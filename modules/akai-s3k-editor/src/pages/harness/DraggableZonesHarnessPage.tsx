@@ -4,6 +4,10 @@ import { useSearchParams } from 'react-router-dom';
 import { KeygroupEditor, ZoneOverview } from '@/components/keygroups';
 import { computeVisibleKeyRange } from '@/components/keygroups/note-coordinate';
 import {
+  buildCreatedKeygroup,
+  type KeygroupCreationDraft,
+} from '@/components/keygroups/keygroup-creation';
+import {
   DRAGGABLE_ZONES_FIXTURES,
   getDraggableZonesFixture,
 } from '@/pages/harness/draggable-zone-fixtures';
@@ -64,6 +68,18 @@ export function DraggableZonesHarnessPage(): JSX.Element {
   const handleReset = () => {
     setKeygroups(cloneKeygroups(activeFixture.keygroups));
     setSelectedKeygroupIndex(0);
+  };
+
+  const handleCreateKeygroup = (draft: KeygroupCreationDraft) => {
+    setKeygroups((current) => {
+      const template = current[selectedKeygroupIndex] ?? current[0];
+      if (!template) return current;
+
+      const created = buildCreatedKeygroup(template, draft);
+      const next = [...current, created];
+      setSelectedKeygroupIndex(next.length - 1);
+      return next;
+    });
   };
 
   return (
@@ -135,6 +151,7 @@ export function DraggableZonesHarnessPage(): JSX.Element {
           selectedKeygroupIndex={selectedKeygroupIndex}
           onSelectKeygroup={setSelectedKeygroupIndex}
           onParameterChange={handleParameterChange}
+          onCreateKeygroup={handleCreateKeygroup}
           visibleRange={visibleRange}
         />
 

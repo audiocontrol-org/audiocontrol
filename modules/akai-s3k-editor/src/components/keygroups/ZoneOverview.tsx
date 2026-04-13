@@ -20,6 +20,7 @@ import {
   clampLowNote,
   clampLowVelocity,
 } from '@/components/keygroups/zone-constraints';
+import type { KeygroupCreationDraft } from '@/components/keygroups/keygroup-creation';
 
 interface ZoneOverviewProps {
   keygroups: (KeygroupHeader | undefined)[];
@@ -27,6 +28,7 @@ interface ZoneOverviewProps {
   selectedKeygroupIndex: number | null;
   onSelectKeygroup: (index: number) => void;
   onParameterChange?: (field: string, value: number) => void;
+  onCreateKeygroup?: (draft: KeygroupCreationDraft) => void;
   visibleRange?: NoteCoordinateRange;
 }
 
@@ -57,6 +59,13 @@ interface DragState {
   keygroupIndex: number;
   field: ZoneEdgeField;
   value: number;
+}
+
+interface CreationState {
+  startNote: number;
+  endNote: number;
+  startVelocity: number;
+  endVelocity: number;
 }
 
 type VelocityLowField = `LOVEL${1 | 2 | 3 | 4}`;
@@ -113,10 +122,12 @@ export function ZoneOverview({
   selectedKeygroupIndex,
   onSelectKeygroup,
   onParameterChange,
+  onCreateKeygroup,
   visibleRange,
 }: ZoneOverviewProps): JSX.Element {
   const surfaceRef = useRef<HTMLDivElement>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
+  const [creationState, setCreationState] = useState<CreationState | null>(null);
 
   if (keygroupCount === 0) {
     return (
@@ -166,6 +177,21 @@ export function ZoneOverview({
     onParameterChange?.(field, value);
   }, [onParameterChange]);
 
+  const isPointInZone = useCallback((note: number, velocity: number): boolean => {
+    return loadedKeygroups.some(({ header }) => {
+      if (note < header.LONOTE || note > header.HINOTE) {
+        return false;
+      }
+
+      const zones = getVelocityZones(header);
+      if (zones.length === 0) {
+        return true;
+      }
+
+      return zones.some((zone) => velocity >= zone.lovel && velocity <= zone.hivel);
+    });
+  }, [loadedKeygroups]);
+
   const startDrag = useCallback((
     keygroupIndex: number,
     field: ZoneEdgeField,
@@ -196,6 +222,45 @@ export function ZoneOverview({
     handleMouseMove(event.nativeEvent);
   }, [commitDrag, onSelectKeygroup]);
 
+  const startCreateDrag = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!onCreateKeygroup) return;
+    const startNote = getNoteFromClientX(event.clientX);
+    const startVelocity = getVelocityFromClientY(event.clientY);
+
+    if (isPointInZone(startNote, startVelocity)) {
+      return;
+    }
+
+    event.preventDefault();
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      setCreationState({
+        startNote,
+        startVelocity,
+        endNote: getNoteFromClientX(moveEvent.clientX),
+        endVelocity: getVelocityFromClientY(moveEvent.clientY),
+      });
+    };
+
+    const handleMouseUp = (upEvent: MouseEvent) => {
+      const endNote = getNoteFromClientX(upEvent.clientX);
+      const endVelocity = getVelocityFromClientY(upEvent.clientY);
+      const draft = {
+        lowNote: Math.min(startNote, endNote),
+        highNote: Math.max(startNote, endNote),
+        lowVelocity: Math.min(startVelocity, endVelocity),
+        highVelocity: Math.max(startVelocity, endVelocity),
+      };
+      setCreationState(null);
+      onCreateKeygroup(draft);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    handleMouseMove(event.nativeEvent);
+  }, [getNoteFromClientX, getVelocityFromClientY, isPointInZone, onCreateKeygroup]);
+
   return (
     <div className="mx-4 mb-3">
       <div
@@ -221,12 +286,17 @@ export function ZoneOverview({
           ref={surfaceRef}
           data-testid="zone-overview-surface"
           className="absolute top-0"
+          onMouseDown={startCreateDrag}
           style={{
             left: `${LEFT_LABEL_WIDTH}px`,
             right: 0,
             height: `calc(100% - ${BOTTOM_LABEL_HEIGHT}px)`,
           }}
         >
+          <div
+            className="absolute inset-0"
+            data-testid="zone-overview-create-layer"
+          />
           {/* Background grid lines for octave markers */}
           {visibleMarkers.map((marker) => {
             const xPercent = noteToPercent(marker.note, range);
@@ -372,6 +442,27 @@ export function ZoneOverview({
               );
             });
           })}
+
+          {creationState && (
+            <div
+              data-testid="zone-overview-create-preview"
+              className="absolute border border-dashed border-blue-300 bg-blue-400/20 pointer-events-none z-40"
+              style={{
+                left: `${noteToPercent(Math.min(creationState.startNote, creationState.endNote), range)}%`,
+                width: `${Math.max(
+                  noteToPercent(Math.max(creationState.startNote, creationState.endNote) + 1, range) -
+                    noteToPercent(Math.min(creationState.startNote, creationState.endNote), range),
+                  0.8,
+                )}%`,
+                top: `${((127 - Math.max(creationState.startVelocity, creationState.endVelocity)) / 128) * 100}%`,
+                height: `${Math.max(
+                  ((127 - Math.min(creationState.startVelocity, creationState.endVelocity) + 1) / 128) * 100 -
+                    ((127 - Math.max(creationState.startVelocity, creationState.endVelocity)) / 128) * 100,
+                  0.8,
+                )}%`,
+              }}
+            />
+          )}
 
           {loadedKeygroups.map(({ index, header }) => {
             if (!onParameterChange || selectedKeygroupIndex !== index) {

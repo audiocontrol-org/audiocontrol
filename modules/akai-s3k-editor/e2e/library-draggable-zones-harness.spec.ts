@@ -175,4 +175,74 @@ test.describe('Draggable Zones Harness', () => {
         }))
       .toMatchObject({ HIVEL1: 80, LOVEL2: 81 });
   });
+
+  test('supports creating a new keygroup by dragging in empty overview space', async ({ page }) => {
+    await page.goto(harnessUrl('stacked-layers'));
+
+    const surface = page.getByTestId('zone-overview-surface');
+    await expect(surface).toBeVisible();
+
+    const box = await surface.boundingBox();
+    if (!box) {
+      throw new Error('Expected zone overview surface bounding box');
+    }
+
+    const startX = box.x + 4;
+    const startY = box.y + box.height - 50;
+    const endX = startX + 40;
+    const endY = startY - 50;
+    const visibleRangeMin = 32;
+    const visibleRangeMax = 100;
+    const visibleSpan = visibleRangeMax - visibleRangeMin + 1;
+    const velocityFromY = (clientY: number) => {
+      const fraction = Math.max(0, Math.min(1, (clientY - box.y) / box.height));
+      return Math.max(0, Math.min(127, Math.round(127 - fraction * 128)));
+    };
+    const noteFromX = (clientX: number) => {
+      const fraction = Math.max(0, Math.min(1, (clientX - box.x) / box.width));
+      return Math.max(
+        visibleRangeMin,
+        Math.min(127, Math.round(visibleRangeMin + fraction * visibleSpan)),
+      );
+    };
+
+    const expectedLowNote = Math.min(noteFromX(startX), noteFromX(endX));
+    const expectedHighNote = Math.max(noteFromX(startX), noteFromX(endX));
+    const expectedLowVelocity = Math.min(velocityFromY(startY), velocityFromY(endY));
+    const expectedHighVelocity = Math.max(velocityFromY(startY), velocityFromY(endY));
+
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await expect(page.getByTestId('zone-overview-create-preview')).toBeVisible();
+    await page.mouse.move(endX, endY, { steps: 8 });
+    await page.mouse.up();
+
+    await expect(page.getByTestId('harness-keygroup-2')).toBeVisible();
+
+    await expect
+      .poll(async () =>
+        page.evaluate(() => {
+          const state = (
+            window as unknown as {
+              __draggableZonesHarness?: {
+                keygroups: Array<{ LONOTE: number; HINOTE: number; LOVEL1: number; HIVEL1: number }>;
+                selectedKeygroupIndex: number;
+              };
+            }
+          ).__draggableZonesHarness;
+          return {
+            selectedKeygroupIndex: state?.selectedKeygroupIndex,
+            keygroup: state?.keygroups[2],
+          };
+        }))
+      .toMatchObject({
+        selectedKeygroupIndex: 2,
+        keygroup: {
+          LONOTE: expectedLowNote,
+          HINOTE: expectedHighNote,
+          LOVEL1: expectedLowVelocity,
+          HIVEL1: expectedHighVelocity,
+        },
+      });
+  });
 });

@@ -98,10 +98,10 @@ This feature extends the current Akai S3000XL keygroup editing surfaces with dir
 **Goal:** Let users create keygroups spatially from empty overview space.
 
 **Tasks:**
-- [ ] Detect drag initiation in unoccupied `ZoneOverview` regions
-- [ ] Show preview feedback for the pending new zone
-- [ ] Create the keygroup with sensible verified defaults on commit
-- [ ] Add tests for creation gesture handling and resulting editor state
+- [x] Detect drag initiation in unoccupied `ZoneOverview` regions
+- [x] Show preview feedback for the pending new zone
+- [x] Create the keygroup with sensible verified defaults on commit
+- [x] Add tests for creation gesture handling and resulting editor state
 
 **Acceptance:** Dragging in empty overview space creates a new keygroup covering the dragged note and velocity range, and the new keygroup is reflected in the UI and committed correctly.
 
@@ -117,5 +117,6 @@ This feature extends the current Akai S3000XL keygroup editing surfaces with dir
 - Phase 1 is complete.
 - Phase 2 is complete: ZoneOverview boundaries are draggable, overlapping keyspans are allowed, and keygroup note fields now clamp to the documented S3000XL `21-127` range.
 - Phase 3 is complete: `VelocityRangeBar` split handles now drive adjacent velocity-zone updates and stay synchronized with numeric editing and ZoneOverview.
-- Next implementation target is Phase 4: zone creation via drag in empty `ZoneOverview` space.
+- Phase 4 is complete: empty-space drags in `ZoneOverview` now preview and create new keygroups in both the harness and the real page flow.
+- Feature implementation is complete pending ship/merge workflow.
 - The browser-only harness is now available for rapid UI iteration before hardware or transport e2e.

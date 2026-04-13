@@ -2,11 +2,11 @@
 
 ## Status
 
-Phase 1, Phase 2, and Phase 3 complete. Browser-only UI harness added.
+Phase 1 through Phase 4 complete. Browser-only UI harness added.
 
 ## Overview
 
-The feature now has the shared coordinate-system foundation plus completed `ZoneOverview` and `VelocityRangeBar` dragging, verified through an isolated browser harness without hardware.
+The feature now has the shared coordinate-system foundation plus completed dragging and zone creation flows, verified through an isolated browser harness without hardware.
 
 ## What Changed
 
@@ -29,20 +29,25 @@ The feature now has the shared coordinate-system foundation plus completed `Zone
 - Wired `VelocityRangeBar` split dragging through `VelocityZoneEditor` so adjacent zone fields update together.
 - Added unit coverage for split-handle rendering, drag commits, numeric clamping, and adjacent-zone synchronization.
 - Extended the harness Playwright spec to drag a velocity split and assert committed browser-only state changes.
+- Added empty-space drag detection and preview rendering in `ZoneOverview` for new keygroup creation.
+- Added a shared keygroup-creation helper so the harness and real page build new keygroups from the same template-clone path.
+- Wired real-page zone creation through `createKeygroup(program, index, template)` using a concrete draft-backed header.
+- Added unit coverage for empty-space creation vs occupied-zone rejection.
+- Extended the harness Playwright spec to create a new keygroup by drag and assert the resulting selected state.
 
 ## Verification
 
 - `make` passed at the repo root after dependency bootstrap, including `modules/akai-s3k-editor`.
 - `make modules/akai-s3k-editor/.build-stamp` passed.
-- `pnpm --filter @audiocontrol/akai-s3k-editor exec vitest run src/components/keygroups/VelocityRangeBar.test.tsx src/components/keygroups/VelocityZoneEditor.test.tsx src/components/keygroups/ZoneOverview.test.tsx src/components/keygroups/KeyRangeEditor.test.tsx` passed.
-- `modules/e2e-infra/scripts/run-and-watch.sh test-e2e-s3k-library 'ARGS=--grep "Draggable Zones Harness"'` passed with `5 passed`.
+- `pnpm --filter @audiocontrol/akai-s3k-editor exec vitest run src/components/keygroups/ZoneOverview.test.tsx src/components/keygroups/VelocityRangeBar.test.tsx src/components/keygroups/VelocityZoneEditor.test.tsx src/components/keygroups/KeyRangeEditor.test.tsx` passed.
+- `modules/e2e-infra/scripts/run-and-watch.sh test-e2e-s3k-library 'ARGS=--grep "Draggable Zones Harness"'` passed with `6 passed`.
 
 ## Deviations
 
 - Phase 2 intentionally does not constrain adjacent keygroups against each other because overlapping keyspans are allowed.
 - Velocity split dragging currently models adjacent split points as contiguous boundaries (`HIVELn = boundary`, `LOVELn+1 = boundary + 1`).
-- Phase 4 remains unimplemented.
+- New keygroups are seeded from an existing keygroup template and normalized into a single-zone mapping, rather than being synthesized from scratch.
 
 ## Next Step
 
-Implement Phase 4 by allowing zone creation via drag in empty `ZoneOverview` space, with preview feedback and verified defaults on commit.
+Move into ship/merge workflow: final review, full validation, and PR prep.

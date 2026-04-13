@@ -34,4 +34,4 @@ Clean-room Codex implementation of draggable zone editing for the Akai S3000XL e
 | 1 | Shared coordinate system | Complete |
 | 2 | Draggable ZoneOverview boundaries | Complete |
 | 3 | Draggable VelocityRangeBar | Complete |
-| 4 | Zone creation via drag | Pending |
+| 4 | Zone creation via drag | Complete |

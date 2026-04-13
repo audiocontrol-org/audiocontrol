@@ -10,6 +10,10 @@ import { useConnectionDrawerStore } from '@/stores/connectionDrawerStore';
 import { writeKeygroupField } from '@/lib/keygroup-writers';
 import { ErrorBanner } from '@/components/ui';
 import { computeVisibleKeyRange } from '@/components/keygroups/note-coordinate';
+import {
+  buildCreatedKeygroup,
+  type KeygroupCreationDraft,
+} from '@/components/keygroups/keygroup-creation';
 
 export function KeygroupsPage(): JSX.Element {
   const { client, isConnected } = useS3000xlClient();
@@ -129,6 +133,34 @@ export function KeygroupsPage(): JSX.Element {
 
   const selectedHeader =
     selectedKeygroupIndex !== null ? keygroups[selectedKeygroupIndex] : undefined;
+
+  const handleCreateKeygroup = useCallback(async (draft: KeygroupCreationDraft) => {
+    if (selectedProgramIndex === null || !client || !selectedProgram) return;
+
+    const template =
+      selectedHeader ??
+      keygroups.find((keygroup): keygroup is NonNullable<typeof keygroup> => Boolean(keygroup)) ??
+      await client.fetchKeygroupHeader(selectedProgramIndex, 0);
+
+    try {
+      const created = buildCreatedKeygroup(template, draft);
+      await client.createKeygroup(selectedProgramIndex, selectedProgram.GROUPS, created);
+      await refreshFromDevice();
+      selectKeygroup(selectedProgram.GROUPS);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create keygroup';
+      setError(message);
+    }
+  }, [
+    selectedProgramIndex,
+    client,
+    selectedProgram,
+    selectedHeader,
+    keygroups,
+    refreshFromDevice,
+    selectKeygroup,
+    setError,
+  ]);
   const visibleRange = computeVisibleKeyRange(keygroups, keygroupCount);
 
   if (!isConnected) {
@@ -195,6 +227,7 @@ export function KeygroupsPage(): JSX.Element {
         selectedKeygroupIndex={selectedKeygroupIndex}
         onSelectKeygroup={selectKeygroup}
         onParameterChange={handleParameterChange}
+        onCreateKeygroup={handleCreateKeygroup}
         visibleRange={visibleRange}
       />
 

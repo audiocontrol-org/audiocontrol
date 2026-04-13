@@ -825,3 +825,39 @@ Complete Phase 3 by adding draggable split-point editing to `VelocityRangeBar` a
 ### Insights
 1. The browser-only harness is now covering both note-boundary and velocity-split dragging, which makes it a credible end-to-end loop for Phase 4 as well
 2. Split-point dragging is a better fit for paired field commits than for independent per-zone writes, because the UI concept is one shared boundary
+
+---
+
+## 2026-04-13: Codex Draggable Zones Phase 4
+
+### Feature: codex-draggable-zones
+### Worktree: audiocontrol-codex-draggable-zones
+
+### Goal
+Complete the feature by allowing new keygroups to be created through an empty-space drag gesture in `ZoneOverview`.
+
+### Accomplished
+- Added empty-space drag detection in `ZoneOverview` so creation begins only when the gesture starts outside existing zones
+- Added preview rendering for the pending keygroup rectangle during the drag
+- Added a shared `keygroup-creation.ts` helper that builds a new single-zone keygroup from an existing template plus the dragged note/velocity ranges
+- Wired the harness to append and select newly created keygroups immediately
+- Wired the real keygroups page to create and refresh a device-backed keygroup using the same draft-backed header path
+- Added unit coverage for creation commits and occupied-zone rejection
+- Extended the browser harness to create a new keygroup by drag and assert the resulting selected state and ranges
+
+### Didn't Work
+- The first real-page build failed because the creation callback referenced `selectedHeader` before its declaration
+- The first browser-harness creation test hard-coded expected ranges and failed because the actual surface geometry produced different note/velocity values
+
+### Course Corrections
+- Moved `selectedHeader` earlier in `KeygroupsPage` so the callback closes over a defined value
+- Reworked the harness creation test to compute expected ranges from the actual surface bounds instead of assuming fixed geometry
+
+### Quantitative
+- Targeted component tests: 37 passed
+- Browser harness tests: 6 passed
+- Module build: passed
+
+### Insights
+1. The harness is now strong enough to validate the full feature lifecycle: note edits, velocity edits, and keygroup creation
+2. Template-clone creation is the pragmatic bridge between browser-only experimentation and the real device API, because the device already knows how to append a templated keygroup safely

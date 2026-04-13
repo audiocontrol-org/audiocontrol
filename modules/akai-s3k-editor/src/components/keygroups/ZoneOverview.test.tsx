@@ -376,4 +376,75 @@ describe('ZoneOverview', () => {
 
     expect(onParameterChange).toHaveBeenCalledWith('HIVEL1', 100);
   });
+
+  it('creates a new keygroup draft when dragging in empty space', () => {
+    const kg = makeKeygroupHeader({
+      LONOTE: 36,
+      HINOTE: 72,
+      SNAME1: 'SOFT        ',
+      LOVEL1: 64,
+      HIVEL1: 127,
+    });
+    const onCreateKeygroup = vi.fn();
+
+    render(
+      <ZoneOverview
+        keygroups={[kg]}
+        keygroupCount={1}
+        selectedKeygroupIndex={0}
+        onSelectKeygroup={vi.fn()}
+        onCreateKeygroup={onCreateKeygroup}
+        visibleRange={{ min: 21, max: 88 }}
+      />,
+    );
+    setSurfaceRect();
+
+    fireEvent.mouseDown(screen.getByTestId('zone-overview-surface'), {
+      clientX: 100,
+      clientY: 180,
+    });
+    expect(screen.getByTestId('zone-overview-create-preview')).toBeInTheDocument();
+
+    fireEvent.mouseMove(document, { clientX: 140, clientY: 120 });
+    fireEvent.mouseUp(document, { clientX: 140, clientY: 120 });
+
+    expect(onCreateKeygroup).toHaveBeenCalledWith({
+      lowNote: 21,
+      highNote: 26,
+      lowVelocity: 34,
+      highVelocity: 69,
+    });
+  });
+
+  it('does not create a new keygroup draft when starting inside an existing zone', () => {
+    const kg = makeKeygroupHeader({
+      LONOTE: 36,
+      HINOTE: 72,
+      SNAME1: 'SOFT        ',
+      LOVEL1: 0,
+      HIVEL1: 127,
+    });
+    const onCreateKeygroup = vi.fn();
+
+    render(
+      <ZoneOverview
+        keygroups={[kg]}
+        keygroupCount={1}
+        selectedKeygroupIndex={0}
+        onSelectKeygroup={vi.fn()}
+        onCreateKeygroup={onCreateKeygroup}
+        visibleRange={{ min: 21, max: 88 }}
+      />,
+    );
+    setSurfaceRect();
+
+    fireEvent.mouseDown(screen.getByTestId('zone-overview-surface'), {
+      clientX: 220,
+      clientY: 100,
+    });
+    fireEvent.mouseUp(document, { clientX: 240, clientY: 90 });
+
+    expect(screen.queryByTestId('zone-overview-create-preview')).not.toBeInTheDocument();
+    expect(onCreateKeygroup).not.toHaveBeenCalled();
+  });
 });
