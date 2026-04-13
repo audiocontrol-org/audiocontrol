@@ -70,11 +70,24 @@ PRD → workplan.md → GitHub issues → implementation → implementation-summ
 
 ### Add a UI feature
 1. Read feature workplan for current phase and next task
-2. Implement with loading states and progress indicators from the start
-3. Use proportional flex layouts, not pixel values
-4. Build: `make`
-5. Update workplan acceptance criteria
-6. Commit with GitHub issue reference
+2. Read `TESTING-UI.md` — check if a test harness exists for the feature; create one if not
+3. Implement with loading states and progress indicators from the start
+4. Use proportional flex layouts, not pixel values
+5. Build: `make`
+6. Verify visually using the test harness (screenshot with Playwright, inspect the result)
+7. Iterate: fix issues found visually, screenshot again
+8. Update workplan acceptance criteria
+9. Commit with GitHub issue reference
+
+## Targeted UI Testing
+
+See [TESTING-UI.md](/TESTING-UI.md) for the full methodology.
+
+When developing visual UI features, create a **test harness page** that renders the components under development with hardcoded factory data — no device, no store, no transport. Use the Playwright CLI to screenshot the harness and visually verify rendering. This creates a tight dev→test→fix→test loop without requiring hardware.
+
+- Test harness pages: `src/pages/Test<Feature>Page.tsx`
+- Route convention: `/<editor-base>/test/<feature>`
+- Screenshot: `modules/<editor>/node_modules/.bin/playwright screenshot --ignore-https-errors --full-page "https://localhost:<port>/<route>" /tmp/<name>.png`
 
 ## Before Committing
 
@@ -84,6 +97,7 @@ Review changes against project standards:
 - [ ] No defensive sleeps added (ACK/response is definitive)
 - [ ] No fabricated claims about device behavior (test it or cite docs)
 - [ ] Error messages are actionable
+- [ ] UI features visually verified via test harness screenshot (see TESTING-UI.md)
 - [ ] Feature workplan.md updated with completed tasks
 - [ ] Could any of this work have been delegated to a sub-agent?
 

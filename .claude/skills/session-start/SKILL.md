@@ -32,7 +32,13 @@ Read the following and report a concise summary to the user:
 6. **Check open GitHub issues**:
    - Run: `gh issue list --label <relevant-label> --state open`
 
-7. **Report to the user**:
+7. **Check UI test harness** (if the feature involves UI work):
+   - Read: `TESTING-UI.md` for the methodology
+   - Check if a test harness page already exists for this feature (look for `Test<Feature>Page.tsx` files in the relevant editor's `src/pages/`)
+   - If one exists: note the route and how to screenshot it
+   - If none exists: flag that a harness should be created before implementation begins
+
+8. **Report to the user**:
    - Feature name and current phase
    - Last session's key accomplishments and failures
    - Top correction patterns to watch for (from analysis report)

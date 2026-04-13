@@ -4,9 +4,9 @@
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| Phase 1 | Shared coordinate system | Planning |
-| Phase 2 | Draggable ZoneOverview boundaries | Planning |
-| Phase 3 | Draggable VelocityRangeBar | Planning |
+| Phase 1 | Shared coordinate system | Complete |
+| Phase 2 | Draggable ZoneOverview boundaries | Complete |
+| Phase 3 | Draggable VelocityRangeBar | In Progress |
 | Phase 4 | Zone creation via drag | Planning |
 
 ## Links

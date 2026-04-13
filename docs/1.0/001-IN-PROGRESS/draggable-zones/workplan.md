@@ -29,10 +29,10 @@ A shared coordinate mapping utility will replace the independent note-to-pixel c
 **Goal:** Extract and share the note-to-pixel coordinate mapping so ZoneOverview and KeyRangeEditor align horizontally.
 
 **Tasks:**
-- [ ] Extract note-to-pixel coordinate mapping into a shared utility
-- [ ] Update ZoneOverview to use the shared mapping
-- [ ] Update KeyRangeEditor to use the shared mapping
-- [ ] Verify horizontal alignment between the two components
+- [x] Extract note-to-pixel coordinate mapping into a shared utility
+- [x] Update ZoneOverview to use the shared mapping
+- [x] Update KeyRangeEditor to use the shared mapping
+- [x] Verify horizontal alignment between the two components
 
 **Acceptance:** Both components use identical note-to-pixel calculations. Viewing the same keygroup, note positions align vertically between ZoneOverview and KeyRangeEditor.
 
@@ -41,12 +41,12 @@ A shared coordinate mapping utility will replace the independent note-to-pixel c
 **Goal:** Enable direct manipulation of zone edges in the ZoneOverview.
 
 **Tasks:**
-- [ ] Investigate S3000XL overlap rules for key ranges and velocity zones
-- [ ] Create a drag interaction hook following the EnvelopeEditor pattern
-- [ ] Add drag handles to left/right edges (LONOTE/HINOTE)
-- [ ] Add drag handles to top/bottom edges (LOVEL/HIVEL)
-- [ ] Add visual feedback during drag (hover highlights, drag preview)
-- [ ] Constrain boundaries per S3000XL device behavior
+- [x] Investigate S3000XL overlap rules for key ranges and velocity zones
+- [x] Create a drag interaction hook following the EnvelopeEditor pattern
+- [x] Add drag handles to left/right edges (LONOTE/HINOTE)
+- [x] Add drag handles to top/bottom edges (LOVEL/HIVEL)
+- [x] Add visual feedback during drag (hover highlights, drag preview)
+- [x] Constrain boundaries per S3000XL device behavior
 
 **Acceptance:** Can drag zone edges to change LONOTE/HINOTE/LOVEL/HIVEL. UI updates continuously during drag. Device write occurs on mouseup. Boundaries respect S3000XL constraints.
 

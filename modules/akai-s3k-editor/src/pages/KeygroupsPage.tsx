@@ -9,6 +9,7 @@ import { useEditorStore } from '@/stores/editorStore';
 import { useConnectionDrawerStore } from '@/stores/connectionDrawerStore';
 import { writeKeygroupField } from '@/lib/keygroup-writers';
 import { ErrorBanner } from '@/components/ui';
+import { computeKeyRange } from '@/components/keygroups/note-coordinate-utils';
 
 export function KeygroupsPage(): JSX.Element {
   const { client, isConnected } = useS3000xlClient();
@@ -129,6 +130,8 @@ export function KeygroupsPage(): JSX.Element {
   const selectedHeader =
     selectedKeygroupIndex !== null ? keygroups[selectedKeygroupIndex] : undefined;
 
+  const noteRange = computeKeyRange(keygroups, keygroupCount);
+
   if (!isConnected) {
     return (
       <div className="ac-page ac-page-shell">
@@ -192,6 +195,7 @@ export function KeygroupsPage(): JSX.Element {
         keygroupCount={keygroupCount}
         selectedKeygroupIndex={selectedKeygroupIndex}
         onSelectKeygroup={selectKeygroup}
+        noteRange={noteRange}
       />
 
       <div className="ac-list-detail-grid">
@@ -215,6 +219,7 @@ export function KeygroupsPage(): JSX.Element {
               keygroupIndex={selectedKeygroupIndex!}
               sampleNames={sampleNames}
               onParameterChange={handleParameterChange}
+              noteRange={noteRange}
             />
           ) : selectedKeygroupIndex !== null ? (
             <p className="text-gray-400">Loading keygroup...</p>
