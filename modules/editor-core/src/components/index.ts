@@ -128,6 +128,12 @@ export {
   type OperationState,
 } from '../types/operation-progress';
 
+// Kit configuration types
+export {
+  type BaseKitConfig,
+  type KitOutputConfigProps,
+} from '../types/kit-config';
+
 // SVG glow components
 export {
   VfdGlowDefs,

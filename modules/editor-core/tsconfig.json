@@ -16,7 +16,6 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@audiocontrol/midi-core": ["src/types/midi-core.d.ts"],
       "@/*": ["src/*"]
     },
     "outDir": "dist",

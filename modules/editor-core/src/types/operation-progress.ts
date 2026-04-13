@@ -1,34 +1,20 @@
 /**
  * Canonical types for operation progress feedback.
  *
- * Shared across all editors for import, export, and library operations.
- * The compiler enforces that every progress update provides structured
- * data — no freeform strings.
+ * {@link OperationProgress} is defined in `@audiocontrol/sampler-library`
+ * (the lower-level module) and re-exported here so that editor consumers
+ * can import everything progress-related from a single place.
+ *
+ * UI-specific types ({@link OperationState}) and utility functions
+ * ({@link isOperationComplete}, {@link getOverallPercent}, {@link formatBytes})
+ * live here because they depend on React/UI patterns that don't belong
+ * in sampler-library.
  */
 
-/**
- * Structured progress for a multi-step operation.
- *
- * Overall progress is byte-weighted (not step-weighted) so that a
- * 10 MB upload step doesn't appear as equal to a 100-byte metadata
- * write. Use {@link getOverallPercent} to compute the display value.
- */
-export interface OperationProgress {
-  /** Current step number (1-based) */
-  currentStep: number;
-  /** Total number of steps in the operation */
-  totalSteps: number;
-  /** Human-readable label for the current step (e.g., "Uploading KICK1") */
-  stepLabel: string;
-  /** Bytes transferred in the current step */
-  bytesSent: number;
-  /** Total bytes to transfer in the current step */
-  bytesTotal: number;
-  /** Bytes completed in all prior steps (for byte-weighted overall progress) */
-  bytesSentAllSteps: number;
-  /** Total bytes across ALL steps in the entire operation */
-  bytesTotalAllSteps: number;
-}
+import type { OperationProgress } from '@audiocontrol/sampler-library/browser';
+
+// Re-export the canonical OperationProgress from sampler-library
+export type { OperationProgress } from '@audiocontrol/sampler-library/browser';
 
 /**
  * State of an operation, shared across all hooks and dialogs.
