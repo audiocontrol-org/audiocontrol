@@ -142,19 +142,19 @@ Resolve the 11 deferred type duplication findings from the Phase 1 audit.
 ### Tasks
 
 #### High severity
-- [ ] Unify `WavFileInfo` — create shared metadata interface, update roland `library-tones.ts` and s3k `wav-reader.ts`
-- [ ] Converge `TreeSectionProps` — roland `LibraryTreeNode.tsx` has diverged copy of editor-core's `TreeSectionProps`
-- [ ] Enforce `OperationProgress` — sampler-library `samples.ts` re-declares identical type instead of importing from editor-core
-- [ ] Create `createEditorStore()` factory — extract shared core fields (isLoading, loadingMessage, error, etc.) from both editor stores
-- [ ] Converge `LibraryDragPayload` / `LibraryDragData` — editor-core and roland define parallel drag payload types
+- [x] Unify `WavFileInfo` — shared `WavFileMetadata` in editor-core, both editors extend
+- [x] Converge `TreeSectionProps` — deleted Roland's 460-line LibraryTreeNode.tsx, use editor-core TreeSection with adapter hook
+- [x] Enforce `OperationProgress` — canonical in sampler-library, editor-core re-exports
+- [x] Create `createEditorStoreSlice()` factory — shared base in editor-core, both stores extend
+- [x] Converge `LibraryDragPayload` / `LibraryDragData` — eliminated LibraryDragData, Roland uses LibraryDragPayload with meta helpers
 
 #### Medium severity
-- [ ] Create shared `BaseKitConfig` — S3kKitConfig is a subset of S330KitConfig; extract common fields
-- [ ] Create generic `KitOutputConfigProps<T>` — structurally identical props in both kit output components
-- [ ] Replace `SdsTransferProgress` ambient re-declaration — editor-core `.d.ts` hand-maintains copy of midi-core type
-- [ ] Make `DrumKitImportProgress` / `InstrumentImportProgress` extend `OperationProgress` instead of redefining fields
-- [ ] Replace `SaveProgress` with `OperationProgress` — renamed fields in `DiskToLibraryDialog.tsx`
-- [ ] Promote S3K `Dialog` primitives to editor-core — parallel modal implementations in editor-core and s3k
+- [x] Create shared `BaseKitConfig` — generic in editor-core, S330 extends, S3K aliases
+- [x] Create generic `KitOutputConfigProps<T>` — shared in editor-core
+- [x] Replace `SdsTransferProgress` ambient re-declaration — deleted .d.ts, removed tsconfig path redirect
+- [x] Make `DrumKitImportProgress` / `InstrumentImportProgress` extend `OperationProgress`
+- [x] Replace `SaveProgress` with `OperationProgress & { startTime }` — field names aligned
+- [x] Promote S3K `Dialog` primitives to editor-core — ConfirmDialog composes shared Dialog
 
 ### Acceptance Criteria
 
