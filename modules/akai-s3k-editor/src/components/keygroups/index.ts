@@ -5,6 +5,7 @@ export { KeyRangeEditor } from '@/components/keygroups/KeyRangeEditor';
 export { VelocityRangeBar } from '@/components/keygroups/VelocityRangeBar';
 export { ZoneOverview } from '@/components/keygroups/ZoneOverview';
 export type { NewZoneRange } from '@/components/keygroups/ZoneOverview';
+export { ZoneOverviewToolbar } from '@/components/keygroups/ZoneOverviewToolbar';
 export {
   type ZoneDragField,
   type VelocityZoneIndex,
@@ -28,4 +29,8 @@ export {
   velocityToPercent,
   velocityToPercentInverted,
   getVisibleOctaveMarkers,
+  FULL_RANGE,
+  zoomIn,
+  zoomOut,
+  zoomAtNote,
 } from '@/components/keygroups/note-coordinate-utils';

@@ -1,10 +1,12 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
 import type { NoteRange } from '@/components/keygroups/note-coordinate-utils';
 import {
   noteToPercent,
   velocityToPercentInverted,
   getVisibleOctaveMarkers,
+  percentToNote,
+  zoomAtNote,
 } from '@/components/keygroups/note-coordinate-utils';
 import type { ZoneDragField } from '@/components/keygroups/use-zone-drag';
 import { useZoneDrag } from '@/components/keygroups/use-zone-drag';
@@ -27,6 +29,7 @@ interface ZoneOverviewProps {
   onZoneDrag?: (keygroupIndex: number, field: ZoneDragField, value: number) => void;
   onZoneCommit?: (keygroupIndex: number, field: ZoneDragField, value: number) => void;
   onCreateZone?: (range: NewZoneRange) => void;
+  onNoteRangeChange?: (range: NoteRange) => void;
 }
 
 function CreationPreview({
@@ -71,8 +74,31 @@ export function ZoneOverview({
   onZoneDrag,
   onZoneCommit,
   onCreateZone,
+  onNoteRangeChange,
 }: ZoneOverviewProps): JSX.Element {
   const vizRef = useRef<HTMLDivElement>(null);
+
+  // Scroll-wheel zoom: zoom in/out centered on mouse position
+  useEffect(() => {
+    const el = vizRef.current;
+    if (!el || !onNoteRangeChange) return;
+
+    const handleWheel = (e: WheelEvent): void => {
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
+      const centerNote = percentToNote(xPercent, noteRange);
+      const zoomFactor = e.deltaY > 0 ? 1.15 : 0.85;
+      const newRange = zoomAtNote(noteRange, centerNote, zoomFactor);
+      // Don't zoom tighter than ~12 notes
+      if (newRange.max - newRange.min >= 12) {
+        onNoteRangeChange(newRange);
+      }
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [noteRange, onNoteRangeChange]);
 
   const hasDragCallbacks = onZoneDrag !== undefined && onZoneCommit !== undefined;
 

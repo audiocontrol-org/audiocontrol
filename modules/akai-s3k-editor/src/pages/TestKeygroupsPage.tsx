@@ -5,7 +5,9 @@ import { ZoneOverview } from '@/components/keygroups/ZoneOverview';
 import type { NewZoneRange } from '@/components/keygroups/ZoneOverview';
 import { KeyRangeEditor } from '@/components/keygroups/KeyRangeEditor';
 import { VelocityRangeBar } from '@/components/keygroups/VelocityRangeBar';
-import { computeKeyRange } from '@/components/keygroups/note-coordinate-utils';
+import { FULL_RANGE } from '@/components/keygroups/note-coordinate-utils';
+import type { NoteRange } from '@/components/keygroups/note-coordinate-utils';
+import { ZoneOverviewToolbar } from '@/components/keygroups/ZoneOverviewToolbar';
 
 const VELOCITY_MAX = 127;
 
@@ -82,7 +84,7 @@ export function TestKeygroupsPage(): JSX.Element {
     Record<number, number>
   >({});
 
-  const noteRange = computeKeyRange(keygroups, keygroups.length);
+  const [noteRange, setNoteRange] = useState<NoteRange>(FULL_RANGE);
 
   const handleKeyRangeChange = useCallback(
     (kgIndex: number, field: 'LONOTE' | 'HINOTE', value: number) => {
@@ -187,6 +189,12 @@ export function TestKeygroupsPage(): JSX.Element {
         >
           ZoneOverview ({keygroups.length} keygroups)
         </h2>
+        <ZoneOverviewToolbar
+          noteRange={noteRange}
+          onNoteRangeChange={setNoteRange}
+          keygroups={keygroups}
+          keygroupCount={keygroups.length}
+        />
         <ZoneOverview
           keygroups={keygroups}
           keygroupCount={keygroups.length}
@@ -196,6 +204,7 @@ export function TestKeygroupsPage(): JSX.Element {
           onZoneDrag={handleZoneDrag}
           onZoneCommit={handleZoneDrag}
           onCreateZone={handleCreateZone}
+          onNoteRangeChange={setNoteRange}
         />
       </section>
 

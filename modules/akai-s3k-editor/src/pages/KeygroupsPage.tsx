@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { KeygroupList, KeygroupEditor, ZoneOverview } from '@/components/keygroups';
 import type { ZoneDragField, NewZoneRange } from '@/components/keygroups';
 import { useS3000xlClient } from '@/hooks/useS3000xlClient';
@@ -10,7 +10,9 @@ import { useEditorStore } from '@/stores/editorStore';
 import { useConnectionDrawerStore } from '@/stores/connectionDrawerStore';
 import { writeKeygroupField } from '@/lib/keygroup-writers';
 import { ErrorBanner } from '@/components/ui';
-import { computeKeyRange } from '@/components/keygroups/note-coordinate-utils';
+import { FULL_RANGE } from '@/components/keygroups/note-coordinate-utils';
+import type { NoteRange } from '@/components/keygroups/note-coordinate-utils';
+import { ZoneOverviewToolbar } from '@/components/keygroups/ZoneOverviewToolbar';
 
 export function KeygroupsPage(): JSX.Element {
   const { client, isConnected } = useS3000xlClient();
@@ -192,7 +194,7 @@ export function KeygroupsPage(): JSX.Element {
   const selectedHeader =
     selectedKeygroupIndex !== null ? keygroups[selectedKeygroupIndex] : undefined;
 
-  const noteRange = computeKeyRange(keygroups, keygroupCount);
+  const [noteRange, setNoteRange] = useState<NoteRange>(FULL_RANGE);
 
   if (!isConnected) {
     return (
@@ -252,6 +254,12 @@ export function KeygroupsPage(): JSX.Element {
 
       {error && <ErrorBanner message={error} />}
 
+      <ZoneOverviewToolbar
+        noteRange={noteRange}
+        onNoteRangeChange={setNoteRange}
+        keygroups={keygroups}
+        keygroupCount={keygroupCount}
+      />
       <ZoneOverview
         keygroups={keygroups}
         keygroupCount={keygroupCount}
@@ -261,6 +269,7 @@ export function KeygroupsPage(): JSX.Element {
         onZoneDrag={handleZoneDrag}
         onZoneCommit={handleZoneCommit}
         onCreateZone={handleCreateZone}
+        onNoteRangeChange={setNoteRange}
       />
 
       <div className="ac-list-detail-grid">

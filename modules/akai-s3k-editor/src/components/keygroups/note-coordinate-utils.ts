@@ -100,6 +100,44 @@ export function velocityToPercentInverted(velocity: number): number {
   return ((VELOCITY_MAX - velocity) / (VELOCITY_MAX + 1)) * 100;
 }
 
+/** Full MIDI note range (0-127). */
+export const FULL_RANGE: NoteRange = { min: 0, max: 127 };
+
+/** Narrow the visible range by ~25%, centered on the current midpoint. */
+export function zoomIn(range: NoteRange): NoteRange {
+  const mid = (range.min + range.max) / 2;
+  const halfSpan = (range.max - range.min) / 2;
+  const newHalf = Math.max(halfSpan * 0.75, 6); // don't zoom tighter than ~12 notes
+  return {
+    min: Math.max(0, Math.round(mid - newHalf)),
+    max: Math.min(127, Math.round(mid + newHalf)),
+  };
+}
+
+/** Widen the visible range by ~25%, centered on the current midpoint. */
+export function zoomOut(range: NoteRange): NoteRange {
+  const mid = (range.min + range.max) / 2;
+  const halfSpan = (range.max - range.min) / 2;
+  const newHalf = halfSpan * 1.333; // inverse of 0.75
+  return {
+    min: Math.max(0, Math.round(mid - newHalf)),
+    max: Math.min(127, Math.round(mid + newHalf)),
+  };
+}
+
+/**
+ * Zoom centered on a specific note (for scroll-wheel zoom).
+ * zoomFactor < 1 = zoom in, zoomFactor > 1 = zoom out.
+ */
+export function zoomAtNote(range: NoteRange, centerNote: number, zoomFactor: number): NoteRange {
+  const leftDist = centerNote - range.min;
+  const rightDist = range.max - centerNote;
+  return {
+    min: Math.max(0, Math.round(centerNote - leftDist * zoomFactor)),
+    max: Math.min(127, Math.round(centerNote + rightDist * zoomFactor)),
+  };
+}
+
 /** Filter OCTAVE_MARKERS to those within the visible range. */
 export function getVisibleOctaveMarkers(
   range: NoteRange,
