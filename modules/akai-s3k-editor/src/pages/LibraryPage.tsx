@@ -181,11 +181,13 @@ export function LibraryPage(): JSX.Element {
         setDropTransfer((prev) => ({
           ...prev,
           progress: {
-            currentItem: name,
-            currentIndex: 0,
-            totalItems,
-            bytesTransferred: 0,
-            totalBytes,
+            stepLabel: name,
+            currentStep: 0,
+            totalSteps: totalItems,
+            bytesSent: 0,
+            bytesTotal: totalBytes,
+            bytesSentAllSteps: 0,
+            bytesTotalAllSteps: totalBytes,
             startTime: Date.now(),
           },
         }));
@@ -701,7 +703,7 @@ export function LibraryPage(): JSX.Element {
           <div className="text-sm font-medium text-gray-100 mb-2">
             {dropTransfer.error
               ? 'Transfer failed'
-              : dropTransfer.progress && dropTransfer.progress.currentIndex >= dropTransfer.progress.totalItems
+              : dropTransfer.progress && dropTransfer.progress.currentStep >= dropTransfer.progress.totalSteps
                 ? `Saved ${dropTransfer.fileName}`
                 : `Saving ${dropTransfer.fileName}...`
             }
@@ -715,15 +717,15 @@ export function LibraryPage(): JSX.Element {
                 <div
                   className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
                   style={{
-                    width: `${dropTransfer.progress.totalBytes > 0
-                      ? Math.max(2, Math.round((dropTransfer.progress.bytesTransferred / dropTransfer.progress.totalBytes) * 100))
+                    width: `${dropTransfer.progress.bytesTotal > 0
+                      ? Math.max(2, Math.round((dropTransfer.progress.bytesSent / dropTransfer.progress.bytesTotal) * 100))
                       : 2}%`,
                   }}
                 />
               </div>
               <div className="text-xs text-gray-400 flex justify-between">
-                <span>{dropTransfer.progress.currentIndex} / {dropTransfer.progress.totalItems} items</span>
-                <span className="truncate ml-2">{dropTransfer.progress.currentItem}</span>
+                <span>{dropTransfer.progress.currentStep} / {dropTransfer.progress.totalSteps} items</span>
+                <span className="truncate ml-2">{dropTransfer.progress.stepLabel}</span>
               </div>
             </>
           )}

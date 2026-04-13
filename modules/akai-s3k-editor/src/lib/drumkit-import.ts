@@ -19,6 +19,7 @@ import type {
 } from '@audiocontrol/sampler-devices/s3k';
 import { SampleHeader_writeSHNAME } from '@audiocontrol/sampler-devices/s3k';
 import type { SdsTransferProgress } from '@audiocontrol/midi-core';
+import type { OperationProgress } from '@audiocontrol/editor-core';
 import type { ChoppedSample, DrumKitChoppedSample } from '@audiocontrol/sampler-library/browser';
 import { parseWavFile } from '@/lib/wav-reader';
 import { parseMidiNote } from '@/lib/midi-note-parser';
@@ -30,15 +31,9 @@ import { writeProgramField } from '@/lib/program-writers';
 // =========================================================================
 
 /** Progress callback for the drum kit import pipeline. */
-export interface DrumKitImportProgress {
+export interface DrumKitImportProgress extends Pick<OperationProgress, 'stepLabel' | 'currentStep' | 'totalSteps'> {
   /** Current phase of the import */
   phase: 'loading' | 'sending-samples' | 'creating-program' | 'creating-keygroups';
-  /** Human-readable description of the current step */
-  stepLabel: string;
-  /** Current step within the phase (1-based) */
-  currentStep: number;
-  /** Total steps in the current phase */
-  totalSteps: number;
   /** SDS progress for sample transfers (only during 'sending-samples' phase) */
   sdsProgress?: SdsTransferProgress | null;
 }
@@ -344,4 +339,3 @@ export async function importDrumKitToDevice(
     keygroupCount: slices.length,
   };
 }
-

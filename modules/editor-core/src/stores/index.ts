@@ -1,4 +1,12 @@
 export {
+  createEditorStoreSlice,
+  editorStoreBaseInitialState,
+  type EditorStoreBase,
+  type EditorStoreBaseState,
+  type EditorStoreBaseActions,
+} from './editorStoreBase';
+
+export {
   createMidiStore,
   type MidiStoreConfig,
   type MidiStoreState,

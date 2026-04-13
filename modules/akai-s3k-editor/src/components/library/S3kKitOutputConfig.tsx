@@ -7,18 +7,17 @@
  */
 
 import { DEFAULT_BASE_NOTE } from '@audiocontrol/sample-chopper';
-import type { ChopperOutputState } from '@audiocontrol/sample-chopper/ui';
+import type { BaseKitConfig, KitOutputConfigProps } from '@audiocontrol/editor-core';
 
 // =========================================================================
 // Types
 // =========================================================================
 
-export interface S3kKitConfig {
-  name: string;
-  baseNote: number;
-  transpose: number;
-  velocitySensitivity: number;
-}
+/**
+ * S3kKitConfig is identical to BaseKitConfig — the S3000XL does not
+ * require any device-specific kit configuration fields.
+ */
+export type S3kKitConfig = BaseKitConfig;
 
 export const DEFAULT_S3K_KIT_CONFIG: S3kKitConfig = {
   name: '',
@@ -36,13 +35,7 @@ const VELOCITY_LABELS = [
   'Max',
 ] as const;
 
-export interface S3kKitOutputConfigProps {
-  state: ChopperOutputState;
-  config: S3kKitConfig;
-  onConfigChange: (config: S3kKitConfig) => void;
-  /** When true, hides name/labels (for the standalone drum kit editor) */
-  editMode?: boolean;
-}
+export type S3kKitOutputConfigProps = KitOutputConfigProps<S3kKitConfig>;
 
 // =========================================================================
 // Component

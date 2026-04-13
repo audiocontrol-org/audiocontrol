@@ -76,7 +76,7 @@ export function SendSampleDialog({
         const wavInfo = parseWavFile(result.wavData);
         const targetSlot = sampleNames.length;
         const sizeStr = formatBytes(wavInfo.samples.length * 2);
-        const durationStr = `${(wavInfo.numSamples / wavInfo.sampleRate).toFixed(2)}s`;
+        const durationStr = `${(wavInfo.sampleCount / wavInfo.sampleRate).toFixed(2)}s`;
 
         updateStep('load', {
           status: 'complete',

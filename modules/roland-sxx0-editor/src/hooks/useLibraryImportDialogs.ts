@@ -8,7 +8,8 @@
 
 import { useState, useCallback, type MutableRefObject } from 'react';
 import type { SamplerClientInterface, SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
-import type { LibraryDragData } from '@/components/library/DeviceMemoryPanel';
+import type { LibraryDragPayload } from '@/lib/library-drag-types';
+import { extractRolandDragMeta } from '@/lib/library-drag-types';
 import type { OperationProgress } from '@/types/import-operation';
 import { saveDeviceToSetIncremental, loadSetToDevice, type StorageDirectoryHandle } from '@/lib/library-service';
 import type { RolandPageSelection } from '@/pages/LibraryPage';
@@ -95,20 +96,22 @@ export function useLibraryImportDialogs({
     resetProgress(); setIsLoadDialogOpen(true);
   }, [selection, resetProgress]);
 
-  const handleDropLibraryTone = useCallback((data: LibraryDragData, targetSlot: number) => {
+  const handleDropLibraryTone = useCallback((data: LibraryDragPayload, targetSlot: number) => {
     if (!libraryHandle || !clientRef.current) { throw new Error('Library or device not connected'); }
-    if (data.type !== 'tone') { throw new Error('Can only drop tones on tone slots'); }
+    if (data.nodeType !== 'tone') { throw new Error('Can only drop tones on tone slots'); }
     resetProgress();
-    if (data.setName && data.toneFile) setImportToneDialog({ setName: data.setName, toneFile: data.toneFile, initialTargetSlot: targetSlot });
-    else setImportToneDialog({ setName: '__individual__', toneFile: data.name, initialTargetSlot: targetSlot });
+    const meta = extractRolandDragMeta(data);
+    if (meta.setName && meta.toneFile) setImportToneDialog({ setName: meta.setName, toneFile: meta.toneFile, initialTargetSlot: targetSlot });
+    else setImportToneDialog({ setName: '__individual__', toneFile: data.nodeName, initialTargetSlot: targetSlot });
   }, [libraryHandle, clientRef, resetProgress]);
 
-  const handleDropLibraryPatch = useCallback((data: LibraryDragData, targetSlot: number) => {
+  const handleDropLibraryPatch = useCallback((data: LibraryDragPayload, targetSlot: number) => {
     if (!libraryHandle || !clientRef.current) { throw new Error('Library or device not connected'); }
-    if (data.type !== 'patch') { throw new Error('Can only drop patches on patch slots'); }
+    if (data.nodeType !== 'patch') { throw new Error('Can only drop patches on patch slots'); }
     resetProgress();
-    if (data.setName && data.patchFile) setImportPatchDialog({ setName: data.setName, patchFile: data.patchFile, initialTargetSlot: targetSlot });
-    else setImportPatchDialog({ setName: '__individual__', patchFile: data.name, patchPath: data.path, initialTargetSlot: targetSlot });
+    const meta = extractRolandDragMeta(data);
+    if (meta.setName && meta.patchFile) setImportPatchDialog({ setName: meta.setName, patchFile: meta.patchFile, initialTargetSlot: targetSlot });
+    else setImportPatchDialog({ setName: '__individual__', patchFile: data.nodeName, patchPath: data.sourcePath, initialTargetSlot: targetSlot });
   }, [libraryHandle, clientRef, resetProgress]);
 
   const handleImportLibraryTone = useCallback(async (params: ImportToneParams) => {

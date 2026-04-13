@@ -132,3 +132,32 @@ Eliminate all violations found in the Phase 1 audit.
 - Zero duplicated type definitions
 - Both editors compile and pass tests
 - Manual smoke test confirms dialogs and layouts work correctly
+
+---
+
+## Phase 5: Architectural Type Deduplication
+
+Resolve the 11 deferred type duplication findings from the Phase 1 audit.
+
+### Tasks
+
+#### High severity
+- [x] Unify `WavFileInfo` — shared `WavFileMetadata` in editor-core, both editors extend
+- [x] Converge `TreeSectionProps` — deleted Roland's 460-line LibraryTreeNode.tsx, use editor-core TreeSection with adapter hook
+- [x] Enforce `OperationProgress` — canonical in sampler-library, editor-core re-exports
+- [x] Create `createEditorStoreSlice()` factory — shared base in editor-core, both stores extend
+- [x] Converge `LibraryDragPayload` / `LibraryDragData` — eliminated LibraryDragData, Roland uses LibraryDragPayload with meta helpers
+
+#### Medium severity
+- [x] Create shared `BaseKitConfig` — generic in editor-core, S330 extends, S3K aliases
+- [x] Create generic `KitOutputConfigProps<T>` — shared in editor-core
+- [x] Replace `SdsTransferProgress` ambient re-declaration — deleted .d.ts, removed tsconfig path redirect
+- [x] Make `DrumKitImportProgress` / `InstrumentImportProgress` extend `OperationProgress`
+- [x] Replace `SaveProgress` with `OperationProgress & { startTime }` — field names aligned
+- [x] Promote S3K `Dialog` primitives to editor-core — ConfirmDialog composes shared Dialog
+
+### Acceptance Criteria
+
+- Zero duplicated type definitions across editor-core, roland-sxx0-editor, and akai-s3k-editor
+- Both editors compile with `make`
+- All existing tests pass

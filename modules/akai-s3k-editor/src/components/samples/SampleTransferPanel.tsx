@@ -61,9 +61,9 @@ function WavFileInfoDisplay({ info, fileName }: { info: WavFileInfo; fileName: s
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
         <span>{info.sampleRate.toLocaleString()} Hz</span>
         <span>{info.bitsPerSample}-bit</span>
-        <span>{info.numChannels === 1 ? 'Mono' : 'Stereo \u2192 Mono'}</span>
-        <span>{info.numSamples.toLocaleString()} samples</span>
-        <span>{formatDuration(info.numSamples, info.sampleRate)}</span>
+        <span>{info.channels === 1 ? 'Mono' : 'Stereo \u2192 Mono'}</span>
+        <span>{info.sampleCount.toLocaleString()} samples</span>
+        <span>{formatDuration(info.sampleCount, info.sampleRate)}</span>
       </div>
     </div>
   );
