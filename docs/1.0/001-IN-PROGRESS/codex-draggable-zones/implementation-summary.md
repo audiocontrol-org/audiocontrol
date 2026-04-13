@@ -2,11 +2,11 @@
 
 ## Status
 
-Phase 1 complete. Phase 2 in progress. Browser-only UI harness added.
+Phase 1 and Phase 2 complete. Browser-only UI harness added.
 
 ## Overview
 
-The feature now has the shared coordinate-system foundation plus the first interactive `ZoneOverview` boundary editing pass, all verified through an isolated browser harness without hardware.
+The feature now has the shared coordinate-system foundation plus completed `ZoneOverview` boundary editing, verified through an isolated browser harness without hardware.
 
 ## What Changed
 
@@ -20,9 +20,11 @@ The feature now has the shared coordinate-system foundation plus the first inter
 - Added repo-local documentation for the Codex browser harness methodology in `TESTING-UI-CODEX.md`, plus agent guidance pointers.
 - Added conservative note and velocity edge dragging in `ZoneOverview` with live preview and commit on release.
 - Centralized simple note/velocity clamping in `zone-constraints.ts`.
+- Tightened keygroup note-range clamping to the documented S3000XL `21-127` range.
 - Wired `ZoneOverview` parameter commits through both the real keygroups page and the browser-only harness.
 - Added focused unit coverage for `ZoneOverview` drag-handle rendering and boundary commit behavior.
 - Extended the harness Playwright spec to drag a note boundary and assert local state changes.
+- Confirmed that overlapping keyspans are allowed, so adjacent-keygroup overlap is intentionally not blocked in Phase 2.
 
 ## Verification
 
@@ -33,9 +35,9 @@ The feature now has the shared coordinate-system foundation plus the first inter
 
 ## Deviations
 
-- Adjacent-keygroup overlap rules are still not encoded beyond conservative local clamping (`low <= high`, MIDI `0-127`).
-- Phase 2 should not be marked complete until S3000XL boundary behavior is verified from hardware or a primary source and reflected in the drag constraints.
+- Phase 2 intentionally does not constrain adjacent keygroups against each other because overlapping keyspans are allowed.
+- Phase 3 and Phase 4 remain unimplemented.
 
 ## Next Step
 
-Verify S3000XL note-boundary and overlap behavior, then tighten `ZoneOverview` constraints and decide whether Phase 2 can be closed or needs additional adjacent-zone handling.
+Implement Phase 3 by adding draggable split handles to `VelocityRangeBar` and keeping them synchronized with numeric zone editing and the already-draggable `ZoneOverview`.

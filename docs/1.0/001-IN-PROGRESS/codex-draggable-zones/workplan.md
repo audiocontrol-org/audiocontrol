@@ -74,7 +74,7 @@ This feature extends the current Akai S3000XL keygroup editing surfaces with dir
 **Goal:** Make note and velocity bounds directly editable in the overview.
 
 **Tasks:**
-- [ ] Verify S3000XL boundary and overlap rules before encoding them
+- [x] Verify S3000XL boundary and overlap rules before encoding them
 - [x] Add drag handles and hit areas for left, right, top, and bottom zone edges
 - [x] Add continuous drag preview state and commit-on-release behavior
 - [x] Add tests for clamping, selection behavior, and field commits
@@ -115,6 +115,6 @@ This feature extends the current Akai S3000XL keygroup editing surfaces with dir
 ## Session Status
 
 - Phase 1 is complete.
-- Phase 2 is in progress: drag handles, preview, and isolated-browser verification are implemented; verified adjacent-keygroup overlap rules are still outstanding.
-- Next implementation target is to verify S3000XL boundary/overlap behavior before tightening note-edge constraints or closing Phase 2.
+- Phase 2 is complete: ZoneOverview boundaries are draggable, overlapping keyspans are allowed, and keygroup note fields now clamp to the documented S3000XL `21-127` range.
+- Next implementation target is Phase 3: draggable `VelocityRangeBar` split handles synchronized with numeric zone editing and ZoneOverview.
 - The browser-only harness is now available for rapid UI iteration before hardware or transport e2e.

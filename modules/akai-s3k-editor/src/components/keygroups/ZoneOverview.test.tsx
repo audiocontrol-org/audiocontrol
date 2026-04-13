@@ -311,6 +311,38 @@ describe('ZoneOverview', () => {
     expect(onParameterChange).toHaveBeenCalledWith('LONOTE', 40);
   });
 
+  it('clamps note boundary drags to the documented Akai minimum', () => {
+    const kg = makeKeygroupHeader({
+      LONOTE: 36,
+      HINOTE: 72,
+      SNAME1: 'DRAG NOTE   ',
+      LOVEL1: 0,
+      HIVEL1: 127,
+    });
+    const onParameterChange = vi.fn();
+
+    render(
+      <ZoneOverview
+        keygroups={[kg]}
+        keygroupCount={1}
+        selectedKeygroupIndex={0}
+        onSelectKeygroup={vi.fn()}
+        onParameterChange={onParameterChange}
+        visibleRange={{ min: 21, max: 88 }}
+      />,
+    );
+    setSurfaceRect();
+
+    fireEvent.mouseDown(screen.getByTestId('zone-handle-note-low-0'), {
+      clientX: 139,
+      clientY: 60,
+    });
+    fireEvent.mouseMove(document, { clientX: 20, clientY: 60 });
+    fireEvent.mouseUp(document, { clientX: 20, clientY: 60 });
+
+    expect(onParameterChange).toHaveBeenCalledWith('LONOTE', 21);
+  });
+
   it('commits velocity boundary drags through onParameterChange', () => {
     const kg = makeKeygroupHeader({
       LONOTE: 36,

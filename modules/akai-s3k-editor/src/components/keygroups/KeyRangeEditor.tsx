@@ -1,13 +1,16 @@
 import { useCallback, useRef, useState } from 'react';
 import { formatMidiNote } from '@/lib/midi-note-parser';
 import {
-  clampMidiNote,
   clientXToNote,
   MIDI_NOTE_MAX,
-  MIDI_NOTE_MIN,
   type NoteCoordinateRange,
   noteToPercent,
 } from '@/components/keygroups/note-coordinate';
+import {
+  clampHighNote,
+  clampLowNote,
+  KEYGROUP_NOTE_MIN,
+} from '@/components/keygroups/zone-constraints';
 
 interface KeyRangeEditorProps {
   lowNote: number;
@@ -43,7 +46,7 @@ export function KeyRangeEditor({
 
   const getNoteFromClientX = useCallback((clientX: number): number => {
     const bar = barRef.current;
-    if (!bar) return 0;
+    if (!bar) return KEYGROUP_NOTE_MIN;
     const rect = bar.getBoundingClientRect();
     return clientXToNote(clientX, rect.left, rect.width, visibleRange);
   }, [visibleRange]);
@@ -67,9 +70,9 @@ export function KeyRangeEditor({
       const handleMouseUp = (upEvent: MouseEvent) => {
         const note = getNoteFromClientX(upEvent.clientX);
         if (edge === 'low') {
-          onChange('LONOTE', Math.min(note, highNote));
+          onChange('LONOTE', clampLowNote(note, highNote));
         } else {
-          onChange('HINOTE', Math.max(note, lowNote));
+          onChange('HINOTE', clampHighNote(note, lowNote));
         }
         setDragTarget(null);
         document.removeEventListener('mousemove', handleMouseMove);
@@ -119,7 +122,7 @@ export function KeyRangeEditor({
           onMouseDown={handleMouseDown('low')}
           role="slider"
           aria-label="Low note"
-          aria-valuemin={0}
+          aria-valuemin={KEYGROUP_NOTE_MIN}
           aria-valuemax={127}
           aria-valuenow={displayLow}
           tabIndex={0}
@@ -132,7 +135,7 @@ export function KeyRangeEditor({
           onMouseDown={handleMouseDown('high')}
           role="slider"
           aria-label="High note"
-          aria-valuemin={0}
+          aria-valuemin={KEYGROUP_NOTE_MIN}
           aria-valuemax={127}
           aria-valuenow={displayHigh}
           tabIndex={0}
@@ -159,9 +162,9 @@ export function KeyRangeEditor({
           <input
             type="number"
             value={lowNote}
-            min={MIDI_NOTE_MIN}
+            min={KEYGROUP_NOTE_MIN}
             max={MIDI_NOTE_MAX}
-            onChange={(e) => onChange('LONOTE', clampMidiNote(Number(e.target.value)))}
+            onChange={(e) => onChange('LONOTE', clampLowNote(Number(e.target.value), highNote))}
             className="w-16 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-gray-200 text-right"
           />
         </label>
@@ -170,9 +173,9 @@ export function KeyRangeEditor({
           <input
             type="number"
             value={highNote}
-            min={MIDI_NOTE_MIN}
+            min={KEYGROUP_NOTE_MIN}
             max={MIDI_NOTE_MAX}
-            onChange={(e) => onChange('HINOTE', clampMidiNote(Number(e.target.value)))}
+            onChange={(e) => onChange('HINOTE', clampHighNote(Number(e.target.value), lowNote))}
             className="w-16 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-gray-200 text-right"
           />
         </label>

@@ -760,3 +760,33 @@ Start Phase 2 by making `ZoneOverview` boundaries directly draggable in the real
 1. The isolated browser harness is now good enough for real UI interaction work, not just static rendering checks
 2. Shared coordinate math needs geometry-based assertions in browser tests; fixed pixel drags are too brittle
 3. Phase 2 can advance in the harness without guessing hardware-specific overlap behavior, as long as constraint scope is documented honestly
+
+---
+
+## 2026-04-13: Codex Draggable Zones Phase 2 Closeout
+
+### Feature: codex-draggable-zones
+### Worktree: audiocontrol-codex-draggable-zones
+
+### Goal
+Close Phase 2 after resolving the last boundary-rule uncertainty and aligning note clamps with the documented S3000XL range.
+
+### Accomplished
+- Confirmed that keygroup keyspans can overlap, so adjacent-keygroup overlap is intentionally allowed
+- Kept `ZoneOverview` note dragging permissive across keygroups rather than adding artificial no-overlap constraints
+- Tightened keygroup note editors and drag clamping to the documented S3000XL `21-127` range
+- Added unit coverage for the Akai note minimum in both `KeyRangeEditor` and `ZoneOverview`
+- Re-verified targeted keygroup tests and the module build
+
+### Evidence
+- `modules/sampler-devices/src/devices/s3000xl.ts` documents `LONOTE` as `21 to 127`
+- `docs/1.0/s3000xl-editor/comprehensive-test-plan.md` also treats note-range editing as `21-127`
+- User guidance for this feature session: keygroup keyspans can overlap
+
+### Quantitative
+- Component tests: 27 passed
+- Module build: passed
+
+### Insights
+1. The right constraint model here is asymmetric: enforce verified per-field bounds, but do not invent cross-keygroup exclusivity
+2. The harness and targeted unit tests are sufficient to close UI interaction phases when the remaining question is a rule clarification rather than a rendering bug

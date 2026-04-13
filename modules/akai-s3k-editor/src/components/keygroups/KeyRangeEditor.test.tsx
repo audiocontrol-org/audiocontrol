@@ -47,31 +47,27 @@ describe('KeyRangeEditor', () => {
     expect(onChange).toHaveBeenCalledWith('HINOTE', 96);
   });
 
-  it('handles edge case LONOTE = 0 (C-1)', () => {
+  it('renders the documented Akai note-range minimum', () => {
     const onChange = vi.fn();
 
-    render(<KeyRangeEditor lowNote={0} highNote={127} onChange={onChange} />);
+    render(<KeyRangeEditor lowNote={21} highNote={127} onChange={onChange} />);
 
-    // MIDI 0 = C-1, MIDI 127 = G9. The range display shows both.
-    expect(screen.getByText(/C-1 -- G9/)).toBeInTheDocument();
-
-    const lowInput = screen.getByRole('spinbutton', { name: /low/i });
-    expect(lowInput).toHaveValue(0);
+    expect(screen.getByRole('spinbutton', { name: /low/i })).toHaveValue(21);
+    expect(screen.getByRole('slider', { name: 'Low note' })).toHaveAttribute('aria-valuemin', '21');
   });
 
   it('handles edge case HINOTE = 127 (G9)', () => {
     const onChange = vi.fn();
 
-    render(<KeyRangeEditor lowNote={0} highNote={127} onChange={onChange} />);
+    render(<KeyRangeEditor lowNote={21} highNote={127} onChange={onChange} />);
 
-    // MIDI 127 = G9
-    expect(screen.getByText(/C-1 -- G9/)).toBeInTheDocument();
+    expect(screen.getByText(/A0 -- G9/)).toBeInTheDocument();
 
     const highInput = screen.getByRole('spinbutton', { name: /high/i });
     expect(highInput).toHaveValue(127);
   });
 
-  it('clamps values outside 0-127 range', () => {
+  it('clamps low note values below the documented Akai minimum', () => {
     const onChange = vi.fn();
 
     render(<KeyRangeEditor lowNote={60} highNote={72} onChange={onChange} />);
@@ -79,8 +75,7 @@ describe('KeyRangeEditor', () => {
     const lowInput = screen.getByRole('spinbutton', { name: /low/i });
     fireEvent.change(lowInput, { target: { value: '-5' } });
 
-    // clampNote should clamp to 0
-    expect(onChange).toHaveBeenCalledWith('LONOTE', 0);
+    expect(onChange).toHaveBeenCalledWith('LONOTE', 21);
   });
 
   it('clamps values above 127', () => {
@@ -104,11 +99,11 @@ describe('KeyRangeEditor', () => {
     const highSlider = screen.getByRole('slider', { name: 'High note' });
 
     expect(lowSlider).toHaveAttribute('aria-valuenow', '36');
-    expect(lowSlider).toHaveAttribute('aria-valuemin', '0');
+    expect(lowSlider).toHaveAttribute('aria-valuemin', '21');
     expect(lowSlider).toHaveAttribute('aria-valuemax', '127');
 
     expect(highSlider).toHaveAttribute('aria-valuenow', '72');
-    expect(highSlider).toHaveAttribute('aria-valuemin', '0');
+    expect(highSlider).toHaveAttribute('aria-valuemin', '21');
     expect(highSlider).toHaveAttribute('aria-valuemax', '127');
   });
 
