@@ -234,6 +234,108 @@
     grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
   }
 
+  /* ================================================================
+   * Velocity Zone Editor
+   * ================================================================ */
+
+  .s3k-zone-tabs {
+    display: flex;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .s3k-zone-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.125rem;
+    padding: 0.5rem 0.25rem;
+    font-size: 0.8125rem;
+    color: var(--ac-color-text-muted, #9ca3af);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+  }
+
+  .s3k-zone-tab:hover {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--ac-color-text-primary, #e5e7eb);
+  }
+
+  .s3k-zone-tab--active {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--ac-color-text-primary, #e5e7eb);
+    font-weight: 600;
+    border-bottom: 2px solid var(--ac-color-accent, #d4a843);
+  }
+
+  .s3k-zone-tab-sample {
+    font-size: 0.6875rem;
+    opacity: 0.6;
+    font-family: ui-monospace, 'Cascadia Code', monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 8rem;
+  }
+
+  .s3k-zone-editor {
+    display: grid;
+    grid-template-columns: 10rem 1fr;
+    min-height: 0;
+  }
+
+  .s3k-zone-sample-panel {
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .s3k-sample-list {
+    overflow-y: auto;
+    max-height: 12rem;
+    padding: 0.25rem;
+  }
+
+  .s3k-sample-list-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-family: ui-monospace, 'Cascadia Code', monospace;
+    color: var(--ac-color-text-muted, #9ca3af);
+    background: transparent;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: color 0.1s, background 0.1s;
+  }
+
+  .s3k-sample-list-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--ac-color-text-primary, #e5e7eb);
+  }
+
+  .s3k-sample-list-item--selected {
+    background: var(--ac-color-accent, #d4a843);
+    color: #000;
+  }
+
+  .s3k-sample-list-item--selected:hover {
+    background: var(--ac-color-accent, #d4a843);
+    color: #000;
+  }
+
+  .s3k-zone-params {
+    padding: 0.75rem;
+  }
+
   /* Full-width content above the grid inside a section */
   .s3k-section-header-content {
     padding: 0.75rem;
