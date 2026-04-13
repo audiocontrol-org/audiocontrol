@@ -4,6 +4,7 @@ export { VelocityZoneEditor } from '@/components/keygroups/VelocityZoneEditor';
 export { KeyRangeEditor } from '@/components/keygroups/KeyRangeEditor';
 export { VelocityRangeBar } from '@/components/keygroups/VelocityRangeBar';
 export { ZoneOverview } from '@/components/keygroups/ZoneOverview';
+export type { NewZoneRange } from '@/components/keygroups/ZoneOverview';
 export {
   type ZoneDragField,
   type VelocityZoneIndex,

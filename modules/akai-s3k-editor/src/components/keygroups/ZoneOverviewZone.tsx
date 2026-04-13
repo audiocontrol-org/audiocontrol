@@ -174,6 +174,8 @@ export function ZoneRect({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') onSelectKeygroup(keygroupIndex);
   };
+  // Stop mousedown from reaching the viz div so it doesn't trigger zone creation
+  const handleMouseDown = (e: React.MouseEvent) => e.stopPropagation();
 
   if (zones.length === 0) {
     // Render the keygroup as a single band spanning full velocity
@@ -184,6 +186,7 @@ export function ZoneRect({
         tabIndex={0}
         className="absolute cursor-pointer border transition-all"
         onClick={handleClick}
+        onMouseDown={handleMouseDown}
         onKeyDown={handleKeyDown}
         title={`KG ${keygroupIndex + 1}: ${formatMidiNote(header.LONOTE)}-${formatMidiNote(header.HINOTE)}`}
         style={{
@@ -242,6 +245,7 @@ export function ZoneRect({
             tabIndex={0}
             className="absolute cursor-pointer border transition-all overflow-hidden"
             onClick={handleClick}
+            onMouseDown={handleMouseDown}
             onKeyDown={handleKeyDown}
             title={`KG ${keygroupIndex + 1} Zone ${zone.zoneIndex}: ${formatMidiNote(header.LONOTE)}-${formatMidiNote(header.HINOTE)}, vel ${zone.lovel}-${zone.hivel}${zone.sampleName ? ` [${zone.sampleName}]` : ''}`}
             style={{

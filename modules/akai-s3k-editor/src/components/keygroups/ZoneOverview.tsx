@@ -1,10 +1,11 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
 import type { NoteRange } from '@/components/keygroups/note-coordinate-utils';
 import {
   noteToPercent,
   percentToNote,
   clampVelocity,
+  velocityToPercentInverted,
   getVisibleOctaveMarkers,
 } from '@/components/keygroups/note-coordinate-utils';
 import type { ZoneDragField } from '@/components/keygroups/use-zone-drag';
@@ -15,6 +16,20 @@ import { ZoneRect } from '@/components/keygroups/ZoneOverviewZone';
 const LEFT_LABEL_WIDTH = 36; // px for velocity axis labels
 const BOTTOM_LABEL_HEIGHT = 20; // px for note axis labels
 
+export interface NewZoneRange {
+  lowNote: number;
+  highNote: number;
+  lowVel: number;
+  highVel: number;
+}
+
+interface CreationDragState {
+  startNote: number;
+  startVel: number;
+  currentNote: number;
+  currentVel: number;
+}
+
 interface ZoneOverviewProps {
   keygroups: (KeygroupHeader | undefined)[];
   keygroupCount: number;
@@ -23,6 +38,40 @@ interface ZoneOverviewProps {
   noteRange: NoteRange;
   onZoneDrag?: (keygroupIndex: number, field: ZoneDragField, value: number) => void;
   onZoneCommit?: (keygroupIndex: number, field: ZoneDragField, value: number) => void;
+  onCreateZone?: (range: NewZoneRange) => void;
+}
+
+function CreationPreview({
+  drag,
+  noteRange,
+}: {
+  drag: CreationDragState;
+  noteRange: NoteRange;
+}): JSX.Element {
+  const lowNote = Math.min(drag.startNote, drag.currentNote);
+  const highNote = Math.max(drag.startNote, drag.currentNote);
+  const lowVel = Math.min(drag.startVel, drag.currentVel);
+  const highVel = Math.max(drag.startVel, drag.currentVel);
+
+  const xStart = noteToPercent(lowNote, noteRange);
+  const xEnd = noteToPercent(highNote + 1, noteRange);
+  const yTop = velocityToPercentInverted(highVel);
+  const yBottom = ((128 - lowVel) / 128) * 100;
+
+  return (
+    <div
+      className="absolute pointer-events-none"
+      style={{
+        left: `${xStart}%`,
+        width: `${xEnd - xStart}%`,
+        top: `${yTop}%`,
+        height: `${yBottom - yTop}%`,
+        border: '2px dashed rgba(147, 197, 253, 0.6)',
+        background: 'rgba(59, 130, 246, 0.15)',
+        zIndex: 15,
+      }}
+    />
+  );
 }
 
 export function ZoneOverview({
@@ -33,8 +82,10 @@ export function ZoneOverview({
   noteRange,
   onZoneDrag,
   onZoneCommit,
+  onCreateZone,
 }: ZoneOverviewProps): JSX.Element {
   const vizRef = useRef<HTMLDivElement>(null);
+  const [creationDrag, setCreationDrag] = useState<CreationDragState | null>(null);
 
   const getNoteFromEvent = useCallback(
     (e: MouseEvent): number => {
@@ -67,6 +118,56 @@ export function ZoneOverview({
   const { state: dragState, startDrag } = useZoneDrag(dragCallbacks());
 
   const hasDragCallbacks = onZoneDrag !== undefined && onZoneCommit !== undefined;
+
+  // --- Drag-to-create zone in empty space ---
+  const handleVizMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (!onCreateZone) return;
+      // Only respond to left button on the viz background (zone divs stopPropagation)
+      if (e.button !== 0) return;
+      const note = getNoteFromEvent(e.nativeEvent);
+      const vel = getVelocityFromEvent(e.nativeEvent);
+      setCreationDrag({ startNote: note, startVel: vel, currentNote: note, currentVel: vel });
+    },
+    [onCreateZone, getNoteFromEvent, getVelocityFromEvent],
+  );
+
+  useEffect(() => {
+    if (!creationDrag) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const note = getNoteFromEvent(e);
+      const vel = getVelocityFromEvent(e);
+      setCreationDrag((prev) =>
+        prev ? { ...prev, currentNote: note, currentVel: vel } : null,
+      );
+    };
+
+    const handleMouseUp = (e: MouseEvent) => {
+      setCreationDrag((current) => {
+        if (current && onCreateZone) {
+          const note = getNoteFromEvent(e);
+          const vel = getVelocityFromEvent(e);
+          const lowNote = Math.min(current.startNote, note);
+          const highNote = Math.max(current.startNote, note);
+          const lowVel = Math.min(current.startVel, vel);
+          const highVel = Math.max(current.startVel, vel);
+          // Only create if the user actually dragged a range
+          if (highNote > lowNote || highVel > lowVel) {
+            onCreateZone({ lowNote, highNote, lowVel, highVel });
+          }
+        }
+        return null;
+      });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [creationDrag, getNoteFromEvent, getVelocityFromEvent, onCreateZone]);
 
   if (keygroupCount === 0) {
     return (
@@ -111,6 +212,7 @@ export function ZoneOverview({
         <div
           ref={vizRef}
           className="absolute top-0"
+          onMouseDown={handleVizMouseDown}
           style={{
             left: `${LEFT_LABEL_WIDTH}px`,
             right: 0,
@@ -157,6 +259,9 @@ export function ZoneOverview({
               />
             );
           })}
+
+          {/* Creation drag preview rectangle */}
+          {creationDrag && <CreationPreview drag={creationDrag} noteRange={noteRange} />}
         </div>
 
         {/* Note axis labels (bottom) */}

@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
 import { makeKeygroupHeader } from '@/test-helpers/keygroup-factory';
 import { ZoneOverview } from '@/components/keygroups/ZoneOverview';
+import type { NewZoneRange } from '@/components/keygroups/ZoneOverview';
 import { KeyRangeEditor } from '@/components/keygroups/KeyRangeEditor';
 import { VelocityRangeBar } from '@/components/keygroups/VelocityRangeBar';
 import { computeKeyRange } from '@/components/keygroups/note-coordinate-utils';
@@ -138,6 +139,22 @@ export function TestKeygroupsPage(): JSX.Element {
     [],
   );
 
+  const handleCreateZone = useCallback(
+    (range: NewZoneRange) => {
+      setKeygroups((prev) => [
+        ...prev,
+        makeKeygroupHeader({
+          LONOTE: range.lowNote,
+          HINOTE: range.highNote,
+          LOVEL1: range.lowVel,
+          HIVEL1: range.highVel,
+          SNAME1: `New KG ${prev.length + 1}  `,
+        }),
+      ]);
+    },
+    [],
+  );
+
   return (
     <div
       style={{
@@ -178,6 +195,7 @@ export function TestKeygroupsPage(): JSX.Element {
           noteRange={noteRange}
           onZoneDrag={handleZoneDrag}
           onZoneCommit={handleZoneDrag}
+          onCreateZone={handleCreateZone}
         />
       </section>
 

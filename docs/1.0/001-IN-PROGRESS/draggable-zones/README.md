@@ -7,7 +7,7 @@
 | Phase 1 | Shared coordinate system | Complete |
 | Phase 2 | Draggable ZoneOverview boundaries | Complete |
 | Phase 3 | Draggable VelocityRangeBar | Complete |
-| Phase 4 | Zone creation via drag | Planning |
+| Phase 4 | Zone creation via drag | Complete |
 
 ## Links
 

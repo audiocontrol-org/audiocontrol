@@ -66,10 +66,10 @@ A shared coordinate mapping utility will replace the independent note-to-pixel c
 **Goal:** Enable creating new keygroups by dragging in empty space in the ZoneOverview.
 
 **Tasks:**
-- [ ] Detect drag gestures in empty ZoneOverview space
-- [ ] Create new keygroup covering the dragged range
-- [ ] Determine sensible defaults for new keygroup fields
-- [ ] Add visual feedback showing zone being created during drag
+- [x] Detect drag gestures in empty ZoneOverview space
+- [x] Create new keygroup covering the dragged range
+- [x] Determine sensible defaults for new keygroup fields
+- [x] Add visual feedback showing zone being created during drag
 
 **Acceptance:** Dragging in empty space creates a new keygroup with the dragged key and velocity range. The new keygroup appears in the UI and is written to the device.
 
