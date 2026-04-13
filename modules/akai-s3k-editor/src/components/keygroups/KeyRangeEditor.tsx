@@ -1,34 +1,28 @@
 import { useCallback, useRef, useState } from 'react';
 import { formatMidiNote } from '@/lib/midi-note-parser';
+import type { NoteRange } from '@/components/keygroups/note-coordinate-utils';
+import {
+  noteToPercent,
+  percentToNote,
+  clampNote,
+  getVisibleOctaveMarkers,
+} from '@/components/keygroups/note-coordinate-utils';
 
 interface KeyRangeEditorProps {
   lowNote: number;
   highNote: number;
   onChange: (field: 'LONOTE' | 'HINOTE', value: number) => void;
-}
-
-const TOTAL_NOTES = 128;
-
-/** Octave boundary labels shown below the bar */
-const OCTAVE_LABELS = Array.from({ length: 11 }, (_, i) => ({
-  note: (i + 1) * 12, // C0=12, C1=24, ... C9=120; C-1=0 is off-screen left
-  label: `C${i - 1}`,
-})).filter((o) => o.note <= 127);
-
-// Add C-1 at position 0
-const ALL_LABELS = [{ note: 0, label: 'C-1' }, ...OCTAVE_LABELS];
-
-function clampNote(value: number): number {
-  return Math.max(0, Math.min(127, Math.round(value)));
-}
-
-function noteToPercent(note: number): number {
-  return (note / (TOTAL_NOTES - 1)) * 100;
+  noteRange: NoteRange;
 }
 
 type DragTarget = 'low' | 'high' | null;
 
-export function KeyRangeEditor({ lowNote, highNote, onChange }: KeyRangeEditorProps): JSX.Element {
+export function KeyRangeEditor({
+  lowNote,
+  highNote,
+  onChange,
+  noteRange,
+}: KeyRangeEditorProps): JSX.Element {
   const barRef = useRef<HTMLDivElement>(null);
   const [dragTarget, setDragTarget] = useState<DragTarget>(null);
   const [dragLow, setDragLow] = useState(lowNote);
@@ -37,13 +31,16 @@ export function KeyRangeEditor({ lowNote, highNote, onChange }: KeyRangeEditorPr
   const displayLow = dragTarget !== null ? dragLow : lowNote;
   const displayHigh = dragTarget !== null ? dragHigh : highNote;
 
-  const getNoteFromClientX = useCallback((clientX: number): number => {
-    const bar = barRef.current;
-    if (!bar) return 0;
-    const rect = bar.getBoundingClientRect();
-    const fraction = (clientX - rect.left) / rect.width;
-    return clampNote(fraction * (TOTAL_NOTES - 1));
-  }, []);
+  const getNoteFromClientX = useCallback(
+    (clientX: number): number => {
+      const bar = barRef.current;
+      if (!bar) return 0;
+      const rect = bar.getBoundingClientRect();
+      const fraction = (clientX - rect.left) / rect.width;
+      return percentToNote(fraction * 100, noteRange);
+    },
+    [noteRange],
+  );
 
   const handleMouseDown = useCallback(
     (edge: 'low' | 'high') => (e: React.MouseEvent) => {
@@ -79,9 +76,11 @@ export function KeyRangeEditor({ lowNote, highNote, onChange }: KeyRangeEditorPr
     [lowNote, highNote, onChange, getNoteFromClientX],
   );
 
-  const leftPercent = noteToPercent(displayLow);
-  const rightPercent = noteToPercent(displayHigh);
+  const leftPercent = noteToPercent(displayLow, noteRange);
+  const rightPercent = noteToPercent(displayHigh, noteRange);
   const widthPercent = rightPercent - leftPercent;
+
+  const visibleMarkers = getVisibleOctaveMarkers(noteRange);
 
   return (
     <div className="px-3 py-2">
@@ -133,11 +132,11 @@ export function KeyRangeEditor({ lowNote, highNote, onChange }: KeyRangeEditorPr
 
       {/* Octave labels */}
       <div className="relative h-4 mt-1">
-        {ALL_LABELS.map((o) => (
+        {visibleMarkers.map((o) => (
           <span
             key={o.note}
             className="absolute text-[10px] text-gray-500 -translate-x-1/2"
-            style={{ left: `${noteToPercent(o.note)}%` }}
+            style={{ left: `${noteToPercent(o.note, noteRange)}%` }}
           >
             {o.label}
           </span>

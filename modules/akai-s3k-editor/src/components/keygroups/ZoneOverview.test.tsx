@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
 import { ZoneOverview } from '@/components/keygroups/ZoneOverview';
 import { makeKeygroupHeader } from '@/test-helpers/keygroup-factory';
+import { computeKeyRange } from '@/components/keygroups/note-coordinate-utils';
 
 describe('ZoneOverview', () => {
   it('renders empty state when keygroupCount is 0', () => {
@@ -14,6 +15,7 @@ describe('ZoneOverview', () => {
         keygroupCount={0}
         selectedKeygroupIndex={null}
         onSelectKeygroup={onSelect}
+        noteRange={{ min: 0, max: 127 }}
       />,
     );
 
@@ -36,14 +38,17 @@ describe('ZoneOverview', () => {
       HIVEL1: 127,
     });
 
+    const keygroups = [kg1, kg2];
+    const noteRange = computeKeyRange(keygroups, 2);
     const onSelect = vi.fn();
 
     render(
       <ZoneOverview
-        keygroups={[kg1, kg2]}
+        keygroups={keygroups}
         keygroupCount={2}
         selectedKeygroupIndex={null}
         onSelectKeygroup={onSelect}
+        noteRange={noteRange}
       />,
     );
 
@@ -61,14 +66,17 @@ describe('ZoneOverview', () => {
       HIVEL1: 127,
     });
 
+    const keygroups = [kg];
+    const noteRange = computeKeyRange(keygroups, 1);
     const onSelect = vi.fn();
 
     render(
       <ZoneOverview
-        keygroups={[kg]}
+        keygroups={keygroups}
         keygroupCount={1}
         selectedKeygroupIndex={null}
         onSelectKeygroup={onSelect}
+        noteRange={noteRange}
       />,
     );
 
@@ -94,14 +102,17 @@ describe('ZoneOverview', () => {
       HIVEL1: 127,
     });
 
+    const keygroups = [kg1, kg2];
+    const noteRange = computeKeyRange(keygroups, 2);
     const onSelect = vi.fn();
 
     render(
       <ZoneOverview
-        keygroups={[kg1, kg2]}
+        keygroups={keygroups}
         keygroupCount={2}
         selectedKeygroupIndex={null}
         onSelectKeygroup={onSelect}
+        noteRange={noteRange}
       />,
     );
 
@@ -118,38 +129,45 @@ describe('ZoneOverview', () => {
       HIVEL1: 127,
     });
 
+    const keygroups = [kg];
+    const noteRange = computeKeyRange(keygroups, 1);
     const onSelect = vi.fn();
 
     const { rerender } = render(
       <ZoneOverview
-        keygroups={[kg]}
+        keygroups={keygroups}
         keygroupCount={1}
         selectedKeygroupIndex={null}
         onSelectKeygroup={onSelect}
+        noteRange={noteRange}
       />,
     );
 
-    // The button exists with the zone label
-    const button = screen.getByText('SELECTED').closest('button');
-    expect(button).toBeTruthy();
+    // The zone element exists with the zone label (div role="button" to avoid nesting interactive elements)
+    const zone = screen.getByText('SELECTED').closest('[role="button"]');
+    expect(zone).toBeTruthy();
+    expect(zone).toBeInstanceOf(HTMLElement);
 
     // When not selected, borderWidth should be 1px
-    expect(button?.style.borderWidth).toBe('1px');
+    if (!(zone instanceof HTMLElement)) throw new Error('zone is not HTMLElement');
+    expect(zone.style.borderWidth).toBe('1px');
 
     // Re-render with the keygroup selected
     rerender(
       <ZoneOverview
-        keygroups={[kg]}
+        keygroups={keygroups}
         keygroupCount={1}
         selectedKeygroupIndex={0}
         onSelectKeygroup={onSelect}
+        noteRange={noteRange}
       />,
     );
 
-    const selectedButton = screen.getByText('SELECTED').closest('button');
-    expect(selectedButton?.style.borderWidth).toBe('2px');
+    const selectedZone = screen.getByText('SELECTED').closest('[role="button"]');
+    if (!(selectedZone instanceof HTMLElement)) throw new Error('selectedZone is not HTMLElement');
+    expect(selectedZone.style.borderWidth).toBe('2px');
     // jsdom normalizes hex colors to rgb format
-    expect(selectedButton?.style.borderColor).toBe('rgb(147, 197, 253)');
+    expect(selectedZone.style.borderColor).toBe('rgb(147, 197, 253)');
   });
 
   it('handles undefined entries in keygroups array gracefully', () => {
@@ -162,6 +180,7 @@ describe('ZoneOverview', () => {
     });
 
     const keygroups: (KeygroupHeader | undefined)[] = [kg, undefined, undefined];
+    const noteRange = computeKeyRange(keygroups, 3);
     const onSelect = vi.fn();
 
     // Should not throw — undefined entries are simply skipped
@@ -171,6 +190,7 @@ describe('ZoneOverview', () => {
         keygroupCount={3}
         selectedKeygroupIndex={null}
         onSelectKeygroup={onSelect}
+        noteRange={noteRange}
       />,
     );
 
@@ -192,14 +212,17 @@ describe('ZoneOverview', () => {
       HIVEL4: 0,
     });
 
+    const keygroups = [kg];
+    const noteRange = computeKeyRange(keygroups, 1);
     const onSelect = vi.fn();
 
     render(
       <ZoneOverview
-        keygroups={[kg]}
+        keygroups={keygroups}
         keygroupCount={1}
         selectedKeygroupIndex={null}
         onSelectKeygroup={onSelect}
+        noteRange={noteRange}
       />,
     );
 

@@ -130,4 +130,103 @@ describe('VelocityRangeBar', () => {
     const button = screen.getByRole('button');
     expect(button).toHaveAttribute('title', 'Zone 1: MY SAMPLE (0-127)');
   });
+
+  describe('split handles', () => {
+    it('renders split handles between adjacent zones when callbacks are provided', () => {
+      const zones = [
+        makeZone(0, 63, 'SOFT        '),
+        makeZone(64, 127, 'HARD        '),
+      ];
+
+      render(
+        <VelocityRangeBar
+          zones={zones}
+          selectedZone={0}
+          onSelectZone={vi.fn()}
+          onSplitDrag={vi.fn()}
+          onSplitCommit={vi.fn()}
+        />,
+      );
+
+      const handle = screen.getByTestId('split-handle-0');
+      expect(handle).toBeInTheDocument();
+      expect(handle.style.cursor).toBe('ew-resize');
+    });
+
+    it('does not render split handles when callbacks are absent', () => {
+      const zones = [
+        makeZone(0, 63, 'SOFT        '),
+        makeZone(64, 127, 'HARD        '),
+      ];
+
+      render(
+        <VelocityRangeBar zones={zones} selectedZone={0} onSelectZone={vi.fn()} />,
+      );
+
+      expect(screen.queryByTestId('split-handle-0')).not.toBeInTheDocument();
+    });
+
+    it('renders one handle per boundary (N-1 handles for N zones)', () => {
+      const zones = [
+        makeZone(0, 42, 'ZONE1       '),
+        makeZone(43, 85, 'ZONE2       '),
+        makeZone(86, 127, 'ZONE3       '),
+      ];
+
+      render(
+        <VelocityRangeBar
+          zones={zones}
+          selectedZone={0}
+          onSelectZone={vi.fn()}
+          onSplitDrag={vi.fn()}
+          onSplitCommit={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByTestId('split-handle-0')).toBeInTheDocument();
+      expect(screen.getByTestId('split-handle-1')).toBeInTheDocument();
+      expect(screen.queryByTestId('split-handle-2')).not.toBeInTheDocument();
+    });
+
+    it('does not render handle when only one zone exists', () => {
+      const zones = [makeZone(0, 127, 'SINGLE      ')];
+
+      render(
+        <VelocityRangeBar
+          zones={zones}
+          selectedZone={0}
+          onSelectZone={vi.fn()}
+          onSplitDrag={vi.fn()}
+          onSplitCommit={vi.fn()}
+        />,
+      );
+
+      expect(screen.queryByTestId('split-handle-0')).not.toBeInTheDocument();
+    });
+
+    it('calls onSplitDrag on mousedown with initial velocity', () => {
+      const zones = [
+        makeZone(0, 63, 'SOFT        '),
+        makeZone(64, 127, 'HARD        '),
+      ];
+      const onSplitDrag = vi.fn();
+
+      render(
+        <VelocityRangeBar
+          zones={zones}
+          selectedZone={0}
+          onSelectZone={vi.fn()}
+          onSplitDrag={onSplitDrag}
+          onSplitCommit={vi.fn()}
+        />,
+      );
+
+      const handle = screen.getByTestId('split-handle-0');
+      fireEvent.mouseDown(handle, { clientX: 100 });
+
+      // Should be called with splitIndex 0 and some velocity value
+      expect(onSplitDrag).toHaveBeenCalledTimes(1);
+      expect(onSplitDrag).toHaveBeenCalledWith(0, expect.any(Number));
+    });
+  });
 });
