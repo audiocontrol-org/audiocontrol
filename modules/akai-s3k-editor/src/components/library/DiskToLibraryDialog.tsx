@@ -1,7 +1,7 @@
 /**
- * DiskToLibraryDialog — saves an Akai disk file to the library.
+ * DiskToLibraryDialog -- saves an Akai disk file to the library.
  *
- * Uses SteppedProgressDrawer. Auto-starts on open — no confirm phase.
+ * Uses SteppedProgressDrawer. Auto-starts on open -- no confirm phase.
  * For programs: saves program + referenced samples.
  * For samples: saves WAV + metadata.
  *
@@ -26,7 +26,7 @@ import {
 } from '@audiocontrol/sampler-devices/s3k';
 import type { StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
 import { saveSample, type SampleSavePayload } from '@audiocontrol/sampler-library/browser';
-import { SteppedProgressDrawer, type ProgressStep, formatBytes } from '@audiocontrol/editor-core';
+import { SteppedProgressDrawer, type ProgressStep, type OperationProgress, formatBytes } from '@audiocontrol/editor-core';
 import {
   serializeDiskProgram,
 } from '@/lib/program-serialization';
@@ -52,14 +52,18 @@ export interface DiskToLibraryDialogProps {
 
 type SaveTarget = 's3k' | 'common';
 
-export interface SaveProgress {
-  currentItem: string;
-  currentIndex: number;
-  totalItems: number;
-  bytesTransferred: number;
-  totalBytes: number;
-  startTime: number;
-}
+/**
+ * Progress for disk-to-library save operations.
+ *
+ * Extends OperationProgress with a startTime for elapsed/ETA calculation.
+ * Field mapping from the former SaveProgress:
+ *   currentItem -> stepLabel
+ *   currentIndex -> currentStep
+ *   totalItems -> totalSteps
+ *   bytesTransferred -> bytesSent
+ *   totalBytes -> bytesTotal
+ */
+export type SaveProgress = OperationProgress & { startTime: number };
 
 // =========================================================================
 // Helpers
@@ -148,20 +152,20 @@ export async function saveToS3kLibrary(
     const program = parseProgramFromDisk(fileData);
     const yaml = serializeDiskProgram(program, fileData);
     await saveProgramToLibrary(libraryRoot, name, yaml);
-    onProgress({ bytesTransferred: file.size, currentItem: name });
+    onProgress({ bytesSent: file.size, stepLabel: name });
 
     let samplesFound = 0;
     const sampleNames = collectSampleNames(fileData);
 
     for (let i = 0; i < sampleNames.length; i++) {
       const trimmed = sampleNames[i];
-      onProgress({ currentItem: trimmed, currentIndex: i + 1 });
+      onProgress({ stepLabel: trimmed, currentStep: i + 1 });
       try {
         const result = await extractSample(partitionData, volumeStartBlock, trimmed, ensureBlocks);
         if (result) {
           await saveProgramSample(libraryRoot, name, trimmed, result.wav.buffer as ArrayBuffer);
           samplesFound++;
-          onProgress({ bytesTransferred: file.size + result.wav.length });
+          onProgress({ bytesSent: file.size + result.wav.length });
         }
       } catch (err) {
         console.warn(`Failed to save sample "${trimmed}":`, err);
@@ -183,7 +187,7 @@ export async function saveToS3kLibrary(
 
     await saveProgramToLibrary(libraryRoot, name, yaml);
     await saveProgramSample(libraryRoot, name, name, wav.buffer as ArrayBuffer);
-    onProgress({ bytesTransferred: file.size, currentIndex: 1 });
+    onProgress({ bytesSent: file.size, currentStep: 1 });
     return 1;
   }
   return 0;
@@ -213,7 +217,7 @@ export async function saveToCommonLibrary(
       yaml: commonSample as SampleSavePayload['yaml'],
       wavData: wav.buffer as ArrayBuffer,
     }, targetPath);
-    onProgress({ bytesTransferred: file.size, currentIndex: 1 });
+    onProgress({ bytesSent: file.size, currentStep: 1 });
     return 1;
   } else if (isAkaiProgram(file.type)) {
     const program = parseProgramFromDisk(fileData);
@@ -229,11 +233,11 @@ export async function saveToCommonLibrary(
     const samplesDir = await programDir.getDirectoryHandle('samples', { create: true });
 
     const sampleHeaders = new Map<string, AkaiDiskSampleHeader>();
-    let bytesTransferred = file.size;
+    let bytesSent = file.size;
 
     for (let i = 0; i < sampleNames.length; i++) {
       const sampleName = sampleNames[i];
-      onProgress({ currentItem: sampleName, currentIndex: i + 1 });
+      onProgress({ stepLabel: sampleName, currentStep: i + 1 });
 
       const sampleFile = volumeFiles.find(
         (f) => isAkaiSample(f.type) && f.name.trim() === sampleName,
@@ -255,8 +259,8 @@ export async function saveToCommonLibrary(
         const sampleYaml = stringifyYaml(commonSample, { indent: 2 });
         await writeFile(samplesDir, `${sampleName.trim()}.yaml`, sampleYaml);
 
-        bytesTransferred += sampleFile.size;
-        onProgress({ bytesTransferred });
+        bytesSent += sampleFile.size;
+        onProgress({ bytesSent });
       } catch (err) {
         console.warn(`Failed to save sample "${sampleName}" to program:`, err);
       }

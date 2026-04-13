@@ -8,7 +8,6 @@
 
 import { useState, useCallback } from 'react';
 import type { LibraryTreeNode, LibraryCategory } from '@/lib/library-service';
-import type { LibraryDragData } from '@/components/library/DeviceMemoryPanel';
 import {
   type ContextMenuAction,
   NewFolderIcon,
@@ -16,6 +15,12 @@ import {
   MoveIcon,
   DeleteIcon,
 } from '@audiocontrol/editor-core';
+
+/** Minimal interface for drag data used in within-tree move operations. */
+export interface TreeMoveData {
+  name: string;
+  path: string[];
+}
 
 export interface UseLibraryTreeActionsParams {
   selectedName?: string;
@@ -49,7 +54,7 @@ export interface LibraryTreeActionsResult {
   handleTreeNodeSelect: (node: LibraryTreeNode, category: 'tones' | 'patches' | 'samples') => void;
   handleTreeNodeDelete: (node: LibraryTreeNode, category: 'tones' | 'patches' | 'samples') => void;
   computeSelectedId: (category: 'tones' | 'patches' | 'samples') => string | undefined;
-  handleDropOnDirectory: (category: 'tones' | 'patches' | 'samples', targetPath: string[], dragData: LibraryDragData) => void;
+  handleDropOnDirectory: (category: 'tones' | 'patches' | 'samples', targetPath: string[], dragData: TreeMoveData) => void;
   handleRename: (category: 'tones' | 'patches' | 'samples', node: LibraryTreeNode, newName: string) => Promise<void>;
 }
 
@@ -202,12 +207,12 @@ export function useLibraryTreeActions({
   const handleDropOnDirectory = useCallback((
     category: 'tones' | 'patches' | 'samples',
     targetPath: string[],
-    dragData: LibraryDragData
+    dragData: TreeMoveData
   ) => {
     if (!onDropMoveItem || category === 'samples') return;
 
     const libCategory: LibraryCategory = category;
-    const sourcePath = dragData.path || [];
+    const sourcePath = dragData.path;
     const itemName = dragData.name;
 
     onDropMoveItem(libCategory, sourcePath, itemName, targetPath);

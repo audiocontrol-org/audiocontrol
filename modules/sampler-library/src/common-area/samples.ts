@@ -21,9 +21,10 @@ import { readFileWithProgress, readTextWithProgress, type ReadProgressCallback }
 /**
  * Structured progress for a multi-step operation.
  *
- * This type is intentionally compatible with `OperationProgress` from
- * `@audiocontrol/editor-core`, allowing progress data to be passed directly
- * to UI components like `OperationProgressBar`.
+ * This is the canonical definition of `OperationProgress`.
+ * `@audiocontrol/editor-core` re-exports this type so that UI consumers
+ * can import it alongside editor-specific utilities like `OperationState`
+ * and `getOverallPercent`.
  *
  * Overall progress is byte-weighted (not step-weighted) so that a
  * 10 MB upload step doesn't appear as equal to a 100-byte metadata write.

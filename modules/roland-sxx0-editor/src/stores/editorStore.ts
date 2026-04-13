@@ -6,6 +6,10 @@
  */
 
 import { create } from 'zustand';
+import {
+  createEditorStoreSlice,
+  type EditorStoreBase,
+} from '@audiocontrol/editor-core';
 
 /**
  * Type of hardware parameter change
@@ -21,25 +25,17 @@ export interface LastHardwareChange {
   timestamp: number;
 }
 
-interface EditorState {
+interface EditorState extends EditorStoreBase {
   // Selection state
   selectedPatchIndex: number | null;
   selectedToneIndex: number | null;
 
-  // UI state
-  isLoading: boolean;
-  loadingMessage: string | null;
-  error: string | null;
-
-  // Progress tracking
-  loadingProgress: number | null; // 0-100, null when not tracking progress
+  // Extended progress tracking (device-specific)
   loadingCurrent: number;
   loadingTotal: number;
 
   // Hardware sync state
-  // Incremented when any hardware parameter changes - triggers React re-renders
   hardwareChangeVersion: number;
-  // Details of the last hardware change for selective refetching
   lastHardwareChange: LastHardwareChange;
 }
 
@@ -48,88 +44,79 @@ interface EditorActions {
   selectPatch: (index: number | null) => void;
   selectTone: (index: number | null) => void;
 
-  // UI state
-  setLoading: (isLoading: boolean, message?: string | null) => void;
-  setError: (error: string | null) => void;
-  setProgress: (current: number, total: number) => void;
-  clearProgress: () => void;
+  // Extended UI state
   clear: () => void;
 
   // Hardware sync
-  /**
-   * Notify the store that a hardware parameter has changed.
-   * This increments hardwareChangeVersion to trigger React re-renders
-   * and stores the change details for selective refetching.
-   */
   notifyHardwareChange: (type: HardwareChangeType, index: number | null) => void;
-
-  /**
-   * Clear the last hardware change after it's been handled.
-   * This prevents the change from triggering multiple refetches.
-   */
   clearHardwareChange: () => void;
 }
 
 type EditorStore = EditorState & EditorActions;
 
-export const useEditorStore = create<EditorStore>((set) => ({
-  // Initial state
-  selectedPatchIndex: null,
-  selectedToneIndex: null,
-  isLoading: false,
-  loadingMessage: null,
-  error: null,
-  loadingProgress: null,
-  loadingCurrent: 0,
-  loadingTotal: 0,
-  hardwareChangeVersion: 0,
-  lastHardwareChange: { type: null, index: null, timestamp: 0 },
+export const useEditorStore = create<EditorStore>((set) => {
+  const baseSlice = createEditorStoreSlice(set);
 
-  selectPatch: (index) => set({ selectedPatchIndex: index }),
+  return {
+    ...baseSlice,
 
-  selectTone: (index) => set({ selectedToneIndex: index }),
+    // Selection state
+    selectedPatchIndex: null,
+    selectedToneIndex: null,
 
-  setLoading: (isLoading, message = null) =>
-    set({ isLoading, loadingMessage: message }),
+    // Extended progress tracking
+    loadingCurrent: 0,
+    loadingTotal: 0,
 
-  setError: (error) => set({ error }),
+    // Hardware sync state
+    hardwareChangeVersion: 0,
+    lastHardwareChange: { type: null, index: null, timestamp: 0 },
 
-  setProgress: (current, total) =>
-    set({
-      loadingCurrent: current,
-      loadingTotal: total,
-      loadingProgress: total > 0 ? Math.round((current / total) * 100) : null,
-    }),
+    selectPatch: (index) => set({ selectedPatchIndex: index }),
 
-  clearProgress: () =>
-    set({
-      loadingProgress: null,
-      loadingCurrent: 0,
-      loadingTotal: 0,
-    }),
+    selectTone: (index) => set({ selectedToneIndex: index }),
 
-  clear: () =>
-    set({
-      selectedPatchIndex: null,
-      selectedToneIndex: null,
-      error: null,
-      loadingProgress: null,
-      loadingCurrent: 0,
-      loadingTotal: 0,
-    }),
+    // Override setProgress to also track current/total values
+    setProgress: (current: number, total: number) => {
+      set({
+        loadingCurrent: current,
+        loadingTotal: total,
+        loadingProgress: total > 0 ? Math.round((current / total) * 100) : null,
+      });
+    },
 
-  notifyHardwareChange: (type, index) =>
-    set((state) => ({
-      hardwareChangeVersion: state.hardwareChangeVersion + 1,
-      lastHardwareChange: {
-        type,
-        index,
-        timestamp: Date.now(),
-      },
-    })),
+    // Override clearProgress to also reset current/total values
+    clearProgress: () => {
+      set({
+        loadingProgress: null,
+        loadingCurrent: 0,
+        loadingTotal: 0,
+      });
+    },
 
-  clearHardwareChange: () =>
-    set({
-      lastHardwareChange: { type: null, index: null, timestamp: 0 },
-    }),
-}));
+    clear: () =>
+      set({
+        selectedPatchIndex: null,
+        selectedToneIndex: null,
+        error: null,
+        loadingProgress: null,
+        loadingCurrent: 0,
+        loadingTotal: 0,
+      }),
+
+    notifyHardwareChange: (type, index) =>
+      set((state) => ({
+        hardwareChangeVersion: state.hardwareChangeVersion + 1,
+        lastHardwareChange: {
+          type,
+          index,
+          timestamp: Date.now(),
+        },
+      })),
+
+    clearHardwareChange: () =>
+      set({
+        lastHardwareChange: { type: null, index: null, timestamp: 0 },
+      }),
+  };
+});

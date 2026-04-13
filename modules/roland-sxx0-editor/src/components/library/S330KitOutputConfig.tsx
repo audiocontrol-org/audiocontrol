@@ -7,22 +7,13 @@
  */
 
 import { DEFAULT_BASE_NOTE } from '@audiocontrol/sample-chopper';
-import type { ChopperOutputState } from '@audiocontrol/sample-chopper/ui';
+import type { BaseKitConfig, KitOutputConfigProps } from '@audiocontrol/editor-core';
 
-export interface S330KitConfig {
-  name: string;
+export interface S330KitConfig extends BaseKitConfig {
   sampleRate: 15000 | 30000;
-  baseNote: number;
-  transpose: number;
-  velocitySensitivity: number;
 }
 
-export interface S330KitOutputConfigProps {
-  state: ChopperOutputState;
-  config: S330KitConfig;
-  onConfigChange: (config: S330KitConfig) => void;
-  editMode?: boolean;
-}
+export type S330KitOutputConfigProps = KitOutputConfigProps<S330KitConfig>;
 
 export function S330KitOutputConfig({
   state,

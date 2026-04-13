@@ -16,6 +16,8 @@ import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import type { ToneSlotGroup } from '@/configs/types';
 import { PatchLabel } from '@/components/common/PatchLabel';
+import type { LibraryDragPayload } from '@/lib/library-drag-types';
+import { LIBRARY_ITEM_MIME } from '@/lib/library-drag-types';
 
 /**
  * Data transfer format for dragged device items.
@@ -30,27 +32,6 @@ export interface DeviceDragData {
 /** MIME type for device drag data */
 export const DEVICE_DRAG_MIME = 'application/x-s330-device-item';
 
-/**
- * Data transfer format for dragged library items.
- */
-export interface LibraryDragData {
-  source: 'library';
-  type: 'tone' | 'patch' | 'drumKit';
-  /** For individual tones/patches: the file/directory name */
-  name: string;
-  /** For tones/patches in sets: the set name */
-  setName?: string;
-  /** For tones: the file name within the set */
-  toneFile?: string;
-  /** For patches: the file name within the set */
-  patchFile?: string;
-  /** Path segments from category root (for hierarchical library) */
-  path?: string[];
-}
-
-/** MIME type for library drag data */
-export const LIBRARY_DRAG_MIME = 'application/x-s330-library-item';
-
 interface DeviceMemoryPanelProps {
   tones: (SamplerTone | undefined)[];
   patches: (SamplerPatch | undefined)[];
@@ -61,9 +42,9 @@ interface DeviceMemoryPanelProps {
   onSelectTone: (index: number) => void;
   onSelectPatch: (index: number) => void;
   /** Callback when a library tone is dropped on a device tone slot */
-  onDropLibraryTone?: (data: LibraryDragData, targetSlot: number) => void;
+  onDropLibraryTone?: (data: LibraryDragPayload, targetSlot: number) => void;
   /** Callback when a library patch is dropped on a device patch slot */
-  onDropLibraryPatch?: (data: LibraryDragData, targetSlot: number) => void;
+  onDropLibraryPatch?: (data: LibraryDragPayload, targetSlot: number) => void;
 }
 
 export function DeviceMemoryPanel({
@@ -113,14 +94,14 @@ export function DeviceMemoryPanel({
   );
 
   const handleToneSlotDragOver = useCallback((e: React.DragEvent) => {
-    if (e.dataTransfer.types.includes(LIBRARY_DRAG_MIME)) {
+    if (e.dataTransfer.types.includes(LIBRARY_ITEM_MIME)) {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'copy';
     }
   }, []);
 
   const handleToneSlotDragEnter = useCallback((e: React.DragEvent, index: number) => {
-    if (e.dataTransfer.types.includes(LIBRARY_DRAG_MIME)) {
+    if (e.dataTransfer.types.includes(LIBRARY_ITEM_MIME)) {
       e.preventDefault();
       setDragOverToneSlot(index);
     }
@@ -136,12 +117,12 @@ export function DeviceMemoryPanel({
     e.preventDefault();
     setDragOverToneSlot(null);
 
-    const jsonData = e.dataTransfer.getData(LIBRARY_DRAG_MIME);
+    const jsonData = e.dataTransfer.getData(LIBRARY_ITEM_MIME);
     if (!jsonData) return;
 
     try {
-      const data = JSON.parse(jsonData) as LibraryDragData;
-      if (data.type === 'tone') {
+      const data = JSON.parse(jsonData) as LibraryDragPayload;
+      if (data.nodeType === 'tone') {
         onDropLibraryTone?.(data, index);
       }
     } catch (err) {
@@ -150,14 +131,14 @@ export function DeviceMemoryPanel({
   }, [onDropLibraryTone]);
 
   const handlePatchSlotDragOver = useCallback((e: React.DragEvent) => {
-    if (e.dataTransfer.types.includes(LIBRARY_DRAG_MIME)) {
+    if (e.dataTransfer.types.includes(LIBRARY_ITEM_MIME)) {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'copy';
     }
   }, []);
 
   const handlePatchSlotDragEnter = useCallback((e: React.DragEvent, index: number) => {
-    if (e.dataTransfer.types.includes(LIBRARY_DRAG_MIME)) {
+    if (e.dataTransfer.types.includes(LIBRARY_ITEM_MIME)) {
       e.preventDefault();
       setDragOverPatchSlot(index);
     }
@@ -173,12 +154,12 @@ export function DeviceMemoryPanel({
     e.preventDefault();
     setDragOverPatchSlot(null);
 
-    const jsonData = e.dataTransfer.getData(LIBRARY_DRAG_MIME);
+    const jsonData = e.dataTransfer.getData(LIBRARY_ITEM_MIME);
     if (!jsonData) return;
 
     try {
-      const data = JSON.parse(jsonData) as LibraryDragData;
-      if (data.type === 'patch' || data.type === 'drumKit') {
+      const data = JSON.parse(jsonData) as LibraryDragPayload;
+      if (data.nodeType === 'patch' || data.nodeType === 'drumKit') {
         onDropLibraryPatch?.(data, index);
       }
     } catch (err) {

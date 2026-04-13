@@ -1,4 +1,8 @@
 import { create } from 'zustand';
+import {
+  createEditorStoreSlice,
+  type EditorStoreBase,
+} from '@audiocontrol/editor-core';
 
 const SESSION_KEY = 's3k-editor-selection';
 
@@ -27,22 +31,14 @@ function saveSelection(programIndex: number | null, keygroupIndex: number | null
   } catch { /* ignore */ }
 }
 
-export interface EditorStoreState {
+export interface EditorStoreState extends EditorStoreBase {
   selectedProgramIndex: number | null;
   selectedKeygroupIndex: number | null;
-  isLoading: boolean;
-  loadingMessage: string | null;
-  loadingProgress: number | null;
-  error: string | null;
 }
 
 export interface EditorStoreActions {
   selectProgram(index: number | null): void;
   selectKeygroup(index: number | null): void;
-  setLoading(isLoading: boolean, message?: string): void;
-  setProgress(current: number, total: number): void;
-  clearProgress(): void;
-  setError(error: string | null): void;
 }
 
 export type EditorStore = EditorStoreState & EditorStoreActions;
@@ -50,12 +46,10 @@ export type EditorStore = EditorStoreState & EditorStoreActions;
 const initial = loadSelection();
 
 export const useEditorStore = create<EditorStore>((set) => ({
+  ...createEditorStoreSlice(set),
+
   selectedProgramIndex: initial.programIndex,
   selectedKeygroupIndex: initial.keygroupIndex,
-  isLoading: false,
-  loadingMessage: null,
-  loadingProgress: null,
-  error: null,
 
   selectProgram(index: number | null) {
     saveSelection(index, null);
@@ -66,26 +60,5 @@ export const useEditorStore = create<EditorStore>((set) => ({
     const programIndex = useEditorStore.getState().selectedProgramIndex;
     saveSelection(programIndex, index);
     set({ selectedKeygroupIndex: index, error: null });
-  },
-
-  setLoading(isLoading: boolean, message?: string) {
-    set({
-      isLoading,
-      loadingMessage: message ?? null,
-      ...(isLoading ? {} : { loadingProgress: null }),
-    });
-  },
-
-  setProgress(current: number, total: number) {
-    const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
-    set({ loadingProgress: percentage });
-  },
-
-  clearProgress() {
-    set({ loadingProgress: null });
-  },
-
-  setError(error: string | null) {
-    set({ error, isLoading: false, loadingMessage: null, loadingProgress: null });
   },
 }));

@@ -20,6 +20,7 @@ import type {
   S3000xlClientInterface,
   KeygroupHeader,
 } from '@audiocontrol/sampler-devices/s3k';
+import type { OperationProgress } from '@audiocontrol/editor-core';
 import { writeKeygroupField } from '@/lib/keygroup-writers';
 import { writeProgramField } from '@/lib/program-writers';
 
@@ -28,11 +29,8 @@ import { writeProgramField } from '@/lib/program-writers';
 // =========================================================================
 
 /** Progress callback for instrument import. */
-export interface InstrumentImportProgress {
+export interface InstrumentImportProgress extends Pick<OperationProgress, 'stepLabel' | 'currentStep' | 'totalSteps'> {
   phase: 'resolving' | 'creating-program' | 'creating-keygroups';
-  stepLabel: string;
-  currentStep: number;
-  totalSteps: number;
 }
 
 export interface InstrumentImportResult {

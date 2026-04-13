@@ -73,6 +73,51 @@ Review the implemented UI in the browser, fix design issues, and make parameter 
 
 ## 2026-04-12: Akai S3000XL Editor UX Improvement — All 5 Phases (Session 1)
 
+---
+
+## 2026-04-12: Compiler-Enforced Contracts and Design System
+
+### Feature: contracts
+### Worktree: audiocontrol-contracts
+
+### Goal
+Establish compiler-enforced contracts and a design system document to reduce agent corrections and reinforce codebase consistency.
+
+### Accomplished
+- Phase 1: Audited 55 contract violations across 3 modules using 4 parallel sub-agents (phase1-audit.md)
+- Phase 2: StrategyResult discriminated union, RefreshNotifier/ProgressReporter interfaces, 5 tree capability interfaces replacing 15+ triplicated callbacks (11aab81d, 682517ed)
+- Phase 3: DESIGN-SYSTEM.md as single source of truth with 10 foundational principles; CLAUDE.md pointer (ba8896e1)
+- Phase 4: Eliminated all 13 window.prompt/confirm/alert calls, fixed pixel widths, deduplicated 5 shared types (VfdGlowVariant, BackupProgress, useS330Store, cn(), MIDI note parsing) (5a3c6773, b63b50a4)
+- Merged feature/akai-ux-improvement twice to integrate DESIGN-NOTES.md content
+- Restructured DESIGN-SYSTEM.md from flat pattern catalog to 10 generalized principles with concrete examples
+- PR #249 merged to main, issues #240-#244 closed
+
+### Didn't Work
+- Sub-agents couldn't write files (permission denied) during Phase 1 audit — had to write files from main agent
+- First attempt at cn() extraction caused d110-editor build failure — editor-core re-exported MIDI utils from `@audiocontrol/sampler-library` (Node entry) instead of `@audiocontrol/sampler-library/browser`, pulling `fs`/`os` into browser bundles
+
+### Course Corrections
+- [PROCESS] Agent started implementing Phase 2 changes directly instead of delegating. User asked "Are you fixing everything yourself?" — prompted delegation of 4 parallel agents for type dedup.
+- [DOCUMENTATION] When integrating DESIGN-NOTES.md, agent tried to delete it before reading the latest content. User corrected: "you should review and integrate the latest design notes before deleting."
+- [DOCUMENTATION] Agent incorporated icon-specific patterns literally. User pushed for generalization: "Can you generalize the icon consistency issue. I think there are more basic concepts in there." Led to restructuring around 10 foundational principles.
+- [PROCESS] Agent proposed untangling akai-ux-improvement from the branch via cherry-pick. User had a simpler plan: merge akai-ux-improvement to main first, then rebase contracts. Even simpler: user merged akai to main themselves, then we rebased.
+
+### Quantitative
+- User messages: ~25
+- Commits: 9 (on rebased branch)
+- User corrections: 4 (2 PROCESS, 2 DOCUMENTATION)
+- Sub-agents used: ~12 (4 audit, 1 core contracts, 1 tree refactor, 1 consumer graph research, 1 design patterns research, 4 type dedup)
+
+### Insights
+1. **Generalization with concrete examples** is the right structure for a design system doc. The user pushed for this twice — first with icons, then asking what else could benefit. The result (10 principles) is more useful than the flat pattern catalog it replaced.
+2. **Sub-agent permission issues** are a recurring friction. Agents consistently can't write files, requiring the orchestrator to do the writes. This adds latency and context burden.
+3. **The DESIGN-NOTES.md → DESIGN-SYSTEM.md consolidation pattern** worked well: scratchpad captures decisions as they happen, periodic integration into the formal doc generalizes and structures them. The key insight is to always read the latest scratchpad before deleting — it may have evolved.
+4. **Browser entry vs Node entry** for sampler-library is a recurring footgun. Any re-export from editor-core must use the `/browser` subpath to avoid pulling Node-only deps into browser bundles.
+
+---
+
+## 2026-04-12: Akai S3000XL Editor UX Improvement — All 5 Phases
+
 ### Feature: akai-ux-improvement
 ### Worktree: audiocontrol-akai-ux-improvement
 
