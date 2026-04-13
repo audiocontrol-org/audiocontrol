@@ -2,9 +2,17 @@
 
 ## GitHub Tracking
 
-**GitHub Milestone:** TBD
+**GitHub Milestone:** TBD (assign when scheduling)
+
 **GitHub Issues:**
-- TBD (to be filled by /feature-issues)
+
+| Phase | Issue | Description |
+|-------|-------|-------------|
+| Parent | [#252](https://github.com/audiocontrol-org/audiocontrol/issues/252) | [akai-s3k-editor] Draggable Zone Editing |
+| Phase 1 | [#253](https://github.com/audiocontrol-org/audiocontrol/issues/253) | Extract shared note-to-pixel coordinate mapping |
+| Phase 2 | [#254](https://github.com/audiocontrol-org/audiocontrol/issues/254) | Add draggable zone boundaries to ZoneOverview |
+| Phase 3 | [#255](https://github.com/audiocontrol-org/audiocontrol/issues/255) | Add draggable split points to VelocityRangeBar |
+| Phase 4 | [#256](https://github.com/audiocontrol-org/audiocontrol/issues/256) | Add zone creation via drag in ZoneOverview |
 
 ## Technical Approach
 
