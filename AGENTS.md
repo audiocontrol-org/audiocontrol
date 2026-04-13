@@ -36,6 +36,21 @@ Canonical flow:
 
 Feature docs live under `docs/<version>/<feature-slug>/`.
 
+## Worktree Discipline
+
+When using git worktrees, make branch-owned changes from the worktree attached to that branch.
+
+Before creating feature docs or implementation changes:
+
+1. verify `pwd`
+2. verify `git rev-parse --abbrev-ref HEAD`
+3. confirm the active worktree matches the target feature branch
+4. run `tsx tools/verify-feature-context.ts --slug <slug>` and require it to pass
+
+Feature docs required for implementation must exist in the feature-specific worktree, not only in another worktree such as `main`.
+
+If changes were made in the wrong worktree, prefer a git-native repair (`cherry-pick`, `merge`, or other branch-level transfer) over manual file recreation. Use manual copying only when the desired changes are not available as a clean, isolated git change.
+
 ## Repo-Local Codex Skills
 
 Codex equivalents of the Claude skills live under `.agents/skills/`:
@@ -103,6 +118,7 @@ For bridge work:
 - No fabricated claims about hardware behavior.
 - Error messages are actionable.
 - Feature docs are updated for the work performed.
+- Feature docs and implementation changes live on the branch/worktree that owns the feature.
 
 ## Delegation in Codex
 
