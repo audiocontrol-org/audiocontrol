@@ -11,6 +11,47 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-13: Draggable Zone Editing — Phases 1-3
+
+### Feature: draggable-zones
+### Worktree: audiocontrol-draggable-zones
+
+### Goal
+Implement draggable zone boundaries for the Akai S3000XL keygroup editor — shared coordinate system, drag handles on ZoneOverview, and draggable velocity split points.
+
+### Accomplished
+- Phase 1: Extracted `note-coordinate-utils.ts` with shared `NoteRange`, `noteToPercent`, `percentToNote`, `computeKeyRange`. Both ZoneOverview and KeyRangeEditor now use the same coordinate mapping. (8d2c8033)
+- Phase 2: Created `use-zone-drag.ts` hook (onDrag/onCommit pattern), added invisible DragHandle components on all 4 zone edges with hover highlights. Extracted `ZoneOverviewZone.tsx` to keep files under 300 lines. (8d2c8033)
+- Phase 3: Added draggable split point handles to VelocityRangeBar between adjacent velocity zones. Dragging adjusts HIVEL/LOVEL to keep zones contiguous. (53a6de65)
+- Created `TestKeygroupsPage.tsx` test harness at `/test/keygroups` route — renders all components with hardcoded factory data, no device needed
+- Documented the targeted UI testing methodology in `TESTING-UI.md`
+- Updated CLAUDE.md and session-start skill to reference UI test harness workflow
+- Closed issues #253 (Phase 1), #254 (Phase 2), #255 (Phase 3)
+- 135 tests pass across 15 test files
+
+### Didn't Work
+- WebFetch tool cannot access localhost URLs — had to use Playwright CLI for screenshots instead
+- First implementation agent hit API overload error — retried successfully
+
+### Course Corrections
+- [PROCESS] Agent started implementing Phase 1 directly instead of delegating. User: "are you delegating?" Immediately switched to orchestrator role and delegated to sub-agents for all subsequent work.
+- [PROCESS] Agent proposed testing via the full dev environment with hardware. User asked: "How can you test this yourself in a virtuous cycle?" and then "Is there a way to test in as isolated way as possible?" Led to creating the test harness pattern — standalone page with factory data, no device/store.
+- [PROCESS] Agent proposed Playwright e2e tests and Storybook before researching what already exists. User: "You should research what is available." Led to discovering vitest browser mode and the existing test infrastructure.
+
+### Quantitative
+- User messages: ~15
+- Commits: 2 (Phase 1-2, Phase 3)
+- User corrections: 3 (all PROCESS — delegation, test approach, research first)
+- Sub-agents used: ~8 (1 explore keygroups, 1 explore testing infra, 1 explore overlap rules, 3 implementation, 1 file split, 1 documentation)
+
+### Insights
+1. **Test harness pattern is high-value.** Creating a standalone page with factory data gives a visual feedback loop without hardware. This should be the default for any UI feature work. Documented in TESTING-UI.md so future sessions start with it.
+2. **Research before proposing.** The agent proposed testing approaches (Storybook, Playwright e2e) before checking what tools were available. The user had to redirect to "research what is available" — which found vitest browser mode and existing Playwright infra. Always check existing infrastructure first.
+3. **The "how can you test this yourself" question** is the right framing for any UI feature. The answer should always be: create a minimum-friction harness, not reach for the full e2e stack.
+4. **Phase 1-3 went smoothly once the process corrections landed.** The delegation→implement→screenshot→verify loop worked well. Phase 3 was the fastest because the patterns from Phase 2 (useZoneDrag, DragHandle) were directly reusable.
+
+---
+
 ## 2026-04-13: Architectural Type Deduplication (Phase 5)
 
 ### Feature: contracts
