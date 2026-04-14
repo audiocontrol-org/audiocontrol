@@ -28,6 +28,8 @@ Demo videos for audiocontrol features are created manually, which means they go 
 - Videos can be regenerated from the same scenario definitions when new versions ship.
 - A local preview gallery lets developers browse generated videos without regenerating.
 - Published videos are durably stored with per-scenario revision history.
+- Videos can be regenerated from the gallery UI without switching to the terminal.
+- Caption text can be burned into the video or displayed as a live overlay in the gallery player.
 
 ## Scope
 
@@ -45,10 +47,11 @@ Demo videos for audiocontrol features are created manually, which means they go 
 - Local preview gallery (Vite dev server) for browsing generated videos without regenerating
 - Video publishing pipeline with per-scenario revision history
 - Storage backend research and selection for durable video hosting
+- Gallery-triggered video regeneration (generate from the browser, no terminal required)
+- Text overlay rendering: ffmpeg burn-in (captioned MP4) and live HTML overlay in the gallery player
 
 ### Out of Scope
 
-- Caption compositing onto video (handled by @videocontrol/text-overlay)
 - Audio narration recording or synthesis
 - Video editing UI
 - Thumbnail generation

@@ -95,7 +95,7 @@ function galleryPlugin(): Plugin {
 
 export default defineConfig({
   root: __dirname,
-  server: { port: 4200 },
+  server: { port: 4200, host: '0.0.0.0', allowedHosts: ['orion-m4'] },
   plugins: [galleryPlugin()],
   publicDir: false,
 });

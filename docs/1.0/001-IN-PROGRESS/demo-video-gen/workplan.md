@@ -7,6 +7,8 @@
 - #265 — Create infrastructure for a demo video generator (parent)
 - #267 — Add video preview gallery (Phase 4)
 - #268 — Add video publishing and versioning (Phase 5)
+- #269 — Add gallery-triggered video generation (Phase 6)
+- #270 — Add text overlay rendering (Phase 7)
 
 ## Technical Approach
 
@@ -109,3 +111,38 @@ Use Playwright's built-in `recordVideo` to capture browser interactions as WebM.
 - [ ] Add `make demo-publish-all` to publish all current scenarios
 
 **Acceptance:** Running `make demo-publish SCENARIO=s3k-zone-editor` uploads the video to the selected storage backend. Running it again creates a new revision, preserving the previous one. `make demo-versions` lists all revisions with dates and commit hashes.
+
+---
+
+### Phase 6: Gallery-Triggered Generation
+
+**Goal:** Regenerate scenario videos from the gallery UI without leaving the browser.
+
+**Tasks:**
+
+- [ ] Add `/api/generate` POST endpoint to the Vite dev server that runs a scenario by name (spawns `tsx src/cli.ts` as a child process)
+- [ ] Add `/api/scenarios` GET endpoint that lists available scenario files from `scenarios/` (name, description, mode, outputTier)
+- [ ] Add a "Regenerate" button on each gallery card that triggers `/api/generate` and shows a spinner/progress state
+- [ ] Add a "Generate All" button in the gallery header
+- [ ] Handle concurrent generation requests (queue or reject if already running)
+- [ ] Report generation errors visually in the gallery (red banner or card error state)
+
+**Acceptance:** Clicking "Regenerate" on a gallery card runs the scenario and the new video appears in the gallery without a page refresh. "Generate All" regenerates all scenarios sequentially.
+
+---
+
+### Phase 7: Text Overlay Rendering
+
+**Goal:** Render timed caption overlays onto videos, both as burned-in MP4 and as a live HTML overlay in the gallery player.
+
+**Tasks:**
+
+- [ ] Implement ffmpeg caption burn-in: convert captions YAML to ASS subtitles, render into MP4 using ffmpeg subtitle filter
+- [ ] Produce output variants: `video.mp4` (clean) and `video-captioned.mp4` (text burned in)
+- [ ] Add `--overlay none|burned|both` CLI option controlling which MP4 variants are produced
+- [ ] Add `OVERLAY=none|burned|both` Make variable to `demo-scenario` target
+- [ ] Implement gallery player HTML overlay: parse captions YAML, display timed text synced to video playback position
+- [ ] Add toggle in gallery UI to switch between: clean video, burned-in video, and live overlay mode
+- [ ] Style overlay text to match the editor visual theme (semi-transparent background, white text, bottom-aligned)
+
+**Acceptance:** Running `make demo-scenario SCENARIO=s3k-zone-editor OVERLAY=both` produces both clean and captioned MP4 files. The gallery player can display captions as a live overlay synced to video playback. A toggle switches between clean, burned-in, and live overlay views.
