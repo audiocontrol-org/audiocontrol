@@ -531,6 +531,10 @@ demo-all: $(VIDEO_CONTROL)
 demo-device: $(VIDEO_CONTROL)
 	@echo "Device scenarios not yet implemented"
 
+# Preview gallery — serves existing videos without regenerating
+demo-preview: $(VIDEO_CONTROL)
+	cd $(MODULES_DIR)/video-control && pnpm gallery
+
 # ---------------------------------------------------------------------------
 # Clean
 # ---------------------------------------------------------------------------

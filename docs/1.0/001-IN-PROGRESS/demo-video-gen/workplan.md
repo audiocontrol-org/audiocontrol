@@ -83,12 +83,12 @@ Use Playwright's built-in `recordVideo` to capture browser interactions as WebM.
 
 **Tasks:**
 
-- [ ] Add Vite as a dev dependency to video-control with a minimal `vite.config.ts`
-- [ ] Create gallery HTML page that displays available demos as a card grid
-- [ ] Implement dev server plugin or middleware that scans `dist/demos/*/` for existing video outputs
-- [ ] Each video card shows: GIF thumbnail, scenario name, duration, playable MP4, links to captions YAML and VO script (if present)
-- [ ] Add Make target: `make demo-preview` to start the Vite dev server serving the gallery
-- [ ] Gallery auto-refreshes when new videos are generated (Vite HMR or file watching)
+- [x] Add Vite as a dev dependency to video-control with a minimal `vite.config.ts`
+- [x] Create gallery HTML page that displays available demos as a card grid
+- [x] Implement dev server plugin that scans `dist/demos/*/` for existing video outputs via `/api/demos` endpoint
+- [x] Each video card shows: GIF thumbnail, scenario name, duration, playable MP4, links to captions YAML and VO script (if present)
+- [x] Add Make target: `make demo-preview` to start the Vite dev server serving the gallery
+- [x] Gallery auto-refreshes when new videos are generated (polls `/api/demos` every 5s)
 
 **Acceptance:** `make demo-preview` opens a local page listing all generated demos with playable video previews. Adding a new video via `make demo-scenario` causes the gallery to update without restart.
 
