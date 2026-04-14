@@ -55,10 +55,18 @@ Launch the selected agent with:
 ## 7. Update progress
 
 - Check off completed acceptance criteria in workplan
-- If all criteria for a task are met: `gh issue close <number>`
+- Update feature README status if a phase changed
+- If all criteria for a task are met: `gh issue close <number> -c "Completed in <commit-hash>"`
 - Report to user: what was done, what's next
 
-## 8. Repeat or stop
+## 8. Checkpoint — commit and push
+
+Before continuing to the next task:
+- Stage changes (review staged files — no secrets, temp files, or build artifacts)
+- Commit with a descriptive message referencing the relevant issue
+- Push to the feature branch
+
+## 9. Repeat or stop
 
 - If more tasks remain in the current phase: continue to step 3
 - If phase is complete: report phase completion, ask user to confirm before starting next phase
