@@ -29,7 +29,7 @@ export function ZoneOverviewToolbar({
         className="px-2 py-0.5 text-xs rounded bg-gray-800 text-gray-400 hover:text-gray-200 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         onClick={() => onNoteRangeChange(zoomIn(noteRange))}
         disabled={isMaxZoomIn}
-        title="Zoom In"
+        title="Zoom In (⇧↑)"
       >
         + Zoom In
       </button>
@@ -37,7 +37,7 @@ export function ZoneOverviewToolbar({
         className="px-2 py-0.5 text-xs rounded bg-gray-800 text-gray-400 hover:text-gray-200 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         onClick={() => onNoteRangeChange(zoomOut(noteRange))}
         disabled={isFullRange}
-        title="Zoom Out"
+        title="Zoom Out (⇧↓)"
       >
         - Zoom Out
       </button>
@@ -58,6 +58,9 @@ export function ZoneOverviewToolbar({
       </button>
       <span className="ml-2 text-xs text-gray-600 font-mono">
         {noteRange.min}-{noteRange.max}
+      </span>
+      <span className="ml-2 text-xs text-gray-600">
+        ⇧←→ pan · ⇧↑↓ zoom
       </span>
     </div>
   );

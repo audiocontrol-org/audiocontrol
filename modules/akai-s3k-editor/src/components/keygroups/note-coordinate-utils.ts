@@ -138,6 +138,23 @@ export function zoomAtNote(range: NoteRange, centerNote: number, zoomFactor: num
   };
 }
 
+/** Pan the range left or right by a number of notes. Clamps to [0, 127]. */
+export function panRange(range: NoteRange, deltaNotes: number): NoteRange {
+  const span = range.max - range.min;
+  let newMin = range.min + deltaNotes;
+  let newMax = range.max + deltaNotes;
+  // Clamp to valid range
+  if (newMin < 0) {
+    newMin = 0;
+    newMax = span;
+  }
+  if (newMax > 127) {
+    newMax = 127;
+    newMin = 127 - span;
+  }
+  return { min: Math.max(0, Math.round(newMin)), max: Math.min(127, Math.round(newMax)) };
+}
+
 /** Filter OCTAVE_MARKERS to those within the visible range. */
 export function getVisibleOctaveMarkers(
   range: NoteRange,

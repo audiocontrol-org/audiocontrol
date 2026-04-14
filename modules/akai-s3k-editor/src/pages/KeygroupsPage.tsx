@@ -10,7 +10,7 @@ import { useEditorStore } from '@/stores/editorStore';
 import { useConnectionDrawerStore } from '@/stores/connectionDrawerStore';
 import { writeKeygroupField } from '@/lib/keygroup-writers';
 import { ErrorBanner } from '@/components/ui';
-import { FULL_RANGE } from '@/components/keygroups/note-coordinate-utils';
+import { FULL_RANGE, panRange, zoomIn, zoomOut } from '@/components/keygroups/note-coordinate-utils';
 import type { NoteRange } from '@/components/keygroups/note-coordinate-utils';
 import { ZoneOverviewToolbar } from '@/components/keygroups/ZoneOverviewToolbar';
 
@@ -195,6 +195,28 @@ export function KeygroupsPage(): JSX.Element {
     selectedKeygroupIndex !== null ? keygroups[selectedKeygroupIndex] : undefined;
 
   const [noteRange, setNoteRange] = useState<NoteRange>(FULL_RANGE);
+
+  // Ctrl+Arrow: pan zone overview regardless of focused element
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!e.shiftKey) return;
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        const span = noteRange.max - noteRange.min;
+        const step = Math.max(1, Math.round(span * 0.1));
+        const delta = e.key === 'ArrowLeft' ? step : -step;
+        setNoteRange(panRange(noteRange, delta));
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const newRange = e.key === 'ArrowUp' ? zoomIn(noteRange) : zoomOut(noteRange);
+        if (newRange.max - newRange.min >= 12) {
+          setNoteRange(newRange);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [noteRange]);
 
   if (!isConnected) {
     return (
