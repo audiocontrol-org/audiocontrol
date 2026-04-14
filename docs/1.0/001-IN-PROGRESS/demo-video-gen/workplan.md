@@ -27,13 +27,15 @@ Use Playwright's built-in `recordVideo` to capture browser interactions as WebM.
 
 **Tasks:**
 
-- [ ] Create `tools/demo-video-gen/` with TypeScript project setup (package.json, tsconfig.json, vitest config)
-- [ ] Define the scenario interface: function signature (`(page: Page) => Promise<void>`), metadata type (name, description, mode, duration estimate, output tier)
-- [ ] Implement the scenario runner: load scenario module, launch Playwright with `recordVideo` options, execute scenario function, close browser, collect video file
-- [ ] Implement ffmpeg conversion: WebM to MP4 (h264, crf 23), WebM to GIF (palette-based, max 15fps for size)
-- [ ] Add Make targets: `make demo-scenario SCENARIO=<name>`, `make demo-all`, `make demo-device`
-- [ ] Create one "hello world" scenario that opens a page, performs a simple interaction, and exits
-- [ ] Define output directory structure: `dist/demos/<scenario-name>/` containing video.mp4, video.gif, and metadata.json
+- [x] Create `modules/video-control/` with TypeScript project setup (package.json, tsconfig.json)
+- [x] Define the scenario interface: function signature (`(page: Page) => Promise<void>`), metadata type (name, description, mode, output tier)
+- [x] Implement the scenario runner: load scenario module, launch Playwright with `recordVideo` options, execute scenario function, close browser, collect video file
+- [x] Implement ffmpeg conversion: WebM to MP4 (h264, crf 23), WebM to GIF (palette-based, max 15fps for size)
+- [x] Add Make targets: `make demo-scenario SCENARIO=<name>`, `make demo-all`, `make demo-device`
+- [x] Create one "hello world" scenario that opens a page, performs a simple interaction, and exits
+- [x] Define output directory structure: `dist/demos/<scenario-name>/` containing video.mp4, video.gif, and source .webm
+
+- [x] Create VIDEO-DEMOS.md with script-first authoring process and pacing guidelines
 
 **Acceptance:** Running `make demo-scenario SCENARIO=hello-world` produces MP4 and GIF in `dist/demos/hello-world/`.
 
@@ -62,7 +64,7 @@ Use Playwright's built-in `recordVideo` to capture browser interactions as WebM.
 
 **Tasks:**
 
-- [ ] Create scenario: S3000XL draggable zones demo (harness mode) -- navigate to zone editor, drag zone boundaries, show visual feedback
+- [x] Create scenario: S3000XL draggable zones demo (harness mode) -- navigate to zone editor, drag zone boundaries, show visual feedback
 - [ ] Create scenario: Roland S-330 library browser (harness mode) -- browse library tree, select items, show metadata panel
 - [ ] Create scenario: S3000XL sample transfer (device mode, optional) -- connect to device, initiate transfer, show progress
 - [ ] Add captions to all scenarios (callouts for key interactions, step labels for phases)

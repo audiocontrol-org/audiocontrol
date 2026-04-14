@@ -317,6 +317,45 @@ Implement draggable zone boundaries for the Akai S3000XL keygroup editor — sha
 2. **Research before proposing.** The agent proposed testing approaches (Storybook, Playwright e2e) before checking what tools were available. The user had to redirect to "research what is available" — which found vitest browser mode and existing Playwright infra. Always check existing infrastructure first.
 3. **The "how can you test this yourself" question** is the right framing for any UI feature. The answer should always be: create a minimum-friction harness, not reach for the full e2e stack.
 4. **Phase 1-3 went smoothly once the process corrections landed.** The delegation→implement→screenshot→verify loop worked well. Phase 3 was the fastest because the patterns from Phase 2 (useZoneDrag, DragHandle) were directly reusable.
+---
+
+## 2026-04-13: Demo Video Generation — Phase 1 + First Scenario
+
+### Feature: demo-video-gen
+### Worktree: audiocontrol-demo-video-gen
+
+### Goal
+Create the video-control module with automated demo video generation from Playwright browser interactions. Implement Phase 1 infrastructure and first real scenario (S3000XL keygroup zone editor).
+
+### Accomplished
+- Created `modules/video-control/` pnpm workspace module (`852ebee7`)
+- Implemented scenario runner with Playwright `recordVideo`, ffmpeg MP4/GIF conversion, CLI entry point
+- Added Make targets: `demo-scenario`, `demo-all`, `demo-device`
+- Created hello-world validation scenario
+- Created s3k-zone-editor demo scenario with ZoneOverview, KeyRangeEditor, interactive drag
+- Fixed tsx/esbuild `__name` injection issue in `page.evaluate()` by adding browser-side polyfill
+- Created `VIDEO-DEMOS.md` with script-first authoring process and pacing guidelines
+- Referenced VIDEO-DEMOS.md from CLAUDE.md
+
+### Didn't Work
+- Initial scenario timing was 13 seconds for 7 interactions — unwatchable
+- tsx `keepNames` transform injects `__name()` into functions serialized for `page.evaluate()`, causing ReferenceError in browser context
+
+### Course Corrections
+- [UX] Agent created a 13-second video with 7 interactions (~1.8s each). User pointed out that each interaction needs 5-8 seconds of breathing room for the viewer to anticipate, watch, and absorb. Final video: 53 seconds.
+- [PROCESS] Agent didn't write a voiceover script before setting timing. User asked "have you written a script for voice over and overlays?" — the VO script is the real pacing test. If a human can't read the narration in the time allotted, the video is too fast. Script drives timing, not animation.
+- [DOCUMENTATION] Agent saved pacing feedback to memory but didn't create a project-level document. User directed creation of VIDEO-DEMOS.md as a top-level guide, following the SUBJECT-ASPECT.md naming convention.
+- [PROCESS] User corrected module location: workplan said `tools/demo-video-gen/` but user directed `modules/video-control/` as a proper pnpm workspace module.
+
+### Quantitative
+- User messages: ~15
+- Commits: 1
+- User corrections: 4
+
+### Insights
+1. Script-first demo creation is essential — write the narration, time it against speech rate, then set video duration to match. The script is the source of truth for pacing.
+2. The naming convention for top-level docs is SUBJECT-ASPECT.md (e.g., VIDEO-DEMOS.md, not DEMO-VIDEOS.md). Subject first, then the aspect of that subject.
+3. The tsx/esbuild `__name` issue is a known footgun when using Playwright's `page.evaluate()` with functions. Arrow functions inside evaluate blocks avoid it, and the runner adds a browser-side polyfill as a safety net.
 
 ---
 

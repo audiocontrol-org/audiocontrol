@@ -6,9 +6,9 @@ Automated demo video generation from scripted Playwright browser interactions.
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| Phase 1 | Infrastructure (runner, ffmpeg, Make targets) | Planning |
+| Phase 1 | Infrastructure (runner, ffmpeg, Make targets) | Complete |
 | Phase 2 | Caption Generation (YAML, VO scripts) | Planning |
-| Phase 3 | First Scenarios (S3000XL, Roland S-330) | Planning |
+| Phase 3 | First Scenarios (S3000XL, Roland S-330) | In Progress |
 
 ## Links
 
