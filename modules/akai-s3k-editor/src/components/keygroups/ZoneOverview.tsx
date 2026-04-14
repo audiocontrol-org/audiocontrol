@@ -1,95 +1,68 @@
+import { useRef, useCallback, useEffect } from 'react';
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
-import { formatMidiNote } from '@/lib/midi-note-parser';
+import type { NoteRange } from '@/components/keygroups/note-coordinate-utils';
+import {
+  noteToPercent,
+  velocityToPercentInverted,
+  getVisibleOctaveMarkers,
+  percentToNote,
+  zoomAtNote,
+} from '@/components/keygroups/note-coordinate-utils';
+import type { ZoneDragField } from '@/components/keygroups/use-zone-drag';
+import { useZoneDrag } from '@/components/keygroups/use-zone-drag';
+import { ZoneRect } from '@/components/keygroups/ZoneOverviewZone';
+import type { NewZoneRange } from '@/components/keygroups/use-zone-overview-drags';
+import { useZoneOverviewDrags } from '@/components/keygroups/use-zone-overview-drags';
+
+export type { NewZoneRange };
+
+// Axis label area sizing
+const LEFT_LABEL_WIDTH = 36; // px for velocity axis labels
+const BOTTOM_LABEL_HEIGHT = 20; // px for note axis labels
 
 interface ZoneOverviewProps {
   keygroups: (KeygroupHeader | undefined)[];
   keygroupCount: number;
   selectedKeygroupIndex: number | null;
   onSelectKeygroup: (index: number) => void;
+  noteRange: NoteRange;
+  onZoneDrag?: (keygroupIndex: number, field: ZoneDragField, value: number) => void;
+  onZoneCommit?: (keygroupIndex: number, field: ZoneDragField, value: number) => void;
+  onCreateZone?: (range: NewZoneRange) => void;
+  onNoteRangeChange?: (range: NoteRange) => void;
 }
 
-/**
- * Pastel hue palette for keygroups. Each keygroup gets a distinct hue
- * distributed evenly around the color wheel.
- */
-function keygroupColor(index: number, total: number, alpha: number): string {
-  const hue = (index * 360) / Math.max(total, 1);
-  return `hsla(${hue}, 55%, 55%, ${alpha})`;
-}
+function CreationPreview({
+  drag,
+  noteRange,
+}: {
+  drag: { startNote: number; startVel: number; currentNote: number; currentVel: number };
+  noteRange: NoteRange;
+}): JSX.Element {
+  const lowNote = Math.min(drag.startNote, drag.currentNote);
+  const highNote = Math.max(drag.startNote, drag.currentNote);
+  const lowVel = Math.min(drag.startVel, drag.currentVel);
+  const highVel = Math.max(drag.startVel, drag.currentVel);
 
-function keygroupBorderColor(index: number, total: number): string {
-  const hue = (index * 360) / Math.max(total, 1);
-  return `hsl(${hue}, 65%, 70%)`;
-}
+  const xStart = noteToPercent(lowNote, noteRange);
+  const xEnd = noteToPercent(highNote + 1, noteRange);
+  const yTop = velocityToPercentInverted(highVel);
+  const yBottom = ((128 - lowVel) / 128) * 100;
 
-interface VelocityZone {
-  lovel: number;
-  hivel: number;
-  sampleName: string;
-  zoneIndex: number;
-}
-
-function getVelocityZones(kg: KeygroupHeader): VelocityZone[] {
-  const zones: VelocityZone[] = [];
-
-  const candidates = [
-    { lo: kg.LOVEL1, hi: kg.HIVEL1, name: kg.SNAME1, idx: 1 },
-    { lo: kg.LOVEL2, hi: kg.HIVEL2, name: kg.SNAME2, idx: 2 },
-    { lo: kg.LOVEL3, hi: kg.HIVEL3, name: kg.SNAME3, idx: 3 },
-    { lo: kg.LOVEL4, hi: kg.HIVEL4, name: kg.SNAME4, idx: 4 },
-  ];
-
-  for (const c of candidates) {
-    // A zone is active if it has a non-empty sample name or a non-zero velocity range
-    if (c.name.trim() !== '' || c.hi > 0) {
-      zones.push({
-        lovel: c.lo,
-        hivel: c.hi,
-        sampleName: c.name.trim(),
-        zoneIndex: c.idx,
-      });
-    }
-  }
-
-  return zones;
-}
-
-/** C octave markers across the MIDI range for the X-axis labels */
-const OCTAVE_MARKERS: { note: number; label: string }[] = [];
-for (let octave = -1; octave <= 9; octave++) {
-  const note = (octave + 1) * 12;
-  if (note >= 0 && note <= 127) {
-    OCTAVE_MARKERS.push({ note, label: `C${octave}` });
-  }
-}
-
-/**
- * Compute the used key range across all loaded keygroups, with some padding.
- * Falls back to full range if no keygroups are loaded.
- */
-function computeKeyRange(
-  keygroups: (KeygroupHeader | undefined)[],
-  keygroupCount: number,
-): { min: number; max: number } {
-  let min = 127;
-  let max = 0;
-
-  for (let i = 0; i < keygroupCount; i++) {
-    const kg = keygroups[i];
-    if (!kg) continue;
-    if (kg.LONOTE < min) min = kg.LONOTE;
-    if (kg.HINOTE > max) max = kg.HINOTE;
-  }
-
-  if (min > max) {
-    return { min: 0, max: 127 };
-  }
-
-  // Add padding of a few notes on each side for context
-  return {
-    min: Math.max(0, min - 4),
-    max: Math.min(127, max + 4),
-  };
+  return (
+    <div
+      className="absolute pointer-events-none"
+      style={{
+        left: `${xStart}%`,
+        width: `${xEnd - xStart}%`,
+        top: `${yTop}%`,
+        height: `${yBottom - yTop}%`,
+        border: '2px dashed rgba(147, 197, 253, 0.6)',
+        background: 'rgba(59, 130, 246, 0.15)',
+        zIndex: 15,
+      }}
+    />
+  );
 }
 
 export function ZoneOverview({
@@ -97,7 +70,64 @@ export function ZoneOverview({
   keygroupCount,
   selectedKeygroupIndex,
   onSelectKeygroup,
+  noteRange,
+  onZoneDrag,
+  onZoneCommit,
+  onCreateZone,
+  onNoteRangeChange,
 }: ZoneOverviewProps): JSX.Element {
+  const vizRef = useRef<HTMLDivElement>(null);
+
+  // Scroll-wheel zoom: zoom in/out centered on mouse position
+  useEffect(() => {
+    const el = vizRef.current;
+    if (!el || !onNoteRangeChange) return;
+
+    const handleWheel = (e: WheelEvent): void => {
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
+      const centerNote = percentToNote(xPercent, noteRange);
+      const zoomFactor = e.deltaY > 0 ? 1.15 : 0.85;
+      const newRange = zoomAtNote(noteRange, centerNote, zoomFactor);
+      // Don't zoom tighter than ~12 notes
+      if (newRange.max - newRange.min >= 12) {
+        onNoteRangeChange(newRange);
+      }
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [noteRange, onNoteRangeChange]);
+
+  const hasDragCallbacks = onZoneDrag !== undefined && onZoneCommit !== undefined;
+
+  const dragCallbacks = useCallback(() => {
+    return {
+      onDrag: onZoneDrag ?? (() => {}),
+      onCommit: onZoneCommit ?? (() => {}),
+    };
+  }, [onZoneDrag, onZoneCommit]);
+
+  const { state: dragState, startDrag } = useZoneDrag(dragCallbacks());
+
+  const {
+    creationDrag,
+    translateDrag,
+    getNoteFromEvent,
+    getVelocityFromEvent,
+    handleVizMouseDown,
+    handleStartTranslate,
+  } = useZoneOverviewDrags({
+    vizRef,
+    noteRange,
+    keygroups,
+    hasDragCallbacks,
+    onZoneDrag,
+    onZoneCommit,
+    onCreateZone,
+  });
+
   if (keygroupCount === 0) {
     return (
       <div className="mx-4 mb-3 p-4 rounded bg-gray-800/50 text-gray-500 text-sm text-center">
@@ -106,10 +136,6 @@ export function ZoneOverview({
     );
   }
 
-  const range = computeKeyRange(keygroups, keygroupCount);
-  const keySpan = range.max - range.min + 1;
-
-  // Collect all loaded keygroups for rendering
   const loadedKeygroups: { index: number; header: KeygroupHeader }[] = [];
   for (let i = 0; i < keygroupCount; i++) {
     const kg = keygroups[i];
@@ -118,14 +144,7 @@ export function ZoneOverview({
     }
   }
 
-  // Axis label area sizing
-  const LEFT_LABEL_WIDTH = 36; // px for velocity axis labels
-  const BOTTOM_LABEL_HEIGHT = 20; // px for note axis labels
-
-  // Filter octave markers to those within the visible range
-  const visibleMarkers = OCTAVE_MARKERS.filter(
-    (m) => m.note >= range.min && m.note <= range.max,
-  );
+  const visibleMarkers = getVisibleOctaveMarkers(noteRange);
 
   return (
     <div className="mx-4 mb-3">
@@ -149,16 +168,17 @@ export function ZoneOverview({
 
         {/* Main visualization area */}
         <div
+          ref={vizRef}
           className="absolute top-0"
+          onMouseDown={handleVizMouseDown}
           style={{
             left: `${LEFT_LABEL_WIDTH}px`,
             right: 0,
             height: `calc(100% - ${BOTTOM_LABEL_HEIGHT}px)`,
           }}
         >
-          {/* Background grid lines for octave markers */}
           {visibleMarkers.map((marker) => {
-            const xPercent = ((marker.note - range.min) / keySpan) * 100;
+            const xPercent = noteToPercent(marker.note, noteRange);
             return (
               <div
                 key={`grid-${marker.note}`}
@@ -168,98 +188,38 @@ export function ZoneOverview({
             );
           })}
 
-          {/* Velocity midline */}
           <div
             className="absolute left-0 right-0 border-t border-gray-700/30"
             style={{ top: '50%' }}
           />
 
-          {/* Keygroup zones */}
           {loadedKeygroups.map(({ index, header }) => {
-            const isSelected = selectedKeygroupIndex === index;
-            const zones = getVelocityZones(header);
+            const isDraggingThis =
+              dragState.isDragging && dragState.activeKeygroupIndex === index;
+            const isTranslatingThis =
+              translateDrag !== null && translateDrag.keygroupIndex === index;
 
-            // Key range as percentage of visible range
-            const xStart =
-              ((Math.max(header.LONOTE, range.min) - range.min) / keySpan) * 100;
-            const xEnd =
-              ((Math.min(header.HINOTE, range.max) - range.min + 1) / keySpan) * 100;
-            const width = xEnd - xStart;
-
-            if (width <= 0) return null;
-
-            if (zones.length === 0) {
-              // Render the keygroup as a single band spanning full velocity
-              return (
-                <button
-                  key={`kg-${index}`}
-                  className="absolute cursor-pointer border transition-all"
-                  onClick={() => onSelectKeygroup(index)}
-                  title={`KG ${index + 1}: ${formatMidiNote(header.LONOTE)}-${formatMidiNote(header.HINOTE)}`}
-                  style={{
-                    left: `${xStart}%`,
-                    width: `${width}%`,
-                    top: 0,
-                    bottom: 0,
-                    background: keygroupColor(index, keygroupCount, 0.35),
-                    borderColor: isSelected
-                      ? '#93c5fd'
-                      : keygroupBorderColor(index, keygroupCount),
-                    borderWidth: isSelected ? '2px' : '1px',
-                    boxShadow: isSelected ? '0 0 8px rgba(147, 197, 253, 0.4)' : 'none',
-                    zIndex: isSelected ? 10 : 1,
-                  }}
-                >
-                  <span className="absolute inset-0 flex items-center justify-center text-xs text-gray-300 truncate px-1">
-                    KG {index + 1}
-                  </span>
-                </button>
-              );
-            }
-
-            return zones.map((zone) => {
-              // Velocity range as percentage (0 at bottom, 127 at top)
-              // CSS top: 0% = top of container = velocity 127
-              const yTop = ((127 - zone.hivel) / 128) * 100;
-              const yBottom = ((127 - zone.lovel + 1) / 128) * 100;
-              const height = yBottom - yTop;
-
-              if (height <= 0) return null;
-
-              const label =
-                zone.sampleName !== ''
-                  ? zone.sampleName
-                  : `KG ${index + 1} Z${zone.zoneIndex}`;
-
-              return (
-                <button
-                  key={`kg-${index}-z${zone.zoneIndex}`}
-                  className="absolute cursor-pointer border transition-all overflow-hidden"
-                  onClick={() => onSelectKeygroup(index)}
-                  title={`KG ${index + 1} Zone ${zone.zoneIndex}: ${formatMidiNote(header.LONOTE)}-${formatMidiNote(header.HINOTE)}, vel ${zone.lovel}-${zone.hivel}${zone.sampleName ? ` [${zone.sampleName}]` : ''}`}
-                  style={{
-                    left: `${xStart}%`,
-                    width: `${width}%`,
-                    top: `${yTop}%`,
-                    height: `${height}%`,
-                    background: keygroupColor(index, keygroupCount, 0.4),
-                    borderColor: isSelected
-                      ? '#93c5fd'
-                      : keygroupBorderColor(index, keygroupCount),
-                    borderWidth: isSelected ? '2px' : '1px',
-                    boxShadow: isSelected
-                      ? '0 0 8px rgba(147, 197, 253, 0.4)'
-                      : 'none',
-                    zIndex: isSelected ? 10 : 1,
-                  }}
-                >
-                  <span className="block text-xs text-gray-200 truncate px-1 leading-tight mt-0.5">
-                    {label}
-                  </span>
-                </button>
-              );
-            });
+            return (
+              <ZoneRect
+                key={`kg-${index}`}
+                keygroupIndex={index}
+                header={header}
+                keygroupCount={keygroupCount}
+                noteRange={noteRange}
+                isSelected={selectedKeygroupIndex === index}
+                isDraggingThis={isDraggingThis}
+                isTranslating={isTranslatingThis}
+                hasDragCallbacks={hasDragCallbacks}
+                onSelectKeygroup={onSelectKeygroup}
+                startDrag={startDrag}
+                onStartTranslate={hasDragCallbacks ? handleStartTranslate : undefined}
+                getNoteFromEvent={getNoteFromEvent}
+                getVelocityFromEvent={getVelocityFromEvent}
+              />
+            );
           })}
+
+          {creationDrag && <CreationPreview drag={creationDrag} noteRange={noteRange} />}
         </div>
 
         {/* Note axis labels (bottom) */}
@@ -272,7 +232,7 @@ export function ZoneOverview({
         >
           <div className="relative w-full h-full">
             {visibleMarkers.map((marker) => {
-              const xPercent = ((marker.note - range.min) / keySpan) * 100;
+              const xPercent = noteToPercent(marker.note, noteRange);
               return (
                 <span
                   key={`label-${marker.note}`}

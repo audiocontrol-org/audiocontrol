@@ -70,11 +70,34 @@ PRD → workplan.md → GitHub issues → implementation → implementation-summ
 
 ### Add a UI feature
 1. Read feature workplan for current phase and next task
-2. Implement with loading states and progress indicators from the start
-3. Use proportional flex layouts, not pixel values
-4. Build: `make`
-5. Update workplan acceptance criteria
-6. Commit with GitHub issue reference
+2. Read `TESTING-UI.md` — check if a test harness exists for the feature; create one if not
+3. Implement with loading states and progress indicators from the start
+4. Use proportional flex layouts, not pixel values
+5. Build: `make`
+6. Verify visually using the test harness (screenshot with Playwright, inspect the result)
+7. **Write a Playwright test spec for every interaction you verified manually** — specs live in `e2e/test-harness-<feature>.spec.ts`. Ad-hoc screenshots without corresponding specs are throwaway work.
+8. Iterate: fix issues found visually, update specs, screenshot again
+9. Update workplan acceptance criteria
+10. Commit with GitHub issue reference
+
+## Testing Architecture
+
+See [TESTING.md](/TESTING.md) for the overall testing architecture. Three test categories:
+
+| Category | Location | Tooling | Hardware |
+|----------|----------|---------|----------|
+| Unit | `test/unit/` | vitest + jsdom | No |
+| UI | `test/ui/` | Playwright + test harness | No |
+| E2E | `test/e2e/` | Playwright + real app | Yes |
+
+Detailed methodology: [TESTING-UNIT.md](/TESTING-UNIT.md) | [TESTING-UI.md](/TESTING-UI.md) | [TESTING-E2E.md](/TESTING-E2E.md)
+
+**Migration in progress:** Unit tests currently live as `src/**/*.test.tsx`, E2E tests in `e2e/`. New tests go in `test/<category>/`. See GitHub issue for migration tracking.
+
+When developing UI features:
+1. Create a test harness page (`src/pages/Test<Feature>Page.tsx`) with factory data
+2. Write Playwright specs in `test/ui/<feature>.spec.ts` **as you build, not after**
+3. Every manually verified interaction must become a test spec — ad-hoc screenshots without specs are throwaway work
 
 ## Before Committing
 
@@ -84,6 +107,7 @@ Review changes against project standards:
 - [ ] No defensive sleeps added (ACK/response is definitive)
 - [ ] No fabricated claims about device behavior (test it or cite docs)
 - [ ] Error messages are actionable
+- [ ] UI features visually verified via test harness screenshot (see TESTING-UI.md)
 - [ ] Feature workplan.md updated with completed tasks
 - [ ] Could any of this work have been delegated to a sub-agent?
 

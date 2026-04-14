@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
 import { ParamKnob, ParamSelect } from '@/components/ui/ParamKnob';
+import { VelocityRangeBar } from '@/components/keygroups/VelocityRangeBar';
 
 interface VelocityZoneEditorProps {
   header: KeygroupHeader;
@@ -123,8 +124,34 @@ export function VelocityZoneEditor({
 }: VelocityZoneEditorProps): JSX.Element {
   const [activeZone, setActiveZone] = useState<ZoneIndex>(1);
 
+  const velocityZones = ZONE_INDICES.map((zone) => ({
+    lowVel: getZoneValue(header, 'LOVEL', zone),
+    highVel: getZoneValue(header, 'HIVEL', zone),
+    sampleName: getZoneString(header, 'SNAME', zone),
+  }));
+
+  const handleSplitDrag = useCallback(
+    (splitIndex: number, velocity: number) => {
+      const leftZone = ZONE_INDICES[splitIndex];
+      const rightZone = ZONE_INDICES[splitIndex + 1];
+      if (leftZone !== undefined && rightZone !== undefined) {
+        onParameterChange(zoneField('HIVEL', leftZone), velocity);
+        onParameterChange(zoneField('LOVEL', rightZone), velocity + 1);
+      }
+    },
+    [onParameterChange],
+  );
+
   return (
     <div>
+      <VelocityRangeBar
+        zones={velocityZones}
+        selectedZone={activeZone - 1}
+        onSelectZone={(index) => setActiveZone(ZONE_INDICES[index])}
+        onSplitDrag={handleSplitDrag}
+        onSplitCommit={handleSplitDrag}
+      />
+
       <div className="s3k-zone-tabs">
         {ZONE_INDICES.map((zone) => {
           const sname = getZoneString(header, 'SNAME', zone).trim();

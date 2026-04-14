@@ -2,188 +2,102 @@
 
 **Feature:** E2E Integration Tests
 **PRD:** [prd.md](./prd.md)
-**GitHub Issues:** TBD
+**GitHub Issues:** [#176](https://github.com/audiocontrol-org/audiocontrol/issues/176), [#178](https://github.com/audiocontrol-org/audiocontrol/issues/178)
+**Test Plan:** [comprehensive-test-plan.md](./comprehensive-test-plan.md)
+**Coverage:** 145/229 (63%) — 14 partial, 70 remaining
 
 ## Implementation Phases
 
-### Phase 1: OPFS Library Integration
+### Phase 1: OPFS Library Integration ✅ COMPLETE
 
-Implement OPFS-based library storage for e2e tests.
-
-**Deliverables:**
-- OPFS initialization helper for test setup
-- Test fixture population utilities
-- Cleanup utilities for test isolation
-- Verify MIDI permission grants work reliably
-
-**Approach:**
-Tests use Origin Private File System (OPFS) for library storage:
-- No permission prompts required
-- Real filesystem semantics (same `StorageDirectoryHandle` API)
-- Isolated per-origin (no cross-test contamination)
-- Initialize via `navigator.storage.getDirectory()`
-
-```typescript
-// Example test setup
-const opfsRoot = await navigator.storage.getDirectory();
-const libraryDir = await opfsRoot.getDirectoryHandle('test-library', { create: true });
-await populateTestFixtures(libraryDir);
-```
-
-### Phase 2: Test Infrastructure Setup
-
-Extend existing e2e infrastructure for comprehensive testing.
+OPFS-based library storage for e2e tests — no permission prompts, real filesystem semantics.
 
 **Deliverables:**
-- Test fixtures directory with representative tone/patch/set data
-- Helper functions for common test operations
-- Hardware detection and graceful skipping
-- Playwright config for library-focused tests
-- Run script following port 0 pattern
+- [x] OPFS initialization helper (`initializeRolandOPFS`)
+- [x] Test fixture population utilities (`writeToneFixture`, `writeSampleFixture`, etc.)
+- [x] Cleanup utilities (`cleanupOPFS`)
+- [x] MIDI permission handling via HTTP MIDI transport
 
-**Files to create:**
-```
-e2e/
-├── fixtures/
-│   ├── tones/
-│   │   ├── basic-sine.yaml
-│   │   ├── basic-sine.wav
-│   │   └── ...
-│   ├── patches/
-│   │   ├── basic-patch.yaml
-│   │   └── ...
-│   └── sets/
-│       ├── test-set/
-│       │   ├── set.yaml
-│       │   ├── tones/
-│       │   └── patches/
-│       └── ...
-├── helpers/
-│   ├── library-helpers.ts
-│   ├── hardware-helpers.ts
-│   └── navigation-helpers.ts
-└── ...
-```
-
-### Phase 3: Library Directory Tests
-
-Test directory management operations.
-
-**Tests:**
-- Create directory in each category
-- Create nested directories
-- Rename directory (valid and invalid cases)
-- Delete directory (empty and with contents)
-- Move directory
-- Handle special characters and edge cases
-
-### Phase 4: Library Tone Tests
-
-Test tone CRUD operations.
-
-**Tests:**
-- List tones
-- Preview tone metadata
-- Import tone to device (requires hardware)
-- Export tone from device (requires hardware)
-- Rename tone
-- Delete tone
-- Move tone between directories
-- Handle corrupted/missing files
-
-### Phase 5: Library Patch Tests
-
-Test patch CRUD operations.
-
-**Tests:**
-- List patches
-- Preview patch metadata
-- Import patch to device (requires hardware)
-- Export patch from device (requires hardware)
-- Rename patch
-- Delete patch
-- Move patch between directories
-- Handle patches with invalid tone references
-
-### Phase 6: Library Set Tests
-
-Test set operations (highest priority for Library improvements).
-
-**Tests:**
-- List sets
-- Save device state to set (batch)
-- Save device state to set (incremental streaming)
-- Load set manifest
-- Load individual items from set
-- Load complete set to device
-- Delete set
-- Rename set
-- Handle partial/corrupted sets
-
-### Phase 7: Connected Device Tests
-
-Tests requiring actual Roland S-330/S-550 hardware.
-
-**Tests:**
-- Device connection flow
-- Tone editing with device sync
-- Patch editing with device sync
-- Sample recording
-- Live preview playback
-- Multi-device switching
-
-### Phase 8: Integration Workflow Tests
-
-End-to-end workflows combining multiple features.
-
-**Tests:**
-- Full backup workflow: Connect → Save set → Verify contents
-- Full restore workflow: Connect → Load set → Verify device state
-- Sample creation workflow: Record → Edit → Save to library
-- Drum kit creation: Import samples → Chop → Create kit → Send to device
-
-### Phase 9: UI Test ID Compliance
-
-Add missing data-testid attributes required by e2e tests.
+### Phase 2: Test Infrastructure Setup ✅ COMPLETE
 
 **Deliverables:**
-- Verify TreeView node IDs match expected test selectors
-- Add missing-tone-warning to ImportLibraryPatchDialog
-- Run all device-library e2e tests to verify compliance
+- [x] Shared helpers in `e2e-infra/helpers/` (library-fixtures, library-ui-helpers, opfs-page-helpers)
+- [x] Module-specific helpers in `roland-sxx0-editor/e2e/helpers/` (connection, device-readback, device-state)
+- [x] Heartbeat/watchdog for stuck test detection (5s threshold)
+- [x] Playwright configs: library, hardware, device-library
+- [x] Run scripts via devenv (`run-library-e2e.sh`, `run-http-midi-e2e.sh`, `run-hardware-e2e.sh`)
+- [x] Make targets: `test-e2e-roland-library`, `test-e2e-roland-device`
 
-**Tests Fixed:**
-- device-library-export.spec.ts (6 tests)
-- device-library-import.spec.ts (5 tests)
-- hardware-device-sets.spec.ts (3 tests)
+### Phase 3: Library CRUD Tests ✅ COMPLETE
 
-## Task Breakdown
+- [x] Directory management: create, rename, delete, move, nesting, special chars (`library-directories.spec.ts`)
+- [x] Tone operations: list, create, rename, delete, move, edge cases (`library-tones.spec.ts`)
+- [x] Patch operations: list, create, rename, delete, move, edge cases (`library-patches.spec.ts`)
+- [x] Set operations: list, create, rename, delete, move, edge cases (`library-sets.spec.ts`)
 
-1. Implement OPFS initialization and cleanup helpers
-2. Create test fixture population utilities
-3. Create test fixtures (tones, patches, sets as static files)
-4. Create helper functions (library, hardware, navigation)
-5. Write directory management tests
-6. Write tone operation tests
-7. Write patch operation tests
-8. Write set operation tests
-9. Write connected device tests (hardware-gated)
-10. Write integration workflow tests
-11. Update CI configuration for hardware detection
-12. Document test coverage and gaps
+### Phase 4: Device ↔ Library Integration ✅ COMPLETE
+
+- [x] Tone round trip: import → export → compare (`device-library-roundtrip.spec.ts`)
+- [x] Patch round trip: import → export → compare (`device-library-roundtrip.spec.ts`)
+- [x] Set save: device state → library set (`device-library-set-roundtrip.spec.ts`)
+- [x] Set load: library set → device (`device-library-set-roundtrip.spec.ts`)
+
+### Phase 5: Editor Controls ✅ COMPLETE
+
+- [x] Play page: per-part channel, patch, output, level (`device-play-controls.spec.ts`)
+- [x] Patch editing: name, key mode, bender range, aftertouch, key assign, velocity, zones (`device-patch-controls.spec.ts`)
+- [x] Tone editing: name, loop, TVF cutoff/resonance/key follow, TVA level, LFO rate/delay, pitch (`device-tone-controls.spec.ts`)
+- [x] Envelope editing: TVA/TVF rate, level, sustain point, end point (`device-tone-envelope-controls.spec.ts`)
+- [x] Error recovery: timeout, SysEx rejection, disconnect (`device-error-recovery.spec.ts`)
+
+### Phase 6: Drum Kit & Slice Workflows ✅ COMPLETE
+
+- [x] v1 + v2 drum kit import (`device-drumkit.spec.ts`)
+- [x] Chopper save: fixed slicing, 8 slices, labels, drum kit creation (`library-chopper-save.spec.ts`)
+- [x] Slice persistence: save then reopen restores boundaries (`library-chopper-save.spec.ts`)
+- [x] Device tone chopper: chop into drum kit from Tones page (`device-tone-chopper.spec.ts`)
+- [x] Drum kit pad editor: playback, MIDI notes, base note, load audio (`library-drumkit-editor.spec.ts`)
+- [x] Missing WAV file handling: v1 + v2 kits don't crash (`library-drumkit-error.spec.ts`)
+
+### Phase 7: Sample Operations ✅ COMPLETE
+
+- [x] Export sample as WAV download (`device-sample-operations.spec.ts`)
+- [x] Import WAV file to device (`device-sample-operations.spec.ts`)
+- [x] Wave bank selection during import (`device-sample-operations.spec.ts`)
+- [x] Tone edge cases: empty tone, unsupported format, corrupt WAV (`device-tone-edge-cases.spec.ts`)
+
+### Phase 8: Remaining P1 Gaps ⚠️ IN PROGRESS
+
+Written but not yet hardware-verified:
+- [ ] Set individual tone load (`device-set-individual-load.spec.ts`) — fixture format needs debugging
+- [ ] Set individual patch load (`device-set-individual-load.spec.ts`) — fixture format needs debugging
+
+Not yet implemented:
+- [ ] Auto-fit slot allocation (P0) — deprioritized per user direction
+- [ ] Loop editor from Library page
+- [ ] Parameter persistence after page reload
+- [ ] Patch tone zone editor
+- [ ] Set with missing files error handling
+
+### Phase 9: Deferred
+
+- Multi-device S-550 specific tests — deferred per architecture constraints
+- Per-pad output routing — S-330 architecture limitation (single output per patch)
+- Per-pad MIDI note editing — needs schema extension
+
+## Open Issues
+
+- [#176](https://github.com/audiocontrol-org/audiocontrol/issues/176) — MIDI port selector not visible in device-library tests
+- [#178](https://github.com/audiocontrol-org/audiocontrol/issues/178) — Roland tone export fails (libraryHandle null on Tones page)
+
+## Merged PRs
+
+- [#146](https://github.com/audiocontrol-org/audiocontrol/pull/146) — E2E coverage 118 → 145/229 (Phase 5 completion, tone params, sample ops)
+- [#161](https://github.com/audiocontrol-org/audiocontrol/pull/161) — Edit Sample for drum kits, edge cases, set individual load tests
 
 ## Dependencies
 
-- Existing e2e infrastructure (port 0 scripts, playwright configs)
-- OPFS support in target browsers (Chrome, Edge — already supported)
-- Hardware availability for connected tests
-
-## Risk Mitigation
-
-**Risk:** Hardware not available in CI
-**Mitigation:** Skip hardware tests gracefully; run them in local development
-
-**Risk:** Flaky tests due to MIDI timing
-**Mitigation:** Use longer timeouts; add retry logic; ensure single-worker execution
-
-**Risk:** OPFS quota limits in testing
-**Mitigation:** Clean up test data after each test; monitor storage usage
+- `devenv` shell (auto-installed by make)
+- Playwright browsers (auto-installed by make)
+- midi-server (auto-provisioned to `.deps/` by make)
+- Hardware: Roland S-330 or S-550 for device tests
