@@ -18,6 +18,13 @@
  * @packageDocumentation
  */
 
+// Canonical MIDI note utilities
+export {
+  midiNoteToName,
+  parseMidiNote,
+  resolveKey,
+} from './midi-notes.js';
+
 // Type exports
 export type {
   DeviceType,
@@ -251,7 +258,6 @@ export {
 // Template exports
 export {
   parseNoteName,
-  resolveKey,
   validateToneReferences,
   TemplateHandlerRegistry,
   templateHandlerRegistry,

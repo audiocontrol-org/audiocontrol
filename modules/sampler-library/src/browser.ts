@@ -11,6 +11,13 @@
 // FSAA global type declarations (side-effect import augments globalThis)
 import './fsaa-types.js';
 
+// Canonical MIDI note utilities
+export {
+  midiNoteToName,
+  parseMidiNote,
+  resolveKey,
+} from './midi-notes.js';
+
 // Type exports
 export type {
   DeviceType,
@@ -169,7 +176,6 @@ export type {
 // Template exports (these are browser-compatible)
 export {
   parseNoteName,
-  resolveKey,
   validateToneReferences,
   TemplateHandlerRegistry,
   templateHandlerRegistry,
@@ -208,11 +214,13 @@ export type {
 
 // Program schema exports (common area, browser-compatible)
 export {
+  SourceInfoSchema,
   ZoneSchema,
   ProgramYamlSchema,
 } from './schemas/index.js';
 
 export type {
+  SourceInfo,
   Zone,
   ProgramYaml,
   ProgramInfo,
@@ -259,7 +267,6 @@ export {
   loadDrumKitBundle,
   resolveMidiNotes,
   getAllSampleFilenames,
-  midiNoteToName,
 } from './drum-kits/index.js';
 
 export type {
@@ -448,9 +455,19 @@ export {
 
 // Common-area CRUD operations for programs
 export {
+  saveProgram,
   loadProgramMeta,
   loadProgramFromProgramsDir,
+  loadProgram,
   getProgramDirFromProgramsDir,
+} from './common-area/programs.js';
+
+export type {
+  ProgramWavFile,
+  ProgramSavePayload,
+  ProgramLoadResult,
+  ProgramSaveOptions,
+  ProgramLoadOptions,
 } from './common-area/programs.js';
 
 export type {

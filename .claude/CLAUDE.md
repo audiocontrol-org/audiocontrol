@@ -70,11 +70,34 @@ PRD → workplan.md → GitHub issues → implementation → implementation-summ
 
 ### Add a UI feature
 1. Read feature workplan for current phase and next task
-2. Implement with loading states and progress indicators from the start
-3. Use proportional flex layouts, not pixel values
-4. Build: `make`
-5. Update workplan acceptance criteria
-6. Commit with GitHub issue reference
+2. Read `TESTING-UI.md` — check if a test harness exists for the feature; create one if not
+3. Implement with loading states and progress indicators from the start
+4. Use proportional flex layouts, not pixel values
+5. Build: `make`
+6. Verify visually using the test harness (screenshot with Playwright, inspect the result)
+7. **Write a Playwright test spec for every interaction you verified manually** — specs live in `e2e/test-harness-<feature>.spec.ts`. Ad-hoc screenshots without corresponding specs are throwaway work.
+8. Iterate: fix issues found visually, update specs, screenshot again
+9. Update workplan acceptance criteria
+10. Commit with GitHub issue reference
+
+## Testing Architecture
+
+See [TESTING.md](/TESTING.md) for the overall testing architecture. Three test categories:
+
+| Category | Location | Tooling | Hardware |
+|----------|----------|---------|----------|
+| Unit | `test/unit/` | vitest + jsdom | No |
+| UI | `test/ui/` | Playwright + test harness | No |
+| E2E | `test/e2e/` | Playwright + real app | Yes |
+
+Detailed methodology: [TESTING-UNIT.md](/TESTING-UNIT.md) | [TESTING-UI.md](/TESTING-UI.md) | [TESTING-E2E.md](/TESTING-E2E.md)
+
+**Migration in progress:** Unit tests currently live as `src/**/*.test.tsx`, E2E tests in `e2e/`. New tests go in `test/<category>/`. See GitHub issue for migration tracking.
+
+When developing UI features:
+1. Create a test harness page (`src/pages/Test<Feature>Page.tsx`) with factory data
+2. Write Playwright specs in `test/ui/<feature>.spec.ts` **as you build, not after**
+3. Every manually verified interaction must become a test spec — ad-hoc screenshots without specs are throwaway work
 
 ## Before Committing
 
@@ -84,6 +107,7 @@ Review changes against project standards:
 - [ ] No defensive sleeps added (ACK/response is definitive)
 - [ ] No fabricated claims about device behavior (test it or cite docs)
 - [ ] Error messages are actionable
+- [ ] UI features visually verified via test harness screenshot (see TESTING-UI.md)
 - [ ] Feature workplan.md updated with completed tasks
 - [ ] Could any of this work have been delegated to a sub-agent?
 
@@ -236,6 +260,28 @@ Bad code actively attracts more bad code. Agents and humans learn patterns from 
 
 **When adding new code:** Before implementing, check if the same concept already exists elsewhere in the codebase. If it does, use it. If it's close but not quite right, extend it. The only valid reason to create a new implementation is that no existing implementation covers the use case — and even then, consider whether the existing code should be generalized rather than duplicated.
 
+### Contract Enforcement
+
+**The whole point of a strongly typed language is that the compiler catches contract violations.** If a contract can change without the compiler complaining, the type system isn't doing its job — either the contract is too loose (optional fields, `any`, duplicated types) or the architecture is wrong (parallel implementations instead of shared interfaces). Every shared contract must be structured so that a breaking change produces a compile error in every consumer.
+
+**Compiler-enforced contracts:**
+
+- When a shared interface changes in editor-core, **every editor that implements it must fail to compile** until updated. If you add a required field to a shared type and no editor breaks, the type isn't actually shared — it's duplicated or optional. Fix the architecture.
+- **No optional bags of callbacks.** An interface with all-optional methods (`handleX?`, `onY?`) is a contract that enforces nothing. If an editor shows a UI element, the handler for that element must be required. Use discriminated unions or capability declarations instead of optional fields when the presence of a callback determines whether UI appears.
+- **Types exist once.** If the same type is defined in two files, one must go. Move it to the lowest common ancestor and import it everywhere. A "local copy" of a shared type is a ticking divergence bomb — when one changes, the other silently disagrees.
+
+**Loud failure over silent no-ops:**
+
+- If a context menu shows an action, clicking it **must** do something. An action that silently does nothing is a bug. Either the action should not appear (filter based on declared capabilities), or it should throw an error explaining what's not implemented.
+- If a shared component adds a new callback prop, editors that use the component must wire it or the compiler must complain. Don't make new props optional just to avoid breaking other editors — break them, then fix them.
+- Never swallow errors to avoid disrupting the UI. A red error banner the user can see is infinitely better than a `console.error` the user never checks.
+
+**Cross-editor contract changes:**
+
+- When changing shared code in editor-core, **build all editors before committing** (`make`). If only one editor builds, you broke a contract. Fix all consumers before committing.
+- When adding a feature to one editor's library page, ask: "Does this feature's absence in other editors represent a bug?" If yes, the feature belongs in the shared layer with a required contract. If no, it's genuinely device-specific.
+- Test the contract: if you remove the feature from the editor you just added it to, does the shared layer still compile? If yes, the contract is too loose.
+
 ### Repository Hygiene
 
 - Build artifacts only in `dist/`
@@ -243,6 +289,16 @@ Bad code actively attracts more bad code. Agents and humans learn patterns from 
 - Never commit temporary files, logs, or generated artifacts
 - Use `pnpm` for all package operations
 - Use `tsx` for running TypeScript (not `ts-node`)
+
+## Design System
+
+**Read [DESIGN-SYSTEM.md](/DESIGN-SYSTEM.md) before building or modifying any UI component, dialog, layout, or shared interface.** It is the single source of truth for:
+
+- **Typed capability contracts** — ErrorReporter, RefreshNotifier, ProgressReporter, StrategyResult. No bare `onError?` callbacks; use the typed interfaces.
+- **Dialog components** — which component to use for confirmations, progress, forms, renames. Never use `window.confirm`, `window.alert`, or `window.prompt`.
+- **Tree capability interfaces** — TreeSelectionCapability, TreeEditCapability, TreeContextMenuCapability, TreeDragCapability, TreeRenderCapability. No bare callback bags on tree components.
+- **Layout conventions** — flex ratios and design tokens only, no hardcoded pixel widths.
+- **Contract enforcement rules** — compiler-enforced contracts, no optional callback bags, no duplicated types, loud failure over silent no-ops.
 
 ## Sub-Agent Delegation
 
@@ -330,6 +386,8 @@ make modules/sampler-devices/.build-stamp  # Build one module (and its deps)
 ```
 
 `pnpm -r build` still works but does **not** enforce build order — use `make` instead.
+
+**Source change detection is automatic.** The Makefile tracks `.ts`, `.tsx`, and `.css` files in each module's `src/` directory. When any tracked file changes, `make` rebuilds that module and its dependents. Do **not** delete `.build-stamp` files for routine development — `make` alone is sufficient. See the "HOW SOURCE CHANGE DETECTION WORKS" comment block in the Makefile for details.
 
 ## Deployment
 

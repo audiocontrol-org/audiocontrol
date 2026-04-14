@@ -7,8 +7,8 @@
  */
 
 import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
-import type { LibraryDragData } from '@/components/library/DeviceMemoryPanel';
-import type { ItemSelection } from '@/pages/LibraryPage';
+import type { LibraryDragPayload } from '@/lib/library-drag-types';
+import type { RolandPageSelection } from '@/pages/LibraryPage';
 import type { StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
 
 // =========================================================================
@@ -37,9 +37,9 @@ export interface DeviceMemoryCustomState {
   /** Callback when a patch slot is selected */
   onSelectPatch: (index: number) => void;
   /** Callback when a library tone is dropped on a device slot */
-  onDropLibraryTone?: (data: LibraryDragData, targetSlot: number) => void;
+  onDropLibraryTone?: (data: LibraryDragPayload, targetSlot: number) => void;
   /** Callback when a library patch is dropped on a device slot */
-  onDropLibraryPatch?: (data: LibraryDragData, targetSlot: number) => void;
+  onDropLibraryPatch?: (data: LibraryDragPayload, targetSlot: number) => void;
 }
 
 // =========================================================================
@@ -52,7 +52,7 @@ export interface DeviceMemoryCustomState {
  */
 export interface PreviewPanelCustomState {
   /** LibraryPage-style selection (includes source and additional fields) */
-  pageSelection: ItemSelection | null;
+  pageSelection: RolandPageSelection | null;
   /** Device tones for preview */
   deviceTones: (SamplerTone | undefined)[];
   /** Device patches for preview */

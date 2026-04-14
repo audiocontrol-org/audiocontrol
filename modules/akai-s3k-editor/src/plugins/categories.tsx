@@ -7,23 +7,37 @@
  * - S3K Programs: Akai-native serialized programs (library/s3k/programs/)
  */
 
-import type { CategoryPlugin } from '@audiocontrol/editor-core';
+import type { CategoryPlugin, TransferActionId } from '@audiocontrol/editor-core';
 import {
   createCommonSamplesCategory,
   createCommonProgramsCategory,
+  createCommonProgramItemType,
 } from '@audiocontrol/editor-core';
-import { commonProgramItemType } from '@audiocontrol/editor-core';
+
+// =========================================================================
+// S3K transfer capabilities
+// =========================================================================
+
+/** Transfer actions the S3K editor supports. */
+export const S3K_TRANSFER_ACTIONS: ReadonlySet<TransferActionId> = new Set<TransferActionId>([
+  'send-sample-to-device',
+  'send-program-to-device',
+  'import-drum-kit',
+  'edit-drum-kit',
+  'import-instrument',
+  'promote-to-common-area',
+]);
 
 // =========================================================================
 // Common area categories
 // =========================================================================
 
 export function createSamplesCategory(): CategoryPlugin {
-  return createCommonSamplesCategory('samples');
+  return createCommonSamplesCategory('samples', S3K_TRANSFER_ACTIONS);
 }
 
 export function createCommonProgramsCategoryForS3k(): CategoryPlugin {
-  return createCommonProgramsCategory('common-programs');
+  return createCommonProgramsCategory('common-programs', S3K_TRANSFER_ACTIONS);
 }
 
 // =========================================================================
@@ -35,7 +49,7 @@ export function createS3kProgramsCategory(): CategoryPlugin {
     categoryId: 's3k-programs',
     title: 'Akai Programs',
     itemTypes: {
-      program: commonProgramItemType,
+      program: createCommonProgramItemType(S3K_TRANSFER_ACTIONS),
     },
     emptyMessage: 'No Akai programs in library.',
     acceptsExternalDrop: false,

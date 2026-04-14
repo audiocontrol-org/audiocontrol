@@ -154,9 +154,11 @@ export async function moveDirectory(
   parentDir: StorageDirectoryHandle,
   name: string,
   targetParentDir: StorageDirectoryHandle,
+  newName?: string,
 ): Promise<void> {
+  const destName = newName ?? name;
   const srcDir = await parentDir.getDirectoryHandle(name, { create: false });
-  const destDir = await targetParentDir.getDirectoryHandle(name, { create: true });
+  const destDir = await targetParentDir.getDirectoryHandle(destName, { create: true });
   await copyDirectoryContents(srcDir, destDir);
   await parentDir.removeEntry(name, { recursive: true });
 }

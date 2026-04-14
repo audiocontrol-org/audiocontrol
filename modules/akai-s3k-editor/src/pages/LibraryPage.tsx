@@ -1,5 +1,5 @@
 /**
- * Library Page — browse and manage the S3000XL sampler library.
+ * Library Page -- browse and manage the S3000XL sampler library.
  *
  * Three-column layout via PluginLibraryBrowser:
  * - Left: Device memory (programs and samples on device)
@@ -26,6 +26,7 @@
 import { useEffect, useCallback, useRef, useState, useMemo } from 'react';
 import {
   useLibraryConnection,
+  useErrorReporter,
   LibraryConnectionUI,
   PluginLibraryBrowser,
   type TreeNode,
@@ -48,6 +49,10 @@ import { useS3kLibraryData } from '@/hooks/useS3kLibraryData';
 import { useS3kSelectionHandlers } from '@/hooks/useS3kSelectionHandlers';
 import { useS3kLibraryStrategy } from '@/hooks/useS3kLibraryStrategy';
 import { useS3kTransferCallbacks } from '@/hooks/useS3kTransferCallbacks';
+import {
+  SAVE_DIALOG_CLOSED, SEND_DIALOG_CLOSED,
+  type SaveToLibraryDialogState, type SendToDeviceDialogState,
+} from '@audiocontrol/editor-core';
 import { promoteToCommonArea } from '@/lib/program-promotion';
 import { DiskBrowserPanel, DISK_ITEM_MIME, type DiskDragPayload, type DiskBrowserHandle } from '@/components/library/DiskBrowserPanel';
 import { isAkaiSample, isAkaiProgram } from '@audiocontrol/sampler-devices/s3k';
@@ -73,29 +78,6 @@ import { S3kKitOutputConfig } from '@/components/library/S3kKitOutputConfig';
 import type { S3kPreviewCustomState } from '@/components/library/S3kItemPreviewPanel';
 
 const PICKER_ID = 'akai-s3k-library';
-
-// =========================================================================
-// Sample dialog state
-// =========================================================================
-
-interface SendDialogState {
-  open: boolean;
-  sampleName: string;
-  samplePath: string[];
-}
-
-interface ReceiveDialogState {
-  open: boolean;
-  sampleIndex: number;
-  sampleName: string;
-}
-
-const SEND_DIALOG_CLOSED: SendDialogState = {
-  open: false, sampleName: '', samplePath: [],
-};
-const RECEIVE_DIALOG_CLOSED: ReceiveDialogState = {
-  open: false, sampleIndex: 0, sampleName: '',
-};
 
 interface DiskToLibraryDialogState {
   open: boolean;
@@ -151,8 +133,8 @@ export function LibraryPage(): JSX.Element {
   const setSelectedDevice = useLibraryStore((s) => s.setSelectedDevice);
 
   const [selection, setSelection] = useState<ItemSelection | null>(null);
-  const [sendDialog, setSendDialog] = useState<SendDialogState>(SEND_DIALOG_CLOSED);
-  const [receiveDialog, setReceiveDialog] = useState<ReceiveDialogState>(RECEIVE_DIALOG_CLOSED);
+  const [sendDialog, setSendDialog] = useState<SendToDeviceDialogState>(SEND_DIALOG_CLOSED);
+  const [receiveDialog, setReceiveDialog] = useState<SaveToLibraryDialogState>(SAVE_DIALOG_CLOSED);
   const [diskToLibrary, setDiskToLibrary] = useState<DiskToLibraryDialogState>(DISK_TO_LIBRARY_CLOSED);
   const diskBrowserRef = useRef<DiskBrowserHandle>(null);
   const [dropTransfer, setDropTransfer] = useState<DropTransferState>(DROP_TRANSFER_IDLE);
@@ -182,7 +164,7 @@ export function LibraryPage(): JSX.Element {
     const name = payload.file.name.trim();
     const libraryRoot = root;
 
-    // Save directly — no confirmation dialog
+    // Save directly -- no confirmation dialog
     setDropTransfer({ active: true, fileName: name, progress: null, error: null });
 
     (async () => {
@@ -199,11 +181,13 @@ export function LibraryPage(): JSX.Element {
         setDropTransfer((prev) => ({
           ...prev,
           progress: {
-            currentItem: name,
-            currentIndex: 0,
-            totalItems,
-            bytesTransferred: 0,
-            totalBytes,
+            stepLabel: name,
+            currentStep: 0,
+            totalSteps: totalItems,
+            bytesSent: 0,
+            bytesTotal: totalBytes,
+            bytesSentAllSteps: 0,
+            bytesTotalAllSteps: totalBytes,
             startTime: Date.now(),
           },
         }));
@@ -248,25 +232,12 @@ export function LibraryPage(): JSX.Element {
   const drumKitTransfer = useDrumKitTransfer(isDeviceConnected, !!root);
   const instrumentTransfer = useInstrumentTransfer(isDeviceConnected, !!root);
 
-  const handleEditorError = useCallback(
-    (message: string) => setError(message),
-    [setError],
-  );
-  const editorDialogs = useEditorDialogs(root, refreshLibrary, handleEditorError);
+  const errorReporter = useErrorReporter(setError);
+  const editorDialogs = useEditorDialogs(root, refreshLibrary, errorReporter);
 
   // -----------------------------------------------------------------------
-  // Shared library operations (create, delete, move, rename, drop, expand)
+  // Shared library operations -- must be after transfer callbacks
   // -----------------------------------------------------------------------
-
-  const libraryStrategy = useS3kLibraryStrategy({ root, refreshPrograms });
-
-  const libraryOps = useLibraryOperations(
-    root,
-    libraryStrategy,
-    refreshLibrary,
-    (msg) => setError(msg),
-    editorDialogs.createEditorActionHandler(),
-  );
 
   const hasInitiatedScan = useRef(false);
 
@@ -368,6 +339,49 @@ export function LibraryPage(): JSX.Element {
     handlePromoteToCommonArea,
   ]);
 
+  // -----------------------------------------------------------------------
+  // Shared library operations (create, delete, move, rename, drop, expand)
+  // -----------------------------------------------------------------------
+
+  const libraryStrategy = useS3kLibraryStrategy({
+    root,
+    refreshPrograms,
+    transfers: {
+      'send-sample-to-device': (name, path) => {
+        if (!canTransfer) throw new Error('Connect to device and library to send samples');
+        transferCallbacks.handleSendSampleToDevice(name, path);
+      },
+      'send-program-to-device': (dirName, name) => {
+        if (!canTransfer) throw new Error('Connect to device and library to send programs');
+        transferCallbacks.handleSendProgramToDevice(dirName, name);
+      },
+      'import-drum-kit': (name, path) => {
+        if (!canTransfer) throw new Error('Connect to device and library to import drum kits');
+        drumKitTransfer.openDialog(name, path);
+      },
+      'edit-drum-kit': (name, nodeType, path) => {
+        if (!hasLibrary) throw new Error('Connect to library to edit drum kits');
+        editorDialogs.handleOpenDrumKitEditor(name, nodeType, path);
+      },
+      'import-instrument': (dirName, path, fromProgramsDir) => {
+        if (!canTransfer) throw new Error('Connect to device and library to import instruments');
+        transferCallbacks.handleImportInstrument(dirName, path, fromProgramsDir);
+      },
+      'promote-to-common-area': (dirName) => {
+        if (!hasLibrary) throw new Error('Connect to library to promote programs');
+        void handlePromoteToCommonArea(dirName);
+      },
+    },
+  });
+
+  const libraryOps = useLibraryOperations(
+    root,
+    libraryStrategy,
+    refreshLibrary,
+    errorReporter,
+    editorDialogs.createEditorActionHandler(),
+  );
+
   const deviceMemoryState = useMemo<S3kMemoryPanelState>(() => ({
     programNames: deviceProgramNames,
     sampleNames: deviceSampleNames,
@@ -386,7 +400,8 @@ export function LibraryPage(): JSX.Element {
     } : undefined,
     onDiskItemDrop: canTransfer ? (payload: DiskDragPayload) => {
       const resolved = diskBrowserRef.current?.resolveDragPayload(payload);
-      if (!resolved) return;
+      if (!resolved || !root) return;
+      const libraryRoot = root;
       const name = payload.file.name.trim();
 
       if (isAkaiSample(payload.file.type)) {
@@ -398,7 +413,7 @@ export function LibraryPage(): JSX.Element {
             const noop = () => { /* progress not shown for background save */ };
             await saveToCommonLibrary(
               payload.file, fileData, resolved.partitionData,
-              payload.volumeStartBlock, name, root!, noop,
+              payload.volumeStartBlock, name, libraryRoot, noop,
               resolved.ensureFileBlocks,
             );
             await refreshLibrary();
@@ -417,7 +432,7 @@ export function LibraryPage(): JSX.Element {
             const noop = () => { /* progress not shown for background save */ };
             await saveToCommonLibrary(
               payload.file, fileData, resolved.partitionData,
-              payload.volumeStartBlock, name, root!, noop,
+              payload.volumeStartBlock, name, libraryRoot, noop,
               resolved.ensureFileBlocks,
             );
             await refreshLibrary();
@@ -428,6 +443,14 @@ export function LibraryPage(): JSX.Element {
         })();
       }
     } : undefined,
+    onSaveSampleToCommonLibrary: canTransfer ? transferCallbacks.handleSaveDeviceSampleToLibraryDirect : undefined,
+    onSaveSampleToDeviceLibrary: canTransfer ? transferCallbacks.handleSaveDeviceSampleToLibraryDirect : undefined,
+    onSaveProgramToCommonLibrary: canTransfer ? transferCallbacks.handleSaveDeviceProgramToCommonArea : undefined,
+    onSaveProgramToDeviceLibrary: canTransfer ? transferCallbacks.handleSaveDeviceProgramToLibraryDirect : undefined,
+    onRenameSample: isDeviceConnected ? transferCallbacks.handleRenameDeviceSample : undefined,
+    onRenameProgram: isDeviceConnected ? transferCallbacks.handleRenameDeviceProgram : undefined,
+    onDeleteSample: isDeviceConnected ? transferCallbacks.handleDeleteDeviceSample : undefined,
+    onDeleteProgram: isDeviceConnected ? transferCallbacks.handleDeleteDeviceProgram : undefined,
     isConnected: isDeviceConnected,
     isLoading: isDeviceLoading,
   }), [
@@ -435,8 +458,7 @@ export function LibraryPage(): JSX.Element {
     selectedDeviceIndex, selectedDeviceType,
     handleDeviceSelectProgram, handleDeviceSelectSample,
     refreshDevice, isDeviceConnected, isDeviceLoading,
-    canTransfer, transferCallbacks.handleSendSampleToDevice,
-    transferCallbacks.handleSendProgramToDevice,
+    canTransfer, transferCallbacks,
     instrumentTransfer,
   ]);
 
@@ -468,7 +490,7 @@ export function LibraryPage(): JSX.Element {
   const libraryHandle = root;
 
   return (
-    <div className="ac-page">
+    <div className="ac-page ac-page-shell">
       <div className="ac-page-sticky-header">
         <div className="ac-page-header">
           <h2 className="text-xl font-bold">Library</h2>
@@ -490,6 +512,8 @@ export function LibraryPage(): JSX.Element {
             onMove={libraryOps.onMove}
             onRename={libraryOps.onRename}
             onFileDrop={libraryOps.onFileDrop}
+            onBatchDelete={libraryOps.onBatchDelete}
+            onBatchMove={libraryOps.onBatchMove}
             onExternalDrop={handleExternalDrop}
             onContextMenuAction={libraryOps.onContextMenuAction}
             deviceMemoryState={deviceMemoryState}
@@ -504,6 +528,29 @@ export function LibraryPage(): JSX.Element {
                 onSaveToLibrary={root ? (file, _targetId, partitionData, volumeStartBlock, ensureFileBlocks) => {
                   setDiskToLibrary({ open: true, file, partitionData, volumeStartBlock, ensureFileBlocks });
                 } : undefined}
+                onSendToDevice={canTransfer && root ? (file, _targetId, partitionData, volumeStartBlock, ensureFileBlocks) => {
+                  const libraryRoot = root;
+                  const name = file.name.trim();
+                  (async () => {
+                    try {
+                      const fileData = readFileData(partitionData, file);
+                      const noop = () => {};
+                      await saveToCommonLibrary(
+                        file, fileData, partitionData,
+                        volumeStartBlock, name, libraryRoot, noop,
+                        ensureFileBlocks,
+                      );
+                      await refreshLibrary();
+                      if (isAkaiSample(file.type)) {
+                        transferCallbacks.handleSendSampleToDevice(name, []);
+                      } else if (isAkaiProgram(file.type)) {
+                        instrumentTransfer.openDialog(name, [], true);
+                      }
+                    } catch (err) {
+                      console.error('[LibraryPage] disk-to-device failed:', err);
+                    }
+                  })();
+                } : undefined}
               />
             }
           />
@@ -516,8 +563,8 @@ export function LibraryPage(): JSX.Element {
           <SendSampleDialog
             open={sendDialog.open}
             onClose={() => setSendDialog(SEND_DIALOG_CLOSED)}
-            sampleName={sendDialog.sampleName}
-            samplePath={sendDialog.samplePath}
+            sampleName={sendDialog.itemName}
+            samplePath={sendDialog.itemPath}
             client={client}
             libraryRoot={root}
             deviceSampleCount={deviceSampleNames.length}
@@ -525,12 +572,13 @@ export function LibraryPage(): JSX.Element {
           />
           <ReceiveSampleDialog
             open={receiveDialog.open}
-            onClose={() => setReceiveDialog(RECEIVE_DIALOG_CLOSED)}
-            sampleIndex={receiveDialog.sampleIndex}
-            sampleName={receiveDialog.sampleName}
+            onClose={() => setReceiveDialog(SAVE_DIALOG_CLOSED)}
+            sampleIndex={receiveDialog.itemIndex}
+            sampleName={receiveDialog.itemName}
             client={client}
             libraryRoot={root}
             onTransferComplete={() => refreshLibrary()}
+            autoStart={receiveDialog.autoStart}
           />
           <ImportDrumKitDialog
             open={drumKitTransfer.dialog.open}
@@ -555,12 +603,14 @@ export function LibraryPage(): JSX.Element {
           <ExportProgramDialog
             open={programTransfer.exportDialog.open}
             onClose={programTransfer.closeExportDialog}
-            programIndex={programTransfer.exportDialog.programIndex}
-            programName={programTransfer.exportDialog.programName}
+            programIndex={programTransfer.exportDialog.itemIndex}
+            programName={programTransfer.exportDialog.itemName}
             client={client}
             libraryRoot={root}
             deviceSampleNames={deviceSampleNames}
             onExportComplete={transferCallbacks.handleExportComplete}
+            autoStart={programTransfer.exportDialog.autoStart}
+            saveToCommonArea={programTransfer.exportDialog.saveToCommonArea}
           />
           <ImportProgramDialog
             open={programTransfer.importDialog.open}
@@ -641,6 +691,7 @@ export function LibraryPage(): JSX.Element {
           onClose={editorDialogs.closeDrumKitEditor}
           kitName={editorDialogs.drumKitEditor.kitName}
           kitPath={editorDialogs.drumKitEditor.kitPath}
+          nodeType={editorDialogs.drumKitEditor.nodeType}
           libraryRoot={root}
           onSave={refreshLibrary}
         />
@@ -652,7 +703,7 @@ export function LibraryPage(): JSX.Element {
           <div className="text-sm font-medium text-gray-100 mb-2">
             {dropTransfer.error
               ? 'Transfer failed'
-              : dropTransfer.progress && dropTransfer.progress.currentIndex >= dropTransfer.progress.totalItems
+              : dropTransfer.progress && dropTransfer.progress.currentStep >= dropTransfer.progress.totalSteps
                 ? `Saved ${dropTransfer.fileName}`
                 : `Saving ${dropTransfer.fileName}...`
             }
@@ -666,15 +717,15 @@ export function LibraryPage(): JSX.Element {
                 <div
                   className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
                   style={{
-                    width: `${dropTransfer.progress.totalBytes > 0
-                      ? Math.max(2, Math.round((dropTransfer.progress.bytesTransferred / dropTransfer.progress.totalBytes) * 100))
+                    width: `${dropTransfer.progress.bytesTotal > 0
+                      ? Math.max(2, Math.round((dropTransfer.progress.bytesSent / dropTransfer.progress.bytesTotal) * 100))
                       : 2}%`,
                   }}
                 />
               </div>
               <div className="text-xs text-gray-400 flex justify-between">
-                <span>{dropTransfer.progress.currentIndex} / {dropTransfer.progress.totalItems} items</span>
-                <span className="truncate ml-2">{dropTransfer.progress.currentItem}</span>
+                <span>{dropTransfer.progress.currentStep} / {dropTransfer.progress.totalSteps} items</span>
+                <span className="truncate ml-2">{dropTransfer.progress.stepLabel}</span>
               </div>
             </>
           )}

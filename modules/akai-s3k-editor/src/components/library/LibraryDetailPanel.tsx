@@ -44,7 +44,7 @@ function DirectoryDetail({ node }: { node: TreeNode }) {
   const childCount = node.children?.length ?? 0;
   return (
     <div>
-      <h3 className="text-lg font-semibold text-gray-100 mb-2">{node.name}</h3>
+      <h3 className="text-lg font-semibold text-gray-200 mb-2">{node.name}</h3>
       <MetaRow label="Type" value="Folder" />
       <MetaRow label="Items" value={childCount} />
     </div>
@@ -56,7 +56,7 @@ function SampleDetail({ node }: { node: TreeNode }) {
   const description = typeof meta.description === 'string' ? meta.description : undefined;
   return (
     <div>
-      <h3 className="text-lg font-semibold text-gray-100 mb-2">{node.name}</h3>
+      <h3 className="text-lg font-semibold text-gray-200 mb-2">{node.name}</h3>
       <MetaRow label="Type" value="Sample" />
       <MetaRow label="Path" value={formatPath(meta)} />
       <MetaRow label="Description" value={description} />
@@ -68,7 +68,7 @@ function ProgramDetail({ node }: { node: TreeNode }) {
   const meta = getMeta(node);
   return (
     <div>
-      <h3 className="text-lg font-semibold text-gray-100 mb-2">{node.name}</h3>
+      <h3 className="text-lg font-semibold text-gray-200 mb-2">{node.name}</h3>
       <MetaRow label="Type" value="Program" />
       <MetaRow label="Path" value={formatPath(meta)} />
     </div>
@@ -79,7 +79,7 @@ function GenericDetail({ node }: { node: TreeNode }) {
   const meta = getMeta(node);
   return (
     <div>
-      <h3 className="text-lg font-semibold text-gray-100 mb-2">{node.name}</h3>
+      <h3 className="text-lg font-semibold text-gray-200 mb-2">{node.name}</h3>
       <MetaRow label="Type" value={node.type} />
       <MetaRow label="Path" value={formatPath(meta)} />
     </div>

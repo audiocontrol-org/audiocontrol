@@ -1,3 +1,5 @@
+export { cn } from './cn';
+
 export {
   formatPercent,
   formatSigned,
@@ -18,3 +20,10 @@ export {
   type LogEntry,
   type GitHubFormatOptions,
 } from './logCapture';
+
+// Re-export canonical MIDI note utilities from sampler-library (browser entry to avoid Node deps)
+export {
+  midiNoteToName,
+  parseMidiNote,
+  resolveKey,
+} from '@audiocontrol/sampler-library/browser';

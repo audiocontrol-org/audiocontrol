@@ -13,9 +13,24 @@
  */
 
 import type { DrumKitBundle, SliceDefinition } from '@/schemas/drum-kit-bundle-schema.js';
+import { midiNoteToName, parseMidiNote, resolveKey } from '@/midi-notes.js';
 
 // Re-export SliceDefinition for consumers
 export type { SliceDefinition } from '@/schemas/drum-kit-bundle-schema.js';
+
+// Re-export midi-notes functions for backward compatibility via this module's public API
+export { midiNoteToName, resolveKey } from '@/midi-notes.js';
+
+/**
+ * Parse a MIDI note name to a note number.
+ *
+ * @deprecated Use `parseMidiNote` from `@/midi-notes.js` directly.
+ * This wrapper exists for backward compatibility with consumers that
+ * import `parseNoteName` from this module.
+ */
+export function parseNoteName(noteName: string): number {
+  return parseMidiNote(noteName);
+}
 
 /**
  * Recognized drum sample types.
@@ -134,68 +149,6 @@ const DRUM_PATTERNS: Array<{ pattern: RegExp; type: DrumSampleType }> = [
   { pattern: /^hihat[_\s-]?closed[_\s-]?(\d+)/i, type: 'hhClosed' },
   { pattern: /^hihat[_\s-]?open[_\s-]?(\d+)/i, type: 'hhOpen' },
 ];
-
-/**
- * MIDI note name to number mapping.
- */
-const NOTE_NAMES: Record<string, number> = {
-  C: 0,
-  'C#': 1,
-  Db: 1,
-  D: 2,
-  'D#': 3,
-  Eb: 3,
-  E: 4,
-  F: 5,
-  'F#': 6,
-  Gb: 6,
-  G: 7,
-  'G#': 8,
-  Ab: 8,
-  A: 9,
-  'A#': 10,
-  Bb: 10,
-  B: 11,
-};
-
-/**
- * Parse a MIDI note name to a note number.
- *
- * @param noteName - Note name like "C1", "F#4", "Bb3"
- * @returns MIDI note number (0-127)
- */
-export function parseNoteName(noteName: string): number {
-  const match = noteName.match(/^([A-Ga-g])([#b]?)(-?\d)$/);
-  if (!match) {
-    throw new Error(`Invalid note name: ${noteName}`);
-  }
-
-  const [, letter, accidental, octaveStr] = match;
-  const baseName = (letter?.toUpperCase() ?? 'C') + (accidental ?? '');
-  const octave = parseInt(octaveStr ?? '0', 10);
-
-  const semitone = NOTE_NAMES[baseName];
-  if (semitone === undefined) {
-    throw new Error(`Invalid note name: ${noteName}`);
-  }
-
-  // MIDI note = (octave + 1) * 12 + semitone
-  // C-1 = 0, C0 = 12, C1 = 24, C2 = 36, etc.
-  return (octave + 1) * 12 + semitone;
-}
-
-/**
- * Resolve a key specification to a MIDI note number.
- *
- * @param key - Note name (e.g., "C1") or MIDI number
- * @returns MIDI note number
- */
-export function resolveKey(key: string | number): number {
-  if (typeof key === 'number') {
-    return key;
-  }
-  return parseNoteName(key);
-}
 
 /**
  * Parse a single filename to detect drum type and kit number.
@@ -441,17 +394,4 @@ export function getAllSampleFilenames(bundle: ResolvedDrumKitBundle): string[] {
   }
 
   return filenames;
-}
-
-/**
- * Convert MIDI note number to note name.
- *
- * @param midiNote - MIDI note number (0-127)
- * @returns Note name like "C1", "F#4"
- */
-export function midiNoteToName(midiNote: number): string {
-  const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-  const octave = Math.floor(midiNote / 12) - 1;
-  const note = noteNames[midiNote % 12];
-  return `${note}${octave}`;
 }

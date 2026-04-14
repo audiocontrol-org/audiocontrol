@@ -5,19 +5,19 @@
  * The shared hook provides the full complement of common-area editing
  * tools. This wrapper adds:
  * - S3K kit config state (baseNote, transpose, velocitySensitivity)
- * - Chopper YAML transform to inject drum kit metadata
+ * - Chopper program transform to inject drum kit key mappings
  *
  * All editing operations save to the common area (Zone 4).
  */
 
 import { useState, useMemo } from 'react';
-import type { StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
+import type { StorageDirectoryHandle, ProgramYaml } from '@audiocontrol/sampler-library/browser';
 import {
   useEditorDialogsCore,
   type EditorDialogStrategy,
   type EditorDialogsCoreResult,
+  type ErrorReporter,
 } from '@audiocontrol/editor-core';
-import type { SampleYaml } from '@audiocontrol/sampler-library/browser';
 import {
   DEFAULT_S3K_KIT_CONFIG,
   type S3kKitConfig,
@@ -51,7 +51,7 @@ export interface EditorDialogsResult extends EditorDialogsCoreResult {
 export function useEditorDialogs(
   libraryRoot: StorageDirectoryHandle | null,
   onRefresh: () => void,
-  onError: (message: string) => void,
+  errorReporter: ErrorReporter,
 ): EditorDialogsResult {
   const [kitConfig, setKitConfig] = useState<S3kKitConfig>(DEFAULT_S3K_KIT_CONFIG);
 
@@ -59,18 +59,18 @@ export function useEditorDialogs(
   // but injects drum kit metadata into chopper saves.
   const strategy = useMemo<EditorDialogStrategy>(() => ({
     loadWav: async () => null, // all common-area — shared hook handles it
-    transformChopperYaml: (yaml: SampleYaml): SampleYaml => ({
-      ...yaml,
-      name: kitConfig.name || yaml.name,
-      drumKit: {
-        baseNote: kitConfig.baseNote,
+    transformChopperProgram: (program: ProgramYaml): ProgramYaml => ({
+      ...program,
+      name: kitConfig.name || program.name,
+      zones: program.zones.map((zone, i) => ({
+        ...zone,
+        keyRange: [kitConfig.baseNote + i, kitConfig.baseNote + i] as [number, number],
         transpose: kitConfig.transpose !== 0 ? kitConfig.transpose : undefined,
-        velocitySensitivity: kitConfig.velocitySensitivity,
-      },
+      })),
     }),
   }), [kitConfig]);
 
-  const core = useEditorDialogsCore(libraryRoot, strategy, onRefresh, onError);
+  const core = useEditorDialogsCore(libraryRoot, strategy, onRefresh, errorReporter);
 
   return {
     ...core,

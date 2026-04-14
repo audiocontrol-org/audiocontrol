@@ -113,11 +113,13 @@ export type {
 
 // Program schema (common area)
 export {
+  SourceInfoSchema,
   ZoneSchema,
   ProgramYamlSchema,
 } from './program-schema.js';
 
 export type {
+  SourceInfo,
   Zone,
   ProgramYaml,
   ProgramInfo,

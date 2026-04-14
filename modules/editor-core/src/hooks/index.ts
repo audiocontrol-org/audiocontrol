@@ -1,3 +1,6 @@
+export { useErrorReporter, type ErrorReporter } from './useErrorReporter';
+export { useRefreshNotifier, type RefreshNotifier } from './useRefreshNotifier';
+export { useProgressReporter, type ProgressReporter } from './useProgressReporter';
 export { useHomePageStore, type HomePageMidiStore } from './useHomePageStore';
 export {
   useNotifications,
@@ -27,8 +30,16 @@ export {
 } from './useLibraryConnection';
 export {
   useLibraryOperations,
+  createTransferActionHandler,
   getNodePath,
   getNodeName,
+  SAVE_DIALOG_CLOSED,
+  SEND_DIALOG_CLOSED,
+  type StrategyResult,
   type LibraryOperationsStrategy,
   type LibraryOperationsResult,
+  type TransferActionId,
+  type TransferHandlerMap,
+  type SaveToLibraryDialogState,
+  type SendToDeviceDialogState,
 } from './useLibraryOperations';

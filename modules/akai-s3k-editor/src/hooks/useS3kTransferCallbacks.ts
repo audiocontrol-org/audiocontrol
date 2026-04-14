@@ -12,17 +12,8 @@ import type { S3000xlClientInterface } from '@audiocontrol/sampler-devices/s3k';
 import type { useProgramTransfer } from '@/hooks/useProgramTransfer';
 import type { useInstrumentTransfer } from '@/hooks/useInstrumentTransfer';
 
-interface SendDialogState {
-  open: boolean;
-  sampleName: string;
-  samplePath: string[];
-}
-
-interface ReceiveDialogState {
-  open: boolean;
-  sampleIndex: number;
-  sampleName: string;
-}
+import type { SendToDeviceDialogState, SaveToLibraryDialogState } from '@audiocontrol/editor-core';
+export type { SendToDeviceDialogState, SaveToLibraryDialogState } from '@audiocontrol/editor-core';
 
 interface UseS3kTransferCallbacksArgs {
   client: S3000xlClientInterface | null;
@@ -36,8 +27,8 @@ interface UseS3kTransferCallbacksArgs {
   refreshPrograms: () => Promise<void>;
   setError: (msg: string | null) => void;
   setSelection: (selection: null) => void;
-  setSendDialog: (state: SendDialogState) => void;
-  setReceiveDialog: (state: ReceiveDialogState) => void;
+  setSendDialog: (state: SendToDeviceDialogState) => void;
+  setReceiveDialog: (state: SaveToLibraryDialogState) => void;
 }
 
 export function useS3kTransferCallbacks({
@@ -58,7 +49,7 @@ export function useS3kTransferCallbacks({
   const handleSendSampleToDevice = useCallback(
     (name: string, path?: string[]) => {
       if (!client || !root) return;
-      setSendDialog({ open: true, sampleName: name, samplePath: path ?? [] });
+      setSendDialog({ open: true, itemName: name, itemPath: path ?? [] });
     },
     [client, root, setSendDialog],
   );
@@ -66,13 +57,34 @@ export function useS3kTransferCallbacks({
   const handleSaveDeviceSampleToLibrary = useCallback(
     (index: number, name: string) => {
       if (!client || !root) return;
-      setReceiveDialog({ open: true, sampleIndex: index, sampleName: name });
+      setReceiveDialog({ open: true, itemIndex: index, itemName: name });
+    },
+    [client, root, setReceiveDialog],
+  );
+
+  /** Same as handleSaveDeviceSampleToLibrary but skips confirm and starts transfer immediately. */
+  const handleSaveDeviceSampleToLibraryDirect = useCallback(
+    (index: number, name: string) => {
+      if (!client || !root) return;
+      setReceiveDialog({ open: true, itemIndex: index, itemName: name, autoStart: true });
     },
     [client, root, setReceiveDialog],
   );
 
   const handleSaveDeviceProgramToLibrary = useCallback(
     (index: number, name: string) => { programTransfer.openExportDialog(index, name); },
+    [programTransfer],
+  );
+
+  /** Same as handleSaveDeviceProgramToLibrary but skips confirm and starts export immediately. */
+  const handleSaveDeviceProgramToLibraryDirect = useCallback(
+    (index: number, name: string) => { programTransfer.openExportDialogDirect(index, name); },
+    [programTransfer],
+  );
+
+  /** Save device program to common area (converts to program.yaml with zones). */
+  const handleSaveDeviceProgramToCommonArea = useCallback(
+    (index: number, name: string) => { programTransfer.openExportDialogToCommonArea(index, name); },
     [programTransfer],
   );
 
@@ -87,14 +99,41 @@ export function useS3kTransferCallbacks({
   );
 
   const handleImportInstrument = useCallback(
-    (dirName: string, path: string[]) => { instrumentTransfer.openDialog(dirName, path); },
+    (dirName: string, path: string[], fromProgramsDir: boolean) => {
+      instrumentTransfer.openDialog(dirName, path, fromProgramsDir);
+    },
     [instrumentTransfer],
   );
 
-  const handleDeleteDeviceProgram = useCallback(
-    async (index: number, name: string) => {
+  const handleRenameDeviceSample = useCallback(
+    async (index: number, newName: string) => {
       if (!client) return;
-      if (!window.confirm(`Delete program "${name.trim()}" (#${index}) from device?`)) return;
+      try {
+        await client.renameSample(index, newName.trim());
+        await refreshDevice();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to rename sample');
+      }
+    },
+    [client, refreshDevice, setError],
+  );
+
+  const handleRenameDeviceProgram = useCallback(
+    async (index: number, newName: string) => {
+      if (!client) return;
+      try {
+        await client.renameProgram(index, newName.trim());
+        await refreshDevice();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to rename program');
+      }
+    },
+    [client, refreshDevice, setError],
+  );
+
+  const handleDeleteDeviceProgram = useCallback(
+    async (index: number, _name: string) => {
+      if (!client) return;
       try {
         await client.deleteProgram(index);
         await refreshDevice();
@@ -107,9 +146,8 @@ export function useS3kTransferCallbacks({
   );
 
   const handleDeleteDeviceSample = useCallback(
-    async (index: number, name: string) => {
+    async (index: number, _name: string) => {
       if (!client) return;
-      if (!window.confirm(`Delete sample "${name.trim()}" (#${index}) from device?`)) return;
       try {
         await client.deleteSample(index);
         await refreshDevice();
@@ -134,9 +172,14 @@ export function useS3kTransferCallbacks({
   return {
     handleSendSampleToDevice,
     handleSaveDeviceSampleToLibrary,
+    handleSaveDeviceSampleToLibraryDirect,
     handleSaveDeviceProgramToLibrary,
+    handleSaveDeviceProgramToLibraryDirect,
+    handleSaveDeviceProgramToCommonArea,
     handleSendProgramToDevice,
     handleImportInstrument,
+    handleRenameDeviceSample,
+    handleRenameDeviceProgram,
     handleDeleteDeviceProgram,
     handleDeleteDeviceSample,
     handleExportComplete,

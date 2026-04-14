@@ -17,6 +17,14 @@
   --ac-page-list-sticky-top: calc(var(--ac-site-header-height) + var(--ac-page-header-height));
   --ac-page-list-scroll-bottom: 2.25rem;
   --ac-container-md: 42rem;
+
+  /* List item action icons — must be visible on both default and selected backgrounds */
+  --ac-action-color: rgba(255, 255, 255, 0.4);
+  --ac-action-hover: rgba(255, 255, 255, 0.85);
+  --ac-action-danger-hover: #f87171;
+  --ac-action-selected-color: rgba(255, 255, 255, 0.85);
+  --ac-action-selected-hover: #fff;
+  --ac-action-selected-danger-hover: #fca5a5;
 }
 
 .ac-page {
@@ -215,6 +223,10 @@
 }
 
 .ac-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  white-space: nowrap;
   border-radius: var(--ac-radius-md);
   border: 1px solid var(--ac-color-border-subtle);
   background: color-mix(in srgb, var(--ac-color-surface-panel) 94%, transparent);
@@ -487,6 +499,46 @@
   gap: var(--ac-space-3);
 }
 
+/* List item action buttons — uses --ac-action-* variables for selected/unselected states */
+.ac-list-action-btn {
+  display: flex;
+  align-items: center;
+  padding: 0.375rem;
+  border: none;
+  border-radius: var(--ac-radius-sm);
+  background: transparent;
+  color: var(--ac-action-color);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.ac-list-action-btn:hover {
+  color: var(--ac-action-hover);
+}
+
+.ac-list-action-btn--danger:hover {
+  color: var(--ac-action-danger-hover);
+}
+
+.ac-list-action-btn--selected {
+  color: var(--ac-action-selected-color);
+}
+
+.ac-list-action-btn--selected:hover {
+  color: var(--ac-action-selected-hover);
+}
+
+.ac-list-action-btn--selected.ac-list-action-btn--danger:hover {
+  color: var(--ac-action-selected-danger-hover);
+}
+
+/* Responsive visibility — header text collapses to icons */
+@media (max-width: 1400px) {
+  .ac-hide-narrow {
+    display: none;
+  }
+}
+
 .ac-site-main {
   flex: 1;
   width: 100%;
@@ -546,6 +598,22 @@
 .ac-status-detail {
   font-size: var(--ac-text-xs);
   color: var(--ac-color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 20rem;
+}
+
+@media (max-width: 1600px) {
+  .ac-status-detail {
+    max-width: 12rem;
+  }
+}
+
+@media (max-width: 1400px) {
+  .ac-status-detail {
+    display: none;
+  }
 }
 
 /* Modal Primitives */
@@ -625,6 +693,93 @@
   display: flex;
   align-items: center;
   gap: var(--ac-space-2);
+}
+
+/* Slide-Over Drawer — slides in from the right edge */
+
+.ac-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.3);
+  transition: opacity var(--ac-duration-normal) var(--ac-easing-default);
+}
+
+.ac-drawer-overlay[data-state="closed"] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ac-drawer-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 101;
+  width: 24rem;
+  max-width: 90vw;
+  background: var(--ac-color-surface-panel);
+  border-left: 1px solid var(--ac-color-border-subtle);
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(0);
+  transition: transform var(--ac-duration-normal) var(--ac-easing-default);
+}
+
+.ac-drawer-panel[data-state="closed"] {
+  transform: translateX(100%);
+}
+
+.ac-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--ac-space-3) var(--ac-space-4);
+  border-bottom: 1px solid var(--ac-color-border-subtle);
+  flex-shrink: 0;
+}
+
+.ac-drawer-title {
+  font-size: 1rem;
+  font-weight: var(--ac-font-weight-semibold);
+  color: var(--ac-color-text-primary);
+}
+
+.ac-drawer-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  border-radius: var(--ac-radius-sm);
+  background: transparent;
+  color: var(--ac-color-text-muted);
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: color var(--ac-duration-fast), background-color var(--ac-duration-fast);
+}
+
+.ac-drawer-close:hover {
+  color: var(--ac-color-text-primary);
+  background: color-mix(in srgb, var(--ac-color-text-muted) 12%, transparent);
+}
+
+.ac-drawer-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--ac-space-4);
+}
+
+.ac-drawer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ac-space-2);
+  padding: var(--ac-space-3) var(--ac-space-4);
+  border-top: 1px solid var(--ac-color-border-subtle);
+  flex-shrink: 0;
 }
 
 /* Tabs */
@@ -832,8 +987,15 @@
 /* Icon */
 
 .ac-icon {
-  width: 1rem;
-  height: 1rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+.ac-icon-lg {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
 }
 
 /* Scrollbar styling for dark theme */

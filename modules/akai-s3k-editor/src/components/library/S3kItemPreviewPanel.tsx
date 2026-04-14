@@ -7,15 +7,15 @@
  * device programs, device samples, and directories.
  *
  * Action buttons:
- * - "Send to Device" — triggers SDS transfer from library to device (samples)
- * - "Save to Library" — triggers export from device to library (samples, programs)
- * - "Send to Device" — triggers import from library to device (S3K programs)
- * - "Import as Drum Program" — imports drum kit slices as program + samples
- * - "Import to Device" — converts common-area program zones to S3K keygroups
- * - "Open in Loop Editor" — opens loop point editor for samples
- * - "Open in Editor" — opens sample editor for destructive editing
- * - "Chop into Drum Kit" — opens sample chopper for slicing into drum kit
- * - "Edit Kit" — opens standalone drum kit editor for metadata/pad editing
+ * - "Send to Device" -- triggers SDS transfer from library to device (samples)
+ * - "Save to Library" -- triggers export from device to library (samples, programs)
+ * - "Send to Device" -- triggers import from library to device (S3K programs)
+ * - "Import as Drum Program" -- imports drum kit slices as program + samples
+ * - "Import to Device" -- converts common-area program zones to S3K keygroups
+ * - "Open in Loop Editor" -- opens loop point editor for samples
+ * - "Open in Editor" -- opens sample editor for destructive editing
+ * - "Chop into Drum Kit" -- opens sample chopper for slicing into drum kit
+ * - "Edit Kit" -- opens standalone drum kit editor for metadata/pad editing
  */
 
 import type { ItemSelection, PreviewContext } from '@audiocontrol/editor-core';
@@ -49,15 +49,15 @@ export interface S3kPreviewCustomState {
   /** Callback for "Import as Drum Program" action (drum kit) */
   onImportDrumKit?: (name: string, path?: string[]) => void;
   /** Callback for "Import to Device" action (common-area program) */
-  onImportInstrument?: (dirName: string, path: string[]) => void;
+  onImportInstrument?: (dirName: string, path: string[], fromProgramsDir: boolean) => void;
   /** Callback for "Open in Loop Editor" action (sample) */
   onOpenInLoopEditor?: (name: string, type: string, path?: string[]) => void;
   /** Callback for "Open in Editor" action (sample) */
   onOpenInSampleEditor?: (name: string, type: string, path?: string[]) => void;
   /** Callback for "Chop into Drum Kit" action (sample) */
   onOpenInChopper?: (name: string, type: string, path?: string[]) => void;
-  /** Callback for "Edit Kit" action (drum kit) */
-  onEditDrumKit?: (name: string, path?: string[]) => void;
+  /** Callback for "Edit Kit" action (drum kit or program) */
+  onEditDrumKit?: (name: string, nodeType: string, path?: string[]) => void;
   /** Callback for "Delete" action (device program) */
   onDeleteDeviceProgram?: (index: number, name: string) => void;
   /** Callback for "Delete" action (device sample) */
@@ -84,7 +84,7 @@ function EmptyState(): JSX.Element {
   return (
     <div className="h-full flex flex-col">
       <div className="p-3 border-b border-gray-700">
-        <h3 className="font-bold text-gray-100">Preview</h3>
+        <h3 className="font-semibold text-gray-200">Preview</h3>
       </div>
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="text-center text-gray-400 text-sm">
@@ -99,14 +99,62 @@ function DirectoryPreview({ selection }: { selection: ItemSelection }): JSX.Elem
   const childCount = selection.node.children?.length ?? 0;
   return (
     <div className="p-4">
-      <h3 className="text-lg font-semibold text-gray-100 mb-3">{selection.node.name}</h3>
+      <h3 className="text-lg font-semibold text-gray-200 mb-3">{selection.node.name}</h3>
       <MetaRow label="Type" value="Folder" />
       <MetaRow label="Items" value={childCount} />
     </div>
   );
 }
 
-/** Shared editor action buttons for samples and chopped samples. */
+/** Labeled group of action buttons in the preview panel. */
+function ActionGroup({ label, children }: { label: string; children: React.ReactNode }): JSX.Element {
+  return (
+    <div className="mt-4">
+      <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">{label}</h4>
+      <div className="flex gap-1.5 flex-wrap">{children}</div>
+    </div>
+  );
+}
+
+/** Primary action button (e.g., Send to Device). */
+function PrimaryAction({ label, onClick, testId }: { label: string; onClick: () => void; testId?: string }): JSX.Element {
+  return (
+    <button
+      className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
+      onClick={onClick}
+      data-testid={testId}
+    >
+      {label}
+    </button>
+  );
+}
+
+/** Secondary action button (e.g., editor tools). */
+function SecondaryAction({ label, onClick, testId }: { label: string; onClick: () => void; testId?: string }): JSX.Element {
+  return (
+    <button
+      className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 rounded transition-colors"
+      onClick={onClick}
+      data-testid={testId}
+    >
+      {label}
+    </button>
+  );
+}
+
+/** Danger action button (e.g., Delete). */
+function DangerAction({ label, onClick, testId }: { label: string; onClick: () => void; testId?: string }): JSX.Element {
+  return (
+    <button
+      className="px-3 py-1.5 text-sm text-red-400 hover:text-red-300 hover:bg-gray-700/50 rounded transition-colors"
+      onClick={onClick}
+      data-testid={testId}
+    >
+      {label}
+    </button>
+  );
+}
+
 function EditorActions({
   name,
   nodeType,
@@ -124,35 +172,29 @@ function EditorActions({
   if (!hasActions) return null;
 
   return (
-    <div className="mt-3 flex gap-2 flex-wrap">
+    <ActionGroup label="Edit">
       {customState.onOpenInLoopEditor && (
-        <button
-          className="px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded transition-colors"
+        <SecondaryAction
+          label="Loop Editor"
           onClick={() => customState.onOpenInLoopEditor!(name, nodeType, path)}
-          data-testid="preview-open-loop-editor"
-        >
-          Loop Editor
-        </button>
+          testId="preview-open-loop-editor"
+        />
       )}
       {customState.onOpenInSampleEditor && (
-        <button
-          className="px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded transition-colors"
+        <SecondaryAction
+          label="Edit Sample"
           onClick={() => customState.onOpenInSampleEditor!(name, nodeType, path)}
-          data-testid="preview-open-sample-editor"
-        >
-          Edit Sample
-        </button>
+          testId="preview-open-sample-editor"
+        />
       )}
       {customState.onOpenInChopper && (
-        <button
-          className="px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded transition-colors"
+        <SecondaryAction
+          label="Chop"
           onClick={() => customState.onOpenInChopper!(name, nodeType, path)}
-          data-testid="preview-open-chopper"
-        >
-          Chop
-        </button>
+          testId="preview-open-chopper"
+        />
       )}
-    </div>
+    </ActionGroup>
   );
 }
 
@@ -170,12 +212,12 @@ function SamplePreview({
   const typeLabel = meta.hasDrumKit
     ? 'Drum Kit'
     : hasSlices
-      ? 'Chopped Sample'
+      ? 'Sliced Sample'
       : 'Sample';
 
   return (
     <div className="p-4">
-      <h3 className="text-lg font-semibold text-gray-100 mb-3">{selection.node.name}</h3>
+      <h3 className="text-lg font-semibold text-gray-200 mb-3">{selection.node.name}</h3>
       <MetaRow label="Type" value={typeLabel} />
       {hasSlices && (
         <MetaRow
@@ -186,46 +228,24 @@ function SamplePreview({
       <MetaRow label="Path" value={pathDisplay} />
       <MetaRow label="Description" value={meta.description} />
 
-      <div className="mt-4 flex gap-2 flex-wrap">
-        {meta.hasDrumKit && customState?.onEditDrumKit && (
-          <button
-            className="px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded transition-colors"
-            onClick={() => customState.onEditDrumKit!(
-              selection.node.name,
-              meta.path,
-            )}
-            data-testid="preview-edit-drum-kit"
-          >
-            Edit Kit
-          </button>
-        )}
-
-        {customState?.onSendSampleToDevice && (
-          <button
-            className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
-            onClick={() => customState.onSendSampleToDevice!(
-              selection.node.name,
-              meta.path,
-            )}
-            data-testid="preview-send-to-device"
-          >
-            Send to Device
-          </button>
-        )}
-
-        {meta.hasDrumKit && customState?.onImportDrumKit && (
-          <button
-            className="px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-500 text-white rounded transition-colors"
-            onClick={() => customState.onImportDrumKit!(
-              selection.node.name,
-              meta.path,
-            )}
-            data-testid="preview-import-drum-kit"
-          >
-            Import as Drum Program
-          </button>
-        )}
-      </div>
+      {(customState?.onSendSampleToDevice || (meta.hasDrumKit && customState?.onImportDrumKit)) && (
+        <ActionGroup label="Device">
+          {customState?.onSendSampleToDevice && (
+            <PrimaryAction
+              label="Send to Device"
+              onClick={() => customState.onSendSampleToDevice!(selection.node.name, meta.path)}
+              testId="preview-send-to-device"
+            />
+          )}
+          {meta.hasDrumKit && customState?.onImportDrumKit && (
+            <SecondaryAction
+              label="Import as Drum Program"
+              onClick={() => customState.onImportDrumKit!(selection.node.name, meta.path)}
+              testId="preview-import-drum-kit"
+            />
+          )}
+        </ActionGroup>
+      )}
 
       <EditorActions
         name={selection.node.name}
@@ -233,6 +253,16 @@ function SamplePreview({
         path={meta.path}
         customState={customState}
       />
+
+      {meta.hasDrumKit && customState?.onEditDrumKit && (
+        <ActionGroup label="Kit">
+          <SecondaryAction
+            label="Edit Kit"
+            onClick={() => customState.onEditDrumKit!(selection.node.name, selection.node.type, meta.path)}
+            testId="preview-edit-drum-kit"
+          />
+        </ActionGroup>
+      )}
     </div>
   );
 }
@@ -252,35 +282,28 @@ function S3kProgramPreview({
 
   return (
     <div className="p-4">
-      <h3 className="text-lg font-semibold text-gray-100 mb-3">{selection.node.name}</h3>
+      <h3 className="text-lg font-semibold text-gray-200 mb-3">{selection.node.name}</h3>
       <MetaRow label="Type" value="S3000XL Program" />
       <MetaRow label="Keygroups" value={meta.keygroupCount} />
       <MetaRow label="Samples" value={meta.sampleReferences?.join(', ')} />
 
-      {meta.dirName && (
-        <div className="mt-4 flex flex-col gap-2">
+      {meta.dirName && (customState?.onSendProgramToDevice || customState?.onPromoteToCommonArea) && (
+        <ActionGroup label="Device">
           {customState?.onSendProgramToDevice && (
-            <button
-              className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
-              onClick={() => customState.onSendProgramToDevice!(
-                meta.dirName!,
-                selection.node.name,
-              )}
-              data-testid="preview-send-program-to-device"
-            >
-              Send to Device
-            </button>
+            <PrimaryAction
+              label="Send to Device"
+              onClick={() => customState.onSendProgramToDevice!(meta.dirName!, selection.node.name)}
+              testId="preview-send-program-to-device"
+            />
           )}
           {customState?.onPromoteToCommonArea && (
-            <button
-              className="px-3 py-1.5 text-sm bg-green-700 hover:bg-green-600 text-white rounded transition-colors"
+            <SecondaryAction
+              label="Promote to Common Area"
               onClick={() => customState.onPromoteToCommonArea!(meta.dirName!)}
-              data-testid="preview-promote-to-common"
-            >
-              Promote to Common Area
-            </button>
+              testId="preview-promote-to-common"
+            />
           )}
-        </div>
+        </ActionGroup>
       )}
     </div>
   );
@@ -302,25 +325,45 @@ function CommonProgramPreview({
 
   return (
     <div className="p-4">
-      <h3 className="text-lg font-semibold text-gray-100 mb-3">{selection.node.name}</h3>
-      <MetaRow label="Type" value="Instrument" />
+      <h3 className="text-lg font-semibold text-gray-200 mb-3">{selection.node.name}</h3>
+      <MetaRow label="Type" value="Program" />
       <MetaRow label="Zones" value={meta.kitCount} />
       <MetaRow label="Path" value={pathDisplay} />
       <MetaRow label="Description" value={meta.description} />
 
       {customState?.onImportInstrument && meta.directoryName && (
-        <div className="mt-4">
-          <button
-            className="px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-500 text-white rounded transition-colors"
-            onClick={() => customState.onImportInstrument!(
-              meta.directoryName!,
-              meta.path ?? [],
-            )}
-            data-testid="preview-import-instrument"
-          >
-            Import to Device
-          </button>
-        </div>
+        <ActionGroup label="Device">
+          <PrimaryAction
+            label="Import to Device"
+            onClick={() => {
+              // Programs at root of common-programs category live in library/common/programs/
+              // Programs inside a samples folder have a non-empty path
+              const fromProgramsDir = !meta.path || meta.path.length === 0;
+              customState.onImportInstrument!(meta.directoryName!, meta.path ?? [], fromProgramsDir);
+            }}
+            testId="preview-import-instrument"
+          />
+        </ActionGroup>
+      )}
+
+      {customState?.onOpenInChopper && (
+        <ActionGroup label="Edit">
+          <SecondaryAction
+            label="Re-chop"
+            onClick={() => customState.onOpenInChopper!(selection.node.name, selection.node.type)}
+            testId="preview-open-chopper"
+          />
+        </ActionGroup>
+      )}
+
+      {customState?.onEditDrumKit && (
+        <ActionGroup label="Kit">
+          <SecondaryAction
+            label="Edit Kit"
+            onClick={() => customState.onEditDrumKit!(selection.node.name, selection.node.type)}
+            testId="preview-edit-drum-kit"
+          />
+        </ActionGroup>
       )}
     </div>
   );
@@ -338,36 +381,29 @@ function DeviceSamplePreview({
 
   return (
     <div className="p-4">
-      <h3 className="text-lg font-semibold text-gray-100 mb-3">{selection.node.name}</h3>
+      <h3 className="text-lg font-semibold text-gray-200 mb-3">{selection.node.name}</h3>
       <MetaRow label="Type" value="Device Sample" />
       <MetaRow label="Slot" value={`#${meta.deviceIndex}`} />
 
-      <div className="mt-4 flex gap-2 flex-wrap">
-        {customState?.onSaveDeviceSampleToLibrary && (
-          <button
-            className="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-500 text-white rounded transition-colors"
-            onClick={() => customState.onSaveDeviceSampleToLibrary!(
-              meta.deviceIndex,
-              selection.node.name,
-            )}
-            data-testid="preview-save-to-library"
-          >
-            Save to Library
-          </button>
-        )}
-        {customState?.onDeleteDeviceSample && (
-          <button
-            className="px-3 py-1.5 text-sm bg-red-700 hover:bg-red-600 text-white rounded transition-colors"
-            onClick={() => customState.onDeleteDeviceSample!(
-              meta.deviceIndex,
-              selection.node.name,
-            )}
-            data-testid="preview-delete-device-sample"
-          >
-            Delete from Device
-          </button>
-        )}
-      </div>
+      {customState?.onSaveDeviceSampleToLibrary && (
+        <ActionGroup label="Library">
+          <PrimaryAction
+            label="Save to Library"
+            onClick={() => customState.onSaveDeviceSampleToLibrary!(meta.deviceIndex, selection.node.name)}
+            testId="preview-save-to-library"
+          />
+        </ActionGroup>
+      )}
+
+      {customState?.onDeleteDeviceSample && (
+        <ActionGroup label="Manage">
+          <DangerAction
+            label="Delete from Device"
+            onClick={() => customState.onDeleteDeviceSample!(meta.deviceIndex, selection.node.name)}
+            testId="preview-delete-device-sample"
+          />
+        </ActionGroup>
+      )}
     </div>
   );
 }
@@ -384,36 +420,29 @@ function DeviceProgramPreview({
 
   return (
     <div className="p-4">
-      <h3 className="text-lg font-semibold text-gray-100 mb-3">{selection.node.name}</h3>
+      <h3 className="text-lg font-semibold text-gray-200 mb-3">{selection.node.name}</h3>
       <MetaRow label="Type" value="Device Program" />
       <MetaRow label="Slot" value={`#${meta.deviceIndex}`} />
 
-      <div className="mt-4 flex gap-2 flex-wrap">
-        {customState?.onSaveDeviceProgramToLibrary && (
-          <button
-            className="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-500 text-white rounded transition-colors"
-            onClick={() => customState.onSaveDeviceProgramToLibrary!(
-              meta.deviceIndex,
-              selection.node.name,
-            )}
-            data-testid="preview-save-program-to-library"
-          >
-            Save to Library
-          </button>
-        )}
-        {customState?.onDeleteDeviceProgram && (
-          <button
-            className="px-3 py-1.5 text-sm bg-red-700 hover:bg-red-600 text-white rounded transition-colors"
-            onClick={() => customState.onDeleteDeviceProgram!(
-              meta.deviceIndex,
-              selection.node.name,
-            )}
-            data-testid="preview-delete-device-program"
-          >
-            Delete from Device
-          </button>
-        )}
-      </div>
+      {customState?.onSaveDeviceProgramToLibrary && (
+        <ActionGroup label="Library">
+          <PrimaryAction
+            label="Save to Library"
+            onClick={() => customState.onSaveDeviceProgramToLibrary!(meta.deviceIndex, selection.node.name)}
+            testId="preview-save-program-to-library"
+          />
+        </ActionGroup>
+      )}
+
+      {customState?.onDeleteDeviceProgram && (
+        <ActionGroup label="Manage">
+          <DangerAction
+            label="Delete from Device"
+            onClick={() => customState.onDeleteDeviceProgram!(meta.deviceIndex, selection.node.name)}
+            testId="preview-delete-device-program"
+          />
+        </ActionGroup>
+      )}
     </div>
   );
 }
@@ -489,7 +518,7 @@ export function S3kPreviewPanelAdapter({
   // Fallback for unknown types
   return (
     <div className="p-4">
-      <h3 className="text-lg font-semibold text-gray-100 mb-3">{selection.node.name}</h3>
+      <h3 className="text-lg font-semibold text-gray-200 mb-3">{selection.node.name}</h3>
       <MetaRow label="Type" value={selection.node.type} />
     </div>
   );

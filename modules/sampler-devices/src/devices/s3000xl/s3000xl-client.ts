@@ -22,6 +22,7 @@ import {
   parseSampleHeader,
   parseMiscellaneousData,
   SampleHeader_writeSHNAME,
+  ProgramHeader_writePRNAME,
 } from '@/devices/s3000xl.js';
 import type { ProgramHeader, KeygroupHeader, SampleHeader, MiscellaneousData } from '@/devices/s3000xl.js';
 import type { S3000xlClientOptions, S3000xlClientInterface } from '@/devices/s3000xl/s3000xl-types.js';
@@ -626,6 +627,57 @@ export function createS3000xlClient(
       await sendCommandWithRetry(AkaiOpcode.DELS, numberTo7bitPair(sampleNumber));
       sampleNamesCache = undefined;
       sampleHeaderCache.clear();
+    },
+
+    async renameSample(sampleNumber: number, newName: string): Promise<void> {
+      const header = await client.fetchSampleHeader(sampleNumber);
+      SampleHeader_writeSHNAME(header, newName);
+      await client.writeSampleHeader(header);
+      sampleNamesCache = undefined;
+      sampleHeaderCache.delete(sampleNumber);
+    },
+
+    async cloneProgram(
+      sourceProgramNumber: number,
+      newName: string,
+      onProgress?: (step: string, current: number, total: number) => void,
+    ): Promise<number> {
+      const totalSteps = 3; // read header, create program, clone keygroups
+      const progress = onProgress ?? (() => {});
+
+      progress('Reading source program', 1, totalSteps);
+      const sourceHeader = await client.fetchProgramHeader(sourceProgramNumber);
+      const existingNames = await client.fetchProgramNames();
+      const newIndex = existingNames.length;
+
+      progress('Creating program', 2, totalSteps);
+      const cloned = { ...sourceHeader, raw: [...sourceHeader.raw] };
+      ProgramHeader_writePRNAME(cloned, newName);
+      await client.createProgram(newIndex, cloned);
+
+      // Clone all keygroups from source
+      for (let kg = 0; kg < sourceHeader.GROUPS; kg++) {
+        progress(`Cloning keygroup ${kg + 1}/${sourceHeader.GROUPS}`, 3, totalSteps);
+        const kgHeader = await client.fetchKeygroupHeader(sourceProgramNumber, kg);
+        if (kg === 0) {
+          await client.writeKeygroupHeader(kgHeader);
+        } else {
+          await client.createKeygroup(newIndex, kg, kgHeader);
+        }
+      }
+
+      programNamesCache = undefined;
+      programHeaderCache.clear();
+      invalidateAllKeygroupAndProgramCaches();
+      return newIndex;
+    },
+
+    async renameProgram(programNumber: number, newName: string): Promise<void> {
+      const header = await client.fetchProgramHeader(programNumber);
+      ProgramHeader_writePRNAME(header, newName);
+      await client.writeProgramHeader(header);
+      programNamesCache = undefined;
+      programHeaderCache.delete(programNumber);
     },
 
     async refreshSampleNames(): Promise<string[]> {

@@ -16,7 +16,7 @@ import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { useLibraryStore } from '@/stores/libraryStore';
 import type { SamplerClientInterface, SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import {
-  useLibraryConnection, useLibraryOperations, LibraryConnectionUI, PluginLibraryBrowser,
+  useLibraryConnection, useErrorReporter, useLibraryOperations, LibraryConnectionUI, PluginLibraryBrowser,
 } from '@audiocontrol/editor-core';
 import { s330LibraryPlugin } from '@/plugins/s330-library-plugin';
 import { s550LibraryPlugin } from '@/plugins/s550-library-plugin';
@@ -46,7 +46,7 @@ import { getOverallPercent } from '@/types/import-operation';
 import { cn } from '@/lib/utils';
 
 /** Selection state for items in either panel */
-export interface ItemSelection {
+export interface RolandPageSelection {
   source: 'device' | 'library';
   type: 'tone' | 'patch' | 'set' | 'individualTone' | 'individualPatch' | 'sample' | 'program';
   index?: number;
@@ -75,6 +75,8 @@ export function LibraryPage() {
   const {
     sets, isLoading, setLoading, setError, error,
   } = useLibraryStore();
+
+  const errorReporter = useErrorReporter(setError);
 
   const library = useLibraryConnection({
     pickerId: 'sampler-library',
@@ -115,7 +117,7 @@ export function LibraryPage() {
     libraryHandle,
     selection,
     setLoading: (loading: boolean, message?: string) => setLoading(loading, message),
-    onError: (message: string) => setError(message),
+    errorReporter,
     onRefresh: handleRefreshLibrary,
   });
 
@@ -131,7 +133,7 @@ export function LibraryPage() {
     libraryHandle,
     rolandStrategy,
     handleRefreshLibrary,
-    (msg) => setError(msg),
+    errorReporter,
     editorDialogs.createEditorActionHandler(),
   );
 
@@ -269,6 +271,8 @@ export function LibraryPage() {
           onRename={libraryOps.onRename}
           onContextMenuAction={libraryOps.onContextMenuAction}
           onFileDrop={libraryOps.onFileDrop}
+          onBatchDelete={libraryOps.onBatchDelete}
+          onBatchMove={libraryOps.onBatchMove}
           deviceMemoryState={deviceMemoryState}
           previewState={previewState}
           loading={isLoading || exportOps.isExporting}

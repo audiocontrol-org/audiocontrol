@@ -28,7 +28,7 @@ import {
   type LibraryPatchInfo,
   type StorageDirectoryHandle,
 } from '@/lib/library-service';
-import type { ItemSelection } from '@/pages/LibraryPage';
+import type { RolandPageSelection } from '@/pages/LibraryPage';
 
 interface CreateDirectoryDialogState {
   category: LibraryCategory;
@@ -61,8 +61,8 @@ interface UseDirectoryOperationsOptions {
   tonesTree: LibraryTreeNode[];
   patchesTree: LibraryTreeNode[];
   // Delete-related deps
-  selection: ItemSelection | null;
-  setSelection: (selection: ItemSelection | null) => void;
+  selection: RolandPageSelection | null;
+  setSelection: (selection: RolandPageSelection | null) => void;
   setIndividualTones: (tones: LibraryToneInfo[]) => void;
   setIndividualPatches: (patches: LibraryPatchInfo[]) => void;
   setTonesTree: (tree: LibraryTreeNode[]) => void;
@@ -217,7 +217,7 @@ export function useDirectoryOperations({
   // =========================================================================
 
   const handleDeleteSet = useCallback(async (setName: string) => {
-    if (!libraryHandle || !window.confirm(`Delete set "${setName}"? This cannot be undone.`)) return;
+    if (!libraryHandle) return;
     try {
       await deleteSet(libraryHandle, setName);
       if (selection?.type === 'set' && selection.name === setName) setSelection(null);
@@ -229,7 +229,7 @@ export function useDirectoryOperations({
   }, [libraryHandle, selection, setSelection, handleRefreshLibrary, setError]);
 
   const handleDeleteIndividualTone = useCallback(async (fileName: string, path?: string[]) => {
-    if (!libraryHandle || !window.confirm(`Delete tone "${fileName}"? This cannot be undone.`)) return;
+    if (!libraryHandle) return;
     try {
       await deleteIndividualTone(libraryHandle, fileName, path);
       if (selection?.type === 'individualTone' && selection.name === fileName) setSelection(null);
@@ -243,7 +243,7 @@ export function useDirectoryOperations({
   }, [libraryHandle, selection, setSelection, setIndividualTones, setTonesTree, setError]);
 
   const handleDeleteIndividualPatch = useCallback(async (directoryName: string, path?: string[]) => {
-    if (!libraryHandle || !window.confirm(`Delete patch "${directoryName}" and all its tones? This cannot be undone.`)) return;
+    if (!libraryHandle) return;
     try {
       await deleteIndividualPatch(libraryHandle, directoryName, path);
       if (selection?.type === 'individualPatch' && selection.name === directoryName) setSelection(null);

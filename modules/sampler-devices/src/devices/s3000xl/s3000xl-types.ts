@@ -162,6 +162,26 @@ export interface S3000xlClientInterface {
   /** Delete a sample from the device by its RSLIST index */
   deleteSample(sampleNumber: number): Promise<void>;
 
+  /** Rename a sample on the device */
+  renameSample(sampleNumber: number, newName: string): Promise<void>;
+
+  /** Rename a program on the device */
+  renameProgram(programNumber: number, newName: string): Promise<void>;
+
+  /**
+   * Clone a program to a new slot at the end of the RPLIST.
+   *
+   * Copies the source program header (with a new name) and all its keygroups.
+   * Returns the index of the newly created program.
+   *
+   * @param onProgress - Optional callback for step-by-step progress
+   */
+  cloneProgram(
+    sourceProgramNumber: number,
+    newName: string,
+    onProgress?: (step: string, current: number, total: number) => void,
+  ): Promise<number>;
+
   /** Force refresh of sample names from device (invalidates cache and re-fetches) */
   refreshSampleNames(): Promise<string[]>;
 

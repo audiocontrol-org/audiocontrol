@@ -8,7 +8,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useMidiStore } from '@/stores/midiStore';
-import { useS330Store } from '@/stores/editorStore';
+import { useEditorStore } from '@/stores/editorStore';
 import { useDeviceDataStore } from '@/stores/deviceDataStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { useBankLoader } from '@/hooks/useBankLoader';
@@ -36,7 +36,7 @@ export function PlayPage() {
   const mockMode = isMockMidiMode();
   const { adapter, deviceId, status } = useMidiStore();
   const { setLoading, setError, isLoading, error, setProgress, clearProgress, loadingProgress, loadingMessage } =
-    useS330Store();
+    useEditorStore();
 
   const isConnected = status === 'connected' && adapter !== null;
 

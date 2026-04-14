@@ -6,8 +6,8 @@
  * import from the library tree.
  */
 
-import { useState } from 'react';
-import { LIBRARY_ITEM_MIME, type LibraryDragPayload } from '@audiocontrol/editor-core';
+import { useState, useCallback } from 'react';
+import { LIBRARY_ITEM_MIME, LoadingBar, ContextMenu, type LibraryDragPayload, type ContextMenuAction } from '@audiocontrol/editor-core';
 import { DISK_ITEM_MIME, type DiskDragPayload } from '@/components/library/DiskBrowserPanel';
 
 interface DeviceMemoryPanelProps {
@@ -22,8 +22,67 @@ interface DeviceMemoryPanelProps {
   onImportProgram?: (dirName: string, displayName: string, categoryId: string) => void;
   /** Called when a disk browser item is dropped on the device memory panel. */
   onDiskItemDrop?: (payload: DiskDragPayload) => void;
+  /** Save a device sample to the common library area. */
+  onSaveSampleToCommonLibrary?: (index: number, name: string) => void;
+  /** Save a device sample to the Akai device-specific library area. */
+  onSaveSampleToDeviceLibrary?: (index: number, name: string) => void;
+  /** Save a device program to the common library area. */
+  onSaveProgramToCommonLibrary?: (index: number, name: string) => void;
+  /** Save a device program to the Akai device-specific library area. */
+  onSaveProgramToDeviceLibrary?: (index: number, name: string) => void;
+  /** Rename a device sample. */
+  onRenameSample?: (index: number, name: string) => void;
+  /** Rename a device program. */
+  onRenameProgram?: (index: number, name: string) => void;
+  /** Delete a sample from device memory. */
+  onDeleteSample?: (index: number, name: string) => void;
+  /** Delete a program from device memory. */
+  onDeleteProgram?: (index: number, name: string) => void;
   isConnected: boolean;
   isLoading: boolean;
+}
+
+/** Inline text input for renaming device memory items. */
+function InlineRenameInput({
+  value,
+  onChange,
+  onSubmit,
+  onCancel,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onSubmit: (value: string) => void;
+  onCancel: () => void;
+}) {
+  const handleRef = useCallback((el: HTMLInputElement | null) => {
+    if (el) {
+      el.focus();
+      el.select();
+    }
+  }, []);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      onSubmit(value);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      onCancel();
+    }
+  }, [value, onSubmit, onCancel]);
+
+  return (
+    <input
+      ref={handleRef}
+      type="text"
+      className="flex-1 bg-gray-800 text-gray-100 text-sm px-1 py-0 border border-blue-500 rounded outline-none"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={handleKeyDown}
+      onBlur={() => onSubmit(value)}
+      onClick={(e) => e.stopPropagation()}
+    />
+  );
 }
 
 function NameList({
@@ -33,6 +92,10 @@ function NameList({
   selectedIndex,
   selectedType,
   onSelect,
+  onSaveToCommonLibrary,
+  onSaveToDeviceLibrary,
+  onRename,
+  onDelete,
 }: {
   title: string;
   names: string[];
@@ -40,7 +103,16 @@ function NameList({
   selectedIndex: number | null;
   selectedType: 'program' | 'sample' | null;
   onSelect: (index: number) => void;
+  onSaveToCommonLibrary?: (index: number, name: string) => void;
+  onSaveToDeviceLibrary?: (index: number, name: string) => void;
+  onRename?: (index: number, name: string) => void;
+  onDelete?: (index: number, name: string) => void;
 }) {
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; index: number } | null>(null);
+  const [deletingIndex, setDeletingIndex] = useState<number | null>(null);
+  const [renamingIndex, setRenamingIndex] = useState<number | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+
   if (names.length === 0) {
     return (
       <div className="mb-4">
@@ -60,25 +132,109 @@ function NameList({
       <ul className="overflow-y-auto space-y-px">
         {names.map((name, index) => {
           const isSelected = selectedType === type && selectedIndex === index;
+          const isDeleting = deletingIndex === index;
           return (
             <li key={index}>
               <button
                 type="button"
                 data-testid={`device-${type}-${index}`}
-                className={`w-full text-left px-2 py-1 text-sm rounded transition-colors ${
-                  isSelected
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-300 hover:bg-gray-700'
+                disabled={isDeleting}
+                className={`group w-full text-left flex items-center px-2 py-1 text-sm rounded transition-colors ${
+                  isDeleting
+                    ? 'opacity-50 animate-pulse text-gray-500'
+                    : isSelected
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-300 hover:bg-gray-700'
                 }`}
-                onClick={() => onSelect(index)}
+                onClick={() => !isDeleting && onSelect(index)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  if (isDeleting) return;
+                  onSelect(index);
+                  setContextMenu({ x: e.clientX, y: e.clientY, index });
+                }}
               >
-                <span className="text-gray-500 mr-2 tabular-nums">{index}:</span>
-                {name}
+                <span className={`mr-2 tabular-nums ${isDeleting ? 'text-gray-600' : isSelected ? 'text-blue-200' : 'text-gray-500'}`}>{index}:</span>
+                {renamingIndex === index && onRename ? (
+                  <InlineRenameInput
+                    value={renameValue}
+                    onChange={setRenameValue}
+                    onSubmit={(newName) => {
+                      if (newName.trim() && newName.trim() !== name) {
+                        onRename(index, newName.trim());
+                      }
+                      setRenamingIndex(null);
+                    }}
+                    onCancel={() => setRenamingIndex(null)}
+                  />
+                ) : (
+                  <span className="flex-1 truncate">{isDeleting ? `Deleting ${name}...` : name}</span>
+                )}
+                {onDelete && !isDeleting && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    className={`ml-1 opacity-0 group-hover:opacity-100 transition-opacity ${isSelected ? 'text-blue-200 hover:text-red-300' : 'text-gray-500 hover:text-red-400'}`}
+                    title="Delete from device"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeletingIndex(index);
+                      Promise.resolve(onDelete(index, name)).finally(() => setDeletingIndex(null));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.stopPropagation();
+                        setDeletingIndex(index);
+                        Promise.resolve(onDelete(index, name)).finally(() => setDeletingIndex(null));
+                      }
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0v14a2 2 0 01-2 2H8a2 2 0 01-2-2V6h12" />
+                    </svg>
+                  </span>
+                )}
               </button>
             </li>
           );
         })}
       </ul>
+      {contextMenu && (() => {
+        const name = names[contextMenu.index];
+        const commonLabel = type === 'program' ? 'Save to Common Library' : 'Save to Common Samples';
+        const deviceLabel = type === 'program' ? 'Save to Akai Library' : 'Save to Akai Samples';
+        const actions: ContextMenuAction[] = [];
+        if (onSaveToCommonLibrary) {
+          actions.push({ label: commonLabel, onClick: () => onSaveToCommonLibrary(contextMenu.index, name) });
+        }
+        if (onSaveToDeviceLibrary) {
+          actions.push({ label: deviceLabel, onClick: () => onSaveToDeviceLibrary(contextMenu.index, name) });
+        }
+        if (onRename) {
+          if (actions.length > 0) {
+            actions.push({ label: '', onClick: () => {}, separator: true });
+          }
+          actions.push({ label: 'Rename', onClick: () => {
+            setRenamingIndex(contextMenu.index);
+            setRenameValue(name);
+          } });
+        }
+        if (onDelete) {
+          if (actions.length > 0 && !onRename) {
+            actions.push({ label: '', onClick: () => {}, separator: true });
+          }
+          actions.push({ label: 'Delete from Device', onClick: () => onDelete(contextMenu.index, name), danger: true });
+        }
+        if (actions.length === 0) return null;
+        return (
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            actions={actions}
+            onClose={() => setContextMenu(null)}
+          />
+        );
+      })()}
     </div>
   );
 }
@@ -94,36 +250,51 @@ export function DeviceMemoryPanel({
   onImportSample,
   onImportProgram,
   onDiskItemDrop,
+  onSaveSampleToCommonLibrary,
+  onSaveSampleToDeviceLibrary,
+  onSaveProgramToCommonLibrary,
+  onSaveProgramToDeviceLibrary,
+  onRenameSample,
+  onRenameProgram,
+  onDeleteSample,
+  onDeleteProgram,
   isConnected,
   isLoading,
 }: DeviceMemoryPanelProps): JSX.Element {
   const [programDropOver, setProgramDropOver] = useState(false);
   const [sampleDropOver, setSampleDropOver] = useState(false);
-  if (!isConnected) {
+  const hasData = programNames.length > 0 || sampleNames.length > 0;
+  if (!isConnected && !hasData) {
     return (
-      <div className="p-4">
-        <h3 className="text-lg font-semibold text-gray-100 mb-2">Device Memory</h3>
-        <p className="text-sm text-gray-400 italic">
-          Connect to S3000XL first.
-        </p>
+      <div>
+        <div className="ac-panel-header">
+          <span className="ac-panel-header-title">Device Memory</span>
+        </div>
+        <div className="p-3">
+          <p className="text-sm text-gray-400 italic">
+            Connect to S3000XL first.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-semibold text-gray-100">Device Memory</h3>
+    <div>
+      <div className="ac-panel-header">
+        <span className="ac-panel-header-title">Device Memory</span>
         <button
           type="button"
-          className="text-gray-400 hover:text-gray-200 text-lg px-1 disabled:opacity-50"
+          className="ac-panel-refresh-btn"
           onClick={onRefresh}
-          disabled={isLoading}
+          disabled={isLoading || !isConnected}
           title="Refresh device memory"
         >
           {isLoading ? '...' : '\u21BB'}
         </button>
       </div>
+      <LoadingBar active={isLoading || (!isConnected && hasData)} />
+      <div className="p-3">
 
       <div
         className={`rounded transition-colors ${programDropOver ? 'bg-blue-900/30 ring-1 ring-blue-500/50' : ''}`}
@@ -171,6 +342,10 @@ export function DeviceMemoryPanel({
           selectedIndex={selectedIndex}
           selectedType={selectedType}
           onSelect={onSelectProgram}
+          onSaveToCommonLibrary={onSaveProgramToCommonLibrary}
+          onSaveToDeviceLibrary={onSaveProgramToDeviceLibrary}
+          onRename={onRenameProgram}
+          onDelete={onDeleteProgram}
         />
         {programDropOver && (
           <div className="text-xs text-blue-400 text-center py-2 border border-dashed border-blue-500/50 rounded mx-1 mb-2">
@@ -225,6 +400,10 @@ export function DeviceMemoryPanel({
           selectedIndex={selectedIndex}
           selectedType={selectedType}
           onSelect={onSelectSample}
+          onSaveToCommonLibrary={onSaveSampleToCommonLibrary}
+          onSaveToDeviceLibrary={onSaveSampleToDeviceLibrary}
+          onRename={onRenameSample}
+          onDelete={onDeleteSample}
         />
         {sampleDropOver && (
           <div className="text-xs text-blue-400 text-center py-2 border border-dashed border-blue-500/50 rounded mx-1 mb-2">
@@ -232,6 +411,8 @@ export function DeviceMemoryPanel({
           </div>
         )}
       </div>
+      </div>
     </div>
   );
 }
+

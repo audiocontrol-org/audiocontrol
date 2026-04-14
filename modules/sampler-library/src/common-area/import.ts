@@ -124,11 +124,18 @@ export function extractWavSampleRate(data: Uint8Array): number {
 // =========================================================================
 
 /**
- * Sanitize a string for use as a filename by replacing unsafe characters
- * with underscores.
+ * Sanitize a string for use as a filename.
+ *
+ * Trims whitespace, replaces unsafe characters and spaces with underscores,
+ * and collapses consecutive underscores. Follows the akaitools convention:
+ * spaces become underscores on disk.
  */
 export function sanitizeForFilename(input: string): string {
-  return input.replace(UNSAFE_FILENAME_CHARS, '_');
+  return input
+    .trim()
+    .replace(UNSAFE_FILENAME_CHARS, '_')
+    .replace(/\s+/g, '_')
+    .replace(/_+/g, '_');
 }
 
 /**

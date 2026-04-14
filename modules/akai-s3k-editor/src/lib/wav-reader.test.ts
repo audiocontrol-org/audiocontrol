@@ -8,14 +8,14 @@ import { parseWavFile } from '@/lib/wav-reader';
 function buildTestWav(options: {
   sampleRate?: number;
   bitsPerSample?: number;
-  numChannels?: number;
+  channels?: number;
   samples: number[]; // raw sample values (channel-interleaved if stereo)
   audioFormat?: number;
 }): ArrayBuffer {
   const {
     sampleRate = 44100,
     bitsPerSample = 16,
-    numChannels = 1,
+    channels = 1,
     samples,
     audioFormat = 1,
   } = options;
@@ -39,11 +39,11 @@ function buildTestWav(options: {
   writeString(view, offset, 'fmt '); offset += 4;
   view.setUint32(offset, fmtChunkSize, true); offset += 4;
   view.setUint16(offset, audioFormat, true); offset += 2; // audio format
-  view.setUint16(offset, numChannels, true); offset += 2;
+  view.setUint16(offset, channels, true); offset += 2;
   view.setUint32(offset, sampleRate, true); offset += 4;
-  const byteRate = sampleRate * numChannels * bytesPerSample;
+  const byteRate = sampleRate * channels * bytesPerSample;
   view.setUint32(offset, byteRate, true); offset += 4;
-  const blockAlign = numChannels * bytesPerSample;
+  const blockAlign = channels * bytesPerSample;
   view.setUint16(offset, blockAlign, true); offset += 2;
   view.setUint16(offset, bitsPerSample, true); offset += 2;
 
@@ -87,13 +87,13 @@ function writeString(view: DataView, offset: number, str: string): void {
 describe('parseWavFile', () => {
   it('parses a 16-bit mono WAV file', () => {
     const samples = [0, 1000, -1000, 32767, -32768];
-    const buffer = buildTestWav({ bitsPerSample: 16, numChannels: 1, samples });
+    const buffer = buildTestWav({ bitsPerSample: 16, channels: 1, samples });
     const result = parseWavFile(buffer);
 
     expect(result.sampleRate).toBe(44100);
     expect(result.bitsPerSample).toBe(16);
-    expect(result.numChannels).toBe(1);
-    expect(result.numSamples).toBe(5);
+    expect(result.channels).toBe(1);
+    expect(result.sampleCount).toBe(5);
     expect(Array.from(result.samples)).toEqual(samples);
   });
 
@@ -102,13 +102,13 @@ describe('parseWavFile', () => {
     const stereoSamples = [1000, 3000, -500, -1500];
     const buffer = buildTestWav({
       bitsPerSample: 16,
-      numChannels: 2,
+      channels: 2,
       samples: stereoSamples,
     });
     const result = parseWavFile(buffer);
 
-    expect(result.numChannels).toBe(2);
-    expect(result.numSamples).toBe(2);
+    expect(result.channels).toBe(2);
+    expect(result.sampleCount).toBe(2);
     // Mono should be average: (1000+3000)/2=2000, (-500+-1500)/2=-1000
     expect(Array.from(result.samples)).toEqual([2000, -1000]);
   });
@@ -118,7 +118,7 @@ describe('parseWavFile', () => {
     const samples = [128, 255, 0]; // silence, max positive, max negative
     const buffer = buildTestWav({
       bitsPerSample: 8,
-      numChannels: 1,
+      channels: 1,
       samples,
     });
     const result = parseWavFile(buffer);
@@ -138,7 +138,7 @@ describe('parseWavFile', () => {
     const samples = [0x7FFF00];
     const buffer = buildTestWav({
       bitsPerSample: 24,
-      numChannels: 1,
+      channels: 1,
       samples,
     });
     const result = parseWavFile(buffer);
@@ -152,7 +152,7 @@ describe('parseWavFile', () => {
     const samples = [0x7FFF0000];
     const buffer = buildTestWav({
       bitsPerSample: 32,
-      numChannels: 1,
+      channels: 1,
       samples,
     });
     const result = parseWavFile(buffer);

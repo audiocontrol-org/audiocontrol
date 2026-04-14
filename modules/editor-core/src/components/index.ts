@@ -44,12 +44,22 @@ export {
   LibraryPanel,
   LibraryBrowser,
   SampleDetailPanel,
+  Dialog,
+  DialogTitle,
+  DialogDescription,
+  DialogActions,
   ConfirmDialog,
   SaveDialog,
   MoveDialog,
   CacheMetricsModal,
   LibraryConnectionUI,
   DrumKitPadList,
+  LoadingBar,
+  SlideDrawer,
+  SteppedProgressDrawer,
+  type SteppedProgressDrawerProps,
+  type ProgressStep,
+  type StepStatus,
   FolderIcon,
   ChevronIcon,
   AudioFileIcon,
@@ -59,6 +69,8 @@ export {
   ImportIcon,
   RenameIcon,
   MoveIcon,
+  CloneIcon,
+  RefreshIcon,
   type TreeNode,
   type TreeViewProps,
   type TreeSectionProps,
@@ -66,6 +78,7 @@ export {
   type LibraryDragPayload,
   type ContextMenuAction,
   type ContextMenuProps,
+  type DialogProps,
   type ConfirmDialogProps,
   type SaveDialogProps,
   type SaveDialogResult,
@@ -95,6 +108,12 @@ export {
   type DeviceLibraryPlugin,
   type DeviceMemoryAction,
   type LibraryConnectionUIProps,
+  // Tree capability types
+  type TreeSelectionCapability,
+  type TreeEditCapability,
+  type TreeContextMenuCapability,
+  type TreeDragCapability,
+  type TreeRenderCapability,
 } from './library';
 
 // Operation status components
@@ -119,6 +138,17 @@ export {
   type OperationProgress,
   type OperationState,
 } from '../types/operation-progress';
+
+// Kit configuration types
+export {
+  type BaseKitConfig,
+  type KitOutputConfigProps,
+} from '../types/kit-config';
+
+// WAV file metadata types
+export {
+  type WavFileMetadata,
+} from '../types/wav-file-info';
 
 // SVG glow components
 export {

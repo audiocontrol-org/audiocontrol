@@ -13,9 +13,18 @@ import {
   type TriggerId,
 } from '@/ui/hooks/useTriggerInput.js';
 
-const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const;
 
-/** Convert a MIDI note number to a display name (e.g. 36 -> "C2") */
+/**
+ * Convert a MIDI note number to a display name (e.g. 36 -> "C2").
+ *
+ * DEVIATION: This duplicates midiNoteToName from @audiocontrol/sampler-library.
+ * Cannot import from sampler-library here because sample-chopper and sampler-library
+ * have a circular dependency (sampler-library depends on sample-chopper). Importing
+ * from sampler-library breaks the CJS build. This should not be copied elsewhere --
+ * all other modules should import from @audiocontrol/sampler-library or
+ * @audiocontrol/editor-core instead.
+ */
 export function midiNoteToName(note: number): string {
   return `${NOTE_NAMES[note % 12]}${Math.floor(note / 12) - 1}`;
 }

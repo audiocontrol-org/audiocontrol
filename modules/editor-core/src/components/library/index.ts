@@ -7,6 +7,13 @@ export {
   TreeSection,
   type TreeSectionProps,
 } from './TreeSection';
+export type {
+  TreeSelectionCapability,
+  TreeEditCapability,
+  TreeContextMenuCapability,
+  TreeDragCapability,
+  TreeRenderCapability,
+} from './tree-capabilities';
 export {
   PluginLibraryBrowser,
   LIBRARY_ITEM_MIME,
@@ -23,6 +30,13 @@ export {
   type LibraryTab,
   type LibraryPanelProps,
 } from './LibraryPanel';
+export {
+  Dialog,
+  DialogTitle,
+  DialogDescription,
+  DialogActions,
+  type DialogProps,
+} from './Dialog';
 export {
   ConfirmDialog,
   type ConfirmDialogProps,
@@ -61,6 +75,8 @@ export {
   ImportIcon,
   RenameIcon,
   MoveIcon,
+  CloneIcon,
+  RefreshIcon,
 } from './TreeIcons';
 export {
   CacheMetricsModal,
@@ -75,6 +91,14 @@ export {
 } from './LibraryConnectionUI';
 
 export { DrumKitPadList } from './DrumKitPadList';
+export { LoadingBar } from './LoadingBar';
+export { SlideDrawer, type SlideDrawerProps } from './SlideDrawer';
+export {
+  SteppedProgressDrawer,
+  type SteppedProgressDrawerProps,
+  type ProgressStep,
+  type StepStatus,
+} from './SteppedProgressDrawer';
 
 // Plugin interfaces
 export type {

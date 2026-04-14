@@ -22,9 +22,9 @@ import {
 import { cn } from '@/lib/utils';
 import { useLibraryTreeDragDrop } from '@/hooks/useLibraryTreeDragDrop';
 import { useLibraryTreeActions } from '@/hooks/useLibraryTreeActions';
+import { useLibraryTreeCapabilities } from '@/hooks/useLibraryTreeCapabilities';
 import { type DeviceDragData } from './DeviceMemoryPanel';
-import { TreeSection } from './LibraryTreeNode';
-import { ContextMenu } from '@audiocontrol/editor-core';
+import { TreeSection, ContextMenu } from '@audiocontrol/editor-core';
 import { WaveIcon, PatchIcon, DeleteButton } from './LibraryTreeIcons';
 import { SetItem } from './SetItem';
 
@@ -175,6 +175,32 @@ export function LibraryTreePanel({
     onRenameItem,
   });
 
+  // Tree capability objects for tones section
+  const tonesCapabilities = useLibraryTreeCapabilities({
+    category: 'tones',
+    onSelect: handleTreeNodeSelect,
+    onDelete: handleTreeNodeDelete,
+    onContextMenu: handleTreeContextMenu,
+    onDropOnDirectory: handleDropOnDirectory,
+    onRename: handleRename,
+  });
+
+  // Tree capability objects for patches section
+  const patchesCapabilities = useLibraryTreeCapabilities({
+    category: 'patches',
+    onSelect: handleTreeNodeSelect,
+    onDelete: handleTreeNodeDelete,
+    onContextMenu: handleTreeContextMenu,
+    onDropOnDirectory: handleDropOnDirectory,
+    onRename: handleRename,
+  });
+
+  // Tree capability objects for samples section (read-only)
+  const samplesCapabilities = useLibraryTreeCapabilities({
+    category: 'samples',
+    onSelect: handleTreeNodeSelect,
+  });
+
   const toggleSet = useCallback((name: string) => {
     setExpandedSets((prev) => {
       const next = new Set(prev);
@@ -301,19 +327,20 @@ export function LibraryTreePanel({
 
         {/* Individual Tones Section - Drop Zone */}
         {tonesTree ? (
-          // Hierarchical tree view
+          // Hierarchical tree view (editor-core TreeSection with capabilities)
           <TreeSection
             title="Individual Tones"
             nodes={tonesTree}
             category="tones"
-            expandedPaths={expandedPaths?.tones ?? new Set()}
+            data-testid="library-tones-section"
+            expandedIds={expandedPaths?.tones ?? new Set()}
             selectedId={computeSelectedId('tones')}
             onToggleExpand={(nodeId) => onToggleDirectoryExpanded?.('tones', nodeId)}
-            onSelect={(node) => handleTreeNodeSelect(node, 'tones')}
-            onDelete={(node) => handleTreeNodeDelete(node, 'tones')}
-            onContextMenu={(e, node) => handleTreeContextMenu(e, node, 'tones')}
-            onDropOnDirectory={(targetPath, dragData) => handleDropOnDirectory('tones', targetPath, dragData)}
-            onRename={(node, newName) => handleRename('tones', node, newName)}
+            selection={tonesCapabilities.selection}
+            edit={tonesCapabilities.edit}
+            contextMenu={tonesCapabilities.contextMenu}
+            drag={tonesCapabilities.drag}
+            render={tonesCapabilities.render}
             emptyMessage="Drag tones from device to export"
             isDragOver={isToneDragOver}
             onDragOver={handleToneDragOver}
@@ -406,19 +433,20 @@ export function LibraryTreePanel({
 
         {/* Individual Patches Section - Drop Zone */}
         {patchesTree ? (
-          // Hierarchical tree view
+          // Hierarchical tree view (editor-core TreeSection with capabilities)
           <TreeSection
             title="Individual Patches"
             nodes={patchesTree}
             category="patches"
-            expandedPaths={expandedPaths?.patches ?? new Set()}
+            data-testid="library-patches-section"
+            expandedIds={expandedPaths?.patches ?? new Set()}
             selectedId={computeSelectedId('patches')}
             onToggleExpand={(nodeId) => onToggleDirectoryExpanded?.('patches', nodeId)}
-            onSelect={(node) => handleTreeNodeSelect(node, 'patches')}
-            onDelete={(node) => handleTreeNodeDelete(node, 'patches')}
-            onContextMenu={(e, node) => handleTreeContextMenu(e, node, 'patches')}
-            onDropOnDirectory={(targetPath, dragData) => handleDropOnDirectory('patches', targetPath, dragData)}
-            onRename={(node, newName) => handleRename('patches', node, newName)}
+            selection={patchesCapabilities.selection}
+            edit={patchesCapabilities.edit}
+            contextMenu={patchesCapabilities.contextMenu}
+            drag={patchesCapabilities.drag}
+            render={patchesCapabilities.render}
             emptyMessage="Drag patches from device to export"
             isDragOver={isPatchDragOver}
             onDragOver={handlePatchDragOver}
@@ -518,10 +546,12 @@ export function LibraryTreePanel({
             title="Samples"
             nodes={commonSamplesTree}
             category="samples"
-            expandedPaths={expandedPaths?.samples ?? new Set()}
+            data-testid="library-samples-section"
+            expandedIds={expandedPaths?.samples ?? new Set()}
             selectedId={computeSelectedId('samples')}
             onToggleExpand={(nodeId) => onToggleDirectoryExpanded?.('samples', nodeId)}
-            onSelect={(node) => handleTreeNodeSelect(node, 'samples')}
+            selection={samplesCapabilities.selection}
+            render={samplesCapabilities.render}
             emptyMessage="No samples in common library"
           />
         )}

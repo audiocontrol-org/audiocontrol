@@ -1,13 +1,14 @@
 /**
- * Shared item type plugins for common-area samples and programs.
+ * Shared item type factories for common-area samples and programs.
  *
- * These define rendering and behavior for items that live in the
- * common library area shared across all editors. Device-specific
- * item types (tones, patches, keygroups) remain in their respective
- * editor plugins.
+ * These create ItemTypePlugin instances for items in the common library
+ * area shared across all editors. Context menu actions are filtered by
+ * the editor's declared transfer capabilities — only actions the editor
+ * can handle appear in the menu.
  */
 
-import type { ItemTypePlugin } from '@/components/library/plugins/types';
+import type { ItemTypePlugin, PluginContextMenuAction } from '@/components/library/plugins/types';
+import type { TransferActionId } from '@/hooks/useLibraryOperations';
 import { SampleIcon, ProgramIcon } from '@/plugins/common-area/icons';
 
 // =========================================================================
@@ -26,64 +27,129 @@ export interface CommonSampleMeta {
 export interface CommonProgramMeta {
   path?: string[];
   description?: string;
+  /** Number of zones in the program (from kitCount in tree node) */
+  kitCount?: number;
 }
 
 // =========================================================================
-// Sample item type
+// Sample item type factory
 // =========================================================================
 
-export const commonSampleItemType: ItemTypePlugin<CommonSampleMeta> = {
-  typeId: 'sample',
-  displayName: 'Sample',
+/**
+ * Create an item type plugin for common-area samples.
+ *
+ * @param supportedActions - Transfer actions this editor can handle.
+ *   Only actions in this set appear in the context menu.
+ */
+export function createCommonSampleItemType(
+  supportedActions: ReadonlySet<TransferActionId>,
+): ItemTypePlugin<CommonSampleMeta> {
+  return {
+    typeId: 'sample',
+    displayName: 'Sample',
 
-  renderIcon: () => <SampleIcon />,
+    renderIcon: () => <SampleIcon />,
 
-  renderTrailing: (meta) => {
-    if (!meta.sliceCount || meta.sliceCount <= 0) return null;
-    const unit = meta.hasDrumKit ? 'pad' : 'slice';
-    return (
-      <span className="text-xs text-gray-400">
-        {meta.sliceCount} {unit}{meta.sliceCount !== 1 ? 's' : ''}
-      </span>
-    );
-  },
+    renderTrailing: (meta) => {
+      if (!meta.sliceCount || meta.sliceCount <= 0) return null;
+      const unit = meta.hasDrumKit ? 'pad' : 'slice';
+      return (
+        <span className="text-xs text-gray-400">
+          {meta.sliceCount} {unit}{meta.sliceCount !== 1 ? 's' : ''}
+        </span>
+      );
+    },
 
-  isDraggable: () => true,
+    isDraggable: () => true,
 
-  supportsRename: true,
+    supportsRename: true,
 
-  getContextMenuActions: () => [
-    { id: 'open-loop-editor', label: 'Open in Loop Editor', icon: null },
-    { id: 'open-sample-editor', label: 'Open in Sample Editor', icon: null },
-    { id: 'open-chopper', label: 'Open in Chopper', icon: null },
-    { separator: true },
-    { id: 'rename', label: 'Rename', icon: null },
-    { id: 'move', label: 'Move to...', icon: null },
-    { separator: true },
-    { id: 'delete', label: 'Delete', icon: null, danger: true },
-  ],
-};
+    getContextMenuActions: (meta) => {
+      const actions: PluginContextMenuAction[] = [];
+
+      // Transfer actions — batchable (send multiple samples to device)
+      if (supportedActions.has('send-sample-to-device')) {
+        actions.push({ id: 'send-sample-to-device', label: 'Send to Device', icon: null, batchable: false });
+      }
+      if (meta.hasDrumKit && supportedActions.has('import-drum-kit')) {
+        actions.push({ id: 'import-drum-kit', label: 'Import as Drum Program', icon: null, batchable: false });
+      }
+
+      // Editor actions — single-item only (one editor window at a time)
+      if (actions.length > 0) actions.push({ separator: true });
+      actions.push({ id: 'open-loop-editor', label: 'Open in Loop Editor', icon: null, batchable: false });
+      actions.push({ id: 'open-sample-editor', label: 'Open in Sample Editor', icon: null, batchable: false });
+      actions.push({ id: 'open-chopper', label: 'Open in Chopper', icon: null, batchable: false });
+      if (meta.hasDrumKit && supportedActions.has('edit-drum-kit')) {
+        actions.push({ id: 'edit-drum-kit', label: 'Edit Kit', icon: null, batchable: false });
+      }
+
+      // File operations
+      actions.push({ separator: true });
+      actions.push({ id: 'rename', label: 'Rename', icon: null, batchable: false });
+      actions.push({ id: 'move', label: 'Move to...', icon: null, batchable: true });
+      actions.push({ separator: true });
+      actions.push({ id: 'delete', label: 'Delete', icon: null, danger: true, batchable: true });
+
+      return actions;
+    },
+  };
+}
 
 // =========================================================================
-// Program item type
+// Program item type factory
 // =========================================================================
 
-export const commonProgramItemType: ItemTypePlugin<CommonProgramMeta> = {
-  typeId: 'program',
-  displayName: 'Program',
+/**
+ * Create an item type plugin for common-area programs.
+ *
+ * @param supportedActions - Transfer actions this editor can handle.
+ *   Only actions in this set appear in the context menu.
+ */
+export function createCommonProgramItemType(
+  supportedActions: ReadonlySet<TransferActionId>,
+): ItemTypePlugin<CommonProgramMeta> {
+  return {
+    typeId: 'program',
+    displayName: 'Program',
 
-  renderIcon: () => <ProgramIcon />,
+    renderIcon: () => <ProgramIcon />,
 
-  renderTrailing: () => null,
+    renderTrailing: (meta) => {
+      if (!meta.kitCount || meta.kitCount <= 0) return null;
+      return (
+        <span className="text-xs text-gray-400">
+          {meta.kitCount} zone{meta.kitCount !== 1 ? 's' : ''}
+        </span>
+      );
+    },
 
-  isDraggable: () => true,
+    isDraggable: () => true,
 
-  supportsRename: true,
+    supportsRename: true,
 
-  getContextMenuActions: () => [
-    { id: 'rename', label: 'Rename', icon: null },
-    { id: 'move', label: 'Move to...', icon: null },
-    { separator: true },
-    { id: 'delete', label: 'Delete', icon: null, danger: true },
-  ],
-};
+    getContextMenuActions: () => {
+      const actions: PluginContextMenuAction[] = [];
+
+      // Transfer actions
+      if (supportedActions.has('send-program-to-device')) {
+        actions.push({ id: 'send-program-to-device', label: 'Send to Device', icon: null, batchable: false });
+      }
+      if (supportedActions.has('promote-to-common-area')) {
+        actions.push({ id: 'promote-to-common-area', label: 'Promote to Common Area', icon: null, batchable: false });
+      }
+      if (supportedActions.has('import-instrument')) {
+        actions.push({ id: 'import-instrument', label: 'Import to Device', icon: null, batchable: false });
+      }
+
+      // File operations
+      if (actions.length > 0) actions.push({ separator: true });
+      actions.push({ id: 'rename', label: 'Rename', icon: null, batchable: false });
+      actions.push({ id: 'move', label: 'Move to...', icon: null, batchable: true });
+      actions.push({ separator: true });
+      actions.push({ id: 'delete', label: 'Delete', icon: null, danger: true, batchable: true });
+
+      return actions;
+    },
+  };
+}

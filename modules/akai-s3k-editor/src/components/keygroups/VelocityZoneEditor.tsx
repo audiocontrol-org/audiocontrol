@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import type { ReactNode } from 'react';
+import { useState, useCallback } from 'react';
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
+import { ParameterRow, NumberInput, SelectInput } from '@/components/ui';
+import { VelocityRangeBar } from '@/components/keygroups/VelocityRangeBar';
 
 interface VelocityZoneEditorProps {
   header: KeygroupHeader;
@@ -19,62 +20,6 @@ const PLAYBACK_MODE_OPTIONS: { value: number; label: string }[] = [
   { value: 4, label: 'Play To End' },
 ];
 
-function ParameterRow({ label, children }: { label: string; children: ReactNode }): JSX.Element {
-  return (
-    <div className="flex items-center justify-between py-1.5 px-3">
-      <span className="text-sm text-gray-400">{label}</span>
-      <div className="flex items-center gap-2">{children}</div>
-    </div>
-  );
-}
-
-function NumberInput({
-  value,
-  min,
-  max,
-  onChange,
-}: {
-  value: number;
-  min: number;
-  max: number;
-  onChange: (v: number) => void;
-}): JSX.Element {
-  return (
-    <input
-      type="number"
-      value={value}
-      min={min}
-      max={max}
-      onChange={(e) => onChange(Number(e.target.value))}
-      className="w-20 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-gray-200 text-right"
-    />
-  );
-}
-
-function SelectInput({
-  value,
-  options,
-  onChange,
-}: {
-  value: number;
-  options: { value: number; label: string }[];
-  onChange: (v: number) => void;
-}): JSX.Element {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(Number(e.target.value))}
-      className="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-gray-200"
-    >
-      {options.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
-  );
-}
-
 function SampleNameSelect({
   value,
   sampleNames,
@@ -89,7 +34,7 @@ function SampleNameSelect({
     <select
       value={trimmed}
       onChange={(e) => onChange(e.target.value)}
-      className="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-gray-200 max-w-[200px]"
+      className="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-gray-200 max-w-xs"
     >
       <option value="">(none)</option>
       {sampleNames.map((name) => (
@@ -208,9 +153,36 @@ export function VelocityZoneEditor({
 }: VelocityZoneEditorProps): JSX.Element {
   const [activeZone, setActiveZone] = useState<ZoneIndex>(1);
 
+  const velocityZones = ZONE_INDICES.map((zone) => ({
+    lowVel: getZoneValue(header, 'LOVEL', zone),
+    highVel: getZoneValue(header, 'HIVEL', zone),
+    sampleName: getZoneString(header, 'SNAME', zone),
+  }));
+
+  const handleSplitDrag = useCallback(
+    (splitIndex: number, velocity: number) => {
+      // splitIndex 0 = boundary between zone 1 and zone 2
+      const leftZone = ZONE_INDICES[splitIndex];
+      const rightZone = ZONE_INDICES[splitIndex + 1];
+      if (leftZone !== undefined && rightZone !== undefined) {
+        onParameterChange(zoneField('HIVEL', leftZone), velocity);
+        onParameterChange(zoneField('LOVEL', rightZone), velocity + 1);
+      }
+    },
+    [onParameterChange],
+  );
+
   return (
     <div className="border border-gray-700 rounded-lg overflow-hidden mb-3">
       <div className="bg-gray-800 px-3 py-2 text-sm font-medium">Velocity Zones</div>
+
+      <VelocityRangeBar
+        zones={velocityZones}
+        selectedZone={activeZone - 1}
+        onSelectZone={(index) => setActiveZone(ZONE_INDICES[index])}
+        onSplitDrag={handleSplitDrag}
+        onSplitCommit={handleSplitDrag}
+      />
 
       <div className="flex border-b border-gray-700">
         {ZONE_INDICES.map((zone) => {

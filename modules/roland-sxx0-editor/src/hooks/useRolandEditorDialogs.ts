@@ -15,6 +15,7 @@ import type { StorageDirectoryHandle } from '@audiocontrol/sampler-library/brows
 import {
   useEditorDialogsCore,
   type EditorDialogStrategy,
+  type ErrorReporter,
   type WavData,
   type EditorDialogsCoreResult,
 } from '@audiocontrol/editor-core';
@@ -49,13 +50,13 @@ interface UseRolandEditorDialogsOptions {
   libraryHandle: StorageDirectoryHandle | null;
   selection: { type: string; name?: string; path?: string[] } | null;
   setLoading: (loading: boolean, message?: string) => void;
-  onError: (message: string) => void;
+  errorReporter: ErrorReporter;
   onRefresh: () => Promise<void>;
 }
 
 export function useRolandEditorDialogs({
   libraryHandle,
-  onError,
+  errorReporter,
   onRefresh,
 }: UseRolandEditorDialogsOptions): RolandEditorDialogsResult {
 
@@ -84,7 +85,7 @@ export function useRolandEditorDialogs({
     },
   }), []);
 
-  const core = useEditorDialogsCore(libraryHandle, strategy, onRefresh, onError);
+  const core = useEditorDialogsCore(libraryHandle, strategy, onRefresh, errorReporter);
 
   return {
     ...core,
