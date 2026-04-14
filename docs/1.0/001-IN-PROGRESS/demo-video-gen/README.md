@@ -10,9 +10,10 @@ Automated demo video generation from scripted Playwright browser interactions.
 | Phase 2 | Caption Generation (YAML, VO scripts) | Complete |
 | Phase 3 | First Scenarios (S3000XL, Roland S-330) | Complete (device scenario optional) |
 | Phase 4 | Video Preview Gallery (Vite dev server) | Complete |
-| Phase 5 | Video Publishing & Versioning | Planning |
-| Phase 6 | Gallery-Triggered Generation | Planning |
-| Phase 7 | Text Overlay Rendering | Planning |
+| Phase 5 | Port videocontrol Repo | Planning |
+| Phase 6 | Video Publishing & Versioning | Planning |
+| Phase 7 | Gallery-Triggered Generation | Planning |
+| Phase 8 | Text Overlay Rendering | Planning |
 
 ## Links
 

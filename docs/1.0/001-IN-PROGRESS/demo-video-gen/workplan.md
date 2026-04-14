@@ -6,9 +6,10 @@
 **GitHub Issues:**
 - #265 — Create infrastructure for a demo video generator (parent)
 - #267 — Add video preview gallery (Phase 4)
-- #268 — Add video publishing and versioning (Phase 5)
-- #269 — Add gallery-triggered video generation (Phase 6)
-- #270 — Add text overlay rendering (Phase 7)
+- #271 — Port videocontrol repo into audiocontrol monorepo (Phase 5)
+- #268 — Add video publishing and versioning (Phase 6)
+- #269 — Add gallery-triggered video generation (Phase 7)
+- #270 — Add text overlay rendering (Phase 8)
 
 ## Technical Approach
 
@@ -96,7 +97,27 @@ Use Playwright's built-in `recordVideo` to capture browser interactions as WebM.
 
 ---
 
-### Phase 5: Video Publishing & Versioning
+### Phase 5: Port videocontrol Repo
+
+**Goal:** Port all modules from the standalone `audiocontrol-org/videocontrol` repo into `modules/video-control/` and deprecate the standalone repo. Makes video-core, text-overlay, and phosphor-scope available for subsequent phases.
+
+**Tasks:**
+
+- [ ] Clone and inventory `audiocontrol-org/videocontrol` (video-core, text-overlay, phosphor-scope)
+- [ ] Port modules into `modules/video-control/packages/` (video-core, text-overlay, phosphor-scope)
+- [ ] Update package names from `@videocontrol/*` to `@audiocontrol/*`
+- [ ] Update internal cross-references and imports between ported packages
+- [ ] Wire ported packages into pnpm workspace (update `pnpm-workspace.yaml` or use nested workspace)
+- [ ] Verify all tests pass for ported modules
+- [ ] Update video-control's existing code to use ported text-overlay (replace hand-built YAML with real format)
+- [ ] Add deprecation notice to `audiocontrol-org/videocontrol` README
+- [ ] Archive the standalone repo on GitHub
+
+**Acceptance:** All three ported modules build and pass tests within the audiocontrol monorepo. The standalone videocontrol repo is archived with a deprecation notice pointing to the new location.
+
+---
+
+### Phase 6: Video Publishing & Versioning (was Phase 5)
 
 **Goal:** Publish generated videos to durable storage with per-scenario revision history so videos aren't fragile local-only artifacts.
 
@@ -114,7 +135,7 @@ Use Playwright's built-in `recordVideo` to capture browser interactions as WebM.
 
 ---
 
-### Phase 6: Gallery-Triggered Generation
+### Phase 7: Gallery-Triggered Generation (was Phase 6)
 
 **Goal:** Regenerate scenario videos from the gallery UI without leaving the browser.
 
@@ -131,7 +152,7 @@ Use Playwright's built-in `recordVideo` to capture browser interactions as WebM.
 
 ---
 
-### Phase 7: Text Overlay Rendering
+### Phase 8: Text Overlay Rendering (was Phase 7)
 
 **Goal:** Render timed caption overlays onto videos, both as burned-in MP4 and as a live HTML overlay in the gallery player.
 
