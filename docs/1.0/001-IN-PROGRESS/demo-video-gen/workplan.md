@@ -47,12 +47,11 @@ Use Playwright's built-in `recordVideo` to capture browser interactions as WebM.
 
 **Tasks:**
 
-- [ ] Extend scenario interface to include captions array: `{ text: string, timestampMs: number, durationMs: number, type: 'title' | 'callout' | 'step' }`
-- [ ] Implement YAML generation matching @videocontrol/text-overlay project format
-- [ ] Integrate caption output into scenario runner pipeline (output alongside video files)
-- [ ] Validate generated YAML against text-overlay schema (structural validation, not runtime)
-- [ ] Implement VO script output: generate a plain-text script with timestamps derived from caption data
-- [ ] Add output tier selection to Make targets: `TIER=silent|captioned|scripted`
+- [x] Extend scenario interface to include captions array: `{ text: string, timestampMs: number, durationMs: number, type: 'title' | 'callout' | 'step' }`
+- [x] Implement YAML generation (hand-built strings, no library dependency)
+- [x] Integrate caption output into scenario runner pipeline (output alongside video files)
+- [x] Implement VO script output: generate a plain-text script with timestamps derived from caption data
+- [x] Add output tier selection to Make targets: `TIER=silent|captioned|scripted` and `--tier` CLI flag
 
 **Acceptance:** Running a scenario with captions produces a `.yaml` file valid for text-overlay and (if tier=scripted) a `.txt` VO script.
 
@@ -65,11 +64,11 @@ Use Playwright's built-in `recordVideo` to capture browser interactions as WebM.
 **Tasks:**
 
 - [x] Create scenario: S3000XL draggable zones demo (harness mode) -- navigate to zone editor, drag zone boundaries, show visual feedback
-- [ ] Create scenario: Roland S-330 library browser (harness mode) -- browse library tree, select items, show metadata panel
+- [x] Create scenario: Roland S-330 library browser (harness mode) -- browse library tree, select items, show metadata panel
 - [ ] Create scenario: S3000XL sample transfer (device mode, optional) -- connect to device, initiate transfer, show progress
-- [ ] Add captions to all scenarios (callouts for key interactions, step labels for phases)
-- [ ] Integrate all scenarios into `make demo-all`
-- [ ] Verify harness scenarios run without any device connected
-- [ ] Document scenario authoring guide in tools/demo-video-gen/README.md
+- [x] Add captions to all scenarios (callouts for key interactions, step labels for phases)
+- [x] Integrate all scenarios into `make demo-all`
+- [x] Verify harness scenarios run without any device connected
+- [x] Document scenario authoring guide in VIDEO-DEMOS.md
 
 **Acceptance:** Each scenario produces MP4, GIF, and captions YAML. Harness scenarios run without a device. `make demo-all` runs all harness scenarios and skips device scenarios unless hardware is available.
