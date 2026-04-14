@@ -4,7 +4,9 @@
 
 **GitHub Milestone:** TBD
 **GitHub Issues:**
-- TBD (to be created via /feature-issues)
+- #265 — Create infrastructure for a demo video generator (parent)
+- #267 — Add video preview gallery (Phase 4)
+- #268 — Add video publishing and versioning (Phase 5)
 
 ## Technical Approach
 
@@ -72,3 +74,38 @@ Use Playwright's built-in `recordVideo` to capture browser interactions as WebM.
 - [x] Document scenario authoring guide in VIDEO-DEMOS.md
 
 **Acceptance:** Each scenario produces MP4, GIF, and captions YAML. Harness scenarios run without a device. `make demo-all` runs all harness scenarios and skips device scenarios unless hardware is available.
+
+---
+
+### Phase 4: Video Preview Gallery
+
+**Goal:** A local Vite-served gallery page for browsing and previewing generated demo videos without regenerating them.
+
+**Tasks:**
+
+- [ ] Add Vite as a dev dependency to video-control with a minimal `vite.config.ts`
+- [ ] Create gallery HTML page that displays available demos as a card grid
+- [ ] Implement dev server plugin or middleware that scans `dist/demos/*/` for existing video outputs
+- [ ] Each video card shows: GIF thumbnail, scenario name, duration, playable MP4, links to captions YAML and VO script (if present)
+- [ ] Add Make target: `make demo-preview` to start the Vite dev server serving the gallery
+- [ ] Gallery auto-refreshes when new videos are generated (Vite HMR or file watching)
+
+**Acceptance:** `make demo-preview` opens a local page listing all generated demos with playable video previews. Adding a new video via `make demo-scenario` causes the gallery to update without restart.
+
+---
+
+### Phase 5: Video Publishing & Versioning
+
+**Goal:** Publish generated videos to durable storage with per-scenario revision history so videos aren't fragile local-only artifacts.
+
+**Tasks:**
+
+- [ ] Research storage backend options (GitHub Releases, S3/R2, Git LFS, Netlify assets, etc.) and document trade-offs
+- [ ] Select storage backend based on research findings
+- [ ] Implement publish command: `make demo-publish SCENARIO=<name>` uploads video + metadata to storage
+- [ ] Add per-scenario revision tracking: each publish records date, git commit hash, and scenario file checksum
+- [ ] Implement revision listing: `make demo-versions SCENARIO=<name>` shows revision history
+- [ ] Update gallery to display published versions alongside local drafts
+- [ ] Add `make demo-publish-all` to publish all current scenarios
+
+**Acceptance:** Running `make demo-publish SCENARIO=s3k-zone-editor` uploads the video to the selected storage backend. Running it again creates a new revision, preserving the previous one. `make demo-versions` lists all revisions with dates and commit hashes.

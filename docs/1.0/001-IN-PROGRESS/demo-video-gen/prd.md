@@ -26,6 +26,8 @@ Demo videos for audiocontrol features are created manually, which means they go 
 - A Make target runs all scenarios and outputs videos to a `dist/` directory.
 - Three output tiers: silent (raw video only), captioned (video + text-overlay YAML for compositing), or scripted (proposed VO script for post-production).
 - Videos can be regenerated from the same scenario definitions when new versions ship.
+- A local preview gallery lets developers browse generated videos without regenerating.
+- Published videos are durably stored with per-scenario revision history.
 
 ## Scope
 
@@ -40,11 +42,14 @@ Demo videos for audiocontrol features are created manually, which means they go 
 - Harness mode (fixture data, no device required) and device mode (real hardware)
 - Output directory structure under `dist/`
 
+- Local preview gallery (Vite dev server) for browsing generated videos without regenerating
+- Video publishing pipeline with per-scenario revision history
+- Storage backend research and selection for durable video hosting
+
 ### Out of Scope
 
 - Caption compositing onto video (handled by @videocontrol/text-overlay)
 - Audio narration recording or synthesis
-- Video hosting or deployment
 - Video editing UI
 - Thumbnail generation
 - Video streaming or adaptive bitrate encoding
