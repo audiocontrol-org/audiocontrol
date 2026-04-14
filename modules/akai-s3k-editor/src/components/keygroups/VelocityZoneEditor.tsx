@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
 import { ParamKnob, ParamSelect } from '@/components/ui/ParamKnob';
 import { VelocityRangeBar } from '@/components/keygroups/VelocityRangeBar';
@@ -45,11 +45,19 @@ function SampleList({
   onChange: (name: string) => void;
 }): JSX.Element {
   const trimmed = value.trim();
+  const selectedRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (selectedRef.current) {
+      selectedRef.current.scrollIntoView({ block: 'nearest' });
+    }
+  }, [trimmed]);
 
   return (
     <div className="s3k-sample-list">
       <button
         type="button"
+        ref={trimmed === '' ? selectedRef : undefined}
         onClick={() => onChange('')}
         className={`s3k-sample-list-item ${trimmed === '' ? 's3k-sample-list-item--selected' : ''}`}
       >
@@ -62,6 +70,7 @@ function SampleList({
           <button
             key={name}
             type="button"
+            ref={isSelected ? selectedRef : undefined}
             onClick={() => onChange(t)}
             className={`s3k-sample-list-item ${isSelected ? 's3k-sample-list-item--selected' : ''}`}
           >
