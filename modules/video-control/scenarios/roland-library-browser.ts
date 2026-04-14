@@ -1,4 +1,5 @@
 import type { Page } from 'playwright';
+// Relative import: scenarios/ is outside tsconfig rootDir (src/), so @/ paths don't resolve here.
 import type { Caption, ScenarioMetadata } from '../src/types.js';
 
 export const metadata: ScenarioMetadata = {
@@ -231,10 +232,8 @@ export const run = async (page: Page): Promise<void> => {
         Object.assign(selectedRow.style, {
           backgroundColor: 'transparent',
         });
-        const prevLabel = selectedRow.querySelector(
-          '[data-role="label"]',
-        ) as HTMLSpanElement | null;
-        if (prevLabel) {
+        const prevLabel = selectedRow.querySelector('[data-role="label"]');
+        if (prevLabel instanceof HTMLSpanElement) {
           prevLabel.style.color = selectedRow.hasAttribute('data-folder')
             ? '#d1d5db'
             : '#9ca3af';
@@ -244,10 +243,8 @@ export const run = async (page: Page): Promise<void> => {
       Object.assign(row.style, {
         backgroundColor: '#1e3a5f',
       });
-      const label = row.querySelector(
-        '[data-role="label"]',
-      ) as HTMLSpanElement | null;
-      if (label) {
+      const label = row.querySelector('[data-role="label"]');
+      if (label instanceof HTMLSpanElement) {
         label.style.color = '#93c5fd';
       }
     };
@@ -359,19 +356,13 @@ export const run = async (page: Page): Promise<void> => {
     buildTree(treeData, container, 0, '');
 
     // Auto-expand root "Library" folder so tree is visible on load
-    const libraryRow = container.querySelector(
-      '[data-path="Library"]',
-    ) as HTMLDivElement | null;
-    if (libraryRow) {
+    const libraryRow = container.querySelector('[data-path="Library"]');
+    if (libraryRow instanceof HTMLDivElement) {
       libraryRow.setAttribute('data-expanded', 'true');
-      const arrow = libraryRow.querySelector(
-        '[data-role="arrow"]',
-      ) as HTMLSpanElement | null;
-      if (arrow) arrow.textContent = '\u25BE';
-      const children = container.querySelector(
-        '[data-children-of="Library"]',
-      ) as HTMLDivElement | null;
-      if (children) children.style.display = 'block';
+      const arrow = libraryRow.querySelector('[data-role="arrow"]');
+      if (arrow instanceof HTMLSpanElement) arrow.textContent = '\u25BE';
+      const children = container.querySelector('[data-children-of="Library"]');
+      if (children instanceof HTMLDivElement) children.style.display = 'block';
     }
 
     document.body.appendChild(container);

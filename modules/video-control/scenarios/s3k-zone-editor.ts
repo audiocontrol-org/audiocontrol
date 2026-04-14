@@ -1,4 +1,5 @@
 import type { Page } from 'playwright';
+// Relative import: scenarios/ is outside tsconfig rootDir (src/), so @/ paths don't resolve here.
 import type { Caption, ScenarioMetadata } from '../src/types.js';
 
 export const metadata: ScenarioMetadata = {

@@ -1,16 +1,6 @@
 import type { Page } from 'playwright';
-
-export interface ScenarioMetadata {
-  name: string;
-  description: string;
-  mode: 'harness' | 'device';
-  outputTier: 'silent' | 'captioned' | 'scripted';
-}
-
-export interface ScenarioModule {
-  metadata: ScenarioMetadata;
-  run: (page: Page) => Promise<void>;
-}
+// Relative import: scenarios/ is outside tsconfig rootDir (src/), so @/ paths don't resolve here.
+import type { ScenarioMetadata } from '../src/types.js';
 
 export const metadata: ScenarioMetadata = {
   name: 'hello-world',

@@ -50,15 +50,18 @@ export async function runScenario(
   await page.goto(options.url);
   await scenario.run(page);
 
-  // Close page and context to finalize the video
-  await page.close();
-  await context.close();
-
-  // Playwright saves video as .webm -- find it
+  // Capture video reference before closing — Playwright requires this ordering
   const video = page.video();
   if (!video) {
     throw new Error(`No video recorded for scenario "${name}"`);
   }
+
+  // Close page and context to finalize the video file
+  await page.close();
+  await context.close();
+  await browser.close();
+
+  // Playwright saves video as .webm — path is available after close
   const webmPath = await video.path();
 
   // Convert to MP4 and GIF
@@ -67,8 +70,6 @@ export async function runScenario(
 
   await convertToMp4(webmPath, mp4Path);
   await convertToGif(webmPath, gifPath);
-
-  await browser.close();
 
   // Generate caption outputs if the scenario has captions and the tier calls for them
   const effectiveTier = options.tier ?? scenario.metadata.outputTier;

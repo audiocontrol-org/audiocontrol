@@ -11,22 +11,11 @@ const formatTimestamp = (ms: number): string => {
 };
 
 /**
- * Escape a string for safe inclusion in YAML (wrap in quotes if needed).
+ * Escape a string for safe inclusion in YAML. Always double-quotes for consistency.
  */
 const yamlEscapeString = (text: string): string => {
-  if (
-    text.includes(':') ||
-    text.includes('#') ||
-    text.includes('"') ||
-    text.includes("'") ||
-    text.includes('\n') ||
-    text.startsWith(' ') ||
-    text.endsWith(' ')
-  ) {
-    const escaped = text.replace(/"/g, '\\"');
-    return `"${escaped}"`;
-  }
-  return `"${text}"`;
+  const escaped = text.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return `"${escaped}"`;
 };
 
 /**
