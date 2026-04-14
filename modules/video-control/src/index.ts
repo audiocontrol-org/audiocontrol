@@ -9,3 +9,4 @@ export type {
 } from '@/types.js';
 export { runScenario } from '@/runner.js';
 export type { RunScenarioOptions } from '@/runner.js';
+export { generateCaptionsYaml, generateVoScript } from '@/captions.js';

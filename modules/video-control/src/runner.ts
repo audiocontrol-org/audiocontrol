@@ -1,8 +1,9 @@
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
-import type { ScenarioModule, ScenarioResult } from '@/types.js';
-import { convertToGif, convertToMp4 } from '@/ffmpeg.js';
+import { generateCaptionsYaml, generateVoScript } from '@/captions.js';
+import { convertToGif, convertToMp4, getVideoDurationMs } from '@/ffmpeg.js';
+import type { OutputTier, ScenarioModule, ScenarioResult } from '@/types.js';
 
 export interface RunScenarioOptions {
   /** URL to navigate to before running the scenario */
@@ -13,6 +14,8 @@ export interface RunScenarioOptions {
   width?: number;
   /** Viewport height (default 720) */
   height?: number;
+  /** Output tier override (defaults to scenario's own metadata.outputTier) */
+  tier?: OutputTier;
 }
 
 export async function runScenario(
@@ -67,11 +70,44 @@ export async function runScenario(
 
   await browser.close();
 
+  // Generate caption outputs if the scenario has captions and the tier calls for them
+  const effectiveTier = options.tier ?? scenario.metadata.outputTier;
+  let captionsYamlPath: string | undefined;
+  let voScriptPath: string | undefined;
+
+  if (
+    scenario.captions &&
+    scenario.captions.length > 0 &&
+    (effectiveTier === 'captioned' || effectiveTier === 'scripted')
+  ) {
+    const videoDurationMs = await getVideoDurationMs(mp4Path);
+
+    const yamlContent = generateCaptionsYaml(
+      name,
+      scenario.captions,
+      videoDurationMs,
+    );
+    captionsYamlPath = join(outputDir, 'captions.yaml');
+    await writeFile(captionsYamlPath, yamlContent, 'utf-8');
+
+    if (effectiveTier === 'scripted') {
+      const voContent = generateVoScript(
+        name,
+        scenario.captions,
+        videoDurationMs,
+      );
+      voScriptPath = join(outputDir, 'vo-script.txt');
+      await writeFile(voScriptPath, voContent, 'utf-8');
+    }
+  }
+
   return {
     scenarioName: name,
     outputDir,
     mp4Path,
     gifPath,
+    captionsYamlPath,
+    voScriptPath,
     metadata: scenario.metadata,
   };
 }

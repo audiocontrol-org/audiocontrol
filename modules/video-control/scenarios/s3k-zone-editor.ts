@@ -1,11 +1,5 @@
 import type { Page } from 'playwright';
-
-interface ScenarioMetadata {
-  name: string;
-  description: string;
-  mode: 'harness' | 'device';
-  outputTier: 'silent' | 'captioned' | 'scripted';
-}
+import type { Caption, ScenarioMetadata } from '../src/types.js';
 
 export const metadata: ScenarioMetadata = {
   name: 's3k-zone-editor',
@@ -14,6 +8,63 @@ export const metadata: ScenarioMetadata = {
   mode: 'harness',
   outputTier: 'silent',
 };
+
+export const captions: Caption[] = [
+  {
+    text: 'The S3000XL editor includes a visual keygroup zone mapper for assigning samples across the keyboard.',
+    timestampMs: 0,
+    durationMs: 6000,
+    type: 'title',
+  },
+  {
+    text: 'The zone overview shows all keygroups in the current program. Each colored rectangle represents a keygroup\'s range on the keyboard.',
+    timestampMs: 6000,
+    durationMs: 7000,
+    type: 'step',
+  },
+  {
+    text: 'Clicking a keygroup selects it for editing. The selected zone is highlighted in blue.',
+    timestampMs: 13000,
+    durationMs: 5000,
+    type: 'step',
+  },
+  {
+    text: 'The key range editor appears below, showing a draggable bar for the selected keygroup\'s note range.',
+    timestampMs: 18000,
+    durationMs: 6000,
+    type: 'step',
+  },
+  {
+    text: 'Dragging the right handle extends the upper boundary. The zone overview updates in real time as the range changes.',
+    timestampMs: 24000,
+    durationMs: 7000,
+    type: 'step',
+  },
+  {
+    text: 'The left handle adjusts the lower boundary the same way.',
+    timestampMs: 31000,
+    durationMs: 5300,
+    type: 'step',
+  },
+  {
+    text: 'Selecting a different keygroup switches the range editor to show that keygroup\'s boundaries.',
+    timestampMs: 36300,
+    durationMs: 6000,
+    type: 'step',
+  },
+  {
+    text: 'Each keygroup\'s range can be adjusted independently.',
+    timestampMs: 42300,
+    durationMs: 5300,
+    type: 'step',
+  },
+  {
+    text: 'Zones can be positioned precisely to create splits, layers, and velocity-switched programs.',
+    timestampMs: 47600,
+    durationMs: 5000,
+    type: 'callout',
+  },
+];
 
 interface Keygroup {
   lowNote: number;

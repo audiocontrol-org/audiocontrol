@@ -38,5 +38,7 @@ export interface ScenarioResult {
   outputDir: string;
   mp4Path: string;
   gifPath: string;
+  captionsYamlPath?: string;
+  voScriptPath?: string;
   metadata: ScenarioMetadata;
 }

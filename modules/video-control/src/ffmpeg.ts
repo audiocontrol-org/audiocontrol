@@ -5,6 +5,28 @@ import { promisify } from 'node:util';
 const execFileAsync = promisify(execFile);
 
 /**
+ * Get video duration in milliseconds using ffprobe.
+ */
+export async function getVideoDurationMs(videoPath: string): Promise<number> {
+  const { stdout } = await execFileAsync('ffprobe', [
+    '-v',
+    'quiet',
+    '-show_entries',
+    'format=duration',
+    '-of',
+    'csv=p=0',
+    videoPath,
+  ]);
+  const seconds = parseFloat(stdout.trim());
+  if (isNaN(seconds)) {
+    throw new Error(
+      `Failed to parse video duration from ffprobe output: "${stdout.trim()}"`,
+    );
+  }
+  return Math.round(seconds * 1000);
+}
+
+/**
  * Convert WebM to MP4 using h264 codec.
  */
 export async function convertToMp4(

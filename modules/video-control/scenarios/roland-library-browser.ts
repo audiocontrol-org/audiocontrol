@@ -1,11 +1,5 @@
 import type { Page } from 'playwright';
-
-interface ScenarioMetadata {
-  name: string;
-  description: string;
-  mode: 'harness' | 'device';
-  outputTier: 'silent' | 'captioned' | 'scripted';
-}
+import type { Caption, ScenarioMetadata } from '../src/types.js';
 
 export const metadata: ScenarioMetadata = {
   name: 'roland-library-browser',
@@ -14,6 +8,45 @@ export const metadata: ScenarioMetadata = {
   mode: 'harness',
   outputTier: 'silent',
 };
+
+export const captions: Caption[] = [
+  {
+    text: 'The S-330 editor includes a library browser for organizing patches, samples, and tones.',
+    timestampMs: 0,
+    durationMs: 5000,
+    type: 'title',
+  },
+  {
+    text: 'The library displays your content as a navigable tree structure.',
+    timestampMs: 5000,
+    durationMs: 6000,
+    type: 'step',
+  },
+  {
+    text: 'Expanding a folder reveals its contents -- patches organized into sub-folders.',
+    timestampMs: 11000,
+    durationMs: 7000,
+    type: 'step',
+  },
+  {
+    text: 'Selecting an item highlights it in the tree. Here we pick Grand Piano from the Piano patches folder.',
+    timestampMs: 18000,
+    durationMs: 7000,
+    type: 'step',
+  },
+  {
+    text: 'You can browse through different categories to find the content you need.',
+    timestampMs: 25000,
+    durationMs: 7000,
+    type: 'step',
+  },
+  {
+    text: 'The library supports the full S-330 content hierarchy -- patches, tones, and wave samples.',
+    timestampMs: 32000,
+    durationMs: 7000,
+    type: 'step',
+  },
+];
 
 // ---------------------------------------------------------------------------
 // Voiceover script (determines all timing)
