@@ -132,6 +132,15 @@ The compiler must catch contract violations. No optional bags of callbacks, no d
 - Use `pnpm` for all package operations
 - Use `tsx` for running TypeScript (not `ts-node`)
 
+## Video Demos
+
+**Read [VIDEO-DEMOS.md](/VIDEO-DEMOS.md) before creating or modifying demo video scenarios.** It is the single source of truth for:
+
+- **Pacing** — 5-8 seconds per interaction; anticipation, action, absorption
+- **Scenario structure** — exports, modes (harness vs device), output tiers
+- **Harness mode** — building UI with vanilla DOM in `page.evaluate()`, matching editor visual style
+- **tsx compatibility** — arrow functions inside evaluate blocks to avoid `__name` injection
+
 ## Monorepo Conventions
 - Each module is self-contained with clear boundaries
 - Shared types go in dedicated packages

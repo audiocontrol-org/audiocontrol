@@ -34,6 +34,7 @@ AUDIOTOOLS_CLI     := $(MODULES_DIR)/audiotools-cli/.build-stamp
 SYNTH_CORE         := $(MODULES_DIR)/synth-core/.build-stamp
 SAMPLE_EDITOR_MOD  := $(MODULES_DIR)/sample-editor/.build-stamp
 AKAI_S3K_EDITOR    := $(MODULES_DIR)/akai-s3k-editor/.build-stamp
+VIDEO_CONTROL      := $(MODULES_DIR)/video-control/.build-stamp
 
 ALL_STAMPS := \
 	$(MIDI_CORE) $(SAMPLER_LIB) $(AUDIOTOOLS_CONFIG) $(CANONICAL_MIDI) \
@@ -42,7 +43,7 @@ ALL_STAMPS := \
 	$(SAMPLER_DEVICES) $(SAMPLER_LIBRARY) \
 	$(SAMPLER_TRANSLATE) $(SAMPLER_BACKUP) $(SAMPLER_EXPORT) $(LOOP_EDITOR) \
 	$(D110_EDITOR) $(JV1080_EDITOR) $(ROLAND_SXX0_EDITOR) $(AUDIOTOOLS_CLI) \
-	$(SYNTH_CORE) $(SAMPLE_EDITOR_MOD) $(AKAI_S3K_EDITOR)
+	$(SYNTH_CORE) $(SAMPLE_EDITOR_MOD) $(AKAI_S3K_EDITOR) $(VIDEO_CONTROL)
 
 INSTALL_STAMP := node_modules/.install-stamp
 
@@ -76,8 +77,9 @@ AUDIOTOOLS_CLI_SRC     := $(shell find $(MODULES_DIR)/audiotools-cli/src -name '
 SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
+VIDEO_CONTROL_SRC      := $(shell find $(MODULES_DIR)/video-control/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland demo-scenario demo-all demo-device demo-preview
 
 build: $(ALL_STAMPS)
 
@@ -495,6 +497,37 @@ $(ROLAND_SXX0_EDITOR): $(EDITOR_CORE) $(LOOP_EDITOR) $(SAMPLE_CHOPPER) $(SAMPLE_
 $(AUDIOTOOLS_CLI): $(AUDIOTOOLS_CONFIG) $(LIB_DEVICE_UUID) $(SAMPLER_BACKUP) $(SAMPLER_EXPORT) $(AUDIOTOOLS_CLI_SRC)
 	cd $(MODULES_DIR)/audiotools-cli && pnpm build
 	@touch $@
+
+# ---------------------------------------------------------------------------
+# Video Control (standalone, no module deps)
+# ---------------------------------------------------------------------------
+
+$(VIDEO_CONTROL): $(INSTALL_STAMP) $(VIDEO_CONTROL_SRC)
+	cd $(MODULES_DIR)/video-control && pnpm build
+	@touch $@
+
+# ---------------------------------------------------------------------------
+# Demo Video Generation
+# ---------------------------------------------------------------------------
+
+SCENARIO ?=
+
+# Run a single scenario by name
+# Usage: make demo-scenario SCENARIO=hello-world
+demo-scenario: $(VIDEO_CONTROL)
+	@test -n "$(SCENARIO)" || (echo "ERROR: SCENARIO is required. Usage: make demo-scenario SCENARIO=hello-world" && exit 1)
+	cd $(MODULES_DIR)/video-control && tsx src/cli.ts scenarios/$(SCENARIO).ts
+
+# Run all harness scenarios (no device required)
+demo-all: $(VIDEO_CONTROL)
+	@for f in $(MODULES_DIR)/video-control/scenarios/*.ts; do \
+		echo "=== Running scenario: $$(basename $$f .ts) ==="; \
+		cd $(CURDIR)/$(MODULES_DIR)/video-control && tsx src/cli.ts "$(CURDIR)/$$f" || exit 1; \
+	done
+
+# Run device scenarios only (requires hardware)
+demo-device: $(VIDEO_CONTROL)
+	@echo "Device scenarios not yet implemented"
 
 # ---------------------------------------------------------------------------
 # Clean
