@@ -23,6 +23,7 @@
 | Phase 10 | #276 | Remove Compare page (unused feature) |
 | Phase 11 | #277 | Persistent editor cache — sessionStorage for data |
 | Phase 12 | #278 | Fix program download expandability and atomic sample rename |
+| Phase 13 | #279 | Implement sample clone in device client and UI |
 
 ## Technical Approach
 
@@ -170,10 +171,10 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 
 ### Tasks
 
-- [ ] Add rename (double-click), clone, refresh, delete hover actions to programs in DeviceMemoryPanel
-- [ ] Add rename, refresh, delete hover actions to samples in DeviceMemoryPanel
-- [ ] Wire CRUD operations to the S3K device client (renameProgram, cloneProgram, deleteProgram, renameSample, deleteSample)
-- [ ] Use ConfirmDialog for destructive actions, optimistic updates for rename
+- [x] Add rename (double-click), clone, refresh, delete hover actions to programs in DeviceMemoryPanel
+- [x] Add rename, refresh, delete hover actions to samples in DeviceMemoryPanel
+- [x] Wire CRUD operations to the S3K device client (renameProgram, cloneProgram, deleteProgram, renameSample, deleteSample)
+- [x] Use ConfirmDialog for destructive actions, optimistic updates for rename
 - [ ] Write tests for DeviceMemoryPanel CRUD interactions
 
 ### Acceptance Criteria
@@ -306,3 +307,21 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 - Renaming a sample inside a program directory updates the program YAML's zone references
 - Rename + YAML update is atomic with rollback on failure
 - Works regardless of MIDI transport
+
+---
+
+## Phase 13: Sample Clone
+
+**Goal:** Implement sample duplication in device memory.
+
+### Tasks
+
+- [ ] Implement cloneSample in s3000xl-client (fetch header + SDS data, send to new slot, rename)
+- [ ] Add clone action to sample list items in DeviceMemoryPanel
+- [ ] Add clone action to sample list in SamplesPage (when built)
+
+### Acceptance Criteria
+
+- Samples can be cloned in device memory
+- Clone appears as a hover action icon on sample list items
+- Cloned sample gets a " CPY" suffix name

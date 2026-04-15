@@ -382,6 +382,20 @@ export function LibraryPage(): JSX.Element {
     editorDialogs.createEditorActionHandler(),
   );
 
+  const handleCloneDeviceProgram = useCallback(
+    async (index: number, name: string) => {
+      if (!client) return;
+      try {
+        const cloneName = `${name.trim().substring(0, 8)} CPY`.padEnd(12);
+        await client.cloneProgram(index, cloneName);
+        await refreshDevice();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to clone program');
+      }
+    },
+    [client, refreshDevice, setError],
+  );
+
   const deviceMemoryState = useMemo<S3kMemoryPanelState>(() => ({
     programNames: deviceProgramNames,
     sampleNames: deviceSampleNames,
@@ -451,6 +465,7 @@ export function LibraryPage(): JSX.Element {
     onRenameProgram: isDeviceConnected ? transferCallbacks.handleRenameDeviceProgram : undefined,
     onDeleteSample: isDeviceConnected ? transferCallbacks.handleDeleteDeviceSample : undefined,
     onDeleteProgram: isDeviceConnected ? transferCallbacks.handleDeleteDeviceProgram : undefined,
+    onCloneProgram: isDeviceConnected ? handleCloneDeviceProgram : undefined,
     isConnected: isDeviceConnected,
     isLoading: isDeviceLoading,
   }), [
@@ -459,7 +474,7 @@ export function LibraryPage(): JSX.Element {
     handleDeviceSelectProgram, handleDeviceSelectSample,
     refreshDevice, isDeviceConnected, isDeviceLoading,
     canTransfer, transferCallbacks,
-    instrumentTransfer,
+    instrumentTransfer, handleCloneDeviceProgram,
   ]);
 
   // -----------------------------------------------------------------------
