@@ -10,7 +10,7 @@ import { useEditorStore } from '@/stores/editorStore';
 import { useConnectionDrawerStore } from '@/stores/connectionDrawerStore';
 import { writeKeygroupField } from '@/lib/keygroup-writers';
 import { ErrorBanner } from '@/components/ui';
-import { FULL_RANGE } from '@/components/keygroups/note-coordinate-utils';
+import { FULL_RANGE, panRange, zoomIn, zoomOut } from '@/components/keygroups/note-coordinate-utils';
 import type { NoteRange } from '@/components/keygroups/note-coordinate-utils';
 import { ZoneOverviewToolbar } from '@/components/keygroups/ZoneOverviewToolbar';
 
@@ -60,21 +60,76 @@ export function KeygroupsPage(): JSX.Element {
     loadKeygroups(selectedProgramIndex, selectedProgram.GROUPS);
   }, [isConnected, selectedProgramIndex, selectedProgram, invalidateCache, selectKeygroup, loadKeygroups]);
 
+  // Throttled drag handler: update store immediately, write to device at most every 150ms
+  const lastDragWrite = useRef(0);
+  const dragWriteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleDragChange = useCallback(
+    (field: string, value: number) => {
+      if (selectedKeygroupIndex === null || !client) return;
+
+      const header = useKeygroupStore.getState().keygroups[selectedKeygroupIndex];
+      if (!header) return;
+
+      console.warn('[handleDragChange] field=%s value=%d E_FREQ_before=%d raw[30]=%d raw[31]=%d', field, value, header.E_FREQ, header.raw[30], header.raw[31]);
+
+      const updated = { ...header, [field]: value };
+      useKeygroupStore.getState().setKeygroup(selectedKeygroupIndex, updated);
+
+      const now = Date.now();
+      if (now - lastDragWrite.current >= 150) {
+        lastDragWrite.current = now;
+        const toSend = { ...updated, raw: [...header.raw] };
+        writeKeygroupField(toSend, field, value);
+        console.warn('[handleDragChange] sending: E_FREQ=%d raw[30]=%d raw[31]=%d', toSend.E_FREQ, toSend.raw[30], toSend.raw[31]);
+        client.writeKeygroupHeader(toSend);
+      }
+    },
+    [selectedKeygroupIndex, client],
+  );
+
+  // Commit: write current header to device (called on drag end)
+  const handleCommitHeader = useCallback(async () => {
+    if (selectedKeygroupIndex === null || !client) return;
+    if (dragWriteTimer.current) clearTimeout(dragWriteTimer.current);
+    const header = useKeygroupStore.getState().keygroups[selectedKeygroupIndex];
+    if (!header) return;
+    const toSend = { ...header, raw: [...header.raw] };
+
+    console.warn('[handleCommitHeader] before re-encode: E_FREQ=%d raw[30]=%d raw[31]=%d', toSend.E_FREQ, toSend.raw[30], toSend.raw[31]);
+
+    // Re-encode all fields that might have changed during drag
+    for (const field of Object.keys(toSend)) {
+      if (field !== 'raw') {
+        const val = toSend[field as keyof typeof toSend];
+        const wrote = writeKeygroupField(toSend, field, val as number);
+        if (wrote && field === 'E_FREQ') {
+          console.warn('[handleCommitHeader] encoded E_FREQ=%s raw[30]=%d raw[31]=%d', val, toSend.raw[30], toSend.raw[31]);
+        }
+      }
+    }
+
+    console.warn('[handleCommitHeader] after re-encode: E_FREQ=%d raw[30]=%d raw[31]=%d', toSend.E_FREQ, toSend.raw[30], toSend.raw[31]);
+
+    await client.writeKeygroupHeader(toSend);
+  }, [selectedKeygroupIndex, client]);
+
   const handleParameterChange = useCallback(
     async (field: string, value: number | string) => {
       if (selectedKeygroupIndex === null || !client) return;
 
-      // Read from getState() not the closure — multiple calls in the same
-      // tick must each see the previous call's update.
       const header = useKeygroupStore.getState().keygroups[selectedKeygroupIndex];
       if (!header) return;
 
-      // Update local store optimistically
+      console.warn('[handleParameterChange] field=%s value=%s E_FREQ_before=%d raw[30]=%d raw[31]=%d', field, value, header.E_FREQ, header.raw[30], header.raw[31]);
+
       const updated = { ...header, [field]: value, raw: [...header.raw] };
       useKeygroupStore.getState().setKeygroup(selectedKeygroupIndex, updated);
 
-      // Encode value into raw SysEx bytes, then write to device
       writeKeygroupField(updated, field, value);
+
+      console.warn('[handleParameterChange] after encode: E_FREQ=%d raw[30]=%d raw[31]=%d', updated.E_FREQ, updated.raw[30], updated.raw[31]);
+
       await client.writeKeygroupHeader(updated);
     },
     [selectedKeygroupIndex, client, keygroups],
@@ -196,6 +251,28 @@ export function KeygroupsPage(): JSX.Element {
 
   const [noteRange, setNoteRange] = useState<NoteRange>(FULL_RANGE);
 
+  // Ctrl+Arrow: pan zone overview regardless of focused element
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!e.shiftKey) return;
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        const span = noteRange.max - noteRange.min;
+        const step = Math.max(1, Math.round(span * 0.1));
+        const delta = e.key === 'ArrowLeft' ? step : -step;
+        setNoteRange(panRange(noteRange, delta));
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const newRange = e.key === 'ArrowUp' ? zoomIn(noteRange) : zoomOut(noteRange);
+        if (newRange.max - newRange.min >= 12) {
+          setNoteRange(newRange);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [noteRange]);
+
   if (!isConnected) {
     return (
       <div className="ac-page ac-page-shell">
@@ -293,6 +370,8 @@ export function KeygroupsPage(): JSX.Element {
               keygroupIndex={selectedKeygroupIndex!}
               sampleNames={sampleNames}
               onParameterChange={handleParameterChange}
+              onDragChange={handleDragChange}
+              onCommitHeader={handleCommitHeader}
               noteRange={noteRange}
             />
           ) : selectedKeygroupIndex !== null ? (

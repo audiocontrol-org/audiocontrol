@@ -1,12 +1,12 @@
 /**
- * S3K program promotion: device-specific library → common area.
+ * S3K program promotion: device-specific library -> common area.
  *
  * Converts a stored S3K program (Zone 3) to a common-area program
  * bundle (Zone 4) by mapping keygroups to zones via the existing
  * akai-to-common converter, then copying referenced sample WAVs.
  *
  * Handles both SysEx-origin (s3000xl-program) and disk-origin
- * (s3000xl-disk-program) formats — both store the same keygroup
+ * (s3000xl-disk-program) formats -- both store the same keygroup
  * fields needed for conversion.
  *
  * See SAMPLER-LIBRARY.md for the four-zone storage model.
@@ -33,7 +33,7 @@ import {
 } from '@audiocontrol/sampler-library/browser';
 
 // =========================================================================
-// Adapter: serialized keygroups → AkaiDiskKeygroup[]
+// Adapter: serialized keygroups -> AkaiDiskKeygroup[]
 // =========================================================================
 
 /**
@@ -47,7 +47,7 @@ function serializedKeygroupsToAkai(
   keygroups: Record<string, unknown>[],
 ): AkaiDiskKeygroup[] {
   return keygroups.map((kg) => {
-    // Extract sample names — may be stored as sampleNames array or SNAME1-4 fields
+    // Extract sample names -- may be stored as sampleNames array or SNAME1-4 fields
     let sampleNames: string[];
     if (Array.isArray(kg.sampleNames)) {
       sampleNames = (kg.sampleNames as string[]).map((n) => String(n).trim());
@@ -105,6 +105,7 @@ function extractProgramData(yamlContent: string): {
   sampleReferences: string[];
 } {
   const format = detectProgramFormat(yamlContent);
+  console.log('[promoteToCommonArea] Detected program format:', format);
 
   if (format === 's3000xl-disk-program') {
     const disk = deserializeDiskProgram(yamlContent);
@@ -128,7 +129,7 @@ function extractProgramData(yamlContent: string): {
     };
   }
 
-  throw new Error(`Unknown program format in YAML`);
+  throw new Error(`Unknown program format in YAML (format field not recognized)`);
 }
 
 /**
@@ -137,13 +138,14 @@ function extractProgramData(yamlContent: string): {
  * Reads the program from library/s3k/programs/{programDirName}/,
  * converts keygroups to zones via akaiProgramToCommon(), copies
  * sample WAVs, and saves a ProgramYaml bundle to
- * library/common/samples/{targetName}/.
+ * library/common/programs/{targetName}/.
  *
  * @param libraryRoot - Library root directory handle
  * @param programDirName - Directory name in library/s3k/programs/
  * @param targetName - Name for the common-area program (defaults to program name)
  * @returns The CommonProgram that was saved
  */
+
 /**
  * Save a program from device SysEx headers directly to the common area.
  *
@@ -185,9 +187,26 @@ export async function promoteToCommonArea(
   programDirName: string,
   targetName?: string,
 ): Promise<CommonProgram> {
+  console.log('[promoteToCommonArea] Starting promotion for:', programDirName);
+
   // 1. Load the serialized program
-  const yamlContent = await loadProgramFromLibrary(libraryRoot, programDirName);
-  const data = extractProgramData(yamlContent);
+  let yamlContent: string;
+  try {
+    yamlContent = await loadProgramFromLibrary(libraryRoot, programDirName);
+  } catch (err) {
+    console.error('[promoteToCommonArea] Failed to load program from library:', programDirName, err);
+    throw new Error(`Cannot load program "${programDirName}" from S3K library: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  let data: ReturnType<typeof extractProgramData>;
+  try {
+    data = extractProgramData(yamlContent);
+  } catch (err) {
+    console.error('[promoteToCommonArea] Failed to parse program YAML:', err);
+    throw new Error(`Cannot parse program "${programDirName}": ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  console.log('[promoteToCommonArea] Program data extracted:', data.name, 'keygroups:', data.keygroups.length, 'samples:', data.sampleReferences.length);
 
   // 2. Convert to common-area program via existing converter
   const akaiProgram = buildAkaiDiskProgram(data.name, data.keygroups, data.polyphony);
@@ -228,16 +247,18 @@ export async function promoteToCommonArea(
         const dstWritable = await dstHandle.createWritable();
         await dstWritable.write(wavData);
         await dstWritable.close();
+        console.log('[promoteToCommonArea] Copied sample:', sampleRef);
       } catch {
-        // Sample not in bundle — zone will reference it but file won't be present.
+        // Sample not in bundle -- zone will reference it but file won't be present.
         // This is expected when programs were exported without "include samples".
         console.warn(`[promoteToCommonArea] Sample "${sampleRef}" not found in S3K program bundle`);
       }
     }
   } catch {
-    // No samples directory — program was exported without samples
+    // No samples directory -- program was exported without samples
     console.warn(`[promoteToCommonArea] No samples directory in S3K program bundle "${programDirName}"`);
   }
 
+  console.log('[promoteToCommonArea] Promotion complete:', outputName);
   return commonProgram;
 }

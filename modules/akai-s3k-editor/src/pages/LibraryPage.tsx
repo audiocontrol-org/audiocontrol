@@ -49,12 +49,13 @@ import { useS3kLibraryData } from '@/hooks/useS3kLibraryData';
 import { useS3kSelectionHandlers } from '@/hooks/useS3kSelectionHandlers';
 import { useS3kLibraryStrategy } from '@/hooks/useS3kLibraryStrategy';
 import { useS3kTransferCallbacks } from '@/hooks/useS3kTransferCallbacks';
+import { usePromotionTransfer } from '@/hooks/usePromotionTransfer';
 import {
   SAVE_DIALOG_CLOSED, SEND_DIALOG_CLOSED,
   type SaveToLibraryDialogState, type SendToDeviceDialogState,
 } from '@audiocontrol/editor-core';
-import { promoteToCommonArea } from '@/lib/program-promotion';
 import { DiskBrowserPanel, DISK_ITEM_MIME, type DiskDragPayload, type DiskBrowserHandle } from '@/components/library/DiskBrowserPanel';
+import { DEVICE_MEMORY_MIME, type DeviceMemoryDragPayload } from '@/components/library/DeviceMemoryPanel';
 import { isAkaiSample, isAkaiProgram } from '@audiocontrol/sampler-devices/s3k';
 import {
   DiskToLibraryDialog,
@@ -139,9 +140,32 @@ export function LibraryPage(): JSX.Element {
   const diskBrowserRef = useRef<DiskBrowserHandle>(null);
   const [dropTransfer, setDropTransfer] = useState<DropTransferState>(DROP_TRANSFER_IDLE);
 
+  /**
+   * Ref to the latest transfer callbacks. Used inside handleExternalDrop so
+   * that the device-memory drop handler can call the current callbacks without
+   * requiring handleExternalDrop to be re-created every time transferCallbacks
+   * changes (which would cause PluginLibraryBrowser to re-render).
+   */
+  const transferCallbacksRef = useRef<ReturnType<typeof useS3kTransferCallbacks> | null>(null);
+
   const handleExternalDrop = useCallback((categoryId: string, dataTransfer: DataTransfer, targetPath: string[] = []): boolean => {
     console.log('[LibraryPage] handleExternalDrop:', categoryId, 'types:', Array.from(dataTransfer.types));
     if (!root) return false;
+
+    // Handle device memory items dragged from the DeviceMemoryPanel.
+    const deviceRaw = dataTransfer.getData(DEVICE_MEMORY_MIME);
+    if (deviceRaw) {
+      const callbacks = transferCallbacksRef.current;
+      if (!callbacks) return false;
+      const payload = JSON.parse(deviceRaw) as DeviceMemoryDragPayload;
+      if (payload.type === 'program') {
+        callbacks.handleSaveDeviceProgramToCommonArea(payload.index, payload.name);
+      } else {
+        callbacks.handleSaveDeviceSampleToLibraryDirect(payload.index, payload.name);
+      }
+      return true;
+    }
+
     const raw = dataTransfer.getData(DISK_ITEM_MIME);
     if (!raw) { console.log('[LibraryPage] no DISK_ITEM_MIME data'); return false; }
 
@@ -236,6 +260,16 @@ export function LibraryPage(): JSX.Element {
   const editorDialogs = useEditorDialogs(root, refreshLibrary, errorReporter);
 
   // -----------------------------------------------------------------------
+  // Program promotion (S3K library -> common area)
+  // -----------------------------------------------------------------------
+
+  const promotionTransfer = usePromotionTransfer({
+    root,
+    errorReporter,
+    onComplete: refreshLibrary,
+  });
+
+  // -----------------------------------------------------------------------
   // Shared library operations -- must be after transfer callbacks
   // -----------------------------------------------------------------------
 
@@ -295,6 +329,10 @@ export function LibraryPage(): JSX.Element {
     setReceiveDialog,
   });
 
+  // Keep ref current so handleExternalDrop can access latest callbacks
+  // without being re-created on every transferCallbacks change.
+  transferCallbacksRef.current = transferCallbacks;
+
   // -----------------------------------------------------------------------
   // Preview state
   // -----------------------------------------------------------------------
@@ -303,17 +341,13 @@ export function LibraryPage(): JSX.Element {
   const hasLibrary = !!root;
 
   const handlePromoteToCommonArea = useCallback(
-    async (dirName: string) => {
-      if (!root) return;
-      try {
-        await promoteToCommonArea(root, dirName);
-        void refreshLibrary();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to promote program to common area');
-      }
+    (dirName: string) => {
+      void promotionTransfer.promote(dirName);
     },
-    [root, refreshLibrary, setError],
+    [promotionTransfer],
   );
+
+  const isPromoting = promotionTransfer.status.state === 'promoting';
 
   const previewState = useMemo<S3kPreviewCustomState>(() => ({
     onSendSampleToDevice: canTransfer ? transferCallbacks.handleSendSampleToDevice : undefined,
@@ -329,8 +363,9 @@ export function LibraryPage(): JSX.Element {
     onOpenInChopper: hasLibrary ? editorDialogs.handleOpenInChopper : undefined,
     onEditDrumKit: hasLibrary ? editorDialogs.handleOpenDrumKitEditor : undefined,
     onPromoteToCommonArea: hasLibrary ? handlePromoteToCommonArea : undefined,
+    isPromoting,
   }), [
-    canTransfer, hasLibrary, isDeviceConnected,
+    canTransfer, hasLibrary, isDeviceConnected, isPromoting,
     transferCallbacks, drumKitTransfer.openDialog,
     editorDialogs.handleOpenInLoopEditor,
     editorDialogs.handleOpenInSampleEditor,
@@ -369,7 +404,7 @@ export function LibraryPage(): JSX.Element {
       },
       'promote-to-common-area': (dirName) => {
         if (!hasLibrary) throw new Error('Connect to library to promote programs');
-        void handlePromoteToCommonArea(dirName);
+        void promotionTransfer.promote(dirName);
       },
     },
   });
@@ -380,6 +415,20 @@ export function LibraryPage(): JSX.Element {
     refreshLibrary,
     errorReporter,
     editorDialogs.createEditorActionHandler(),
+  );
+
+  const handleCloneDeviceProgram = useCallback(
+    async (index: number, name: string) => {
+      if (!client) return;
+      try {
+        const cloneName = `${name.trim().substring(0, 8)} CPY`.padEnd(12);
+        await client.cloneProgram(index, cloneName);
+        await refreshDevice();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to clone program');
+      }
+    },
+    [client, refreshDevice, setError],
   );
 
   const deviceMemoryState = useMemo<S3kMemoryPanelState>(() => ({
@@ -451,6 +500,7 @@ export function LibraryPage(): JSX.Element {
     onRenameProgram: isDeviceConnected ? transferCallbacks.handleRenameDeviceProgram : undefined,
     onDeleteSample: isDeviceConnected ? transferCallbacks.handleDeleteDeviceSample : undefined,
     onDeleteProgram: isDeviceConnected ? transferCallbacks.handleDeleteDeviceProgram : undefined,
+    onCloneProgram: isDeviceConnected ? handleCloneDeviceProgram : undefined,
     isConnected: isDeviceConnected,
     isLoading: isDeviceLoading,
   }), [
@@ -459,7 +509,7 @@ export function LibraryPage(): JSX.Element {
     handleDeviceSelectProgram, handleDeviceSelectSample,
     refreshDevice, isDeviceConnected, isDeviceLoading,
     canTransfer, transferCallbacks,
-    instrumentTransfer,
+    instrumentTransfer, handleCloneDeviceProgram,
   ]);
 
   // -----------------------------------------------------------------------
@@ -729,6 +779,60 @@ export function LibraryPage(): JSX.Element {
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* Promotion status toast */}
+      {promotionTransfer.status.state !== 'idle' && (
+        <div
+          className={`fixed bottom-4 right-4 w-80 border rounded-lg shadow-xl p-4 z-50 ${
+            promotionTransfer.status.state === 'error'
+              ? 'bg-gray-800 border-red-600/50'
+              : promotionTransfer.status.state === 'success'
+                ? 'bg-gray-800 border-green-600/50'
+                : 'bg-gray-800 border-gray-600'
+          }`}
+          style={dropTransfer.active ? { bottom: '6rem' } : undefined}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              {promotionTransfer.status.state === 'promoting' && (
+                <span className="ac-spinner ac-spinner-sm flex-shrink-0" />
+              )}
+              {promotionTransfer.status.state === 'success' && (
+                <svg className="w-4 h-4 text-green-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+              {promotionTransfer.status.state === 'error' && (
+                <svg className="w-4 h-4 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              )}
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-gray-100 truncate">
+                  {promotionTransfer.status.state === 'promoting'
+                    ? `Promoting "${promotionTransfer.status.programName}"...`
+                    : promotionTransfer.status.state === 'success'
+                      ? `Promoted "${promotionTransfer.status.programName}" to common area`
+                      : `Failed to promote "${promotionTransfer.status.programName}"`
+                  }
+                </div>
+                {promotionTransfer.status.state === 'error' && (
+                  <div className="text-xs text-red-400 mt-1">{promotionTransfer.status.message}</div>
+                )}
+              </div>
+            </div>
+            {promotionTransfer.status.state !== 'promoting' && (
+              <button
+                className="text-gray-400 hover:text-gray-200 ml-2 flex-shrink-0"
+                onClick={promotionTransfer.dismiss}
+                title="Dismiss"
+              >
+                &times;
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

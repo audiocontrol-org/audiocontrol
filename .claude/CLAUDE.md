@@ -99,6 +99,23 @@ When developing UI features:
 2. Write Playwright specs in `test/ui/<feature>.spec.ts` **as you build, not after**
 3. Every manually verified interaction must become a test spec — ad-hoc screenshots without specs are throwaway work
 
+**When fixing a bug, write a failing test FIRST:**
+1. Ask: "what layer does this bug live in?" — that determines the test category
+   - Pure function logic → unit test
+   - UI interaction + state management → UI test (Playwright + test harness)
+   - Device communication / round-trip → e2e test (real hardware at s3k.local:7033)
+2. Never default to the easiest test category. If the user reports a device behavior, the test must talk to the device.
+3. Verify the test fails, THEN fix the bug, THEN verify the test passes.
+4. **Isolate the layer first:** For bugs reported as device behavior, write a Node.js test that talks directly to the device through the client (`modules/e2e-infra/src/node/`). If the Node test reproduces the bug, the problem is in the client/encoding layer. If it passes, the problem is in the UI state management layer. This avoids wasting time on Playwright when the bug is in raw byte encoding.
+5. **Never assume the device is at fault.** The device has been in constant service for 30 years. Our code is brand new. Exhaust all possibilities in our code before considering a device bug.
+
+## Before Running Tests
+
+Before running any test command, re-read the "E2E Testing Tenets" section of this file. Do not improvise test infrastructure. The key rules:
+- Use `make test-*` targets — never call tsx, npx, or scripts directly
+- Use `run-and-watch.sh` to run e2e make targets
+- Never build standalone test runners, throwaway scripts, or ad-hoc harnesses
+
 ## Before Committing
 
 Review changes against project standards:

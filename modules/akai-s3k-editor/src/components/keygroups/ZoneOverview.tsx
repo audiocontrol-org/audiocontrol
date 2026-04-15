@@ -7,6 +7,7 @@ import {
   getVisibleOctaveMarkers,
   percentToNote,
   zoomAtNote,
+  panRange,
 } from '@/components/keygroups/note-coordinate-utils';
 import type { ZoneDragField } from '@/components/keygroups/use-zone-drag';
 import { useZoneDrag } from '@/components/keygroups/use-zone-drag';
@@ -78,26 +79,58 @@ export function ZoneOverview({
 }: ZoneOverviewProps): JSX.Element {
   const vizRef = useRef<HTMLDivElement>(null);
 
-  // Scroll-wheel zoom: zoom in/out centered on mouse position
+  // Wheel/trackpad gestures:
+  // - Pinch (ctrlKey + deltaY): zoom in/out centered on mouse position
+  // - Two-finger horizontal scroll (deltaX): pan left/right
+  // - Two-finger vertical scroll (deltaY without ctrlKey): pass through to page
   useEffect(() => {
     const el = vizRef.current;
     if (!el || !onNoteRangeChange) return;
 
     const handleWheel = (e: WheelEvent): void => {
-      e.preventDefault();
-      const rect = el.getBoundingClientRect();
-      const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
-      const centerNote = percentToNote(xPercent, noteRange);
-      const zoomFactor = e.deltaY > 0 ? 1.15 : 0.85;
-      const newRange = zoomAtNote(noteRange, centerNote, zoomFactor);
-      // Don't zoom tighter than ~12 notes
-      if (newRange.max - newRange.min >= 12) {
-        onNoteRangeChange(newRange);
+      if (e.ctrlKey) {
+        // Pinch-to-zoom (trackpad pinch fires wheel with ctrlKey)
+        e.preventDefault();
+        const rect = el.getBoundingClientRect();
+        const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
+        const centerNote = percentToNote(xPercent, noteRange);
+        const zoomFactor = e.deltaY > 0 ? 1.15 : 0.85;
+        const newRange = zoomAtNote(noteRange, centerNote, zoomFactor);
+        if (newRange.max - newRange.min >= 12) {
+          onNoteRangeChange(newRange);
+        }
+      } else if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+        // Horizontal scroll → pan
+        e.preventDefault();
+        const span = noteRange.max - noteRange.min;
+        const notesPerPixel = span / el.getBoundingClientRect().width;
+        const deltaNotes = e.deltaX * notesPerPixel;
+        onNoteRangeChange(panRange(noteRange, deltaNotes));
       }
+      // Vertical scroll without ctrlKey: don't prevent default, let page scroll
     };
 
     el.addEventListener('wheel', handleWheel, { passive: false });
     return () => el.removeEventListener('wheel', handleWheel);
+  }, [noteRange, onNoteRangeChange]);
+
+  // Arrow key panning (left/right to pan, prevent DOM navigation)
+  useEffect(() => {
+    const el = vizRef.current;
+    if (!el || !onNoteRangeChange) return;
+
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        const span = noteRange.max - noteRange.min;
+        const step = Math.max(1, Math.round(span * 0.1));
+        const delta = e.key === 'ArrowLeft' ? -step : step;
+        onNoteRangeChange(panRange(noteRange, delta));
+      }
+    };
+
+    el.addEventListener('keydown', handleKeyDown);
+    return () => el.removeEventListener('keydown', handleKeyDown);
   }, [noteRange, onNoteRangeChange]);
 
   const hasDragCallbacks = onZoneDrag !== undefined && onZoneCommit !== undefined;
@@ -170,6 +203,7 @@ export function ZoneOverview({
         <div
           ref={vizRef}
           className="absolute top-0"
+          tabIndex={0}
           onMouseDown={handleVizMouseDown}
           style={{
             left: `${LEFT_LABEL_WIDTH}px`,
