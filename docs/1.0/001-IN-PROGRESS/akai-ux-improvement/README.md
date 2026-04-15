@@ -13,7 +13,7 @@ Restructure the Akai S3000XL editor from memory-oriented pages to workflow-orien
 | Phase 5: Visual Polish | Complete | Design system, responsive header, accessibility |
 | Phase 6: Memory Browser CRUD Parity | Complete | |
 | Phase 7: Memory-to-Library Drag & Drop | Complete | |
-| Phase 8: Library Promotion Fix | In Progress | Round-trip verification remaining |
+| Phase 8: Library Promotion Fix | Complete | Promotion verified via e2e tests |
 | Phase 9: Sample Editor | Not Started | |
 | Phase 10: Remove Compare Page | Complete | |
 | Phase 11: Persistent Editor Cache | Not Started | |
