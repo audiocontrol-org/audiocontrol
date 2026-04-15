@@ -4,12 +4,26 @@
  * Renders two scrollable lists (programs and samples) fetched from the
  * S3000XL. Supports item selection, manual refresh, and drag-and-drop
  * import from the library tree.
+ *
+ * Items in the panel are draggable so they can be dropped onto the library
+ * tree to trigger an export (program) or receive (sample) transfer.
  */
 
 import { useState, useCallback } from 'react';
 import { LIBRARY_ITEM_MIME, LoadingBar, ContextMenu, ConfirmDialog, DeleteIcon, CloneIcon, type LibraryDragPayload, type ContextMenuAction } from '@audiocontrol/editor-core';
 import { cn } from '@/lib/utils';
 import { DISK_ITEM_MIME, type DiskDragPayload } from '@/components/library/DiskBrowserPanel';
+
+/** MIME type for device memory items dragged from the DeviceMemoryPanel. */
+export const DEVICE_MEMORY_MIME = 'application/x-s3k-device-item';
+
+/** Drag payload for device memory items. */
+export interface DeviceMemoryDragPayload {
+  source: 'device-memory';
+  type: 'program' | 'sample';
+  index: number;
+  name: string;
+}
 
 interface DeviceMemoryPanelProps {
   programNames: string[];
@@ -100,6 +114,7 @@ function NameList({
   onRename,
   onDelete,
   onClone,
+  draggable: isDraggable,
 }: {
   title: string;
   names: string[];
@@ -112,6 +127,8 @@ function NameList({
   onRename?: (index: number, name: string) => void;
   onDelete?: (index: number, name: string) => void;
   onClone?: (index: number, name: string) => void;
+  /** When true, each list item is draggable with DEVICE_MEMORY_MIME payload. */
+  draggable?: boolean;
 }) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; index: number } | null>(null);
   const [confirmDeleteIndex, setConfirmDeleteIndex] = useState<number | null>(null);
@@ -150,7 +167,19 @@ function NameList({
                   isSelected
                     ? 'bg-blue-600 text-white'
                     : 'text-gray-300 hover:bg-gray-700',
+                  isDraggable && 'cursor-grab active:cursor-grabbing',
                 )}
+                draggable={isDraggable}
+                onDragStart={isDraggable ? (e) => {
+                  const payload: DeviceMemoryDragPayload = {
+                    source: 'device-memory',
+                    type,
+                    index,
+                    name,
+                  };
+                  e.dataTransfer.setData(DEVICE_MEMORY_MIME, JSON.stringify(payload));
+                  e.dataTransfer.effectAllowed = 'copy';
+                } : undefined}
                 onClick={() => onSelect(index)}
                 onDoubleClick={() => {
                   if (onRename) {
@@ -398,6 +427,7 @@ export function DeviceMemoryPanel({
           onRename={onRenameProgram}
           onDelete={onDeleteProgram}
           onClone={onCloneProgram}
+          draggable={isConnected && !!onSaveProgramToCommonLibrary}
         />
         {programDropOver && (
           <div className="text-xs text-blue-400 text-center py-2 border border-dashed border-blue-500/50 rounded mx-1 mb-2">
@@ -456,6 +486,7 @@ export function DeviceMemoryPanel({
           onSaveToDeviceLibrary={onSaveSampleToDeviceLibrary}
           onRename={onRenameSample}
           onDelete={onDeleteSample}
+          draggable={isConnected && !!onSaveSampleToCommonLibrary}
         />
         {sampleDropOver && (
           <div className="text-xs text-blue-400 text-center py-2 border border-dashed border-blue-500/50 rounded mx-1 mb-2">

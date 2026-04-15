@@ -191,11 +191,11 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 
 ### Tasks
 
-- [ ] Implement drag source on DeviceMemoryPanel items (programs and samples)
-- [ ] Accept drops in both the common area and S3K-specific library sections
-- [ ] Show SteppedProgressDrawer for transfer operations (export program, receive sample via SDS)
-- [ ] Refresh library tree after successful drop
-- [ ] Handle errors with ErrorBanner
+- [x] Implement drag source on DeviceMemoryPanel items (programs and samples)
+- [x] Accept drops in both the common area and S3K-specific library sections
+- [x] Show SteppedProgressDrawer for transfer operations (export program, receive sample via SDS)
+- [x] Refresh library tree after successful drop
+- [x] Handle errors with ErrorBanner
 
 ### Acceptance Criteria
 

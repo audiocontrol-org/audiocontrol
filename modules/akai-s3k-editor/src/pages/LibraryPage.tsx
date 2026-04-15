@@ -55,6 +55,7 @@ import {
 } from '@audiocontrol/editor-core';
 import { promoteToCommonArea } from '@/lib/program-promotion';
 import { DiskBrowserPanel, DISK_ITEM_MIME, type DiskDragPayload, type DiskBrowserHandle } from '@/components/library/DiskBrowserPanel';
+import { DEVICE_MEMORY_MIME, type DeviceMemoryDragPayload } from '@/components/library/DeviceMemoryPanel';
 import { isAkaiSample, isAkaiProgram } from '@audiocontrol/sampler-devices/s3k';
 import {
   DiskToLibraryDialog,
@@ -139,9 +140,32 @@ export function LibraryPage(): JSX.Element {
   const diskBrowserRef = useRef<DiskBrowserHandle>(null);
   const [dropTransfer, setDropTransfer] = useState<DropTransferState>(DROP_TRANSFER_IDLE);
 
+  /**
+   * Ref to the latest transfer callbacks. Used inside handleExternalDrop so
+   * that the device-memory drop handler can call the current callbacks without
+   * requiring handleExternalDrop to be re-created every time transferCallbacks
+   * changes (which would cause PluginLibraryBrowser to re-render).
+   */
+  const transferCallbacksRef = useRef<ReturnType<typeof useS3kTransferCallbacks> | null>(null);
+
   const handleExternalDrop = useCallback((categoryId: string, dataTransfer: DataTransfer, targetPath: string[] = []): boolean => {
     console.log('[LibraryPage] handleExternalDrop:', categoryId, 'types:', Array.from(dataTransfer.types));
     if (!root) return false;
+
+    // Handle device memory items dragged from the DeviceMemoryPanel.
+    const deviceRaw = dataTransfer.getData(DEVICE_MEMORY_MIME);
+    if (deviceRaw) {
+      const callbacks = transferCallbacksRef.current;
+      if (!callbacks) return false;
+      const payload = JSON.parse(deviceRaw) as DeviceMemoryDragPayload;
+      if (payload.type === 'program') {
+        callbacks.handleSaveDeviceProgramToCommonArea(payload.index, payload.name);
+      } else {
+        callbacks.handleSaveDeviceSampleToLibraryDirect(payload.index, payload.name);
+      }
+      return true;
+    }
+
     const raw = dataTransfer.getData(DISK_ITEM_MIME);
     if (!raw) { console.log('[LibraryPage] no DISK_ITEM_MIME data'); return false; }
 
@@ -294,6 +318,10 @@ export function LibraryPage(): JSX.Element {
     setSendDialog,
     setReceiveDialog,
   });
+
+  // Keep ref current so handleExternalDrop can access latest callbacks
+  // without being re-created on every transferCallbacks change.
+  transferCallbacksRef.current = transferCallbacks;
 
   // -----------------------------------------------------------------------
   // Preview state

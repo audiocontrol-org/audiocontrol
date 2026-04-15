@@ -12,7 +12,7 @@ Restructure the Akai S3000XL editor from memory-oriented pages to workflow-orien
 | Phase 4: Multi-Editor | Complete | Extraction deferred until Roland needs it |
 | Phase 5: Visual Polish | Complete | Design system, responsive header, accessibility |
 | Phase 6: Memory Browser CRUD Parity | Complete | |
-| Phase 7: Memory-to-Library Drag & Drop | Not Started | |
+| Phase 7: Memory-to-Library Drag & Drop | Complete | |
 | Phase 8: Library Promotion Fix | Not Started | |
 | Phase 9: Sample Editor | Not Started | |
 | Phase 10: Remove Compare Page | Complete | |
