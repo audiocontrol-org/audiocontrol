@@ -110,6 +110,51 @@ Triage bug #280 (ENV2→filter parameter reset to 0 when editing filter values).
 
 ---
 
+## 2026-04-15: Demo Video Generation — Phases 4-8, videocontrol Port, Gallery + Overlays
+
+### Feature: demo-video-gen
+### Worktree: audiocontrol-demo-video-gen
+
+### Goal
+Continue from Phase 1-3 completion. Implement the video preview gallery, port the standalone videocontrol repo, add gallery-triggered generation, and text overlay rendering.
+
+### Accomplished
+- Phase 4: Video preview gallery — Vite dev server at localhost:4200 with card grid, GIF thumbnails, click-to-play MP4, caption/VO links, auto-polling (`58c34850`)
+- Phase 5: Ported `audiocontrol-org/videocontrol` (video-core, text-overlay, phosphor-scope) into `modules/video-control/packages/`, renamed to `@audiocontrol/*`, archived standalone repo (`b9f1f951`)
+- Updated captions YAML to conform to text-overlay `ProjectSchema` (`d47a0ca5`)
+- Phase 7: Gallery-triggered generation — `/api/generate` POST, `/api/scenarios` GET, Regenerate/Generate All buttons, concurrent-run prevention (`b8e09842`)
+- Phase 8: Text overlay rendering — ffmpeg ASS subtitle burn-in (`video-captioned.mp4`), gallery live HTML caption overlay synced to video playback, Clean/Overlay/Burned view toggle (`0e5efacb`)
+- Feature scope extended 3 times (Phases 4-5, 6-7, 8) via `/feature-extend`
+- Two rebases onto main (58 commits behind at peak)
+- Bound Vite to `0.0.0.0` with Tailscale hostname allowlist for remote access
+
+### Didn't Work
+- phosphor-scope had `@types/node@^20` conflict with monorepo's `@types/node@^22` — fixed by aligning version
+- Repeated cwd issues when running git commands from the video-control subdir instead of repo root — had to `cd` back each time
+
+### Course Corrections
+- [UX] Agent created 13-second video with 7 interactions (~1.8s each). User pointed out each interaction needs 5-8 seconds of breathing room for anticipation, action, absorption. Final video: 53 seconds.
+- [PROCESS] Agent didn't write a voiceover script before setting timing. User asked "have you written a script for voice over and overlays?" — the VO script is the real pacing test. If a human can't speak the narration in the allotted time, the video is too fast. Script drives timing, not animation.
+- [DOCUMENTATION] Agent saved pacing feedback to memory but didn't create a project-level document. User directed creation of VIDEO-DEMOS.md as a top-level guide, following the SUBJECT-ASPECT.md naming convention (VIDEO-DEMOS.md, not DEMO-VIDEOS.md).
+- [PROCESS] User corrected module location: workplan said `tools/demo-video-gen/` but user directed `modules/video-control/` as a proper pnpm workspace module.
+- [PROCESS] Agent didn't whitelist the Tailscale hostname in Vite config for remote access. User had to prompt for `allowedHosts: ['orion-m4']`.
+
+### Quantitative
+- User messages: ~40
+- Commits: 18 (on feature branch)
+- User corrections: 5
+- Issues created: 5 (#267, #268, #269, #270, #271)
+- Issues closed: 3 (#267, #269, #270, #271)
+
+### Insights
+1. **Script-first demo creation** is the single most important insight. Write the narration, estimate speech duration at ~150 wpm, and use that to set video timing. The animation serves the script, not the other way around.
+2. **Top-level docs follow SUBJECT-ASPECT.md** naming: the subject (VIDEO) comes first, then the aspect (DEMOS). Not DEMO-VIDEOS.
+3. **Tailscale remote access** requires `host: '0.0.0.0'` and `allowedHosts` in Vite config. Worth documenting for any dev server that might be accessed from another machine.
+4. **Feature extension workflow** (`/feature-extend`) worked smoothly for iterative scope growth — 3 extensions across the session, each adding phases, updating docs, creating issues.
+5. **No tests** were written for any video-control code. The user asked about tests at session end — this should have been addressed during implementation per the "write test specs as you build" feedback.
+
+---
+
 ## 2026-04-14: Akai S3000XL Editor UX — Phases 6-10, Filter Display, Testing Lessons (Session 3)
 
 ### Feature: akai-ux-improvement
