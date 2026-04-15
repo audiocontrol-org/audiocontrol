@@ -358,10 +358,10 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 
 ### Tasks
 
-- [ ] Add device-origin tracking to editor dialog state (SampleOrigin type)
-- [ ] Implement "Save to Device" handler: upload modified audio via SDS (overwrite original slot)
+- [x] Add device-origin tracking to editor dialog state (SampleOrigin type)
+- [x] Implement "Save to Device" handler: upload modified audio via SDS (overwrite original slot)
 - [ ] Implement "Save to Device as New" handler: upload to new slot with name suffix
-- [ ] For loop-point-only edits, write sample header directly (skip SDS re-upload)
+- [x] For loop-point-only edits, write sample header directly (skip SDS re-upload)
 - [ ] Show SDS upload progress during save
 
 ### Acceptance Criteria
