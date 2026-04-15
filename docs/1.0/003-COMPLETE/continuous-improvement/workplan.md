@@ -22,6 +22,8 @@
 | Phase 6 | [#195](https://github.com/audiocontrol-org/audiocontrol/issues/195) | Session data extraction (TypeScript, replaces Phase 3) |
 | Phase 7 | [#196](https://github.com/audiocontrol-org/audiocontrol/issues/196) | Session data analyzer (local, code-only, future LLM) |
 | Phase 5 | [#192](https://github.com/audiocontrol-org/audiocontrol/issues/192) | Library-ux feature docs and roadmap |
+| Phase 8 | [#285](https://github.com/audiocontrol-org/audiocontrol/issues/285) | CLAUDE.md audit — classify directives by impact and path scope |
+| Phase 9 | [#286](https://github.com/audiocontrol-org/audiocontrol/issues/286) | CLAUDE.md refactoring — migrate domain rules to `.claude/rules/` |
 
 ---
 
@@ -427,6 +429,140 @@ Requires API key. Deferred — the code-only version provides the foundation dat
 
 ---
 
+## Phase 8: CLAUDE.md Audit and Classification
+
+### Context
+
+CLAUDE.md is 773 lines / 42KB — nearly 4x the recommended 200-line limit. It's loaded in full on every conversation turn regardless of what the agent is working on. Claude Code supports `.claude/rules/` with `paths:` YAML frontmatter for glob-scoped conditional loading, but we're not using it. Session analysis (54 corrections across 37 sessions) shows PROCESS corrections dominate at 59%, meaning the highest-leverage directives are workflow and decision-making rules, not domain-specific protocol details.
+
+### Task 8.1: Review session analysis data
+
+Read the existing analysis reports (`data/sessions/report-all.md`) and decrypt a sample of high-correction sessions to identify which CLAUDE.md directives actually prevented (or would have prevented) mistakes.
+
+**Files:**
+- Read: `data/sessions/report-all.md`
+- Read: `data/sessions/analysis/*.json.age` (decrypt and review top-correction sessions)
+
+**Acceptance Criteria:**
+- [x] Top 5 high-correction sessions reviewed
+- [x] Each correction mapped to the CLAUDE.md directive that addresses it (or should)
+- [x] List of directives ranked by impact (how many corrections they prevent)
+
+### Task 8.2: Classify CLAUDE.md sections
+
+Categorize every section of CLAUDE.md into one of three buckets:
+
+| Bucket | Criteria | Destination |
+|--------|----------|-------------|
+| Universal | Needed every session regardless of module | Stays in CLAUDE.md |
+| Domain-scoped | Only relevant when touching specific modules/paths | `.claude/rules/<topic>.md` with `paths:` frontmatter |
+| Redundant | Already encoded in skills, agents, or referenced docs | Delete |
+
+**Files:**
+- Read: `.claude/CLAUDE.md`
+- Create: `docs/1.0/001-IN-PROGRESS/continuous-improvement/claude-md-audit.md`
+
+**Acceptance Criteria:**
+- [x] Every section of CLAUDE.md classified with rationale
+- [x] Migration plan: what stays, what moves, what gets deleted
+- [x] Proposed `.claude/rules/` file list with path globs
+- [x] Estimated post-refactor CLAUDE.md line count (target: under 200)
+
+**Phase 8 Status:** COMPLETE
+
+---
+
+## Phase 9: CLAUDE.md Refactoring
+
+### Context
+
+Using the audit from Phase 8, refactor CLAUDE.md into a lean universal file plus path-scoped rule files. The goal is to reduce context consumption without losing directive effectiveness.
+
+### Task 9.1: Create `.claude/rules/` directory with path-scoped rules
+
+Create rule files for each domain-scoped topic identified in the audit.
+
+**Rule files created (refined from Phase 8 audit):**
+
+| Rule file | Lines | Content |
+|-----------|-------|---------|
+| `e2e-testing.md` | 240 | E2E tenets, make targets, SCSI provisioning, heartbeat/watchdog |
+| `testing.md` | 44 | Test categories, bug-first methodology, before-running-tests |
+| `akai-s3000xl.md` | 33 | SysEx encoding, exclusive channel, SDS storage |
+| `midi-audio.md` | 19 | MIDI spec standards, midisnoop |
+| `ui-development.md` | 34 | Design system pointer, progress indicators |
+| `deployment.md` | 39 | Netlify sites, deploy commands, config |
+| `session-analytics.md` | 41 | Extract/analyze commands, metrics |
+| `workflow-playbooks.md` | 39 | Hardware protocol, bridge, UI feature playbooks |
+
+**Files:**
+- Create: `.claude/rules/e2e-testing.md`
+- Create: `.claude/rules/testing.md`
+- Create: `.claude/rules/akai-s3000xl.md`
+- Create: `.claude/rules/midi-audio.md`
+- Create: `.claude/rules/ui-development.md`
+- Create: `.claude/rules/deployment.md`
+- Create: `.claude/rules/session-analytics.md`
+- Create: `.claude/rules/workflow-playbooks.md`
+
+**Acceptance Criteria:**
+- [x] Each rule file has `paths:` YAML frontmatter with appropriate globs
+- [x] Content moved verbatim — no rewriting or summarizing during migration
+- [x] Rule files load only when matching paths are touched
+
+### Task 9.2: Trim CLAUDE.md to universal directives
+
+Remove migrated sections from CLAUDE.md. Keep only rules that apply to every session.
+
+**Universal directives (expected to stay):**
+- Project structure overview
+- Import pattern (`@/`)
+- Error handling (no fallbacks, no mock data)
+- TypeScript architecture (composition, DI, no `any`)
+- Multi-device architecture (factories, not conditionals)
+- Code quality (file size limits, testing, DI)
+- Repository hygiene (build artifacts, hooks, pnpm, tsx)
+- Session lifecycle (start/end checklists)
+- Project management workflow
+- Build system (`make` commands)
+- Sub-agent delegation guidance
+- Critical don'ts list
+- Development journal template
+
+**Files:**
+- Modify: `.claude/CLAUDE.md`
+
+**Acceptance Criteria:**
+- [x] CLAUDE.md is under 200 lines (198 lines, down from 774)
+- [x] No domain-specific content remains (Akai SysEx, E2E heartbeat, SCSI provisioning)
+- [x] All universal directives preserved — nothing important deleted
+- [x] Build passes (`make`)
+
+### Task 9.3: Validate rule loading
+
+Verify that the refactoring works correctly — rules load when expected, don't load when not relevant.
+
+**Files:**
+- No new files
+
+**Acceptance Criteria:**
+- [x] Opening an Akai editor file loads `akai-s3000xl.md` rules
+- [x] Opening a UI component file loads `ui-development.md` rules
+- [x] Working on tools/ loads `session-analytics.md` rules
+- [x] Working on a file outside all scopes loads only CLAUDE.md (under 200 lines)
+
+### Task 9.4: Update issue #283
+
+Close the GitHub issue with a summary of what was done.
+
+**Acceptance Criteria:**
+- [x] Issue #283 commented with before/after line counts and rule file list
+- [x] Issue closed
+
+**Phase 9 Status:** COMPLETE
+
+---
+
 ## Dependency Graph
 
 ```
@@ -450,9 +586,17 @@ Phase 6 (session data extraction) — replaces Phase 3 analyzer
 
 Phase 7 (session data analysis) — depends on Phase 6
   7.1 → 7.2 → (future: 7.3 LLM analysis)
+
+Phase 8 (CLAUDE.md audit) — depends on Phase 7 (uses analysis data)
+  8.1 → 8.2
+
+Phase 9 (CLAUDE.md refactoring) — depends on Phase 8 (uses audit results)
+  9.1 → 9.2 → 9.3 → 9.4
 ```
 
 Phases 1, 2, 5 are independent and can be worked in parallel.
 Phase 4 benefits from Phase 1 (playbooks inform skill design).
 Phase 6 replaces Phase 3 (Python/Docker analyzer → TypeScript extractor).
 Phase 7 depends on Phase 6 (needs extracted data to analyze).
+Phase 8 depends on Phase 7 (uses session analysis to rank directive impact).
+Phase 9 depends on Phase 8 (uses audit classification to execute migration).
