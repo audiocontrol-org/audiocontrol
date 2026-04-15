@@ -1,0 +1,1 @@
+export { VideoRecorder } from './VideoRecorder'

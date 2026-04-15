@@ -1,0 +1,44 @@
+{
+  "name": "@audiocontrol/text-overlay",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Generate text overlay videos from YAML definitions with ProRes 4444 alpha output",
+  "type": "module",
+  "bin": {
+    "textoverlay": "./dist/cli/index.js"
+  },
+  "scripts": {
+    "dev": "remotion studio",
+    "build": "remotion bundle",
+    "build:cli": "tsc -p tsconfig.cli.json",
+    "cli": "tsx src/cli/index.ts",
+    "upgrade": "remotion upgrade",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src && tsc",
+    "test:cli": "tsx scripts/test-cli.ts",
+    "clean": "rm -rf dist out"
+  },
+  "devDependencies": {
+    "@remotion/eslint-config-flat": "^4.0.0",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.0.0",
+    "@types/react": "19.2.7",
+    "@types/web": "0.0.166",
+    "eslint": "9.19.0",
+    "prettier": "3.6.0",
+    "tsconfig-paths-webpack-plugin": "^4.2.0",
+    "tsx": "^4.21.0",
+    "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.0",
+    "@remotion/google-fonts": "^4.0.0",
+    "commander": "^13.0.0",
+    "js-yaml": "^4.1.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "remotion": "^4.0.0",
+    "shiki": "^1.0.0",
+    "zod": "^3.22.3"
+  }
+}
