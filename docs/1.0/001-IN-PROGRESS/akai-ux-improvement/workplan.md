@@ -237,7 +237,7 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 - [x] Replace SamplesPage with list-detail layout (SampleList + SampleEditor)
 - [x] Wire sample header reads/writes to the device client
 - [x] Add rename (double-click), refresh, delete to sample list items
-- [ ] Write tests for SampleEditor and SampleList
+- [x] Write tests for SampleEditor and SampleList
 
 ### Acceptance Criteria
 
