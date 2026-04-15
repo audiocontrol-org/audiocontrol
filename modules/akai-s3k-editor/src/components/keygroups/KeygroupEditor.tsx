@@ -12,6 +12,10 @@ interface KeygroupEditorProps {
   keygroupIndex: number;
   sampleNames: string[];
   onParameterChange: (field: string, value: number | string) => void;
+  /** Optimistic-only update during drag (no device write) */
+  onDragChange?: (field: string, value: number) => void;
+  /** Write current header to device (called on drag end) */
+  onCommitHeader?: () => void;
   noteRange: NoteRange;
 }
 
@@ -40,6 +44,8 @@ export function KeygroupEditor({
   keygroupIndex,
   sampleNames,
   onParameterChange,
+  onDragChange,
+  onCommitHeader,
   noteRange,
 }: KeygroupEditorProps): JSX.Element {
   const num = (field: string) => (value: number) =>
@@ -98,7 +104,8 @@ export function KeygroupEditor({
             <MultiPointEnvelopeDisplay
               rates={[header.ENV2R1, header.ENV2R2, header.ENV2R3, header.ENV2R4]}
               levels={[header.ENV2L1, header.ENV2L2, header.ENV2L3, header.ENV2L4]}
-              onChange={(changes) => { for (const [f, v] of Object.entries(changes)) onParameterChange(f, v); }}
+              onChange={onDragChange ? (changes) => { for (const [f, v] of Object.entries(changes)) onDragChange(f, v); } : (changes) => { for (const [f, v] of Object.entries(changes)) onParameterChange(f, v); }}
+              onCommit={onCommitHeader}
             />
           }
         >
@@ -123,7 +130,8 @@ export function KeygroupEditor({
             <FilterDisplay
               frequency={header.FILFRQ}
               resonance={header.FILQ}
-              onChange={(changes) => { for (const [f, v] of Object.entries(changes)) onParameterChange(f, v); }}
+              onChange={onDragChange ? (changes) => { for (const [f, v] of Object.entries(changes)) onDragChange(f, v); } : (changes) => { for (const [f, v] of Object.entries(changes)) onParameterChange(f, v); }}
+              onCommit={onCommitHeader}
             />
           }
         >
@@ -146,7 +154,8 @@ export function KeygroupEditor({
               decay={header.DECAY1}
               sustain={header.SUSTN1}
               release={header.RELSE1}
-              onChange={(changes) => { for (const [f, v] of Object.entries(changes)) onParameterChange(f, v); }}
+              onChange={onDragChange ? (changes) => { for (const [f, v] of Object.entries(changes)) onDragChange(f, v); } : (changes) => { for (const [f, v] of Object.entries(changes)) onParameterChange(f, v); }}
+              onCommit={onCommitHeader}
             />
           }
         >

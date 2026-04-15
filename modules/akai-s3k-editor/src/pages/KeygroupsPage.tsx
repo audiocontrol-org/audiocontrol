@@ -60,6 +60,48 @@ export function KeygroupsPage(): JSX.Element {
     loadKeygroups(selectedProgramIndex, selectedProgram.GROUPS);
   }, [isConnected, selectedProgramIndex, selectedProgram, invalidateCache, selectKeygroup, loadKeygroups]);
 
+  // Throttled drag handler: update store immediately, write to device at most every 150ms
+  const lastDragWrite = useRef(0);
+  const dragWriteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleDragChange = useCallback(
+    (field: string, value: number) => {
+      if (selectedKeygroupIndex === null || !client) return;
+
+      // Always update store immediately for responsive UI
+      const header = useKeygroupStore.getState().keygroups[selectedKeygroupIndex];
+      if (!header) return;
+      const updated = { ...header, [field]: value };
+      useKeygroupStore.getState().setKeygroup(selectedKeygroupIndex, updated);
+
+      // Throttle device writes to ~150ms intervals
+      const now = Date.now();
+      if (now - lastDragWrite.current >= 150) {
+        lastDragWrite.current = now;
+        const toSend = { ...updated, raw: [...header.raw] };
+        writeKeygroupField(toSend, field, value);
+        client.writeKeygroupHeader(toSend);
+      }
+    },
+    [selectedKeygroupIndex, client],
+  );
+
+  // Commit: write current header to device (called on drag end)
+  const handleCommitHeader = useCallback(async () => {
+    if (selectedKeygroupIndex === null || !client) return;
+    if (dragWriteTimer.current) clearTimeout(dragWriteTimer.current);
+    const header = useKeygroupStore.getState().keygroups[selectedKeygroupIndex];
+    if (!header) return;
+    const toSend = { ...header, raw: [...header.raw] };
+    // Re-encode all fields that might have changed during drag
+    for (const field of Object.keys(toSend)) {
+      if (field !== 'raw') {
+        writeKeygroupField(toSend, field, toSend[field as keyof typeof toSend] as number);
+      }
+    }
+    await client.writeKeygroupHeader(toSend);
+  }, [selectedKeygroupIndex, client]);
+
   const handleParameterChange = useCallback(
     async (field: string, value: number | string) => {
       if (selectedKeygroupIndex === null || !client) return;
@@ -315,6 +357,8 @@ export function KeygroupsPage(): JSX.Element {
               keygroupIndex={selectedKeygroupIndex!}
               sampleNames={sampleNames}
               onParameterChange={handleParameterChange}
+              onDragChange={handleDragChange}
+              onCommitHeader={handleCommitHeader}
               noteRange={noteRange}
             />
           ) : selectedKeygroupIndex !== null ? (
