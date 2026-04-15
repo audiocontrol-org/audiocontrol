@@ -704,6 +704,48 @@ export function createS3000xlClient(
       programHeaderCache.delete(programNumber);
     },
 
+    async cloneSample(
+      sourceSampleNumber: number,
+      onProgress?: (step: string, current: number, total: number) => void,
+    ): Promise<number> {
+      const totalSteps = 4;
+      const progress = onProgress ?? (() => {});
+
+      // Step 1: Read source sample header and name
+      progress('Reading source sample', 1, totalSteps);
+      const sourceHeader = await client.fetchSampleHeader(sourceSampleNumber);
+      const sourceName = sourceHeader.SHNAME.trim();
+
+      // Step 2: Download sample data via SDS
+      progress('Downloading sample data', 2, totalSteps);
+      const { header: sdsHeader, samples: sampleData } =
+        await client.receiveSampleViaSds(sourceSampleNumber);
+
+      // Step 3: Upload as new sample (S3000XL creates at end of RSLIST)
+      progress('Uploading clone', 3, totalSteps);
+      const existingNames = await client.fetchSampleNames();
+      const newSlot = existingNames.length;
+      const sampleRate = Math.round(1_000_000_000 / sdsHeader.samplePeriodNs);
+      await client.sendSampleViaSds(newSlot, sampleData, sampleRate, {
+        loopStart: sdsHeader.loopStart,
+        loopEnd: sdsHeader.loopEnd,
+        loopType: sdsHeader.loopType,
+      });
+
+      // Step 4: Rename the clone with " CPY" suffix
+      progress('Renaming clone', 4, totalSteps);
+      // Truncate to fit 12-char limit: name gets at most 8 chars + " CPY"
+      const maxBase = 12 - 4; // " CPY" is 4 chars
+      const cloneName = sourceName.substring(0, maxBase) + ' CPY';
+      const updatedNames = await client.fetchSampleNames();
+      const cloneIndex = updatedNames.length - 1;
+      await client.renameSample(cloneIndex, cloneName);
+
+      sampleNamesCache = undefined;
+      sampleHeaderCache.clear();
+      return cloneIndex;
+    },
+
     async refreshSampleNames(): Promise<string[]> {
       sampleNamesCache = undefined;
       return client.fetchSampleNames();

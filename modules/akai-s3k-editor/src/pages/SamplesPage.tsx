@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useRef } from 'react';
-import { ConfirmDialog } from '@audiocontrol/editor-core';
+import { ConfirmDialog, SteppedProgressDrawer, type ProgressStep } from '@audiocontrol/editor-core';
 import { SampleList, SampleEditor } from '@/components/samples';
 import { useS3000xlClient } from '@/hooks/useS3000xlClient';
 import { useSampleStore } from '@/stores/sampleStore';
@@ -30,6 +30,10 @@ export function SamplesPage(): JSX.Element {
   const [isLoading, setIsLoading] = useState(false);
   const [deletingIndex, setDeletingIndex] = useState<number | null>(null);
   const [deleteInProgress, setDeleteInProgress] = useState(false);
+  const [cloneSteps, setCloneSteps] = useState<ProgressStep[]>([]);
+  const [cloneDrawerOpen, setCloneDrawerOpen] = useState(false);
+  const [cloneComplete, setCloneComplete] = useState(false);
+  const [cloneError, setCloneError] = useState(false);
 
   // Load sample names on first connect
   // Load sample names on connect (background refresh if cached)
@@ -151,6 +155,32 @@ export function SamplesPage(): JSX.Element {
     }
   }, [client, invalidateCache, setSampleNames, selectedSampleIndex, setSample, setError]);
 
+  const handleClone = useCallback(async (index: number) => {
+    if (!client) return;
+    const name = sampleNames[index]?.trim() || `Sample ${index}`;
+    setCloneSteps([{ id: 'clone', label: `Cloning "${name}"...`, status: 'active' }]);
+    setCloneDrawerOpen(true);
+    setCloneComplete(false);
+    setCloneError(false);
+
+    try {
+      await client.cloneSample(index, (step, current, total) => {
+        setCloneSteps([{ id: 'clone', label: `${step} (${current}/${total})`, status: 'active' }]);
+      });
+      setCloneSteps([{ id: 'clone', label: `Cloned "${name}"`, status: 'complete' }]);
+      setCloneComplete(true);
+
+      // Refresh sample list
+      invalidateCache();
+      client.invalidateSampleCache();
+      const names = await client.fetchSampleNames();
+      setSampleNames(names);
+    } catch (err) {
+      setCloneSteps([{ id: 'clone', label: err instanceof Error ? err.message : 'Clone failed', status: 'failed' }]);
+      setCloneError(true);
+    }
+  }, [client, sampleNames, invalidateCache, setSampleNames]);
+
   if (!isConnected) {
     return (
       <div className="ac-page ac-page-shell">
@@ -190,6 +220,7 @@ export function SamplesPage(): JSX.Element {
             onSelect={selectSample}
             onDelete={handleDelete}
             onRename={handleRename}
+            onClone={handleClone}
             onRefresh={handleRefresh}
             onRefreshAll={handleRefreshAll}
             isLoading={isLoading}
@@ -219,6 +250,15 @@ export function SamplesPage(): JSX.Element {
         onConfirm={confirmDelete}
         onCancel={() => setDeletingIndex(null)}
         danger
+      />
+
+      <SteppedProgressDrawer
+        open={cloneDrawerOpen}
+        title="Clone Sample"
+        onClose={() => setCloneDrawerOpen(false)}
+        steps={cloneSteps}
+        isComplete={cloneComplete}
+        hasError={cloneError}
       />
     </div>
   );

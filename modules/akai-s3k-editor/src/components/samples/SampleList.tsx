@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { DeleteIcon, RefreshIcon } from '@audiocontrol/editor-core';
+import { DeleteIcon, RefreshIcon, CloneIcon } from '@audiocontrol/editor-core';
 import { cn } from '@/lib/utils';
 
 interface SampleListProps {
@@ -8,6 +8,7 @@ interface SampleListProps {
   onSelect: (index: number) => void;
   onDelete?: (index: number) => void;
   onRename?: (index: number, newName: string) => Promise<void>;
+  onClone?: (index: number) => void;
   onRefresh?: (index: number) => void;
   onRefreshAll?: () => void;
   isLoading: boolean;
@@ -47,6 +48,7 @@ export function SampleList({
   onSelect,
   onDelete,
   onRename,
+  onClone,
   onRefresh,
   onRefreshAll,
   isLoading,
@@ -136,7 +138,7 @@ export function SampleList({
     );
   }
 
-  const hasActions = onDelete || onRename || onRefresh;
+  const hasActions = onDelete || onRename || onClone || onRefresh;
 
   return (
     <div className="card p-2">
@@ -224,6 +226,15 @@ export function SampleList({
                       selected={isSelected}
                     >
                       <RefreshIcon />
+                    </ActionButton>
+                  )}
+                  {onClone && (
+                    <ActionButton
+                      onClick={(e) => { e.stopPropagation(); onClone(index); }}
+                      title="Clone sample"
+                      selected={isSelected}
+                    >
+                      <CloneIcon />
                     </ActionButton>
                   )}
                   {onDelete && (

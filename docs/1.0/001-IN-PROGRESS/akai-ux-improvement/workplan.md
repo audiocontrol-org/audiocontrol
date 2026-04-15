@@ -317,9 +317,9 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 
 ### Tasks
 
-- [ ] Implement cloneSample in s3000xl-client (fetch header + SDS data, send to new slot, rename)
+- [x] Implement cloneSample in s3000xl-client (fetch header + SDS data, send to new slot, rename)
 - [ ] Add clone action to sample list items in DeviceMemoryPanel
-- [ ] Add clone action to sample list in SamplesPage (when built)
+- [x] Add clone action to sample list in SamplesPage
 
 ### Acceptance Criteria
 
