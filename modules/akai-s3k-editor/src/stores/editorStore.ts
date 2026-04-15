@@ -9,6 +9,7 @@ const SESSION_KEY = 's3k-editor-selection';
 interface PersistedSelection {
   programIndex: number | null;
   keygroupIndex: number | null;
+  sampleIndex: number | null;
 }
 
 function loadSelection(): PersistedSelection {
@@ -19,26 +20,30 @@ function loadSelection(): PersistedSelection {
       return {
         programIndex: typeof parsed.programIndex === 'number' ? parsed.programIndex : null,
         keygroupIndex: typeof parsed.keygroupIndex === 'number' ? parsed.keygroupIndex : null,
+        sampleIndex: typeof parsed.sampleIndex === 'number' ? parsed.sampleIndex : null,
       };
     }
   } catch { /* ignore */ }
-  return { programIndex: null, keygroupIndex: null };
+  return { programIndex: null, keygroupIndex: null, sampleIndex: null };
 }
 
-function saveSelection(programIndex: number | null, keygroupIndex: number | null): void {
+function saveSelection(sel: Partial<PersistedSelection>): void {
   try {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ programIndex, keygroupIndex }));
+    const current = loadSelection();
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ ...current, ...sel }));
   } catch { /* ignore */ }
 }
 
 export interface EditorStoreState extends EditorStoreBase {
   selectedProgramIndex: number | null;
   selectedKeygroupIndex: number | null;
+  selectedSampleIndex: number | null;
 }
 
 export interface EditorStoreActions {
   selectProgram(index: number | null): void;
   selectKeygroup(index: number | null): void;
+  selectSample(index: number | null): void;
 }
 
 export type EditorStore = EditorStoreState & EditorStoreActions;
@@ -50,15 +55,20 @@ export const useEditorStore = create<EditorStore>((set) => ({
 
   selectedProgramIndex: initial.programIndex,
   selectedKeygroupIndex: initial.keygroupIndex,
+  selectedSampleIndex: initial.sampleIndex,
 
   selectProgram(index: number | null) {
-    saveSelection(index, null);
+    saveSelection({ programIndex: index, keygroupIndex: null });
     set({ selectedProgramIndex: index, selectedKeygroupIndex: null, error: null });
   },
 
   selectKeygroup(index: number | null) {
-    const programIndex = useEditorStore.getState().selectedProgramIndex;
-    saveSelection(programIndex, index);
+    saveSelection({ keygroupIndex: index });
     set({ selectedKeygroupIndex: index, error: null });
+  },
+
+  selectSample(index: number | null) {
+    saveSelection({ sampleIndex: index });
+    set({ selectedSampleIndex: index, error: null });
   },
 }));

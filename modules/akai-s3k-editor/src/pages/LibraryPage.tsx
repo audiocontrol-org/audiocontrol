@@ -431,6 +431,19 @@ export function LibraryPage(): JSX.Element {
     [client, refreshDevice, setError],
   );
 
+  const handleCloneDeviceSample = useCallback(
+    async (index: number, _name: string) => {
+      if (!client) return;
+      try {
+        await client.cloneSample(index);
+        await refreshDevice();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to clone sample');
+      }
+    },
+    [client, refreshDevice, setError],
+  );
+
   const deviceMemoryState = useMemo<S3kMemoryPanelState>(() => ({
     programNames: deviceProgramNames,
     sampleNames: deviceSampleNames,
@@ -501,6 +514,7 @@ export function LibraryPage(): JSX.Element {
     onDeleteSample: isDeviceConnected ? transferCallbacks.handleDeleteDeviceSample : undefined,
     onDeleteProgram: isDeviceConnected ? transferCallbacks.handleDeleteDeviceProgram : undefined,
     onCloneProgram: isDeviceConnected ? handleCloneDeviceProgram : undefined,
+    onCloneSample: isDeviceConnected ? handleCloneDeviceSample : undefined,
     isConnected: isDeviceConnected,
     isLoading: isDeviceLoading,
   }), [
@@ -509,7 +523,7 @@ export function LibraryPage(): JSX.Element {
     handleDeviceSelectProgram, handleDeviceSelectSample,
     refreshDevice, isDeviceConnected, isDeviceLoading,
     canTransfer, transferCallbacks,
-    instrumentTransfer, handleCloneDeviceProgram,
+    instrumentTransfer, handleCloneDeviceProgram, handleCloneDeviceSample,
   ]);
 
   // -----------------------------------------------------------------------

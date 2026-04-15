@@ -11,6 +11,54 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-15: Bug #280 Triage — E_FREQ Field Mapping Discovery (Session 4)
+
+### Feature: akai-ux-improvement
+### Worktree: audiocontrol-akai-ux-improvement
+
+### Goal
+Triage bug #280 (ENV2→filter parameter reset to 0 when editing filter values). Determine whether the bug is in the client/transport layer or the UI state management layer.
+
+### Accomplished
+- Ran Node e2e cross-field integrity tests against hardware — all 7 pass. Client/encoding is clean.
+- Fixed label case mismatch in Playwright e2e spec (FREQ→Freq, RESONANCE→Resonance) that caused tests to hang
+- Rewrote Playwright e2e spec to test all 5 filter params (Freq, Resonance, Key Track, Vel→Filt, Press→Filt) plus FilterDisplay drag path — all 6 pass
+- **Root cause found**: The S3000XL repurposed three S1000 "not used" fields. Our code mapped UI knobs to dead fields:
+  - "Vel→Filt" → V_FREQ (dead) — real field is MODVFILT1
+  - "LFO2→Filt" → P_FREQ (dead) — real field is MODVFILT2 (label was also wrong: "Press→Filt")
+  - "Env→Filt" → E_FREQ (dead) — real field is MODVFILT3
+- **Discovery method**: Throwaway Node script to snapshot keygroup raw buffer, user changed value on S3000XL front panel, re-read and diffed. MODVFILT3 was the only field that changed when ENV2→freq was set to +45.
+- Fixed signed decoding: K_FREQ, MODVFILT1, MODVFILT2, MODVFILT3 now use `bytes2signedNumberLE` (was `bytes2numberLE`, so -15 read as 241)
+- Fixed KeygroupEditor.tsx: three knobs remapped to correct fields, "Press→Filt" label corrected to "LFO2→Filt"
+- Added unit tests for E_FREQ corruption (10 tests, store lifecycle simulation)
+- Added Node e2e diagnostic tests (efreq-mapping, efreq-probe) for future field investigation
+- Fixed relative imports in test-filter-efreq-bug.ts to use #node/* pattern
+
+### Didn't Work
+- Initial approach: wrote unit tests simulating UI code paths (handleParameterChange, handleDragChange, handleCommitHeader). All passed because the spread/encode logic is correct — the bug wasn't in state management, it was in field mapping.
+- Playwright e2e tests also passed — because they were reading/writing the same dead field (E_FREQ) consistently. Round-trip to a dead field works; it just doesn't affect the device's actual parameter.
+
+### Course Corrections
+- [PROCESS] Agent spent significant time analyzing UI state management code paths (stale closures, raw buffer references, handleCommitHeader re-encode loop) before writing a test. User: "you should write a test that exercises the bug"
+- [PROCESS] Agent then wrote unit tests replicating code patterns. User redirected to Playwright e2e tests as the right layer for a bug reported as device behavior.
+- [PROCESS] Agent started analyzing code again after Playwright tests passed. User hypothesized the real issue: "I suspect the field for filter envelope->cutoff parameter is incorrectly mapped and that we are mistakenly applying a zero default to the actual field" — this was correct.
+- [PROCESS] Agent proposed building a proper e2e test for field mapping. User: "Let's do this ad-hoc... just write a throwaway node script" — much faster for exploratory investigation.
+- [PROCESS] Agent tried to run throwaway script from /tmp (outside monorepo, module resolution failed). Should have put it inside the workspace from the start.
+
+### Quantitative
+- User messages: ~20
+- Commits: 0 (session end commit pending)
+- User corrections: 5 (all PROCESS — testing approach and investigation methodology)
+
+### Insights
+1. **When the obvious tests pass, question your assumptions.** Both unit and e2e tests passed because they exercised the same incorrect mapping consistently. The bug was a wrong field, not wrong logic.
+2. **Throwaway scripts beat ceremony for exploration.** The user's suggestion to skip the e2e infra and write a quick diff script found the root cause in one iteration. The overhead of properly registering test groups, wiring make targets, etc. is wrong for exploratory work.
+3. **Front-panel comparison is the ground truth.** The decisive test was: write to field X via SysEx, check the front panel. No amount of round-trip testing through our own code would have caught a mapping error where both read and write use the same wrong offset.
+4. **S3000XL field layout diverges from S1000/S2800 spec.** Fields marked "not used" in the spec are repurposed on the S3000XL. The assignable modulation amount fields (MODVFILT1-3) map to the front panel's velocity→freq, LFO2→freq, ENV2→freq. This should be documented.
+5. **Signed decoding gaps hide quietly.** K_FREQ reading as 241 instead of -15 was never noticed because the UI showed the unsigned value and nobody compared against the front panel until now.
+
+---
+
 ## 2026-04-14: Akai S3000XL Editor UX — Phases 6-10, Filter Display, Testing Lessons (Session 3)
 
 ### Feature: akai-ux-improvement

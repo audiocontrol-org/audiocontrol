@@ -138,9 +138,9 @@ export function KeygroupEditor({
           <ParamKnob label="Freq" value={header.FILFRQ} min={0} max={99} onChange={num('FILFRQ')} />
           <ParamKnob label="Resonance" value={header.FILQ} min={0} max={15} onChange={num('FILQ')} />
           <ParamKnob label="Key Track" value={header.K_FREQ} min={-50} max={50} onChange={num('K_FREQ')} bipolar />
-          <ParamKnob label="Vel→Filt" value={header.V_FREQ} min={-50} max={50} onChange={num('V_FREQ')} bipolar />
-          <ParamKnob label="Press→Filt" value={header.P_FREQ} min={-50} max={50} onChange={num('P_FREQ')} bipolar />
-          <ParamKnob label="Env→Filt" value={header.E_FREQ} min={-50} max={50} onChange={num('E_FREQ')} bipolar />
+          <ParamKnob label="Vel→Filt" value={header.MODVFILT1} min={-50} max={50} onChange={num('MODVFILT1')} bipolar />
+          <ParamKnob label="LFO2→Filt" value={header.MODVFILT2} min={-50} max={50} onChange={num('MODVFILT2')} bipolar />
+          <ParamKnob label="Env→Filt" value={header.MODVFILT3} min={-50} max={50} onChange={num('MODVFILT3')} bipolar />
         </Section>
       </div>
 

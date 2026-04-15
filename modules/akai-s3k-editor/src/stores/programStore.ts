@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type { ProgramHeader } from '@audiocontrol/sampler-devices/s3k';
 
 export interface ProgramStoreState {
@@ -8,6 +9,8 @@ export interface ProgramStoreState {
   programNames: string[];
   /** Whether the program name list has been loaded from the device */
   namesLoaded: boolean;
+  /** Timestamp (ms) when names were last fetched from device */
+  lastRefreshed: number | null;
 }
 
 export interface ProgramStoreActions {
@@ -25,31 +28,41 @@ function createEmptyPrograms(): (ProgramHeader | undefined)[] {
   return new Array<ProgramHeader | undefined>(128).fill(undefined);
 }
 
-export const useProgramStore = create<ProgramStore>((set) => ({
-  programs: createEmptyPrograms(),
-  programNames: [],
-  namesLoaded: false,
-
-  setProgramNames(names: string[]) {
-    set({ programNames: names, namesLoaded: true });
-  },
-
-  setProgram(index: number, header: ProgramHeader) {
-    set((state) => {
-      const next = [...state.programs];
-      next[index] = header;
-      return { programs: next };
-    });
-  },
-
-  invalidateCache() {
-    set({
+export const useProgramStore = create<ProgramStore>()(
+  persist(
+    (set) => ({
       programs: createEmptyPrograms(),
       programNames: [],
       namesLoaded: false,
-    });
-  },
-}));
+      lastRefreshed: null,
+
+      setProgramNames(names: string[]) {
+        set({ programNames: names, namesLoaded: true, lastRefreshed: Date.now() });
+      },
+
+      setProgram(index: number, header: ProgramHeader) {
+        set((state) => {
+          const next = [...state.programs];
+          next[index] = header;
+          return { programs: next };
+        });
+      },
+
+      invalidateCache() {
+        set({
+          programs: createEmptyPrograms(),
+          programNames: [],
+          namesLoaded: false,
+          lastRefreshed: null,
+        });
+      },
+    }),
+    {
+      name: 's3k-program-cache',
+      storage: createJSONStorage(() => sessionStorage),
+    },
+  ),
+);
 
 // Expose on window for E2E testing
 if (typeof window !== 'undefined') {

@@ -55,6 +55,8 @@ interface DeviceMemoryPanelProps {
   onDeleteProgram?: (index: number, name: string) => void;
   /** Clone a program on the device. */
   onCloneProgram?: (index: number, name: string) => void;
+  /** Clone a sample on the device. */
+  onCloneSample?: (index: number, name: string) => void;
   isConnected: boolean;
   isLoading: boolean;
 }
@@ -212,14 +214,14 @@ function NameList({
               </button>
               {(onClone || onDelete) && renamingIndex !== index && (
                 <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {onClone && type === 'program' && (
+                  {onClone && (
                     <button
                       type="button"
                       className={cn(
                         'ac-list-action-btn',
                         isSelected && 'ac-list-action-btn--selected',
                       )}
-                      title="Clone program"
+                      title={`Clone ${type}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         onClone(index, name);
@@ -271,11 +273,11 @@ function NameList({
             setRenameValue(name);
           } });
         }
-        if (onClone && type === 'program') {
+        if (onClone) {
           actions.push({ label: 'Clone', onClick: () => onClone(contextMenu.index, name) });
         }
         if (onDelete) {
-          if (actions.length > 0 && !onRename && !(onClone && type === 'program')) {
+          if (actions.length > 0 && !onRename && !onClone) {
             actions.push({ label: '', onClick: () => {}, separator: true });
           }
           actions.push({ label: 'Delete from Device', onClick: () => setConfirmDeleteIndex(contextMenu.index), danger: true });
@@ -338,6 +340,7 @@ export function DeviceMemoryPanel({
   onDeleteSample,
   onDeleteProgram,
   onCloneProgram,
+  onCloneSample,
   isConnected,
   isLoading,
 }: DeviceMemoryPanelProps): JSX.Element {
@@ -485,6 +488,7 @@ export function DeviceMemoryPanel({
           onSaveToCommonLibrary={onSaveSampleToCommonLibrary}
           onSaveToDeviceLibrary={onSaveSampleToDeviceLibrary}
           onRename={onRenameSample}
+          onClone={onCloneSample}
           onDelete={onDeleteSample}
           draggable={isConnected && !!onSaveSampleToCommonLibrary}
         />

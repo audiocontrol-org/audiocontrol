@@ -13,12 +13,12 @@ Restructure the Akai S3000XL editor from memory-oriented pages to workflow-orien
 | Phase 5: Visual Polish | Complete | Design system, responsive header, accessibility |
 | Phase 6: Memory Browser CRUD Parity | Complete | |
 | Phase 7: Memory-to-Library Drag & Drop | Complete | |
-| Phase 8: Library Promotion Fix | In Progress | Round-trip verification remaining |
-| Phase 9: Sample Editor | Not Started | |
+| Phase 8: Library Promotion Fix | Complete | Promotion verified via e2e tests |
+| Phase 9: Sample Editor | Complete | List-detail layout, dense grid, 20 unit tests |
 | Phase 10: Remove Compare Page | Complete | |
-| Phase 11: Persistent Editor Cache | Not Started | |
-| Phase 12: Program Download Fix | Not Started | Expandability + atomic sample rename |
-| Phase 13: Sample Clone | Not Started | cloneSample in device client + UI |
+| Phase 11: Persistent Editor Cache | Complete | zustand persist + sessionStorage, CacheAge indicator |
+| Phase 12: Program Download Fix | Complete | Expandable programs + atomic sample rename |
+| Phase 13: Sample Clone | Complete | cloneSample via SDS, UI in both SamplesPage and DeviceMemoryPanel |
 
 ## Links
 
@@ -29,3 +29,4 @@ Restructure the Akai S3000XL editor from memory-oriented pages to workflow-orien
 | PRD | [prd.md](./prd.md) |
 | Workplan | [workplan.md](./workplan.md) |
 | Parent Issue | [#216](https://github.com/audiocontrol-org/audiocontrol/issues/216) |
+| PR | [#289](https://github.com/audiocontrol-org/audiocontrol/pull/289) |

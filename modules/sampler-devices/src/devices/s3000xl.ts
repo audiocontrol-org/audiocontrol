@@ -3105,7 +3105,7 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
     for (let i=0; i<1; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.K_FREQ = bytes2numberLE(b)
+    o.K_FREQ = bytes2signedNumberLE(b)
 
     // Not used
     out.log('V_FREQ: offset: ' + reloff())
@@ -3801,7 +3801,7 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
     for (let i=0; i<1; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.MODVFILT1 = bytes2numberLE(b)
+    o.MODVFILT1 = bytes2signedNumberLE(b)
 
     // Amount of control of filter frequency by assignable source 2
     out.log('MODVFILT2: offset: ' + reloff())
@@ -3809,7 +3809,7 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
     for (let i=0; i<1; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.MODVFILT2 = bytes2numberLE(b)
+    o.MODVFILT2 = bytes2signedNumberLE(b)
 
     // Amount of control of filter frequency by assignable source 3
     out.log('MODVFILT3: offset: ' + reloff())
@@ -3817,7 +3817,7 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
     for (let i=0; i<1; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.MODVFILT3 = bytes2numberLE(b)
+    o.MODVFILT3 = bytes2signedNumberLE(b)
 
     // Amount of control of pitch by assignable source
     out.log('MODVPITCH: offset: ' + reloff())

@@ -182,6 +182,19 @@ export interface S3000xlClientInterface {
     onProgress?: (step: string, current: number, total: number) => void,
   ): Promise<number>;
 
+  /**
+   * Clone a sample to a new slot at the end of the RSLIST.
+   *
+   * Downloads the sample via SDS, re-uploads as a new sample,
+   * then renames the copy with a " CPY" suffix.
+   *
+   * @param onProgress - Optional callback for step-by-step progress
+   */
+  cloneSample(
+    sourceSampleNumber: number,
+    onProgress?: (step: string, current: number, total: number) => void,
+  ): Promise<number>;
+
   /** Force refresh of sample names from device (invalidates cache and re-fetches) */
   refreshSampleNames(): Promise<string[]>;
 
