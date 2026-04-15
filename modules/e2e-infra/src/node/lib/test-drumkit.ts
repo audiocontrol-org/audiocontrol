@@ -13,7 +13,7 @@
  *   6. Verify everything by reading back
  */
 
-import type { TestContext, TestResult } from '@/node/lib/test-types.js';
+import type { TestContext, TestResult } from '#node/lib/test-types.js';
 import WebSocket from 'ws';
 import {
   ProgramHeader_writePRNAME,

@@ -5,7 +5,7 @@
  */
 
 import type { ScsiMidiBridgeStatus, ScsiDevice } from '@audiocontrol/midi-core';
-import type { TestContext, TestResult } from '@/node/lib/test-types.js';
+import type { TestContext, TestResult } from '#node/lib/test-types.js';
 
 export async function runConnectionTests(ctx: TestContext): Promise<TestResult[]> {
   const results: TestResult[] = [];

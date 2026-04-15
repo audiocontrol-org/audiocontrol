@@ -6,7 +6,7 @@
  * no renames. Just raw SDS transfers to see if the device accepts them.
  */
 
-import type { TestContext, TestResult } from '@/node/lib/test-types.js';
+import type { TestContext, TestResult } from '#node/lib/test-types.js';
 import WebSocket from 'ws';
 
 function generateSineWave(length: number, freq: number, sampleRate: number): Int16Array {

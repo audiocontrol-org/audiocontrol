@@ -13,7 +13,7 @@
  *   6. Clean up (free the blocks, remove directory entry)
  */
 
-import type { TestContext, TestResult } from '@/node/lib/test-types.js';
+import type { TestContext, TestResult } from '#node/lib/test-types.js';
 import { createScsiDiskClient, type ScsiDiskClient } from '@audiocontrol/midi-core';
 import {
   parsePartitionTable,

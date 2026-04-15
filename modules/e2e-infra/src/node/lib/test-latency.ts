@@ -16,7 +16,7 @@
  * Each test runs multiple iterations to get min/max/median.
  */
 
-import type { TestContext, TestResult } from '@/node/lib/test-types.js';
+import type { TestContext, TestResult } from '#node/lib/test-types.js';
 
 const ITERATIONS = 10;
 

@@ -18,12 +18,12 @@ Unblock Node-based e2e tests that currently fail with `ERR_MODULE_NOT_FOUND` due
 
 **Tasks:**
 
-- [ ] Investigate tsx path alias resolution with `moduleResolution: "nodenext"` — determine whether tsx supports `paths` from tsconfig, whether a loader/plugin is needed, or whether the alias approach is fundamentally incompatible with Node ESM resolution
-- [ ] Choose resolution strategy: either configure tsx to resolve `@/` paths (via `tsconfig-paths`, custom loader, or tsx-native support) or migrate `e2e-infra` imports from `@/` to Node-native `#node/` package imports using the `imports` field in `package.json`
-- [ ] Implement the chosen strategy in `modules/e2e-infra/`
+- [x] Investigate tsx path alias resolution with `moduleResolution: "nodenext"` — tsx does NOT resolve TypeScript `paths` at runtime; Node ESM has no knowledge of tsconfig path aliases
+- [x] Choose resolution strategy: migrate `e2e-infra` imports from `@/` to Node-native `#node/` package imports using the `imports` field in `package.json`
+- [x] Implement the chosen strategy in `modules/e2e-infra/` — migrated all 37 `@/node/` imports to `#node/` across 17 files; added `#node/*` path to tsconfig for IDE/type-check support
 - [ ] Verify `make test-scsi-write-validation` runs without import resolution errors
 - [ ] Verify other Node e2e Make targets (`test-e2e-s3k-scsi`, etc.) work correctly
-- [ ] Document the resolution approach in a code comment at the configuration site
+- [x] Document the resolution approach in a code comment at the configuration site — comment added in `scsi-write-test.ts`
 
 **Acceptance criteria:** All Node e2e tests run without `ERR_MODULE_NOT_FOUND`. No regressions in existing SCSI or device e2e test targets.
 

@@ -10,7 +10,7 @@ import {
   KeygroupHeader_writeFILFRQ,
   SampleHeader_writeSHNAME,
 } from '@audiocontrol/sampler-devices/s3k';
-import type { TestContext, TestResult } from '@/node/lib/test-types.js';
+import type { TestContext, TestResult } from '#node/lib/test-types.js';
 
 function delay(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));

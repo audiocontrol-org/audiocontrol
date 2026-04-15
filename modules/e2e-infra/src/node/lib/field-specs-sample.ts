@@ -1,5 +1,5 @@
 import type { SampleHeader } from '@audiocontrol/sampler-devices/s3k';
-import type { FieldSpec } from '@/node/lib/field-specs-program.js';
+import type { FieldSpec } from '#node/lib/field-specs-program.js';
 
 export const SAMPLE_FIELD_SPECS: FieldSpec<SampleHeader>[] = [
   {

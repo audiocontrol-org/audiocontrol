@@ -1,5 +1,5 @@
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
-import type { FieldSpec } from '@/node/lib/field-specs-program.js';
+import type { FieldSpec } from '#node/lib/field-specs-program.js';
 
 export const KEYGROUP_FIELD_SPECS: FieldSpec<KeygroupHeader>[] = [
   {

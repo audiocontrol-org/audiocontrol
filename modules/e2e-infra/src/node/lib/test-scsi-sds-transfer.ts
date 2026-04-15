@@ -5,7 +5,7 @@
  * Uses the built-in Node.js WebSocket API (Node 22+).
  */
 
-import type { TestContext, TestResult } from '@/node/lib/test-types.js';
+import type { TestContext, TestResult } from '#node/lib/test-types.js';
 
 interface SampleHeader {
   name: string;
