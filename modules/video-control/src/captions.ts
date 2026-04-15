@@ -3,7 +3,7 @@ import type { Caption, CaptionType } from '@/types.js';
 /**
  * Format milliseconds as MM:SS timestamp string (for VO scripts).
  */
-const formatTimestamp = (ms: number): string => {
+export const formatTimestamp = (ms: number): string => {
   const totalSeconds = Math.floor(ms / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
@@ -13,7 +13,7 @@ const formatTimestamp = (ms: number): string => {
 /**
  * Format milliseconds as text-overlay timecode: "M:SS.mmm"
  */
-const formatTimecode = (ms: number): string => {
+export const formatTimecode = (ms: number): string => {
   const totalSeconds = Math.floor(ms / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
@@ -24,7 +24,7 @@ const formatTimecode = (ms: number): string => {
 /**
  * Escape a string for safe inclusion in YAML. Always double-quotes for consistency.
  */
-const yamlEscapeString = (text: string): string => {
+export const yamlEscapeString = (text: string): string => {
   const escaped = text.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   return `"${escaped}"`;
 };
@@ -95,7 +95,7 @@ export const generateCaptionsYaml = (
  * Wrap text at approximately maxWidth characters, preserving word boundaries.
  * Returns an array of lines.
  */
-const wrapText = (text: string, maxWidth: number): string[] => {
+export const wrapText = (text: string, maxWidth: number): string[] => {
   const words = text.split(' ');
   const lines: string[] = [];
   let currentLine = '';
@@ -120,7 +120,7 @@ const wrapText = (text: string, maxWidth: number): string[] => {
  * Format a scenario name into a human-readable title.
  * e.g. "s3k-zone-editor" -> "S3k Zone Editor"
  */
-const formatTitle = (scenarioName: string): string => {
+export const formatTitle = (scenarioName: string): string => {
   return scenarioName
     .split('-')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))

@@ -92,7 +92,7 @@ export async function convertToGif(
 /**
  * Format milliseconds to ASS timestamp format: H:MM:SS.cc (centiseconds).
  */
-const formatAssTimestamp = (ms: number): string => {
+export const formatAssTimestamp = (ms: number): string => {
   const totalSeconds = Math.floor(ms / 1000);
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -104,7 +104,7 @@ const formatAssTimestamp = (ms: number): string => {
 /**
  * Generate ASS subtitle file content from captions.
  */
-const generateAssContent = (captions: ReadonlyArray<Caption>): string => {
+export const generateAssContent = (captions: ReadonlyArray<Caption>): string => {
   const lines: string[] = [];
 
   // Script Info section
