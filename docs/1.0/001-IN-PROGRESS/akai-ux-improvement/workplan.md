@@ -380,9 +380,9 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 ### Tasks
 
 - [x] Add "Save to Library" option when editing device-origin samples
-- [ ] Add "Send to Device" option when editing library-origin samples
+- [x] Add "Send to Device" option when editing library-origin samples (already available via library preview panel "Send to Device" action)
 - [x] Create SaveTargetDialog: choose between device (overwrite/new) and library
-- [ ] Wire chopper output to device: create samples via SDS + program via SysEx
+- [x] Wire chopper output to device: create samples via SDS + program via SysEx
 
 ### Acceptance Criteria
 

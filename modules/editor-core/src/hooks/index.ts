@@ -20,6 +20,7 @@ export {
   type SliceEditDialogState,
   type DrumKitEditorDialogState,
   type EditorDialogsCoreResult,
+  type ChopperSavePayload,
 } from './useEditorDialogsCore';
 export {
   useLibraryConnection,

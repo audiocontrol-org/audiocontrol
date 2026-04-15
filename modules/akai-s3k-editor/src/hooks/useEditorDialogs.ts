@@ -15,6 +15,7 @@ import {
   type EditorDialogStrategy,
   type EditorDialogsCoreResult,
   type WavData,
+  type ChopperSavePayload,
   type ErrorReporter,
 } from '@audiocontrol/editor-core';
 import * as s3k from '@audiocontrol/sampler-devices/s3k';
@@ -242,10 +243,72 @@ export function useEditorDialogs(
     setSaveTargetState(SAVE_TARGET_IDLE);
   }, []);
 
+  // ---------------------------------------------------------------------------
+  // Device-aware chopper save
+  // ---------------------------------------------------------------------------
+
+  const handleChopperSave = useCallback(async (payload: ChopperSavePayload) => {
+    const origin = core.chopper?.origin;
+
+    if (origin?.type === 'device-sample' && client) {
+      // Upload each slice as a new device sample, then create a program
+      try {
+        const { sourceAudio, slices, name: programName } = payload;
+        const existingNames = await client.fetchSampleNames();
+        let nextSlot = existingNames.length;
+        const sliceSampleNames: string[] = [];
+
+        for (const slice of slices) {
+          const sliceData = sourceAudio.samples.slice(slice.startSample, slice.endSample);
+          const sliceName = slice.label.substring(0, 12).trim();
+          await client.sendSampleViaSds(nextSlot, sliceData, sourceAudio.sampleRate, {
+            name: sliceName,
+          });
+          sliceSampleNames.push(sliceName);
+          nextSlot++;
+        }
+
+        // Create a program with keygroups mapping each slice to a note
+        const baseNote = kitConfig.baseNote;
+        const existingPrograms = await client.fetchProgramNames();
+        const programIndex = existingPrograms.length;
+
+        const programHeader = await client.fetchProgramHeader(0);
+        const newHeader = { ...programHeader, raw: [...programHeader.raw] };
+        s3k.ProgramHeader_writePRNAME(newHeader, programName.substring(0, 12));
+        await client.createProgram(programIndex, newHeader);
+
+        // Write keygroups
+        for (let i = 0; i < sliceSampleNames.length; i++) {
+          if (i > 0) {
+            await client.createKeygroup(programIndex, i);
+          }
+          const kg = await client.fetchKeygroupHeader(programIndex, i);
+          const updated = { ...kg, raw: [...kg.raw] };
+          const note = baseNote + i;
+          s3k.KeygroupHeader_writeLONOTE(updated, note);
+          s3k.KeygroupHeader_writeHINOTE(updated, note);
+          s3k.KeygroupHeader_writeSNAME1(updated, sliceSampleNames[i].padEnd(12));
+          await client.writeKeygroupHeader(updated);
+        }
+
+        client.invalidateSampleCache();
+        client.invalidateProgramCache();
+      } catch (err) {
+        errorReporter.report(err instanceof Error ? err.message : 'Failed to create device drum kit');
+      }
+      return;
+    }
+
+    // Library origin — delegate to shared handler
+    core.handleChopperSave(payload);
+  }, [core, client, kitConfig, errorReporter]);
+
   return {
     ...core,
     handleLoopEditorSave,
     handleSampleEditorSave,
+    handleChopperSave,
     kitConfig,
     setKitConfig,
     saveTargetState,
