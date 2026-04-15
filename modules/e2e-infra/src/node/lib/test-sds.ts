@@ -2,7 +2,7 @@
  * SDS round-trip test — send a known sample, receive it back, compare.
  */
 
-import type { TestContext, TestResult } from '@/node/lib/test-types.js';
+import type { TestContext, TestResult } from '#node/lib/test-types.js';
 
 function generateSineWave(length: number, sampleRate: number, freqHz: number): Int16Array {
   const samples = new Int16Array(length);

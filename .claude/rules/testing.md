@@ -19,7 +19,7 @@ See [TESTING.md](/TESTING.md) for the overall testing architecture. Three test c
 
 Detailed methodology: [TESTING-UNIT.md](/TESTING-UNIT.md) | [TESTING-UI.md](/TESTING-UI.md) | [TESTING-E2E.md](/TESTING-E2E.md)
 
-**Migration in progress:** Unit tests currently live as `src/**/*.test.tsx`, E2E tests in `e2e/`. New tests go in `test/<category>/`. See GitHub issue for migration tracking.
+**Standard layout:** Unit tests in `test/unit/`, UI tests in `test/ui/`, E2E tests in `test/e2e/`. All new tests go in the appropriate `test/<category>/` directory.
 
 When developing UI features:
 1. Create a test harness page (`src/pages/Test<Feature>Page.tsx`) with factory data

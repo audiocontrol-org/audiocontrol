@@ -34,7 +34,7 @@ if (!midiServerPort) {
 }
 
 export default defineConfig({
-  testDir: './e2e',
+  testDir: './test/e2e',
   testMatch: 'device-library-*.spec.ts',
   fullyParallel: false, // Sequential for hardware + OPFS isolation
   forbidOnly: !!process.env.CI,
@@ -42,7 +42,7 @@ export default defineConfig({
   workers: 1, // Single worker for hardware + OPFS isolation
   reporter: [
     ['line'],
-    ['./e2e/reporters/heartbeat-reporter.ts'],
+    ['./test/e2e/reporters/heartbeat-reporter.ts'],
   ],
   timeout: 60_000, // 60s max per test - device transfers are slow
   use: {

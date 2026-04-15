@@ -6,11 +6,11 @@
  */
 
 import * as s3k from '@audiocontrol/sampler-devices/s3k';
-import type { FieldSpec } from '@/node/lib/field-specs-program.js';
-import { PROGRAM_FIELD_SPECS } from '@/node/lib/field-specs-program.js';
-import { KEYGROUP_FIELD_SPECS } from '@/node/lib/field-specs-keygroup.js';
-import { SAMPLE_FIELD_SPECS } from '@/node/lib/field-specs-sample.js';
-import type { TestContext, TestResult } from '@/node/lib/test-types.js';
+import type { FieldSpec } from '#node/lib/field-specs-program.js';
+import { PROGRAM_FIELD_SPECS } from '#node/lib/field-specs-program.js';
+import { KEYGROUP_FIELD_SPECS } from '#node/lib/field-specs-keygroup.js';
+import { SAMPLE_FIELD_SPECS } from '#node/lib/field-specs-sample.js';
+import type { TestContext, TestResult } from '#node/lib/test-types.js';
 
 function delay(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));

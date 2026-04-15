@@ -913,6 +913,9 @@ importers:
         specifier: ^4.4.7
         version: 4.5.7(@types/react@18.3.27)(react@18.3.1)
     devDependencies:
+      '@audiocontrol/e2e-infra':
+        specifier: workspace:*
+        version: link:../e2e-infra
       '@playwright/test':
         specifier: ^1.57.0
         version: 1.58.1

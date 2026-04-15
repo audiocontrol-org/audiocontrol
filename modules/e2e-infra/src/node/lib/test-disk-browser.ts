@@ -5,7 +5,7 @@
  * Akai-formatted disks, then parses their partition/volume/file structure.
  */
 
-import type { TestContext, TestResult } from '@/node/lib/test-types.js';
+import type { TestContext, TestResult } from '#node/lib/test-types.js';
 import { createScsiDiskClient } from '@audiocontrol/midi-core';
 import { mkdtemp, rm, readdir, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

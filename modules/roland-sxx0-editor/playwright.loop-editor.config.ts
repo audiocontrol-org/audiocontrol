@@ -21,7 +21,7 @@ if (!editorPort || !harnessPort) {
 }
 
 export default defineConfig({
-  testDir: './e2e',
+  testDir: './test/e2e',
   testMatch: 'loop-editor-production.spec.ts',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,

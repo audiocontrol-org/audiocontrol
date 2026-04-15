@@ -22,7 +22,7 @@ if (!port) {
 }
 
 export default defineConfig({
-  testDir: './e2e',
+  testDir: './test/e2e',
   testMatch: 'device-*.spec.ts',
   fullyParallel: false, // Sequential for hardware tests
   forbidOnly: !!process.env.CI,
@@ -30,7 +30,7 @@ export default defineConfig({
   workers: 1, // Single worker for hardware tests
   reporter: [
     ['line'],
-    ['./e2e/reporters/heartbeat-reporter.ts'],
+    ['./test/e2e/reporters/heartbeat-reporter.ts'],
   ],
   timeout: 10_000, // 10s max per test - fail fast
   use: {

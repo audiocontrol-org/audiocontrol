@@ -31,7 +31,7 @@ if (!scsiBridgeUrl) {
 }
 
 export default defineConfig({
-  testDir: './e2e',
+  testDir: './test/e2e',
   testMatch: 'scsi-*.spec.ts',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,

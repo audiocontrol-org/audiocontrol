@@ -33,7 +33,7 @@ paths:
 4. Use proportional flex layouts, not pixel values
 5. Build: `make`
 6. Verify visually using the test harness (screenshot with Playwright, inspect the result)
-7. **Write a Playwright test spec for every interaction you verified manually** — specs live in `e2e/test-harness-<feature>.spec.ts`. Ad-hoc screenshots without corresponding specs are throwaway work.
+7. **Write a Playwright test spec for every interaction you verified manually** — specs live in `test/ui/<feature>.spec.ts`. Ad-hoc screenshots without corresponding specs are throwaway work.
 8. Iterate: fix issues found visually, update specs, screenshot again
 9. Update workplan acceptance criteria
 10. Commit with GitHub issue reference

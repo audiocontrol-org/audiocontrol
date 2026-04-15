@@ -71,22 +71,11 @@ pnpm test                              # All unit tests across monorepo
 pnpm --filter <module> test            # Unit tests for one module
 
 # UI tests
-make test-ui-s3k                       # UI tests for akai-s3k-editor
+make test-ui-s3k                       # S3K UI tests
+make test-ui-roland                    # Roland UI tests
 
-# E2E tests (see TESTING-E2E.md for hardware prerequisites)
-make test-e2e-roland-device            # Roland device tests
-make test-e2e-s3k-device               # S3000XL device tests
-make test-e2e-s3k-scsi                 # S3000XL SCSI tests
+# E2E tests (use run-and-watch.sh — see TESTING-E2E.md)
+modules/e2e-infra/scripts/run-and-watch.sh test-e2e-roland-library
+modules/e2e-infra/scripts/run-and-watch.sh test-e2e-s3k-device
+modules/e2e-infra/scripts/run-and-watch.sh test-scsi-write-validation 'ARGS=--test connect'
 ```
-
-## Current State and Migration
-
-The target directory structure (`test/unit/`, `test/ui/`, `test/e2e/`) is new. Existing tests live in legacy locations:
-
-| What | Current location | Target location |
-|------|-----------------|-----------------|
-| Unit tests | `src/**/*.test.tsx` (co-located with source) | `test/unit/` |
-| UI test specs | `e2e/test-harness-*.spec.ts` | `test/ui/` |
-| E2E test specs | `e2e/` directory | `test/e2e/` |
-
-Migration is tracked separately. New tests should be written in the target locations. Existing tests will be moved incrementally.

@@ -12,27 +12,28 @@
  *   pnpm --filter @audiocontrol/e2e-infra scsi-write-test -- --bridge-url http://s3k.local:7033 --test connect
  */
 
+// Node e2e scripts use #node/* imports (via package.json "imports" field) instead of @/*
+// because tsx with moduleResolution "nodenext" does not resolve TypeScript path aliases at runtime.
 import { createScsiMidiTransport } from '@audiocontrol/midi-core';
 import type { MidiIO } from '@audiocontrol/midi-core';
 import { createS3000xlClient } from '@audiocontrol/sampler-devices/s3k';
-import { createLoggingMidiIO } from '@/node/lib/logging-midi-io.js';
-import { runConnectionTests } from '@/node/lib/test-connection.js';
-import { runReadTests } from '@/node/lib/test-reads.js';
-import { runWriteTests } from '@/node/lib/test-writes.js';
-import { runAllFieldTests } from '@/node/lib/test-all-fields.js';
-import { runStructureTests } from '@/node/lib/test-structure.js';
-import { runMultiTests } from '@/node/lib/test-multi.js';
-import { runLatencyTests } from '@/node/lib/test-latency.js';
-import { runStreamingTests } from '@/node/lib/test-streaming.js';
-import { runSdsTests } from '@/node/lib/test-sds.js';
-import { runScsiSdsTransferTests } from '@/node/lib/test-scsi-sds-transfer.js';
-import { runDiskWriteTests } from '@/node/lib/test-disk-write.js';
-import { runDrumKitTests } from '@/node/lib/test-drumkit.js';
-import { runMultiSdsTests } from '@/node/lib/test-multi-sds.js';
-import { runProgramExportTests } from '@/node/lib/test-program-export.js';
-import { runDiskBrowserTests } from '@/node/lib/test-disk-browser.js';
+import { createLoggingMidiIO } from '#node/lib/logging-midi-io.js';
+import { runConnectionTests } from '#node/lib/test-connection.js';
+import { runReadTests } from '#node/lib/test-reads.js';
+import { runWriteTests } from '#node/lib/test-writes.js';
+import { runAllFieldTests } from '#node/lib/test-all-fields.js';
+import { runStructureTests } from '#node/lib/test-structure.js';
+import { runMultiTests } from '#node/lib/test-multi.js';
+import { runLatencyTests } from '#node/lib/test-latency.js';
+import { runSdsTests } from '#node/lib/test-sds.js';
+import { runScsiSdsTransferTests } from '#node/lib/test-scsi-sds-transfer.js';
+import { runDiskWriteTests } from '#node/lib/test-disk-write.js';
+import { runDrumKitTests } from '#node/lib/test-drumkit.js';
+import { runMultiSdsTests } from '#node/lib/test-multi-sds.js';
+import { runProgramExportTests } from '#node/lib/test-program-export.js';
+import { runDiskBrowserTests } from '#node/lib/test-disk-browser.js';
 import { runFilterEFreqBugTests } from './lib/test-filter-efreq-bug.js';
-import type { TestContext, TestResult } from '@/node/lib/test-types.js';
+import type { TestContext, TestResult } from '#node/lib/test-types.js';
 
 // ---------------------------------------------------------------------------
 // Arg parsing
@@ -141,7 +142,7 @@ const TEST_GROUPS: TestGroup[] = [
   { name: 'structure', run: runStructureTests },
   { name: 'multi', run: runMultiTests },
   { name: 'latency', run: runLatencyTests },
-  { name: 'streaming', run: runStreamingTests },
+  // test-streaming.ts was never created — removed dead reference
   { name: 'sds', run: runSdsTests },
   { name: 'scsi-sds-transfer', run: runScsiSdsTransferTests },
   { name: 'disk-write', run: runDiskWriteTests },

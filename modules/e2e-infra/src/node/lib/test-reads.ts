@@ -2,7 +2,7 @@
  * Read-only tests — verify that fetches return valid data with cache disabled.
  */
 
-import type { TestContext, TestResult } from '@/node/lib/test-types.js';
+import type { TestContext, TestResult } from '#node/lib/test-types.js';
 
 export async function runReadTests(ctx: TestContext): Promise<TestResult[]> {
   const results: TestResult[] = [];

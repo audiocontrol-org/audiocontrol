@@ -210,7 +210,7 @@ The `roland-sxx0-editor` module includes hardware e2e tests that run against rea
 
 ### How It Works
 
-1. **Heartbeat Reporter** (`e2e/reporters/heartbeat-reporter.ts`): Custom Playwright reporter that writes a JSON heartbeat file on every test event (`onTestBegin`, `onTestEnd`, `onStepBegin`, `onStepEnd`). The heartbeat includes the current timestamp, event type, and description.
+1. **Heartbeat Reporter** (`test/e2e/reporters/heartbeat-reporter.ts`): Custom Playwright reporter that writes a JSON heartbeat file on every test event (`onTestBegin`, `onTestEnd`, `onStepBegin`, `onStepEnd`). The heartbeat includes the current timestamp, event type, and description.
 
 2. **Watchdog Process** (`scripts/watchdog.ts`): Background process that polls the heartbeat file every 500ms. If the heartbeat timestamp is older than 5 seconds, the watchdog kills the Playwright runner process with SIGKILL and exits with code 1.
 
@@ -234,7 +234,7 @@ Prerequisites:
 
 ### File Locations
 
-- **Reporter**: `modules/roland-sxx0-editor/e2e/reporters/heartbeat-reporter.ts`
+- **Reporter**: `modules/roland-sxx0-editor/test/e2e/reporters/heartbeat-reporter.ts`
 - **Watchdog**: `modules/roland-sxx0-editor/scripts/watchdog.ts`
 - **Runner**: `modules/roland-sxx0-editor/scripts/run-hardware-e2e.sh`
 - **Config**: `modules/roland-sxx0-editor/playwright.hardware.config.ts`
