@@ -103,12 +103,12 @@ Use Playwright's built-in `recordVideo` to capture browser interactions as WebM.
 
 **Tasks:**
 
-- [ ] Clone and inventory `audiocontrol-org/videocontrol` (video-core, text-overlay, phosphor-scope)
-- [ ] Port modules into `modules/video-control/packages/` (video-core, text-overlay, phosphor-scope)
-- [ ] Update package names from `@videocontrol/*` to `@audiocontrol/*`
-- [ ] Update internal cross-references and imports between ported packages
-- [ ] Wire ported packages into pnpm workspace (update `pnpm-workspace.yaml` or use nested workspace)
-- [ ] Verify all tests pass for ported modules
+- [x] Clone and inventory `audiocontrol-org/videocontrol` (video-core, text-overlay, phosphor-scope)
+- [x] Port modules into `modules/video-control/packages/` (video-core, text-overlay, phosphor-scope)
+- [x] Update package names from `@videocontrol/*` to `@audiocontrol/*`
+- [x] Update internal cross-references and imports between ported packages
+- [x] Wire ported packages into pnpm workspace (update `pnpm-workspace.yaml`)
+- [x] Verify all tests pass for ported modules (video-core: 43/43, text-overlay: typecheck pass, phosphor-scope: typecheck pass)
 - [ ] Update video-control's existing code to use ported text-overlay (replace hand-built YAML with real format)
 - [ ] Add deprecation notice to `audiocontrol-org/videocontrol` README
 - [ ] Archive the standalone repo on GitHub
