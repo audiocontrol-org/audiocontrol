@@ -10,7 +10,7 @@ Feature documentation is organized by implementation state:
 | `000-PENDING/` | Accepted, not started | 1 |
 | `001-IN-PROGRESS/` | Active development | 7 |
 | `002-BLOCKED/` | Blocked on dependencies | 1 |
-| `003-COMPLETE/` | Implemented | 16 |
+| `003-COMPLETE/` | Implemented | 17 |
 | `004-ARCHIVE/` | Superseded/abandoned | 1 |
 
 ---
@@ -35,7 +35,7 @@ No blockers, can be worked independently.
 | trigger-chopping | Partial | #100 | Verify implementation |
 | chopper-testing-infra | Partial | #98 | E2E test infrastructure |
 | edit-workflow-architecture | ~95% | #61 | Final polish |
-| continuous-improvement | Phase 1-4 | #187 | Session lifecycle, journal, analyzer, agents/skills |
+| ~~continuous-improvement~~ | Complete | #187 | Moved to 003-COMPLETE |
 
 **Not Started (Ready):**
 
@@ -89,7 +89,7 @@ Features organized by state. See `docs/1.0/<state>/<slug>/` for details.
 | trigger-chopping | — | #100 | Partial |
 | chopper-testing-infra | — | #98 | Partial |
 
-### 003-COMPLETE (16)
+### 003-COMPLETE (17)
 
 | Feature | Phase | Summary |
 |---------|-------|---------|
@@ -109,6 +109,7 @@ Features organized by state. See `docs/1.0/<state>/<slug>/` for details.
 | netlify-monorepo-deploy | — | Per-site Netlify deployment |
 | trigger-architecture-simplification | — | Trigger hook decomposition |
 | library-sets | — | Library set management |
+| continuous-improvement | 9 | Session lifecycle, analytics, agents/skills, CLAUDE.md refactoring |
 
 ### 002-BLOCKED (1)
 
