@@ -230,6 +230,55 @@
       font-size: 0.85rem;
       color: #f9fafb;
     }
+
+    /* Caption overlay */
+    .caption-overlay {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      max-width: 80%;
+      background: rgba(0, 0, 0, 0.7);
+      color: #fff;
+      font-size: 16px;
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 8px 16px;
+      border-radius: 4px;
+      pointer-events: none;
+      text-align: center;
+      line-height: 1.4;
+      z-index: 10;
+    }
+
+    /* View toggle bar */
+    .view-toggle-bar {
+      display: flex;
+      justify-content: center;
+      gap: 2px;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 4px 8px;
+    }
+
+    .view-toggle-btn {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: #9ca3af;
+      font-size: 12px;
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 2px 10px;
+      cursor: pointer;
+      transition: color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .view-toggle-btn:hover {
+      color: #d1d5db;
+    }
+
+    .view-toggle-btn.active {
+      color: #f9fafb;
+      border-bottom-color: #3b82f6;
+    }
   </style>
 </head>
 <body>

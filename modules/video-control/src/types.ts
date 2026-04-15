@@ -3,6 +3,9 @@ import type { Page } from 'playwright';
 /** Output tier -- each is a superset of the previous */
 export type OutputTier = 'silent' | 'captioned' | 'scripted';
 
+/** Caption overlay mode for burned-in subtitles */
+export type OverlayMode = 'none' | 'burned' | 'both';
+
 /** Scenario mode */
 export type ScenarioMode = 'harness' | 'device';
 
@@ -38,6 +41,7 @@ export interface ScenarioResult {
   outputDir: string;
   mp4Path: string;
   gifPath: string;
+  captionedMp4Path?: string;
   captionsYamlPath?: string;
   voScriptPath?: string;
   metadata: ScenarioMetadata;

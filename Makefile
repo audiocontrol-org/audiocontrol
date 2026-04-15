@@ -512,13 +512,14 @@ $(VIDEO_CONTROL): $(INSTALL_STAMP) $(VIDEO_CONTROL_SRC)
 
 SCENARIO ?=
 TIER ?=
+OVERLAY ?=
 
 # Run a single scenario by name
 # Usage: make demo-scenario SCENARIO=hello-world
 # Usage: make demo-scenario SCENARIO=s3k-zone-editor TIER=scripted
 demo-scenario: $(VIDEO_CONTROL)
 	@test -n "$(SCENARIO)" || (echo "ERROR: SCENARIO is required. Usage: make demo-scenario SCENARIO=hello-world" && exit 1)
-	cd $(MODULES_DIR)/video-control && tsx src/cli.ts scenarios/$(SCENARIO).ts about:blank $(if $(TIER),--tier $(TIER))
+	cd $(MODULES_DIR)/video-control && tsx src/cli.ts scenarios/$(SCENARIO).ts about:blank $(if $(TIER),--tier $(TIER)) $(if $(OVERLAY),--overlay $(OVERLAY))
 
 # Run all harness scenarios (no device required)
 demo-all: $(VIDEO_CONTROL)

@@ -1,8 +1,11 @@
+import { setupCaptionsForVideo } from './captions.js';
+
 interface DemoInfo {
   name: string;
   mp4Url: string;
   gifUrl: string | null;
   hasCaptions: boolean;
+  hasCaptionedMp4: boolean;
   hasVoScript: boolean;
   durationMs: number;
 }
@@ -141,6 +144,9 @@ function createCard(demo: DemoInfo, scenarioName: string | null): HTMLElement {
       video.style.objectFit = 'contain';
       video.style.backgroundColor = '#000';
       thumb.appendChild(video);
+
+      // Load captions and set up overlay + toggle
+      setupCaptionsForVideo(demo, card, thumb, video);
     });
   }
 
@@ -198,7 +204,7 @@ function mergeCards(demos: DemoInfo[], scenarios: ScenarioInfo[]): CardEntry[] {
   for (const s of scenarios) {
     if (!demoNames.has(s.name)) {
       entries.push({
-        demo: { name: s.name, mp4Url: '', gifUrl: null, hasCaptions: false, hasVoScript: false, durationMs: 0 },
+        demo: { name: s.name, mp4Url: '', gifUrl: null, hasCaptions: false, hasCaptionedMp4: false, hasVoScript: false, durationMs: 0 },
         scenarioName: s.name,
       });
     }

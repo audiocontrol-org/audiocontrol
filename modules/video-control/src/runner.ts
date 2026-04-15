@@ -2,8 +2,8 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
 import { generateCaptionsYaml, generateVoScript } from '@/captions.js';
-import { convertToGif, convertToMp4, getVideoDurationMs } from '@/ffmpeg.js';
-import type { OutputTier, ScenarioModule, ScenarioResult } from '@/types.js';
+import { burnCaptions, convertToGif, convertToMp4, getVideoDurationMs } from '@/ffmpeg.js';
+import type { OutputTier, OverlayMode, ScenarioModule, ScenarioResult } from '@/types.js';
 
 export interface RunScenarioOptions {
   /** URL to navigate to before running the scenario */
@@ -16,6 +16,8 @@ export interface RunScenarioOptions {
   height?: number;
   /** Output tier override (defaults to scenario's own metadata.outputTier) */
   tier?: OutputTier;
+  /** Caption overlay mode (defaults to 'none') */
+  overlay?: OverlayMode;
 }
 
 export async function runScenario(
@@ -73,8 +75,10 @@ export async function runScenario(
 
   // Generate caption outputs if the scenario has captions and the tier calls for them
   const effectiveTier = options.tier ?? scenario.metadata.outputTier;
+  const effectiveOverlay = options.overlay ?? 'none';
   let captionsYamlPath: string | undefined;
   let voScriptPath: string | undefined;
+  let captionedMp4Path: string | undefined;
 
   if (
     scenario.captions &&
@@ -102,11 +106,22 @@ export async function runScenario(
     }
   }
 
+  // Burn captions into the video if overlay mode requests it
+  if (
+    scenario.captions &&
+    scenario.captions.length > 0 &&
+    (effectiveOverlay === 'burned' || effectiveOverlay === 'both')
+  ) {
+    captionedMp4Path = join(outputDir, 'video-captioned.mp4');
+    await burnCaptions(mp4Path, captionedMp4Path, scenario.captions);
+  }
+
   return {
     scenarioName: name,
     outputDir,
     mp4Path,
     gifPath,
+    captionedMp4Path,
     captionsYamlPath,
     voScriptPath,
     metadata: scenario.metadata,

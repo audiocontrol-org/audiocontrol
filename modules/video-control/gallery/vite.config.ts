@@ -13,6 +13,7 @@ interface DemoInfo {
   mp4Url: string;
   gifUrl: string | null;
   hasCaptions: boolean;
+  hasCaptionedMp4: boolean;
   hasVoScript: boolean;
   durationMs: number;
 }
@@ -53,6 +54,7 @@ function scanDemos(): DemoInfo[] {
         ? `/videos/${entry.name}/video.gif`
         : null,
       hasCaptions: existsSync(join(dir, 'captions.yaml')),
+      hasCaptionedMp4: existsSync(join(dir, 'video-captioned.mp4')),
       hasVoScript: existsSync(join(dir, 'vo-script.txt')),
       durationMs: getDurationMs(mp4),
     });
