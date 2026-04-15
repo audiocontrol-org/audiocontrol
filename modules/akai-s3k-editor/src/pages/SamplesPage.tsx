@@ -76,9 +76,13 @@ export function SamplesPage(): JSX.Element {
       const updated = { ...selectedHeader, [field]: value, raw: [...selectedHeader.raw] };
       setSample(selectedSampleIndex, updated);
       writeSampleField(updated, field, value);
-      await client.writeSampleHeader(updated);
+      try {
+        await client.writeSampleHeader(updated);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to write sample parameter');
+      }
     },
-    [selectedSampleIndex, client, selectedHeader, setSample],
+    [selectedSampleIndex, client, selectedHeader, setSample, setError],
   );
 
   const handleRename = useCallback(
@@ -228,10 +232,10 @@ export function SamplesPage(): JSX.Element {
         </div>
 
         <div className="p-4">
-          {selectedHeader ? (
+          {selectedHeader && selectedSampleIndex !== null ? (
             <SampleEditor
               header={selectedHeader}
-              sampleIndex={selectedSampleIndex!}
+              sampleIndex={selectedSampleIndex}
               onParameterChange={handleParameterChange}
             />
           ) : selectedSampleIndex !== null ? (
