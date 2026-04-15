@@ -274,12 +274,12 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 
 ### Tasks
 
-- [ ] Cache program names and headers in sessionStorage (programStore)
-- [ ] Cache keygroup headers in sessionStorage (keygroupStore)
-- [ ] Cache sample names and headers in sessionStorage
-- [ ] Lazy-load from device only when cache is stale or missing
-- [ ] Show cached data immediately on page load, refresh in background
-- [ ] Add a cache age indicator or "last refreshed" timestamp
+- [x] Cache program names and headers in sessionStorage (programStore)
+- [x] Cache keygroup headers in sessionStorage (keygroupStore)
+- [x] Cache sample names and headers in sessionStorage
+- [x] Lazy-load from device only when cache is stale or missing
+- [x] Show cached data immediately on page load, refresh in background
+- [x] Add a cache age indicator or "last refreshed" timestamp
 
 ### Acceptance Criteria
 

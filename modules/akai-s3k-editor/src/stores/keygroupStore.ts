@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
 
 export interface KeygroupStoreState {
@@ -6,6 +7,8 @@ export interface KeygroupStoreState {
   keygroups: (KeygroupHeader | undefined)[];
   /** Number of keygroups in the currently selected program */
   keygroupCount: number;
+  /** Timestamp (ms) when keygroups were last fetched from device */
+  lastRefreshed: number | null;
 }
 
 export interface KeygroupStoreActions {
@@ -19,23 +22,32 @@ export interface KeygroupStoreActions {
 
 export type KeygroupStore = KeygroupStoreState & KeygroupStoreActions;
 
-export const useKeygroupStore = create<KeygroupStore>((set) => ({
-  keygroups: [],
-  keygroupCount: 0,
+export const useKeygroupStore = create<KeygroupStore>()(
+  persist(
+    (set) => ({
+      keygroups: [],
+      keygroupCount: 0,
+      lastRefreshed: null,
 
-  setKeygroup(index: number, header: KeygroupHeader) {
-    set((state) => {
-      const next = [...state.keygroups];
-      next[index] = header;
-      return { keygroups: next };
-    });
-  },
+      setKeygroup(index: number, header: KeygroupHeader) {
+        set((state) => {
+          const next = [...state.keygroups];
+          next[index] = header;
+          return { keygroups: next, lastRefreshed: Date.now() };
+        });
+      },
 
-  setKeygroupCount(count: number) {
-    set({ keygroupCount: count, keygroups: new Array(count).fill(undefined) });
-  },
+      setKeygroupCount(count: number) {
+        set({ keygroupCount: count, keygroups: new Array(count).fill(undefined) });
+      },
 
-  invalidateCache() {
-    set({ keygroups: [], keygroupCount: 0 });
-  },
-}));
+      invalidateCache() {
+        set({ keygroups: [], keygroupCount: 0, lastRefreshed: null });
+      },
+    }),
+    {
+      name: 's3k-keygroup-cache',
+      storage: createJSONStorage(() => sessionStorage),
+    },
+  ),
+);

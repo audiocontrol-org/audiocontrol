@@ -10,6 +10,7 @@ import { useEditorStore } from '@/stores/editorStore';
 import { useConnectionDrawerStore } from '@/stores/connectionDrawerStore';
 import { writeKeygroupField } from '@/lib/keygroup-writers';
 import { ErrorBanner } from '@/components/ui';
+import { CacheAge } from '@/components/ui/CacheAge';
 import { FULL_RANGE, panRange, zoomIn, zoomOut } from '@/components/keygroups/note-coordinate-utils';
 import type { NoteRange } from '@/components/keygroups/note-coordinate-utils';
 import { ZoneOverviewToolbar } from '@/components/keygroups/ZoneOverviewToolbar';
@@ -33,6 +34,7 @@ export function KeygroupsPage(): JSX.Element {
   const keygroups = useKeygroupStore((s) => s.keygroups);
   const keygroupCount = useKeygroupStore((s) => s.keygroupCount);
   const invalidateCache = useKeygroupStore((s) => s.invalidateCache);
+  const keygroupLastRefreshed = useKeygroupStore((s) => s.lastRefreshed);
 
   const lastLoadedProgram = useRef<number | null>(null);
 
@@ -71,8 +73,6 @@ export function KeygroupsPage(): JSX.Element {
       const header = useKeygroupStore.getState().keygroups[selectedKeygroupIndex];
       if (!header) return;
 
-      console.warn('[handleDragChange] field=%s value=%d E_FREQ_before=%d raw[30]=%d raw[31]=%d', field, value, header.E_FREQ, header.raw[30], header.raw[31]);
-
       const updated = { ...header, [field]: value };
       useKeygroupStore.getState().setKeygroup(selectedKeygroupIndex, updated);
 
@@ -81,7 +81,6 @@ export function KeygroupsPage(): JSX.Element {
         lastDragWrite.current = now;
         const toSend = { ...updated, raw: [...header.raw] };
         writeKeygroupField(toSend, field, value);
-        console.warn('[handleDragChange] sending: E_FREQ=%d raw[30]=%d raw[31]=%d', toSend.E_FREQ, toSend.raw[30], toSend.raw[31]);
         client.writeKeygroupHeader(toSend);
       }
     },
@@ -96,20 +95,13 @@ export function KeygroupsPage(): JSX.Element {
     if (!header) return;
     const toSend = { ...header, raw: [...header.raw] };
 
-    console.warn('[handleCommitHeader] before re-encode: E_FREQ=%d raw[30]=%d raw[31]=%d', toSend.E_FREQ, toSend.raw[30], toSend.raw[31]);
-
     // Re-encode all fields that might have changed during drag
     for (const field of Object.keys(toSend)) {
       if (field !== 'raw') {
         const val = toSend[field as keyof typeof toSend];
-        const wrote = writeKeygroupField(toSend, field, val as number);
-        if (wrote && field === 'E_FREQ') {
-          console.warn('[handleCommitHeader] encoded E_FREQ=%s raw[30]=%d raw[31]=%d', val, toSend.raw[30], toSend.raw[31]);
-        }
+        writeKeygroupField(toSend, field, val as number);
       }
     }
-
-    console.warn('[handleCommitHeader] after re-encode: E_FREQ=%d raw[30]=%d raw[31]=%d', toSend.E_FREQ, toSend.raw[30], toSend.raw[31]);
 
     await client.writeKeygroupHeader(toSend);
   }, [selectedKeygroupIndex, client]);
@@ -121,14 +113,10 @@ export function KeygroupsPage(): JSX.Element {
       const header = useKeygroupStore.getState().keygroups[selectedKeygroupIndex];
       if (!header) return;
 
-      console.warn('[handleParameterChange] field=%s value=%s E_FREQ_before=%d raw[30]=%d raw[31]=%d', field, value, header.E_FREQ, header.raw[30], header.raw[31]);
-
       const updated = { ...header, [field]: value, raw: [...header.raw] };
       useKeygroupStore.getState().setKeygroup(selectedKeygroupIndex, updated);
 
       writeKeygroupField(updated, field, value);
-
-      console.warn('[handleParameterChange] after encode: E_FREQ=%d raw[30]=%d raw[31]=%d', updated.E_FREQ, updated.raw[30], updated.raw[31]);
 
       await client.writeKeygroupHeader(updated);
     },
@@ -317,9 +305,12 @@ export function KeygroupsPage(): JSX.Element {
     <div className="ac-page ac-page-shell">
       <div className="ac-page-sticky-header">
         <div className="ac-page-header flex items-center justify-between">
-          <h2 className="text-xl font-bold">
-            Keygroups — {selectedProgram.PRNAME.trim() || '(unnamed)'}
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold">
+              Keygroups — {selectedProgram.PRNAME.trim() || '(unnamed)'}
+            </h2>
+            <CacheAge timestamp={keygroupLastRefreshed} />
+          </div>
           {isLoading && (
             <span className="text-sm text-gray-400">
               {loadingMessage}

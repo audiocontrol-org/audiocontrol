@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type { SampleHeader } from '@audiocontrol/sampler-devices/s3k';
 
 export interface SampleStoreState {
@@ -8,6 +9,8 @@ export interface SampleStoreState {
   namesLoaded: boolean;
   /** Sparse array of loaded sample headers, indexed by sample number */
   samples: (SampleHeader | undefined)[];
+  /** Timestamp (ms) when names were last fetched from device */
+  lastRefreshed: number | null;
 }
 
 export interface SampleStoreActions {
@@ -21,24 +24,33 @@ export interface SampleStoreActions {
 
 export type SampleStore = SampleStoreState & SampleStoreActions;
 
-export const useSampleStore = create<SampleStore>((set) => ({
-  sampleNames: [],
-  namesLoaded: false,
-  samples: [],
+export const useSampleStore = create<SampleStore>()(
+  persist(
+    (set) => ({
+      sampleNames: [],
+      namesLoaded: false,
+      samples: [],
+      lastRefreshed: null,
 
-  setSampleNames(names: string[]) {
-    set({ sampleNames: names, namesLoaded: true });
-  },
+      setSampleNames(names: string[]) {
+        set({ sampleNames: names, namesLoaded: true, lastRefreshed: Date.now() });
+      },
 
-  setSample(index: number, header: SampleHeader) {
-    set((state) => {
-      const next = [...state.samples];
-      next[index] = header;
-      return { samples: next };
-    });
-  },
+      setSample(index: number, header: SampleHeader) {
+        set((state) => {
+          const next = [...state.samples];
+          next[index] = header;
+          return { samples: next };
+        });
+      },
 
-  invalidateCache() {
-    set({ sampleNames: [], namesLoaded: false, samples: [] });
-  },
-}));
+      invalidateCache() {
+        set({ sampleNames: [], namesLoaded: false, samples: [], lastRefreshed: null });
+      },
+    }),
+    {
+      name: 's3k-sample-cache',
+      storage: createJSONStorage(() => sessionStorage),
+    },
+  ),
+);

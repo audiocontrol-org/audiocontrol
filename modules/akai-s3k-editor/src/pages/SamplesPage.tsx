@@ -7,6 +7,7 @@ import { useEditorStore } from '@/stores/editorStore';
 import { useConnectionDrawerStore } from '@/stores/connectionDrawerStore';
 import { writeSampleField } from '@/lib/sample-writers';
 import { ErrorBanner } from '@/components/ui';
+import { CacheAge } from '@/components/ui/CacheAge';
 import { useState } from 'react';
 
 export function SamplesPage(): JSX.Element {
@@ -18,6 +19,7 @@ export function SamplesPage(): JSX.Element {
   const samples = useSampleStore((s) => s.samples);
   const setSample = useSampleStore((s) => s.setSample);
   const invalidateCache = useSampleStore((s) => s.invalidateCache);
+  const lastRefreshed = useSampleStore((s) => s.lastRefreshed);
 
   const selectedSampleIndex = useEditorStore((s) => s.selectedSampleIndex);
   const selectSample = useEditorStore((s) => s.selectSample);
@@ -30,10 +32,11 @@ export function SamplesPage(): JSX.Element {
   const [deleteInProgress, setDeleteInProgress] = useState(false);
 
   // Load sample names on first connect
+  // Load sample names on connect (background refresh if cached)
   useEffect(() => {
-    if (isConnected && !namesLoaded && !hasInitiatedLoad.current && client) {
+    if (isConnected && !hasInitiatedLoad.current && client) {
       hasInitiatedLoad.current = true;
-      setIsLoading(true);
+      setIsLoading(!namesLoaded); // Only show loading spinner if no cached data
       client.fetchSampleNames()
         .then((names) => setSampleNames(names))
         .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load sample names'))
@@ -167,7 +170,10 @@ export function SamplesPage(): JSX.Element {
     <div className="ac-page ac-page-shell">
       <div className="ac-page-sticky-header">
         <div className="ac-page-header flex items-center justify-between">
-          <h2 className="text-xl font-bold">Samples</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold">Samples</h2>
+            <CacheAge timestamp={lastRefreshed} />
+          </div>
           {isLoading && (
             <span className="text-sm text-gray-400">Loading...</span>
           )}

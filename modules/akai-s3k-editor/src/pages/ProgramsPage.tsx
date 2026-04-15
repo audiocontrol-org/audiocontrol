@@ -10,6 +10,7 @@ import { useEditorStore } from '@/stores/editorStore';
 import { useConnectionDrawerStore } from '@/stores/connectionDrawerStore';
 import { writeProgramField } from '@/lib/program-writers';
 import { ErrorBanner } from '@/components/ui';
+import { CacheAge } from '@/components/ui/CacheAge';
 
 export function ProgramsPage(): JSX.Element {
   const { client, isConnected } = useS3000xlClient();
@@ -19,6 +20,7 @@ export function ProgramsPage(): JSX.Element {
   const programNames = useProgramStore((s) => s.programNames);
   const namesLoaded = useProgramStore((s) => s.namesLoaded);
   const programs = useProgramStore((s) => s.programs);
+  const lastRefreshed = useProgramStore((s) => s.lastRefreshed);
 
   const selectedProgramIndex = useEditorStore((s) => s.selectedProgramIndex);
   const selectProgram = useEditorStore((s) => s.selectProgram);
@@ -40,13 +42,13 @@ export function ProgramsPage(): JSX.Element {
   const [cloneComplete, setCloneComplete] = useState(false);
   const [cloneError, setCloneError] = useState(false);
 
-  // Load program names on first connect
+  // Load program names on connect (background refresh if cached)
   useEffect(() => {
-    if (isConnected && !namesLoaded && !hasInitiatedLoad.current) {
+    if (isConnected && !hasInitiatedLoad.current) {
       hasInitiatedLoad.current = true;
       loadProgramNames();
     }
-  }, [isConnected, namesLoaded, loadProgramNames]);
+  }, [isConnected, loadProgramNames]);
 
   // Auto-select first program once names are loaded
   useEffect(() => {
@@ -308,7 +310,10 @@ export function ProgramsPage(): JSX.Element {
     <div className="ac-page ac-page-shell">
       <div className="ac-page-sticky-header">
         <div className="ac-page-header flex items-center justify-between">
-          <h2 className="text-xl font-bold">Programs</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold">Programs</h2>
+            <CacheAge timestamp={lastRefreshed} />
+          </div>
           {isLoading && (
             <span className="text-sm text-gray-400" data-testid="loading-status">
               {loadingMessage}
