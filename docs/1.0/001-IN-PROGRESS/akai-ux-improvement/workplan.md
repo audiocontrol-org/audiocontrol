@@ -175,7 +175,7 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 - [x] Add rename, refresh, delete hover actions to samples in DeviceMemoryPanel
 - [x] Wire CRUD operations to the S3K device client (renameProgram, cloneProgram, deleteProgram, renameSample, deleteSample)
 - [x] Use ConfirmDialog for destructive actions, optimistic updates for rename
-- [ ] Write tests for DeviceMemoryPanel CRUD interactions
+- [x] Write tests for DeviceMemoryPanel CRUD interactions
 
 ### Acceptance Criteria
 
