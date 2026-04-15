@@ -141,12 +141,12 @@ Use Playwright's built-in `recordVideo` to capture browser interactions as WebM.
 
 **Tasks:**
 
-- [ ] Add `/api/generate` POST endpoint to the Vite dev server that runs a scenario by name (spawns `tsx src/cli.ts` as a child process)
-- [ ] Add `/api/scenarios` GET endpoint that lists available scenario files from `scenarios/` (name, description, mode, outputTier)
-- [ ] Add a "Regenerate" button on each gallery card that triggers `/api/generate` and shows a spinner/progress state
-- [ ] Add a "Generate All" button in the gallery header
-- [ ] Handle concurrent generation requests (queue or reject if already running)
-- [ ] Report generation errors visually in the gallery (red banner or card error state)
+- [x] Add `/api/generate` POST endpoint to the Vite dev server that runs a scenario by name (spawns `tsx src/cli.ts` as a child process)
+- [x] Add `/api/scenarios` GET endpoint that lists available scenario files from `scenarios/` (name, description, mode, outputTier)
+- [x] Add a "Regenerate" button on each gallery card that triggers `/api/generate` and shows a spinner/progress state
+- [x] Add a "Generate All" button in the gallery header
+- [x] Handle concurrent generation requests (reject with 409 if already running)
+- [x] Report generation errors visually in the gallery (red error text on card)
 
 **Acceptance:** Clicking "Regenerate" on a gallery card runs the scenario and the new video appears in the gallery without a page refresh. "Generate All" regenerates all scenarios sequentially.
 

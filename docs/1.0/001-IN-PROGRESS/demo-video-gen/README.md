@@ -12,7 +12,7 @@ Automated demo video generation from scripted Playwright browser interactions.
 | Phase 4 | Video Preview Gallery (Vite dev server) | Complete |
 | Phase 5 | Port videocontrol Repo | Complete |
 | Phase 6 | Video Publishing & Versioning | Planning |
-| Phase 7 | Gallery-Triggered Generation | Planning |
+| Phase 7 | Gallery-Triggered Generation | Complete |
 | Phase 8 | Text Overlay Rendering | Planning |
 
 ## Links
