@@ -482,27 +482,33 @@ Using the audit from Phase 8, refactor CLAUDE.md into a lean universal file plus
 
 Create rule files for each domain-scoped topic identified in the audit.
 
-**Expected rule files (subject to Phase 8 audit results):**
+**Rule files created (refined from Phase 8 audit):**
 
-| Rule file | Paths scope | Content |
-|-----------|-------------|---------|
-| `akai-sysex.md` | `modules/akai-s3k-editor/**`, `modules/sampler-midi/**` | S3000XL SysEx encoding, exclusive channel, SDS storage behavior |
-| `e2e-testing.md` | `test/e2e/**`, `modules/e2e-infra/**`, `e2e/**` | E2E testing tenets, atomic round trips, no mocking, no workarounds |
-| `hardware-e2e.md` | `modules/e2e-infra/**`, `modules/roland-sxx0-editor/e2e/**` | Heartbeat/watchdog, SCSI provisioning, runner scripts |
-| `ui-development.md` | `modules/*/src/components/**`, `modules/*/src/pages/**` | Design system, progress indicators, proportional layout, test harness workflow |
-| `session-analytics.md` | `tools/**`, `data/sessions/**` | Extract/analyze commands, session data format |
+| Rule file | Lines | Content |
+|-----------|-------|---------|
+| `e2e-testing.md` | 240 | E2E tenets, make targets, SCSI provisioning, heartbeat/watchdog |
+| `testing.md` | 44 | Test categories, bug-first methodology, before-running-tests |
+| `akai-s3000xl.md` | 33 | SysEx encoding, exclusive channel, SDS storage |
+| `midi-audio.md` | 19 | MIDI spec standards, midisnoop |
+| `ui-development.md` | 34 | Design system pointer, progress indicators |
+| `deployment.md` | 39 | Netlify sites, deploy commands, config |
+| `session-analytics.md` | 41 | Extract/analyze commands, metrics |
+| `workflow-playbooks.md` | 39 | Hardware protocol, bridge, UI feature playbooks |
 
 **Files:**
-- Create: `.claude/rules/akai-sysex.md`
 - Create: `.claude/rules/e2e-testing.md`
-- Create: `.claude/rules/hardware-e2e.md`
+- Create: `.claude/rules/testing.md`
+- Create: `.claude/rules/akai-s3000xl.md`
+- Create: `.claude/rules/midi-audio.md`
 - Create: `.claude/rules/ui-development.md`
+- Create: `.claude/rules/deployment.md`
 - Create: `.claude/rules/session-analytics.md`
+- Create: `.claude/rules/workflow-playbooks.md`
 
 **Acceptance Criteria:**
-- [ ] Each rule file has `paths:` YAML frontmatter with appropriate globs
-- [ ] Content moved verbatim — no rewriting or summarizing during migration
-- [ ] Rule files load only when matching paths are touched
+- [x] Each rule file has `paths:` YAML frontmatter with appropriate globs
+- [x] Content moved verbatim — no rewriting or summarizing during migration
+- [x] Rule files load only when matching paths are touched
 
 ### Task 9.2: Trim CLAUDE.md to universal directives
 
@@ -527,10 +533,10 @@ Remove migrated sections from CLAUDE.md. Keep only rules that apply to every ses
 - Modify: `.claude/CLAUDE.md`
 
 **Acceptance Criteria:**
-- [ ] CLAUDE.md is under 200 lines
-- [ ] No domain-specific content remains (Akai SysEx, E2E heartbeat, SCSI provisioning)
-- [ ] All universal directives preserved — nothing important deleted
-- [ ] Build passes (`make`)
+- [x] CLAUDE.md is under 200 lines (198 lines, down from 774)
+- [x] No domain-specific content remains (Akai SysEx, E2E heartbeat, SCSI provisioning)
+- [x] All universal directives preserved — nothing important deleted
+- [x] Build passes (`make`)
 
 ### Task 9.3: Validate rule loading
 
@@ -540,20 +546,20 @@ Verify that the refactoring works correctly — rules load when expected, don't 
 - No new files
 
 **Acceptance Criteria:**
-- [ ] Opening an Akai editor file loads `akai-sysex.md` rules
-- [ ] Opening a UI component file loads `ui-development.md` rules
-- [ ] Working on tools/ loads `session-analytics.md` rules
-- [ ] Working on a file outside all scopes loads only CLAUDE.md (under 200 lines)
+- [x] Opening an Akai editor file loads `akai-s3000xl.md` rules
+- [x] Opening a UI component file loads `ui-development.md` rules
+- [x] Working on tools/ loads `session-analytics.md` rules
+- [x] Working on a file outside all scopes loads only CLAUDE.md (under 200 lines)
 
 ### Task 9.4: Update issue #283
 
 Close the GitHub issue with a summary of what was done.
 
 **Acceptance Criteria:**
-- [ ] Issue #283 commented with before/after line counts and rule file list
-- [ ] Issue closed
+- [x] Issue #283 commented with before/after line counts and rule file list
+- [x] Issue closed
 
-**Phase 9 Status:** NOT STARTED
+**Phase 9 Status:** COMPLETE
 
 ---
 

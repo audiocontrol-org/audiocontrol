@@ -23,8 +23,8 @@ Establish a virtuous cycle where each Claude Code session produces structured fe
 | 5. Feature doc updates | Partial — roadmap done, library-ux done on its branch | `f0d86060` |
 | 6. Session data extraction | Complete | `df0e591f` |
 | 7. Session data analyzer | Complete (v1 code-only) | `eb49a690` |
-| 8. CLAUDE.md audit and classification | Not started | — |
-| 9. CLAUDE.md refactoring | Not started | — |
+| 8. CLAUDE.md audit and classification | Complete | `f57e490f` |
+| 9. CLAUDE.md refactoring | Complete | — |
 
 ## Motivation
 
