@@ -18,6 +18,7 @@
   "scripts": {
     "build": "tsc && tsc-alias",
     "test": "vitest",
+    "test:e2e": "vitest --config vitest.e2e.config.ts",
     "clean": "rm -rf dist *.tsbuildinfo",
     "typecheck": "tsc --noEmit",
     "gallery": "vite serve gallery --config gallery/vite.config.ts"
