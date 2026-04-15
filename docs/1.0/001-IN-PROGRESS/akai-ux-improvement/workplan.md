@@ -295,10 +295,10 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 
 ### Tasks
 
-- [ ] Diagnose why downloaded programs are stored as non-expandable (check ExportProgramDialog, program-serialization, program-storage)
-- [ ] Fix program download to store as an expandable directory with constituent samples
-- [ ] Implement atomic sample rename: renaming a sample file inside a program directory updates the program YAML's zone references
-- [ ] Add rollback on failure: if either the file rename or YAML update fails, revert both
+- [x] Diagnose why downloaded programs are stored as non-expandable (check ExportProgramDialog, program-serialization, program-storage)
+- [x] Fix program download to store as an expandable directory with constituent samples
+- [x] Implement atomic sample rename: renaming a sample file inside a program directory updates the program YAML's zone references
+- [x] Add rollback on failure: if either the file rename or YAML update fails, revert both
 - [ ] Verify fix works across all MIDI transports (serial, HTTP, SCSI)
 - [ ] Write tests for the download and rename paths
 

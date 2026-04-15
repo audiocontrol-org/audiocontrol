@@ -142,8 +142,10 @@ export interface StoredProgramInfo {
   name: string;
   /** Number of keygroups */
   keygroupCount: number;
-  /** Sample names referenced */
+  /** Sample names referenced in the YAML */
   sampleReferences: string[];
+  /** WAV file names found in the samples/ subdirectory (without extension) */
+  sampleFiles: string[];
 }
 
 /**
@@ -190,7 +192,21 @@ export async function listStoredPrograms(
         }
       }
 
-      results.push({ dirName: entry.name, name, keygroupCount, sampleReferences });
+      // Scan the samples/ subdirectory for WAV files
+      const sampleFiles: string[] = [];
+      try {
+        const samplesDir = await subDir.getDirectoryHandle('samples');
+        for await (const sampleEntry of samplesDir.values()) {
+          if (sampleEntry.kind === 'file' && sampleEntry.name.endsWith('.wav')) {
+            sampleFiles.push(sampleEntry.name.replace(/\.wav$/, ''));
+          }
+        }
+        sampleFiles.sort((a, b) => a.localeCompare(b));
+      } catch {
+        // No samples/ directory — that's fine
+      }
+
+      results.push({ dirName: entry.name, name, keygroupCount, sampleReferences, sampleFiles });
     } catch {
       // Skip directories without valid program manifests
     }
@@ -211,4 +227,83 @@ export async function deleteStoredProgram(
     throw new Error('Programs directory does not exist');
   }
   await programsDir.removeEntry(dirName, { recursive: true });
+}
+
+/**
+ * Atomically rename a sample inside a program directory.
+ *
+ * 1. Reads the program YAML and the sample WAV
+ * 2. Writes the new WAV file
+ * 3. Updates sampleReferences in the YAML
+ * 4. Deletes the old WAV file
+ *
+ * If any step fails after the YAML has been written, the YAML is
+ * reverted to its original content.
+ */
+export async function renameProgramSample(
+  root: StorageDirectoryHandle,
+  programDirName: string,
+  oldSampleName: string,
+  newSampleName: string,
+): Promise<void> {
+  const programsDir = await getProgramsDirReadOnly(root);
+  if (!programsDir) throw new Error('Programs directory does not exist');
+
+  const programDir = await programsDir.getDirectoryHandle(programDirName);
+  const samplesDir = await programDir.getDirectoryHandle('samples');
+
+  const safeOld = sanitizeForFilename(oldSampleName);
+  const safeNew = sanitizeForFilename(newSampleName);
+  if (safeOld === safeNew) return;
+
+  // 1. Read original YAML content (for rollback)
+  const yamlHandle = await programDir.getFileHandle(MANIFEST_FILENAME);
+  const yamlFile = await yamlHandle.getFile();
+  const originalYaml = await yamlFile.text();
+
+  // 2. Read the original WAV data
+  const oldWavHandle = await samplesDir.getFileHandle(`${safeOld}.wav`);
+  const oldWavFile = await oldWavHandle.getFile();
+  const wavData = await oldWavFile.arrayBuffer();
+
+  // 3. Write the new WAV file
+  const newWavHandle = await samplesDir.getFileHandle(`${safeNew}.wav`, { create: true });
+  const newWavWritable = await newWavHandle.createWritable();
+  await newWavWritable.write(wavData);
+  await newWavWritable.close();
+
+  // 4. Update YAML — replace old sample name with new in sampleReferences
+  const updatedYaml = originalYaml.replace(
+    new RegExp(`(  - )${escapeRegex(oldSampleName.trim())}`, 'g'),
+    `$1${newSampleName.trim()}`,
+  );
+
+  try {
+    const yamlWritable = await yamlHandle.createWritable();
+    await yamlWritable.write(updatedYaml);
+    await yamlWritable.close();
+  } catch (err) {
+    // YAML write failed — remove the new WAV to keep state consistent
+    try { await samplesDir.removeEntry(`${safeNew}.wav`); } catch { /* best effort */ }
+    throw err;
+  }
+
+  // 5. Delete the old WAV file
+  try {
+    await samplesDir.removeEntry(`${safeOld}.wav`);
+  } catch (err) {
+    // Old WAV deletion failed — rollback the YAML to original
+    try {
+      const rollbackWritable = await yamlHandle.createWritable();
+      await rollbackWritable.write(originalYaml);
+      await rollbackWritable.close();
+    } catch { /* best effort rollback */ }
+    // Also remove the new WAV
+    try { await samplesDir.removeEntry(`${safeNew}.wav`); } catch { /* best effort */ }
+    throw err;
+  }
+}
+
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

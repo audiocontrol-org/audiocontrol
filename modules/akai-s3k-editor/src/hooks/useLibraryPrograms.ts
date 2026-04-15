@@ -4,6 +4,9 @@
  * Scans the `library/s3k/programs/` directory for serialized
  * S3000XL program bundles (directories with `program.s3k.yaml`)
  * and converts them to TreeNode format for the library browser.
+ *
+ * Programs with samples in their `samples/` subdirectory are
+ * expandable — each WAV file becomes a child TreeNode.
  */
 
 import { useCallback } from 'react';
@@ -33,16 +36,29 @@ export function useLibraryPrograms(
 
     try {
       const programs = await listStoredPrograms(root);
-      const nodes: TreeNode[] = programs.map((info) => ({
-        id: `program:${info.dirName}`,
-        name: info.name,
-        type: 'program',
-        meta: {
-          dirName: info.dirName,
-          keygroupCount: info.keygroupCount,
-          sampleReferences: info.sampleReferences,
-        },
-      }));
+      const nodes: TreeNode[] = programs.map((info) => {
+        const children: TreeNode[] = info.sampleFiles.map((sampleName) => ({
+          id: `program:${info.dirName}/sample:${sampleName}`,
+          name: sampleName,
+          type: 'sample',
+          meta: {
+            parentDirName: info.dirName,
+            fileName: sampleName,
+          },
+        }));
+
+        return {
+          id: `program:${info.dirName}`,
+          name: info.name,
+          type: 'program',
+          meta: {
+            dirName: info.dirName,
+            keygroupCount: info.keygroupCount,
+            sampleReferences: info.sampleReferences,
+          },
+          children: children.length > 0 ? children : undefined,
+        };
+      });
       setProgramNodes(nodes);
     } catch {
       // If the programs directory doesn't exist yet, that's fine
