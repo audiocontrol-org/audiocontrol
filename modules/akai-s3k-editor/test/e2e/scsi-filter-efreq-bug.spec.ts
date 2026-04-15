@@ -1,21 +1,21 @@
 /**
  * E2E regression test for #280: Envelope→filter (E_FREQ) gets reset to 0
- * when changing filter frequency or resonance via the web editor.
+ * when changing any filter parameter via the web editor.
  *
  * Requires: Pi running s2p + scsi-midi-bridge with S3000XL connected.
  *
- * Test flow:
- * 1. Navigate to keygroups, select first keygroup
- * 2. Read the current E_FREQ (Env→Filt) value from the UI
- * 3. Set E_FREQ to a known non-zero value if needed
- * 4. Change FILFRQ (Freq) to a different value
- * 5. Refresh from device (re-fetch keygroup header)
- * 6. Assert E_FREQ hasn't changed
+ * Strategy:
+ * 1. Set E_FREQ to a known non-zero value (25) and CONFIRM via device refresh
+ * 2. Change a different filter parameter via the UI
+ * 3. Refresh from device
+ * 4. Assert E_FREQ is still 25
+ *
+ * Tests every filter param: Freq, Resonance, Key Track, Vel→Filt, Press→Filt.
+ * Also tests the drag path through the FilterDisplay.
  */
 
 import { test, expect } from '@playwright/test';
 
-// Deviation: relative import — e2e/ is outside src/ and @/ alias doesn't apply
 import {
   buildScsiUrl,
   waitForAppReady,
@@ -31,65 +31,109 @@ function url(subpath: string = ''): string {
   return buildScsiUrl(EDITOR_BASE_PATH, subpath, BRIDGE_URL);
 }
 
-async function selectFirstProgram(page: import('@playwright/test').Page): Promise<void> {
+type Page = import('@playwright/test').Page;
+
+// ---------------------------------------------------------------------------
+// Navigation helpers
+// ---------------------------------------------------------------------------
+
+async function selectFirstProgram(page: Page): Promise<void> {
   const programsLink = page.locator('a[href*="programs"]');
   await programsLink.click();
   await page.waitForURL('**/programs**');
   await expect(page.locator('[data-testid="program-item-0"]')).toBeVisible({ timeout: 15_000 });
   await page.locator('[data-testid="program-item-0"]').click();
-  // Wait for program editor to render (program name input)
   await expect(page.locator('input[type="text"][maxlength="12"]')).toBeVisible({ timeout: 10_000 });
 }
 
-async function navigateToKeygroups(page: import('@playwright/test').Page): Promise<void> {
+async function navigateToKeygroups(page: Page): Promise<void> {
   const keygroupsLink = page.locator('a[href*="keygroups"]');
   await keygroupsLink.click();
   await page.waitForURL('**/keygroups**');
 }
 
-async function waitForKeygroupEditor(page: import('@playwright/test').Page): Promise<void> {
-  // Wait for the keygroup editor title "Keygroup 1:" to appear
+async function waitForKeygroupEditor(page: Page): Promise<void> {
   await expect(page.locator('text=Keygroup 1:').first()).toBeVisible({ timeout: 15_000 });
-  // Wait for the Filter section to be visible
   await expect(page.locator('.s3k-section-title', { hasText: 'Filter' }).first()).toBeVisible({ timeout: 5_000 });
 }
 
-/**
- * Find a ParamKnob's displayed value by its label text.
- * ParamKnob renders: <div class="s3k-param"><span class="s3k-param-label">LABEL</span>...<button class="s3k-param-value">VALUE</button></div>
- */
-function paramKnobValue(page: import('@playwright/test').Page, label: string): import('@playwright/test').Locator {
-  return page.locator('.s3k-param', { has: page.locator(`.s3k-param-label:text-is("${label}")`) }).locator('.s3k-param-value');
+// ---------------------------------------------------------------------------
+// ParamKnob helpers
+// ---------------------------------------------------------------------------
+
+function paramKnobValue(page: Page, label: string) {
+  return page.locator('.s3k-param', {
+    has: page.locator(`.s3k-param-label:text-is("${label}")`),
+  }).locator('.s3k-param-value');
 }
 
-/**
- * Click a ParamKnob value to enter edit mode, clear, type a new value, press Enter.
- */
-async function setParamKnobValue(page: import('@playwright/test').Page, label: string, value: string): Promise<void> {
+async function setParamKnobValue(page: Page, label: string, value: string): Promise<void> {
   const valueBtn = paramKnobValue(page, label);
   await valueBtn.click();
-  // After clicking, an input appears in the same s3k-param container
-  const input = page.locator('.s3k-param', { has: page.locator(`.s3k-param-label:text-is("${label}")`) }).locator('.s3k-param-input');
+  const input = page.locator('.s3k-param', {
+    has: page.locator(`.s3k-param-label:text-is("${label}")`),
+  }).locator('.s3k-param-input');
   await expect(input).toBeVisible({ timeout: 2_000 });
   await input.fill(value);
   await input.press('Enter');
 }
 
-/**
- * Read the displayed numeric value from a ParamKnob.
- */
-async function readParamKnobValue(page: import('@playwright/test').Page, label: string): Promise<number> {
+async function readParamKnobValue(page: Page, label: string): Promise<number> {
   const text = await paramKnobValue(page, label).textContent();
   return Number(text?.trim());
 }
 
-async function refreshKeygroups(page: import('@playwright/test').Page): Promise<void> {
-  // The keygroup list has a refresh button in the title bar
+async function refreshKeygroups(page: Page): Promise<void> {
   const refreshBtn = page.locator('button[title="Reload keygroups from device"]');
   await refreshBtn.click();
-  // Wait for keygroup data to reload
   await waitForKeygroupEditor(page);
 }
+
+// ---------------------------------------------------------------------------
+// Core test helper: set E_FREQ, confirm it, change another param, check E_FREQ
+// ---------------------------------------------------------------------------
+
+const E_FREQ_TEST_VALUE = 25;
+
+/**
+ * Set E_FREQ to a known value and confirm via device round-trip.
+ * Returns the original E_FREQ value for restoration.
+ */
+async function setAndConfirmEFreq(page: Page): Promise<number> {
+  const original = await readParamKnobValue(page, 'Env→Filt');
+
+  // Always set to our known test value
+  await setParamKnobValue(page, 'Env→Filt', String(E_FREQ_TEST_VALUE));
+  await page.waitForTimeout(1500);
+
+  // Confirm the device actually has the value
+  await refreshKeygroups(page);
+  const confirmed = await readParamKnobValue(page, 'Env→Filt');
+  expect(confirmed, 'E_FREQ should be set to test value before exercising bug').toBe(E_FREQ_TEST_VALUE);
+
+  return original;
+}
+
+/**
+ * Change a filter parameter via click-to-edit, then verify E_FREQ is unchanged.
+ */
+async function changeParamAndCheckEFreq(
+  page: Page,
+  label: string,
+  newValue: number,
+): Promise<void> {
+  await setParamKnobValue(page, label, String(newValue));
+  await page.waitForTimeout(1500);
+
+  await refreshKeygroups(page);
+
+  const eFreqAfter = await readParamKnobValue(page, 'Env→Filt');
+  expect(eFreqAfter, `E_FREQ should be ${E_FREQ_TEST_VALUE} after changing ${label}`).toBe(E_FREQ_TEST_VALUE);
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
 
 test.describe('Bug #280: E_FREQ reset on filter change', () => {
   test.beforeEach(async ({ page }) => {
@@ -101,71 +145,100 @@ test.describe('Bug #280: E_FREQ reset on filter change', () => {
     await waitForKeygroupEditor(page);
   });
 
-  test('changing FILFRQ does not reset E_FREQ to 0', async ({ page }) => {
-    // 1. Read current E_FREQ value
-    const originalEFreq = await readParamKnobValue(page, 'Env→Filt');
+  test('changing Freq (FILFRQ) does not reset E_FREQ', async ({ page }) => {
+    const originalEFreq = await setAndConfirmEFreq(page);
+    const currentFreq = await readParamKnobValue(page, 'Freq');
+    const newFreq = currentFreq >= 50 ? 30 : 70;
 
-    // 2. If E_FREQ is 0, set it to 25 so we can detect if it gets reset
-    if (originalEFreq === 0) {
-      await setParamKnobValue(page, 'Env→Filt', '25');
-      await page.waitForTimeout(1500); // wait for device write
-    }
-    const expectedEFreq = originalEFreq === 0 ? 25 : originalEFreq;
-
-    // 3. Change FILFRQ to a different value
-    const currentFreq = await readParamKnobValue(page, 'FREQ');
-    const newFreq = currentFreq === 50 ? 75 : 50;
-    await setParamKnobValue(page, 'FREQ', String(newFreq));
-    await page.waitForTimeout(1500); // wait for device write
-
-    // 4. Refresh from device to get the actual values
-    await refreshKeygroups(page);
-
-    // 5. Read E_FREQ back — it should NOT be 0
-    const eFreqAfter = await readParamKnobValue(page, 'Env→Filt');
-    expect(eFreqAfter).toBe(expectedEFreq);
-
-    // 6. Verify FILFRQ was actually written
-    const freqAfter = await readParamKnobValue(page, 'FREQ');
-    expect(freqAfter).toBe(newFreq);
-
-    // Restore original values
-    await setParamKnobValue(page, 'FREQ', String(currentFreq));
-    if (originalEFreq === 0) {
-      await setParamKnobValue(page, 'Env→Filt', '0');
-    }
-    await page.waitForTimeout(1500);
-  });
-
-  test('changing FILQ does not reset E_FREQ to 0', async ({ page }) => {
-    // 1. Read current E_FREQ value
-    const originalEFreq = await readParamKnobValue(page, 'Env→Filt');
-
-    // 2. Set E_FREQ to 30 if it's 0
-    if (originalEFreq === 0) {
-      await setParamKnobValue(page, 'Env→Filt', '30');
-      await page.waitForTimeout(1500);
-    }
-    const expectedEFreq = originalEFreq === 0 ? 30 : originalEFreq;
-
-    // 3. Change FILQ (Resonance)
-    const currentQ = await readParamKnobValue(page, 'RESONANCE');
-    const newQ = currentQ === 8 ? 4 : 8;
-    await setParamKnobValue(page, 'RESONANCE', String(newQ));
-    await page.waitForTimeout(1500);
-
-    // 4. Refresh from device
-    await refreshKeygroups(page);
-
-    // 5. E_FREQ should not be 0
-    const eFreqAfter = await readParamKnobValue(page, 'Env→Filt');
-    expect(eFreqAfter).toBe(expectedEFreq);
+    await changeParamAndCheckEFreq(page, 'Freq', newFreq);
 
     // Restore
-    await setParamKnobValue(page, 'RESONANCE', String(currentQ));
-    if (originalEFreq === 0) {
-      await setParamKnobValue(page, 'Env→Filt', '0');
-    }
-    await page.waitForTimeout(1500);
+    await setParamKnobValue(page, 'Freq', String(currentFreq));
+    await setParamKnobValue(page, 'Env→Filt', String(originalEFreq));
+    await page.waitForTimeout(1000);
+  });
+
+  test('changing Resonance (FILQ) does not reset E_FREQ', async ({ page }) => {
+    const originalEFreq = await setAndConfirmEFreq(page);
+    const currentQ = await readParamKnobValue(page, 'Resonance');
+    const newQ = currentQ >= 8 ? 3 : 12;
+
+    await changeParamAndCheckEFreq(page, 'Resonance', newQ);
+
+    await setParamKnobValue(page, 'Resonance', String(currentQ));
+    await setParamKnobValue(page, 'Env→Filt', String(originalEFreq));
+    await page.waitForTimeout(1000);
+  });
+
+  test('changing Key Track (K_FREQ) does not reset E_FREQ', async ({ page }) => {
+    const originalEFreq = await setAndConfirmEFreq(page);
+    const current = await readParamKnobValue(page, 'Key Track');
+    const newVal = current >= 0 ? -20 : 20;
+
+    await changeParamAndCheckEFreq(page, 'Key Track', newVal);
+
+    await setParamKnobValue(page, 'Key Track', String(current));
+    await setParamKnobValue(page, 'Env→Filt', String(originalEFreq));
+    await page.waitForTimeout(1000);
+  });
+
+  test('changing Vel→Filt (V_FREQ) does not reset E_FREQ', async ({ page }) => {
+    const originalEFreq = await setAndConfirmEFreq(page);
+    const current = await readParamKnobValue(page, 'Vel→Filt');
+    const newVal = current >= 0 ? -15 : 15;
+
+    await changeParamAndCheckEFreq(page, 'Vel→Filt', newVal);
+
+    await setParamKnobValue(page, 'Vel→Filt', String(current));
+    await setParamKnobValue(page, 'Env→Filt', String(originalEFreq));
+    await page.waitForTimeout(1000);
+  });
+
+  test('changing Press→Filt (P_FREQ) does not reset E_FREQ', async ({ page }) => {
+    const originalEFreq = await setAndConfirmEFreq(page);
+    const current = await readParamKnobValue(page, 'Press→Filt');
+    const newVal = current >= 0 ? -10 : 10;
+
+    await changeParamAndCheckEFreq(page, 'Press→Filt', newVal);
+
+    await setParamKnobValue(page, 'Press→Filt', String(current));
+    await setParamKnobValue(page, 'Env→Filt', String(originalEFreq));
+    await page.waitForTimeout(1000);
+  });
+
+  test('dragging FilterDisplay node does not reset E_FREQ', async ({ page }) => {
+    const originalEFreq = await setAndConfirmEFreq(page);
+    const originalFreq = await readParamKnobValue(page, 'Freq');
+    const originalQ = await readParamKnobValue(page, 'Resonance');
+
+    // Find the FilterDisplay SVG draggable node
+    const filterSvg = page.locator('svg[aria-label^="Filter:"]').first();
+    await expect(filterSvg).toBeVisible({ timeout: 5_000 });
+
+    const dragNode = filterSvg.locator('.s3k-adsr-dot--draggable').first();
+    await expect(dragNode).toBeVisible();
+
+    const box = await dragNode.boundingBox();
+    expect(box).toBeTruthy();
+
+    // Drag horizontally — changes FILFRQ and FILQ simultaneously
+    // via onDragChange → handleDragChange, then onCommit → handleCommitHeader
+    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box!.x + box!.width / 2 + 50, box!.y + box!.height / 2, { steps: 5 });
+    await page.mouse.up();
+
+    await page.waitForTimeout(2000);
+
+    // Refresh and check E_FREQ
+    await refreshKeygroups(page);
+    const eFreqAfter = await readParamKnobValue(page, 'Env→Filt');
+    expect(eFreqAfter, 'E_FREQ should survive filter display drag').toBe(E_FREQ_TEST_VALUE);
+
+    // Restore
+    await setParamKnobValue(page, 'Freq', String(originalFreq));
+    await setParamKnobValue(page, 'Resonance', String(originalQ));
+    await setParamKnobValue(page, 'Env→Filt', String(originalEFreq));
+    await page.waitForTimeout(1000);
   });
 });

@@ -11,8 +11,7 @@
 
 import * as s3k from '@audiocontrol/sampler-devices/s3k';
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
-// Relative import: @/ path alias is broken with tsx + nodenext (see package.json #node/* for native Node imports)
-import type { TestContext, TestResult } from './test-types.js';
+import type { TestContext, TestResult } from '#node/lib/test-types.js';
 
 function delay(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
