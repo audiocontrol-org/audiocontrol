@@ -1,6 +1,6 @@
 # Test Infrastructure
 
-**Status:** PR Open
+**Status:** Complete
 
 | Phase | Description | Status |
 |-------|-------------|--------|
@@ -21,7 +21,8 @@ Standardizes the test directory structure across editor modules and fixes broken
 
 - **Branch:** [`feature/test-infra`](https://github.com/audiocontrol-org/audiocontrol/tree/feature/test-infra)
 - **Worktree:** `~/work/audiocontrol-work/audiocontrol-test-infra/`
-- **Issues:** [#263](https://github.com/audiocontrol-org/audiocontrol/issues/263), [#281](https://github.com/audiocontrol-org/audiocontrol/issues/281)
+- **PR:** [#288](https://github.com/audiocontrol-org/audiocontrol/pull/288)
+- **Issues:** [#263](https://github.com/audiocontrol-org/audiocontrol/issues/263), [#281](https://github.com/audiocontrol-org/audiocontrol/issues/281), [#284](https://github.com/audiocontrol-org/audiocontrol/issues/284)
 
 ## Modules Affected
 
