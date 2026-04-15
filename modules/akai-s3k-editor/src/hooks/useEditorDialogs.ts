@@ -93,7 +93,7 @@ export function useEditorDialogs(
 
   const strategy = useMemo<EditorDialogStrategy>(() => ({
     loadWav: async (
-      _root: StorageDirectoryHandle,
+      _root: StorageDirectoryHandle | null,
       name: string,
       nodeType: string,
     ): Promise<WavData | null> => {

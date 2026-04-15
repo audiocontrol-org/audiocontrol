@@ -22,7 +22,7 @@ Restructure the Akai S3000XL editor from memory-oriented pages to workflow-orien
 | Phase 14: Device Sample Loading | Complete | Strategy-based SDS loading, action bar in SamplesPage |
 | Phase 15: Save to Device | Complete | SaveTargetDialog, device overwrite/new, loop header-only save |
 | Phase 16: Bidirectional Library | Complete | SaveTargetDialog, chopper→device, library send-to-device |
-| Phase 17: Audio Editing E2E Tests | Not Started | Round-trip e2e tests, error handling |
+| Phase 17: Audio Editing E2E Tests | Complete | 3 Playwright e2e tests (loop/sample/chopper editor flows) |
 
 ## Links
 

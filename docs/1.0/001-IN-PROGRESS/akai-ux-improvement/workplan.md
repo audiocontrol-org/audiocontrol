@@ -399,10 +399,10 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 
 ### Tasks
 
-- [ ] Write Playwright e2e tests for device→editor→device round-trip
-- [ ] Write Playwright e2e tests for library→editor→device flow
-- [ ] Handle edge cases: sample too large, SDS timeout, device full
-- [ ] Add loading states and error recovery
+- [x] Write Playwright e2e tests for device→editor→device round-trip
+- [ ] Write Playwright e2e tests for library→editor→device flow (deferred — requires library + device setup in single test)
+- [ ] Handle edge cases: sample too large, SDS timeout, device full (deferred to follow-up)
+- [ ] Add loading states and error recovery (deferred to follow-up)
 
 ### Acceptance Criteria
 
