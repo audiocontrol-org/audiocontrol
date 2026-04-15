@@ -211,10 +211,10 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 
 ### Tasks
 
-- [ ] Diagnose why promotion fails silently (check program-promotion.ts, saveDeviceProgramToCommonArea)
-- [ ] Add error handling and user feedback for promotion failures
+- [x] Diagnose why promotion fails silently (check program-promotion.ts, saveDeviceProgramToCommonArea)
+- [x] Add error handling and user feedback for promotion failures
 - [ ] Verify round-trip: promote to common area, then import back to device
-- [ ] Write tests for the promotion path
+- [x] Write tests for the promotion path
 
 ### Acceptance Criteria
 
