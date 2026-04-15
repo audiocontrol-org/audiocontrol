@@ -22,6 +22,11 @@
     header {
       text-align: center;
       margin-bottom: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
     }
 
     header h1 {
@@ -34,6 +39,40 @@
     header h1 span {
       color: #9ca3af;
       font-weight: 400;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-generate-all {
+      background: #2563eb;
+      color: #f9fafb;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 16px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .btn-generate-all:hover {
+      background: #1d4ed8;
+    }
+
+    .btn-generate-all:disabled {
+      background: #374151;
+      color: #6b7280;
+      cursor: not-allowed;
+    }
+
+    .generate-all-progress {
+      font-size: 0.8rem;
+      color: #93c5fd;
+      display: none;
     }
 
     #grid {
@@ -126,6 +165,55 @@
       text-decoration: underline;
     }
 
+    .btn-regen {
+      background: none;
+      border: 1px solid #374151;
+      border-radius: 4px;
+      color: #9ca3af;
+      font-size: 0.8rem;
+      padding: 2px 8px;
+      cursor: pointer;
+      transition: color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .btn-regen:hover {
+      color: #f9fafb;
+      border-color: #4b5563;
+    }
+
+    .card.generating .card-thumb {
+      opacity: 0.4;
+    }
+
+    .card-generating-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #93c5fd;
+      font-size: 0.95rem;
+      font-weight: 500;
+      animation: pulse 1.5s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    .card-thumb {
+      position: relative;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .card-error {
+      width: 100%;
+      font-size: 0.75rem;
+      color: #f87171;
+      margin-top: 4px;
+    }
+
     .empty-state {
       grid-column: 1 / -1;
       text-align: center;
@@ -147,6 +235,10 @@
 <body>
   <header>
     <h1>audiocontrol <span>-- Demo Video Gallery</span></h1>
+    <div class="header-actions">
+      <button id="generate-all-btn" class="btn-generate-all">Generate All</button>
+      <span id="generate-all-progress" class="generate-all-progress"></span>
+    </div>
   </header>
   <div id="grid"></div>
   <script type="module" src="./gallery.ts"></script>

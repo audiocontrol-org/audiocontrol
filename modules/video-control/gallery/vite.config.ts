@@ -2,6 +2,11 @@ import { defineConfig, Plugin, ViteDevServer } from 'vite';
 import { readdirSync, existsSync, statSync, createReadStream } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { resolve, join } from 'node:path';
+import {
+  handleScenariosRequest,
+  handleGenerateRequest,
+  handleStatusRequest,
+} from './generate-api.js';
 
 interface DemoInfo {
   name: string;
@@ -74,6 +79,13 @@ function galleryPlugin(): Plugin {
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify(scanDemos()));
       });
+
+      // Scenario list
+      server.middlewares.use('/api/scenarios', handleScenariosRequest);
+
+      // Generation trigger
+      server.middlewares.use('/api/generate/status', handleStatusRequest);
+      server.middlewares.use('/api/generate', handleGenerateRequest);
 
       // Static video files
       server.middlewares.use('/videos', (req, res, next) => {
