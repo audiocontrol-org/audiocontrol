@@ -16,8 +16,10 @@ import {
   useEditorDialogsCore,
   type EditorDialogStrategy,
   type EditorDialogsCoreResult,
+  type WavData,
   type ErrorReporter,
 } from '@audiocontrol/editor-core';
+import type { S3000xlClientInterface } from '@audiocontrol/sampler-devices/s3k';
 import {
   DEFAULT_S3K_KIT_CONFIG,
   type S3kKitConfig,
@@ -52,13 +54,41 @@ export function useEditorDialogs(
   libraryRoot: StorageDirectoryHandle | null,
   onRefresh: () => void,
   errorReporter: ErrorReporter,
+  client?: S3000xlClientInterface | null,
 ): EditorDialogsResult {
   const [kitConfig, setKitConfig] = useState<S3kKitConfig>(DEFAULT_S3K_KIT_CONFIG);
 
-  // S3K strategy: common-area only loading (no device-specific paths yet),
-  // but injects drum kit metadata into chopper saves.
+  // S3K strategy: loads device samples via SDS when nodeType is 'device-sample',
+  // falls back to common-area loading for library items.
   const strategy = useMemo<EditorDialogStrategy>(() => ({
-    loadWav: async () => null, // all common-area — shared hook handles it
+    loadWav: async (
+      _root: StorageDirectoryHandle,
+      name: string,
+      nodeType: string,
+    ): Promise<WavData | null> => {
+      if (nodeType !== 'device-sample' || !client) return null;
+
+      // Parse sample index from name format "device-sample:N"
+      const indexStr = name.split(':')[1];
+      if (indexStr === undefined) return null;
+      const sampleIndex = parseInt(indexStr, 10);
+      if (isNaN(sampleIndex)) return null;
+
+      // Download sample audio data from device via SDS
+      const { header: sdsHeader, samples } = await client.receiveSampleViaSds(sampleIndex);
+      const sampleRate = Math.round(1_000_000_000 / sdsHeader.samplePeriodNs);
+
+      // Read sample header for loop/root key metadata
+      const sampleHeader = await client.fetchSampleHeader(sampleIndex);
+
+      return {
+        samples,
+        sampleRate,
+        loopStart: sampleHeader.LOOPAT1 > 0 ? sampleHeader.LOOPAT1 : undefined,
+        loopEnd: sampleHeader.LLNGTH1 > 0 ? sampleHeader.LOOPAT1 + sampleHeader.LLNGTH1 : undefined,
+        rootKey: sampleHeader.SPITCH > 0 ? sampleHeader.SPITCH : undefined,
+      };
+    },
     transformChopperProgram: (program: ProgramYaml): ProgramYaml => ({
       ...program,
       name: kitConfig.name || program.name,
@@ -68,7 +98,7 @@ export function useEditorDialogs(
         transpose: kitConfig.transpose !== 0 ? kitConfig.transpose : undefined,
       })),
     }),
-  }), [kitConfig]);
+  }), [kitConfig, client]);
 
   const core = useEditorDialogsCore(libraryRoot, strategy, onRefresh, errorReporter);
 
