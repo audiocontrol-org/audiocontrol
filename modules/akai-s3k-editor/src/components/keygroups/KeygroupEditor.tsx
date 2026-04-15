@@ -4,6 +4,7 @@ import { formatMidiNote } from '@/lib/midi-note-parser';
 import { VelocityZoneEditor } from '@/components/keygroups/VelocityZoneEditor';
 import { KeyRangeEditor } from '@/components/keygroups/KeyRangeEditor';
 import { AdsrDisplay, MultiPointEnvelopeDisplay } from '@/components/keygroups/AdsrDisplay';
+import { FilterDisplay } from '@/components/keygroups/FilterDisplay';
 import type { NoteRange } from '@/components/keygroups/note-coordinate-utils';
 
 interface KeygroupEditorProps {
@@ -116,7 +117,16 @@ export function KeygroupEditor({
           <ParamKnob label="Vel→Env2" value={header.V_ENV2} min={-50} max={50} onChange={num('V_ENV2')} bipolar />
         </Section>
 
-        <Section title="Filter">
+        <Section
+          title="Filter"
+          headerContent={
+            <FilterDisplay
+              frequency={header.FILFRQ}
+              resonance={header.FILQ}
+              onChange={(changes) => { for (const [f, v] of Object.entries(changes)) onParameterChange(f, v); }}
+            />
+          }
+        >
           <ParamKnob label="Freq" value={header.FILFRQ} min={0} max={99} onChange={num('FILFRQ')} />
           <ParamKnob label="Resonance" value={header.FILQ} min={0} max={15} onChange={num('FILQ')} />
           <ParamKnob label="Key Track" value={header.K_FREQ} min={-50} max={50} onChange={num('K_FREQ')} bipolar />
