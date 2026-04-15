@@ -4,12 +4,14 @@ import { formatMidiNote } from '@/lib/midi-note-parser';
 import { VelocityZoneEditor } from '@/components/keygroups/VelocityZoneEditor';
 import { KeyRangeEditor } from '@/components/keygroups/KeyRangeEditor';
 import { AdsrDisplay, MultiPointEnvelopeDisplay } from '@/components/keygroups/AdsrDisplay';
+import type { NoteRange } from '@/components/keygroups/note-coordinate-utils';
 
 interface KeygroupEditorProps {
   header: KeygroupHeader;
   keygroupIndex: number;
   sampleNames: string[];
   onParameterChange: (field: string, value: number | string) => void;
+  noteRange: NoteRange;
 }
 
 function Section({
@@ -37,6 +39,7 @@ export function KeygroupEditor({
   keygroupIndex,
   sampleNames,
   onParameterChange,
+  noteRange,
 }: KeygroupEditorProps): JSX.Element {
   const num = (field: string) => (value: number) =>
     onParameterChange(field, value);
@@ -60,6 +63,7 @@ export function KeygroupEditor({
               lowNote={header.LONOTE}
               highNote={header.HINOTE}
               onChange={(field, value) => onParameterChange(field, value)}
+              noteRange={noteRange}
             />
           </div>
           <ParamKnob

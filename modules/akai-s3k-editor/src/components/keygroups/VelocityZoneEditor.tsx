@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
 import { ParameterRow, NumberInput, SelectInput } from '@/components/ui';
 import { VelocityRangeBar } from '@/components/keygroups/VelocityRangeBar';
@@ -159,6 +159,19 @@ export function VelocityZoneEditor({
     sampleName: getZoneString(header, 'SNAME', zone),
   }));
 
+  const handleSplitDrag = useCallback(
+    (splitIndex: number, velocity: number) => {
+      // splitIndex 0 = boundary between zone 1 and zone 2
+      const leftZone = ZONE_INDICES[splitIndex];
+      const rightZone = ZONE_INDICES[splitIndex + 1];
+      if (leftZone !== undefined && rightZone !== undefined) {
+        onParameterChange(zoneField('HIVEL', leftZone), velocity);
+        onParameterChange(zoneField('LOVEL', rightZone), velocity + 1);
+      }
+    },
+    [onParameterChange],
+  );
+
   return (
     <div className="border border-gray-700 rounded-lg overflow-hidden mb-3">
       <div className="bg-gray-800 px-3 py-2 text-sm font-medium">Velocity Zones</div>
@@ -167,6 +180,8 @@ export function VelocityZoneEditor({
         zones={velocityZones}
         selectedZone={activeZone - 1}
         onSelectZone={(index) => setActiveZone(ZONE_INDICES[index])}
+        onSplitDrag={handleSplitDrag}
+        onSplitCommit={handleSplitDrag}
       />
 
       <div className="flex border-b border-gray-700">
