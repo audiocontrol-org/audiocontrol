@@ -231,12 +231,12 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 
 ### Tasks
 
-- [ ] Audit S3K sample header fields (name, tuning, loop points, playback mode, sample rate, bandwidth)
-- [ ] Build SampleEditor component using ParamKnob/ParamSelect dense grid layout
-- [ ] Build SampleList component matching ProgramList pattern (list with hover actions)
-- [ ] Replace SamplesPage with list-detail layout (SampleList + SampleEditor)
-- [ ] Wire sample header reads/writes to the device client
-- [ ] Add rename (double-click), refresh, delete to sample list items
+- [x] Audit S3K sample header fields (name, tuning, loop points, playback mode, sample rate, bandwidth)
+- [x] Build SampleEditor component using ParamKnob/ParamSelect dense grid layout
+- [x] Build SampleList component matching ProgramList pattern (list with hover actions)
+- [x] Replace SamplesPage with list-detail layout (SampleList + SampleEditor)
+- [x] Wire sample header reads/writes to the device client
+- [x] Add rename (double-click), refresh, delete to sample list items
 - [ ] Write tests for SampleEditor and SampleList
 
 ### Acceptance Criteria
