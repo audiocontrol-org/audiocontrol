@@ -4,6 +4,7 @@ import { formatMidiNote } from '@/lib/midi-note-parser';
 import { VelocityZoneEditor } from '@/components/keygroups/VelocityZoneEditor';
 import { KeyRangeEditor } from '@/components/keygroups/KeyRangeEditor';
 import { AdsrDisplay, MultiPointEnvelopeDisplay } from '@/components/keygroups/AdsrDisplay';
+import { FilterDisplay } from '@/components/keygroups/FilterDisplay';
 import type { NoteRange } from '@/components/keygroups/note-coordinate-utils';
 
 interface KeygroupEditorProps {
@@ -11,6 +12,10 @@ interface KeygroupEditorProps {
   keygroupIndex: number;
   sampleNames: string[];
   onParameterChange: (field: string, value: number | string) => void;
+  /** Optimistic-only update during drag (no device write) */
+  onDragChange?: (field: string, value: number) => void;
+  /** Write current header to device (called on drag end) */
+  onCommitHeader?: () => void;
   noteRange: NoteRange;
 }
 
@@ -39,6 +44,8 @@ export function KeygroupEditor({
   keygroupIndex,
   sampleNames,
   onParameterChange,
+  onDragChange,
+  onCommitHeader,
   noteRange,
 }: KeygroupEditorProps): JSX.Element {
   const num = (field: string) => (value: number) =>
@@ -89,24 +96,16 @@ export function KeygroupEditor({
         </div>
       </div>
 
-      {/* Row 1: Filter + Filter Envelope (adjacent) */}
+      {/* Row 1: Filter Envelope + Filter (envelope on left to stack above amp envelope) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <Section title="Filter">
-          <ParamKnob label="Freq" value={header.FILFRQ} min={0} max={99} onChange={num('FILFRQ')} />
-          <ParamKnob label="Resonance" value={header.FILQ} min={0} max={15} onChange={num('FILQ')} />
-          <ParamKnob label="Key Track" value={header.K_FREQ} min={-50} max={50} onChange={num('K_FREQ')} bipolar />
-          <ParamKnob label="Vel→Filt" value={header.V_FREQ} min={-50} max={50} onChange={num('V_FREQ')} bipolar />
-          <ParamKnob label="Press→Filt" value={header.P_FREQ} min={-50} max={50} onChange={num('P_FREQ')} bipolar />
-          <ParamKnob label="Env→Filt" value={header.E_FREQ} min={-50} max={50} onChange={num('E_FREQ')} bipolar />
-        </Section>
-
         <Section
           title="Filter Envelope"
           headerContent={
             <MultiPointEnvelopeDisplay
               rates={[header.ENV2R1, header.ENV2R2, header.ENV2R3, header.ENV2R4]}
               levels={[header.ENV2L1, header.ENV2L2, header.ENV2L3, header.ENV2L4]}
-              onChange={(changes) => { for (const [f, v] of Object.entries(changes)) onParameterChange(f, v); }}
+              onChange={onDragChange ? (changes) => { for (const [f, v] of Object.entries(changes)) onDragChange(f, v); } : (changes) => { for (const [f, v] of Object.entries(changes)) onParameterChange(f, v); }}
+              onCommit={onCommitHeader}
             />
           }
         >
@@ -124,6 +123,25 @@ export function KeygroupEditor({
           <ParamKnob label="Key→D/R" value={header.K_DAR2} min={-50} max={50} onChange={num('K_DAR2')} bipolar />
           <ParamKnob label="Vel→Env2" value={header.V_ENV2} min={-50} max={50} onChange={num('V_ENV2')} bipolar />
         </Section>
+
+        <Section
+          title="Filter"
+          headerContent={
+            <FilterDisplay
+              frequency={header.FILFRQ}
+              resonance={header.FILQ}
+              onChange={onDragChange ? (changes) => { for (const [f, v] of Object.entries(changes)) onDragChange(f, v); } : (changes) => { for (const [f, v] of Object.entries(changes)) onParameterChange(f, v); }}
+              onCommit={onCommitHeader}
+            />
+          }
+        >
+          <ParamKnob label="Freq" value={header.FILFRQ} min={0} max={99} onChange={num('FILFRQ')} />
+          <ParamKnob label="Resonance" value={header.FILQ} min={0} max={15} onChange={num('FILQ')} />
+          <ParamKnob label="Key Track" value={header.K_FREQ} min={-50} max={50} onChange={num('K_FREQ')} bipolar />
+          <ParamKnob label="Vel→Filt" value={header.V_FREQ} min={-50} max={50} onChange={num('V_FREQ')} bipolar />
+          <ParamKnob label="Press→Filt" value={header.P_FREQ} min={-50} max={50} onChange={num('P_FREQ')} bipolar />
+          <ParamKnob label="Env→Filt" value={header.E_FREQ} min={-50} max={50} onChange={num('E_FREQ')} bipolar />
+        </Section>
       </div>
 
       {/* Row 2: Amp Envelope + Pitch & Crossfade */}
@@ -136,7 +154,8 @@ export function KeygroupEditor({
               decay={header.DECAY1}
               sustain={header.SUSTN1}
               release={header.RELSE1}
-              onChange={(changes) => { for (const [f, v] of Object.entries(changes)) onParameterChange(f, v); }}
+              onChange={onDragChange ? (changes) => { for (const [f, v] of Object.entries(changes)) onDragChange(f, v); } : (changes) => { for (const [f, v] of Object.entries(changes)) onParameterChange(f, v); }}
+              onCommit={onCommitHeader}
             />
           }
         >

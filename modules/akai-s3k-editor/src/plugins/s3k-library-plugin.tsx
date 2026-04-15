@@ -51,6 +51,7 @@ export interface S3kMemoryPanelState {
   onRenameProgram?: (index: number, name: string) => void;
   onDeleteSample?: (index: number, name: string) => void;
   onDeleteProgram?: (index: number, name: string) => void;
+  onCloneProgram?: (index: number, name: string) => void;
   isConnected: boolean;
   isLoading: boolean;
 }
@@ -98,6 +99,7 @@ function S3kMemoryPanelAdapter({
       onRenameProgram={state.onRenameProgram}
       onDeleteSample={state.onDeleteSample}
       onDeleteProgram={state.onDeleteProgram}
+      onCloneProgram={state.onCloneProgram}
       isConnected={state.isConnected}
       isLoading={state.isLoading}
     />

@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
-import { ParameterRow, NumberInput, SelectInput } from '@/components/ui';
+import { ParamKnob, ParamSelect } from '@/components/ui/ParamKnob';
 import { VelocityRangeBar } from '@/components/keygroups/VelocityRangeBar';
 
 interface VelocityZoneEditorProps {
@@ -20,33 +20,6 @@ const PLAYBACK_MODE_OPTIONS: { value: number; label: string }[] = [
   { value: 4, label: 'Play To End' },
 ];
 
-function SampleNameSelect({
-  value,
-  sampleNames,
-  onChange,
-}: {
-  value: string;
-  sampleNames: string[];
-  onChange: (name: string) => void;
-}): JSX.Element {
-  const trimmed = value.trim();
-  return (
-    <select
-      value={trimmed}
-      onChange={(e) => onChange(e.target.value)}
-      className="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-gray-200 max-w-xs"
-    >
-      <option value="">(none)</option>
-      {sampleNames.map((name) => (
-        <option key={name} value={name.trim()}>
-          {name.trim() || '(unnamed)'}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-/** Typed accessor for zone-suffixed keygroup header fields */
 function zoneField(base: string, zone: ZoneIndex): string {
   return `${base}${zone}`;
 }
@@ -62,6 +35,53 @@ function getZoneString(header: KeygroupHeader, base: string, zone: ZoneIndex): s
   return (header as unknown as Record<string, unknown>)[zoneField(base, zone)] as string;
 }
 
+function SampleList({
+  value,
+  sampleNames,
+  onChange,
+}: {
+  value: string;
+  sampleNames: string[];
+  onChange: (name: string) => void;
+}): JSX.Element {
+  const trimmed = value.trim();
+  const selectedRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (selectedRef.current) {
+      selectedRef.current.scrollIntoView({ block: 'nearest' });
+    }
+  }, [trimmed]);
+
+  return (
+    <div className="s3k-sample-list">
+      <button
+        type="button"
+        ref={trimmed === '' ? selectedRef : undefined}
+        onClick={() => onChange('')}
+        className={`s3k-sample-list-item ${trimmed === '' ? 's3k-sample-list-item--selected' : ''}`}
+      >
+        (none)
+      </button>
+      {sampleNames.map((name) => {
+        const t = name.trim();
+        const isSelected = t === trimmed;
+        return (
+          <button
+            key={name}
+            type="button"
+            ref={isSelected ? selectedRef : undefined}
+            onClick={() => onChange(t)}
+            className={`s3k-sample-list-item ${isSelected ? 's3k-sample-list-item--selected' : ''}`}
+          >
+            {t || '(unnamed)'}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function SingleZoneEditor({
   zone,
   header,
@@ -73,75 +93,35 @@ function SingleZoneEditor({
   sampleNames: string[];
   onParameterChange: (field: string, value: number | string) => void;
 }): JSX.Element {
-  const changeNum = (base: string) => (v: number) =>
+  const num = (base: string) => (v: number) =>
     onParameterChange(zoneField(base, zone), v);
 
   const sampleName = getZoneString(header, 'SNAME', zone);
 
   return (
-    <div className="divide-y divide-gray-800">
-      <ParameterRow label="Sample">
-        <SampleNameSelect
+    <div className="s3k-zone-editor">
+      {/* Left: sample list */}
+      <div className="s3k-zone-sample-panel">
+        <div className="s3k-section-title">Sample</div>
+        <SampleList
           value={sampleName}
           sampleNames={sampleNames}
           onChange={(name) => onParameterChange(zoneField('SNAME', zone), name)}
         />
-      </ParameterRow>
-      <ParameterRow label="Low Velocity">
-        <NumberInput
-          value={getZoneValue(header, 'LOVEL', zone)}
-          min={0}
-          max={127}
-          onChange={changeNum('LOVEL')}
-        />
-      </ParameterRow>
-      <ParameterRow label="High Velocity">
-        <NumberInput
-          value={getZoneValue(header, 'HIVEL', zone)}
-          min={0}
-          max={127}
-          onChange={changeNum('HIVEL')}
-        />
-      </ParameterRow>
-      <ParameterRow label="Tuning Offset">
-        <NumberInput
-          value={getZoneValue(header, 'VTUNO', zone)}
-          min={-50}
-          max={50}
-          onChange={changeNum('VTUNO')}
-        />
-      </ParameterRow>
-      <ParameterRow label="Loudness Offset">
-        <NumberInput
-          value={getZoneValue(header, 'VLOUD', zone)}
-          min={-50}
-          max={50}
-          onChange={changeNum('VLOUD')}
-        />
-      </ParameterRow>
-      <ParameterRow label="Filter Freq Offset">
-        <NumberInput
-          value={getZoneValue(header, 'VFREQ', zone)}
-          min={-50}
-          max={50}
-          onChange={changeNum('VFREQ')}
-        />
-      </ParameterRow>
-      <ParameterRow label="Pan Offset">
-        <NumberInput
-          value={getZoneValue(header, 'VPANO', zone)}
-          min={-50}
-          max={50}
-          onChange={changeNum('VPANO')}
-        />
-      </ParameterRow>
-      <ParameterRow label="Playback Mode">
-        <SelectInput
-          value={getZoneValue(header, 'ZPLAY', zone)}
-          options={PLAYBACK_MODE_OPTIONS}
-          onChange={changeNum('ZPLAY')}
-        />
-      </ParameterRow>
+      </div>
+
+      {/* Right: zone parameters in dense grid */}
+      <div className="s3k-zone-params">
+        <div className="s3k-section-grid">
+          <ParamKnob label="Lo Vel" value={getZoneValue(header, 'LOVEL', zone)} min={0} max={127} onChange={num('LOVEL')} />
+          <ParamKnob label="Hi Vel" value={getZoneValue(header, 'HIVEL', zone)} min={0} max={127} onChange={num('HIVEL')} />
+          <ParamKnob label="Tune" value={getZoneValue(header, 'VTUNO', zone)} min={-50} max={50} onChange={num('VTUNO')} bipolar />
+          <ParamKnob label="Loudness" value={getZoneValue(header, 'VLOUD', zone)} min={-50} max={50} onChange={num('VLOUD')} bipolar />
+          <ParamKnob label="Filter" value={getZoneValue(header, 'VFREQ', zone)} min={-50} max={50} onChange={num('VFREQ')} bipolar />
+          <ParamKnob label="Pan" value={getZoneValue(header, 'VPANO', zone)} min={-50} max={50} onChange={num('VPANO')} bipolar />
+          <ParamSelect label="Playback" value={getZoneValue(header, 'ZPLAY', zone)} options={PLAYBACK_MODE_OPTIONS} onChange={num('ZPLAY')} />
+        </div>
+      </div>
     </div>
   );
 }
@@ -161,7 +141,6 @@ export function VelocityZoneEditor({
 
   const handleSplitDrag = useCallback(
     (splitIndex: number, velocity: number) => {
-      // splitIndex 0 = boundary between zone 1 and zone 2
       const leftZone = ZONE_INDICES[splitIndex];
       const rightZone = ZONE_INDICES[splitIndex + 1];
       if (leftZone !== undefined && rightZone !== undefined) {
@@ -173,9 +152,7 @@ export function VelocityZoneEditor({
   );
 
   return (
-    <div className="border border-gray-700 rounded-lg overflow-hidden mb-3">
-      <div className="bg-gray-800 px-3 py-2 text-sm font-medium">Velocity Zones</div>
-
+    <div>
       <VelocityRangeBar
         zones={velocityZones}
         selectedZone={activeZone - 1}
@@ -184,7 +161,7 @@ export function VelocityZoneEditor({
         onSplitCommit={handleSplitDrag}
       />
 
-      <div className="flex border-b border-gray-700">
+      <div className="s3k-zone-tabs">
         {ZONE_INDICES.map((zone) => {
           const sname = getZoneString(header, 'SNAME', zone).trim();
           const isActive = activeZone === zone;
@@ -193,16 +170,10 @@ export function VelocityZoneEditor({
               key={zone}
               type="button"
               onClick={() => setActiveZone(zone)}
-              className={`flex-1 px-3 py-2 text-sm transition-colors ${
-                isActive
-                  ? 'bg-gray-700 text-gray-100 font-medium'
-                  : 'bg-gray-900 text-gray-400 hover:bg-gray-800 hover:text-gray-300'
-              }`}
+              className={`s3k-zone-tab ${isActive ? 's3k-zone-tab--active' : ''}`}
             >
-              <div>Zone {zone}</div>
-              {sname && (
-                <div className="text-xs truncate mt-0.5 opacity-75">{sname}</div>
-              )}
+              <span>Zone {zone}</span>
+              {sname && <span className="s3k-zone-tab-sample">{sname}</span>}
             </button>
           );
         })}

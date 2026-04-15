@@ -638,8 +638,8 @@ export function PluginLibraryBrowser({
         setDropIsMove(true);
         return;
       }
-      // External file drops (OS files)
-      if (onExternalDrop && e.dataTransfer.types.includes('Files')) {
+      // External drops: OS files or custom MIME types (e.g., device memory items)
+      if (onExternalDrop && e.dataTransfer.types.length > 0) {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'copy';
         setDropTargetCategory(categoryId);

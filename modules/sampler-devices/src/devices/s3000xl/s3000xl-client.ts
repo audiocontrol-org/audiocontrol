@@ -642,27 +642,51 @@ export function createS3000xlClient(
       newName: string,
       onProgress?: (step: string, current: number, total: number) => void,
     ): Promise<number> {
-      const totalSteps = 3; // read header, create program, clone keygroups
+      const totalSteps = 4;
       const progress = onProgress ?? (() => {});
 
+      // Step 1: Read source program and all its keygroups
       progress('Reading source program', 1, totalSteps);
       const sourceHeader = await client.fetchProgramHeader(sourceProgramNumber);
+      const sourceKeygroups = [];
+      for (let kg = 0; kg < sourceHeader.GROUPS; kg++) {
+        sourceKeygroups.push(await client.fetchKeygroupHeader(sourceProgramNumber, kg));
+      }
+
+      // Step 2: Create new program
+      progress('Creating program', 2, totalSteps);
       const existingNames = await client.fetchProgramNames();
       const newIndex = existingNames.length;
+      const clonedHeader = { ...sourceHeader, raw: [...sourceHeader.raw] };
+      ProgramHeader_writePRNAME(clonedHeader, newName);
+      await client.createProgram(newIndex, clonedHeader);
 
-      progress('Creating program', 2, totalSteps);
-      const cloned = { ...sourceHeader, raw: [...sourceHeader.raw] };
-      ProgramHeader_writePRNAME(cloned, newName);
-      await client.createProgram(newIndex, cloned);
+      // Step 3: Write the full program header to the clone to ensure all
+      // fields match the source (createProgram may not copy all fields)
+      progress('Writing program header', 3, totalSteps);
+      const newProgramHeader = await client.fetchProgramHeader(newIndex);
+      const fullHeader = { ...newProgramHeader, raw: [...clonedHeader.raw] };
+      await client.writeProgramHeader(fullHeader);
 
-      // Clone all keygroups from source
-      for (let kg = 0; kg < sourceHeader.GROUPS; kg++) {
-        progress(`Cloning keygroup ${kg + 1}/${sourceHeader.GROUPS}`, 3, totalSteps);
-        const kgHeader = await client.fetchKeygroupHeader(sourceProgramNumber, kg);
+      // Step 4: Write each keygroup field-for-field to the clone
+      for (let kg = 0; kg < sourceKeygroups.length; kg++) {
+        progress(`Writing keygroup ${kg + 1}/${sourceKeygroups.length}`, 4, totalSteps);
         if (kg === 0) {
-          await client.writeKeygroupHeader(kgHeader);
+          // Keygroup 0 already exists — fetch its raw template, overlay source data
+          const targetKg = await client.fetchKeygroupHeader(newIndex, 0);
+          const merged = { ...sourceKeygroups[kg], raw: [...targetKg.raw] };
+          // Copy all source field values into the target's raw bytes
+          const srcRaw = sourceKeygroups[kg].raw;
+          // Use source raw data directly (field layout is identical)
+          merged.raw = [...srcRaw];
+          await client.writeKeygroupHeader(merged);
         } else {
-          await client.createKeygroup(newIndex, kg, kgHeader);
+          // Create additional keygroups with source data as template
+          await client.createKeygroup(newIndex, kg, sourceKeygroups[kg]);
+          // Then overwrite to ensure all fields match
+          const targetKg = await client.fetchKeygroupHeader(newIndex, kg);
+          targetKg.raw = [...sourceKeygroups[kg].raw];
+          await client.writeKeygroupHeader(targetKg);
         }
       }
 

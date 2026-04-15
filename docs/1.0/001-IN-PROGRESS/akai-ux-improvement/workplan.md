@@ -16,6 +16,15 @@
 | Phase 3 | #219 | Build keygroup CRUD and visual zone mapping UI |
 | Phase 4 | #220 | Add multi-editor for side-by-side program editing |
 | Phase 5 | #221 | Polish layout and extract shared components to editor-core |
+| Phase 6 | #272 | Memory Browser CRUD parity — rename/clone/refresh/delete |
+| Phase 7 | #273 | Memory-to-Library drag & drop for programs and samples |
+| Phase 8 | #274 | Fix silent failure when promoting S3K items to common area |
+| Phase 9 | #275 | Build sample header editor with list-detail layout |
+| Phase 10 | #276 | Remove Compare page (unused feature) |
+| Phase 11 | #277 | Persistent editor cache — sessionStorage for data |
+| Phase 12 | #278 | Fix program download expandability and atomic sample rename |
+| Phase 13 | #279 | Implement sample clone in device client and UI |
+| Bug | #280 | Envelope→filter parameter reset to 0 when editing keygroup |
 
 ## Technical Approach
 
@@ -154,3 +163,166 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 - Visual style is consistent with Roland editor (spacing, typography, section headers)
 - Shared components live in editor-core, not duplicated across editors
 - Layout is usable at viewport widths from 1024px to ultrawide
+
+---
+
+## Phase 6: Memory Browser CRUD Parity
+
+**Goal:** Device Memory panel in the Library page has the same CRUD affordances as the Programs list.
+
+### Tasks
+
+- [x] Add rename (double-click), clone, refresh, delete hover actions to programs in DeviceMemoryPanel
+- [x] Add rename, refresh, delete hover actions to samples in DeviceMemoryPanel
+- [x] Wire CRUD operations to the S3K device client (renameProgram, cloneProgram, deleteProgram, renameSample, deleteSample)
+- [x] Use ConfirmDialog for destructive actions, optimistic updates for rename
+- [x] Write tests for DeviceMemoryPanel CRUD interactions
+
+### Acceptance Criteria
+
+- Programs in Device Memory can be renamed (double-click), cloned, refreshed, deleted
+- Samples in Device Memory can be renamed, refreshed, deleted
+- All operations use the established design system patterns (ac-list-action-btn, ConfirmDialog, optimistic updates)
+
+---
+
+## Phase 7: Memory-to-Library Drag & Drop
+
+**Goal:** Drag programs and samples from Device Memory to the library tree.
+
+### Tasks
+
+- [x] Implement drag source on DeviceMemoryPanel items (programs and samples)
+- [x] Accept drops in both the common area and S3K-specific library sections
+- [x] Show SteppedProgressDrawer for transfer operations (export program, receive sample via SDS)
+- [x] Refresh library tree after successful drop
+- [x] Handle errors with ErrorBanner
+
+### Acceptance Criteria
+
+- Programs can be dragged from Device Memory to the S3K programs section or common area
+- Samples can be dragged from Device Memory to the samples section
+- Drop operations show progress and complete reliably
+
+---
+
+## Phase 8: Library Promotion Fix
+
+**Goal:** Fix silent failure when promoting items from S3K library to common area.
+
+### Tasks
+
+- [x] Diagnose why promotion fails silently (check program-promotion.ts, saveDeviceProgramToCommonArea)
+- [x] Add error handling and user feedback for promotion failures
+- [ ] Verify round-trip: promote to common area, then import back to device
+- [x] Write tests for the promotion path
+
+### Acceptance Criteria
+
+- Promotion from S3K library to common area succeeds with progress feedback
+- Promotion failures show actionable error messages
+- Promoted programs can be re-imported to the device
+
+---
+
+## Phase 9: Sample Editor
+
+**Goal:** Build a proper sample header editor replacing the current SamplesPage.
+
+### Tasks
+
+- [ ] Audit S3K sample header fields (name, tuning, loop points, playback mode, sample rate, bandwidth)
+- [ ] Build SampleEditor component using ParamKnob/ParamSelect dense grid layout
+- [ ] Build SampleList component matching ProgramList pattern (list with hover actions)
+- [ ] Replace SamplesPage with list-detail layout (SampleList + SampleEditor)
+- [ ] Wire sample header reads/writes to the device client
+- [ ] Add rename (double-click), refresh, delete to sample list items
+- [ ] Write tests for SampleEditor and SampleList
+
+### Acceptance Criteria
+
+- Sample editor shows all editable header fields in dense grid layout
+- Sample list uses the same pattern as program/keygroup lists
+- Sample parameters round-trip correctly with the device
+- No dropdown selector — uses list view for sample selection
+
+---
+
+## Phase 10: Remove Compare Page
+
+**Goal:** Remove unused multi-editor compare feature.
+
+### Tasks
+
+- [x] Remove MultiProgramPage component
+- [x] Remove ComparePane, ProgramSelector, usePaneKeygroups
+- [x] Remove "Compare" from navigation in Layout.tsx
+- [x] Remove /compare route from App.tsx
+- [x] Remove compare-grid CSS from index.css
+- [x] Update tests that reference Compare components
+
+### Acceptance Criteria
+
+- No Compare nav item, route, or components in the codebase
+- Build clean, all tests pass
+
+---
+
+## Phase 11: Persistent Editor Cache
+
+**Goal:** Editor pages retain data across page reloads, matching the library's caching pattern.
+
+### Tasks
+
+- [ ] Cache program names and headers in sessionStorage (programStore)
+- [ ] Cache keygroup headers in sessionStorage (keygroupStore)
+- [ ] Cache sample names and headers in sessionStorage
+- [ ] Lazy-load from device only when cache is stale or missing
+- [ ] Show cached data immediately on page load, refresh in background
+- [ ] Add a cache age indicator or "last refreshed" timestamp
+
+### Acceptance Criteria
+
+- Page reload restores both selection AND data without re-fetching from device
+- Stale data is refreshed automatically in the background
+- User can force-refresh via the refresh affordance on the list title
+
+---
+
+## Phase 12: Program Download Fix and Atomic Sample Rename
+
+**Goal:** Fix downloaded programs not being expandable in the library, and ensure sample renames inside program directories atomically update the program YAML.
+
+### Tasks
+
+- [ ] Diagnose why downloaded programs are stored as non-expandable (check ExportProgramDialog, program-serialization, program-storage)
+- [ ] Fix program download to store as an expandable directory with constituent samples
+- [ ] Implement atomic sample rename: renaming a sample file inside a program directory updates the program YAML's zone references
+- [ ] Add rollback on failure: if either the file rename or YAML update fails, revert both
+- [ ] Verify fix works across all MIDI transports (serial, HTTP, SCSI)
+- [ ] Write tests for the download and rename paths
+
+### Acceptance Criteria
+
+- Downloaded programs appear as expandable directories showing their samples
+- Renaming a sample inside a program directory updates the program YAML's zone references
+- Rename + YAML update is atomic with rollback on failure
+- Works regardless of MIDI transport
+
+---
+
+## Phase 13: Sample Clone
+
+**Goal:** Implement sample duplication in device memory.
+
+### Tasks
+
+- [ ] Implement cloneSample in s3000xl-client (fetch header + SDS data, send to new slot, rename)
+- [ ] Add clone action to sample list items in DeviceMemoryPanel
+- [ ] Add clone action to sample list in SamplesPage (when built)
+
+### Acceptance Criteria
+
+- Samples can be cloned in device memory
+- Clone appears as a hover action icon on sample list items
+- Cloned sample gets a " CPY" suffix name
