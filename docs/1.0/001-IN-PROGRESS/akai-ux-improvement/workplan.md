@@ -22,6 +22,7 @@
 | Phase 9 | #275 | Build sample header editor with list-detail layout |
 | Phase 10 | #276 | Remove Compare page (unused feature) |
 | Phase 11 | #277 | Persistent editor cache — sessionStorage for data |
+| Phase 12 | #278 | Fix program download expandability and atomic sample rename |
 
 ## Technical Approach
 
@@ -283,3 +284,25 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 - Page reload restores both selection AND data without re-fetching from device
 - Stale data is refreshed automatically in the background
 - User can force-refresh via the refresh affordance on the list title
+
+---
+
+## Phase 12: Program Download Fix and Atomic Sample Rename
+
+**Goal:** Fix downloaded programs not being expandable in the library, and ensure sample renames inside program directories atomically update the program YAML.
+
+### Tasks
+
+- [ ] Diagnose why downloaded programs are stored as non-expandable (check ExportProgramDialog, program-serialization, program-storage)
+- [ ] Fix program download to store as an expandable directory with constituent samples
+- [ ] Implement atomic sample rename: renaming a sample file inside a program directory updates the program YAML's zone references
+- [ ] Add rollback on failure: if either the file rename or YAML update fails, revert both
+- [ ] Verify fix works across all MIDI transports (serial, HTTP, SCSI)
+- [ ] Write tests for the download and rename paths
+
+### Acceptance Criteria
+
+- Downloaded programs appear as expandable directories showing their samples
+- Renaming a sample inside a program directory updates the program YAML's zone references
+- Rename + YAML update is atomic with rollback on failure
+- Works regardless of MIDI transport
