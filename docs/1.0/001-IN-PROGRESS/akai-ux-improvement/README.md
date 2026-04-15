@@ -17,7 +17,7 @@ Restructure the Akai S3000XL editor from memory-oriented pages to workflow-orien
 | Phase 9: Sample Editor | Complete | List-detail layout, dense grid, 20 unit tests |
 | Phase 10: Remove Compare Page | Complete | |
 | Phase 11: Persistent Editor Cache | Complete | zustand persist + sessionStorage, CacheAge indicator |
-| Phase 12: Program Download Fix | Not Started | Expandability + atomic sample rename |
+| Phase 12: Program Download Fix | Complete | Expandable programs + atomic sample rename |
 | Phase 13: Sample Clone | Not Started | cloneSample in device client + UI |
 
 ## Links
