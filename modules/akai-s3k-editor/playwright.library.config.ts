@@ -21,7 +21,7 @@ if (!port) {
 }
 
 export default defineConfig({
-  testDir: './e2e',
+  testDir: './test/e2e',
   testMatch: 'library-*.spec.ts',
   fullyParallel: false, // Sequential for OPFS isolation
   forbidOnly: !!process.env.CI,

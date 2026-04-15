@@ -75,7 +75,7 @@ PRD → workplan.md → GitHub issues → implementation → implementation-summ
 4. Use proportional flex layouts, not pixel values
 5. Build: `make`
 6. Verify visually using the test harness (screenshot with Playwright, inspect the result)
-7. **Write a Playwright test spec for every interaction you verified manually** — specs live in `e2e/test-harness-<feature>.spec.ts`. Ad-hoc screenshots without corresponding specs are throwaway work.
+7. **Write a Playwright test spec for every interaction you verified manually** — specs live in `test/ui/<feature>.spec.ts`. Ad-hoc screenshots without corresponding specs are throwaway work.
 8. Iterate: fix issues found visually, update specs, screenshot again
 9. Update workplan acceptance criteria
 10. Commit with GitHub issue reference
@@ -92,7 +92,7 @@ See [TESTING.md](/TESTING.md) for the overall testing architecture. Three test c
 
 Detailed methodology: [TESTING-UNIT.md](/TESTING-UNIT.md) | [TESTING-UI.md](/TESTING-UI.md) | [TESTING-E2E.md](/TESTING-E2E.md)
 
-**Migration in progress:** Unit tests currently live as `src/**/*.test.tsx`, E2E tests in `e2e/`. New tests go in `test/<category>/`. See GitHub issue for migration tracking.
+**Standard layout:** Unit tests in `test/unit/`, UI tests in `test/ui/`, E2E tests in `test/e2e/`. All new tests go in the appropriate `test/<category>/` directory.
 
 When developing UI features:
 1. Create a test harness page (`src/pages/Test<Feature>Page.tsx`) with factory data
@@ -743,7 +743,7 @@ The `roland-sxx0-editor` module includes hardware e2e tests that run against rea
 
 ### How It Works
 
-1. **Heartbeat Reporter** (`e2e/reporters/heartbeat-reporter.ts`): Custom Playwright reporter that writes a JSON heartbeat file on every test event (`onTestBegin`, `onTestEnd`, `onStepBegin`, `onStepEnd`). The heartbeat includes the current timestamp, event type, and description.
+1. **Heartbeat Reporter** (`test/e2e/reporters/heartbeat-reporter.ts`): Custom Playwright reporter that writes a JSON heartbeat file on every test event (`onTestBegin`, `onTestEnd`, `onStepBegin`, `onStepEnd`). The heartbeat includes the current timestamp, event type, and description.
 
 2. **Watchdog Process** (`scripts/watchdog.ts`): Background process that polls the heartbeat file every 500ms. If the heartbeat timestamp is older than 5 seconds, the watchdog kills the Playwright runner process with SIGKILL and exits with code 1.
 
@@ -767,7 +767,7 @@ Prerequisites:
 
 ### File Locations
 
-- **Reporter**: `modules/roland-sxx0-editor/e2e/reporters/heartbeat-reporter.ts`
+- **Reporter**: `modules/roland-sxx0-editor/test/e2e/reporters/heartbeat-reporter.ts`
 - **Watchdog**: `modules/roland-sxx0-editor/scripts/watchdog.ts`
 - **Runner**: `modules/roland-sxx0-editor/scripts/run-hardware-e2e.sh`
 - **Config**: `modules/roland-sxx0-editor/playwright.hardware.config.ts`

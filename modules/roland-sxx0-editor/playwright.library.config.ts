@@ -21,7 +21,7 @@ if (!port) {
 }
 
 export default defineConfig({
-  testDir: './e2e',
+  testDir: './test/e2e',
   testMatch: 'library-*.spec.ts',
   fullyParallel: false, // Sequential for OPFS isolation
   forbidOnly: !!process.env.CI,
@@ -29,7 +29,7 @@ export default defineConfig({
   workers: 1, // Single worker for OPFS isolation
   reporter: [
     ['line'],
-    ['./e2e/reporters/heartbeat-reporter.ts'],
+    ['./test/e2e/reporters/heartbeat-reporter.ts'],
   ],
   timeout: 15_000, // 15s max per test - fail fast
   use: {

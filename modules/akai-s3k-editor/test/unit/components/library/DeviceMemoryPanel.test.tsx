@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { DeviceMemoryPanel } from './DeviceMemoryPanel';
+import { DeviceMemoryPanel } from '@/components/library/DeviceMemoryPanel';
 
 describe('DeviceMemoryPanel context menus', () => {
   const baseProps = {

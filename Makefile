@@ -77,7 +77,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland
 
 build: $(ALL_STAMPS)
 
@@ -167,6 +167,10 @@ test-e2e-s3k-library: $(AKAI_S3K_EDITOR) ensure-playwright
 # S3K UI test harness (keygroup zone components, no device required)
 test-ui-s3k: $(AKAI_S3K_EDITOR) ensure-playwright
 	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/akai-s3k-editor && ./scripts/run-test-harness-e2e.sh $(ARGS)"
+
+# Roland UI test harness (no device required)
+test-ui-roland: $(ROLAND_SXX0_EDITOR) ensure-playwright
+	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && ./scripts/run-test-harness-e2e.sh $(ARGS)"
 
 # ---------------------------------------------------------------------------
 # Common-Area Library Tests (shared specs, parameterized by env)
