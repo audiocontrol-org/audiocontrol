@@ -25,7 +25,6 @@ import { runAllFieldTests } from '#node/lib/test-all-fields.js';
 import { runStructureTests } from '#node/lib/test-structure.js';
 import { runMultiTests } from '#node/lib/test-multi.js';
 import { runLatencyTests } from '#node/lib/test-latency.js';
-import { runStreamingTests } from '#node/lib/test-streaming.js';
 import { runSdsTests } from '#node/lib/test-sds.js';
 import { runScsiSdsTransferTests } from '#node/lib/test-scsi-sds-transfer.js';
 import { runDiskWriteTests } from '#node/lib/test-disk-write.js';
@@ -143,7 +142,7 @@ const TEST_GROUPS: TestGroup[] = [
   { name: 'structure', run: runStructureTests },
   { name: 'multi', run: runMultiTests },
   { name: 'latency', run: runLatencyTests },
-  { name: 'streaming', run: runStreamingTests },
+  // test-streaming.ts was never created — removed dead reference
   { name: 'sds', run: runSdsTests },
   { name: 'scsi-sds-transfer', run: runScsiSdsTransferTests },
   { name: 'disk-write', run: runDiskWriteTests },
