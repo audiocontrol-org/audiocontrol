@@ -27,7 +27,7 @@ import {
 import {
   initializeRolandOPFS,
   cleanupOPFS,
-} from '../../e2e-infra/helpers/library-ui-helpers';
+} from '@audiocontrol/e2e-infra/helpers/library-ui-helpers';
 // TODO(#182): readDrumKitYaml / listDrumKitDirectories removed — drum kits must move to common area
 // import { readDrumKitYaml, listDrumKitDirectories } from './helpers/library-opfs-helpers';
 

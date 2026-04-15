@@ -3,6 +3,13 @@
   "version": "0.1.0",
   "description": "Shared E2E testing infrastructure for audiocontrol editors",
   "type": "module",
+  "exports": {
+    "./helpers/connection-helper": "./helpers/connection-helper.ts",
+    "./helpers/library-ui-helpers": "./helpers/library-ui-helpers.ts",
+    "./helpers/library-fixtures": "./helpers/library-fixtures.ts",
+    "./helpers/opfs-page-helpers": "./helpers/opfs-page-helpers.ts",
+    "./reporters/heartbeat-reporter": "./reporters/heartbeat-reporter.ts"
+  },
   "imports": {
     "#node/*": "./src/node/*"
   },

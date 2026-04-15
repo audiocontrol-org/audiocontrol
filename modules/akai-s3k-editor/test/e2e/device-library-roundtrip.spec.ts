@@ -24,7 +24,7 @@ import {
   connectToDevice,
   navigateToLibrary,
   connectToOPFS,
-} from '../../e2e-infra/helpers/connection-helper';
+} from '@audiocontrol/e2e-infra/helpers/connection-helper';
 
 import {
   cleanupOPFS,
@@ -35,11 +35,11 @@ import {
   verifyFileInOPFS,
   COMMON_SAMPLES_PATH,
   S3K_PROGRAMS_PATH,
-} from '../../e2e-infra/helpers/library-ui-helpers';
+} from '@audiocontrol/e2e-infra/helpers/library-ui-helpers';
 
 import {
   writeSampleFixture,
-} from '../../e2e-infra/helpers/library-fixtures';
+} from '@audiocontrol/e2e-infra/helpers/library-fixtures';
 
 // ---------------------------------------------------------------------------
 // Environment guard

@@ -18,7 +18,7 @@ import {
   connectToDevice,
   getMidiStatus,
   hasConnectionUI,
-} from '../../e2e-infra/helpers/connection-helper';
+} from '@audiocontrol/e2e-infra/helpers/connection-helper';
 
 test.setTimeout(15_000);
 

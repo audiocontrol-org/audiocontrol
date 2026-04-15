@@ -29,18 +29,18 @@ import {
   connectToDevice,
   navigateToLibrary,
   connectToOPFS,
-} from '../../e2e-infra/helpers/connection-helper';
+} from '@audiocontrol/e2e-infra/helpers/connection-helper';
 
 import {
   cleanupOPFS,
   initializeS3kOPFS,
   assertLibraryItemVisible,
   clickLibraryItem,
-} from '../../e2e-infra/helpers/library-ui-helpers';
+} from '@audiocontrol/e2e-infra/helpers/library-ui-helpers';
 
 import {
   writeDrumKitFixture,
-} from '../../e2e-infra/helpers/library-fixtures';
+} from '@audiocontrol/e2e-infra/helpers/library-fixtures';
 
 import { createScsiMidiTransport } from '@audiocontrol/midi-core';
 import { createS3000xlClient } from '@audiocontrol/sampler-devices/s3k';

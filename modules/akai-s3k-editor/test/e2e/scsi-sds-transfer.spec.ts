@@ -23,7 +23,7 @@ import {
   buildScsiUrl,
   waitForAppReady,
   connectToDevice,
-} from '../../e2e-infra/helpers/connection-helper';
+} from '@audiocontrol/e2e-infra/helpers/connection-helper';
 
 import {
   generateTestWavBuffer,

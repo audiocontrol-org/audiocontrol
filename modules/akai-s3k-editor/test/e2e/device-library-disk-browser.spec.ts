@@ -13,7 +13,7 @@ import {
   waitForAppReady,
   connectToDevice,
   navigateToLibrary,
-} from '../../e2e-infra/helpers/connection-helper';
+} from '@audiocontrol/e2e-infra/helpers/connection-helper';
 
 const BRIDGE_URL = process.env.E2E_SCSI_BRIDGE_URL;
 if (!BRIDGE_URL) {

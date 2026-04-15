@@ -13,7 +13,7 @@ import {
   initializeRolandOPFS,
   connectToOPFS,
   verifyDirectoryInOPFS,
-} from '../../e2e-infra/helpers/library-ui-helpers';
+} from '@audiocontrol/e2e-infra/helpers/library-ui-helpers';
 
 // ---------------------------------------------------------------------------
 // Roland-specific tests

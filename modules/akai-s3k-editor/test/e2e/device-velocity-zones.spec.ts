@@ -18,7 +18,7 @@ import {
   buildUrl,
   waitForAppReady,
   connectToDevice,
-} from '../../e2e-infra/helpers/connection-helper';
+} from '@audiocontrol/e2e-infra/helpers/connection-helper';
 
 test.setTimeout(30_000);
 

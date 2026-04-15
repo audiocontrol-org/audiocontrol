@@ -33,11 +33,11 @@ import {
   initializeRolandOPFS,
   readSampleYaml,
   connectToOPFS,
-} from '../../e2e-infra/helpers/library-ui-helpers';
+} from '@audiocontrol/e2e-infra/helpers/library-ui-helpers';
 import {
   writeSampleFixture,
   writeToneFixture,
-} from '../../e2e-infra/helpers/library-fixtures';
+} from '@audiocontrol/e2e-infra/helpers/library-fixtures';
 // TODO(#182): readDrumKitYaml / listDrumKitDirectories removed — drum kits must move to common area
 // import { readDrumKitYaml, listDrumKitDirectories } from './helpers/library-opfs-helpers';
 

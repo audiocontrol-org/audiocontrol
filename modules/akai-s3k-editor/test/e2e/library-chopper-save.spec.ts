@@ -24,7 +24,7 @@ import {
   initializeS3kOPFS,
   readSampleYaml,
   connectToOPFS,
-} from '../../e2e-infra/helpers/library-ui-helpers';
+} from '@audiocontrol/e2e-infra/helpers/library-ui-helpers';
 // Fixture audio generated inline — see beforeEach
 
 // ---------------------------------------------------------------------------
