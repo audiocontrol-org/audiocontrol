@@ -4,8 +4,11 @@
 **PRD:** [prd.md](./prd.md)
 **GitHub Issues:**
 
-- [#263 — Test directory migration](https://github.com/audiocontrol-org/audiocontrol/issues/263)
-- [#281 — Node e2e @/ path alias resolution](https://github.com/audiocontrol-org/audiocontrol/issues/281)
+| Phase | Issue | Description |
+|-------|-------|-------------|
+| Parent | [#284](https://github.com/audiocontrol-org/audiocontrol/issues/284) | [test] Test Infrastructure — Directory Migration and Path Resolution |
+| Phase 1 | [#281](https://github.com/audiocontrol-org/audiocontrol/issues/281) | Node e2e @/ path alias not resolved by tsx |
+| Phase 2 | [#263](https://github.com/audiocontrol-org/audiocontrol/issues/263) | Migrate test infrastructure to standard test/ directory structure |
 
 ## Implementation Phases
 
