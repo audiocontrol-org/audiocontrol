@@ -33,4 +33,5 @@ export {
   zoomIn,
   zoomOut,
   zoomAtNote,
+  panRange,
 } from '@/components/keygroups/note-coordinate-utils';

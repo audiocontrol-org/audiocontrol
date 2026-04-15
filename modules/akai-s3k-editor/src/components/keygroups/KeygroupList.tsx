@@ -125,7 +125,7 @@ export function KeygroupList({
                   isLoading && 'opacity-50',
                 )}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 pr-8">
                   <span className="text-xs text-gray-500 w-6 text-right font-mono">
                     {i + 1}
                   </span>
@@ -133,7 +133,7 @@ export function KeygroupList({
                     KG {i + 1}
                   </span>
                   {kg ? (
-                    <span className="text-xs text-gray-400 ml-auto">
+                    <span className="text-xs text-gray-400 ml-auto whitespace-nowrap">
                       {formatMidiNote(kg.LONOTE)}–{formatMidiNote(kg.HINOTE)}
                     </span>
                   ) : (

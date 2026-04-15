@@ -64,6 +64,8 @@ export interface S3kPreviewCustomState {
   onDeleteDeviceSample?: (index: number, name: string) => void;
   /** Callback for "Promote to Common Area" action (S3K library program) */
   onPromoteToCommonArea?: (dirName: string) => void;
+  /** Whether a promotion operation is currently in progress */
+  isPromoting?: boolean;
 }
 
 // =========================================================================
@@ -129,14 +131,25 @@ function PrimaryAction({ label, onClick, testId }: { label: string; onClick: () 
   );
 }
 
-/** Secondary action button (e.g., editor tools). */
-function SecondaryAction({ label, onClick, testId }: { label: string; onClick: () => void; testId?: string }): JSX.Element {
+/** Secondary action button (e.g., editor tools). Supports disabled state with spinner. */
+function SecondaryAction({ label, onClick, testId, disabled }: {
+  label: string;
+  onClick: () => void;
+  testId?: string;
+  disabled?: boolean;
+}): JSX.Element {
   return (
     <button
-      className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 rounded transition-colors"
-      onClick={onClick}
+      className={`px-3 py-1.5 text-sm rounded transition-colors inline-flex items-center gap-1.5 ${
+        disabled
+          ? 'bg-gray-700/50 text-gray-500 cursor-not-allowed'
+          : 'bg-gray-700 hover:bg-gray-600 text-gray-200'
+      }`}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
       data-testid={testId}
     >
+      {disabled && <span className="ac-spinner ac-spinner-sm" />}
       {label}
     </button>
   );
@@ -279,6 +292,7 @@ function S3kProgramPreview({
   customState: S3kPreviewCustomState | undefined;
 }): JSX.Element {
   const meta = selection.meta as ProgramMeta;
+  const isPromoting = customState?.isPromoting ?? false;
 
   return (
     <div className="p-4">
@@ -298,8 +312,9 @@ function S3kProgramPreview({
           )}
           {customState?.onPromoteToCommonArea && (
             <SecondaryAction
-              label="Promote to Common Area"
+              label={isPromoting ? 'Promoting...' : 'Promote to Common Area'}
               onClick={() => customState.onPromoteToCommonArea!(meta.dirName!)}
+              disabled={isPromoting}
               testId="preview-promote-to-common"
             />
           )}

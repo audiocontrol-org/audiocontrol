@@ -34,11 +34,28 @@ Cross-editor patterns established in the library-ux branch may inform shared com
 - Layout uses proportional flex, consistent spacing, and follows editor-core visual patterns.
 - Shared patterns extracted to editor-core where they converge with Roland editor needs.
 
+## Extended Scope (Phases 6-11)
+
+8. **As a sound designer**, I want rename/clone/refresh/delete available on programs AND samples in the Library's Device Memory panel, not just the Programs page.
+9. **As a sound designer**, I want to drag programs and samples from Device Memory directly into the library (common area or S3K area) so I can organize my sounds without navigating dialogs.
+10. **As a sound designer**, I want promotion from the S3K library area to the common area to work reliably with clear error feedback.
+11. **As a sound designer**, I want to edit sample headers (name, tuning, loop points, playback mode) using the same dense grid layout as programs and keygroups.
+12. **As a sound designer**, I want the Samples page to use a list-detail layout consistent with the rest of the editor, not a dropdown selector.
+13. **As a sound designer**, I want editor pages to retain their data across page reloads so I don't lose context when navigating.
+
+### Additional Acceptance Criteria
+
+- Device Memory panel in Library page has rename/clone/refresh/delete for programs and samples.
+- Programs and samples can be dragged from Device Memory to the library tree.
+- Promotion from S3K library to common area works with progress feedback and error handling.
+- Sample editor uses list-detail layout with ParamKnob controls for all editable header fields.
+- Compare page is removed (unused feature).
+- Editor pages cache data in sessionStorage; page reload restores data and selection without re-fetching.
+
 ## Out of Scope
 
 - **New device support.** No S5000, S6000, or other Akai models. This feature targets the S3000XL only.
-- **Library browser changes.** The library page and browser UX are handled by the library-ux feature. The library page stays as-is in this feature.
-- **New SysEx protocol commands.** This feature uses the existing device communication layer only. If CRUD operations are missing from the SysEx client, Phase 1 will identify the gap, but implementing new SysEx commands is a separate task.
+- **New SysEx protocol commands.** This feature uses the existing device communication layer only.
 
 ## Dependencies
 
