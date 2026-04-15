@@ -4,11 +4,8 @@
  *
  * - Device sample loading via SDS (strategy pattern)
  * - Device save handlers: loop points → sample header, audio → SDS upload
+ * - Save target dialog state for choosing overwrite/new/library
  * - S3K kit config for chopper dialog
- *
- * When a sample was loaded from the device (origin.type === 'device-sample'),
- * saves go back to the device. Library-origin samples save to the common area
- * via the shared hook's default handlers.
  */
 
 import { useState, useMemo, useCallback } from 'react';
@@ -26,6 +23,7 @@ import {
   DEFAULT_S3K_KIT_CONFIG,
   type S3kKitConfig,
 } from '@/components/library/S3kKitOutputConfig';
+import type { SaveTarget } from '@/components/samples/SaveTargetDialog';
 
 // =========================================================================
 // Re-export types from shared hook for backward compatibility
@@ -43,7 +41,6 @@ export type {
 // Helpers
 // =========================================================================
 
-/** Extract the device sample index from a device-sample origin name. */
 function parseDeviceSampleIndex(name: string): number | null {
   const indexStr = name.split(':')[1];
   if (indexStr === undefined) return null;
@@ -52,12 +49,32 @@ function parseDeviceSampleIndex(name: string): number | null {
 }
 
 // =========================================================================
+// Save target dialog state
+// =========================================================================
+
+export interface SaveTargetState {
+  open: boolean;
+  sampleName: string;
+  /** Pending save data — held until user picks a target */
+  pendingSave: {
+    samples: Int16Array;
+    sampleRate: number;
+    deviceSampleIndex: number;
+  } | null;
+}
+
+const SAVE_TARGET_IDLE: SaveTargetState = { open: false, sampleName: '', pendingSave: null };
+
+// =========================================================================
 // Result interface
 // =========================================================================
 
 export interface EditorDialogsResult extends EditorDialogsCoreResult {
   kitConfig: S3kKitConfig;
   setKitConfig: (config: S3kKitConfig) => void;
+  saveTargetState: SaveTargetState;
+  handleSaveTargetConfirm: (target: SaveTarget) => Promise<void>;
+  handleSaveTargetCancel: () => void;
 }
 
 // =========================================================================
@@ -71,9 +88,8 @@ export function useEditorDialogs(
   client?: S3000xlClientInterface | null,
 ): EditorDialogsResult {
   const [kitConfig, setKitConfig] = useState<S3kKitConfig>(DEFAULT_S3K_KIT_CONFIG);
+  const [saveTargetState, setSaveTargetState] = useState<SaveTargetState>(SAVE_TARGET_IDLE);
 
-  // S3K strategy: loads device samples via SDS when nodeType is 'device-sample',
-  // falls back to common-area loading for library items.
   const strategy = useMemo<EditorDialogStrategy>(() => ({
     loadWav: async (
       _root: StorageDirectoryHandle,
@@ -111,10 +127,9 @@ export function useEditorDialogs(
   const core = useEditorDialogsCore(libraryRoot, strategy, onRefresh, errorReporter);
 
   // ---------------------------------------------------------------------------
-  // Device-aware save handlers
+  // Device-aware loop editor save (fast — header only, no dialog needed)
   // ---------------------------------------------------------------------------
 
-  /** Save loop points to device sample header (fast — no SDS re-upload). */
   const handleLoopEditorSave = useCallback(async (loopStart: number, loopEnd: number) => {
     const origin = core.loopEditor?.origin;
     if (!origin) return;
@@ -127,20 +142,16 @@ export function useEditorDialogs(
         const header = await client.fetchSampleHeader(sampleIndex);
         const updated = { ...header, raw: [...header.raw] };
 
-        // Write loop 1 start and length
         s3k.SampleHeader_writeLOOPAT1(updated, loopStart);
         updated.LOOPAT1 = loopStart;
         const loopLength = Math.max(0, loopEnd - loopStart);
         s3k.SampleHeader_writeLLNGTH1(updated, loopLength);
         updated.LLNGTH1 = loopLength;
 
-        // Set loop count to 1 if it was 0
         if (updated.SLOOPS === 0) {
           s3k.SampleHeader_writeSLOOPS(updated, 1);
           updated.SLOOPS = 1;
         }
-
-        // Set playback mode to looping if it was no-loop
         if (updated.SPTYPE === 2) {
           s3k.SampleHeader_writeSPTYPE(updated, 0);
           updated.SPTYPE = 0;
@@ -154,11 +165,13 @@ export function useEditorDialogs(
       return;
     }
 
-    // Library origin — delegate to shared handler
     core.handleLoopEditorSave(loopStart, loopEnd);
   }, [core, client, errorReporter]);
 
-  /** Save edited audio to device via SDS (overwrites original slot). */
+  // ---------------------------------------------------------------------------
+  // Device-aware sample editor save (opens SaveTargetDialog for device origin)
+  // ---------------------------------------------------------------------------
+
   const handleSampleEditorSave = useCallback(async (samples: Int16Array, sampleRate: number) => {
     const origin = core.sampleEditor?.origin;
     if (!origin) return;
@@ -167,28 +180,67 @@ export function useEditorDialogs(
       const sampleIndex = parseDeviceSampleIndex(origin.name);
       if (sampleIndex === null) return;
 
+      // Read sample name for the dialog
       try {
-        // Read the original sample header for loop/name metadata
         const header = await client.fetchSampleHeader(sampleIndex);
-        const sampleName = header.SHNAME.trim();
-
-        // Upload modified audio via SDS, overwriting the original slot
-        await client.sendSampleViaSds(sampleIndex, samples, sampleRate, {
-          name: sampleName,
-          loopStart: header.LOOPAT1,
-          loopEnd: header.LOOPAT1 + header.LLNGTH1,
+        setSaveTargetState({
+          open: true,
+          sampleName: header.SHNAME.trim(),
+          pendingSave: { samples, sampleRate, deviceSampleIndex: sampleIndex },
         });
-
-        client.invalidateSampleCache();
       } catch (err) {
-        errorReporter.report(err instanceof Error ? err.message : 'Failed to save sample to device');
+        errorReporter.report(err instanceof Error ? err.message : 'Failed to read sample header');
       }
       return;
     }
 
-    // Library origin — delegate to shared handler
     core.handleSampleEditorSave(samples, sampleRate);
   }, [core, client, errorReporter]);
+
+  // ---------------------------------------------------------------------------
+  // Save target dialog handlers
+  // ---------------------------------------------------------------------------
+
+  const handleSaveTargetConfirm = useCallback(async (target: SaveTarget) => {
+    const pending = saveTargetState.pendingSave;
+    if (!pending || !client) {
+      setSaveTargetState(SAVE_TARGET_IDLE);
+      return;
+    }
+
+    const { samples, sampleRate, deviceSampleIndex } = pending;
+    setSaveTargetState(SAVE_TARGET_IDLE);
+
+    try {
+      if (target === 'device-overwrite') {
+        const header = await client.fetchSampleHeader(deviceSampleIndex);
+        await client.sendSampleViaSds(deviceSampleIndex, samples, sampleRate, {
+          name: header.SHNAME.trim(),
+          loopStart: header.LOOPAT1,
+          loopEnd: header.LOOPAT1 + header.LLNGTH1,
+        });
+        client.invalidateSampleCache();
+      } else if (target === 'device-new') {
+        const existingNames = await client.fetchSampleNames();
+        const newSlot = existingNames.length;
+        const header = await client.fetchSampleHeader(deviceSampleIndex);
+        const baseName = header.SHNAME.trim();
+        const newName = baseName.substring(0, 8) + ' EDT';
+        await client.sendSampleViaSds(newSlot, samples, sampleRate, { name: newName });
+        client.invalidateSampleCache();
+      } else if (target === 'library') {
+        // Delegate to the core library save handler
+        // Re-set the sampleEditor origin to trigger the library path
+        core.handleSampleEditorSave(samples, sampleRate);
+      }
+    } catch (err) {
+      errorReporter.report(err instanceof Error ? err.message : 'Failed to save sample');
+    }
+  }, [saveTargetState, client, core, errorReporter]);
+
+  const handleSaveTargetCancel = useCallback(() => {
+    setSaveTargetState(SAVE_TARGET_IDLE);
+  }, []);
 
   return {
     ...core,
@@ -196,5 +248,8 @@ export function useEditorDialogs(
     handleSampleEditorSave,
     kitConfig,
     setKitConfig,
+    saveTargetState,
+    handleSaveTargetConfirm,
+    handleSaveTargetCancel,
   };
 }

@@ -4,6 +4,7 @@ import { LoopEditorDialog } from '@audiocontrol/loop-editor/ui';
 import { SampleEditorDialog } from '@audiocontrol/sample-editor/ui';
 import { SampleChopperDialog } from '@audiocontrol/sample-chopper/ui';
 import { SampleList, SampleEditor } from '@/components/samples';
+import { SaveTargetDialog } from '@/components/samples/SaveTargetDialog';
 import { useS3000xlClient } from '@/hooks/useS3000xlClient';
 import { useEditorDialogs } from '@/hooks/useEditorDialogs';
 import { useErrorReporter } from '@audiocontrol/editor-core';
@@ -357,6 +358,14 @@ export function SamplesPage(): JSX.Element {
           onSave={editorDialogs.handleSampleEditorSave}
         />
       )}
+
+      <SaveTargetDialog
+        open={editorDialogs.saveTargetState.open}
+        sampleName={editorDialogs.saveTargetState.sampleName}
+        hasLibrary={false}
+        onConfirm={editorDialogs.handleSaveTargetConfirm}
+        onCancel={editorDialogs.handleSaveTargetCancel}
+      />
     </div>
   );
 }

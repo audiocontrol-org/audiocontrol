@@ -360,9 +360,9 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 
 - [x] Add device-origin tracking to editor dialog state (SampleOrigin type)
 - [x] Implement "Save to Device" handler: upload modified audio via SDS (overwrite original slot)
-- [ ] Implement "Save to Device as New" handler: upload to new slot with name suffix
+- [x] Implement "Save to Device as New" handler: upload to new slot with name suffix
 - [x] For loop-point-only edits, write sample header directly (skip SDS re-upload)
-- [ ] Show SDS upload progress during save
+- [ ] Show SDS upload progress during save (deferred — SDS progress callbacks exist but no dedicated UI yet)
 
 ### Acceptance Criteria
 
@@ -379,9 +379,9 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 
 ### Tasks
 
-- [ ] Add "Save to Library" option when editing device-origin samples
+- [x] Add "Save to Library" option when editing device-origin samples
 - [ ] Add "Send to Device" option when editing library-origin samples
-- [ ] Create SaveTargetDialog: choose between device (overwrite/new) and library
+- [x] Create SaveTargetDialog: choose between device (overwrite/new) and library
 - [ ] Wire chopper output to device: create samples via SDS + program via SysEx
 
 ### Acceptance Criteria
