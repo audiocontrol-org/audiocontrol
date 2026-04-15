@@ -68,18 +68,20 @@ export function KeygroupsPage(): JSX.Element {
     (field: string, value: number) => {
       if (selectedKeygroupIndex === null || !client) return;
 
-      // Always update store immediately for responsive UI
       const header = useKeygroupStore.getState().keygroups[selectedKeygroupIndex];
       if (!header) return;
+
+      console.warn('[handleDragChange] field=%s value=%d E_FREQ_before=%d raw[30]=%d raw[31]=%d', field, value, header.E_FREQ, header.raw[30], header.raw[31]);
+
       const updated = { ...header, [field]: value };
       useKeygroupStore.getState().setKeygroup(selectedKeygroupIndex, updated);
 
-      // Throttle device writes to ~150ms intervals
       const now = Date.now();
       if (now - lastDragWrite.current >= 150) {
         lastDragWrite.current = now;
         const toSend = { ...updated, raw: [...header.raw] };
         writeKeygroupField(toSend, field, value);
+        console.warn('[handleDragChange] sending: E_FREQ=%d raw[30]=%d raw[31]=%d', toSend.E_FREQ, toSend.raw[30], toSend.raw[31]);
         client.writeKeygroupHeader(toSend);
       }
     },
@@ -93,12 +95,22 @@ export function KeygroupsPage(): JSX.Element {
     const header = useKeygroupStore.getState().keygroups[selectedKeygroupIndex];
     if (!header) return;
     const toSend = { ...header, raw: [...header.raw] };
+
+    console.warn('[handleCommitHeader] before re-encode: E_FREQ=%d raw[30]=%d raw[31]=%d', toSend.E_FREQ, toSend.raw[30], toSend.raw[31]);
+
     // Re-encode all fields that might have changed during drag
     for (const field of Object.keys(toSend)) {
       if (field !== 'raw') {
-        writeKeygroupField(toSend, field, toSend[field as keyof typeof toSend] as number);
+        const val = toSend[field as keyof typeof toSend];
+        const wrote = writeKeygroupField(toSend, field, val as number);
+        if (wrote && field === 'E_FREQ') {
+          console.warn('[handleCommitHeader] encoded E_FREQ=%s raw[30]=%d raw[31]=%d', val, toSend.raw[30], toSend.raw[31]);
+        }
       }
     }
+
+    console.warn('[handleCommitHeader] after re-encode: E_FREQ=%d raw[30]=%d raw[31]=%d', toSend.E_FREQ, toSend.raw[30], toSend.raw[31]);
+
     await client.writeKeygroupHeader(toSend);
   }, [selectedKeygroupIndex, client]);
 
@@ -106,17 +118,18 @@ export function KeygroupsPage(): JSX.Element {
     async (field: string, value: number | string) => {
       if (selectedKeygroupIndex === null || !client) return;
 
-      // Read from getState() not the closure — multiple calls in the same
-      // tick must each see the previous call's update.
       const header = useKeygroupStore.getState().keygroups[selectedKeygroupIndex];
       if (!header) return;
 
-      // Update local store optimistically
+      console.warn('[handleParameterChange] field=%s value=%s E_FREQ_before=%d raw[30]=%d raw[31]=%d', field, value, header.E_FREQ, header.raw[30], header.raw[31]);
+
       const updated = { ...header, [field]: value, raw: [...header.raw] };
       useKeygroupStore.getState().setKeygroup(selectedKeygroupIndex, updated);
 
-      // Encode value into raw SysEx bytes, then write to device
       writeKeygroupField(updated, field, value);
+
+      console.warn('[handleParameterChange] after encode: E_FREQ=%d raw[30]=%d raw[31]=%d', updated.E_FREQ, updated.raw[30], updated.raw[31]);
+
       await client.writeKeygroupHeader(updated);
     },
     [selectedKeygroupIndex, client, keygroups],

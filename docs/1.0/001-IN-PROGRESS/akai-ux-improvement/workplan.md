@@ -24,6 +24,7 @@
 | Phase 11 | #277 | Persistent editor cache — sessionStorage for data |
 | Phase 12 | #278 | Fix program download expandability and atomic sample rename |
 | Phase 13 | #279 | Implement sample clone in device client and UI |
+| Bug | #280 | Envelope→filter parameter reset to 0 when editing keygroup |
 
 ## Technical Approach
 
