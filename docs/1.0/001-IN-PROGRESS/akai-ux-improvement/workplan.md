@@ -252,12 +252,12 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 
 ### Tasks
 
-- [ ] Remove MultiProgramPage component
-- [ ] Remove ComparePane, ProgramSelector, usePaneKeygroups
-- [ ] Remove "Compare" from navigation in Layout.tsx
-- [ ] Remove /compare route from App.tsx
-- [ ] Remove compare-grid CSS from index.css
-- [ ] Update tests that reference Compare components
+- [x] Remove MultiProgramPage component
+- [x] Remove ComparePane, ProgramSelector, usePaneKeygroups
+- [x] Remove "Compare" from navigation in Layout.tsx
+- [x] Remove /compare route from App.tsx
+- [x] Remove compare-grid CSS from index.css
+- [x] Update tests that reference Compare components
 
 ### Acceptance Criteria
 

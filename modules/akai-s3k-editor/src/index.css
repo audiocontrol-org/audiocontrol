@@ -25,35 +25,6 @@
     }
   }
 
-  /* Multi-program compare layout */
-  .compare-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--ac-space-4, 1rem);
-    min-height: 0;
-  }
-
-  .compare-divider {
-    display: none;
-  }
-
-  @media (min-width: 1024px) {
-    .compare-grid {
-      grid-template-columns: 1fr auto 1fr;
-    }
-
-    .compare-divider {
-      display: block;
-      width: 1px;
-      background: var(--ac-color-border-subtle, #374151);
-      align-self: stretch;
-    }
-  }
-
-  .compare-pane {
-    max-height: calc(100vh - var(--ac-site-header-height, 3.75rem) - var(--ac-page-header-height, 3.5rem) - 4rem);
-  }
-
   /* Transparent button wrapper for MidiStatusDisplay so it remains clickable
      without adding visible button chrome */
   .ac-midi-status-btn {

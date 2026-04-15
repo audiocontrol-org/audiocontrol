@@ -17,7 +17,6 @@ function useLayoutConfig(): EditorLayoutConfig {
     editorSubtitle: 'Akai Sampler',
     navItems: [
       { to: `${BASE_PATH}/programs`, label: 'Programs' },
-      { to: `${BASE_PATH}/compare`, label: 'Compare' },
       { to: `${BASE_PATH}/keygroups`, label: 'Keygroups' },
       { to: `${BASE_PATH}/samples`, label: 'Samples' },
       { to: `${BASE_PATH}/library`, label: 'Library' },
