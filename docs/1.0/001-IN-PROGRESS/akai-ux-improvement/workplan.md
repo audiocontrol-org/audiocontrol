@@ -25,6 +25,10 @@
 | Phase 12 | #278 | Fix program download expandability and atomic sample rename |
 | Phase 13 | #279 | Implement sample clone in device client and UI |
 | Bug | #280 | Envelope→filter parameter reset to 0 when editing keygroup — **FIXED**: wrong field mapping (E_FREQ→MODVFILT3) + signed decoding |
+| Phase 14 | #291 | Open device samples in loop editor, sample editor, and chopper |
+| Phase 15 | #292 | Save edited audio back to device memory |
+| Phase 16 | #293 | Bidirectional library integration for sample audio editing |
+| Phase 17 | #294 | Audio editing round-trip e2e tests |
 
 ## Technical Approach
 
@@ -326,3 +330,82 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 - Samples can be cloned in device memory
 - Clone appears as a hover action icon on sample list items
 - Cloned sample gets a " CPY" suffix name
+
+---
+
+## Phase 14: Device Sample Loading
+
+**Goal:** Open device samples in the loop editor, sample editor, and chopper directly from the Samples page.
+
+### Tasks
+
+- [ ] Add "Open in Loop Editor", "Open in Sample Editor", "Open in Chopper" actions to SampleList hover menu
+- [ ] Implement device sample loading: download audio via SDS, convert to Int16Array
+- [ ] Wire device-origin editor dialogs in SamplesPage (reuse useEditorDialogsCore pattern)
+- [ ] Show SDS download progress before editor opens
+
+### Acceptance Criteria
+
+- User can open any device sample in loop editor, sample editor, or chopper
+- Audio data loads from device via SDS with progress indicator
+- Editor displays the waveform correctly
+
+---
+
+## Phase 15: Save to Device
+
+**Goal:** Write edited audio back to device memory from the editors.
+
+### Tasks
+
+- [ ] Add device-origin tracking to editor dialog state (SampleOrigin type)
+- [ ] Implement "Save to Device" handler: upload modified audio via SDS (overwrite original slot)
+- [ ] Implement "Save to Device as New" handler: upload to new slot with name suffix
+- [ ] For loop-point-only edits, write sample header directly (skip SDS re-upload)
+- [ ] Show SDS upload progress during save
+
+### Acceptance Criteria
+
+- Loop editor save updates device sample header (fast, no SDS)
+- Sample editor save with modified audio uploads via SDS
+- User can choose overwrite vs new slot
+- Progress shown during upload
+
+---
+
+## Phase 16: Bidirectional Library Integration
+
+**Goal:** Device samples can be saved to library; library samples can be sent to device.
+
+### Tasks
+
+- [ ] Add "Save to Library" option when editing device-origin samples
+- [ ] Add "Send to Device" option when editing library-origin samples
+- [ ] Create SaveTargetDialog: choose between device (overwrite/new) and library
+- [ ] Wire chopper output to device: create samples via SDS + program via SysEx
+
+### Acceptance Criteria
+
+- Editing a device sample offers save to both device and library
+- Editing a library sample offers save to both library and device
+- Chopper creates device samples and program when targeting device
+- All transfers show progress
+
+---
+
+## Phase 17: Audio Editing E2E Tests
+
+**Goal:** End-to-end test coverage for audio editing round-trips.
+
+### Tasks
+
+- [ ] Write Playwright e2e tests for device→editor→device round-trip
+- [ ] Write Playwright e2e tests for library→editor→device flow
+- [ ] Handle edge cases: sample too large, SDS timeout, device full
+- [ ] Add loading states and error recovery
+
+### Acceptance Criteria
+
+- E2e tests verify audio data integrity through round-trip
+- Errors shown as actionable messages
+- No silent failures

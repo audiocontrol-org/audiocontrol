@@ -19,6 +19,10 @@ Restructure the Akai S3000XL editor from memory-oriented pages to workflow-orien
 | Phase 11: Persistent Editor Cache | Complete | zustand persist + sessionStorage, CacheAge indicator |
 | Phase 12: Program Download Fix | Complete | Expandable programs + atomic sample rename |
 | Phase 13: Sample Clone | Complete | cloneSample via SDS, UI in both SamplesPage and DeviceMemoryPanel |
+| Phase 14: Device Sample Loading | Not Started | Open device samples in loop/sample/chopper editors via SDS |
+| Phase 15: Save to Device | Not Started | Write edited audio back to device memory |
+| Phase 16: Bidirectional Library | Not Started | Save device samples to library, send library samples to device |
+| Phase 17: Audio Editing E2E Tests | Not Started | Round-trip e2e tests, error handling |
 
 ## Links
 
