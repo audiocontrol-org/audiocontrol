@@ -11,6 +11,60 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-14: Akai S3000XL Editor UX — Phases 6-10, Filter Display, Testing Lessons (Session 3)
+
+### Feature: akai-ux-improvement
+### Worktree: audiocontrol-akai-ux-improvement
+
+### Goal
+Implement phases 6-10 (memory CRUD, drag-drop, promotion fix, sample editor, remove Compare), add filter frequency/resonance display, fix clone, investigate E_FREQ bug.
+
+### Accomplished
+- Phase 6: DeviceMemoryPanel CRUD parity — design system icons, double-click rename, clone, ConfirmDialog, 9 tests (#272)
+- Phase 7: Memory-to-Library drag & drop — draggable items, drop triggers export/receive dialogs (#273)
+- Phase 8: Library promotion fix — usePromotionTransfer hook, loading state, error reporting, 6 tests (#274)
+- Phase 10: Remove Compare page — deleted 702 lines (#276)
+- Interactive filter frequency/resonance display (2nd-order LPF, log freq axis, draggable node)
+- Throttled device writes during drag (150ms intervals for audible filter sweeps)
+- cloneProgram: field-for-field copy of all keygroup values
+- Velocity zone: sample list replaces dropdown, scroll-into-view on tab switch
+- Zone overview: pinch zoom, trackpad pan, shift+arrow keyboard shortcuts
+- Extended feature: phases 6-13 scoped and documented, 7 GitHub issues created
+- CLAUDE.md: testing guidance — test at right layer, isolate with Node, never assume device fault, never bypass test pipeline
+- E_FREQ cross-field corruption test written (Node e2e + Playwright specs)
+- Filed #281 (Node e2e @/ imports broken), #280 tracking
+- PR #282 opened
+
+### Didn't Work
+- ADSR envelope drag: took 4 iterations across sessions, still has edge cases
+- Filter display Bézier curves: 3 attempts before switching to sampled magnitude response (200 points, no Béziers)
+- Node e2e test runner: @/ path alias broken in tsx with nodenext moduleResolution — all Node e2e tests are currently broken (#281)
+- Built a standalone test runner to work around the @/ issue instead of following the documented pipeline
+
+### Course Corrections
+- [PROCESS] Agent tried to run tsx directly, then npx tsx, then built a standalone runner — all explicitly prohibited by CLAUDE.md. User asked "did you follow CLAUDE.md guidance?" Answer: no, didn't read it before acting.
+- [PROCESS] Agent defaulted to unit test for a bug reported as device behavior. User walked through 6 questions: "what's the right way to test?", "what is a unit test?", "what kind of test exercises the bug?", "what are the test categories?", "what is E_FREQ?", leading to the correct answer: e2e test against real hardware.
+- [PROCESS] Agent assumed it couldn't access hardware ("can't run e2e tests without hardware"). User: "why do you think you don't have access to hardware?" — the S3000XL is connected via SCSI bridge.
+- [PROCESS] Agent assumed device might be at fault. User: "never assume the device is at fault — it's been in service 30 years, our code is brand new."
+- [PROCESS] Agent wrote guidance to memory but not to CLAUDE.md. User: "why didn't you write it to CLAUDE.md?" — memory helps future sessions, CLAUDE.md helps other agents.
+- [PROCESS] Agent kept writing guidance instead of writing the actual test. User: "did you just take your own advice?"
+
+### Quantitative
+- User messages: ~100+
+- Commits: ~15
+- User corrections: 6 (all PROCESS — testing methodology and following documented procedures)
+- Issues filed: #272-#282
+- Issues closed: #272, #273, #276
+
+### Insights
+1. **Read the documentation before acting.** CLAUDE.md has detailed test infrastructure guidance. The agent didn't read it and spent 30 minutes reinventing (badly) what the docs already describe. Adding a "Before Running Tests" section to CLAUDE.md as a speed bump.
+2. **Test at the right layer.** When a user reports a device behavior, the test must talk to the device. Don't default to the easiest test category — match it to the bug's layer. Use Node e2e tests to isolate client/encoding from UI.
+3. **Never assume the device is at fault.** The device has 30 years of field service. Our code is days old. Exhaust all possibilities in our code first.
+4. **The sampled magnitude response approach works.** Generating filter curves by sampling a transfer function at 200 points (like Surge XT) produces smooth, correct curves. Bézier approximations are fragile and produce visual artifacts at parameter extremes.
+5. **Guidance must go to CLAUDE.md, not just memory.** Memory helps one agent in future sessions. CLAUDE.md helps ALL agents in ALL sessions.
+
+---
+
 ## 2026-04-12: Akai S3000XL Editor UX — Design Review and Interactive Editors (Session 2)
 
 ### Feature: akai-ux-improvement
