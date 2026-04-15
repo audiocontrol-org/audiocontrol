@@ -1,6 +1,6 @@
 # Continuous Improvement Process
 
-**Status:** In Progress
+**Status:** PR Open — [#287](https://github.com/audiocontrol-org/audiocontrol/pull/287)
 **Branch:** `feature/continuous-improvement`
 
 ## Documentation
