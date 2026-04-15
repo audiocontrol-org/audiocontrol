@@ -80,4 +80,4 @@ Establish a standard test directory structure across editor modules and migrate 
 | Phase | GitHub Issue | Status |
 |-------|-------------|--------|
 | Phase 1: Node e2e path resolution | [#281](https://github.com/audiocontrol-org/audiocontrol/issues/281) | Complete |
-| Phase 2: Test directory migration | [#263](https://github.com/audiocontrol-org/audiocontrol/issues/263) | In Progress |
+| Phase 2: Test directory migration | [#263](https://github.com/audiocontrol-org/audiocontrol/issues/263) | Complete |

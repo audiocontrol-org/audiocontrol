@@ -1,11 +1,11 @@
 # Test Infrastructure
 
-**Status:** In Progress
+**Status:** PR Open
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| Phase 1 | Fix Node e2e path resolution (#281) | Planning |
-| Phase 2 | Test directory migration (#263) | Planning |
+| Phase 1 | Fix Node e2e path resolution (#281) | Complete |
+| Phase 2 | Test directory migration (#263) | Complete |
 
 ## Documentation
 
