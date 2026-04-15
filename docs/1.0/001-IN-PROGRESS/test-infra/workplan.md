@@ -21,8 +21,8 @@ Unblock Node-based e2e tests that currently fail with `ERR_MODULE_NOT_FOUND` due
 - [x] Investigate tsx path alias resolution with `moduleResolution: "nodenext"` — tsx does NOT resolve TypeScript `paths` at runtime; Node ESM has no knowledge of tsconfig path aliases
 - [x] Choose resolution strategy: migrate `e2e-infra` imports from `@/` to Node-native `#node/` package imports using the `imports` field in `package.json`
 - [x] Implement the chosen strategy in `modules/e2e-infra/` — migrated all 37 `@/node/` imports to `#node/` across 17 files; added `#node/*` path to tsconfig for IDE/type-check support
-- [ ] Verify `make test-scsi-write-validation` runs without import resolution errors
-- [ ] Verify other Node e2e Make targets (`test-e2e-s3k-scsi`, etc.) work correctly
+- [x] Verify `make test-scsi-write-validation` runs without import resolution errors — confirmed: tsx resolves all `#node/` imports, connect + scan tests pass against S3000XL
+- [x] Verify other Node e2e Make targets (`test-e2e-s3k-scsi`, etc.) work correctly — import resolution verified; `check-scsi-bridge` prerequisite needs Rust cross-compilation (separate concern)
 - [x] Document the resolution approach in a code comment at the configuration site — comment added in `scsi-write-test.ts`
 
 **Acceptance criteria:** All Node e2e tests run without `ERR_MODULE_NOT_FOUND`. No regressions in existing SCSI or device e2e test targets.
