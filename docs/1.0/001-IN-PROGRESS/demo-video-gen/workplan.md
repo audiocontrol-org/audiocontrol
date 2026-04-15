@@ -158,12 +158,12 @@ Use Playwright's built-in `recordVideo` to capture browser interactions as WebM.
 
 **Tasks:**
 
-- [ ] Implement ffmpeg caption burn-in: convert captions YAML to ASS subtitles, render into MP4 using ffmpeg subtitle filter
-- [ ] Produce output variants: `video.mp4` (clean) and `video-captioned.mp4` (text burned in)
-- [ ] Add `--overlay none|burned|both` CLI option controlling which MP4 variants are produced
-- [ ] Add `OVERLAY=none|burned|both` Make variable to `demo-scenario` target
-- [ ] Implement gallery player HTML overlay: parse captions YAML, display timed text synced to video playback position
-- [ ] Add toggle in gallery UI to switch between: clean video, burned-in video, and live overlay mode
-- [ ] Style overlay text to match the editor visual theme (semi-transparent background, white text, bottom-aligned)
+- [x] Implement ffmpeg caption burn-in: convert captions YAML to ASS subtitles, render into MP4 using ffmpeg subtitle filter
+- [x] Produce output variants: `video.mp4` (clean) and `video-captioned.mp4` (text burned in)
+- [x] Add `--overlay none|burned|both` CLI option controlling which MP4 variants are produced
+- [x] Add `OVERLAY=none|burned|both` Make variable to `demo-scenario` target
+- [x] Implement gallery player HTML overlay: parse captions YAML, display timed text synced to video playback position
+- [x] Add toggle in gallery UI to switch between: clean video, burned-in video, and live overlay mode
+- [x] Style overlay text to match the editor visual theme (semi-transparent background, white text, bottom-aligned)
 
 **Acceptance:** Running `make demo-scenario SCENARIO=s3k-zone-editor OVERLAY=both` produces both clean and captioned MP4 files. The gallery player can display captions as a live overlay synced to video playback. A toggle switches between clean, burned-in, and live overlay views.
