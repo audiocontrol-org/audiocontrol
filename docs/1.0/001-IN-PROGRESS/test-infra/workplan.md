@@ -35,29 +35,29 @@ Establish a standard test directory structure across editor modules and migrate 
 
 #### Directory structure
 
-- [ ] Create `test/unit/`, `test/ui/`, `test/e2e/` directories in `modules/akai-s3k-editor/`
-- [ ] Create `test/unit/`, `test/ui/`, `test/e2e/` directories in `modules/roland-sxx0-editor/`
+- [x] Create `test/unit/`, `test/ui/`, `test/e2e/` directories in `modules/akai-s3k-editor/`
+- [x] Create `test/unit/`, `test/ui/`, `test/e2e/` directories in `modules/roland-sxx0-editor/`
 
 #### Unit test migration
 
-- [ ] Move `src/**/*.test.tsx` files from `akai-s3k-editor` to `test/unit/`, preserving directory structure relative to `src/`
-- [ ] Move `src/**/*.test.tsx` files from `roland-sxx0-editor` to `test/unit/`, preserving directory structure relative to `src/`
-- [ ] Update imports in migrated test files (adjust relative paths or add path aliases for test directories)
-- [ ] Update `vitest.config.ts` in each editor to find tests in `test/unit/` instead of `src/`
+- [x] Move `src/**/*.test.tsx` files from `akai-s3k-editor` to `test/unit/`, preserving directory structure relative to `src/`
+- [x] Move `src/**/*.test.tsx` files from `roland-sxx0-editor` to `test/unit/` — N/A, no unit tests in src/
+- [x] Update imports in migrated test files — fixed relative import in DeviceMemoryPanel.test.tsx to use `@/`
+- [x] Update `vitest.config.ts` in each editor to find tests in `test/unit/` instead of `src/`
 
 #### E2E test migration
 
-- [ ] Move `e2e/*.spec.ts` files from `akai-s3k-editor` to `test/e2e/`
-- [ ] Move `e2e/*.spec.ts` files from `roland-sxx0-editor` to `test/e2e/`
-- [ ] Update all Playwright configs (`playwright.config.ts`, `playwright.hardware.config.ts`, etc.) to reference `test/e2e/` test directory
-- [ ] Update any helper/fixture imports within e2e test files
+- [x] Move `e2e/*.spec.ts` files from `akai-s3k-editor` to `test/e2e/`
+- [x] Move `e2e/*.spec.ts` files from `roland-sxx0-editor` to `test/e2e/` (includes helpers, fixtures, reporters, debug)
+- [x] Update all Playwright configs (13 total) to reference `test/e2e/` test directory
+- [x] Update helper/fixture/reporter paths within e2e configs (heartbeat-reporter paths fixed)
 
 #### UI test infrastructure
 
-- [ ] Create `playwright.test-harness.config.ts` in `akai-s3k-editor` for UI tests
-- [ ] Create `playwright.test-harness.config.ts` in `roland-sxx0-editor` for UI tests
-- [ ] Add `test-ui-akai-s3k-editor` Make target
-- [ ] Add `test-ui-roland-sxx0-editor` Make target
+- [x] Create `playwright.test-harness.config.ts` in `akai-s3k-editor` for UI tests — already existed
+- [x] Create `playwright.test-harness.config.ts` in `roland-sxx0-editor` for UI tests
+- [x] Add `test-ui-s3k` Make target — already existed (named `test-ui-s3k`)
+- [x] Add `test-ui-roland` Make target
 - [ ] Verify UI test configs can discover and run specs in `test/ui/`
 
 #### Documentation
@@ -68,10 +68,10 @@ Establish a standard test directory structure across editor modules and migrate 
 
 #### Verification
 
-- [ ] All existing unit tests pass from new locations (`pnpm test`)
+- [x] All existing unit tests pass from new locations (`pnpm test`) — 118 akai tests pass, 4 roland integration tests pass
 - [ ] All existing e2e tests pass from new locations (relevant `make test-e2e-*` targets)
 - [ ] New `make test-ui-*` targets execute without errors
-- [ ] `make` full build succeeds with no regressions
+- [x] `make` full build succeeds with no regressions
 
 **Acceptance criteria:** All tests pass from their new locations. Make targets work for all three test categories. `TESTING-UNIT.md` and `TESTING-E2E.md` contain methodology content. No test behavior changes.
 
@@ -79,5 +79,5 @@ Establish a standard test directory structure across editor modules and migrate 
 
 | Phase | GitHub Issue | Status |
 |-------|-------------|--------|
-| Phase 1: Node e2e path resolution | [#281](https://github.com/audiocontrol-org/audiocontrol/issues/281) | TBD |
-| Phase 2: Test directory migration | [#263](https://github.com/audiocontrol-org/audiocontrol/issues/263) | TBD |
+| Phase 1: Node e2e path resolution | [#281](https://github.com/audiocontrol-org/audiocontrol/issues/281) | Complete |
+| Phase 2: Test directory migration | [#263](https://github.com/audiocontrol-org/audiocontrol/issues/263) | In Progress |
