@@ -5,7 +5,7 @@
  * The clone operation transfers sample data via SDS, which is slow over SCSI.
  *
  * Requires: Pi running s2p + scsi-midi-bridge with S3000XL connected.
- * Run via: make test-e2e-s3k-scsi ARGS="--grep clone"
+ * Run via: make test-e2e-s3k-device-library ARGS="--grep clone"
  */
 
 import { test, expect } from '@playwright/test';
@@ -14,7 +14,14 @@ import {
   buildScsiUrl,
   waitForAppReady,
   connectToDevice,
+  navigateToLibrary,
+  connectToOPFS,
 } from '@audiocontrol/e2e-infra/helpers/connection-helper';
+
+import {
+  cleanupOPFS,
+  initializeS3kOPFS,
+} from '@audiocontrol/e2e-infra/helpers/library-ui-helpers';
 
 // ---------------------------------------------------------------------------
 // Side-channel device query (bypasses UI to verify actual device state)
@@ -36,7 +43,8 @@ if (!BRIDGE_URL) {
 const EDITOR_BASE_PATH = '/akai/s3000xl/editor';
 
 function url(subpath: string = ''): string {
-  return buildScsiUrl(EDITOR_BASE_PATH, subpath, BRIDGE_URL);
+  // Use Vite proxy path so the browser can reach the SDS WebSocket
+  return buildScsiUrl(EDITOR_BASE_PATH, subpath, '/scsi-bridge');
 }
 
 /**

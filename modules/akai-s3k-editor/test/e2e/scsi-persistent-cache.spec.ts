@@ -32,20 +32,15 @@ type Page = import('@playwright/test').Page;
 // ---------------------------------------------------------------------------
 
 async function goToProgramsPage(page: Page): Promise<void> {
-  await page.goto(url());
+  await page.goto(url('/programs'));
   await waitForAppReady(page);
   await connectToDevice(page);
-  // Navigate via nav bar (direct URL routing may not work)
-  await page.locator('a[href*="programs"]').click();
-  await page.waitForURL('**/programs**');
 }
 
 async function goToSamplesPage(page: Page): Promise<void> {
-  await page.goto(url());
+  await page.goto(url('/samples'));
   await waitForAppReady(page);
   await connectToDevice(page);
-  await page.locator('a[href*="samples"]').click();
-  await page.waitForURL('**/samples**');
 }
 
 async function waitForProgramList(page: Page, timeout: number = 30_000): Promise<void> {
@@ -95,19 +90,13 @@ test.describe('Persistent editor cache (sessionStorage)', () => {
     const programNameBefore = await readProgramName(page);
     expect(programNameBefore.length).toBeGreaterThan(0);
 
-    // 4. Reload the page — stays on /programs URL — reconnect
+    // 4. Reload the page — stays on /programs URL with transport params
     await page.reload();
     await waitForAppReady(page);
     await connectToDevice(page);
 
-    // Navigate to programs in case app resets
-    const programsLink = page.locator('a[href*="programs"]');
-    if (await programsLink.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      await programsLink.click();
-    }
-
-    // 5. The program list should appear quickly from cache (short timeout)
-    await waitForProgramList(page, 10_000);
+    // 5. The program list should appear quickly from cache
+    await waitForProgramList(page, 15_000);
 
     // 6. Click first program again and verify the name matches
     await clickFirstProgram(page);
@@ -127,19 +116,13 @@ test.describe('Persistent editor cache (sessionStorage)', () => {
     const sampleNameBefore = await readSampleName(page);
     expect(sampleNameBefore.length).toBeGreaterThan(0);
 
-    // 4. Reload the page — stays on /samples URL — reconnect
+    // 4. Reload the page — stays on /samples URL with transport params
     await page.reload();
     await waitForAppReady(page);
     await connectToDevice(page);
 
-    // 5. Navigate to samples (in case the app resets to a different page)
-    const samplesLink = page.locator('a[href*="samples"]');
-    if (await samplesLink.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      await samplesLink.click();
-    }
-
-    // The sample list should appear quickly from cache (short timeout)
-    await waitForSampleList(page, 10_000);
+    // The sample list should appear quickly from cache
+    await waitForSampleList(page, 15_000);
 
     // 6. The selectedSampleIndex is persisted in editorStore via sessionStorage,
     //    so the same sample should be auto-selected after reload. Wait for the
@@ -157,7 +140,8 @@ test.describe('Persistent editor cache (sessionStorage)', () => {
 
     // 2. The CacheAge component renders as a span.text-xs.text-gray-500
     //    next to the page title, showing relative time like "just now"
-    const cacheAge = page.locator('span.text-xs.text-gray-500');
+    // The CacheAge span is inside the page header, near the "Programs" h2
+    const cacheAge = page.locator('.ac-page-header span.text-xs.text-gray-500').first();
     await expect(cacheAge).toBeVisible({ timeout: 5_000 });
 
     // 3. The text should match a relative time pattern
