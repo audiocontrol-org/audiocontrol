@@ -21,6 +21,10 @@ Establish a virtuous cycle where each Claude Code session produces structured fe
 | 3. Session log analyzer | Partial — setup done, baseline pending | `5adb8270` |
 | 4. Agents and skills | Complete | `a027645f`, `f0d86060` |
 | 5. Feature doc updates | Partial — roadmap done, library-ux done on its branch | `f0d86060` |
+| 6. Session data extraction | Complete | `df0e591f` |
+| 7. Session data analyzer | Complete (v1 code-only) | `eb49a690` |
+| 8. CLAUDE.md audit and classification | Not started | — |
+| 9. CLAUDE.md refactoring | Not started | — |
 
 ## Motivation
 

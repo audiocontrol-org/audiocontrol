@@ -40,6 +40,8 @@ With 1,771 session logs totaling 544MB across two machines, 11 features in progr
 - [ ] hardware-protocol-engineer agent created
 - [ ] Virtuous cycle memory is retrievable by user request
 - [ ] Next 3 sessions show agent reading workplan at start and writing journal at end
+- [ ] CLAUDE.md is under 200 lines with domain-specific rules in `.claude/rules/`
+- [ ] Path-scoped rules load only when relevant files are touched
 
 ## Scope
 
@@ -51,6 +53,7 @@ With 1,771 session logs totaling 544MB across two machines, 11 features in progr
 - Custom skill creation (/session-start, /session-end, /deploy-bridge)
 - Feature doc updates for library-ux (this session's work)
 - Virtuous cycle memory entry
+- CLAUDE.md audit and refactoring — classify directives by impact, migrate domain-specific rules to `.claude/rules/` with path scoping, trim CLAUDE.md to under 200 lines
 
 ### Out of Scope
 - MCP servers or databases
