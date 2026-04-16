@@ -1,5 +1,6 @@
-import { parseCaptionsYaml, CaptionEntry } from './captions.js';
 import { renderProgressPanel } from './progress.js';
+import { buildCaptionTable, applyCaptionOverlay, cleanupCaptionOverlay, showSaved } from './caption-editor.js';
+import type { CaptionRow } from './caption-editor.js';
 
 interface FileInfo {
   name: string;
@@ -18,15 +19,6 @@ interface DemoDetail {
   files: FileInfo[];
   captionsYaml: string | null;
   voScript: string | null;
-}
-
-interface CaptionRow {
-  id: string;
-  type: string;
-  inTc: string;
-  outTc: string;
-  text: string;
-  position: string;
 }
 
 function formatBytes(bytes: number): string {
@@ -59,162 +51,6 @@ function parseCaptionRows(yaml: string): CaptionRow[] {
     rows.push({ id: m[1], type: m[2], inTc: m[4], outTc: m[5], text: m[3], position: m[6] });
   }
   return rows;
-}
-
-function serializeCaptionsYaml(yaml: string, rows: CaptionRow[]): string {
-  const idx = yaml.indexOf('overlays:');
-  const header = idx >= 0 ? yaml.substring(0, idx) : yaml + '\n';
-  return header + 'overlays:\n' + rows.map((r) =>
-    `  - id: "${r.id}"\n    type: ${r.type}\n    text: "${r.text}"\n    in: "${r.inTc}"\n    out: "${r.outTc}"\n    position: ${r.position}\n`,
-  ).join('');
-}
-
-function showSaved(parent: HTMLElement): void {
-  parent.querySelector('.detail-saved')?.remove();
-  const s = document.createElement('span');
-  s.className = 'detail-saved';
-  s.textContent = 'Saved!';
-  parent.appendChild(s);
-  setTimeout(() => s.classList.add('fade-out'), 1500);
-  setTimeout(() => s.remove(), 2000);
-}
-
-let captionCleanup: (() => void) | null = null;
-
-function applyCaptionOverlay(wrap: HTMLElement, video: HTMLVideoElement, yaml: string | null): void {
-  if (captionCleanup) { captionCleanup(); captionCleanup = null; }
-  wrap.querySelector('.caption-overlay')?.remove();
-  if (!yaml) return;
-  const entries = parseCaptionsYaml(yaml);
-  if (entries.length === 0) return;
-
-  const el = document.createElement('div');
-  el.className = 'caption-overlay';
-  wrap.appendChild(el);
-
-  let rafId = 0;
-  const tick = (): void => {
-    const t = video.currentTime;
-    const active = entries.find((c) => t >= c.inSec && t < c.outSec);
-    el.textContent = active ? active.text : '';
-    el.style.display = active ? 'block' : 'none';
-    rafId = requestAnimationFrame(tick);
-  };
-  rafId = requestAnimationFrame(tick);
-  captionCleanup = () => cancelAnimationFrame(rafId);
-}
-
-function buildCaptionTable(
-  rows: CaptionRow[],
-  detail: DemoDetail,
-  videoWrap: HTMLElement,
-  video: HTMLVideoElement,
-  originalYaml: string,
-): HTMLElement {
-  const section = document.createElement('div');
-  section.className = 'detail-section';
-
-  const headerDiv = document.createElement('div');
-  headerDiv.className = 'detail-section-header';
-
-  const title = document.createElement('span');
-  title.className = 'detail-section-title';
-  title.textContent = 'Captions';
-  headerDiv.appendChild(title);
-
-  const saveBtn = document.createElement('button');
-  saveBtn.className = 'detail-save-btn';
-  saveBtn.textContent = 'Save';
-  headerDiv.appendChild(saveBtn);
-  section.appendChild(headerDiv);
-
-  if (rows.length === 0) {
-    const empty = document.createElement('div');
-    empty.style.color = '#6b7280';
-    empty.style.fontSize = '0.8rem';
-    empty.textContent = 'No captions available';
-    section.appendChild(empty);
-    return section;
-  }
-
-  const table = document.createElement('table');
-  table.className = 'detail-table';
-
-  const thead = document.createElement('thead');
-  thead.innerHTML = `<tr>
-    <th class="col-type">Type</th>
-    <th class="col-in">In</th>
-    <th class="col-out">Out</th>
-    <th class="col-text">Text</th>
-  </tr>`;
-  table.appendChild(thead);
-
-  const tbody = document.createElement('tbody');
-  for (const row of rows) {
-    const tr = document.createElement('tr');
-
-    // Type dropdown
-    const tdType = document.createElement('td');
-    const select = document.createElement('select');
-    for (const opt of ['title', 'lower-third', 'callout']) {
-      const option = document.createElement('option');
-      option.value = opt;
-      option.textContent = opt;
-      if (opt === row.type) option.selected = true;
-      select.appendChild(option);
-    }
-    select.addEventListener('change', () => { row.type = select.value; });
-    tdType.appendChild(select);
-    tr.appendChild(tdType);
-
-    // In timecode
-    const tdIn = document.createElement('td');
-    const inputIn = document.createElement('input');
-    inputIn.type = 'text';
-    inputIn.value = row.inTc;
-    inputIn.addEventListener('input', () => { row.inTc = inputIn.value; });
-    tdIn.appendChild(inputIn);
-    tr.appendChild(tdIn);
-
-    // Out timecode
-    const tdOut = document.createElement('td');
-    const inputOut = document.createElement('input');
-    inputOut.type = 'text';
-    inputOut.value = row.outTc;
-    inputOut.addEventListener('input', () => { row.outTc = inputOut.value; });
-    tdOut.appendChild(inputOut);
-    tr.appendChild(tdOut);
-
-    // Text
-    const tdText = document.createElement('td');
-    const inputText = document.createElement('input');
-    inputText.type = 'text';
-    inputText.value = row.text;
-    inputText.addEventListener('input', () => { row.text = inputText.value; });
-    tdText.appendChild(inputText);
-    tr.appendChild(tdText);
-
-    tbody.appendChild(tr);
-  }
-  table.appendChild(tbody);
-  section.appendChild(table);
-
-  // Save handler
-  saveBtn.addEventListener('click', async () => {
-    const updatedYaml = serializeCaptionsYaml(originalYaml, rows);
-    const res = await fetch('/api/save-captions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scenario: detail.name, content: updatedYaml }),
-    });
-    if (res.ok) {
-      showSaved(headerDiv);
-      // Refresh caption overlay on the video
-      applyCaptionOverlay(videoWrap, video, updatedYaml);
-    }
-  });
-
-  return section;
 }
 
 function buildVoScriptEditor(detail: DemoDetail): HTMLElement {
@@ -258,6 +94,85 @@ function buildVoScriptEditor(detail: DemoDetail): HTMLElement {
   return section;
 }
 
+function buildNotGeneratedView(detail: DemoDetail, root: HTMLElement): void {
+  const notice = document.createElement('div');
+  Object.assign(notice.style, {
+    textAlign: 'center',
+    padding: '48px 24px',
+    color: '#9ca3af',
+  });
+
+  const msg = document.createElement('p');
+  msg.textContent = `No video has been generated for "${detail.name}" yet.`;
+  msg.style.marginBottom = '16px';
+  notice.appendChild(msg);
+
+  const genBtn = document.createElement('button');
+  genBtn.textContent = 'Generate Now';
+  Object.assign(genBtn.style, {
+    padding: '8px 20px',
+    backgroundColor: '#3b82f6',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '14px',
+  });
+
+  const progressDiv = document.createElement('div');
+  progressDiv.className = 'progress-panel';
+  progressDiv.style.display = 'none';
+  progressDiv.style.maxWidth = '400px';
+  progressDiv.style.margin = '16px auto 0';
+  progressDiv.style.textAlign = 'left';
+
+  genBtn.addEventListener('click', () => {
+    genBtn.disabled = true;
+    genBtn.style.display = 'none';
+    msg.textContent = `Generating "${detail.name}"...`;
+    progressDiv.style.display = 'block';
+
+    fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scenario: detail.name, tier: 'scripted' }),
+    }).then(() => {
+      const poll = setInterval(() => {
+        fetch('/api/generate/status')
+          .then((r) => r.json())
+          .then((s: {
+            status: string;
+            steps?: Array<{ step: string; status: string; elapsedMs: number | null }>;
+            elapsedMs?: number;
+            estimatedRemainingMs?: number | null;
+          }) => {
+            if (s.status === 'generating' && s.steps) {
+              progressDiv.innerHTML = renderProgressPanel(
+                s.steps,
+                s.elapsedMs ?? 0,
+                s.estimatedRemainingMs ?? null,
+              );
+            }
+            if (s.status === 'complete' || s.status === 'error' || s.status === 'idle') {
+              clearInterval(poll);
+              const container = root.parentElement;
+              if (container) {
+                container.innerHTML = '';
+                container.dataset.scenario = '';
+                location.hash = `#/detail/${detail.name}`;
+                window.dispatchEvent(new HashChangeEvent('hashchange'));
+              }
+            }
+          });
+      }, 1000);
+    });
+  });
+
+  notice.appendChild(genBtn);
+  notice.appendChild(progressDiv);
+  root.appendChild(notice);
+}
+
 function buildDetailView(detail: DemoDetail): HTMLElement {
   const root = document.createElement('div');
   root.className = 'detail-view';
@@ -279,83 +194,8 @@ function buildDetailView(detail: DemoDetail): HTMLElement {
 
   root.appendChild(header);
 
-  // If the video hasn't been generated yet, show a prompt instead of the full detail
   if (!detail.generated) {
-    const notice = document.createElement('div');
-    Object.assign(notice.style, {
-      textAlign: 'center',
-      padding: '48px 24px',
-      color: '#9ca3af',
-    });
-
-    const msg = document.createElement('p');
-    msg.textContent = `No video has been generated for "${detail.name}" yet.`;
-    msg.style.marginBottom = '16px';
-    notice.appendChild(msg);
-
-    const genBtn = document.createElement('button');
-    genBtn.textContent = 'Generate Now';
-    Object.assign(genBtn.style, {
-      padding: '8px 20px',
-      backgroundColor: '#3b82f6',
-      color: '#ffffff',
-      border: 'none',
-      borderRadius: '4px',
-      cursor: 'pointer',
-      fontSize: '14px',
-    });
-    const progressDiv = document.createElement('div');
-    progressDiv.className = 'progress-panel';
-    progressDiv.style.display = 'none';
-    progressDiv.style.marginTop = '16px';
-    progressDiv.style.textAlign = 'left';
-    progressDiv.style.maxWidth = '400px';
-    progressDiv.style.margin = '16px auto 0';
-
-    genBtn.addEventListener('click', () => {
-      genBtn.disabled = true;
-      genBtn.style.display = 'none';
-      msg.textContent = `Generating "${detail.name}"...`;
-      progressDiv.style.display = 'block';
-
-      fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scenario: detail.name, tier: 'scripted' }),
-      }).then(() => {
-        const poll = setInterval(() => {
-          fetch('/api/generate/status')
-            .then((r) => r.json())
-            .then((s: {
-              status: string;
-              steps?: Array<{ step: string; status: string; elapsedMs: number | null }>;
-              elapsedMs?: number;
-              estimatedRemainingMs?: number | null;
-            }) => {
-              if (s.status === 'generating' && s.steps) {
-                progressDiv.innerHTML = renderProgressPanel(
-                  s.steps,
-                  s.elapsedMs ?? 0,
-                  s.estimatedRemainingMs ?? null,
-                );
-              }
-              if (s.status === 'complete' || s.status === 'error' || s.status === 'idle') {
-                clearInterval(poll);
-                const container = root.parentElement;
-                if (container) {
-                  container.innerHTML = '';
-                  container.dataset.scenario = '';
-                  location.hash = `#/detail/${detail.name}`;
-                  window.dispatchEvent(new HashChangeEvent('hashchange'));
-                }
-              }
-            });
-        }, 1000);
-      });
-    });
-    notice.appendChild(genBtn);
-    notice.appendChild(progressDiv);
-    root.appendChild(notice);
+    buildNotGeneratedView(detail, root);
     return root;
   }
 
@@ -383,7 +223,6 @@ function buildDetailView(detail: DemoDetail): HTMLElement {
 
   root.appendChild(videoWrap);
 
-  // Apply caption overlay to video
   if (video && detail.captionsYaml) {
     applyCaptionOverlay(videoWrap, video, detail.captionsYaml);
   }
@@ -437,7 +276,6 @@ function buildDetailView(detail: DemoDetail): HTMLElement {
 }
 
 function mountDetailView(scenarioName: string, container: HTMLElement): void {
-  // Avoid re-mounting the same scenario
   if (container.dataset.scenario === scenarioName && container.children.length > 0) {
     return;
   }
@@ -445,7 +283,6 @@ function mountDetailView(scenarioName: string, container: HTMLElement): void {
   container.innerHTML = '';
   container.dataset.scenario = scenarioName;
 
-  // Show loading state
   const loading = document.createElement('div');
   loading.className = 'detail-view';
   loading.style.color = '#9ca3af';
@@ -468,10 +305,7 @@ function mountDetailView(scenarioName: string, container: HTMLElement): void {
 }
 
 function unmountDetailView(container: HTMLElement): void {
-  if (captionCleanup) {
-    captionCleanup();
-    captionCleanup = null;
-  }
+  cleanupCaptionOverlay();
   container.innerHTML = '';
   container.dataset.scenario = '';
 }
