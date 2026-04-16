@@ -212,15 +212,15 @@ Use Playwright's built-in `recordVideo` to capture browser interactions as WebM.
 
 **Tasks:**
 
-- [ ] Add a detail view to the gallery (click card title or "Details" link → full-page view for that scenario)
-- [ ] Display large video player with caption overlay, scenario metadata (name, description, mode, tier, duration), and list of all output files with sizes
-- [ ] Add `/api/demo/:name` GET endpoint returning full demo metadata including file sizes and caption data
-- [ ] Add editable caption table: text, type, in/out timecodes — inline editing, save via `/api/save-captions` POST
-- [ ] Add `/api/save-captions` POST endpoint that writes updated captions back to `captions.yaml`
-- [ ] Add editable VO script textarea — edit and save via `/api/save-vo-script` POST
-- [ ] Add `/api/save-vo-script` POST endpoint that writes updated text back to `vo-script.txt`
-- [ ] Add "Back to Gallery" navigation
-- [ ] Preview caption changes in real time (editing a caption updates the live overlay without regenerating)
+- [x] Add a detail view to the gallery (click card title → full-page view via hash routing)
+- [x] Display large video player with caption overlay, scenario metadata, and list of all output files with sizes
+- [x] Add `/api/demo?name=` GET endpoint returning full demo metadata including file sizes and caption data
+- [x] Add editable caption table: text, type, in/out timecodes — inline editing, save via `/api/save-captions` POST
+- [x] Add `/api/save-captions` POST endpoint that writes updated captions back to `captions.yaml`
+- [x] Add editable VO script textarea — edit and save via `/api/save-vo-script` POST
+- [x] Add `/api/save-vo-script` POST endpoint that writes updated text back to `vo-script.txt`
+- [x] Add "Back to Gallery" navigation
+- [x] Preview caption changes in real time (saving captions refreshes the live overlay)
 
 **Acceptance:** Clicking a card navigates to a detail view with a large video player, editable caption table, and editable VO script. Saving captions writes to disk and updates the live overlay in real time. Back button returns to the gallery grid.
 

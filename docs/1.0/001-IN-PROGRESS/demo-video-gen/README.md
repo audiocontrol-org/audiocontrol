@@ -16,7 +16,7 @@ Automated demo video generation from scripted Playwright browser interactions.
 | Phase 8 | Text Overlay Rendering | Complete |
 | Phase 9 | Generation Progress Indicator | Complete |
 | Phase 10 | Asset File Access | Complete |
-| Phase 11 | Video Detail View | Planning |
+| Phase 11 | Video Detail View | Complete |
 | Phase 12 | Visual Timeline Editor | Planning |
 
 ## Links
