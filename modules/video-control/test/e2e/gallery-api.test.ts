@@ -1,11 +1,30 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { spawn, execSync, ChildProcess } from 'node:child_process';
+import { createServer } from 'node:net';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const MODULE_ROOT = resolve(__dirname, '../..');
-const BASE_URL = 'http://localhost:4200';
-const GALLERY_PORT = 4200;
+
+/** Ask the OS for a free port by binding to port 0 and reading the assignment. */
+function getFreePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = createServer();
+    server.listen(0, () => {
+      const addr = server.address();
+      if (!addr || typeof addr === 'string') {
+        server.close(() => reject(new Error('Failed to get port')));
+        return;
+      }
+      const port = addr.port;
+      server.close(() => resolve(port));
+    });
+    server.on('error', reject);
+  });
+}
+
+let testPort: number;
+let BASE_URL: string;
 
 interface DemoInfo {
   name: string;
@@ -44,16 +63,6 @@ interface GenerateStatus {
 }
 
 let galleryProcess: ChildProcess | null = null;
-
-function killPort(port: number): void {
-  try {
-    execSync(`lsof -ti:${port} | xargs kill -9 2>/dev/null`, {
-      stdio: 'ignore',
-    });
-  } catch {
-    // No process on the port — that's fine
-  }
-}
 
 async function waitForServer(
   url: string,
@@ -95,13 +104,16 @@ describe('gallery API', () => {
   beforeAll(async () => {
     ensureHelloWorldDemo();
 
-    killPort(GALLERY_PORT);
-    await new Promise((r) => setTimeout(r, 500));
+    testPort = await getFreePort();
+    BASE_URL = `http://localhost:${testPort}`;
 
-    galleryProcess = spawn('pnpm', ['gallery'], {
-      cwd: MODULE_ROOT,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    galleryProcess = spawn(
+      'pnpm', ['vite', 'serve', 'gallery', '--config', 'gallery/vite.config.ts', '--port', String(testPort)],
+      {
+        cwd: MODULE_ROOT,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      },
+    );
 
     await waitForServer(`${BASE_URL}/api/demos`, 20, 500);
   }, 180000);

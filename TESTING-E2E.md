@@ -129,7 +129,31 @@ Never assume a blank device. Tests must:
 - Adapt to the current memory layout
 - Clean up after themselves when possible
 
-### 5. Timeouts use exponential backoff
+### 5. Server ports are OS-assigned
+
+Tests that start servers must **never hardcode a port**. Hardcoded ports kill running dev servers and create contention between parallel test runs.
+
+Use Vite's `--port 0` flag — the OS assigns a free port, and the runner script parses it from the Vite log output. Pass the assigned port to test clients via environment variable (e.g., `E2E_PORT`).
+
+**Pattern** (from `run-test-harness-e2e.sh`):
+```bash
+# Start Vite with OS-assigned port
+pnpm vite --port 0 > "$VITE_LOG" 2>&1 &
+VITE_PID=$!
+
+# Parse assigned port from log output
+PORT=$(grep -o 'https://localhost:[0-9]*' "$VITE_LOG" | head -1 | sed 's/.*://')
+
+# Pass to test runner
+E2E_PORT=$PORT npx playwright test
+```
+
+**Never:**
+- Hardcode a port number in test setup
+- Kill a port (`lsof -ti:PORT | xargs kill`) as test setup
+- Use an environment variable workaround when the tool supports port 0 natively
+
+### 6. Timeouts use exponential backoff
 
 - **Initial timeout:** short (500ms–1s)
 - **Backoff:** double each retry (1s → 2s → 4s → 8s)
