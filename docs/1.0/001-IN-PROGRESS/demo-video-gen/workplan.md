@@ -11,6 +11,7 @@
 - #269 — Add gallery-triggered video generation (Phase 7)
 - #270 — Add text overlay rendering (Phase 8)
 - #296 — Add generation progress indicator (Phase 9)
+- #297 — Add asset file access from gallery (Phase 10)
 
 ## Technical Approach
 
@@ -185,3 +186,18 @@ Use Playwright's built-in `recordVideo` to capture browser interactions as WebM.
 - [x] Estimate ETA from hardcoded default durations per step
 
 **Acceptance:** When generating a video from the gallery, the user sees each pipeline step listed with its status (pending/running/done), elapsed time, and ETA. Steps update in real time as the generation progresses.
+
+---
+
+### Phase 10: Asset File Access
+
+**Goal:** Quick access to generated video assets on disk from the gallery UI.
+
+**Tasks:**
+
+- [ ] Add `/api/open-folder` POST endpoint that runs `open <path>` (macOS) to reveal the scenario's output directory in Finder
+- [ ] Add `/api/open-file` POST endpoint that runs `open <path>` to open a specific file in the default app
+- [ ] Add "Show in Finder" link on each gallery card that calls `/api/open-folder`
+- [ ] Add "Open" links next to each asset (MP4, GIF, captions, VO script) that call `/api/open-file`
+
+**Acceptance:** Clicking "Show in Finder" opens the scenario's output directory. Clicking "Open" on an asset opens it in the default application.

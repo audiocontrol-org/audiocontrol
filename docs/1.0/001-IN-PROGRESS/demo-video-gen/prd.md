@@ -51,6 +51,7 @@ Demo videos for audiocontrol features are created manually, which means they go 
 - Gallery-triggered video regeneration (generate from the browser, no terminal required)
 - Text overlay rendering: ffmpeg burn-in (captioned MP4) and live HTML overlay in the gallery player
 - Fine-grained generation progress indicator showing pipeline steps, elapsed time, and ETA
+- Quick access to generated assets on disk (show in Finder, open in default app)
 
 ### Out of Scope
 
