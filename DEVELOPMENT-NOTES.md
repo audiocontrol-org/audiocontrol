@@ -11,6 +11,44 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-15: Phases 14-17 — Sample Audio Editing (Session 6)
+
+### Feature: akai-ux-improvement
+### Worktree: audiocontrol-akai-ux-improvement
+
+### Goal
+Implement phases 14-17: bidirectional sample audio editing between device memory and the library's visual editors (loop editor, sample editor, chopper).
+
+### Accomplished
+- **Phase 14**: Device sample loading into editors via SDS. EditorDialogStrategy extended with `device-sample` node type. SamplesPage action bar: Loop Editor / Sample Editor / Chopper buttons.
+- **Phase 15**: Save to device. Loop editor saves loop points directly to sample header (fast, no SDS). Sample editor opens SaveTargetDialog: overwrite original / new slot / save to library.
+- **Phase 16**: Chopper-to-device: uploads each slice as a new sample via SDS, creates program with keygroup-per-slice mappings. SaveTargetDialog for bidirectional save choice.
+- **Phase 17**: 3 Playwright e2e tests verify device→editor→device round-trip for all three editors.
+- **Bug fix**: `EditorDialogStrategy.loadWav` root parameter made nullable — strategy-based loading (SDS) now works without a connected library root.
+- **PR #295** created, reviewed, merged.
+- 4 GitHub issues closed (#291-#294).
+
+### Didn't Work
+- First e2e test run: watchdog killed tests because `waitForEditorDialog` used a single long `expect` that starved the heartbeat. Fixed with polling loop.
+- First editor open attempt: `useEditorDialogsCore.loadWavData` threw "Library not connected" before trying the strategy — `libraryRoot` null guard blocked device-sample loading. Fixed by making the strategy interface accept nullable root.
+
+### Course Corrections
+None this session — the implementation flow was smooth.
+
+### Quantitative
+- User messages: ~15
+- Commits: 7
+- User corrections: 0
+- Issues closed: #291, #292, #293, #294
+- PR: #295 (merged)
+
+### Insights
+1. **Strategy pattern pays off.** The `EditorDialogStrategy` abstraction let us add device loading without modifying the shared editor dialog infrastructure — just the S3K strategy implementation.
+2. **Nullable parameters unlock composability.** Making `loadWav`'s root parameter nullable was a one-line interface change that eliminated the need for the library to be connected when loading from device. Small type change, big architectural unlock.
+3. **Watchdog-friendly polling is non-negotiable.** Any Playwright assertion that might take >10s needs a polling loop with heartbeat assertions. Single long `expect` calls get killed.
+
+---
+
 ## 2026-04-15: Phases 8-14 + Bug #280 — Full Feature Completion and Extension (Session 5)
 
 ### Feature: akai-ux-improvement
