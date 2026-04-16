@@ -432,14 +432,18 @@ where
     let sn_lo = (sample_number & 0x7F) as u8;
     let sn_hi = ((sample_number >> 7) & 0x7F) as u8;
 
-    // Declare 40 samples (1 packet's worth) — we'll overwrite with ASPACK
+    // Declare the real sample length so the device allocates the correct size.
+    // SDS dump header length is 3 × 7-bit bytes, LSB first.
+    let len_lo = (total & 0x7F) as u8;
+    let len_mid = ((total >> 7) & 0x7F) as u8;
+    let len_hi = ((total >> 14) & 0x7F) as u8;
     let dump_header = vec![
         0xF0, 0x7E, channel, 0x01,
         sn_lo, sn_hi, 16,
         (period_ns & 0x7F) as u8,
         ((period_ns >> 7) & 0x7F) as u8,
         ((period_ns >> 14) & 0x7F) as u8,
-        40u8 & 0x7F, 0, 0,             // length = 40 samples
+        len_lo, len_mid, len_hi,        // length = actual sample count
         0, 0, 0, 0, 0, 0, 0,           // loop start/end/type = 0
         0xF7,
     ];
@@ -448,8 +452,14 @@ where
     wait_for_ack(s2p, target_id, 30).await
         .map_err(|e| format!("no ACK for dump header: {e}"))?;
 
-    // Send 1 data packet of silence to register the sample
-    let silence_pkt = encode_sds_data_packet(channel, 0, &[0i16; 40], 0, 40);
+    // Send 1 data packet of silence to register the sample slot
+    let init_count = std::cmp::min(40, total as usize);
+    let mut init_samples = vec![0i16; init_count];
+    // Copy real data if available (avoids overwriting first 40 samples with silence)
+    for (i, s) in samples.iter().take(init_count).enumerate() {
+        init_samples[i] = *s;
+    }
+    let silence_pkt = encode_sds_data_packet(channel, 0, &init_samples, 0, total as usize);
     s2p.scsi_midi_send(target_id, &silence_pkt).await?;
     wait_for_ack(s2p, target_id, 30).await
         .map_err(|e| format!("no ACK for silence packet: {e}"))?;
