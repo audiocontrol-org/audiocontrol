@@ -1,4 +1,5 @@
 import { parseCaptionsYaml, CaptionEntry } from './captions.js';
+import { renderProgressPanel } from './progress.js';
 
 interface FileInfo {
   name: string;
@@ -303,37 +304,57 @@ function buildDetailView(detail: DemoDetail): HTMLElement {
       cursor: 'pointer',
       fontSize: '14px',
     });
+    const progressDiv = document.createElement('div');
+    progressDiv.className = 'progress-panel';
+    progressDiv.style.display = 'none';
+    progressDiv.style.marginTop = '16px';
+    progressDiv.style.textAlign = 'left';
+    progressDiv.style.maxWidth = '400px';
+    progressDiv.style.margin = '16px auto 0';
+
     genBtn.addEventListener('click', () => {
       genBtn.disabled = true;
-      genBtn.textContent = 'Generating...';
+      genBtn.style.display = 'none';
+      msg.textContent = `Generating "${detail.name}"...`;
+      progressDiv.style.display = 'block';
+
       fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ scenario: detail.name, tier: 'scripted' }),
       }).then(() => {
-        // Poll until complete, then reload the detail view
         const poll = setInterval(() => {
           fetch('/api/generate/status')
             .then((r) => r.json())
-            .then((s: { status: string }) => {
+            .then((s: {
+              status: string;
+              steps?: Array<{ step: string; status: string; elapsedMs: number | null }>;
+              elapsedMs?: number;
+              estimatedRemainingMs?: number | null;
+            }) => {
+              if (s.status === 'generating' && s.steps) {
+                progressDiv.innerHTML = renderProgressPanel(
+                  s.steps,
+                  s.elapsedMs ?? 0,
+                  s.estimatedRemainingMs ?? null,
+                );
+              }
               if (s.status === 'complete' || s.status === 'error' || s.status === 'idle') {
                 clearInterval(poll);
-                // Reload the detail view
                 const container = root.parentElement;
                 if (container) {
                   container.innerHTML = '';
                   container.dataset.scenario = '';
-                  // Re-trigger mount
                   location.hash = `#/detail/${detail.name}`;
-                  // Force hashchange since hash hasn't changed
                   window.dispatchEvent(new HashChangeEvent('hashchange'));
                 }
               }
             });
-        }, 1500);
+        }, 1000);
       });
     });
     notice.appendChild(genBtn);
+    notice.appendChild(progressDiv);
     root.appendChild(notice);
     return root;
   }
