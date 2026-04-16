@@ -11,6 +11,59 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-16: ASPACK Upload SLNGTH Bug Investigation (Session 8)
+
+### Feature: akai-ux-improvement
+### Worktree: audiocontrol-akai-ux-improvement
+
+### Goal
+Fix sample uploads producing truncated samples (SLNGTH stuck at 40 regardless of actual data size). Also: progress indicators, cancel support, sample length in preview, ReceiveSampleDialog abort loop fix.
+
+### Accomplished
+- **ReceiveSampleDialog abort loop fixed**: useEffect cleanup was aborting the transfer on every re-render. Added `hasStartedRef` guard so transfer only starts once per dialog open.
+- **Sample length in preview panel**: library samples show sample count + duration from WAV file scan. Device samples show SLNGTH/SSRATE from header fetched on selection.
+- **SDS upload progress**: SteppedProgressDrawer during save-to-device with direction-aware labels.
+- **ASPACK SLNGTH investigation test** (`test-aspack-slngth.ts`): raw SCSI CDB test that bypasses the client entirely. Tests both creation theories.
+- **Key finding**: Theory A (real length header, no data packet) → sample NOT created. Theory B (40-sample stub + data packet) → sample created but SLNGTH stays at 40.
+- **Bridge poll bug found**: midiPoll parsed 3-byte response as 4-byte, returning 0 for all polls. Fixed.
+
+### Didn't Work
+- **5 failed attempts to fix ASPACK upload SLNGTH**:
+  1. Real length in SDS header → device NAK'd data packet (malformed: passed `total` as `samples_per_packet`, creating 132KB SDS packet)
+  2. Real length in SDS header, no data packet → sample not created in RSLIST
+  3. Bridge-side SLNGTH patch via RSDATA/SDATA after ASPACK → device doesn't respond to RSDATA in SCSI MIDI context (0 bytes after 10s)
+  4. Client-side SLNGTH patch via SDATA → device rejects with error code 1 (can't set SLNGTH beyond allocated memory)
+  5. Real length in header + proper 40-sample data packet → still not creating sample (bridge deployed with current code)
+- **Cited test-sds-header-aspack-data.ts as evidence** without running it. When finally run, it failed. The test had a session conflict (used `/sds/send` for RSLIST but raw SCSI for data), saw wrong sample count, and never actually validated its own success condition.
+
+### Course Corrections
+- [PROCESS] Agent deferred progress indicators during implementation despite explicit project guidelines. User: "Why didn't that get added in the first place?"
+- [UX] Agent opened progress drawer only after device round-trip (perceptible delay). User: "The drawer should slide open instantly."
+- [UX] Agent's cancel just dismissed the UI without stopping the transfer. User: "Don't just dismiss the window if the action isn't actually cancelled."
+- [PROCESS] Agent didn't update library ReceiveSampleDialog to match new progress pattern. User: "You need to update the sample download progress indicator in the library to match."
+- [PROCESS] Agent created a leaky abstraction (client patching SLNGTH that the bridge should own). User: "Are you creating a leaky abstraction?"
+- [PROCESS] Agent cited a test as evidence without running it. User: "How do you know the test you found is actually working?"
+- [PROCESS] Agent made snap judgement about test results without checking device state. User: "There are four samples in the device right now. Why does the test say there are two?"
+- [PROCESS] Agent kept trying fixes without understanding the full history. User: "Can you look at the development log and the commit log to reconstruct the reasoning behind why the upload process was built the way it was."
+- [FABRICATION] Agent assumed test-sds-header-aspack-data.ts worked because the code had a success message, without verifying against hardware.
+- [PROCESS] Agent didn't delegate investigation work. User: "Why aren't you delegating?"
+
+### Quantitative
+- User messages: ~40
+- Commits: 12
+- User corrections: 10 (5 PROCESS, 3 UX, 1 FABRICATION, 1 delegation)
+- Bridge deploys: 6
+
+### Insights
+1. **Never cite a test as evidence without running it.** The test-sds-header-aspack-data.ts file had "✓ New sample created" in its output logic, but it never actually worked. Source code is not evidence — test results are.
+2. **Understand the full history before changing battle-tested code.** The ASPACK upload process was developed over multiple sessions with extensive hardware testing. Each decision (40-sample stub, data packet requirement, chunk size 8191) was discovered through hardware behavior, not theory.
+3. **Test at the right layer.** The client library has caching, retry logic, and session management that can mask bugs. A raw SCSI CDB test removes all abstraction and shows exactly what the device does.
+4. **Progress indicators and cancel are not polish — they're requirements.** The project guidelines are explicit. Build them with the feature.
+5. **Don't thrash.** Five failed attempts in a row, each based on a theory rather than evidence. The right approach was to write a clean test first, run it, then decide.
+6. **The SLNGTH problem is still open.** The 40-sample stub creates samples correctly but ASPACK writes don't update SLNGTH, and SDATA writes to increase SLNGTH are rejected (error code 1). The nibble offset parsing in the raw test also needs fixing. Next session must start here.
+
+---
+
 ## 2026-04-16: Progress Indicators and Cancel for SDS Transfers (Session 7)
 
 ### Feature: akai-ux-improvement

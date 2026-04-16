@@ -470,6 +470,36 @@ Always verify the sampler's protocol mode before running SDS operations. S3000 m
 
 ---
 
+## 2026-04-16: ASPACK Upload SLNGTH Investigation
+
+### Problem
+Samples uploaded via ASPACK play only the first ~40-48 samples. SLNGTH in the sample header stays at the value from the SDS stub creation, regardless of how much data ASPACK writes.
+
+### Tested (via raw SCSI CDBs — test-aspack-slngth.ts, no client library)
+
+**Theory A: Real length in SDS dump header, no data packet, ASPACK fills data**
+- Dump header with length=1000 → ACK'd
+- ASPACK chunk → REPLY (success)
+- RSLIST count unchanged → **sample NOT created**
+- Confirms SCSI-NOTES: dump header alone does not create a sample.
+
+**Theory B: 40-sample stub header + data packet, ASPACK fills, SDATA patches SLNGTH**
+- 40-sample header → ACK'd, data packet → ACK'd → **sample created**
+- ASPACK write to newly created sample → **FAILED** (no REPLY)
+- SDATA write to patch SLNGTH → device error code 1 (rejected)
+- SLNGTH parsing in raw test returned wrong values (90112 for 40-sample stub) — offset bug
+
+### Open Questions
+1. Why does ASPACK fail on a freshly-created sample? Index mismatch? Device needs commit time?
+2. Can SDATA modify SLNGTH beyond allocated memory? Error code 1 suggests no.
+3. Would real length in header + data packet work? (Allocate full memory via header, trigger creation via packet.)
+4. Is the nibble offset for SLNGTH correct in the raw test?
+
+### Test File
+`modules/e2e-infra/src/node/lib/test-aspack-slngth.ts`
+
+---
+
 ## 2026-04-10 16:00 PDT: ASPACK End-to-End — Multi-Chunk, Bridge, Web Editor
 
 ### Multi-chunk solved
