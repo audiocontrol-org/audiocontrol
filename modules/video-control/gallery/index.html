@@ -140,6 +140,12 @@
       font-weight: 500;
       color: #f9fafb;
       flex: 1 1 auto;
+      text-decoration: none;
+      display: block;
+    }
+
+    a.card-title:hover {
+      color: #93c5fd;
     }
 
     .card-duration {
@@ -342,6 +348,193 @@
     .view-toggle-btn.active {
       color: #f9fafb;
       border-bottom-color: #3b82f6;
+    }
+
+    /* Detail view */
+    .detail-view {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+
+    .detail-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .detail-back {
+      color: #93c5fd;
+      text-decoration: none;
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+
+    .detail-back:hover {
+      text-decoration: underline;
+    }
+
+    .detail-name {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #f9fafb;
+    }
+
+    .detail-video-wrap {
+      position: relative;
+      width: 100%;
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .detail-video {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      display: block;
+      background: #000;
+    }
+
+    .detail-metadata {
+      font-size: 0.8rem;
+      color: #9ca3af;
+      margin-bottom: 16px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .detail-files {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 24px;
+      font-size: 0.8rem;
+    }
+
+    .detail-files a {
+      color: #93c5fd;
+      text-decoration: none;
+    }
+
+    .detail-files a:hover {
+      text-decoration: underline;
+    }
+
+    .detail-files .file-size {
+      color: #6b7280;
+      margin-left: 4px;
+    }
+
+    .detail-section {
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+
+    .detail-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .detail-section-title {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: #f9fafb;
+    }
+
+    .detail-save-btn {
+      background: #2563eb;
+      color: #f9fafb;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 14px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .detail-save-btn:hover {
+      background: #1d4ed8;
+    }
+
+    .detail-saved {
+      color: #4ade80;
+      font-size: 0.8rem;
+      margin-left: 8px;
+      opacity: 1;
+      transition: opacity 0.5s ease;
+    }
+
+    .detail-saved.fade-out {
+      opacity: 0;
+    }
+
+    .detail-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+
+    .detail-table th {
+      text-align: left;
+      color: #9ca3af;
+      font-weight: 500;
+      padding: 6px 8px;
+      border-bottom: 1px solid #374151;
+    }
+
+    .detail-table td {
+      padding: 4px 8px;
+      border-bottom: 1px solid #1f2937;
+    }
+
+    .detail-table input,
+    .detail-table select {
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 4px;
+      color: #f9fafb;
+      font-size: 0.8rem;
+      padding: 4px 8px;
+      width: 100%;
+      font-family: inherit;
+    }
+
+    .detail-table input:focus,
+    .detail-table select:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+
+    .detail-table .col-type { width: 20%; }
+    .detail-table .col-in { width: 15%; }
+    .detail-table .col-out { width: 15%; }
+    .detail-table .col-text { width: 50%; }
+
+    .detail-textarea {
+      width: 100%;
+      min-height: 200px;
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 4px;
+      color: #f9fafb;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 0.8rem;
+      padding: 12px;
+      resize: vertical;
+    }
+
+    .detail-textarea:focus {
+      outline: none;
+      border-color: #3b82f6;
     }
   </style>
 </head>

@@ -6,9 +6,14 @@ import {
   handleScenariosRequest,
   handleGenerateRequest,
   handleStatusRequest,
+} from './generate-api.js';
+import {
   handleOpenFolderRequest,
   handleOpenFileRequest,
-} from './generate-api.js';
+  handleDemoDetailRequest,
+  handleSaveCaptionsRequest,
+  handleSaveVoScriptRequest,
+} from './file-api.js';
 
 interface DemoInfo {
   name: string;
@@ -90,6 +95,11 @@ function galleryPlugin(): Plugin {
       // Generation trigger
       server.middlewares.use('/api/generate/status', handleStatusRequest);
       server.middlewares.use('/api/generate', handleGenerateRequest);
+
+      // Detail view
+      server.middlewares.use('/api/demo', handleDemoDetailRequest);
+      server.middlewares.use('/api/save-captions', handleSaveCaptionsRequest);
+      server.middlewares.use('/api/save-vo-script', handleSaveVoScriptRequest);
 
       // File/folder open
       server.middlewares.use('/api/open-folder', handleOpenFolderRequest);

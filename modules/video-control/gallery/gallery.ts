@@ -1,4 +1,5 @@
 import { setupCaptionsForVideo } from './captions.js';
+import { mountDetailView, unmountDetailView } from './detail.js';
 
 async function postApi(endpoint: string, body: Record<string, string>): Promise<void> {
   await fetch(endpoint, {
@@ -246,10 +247,11 @@ function createCard(demo: DemoInfo, scenarioName: string | null): HTMLElement {
   const info = document.createElement('div');
   info.className = 'card-info';
 
-  const title = document.createElement('h2');
-  title.className = 'card-title';
-  title.textContent = demo.name;
-  info.appendChild(title);
+  const titleLink = document.createElement('a');
+  titleLink.className = 'card-title';
+  titleLink.href = `#/detail/${demo.name}`;
+  titleLink.textContent = demo.name;
+  info.appendChild(titleLink);
 
   const duration = document.createElement('span');
   duration.className = 'card-duration';
@@ -424,3 +426,35 @@ fetchScenarios()
 
 // Poll every 5 seconds
 setInterval(fetchAndRender, 5000);
+
+// Hash-based routing for detail view
+function handleRouteChange(): void {
+  const hash = location.hash;
+  const grid = document.getElementById('grid');
+  const header = document.querySelector('header');
+  const detailContainer = document.getElementById('detail-container') ?? createDetailContainer();
+  if (!grid) return;
+
+  const detailMatch = hash.match(/^#\/detail\/(.+)$/);
+  if (detailMatch) {
+    grid.style.display = 'none';
+    if (header) (header as HTMLElement).style.display = 'none';
+    detailContainer.style.display = 'block';
+    mountDetailView(decodeURIComponent(detailMatch[1]), detailContainer);
+  } else {
+    unmountDetailView(detailContainer);
+    detailContainer.style.display = 'none';
+    grid.style.display = '';
+    if (header) (header as HTMLElement).style.display = '';
+  }
+}
+
+function createDetailContainer(): HTMLElement {
+  const el = document.createElement('div');
+  el.id = 'detail-container';
+  document.body.appendChild(el);
+  return el;
+}
+
+window.addEventListener('hashchange', handleRouteChange);
+if (location.hash.startsWith('#/detail/')) handleRouteChange();

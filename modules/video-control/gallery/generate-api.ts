@@ -1,5 +1,5 @@
-import { readdirSync, existsSync, statSync } from 'node:fs';
-import { spawn, execFile, ChildProcess } from 'node:child_process';
+import { readdirSync } from 'node:fs';
+import { spawn, ChildProcess } from 'node:child_process';
 import { resolve } from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
@@ -330,80 +330,8 @@ function handleStatusRequest(
   sendJson(res, 200, lastStatus);
 }
 
-function isPathSafe(name: string): boolean {
-  return !name.includes('/') && !name.includes('..') && !name.includes('\\');
-}
-
-function handleOpenFolderRequest(
-  req: IncomingMessage,
-  res: ServerResponse,
-): void {
-  readBody(req)
-    .then((raw) => {
-      const body = JSON.parse(raw) as { scenario: string };
-      if (!body.scenario) {
-        sendJson(res, 400, { error: 'Missing "scenario" field' });
-        return;
-      }
-      if (!isPathSafe(body.scenario)) {
-        sendJson(res, 400, { error: 'Invalid scenario name' });
-        return;
-      }
-      const folderPath = resolve(MODULE_ROOT, 'dist/demos', body.scenario);
-      if (!existsSync(folderPath) || !statSync(folderPath).isDirectory()) {
-        sendJson(res, 404, { error: `Scenario folder not found: ${body.scenario}` });
-        return;
-      }
-      execFile('open', [folderPath], (err) => {
-        if (err) {
-          sendJson(res, 500, { error: err.message });
-          return;
-        }
-        sendJson(res, 200, { ok: true });
-      });
-    })
-    .catch((err: Error) =>
-      sendJson(res, 400, { error: err.message }),
-    );
-}
-
-function handleOpenFileRequest(
-  req: IncomingMessage,
-  res: ServerResponse,
-): void {
-  readBody(req)
-    .then((raw) => {
-      const body = JSON.parse(raw) as { scenario: string; file: string };
-      if (!body.scenario || !body.file) {
-        sendJson(res, 400, { error: 'Missing "scenario" or "file" field' });
-        return;
-      }
-      if (!isPathSafe(body.scenario) || !isPathSafe(body.file)) {
-        sendJson(res, 400, { error: 'Invalid scenario or file name' });
-        return;
-      }
-      const filePath = resolve(MODULE_ROOT, 'dist/demos', body.scenario, body.file);
-      if (!existsSync(filePath) || !statSync(filePath).isFile()) {
-        sendJson(res, 404, { error: `File not found: ${body.scenario}/${body.file}` });
-        return;
-      }
-      execFile('open', [filePath], (err) => {
-        if (err) {
-          sendJson(res, 500, { error: err.message });
-          return;
-        }
-        sendJson(res, 200, { ok: true });
-      });
-    })
-    .catch((err: Error) =>
-      sendJson(res, 400, { error: err.message }),
-    );
-}
-
 export {
   handleScenariosRequest,
   handleGenerateRequest,
   handleStatusRequest,
-  handleOpenFolderRequest,
-  handleOpenFileRequest,
 };
