@@ -116,12 +116,12 @@ export function useEditorDialogs(
       const sampleIndex = parseDeviceSampleIndex(name);
       if (sampleIndex === null) return null;
 
-      // Read sample name for progress display
-      const sampleHeader = await client.fetchSampleHeader(sampleIndex);
-      const sampleName = sampleHeader.SHNAME.trim();
+      // Open progress drawer immediately — don't wait for device round-trip
+      setSdsLoadingState({ open: true, sampleName: `Sample ${sampleIndex + 1}`, progress: null });
 
-      // Show progress drawer during SDS download
-      setSdsLoadingState({ open: true, sampleName, progress: null });
+      // Fetch header for name and loop metadata
+      const sampleHeader = await client.fetchSampleHeader(sampleIndex);
+      setSdsLoadingState((prev) => ({ ...prev, sampleName: sampleHeader.SHNAME.trim() }));
 
       const { header: sdsHeader, samples } = await client.receiveSampleViaSds(
         sampleIndex,
