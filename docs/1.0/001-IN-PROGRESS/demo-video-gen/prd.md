@@ -50,6 +50,7 @@ Demo videos for audiocontrol features are created manually, which means they go 
 - Port standalone videocontrol repo (video-core, text-overlay, phosphor-scope) into the audiocontrol monorepo under modules/video-control/
 - Gallery-triggered video regeneration (generate from the browser, no terminal required)
 - Text overlay rendering: ffmpeg burn-in (captioned MP4) and live HTML overlay in the gallery player
+- Fine-grained generation progress indicator showing pipeline steps, elapsed time, and ETA
 
 ### Out of Scope
 
