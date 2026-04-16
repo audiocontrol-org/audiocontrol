@@ -565,10 +565,43 @@ ASPACK was our invention based on MESA II's "ASPACK opcode 0x0D" reference — b
 3. **ASPACK can overwrite data** in existing samples but can't change the allocation or SLNGTH
 4. **The correct approach is full SDS with optimized batching** — match what MESA does
 
-Options:
-- Improve our SDS batching throughput (currently ~2.2 KB/s with 20 packets per CDB)
-- Investigate the SCSI Plug's BULK handler to see what SCSI optimization it uses
-- Send more packets per CDB, or use larger SCSI transfer blocks
+### SCSI Plug BULK Handler — Deeper Analysis (Session 9)
+
+Disassembled the full `SendData` function (1068 bytes). The BULK path does NOT send standard SDS data packets. Instead:
+
+1. It checks that the data is Akai SysEx (`F0 47 cc ... 48`)
+2. It checks if the opcode is `0x0B` (SDATA) — the sample data write opcode
+3. It extracts offset and length from the SysEx parameters (bytes 0x0b-0x0e)
+4. It calls `SMSendData` (JSR $0000106E) to transmit the data via SCSI
+
+### BuildSampleDataRequest — Message Format
+
+From disassembly of `BuildSampleDataRequest` (178 bytes at 0x06dc5b):
+
+```
+F0 47 cc 0B 48 ss ss oo oo oo oo nn nn nn nn 01 00 F7
+                ^^                             ^^
+                SDATA opcode                   interval=1
+
+  ss ss     — sample number (7-bit pair, LE)
+  oo oo oo oo — offset from start of sample (4 × 7-bit, LE)
+  nn nn nn nn — number of samples (4 × 7-bit, LE)
+  01        — interval mode (single)
+  00        — reserved
+```
+
+This is a **proprietary Akai SDATA command with offset/length parameters** — different from the header-only SDATA we use for writing sample metadata. With offset and length, it becomes a sample data write command.
+
+### The Missing Piece: Where Does the Audio Data Go?
+
+The `BuildSampleDataRequest` message is only 18 bytes — it contains no audio data. The BULK handler sends this header, then presumably sends the actual PCM data in a separate SCSI transfer. The data likely follows in the same SCSI MIDI send (CDB 0x0C) as a larger payload, or in a subsequent CDB.
+
+Need to investigate: does the SCSI Plug send the header + data as one large CDB write, or as separate CDB writes?
+
+### Next Steps
+1. Test SDATA with offset/length against the S3000XL — does it accept the command?
+2. Determine how the PCM data follows the header (same CDB or separate?)
+3. If SDATA-with-offset works, it bypasses the SDS length limit entirely — no SDS needed for data transfer, only for initial sample creation
 
 ### Test Files
 - `test-aspack-slngth.ts` — original multi-theory test (RSLIST parser bug, needs update)
