@@ -15,6 +15,7 @@ import { writeSampleField } from '@/lib/sample-writers';
 import { ErrorBanner } from '@/components/ui';
 import { CacheAge } from '@/components/ui/CacheAge';
 import { S3kKitOutputConfig } from '@/components/library/S3kKitOutputConfig';
+import { formatBytes } from '@audiocontrol/editor-core';
 
 export function SamplesPage(): JSX.Element {
   const { client, isConnected } = useS3000xlClient();
@@ -365,6 +366,39 @@ export function SamplesPage(): JSX.Element {
         hasLibrary={false}
         onConfirm={editorDialogs.handleSaveTargetConfirm}
         onCancel={editorDialogs.handleSaveTargetCancel}
+      />
+
+      <SteppedProgressDrawer
+        open={editorDialogs.sdsLoadingState.open}
+        title={editorDialogs.sdsLoadingState.direction === 'upload'
+          ? `Saving "${editorDialogs.sdsLoadingState.sampleName}"`
+          : `Loading "${editorDialogs.sdsLoadingState.sampleName}"`}
+        onClose={editorDialogs.handleSdsLoadingCancel}
+        onCancel={editorDialogs.handleSdsLoadingCancel}
+        steps={[{
+          id: editorDialogs.sdsLoadingState.direction === 'upload' ? 'upload' : 'download',
+          label: editorDialogs.sdsLoadingState.direction === 'upload'
+            ? 'Uploading sample to device'
+            : 'Downloading sample from device',
+          status: editorDialogs.sdsLoadingState.progress ? 'active' : 'pending',
+          progress: editorDialogs.sdsLoadingState.progress && editorDialogs.sdsLoadingState.progress.bytesTotal > 0
+            ? Math.round((editorDialogs.sdsLoadingState.progress.bytesSent / editorDialogs.sdsLoadingState.progress.bytesTotal) * 100)
+            : undefined,
+          detail: (() => {
+            const { progress, startTime, direction } = editorDialogs.sdsLoadingState;
+            if (!progress) return direction === 'upload' ? 'Preparing upload...' : 'Connecting to device...';
+            const bytes = `${formatBytes(progress.bytesSent)} / ${formatBytes(progress.bytesTotal)}`;
+            const elapsed = startTime ? Math.round((Date.now() - startTime) / 1000) : 0;
+            const bytesPerSec = elapsed > 0 ? progress.bytesSent / elapsed : 0;
+            const remaining = bytesPerSec > 0 ? Math.round((progress.bytesTotal - progress.bytesSent) / bytesPerSec) : 0;
+            const elapsedStr = elapsed > 0 ? `${elapsed}s elapsed` : '';
+            const etaStr = remaining > 0 ? `~${remaining}s remaining` : '';
+            const timeStr = [elapsedStr, etaStr].filter(Boolean).join(' \u2022 ');
+            return timeStr ? `${bytes} \u2022 ${timeStr}` : bytes;
+          })(),
+        }]}
+        isComplete={false}
+        hasError={false}
       />
     </div>
   );

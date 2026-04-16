@@ -1,0 +1,17 @@
+; GetSampleData__12CAkaiSamplerFsllPs
+; File offset: 0x06ad11 - 0x06ade1 (208 bytes)
+; Source: sampler-editor-rsrc.bin
+
+  06ad11: 4e 56 fe fc 48 e7 1e 30 26 6e 00 08 26 2e 00 0e  NV..H..0&n..&...
+  06ad21: 2c 2e 00 12 24 6e 00 16 2f 06 2f 03 3f 2e 00 0c  ,...$n.././.?...
+  06ad31: 1f 2b 00 0e 48 6e ff 00 2f 0b 20 57 22 68 00 02  .+..Hn../. W"h..
+  06ad41: 22 69 00 2c 4e 91 3a 00 4f ef 00 14 66 00 00 88  "i.,N.:.O...f...
+  06ad51: 2f 3c 42 55 4c 4b 48 78 00 12 48 6e ff 00 2f 2b  /<BULKHx..Hn../+
+  06ad61: 00 a2 20 57 22 50 22 69 00 14 4e 91 3a 00 4f ef  .. W"P"i..N.:.O.
+  06ad71: 00 10 66 20 48 6e fe fc 42 27 30 6b 00 0c 2f 08  ..f Hn..B'0k../.
+  06ad81: 2f 0b 20 57 22 68 00 02 22 69 00 cc 4e 91 3a 00  /. W"h.."i..N.:.
+  06ad91: 4f ef 00 0e 4a 45 66 3e 2c 2e fe fc e0 8e e0 8e  O...JEf>,.......
+  06ada1: e0 8e ee 8e dc ae fe fc e2 86 76 00 60 24 20 03  ..........v.`$ .
+  06adb1: d0 80 38 32 08 00 30 04 e1 48 02 40 ff 00 32 04  ..82..0..H.@..2.
+  06adc1: e0 41 02 41 00 ff 82 40 20 03 d0 80 35 81 08 00  .A.A...@ ...5...
+  06add1: 52 83 b6 86 6d d8 30 05 4c df 0c 78 4e 5e 4e 75  R...m.0.L..xN^Nu

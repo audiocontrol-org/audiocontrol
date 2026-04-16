@@ -1,0 +1,24 @@
+; ImportSampleData__14CSamplerModuleFP21MESAAudioExportHeader
+; File offset: 0x02e549 - 0x02e67d (308 bytes)
+; Source: sampler-editor-rsrc.bin
+
+  02e549: 4e 56 ff 80 48 e7 1c 30 2a 2e 00 08 26 6e 00 0c  NV..H..0*...&n..
+  02e559: 78 00 2f 05 4e ba a1 da 24 48 20 0a 58 4f 67 00  x./.N...$H .XOg.
+  02e569: 01 06 76 00 60 00 00 f6 70 30 c1 c3 0c b2 41 55  ..v.`...p0....AU
+  02e579: 44 4f 08 04 66 00 00 e4 70 30 c1 c3 20 32 08 08  DO..f...p0.. 2..
+  02e589: b0 ab 00 70 66 00 00 d4 70 30 c1 c3 4a b2 08 0c  ...pf...p0..J...
+  02e599: 67 00 00 c0 41 ec 56 58 43 ee ff f6 22 d8 22 d8  g...A.VXC...".".
+  02e5a9: 32 d8 41 ee ff 80 2d 48 ff fc 48 6e ff f6 70 30  2.A...-H..Hn..p0
+  02e5b9: c1 c3 20 72 08 0c 4e 90 4a 6e ff fa 58 4f 66 00  .. r..N.Jn..XOf.
+  02e5c9: 00 8c 41 ec 56 48 43 ee ff 84 22 d8 22 d8 22 d8  ..A.VHC...".".".
+  02e5d9: 22 d8 2d 6e ff 80 ff 84 42 a7 3f 3c 00 01 48 6e  ".-n....B.?<..Hn
+  02e5e9: ff 84 48 6e ff 94 3f 3c 00 06 a9 ea 4a 2e ff 94  ..Hn..?<....J...
+  02e5f9: 67 56 41 ec 56 3e 43 ee ff ec 22 d8 22 d8 32 d8  gVA.V>C...".".2.
+  02e609: 2d 4b ff f2 41 ee ff 94 5c 88 27 48 00 5c 48 6e  -K..A...\.'H.\Hn
+  02e619: ff ec 70 30 c1 c3 20 72 08 0c 4e 90 4a 6e ff f0  ..p0.. r..N.Jn..
+  02e629: 58 4f 66 1e 70 30 c1 c3 20 4a d1 c0 48 68 00 04  XOf.p0.. J..Hh..
+  02e639: 2f 0b 2f 05 4e b9 00 00 6d 2c 38 00 4f ef 00 0c  /./.N...m,8.O...
+  02e649: 60 28 38 2e ff f0 60 22 70 00 60 20 38 2e ff fa  `(8...`"p.` 8...
+  02e659: 60 18 37 7c d5 06 00 76 60 10 52 43 30 43 b1 d2  `.7|...v`.RC0C..
+  02e669: 6d 00 ff 06 60 04 38 3c d5 06 30 04 4c df 0c 38  m...`.8<..0.L..8
+  02e679: 4e 5e 4e 75                                      N^Nu

@@ -69,7 +69,7 @@ export function useSampleTransfer(client: S3000xlClientInterface | null) {
   );
 
   const receiveFromDevice = useCallback(
-    async (sampleNumber: number): Promise<SdsReceiveResult | null> => {
+    async (sampleNumber: number, signal?: AbortSignal): Promise<SdsReceiveResult | null> => {
       if (!client) {
         throw new Error('Cannot receive sample: client is not connected');
       }
@@ -88,6 +88,7 @@ export function useSampleTransfer(client: S3000xlClientInterface | null) {
             console.log(`[S3000XL SDS] receive ${progress.packetsSent}/${progress.packetsTotal}`);
             setTransferState((prev) => ({ ...prev, progress }));
           },
+          signal,
         );
         setTransferState(INITIAL_STATE);
         return result;

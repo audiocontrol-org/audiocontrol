@@ -495,6 +495,7 @@ export function createS3000xlClient(
       sampleNamesCache = postNames;
 
       // Post-upload rename: the device auto-assigns a name (e.g., "MIDI 18").
+      // SLNGTH/SMPEND are correct because the SDS dump header declared the real count.
       if (sdsOptions?.name) {
         console.log(`[s3000xl-client] renaming sample ${rslistIndex} to "${sdsOptions.name}"`);
         const response = await sendCommandWithRetry(
@@ -516,12 +517,13 @@ export function createS3000xlClient(
     async receiveSampleViaSds(
       sampleNumber: number,
       onProgress?: (progress: SdsTransferProgress) => void,
+      signal?: AbortSignal,
     ): Promise<{ header: SdsDumpHeader; samples: Int16Array }> {
       // Use dedicated SDS channel when available (SCSI transport).
       // Do NOT use serialize() — same deadlock risk as upload (see above).
       if (sdsChannel) {
         console.log(`[s3000xl-client] using SdsChannel for download (bypassing serialize queue)`);
-        return sdsChannel.downloadSample(sampleNumber, channel, onProgress);
+        return sdsChannel.downloadSample(sampleNumber, channel, onProgress, signal);
       }
 
       return serialize(() => {

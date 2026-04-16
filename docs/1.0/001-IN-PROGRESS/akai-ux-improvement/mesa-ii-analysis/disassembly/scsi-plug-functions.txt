@@ -1,0 +1,53 @@
+# SCSI Plug 2.1.2 — Function Index
+# Source: scsi-plug-rsrc.bin (12053 bytes)
+# A4 data base: file offset $2BD2
+# Address mapping: file_offset = abs_addr + $061E
+
+0x070c - 0x07a4  (  152 bytes)  main
+0x07ac - 0x07fa  (   78 bytes)  __ct__11CMESAPlugInFv
+0x0812 - 0x083e  (   44 bytes)  __dt__11CMESAPlugInFv
+0x0856 - 0x0868  (   18 bytes)  
+0x089a - 0x09a2  (  264 bytes)  
+0x09d2 - 0x0a2e  (   92 bytes)  
+0x0a5e - 0x0ab6  (   88 bytes)  
+0x0ae6 - 0x0b20  (   58 bytes)  BusyCursor__11CMESAPlugInFUc
+0x0b40 - 0x0b76  (   54 bytes)  KeyIsPressed__11CMESAPlugInFUs
+0x0b98 - 0x0ba8  (   16 bytes)  GetSockets__11CMESAPlugInFv
+0x0bc6 - 0x0c74  (  174 bytes)  __ct__9CSCSIPlugFv
+0x0c8a - 0x0cce  (   68 bytes)  __dt__9CSCSIPlugFv
+0x0ce4 - 0x0d62  (  126 bytes)  
+0x0d8e - 0x0d96  (    8 bytes)  Open__9CSCSIPlugFv
+0x0dac - 0x0db4  (    8 bytes)  Close__9CSCSIPlugFv
+0x0dca - 0x0dd2  (    8 bytes)  DoAboutToQuit__9CSCSIPlugFPl
+0x0df2 - 0x121e  ( 1068 bytes)  SendData__9CSCSIPlugFP7IP_Data
+0x1240 - 0x12cc  (  140 bytes)  
+0x12f2 - 0x1374  (  130 bytes)  
+0x139a - 0x15e4  (  586 bytes)  
+0x160c - 0x16d8  (  204 bytes)  
+0x1700 - 0x1b00  ( 1024 bytes)  ChooseSCSI__9CSCSIPlugFUl
+0x1b1c - 0x1ba6  (  138 bytes)  __ct__10CSCSIUtilsFv
+0x1bbe - 0x1d1e  (  352 bytes)  
+0x1d4a - 0x1da2  (   88 bytes)  Inquiry__10CSCSIUtilsFccPUcUl
+0x1dc2 - 0x1dfc  (   58 bytes)  TestUnitReady__10CSCSIUtilsFs
+0x1e1c - 0x1e96  (  122 bytes)  WaitUntilReady__10CSCSIUtilsFs
+0x1eb8 - 0x1ef2  (   58 bytes)  ResetBus__10CSCSIUtilsFc
+0x1f0e - 0x1fac  (  158 bytes)  IdentifyBusses__10CSCSIUtilsFv
+0x2150 - 0x2196  (   70 bytes)  __ct__7CDialogFsPv
+0x21ac - 0x21ea  (   62 bytes)  __dt__7CDialogFv
+0x21fe - 0x2220  (   34 bytes)  Show__7CDialogFv
+0x2234 - 0x226c  (   56 bytes)  Draw__7CDialogFv
+0x2280 - 0x22d0  (   80 bytes)  Do__7CDialogFv
+0x2524 - 0x2550  (   44 bytes)  GetItemText__7CDialogFsPUc
+0x256e - 0x25a4  (   54 bytes)  GetItemValue__7CDialogFs
+0x25c0 - 0x2606  (   70 bytes)  ToggleCheckBox__7CDialogFs
+0x2624 - 0x2636  (   18 bytes)  SetIsMovable__7CDialogFUc
+0x2652 - 0x2662  (   16 bytes)  IsMovable__7CDialogFv
+0x267a - 0x2690  (   22 bytes)  SetTitle__7CDialogFPUc
+0x26aa - 0x270e  (  100 bytes)  __ct__11CSCSIDialogFsPv
+0x2728 - 0x2762  (   58 bytes)  __dt__11CSCSIDialogFv
+0x277a - 0x27d6  (   92 bytes)  SetLine__11CSCSIDialogFsPUc
+0x27f4 - 0x281c  (   40 bytes)  DoItemHit__11CSCSIDialogFs
+0x283a - 0x2908  (  206 bytes)  DoDraw__11CSCSIDialogFv
+0x2922 - 0x292c  (   10 bytes)  DoKeyPress__11CSCSIDialogFcs
+0x294c - 0x2968  (   28 bytes)  DoNull__11CSCSIDialogFv
+0x2982 - 0x2a58  (  214 bytes)  

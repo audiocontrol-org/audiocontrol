@@ -80,6 +80,7 @@ export interface SdsChannel {
     sampleNumber: number,
     channel: number,
     onProgress?: (progress: SdsTransferProgress) => void,
+    signal?: AbortSignal,
   ): Promise<{ header: SdsDumpHeader; samples: Int16Array }>;
 }
 

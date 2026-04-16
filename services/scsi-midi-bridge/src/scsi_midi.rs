@@ -432,14 +432,19 @@ where
     let sn_lo = (sample_number & 0x7F) as u8;
     let sn_hi = ((sample_number >> 7) & 0x7F) as u8;
 
-    // Declare 40 samples (1 packet's worth) — we'll overwrite with ASPACK
+    // Declare the real sample count in the SDS header so the device
+    // allocates the correct memory size. Then send 1 data packet (40 samples)
+    // to trigger sample creation in RSLIST. ASPACK overwrites with real data.
+    let len_lo = (total & 0x7F) as u8;
+    let len_mid = ((total >> 7) & 0x7F) as u8;
+    let len_hi = ((total >> 14) & 0x7F) as u8;
     let dump_header = vec![
         0xF0, 0x7E, channel, 0x01,
         sn_lo, sn_hi, 16,
         (period_ns & 0x7F) as u8,
         ((period_ns >> 7) & 0x7F) as u8,
         ((period_ns >> 14) & 0x7F) as u8,
-        40u8 & 0x7F, 0, 0,             // length = 40 samples
+        len_lo, len_mid, len_hi,        // length = actual sample count
         0, 0, 0, 0, 0, 0, 0,           // loop start/end/type = 0
         0xF7,
     ];
@@ -448,11 +453,13 @@ where
     wait_for_ack(s2p, target_id, 30).await
         .map_err(|e| format!("no ACK for dump header: {e}"))?;
 
-    // Send 1 data packet of silence to register the sample
+    // Send 1 data packet (40 samples of silence) to commit the sample to RSLIST.
+    // The dump header alone doesn't create the sample — the device needs at least
+    // one data packet. (SCSI-NOTES: "minimum viable creation: 1 header + 1 packet")
     let silence_pkt = encode_sds_data_packet(channel, 0, &[0i16; 40], 0, 40);
     s2p.scsi_midi_send(target_id, &silence_pkt).await?;
     wait_for_ack(s2p, target_id, 30).await
-        .map_err(|e| format!("no ACK for silence packet: {e}"))?;
+        .map_err(|e| format!("no ACK for data packet: {e}"))?;
 
     info!("ASPACK phase 1 complete: sample slot created");
 

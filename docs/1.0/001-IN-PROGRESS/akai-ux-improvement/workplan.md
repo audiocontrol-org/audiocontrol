@@ -342,7 +342,7 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 - [x] Add "Open in Loop Editor", "Open in Sample Editor", "Open in Chopper" actions to SampleList hover menu
 - [x] Implement device sample loading: download audio via SDS, convert to Int16Array
 - [x] Wire device-origin editor dialogs in SamplesPage (reuse useEditorDialogsCore pattern)
-- [ ] Show SDS download progress before editor opens (deferred — SDS download starts but no dedicated progress UI yet)
+- [x] Show SDS download progress before editor opens
 
 ### Acceptance Criteria
 
@@ -362,7 +362,7 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 - [x] Implement "Save to Device" handler: upload modified audio via SDS (overwrite original slot)
 - [x] Implement "Save to Device as New" handler: upload to new slot with name suffix
 - [x] For loop-point-only edits, write sample header directly (skip SDS re-upload)
-- [ ] Show SDS upload progress during save (deferred — SDS progress callbacks exist but no dedicated UI yet)
+- [x] Show SDS upload progress during save
 
 ### Acceptance Criteria
 
@@ -403,6 +403,8 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 - [ ] Write Playwright e2e tests for library→editor→device flow (deferred — requires library + device setup in single test)
 - [ ] Handle edge cases: sample too large, SDS timeout, device full (deferred to follow-up)
 - [ ] Add loading states and error recovery (deferred to follow-up)
+- [x] Show device sample length and sample rate in library preview panel (fetch header on selection)
+- [x] Show SDS upload progress in SaveTargetDialog during save-to-device
 
 ### Acceptance Criteria
 

@@ -1,0 +1,5 @@
+# SCSI Plug Transfer Mode Dispatch Table
+# File offset: 0x0e58
+
+# Format: 4-char tag + 2-byte offset
+

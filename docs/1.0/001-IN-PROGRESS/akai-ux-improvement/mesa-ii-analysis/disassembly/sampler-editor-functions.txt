@@ -1,0 +1,3 @@
+# Sampler Editor 2.3 — Function Index
+# Source: sampler-editor-rsrc.bin (506909 bytes)
+

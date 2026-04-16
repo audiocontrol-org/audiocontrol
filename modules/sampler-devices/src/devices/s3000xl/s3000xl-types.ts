@@ -101,6 +101,7 @@ export interface S3000xlClientInterface {
   receiveSampleViaSds(
     sampleNumber: number,
     onProgress?: (progress: SdsTransferProgress) => void,
+    signal?: AbortSignal,
   ): Promise<{ header: SdsDumpHeader; samples: Int16Array }>;
 
   /**

@@ -470,6 +470,244 @@ Always verify the sampler's protocol mode before running SDS operations. S3000 m
 
 ---
 
+## 2026-04-16: ASPACK Upload SLNGTH Investigation
+
+### Problem
+Samples uploaded via ASPACK play only the first ~40-48 samples. SLNGTH in the sample header stays at the value from the SDS stub creation, regardless of how much data ASPACK writes.
+
+### Theories
+
+All tested via raw SCSI CDBs (`test-aspack-slngth.ts`) — no client library.
+
+**Theory A: Real length in dump header, no data packet, ASPACK fills.**
+- Hypothesis: Dump header allocates memory. ASPACK fills data. No data packet needed.
+- Session 8 result: Header ACK'd, ASPACK REPLY'd, but sample NOT created in RSLIST.
+- Conclusion: **Dump header alone does not create a sample.** Data packet required.
+
+**Theory B: 40-sample stub header + data packet, ASPACK fills, SDATA patches SLNGTH.**
+- Hypothesis: Create small sample via SDS, fill with ASPACK, patch SLNGTH via SDATA.
+- Session 8 result: Sample created. ASPACK FAILED (no REPLY). SDATA rejected (error code 1).
+- Session 8 bugs: SLNGTH parsing offset was wrong (`5+59` instead of `59`). Fixed session 9.
+- Open: Was ASPACK failure due to wrong index? Does device need commit time before ASPACK?
+- Open: Does error code 1 mean SLNGTH can't exceed allocated memory?
+
+**Theory C: Real length in header + 40-sample data packet, then ASPACK.**
+- Hypothesis: Declare real count in header (allocates full memory), send 40-sample data packet (triggers creation). SLNGTH should already be correct from header.
+- Not yet tested.
+- Risk: Device may NAK the data packet if declared length doesn't match packet count.
+
+### Resolved Issues
+- SLNGTH nibble offset in raw test: `raw[59]` is correct (includes 5-byte SysEx header). Was using `5+59=64`.
+- midiPoll: s2p returns 3 bytes, not 4. Parser fixed.
+
+### Session 9 Results (corrected RSLIST parser)
+
+Previous session's test failures were ALL caused by a bad RSLIST parser (used `(len-6)/24` instead of the 2-byte count at offset 5). The device had 7+ samples, not 3. Tests were overwriting existing samples, not creating new ones.
+
+**Theory B (40-sample stub) — CONFIRMED WORKING:**
+- 40-sample header + data packet → sample created (count increased)
+- SLNGTH = 48 (device rounds up from 40 to internal block alignment)
+- ASPACK write to new sample → REPLY received (was hidden in buffer padding)
+- ASPACK does NOT update SLNGTH — it stays at 48
+
+**Theory C (real length header + data packet) — FAILED:**
+- Header ACK'd (WAIT then ACK), data packet ACK'd
+- Sample NOT created — device waits for full SDS transfer to complete
+- The SDS transfer is open-ended until all declared samples are received
+
+**SDATA SLNGTH write — READ ONLY:**
+- Attempted writing SLNGTH=20 to a sample with SLNGTH=48 via SDATA
+- No REPLY received, SLNGTH unchanged on readback
+- SLNGTH is controlled internally by the device, not writable via SDATA
+
+### Proven Facts
+1. SDS dump header declares length → device allocates memory AND expects that many samples via SDS packets
+2. Device won't commit to RSLIST until the full SDS transfer completes
+3. ASPACK writes data at arbitrary offsets but doesn't change SLNGTH
+4. SLNGTH is read-only via SDATA — can't be patched after creation
+5. The only way to set SLNGTH is through the SDS dump header at creation time
+
+### Remaining Approaches
+1. **Send full SDS transfer at declared length, then overwrite with ASPACK** — defeats ASPACK speed advantage
+2. **Find another way to create samples with correct SLNGTH** — MESA's `SendAudioBufferToSampler` does it somehow, but we haven't disassembled that method
+3. **Investigate whether ASPACK can grow the allocation** — untested; ASPACK writes beyond SLNGTH succeed but the data may not be playable
+4. **Send SDS at maximum batch speed** — the batched SDS path (20 packets per CDB) runs at ~2.2 KB/s; for short samples this may be acceptable
+
+### 2026-04-16 13:00 PDT — MESA II Disassembly: SendAudioBufferToSampler
+
+Extracted `Sampler Editor 2.3` resource fork (506909 bytes) from Mac OS 9 disk image via hfsutils. Disassembled `SendAudioBufferToSampler` (0x030713 - 0x030cc5, 1458 bytes of 68k code). Binaries and disassembly archived in `docs/1.0/001-IN-PROGRESS/akai-ux-improvement/mesa-ii-analysis/`.
+
+**Observations (from static disassembly — not yet validated against hardware):**
+
+- **No ASPACK (0x0D) opcode push** found in the function body.
+- **4 instances of `MOVE.B #$01,-(SP)`** — 0x01 is the SDS dump header opcode. This suggests MESA builds SDS headers, but the exact context of each push is not yet fully traced.
+- **`MOVE.L #'BULK',-(SP)`** — passes the 'BULK' tag to the SCSI Plug's `SendData` method.
+- **No explicit SDS data packet (0x02) push** — the BULK handler may construct data packets internally, or the data may be sent through a different mechanism.
+
+**SCSI Plug dispatch table** (at 0x0e58 in scsi-plug-rsrc.bin — confirmed by hex inspection):
+
+| Tag | Offset | Purpose (inferred) |
+|-----|--------|---------|
+| BOFF → SYSX | 0x04 | Possibly normal SysEx mode |
+| BOFF | 0x1a | Possibly buffer-off cleanup |
+| BULK | 0x30 | Bulk data transfer |
+| MIDI | 0x2A2 | Possibly raw MIDI |
+| SRAW | 0x46 | Possibly raw SysEx without handshake |
+| SYSX | 0x246 | Possibly SysEx with handshake |
+
+**Tentative interpretation:** MESA may send a complete SDS transfer using the BULK handler for optimized throughput. However, this is based on opcode scanning — the full control flow has not been traced through all branches.
+
+### 2026-04-16 13:30 PDT — SCSI Plug BULK Handler Analysis
+
+Disassembled the full `SendData` function (1068 bytes). Traced the BULK code path:
+
+**Observations (from static analysis — needs hardware validation):**
+
+1. The BULK path appears to check that the data starts with Akai SysEx framing (`F0` at byte 0, `0x47` at byte 1, `0x48` at byte 4).
+2. It appears to check byte 3 (the opcode) against `0x0B` (SDATA). If the opcode is `0x0B`, it enters a code path that reads bytes 0x0b-0x0e from the data — these would be offset/length parameters if the message follows `BuildSampleDataRequest` format.
+3. It calls `JSR $0000106E` which appears to be the raw SCSI send function (`SMSendData` based on address proximity to its name string at 0x16dc).
+
+**Caution:** The 68k decoder is incomplete (many instructions show as `.word`). The control flow between the dispatch table match and the actual send is not fully traced. The interpretation that "BULK sends SDATA with offset/length" is a hypothesis, not proven.
+
+### 2026-04-16 13:35 PDT — BuildSampleDataRequest Message Format
+
+From disassembly of `BuildSampleDataRequest` (178 bytes at 0x06dc5b). This function's name and parameter types are known from the THINK C name string.
+
+**Observed encoding (high confidence — the byte writes are explicit in the disassembly):**
+
+```
+F0 47 cc 0B 48 ss ss oo oo oo oo nn nn nn nn 01 00 F7
+                ^^                             ^^
+                SDATA opcode                   interval byte
+
+  ss ss         — sample number (7-bit pair, LE)
+  oo oo oo oo   — offset (4 × 7-bit bytes, LE)
+  nn nn nn nn   — count (4 × 7-bit bytes, LE)
+  01            — interval mode? (literal 0x01 written at offset 0x0f)
+  00            — literal 0x00 at offset 0x10
+  F7            — SysEx end
+```
+
+This message is 18 bytes and contains NO audio data. It appears to be a request/command header.
+
+**Open question:** How does the actual PCM audio data get transmitted? Possibilities:
+1. The BULK handler appends PCM data to the same CDB 0x0C write (making one large SCSI transfer)
+2. The PCM data follows in a subsequent CDB 0x0C write
+3. The PCM data is sent through a completely different mechanism (direct SCSI block write?)
+
+**NOT YET TESTED against hardware.**
+
+### 2026-04-16 14:00 PDT — Hardware Test: SDATA with offset/length
+
+Sent the `BuildSampleDataRequest` message format to the S3000XL via SCSI MIDI (CDB 0x0C). Test file: `test-sdata-bulk-probe.ts`.
+
+**Results:**
+- SDATA with offset/length (0x0B opcode + sample#/offset/count): **no response**. Device ignores it completely.
+- Tried with CDB flag 0x00 and 0x80: no response either way.
+- Normal RSDATA (0x0A, header read): works fine, 230 bytes returned.
+
+**Interpretation:** The SDATA-with-offset-length command does not work over the SCSI MIDI channel (CDB 0x0C/0x0D/0x0E). This is consistent with the earlier finding that RSPACK (0x0C) also doesn't work over SCSI MIDI. Both are sample DATA commands (as opposed to sample HEADER commands), and both are silent.
+
+**This suggests MESA's BULK handler does NOT send sample data through CDB 0x0C (MIDI send).** It may use a different CDB entirely — possibly a vendor-specific CDB for direct memory/data transfer, or it may layer the data differently (e.g., appending PCM data to the SysEx message itself before sending via CDB 0x0C).
+
+### Open Questions (as of 2026-04-16 14:00 PDT)
+1. How does MESA's SCSI Plug actually send the PCM data in BULK mode? The `SMSendData` function uses CDB 0x0C — but does it send the 18-byte header alone, or does it build a larger payload that includes the PCM data inline?
+2. Could the data be nibble-encoded PCM appended to the SDATA SysEx message before the F7 terminator? (Similar to how ASPACK sends nibble-encoded data in a single SysEx message.)
+3. Is there a completely separate SCSI command (not CDB 0x0C) for bulk data?
+
+### 2026-04-16 14:15 PDT — SendAudioBufferToSampler: Two-Phase Send
+
+Closer analysis of `SendAudioBufferToSampler` hex dump reveals TWO distinct send operations:
+
+1. **BULK send** (at ~0x0308af): `MOVE.L #'BULK',-(SP)` followed by vtable call to `SendData`. This likely sends the BuildSampleDataRequest header or an SDS dump header.
+
+2. **SRAW send** (at ~0x030a53): `MOVE.L #'SRAW',-(SP)` followed by vtable call to `SendData`. SRAW = "raw SysEx without handshake" (from dispatch table). This appears to send actual PCM data in a fire-and-forget mode.
+
+The function appears to loop (branch back visible around 0x030a83), suggesting it sends multiple SRAW chunks of PCM data.
+
+**Hypothesis (not yet tested):** The upload flow is:
+1. BULK: send BuildSampleDataRequest header (tells device: "I'm about to write N samples at offset O")
+2. SRAW (loop): send PCM data chunks as raw SysEx, no handshake per chunk
+
+**However:** our probe showed the BuildSampleDataRequest header gets no response from the device via SCSI MIDI. Possible explanations:
+- The device processes it silently (no response expected — SRAW mode means no handshake)
+- The header and data need to be sent together in a specific way
+- The SRAW path uses a different SCSI mechanism than CDB 0x0C
+
+**Also noted:** there appear to be 4 `MOVE.B #$01,-(SP)` (SDS header opcode) pushes in the function. These may correspond to different branches — e.g., one for SDS-based upload (MIDI path) and another for SCSI-based upload (BULK+SRAW path). The function may have separate code paths for MIDI vs SCSI.
+
+### 2026-04-16 14:30 PDT — SRAW Data Format + Hardware Tests
+
+**Disassembly finding:** The inner loop in `SendAudioBufferToSampler` (0x0309f3-0x030a35) does byte-swapping of 16-bit samples to big-endian order. However, this may be for a different path — see hardware test results below.
+
+**SCSI Plug SRAW handler** (0x0f40): calls `SMSendData` (same as other modes). The difference from SYSX appears to be the flag byte, not the transport mechanism. All data goes through CDB 0x0C.
+
+### 2026-04-16 14:45 PDT — Hardware Test Results
+
+**Test: SDATA with various data formats (test-sdata-bulk-write.ts)**
+
+| Format | Response | Notes |
+|--------|----------|-------|
+| SDATA header only (18 bytes) | No response | Device ignores it |
+| Header + raw BE PCM (separate CDBs) | No response | Neither header nor data |
+| Header + raw BE PCM (single CDB) | No response | Combined doesn't help |
+| **SDATA header + nibble-encoded PCM (ASPACK-style)** | **REPLY (0x16)** | **Device accepts it!** |
+
+**Key finding: SDATA (0x0B) with nibble-encoded PCM works — same encoding as ASPACK (0x0D).**
+
+The format that got a REPLY:
+```
+F0 47 cc 0B 48 [sample# 7-bit] [offset 4×7-bit] [count 4×7-bit] [nibble PCM...] F7
+```
+This is identical to ASPACK except the opcode is 0x0B instead of 0x0D.
+
+**BUT: SDATA nibble write does NOT update SLNGTH.**
+
+| | Before | After |
+|---|---|---|
+| SLNGTH | 256 | 256 (unchanged) |
+| Write count | 500 samples | — |
+| REPLY | Yes (0x16) | — |
+
+SDATA 0x0B with nibble data behaves identically to ASPACK 0x0D: writes data successfully, doesn't change SLNGTH. **Both are data-write commands that operate within the existing allocation.**
+
+### 2026-04-16 15:00 PDT — Revised Understanding
+
+MESA's upload flow probably IS full SDS. The BULK mode in the SCSI Plug likely optimizes the SDS data packet transmission (batching, larger CDB transfers), not replaces it with a different protocol. The SDATA/SRAW path we traced may be for a different purpose (reading data, or an alternate mode).
+
+The 4 `MOVE.B #$01` (SDS header opcode) pushes in `SendAudioBufferToSampler` are likely the actual upload mechanism:
+1. Build SDS dump header with real length
+2. Send via BULK mode (which optimizes the SCSI layer for the full SDS packet stream)
+3. The BULK handler sends the SDS data packets internally
+
+### Evidence Summary (as of 2026-04-16 15:00 PDT)
+
+Strong evidence (multiple tests, consistent results):
+- ASPACK and SDATA nibble writes are accepted by device (REPLY received) but don't change SLNGTH
+- 40-sample SDS stub creates samples with SLNGTH ~48
+- SDATA header-only writes to SLNGTH field have no effect (field appears read-only via SDATA)
+- Device doesn't commit new samples from SDS dump header alone — at least one data packet is needed
+- Device doesn't commit new samples when header declares a large count and only one packet is sent
+
+Not yet tested:
+- Whether there's a different SDATA format (e.g., with different interval byte or flags) that updates SLNGTH
+- Whether sending more SDS data packets (but not all) triggers an earlier commit
+- Whether the SCSI Plug's BULK handler uses something beyond CDB 0x0C/0x0D/0x0E that we haven't replicated
+- What throughput is achievable with optimized full SDS
+
+**Remaining approach:** Optimize our SDS batching for maximum throughput. The current batched path does 20 packets per CDB at ~2.2 KB/s. Potential improvements:
+- Larger batches (more packets per CDB)
+- Pipelining (send next batch while waiting for ACKs)
+- Skip per-packet ACK checking (rely on end-of-transfer verification)
+
+### Test Files
+- `test-aspack-slngth.ts` — original multi-theory test (RSLIST parser bug, needs update)
+- `test-theory-b.ts`, `test-b-fixed.ts`, `test-b-full.ts` — Theory B validation
+- `test-c-fixed.ts` — Theory C validation
+- `test-sdata-slngth.ts` — SDATA SLNGTH write test
+
+---
+
 ## 2026-04-10 16:00 PDT: ASPACK End-to-End — Multi-Chunk, Bridge, Web Editor
 
 ### Multi-chunk solved

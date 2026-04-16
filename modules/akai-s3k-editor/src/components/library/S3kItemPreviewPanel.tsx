@@ -238,6 +238,17 @@ function SamplePreview({
           value={meta.sliceCount}
         />
       )}
+      {meta.sampleCount !== undefined && (
+        <MetaRow
+          label="Length"
+          value={meta.sampleRate
+            ? `${meta.sampleCount.toLocaleString()} samples (${(meta.sampleCount / meta.sampleRate).toFixed(2)}s)`
+            : `${meta.sampleCount.toLocaleString()} samples`}
+        />
+      )}
+      {meta.sampleRate !== undefined && (
+        <MetaRow label="Sample Rate" value={`${meta.sampleRate.toLocaleString()} Hz`} />
+      )}
       <MetaRow label="Path" value={pathDisplay} />
       <MetaRow label="Description" value={meta.description} />
 
@@ -392,13 +403,24 @@ function DeviceSamplePreview({
   selection: ItemSelection;
   customState: S3kPreviewCustomState | undefined;
 }): JSX.Element {
-  const meta = selection.meta as { deviceIndex: number };
+  const meta = selection.meta as { deviceIndex: number; sampleCount?: number; sampleRate?: number };
 
   return (
     <div className="p-4">
       <h3 className="text-lg font-semibold text-gray-200 mb-3">{selection.node.name}</h3>
       <MetaRow label="Type" value="Device Sample" />
       <MetaRow label="Slot" value={`#${meta.deviceIndex}`} />
+      {meta.sampleCount !== undefined && meta.sampleCount > 0 && (
+        <MetaRow
+          label="Length"
+          value={meta.sampleRate && meta.sampleRate > 0
+            ? `${meta.sampleCount.toLocaleString()} samples (${(meta.sampleCount / meta.sampleRate).toFixed(2)}s)`
+            : `${meta.sampleCount.toLocaleString()} samples`}
+        />
+      )}
+      {meta.sampleRate !== undefined && meta.sampleRate > 0 && (
+        <MetaRow label="Sample Rate" value={`${meta.sampleRate.toLocaleString()} Hz`} />
+      )}
 
       {customState?.onSaveDeviceSampleToLibrary && (
         <ActionGroup label="Library">

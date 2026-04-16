@@ -21,6 +21,10 @@ export interface CommonSampleMeta {
   description?: string;
   sliceCount?: number;
   hasDrumKit?: boolean;
+  /** Number of audio samples in the WAV file */
+  sampleCount?: number;
+  /** Sample rate in Hz */
+  sampleRate?: number;
 }
 
 /** Metadata for common-area program items */

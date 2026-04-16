@@ -1,0 +1,58 @@
+; ExportSampleData__14CSamplerModuleFP21MESAAudioExportHeader
+; File offset: 0x02e181 - 0x02e4db (858 bytes)
+; Source: sampler-editor-rsrc.bin
+
+  02e181: 4e 56 fb c4 48 e7 1f 30 26 6e 00 08 24 6e 00 0c  NV..H..0&n..$n..
+  02e191: 2f 0b 4e ba a5 a4 2d 48 ff e2 42 6e ff e6 58 4f  /.N...-H..Bn..XO
+  02e1a1: 60 00 03 22 70 30 c1 ee ff e6 20 6e ff e2 0c b0  `.."p0.... n....
+  02e1b1: 41 55 44 4f 08 04 66 00 03 08 70 30 c1 ee ff e6  AUDO..f...p0....
+  02e1c1: 20 6e ff e2 20 30 08 08 b0 aa 00 70 66 00 02 f2   n.. 0.....pf...
+  02e1d1: 70 30 c1 ee ff e6 20 6e ff e2 4a b0 08 0c 67 00  p0.... n..J...g.
+  02e1e1: 02 d8 41 ec 56 80 43 ee fe d2 22 d8 22 d8 32 d8  ..A.V.C...".".2.
+  02e1f1: 41 ee fb c4 2d 48 fe d8 48 6e fe d2 70 30 c1 ee  A...-H..Hn..p0..
+  02e201: ff e6 20 6e ff e2 20 70 08 0c 4e 90 4a 6e fe d6  .. n.. p..N.Jn..
+  02e211: 58 4f 66 00 02 9c 4a 2a 00 74 67 00 00 a0 48 6e  XOf...J*.tg...Hn
+  02e221: fd c8 2f 3c 00 0d 00 83 4e b9 00 04 66 64 41 ee  ../<....N...fdA.
+  02e231: fb c4 43 ee fc c9 70 04 a0 2e 1d 7c 00 04 fc c8  ..C...p....|....
+  02e241: 3f 3c 01 00 48 6e fc c8 48 6e fd c8 4e b9 00 04  ?<..Hn..Hn..N...
+  02e251: 69 0c 41 ea 00 15 43 ee fb c9 10 2a 00 14 48 80  i.A...C....*..H.
+  02e261: 52 40 48 c0 a0 2e 1d 6a 00 14 fb c8 48 6e fd c8  R@H....j....Hn..
+  02e271: 48 6e fb c8 48 6c 5e 4a 3f 3c 00 05 a9 ea 4a 2c  Hn..Hl^J?<....J,
+  02e281: 5e 4a 4f ef 00 0a 67 2c 4a 6a 00 76 66 14 48 6e  ^JO...g,Jj.vf.Hn
+  02e291: fe dc 2f 0a 2f 0b 4e ba fc e0 35 40 00 76 4f ef  .././.N...5@.vO.
+  02e2a1: 00 0c 4a 6a 00 76 66 28 41 ec 5e 4a 5c 88 25 48  ..Jj.vf(A.^J\.%H
+  02e2b1: 00 5c 60 1c 35 7c ff ff 00 76 60 14 48 6e fe dc  .\`.5|...v`.Hn..
+  02e2c1: 2f 0a 2f 0b 4e ba fc b2 35 40 00 76 4f ef 00 0c  /./.N...5@.vO...
+  02e2d1: 4a 6a 00 76 66 2e 41 ec 56 76 43 ee fe c8 22 d8  Jj.vf.A.VvC...".
+  02e2e1: 22 d8 32 d8 2d 4a fe ce 48 6e fe c8 70 30 c1 ee  ".2.-J..Hn..p0..
+  02e2f1: ff e6 20 6e ff e2 20 70 08 0c 4e 90 35 6e fe cc  .. n.. p..N.5n..
+  02e301: 00 76 58 4f 4a 6a 00 76 66 00 01 c8 7a 00 28 2a  .vXOJj.vf...z.(*
+  02e311: 00 50 2e 2b 00 84 e0 8f e0 8f e0 8f ee 8f de ab  .P.+............
+  02e321: 00 84 e2 87 20 04 72 64 4e b9 00 00 01 a6 2d 40  .... .rdN.....-@
+  02e331: ff e8 42 ae fe de 48 6e fe e2 2f 3c 00 0c 00 83  ..B...Hn../<....
+  02e341: 4e b9 00 04 66 64 3f 3c 01 00 48 6a 00 14 48 6e  N...fd?<..Hj..Hn
+  02e351: fe e2 4e b9 00 04 69 0c 41 ec 56 6c 43 ee ff ec  ..N...i.A.VlC...
+  02e361: 22 d8 22 d8 32 d8 41 ee fe de 2d 48 ff f2 48 6e  ".".2.A...-H..Hn
+  02e371: ff ec 20 6b 0a 20 4e 90 20 2b 00 84 a3 22 24 88  .. k. N. +..."$.
+  02e381: 4f ef 00 0e 66 00 00 d2 35 7c ff 94 00 76 60 00  O...f...5|...v`.
+  02e391: 00 c8 b8 87 6f 04 2c 07 60 02 2c 04 26 06 48 6b  ....o.,.`.,.&.Hk
+  02e3a1: 00 74 20 57 22 50 22 69 00 24 4e 91 58 4f 2f 08  .t W"P"i.$N.XO/.
+  02e3b1: 2f 03 2f 05 3f 2e fe dc 2f 2b 0d a4 20 57 22 68  /./.?.../+.. W"h
+  02e3c1: 00 02 22 69 01 78 4e 91 35 40 00 76 4a 6a 00 76  .."i.xN.5@.vJj.v
+  02e3d1: 4f ef 00 12 66 52 48 6b 00 74 20 57 22 50 22 69  O...fRHk.t W"P"i
+  02e3e1: 00 24 4e 91 58 4f 22 52 22 51 20 2b 00 84 a0 2e  .$N.XO"R"Q +....
+  02e3f1: 25 6b 00 84 00 04 25 43 00 50 41 ec 56 62 43 ee  %k....%C.PA.VbC.
+  02e401: ff f6 22 d8 22 d8 32 d8 2d 4a ff fc 48 6e ff f6  ..".".2.-J..Hn..
+  02e411: 70 30 c1 ee ff e6 20 6e ff e2 20 70 08 0c 4e 90  p0.... n.. p..N.
+  02e421: 35 6e ff fa 00 76 58 4f 4a ae ff e8 67 12 20 05  5n...vXOJ...g. .
+  02e431: d0 83 22 2e ff e8 4e b9 00 00 01 a6 2d 40 fe de  .."...N.....-@..
+  02e441: 2d 7c 55 50 52 47 ff ec 48 6e ff ec 20 6b 0a 20  -|UPRG..Hn.. k. 
+  02e451: 4e 90 da 83 98 83 58 4f 4a 84 67 08 4a 6a 00 76  N.....XOJ.g.Jj.v
+  02e461: 67 00 ff 30 20 52 a0 23 70 64 2d 40 fe de 2d 7c  g..0 R.#pd-@..-|
+  02e471: 55 50 52 47 ff ec 48 6e ff ec 20 6b 0a 20 4e 90  UPRG..Hn.. k. N.
+  02e481: 2d 7c 4b 50 52 47 ff ec 48 6e ff ec 20 6b 0a 20  -|KPRG..Hn.. k. 
+  02e491: 4e 90 2f 3c 42 4f 46 46 42 a7 42 a7 48 6b 00 74  N./<BOFFB.B.Hk.t
+  02e4a1: 20 57 22 50 22 69 00 14 4e 91 4f ef 00 18 60 22   W"P"i..N.O...`"
+  02e4b1: 35 6e fe d6 00 76 60 1a 35 7c d5 06 00 76 60 12  5n...v`.5|...v`.
+  02e4c1: 52 6e ff e6 20 6e ff e2 32 6e ff e6 b3 d0 6d 00  Rn.. n..2n....m.
+  02e4d1: fc d4 4c df 0c f8 4e 5e 4e 75                    ..L...N^Nu
