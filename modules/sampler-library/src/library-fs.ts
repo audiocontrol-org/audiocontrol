@@ -64,6 +64,10 @@ export interface LibraryTreeNode {
   sliceCount?: number;
   /** Whether sample has drum kit config (base note, pad mapping) */
   hasDrumKit?: boolean;
+  /** Number of audio samples (from WAV file) */
+  sampleCount?: number;
+  /** Sample rate in Hz */
+  sampleRate?: number;
 }
 
 // =========================================================================
@@ -405,6 +409,21 @@ const detectSample: ItemDetector = async (entry, parentDir, path) => {
     // All samples are type 'sample'. Slice and drum kit metadata are
     // communicated via the node's metadata fields, not the type.
     // See SAMPLER-LIBRARY.md "Sample Slicing" for the theory.
+    // Read WAV file size to compute sample count
+    let sampleCount: number | undefined;
+    const sampleRate = data.sampleRate;
+    try {
+      const wavHandle = await sampleDir.getFileHandle(data.file);
+      const wavFile = await wavHandle.getFile();
+      // WAV: 44-byte header, 16-bit mono = 2 bytes per sample
+      const dataBytes = wavFile.size - 44;
+      if (dataBytes > 0) {
+        sampleCount = Math.floor(dataBytes / 2);
+      }
+    } catch {
+      // WAV file missing or unreadable — skip sample count
+    }
+
     return {
       id: [...path, entry.name].join('/'),
       name: data.name,
@@ -414,6 +433,8 @@ const detectSample: ItemDetector = async (entry, parentDir, path) => {
       description: data.description,
       sliceCount: data.slices?.length,
       hasDrumKit: data.drumKit !== undefined,
+      sampleCount,
+      sampleRate,
     };
   } catch {
     return null;

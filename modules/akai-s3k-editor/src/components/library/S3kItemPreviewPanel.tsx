@@ -238,6 +238,17 @@ function SamplePreview({
           value={meta.sliceCount}
         />
       )}
+      {meta.sampleCount !== undefined && (
+        <MetaRow
+          label="Length"
+          value={meta.sampleRate
+            ? `${meta.sampleCount.toLocaleString()} samples (${(meta.sampleCount / meta.sampleRate).toFixed(2)}s)`
+            : `${meta.sampleCount.toLocaleString()} samples`}
+        />
+      )}
+      {meta.sampleRate !== undefined && (
+        <MetaRow label="Sample Rate" value={`${meta.sampleRate.toLocaleString()} Hz`} />
+      )}
       <MetaRow label="Path" value={pathDisplay} />
       <MetaRow label="Description" value={meta.description} />
 
