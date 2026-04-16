@@ -67,6 +67,18 @@ export interface SaveTargetState {
 const SAVE_TARGET_IDLE: SaveTargetState = { open: false, sampleName: '', pendingSave: null };
 
 // =========================================================================
+// SDS transfer progress state
+// =========================================================================
+
+export interface SdsLoadingState {
+  open: boolean;
+  sampleName: string;
+  progress: import('@audiocontrol/midi-core').SdsTransferProgress | null;
+}
+
+const SDS_LOADING_IDLE: SdsLoadingState = { open: false, sampleName: '', progress: null };
+
+// =========================================================================
 // Result interface
 // =========================================================================
 
@@ -76,6 +88,7 @@ export interface EditorDialogsResult extends EditorDialogsCoreResult {
   saveTargetState: SaveTargetState;
   handleSaveTargetConfirm: (target: SaveTarget) => Promise<void>;
   handleSaveTargetCancel: () => void;
+  sdsLoadingState: SdsLoadingState;
 }
 
 // =========================================================================
@@ -90,6 +103,7 @@ export function useEditorDialogs(
 ): EditorDialogsResult {
   const [kitConfig, setKitConfig] = useState<S3kKitConfig>(DEFAULT_S3K_KIT_CONFIG);
   const [saveTargetState, setSaveTargetState] = useState<SaveTargetState>(SAVE_TARGET_IDLE);
+  const [sdsLoadingState, setSdsLoadingState] = useState<SdsLoadingState>(SDS_LOADING_IDLE);
 
   const strategy = useMemo<EditorDialogStrategy>(() => ({
     loadWav: async (
@@ -102,9 +116,22 @@ export function useEditorDialogs(
       const sampleIndex = parseDeviceSampleIndex(name);
       if (sampleIndex === null) return null;
 
-      const { header: sdsHeader, samples } = await client.receiveSampleViaSds(sampleIndex);
-      const sampleRate = Math.round(1_000_000_000 / sdsHeader.samplePeriodNs);
+      // Read sample name for progress display
       const sampleHeader = await client.fetchSampleHeader(sampleIndex);
+      const sampleName = sampleHeader.SHNAME.trim();
+
+      // Show progress drawer during SDS download
+      setSdsLoadingState({ open: true, sampleName, progress: null });
+
+      const { header: sdsHeader, samples } = await client.receiveSampleViaSds(
+        sampleIndex,
+        (progress) => setSdsLoadingState((prev) => ({ ...prev, progress })),
+      );
+
+      // Close progress drawer
+      setSdsLoadingState(SDS_LOADING_IDLE);
+
+      const sampleRate = Math.round(1_000_000_000 / sdsHeader.samplePeriodNs);
 
       return {
         samples,
@@ -314,5 +341,6 @@ export function useEditorDialogs(
     saveTargetState,
     handleSaveTargetConfirm,
     handleSaveTargetCancel,
+    sdsLoadingState,
   };
 }

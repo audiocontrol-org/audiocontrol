@@ -15,6 +15,7 @@ import { writeSampleField } from '@/lib/sample-writers';
 import { ErrorBanner } from '@/components/ui';
 import { CacheAge } from '@/components/ui/CacheAge';
 import { S3kKitOutputConfig } from '@/components/library/S3kKitOutputConfig';
+import { formatBytes } from '@audiocontrol/editor-core';
 
 export function SamplesPage(): JSX.Element {
   const { client, isConnected } = useS3000xlClient();
@@ -365,6 +366,25 @@ export function SamplesPage(): JSX.Element {
         hasLibrary={false}
         onConfirm={editorDialogs.handleSaveTargetConfirm}
         onCancel={editorDialogs.handleSaveTargetCancel}
+      />
+
+      <SteppedProgressDrawer
+        open={editorDialogs.sdsLoadingState.open}
+        title={`Loading "${editorDialogs.sdsLoadingState.sampleName}"`}
+        onClose={() => {}}
+        steps={[{
+          id: 'download',
+          label: 'Downloading sample from device',
+          status: editorDialogs.sdsLoadingState.progress ? 'active' : 'pending',
+          progress: editorDialogs.sdsLoadingState.progress && editorDialogs.sdsLoadingState.progress.bytesTotal > 0
+            ? Math.round((editorDialogs.sdsLoadingState.progress.bytesSent / editorDialogs.sdsLoadingState.progress.bytesTotal) * 100)
+            : undefined,
+          detail: editorDialogs.sdsLoadingState.progress
+            ? `${formatBytes(editorDialogs.sdsLoadingState.progress.bytesSent)} / ${formatBytes(editorDialogs.sdsLoadingState.progress.bytesTotal)}`
+            : undefined,
+        }]}
+        isComplete={false}
+        hasError={false}
       />
     </div>
   );

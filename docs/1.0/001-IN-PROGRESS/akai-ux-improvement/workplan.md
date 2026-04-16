@@ -342,7 +342,7 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 - [x] Add "Open in Loop Editor", "Open in Sample Editor", "Open in Chopper" actions to SampleList hover menu
 - [x] Implement device sample loading: download audio via SDS, convert to Int16Array
 - [x] Wire device-origin editor dialogs in SamplesPage (reuse useEditorDialogsCore pattern)
-- [ ] Show SDS download progress before editor opens (deferred — SDS download starts but no dedicated progress UI yet)
+- [x] Show SDS download progress before editor opens
 
 ### Acceptance Criteria
 
