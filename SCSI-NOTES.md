@@ -475,28 +475,69 @@ Always verify the sampler's protocol mode before running SDS operations. S3000 m
 ### Problem
 Samples uploaded via ASPACK play only the first ~40-48 samples. SLNGTH in the sample header stays at the value from the SDS stub creation, regardless of how much data ASPACK writes.
 
-### Tested (via raw SCSI CDBs — test-aspack-slngth.ts, no client library)
+### Theories
 
-**Theory A: Real length in SDS dump header, no data packet, ASPACK fills data**
-- Dump header with length=1000 → ACK'd
-- ASPACK chunk → REPLY (success)
-- RSLIST count unchanged → **sample NOT created**
-- Confirms SCSI-NOTES: dump header alone does not create a sample.
+All tested via raw SCSI CDBs (`test-aspack-slngth.ts`) — no client library.
 
-**Theory B: 40-sample stub header + data packet, ASPACK fills, SDATA patches SLNGTH**
-- 40-sample header → ACK'd, data packet → ACK'd → **sample created**
-- ASPACK write to newly created sample → **FAILED** (no REPLY)
-- SDATA write to patch SLNGTH → device error code 1 (rejected)
-- SLNGTH parsing in raw test returned wrong values (90112 for 40-sample stub) — offset bug
+**Theory A: Real length in dump header, no data packet, ASPACK fills.**
+- Hypothesis: Dump header allocates memory. ASPACK fills data. No data packet needed.
+- Session 8 result: Header ACK'd, ASPACK REPLY'd, but sample NOT created in RSLIST.
+- Conclusion: **Dump header alone does not create a sample.** Data packet required.
 
-### Open Questions
-1. Why does ASPACK fail on a freshly-created sample? Index mismatch? Device needs commit time?
-2. Can SDATA modify SLNGTH beyond allocated memory? Error code 1 suggests no.
-3. Would real length in header + data packet work? (Allocate full memory via header, trigger creation via packet.)
-4. Is the nibble offset for SLNGTH correct in the raw test?
+**Theory B: 40-sample stub header + data packet, ASPACK fills, SDATA patches SLNGTH.**
+- Hypothesis: Create small sample via SDS, fill with ASPACK, patch SLNGTH via SDATA.
+- Session 8 result: Sample created. ASPACK FAILED (no REPLY). SDATA rejected (error code 1).
+- Session 8 bugs: SLNGTH parsing offset was wrong (`5+59` instead of `59`). Fixed session 9.
+- Open: Was ASPACK failure due to wrong index? Does device need commit time before ASPACK?
+- Open: Does error code 1 mean SLNGTH can't exceed allocated memory?
 
-### Test File
-`modules/e2e-infra/src/node/lib/test-aspack-slngth.ts`
+**Theory C: Real length in header + 40-sample data packet, then ASPACK.**
+- Hypothesis: Declare real count in header (allocates full memory), send 40-sample data packet (triggers creation). SLNGTH should already be correct from header.
+- Not yet tested.
+- Risk: Device may NAK the data packet if declared length doesn't match packet count.
+
+### Resolved Issues
+- SLNGTH nibble offset in raw test: `raw[59]` is correct (includes 5-byte SysEx header). Was using `5+59=64`.
+- midiPoll: s2p returns 3 bytes, not 4. Parser fixed.
+
+### Session 9 Results (corrected RSLIST parser)
+
+Previous session's test failures were ALL caused by a bad RSLIST parser (used `(len-6)/24` instead of the 2-byte count at offset 5). The device had 7+ samples, not 3. Tests were overwriting existing samples, not creating new ones.
+
+**Theory B (40-sample stub) — CONFIRMED WORKING:**
+- 40-sample header + data packet → sample created (count increased)
+- SLNGTH = 48 (device rounds up from 40 to internal block alignment)
+- ASPACK write to new sample → REPLY received (was hidden in buffer padding)
+- ASPACK does NOT update SLNGTH — it stays at 48
+
+**Theory C (real length header + data packet) — FAILED:**
+- Header ACK'd (WAIT then ACK), data packet ACK'd
+- Sample NOT created — device waits for full SDS transfer to complete
+- The SDS transfer is open-ended until all declared samples are received
+
+**SDATA SLNGTH write — READ ONLY:**
+- Attempted writing SLNGTH=20 to a sample with SLNGTH=48 via SDATA
+- No REPLY received, SLNGTH unchanged on readback
+- SLNGTH is controlled internally by the device, not writable via SDATA
+
+### Proven Facts
+1. SDS dump header declares length → device allocates memory AND expects that many samples via SDS packets
+2. Device won't commit to RSLIST until the full SDS transfer completes
+3. ASPACK writes data at arbitrary offsets but doesn't change SLNGTH
+4. SLNGTH is read-only via SDATA — can't be patched after creation
+5. The only way to set SLNGTH is through the SDS dump header at creation time
+
+### Remaining Approaches
+1. **Send full SDS transfer at declared length, then overwrite with ASPACK** — defeats ASPACK speed advantage
+2. **Find another way to create samples with correct SLNGTH** — MESA's `SendAudioBufferToSampler` does it somehow, but we haven't disassembled that method
+3. **Investigate whether ASPACK can grow the allocation** — untested; ASPACK writes beyond SLNGTH succeed but the data may not be playable
+4. **Send SDS at maximum batch speed** — the batched SDS path (20 packets per CDB) runs at ~2.2 KB/s; for short samples this may be acceptable
+
+### Test Files
+- `test-aspack-slngth.ts` — original multi-theory test (RSLIST parser bug, needs update)
+- `test-theory-b.ts`, `test-b-fixed.ts`, `test-b-full.ts` — Theory B validation
+- `test-c-fixed.ts` — Theory C validation
+- `test-sdata-slngth.ts` — SDATA SLNGTH write test
 
 ---
 

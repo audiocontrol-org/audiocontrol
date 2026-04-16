@@ -71,8 +71,9 @@ async function sendAndReceive(msg: number[], maxResponseLen = 1024): Promise<num
 
 async function queryRSLIST(): Promise<number> {
   const resp = await sendAndReceive([0xF0, 0x47, CHANNEL, 0x04, 0x48, 0xF7], 4096);
-  if (resp.length < 6) return 0;
-  return Math.floor((resp.length - 6) / 24);
+  if (resp.length < 7) return 0;
+  // 2-byte count at offset 5 (after F0 47 cc 05 48), little-endian
+  return resp[5] | (resp[6] << 8);
 }
 
 async function readSampleHeader(index: number): Promise<number[]> {
@@ -82,8 +83,9 @@ async function readSampleHeader(index: number): Promise<number[]> {
 }
 
 function parseSLNGTH(headerData: number[]): number {
-  // SLNGTH at nibble offset 59 from payload start (byte 5 in SysEx frame)
-  const off = 5 + 59;
+  // SLNGTH at raw index 59 (includes 5-byte SysEx header F0 47 cc 09 48)
+  // 4 bytes = 8 nibbles, LE nibble pairs
+  const off = 59;
   if (headerData.length < off + 8) return -1;
   let value = 0;
   for (let i = 0; i < 4; i++) {
@@ -95,7 +97,7 @@ function parseSLNGTH(headerData: number[]): number {
 }
 
 function parseSMPEND(headerData: number[]): number {
-  const off = 5 + 75;
+  const off = 75;
   if (headerData.length < off + 8) return -1;
   let value = 0;
   for (let i = 0; i < 4; i++) {
@@ -355,10 +357,10 @@ async function testTheoryB(sampleNumber: number): Promise<void> {
     return;
   }
 
-  // Patch SLNGTH (nibble offset 59 from payload)
-  const payloadStart = 5;
-  const slngthOff = payloadStart + 59;
-  const smpendOff = payloadStart + 75;
+  // Patch SLNGTH at raw index 59, SMPEND at raw index 75
+  // (raw indices include the 5-byte SysEx header)
+  const slngthOff = 59;
+  const smpendOff = 75;
 
   for (const [fieldOff, value] of [[slngthOff, TEST_SAMPLE_COUNT], [smpendOff, TEST_SAMPLE_COUNT]] as const) {
     let tmp = value;
@@ -408,6 +410,90 @@ async function testTheoryB(sampleNumber: number): Promise<void> {
   }
 }
 
+async function testTheoryC(sampleNumber: number): Promise<void> {
+  console.log('\n========================================');
+  console.log('THEORY C: Real length in dump header + 40-sample data packet, then ASPACK');
+  console.log('========================================\n');
+
+  const periodNs = Math.floor(1_000_000_000 / SAMPLE_RATE);
+
+  // Step 1: Dump header with REAL length
+  const dumpHeader = [
+    0xF0, 0x7E, CHANNEL, 0x01,
+    sampleNumber & 0x7F, (sampleNumber >> 7) & 0x7F,
+    16,
+    periodNs & 0x7F, (periodNs >> 7) & 0x7F, (periodNs >> 14) & 0x7F,
+    TEST_SAMPLE_COUNT & 0x7F, (TEST_SAMPLE_COUNT >> 7) & 0x7F, (TEST_SAMPLE_COUNT >> 14) & 0x7F,
+    0, 0, 0, 0, 0, 0, 0,
+    0xF7,
+  ];
+
+  console.log(`Step 1: SDS dump header (sample #${sampleNumber}, declared length=${TEST_SAMPLE_COUNT})`);
+  await midiSend(dumpHeader);
+  const ack1 = await waitForAck();
+  console.log(`  Response: ${ack1}`);
+  if (!ack1.includes('ACK')) {
+    console.log(`  Header not ACKed (${ack1}). Aborting Theory C.`);
+    return;
+  }
+
+  // Step 2: Send 1 data packet (40 samples) to trigger creation
+  console.log('Step 2: SDS data packet (40 samples silence)');
+  const silencePacket = buildSdsDataPacket(0, new Array(40).fill(0));
+  await midiSend(silencePacket);
+  const ack2 = await waitForAck();
+  console.log(`  Response: ${ack2}`);
+  if (!ack2.includes('ACK')) {
+    console.log(`  Data packet not ACKed (${ack2}). This is the key test — does the device accept a partial SDS?`);
+  }
+
+  await sleep(200);
+
+  // Step 3: Check RSLIST
+  console.log('Step 3: Query RSLIST');
+  const count = await queryRSLIST();
+  console.log(`  Sample count: ${count}`);
+  if (count > sampleNumber) {
+    console.log('  ✓ Sample created');
+  } else {
+    console.log('  ✗ Sample NOT created — Theory C failed');
+    return;
+  }
+
+  // Step 4: Read sample header — check SLNGTH
+  console.log('Step 4: Read sample header');
+  const header = await readSampleHeader(sampleNumber);
+  const slngth = parseSLNGTH(header);
+  const smpend = parseSMPEND(header);
+  console.log(`  SLNGTH: ${slngth} (declared: ${TEST_SAMPLE_COUNT})`);
+  console.log(`  SMPEND: ${smpend}`);
+  console.log(`  Header length: ${header.length} bytes`);
+
+  // Step 5: ASPACK data
+  console.log(`Step 5: ASPACK data (${TEST_SAMPLE_COUNT} samples)`);
+  const testSamples = Array.from({ length: TEST_SAMPLE_COUNT }, (_, i) =>
+    Math.round(Math.sin(2 * Math.PI * 440 * i / SAMPLE_RATE) * 16000));
+  const aspackMsg = buildAspackChunk(sampleNumber, 0, testSamples);
+  const ok = await sendAspackAndWaitReply(aspackMsg);
+  console.log(`  ASPACK reply: ${ok ? 'OK' : 'FAILED'}`);
+
+  // Step 6: Read header after ASPACK
+  console.log('Step 6: Read sample header after ASPACK');
+  const headerAfter = await readSampleHeader(sampleNumber);
+  const slngthAfter = parseSLNGTH(headerAfter);
+  const smpendAfter = parseSMPEND(headerAfter);
+  console.log(`  SLNGTH: ${slngthAfter} (was ${slngth})`);
+  console.log(`  SMPEND: ${smpendAfter} (was ${smpend})`);
+
+  if (slngthAfter === TEST_SAMPLE_COUNT) {
+    console.log('  ✓ SLNGTH matches declared count — Theory C works!');
+  } else if (slngthAfter === slngth) {
+    console.log('  SLNGTH unchanged after ASPACK');
+  } else {
+    console.log(`  SLNGTH changed to ${slngthAfter} (not the target ${TEST_SAMPLE_COUNT})`);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -453,10 +539,16 @@ async function main() {
   const countAfterB = await queryRSLIST();
   console.log(`\nSamples after Theory B: ${countAfterB}`);
 
+  // Theory C: use next free slot
+  await testTheoryC(countAfterB);
+
+  const countAfterC = await queryRSLIST();
+  console.log(`\nSamples after Theory C: ${countAfterC}`);
+
   await midiDisable();
 
   console.log('\n=== Summary ===');
-  console.log(`Samples: ${countBefore} → ${countAfterA} (Theory A) → ${countAfterB} (Theory B)`);
+  console.log(`Samples: ${countBefore} → ${countAfterA} (A) → ${countAfterB} (B) → ${countAfterC} (C)`);
 }
 
 main().catch(err => {
