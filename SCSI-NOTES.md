@@ -615,9 +615,31 @@ Sent the `BuildSampleDataRequest` message format to the S3000XL via SCSI MIDI (C
 2. Could the data be nibble-encoded PCM appended to the SDATA SysEx message before the F7 terminator? (Similar to how ASPACK sends nibble-encoded data in a single SysEx message.)
 3. Is there a completely separate SCSI command (not CDB 0x0C) for bulk data?
 
+### 2026-04-16 14:15 PDT — SendAudioBufferToSampler: Two-Phase Send
+
+Closer analysis of `SendAudioBufferToSampler` hex dump reveals TWO distinct send operations:
+
+1. **BULK send** (at ~0x0308af): `MOVE.L #'BULK',-(SP)` followed by vtable call to `SendData`. This likely sends the BuildSampleDataRequest header or an SDS dump header.
+
+2. **SRAW send** (at ~0x030a53): `MOVE.L #'SRAW',-(SP)` followed by vtable call to `SendData`. SRAW = "raw SysEx without handshake" (from dispatch table). This appears to send actual PCM data in a fire-and-forget mode.
+
+The function appears to loop (branch back visible around 0x030a83), suggesting it sends multiple SRAW chunks of PCM data.
+
+**Hypothesis (not yet tested):** The upload flow is:
+1. BULK: send BuildSampleDataRequest header (tells device: "I'm about to write N samples at offset O")
+2. SRAW (loop): send PCM data chunks as raw SysEx, no handshake per chunk
+
+**However:** our probe showed the BuildSampleDataRequest header gets no response from the device via SCSI MIDI. Possible explanations:
+- The device processes it silently (no response expected — SRAW mode means no handshake)
+- The header and data need to be sent together in a specific way
+- The SRAW path uses a different SCSI mechanism than CDB 0x0C
+
+**Also noted:** there appear to be 4 `MOVE.B #$01,-(SP)` (SDS header opcode) pushes in the function. These may correspond to different branches — e.g., one for SDS-based upload (MIDI path) and another for SCSI-based upload (BULK+SRAW path). The function may have separate code paths for MIDI vs SCSI.
+
 ### Next Steps
-1. **Disassemble SMSendData more carefully** — trace exactly what data buffer it sends. Does it send just the 18-byte header, or does the Sampler Editor append PCM data to the buffer before calling SendData?
-2. **Look at SendAudioBufferToSampler more carefully** — what does it put in the buffer that gets passed to SendData with BULK mode? The 'BULK' tag and the BuildSampleDataRequest header may be just part of a larger structure.
+1. **Trace the exact SRAW data format** — what bytes does the Sampler Editor put in the SRAW buffer? Is it nibble-encoded PCM like ASPACK, or raw 16-bit PCM, or SDS-encoded 7-bit data?
+2. **Test: send BuildSampleDataRequest followed by raw PCM data** — even though the header got no response, the device may process it silently and accept data that follows
+3. **Check if SendAudioBufferToSampler has separate MIDI vs SCSI paths** — the 4 SDS header pushes may be a MIDI-only fallback
 
 ### Test Files
 - `test-aspack-slngth.ts` — original multi-theory test (RSLIST parser bug, needs update)
