@@ -680,6 +680,21 @@ The 4 `MOVE.B #$01` (SDS header opcode) pushes in `SendAudioBufferToSampler` are
 2. Send via BULK mode (which optimizes the SCSI layer for the full SDS packet stream)
 3. The BULK handler sends the SDS data packets internally
 
+### Evidence Summary (as of 2026-04-16 15:00 PDT)
+
+Strong evidence (multiple tests, consistent results):
+- ASPACK and SDATA nibble writes are accepted by device (REPLY received) but don't change SLNGTH
+- 40-sample SDS stub creates samples with SLNGTH ~48
+- SDATA header-only writes to SLNGTH field have no effect (field appears read-only via SDATA)
+- Device doesn't commit new samples from SDS dump header alone — at least one data packet is needed
+- Device doesn't commit new samples when header declares a large count and only one packet is sent
+
+Not yet tested:
+- Whether there's a different SDATA format (e.g., with different interval byte or flags) that updates SLNGTH
+- Whether sending more SDS data packets (but not all) triggers an earlier commit
+- Whether the SCSI Plug's BULK handler uses something beyond CDB 0x0C/0x0D/0x0E that we haven't replicated
+- What throughput is achievable with optimized full SDS
+
 **Remaining approach:** Optimize our SDS batching for maximum throughput. The current batched path does 20 packets per CDB at ~2.2 KB/s. Potential improvements:
 - Larger batches (more packets per CDB)
 - Pipelining (send next batch while waiting for ACKs)
