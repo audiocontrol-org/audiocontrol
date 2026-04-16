@@ -307,6 +307,7 @@ export function LibraryPage(): JSX.Element {
     deviceSampleNames,
     setSelectedDevice,
     setSelection,
+    client,
   });
 
   // -----------------------------------------------------------------------

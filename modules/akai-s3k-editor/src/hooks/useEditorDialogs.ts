@@ -73,12 +73,13 @@ const SAVE_TARGET_IDLE: SaveTargetState = { open: false, sampleName: '', pending
 export interface SdsLoadingState {
   open: boolean;
   sampleName: string;
+  direction: 'download' | 'upload';
   progress: import('@audiocontrol/midi-core').SdsTransferProgress | null;
   startTime: number | null;
   cancelled: boolean;
 }
 
-const SDS_LOADING_IDLE: SdsLoadingState = { open: false, sampleName: '', progress: null, startTime: null, cancelled: false };
+const SDS_LOADING_IDLE: SdsLoadingState = { open: false, sampleName: '', direction: 'download', progress: null, startTime: null, cancelled: false };
 
 // =========================================================================
 // Result interface
@@ -125,7 +126,7 @@ export function useEditorDialogs(
       // Open progress drawer immediately — don't wait for device round-trip
       const abortController = new AbortController();
       sdsAbortRef.current = abortController;
-      setSdsLoadingState({ open: true, sampleName: `Sample ${sampleIndex + 1}`, progress: null, startTime: Date.now(), cancelled: false });
+      setSdsLoadingState({ open: true, sampleName: `Sample ${sampleIndex + 1}`, direction: 'download', progress: null, startTime: Date.now(), cancelled: false });
 
       // Fetch header for name and loop metadata
       const sampleHeader = await client.fetchSampleHeader(sampleIndex);
@@ -259,24 +260,35 @@ export function useEditorDialogs(
     }
 
     const { samples, sampleRate, deviceSampleIndex } = pending;
+    const pendingSampleName = saveTargetState.sampleName;
     setSaveTargetState(SAVE_TARGET_IDLE);
+
+    const onUploadProgress = (progress: import('@audiocontrol/midi-core').SdsTransferProgress) => {
+      setSdsLoadingState((prev) => ({ ...prev, progress }));
+    };
 
     try {
       if (target === 'device-overwrite') {
+        setSdsLoadingState({ open: true, sampleName: pendingSampleName, direction: 'upload', progress: null, startTime: Date.now(), cancelled: false });
         const header = await client.fetchSampleHeader(deviceSampleIndex);
         await client.sendSampleViaSds(deviceSampleIndex, samples, sampleRate, {
           name: header.SHNAME.trim(),
           loopStart: header.LOOPAT1,
           loopEnd: header.LOOPAT1 + header.LLNGTH1,
+          onProgress: onUploadProgress,
         });
+        setSdsLoadingState(SDS_LOADING_IDLE);
         client.invalidateSampleCache();
       } else if (target === 'device-new') {
+        const newName = pendingSampleName.substring(0, 8) + ' EDT';
+        setSdsLoadingState({ open: true, sampleName: newName, direction: 'upload', progress: null, startTime: Date.now(), cancelled: false });
         const existingNames = await client.fetchSampleNames();
         const newSlot = existingNames.length;
-        const header = await client.fetchSampleHeader(deviceSampleIndex);
-        const baseName = header.SHNAME.trim();
-        const newName = baseName.substring(0, 8) + ' EDT';
-        await client.sendSampleViaSds(newSlot, samples, sampleRate, { name: newName });
+        await client.sendSampleViaSds(newSlot, samples, sampleRate, {
+          name: newName,
+          onProgress: onUploadProgress,
+        });
+        setSdsLoadingState(SDS_LOADING_IDLE);
         client.invalidateSampleCache();
       } else if (target === 'library') {
         // Delegate to the core library save handler

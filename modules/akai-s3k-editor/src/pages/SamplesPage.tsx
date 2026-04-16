@@ -370,19 +370,23 @@ export function SamplesPage(): JSX.Element {
 
       <SteppedProgressDrawer
         open={editorDialogs.sdsLoadingState.open}
-        title={`Loading "${editorDialogs.sdsLoadingState.sampleName}"`}
+        title={editorDialogs.sdsLoadingState.direction === 'upload'
+          ? `Saving "${editorDialogs.sdsLoadingState.sampleName}"`
+          : `Loading "${editorDialogs.sdsLoadingState.sampleName}"`}
         onClose={editorDialogs.handleSdsLoadingCancel}
         onCancel={editorDialogs.handleSdsLoadingCancel}
         steps={[{
-          id: 'download',
-          label: 'Downloading sample from device',
+          id: editorDialogs.sdsLoadingState.direction === 'upload' ? 'upload' : 'download',
+          label: editorDialogs.sdsLoadingState.direction === 'upload'
+            ? 'Uploading sample to device'
+            : 'Downloading sample from device',
           status: editorDialogs.sdsLoadingState.progress ? 'active' : 'pending',
           progress: editorDialogs.sdsLoadingState.progress && editorDialogs.sdsLoadingState.progress.bytesTotal > 0
             ? Math.round((editorDialogs.sdsLoadingState.progress.bytesSent / editorDialogs.sdsLoadingState.progress.bytesTotal) * 100)
             : undefined,
           detail: (() => {
-            const { progress, startTime } = editorDialogs.sdsLoadingState;
-            if (!progress) return 'Connecting to device...';
+            const { progress, startTime, direction } = editorDialogs.sdsLoadingState;
+            if (!progress) return direction === 'upload' ? 'Preparing upload...' : 'Connecting to device...';
             const bytes = `${formatBytes(progress.bytesSent)} / ${formatBytes(progress.bytesTotal)}`;
             const elapsed = startTime ? Math.round((Date.now() - startTime) / 1000) : 0;
             const bytesPerSec = elapsed > 0 ? progress.bytesSent / elapsed : 0;
