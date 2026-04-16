@@ -577,73 +577,7 @@ where
         }
     }
 
-    // Phase 3: Patch sample header SLNGTH and SMPEND via SysEx.
-    // The SDS dump header declared 40 samples to create the slot. Now that
-    // ASPACK has written the real data, update the header to reflect the
-    // actual length. This keeps the ASPACK workaround encapsulated here.
-    info!(rslist_index, total, "ASPACK phase 3: patching SLNGTH via SysEx");
-
-    // RSDATA request: F0 47 cc 08 48 [index 7-bit pair] F7
-    let idx_lo = (rslist_index & 0x7F) as u8;
-    let idx_hi = ((rslist_index >> 7) & 0x7F) as u8;
-    let rsdata_req = vec![0xF0, 0x47, channel, 0x08, 0x48, idx_lo, idx_hi, 0xF7];
-    s2p.scsi_midi_send(target_id, &rsdata_req).await?;
-
-    let mut header_data = Vec::new();
-    let mut wait_ms = 100u64;
-    let max_wait_ms = 10_000u64;
-    let mut total_waited = 0u64;
-    while total_waited < max_wait_ms {
-        tokio::time::sleep(std::time::Duration::from_millis(wait_ms)).await;
-        total_waited += wait_ms;
-        let pending = s2p.scsi_midi_poll(target_id).await?;
-        if pending > 0 {
-            header_data = s2p.scsi_midi_read(target_id, pending).await?;
-            break;
-        }
-        wait_ms = std::cmp::min(wait_ms * 2, 2000);
-    }
-    if header_data.len() < 70 {
-        return Err(format!("RSDATA response too short after {}ms: {} bytes", total_waited, header_data.len()));
-    }
-
-    // Patch SLNGTH at nibble offset 59 (4 bytes = 8 nibbles, little-endian nibble pairs)
-    // The raw data starts after the 5-byte SysEx header (F0 47 cc 09 48)
-    let payload_start = 5;
-    let slngth_offset = payload_start + 59;
-    let smpend_offset = payload_start + 75; // SMPEND is at nibble offset 75
-
-    // Encode total as 4 LE bytes, each split into 2 nibbles
-    for (field_offset, value) in [(slngth_offset, total), (smpend_offset, total)] {
-        let mut tmp = value;
-        for i in 0..4 {
-            let byte_offset = field_offset + i * 2;
-            if byte_offset + 1 < header_data.len() {
-                header_data[byte_offset] = (tmp & 0x0F) as u8;
-                header_data[byte_offset + 1] = ((tmp >> 4) & 0x0F) as u8;
-                tmp >>= 8;
-            }
-        }
-    }
-
-    // SDATA write: change opcode from 0x09 (RSDATA response) to 0x0B (SDATA write)
-    // Frame format: F0 47 cc [opcode] 48 [payload] F7
-    if header_data.len() > 3 {
-        header_data[3] = 0x0B; // SDATA opcode
-    }
-    s2p.scsi_midi_send(target_id, &header_data).await?;
-
-    // Wait for ACK
-    for _ in 0..30 {
-        let pending = s2p.scsi_midi_poll(target_id).await?;
-        if pending > 0 {
-            let _ = s2p.scsi_midi_read(target_id, pending).await?;
-            break;
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-    }
-
-    info!(total, "ASPACK upload complete (SLNGTH patched)");
+    info!(total, "ASPACK upload complete");
     Ok(total)
 }
 
