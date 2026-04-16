@@ -79,7 +79,7 @@ SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 VIDEO_CONTROL_SRC      := $(shell find $(MODULES_DIR)/video-control/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland demo-scenario demo-all demo-device demo-preview test-e2e-video-control
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland demo-scenario demo-all demo-device demo-preview test-e2e-video-control test-ui-video-control
 
 build: $(ALL_STAMPS)
 
@@ -539,6 +539,10 @@ demo-preview: $(VIDEO_CONTROL)
 # E2E tests — runs scenarios through the full pipeline (Playwright + ffmpeg)
 test-e2e-video-control: $(VIDEO_CONTROL)
 	cd $(MODULES_DIR)/video-control && pnpm test:e2e -- --run
+
+# Gallery UI tests — loads the gallery page in a browser and verifies rendering
+test-ui-video-control: $(VIDEO_CONTROL)
+	cd $(MODULES_DIR)/video-control && ./scripts/run-gallery-e2e.sh
 
 # ---------------------------------------------------------------------------
 # Clean
