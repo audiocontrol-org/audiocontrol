@@ -12,7 +12,75 @@ interface DemoInfo {
 
 interface ScenarioInfo { name: string; description: string; mode: string; outputTier: string; file: string }
 
-interface GenerateStatus { status: 'idle' | 'generating' | 'complete' | 'error'; scenario?: string; output?: string; error?: string }
+interface StepInfo {
+  step: string;
+  status: 'pending' | 'running' | 'done';
+  startedAt: number | null;
+  completedAt: number | null;
+  elapsedMs: number | null;
+}
+
+interface GenerateStatusIdle { status: 'idle' }
+interface GenerateStatusGenerating {
+  status: 'generating';
+  scenario: string;
+  currentStep: string;
+  steps: StepInfo[];
+  elapsedMs: number;
+  estimatedRemainingMs: number | null;
+}
+interface GenerateStatusComplete { status: 'complete'; scenario: string; elapsedMs: number }
+interface GenerateStatusError { status: 'error'; scenario: string; error: string; elapsedMs: number }
+type GenerateStatus = GenerateStatusIdle | GenerateStatusGenerating | GenerateStatusComplete | GenerateStatusError;
+
+const STEP_LABELS: Record<string, string> = {
+  'launching-browser': 'Launching browser',
+  'recording-scenario': 'Recording scenario',
+  'finalizing-video': 'Finalizing video',
+  'converting-mp4': 'Converting MP4',
+  'converting-gif': 'Converting GIF',
+  'generating-captions': 'Generating captions',
+  'generating-vo-script': 'Generating VO script',
+  'burning-captions': 'Burning captions',
+  'complete': 'Complete',
+};
+
+function humanizeStep(step: string): string {
+  return STEP_LABELS[step] ?? step.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatElapsedCompact(ms: number): string {
+  const totalSeconds = Math.round(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+function renderProgressPanel(status: GenerateStatusGenerating): string {
+  const stepRows = status.steps.map((s) => {
+    const label = humanizeStep(s.step);
+    const cls = `progress-step progress-step-${s.status}`;
+    let icon = '<span class="progress-step-icon"></span>';
+    if (s.status === 'done') icon = '<span class="progress-step-icon">\u2713</span>';
+    if (s.status === 'running') icon = '<span class="progress-step-icon">\u25CF</span>';
+
+    const elapsed = s.status === 'done' && s.elapsedMs !== null
+      ? `<span class="progress-step-elapsed">${(s.elapsedMs / 1000).toFixed(1)}s</span>`
+      : s.status === 'running'
+        ? `<span class="progress-step-elapsed">\u2026</span>`
+        : '';
+
+    return `<div class="${cls}">${icon}<span class="progress-step-label">${label}</span>${elapsed}</div>`;
+  }).join('');
+
+  const elapsedStr = formatElapsedCompact(status.elapsedMs);
+  const etaStr = status.estimatedRemainingMs !== null
+    ? `~${formatElapsedCompact(status.estimatedRemainingMs)}`
+    : '--:--';
+
+  return `<div class="progress-panel">${stepRows}</div>`
+    + `<div class="progress-footer">Elapsed: ${elapsedStr}  |  ETA: ${etaStr}</div>`;
+}
 
 function formatDuration(ms: number): string {
   if (ms <= 0) return '--:--';
@@ -22,20 +90,31 @@ function formatDuration(ms: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
+function ensureOverlay(card: HTMLElement): HTMLElement {
+  let overlay = card.querySelector('.card-generating-overlay') as HTMLElement | null;
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.className = 'card-generating-overlay';
+    card.querySelector('.card-thumb')?.appendChild(overlay);
+  }
+  return overlay;
+}
+
 function setCardGenerating(card: HTMLElement, generating: boolean): void {
-  const overlay = card.querySelector('.card-generating-overlay') as HTMLElement | null;
   if (generating) {
-    if (!overlay) {
-      const el = document.createElement('div');
-      el.className = 'card-generating-overlay';
-      el.textContent = 'Generating...';
-      card.querySelector('.card-thumb')?.appendChild(el);
-    }
+    ensureOverlay(card);
     card.classList.add('generating');
   } else {
+    const overlay = card.querySelector('.card-generating-overlay') as HTMLElement | null;
     overlay?.remove();
     card.classList.remove('generating');
   }
+}
+
+function updateCardProgress(card: HTMLElement, status: GenerateStatusGenerating): void {
+  card.classList.add('generating');
+  const overlay = ensureOverlay(card);
+  overlay.innerHTML = renderProgressPanel(status);
 }
 
 function setCardError(card: HTMLElement, message: string): void {
@@ -48,11 +127,14 @@ function setCardError(card: HTMLElement, message: string): void {
   setTimeout(() => errEl.remove(), 5000);
 }
 
-async function pollUntilDone(): Promise<GenerateStatus> {
+async function pollUntilDone(card: HTMLElement | null): Promise<GenerateStatus> {
   while (true) {
     await new Promise((r) => setTimeout(r, 1000));
     const res = await fetch('/api/generate/status');
     const status: GenerateStatus = await res.json();
+    if (status.status === 'generating' && card) {
+      updateCardProgress(card, status);
+    }
     if (status.status !== 'generating') return status;
   }
 }
@@ -71,20 +153,20 @@ async function generateScenario(
   });
 
   if (res.status === 409) {
-    const body: GenerateStatus = await res.json();
+    const body = await res.json() as { error?: string };
     if (card) {
       setCardGenerating(card, false);
       setCardError(card, 'Another generation in progress');
     }
-    return { status: 'error', scenario: scenarioName, error: body.error };
+    return { status: 'error', scenario: scenarioName, error: body.error ?? 'Conflict', elapsedMs: 0 };
   }
 
-  const result = await pollUntilDone();
+  const result = await pollUntilDone(card);
 
   if (card) {
     setCardGenerating(card, false);
     if (result.status === 'error') {
-      setCardError(card, result.error ?? 'Generation failed');
+      setCardError(card, result.error);
     }
   }
 

@@ -35,6 +35,32 @@ export interface ScenarioModule {
   captions?: Caption[];
 }
 
+/** Pipeline step identifier for progress tracking */
+export type PipelineStep =
+  | 'launching-browser'
+  | 'recording-scenario'
+  | 'finalizing-video'
+  | 'converting-mp4'
+  | 'converting-gif'
+  | 'generating-captions'
+  | 'generating-vo-script'
+  | 'burning-captions'
+  | 'complete';
+
+/** Status of a pipeline step */
+export type StepStatus = 'pending' | 'running' | 'done';
+
+/** Progress info for a single pipeline step */
+export interface StepProgress {
+  step: PipelineStep;
+  status: StepStatus;
+  startedAt?: number;
+  completedAt?: number;
+}
+
+/** Callback invoked at each pipeline transition */
+export type ProgressCallback = (step: PipelineStep) => void;
+
 /** Result of running a scenario */
 export interface ScenarioResult {
   scenarioName: string;

@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { chromium } from 'playwright';
 import { generateCaptionsYaml, generateVoScript } from '@/captions.js';
 import { burnCaptions, convertToGif, convertToMp4, getVideoDurationMs } from '@/ffmpeg.js';
-import type { OutputTier, OverlayMode, ScenarioModule, ScenarioResult } from '@/types.js';
+import type { OutputTier, OverlayMode, ProgressCallback, ScenarioModule, ScenarioResult } from '@/types.js';
 
 export interface RunScenarioOptions {
   /** URL to navigate to before running the scenario */
@@ -18,6 +18,8 @@ export interface RunScenarioOptions {
   tier?: OutputTier;
   /** Caption overlay mode (defaults to 'none') */
   overlay?: OverlayMode;
+  /** Progress callback invoked at each pipeline step transition */
+  onProgress?: ProgressCallback;
 }
 
 export async function runScenario(
@@ -33,6 +35,9 @@ export async function runScenario(
 
   await mkdir(outputDir, { recursive: true });
 
+  const { onProgress } = options;
+
+  if (onProgress) onProgress('launching-browser');
   const browser = await chromium.launch();
   const context = await browser.newContext({
     viewport: { width, height },
@@ -50,6 +55,7 @@ export async function runScenario(
   await page.addInitScript('window.__name = function(fn) { return fn; };');
 
   await page.goto(options.url);
+  if (onProgress) onProgress('recording-scenario');
   await scenario.run(page);
 
   // Capture video reference before closing — Playwright requires this ordering
@@ -59,6 +65,7 @@ export async function runScenario(
   }
 
   // Finalize the video: close page and context to flush the recording.
+  if (onProgress) onProgress('finalizing-video');
   await page.close();
   await context.close();
   await browser.close();
@@ -82,7 +89,9 @@ export async function runScenario(
   const mp4Path = join(outputDir, 'video.mp4');
   const gifPath = join(outputDir, 'video.gif');
 
+  if (onProgress) onProgress('converting-mp4');
   await convertToMp4(webmPath, mp4Path);
+  if (onProgress) onProgress('converting-gif');
   await convertToGif(webmPath, gifPath);
 
   // Generate caption outputs if the scenario has captions and the tier calls for them
@@ -99,6 +108,7 @@ export async function runScenario(
   ) {
     const videoDurationMs = await getVideoDurationMs(mp4Path);
 
+    if (onProgress) onProgress('generating-captions');
     const yamlContent = generateCaptionsYaml(
       name,
       scenario.captions,
@@ -108,6 +118,7 @@ export async function runScenario(
     await writeFile(captionsYamlPath, yamlContent, 'utf-8');
 
     if (effectiveTier === 'scripted') {
+      if (onProgress) onProgress('generating-vo-script');
       const voContent = generateVoScript(
         name,
         scenario.captions,
@@ -125,8 +136,11 @@ export async function runScenario(
     (effectiveOverlay === 'burned' || effectiveOverlay === 'both')
   ) {
     captionedMp4Path = join(outputDir, 'video-captioned.mp4');
+    if (onProgress) onProgress('burning-captions');
     await burnCaptions(mp4Path, captionedMp4Path, scenario.captions);
   }
+
+  if (onProgress) onProgress('complete');
 
   return {
     scenarioName: name,

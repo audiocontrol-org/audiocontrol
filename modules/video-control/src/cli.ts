@@ -40,7 +40,14 @@ async function main(): Promise<void> {
   console.log(`Output tier: ${effectiveTier}`);
   console.log(`Overlay: ${effectiveOverlay}`);
 
-  const result = await runScenario(scenario, { url, tier, overlay });
+  const result = await runScenario(scenario, {
+    url,
+    tier,
+    overlay,
+    onProgress: (step) => {
+      console.log(`[STEP] ${step}`);
+    },
+  });
 
   console.log(`\nDone! Output:`);
   console.log(`  MP4: ${result.mp4Path}`);

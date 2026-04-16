@@ -189,12 +189,10 @@
       position: absolute;
       inset: 0;
       display: flex;
-      align-items: center;
+      flex-direction: column;
       justify-content: center;
-      color: #93c5fd;
-      font-size: 0.95rem;
-      font-weight: 500;
-      animation: pulse 1.5s ease-in-out infinite;
+      padding: 16px;
+      background: rgba(0, 0, 0, 0.85);
       pointer-events: none;
     }
 
@@ -202,9 +200,66 @@
       position: relative;
     }
 
-    @keyframes pulse {
+    .progress-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .progress-step {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+      line-height: 1.4;
+      color: #f9fafb;
+    }
+
+    .progress-step-icon {
+      display: inline-block;
+      width: 14px;
+      text-align: center;
+      flex-shrink: 0;
+      font-size: 0.75rem;
+    }
+
+    .progress-step-label {
+      flex: 1 1 auto;
+    }
+
+    .progress-step-elapsed {
+      font-size: 0.72rem;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      color: #9ca3af;
+      flex-shrink: 0;
+    }
+
+    .progress-step-done .progress-step-icon {
+      color: #4ade80;
+    }
+
+    .progress-step-running .progress-step-icon {
+      color: #60a5fa;
+      animation: step-pulse 1.2s ease-in-out infinite;
+    }
+
+    .progress-step-pending {
+      color: #6b7280;
+    }
+
+    .progress-footer {
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px solid #374151;
+      font-size: 0.72rem;
+      color: #9ca3af;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      text-align: center;
+    }
+
+    @keyframes step-pulse {
       0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
+      50% { opacity: 0.3; }
     }
 
     .card-error {
