@@ -533,75 +533,91 @@ Previous session's test failures were ALL caused by a bad RSLIST parser (used `(
 3. **Investigate whether ASPACK can grow the allocation** — untested; ASPACK writes beyond SLNGTH succeed but the data may not be playable
 4. **Send SDS at maximum batch speed** — the batched SDS path (20 packets per CDB) runs at ~2.2 KB/s; for short samples this may be acceptable
 
-### MESA II Disassembly: SendAudioBufferToSampler
+### 2026-04-16 13:00 PDT — MESA II Disassembly: SendAudioBufferToSampler
 
-Extracted `Sampler Editor 2.3` resource fork (506909 bytes) from Mac OS 9 disk image via hfsutils. Disassembled `SendAudioBufferToSampler` (0x030713 - 0x030cc5, 1458 bytes of 68k code).
+Extracted `Sampler Editor 2.3` resource fork (506909 bytes) from Mac OS 9 disk image via hfsutils. Disassembled `SendAudioBufferToSampler` (0x030713 - 0x030cc5, 1458 bytes of 68k code). Binaries and disassembly archived in `docs/1.0/001-IN-PROGRESS/akai-ux-improvement/mesa-ii-analysis/`.
 
-**Key finding: MESA uses SDS with BULK mode — NOT ASPACK.**
+**Observations (from static disassembly — not yet validated against hardware):**
 
-- **No ASPACK (0x0D) opcode** in the function body. No SDATA (0x0B) bulk write either.
-- **4 instances of `MOVE.B #$01,-(SP)`** — opcode 0x01 is SDS dump header. MESA builds SDS headers.
-- **`MOVE.L #'BULK',-(SP)`** — tells the SCSI Plug to use its BULK transfer handler for the data.
-- **No SDS data packet (0x02) push** — the BULK handler in the SCSI Plug constructs data packets internally.
+- **No ASPACK (0x0D) opcode push** found in the function body.
+- **4 instances of `MOVE.B #$01,-(SP)`** — 0x01 is the SDS dump header opcode. This suggests MESA builds SDS headers, but the exact context of each push is not yet fully traced.
+- **`MOVE.L #'BULK',-(SP)`** — passes the 'BULK' tag to the SCSI Plug's `SendData` method.
+- **No explicit SDS data packet (0x02) push** — the BULK handler may construct data packets internally, or the data may be sent through a different mechanism.
 
-**SCSI Plug dispatch table** (at 0x0e58 in scsi-plug-rsrc.bin):
+**SCSI Plug dispatch table** (at 0x0e58 in scsi-plug-rsrc.bin — confirmed by hex inspection):
 
-| Tag | Offset | Purpose |
+| Tag | Offset | Purpose (inferred) |
 |-----|--------|---------|
-| BOFF | 0x04 | Buffer off (cleanup) |
-| SYSX | 0x04 | Normal SysEx (send + poll + read) |
-| BULK | 0x30 | Bulk sample data transfer |
-| MIDI | 0x2A2 | Raw MIDI |
-| SRAW | 0x46 | Raw SysEx without handshake |
+| BOFF → SYSX | 0x04 | Possibly normal SysEx mode |
+| BOFF | 0x1a | Possibly buffer-off cleanup |
+| BULK | 0x30 | Bulk data transfer |
+| MIDI | 0x2A2 | Possibly raw MIDI |
+| SRAW | 0x46 | Possibly raw SysEx without handshake |
+| SYSX | 0x246 | Possibly SysEx with handshake |
 
-**Implication:** MESA sends the **complete SDS transfer** with the real sample count in the dump header and all data packets. It does NOT use partial SDS stubs or ASPACK. The BULK handler optimizes SCSI throughput (likely larger CDB transfers, batched packets, minimal per-packet overhead).
+**Tentative interpretation:** MESA may send a complete SDS transfer using the BULK handler for optimized throughput. However, this is based on opcode scanning — the full control flow has not been traced through all branches.
 
-ASPACK was our invention based on MESA II's "ASPACK opcode 0x0D" reference — but MESA itself doesn't use it for uploads. MESA achieves fast uploads by optimizing the SDS transport layer, not by bypassing SDS.
+### 2026-04-16 13:30 PDT — SCSI Plug BULK Handler Analysis
 
-### Implications for the Fix
+Disassembled the full `SendData` function (1068 bytes). Traced the BULK code path:
 
-1. **SLNGTH can only be set via SDS dump header** — confirmed read-only via SDATA
-2. **The device requires a complete SDS transfer** before committing a new sample
-3. **ASPACK can overwrite data** in existing samples but can't change the allocation or SLNGTH
-4. **The correct approach is full SDS with optimized batching** — match what MESA does
+**Observations (from static analysis — needs hardware validation):**
 
-### SCSI Plug BULK Handler — Deeper Analysis (Session 9)
+1. The BULK path appears to check that the data starts with Akai SysEx framing (`F0` at byte 0, `0x47` at byte 1, `0x48` at byte 4).
+2. It appears to check byte 3 (the opcode) against `0x0B` (SDATA). If the opcode is `0x0B`, it enters a code path that reads bytes 0x0b-0x0e from the data — these would be offset/length parameters if the message follows `BuildSampleDataRequest` format.
+3. It calls `JSR $0000106E` which appears to be the raw SCSI send function (`SMSendData` based on address proximity to its name string at 0x16dc).
 
-Disassembled the full `SendData` function (1068 bytes). The BULK path does NOT send standard SDS data packets. Instead:
+**Caution:** The 68k decoder is incomplete (many instructions show as `.word`). The control flow between the dispatch table match and the actual send is not fully traced. The interpretation that "BULK sends SDATA with offset/length" is a hypothesis, not proven.
 
-1. It checks that the data is Akai SysEx (`F0 47 cc ... 48`)
-2. It checks if the opcode is `0x0B` (SDATA) — the sample data write opcode
-3. It extracts offset and length from the SysEx parameters (bytes 0x0b-0x0e)
-4. It calls `SMSendData` (JSR $0000106E) to transmit the data via SCSI
+### 2026-04-16 13:35 PDT — BuildSampleDataRequest Message Format
 
-### BuildSampleDataRequest — Message Format
+From disassembly of `BuildSampleDataRequest` (178 bytes at 0x06dc5b). This function's name and parameter types are known from the THINK C name string.
 
-From disassembly of `BuildSampleDataRequest` (178 bytes at 0x06dc5b):
+**Observed encoding (high confidence — the byte writes are explicit in the disassembly):**
 
 ```
 F0 47 cc 0B 48 ss ss oo oo oo oo nn nn nn nn 01 00 F7
                 ^^                             ^^
-                SDATA opcode                   interval=1
+                SDATA opcode                   interval byte
 
-  ss ss     — sample number (7-bit pair, LE)
-  oo oo oo oo — offset from start of sample (4 × 7-bit, LE)
-  nn nn nn nn — number of samples (4 × 7-bit, LE)
-  01        — interval mode (single)
-  00        — reserved
+  ss ss         — sample number (7-bit pair, LE)
+  oo oo oo oo   — offset (4 × 7-bit bytes, LE)
+  nn nn nn nn   — count (4 × 7-bit bytes, LE)
+  01            — interval mode? (literal 0x01 written at offset 0x0f)
+  00            — literal 0x00 at offset 0x10
+  F7            — SysEx end
 ```
 
-This is a **proprietary Akai SDATA command with offset/length parameters** — different from the header-only SDATA we use for writing sample metadata. With offset and length, it becomes a sample data write command.
+This message is 18 bytes and contains NO audio data. It appears to be a request/command header.
 
-### The Missing Piece: Where Does the Audio Data Go?
+**Open question:** How does the actual PCM audio data get transmitted? Possibilities:
+1. The BULK handler appends PCM data to the same CDB 0x0C write (making one large SCSI transfer)
+2. The PCM data follows in a subsequent CDB 0x0C write
+3. The PCM data is sent through a completely different mechanism (direct SCSI block write?)
 
-The `BuildSampleDataRequest` message is only 18 bytes — it contains no audio data. The BULK handler sends this header, then presumably sends the actual PCM data in a separate SCSI transfer. The data likely follows in the same SCSI MIDI send (CDB 0x0C) as a larger payload, or in a subsequent CDB.
+**NOT YET TESTED against hardware.**
 
-Need to investigate: does the SCSI Plug send the header + data as one large CDB write, or as separate CDB writes?
+### 2026-04-16 14:00 PDT — Hardware Test: SDATA with offset/length
+
+Sent the `BuildSampleDataRequest` message format to the S3000XL via SCSI MIDI (CDB 0x0C). Test file: `test-sdata-bulk-probe.ts`.
+
+**Results:**
+- SDATA with offset/length (0x0B opcode + sample#/offset/count): **no response**. Device ignores it completely.
+- Tried with CDB flag 0x00 and 0x80: no response either way.
+- Normal RSDATA (0x0A, header read): works fine, 230 bytes returned.
+
+**Interpretation:** The SDATA-with-offset-length command does not work over the SCSI MIDI channel (CDB 0x0C/0x0D/0x0E). This is consistent with the earlier finding that RSPACK (0x0C) also doesn't work over SCSI MIDI. Both are sample DATA commands (as opposed to sample HEADER commands), and both are silent.
+
+**This suggests MESA's BULK handler does NOT send sample data through CDB 0x0C (MIDI send).** It may use a different CDB entirely — possibly a vendor-specific CDB for direct memory/data transfer, or it may layer the data differently (e.g., appending PCM data to the SysEx message itself before sending via CDB 0x0C).
+
+### Open Questions (as of 2026-04-16 14:00 PDT)
+1. How does MESA's SCSI Plug actually send the PCM data in BULK mode? The `SMSendData` function uses CDB 0x0C — but does it send the 18-byte header alone, or does it build a larger payload that includes the PCM data inline?
+2. Could the data be nibble-encoded PCM appended to the SDATA SysEx message before the F7 terminator? (Similar to how ASPACK sends nibble-encoded data in a single SysEx message.)
+3. Is there a completely separate SCSI command (not CDB 0x0C) for bulk data?
 
 ### Next Steps
-1. Test SDATA with offset/length against the S3000XL — does it accept the command?
-2. Determine how the PCM data follows the header (same CDB or separate?)
-3. If SDATA-with-offset works, it bypasses the SDS length limit entirely — no SDS needed for data transfer, only for initial sample creation
+1. **Disassemble SMSendData more carefully** — trace exactly what data buffer it sends. Does it send just the 18-byte header, or does the Sampler Editor append PCM data to the buffer before calling SendData?
+2. **Look at SendAudioBufferToSampler more carefully** — what does it put in the buffer that gets passed to SendData with BULK mode? The 'BULK' tag and the BuildSampleDataRequest header may be just part of a larger structure.
 
 ### Test Files
 - `test-aspack-slngth.ts` — original multi-theory test (RSLIST parser bug, needs update)
