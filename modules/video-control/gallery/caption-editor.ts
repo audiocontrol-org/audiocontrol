@@ -222,4 +222,4 @@ function buildCaptionTable(
 }
 
 export type { CaptionRow };
-export { buildCaptionTable, applyCaptionOverlay, cleanupCaptionOverlay };
+export { buildCaptionTable, applyCaptionOverlay, cleanupCaptionOverlay, showSaved };
