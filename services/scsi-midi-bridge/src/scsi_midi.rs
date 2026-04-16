@@ -432,10 +432,9 @@ where
     let sn_lo = (sample_number & 0x7F) as u8;
     let sn_hi = ((sample_number >> 7) & 0x7F) as u8;
 
-    // Declare the real sample count in the SDS header. The dump header
-    // allocates memory and creates the slot in RSLIST. No data packet is
-    // needed — ASPACK writes the actual PCM data directly.
-    // (Confirmed by test-sds-header-aspack-data.ts: header + ASPACK, no data packet.)
+    // Declare the real sample count in the SDS header so the device
+    // allocates the correct memory size. Then send 1 data packet (40 samples)
+    // to trigger sample creation in RSLIST. ASPACK overwrites with real data.
     let len_lo = (total & 0x7F) as u8;
     let len_mid = ((total >> 7) & 0x7F) as u8;
     let len_hi = ((total >> 14) & 0x7F) as u8;
@@ -453,6 +452,14 @@ where
     s2p.scsi_midi_send(target_id, &dump_header).await?;
     wait_for_ack(s2p, target_id, 30).await
         .map_err(|e| format!("no ACK for dump header: {e}"))?;
+
+    // Send 1 data packet (40 samples of silence) to commit the sample to RSLIST.
+    // The dump header alone doesn't create the sample — the device needs at least
+    // one data packet. (SCSI-NOTES: "minimum viable creation: 1 header + 1 packet")
+    let silence_pkt = encode_sds_data_packet(channel, 0, &[0i16; 40], 0, 40);
+    s2p.scsi_midi_send(target_id, &silence_pkt).await?;
+    wait_for_ack(s2p, target_id, 30).await
+        .map_err(|e| format!("no ACK for data packet: {e}"))?;
 
     info!("ASPACK phase 1 complete: sample slot created");
 
