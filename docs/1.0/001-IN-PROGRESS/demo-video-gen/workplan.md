@@ -195,9 +195,9 @@ Use Playwright's built-in `recordVideo` to capture browser interactions as WebM.
 
 **Tasks:**
 
-- [ ] Add `/api/open-folder` POST endpoint that runs `open <path>` (macOS) to reveal the scenario's output directory in Finder
-- [ ] Add `/api/open-file` POST endpoint that runs `open <path>` to open a specific file in the default app
-- [ ] Add "Show in Finder" link on each gallery card that calls `/api/open-folder`
-- [ ] Add "Open" links next to each asset (MP4, GIF, captions, VO script) that call `/api/open-file`
+- [x] Add `/api/open-folder` POST endpoint that runs `open <path>` (macOS) to reveal the scenario's output directory in Finder
+- [x] Add `/api/open-file` POST endpoint that runs `open <path>` to open a specific file in the default app
+- [x] Add "Show in Finder" link on each gallery card that calls `/api/open-folder`
+- [x] Add "Open" links next to each asset (MP4, GIF, captions, VO script) that call `/api/open-file`
 
 **Acceptance:** Clicking "Show in Finder" opens the scenario's output directory. Clicking "Open" on an asset opens it in the default application.
