@@ -533,6 +533,43 @@ Previous session's test failures were ALL caused by a bad RSLIST parser (used `(
 3. **Investigate whether ASPACK can grow the allocation** — untested; ASPACK writes beyond SLNGTH succeed but the data may not be playable
 4. **Send SDS at maximum batch speed** — the batched SDS path (20 packets per CDB) runs at ~2.2 KB/s; for short samples this may be acceptable
 
+### MESA II Disassembly: SendAudioBufferToSampler
+
+Extracted `Sampler Editor 2.3` resource fork (506909 bytes) from Mac OS 9 disk image via hfsutils. Disassembled `SendAudioBufferToSampler` (0x030713 - 0x030cc5, 1458 bytes of 68k code).
+
+**Key finding: MESA uses SDS with BULK mode — NOT ASPACK.**
+
+- **No ASPACK (0x0D) opcode** in the function body. No SDATA (0x0B) bulk write either.
+- **4 instances of `MOVE.B #$01,-(SP)`** — opcode 0x01 is SDS dump header. MESA builds SDS headers.
+- **`MOVE.L #'BULK',-(SP)`** — tells the SCSI Plug to use its BULK transfer handler for the data.
+- **No SDS data packet (0x02) push** — the BULK handler in the SCSI Plug constructs data packets internally.
+
+**SCSI Plug dispatch table** (at 0x0e58 in scsi-plug-rsrc.bin):
+
+| Tag | Offset | Purpose |
+|-----|--------|---------|
+| BOFF | 0x04 | Buffer off (cleanup) |
+| SYSX | 0x04 | Normal SysEx (send + poll + read) |
+| BULK | 0x30 | Bulk sample data transfer |
+| MIDI | 0x2A2 | Raw MIDI |
+| SRAW | 0x46 | Raw SysEx without handshake |
+
+**Implication:** MESA sends the **complete SDS transfer** with the real sample count in the dump header and all data packets. It does NOT use partial SDS stubs or ASPACK. The BULK handler optimizes SCSI throughput (likely larger CDB transfers, batched packets, minimal per-packet overhead).
+
+ASPACK was our invention based on MESA II's "ASPACK opcode 0x0D" reference — but MESA itself doesn't use it for uploads. MESA achieves fast uploads by optimizing the SDS transport layer, not by bypassing SDS.
+
+### Implications for the Fix
+
+1. **SLNGTH can only be set via SDS dump header** — confirmed read-only via SDATA
+2. **The device requires a complete SDS transfer** before committing a new sample
+3. **ASPACK can overwrite data** in existing samples but can't change the allocation or SLNGTH
+4. **The correct approach is full SDS with optimized batching** — match what MESA does
+
+Options:
+- Improve our SDS batching throughput (currently ~2.2 KB/s with 20 packets per CDB)
+- Investigate the SCSI Plug's BULK handler to see what SCSI optimization it uses
+- Send more packets per CDB, or use larger SCSI transfer blocks
+
 ### Test Files
 - `test-aspack-slngth.ts` — original multi-theory test (RSLIST parser bug, needs update)
 - `test-theory-b.ts`, `test-b-fixed.ts`, `test-b-full.ts` — Theory B validation
