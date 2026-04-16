@@ -7,6 +7,7 @@ interface FileInfo {
 
 interface DemoDetail {
   name: string;
+  generated: boolean;
   mp4Url: string | null;
   gifUrl: string | null;
   hasCaptions: boolean;
@@ -276,6 +277,66 @@ function buildDetailView(detail: DemoDetail): HTMLElement {
   header.appendChild(name);
 
   root.appendChild(header);
+
+  // If the video hasn't been generated yet, show a prompt instead of the full detail
+  if (!detail.generated) {
+    const notice = document.createElement('div');
+    Object.assign(notice.style, {
+      textAlign: 'center',
+      padding: '48px 24px',
+      color: '#9ca3af',
+    });
+
+    const msg = document.createElement('p');
+    msg.textContent = `No video has been generated for "${detail.name}" yet.`;
+    msg.style.marginBottom = '16px';
+    notice.appendChild(msg);
+
+    const genBtn = document.createElement('button');
+    genBtn.textContent = 'Generate Now';
+    Object.assign(genBtn.style, {
+      padding: '8px 20px',
+      backgroundColor: '#3b82f6',
+      color: '#ffffff',
+      border: 'none',
+      borderRadius: '4px',
+      cursor: 'pointer',
+      fontSize: '14px',
+    });
+    genBtn.addEventListener('click', () => {
+      genBtn.disabled = true;
+      genBtn.textContent = 'Generating...';
+      fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scenario: detail.name, tier: 'scripted' }),
+      }).then(() => {
+        // Poll until complete, then reload the detail view
+        const poll = setInterval(() => {
+          fetch('/api/generate/status')
+            .then((r) => r.json())
+            .then((s: { status: string }) => {
+              if (s.status === 'complete' || s.status === 'error' || s.status === 'idle') {
+                clearInterval(poll);
+                // Reload the detail view
+                const container = root.parentElement;
+                if (container) {
+                  container.innerHTML = '';
+                  container.dataset.scenario = '';
+                  // Re-trigger mount
+                  location.hash = `#/detail/${detail.name}`;
+                  // Force hashchange since hash hasn't changed
+                  window.dispatchEvent(new HashChangeEvent('hashchange'));
+                }
+              }
+            });
+        }, 1500);
+      });
+    });
+    notice.appendChild(genBtn);
+    root.appendChild(notice);
+    return root;
+  }
 
   // Video player
   const videoWrap = document.createElement('div');

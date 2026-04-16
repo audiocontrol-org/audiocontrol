@@ -110,7 +110,27 @@ function handleDemoDetailRequest(
   }
 
   const dir = resolve(MODULE_ROOT, 'dist/demos', name);
+
+  // If the output directory doesn't exist, check if the scenario file exists.
+  // A missing directory just means the video hasn't been generated yet.
   if (!existsSync(dir) || !statSync(dir).isDirectory()) {
+    const scenarioFile = resolve(MODULE_ROOT, 'scenarios', `${name}.ts`);
+    if (existsSync(scenarioFile)) {
+      sendJson(res, 200, {
+        name,
+        generated: false,
+        mp4Url: null,
+        gifUrl: null,
+        hasCaptions: false,
+        hasCaptionedMp4: false,
+        hasVoScript: false,
+        durationMs: 0,
+        files: [],
+        captionsYaml: null,
+        voScript: null,
+      });
+      return;
+    }
     sendJson(res, 404, { error: `Scenario not found: ${name}` });
     return;
   }
@@ -147,6 +167,7 @@ function handleDemoDetailRequest(
 
   sendJson(res, 200, {
     name,
+    generated: true,
     mp4Url: hasMp4 ? `/videos/${name}/video.mp4` : null,
     gifUrl: hasGif ? `/videos/${name}/video.gif` : null,
     hasCaptions,
