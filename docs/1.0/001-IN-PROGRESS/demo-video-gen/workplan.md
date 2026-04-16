@@ -177,11 +177,11 @@ Use Playwright's built-in `recordVideo` to capture browser interactions as WebM.
 
 **Tasks:**
 
-- [ ] Define pipeline step identifiers emitted by the runner: `launching-browser`, `recording-scenario`, `converting-mp4`, `converting-gif`, `generating-captions`, `generating-vo-script`, `burning-captions`, `complete`
-- [ ] Add a progress callback to `RunScenarioOptions` that the runner calls at each step transition
-- [ ] Update `/api/generate/status` to return: current step, list of all steps with status (pending/running/done), elapsed time per step, total elapsed, and estimated time remaining
-- [ ] Update the gallery UI to display a step-by-step progress panel on the generating card: checkmark for completed steps, spinner for current step, dimmed for pending steps
-- [ ] Display elapsed time and ETA at the bottom of the progress panel
-- [ ] Estimate ETA from previous generation durations or reasonable defaults per step
+- [x] Define pipeline step identifiers emitted by the runner: `launching-browser`, `recording-scenario`, `finalizing-video`, `converting-mp4`, `converting-gif`, `generating-captions`, `generating-vo-script`, `burning-captions`, `complete`
+- [x] Add a progress callback to `RunScenarioOptions` that the runner calls at each step transition
+- [x] Update `/api/generate/status` to return: current step, list of all steps with status (pending/running/done), elapsed time per step, total elapsed, and estimated time remaining
+- [x] Update the gallery UI to display a step-by-step progress panel on the generating card: checkmark for completed steps, pulsing dot for current step, dimmed for pending steps
+- [x] Display elapsed time and ETA at the bottom of the progress panel
+- [x] Estimate ETA from hardcoded default durations per step
 
 **Acceptance:** When generating a video from the gallery, the user sees each pipeline step listed with its status (pending/running/done), elapsed time, and ETA. Steps update in real time as the generation progresses.
