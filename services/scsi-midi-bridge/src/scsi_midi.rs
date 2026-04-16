@@ -590,16 +590,21 @@ where
     s2p.scsi_midi_send(target_id, &rsdata_req).await?;
 
     let mut header_data = Vec::new();
-    for _ in 0..30 {
+    let mut wait_ms = 100u64;
+    let max_wait_ms = 10_000u64;
+    let mut total_waited = 0u64;
+    while total_waited < max_wait_ms {
+        tokio::time::sleep(std::time::Duration::from_millis(wait_ms)).await;
+        total_waited += wait_ms;
         let pending = s2p.scsi_midi_poll(target_id).await?;
         if pending > 0 {
             header_data = s2p.scsi_midi_read(target_id, pending).await?;
             break;
         }
-        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        wait_ms = std::cmp::min(wait_ms * 2, 2000);
     }
     if header_data.len() < 70 {
-        return Err(format!("RSDATA response too short: {} bytes", header_data.len()));
+        return Err(format!("RSDATA response too short after {}ms: {} bytes", total_waited, header_data.len()));
     }
 
     // Patch SLNGTH at nibble offset 59 (4 bytes = 8 nibbles, little-endian nibble pairs)
