@@ -495,6 +495,7 @@ export function createS3000xlClient(
       sampleNamesCache = postNames;
 
       // Post-upload rename: the device auto-assigns a name (e.g., "MIDI 18").
+      // Note: SLNGTH/SMPEND are patched by the bridge after ASPACK upload.
       if (sdsOptions?.name) {
         console.log(`[s3000xl-client] renaming sample ${rslistIndex} to "${sdsOptions.name}"`);
         const response = await sendCommandWithRetry(
