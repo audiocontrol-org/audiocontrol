@@ -82,9 +82,12 @@ export interface EditorDialogStrategy {
    * Load WAV data for a device-specific node type.
    * Return null if this strategy doesn't handle the given nodeType --
    * the shared hook will fall back to common-area loading.
+   *
+   * @param root - Library root handle, or null if no library is connected.
+   *   Strategies that load from device memory (e.g., SDS) don't need the root.
    */
   loadWav(
-    root: StorageDirectoryHandle,
+    root: StorageDirectoryHandle | null,
     name: string,
     nodeType: string,
     path?: string[],
@@ -221,11 +224,13 @@ export function useEditorDialogsCore(
     nodeType: string,
     path?: string[],
   ): Promise<WavData> => {
-    if (!libraryRoot) throw new Error('Library not connected');
-
-    // Try device-specific strategy first
+    // Try device-specific strategy first — strategy may not need libraryRoot
+    // (e.g., loading device samples via SDS bypasses library entirely)
     const strategyResult = await strategy.loadWav(libraryRoot, name, nodeType, path);
     if (strategyResult) return strategyResult;
+
+    // Common-area loading requires a library root
+    if (!libraryRoot) throw new Error('Library not connected');
 
     // Common-area samples: sample.yaml + sample.wav
     if (nodeType === 'sample') {

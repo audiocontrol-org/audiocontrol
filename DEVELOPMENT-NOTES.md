@@ -11,6 +11,57 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-15: Phases 8-14 + Bug #280 — Full Feature Completion and Extension (Session 5)
+
+### Feature: akai-ux-improvement
+### Worktree: audiocontrol-akai-ux-improvement
+
+### Goal
+Triage bug #280, complete all remaining phases (8-13), ship the feature, then extend with sample audio editing (phases 14-17).
+
+### Accomplished
+- **Bug #280**: Root cause found via throwaway diff script — S3000XL uses MODVFILT1/2/3 for velocity→freq, LFO2→freq, ENV2→freq (not the dead S1000 fields V_FREQ, P_FREQ, E_FREQ). Fixed field mapping + signed decoding.
+- **Phase 8**: Promotion round-trip verified — 2 Playwright e2e tests (preview button + context menu)
+- **Phase 9**: Sample editor — SampleList, SampleEditor, SamplesPage with list-detail layout, 20 unit tests
+- **Phase 11**: Persistent editor cache — zustand persist + sessionStorage for all 3 stores, CacheAge indicator
+- **Phase 12**: Expandable programs — listStoredPrograms scans samples/ dir, atomic sample rename with rollback, 8 unit tests
+- **Phase 13**: Sample clone — cloneSample via SDS in client, UI in SamplesPage + DeviceMemoryPanel
+- **All 13 phases complete** — PR #289 created, reviewed, merged
+- **Feature extended** with phases 14-17 for sample audio editing, 4 GitHub issues created (#291-#294)
+- **Phase 14**: Device sample loading — useEditorDialogs strategy loads via SDS, action bar in SamplesPage
+- **18 Playwright e2e tests** passing across all implementations
+- **176 unit tests** passing
+
+### Didn't Work
+- Initial E_FREQ investigation: spent time analyzing UI state management code paths when the bug was a field mapping issue. Unit tests all passed because both read and write used the same wrong offset.
+- Playwright e2e test label case mismatch caused tests to hang (FREQ vs Freq)
+- `buildScsiUrl` produces double-slash with leading-slash subpaths — caused persistent cache tests to fail silently
+- Sample clone tests needed device-library config (not scsi-midi) for SDS WebSocket via Vite proxy
+
+### Course Corrections
+- [PROCESS] Agent analyzed code extensively before writing tests. User: "you should write a test that exercises the bug"
+- [PROCESS] Agent wrote unit tests for UI code paths. User redirected to Playwright e2e as the right layer.
+- [PROCESS] Agent proposed building proper e2e test infrastructure for field mapping. User: "Let's do this ad-hoc... just write a throwaway node script" — found root cause in one iteration.
+- [PROCESS] Agent tried to run throwaway script from /tmp (outside monorepo, module resolution failed).
+- [PROCESS] After e2e tests all passed, agent asked about reproduction steps. User provided the correct hypothesis: "I suspect the field for filter envelope->cutoff parameter is incorrectly mapped"
+
+### Quantitative
+- User messages: ~50
+- Commits: 18
+- User corrections: 5 (all PROCESS)
+- Issues filed: #289 (PR), #291-#294 (new phases)
+- Issues closed: #216, #274, #275, #277, #278, #279, #280
+- Sub-agents spawned: ~12 (UI engineers, code reviewer, explorers)
+
+### Insights
+1. **Throwaway scripts beat ceremony for exploration.** The diff script found the bug in one iteration. The agent kept trying to build proper infrastructure when a quick comparison was all that was needed.
+2. **When all tests pass, question your assumptions.** Round-trip tests passing doesn't mean the mapping is correct — both read and write used the same wrong offset.
+3. **Front-panel comparison is the definitive test.** No amount of software testing catches a field that the spec says "not used" but the device actually uses.
+4. **Parallel agent delegation works well.** 4 e2e test agents writing simultaneously, 2 UI component agents — all produced usable output on first try.
+5. **URL builder edge cases matter.** The double-slash in `buildScsiUrl('/path', '/subpath')` wasted 3 test iterations.
+
+---
+
 ## 2026-04-15: Bug #280 Triage — E_FREQ Field Mapping Discovery (Session 4)
 
 ### Feature: akai-ux-improvement

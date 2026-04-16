@@ -1,14 +1,20 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { ConfirmDialog, SteppedProgressDrawer, type ProgressStep } from '@audiocontrol/editor-core';
+import { LoopEditorDialog } from '@audiocontrol/loop-editor/ui';
+import { SampleEditorDialog } from '@audiocontrol/sample-editor/ui';
+import { SampleChopperDialog } from '@audiocontrol/sample-chopper/ui';
 import { SampleList, SampleEditor } from '@/components/samples';
+import { SaveTargetDialog } from '@/components/samples/SaveTargetDialog';
 import { useS3000xlClient } from '@/hooks/useS3000xlClient';
+import { useEditorDialogs } from '@/hooks/useEditorDialogs';
+import { useErrorReporter } from '@audiocontrol/editor-core';
 import { useSampleStore } from '@/stores/sampleStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { useConnectionDrawerStore } from '@/stores/connectionDrawerStore';
 import { writeSampleField } from '@/lib/sample-writers';
 import { ErrorBanner } from '@/components/ui';
 import { CacheAge } from '@/components/ui/CacheAge';
-import { useState } from 'react';
+import { S3kKitOutputConfig } from '@/components/library/S3kKitOutputConfig';
 
 export function SamplesPage(): JSX.Element {
   const { client, isConnected } = useS3000xlClient();
@@ -25,6 +31,11 @@ export function SamplesPage(): JSX.Element {
   const selectSample = useEditorStore((s) => s.selectSample);
   const error = useEditorStore((s) => s.error);
   const setError = useEditorStore((s) => s.setError);
+
+  const errorReporter = useErrorReporter(setError);
+  // Editor dialogs need a library root for save operations — null means save-to-library is disabled
+  // but device sample loading still works via the strategy
+  const editorDialogs = useEditorDialogs(null, () => {}, errorReporter, client);
 
   const hasInitiatedLoad = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -185,6 +196,22 @@ export function SamplesPage(): JSX.Element {
     }
   }, [client, sampleNames, invalidateCache, setSampleNames]);
 
+  // Editor open handlers — pass device-sample node type so the strategy loads via SDS
+  const handleOpenInLoopEditor = useCallback((index: number) => {
+    const name = `device-sample:${index}`;
+    editorDialogs.handleOpenInLoopEditor(name, 'device-sample');
+  }, [editorDialogs]);
+
+  const handleOpenInSampleEditor = useCallback((index: number) => {
+    const name = `device-sample:${index}`;
+    editorDialogs.handleOpenInSampleEditor(name, 'device-sample');
+  }, [editorDialogs]);
+
+  const handleOpenInChopper = useCallback((index: number) => {
+    const name = `device-sample:${index}`;
+    editorDialogs.handleOpenInChopper(name, 'device-sample');
+  }, [editorDialogs]);
+
   if (!isConnected) {
     return (
       <div className="ac-page ac-page-shell">
@@ -233,11 +260,33 @@ export function SamplesPage(): JSX.Element {
 
         <div className="p-4">
           {selectedHeader && selectedSampleIndex !== null ? (
-            <SampleEditor
-              header={selectedHeader}
-              sampleIndex={selectedSampleIndex}
-              onParameterChange={handleParameterChange}
-            />
+            <>
+              <div className="flex items-center gap-2 mb-3">
+                <button
+                  className="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-gray-300"
+                  onClick={() => handleOpenInLoopEditor(selectedSampleIndex)}
+                >
+                  Loop Editor
+                </button>
+                <button
+                  className="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-gray-300"
+                  onClick={() => handleOpenInSampleEditor(selectedSampleIndex)}
+                >
+                  Sample Editor
+                </button>
+                <button
+                  className="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-gray-300"
+                  onClick={() => handleOpenInChopper(selectedSampleIndex)}
+                >
+                  Chopper
+                </button>
+              </div>
+              <SampleEditor
+                header={selectedHeader}
+                sampleIndex={selectedSampleIndex}
+                onParameterChange={handleParameterChange}
+              />
+            </>
           ) : selectedSampleIndex !== null ? (
             <p className="text-gray-400">Loading sample...</p>
           ) : (
@@ -263,6 +312,59 @@ export function SamplesPage(): JSX.Element {
         steps={cloneSteps}
         isComplete={cloneComplete}
         hasError={cloneError}
+      />
+
+      {editorDialogs.loopEditor && (
+        <LoopEditorDialog
+          open={editorDialogs.loopEditor.open}
+          onOpenChange={(open) => { if (!open) editorDialogs.closeLoopEditor(); }}
+          samples={editorDialogs.loopEditor.samples}
+          sampleRate={editorDialogs.loopEditor.sampleRate}
+          sampleName={editorDialogs.loopEditor.sampleName}
+          loopStart={editorDialogs.loopEditor.loopStart}
+          loopEnd={editorDialogs.loopEditor.loopEnd}
+          rootKey={editorDialogs.loopEditor.rootKey}
+          onSave={editorDialogs.handleLoopEditorSave}
+        />
+      )}
+      {editorDialogs.chopper && (
+        <SampleChopperDialog
+          open={editorDialogs.chopper.open}
+          onOpenChange={(open) => { if (!open) editorDialogs.closeChopper(); }}
+          samples={editorDialogs.chopper.samples}
+          sampleRate={editorDialogs.chopper.sampleRate}
+          sourceName={editorDialogs.chopper.sampleName}
+          editMode={!!editorDialogs.chopper.initialSlices}
+          initialSlices={editorDialogs.chopper.initialSlices}
+          initialLabels={editorDialogs.chopper.initialLabels}
+          onConfirm={() => { editorDialogs.closeChopper(); }}
+          onSave={editorDialogs.handleChopperSave}
+          renderOutputConfig={(state) => (
+            <S3kKitOutputConfig
+              state={state}
+              config={editorDialogs.kitConfig}
+              onConfigChange={editorDialogs.setKitConfig}
+            />
+          )}
+        />
+      )}
+      {editorDialogs.sampleEditor && (
+        <SampleEditorDialog
+          open={editorDialogs.sampleEditor.open}
+          onOpenChange={(open) => { if (!open) editorDialogs.closeSampleEditor(); }}
+          samples={editorDialogs.sampleEditor.samples}
+          sampleRate={editorDialogs.sampleEditor.sampleRate}
+          sampleName={editorDialogs.sampleEditor.sampleName}
+          onSave={editorDialogs.handleSampleEditorSave}
+        />
+      )}
+
+      <SaveTargetDialog
+        open={editorDialogs.saveTargetState.open}
+        sampleName={editorDialogs.saveTargetState.sampleName}
+        hasLibrary={false}
+        onConfirm={editorDialogs.handleSaveTargetConfirm}
+        onCancel={editorDialogs.handleSaveTargetCancel}
       />
     </div>
   );

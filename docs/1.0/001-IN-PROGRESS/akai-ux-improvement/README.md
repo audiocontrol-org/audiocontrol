@@ -19,6 +19,10 @@ Restructure the Akai S3000XL editor from memory-oriented pages to workflow-orien
 | Phase 11: Persistent Editor Cache | Complete | zustand persist + sessionStorage, CacheAge indicator |
 | Phase 12: Program Download Fix | Complete | Expandable programs + atomic sample rename |
 | Phase 13: Sample Clone | Complete | cloneSample via SDS, UI in both SamplesPage and DeviceMemoryPanel |
+| Phase 14: Device Sample Loading | Complete | Strategy-based SDS loading, action bar in SamplesPage |
+| Phase 15: Save to Device | Complete | SaveTargetDialog, device overwrite/new, loop header-only save |
+| Phase 16: Bidirectional Library | Complete | SaveTargetDialog, chopper→device, library send-to-device |
+| Phase 17: Audio Editing E2E Tests | Complete | 3 Playwright e2e tests (loop/sample/chopper editor flows) |
 
 ## Links
 
@@ -29,4 +33,5 @@ Restructure the Akai S3000XL editor from memory-oriented pages to workflow-orien
 | PRD | [prd.md](./prd.md) |
 | Workplan | [workplan.md](./workplan.md) |
 | Parent Issue | [#216](https://github.com/audiocontrol-org/audiocontrol/issues/216) |
-| PR | [#289](https://github.com/audiocontrol-org/audiocontrol/pull/289) |
+| PR (phases 1-13) | [#289](https://github.com/audiocontrol-org/audiocontrol/pull/289) |
+| PR (phases 14-17) | [#295](https://github.com/audiocontrol-org/audiocontrol/pull/295) |

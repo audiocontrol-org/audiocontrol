@@ -11,6 +11,9 @@ interface SampleListProps {
   onClone?: (index: number) => void;
   onRefresh?: (index: number) => void;
   onRefreshAll?: () => void;
+  onOpenInLoopEditor?: (index: number) => void;
+  onOpenInSampleEditor?: (index: number) => void;
+  onOpenInChopper?: (index: number) => void;
   isLoading: boolean;
 }
 
@@ -51,6 +54,9 @@ export function SampleList({
   onClone,
   onRefresh,
   onRefreshAll,
+  onOpenInLoopEditor,
+  onOpenInSampleEditor,
+  onOpenInChopper,
   isLoading,
 }: SampleListProps): JSX.Element {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -138,7 +144,7 @@ export function SampleList({
     );
   }
 
-  const hasActions = onDelete || onRename || onClone || onRefresh;
+  const hasActions = onDelete || onRename || onClone || onRefresh || onOpenInLoopEditor || onOpenInSampleEditor || onOpenInChopper;
 
   return (
     <div className="card p-2">
