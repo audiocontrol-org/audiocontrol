@@ -52,6 +52,8 @@ Demo videos for audiocontrol features are created manually, which means they go 
 - Text overlay rendering: ffmpeg burn-in (captioned MP4) and live HTML overlay in the gallery player
 - Fine-grained generation progress indicator showing pipeline steps, elapsed time, and ETA
 - Quick access to generated assets on disk (show in Finder, open in default app)
+- Detail view for individual videos with editable captions and VO script
+- Visual timeline editor for drag-and-drop caption positioning (future)
 
 ### Out of Scope
 

@@ -12,6 +12,8 @@
 - #270 — Add text overlay rendering (Phase 8)
 - #296 — Add generation progress indicator (Phase 9)
 - #297 — Add asset file access from gallery (Phase 10)
+- #298 — Add video detail view with editable captions (Phase 11)
+- #299 — Add visual timeline editor for captions (Phase 12)
 
 ## Technical Approach
 
@@ -201,3 +203,40 @@ Use Playwright's built-in `recordVideo` to capture browser interactions as WebM.
 - [x] Add "Open" links next to each asset (MP4, GIF, captions, VO script) that call `/api/open-file`
 
 **Acceptance:** Clicking "Show in Finder" opens the scenario's output directory. Clicking "Open" on an asset opens it in the default application.
+
+---
+
+### Phase 11: Video Detail View
+
+**Goal:** A drill-down view for a single video showing full metadata, large video player, and editable captions/VO script.
+
+**Tasks:**
+
+- [ ] Add a detail view to the gallery (click card title or "Details" link → full-page view for that scenario)
+- [ ] Display large video player with caption overlay, scenario metadata (name, description, mode, tier, duration), and list of all output files with sizes
+- [ ] Add `/api/demo/:name` GET endpoint returning full demo metadata including file sizes and caption data
+- [ ] Add editable caption table: text, type, in/out timecodes — inline editing, save via `/api/save-captions` POST
+- [ ] Add `/api/save-captions` POST endpoint that writes updated captions back to `captions.yaml`
+- [ ] Add editable VO script textarea — edit and save via `/api/save-vo-script` POST
+- [ ] Add `/api/save-vo-script` POST endpoint that writes updated text back to `vo-script.txt`
+- [ ] Add "Back to Gallery" navigation
+- [ ] Preview caption changes in real time (editing a caption updates the live overlay without regenerating)
+
+**Acceptance:** Clicking a card navigates to a detail view with a large video player, editable caption table, and editable VO script. Saving captions writes to disk and updates the live overlay in real time. Back button returns to the gallery grid.
+
+---
+
+### Phase 12: Visual Timeline Editor
+
+**Goal:** Drag-and-drop caption timeline synced to video playback. Deferred — scope documented for future implementation.
+
+**Tasks:**
+
+- [ ] Add a timeline track below the video player showing caption blocks as draggable rectangles
+- [ ] Sync timeline cursor to video playback position
+- [ ] Drag caption blocks to adjust in/out times visually
+- [ ] Drag edges of caption blocks to resize duration
+- [ ] Click timeline to seek the video to that position
+- [ ] Save timeline changes back to captions.yaml
+
+**Acceptance:** Captions appear as draggable blocks on a timeline synced to video playback. Dragging adjusts timing. Changes save to disk.
