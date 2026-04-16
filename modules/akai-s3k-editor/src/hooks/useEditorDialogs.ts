@@ -8,7 +8,7 @@
  * - S3K kit config for chopper dialog
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import type { StorageDirectoryHandle, ProgramYaml } from '@audiocontrol/sampler-library/browser';
 import {
   useEditorDialogsCore,
@@ -74,9 +74,11 @@ export interface SdsLoadingState {
   open: boolean;
   sampleName: string;
   progress: import('@audiocontrol/midi-core').SdsTransferProgress | null;
+  startTime: number | null;
+  cancelled: boolean;
 }
 
-const SDS_LOADING_IDLE: SdsLoadingState = { open: false, sampleName: '', progress: null };
+const SDS_LOADING_IDLE: SdsLoadingState = { open: false, sampleName: '', progress: null, startTime: null, cancelled: false };
 
 // =========================================================================
 // Result interface
@@ -89,6 +91,7 @@ export interface EditorDialogsResult extends EditorDialogsCoreResult {
   handleSaveTargetConfirm: (target: SaveTarget) => Promise<void>;
   handleSaveTargetCancel: () => void;
   sdsLoadingState: SdsLoadingState;
+  handleSdsLoadingCancel: () => void;
 }
 
 // =========================================================================
@@ -104,6 +107,9 @@ export function useEditorDialogs(
   const [kitConfig, setKitConfig] = useState<S3kKitConfig>(DEFAULT_S3K_KIT_CONFIG);
   const [saveTargetState, setSaveTargetState] = useState<SaveTargetState>(SAVE_TARGET_IDLE);
   const [sdsLoadingState, setSdsLoadingState] = useState<SdsLoadingState>(SDS_LOADING_IDLE);
+  const sdsLoadingStateRef = useRef(sdsLoadingState);
+  sdsLoadingStateRef.current = sdsLoadingState;
+  const sdsAbortRef = useRef<AbortController | null>(null);
 
   const strategy = useMemo<EditorDialogStrategy>(() => ({
     loadWav: async (
@@ -117,19 +123,35 @@ export function useEditorDialogs(
       if (sampleIndex === null) return null;
 
       // Open progress drawer immediately — don't wait for device round-trip
-      setSdsLoadingState({ open: true, sampleName: `Sample ${sampleIndex + 1}`, progress: null });
+      const abortController = new AbortController();
+      sdsAbortRef.current = abortController;
+      setSdsLoadingState({ open: true, sampleName: `Sample ${sampleIndex + 1}`, progress: null, startTime: Date.now(), cancelled: false });
 
       // Fetch header for name and loop metadata
       const sampleHeader = await client.fetchSampleHeader(sampleIndex);
+
+      if (abortController.signal.aborted) {
+        setSdsLoadingState(SDS_LOADING_IDLE);
+        return null;
+      }
+
       setSdsLoadingState((prev) => ({ ...prev, sampleName: sampleHeader.SHNAME.trim() }));
 
-      const { header: sdsHeader, samples } = await client.receiveSampleViaSds(
-        sampleIndex,
-        (progress) => setSdsLoadingState((prev) => ({ ...prev, progress })),
-      );
+      try {
+        var { header: sdsHeader, samples } = await client.receiveSampleViaSds(
+          sampleIndex,
+          (progress) => setSdsLoadingState((prev) => ({ ...prev, progress })),
+          abortController.signal,
+        );
+      } catch (err) {
+        setSdsLoadingState(SDS_LOADING_IDLE);
+        sdsAbortRef.current = null;
+        if (abortController.signal.aborted) return null;
+        throw err;
+      }
 
-      // Close progress drawer
       setSdsLoadingState(SDS_LOADING_IDLE);
+      sdsAbortRef.current = null;
 
       const sampleRate = Math.round(1_000_000_000 / sdsHeader.samplePeriodNs);
 
@@ -342,5 +364,10 @@ export function useEditorDialogs(
     handleSaveTargetConfirm,
     handleSaveTargetCancel,
     sdsLoadingState,
+    handleSdsLoadingCancel: useCallback(() => {
+      sdsAbortRef.current?.abort();
+      sdsAbortRef.current = null;
+      setSdsLoadingState(SDS_LOADING_IDLE);
+    }, []),
   };
 }

@@ -350,6 +350,7 @@ function createScsiSdsChannel(
       sampleNumber: number,
       channel: number,
       onProgress?: (progress: SdsTransferProgress) => void,
+      signal?: AbortSignal,
     ): Promise<{ header: SdsDumpHeader; samples: Int16Array }> {
       await waitForIdle();
       console.log(`[SdsChannel] send queue idle, starting download`);
@@ -358,6 +359,14 @@ function createScsiSdsChannel(
 
       return new Promise<{ header: SdsDumpHeader; samples: Int16Array }>((resolve, reject) => {
         const sdsWs = new WebSocket(wsUrl);
+
+        // Abort support: close the WebSocket when signal fires
+        if (signal) {
+          signal.addEventListener('abort', () => {
+            sdsWs.close();
+            reject(new Error('SDS download cancelled'));
+          }, { once: true });
+        }
         const timeoutMs = 60_000;
         const timeout = setTimeout(() => {
           sdsWs.close();

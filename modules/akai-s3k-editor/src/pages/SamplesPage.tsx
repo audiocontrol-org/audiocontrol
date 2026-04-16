@@ -371,7 +371,8 @@ export function SamplesPage(): JSX.Element {
       <SteppedProgressDrawer
         open={editorDialogs.sdsLoadingState.open}
         title={`Loading "${editorDialogs.sdsLoadingState.sampleName}"`}
-        onClose={() => {}}
+        onClose={editorDialogs.handleSdsLoadingCancel}
+        onCancel={editorDialogs.handleSdsLoadingCancel}
         steps={[{
           id: 'download',
           label: 'Downloading sample from device',
@@ -379,9 +380,18 @@ export function SamplesPage(): JSX.Element {
           progress: editorDialogs.sdsLoadingState.progress && editorDialogs.sdsLoadingState.progress.bytesTotal > 0
             ? Math.round((editorDialogs.sdsLoadingState.progress.bytesSent / editorDialogs.sdsLoadingState.progress.bytesTotal) * 100)
             : undefined,
-          detail: editorDialogs.sdsLoadingState.progress
-            ? `${formatBytes(editorDialogs.sdsLoadingState.progress.bytesSent)} / ${formatBytes(editorDialogs.sdsLoadingState.progress.bytesTotal)}`
-            : undefined,
+          detail: (() => {
+            const { progress, startTime } = editorDialogs.sdsLoadingState;
+            if (!progress) return 'Connecting to device...';
+            const bytes = `${formatBytes(progress.bytesSent)} / ${formatBytes(progress.bytesTotal)}`;
+            const elapsed = startTime ? Math.round((Date.now() - startTime) / 1000) : 0;
+            const bytesPerSec = elapsed > 0 ? progress.bytesSent / elapsed : 0;
+            const remaining = bytesPerSec > 0 ? Math.round((progress.bytesTotal - progress.bytesSent) / bytesPerSec) : 0;
+            const elapsedStr = elapsed > 0 ? `${elapsed}s elapsed` : '';
+            const etaStr = remaining > 0 ? `~${remaining}s remaining` : '';
+            const timeStr = [elapsedStr, etaStr].filter(Boolean).join(' \u2022 ');
+            return timeStr ? `${bytes} \u2022 ${timeStr}` : bytes;
+          })(),
         }]}
         isComplete={false}
         hasError={false}

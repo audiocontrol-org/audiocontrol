@@ -516,12 +516,13 @@ export function createS3000xlClient(
     async receiveSampleViaSds(
       sampleNumber: number,
       onProgress?: (progress: SdsTransferProgress) => void,
+      signal?: AbortSignal,
     ): Promise<{ header: SdsDumpHeader; samples: Int16Array }> {
       // Use dedicated SDS channel when available (SCSI transport).
       // Do NOT use serialize() — same deadlock risk as upload (see above).
       if (sdsChannel) {
         console.log(`[s3000xl-client] using SdsChannel for download (bypassing serialize queue)`);
-        return sdsChannel.downloadSample(sampleNumber, channel, onProgress);
+        return sdsChannel.downloadSample(sampleNumber, channel, onProgress, signal);
       }
 
       return serialize(() => {
