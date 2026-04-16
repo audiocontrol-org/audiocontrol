@@ -63,6 +63,7 @@ Goal: Implement the validated protocol in the bridge so sample uploads produce c
 
 | Phase | Issue |
 |-------|-------|
-| Phase 1: Disassembly Infrastructure | TBD |
-| Phase 2: Protocol Validation | TBD |
-| Phase 3: Bridge Implementation | TBD |
+| Parent feature | [#304](https://github.com/audiocontrol-org/audiocontrol/issues/304) |
+| Phase 1: Disassembly Infrastructure | [#305](https://github.com/audiocontrol-org/audiocontrol/issues/305) |
+| Phase 2: Protocol Validation | [#306](https://github.com/audiocontrol-org/audiocontrol/issues/306) |
+| Phase 3: Bridge Implementation | [#307](https://github.com/audiocontrol-org/audiocontrol/issues/307) |
