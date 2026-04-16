@@ -2,9 +2,11 @@
  * Receive Sample Dialog — transfers a sample from the device to the library.
  *
  * Uses SteppedProgressDrawer:
- * 1. Receive via SDS with progress
+ * 1. Receive via SDS with progress (bar, bytes, elapsed, ETA)
  * 2. Build WAV from PCM data
  * 3. Save to library storage
+ *
+ * Cancel aborts the SDS transfer via AbortController.
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -63,6 +65,17 @@ function makeSampleYaml(
   return yaml;
 }
 
+function formatProgress(bytesSent: number, bytesTotal: number, startTime: number): string {
+  const bytes = `${formatBytes(bytesSent)} / ${formatBytes(bytesTotal)}`;
+  const elapsed = Math.round((Date.now() - startTime) / 1000);
+  const bytesPerSec = elapsed > 0 ? bytesSent / elapsed : 0;
+  const remaining = bytesPerSec > 0 ? Math.round((bytesTotal - bytesSent) / bytesPerSec) : 0;
+  const elapsedStr = elapsed > 0 ? `${elapsed}s elapsed` : '';
+  const etaStr = remaining > 0 ? `~${remaining}s remaining` : '';
+  const timeStr = [elapsedStr, etaStr].filter(Boolean).join(' \u2022 ');
+  return timeStr ? `${bytes} \u2022 ${timeStr}` : bytes;
+}
+
 // =========================================================================
 // Component
 // =========================================================================
@@ -80,18 +93,32 @@ export function ReceiveSampleDialog({
   const [isComplete, setIsComplete] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [summary, setSummary] = useState<string | undefined>();
-  const cancelledRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const startTimeRef = useRef<number>(0);
 
-  const { receiveFromDevice } = useSampleTransfer(client);
+  const { receiveFromDevice, transferState } = useSampleTransfer(client);
 
   const updateStep = useCallback((id: string, update: Partial<ProgressStep>) => {
     setSteps((prev) => prev.map((s) => s.id === id ? { ...s, ...update } : s));
   }, []);
 
+  // Pipe SDS transfer progress into the receive step
+  useEffect(() => {
+    if (!transferState.progress || !transferState.isTransferring) return;
+    const { bytesSent, bytesTotal } = transferState.progress;
+    const pct = bytesTotal > 0 ? Math.round((bytesSent / bytesTotal) * 100) : undefined;
+    updateStep('receive', {
+      progress: pct,
+      detail: formatProgress(bytesSent, bytesTotal, startTimeRef.current),
+    });
+  }, [transferState.progress, transferState.isTransferring, updateStep]);
+
   useEffect(() => {
     if (!open) return;
 
-    cancelledRef.current = false;
+    const abortController = new AbortController();
+    abortRef.current = abortController;
+    startTimeRef.current = Date.now();
     setIsComplete(false);
     setHasError(false);
     setSummary(undefined);
@@ -106,11 +133,8 @@ export function ReceiveSampleDialog({
     void (async () => {
       try {
         // Step 1: Receive via SDS
-        const result = await receiveFromDevice(sampleIndex);
-        if (!result) {
-          throw new Error('Receive failed — no data returned');
-        }
-        if (cancelledRef.current) return;
+        const result = await receiveFromDevice(sampleIndex, abortController.signal);
+        if (!result || abortController.signal.aborted) return;
 
         const sampleRate = Math.round(1_000_000_000 / result.header.samplePeriodNs);
         const pcmBytes = result.samples.length * 2;
@@ -118,6 +142,7 @@ export function ReceiveSampleDialog({
 
         updateStep('receive', {
           status: 'complete',
+          progress: 100,
           detail: `${sampleRate} Hz, ${durationStr}, ${formatBytes(pcmBytes)}`,
         });
 
@@ -139,6 +164,7 @@ export function ReceiveSampleDialog({
         await onTransferComplete();
 
       } catch (err: unknown) {
+        if (abortController.signal.aborted) return;
         const message = err instanceof Error ? err.message : String(err);
         console.error(`[ReceiveSample] Failed:`, err);
         setSteps((prev) => {
@@ -153,15 +179,24 @@ export function ReceiveSampleDialog({
       }
     })();
 
-    return () => { cancelledRef.current = true; };
+    return () => {
+      abortController.abort();
+      abortRef.current = null;
+    };
   }, [open, sampleIndex, sampleName, client, libraryRoot, onTransferComplete, receiveFromDevice, updateStep]);
+
+  const handleCancel = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    onClose();
+  }, [onClose]);
 
   return (
     <SteppedProgressDrawer
       open={open}
       title={`Save "${sampleName.trim()}" to Library`}
-      onClose={onClose}
-      onCancel={() => { cancelledRef.current = true; }}
+      onClose={isComplete || hasError ? onClose : handleCancel}
+      onCancel={handleCancel}
       steps={steps}
       isComplete={isComplete}
       hasError={hasError}
