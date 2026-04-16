@@ -1,0 +1,15 @@
+; AcceptSampleHeader__12CAkaiSamplerFPUcs
+; File offset: 0x06ae09 - 0x06aeb9 (176 bytes)
+; Source: sampler-editor-rsrc.bin
+
+  06ae09: 4e 56 fd fc 48 e7 10 30 24 6e 00 08 2f 3c 42 55  NV..H..0$n../<BU
+  06ae19: 4c 4b 48 78 00 c0 42 27 3f 2e 00 10 1f 3c 00 0b  LKHx..B'?....<..
+  06ae29: 1f 2a 00 0e 2f 2e 00 0c 48 6e fe 00 2f 0a 20 57  .*../...Hn../. W
+  06ae39: 22 68 00 02 22 69 00 14 4e 91 4f ef 00 18 2f 00  "h.."i..N.O.../.
+  06ae49: 48 6e fe 00 2f 2a 00 a2 20 57 22 50 22 69 00 14  Hn../*.. W"P"i..
+  06ae59: 4e 91 36 00 4f ef 00 10 66 20 48 6e fd fc 1f 3c  N.6.O...f Hn...<
+  06ae69: 00 01 48 78 03 e8 2f 0a 20 57 22 68 00 02 22 69  ..Hx../. W"h.."i
+  06ae79: 00 cc 4e 91 36 00 4f ef 00 0e 0c 43 cd 37 66 26  ..N.6.O....C.7f&
+  06ae89: 2f 2a 00 a2 20 57 22 50 22 69 00 24 4e 91 26 48  /*.. W"P"i.$N.&H
+  06ae99: 0c 13 00 f0 58 4f 66 0e 0c 2b 00 7e 00 01 66 06  ....XOf..+.~..f.
+  06aea9: 76 00 16 2b 00 03 30 03 4c df 0c 08 4e 5e 4e 75  v..+..0.L...N^Nu

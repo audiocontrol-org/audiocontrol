@@ -1,0 +1,16 @@
+; BuildSampleDataRequest__19CAkaiMIDIDispatcherFPUcUcsll
+; File offset: 0x06dc5b - 0x06dd0d (178 bytes)
+; Source: sampler-editor-rsrc.bin
+
+  06dc5b: 4e 56 00 00 48 e7 1c 20 24 6e 00 0c 3a 2e 00 12  NV..H.. $n..:...
+  06dc6b: 26 2e 00 14 28 2e 00 18 1f 3c 00 0c 1f 2e 00 10  &...(....<......
+  06dc7b: 2f 0a 2f 2e 00 08 20 57 22 68 00 02 22 69 00 0c  /./... W"h.."i..
+  06dc8b: 4e 91 30 05 02 40 00 7f 15 40 00 05 ee 45 30 05  N.0..@...@...E0.
+  06dc9b: 02 40 00 7f 15 40 00 06 70 7f c0 83 15 40 00 07  .@...@..p....@..
+  06dcab: ee 83 70 7f c0 83 15 40 00 08 ee 83 70 7f c0 83  ..p....@....p...
+  06dcbb: 15 40 00 09 ee 83 70 7f c0 83 15 40 00 0a 70 7f  .@....p....@..p.
+  06dccb: c0 84 15 40 00 0b ee 84 70 7f c0 84 15 40 00 0c  ...@....p....@..
+  06dcdb: ee 84 70 7f c0 84 15 40 00 0d ee 84 70 7f c0 84  ..p....@....p...
+  06dceb: 15 40 00 0e 15 7c 00 01 00 0f 42 2a 00 10 15 7c  .@...|....B*...|
+  06dcfb: 00 f7 00 11 70 00 4f ef 00 0c 4c df 04 38 4e 5e  ....p.O...L..8N^
+  06dd0b: 4e 75                                            Nu
