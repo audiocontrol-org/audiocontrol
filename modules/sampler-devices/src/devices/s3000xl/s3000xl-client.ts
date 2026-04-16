@@ -22,8 +22,6 @@ import {
   parseSampleHeader,
   parseMiscellaneousData,
   SampleHeader_writeSHNAME,
-  SampleHeader_writeSLNGTH,
-  SampleHeader_writeSMPEND,
   ProgramHeader_writePRNAME,
 } from '@/devices/s3000xl.js';
 import type { ProgramHeader, KeygroupHeader, SampleHeader, MiscellaneousData } from '@/devices/s3000xl.js';
@@ -496,32 +494,21 @@ export function createS3000xlClient(
       console.log(`[s3000xl-client] sample committed at RSLIST index ${rslistIndex} (count: ${postNames.length})`);
       sampleNamesCache = postNames;
 
-      // Post-upload: patch SLNGTH/SMPEND and optionally rename.
-      // The ASPACK upload creates a 40-sample slot via SDS then writes real
-      // data via ASPACK. The sample header still says SLNGTH=40, so we patch it.
-      {
-        console.log(`[s3000xl-client] patching sample header: SLNGTH=${sampleData.length}`);
+      // Post-upload rename: the device auto-assigns a name (e.g., "MIDI 18").
+      // SLNGTH/SMPEND are correct because the SDS dump header declared the real count.
+      if (sdsOptions?.name) {
+        console.log(`[s3000xl-client] renaming sample ${rslistIndex} to "${sdsOptions.name}"`);
         const response = await sendCommandWithRetry(
           AkaiOpcode.RSDATA,
           numberTo7bitPair(rslistIndex),
         );
         const sampleHeader = parseSampleFromResponse(response);
-
-        SampleHeader_writeSLNGTH(sampleHeader, sampleData.length);
-        sampleHeader.SLNGTH = sampleData.length;
-        SampleHeader_writeSMPEND(sampleHeader, sampleData.length);
-        sampleHeader.SMPEND = sampleData.length;
-
-        if (sdsOptions?.name) {
-          sampleHeader.SHNAME = sdsOptions.name;
-          SampleHeader_writeSHNAME(sampleHeader, sdsOptions.name);
-          console.log(`[s3000xl-client] renaming sample ${rslistIndex} to "${sdsOptions.name}"`);
-        }
-
-        await bufferWrite(`sample:${rslistIndex}`, AkaiOpcode.SDATA, sampleHeader.raw.slice(5, -1));
+        sampleHeader.SHNAME = sdsOptions.name;
+        SampleHeader_writeSHNAME(sampleHeader, sdsOptions.name);
+        await bufferWrite(`sample:${sampleHeader.SHNAME}`, AkaiOpcode.SDATA, sampleHeader.raw.slice(5, -1));
         sampleNamesCache = undefined;
         sampleHeaderCache.delete(rslistIndex);
-        console.log(`[s3000xl-client] sample ${rslistIndex} header patched (SLNGTH=${sampleData.length})`);
+        console.log(`[s3000xl-client] sample ${rslistIndex} renamed to "${sdsOptions.name}"`);
       }
 
       console.log(`[s3000xl-client] sendSampleViaSds complete`);
