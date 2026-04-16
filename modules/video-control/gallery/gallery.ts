@@ -1,5 +1,13 @@
 import { setupCaptionsForVideo } from './captions.js';
 
+async function postApi(endpoint: string, body: Record<string, string>): Promise<void> {
+  await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
 interface DemoInfo {
   name: string;
   mp4Url: string;
@@ -254,25 +262,62 @@ function createCard(demo: DemoInfo, scenarioName: string | null): HTMLElement {
   const links = document.createElement('div');
   links.className = 'card-links';
 
+  if (hasVideo) {
+    const mp4Link = document.createElement('a');
+    mp4Link.href = '#';
+    mp4Link.textContent = 'MP4';
+    mp4Link.addEventListener('click', (e) => {
+      e.preventDefault();
+      postApi('/api/open-file', { scenario: demo.name, file: 'video.mp4' });
+    });
+    links.appendChild(mp4Link);
+  }
+
+  if (demo.gifUrl) {
+    const gifLink = document.createElement('a');
+    gifLink.href = '#';
+    gifLink.textContent = 'GIF';
+    gifLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      postApi('/api/open-file', { scenario: demo.name, file: 'video.gif' });
+    });
+    links.appendChild(gifLink);
+  }
+
   if (demo.hasCaptions) {
     const a = document.createElement('a');
-    a.href = `/videos/${demo.name}/captions.yaml`;
-    a.target = '_blank';
+    a.href = '#';
     a.textContent = 'Captions';
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      postApi('/api/open-file', { scenario: demo.name, file: 'captions.yaml' });
+    });
     links.appendChild(a);
   }
 
   if (demo.hasVoScript) {
     const a = document.createElement('a');
-    a.href = `/videos/${demo.name}/vo-script.txt`;
-    a.target = '_blank';
+    a.href = '#';
     a.textContent = 'VO Script';
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      postApi('/api/open-file', { scenario: demo.name, file: 'vo-script.txt' });
+    });
     links.appendChild(a);
   }
 
-  if (links.childElementCount > 0) {
-    info.appendChild(links);
-  }
+  // Show in Finder link
+  const finderLink = document.createElement('a');
+  finderLink.href = '#';
+  finderLink.className = 'card-link-finder';
+  finderLink.textContent = 'Show in Finder';
+  finderLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    postApi('/api/open-folder', { scenario: demo.name });
+  });
+  links.appendChild(finderLink);
+
+  info.appendChild(links);
 
   card.appendChild(info);
   return card;

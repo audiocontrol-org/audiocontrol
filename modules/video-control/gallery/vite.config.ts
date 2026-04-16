@@ -6,6 +6,8 @@ import {
   handleScenariosRequest,
   handleGenerateRequest,
   handleStatusRequest,
+  handleOpenFolderRequest,
+  handleOpenFileRequest,
 } from './generate-api.js';
 
 interface DemoInfo {
@@ -88,6 +90,10 @@ function galleryPlugin(): Plugin {
       // Generation trigger
       server.middlewares.use('/api/generate/status', handleStatusRequest);
       server.middlewares.use('/api/generate', handleGenerateRequest);
+
+      // File/folder open
+      server.middlewares.use('/api/open-folder', handleOpenFolderRequest);
+      server.middlewares.use('/api/open-file', handleOpenFileRequest);
 
       // Static video files
       server.middlewares.use('/videos', (req, res, next) => {
