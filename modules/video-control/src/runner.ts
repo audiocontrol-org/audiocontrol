@@ -58,13 +58,25 @@ export async function runScenario(
     throw new Error(`No video recorded for scenario "${name}"`);
   }
 
-  // Close page and context to finalize the video file
+  // Finalize the video: close page and context to flush the recording.
   await page.close();
   await context.close();
   await browser.close();
 
-  // Playwright saves video as .webm — path is available after close
+  // Playwright writes the webm asynchronously. video.path() returns
+  // the intended path, but the file may not exist yet. Poll until it does.
   const webmPath = await video.path();
+  const { existsSync } = await import('node:fs');
+  const maxWaitMs = 5000;
+  const pollMs = 100;
+  let waited = 0;
+  while (!existsSync(webmPath) && waited < maxWaitMs) {
+    await new Promise((resolve) => setTimeout(resolve, pollMs));
+    waited += pollMs;
+  }
+  if (!existsSync(webmPath)) {
+    throw new Error(`Video file not found after ${maxWaitMs}ms: ${webmPath}`);
+  }
 
   // Convert to MP4 and GIF
   const mp4Path = join(outputDir, 'video.mp4');
