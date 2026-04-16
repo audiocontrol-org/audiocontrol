@@ -362,7 +362,7 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 - [x] Implement "Save to Device" handler: upload modified audio via SDS (overwrite original slot)
 - [x] Implement "Save to Device as New" handler: upload to new slot with name suffix
 - [x] For loop-point-only edits, write sample header directly (skip SDS re-upload)
-- [ ] Show SDS upload progress during save (deferred — SDS progress callbacks exist but no dedicated UI yet)
+- [ ] Show SDS upload progress during save (save-to-device uses sendSampleViaSds which has onProgress, but SaveTargetDialog doesn't show transfer progress yet)
 
 ### Acceptance Criteria
 

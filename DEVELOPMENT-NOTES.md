@@ -11,6 +11,44 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-16: Progress Indicators and Cancel for SDS Transfers (Session 7)
+
+### Feature: akai-ux-improvement
+### Worktree: audiocontrol-akai-ux-improvement
+
+### Goal
+Fix missing progress indicators and cancel support for SDS sample transfers, bringing editor loading and library receive dialogs into compliance with project guidelines.
+
+### Accomplished
+- **SDS download progress for editors**: SteppedProgressDrawer opens instantly on editor button click, shows progress bar with bytes/elapsed/ETA during SDS download
+- **Proper cancel via AbortSignal**: threaded AbortSignal through receiveSampleViaSds → SdsChannel.downloadSample → WebSocket close. Cancel actually terminates the transfer.
+- **Library ReceiveSampleDialog updated**: progress bar, elapsed/ETA, and AbortSignal cancel — matching the Samples page pattern
+- **Instant drawer open**: progress drawer opens immediately with placeholder name, updates to real name after header fetch
+- PR #295 updated with progress fixes
+
+### Didn't Work
+- First attempt at progress used `SdsProgressBar` component inside `SteppedProgressDrawer` step detail — but `detail` is `string`, not `ReactNode`. Switched to native step `progress` field (number 0-100) with formatted detail string.
+- Initial cancel implementation just set a flag and dismissed the drawer without actually stopping the SDS transfer.
+
+### Course Corrections
+- [PROCESS] Agent deferred progress indicators during Phase 14 implementation despite project guidelines being explicit: "All long-running operations must show progress indicators." User called this out.
+- [UX] Agent initially opened the progress drawer only after fetching the sample header (a device round-trip), creating a perceptible delay. User: "The drawer should slide open instantly." Fixed to open immediately with placeholder.
+- [UX] Agent's first cancel implementation just dismissed the UI without stopping the transfer. User: "Don't just dismiss the window if the action isn't actually cancelled. You have to make cancel work properly." Fixed with AbortSignal through the full stack.
+- [PROCESS] Agent didn't update the library's ReceiveSampleDialog to match. User: "You need to update the sample download progress indicator in the library to match." Consistency across the app.
+
+### Quantitative
+- User messages: ~10
+- Commits: 4
+- User corrections: 4 (2 UX, 2 PROCESS)
+
+### Insights
+1. **Progress indicators are not optional polish.** The project guidelines are explicit. Deferring them creates a UX debt that the user will immediately notice and call out. Build them as part of the feature, not after.
+2. **Cancel must actually cancel.** A dismiss-only cancel is dishonest UI. If a button says "Cancel," the operation must stop. Threading AbortSignal through the stack is more work but the only correct answer.
+3. **Instant UI response matters.** Any delay between a user action and visible feedback feels broken. Open the drawer first, fetch data second.
+4. **Consistency is a requirement, not a nice-to-have.** When you fix the progress pattern in one place, check every other place that does the same operation.
+
+---
+
 ## 2026-04-15: Phases 14-17 — Sample Audio Editing (Session 6)
 
 ### Feature: akai-ux-improvement
