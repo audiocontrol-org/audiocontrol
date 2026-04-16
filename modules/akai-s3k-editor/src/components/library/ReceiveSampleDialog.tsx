@@ -95,6 +95,7 @@ export function ReceiveSampleDialog({
   const [summary, setSummary] = useState<string | undefined>();
   const abortRef = useRef<AbortController | null>(null);
   const startTimeRef = useRef<number>(0);
+  const hasStartedRef = useRef(false);
 
   const { receiveFromDevice, transferState } = useSampleTransfer(client);
 
@@ -114,7 +115,13 @@ export function ReceiveSampleDialog({
   }, [transferState.progress, transferState.isTransferring, updateStep]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      hasStartedRef.current = false;
+      return;
+    }
+    // Only start the transfer once per open — don't restart on dep changes
+    if (hasStartedRef.current) return;
+    hasStartedRef.current = true;
 
     const abortController = new AbortController();
     abortRef.current = abortController;
@@ -179,10 +186,8 @@ export function ReceiveSampleDialog({
       }
     })();
 
-    return () => {
-      abortController.abort();
-      abortRef.current = null;
-    };
+    // No cleanup abort — transfer runs to completion or is explicitly cancelled.
+    // The hasStartedRef guard prevents re-running on dep changes.
   }, [open, sampleIndex, sampleName, client, libraryRoot, onTransferComplete, receiveFromDevice, updateStep]);
 
   const handleCancel = useCallback(() => {
