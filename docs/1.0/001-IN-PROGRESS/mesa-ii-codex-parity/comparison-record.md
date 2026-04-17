@@ -128,6 +128,9 @@ cleanly.
   the wider pre-`OpenModule` slice adds one important correction: `+0xda0` is written in
   a transport-toggle routine around `0x029105`, where the code flips the selector,
   deactivates slot `0x30` with `0`, re-selects the other plug, and reactivates with `1`.
+  That toggle path now also has stronger ownership context: it sits inside a larger
+  command-dispatch routine whose neighboring handlers derive the current transport label
+  (`'MIDI'` vs `'SCSI'`) and related status values from the same `+0xda0` byte.
   `+0xdaa` is still only observed being written in `OpenModule` in the checked-in slice,
   and the helper at `0x031ce6` is just a message/progress wrapper. The artifact set now
   supports runtime transport-switch modeling, but still does not reveal the default

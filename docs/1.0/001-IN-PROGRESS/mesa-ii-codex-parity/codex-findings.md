@@ -283,6 +283,28 @@ correct. Every finding should distinguish direct evidence from inference.
   obvious addressing forms than the current grep strategy caught or inside code regions
   that still need hand-decoding rather than offset-grep alone.
 
+- Finding 17: the runtime transport-toggle path around `0x029105` belongs to a larger
+  command-dispatch routine, and the neighboring cases reinforce the active-transport
+  model for `CSamplerModule+0xda0`.
+  Evidence:
+  in the aligned constructor-to-`OpenModule` slice, the block at `0x0289f1` begins a
+  large command-oriented routine that repeatedly resolves four-character selectors via
+  `jsr 0x28980` and then branches into adjacent handlers.
+  Within that routine, the `0x029105` block flips `this+0xda0`, calls socket slot
+  `0x30` with `0`, selects the corresponding plug ID from `this+0xd98` or `this+0xd9c`,
+  restores the old `+0xda0` value on select failure, and then calls slot `0x30` with
+  `1`.
+  The neighboring handler at `0x0291b9` chooses literal tag `'MIDI'` or `'SCSI'`
+  based on the same `+0xda0` byte before scanning a 48-byte-per-entry table, and the
+  later handler at `0x02a20d` maps `+0xda0` to status value `2` or `1` before also
+  reading back `this+0xdaa`.
+  Interpretation:
+  the current artifact set no longer supports treating the `0x029105` block as an
+  isolated helper. It is part of a higher-level command/dispatch surface that exposes
+  transport switching, current transport identity, and related availability state.
+  That makes the `+0xda0` model stronger: it is an active, user-visible transport
+  selector, not just a private startup implementation detail.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
