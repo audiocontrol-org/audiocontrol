@@ -305,6 +305,24 @@ correct. Every finding should distinguish direct evidence from inference.
   That makes the `+0xda0` model stronger: it is an active, user-visible transport
   selector, not just a private startup implementation detail.
 
+- Finding 18: the early `+0xa20` callback path is a lazy command-helper cache, not the
+  missing initializer for `+0xb0/+0xb1` or `+0xda0`.
+  Evidence:
+  `InitModule__14CSamplerModuleFPFP11MESACommand_v` at `0x0286f3` performs a single
+  direct store of its callback argument to `this+0xa20`.
+  A later helper beginning at `0x028739` checks the cached pointer at absolute offset
+  `+0xce24`, and if it is null but `this+0xa20` is present, it builds a small local
+  descriptor on the stack, calls through `this+0xa20`, and then caches the returned
+  pointer back into `+0xce24` before returning it.
+  Other later command-dispatch cases at `0x0297b9` and `0x029b0b` call through the same
+  `this+0xa20` callback with short stack descriptors and adjacent status words, which
+  matches command/message helper usage rather than module-state initialization.
+  Interpretation:
+  the `+0xa20` callback machinery is important context for the command-dispatch layer,
+  but it does not explain the provenance of `+0xb0`, `+0xb1`, or the default `+0xda0`
+  value. That path should be treated as a command-proc/helper cache, not the state-byte
+  initializer we are still looking for.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

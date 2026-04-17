@@ -145,6 +145,9 @@ cleanly.
   of `+0xb0`/`+0xb1` are visible. A whole-binary `objdump` pass still did not expose
   obvious plain stores to those fields, so the current artifact gap is real rather than
   just a narrow-slice oversight.
+  The nearby `InitModule` / `this+0xa20` callback path does not close that gap: it now
+  looks like a lazy command-helper cache rooted at `+0xce24`, not a state-byte
+  initialization path.
 
 ### Unresolved
 
