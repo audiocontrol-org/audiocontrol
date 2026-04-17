@@ -1,0 +1,152 @@
+; ============================================================
+; Function: CAkaiMIDIDispatcher::SwapLongWord
+;   Mangled: SwapLongWord__19CAkaiMIDIDispatcherFPUl
+;   File offset: 0x06de81 - 0x06dec2 (66 bytes)
+;   Binary: sampler-editor-rsrc.bin
+; ============================================================
+;
+; CONTEXT:
+;   This is the function at vtable[0x38] called by BuildSampleHeaderFromMAH
+;   when encoding SLNGTH and loop/sustain fields into the 200-byte Akai header.
+;   It was previously inferred as "nibble-encode-in-place" (low confidence) and
+;   later misidentified as the CAkaiMIDIDispatcher::Nibbleize function (wrong object).
+;
+;   The dispatch in BuildSampleHeaderFromMAH (file 0x02e84f):
+;     pea fp@(-16)             ; push &value as second arg
+;     moveal d6, a0            ; a0 = CSamplerModule* this
+;     movel a0@(0xda4), sp@-   ; push CSamplerModule@(3492) = ptr to CAkaiSampler object
+;     moveal sp@, a0           ; peek: a0 = the sampler ptr
+;     moveal a0@(2), a1        ; a1 = sampler@(2) = vtable_ptr (CAkaiSampler stores vtable at +2)
+;     moveal a1@(0x38), a1     ; a1 = vtable[0x38] = SwapLongWord runtime addr 0x00045f2a
+;     jsr (a1)                 ; call SwapLongWord(sampler_ptr, &value)
+;
+;   vtable confirmation:
+;     Vtable base at file 0x06f74b (CAkaiMIDIDispatcher vtable).
+;     Entry at vtable+0x38 = file 0x06f783: value = 0x00045f2a (runtime addr).
+;     runtime_addr + 0x027f57 = 0x00045f2a + 0x027f57 = 0x06de81 = file offset of this function.
+;     Delta 0x027f57 independently verified by two anchors:
+;       vtable[0x014] = 0x00044b40 -> file 0x06ca97 = BuildCommand (known).
+;       vtable[0x017c] caller -> AcceptSampleHeader -> 0x042eb2 -> file 0x06ae09 (known).
+;
+;   The object being dispatched through (CSamplerModule@(0xDA4)):
+;     This is a POINTER to a CAkaiSampler object (which inherits CAkaiMIDIDispatcher).
+;     CAkaiSampler ctor (file 0x068981) stores vtable at this+2 (not this+0).
+;     CMESASocket's ctor also exists in this binary (file 0x059d1d) but has its own
+;     vtable stored at this+0; it is NOT the object dispatched here.
+;     The SCSI Plug binary (scsi-plug-rsrc.bin, 12KB) contains only CMESAPlugIn and
+;     CSCSIPlug classes -- NO CMESASocket. The vtable[0x38] encoding occurs entirely
+;     within the sampler editor binary before the SCSI Plug is involved.
+;
+; FUNCTION SIGNATURE:
+;   SwapLongWord(this: CAkaiMIDIDispatcher*, ptr: unsigned long*)
+;   fp@(8)  = this (not used in function body)
+;   fp@(12) = ptr (pointer to 32-bit value to byte-reverse in place)
+;
+; WHAT IT DOES:
+;   Performs a 32-bit byte reversal (big-endian to little-endian conversion) in place.
+;   For input value V, the output = V with all 4 bytes reversed:
+;     output[0] = input[3]
+;     output[1] = input[2]
+;     output[2] = input[1]
+;     output[3] = input[0]
+;   i.e., SwapLongWord(0x12345678) = 0x78563412.
+;
+;   Algorithm uses two-phase bit manipulation (avoids BSWAP which doesn't exist on 68000):
+;   Phase 1: swap bytes within each 16-bit word:
+;     D0 = ROL.L #8, *ptr AND 0xFF00FF00    [bytes at [3] and [1] positions of original]
+;     D1 = ROR.L #8, *ptr AND 0x00FF00FF    [bytes at [2] and [0] positions of original]
+;     *ptr = D0 OR D1    =>  swaps bytes within each 16-bit half
+;   Phase 2: swap the two 16-bit words:
+;     D0 = SWAP(*ptr) AND 0xFFFF0000         [high word of phase-1 result, now in low]
+;     D1 = SWAP(CLR.W(*ptr)) AND 0x0000FFFF  [low word of phase-1 result, now in high]
+;     *ptr = D0 OR D1    =>  words swapped, final 32-bit byte-reverse complete
+;
+; ============================================================
+
+  06de81:  4e56 0000             linkw %fp,#0
+  06de85:  206e 000c             moveal %fp@(12),%a0       ; A0 = ptr to 32-bit value
+
+  ; Phase 1: swap bytes within each 16-bit word
+  06de89:  2010                  movel (%a0),%d0           ; D0 = *ptr
+  06de8b:  e188                  roll #8,%d0               ; D0 = ROL.L #8 (*ptr)
+  06de8d:  0280 ff00 ff00        andil #-16711936,%d0      ; D0 &= 0xFF00FF00
+  06de93:  2210                  movel (%a0),%d1           ; D1 = *ptr (original again)
+  06de95:  e089                  rorl #8,%d1               ; D1 = ROR.L #8 (*ptr)
+  06de97:  0281 00ff 00ff        andil #16711935,%d1       ; D1 &= 0x00FF00FF
+  06de9d:  8280                  orl %d0,%d1               ; D1 = D0 | D1 (bytes swapped within words)
+  06de9f:  2081                  movel %d1,(%a0)           ; *ptr = D1 (phase 1 result)
+
+  ; Phase 2: swap the two 16-bit words
+  06dea1:  2010                  movel (%a0),%d0           ; D0 = phase-1 result
+  06dea3:  4840                  swap %d0                  ; D0 = SWAP(D0) (exchange high/low words)
+  06dea5:  4240                  clrw %d0                  ; D0 & 0xFFFF0000 (clear low word)
+  06dea7:  0280 ffff 0000        andil #-65536,%d0         ; D0 &= 0xFFFF0000 (belt-and-suspenders)
+  06dead:  2210                  movel (%a0),%d1           ; D1 = phase-1 result
+  06deaf:  4241                  clrw %d1                  ; D1 & 0xFFFF0000 (clear low word)
+  06deb1:  4841                  swap %d1                  ; D1 = SWAP(D1) = low-word now in high half
+  06deb3:  0281 0000 ffff        andil #65535,%d1          ; D1 &= 0x0000FFFF
+  06deb9:  8280                  orl %d0,%d1               ; D1 = D0 | D1 (words swapped)
+  06debb:  2081                  movel %d1,(%a0)           ; *ptr = D1 (final byte-reversed result)
+
+  06debd:  4e5e                  unlk %fp
+  06debf:  4e75                  rts
+
+  ; Function name string (after RTS):
+  06dec1:  80 27 53 77 61 70 4c 6f 6e 67 57 6f 72 64 5f 5f 31 39 43 41 6b 61 69 4d 49 44 49 44 69 73 70 61 74 63 68 65 72 46 50 55 6c
+  ;        = .SwapLongWord__19CAkaiMIDIDispatcherFPUl
+
+; ============================================================
+; ENCODING EXAMPLES
+; ============================================================
+;
+;   SwapLongWord(0x00001000) = 0x00100000   [SLNGTH=4096 bytes]
+;     stored at header[26..29] = 00 10 00 00 (big-endian MOVEL)
+;     nibble-encoded by BuildCommand: 00 00 00 01 00 00 00 00
+;
+;   SwapLongWord(0x00000000) = 0x00000000   [loop/sustain fields when =0]
+;     stored as 00 00 00 00, nibble-encoded: 00 00 00 00 00 00 00 00
+;
+;   SwapLongWord(0x00002000) = 0x00200000   [SLNGTH=8192 bytes]
+;     stored at header[26..29] = 00 20 00 00
+;     nibble-encoded: 00 00 00 02 00 00 00 00
+;
+;   SwapLongWord(0x12345678) = 0x78563412
+;     stored as 78 56 34 12, nibble-encoded: 08 07 06 05 04 03 02 01
+;
+; ============================================================
+; NOTE: DUPLICATE CALL ON fp(-16) IN BuildSampleHeaderFromMAH
+; ============================================================
+; At file 0x02e86b, SwapLongWord is called again on &fp(-16) immediately
+; after the first call and its result has been stored at header[26].
+; This second call has no following MOVEL store. Since SwapLongWord is
+; self-inverse (applying it twice returns the original value), the net
+; effect on fp(-16) is zero. This is consistent with the 'stateful socket
+; cursor advance' hypothesis: the socket maintains an internal write cursor,
+; and each vtable[0x38] call advances it by 4 bytes (one 32-bit slot).
+; The duplicate call at 0x02e86b advances the cursor from byte 0 to byte 4
+; before encoding loop_start at byte 4 -- suggesting the socket's cursor is
+; used to build the header internally in parallel with the MOVEL stores.
+; The stack accumulates 6 * 8 = 48 bytes of args, all popped at once at
+; 0x02e8f9 via 'lea sp@(48), sp'.
+;
+; ============================================================
+; VTABLE LAYOUT (CAkaiMIDIDispatcher, file 0x06f74b)
+; ============================================================
+; slot  0 [0x000] = 0x00000000  (null, base class)
+; slot  1 [0x004] = 0x00000000  (null, base class)
+; slot  2 [0x008] = 0x00040ae0  -> file 0x068a37 __dt__12CAkaiSamplerFv
+; slot  3 [0x00c] = 0x00044954  -> file 0x06c8ab BuildHeader
+; slot  4 [0x010] = 0x000449c4  -> file 0x06c91b BuildRequest
+; slot  5 [0x014] = 0x00044b40  -> file 0x06ca97 BuildCommand       [confirmed]
+; slot  6 [0x018] = 0x00044d3a  -> file 0x06cc91 Set7BitWord        [confirmed]
+; slot  7 [0x01c] = 0x00044d9e  -> file 0x06ccf5 Nibbleize          [confirmed]
+; slot  8 [0x020] = 0x00044e1c  -> file 0x06cd73 UNNibbleize
+; slot  9 [0x024] = 0x00044e8a  -> file 0x06cde1 MIDIDispatchReply
+; slot 10 [0x028] = 0x000450f0  -> file 0x06d047 GetUnhandledReply
+; slot 11 [0x02c] = 0x00045d04  -> file 0x06dc5b BuildSampleDataRequest
+; slot 12 [0x030] = 0x00045df0  -> file 0x06dd47 ConvertASCIIName
+; slot 13 [0x034] = 0x00045ed0  -> file 0x06de27 ConvertNameToASCII
+; slot 14 [0x038] = 0x00045f2a  -> file 0x06de81 SwapLongWord       [THIS FUNCTION]
+; slot 15 [0x03c] = 0x00045f96  -> file 0x06deed SwapWord
+; ...
+; Confidence: high. All slots cross-checked via delta 0x027f57 = BuildCommand anchor.

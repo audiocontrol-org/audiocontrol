@@ -10,9 +10,9 @@
  * SLNGTH lives at byte 26-29, expressed in BYTES (not sample words),
  * stored as a 4-byte value transformed by vtable[0x38].
  *
- * vtable[0x38] is medium-confidence interpreted as 32-bit-value -> 4-nibble-byte
- * encoder for the LOW 16 bits (per `build-sample-header-decoded.md` section
- * "What vtable[0x38] does to the raw value").
+ * vtable[0x38] is instruction-level decoded as SwapLongWord (32-bit byte reversal,
+ * big-endian to little-endian) per `mesa-ii-analysis/cmesasocket-vtable38-decoded.md`.
+ * Confidence: HIGH.
  *
  * This test sends one BULK SDATA exactly as MESA does and verifies whether
  * a sample is created with the expected SLNGTH. If yes, we have closed the
@@ -83,16 +83,28 @@ function sleep(ms: number): Promise<void> {
 // ---------------------------------------------------------------------------
 
 /**
- * Encode a 32-bit value via vtable[0x38] semantics: 4 nibble bytes,
- * low nibble first (per `build-sample-header-decoded.md` interpretation).
- * Encodes only the LOW 16 bits — confidence: medium.
+ * Encode a 32-bit value via vtable[0x38] semantics: SwapLongWord.
+ *
+ * Instruction-level decoded from `sampler-editor-rsrc.bin` at file offset 0x06de81:
+ * `SwapLongWord__19CAkaiMIDIDispatcherFPUl` — a 32-bit byte reversal (big-endian to
+ * little-endian conversion) applied in place. Confidence: HIGH.
+ *
+ * The vtable dispatch in BuildSampleHeaderFromMAH (file 0x02e84f) calls through
+ * CSamplerModule@(0xDA4), which is a pointer to a CAkaiSampler object.
+ * CAkaiSampler stores its vtable at this+2; the vtable is CAkaiMIDIDispatcher's vtable
+ * at file 0x06f74b. Slot [0x38] = runtime 0x00045f2a = file 0x06de81 = SwapLongWord.
+ *
+ * See `mesa-ii-analysis/cmesasocket-vtable38-decoded.md` for full derivation.
+ *
+ * Result: 4 bytes representing the input with all bytes reversed (little-endian order).
+ * Example: swapLongWord(0x00001000) = [0x00, 0x10, 0x00, 0x00] (SLNGTH=4096 bytes)
  */
-function vtable38Encode(value: number): number[] {
+function swapLongWord(value: number): number[] {
   return [
-    (value >> 0) & 0xF,
-    (value >> 4) & 0xF,
-    (value >> 8) & 0xF,
-    (value >> 12) & 0xF,
+    value & 0xFF,
+    (value >> 8) & 0xFF,
+    (value >> 16) & 0xFF,
+    (value >> 24) & 0xFF,
   ];
 }
 
@@ -121,8 +133,8 @@ function buildAkaiHeader(opts: {
   buf[19] = 2;    // loop_type: 2 = no loop
   // buf[20..21] = fine tuning (leave 0)
 
-  // SLNGTH at 26..29 (vtable[0x38]-encoded total_byte_length)
-  const slngthEncoded = vtable38Encode(opts.slngthBytes);
+  // SLNGTH at 26..29: SwapLongWord(total_byte_length) per cmesasocket-vtable38-decoded.md
+  const slngthEncoded = swapLongWord(opts.slngthBytes);
   buf[26] = slngthEncoded[0];
   buf[27] = slngthEncoded[1];
   buf[28] = slngthEncoded[2];
