@@ -17,22 +17,39 @@ cleanly.
 
 ### Matched
 
-- None yet. Phase 2 has not started.
+- Slot `0x38` in the `CAkaiMIDIDispatcher` vtable maps to `SwapLongWord`
+  Claude baseline:
+  later Claude-side analysis argued that the repeated field transform resolves to
+  `SwapLongWord`.
+  Codex finding:
+  raw bytes in `sampler-editor-rsrc.bin` confirm the vtable entry sequence at
+  file offset `0x06f74b`, including slot `0x38 = 0x00045f2a`, and the bytes at file
+  offset `0x06de81` match the documented `SwapLongWord` implementation.
 
 ### Disputed
 
-- None yet. Phase 2 has not started.
+- `CMESASocket::vtable[0x38]` label
+  Claude baseline:
+  the current Claude branch still describes the blocking target as
+  `CMESASocket::vtable[0x38]`.
+  Codex finding:
+  the checked-in primary disassembly artifacts show the repeated slot-`0x38` dispatch
+  loading an object whose vtable pointer lives at `+2`, which matches the
+  `CAkaiSampler`/`CAkaiMIDIDispatcher` convention shown elsewhere and conflicts with the
+  `CMESASocket` constructor layout at `+0`.
 
 ### Unresolved
 
-- `CMESASocket::vtable[0x38]` semantics
-  Claude baseline:
-  current blocker; believed to control encoding of 32-bit header fields, but not
-  instruction-level confirmed from the socket-side binary.
 - 200-byte Akai header field encoding at offsets 26-47
   Claude baseline:
   corrected wire framing still fails on hardware, implying the content bytes remain
   wrong or incomplete.
+- Exact slot-`0x38` target mapping
+  Claude baseline:
+  later analysis argues for `SwapLongWord`.
+  Codex finding:
+  raw binary bytes now support that mapping, but the class identity of the caller-side
+  object in the `BuildSampleHeaderFromMAH` path is still being narrowed.
 - SRAW on-wire bytes
   Claude baseline:
   prior harness text admitted inference instead of captured bytes.

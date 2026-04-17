@@ -23,12 +23,63 @@ correct. Every finding should distinguish direct evidence from inference.
 
 ## Findings
 
-- None yet.
+- Finding 1: the current target is mislabeled in the Claude-side docs.
+  Evidence:
+  `BuildSampleHeaderFromMAH.annotated.txt` shows the repeated field-encoding dispatches
+  loading the object from `CSamplerModule+0xDA4`, then reading its vtable pointer from
+  offset `+2` before calling slot `0x38`.
+  `CMESASocket-ctor.annotated.txt` shows `CMESASocket` stores its vtable at object
+  offset `+0`, not `+2`.
+  `AcceptSampleHeader.annotated.txt` and `CAkaiSampler-vtable14.annotated.txt` use the
+  same `object -> +2 -> vtable` convention seen in `BuildSampleHeaderFromMAH`.
+  Interpretation:
+  based on the primary artifacts currently checked in the Claude branch, the repeated
+  slot-`0x38` call in `BuildSampleHeaderFromMAH` is consistent with the
+  `CAkaiSampler`/`CAkaiMIDIDispatcher` object chain and inconsistent with the
+  `CMESASocket` object layout.
+
+- Finding 2: the Claude-side artifact set is internally inconsistent about this target.
+  Evidence:
+  `disassembly-full/CMESASocket-vtable38.annotated.txt` actually contains the function
+  header for `CAkaiMIDIDispatcher::Nibbleize`.
+  `disassembly-full/CMESASocket-vtable38-encoder.annotated.txt` instead argues that the
+  relevant slot resolves to `CAkaiMIDIDispatcher::SwapLongWord`.
+  Interpretation:
+  the artifact naming and the conclusion history drifted during the Claude-side session.
+  This does not by itself disprove the `SwapLongWord` conclusion, but it means the
+  checked-in analysis outputs cannot be treated as a clean, contradiction-free source.
+
+- Finding 3: the currently checked-in annotated disassembly is compatible with the
+  `SwapLongWord` theory for slot `0x38`.
+  Evidence:
+  `BuildSampleHeaderFromMAH.annotated.txt` shows slot `0x38` mutating local 32-bit
+  values in place before each `movel` store into header offsets 26, 30, 34, 38, and 44.
+  `CMESASocket-vtable38-encoder.annotated.txt` contains a fully decoded
+  `SwapLongWord__19CAkaiMIDIDispatcherFPUl` implementation and ties it to vtable slot
+  `0x38` of the `CAkaiMIDIDispatcher` table.
+  Interpretation:
+  the strongest current Codex read is that the repeated field transform is byte-swap,
+  not nibble-encode-in-place.
+
+- Finding 4: the raw binary supports the slot-`0x38` to `SwapLongWord` mapping.
+  Evidence:
+  in `binaries/sampler-editor-rsrc.bin`, the bytes at file offset `0x06f74b` contain the
+  vtable entries:
+  `... 00045df0 00045ed0 00045f2a 00045f96 ...`
+  so slot `0x38` contains runtime address `0x00045f2a`.
+  The bytes at file offset `0x06de81` begin:
+  `4e56 0000 206e 000c 2010 e188 ...`
+  which exactly match the checked-in decoded `SwapLongWord` function body.
+  Interpretation:
+  Codex independently verified from raw binary bytes that the vtable table includes
+  slot `0x38 = 0x00045f2a` and that file offset `0x06de81` is a real function whose
+  body matches the documented byte-swap implementation. This makes the byte-swap
+  conclusion materially stronger than the earlier nibble-encode hypothesis.
 
 ## Open Questions
 
-- Is `CMESASocket::vtable[0x38]` actually responsible for the field encoding the Claude
-  branch attributes to it?
+- Is the `CSamplerModule+0xDA4` object definitively a `CAkaiSampler` instance in the raw
+  binary, or is there another `+2`-vtable class in this path?
 - Are the header fields byte-swapped, nibble-transformed, both, or something else?
 - Does the failure of the 392-byte BULK test come from bad content bytes, a wrong call
   sequence, or another prerequisite outside the payload itself?
