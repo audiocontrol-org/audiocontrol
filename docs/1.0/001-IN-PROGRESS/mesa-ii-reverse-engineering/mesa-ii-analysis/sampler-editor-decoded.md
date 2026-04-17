@@ -1,5 +1,24 @@
 # SendAudioBufferToSampler — Decoded Analysis
 
+> **PARTIALLY SUPERSEDED (per issues #309, #313):**
+>
+> - Vtable slot interpretations in the table below are NOT all on the same vtable.
+>   `vtable[0x14]` = `CAkaiSampler::vtable[0x14]` = `BuildCommand` (CAkaiMIDIDispatcher,
+>   builds SysEx). But `vtable[0x30]` per the call sites (see §"MIDI/SCSI Mode Branch")
+>   is on a different object — `CSamplerModule+0x74` = `CMESASocket*` per #313.
+>   See [`disassembly-full/CMESASocket-vtable30-ActivateThisSocket.annotated.txt`](./disassembly-full/CMESASocket-vtable30-ActivateThisSocket.annotated.txt).
+> - `vtable[0x30]` does NOT "Send SDS sample header" — it is
+>   `CMESASocket::ActivateThisSocket(Uc)` at file `0x05a0a7`. A socket-state /
+>   channel-activation function, NOT a transport primitive. This invalidates the
+>   earlier "send SDS sample header before BULK loop" interpretation. The actual
+>   SDS-header-equivalent is `AcceptSampleHeader` (vtable[0x017c]) which builds and
+>   sends the 200-byte Akai header SysEx via `BuildCommand` + `CMESASocket::SendData`.
+> - `vtable[0x017c]` row in the table below remains correct (AcceptSampleHeader).
+>
+> Kept in place to preserve the session record. The corrected upload-flow narrative
+> lives in `send-sample-header-decoded.md` (with its own superseded-banner) and the
+> active vtable30 artifact above.
+
 Disassembly source: `disassembly-full/SendAudioBufferToSampler.annotated.txt`
 Binary: `binaries/sampler-editor-rsrc.bin`
 Disassembler: `m68k-elf-objdump -D -b binary -m m68k:68020 --adjust-vma=<offset>`

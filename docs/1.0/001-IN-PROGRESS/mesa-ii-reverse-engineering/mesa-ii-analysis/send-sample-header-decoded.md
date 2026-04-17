@@ -205,9 +205,17 @@ AcceptSampleHeader (CAkaiSampler::vtable[0x017c])
 ```
 
 `AcceptSampleHeader` does NOT call `CSCSIPlug::SendData` directly. It calls
-`CMESASocket::vtable[0x14]`, which in turn routes through the SCSI plug. The harness
-Phase 5 synthetic call tested `CSCSIPlug::SendData` with a pre-built BULK IP_Data struct;
-that path is equivalent but bypasses the two intermediate steps.
+`CMESASocket::vtable[0x14]`, which in turn routes through the SCSI plug.
+
+> **Correction (per issue #312):** The earlier wording here said the Phase 5 harness
+> path is "equivalent but bypasses the two intermediate steps" — that overstates
+> the equivalence. The harness Phase 5 test reproduced the `CSCSIPlug::SendData`
+> sub-call only. It did NOT reproduce the surrounding `SendAudioBufferToSampler`
+> sequence: the bracketing `CMESASocket::vtable[0x30]` (`ActivateThisSocket`, per
+> #313) calls at file offsets 0x030743, 0x030811, 0x030c63, 0x030c95 on
+> `CSamplerModule+0x74`, the BOFF cleanup, and the post-loop UALL phase. Whether
+> those omitted state-setup steps are required for the device to apply the SDATA
+> remains open — so the harness reproduced one sub-call, not "the upload path."
 
 ---
 
@@ -329,8 +337,16 @@ with the 406-byte payload. However, the actual MESA code path is:
    using the 200-byte header as input.
 2. It then sends via `CMESASocket::vtable[0x14]` → `CSCSIPlug::SendData`.
 
-If the harness Phase 5 test failed, the root cause is not in `AcceptSampleHeader`'s
-dispatch path (which terminates at `CSCSIPlug::SendData` exactly as the harness called).
+> **Correction (per issue #312):** This paragraph's "root cause is not in dispatch
+> path" claim was too strong. The harness Phase 5 test bypassed the
+> `SendAudioBufferToSampler`-level state-setup calls (vtable[0x30] =
+> `ActivateThisSocket` per #313, BOFF cleanup, UALL phase). The failure could be
+> in the SysEx buffer content OR in those omitted state-setup steps — both are
+> open. Subsequent hardware tests confirmed: with the harness's exact 392-byte
+> SysEx but no preamble, the device is silent; with a generic SDS-create preamble,
+> the device replies but doesn't apply the SDATA content. So state setup matters
+> AND content correctness matters; either alone is not enough.
+
 The failure must be in the content of the SysEx buffer — specifically the SLNGTH field
 (header[26..29]) whose value and encoding must be verified against what the device accepts.
 
