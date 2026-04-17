@@ -924,3 +924,53 @@ on the S3000XL requires standard SDS dump header + at least one data packet.
 **Next:** test the preamble hypothesis directly by adding SDS create to the test
 before the BULK SDATA, OR decode vtable[0x0030] to see what exact preamble MESA
 sends. Tracked in task #20.
+
+### 2026-04-17: Preamble + Akai SDATA Hardware Test Result
+
+Updated test (`test-bulk-akai-header.ts`) with SDS preamble (Theory B pattern):
+40-sample SDS dump header + silence packet, then the 392-byte Akai SDATA
+(opcode 0x0B with the SwapLongWord-encoded 200-byte header).
+
+**Hardware results against live S3000XL** (samplerReachable confirmed before each test):
+
+```
+[PREAMBLE] SDS dump header (slot=4, declared=40 samples) → ACK
+[PREAMBLE] SDS data packet (40 silence samples)         → ACK
+Samples after preamble: 5 (was 4)
+Stub sample SLNGTH: 48 (as expected per Theory B)
+
+[Akai SDATA] 392 bytes, slot=4, declared SLNGTH=4096, name="BULKHDRTEST"
+Reply: 182 bytes (was zero before preamble!)
+First reply byte: 0x00 (not standard SysEx 0xF0 — likely buffer noise)
+
+After SDATA:
+  SLNGTH: 48  (unchanged — DID NOT update to 4096)
+  Sample name: "   "  (blank — DID NOT update to "BULKHDRTEST")
+```
+
+**Interpretation:**
+- Preamble unblocks SDATA acceptance: with no preamble device is silent;
+  with preamble device replies. Confirmed: the SDATA path requires some
+  prior state setup.
+- BUT the SDATA content is silently ignored. Either the 200-byte Akai
+  header bytes are still wrong (unlikely — encoding now matches
+  SwapLongWord per task #19) OR the device's "apply SDATA content"
+  decision depends on something OTHER than just "slot exists."
+
+**Codex #313 revealed the missing piece:** vtable[0x30] is not a wire
+preamble — it's `CMESASocket::ActivateThisSocket(Uc)`, an in-memory
+socket-state function. MESA sets up application-side state on the
+CMESASocket object before the SDATA, and the SCSI Plug's behavior
+likely depends on which socket is "active." Our Node test can't
+replicate that state from outside the application.
+
+**Implication for the bug-hunt:** the BULK SDATA upload may be
+irreducibly stateful. Replicating it from a stateless Node test
+might not be feasible. Options being weighed for next session:
+(a) decode ActivateThisSocket's effect fully (task #21),
+(b) extend the harness to drive `SendAudioBufferToSampler`
+end-to-end (loading sampler-editor binary alongside scsi-plug),
+(c) pivot to a different fast-upload approach.
+
+**Test artifact:** `modules/e2e-infra/src/node/lib/test-bulk-akai-header.ts`
+(commit 26a13a14 + 82ec15dc).

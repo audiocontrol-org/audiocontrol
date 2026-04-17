@@ -11,6 +11,52 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-17: Preamble Hypothesis + Codex Parity Wave + Model Revision
+
+### Feature: mesa-ii-reverse-engineering
+### Worktree: audiocontrol-mesa-ii-reverse-engineering
+
+### Goal
+Test the preamble hypothesis from session-end #5 (BULK SDATA needs pre-existing sample slot). Address GitHub issues from Codex parity review. Identify the next blocker for the BULK upload test.
+
+### Accomplished
+- **Preamble test:** Added SDS-create preamble (Theory B pattern: 40-sample SDS dump header + silence packet) before the Akai SDATA in `test-bulk-akai-header.ts`. Also fixed `midiSend` to support per-call CDB flag (SDS preamble = `0x00` per Theory B; Akai SDATA = `0x80` per MESA's captured CDB). Result: device went from silent to replying (182 bytes), but SLNGTH and sample name still didn't update.
+- **Addressed 5 Codex parity GitHub issues** (#309, #310, #311, #312, #313 — all opened by user from Codex parallel review):
+  - **#309** — class-identity mislabel: renamed `cmesasocket-vtable38-decoded.md` → `cakaidispatcher-slot38-swaplongword.md` and 2 annotated.txt files (git mv preserved history). The slot-0x38 dispatch is `CAkaiSampler*` (vtable at object+2), not CMESASocket (vtable at object+0). The `+0` vs `+2` tell was decisive evidence I should have caught.
+  - **#310/#311** — stale 406-byte / nibble-encode docs: added SUPERSEDED banners to `send-sample-header-decoded.md` and `build-sample-header-decoded.md` calling out which claims are wrong (406 bytes, nibble-encoded SLNGTH, CMESASocket class identity) and which are still correct.
+  - **#312** — overstated harness equivalence: corrected sections 4 and 8 of `send-sample-header-decoded.md` to acknowledge the harness reproduced only the `SendData` sub-call, not the bracketing `ActivateThisSocket` / UALL phase calls.
+  - **#313** — vtable[0x30] reconciliation: this was the substantive finding. The slot is `CMESASocket::ActivateThisSocket(Uc)` at file `0x05a0a7`, NOT "Send SDS sample header." A checked-in artifact (`CMESASocket-vtable30-ActivateThisSocket.annotated.txt`) had been produced in an earlier session but the higher-level docs ignored it. Added superseded banner to `sampler-editor-decoded.md`.
+- **Model revision:** the "preamble" we've been chasing in the BULK upload is application-side socket state setup, not a wire-protocol message. ActivateThisSocket modifies in-memory CMESASocket state and conditionally calls a function pointer at `this+52+(48*this+2474)` — whether that emits wire bytes is task #21.
+- Saved feedback memory: "Don't close issues autonomously" (after I tried to close #309 with the fix).
+
+### Didn't Work
+- **Hardware test still fails to update SLNGTH after preamble + Akai SDATA.** Device replies (positive signal) but SDATA content is silently ignored.
+- **BULK test approach may be structurally wrong.** ActivateThisSocket modifies application-side socket state; if the SCSI Plug's behavior depends on that state, the device sees different bytes depending on which socket is "active" — and that selection is invisible to a stateless Node test.
+
+### Course Corrections
+- **[FABRICATION] (caught by Codex #309)** Class identity claim "CMESASocket::vtable[0x38]" was inference, never primary-evidence-verified. The `+0` vs `+2` vtable-offset tell was sitting in the constructor disassembly the whole time. Codex caught it; I should have run the same check.
+- **[FABRICATION] (caught by Codex #313)** "vtable[0x30] = Send SDS sample header" was inference based on `moveb #1, -(SP)` push pattern. The actual function (ActivateThisSocket) had been decoded by an earlier sub-agent — I never read or referenced the artifact. The agent's checked-in file existed but the higher-level docs ignored it.
+- **[DOCUMENTATION] (caught by Codex #310/#311)** Left contradictory analysis docs in place across sessions — the old 406-byte / nibble-encode model was superseded but the older files weren't marked superseded. Codex's audit caught the contradictions.
+- **[FABRICATION] (caught by Codex #312)** Used "equivalent" too loosely for "harness path equals MESA path" — the harness reproduced only one sub-call, not the bracketing state-setup. Lazy phrasing.
+- **[PROCESS] (self-caught after user correction)** Tried to close #309 with the comment. User: "we need user acceptance before closing." Saved as memory.
+
+### Quantitative
+- User messages: ~12
+- Commits: 4 (preamble test, class-identity rename + content fixes, superseded banners, vtable[0x30] reconciliation)
+- Codex issues addressed: 5 (#309, #310, #311, #312, #313)
+- New tasks created: 1 (#21 ActivateThisSocket follow-up)
+- Tasks completed: 1 (#20)
+- User corrections: 1 (don't close issues autonomously)
+- Memory entries added: 1
+
+### Insights
+1. **Codex parity is finding things I should have found.** Five issues in one wave, one of them substantively model-changing (#313). All four "FABRICATION" tags above are checks Codex ran from primary artifacts that I never ran. The pattern: I claim a class identity from inference; Codex verifies against the constructor's vtable-offset pattern. I claim a vtable slot's purpose from a push pattern; Codex looks for an artifact actually decoding that slot. These are cheap checks I can — and should — be doing myself.
+2. **Sub-agent artifacts can be invisible to me.** The `CMESASocket-vtable30-ActivateThisSocket.annotated.txt` file existed in this worktree the whole time. The agent that produced it (probably during task #19) didn't surface it in its summary, and I committed it without reading the header. If I'd opened the file, I'd have seen the function name and avoided the `vtable[0x30] = Send SDS sample header` claim. Lesson: read the artifacts sub-agents produce, don't just commit them.
+3. **The model keeps moving away from "this is a wire protocol problem."** Each layer of decoding has shown more application-side state involvement: BuildCommand isn't just nibble-encoding (it inserts a sample_number field via Set7BitWord), ActivateThisSocket is in-memory state setup, etc. The accumulated weight of these findings suggests MESA's BULK upload may not be replicable from a stateless Node test at all — and the right move may be to drive the harness end-to-end rather than continue decoding incrementally.
+4. **Strategic decision is now overdue.** I've been pursuing "replicate MESA's bytes from a Node test" through 5 sessions. The remaining unknowns (ActivateThisSocket effects, full state machine, UALL phase) keep growing. Worth deliberately deciding: continue this path, expand the harness to drive end-to-end, or pivot to a different fast-upload approach. Reported the trade-offs to the user; awaiting decision.
+
+---
+
 > **Naming correction (2026-04-17, per issue #309):** session entries on and before
 > 2026-04-16 labeled the slot-0x38 target as "CMESASocket::vtable[0x38]". That class
 > identity was wrong. The 6 slot-0x38 calls in `BuildSampleHeaderFromMAH` dispatch
