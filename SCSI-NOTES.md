@@ -779,3 +779,38 @@ New WebSocket endpoint `sample-upload-fast`: creates sample slot via minimal SDS
 - Can the S3000 protocol mode be toggled via SysEx?
 - Why does s2p take 113ms per SCSI CDB? Is there internal locking, logging, or device emulation overhead?
 - What does MESA's `SetSCSIMIDIMode` 84-byte config block contain?
+
+### 2026-04-16 (cont.): BULK SDATA Hardware Test — Failed
+
+Test file: `modules/e2e-infra/src/node/lib/test-bulk-akai-header.ts`
+
+**Test:** sent the harness Phase 5-captured bytes against live S3000XL via `/scsi/exec`:
+
+```
+CDB:     0c 00 00 01 96 80           (MIDI Send, 406 bytes, reply expected)
+Payload: f0 47 00 0b 48 [400 nibble bytes] f7
+         200-byte Akai header per build-sample-header-decoded.md, with
+         SLNGTH=4096 bytes, sample name "BULKHDRTEST"
+```
+
+**Result:**
+- Reply: 0 bytes (expected SDS REPLY 0x16 since reply-expected flag set)
+- RSLIST count before/after: 0 / 0
+- Sample created: NO
+
+**Implication:** The harness Phase 5 trace was of a synthetic call path —
+`SendData(socket, BULK, sysex_len=406, sysex_ptr=...)` — that MESA's actual code
+never makes. MESA calls `SendData(socket, BULK, 0, 0)` (no buffer); the actual
+SDS header is sent via a separate `vtable[0x017c]` call (the SCSI Plug's
+"SendSampleHeader" function), not via `SendData`.
+
+The SCSI Plug's BULK *parser* does accept the SysEx framing we sent (the harness
+proved it dispatches via CDB 0x0C). What we don't yet know is what wire bytes
+`vtable[0x017c]` actually emits — i.e., what MESA actually drives the SCSI Plug
+with. Tracked in task #17.
+
+The harness Phase 5 report's `"BULK SCSI forward returned status=-2 ...
+environmental"` should have been a flag — `status=-2` on a write that's supposed
+to commit a sample is not "environmental," it's "the call didn't work." Without
+verifying that a sample was actually committed, the trace is just a record of
+what the harness did, not a finding about what MESA does.

@@ -7,7 +7,7 @@ Reverse-engineer MESA II's sample data transfer protocol to fix S3000XL sample u
 | Phase | Status | Notes |
 |-------|--------|-------|
 | Phase 1: Disassembly Infrastructure | Mostly Complete | m68k-elf-objdump + annotate_function.py pipeline (1241 funcs indexed). SendAudioBufferToSampler (443 instr) and BuildSampleHeaderFromMAH (224 instr) fully decoded with zero placeholders. Findings: 200-byte Akai header layout, BULK/SRAW/BOFF/UALL emission sequence, SLNGTH at bytes 26-29 in BYTES not words. |
-| Phase 2: Protocol Validation | In Progress | mesa-plug-harness extended with Memory Manager stubs + TagDispatch interception. Live trace against S3000XL captured BULK CDB definitively (`0c 00 00 01 96 80` + `f0 47 00 0b 48 [400 nibble bytes] f7`). BOFF confirmed as local cleanup only. SRAW wire bytes NOT captured (task #15). UALL handler not yet found (task #16). Hardware verification of BULK pending (task #14). |
+| Phase 2: Protocol Validation | In Progress | mesa-plug-harness extended with Memory Manager stubs + TagDispatch interception. Live trace captured BULK CDB but for a synthetic call path MESA never actually makes. **Hardware test of the captured bytes failed: no reply, no sample created.** Real sample-header sender is `vtable[0x017c]` (task #17), not `SendData`. SRAW wire bytes still not captured (task #15). UALL handler still not found (task #16). |
 | Phase 3: Bridge Implementation | Not Started | Working upload with correct SLNGTH |
 
 See `SCSI-NOTES.md` (entries dated 2026-04-16) for detailed hardware findings.

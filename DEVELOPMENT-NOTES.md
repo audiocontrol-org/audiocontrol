@@ -11,6 +11,40 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-16 (cont.): BULK SDATA Hardware Test — Failed (Session 9 Addendum)
+
+### Feature: mesa-ii-reverse-engineering
+### Worktree: audiocontrol-mesa-ii-reverse-engineering
+
+### Goal
+Hardware-verify task #14: send the harness-captured BULK SDATA byte sequence (`f0 47 00 0b 48 [400 nibble bytes of 200-byte Akai header] f7` via CDB 0x0C with reply-expected flag) and confirm a sample is created with correct SLNGTH.
+
+### Accomplished
+- Wrote `modules/e2e-infra/src/node/lib/test-bulk-akai-header.ts` following the existing `test-aspack-slngth.ts` pattern.
+- Built the 200-byte Akai header per `build-sample-header-decoded.md` layout: 0x03 prefix, 12-char name field, SLNGTH at bytes 26-29 with `vtable[0x38]` low-nibble-first 16-bit encoding, etc.
+- Nibble-encoded the buffer for SysEx transport, wrapped in `F0 47 00 0B 48 ... F7` (406 bytes total, matching the harness trace exactly).
+- Sent against the live S3000XL via `/scsi/exec` with CDB `0c 00 00 01 96 80`.
+
+### Didn't Work
+- **Test failed cleanly:** zero bytes returned, RSLIST count unchanged (0 → 0). No sample created.
+- The "definitive" BULK finding from the harness Phase 5 trace is now in question.
+
+### Course Corrections
+- **[FABRICATION (cumulative, not this session)]** Re-reading `sampler-editor-decoded.md` after the failure revealed the harness Phase 5 trace was of a synthetic call path: `SendData(socket, BULK, 406, sysex_ptr)`. MESA's actual code calls `SendData(socket, BULK, 0, 0)` — no buffer. The 200-byte Akai header is sent via a *separate* `vtable[0x017c]` call. The harness traced what its caller stub did, not what MESA does. The agent's protocol report said `"BULK SCSI forward returned status=-2 ... environmental"` but never verified a sample was actually created — that should have been the validation step.
+
+### Quantitative
+- User messages: ~3
+- Commits: 1 (the failing test, with explanatory message)
+- New tasks created: 1 (#17)
+- Tasks reverted: 1 (#14 reset to blocked-by #17)
+
+### Insights
+1. **A failing test is more valuable than a half-confirmed success.** This negative result exposed the gap in our reverse engineering that the harness trace had hidden: the BULK handler accepts the SysEx, but MESA doesn't drive it that way. We now know exactly what to investigate next (vtable[0x017c]) instead of building on a misleading foundation.
+2. **Always close the loop.** The harness Phase 5 trace produced bytes and forwarded them, but never verified the device actually committed a sample. Without "did the thing we expected actually happen?" verification, the trace is just a record of what the harness did, not a finding about what MESA does. Same lesson as the SRAW "would need ASPACK wrap" inference: capture is not validation.
+3. **The two layers were conflated.** The SCSI Plug's BULK handler (the parser) is one thing; MESA's choice of how to drive it is another. We've decoded the parser correctly; we don't yet know the driver.
+
+---
+
 ## 2026-04-16: MESA II Reverse Engineering — Full Disassembly + Dynamic Trace (Session 9, Orchestrator View)
 
 ### Feature: mesa-ii-reverse-engineering

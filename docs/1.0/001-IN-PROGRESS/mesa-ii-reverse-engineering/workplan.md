@@ -43,10 +43,11 @@ Goal: Validate the disassembly findings against real hardware with test scripts.
 - [ ] Measure MESA II's actual throughput (deferred to Phase 3)
 - [x] Confirm SLNGTH source — set by 200-byte Akai header bytes 26-29 (nibble-encoded from total_byte_length IN BYTES) sent via SDATA opcode 0x0B
 - [x] Test for undocumented vendor-specific SCSI commands — none found; MESA uses standard CDB 0x0C with Akai SysEx framing
-- [ ] **Hardware-verify BULK finding (task #14)**: send the captured CDB+payload, check sample is created with correct SLNGTH
+- [x] ~~Hardware-verify BULK finding (task #14)~~ — attempted, FAILED. Sending the harness-captured bytes produces no reply and no sample. The harness Phase 5 trace was of a synthetic IP_Data call path that MESA's real code never makes.
+- [ ] **Decode vtable[0x017c] (task #17)**: the actual SCSI Plug entry MESA uses to send the SDS header. Once decoded, regenerate the BULK test with the correct wire format.
 - [ ] **Capture SRAW wire bytes (task #15)**: agent's "would need ASPACK wrap" was an inference, not a finding
 - [ ] **Find UALL handler (task #16)**: not in SendData TagDispatch, uses vtable[0x28]
-- [ ] Document validated protocol specification with message sequence diagrams (after #14/#15/#16)
+- [ ] Document validated protocol specification with message sequence diagrams (after #15/#16/#17)
 
 ## Phase 3: Bridge Implementation
 
