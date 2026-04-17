@@ -465,6 +465,29 @@ correct. Every finding should distinguish direct evidence from inference.
   understand an `ASOK`-like activation message as a separate flow from the earlier
   `CONS`-like registration/query path.
 
+- Finding 25: the descriptor callback exercised during `ConnectToPlug` is already an
+  `ASOK`-style path, which sharply constrains what the installed per-plug function
+  pointer can be.
+  Evidence:
+  in `CMESASocket::ConnectToPlug`, the first handler callback at `0x059eab` is the
+  plug's top-level `DoMESACommand` callback and is used to fetch the descriptor array.
+  Later, at `0x059f0f`, the code invokes the descriptor entry's installed function
+  pointer at `descriptor[+12]` with a separate 10-byte local template copied from
+  `A4+12492`.
+  The sampler-editor command-template block now shows that `A4+12492` aligns with the
+  `.ASOK.....` record under the same A4-base interpretation that makes `A4+12502`
+  align with `.CONS.....`.
+  In the SCSI Plug dispatcher, only two arms use the `SocketInfo`-style
+  `(this, MESACommand+6)` calling convention: the vtable `+0x30` arm at `0x090c` and
+  the vtable `+0x34` arm at `0x0924`.
+  Interpretation:
+  this materially tightens the callback model. The installed descriptor function pointer
+  is not just some opaque plug callback that later happens to be reused by
+  `ActivateThisSocket`; it is already being tested via an `ASOK`-style message during
+  registration. That makes the remaining task-21 ambiguity essentially a two-way choice:
+  which of the two `SocketInfo`-style `CMESAPlugIn::DoMESACommand` arms corresponds to
+  `ASOK`, and which corresponds to `CONS`.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
@@ -491,6 +514,9 @@ correct. Every finding should distinguish direct evidence from inference.
 - Why does `ActivateThisSocket`'s checked-in `lea %a4@(12482),%a0` land on a zeroed
   10-byte template under the current best sampler-editor A4-base interpretation, while
   the adjacent `ConnectToPlug` call sites line up cleanly with `ASOK` and `CONS`?
+- Can Codex prove which of the two `SocketInfo`-style plug-dispatch arms
+  (`vtable+0x30` at `0x090c` vs `vtable+0x34` at `0x0924`) is the `ASOK` activation
+  arm, and which is the `CONS` connect/query arm?
 - Is the remaining hardware failure explained entirely by the missing socket-level
   pre/post sequence, or is there still a content-byte mismatch in the 200-byte header?
 - What exactly does the `CSamplerModule`-side `UALL` dispatch at `0x030c93` signal to

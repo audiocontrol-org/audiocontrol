@@ -194,6 +194,9 @@ cleanly.
   across arbitrary plug behavior. New sampler-editor-side support: the A4 template block
   contains distinct 10-byte records for `ASOK` and `CONS`, and `ConnectToPlug`'s two
   nearby template copies line up with those activation-style and connect-style records.
+  Stronger Codex constraint: the descriptor callback tested during `ConnectToPlug`
+  already uses the `.ASOK.....` template, so the installed per-plug function pointer is
+  specifically on the activation-style path before `ActivateThisSocket` ever reuses it.
 - SRAW on-wire bytes
   Claude baseline:
   prior harness text admitted inference instead of captured bytes.
