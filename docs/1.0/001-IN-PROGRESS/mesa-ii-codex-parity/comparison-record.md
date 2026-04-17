@@ -148,6 +148,9 @@ cleanly.
   The nearby `InitModule` / `this+0xa20` callback path does not close that gap: it now
   looks like a lazy command-helper cache rooted at `+0xce24`, not a state-byte
   initialization path.
+  The nearby `SPRF` path also looks unrelated: `ReadPrefsFile` writes `+0xb7c` and
+  copies `+0xb32` into `+0xb7e`, which points to a preferences/settings block rather
+  than the missing transport-state bytes.
 
 ### Unresolved
 

@@ -323,6 +323,24 @@ correct. Every finding should distinguish direct evidence from inference.
   value. That path should be treated as a command-proc/helper cache, not the state-byte
   initializer we are still looking for.
 
+- Finding 19: the `SPRF` path near `OpenModule` is prefs-file plumbing, not an observed
+  initializer for the transport-state bytes.
+  Evidence:
+  `OpenModule__14CSamplerModuleFv` at `0x02a7fb` pushes `this+0xb7c` with the four-byte
+  tag `SPRF` through `0x28980`, then conditionally calls `0x4204` only when
+  `this+0xb3c` is nonzero.
+  Later routines in the same aligned slice are explicitly labeled
+  `ReadPrefsFile__14CSamplerModuleFv` and `WritePrefsFile__14CSamplerModuleFv`.
+  `ReadPrefsFile` writes `this+0xb7c = 12` and copies the longword at `this+0xb32` into
+  `this+0xb7e` before calling lower-level file helpers.
+  Another nearby routine at `0x02b1a5` updates `this+0xb32` under a mask from an input
+  structure and again pushes `this+0xb7c` with tag `SPRF`.
+  Interpretation:
+  the `SPRF`/`+0xb7c` region is now best read as a sampler preferences file/settings
+  path rooted in the older `+0xb32` bitfield, not as the missing write site for
+  `+0xb0`, `+0xb1`, or `+0xda0`. It narrows the search by eliminating another nearby
+  settings-related false lead.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
