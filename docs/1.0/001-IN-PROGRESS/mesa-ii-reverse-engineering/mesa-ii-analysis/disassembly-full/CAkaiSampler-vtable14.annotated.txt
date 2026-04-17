@@ -1,0 +1,329 @@
+; ============================================================
+; Function: CAkaiMIDIDispatcherFPUcPUcUcUcsUcss::BuildCommand
+;   Mangled: BuildCommand__19CAkaiMIDIDispatcherFPUcPUcUcUcsUcss
+;   File offset: 0x06ca97 - 0x06cc91 (506 bytes)
+;   Binary: sampler-editor-rsrc.bin
+; ============================================================
+
+  06ca97:  4e56 fffe             linkw %fp,#-2
+  06ca9b:  48e7 1f30             moveml %d3-%d7/%a2-%a3,%sp@-
+  06ca9f:  282e 0008             movel %fp@(8),%d4
+  06caa3:  246e 000c             moveal %fp@(12),%a2
+  06caa7:  266e 0010             moveal %fp@(16),%a3
+  06caab:  1e2e 0016             moveb %fp@(22),%d7
+  06caaf:  3c2e 0018             movew %fp@(24),%d6
+  06cab3:  3a2e 001e             movew %fp@(30),%d5
+  06cab7:  1f07                  moveb %d7,%sp@-
+  06cab9:  1f2e 0014             moveb %fp@(20),%sp@-
+  06cabd:  2f0a                  movel %a2,%sp@-
+  06cabf:  2f04                  movel %d4,%sp@-
+  06cac1:  2057                  moveal %sp@,%a0
+  06cac3:  2268 0002             moveal %a0@(2),%a1
+  06cac7:  2269 000c             moveal %a1@(12),%a1
+  06cacb:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  06cacd:  2600                  movel %d0,%d3
+  06cacf:  7000                  moveq #0,%d0
+  06cad1:  1007                  moveb %d7,%d0
+  06cad3:  4fef 000c             lea %sp@(12),%sp
+  06cad7:  0440 000b             subiw #11,%d0
+  06cadb:  6700 010e             beqw 0x6cbeb
+  06cadf:  5d40                  subqw #6,%d0
+  06cae1:  6700 013e             beqw 0x6cc21
+  06cae5:  5340                  subqw #1,%d0
+  06cae7:  6700 00d6             beqw 0x6cbbf
+  06caeb:  5340                  subqw #1,%d0
+  06caed:  6700 00d0             beqw 0x6cbbf
+  06caf1:  5340                  subqw #1,%d0
+  06caf3:  6700 00ca             beqw 0x6cbbf
+  06caf7:  5340                  subqw #1,%d0
+  06caf9:  6700 014a             beqw 0x6cc45
+  06cafd:  0440 0013             subiw #19,%d0
+  06cb01:  672a                  beqs 0x6cb2d
+  06cb03:  5540                  subqw #2,%d0
+  06cb05:  6726                  beqs 0x6cb2d
+  06cb07:  5540                  subqw #2,%d0
+  06cb09:  6722                  beqs 0x6cb2d
+  06cb0b:  5540                  subqw #2,%d0
+  06cb0d:  671e                  beqs 0x6cb2d
+  06cb0f:  5540                  subqw #2,%d0
+  06cb11:  671a                  beqs 0x6cb2d
+  06cb13:  5540                  subqw #2,%d0
+  06cb15:  6716                  beqs 0x6cb2d
+  06cb17:  5540                  subqw #2,%d0
+  06cb19:  6712                  beqs 0x6cb2d
+  06cb1b:  5540                  subqw #2,%d0
+  06cb1d:  670e                  beqs 0x6cb2d
+  06cb1f:  5540                  subqw #2,%d0
+  06cb21:  670a                  beqs 0x6cb2d
+  06cb23:  0440 000a             subiw #10,%d0
+  06cb27:  6704                  beqs 0x6cb2d
+  06cb29:  6000 0116             braw 0x6cc41
+  06cb2d:  3f06                  movew %d6,%sp@-
+  06cb2f:  2f03                  movel %d3,%sp@-
+  06cb31:  2f0a                  movel %a2,%sp@-
+  06cb33:  2f04                  movel %d4,%sp@-
+  06cb35:  2057                  moveal %sp@,%a0
+  06cb37:  2268 0002             moveal %a0@(2),%a1
+  06cb3b:  2269 0018             moveal %a1@(24),%a1
+  06cb3f:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  06cb41:  2600                  movel %d0,%d3
+  06cb43:  2003                  movel %d3,%d0
+  06cb45:  5283                  addql #1,%d3
+  06cb47:  15ae 001a 0800        moveb %fp@(26),%a2@(0,%d0:l)
+  06cb4d:  3f2e 001c             movew %fp@(28),%sp@-
+  06cb51:  2f03                  movel %d3,%sp@-
+  06cb53:  2f0a                  movel %a2,%sp@-
+  06cb55:  2f04                  movel %d4,%sp@-
+  06cb57:  2057                  moveal %sp@,%a0
+  06cb59:  2268 0002             moveal %a0@(2),%a1
+  06cb5d:  2269 0018             moveal %a1@(24),%a1
+  06cb61:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  06cb63:  2600                  movel %d0,%d3
+  06cb65:  3f05                  movew %d5,%sp@-
+  06cb67:  2f03                  movel %d3,%sp@-
+  06cb69:  2f0a                  movel %a2,%sp@-
+  06cb6b:  2f04                  movel %d4,%sp@-
+  06cb6d:  2057                  moveal %sp@,%a0
+  06cb6f:  2268 0002             moveal %a0@(2),%a1
+  06cb73:  2269 0018             moveal %a1@(24),%a1
+  06cb77:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  06cb79:  2600                  movel %d0,%d3
+  06cb7b:  0c45 0002             cmpiw #2,%d5
+  06cb7f:  4fef 002a             lea %sp@(42),%sp
+  06cb83:  6612                  bnes 0x6cb97
+  06cb85:  7000                  moveq #0,%d0
+  06cb87:  1013                  moveb %a3@,%d0
+  06cb89:  3d40 fffe             movew %d0,%fp@(-2)
+  06cb8d:  16ab 0001             moveb %a3@(1),%a3@
+  06cb91:  176e ffff 0001        moveb %fp@(-1),%a3@(1)
+  06cb97:  4a45                  tstw %d5
+  06cb99:  6700 00aa             beqw 0x6cc45
+  06cb9d:  3045                  moveaw %d5,%a0
+  06cb9f:  2f08                  movel %a0,%sp@-
+  06cba1:  3f03                  movew %d3,%sp@-
+  06cba3:  2f0b                  movel %a3,%sp@-
+  06cba5:  2f0a                  movel %a2,%sp@-
+  06cba7:  2f04                  movel %d4,%sp@-
+  06cba9:  2057                  moveal %sp@,%a0
+  06cbab:  2268 0002             moveal %a0@(2),%a1
+  06cbaf:  2269 001c             moveal %a1@(28),%a1
+  06cbb3:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  06cbb5:  2600                  movel %d0,%d3
+  06cbb7:  4fef 0012             lea %sp@(18),%sp
+  06cbbb:  6000 0088             braw 0x6cc45
+  06cbbf:  3f06                  movew %d6,%sp@-
+  06cbc1:  2f03                  movel %d3,%sp@-
+  06cbc3:  2f0a                  movel %a2,%sp@-
+  06cbc5:  2f04                  movel %d4,%sp@-
+  06cbc7:  2057                  moveal %sp@,%a0
+  06cbc9:  2268 0002             moveal %a0@(2),%a1
+  06cbcd:  2269 0018             moveal %a1@(24),%a1
+  06cbd1:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  06cbd3:  2600                  movel %d0,%d3
+  06cbd5:  0c07 0013             cmpib #19,%d7
+  06cbd9:  4fef 000e             lea %sp@(14),%sp
+  06cbdd:  6666                  bnes 0x6cc45
+  06cbdf:  2003                  movel %d3,%d0
+  06cbe1:  5283                  addql #1,%d3
+  06cbe3:  15ae 001a 0800        moveb %fp@(26),%a2@(0,%d0:l)
+  06cbe9:  605a                  bras 0x6cc45
+  06cbeb:  3f06                  movew %d6,%sp@-
+  06cbed:  2f03                  movel %d3,%sp@-
+  06cbef:  2f0a                  movel %a2,%sp@-
+  06cbf1:  2f04                  movel %d4,%sp@-
+  06cbf3:  2057                  moveal %sp@,%a0
+  06cbf5:  2268 0002             moveal %a0@(2),%a1
+  06cbf9:  2269 0018             moveal %a1@(24),%a1
+  06cbfd:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  06cbff:  2600                  movel %d0,%d3
+  06cc01:  3045                  moveaw %d5,%a0
+  06cc03:  2f08                  movel %a0,%sp@-
+  06cc05:  3f03                  movew %d3,%sp@-
+  06cc07:  2f0b                  movel %a3,%sp@-
+  06cc09:  2f0a                  movel %a2,%sp@-
+  06cc0b:  2f04                  movel %d4,%sp@-
+  06cc0d:  2057                  moveal %sp@,%a0
+  06cc0f:  2268 0002             moveal %a0@(2),%a1
+  06cc13:  2269 001c             moveal %a1@(28),%a1
+  06cc17:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  06cc19:  2600                  movel %d0,%d3
+  06cc1b:  4fef 0020             lea %sp@(32),%sp
+  06cc1f:  6024                  bras 0x6cc45
+  06cc21:  3045                  moveaw %d5,%a0
+  06cc23:  2f08                  movel %a0,%sp@-
+  06cc25:  3f03                  movew %d3,%sp@-
+  06cc27:  2f0b                  movel %a3,%sp@-
+  06cc29:  2f0a                  movel %a2,%sp@-
+  06cc2b:  2f04                  movel %d4,%sp@-
+  06cc2d:  2057                  moveal %sp@,%a0
+  06cc2f:  2268 0002             moveal %a0@(2),%a1
+  06cc33:  2269 001c             moveal %a1@(28),%a1
+  06cc37:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  06cc39:  2600                  movel %d0,%d3
+  06cc3b:  4fef 0012             lea %sp@(18),%sp
+  06cc3f:  6004                  bras 0x6cc45
+  06cc41:  7000                  moveq #0,%d0
+  06cc43:  600c                  bras 0x6cc51
+  06cc45:  2003                  movel %d3,%d0
+  06cc47:  5283                  addql #1,%d3
+  06cc49:  15bc 00f7 0800        moveb #-9,%a2@(0,%d0:l)
+  06cc4f:  2003                  movel %d3,%d0
+  06cc51:  4cdf 0cf8             moveml %sp@+,%d3-%d7/%a2-%a3
+  06cc55:  4e5e                  unlk %fp
+  06cc57:  4e75                  rts
+  06cc59:  8033 4275             orb %a3@(75,%d4:w:2),%d0
+  06cc5d:  696c                  bvss 0x6cccb
+  06cc5f:  6443                  bccs 0x6cca4
+  06cc61:  6f6d                  bles 0x6ccd0
+  06cc63:  6d61                  blts 0x6ccc6
+  06cc65:  6e64                  bgts 0x6cccb
+  06cc67:  5f5f                  subqw #7,%sp@+
+  06cc69:  3139 4341 6b61        movew 0x43416b61,%a0@-
+  06cc6f:  694d                  bvss 0x6ccbe
+  06cc71:  4944                  .short 0x4944
+  06cc73:  4944                  .short 0x4944
+  06cc75:  6973                  bvss 0x6ccea
+  06cc77:  7061                  moveq #97,%d0
+  06cc79:  7463                  moveq #99,%d2
+  06cc7b:  6865                  bvcs 0x6cce2
+  06cc7d:  7246                  moveq #70,%d1
+  06cc7f:  5055                  addqw #8,%a5@
+  06cc81:  6350                  blss 0x6ccd3
+  06cc83:  5563                  subqw #2,%a3@-
+  06cc85:  5563                  subqw #2,%a3@-
+  06cc87:  5563                  subqw #2,%a3@-
+  06cc89:  7355                  .short 0x7355
+  06cc8b:  6373                  blss 0x6cd00
+  06cc8d:  7300                  .short 0x7300
+
+; ============================================================
+; CALL GRAPH (all JSR/BSR targets)
+; ============================================================
+
+; ============================================================
+; NEARBY FUNCTIONS (within 0x5000 of target range)
+; ============================================================
+;   0x067bb5  CFXFilerViewFv::Deselect  [Deselect__12CFXFilerViewFv]
+;   0x067bf3  CFXFilerViewFv::SomethingIsSelected  [SomethingIsSelected__12CFXFilerViewFv]
+;   0x067c45  CFXFilerViewFssRlRl::GetFXIndexFromMIDIPNum  [GetFXIndexFromMIDIPNum__12CFXFilerViewFssRlRl]
+;   0x067d71  CFXFilerViewFv::SetFXUsageTable  [SetFXUsageTable__12CFXFilerViewFv]
+;   0x067e13  CFXFilerViewFv::DrawNameList  [DrawNameList__12CFXFilerViewFv]
+;   0x067f9f  CFXFilerViewFlsssPcsss::SendCommandToSampler  [SendCommandToSampler__12CFXFilerViewFlsssPcsss]
+;   0x068133  CFXFilerViewFv::RenameFXFile  [RenameFXFile__12CFXFilerViewFv]
+;   0x068243  CFXFilerViewFsUc::RenameEffect  [RenameEffect__12CFXFilerViewFsUc]
+;   0x0683eb  CFXFilerViewFss::CopyReverb  [CopyReverb__12CFXFilerViewFss]
+;   0x068497  CFXFilerViewFss::CopyEffect  [CopyEffect__12CFXFilerViewFss]
+;   0x06853b  CFXFilerViewFv::SaveFXFileToSampler  [SaveFXFileToSampler__12CFXFilerViewFv]
+;   0x068655  CFXFilerViewFv::SaveFXFileToMac  [SaveFXFileToMac__12CFXFilerViewFv]
+;   0x068981    [__ct__12CAkaiSamplerFv]
+;   0x068a37    [__dt__12CAkaiSamplerFv]
+;   0x068aa7  CAkaiSamplerFv::NullValues  [NullValues__12CAkaiSamplerFv]
+;   0x068b69  CAkaiSamplerFv::GetDefaultKeygroup  [GetDefaultKeygroup__12CAkaiSamplerFv]
+;   0x068bb9  CAkaiSamplerFPUc::ScanForSamplers  [ScanForSamplers__12CAkaiSamplerFPUc]
+;   0x068d23  CAkaiSamplerFPUcUcUcsUcssUcRl::SendExclusiveCommand  [SendExclusiveCommand__12CAkaiSamplerFPUcUcUcsUcssUcRl]
+;   0x068dff  CAkaiSamplerFUcUcsUcssUcRl::SendExclusiveRequest  [SendExclusiveRequest__12CAkaiSamplerFUcUcsUcssUcRl]
+;   0x068ecf  CAkaiSamplerFlUcRl::WaitForReply  [WaitForReply__12CAkaiSamplerFlUcRl]
+;   0x068fa9  CAkaiSamplerFv::BuildProgramList  [BuildProgramList__12CAkaiSamplerFv]
+;   0x06905f  CAkaiSamplerFv::BuildSampleList  [BuildSampleList__12CAkaiSamplerFv]
+;   0x069115  CAkaiSamplerFv::GetSamplerStatus  [GetSamplerStatus__12CAkaiSamplerFv]
+;   0x069259  CAkaiSamplerFsRPPcRPPcUc::GetProgram  [GetProgram__12CAkaiSamplerFsRPPcRPPcUc]
+;   0x069445  CAkaiSamplerFssRPPc::GetKeygroup  [GetKeygroup__12CAkaiSamplerFssRPPc]
+;   0x0694e9  CAkaiSamplerFRPPc::GetMulti  [GetMulti__12CAkaiSamplerFRPPc]
+;   0x0695c5  CAkaiSamplerFUl::FetchDataFromSampler  [FetchDataFromSampler__12CAkaiSamplerFUl]
+;   0x06976d  CAkaiSamplerFP8SGetData::GetData  [GetData__12CAkaiSamplerFP8SGetData]
+;   0x0698a7  CAkaiSamplerFs::SetMIDITimeOut  [SetMIDITimeOut__12CAkaiSamplerFs]
+;   0x0698dd  CAkaiSamplerFP8SGetData::SetData  [SetData__12CAkaiSamplerFP8SGetData]
+;   0x069a39  CAkaiSamplerFlll::SetProgramHeaderValue  [SetProgramHeaderValue__12CAkaiSamplerFlll]
+;   0x069b91  CAkaiSamplerFlll::SetKeygroupHeaderValue  [SetKeygroupHeaderValue__12CAkaiSamplerFlll]
+;   0x069e23  CAkaiSamplerFlll::SetMultiDataValue  [SetMultiDataValue__12CAkaiSamplerFlll]
+;   0x069faf  CAkaiSamplerFs::SetCurrentProgram  [SetCurrentProgram__12CAkaiSamplerFs]
+;   0x06a0af  CAkaiSamplerFs::SetCurrentEffect  [SetCurrentEffect__12CAkaiSamplerFs]
+;   0x06a0e7  CAkaiSamplerFs::SetCurrentReverb  [SetCurrentReverb__12CAkaiSamplerFs]
+;   0x06a11f  CAkaiSamplerFPUc::SetEditGroups  [SetEditGroups__12CAkaiSamplerFPUc]
+;   0x06a167  CAkaiSamplerFss::AddKeygroup  [AddKeygroup__12CAkaiSamplerFss]
+;   0x06a35d  CAkaiSamplerFss::DeleteKeygroupInSpecifiedProgram  [DeleteKeygroupInSpecifiedProgram__12CAkaiSamplerFss]
+;   0x06a3d7  CAkaiSamplerFv::DeleteKeygroup  [DeleteKeygroup__12CAkaiSamplerFv]
+;   0x06a4b7  CAkaiSamplerFPUcs::NewProgram  [NewProgram__12CAkaiSamplerFPUcs]
+;   0x06a649  CAkaiSamplerFPUcs::RenameProgram  [RenameProgram__12CAkaiSamplerFPUcs]
+;   0x06a751  CAkaiSamplerFv::BTSort  [BTSort__12CAkaiSamplerFv]
+;   0x06a7b7  CAkaiSamplerFPUc::DeleteNamedProgram  [DeleteNamedProgram__12CAkaiSamplerFPUc]
+;   0x06a86f  CAkaiSamplerFs::DeleteIndexedProgram  [DeleteIndexedProgram__12CAkaiSamplerFs]
+;   0x06a8ed  CAkaiSamplerFPUc::DeleteNamedSample  [DeleteNamedSample__12CAkaiSamplerFPUc]
+;   0x06a9a5  CAkaiSamplerFs::DeleteIndexedSample  [DeleteIndexedSample__12CAkaiSamplerFs]
+;   0x06aa23  CAkaiSamplerFUc::GetFreeMemory  [GetFreeMemory__12CAkaiSamplerFUc]
+;   0x06aa9f  CAkaiSamplerFUc::SetSoloProgram  [SetSoloProgram__12CAkaiSamplerFUc]
+;   0x06abcd  CAkaiSamplerFv::IsFilterBoardInstalled  [IsFilterBoardInstalled__12CAkaiSamplerFv]
+;   0x06ac61  CAkaiSamplerFsRPPc::GetSampleHeader  [GetSampleHeader__12CAkaiSamplerFsRPPc]
+;   0x06ad11  CAkaiSamplerFsllPs::GetSampleData  [GetSampleData__12CAkaiSamplerFsllPs]
+;   0x06ae09  CAkaiSamplerFPUcs::AcceptSampleHeader  [AcceptSampleHeader__12CAkaiSamplerFPUcs]
+;   0x06aee5  CAkaiSamplerFPUc::DuplicateProgram  [DuplicateProgram__12CAkaiSamplerFPUc]
+;   0x06b1cb  CAkaiSamplerFv::DuplicateKeygroup  [DuplicateKeygroup__12CAkaiSamplerFv]
+;   0x06b363  CAkaiSamplerFv::HasMultiMode  [HasMultiMode__12CAkaiSamplerFv]
+;   0x06b3b9  CAkaiSamplerFv::GetEB16Data  [GetEB16Data__12CAkaiSamplerFv]
+;   0x06b6e3  CAkaiSamplerFPPc::SetEB16Data  [SetEB16Data__12CAkaiSamplerFPPc]
+;   0x06b957  CAkaiSamplerFlll::SetEB16HeaderDataValue  [SetEB16HeaderDataValue__12CAkaiSamplerFlll]
+;   0x06ba3d  CAkaiSamplerFlll::SetEB16AssignDataValue  [SetEB16AssignDataValue__12CAkaiSamplerFlll]
+;   0x06bbc5  CAkaiSamplerFv::GetCurrentFXPtr  [GetCurrentFXPtr__12CAkaiSamplerFv]
+;   0x06bc57  CAkaiSamplerFlll::SetEB16FXDataValue  [SetEB16FXDataValue__12CAkaiSamplerFlll]
+;   0x06bdd5  CAkaiSamplerFlll::SetEB16RVDataValue  [SetEB16RVDataValue__12CAkaiSamplerFlll]
+;   0x06bfa9  CAkaiSamplerFs::TestUnitReady  [TestUnitReady__12CAkaiSamplerFs]
+;   0x06c02d  CAkaiSamplerFv::GetMIDIProgramChange  [GetMIDIProgramChange__12CAkaiSamplerFv]
+;   0x06c067  CAkaiSamplerUtilsFPUcl::GetWord  [GetWord__17CAkaiSamplerUtilsFPUcl]
+;   0x06c0b1  CAkaiSamplerUtilsFPUcl::GetLongWord  [GetLongWord__17CAkaiSamplerUtilsFPUcl]
+;   0x06c121  CAkaiSamplerUtilsFPUcls::SetWord  [SetWord__17CAkaiSamplerUtilsFPUcls]
+;   0x06c179  CAkaiSamplerUtilsFPUcll::SetLongWord  [SetLongWord__17CAkaiSamplerUtilsFPUcll]
+;   0x06c201  CAkaiSamplerUtilsFPUcPPc::IndexOfNameInList  [IndexOfNameInList__17CAkaiSamplerUtilsFPUcPPc]
+;   0x06c28f  CAkaiSamplerUtilsFsRlRl::SemiCentFromTuning  [SemiCentFromTuning__17CAkaiSamplerUtilsFsRlRl]
+;   0x06c42d  CAkaiSamplerUtilsFll::TuningFromSemiCent  [TuningFromSemiCent__17CAkaiSamplerUtilsFll]
+;   0x06c499  CAkaiSamplerUtilsFPUc::CheckNameValidity  [CheckNameValidity__17CAkaiSamplerUtilsFPUc]
+;   0x06c53d  CAkaiSamplerUtilsFPUcPUcPUc::IsSampleUsedInProgram  [IsSampleUsedInProgram__17CAkaiSamplerUtilsFPUcPUcPUc]
+;   0x06c699  CAkaiSamplerUtilsFsPUc::NumToNote  [NumToNote__17CAkaiSamplerUtilsFsPUc]
+;   0x06c71d  CAkaiSamplerUtilsFPsPUc::NoteToNum  [NoteToNum__17CAkaiSamplerUtilsFPsPUc]
+;   0x06c821    [__ct__19CAkaiMIDIDispatcherFv]
+;   0x06c85d    [__dt__19CAkaiMIDIDispatcherFv]
+;   0x06c8ab  CAkaiMIDIDispatcherFPUcUcUc::BuildHeader  [BuildHeader__19CAkaiMIDIDispatcherFPUcUcUc]
+;   0x06c91b  CAkaiMIDIDispatcherFPUcUcUcsUcss::BuildRequest  [BuildRequest__19CAkaiMIDIDispatcherFPUcUcUcsUcss]
+;   0x06ca97  CAkaiMIDIDispatcherFPUcPUcUcUcsUcss::BuildCommand  [BuildCommand__19CAkaiMIDIDispatcherFPUcPUcUcUcsUcss]
+;   0x06cc91  CAkaiMIDIDispatcherFPUcls::Set7BitWord  [Set7BitWord__19CAkaiMIDIDispatcherFPUcls]
+;   0x06ccf5  CAkaiMIDIDispatcherFPUcPUcsl::Nibbleize  [Nibbleize__19CAkaiMIDIDispatcherFPUcPUcsl]
+;   0x06cd73  CAkaiMIDIDispatcherFPUcl::UNNibbleize  [UNNibbleize__19CAkaiMIDIDispatcherFPUcl]
+;   0x06cde1  CAkaiMIDIDispatcherFPUcPl::MIDIDispatchReply  [MIDIDispatchReply__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06d047  CAkaiMIDIDispatcherCFv::GetUnhandledReply  [GetUnhandledReply__19CAkaiMIDIDispatcherCFv]
+;   0x06d087  CAkaiMIDIDispatcherFPUcPCUcl::UnpackIt  [UnpackIt__19CAkaiMIDIDispatcherFPUcPCUcl]
+;   0x06d16b  CAkaiMIDIDispatcherFPUcPl::UnpackMiscProc  [UnpackMiscProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06d293  CAkaiMIDIDispatcherFPUc::UnpackSMPTEProc  [UnpackSMPTEProc__19CAkaiMIDIDispatcherFPUc]
+;   0x06d399  CAkaiMIDIDispatcherFPUcPl::UnpackListProc  [UnpackListProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06d439  CAkaiMIDIDispatcherFPUcPl::UnpackSDataProc  [UnpackSDataProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06d4dd  CAkaiMIDIDispatcherFPUcPl::CheckReplyProc  [CheckReplyProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06d533  CAkaiMIDIDispatcherFPUcPl::UnpackProgramProc  [UnpackProgramProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06d5d9  CAkaiMIDIDispatcherFPUcPl::UnpackKeygroupProc  [UnpackKeygroupProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06d681  CAkaiMIDIDispatcherFPUcPl::UnpackDrumProc  [UnpackDrumProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06d703  CAkaiMIDIDispatcherFPUcPl::UnpackMDataProc  [UnpackMDataProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06d765  CAkaiMIDIDispatcherFPUcPl::UnpackVolumeListProc  [UnpackVolumeListProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06d817  CAkaiMIDIDispatcherFPUcPl::UnpackDirEntryProc  [UnpackDirEntryProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06d903  CAkaiMIDIDispatcherFPUcPl::UnpackFXProc  [UnpackFXProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06da7b  CAkaiMIDIDispatcherFPUcPl::UnpackStatProc  [UnpackStatProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06dbd9  CAkaiMIDIDispatcherFPUcPl::UnpackMultiProc  [UnpackMultiProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06dc5b  CAkaiMIDIDispatcherFPUcUcsll::BuildSampleDataRequest  [BuildSampleDataRequest__19CAkaiMIDIDispatcherFPUcUcsll]
+;   0x06dd47  CAkaiMIDIDispatcherFPUc::ConvertASCIIName  [ConvertASCIIName__19CAkaiMIDIDispatcherFPUc]
+;   0x06de27  CAkaiMIDIDispatcherFPUc::ConvertNameToASCII  [ConvertNameToASCII__19CAkaiMIDIDispatcherFPUc]
+;   0x06de81  CAkaiMIDIDispatcherFPUl::SwapLongWord  [SwapLongWord__19CAkaiMIDIDispatcherFPUl]
+;   0x06deed  CAkaiMIDIDispatcherFPs::SwapWord  [SwapWord__19CAkaiMIDIDispatcherFPs]
+;   0x06df33    [__ct__12CS3000SampleFPc]
+;   0x06df75    [__dt__12CS3000SampleFv]
+;   0x06dfbd  CS3000SampleFPUc::Name  [Name__12CS3000SampleFPUc]
+;   0x06e007  CS3000SampleFv::SampleRate  [SampleRate__12CS3000SampleFv]
+;   0x06e045  CS3000SampleFv::StartMarker  [StartMarker__12CS3000SampleFv]
+;   0x06e097  CS3000SampleFv::EndMarker  [EndMarker__12CS3000SampleFv]
+;   0x06e0e7  CS3000SampleFs::LoopStart  [LoopStart__12CS3000SampleFs]
+;   0x06e1a1  CS3000SampleFs::LoopEnd  [LoopEnd__12CS3000SampleFs]
+;   0x06e22b  CS3000SampleFs::LoopDwell  [LoopDwell__12CS3000SampleFs]
+;   0x06e299  CS3000SampleFv::SampleLength  [SampleLength__12CS3000SampleFv]
+;   0x06e2ed  CS3000SampleFv::Tuning  [Tuning__12CS3000SampleFv]
+;   0x06e359  CS3000SampleFv::LoopTuning  [LoopTuning__12CS3000SampleFv]
+;   0x06e38d  CS3000SampleFv::BaseNote  [BaseNote__12CS3000SampleFv]
+;   0x06e3bd  CS3000SampleFv::LoopType  [LoopType__12CS3000SampleFv]
+;   0x06e601  UExtractFromAEDescFRC6AEDescRl::TheInt32  [TheInt32__18UExtractFromAEDescFRC6AEDescRl]
+;   0x06e6bd  UExtractFromAEDescFRC6AEDescRUc::TheBoolean  [TheBoolean__18UExtractFromAEDescFRC6AEDescRUc]
+;   0x06e77d  UExtractFromAEDescFRC6AEDescPUc::ThePString  [ThePString__18UExtractFromAEDescFRC6AEDescPUc]
+;   0x06e863  ConcatPStr  [ConcatPStr__FPUcPCUcs]

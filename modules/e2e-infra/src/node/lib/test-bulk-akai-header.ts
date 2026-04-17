@@ -32,6 +32,12 @@ const CHANNEL = 0;
 const TEST_SLNGTH_BYTES = 4096;
 const SAMPLE_NAME = 'BULKHDRTEST'; // 11 chars, will be padded to 12
 
+// Sample slot to target. MESA's `AcceptSampleHeader` takes `sample_number`
+// and inserts it as a 7-bit-encoded 2-byte field at SysEx bytes 5-6 via
+// `Set7BitWord` (see sysex-builder-decoded.md §3 step 3). We pick slot 1 as a
+// safe initial target (the user can verify device state separately).
+const TEST_SAMPLE_NUM = 1;
+
 // ---------------------------------------------------------------------------
 // Raw SCSI helpers
 // ---------------------------------------------------------------------------
@@ -234,17 +240,27 @@ async function main() {
   console.log(`  ${hexDump(headerBuf, 32)}`);
   console.log(`Header bytes 26..29 (SLNGTH encoded): ${hexDump(Array.from(headerBuf.slice(26, 30)))}`);
 
-  // Nibble-encode the entire buffer for SysEx transport
-  const nibblePayload = nibbleEncodeBuffer(headerBuf);
-  console.log(`Nibble-encoded payload: ${nibblePayload.length} bytes (expected 400)`);
+  // CORRECTED per sysex-builder-decoded.md:
+  //   - Nibbleize covers only header_buf[0..191] (192 bytes), NOT all 200 bytes.
+  //   - Sample number is inserted as a 7-bit 2-byte field at SysEx bytes 5-6
+  //     via MESA's Set7BitWord (between the 5-byte header and the nibble payload).
+  //   - Total payload is 392 bytes, not 406.
+  const nibblePayload = nibbleEncodeBuffer(headerBuf.slice(0, 192));
+  console.log(`Nibble-encoded payload: ${nibblePayload.length} bytes (expected 384, covers header[0..191] only)`);
 
-  // Wrap in SysEx
-  const sysex = [0xF0, 0x47, CHANNEL, 0x0B, 0x48, ...nibblePayload, 0xF7];
-  console.log(`Total SysEx message: ${sysex.length} bytes (expected 406)`);
+  // Wrap in SysEx: F0 47 ch 0B 48 [sample_lo 7-bit] [sample_hi 7-bit] [384 nibble bytes] F7
+  const sysex = [
+    0xF0, 0x47, CHANNEL, 0x0B, 0x48,
+    TEST_SAMPLE_NUM & 0x7F,
+    (TEST_SAMPLE_NUM >> 7) & 0x7F,
+    ...nibblePayload,
+    0xF7,
+  ];
+  console.log(`Total SysEx message: ${sysex.length} bytes (expected 392)`);
   console.log(`SysEx prefix: ${hexDump(sysex.slice(0, 10))}`);
   console.log(`SysEx suffix: ${hexDump(sysex.slice(-4))}`);
 
-  // Send via MIDI Send CDB with reply-expected flag (matching MESA's `0c 00 00 01 96 80`)
+  // Send via MIDI Send CDB with reply-expected flag (CDB = 0c 00 00 01 88 80 for 392 bytes)
   console.log('\nSending BULK SDATA...');
   await midiSend(sysex);
 
