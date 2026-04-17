@@ -126,6 +126,18 @@ The highest-value remaining unknown is the identity and side effects of `CMESASo
 slot `0x30`, which is called with SDS opcode `0x01` before BULK open and again after
 the later `UALL` phase.
 
+This is now narrower than when the phase started. Current Codex evidence supports:
+
+- slot `0x30` as `ActivateThisSocket(Uc)` rather than an SDS-header send primitive
+- `CSamplerModule+0xda0` as mutable active transport-selection state rather than a
+  static startup flag
+- `CSamplerModule+0xdaa` as likely MIDI-plug availability state
+- `CSamplerModule+0xb1` as reusable cached activation state across multiple upload paths
+
+The highest-value remaining unknown is now initialization provenance rather than identity:
+where `CSamplerModule+0xb0/+0xb1` are first set, and where the default `+0xda0` value is
+established before the runtime toggle path takes over.
+
 ---
 
 ## Phase 3: Cross-Check and Reconciliation
@@ -164,3 +176,12 @@ the later `UALL` phase.
 - A maintainer can tell which findings are validated, disputed, or deferred
 - Recommended next experiments are explicit
 - Downstream work can consume the validated findings without relying on conversational memory
+
+### Next Experiments
+
+- Hand-decode the pre-`OpenModule` transport-toggle owner around `0x029105` further
+  backward so the owning function and full state choreography are explicit
+- Expand earlier creation/initialization paths or less-obvious callees to find the first
+  concrete stores to `CSamplerModule+0xb0` and `+0xb1`
+- Identify where the default `CSamplerModule+0xda0` value is established before the
+  runtime toggle path observed in the current artifact set

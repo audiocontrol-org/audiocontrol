@@ -220,6 +220,69 @@ correct. Every finding should distinguish direct evidence from inference.
   module is in MIDI mode versus SCSI mode. That aligns with the warning behavior and the
   earlier `OpenModule` selection logic.
 
+- Finding 13: within the checked-in disassembly slice from `OpenModule` onward,
+  `this+0xdaa` has one observed write, `this+0xda0` has only observed reads, and the
+  shared helper at `0x031ce6` does not explain either field.
+  Evidence:
+  direct search over the aligned slice `/tmp/mesa_sampler_from_openmodule.asm` finds
+  only one `0xdaa` write:
+  `moveb #1,%a2@(3498)` at `0x02a669` in `OpenModule`.
+  The same slice shows `this+0xda0` only at `0x02a695` (`OpenModule`) and `0x030d13`
+  (`SCSIOnlyWarning`), both as `tstb` reads.
+  The frequently-called helper at `0x031ce6` resolves cleanly in the aligned slice to a
+  message/progress helper that builds a block using `this+0xa20` and returns a status
+  word through an out-parameter; it does not touch `+0xda0`, `+0xdaa`, `+0xb0`, or
+  `+0xb1`.
+  Interpretation:
+  the current checked-in artifact window is enough to model downstream use of the
+  transport and connection-state bytes, but not enough to prove where `+0xda0` is
+  initialized. Any claim about its write-site still needs wider disassembly or another
+  artifact set.
+
+- Finding 14: a pre-`OpenModule` command path does write `CSamplerModule+0xda0`, and it
+  uses that byte as mutable active transport state rather than immutable startup config.
+  Evidence:
+  in the constructor-to-`OpenModule` slice, a routine around `0x029105` saves
+  `this+0xda0` to a stack byte, flips it to the opposite value (`0` -> `1`, `1` -> `0`),
+  writes the new value back to `this+0xda0`, calls socket slot `0x30` with `0`,
+  selects the corresponding plug ID from `this+0xd98` or `this+0xd9c`, and on select
+  failure restores the saved byte to `this+0xda0`. It then calls slot `0x30` with `1`.
+  Separately, another nearby command-status path at `0x02a20d-0x02a235` maps
+  `this+0xda0` to a `1`/`2` command parameter and reads back `this+0xdaa`.
+  Interpretation:
+  `+0xda0` is an active transport-selection byte that can be toggled at runtime while
+  reconfiguring the socket, not merely a fixed mode chosen once during initialization.
+  That strengthens the earlier "MIDI vs SCSI selector" reading and narrows the missing
+  upload-sequence model toward transport-state choreography rather than static setup.
+
+- Finding 15: the checked-in aligned slices still show no direct stores to
+  `CSamplerModule+0xb0` or `+0xb1`; only reads are visible.
+  Evidence:
+  direct grep over both aligned slices
+  (`/tmp/mesa_sampler_ctor_to_open.asm` and `/tmp/mesa_sampler_from_openmodule.asm`)
+  finds `moveb %a0@(177),...` reads at `0x02ec93`, `0x030723`, and `0x03109d`, plus
+  `tstw %a0@(176)` reads at the upload/import call sites, but no `move* ..., %a0@(176)`
+  or `move* ..., %a0@(177)` writes.
+  Interpretation:
+  with the current checked-in artifact coverage, `+0xb0/+0xb1` are downstream state
+  consumers only. Their initialization site likely lives either earlier in the binary
+  than the current aligned slices or inside callees not yet expanded into primary
+  artifact notes.
+
+- Finding 16: a whole-binary disassembly pass still does not reveal obvious plain stores
+  to `CSamplerModule+0xb0` or `+0xb1`.
+  Evidence:
+  a full `m68k-elf-objdump` dump of `sampler-editor-rsrc.bin` to
+  `/tmp/mesa_sampler_full_objdump.asm` produced the same result as the aligned-slice
+  searches: concrete reads of `+0xb1` at `0x02ec93`, `0x030723`, and `0x03109d`, plus
+  `tstw` reads of `+0xb0` in the upload/import paths, but no obvious plain `move*` or
+  `clr*` stores targeting offsets `176` or `177`.
+  Interpretation:
+  within the currently available primary artifacts, `+0xb0/+0xb1` remain "read-only
+  observed state." If they are initialized in this binary, it is either through less
+  obvious addressing forms than the current grep strategy caught or inside code regions
+  that still need hand-decoding rather than offset-grep alone.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
@@ -234,8 +297,10 @@ correct. Every finding should distinguish direct evidence from inference.
 - What exactly is stored at `CSamplerModule+0xd98` and `+0xd9c` after `OpenModule`
   connects the `'MIDI'` and `'SCSI'` plugs?
 - Are there any write sites for `CSamplerModule+0xda0` in the checked-in artifacts, or
-  is its MIDI-vs-SCSI meaning only visible through downstream reads like `OpenModule`
-  and `SCSIOnlyWarning`?
+  beyond the transport-toggle path described above, where is the default value
+  established?
+- Where are `CSamplerModule+0xb0` and `+0xb1` initialized before the upload/import
+  paths that save/restore them?
 - Is the remaining hardware failure explained entirely by the missing socket-level
   pre/post sequence, or is there still a content-byte mismatch in the 200-byte header?
 - What exactly does the `CSamplerModule`-side `UALL` dispatch at `0x030c93` signal to

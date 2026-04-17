@@ -1186,3 +1186,74 @@ Add CSS file tracking to Makefile source dependencies and add inline documentati
 ### Insights
 1. Well-scoped features with clear workplans and pre-created issues make sessions fast and frictionless
 2. Small features benefit from doing all tasks in a single commit rather than splitting artificially
+
+---
+
+## 2026-04-17: MESA II Parity Transport-State Trace
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Advance the Codex-side MESA II parity analysis by tightening the socket and transport
+state model around sample upload and identifying any clear disagreements that should be
+escalated to Claude.
+
+### Accomplished
+- Published parity-doc baseline and follow-up findings in commits:
+  `a2fcd612`, `2d268d90`, `14c695f9`, `2ddb5e3d`, `5303c27b`, `84b43a5f`, `3b88631e`
+- Confirmed from primary artifacts that `CAkaiMIDIDispatcher` slot `0x38` points to
+  `SwapLongWord`
+- Established that `CMESASocket` slot `0x30` is activation/state management rather than
+  a direct SDS-header send path, with:
+  `OpenModule`/`ActivateModule` -> `ActivateThisSocket(1)`
+  `DeactivateModule` -> `ActivateThisSocket(0)`
+- Decoded enough socket lifecycle to model:
+  `ConnectToPlug` -> `SelectPlug` -> `ActivateThisSocket`
+- Proved the old direct `CSCSIPlug::SendData('BULK')` harness is structurally incomplete
+  because it skipped real socket/plug selection and activation choreography
+- Identified `CSamplerModule+0xda0` as mutable runtime transport-selection state via a
+  pre-`OpenModule` toggle path around `0x029105`
+- Identified `CSamplerModule+0xdaa` as likely MIDI-plug availability state, with the
+  only observed write in the current artifact window occurring after successful `'MIDI'`
+  `ConnectToPlug(...)`
+- Confirmed `CSamplerModule+0xb1` save/restore behavior across both
+  `SendAudioBufferToSampler` and `SendAudioFileToSampler`
+- Reviewed and closed Claude-response issues `#309`, `#310`, `#311`, `#312`, and `#313`
+  after verifying the actual branch fixes
+
+### Didn't Work
+- A whole-binary `objdump` pass still did not expose obvious plain stores to
+  `CSamplerModule+0xb0` or `+0xb1`
+- Constructor/`InitModule` decoding did not reveal inline initialization of
+  `+0xb0`, `+0xb1`, or the default `+0xda0` value
+
+### Course Corrections
+- **[PROCESS]** I left several stable parity-doc updates uncommitted while continuing
+  analysis. User pointed out the collaboration and durability risk. I corrected course by
+  publishing the stable doc slices once they crossed the evidence threshold.
+- **[DOCUMENTATION]** The phase-2 unknown initially stayed framed as slot-`0x30`
+  identity. The session evidence narrowed that materially; the real remaining unknown is
+  initialization provenance for `+0xb0/+0xb1` and the default `+0xda0` value.
+- **[FABRICATION]** This session stayed disciplined about marking artifact boundaries.
+  When whole-binary searches still failed to show `+0xb0/+0xb1` stores, the result was
+  recorded as an evidence limit instead of turning it into a guessed explanation.
+
+### Quantitative
+- Commits pushed on parity branch during session: 3
+  `84b43a5f`, `3b88631e`, plus the earlier pushed `5303c27b` close-out commit carried
+  forward into this session's continuation
+- Claude-review issues resolved this session: 5
+  `#309`, `#310`, `#311`, `#312`, `#313`
+- New parity-doc findings added this session: transport selector `+0xda0`, MIDI
+  availability byte `+0xdaa`, repeated `+0xb1` save/restore across multiple upload
+  paths, and the stronger activation-state interpretation of slot `0x30`
+
+### Insights
+1. The most valuable parity work this session came from following concrete state bytes
+   (`+0xda0`, `+0xdaa`, `+0xb1`) across real code paths instead of continuing to argue
+   abstract transport theories.
+2. The direct BULK harness problem is now much more clearly a missing lifecycle problem
+   than a one-packet problem.
+3. Once a parity finding is evidence-stable, publishing it quickly matters because the
+   parallel Claude branch can incorporate or contest it immediately.

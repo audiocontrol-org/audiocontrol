@@ -7,7 +7,7 @@ Parallel Codex-driven reverse engineering of Akai's MESA II sampler editor, desi
 | Phase | Status | Notes |
 |-------|--------|-------|
 | Phase 1: Baseline and Comparison Setup | Complete | Claude branch baseline captured; comparison artifacts created; first Codex target selected |
-| Phase 2: Independent Codex Analysis | In Progress | Object identity corrected; slot `0x38` matched to `SwapLongWord`; upload call-sequence tracing underway |
+| Phase 2: Independent Codex Analysis | In Progress | Object identity corrected; slot `0x38` matched to `SwapLongWord`; socket/transport lifecycle now traced through `OpenModule`, `ActivateModule`, `DeactivateModule`, and a runtime transport-toggle path |
 | Phase 3: Cross-Check and Reconciliation | Not Started | Compare the two efforts and resolve or narrow disputes |
 | Phase 4: Downstream Integration Guidance | Not Started | Summarize validated findings and next experiments |
 
@@ -59,3 +59,25 @@ The first independent Codex target is therefore the same area the Claude branch 
 identifies as its blocking unknown: the `CAkaiSampler` / `CAkaiMIDIDispatcher`
 field-encoding path for header offsets 26-47, plus the `CMESASocket` pre/post calls
 that bracket BULK transfer in `SendAudioBufferToSampler`.
+
+## Current Session Close
+
+Phase 2 advanced materially this session:
+
+- `CMESASocket` slot `0x30` is now modeled as activation state rather than packet
+  content, with `OpenModule` and `ActivateModule` calling it with `1` and
+  `DeactivateModule` calling it with `0`
+- `CSamplerModule+0xda0` is no longer just a read-side hint; a pre-`OpenModule`
+  command path actively flips it, deactivates the socket, re-selects the other plug,
+  and reactivates the socket
+- `CSamplerModule+0xdaa` still looks like MIDI-plug availability state, with the only
+  observed write in the checked-in artifact window occurring after successful `'MIDI'`
+  `ConnectToPlug(...)`
+- `CSamplerModule+0xb1` save/restore behavior is now confirmed across both
+  `SendAudioBufferToSampler` and `SendAudioFileToSampler`
+
+The main unresolved boundary is still initialization provenance for `CSamplerModule+0xb0`
+and `+0xb1`. The current checked-in primary artifacts show repeated reads of those bytes
+but no obvious plain stores, even after a whole-binary `objdump` pass. The next analysis
+move is to widen or hand-decode earlier creation paths or less-obvious callees rather
+than keep re-grepping the same upload-region slices.
