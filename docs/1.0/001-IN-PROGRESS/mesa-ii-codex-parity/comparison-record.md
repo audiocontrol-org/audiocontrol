@@ -35,8 +35,9 @@ cleanly.
   Codex finding:
   the checked-in primary disassembly artifacts show the repeated slot-`0x38` dispatch
   loading an object whose vtable pointer lives at `+2`, which matches the
-  `CAkaiSampler`/`CAkaiMIDIDispatcher` convention shown elsewhere and conflicts with the
-  `CMESASocket` constructor layout at `+0`.
+  `CAkaiSampler`/`CAkaiMIDIDispatcher` convention shown elsewhere. Raw constructor bytes
+  for `CAkaiSampler` also show the vtable stored at `+2`, while the `CMESASocket`
+  constructor stores its vtable at `+0`.
 
 ### Unresolved
 

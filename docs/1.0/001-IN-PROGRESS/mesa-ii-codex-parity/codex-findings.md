@@ -32,6 +32,10 @@ correct. Every finding should distinguish direct evidence from inference.
   offset `+0`, not `+2`.
   `AcceptSampleHeader.annotated.txt` and `CAkaiSampler-vtable14.annotated.txt` use the
   same `object -> +2 -> vtable` convention seen in `BuildSampleHeaderFromMAH`.
+  Raw bytes from `sampler-editor-rsrc.bin` at `0x068981` show the `CAkaiSampler`
+  constructor storing one pointer at offset `+8` and the vtable pointer at offset `+2`,
+  matching the caller-side access pattern:
+  `... 41ec0d90 2548 0008 41ec0e80 2548 0002 ...`
   Interpretation:
   based on the primary artifacts currently checked in the Claude branch, the repeated
   slot-`0x38` call in `BuildSampleHeaderFromMAH` is consistent with the
@@ -78,8 +82,9 @@ correct. Every finding should distinguish direct evidence from inference.
 
 ## Open Questions
 
-- Is the `CSamplerModule+0xDA4` object definitively a `CAkaiSampler` instance in the raw
-  binary, or is there another `+2`-vtable class in this path?
+- Is there any other `+2`-vtable class in this call path that could mimic the
+  `CAkaiSampler` layout, or is the object identity now strong enough to escalate as a
+  Claude-side issue?
 - Are the header fields byte-swapped, nibble-transformed, both, or something else?
 - Does the failure of the 392-byte BULK test come from bad content bytes, a wrong call
   sequence, or another prerequisite outside the payload itself?
