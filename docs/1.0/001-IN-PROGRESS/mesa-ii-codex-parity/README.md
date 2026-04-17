@@ -55,6 +55,12 @@ earlier MESA conclusions:
 - SRAW wire-byte claims and some earlier vtable semantics were explicitly downgraded
   from findings to unresolved inference
 
+After re-syncing with the live Claude branch on April 17, 2026, the newest Claude-side
+delta is no longer about slot `0x38`. The current branch head (`1a196d2e`) now claims
+that `ActivateThisSocket(Uc)` is pure in-memory socket state setup that emits no wire
+bytes. Codex has not reproduced that stronger task-21 claim yet, so it is now tracked
+as a live Claude-side conclusion pending parity verification.
+
 The first independent Codex target is therefore the same area the Claude branch now
 identifies as its blocking unknown: the `CAkaiSampler` / `CAkaiMIDIDispatcher`
 field-encoding path for header offsets 26-47, plus the `CMESASocket` pre/post calls
@@ -87,3 +93,7 @@ and `+0xb1`. The current checked-in primary artifacts show repeated reads of tho
 but no obvious plain stores, even after a whole-binary `objdump` pass. The next analysis
 move is to keep hand-decoding the constructor-era handoff around `0x317dc` and related
 owner-install paths rather than keep re-grepping the same upload-region slices.
+
+The immediate cross-check target after the Claude re-sync is now narrower and separate:
+independently verify or dispute Claude's latest task-21 claim that
+`ActivateThisSocket(Uc)` emits no wire bytes.
