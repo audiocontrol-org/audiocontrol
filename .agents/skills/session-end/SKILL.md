@@ -22,4 +22,5 @@ Use this when the user wants a clean end-of-session wrap-up.
    - approximate quantitative notes if useful
 4. Update hardware notes if protocol or device behavior was investigated.
 5. Update or close related GitHub issues if the change materially advanced them.
-6. Commit the documentation updates with the code changes they describe.
+6. If requested, run the session-analysis tooling and include the key metrics in the notes.
+7. Commit the documentation updates with the code changes they describe.

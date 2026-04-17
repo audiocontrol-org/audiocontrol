@@ -1120,3 +1120,39 @@ Add CSS file tracking to Makefile source dependencies and add inline documentati
 ### Insights
 1. Well-scoped features with clear workplans and pre-created issues make sessions fast and frictionless
 2. Small features benefit from doing all tasks in a single commit rather than splitting artificially
+
+---
+
+## 2026-04-17: Codex and Claude Parity Baseline and Alignment
+
+### Feature: codex-claude-parity
+### Worktree: audiocontrol-codex-claude-parity
+
+### Goal
+Audit the current Codex and Claude repo-local guidance, close unintentional parity gaps, and leave behind explicit maintenance guidance so future changes do not drift silently.
+
+### Accomplished
+- Fetched and verified the worktree against `origin/main` before auditing; committed history matched exactly at the audit baseline
+- Added a feature-local parity audit artifact documenting shared guidance, matched skills, intentional divergences, and Claude-only tool-specific repo artifacts
+- Expanded `AGENTS.md` to match the shared substance in `.claude/CLAUDE.md`, including project-management, build/test, contract-enforcement, hygiene, and documentation guidance
+- Added an explicit canonical sync path to both `AGENTS.md` and `.claude/CLAUDE.md`
+- Added Codex `feature-extend` and aligned Codex `session-start`, `session-end`, and `feature-help` skills with the Claude workflow substance
+- Added a parity maintenance checklist documenting what must stay aligned and which Claude-only repo artifacts are intentionally tool-specific
+- Updated the feature README and workplan so all four parity phases are marked complete
+
+### Didn't Work
+- No code or tests were run during this session because the work stayed at the documentation and repo-local skill-definition layer
+
+### Course Corrections
+- [PROCESS] Verified `origin/main` explicitly before continuing the audit rather than assuming the local branch was current
+- [DOCUMENTATION] Normalized the parity audit after the alignment work so it reflects the final state rather than the earlier audit snapshot
+
+### Quantitative
+- User messages: ~12
+- Commits: 1
+- User corrections: 1
+
+### Insights
+1. Parity work needs a canonical maintenance note or future audits will keep rediscovering the same "missing" artifacts.
+2. The important distinction is "matched in substance" versus "identical file-for-file"; tool-driven differences should be documented, not flattened.
+3. Verifying against `origin/main` before auditing prevents false positives when the repo surface may have changed upstream.

@@ -13,14 +13,21 @@ Use this when the user wants the current feature state summarized before work be
 2. Read:
    - `docs/1.0/001-IN-PROGRESS/<feature>/README.md`
    - `docs/1.0/001-IN-PROGRESS/<feature>/workplan.md`
-   - latest relevant entry in `DEVELOPMENT-NOTES.md`
+   - the latest relevant entry in `DEVELOPMENT-NOTES.md`
 3. If the task is hardware-facing, read the latest relevant entries in `SCSI-NOTES.md` or the matching device notes file.
 4. If `data/sessions/report-all.md` exists, extract the top correction patterns that should influence this session.
 5. If issue state matters, inspect the relevant GitHub issues.
-6. Report:
-   - current phase
+6. If the feature involves UI work:
+   - read `TESTING.md`
+   - read `TESTING-UI.md`
+   - check whether the feature already has a harness page
+   - check whether UI specs already exist for the interactions being changed
+7. Report:
+   - feature name and current phase
    - completed vs pending work
    - last session outcome
+   - top correction patterns to avoid repeating
+   - top unresolved issues
    - likely risks
    - proposed goal for this session
 

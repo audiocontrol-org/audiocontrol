@@ -9,13 +9,14 @@ Use this when the user wants process guidance rather than implementation.
 
 ## Lifecycle
 
-`feature-define -> feature-setup -> feature-issues -> feature-implement -> feature-review -> feature-ship -> feature-complete -> feature-teardown`
+`feature-define -> feature-setup -> feature-issues -> feature-implement -> feature-extend -> feature-review -> feature-ship -> feature-complete -> feature-teardown`
 
 Supporting skills:
 
 - `session-start`
 - `session-end`
 - `feature-pickup`
+- `feature-extend`
 
 ## State Check
 
