@@ -26,6 +26,20 @@ cleanly.
   file offset `0x06f74b`, including slot `0x38 = 0x00045f2a`, and the bytes at file
   offset `0x06de81` match the documented `SwapLongWord` implementation.
 
+- The old direct-`SendData('BULK')` harness path is not equivalent to the real
+  `SendAudioBufferToSampler` call sequence
+  Claude baseline:
+  later Claude-side notes already backed away from treating the synthetic BULK harness
+  as definitive and started suspecting missing setup around the transfer path.
+  Codex finding:
+  the checked-in disassembly now makes that limitation concrete. `SendAudioBufferToSampler`
+  performs repeated socket-level calls on `CSamplerModule+0x74`: SDS-opcode `0x01`
+  dispatches through socket slot `0x30` before BULK open and again after the later
+  `UALL` phase, while `BULK`, `SRAW`, and `BOFF` travel separately through socket
+  slot `0x14`.
+  A harness that calls `CSCSIPlug::SendData` directly with only a `BULK` struct omits
+  those surrounding socket transitions.
+
 ### Disputed
 
 - `CMESASocket::vtable[0x38]` label
@@ -54,6 +68,10 @@ cleanly.
   Claude baseline:
   corrected wire framing still fails on hardware, implying the content bytes remain
   wrong or incomplete.
+- `CMESASocket` slot `0x30` identity and side effects
+  Claude baseline:
+  active docs describe this as the SDS-header path in SCSI mode, but the concrete
+  method identity and sampler-visible state changes are not yet resolved.
 - SRAW on-wire bytes
   Claude baseline:
   prior harness text admitted inference instead of captured bytes.

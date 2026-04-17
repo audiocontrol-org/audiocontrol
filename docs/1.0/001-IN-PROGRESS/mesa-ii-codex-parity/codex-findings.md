@@ -9,8 +9,8 @@ correct. Every finding should distinguish direct evidence from inference.
 
 ### Surface
 
-- `CMESASocket::vtable[0x38]`
-- Akai header field encoding for offsets 26-47
+- `CAkaiSampler` / `CAkaiMIDIDispatcher` field encoding for Akai header offsets 26-47
+- `CMESASocket` call sequencing around BULK transfer in `SendAudioBufferToSampler`
 
 ### Why This Target First
 
@@ -98,8 +98,31 @@ correct. Every finding should distinguish direct evidence from inference.
   contains flat contradictions across checked-in analysis docs. This was escalated in
   issue `#311` so Claude can reconcile or explicitly scope the stale files.
 
+- Finding 6: the direct harness call to `CSCSIPlug::SendData` with a synthetic `BULK`
+  `IP_Data` struct did not reproduce the full MESA upload sequence.
+  Evidence:
+  `SendAudioBufferToSampler.annotated.txt` shows repeated `CMESASocket` calls on
+  `CSamplerModule+0x74` around the BULK loop, not just `SendData`.
+  At `0x030743`, `0x030811`, `0x030c63`, and `0x030c95`, the function pushes SDS
+  opcode `0x01` and then dispatches `vtable[0x30]` on the socket object at `this+116`.
+  The same function also brackets raw sample transfer with `SendData` tags
+  `BULK`, `SRAW`, and `BOFF` through socket `vtable[0x14]`, then calls a separate
+  `CSamplerModule` vtable entry with `UALL` at `0x030c93`.
+  The checked-in Claude-side `sampler-editor-decoded.md` already summarizes the same
+  phase structure: SCSI mode performs an SDS-header call before BULK open and again
+  after `UALL`, while the audio chunks travel through `BULK`/`SRAW`/`BOFF`.
+  Interpretation:
+  the old synthetic harness result can no longer be treated as equivalent to MESA's real
+  caller path. Even without fully naming socket slot `0x30`, the primary disassembly
+  shows that a standalone `SendData('BULK')` call omits concrete socket-level
+  phase transitions that MESA performs before and after bulk transfer. This was
+  escalated in issue `#312` so the stale equivalence claim can be corrected or refuted.
+
 ## Open Questions
 
-- Are the header fields byte-swapped, nibble-transformed, both, or something else?
-- Does the failure of the 392-byte BULK test come from bad content bytes, a wrong call
-  sequence, or another prerequisite outside the payload itself?
+- What exact `CMESASocket` method is slot `0x30`, and what state does it change when
+  called with SDS opcode `0x01`?
+- Is the remaining hardware failure explained entirely by the missing socket-level
+  pre/post sequence, or is there still a content-byte mismatch in the 200-byte header?
+- What exactly does the `CSamplerModule`-side `UALL` dispatch at `0x030c93` signal to
+  the sampler or UI layer?

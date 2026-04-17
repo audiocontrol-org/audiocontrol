@@ -11,6 +11,72 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-17: MESA II Codex Parity Baseline, Issue Review, and Upload-Sequence Narrowing
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Baseline the active Claude-side MESA II reverse-engineering branch, record Codex-side
+comparison artifacts, review Claude's responses to parity issues, and keep narrowing the
+remaining upload-path uncertainty from primary artifacts.
+
+### Accomplished
+- Created and updated the parity feature docs under
+  `docs/1.0/001-IN-PROGRESS/mesa-ii-codex-parity/`, including baseline, comparison,
+  and findings records.
+- Confirmed from raw bytes that `CAkaiMIDIDispatcher` slot `0x38` maps to
+  `SwapLongWord`, not nibble-encode-in-place.
+- Confirmed the caller-side class identity correction: the repeated slot-`0x38` path in
+  `BuildSampleHeaderFromMAH` is `CAkaiSampler` / `CAkaiMIDIDispatcher`, not
+  `CMESASocket`.
+- Filed parity issues `#309`, `#310`, and `#311`, reviewed Claude's fixes, then closed
+  all three after verifying the actual branch changes.
+- Identified a further stale claim in the Claude branch: the old direct
+  `CSCSIPlug::SendData('BULK')` harness was still described as equivalent to the real
+  upload path. Filed follow-up issue `#312`.
+- Narrowed the next technical target: `SendAudioBufferToSampler` clearly performs
+  repeated socket-level phase calls around BULK transfer, especially slot `0x30` calls
+  with SDS opcode `0x01`.
+
+### Didn't Work
+- First attempt to file issue `#312` failed because the shell command body was not
+  quoted safely and then hit sandboxed network restrictions. Retried with proper quoting
+  and escalation.
+- I briefly misclassified the `UALL` dispatch at `0x030c93` as a socket-vtable call.
+  The disassembly shows it goes through `CSamplerModule`, not `CMESASocket`. Corrected
+  the parity docs immediately.
+
+### Course Corrections
+- **[PROCESS]** The user explicitly required that parity disagreements be handled through
+  GitHub issues that Claude can remediate or refute. That changed the threshold for
+  "interesting discrepancy" into "documented, evidence-backed issue."
+- **[DOCUMENTATION]** The active Claude baseline was not on `main`; it lived in the
+  separate `feature/mesa-ii-reverse-engineering` worktree. The session had to anchor on
+  that branch's docs and `DEVELOPMENT-NOTES.md`, not the stale merged snapshot.
+- **[FABRICATION]** While tracing the upload sequence, I caught and corrected my own
+  overreach on the `UALL` path before turning it into a persisted finding. The same
+  evidence standard used to challenge Claude has to apply locally too.
+
+### Quantitative
+- GitHub issues filed: 4 (`#309`-`#312`)
+- Issues reviewed and closed this session: 3 (`#309`, `#310`, `#311`)
+- Parity docs added or materially updated: 6+
+- New unresolved target narrowed to 1 concrete socket slot: `CMESASocket` slot `0x30`
+
+### Insights
+1. The Codex/Claude parity workflow is useful only if stale contradictions are forced
+   into concrete issue threads. Otherwise the branch drifts into "historical notes plus
+   live findings" with no boundary between them.
+2. The synthetic BULK harness was useful for exploring `SendData`, but the checked-in
+   disassembly now makes clear it was not a faithful reproduction of the full MESA
+   caller path.
+3. The next high-value step is not more speculation about header bytes. It is naming
+   `CMESASocket` slot `0x30` and understanding what state transition those repeated
+   SDS-opcode calls are performing around BULK.
+
+---
+
 ## 2026-04-16: ASPACK Upload SLNGTH Bug Investigation (Session 8)
 
 ### Feature: akai-ux-improvement

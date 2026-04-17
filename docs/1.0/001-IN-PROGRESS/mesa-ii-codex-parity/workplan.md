@@ -68,7 +68,8 @@
 - Comparison structure captured in `comparison-record.md`
 - Codex findings log created in `codex-findings.md`
 - First independent target selected:
-  `CMESASocket::vtable[0x38]` and Akai header field encoding at offsets 26-47
+  `CAkaiSampler` / `CAkaiMIDIDispatcher` header-field encoding plus the socket-level
+  call sequence that brackets BULK transfer
 
 ### Current Assessment
 
@@ -96,17 +97,34 @@ the current comparison target because it retracts or narrows earlier conclusions
 
 ### Tasks
 
-- [ ] Re-run targeted binary or disassembly analysis against the chosen MESA II surface
-- [ ] Document each Codex conclusion with evidence references
-- [ ] Distinguish direct evidence from inference in the written findings
-- [ ] Record any areas where the current source artifacts are insufficient for confidence
-- [ ] Add follow-up experiments where binary evidence alone is not enough
+- [x] Re-run targeted binary or disassembly analysis against the chosen MESA II surface
+- [x] Document each Codex conclusion with evidence references
+- [x] Distinguish direct evidence from inference in the written findings
+- [x] Record any areas where the current source artifacts are insufficient for confidence
+- [x] Add follow-up experiments where binary evidence alone is not enough
 
 ### Acceptance Criteria
 
 - Codex produces an independent written findings set for at least one high-value MESA II surface
 - Every finding is labeled with evidence or clearly marked inference
 - Missing evidence is documented explicitly instead of glossed over
+
+### Current Assessment
+
+Codex has now independently reproduced and refined several high-value points from the
+Claude branch:
+
+- matched `CAkaiMIDIDispatcher` slot `0x38` to `SwapLongWord` from raw binary bytes
+- disputed and resolved the stale `CMESASocket::vtable[0x38]` class label via issue
+  `#309`
+- forced reconciliation of stale 406-byte / nibble-encode docs via issues `#310` and
+  `#311`
+- established from `SendAudioBufferToSampler` that the old direct `CSCSIPlug::SendData`
+  BULK harness omitted real socket-level phase calls, escalated as issue `#312`
+
+The highest-value remaining unknown is the identity and side effects of `CMESASocket`
+slot `0x30`, which is called with SDS opcode `0x01` before BULK open and again after
+the later `UALL` phase.
 
 ---
 
@@ -116,11 +134,11 @@ the current comparison target because it retracts or narrows earlier conclusions
 
 ### Tasks
 
-- [ ] Compare Codex findings against the existing Claude findings line by line where practical
-- [ ] Mark agreements, disagreements, and ambiguous areas explicitly
+- [x] Compare Codex findings against the existing Claude findings line by line where practical
+- [x] Mark agreements, disagreements, and ambiguous areas explicitly
 - [ ] Propose or run validation experiments for the highest-impact disputes
-- [ ] Update the comparison record after each dispute is resolved or narrowed
-- [ ] Record any disagreements that remain open with a concrete next step
+- [x] Update the comparison record after each dispute is resolved or narrowed
+- [x] Record any disagreements that remain open with a concrete next step
 
 ### Acceptance Criteria
 
