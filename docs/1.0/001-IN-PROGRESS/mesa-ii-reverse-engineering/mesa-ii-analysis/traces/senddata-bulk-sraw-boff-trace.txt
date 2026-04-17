@@ -1,0 +1,260 @@
+=== SCSI Plug Harness ===
+
+Allocated 33554432 bytes (32 MB) for emulated memory
+Mac environment initialized:
+  Plug code:  0x010000 - 0x018000
+  Plug data:  0x020000 - 0x024000 (A4)
+  Stack:      0x100000 (top)
+  Trap stubs: 0x100000
+  Unit table: 0x030000 (48 entries)
+Loaded 12053 bytes from /Users/orion/work/audiocontrol-work/audiocontrol-mesa-ii-reverse-engineering/docs/1.0/001-IN-PROGRESS/mesa-ii-reverse-engineering/mesa-ii-analysis/binaries/scsi-plug-rsrc.bin at 0x010000
+  Relocated 56 absolute JSR/JMP references (+0x10000)
+scsi_bridge: target 10.0.0.57:6868
+=== Skipping constructor — setting up state manually ===
+  scsi43_flag (A4+0x26A) = 1
+  init_marker (A4+0x266) = 0x00020000
+
+=== Phase 2: SCSI Command Test ===
+
+Running SCSI INQUIRY stub (bus=0, target=6)...
+  PB at 0x00050000, data buffer at 0x00050100
+  CDB: 12 00 00 00 60 00
+
+
+========================================
+Running SCSI INQUIRY stub at 0x000f0000
+  A4 (data) = 0x00020000
+  A7 (stack) = 0x000ffffc
+  Return sentinel = 0x00100020
+========================================
+
+TRAP #1: $A089 (SCSIDispatch) D0=0x00000001 A0=0x00050000
+  *** SCSI DISPATCH *** A0=PB@0x00050000 D0=1
+  func=1 bus=0 target=6 lun=0 flags=0x40040000
+  CDB[6]: 12 00 00 00 60 00
+  data_ptr=0x00050100 data_len=96
+  → Forwarding to scsi2pi (target 6, READ, 96 bytes)
+  ← SCSI status=0, data_in=36 bytes
+  ← Data: 03 00 01 01 20 00 00 00 41 4b 41 49 20 45 4d 49 53 33 30 30 30 58 4c 20 53 41 4d 50 4c 45 52 20 32 2e 30 30
+
+=== SCSI INQUIRY stub RETURNED (hit sentinel) ===
+  D0 = 0x00000000 (result)
+  Total traps: 1
+
+========================================
+Phase 3: MIDI-over-SCSI Protocol
+========================================
+
+--- Step 1: TEST UNIT READY ---
+  status=0 (ready)
+
+--- Step 2: SET MIDI MODE (enable) ---
+  CDB: 09 00 01 00 00 00
+  status=0
+
+--- Step 2b: TEST UNIT READY (pre-send check) ---
+  status=0
+
+--- Step 3: SEND AKAI SYSEX (Request Sample Names) ---
+  ch=0: F0 47 00 04 48 F7 → send=0, avail=56
+  *** Found device on exclusive channel 0! ***
+
+--- Reading SAMPLE NAME LIST (112 bytes) ---
+  status=0, received 112 bytes
+  Raw: f0 47 00 05 48 04 00 1d 13 18 0f 0a 0a 0a 0a 0a 0a 0a 0a 1d 1b 1f 0b 1c 0f 0a 0a 0a 0a 0a 0a 1d 0b 21 1e 19 19 1e 12 0a 0a 0a 0a 1a 1f 16 1d 0f 0a 0a 0a 0a 0a 0a 0a f7 (EoSx) ...
+
+  SAMPLES (4):
+      0: "SINE        "
+      1: "SQUARE      "
+      2: "SAWTOOTH    "
+      3: "PULSE       "
+
+--- Requesting PROGRAM NAME LIST ---
+  20 bytes available
+  received 20 bytes
+
+  PROGRAMS (1):
+      0: "TEST PROGRAM"
+
+--- Step 4: DATA BYTE ENQUIRY (poll for reply) ---
+  status=0, bytes available: 0 (raw: 00 00 00)
+  status=0, bytes available: 0 (raw: 00 00 00)
+  status=0, bytes available: 0 (raw: 00 00 00)
+  status=0, bytes available: 0 (raw: 00 00 00)
+  status=0, bytes available: 0 (raw: 00 00 00)
+  status=0, bytes available: 0 (raw: 00 00 00)
+  status=0, bytes available: 0 (raw: 00 00 00)
+  status=0, bytes available: 0 (raw: 00 00 00)
+  status=0, bytes available: 0 (raw: 00 00 00)
+  status=0, bytes available: 0 (raw: 00 00 00)
+
+  No reply data available.
+
+--- Step 6: SEND AKAI SYSEX (Request Sample Names) ---
+  Trying channel 0: F0 47 00 04 48 F7
+scsi_bridge: error: SCSI command failed with status 2
+  send status=-2
+  poll: 0 bytes available
+  Trying channel 127: F0 47 7f 04 48 F7
+scsi_bridge: error: SCSI command failed with status 2
+  send status=-2
+  poll: 0 bytes available
+
+--- Step 6: SEND AKAI SYSEX (Request Program Names) ---
+  SysEx: F0 47 00 02 48 F7 (RPLIST)
+scsi_bridge: error: SCSI command failed with status 2
+  send status=-2
+  poll: 0 bytes available
+  poll: 0 bytes available
+  poll: 0 bytes available
+  poll: 0 bytes available
+  poll: 0 bytes available
+  poll: 0 bytes available
+  poll: 0 bytes available
+  poll: 0 bytes available
+  poll: 0 bytes available
+  poll: 0 bytes available
+
+--- Step 7: SET MIDI MODE (disable) ---
+  status=0
+
+========================================
+MIDI-over-SCSI protocol complete.
+========================================
+
+========================================
+Phase 4: SendData BULK/SRAW/BOFF Trace
+  target=6 channel=0
+========================================
+
+--- Enabling MIDI mode ---
+  SET MIDI MODE: status=0
+
+Built synthetic audio: 128 frames, 256 bytes at 0x092000
+  Akai header built at 0x093000:
+    byte[0]=03, name='HARNESS', SLNGTH=0x0100 nibble-encoded at [26..29]
+    [26..29]: 00 00 01 00
+  IP_Data built at 0x090000: tag=0x42554c4b ('BULK') len=200 socket=0x00000000
+  IP_Data built at 0x090040: tag=0x53524157 ('SRAW') len=256 socket=0x00092000
+  IP_Data built at 0x090080: tag=0x424f4646 ('BOFF') len=0 socket=0x00000000
+
+--- SendData call: BULK (Akai header) ---
+  this=0x00091000 ip=0x00090000
+  Stack: [000ffff0]=sentinel [000ffff4]=this [000ffff8]=ip
+  [00010df2] SP=000ffff0 D0=00000000  link    A6, #-$30
+  [00010df6] SP=000fffbc D0=00000000  movem.l D3-D7/A2-A3, -(A7)
+  [00010dfa] SP=000fffa0 D0=00000000  movea.l ($8,A6), A2
+  [00010dfe] SP=000fffa0 D0=00000000  movea.l ($c,A6), A3
+  [00010e02] SP=000fffa0 D0=00000000  moveq   #$0, D3
+  [00010e04] SP=000fffa0 D0=00000000  clr.w   ($d6e,A2)
+  [00010e08] SP=000fffa0 D0=00000000  moveq   #$0, D4
+  [00010e0a] SP=000fffa0 D0=00000000  bra     $10e2e
+  [00010e2e] SP=000fffa0 D0=00000000  movea.w D4, A0
+  [00010e30] SP=000fffa0 D0=00000000  cmpa.l  ($38,A2), A0
+  [00010e34] SP=000fffa0 D0=00000000  blt     $10e0c
+  [SocketBypass @ 0x00010e36] A2=0x00091000 A3=0x00090000 — injecting socket match
+  [00010e36] SP=000fffa0 D0=00000000  tst.w   ($d6e,A2)
+  [00010e3a] SP=000fffa0 D0=00000000  bne     $10e44
+  [00010e44] SP=000fffa0 D0=00000000  tst.w   D3
+  [00010e46] SP=000fffa0 D0=00000000  bne     $11214
+  [00010e4a] SP=000fffa0 D0=00000000  clr.l   (-$1e,A6)
+  [00010e4e] SP=000fffa0 D0=00000000  move.l  ($8,A3), D0
+  [TagDispatch] tag='BULK' (0x42554c4b) → handler @ 0x00010e9e
+  [00010ea2] SP=000fffa0 D0=42554c4b  bne     $10ec0
+  [00010ec0] SP=000fffa0 D0=42554c4b  tst.b   ($e40,A2)
+  [00010ec4] SP=000fffa0 D0=42554c4b  beq     $11072
+  [00010ec8] SP=000fffa0 D0=42554c4b  move.w  #$d505, D3
+  [00010ecc] SP=000fffa0 D0=42554c4b  move.l  ($4,A3), D6
+  [00010ed0] SP=000fffa0 D0=42554c4b  bne     $10f40
+  [00010ed2] SP=000fffa0 D0=42554c4b  tst.l   (A3)
+  [00010ed4] SP=000fffa0 D0=42554c4b  bne     $10f40
+  [00010ed6] SP=000fffa0 D0=42554c4b  clr.b   -(A7)
+  [00010ed8] SP=000fff9e D0=42554c4b  move.w  ($d6e,A2), -(A7)
+  [00010edc] SP=000fff9c D0=42554c4b  move.l  A2, -(A7)
+  [00010ede] SP=000fff98 D0=42554c4b  jsr     $10d54.l
+  SendData returned: D0=0x42554c4b (error)
+
+--- SendData call: SRAW (audio data) ---
+  this=0x00091000 ip=0x00090040
+  Stack: [000ffff0]=sentinel [000ffff4]=this [000ffff8]=ip
+  [00010df2] SP=000ffff0 D0=42554c4b  link    A6, #-$30
+  [00010df6] SP=000fffbc D0=42554c4b  movem.l D3-D7/A2-A3, -(A7)
+  [00010dfa] SP=000fffa0 D0=42554c4b  movea.l ($8,A6), A2
+  [00010dfe] SP=000fffa0 D0=42554c4b  movea.l ($c,A6), A3
+  [00010e02] SP=000fffa0 D0=42554c4b  moveq   #$0, D3
+  [00010e04] SP=000fffa0 D0=42554c4b  clr.w   ($d6e,A2)
+  [00010e08] SP=000fffa0 D0=42554c4b  moveq   #$0, D4
+  [00010e0a] SP=000fffa0 D0=42554c4b  bra     $10e2e
+  [00010e2e] SP=000fffa0 D0=42554c4b  movea.w D4, A0
+  [00010e30] SP=000fffa0 D0=42554c4b  cmpa.l  ($38,A2), A0
+  [00010e34] SP=000fffa0 D0=42554c4b  blt     $10e0c
+  [SocketBypass @ 0x00010e36] A2=0x00091000 A3=0x00090040 — injecting socket match
+  [00010e36] SP=000fffa0 D0=42554c4b  tst.w   ($d6e,A2)
+  [00010e3a] SP=000fffa0 D0=42554c4b  bne     $10e44
+  [00010e44] SP=000fffa0 D0=42554c4b  tst.w   D3
+  [00010e46] SP=000fffa0 D0=42554c4b  bne     $11214
+  [00010e4a] SP=000fffa0 D0=42554c4b  clr.l   (-$1e,A6)
+  [00010e4e] SP=000fffa0 D0=42554c4b  move.l  ($8,A3), D0
+  [TagDispatch] tag='SRAW' (0x53524157) → handler @ 0x00010ec0
+  [00010ec4] SP=000fffa0 D0=53524157  beq     $11072
+  [00010ec8] SP=000fffa0 D0=53524157  move.w  #$d505, D3
+  [00010ecc] SP=000fffa0 D0=53524157  move.l  ($4,A3), D6
+  [00010ed0] SP=000fffa0 D0=53524157  bne     $10f40
+  [00010ed2] SP=000fffa0 D0=53524157  tst.l   (A3)
+  [00010ed4] SP=000fffa0 D0=53524157  bne     $10f40
+  [00010ed6] SP=000fffa0 D0=53524157  clr.b   -(A7)
+  [00010ed8] SP=000fff9e D0=53524157  move.w  ($d6e,A2), -(A7)
+  [00010edc] SP=000fff9c D0=53524157  move.l  A2, -(A7)
+  [00010ede] SP=000fff98 D0=53524157  jsr     $10d54.l
+  SendData returned: D0=0x53524157 (error)
+
+--- SendData call: BOFF (end transfer) ---
+  this=0x00091000 ip=0x00090080
+  Stack: [000ffff0]=sentinel [000ffff4]=this [000ffff8]=ip
+  [00010df2] SP=000ffff0 D0=53524157  link    A6, #-$30
+  [00010df6] SP=000fffbc D0=53524157  movem.l D3-D7/A2-A3, -(A7)
+  [00010dfa] SP=000fffa0 D0=53524157  movea.l ($8,A6), A2
+  [00010dfe] SP=000fffa0 D0=53524157  movea.l ($c,A6), A3
+  [00010e02] SP=000fffa0 D0=53524157  moveq   #$0, D3
+  [00010e04] SP=000fffa0 D0=53524157  clr.w   ($d6e,A2)
+  [00010e08] SP=000fffa0 D0=53524157  moveq   #$0, D4
+  [00010e0a] SP=000fffa0 D0=53524157  bra     $10e2e
+  [00010e2e] SP=000fffa0 D0=53524157  movea.w D4, A0
+  [00010e30] SP=000fffa0 D0=53524157  cmpa.l  ($38,A2), A0
+  [00010e34] SP=000fffa0 D0=53524157  blt     $10e0c
+  [SocketBypass @ 0x00010e36] A2=0x00091000 A3=0x00090080 — injecting socket match
+  [00010e36] SP=000fffa0 D0=53524157  tst.w   ($d6e,A2)
+  [00010e3a] SP=000fffa0 D0=53524157  bne     $10e44
+  [00010e44] SP=000fffa0 D0=53524157  tst.w   D3
+  [00010e46] SP=000fffa0 D0=53524157  bne     $11214
+  [00010e4a] SP=000fffa0 D0=53524157  clr.l   (-$1e,A6)
+  [00010e4e] SP=000fffa0 D0=53524157  move.l  ($8,A3), D0
+  [TagDispatch] tag='BOFF' (0x424f4646) → handler @ 0x00010e82
+  [00010e84] SP=000fff9e D0=424f4646  clr.b   -(A7)
+  [00010e86] SP=000fff9c D0=424f4646  move.w  ($d6e,A2), -(A7)
+  [00010e8a] SP=000fff9a D0=424f4646  move.l  A2, -(A7)
+  [00010e8c] SP=000fff96 D0=424f4646  jsr     $10ca2.l
+TRAP #1: $A02A (HUnlock) D0=0x424f4646 A0=0x00000000
+  UNHANDLED TRAP $A02A — returning 0
+TRAP #2: $A023 (DisposeHandle) D0=0x00000000 A0=0x00000000
+  UNHANDLED TRAP $A023 — returning 0
+  RD8 OOB: 0xfffffff0 (count=1)
+  RD8 OOB: 0xfffffff1 (count=2)
+ILLEGAL INSTRUCTION: $0008 at PC=0x0000040c
+  Registers:
+    D0=0x00000000  A0=0x008a06d8
+    D1=0x00000000  A0=0x008a06d8
+    D2=0x00000000  A593920=0x008a06d8
+    D3=0x00000000  A589952=0x008a06d8
+    D4=0x000000f0  A131072=0x008a06d8
+    D5=0x00000000  A131072=0x008a06d8
+    D6=0x00000000  A1048556=0x008a06d8
+    D7=0x00000000  A1048456=0x008a06d8
+  Stack at SP=0x000fff88: 00010cb4 00091000 00000001 0e920009 10000001 00010000 00010000 00000000
+
+--- Disabling MIDI mode ---
+  SET MIDI MODE OFF: status=0
+
+========================================
+Phase 4 complete.
+========================================
