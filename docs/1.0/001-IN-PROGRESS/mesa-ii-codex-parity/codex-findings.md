@@ -535,6 +535,26 @@ correct. Every finding should distinguish direct evidence from inference.
   that missing `UALL` or its surrounding module-side state transition is still a real
   cause of the failed standalone upload harness.
 
+- Finding 28: the `UALL` upload-phase call shares a broader `CSamplerModule`
+  command-dispatch slot with `SendCommandToSampler`, not a unique upload-only helper.
+  Evidence:
+  direct disassembly of `SendCommandToSampler__14CSamplerModuleFlsssPcsss` at
+  `0x0321a7` shows the same core call shape as the upload-path `UALL` site: a local
+  block pointer is pushed, then the caller argument and `this`, then the code loads
+  `this+4`, reads `vtable[0x28]`, and dispatches through that slot.
+  Raw bytes near `0x032147` in `sampler-editor-rsrc.bin` also show another `UALL`
+  sequence in the same function family:
+  `4878 0007 2f3c 55414c4c ... 2269 0028 4e91`, i.e. push small integer `7`, push
+  `'UALL'`, push `this`, then call the same `this+4 -> vtable[0x28]` slot.
+  The earlier upload-path site at `0x030c7b-0x030c93` already showed the same
+  `this+4 -> vtable[0x28]` dispatch pattern with integer `5`.
+  Interpretation:
+  the strongest current Codex read is that `UALL` belongs to a generic
+  `CSamplerModule` command channel surfaced through `vtable[0x28]`, not to a special
+  upload-only postamble routine. That still leaves the concrete handler identity open,
+  but it narrows the remaining failure model toward missing module-command/state
+  sequencing rather than a hidden plug-side transport tag.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

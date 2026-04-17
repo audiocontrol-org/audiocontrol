@@ -203,7 +203,12 @@ cleanly.
   `CSamplerModule`-side `vtable[0x28]` call on `this`, not through the socket object at
   `this+116`, and raw binary search shows `UALL` appears in `sampler-editor-rsrc.bin`
   but not in `scsi-plug-rsrc.bin`. This matches the existing plug-side harness failure
-  where synthetic UALL is unhandled by `SendData`.
+  where synthetic UALL is unhandled by `SendData`. Direct disassembly of
+  `SendCommandToSampler__14CSamplerModuleFlsssPcsss` at `0x0321a7` now narrows that
+  path further: the upload-phase `UALL` call shares the same `this+4 -> vtable[0x28]`
+  command-dispatch slot used by the broader `CSamplerModule` command channel, so the
+  remaining ambiguity is the concrete module-side handler behind that generic slot, not
+  whether `UALL` is a hidden plug-side transport tag.
 
 ### Deferred
 
