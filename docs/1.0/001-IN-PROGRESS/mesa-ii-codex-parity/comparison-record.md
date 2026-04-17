@@ -170,19 +170,6 @@ cleanly.
   narrowed from "somewhere outside the traced module windows" to a specific
   constructor-helper handoff.
 
-- `ActivateThisSocket(Uc)` side effects
-  Claude baseline:
-  current Claude branch head `1a196d2e` now claims `ActivateThisSocket(Uc)` is pure
-  in-memory socket state setup and emits no wire bytes, which in turn supports a
-  stronger strategic claim that the stateless Node BULK test may be structurally unable
-  to reproduce MESA's upload path.
-  Codex finding:
-  not yet independently reproduced. Codex has matched the class identity, the call
-  sites, and the activation-state interpretation of slot `0x30`, but has not yet
-  reproduced the stronger "no wire bytes" conclusion from primary artifacts.
-  This is therefore a new live Claude-side claim pending explicit Codex verification or
-  dispute.
-
 ### Unresolved
 
 - 200-byte Akai header field encoding at offsets 26-47
@@ -194,7 +181,13 @@ cleanly.
   current Claude branch now claims the function is pure in-memory state and emits no
   wire bytes.
   Codex status:
-  pending independent reproduction from primary artifacts.
+  partially reproduced. Codex now independently supports the plug-side half of the
+  claim: `CMESAPlugIn::ActivateSocket` at `0x0a5e` contains only slot lookup plus local
+  state writes and does not itself show wire-I/O call sites. The remaining unresolved
+  piece is the final dispatch hop from `CMESASocket::ActivateThisSocket` through the
+  installed callback slot into `CMESAPlugIn::DoMESACommand` and then specifically into
+  `ActivateSocket`; that chain is still supported but not yet fully re-decoded from
+  primary bytes end-to-end.
 - SRAW on-wire bytes
   Claude baseline:
   prior harness text admitted inference instead of captured bytes.

@@ -386,6 +386,37 @@ correct. Every finding should distinguish direct evidence from inference.
   with `0x317dc` as the strongest current candidate for where `CAkaiSampler` and related
   external state are attached to the module object.
 
+- Finding 22: Codex can now independently support the plug-side half of Claude's
+  task-21 conclusion: `CMESAPlugIn::ActivateSocket` itself is an in-memory state
+  routine, but the final callback-resolution hop from
+  `CMESASocket::ActivateThisSocket` into that plug routine is still only partially
+  reproduced.
+  Evidence:
+  `CMESASocket::ActivateThisSocket` at `0x05a0a7` stores its byte argument into
+  `CMESASocket+0x3c`, computes `48 * this[2474]`, and indirect-calls the per-plug
+  callback stored at `this[82 + 48*idx]`.
+  `CMESASocket::ConnectToPlug` at `0x059e4b` copies 48 bytes from each matching plug
+  descriptor entry into `this[74 + 48*n]`, which places descriptor offset `+12` at the
+  same callback slot `this[82 + 48*n]` later used by both `ActivateThisSocket` and
+  `SendData`.
+  In the SCSI Plug binary, the full disassembly shows these neighboring entry points:
+  `CMESAPlugIn::ConnectToSocket` at `0x09d2`, `CMESAPlugIn::ActivateSocket` at
+  `0x0a5e`, `CMESAPlugIn::GetSockets` at `0x0b98`, and `CSCSIPlug::SendData` at
+  `0x0df2`.
+  The decoded `CMESAPlugIn::ActivateSocket` body at `0x0a5e` performs a slot scan and
+  then only three local writes: it copies a word from `SocketInfo+36` into the plug's
+  slot record, copies a long from `SocketInfo+42` into that slot record, and clears
+  `buffer_ptr[16]`. The body contains no visible A-traps, no
+  `_SCSIDispatch`-style call sites, and no jump into the later `CSCSIPlug::SendData`
+  region.
+  Interpretation:
+  Codex now independently matches the no-wire behavior of the plug-side
+  `ActivateSocket` implementation itself. The remaining gap is narrower than before:
+  Codex still has not fully re-decoded the `CMESAPlugIn::DoMESACommand` tag dispatch
+  strongly enough to promote "ActivateThisSocket always resolves to that no-wire
+  routine" from inference to direct reproduction. So Claude's task-21 claim is now
+  substantially supported, but not yet fully matched end-to-end from primary bytes.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
@@ -406,6 +437,9 @@ correct. Every finding should distinguish direct evidence from inference.
   paths that save/restore them?
 - What exactly does helper `0x317dc(this)` install during the constructor-era setup,
   and is that where `CAkaiSampler` ultimately reaches `CSamplerModule+0xda4`?
+- Can Codex independently decode enough of `CMESAPlugIn::DoMESACommand` to prove the
+  `ActivateThisSocket` callback reaches `CMESAPlugIn::ActivateSocket` directly, rather
+  than treating that final hop as a still-supported inference?
 - Is the remaining hardware failure explained entirely by the missing socket-level
   pre/post sequence, or is there still a content-byte mismatch in the 200-byte header?
 - What exactly does the `CSamplerModule`-side `UALL` dispatch at `0x030c93` signal to
