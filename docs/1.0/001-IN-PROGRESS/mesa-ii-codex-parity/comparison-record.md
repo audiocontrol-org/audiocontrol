@@ -198,6 +198,12 @@ cleanly.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.
+  Codex status:
+  independently strengthened. `SendAudioBufferToSampler` dispatches `UALL` through a
+  `CSamplerModule`-side `vtable[0x28]` call on `this`, not through the socket object at
+  `this+116`, and raw binary search shows `UALL` appears in `sampler-editor-rsrc.bin`
+  but not in `scsi-plug-rsrc.bin`. This matches the existing plug-side harness failure
+  where synthetic UALL is unhandled by `SendData`.
 
 ### Deferred
 

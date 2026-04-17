@@ -515,6 +515,26 @@ correct. Every finding should distinguish direct evidence from inference.
   remaining uncertainty isolated to the selector helper implementation rather than to
   transport behavior.
 
+- Finding 27: `UALL` is now independently strengthened as a sampler-editor-side/module
+  dispatch, not a SCSI Plug `SendData` tag.
+  Evidence:
+  `SendAudioBufferToSampler` at `0x030c7b-0x030c93` pushes `5`, then `'UALL'`, then
+  `this`, and dispatches through `%a0@(4)->vtable[0x28]` on the `CSamplerModule`-side
+  object, not through the socket object at `this+116`.
+  The same function immediately surrounds that call with separate socket slot `0x30`
+  activation calls at `0x030c63` and `0x030ca3`, which makes the ownership split
+  concrete in one contiguous trace.
+  Raw binary search also shows `UALL` appears many times in `sampler-editor-rsrc.bin`
+  and does not appear at all in `scsi-plug-rsrc.bin`.
+  That matches the earlier harness result in `plug-bulk-trace.md`: a synthetic UALL tag
+  sent through the plug-side `SendData` dispatcher halts as unhandled.
+  Interpretation:
+  Codex now has direct sampler-editor-side and plug-side negative evidence for the same
+  conclusion: `UALL` belongs to a different module/class dispatch path after bulk
+  transfer, not to the SCSI Plug `SendData` tag family. That increases the likelihood
+  that missing `UALL` or its surrounding module-side state transition is still a real
+  cause of the failed standalone upload harness.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
@@ -545,6 +565,8 @@ correct. Every finding should distinguish direct evidence from inference.
   (`vtable+0x30` at `0x090c` vs `vtable+0x34` at `0x0924`) is the `ASOK` activation
   arm, and which is the `CONS` connect/query arm, from the selector helper alone rather
   than from the current stronger combined inference?
+- What concrete `CSamplerModule`-side method lives at the `vtable[0x28]` `UALL` call
+  site, and does it in turn route into a sampler object, a UI update path, or both?
 - Is the remaining hardware failure explained entirely by the missing socket-level
   pre/post sequence, or is there still a content-byte mismatch in the 200-byte header?
 - What exactly does the `CSamplerModule`-side `UALL` dispatch at `0x030c93` signal to
