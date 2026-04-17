@@ -11,6 +11,16 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+> **Naming correction (2026-04-17, per issue #309):** session entries on and before
+> 2026-04-16 labeled the slot-0x38 target as "CMESASocket::vtable[0x38]". That class
+> identity was wrong. The 6 slot-0x38 calls in `BuildSampleHeaderFromMAH` dispatch
+> through `CSamplerModule@(0xDA4)` = `CAkaiSampler*` (inheriting `CAkaiMIDIDispatcher`
+> whose vtable is stored at `object+2`). `CMESASocket` stores its vtable at `object+0`
+> and is not involved in this path. The SwapLongWord conclusion itself is still
+> correct; only the class identity was mislabeled. Authoritative doc:
+> `mesa-ii-analysis/cakaidispatcher-slot38-swaplongword.md`. Entries below preserve
+> the historical mis-labeling as a record of the course-correction.
+
 ## 2026-04-16 (cont.): SwapLongWord Decode; BULK Test Still Fails — Preamble Hypothesis (Task #19)
 
 ### Feature: mesa-ii-reverse-engineering
@@ -25,7 +35,7 @@ Decode `CMESASocket::vtable[0x38]` — the encoder BuildSampleHeaderFromMAH uses
 - **SwapLongWord is a 32-bit byte reversal** (big-endian → little-endian), applied in place to the 32-bit value at the argument pointer. For SLNGTH=4096 (0x00001000): output bytes are `00 10 00 00`.
 - **Test updated:** `vtable38Encode` replaced with `swapLongWord`. The 200-byte header's SLNGTH field at offsets 26-29 now contains `00 10 00 00` (correct per MESA's encoding) instead of the earlier guessed `00 00 00 01`.
 - **BULK test re-ran against live S3000XL:** zero reply, no sample created. Framing AND content are now byte-perfect to MESA's output.
-- Deliverables: `cmesasocket-vtable38-decoded.md` (findings), `disassembly-full/CMESASocket-vtable38-encoder.annotated.txt` (SwapLongWord disassembly — misleadingly named for the question being answered, not the class).
+- Deliverables: `cakaidispatcher-slot38-swaplongword.md` (findings; originally named `cmesasocket-vtable38-decoded.md` — renamed 2026-04-17 per issue #309), `disassembly-full/CAkaiMIDIDispatcher-SwapLongWord.annotated.txt` (originally `CMESASocket-vtable38-encoder.annotated.txt` — same rename).
 
 ### Didn't Work
 - **BULK test still silent after correct encoding.** At this point the SysEx we send is byte-identical to what MESA's code produces. Something else is required.

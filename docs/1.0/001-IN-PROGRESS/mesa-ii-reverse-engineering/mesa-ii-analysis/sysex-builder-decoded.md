@@ -162,7 +162,7 @@ output_buf[cursor + 2*i+1] = (B >> 4) & 0x0F (high nibble second)
 
 Returns: new cursor value (cursor + count*2).
 
-**This is the SAME function identified as vtable[0x38] on CMESASocket in `build-sample-header-decoded.md`.** vtable[0x38] on the CAkaiSampler vtable maps to `Nibbleize` at file `0x06de81`? No — vtable[0x38] at file offset `0x06de81` is `SwapLongWord`. Confirmed from vtable dump: vtable[0x38] = file `0x06de81` = `SwapLongWord__19CAkaiMIDIDispatcherFPUl`.
+**Correction (per issue #309):** `build-sample-header-decoded.md` described vtable[0x38] as "CMESASocket vtable[0x38] = nibble-encode-in-place" — that class identity was wrong. The calls in `BuildSampleHeaderFromMAH` dispatch through `CSamplerModule@(0xDA4)` = `CAkaiSampler*` (which inherits CAkaiMIDIDispatcher), not CMESASocket. Slot 0x38 in the CAkaiMIDIDispatcher vtable maps to `SwapLongWord`, not Nibbleize, and not nibble-encode-in-place. Confirmed from vtable dump: slot 0x38 at file `0x06f783` = runtime 0x00045f2a = file `0x06de81` = `SwapLongWord__19CAkaiMIDIDispatcherFPUl`. Full decode in `cakaidispatcher-slot38-swaplongword.md`.
 
 This invalidates `build-sample-header-decoded.md`'s description of vtable[0x38] as "nibble-encode-in-place." That was medium-confidence and is now refuted. **vtable[0x38] is `SwapLongWord`, not `Nibbleize`.**
 
@@ -175,9 +175,9 @@ So `BuildSampleHeaderFromMAH` calls `SwapLongWord` (not nibble-encode) 6 times. 
 
 ---
 
-## 6. CMESASocket vtable[0x38] Re-Assessment
+## 6. Slot 0x38 Class Identity (issue #309 correction)
 
-The `CMESASocket` vtable is separate from the `CAkaiSampler` vtable. The CMESASocket vtable was NOT found in the sampler-editor binary — CMESASocket methods were enumerated as 0 entries. The `build-sample-header-decoded.md` claim that vtable[0x38] is "nibble-encode-in-place" referred to the SCSI Plug vtable (in the separate scsi-plug binary), NOT to the Sampler Editor vtable.
+Earlier docs called the slot-0x38 target "CMESASocket::vtable[0x38]". That was a class-identity mistake: the caller-side pointer `CSamplerModule@(0xDA4)` is a `CAkaiSampler*` (which inherits CAkaiMIDIDispatcher and stores its vtable at `object+2`). The CMESASocket class exists in both binaries but stores its vtable at `object+0` — so the `moveal a0@(2), a1` pattern at all 6 call sites in `BuildSampleHeaderFromMAH` cannot be CMESASocket.
 
 The 6 `vtable[0x38]` calls in `BuildSampleHeaderFromMAH` call through `this@(3492)` which is the socket object within `CSamplerModule` (not `CAkaiSampler`). This socket's vtable[0x38] is in the SCSI Plug binary, not the Sampler Editor binary. The finding from `build-sample-header-decoded.md` that "vtable[0x38] = nibble-encode-in-place" was based on behavioral inference, not instruction-level decoding. That inference may still be correct for the SCSI Plug's vtable[0x38]; it is independent of the `CAkaiSampler` vtable[0x38] identified here as `SwapLongWord`.
 

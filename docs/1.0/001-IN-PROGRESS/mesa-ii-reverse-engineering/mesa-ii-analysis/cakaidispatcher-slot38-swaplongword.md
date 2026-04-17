@@ -1,7 +1,14 @@
-# CMESASocket vtable[0x38] — Decoded
+# CAkaiMIDIDispatcher vtable slot 0x38 — SwapLongWord (Decoded)
 
-**Date:** 2026-04-16  
-**Binary:** `sampler-editor-rsrc.bin`  
+> **Naming correction (per issue #309):** this document was originally filed under
+> "CMESASocket vtable[0x38]" — that class identity was wrong. The slot-0x38 dispatch in
+> `BuildSampleHeaderFromMAH` is on a `CAkaiSampler*` (inheriting `CAkaiMIDIDispatcher`),
+> not a `CMESASocket*`. `CAkaiSampler` stores its vtable at `object+2`; `CMESASocket`
+> stores its vtable at `object+0` — the call-site pattern `moveal a0@(2), a1`
+> unambiguously identifies this as the CAkaiSampler path. See section 2 below.
+
+**Date:** 2026-04-16 (renamed 2026-04-17 per issue #309)
+**Binary:** `sampler-editor-rsrc.bin`
 **Method:** Static disassembly (instruction-level decode + vtable table dump + cross-validation)
 
 ---

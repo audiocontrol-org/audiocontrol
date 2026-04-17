@@ -900,7 +900,7 @@ vtable. Its behavior remains unresolved until #19.
 - `SwapLongWord(0x00001000)` → `0x00100000` (little-endian byte order `00 10 00 00`)
 - `SwapLongWord(0)` → `0` (zero fields unchanged)
 
-Full decode: `mesa-ii-analysis/cmesasocket-vtable38-decoded.md`.
+Full decode: `mesa-ii-analysis/cakaidispatcher-slot38-swaplongword.md` (renamed 2026-04-17 per issue #309 — class identity was mis-labeled; actual class is CAkaiSampler, not CMESASocket).
 
 **Test updated** (`test-bulk-akai-header.ts`): `swapLongWord(SLNGTH=4096)` puts
 bytes `00 10 00 00` at header offsets 26-29, matching MESA's encoding.
