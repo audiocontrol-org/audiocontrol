@@ -443,6 +443,28 @@ correct. Every finding should distinguish direct evidence from inference.
   decoded no-wire `ActivateSocket` routine. The unresolved step is now specifically
   which inline tag maps to which of those two arms, not the broader class of behavior.
 
+- Finding 24: the sampler-editor A4 template block contains adjacent 10-byte command
+  records for `SEND`, `ASOK`, `CONS`, and `PLST`, and the `ConnectToPlug` call sites
+  line up with the `ASOK`/`CONS` records.
+  Evidence:
+  raw bytes in `sampler-editor-rsrc.bin` at file `0x71972` onward show a compact
+  template region:
+  `0x71972: 40 53 45 4e 44 00 00 00 00 00` (`@SEND.....`)
+  `0x7198c: 00 41 53 4f 4b 00 00 00 00 00` (`.ASOK.....`)
+  `0x71996: 00 43 4f 4e 53 00 00 00 00 00` (`.CONS.....`)
+  `0x719a0: 00 50 4c 53 54 00 00 00 00 00` (`.PLST.....`)
+  Those records are separated by the same 10-byte copy size used by the socket methods.
+  Using the same A4 data-base interpretation that makes `A4+12466` land on the
+  `SEND` record, `CMESASocket::ConnectToPlug`'s first handler query at `0x059e91`
+  (`lea %a4@(12502),%a0`) lands on the `CONS` record, while the later descriptor
+  callback test at `0x059ed1` (`lea %a4@(12492),%a0`) lands on the `ASOK` record.
+  Interpretation:
+  even before the `0x148` selector helper is fully decoded, the sampler-editor side now
+  shows distinct command templates for connect-style and activate-style plug messages.
+  That materially supports the view that the installed per-plug callback is expected to
+  understand an `ASOK`-like activation message as a separate flow from the earlier
+  `CONS`-like registration/query path.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
@@ -466,6 +488,9 @@ correct. Every finding should distinguish direct evidence from inference.
 - Can Codex independently decode enough of `CMESAPlugIn::DoMESACommand` to prove the
   `ActivateThisSocket` callback reaches `CMESAPlugIn::ActivateSocket` directly, rather
   than treating that final hop as a still-supported inference?
+- Why does `ActivateThisSocket`'s checked-in `lea %a4@(12482),%a0` land on a zeroed
+  10-byte template under the current best sampler-editor A4-base interpretation, while
+  the adjacent `ConnectToPlug` call sites line up cleanly with `ASOK` and `CONS`?
 - Is the remaining hardware failure explained entirely by the missing socket-level
   pre/post sequence, or is there still a content-byte mismatch in the 200-byte header?
 - What exactly does the `CSamplerModule`-side `UALL` dispatch at `0x030c93` signal to

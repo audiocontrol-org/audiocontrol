@@ -191,7 +191,9 @@ cleanly.
   only two branch arms use the `SocketInfo`-style `(this, MESACommand+6)` calling
   convention, and those call vtable offsets `+0x30` and `+0x34`. So the remaining
   ambiguity is now the exact tag-to-arm mapping, not whether the callback can range
-  across arbitrary plug behavior.
+  across arbitrary plug behavior. New sampler-editor-side support: the A4 template block
+  contains distinct 10-byte records for `ASOK` and `CONS`, and `ConnectToPlug`'s two
+  nearby template copies line up with those activation-style and connect-style records.
 - SRAW on-wire bytes
   Claude baseline:
   prior harness text admitted inference instead of captured bytes.
