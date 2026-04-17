@@ -362,6 +362,30 @@ correct. Every finding should distinguish direct evidence from inference.
   outside the currently aligned `CSamplerModule` windows, just like the missing first
   writes for `+0xb0`, `+0xb1`, and default `+0xda0`.
 
+- Finding 21: the constructor-era ownership boundary is now sharper: the current
+  primary artifacts expose `CAkaiSampler::SetSocket` and a likely
+  `CSamplerModule` constructor that delegates deeper installation to helper `0x317dc`.
+  Evidence:
+  bounded raw disassembly of `sampler-editor-rsrc.bin` at file `0x028597` shows a tiny
+  setter-shaped routine:
+  `moveal %fp@(8),%a0; movel %fp@(12),%a0@(162); rts`, which matches the later
+  `AcceptSampleHeader` evidence that `CAkaiSampler+0xa2` stores a `CMESASocket*`.
+  The adjacent ASCII symbol bytes identify that routine as
+  `SetSocket__12CAkaiSamplerFP11CMESASocket`.
+  The next real function begins at file `0x0285d3` and shows a constructor/destructor
+  shape for the owning sampler-module object: it installs several A4-relative tables at
+  offsets `+4`, `+0x3e`, `+0x74`, and `+0xb2e`, computes an owner-relative backpointer
+  through the object stored at `this@`, then calls helper `0x317dc(this)`.
+  That same routine also conditionally tears down the subobject at `this+0xce28` via
+  `0x2d6f6` when the destructor flag is nonzero, which matches the later pattern that
+  object-lifetime work is being delegated rather than inlined.
+  Interpretation:
+  the current artifact set still does not show a direct `movel ...,%a2@(3492)` write to
+  `CSamplerModule+0xda4`, but it no longer leaves ownership completely unbounded.
+  The missing collaborator installation is now narrowed to constructor-era helper work,
+  with `0x317dc` as the strongest current candidate for where `CAkaiSampler` and related
+  external state are attached to the module object.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
@@ -380,6 +404,8 @@ correct. Every finding should distinguish direct evidence from inference.
   established?
 - Where are `CSamplerModule+0xb0` and `+0xb1` initialized before the upload/import
   paths that save/restore them?
+- What exactly does helper `0x317dc(this)` install during the constructor-era setup,
+  and is that where `CAkaiSampler` ultimately reaches `CSamplerModule+0xda4`?
 - Is the remaining hardware failure explained entirely by the missing socket-level
   pre/post sequence, or is there still a content-byte mismatch in the 200-byte header?
 - What exactly does the `CSamplerModule`-side `UALL` dispatch at `0x030c93` signal to

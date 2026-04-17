@@ -155,6 +155,21 @@ cleanly.
   current artifact set it is repeatedly read, null-checked, and dispatched through, but
   still has no observed local write site inside the traced `CSamplerModule` windows.
 
+- Constructor-era ownership boundary for `+0xda4`
+  Claude baseline:
+  `send-sample-header-decoded.md` already attributes `CSamplerModule+0xda4` to a
+  `CAkaiSampler*` installed during constructor-time setup, but the exact write site is
+  not spelled out from raw code bytes.
+  Codex finding:
+  independent bounded disassembly sharpens that boundary. File `0x028597` is a direct
+  `CAkaiSampler::SetSocket`-shaped setter that writes a `CMESASocket*` to offset `+0xa2`,
+  matching the later `AcceptSampleHeader` call chain. The following constructor-era
+  routine at `0x0285d3` installs several subobject tables and then delegates deeper
+  ownership setup to helper `0x317dc(this)`. So while Codex still does not have a
+  direct `+0xda4` store from primary bytes, the missing installation path is now
+  narrowed from "somewhere outside the traced module windows" to a specific
+  constructor-helper handoff.
+
 ### Unresolved
 
 - 200-byte Akai header field encoding at offsets 26-47
