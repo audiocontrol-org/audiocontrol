@@ -1,5 +1,27 @@
 # BuildSampleHeaderFromMAH — Decoded Analysis
 
+> **PARTIALLY SUPERSEDED (per issue #310/#311 and #309):**
+>
+> Specific claims below are WRONG:
+>
+> - **slot 0x38 is NOT "nibble-encode-in-place"** — the 6 vtable[0x38] calls
+>   resolve to `CAkaiMIDIDispatcher::SwapLongWord` (a 32-bit byte reversal).
+>   See [`cakaidispatcher-slot38-swaplongword.md`](./cakaidispatcher-slot38-swaplongword.md).
+> - **SLNGTH at `header[26..29]` is NOT nibble-encoded** — it's stored
+>   `SwapLongWord(total_byte_length)`. For SLNGTH=4096 the bytes are
+>   `00 10 00 00`, not `00 00 00 01`.
+> - Any claim naming the slot-0x38 caller's object as "CMESASocket" is WRONG
+>   (per #309) — it's `CSamplerModule@(0xDA4)` = `CAkaiSampler*`, whose vtable
+>   is at `object+2`. CMESASocket's vtable is at `object+0` and is NOT this
+>   path.
+>
+> What IS still correct: the 200-byte output-buffer layout (which offsets hold
+> which fields), the sample-name construction, the `TuningFromSemiCent` call,
+> the MAH field map, and the overall byte-write sequence.
+>
+> Kept as-is (not deleted) to preserve the session record of how the finding
+> evolved.
+
 Disassembly source: `disassembly-full/BuildSampleHeaderFromMAH.annotated.txt`
 Binary: `binaries/sampler-editor-rsrc.bin`
 Function file offset: 0x02e6bd - 0x02e9d3 (790 bytes, 224 instructions)

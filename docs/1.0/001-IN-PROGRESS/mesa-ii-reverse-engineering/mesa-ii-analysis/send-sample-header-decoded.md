@@ -1,11 +1,33 @@
 # AcceptSampleHeader (vtable[0x017c]) — Decoded Analysis
 
+> **PARTIALLY SUPERSEDED (per issue #310/#311):**
+>
+> Specific claims below have been superseded by later decoding:
+>
+> - The "**SysEx payload is 406 bytes**, CDB length `0x000196`" claim is WRONG.
+>   Correct wire format is **392 bytes** (CDB length `0x000188`). See
+>   [`sysex-builder-decoded.md`](./sysex-builder-decoded.md) §4 for the
+>   definitive byte layout: 5-byte header + 2-byte `sample_number` field (via
+>   `Set7BitWord`) + 384 nibble bytes (Nibbleize of header[0..191] only, not
+>   all 200 bytes) + `0xF7`.
+> - Any claim here that `header[26..29]` SLNGTH is "nibble-encoded" is WRONG.
+>   The actual encoding is `SwapLongWord` (32-bit byte reversal). See
+>   [`cakaidispatcher-slot38-swaplongword.md`](./cakaidispatcher-slot38-swaplongword.md).
+>
+> What IS still correct: the function's 3-step flow (build SysEx via
+> `vtable[0x14]` → send via `CMESASocket::vtable[0x14]` → wait for SDS reply
+> via `vtable[0xCC]`), the call-site trace to `vtable[0x017c]`, the object
+> hierarchy discussion, and the reply-parsing logic.
+>
+> Kept as-is (not deleted) to preserve the session record of how the finding
+> evolved.
+
 **Binary:** `binaries/sampler-editor-rsrc.bin`  
 **Function file offset:** 0x06ae09 - 0x06aeb7 (174 bytes executable, 220 bytes to name string)  
 **THINK C name string at 0x06aeb9:** `AcceptSampleHeader__12CAkaiSamplerFPUcs`  
 **Disassembly source:** `disassembly-full/AcceptSampleHeader.annotated.txt`  
 **Caller:** `SendAudioBufferToSampler__14CSamplerModuleFP16MESAAudioHeader2` at file 0x030895  
-**Date:** 2026-04-16
+**Date:** 2026-04-16 (superseded-in-part 2026-04-17 per #310/#311)
 
 ---
 
