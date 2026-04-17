@@ -84,6 +84,20 @@ correct. Every finding should distinguish direct evidence from inference.
   body matches the documented byte-swap implementation. This makes the byte-swap
   conclusion materially stronger than the earlier nibble-encode hypothesis.
 
+- Finding 5: the Claude-side analysis set still contains stale, internally contradictory
+  documents after the later `BuildCommand` and `SwapLongWord` corrections.
+  Evidence:
+  `send-sample-header-decoded.md` still presents a 406-byte payload and CDB length
+  `0x000196`, and still describes the SLNGTH path under the older nibble-encoded model.
+  `build-sample-header-decoded.md` still describes slot `0x38` as
+  nibble-encode-in-place.
+  Later files and notes, especially `sysex-builder-decoded.md` and later
+  `SCSI-NOTES.md` entries, instead describe a 392-byte framing and `SwapLongWord`.
+  Interpretation:
+  the Claude-side branch does not just contain historical evolution; it currently
+  contains flat contradictions across checked-in analysis docs. This was escalated in
+  issue `#311` so Claude can reconcile or explicitly scope the stale files.
+
 ## Open Questions
 
 - Are the header fields byte-swapped, nibble-transformed, both, or something else?

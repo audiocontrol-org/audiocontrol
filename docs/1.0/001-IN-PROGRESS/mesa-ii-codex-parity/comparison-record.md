@@ -39,6 +39,15 @@ cleanly.
   for `CAkaiSampler` also show the vtable stored at `+2`, while the `CMESASocket`
   constructor stores its vtable at `+0`.
 
+- Stale 406-byte / nibble-encoded-header docs remain checked in
+  Claude baseline:
+  some checked-in files still present the earlier 406-byte and nibble-encode model as
+  if it were current.
+  Codex finding:
+  later Claude-side artifacts and raw-binary-backed Codex review support the 392-byte
+  framing plus `SwapLongWord`, so the branch currently contains contradictory analysis
+  documents. Filed as issue `#311`.
+
 ### Unresolved
 
 - 200-byte Akai header field encoding at offsets 26-47
