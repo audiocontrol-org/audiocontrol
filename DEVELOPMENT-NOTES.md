@@ -11,6 +11,42 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-16 (cont.): Decode vtable[0x14] — BuildCommand; BULK Test Still Fails (Task #18)
+
+### Feature: mesa-ii-reverse-engineering
+### Worktree: audiocontrol-mesa-ii-reverse-engineering
+
+### Goal
+Decode `CAkaiSampler::vtable[0x14]` — the SysEx builder called by AcceptSampleHeader in step 1. Identify exactly how the 200-byte Akai header is transformed into the 400-nibble payload. Resolve `vtable[0x38]`'s semantics. Then re-run the BULK hardware test with the corrected format.
+
+### Accomplished
+- Identified `CAkaiSampler::vtable[0x14]` = `CAkaiMIDIDispatcher::BuildCommand` at file `0x06ca97` via vtable dump at file `0x06f74b` (located by searching for AcceptSampleHeader's known code address as an anchor).
+- Fully decoded `BuildCommand` — dispatches on opcode byte. For SDATA (0x0B), the path is: `BuildHeader` (vtable[0x0c], writes 5-byte SysEx prefix) → `Set7BitWord` (vtable[0x18], writes 2-byte sample_number field) → `Nibbleize` (vtable[0x1c], encodes 192 input bytes → 384 output bytes, low-nibble-first) → append 0xF7. **Total: 392 bytes, NOT 406.**
+- **Corrected test** `test-bulk-akai-header.ts` with the real format: added the 2-byte sample_number field at SysEx bytes 5-6; changed nibble-encode to cover only `header[0..191]`.
+- Found that `CAkaiSampler::vtable[0x38]` = `SwapLongWord` (not nibble-encode). This invalidates yesterday's `build-sample-header-decoded.md` section describing vtable[0x38] as nibble-encode-in-place — but only for CAkaiSampler. **The vtable[0x38] calls inside `BuildSampleHeaderFromMAH` are on a DIFFERENT object** — `this@(3492)` is a CMESASocket (in the SCSI Plug binary). That socket's vtable[0x38] behavior remains behavioral-inference-only.
+- Ran the corrected test against live S3000XL. Still fails: zero reply bytes, no sample created.
+- Deliverables: `sysex-builder-decoded.md` (findings), `CAkaiSampler-vtable14.annotated.txt` (BuildCommand disassembly), `CMESASocket-vtable38.annotated.txt` (SwapLongWord disassembly — named for the question being answered, not the function's class).
+
+### Didn't Work
+- **BULK test with corrected 392-byte format still produces no device response.** SCSI framing is now byte-perfect to what MESA's BuildCommand outputs. Means the remaining failure is in the *content* of the 200-byte header — specifically the 32-bit fields (SLNGTH, loop_start, loop_end, sustain_end, sustain_length) at offsets 26, 30, 34, 38, 44, which are populated by `BuildSampleHeaderFromMAH` via `CMESASocket::vtable[0x38]`.
+- Bridge went down between sessions (cleanup trap from run-and-watch still fires even on test failures). Had to re-deploy via the fixed skill — which worked, thanks to the self-heal step.
+
+### Course Corrections
+- **[FABRICATION — caught in review, not user correction]** The previous session's `build-sample-header-decoded.md` claimed vtable[0x38] = "nibble-encode-in-place" with medium confidence. Today's decode of the CAkaiSampler vtable proved vtable[0x38] on CAkaiSampler is `SwapLongWord`. The claim's accuracy for CMESASocket's vtable[0x38] is still unresolved (different object, different vtable). The lesson: "medium confidence" labels matter — when a claim is later refuted for one object, don't carry it forward to a different object without re-verifying.
+
+### Quantitative
+- User messages: ~3
+- Commits: 1 (task #18 artifacts + updated test with corrected format)
+- New tasks created: 1 (#19)
+- Tasks completed: 1 (#18)
+
+### Insights
+1. **Vtable identification by anchor is fast.** Once you know *one* vtable slot (AcceptSampleHeader at [0x017c]), you can search the binary for that function's code address, find the vtable table, and read the entire vtable. This is much faster than enumerating THINK C name strings and guessing signatures. Use this technique going forward.
+2. **Confidence labels propagate in bad ways.** The medium-confidence "vtable[0x38] = nibble-encode-in-place" claim in yesterday's doc was technically about the SCSI Plug, but got cited elsewhere as if it applied to any vtable[0x38]. Today's decode only tested the CAkaiSampler side. The audit needed: when a claim is disproven for one context, explicitly note where else the claim might still hold.
+3. **The device's silence is a signal.** Zero response to a BULK SDATA with well-formed Akai SysEx framing — not even NAK or error reply — suggests the device validates early and drops the message before it reaches reply-generation. Likely some specific byte in the 200-byte header triggers "invalid, ignore silently."
+
+---
+
 ## 2026-04-16 (cont.): BULK SDATA Hardware Test — Failed (Session 9 Addendum)
 
 ### Feature: mesa-ii-reverse-engineering

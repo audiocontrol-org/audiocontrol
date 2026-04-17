@@ -850,3 +850,41 @@ timeout via `CAkaiSampler::vtable[0xCC]`. On timeout sentinel (-13001), it calls
 no bytes received — so the device didn't even start producing a reply, suggesting
 the device rejected the SysEx before the parsing stage (validates against the
 first ~few bytes of opcode/header content, not just framing).
+
+### 2026-04-16 (cont.): BuildCommand Decoded — BULK Test Re-Run Still Fails
+
+`CAkaiSampler::vtable[0x14]` = `CAkaiMIDIDispatcher::BuildCommand` (file 0x06ca97 in
+sampler-editor-rsrc.bin). Full decode in
+`mesa-ii-analysis/sysex-builder-decoded.md`.
+
+**Real BULK SDATA wire format (392 bytes, not 406):**
+
+```
+F0 47 ch 0B 48 [sample_num & 0x7F] [(sample_num >> 7) & 0x7F] [384 nibble bytes of header[0..191]] F7
+```
+
+- 5-byte SysEx prefix (F0 47 ch 0B 48) via vtable[0x0c] = `BuildHeader`
+- 2-byte sample_number field via vtable[0x18] = `Set7BitWord` (inserted at bytes 5-6)
+- 192 header bytes nibble-encoded low-nibble-first via vtable[0x1c] = `Nibbleize`
+  (bytes 192-199 of the 200-byte header are NOT sent)
+- F7 terminator
+
+SCSI CDB: `0c 00 00 01 88 80` (0x000188 = 392 bytes, reply-expected flag).
+
+**Hardware test (test-bulk-akai-header.ts, corrected) result:**
+- Zero reply bytes received
+- RSLIST count unchanged (0 → 0)
+- Sample not created
+
+**Interpretation:** The SCSI framing is now byte-perfect to what MESA's BuildCommand
+produces. The failure must be in the *content* of the 200-byte header — specifically
+how SLNGTH and the loop/sustain 32-bit fields are encoded at offsets 26-47. Those
+fields are populated by `BuildSampleHeaderFromMAH` via `CMESASocket::vtable[0x38]`
+(the SCSI Plug's socket encoder), whose actual behavior is still behavioral-inference-only.
+Task #19 opens to decode it.
+
+**Note on vtable[0x38]:** `CAkaiSampler::vtable[0x38]` was found to be `SwapLongWord`
+(NOT nibble-encode). This invalidates that section of `build-sample-header-decoded.md`
+for CAkaiSampler. BUT `BuildSampleHeaderFromMAH`'s vtable[0x38] calls go through
+`this@(3492)` which is a CMESASocket instance in the SCSI Plug binary — a DIFFERENT
+vtable. Its behavior remains unresolved until #19.
