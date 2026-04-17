@@ -1,0 +1,344 @@
+; ============================================================
+; Function: CSamplerModuleFPUcP16MESAAudioHeader2s::BuildSampleHeaderFromMAH
+;   Mangled: BuildSampleHeaderFromMAH__14CSamplerModuleFPUcP16MESAAudioHeader2s
+;   File offset: 0x02e6bd - 0x02e9d3 (790 bytes)
+;   Binary: sampler-editor-rsrc.bin
+; ============================================================
+
+  02e6bd:  4e56 ffce             linkw %fp,#-50
+  02e6c1:  48e7 1f30             moveml %d3-%d7/%a2-%a3,%sp@-
+  02e6c5:  2c2e 0008             movel %fp@(8),%d6
+  02e6c9:  246e 000c             moveal %fp@(12),%a2
+  02e6cd:  266e 0010             moveal %fp@(16),%a3
+  02e6d1:  7800                  moveq #0,%d4
+  02e6d3:  6006                  bras 0x2e6db
+  02e6d5:  4232 4000             clrb %a2@(0,%d4:w)
+  02e6d9:  5244                  addqw #1,%d4
+  02e6db:  0c44 00c8             cmpiw #200,%d4
+  02e6df:  6df4                  blts 0x2e6d5
+  02e6e1:  2d6b 0050 fff0        movel %a3@(80),%fp@(-16)
+  02e6e7:  2d6b 0034 ffe4        movel %a3@(52),%fp@(-28)
+  02e6ed:  2d6b 0038 ffe0        movel %a3@(56),%fp@(-32)
+  02e6f3:  2d6b 0040 ffdc        movel %a3@(64),%fp@(-36)
+  02e6f9:  202b 0040             movel %a3@(64),%d0
+  02e6fd:  90ab 003c             subl %a3@(60),%d0
+  02e701:  5280                  addql #1,%d0
+  02e703:  2d40 fffc             movel %d0,%fp@(-4)
+  02e707:  14bc 0003             moveb #3,%a2@
+  02e70b:  0cab 0000 5622        cmpil #22050,%a3@(12)
+  02e713:  6f08                  bles 0x2e71d
+  02e715:  3d7c 0001 ffda        movew #1,%fp@(-38)
+  02e71b:  6004                  bras 0x2e721
+  02e71d:  426e ffda             clrw %fp@(-38)
+  02e721:  156e ffdb 0001        moveb %fp@(-37),%a2@(1)
+  02e727:  156b 0067 0002        moveb %a3@(103),%a2@(2)
+  02e72d:  7800                  moveq #0,%d4
+  02e72f:  6072                  bras 0x2e7a3
+  02e731:  7a00                  moveq #0,%d5
+  02e733:  3004                  movew %d4,%d0
+  02e735:  5240                  addqw #1,%d0
+  02e737:  1633 0014             moveb %a3@(14,%d0:w),%d3
+  02e73b:  0c03 0061             cmpib #97,%d3
+  02e73f:  6d0c                  blts 0x2e74d
+  02e741:  0c03 007a             cmpib #122,%d3
+  02e745:  6e06                  bgts 0x2e74d
+  02e747:  0203 ffdf             andib #-33,%d3
+  02e74b:  7a01                  moveq #1,%d5
+  02e74d:  0c03 0030             cmpib #48,%d3
+  02e751:  6d08                  blts 0x2e75b
+  02e753:  0c03 0039             cmpib #57,%d3
+  02e757:  6e02                  bgts 0x2e75b
+  02e759:  7a01                  moveq #1,%d5
+  02e75b:  0c03 0020             cmpib #32,%d3
+  02e75f:  6718                  beqs 0x2e779
+  02e761:  0c03 0023             cmpib #35,%d3
+  02e765:  6712                  beqs 0x2e779
+  02e767:  0c03 002b             cmpib #43,%d3
+  02e76b:  670c                  beqs 0x2e779
+  02e76d:  0c03 002d             cmpib #45,%d3
+  02e771:  6706                  beqs 0x2e779
+  02e773:  0c03 002e             cmpib #46,%d3
+  02e777:  6602                  bnes 0x2e77b
+  02e779:  7a01                  moveq #1,%d5
+  02e77b:  0c03 0041             cmpib #65,%d3
+  02e77f:  6d08                  blts 0x2e789
+  02e781:  0c03 005a             cmpib #90,%d3
+  02e785:  6e02                  bgts 0x2e789
+  02e787:  7a01                  moveq #1,%d5
+  02e789:  4a05                  tstb %d5
+  02e78b:  670a                  beqs 0x2e797
+  02e78d:  102b 0014             moveb %a3@(20),%d0
+  02e791:  4880                  extw %d0
+  02e793:  b840                  cmpw %d0,%d4
+  02e795:  6d02                  blts 0x2e799
+  02e797:  7620                  moveq #32,%d3
+  02e799:  3004                  movew %d4,%d0
+  02e79b:  5640                  addqw #3,%d0
+  02e79d:  1583 0000             moveb %d3,%a2@(0,%d0:w)
+  02e7a1:  5244                  addqw #1,%d4
+  02e7a3:  0c44 000c             cmpiw #12,%d4
+  02e7a7:  6f88                  bles 0x2e731
+  02e7a9:  7002                  moveq #2,%d0
+  02e7ab:  b0ab 0010             cmpl %a3@(16),%d0
+  02e7af:  6620                  bnes 0x2e7d1
+  02e7b1:  157c 002d 000d        moveb #45,%a2@(13)
+  02e7b7:  4a6e 0014             tstw %fp@(20)
+  02e7bb:  6708                  beqs 0x2e7c5
+  02e7bd:  1d7c 0052 ffd9        moveb #82,%fp@(-39)
+  02e7c3:  6006                  bras 0x2e7cb
+  02e7c5:  1d7c 004c ffd9        moveb #76,%fp@(-39)
+  02e7cb:  156e ffd9 000e        moveb %fp@(-39),%a2@(14)
+  02e7d1:  486a 0003             pea %a2@(3)
+  02e7d5:  2046                  moveal %d6,%a0
+  02e7d7:  2f28 0da4             movel %a0@(3492),%sp@-
+  02e7db:  2057                  moveal %sp@,%a0
+  02e7dd:  2268 0002             moveal %a0@(2),%a1
+  02e7e1:  2269 0030             moveal %a1@(48),%a1
+  02e7e5:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  02e7e7:  157c 0080 000f        moveb #-128,%a2@(15)
+  02e7ed:  426e ffd6             clrw %fp@(-42)
+  02e7f1:  7001                  moveq #1,%d0
+  02e7f3:  c0ab 0068             andl %a3@(104),%d0
+  02e7f7:  504f                  addqw #8,%sp
+  02e7f9:  670c                  beqs 0x2e807
+  02e7fb:  4aae fffc             tstl %fp@(-4)
+  02e7ff:  6706                  beqs 0x2e807
+  02e801:  3d7c 0001 ffd6        movew #1,%fp@(-42)
+  02e807:  4a6e ffd6             tstw %fp@(-42)
+  02e80b:  6708                  beqs 0x2e815
+  02e80d:  3d7c 0001 ffd4        movew #1,%fp@(-44)
+  02e813:  6004                  bras 0x2e819
+  02e815:  426e ffd4             clrw %fp@(-44)
+  02e819:  156e ffd5 0010        moveb %fp@(-43),%a2@(16)
+  02e81f:  426e ffd2             clrw %fp@(-46)
+  02e823:  7001                  moveq #1,%d0
+  02e825:  c0ab 0068             andl %a3@(104),%d0
+  02e829:  670c                  beqs 0x2e837
+  02e82b:  4aae fffc             tstl %fp@(-4)
+  02e82f:  6706                  beqs 0x2e837
+  02e831:  3d7c 0001 ffd2        movew #1,%fp@(-46)
+  02e837:  4a6e ffd2             tstw %fp@(-46)
+  02e83b:  6706                  beqs 0x2e843
+  02e83d:  426e ffd0             clrw %fp@(-48)
+  02e841:  6006                  bras 0x2e849
+  02e843:  3d7c 0002 ffd0        movew #2,%fp@(-48)
+  02e849:  156e ffd1 0013        moveb %fp@(-47),%a2@(19)
+  02e84f:  486e fff0             pea %fp@(-16)
+  02e853:  2046                  moveal %d6,%a0
+  02e855:  2f28 0da4             movel %a0@(3492),%sp@-
+  02e859:  2057                  moveal %sp@,%a0
+  02e85b:  2268 0002             moveal %a0@(2),%a1
+  02e85f:  2269 0038             moveal %a1@(56),%a1
+  02e863:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  02e865:  256e fff0 001a        movel %fp@(-16),%a2@(26)
+  02e86b:  486e fff0             pea %fp@(-16)
+  02e86f:  2046                  moveal %d6,%a0
+  02e871:  2f28 0da4             movel %a0@(3492),%sp@-
+  02e875:  2057                  moveal %sp@,%a0
+  02e877:  2268 0002             moveal %a0@(2),%a1
+  02e87b:  2269 0038             moveal %a1@(56),%a1
+  02e87f:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  02e881:  486e ffe4             pea %fp@(-28)
+  02e885:  2046                  moveal %d6,%a0
+  02e887:  2f28 0da4             movel %a0@(3492),%sp@-
+  02e88b:  2057                  moveal %sp@,%a0
+  02e88d:  2268 0002             moveal %a0@(2),%a1
+  02e891:  2269 0038             moveal %a1@(56),%a1
+  02e895:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  02e897:  256e ffe4 001e        movel %fp@(-28),%a2@(30)
+  02e89d:  486e ffe0             pea %fp@(-32)
+  02e8a1:  2046                  moveal %d6,%a0
+  02e8a3:  2f28 0da4             movel %a0@(3492),%sp@-
+  02e8a7:  2057                  moveal %sp@,%a0
+  02e8a9:  2268 0002             moveal %a0@(2),%a1
+  02e8ad:  2269 0038             moveal %a1@(56),%a1
+  02e8b1:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  02e8b3:  256e ffe0 0022        movel %fp@(-32),%a2@(34)
+  02e8b9:  486e ffdc             pea %fp@(-36)
+  02e8bd:  2046                  moveal %d6,%a0
+  02e8bf:  2f28 0da4             movel %a0@(3492),%sp@-
+  02e8c3:  2057                  moveal %sp@,%a0
+  02e8c5:  2268 0002             moveal %a0@(2),%a1
+  02e8c9:  2269 0038             moveal %a1@(56),%a1
+  02e8cd:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  02e8cf:  256e ffdc 0026        movel %fp@(-36),%a2@(38)
+  02e8d5:  486e fffc             pea %fp@(-4)
+  02e8d9:  2046                  moveal %d6,%a0
+  02e8db:  2f28 0da4             movel %a0@(3492),%sp@-
+  02e8df:  2057                  moveal %sp@,%a0
+  02e8e1:  2268 0002             moveal %a0@(2),%a1
+  02e8e5:  2269 0038             moveal %a1@(56),%a1
+  02e8e9:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  02e8eb:  256e fffc 002c        movel %fp@(-4),%a2@(44)
+  02e8f1:  0cae 0000 0100        cmpil #256,%fp@(-4)
+  02e8f9:  4fef 0030             lea %sp@(48),%sp
+  02e8fd:  6308                  blss 0x2e907
+  02e8ff:  3d7c 270f ffce        movew #9999,%fp@(-50)
+  02e905:  6004                  bras 0x2e90b
+  02e907:  426e ffce             clrw %fp@(-50)
+  02e90b:  3d6e ffce fffa        movew %fp@(-50),%fp@(-6)
+  02e911:  302e fffa             movew %fp@(-6),%d0
+  02e915:  0240 00ff             andiw #255,%d0
+  02e919:  1540 0030             moveb %d0,%a2@(48)
+  02e91d:  302e fffa             movew %fp@(-6),%d0
+  02e921:  e040                  asrw #8,%d0
+  02e923:  3d40 fffa             movew %d0,%fp@(-6)
+  02e927:  302e fffa             movew %fp@(-6),%d0
+  02e92b:  0240 00ff             andiw #255,%d0
+  02e92f:  1540 0031             moveb %d0,%a2@(49)
+  02e933:  3e2b 000e             movew %a3@(14),%d7
+  02e937:  3007                  movew %d7,%d0
+  02e939:  0240 00ff             andiw #255,%d0
+  02e93d:  1540 008a             moveb %d0,%a2@(138)
+  02e941:  e047                  asrw #8,%d7
+  02e943:  3007                  movew %d7,%d0
+  02e945:  0240 00ff             andiw #255,%d0
+  02e949:  1540 008b             moveb %d0,%a2@(139)
+  02e94d:  41ec 0d90             lea %a4@(3472),%a0
+  02e951:  2d48 ffec             movel %a0,%fp@(-20)
+  02e955:  202b 0060             movel %a3@(96),%d0
+  02e959:  7264                  moveq #100,%d1
+  02e95b:  4eb9 0000 01a6        jsr 0x1a6  ; -> __mulsi3 (32-bit multiply, D0*D1 -> D0)
+  02e961:  2d40 fff6             movel %d0,%fp@(-10)
+  02e965:  202e fff6             movel %fp@(-10),%d0
+  02e969:  7264                  moveq #100,%d1
+  02e96b:  4eb9 0000 0116        jsr 0x116  ; -> __divsi3 (32-bit signed divide, D0/D1 -> D0)
+  02e971:  222b 0060             movel %a3@(96),%d1
+  02e975:  9280                  subl %d0,%d1
+  02e977:  2d41 ffe8             movel %d1,%fp@(-24)
+  02e97b:  0cab 0000 bb80        cmpil #48000,%a3@(12)
+  02e983:  660a                  bnes 0x2e98f
+  02e985:  52ae fff6             addql #1,%fp@(-10)
+  02e989:  702f                  moveq #47,%d0
+  02e98b:  d1ae ffe8             addl %d0,%fp@(-24)
+  02e98f:  2f2e ffe8             movel %fp@(-24),%sp@-
+  02e993:  2f2e fff6             movel %fp@(-10),%sp@-
+  02e997:  486e ffec             pea %fp@(-20)
+  02e99b:  4eb9 0004 44d6        jsr 0x444d6  ; -> CAkaiSamplerUtilsFll::TuningFromSemiCent
+  02e9a1:  3d40 fff4             movew %d0,%fp@(-12)
+  02e9a5:  302e fff4             movew %fp@(-12),%d0
+  02e9a9:  0240 00ff             andiw #255,%d0
+  02e9ad:  1540 0014             moveb %d0,%a2@(20)
+  02e9b1:  302e fff4             movew %fp@(-12),%d0
+  02e9b5:  e040                  asrw #8,%d0
+  02e9b7:  3d40 fff4             movew %d0,%fp@(-12)
+  02e9bb:  302e fff4             movew %fp@(-12),%d0
+  02e9bf:  0240 00ff             andiw #255,%d0
+  02e9c3:  1540 0015             moveb %d0,%a2@(21)
+  02e9c7:  4fef 000c             lea %sp@(12),%sp
+  02e9cb:  4cdf 0cf8             moveml %sp@+,%d3-%d7/%a2-%a3
+  02e9cf:  4e5e                  unlk %fp
+  02e9d1:  4e75                  rts
+
+; ============================================================
+; CALL GRAPH (all JSR/BSR targets)
+; ============================================================
+;   0x02e95b  jsr 0x0001a6 (file:0x0280fd)  ->  
+;   0x02e96b  jsr 0x000116 (file:0x02806d)  ->  
+;   0x02e99b  jsr 0x0444d6 (file:0x06c42d)  ->  CAkaiSamplerUtilsFll::TuningFromSemiCent
+
+; ============================================================
+; NEARBY FUNCTIONS (within 0x5000 of target range)
+; ============================================================
+;   0x029c5d  CAkaiSamplerFv::GetKeygroupsHandle  [GetKeygroupsHandle__12CAkaiSamplerFv]
+;   0x029c95  CAkaiSamplerFv::GetEditGroups  [GetEditGroups__12CAkaiSamplerFv]
+;   0x029cc7  CSamplerModuleFlRUcRUcRUsPUc::FindCommandStatus  [FindCommandStatus__14CSamplerModuleFlRUcRUcRUsPUc]
+;   0x02a521  CAkaiSamplerFv::GetCurrentReverb  [GetCurrentReverb__12CAkaiSamplerFv]
+;   0x02a557  CAkaiSamplerFv::GetCurrentEffect  [GetCurrentEffect__12CAkaiSamplerFv]
+;   0x02a58d  CAkaiSamplerFv::HasEB16  [HasEB16__12CAkaiSamplerFv]
+;   0x02a5b9  CAkaiSamplerFv::Groups  [Groups__12CAkaiSamplerFv]
+;   0x02a5f7  CAkaiSamplerFv::CanDuplicateProgram  [CanDuplicateProgram__12CAkaiSamplerFv]
+;   0x02a639  CSamplerModuleFv::OpenModule  [OpenModule__14CSamplerModuleFv]
+;   0x02a7fd  CSamplerModuleFv::CloseModule  [CloseModule__14CSamplerModuleFv]
+;   0x02a857  CSamplerModuleFv::ActivateModule  [ActivateModule__14CSamplerModuleFv]
+;   0x02a93f  CSamplerModuleFv::DeactivateModule  [DeactivateModule__14CSamplerModuleFv]
+;   0x02aa09  CSamplerModuleFv::Null  [Null__14CSamplerModuleFv]
+;   0x02aa5f  CSamplerModuleFv::CheckDraggedFiles  [CheckDraggedFiles__14CSamplerModuleFv]
+;   0x02ada1  CAkaiSamplerFv::GetProgramList  [GetProgramList__12CAkaiSamplerFv]
+;   0x02add5  CSamplerModuleFP20MESAAdjustCursorData::AdjustCursor  [AdjustCursor__14CSamplerModuleFP20MESAAdjustCursorData]
+;   0x02ae41  CSamplerModuleFP18MESADrawWindowData::DoDrawInWindow  [DoDrawInWindow__14CSamplerModuleFP18MESADrawWindowData]
+;   0x02aea5  CSamplerModuleFP17MESAClickSelfData::DoClickInWindow  [DoClickInWindow__14CSamplerModuleFP17MESAClickSelfData]
+;   0x02af49  CSamplerModuleFP16MESAKeyPressData::DoKeyPress  [DoKeyPress__14CSamplerModuleFP16MESAKeyPressData]
+;   0x02afcf  CSamplerModuleFP16MESAActivateData::DoShowHideWindow  [DoShowHideWindow__14CSamplerModuleFP16MESAActivateData]
+;   0x02b04b  CSamplerModuleFP16MESAActivateData::DoActivateWindow  [DoActivateWindow__14CSamplerModuleFP16MESAActivateData]
+;   0x02b0c7  CSamplerModuleFP16MESAActivateData::DoEnableWindow  [DoEnableWindow__14CSamplerModuleFP16MESAActivateData]
+;   0x02b141  CSamplerModuleFP20MESAAttemptCloseData::DoAttemptCloseWindow  [DoAttemptCloseWindow__14CSamplerModuleFP20MESAAttemptCloseData]
+;   0x02b1a7  CSamplerModuleFP20MESADeleteWindowData::DoDeleteWindow  [DoDeleteWindow__14CSamplerModuleFP20MESADeleteWindowData]
+;   0x02b247  CSamplerModuleFP20MESAResizeWindowData::DoResizeWindow  [DoResizeWindow__14CSamplerModuleFP20MESAResizeWindowData]
+;   0x02b2c9  CSamplerModuleFPl::DoAboutToQuit  [DoAboutToQuit__14CSamplerModuleFPl]
+;   0x02b2f7  CSamplerModuleFv::CreateControlCenterWindow  [CreateControlCenterWindow__14CSamplerModuleFv]
+;   0x02b4bb  CControlCenterViewFUc::SetHasMulti  [SetHasMulti__18CControlCenterViewFUc]
+;   0x02b4f5  CSamplerModuleFv::CreateProgramSelectorWindow  [CreateProgramSelectorWindow__14CSamplerModuleFv]
+;   0x02b695  CSamplerModuleFv::CreateSamplerMemoryWindow  [CreateSamplerMemoryWindow__14CSamplerModuleFv]
+;   0x02b817  CSamplerModuleFv::CreateSampleAssignWindow  [CreateSampleAssignWindow__14CSamplerModuleFv]
+;   0x02b9c1  CSamplerModuleFv::CreateSamplerDiskWindow  [CreateSamplerDiskWindow__14CSamplerModuleFv]
+;   0x02bb43  CSamplerModuleFv::CreateMultiWindow  [CreateMultiWindow__14CSamplerModuleFv]
+;   0x02bcdf  CSamplerModuleFv::CreateMuteGroupsWindow  [CreateMuteGroupsWindow__14CSamplerModuleFv]
+;   0x02be81  CSamplerModuleFv::CreateQuickAccessWindow  [CreateQuickAccessWindow__14CSamplerModuleFv]
+;   0x02c027  CSamplerModuleFv::ReadPrefsFile  [ReadPrefsFile__14CSamplerModuleFv]
+;   0x02c15b  CSamplerModuleFv::WritePrefsFile  [WritePrefsFile__14CSamplerModuleFv]
+;   0x02c201  CSamplerModuleFs::ShowError  [ShowError__14CSamplerModuleFs]
+;   0x02c321  CSamplerModuleFPPcssUc::BuildNamePopup  [BuildNamePopup__14CSamplerModuleFPPcssUc]
+;   0x02c40b  CSamplerModuleFP15CGraphicControl::DoTrackingAction  [DoTrackingAction__14CSamplerModuleFP15CGraphicControl]
+;   0x02c46f  CSamplerModuleFP15CGraphicControl::DoPostTrackAction  [DoPostTrackAction__14CSamplerModuleFP15CGraphicControl]
+;   0x02d007  CGraphicControlFv::GetMinValue  [GetMinValue__15CGraphicControlFv]
+;   0x02d03b  CAkaiSamplerFv::GetProgramHandle  [GetProgramHandle__12CAkaiSamplerFv]
+;   0x02d071  CGraphicControlFv::GetControlType  [GetControlType__15CGraphicControlFv]
+;   0x02d0a9  CGraphicControlFv::GetRefcon  [GetRefcon__15CGraphicControlFv]
+;   0x02d0db  CGraphicControlFv::GetValue  [GetValue__15CGraphicControlFv]
+;   0x02d10b  CSamplerModuleFUc::BroadcastUpdateMessages  [BroadcastUpdateMessages__14CSamplerModuleFUc]
+;   0x02d473  CAkaiSamplerFv::GetSoloProgram  [GetSoloProgram__12CAkaiSamplerFv]
+;   0x02d4a7  CAkaiSamplerFv::GetEB16Handle  [GetEB16Handle__12CAkaiSamplerFv]
+;   0x02d4d9  CAkaiSamplerFv::GetMultiPartsHandle  [GetMultiPartsHandle__12CAkaiSamplerFv]
+;   0x02d513  CAkaiSamplerFv::GetCurrentProgram  [GetCurrentProgram__12CAkaiSamplerFv]
+;   0x02d54b  CAkaiSamplerFv::GetSampleList  [GetSampleList__12CAkaiSamplerFv]
+;   0x02d57d  CAkaiSamplerFv::HasLSI2  [HasLSI2__12CAkaiSamplerFv]
+;   0x02d5a5  CAkaiSamplerFv::ModelID  [ModelID__12CAkaiSamplerFv]
+;   0x02d5d1  CSamplerModuleFPUc::GetNewProgramNameFromUser  [GetNewProgramNameFromUser__14CSamplerModuleFPUc]
+;   0x02d68b  CSamplerModuleFv::Redraw  [Redraw__14CSamplerModuleFv]
+;   0x02d723  CSamplerModuleFl::SelectWindow  [SelectWindow__14CSamplerModuleFl]
+;   0x02d79b  CSamplerModuleFl::DoMenuHelp  [DoMenuHelp__14CSamplerModuleFl]
+;   0x02d96f  CSamplerModuleFP17MESAClickSelfData::DoClickHelp  [DoClickHelp__14CSamplerModuleFP17MESAClickSelfData]
+;   0x02da55  CSamplerModuleFsR4Rect::DoEnvTemplatePopup  [DoEnvTemplatePopup__14CSamplerModuleFsR4Rect]
+;   0x02dc45  CSamplerModuleFsPl::AssignEnvTemplate  [AssignEnvTemplate__14CSamplerModuleFsPl]
+;   0x02ddcb  CSamplerModuleFv::DoAboutDialog  [DoAboutDialog__14CSamplerModuleFv]
+;   0x02de85  CSamplerModuleFv::BuildImportExportMenu  [BuildImportExportMenu__14CSamplerModuleFv]
+;   0x02df79  CSamplerModuleFP16MESAAudioHeader2Rs::MESAAudioHeaderFromSample  [MESAAudioHeaderFromSample__14CSamplerModuleFP16MESAAudioHeader2Rs]
+;   0x02e181  CSamplerModuleFP21MESAAudioExportHeader::ExportSampleData  [ExportSampleData__14CSamplerModuleFP21MESAAudioExportHeader]
+;   0x02e51b  CMESASocketFv::GetBuffer  [GetBuffer__11CMESASocketFv]
+;   0x02e549  CSamplerModuleFP21MESAAudioExportHeader::ImportSampleData  [ImportSampleData__14CSamplerModuleFP21MESAAudioExportHeader]
+;   0x02e6bd  CSamplerModuleFPUcP16MESAAudioHeader2s::BuildSampleHeaderFromMAH  [BuildSampleHeaderFromMAH__14CSamplerModuleFPUcP16MESAAudioHeader2s]
+;   0x02ea19  CSamplerModuleFUlUlP6FSSpecUcs::OpenDraggedFile  [OpenDraggedFile__14CSamplerModuleFUlUlP6FSSpecUcs]
+;   0x02ec83  CSamplerModuleFP16MESAAudioHeader2P8PlugInfo::SendAudioFileToSampler  [SendAudioFileToSampler__14CSamplerModuleFP16MESAAudioHeader2P8PlugInfo]
+;   0x02f2bf  CAkaiSamplerFv::GetFreeMemory  [GetFreeMemory__12CAkaiSamplerFv]
+;   0x02f2f1  CMESASocketFv::DataWaiting  [DataWaiting__11CMESASocketFv]
+;   0x02f329  CMESASocketFv::NextFreeByteInBuffer  [NextFreeByteInBuffer__11CMESASocketFv]
+;   0x02f363  CMESASocketFv::ClearBuffer  [ClearBuffer__11CMESASocketFv]
+;   0x02f397  CMESASocketFv::CurrentPlug  [CurrentPlug__11CMESASocketFv]
+;   0x02f423  CSamplerModuleFPPc::BuildEB16Popups  [BuildEB16Popups__14CSamplerModuleFPPc]
+;   0x02f54d  CSamplerModuleFv::CreateFXRoutingWindow  [CreateFXRoutingWindow__14CSamplerModuleFv]
+;   0x02f6ed  CSamplerModuleFv::CreateRingModDistWindow  [CreateRingModDistWindow__14CSamplerModuleFv]
+;   0x02f88f  CSamplerModuleFv::CreateEQWindow  [CreateEQWindow__14CSamplerModuleFv]
+;   0x02fa27  CSamplerModuleFv::CreateModulationWindow  [CreateModulationWindow__14CSamplerModuleFv]
+;   0x02fbc7  CSamplerModuleFv::CreateDelayWindow  [CreateDelayWindow__14CSamplerModuleFv]
+;   0x02fd63  CSamplerModuleFv::CreateReverbWindow  [CreateReverbWindow__14CSamplerModuleFv]
+;   0x02feff  CSamplerModuleFv::CreateFXFilerWindow  [CreateFXFilerWindow__14CSamplerModuleFv]
+;   0x03007b  CSamplerModuleFP15DraggedFileData::SaveEB16Reverb  [SaveEB16Reverb__14CSamplerModuleFP15DraggedFileData]
+;   0x0301d3  CSamplerModuleFP15DraggedFileData::SaveEB16Effect  [SaveEB16Effect__14CSamplerModuleFP15DraggedFileData]
+;   0x03032b  CSamplerModuleFP6FSSpecUls::LoadEB16FXFileSingle  [LoadEB16FXFileSingle__14CSamplerModuleFP6FSSpecUls]
+;   0x030609  CSamplerModuleFP6FSSpecUl::LoadEB16FXFileAll  [LoadEB16FXFileAll__14CSamplerModuleFP6FSSpecUl]
+;   0x030713  CSamplerModuleFP16MESAAudioHeader2::SendAudioBufferToSampler  [SendAudioBufferToSampler__14CSamplerModuleFP16MESAAudioHeader2]
+;   0x030d0b  CSamplerModuleFv::SCSIOnlyWarning  [SCSIOnlyWarning__14CSamplerModuleFv]
+;   0x030d57  CSamplerModuleFP6FSSpecUc::LoadVersion1ProgramFile  [LoadVersion1ProgramFile__14CSamplerModuleFP6FSSpecUc]
+;   0x03108f  CSamplerModuleFP6FSSpecUc::LoadVersion2ProgramFile  [LoadVersion2ProgramFile__14CSamplerModuleFP6FSSpecUc]
+;   0x0314c7  CSamplerModuleFslPUcs::LoadAllAIFFInFolder  [LoadAllAIFFInFolder__14CSamplerModuleFslPUcs]
+;   0x031675  CSamplerModuleFv::ImportProgram  [ImportProgram__14CSamplerModuleFv]
+;   0x031731  CSamplerModuleFP17ExportProgramData::ExportProgram  [ExportProgram__14CSamplerModuleFP17ExportProgramData]
+;   0x031d77  CAkaiSamplerFv::GetExclusiveChannel  [GetExclusiveChannel__12CAkaiSamplerFv]
+;   0x031db1  CSamplerModuleFP6FSSpecUc::LoadDiskDBaseFile  [LoadDiskDBaseFile__14CSamplerModuleFP6FSSpecUc]
+;   0x0321a7  CSamplerModuleFlsssPcsss::SendCommandToSampler  [SendCommandToSampler__14CSamplerModuleFlsssPcsss]
+;   0x03222d  CSamplerModuleFPUl::GetBaseNote  [GetBaseNote__14CSamplerModuleFPUl]
+;   0x0322d9  CSamplerModuleFP12MESAAEOMData::CountAEObjects  [CountAEObjects__14CSamplerModuleFP12MESAAEOMData]
+;   0x03244d  CSamplerModuleFP12MESAAEOMData::GetElement  [GetElement__14CSamplerModuleFP12MESAAEOMData]
+;   0x032583  CSamplerModuleFP12MESAAEOMData::GetProperty  [GetProperty__14CSamplerModuleFP12MESAAEOMData]
+;   0x0332d9  CSamplerModuleFP12MESAAEOMData::SetProperty  [SetProperty__14CSamplerModuleFP12MESAAEOMData]

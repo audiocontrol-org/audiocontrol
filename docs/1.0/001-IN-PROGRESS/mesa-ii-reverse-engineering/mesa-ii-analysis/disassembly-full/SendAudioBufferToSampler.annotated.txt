@@ -1,0 +1,563 @@
+; ============================================================
+; Function: CSamplerModuleFP16MESAAudioHeader2::SendAudioBufferToSampler
+;   Mangled: SendAudioBufferToSampler__14CSamplerModuleFP16MESAAudioHeader2
+;   File offset: 0x030713 - 0x030cc6 (1459 bytes)
+;   Binary: sampler-editor-rsrc.bin
+; ============================================================
+
+  030713:  4e56 fe08             linkw %fp,#-504
+  030717:  48e7 1f30             moveml %d3-%d7/%a2-%a3,%sp@-
+  03071b:  426e fff4             clrw %fp@(-12)
+  03071f:  206e 0008             moveal %fp@(8),%a0
+  030723:  1d68 00b1 fe0d        moveb %a0@(177),%fp@(-499)
+  030729:  206e 000c             moveal %fp@(12),%a0
+  03072d:  4aa8 0050             tstl %a0@(80)
+  030731:  6606                  bnes 0x30739
+  030733:  7000                  moveq #0,%d0
+  030735:  6000 058a             braw 0x30cc1
+  030739:  206e 0008             moveal %fp@(8),%a0
+  03073d:  4a68 00b0             tstw %a0@(176)
+  030741:  661c                  bnes 0x3075f
+  030743:  1f3c 0001             moveb #1,%sp@-  ; SDS-OPCODE-PUSH (opcode=0x01 = SDS dump header)
+  030747:  206e 0008             moveal %fp@(8),%a0
+  03074b:  4868 0074             pea %a0@(116)
+  03074f:  2057                  moveal %sp@,%a0
+  030751:  2250                  moveal %a0@,%a1
+  030753:  2269 0030             moveal %a1@(48),%a1
+  030757:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  030759:  3d40 fff4             movew %d0,%fp@(-12)
+  03075d:  5c4f                  addqw #6,%sp
+  03075f:  4a6e fff4             tstw %fp@(-12)
+  030763:  661a                  bnes 0x3077f
+  030765:  206e 0008             moveal %fp@(8),%a0
+  030769:  2f28 0da4             movel %a0@(3492),%sp@-
+  03076d:  2057                  moveal %sp@,%a0
+  03076f:  2268 0002             moveal %a0@(2),%a1
+  030773:  2269 0170             moveal %a1@(368),%a1
+  030777:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  030779:  3d40 fff4             movew %d0,%fp@(-12)
+  03077d:  584f                  addqw #4,%sp
+  03077f:  4a6e fff4             tstw %fp@(-12)
+  030783:  665c                  bnes 0x307e1
+  030785:  206e 0008             moveal %fp@(8),%a0
+  030789:  2f28 0da4             movel %a0@(3492),%sp@-
+  03078d:  2057                  moveal %sp@,%a0
+  03078f:  2268 0002             moveal %a0@(2),%a1
+  030793:  2269 0134             moveal %a1@(308),%a1
+  030797:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  030799:  206e 000c             moveal %fp@(12),%a0
+  03079d:  226e 000c             moveal %fp@(12),%a1
+  0307a1:  2d40 fe08             movel %d0,%fp@(-504)
+  0307a5:  2028 0050             movel %a0@(80),%d0
+  0307a9:  2229 0010             movel %a1@(16),%d1
+  0307ad:  4eb9 0000 0116        jsr 0x116  ; -> __divsi3 (32-bit signed divide, D0/D1 -> D0)
+  0307b3:  b0ae fe08             cmpl %fp@(-504),%d0
+  0307b7:  584f                  addqw #4,%sp
+  0307b9:  6f26                  bles 0x307e1
+  0307bb:  206e 000c             moveal %fp@(12),%a0
+  0307bf:  2068 005c             moveal %a0@(92),%a0
+  0307c3:  4868 0006             pea %a0@(6)
+  0307c7:  42a7                  clrl %sp@-
+  0307c9:  42a7                  clrl %sp@-
+  0307cb:  42a7                  clrl %sp@-
+  0307cd:  a98b                  .short 0xa98b
+  0307cf:  554f                  subqw #2,%sp
+  0307d1:  3f3c 008e             movew #142,%sp@-
+  0307d5:  42a7                  clrl %sp@-
+  0307d7:  a985                  .short 0xa985
+  0307d9:  301f                  movew %sp@+,%d0
+  0307db:  7000                  moveq #0,%d0
+  0307dd:  6000 04e2             braw 0x30cc1
+  0307e1:  206e 000c             moveal %fp@(12),%a0
+  0307e5:  4868 0015             pea %a0@(21)
+  0307e9:  206e 0008             moveal %fp@(8),%a0
+  0307ed:  2f28 0da4             movel %a0@(3492),%sp@-
+  0307f1:  2057                  moveal %sp@,%a0
+  0307f3:  2268 0002             moveal %a0@(2),%a1
+  0307f7:  2269 015c             moveal %a1@(348),%a1
+  0307fb:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  0307fd:  426e fedc             clrw %fp@(-292)
+  030801:  504f                  addqw #8,%sp
+  030803:  6000 0444             braw 0x30c49
+  030807:  206e 0008             moveal %fp@(8),%a0
+  03080b:  4a68 00b0             tstw %a0@(176)
+  03080f:  6618                  bnes 0x30829
+  030811:  1f3c 0001             moveb #1,%sp@-  ; SDS-OPCODE-PUSH (opcode=0x01 = SDS dump header)
+  030815:  206e 0008             moveal %fp@(8),%a0
+  030819:  4868 0074             pea %a0@(116)
+  03081d:  2057                  moveal %sp@,%a0
+  03081f:  2250                  moveal %a0@,%a1
+  030821:  2269 0030             moveal %a1@(48),%a1
+  030825:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  030827:  5c4f                  addqw #6,%sp
+  030829:  4a6e fff4             tstw %fp@(-12)
+  03082d:  6600 00d2             bnew 0x30901
+  030831:  594f                  subqw #4,%sp
+  030833:  206e 0008             moveal %fp@(8),%a0
+  030837:  2f28 0da4             movel %a0@(3492),%sp@-
+  03083b:  2057                  moveal %sp@,%a0
+  03083d:  2268 0002             moveal %a0@(2),%a1
+  030841:  2269 00dc             moveal %a1@(220),%a1
+  030845:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  030847:  584f                  addqw #4,%sp
+  030849:  2f08                  movel %a0,%sp@-
+  03084b:  4eb9 0004 64aa        jsr 0x464aa  ; -> UExtractFromAEDesc::TheInt32 (entry mid-function, file:0x06e401)
+  030851:  201f                  movel %sp@+,%d0
+  030853:  720c                  moveq #12,%d1
+  030855:  4eb9 0000 01a6        jsr 0x1a6  ; -> __mulsi3 (32-bit multiply, D0*D1 -> D0)
+  03085b:  306e fedc             moveaw %fp@(-292),%a0
+  03085f:  d088                  addl %a0,%d0
+  030861:  3d40 fed6             movew %d0,%fp@(-298)
+  030865:  3f2e fedc             movew %fp@(-292),%sp@-
+  030869:  2f2e 000c             movel %fp@(12),%sp@-
+  03086d:  486e fe0e             pea %fp@(-498)
+  030871:  2f2e 0008             movel %fp@(8),%sp@-
+  030875:  4eb9 0000 6766        jsr 0x6766  ; -> CSamplerModuleFPUcP16MESAAudioHeader2s::BuildSampleHeaderFromMAH
+  03087b:  3f2e fed6             movew %fp@(-298),%sp@-
+  03087f:  486e fe0e             pea %fp@(-498)
+  030883:  206e 0008             moveal %fp@(8),%a0
+  030887:  2f28 0da4             movel %a0@(3492),%sp@-
+  03088b:  2057                  moveal %sp@,%a0
+  03088d:  2268 0002             moveal %a0@(2),%a1
+  030891:  2269 017c             moveal %a1@(380),%a1
+  030895:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  030897:  3d40 fff4             movew %d0,%fp@(-12)
+  03089b:  302e fff4             movew %fp@(-12),%d0
+  03089f:  4fef 0018             lea %sp@(24),%sp
+  0308a3:  0440 007c             subiw #124,%d0
+  0308a7:  6706                  beqs 0x308af
+  0308a9:  5740                  subqw #3,%d0
+  0308ab:  6748                  beqs 0x308f5
+  0308ad:  604c                  bras 0x308fb
+  0308af:  2f3c 4255 4c4b        movel #1112886347,%sp@-  ; TAG=BULK
+  0308b5:  42a7                  clrl %sp@-
+  0308b7:  42a7                  clrl %sp@-
+  0308b9:  206e 0008             moveal %fp@(8),%a0
+  0308bd:  4868 0074             pea %a0@(116)
+  0308c1:  2057                  moveal %sp@,%a0
+  0308c3:  2250                  moveal %a0@,%a1
+  0308c5:  2269 0014             moveal %a1@(20),%a1
+  0308c9:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  0308cb:  3d40 fff4             movew %d0,%fp@(-12)
+  0308cf:  0c6e 007c fff4        cmpiw #124,%fp@(-12)
+  0308d5:  4fef 0010             lea %sp@(16),%sp
+  0308d9:  67d4                  beqs 0x308af
+  0308db:  302e fff4             movew %fp@(-12),%d0
+  0308df:  0440 007f             subiw #127,%d0
+  0308e3:  6702                  beqs 0x308e7
+  0308e5:  6006                  bras 0x308ed
+  0308e7:  426e fff4             clrw %fp@(-12)
+  0308eb:  6014                  bras 0x30901
+  0308ed:  3d7c cb45 fff4        movew #-13499,%fp@(-12)
+  0308f3:  600c                  bras 0x30901
+  0308f5:  426e fff4             clrw %fp@(-12)
+  0308f9:  6006                  bras 0x30901
+  0308fb:  3d7c cb45 fff4        movew #-13499,%fp@(-12)
+  030901:  4a6e fff4             tstw %fp@(-12)
+  030905:  6600 031e             bnew 0x30c25
+  030909:  206e 000c             moveal %fp@(12),%a0
+  03090d:  2028 0050             movel %a0@(80),%d0
+  030911:  7264                  moveq #100,%d1
+  030913:  4eb9 0000 01a6        jsr 0x1a6  ; -> __mulsi3 (32-bit multiply, D0*D1 -> D0)
+  030919:  2d40 fed8             movel %d0,%fp@(-296)
+  03091d:  42ae fff0             clrl %fp@(-16)
+  030921:  42ae ffec             clrl %fp@(-20)
+  030925:  42ae fede             clrl %fp@(-290)
+  030929:  486e fee2             pea %fp@(-286)
+  03092d:  2f3c 000e 0083        movel #917635,%sp@-
+  030933:  4eb9 0004 6664        jsr 0x46664  ; -> UExtractFromAEDesc::TheInt32 (LINK entry, file:0x06e5bb)
+  030939:  3f3c 0100             movew #256,%sp@-
+  03093d:  206e 000c             moveal %fp@(12),%a0
+  030941:  4868 0014             pea %a0@(20)
+  030945:  486e fee2             pea %fp@(-286)
+  030949:  4eb9 0004 690c        jsr 0x4690c  ; -> ConcatPStr
+  03094f:  41ec 546e             lea %a4@(21614),%a0
+  030953:  43ee ffe2             lea %fp@(-30),%a1
+  030957:  22d8                  movel %a0@+,%a1@+
+  030959:  22d8                  movel %a0@+,%a1@+
+  03095b:  32d8                  movew %a0@+,%a1@+
+  03095d:  41ee fede             lea %fp@(-290),%a0
+  030961:  2d48 ffe8             movel %a0,%fp@(-24)
+  030965:  486e ffe2             pea %fp@(-30)
+  030969:  206e 0008             moveal %fp@(8),%a0
+  03096d:  2068 0a20             moveal %a0@(2592),%a0
+  030971:  4e90                  jsr %a0@  ; vtable dispatch (indirect)
+  030973:  206e 000c             moveal %fp@(12),%a0
+  030977:  2d68 0050 fffa        movel %a0@(80),%fp@(-6)
+  03097d:  206e 0008             moveal %fp@(8),%a0
+  030981:  2e28 0084             movel %a0@(132),%d7
+  030985:  e08f                  lsrl #8,%d7
+  030987:  e08f                  lsrl #8,%d7
+  030989:  e08f                  lsrl #8,%d7
+  03098b:  ee8f                  lsrl #7,%d7
+  03098d:  dea8 0084             addl %a0@(132),%d7
+  030991:  e287                  asrl #1,%d7
+  030993:  4fef 000e             lea %sp@(14),%sp
+  030997:  6000 024a             braw 0x30be3
+  03099b:  206e 000c             moveal %fp@(12),%a0
+  03099f:  7001                  moveq #1,%d0
+  0309a1:  b0a8 0010             cmpl %a0@(16),%d0
+  0309a5:  6600 00de             bnew 0x30a85
+  0309a9:  beae fffa             cmpl %fp@(-6),%d7
+  0309ad:  6c0a                  bges 0x309b9
+  0309af:  2007                  movel %d7,%d0
+  0309b1:  d080                  addl %d0,%d0
+  0309b3:  2d40 fff6             movel %d0,%fp@(-10)
+  0309b7:  600a                  bras 0x309c3
+  0309b9:  202e fffa             movel %fp@(-6),%d0
+  0309bd:  d080                  addl %d0,%d0
+  0309bf:  2d40 fff6             movel %d0,%fp@(-10)
+  0309c3:  206e 000c             moveal %fp@(12),%a0
+  0309c7:  2050                  moveal %a0@,%a0
+  0309c9:  2250                  moveal %a0@,%a1
+  0309cb:  202e fff0             movel %fp@(-16),%d0
+  0309cf:  41f1 0800             lea %a1@(0,%d0:l),%a0
+  0309d3:  226e 0008             moveal %fp@(8),%a1
+  0309d7:  2269 007c             moveal %a1@(124),%a1
+  0309db:  202e fff6             movel %fp@(-10),%d0
+  0309df:  a02e                  .short 0xa02e
+  0309e1:  202e fff6             movel %fp@(-10),%d0
+  0309e5:  d1ae fff0             addl %d0,%fp@(-16)
+  0309e9:  4a6e fff4             tstw %fp@(-12)
+  0309ed:  6600 01ca             bnew 0x30bb9
+  0309f1:  206e 0008             moveal %fp@(8),%a0
+  0309f5:  2468 007c             moveal %a0@(124),%a2
+  0309f9:  7600                  moveq #0,%d3
+  0309fb:  603a                  bras 0x30a37
+  0309fd:  2003                  movel %d3,%d0
+  0309ff:  d080                  addl %d0,%d0
+  030a01:  3a32 0800             movew %a2@(0,%d0:l),%d5
+  030a05:  206e 000c             moveal %fp@(12),%a0
+  030a09:  0828 0007 006b        btst #7,%a0@(107)
+  030a0f:  661c                  bnes 0x30a2d
+  030a11:  3005                  movew %d5,%d0
+  030a13:  e148                  lslw #8,%d0
+  030a15:  0240 ff00             andiw #-256,%d0
+  030a19:  3205                  movew %d5,%d1
+  030a1b:  e041                  asrw #8,%d1
+  030a1d:  0241 00ff             andiw #255,%d1
+  030a21:  8240                  orw %d0,%d1
+  030a23:  2003                  movel %d3,%d0
+  030a25:  d080                  addl %d0,%d0
+  030a27:  3581 0800             movew %d1,%a2@(0,%d0:l)
+  030a2b:  6008                  bras 0x30a35
+  030a2d:  2003                  movel %d3,%d0
+  030a2f:  d080                  addl %d0,%d0
+  030a31:  3585 0800             movew %d5,%a2@(0,%d0:l)
+  030a35:  5283                  addql #1,%d3
+  030a37:  b687                  cmpl %d7,%d3
+  030a39:  6dc2                  blts 0x309fd
+  030a3b:  beae fffa             cmpl %fp@(-6),%d7
+  030a3f:  6c06                  bges 0x30a47
+  030a41:  9fae fffa             subl %d7,%fp@(-6)
+  030a45:  6004                  bras 0x30a4b
+  030a47:  42ae fffa             clrl %fp@(-6)
+  030a4b:  4a6e fff4             tstw %fp@(-12)
+  030a4f:  662c                  bnes 0x30a7d
+  030a51:  2f3c 5352 4157        movel #1397899607,%sp@-  ; TAG=SRAW
+  030a57:  2f2e fff6             movel %fp@(-10),%sp@-
+  030a5b:  206e 0008             moveal %fp@(8),%a0
+  030a5f:  2f28 007c             movel %a0@(124),%sp@-
+  030a63:  206e 0008             moveal %fp@(8),%a0
+  030a67:  4868 0074             pea %a0@(116)
+  030a6b:  2057                  moveal %sp@,%a0
+  030a6d:  2250                  moveal %a0@,%a1
+  030a6f:  2269 0014             moveal %a1@(20),%a1
+  030a73:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  030a75:  3d40 fff4             movew %d0,%fp@(-12)
+  030a79:  4fef 0010             lea %sp@(16),%sp
+  030a7d:  dfae ffec             addl %d7,%fp@(-20)
+  030a81:  6000 0136             braw 0x30bb9
+  030a85:  2007                  movel %d7,%d0
+  030a87:  e088                  lsrl #8,%d0
+  030a89:  e088                  lsrl #8,%d0
+  030a8b:  e088                  lsrl #8,%d0
+  030a8d:  ee88                  lsrl #7,%d0
+  030a8f:  d087                  addl %d7,%d0
+  030a91:  e280                  asrl #1,%d0
+  030a93:  b0ae fffa             cmpl %fp@(-6),%d0
+  030a97:  6c0a                  bges 0x30aa3
+  030a99:  2007                  movel %d7,%d0
+  030a9b:  d080                  addl %d0,%d0
+  030a9d:  2d40 fff6             movel %d0,%fp@(-10)
+  030aa1:  600a                  bras 0x30aad
+  030aa3:  202e fffa             movel %fp@(-6),%d0
+  030aa7:  e588                  lsll #2,%d0
+  030aa9:  2d40 fff6             movel %d0,%fp@(-10)
+  030aad:  206e 000c             moveal %fp@(12),%a0
+  030ab1:  2050                  moveal %a0@,%a0
+  030ab3:  2250                  moveal %a0@,%a1
+  030ab5:  202e fff0             movel %fp@(-16),%d0
+  030ab9:  41f1 0800             lea %a1@(0,%d0:l),%a0
+  030abd:  226e 0008             moveal %fp@(8),%a1
+  030ac1:  2269 007c             moveal %a1@(124),%a1
+  030ac5:  202e fff6             movel %fp@(-10),%d0
+  030ac9:  a02e                  .short 0xa02e
+  030acb:  202e fff6             movel %fp@(-10),%d0
+  030acf:  d1ae fff0             addl %d0,%fp@(-16)
+  030ad3:  4a6e fff4             tstw %fp@(-12)
+  030ad7:  6600 00e0             bnew 0x30bb9
+  030adb:  206e 0008             moveal %fp@(8),%a0
+  030adf:  2668 007c             moveal %a0@(124),%a3
+  030ae3:  306e fedc             moveaw %fp@(-292),%a0
+  030ae7:  2008                  movel %a0,%d0
+  030ae9:  3d40 fffe             movew %d0,%fp@(-2)
+  030aed:  7800                  moveq #0,%d4
+  030aef:  6042                  bras 0x30b33
+  030af1:  302e fffe             movew %fp@(-2),%d0
+  030af5:  204b                  moveal %a3,%a0
+  030af7:  d0c0                  addaw %d0,%a0
+  030af9:  3c30 0000             movew %a0@(0,%d0:w),%d6
+  030afd:  206e 000c             moveal %fp@(12),%a0
+  030b01:  0828 0007 006b        btst #7,%a0@(107)
+  030b07:  661c                  bnes 0x30b25
+  030b09:  3006                  movew %d6,%d0
+  030b0b:  e148                  lslw #8,%d0
+  030b0d:  0240 ff00             andiw #-256,%d0
+  030b11:  3206                  movew %d6,%d1
+  030b13:  e041                  asrw #8,%d1
+  030b15:  0241 00ff             andiw #255,%d1
+  030b19:  8240                  orw %d0,%d1
+  030b1b:  204b                  moveal %a3,%a0
+  030b1d:  d0c4                  addaw %d4,%a0
+  030b1f:  3181 4000             movew %d1,%a0@(0,%d4:w)
+  030b23:  6008                  bras 0x30b2d
+  030b25:  204b                  moveal %a3,%a0
+  030b27:  d0c4                  addaw %d4,%a0
+  030b29:  3186 4000             movew %d6,%a0@(0,%d4:w)
+  030b2d:  546e fffe             addqw #2,%fp@(-2)
+  030b31:  5244                  addqw #1,%d4
+  030b33:  3044                  moveaw %d4,%a0
+  030b35:  b1c7                  cmpal %d7,%a0
+  030b37:  6db8                  blts 0x30af1
+  030b39:  2007                  movel %d7,%d0
+  030b3b:  e088                  lsrl #8,%d0
+  030b3d:  e088                  lsrl #8,%d0
+  030b3f:  e088                  lsrl #8,%d0
+  030b41:  ee88                  lsrl #7,%d0
+  030b43:  d087                  addl %d7,%d0
+  030b45:  e280                  asrl #1,%d0
+  030b47:  b0ae fffa             cmpl %fp@(-6),%d0
+  030b4b:  6c14                  bges 0x30b61
+  030b4d:  2007                  movel %d7,%d0
+  030b4f:  e088                  lsrl #8,%d0
+  030b51:  e088                  lsrl #8,%d0
+  030b53:  e088                  lsrl #8,%d0
+  030b55:  ee88                  lsrl #7,%d0
+  030b57:  d087                  addl %d7,%d0
+  030b59:  e280                  asrl #1,%d0
+  030b5b:  91ae fffa             subl %d0,%fp@(-6)
+  030b5f:  6004                  bras 0x30b65
+  030b61:  42ae fffa             clrl %fp@(-6)
+  030b65:  202e fff6             movel %fp@(-10),%d0
+  030b69:  7202                  moveq #2,%d1
+  030b6b:  4eb9 0000 01a6        jsr 0x1a6  ; -> __mulsi3 (32-bit multiply, D0*D1 -> D0)
+  030b71:  2d40 fff6             movel %d0,%fp@(-10)
+  030b75:  4a6e fff4             tstw %fp@(-12)
+  030b79:  662c                  bnes 0x30ba7
+  030b7b:  2f3c 5352 4157        movel #1397899607,%sp@-  ; TAG=SRAW
+  030b81:  2f2e fff6             movel %fp@(-10),%sp@-
+  030b85:  206e 0008             moveal %fp@(8),%a0
+  030b89:  2f28 007c             movel %a0@(124),%sp@-
+  030b8d:  206e 0008             moveal %fp@(8),%a0
+  030b91:  4868 0074             pea %a0@(116)
+  030b95:  2057                  moveal %sp@,%a0
+  030b97:  2250                  moveal %a0@,%a1
+  030b99:  2269 0014             moveal %a1@(20),%a1
+  030b9d:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  030b9f:  3d40 fff4             movew %d0,%fp@(-12)
+  030ba3:  4fef 0010             lea %sp@(16),%sp
+  030ba7:  2007                  movel %d7,%d0
+  030ba9:  e088                  lsrl #8,%d0
+  030bab:  e088                  lsrl #8,%d0
+  030bad:  e088                  lsrl #8,%d0
+  030baf:  ee88                  lsrl #7,%d0
+  030bb1:  d087                  addl %d7,%d0
+  030bb3:  e280                  asrl #1,%d0
+  030bb5:  d1ae ffec             addl %d0,%fp@(-20)
+  030bb9:  202e ffec             movel %fp@(-20),%d0
+  030bbd:  222e fed8             movel %fp@(-296),%d1
+  030bc1:  4eb9 0000 01a6        jsr 0x1a6  ; -> __mulsi3 (32-bit multiply, D0*D1 -> D0)
+  030bc7:  2d40 fede             movel %d0,%fp@(-290)
+  030bcb:  2d7c 5550 5247        movel #1431327303,%fp@(-30)  ; TAG=UPRG
+  030bd3:  486e ffe2             pea %fp@(-30)
+  030bd7:  206e 0008             moveal %fp@(8),%a0
+  030bdb:  2068 0a20             moveal %a0@(2592),%a0
+  030bdf:  4e90                  jsr %a0@  ; vtable dispatch (indirect)
+  030be1:  584f                  addqw #4,%sp
+  030be3:  4aae fffa             tstl %fp@(-6)
+  030be7:  6708                  beqs 0x30bf1
+  030be9:  4a6e fff4             tstw %fp@(-12)
+  030bed:  6700 fdac             beqw 0x3099b
+  030bf1:  7064                  moveq #100,%d0
+  030bf3:  2d40 fede             movel %d0,%fp@(-290)
+  030bf7:  2d7c 5550 5247        movel #1431327303,%fp@(-30)  ; TAG=UPRG
+  030bff:  486e ffe2             pea %fp@(-30)
+  030c03:  206e 0008             moveal %fp@(8),%a0
+  030c07:  2068 0a20             moveal %a0@(2592),%a0
+  030c0b:  4e90                  jsr %a0@  ; vtable dispatch (indirect)
+  030c0d:  2d7c 4b50 5247        movel #1263555143,%fp@(-30)  ; TAG=KPRG
+  030c15:  486e ffe2             pea %fp@(-30)
+  030c19:  206e 0008             moveal %fp@(8),%a0
+  030c1d:  2068 0a20             moveal %a0@(2592),%a0
+  030c21:  4e90                  jsr %a0@  ; vtable dispatch (indirect)
+  030c23:  504f                  addqw #8,%sp
+  030c25:  2f3c 424f 4646        movel #1112491590,%sp@-  ; TAG=BOFF
+  030c2b:  42a7                  clrl %sp@-
+  030c2d:  42a7                  clrl %sp@-
+  030c2f:  206e 0008             moveal %fp@(8),%a0
+  030c33:  4868 0074             pea %a0@(116)
+  030c37:  2057                  moveal %sp@,%a0
+  030c39:  2250                  moveal %a0@,%a1
+  030c3b:  2269 0014             moveal %a1@(20),%a1
+  030c3f:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  030c41:  526e fedc             addqw #1,%fp@(-292)
+  030c45:  4fef 0010             lea %sp@(16),%sp
+  030c49:  206e 000c             moveal %fp@(12),%a0
+  030c4d:  326e fedc             moveaw %fp@(-292),%a1
+  030c51:  b3e8 0010             cmpal %a0@(16),%a1
+  030c55:  6d00 fbb0             bltw 0x30807
+  030c59:  206e 0008             moveal %fp@(8),%a0
+  030c5d:  4a68 00b0             tstw %a0@(176)
+  030c61:  6618                  bnes 0x30c7b
+  030c63:  1f3c 0001             moveb #1,%sp@-  ; SDS-OPCODE-PUSH (opcode=0x01 = SDS dump header)
+  030c67:  206e 0008             moveal %fp@(8),%a0
+  030c6b:  4868 0074             pea %a0@(116)
+  030c6f:  2057                  moveal %sp@,%a0
+  030c71:  2250                  moveal %a0@,%a1
+  030c73:  2269 0030             moveal %a1@(48),%a1
+  030c77:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  030c79:  5c4f                  addqw #6,%sp
+  030c7b:  4878 0005             pea 0x5
+  030c7f:  2f3c 5541 4c4c        movel #1430342732,%sp@-  ; TAG=UALL
+  030c85:  2f2e 0008             movel %fp@(8),%sp@-
+  030c89:  2057                  moveal %sp@,%a0
+  030c8b:  2268 0004             moveal %a0@(4),%a1
+  030c8f:  2269 0028             moveal %a1@(40),%a1
+  030c93:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  030c95:  1f3c 0001             moveb #1,%sp@-  ; SDS-OPCODE-PUSH (opcode=0x01 = SDS dump header)
+  030c99:  2f2e 0008             movel %fp@(8),%sp@-
+  030c9d:  4eb9 0000 51b4        jsr 0x51b4  ; -> CSamplerModuleFUc::BroadcastUpdateMessages
+  030ca3:  1f2e fe0d             moveb %fp@(-499),%sp@-
+  030ca7:  206e 0008             moveal %fp@(8),%a0
+  030cab:  4868 0074             pea %a0@(116)
+  030caf:  2057                  moveal %sp@,%a0
+  030cb1:  2250                  moveal %a0@,%a1
+  030cb3:  2269 0030             moveal %a1@(48),%a1
+  030cb7:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  030cb9:  302e fff4             movew %fp@(-12),%d0
+  030cbd:  4fef 0018             lea %sp@(24),%sp
+  030cc1:  4cdf 0cf8             moveml %sp@+,%d3-%d7/%a2-%a3
+
+; ============================================================
+; CALL GRAPH (all JSR/BSR targets)
+; ============================================================
+;   0x0307ad  jsr 0x000116 (file:0x02806d)  ->  
+;   0x03084b  jsr 0x0464aa (file:0x06e401)  ->  UExtractFromAEDesc::TheInt32 (entry mid-function, file:0x06e401)
+;   0x030855  jsr 0x0001a6 (file:0x0280fd)  ->  
+;   0x030875  jsr 0x006766 (file:0x02e6bd)  ->  CSamplerModuleFPUcP16MESAAudioHeader2s::BuildSampleHeaderFromMAH
+;   0x030933  jsr 0x046664 (file:0x06e5bb)  ->  UExtractFromAEDesc::TheInt32 (LINK entry, file:0x06e5bb)
+;   0x030949  jsr 0x04690c (file:0x06e863)  ->  ConcatPStr
+;   0x030c9d  jsr 0x0051b4 (file:0x02d10b)  ->  CSamplerModuleFUc::BroadcastUpdateMessages
+
+; ============================================================
+; NEARBY FUNCTIONS (within 0x5000 of target range)
+; ============================================================
+;   0x02b817  CSamplerModuleFv::CreateSampleAssignWindow  [CreateSampleAssignWindow__14CSamplerModuleFv]
+;   0x02b9c1  CSamplerModuleFv::CreateSamplerDiskWindow  [CreateSamplerDiskWindow__14CSamplerModuleFv]
+;   0x02bb43  CSamplerModuleFv::CreateMultiWindow  [CreateMultiWindow__14CSamplerModuleFv]
+;   0x02bcdf  CSamplerModuleFv::CreateMuteGroupsWindow  [CreateMuteGroupsWindow__14CSamplerModuleFv]
+;   0x02be81  CSamplerModuleFv::CreateQuickAccessWindow  [CreateQuickAccessWindow__14CSamplerModuleFv]
+;   0x02c027  CSamplerModuleFv::ReadPrefsFile  [ReadPrefsFile__14CSamplerModuleFv]
+;   0x02c15b  CSamplerModuleFv::WritePrefsFile  [WritePrefsFile__14CSamplerModuleFv]
+;   0x02c201  CSamplerModuleFs::ShowError  [ShowError__14CSamplerModuleFs]
+;   0x02c321  CSamplerModuleFPPcssUc::BuildNamePopup  [BuildNamePopup__14CSamplerModuleFPPcssUc]
+;   0x02c40b  CSamplerModuleFP15CGraphicControl::DoTrackingAction  [DoTrackingAction__14CSamplerModuleFP15CGraphicControl]
+;   0x02c46f  CSamplerModuleFP15CGraphicControl::DoPostTrackAction  [DoPostTrackAction__14CSamplerModuleFP15CGraphicControl]
+;   0x02d007  CGraphicControlFv::GetMinValue  [GetMinValue__15CGraphicControlFv]
+;   0x02d03b  CAkaiSamplerFv::GetProgramHandle  [GetProgramHandle__12CAkaiSamplerFv]
+;   0x02d071  CGraphicControlFv::GetControlType  [GetControlType__15CGraphicControlFv]
+;   0x02d0a9  CGraphicControlFv::GetRefcon  [GetRefcon__15CGraphicControlFv]
+;   0x02d0db  CGraphicControlFv::GetValue  [GetValue__15CGraphicControlFv]
+;   0x02d10b  CSamplerModuleFUc::BroadcastUpdateMessages  [BroadcastUpdateMessages__14CSamplerModuleFUc]
+;   0x02d473  CAkaiSamplerFv::GetSoloProgram  [GetSoloProgram__12CAkaiSamplerFv]
+;   0x02d4a7  CAkaiSamplerFv::GetEB16Handle  [GetEB16Handle__12CAkaiSamplerFv]
+;   0x02d4d9  CAkaiSamplerFv::GetMultiPartsHandle  [GetMultiPartsHandle__12CAkaiSamplerFv]
+;   0x02d513  CAkaiSamplerFv::GetCurrentProgram  [GetCurrentProgram__12CAkaiSamplerFv]
+;   0x02d54b  CAkaiSamplerFv::GetSampleList  [GetSampleList__12CAkaiSamplerFv]
+;   0x02d57d  CAkaiSamplerFv::HasLSI2  [HasLSI2__12CAkaiSamplerFv]
+;   0x02d5a5  CAkaiSamplerFv::ModelID  [ModelID__12CAkaiSamplerFv]
+;   0x02d5d1  CSamplerModuleFPUc::GetNewProgramNameFromUser  [GetNewProgramNameFromUser__14CSamplerModuleFPUc]
+;   0x02d68b  CSamplerModuleFv::Redraw  [Redraw__14CSamplerModuleFv]
+;   0x02d723  CSamplerModuleFl::SelectWindow  [SelectWindow__14CSamplerModuleFl]
+;   0x02d79b  CSamplerModuleFl::DoMenuHelp  [DoMenuHelp__14CSamplerModuleFl]
+;   0x02d96f  CSamplerModuleFP17MESAClickSelfData::DoClickHelp  [DoClickHelp__14CSamplerModuleFP17MESAClickSelfData]
+;   0x02da55  CSamplerModuleFsR4Rect::DoEnvTemplatePopup  [DoEnvTemplatePopup__14CSamplerModuleFsR4Rect]
+;   0x02dc45  CSamplerModuleFsPl::AssignEnvTemplate  [AssignEnvTemplate__14CSamplerModuleFsPl]
+;   0x02ddcb  CSamplerModuleFv::DoAboutDialog  [DoAboutDialog__14CSamplerModuleFv]
+;   0x02de85  CSamplerModuleFv::BuildImportExportMenu  [BuildImportExportMenu__14CSamplerModuleFv]
+;   0x02df79  CSamplerModuleFP16MESAAudioHeader2Rs::MESAAudioHeaderFromSample  [MESAAudioHeaderFromSample__14CSamplerModuleFP16MESAAudioHeader2Rs]
+;   0x02e181  CSamplerModuleFP21MESAAudioExportHeader::ExportSampleData  [ExportSampleData__14CSamplerModuleFP21MESAAudioExportHeader]
+;   0x02e51b  CMESASocketFv::GetBuffer  [GetBuffer__11CMESASocketFv]
+;   0x02e549  CSamplerModuleFP21MESAAudioExportHeader::ImportSampleData  [ImportSampleData__14CSamplerModuleFP21MESAAudioExportHeader]
+;   0x02e6bd  CSamplerModuleFPUcP16MESAAudioHeader2s::BuildSampleHeaderFromMAH  [BuildSampleHeaderFromMAH__14CSamplerModuleFPUcP16MESAAudioHeader2s]
+;   0x02ea19  CSamplerModuleFUlUlP6FSSpecUcs::OpenDraggedFile  [OpenDraggedFile__14CSamplerModuleFUlUlP6FSSpecUcs]
+;   0x02ec83  CSamplerModuleFP16MESAAudioHeader2P8PlugInfo::SendAudioFileToSampler  [SendAudioFileToSampler__14CSamplerModuleFP16MESAAudioHeader2P8PlugInfo]
+;   0x02f2bf  CAkaiSamplerFv::GetFreeMemory  [GetFreeMemory__12CAkaiSamplerFv]
+;   0x02f2f1  CMESASocketFv::DataWaiting  [DataWaiting__11CMESASocketFv]
+;   0x02f329  CMESASocketFv::NextFreeByteInBuffer  [NextFreeByteInBuffer__11CMESASocketFv]
+;   0x02f363  CMESASocketFv::ClearBuffer  [ClearBuffer__11CMESASocketFv]
+;   0x02f397  CMESASocketFv::CurrentPlug  [CurrentPlug__11CMESASocketFv]
+;   0x02f423  CSamplerModuleFPPc::BuildEB16Popups  [BuildEB16Popups__14CSamplerModuleFPPc]
+;   0x02f54d  CSamplerModuleFv::CreateFXRoutingWindow  [CreateFXRoutingWindow__14CSamplerModuleFv]
+;   0x02f6ed  CSamplerModuleFv::CreateRingModDistWindow  [CreateRingModDistWindow__14CSamplerModuleFv]
+;   0x02f88f  CSamplerModuleFv::CreateEQWindow  [CreateEQWindow__14CSamplerModuleFv]
+;   0x02fa27  CSamplerModuleFv::CreateModulationWindow  [CreateModulationWindow__14CSamplerModuleFv]
+;   0x02fbc7  CSamplerModuleFv::CreateDelayWindow  [CreateDelayWindow__14CSamplerModuleFv]
+;   0x02fd63  CSamplerModuleFv::CreateReverbWindow  [CreateReverbWindow__14CSamplerModuleFv]
+;   0x02feff  CSamplerModuleFv::CreateFXFilerWindow  [CreateFXFilerWindow__14CSamplerModuleFv]
+;   0x03007b  CSamplerModuleFP15DraggedFileData::SaveEB16Reverb  [SaveEB16Reverb__14CSamplerModuleFP15DraggedFileData]
+;   0x0301d3  CSamplerModuleFP15DraggedFileData::SaveEB16Effect  [SaveEB16Effect__14CSamplerModuleFP15DraggedFileData]
+;   0x03032b  CSamplerModuleFP6FSSpecUls::LoadEB16FXFileSingle  [LoadEB16FXFileSingle__14CSamplerModuleFP6FSSpecUls]
+;   0x030609  CSamplerModuleFP6FSSpecUl::LoadEB16FXFileAll  [LoadEB16FXFileAll__14CSamplerModuleFP6FSSpecUl]
+;   0x030713  CSamplerModuleFP16MESAAudioHeader2::SendAudioBufferToSampler  [SendAudioBufferToSampler__14CSamplerModuleFP16MESAAudioHeader2]
+;   0x030d0b  CSamplerModuleFv::SCSIOnlyWarning  [SCSIOnlyWarning__14CSamplerModuleFv]
+;   0x030d57  CSamplerModuleFP6FSSpecUc::LoadVersion1ProgramFile  [LoadVersion1ProgramFile__14CSamplerModuleFP6FSSpecUc]
+;   0x03108f  CSamplerModuleFP6FSSpecUc::LoadVersion2ProgramFile  [LoadVersion2ProgramFile__14CSamplerModuleFP6FSSpecUc]
+;   0x0314c7  CSamplerModuleFslPUcs::LoadAllAIFFInFolder  [LoadAllAIFFInFolder__14CSamplerModuleFslPUcs]
+;   0x031675  CSamplerModuleFv::ImportProgram  [ImportProgram__14CSamplerModuleFv]
+;   0x031731  CSamplerModuleFP17ExportProgramData::ExportProgram  [ExportProgram__14CSamplerModuleFP17ExportProgramData]
+;   0x031d77  CAkaiSamplerFv::GetExclusiveChannel  [GetExclusiveChannel__12CAkaiSamplerFv]
+;   0x031db1  CSamplerModuleFP6FSSpecUc::LoadDiskDBaseFile  [LoadDiskDBaseFile__14CSamplerModuleFP6FSSpecUc]
+;   0x0321a7  CSamplerModuleFlsssPcsss::SendCommandToSampler  [SendCommandToSampler__14CSamplerModuleFlsssPcsss]
+;   0x03222d  CSamplerModuleFPUl::GetBaseNote  [GetBaseNote__14CSamplerModuleFPUl]
+;   0x0322d9  CSamplerModuleFP12MESAAEOMData::CountAEObjects  [CountAEObjects__14CSamplerModuleFP12MESAAEOMData]
+;   0x03244d  CSamplerModuleFP12MESAAEOMData::GetElement  [GetElement__14CSamplerModuleFP12MESAAEOMData]
+;   0x032583  CSamplerModuleFP12MESAAEOMData::GetProperty  [GetProperty__14CSamplerModuleFP12MESAAEOMData]
+;   0x0332d9  CSamplerModuleFP12MESAAEOMData::SetProperty  [SetProperty__14CSamplerModuleFP12MESAAEOMData]
+;   0x0340a7  CSamplerModuleFP12MESAAEOMData::MakeNewElement  [MakeNewElement__14CSamplerModuleFP12MESAAEOMData]
+;   0x03425b  CSamplerModuleFP12MESAAEOMData::DeleteElement  [DeleteElement__14CSamplerModuleFP12MESAAEOMData]
+;   0x0344db  CSamplerModuleFP12MESAAEOMDatas::SetAEError  [SetAEError__14CSamplerModuleFP12MESAAEOMDatas]
+;   0x03454d    [__ct__20CProgramSelectorViewFv]
+;   0x034671    [__dt__20CProgramSelectorViewFv]
+;   0x03476b  CProgramSelectorViewFP15CControlHandler::SetControlHandler  [SetControlHandler__20CProgramSelectorViewFP15CControlHandler]
+;   0x034807  CGraphicControlListFv::GetNumControls  [GetNumControls__19CGraphicControlListFv]
+;   0x034843  CGraphicControlFP15CControlHandler::SetControlHandler  [SetControlHandler__15CGraphicControlFP15CControlHandler]
+;   0x034891  CProgramSelectorViewFll::SetContent  [SetContent__20CProgramSelectorViewFll]
+;   0x034983  CProgramSelectorViewFlPv::ListenToMessage  [ListenToMessage__20CProgramSelectorViewFlPv]
+;   0x034afd  CProgramSelectorViewFv::ShowSelf  [ShowSelf__20CProgramSelectorViewFv]
+;   0x034b2b  CProgramSelectorViewFv::HideSelf  [HideSelf__20CProgramSelectorViewFv]
+;   0x034b59  CProgramSelectorViewFv::DrawSelf  [DrawSelf__20CProgramSelectorViewFv]
+;   0x034d4f  C3DBoxFR4Rect::GetFrame  [GetFrame__6C3DBoxFR4Rect]
+;   0x034d85  C3DBoxFR8RGBColor::GetBodyColour  [GetBodyColour__6C3DBoxFR8RGBColor]
+;   0x034dc5  CProgramSelectorViewFRC15SMouseDownEvent::ClickSelf  [ClickSelf__20CProgramSelectorViewFRC15SMouseDownEvent]
+;   0x034f3d  CProgramSelectorViewFR15SMouseDownEventR16MESAShowHelpData::DoClickHelp  [DoClickHelp__20CProgramSelectorViewFR15SMouseDownEventR16MESAShowHelpData]
+;   0x0350d5  CGraphicControlFv::GetHelp  [GetHelp__15CGraphicControlFv]
+;   0x035105  CProgramSelectorViewF5PointRC11EventRecord::AdjustCursorSelf  [AdjustCursorSelf__20CProgramSelectorViewF5PointRC11EventRecord]
+;   0x03514f  CProgramSelectorViewFsUc::SelectGroupToEdit  [SelectGroupToEdit__20CProgramSelectorViewFsUc]
+;   0x03524b  CMESAGrafPortViewFv::IsFloating  [IsFloating__17CMESAGrafPortViewFv]
+;   0x035281  CMESAGrafPortViewFv::DoubleClick  [DoubleClick__17CMESAGrafPortViewFv]
+;   0x0352f3    [__ct__18CControlCenterViewFv]
+;   0x0353db    [__dt__18CControlCenterViewFv]
+;   0x035537  CControlCenterViewFP15CControlHandler::SetControlHandler  [SetControlHandler__18CControlCenterViewFP15CControlHandler]
+;   0x0355c9  CControlCenterViewFlPv::ListenToMessage  [ListenToMessage__18CControlCenterViewFlPv]

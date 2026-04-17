@@ -44,6 +44,71 @@ humount
 - Absolute-to-file address offset = `$061E` (file_offset = abs_addr + $061E)
 - See `/Users/orion/work/scsi2pi-work/mesa-plug-harness/SCSI-PROTOCOL.md` for full CDB reference
 
+## Disassembler Setup
+
+### Tool: m68k-elf-objdump (from m68k-elf-binutils)
+
+Selected over Ghidra and radare2 because it is already installed, requires no project
+setup, produces plain-text output, and decodes the full 68k ISA including all addressing
+modes. Cross-referencing is done by the `annotate_function.py` script using THINK C name
+strings extracted from the binary.
+
+```bash
+brew install m68k-elf-binutils
+# Verify:
+/opt/homebrew/bin/m68k-elf-objdump --version
+```
+
+### Full binary disassembly (already generated)
+
+```bash
+/opt/homebrew/bin/m68k-elf-objdump -D -b binary -m m68k:68020 --adjust-vma=0 \
+  binaries/sampler-editor-rsrc.bin > disassembly-full/sampler-editor-full.asm
+
+/opt/homebrew/bin/m68k-elf-objdump -D -b binary -m m68k:68020 --adjust-vma=0 \
+  binaries/scsi-plug-rsrc.bin > disassembly-full/scsi-plug-full.asm
+```
+
+Note: the full disassembly decodes starting at offset 0 and can get out of sync at
+function boundaries. Use `annotate_function.py` to disassemble a specific function
+range with correct alignment.
+
+### Per-function annotation script
+
+`annotate_function.py` in this directory:
+1. Scans the binary for THINK C name strings (after `UNLK A6 / RTS`).
+2. Back-traces from each `UNLK` to the nearest `LINK A6` to build a function address map.
+3. Disassembles the requested byte range via `m68k-elf-objdump --adjust-vma`.
+4. Annotates all `JSR`/`BSR` targets with resolved function names.
+5. Marks known 4-char tags (BULK, SRAW, BOFF, UPRG, KPRG, UALL) and SDS opcode pushes.
+
+```bash
+python3 annotate_function.py binaries/sampler-editor-rsrc.bin \
+  0x030713 0x030cc6 disassembly-full/SendAudioBufferToSampler.annotated.txt
+```
+
+### THINK C name string encoding
+
+THINK C places a mangled name string immediately after `UNLK A6 / RTS`:
+- Short form (name <= 127 bytes): one byte with high bit set, low 7 bits = length, then name.
+  Example: `0x9f GetFreeMemory...` (0x9f = 0x80|31, length 31).
+- Long form (name > 63 bytes): sentinel byte `0x80` (length field = 0), then a plain
+  length byte, then name.
+  Example: `0x80 0x3e SendAudioBufferToSampler...` (0x3e = 62 chars).
+
+### Address mapping
+
+The binary is a Mac OS 9 EDIT-type resource (not a CODE resource). The code data starts
+at file offset **0x027f57** (4-byte resource length header at 0x027f53). Absolute `JSR`
+addresses in the compiled code are offsets relative to this base:
+
+```
+file_offset = 0x027f57 + jsr_absolute_address
+```
+
+Example: `JSR 0x006766` resolves to file offset `0x027f57 + 0x006766 = 0x02e6bd`
+= `BuildSampleHeaderFromMAH`.
+
 ## Key Functions
 
 ### Sampler Editor

@@ -7,6 +7,10 @@ build/
 *.tsbuildinfo
 .build-stamp
 
+# Python
+__pycache__/
+*.pyc
+
 # Logs
 *.log
 logs/
