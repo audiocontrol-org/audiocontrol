@@ -36,6 +36,10 @@ correct. Every finding should distinguish direct evidence from inference.
   constructor storing one pointer at offset `+8` and the vtable pointer at offset `+2`,
   matching the caller-side access pattern:
   `... 41ec0d90 2548 0008 41ec0e80 2548 0002 ...`
+  `send-sample-header-decoded.md` cites the `CSamplerModule` constructor at `0x02820d`
+  as the assignment site for `this+0xDA4 = CAkaiSampler*`, and the raw bytes around
+  `0x02820d` are consistent with a constructor sequence that calls into
+  `__ct__12CAkaiSamplerFv` and then stores A4-relative pointers into the object.
   Interpretation:
   based on the primary artifacts currently checked in the Claude branch, the repeated
   slot-`0x38` call in `BuildSampleHeaderFromMAH` is consistent with the
@@ -82,9 +86,6 @@ correct. Every finding should distinguish direct evidence from inference.
 
 ## Open Questions
 
-- Is there any other `+2`-vtable class in this call path that could mimic the
-  `CAkaiSampler` layout, or is the object identity now strong enough to escalate as a
-  Claude-side issue?
 - Are the header fields byte-swapped, nibble-transformed, both, or something else?
 - Does the failure of the 392-byte BULK test come from bad content bytes, a wrong call
   sequence, or another prerequisite outside the payload itself?

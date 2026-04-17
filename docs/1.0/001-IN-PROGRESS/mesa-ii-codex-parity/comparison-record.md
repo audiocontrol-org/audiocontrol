@@ -45,12 +45,6 @@ cleanly.
   Claude baseline:
   corrected wire framing still fails on hardware, implying the content bytes remain
   wrong or incomplete.
-- Exact slot-`0x38` target mapping
-  Claude baseline:
-  later analysis argues for `SwapLongWord`.
-  Codex finding:
-  raw binary bytes now support that mapping, but the class identity of the caller-side
-  object in the `BuildSampleHeaderFromMAH` path is still being narrowed.
 - SRAW on-wire bytes
   Claude baseline:
   prior harness text admitted inference instead of captured bytes.
