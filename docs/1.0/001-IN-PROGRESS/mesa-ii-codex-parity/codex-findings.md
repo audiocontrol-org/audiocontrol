@@ -417,6 +417,32 @@ correct. Every finding should distinguish direct evidence from inference.
   routine" from inference to direct reproduction. So Claude's task-21 claim is now
   substantially supported, but not yet fully matched end-to-end from primary bytes.
 
+- Finding 23: `CMESAPlugIn::DoMESACommand` now appears narrowed to two
+  `SocketInfo`-style branch arms, which materially tightens the remaining task-21 gap.
+  Evidence:
+  bounded disassembly of the SCSI Plug binary at `0x089a-0x09a0` shows
+  `CMESAPlugIn::DoMESACommand` loading the four-byte command tag from `MESACommand[0]`,
+  running it through a selector helper at `0x148`, and then falling through a set of
+  branch arms after the inline tag table containing `SEND`, `ASOK`, `CLSM`, `CONS`,
+  `IDEN`, and `OPNM`.
+  Among those arms, only two have the `SocketInfo`-style calling convention:
+  `0x090c` pushes `MESACommand+6` plus `this` and calls vtable offset `+0x30`, while
+  `0x0924` pushes the same `MESACommand+6` plus `this` and calls vtable offset `+0x34`.
+  By contrast, the `0x08f0` arm uses a different vtable slot (`+0x14`) and does not
+  pass the same `SocketInfo` payload shape, while `0x093c`, `0x096e`, and `0x097e`
+  use still different vtable slots and argument counts.
+  The nearby concrete method bodies already identified in the same binary are
+  `CMESAPlugIn::ConnectToSocket(SocketInfo*)` at `0x09d2`,
+  `CMESAPlugIn::ActivateSocket(SocketInfo*)` at `0x0a5e`, and
+  `CSCSIPlug::SendData(IP_Data*)` at `0x0df2`.
+  Interpretation:
+  even without a full decode of the selector helper at `0x148`, the dispatcher shape is
+  now much tighter. The `ActivateThisSocket` callback can no longer be thought of as
+  "some unknown plug-side behavior"; within the current primary artifacts it narrows to
+  the two `SocketInfo`-taking `CMESAPlugIn` arms, one of which is the independently
+  decoded no-wire `ActivateSocket` routine. The unresolved step is now specifically
+  which inline tag maps to which of those two arms, not the broader class of behavior.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

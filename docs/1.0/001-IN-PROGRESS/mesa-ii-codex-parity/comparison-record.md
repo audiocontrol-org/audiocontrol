@@ -187,7 +187,11 @@ cleanly.
   piece is the final dispatch hop from `CMESASocket::ActivateThisSocket` through the
   installed callback slot into `CMESAPlugIn::DoMESACommand` and then specifically into
   `ActivateSocket`; that chain is still supported but not yet fully re-decoded from
-  primary bytes end-to-end.
+  primary bytes end-to-end. New Codex narrowing: inside `CMESAPlugIn::DoMESACommand`,
+  only two branch arms use the `SocketInfo`-style `(this, MESACommand+6)` calling
+  convention, and those call vtable offsets `+0x30` and `+0x34`. So the remaining
+  ambiguity is now the exact tag-to-arm mapping, not whether the callback can range
+  across arbitrary plug behavior.
 - SRAW on-wire bytes
   Claude baseline:
   prior harness text admitted inference instead of captured bytes.
