@@ -55,10 +55,11 @@ async function scsiExec(cdb: number[], dataOut: number[] = [], expectedIn = 0): 
 async function midiEnable(): Promise<void> { await scsiExec([0x09, 0x00, 0x01, 0x00, 0x00, 0x00]); }
 async function midiDisable(): Promise<void> { await scsiExec([0x09, 0x00, 0x00, 0x00, 0x00, 0x00]); }
 
-async function midiSend(data: number[]): Promise<void> {
+async function midiSend(data: number[], flag = 0x00): Promise<void> {
   const len = data.length;
-  // Use reply-expected flag 0x80 to match MESA's BULK CDB behavior.
-  await scsiExec([0x0C, 0x00, (len >> 16) & 0xFF, (len >> 8) & 0xFF, len & 0xFF, 0x80], data, 0);
+  // Default flag = 0x00 (fire-and-forget) matches test-aspack-slngth.ts Theory B.
+  // MESA's BULK CDB uses flag 0x80 (reply-expected); pass it explicitly for that path.
+  await scsiExec([0x0C, 0x00, (len >> 16) & 0xFF, (len >> 8) & 0xFF, len & 0xFF, flag], data, 0);
 }
 
 async function midiPoll(): Promise<number> {
@@ -165,6 +166,99 @@ function nibbleEncodeBuffer(input: Uint8Array): number[] {
 }
 
 // ---------------------------------------------------------------------------
+// SDS preamble (adapted from test-aspack-slngth.ts Theory B).
+//
+// Hypothesis: SDATA opcode 0x0B is an UPDATE command — it requires the sample
+// slot to pre-exist. MESA's SCSI flow sends a preamble SDS dump header via
+// vtable[0x0030] BEFORE the BULK loop (see sampler-editor-decoded.md
+// MIDI/SCSI mode branch at 0x030739-0x03075f).
+//
+// Theory B's known-working sample-create pattern: SDS dump header declaring
+// 40 samples + one SDS data packet with 40 silence samples. Device creates
+// the sample with SLNGTH ~48.
+// ---------------------------------------------------------------------------
+
+function encodeSdsSample(sample: number): number[] {
+  const raw = sample & 0xFFFF;
+  return [
+    (raw >> 9) & 0x7F,
+    (raw >> 2) & 0x7F,
+    (raw << 5) & 0x60,
+  ];
+}
+
+function buildSdsDumpHeader(sampleNumber: number, sampleCount: number, sampleRateHz: number): number[] {
+  const periodNs = Math.floor(1_000_000_000 / sampleRateHz);
+  return [
+    0xF0, 0x7E, CHANNEL, 0x01,
+    sampleNumber & 0x7F, (sampleNumber >> 7) & 0x7F,
+    16,
+    periodNs & 0x7F, (periodNs >> 7) & 0x7F, (periodNs >> 14) & 0x7F,
+    sampleCount & 0x7F, (sampleCount >> 7) & 0x7F, (sampleCount >> 14) & 0x7F,
+    0, 0, 0, 0, 0, 0, 0,
+    0xF7,
+  ];
+}
+
+function buildSdsDataPacket(packetNum: number, samples: number[]): number[] {
+  const pkt = [0xF0, 0x7E, CHANNEL, 0x02, packetNum & 0x7F];
+  let checksum = 0x7E ^ CHANNEL ^ 0x02 ^ (packetNum & 0x7F);
+  for (const s of samples) {
+    const enc = encodeSdsSample(s);
+    checksum ^= enc[0]; checksum ^= enc[1]; checksum ^= enc[2];
+    pkt.push(...enc);
+  }
+  // Pad to 120 bytes of sample data if needed (SDS protocol convention)
+  while (pkt.length - 5 < 120) {
+    pkt.push(0); checksum ^= 0;
+  }
+  pkt.push(checksum & 0x7F, 0xF7);
+  return pkt;
+}
+
+async function waitForSdsAck(label: string): Promise<string> {
+  // Scan buffered bytes for SDS handshake: F0 7E ch [type] pp F7
+  // ACK=0x7F, NAK=0x7E, CANCEL=0x7D, WAIT=0x7C
+  let allBytes: number[] = [];
+  for (let attempt = 0; attempt < 30; attempt++) {
+    const pending = await midiPoll();
+    if (pending > 0) {
+      const data = await midiRead(pending);
+      allBytes.push(...data);
+      for (let i = 0; i < allBytes.length - 3; i++) {
+        if (allBytes[i] === 0xF0 && allBytes[i + 1] === 0x7E) {
+          const type = allBytes[i + 3];
+          if (type === 0x7F) return 'ACK';
+          if (type === 0x7E) return 'NAK';
+          if (type === 0x7D) return 'CANCEL';
+          // WAIT (0x7C) — keep polling
+        }
+      }
+    }
+    await sleep(100);
+  }
+  return `TIMEOUT (${allBytes.length} bytes buffered) [${label}]`;
+}
+
+/**
+ * Create a sample slot via the Theory B pattern: SDS dump header declaring
+ * 40 samples + one SDS data packet with 40 silence samples.
+ */
+async function createSampleSlotViaSds(sampleNumber: number): Promise<boolean> {
+  console.log(`  [preamble] SDS dump header (slot=${sampleNumber}, declared=40 samples)...`);
+  await midiSend(buildSdsDumpHeader(sampleNumber, 40, 44100));
+  const ack1 = await waitForSdsAck('dump header');
+  console.log(`    response: ${ack1}`);
+  if (!ack1.includes('ACK')) return false;
+
+  console.log(`  [preamble] SDS data packet (40 silence samples)...`);
+  await midiSend(buildSdsDataPacket(0, new Array(40).fill(0)));
+  const ack2 = await waitForSdsAck('data packet');
+  console.log(`    response: ${ack2}`);
+  return ack2.includes('ACK');
+}
+
+// ---------------------------------------------------------------------------
 // SysEx send/receive helpers
 // ---------------------------------------------------------------------------
 
@@ -243,6 +337,33 @@ async function main() {
   const countBefore = await queryRSLIST();
   console.log(`Samples in device before: ${countBefore}`);
 
+  // Use next free slot for this test (0-indexed in SDS encoding).
+  const sampleSlot = countBefore;
+  console.log(`Using sample slot: ${sampleSlot}`);
+
+  // ---------------------------------------------------------------------
+  // Preamble: create the sample slot via SDS (Theory B pattern).
+  // This tests the hypothesis that SDATA opcode 0x0B is an UPDATE command
+  // requiring a pre-existing slot.
+  // ---------------------------------------------------------------------
+  console.log('\n[PREAMBLE] Creating sample slot via SDS (40-sample stub)...');
+  const preambleOk = await createSampleSlotViaSds(sampleSlot);
+  console.log(`[PREAMBLE] Create result: ${preambleOk ? 'OK' : 'FAILED'}`);
+
+  await sleep(200); // brief settle
+  const countAfterPreamble = await queryRSLIST();
+  console.log(`Samples after preamble: ${countAfterPreamble} (was ${countBefore})`);
+  if (countAfterPreamble <= countBefore) {
+    console.log('✗ Preamble did not create a sample. Aborting.');
+    await midiDisable();
+    return;
+  }
+
+  // Verify SLNGTH of the stub sample (should be ~48 per Theory B)
+  const stubHeader = await readSampleHeader(sampleSlot);
+  const stubSlngth = parseSLNGTH(stubHeader);
+  console.log(`Stub sample SLNGTH (expected ~48): ${stubSlngth}`);
+
   // Build the 200-byte Akai header
   const headerBuf = buildAkaiHeader({
     sampleName: SAMPLE_NAME,
@@ -263,8 +384,8 @@ async function main() {
   // Wrap in SysEx: F0 47 ch 0B 48 [sample_lo 7-bit] [sample_hi 7-bit] [384 nibble bytes] F7
   const sysex = [
     0xF0, 0x47, CHANNEL, 0x0B, 0x48,
-    TEST_SAMPLE_NUM & 0x7F,
-    (TEST_SAMPLE_NUM >> 7) & 0x7F,
+    sampleSlot & 0x7F,
+    (sampleSlot >> 7) & 0x7F,
     ...nibblePayload,
     0xF7,
   ];
@@ -274,7 +395,7 @@ async function main() {
 
   // Send via MIDI Send CDB with reply-expected flag (CDB = 0c 00 00 01 88 80 for 392 bytes)
   console.log('\nSending BULK SDATA...');
-  await midiSend(sysex);
+  await midiSend(sysex, 0x80);
 
   // Wait for reply
   console.log('Polling for reply...');
@@ -305,23 +426,10 @@ async function main() {
   // Brief settle
   await sleep(300);
 
-  // Check RSLIST
-  const countAfter = await queryRSLIST();
-  console.log(`\nSamples in device after: ${countAfter} (was ${countBefore})`);
-  const created = countAfter > countBefore;
-  console.log(`Sample created: ${created ? 'YES' : 'NO'}`);
-
-  if (!created) {
-    console.log('\n✗ FAILED: BULK SDATA did not create a sample.');
-    console.log('  The reverse-engineered protocol is incomplete or incorrect.');
-    await midiDisable();
-    return;
-  }
-
-  // Read the new sample header
-  const newSampleIndex = countBefore;
-  console.log(`\nReading sample header at index ${newSampleIndex}...`);
-  const headerResp = await readSampleHeader(newSampleIndex);
+  // Sample already existed (preamble created it). Re-read its header to check
+  // whether the Akai SDATA updated SLNGTH.
+  console.log(`\nRe-reading sample header at slot ${sampleSlot} after SDATA...`);
+  const headerResp = await readSampleHeader(sampleSlot);
   console.log(`  Header response: ${headerResp.length} bytes`);
   if (headerResp.length === 0) {
     console.log('  ✗ Could not read header back');
