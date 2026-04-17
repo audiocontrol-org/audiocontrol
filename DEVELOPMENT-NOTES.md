@@ -45,6 +45,86 @@ Hardware-verify task #14: send the harness-captured BULK SDATA byte sequence (`f
 
 ---
 
+## 2026-04-16 (cont.): Decode vtable[0x017c] — AcceptSampleHeader (Task #17)
+
+### Feature: mesa-ii-reverse-engineering
+### Worktree: audiocontrol-mesa-ii-reverse-engineering
+
+### Re-framing of yesterday's BULK-test post-mortem
+
+Yesterday's session-end concluded that the harness Phase 5 trace had captured a
+"synthetic call path MESA never actually makes" — and that this was why the BULK
+hardware test failed. **That conclusion was wrong.** The agent's full decode of
+AcceptSampleHeader (this task) shows the dispatch chain is exactly:
+
+  CAkaiSampler::AcceptSampleHeader (vtable[0x017c])
+    → CAkaiSampler::vtable[0x14] (build SysEx)
+    → CMESASocket::vtable[0x14] → CSCSIPlug::SendData
+    → SCSI CDB 0c 00 00 01 96 80 + 406-byte SysEx payload
+
+That terminal CDB is exactly what the harness Phase 5 trace captured directly. So
+the dispatch path is correct. The BULK test's failure is in the *content* of the
+SysEx — most likely the SLNGTH encoding (medium-confidence interpretation of
+`vtable[0x38]`) or some other byte the device validates more strictly than we
+realized. The mystery has narrowed to one box: `CAkaiSampler::vtable[0x14]`,
+the SysEx builder.
+
+The lesson: when invalidating a working hypothesis, audit the new
+hypothesis with the same rigor — yesterday's "synthetic path" theory was
+evidence-free, just plausible-sounding. Caught only by today's full decode.
+
+### Goal
+Identify and decode the function at `CAkaiSampler::vtable[0x017c]` — called at file
+offset 0x030895 in `SendAudioBufferToSampler` immediately after `BuildSampleHeaderFromMAH`.
+Produce `disassembly-full/SendSampleHeader.annotated.txt` and `send-sample-header-decoded.md`.
+
+### Accomplished
+- Confirmed the object at `this+0xDA4` (CSamplerModule) is a `CAkaiSampler*`, not a
+  `CMESASocket*`, by disassembling the CSamplerModule constructor at file 0x02820d.
+- Established THINK C vtable tables are runtime-patched (A4-relative data) and cannot be
+  read from the resource binary directly — three candidate A4 bases all had ~1/128 valid
+  LINK entries, confirming no static vtable array.
+- Identified vtable[0x017c] as `AcceptSampleHeader__12CAkaiSamplerFPUcs` by scanning THINK
+  C name strings for CAkaiSampler methods and matching the 3-arg signature
+  `(CAkaiSampler*, unsigned char*, short)` against the push sequence at 0x030876-0x030888.
+- Disassembled `AcceptSampleHeader` (file 0x06ae09, 174 bytes) using annotate_function.py,
+  saved to `disassembly-full/AcceptSampleHeader.annotated.txt`.
+- Decoded the 3-step function behavior: (1) build SDATA SysEx via CAkaiSampler::vtable[0x14],
+  (2) transmit via CMESASocket::vtable[0x14] → CSCSIPlug::SendData, (3) wait for SDS
+  opcode-0x01 reply with 1000-unit timeout.
+- Wrote `disassembly-full/SendSampleHeader.annotated.txt` (redirect note to AcceptSampleHeader.annotated.txt).
+- Wrote `mesa-ii-analysis/send-sample-header-decoded.md` with full citation chain,
+  predicted on-wire bytes, and confidence table.
+
+### Didn't Work
+- CMESASocket vtable scan: searching for runs of 20+ consecutive valid LINK instructions
+  at candidate A4 offsets found zero hits. Root cause: vtable is runtime-initialized.
+- CSCSIPlug vtable scan at file 0x2D0E: entries were garbage (e.g., 0x05a20000). Same
+  root cause.
+- Initial assumption that `this+0xDA4` held a `CMESASocket*` was wrong; it holds a
+  `CAkaiSampler*`. The extra vtable indirection (`object+2` instead of `object+0`) was
+  the tell.
+
+### Course Corrections
+None from user this session — static analysis was independent work.
+
+### Quantitative
+- User messages: 1 (delegation)
+- Commits: 0 (not yet committed — findings docs written, await user review)
+- New files: 3 (AcceptSampleHeader.annotated.txt, SendSampleHeader.annotated.txt, send-sample-header-decoded.md)
+
+### Insights
+1. **Identify from the callee side when vtable is unreadable.** Trying to read vtable
+   entries from the binary wastes time when the vtable is runtime-patched. The faster
+   path is: enumerate all THINK C name strings for the class, match the arg signature
+   from the call site.
+2. **Two vtable offsets, two classes.** CAkaiSampler has vtable at `object+2`; CMESASocket
+   has vtable at `object+0`. The extra 2-byte prefix on CAkaiSampler (likely a 2-byte
+   reference count or class flag) is a subtle structural difference that would have misled
+   a naive vtable search.
+
+---
+
 ## 2026-04-16: MESA II Reverse Engineering — Full Disassembly + Dynamic Trace (Session 9, Orchestrator View)
 
 ### Feature: mesa-ii-reverse-engineering

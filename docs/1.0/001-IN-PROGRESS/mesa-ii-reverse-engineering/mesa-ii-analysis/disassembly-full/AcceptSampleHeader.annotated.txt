@@ -1,0 +1,252 @@
+; ============================================================
+; Function: CAkaiSamplerFPUcs::AcceptSampleHeader
+;   Mangled: AcceptSampleHeader__12CAkaiSamplerFPUcs
+;   File offset: 0x06ae09 - 0x06aee5 (220 bytes)
+;   Binary: sampler-editor-rsrc.bin
+; ============================================================
+
+  06ae09:  4e56 fdfc             linkw %fp,#-516
+  06ae0d:  48e7 1030             moveml %d3/%a2-%a3,%sp@-
+  06ae11:  246e 0008             moveal %fp@(8),%a2
+  06ae15:  2f3c 4255 4c4b        movel #1112886347,%sp@-  ; TAG=BULK
+  06ae1b:  4878 00c0             pea 0xc0
+  06ae1f:  4227                  clrb %sp@-
+  06ae21:  3f2e 0010             movew %fp@(16),%sp@-
+  06ae25:  1f3c 000b             moveb #11,%sp@-
+  06ae29:  1f2a 000e             moveb %a2@(14),%sp@-
+  06ae2d:  2f2e 000c             movel %fp@(12),%sp@-
+  06ae31:  486e fe00             pea %fp@(-512)
+  06ae35:  2f0a                  movel %a2,%sp@-
+  06ae37:  2057                  moveal %sp@,%a0
+  06ae39:  2268 0002             moveal %a0@(2),%a1
+  06ae3d:  2269 0014             moveal %a1@(20),%a1
+  06ae41:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  06ae43:  4fef 0018             lea %sp@(24),%sp
+  06ae47:  2f00                  movel %d0,%sp@-
+  06ae49:  486e fe00             pea %fp@(-512)
+  06ae4d:  2f2a 00a2             movel %a2@(162),%sp@-
+  06ae51:  2057                  moveal %sp@,%a0
+  06ae53:  2250                  moveal %a0@,%a1
+  06ae55:  2269 0014             moveal %a1@(20),%a1
+  06ae59:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  06ae5b:  3600                  movew %d0,%d3
+  06ae5d:  4fef 0010             lea %sp@(16),%sp
+  06ae61:  6620                  bnes 0x6ae83
+  06ae63:  486e fdfc             pea %fp@(-516)
+  06ae67:  1f3c 0001             moveb #1,%sp@-  ; SDS-OPCODE-PUSH (opcode=0x01 = SDS dump header)
+  06ae6b:  4878 03e8             pea 0x3e8
+  06ae6f:  2f0a                  movel %a2,%sp@-
+  06ae71:  2057                  moveal %sp@,%a0
+  06ae73:  2268 0002             moveal %a0@(2),%a1
+  06ae77:  2269 00cc             moveal %a1@(204),%a1
+  06ae7b:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  06ae7d:  3600                  movew %d0,%d3
+  06ae7f:  4fef 000e             lea %sp@(14),%sp
+  06ae83:  0c43 cd37             cmpiw #-13001,%d3
+  06ae87:  6626                  bnes 0x6aeaf
+  06ae89:  2f2a 00a2             movel %a2@(162),%sp@-
+  06ae8d:  2057                  moveal %sp@,%a0
+  06ae8f:  2250                  moveal %a0@,%a1
+  06ae91:  2269 0024             moveal %a1@(36),%a1
+  06ae95:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  06ae97:  2648                  moveal %a0,%a3
+  06ae99:  0c13 00f0             cmpib #-16,%a3@
+  06ae9d:  584f                  addqw #4,%sp
+  06ae9f:  660e                  bnes 0x6aeaf
+  06aea1:  0c2b 007e 0001        cmpib #126,%a3@(1)
+  06aea7:  6606                  bnes 0x6aeaf
+  06aea9:  7600                  moveq #0,%d3
+  06aeab:  162b 0003             moveb %a3@(3),%d3
+  06aeaf:  3003                  movew %d3,%d0
+  06aeb1:  4cdf 0c08             moveml %sp@+,%d3/%a2-%a3
+  06aeb5:  4e5e                  unlk %fp
+  06aeb7:  4e75                  rts
+  06aeb9:  8027                  orb %sp@-,%d0
+  06aebb:  4163                  .short 0x4163
+  06aebd:  6365                  blss 0x6af24
+  06aebf:  7074                  moveq #116,%d0
+  06aec1:  5361                  subqw #1,%a1@-
+  06aec3:  6d70                  blts 0x6af35
+  06aec5:  6c65                  bges 0x6af2c
+  06aec7:  4865                  .short 0x4865
+  06aec9:  6164                  bsrs 0x6af2f  ; -> 0x06af2f/file:0x092e86 (name unknown)
+  06aecb:  6572                  bcss 0x6af3f
+  06aecd:  5f5f                  subqw #7,%sp@+
+  06aecf:  3132 4341             movew %a2@(0)@(0),%a0@-
+  06aed3:  6b61                  bmis 0x6af36
+  06aed5:  6953                  bvss 0x6af2a
+  06aed7:  616d                  bsrs 0x6af46  ; -> 0x06af46/file:0x092e9d (name unknown)
+  06aed9:  706c                  moveq #108,%d0
+  06aedb:  6572                  bcss 0x6af4f
+  06aedd:  4650                  notw %a0@
+  06aedf:  5563                  subqw #2,%a3@-
+  06aee1:  7300                  .short 0x7300
+
+; ============================================================
+; CALL GRAPH (all JSR/BSR targets)
+; ============================================================
+;   0x06aec9  jsr 0x06af2f (file:0x092e86)  ->  (name not found)
+;   0x06aed7  jsr 0x06af46 (file:0x092e9d)  ->  (name not found)
+
+; ============================================================
+; NEARBY FUNCTIONS (within 0x5000 of target range)
+; ============================================================
+;   0x065f75  CReverbViewFv::ActivateSelf  [ActivateSelf__11CReverbViewFv]
+;   0x065f9d  CReverbViewFv::DeactivateSelf  [DeactivateSelf__11CReverbViewFv]
+;   0x065fc7  CReverbViewFv::ShowSelf  [ShowSelf__11CReverbViewFv]
+;   0x065feb  CReverbViewFv::HideSelf  [HideSelf__11CReverbViewFv]
+;   0x06600f  CReverbViewFv::EnableSelf  [EnableSelf__11CReverbViewFv]
+;   0x066035  CReverbViewFv::DisableSelf  [DisableSelf__11CReverbViewFv]
+;   0x06605d  CReverbViewFv::DrawSelf  [DrawSelf__11CReverbViewFv]
+;   0x0660d1  CReverbViewFRC15SMouseDownEvent::ClickSelf  [ClickSelf__11CReverbViewFRC15SMouseDownEvent]
+;   0x066139  CReverbViewF5PointRC11EventRecord::AdjustCursorSelf  [AdjustCursorSelf__11CReverbViewF5PointRC11EventRecord]
+;   0x06617b  CReverbViewFRl::GetRVIndexFromMIDIPNum  [GetRVIndexFromMIDIPNum__11CReverbViewFRl]
+;   0x06626d  CReverbViewFPUcl::GetValuesFromHeader  [GetValuesFromHeader__11CReverbViewFPUcl]
+;   0x06640d  CReverbViewFv::SetControlList  [SetControlList__11CReverbViewFv]
+;   0x06651f    [__ct__12CFXFilerViewFv]
+;   0x066615    [__dt__12CFXFilerViewFv]
+;   0x0666d9  CFXFilerViewFP8GrafPortP9QDGlobalsP10LCommanderUcsls::InitialiseMESAView  [InitialiseMESAView__12CFXFilerViewFP8GrafPortP9QDGlobalsP10LCommanderUcsls]
+;   0x0667a5  CFXFilerViewFcs::MESAKeyPress  [MESAKeyPress__12CFXFilerViewFcs]
+;   0x0667d1  CFXFilerViewFll::SetContent  [SetContent__12CFXFilerViewFll]
+;   0x066919  CFXFilerViewFR15SMouseDownEventR16MESAShowHelpData::DoClickHelp  [DoClickHelp__12CFXFilerViewFR15SMouseDownEventR16MESAShowHelpData]
+;   0x066971  CFXFilerViewFlPv::ListenToMessage  [ListenToMessage__12CFXFilerViewFlPv]
+;   0x066c4f  CFXFilerViewFv::ActivateSelf  [ActivateSelf__12CFXFilerViewFv]
+;   0x066c8b  CFXFilerViewFv::DeactivateSelf  [DeactivateSelf__12CFXFilerViewFv]
+;   0x066cc9  CFXFilerViewFv::ShowSelf  [ShowSelf__12CFXFilerViewFv]
+;   0x066cef  CFXFilerViewFv::HideSelf  [HideSelf__12CFXFilerViewFv]
+;   0x066d15  CFXFilerViewFv::EnableSelf  [EnableSelf__12CFXFilerViewFv]
+;   0x066d3d  CFXFilerViewFv::DisableSelf  [DisableSelf__12CFXFilerViewFv]
+;   0x066d65  CFXFilerViewFv::DrawSelf  [DrawSelf__12CFXFilerViewFv]
+;   0x066ea3  CFXFilerViewFRC15SMouseDownEvent::ClickSelf  [ClickSelf__12CFXFilerViewFRC15SMouseDownEvent]
+;   0x0670d7  CFXFilerViewF5PointRC11EventRecord::AdjustCursorSelf  [AdjustCursorSelf__12CFXFilerViewF5PointRC11EventRecord]
+;   0x067119  CFXFilerViewFRPP9MacRegion::CreateDragHiliteRgn  [CreateDragHiliteRgn__12CFXFilerViewFRPP9MacRegion]
+;   0x0671bd  CFXFilerViewFUlUlR6FSSpecs::OpenDraggedFile  [OpenDraggedFile__12CFXFilerViewFUlUlR6FSSpecs]
+;   0x06726d  CFXFilerViewFP8GrafPortP19OpaqueDragReferencel::DoAddDragFlavors  [DoAddDragFlavors__12CFXFilerViewFP8GrafPortP19OpaqueDragReferencel]
+;   0x067345  CFXFilerViewFP8GrafPortP19OpaqueDragReferencelPP9MacRegion::DoSetDragRegion  [DoSetDragRegion__12CFXFilerViewFP8GrafPortP19OpaqueDragReferencelPP9MacRegion]
+;   0x067409  CFXFilerViewFP8GrafPortP19OpaqueDragReference5PointUc::DoTrackDragInWindow  [DoTrackDragInWindow__12CFXFilerViewFP8GrafPortP19OpaqueDragReference5PointUc]
+;   0x067517  CFXFilerViewFP19OpaqueDragReferences::DoItemDroppedHere  [DoItemDroppedHere__12CFXFilerViewFP19OpaqueDragReferences]
+;   0x067771  CFXFilerViewFv::CheckDraggedFiles  [CheckDraggedFiles__12CFXFilerViewFv]
+;   0x067bb5  CFXFilerViewFv::Deselect  [Deselect__12CFXFilerViewFv]
+;   0x067bf3  CFXFilerViewFv::SomethingIsSelected  [SomethingIsSelected__12CFXFilerViewFv]
+;   0x067c45  CFXFilerViewFssRlRl::GetFXIndexFromMIDIPNum  [GetFXIndexFromMIDIPNum__12CFXFilerViewFssRlRl]
+;   0x067d71  CFXFilerViewFv::SetFXUsageTable  [SetFXUsageTable__12CFXFilerViewFv]
+;   0x067e13  CFXFilerViewFv::DrawNameList  [DrawNameList__12CFXFilerViewFv]
+;   0x067f9f  CFXFilerViewFlsssPcsss::SendCommandToSampler  [SendCommandToSampler__12CFXFilerViewFlsssPcsss]
+;   0x068133  CFXFilerViewFv::RenameFXFile  [RenameFXFile__12CFXFilerViewFv]
+;   0x068243  CFXFilerViewFsUc::RenameEffect  [RenameEffect__12CFXFilerViewFsUc]
+;   0x0683eb  CFXFilerViewFss::CopyReverb  [CopyReverb__12CFXFilerViewFss]
+;   0x068497  CFXFilerViewFss::CopyEffect  [CopyEffect__12CFXFilerViewFss]
+;   0x06853b  CFXFilerViewFv::SaveFXFileToSampler  [SaveFXFileToSampler__12CFXFilerViewFv]
+;   0x068655  CFXFilerViewFv::SaveFXFileToMac  [SaveFXFileToMac__12CFXFilerViewFv]
+;   0x068981    [__ct__12CAkaiSamplerFv]
+;   0x068a37    [__dt__12CAkaiSamplerFv]
+;   0x068aa7  CAkaiSamplerFv::NullValues  [NullValues__12CAkaiSamplerFv]
+;   0x068b69  CAkaiSamplerFv::GetDefaultKeygroup  [GetDefaultKeygroup__12CAkaiSamplerFv]
+;   0x068bb9  CAkaiSamplerFPUc::ScanForSamplers  [ScanForSamplers__12CAkaiSamplerFPUc]
+;   0x068d23  CAkaiSamplerFPUcUcUcsUcssUcRl::SendExclusiveCommand  [SendExclusiveCommand__12CAkaiSamplerFPUcUcUcsUcssUcRl]
+;   0x068dff  CAkaiSamplerFUcUcsUcssUcRl::SendExclusiveRequest  [SendExclusiveRequest__12CAkaiSamplerFUcUcsUcssUcRl]
+;   0x068ecf  CAkaiSamplerFlUcRl::WaitForReply  [WaitForReply__12CAkaiSamplerFlUcRl]
+;   0x068fa9  CAkaiSamplerFv::BuildProgramList  [BuildProgramList__12CAkaiSamplerFv]
+;   0x06905f  CAkaiSamplerFv::BuildSampleList  [BuildSampleList__12CAkaiSamplerFv]
+;   0x069115  CAkaiSamplerFv::GetSamplerStatus  [GetSamplerStatus__12CAkaiSamplerFv]
+;   0x069259  CAkaiSamplerFsRPPcRPPcUc::GetProgram  [GetProgram__12CAkaiSamplerFsRPPcRPPcUc]
+;   0x069445  CAkaiSamplerFssRPPc::GetKeygroup  [GetKeygroup__12CAkaiSamplerFssRPPc]
+;   0x0694e9  CAkaiSamplerFRPPc::GetMulti  [GetMulti__12CAkaiSamplerFRPPc]
+;   0x0695c5  CAkaiSamplerFUl::FetchDataFromSampler  [FetchDataFromSampler__12CAkaiSamplerFUl]
+;   0x06976d  CAkaiSamplerFP8SGetData::GetData  [GetData__12CAkaiSamplerFP8SGetData]
+;   0x0698a7  CAkaiSamplerFs::SetMIDITimeOut  [SetMIDITimeOut__12CAkaiSamplerFs]
+;   0x0698dd  CAkaiSamplerFP8SGetData::SetData  [SetData__12CAkaiSamplerFP8SGetData]
+;   0x069a39  CAkaiSamplerFlll::SetProgramHeaderValue  [SetProgramHeaderValue__12CAkaiSamplerFlll]
+;   0x069b91  CAkaiSamplerFlll::SetKeygroupHeaderValue  [SetKeygroupHeaderValue__12CAkaiSamplerFlll]
+;   0x069e23  CAkaiSamplerFlll::SetMultiDataValue  [SetMultiDataValue__12CAkaiSamplerFlll]
+;   0x069faf  CAkaiSamplerFs::SetCurrentProgram  [SetCurrentProgram__12CAkaiSamplerFs]
+;   0x06a0af  CAkaiSamplerFs::SetCurrentEffect  [SetCurrentEffect__12CAkaiSamplerFs]
+;   0x06a0e7  CAkaiSamplerFs::SetCurrentReverb  [SetCurrentReverb__12CAkaiSamplerFs]
+;   0x06a11f  CAkaiSamplerFPUc::SetEditGroups  [SetEditGroups__12CAkaiSamplerFPUc]
+;   0x06a167  CAkaiSamplerFss::AddKeygroup  [AddKeygroup__12CAkaiSamplerFss]
+;   0x06a35d  CAkaiSamplerFss::DeleteKeygroupInSpecifiedProgram  [DeleteKeygroupInSpecifiedProgram__12CAkaiSamplerFss]
+;   0x06a3d7  CAkaiSamplerFv::DeleteKeygroup  [DeleteKeygroup__12CAkaiSamplerFv]
+;   0x06a4b7  CAkaiSamplerFPUcs::NewProgram  [NewProgram__12CAkaiSamplerFPUcs]
+;   0x06a649  CAkaiSamplerFPUcs::RenameProgram  [RenameProgram__12CAkaiSamplerFPUcs]
+;   0x06a751  CAkaiSamplerFv::BTSort  [BTSort__12CAkaiSamplerFv]
+;   0x06a7b7  CAkaiSamplerFPUc::DeleteNamedProgram  [DeleteNamedProgram__12CAkaiSamplerFPUc]
+;   0x06a86f  CAkaiSamplerFs::DeleteIndexedProgram  [DeleteIndexedProgram__12CAkaiSamplerFs]
+;   0x06a8ed  CAkaiSamplerFPUc::DeleteNamedSample  [DeleteNamedSample__12CAkaiSamplerFPUc]
+;   0x06a9a5  CAkaiSamplerFs::DeleteIndexedSample  [DeleteIndexedSample__12CAkaiSamplerFs]
+;   0x06aa23  CAkaiSamplerFUc::GetFreeMemory  [GetFreeMemory__12CAkaiSamplerFUc]
+;   0x06aa9f  CAkaiSamplerFUc::SetSoloProgram  [SetSoloProgram__12CAkaiSamplerFUc]
+;   0x06abcd  CAkaiSamplerFv::IsFilterBoardInstalled  [IsFilterBoardInstalled__12CAkaiSamplerFv]
+;   0x06ac61  CAkaiSamplerFsRPPc::GetSampleHeader  [GetSampleHeader__12CAkaiSamplerFsRPPc]
+;   0x06ad11  CAkaiSamplerFsllPs::GetSampleData  [GetSampleData__12CAkaiSamplerFsllPs]
+;   0x06ae09  CAkaiSamplerFPUcs::AcceptSampleHeader  [AcceptSampleHeader__12CAkaiSamplerFPUcs]
+;   0x06aee5  CAkaiSamplerFPUc::DuplicateProgram  [DuplicateProgram__12CAkaiSamplerFPUc]
+;   0x06b1cb  CAkaiSamplerFv::DuplicateKeygroup  [DuplicateKeygroup__12CAkaiSamplerFv]
+;   0x06b363  CAkaiSamplerFv::HasMultiMode  [HasMultiMode__12CAkaiSamplerFv]
+;   0x06b3b9  CAkaiSamplerFv::GetEB16Data  [GetEB16Data__12CAkaiSamplerFv]
+;   0x06b6e3  CAkaiSamplerFPPc::SetEB16Data  [SetEB16Data__12CAkaiSamplerFPPc]
+;   0x06b957  CAkaiSamplerFlll::SetEB16HeaderDataValue  [SetEB16HeaderDataValue__12CAkaiSamplerFlll]
+;   0x06ba3d  CAkaiSamplerFlll::SetEB16AssignDataValue  [SetEB16AssignDataValue__12CAkaiSamplerFlll]
+;   0x06bbc5  CAkaiSamplerFv::GetCurrentFXPtr  [GetCurrentFXPtr__12CAkaiSamplerFv]
+;   0x06bc57  CAkaiSamplerFlll::SetEB16FXDataValue  [SetEB16FXDataValue__12CAkaiSamplerFlll]
+;   0x06bdd5  CAkaiSamplerFlll::SetEB16RVDataValue  [SetEB16RVDataValue__12CAkaiSamplerFlll]
+;   0x06bfa9  CAkaiSamplerFs::TestUnitReady  [TestUnitReady__12CAkaiSamplerFs]
+;   0x06c02d  CAkaiSamplerFv::GetMIDIProgramChange  [GetMIDIProgramChange__12CAkaiSamplerFv]
+;   0x06c067  CAkaiSamplerUtilsFPUcl::GetWord  [GetWord__17CAkaiSamplerUtilsFPUcl]
+;   0x06c0b1  CAkaiSamplerUtilsFPUcl::GetLongWord  [GetLongWord__17CAkaiSamplerUtilsFPUcl]
+;   0x06c121  CAkaiSamplerUtilsFPUcls::SetWord  [SetWord__17CAkaiSamplerUtilsFPUcls]
+;   0x06c179  CAkaiSamplerUtilsFPUcll::SetLongWord  [SetLongWord__17CAkaiSamplerUtilsFPUcll]
+;   0x06c201  CAkaiSamplerUtilsFPUcPPc::IndexOfNameInList  [IndexOfNameInList__17CAkaiSamplerUtilsFPUcPPc]
+;   0x06c28f  CAkaiSamplerUtilsFsRlRl::SemiCentFromTuning  [SemiCentFromTuning__17CAkaiSamplerUtilsFsRlRl]
+;   0x06c42d  CAkaiSamplerUtilsFll::TuningFromSemiCent  [TuningFromSemiCent__17CAkaiSamplerUtilsFll]
+;   0x06c499  CAkaiSamplerUtilsFPUc::CheckNameValidity  [CheckNameValidity__17CAkaiSamplerUtilsFPUc]
+;   0x06c53d  CAkaiSamplerUtilsFPUcPUcPUc::IsSampleUsedInProgram  [IsSampleUsedInProgram__17CAkaiSamplerUtilsFPUcPUcPUc]
+;   0x06c699  CAkaiSamplerUtilsFsPUc::NumToNote  [NumToNote__17CAkaiSamplerUtilsFsPUc]
+;   0x06c71d  CAkaiSamplerUtilsFPsPUc::NoteToNum  [NoteToNum__17CAkaiSamplerUtilsFPsPUc]
+;   0x06c821    [__ct__19CAkaiMIDIDispatcherFv]
+;   0x06c85d    [__dt__19CAkaiMIDIDispatcherFv]
+;   0x06c8ab  CAkaiMIDIDispatcherFPUcUcUc::BuildHeader  [BuildHeader__19CAkaiMIDIDispatcherFPUcUcUc]
+;   0x06c91b  CAkaiMIDIDispatcherFPUcUcUcsUcss::BuildRequest  [BuildRequest__19CAkaiMIDIDispatcherFPUcUcUcsUcss]
+;   0x06ca97  CAkaiMIDIDispatcherFPUcPUcUcUcsUcss::BuildCommand  [BuildCommand__19CAkaiMIDIDispatcherFPUcPUcUcUcsUcss]
+;   0x06cc91  CAkaiMIDIDispatcherFPUcls::Set7BitWord  [Set7BitWord__19CAkaiMIDIDispatcherFPUcls]
+;   0x06ccf5  CAkaiMIDIDispatcherFPUcPUcsl::Nibbleize  [Nibbleize__19CAkaiMIDIDispatcherFPUcPUcsl]
+;   0x06cd73  CAkaiMIDIDispatcherFPUcl::UNNibbleize  [UNNibbleize__19CAkaiMIDIDispatcherFPUcl]
+;   0x06cde1  CAkaiMIDIDispatcherFPUcPl::MIDIDispatchReply  [MIDIDispatchReply__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06d047  CAkaiMIDIDispatcherCFv::GetUnhandledReply  [GetUnhandledReply__19CAkaiMIDIDispatcherCFv]
+;   0x06d087  CAkaiMIDIDispatcherFPUcPCUcl::UnpackIt  [UnpackIt__19CAkaiMIDIDispatcherFPUcPCUcl]
+;   0x06d16b  CAkaiMIDIDispatcherFPUcPl::UnpackMiscProc  [UnpackMiscProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06d293  CAkaiMIDIDispatcherFPUc::UnpackSMPTEProc  [UnpackSMPTEProc__19CAkaiMIDIDispatcherFPUc]
+;   0x06d399  CAkaiMIDIDispatcherFPUcPl::UnpackListProc  [UnpackListProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06d439  CAkaiMIDIDispatcherFPUcPl::UnpackSDataProc  [UnpackSDataProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06d4dd  CAkaiMIDIDispatcherFPUcPl::CheckReplyProc  [CheckReplyProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06d533  CAkaiMIDIDispatcherFPUcPl::UnpackProgramProc  [UnpackProgramProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06d5d9  CAkaiMIDIDispatcherFPUcPl::UnpackKeygroupProc  [UnpackKeygroupProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06d681  CAkaiMIDIDispatcherFPUcPl::UnpackDrumProc  [UnpackDrumProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06d703  CAkaiMIDIDispatcherFPUcPl::UnpackMDataProc  [UnpackMDataProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06d765  CAkaiMIDIDispatcherFPUcPl::UnpackVolumeListProc  [UnpackVolumeListProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06d817  CAkaiMIDIDispatcherFPUcPl::UnpackDirEntryProc  [UnpackDirEntryProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06d903  CAkaiMIDIDispatcherFPUcPl::UnpackFXProc  [UnpackFXProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06da7b  CAkaiMIDIDispatcherFPUcPl::UnpackStatProc  [UnpackStatProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06dbd9  CAkaiMIDIDispatcherFPUcPl::UnpackMultiProc  [UnpackMultiProc__19CAkaiMIDIDispatcherFPUcPl]
+;   0x06dc5b  CAkaiMIDIDispatcherFPUcUcsll::BuildSampleDataRequest  [BuildSampleDataRequest__19CAkaiMIDIDispatcherFPUcUcsll]
+;   0x06dd47  CAkaiMIDIDispatcherFPUc::ConvertASCIIName  [ConvertASCIIName__19CAkaiMIDIDispatcherFPUc]
+;   0x06de27  CAkaiMIDIDispatcherFPUc::ConvertNameToASCII  [ConvertNameToASCII__19CAkaiMIDIDispatcherFPUc]
+;   0x06de81  CAkaiMIDIDispatcherFPUl::SwapLongWord  [SwapLongWord__19CAkaiMIDIDispatcherFPUl]
+;   0x06deed  CAkaiMIDIDispatcherFPs::SwapWord  [SwapWord__19CAkaiMIDIDispatcherFPs]
+;   0x06df33    [__ct__12CS3000SampleFPc]
+;   0x06df75    [__dt__12CS3000SampleFv]
+;   0x06dfbd  CS3000SampleFPUc::Name  [Name__12CS3000SampleFPUc]
+;   0x06e007  CS3000SampleFv::SampleRate  [SampleRate__12CS3000SampleFv]
+;   0x06e045  CS3000SampleFv::StartMarker  [StartMarker__12CS3000SampleFv]
+;   0x06e097  CS3000SampleFv::EndMarker  [EndMarker__12CS3000SampleFv]
+;   0x06e0e7  CS3000SampleFs::LoopStart  [LoopStart__12CS3000SampleFs]
+;   0x06e1a1  CS3000SampleFs::LoopEnd  [LoopEnd__12CS3000SampleFs]
+;   0x06e22b  CS3000SampleFs::LoopDwell  [LoopDwell__12CS3000SampleFs]
+;   0x06e299  CS3000SampleFv::SampleLength  [SampleLength__12CS3000SampleFv]
+;   0x06e2ed  CS3000SampleFv::Tuning  [Tuning__12CS3000SampleFv]
+;   0x06e359  CS3000SampleFv::LoopTuning  [LoopTuning__12CS3000SampleFv]
+;   0x06e38d  CS3000SampleFv::BaseNote  [BaseNote__12CS3000SampleFv]
+;   0x06e3bd  CS3000SampleFv::LoopType  [LoopType__12CS3000SampleFv]
+;   0x06e601  UExtractFromAEDescFRC6AEDescRl::TheInt32  [TheInt32__18UExtractFromAEDescFRC6AEDescRl]
+;   0x06e6bd  UExtractFromAEDescFRC6AEDescRUc::TheBoolean  [TheBoolean__18UExtractFromAEDescFRC6AEDescRUc]
+;   0x06e77d  UExtractFromAEDescFRC6AEDescPUc::ThePString  [ThePString__18UExtractFromAEDescFRC6AEDescPUc]
+;   0x06e863  ConcatPStr  [ConcatPStr__FPUcPCUcs]

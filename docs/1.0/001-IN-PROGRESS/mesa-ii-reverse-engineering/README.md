@@ -7,7 +7,7 @@ Reverse-engineer MESA II's sample data transfer protocol to fix S3000XL sample u
 | Phase | Status | Notes |
 |-------|--------|-------|
 | Phase 1: Disassembly Infrastructure | Mostly Complete | m68k-elf-objdump + annotate_function.py pipeline (1241 funcs indexed). SendAudioBufferToSampler (443 instr) and BuildSampleHeaderFromMAH (224 instr) fully decoded with zero placeholders. Findings: 200-byte Akai header layout, BULK/SRAW/BOFF/UALL emission sequence, SLNGTH at bytes 26-29 in BYTES not words. |
-| Phase 2: Protocol Validation | In Progress | mesa-plug-harness extended with Memory Manager stubs + TagDispatch interception. Live trace captured BULK CDB but for a synthetic call path MESA never actually makes. **Hardware test of the captured bytes failed: no reply, no sample created.** Real sample-header sender is `vtable[0x017c]` (task #17), not `SendData`. SRAW wire bytes still not captured (task #15). UALL handler still not found (task #16). |
+| Phase 2: Protocol Validation | In Progress | Harness Phase 5 trace + AcceptSampleHeader decode (task #17) confirm the BULK dispatch chain: `vtable[0x017c]` → `vtable[0x14]` (SysEx builder) → `CMESASocket::vtable[0x14]` → `CSCSIPlug::SendData` → CDB `0c 00 00 01 96 80`. Hardware test of the captured bytes still fails — failure is in SysEx *content* (SLNGTH encoding or some other validated byte), not the dispatch. Mystery narrowed to `CAkaiSampler::vtable[0x14]` SysEx builder (task #18). SRAW wire bytes still not captured (task #15). UALL handler still not found (task #16). |
 | Phase 3: Bridge Implementation | Not Started | Working upload with correct SLNGTH |
 
 See `SCSI-NOTES.md` (entries dated 2026-04-16) for detailed hardware findings.

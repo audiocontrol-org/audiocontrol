@@ -44,7 +44,8 @@ Goal: Validate the disassembly findings against real hardware with test scripts.
 - [x] Confirm SLNGTH source — set by 200-byte Akai header bytes 26-29 (nibble-encoded from total_byte_length IN BYTES) sent via SDATA opcode 0x0B
 - [x] Test for undocumented vendor-specific SCSI commands — none found; MESA uses standard CDB 0x0C with Akai SysEx framing
 - [x] ~~Hardware-verify BULK finding (task #14)~~ — attempted, FAILED. Sending the harness-captured bytes produces no reply and no sample. The harness Phase 5 trace was of a synthetic IP_Data call path that MESA's real code never makes.
-- [ ] **Decode vtable[0x017c] (task #17)**: the actual SCSI Plug entry MESA uses to send the SDS header. Once decoded, regenerate the BULK test with the correct wire format.
+- [x] ~~Decode vtable[0x017c] (task #17)~~ — done. It's `CAkaiSampler::AcceptSampleHeader` at file 0x06ae09 in the Sampler Editor binary (NOT in the SCSI Plug as initially suspected). Dispatch chain matches the harness Phase 5 trace. See `mesa-ii-analysis/send-sample-header-decoded.md`.
+- [ ] **Decode CAkaiSampler::vtable[0x14] (task #18)**: the SysEx builder called by AcceptSampleHeader. The remaining mystery box — its exact transformation of the 200-byte Akai header determines what bytes go on the wire. Resolve `vtable[0x38]` semantics here too.
 - [ ] **Capture SRAW wire bytes (task #15)**: agent's "would need ASPACK wrap" was an inference, not a finding
 - [ ] **Find UALL handler (task #16)**: not in SendData TagDispatch, uses vtable[0x28]
 - [ ] Document validated protocol specification with message sequence diagrams (after #15/#16/#17)

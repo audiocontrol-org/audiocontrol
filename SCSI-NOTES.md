@@ -814,3 +814,39 @@ environmental"` should have been a flag — `status=-2` on a write that's suppos
 to commit a sample is not "environmental," it's "the call didn't work." Without
 verifying that a sample was actually committed, the trace is just a record of
 what the harness did, not a finding about what MESA does.
+
+### 2026-04-16 (cont.): vtable[0x017c] = CAkaiSampler::AcceptSampleHeader
+
+Decoded statically from `sampler-editor-rsrc.bin` (file 0x06ae09, 174 bytes).
+Full report: `mesa-ii-analysis/send-sample-header-decoded.md`.
+
+**Key correction to yesterday's post-mortem:** the harness Phase 5 BULK trace was
+NOT of a synthetic call path MESA never makes. The dispatch chain is:
+
+```
+AcceptSampleHeader (CAkaiSampler::vtable[0x017c])
+  -> CAkaiSampler::vtable[0x14]  (SysEx builder, builds the 406-byte payload)
+  -> CMESASocket::vtable[0x14]   (=CSCSIPlug::SendData)
+  -> SCSI CDB 0c 00 00 01 96 80 + 406-byte SysEx F0 47 ch 0B 48 [400 nibbles] F7
+```
+
+The terminal CDB and payload framing match what Phase 5 captured.
+
+**Why the BULK hardware test still fails:** the failure must be in the *content*
+of the 400 nibble bytes — most likely the SLNGTH encoding (medium-confidence
+interpretation of `vtable[0x38]` as a 4-nibble-byte encoder for the low 16 bits of
+a 32-bit value), or some byte the device validates that we haven't identified.
+
+**Object hierarchy (corrects earlier inferences):**
+- `CSamplerModule+0xDA4` = `CAkaiSampler*` (NOT `CMESASocket*` as earlier suspected)
+- `CAkaiSampler+0xA2` = `CMESASocket*`
+- `CAkaiSampler` vtable is at `object+2` (2-byte prefix); `CMESASocket` vtable at `object+0`
+
+**Reply path:** AcceptSampleHeader waits for a SDS opcode-0x01 reply with 1000-unit
+timeout via `CAkaiSampler::vtable[0xCC]`. On timeout sentinel (-13001), it calls
+`CMESASocket::vtable[0x24]` to retrieve the pending reply and validates
+`reply[0]==0xF0, reply[1]==0x7E` (standard MIDI universal SysEx prefix).
+`reply[3]` is the device's result byte. Note: my failed test polled for 1.5s with
+no bytes received — so the device didn't even start producing a reply, suggesting
+the device rejected the SysEx before the parsing stage (validates against the
+first ~few bytes of opcode/header content, not just framing).

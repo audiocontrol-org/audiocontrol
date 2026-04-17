@@ -1,0 +1,18 @@
+; ============================================================
+; NOTE: SendSampleHeader is AcceptSampleHeader
+;
+; The function called at vtable[0x017c] on the CAkaiSampler object
+; in SendAudioBufferToSampler (file offset 0x030895) is:
+;
+;   AcceptSampleHeader__12CAkaiSamplerFPUcs
+;
+; Full annotated disassembly: AcceptSampleHeader.annotated.txt
+; Findings document: ../send-sample-header-decoded.md
+;
+; The name "AcceptSampleHeader" reflects MESA's perspective:
+;   "Accept [from the Mac audio layer and deliver to the]
+;    [Akai sampler's] SampleHeader [transfer protocol]"
+;
+; This file exists to satisfy the task deliverable name
+; SendSampleHeader.annotated.txt. Its content is in AcceptSampleHeader.annotated.txt.
+; ============================================================
