@@ -11,6 +11,43 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-16 (cont.): SwapLongWord Decode; BULK Test Still Fails — Preamble Hypothesis (Task #19)
+
+### Feature: mesa-ii-reverse-engineering
+### Worktree: audiocontrol-mesa-ii-reverse-engineering
+
+### Goal
+Decode `CMESASocket::vtable[0x38]` — the encoder BuildSampleHeaderFromMAH uses 6 times to populate the 32-bit fields (SLNGTH, loop_start, loop_end, sustain_end, sustain_length) in the 200-byte Akai header. Its "nibble-encode-in-place" interpretation was behavioral inference only; instruction-level decode needed.
+
+### Accomplished
+- **Object identity corrected.** The vtable[0x38] calls in BuildSampleHeaderFromMAH dispatch through `CSamplerModule@(0xDA4)`, which is a `CAkaiSampler*` (not a separate `CMESASocket*`). The CAkaiSampler vtable at file 0x06f74b was dumped via the same anchor technique that worked for task #18 (find a known code address, then read the whole table).
+- **vtable[0x38] resolved:** file 0x06f74b slot 14 (0x38/4) → runtime 0x00045f2a → file 0x06de81 → `SwapLongWord__19CAkaiMIDIDispatcherFPUl`. High confidence from vtable dump.
+- **SwapLongWord is a 32-bit byte reversal** (big-endian → little-endian), applied in place to the 32-bit value at the argument pointer. For SLNGTH=4096 (0x00001000): output bytes are `00 10 00 00`.
+- **Test updated:** `vtable38Encode` replaced with `swapLongWord`. The 200-byte header's SLNGTH field at offsets 26-29 now contains `00 10 00 00` (correct per MESA's encoding) instead of the earlier guessed `00 00 00 01`.
+- **BULK test re-ran against live S3000XL:** zero reply, no sample created. Framing AND content are now byte-perfect to MESA's output.
+- Deliverables: `cmesasocket-vtable38-decoded.md` (findings), `disassembly-full/CMESASocket-vtable38-encoder.annotated.txt` (SwapLongWord disassembly — misleadingly named for the question being answered, not the class).
+
+### Didn't Work
+- **BULK test still silent after correct encoding.** At this point the SysEx we send is byte-identical to what MESA's code produces. Something else is required.
+- Re-reading `sampler-editor-decoded.md` revealed the missing piece: in SCSI mode, MESA sends a **preamble SDS dump header via `vtable[0x0030]`** BEFORE the BULK loop (at file 0x030739-0x03075f). The test never sends this. New hypothesis: SDATA opcode 0x0B may be an UPDATE command requiring a pre-existing sample slot; the preamble creates the slot.
+
+### Course Corrections
+- **[FABRICATION — caught in review]** The earlier `build-sample-header-decoded.md` section "vtable[0x38] — Identification" was labeled "high (behavior), low (name)" and asserted "vtable[0x38] = nibble-encode-in-place" based on behavioral pattern. Today's instruction-level decode proved that's wrong — it's `SwapLongWord`, a completely different operation. Medium-confidence inferences without decode should be marked much more pessimistically, especially when downstream analysis builds on them.
+- **[PROCESS — self-correction]** After test #2 (with corrected BuildCommand format) failed silently, I could have jumped to decoding vtable[0x38]. Good call to do that first rather than guess alternate SLNGTH encodings. The "decode, don't guess" preference continues to pay off.
+
+### Quantitative
+- User messages: ~4
+- Commits: 2 (task #19 artifacts, session-end docs)
+- Tasks completed: 1 (#19)
+- New tasks created: 1 (#20 — preamble hypothesis)
+
+### Insights
+1. **The "red herring vtable" pattern.** The agent initially named the output file `CMESASocket-vtable38.annotated.txt` thinking it was a CMESASocket method. It was actually CAkaiSampler — because the `this@(3492)` pointer in BuildSampleHeaderFromMAH points to a CAkaiSampler instance (the Sampler's embedded Akai-protocol dispatcher), NOT a separate socket. Object-hierarchy assumptions can be wrong; always verify by tracing the pointer source.
+2. **Hypotheses compound — revisit them.** "The harness Phase 5 trace was synthetic" (Session 4 hypothesis) was disproven by vtable[0x017c] decode (Session 5). "vtable[0x38] is nibble-encode" (Session 3 inference) was disproven by vtable[0x14] decode (Session 6). Now "SLNGTH encoding was wrong" (Session 6 hypothesis) is disproven by vtable[0x38] = SwapLongWord (Session 7). Each correction narrowed the remaining mystery. The pattern: don't stop at "confirmed plausible"; keep decoding.
+3. **"Silence" as signal.** The device's zero-byte response to byte-perfect SysEx strongly suggests early-stage validation rejection (before reply generation). That in turn suggests the device state is wrong — i.e., the sample doesn't exist. Points directly at the preamble hypothesis.
+
+---
+
 ## 2026-04-16 (cont.): Decode vtable[0x14] — BuildCommand; BULK Test Still Fails (Task #18)
 
 ### Feature: mesa-ii-reverse-engineering

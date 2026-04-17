@@ -888,3 +888,39 @@ Task #19 opens to decode it.
 for CAkaiSampler. BUT `BuildSampleHeaderFromMAH`'s vtable[0x38] calls go through
 `this@(3492)` which is a CMESASocket instance in the SCSI Plug binary — a DIFFERENT
 vtable. Its behavior remains unresolved until #19.
+
+### 2026-04-16 (cont.): SwapLongWord Resolved; BULK Test Still Fails
+
+`CMESASocket::vtable[0x38]` was a red herring — the 6 `vtable[0x38]` calls in
+`BuildSampleHeaderFromMAH` dispatch through `CSamplerModule@(0xDA4)` which is a
+`CAkaiSampler*`, not a separate CMESASocket. The actual function is
+`CAkaiMIDIDispatcher::SwapLongWord` at file 0x06de81.
+
+**SwapLongWord:** 32-bit byte reversal (big-endian → little-endian) in place.
+- `SwapLongWord(0x00001000)` → `0x00100000` (little-endian byte order `00 10 00 00`)
+- `SwapLongWord(0)` → `0` (zero fields unchanged)
+
+Full decode: `mesa-ii-analysis/cmesasocket-vtable38-decoded.md`.
+
+**Test updated** (`test-bulk-akai-header.ts`): `swapLongWord(SLNGTH=4096)` puts
+bytes `00 10 00 00` at header offsets 26-29, matching MESA's encoding.
+
+**Hardware test result:** still silent, no sample created.
+
+**Interpretation:** At this point both the SCSI framing (from BuildCommand decode,
+task #18) and the content encoding (from SwapLongWord decode, task #19) are
+byte-perfect to what MESA's code produces. The device's total silence suggests
+early validation rejection — likely the sample slot doesn't exist.
+
+**New hypothesis:** SDATA opcode 0x0B is an UPDATE command, not a CREATE. MESA's
+SCSI-mode flow (sampler-editor-decoded.md at 0x030739-0x03075f) sends a preamble
+SDS dump header via `vtable[0x0030]` BEFORE the BULK loop. Our test omits this.
+Without a pre-existing sample slot, SDATA has nothing to update → device drops
+the message.
+
+This aligns with the existing Theory B finding (Session 8) that sample creation
+on the S3000XL requires standard SDS dump header + at least one data packet.
+
+**Next:** test the preamble hypothesis directly by adding SDS create to the test
+before the BULK SDATA, OR decode vtable[0x0030] to see what exact preamble MESA
+sends. Tracked in task #20.
