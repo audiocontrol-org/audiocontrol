@@ -706,6 +706,37 @@ Not yet tested:
 - `test-c-fixed.ts` — Theory C validation
 - `test-sdata-slngth.ts` — SDATA SLNGTH write test
 
+### 2026-04-16: MESA II SCSI Plug Phase 5 — SEND_FUNC_SLOT Trace
+
+Stubbed full Mac Memory Manager in the mesa-plug-harness, ran BULK/SRAW/BOFF/UALL
+through `SendData` with real hardware forwarding.
+
+**BULK (SDATA) confirmed CDB:**
+```
+0c 00 00 01 96 80
+```
+MIDI Send, 406 bytes, reply-expected flag. Payload = `F0 47 [ch] 0B 48 [400 nibble bytes] F7`.
+
+**SRAW:** Calls SEND_FUNC_SLOT with flag=1, audio_byte_count at SP+12, audio_buf_ptr at SP+20.
+No CDB issued by the harness — SRAW audio would need ASPACK wrapping. The plug confirms
+SRAW goes through CDB 0x0C (same `JSR $1106E` as BULK), but the flag byte distinguishes
+the path inside the transport function.
+
+**BOFF:** No MIDI CDB. Calls HUnlock + DisposeHandle on internal handle, then a reconnect
+ping at address `0x274`, then `SCSIAtomic2` ($A31E) to re-acquire SCSI access.
+
+**UALL:** Not in SendData's TagDispatch table. Must use a different vtable entry.
+
+**Key insight:** `0x1106E` in the unpatched binary is `BRA $001160` (error path). In real
+Mac OS use, `Open()` patches this address with a JSR/JMP to the actual SCSI MIDI transport.
+Our harness intercepts at this address to simulate the patched transport.
+
+**D3 is the return code accumulator.** `MOVE.W #$D505, D3` before the send is a
+pre-call sentinel that gets overwritten by `MOVE.W D0, D3` immediately after the JSR
+returns. D3=0 = noErr is correct behavior, not register corruption.
+
+Trace log archived: `docs/1.0/001-IN-PROGRESS/mesa-ii-reverse-engineering/mesa-ii-analysis/traces/senddata-bulk-sraw-boff-trace.log`
+
 ---
 
 ## 2026-04-10 16:00 PDT: ASPACK End-to-End — Multi-Chunk, Bridge, Web Editor

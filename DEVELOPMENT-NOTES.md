@@ -11,6 +11,60 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-16: MESA II SCSI Plug Phase 5 — SEND_FUNC_SLOT Trace (Session 9)
+
+### Feature: mesa-ii-reverse-engineering
+### Worktree: audiocontrol-mesa-ii-reverse-engineering
+
+### Goal
+Get past `JSR $10d54` in SendData by stubbing Mac Memory Manager traps, trace BULK/SRAW/BOFF
+execution paths through to the SCSI wire, and capture actual CDB bytes emitted per tag type.
+
+### Accomplished
+- **Full Memory Manager stubs in harness**: NewHandle, HLock/HUnlock, DisposeHandle,
+  GetHandleSize, SetHandleSize, NewPtr/NewPtrClear, DisposePtr, ResrvMem, PurgeSpace,
+  _BlockMove — all backed by a fake heap at 0x00800000.
+- **SEND_FUNC_SLOT intercept at `PLUG_CODE_BASE + 0x106E`**: intercepts the patchable
+  send-function slot (which contains `BRA $001160` in the unpatched binary). Forwards
+  BULK SysEx via SCSI CDB 0x0C.
+- **Correct BULK IP_Data layout discovered**: IP_Data+4 = SysEx ptr (not byte count).
+  Evidence: `MOVEA.L D6, A0; CMPI.B #$F0, (A0)` at `0x10f70` uses D6 = IP_Data+4 as a ptr.
+- **SDATA SysEx builder** (`build_sdata_sysex`): builds `F0 47 ch 0B 48 [400 nibble bytes] F7`.
+- **BULK CDB confirmed**: `0c 00 00 01 96 80` — MIDI Send, 406 bytes, reply expected.
+- **SRAW stack args confirmed**: flag=1, SP+12=audio_byte_count, SP+20=audio_buf_ptr.
+- **BOFF path confirmed**: calls HUnlock+DisposeHandle+reconnect ping+SCSIAtomic2, no MIDI CDB.
+- **D3 behavior clarified**: D3 = error return accumulator. Pre-call `0xD505` is intentionally
+  overwritten by `MOVE.W D0, D3` immediately after JSR returns. D3=0 = noErr is correct.
+- **UALL confirmed not in TagDispatch table**: halts cleanly with "UNHANDLED tag".
+- Full trace log written to `traces/senddata-bulk-sraw-boff-trace.log`.
+- `plug-bulk-trace.md` sections 9-13 updated with confirmed findings.
+
+### Didn't Work
+- SRAW SCSI send not implemented (would need ASPACK wrapping — deferred as out of scope for
+  this investigation phase).
+- BULK SCSI forward returned status=-2 because MIDI mode was already active from Phase 3
+  tests (lock state). CDB bytes are correct; the status failure is environmental.
+
+### Course Corrections
+None in this session (sub-agent role; parent agent reviewed diff before committing).
+
+### Quantitative
+- User messages: N/A (sub-agent session)
+- Commits: 1
+- User corrections: 0
+
+### Insights
+1. **`0x1106E` is a patchable slot, not a function.** The binary contains `BRA $001160` at
+   that address. In real use, Open() patches this with a JSR/JMP to the SCSI MIDI transport.
+   The intercept approach correctly simulates this patching.
+2. **D3 overwrite after JSR is by design.** The pattern is set-sentinel → JSR → capture
+   return-in-D3 → test D3. The sentinel is only used on the error-before-JSR paths.
+3. **IP_Data field semantics are tag-dependent.** BULK and SRAW use the same struct layout
+   differently. The plug uses D6 (loaded from IP_Data+4) as a SysEx pointer for BULK and
+   as an audio byte count for SRAW.
+
+---
+
 ## 2026-04-16: ASPACK Upload SLNGTH Bug Investigation (Session 8)
 
 ### Feature: akai-ux-improvement
