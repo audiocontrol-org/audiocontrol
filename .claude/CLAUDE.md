@@ -2,6 +2,17 @@
 
 TypeScript monorepo for audio device control, MIDI communication, and web-based editors for vintage samplers and synthesizers. Uses pnpm workspaces with Vitest for testing.
 
+This file is the Claude equivalent of the workspace-level `AGENTS.md`. Keep both in sync while the repo supports both agents.
+
+## Canonical Sync Path
+
+Shared repo guidance must stay aligned between `AGENTS.md` and `.claude/CLAUDE.md`.
+
+- Start edits in whichever file is more natural for the current agent session
+- Before finishing, mirror the same substantive guidance into the counterpart file
+- Preserve only differences that are explicitly tied to real tool constraints
+- If a difference is intentional, say so at the point of divergence instead of letting it look accidental
+
 ## Session Lifecycle
 
 ### Starting a Session
@@ -63,6 +74,8 @@ Review changes against project standards:
 ## Sub-Agent Delegation
 
 Delegate to sub-agents proactively — don't wait for the user to ask. The main agent should orchestrate; sub-agents should do the work.
+
+This is an intentional difference from `AGENTS.md`, which restricts Codex sub-agent use to cases where the user explicitly asks for delegation, sub-agents, or parallel agent work.
 
 | Task Pattern | Agent | Why |
 |-------------|-------|-----|
