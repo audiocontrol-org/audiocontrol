@@ -86,6 +86,41 @@ cleanly.
   `ActivateThisSocket(1)` before later sampler operations. This makes the direct harness
   gap larger and more structural than "missing a preamble packet."
 
+- Slot `0x30` argument semantics
+  Claude baseline:
+  the branch now identifies slot `0x30` as `ActivateThisSocket(Uc)`, but the byte
+  argument meaning is still not modeled concretely.
+  Codex finding:
+  `ActivateModule` and `OpenModule` call slot `0x30` with `1`, while `DeactivateModule`
+  calls it with `0`. That pushes the argument away from any packet/opcode reading and
+  toward plain activation-state semantics.
+
+- `OpenModule` nearby module-state bytes
+  Claude baseline:
+  active docs do not yet model the module-side fields adjacent to the stored plug IDs.
+  Codex finding:
+  `OpenModule` writes `this+0xdaa = 1` only on successful `'MIDI'` `ConnectToPlug(...)`
+  return, then uses `this+0xda0` to choose between the plug IDs stored at `this+0xd98`
+  and `this+0xd9c`. That suggests separate fields for connection availability and active
+  transport selection.
+
+- `CSamplerModule+0xda0` meaning
+  Claude baseline:
+  active docs do not yet assign a concrete meaning to the byte used for plug choice.
+  Codex finding:
+  nonzero `this+0xda0` selects the `'MIDI'` plug in `OpenModule`, and the same nonzero
+  path triggers `SCSIOnlyWarning`. The cleanest current read is "MIDI-selected / not
+  SCSI" transport mode.
+
+- `CSamplerModule+0xb1` scope
+  Claude baseline:
+  active docs discuss the save/restore byte in `SendAudioBufferToSampler` only.
+  Codex finding:
+  `SendAudioFileToSampler` also saves `this+0xb1`, conditionally forces
+  `ActivateThisSocket(1)`, and restores the saved byte through slot `0x30` afterward.
+  That makes `+0xb1` a cross-upload cached activation-state field, not a one-off local
+  quirk.
+
 ### Unresolved
 
 - 200-byte Akai header field encoding at offsets 26-47

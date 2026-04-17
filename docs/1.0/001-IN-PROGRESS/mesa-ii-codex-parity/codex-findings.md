@@ -176,6 +176,50 @@ correct. Every finding should distinguish direct evidence from inference.
   A direct `CSCSIPlug::SendData('BULK')` harness bypasses all three layers of setup, not
   just the later upload-specific call sequence inside `SendAudioBufferToSampler`.
 
+- Finding 10: `OpenModule` and `DeactivateModule` add two more concrete state clues:
+  `this+0xdaa` appears to track successful MIDI-plug connection, and slot `0x30`
+  clearly uses `0`/`1` as activation-state values.
+  Evidence:
+  in `OpenModule` at `0x02a645-0x02a66d`, the `'MIDI'` `ConnectToPlug(...)` call is
+  followed by `moveb #1,%a2@(3498)` at `0x02a669` only when the return code is zero.
+  The same function then performs the `'SCSI'` `ConnectToPlug(...)` call, checks
+  `this+0x0ba` at `0x02a68b`, and selects between the stored plug IDs at `this+0xd98`
+  and `this+0xd9c` based on `this+0xda0` before calling `SelectPlug(...)`.
+  Separately, `DeactivateModule` at `0x02a93f-0x02a9d7` performs the same message
+  prologue as `ActivateModule`, but then calls socket slot `0x30` with byte `0`
+  instead of `1`.
+  Interpretation:
+  `OpenModule` is keeping at least two distinct module-side pieces of socket state:
+  one byte near the plug IDs that records successful MIDI availability, and another byte
+  at `this+0xda0` that chooses the active plug. The slot-`0x30` parameter is now best
+  read as an activation-state value, because both `ActivateModule` and `OpenModule` use
+  `1` while `DeactivateModule` uses `0`.
+
+- Finding 11: the `this+0xb1` save/restore pattern is not specific to
+  `SendAudioBufferToSampler`; `SendAudioFileToSampler` repeats it almost exactly.
+  Evidence:
+  `CSamplerModule::SendAudioFileToSampler` at `0x02ec83` begins with
+  `moveb %a0@(177),%fp@(-511)` at `0x02ec93`, conditionally forces slot `0x30` with
+  byte `1` at `0x02ecb3-0x02ecc9` when `this+0xb0` is zero, performs the same Akai
+  header build plus `BULK` transfer structure seen in `SendAudioBufferToSampler`, and
+  then restores the saved byte through slot `0x30` at `0x02f24f-0x02f263`.
+  Interpretation:
+  `CSamplerModule+0xb1` is better modeled as reusable cached socket-activation state
+  across multiple upload paths, not as a temporary local detail of one function.
+
+- Finding 12: `CSamplerModule+0xda0` is very likely the module's transport selector,
+  where nonzero means MIDI-selected / not-SCSI.
+  Evidence:
+  `OpenModule` tests `this+0xda0` at `0x02a695` and, when nonzero, chooses the stored
+  `'MIDI'` plug ID from `this+0xd98`; otherwise it chooses the `'SCSI'` plug ID from
+  `this+0xd9c`.
+  `SCSIOnlyWarning` at `0x030d0b` tests the same byte at `0x030d13` and, when nonzero,
+  displays warning `143` then returns `0`; when zero it returns `1` without warning.
+  Interpretation:
+  `this+0xda0` is not just "which plug object to use"; it likely encodes whether the
+  module is in MIDI mode versus SCSI mode. That aligns with the warning behavior and the
+  earlier `OpenModule` selection logic.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
@@ -185,9 +229,13 @@ correct. Every finding should distinguish direct evidence from inference.
 - How does `CSamplerModule+0xb1` relate to `CMESASocket+0x3c`? The current trace shows
   save/restore behavior across those fields, but not whether they are the same concept
   mirrored at two layers or merely correlated state.
+- Is `CSamplerModule+0xdaa` specifically a "MIDI plug connected" flag, and if so where
+  is it consumed outside `OpenModule`?
 - What exactly is stored at `CSamplerModule+0xd98` and `+0xd9c` after `OpenModule`
-  connects the `'MIDI'` and `'SCSI'` plugs, and how does `this+0xda0` choose between
-  them?
+  connects the `'MIDI'` and `'SCSI'` plugs?
+- Are there any write sites for `CSamplerModule+0xda0` in the checked-in artifacts, or
+  is its MIDI-vs-SCSI meaning only visible through downstream reads like `OpenModule`
+  and `SCSIOnlyWarning`?
 - Is the remaining hardware failure explained entirely by the missing socket-level
   pre/post sequence, or is there still a content-byte mismatch in the 200-byte header?
 - What exactly does the `CSamplerModule`-side `UALL` dispatch at `0x030c93` signal to
