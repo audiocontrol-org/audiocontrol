@@ -341,6 +341,27 @@ correct. Every finding should distinguish direct evidence from inference.
   `+0xb0`, `+0xb1`, or `+0xda0`. It narrows the search by eliminating another nearby
   settings-related false lead.
 
+- Finding 20: `CSamplerModule+0xda4` is only observed as a read-side installed
+  dependency in the current primary artifacts, not as a locally initialized field.
+  Evidence:
+  direct search across the aligned constructor-to-`OpenModule` and post-`OpenModule`
+  slices finds many reads of `this+0xda4` (`movel %a2@(3492),...`, `moveal %a2@(3492),...`,
+  `tstl %a2@(3492)`), but no concrete destination-side store to `+0xda4`.
+  The same pattern holds in the broader checked-in disassembly coverage: the reliable
+  matches are null checks and call-site reads, not writes.
+  Representative read-side use includes `GetValue__15CGraphicControlFUc` at `0x02d10b`,
+  which first checks `tstl %a2@(3492)` and then dispatches through the object loaded
+  from `+0xda4`.
+  Another representative use at `0x02abf3` loads `this+0xda4` into `%a0`, then passes
+  `a0+8` into a later virtual-style dispatch, which is consistent with the earlier
+  `CAkaiSampler`/dispatcher object-chain model.
+  Interpretation:
+  in the current primary-artifact set, `+0xda4` behaves like an already-installed
+  collaborator owned by code outside the traced sampler-module slices. That strengthens
+  the broader ownership conclusion: the true creation/installation path likely sits
+  outside the currently aligned `CSamplerModule` windows, just like the missing first
+  writes for `+0xb0`, `+0xb1`, and default `+0xda0`.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

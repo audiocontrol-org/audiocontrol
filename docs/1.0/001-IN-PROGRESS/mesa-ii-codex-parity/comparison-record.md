@@ -151,6 +151,9 @@ cleanly.
   The nearby `SPRF` path also looks unrelated: `ReadPrefsFile` writes `+0xb7c` and
   copies `+0xb32` into `+0xb7e`, which points to a preferences/settings block rather
   than the missing transport-state bytes.
+  The sibling collaborator field `+0xda4` shows the same boundary pattern: in the
+  current artifact set it is repeatedly read, null-checked, and dispatched through, but
+  still has no observed local write site inside the traced `CSamplerModule` windows.
 
 ### Unresolved
 
