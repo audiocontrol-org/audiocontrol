@@ -1,0 +1,89 @@
+; ============================================================
+; Function: CMESAPlugIn::ActivateSocket
+;   Mangled: ActivateSocket__11CMESAPlugInFP10SocketInfo
+;   File offset: 0x000a5e - 0x000ab4 (86 bytes)
+;   Binary: scsi-plug-rsrc.bin
+; ============================================================
+; CLASS IDENTITY VERIFIED:
+;   This is CMESAPlugIn (scsi-plug binary). The vtable at object+0 confirms CMESAPlugIn.
+;   Compare: in sampler-editor, CMESASocket also stores vtable at object+0 — different class.
+;
+; BOTTOM-LINE: This function is purely in-memory. It updates three fields in CMESAPlugIn's
+; slot array. NO SCSI calls, NO A-traps for I/O, NO wire bytes emitted.
+;
+; CALLED FROM:
+;   CMESAPlugIn::DoMESACommand (0x0089a) dispatches here for ACTIVATE-type MESACommands.
+;   Which is itself called by CMESASocket::ActivateThisSocket (sampler-editor 0x05a0a7)
+;   through the function pointer installed at CMESASocket.slot[idx].fn_ptr.
+;
+; SIGNATURE:
+;   short CMESAPlugIn::ActivateSocket(CMESAPlugIn* this, SocketInfo* info)
+;   where SocketInfo is the MESACommand struct built by ActivateThisSocket (10 bytes at A4+12482)
+;
+; OFFSET ENCODING NOTE:
+;   Brief extension word displacements are shown as HEX without 0x prefix by m68k-elf-objdump.
+;   16-bit displacements are shown as DECIMAL.
+;   So: a1@(60,d0:l) = this[60 decimal + D0], but a1@(62,%d0:l) brief form 62 = 0x3e = 62 decimal.
+;   This function uses both forms consistently.
+; ============================================================
+
+  000a5e:  4e56 0000             linkw %fp,#0
+  000a62:  2f0b                  movel %a3,%sp@-      ; save A3
+  000a64:  226e 0008             moveal %fp@(8),%a1   ; A1 = CMESAPlugIn* this
+  000a68:  266e 000c             moveal %fp@(12),%a3  ; A3 = SocketInfo* (MESACommand)
+  000a6c:  7200                  moveq #0,%d1         ; D1 = slot index = 0
+  000a6e:  6034                  bras 0xaa4           ; → loop check
+
+  ; LOOP BODY: scan slots for matching socket ID
+  000a70:  702e                  moveq #46,%d0        ; D0 = 46 (slot stride)
+  000a72:  c1c1                  mulsw %d1,%d0        ; D0 = 46 * slot_index
+  000a74:  2031 0862             movel %a1@(62,%d0:l),%d0  ; D0 = plug->slot[idx].socket_id
+  000a78:  b0ab 0026             cmpl %a3@(38),%d0    ; compare with SocketInfo.socket_id (at +38)
+  000a7c:  6624                  bnes 0xaa2           ; no match → increment and try next
+
+  ; MATCH FOUND: perform three in-memory writes
+  000a7e:  702e                  moveq #46,%d0
+  000a80:  c1c1                  mulsw %d1,%d0        ; D0 = 46 * idx
+  000a82:  33ab 0024 0860        movew %a3@(36),%a1@(60,%d0:l)
+                                 ; plug->slot[idx].activation_code = SocketInfo[36] (word)
+                                 ; SocketInfo[36] = the byte arg passed to ActivateThisSocket
+                                 ; (stored at CMESASocket.this[60] = a2@(60) before the call)
+
+  000a88:  702e                  moveq #46,%d0
+  000a8a:  c1c1                  mulsw %d1,%d0        ; D0 = 46 * idx
+  000a8c:  23ab 002a 0866        movel %a3@(42),%a1@(66,%d0:l)
+                                 ; plug->slot[idx].buffer_ptr = SocketInfo[42] (long)
+                                 ; This is CMESASocket.this[62] (the buffer pointer field)
+
+  000a92:  702e                  moveq #46,%d0
+  000a94:  c1c1                  mulsw %d1,%d0        ; D0 = 46 * idx
+  000a96:  2071 0866             moveal %a1@(66,%d0:l),%a0  ; A0 = buffer_ptr (just stored)
+  000a9a:  42a8 0010             clrl %a0@(16)        ; buffer_ptr[16] = 0  (clears a status/counter)
+  000a9e:  7000                  moveq #0,%d0         ; return 0 (success)
+  000aa0:  600e                  bras 0xab0           ; → epilog
+
+  ; LOOP INCREMENT
+  000aa2:  5241                  addqw #1,%d1         ; idx += 1
+  000aa4:  3041                  moveaw %d1,%a0       ; LOOP CHECK: A0 = idx as address
+  000aa6:  b1e9 0038             cmpal %a1@(56),%a0   ; compare with plug.socket_count
+  000aaa:  6dc4                  blts 0xa70           ; if idx < count → loop body
+
+  ; NOT FOUND
+  000aac:  303c d504             movew #-11004,%d0    ; return error -11004
+
+  000ab0:  265f                  moveal %sp@+,%a3     ; restore A3
+  000ab2:  4e5e                  unlk %fp
+  000ab4:  4e75                  rts
+
+; ============================================================
+; EFFECT SUMMARY:
+;   On success: three in-memory writes to CMESAPlugIn slot array.
+;   On error:   returns -11004, no writes.
+;   Wire bytes emitted: NONE.
+;
+; FIELD LAYOUT of CMESAPlugIn slot array (base at plug+56, stride 46):
+;   slot[n] + 0  (plug@60+46n): socket_id (long) — used for lookup
+;   slot[n] + 4  (plug@60+46n+4): activation_code (word) — written here
+;   slot[n] + 6  (plug@60+46n+6): (unknown, not accessed here)
+;   slot[n] + 10 (plug@66+46n):   buffer_ptr (long) — written here; buffer[16] zeroed
+; ============================================================

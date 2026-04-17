@@ -1,0 +1,206 @@
+; ============================================================
+; Function: CMESASocket::ConnectToPlug
+;   Mangled: ConnectToPlug__11CMESASocketFPFP11MESACommand_vUlRl
+;   File offset: 0x059e4b - 0x05a019 (462 bytes active code + data)
+;   Binary: sampler-editor-rsrc.bin
+; ============================================================
+; CLASS IDENTITY VERIFIED:
+;   vtable at object+0 (from ctor 0x059d27: movel a0, a2@). This is CMESASocket.
+;   Not CAkaiSampler (vtable at object+2) or CAkaiMIDIDispatcher.
+;
+; PURPOSE:
+;   Registers a plug (SCSI Plug, MIDI Plug, etc.) with this socket.
+;   Queries the plug's socket descriptor array via the handler callback,
+;   then copies matching descriptors into CMESASocket's internal slot array.
+;
+; KEY ENCODING NOTE:
+;   m68k-elf-objdump prints 16-bit (d16) displacements as DECIMAL.
+;   It prints 8-bit brief-extension-word displacements as HEXADECIMAL without 0x prefix.
+;   Example: a2@(66) means this[66 decimal]. But a2@(52,%d0:l) means this[0x52 decimal=82].
+;
+; SIGNATURE (from mangled name):
+;   short CMESASocket::ConnectToPlug(
+;       CMESASocket* this,              fp@(8)
+;       void (*handler)(MESACommand*),  fp@(12) -- the plug's DoMESACommand callback
+;       unsigned long plug_id,          fp@(16) -- ID of the plug to connect
+;       long& out_slot_index            fp@(20) -- reference to output slot number
+;   )
+;
+; JSUBR NOTES:
+;   jsr 0x116 = __divsi3 (32-bit signed divide, D0/D1 → D0)
+;     Used at entry to compute byte offset into slot array: D0 = slot_count / 48 = 0 for first
+;   jsr 0x1a6 = __mulsi3 (32-bit signed multiply, D0*D1 → D0)
+;     Not used in this function.
+; ============================================================
+
+  059e4b:  4e56 ffe8             linkw %fp,#-24
+  059e4f:  48e7 1f30             moveml %d3-%d7/%a2-%a3,%sp@-
+  059e53:  246e 0008             moveal %fp@(8),%a2      ; A2 = CMESASocket* this
+  059e57:  2a2e 0010             movel %fp@(16),%d5      ; D5 = plug_id
+  059e5b:  266e 0014             moveal %fp@(20),%a3     ; A3 = &out_slot_index
+  059e5f:  3c3c d508             movew #-11000,%d6       ; D6 = default error code
+  059e63:  7e01                  moveq #1,%d7            ; D7 = "first_time" flag
+  059e65:  4a93                  tstl %a3@               ; is out_slot_index == NULL?
+  059e67:  6720                  beqs 0x59e89            ; yes → skip existing-match check
+
+  ; PHASE 1: Check if plug_id already registered
+  059e69:  7400                  moveq #0,%d4            ; D4 = loop counter
+  059e6b:  6014                  bras 0x59e81
+  059e6d:  7030                  moveq #48,%d0           ; slot stride = 48 bytes
+  059e6f:  c1c4                  mulsw %d4,%d0           ; D0 = 48 * D4
+  059e71:  2032 084e             movel %a2@(4e,%d0:l),%d0 ; D0 = slot[D4].plug_id (at slot_base+0x4e-0x34=0x1a offset?)
+                                 ; NOTE: 0x4e brief = 78 decimal; slot_base = this[82]; 78-82 = -4?
+                                 ; Actually: a2@(4e,d0:l) where D0=48*D4, so this[0x4e + 48*D4]
+                                 ; = this[78 + 48*D4]. plug_id is at +78 from object base for slot 0.
+  059e75:  b093                  cmpl %a3@,%d0           ; compare with *out_slot_index (existing slot id?)
+  059e77:  6606                  bnes 0x59e7f
+  059e79:  7000                  moveq #0,%d0            ; found: return 0 (already connected)
+  059e7b:  6000 0196             braw 0x5a013
+  059e7f:  5244                  addqw #1,%d4
+  059e81:  3044                  moveaw %d4,%a0
+  059e83:  b1ea 0046             cmpal %a2@(70),%a0      ; compare with this[70] = slot_count
+  059e87:  6de4                  blts 0x59e6d
+
+  ; PHASE 2: Query plug for its socket descriptors
+  059e89:  4aae 000c             tstl %fp@(12)           ; handler callback == NULL?
+  059e8d:  6700 0180             beqw 0x5a00f
+
+  059e91:  41ec 30d6             lea %a4@(12502),%a0     ; A0 → "ConnectToPlug" name string
+  059e95:  43ee ffe8             lea %fp@(-24),%a1       ; A1 → local MESACommand struct
+  059e99:  22d8                  movel %a0@+,%a1@+       ; copy 10 bytes (5 ops: 4+4+2)
+  059e9b:  22d8                  movel %a0@+,%a1@+
+  059e9d:  32d8                  movew %a0@+,%a1@+
+  059e9f:  41ee fffc             lea %fp@(-4),%a0        ; A0 = &local ptr (fp@(-4))
+  059ea3:  2d48 ffee             movel %a0,%fp@(-18)     ; fp@(-18) = &fp@(-4) (output ptr location)
+
+  059ea7:  486e ffe8             pea %fp@(-24)           ; push MESACommand*
+  059eab:  206e 000c             moveal %fp@(12),%a0     ; A0 = handler callback (DoMESACommand)
+  059eaf:  4e90                  jsr %a0@                ; CALL: handler(MESACommand*)
+                                 ; → CMESAPlugIn::DoMESACommand (0x089a in scsi-plug-rsrc.bin)
+                                 ; This populates fp@(-4) with ptr to plug's SocketInfo array
+  059eb1:  4a6e ffec             tstw %fp@(-20)          ; check error code
+  059eb5:  584f                  addqw #4,%sp
+  059eb7:  6600 0152             bnew 0x5a00b            ; error → exit
+
+  ; PHASE 3: Scan descriptor array for matching plug_id
+  059ebb:  7600                  moveq #0,%d3            ; D3 = descriptor entry index
+  059ebd:  6000 0130             braw 0x59fef            ; → loop check
+
+  ; PHASE 3 LOOP BODY:
+  059ec1:  7030                  moveq #48,%d0
+  059ec3:  c1c3                  mulsw %d3,%d0           ; D0 = 48 * D3
+  059ec5:  206e fffc             moveal %fp@(-4),%a0     ; A0 = descriptor array base
+  059ec9:  bab0 0804             cmpl %a0@(4,%d0:l),%d5  ; compare descriptor[D3][+4] with plug_id
+  059ecd:  6600 011e             bnew 0x59fed            ; no match → next
+  059ed1:  41ec 30cc             lea %a4@(12492),%a0     ; → another name string
+  059ed5:  43ee fff2             lea %fp@(-14),%a1
+  059ed9:  22d8                  movel %a0@+,%a1@+
+  059edb:  22d8                  movel %a0@+,%a1@+
+  059edd:  32d8                  movew %a0@+,%a1@+       ; copy 10 bytes to MESACommand
+  059edf:  204a                  moveal %a2,%a0
+  059ee1:  41e8 0018             lea %a0@(24),%a0
+  059ee5:  2d48 fff8             movel %a0,%fp@(-8)      ; fp@(-8) = this+24
+
+  059ee9:  4a93                  tstl %a3@               ; out_slot_index != NULL?
+  059eeb:  6700 0086             beqw 0x59f73            ; → path B (no socket qualifier)
+
+  ; PATH A: matching with socket qualifier
+  059eef:  7030                  moveq #48,%d0
+  059ef1:  c1c3                  mulsw %d3,%d0
+  059ef3:  206e fffc             moveal %fp@(-4),%a0
+  059ef7:  2213                  movel %a3@,%d1           ; D1 = *out_slot_index (socket qualifier)
+  059ef9:  b2b0 0808             cmpl %a0@(8,%d0:l),%d1  ; compare descriptor[D3][+8] with qualifier
+  059efd:  6600 00ee             bnew 0x59fed
+
+  ; Check if descriptor has an activation function pointer
+  059f01:  7030                  moveq #48,%d0
+  059f03:  c1c3                  mulsw %d3,%d0
+  059f05:  206e fffc             moveal %fp@(-4),%a0
+  059f09:  4ab0 080c             tstl %a0@(c,%d0:l)      ; test descriptor[D3][+12] = function ptr
+  059f0d:  6722                  beqs 0x59f31            ; NULL fn ptr → skip activation call
+
+  ; Call the activation function with the local MESACommand
+  059f0f:  486e fff2             pea %fp@(-14)           ; push MESACommand*
+  059f13:  7030                  moveq #48,%d0
+  059f15:  c1c3                  mulsw %d3,%d0
+  059f17:  206e fffc             moveal %fp@(-4),%a0
+  059f1b:  2070 080c             moveal %a0@(c,%d0:l),%a0 ; A0 = descriptor[D3][+12] = FN PTR
+  059f1f:  4e90                  jsr %a0@                ; CALL: fn_ptr(MESACommand*)
+                                 ; NOTE: during ConnectToPlug, this fn_ptr is for a "connect" query
+                                 ; It is NOT the same path as ActivateThisSocket's call
+  059f21:  4a6e fff6             tstw %fp@(-10)          ; error?
+  059f25:  584f                  addqw #4,%sp
+  059f27:  6708                  beqs 0x59f31
+  059f29:  302e fff6             movew %fp@(-10),%d0
+  059f2d:  6000 00e4             braw 0x5a013
+
+  ; COPY SLOT DATA: register descriptor[D3] as new slot
+  059f31:  7030                  moveq #48,%d0
+  059f33:  c1c3                  mulsw %d3,%d0           ; D0 = 48 * D3
+  059f35:  206e fffc             moveal %fp@(-4),%a0     ; A0 = descriptor array
+  059f39:  d1c0                  addal %d0,%a0           ; A0 += 48*D3 (point to descriptor entry)
+  059f3b:  5888                  addql #4,%a0            ; A0 += 4 (skip first 4 bytes of entry)
+  059f3d:  202a 0046             movel %a2@(70),%d0      ; D0 = this[70] = current slot_count
+  059f41:  52aa 0046             addql #1,%a2@(70)       ; this[70] += 1 (allocate new slot)
+  059f45:  7230                  moveq #48,%d1           ; D1 = 48 (slot size for jsr 0x116)
+  059f47:  4eb9 0000 0116        jsr 0x116               ; __divsi3: D0 = slot_count / 48
+                                 ; For first slot: D0 = 0/48 = 0 → slot offset = 0
+  059f4d:  224a                  moveal %a2,%a1          ; A1 = this
+  059f4f:  d3c0                  addal %d0,%a1           ; A1 += D0 (byte offset from __divsi3)
+  059f51:  43e9 004a             lea %a1@(74),%a1        ; A1 = this + D0 + 74
+                                 ; For slot 0: A1 = this + 0 + 74 = this[74]
+                                 ; The slot data (48 bytes) is written starting here
+                                 ; FUNCTION POINTER lands at slot_base + 8 = this[82] for slot 0
+
+  ; Copy 12 longs (48 bytes) from source (entry+4) to slot
+  059f55:  22d8                  movel %a0@+,%a1@+       ; slot[0..3]  = entry[+4..+7]
+  059f57:  22d8                  movel %a0@+,%a1@+       ; slot[4..7]  = entry[+8..+11]
+  059f59:  22d8                  movel %a0@+,%a1@+       ; slot[8..11] = entry[+12..+15] ← FN PTR
+  059f5b:  22d8                  movel %a0@+,%a1@+       ; slot[12..15]
+  059f5d:  22d8                  movel %a0@+,%a1@+
+  059f5f:  22d8                  movel %a0@+,%a1@+
+  059f61:  22d8                  movel %a0@+,%a1@+
+  059f63:  22d8                  movel %a0@+,%a1@+
+  059f65:  22d8                  movel %a0@+,%a1@+
+  059f67:  22d8                  movel %a0@+,%a1@+
+  059f69:  22d8                  movel %a0@+,%a1@+
+  059f6b:  22d8                  movel %a0@+,%a1@+       ; slot[44..47]
+  059f6d:  7000                  moveq #0,%d0            ; return 0
+  059f6f:  6000 00a2             braw 0x5a013
+
+  ; PATH B (no socket qualifier) - omitted for brevity, same copy logic
+  ; ...
+
+  ; LOOP CHECK:
+  059fed:  5243                  addqw #1,%d3
+  059fef:  206e fffc             moveal %fp@(-4),%a0
+  059ff3:  3243                  moveaw %d3,%a1
+  059ff5:  b3d0                  cmpal %a0@,%a1          ; compare index with descriptor count
+  059ff7:  6d00 fec8             bltw 0x59ec1            ; loop
+  ; ...
+
+  05a013:  4cdf 0cf8             moveml %sp@+,%d3-%d7/%a2-%a3
+  05a017:  4e5e                  unlk %fp
+  05a019:  4e75                  rts
+
+; ============================================================
+; KEY FINDINGS:
+;
+; 1. CMESASocket slot layout (offsets from object base, all decimal):
+;    Slot n starts at this[74 + 48*n] for n = 0, 1, 2...
+;    Within each slot (relative to slot_base = this[74 + 48*n]):
+;      +0 to +7:  ids/qualifiers from descriptor entry[+4..+11]
+;      +8 to +11: FUNCTION POINTER from descriptor entry[+12]  ← key
+;      +12 to +47: remaining 9 longs from descriptor entry[+16..+51]
+;
+; 2. ActivateThisSocket reads fn ptr from this[0x52 + 0x30*idx]
+;    = this[82 + 48*idx] = this[74 + 8 + 48*idx] = slot_base + 8  ✓
+;    (0x52 is a brief-ext-word hex displacement = 82 decimal)
+;
+; 3. During ConnectToPlug, the fn ptr at descriptor entry[+12] IS called
+;    (at 0x59f1f) to verify the connection. But the important use is LATER:
+;    when ActivateThisSocket / SendData call through the installed slot fn ptr.
+;
+; 4. The fn ptr resolves at runtime to CMESAPlugIn::DoMESACommand (scsi-plug binary),
+;    which dispatches to ActivateSocket (purely in-memory) or CSCSIPlug::SendData (wire).
+; ============================================================
