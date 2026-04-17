@@ -1257,3 +1257,54 @@ escalated to Claude.
    than a one-packet problem.
 3. Once a parity finding is evidence-stable, publishing it quickly matters because the
    parallel Claude branch can incorporate or contest it immediately.
+
+---
+
+## 2026-04-17: MESA II Parity Constructor Boundary Narrowing
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Push the remaining parity unknown from generic ownership speculation into a narrower,
+constructor-era boundary: confirm the `CAkaiSampler` socket field setup directly and
+localize the unresolved `CSamplerModule+0xda4` installation path.
+
+### Accomplished
+- Independently confirmed `CAkaiSampler::SetSocket` at file `0x028597` as a direct
+  write of a `CMESASocket*` to `CAkaiSampler+0xa2`
+- Independently confirmed the `CAkaiSampler` constructor at `0x068981`, including:
+  vtable-at-`+2` layout, reset of the socket field at `+0xa2`, and the expected
+  constructor-time zeroing of related state
+- Narrowed the module-side ownership gap further:
+  the remaining `CSamplerModule+0xda4` installation is no longer “some unknown external
+  write” but constructor-era helper work, with `0x317dc(this)` as the strongest current
+  candidate from primary artifacts
+- Published the narrowed constructor-boundary finding in commit `7f1f5147`
+
+### Didn't Work
+- I still did not recover a direct primary-artifact store to `CSamplerModule+0xda4`
+- Whole-binary and bounded searches still did not surface a clean, trustworthy caller
+  of `__ct__12CAkaiSamplerFv` or `SetSocket` from the aligned module slices
+
+### Course Corrections
+- **[PROCESS]** The constructor start address was initially assumed too late
+  (`0x0285d3`). Re-checking the binary string table corrected that boundary to
+  `__ct__14CSamplerModuleFv` at `0x02857c`, which prevented the next pass from chasing
+  the wrong ownership window.
+- **[EVIDENCE]** I did not promote `0x317dc` from “best current candidate” to a named
+  initializer because the directly bounded disassembly at that address is still noisy.
+  The docs keep that distinction explicit.
+
+### Quantitative
+- Commits pushed in this constructor-boundary pass: 1
+  `7f1f5147`
+- New stable parity findings added: 1 major constructor-boundary finding
+  (`CAkaiSampler::SetSocket` + `CAkaiSampler` ctor confirmation + narrowed `+0xda4`
+  installation boundary)
+
+### Insights
+1. The string table is a practical boundary-finding tool in this binary; it corrected a
+   constructor-start mistake that raw offset assumptions had introduced.
+2. The ownership problem is now usefully smaller: the unresolved question is not whether
+   `+0xda4` is a `CAkaiSampler*`, but which constructor-era helper installs it.

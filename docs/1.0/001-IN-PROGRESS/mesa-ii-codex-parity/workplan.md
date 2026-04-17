@@ -136,7 +136,11 @@ This is now narrower than when the phase started. Current Codex evidence support
 
 The highest-value remaining unknown is now initialization provenance rather than identity:
 where `CSamplerModule+0xb0/+0xb1` are first set, and where the default `+0xda0` value is
-established before the runtime toggle path takes over.
+established before the runtime toggle path takes over. The latest constructor-boundary
+pass also narrows the `CSamplerModule+0xda4` ownership gap to constructor-era helper
+work: `CAkaiSampler::SetSocket` is independently confirmed, `CAkaiSampler`'s own
+constructor is independently confirmed, and helper `0x317dc(this)` is now the strongest
+current candidate for the remaining module-side collaborator installation.
 
 ---
 
@@ -181,6 +185,8 @@ established before the runtime toggle path takes over.
 
 - Hand-decode the pre-`OpenModule` transport-toggle owner around `0x029105` further
   backward so the owning function and full state choreography are explicit
+- Hand-decode constructor-era helper `0x317dc(this)` and adjacent owner-install paths to
+  find where `CAkaiSampler` ultimately reaches `CSamplerModule+0xda4`
 - Expand earlier creation/initialization paths or less-obvious callees to find the first
   concrete stores to `CSamplerModule+0xb0` and `+0xb1`
 - Identify where the default `CSamplerModule+0xda0` value is established before the

@@ -75,9 +75,15 @@ Phase 2 advanced materially this session:
   `ConnectToPlug(...)`
 - `CSamplerModule+0xb1` save/restore behavior is now confirmed across both
   `SendAudioBufferToSampler` and `SendAudioFileToSampler`
+- constructor-era ownership is narrower now: `CAkaiSampler::SetSocket` at `0x028597`
+  is independently confirmed as a direct write to `CAkaiSampler+0xa2`, the
+  `CAkaiSampler` constructor at `0x068981` independently confirms that field starts as
+  null, and the remaining `CSamplerModule+0xda4` installation gap is now localized to
+  constructor-era helper work centered on `0x317dc(this)` rather than an unbounded
+  “somewhere else in the binary” assumption
 
 The main unresolved boundary is still initialization provenance for `CSamplerModule+0xb0`
 and `+0xb1`. The current checked-in primary artifacts show repeated reads of those bytes
 but no obvious plain stores, even after a whole-binary `objdump` pass. The next analysis
-move is to widen or hand-decode earlier creation paths or less-obvious callees rather
-than keep re-grepping the same upload-region slices.
+move is to keep hand-decoding the constructor-era handoff around `0x317dc` and related
+owner-install paths rather than keep re-grepping the same upload-region slices.
