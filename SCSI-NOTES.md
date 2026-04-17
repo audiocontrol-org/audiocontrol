@@ -718,9 +718,9 @@ through `SendData` with real hardware forwarding.
 MIDI Send, 406 bytes, reply-expected flag. Payload = `F0 47 [ch] 0B 48 [400 nibble bytes] F7`.
 
 **SRAW:** Calls SEND_FUNC_SLOT with flag=1, audio_byte_count at SP+12, audio_buf_ptr at SP+20.
-No CDB issued by the harness — SRAW audio would need ASPACK wrapping. The plug confirms
-SRAW goes through CDB 0x0C (same `JSR $1106E` as BULK), but the flag byte distinguishes
-the path inside the transport function.
+**No CDB captured for SRAW** — the harness has a hard-coded skip with the comment "would need
+ASPACK wrapping," but this is an inference, not a finding. The real on-wire bytes for SRAW
+have NOT been captured. Open question logged as task #15.
 
 **BOFF:** No MIDI CDB. Calls HUnlock + DisposeHandle on internal handle, then a reconnect
 ping at address `0x274`, then `SCSIAtomic2` ($A31E) to re-acquire SCSI access.

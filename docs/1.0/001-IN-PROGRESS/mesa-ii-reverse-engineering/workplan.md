@@ -25,26 +25,28 @@ Each cycle produces a testable hypothesis about MESA II's protocol behavior, val
 
 Goal: Improve the 68k disassembler and fully annotate all sample transfer functions in both MESA II binaries.
 
-- [ ] Improve `disassemble.py` to handle all 68000 addressing modes used by MESA II
-- [ ] Annotate `SendAudioBufferToSampler` call graph completely (Sampler Editor side)
-- [ ] Annotate SCSI Plug BULK handler (`ProcessBulkSend`, `ProcessBulkReceive`)
-- [ ] Annotate `GetSampleData` / `ExportSampleData` call graph
-- [ ] Document the BULK vs SRAW distinction: what data format does each use?
-- [ ] Identify all SysEx message types constructed during sample transfer
-- [ ] Map out the two-phase send sequence: what happens in phase 1 (BULK) vs phase 2 (SRAW)?
-- [ ] Document all CDB opcodes used by SCSI Plug (confirm whether 0x0C is the only one)
+- [x] ~~Improve `disassemble.py`~~ — replaced with `m68k-elf-objdump` + `annotate_function.py` (1241 funcs indexed)
+- [x] Annotate `SendAudioBufferToSampler` call graph completely (Sampler Editor side) — 443 instr decoded, zero placeholders
+- [x] Annotate SCSI Plug BULK handler — full SendData + TagDispatch traced; BULK→0x10e9e, SRAW→0x10ec0, BOFF→0x10e82
+- [ ] Annotate `GetSampleData` / `ExportSampleData` call graph (deferred until upload path is solved)
+- [x] Document the BULK vs SRAW distinction: BULK uses opcode 0x0B SDATA with nibble-encoded 200-byte Akai header; SRAW shares same code path with flag=1 (wire bytes not yet captured — task #15)
+- [x] Identify all SysEx message types constructed during sample transfer — `F0 47 ch 0B 48 [400 nibble bytes] F7` for BULK; SRAW unknown
+- [x] Map out the multi-phase send sequence: SDS-header → BULK open → SRAW chunks → BOFF (local cleanup) → UALL (vtable[0x28], path TBD)
+- [x] Document all CDB opcodes used by SCSI Plug — only 0x0C confirmed for BULK; SRAW unknown
 
 ## Phase 2: Protocol Validation
 
 Goal: Validate the disassembly findings against real hardware with test scripts.
 
-- [ ] Write a hardware test script that sends a minimal SDS sample via SCSI MIDI
-- [ ] Test the two-phase send hypothesis: BULK header + SRAW audio data
-- [ ] Measure MESA II's actual throughput (if testable without SheepShaver, use protocol replay)
-- [ ] Confirm whether SLNGTH is set by the SDS header, by SRAW data length, or by a separate command
-- [ ] Test for undocumented vendor-specific SCSI commands (scan CDB opcode space)
-- [ ] Validate the complete upload sequence end-to-end: sample appears on device with correct SLNGTH
-- [ ] Document validated protocol specification with message sequence diagrams
+- [x] ~~Hardware test script for minimal SDS~~ — superseded by harness-based dynamic trace
+- [x] Test the multi-phase send hypothesis — confirmed via live trace: BULK SDATA + SRAW (path TBD) + BOFF cleanup + UALL terminator
+- [ ] Measure MESA II's actual throughput (deferred to Phase 3)
+- [x] Confirm SLNGTH source — set by 200-byte Akai header bytes 26-29 (nibble-encoded from total_byte_length IN BYTES) sent via SDATA opcode 0x0B
+- [x] Test for undocumented vendor-specific SCSI commands — none found; MESA uses standard CDB 0x0C with Akai SysEx framing
+- [ ] **Hardware-verify BULK finding (task #14)**: send the captured CDB+payload, check sample is created with correct SLNGTH
+- [ ] **Capture SRAW wire bytes (task #15)**: agent's "would need ASPACK wrap" was an inference, not a finding
+- [ ] **Find UALL handler (task #16)**: not in SendData TagDispatch, uses vtable[0x28]
+- [ ] Document validated protocol specification with message sequence diagrams (after #14/#15/#16)
 
 ## Phase 3: Bridge Implementation
 

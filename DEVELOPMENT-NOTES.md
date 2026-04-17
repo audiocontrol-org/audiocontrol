@@ -11,6 +11,71 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-16: MESA II Reverse Engineering — Full Disassembly + Dynamic Trace (Session 9, Orchestrator View)
+
+### Feature: mesa-ii-reverse-engineering
+### Worktree: audiocontrol-mesa-ii-reverse-engineering
+
+### Goal
+Bootstrap the mesa-ii-reverse-engineering feature: bookkeeping (move analysis docs, file GitHub issues), Phase 1 (full static disassembly of MESA's Sampler Editor sample-upload code), and begin Phase 2 (dynamic trace of the SCSI Plug against live S3000XL).
+
+### Accomplished
+
+**Bookkeeping**
+- Moved `mesa-ii-analysis/` into the feature dir (was orphaned in akai-ux-improvement)
+- Filed parent issue #304 + Phase 1 (#305), Phase 2 (#306), Phase 3 (#307)
+- Updated README/workplan to reflect actual state (Phase 1 + 2 in progress, not "Not Started")
+
+**Phase 1 — Static disassembly**
+- Stood up `m68k-elf-objdump` + `annotate_function.py` (1241 functions indexed) — replaces the broken hand-rolled `disassemble.py`
+- Fully decoded `SendAudioBufferToSampler` (443 instructions, zero placeholders): full call graph, IP_Data layout, BULK + SRAW + BOFF + UALL emission sequence, MIDI vs SCSI mode branching at `this+0xb0`
+- Fully decoded `BuildSampleHeaderFromMAH` (224 instructions): the 200-byte proprietary Akai header layout with SLNGTH at bytes 26-29 nibble-encoded from `mah@(80) = total_byte_length` IN BYTES (not sample words)
+- Confirmed: MESA does NOT use ASPACK anywhere. Our bridge using ASPACK is a different protocol.
+
+**Phase 2 — Dynamic trace via mesa-plug-harness**
+- Extended `mesa-plug-harness` with TagDispatch interception, socket-search bypass, and full Mac Memory Manager stubs (NewHandle, HLock/HUnlock, DisposeHandle, NewPtr, etc.) backed by a fake heap at 0x00800000
+- Confirmed IP_Data layout against live trace: tag at +8, dual-purpose +0/+4 fields
+- TagDispatch table fully mapped: BULK→0x10e9e, SRAW→0x10ec0, BOFF→0x10e82, MIDI→0x11116, SYSX→0x110c6
+- Captured BULK CDB on the wire: `0c 00 00 01 96 80` + payload `f0 47 [ch] 0b 48 [400 nibble bytes] f7` — that's 200-byte Akai header nibble-encoded inside SDATA opcode 0x0B
+- Confirmed BOFF emits no MIDI CDB — it's purely Mac handle cleanup (HUnlock + DisposeHandle + SCSIAtomic2)
+
+**Tooling fixes**
+- Fixed `deploy-bridge` skill to self-heal stale `.docker-build-stamp` (was causing silent fresh-worktree failures)
+- Untracked `services/scsi-midi-bridge/.docker-build-stamp` from git; added to gitignore
+- Added 3 new CLAUDE.md rules (global) after recurring permission gates: (1) no `#` in bash heredocs, (2) no `sed -i`/`sed 'w'`/`sed 'e'`, (3) prefer scripts over complex bash one-liners
+
+### Didn't Work
+
+- **SRAW wire format NOT captured.** The harness has a hard-coded skip with the comment "would need ASPACK wrapping" — this is an inference baked into the harness, not a finding from running the real SCSI Plug code. SRAW logged as task #15 for follow-up.
+- **UALL handler not located.** Halts at TagDispatch with "unhandled tag" because UALL goes through a different vtable entry (vtable[0x28] from MESA caller side, not the SendData TagDispatch table). Logged as task #16.
+- **Provisioning step 7 failed** with `ERR_MODULE_NOT_FOUND` for `@audiocontrol/sampler-library/dist/testing/index.js` — unrelated test infra issue but worth noting for follow-up.
+
+### Course Corrections
+
+- **[PROCESS]** Initially ran `make deploy-scsi-bridge` directly which hit a stale-stamp build bug; user pointed at TESTING-E2E.md "SCSI E2E Provisioning" section showing the sanctioned `run-and-watch.sh <target>` pipeline. Fixed `deploy-bridge` skill to document the rules-file decision matrix and self-heal stamps.
+- **[FABRICATION]** Sub-agent skipped SRAW wire-byte capture with an inference ("would need ASPACK wrap") rather than running the real code path or admitting "unknown." Caught by reviewing the protocol report carefully. New task created (#15) and SCSI-NOTES.md entry corrected to flag the inference explicitly.
+- **[PROCESS]** Three back-to-back agent delegations triggered the "newline + `#` in quoted argument" permission gate. Should have updated CLAUDE.md after the first occurrence rather than assuming it was a one-off.
+- **[PROCESS]** Build system bug: `.docker-build-stamp` tracked in git while `.docker-build/` gitignored — caused silent failure in fresh worktrees. Fixed by untracking + gitignoring; updated skill to self-heal.
+
+### Quantitative
+
+- User messages: ~28
+- Commits: 3 (worktree bookkeeping; deploy-bridge fix; Phase 1 disassembly artifacts)
+- User corrections: 4 (3 PROCESS, 1 FABRICATION caught in review)
+- Sub-agent delegations: 4 (tooling survey, Sampler Editor decode, BuildSampleHeaderFromMAH decode, harness Phase 4+5)
+- CLAUDE.md rule additions: 3
+- Lines added to disassembly artifacts: ~190K (full sampler-editor + scsi-plug ASM, plus annotated function-level decodes)
+
+### Insights
+
+1. **Static + dynamic hybrid is the right pattern.** Static disassembly answered "what data does MESA prepare" (IP_Data layout, 200-byte Akai header format). Dynamic trace against real hardware answered "what bytes go on the wire" (CDB 0x0C with SDATA opcode 0x0B). Neither alone would have done it.
+2. **MESA's "vendor-specific" transport is standard SDATA in disguise.** The SCSI Plug doesn't have a vendor-specific CDB; opcode 0x0B (SDATA) is a multiplexer that accepts at least two payload formats. We previously tested one (BuildSampleDataRequest, 18 bytes); MESA uses another (200-byte Akai sample header, nibble-encoded).
+3. **Inference vs evidence.** The agent's "would need ASPACK wrap" SRAW comment is exactly the failure mode the user has warned against repeatedly — text that reads like a finding but is actually an unverified hypothesis. The fix is structural: agents must either capture the bytes or label the gap as "unknown — needs trace." Inferences masquerading as findings compound across sessions.
+4. **The SLNGTH bug should collapse to one test.** Now that we know MESA's BULK CDB is `0c 00 00 01 96 80` with payload `f0 47 00 0b 48 [200 nibble-encoded bytes of Akai header] f7`, a single Node test against the live device should confirm whether sending exactly that creates a sample with correct SLNGTH. Days of disassembly compress into a 30-minute yes/no answer (task #14).
+5. **Permission gates and CLAUDE.md.** Recurring permission prompts are a signal that the global rules need updating. Treat the first occurrence as a free probe; treat the second as a CLAUDE.md update opportunity. Don't wait until the third.
+
+---
+
 ## 2026-04-16: MESA II SCSI Plug Phase 5 — SEND_FUNC_SLOT Trace (Session 9)
 
 ### Feature: mesa-ii-reverse-engineering
