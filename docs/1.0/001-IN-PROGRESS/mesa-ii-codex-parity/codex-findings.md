@@ -118,10 +118,76 @@ correct. Every finding should distinguish direct evidence from inference.
   phase transitions that MESA performs before and after bulk transfer. This was
   escalated in issue `#312` so the stale equivalence claim can be corrected or refuted.
 
+- Finding 7: the checked-in Claude artifacts strongly suggest `CMESASocket` slot
+  `0x30` is `ActivateThisSocket(Uc)`, while some higher-level Claude docs still
+  describe that slot as directly sending the SDS header.
+  Evidence:
+  the Claude branch already contains
+  `disassembly-full/CMESASocket-vtable30-ActivateThisSocket.annotated.txt`, which
+  identifies file offset `0x05a0a7` as `ActivateThisSocket__11CMESASocketFUc`.
+  The recovered signature is `CMESASocket::ActivateThisSocket(Uc)`, which matches the
+  `SendAudioBufferToSampler` call pattern: socket pointer plus one byte argument.
+  The decoded body writes the byte argument to `CMESASocket+0x3c`, checks
+  `CMESASocket+0x46` as a connection/dispatch guard, and then dispatches through a
+  per-plug function pointer table using `CMESASocket+0x9aa` as the selected-plug index.
+  `SendAudioBufferToSampler.annotated.txt` shows slot `0x30` being called with byte
+  `1` at `0x030743`, `0x030811`, and `0x030c63`, then later with the saved byte from
+  `this+0xb1` at `0x030ca3`/`0x030cb7`.
+  That save-and-restore pattern is consistent with socket activation or selection state.
+  In contrast, `sampler-editor-decoded.md` still labels `vtable[0x0030]` as
+  "Send SDS sample header (opcode=0x01, socket_ptr)".
+  Interpretation:
+  the artifact set now points toward slot `0x30` being a socket-state method, not a
+  direct transport send primitive. This strengthens the conclusion that the old direct
+  BULK harness omitted real socket setup. Filed as issue `#313`.
+
+- Finding 8: `ActivateThisSocket(1)` is part of broader `CSamplerModule` activation
+  flow, not something unique to sample upload.
+  Evidence:
+  raw disassembly of `CSamplerModule::ActivateModule` at file `0x02a857` shows a
+  second call to socket slot `0x30` with byte argument `1` at `0x02a8df-0x02a8ef`.
+  The same function also emits several module/UI messages through `this+0xa20` before
+  the socket activation call, then performs a later `vtable[0x28]` dispatch with
+  constant `0x03ea`.
+  Raw disassembly of `CSamplerModule::OpenModule` at file `0x02a639` also calls socket
+  slot `0x30` with byte `1` at `0x02a6bb-0x02a6cb` after earlier socket-vtable calls
+  on slots `0x0c` and `0x10`.
+  Interpretation:
+  `ActivateThisSocket(1)` is part of normal module/socket bring-up, not an ad hoc
+  helper specific to the sample-transfer code. That makes the missing-sequence problem
+  in the direct BULK harness more structural: the harness skipped module/socket
+  activation steps that appear elsewhere in the sampler lifecycle too.
+
+- Finding 9: `CSamplerModule::OpenModule` now looks like the full socket/plug bring-up
+  sequence that the direct BULK harness skipped.
+  Evidence:
+  raw disassembly of `CSamplerModule::OpenModule` at file `0x02a639` shows two calls on
+  socket slot `0x0c` with arguments that match the recovered
+  `CMESASocket::ConnectToPlug(...)` signature:
+  `this+0xa20` as callback/function pointer, plug IDs `'MIDI'` and `'SCSI'`, and
+  output locations at `this+0xd98` and `this+0xd9c`.
+  The same function then chooses one of those plug IDs and calls socket slot `0x10`
+  with that value, matching the recovered `CMESASocket::SelectPlug(long)` signature.
+  Only after connect/select does `OpenModule` call socket slot `0x30` with byte `1`,
+  i.e. `ActivateThisSocket(1)`.
+  Interpretation:
+  sample upload occurs inside a pre-existing socket lifecycle:
+  `ConnectToPlug` -> `SelectPlug` -> `ActivateThisSocket`.
+  A direct `CSCSIPlug::SendData('BULK')` harness bypasses all three layers of setup, not
+  just the later upload-specific call sequence inside `SendAudioBufferToSampler`.
+
 ## Open Questions
 
-- What exact `CMESASocket` method is slot `0x30`, and what state does it change when
-  called with SDS opcode `0x01`?
+- Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
+  authoritative identity for slot `0x30`, or is there a primary-artifact refutation?
+- If slot `0x30` is `ActivateThisSocket(Uc)`, what does byte value `1` mean in the
+  upload path, and why is `this+0xb1` restored afterward?
+- How does `CSamplerModule+0xb1` relate to `CMESASocket+0x3c`? The current trace shows
+  save/restore behavior across those fields, but not whether they are the same concept
+  mirrored at two layers or merely correlated state.
+- What exactly is stored at `CSamplerModule+0xd98` and `+0xd9c` after `OpenModule`
+  connects the `'MIDI'` and `'SCSI'` plugs, and how does `this+0xda0` choose between
+  them?
 - Is the remaining hardware failure explained entirely by the missing socket-level
   pre/post sequence, or is there still a content-byte mismatch in the 200-byte header?
 - What exactly does the `CSamplerModule`-side `UALL` dispatch at `0x030c93` signal to

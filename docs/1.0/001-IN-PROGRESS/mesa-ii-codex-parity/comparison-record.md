@@ -62,16 +62,36 @@ cleanly.
   framing plus `SwapLongWord`, so the branch currently contains contradictory analysis
   documents. Filed as issue `#311`.
 
+- `CMESASocket` slot `0x30` meaning
+  Claude baseline:
+  `sampler-editor-decoded.md` still describes slot `0x30` as the SDS-header send path
+  in SCSI mode.
+  Codex finding:
+  the same branch already contains a checked-in annotated artifact naming slot `0x30`
+  as `ActivateThisSocket__11CMESASocketFUc`, and the actual call pattern in
+  `SendAudioBufferToSampler` matches a one-byte socket-state method with save/restore
+  semantics better than a direct send primitive. The decoded body also writes the byte
+  argument into `CMESASocket+0x3c` and dispatches through a per-plug callback table,
+  which is further evidence for state activation rather than immediate transport send.
+  Raw disassembly of `OpenModule` and `ActivateModule` also shows separate
+  `ActivateThisSocket(1)` calls outside sample upload. Filed as issue `#313`.
+
+- Direct BULK harness scope
+  Claude baseline:
+  the branch now correctly retracts the old equivalence claim, but the exact missing
+  lifecycle remains a live technical question.
+  Codex finding:
+  `OpenModule` provides a clearer missing-lifecycle model: it appears to call
+  `ConnectToPlug` twice (`'MIDI'` and `'SCSI'`), then `SelectPlug`, then
+  `ActivateThisSocket(1)` before later sampler operations. This makes the direct harness
+  gap larger and more structural than "missing a preamble packet."
+
 ### Unresolved
 
 - 200-byte Akai header field encoding at offsets 26-47
   Claude baseline:
   corrected wire framing still fails on hardware, implying the content bytes remain
   wrong or incomplete.
-- `CMESASocket` slot `0x30` identity and side effects
-  Claude baseline:
-  active docs describe this as the SDS-header path in SCSI mode, but the concrete
-  method identity and sampler-visible state changes are not yet resolved.
 - SRAW on-wire bytes
   Claude baseline:
   prior harness text admitted inference instead of captured bytes.
