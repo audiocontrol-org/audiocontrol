@@ -181,22 +181,17 @@ cleanly.
   current Claude branch now claims the function is pure in-memory state and emits no
   wire bytes.
   Codex status:
-  partially reproduced. Codex now independently supports the plug-side half of the
-  claim: `CMESAPlugIn::ActivateSocket` at `0x0a5e` contains only slot lookup plus local
-  state writes and does not itself show wire-I/O call sites. The remaining unresolved
-  piece is the final dispatch hop from `CMESASocket::ActivateThisSocket` through the
-  installed callback slot into `CMESAPlugIn::DoMESACommand` and then specifically into
-  `ActivateSocket`; that chain is still supported but not yet fully re-decoded from
-  primary bytes end-to-end. New Codex narrowing: inside `CMESAPlugIn::DoMESACommand`,
-  only two branch arms use the `SocketInfo`-style `(this, MESACommand+6)` calling
-  convention, and those call vtable offsets `+0x30` and `+0x34`. So the remaining
-  ambiguity is now the exact tag-to-arm mapping, not whether the callback can range
-  across arbitrary plug behavior. New sampler-editor-side support: the A4 template block
-  contains distinct 10-byte records for `ASOK` and `CONS`, and `ConnectToPlug`'s two
-  nearby template copies line up with those activation-style and connect-style records.
-  Stronger Codex constraint: the descriptor callback tested during `ConnectToPlug`
-  already uses the `.ASOK.....` template, so the installed per-plug function pointer is
-  specifically on the activation-style path before `ActivateThisSocket` ever reuses it.
+  effectively matched, with one explicit inference step remaining. Codex independently
+  supports the no-wire plug-side routine `CMESAPlugIn::ActivateSocket` at `0x0a5e`, the
+  existence of distinct sampler-editor `ASOK` and `CONS` templates, and the fact that
+  the installed per-plug callback is already exercised with `.ASOK.....` during
+  `ConnectToPlug`. Inside `CMESAPlugIn::DoMESACommand`, only two arms use the
+  `SocketInfo`-style `(this, MESACommand+6)` calling convention, and they dispatch
+  through vtable `+0x30` and `+0x34`. The strongest combined Codex read is now
+  `CONS -> +0x30 -> ConnectToSocket` and `ASOK -> +0x34 -> ActivateSocket`, which
+  reproduces Claude's "no wire bytes" conclusion for `ActivateThisSocket` in practical
+  terms. The only remaining gap is a byte-perfect decode of the selector helper at
+  `0x148`, not the higher-level transport behavior.
 - SRAW on-wire bytes
   Claude baseline:
   prior harness text admitted inference instead of captured bytes.

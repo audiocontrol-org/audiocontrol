@@ -488,6 +488,33 @@ correct. Every finding should distinguish direct evidence from inference.
   which of the two `SocketInfo`-style `CMESAPlugIn::DoMESACommand` arms corresponds to
   `ASOK`, and which corresponds to `CONS`.
 
+- Finding 26: the strongest current end-to-end Codex model is now
+  `CONS -> vtable+0x30 -> ConnectToSocket` and
+  `ASOK -> vtable+0x34 -> ActivateSocket`, with one remaining inference step in the
+  selector-helper mapping.
+  Evidence:
+  `CMESAPlugIn::DoMESACommand` contains exactly two `SocketInfo`-style arms:
+  `0x090c` calls vtable `+0x30` with `(this, MESACommand+6)`, and `0x0924` calls
+  vtable `+0x34` with the same argument shape.
+  The nearby identified `CMESAPlugIn` methods in the same binary appear in this order:
+  `ConnectToSocket` at `0x09d2`, `ActivateSocket` at `0x0a5e`,
+  `BusyCursor` at `0x0ae6`, `KeyIsPressed` at `0x0b40`, and `GetSockets` at `0x0b98`.
+  That order is consistent with a vtable layout where the two SocketInfo-taking slots
+  are the earlier pair and `+0x30` precedes `+0x34`.
+  On the sampler-editor side, the `.CONS.....` and `.ASOK.....` template records are
+  distinct and adjacent, and the descriptor callback installed into the socket slot is
+  already exercised with `.ASOK.....` during `ConnectToPlug`.
+  The plug-side method body independently decoded at `0x0a5e` is the no-wire
+  `ActivateSocket` routine.
+  Interpretation:
+  Codex still does not have a byte-perfect decode of the selector helper at `0x148`,
+  so the tag-to-arm mapping is not mathematically closed. But the combined evidence now
+  makes one mapping clearly strongest: the earlier SocketInfo slot `+0x30` is the
+  connect/query arm, and the later SocketInfo slot `+0x34` is the activation arm.
+  Under that model, Claude's task-21 conclusion is effectively reproduced, with the
+  remaining uncertainty isolated to the selector helper implementation rather than to
+  transport behavior.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
@@ -516,7 +543,8 @@ correct. Every finding should distinguish direct evidence from inference.
   the adjacent `ConnectToPlug` call sites line up cleanly with `ASOK` and `CONS`?
 - Can Codex prove which of the two `SocketInfo`-style plug-dispatch arms
   (`vtable+0x30` at `0x090c` vs `vtable+0x34` at `0x0924`) is the `ASOK` activation
-  arm, and which is the `CONS` connect/query arm?
+  arm, and which is the `CONS` connect/query arm, from the selector helper alone rather
+  than from the current stronger combined inference?
 - Is the remaining hardware failure explained entirely by the missing socket-level
   pre/post sequence, or is there still a content-byte mismatch in the 200-byte header?
 - What exactly does the `CSamplerModule`-side `UALL` dispatch at `0x030c93` signal to
