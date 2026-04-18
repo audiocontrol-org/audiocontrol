@@ -988,6 +988,21 @@ correct. Every finding should distinguish direct evidence from inference.
   configurable timing/control value used by higher-level enquiry logic, not evidence of
   runtime patching around the `0x106e` sender stub.
 
+- Finding 50: `DoMESACommand__9CSCSIPlugFP11MESACommand` uses the same plug-side field
+  cluster for ordinary control-plane updates, not for sender-stub installation.
+  Evidence:
+  the recovered control handler at file `0x0cf0-0x0d58` switches on four command tags.
+  One arm writes the incoming word at `MESACommand+8` directly to `CSCSIPlug+0x0d6e`;
+  another writes the incoming longword at `MESACommand+6` to `CSCSIPlug+0x0e42`; a third
+  clears `MESACommand+4`; and the `SHOW` arm calls helper `0x1162` and stores its word
+  result back to `MESACommand+4`. The default arm delegates to helper `0x02fc`, but none
+  of these cases reference `0x106e`, `0x1072`, or `0x1160`.
+  Interpretation:
+  this strengthens the current ownership model around the SRAW/BULK-adjacent fields.
+  The same `+0x0d6e` / `+0x0e42` neighborhood participates in normal plug command/state
+  handling, so it should be treated as mutable runtime configuration and status, not as a
+  hidden patch-control surface for the sender stub.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

@@ -291,7 +291,11 @@ cleanly.
   The same field cluster is also getting clearer semantically: `+0x0e42` is now backed
   as a timeout/configuration longword, because `SMDataByteEnquiry__9CSCSIPlugFsUc`
   compares elapsed time against it and returns `-14010` on expiry, while constructor and
-  command paths treat it as mutable data.
+  command paths treat it as mutable data. The command-side picture is now tighter too:
+  `DoMESACommand__9CSCSIPlugFP11MESACommand` uses this same field cluster for plain
+  control-plane updates like selected ID (`+0x0d6e`) and timeout budget (`+0x0e42`),
+  plus command-result bookkeeping at `MESACommand+4`, without touching the sender-stub
+  region.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.
