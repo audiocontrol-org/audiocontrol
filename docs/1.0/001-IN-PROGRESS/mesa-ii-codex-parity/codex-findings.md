@@ -768,6 +768,22 @@ correct. Every finding should distinguish direct evidence from inference.
   slots `0x50` and `0x64` as the more promising place if Codex keeps pushing on the
   exact meaning of `GetSamplerStatus`.
 
+- Finding 39: the full `this+0x2c -> slot 0x50 -> slot 0x64 -> fallback` triad is
+  unique to the `GetSamplerStatus` region in the current primary artifacts.
+  Evidence:
+  a raw-binary search for the full sequence
+  `pea this+0x2c; call slot 0x50; test result; if zero call slot 0x64; else fallback`
+  returns exactly one match at file offset `0x0611bf`, which is the bounded
+  `GetSamplerStatus` block already tied to `CAkaiSampler::vtable[0x0170]`.
+  By contrast, broad searches for slot loads `0x50` and `0x64` alone do return many
+  unrelated hits, so the uniqueness is in the full triad shape, not the slot numbers by
+  themselves.
+  Interpretation:
+  while Codex still cannot name helper slots `0x50` and `0x64`, the evidence now
+  supports treating their combined triad as the distinctive status path inside
+  `GetSamplerStatus`. That makes this triad a better discriminator for future tracing
+  than the individual slot offsets alone.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
