@@ -790,6 +790,20 @@ correct. Every finding should distinguish direct evidence from inference.
   inside `GetSamplerStatus`. That makes the cluster a better discriminator for future
   tracing than the individual slot offsets alone.
 
+- Finding 40: helper `0x0341d6` is not sampler-specific; its other direct call site is
+  in a graphics-side `DrawOffscreen`-adjacent control-flow pattern.
+  Evidence:
+  raw-binary search for absolute `jsr 0x0341d6` yields exactly two call sites:
+  `0x0611e9` in the bounded `GetSamplerStatus` region, and `0x060d75` in a region whose
+  trailing string decodes to `DrawOffscreen__10CGRPHFaderFv`.
+  The second site also follows the same broad control shape seen in `GetSamplerStatus`:
+  call helper-object slot `0x50`, test the result, optionally call slot `0x64`, else
+  branch to helper `0x0341d6`.
+  Interpretation:
+  helper `0x0341d6` is now better understood as a generic UI/helper fallback routine,
+  not a sampler-transport-specific function. That further weakens the case that the
+  remaining upload failure is hiding inside the `GetSamplerStatus` helper path.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

@@ -239,6 +239,9 @@ cleanly.
   alone: the bounded `GetSamplerStatus` cluster that gates between the missing-field
   helper path and the `+0x2c -> slot 0x50` / optional `slot 0x64` path appears only in
   that region in the current primary artifacts.
+  The fallback helper itself also now points away from transport: its only other direct
+  call site is in a graphics-side `DrawOffscreen__10CGRPHFaderFv`-adjacent region with a
+  similar `slot 0x50` / `slot 0x64` / helper control shape.
 - `ActivateThisSocket(Uc)` wire behavior
   Claude baseline:
   current Claude branch now claims the function is pure in-memory state and emits no
