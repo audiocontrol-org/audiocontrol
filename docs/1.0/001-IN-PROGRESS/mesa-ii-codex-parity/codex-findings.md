@@ -1020,6 +1020,23 @@ correct. Every finding should distinguish direct evidence from inference.
   `SMDispatchReply`-side helper family is concerned with command dispatch plus reply
   validation/readback, not with retargeting the live sender stub.
 
+- Finding 52: `0x1620` is not a separate hidden helper; it is a shared internal entry
+  inside the recovered `SMDispatchReply` family that multiple higher-level wrappers call.
+  Evidence:
+  the recovered body at `0x160c-0x16d6` begins with standard prologue/setup at `0x160c`,
+  but all absolute call sites target `0x1620`, not `0x160c`. Those call sites are the
+  known wrappers at `0x12a6`, `0x133a`, `0x14ac`, and `0x15b8`. The `0x1620` entry point
+  starts after the common register/setup prologue, with `moveal %fp@(28),%a3`, zeroes
+  the output longword, validates transport through `0x187e`, builds the local 4-byte
+  control block, and performs the actual reply dispatch/readback flow. There are no
+  independent call sites to `0x169a`; that is just the self-recursive/shared re-entry
+  call within the same body.
+  Interpretation:
+  this removes another source of ambiguity from the static SRAW search. The oft-seen
+  `jsr 0x1620` target is not evidence of an unnamed external install helper; it is the
+  common internal dispatch entry reused by the surrounding `CSCSIPlug` reply/send-mode
+  wrappers.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

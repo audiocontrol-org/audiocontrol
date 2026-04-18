@@ -298,7 +298,9 @@ cleanly.
   region. The nearby `SMDispatchReply`-side helper family at `0x160c-0x16d6` also now
   looks ordinary: it validates transport, builds a small control block, dispatches a
   reply command, and can fall into `SMDataByteEnquiry` for readback, but it still does
-  not reference the sender-stub region.
+  not reference the sender-stub region. The common `jsr 0x1620` target is no longer a
+  mystery helper either: it is just the shared internal entry inside that same reply
+  family, reused by `SetSCSIMIDIMode`, `SMDataByteEnquiry`, and the nearby wrappers.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.
