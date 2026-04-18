@@ -804,6 +804,30 @@ correct. Every finding should distinguish direct evidence from inference.
   not a sampler-transport-specific function. That further weakens the case that the
   remaining upload failure is hiding inside the `GetSamplerStatus` helper path.
 
+- Finding 41: the `this+4 -> vtable[0x28]` command bus is installed as a constructor-era
+  secondary table across multiple editor/view classes, not just `CSamplerModule`.
+  Evidence:
+  `SendCommandToSampler__14CSamplerModuleFlsssPcsss` at `0x03222e` loads the secondary
+  object/table at `this+4`, then dispatches through slot `0x28`.
+  `SendCommandToSampler__12CFXFilerViewFlsssPcsss` at `0x068132` was already known to
+  use the same `object+4 -> vtable[0x28]` shape. Raw constructor bytes now tighten that
+  genericity further:
+  `__ct__14CSamplerModuleFv` at `0x028597` stores an A4-relative pointer at `this+4`
+  via `41 ec 54 f0` / `25 48 00 04`;
+  `__ct__12CFXFilerViewFv` at `0x066618` does the same with `41 ec 12 0a` /
+  `25 48 00 04`;
+  `__ct__20CProgramsSamplesViewFv` at `0x03775c` does the same with
+  `41 ec 49 1a` / `25 48 00 04`.
+  In all three constructors, that secondary-table installation is separate from the
+  primary class vtable at offset `0`, and the surrounding code follows the same broad
+  "install table, then call shared helper/init routine" pattern.
+  Interpretation:
+  the post-loop `UALL` dispatch is better modeled as a call into a shared editor/view
+  command-routing interface than as a sampler-private transport hook. This does not yet
+  name the concrete class behind `+4`, but it narrows the ownership boundary: if the
+  remaining upload behavior depends on `UALL`, the missing logic is more likely in a
+  common command-processor layer than in `CAkaiSampler` or SCSI Plug transport code.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
