@@ -300,7 +300,10 @@ cleanly.
   reply command, and can fall into `SMDataByteEnquiry` for readback, but it still does
   not reference the sender-stub region. The common `jsr 0x1620` target is no longer a
   mystery helper either: it is just the shared internal entry inside that same reply
-  family, reused by `SetSCSIMIDIMode`, `SMDataByteEnquiry`, and the nearby wrappers.
+  family, reused by `SetSCSIMIDIMode`, `SMDataByteEnquiry`, and the nearby wrappers. A
+  broader absolute-call sweep now tightens that again: several scary-looking local call
+  targets are internal entries inside already recovered bodies rather than additional
+  standalone helpers, leaving the real unresolved static surface very small.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.

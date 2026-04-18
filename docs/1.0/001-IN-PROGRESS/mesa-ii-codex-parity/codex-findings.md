@@ -1037,6 +1037,28 @@ correct. Every finding should distinguish direct evidence from inference.
   common internal dispatch entry reused by the surrounding `CSCSIPlug` reply/send-mode
   wrappers.
 
+- Finding 53: most of the remaining absolute call targets inside the `CSCSIPlug` send
+  region are internal entries within already recovered bodies, not additional standalone
+  helpers.
+  Evidence:
+  a full absolute-`jsr` sweep across the `CSCSIPlug` method window (`0x0c00-0x1b20`)
+  now reduces the interesting local targets to a small set:
+  `0xca2`, `0xdfc`, `0x106e`, `0x1162`, `0x1620`, and `0x187e`.
+  The latest decoding already collapses several of these:
+  `0x1620` is the shared internal entry inside the recovered `0x160c-0x16d6`
+  `SMDispatchReply` family;
+  `0xdfc` is the main entry of the selector/send dispatcher recovered at
+  `0x0df2-0x106a`;
+  `0xca2` sits inside the recovered `__dt__9CSCSIPlugFv`-adjacent body at
+  `0x0c88-0x0ccc`, not at a separate named symbol boundary.
+  `0x187e` is already the known utility/transport check used by several wrappers.
+  Interpretation:
+  this means the apparent helper surface in the static plug binary is smaller than it
+  looked earlier. After collapsing shared/internal entries, the genuinely unresolved
+  local targets are basically the `0x106e` sender stub itself and the odd `SHOW`-path
+  jump into `0x1162` inside the shared post-call block, plus the selector helper at
+  `0x148`.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
