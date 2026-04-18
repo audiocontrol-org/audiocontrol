@@ -288,6 +288,10 @@ cleanly.
   clearly initializes the persistent plug-side state later used by `SendData`
   (`+0x0e38/+0x0e3c`, the per-bus cache rooted at `+0x0d70`, and flags
   `+0x0e40/+0x0e42/+0x0e46/+0x0e47`), but still does not reference the stub region.
+  The same field cluster is also getting clearer semantically: `+0x0e42` is now backed
+  as a timeout/configuration longword, because `SMDataByteEnquiry__9CSCSIPlugFsUc`
+  compares elapsed time against it and returns `-14010` on expiry, while constructor and
+  command paths treat it as mutable data.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.

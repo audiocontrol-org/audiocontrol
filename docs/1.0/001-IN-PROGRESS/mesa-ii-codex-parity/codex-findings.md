@@ -972,6 +972,22 @@ correct. Every finding should distinguish direct evidence from inference.
   negative SRAW result again: even constructor-time setup does not visibly install the
   live sender behind `0x106e`.
 
+- Finding 49: `CSCSIPlug+0x0e42` is behaving like a timeout budget, not like code or a
+  sender-install pointer.
+  Evidence:
+  the named body at file `0x139a-0x15dc`, `SMDataByteEnquiry__9CSCSIPlugFsUc`, measures
+  elapsed time with repeated trap `0xa975` calls and compares the delta against
+  `a2@(0x0e42)` at `0x1410-0x1416` and again at `0x1552-0x1558`. When the elapsed time
+  exceeds that stored longword, the function returns error `-14010` (`0xc946`) rather
+  than continuing the data-enquiry loop. This matches the constructor seed at
+  `0x0c62-0x0c68`, which writes the longword constant `1800` into `this+0x0e42`, and it
+  also matches the `DoMESACommand__9CSCSIPlugFP11MESACommand` control path at
+  `0x0d3c-0x0d40`, which overwrites `this+0x0e42` from command data.
+  Interpretation:
+  this narrows another ambiguous field in the SRAW/BULK neighborhood. `+0x0e42` is a
+  configurable timing/control value used by higher-level enquiry logic, not evidence of
+  runtime patching around the `0x106e` sender stub.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
