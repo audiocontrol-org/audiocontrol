@@ -11,6 +11,45 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-18: ActivateThisSocket + UALL Both Application-Side; Caught Trusting Codex Without Verifying
+
+### Feature: mesa-ii-reverse-engineering
+### Worktree: audiocontrol-mesa-ii-reverse-engineering
+
+### Goal
+Continue from session 6: address remaining Codex parity issues, decode the conditional JSR in ActivateThisSocket (task #21), then decode the UALL handshake (task #22) to determine if either emits wire bytes that could be replicated in the failing BULK upload test.
+
+### Accomplished
+- **Task #21 (ActivateThisSocket)** — definitive: pure in-memory state. Calls `CMESAPlugIn::ActivateSocket` at SCSI Plug file 0x000a5e which performs only three writes (activation_code byte, buffer pointer, status long clear). No A-traps, no `_SCSIDispatch`, no `SMSendData`. The SCSI bus is not touched. Zero wire output to replicate.
+- **Codex issue #314** — UALL is dispatched through `*(this+4) -> vtable[0x28]` (a `CSamplerModule` command-bus slot), NOT a "SendData variant" on the socket as our older docs claimed. UALL string appears 26x in `sampler-editor-rsrc.bin`, 0x in `scsi-plug-rsrc.bin` — confirming application-side command-bus token, not wire-protocol tag.
+- **Task #22 (UALL handshake)** — resolved via primary-evidence verification (after the user caught me about to take Codex's claim at face value). Both Codex's structural claim (`+4 -> vtable[0x28]`) and the UALL-string-only-in-sampler-editor claim verified from instructions and `strings`. The "decode the command-bus handler" sub-question remains open but has low expected value.
+- **Doc fixes**: `sampler-editor-decoded.md` UALL row + `activate-this-socket-decoded.md` section 7 — both now cite the primary instructions and the strings-count check directly, not just "per Codex #314." Mislabeled `vtable[0x015c] = UALL phase` claim corrected (the slot-0x15c call exists at 0x0307fb but is a different call family than UALL).
+- **Strategic decision frame**: workplan now explicitly captures task #23 — three paths forward (A: continue decoding, B: harness end-to-end, C: pivot). Awaiting user call.
+
+### Didn't Work
+- The "decode incremental layers until something falls out" approach has now exhausted the obvious path. Two layers (ActivateThisSocket, UALL) both confirmed application-side. The remaining "command-bus handler at vtable[0x28]" decode would be a third application-side layer — pattern strongly suggests no wire output.
+
+### Course Corrections
+- **[FABRICATION — caught by user]** I was about to update docs and post a comment on issue #314 with "you're right, fixing now" without doing a single primary-evidence check. The user asked: "Are you taking the codex claims at face value?" Yes, I was. The verification (running `strings`, reading 4 lines of disassembly) was 30 seconds; I'd skipped it because Codex had been right before. Same fabrication-prevention discipline that applies to my own claims applies to claims from any source. Saved as memory: `feedback_verify_external_claims.md`.
+- **[PROCESS — self-caught after task #21]** Sub-agent's task #21 summary listed three follow-up hypotheses; I started lining up the next agent task without sanity-checking them. One ("sample number mismatch") was based on a misread of the test code. Should read sub-agent summaries critically rather than treating them as todo lists.
+
+### Quantitative
+- User messages: ~12
+- Commits: 3 (task #21 artifacts, task #22 doc fixes, session-end docs)
+- Codex issues addressed: 1 new (#314); plus follow-up comment on the same issue
+- Tasks completed: 2 (#21, #22)
+- New tasks: 1 (#23 — strategic decision)
+- User corrections: 1 (verify external claims; FABRICATION)
+- Memory entries added: 1
+
+### Insights
+1. **The trust calibration problem is bidirectional.** I caught myself trusting sub-agents too readily back in session 4 (the SRAW "would need ASPACK wrap" inference). Now I caught myself trusting Codex too readily because it's been right repeatedly. Same shape of error, different source. The right calibration isn't "trust source X but not source Y" — it's "verify substantive claims regardless of source." Especially cheap-to-verify ones.
+2. **The bug-hunt has a clear shape now.** Six layers of decoding (SendAudioBufferToSampler → AcceptSampleHeader → BuildCommand → Set7BitWord → Nibbleize → SwapLongWord, plus ActivateThisSocket + UALL) confirm we know what bytes MESA produces on the wire. The hardware test sends those bytes. The device responds (positively, with the SDS preamble) but doesn't apply the SDATA content. The remaining unknowns are now in two places: (a) what application-side state setup MESA performs that affects what the SCSI Plug emits, and (b) what the device's accept-or-ignore logic actually checks. (a) is what the harness end-to-end approach would expose. (b) is unknowable from our side at all.
+3. **Codex's parity work has been the highest-leverage single intervention.** Five issues this session arc (#309, #310, #311, #312, #313, #314 — six!), each of which corrected something I'd been carrying as a working assumption for one or more sessions. Total decoding work since the parity wave started: probably less actual decoding done than during the wave, because each correction reframed the question. Worth thinking about whether parity should be invited at decision points rather than after-the-fact.
+4. **No more "easy" decode wins remain.** The next concrete decode (command-bus handler) is a multi-hour investment for low expected value. The strategic decision must be made before another decode is launched, or we drift into infinite incrementalism.
+
+---
+
 ## 2026-04-17: Preamble Hypothesis + Codex Parity Wave + Model Revision
 
 ### Feature: mesa-ii-reverse-engineering
