@@ -674,6 +674,26 @@ correct. Every finding should distinguish direct evidence from inference.
   the meaning of the status path, not about whether `0x0170` belongs to the transport
   layer.
 
+- Finding 34: `GetSamplerStatus`, `BuildSampleList`, and `GetSampleList` now fit a
+  coherent three-layer model.
+  Evidence:
+  raw bytes around file offset `0x0690db` show a function epilogue immediately followed
+  by the `BuildSampleList__12CAkaiSamplerFv` name string, and then the next real
+  function prologue at `0x0690f5`, which is the `GetSamplerStatus` entry discussed
+  above.
+  The adjacent `BuildSampleList` body and the later `GetSamplerStatus` body both touch
+  the same field cluster rooted around `this+0x2c` and `this+0xba`.
+  Separately, file offset `0x02d54b` shows `GetSampleList` as a tiny getter returning
+  `this+0x1c`.
+  Interpretation:
+  the strongest current model is:
+  `BuildSampleList` populates or refreshes sampler-side/list-side state,
+  `GetSamplerStatus` queries readiness or status over that same state cluster, and
+  `GetSampleList` simply returns the cached list/descriptor object at `this+0x1c`.
+  That makes the pre-loop family in `SendAudioBufferToSampler` look even less like a
+  transport sequence and more like a sampler/list-state preparation path before header
+  acceptance and bulk transfer.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

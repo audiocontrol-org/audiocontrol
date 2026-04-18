@@ -214,6 +214,10 @@ cleanly.
   fields are absent, which pushes it further toward a status/helper path and further
   away from any transport primitive. What remains unresolved is the concrete meaning of
   that status, not the general kind of routine it is.
+  The neighboring raw-binary structure also now helps: `BuildSampleList` sits directly
+  before `GetSamplerStatus`, and both appear to share the same state cluster, while
+  `GetSampleList` is just a tiny getter returning the cached list object. That makes the
+  whole pre-loop trio read as list/status preparation rather than hidden transport work.
 - `ActivateThisSocket(Uc)` wire behavior
   Claude baseline:
   current Claude branch now claims the function is pure in-memory state and emits no
