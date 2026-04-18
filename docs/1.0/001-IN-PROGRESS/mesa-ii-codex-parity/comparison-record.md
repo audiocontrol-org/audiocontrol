@@ -40,6 +40,29 @@ cleanly.
   A harness that calls `CSCSIPlug::SendData` directly with only a `BULK` struct omits
   those surrounding socket transitions.
 
+- The early `CAkaiSampler` family in `SendAudioBufferToSampler` is no longer an opaque
+  set of unnamed slots
+  Claude baseline:
+  the active Claude-side `sampler-editor-decoded.md` table now treats the pre-loop
+  `CAkaiSampler` calls as:
+  `vtable[0x0170]` unverified,
+  `vtable[0x0134]` likely `GetFreeMemory`,
+  `vtable[0x015c]` likely `DeleteNamedSample`,
+  `vtable[0x00dc]` unverified,
+  `vtable[0x017c] = AcceptSampleHeader`.
+  Codex finding:
+  the checked-in `CAkaiSampler` vtable anchor plus the same symbol-list artifacts used
+  elsewhere in the branch give a consistent slot map for that family:
+  `0x0170 = GetSamplerStatus`,
+  `0x0134 = GetFreeMemory`,
+  `0x015c = DeleteNamedSample(PUc)`,
+  `0x00dc = GetSampleList`,
+  `0x017c = AcceptSampleHeader`.
+  The behavioral evidence is strongest for `0x0134`, `0x015c`, and `0x017c`; `0x0170`
+  and `0x00dc` are still best read as strong symbol-anchor matches rather than fully
+  body-decoded functions. That is close enough to move the family out of the "opaque
+  unknown slots" bucket and into practical parity with Claude's current direction.
+
 ### Disputed
 
 - `CMESASocket::vtable[0x38]` label
@@ -176,6 +199,14 @@ cleanly.
   Claude baseline:
   corrected wire framing still fails on hardware, implying the content bytes remain
   wrong or incomplete.
+- Direct behavioral decode of `CAkaiSampler` slots `0x0170` and `0x00dc`
+  Claude baseline:
+  active Claude docs leave those earlier pre-loop calls partially or fully unverified.
+  Codex status:
+  the slot names now have strong vtable-and-symbol-anchor support as
+  `GetSamplerStatus` and `GetSampleList`, but Codex has not yet decoded their function
+  bodies cleanly enough to treat those names as behavior-backed rather than
+  address-backed identifications.
 - `ActivateThisSocket(Uc)` wire behavior
   Claude baseline:
   current Claude branch now claims the function is pure in-memory state and emits no

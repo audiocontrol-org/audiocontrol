@@ -611,6 +611,41 @@ correct. Every finding should distinguish direct evidence from inference.
   The strongest current Codex read is that some Claude-side docs have been conflating
   those two distinct paths when they describe `UALL` as `CAkaiSampler::vtable[0x015c]`.
 
+- Finding 32: the early `CAkaiSampler` call family in `SendAudioBufferToSampler` now
+  has a mostly recoverable slot map from the checked-in vtable and symbol anchors.
+  Evidence:
+  `SendAudioBufferToSampler.annotated.txt` already shows the pre-loop calls at
+  `0x030773`, `0x030793`, `0x0307f7`, `0x030841`, and `0x030891` dispatching through
+  `CSamplerModule+0xda4` with slot offsets `0x0170`, `0x0134`, `0x015c`, `0x00dc`, and
+  `0x017c`.
+  The checked-in `CAkaiSampler` vtable anchor at file offset `0x06f74b`, together with
+  the independently reproduced `vtable[0x017c] = AcceptSampleHeader` mapping, yields the
+  same slot-to-code progression used elsewhere in the Claude artifacts. The accompanying
+  checked-in symbol lists then identify the corresponding code addresses as:
+  `0x00dc -> GetSampleList`,
+  `0x0134 -> GetFreeMemory`,
+  `0x015c -> DeleteNamedSample(PUc)`,
+  `0x0170 -> GetSamplerStatus`,
+  `0x017c -> AcceptSampleHeader`.
+  The call-site argument shapes fit that map unevenly but materially:
+  `0x030793` takes no extra pushed arguments and its result is immediately compared
+  against sample-size-derived arithmetic, which strongly matches a free-memory query.
+  `0x0307f7` pushes `mah+21` before the call, which strongly matches a name-taking
+  sampler method and is compatible with `DeleteNamedSample(PUc)`.
+  `0x030891` is already independently anchored as `AcceptSampleHeader(PUc,s)`.
+  `0x030841` and `0x030773` are weaker behaviorally from the current artifacts, but they
+  still inherit the same vtable-address mapping and symbol-list anchors.
+  Interpretation:
+  the strongest current Codex map for the pre-loop sampler-side family is:
+  `0x0170 = GetSamplerStatus`,
+  `0x0134 = GetFreeMemory`,
+  `0x015c = DeleteNamedSample(PUc)`,
+  `0x00dc = GetSampleList`,
+  `0x017c = AcceptSampleHeader`.
+  The confidence is highest for `0x0134`, `0x015c`, and `0x017c`; `0x0170` and `0x00dc`
+  are still best treated as vtable-plus-symbol-anchor identifications until their
+  function bodies are decoded more directly.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
@@ -643,6 +678,9 @@ correct. Every finding should distinguish direct evidence from inference.
   than from the current stronger combined inference?
 - What concrete `CSamplerModule`-side method lives at the `vtable[0x28]` `UALL` call
   site, and does it in turn route into a sampler object, a UI update path, or both?
+- Can Codex decode the function bodies behind `CAkaiSampler` slots `0x0170` and
+  `0x00dc` directly enough to upgrade `GetSamplerStatus` and `GetSampleList` from
+  strong symbol-anchor matches to behavior-backed identifications?
 - Is the remaining hardware failure explained entirely by the missing socket-level
   pre/post sequence, or is there still a content-byte mismatch in the 200-byte header?
 - What exactly does the `CSamplerModule`-side `UALL` dispatch at `0x030c93` signal to
