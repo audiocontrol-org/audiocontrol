@@ -1129,6 +1129,21 @@ correct. Every finding should distinguish direct evidence from inference.
   entry points unless stronger evidence proves otherwise. That further shrinks the set of
   plausible in-binary explanations for the live SRAW sender.
 
+- Finding 58: `0x02fc` also lands inside the same dense table/data band, not a credible
+  local helper body.
+  Evidence:
+  direct `xxd` and `objdump` of file `0x02e0-0x0360` show that the `0x02fc` target sits
+  in a region dominated by repeated numeric/table patterns such as
+  `3333 3333 3333 0005 bbbb bbbb bbbb`, `000f f000`, `004f f400`, `05ff ff50`, and
+  `04f3 3f40`, with long zero runs between them. This region does not show any coherent
+  function prologue/call/return structure; it continues the same non-code table band
+  already observed around `0x0274`.
+  Interpretation:
+  this upgrades the earlier caution into a stronger pattern: all of the low absolute
+  targets currently used by `CSCSIPlug` (`0x148`, `0x0274`, `0x02fc`) now look like
+  data/header territory rather than ordinary in-resource helper code. That pushes the
+  remaining live-sender explanation even further toward nonlocal/runtime behavior.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

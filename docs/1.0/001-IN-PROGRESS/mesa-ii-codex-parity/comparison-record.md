@@ -315,7 +315,9 @@ cleanly.
   dispatcher family where `a2` is already live. The very low absolute targets are now
   weaker than before too: direct byte inspection shows `0x148` and `0x274` land inside
   string/table-heavy header data, not credible local code bodies, so they should not be
-  treated as ordinary in-resource helpers without stronger evidence.
+  treated as ordinary in-resource helpers without stronger evidence. The same is now true
+  for `0x02fc`: it sits in the same dense non-code table band, not in a plausible helper
+  body.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.
