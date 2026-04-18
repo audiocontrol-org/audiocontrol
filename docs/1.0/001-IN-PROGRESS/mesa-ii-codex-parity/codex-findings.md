@@ -594,6 +594,23 @@ correct. Every finding should distinguish direct evidence from inference.
   `4`. The unresolved `UALL` handler therefore lives behind a shared command interface
   installed during construction, not behind a hidden sampler/socket transport object.
 
+- Finding 31: `SendAudioBufferToSampler` contains two distinct non-socket call families
+  that should not be conflated: early `CAkaiSampler` vtable calls via `+0xda4`, and the
+  later post-loop `UALL` command-bus dispatch via object offset `+4`.
+  Evidence:
+  the early calls at `0x030773`, `0x030793`, `0x0307f7`, `0x030841`, and `0x030891`
+  all load `CSamplerModule+0xda4`, then dereference the pushed object's vtable pointer
+  from offset `+2` before calling slots `0x0170`, `0x0134`, `0x015c`, `0x00dc`, and
+  `0x017c`.
+  In contrast, the later post-loop path at `0x030c7b-0x030c93` pushes integer `5`,
+  `'UALL'`, and `this`, then loads `this+4`, reads offset `0x28` from that secondary
+  table, and dispatches through it.
+  Interpretation:
+  the `0x0307fb` call through `CAkaiSampler` slot `0x015c` is a real pre-loop sampler
+  call, but it is not the same thing as the post-loop `UALL` command at `0x030c93`.
+  The strongest current Codex read is that some Claude-side docs have been conflating
+  those two distinct paths when they describe `UALL` as `CAkaiSampler::vtable[0x015c]`.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

@@ -215,7 +215,12 @@ cleanly.
   `CFXFilerView` install an A4-relative secondary function table at offset `+4`, then
   use slot `0x28` of that table for command routing. That makes the unresolved handler
   look more like a shared editor/view command processor than a sampler-private
-  post-transfer routine.
+  post-transfer routine. The call-family split in `SendAudioBufferToSampler` is now
+  sharper too: the earlier `0x0170/0x0134/0x015c/0x00dc/0x017c` calls go through the
+  `CAkaiSampler` object at `CSamplerModule+0xda4` using the `object+2 -> vtable` path,
+  while the later post-loop `UALL` call at `0x030c93` goes through the separate shared
+  command table at object offset `+4`. So active Claude-side wording that equates UALL
+  with `CAkaiSampler::vtable[0x015c]` is conflating two different call families.
 
 ### Deferred
 
