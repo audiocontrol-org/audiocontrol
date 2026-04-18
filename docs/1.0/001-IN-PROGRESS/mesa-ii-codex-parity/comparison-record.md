@@ -58,10 +58,13 @@ cleanly.
   `0x015c = DeleteNamedSample(PUc)`,
   `0x00dc = GetSampleList`,
   `0x017c = AcceptSampleHeader`.
-  The behavioral evidence is strongest for `0x0134`, `0x015c`, and `0x017c`; `0x0170`
-  and `0x00dc` are still best read as strong symbol-anchor matches rather than fully
-  body-decoded functions. That is close enough to move the family out of the "opaque
-  unknown slots" bucket and into practical parity with Claude's current direction.
+  The evidence is now high for `0x00dc`, `0x0134`, `0x015c`, and `0x017c`: in
+  particular, `0x00dc` is backed by a direct tiny getter body at file offset `0x02d54b`
+  returning `this+0x1c`, which fits its immediate `UExtractFromAEDesc::TheInt32` use in
+  `SendAudioBufferToSampler`. `0x0170` remains the weakest of the set: it has a real
+  function body and compatible call-site behavior, but not yet a full behavior decode.
+  That is still enough to move the family out of the "opaque unknown slots" bucket and
+  into practical parity with Claude's current direction.
 
 ### Disputed
 
@@ -199,14 +202,14 @@ cleanly.
   Claude baseline:
   corrected wire framing still fails on hardware, implying the content bytes remain
   wrong or incomplete.
-- Direct behavioral decode of `CAkaiSampler` slots `0x0170` and `0x00dc`
+- Direct behavioral decode of `CAkaiSampler` slot `0x0170`
   Claude baseline:
-  active Claude docs leave those earlier pre-loop calls partially or fully unverified.
+  active Claude docs still leave `vtable[0x0170]` unverified.
   Codex status:
-  the slot names now have strong vtable-and-symbol-anchor support as
-  `GetSamplerStatus` and `GetSampleList`, but Codex has not yet decoded their function
-  bodies cleanly enough to treat those names as behavior-backed rather than
-  address-backed identifications.
+  `0x00dc = GetSampleList` is now strengthened by a direct getter body plus a fitting
+  `UExtractFromAEDesc::TheInt32` call-site use. `0x0170 = GetSamplerStatus` still rests
+  on a strong address/name anchor and compatible status-word behavior, but not yet a
+  full behavior decode.
 - `ActivateThisSocket(Uc)` wire behavior
   Claude baseline:
   current Claude branch now claims the function is pure in-memory state and emits no

@@ -632,9 +632,17 @@ correct. Every finding should distinguish direct evidence from inference.
   against sample-size-derived arithmetic, which strongly matches a free-memory query.
   `0x0307f7` pushes `mah+21` before the call, which strongly matches a name-taking
   sampler method and is compatible with `DeleteNamedSample(PUc)`.
+  Raw bytes at file offset `0x02d54b` decode cleanly as a tiny getter
+  (`linkw #0; moveal this; moveal this+0x1c; unlk; rts`) followed immediately by the
+  `GetSampleList__12CAkaiSamplerFv` name string, which materially strengthens the
+  `0x00dc -> GetSampleList` mapping. That also fits the `0x030841` call site, where the
+  returned object in `A0` is passed straight into `UExtractFromAEDesc::TheInt32`.
+  Raw bytes at file offset `0x069115` also decode as a real function body followed by
+  the `GetSamplerStatus__12CAkaiSamplerFv` name string, and the `0x030773` call site
+  stores its `D0` result as a status word whose nonzero value bypasses the later
+  free-memory check. That is compatible with a sampler-status query, though still not as
+  behaviorally direct as the `GetSampleList` getter or the `GetFreeMemory` arithmetic.
   `0x030891` is already independently anchored as `AcceptSampleHeader(PUc,s)`.
-  `0x030841` and `0x030773` are weaker behaviorally from the current artifacts, but they
-  still inherit the same vtable-address mapping and symbol-list anchors.
   Interpretation:
   the strongest current Codex map for the pre-loop sampler-side family is:
   `0x0170 = GetSamplerStatus`,
@@ -642,9 +650,10 @@ correct. Every finding should distinguish direct evidence from inference.
   `0x015c = DeleteNamedSample(PUc)`,
   `0x00dc = GetSampleList`,
   `0x017c = AcceptSampleHeader`.
-  The confidence is highest for `0x0134`, `0x015c`, and `0x017c`; `0x0170` and `0x00dc`
-  are still best treated as vtable-plus-symbol-anchor identifications until their
-  function bodies are decoded more directly.
+  The confidence is now high for `0x00dc`, `0x0134`, `0x015c`, and `0x017c`.
+  `0x0170` is still the weakest of the set: its name and call-site role fit
+  `GetSamplerStatus`, but the body has not yet been decoded far enough to treat that
+  mapping as equally direct.
 
 ## Open Questions
 
@@ -678,9 +687,9 @@ correct. Every finding should distinguish direct evidence from inference.
   than from the current stronger combined inference?
 - What concrete `CSamplerModule`-side method lives at the `vtable[0x28]` `UALL` call
   site, and does it in turn route into a sampler object, a UI update path, or both?
-- Can Codex decode the function bodies behind `CAkaiSampler` slots `0x0170` and
-  `0x00dc` directly enough to upgrade `GetSamplerStatus` and `GetSampleList` from
-  strong symbol-anchor matches to behavior-backed identifications?
+- Can Codex decode the function body behind `CAkaiSampler` slot `0x0170` directly
+  enough to upgrade `GetSamplerStatus` from a strong address-plus-call-site match to a
+  fully behavior-backed identification?
 - Is the remaining hardware failure explained entirely by the missing socket-level
   pre/post sequence, or is there still a content-byte mismatch in the 200-byte header?
 - What exactly does the `CSamplerModule`-side `UALL` dispatch at `0x030c93` signal to
