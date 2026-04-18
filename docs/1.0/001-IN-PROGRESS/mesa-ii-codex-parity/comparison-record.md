@@ -280,7 +280,13 @@ cleanly.
   `CSCSIUtils::Inquiry`, formats `Bus X, ID=Y` strings for dialog state, and caches the
   chosen address back into `CSCSIPlug+0x0d6e` and a per-bus slot family rooted at
   `+0x0d70`, but it still does not write to `0x106e` or the neighboring stub region.
-  Claude's newer workplan now targets that same remaining gap directly.
+  The static negative case is now tighter still: byte-search plus `objdump` show that
+  the checked-in binary contains exactly six direct `jsr 0x106e` call sites, all inside
+  the `SendData` dispatch arms, with no other literal references to `0x106e` and no
+  direct literal references at all to `0x1072` or `0x1160` outside their own bodies.
+  That makes the remaining live-sender gap look less like a missed in-binary helper and
+  more like external runtime patching or harness-side interception. Claude's newer
+  workplan now targets that same remaining gap directly.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

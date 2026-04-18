@@ -932,6 +932,26 @@ correct. Every finding should distinguish direct evidence from inference.
   setup/helpers or the harness-side interception layer, rather than treating bus choice
   as the missing patch site.
 
+- Finding 47: the checked-in `CSCSIPlug` binary contains only call-site references to the
+  SRAW send stub region; it does not contain a visible static patch/install path for
+  `0x106e`, `0x1072`, or `0x1160`.
+  Evidence:
+  direct byte-search and `objdump` cross-checking on `scsi-plug-rsrc.bin` show exactly
+  six absolute `jsr 0x106e` call sites, all inside the recovered `SendData` dispatch
+  region at file `0x0f40-0x115c`:
+  `0x0f60`, `0x0fbc`, `0x102c`, `0x10b2`, `0x10f8`, and `0x1144`.
+  No other literal references to `0x106e` appear in the binary, and there are no direct
+  literal references at all to `0x1072` or `0x1160` outside their own code bodies.
+  The same recovered dispatch slice shows those six sites as payload-send arms followed
+  by fallthrough/branch into the shared post-call block, not as stores or patch writes.
+  Interpretation:
+  this sharpens the current negative case. Static `CSCSIPlug` code clearly knows how to
+  call the sender stub, but the checked-in binary does not visibly install or retarget
+  that stub from within the plug code itself. If a live sender replaces the `0x106e`
+  branch at runtime, that installation is more likely happening through external runtime
+  patching, resource initialization outside the recovered plug body, or harness-layer
+  interception than through a normal in-binary helper that simply has not been named yet.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
