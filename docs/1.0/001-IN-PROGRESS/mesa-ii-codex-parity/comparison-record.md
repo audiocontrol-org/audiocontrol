@@ -282,8 +282,10 @@ cleanly.
   use slot `0x28` of that table for command routing. The new constructor-side parity
   pass strengthens that genericity again: `CProgramsSamplesView` also installs an
   A4-relative table at `this+4` with the same broad constructor pattern, even though it
-  does not share `CSamplerModule`'s sampler-private state layout. That makes the
-  unresolved handler look more like a shared editor/view command processor than a
+  does not share `CSamplerModule`'s sampler-private state layout. The base
+  `CMESAGrafPortView` constructor also installs a `+4` table, and its own
+  `ListenToMessage` path dispatches through that table using other slots. That makes
+  the unresolved handler look more like a shared editor/view command processor than a
   sampler-private post-transfer routine. The call-family split in
   `SendAudioBufferToSampler` is now sharper too: the earlier
   `0x0170/0x0134/0x015c/0x00dc/0x017c` calls go through the `CAkaiSampler` object at

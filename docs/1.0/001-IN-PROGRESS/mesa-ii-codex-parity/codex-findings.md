@@ -828,6 +828,25 @@ correct. Every finding should distinguish direct evidence from inference.
   remaining upload behavior depends on `UALL`, the missing logic is more likely in a
   common command-processor layer than in `CAkaiSampler` or SCSI Plug transport code.
 
+- Finding 42: the `+4` secondary table is generic framework machinery, not a
+  `SendCommandToSampler`-only special case.
+  Evidence:
+  the base view constructor `__ct__17CMESAGrafPortViewFv` at `0x058ae0` also installs an
+  A4-relative pointer at `this+4` (`41 ec 32 08` / `25 48 00 04`), which means the
+  pattern is present even below `CFXFilerView` and `CProgramsSamplesView`.
+  The base `ListenToMessage__17CMESAGrafPortViewFlPv` body at `0x058d38` then dispatches
+  twice through that same secondary table via slots `0x00b4` and `0x0110`.
+  Derived classes reuse the same mechanism: `ListenToMessage__12CFXFilerViewFlPv` at
+  `0x066c4c` dispatches through `this+4 -> slot 0x00e0`, while
+  `SendCommandToSampler__14CSamplerModuleFlsssPcsss` continues to use `this+4 ->
+  slot 0x0028`.
+  Interpretation:
+  the `+4` structure is best modeled as a broader MESA editor/view interface table or
+  message-routing bus, not a sampler-upload helper invented for `UALL`. That pushes the
+  remaining ambiguity one layer higher: the question is no longer whether `UALL` rides a
+  shared framework bus, but which framework-side handler or adapter sits behind slot
+  `0x28` for `CSamplerModule`.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
