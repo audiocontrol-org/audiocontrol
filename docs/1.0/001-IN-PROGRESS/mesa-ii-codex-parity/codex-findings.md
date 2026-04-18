@@ -1144,6 +1144,21 @@ correct. Every finding should distinguish direct evidence from inference.
   data/header territory rather than ordinary in-resource helper code. That pushes the
   remaining live-sender explanation even further toward nonlocal/runtime behavior.
 
+- Finding 59: classic Mac memory layout makes the low-address `jsr` targets look more
+  like low-memory/system entry points than in-resource code.
+  Evidence:
+  platform documentation aligns with the binary-level anomaly. Classic Mac memory maps
+  place low-memory globals beginning at `$0100`, the OS trap table around `$0400`, the
+  Toolbox trap table around `$0E00`, and the system heap only later (for example,
+  around `$1600` on the Mac Plus / classic-era map). That means the absolute targets used
+  here at `0x148`, `0x274`, and `0x02fc` all fall squarely inside the low-memory/system
+  area rather than where application/resource code would normally live.
+  Interpretation:
+  this is still an inference layered on top of the primary-artifact findings above, but
+  it fits them cleanly. The weird low-address `jsr` sites are better modeled as external
+  low-memory/system vectors or data-driven control transfers than as ordinary helper code
+  residing inside the plug resource itself.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

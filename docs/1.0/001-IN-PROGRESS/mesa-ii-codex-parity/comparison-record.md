@@ -317,7 +317,10 @@ cleanly.
   string/table-heavy header data, not credible local code bodies, so they should not be
   treated as ordinary in-resource helpers without stronger evidence. The same is now true
   for `0x02fc`: it sits in the same dense non-code table band, not in a plausible helper
-  body.
+  body. External platform context now lines up with that too: classic Mac memory layout
+  places low-memory globals and trap/vector tables in exactly this address range, well
+  below the system heap, so these low absolute `jsr` targets are increasingly consistent
+  with low-memory/system entry points rather than in-resource helper code.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.
