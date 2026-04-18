@@ -96,4 +96,4 @@ Path 2 is the only viable one. We've already decoded most of MESA's chain:
 
 - #315 (parent decision issue) — will be updated with a comment pointing at this record
 - #304, #305, #306, #307 (parent/phase feature issues)
-- #309, #310, #311, #312, #313, #314 (Codex parity wave — all open, still awaiting user close)
+- #309, #310, #311, #312, #313, #314 (Codex parity wave — all CLOSED as of 2026-04-18)

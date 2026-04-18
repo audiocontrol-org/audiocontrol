@@ -50,17 +50,21 @@ Goal: Validate the disassembly findings against real hardware with test scripts.
 - [x] ~~Preamble hypothesis (task #20)~~ — partially confirmed but model revised. Tested SDS-create preamble + Akai SDATA: device replies (was silent before) but does NOT apply SDATA content. Codex #313 then revealed `vtable[0x30]` is `CMESASocket::ActivateThisSocket(Uc)` (file 0x05a0a7) — a socket-state/channel-activation function, NOT a transport primitive. The "preamble" we've been chasing is in-memory state setup on the application-side socket, not wire protocol. See `disassembly-full/CMESASocket-vtable30-ActivateThisSocket.annotated.txt`.
 - [x] ~~Replicate ActivateThisSocket sequence (task #21)~~ — decoded: pure in-memory state via `CMESAPlugIn::ActivateSocket` at SCSI Plug file 0x000a5e (3 writes: `activation_code`, `buffer_ptr`, status long). Zero wire bytes. See `mesa-ii-analysis/activate-this-socket-decoded.md`.
 - [x] ~~Decode UALL/LALL handshake (task #22)~~ — resolved via primary-evidence verification. UALL dispatched through `*(this+4) -> vtable[0x28]` (NOT through the socket; verified at file 0x030c89-0x030c93). UALL string absent from `scsi-plug-rsrc.bin` (0 of 26 occurrences). It's a `CSamplerModule` command-bus token, not a wire-protocol tag. See sampler-editor-decoded.md §6 (corrected) and Codex issue #314.
-- [x] ~~Strategic decision (task #23)~~ — **DECIDED via [#315](https://github.com/audiocontrol-org/audiocontrol/issues/315): Option 1 (SDS optimization)**. Codex parity review aligned. Phase 2 closed; Phase 3 active. Defer Option 2 (harness end-to-end) as later research. Reject Option 3 (opcode scan) — firmware risk. The MESA II reference is preserved in `mesa-ii-analysis/` for any future Option 2 attempt.
+- [x] ~~Strategic decision (task #23)~~ — initially decided as Option 1 (SDS optimize) via [#315](https://github.com/audiocontrol-org/audiocontrol/issues/315), then **SUPERSEDED later that day** after Phase 3.1-3.3 hardware data showed SCSI SDS = 2.91 KB/s ≈ 1.4x serial MIDI (not the 10x needed to justify the bridge infrastructure). New direction: continue MESA II RE until we have a testable, data-backed hypothesis. See [`decision-record-2026-04-18.md`](./decision-record-2026-04-18.md) for full rationale and guard rails. Option 2 (harness end-to-end) is now effectively the active path in narrower form (decode-driven, not full harness expansion up front). Option 3 (opcode scan) still rejected.
 - [ ] ~~Hardware-verify the BULK SDATA finding (task #14)~~ — **dropped per #315 decision**. The BULK upload is irreducibly stateful; not pursuing.
-- [ ] ~~Trace SRAW on the wire (task #15)~~ — **deferred per #315**. Not on the Option 1 critical path.
-- [ ] ~~Find UALL handler (task #16)~~ — **deferred per #315**. UALL is application-side per #314; not on the Option 1 critical path.
+- [ ] **Decode SRAW wire bytes (task #30)** — **NOW THE CRITICAL PATH** per `decision-record-2026-04-18.md`. SRAW is the only undecoded piece of MESA's upload chain. Find primary-evidence answer to "what bytes does the SCSI Plug emit when called with `SendData(socket, 'SRAW', byte_count, audio_buf_ptr)`?" Approaches: (a) decode SCSI Plug Open() to find what patches `$1106E`, (b) decode the unpatched `$001160` stub, (c) extend harness to actually run SRAW path, or (d) search for direct writes to `$1106E`. Pick cheapest. (Replaces the earlier "task #15" entry which was deferred under the now-superseded Option 1 framing.)
+- [ ] ~~Find UALL handler (task #16)~~ — still deferred. UALL is confirmed application-side per #314 (closed). Not on the SRAW-decode critical path; revisit only if SRAW decode reveals UALL is part of the answer.
 - [ ] **Capture SRAW wire bytes (task #15)**: agent's "would need ASPACK wrap" was an inference, not a finding
 - [ ] **Find UALL handler (task #16)**: not in SendData TagDispatch, uses vtable[0x28]
 - [ ] Document validated protocol specification with message sequence diagrams (after #15/#16/#17)
 
-## Phase 3: Bridge Implementation — Option 1 (SDS Optimization)
+## Phase 3: MESA II RE Continued (post-SDS-ceiling decision)
 
-**Decision context:** Per [#315](https://github.com/audiocontrol-org/audiocontrol/issues/315), MESA's BULK upload is irreducibly stateful and not feasibly replicable from a stateless Node test. The pragmatic path is to optimize the existing batched-SDS upload, which already produces correct SLNGTH at sample creation time (per Theory B verification in SCSI-NOTES.md).
+**Decision context:** Per [`decision-record-2026-04-18.md`](./decision-record-2026-04-18.md), the original Option 1 (SDS optimize) commitment in [#315](https://github.com/audiocontrol-org/audiocontrol/issues/315) is **SUPERSEDED**. Phase 3.1-3.3 measured SDS = 2.91 KB/s = ~1.4x serial MIDI — not enough to justify the SCSI bridge infrastructure (the bridge needs ~10x MIDI to earn its complexity). Since we can't measure MESA II directly (no vintage hardware) but it demonstrably achieves the higher throughput, the path forward is to keep decoding MESA II until we have a testable hypothesis. Sections below preserve the Phase 3.1-3.3 SDS-optimization data as reference (the negative results are the evidence that sealed the supersession).
+
+**Current target:** task #30 — decode SRAW wire bytes (the only undecoded piece of MESA's chain). See task list above.
+
+### Phase 3.1-3.3 archive: SDS optimization data (kept as evidence of supersession)
 
 **Throughput targets (per #315 decision comment):**
 
@@ -76,12 +80,10 @@ Goal: Validate the disassembly findings against real hardware with test scripts.
 - [x] **Phase 3.1 (task #24): Measure current SDS baseline on hardware** — done. **2.91 KB/s steady-state** at batch=20 depth=1 on 16000-sample upload. Per-packet floors at 26.2ms. Doc: `sds-baseline.md`.
 - [x] **Phase 3.2 (task #25): Try larger CDB batches** — done, NEGATIVE. batch=20 is the optimum; batch=40 → 0.76x; batch=60+ → 0.42x plateau. Device-side MIDI buffer is the bottleneck, not per-CDB overhead. `batch_size` JSON knob added (default 20). Doc: `sds-phase-3.2-batch-sweep.md`.
 - [x] **Phase 3.3 (task #26): Pipeline ACK validation** — done, NEGATIVE. depth=1 is the optimum at 2.89 KB/s; depth=2-8 → 0.59-0.70x. Combined with 3.2, confirms the device's natural SDS rate is ~27ms/packet = 2.9 KB/s — the bridge is NOT the bottleneck. `pipeline_depth` JSON knob added (default 1). **Triggers #315 stop criterion.** Doc: `sds-phase-3.3-pipeline-sweep.md`.
-- [ ] ~~Phase 3.4 (task #27): Skip per-packet ACK validation~~ — **PAUSED pending #315 reassessment**. Unlikely to help; bridge already validates ACKs in batch (one read per batch). The bottleneck is device processing, not ACK overhead.
-- [ ] ~~Try larger SDS data packets~~ — paused. SDS protocol spec is 120 bytes/packet; deviating is non-standard.
-- [ ] ~~Phase 3.5 (task #28): Hardware-verify final implementation~~ — **PAUSED pending #315 reassessment**. Need a delivery decision before integrating.
-- [x] **Stop criterion check** — TRIGGERED. Plateau at 2.9 KB/s after exhausting Phase 3.2 + 3.3. Eng team reassessment posted on #315 with 4 options (B/C/D/E). Awaiting product call.
-- [ ] Update SCSI-NOTES.md with final SDS-optimization findings (after delivery decision).
-- [ ] Update bridge API documentation (after delivery decision).
+- [x] ~~Phase 3.4 (task #27): Skip per-packet ACK validation~~ — **DROPPED** per `decision-record-2026-04-18.md`. The bottleneck is device processing time; bridge-side ACK handling won't change throughput. Task #27 deleted.
+- [x] ~~Try larger SDS data packets~~ — DROPPED. SDS protocol spec is 120 bytes/packet; deviating is non-standard. SDS path itself is no longer the critical work.
+- [ ] **Phase 3.5 (task #28): Hardware-verify the chosen delivery path** — re-scoped per Codex guidance: waits for the SRAW decode (task #30) to produce a testable hypothesis, then verifies whatever we end up shipping. Round-trip E2E test required.
+- [x] **Stop criterion check** — TRIGGERED at 2.9 KB/s. Result was the supersession of Option 1, not a "stop and ship" — see decision record.
 
 **Deferred (per #315):** Sample download (`GetSampleData`/`ExportSampleData`) parity with MESA. Not blocking the SLNGTH bug fix.
 
