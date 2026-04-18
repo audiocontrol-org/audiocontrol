@@ -295,7 +295,10 @@ cleanly.
   `DoMESACommand__9CSCSIPlugFP11MESACommand` uses this same field cluster for plain
   control-plane updates like selected ID (`+0x0d6e`) and timeout budget (`+0x0e42`),
   plus command-result bookkeeping at `MESACommand+4`, without touching the sender-stub
-  region.
+  region. The nearby `SMDispatchReply`-side helper family at `0x160c-0x16d6` also now
+  looks ordinary: it validates transport, builds a small control block, dispatches a
+  reply command, and can fall into `SMDataByteEnquiry` for readback, but it still does
+  not reference the sender-stub region.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.

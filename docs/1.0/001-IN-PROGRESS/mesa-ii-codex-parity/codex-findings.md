@@ -1003,6 +1003,23 @@ correct. Every finding should distinguish direct evidence from inference.
   handling, so it should be treated as mutable runtime configuration and status, not as a
   hidden patch-control surface for the sender stub.
 
+- Finding 51: the recovered `0x160c-0x16d6` routine tagged
+  `SMDispatchReply__9CSCSIPlugFsPUcUcPl` is a reply/validation wrapper that can fall
+  into `SMDataByteEnquiry`; it is not a sender-stub installer.
+  Evidence:
+  real `m68k-elf-objdump` of file `0x160c-0x16d6` shows the routine zeroing the output
+  longword at `a3@`, validating the transport with the utility check at `0x187e`, then
+  packing the three payload bytes from the incoming longword into a local 4-byte control
+  block with optional `0x80` in the high flag byte. It then dispatches through the same
+  internal reply path at `0x1620`/`0x169a` with mode `2` and a 1000-unit timeout. If
+  that succeeds and an output pointer is present, it immediately calls
+  `SMDataByteEnquiry__9CSCSIPlugFsUc` at file `0x139a` to wait for/read back the reply
+  data. None of this code references `0x106e`, `0x1072`, or `0x1160`.
+  Interpretation:
+  this removes another nearby candidate for hidden SRAW installation logic. The
+  `SMDispatchReply`-side helper family is concerned with command dispatch plus reply
+  validation/readback, not with retargeting the live sender stub.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
