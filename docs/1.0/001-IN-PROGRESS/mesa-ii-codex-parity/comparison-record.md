@@ -208,8 +208,12 @@ cleanly.
   Codex status:
   `0x00dc = GetSampleList` is now strengthened by a direct getter body plus a fitting
   `UExtractFromAEDesc::TheInt32` call-site use. `0x0170 = GetSamplerStatus` still rests
-  on a strong address/name anchor and compatible status-word behavior, but not yet a
-  full behavior decode.
+  on a strong address/name anchor and compatible status-word behavior. Bounded decoding
+  now also shows `0x0170` testing local fields, dispatching through `this+0xc4`, and
+  then using callback slots rooted at `this+0x2c` with a fallback helper when those
+  fields are absent, which pushes it further toward a status/helper path and further
+  away from any transport primitive. What remains unresolved is the concrete meaning of
+  that status, not the general kind of routine it is.
 - `ActivateThisSocket(Uc)` wire behavior
   Claude baseline:
   current Claude branch now claims the function is pure in-memory state and emits no

@@ -655,6 +655,25 @@ correct. Every finding should distinguish direct evidence from inference.
   `GetSamplerStatus`, but the body has not yet been decoded far enough to treat that
   mapping as equally direct.
 
+- Finding 33: `CAkaiSampler` slot `0x0170` is now more specifically constrained as a
+  status/helper path with callback and fallback behavior, not a transport or memory
+  primitive.
+  Evidence:
+  raw bytes at file offset `0x069115` decode as a real function body followed by the
+  `GetSamplerStatus__12CAkaiSamplerFv` name string.
+  The function tests `this+0xba` and `this+0xbe`, zeroes local temporaries, then
+  dispatches through `this+0xc4`. Later it pushes `this+0x2c` and calls either
+  callback slots at offsets `0x50` and `0x64` on that object, or a fallback helper at
+  `0x0341d6` when the earlier fields are absent.
+  At the `SendAudioBufferToSampler` call site (`0x030773`), the returned `D0` word is
+  stored as status and a nonzero result skips the later free-memory check.
+  Interpretation:
+  this is materially more compatible with a sampler-status/query routine than with any
+  direct transport send, buffer clear, or memory-size primitive. Codex still does not
+  know what concrete status is being queried, but the remaining ambiguity is now about
+  the meaning of the status path, not about whether `0x0170` belongs to the transport
+  layer.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
@@ -690,6 +709,9 @@ correct. Every finding should distinguish direct evidence from inference.
 - Can Codex decode the function body behind `CAkaiSampler` slot `0x0170` directly
   enough to upgrade `GetSamplerStatus` from a strong address-plus-call-site match to a
   fully behavior-backed identification?
+- What concrete status or UI state does `CAkaiSampler::GetSamplerStatus` actually report
+  through the callback/fallback path rooted at `this+0x2c`, `this+0xc4`, `this+0xba`,
+  and `this+0xbe`?
 - Is the remaining hardware failure explained entirely by the missing socket-level
   pre/post sequence, or is there still a content-byte mismatch in the 200-byte header?
 - What exactly does the `CSamplerModule`-side `UALL` dispatch at `0x030c93` signal to
