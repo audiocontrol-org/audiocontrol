@@ -432,6 +432,9 @@ async fn handle_ws_sample_upload(
     let sample_number = parsed["sample_number"].as_u64().unwrap_or(0) as u16;
     let channel = parsed["channel"].as_u64().unwrap_or(0) as u8;
     let sample_rate = parsed["sample_rate"].as_u64().unwrap_or(44100) as u32;
+    // Phase 3.2 optimization knob: client may pass `batch_size` to override the
+    // default SDS packets-per-CDB. Test-only; production callers omit it.
+    let batch_size = parsed["batch_size"].as_u64().map(|n| n as usize);
 
     let samples: Vec<i16> = parsed["samples"]
         .as_array()
@@ -448,7 +451,7 @@ async fn handle_ws_sample_upload(
 
     tokio::spawn(async move {
         let total = samples.len() as u32;
-        info!(target_id, sample_number, total, sample_rate, "starting sample upload task");
+        info!(target_id, sample_number, total, sample_rate, ?batch_size, "starting sample upload task");
 
         let (progress_tx, mut progress_rx) = mpsc::channel::<serde_json::Value>(128);
 
@@ -459,6 +462,7 @@ async fn handle_ws_sample_upload(
             channel,
             sample_rate,
             samples,
+            batch_size,
             progress: progress_tx,
             reply: reply_tx,
         }).await;

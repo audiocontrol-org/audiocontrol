@@ -44,6 +44,9 @@ pub enum ScsiWork {
         channel: u8,
         sample_rate: u32,
         samples: Vec<i16>,
+        /// Override the default SDS batch size (packets/CDB). None = use default.
+        /// Test-only knob for Phase 3.2 optimization work (task #25).
+        batch_size: Option<usize>,
         progress: mpsc::Sender<serde_json::Value>,
         reply: oneshot::Sender<Result<u32, String>>,
     },
@@ -116,11 +119,11 @@ pub async fn scsi_worker(
                 ).await;
                 let _ = reply.send(result);
             }
-            ScsiWork::SdsUpload { target_id, sample_number, channel, sample_rate, samples, progress, reply } => {
+            ScsiWork::SdsUpload { target_id, sample_number, channel, sample_rate, samples, batch_size, progress, reply } => {
                 let cancelled = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
                 let cancelled_clone = cancelled.clone();
                 let result = scsi_midi::upload_sample(
-                    &s2p, target_id, sample_number, channel, sample_rate, &samples,
+                    &s2p, target_id, sample_number, channel, sample_rate, &samples, batch_size,
                     |sent, total| {
                         let msg = serde_json::json!({
                             "type": "upload-progress",

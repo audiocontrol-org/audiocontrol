@@ -41,7 +41,7 @@ interface RunResult {
   perPacketMs: number;
 }
 
-async function runOne(sampleCount: number, slot: number): Promise<RunResult> {
+async function runOne(sampleCount: number, slot: number, batchSize?: number): Promise<RunResult> {
   const samples = new Int16Array(sampleCount);
   for (let i = 0; i < sampleCount; i++) {
     samples[i] = Math.round(Math.sin(2 * Math.PI * 440 * i / SAMPLE_RATE) * 16000);
@@ -49,7 +49,7 @@ async function runOne(sampleCount: number, slot: number): Promise<RunResult> {
 
   const wsUrl = BRIDGE_URL.replace(/^http/, 'ws') + '/sds/stream';
   const result: Partial<RunResult> = {
-    label: `${sampleCount}-sample (${(sampleCount * 2 / 1024).toFixed(1)} KB)`,
+    label: `${sampleCount}-sample (${(sampleCount * 2 / 1024).toFixed(1)} KB)` + (batchSize ? ` batch=${batchSize}` : ''),
     sampleCount,
     totalBytes: sampleCount * 2,
     progressEvents: 0,
@@ -71,14 +71,16 @@ async function runOne(sampleCount: number, slot: number): Promise<RunResult> {
 
     ws.on('open', () => {
       tConnected = performance.now();
-      ws.send(JSON.stringify({
+      const req: Record<string, unknown> = {
         type: 'sample-upload',
         target_id: 6,
         sample_number: slot,
         channel: 0,
         sample_rate: SAMPLE_RATE,
         samples: Array.from(samples),
-      }));
+      };
+      if (batchSize !== undefined) req.batch_size = batchSize;
+      ws.send(JSON.stringify(req));
       tSendRequest = performance.now();
     });
 

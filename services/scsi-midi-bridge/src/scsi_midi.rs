@@ -243,6 +243,7 @@ pub async fn upload_sample<F>(
     channel: u8,
     sample_rate: u32,
     samples: &[i16],
+    batch_size: Option<usize>,
     mut on_progress: F,
     cancelled: &std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> Result<u32, String>
@@ -250,11 +251,11 @@ where
     F: FnMut(u32, u32),
 {
     let total = samples.len() as u32;
-    info!(target_id, sample_number, total, sample_rate, "starting sample upload");
+    info!(target_id, sample_number, total, sample_rate, batch_size = ?batch_size, "starting sample upload");
 
     s2p.scsi_midi_enable(target_id).await?;
     let result = upload_sample_inner(
-        s2p, target_id, sample_number, channel, sample_rate, samples, &mut on_progress, cancelled,
+        s2p, target_id, sample_number, channel, sample_rate, samples, batch_size, &mut on_progress, cancelled,
     ).await;
     let _ = s2p.scsi_midi_disable(target_id).await;
     result
@@ -267,6 +268,7 @@ async fn upload_sample_inner<F>(
     channel: u8,
     sample_rate: u32,
     samples: &[i16],
+    batch_size_override: Option<usize>,
     on_progress: &mut F,
     cancelled: &std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> Result<u32, String>
@@ -308,7 +310,11 @@ where
     // amortizes the ~113ms per-SCSI-command overhead. Batch of 20 gives ~9x
     // speedup (25ms/pkt vs 227ms/pkt).
     let samples_per_packet = 40usize;
-    let batch_size = 20usize;
+    // Phase 3.2 (task #25): batch_size tunable per-request for throughput optimization.
+    // Default 20 is the session-3 baseline (~2.9 KB/s). Larger batches amortize
+    // per-CDB overhead; expected 1.5-2x at ~100 packets/CDB per the per-CDB ~213ms
+    // model in `sds-baseline.md`. Request can override via `batch_size` JSON field.
+    let batch_size = batch_size_override.unwrap_or(20);
     let mut pkt_num: u8 = 0;
     let mut offset = 0usize;
 
