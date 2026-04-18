@@ -321,6 +321,9 @@ cleanly.
   places low-memory globals and trap/vector tables in exactly this address range, well
   below the system heap, so these low absolute `jsr` targets are increasingly consistent
   with low-memory/system entry points rather than in-resource helper code.
+  The mid/high address surface also keeps collapsing inward: `0x187e`, previously easy to
+  mistake for a utility check helper, is just another internal entry inside the larger
+  `0x1700-0x1afe` body, much like `0x1620` and `0xca2`.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.

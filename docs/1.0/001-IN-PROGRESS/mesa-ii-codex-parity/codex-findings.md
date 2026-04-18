@@ -1159,6 +1159,20 @@ correct. Every finding should distinguish direct evidence from inference.
   low-memory/system vectors or data-driven control transfers than as ordinary helper code
   residing inside the plug resource itself.
 
+- Finding 60: `0x187e` is another internal entry point, not a separate standalone helper.
+  Evidence:
+  the absolute callers at `0x1286`, `0x14f6`, and `0x162e` all jump to `0x187e`, but
+  direct disassembly of the larger `0x1700-0x1afe` region shows that `0x187e` lands in
+  the middle of the already recovered `ChooseSCSI`-side body rather than at any clean
+  prologue. In the surrounding bytes, `0x187e` sits inside the text-building sequence
+  that formats `Bus X, ID=Y: ...` strings into the large stack-backed dialog block. So,
+  like `0x1620` and `0xca2`, this is a shared internal entry reused by other wrappers,
+  not a separate local helper that broadens the search surface.
+  Interpretation:
+  this collapses yet another apparently independent target. The remaining static plug
+  surface is now even smaller than before; most surprising absolute `jsr` targets in the
+  mid/high address range are internal entries inside already recovered bodies.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
