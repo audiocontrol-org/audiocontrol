@@ -694,6 +694,26 @@ correct. Every finding should distinguish direct evidence from inference.
   transport sequence and more like a sampler/list-state preparation path before header
   acceptance and bulk transfer.
 
+- Finding 35: `BuildProgramList` and `BuildSampleList` are near-template siblings that
+  differ mainly by cached-list field selection.
+  Evidence:
+  raw bytes at `0x068fa9` (`BuildProgramList`) and `0x06905f` (`BuildSampleList`) share
+  the same overall instruction shape:
+  same prologue,
+  same initial `tstl this+0xba`,
+  same callback/refresh sequence through `this+0xa2`,
+  same later use of the object at `this+0x2c`,
+  same fallback pattern ending in `moveal this, %a0; rts`.
+  The key stable difference in the matched bytes is the cached-list field:
+  `BuildProgramList` uses `this+0x20`, while `BuildSampleList` uses `this+0x1c`.
+  The immediate small selector argument also differs (`#2` in the program-list variant,
+  `#4` in the sample-list variant).
+  Interpretation:
+  `BuildSampleList` is best understood as the sample-list specialization of the same
+  list-refresh scaffold used by `BuildProgramList`, not as an upload-specific helper.
+  That makes the later `GetSampleList` getter and `GetSamplerStatus` query look like
+  consumers of a broader cached-list subsystem inside `CAkaiSampler`.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

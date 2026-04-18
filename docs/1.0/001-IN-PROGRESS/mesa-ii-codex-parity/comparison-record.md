@@ -218,6 +218,11 @@ cleanly.
   before `GetSamplerStatus`, and both appear to share the same state cluster, while
   `GetSampleList` is just a tiny getter returning the cached list object. That makes the
   whole pre-loop trio read as list/status preparation rather than hidden transport work.
+  The program-side sibling strengthens that further: `BuildProgramList` and
+  `BuildSampleList` are near-template matches whose main stable difference is whether
+  they operate on the cached object at `this+0x20` or `this+0x1c`. That makes the
+  sample-side path look like one specialization of a broader cached-list subsystem in
+  `CAkaiSampler`, not a one-off upload routine.
 - `ActivateThisSocket(Uc)` wire behavior
   Claude baseline:
   current Claude branch now claims the function is pure in-memory state and emits no
