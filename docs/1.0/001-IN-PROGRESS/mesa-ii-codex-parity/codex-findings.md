@@ -1094,6 +1094,23 @@ correct. Every finding should distinguish direct evidence from inference.
   resource-header trick, or some other nonstandard control transfer rather than a normal
   local function.
 
+- Finding 56: `0xca2` is another internal entry point inside the recovered
+  `0x0c88-0x0ccc` body, not a normal standalone helper.
+  Evidence:
+  direct `objdump` of file `0x0c88-0x0ccc` shows that `0xca2` lands in the middle of the
+  body, after the outer setup at `0x0c88-0x0c9e`. The instructions starting at `0xca2`
+  immediately dereference `a2@(0x0e38)` and issue the two trap-style calls at `0xa02a`
+  and `0xa023`, then tail into the `jsr 0x274` / optional `jsr 0x1b56` path. That code
+  does not establish `a2` locally at the `0xca2` entry; it relies on `a2` already
+  holding the active `CSCSIPlug` object. The only absolute call sites to `0xca2`
+  (`0x0e8c`, `0x0eb2`, `0x10d2`, `0x110a`, `0x1122`, `0x1156`) all occur inside the same
+  send/dispatcher family where `a2` is already live.
+  Interpretation:
+  this collapses another apparently independent helper. `0xca2` is register-dependent
+  shared internal logic reused within the `CSCSIPlug` dispatcher, not a separate helper
+  that broadens the static search surface. That leaves the `0x106e` sender stub as the
+  only clearly ordinary unresolved local mechanism in the plug code.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
