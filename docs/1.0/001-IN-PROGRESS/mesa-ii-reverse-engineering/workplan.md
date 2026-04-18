@@ -73,15 +73,15 @@ Goal: Validate the disassembly findings against real hardware with test scripts.
 
 **Tasks (in order of expected payoff):**
 
-- [ ] **Phase 3.1 (task #24): Measure current SDS baseline on hardware** — confirm the ~2.2 KB/s number, capture per-stage timing (CDB write, ACK wait, end-of-transfer). Establishes a real number to optimize against.
-- [ ] **Phase 3.2 (task #25): Try larger CDB batches** — currently 20 packets/CDB. Test 40, 60, 100. Cheap to try; could 2-5x throughput.
-- [ ] **Phase 3.3 (task #26): Pipeline ACK validation** — stream the whole batch and validate ACK count at the end. May yield another 1.5-2x.
-- [ ] **Phase 3.4 (task #27): Skip per-packet ACK validation** — rely on end-of-transfer success indicator + post-transfer sample readback validation.
-- [ ] **Try larger SDS data packets** if the protocol permits — currently 120-byte payload (40 samples).
-- [ ] **Phase 3.5 (task #28): Hardware-verify final implementation** + add atomic round-trip E2E test (per memory `feedback_e2e_roundtrip.md`).
-- [ ] **Stop criterion check** — once throughput hits 8 KB/s, declare Option 1 done; if plateau below 4 KB/s, reopen strategic conversation.
-- [ ] Update SCSI-NOTES.md with final SDS-optimization findings.
-- [ ] Update bridge API documentation.
+- [x] **Phase 3.1 (task #24): Measure current SDS baseline on hardware** — done. **2.91 KB/s steady-state** at batch=20 depth=1 on 16000-sample upload. Per-packet floors at 26.2ms. Doc: `sds-baseline.md`.
+- [x] **Phase 3.2 (task #25): Try larger CDB batches** — done, NEGATIVE. batch=20 is the optimum; batch=40 → 0.76x; batch=60+ → 0.42x plateau. Device-side MIDI buffer is the bottleneck, not per-CDB overhead. `batch_size` JSON knob added (default 20). Doc: `sds-phase-3.2-batch-sweep.md`.
+- [x] **Phase 3.3 (task #26): Pipeline ACK validation** — done, NEGATIVE. depth=1 is the optimum at 2.89 KB/s; depth=2-8 → 0.59-0.70x. Combined with 3.2, confirms the device's natural SDS rate is ~27ms/packet = 2.9 KB/s — the bridge is NOT the bottleneck. `pipeline_depth` JSON knob added (default 1). **Triggers #315 stop criterion.** Doc: `sds-phase-3.3-pipeline-sweep.md`.
+- [ ] ~~Phase 3.4 (task #27): Skip per-packet ACK validation~~ — **PAUSED pending #315 reassessment**. Unlikely to help; bridge already validates ACKs in batch (one read per batch). The bottleneck is device processing, not ACK overhead.
+- [ ] ~~Try larger SDS data packets~~ — paused. SDS protocol spec is 120 bytes/packet; deviating is non-standard.
+- [ ] ~~Phase 3.5 (task #28): Hardware-verify final implementation~~ — **PAUSED pending #315 reassessment**. Need a delivery decision before integrating.
+- [x] **Stop criterion check** — TRIGGERED. Plateau at 2.9 KB/s after exhausting Phase 3.2 + 3.3. Eng team reassessment posted on #315 with 4 options (B/C/D/E). Awaiting product call.
+- [ ] Update SCSI-NOTES.md with final SDS-optimization findings (after delivery decision).
+- [ ] Update bridge API documentation (after delivery decision).
 
 **Deferred (per #315):** Sample download (`GetSampleData`/`ExportSampleData`) parity with MESA. Not blocking the SLNGTH bug fix.
 
