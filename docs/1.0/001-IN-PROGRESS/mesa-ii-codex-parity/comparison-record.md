@@ -306,7 +306,10 @@ cleanly.
   standalone helpers, leaving the real unresolved static surface very small. The odd
   `SHOW`-path `jsr 0x1162` is now explained the same way: it jumps directly into the
   shared post-call/report block at `0x1162`, just past the initial `tstw %d3`, to reuse
-  the callback/report fan-out rather than invoke a separate helper.
+  the callback/report fan-out rather than invoke a separate helper. The other residue is
+  now stranger too: `0x148` no longer looks like a normal helper body at all, because it
+  overlaps the embedded `MESA SCSI Plug` string/header region. So the only clearly
+  ordinary unresolved local mechanism left is the `0x106e` sender stub itself.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.

@@ -1074,7 +1074,25 @@ correct. Every finding should distinguish direct evidence from inference.
   this collapses one of the last apparently mysterious local targets. The `SHOW` path is
   reusing the shared report/callback machinery directly, not calling a hidden standalone
   helper. That leaves the real unresolved static residue even smaller: the `0x106e`
-  sender stub itself plus the selector helper at `0x148`.
+  sender stub itself, plus the unresolved `jsr 0x148` target in the dispatcher.
+
+- Finding 55: `0x148` does not decode cleanly as a normal standalone helper; it overlaps
+  the plug's embedded string/header region.
+  Evidence:
+  direct `objdump` and `xxd` of file `0x0120-0x01b0` show that the bytes around `0x148`
+  are not a clean function body but the resource-identification region containing
+  `AKAI & Living Memory 1995`, `MESA SCSI Plug`, and adjacent header-like values. The
+  exact bytes at `0x148` are:
+  `20 53 43 53 49 20 50 6c 75 67 ...`, which render as printable product text in the
+  same region rather than a trustworthy helper prologue. The only absolute call site to
+  `0x148` is the selector/send dispatcher at `0x0e52`.
+  Interpretation:
+  this means the long-standing `jsr 0x148` target should not be treated as an ordinary
+  recovered helper without further evidence. The remaining static residue is therefore
+  narrower but also stranger than before: the live sender stub at `0x106e` is still the
+  main unresolved mechanism, while the `0x148` target may be a data-driven entry,
+  resource-header trick, or some other nonstandard control transfer rather than a normal
+  local function.
 
 ## Open Questions
 
@@ -1120,3 +1138,6 @@ correct. Every finding should distinguish direct evidence from inference.
   pre/post sequence, or is there still a content-byte mismatch in the 200-byte header?
 - What exactly does the `CSamplerModule`-side `UALL` dispatch at `0x030c93` signal to
   the sampler or UI layer?
+- What is really happening at the `jsr 0x148` site in the `CSCSIPlug` selector/send
+  dispatcher, given that `0x148` overlaps the embedded string/header region instead of a
+  clean helper body?
