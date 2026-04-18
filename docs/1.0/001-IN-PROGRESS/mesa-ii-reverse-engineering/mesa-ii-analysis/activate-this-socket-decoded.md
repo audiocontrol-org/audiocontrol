@@ -138,7 +138,19 @@ The reason the BULK test fails is NOT that ActivateThisSocket emits a missing wi
 
 1. **The pre-existing sample slot is in the wrong state.** The device may require the slot to have been created via SDS and then left in a specific condition. The preamble test created a slot but SLNGTH still wasn't updated — the sample may have been created but the SDATA opcode semantics (UPDATE vs CREATE) still differ.
 
-2. **The UALL phase is missing.** `SendAudioBufferToSampler` calls `vtable[0x0134]` (DecodeAcceptSampleResult) and `vtable[0x015c]` (UALL phase) before and after the BULK loop. The UALL command (`CAkaiSampler::vtable[0x015c]`) and LALL response have not been reproduced in the test.
+2. **The UALL phase is missing.** `SendAudioBufferToSampler` does emit a UALL command after the BULK loop, but **NOT through `vtable[0x015c]`** as this section originally claimed (Codex #314 caught the mislabel).
+
+   Primary evidence: the actual UALL dispatch at file 0x030c93 goes through `*(this+4) -> vtable[0x28]`, not through any CAkaiSampler vtable slot:
+   ```
+   030c89:  moveal %sp@,%a0          ; A0 = this (CSamplerModule*)
+   030c8b:  moveal %a0@(4),%a1       ; A1 = *(this+4)
+   030c8f:  moveal %a1@(40),%a1      ; A1 = vtable[0x28]
+   030c93:  jsr %a1@
+   ```
+
+   The `vtable[0x015c]` call in `SendAudioBufferToSampler` exists at file 0x0307fb (verified: `moveal %a0@(2),%a1; moveal %a1@(348),%a1`, CAkaiSampler convention) but is BEFORE the BULK loop in the sample-name-setup region — it's a different call than UALL. Its purpose is unverified (older notes guessed "ClearBuffer or ResetSample").
+
+   Additionally: the literal string `UALL` appears 26 times in `sampler-editor-rsrc.bin` and 0 times in `scsi-plug-rsrc.bin` (verified via `strings`). UALL is a sampler-editor command-bus token, not a wire-protocol tag. Whether the `vtable[0x28]` handler chain ever emits wire bytes (and thus whether it could be replicated in the Node test) is still unresolved — that's the next investigation.
 
 3. **Sample number mismatch.** The 2-byte sample_number field in the SDATA SysEx must match the existing slot's index. If the SDS preamble created sample 0 but SDATA targets sample 1, the device silently ignores it.
 

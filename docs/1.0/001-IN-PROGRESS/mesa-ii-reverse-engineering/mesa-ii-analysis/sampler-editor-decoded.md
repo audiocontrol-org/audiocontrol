@@ -159,8 +159,25 @@ After loop (0x030bb9–0x030c23):
 - `PEA 0x5` (0x030c7b): push 5.
 - `MOVE.L #'UALL', -(SP)` (0x030c7f): push UALL tag.
 - `movel fp(8), -(SP)`: push this.
-- `vtable[0x0028]` (0x030c93): call with (5, UALL, this) — likely `SendData` variant for end-of-transfer.
-- Confidence: high (UALL tag visible, follows BOFF teardown).
+- `vtable[0x0028]` (0x030c93): dispatched through `*(this+4) -> vtable[0x28]` (NOT through `this+116` socket).
+
+  **CORRECTION (resolves Codex #314).** Earlier wording called this "likely `SendData` variant for end-of-transfer" — that was wrong.
+
+  Primary evidence (instructions at file 0x030c89-0x030c93 in `SendAudioBufferToSampler.annotated.txt`):
+  ```
+  030c89:  2057           moveal %sp@,%a0       ; A0 = TOS = this (CSamplerModule*)
+  030c8b:  2268 0004      moveal %a0@(4),%a1    ; A1 = *(this+4) — NOT the socket at this+116
+  030c8f:  2269 0028      moveal %a1@(40),%a1   ; A1 = vtable[0x28]
+  030c93:  4e91           jsr %a1@
+  ```
+
+  UALL is also NOT in the SCSI Plug binary. Verified by `strings` on both binaries: `sampler-editor-rsrc.bin` contains the literal string 26 times; `scsi-plug-rsrc.bin` contains it 0 times. So `'UALL'` is an application-side command-bus token, not a wire-protocol tag.
+
+  The `SendCommandToSampler__*` name family appears 5 times in `sampler-editor-rsrc.bin` (across `CSamplerModule`, `CProgramsSamplesView`, `CSamplerDiskView`, `CQuickAccessView`, `CFXFilerView`) — strong evidence for a shared command-bus pattern, though I have NOT decoded the inside of any `SendCommandToSampler` to confirm the same `(this+4 -> vtable[0x28])` shape is used there.
+
+  Concrete handler behind `vtable[0x28]` is unresolved.
+
+- Confidence: high (instructions verified; UALL string presence verified). The "SendData variant" interpretation is REFUTED.
 
 ### Epilogue (0x030c95–0x030cc1)
 - `moveb #1, -(SP)` (0x030c95): push 1.
