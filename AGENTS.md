@@ -2,6 +2,15 @@
 
 This file is the Codex equivalent of the workspace-level `.claude/CLAUDE.md`. Keep both in sync while the repo supports both agents.
 
+## Canonical Sync Path
+
+Shared repo guidance must stay aligned between `AGENTS.md` and `.claude/CLAUDE.md`.
+
+- Start edits in whichever file is more natural for the current agent session.
+- Before finishing, mirror the same substantive guidance into the counterpart file.
+- Preserve only differences that are explicitly tied to real tool constraints.
+- If a difference is intentional, say so at the point of divergence instead of letting it look accidental.
+
 ## Scope
 
 TypeScript monorepo for MIDI device control, bridge services, and web-based editors. Primary tooling is `pnpm`, `tsx`, Vitest, and GitHub issue-driven feature work.
@@ -13,9 +22,10 @@ Before writing code:
 1. Identify the active feature from the worktree name, branch, or the user request.
 2. Read `docs/<version>/<feature-slug>/README.md` and `workplan.md`.
 3. Read the latest relevant entry in `DEVELOPMENT-NOTES.md`.
-4. If the work touches hardware or transport behavior, read the relevant notes file first, such as `SCSI-NOTES.md`.
-5. Check related GitHub issues when the task depends on issue state.
-6. Tell the user what you found and what you plan to do next.
+4. Check open or related GitHub issues when the task depends on issue state.
+5. If the work touches hardware or transport behavior, read the relevant notes file first, such as `SCSI-NOTES.md`.
+6. If the work touches UI behavior, read `TESTING.md` and `TESTING-UI.md`, then verify whether the feature already has a harness page and UI specs.
+7. Tell the user what you found and what you plan to do next.
 
 ## Session End
 
@@ -36,6 +46,26 @@ Canonical flow:
 
 Feature docs live under `docs/<version>/<feature-slug>/`.
 
+## Project Management
+
+Features follow the workflow in [PROJECT-MANAGEMENT.md](~/work/PROJECT-MANAGEMENT.md).
+
+**Feature docs:** `docs/<version>/<feature-slug>/` containing `prd.md`, `workplan.md`, and `README.md`
+
+**Roadmap:** `docs/1.0/ROADMAP.md` for dependency graph, feature states, and phase tracking
+
+**Worktrees:** `~/work/audiocontrol-work/audiocontrol-<feature-slug>/` on branch `feature/<feature-slug>`
+
+**Multi-machine:** Work happens on multiple machines. Session logs are machine-local and do not sync. Git branches do sync. Always rehydrate from `workplan.md` and the latest `DEVELOPMENT-NOTES.md` entry rather than assuming prior conversational context exists.
+
+### Start a New Feature
+
+1. Read `docs/1.0/ROADMAP.md` for prerequisites and dependencies.
+2. Create `docs/<version>/<feature-slug>/`.
+3. Write `prd.md`, `workplan.md`, and `README.md`.
+4. Create GitHub issues linked from the workplan.
+5. Create the worktree with `git worktree add ~/work/audiocontrol-work/audiocontrol-<slug> -b feature/<slug>`.
+
 ## Repo-Local Codex Skills
 
 Codex equivalents of the Claude skills live under `.agents/skills/`:
@@ -48,6 +78,7 @@ Codex equivalents of the Claude skills live under `.agents/skills/`:
 - `feature-issues`
 - `feature-pickup`
 - `feature-implement`
+- `feature-extend`
 - `feature-review`
 - `feature-ship`
 - `feature-complete`
@@ -102,7 +133,22 @@ For bridge work:
 - No defensive sleeps when protocol ACK or response semantics already define completion.
 - No fabricated claims about hardware behavior.
 - Error messages are actionable.
+- UI features are visually verified with the existing test harness process in `TESTING-UI.md`.
+- No ad-hoc test infrastructure is introduced when `modules/e2e-infra/` or existing `make test-*` targets already cover the need.
 - Feature docs are updated for the work performed.
+
+## Build and Test
+
+Use the root `Makefile` to build the monorepo in dependency order.
+
+```bash
+make
+make clean
+pnpm test
+pnpm --filter <module> test
+```
+
+Prefer `make` over `pnpm -r build` for full builds because the Make-based flow enforces module build order.
 
 ## Delegation in Codex
 
@@ -113,3 +159,40 @@ Codex can use sub-agents only when the user explicitly asks for delegation, sub-
 - keep the critical-path task local when waiting would block progress
 
 Do not assume agent delegation is available by default.
+
+This is an intentional difference from `.claude/CLAUDE.md`, which is allowed to assume proactive repo-local agent delegation.
+
+## Contract Enforcement
+
+The compiler must catch contract violations.
+
+- Do not use optional bags of callbacks where a shared contract should be mandatory.
+- Do not duplicate shared types to "get around" compile failures.
+- Do not hide unsupported behavior behind silent no-ops.
+- When shared interfaces change, update every consumer until the build fails nowhere.
+- When changing shared code in `editor-core`, build all affected editors before committing.
+
+## Repository Hygiene
+
+- Build artifacts belong in `dist/`.
+- Do not bypass pre-commit or pre-push hooks.
+- Do not commit temporary files, logs, or generated artifacts unless the repo explicitly tracks them.
+- Use `pnpm` for package operations.
+- Use `tsx` for running TypeScript scripts.
+
+## Monorepo Conventions
+
+- Each module should have clear boundaries and self-contained responsibilities.
+- Shared types belong in dedicated packages.
+- Internal dependencies should use the `workspace:*` protocol where applicable.
+
+## URL Convention for Editors
+
+Editors are served at `https://audiocontrol.org/<manufacturer>/<device>/editor`.
+
+## Documentation Standards
+
+- Do not call unfinished work "production-ready".
+- Do not express project-management goals in temporal promises when milestone or phase language is more accurate.
+- Do not invent projection statistics.
+- Use GitHub links, not local file paths, in GitHub issue descriptions.
