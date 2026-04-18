@@ -574,6 +574,26 @@ correct. Every finding should distinguish direct evidence from inference.
   handler identity toward a common command processor that may bridge sampler and UI
   concerns, rather than a hidden transport-specific routine.
 
+- Finding 30: the shared command-dispatch slot is rooted in a secondary function table
+  stored directly at object offset `+4`, and both `CSamplerModule` and `CFXFilerView`
+  constructors install that table from A4-relative data.
+  Evidence:
+  `SendCommandToSampler__14CSamplerModuleFlsssPcsss` loads `%a0 = this`, then
+  `moveal %a0@(4), %a1`, then `moveal %a1@(40), %a1`, then `jsr %a1@`. There is no
+  extra vtable dereference through an owned subobject; the field at `this+4` is itself
+  the base of a function-pointer table used for command routing.
+  The constructor-era `CSamplerModule` setup at `0x0285e9-0x0285fd` writes
+  `this+4 = A4+0x54f0`, then writes `*(this+0) = (A4+0x54f0)+0x114`, showing the
+  object's primary vtable pointer and secondary command table being installed from the
+  same A4-relative table family.
+  `CFXFilerView`'s constructor at `0x06655d-0x0666f` shows the same pattern: it writes
+  `this+4 = A4+0x120a`, then writes `*(this+0) = (A4+0x120a)+0x2b4`.
+  Interpretation:
+  the current best structural model is that these editor/view classes carry a primary
+  class vtable at offset `0` and a second A4-relative command-routing table at offset
+  `4`. The unresolved `UALL` handler therefore lives behind a shared command interface
+  installed during construction, not behind a hidden sampler/socket transport object.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

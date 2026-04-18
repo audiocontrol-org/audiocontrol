@@ -211,8 +211,11 @@ cleanly.
   whether `UALL` is a hidden plug-side transport tag. The new `CFXFilerView` parallel
   also matters here: `SendCommandToSampler__12CFXFilerViewFlsssPcsss` ultimately
   packages a local block and dispatches through the same `object+4 -> vtable[0x28]`
-  slot shape, which makes the unresolved handler look more like a shared editor/view
-  command processor than a sampler-private post-transfer routine.
+  slot shape. Constructor slices now tighten that further: both `CSamplerModule` and
+  `CFXFilerView` install an A4-relative secondary function table at offset `+4`, then
+  use slot `0x28` of that table for command routing. That makes the unresolved handler
+  look more like a shared editor/view command processor than a sampler-private
+  post-transfer routine.
 
 ### Deferred
 
