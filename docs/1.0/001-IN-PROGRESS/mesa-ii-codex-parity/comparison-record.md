@@ -274,8 +274,13 @@ cleanly.
   emits, not some already-proven ASPACK wrapper inside the checked-in binary. The latest
   Codex pass also rules out one nearby candidate for that installation: the real
   `SetSCSIMIDIMode` body at file `0x12f2` computes and returns a mode word, but it does
-  not write to `0x106e` or the neighboring stub region. Claude's newer workplan now
-  targets that same remaining gap directly.
+  not write to `0x106e` or the neighboring stub region. The next static setup-path
+  candidate is now ruled out too: `ChooseSCSI__9CSCSIPlugFUl` at file `0x1700-0x1afe`
+  is a bus-enumeration and selection path that probes devices through
+  `CSCSIUtils::Inquiry`, formats `Bus X, ID=Y` strings for dialog state, and caches the
+  chosen address back into `CSCSIPlug+0x0d6e` and a per-bus slot family rooted at
+  `+0x0d70`, but it still does not write to `0x106e` or the neighboring stub region.
+  Claude's newer workplan now targets that same remaining gap directly.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

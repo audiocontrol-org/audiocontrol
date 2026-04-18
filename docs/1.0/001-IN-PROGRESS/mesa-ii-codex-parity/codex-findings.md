@@ -909,6 +909,29 @@ correct. Every finding should distinguish direct evidence from inference.
   initialization/setup paths such as `ChooseSCSI`, open-time utility helpers, or the
   harness-side intercept layer rather than re-reading mode-selection code.
 
+- Finding 46: `ChooseSCSI` is a bus-enumeration and selection path that caches chosen
+  SCSI address fields back into `CSCSIPlug`; it does not patch the `0x106e` SRAW sender
+  slot.
+  Evidence:
+  real `m68k-elf-objdump` of file `0x1700-0x1afe` recovers the body of
+  `ChooseSCSI__9CSCSIPlugFUl`. That code builds a dialog-backed working set in
+  `fp-0x740`, iterates bus/device candidates, and formats strings like `Bus X, ID=Y`
+  from the inquiry buffer at `fp-0x124`. The inner probe path calls local helper
+  `0x17ac`, which in turn reaches `CSCSIUtils::Inquiry__10CSCSIUtilsFccPUcUl` through
+  the utility constructor at `0x1b1e`. Successful selection updates plug-local cached
+  address fields:
+  the chosen inquiry result is converted into a packed word at `fp-0x744`, written to
+  `a2@(0x0d6e)`, and also stored into a per-bus slot family rooted at `a2@(0x0d70)`.
+  Across the full recovered body there are no writes to file `0x106e`, `0x1072`, or the
+  neighboring SRAW/SYSX stub region.
+  Interpretation:
+  this rules out another plausible setup-path candidate for the runtime SRAW sender
+  install. `ChooseSCSI` clearly decides and caches which bus/device address the plug
+  should use, but static evidence still does not show it installing the live sender into
+  `0x106e`. The remaining static search should move outward again, toward other open-time
+  setup/helpers or the harness-side interception layer, rather than treating bus choice
+  as the missing patch site.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
