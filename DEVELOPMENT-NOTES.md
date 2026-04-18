@@ -11,6 +11,48 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-18: Strategic Decision — Phase 2 Closed, Pivot to Phase 3 (Option 1: SDS Optimize)
+
+### Feature: mesa-ii-reverse-engineering
+### Worktree: audiocontrol-mesa-ii-reverse-engineering
+
+### Goal
+Make the strategic call I'd been deferring: continue MESA RE indefinitely, or commit to a delivery path. Document the decision so future sessions don't re-litigate it.
+
+### Accomplished
+- **Created decision issue [#315](https://github.com/audiocontrol-org/audiocontrol/issues/315)** with three options framed:
+  - Option 1 — SDS optimization (pragmatic, fastest delivery)
+  - Option 2 — harness end-to-end (gold standard, weeks of scope)
+  - Option 3 — Akai opcode scan (gamble, firmware risk)
+- **Codex parity weighed in** with aligned recommendation (Option 1 endorsed, Option 2 deferred to research, Option 3 explicitly rejected for production hardware). Codex also added the useful refinement of defining a concrete throughput target + stop criterion.
+- **Decision committed: Option 1.** Throughput target band: 8 KB/s minimum, 15 KB/s aspirational, <4 KB/s plateau triggers reassessment.
+- **Updated all feature docs**:
+  - `README.md` status table — Phase 2 marked closed (decided #315), Phase 3 marked active (Option 1) with throughput targets
+  - `README.md` links table — added #315 and Codex parity issues for visibility
+  - `workplan.md` Phase 3 — rewritten with concrete tasks (Phase 3.1-3.5: baseline → larger batches → pipeline ACKs → skip per-packet ACKs → verify), throughput targets inline
+  - `workplan.md` Phase 2 — task #23 marked decided, deferred tasks #14/#15/#16 explicitly noted as dropped/deferred per #315
+- **Task tracking cleanup**: created tasks #24-#28 for Phase 3.1-3.5; deleted superseded tasks #14/#15/#16; marked #23 completed.
+
+### Didn't Work
+- Nothing this round — the decision was the deliverable.
+
+### Course Corrections
+None this round. The discipline that paid off was naming the decision point explicitly (issue #315) and getting independent input (Codex) before committing.
+
+### Quantitative
+- User messages: ~6
+- Commits: about to commit (3+ files)
+- New tasks created: 5 (Phase 3.1-3.5)
+- Tasks closed/deleted: 4 (#14 dropped, #15 deferred, #16 deferred, #23 decided)
+
+### Insights
+1. **The investment-vs-delivery question gets harder the deeper you go.** Each session in Phase 2 produced more knowledge but the marginal cost of the next decode kept rising while the marginal value kept falling. Naming "what would close this question" (issue #315) forced the comparison the loop had been avoiding.
+2. **External review aligning with internal recommendation is high-confidence signal.** Codex independently arrived at "Option 1 now, defer 2, never 3" — same conclusion from independent evidence path. That's stronger than either source alone.
+3. **Define throughput targets BEFORE optimization, not after.** Open-ended "make it faster" is a bottomless investment. "Stop at 8 KB/s, reassess if you plateau below 4" gives the optimization a clear shape.
+4. **The MESA RE work is preserved as reference, not wasted.** The complete static decode in `mesa-ii-analysis/` plus the harness Phase 5 dynamic trace is exactly what someone needs if they ever decide Option 2 is justified. The investment isn't a sunk cost; it's now a documented foundation.
+
+---
+
 ## 2026-04-18: ActivateThisSocket + UALL Both Application-Side; Caught Trusting Codex Without Verifying
 
 ### Feature: mesa-ii-reverse-engineering

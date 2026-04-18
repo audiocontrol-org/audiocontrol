@@ -50,21 +50,40 @@ Goal: Validate the disassembly findings against real hardware with test scripts.
 - [x] ~~Preamble hypothesis (task #20)~~ — partially confirmed but model revised. Tested SDS-create preamble + Akai SDATA: device replies (was silent before) but does NOT apply SDATA content. Codex #313 then revealed `vtable[0x30]` is `CMESASocket::ActivateThisSocket(Uc)` (file 0x05a0a7) — a socket-state/channel-activation function, NOT a transport primitive. The "preamble" we've been chasing is in-memory state setup on the application-side socket, not wire protocol. See `disassembly-full/CMESASocket-vtable30-ActivateThisSocket.annotated.txt`.
 - [x] ~~Replicate ActivateThisSocket sequence (task #21)~~ — decoded: pure in-memory state via `CMESAPlugIn::ActivateSocket` at SCSI Plug file 0x000a5e (3 writes: `activation_code`, `buffer_ptr`, status long). Zero wire bytes. See `mesa-ii-analysis/activate-this-socket-decoded.md`.
 - [x] ~~Decode UALL/LALL handshake (task #22)~~ — resolved via primary-evidence verification. UALL dispatched through `*(this+4) -> vtable[0x28]` (NOT through the socket; verified at file 0x030c89-0x030c93). UALL string absent from `scsi-plug-rsrc.bin` (0 of 26 occurrences). It's a `CSamplerModule` command-bus token, not a wire-protocol tag. See sampler-editor-decoded.md §6 (corrected) and Codex issue #314.
-- [ ] **Strategic decision (task #23)**: bug-hunt is at decision point. Three options: (A) one more incremental decode of the command-bus handler at vtable[0x28] (low expected value); (B) expand mesa-plug-harness to load sampler-editor-rsrc.bin alongside scsi-plug-rsrc.bin and drive `SendAudioBufferToSampler` end-to-end (gold standard, significant scope expansion); (C) pivot to alternate fast-upload approach.
+- [x] ~~Strategic decision (task #23)~~ — **DECIDED via [#315](https://github.com/audiocontrol-org/audiocontrol/issues/315): Option 1 (SDS optimization)**. Codex parity review aligned. Phase 2 closed; Phase 3 active. Defer Option 2 (harness end-to-end) as later research. Reject Option 3 (opcode scan) — firmware risk. The MESA II reference is preserved in `mesa-ii-analysis/` for any future Option 2 attempt.
+- [ ] ~~Hardware-verify the BULK SDATA finding (task #14)~~ — **dropped per #315 decision**. The BULK upload is irreducibly stateful; not pursuing.
+- [ ] ~~Trace SRAW on the wire (task #15)~~ — **deferred per #315**. Not on the Option 1 critical path.
+- [ ] ~~Find UALL handler (task #16)~~ — **deferred per #315**. UALL is application-side per #314; not on the Option 1 critical path.
 - [ ] **Capture SRAW wire bytes (task #15)**: agent's "would need ASPACK wrap" was an inference, not a finding
 - [ ] **Find UALL handler (task #16)**: not in SendData TagDispatch, uses vtable[0x28]
 - [ ] Document validated protocol specification with message sequence diagrams (after #15/#16/#17)
 
-## Phase 3: Bridge Implementation
+## Phase 3: Bridge Implementation — Option 1 (SDS Optimization)
 
-Goal: Implement the validated protocol in the bridge so sample uploads produce correct SLNGTH.
+**Decision context:** Per [#315](https://github.com/audiocontrol-org/audiocontrol/issues/315), MESA's BULK upload is irreducibly stateful and not feasibly replicable from a stateless Node test. The pragmatic path is to optimize the existing batched-SDS upload, which already produces correct SLNGTH at sample creation time (per Theory B verification in SCSI-NOTES.md).
 
-- [ ] Implement SDS-over-SCSI sample upload in the bridge using validated protocol
-- [ ] Implement sample download (read audio from device) using validated protocol
-- [ ] Add E2E test: upload sample, read it back, compare audio data
-- [ ] Measure upload throughput and compare to MESA II baseline
-- [ ] Update SCSI-NOTES.md with final protocol specification
-- [ ] Update bridge API documentation
+**Throughput targets (per #315 decision comment):**
+
+| Threshold | Throughput | A 1MB sample takes |
+|---|---|---|
+| Current baseline | ~2.2 KB/s | ~7.5 min |
+| **Minimum acceptable (ship)** | **8 KB/s** | **~2 min** |
+| Aspirational | 15 KB/s | ~70 sec |
+| Reassessment threshold | <4 KB/s after optimization | re-open strategic conversation |
+
+**Tasks (in order of expected payoff):**
+
+- [ ] **Phase 3.1 (task #24): Measure current SDS baseline on hardware** — confirm the ~2.2 KB/s number, capture per-stage timing (CDB write, ACK wait, end-of-transfer). Establishes a real number to optimize against.
+- [ ] **Phase 3.2 (task #25): Try larger CDB batches** — currently 20 packets/CDB. Test 40, 60, 100. Cheap to try; could 2-5x throughput.
+- [ ] **Phase 3.3 (task #26): Pipeline ACK validation** — stream the whole batch and validate ACK count at the end. May yield another 1.5-2x.
+- [ ] **Phase 3.4 (task #27): Skip per-packet ACK validation** — rely on end-of-transfer success indicator + post-transfer sample readback validation.
+- [ ] **Try larger SDS data packets** if the protocol permits — currently 120-byte payload (40 samples).
+- [ ] **Phase 3.5 (task #28): Hardware-verify final implementation** + add atomic round-trip E2E test (per memory `feedback_e2e_roundtrip.md`).
+- [ ] **Stop criterion check** — once throughput hits 8 KB/s, declare Option 1 done; if plateau below 4 KB/s, reopen strategic conversation.
+- [ ] Update SCSI-NOTES.md with final SDS-optimization findings.
+- [ ] Update bridge API documentation.
+
+**Deferred (per #315):** Sample download (`GetSampleData`/`ExportSampleData`) parity with MESA. Not blocking the SLNGTH bug fix.
 
 ---
 
