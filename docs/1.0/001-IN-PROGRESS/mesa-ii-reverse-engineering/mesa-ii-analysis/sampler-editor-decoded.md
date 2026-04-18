@@ -55,15 +55,19 @@ All JSR/BSR targets with resolved names (EDIT code base = 0x027f57):
 | 0x030bc1 | 0x0001a6 | 0x0280fd | `__mulsi3` |
 | 0x030c9d | 0x0051b4 | 0x02d10b | `CSamplerModule::BroadcastUpdateMessages` |
 
-Vtable dispatches (all via `jsr %a1@` or `jsr %a0@`):
+Vtable dispatches (NOTE: this table conflated multiple vtables in earlier versions; corrected per #309/#313/#314 below — DO NOT use this table to infer class identity, check the call-site instructions instead):
 
-| Offset from vtable | Usage |
-|-------------------|-------|
-| vtable[0x0014] | SendData(tag, len_hi, len_lo, socket) — called for BULK, SRAW, BOFF |
-| vtable[0x0028] | Unknown — called at 0x030773 via socket vtable+0x170 |
-| vtable[0x0030] | Send SDS sample header (opcode=0x01, socket_ptr) |
-| vtable[0x015c] | Called at 0x0307fb — likely ClearBuffer or ResetSample |
-| vtable[0x017c] | SendSampleHeader(sample_number, header_buf_ptr) — sends SDS header to device |
+| Call site | Slot | Class (vtable convention) | Resolved function |
+|-----------|------|---------------------------|---------------------|
+| 0x030753 | vtable[0x0030] | CMESASocket (vtable at object+0; embedded at `this+116`) | `CMESASocket::ActivateThisSocket(Uc)` (file 0x05a0a7, per #313) |
+| 0x030773 | vtable[0x0170] | CAkaiSampler (vtable at +2 via `CSamplerModule@(0xDA4)`) | unverified |
+| 0x030793 | vtable[0x0134] | CAkaiSampler (vtable at +2 via `CSamplerModule@(0xDA4)`) | unverified |
+| 0x0307fb | vtable[0x015c] | CAkaiSampler (vtable at +2 via `CSamplerModule@(0xDA4)`) | unverified (older guess "ClearBuffer or ResetSample" was inference) |
+| 0x030841 | vtable[0x00dc] | CAkaiSampler (vtable at +2 via `CSamplerModule@(0xDA4)`) | unverified |
+| 0x030891 | vtable[0x017c] | CAkaiSampler (vtable at +2 via `CSamplerModule@(0xDA4)`) | `CAkaiSampler::AcceptSampleHeader(PUc, s)` (file 0x06ae09, per task #17) |
+| 0x06ae3d (in AcceptSampleHeader) | vtable[0x0014] | CAkaiSampler (vtable at +2) | `CAkaiMIDIDispatcher::BuildCommand` (file 0x06ca97, per task #18) |
+| 0x06ae55 (in AcceptSampleHeader) | vtable[0x0014] | CMESASocket (vtable at +0 via `CAkaiSampler+0xA2`) | `CMESASocket::SendData` → `CSCSIPlug::SendData` |
+| 0x030c93 | vtable[0x0028] | `CSamplerModule` command-bus subobject (vtable via `*(this+4)`) | unverified handler (per #314) |
 | vtable[0x0a20] | SendProgressUpdate(ip_data_ptr) — called with UPRG/KPRG tag struct |
 
 ---
@@ -77,7 +81,7 @@ Vtable dispatches (all via `jsr %a1@` or `jsr %a0@`):
 
 ### MIDI/SCSI Mode Branch (0x030739–0x03075f)
 - `TST.W this@(176)` (0x03073d): tests `this+0xb0`. Zero = SCSI mode. Non-zero = skip SDS header calls.
-- **When 0 (SCSI mode)**: push `moveb #1, -(SP)` (opcode 0x01 = SDS dump header) then call `vtable[0x0030]` on the socket. This sends the SDS sample header before the upload begins.
+- **When 0 (SCSI mode)**: push `moveb #1, -(SP)` then call `vtable[0x0030]` on `this+116` (CMESASocket embedded field). **CORRECTION per #313:** vtable[0x0030] is `CMESASocket::ActivateThisSocket(Uc)`, NOT a "send SDS sample header" function. The byte `1` is the activation-code argument (stored as `activation_code` on the plug-side slot), not an SDS opcode. This is application-side socket-channel activation; no wire bytes emitted (per task #21 verification).
 - **When non-zero**: skip SDS header — no SDS header sent at all at this stage.
 - Confidence: high (directly visible; the branch is unambiguous).
 
@@ -89,7 +93,7 @@ Vtable dispatches (all via `jsr %a1@` or `jsr %a0@`):
 
 ### Sample Name Setup (0x0307e1–0x030803)
 - `pea mah@(21)`: pushes `mah+0x15` = sample name string (at offset 21 in MESAAudioHeader2).
-- `vtable[0x015c]` on socket: sets sample name or clears state.
+- `vtable[0x015c]` (CORRECTION per #314): NOT on the socket. Verified call-shape at 0x0307ed-0x0307fb: pushes `CSamplerModule@(0xDA4)` (= CAkaiSampler*), reads vtable from `+2` (CAkaiSampler convention), then dispatches slot 0x15c. Concrete handler unverified (older "sets sample name or clears state" was inference).
 - Initialize packet counter `fp(-292) = 0`.
 
 ### BULK Initiation (0x030807–0x030901)
@@ -155,7 +159,7 @@ After loop (0x030bb9–0x030c23):
 
 ### Final SDS Header and UALL (0x030c59–0x030c93)
 - `TST.W this@(176)` (0x030c5d): MIDI mode check again.
-- If SCSI mode: `moveb #1, -(SP)` (*** fourth SDS opcode 0x01 push, 0x030c63) + `vtable[0x0030]`.
+- If SCSI mode: `moveb #1, -(SP)` (fourth `ActivateThisSocket` activation-code push, 0x030c63 — earlier sessions called this an "SDS opcode 0x01 push" which was wrong per #313) + `vtable[0x0030]` = `ActivateThisSocket`.
 - `PEA 0x5` (0x030c7b): push 5.
 - `MOVE.L #'UALL', -(SP)` (0x030c7f): push UALL tag.
 - `movel fp(8), -(SP)`: push this.
@@ -183,7 +187,7 @@ After loop (0x030bb9–0x030c23):
 - `moveb #1, -(SP)` (0x030c95): push 1.
 - `movel fp(8), -(SP)`: push this.
 - `BroadcastUpdateMessages` (0x030c9d): notify UI of completion.
-- Restore `fp(-499)` byte via vtable[0x0030] call (0x030cb7): sends the originally-saved byte back (channel/sample number restore).
+- Restore `fp(-499)` byte via `vtable[0x0030]` (= `CMESASocket::ActivateThisSocket`) at 0x030cb7: re-activates the socket with the originally-saved activation byte (channel/state restore). Application-side, no wire bytes (per #313).
 - Return `fp(-12)` (error flag).
 
 ---
@@ -228,7 +232,7 @@ fp(-26): ...   (copied from A4-relative template at compile time; fields unknown
 
 Sequence for one sample upload (per outer loop iteration, 0x030807–0x030c55):
 
-1. **SDS header** (SCSI mode only): `vtable[0x0030](opcode=0x01, socket)` — sends SDS sample header.
+1. **Socket activation** (SCSI mode only): `vtable[0x0030](socket=this+116, activation_code=1)` = `CMESASocket::ActivateThisSocket(Uc)`. **CORRECTION per #313:** earlier wording called this "sends SDS sample header" — that was wrong. It's an application-side state-setup function with zero wire output. The actual SDS-header-equivalent send is in step 2 below via `AcceptSampleHeader`/`BuildCommand`.
 2. **BULK open**: `vtable[0x0014](socket, BULK, 0, 0)` — opens BULK mode, waits for 0x7c response.
 3. For each audio chunk:
    a. Byte-swap samples if needed (big-endian → little-endian).
@@ -247,7 +251,7 @@ After all packets:
 
 There is no explicit "S3000 mode" branch in this function. The only transport-level branching is the `this+0xb0` flag (offset 176):
 
-- `this+0xb0 == 0`: SCSI mode — SDS sample headers are sent via `vtable[0x0030]`.
+- `this+0xb0 == 0`: SCSI mode — `vtable[0x0030]` (= `ActivateThisSocket`, application-side state setup per #313) is called to activate the socket. The actual SDS-header-equivalent send happens elsewhere via `AcceptSampleHeader` (vtable[0x017c]) → `BuildCommand` → `CMESASocket::SendData`. Earlier wording "SDS sample headers are sent via vtable[0x0030]" was wrong.
 - `this+0xb0 != 0`: serial MIDI mode (or other non-SCSI) — SDS headers are skipped; only the BULK/SRAW/BOFF/UALL sequence via `vtable[0x0014]` is used.
 
 The BULK/SRAW sequence is taken in both modes. There is no code path that uses ASPACK (opcode 0x0D) — MESA uses SDS + BULK for all sample uploads in this function. Confidence: high.
