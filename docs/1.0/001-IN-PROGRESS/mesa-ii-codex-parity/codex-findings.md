@@ -1059,6 +1059,23 @@ correct. Every finding should distinguish direct evidence from inference.
   jump into `0x1162` inside the shared post-call block, plus the selector helper at
   `0x148`.
 
+- Finding 54: the `SHOW` arm’s `jsr 0x1162` is an intentional jump into the shared
+  post-call/report block, not a separate helper.
+  Evidence:
+  `objdump` of file `0x115c-0x1216` shows that `0x1162` lands two bytes into the shared
+  post-call block that normally begins at `0x1160` with `tstw %d3`. Entering at
+  `0x1162` skips that initial status test and starts at `bnew 0x1214`, followed by the
+  callback-list walk:
+  fetch callback container from `CSCSIPlug+24`, iterate 46-byte entries, build the local
+  report block, label the payload `SYSX` vs `SRAW`, and invoke each callback entry.
+  The only absolute call site to `0x1162` is the `SHOW` arm in
+  `DoMESACommand__9CSCSIPlugFP11MESACommand` at `0x0d2e`.
+  Interpretation:
+  this collapses one of the last apparently mysterious local targets. The `SHOW` path is
+  reusing the shared report/callback machinery directly, not calling a hidden standalone
+  helper. That leaves the real unresolved static residue even smaller: the `0x106e`
+  sender stub itself plus the selector helper at `0x148`.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

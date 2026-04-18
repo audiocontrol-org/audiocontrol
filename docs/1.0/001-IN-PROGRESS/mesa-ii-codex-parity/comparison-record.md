@@ -303,7 +303,10 @@ cleanly.
   family, reused by `SetSCSIMIDIMode`, `SMDataByteEnquiry`, and the nearby wrappers. A
   broader absolute-call sweep now tightens that again: several scary-looking local call
   targets are internal entries inside already recovered bodies rather than additional
-  standalone helpers, leaving the real unresolved static surface very small.
+  standalone helpers, leaving the real unresolved static surface very small. The odd
+  `SHOW`-path `jsr 0x1162` is now explained the same way: it jumps directly into the
+  shared post-call/report block at `0x1162`, just past the initial `tstw %d3`, to reuse
+  the callback/report fan-out rather than invoke a separate helper.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.
