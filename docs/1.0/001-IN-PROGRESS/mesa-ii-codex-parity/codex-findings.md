@@ -847,6 +847,47 @@ correct. Every finding should distinguish direct evidence from inference.
   shared framework bus, but which framework-side handler or adapter sits behind slot
   `0x28` for `CSamplerModule`.
 
+- Finding 43: the plug-side SRAW path does call through a patchable send slot at
+  `0x106e`, but the checked-in unpatched binary does not contain a concrete sender there.
+  Evidence:
+  real `m68k-elf-objdump` disassembly of `CSCSIPlug::SendData` at file `0x0f40-0x0f6c`
+  shows the `SRAW` arm packaging seven arguments and calling `jsr 0x106e`:
+  `a2` (`CSCSIPlug*`), `a2+0x0d6e` (port/mode word), literal byte `1`,
+  `d6 = a3+4` (loaded earlier from `IP_Data+4`), `a2+0x0e3c`,
+  `a3@` (the leading `IP_Data` word), and `&fp-0x1e` as an out-pointer.
+  The same `objdump` pass shows file `0x106e` itself is just `braw 0x1160` in the
+  checked-in binary, not a concrete transport routine. That matches the Claude-side
+  harness note that this is a patchable send-function slot, but Codex can now confirm it
+  directly from primary bytes and can correct the offset spelling to file `0x106e`
+  rather than sampler-style `0x1106e`.
+  Interpretation:
+  static evidence still does not tell us the final on-wire SRAW bytes, because the live
+  sender is installed dynamically into the `0x106e` slot. But the binary does support a
+  sharper negative claim: "would need ASPACK wrapping" is not present as static behavior
+  here. The actual unresolved question is what runtime patch replaces the `0x106e` stub
+  and what that patch emits.
+
+- Finding 44: the shared post-call block at `0x1160` is a callback fan-out that labels
+  payloads as `SYSX` or `SRAW`; it is not itself the missing wire emitter.
+  Evidence:
+  `objdump` of file `0x1160-0x1216` shows that after the `0x106e` call returns, the code
+  tests the result word in `d3`, then, if an out-pointer at `fp-0x1e` is non-null, calls
+  through a callback list obtained from `a2@(24)`. For each callback entry, it copies
+  two small A4-relative templates into stack locals, stores the out-pointer and
+  `a2+0x0e3c`, then chooses a four-byte local tag:
+  if the first byte at `a2+0x0e3c` is `0xf0`, it writes `SYSX`; otherwise it writes
+  `SRAW`.
+  Only then does it call the callback entry point.
+  Interpretation:
+  this block explains why the unpatched `0x106e` slot can still fall through into
+  framework-visible behavior without proving any wire output. The static binary therefore
+  contains a clean separation:
+  `SRAW` command setup at `0x0f40`,
+  patchable sender slot at `0x106e`,
+  callback/report fan-out at `0x1160`.
+  That narrows the remaining SRAW gap to the runtime patch or harness trace, not to the
+  already-visible callback machinery.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

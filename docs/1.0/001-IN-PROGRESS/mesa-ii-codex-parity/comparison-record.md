@@ -261,6 +261,18 @@ cleanly.
 - SRAW on-wire bytes
   Claude baseline:
   prior harness text admitted inference instead of captured bytes.
+  Codex status:
+  independently tightened. Real `m68k-elf-objdump` now confirms that the plug-side
+  `SRAW` arm at file `0x0f40-0x0f6c` packages its arguments and calls a patchable send
+  slot at file `0x106e`. In the checked-in unpatched binary, `0x106e` itself is only
+  `braw 0x1160`, not a concrete sender. The common block at `0x1160-0x1216` is also now
+  clearer: after the send slot returns, it fans out through a callback list from
+  `CSCSIPlug+24` and labels the payload as `SYSX` or `SRAW` based on the leading byte of
+  `CSCSIPlug+0x0e3c`. That means static evidence still does not yield the final on-wire
+  `SRAW` bytes, but it does support a sharper framing than the old harness inference:
+  the unresolved question is the runtime patch installed into `0x106e` and what it
+  emits, not some already-proven ASPACK wrapper inside the checked-in binary. Claude's
+  newer workplan now targets that same gap directly.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.
