@@ -714,6 +714,24 @@ correct. Every finding should distinguish direct evidence from inference.
   That makes the later `GetSampleList` getter and `GetSamplerStatus` query look like
   consumers of a broader cached-list subsystem inside `CAkaiSampler`.
 
+- Finding 36: the `this+0xba` / `this+0xbe` / `this+0xc4` field cluster is tightly
+  concentrated in the same list/status subsystem, not spread through upload transport
+  code.
+  Evidence:
+  raw-binary pattern searches for `push this+0xba`, `push this+0xbe`, and
+  `load this+0xc4 then dispatch` land on the same local region that contains
+  `BuildProgramList`, `BuildSampleList`, and `GetSamplerStatus`.
+  The matched bytes at `0x068fa9`, `0x06905f`, and `0x069115` show the same recurring
+  structure:
+  test/push cached fields around `+0xba` / `+0xbe`,
+  dispatch through `this+0xc4`,
+  then interact with the object at `this+0x2c`.
+  Interpretation:
+  the strongest current read is that `+0xba`, `+0xbe`, and `+0xc4` belong to the
+  cached-list/status machinery inside `CAkaiSampler`. They are not currently behaving
+  like sample-upload transport fields, which further reduces the chance that the
+  remaining BULK failure is hiding in this pre-loop status/list code.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

@@ -223,6 +223,10 @@ cleanly.
   they operate on the cached object at `this+0x20` or `this+0x1c`. That makes the
   sample-side path look like one specialization of a broader cached-list subsystem in
   `CAkaiSampler`, not a one-off upload routine.
+  The field-use clustering points the same way: the `+0xba`, `+0xbe`, and `+0xc4`
+  accesses that show up in this region are concentrated in the program-list builder,
+  sample-list builder, and status helper, which makes them look like cached-list/status
+  fields rather than hidden upload-transport state.
 - `ActivateThisSocket(Uc)` wire behavior
   Claude baseline:
   current Claude branch now claims the function is pure in-memory state and emits no
