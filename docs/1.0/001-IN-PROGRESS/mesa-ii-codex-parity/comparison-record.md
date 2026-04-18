@@ -231,6 +231,10 @@ cleanly.
   appears in non-sampler graphics/view code, so it no longer looks like a
   transport-specific collaborator. The remaining ambiguity around `GetSamplerStatus`
   is increasingly about UI/list-state meaning, not transport mechanics.
+  More specifically, slot `0x10` on that helper object is reused broadly outside the
+  sampler path, while slots `0x50` and `0x64` still appear sampler-status-specific.
+  That makes the status-only slots the more plausible place to look if this area is
+  analyzed further.
 - `ActivateThisSocket(Uc)` wire behavior
   Claude baseline:
   current Claude branch now claims the function is pure in-memory state and emits no

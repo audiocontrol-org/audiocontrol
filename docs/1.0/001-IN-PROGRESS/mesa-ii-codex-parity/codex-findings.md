@@ -751,6 +751,23 @@ correct. Every finding should distinguish direct evidence from inference.
   ambiguity further toward UI/list-state semantics and further away from wire-protocol
   behavior.
 
+- Finding 38: slot `0x10` on the `this+0x2c` helper object is broadly reused outside
+  the sampler path, which makes it look like a generic helper/display callback.
+  Evidence:
+  exact `pea this+0x2c; load slot 0x10; jsr` matches occur not only at the sampler-side
+  `BuildProgramList` / `BuildSampleList` sites, but also at unrelated offsets such as
+  `0x05e1c1`, `0x05e2fd`, `0x05e403`, `0x061397`, `0x061463`, and `0x0614c5`.
+  The surrounding bytes in those non-sampler sites live near strings that decode to
+  view/graphics function names like `Draw__8CGRPHPotFv` and
+  `DrawOffscreen__8CGRPHPotFv`.
+  In contrast, slots `0x50` and `0x64` on the same helper object are currently only
+  observed in the `GetSamplerStatus` region.
+  Interpretation:
+  the shared `slot 0x10` use strongly suggests a general helper/display method on the
+  `+0x2c` object rather than any upload-specific behavior. That leaves the status-only
+  slots `0x50` and `0x64` as the more promising place if Codex keeps pushing on the
+  exact meaning of `GetSamplerStatus`.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
