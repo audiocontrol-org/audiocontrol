@@ -227,6 +227,10 @@ cleanly.
   accesses that show up in this region are concentrated in the program-list builder,
   sample-list builder, and status helper, which makes them look like cached-list/status
   fields rather than hidden upload-transport state.
+  The `+0x2c` object pushes the same direction too: its callback-slot call shape also
+  appears in non-sampler graphics/view code, so it no longer looks like a
+  transport-specific collaborator. The remaining ambiguity around `GetSamplerStatus`
+  is increasingly about UI/list-state meaning, not transport mechanics.
 - `ActivateThisSocket(Uc)` wire behavior
   Claude baseline:
   current Claude branch now claims the function is pure in-memory state and emits no

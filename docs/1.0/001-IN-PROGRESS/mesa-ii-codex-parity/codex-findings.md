@@ -732,6 +732,25 @@ correct. Every finding should distinguish direct evidence from inference.
   like sample-upload transport fields, which further reduces the chance that the
   remaining BULK failure is hiding in this pre-loop status/list code.
 
+- Finding 37: the `this+0x2c` callback object used by the sampler list/status helpers
+  is not unique to upload or sampler transport code; the same call shape appears in
+  graphics/view code.
+  Evidence:
+  pattern searches for the `pea this+0x2c; load callee slot; jsr` shape find not only
+  the sampler-side sites in `BuildProgramList`, `BuildSampleList`, and
+  `GetSamplerStatus`, but also unrelated view/graphics-side regions such as
+  `0x05e1c1`, `0x05c669`, and neighboring functions whose trailing strings decode to
+  names like `CountPanels__5LView...`, `Draw__8CGRPHPotFv`, and
+  `DrawOffscreen__8CGRPHPotFv`.
+  In the sampler cluster itself, the callback object at `this+0x2c` is used with slot
+  `0x10` in the list builders and slots `0x50` / `0x64` in `GetSamplerStatus`, plus a
+  direct fallback helper when needed.
+  Interpretation:
+  `CAkaiSampler+0x2c` now looks more like a UI/list-controller or generic helper object
+  than a sampler-transport collaborator. That shifts the remaining `GetSamplerStatus`
+  ambiguity further toward UI/list-state semantics and further away from wire-protocol
+  behavior.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
@@ -770,6 +789,8 @@ correct. Every finding should distinguish direct evidence from inference.
 - What concrete status or UI state does `CAkaiSampler::GetSamplerStatus` actually report
   through the callback/fallback path rooted at `this+0x2c`, `this+0xc4`, `this+0xba`,
   and `this+0xbe`?
+- What is the concrete class or interface behind `CAkaiSampler+0x2c`, given that the
+  same callback-slot pattern also appears in graphics/view code?
 - Is the remaining hardware failure explained entirely by the missing socket-level
   pre/post sequence, or is there still a content-byte mismatch in the 200-byte header?
 - What exactly does the `CSamplerModule`-side `UALL` dispatch at `0x030c93` signal to
