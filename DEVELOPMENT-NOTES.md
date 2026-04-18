@@ -1308,3 +1308,74 @@ localize the unresolved `CSamplerModule+0xda4` installation path.
    constructor-start mistake that raw offset assumptions had introduced.
 2. The ownership problem is now usefully smaller: the unresolved question is not whether
    `+0xda4` is a `CAkaiSampler*`, but which constructor-era helper installs it.
+
+---
+
+## 2026-04-17: MESA II Parity UALL Call-Family Split
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Push past the broad “UALL is not `SendData`” result and recover the actual structural
+split inside `SendAudioBufferToSampler`: which calls are sampler-side, which call is the
+later shared command-bus dispatch, and what shared interface sits behind that path.
+
+### Accomplished
+- Confirmed from primary disassembly that `SendAudioBufferToSampler` contains two
+  distinct non-socket call families:
+  - early pre-loop calls at `0x030773`, `0x030793`, `0x0307f7`, `0x030841`, and
+    `0x030891` all go through `CSamplerModule+0xda4` via the `object+2 -> vtable` path
+  - the later post-loop `UALL` call at `0x030c93` instead goes through a separate
+    secondary command table at object offset `+4`
+- Confirmed that `CSamplerModule::SendCommandToSampler` and
+  `CFXFilerView::SendCommandToSampler` both dispatch through slot `0x28` of that shared
+  `+4` table
+- Confirmed from constructor slices that both `CSamplerModule` and `CFXFilerView`
+  install an A4-relative primary class vtable at offset `0` and a second A4-relative
+  command-routing table at offset `+4`
+- Updated the parity docs and comparison record to treat post-loop `UALL` as a shared
+  command-bus path rather than a plug transport tag or a direct `CAkaiSampler`
+  vtable-slot identity
+- Filed issue `#314` and then added follow-up comments narrowing the stale Claude-side
+  problem from “not SendData” to “conflates the early `CAkaiSampler` slot-`0x015c` call
+  with the later post-loop `UALL` command-bus dispatch”
+
+### Didn't Work
+- I still did not name the shared command processor behind the secondary `+4` table
+- Raw A4-table bytes alone were too noisy to promote into a named interface or clean
+  slot map without risking overclaiming
+
+### Course Corrections
+- **[DOCUMENTATION]** The first `UALL` correction was still too coarse. The next pass
+  showed the real issue is a call-family conflation inside the same function, so the
+  docs and issue thread were tightened to separate the early `CAkaiSampler` path from
+  the later shared command-bus path.
+- **[PROCESS]** I kept publishing stable parity findings as soon as they crossed the
+  evidence threshold instead of leaving them local. This session produced four pushed
+  commits that each reflected a discrete structural refinement.
+- **[EVIDENCE]** I did not promote the secondary `+4` table to a named interface from
+  raw bytes alone. The notes keep the current state at the stronger, defensible level:
+  shared command-routing table installed during construction, handler identity still
+  unresolved.
+
+### Quantitative
+- Commits pushed in this pass: 5
+  `1cc87661`, `ca445c4d`, `610b3fdb`, `afacaf7a`, plus the preceding pushed parity work
+  carried forward into this close-out
+- New GitHub issue activity: 1 issue filed and expanded
+  `#314`
+- New stable parity findings added: 4 major `UALL`/command-routing refinements
+  (generic `CSamplerModule` command slot, shared `CFXFilerView` parallel, secondary
+  `+4` command table installed by both constructors, and the explicit sampler-side vs
+  post-loop `UALL` call-family split)
+
+### Insights
+1. The remaining `UALL` ambiguity is now smaller and more useful: the problem is not
+   transport anymore, but command-routing ownership.
+2. Constructor slices were more informative than raw table bytes for understanding the
+   secondary `+4` table. The install sites gave a stronger structural claim than the
+   table contents did.
+3. `SendAudioBufferToSampler` mixes multiple object systems in a small span. Treating
+   every non-socket indirect call as one “UALL phase” was the wrong abstraction; the
+   parity work improved once those call families were separated explicitly.

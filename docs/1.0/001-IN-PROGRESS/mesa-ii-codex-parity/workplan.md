@@ -142,6 +142,21 @@ work: `CAkaiSampler::SetSocket` is independently confirmed, `CAkaiSampler`'s own
 constructor is independently confirmed, and helper `0x317dc(this)` is now the strongest
 current candidate for the remaining module-side collaborator installation.
 
+The session then moved past the task-21 dispute and into the remaining `UALL` ambiguity.
+Codex now has a stronger structural split:
+
+- the early pre-loop calls in `SendAudioBufferToSampler` at `0x030773`, `0x030793`,
+  `0x0307f7`, `0x030841`, and `0x030891` all go through the `CAkaiSampler` object at
+  `CSamplerModule+0xda4` via the `object+2 -> vtable` path
+- the later post-loop `UALL` call at `0x030c93` is a different path entirely, using a
+  shared secondary command-routing table installed at object offset `+4`
+- both `CSamplerModule` and `CFXFilerView` constructors install that secondary A4-relative
+  table at `+4`, and both classes route `SendCommandToSampler` through slot `0x28` of it
+
+That means the active remaining question is not whether `UALL` is plug-side, but which
+shared command processor sits behind the secondary `+4` table and how it relates to the
+earlier sampler-side `+0xda4` calls.
+
 ---
 
 ## Phase 3: Cross-Check and Reconciliation
@@ -161,6 +176,21 @@ current candidate for the remaining module-side collaborator installation.
 - The feature contains an explicit agreement/disagreement record between the two efforts
 - High-impact disputes have a documented validation plan or outcome
 - Remaining unresolved areas are concrete and evidence-linked rather than vague
+
+### Current Assessment
+
+Phase 3 is now actively in progress rather than merely prepared:
+
+- earlier parity issues `#309` through `#313` were resolved
+- issue `#314` is open and now captures the remaining stale Claude-side `UALL`
+  conflation problem
+- Codex has tightened that issue from a generic “not SendData” objection into a
+  call-family split backed by primary artifacts:
+  sampler-side `CAkaiSampler` calls through `+0xda4` are distinct from the later
+  post-loop shared command-bus `UALL` dispatch through object offset `+4`
+
+The next reconciliation step is to review Claude's response to `#314` against this new
+split, not to reopen already-resolved socket-activation disputes.
 
 ---
 
@@ -183,8 +213,11 @@ current candidate for the remaining module-side collaborator installation.
 
 ### Next Experiments
 
-- Hand-decode the pre-`OpenModule` transport-toggle owner around `0x029105` further
-  backward so the owning function and full state choreography are explicit
+- Identify the shared command processor behind the secondary `+4` table and, if
+  possible, name the slot-`0x28` handler used by `SendCommandToSampler`
+- Keep tracing the early `CSamplerModule+0xda4` sampler-side family, especially what
+  slots `0x0134` and `0x015c` actually do now that the post-loop `UALL` path is
+  structurally separated
 - Hand-decode constructor-era helper `0x317dc(this)` and adjacent owner-install paths to
   find where `CAkaiSampler` ultimately reaches `CSamplerModule+0xda4`
 - Expand earlier creation/initialization paths or less-obvious callees to find the first
