@@ -236,8 +236,9 @@ cleanly.
   That makes the status-only slots the more plausible place to look if this area is
   analyzed further.
   The stronger discriminator is now the full control-flow shape, not the slot numbers
-  alone: the complete `+0x2c -> slot 0x50 -> slot 0x64 -> fallback` triad appears only
-  in the bounded `GetSamplerStatus` region in the current primary artifacts.
+  alone: the bounded `GetSamplerStatus` cluster that gates between the missing-field
+  helper path and the `+0x2c -> slot 0x50` / optional `slot 0x64` path appears only in
+  that region in the current primary artifacts.
 - `ActivateThisSocket(Uc)` wire behavior
   Claude baseline:
   current Claude branch now claims the function is pure in-memory state and emits no

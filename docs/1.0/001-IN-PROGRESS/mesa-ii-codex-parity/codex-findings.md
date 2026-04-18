@@ -768,21 +768,27 @@ correct. Every finding should distinguish direct evidence from inference.
   slots `0x50` and `0x64` as the more promising place if Codex keeps pushing on the
   exact meaning of `GetSamplerStatus`.
 
-- Finding 39: the full `this+0x2c -> slot 0x50 -> slot 0x64 -> fallback` triad is
-  unique to the `GetSamplerStatus` region in the current primary artifacts.
+- Finding 39: the full `GetSamplerStatus` control-flow cluster around
+  `this+0x2c`, slots `0x50` / `0x64`, and helper `0x0341d6` is unique in the current
+  primary artifacts.
   Evidence:
-  a raw-binary search for the full sequence
-  `pea this+0x2c; call slot 0x50; test result; if zero call slot 0x64; else fallback`
-  returns exactly one match at file offset `0x0611bf`, which is the bounded
-  `GetSamplerStatus` block already tied to `CAkaiSampler::vtable[0x0170]`.
+  a raw-binary search for the exact bounded sequence around file offset `0x0611bf`
+  returns one match, in the `GetSamplerStatus` block already tied to
+  `CAkaiSampler::vtable[0x0170]`.
+  The local control flow is:
+  if the earlier cached fields around `this+0xba` / `this+0xbe` are missing, branch
+  directly to helper `0x0341d6`;
+  otherwise call `this+0x2c -> slot 0x50`;
+  if that returns nonzero, then call `this+0x2c -> slot 0x64`;
+  in both cases return without falling through into the helper.
   By contrast, broad searches for slot loads `0x50` and `0x64` alone do return many
   unrelated hits, so the uniqueness is in the full triad shape, not the slot numbers by
   themselves.
   Interpretation:
   while Codex still cannot name helper slots `0x50` and `0x64`, the evidence now
-  supports treating their combined triad as the distinctive status path inside
-  `GetSamplerStatus`. That makes this triad a better discriminator for future tracing
-  than the individual slot offsets alone.
+  supports treating this whole gated control-flow cluster as the distinctive status path
+  inside `GetSamplerStatus`. That makes the cluster a better discriminator for future
+  tracing than the individual slot offsets alone.
 
 ## Open Questions
 
