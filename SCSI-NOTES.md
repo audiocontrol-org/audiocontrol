@@ -974,3 +974,77 @@ end-to-end (loading sampler-editor binary alongside scsi-plug),
 
 **Test artifact:** `modules/e2e-infra/src/node/lib/test-bulk-akai-header.ts`
 (commit 26a13a14 + 82ec15dc).
+
+### 2026-04-18: SDS Throughput Hardware Measurement (Phase 3.1-3.3)
+
+Three rounds of SDS throughput measurement on live S3000XL via the production
+`/sds/stream` WebSocket path. All measurements are from `test-sds-baseline.ts`,
+`test-sds-batch-sweep.ts`, and `test-sds-pipeline-sweep.ts` in
+`modules/e2e-infra/src/node/lib/`.
+
+**Phase 3.1 baseline (16000-sample upload, batch=20, depth=1 — current production defaults):**
+- 1000 samples (2 KB):  1749ms, 1.12 KB/s, 54.6ms/packet (startup overhead dominates)
+- 4000 samples (8 KB):  3344ms, 2.34 KB/s, 30.7ms/packet
+- 16000 samples (31 KB): 10754ms, **2.91 KB/s steady-state**, 26.2ms/packet
+- ~1s constant startup overhead before first progress
+- Per-packet floors at ~26ms
+
+**Phase 3.2 batch-size sweep (16000-sample upload, depth=1):**
+| batch | KB/s | ms/packet | speedup |
+|---|---|---|---|
+| 20 | 2.90 | 26.97 | 1.00x |
+| 40 | 2.20 | 35.53 | 0.76x |
+| 60 | 1.19 | 65.69 | 0.41x |
+| 100-200 | ~1.2 | ~64-65 | ~0.42x |
+
+batch=20 IS the local optimum. Larger batches degrade throughput sharply.
+Per-batch time at large sizes scales linearly with batch size — strongly
+suggests device-side MIDI buffer fills before processing can drain it.
+
+**Phase 3.3 pipeline-depth sweep (16000-sample upload, batch=20):**
+| depth | KB/s | ms/packet | speedup |
+|---|---|---|---|
+| 1 | 2.89 | 27.07 | 1.00x |
+| 2 | 2.02 | 38.60 | 0.70x |
+| 3 | 1.98 | 39.40 | 0.69x |
+| 4 | 1.69 | 46.21 | 0.59x |
+| 6-8 | ~1.78 | ~44 | ~0.62x |
+
+depth=1 IS the local optimum. Higher depths degrade.
+
+**Combined diagnosis (math):**
+- Per-packet at batch=20, depth=1: 27ms
+- Per-packet device processing (after stripping per-CDB overhead): ~17ms
+- Audio bytes per packet: 80 (40 16-bit samples)
+- Steady-state audio rate: 80 / 27ms = 2.96 KB/s — matches measurement
+- Wire bytes per packet: ~125 (after SDS framing)
+- Wire rate: 125 / 27ms = 4.6 KB/s
+
+**The S3000XL's SDS processing is the rate-limiter.** The bridge isn't the
+bottleneck. No bridge-side optimization can change this rate.
+
+**Comparison to serial MIDI SDS:**
+- Serial MIDI wire ceiling: 31250 baud / 10 = 3.125 KB/s
+- SDS encoding overhead: 1.5x (3 wire bytes per 16-bit audio sample)
+- Serial MIDI SDS audio ceiling: ~2.1 KB/s
+- SCSI SDS measured: 2.91 KB/s
+- **SCSI is ~1.4x faster than serial MIDI for SDS.**
+
+**Strategic implication:** the SCSI bridge infrastructure earns its complexity
+only if sample throughput is meaningfully greater than serial MIDI (~10x = 20+
+KB/s). The 1.4x SDS speedup doesn't clear that bar. To get there we need a
+non-SDS path — which MESA II demonstrably uses but we haven't yet decoded
+(SRAW is the gap). See `decision-record-2026-04-18.md` for the strategic call.
+
+**Bridge tuning knobs added (left in place for future investigation):**
+- `batch_size` JSON field on `sample-upload` WebSocket (default 20)
+- `pipeline_depth` JSON field on `sample-upload` WebSocket (default 1)
+
+**Test artifacts:**
+- `modules/e2e-infra/src/node/lib/test-sds-baseline.ts`
+- `modules/e2e-infra/src/node/lib/test-sds-batch-sweep.ts`
+- `modules/e2e-infra/src/node/lib/test-sds-pipeline-sweep.ts`
+- `docs/.../sds-baseline.md`
+- `docs/.../sds-phase-3.2-batch-sweep.md`
+- `docs/.../sds-phase-3.3-pipeline-sweep.md`
+- `docs/.../decision-record-2026-04-18.md`

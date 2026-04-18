@@ -11,6 +11,91 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-18: Phase 3.1-3.3 SDS optimization (NEGATIVE) → strategic reframe → SRAW decode is the path
+
+### Feature: mesa-ii-reverse-engineering
+### Worktree: audiocontrol-mesa-ii-reverse-engineering
+
+### Goal
+Execute the Option 1 (SDS optimize) plan committed in #315: measure baseline (Phase 3.1), iterate through batch-size and pipeline-depth optimizations (3.2/3.3) to hit the 8 KB/s ship target.
+
+### Accomplished
+
+**Phase 3.1 — baseline measurement (task #24):**
+- Built `test-sds-baseline.ts` measuring throughput at 3 sample sizes through production `/sds/stream` path
+- Result: **2.91 KB/s** steady-state on 16000-sample upload; per-packet floors at 26.2ms; ~1s startup overhead
+- Committed `sds-baseline.md` as the 1.0x reference for subsequent runs
+
+**Phase 3.2 — batch-size sweep (task #25, NEGATIVE):**
+- Plumbed `batch_size` as JSON field through `sample-upload` WebSocket → `ScsiWork::SdsUpload` → `upload_sample` (default 20)
+- Built `test-sds-batch-sweep.ts` measuring 20/40/60/100/150/200 packets/CDB
+- Result: batch=20 IS the optimum. batch=40 → 0.76x; batch=60+ → 0.42x plateau
+- Diagnosis: device-side MIDI buffer overflows at large batches; per-CDB overhead amortization stops paying off above 20
+
+**Phase 3.3 — pipeline-depth sweep (task #26, NEGATIVE):**
+- Plumbed `pipeline_depth` as JSON field; refactored `upload_sample_inner` to use VecDeque of in-flight batches
+- Built `test-sds-pipeline-sweep.ts` measuring depths 1-8
+- Result: depth=1 IS the optimum. depth=2-8 all degrade to 0.59-0.70x
+- Combined with 3.2: per-packet math (27ms × 80 audio bytes = 2.96 KB/s) confirms **device IS the rate-limiter**, not the bridge
+
+**Strategic reframe:**
+- User: "Is the SCSI infrastructure worth the pain... if it's not meaningfully faster than MIDI?" 
+- Math: serial MIDI SDS ceiling = ~2.1 KB/s; SCSI SDS measured = 2.91 KB/s = **1.4x** — not enough to justify the bridge
+- Decision: continue MESA II RE until we have a testable, data-backed hypothesis (the original Option 2 in narrower form). MESA achieves the throughput we need; we can't measure MESA directly (no vintage hardware), so RE the binaries until we know how.
+- Committed `decision-record-2026-04-18.md` capturing rationale and guard rails
+
+**Codex parity (issues #309-#314 all CLOSED earlier today; #315 still active):**
+- #314 (UALL is `*(this+4) -> vtable[0x28]`, not `SendData`-style) — verified from primary evidence (instructions at 0x030c89 + `strings` count: 26 in sampler-editor binary, 0 in scsi-plug binary). Doc fixed across 3 places in `sampler-editor-decoded.md`.
+- 2 follow-up branch-state-sync waves: README/workplan stale lines from earlier framings caught and fixed each round
+
+**Bridge code changes (committed and deployed):**
+- `services/scsi-midi-bridge/src/scsi_midi.rs` + `worker.rs` + `routes.rs`: added `batch_size` and `pipeline_depth` as optional JSON tuning knobs; defaults preserve previous behavior. Reusable for any future investigation.
+
+**Memory entries added:**
+- `feedback_stop_micro_optimizing.md` — when measurement points cleanly outside your layer, stop running more in-layer variations
+- `feedback_grep_after_doc_sync.md` — after status changes, grep across all docs for sibling references before declaring sync complete
+
+**Other:**
+- 17 completed tasks deleted from task list (was occupying half the screen per user)
+- Merged origin/main into feature branch (1 commit, clean)
+- README Phase 2/3 rows synced; workplan Phase 3 section retitled "MESA II RE Continued"
+
+### Didn't Work
+
+- **Both Phase 3.2 and 3.3 produced ZERO improvement.** Negative results are valuable evidence but the time spent confirming they don't help (~1 hour each, plus deploys) is real.
+- **My initial Option-1 framing was insufficiently skeptical.** I committed to optimization paths predicted to give 1.5-2x without first confirming the bottleneck location — the per-packet math we used to interpret the negative results AFTER the fact was knowable BEFORE the experiments. Should have done the bottleneck analysis first.
+
+### Course Corrections
+
+- **[FABRICATION] (caught by user)** I claimed `upload_sample_aspack` runs at 16-23 KB/s based on a code comment, treated as fact. User: "You have no proof that ASPACK is actually fast — you know you can send high throughput ASPACK messages, but you don't know that it's not fast because the sampler just ACKs receipt and throws away the data." Same shape as the BULK SDATA case from earlier sessions: device REPLY ≠ data committed to memory. Audited my entire reasoning chain afterward and found multiple unverified claims I'd been propagating ("ASPACK = 10x SDS", "MESA = ~50 KB/s estimated", "we're 90% there"). User explicitly warned: "my appetite for letting you thrash around making dumb guesses is very low. So, do not pursue any avenues that are based on conjecture without data."
+- **[FABRICATION] (caught by Codex on #315 round 1)** I posted a decision-update comment without first verifying that #309-#314 were actually closed (they were) and that the README parity-wave row reflected that (it didn't). Same root pattern as the earlier "trust Codex without primary verification" mistake from session 8 — bidirectional now: I shouldn't trust ANY claim about repo state without checking.
+- **[DOCUMENTATION] (caught by Codex on #315 round 2)** After fixing the four mismatches Codex flagged, I missed a fifth one (README "Codex Parity Wave" row still labeled "open, awaiting review"). Same shape as the earlier `cmesasocket-vtable38-decoded.md` rename leaving stale references — when I update one occurrence of a status, sibling references in OTHER tables/docs go uncaught. Saved as memory: grep across all docs after sync.
+- **[PROCESS] (self-correction after user pushback)** Before the user's reframing, I was about to delegate "decode SRAW" with a plan that leaned on "ASPACK is fast" inference. The plan would have been a more sophisticated version of the same chasing-comments mistake. The reframe forced me to articulate what's measured vs inferred and start over with primary evidence only.
+
+### Quantitative
+
+- User messages: ~25
+- Commits this session: 12 (3 phase artifacts + 1 batch-sweep + 1 pipeline-sweep + 1 decision record + 5 doc-sync rounds + 1 main merge)
+- Bridge deploys: 2 (one for Phase 3.2 plumbing, one for Phase 3.3 plumbing)
+- Codex issues: 1 new (#314 wave) + 6 follow-up branch-state sync rounds across multiple comments
+- Memory entries: 2 (`stop_micro_optimizing`, `grep_after_doc_sync`)
+- Tasks: 17 completed/superseded deleted from list; 1 new (#30 SRAW decode)
+- User course corrections: 2 explicit FABRICATION calls (ASPACK speculation + #315 verification gap)
+
+### Insights
+
+1. **The 8 KB/s target was set without primary-evidence basis.** Per-packet math (27ms × 80 = 2.96 KB/s) was knowable before any of Phase 3.2/3.3 ran. Setting throughput targets without first identifying the rate-limiting layer is target-by-aspiration. Future targets should be set FROM the bottleneck analysis, not as a separate "what would feel good" judgment.
+
+2. **The "1.4x doesn't justify the SCSI bridge" argument is sharp BECAUSE it's grounded in measurement.** The user's reframe could only land because we had real numbers from Phase 3.1-3.3. The negative results enabled the strategic call. Negative results aren't wasted time when they convert speculation into data.
+
+3. **The fabrication failure mode keeps recurring with new shapes.** Session 4: SRAW "would need ASPACK wrap" inference. Session 7: trusted Codex without primary verification. Session 8: claimed Codex's vtable[0x015c] interpretation was wrong without checking. This session: claimed ASPACK throughput from comment, claimed MESA throughput from extrapolation, missed branch-state items in 2 doc-sync rounds. The discipline to verify needs to be DEFAULT, not "I'll do it when I remember." Three memory entries about it now (`feedback_verify_external_claims`, `feedback_stop_micro_optimizing`, `feedback_grep_after_doc_sync`) — they're proxies for the underlying skill of slowing down and checking before committing.
+
+4. **The decision record is a load-bearing artifact.** Five committable docs in this session captured what a future session needs to pick up cleanly: baseline measurement, two negative-result analyses, the decision record, and the workplan/README updates. Together they make the supersession of Option 1 legible without requiring anyone to re-litigate the conversation. That's the kind of doc work that pays back across sessions.
+
+5. **The user's appetite-for-thrashing language is the right meta-signal.** "My appetite for letting you thrash around making dumb guesses is very low" was a clean directive: don't act without data, full stop. Worth treating as a project-wide standing instruction, not a one-shot rebuke. The earlier `process_virtuous_cycle.md` memory probably already covers this; worth re-reading it.
+
+---
+
 ## 2026-04-18: Strategic Decision — Phase 2 Closed, Pivot to Phase 3 (Option 1: SDS Optimize)
 
 ### Feature: mesa-ii-reverse-engineering
