@@ -208,7 +208,11 @@ cleanly.
   path further: the upload-phase `UALL` call shares the same `this+4 -> vtable[0x28]`
   command-dispatch slot used by the broader `CSamplerModule` command channel, so the
   remaining ambiguity is the concrete module-side handler behind that generic slot, not
-  whether `UALL` is a hidden plug-side transport tag.
+  whether `UALL` is a hidden plug-side transport tag. The new `CFXFilerView` parallel
+  also matters here: `SendCommandToSampler__12CFXFilerViewFlsssPcsss` ultimately
+  packages a local block and dispatches through the same `object+4 -> vtable[0x28]`
+  slot shape, which makes the unresolved handler look more like a shared editor/view
+  command processor than a sampler-private post-transfer routine.
 
 ### Deferred
 

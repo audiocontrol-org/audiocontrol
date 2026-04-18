@@ -555,6 +555,25 @@ correct. Every finding should distinguish direct evidence from inference.
   but it narrows the remaining failure model toward missing module-command/state
   sequencing rather than a hidden plug-side transport tag.
 
+- Finding 29: the `vtable[0x28]` command-dispatch shape is shared beyond
+  `CSamplerModule`, which makes it look like a broader editor/view command bus rather
+  than a sampler-private virtual.
+  Evidence:
+  `SendCommandToSampler__14CSamplerModuleFlsssPcsss` at `0x0321a7` packages a small
+  local block, then pushes caller argument plus `this`, loads `this+4`, reads
+  `vtable[0x28]`, and dispatches through that slot.
+  `SendCommandToSampler__12CFXFilerViewFlsssPcsss` at `0x067f9f-0x0680ef` does the
+  same higher-level thing after its view-specific validation and repacking: it builds a
+  local block at `fp-26`, then pushes the caller argument and `%a3@(138)`, loads the
+  second pushed object plus offset `+4`, reads `vtable[0x28]`, and dispatches through
+  the same slot shape before returning the status word stored in the local block.
+  Interpretation:
+  the strongest current Codex read is that `this+4 -> vtable[0x28]` is part of a
+  shared command-routing interface used by multiple editor/view classes, not a
+  `CSamplerModule`-exclusive sampler primitive. That pushes the unresolved `UALL`
+  handler identity toward a common command processor that may bridge sampler and UI
+  concerns, rather than a hidden transport-specific routine.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
