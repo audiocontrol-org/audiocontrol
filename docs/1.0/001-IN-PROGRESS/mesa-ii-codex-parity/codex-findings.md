@@ -952,6 +952,26 @@ correct. Every finding should distinguish direct evidence from inference.
   patching, resource initialization outside the recovered plug body, or harness-layer
   interception than through a normal in-binary helper that simply has not been named yet.
 
+- Finding 48: the `CSCSIPlug` constructor owns the persistent plug-side state used by
+  later `SendData` paths, but it still does not reveal a static `0x106e` install site.
+  Evidence:
+  real `m68k-elf-objdump` of file `0x0bc6-0x0c6e` recovers `__ct__9CSCSIPlugFv`. After
+  calling the inherited plug constructor and an initializer on `this+0x093a`, it writes
+  the class vtable pointer from `a4@(316)`, seeds the four-byte tags `SCSI` and `PASC`
+  into `this+8` and `this+12`, clears cached address state at `+0x0d66/+0x0d6a/+0x0d6c`
+  and `+0x0d6e`, allocates `0x8000` bytes into `this+0x0e38`, copies the first longword
+  of that allocation into `this+0x0e3c`, clears the per-bus slot family rooted at
+  `this+0x0d70`, clears flag bytes `this+0x0e40`, `this+0x0e46`, and `this+0x0e47`, and
+  stores the longword constant `1800` into `this+0x0e42`.
+  None of that constructor body contains any literal reference to `0x106e`, `0x1072`, or
+  `0x1160`.
+  Interpretation:
+  this is the cleanest in-binary ownership boundary so far for the plug-side state that
+  `SendData` later reads and mutates. It explains where the cached payload pointer,
+  readiness flags, and per-bus bookkeeping originate, but it also strengthens the
+  negative SRAW result again: even constructor-time setup does not visibly install the
+  live sender behind `0x106e`.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

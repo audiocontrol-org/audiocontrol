@@ -284,6 +284,10 @@ cleanly.
   the checked-in binary contains exactly six direct `jsr 0x106e` call sites, all inside
   the `SendData` dispatch arms, with no other literal references to `0x106e` and no
   direct literal references at all to `0x1072` or `0x1160` outside their own bodies.
+  The constructor pass tightens that ownership model further: `__ct__9CSCSIPlugFv`
+  clearly initializes the persistent plug-side state later used by `SendData`
+  (`+0x0e38/+0x0e3c`, the per-bus cache rooted at `+0x0d70`, and flags
+  `+0x0e40/+0x0e42/+0x0e46/+0x0e47`), but still does not reference the stub region.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.
