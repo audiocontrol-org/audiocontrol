@@ -435,6 +435,9 @@ async fn handle_ws_sample_upload(
     // Phase 3.2 optimization knob: client may pass `batch_size` to override the
     // default SDS packets-per-CDB. Test-only; production callers omit it.
     let batch_size = parsed["batch_size"].as_u64().map(|n| n as usize);
+    // Phase 3.3 optimization knob: client may pass `pipeline_depth` to keep N
+    // batches in flight at once (1 = synchronous send→read, default).
+    let pipeline_depth = parsed["pipeline_depth"].as_u64().map(|n| n as usize);
 
     let samples: Vec<i16> = parsed["samples"]
         .as_array()
@@ -463,6 +466,7 @@ async fn handle_ws_sample_upload(
             sample_rate,
             samples,
             batch_size,
+            pipeline_depth,
             progress: progress_tx,
             reply: reply_tx,
         }).await;

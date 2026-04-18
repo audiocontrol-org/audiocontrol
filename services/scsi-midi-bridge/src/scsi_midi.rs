@@ -244,6 +244,7 @@ pub async fn upload_sample<F>(
     sample_rate: u32,
     samples: &[i16],
     batch_size: Option<usize>,
+    pipeline_depth: Option<usize>,
     mut on_progress: F,
     cancelled: &std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> Result<u32, String>
@@ -251,11 +252,11 @@ where
     F: FnMut(u32, u32),
 {
     let total = samples.len() as u32;
-    info!(target_id, sample_number, total, sample_rate, batch_size = ?batch_size, "starting sample upload");
+    info!(target_id, sample_number, total, sample_rate, batch_size = ?batch_size, pipeline_depth = ?pipeline_depth, "starting sample upload");
 
     s2p.scsi_midi_enable(target_id).await?;
     let result = upload_sample_inner(
-        s2p, target_id, sample_number, channel, sample_rate, samples, batch_size, &mut on_progress, cancelled,
+        s2p, target_id, sample_number, channel, sample_rate, samples, batch_size, pipeline_depth, &mut on_progress, cancelled,
     ).await;
     let _ = s2p.scsi_midi_disable(target_id).await;
     result
@@ -269,6 +270,7 @@ async fn upload_sample_inner<F>(
     sample_rate: u32,
     samples: &[i16],
     batch_size_override: Option<usize>,
+    pipeline_depth_override: Option<usize>,
     on_progress: &mut F,
     cancelled: &std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> Result<u32, String>
@@ -310,42 +312,31 @@ where
     // amortizes the ~113ms per-SCSI-command overhead. Batch of 20 gives ~9x
     // speedup (25ms/pkt vs 227ms/pkt).
     let samples_per_packet = 40usize;
-    // Phase 3.2 (task #25): batch_size tunable per-request for throughput optimization.
-    // Default 20 is the session-3 baseline (~2.9 KB/s). Larger batches amortize
-    // per-CDB overhead; expected 1.5-2x at ~100 packets/CDB per the per-CDB ~213ms
-    // model in `sds-baseline.md`. Request can override via `batch_size` JSON field.
+    // Phase 3.2 (task #25): batch_size tunable per-request. Phase 3.2 sweep showed
+    // batch=20 is the local optimum on this device (larger batches degrade due to
+    // device-side MIDI buffering). See `sds-phase-3.2-batch-sweep.md`.
     let batch_size = batch_size_override.unwrap_or(20);
+    // Phase 3.3 (task #26): pipeline_depth controls how many batches stay
+    // "in flight" (sent but not ACK-read). depth=1 = previous behavior
+    // (synchronous send→read per batch). depth=N keeps N batches buffered on the
+    // device, overlapping bridge-side send/read with device-side processing.
+    let pipeline_depth = pipeline_depth_override.unwrap_or(1).max(1);
     let mut pkt_num: u8 = 0;
     let mut offset = 0usize;
 
-    while offset < samples.len() {
-        if cancelled.load(std::sync::atomic::Ordering::Relaxed) {
-            info!("SDS upload cancelled by client disconnect");
-            return Err("upload cancelled".to_string());
-        }
+    // Track in-flight batches: each entry is the packet count of a sent-but-not-yet-read batch.
+    let mut in_flight: std::collections::VecDeque<usize> = std::collections::VecDeque::new();
+    let mut last_log_offset = 0usize;
 
-        // Build a batch of packets
-        let mut batch_data: Vec<u8> = Vec::new();
-        let mut packets_in_batch = 0usize;
-        let batch_start_offset = offset;
-
-        while packets_in_batch < batch_size && offset < samples.len() {
-            let pkt = encode_sds_data_packet(channel, pkt_num, samples, offset, samples_per_packet);
-            batch_data.extend_from_slice(&pkt);
-            offset += samples_per_packet;
-            pkt_num = (pkt_num + 1) & 0x7F;
-            packets_in_batch += 1;
-        }
-
-        // Send entire batch in one SCSI MIDI send
+    // Helper: read and validate ACKs for one batch
+    async fn drain_one_batch_acks(
+        s2p: &S2pClient,
+        target_id: u8,
+        packets_in_batch: usize,
+    ) -> Result<std::time::Duration, String> {
         let t0 = std::time::Instant::now();
-        s2p.scsi_midi_send(target_id, &batch_data).await?;
-
-        // Read all ACKs in one SCSI MIDI read (6 bytes per ACK)
         let ack_data = s2p.scsi_midi_read(target_id, (packets_in_batch * 6) as u32).await?;
-        let t_batch = t0.elapsed();
-
-        // Verify ACKs
+        let elapsed = t0.elapsed();
         let (messages, _) = extract_sysex_messages(&ack_data);
         for msg in &messages {
             if msg.len() >= 6 && msg[1] == 0x7E {
@@ -358,18 +349,60 @@ where
                 }
             }
         }
+        Ok(elapsed)
+    }
 
-        let sent = (offset as u32).min(total);
-        on_progress(sent, total);
+    while offset < samples.len() || !in_flight.is_empty() {
+        if cancelled.load(std::sync::atomic::Ordering::Relaxed) {
+            info!("SDS upload cancelled by client disconnect");
+            // Try to drain any in-flight ACKs to leave the device in a clean state.
+            while let Some(packets) = in_flight.pop_front() {
+                let _ = s2p.scsi_midi_read(target_id, (packets * 6) as u32).await;
+            }
+            return Err("upload cancelled".to_string());
+        }
 
-        if batch_start_offset == 0 || offset % (batch_size * samples_per_packet * 10) < batch_size * samples_per_packet {
-            info!(
-                batch_packets = packets_in_batch,
-                batch_ms = t_batch.as_millis() as u64,
-                per_pkt_ms = (t_batch.as_millis() as u64) / (packets_in_batch as u64),
-                progress = format!("{}/{}", sent, total),
-                "SDS batch timing"
-            );
+        // Send next batch if pipeline isn't full and there's data left.
+        let can_send = offset < samples.len() && in_flight.len() < pipeline_depth;
+        if can_send {
+            let mut batch_data: Vec<u8> = Vec::new();
+            let mut packets_in_batch = 0usize;
+            while packets_in_batch < batch_size && offset < samples.len() {
+                let pkt = encode_sds_data_packet(channel, pkt_num, samples, offset, samples_per_packet);
+                batch_data.extend_from_slice(&pkt);
+                offset += samples_per_packet;
+                pkt_num = (pkt_num + 1) & 0x7F;
+                packets_in_batch += 1;
+            }
+            s2p.scsi_midi_send(target_id, &batch_data).await?;
+            in_flight.push_back(packets_in_batch);
+        }
+
+        // Drain when: pipeline is now full, OR there's no more data to send (final drain).
+        let must_drain = in_flight.len() >= pipeline_depth || offset >= samples.len();
+        if must_drain {
+            if let Some(packets) = in_flight.pop_front() {
+                let ack_ms = drain_one_batch_acks(s2p, target_id, packets).await?;
+
+                let sent = (offset as u32).min(total);
+                on_progress(sent, total);
+
+                // Log roughly every 10 batches to avoid log spam
+                if last_log_offset == 0
+                    || offset.saturating_sub(last_log_offset) >= batch_size * samples_per_packet * 10
+                {
+                    info!(
+                        batch_packets = packets,
+                        ack_drain_ms = ack_ms.as_millis() as u64,
+                        per_pkt_ms = (ack_ms.as_millis() as u64) / (packets as u64).max(1),
+                        in_flight = in_flight.len(),
+                        pipeline_depth,
+                        progress = format!("{}/{}", sent, total),
+                        "SDS batch timing"
+                    );
+                    last_log_offset = offset;
+                }
+            }
         }
     }
 
