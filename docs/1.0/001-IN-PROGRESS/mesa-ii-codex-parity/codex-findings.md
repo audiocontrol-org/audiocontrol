@@ -1111,6 +1111,24 @@ correct. Every finding should distinguish direct evidence from inference.
   that broadens the static search surface. That leaves the `0x106e` sender stub as the
   only clearly ordinary unresolved local mechanism in the plug code.
 
+- Finding 57: the very low absolute targets like `0x148` and `0x274` fall inside
+  header/data territory, not credible local code bodies.
+  Evidence:
+  direct `xxd` and `objdump` of file `0x0120-0x0320` show that this region is dominated
+  by embedded strings and table-like data, not executable function structure. Around
+  `0x148`, the bytes decode as the printable product string `MESA SCSI Plug`. Around
+  `0x274`, the bytes are dense table patterns such as
+  `c300 00c3 c300 0183 c180 ...`, and the surrounding `0x0240-0x0320` region continues
+  with obviously non-code table content and repeated numeric patterns rather than any
+  coherent prologue/call/return structure.
+  Interpretation:
+  this means low absolute `jsr` targets in this binary should not be assumed to be local
+  in-resource helper bodies just because `objdump` can assign instructions to the bytes.
+  In practice, the remaining odd targets (`0x148`, and likely the similarly low `0x274`
+  and `0x02fc`) should be treated as nonstandard control transfers or external/runtime
+  entry points unless stronger evidence proves otherwise. That further shrinks the set of
+  plausible in-binary explanations for the live SRAW sender.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
@@ -1158,3 +1176,6 @@ correct. Every finding should distinguish direct evidence from inference.
 - What is really happening at the `jsr 0x148` site in the `CSCSIPlug` selector/send
   dispatcher, given that `0x148` overlaps the embedded string/header region instead of a
   clean helper body?
+- Are the other very low absolute `jsr` targets used by `CSCSIPlug` (`0x274`, `0x02fc`)
+  also external/runtime entry points or data-driven transfers rather than local helper
+  bodies?

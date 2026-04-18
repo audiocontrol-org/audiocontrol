@@ -312,7 +312,10 @@ cleanly.
   ordinary unresolved local mechanism left is the `0x106e` sender stub itself. The
   nearby `0xca2` target now collapses the same way as `0x1620`: it is a register-
   dependent internal entry inside the `0x0c88-0x0ccc` body, reused only from the same
-  dispatcher family where `a2` is already live.
+  dispatcher family where `a2` is already live. The very low absolute targets are now
+  weaker than before too: direct byte inspection shows `0x148` and `0x274` land inside
+  string/table-heavy header data, not credible local code bodies, so they should not be
+  treated as ordinary in-resource helpers without stronger evidence.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.
