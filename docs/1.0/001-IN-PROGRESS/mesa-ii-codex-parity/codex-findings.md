@@ -888,6 +888,27 @@ correct. Every finding should distinguish direct evidence from inference.
   That narrows the remaining SRAW gap to the runtime patch or harness trace, not to the
   already-visible callback machinery.
 
+- Finding 45: `SetSCSIMIDIMode` is not the runtime patcher for `0x106e`; it computes and
+  returns the mode word later used by higher-level helpers.
+  Evidence:
+  the real `SetSCSIMIDIMode__9CSCSIPlugFsUcUc` body starts at file `0x12f2`. Its code
+  saves the cached A4-relative mode value from `a4@(372)` / `a4@(376)`, conditionally
+  sets a local byte to `0x80`, then calls helper `0x1620` with the requested mode word,
+  the plug-local control block at `a2@(2362)`, and local output buffers. If
+  `a2@(3430)` is non-null after that call, the function returns the longword cached
+  there; otherwise it rebuilds the return value from three local bytes at `fp-4 .. fp-2`
+  and returns that 24-bit value in `d0`.
+  There are no writes to file `0x106e`, `0x1072`, or the neighboring SRAW/SYSX stub
+  region anywhere in this function. The two higher-level callers now traced
+  (`0x1452..0x14be` and `0x150a..0x15c8`) use the returned mode value as data, feeding
+  it into helper `0x1620`; they also do not patch the `0x106e` slot directly.
+  Interpretation:
+  this removes one of the more plausible static candidates for the SRAW sender install.
+  The runtime patching of `0x106e` is not happening inside `SetSCSIMIDIMode` or its two
+  immediately traced callers, so the remaining search should move outward toward other
+  initialization/setup paths such as `ChooseSCSI`, open-time utility helpers, or the
+  harness-side intercept layer rather than re-reading mode-selection code.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

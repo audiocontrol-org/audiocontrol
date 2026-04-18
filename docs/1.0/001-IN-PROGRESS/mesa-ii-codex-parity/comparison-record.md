@@ -271,8 +271,11 @@ cleanly.
   `CSCSIPlug+0x0e3c`. That means static evidence still does not yield the final on-wire
   `SRAW` bytes, but it does support a sharper framing than the old harness inference:
   the unresolved question is the runtime patch installed into `0x106e` and what it
-  emits, not some already-proven ASPACK wrapper inside the checked-in binary. Claude's
-  newer workplan now targets that same gap directly.
+  emits, not some already-proven ASPACK wrapper inside the checked-in binary. The latest
+  Codex pass also rules out one nearby candidate for that installation: the real
+  `SetSCSIMIDIMode` body at file `0x12f2` computes and returns a mode word, but it does
+  not write to `0x106e` or the neighboring stub region. Claude's newer workplan now
+  targets that same remaining gap directly.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.
