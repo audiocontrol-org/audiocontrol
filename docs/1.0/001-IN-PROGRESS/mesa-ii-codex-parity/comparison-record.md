@@ -345,6 +345,11 @@ cleanly.
   selected slot index, and both `ActivateThisSocket` and `CMESASocket::SendData` read
   that same installed callback from slot-base `+8`. So the current host-side evidence
   does not support per-send callback rewriting inside the recovered socket layer.
+  One step higher, `OpenModule` appears to pass the generic module/editor command-proc
+  stored at `this+0xa20` into `ConnectToPlug`, not a dedicated plug-owned callback
+  field. That suggests the best remaining host-side place to look for special descriptor
+  preparation is the command-proc path behind `+0xa20`, not `SelectPlug` or
+  `CMESASocket::SendData`.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.

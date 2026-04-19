@@ -1275,6 +1275,24 @@ correct. Every finding should distinguish direct evidence from inference.
   `ConnectToPlug` copies the descriptor, or inside the plug-side callback chain after the
   socket dispatch has already handed off control.
 
+- Finding 67: the callback handed into `ConnectToPlug` from `OpenModule` is the generic
+  module command-proc stored at `this+0xa20`, not a direct plug-owned callback field.
+  Evidence:
+  in `CSamplerModule::OpenModule` at `0x02a639`, the `'MIDI'` and `'SCSI'`
+  `ConnectToPlug(...)` calls push `this+0xa20` as the callback argument before the plug
+  IDs and output locations at `this+0xd98` and `this+0xd9c`.
+  Separately, the early setup path at `0x0286f3` performs the direct store of its
+  callback argument into `this+0xa20`; the surrounding string table identifies that
+  routine as the `SetCommandProc` / `InitModule` callback-install path rather than a
+  plug-specific socket helper.
+  Interpretation:
+  the immediate host-side provider for `ConnectToPlug` is the module/editor command-proc
+  layer, not a dedicated socket-local plug object. That pushes the likely installation
+  boundary one step outward again: if the live plug descriptor or sender callback is
+  being prepared specially before `ConnectToPlug` copies it into the socket slot, the
+  best remaining host-side candidate is the command-proc path behind `this+0xa20`, not
+  `SelectPlug` or `CMESASocket::SendData` themselves.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
