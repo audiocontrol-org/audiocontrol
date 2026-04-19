@@ -1219,6 +1219,20 @@ correct. Every finding should distinguish direct evidence from inference.
   body. The live sender must be installed, intercepted, or otherwise redirected at
   runtime before normal execution.
 
+- Finding 64: `0x0d54` is not a standalone helper; it lands inside the tail of
+  `DoMESACommand`.
+  Evidence:
+  raw bytes from file `0x0d20-0x0d64` show `0x0d54` sitting inside a normal epilogue
+  sequence:
+  `... 4e b9 00 00 02 fc` at `0x0d4e` (`jsr 0x02fc`), then `0x0d54: 16 00`,
+  `0x0d56: 50 4f`, `0x0d58: 10 03`, `0x0d5a: 4c df 0c 08`, `0x0d5e: 4e 5e`,
+  `0x0d60: 4e 75`. Immediately after that, file `0x0d64` begins the embedded
+  `DoMESACommand__9CSCSIPlugFP11MESACommand` symbol string.
+  Interpretation:
+  this is another mid-body/internal return entry, not a separate send-path helper. That
+  further shrinks the ordinary static call surface around `SendData`: the only clearly
+  ordinary unresolved local mechanism is still `0x106e`.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

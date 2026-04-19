@@ -332,6 +332,10 @@ cleanly.
   sender body: every `jsr 0x106e` return site expects arm-local result handling and
   stack cleanup before the later shared `bra 0x1160`, but the static bytes at
   `0x106e` are only `bra 0x1160` and would skip that work entirely if executed as-is.
+  One more nearby target has now collapsed too: `0x0d54`, called from one `SendData`
+  arm, lands inside the tail/epilogue of `DoMESACommand` immediately before the
+  embedded `DoMESACommand__9CSCSIPlugFP11MESACommand` symbol string, not at a
+  standalone helper boundary.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.
