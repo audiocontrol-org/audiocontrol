@@ -7,9 +7,9 @@ Parallel Codex-driven reverse engineering of Akai's MESA II sampler editor, desi
 | Phase | Status | Notes |
 |-------|--------|-------|
 | Phase 1: Baseline and Comparison Setup | Complete | Claude branch baseline captured; comparison artifacts created; first Codex target selected |
-| Phase 2: Independent Codex Analysis | In Progress | Task-21 activation-state model is effectively matched; `UALL` is now split into sampler-side pre-loop calls vs a later shared command-bus dispatch |
-| Phase 3: Cross-Check and Reconciliation | In Progress | Earlier Claude disputes were resolved; new issue `#314` tracks the remaining stale `UALL` call-family conflation |
-| Phase 4: Downstream Integration Guidance | Not Started | Summarize validated findings and next experiments |
+| Phase 2: Independent Codex Analysis | In Progress | Task-21 activation-state model is effectively matched; static `CSCSIPlug::SendData` helper hunting is now effectively exhausted down to `0x106e` |
+| Phase 3: Cross-Check and Reconciliation | In Progress | Earlier Claude disputes `#309`-`#314` are resolved; active sync now runs through issue `#315` as Claude re-evaluates the runtime sender boundary |
+| Phase 4: Downstream Integration Guidance | In Progress | Runtime-boundary guidance is now the highest-value downstream output from the parity branch |
 
 ## Links
 
@@ -55,41 +55,41 @@ earlier MESA conclusions:
 - SRAW wire-byte claims and some earlier vtable semantics were explicitly downgraded
   from findings to unresolved inference
 
-After re-syncing with the live Claude branch on April 17, 2026, the newest Claude-side
-delta is no longer about slot `0x38`. The current branch head (`1a196d2e`) now claims
-that `ActivateThisSocket(Uc)` is pure in-memory socket state setup that emits no wire
-bytes. Codex has not reproduced that stronger task-21 claim yet, so it is now tracked
-as a live Claude-side conclusion pending parity verification.
+After re-syncing with the live Claude branch, the main Claude-side shift is no longer
+about slot `0x38` or `UALL` wording. The active Claude effort has now elevated the live
+SRAW sender boundary and the product/deployment decision tracked in issue `#315`. Codex
+has already matched the task-21 activation-state conclusion closely enough that the
+remaining meaningful parity gap is now runtime-facing, not socket-vtable naming.
 
-The first independent Codex target is therefore the same area the Claude branch now
-identifies as its blocking unknown: the `CAkaiSampler` / `CAkaiMIDIDispatcher`
+The first independent Codex target started at the same place the Claude branch had
+flagged as its blocking unknown: the `CAkaiSampler` / `CAkaiMIDIDispatcher`
 field-encoding path for header offsets 26-47, plus the `CMESASocket` pre/post calls
-that bracket BULK transfer in `SendAudioBufferToSampler`.
+that bracket BULK transfer in `SendAudioBufferToSampler`. The current frontier has since
+moved outward: the remaining unresolved mechanism is the runtime boundary around the live
+SRAW sender rather than one more static helper inside `SendData`.
 
 ## Current Session Close
 
-Phase 2 advanced materially this session:
+Recent parity work materially changed the boundary of useful Codex analysis:
 
 - Codex now effectively matches Claude's task-21 conclusion at the behavioral level:
   `ActivateThisSocket(Uc)` is modeled as application-side activation state rather than a
   missing wire preamble
-- the remaining `UALL` problem is sharper too:
-  `SendAudioBufferToSampler` contains two distinct non-socket call families that some
-  Claude-side docs had been conflating
-- the early pre-loop calls at `0x030773/0x030793/0x0307f7/0x030841/0x030891` go through
-  the `CAkaiSampler` object at `CSamplerModule+0xda4` via the `object+2 -> vtable` path
-- the later post-loop `UALL` call at `0x030c93` instead goes through a shared secondary
-  command-routing table installed at object offset `+4`
-- that secondary `+4` command table is now independently shown in both
-  `CSamplerModule` and `CFXFilerView`: each constructor installs an A4-relative primary
-  vtable at offset `0` and a separate A4-relative command table at offset `4`, and each
-  class's `SendCommandToSampler` path dispatches through slot `0x28` of that secondary
-  table
-- issue [#314](https://github.com/audiocontrol-org/audiocontrol/issues/314) now tracks
-  the remaining stale Claude-side `UALL` wording, including the incorrect equation of
-  post-loop `UALL` with `CAkaiSampler::vtable[0x015c]`
+- earlier parity-cleanup issues `#309` through `#314` are all resolved and closed
+- the static `CSCSIPlug::SendData` surface has been reduced to a near-exhaustive state:
+  low-address targets such as `0x0148`, `0x0274`, and `0x02fc` now look nonlocal or
+  low-memory/system-adjacent; `0x0ca2`, `0x0d54`, `0x1162`, `0x1620`, `0x187e`, and
+  `0x1b56` all collapsed into internal entries or shared epilogues inside already
+  recovered bodies
+- the checked-in bytes at `0x106e` are stronger evidence for runtime installation than
+  before: if executed as-is, they would skip arm-local cleanup that every `jsr 0x106e`
+  caller expects before the shared `0x1160` tail path
+- issue [#315](https://github.com/audiocontrol-org/audiocontrol/issues/315) is now the
+  live Claude/Codex sync point because the remaining meaningful unknown is the runtime
+  sender boundary, not another static helper inside the plug body
 
 The main unresolved boundary has shifted again. The important next question is no longer
-whether `UALL` is plug-side. It is which shared command processor sits behind the
-secondary `+4` table, and how that shared command-bus path relates to the earlier
-sampler-side `+0xda4` calls in the same upload routine.
+whether `UALL` is plug-side or whether one more local `SendData` helper remains to be
+found. It is how the live sender is installed, intercepted, or otherwise redirected at
+runtime, and how Claude's harness/runtime evidence on issue `#315` should reshape the
+next Codex parity target.

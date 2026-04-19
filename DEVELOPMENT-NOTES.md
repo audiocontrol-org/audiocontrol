@@ -1311,6 +1311,73 @@ localize the unresolved `CSamplerModule+0xda4` installation path.
 
 ---
 
+## 2026-04-19: MESA II Parity Static Send Surface Exhaustion
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Push the static `CSCSIPlug::SendData` surface to a clean stopping point so the next
+Codex move can shift outward to runtime evidence instead of one more speculative helper
+hunt.
+
+### Accomplished
+- Published a series of parity refinements that collapsed the remaining apparent local
+  `SendData` targets:
+  - chooser-side `0x210c/0x21dc/0x229c/0x218a` targets are plain `CDialog` plumbing
+  - `0x0d54` lands inside the tail/epilogue of `DoMESACommand`
+  - the direct absolute `jsr` targets inside `SendData` are now effectively classified:
+    `0x0148` low-memory/nonlocal, `0x0ca2` internal, `0x0d54` internal tail entry,
+    `0x0dfc` selector/send dispatcher, `0x106e` unresolved sender stub
+- Strengthened the `0x106e` result from “placeholder” to “not plausibly executable as
+  the final sender body in the checked-in binary”:
+  every `jsr 0x106e` return site expects caller-side result handling and stack cleanup
+  before the shared `0x1160` tail path, but the static bytes at `0x106e` are only
+  `bra 0x1160` and would skip that work entirely if executed as-is
+- Synced the stronger runtime-boundary interpretation back to Claude on issue `#315`
+  and then posted a second note explicitly marking the static `SendData` surface as
+  effectively exhausted
+- Updated the parity feature README and workplan so they no longer imply the next best
+  move is another static helper search inside the plug body
+
+### Didn't Work
+- Continuing to probe inside the recovered `CSCSIPlug` body stopped producing new helper
+  identities; the remaining apparent targets kept collapsing into internal entries,
+  low-memory/nonlocal jumps, or UI/control plumbing
+- The checked-in split disassembly files were not enough on their own to answer some of
+  the late-stage call-target questions; I had to fall back to raw bytes for the final
+  `0x0d54` collapse
+
+### Course Corrections
+- **[STRATEGY]** The right parity target is no longer “find one more send helper.”
+  The branch now treats the static plug-side `SendData` surface as effectively exhausted
+  and points the next pass at runtime installation/interception evidence instead.
+- **[SYNC]** Rather than filing a new contradiction issue, I used issue `#315` as the
+  additive coordination point because the new findings sharpen Claude's current runtime
+  direction instead of disputing it.
+- **[DOCUMENTATION]** I updated the feature README/workplan immediately after the
+  exhaustion point so the next session does not reopen the same static surface by habit.
+
+### Quantitative
+- Commits pushed in this pass: 5
+  `3751026d`, `ece173d5`, `90ae3a07`, `c6a17136`, plus the surrounding parity-sync work
+- New GitHub issue activity: 2 additive `#315` comments
+- New stable parity findings added: 4 major static-boundary refinements
+  (chooser-side dialog collapse, strengthened `0x106e` sender-stub model, `0x0d54`
+  collapse, and explicit `SendData` call-surface exhaustion)
+
+### Insights
+1. The most useful late-stage static result was not another symbol name but a stopping
+   rule: once the direct absolute `jsr` targets inside `SendData` were effectively all
+   classified except `0x106e`, the branch had a defensible reason to pivot outward.
+2. The `0x106e` bytes matter more than I initially gave them credit for. They are not
+   merely “unknown”; they actively look incompatible with the caller-side cleanup shape
+   in the checked-in binary.
+3. Claude/Codex coordination is cleaner now that `#315` is carrying additive runtime
+   boundary evidence while the old stale-doc parity issues remain closed.
+
+---
+
 ## 2026-04-17: MESA II Parity UALL Call-Family Split
 
 ### Feature: mesa-ii-codex-parity

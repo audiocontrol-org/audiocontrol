@@ -181,16 +181,21 @@ earlier sampler-side `+0xda4` calls.
 
 Phase 3 is now actively in progress rather than merely prepared:
 
-- earlier parity issues `#309` through `#313` were resolved
-- issue `#314` is open and now captures the remaining stale Claude-side `UALL`
-  conflation problem
-- Codex has tightened that issue from a generic “not SendData” objection into a
-  call-family split backed by primary artifacts:
-  sampler-side `CAkaiSampler` calls through `+0xda4` are distinct from the later
-  post-loop shared command-bus `UALL` dispatch through object offset `+4`
+- earlier parity issues `#309` through `#314` are now resolved and closed
+- issue `#315` is the active coordination point as Claude re-evaluates the product and
+  reverse-engineering direction around the live SRAW sender boundary
+- Codex has now pushed the static plug-side `SendData` surface to a practical
+  exhaustion point:
+  `0x0148` looks low-memory/nonlocal, `0x0ca2` and `0x0d54` are internal entries,
+  `0x0dfc` is the selector/send dispatcher, and only `0x106e` remains as an unresolved
+  ordinary local target
+- the checked-in bytes at `0x106e` themselves now strengthen the runtime-boundary case:
+  if executed as-is, they would skip the caller-side cleanup that every `jsr 0x106e`
+  arm expects before the shared `0x1160` tail path
 
-The next reconciliation step is to review Claude's response to `#314` against this new
-split, not to reopen already-resolved socket-activation disputes.
+The next reconciliation step is no longer another stale-doc cleanup issue. It is to keep
+Claude and Codex synchronized on `#315` while shifting the next technical target outward
+to runtime install/intercept evidence rather than one more static helper hunt.
 
 ---
 
@@ -213,14 +218,13 @@ split, not to reopen already-resolved socket-activation disputes.
 
 ### Next Experiments
 
-- Identify the shared command processor behind the secondary `+4` table and, if
-  possible, name the slot-`0x28` handler used by `SendCommandToSampler`
-- Keep tracing the early `CSamplerModule+0xda4` sampler-side family, especially what
-  slots `0x0134` and `0x015c` actually do now that the post-loop `UALL` path is
-  structurally separated
-- Hand-decode constructor-era helper `0x317dc(this)` and adjacent owner-install paths to
-  find where `CAkaiSampler` ultimately reaches `CSamplerModule+0xda4`
-- Expand earlier creation/initialization paths or less-obvious callees to find the first
-  concrete stores to `CSamplerModule+0xb0` and `+0xb1`
-- Identify where the default `CSamplerModule+0xda0` value is established before the
-  runtime toggle path observed in the current artifact set
+- Review Claude's latest `#315` updates and keep the parity docs aligned with any new
+  runtime/harness evidence around the live sender
+- Move the next Codex pass outward from the static plug body:
+  target harness/intercept behavior, resource initialization, open-time install paths,
+  or other runtime evidence that could explain how the live sender replaces or redirects
+  `0x106e`
+- Keep the earlier sampler-side findings available as context, but avoid spending more
+  cycles on local `SendData` helper hunting unless new evidence reopens that surface
+- If new runtime evidence contradicts the current static model, capture that as an
+  explicit parity note or issue rather than letting the branch drift informally
