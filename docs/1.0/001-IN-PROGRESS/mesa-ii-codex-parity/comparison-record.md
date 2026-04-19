@@ -362,6 +362,9 @@ cleanly.
   the constructor/destructor/`DoMESACommand` region labeled for `CMESAEditor` is where
   `+0xa20` is cleared and later tested, while `CSamplerModule::OpenModule` merely reuses
   it when handing a callback into `ConnectToPlug`.
+  The next owner edge is still not visible as a simple local call either: a direct
+  control-transfer sweep found no straightforward local branch or absolute-`jsr` hits
+  targeting `InitModule` / `SetCommandProc` at `0x0286f3` inside the recovered resource.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.

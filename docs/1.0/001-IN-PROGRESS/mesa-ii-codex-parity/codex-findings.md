@@ -1347,6 +1347,23 @@ correct. Every finding should distinguish direct evidence from inference.
   the `CMESAEditor` base region and inherited by `CSamplerModule`, not something local
   to `CMESASocket` or `CAkaiSampler`.
 
+- Finding 71: `InitModule` / `SetCommandProc` is not directly reached by any simple local
+  branch or absolute `jsr` inside the recovered sampler-editor resource.
+  Evidence:
+  a raw binary sweep for common direct control-transfer forms targeting file `0x0286f3`
+  (`bsr.s`, `bsr.w`, `jsr` pc-relative, `jsr` absolute) returns no hits in the checked-in
+  `sampler-editor-rsrc.bin`.
+  The same negative result holds for nearby `CMESAEditor` region entries such as the
+  constructor area at `0x05965f`, destructor area at `0x059733`, and
+  `CMESAEditor::DoMESACommand` at `0x0598a5`: no simple local direct-call encodings were
+  found for those targets either.
+  Interpretation:
+  within the current primary artifacts, the install path for `+0xa20` does not present as
+  a straightforward local call edge into `InitModule`. If the command-proc is installed
+  by code we already have, that handoff is likely table-driven, virtual, or otherwise
+  indirect; otherwise the owner boundary may sit outside the recovered resource-level call
+  graph entirely.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
