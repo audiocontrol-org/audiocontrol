@@ -1311,6 +1311,26 @@ correct. Every finding should distinguish direct evidence from inference.
   or its caller/owner chain a stronger host-side boundary than `OpenModule` itself if we
   are trying to find where the eventual live plug descriptor or callback originates.
 
+- Finding 69: the module/editor constructor path clears `+0xa20`, so the command-proc
+  callback is not constructor-seeded inside the recovered object body.
+  Evidence:
+  in the constructor-region function at `0x05965f`, after the object installs its A4
+  tables and subobject pointers, it executes `clrl %a2@(2592)` at `0x0596e3`, i.e.
+  clears `this+0xa20`.
+  The same constructor sequence also installs the socket-related subobject pointers at
+  `this+62` and `this+116`, which makes it the right ownership region for default field
+  state. That means the later `InitModule` / `SetCommandProc` store is not reinforcing an
+  already-present constructor default; it is the point where the callback first becomes
+  non-null in the recovered lifecycle.
+  Interpretation:
+  the host-side install boundary is sharper now:
+  constructor clears `+0xa20`,
+  `InitModule` installs `+0xa20`,
+  `OpenModule` later consumes `+0xa20` via `ConnectToPlug`.
+  So if Path A keeps moving outward, the next relevant caller/owner question is who calls
+  `InitModule` / `SetCommandProc` with the live command-proc, not whether the socket or
+  constructor paths mutate it later.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

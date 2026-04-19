@@ -354,6 +354,10 @@ cleanly.
   direct install in the `InitModule` / `SetCommandProc` path and is then broadly reused
   as a callback field from many later call sites, rather than being visibly rewritten in
   `OpenModule`.
+  The constructor-region function around `0x05965f` also clears `this+0xa20`, which
+  makes the lifecycle sharper: constructor clears it, `InitModule` installs it,
+  `OpenModule` later consumes it. That pushes the next owner-boundary question to the
+  caller of `InitModule` / `SetCommandProc`.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.
