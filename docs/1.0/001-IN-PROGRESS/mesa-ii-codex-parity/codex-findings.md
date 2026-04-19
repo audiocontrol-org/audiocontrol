@@ -1202,6 +1202,23 @@ correct. Every finding should distinguish direct evidence from inference.
   region. The surviving unresolved mechanism on the static plug side is still the
   `0x106e` sender stub, not any of the dialog-related helpers.
 
+- Finding 63: the static `0x106e` bytes are not a usable in-binary sender body; if
+  executed as-is, they jump straight into the shared report block and skip the
+  per-arm post-call cleanup that the real sender path expects.
+  Evidence:
+  in `scsi-plug-SendData.asm`, every `jsr 0x106e` call site is immediately followed by
+  arm-local epilogue work before a later `bra 0x1160`. For example:
+  `0x0f60: jsr 0x106e`, then `0x0f66: move.w d0,...`, `0x0f68: addq/stack cleanup`,
+  `0x0f6c: bra 0x1160`; similarly at `0x102c`, `0x10b2`, `0x10f8`, and `0x1144`.
+  But the bytes at file `0x106e` in the checked-in binary are only `bra 0x1160`, which
+  would bypass those return-site instructions entirely and enter the shared
+  post-call/report block without running the arm-local cleanup or result handling.
+  Interpretation:
+  this is stronger than “`0x106e` is a placeholder.” The checked-in static bytes at
+  `0x106e` are not a plausible final sender implementation inside the recovered plug
+  body. The live sender must be installed, intercepted, or otherwise redirected at
+  runtime before normal execution.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

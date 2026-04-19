@@ -328,6 +328,10 @@ cleanly.
   a standalone helper boundary. The remaining chooser-side support targets
   `0x210c/0x21dc/0x229c/0x218a` are now clearly `CDialog` plumbing rather than anything
   on the SRAW send path.
+  More importantly, the checked-in bytes at `0x106e` now look even less like a usable
+  sender body: every `jsr 0x106e` return site expects arm-local result handling and
+  stack cleanup before the later shared `bra 0x1160`, but the static bytes at
+  `0x106e` are only `bra 0x1160` and would skip that work entirely if executed as-is.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.
