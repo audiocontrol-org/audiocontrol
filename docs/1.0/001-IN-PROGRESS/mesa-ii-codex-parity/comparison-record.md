@@ -350,6 +350,10 @@ cleanly.
   field. That suggests the best remaining host-side place to look for special descriptor
   preparation is the command-proc path behind `+0xa20`, not `SelectPlug` or
   `CMESASocket::SendData`.
+  The current artifact set also strengthens that boundary: `this+0xa20` has one clear
+  direct install in the `InitModule` / `SetCommandProc` path and is then broadly reused
+  as a callback field from many later call sites, rather than being visibly rewritten in
+  `OpenModule`.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.

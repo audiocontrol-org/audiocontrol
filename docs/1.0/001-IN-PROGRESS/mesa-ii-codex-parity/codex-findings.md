@@ -1293,6 +1293,24 @@ correct. Every finding should distinguish direct evidence from inference.
   best remaining host-side candidate is the command-proc path behind `this+0xa20`, not
   `SelectPlug` or `CMESASocket::SendData` themselves.
 
+- Finding 68: in the current primary artifacts, `CSamplerModule+0xa20` has one clear
+  direct store in the `InitModule` path and then behaves as a broadly reused callback
+  field, not something reinstalled inside `OpenModule`.
+  Evidence:
+  the direct `InitModule` / `SetCommandProc` store at `0x0286f3` writes its callback
+  argument straight into `this+0xa20`.
+  A raw binary sweep then finds many `movea this+0xa20,Ax` call-through patterns
+  (`20 6a 0a 20 ... 4e 90`) across the sampler module, including the earlier helper
+  cache at `0x028739`, the `OpenModule` / activation-adjacent regions, and the
+  `SendAudioBufferToSampler` message path at `0x03096d`.
+  In contrast, the current artifact set has not exposed a second clear direct store to
+  `this+0xa20` after that `InitModule` install.
+  Interpretation:
+  the command-proc identity appears to be established before the module's normal socket
+  bring-up and then reused by later paths like `ConnectToPlug`. That makes `InitModule`
+  or its caller/owner chain a stronger host-side boundary than `OpenModule` itself if we
+  are trying to find where the eventual live plug descriptor or callback originates.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
