@@ -340,6 +340,11 @@ cleanly.
   classified: `0x0148` is low-memory/nonlocal territory, `0x0ca2` and `0x0d54` are
   internal entries, `0x0dfc` is the selector/send dispatcher, and only `0x106e`
   remains as an unresolved ordinary local target.
+  The Sampler Editor socket layer has now been tightened too: `ConnectToPlug` installs
+  the per-plug callback into the socket slot record, `SelectPlug` only updates the
+  selected slot index, and both `ActivateThisSocket` and `CMESASocket::SendData` read
+  that same installed callback from slot-base `+8`. So the current host-side evidence
+  does not support per-send callback rewriting inside the recovered socket layer.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.

@@ -1251,6 +1251,30 @@ correct. Every finding should distinguish direct evidence from inference.
   helper hidden in `SendData`; it is more likely to come from runtime behavior,
   interception, or nonlocal installation of the live sender.
 
+- Finding 66: the Sampler Editor socket layer does not appear to rewrite the installed
+  per-plug callback after `ConnectToPlug`; it installs once, selects by index, and then
+  reuses the same slot callback for both activation and send.
+  Evidence:
+  `CMESASocket::ConnectToPlug` at `0x059e4b` copies 48 bytes of plug-provided descriptor
+  data into the internal slot array starting at `this[74 + 48*n]`; the future callback
+  lands at slot-base `+8`, which is object offset `this[82 + 48*n]`.
+  `CMESASocket::SelectPlug` at `0x05a053` does not touch slot contents; it only scans the
+  registered slots for a matching plug ID and stores the chosen slot index into
+  `this+0x09aa`.
+  `ActivateThisSocket` at `0x05a0a7` computes `48 * this[0x09aa]`, reads the callback
+  from `this[82 + 48*idx]`, and calls it.
+  `CMESASocket::SendData` at `0x05a133` follows the same pattern: it builds a local
+  command block, computes `48 * this[0x09aa]`, reads the callback from
+  `this[82 + 48*idx]`, and calls it.
+  Interpretation:
+  within the recovered Sampler Editor socket layer, there is no evidence that the live
+  sender callback is being rewritten per transfer or per send call. The only host-side
+  mutation visible here is initial descriptor installation in `ConnectToPlug` plus active
+  slot selection in `SelectPlug`. If the eventual SRAW sender behind the plug path is
+  replaced or redirected at runtime, that behavior is more likely to happen before
+  `ConnectToPlug` copies the descriptor, or inside the plug-side callback chain after the
+  socket dispatch has already handed off control.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
