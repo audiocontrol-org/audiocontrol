@@ -1233,6 +1233,24 @@ correct. Every finding should distinguish direct evidence from inference.
   further shrinks the ordinary static call surface around `SendData`: the only clearly
   ordinary unresolved local mechanism is still `0x106e`.
 
+- Finding 65: the direct absolute `jsr` targets inside `SendData` are now effectively
+  classified; the only unresolved ordinary local target left is `0x106e`.
+  Evidence:
+  the recovered `SendData` body uses absolute `jsr` targets `0x0148`, `0x0ca2`,
+  `0x0d54`, `0x0dfc`, and `0x106e`.
+  Current classification from primary-artifact work is:
+  `0x0148` overlaps low-memory/header/string territory rather than a normal in-resource
+  helper;
+  `0x0ca2` is an internal entry inside the recovered `0x0c88-0x0ccc` body;
+  `0x0d54` is an internal tail entry inside `DoMESACommand`;
+  `0x0dfc` is the main entry of the selector/send dispatcher;
+  `0x106e` is still the unresolved sender stub.
+  Interpretation:
+  this is the cleanest static-exhaustion point so far for the plug-side send path.
+  Further progress on the static side is unlikely to come from finding one more normal
+  helper hidden in `SendData`; it is more likely to come from runtime behavior,
+  interception, or nonlocal installation of the live sender.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

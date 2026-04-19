@@ -336,6 +336,10 @@ cleanly.
   arm, lands inside the tail/epilogue of `DoMESACommand` immediately before the
   embedded `DoMESACommand__9CSCSIPlugFP11MESACommand` symbol string, not at a
   standalone helper boundary.
+  More broadly, the direct absolute `jsr` targets inside `SendData` are now basically
+  classified: `0x0148` is low-memory/nonlocal territory, `0x0ca2` and `0x0d54` are
+  internal entries, `0x0dfc` is the selector/send dispatcher, and only `0x106e`
+  remains as an unresolved ordinary local target.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.
