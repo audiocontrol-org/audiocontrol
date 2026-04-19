@@ -1173,6 +1173,20 @@ correct. Every finding should distinguish direct evidence from inference.
   surface is now even smaller than before; most surprising absolute `jsr` targets in the
   mid/high address range are internal entries inside already recovered bodies.
 
+- Finding 61: `0x1b56` is another internal entry point, inside the recovered
+  `CSCSIUtils` constructor path rather than a standalone helper.
+  Evidence:
+  direct disassembly of file `0x1b1c-0x1ba4` shows the real `__ct__10CSCSIUtilsFv`
+  constructor starting at `0x1b1c`. The absolute target `0x1b56` lands in the middle of
+  that body, after the initial zeroing/allocation setup and just before the constructor's
+  large-buffer install and `scsi` capability test. The absolute call sites to `0x1b56`
+  (`0x082e`, `0x0cbe`, `0x21da`, `0x2752`) therefore target a register-dependent
+  constructor-side entry, not a separate helper symbol.
+  Interpretation:
+  this keeps pushing the same direction: even the remaining higher-address setup-looking
+  targets are collapsing into internal entries inside already recovered bodies. The
+  ordinary unexplained static mechanism is still just the `0x106e` sender stub.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
