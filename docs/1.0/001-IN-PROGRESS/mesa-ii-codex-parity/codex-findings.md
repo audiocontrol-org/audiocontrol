@@ -1187,6 +1187,21 @@ correct. Every finding should distinguish direct evidence from inference.
   targets are collapsing into internal entries inside already recovered bodies. The
   ordinary unexplained static mechanism is still just the `0x106e` sender stub.
 
+- Finding 62: the remaining `0x210c/0x21dc/0x229c/0x218a` family is dialog/UI plumbing,
+  not part of the SRAW send mechanism.
+  Evidence:
+  direct disassembly of file `0x2100-0x22ce` plus nearby symbol strings shows these
+  targets living under the `CDialog` method cluster:
+  `__ct__7CDialogFsPv`, `__dt__7CDialogFv`, `Show__7CDialogFv`,
+  `Draw__7CDialogFv`, and `Do__7CDialogFv`. The call shapes match that too:
+  `0x21dc` and `0x229c` are used repeatedly from the `ChooseSCSI` dialog-building loop,
+  while `0x218a` is the dialog-show/display path used once the candidate list has been
+  built.
+  Interpretation:
+  this closes off the last obvious “maybe that target matters” branch in the chooser
+  region. The surviving unresolved mechanism on the static plug side is still the
+  `0x106e` sender stub, not any of the dialog-related helpers.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

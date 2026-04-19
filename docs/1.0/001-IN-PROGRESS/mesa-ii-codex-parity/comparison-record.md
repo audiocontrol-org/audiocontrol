@@ -325,7 +325,9 @@ cleanly.
   mistake for a utility check helper, is just another internal entry inside the larger
   `0x1700-0x1afe` body, much like `0x1620` and `0xca2`. The same is now true for
   `0x1b56`, which lands inside the recovered `CSCSIUtils` constructor path rather than at
-  a standalone helper boundary.
+  a standalone helper boundary. The remaining chooser-side support targets
+  `0x210c/0x21dc/0x229c/0x218a` are now clearly `CDialog` plumbing rather than anything
+  on the SRAW send path.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.
