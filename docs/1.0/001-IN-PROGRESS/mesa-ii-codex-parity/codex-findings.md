@@ -1331,6 +1331,22 @@ correct. Every finding should distinguish direct evidence from inference.
   `InitModule` / `SetCommandProc` with the live command-proc, not whether the socket or
   constructor paths mutate it later.
 
+- Finding 70: `+0xa20` behaves like a `CMESAEditor`-level command-proc field, not a
+  sampler-specific socket field.
+  Evidence:
+  the function-boundary strings around the recovered object-lifecycle region identify
+  `0x05965f` as the `CMESAEditor` constructor area, `0x059733` as the matching
+  destructor region, and `0x0598a5` as `CMESAEditor::DoMESACommand`.
+  Inside that same `CMESAEditor`-labeled region, the constructor clears `this+0xa20`,
+  and `CMESAEditor::DoMESACommand` begins by testing `this+0xa20` before routing command
+  tags.
+  `OpenModule` later passes that same `this+0xa20` field into `ConnectToPlug`.
+  Interpretation:
+  the remaining host-side owner question has moved above sampler-specific code. The live
+  command-proc feeding `ConnectToPlug` looks like an editor-framework callback owned by
+  the `CMESAEditor` base region and inherited by `CSamplerModule`, not something local
+  to `CMESASocket` or `CAkaiSampler`.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

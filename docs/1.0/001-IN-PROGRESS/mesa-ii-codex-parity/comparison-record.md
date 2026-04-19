@@ -358,6 +358,10 @@ cleanly.
   makes the lifecycle sharper: constructor clears it, `InitModule` installs it,
   `OpenModule` later consumes it. That pushes the next owner-boundary question to the
   caller of `InitModule` / `SetCommandProc`.
+  The same field now also looks editor-framework-owned rather than sampler-specific:
+  the constructor/destructor/`DoMESACommand` region labeled for `CMESAEditor` is where
+  `+0xa20` is cleared and later tested, while `CSamplerModule::OpenModule` merely reuses
+  it when handing a callback into `ConnectToPlug`.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.
