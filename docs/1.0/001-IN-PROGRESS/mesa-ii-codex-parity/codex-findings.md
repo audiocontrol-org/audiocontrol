@@ -1385,6 +1385,26 @@ correct. Every finding should distinguish direct evidence from inference.
   remaining Path A boundary again: the command-proc install path is still indirect, but
   the observed `+0xac` sites do not currently look like it.
 
+- Finding 73: the four-character-tag wrapper at `0x028980` is the named
+  `CSamplerModule::DoMESACommand`, which makes the nearby `EDKGH` / `SSOL` / `UEND`
+  traffic look like ordinary module-command routing rather than callback installation.
+  Evidence:
+  direct bytes at file `0x028980-0x0289be` end in a function epilogue followed
+  immediately by the embedded symbol string
+  `DoMESACommand__14CSamplerModuleFP11MESACommand`.
+  The earlier high-frequency call pattern `4eb900028980` therefore resolves to the named
+  module command handler, not an unknown wrapper.
+  Around the two `+0xac` sites, the surrounding code first pushes four-character tags and
+  calls `0x028980`, then performs the secondary-table `+0xac` dispatch. In the named
+  `BroadcastUpdateMessages__14CSamplerModuleFUc` case, the tags are `SSOL` and `UEND`; in
+  the other observed case, the tag before the `+0xac` dispatch is `EDKGH`.
+  Interpretation:
+  the currently visible `+0xac` path is sitting next to explicit `CSamplerModule`
+  command-tag traffic, not next to a unique callback-install sequence. That strengthens
+  the current negative read: these observed `+0xac` edges look like ordinary framework
+  command/update routing on top of the module command bus, not the owner-side install
+  point for the live plug sender.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

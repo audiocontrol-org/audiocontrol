@@ -370,6 +370,9 @@ cleanly.
   `sampler-editor-rsrc.bin`, once inside the named
   `BroadcastUpdateMessages__14CSamplerModuleFUc` path bracketed by `SSOL`/`UEND`
   message tags and once in a nearby command path bracketed by `EDKGH` and later `UALL`.
+  The surrounding tag wrapper is now named too: file `0x028980` resolves to
+  `DoMESACommand__14CSamplerModuleFP11MESACommand`, so those nearby four-character tags
+  are explicit `CSamplerModule` command traffic rather than an unknown install helper.
   In other words, the observed `+0xac` sites are currently better modeled as shared
   framework message-routing calls than as the owner-side install edge for `+0xa20`.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
