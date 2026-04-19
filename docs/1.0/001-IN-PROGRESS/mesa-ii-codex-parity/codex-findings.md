@@ -1364,6 +1364,27 @@ correct. Every finding should distinguish direct evidence from inference.
   indirect; otherwise the owner boundary may sit outside the recovered resource-level call
   graph entirely.
 
+- Finding 72: the exact secondary-table `+0xac` indirect-call shape now looks like shared
+  framework message routing, not the missing `+0xa20` install edge.
+  Evidence:
+  a raw binary search for the exact byte pattern
+  `2f0a205722680004226900ac4e91`
+  (`push this`, `load this+4`, `jsr slot+0xac`) finds exactly two hits in the checked-in
+  `sampler-editor-rsrc.bin`: file offsets `0x02976f` and `0x02d41b`.
+  The second hit lands inside the named
+  `BroadcastUpdateMessages__14CSamplerModuleFUc` region, where the same indirect call is
+  bracketed by four-character message tags `SSOL` and `UEND`, followed by a call to the
+  already-identified helper `0x031ce6`, then `clrb this+0xda8` before return.
+  The first hit at `0x02976f` is similarly surrounded by four-character command tags,
+  including `EDKGH` before the `+0xac` dispatch and `UALL` shortly afterward through the
+  already-known `this+4 -> vtable[0x28]` command bus.
+  Interpretation:
+  the currently recovered `+0xac` edges are best modeled as part of the same shared
+  editor/view secondary-table message-routing framework already seen elsewhere, not as the
+  owner-side install point for `+0xa20` or the live plug callback. This narrows the
+  remaining Path A boundary again: the command-proc install path is still indirect, but
+  the observed `+0xac` sites do not currently look like it.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

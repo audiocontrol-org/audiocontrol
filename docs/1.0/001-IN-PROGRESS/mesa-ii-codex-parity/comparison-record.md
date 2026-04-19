@@ -365,6 +365,13 @@ cleanly.
   The next owner edge is still not visible as a simple local call either: a direct
   control-transfer sweep found no straightforward local branch or absolute-`jsr` hits
   targeting `InitModule` / `SetCommandProc` at `0x0286f3` inside the recovered resource.
+  A new bounded search narrows one tempting alternative too: the exact
+  `this -> this+4 -> slot+0xac` indirect-call shape appears only twice in the current
+  `sampler-editor-rsrc.bin`, once inside the named
+  `BroadcastUpdateMessages__14CSamplerModuleFUc` path bracketed by `SSOL`/`UEND`
+  message tags and once in a nearby command path bracketed by `EDKGH` and later `UALL`.
+  In other words, the observed `+0xac` sites are currently better modeled as shared
+  framework message-routing calls than as the owner-side install edge for `+0xa20`.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.
