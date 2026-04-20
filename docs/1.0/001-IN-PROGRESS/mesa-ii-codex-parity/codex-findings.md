@@ -1444,6 +1444,25 @@ correct. Every finding should distinguish direct evidence from inference.
   If the live command-proc source still exists inside this resource, it is likely hidden
   behind a more indirect or computed handoff than the usual static cues.
 
+- Finding 76: `+0xa20` is used by generic `CMESAEditor` UI-side methods as well, which
+  strengthens the read that it is an editor-framework callback sink rather than a
+  sampler-specific sender hook.
+  Evidence:
+  the `CMESAEditor`-labeled region around `0x059c20` contains the functions whose
+  trailing symbol strings decode to `BusyCursor__11CMESAEditorFUc` and
+  `BarCursor__11CMESAEditorFUc`.
+  In both bodies, the same pattern appears:
+  test `this+0xa20`, build a small local block, then `movea this+0xa20,Ax` and `jsr`
+  through that callback if present.
+  Those are separate from the already-traced `CMESAEditor::DoMESACommand` and
+  `CSamplerModule::OpenModule` paths that also use `+0xa20`.
+  Interpretation:
+  `+0xa20` now looks less like a callback installed specifically for sampler upload or
+  plug setup and more like a general editor-framework command/notification callback field
+  that multiple unrelated UI/module methods reuse. That lowers the chance that simply
+  finding more `+0xa20` consumers inside the resource will expose the live sender install
+  edge directly.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

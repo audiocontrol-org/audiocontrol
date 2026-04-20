@@ -384,6 +384,10 @@ cleanly.
   alternate straightforward direct-store encodings to `this+0xa20` beyond the already
   known install/use sites. So the missing owner edge is not just "not a simple call";
   it also does not currently show up as an ordinary in-resource pointer trail.
+  The field also now looks even more generic than before: `BusyCursor__11CMESAEditorFUc`
+  and `BarCursor__11CMESAEditorFUc` both test and dispatch through `+0xa20`, so the
+  current artifact set treats it as a broader editor-framework callback sink rather than
+  a sampler-upload-specific hook.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.
