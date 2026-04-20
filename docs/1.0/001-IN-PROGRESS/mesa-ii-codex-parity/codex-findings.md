@@ -2095,6 +2095,25 @@ correct. Every finding should distinguish direct evidence from inference.
   resolve into ordinary program import, window management, or command/file-flow
   territory. They do not expose a local bridge into the callback install edge either.
 
+- Finding 111: the descriptor roots feeding the scaffold layer are themselves tightly
+  clustered in generic setup/cache plumbing rather than spread across upload logic.
+  Evidence:
+  the `0xce28` root used by the `CMESAEditor` constructor sequence appears only at a
+  small cluster of sites in the current binary:
+  `0x28221`, `0x2822b`, `0x2828b`, `0x28625`, `0x28645`, plus one far-out unrelated
+  occurrence.
+  The nearby `0xce24` root likewise appears in the constructor/cached-helper surface at
+  `0x28553`, `0x28745`, `0x28787`, and `0x28791`, then a few unrelated later sites.
+  In context, those roots sit in constructor/destructor/setup and cached-helper code:
+  the `0xce28` sites are in the `main`/constructor and destructor-adjacent region around
+  `CSamplerModule`, while the `0xce24` sites are in the earlier constructor and
+  `GetPlugList`/helper-cache path.
+  Interpretation:
+  the visible record roots feeding the scaffold and cache layers still look like generic
+  framework state anchors, not sender-specific install data. That is another reason to
+  treat the remaining install edge as upstream/nonliteral rather than buried in the
+  local descriptor constants themselves.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
