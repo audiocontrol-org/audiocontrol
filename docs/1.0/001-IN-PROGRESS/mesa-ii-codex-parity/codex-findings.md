@@ -2020,6 +2020,26 @@ correct. Every finding should distinguish direct evidence from inference.
   the whole explicit constructor call surface looking accounted for without exposing a
   dedicated sender-install helper.
 
+- Finding 107: `0x02d6c8` is not just reused often; it sits in a highly regular
+  constructor scaffold pattern across many classes.
+  Evidence:
+  direct absolute `jsr 0x02d6c8` appears in repeated setup sequences with a stable
+  shape. Typical callsites look like:
+  `moveal this, a0; moveal this+disp, a0/slot; store object-relative block(s);
+  push or pass the selected subobject pointer; jsr 0x02d6c8; then store multiple
+  object fields such as +0x04, +0x82, +0x86, +0xd0`.
+  This same pattern appears in the `CMESAEditor` constructor, `LGrafPortView`
+  constructor, and many other setup-looking regions at offsets such as
+  `0x034571`, `0x035317`, `0x037681`, `0x03b487`, `0x03ea8d`, `0x03f82d`,
+  `0x0449bf`, `0x046e09`, `0x04f8f3`, `0x050b1f`, and `0x0514bf`.
+  The 16-byte pre-call windows are often near-identical except for the object-relative
+  displacement being wired into the scaffold.
+  Interpretation:
+  `0x02d6c8` now looks like a shared constructor/registration initializer operating on
+  per-object descriptor blocks or subobjects, not a narrow sender-install helper. That
+  makes it a framework mechanism that many classes reuse during setup, which is exactly
+  the opposite of the specialized install edge we are looking for.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
