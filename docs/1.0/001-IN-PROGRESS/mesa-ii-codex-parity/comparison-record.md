@@ -419,7 +419,10 @@ cleanly.
   `AK11` / `DATA` tags before calling `0x006ac2`, while `aete` pushes literal `aete`
   before calling `0x00a9a0`, and both then converge on the shared ladder. Those setup
   helpers also still live in the same opaque low-address format and still do not show the
-  known `+0xa20` callback signatures or ordinary m68k function markers.
+  known `+0xa20` callback signatures or ordinary m68k function markers. The opaque
+  payload layer is not uniform, though: `0x006ac2` has a distinct byte profile from the
+  later `0x00a382` / `0x00a4f6` / `0x00a62c` / `0x00a9a0` / `0x00b382` / `0x00c150` /
+  `0x00c304` group, which shares a more self-similar grammar-like token pattern.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.

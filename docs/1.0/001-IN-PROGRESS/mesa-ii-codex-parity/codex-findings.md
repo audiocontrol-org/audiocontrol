@@ -1691,6 +1691,23 @@ correct. Every finding should distinguish direct evidence from inference.
   helpers they invoke still terminate in the same opaque low-address world rather than in
   a cleaner owner/callback-install layer.
 
+- Finding 89: the opaque low-address payload layer is not uniform; `0x006ac2` forms a
+  distinct subfamily from the other currently traced payload targets.
+  Evidence:
+  representative word-frequency and byte-profile checks over
+  `0x006ac2`, `0x00a382`, `0x00a4f6`, `0x00a62c`, `0x00a9a0`, `0x00b382`, `0x00c150`,
+  and `0x00c304` show that `0x006ac2` is dominated by patterns like `fd56`, `fc00`,
+  `fe00`, and `0008`, while the other targets share repeated grammar-like words such as
+  `0633`, `3306`, `331d`, `1d33`, `2f06`, `0200`, `0202`, and related small-token
+  sequences.
+  The later group still lacks ordinary function markers and callback signatures, but it
+  is visibly self-similar across multiple targets in a way that `0x006ac2` is not.
+  Interpretation:
+  the payload layer is now better modeled as at least two opaque subfamilies rather than
+  one undifferentiated blob. `OTFL`'s helper at `0x006ac2` likely belongs to a different
+  internal format or service family than the `aete`/shared-ladder payload targets. That
+  is useful boundary information even before the semantics of either family are decoded.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
