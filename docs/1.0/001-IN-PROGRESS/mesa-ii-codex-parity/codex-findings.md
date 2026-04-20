@@ -1503,6 +1503,25 @@ correct. Every finding should distinguish direct evidence from inference.
   resource, it is likely using a more indirect mechanism than a straightforward field
   store.
 
+- Finding 79: the visible installer body is the generic `CMESAEditor::SetCommandProc`
+  setter itself, not a separate sampler-private implementation.
+  Evidence:
+  the string table in `sampler-editor-rsrc.bin` contains
+  `InitModule__14CSamplerModuleFPFP11MESACommand_v` at file `0x0286c0` and
+  `SetCommandProc__11CMESAEditorFPFP11MESACommand_v` at file `0x028706`, with the tiny
+  setter body beginning immediately afterward at `0x0286f3`.
+  That body is just:
+  load `this`,
+  copy the callback argument into `this+0xa20`,
+  return.
+  No second body or sampler-specific variant is visible between those symbol anchors.
+  Interpretation:
+  the recovered install point is best modeled as a base/editor-level setter that the
+  sampler module inherits or aliases, not as a dedicated upload/sender initialization
+  routine. That supports the current boundary read: the remaining unknown is the owner or
+  computed dispatch that calls this generic setter with the live callback, not a missed
+  second implementation inside sampler-private code.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

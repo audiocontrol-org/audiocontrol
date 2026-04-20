@@ -395,6 +395,10 @@ cleanly.
   the same way from the write side: beyond the known `SetCommandProc` installer at
   `0x0286f3`, the current artifact set does not expose a second ordinary `move.l` store
   into `+0xa20`, including the same stack-to-field encoding family used by that setter.
+  The installer body itself also looks generic rather than sampler-private: the adjacent
+  symbol strings identify it as `CMESAEditor::SetCommandProc` as well as
+  `CSamplerModule::InitModule`, with no second specialized implementation visible between
+  those anchors.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.
