@@ -2074,6 +2074,27 @@ correct. Every finding should distinguish direct evidence from inference.
   being manipulated directly in the surrounding callers. That pushes the remaining
   install edge further upstream of the whole repeated scaffold pattern.
 
+- Finding 110: the remaining post-scaffold helper surface still does not bridge into
+  `+0xa20` or the generic setter; it resolves into ordinary import/window/command flows.
+  Evidence:
+  the three immediate post-scaffold targets singled out by the constructor patterns were
+  rechecked directly:
+  - `0x031708` is the unique `CMESAEditor` post-scaffold target and lands at the end of
+    a small helper just before the string/symbol `ImportProgram__14CSamplerModuleFv`,
+    followed by code in the same import/file-handling neighborhood
+  - `0x028cf0` sits in a command-heavy region carrying tags like `OPEN`, `SVST`,
+    `SAVE`, `RNST`, `UALL`, `IPST`, and `EXST`
+  - `0x02b228` lands in the string/symbol band for window-management routines such as
+    `DoDeleteWindow__14CSamplerModuleFP20MESADeleteWindowData` and
+    `DoResizeWindow__14CSamplerModuleFP20MESAResizeWindowData`
+  bounded signature scans around all three targets found no matches for the known
+  `+0xa20` direct-use signatures and no direct absolute-call encoding for
+  `SetCommandProc` (`4eb9 000286f3`).
+  Interpretation:
+  once control leaves the generic scaffold helper, the visible next-layer helpers still
+  resolve into ordinary program import, window management, or command/file-flow
+  territory. They do not expose a local bridge into the callback install edge either.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
