@@ -428,7 +428,11 @@ cleanly.
   metadata rather than hidden executable helper code. The distinct `0x006ac2` subfamily
   also recurs across the same broad low-address resource neighborhood, with repeats near
   parameter/help strings and UI class strings like `CGraphicControlList` and `CPopup`,
-  while still lacking ordinary m68k function markers.
+  while still lacking ordinary m68k function markers. The tag vocabulary itself also
+  recurs in later mixed regions such as `0x02ea2d` (`AK11` / `DATA` plus
+  `EBFL` / `EBFX` / `EBRV` / `PSYS` / `SMDB`) and `0x031e15`
+  (`SMDB` / `SS30` / `PROG`), which makes the `0x287ee` registry look like one front-end
+  view onto a broader tag-based resource/type system.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.

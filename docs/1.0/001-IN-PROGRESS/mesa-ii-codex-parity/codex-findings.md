@@ -1743,6 +1743,24 @@ correct. Every finding should distinguish direct evidence from inference.
   resource-heavy part of the binary. That further reduces the odds that the missing live
   callback install path is hiding inside this subfamily as conventional executable code.
 
+- Finding 92: the registry tags from `0x287ee` recur in later mixed regions, which
+  strengthens the read that they are part of a broader resource-type system rather than a
+  one-off constructor-only mechanism.
+  Evidence:
+  the same tag vocabulary reappears in later bounded regions of `sampler-editor-rsrc.bin`:
+  at `0x02ea2d` the bytes explicitly compare `AK11` and `DATA`, then later introduce
+  `EBFL`, `EBFX`, `EBRV`, `PSYS`, and `SMDB` in another mixed tag/logic block; at
+  `0x031e15` the code compares `SMDB` and `SS30`, and then also checks `PROG`.
+  The raw string table confirms repeated occurrences of these same tags across multiple
+  low-address neighborhoods: `AK11`, `DATA`, `SS30`, `EBFL`, `EBFX`, `EBRV`, `PSYS`,
+  `SMDB`, and `aete`.
+  Interpretation:
+  the `0x287ee` registry is not an isolated curiosity. It appears to be one front-end
+  view onto a broader tag-based resource/type system used elsewhere in the binary. That
+  further supports the resource/metadata interpretation of the opaque low-address layers
+  and further weakens the hypothesis that this path hides a conventional callback-install
+  helper.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
