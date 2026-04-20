@@ -1538,6 +1538,24 @@ correct. Every finding should distinguish direct evidence from inference.
   crosses into tag/data-heavy territory, which makes a data-driven or otherwise
   nonstandard setup edge more plausible than another ordinary in-resource helper.
 
+- Finding 81: the `0x287ee` target is best modeled as a mixed descriptor/dispatcher
+  region, not as inert data and not as a normal standalone function body.
+  Evidence:
+  direct bytes from `0x287ee` begin with four-character records such as `OTFL`, `DATA`,
+  `SS30`, `EBFL`, `EBFX`, `EBRV`, `PSYS`, and `SMDB`, each followed by short values or
+  offsets. The same bounded region then transitions into executable logic around
+  `0x28874`, where the code compares incoming tags like `DATA` and `SS30`, performs
+  further calls, and continues into the later command-tag traffic that eventually leads
+  toward the `DoMESACommand__14CSamplerModuleFP11MESACommand` string anchor at `0x289c2`.
+  The only direct `jsr 0x287ee` hit in the current binary is the `CMESAEditor`
+  constructor call already noted above.
+  Interpretation:
+  the constructor is not simply jumping into garbage or a pure static string table. It is
+  entering a mixed table/dispatcher band whose front matter is tag-driven metadata and
+  whose later bytes are executable logic. That makes the remaining owner boundary look
+  more like a data-driven framework registry or command-template install path than a
+  conventional named helper that static symbol recovery failed to isolate cleanly.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
