@@ -1798,6 +1798,23 @@ correct. Every finding should distinguish direct evidence from inference.
   are staying structurally separate from the real transfer verbs, which further weakens
   the idea that this registry layer hides the missing live sender behavior.
 
+- Finding 95: the recurring resource tags behave like explicit file/type markers inside
+  concrete save/load flows.
+  Evidence:
+  in `OpenDraggedFile__14CSamplerModule...` around `0x02ebe5`, the code writes literal
+  `MAHF` into a local slot and then continues through file-oriented handling that also
+  checks `AK11` and `DATA` in the nearby mixed region at `0x02ea2d`.
+  In the save/load neighborhood around `SaveEB16Reverb__14CSamplerModule...` and
+  `SaveEB16Effect__14CSamplerModule...`, the code writes literal `EBFX` and `SS30`
+  markers into local slots before calling later helpers. The surrounding string anchors
+  name nearby functions like `CreateFXFilerWindow`, `SaveEB16Reverb`,
+  `SaveEB16Effect`, `LoadEB16FXFileSingle`, and `LoadEB16FXFileAll`.
+  Interpretation:
+  the tag system is not only adjacent to editor/file paths; it is actively used there as
+  explicit type/format markers. That further supports the read that these tags belong to
+  resource/document packaging and validation logic rather than to live sampler transport
+  or callback installation.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

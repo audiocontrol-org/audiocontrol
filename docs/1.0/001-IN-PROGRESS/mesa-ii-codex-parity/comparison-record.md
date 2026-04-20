@@ -439,6 +439,9 @@ cleanly.
   paths stay separate: `SendAudioFileToSampler` and `SendAudioBufferToSampler` keep using
   `BULK` / `SRAW` / `UALL`, while the resource-tag neighborhoods carry
   `EBRV` / `EBFX` / `SS30` / `SMDB` / `PSYS` / `AK11` / `DATA` instead.
+  Those tags also now behave like explicit file/type markers inside named save/load
+  flows: `OpenDraggedFile` writes `MAHF`, the nearby mixed region checks `AK11` and
+  `DATA`, and the EB16 save paths write `EBFX` and `SS30` before calling later helpers.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.
