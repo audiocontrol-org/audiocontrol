@@ -1779,6 +1779,25 @@ correct. Every finding should distinguish direct evidence from inference.
   meaning of these tags toward resource/document types and editor save/load plumbing
   rather than transport or live sender setup.
 
+- Finding 94: the resource-tag system stays separate from the actual upload transport
+  paths in the currently traced sampler-module code.
+  Evidence:
+  bounded reads around the real transfer routines show the expected transport/control tags
+  in their own neighborhoods:
+  `SendAudioFileToSampler__14CSamplerModule...` near `0x02ee5f` uses `BULK`, `SRAW`, and
+  `UALL`;
+  `SendAudioBufferToSampler__14CSamplerModule...` near `0x030cca` likewise shows
+  `BULK`, `SRAW`, and `UALL`.
+  By contrast, the nearby EB16/resource-handling neighborhoods around
+  `CreateFXFilerWindow__14CSamplerModuleFv`, `SaveEB16Reverb__14CSamplerModule...`, and
+  adjacent mixed blocks carry `EBRV`, `EBFX`, `SS30`, `SMDB`, `PSYS`, `AK11`, and
+  `DATA`, but do not introduce `BULK` or `SRAW`.
+  Interpretation:
+  the currently recovered tag-based resource system is not simply another view of the
+  transport/upload command path. The tag families tied to editor save/load/resource flows
+  are staying structurally separate from the real transfer verbs, which further weakens
+  the idea that this registry layer hides the missing live sender behavior.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

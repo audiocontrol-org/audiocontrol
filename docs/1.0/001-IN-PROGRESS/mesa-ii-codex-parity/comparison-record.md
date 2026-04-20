@@ -435,7 +435,10 @@ cleanly.
   view onto a broader tag-based resource/type system. Some of those tags are now anchored
   to concrete sampler-module editor/file flows too: `EBRV` / `EBFX` / `SS30` appear in
   the neighborhoods of `CreateFXFilerWindow` and `SaveEB16Reverb`, pushing their meaning
-  toward resource/document handling rather than callback installation.
+  toward resource/document handling rather than callback installation. The real upload
+  paths stay separate: `SendAudioFileToSampler` and `SendAudioBufferToSampler` keep using
+  `BULK` / `SRAW` / `UALL`, while the resource-tag neighborhoods carry
+  `EBRV` / `EBFX` / `SS30` / `SMDB` / `PSYS` / `AK11` / `DATA` instead.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.
