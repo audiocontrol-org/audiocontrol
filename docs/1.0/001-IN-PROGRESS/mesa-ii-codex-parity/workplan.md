@@ -210,6 +210,17 @@ Current recommended work split:
   of the second track is cross-checking and different search order, not avoiding
   overlap at all costs.
 
+Current Codex read after the latest far-out reductions:
+
+- the ordinary recovered `sampler-editor-rsrc.bin` graph is now effectively exhausted as
+  a direct owner/install path
+- the visible constructor call set, generic scaffold/helper surface, post-scaffold
+  helpers, constructor/tag/resource branch, and far-out table exceptions all reduce to
+  generic framework/UI/resource behavior rather than a sender-install edge
+- the remaining live install boundary should therefore be treated as either:
+  a deeper nonliteral/table-driven framework handoff or behavior outside the recovered
+  resource graph entirely
+
 That split uses the two efforts complementarily: Claude pushes runtime terrain and
 hardware truth, while Codex keeps pressure on the same install-edge path statically and
 records which static branches are now convincingly ruled out.
@@ -242,6 +253,10 @@ records which static branches are now convincingly ruled out.
 - Keep Codex on the same static install-edge question in parallel:
   test computed or table-driven owner paths above `CMESAEditor`, and treat
   “the install edge leaves the recovered resource graph” as a valid terminal finding
+- Prefer explicit terminal-boundary documentation over additional broad helper hunting:
+  if a remaining static surface only re-encodes already-classified scaffolding, resource
+  descriptors, or lifecycle metadata, record that as another exclusion rather than
+  treating it as a fresh reverse-engineering frontier
 - Use the recent constructor/tag/resource results as an exclusion boundary:
   that branch now looks like file/resource/document plumbing, so do not keep mining it
   as if it were still a likely live-sender path unless new evidence points back to it

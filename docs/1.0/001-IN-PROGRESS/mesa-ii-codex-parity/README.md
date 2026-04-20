@@ -131,3 +131,19 @@ The shared critical path remains the same: identify where the live sender is ins
 redirected, or otherwise made reachable. Claude is best placed to push that boundary at
 runtime; Codex remains useful by pursuing the same static boundary from a second angle
 and documenting which side branches are now effectively ruled out.
+
+The latest Codex static pass now makes the boundary sharper than earlier versions of
+this README said explicitly: the ordinary recovered `sampler-editor-rsrc.bin` graph is
+effectively exhausted as a direct owner/install path. The visible constructor call
+surface, generic scaffold layer, post-scaffold helpers, constructor/tag/resource branch,
+and remaining far-out table exceptions all collapse into framework scaffolding,
+file/resource dispatch, UI/resource descriptor data, or lifecycle metadata. So the
+remaining install edge should now be treated as either:
+
+- a deeper nonliteral/table-driven framework handoff, or
+- behavior outside the recovered resource graph entirely
+
+That is not a reason for Codex to stop. It is the stopping rule for a certain class of
+static work: further broad mining of ordinary in-resource helper paths is now lower value
+than staying tightly focused on boundary proof and cross-checking Claude's runtime Option
+2 work.

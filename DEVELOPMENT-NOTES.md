@@ -1675,3 +1675,47 @@ table-shaped escape hatch for the callback-install edge.
    generic framework layer.
 3. The static owner-boundary case is getting closer to a clean terminal conclusion:
    no visible far-out table layer is opening a new sender-install path.
+
+## 2026-04-20: MESA II Static Owner Boundary Declared Effectively Exhausted
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Turn the accumulated boundary-tightening work into an explicit branch-level conclusion
+about what the recovered `sampler-editor-rsrc.bin` graph can still realistically tell us.
+
+### Accomplished
+- Added a new terminal-style finding stating that the ordinary recovered resource graph
+  is effectively exhausted as a direct owner/install path into `+0xa20`
+- Updated the feature README to make the stopping rule explicit:
+  the remaining install edge is now best modeled as either a deeper nonliteral/table-
+  driven framework handoff or behavior outside the recovered resource graph
+- Updated the workplan so future passes do not treat already-collapsed ordinary helper,
+  descriptor, and lifecycle surfaces as fresh reverse-engineering terrain
+
+### Didn't Work
+- This did not reveal the live sender install edge itself
+- The static side still cannot name the exact upstream owner that calls the generic
+  `SetCommandProc` / `InitModule` setter
+
+### Course Corrections
+- **[PROCESS]** The right next move was not yet another local decode. It was to write
+  down the stopping rule the evidence now supports, so both Codex and Claude can use the
+  same boundary when choosing what not to re-investigate.
+- **[DOCUMENTATION]** The docs already implied this conclusion informally, but they did
+  not yet say it plainly enough. The update makes the terminal static read explicit.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 115`
+- Feature docs updated: 3
+  `codex-findings.md`, `README.md`, `workplan.md`
+
+### Insights
+1. A clean terminal static conclusion is itself useful output when parallel runtime work
+   is active; it prevents broad re-decoding churn.
+2. The right remaining static target is no longer "one more helper." It is only boundary
+   proof or contradiction handling if new evidence appears.
+3. Path A still has value in parallel with Claude, but now mostly as exclusion and
+   falsification work around the boundary, not as open-ended graph excavation.

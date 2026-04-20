@@ -2174,6 +2174,29 @@ correct. Every finding should distinguish direct evidence from inference.
   for the existing scaffold/helper surface, not as a separate owner-side boundary for the
   live sender install edge.
 
+- Finding 115: the ordinary recovered `sampler-editor-rsrc.bin` graph is now effectively
+  exhausted as a source for a direct owner-side callback-install path into `+0xa20`.
+  Evidence:
+  the visible static layers have now been reduced from multiple directions without
+  exposing a bridge into `SetCommandProc` / `InitModule` beyond the generic setter body:
+  - literal scans do not reveal direct call, pointer, or ordinary store trails into
+    `0x0286f3`
+  - the exact `CMESAEditor` constructor call surface is fully accounted for as shared
+    scaffolding, descriptor/string bands, or file/resource dispatch
+  - the shared scaffold helper `0x02d6c8` consumes `+0xa20` but does not install it
+  - repeated scaffold callers do not manipulate `+0xa20`
+  - immediate post-scaffold helpers stay in import/window/command territory
+  - the constructor/tag/resource branch rooted at `0x287ee` resolves to document/resource
+    plumbing rather than transport or callback setup
+  - the far-out `0x07b212` and `0x075b8b` table exceptions now reduce to UI/resource
+    descriptor catalog data and lifecycle metadata, not fresh owner-side surfaces
+  Interpretation:
+  on the current primary artifacts, there is no remaining ordinary in-resource path that
+  plausibly yields the live sender install edge. The residual possibilities are now
+  narrower and more explicit: either the handoff is nonliteral/table-driven in a deeper
+  framework layer than the recovered graph exposes, or the decisive install behavior lies
+  outside the recovered resource entirely.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
