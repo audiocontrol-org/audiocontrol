@@ -412,7 +412,9 @@ cleanly.
   those targets still look like dense low-address table/data bands rather than ordinary
   recovered helper bodies. Bounded checks over those payload targets also found none of
   the known `+0xa20` callback signatures and none of the usual `link` / `rts` / absolute
-  `jsr` markers of ordinary recovered m68k functions.
+  `jsr` markers of ordinary recovered m68k functions. The table is also more compact than
+  a naive one-tag/one-handler map: several tags land in the middle of a shared local
+  ladder and reuse the same downstream payload-handler tails.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.

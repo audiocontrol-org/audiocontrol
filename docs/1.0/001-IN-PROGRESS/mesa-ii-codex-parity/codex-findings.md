@@ -1637,6 +1637,28 @@ correct. Every finding should distinguish direct evidence from inference.
   hiding inside these already-traced low-address payload targets, and more likely that
   the callback install path stays above them or crosses into a different opaque layer.
 
+- Finding 86: the decoded tag table does not map one-to-one onto isolated case bodies;
+  several tags enter the middle of a shared local ladder and reuse the same downstream
+  payload handlers.
+  Evidence:
+  the current table offsets resolve to local entries at `0x28817`, `0x288fd`,
+  `0x2893f`, `0x28943`, `0x2894d`, `0x28951`, `0x28967`, and `0x28989`.
+  Bounded reads show the later entries from `0x2893f` onward are tightly packed inside a
+  single local ladder:
+  `0x2894d` starts the arm that calls `0x00a382`,
+  then falls through to the next arm at `0x28959` for `0x00a4f6`,
+  then `0x28967` for `0x00a62c`,
+  then `0x28977` for `0x00b382`,
+  then `0x28989` for `0x00c150`,
+  then `0x28999` for `0x00c304`.
+  Table entries like `aeGE`, `aeGP`, and `aeSP` therefore land at different points
+  inside that shared ladder rather than owning distinct standalone bodies.
+  Interpretation:
+  the registry layer is more compact and normalized than a naive tag-to-handler map. It
+  uses shared local case code and shared payload tails, which further supports the read
+  that this is framework dispatcher machinery rather than domain-specific sampler upload
+  logic exposed as clean named functions.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
