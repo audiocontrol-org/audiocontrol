@@ -442,6 +442,9 @@ cleanly.
   Those tags also now behave like explicit file/type markers inside named save/load
   flows: `OpenDraggedFile` writes `MAHF`, the nearby mixed region checks `AK11` and
   `DATA`, and the EB16 save paths write `EBFX` and `SS30` before calling later helpers.
+  Later mixed blocks go further and dispatch on those tags explicitly: the region around
+  `0x031e00` checks `SMDB`, `SS30`, and `PROG`, then routes into `GDFS` / `SDIS` helper
+  calls as part of save/load-style logic.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.

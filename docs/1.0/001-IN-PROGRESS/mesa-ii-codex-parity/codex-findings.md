@@ -1815,6 +1815,21 @@ correct. Every finding should distinguish direct evidence from inference.
   resource/document packaging and validation logic rather than to live sampler transport
   or callback installation.
 
+- Finding 96: later mixed blocks are performing explicit file-format dispatch on these
+  tags rather than treating them as passive metadata.
+  Evidence:
+  the block around `0x031e00` checks local markers against `SMDB`, then `SS30`, then
+  `PROG`. After those checks it routes into helper calls tagged `GDFS` and repeated
+  `SDIS` requests, while maintaining local state bytes and status flags.
+  Similarly, the earlier mixed block around `0x02ea20` compares `AK11` and `DATA`, then
+  introduces additional type markers like `EBFL`, `EBFX`, `EBRV`, `PSYS`, and `SMDB`
+  before branching into multiple helper calls.
+  Interpretation:
+  this tag system is active dispatch logic for resource/document formats, not just static
+  descriptors. The code is validating and routing on format tags in save/load-style
+  workflows. That is another strong reason to keep it separate from the live transport
+  path: it is clearly file/resource dispatch machinery.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
