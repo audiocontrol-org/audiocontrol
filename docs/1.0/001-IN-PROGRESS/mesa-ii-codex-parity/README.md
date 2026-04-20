@@ -8,7 +8,7 @@ Parallel Codex-driven reverse engineering of Akai's MESA II sampler editor, desi
 |-------|--------|-------|
 | Phase 1: Baseline and Comparison Setup | Complete | Claude branch baseline captured; comparison artifacts created; first Codex target selected |
 | Phase 2: Independent Codex Analysis | In Progress | Task-21 activation-state model is effectively matched; static `CSCSIPlug::SendData` helper hunting is now effectively exhausted down to `0x106e` |
-| Phase 3: Cross-Check and Reconciliation | In Progress | Earlier Claude disputes `#309`-`#314` are resolved; active sync now runs through issue `#315` as Claude re-evaluates the runtime sender boundary |
+| Phase 3: Cross-Check and Reconciliation | In Progress | Earlier Claude disputes `#309`-`#314` are resolved; active sync now runs through issue `#315` as Claude commits to Option 2 and the runtime sender boundary becomes the shared critical path |
 | Phase 4: Downstream Integration Guidance | In Progress | Runtime-boundary guidance is now the highest-value downstream output from the parity branch |
 
 ## Links
@@ -85,14 +85,17 @@ Recent parity work materially changed the boundary of useful Codex analysis:
   before: if executed as-is, they would skip arm-local cleanup that every `jsr 0x106e`
   caller expects before the shared `0x1160` tail path
 - issue [#315](https://github.com/audiocontrol-org/audiocontrol/issues/315) is now the
-  live Claude/Codex sync point because the remaining meaningful unknown is the runtime
-  sender boundary, not another static helper inside the plug body
+  live Claude/Codex sync point because Claude has committed to Option 2
+  (`mesa-plug-harness` end-to-end via terrain-as-necessary) and the remaining meaningful
+  unknown is the runtime sender boundary, not another static helper inside the plug body
 
 The main unresolved boundary has shifted again. The important next question is no longer
 whether `UALL` is plug-side or whether one more local `SendData` helper remains to be
 found. It is how the live sender is installed, intercepted, or otherwise redirected at
-runtime, and how Claude's harness/runtime evidence on issue `#315` should reshape the
-next Codex parity target.
+runtime now that Claude's branch has committed to Option 2 harness work and adopted the
+runtime/hardware versus static-boundary split on issue `#315`. Claude's latest reply on
+that issue also makes the sequencing explicit: Path A / task `#31` is now treated as the
+step-0 prequel to Option 2, not as a competing strategy.
 
 ## Recommended Split
 

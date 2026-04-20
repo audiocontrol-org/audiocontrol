@@ -182,8 +182,8 @@ earlier sampler-side `+0xda4` calls.
 Phase 3 is now actively in progress rather than merely prepared:
 
 - earlier parity issues `#309` through `#314` are now resolved and closed
-- issue `#315` is the active coordination point as Claude re-evaluates the product and
-  reverse-engineering direction around the live SRAW sender boundary
+- issue `#315` is the active coordination point as Claude commits to Option 2
+  (terrain-as-necessary harness work) around the live SRAW sender boundary
 - Codex has now pushed the static plug-side `SendData` surface to a practical
   exhaustion point:
   `0x0148` looks low-memory/nonlocal, `0x0ca2` and `0x0d54` are internal entries,
@@ -194,8 +194,8 @@ Phase 3 is now actively in progress rather than merely prepared:
   arm expects before the shared `0x1160` tail path
 
 The next reconciliation step is no longer another stale-doc cleanup issue. It is to keep
-Claude and Codex synchronized on `#315` while shifting the next technical target outward
-to runtime install/intercept evidence rather than one more static helper hunt.
+Claude and Codex synchronized on `#315` while Claude drives runtime/hardware validation
+through Option 2 and Codex keeps narrowing the remaining static owner boundary.
 
 Current recommended work split:
 
@@ -233,7 +233,9 @@ static RE on the same diminishing-return surface.
 ### Next Experiments
 
 - Review Claude's latest `#315` updates and keep the parity docs aligned with any new
-  runtime/harness evidence around the live sender
+  runtime/harness evidence around the live sender and the Option 2 bootstrap plan
+- Treat Claude's Path A / task `#31` as the step-0 prequel to Option 2, per the latest
+  `#315` reply, not as a rival strategy branch
 - Keep Codex on the static boundary only:
   test computed or table-driven owner paths above `CMESAEditor`, and treat
   “the install edge leaves the recovered resource graph” as a valid terminal finding

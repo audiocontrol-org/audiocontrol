@@ -23,24 +23,27 @@ comparison work, not an endorsement of every Claude-side conclusion.
 
 ## Current Claude-Side Phase State
 
-From the Claude branch README and current branch head `1a196d2e`
-(`docs: ActivateThisSocket decoded — pure in-memory state, no wire bytes (task #21)`):
+From the Claude branch README, workplan, and current branch head `2576636f`:
 
 - Phase 1: Mostly Complete
-- Phase 2: In Progress
-- Phase 3: Not Started
+- Phase 2: Closed (decision redirected through `#315`)
+- Phase 3: Active as **Option 2 committed**
 
-The Claude branch no longer describes its current blocker as
-`CMESASocket::vtable[0x38]`. Its current Phase 2 blocker is now the larger task-21
-question created by the latest `ActivateThisSocket` work:
+The Claude branch no longer treats the main question as a choice between several equal
+strategy options. Its current active state is:
 
 - `CMESASocket::vtable[0x30]` is treated as `ActivateThisSocket(Uc)`
-- `ActivateThisSocket(Uc)` is now claimed to be pure in-memory socket state setup that
-  emits no wire bytes
-- the branch now questions whether the BULK upload path is reproducible from a
-  stateless Node test at all
-- the next decision is framed as: continue decoding, drive the harness end-to-end, or
-  pivot to another fast-upload approach
+- `ActivateThisSocket(Uc)` is treated as pure in-memory socket state setup with no wire
+  output
+- the static decode of the SCSI Plug is treated as exhausted at runtime boundaries
+- `decision-record-2026-04-19.md` commits the branch to Option 2:
+  extend `mesa-plug-harness` to run `sampler-editor-rsrc.bin` via a terrain-as-necessary
+  approach
+- Claude's workplan now explicitly uses Codex's priority test ordering (P1→P4) and
+  carries Path A / task `#31` as step 0 before deeper harness bootstrap
+- Claude's latest reply comment on issue `#315` makes that sequencing explicit:
+  Path A is a prequel to Option 2, not a competing branch of work, and the asymmetric
+  split stays active while the branches remain parallel
 
 ## Artifact Inventory
 
@@ -93,18 +96,20 @@ workplan, analysis notes, and development notes.
 - Real SRAW on-wire bytes
 - UALL handler path
 - Whether the full BULK upload path is reproducible from a stateless Node test at all
-- Which strategic path should replace or extend the current test approach if it is not
+- Exact runtime install/redirection path for the live sender
+- Whether the install edge stays inside the binaries we have or leaves them
+- What the harness will observe at the P1/P2 boundaries once Option 2 bootstrap begins
 
-### New Claude-Side Claim Pending Codex Reproduction
+### New Claude-Side Direction Pending Continued Parity Tracking
 
-- `ActivateThisSocket(Uc)` emits no wire bytes and is purely in-memory socket state
-  setup.
+- Option 2 is now committed, not merely proposed.
   Source:
-  Claude branch commit `1a196d2e`, current README/workplan, and the 2026-04-17
-  `DEVELOPMENT-NOTES.md` entry.
+  Claude branch `README.md`, `workplan.md`, and
+  `decision-record-2026-04-19.md`, plus the latest `#315` reply comment.
   Current Codex status:
-  not yet independently reproduced from primary artifacts. This should be treated as a
-  live Claude-side claim pending parity verification, not as a matched finding.
+  aligned at the strategy level. Codex has updated its own docs to treat Claude as
+  owning runtime/hardware validation while Codex keeps only narrow static
+  owner-boundary proof.
 
 ## Important Corrections Already Made On The Claude Branch
 
@@ -128,16 +133,19 @@ still current.
 - The Claude branch is active and self-correcting; older notes and older docs should not
   be treated as equivalent to the latest state.
 - The branch contains both evidence-backed conclusions and explicitly retracted claims.
-- The latest Claude-side task-21 conclusion is newer than the current Codex parity
-  baseline and needs explicit reproduction or dispute.
+- The branch has moved beyond the earlier task-21-only framing. The important baseline
+  for parity is now the Option 2 commitment plus the explicit runtime/static work split,
+  not just the older `ActivateThisSocket` interpretation.
 - Any parity effort that ignores `DEVELOPMENT-NOTES.md` will likely compare against stale
   or already-corrected conclusions.
 
 ## Selected First Codex Target
 
 Codex started with the old slot-`0x38` blocker because that was the then-current Claude
-state. After re-sync, the highest-value Claude-side delta to compare next is:
+state. After re-sync, the highest-value Claude-side delta is no longer another static
+claim inside the plug body. It is the branch-level strategic shift:
 
-- the new task-21 claim that `ActivateThisSocket(Uc)` emits no wire bytes
-- whether that claim is reproducible from primary artifacts
-- whether it materially changes the viability of the stateless Node BULK test approach
+- Claude has committed to Option 2 harness work
+- Claude has adopted the runtime/hardware versus static-boundary split
+- Codex should now compare against Claude's runtime findings and bootstrap evidence,
+  not against an older assumption that Claude is still deciding whether to go dynamic

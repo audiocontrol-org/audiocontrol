@@ -11,6 +11,44 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-20: MESA II Parity Baseline Resynced To Claude Option 2 Reply
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Refresh the parity baseline after Claude updated both the feature docs and the live
+`#315` thread to commit to Option 2 and clarify how Path A fits into that plan.
+
+### Accomplished
+- Reviewed the current Claude branch head `2576636f`, its `README.md`, `workplan.md`,
+  and `decision-record-2026-04-19.md`
+- Reviewed the latest Claude reply on issue `#315`
+- Updated the Codex parity README, workplan, and `claude-baseline.md` so they no longer
+  describe Claude as merely "re-evaluating" the runtime boundary
+- Recorded the new explicit sequencing from Claude's reply:
+  Path A / task `#31` is step 0 of Option 2, not a competing strategy
+
+### Didn't Work
+- No new technical reverse-engineering finding came out of this pass; it was a
+  state-sync/documentation correction only
+
+### Course Corrections
+- **[DOCUMENTATION]** The parity baseline had drifted behind the active Claude branch.
+  The docs still reflected the earlier task-21 / "still deciding" state after Claude had
+  already committed to Option 2 in both branch docs and issue comments.
+
+### Quantitative
+- Feature docs materially updated: 3
+  `README.md`, `workplan.md`, `claude-baseline.md`
+
+### Insights
+1. For this feature, issue `#315` is part of the live baseline, not just side-channel
+   discussion. Branch docs alone were not enough once the tactical sequencing changed in
+   comments.
+2. The meaningful sync unit is now "Claude Option 2 + Path A as step 0 + asymmetric
+   split remains active," not the older task-21 framing.
+
 ## 2026-04-20: MESA II Parity Work Split Clarified
 
 ### Feature: mesa-ii-codex-parity
