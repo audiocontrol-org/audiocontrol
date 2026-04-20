@@ -2135,6 +2135,28 @@ correct. Every finding should distinguish direct evidence from inference.
   disk-view, and table/index contexts. They do not open a new visible install path for
   the live sender.
 
+- Finding 113: the dense far-out table at `0x07b212` resolves into explicit non-code
+  UI/resource descriptor blocks, not a hidden callback-install or sender path.
+  Evidence:
+  direct byte reads show the `0x07b212` region is a repeated fixed-structure table whose
+  rows contain longword payload targets like `0x0001ce24`, `0x0001ce52`, `0x0001ce80`,
+  and `0x0001ceae`, not the local constructor-era root `0x0000ce24`.
+  The referenced payloads around `0x01ce24` through `0x01d040` are dense structured
+  records with repeated word patterns such as `000c 000a 0001 ... 0009 ... 002a 0002`
+  and no ordinary m68k function markers. Nearby strings in the same target range include
+  sampler UI/help text like `3rd loop length.`, `loop dwell 3`, and
+  `Dwell time of 3rd loop, 0=no loop,9999=hold`.
+  The surrounding `0x07ba41+` string table is likewise menu/editor facing
+  (`Sampler Suite`, `Edit`, `Import`, `Windows`, `Sampler`, `Filter 1`, `LFO 1`,
+  `FX Labels`, `Sampler Editor`), which matches a resource catalog or UI descriptor map
+  rather than executable setup logic.
+  Interpretation:
+  the last far-out table/index layer still visible from the recovered resource graph is
+  now better understood as a record table into UI/resource descriptor payloads. That
+  makes it a stronger exclusion boundary: this layer is not a plausible owner-side
+  callback installer for `+0xa20` and does not weaken the current conclusion that the
+  remaining install edge is higher/nonliteral or outside the recovered graph entirely.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

@@ -1579,3 +1579,53 @@ later shared command-bus dispatch, and what shared interface sits behind that pa
 3. `SendAudioBufferToSampler` mixes multiple object systems in a small span. Treating
    every non-socket indirect call as one “UALL phase” was the wrong abstraction; the
    parity work improved once those call families were separated explicitly.
+
+## 2026-04-20: MESA II Far-Out Table Layer Tightened Into UI Descriptor Exclusion
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Push one more narrow static pass on the remaining far-out descriptor/table layer and
+see whether it still looked like a plausible owner-side callback-install boundary.
+
+### Accomplished
+- Rechecked the dense table region around `0x07b212` directly from raw bytes
+- Corrected the far-out payload reading from a vague "`0xce24` table region" to the
+  stronger longword-target interpretation:
+  rows point into `0x0001ce24`, `0x0001ce52`, `0x0001ce80`, `0x0001ceae`, and nearby
+  payload blocks
+- Verified those payload blocks are repeated structured records without ordinary m68k
+  function markers
+- Anchored the target neighborhood to UI/help text such as `3rd loop length.` and
+  `loop dwell 3`, which makes the table look like a resource/descriptor catalog rather
+  than hidden executable install logic
+- Updated parity findings and comparison notes with the stronger exclusion
+
+### Didn't Work
+- This pass still did not expose a new bridge into `+0xa20` or `SetCommandProc`
+- The remaining install edge still does not present as an ordinary in-resource caller
+  chain
+
+### Course Corrections
+- **[EVIDENCE]** The earlier wording for the far-out `0x07b212` region was too soft.
+  The new pass replaced "generic index/table region" with a stronger, byte-backed
+  description: repeated rows into non-code UI/resource descriptor payloads.
+- **[PROCESS]** I kept the pass narrow instead of reopening the already ruled-out
+  constructor/tag/resource branch. The new finding strengthens the existing boundary
+  rather than creating another exploratory side quest.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 113`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. The last visible far-out table layer now looks like descriptor catalog data, not a
+   blurry "maybe installer" region.
+2. The static boundary is stronger when the payload targets are read as full longwords
+   (`0x0001ce24`, etc.) instead of truncated local roots (`0x0000ce24`).
+3. This kind of narrowing is still worth doing in parallel with Claude's runtime work:
+   it gives a sharper exclusion boundary without reopening broad static reverse
+   engineering.

@@ -464,7 +464,13 @@ cleanly.
   `AIFF`, and `LoadAllAIFFInFolder` also calls the distinct `0x006ac2` helper family.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
-  workplan now targets that same remaining gap directly.
+  workplan now targets that same remaining gap directly. The far-out table/index layer
+  also tightened in this pass: the dense `0x07b212` rows do not point back to the local
+  `0x0000ce24` root, but to longword payloads like `0x0001ce24`, `0x0001ce52`, and
+  `0x0001ce80`. Those payloads resolve to repeated structured descriptor blocks with
+  nearby loop-parameter/help strings such as `3rd loop length.` and `loop dwell 3`,
+  which makes that region a stronger UI/resource catalog exclusion rather than a hidden
+  owner-side callback-install path.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.
