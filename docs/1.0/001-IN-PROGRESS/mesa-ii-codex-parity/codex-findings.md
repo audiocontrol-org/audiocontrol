@@ -1463,6 +1463,29 @@ correct. Every finding should distinguish direct evidence from inference.
   finding more `+0xa20` consumers inside the resource will expose the live sender install
   edge directly.
 
+- Finding 77: the full observed `cmp this+0xa20` surface is now classified as ordinary
+  editor/module behavior, not a narrow upload-sender path.
+  Evidence:
+  the seven currently observed `4aaa0a20` compare sites land at file offsets
+  `0x028751`, `0x0297b9`, `0x02c035`, `0x02d697`, `0x02d733`, `0x059c47`, and `0x059ca1`.
+  Bounded reads around those sites now tie them to named or already-anchored routines:
+  `GetPlugList__11CMESAEditor...` at `0x028751`,
+  the `CSamplerModule::DoMESACommand` / `UALL` command region at `0x0297b9`,
+  `CreateQuickAccessWindow__14CSamplerModuleFv` at `0x02c035`,
+  `Redraw__14CSamplerModuleFv` at `0x02d697`,
+  `SelectWindow__14CSamplerModuleFl` at `0x02d733`,
+  `BusyCursor__11CMESAEditorFUc` at `0x059c47`,
+  and `BarCursor__11CMESAEditorFUc` at `0x059ca1`.
+  No currently observed compare site lands in a dedicated sender-install helper, socket
+  callback installer, or other upload-exclusive path.
+  Interpretation:
+  the primary-artifact surface around `+0xa20` now looks comprehensively generic:
+  editor command handling, view/window management, and cursor/UI notifications all test
+  the same field. That makes it less likely that continuing to enumerate more in-resource
+  `+0xa20` consumers will reveal the missing live-sender install edge, and more likely
+  that the remaining owner boundary is either computed/indirect above this layer or
+  outside the recovered resource graph entirely.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

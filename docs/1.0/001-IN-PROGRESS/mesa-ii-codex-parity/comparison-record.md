@@ -387,7 +387,11 @@ cleanly.
   The field also now looks even more generic than before: `BusyCursor__11CMESAEditorFUc`
   and `BarCursor__11CMESAEditorFUc` both test and dispatch through `+0xa20`, so the
   current artifact set treats it as a broader editor-framework callback sink rather than
-  a sampler-upload-specific hook.
+  a sampler-upload-specific hook. The full observed compare surface now points the same
+  way: the seven current `cmp this+0xa20` sites sit in `GetPlugList`, the
+  `CSamplerModule::DoMESACommand` / `UALL` region, `CreateQuickAccessWindow`, `Redraw`,
+  `SelectWindow`, `BusyCursor`, and `BarCursor`, with no observed compare site landing in
+  a dedicated sender-install helper.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.
