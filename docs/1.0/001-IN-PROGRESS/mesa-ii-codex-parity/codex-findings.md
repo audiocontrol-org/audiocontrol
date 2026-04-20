@@ -2056,6 +2056,24 @@ correct. Every finding should distinguish direct evidence from inference.
   close to this generic scaffold machinery, yet still not explained by it: the helper
   assumes `+0xa20` is already available rather than installing it itself.
 
+- Finding 109: the repeated scaffold callsites do not themselves manipulate `+0xa20`;
+  the callback sink only appears inside the shared helper body.
+  Evidence:
+  across all observed `jsr 0x02d6c8` scaffold callsites, bounded scans of the caller
+  windows out to at least `+/- 0x100` bytes found zero matches for the known direct
+  `+0xa20` signatures:
+  `216e000c0a20` (setter write),
+  `206a0a20` (load/call),
+  `4aaa0a20` (tst),
+  `2f2a0a20` (pea by-address pass).
+  By contrast, the target body at `0x02d6dc-0x02d6e2` contains the direct `+0xa20`
+  load-and-call sequence `20 6a 0a 20 4e 90`.
+  Interpretation:
+  the scaffold caller sites prepare object-relative blocks and descriptor/state fields,
+  but the callback sink is encapsulated inside the shared framework helper rather than
+  being manipulated directly in the surrounding callers. That pushes the remaining
+  install edge further upstream of the whole repeated scaffold pattern.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
