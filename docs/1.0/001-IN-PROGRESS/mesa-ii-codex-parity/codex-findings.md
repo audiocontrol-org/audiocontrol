@@ -1659,6 +1659,23 @@ correct. Every finding should distinguish direct evidence from inference.
   that this is framework dispatcher machinery rather than domain-specific sampler upload
   logic exposed as clean named functions.
 
+- Finding 87: the two distinctive table entries, `OTFL` and `aete`, act as setup paths
+  that prepare state before entering the shared local ladder.
+  Evidence:
+  the `OTFL` entry at `0x28817` runs a longer prelude than the later case arms. Within
+  that prelude it pushes the literal tags `AK11` and `DATA`, calls `jsr 0x006ac2`, stores
+  the returned word into a local slot, and only then falls through toward the later local
+  dispatch flow.
+  The `aete` entry at `0x288fd` likewise has its own prelude before the shared ladder:
+  it pushes the literal tag `aete`, calls `jsr 0x00a9a0`, and only then enters the later
+  tightly packed case-arm ladder beginning around `0x2893f`.
+  Interpretation:
+  `OTFL` and `aete` are not just more entries that directly map to the same payload
+  handlers. They are special setup-style entries for this registry layer. That sharpens
+  the current model of `0x287ee`: a small tag/offset registry whose front entries can do
+  additional tag-specific setup before converging on the shared ladder and opaque payload
+  layer.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
