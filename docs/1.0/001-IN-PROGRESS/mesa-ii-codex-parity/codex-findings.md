@@ -2040,6 +2040,22 @@ correct. Every finding should distinguish direct evidence from inference.
   makes it a framework mechanism that many classes reuse during setup, which is exactly
   the opposite of the specialized install edge we are looking for.
 
+- Finding 108: the shared scaffold helper `0x02d6c8` is callback-aware: inside its own
+  body it loads `object+0xa20` and indirect-calls it.
+  Evidence:
+  raw bytes in the target body at `0x02d6dc-0x02d6e2` are:
+  `20 6a 0a 20 4e 90`, i.e. `moveal object@(0xa20),%a0; jsr %a0@`.
+  The same `+0xa20` field is already independently matched elsewhere in the binary as
+  the generic `CMESAEditor` callback sink used by `DoMESACommand`, `BusyCursor`,
+  `BarCursor`, and the two `OpenModule -> ConnectToPlug` by-address passes.
+  The helper still remains broadly reused across many constructor/setup-shaped regions,
+  including `CMESAEditor` and `LGrafPortView`.
+  Interpretation:
+  `0x02d6c8` is not the installer for the callback sink, but it does participate in the
+  callback-aware framework layer that consumes it. That means the owner boundary is
+  close to this generic scaffold machinery, yet still not explained by it: the helper
+  assumes `+0xa20` is already available rather than installing it itself.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
