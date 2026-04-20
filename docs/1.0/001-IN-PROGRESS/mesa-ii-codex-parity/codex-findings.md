@@ -1556,6 +1556,28 @@ correct. Every finding should distinguish direct evidence from inference.
   more like a data-driven framework registry or command-template install path than a
   conventional named helper that static symbol recovery failed to isolate cleanly.
 
+- Finding 82: the front of the `0x287ee` band is a regular 6-byte tag/offset table.
+  Evidence:
+  aligned reads starting at file `0x287eb` decode cleanly into repeated
+  four-character tag plus 16-bit offset entries:
+  `OTFL -> 0x002c`,
+  `aeCT -> 0x0154`,
+  `aeDL -> 0x019e`,
+  `aeGE -> 0x0158`,
+  `aeGP -> 0x0162`,
+  `aeMN -> 0x017c`,
+  `aeSP -> 0x0166`,
+  `aete -> 0x0112`.
+  Immediately after those fixed-width records, the same region transitions into the later
+  executable tag-comparison/dispatch logic already noted above.
+  Interpretation:
+  this is no longer just "mixed tag-heavy bytes." The constructor-side target now looks
+  like a concrete registry-table-plus-dispatcher structure: a fixed tag/offset table at
+  the front, then logic that consumes related tags deeper in the same band. That makes a
+  data-driven framework install path inside `sampler-editor-rsrc.bin` more plausible than
+  a hidden conventional helper, while still keeping the ultimate live-callback owner edge
+  unresolved.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
