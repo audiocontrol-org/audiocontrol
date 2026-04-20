@@ -1908,6 +1908,37 @@ correct. Every finding should distinguish direct evidence from inference.
   edge is computed, table-driven in a nonliteral way, or outside the recovered resource
   graph entirely.
 
+- Finding 101: the same "no literal trail" result now applies to the visible owner-side
+  chain above the setter too.
+  Evidence:
+  direct byte-count checks over `sampler-editor-rsrc.bin` found zero occurrences of the
+  big-endian longwords `0x0005971c` (`__ct__11CMESAEditorFv`) and `0x0005965f`
+  (the constructor-region routine that clears `+0xa20`), and zero occurrences of the
+  matching direct absolute-call encodings `4eb9 0005971c` and `4eb9 0005965f`.
+  Combined with Finding 100, the visible owner-side sequence is now:
+  constructor clear of `+0xa20`, generic setter at `0x0286f3`, and later consumers like
+  `DoMESACommand`, `BusyCursor`, `BarCursor`, and `OpenModule` — but none of those key
+  owner-side anchor addresses currently have a literal in-resource call/pointer trail
+  leading into them.
+  Interpretation:
+  the boundary problem is no longer just "the setter has no obvious caller." The entire
+  visible owner-side callback chain now looks nonliteral from the checked-in resource's
+  point of view, which makes a computed, table-driven, or external handoff more likely
+  than one more missed ordinary code path.
+
+- Finding 102: the callback sink at `+0xa20` is only passed by address at the two
+  already-known `OpenModule` plug-connection sites.
+  Evidence:
+  a whole-binary signature scan for `pea this+0xa20` (`2f2a0a20`) found exactly two
+  matches in `sampler-editor-rsrc.bin`, at file offsets `0x02a64f` and `0x02a679`.
+  Those are the same two `OpenModule` call sites already decoded as the `'MIDI'` and
+  `'SCSI'` `ConnectToPlug(...)` invocations.
+  Interpretation:
+  there is no broader ordinary pattern of code passing the `+0xa20` callback field by
+  address around the recovered resource. The visible by-address use of that field is
+  still confined to `OpenModule`'s socket bring-up path, which further narrows the
+  missing install edge upstream rather than sideways.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
