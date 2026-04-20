@@ -373,6 +373,9 @@ cleanly.
   The surrounding tag wrapper is now named too: file `0x028980` resolves to
   `DoMESACommand__14CSamplerModuleFP11MESACommand`, so those nearby four-character tags
   are explicit `CSamplerModule` command traffic rather than an unknown install helper.
+  The second site is now anchored more tightly as well: it sits inside the function whose
+  trailing symbol string is `ObeyCommand__14CSamplerModuleFlPv`, so both currently
+  observed `+0xac` edges belong to named `CSamplerModule` command/update paths.
   In other words, the observed `+0xac` sites are currently better modeled as shared
   framework message-routing calls than as the owner-side install edge for `+0xa20`.
   That makes the remaining live-sender gap look less like a missed in-binary helper and

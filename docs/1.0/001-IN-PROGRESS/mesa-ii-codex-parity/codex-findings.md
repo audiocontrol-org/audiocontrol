@@ -1405,6 +1405,25 @@ correct. Every finding should distinguish direct evidence from inference.
   command/update routing on top of the module command bus, not the owner-side install
   point for the live plug sender.
 
+- Finding 74: the previously unnamed `+0xac` site at `0x02976f` sits inside
+  `ObeyCommand__14CSamplerModuleFlPv`, so both currently observed `+0xac` edges are
+  anchored to ordinary `CSamplerModule` command/update paths.
+  Evidence:
+  the function ending at file `0x029c30-0x029c36` is followed immediately by the embedded
+  symbol string `ObeyCommand__14CSamplerModuleFlPv` at `0x029c38`, which matches the same
+  "epilogue then trailing symbol string" layout seen elsewhere in the binary.
+  The earlier `0x02976f` indirect-call site lies well inside that same bounded region.
+  Its surrounding raw bytes show explicit four-character command tags including `CURK`,
+  `KDAT`, `EDKGH`, later `UALL`, and repeated calls to the now-identified
+  `CSamplerModule::DoMESACommand` wrapper at `0x028980` before and after the `+0xac`
+  secondary-table dispatch.
+  Interpretation:
+  the second `+0xac` edge is no longer just "a nearby command path"; it is inside the
+  named `CSamplerModule::ObeyCommand` flow. Together with the named
+  `BroadcastUpdateMessages__14CSamplerModuleFUc` site, that makes the visible `+0xac`
+  usage look like normal module command/update handling rather than the owner-side install
+  path for `+0xa20` or the live sender callback.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
