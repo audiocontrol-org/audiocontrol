@@ -1424,6 +1424,26 @@ correct. Every finding should distinguish direct evidence from inference.
   usage look like normal module command/update handling rather than the owner-side install
   path for `+0xa20` or the live sender callback.
 
+- Finding 75: the current sampler-editor resource does not expose any ordinary in-resource
+  pointer or alternate direct-store path back into `InitModule` / `SetCommandProc`.
+  Evidence:
+  a raw big-endian literal search for the recovered entrypoint words
+  `0x000286f2`, `0x0002873a`, `0x0005965f`, and `0x000598a5` returns zero hits in the
+  checked-in `sampler-editor-rsrc.bin`.
+  A second bounded search for straightforward alternate direct-store encodings to
+  `this+0xa20` also returns zero hits for the tested patterns
+  `214a0a20`, `21480a20`, and `21400a20`, while the positive controls still show the
+  already-known compare/load/use shapes:
+  `4aaa0a20` at seven sites,
+  `206a0a20` at thirty-seven sites,
+  and `2f2a0a20` at the two `OpenModule` `ConnectToPlug` calls.
+  Interpretation:
+  the remaining owner boundary is now narrower than "no obvious local call." In the
+  current primary artifact set there is also no plain literal table/pointer trail back to
+  `InitModule` / `SetCommandProc`, and no second direct-install encoding for `+0xa20`.
+  If the live command-proc source still exists inside this resource, it is likely hidden
+  behind a more indirect or computed handoff than the usual static cues.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

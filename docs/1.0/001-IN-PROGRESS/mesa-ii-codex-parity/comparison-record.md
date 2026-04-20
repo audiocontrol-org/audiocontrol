@@ -378,6 +378,12 @@ cleanly.
   observed `+0xac` edges belong to named `CSamplerModule` command/update paths.
   In other words, the observed `+0xac` sites are currently better modeled as shared
   framework message-routing calls than as the owner-side install edge for `+0xa20`.
+  A further bounded negative check now supports that same boundary from another angle:
+  the checked-in `sampler-editor-rsrc.bin` contains no big-endian literal references to
+  the recovered `InitModule` / `SetCommandProc` / `CMESAEditor` entrypoints, and no
+  alternate straightforward direct-store encodings to `this+0xa20` beyond the already
+  known install/use sites. So the missing owner edge is not just "not a simple call";
+  it also does not currently show up as an ordinary in-resource pointer trail.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.
