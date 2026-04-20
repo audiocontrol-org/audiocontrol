@@ -1849,6 +1849,28 @@ correct. Every finding should distinguish direct evidence from inference.
   lining up with file/resource operations and file-type validation, which makes the
   remaining live-sender/callback-install hypothesis on this branch even weaker.
 
+- Finding 98: the constructor-side registry/tag/resource branch is now effectively
+  ruled out as the primary live-sender path.
+  Evidence:
+  the `0x287ee` band has been reduced to a front-end tag table, a shared local ladder,
+  and low-address payload/service families that repeatedly align with file/resource
+  markers like `AK11`, `DATA`, `EBFL`, `EBFX`, `EBRV`, `PSYS`, `SMDB`, `SS30`, `PROG`,
+  `AIFF`, `GDFS`, `SDIS`, and `MAHF`.
+  Named sampler-module flows tie those markers to file/document handling:
+  `CreateFXFilerWindow`, `SaveEB16Reverb`, `SaveEB16Effect`,
+  `LoadEB16FXFileSingle`, `LoadEB16FXFileAll`, `OpenDraggedFile`,
+  `LoadVersion1ProgramFile`, `LoadVersion2ProgramFile`,
+  `LoadDiskDBaseFile`, and `LoadAllAIFFInFolder`.
+  The actual transfer neighborhoods remain separate and continue to use transport verbs
+  `BULK`, `SRAW`, and `UALL`.
+  The low-address payload families also still lack overlap with the known `+0xa20`
+  callback signatures and continue to look more like resource/service formats than
+  conventional executable helpers.
+  Interpretation:
+  this branch now reads as file/resource/document plumbing. It may still matter for
+  understanding the editor broadly, but it is no longer a credible primary candidate
+  for the missing sender-install or callback-install edge.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

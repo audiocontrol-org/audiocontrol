@@ -49,6 +49,56 @@ Refresh the parity baseline after Claude updated both the feature docs and the l
 2. The meaningful sync unit is now "Claude Option 2 + Path A as step 0 + asymmetric
    split remains active," not the older task-21 framing.
 
+## 2026-04-20: MESA II Resource-Tag Branch Ruled Out As Primary Sender Lead
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Decide whether the constructor-side registry/tag/resource branch was still worth
+treating as a live candidate for the missing sender-install edge, and resync the Codex
+plan with Claude's current Option 2 state before going further.
+
+### Accomplished
+- Re-checked Claude's current branch state locally:
+  README/workplan now clearly commit to Option 2, with Path A/task `#31` as step 0.
+- Wrote down the stronger Codex exclusion result:
+  the `0x287ee` constructor-side registry plus its low-address payload families now
+  align with file/resource/document handling, not upload transport or callback install.
+- Updated parity README/workplan/findings/comparison docs so the plan is now:
+  - keep following Path A in parallel with Claude
+  - stop treating the constructor/tag/resource branch as a likely sender path unless
+    new evidence points back to it
+
+### Didn't Work
+- This pass still did not expose the owner that calls the generic `SetCommandProc`
+  setter with the live callback.
+- The resource/tag branch kept yielding internally coherent structure, but that
+  coherence was about file/resource dispatch rather than the sender boundary we care
+  about.
+
+### Course Corrections
+- **[PROCESS]** The earlier "Codex should stop spending cycles here" framing was too
+  coarse. The user wants Codex to keep running the same Path A frontier in parallel with
+  Claude for cross-pollination, not to stand down entirely.
+- **[DOCUMENTATION]** The plan needed two ideas written together, not separately:
+  continue parallel static work, but mark the constructor/tag/resource branch as a
+  ruled-out false lead for the sender question.
+
+### Quantitative
+- Parity docs updated: 5
+  `README.md`, `workplan.md`, `codex-findings.md`, `comparison-record.md`,
+  `DEVELOPMENT-NOTES.md`
+
+### Insights
+1. "Keep working in parallel" and "stop chasing this specific branch" are compatible.
+   The right correction is to narrow the frontier, not to stop the second track.
+2. The tag/resource branch is now useful mainly as exclusion evidence: it tells us
+   where the live sender probably is not.
+3. Claude's current Option 2 state matters operationally. Once their branch has already
+   committed to the runtime path, Codex static work should complement that path rather
+   than try to reopen already-closed strategic debates.
+
 ## 2026-04-20: MESA II Parity Work Split Clarified
 
 ### Feature: mesa-ii-codex-parity

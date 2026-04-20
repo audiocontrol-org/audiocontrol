@@ -204,12 +204,15 @@ Current recommended work split:
   post-transfer behavior, and whether the product bar can only be met by behavior that
   is not recoverable from the checked-in static plug body alone.
 - Codex:
-  narrow static owner-boundary proof, especially whether the `+0xa20` command-proc
-  source can still be recovered from `sampler-editor-rsrc.bin` or whether the install
-  edge has effectively left the recovered resource graph.
+  continue Path A-style static owner-boundary proof in parallel, especially whether the
+  `+0xa20` command-proc source can still be recovered from `sampler-editor-rsrc.bin` or
+  whether the install edge has effectively left the recovered resource graph. The point
+  of the second track is cross-checking and different search order, not avoiding
+  overlap at all costs.
 
-That split uses the two efforts complementarily instead of paying twice for more broad
-static RE on the same diminishing-return surface.
+That split uses the two efforts complementarily: Claude pushes runtime terrain and
+hardware truth, while Codex keeps pressure on the same install-edge path statically and
+records which static branches are now convincingly ruled out.
 
 ---
 
@@ -236,9 +239,12 @@ static RE on the same diminishing-return surface.
   runtime/harness evidence around the live sender and the Option 2 bootstrap plan
 - Treat Claude's Path A / task `#31` as the step-0 prequel to Option 2, per the latest
   `#315` reply, not as a rival strategy branch
-- Keep Codex on the static boundary only:
+- Keep Codex on the same static install-edge question in parallel:
   test computed or table-driven owner paths above `CMESAEditor`, and treat
   “the install edge leaves the recovered resource graph” as a valid terminal finding
+- Use the recent constructor/tag/resource results as an exclusion boundary:
+  that branch now looks like file/resource/document plumbing, so do not keep mining it
+  as if it were still a likely live-sender path unless new evidence points back to it
 - Leave runtime install/intercept validation, live sender observation, and hardware
   throughput checks to the parallel Claude effort unless new evidence makes Codex-side
   runtime work necessary

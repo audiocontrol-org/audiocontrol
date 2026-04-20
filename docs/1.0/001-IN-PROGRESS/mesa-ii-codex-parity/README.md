@@ -97,20 +97,37 @@ runtime/hardware versus static-boundary split on issue `#315`. Claude's latest r
 that issue also makes the sequencing explicit: Path A / task `#31` is now treated as the
 step-0 prequel to Option 2, not as a competing strategy.
 
+Recent Codex work also closes off a broad static false lead: the constructor-side
+registry/tag/resource branch rooted at `0x287ee` now looks like resource/document
+plumbing, not the missing live-sender install path. The recovered front-end table,
+shared local ladder, low-address payload families, and later mixed tag-dispatch blocks
+all align with file/resource handling (`AK11`, `DATA`, `EBFX`, `EBRV`, `SMDB`, `SS30`,
+`PROG`, `AIFF`, `GDFS`, `SDIS`, `MAHF`) rather than transport verbs like `BULK`,
+`SRAW`, or `UALL`.
+
 ## Recommended Split
 
 Based on the current combined Claude and Codex evidence, the most effective parallel
-assignment is now asymmetric:
+assignment is now complementary rather than duplicated:
 
 - Claude should own runtime and hardware validation:
   initialization-time behavior, live sender installation or redirection, and the
   product-facing question of whether any recovered path can plausibly reach
   MESA-class throughput.
-- Codex should own narrow static boundary proof:
-  keep pressing only on whether the `+0xa20` command-proc install path stays inside
-  `sampler-editor-rsrc.bin` or leaves the recovered resource-level graph.
+- Codex should keep following Path A in parallel:
+  continue static owner-boundary work around `+0xa20`, `SetCommandProc`, and the
+  install-edge path in `sampler-editor-rsrc.bin`, even though Claude is also pursuing
+  Path A as step 0 of Option 2. The value of the second track is cross-pollination,
+  different search order, and independent falsification.
 
-Both efforts should avoid reopening broad static plug-body analysis unless new evidence
-reopens it. The current branch evidence already pushes `CSCSIPlug::SendData` close to
-exhaustion, while the remaining unknown now sits at the seam between static owner
-analysis and runtime behavior.
+Both efforts should avoid two specific traps:
+
+- reopening broad static plug-body helper hunting in `CSCSIPlug::SendData`, which is
+  already close to exhaustion
+- mistaking the constructor/tag/resource branch for a transport-install path now that
+  it looks like resource/document plumbing
+
+The shared critical path remains the same: identify where the live sender is installed,
+redirected, or otherwise made reachable. Claude is best placed to push that boundary at
+runtime; Codex remains useful by pursuing the same static boundary from a second angle
+and documenting which side branches are now effectively ruled out.

@@ -66,6 +66,20 @@ cleanly.
   That is still enough to move the family out of the "opaque unknown slots" bucket and
   into practical parity with Claude's current direction.
 
+- The constructor-side registry/tag/resource branch is now a strong exclusion boundary,
+  not a live sender lead
+  Claude baseline:
+  Claude's current Option 2 framing treats Path A as a boundary-identification exercise
+  ahead of runtime harness work, not as a claim that every constructor-adjacent mixed
+  region is likely to contain the sender install.
+  Codex finding:
+  the `0x287ee` branch now resolves into a tag-indexed registry/front-end dispatcher,
+  low-address payload families, and broader file/resource-format handling tied to
+  markers like `AK11`, `DATA`, `EBFX`, `EBRV`, `SMDB`, `SS30`, `PROG`, `AIFF`, `GDFS`,
+  `SDIS`, and `MAHF`. Those paths line up with editor/document flows, while actual
+  upload paths stay separate with `BULK`, `SRAW`, and `UALL`.
+  That makes this branch a strong static exclusion rather than a primary sender lead.
+
 ### Disputed
 
 - `CMESASocket::vtable[0x38]` label
