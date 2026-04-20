@@ -58,11 +58,32 @@ Goal: Validate the disassembly findings against real hardware with test scripts.
 - [ ] **Find UALL handler (task #16)**: not in SendData TagDispatch, uses vtable[0x28]
 - [ ] Document validated protocol specification with message sequence diagrams (after #15/#16/#17)
 
-## Phase 3: MESA II RE Continued (post-SDS-ceiling decision)
+## Phase 3: Option 2 — Harness End-to-End via Terrain-as-Necessary
 
-**Decision context:** Per [`decision-record-2026-04-18.md`](./decision-record-2026-04-18.md), the original Option 1 (SDS optimize) commitment in [#315](https://github.com/audiocontrol-org/audiocontrol/issues/315) is **SUPERSEDED**. Phase 3.1-3.3 measured SDS = 2.91 KB/s = ~1.4x serial MIDI — not enough to justify the SCSI bridge infrastructure (the bridge needs ~10x MIDI to earn its complexity). Since we can't measure MESA II directly (no vintage hardware) but it demonstrably achieves the higher throughput, the path forward is to keep decoding MESA II until we have a testable hypothesis. Sections below preserve the Phase 3.1-3.3 SDS-optimization data as reference (the negative results are the evidence that sealed the supersession).
+**Decision context:** [`decision-record-2026-04-19.md`](./decision-record-2026-04-19.md) supersedes the earlier 2026-04-18 commitment. After task #30 reached Outcome B (SCSI Plug static decode exhausted at two runtime boundaries) and Codex parity confirmed no ordinary install edge in the Sampler Editor binary either, the remaining question (how MESA's live sender is installed/redirected at runtime) can only be answered by extending `mesa-plug-harness` to execute the Sampler Editor binary end-to-end.
 
-**Current target:** task #30 — decode SRAW wire bytes (the only undecoded piece of MESA's chain). See task list above.
+**Approach:** "Terrain-as-necessary." Build minimum harness extension needed per priority test, stop between each, reassess. Don't build the whole Mac toolbox emulator up front.
+
+### Priority tests (from Codex's #315 recommendation)
+
+- [ ] **Step 0 (task #31): Path A — static decode of the install-edge path in `sampler-editor-rsrc.bin`.** Starting points: `CMESASocket::ConnectToPlug`, `CMESASocket::SelectPlug` (file 0x05a053). Do not assume they're the final installer. Capture: exact write/redirection site, object ownership, target type (code / callback vector / patch slot), install timing. If chain exits to app-loader or host-framework, record that as the install boundary. Cheap (2-4 hours), high info value relative to multi-week harness commitment.
+- [ ] **P1: Init-time state snapshots.** Harness terrain: load `sampler-editor-rsrc.bin` alongside `scsi-plug-rsrc.bin`; execute init sequence. Snapshot plug-slot state (especially $106e effective call target) at phase boundaries: pre-init, post-InitModule, at transfer start. Success: concrete runtime redirection/install event OR show none occurs.
+- [ ] **P2: Wire capture for state-only vs wire-emitting phases.** Harness terrain: P1 + enough send-path execution to reach the boundaries. Isolate `ActivateThisSocket`, plug selection/connection, pre- and post-BULK phases. Success: confirm or refute that `ActivateThisSocket` is state-only in real operation (vs wire-emitting).
+- [ ] **P3: Module-side post-transfer dependency test.** Harness terrain: P1 + P2 + interruption mechanism. Compare normal vs interrupted post-transfer flow. Watch for: sampler accepting data but not committing, UI/state mismatch, transfer completing but sample unusable. Success: determine whether module-side post-transfer behavior is the remaining correctness dependency.
+- [ ] **P4: Throughput decision check.** Measure real throughput for any runtime-discovered alternative path. Compare against 8 KB/s ship target, 15 KB/s aspirational, serial-MIDI baseline. Success: justify continued RE or kill decisively.
+
+### What NOT to do (from Codex's explicit prohibitions)
+
+- Don't handcraft speculative SRAW/SYSX payloads as if they were MESA's
+- Don't re-decode ordinary `CSCSIPlug::SendData` helpers
+- Don't treat static guesses about low-address call targets as hardware hypotheses
+- Don't abandon the guard rails carried forward from `decision-record-2026-04-18.md`: primary evidence only, measured > inferred, mark unknowns as unknowns
+
+### Community writeup (planned terminal deliverable)
+
+After Option 2 reaches a natural terminal point (success or definitive negative result), package findings for the vintage-computing RE community. Content: project arc, tools built, findings, process lessons, Option 2 results. Defer packaging until terminal. Tracked informally; will be created as a separate doc when the time comes.
+
+### Phase 3.1-3.3 archive (SDS optimization — superseded, preserved as evidence of why Option 2 was chosen)
 
 ### Phase 3.1-3.3 archive: SDS optimization data (kept as evidence of supersession)
 
