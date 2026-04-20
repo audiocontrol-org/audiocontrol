@@ -2114,6 +2114,27 @@ correct. Every finding should distinguish direct evidence from inference.
   treat the remaining install edge as upstream/nonliteral rather than buried in the
   local descriptor constants themselves.
 
+- Finding 112: the far-out `0xce24` / `0xce28` occurrences also stay in generic
+  framework/UI territory rather than opening a new sender path.
+  Evidence:
+  rechecking the nonlocal occurrences of these roots shows:
+  - `0x041052`, `0x0410d4`, `0x041156`: `0xce24` embedded immediately before symbol
+    strings like `SelectAllPrograms__16CSamplerDiskViewFUc`,
+    `SelectAllSamples__16CSamplerDiskViewFUc`, and
+    `SelectAllMisc__16CSamplerDiskViewFUc`
+  - `0x04e398`: `0xce24` immediately before the `DoDraw__12CAboutDialogFv` symbol band
+  - `0x07b212`: `0xce24` appears in what looks like a dense index/table region, not
+    code
+  - `0x075b8b`: the lone far-out `0xce28` occurrence also sits in a structured table
+    region with mixed constants and address-like entries, not executable-looking code
+  direct absolute-call counts to these far-out addresses are zero or incidental, and the
+  surrounding bytes do not reveal a bridge into `+0xa20` or `SetCommandProc`.
+  Interpretation:
+  even the nonlocal descriptor-root occurrences keep reinforcing the same model:
+  `0xce24` / `0xce28` are generic framework state or indexing anchors that recur in UI,
+  disk-view, and table/index contexts. They do not open a new visible install path for
+  the live sender.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
