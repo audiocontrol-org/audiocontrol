@@ -1522,6 +1522,22 @@ correct. Every finding should distinguish direct evidence from inference.
   computed dispatch that calls this generic setter with the live callback, not a missed
   second implementation inside sampler-private code.
 
+- Finding 80: the `CMESAEditor` constructor already mixes ordinary calls with a direct
+  jump into the tag-heavy `0x287ee` band, so the upper-layer setup path is not a clean
+  code-only call graph.
+  Evidence:
+  bounded reads of `__ct__11CMESAEditorFv` at `0x05971c` show direct absolute calls to
+  `0x031e24`, `0x0287ee`, `0x027a64`, `0x02d6f6`, and `0x0273fa`.
+  Of those, `0x0287ee` lands in the same nearby band that contains the `OTFL`, `DATA`,
+  `SS30`, `EBFL`, `EBFX`, and related four-character tag records rather than an ordinary
+  named function body. A raw search finds only one direct `jsr 0x0287ee` site in the
+  current binary, and it is this constructor call.
+  Interpretation:
+  the owner boundary above `CMESAEditor::SetCommandProc` is now even less likely to be a
+  simple missed caller in a conventional code-only graph. The constructor path already
+  crosses into tag/data-heavy territory, which makes a data-driven or otherwise
+  nonstandard setup edge more plausible than another ordinary in-resource helper.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

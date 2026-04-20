@@ -398,7 +398,10 @@ cleanly.
   The installer body itself also looks generic rather than sampler-private: the adjacent
   symbol strings identify it as `CMESAEditor::SetCommandProc` as well as
   `CSamplerModule::InitModule`, with no second specialized implementation visible between
-  those anchors.
+  those anchors. The constructor side also now looks less like a clean code-only graph
+  than before: `__ct__11CMESAEditorFv` makes one direct absolute call into the
+  tag-heavy `0x287ee` band near the `OTFL` / `DATA` / `SS30` records, rather than only
+  into ordinary named function bodies.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.
