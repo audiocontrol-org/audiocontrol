@@ -404,7 +404,9 @@ cleanly.
   into ordinary named function bodies. That `0x287ee` target now looks mixed rather than
   dead: the front of the region is now decoded as a fixed 6-byte tag/offset table
   (`OTFL`, `aeCT`, `aeDL`, `aeGE`, `aeGP`, `aeMN`, `aeSP`, `aete`), and later bytes in
-  the same band execute a tag-comparison/dispatch path.
+  the same band execute a tag-comparison/dispatch path. Those offsets resolve to local
+  case-arm entries inside the same region rather than to far-away handlers, so the
+  current best read is a self-contained tag-indexed front-end dispatcher.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.

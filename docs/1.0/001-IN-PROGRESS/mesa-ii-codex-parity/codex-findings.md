@@ -1578,6 +1578,29 @@ correct. Every finding should distinguish direct evidence from inference.
   a hidden conventional helper, while still keeping the ultimate live-callback owner edge
   unresolved.
 
+- Finding 83: the tag-table offsets resolve to local case arms inside the same band,
+  not to far-away handlers.
+  Evidence:
+  using the decoded table base at `0x287eb`, the current offsets land at:
+  `OTFL -> 0x28817`,
+  `aete -> 0x288fd`,
+  `aeCT -> 0x2893f`,
+  `aeGE -> 0x28943`,
+  `aeGP -> 0x2894d`,
+  `aeSP -> 0x28951`,
+  `aeMN -> 0x28967`,
+  `aeDL -> 0x28989`.
+  Those addresses all sit inside the same `0x287ee` region. Bounded reads show the later
+  entries at `0x2893f` onward are local case-arm starts that share the same
+  `push tag state / push this / jsr absolute / return to local dispatcher` shape, with
+  external calls such as `jsr 0x00a382`, `jsr 0x00a4f6`, `jsr 0x00a62c`,
+  `jsr 0x00b382`, `jsr 0x00c150`, and `jsr 0x00c304`.
+  Interpretation:
+  `0x287ee` is now best modeled as a self-contained tag-indexed front-end dispatcher:
+  the table maps tags to local case entries, and those local entries then fan out to
+  other helpers. That is a stronger and more specific framework-registry model than
+  “constructor jumps into a strange mixed region.”
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
