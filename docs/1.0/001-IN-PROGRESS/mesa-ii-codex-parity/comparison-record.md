@@ -391,7 +391,10 @@ cleanly.
   way: the seven current `cmp this+0xa20` sites sit in `GetPlugList`, the
   `CSamplerModule::DoMESACommand` / `UALL` region, `CreateQuickAccessWindow`, `Redraw`,
   `SelectWindow`, `BusyCursor`, and `BarCursor`, with no observed compare site landing in
-  a dedicated sender-install helper.
+  a dedicated sender-install helper. A broader `move.l ..., this+0xa20` sweep now points
+  the same way from the write side: beyond the known `SetCommandProc` installer at
+  `0x0286f3`, the current artifact set does not expose a second ordinary `move.l` store
+  into `+0xa20`, including the same stack-to-field encoding family used by that setter.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.

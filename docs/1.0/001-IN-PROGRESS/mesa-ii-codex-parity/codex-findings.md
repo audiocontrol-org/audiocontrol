@@ -1486,6 +1486,23 @@ correct. Every finding should distinguish direct evidence from inference.
   that the remaining owner boundary is either computed/indirect above this layer or
   outside the recovered resource graph entirely.
 
+- Finding 78: a broader `move.l ..., this+0xa20` store-family sweep still only finds the
+  known `SetCommandProc` installer.
+  Evidence:
+  the exact setter at file `0x0286f3` encodes as `21 6e 00 0c 0a 20`, i.e. a stack-slot
+  argument copied into `this+0xa20`.
+  A broader raw-hex sweep for `move.l`-family writes terminating at displacement
+  `0x0a20`, including the known `216e....0a20` stack-source form and looser
+  `21.. .... 0a20` variants, returns only that one hit at `0x0286f3` in the checked-in
+  `sampler-editor-rsrc.bin`.
+  Interpretation:
+  the negative owner-boundary result is now stronger than the earlier register-store
+  sweep alone: the current primary artifact set does not expose a second ordinary
+  `move.l` installer for `+0xa20`, even when the search includes the same stack-to-field
+  encoding family used by the known setter. If another install edge exists inside the
+  resource, it is likely using a more indirect mechanism than a straightforward field
+  store.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
