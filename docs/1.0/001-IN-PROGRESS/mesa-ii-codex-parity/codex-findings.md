@@ -1963,6 +1963,23 @@ correct. Every finding should distinguish direct evidence from inference.
   remaining install-edge question can be solved by ordinary function-call reconstruction
   alone.
 
+- Finding 104: the non-code constructor target `0x02797c` is reused in another generic
+  framework constructor pattern, which makes it look like shared registration/scaffolding
+  rather than anything sampler-upload-specific.
+  Evidence:
+  direct absolute `jsr 0x02797c` appears at two sites in `sampler-editor-rsrc.bin`:
+  one inside the `CMESAEditor` constructor sequence at `0x05968b`, and one inside
+  `__ct__13LGrafPortViewFv` at `0x050b39`.
+  The second site shows the same broad setup shape: nearby call to `0x02d6c8`, then the
+  `0x02797c` call, followed by object-field stores and later framework-style calls.
+  Raw bytes at `0x02797c` remain structured record data rather than executable-looking
+  code, with recurring entries containing values like `PHP1` and nearby `GPOP` records.
+  Interpretation:
+  `0x02797c` is increasingly best read as generic framework descriptor/registration
+  content reused across constructors, not a hidden sender-install helper. That further
+  weakens the idea that the remaining install edge will yield to ordinary direct-call
+  tracing alone.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
