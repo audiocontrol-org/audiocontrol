@@ -1871,6 +1871,43 @@ correct. Every finding should distinguish direct evidence from inference.
   understanding the editor broadly, but it is no longer a credible primary candidate
   for the missing sender-install or callback-install edge.
 
+- Finding 99: the other immediate `CMESAEditor` constructor call targets also fail to
+  expose a normal code-only bridge into `SetCommandProc`.
+  Evidence:
+  the constructor-era direct targets previously tracked alongside `0x287ee`
+  (`0x031e24`, `0x027a64`, `0x0273fa`, `0x02d6f6`) were rechecked directly in the
+  bounded full disassembly.
+  `0x031e24` still lands in the later mixed tag/dispatch region that compares markers
+  like `SMDB`, `SS30`, and `PROG`.
+  `0x027a64` and `0x0273fa` still land in dense table/data-style bands with repeated
+  structured constants rather than ordinary m68k function shape.
+  `0x02d6f6` also does not resolve to a clean standalone helper body; the bounded region
+  at that target immediately transitions into the same symbol/header-style band carrying
+  `Redraw__14CSamplerModuleFv`, rather than a straightforward code path that reaches the
+  generic `SetCommandProc` setter.
+  Interpretation:
+  the immediate constructor call surface above `CMESAEditor` is still not giving up a
+  normal helper path into the live callback install. The remaining owner edge continues
+  to look mixed, indirect, or otherwise nonstandard rather than one missed ordinary
+  function call.
+
+- Finding 100: the generic callback setter at `0x0286f3` currently has no literal
+  in-resource pointer trail at all.
+  Evidence:
+  direct byte-count checks over `sampler-editor-rsrc.bin` found zero occurrences of the
+  big-endian longword `0x000286f3`.
+  The same scan also found zero occurrences of the direct absolute-call encoding
+  `4eb9 000286f3`.
+  A looser 3-byte tail scan for `0x0286f3` also found zero occurrences.
+  By contrast, the obviously data-heavy constructor-adjacent targets such as `0x031e24`,
+  `0x027a64`, `0x02d6f6`, and `0x0273fa` do recur as raw address bytes in the binary.
+  Interpretation:
+  the visible `CMESAEditor::SetCommandProc` / `InitModule` setter is not currently being
+  reached through any ordinary literal pointer or direct absolute-call path preserved in
+  the checked-in resource. That materially strengthens the case that the live install
+  edge is computed, table-driven in a nonliteral way, or outside the recovered resource
+  graph entirely.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
