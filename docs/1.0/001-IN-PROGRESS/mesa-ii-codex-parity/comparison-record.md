@@ -417,7 +417,9 @@ cleanly.
   ladder and reuse the same downstream payload-handler tails. The two most distinctive
   entries, `OTFL` and `aete`, now look like setup-style entries: `OTFL` packages literal
   `AK11` / `DATA` tags before calling `0x006ac2`, while `aete` pushes literal `aete`
-  before calling `0x00a9a0`, and both then converge on the shared ladder.
+  before calling `0x00a9a0`, and both then converge on the shared ladder. Those setup
+  helpers also still live in the same opaque low-address format and still do not show the
+  known `+0xa20` callback signatures or ordinary m68k function markers.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.

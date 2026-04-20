@@ -1676,6 +1676,21 @@ correct. Every finding should distinguish direct evidence from inference.
   additional tag-specific setup before converging on the shared ladder and opaque payload
   layer.
 
+- Finding 88: the two setup helpers reached by `OTFL` and `aete` are themselves still in
+  the same opaque low-address format, not a clearer recovered code layer.
+  Evidence:
+  `OTFL` calls `0x006ac2`, and `aete` calls `0x00a9a0`.
+  Direct byte reads around both targets show the same dense low-address, table/data-like
+  format seen in the other opaque payload regions rather than ordinary m68k function
+  structure. Bounded checks over both targets found no common function markers
+  (`4e56`, `4e75`, `4eb9`) and none of the known `+0xa20` callback signatures
+  (`216e000c0a20`, `4aaa0a20`, `206a0a20`, `2f2a0a20`).
+  Interpretation:
+  the setup-entry analysis now converges with the payload-layer analysis instead of
+  escaping it. `OTFL` and `aete` do special setup before the shared ladder, but the
+  helpers they invoke still terminate in the same opaque low-address world rather than in
+  a cleaner owner/callback-install layer.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
