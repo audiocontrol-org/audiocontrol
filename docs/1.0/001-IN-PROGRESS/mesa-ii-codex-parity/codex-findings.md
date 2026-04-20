@@ -1830,6 +1830,25 @@ correct. Every finding should distinguish direct evidence from inference.
   workflows. That is another strong reason to keep it separate from the live transport
   path: it is clearly file/resource dispatch machinery.
 
+- Finding 97: the named helper tags used by that dispatch layer also line up with file
+  and resource operations rather than transport.
+  Evidence:
+  in the format-dispatch block around `0x031e00`, successful type checks on `SMDB`,
+  `SS30`, and `PROG` route into helper calls labeled `GDFS` and repeated `SDIS`.
+  The same general neighborhood contains named load/save functions such as
+  `LoadVersion1ProgramFile__14CSamplerModuleFP6FSSpecUc`,
+  `LoadVersion2ProgramFile__14CSamplerModuleFP6FSSpecUc`,
+  `LoadAllAIFFInFolder__14CSamplerModuleFslPUcs`, and
+  `LoadDiskDBaseFile__14CSamplerModuleFP6FSSpecUc`, plus literal file-type markers like
+  `AIFF`.
+  In `LoadAllAIFFInFolder`, the code explicitly checks `AIFF` and later calls
+  `0x006ac2`, reinforcing that the same helper family is being used inside file/resource
+  loading logic.
+  Interpretation:
+  the tag-dispatch helpers are not drifting back toward transport semantics. They keep
+  lining up with file/resource operations and file-type validation, which makes the
+  remaining live-sender/callback-install hypothesis on this branch even weaker.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

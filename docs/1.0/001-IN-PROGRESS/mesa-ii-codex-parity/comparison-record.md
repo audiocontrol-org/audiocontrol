@@ -444,7 +444,10 @@ cleanly.
   `DATA`, and the EB16 save paths write `EBFX` and `SS30` before calling later helpers.
   Later mixed blocks go further and dispatch on those tags explicitly: the region around
   `0x031e00` checks `SMDB`, `SS30`, and `PROG`, then routes into `GDFS` / `SDIS` helper
-  calls as part of save/load-style logic.
+  calls as part of save/load-style logic. Those helper tags also stay in the file/resource
+  world: the same neighborhood contains `LoadVersion1ProgramFile`,
+  `LoadVersion2ProgramFile`, `LoadAllAIFFInFolder`, `LoadDiskDBaseFile`, and literal
+  `AIFF`, and `LoadAllAIFFInFolder` also calls the distinct `0x006ac2` helper family.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.
