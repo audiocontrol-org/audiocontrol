@@ -1980,6 +1980,25 @@ correct. Every finding should distinguish direct evidence from inference.
   weakens the idea that the remaining install edge will yield to ordinary direct-call
   tracing alone.
 
+- Finding 105: once the exact `CMESAEditor` constructor callees are corrected, none of
+  them currently look like a dedicated live-sender install helper.
+  Evidence:
+  the exact constructor call set from raw bytes is:
+  `0x02d6c8`, `0x02797c`, `0x0287a8`, `0x031dc6`.
+  Current direct evidence for those targets is:
+  - `0x02797c`: shared descriptor/registration data reused from `LGrafPortView`
+  - `0x0287a8`: mangled-name/string band immediately before `GetPlugList`
+  - `0x02d6c8`: real code, but heavily reused and adjacent to the `Redraw` region rather
+    than a narrow install/setup symbol boundary
+  - `0x031dc6`: real code inside the later file/resource dispatch neighborhood that
+    checks markers like `SMDB` and `SS30`
+  Interpretation:
+  after correcting the exact target addresses from raw bytes, the constructor surface
+  actually looks less like a sender-install path than before. It resolves into generic
+  scaffolding, descriptor/string bands, reused UI/framework code, and file/resource
+  dispatch. The remaining install edge is therefore still more likely to be nonliteral,
+  table-driven in another layer, or outside the recovered resource graph.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
