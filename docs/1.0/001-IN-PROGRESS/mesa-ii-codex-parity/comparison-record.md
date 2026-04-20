@@ -432,7 +432,10 @@ cleanly.
   recurs in later mixed regions such as `0x02ea2d` (`AK11` / `DATA` plus
   `EBFL` / `EBFX` / `EBRV` / `PSYS` / `SMDB`) and `0x031e15`
   (`SMDB` / `SS30` / `PROG`), which makes the `0x287ee` registry look like one front-end
-  view onto a broader tag-based resource/type system.
+  view onto a broader tag-based resource/type system. Some of those tags are now anchored
+  to concrete sampler-module editor/file flows too: `EBRV` / `EBFX` / `SS30` appear in
+  the neighborhoods of `CreateFXFilerWindow` and `SaveEB16Reverb`, pushing their meaning
+  toward resource/document handling rather than callback installation.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.

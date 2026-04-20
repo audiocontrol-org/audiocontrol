@@ -1761,6 +1761,24 @@ correct. Every finding should distinguish direct evidence from inference.
   and further weakens the hypothesis that this path hides a conventional callback-install
   helper.
 
+- Finding 93: several recurring tags are now anchored to concrete sampler-module
+  editor/file flows rather than to transport or callback-install behavior.
+  Evidence:
+  the later mixed regions around `0x030050` and `0x03019c` sit next to named functions
+  like `CreateFXFilerWindow__14CSamplerModuleFv` and
+  `SaveEB16Reverb__14CSamplerModuleFP15DraggedFileData`.
+  In those neighborhoods, the recurring tag vocabulary reappears directly in context:
+  `EBRV` and `SS30` near the FX-filer/reverb save path,
+  `EBFX` and `SS30` near the adjacent save path,
+  and earlier mixed blocks around `0x02ea2d` also introduce `EBFL`, `EBFX`, `EBRV`,
+  `PSYS`, and `SMDB` after `AK11` / `DATA`.
+  Interpretation:
+  at least part of the broader tag system is now tied to concrete editor/file/resource
+  workflows such as EB16 reverb/effects handling, not to hidden callback installation.
+  That does not fully decode the low-address formats, but it further shifts the likely
+  meaning of these tags toward resource/document types and editor save/load plumbing
+  rather than transport or live sender setup.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
