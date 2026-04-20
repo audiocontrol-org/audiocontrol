@@ -11,6 +11,80 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-19: SRAW decode terminates at runtime boundary → strategic commit to Option 2
+
+### Feature: mesa-ii-reverse-engineering
+### Worktree: audiocontrol-mesa-ii-reverse-engineering
+
+### Goal
+Execute the SRAW decode (task #30) per the previous session's plan; evaluate the result and pick the next strategic move based on data.
+
+### Accomplished
+
+**Task #30 — SRAW decode (Outcome B):**
+- Delegated to hardware-protocol-engineer with a tightened prompt incorporating prior Codex parity findings (no patch installer in SCSI Plug binary; $001160 is real fall-through code) and explicit "termination at magic site is a valid complete answer" framing
+- Result: **two termination points** identified, both at runtime/external boundaries
+  - Termination 1: SEND_FUNC_SLOT at file 0x106e is a do-nothing stub (`BRA $1160`); real send function installed at runtime by Sampler Editor
+  - Termination 2: Indirect call at file 0x11fe goes through a function pointer in a socket slot descriptor, also installed by Sampler Editor (candidate: `CMESASocket::ConnectToPlug`)
+- **Critical finding:** SRAW vs BULK flag is consumed entirely by the externally-installed function — has NO effect on any downstream code in the SCSI Plug binary. Static decode of the SCSI Plug binary alone tells us nothing about how SRAW differs from BULK on the wire.
+- Class identity at $1172 verified as **CSCSIPlug** (not CMESASocket as my earlier spot-check guessed). Both classes use `+0` vtable convention; the load-from-`(a0)` pattern is consistent with either, so the disambiguator is what `a2` was set to in the SendData prologue (CSCSIPlug, not the socket).
+- Doc: `mesa-ii-analysis/sraw-decoded.md`
+
+**Codex parity wave on #315 (multiple substantive comments):**
+- Codex independently classified all 5 absolute JSR targets inside SendData (0x148, 0x0ca2, 0x0d54, 0x0dfc, 0x106e); only 0x106e remains as an unresolved ordinary local target
+- Codex narrowed install-edge search inside `sampler-editor-rsrc.bin`: no big-endian literal references to recovered InitModule/SetCommandProc entrypoints; no straightforward direct-store encodings to `this+0xa20` beyond known sites — strong negative result indicating the install edge is "external runtime patching or harness-side interception"
+- Codex recommended an asymmetric split: Claude goes dynamic (runtime/hardware validation), Codex stays sideways as narrow static boundary prover
+- I verified each of Codex's load-bearing claims from primary evidence BEFORE acting on them (lesson reinforced from session 8's failure mode):
+  - `jsr 0x148` jumps into "MESA SCSI Plug" string data ✅ verified via xxd
+  - DoMESACommand field writes match Codex's description ✅ verified at lines 1097/1105/1107/1099-1102
+  - SMDispatchReply has no refs to slot region ✅ grep returned no matches
+  - CSCSIPlug ctor has no refs to slot region ✅ verified from existing annotated artifact
+  - +0x0e42 is timeout config (init to 1800 at 0xc62; compared with -14010 return at 0x1410 + 0x1554) ✅ verified
+  - 0x0ca2 is A-trap mid-function entry (HUnlock) ✅ verified
+  - 0x0d54 is in DoMESACommand epilogue ✅ verified
+
+**Strategic commitment: Option 2 (harness end-to-end) via "terrain-as-necessary":**
+- User endorsed Option 2 with two motivations: curiosity/craft (worth attempting just to see if we can do it) + community value (vintage-computing RE writeup)
+- Critical refinement: don't build full Option 2 infrastructure up front; build minimum harness extension per Codex's priority test (P1-P4), assess between each
+- Decision record `decision-record-2026-04-19.md` created — supersedes the 2026-04-18 record's "continue MESA II RE" with the specific Option 2 commitment
+- Path A (task #31) reframed as step 0 prequel: static decode of install-edge path informs Option 2's bootstrap, doesn't compete with it
+- Community writeup added as planned terminal deliverable
+- README Phase 3 row + workplan Phase 3 section both rewritten to match
+- Branch merge question evaluated: don't merge `feature/mesa-ii-codex-parity` and `feature/mesa-ii-reverse-engineering`; the asymmetric split is by design, merging would mash together work meant to stay parallel
+
+### Didn't Work
+
+- **Multiple delegation interruptions while user pointed me at new Codex evidence.** I drafted the SRAW decode delegation prompt three times before the user (rightly) interrupted to surface new Codex info that should be incorporated. Repeated re-reading of the latest comment + verification of new claims took most of the session's wall-clock time. Net result was a much better-grounded final delegation, but the drafting churn was avoidable if I'd checked for new Codex updates BEFORE starting each draft.
+- **My initial "SRAW probably emits ASPACK-framed bytes" framing** when I started the round (treating MESA throughput as ~50 KB/s and assuming SRAW = the fast path). The user explicitly called this out: "You have no proof that ASPACK is actually fast — you know you can send high throughput ASPACK messages, but you don't know that it's not fast because the sampler just ACKs receipt and throws away the data." Audited my reasoning chain and found multiple unverified inferences I'd been propagating.
+
+### Course Corrections
+
+- **[FABRICATION] (caught by user)** Treated `upload_sample_aspack`'s "10x faster than SDS" code comment as fact when proposing next steps. User: "do not pursue any avenues that are based on conjecture without data." Reasoned-from-comment plans are the same shape as the bottom-of-session-4 SRAW "would need ASPACK wrap" inference, just dressed up as "we're 90% there." Audit afterward identified other claims I'd been propagating without primary evidence (MESA throughput estimates, "ASPACK delivers data" assumption from REPLY 0x16).
+- **[PROCESS] (self-corrected after user's third Codex-update interruption)** I should be checking for new GitHub comments on the active issue between major actions, not relying on the user to surface them. Especially when an active parity branch is doing independent work in parallel. Checking comments before drafting a delegation prompt is now part of the loop.
+- **[FABRICATION] (would have happened without verification)** Was about to post a doc-update comment on #315 acknowledging Codex's claims as fact. Slowed down per the recently-saved `feedback_verify_external_claims` memory; verified each load-bearing claim from primary evidence; THEN posted the comment with explicit "verified from X" language. Discipline applied this time without a user catch.
+
+### Quantitative
+
+- User messages this session: ~18
+- Commits this session: 2 (task #30 SRAW decode artifact + Option 2 decision-record/README/workplan)
+- Codex parity comments addressed on #315: ~5 substantive comments, all verified from primary evidence before acting
+- New tasks: 1 created, 1 reframed (#31 Path A from "competitor" to "step 0 prequel")
+- User course corrections: 1 explicit FABRICATION call (ASPACK speculation) + multiple "go check #315" prompts
+
+### Insights
+
+1. **Verifying external claims has become more reflexive.** Compared to session 8 (where Codex's `+2` vs `+0` vtable-offset finding caught me trusting without checking), this session I caught myself before posting and verified each load-bearing claim from primary evidence first. The discipline is now reflex, not afterthought. The `feedback_verify_external_claims` memory entry from earlier is doing its job.
+
+2. **The "terrain as necessary" frame is a meaningful improvement over Option 2 as originally scoped.** The original Option 2 framing in #315 was "weeks of work, uncertain payoff" — a binary commit-or-defer decision. The terrain frame breaks it into priority tests with stop-and-assess between them, each priority requiring incrementally more harness terrain. That's the same shape as the SDS optimization Phase 3.1-3.3 sequence, except aimed at a different rate-limiter. Predictable scope rhythm reduces commitment risk.
+
+3. **Negative results compound into clarity.** Static decode of the SCSI Plug binary exhausted (task #30) + Codex's negative search of the Sampler Editor binary for install edges = strong combined evidence that the install edge is external. Either source alone would be weaker. The same pattern played out earlier with Phase 3.2 + Phase 3.3 (both negative → device-is-the-bottleneck conclusion). Two independent negative results from different angles is a much stronger evidence base than one positive result.
+
+4. **The Codex/Claude split is settling into a clear protocol.** Codex provides primary-artifact static analysis with explicit confidence and termination markers; I verify their load-bearing claims from the same primary artifacts before propagating; we converge on shared conclusions or surface explicit disagreements. The cross-check pattern is itself a documented artifact (in the Codex parity branch's `comparison-record.md`). Worth knowing this exists as a model if a future project needs the same multi-agent setup.
+
+5. **The user's "fun + community value" motivation matters.** The pure-engineering case for Option 2 is borderline (3-6 weeks for an answer that may or may not yield a shippable bridge fix). The vintage-computing-craft case is much stronger — this is unique work that doesn't otherwise exist publicly. Mixing engineering and craft motivations in deliberate decision records (rather than treating only ROI as legitimate) keeps interesting work alive.
+
+---
+
 ## 2026-04-18: Phase 3.1-3.3 SDS optimization (NEGATIVE) → strategic reframe → SRAW decode is the path
 
 ### Feature: mesa-ii-reverse-engineering
