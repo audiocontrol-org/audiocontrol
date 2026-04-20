@@ -425,7 +425,10 @@ cleanly.
   `0x00c304` group, which shares a more self-similar grammar-like token pattern. That
   grammar-like subfamily also overlaps low-address parameter/help text regions such as the
   `LFO 1 rate` / `LFO 1 depth` area near `0x009f57`, which suggests declarative resource
-  metadata rather than hidden executable helper code.
+  metadata rather than hidden executable helper code. The distinct `0x006ac2` subfamily
+  also recurs across the same broad low-address resource neighborhood, with repeats near
+  parameter/help strings and UI class strings like `CGraphicControlList` and `CPopup`,
+  while still lacking ordinary m68k function markers.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.

@@ -1725,6 +1725,24 @@ correct. Every finding should distinguish direct evidence from inference.
   dispatcher may be selecting resource descriptors or templates rather than jumping into
   conventional code bodies.
 
+- Finding 91: the distinct `0x006ac2`-style subfamily also recurs inside low-address
+  resource neighborhoods rather than surfacing as ordinary code.
+  Evidence:
+  motifs from the `0x006ac2` family such as `fd560008` recur at multiple low offsets
+  including `0x005def`, `0x005dff`, `0x005f95`, `0x006082`, `0x006169`, `0x006270`,
+  `0x00636d`, `0x006469`, `0x00654b`, `0x006627`, `0x006718`, `0x0068f2`, and `0x006906`.
+  Bounded reads over representative sites like `0x005de0`, `0x005f80`, `0x006080`,
+  `0x006900`, `0x006b00`, and `0x006d00` show the same opaque tokenized byte style and
+  still lack ordinary m68k function markers.
+  The surrounding string table for this broader low-address band includes parameter/help
+  text such as `output level`, `velocity sensitivity`, and nearby UI class strings like
+  `CGraphicControlList` and `CPopup`, again indicating a resource-heavy neighborhood.
+  Interpretation:
+  the `0x006ac2` family no longer looks like a one-off hidden code escape hatch. It also
+  behaves like a recurring low-address resource/service format inside the same general
+  resource-heavy part of the binary. That further reduces the odds that the missing live
+  callback install path is hiding inside this subfamily as conventional executable code.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
