@@ -1999,6 +1999,27 @@ correct. Every finding should distinguish direct evidence from inference.
   dispatch. The remaining install edge is therefore still more likely to be nonliteral,
   table-driven in another layer, or outside the recovered resource graph.
 
+- Finding 106: the two remaining "real code" constructor callees separate cleanly into
+  generic framework scaffolding (`0x02d6c8`) and file/resource dispatch (`0x031dc6`).
+  Evidence:
+  direct absolute `jsr 0x02d6c8` appears at least 22 times across the binary, including
+  the `CMESAEditor` constructor, `LGrafPortView` constructor, and many other
+  constructor/setup-shaped regions with the same broad pattern: copy object-relative
+  blocks, call `0x02d6c8`, then store multiple object fields and continue with generic
+  framework calls. The target sits in real code near the `Redraw__14CSamplerModuleFv`
+  region, but its heavy reuse and surrounding call shapes make it look like shared
+  framework/UI scaffolding rather than a narrow sender-install routine.
+  By contrast, direct absolute `jsr 0x031dc6` appears only once in the current binary:
+  the `CMESAEditor` constructor sequence. The target itself sits in the already-traced
+  later file/resource dispatch region that checks markers like `SMDB`, `SS30`, and
+  `PROG`, then routes into helper calls in that same document/resource-handling layer.
+  Interpretation:
+  the two "real code" members of the exact constructor call set do not rescue the
+  install-edge hypothesis. One is broad, generic scaffolding reused across framework
+  setup; the other is a unique entry into the file/resource dispatch layer. That leaves
+  the whole explicit constructor call surface looking accounted for without exposing a
+  dedicated sender-install helper.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
