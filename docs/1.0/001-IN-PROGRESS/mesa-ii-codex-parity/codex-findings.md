@@ -1708,6 +1708,23 @@ correct. Every finding should distinguish direct evidence from inference.
   internal format or service family than the `aete`/shared-ladder payload targets. That
   is useful boundary information even before the semantics of either family are decoded.
 
+- Finding 90: the grammar-like low-address subfamily overlaps parameter/help resource
+  text, which suggests declarative resource data rather than hidden executable helpers.
+  Evidence:
+  one reused member of the grammar-like family appears at file `0x009f57`. Bounded reads
+  there show the same recurring token pattern seen in payload targets like `0x00a382`,
+  but the surrounding string table in the same low-address neighborhood is packed with
+  parameter/help text such as `LFO 1 rate`, `LFO 1 depth`, `LFO 2 waveform`, and related
+  synth-parameter descriptions.
+  Other reused matches for the same family occur at `0x00dfef`, `0x00ef0f`, `0x00f569`,
+  and `0x00fd63`, all still inside the same low-address, non-code-looking region.
+  Interpretation:
+  the currently traced grammar-like payload family is likely declarative resource or
+  metadata content, not hidden executable m68k helper code. That further weakens the idea
+  that the missing live-callback owner edge is buried in these payload targets. The
+  dispatcher may be selecting resource descriptors or templates rather than jumping into
+  conventional code bodies.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

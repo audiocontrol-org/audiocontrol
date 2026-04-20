@@ -422,7 +422,10 @@ cleanly.
   known `+0xa20` callback signatures or ordinary m68k function markers. The opaque
   payload layer is not uniform, though: `0x006ac2` has a distinct byte profile from the
   later `0x00a382` / `0x00a4f6` / `0x00a62c` / `0x00a9a0` / `0x00b382` / `0x00c150` /
-  `0x00c304` group, which shares a more self-similar grammar-like token pattern.
+  `0x00c304` group, which shares a more self-similar grammar-like token pattern. That
+  grammar-like subfamily also overlaps low-address parameter/help text regions such as the
+  `LFO 1 rate` / `LFO 1 depth` area near `0x009f57`, which suggests declarative resource
+  metadata rather than hidden executable helper code.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.
