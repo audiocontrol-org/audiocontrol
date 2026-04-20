@@ -11,6 +11,51 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-20: MESA II Parity Work Split Clarified
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Turn the recent static-boundary results into an explicit division of labor between the
+Claude and Codex efforts so both branches stop duplicating low-yield static work.
+
+### Accomplished
+- Wrote down the recommended split in the parity README and workplan:
+  - Claude owns runtime and hardware validation
+  - Codex owns narrow static owner-boundary proof around the `+0xa20` install path
+- Synced that recommendation to issue `#315` so the active Claude branch has the same
+  tactical framing
+- Kept the recommendation tied to the current evidence instead of preference:
+  the static `CSCSIPlug::SendData` surface is effectively exhausted, while the remaining
+  unresolved mechanism now sits at the seam between recovered static owner logic and
+  runtime-installed behavior
+
+### Didn't Work
+- There is still no recovered ordinary in-resource caller or pointer trail into
+  `InitModule` / `SetCommandProc`, so the static side still cannot name the exact
+  owner that provides the live command-proc
+
+### Course Corrections
+- **[STRATEGY]** Broad static analysis in both branches is now the wrong use of
+  parallel effort. The branch docs now say that explicitly.
+- **[COORDINATION]** Rather than leaving the split implicit in issue comments, I
+  recorded it in feature docs so the next session does not reopen the same debate.
+
+### Quantitative
+- Commits pushed in the surrounding owner-boundary pass: 4
+  `217bfb3a`, `55ac3f87`, `77977265`, `4aeab475`
+- New GitHub issue activity in this pass: 1 additive `#315` comment with the recommended
+  split
+
+### Insights
+1. The best use of Codex now is as a boundary prover, not as a second general-purpose
+   reverse-engineering branch on the same static plug surface.
+2. The best use of Claude now is the runtime/hardware loop, because that is where the
+   remaining uncertainty is concentrated.
+3. Once a static surface reaches exhaustion, documenting the stopping rule is as
+   important as documenting the findings that led there.
+
 ## 2026-04-17: MESA II Codex Parity Baseline, Issue Review, and Upload-Sequence Narrowing
 
 ### Feature: mesa-ii-codex-parity

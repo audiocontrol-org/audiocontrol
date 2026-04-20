@@ -93,3 +93,21 @@ whether `UALL` is plug-side or whether one more local `SendData` helper remains 
 found. It is how the live sender is installed, intercepted, or otherwise redirected at
 runtime, and how Claude's harness/runtime evidence on issue `#315` should reshape the
 next Codex parity target.
+
+## Recommended Split
+
+Based on the current combined Claude and Codex evidence, the most effective parallel
+assignment is now asymmetric:
+
+- Claude should own runtime and hardware validation:
+  initialization-time behavior, live sender installation or redirection, and the
+  product-facing question of whether any recovered path can plausibly reach
+  MESA-class throughput.
+- Codex should own narrow static boundary proof:
+  keep pressing only on whether the `+0xa20` command-proc install path stays inside
+  `sampler-editor-rsrc.bin` or leaves the recovered resource-level graph.
+
+Both efforts should avoid reopening broad static plug-body analysis unless new evidence
+reopens it. The current branch evidence already pushes `CSCSIPlug::SendData` close to
+exhaustion, while the remaining unknown now sits at the seam between static owner
+analysis and runtime behavior.

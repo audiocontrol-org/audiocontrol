@@ -197,6 +197,20 @@ The next reconciliation step is no longer another stale-doc cleanup issue. It is
 Claude and Codex synchronized on `#315` while shifting the next technical target outward
 to runtime install/intercept evidence rather than one more static helper hunt.
 
+Current recommended work split:
+
+- Claude:
+  runtime and hardware validation, especially around live sender installation,
+  post-transfer behavior, and whether the product bar can only be met by behavior that
+  is not recoverable from the checked-in static plug body alone.
+- Codex:
+  narrow static owner-boundary proof, especially whether the `+0xa20` command-proc
+  source can still be recovered from `sampler-editor-rsrc.bin` or whether the install
+  edge has effectively left the recovered resource graph.
+
+That split uses the two efforts complementarily instead of paying twice for more broad
+static RE on the same diminishing-return surface.
+
 ---
 
 ## Phase 4: Downstream Integration Guidance
@@ -220,10 +234,12 @@ to runtime install/intercept evidence rather than one more static helper hunt.
 
 - Review Claude's latest `#315` updates and keep the parity docs aligned with any new
   runtime/harness evidence around the live sender
-- Move the next Codex pass outward from the static plug body:
-  target harness/intercept behavior, resource initialization, open-time install paths,
-  or other runtime evidence that could explain how the live sender replaces or redirects
-  `0x106e`
+- Keep Codex on the static boundary only:
+  test computed or table-driven owner paths above `CMESAEditor`, and treat
+  “the install edge leaves the recovered resource graph” as a valid terminal finding
+- Leave runtime install/intercept validation, live sender observation, and hardware
+  throughput checks to the parallel Claude effort unless new evidence makes Codex-side
+  runtime work necessary
 - Keep the earlier sampler-side findings available as context, but avoid spending more
   cycles on local `SendData` helper hunting unless new evidence reopens that surface
 - If new runtime evidence contradicts the current static model, capture that as an
