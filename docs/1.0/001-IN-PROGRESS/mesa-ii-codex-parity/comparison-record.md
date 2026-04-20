@@ -406,7 +406,11 @@ cleanly.
   (`OTFL`, `aeCT`, `aeDL`, `aeGE`, `aeGP`, `aeMN`, `aeSP`, `aete`), and later bytes in
   the same band execute a tag-comparison/dispatch path. Those offsets resolve to local
   case-arm entries inside the same region rather than to far-away handlers, so the
-  current best read is a self-contained tag-indexed front-end dispatcher.
+  current best read is a self-contained tag-indexed front-end dispatcher. The next fan-out
+  layer is still opaque, though: the local case arms call low-address payload targets
+  like `0x00a382`, `0x00a4f6`, `0x00a62c`, `0x00b382`, `0x00c150`, and `0x00c304`, and
+  those targets still look like dense low-address table/data bands rather than ordinary
+  recovered helper bodies.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.

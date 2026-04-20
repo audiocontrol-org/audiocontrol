@@ -1601,6 +1601,24 @@ correct. Every finding should distinguish direct evidence from inference.
   other helpers. That is a stronger and more specific framework-registry model than
   “constructor jumps into a strange mixed region.”
 
+- Finding 84: the local case arms fan out to opaque low-address payload regions rather
+  than to ordinary-looking recovered code bodies.
+  Evidence:
+  the currently observed external calls from the local case arms include
+  `jsr 0x00a382`, `jsr 0x00a4f6`, `jsr 0x00a62c`, `jsr 0x00b382`,
+  `jsr 0x00c150`, and `jsr 0x00c304`.
+  Direct byte reads around representative targets such as `0x00a620`, `0x00b360`, and
+  `0x00c2f0` do not show coherent m68k prologues or normal function structure; instead
+  they continue the same dense low-address, table/data-like byte patterns seen elsewhere
+  in the opaque lower bands of `sampler-editor-rsrc.bin`.
+  Interpretation:
+  the constructor-side registry/dispatcher is now recovered more clearly than its payload
+  handlers. The front-end table and local case arms are in view, but the code they fan
+  out to still lives in opaque low-address regions that do not currently recover as
+  ordinary helper bodies. That pushes the remaining static boundary outward again: the
+  unresolved behavior is no longer in the front-end dispatcher itself, but in the
+  low-address payload targets it reaches.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
