@@ -1629,3 +1629,49 @@ see whether it still looked like a plausible owner-side callback-install boundar
 3. This kind of narrowing is still worth doing in parallel with Claude's runtime work:
    it gives a sharper exclusion boundary without reopening broad static reverse
    engineering.
+
+## 2026-04-20: MESA II Final Far-Out `ce28` Site Reduced To Lifecycle Metadata
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Check whether the lone far-out `0x0000ce28` table site was the last plausible
+table-shaped escape hatch for the callback-install edge.
+
+### Accomplished
+- Re-read the structured record around `0x075b8b` from raw bytes
+- Matched its helper/address family back to the already-known constructor/main/destructor
+  surface:
+  `0x000273fa`, `0x000317dc`, `0x0002d6f6`, and `0x0000ce28`
+- Verified that the same family is already present in live code around
+  `0x028221-0x028245` and `0x028625-0x02864f`
+- Recorded the stronger interpretation: this far-out `ce28` table site is lifecycle
+  metadata for the generic scaffold/helper layer, not a fresh sender-install path
+
+### Didn't Work
+- This still did not reveal a new caller into `SetCommandProc` or a new bridge into
+  `+0xa20`
+- The remaining boundary still does not present as an ordinary in-resource call graph
+
+### Course Corrections
+- **[EVIDENCE]** I treated the far-out `ce28` site as a fresh possibility only until the
+  raw-byte comparison showed it was re-encoding the same helper family already classified
+  from direct code.
+- **[PROCESS]** I kept collapsing the remaining far-out exceptions instead of reopening
+  broader static terrain. That made the boundary cleaner without duplicating Claude's
+  dynamic effort.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 114`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. The remaining far-out exceptions are becoming bookkeeping/lifecycle metadata, not new
+   semantic terrain.
+2. Re-encoding of already-known helper families is now a recurring pattern in the
+   generic framework layer.
+3. The static owner-boundary case is getting closer to a clean terminal conclusion:
+   no visible far-out table layer is opening a new sender-install path.

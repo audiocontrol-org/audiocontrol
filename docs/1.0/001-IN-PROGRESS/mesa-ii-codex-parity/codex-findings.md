@@ -2157,6 +2157,23 @@ correct. Every finding should distinguish direct evidence from inference.
   callback installer for `+0xa20` and does not weaken the current conclusion that the
   remaining install edge is higher/nonliteral or outside the recovered graph entirely.
 
+- Finding 114: the lone far-out `0x0000ce28` table occurrence also resolves back into
+  generic object-lifecycle metadata rather than a new callback-install path.
+  Evidence:
+  the structured record around `0x075b8b` carries the same helper/address family already
+  observed directly in the `CSamplerModule` constructor/main/destructor neighborhood:
+  `0x000273fa`, `0x000317dc`, `0x0002d6f6`, and `0x0000ce28`.
+  Those same values appear in the live code path around `0x028221-0x028245` and
+  `0x028625-0x02864f`, where `main` / constructor / destructor-adjacent code uses
+  `0x0000ce28` with the shared scaffold/helper sequence rather than any sender-specific
+  callback installer. The far-out table therefore does not introduce a new target set;
+  it re-encodes the same generic lifecycle/helper family already classified from direct
+  code.
+  Interpretation:
+  the last visible far-out `0xce28` site is better read as framework lifecycle metadata
+  for the existing scaffold/helper surface, not as a separate owner-side boundary for the
+  live sender install edge.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

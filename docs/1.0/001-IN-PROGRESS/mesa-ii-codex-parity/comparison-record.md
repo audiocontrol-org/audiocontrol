@@ -470,7 +470,12 @@ cleanly.
   `0x0001ce80`. Those payloads resolve to repeated structured descriptor blocks with
   nearby loop-parameter/help strings such as `3rd loop length.` and `loop dwell 3`,
   which makes that region a stronger UI/resource catalog exclusion rather than a hidden
-  owner-side callback-install path.
+  owner-side callback-install path. The lone far-out `0x0000ce28` table site now points
+  the same way: its surrounding record re-encodes the already-known
+  `0x000273fa` / `0x000317dc` / `0x0002d6f6` / `0x0000ce28` helper family seen directly
+  in the `CSamplerModule` constructor/main/destructor neighborhood, so it also looks
+  like lifecycle metadata for the existing scaffold surface rather than a new sender
+  boundary.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.
