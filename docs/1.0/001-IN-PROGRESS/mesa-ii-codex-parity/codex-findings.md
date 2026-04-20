@@ -1619,6 +1619,24 @@ correct. Every finding should distinguish direct evidence from inference.
   unresolved behavior is no longer in the front-end dispatcher itself, but in the
   low-address payload targets it reaches.
 
+- Finding 85: the currently traced low-address payload targets do not show the known
+  `+0xa20` callback-store/use patterns or ordinary m68k function markers.
+  Evidence:
+  bounded checks over representative payload targets
+  `0x00a382`, `0x00a4f6`, `0x00a62c`, `0x00b382`, `0x00c150`, and `0x00c304` found none
+  of the known `+0xa20` signatures:
+  `216e000c0a20` (the `SetCommandProc` stack-to-field store),
+  `4aaa0a20` (compare),
+  `206a0a20` (load/call-through),
+  or `2f2a0a20` (push/use in `OpenModule`).
+  The same bounded slices also lack common ordinary function markers such as `4e56`
+  (`link`), `4e75` (`rts`), or even direct absolute `4eb9` call opcodes.
+  Interpretation:
+  the currently visible payload layer still does not intersect the known generic callback
+  machinery. That makes it less likely that the missing live-callback owner edge is
+  hiding inside these already-traced low-address payload targets, and more likely that
+  the callback install path stays above them or crosses into a different opaque layer.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

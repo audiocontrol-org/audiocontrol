@@ -410,7 +410,9 @@ cleanly.
   layer is still opaque, though: the local case arms call low-address payload targets
   like `0x00a382`, `0x00a4f6`, `0x00a62c`, `0x00b382`, `0x00c150`, and `0x00c304`, and
   those targets still look like dense low-address table/data bands rather than ordinary
-  recovered helper bodies.
+  recovered helper bodies. Bounded checks over those payload targets also found none of
+  the known `+0xa20` callback signatures and none of the usual `link` / `rts` / absolute
+  `jsr` markers of ordinary recovered m68k functions.
   That makes the remaining live-sender gap look less like a missed in-binary helper and
   more like external runtime patching or harness-side interception. Claude's newer
   workplan now targets that same remaining gap directly.
