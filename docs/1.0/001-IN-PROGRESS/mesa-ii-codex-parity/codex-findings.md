@@ -1939,6 +1939,30 @@ correct. Every finding should distinguish direct evidence from inference.
   still confined to `OpenModule`'s socket bring-up path, which further narrows the
   missing install edge upstream rather than sideways.
 
+- Finding 103: the exact `CMESAEditor` constructor `jsr` targets are even stranger than
+  the earlier approximate disassembly view suggested: two of them land in non-code
+  descriptor/string territory.
+  Evidence:
+  raw bytes around file `0x05965f` show the constructor issuing these exact direct
+  absolute calls in order:
+  `4eb9 0002d6c8`, `4eb9 0002797c`, `4eb9 000287a8`, `4eb9 00031dc6`.
+  Rechecking those exact targets against the raw binary shows:
+  - `0x02d6c8` lands inside real code near the `Redraw__14CSamplerModuleFv` region,
+    but not at a clean symbol boundary
+  - `0x02797c` lands in dense structured table data, not executable-looking code
+  - `0x0287a8` lands in the mangled-name/string band immediately before
+    `GetPlugList__14CSamplerModuleFv`, not on the following code body at `0x0287c0`
+  - `0x031dc6` lands in real code inside the later file/resource dispatch region
+  Direct byte-count checks also show that `0x02797c` and `0x0287a8` are not merely
+  incidental address bytes; both do appear in direct absolute `jsr` encodings elsewhere
+  in the binary.
+  Interpretation:
+  even the constructor's explicit absolute-call surface is not a normal "all targets are
+  helper functions" graph. In this binary, direct `jsr` targets can legitimately point
+  into table/descriptor/string bands. That is a strong warning against assuming that the
+  remaining install-edge question can be solved by ordinary function-call reconstruction
+  alone.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
