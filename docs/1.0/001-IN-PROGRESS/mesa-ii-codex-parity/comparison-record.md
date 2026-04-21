@@ -523,6 +523,19 @@ cleanly.
   not close the `SocketInfo[+0]` question yet, but it raises the status of Claude's
   current candidate from loose speculation to the strongest concrete function candidate
   currently visible in the recovered graph.
+  Codex has now also closed the plug-side selector gap from raw bytes alone. In the
+  inline selector table embedded directly after `CMESAPlugIn::DoMESACommand`'s
+  `jsr 0x0148`, the offset word for `CONS` sits at file `0x08de` with value `0x002e`,
+  which lands exactly on the `0x090c` `(this, MESACommand[+6]) -> vtable+0x30` arm.
+  The offset word for `ASOK` sits at file `0x08d2` with value `0x0052`, which lands
+  exactly on the `0x0924` `(this, MESACommand[+6]) -> vtable+0x34` arm. The adjacent
+  symbol-string anchors remain consistent with the earlier body identities:
+  `ConnectToSocket__11CMESAPlugInFP10SocketInfo` at `0x09d2` and
+  `ActivateSocket__11CMESAPlugInFP10SocketInfo` at `0x0a5e`. So the current
+  Claude/Codex model is stronger than before: the selector table itself now proves
+  `CONS -> ConnectToSocket` and `ASOK -> ActivateSocket`, leaving the remaining question
+  entirely on the editor side of the `CONS` payload rather than in the plug's own arm
+  mapping.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

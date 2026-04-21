@@ -2059,3 +2059,55 @@ socket `+24` is not just a raw constant, but a real callback candidate relevant 
 2. The remaining uncertainty is routing, not the existence of a plausible callback body.
 3. This is the right point to keep the distinction between "strong candidate" and
    "proved identity" explicit, because the last hop still matters.
+
+## 2026-04-20: MESA II `CONS` and `ASOK` Arm Mapping Proved from Plug Selector Table
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Close the last plug-side routing gap in the `SocketInfo[+0]` frontier by proving from
+raw bytes which `CMESAPlugIn::DoMESACommand` arm is `CONS` and which is `ASOK`.
+
+### Accomplished
+- Re-read the raw `CMESAPlugIn::DoMESACommand` bytes at file `0x089a-0x099e`
+- Decoded the inline selector table format as:
+  - default offset word `0x00d6`
+  - then tag/offset records where each offset is relative to its own word location
+- Proved these two key landings from the raw table:
+  - `CONS`: offset word at `0x08de`, value `0x002e`, target `0x090c`
+  - `ASOK`: offset word at `0x08d2`, value `0x0052`, target `0x0924`
+- Reconfirmed that:
+  - arm `0x090c` passes `(this, MESACommand[+6])` to vtable `+0x30`
+  - arm `0x0924` passes `(this, MESACommand[+6])` to vtable `+0x34`
+- Reconfirmed the adjacent callee anchors:
+  - `ConnectToSocket__11CMESAPlugInFP10SocketInfo` at `0x09d2`
+  - `ActivateSocket__11CMESAPlugInFP10SocketInfo` at `0x0a5e`
+- Updated parity docs to promote the `CONS -> ConnectToSocket` / `ASOK -> ActivateSocket`
+  mapping from combined inference to raw-table-backed proof
+
+### Didn't Work
+- This still does not fully prove that the editor-side `CONS` payload exposes raw
+  embedded-socket `this+24` as `SocketInfo[+0]`
+- So the remaining uncertainty is now entirely on the editor side of the handshake, not
+  in the plug's own tag routing
+
+### Course Corrections
+- **[EVIDENCE]** The right static target was the selector table arithmetic itself, not
+  more generic plug-method speculation. Once the offset-word format was read correctly,
+  the `CONS`/`ASOK` ambiguity collapsed cleanly.
+- **[PROCESS]** This is a good example of how to finish a narrow decode: stop looking
+  for broader patterns once the raw table already contains the answer.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 123`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. The plug-side tag mapping is now settled from primary bytes: `CONS` and `ASOK` are
+   no longer inference-grade.
+2. The remaining `SocketInfo[+0]` question is purely editor-side packing/routing.
+3. This materially strengthens the current `0x212 -> 0x028169` callback candidate,
+   because the plug-side copy path it would feed is now directly matched.

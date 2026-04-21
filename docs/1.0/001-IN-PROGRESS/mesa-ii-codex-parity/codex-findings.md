@@ -2352,6 +2352,33 @@ correct. Every finding should distinguish direct evidence from inference.
   stored exactly where the current `CONS -> this+24` model points, with a callback-style
   single-argument entry shape.
 
+- Finding 123: the inline selector table inside `CMESAPlugIn::DoMESACommand` directly
+  resolves `CONS` to the `0x090c` `SocketInfo` arm and `ASOK` to the `0x0924`
+  `SocketInfo` arm.
+  Evidence:
+  raw bytes at file `0x089a-0x099e` show `CMESAPlugIn::DoMESACommand` calling helper
+  `0x0148`, then embedding a selector table that begins with default offset `0x00d6`
+  followed by tag/offset records:
+  `AQUT 0x0006`, `ASOK 0x0052`, `CLSM 0x0096`, `CONS 0x002e`, `IDEN 0x0068`,
+  `OPNM 0x0052`, `SEND 0x0002`.
+  Those offsets are relative to the offset-word location itself, so the table lands on:
+  `ASOK @ 0x08d2 + 0x0052 = 0x0924` and
+  `CONS @ 0x08de + 0x002e = 0x090c`.
+  The arm at `0x090c` pushes `MESACommand[+6]` and `this`, then dispatches through
+  vtable offset `+0x30`; the arm at `0x0924` pushes the same `(this, MESACommand[+6])`
+  pair and dispatches through vtable offset `+0x34`.
+  The callee bodies remain anchored by their adjacent symbol strings:
+  `ConnectToSocket__11CMESAPlugInFP10SocketInfo` begins at file `0x09d2`, and
+  `ActivateSocket__11CMESAPlugInFP10SocketInfo` begins at file `0x0a5e`.
+  Interpretation:
+  Codex no longer needs to infer the `CONS` versus `ASOK` arm mapping from the broader
+  combined model. The selector table itself now proves the routing:
+  `CONS -> 0x090c -> vtable+0x30 -> ConnectToSocket(SocketInfo*)`, and
+  `ASOK -> 0x0924 -> vtable+0x34 -> ActivateSocket(SocketInfo*)`.
+  That materially strengthens the current `SocketInfo[+0]` frontier: if the editor-side
+  `CONS` payload exposes raw embedded-socket `this+24`, then the plug-side path that
+  copies it into `plug_slot[+0]` is now directly matched.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
@@ -2378,10 +2405,9 @@ correct. Every finding should distinguish direct evidence from inference.
 - Why does `ActivateThisSocket`'s checked-in `lea %a4@(12482),%a0` land on a zeroed
   10-byte template under the current best sampler-editor A4-base interpretation, while
   the adjacent `ConnectToPlug` call sites line up cleanly with `ASOK` and `CONS`?
-- Can Codex prove which of the two `SocketInfo`-style plug-dispatch arms
-  (`vtable+0x30` at `0x090c` vs `vtable+0x34` at `0x0924`) is the `ASOK` activation
-  arm, and which is the `CONS` connect/query arm, from the selector helper alone rather
-  than from the current stronger combined inference?
+- Does the editor-side `CONS` payload expose raw embedded-socket `this+24` as
+  `SocketInfo[+0]`, or is there still a transform layer between the current strongest
+  candidate at file `0x028169` and the plug-visible `ConnectToSocket` copy path?
 - What concrete `CSamplerModule`-side method lives at the `vtable[0x28]` `UALL` call
   site, and does it in turn route into a sampler object, a UI update path, or both?
 - Can Codex decode the function body behind `CAkaiSampler` slot `0x0170` directly
