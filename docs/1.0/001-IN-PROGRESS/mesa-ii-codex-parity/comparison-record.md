@@ -587,6 +587,14 @@ cleanly.
   into `CSCSIPlug+0x0d6e`. If no match is found, `SendData` returns `-14000`
   immediately. So `IP_Data[+12]` is now measured as the front-end routing key that
   selects the downstream target word used by every later `0x106e` caller family.
+  Codex has now also resolved the persistent `%a3@` long in the shared sender frame.
+  Direct `objdump` of `CMESASocket::AcceptData` at `0x05a1e1` shows `%a3@` being used
+  as copy length, compared against socket capacity, and then stored into `this@(4)`,
+  while `%a3@(4)` is the payload pointer and `%a3@(8)` is the reply/result tag.
+  Combined with the measured `SendData` frame layout, that means the stable `0x106e`
+  caller frame is no longer carrying an opaque extra long there: it is carrying byte
+  count. This narrows the remaining sender-side semantic unknowns to the mode byte and
+  the nullable context long.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

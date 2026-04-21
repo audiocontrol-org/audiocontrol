@@ -2491,6 +2491,26 @@ correct. Every finding should distinguish direct evidence from inference.
   routing field, while the remaining `0x106e` unknowns stay concentrated in mode/source/
   context and the persistent `%a3@` long.
 
+- Finding 129: `IP_Data[+0]` is the payload-length field, which means the persistent
+  `%a3@` slot in every `0x106e` caller family is carrying byte count, not an opaque
+  descriptor pointer.
+  Evidence:
+  `CMESASocket::AcceptData` at file `0x05a1e1` loads `IP_Data*` into `%a3`, then:
+  compares `%a3@` against `this@(16)` at `0x05a1f7-0x05a1fd`,
+  uses `%a3@(4)` as source pointer and `%a3@` as copy length for trap `0xa02e` at
+  `0x05a1ff-0x05a209`,
+  stores `%a3@(8)` into `this@(12)` at `0x05a20b`,
+  and stores `%a3@` into `this@(4)` at `0x05a211`.
+  Combined with the measured `SendData` frame layout, where every direct `jsr 0x106e`
+  site pushes `%a3@` in the same argument slot, this now identifies that live-in field
+  as payload length / byte count.
+  Interpretation:
+  the stable `0x106e` frame is now materially decoded:
+  target word, mode byte, source pointer, nullable context long, and byte count are all
+  visible from primary artifacts. The remaining semantic unknowns are narrower than
+  before: chiefly the exact meaning of the mode byte, the nullable context long, and how
+  those drive wire emission inside or beyond the shared sender.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
@@ -2529,12 +2549,11 @@ correct. Every finding should distinguish direct evidence from inference.
 - How do the measured caller families into `0x106e` map onto concrete wire modes:
   raw-SRAW, SDS-header-like control sends, and the derived-length path that post-processes
   `%fp@(-30)` after return?
-- What does `arg5 = %a3@` represent in the shared `0x106e` sender frame across all
-  caller families, and is it an `IP_Data*`, a higher-level command descriptor, or
-  another transport-control block?
 - What exact per-entry long at `self@(62 + 46*i)` is being matched against `IP_Data[+12]`,
   and how does that routing key relate to the plug/socket identity established by the
   earlier `CONS` handshake?
+- What exact semantic does the nullable context long in the shared `0x106e` frame carry:
+  prebuilt transport buffer, framing template, or some other plug-local state root?
 - What concrete `CSamplerModule`-side method lives at the `vtable[0x28]` `UALL` call
   site, and does it in turn route into a sampler object, a UI update path, or both?
 - Can Codex decode the function body behind `CAkaiSampler` slot `0x0170` directly

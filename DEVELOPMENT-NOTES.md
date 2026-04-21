@@ -2350,3 +2350,50 @@ downstream send-engine ambiguity.
 1. `IP_Data[+12]` is a measured target-selection key, not part of the later branch split.
 2. The later `0x106e` frame should now be read as operating on an already-selected target.
 3. The next high-value unresolved `IP_Data` field is `%a3@`, not `IP_Data[+12]`.
+
+## 2026-04-21: MESA II `IP_Data[+0]` Is Byte Count, Not an Opaque Sender Long
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Resolve the last persistent `IP_Data` field that stayed live across every measured
+`0x106e` caller family, and determine whether it was length, flags, or some higher-level
+descriptor pointer.
+
+### Accomplished
+- Re-decoded `CMESASocket::AcceptData` at file `0x05a1e1`
+- Verified that `AcceptData` treats:
+  - `%a3@` as incoming byte count
+  - `%a3@(4)` as payload pointer
+  - `%a3@(8)` as reply/result tag
+- Verified concrete uses:
+  - compare `%a3@` against socket capacity
+  - call trap `0xa02e` with `%a3@(4)` as source pointer and `%a3@` as copy length
+  - store `%a3@(8)` into socket `+12`
+  - store `%a3@` into socket `+4`
+- Combined that with the already measured `SendData` frame layout to resolve the
+  persistent `%a3@` argument into the shared `0x106e` caller contract as byte count
+
+### Didn't Work
+- This still does not decode the exact semantic meaning of the mode byte in the shared
+  sender frame
+- It also does not yet settle what role the nullable context long plays in wire emission
+
+### Course Corrections
+- **[EVIDENCE]** The `0x106e` frame is now less mysterious than before: one more
+  previously opaque live-in slot is just length.
+- **[PROCESS]** This is the right way to close field-map ambiguity: verify structure
+  semantics in another measured consumer instead of guessing from the sender alone.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 129`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. The shared `0x106e` frame now has a measured byte-count field, not an opaque extra long.
+2. `IP_Data` is becoming a concrete field map rather than a vague transport blob.
+3. The remaining sender-side semantic unknowns are now narrower: mode byte and nullable
+   context long.
