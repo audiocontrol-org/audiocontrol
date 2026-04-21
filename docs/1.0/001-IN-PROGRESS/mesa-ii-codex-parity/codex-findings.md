@@ -2328,6 +2328,30 @@ correct. Every finding should distinguish direct evidence from inference.
   the `CONS` payload is transformed through another layer before the plug sees it, or
   whether the overwrite happens outside the currently recovered socket-method surface.
 
+- Finding 122: the constructor-seeded value at embedded-socket `+24` resolves to a real
+  callback-shaped function at file `0x028169`, making it the strongest current static
+  candidate for `SocketInfo[+0]` if the `CONS` payload exposes raw `this+24`.
+  Evidence:
+  `CMESAEditor` constructor writes EDIT-relative `0x212` into editor `this+0x8c` at
+  file `0x0596e7-0x0596ed`, and embedded `CMESASocket` starts at editor `this+0x74`, so
+  that is socket `this+24`.
+  With the current EDIT base `0x027f57`, `0x212` resolves to file `0x028169`.
+  Raw bytes at file `0x028169` begin:
+  `4e 56 00 00 48 e7 1c 30 24 6e 00 08 4e b9 00 00 01 04 ...`, i.e. a valid
+  `link`-prologue function entry that takes one stack argument (`fp@(8)`) and
+  immediately performs the THINK C world-setup call at `0x0104`.
+  The same body then reads the incoming struct's first long and compares it against the
+  literal `INIT` at file `0x02817d-0x028185`.
+  A direct byte-pattern search still finds the ctor store as the only exact longword
+  write currently known for embedded-socket `+24`.
+  Interpretation:
+  Codex cannot yet promote `0x028169` to a proved `SocketInfo[+0]` identity, because the
+  exact editor-side `CONS` packing/routing layer is still not fully matched and the
+  plug-side `CONS` arm mapping remains one step short of body-decoded proof. But this is
+  now the strongest concrete callback candidate in the recovered graph: a real function,
+  stored exactly where the current `CONS -> this+24` model points, with a callback-style
+  single-argument entry shape.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

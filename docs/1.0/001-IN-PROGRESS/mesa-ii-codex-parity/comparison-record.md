@@ -516,6 +516,13 @@ cleanly.
   current `SocketInfo[+0]` frontier, but it does make the next question sharper:
   whether the payload view is transformed through another layer before the plug sees it,
   or whether the overwrite happens outside the currently recovered socket-method set.
+  Codex has now also validated the concrete candidate behind that ctor seed: the stored
+  EDIT-relative value `0x212` resolves to file `0x028169`, whose raw bytes form a real
+  callback-shaped function entry (`link`, saved registers, one stack arg, immediate
+  THINK C world-setup call, then an `INIT` tag check on the incoming struct). That does
+  not close the `SocketInfo[+0]` question yet, but it raises the status of Claude's
+  current candidate from loose speculation to the strongest concrete function candidate
+  currently visible in the recovered graph.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

@@ -2011,3 +2011,51 @@ address and the plug-side frontier still asks what becomes `SocketInfo[+0]`.
    also "what layer makes that field plug-visible?"
 3. A bounded negative result is still useful when it narrows where the next overwrite can
    plausibly live.
+
+## 2026-04-20: MESA II `0x212 -> 0x028169` Is the Strongest Current Callback Candidate
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Pressure-test Claude's newer A.7 claim that the ctor-seeded `0x212` value at embedded
+socket `+24` is not just a raw constant, but a real callback candidate relevant to
+`SocketInfo[+0]`.
+
+### Accomplished
+- Verified that the ctor-seeded value at embedded-socket `+24` is EDIT-relative `0x212`
+- Verified that `0x212 + EDIT_BASE(0x027f57) = file 0x028169`
+- Verified from raw bytes that file `0x028169` is a real function entry:
+  `4e 56 00 00 48 e7 1c 30 ...`
+- Verified that the function takes one stack argument, immediately performs the THINK C
+  world-setup call at `0x0104`, and then checks the incoming struct's first long against
+  literal `INIT`
+- Updated parity docs to promote `0x028169` as the strongest current
+  `SocketInfo[+0]` callback candidate, while keeping it below the threshold of a proved
+  identity
+
+### Didn't Work
+- This still did not fully prove that raw socket `this+24` is exactly what the plug sees
+  as `SocketInfo[+0]`
+- It also did not close the exact plug-side `CONS` arm mapping gap inside
+  `CMESAPlugIn::DoMESACommand`
+
+### Course Corrections
+- **[EVIDENCE]** The right posture here is "strongest concrete candidate," not "solved."
+  The function evidence is real, but the last routing step is still not fully body-decoded.
+- **[PROCESS]** This is a good example of letting Claude's newer hypothesis raise the
+  priority of a check without inheriting the conclusion blindly. The candidate survived
+  primary-artifact review, but only at the right confidence level.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 122`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. The `CONS` frontier now has a best visible function candidate, not just an abstract
+   unresolved field.
+2. The remaining uncertainty is routing, not the existence of a plausible callback body.
+3. This is the right point to keep the distinction between "strong candidate" and
+   "proved identity" explicit, because the last hop still matters.
