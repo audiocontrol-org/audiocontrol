@@ -536,6 +536,17 @@ cleanly.
   `CONS -> ConnectToSocket` and `ASOK -> ActivateSocket`, leaving the remaining question
   entirely on the editor side of the `CONS` payload rather than in the plug's own arm
   mapping.
+  Codex also now has a tighter read on the outbound SRAW preamble inside
+  `CSCSIPlug::SendData`. Raw `objdump` of file `0x0ec0-0x1072` shows the measured
+  `SRAW` branch at `0x0f40` comparing `IP_Data[+8]` against literal `'SRAW'`, then
+  pushing a seven-argument frame and calling the shared sender entry at `0x106e`
+  without any visible inline CDB-byte writes or nibble-expansion logic. The adjacent
+  non-`SRAW` branch is the one that performs direct byte inspection (`0xf0`, `0x47`,
+  `0x48`) and reconstructs a doubled length from bytes `11..14` before calling
+  `0x106e`. So the current Codex read is sharper than "SRAW unresolved": the measured
+  pre-`0x106e` SRAW path looks like a higher-level raw send shape handed to the shared
+  sender, while the more explicit byte-level header work lives in the neighboring
+  non-`SRAW` path.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

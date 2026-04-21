@@ -2111,3 +2111,54 @@ raw bytes which `CMESAPlugIn::DoMESACommand` arm is `CONS` and which is `ASOK`.
 2. The remaining `SocketInfo[+0]` question is purely editor-side packing/routing.
 3. This materially strengthens the current `0x212 -> 0x028169` callback candidate,
    because the plug-side copy path it would feed is now directly matched.
+
+## 2026-04-21: MESA II SRAW Pre-`0x106e` Path Looks Like Argument Packaging, Not Inline CDB Construction
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Push on the original outbound-SRAW question without overclaiming: determine whether the
+SRAW-specific `CSCSIPlug::SendData` body visibly constructs wire/CDB bytes before the
+shared sender entry at `0x106e`.
+
+### Accomplished
+- Re-decoded the relevant `CSCSIPlug::SendData` window with `m68k-elf-objdump`
+  (`0x0ec0-0x1072`)
+- Verified the measured SRAW branch anchor:
+  `0x0f40: cmpil #'SRAW', %a3@(8)`
+- Verified that the matching branch pushes a seven-argument frame and calls the shared
+  sender entry at `0x0f60 -> jsr 0x106e`
+- Verified that this measured SRAW path contains no obvious inline CDB-byte stores, no
+  local nibble-expansion loop, and no visible `move.b #0x0c,...` opcode write before
+  the shared sender call
+- Verified that the immediately adjacent non-`SRAW` branch is the one doing explicit
+  byte inspection and derived-length reconstruction before its own `0x106e` call
+- Updated parity docs to capture this as a sharper negative claim rather than another
+  vague “still unresolved” note
+
+### Didn't Work
+- This still does not reveal the final outbound SRAW wire bytes
+- It also does not identify whether the shared sender at `0x106e` itself constructs the
+  CDB or whether a later runtime-installed layer still intervenes
+
+### Course Corrections
+- **[EVIDENCE]** The right measured claim here is structural, not final-protocol:
+  pre-`0x106e` SRAW does not look like inline CDB assembly.
+- **[PROCESS]** In the exhausted-boundary phase, this is the right kind of progress:
+  narrow the unresolved mechanism and separate the real SRAW-specific branch from the
+  neighboring header-inspection path instead of forcing a premature wire-byte theory.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 124`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. The measured SRAW path is now cleaner: it packages arguments and hands off.
+2. The obvious byte-level header parsing lives next door in the non-`SRAW` path, not in
+   the measured `cmpil #'SRAW'` branch.
+3. The highest-value remaining static question is now whether `0x106e` itself builds the
+   outbound CDB from that call frame or whether the real wire emission still crosses a
+   runtime boundary.

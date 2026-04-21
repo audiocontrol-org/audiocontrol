@@ -2379,6 +2379,31 @@ correct. Every finding should distinguish direct evidence from inference.
   `CONS` payload exposes raw embedded-socket `this+24`, then the plug-side path that
   copies it into `plug_slot[+0]` is now directly matched.
 
+- Finding 124: the SRAW-specific body in `CSCSIPlug::SendData` does not visibly
+  construct outbound CDB bytes inline before the shared `0x106e` sender call; instead it
+  packages higher-level arguments and hands them to the shared sender entry.
+  Evidence:
+  `m68k-elf-objdump` of file `0x0ec0-0x1072` shows the SRAW branch beginning at
+  `0x0f40` with `cmpil #'SRAW', %a3@(8)`. On the matching path, the code pushes seven
+  values and then calls `jsr 0x106e` at `0x0f60`:
+  `pea %fp@(-30)`, `movel %a3@,-(sp)`, `movel %a2@(0x0e3c),-(sp)`, `movel %d6,-(sp)`,
+  `moveb #1,-(sp)`, `movew %a2@(0x0d6e),-(sp)`, `movel %a2,-(sp)`.
+  No inline `move.b #0x0c,...`, no direct stores into a local CDB buffer, and no
+  nibble-expansion loop appear in that measured SRAW path before the shared sender call.
+  By contrast, the immediately adjacent non-`SRAW` path at `0x0f70-0x103e` inspects
+  bytes in the buffer pointed to by `%d6` (`cmpib #-16,%a0@`, `cmpib #71,%a0@(1)`,
+  `cmpib #72,%a0@(4)`), extracts four 7-bit fields from offsets `11..14`, rebuilds a
+  length value in `%fp@(-38)`, doubles it into `%fp@(-30)`, and only then calls
+  `jsr 0x106e`.
+  Interpretation:
+  Codex still does not have the final outbound wire bytes for SRAW, because the live
+  sender behind `0x106e` remains unresolved. But the pre-`0x106e` body now supports a
+  sharper negative claim: the measured SRAW-specific branch is not doing visible
+  inline CDB-byte assembly or header nibble-repacking itself. The more structured
+  byte-level inspection and derived-length logic live in the neighboring non-`SRAW`
+  path, which makes the SRAW branch look more like a rawer higher-level send shape
+  handed off to the shared sender rather than a local mirror of the BULK builder.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
@@ -2408,6 +2433,9 @@ correct. Every finding should distinguish direct evidence from inference.
 - Does the editor-side `CONS` payload expose raw embedded-socket `this+24` as
   `SocketInfo[+0]`, or is there still a transform layer between the current strongest
   candidate at file `0x028169` and the plug-visible `ConnectToSocket` copy path?
+- Does the shared sender behind `0x106e` construct the actual outbound SRAW CDB/wire
+  bytes from the seven-argument call frame prepared by the `0x0f40` branch, or does a
+  later runtime-installed layer still intervene before bus emission?
 - What concrete `CSamplerModule`-side method lives at the `vtable[0x28]` `UALL` call
   site, and does it in turn route into a sampler object, a UI update path, or both?
 - Can Codex decode the function body behind `CAkaiSampler` slot `0x0170` directly
