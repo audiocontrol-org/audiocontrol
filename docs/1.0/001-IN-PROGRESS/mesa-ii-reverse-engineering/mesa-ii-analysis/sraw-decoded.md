@@ -9,7 +9,7 @@
 >
 > **Resolved findings:**
 >
-> 1. **$106e is not a patchable slot.** Bytes at 0x106e: `60 00 00 f0` = `BRA.W +0xf0` inside `CSCSIPlug::SendData` (THINK C shared-entry; 4 JSR sites at 0x0f60/0x0fbc/0x102c/0x10b2 all reach the shared epilogue at 0x1160). No installer.
+> 1. **$106e bytes are `60 00 00 f0` = `BRA.W +0xf0` in the binary-as-shipped** (MEASURED). Path A framed this as a "THINK C shared-entry to 0x1160 — no installer needed." That interpretation was **WRONG** and is revised by Path A.9 (2026-04-21): the 0x1160 code is the reply-processing epilogue (tests D3 status and reply_var, dispatches via vtable[+24]) — it does NOT construct or send CDB bytes. If 0x106e were truly just a BRA to 0x1160, SendData would never emit anything on the wire. The actual CDB-building code lives in `CSCSIPlug::SMSendData` at file 0x160c, whose calling convention matches the 7-arg stack frame the SRAW handler assembles at 0x0f4a-0x0f5e (MEASURED, exact match). **Revised reading (CANDIDATE, strong):** 0x106e is a runtime-patchable slot. The 2-byte displacement at 0x1070-0x1071 gets rewritten at load time from `00 f0` (→ 0x1160) to `05 9c`-ish (→ 0x160c = SMSendData). The pre-patch BRA is a defensive placeholder that terminates gracefully if the patch never fires. Patcher identity is **OPEN** (task #35 / Path A.11).
 >
 > 2. **The editor does NOT install via `SocketInfo[+12]`** (verified across `CMESAEditor::ctor` + 5 PowerPlant sub-ctors). That field stays NULL.
 >
@@ -23,7 +23,7 @@
 >
 > 7. **MEASURED (REPLY direction only):** Path A.8 traced the dispatch chain from `main`'s non-INIT branch through `vtable[+0xA8]` → dispatcher at file 0x0287C5 → 'ADAT' handler at 0x599a7 → `CMESASocket::AcceptData` at file 0x5A1E1 (`_BlockMove` reply bytes into `CMESASocket[+8]`; store 'SRAW'/'SYSX' tag at `[+12]`).
 >
-> 8. **OPEN:** the OUTBOUND CDB emission for SRAW audio uploads (the original Phase 3 question) lives in `CSCSIPlug::SendData` SRAW handler body at scsi-plug file 0x0ec0, BEFORE the shared-entry JSR at $106e. Task #33 (Path A.9) targets it.
+> 8. **MEASURED (Path A.9, 2026-04-21):** OUTBOUND CDB wire bytes for SRAW = `0C 00 [len_hi] [len_mid] [len_lo] 80` (24-bit big-endian byte count; byte 5 = 0x80 when flag=1/SRAW, 0x00 otherwise). CDB opcode write at scsi-plug file 0x163c: `1d 7c 00 0c ff fa` = `MOVE.B #$0C, (-6, A6)`. No nibble or 7-bit encoding observed in SRAW handler body. Bus emission via JSR 0x1620 at scsi-plug file 0x169a → CSCSIUtils::SCSICommand → SCSIDispatch `$A089` (downstream chain CANDIDATE). **CANDIDATE:** audio buffer is sent as raw bytes (no encoding observed statically in the handler; encoding inside SMSendData's bus emission body is OPEN — A.11 may surface it). **OPEN:** who patches 0x1070-0x1071 at load time (task #35 / Path A.11).
 >
 > Sections 8/9 of this doc below are obsolete. Trust the path-a*.md docs (each carries its own calibration banner).
 
