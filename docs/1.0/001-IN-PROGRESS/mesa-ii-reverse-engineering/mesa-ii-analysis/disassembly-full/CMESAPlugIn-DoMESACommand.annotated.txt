@@ -1,0 +1,159 @@
+; ============================================================
+; Function: CMESAPlugInFP11MESACommand::DoMESACommand
+;   Mangled: DoMESACommand__11CMESAPlugInFP11MESACommand
+;   File offset: 0x00089a - 0x0009a0 (262 bytes)
+;   Binary: scsi-plug-rsrc.bin
+; ============================================================
+
+  00089a:  4e56 0000             linkw %fp,#0
+  00089e:  48e7 1030             moveml %d3/%a2-%a3,%sp@-
+  0008a2:  266e 0008             moveal %fp@(8),%a3
+  0008a6:  246e 000c             moveal %fp@(12),%a2
+  0008aa:  4aab 0004             tstl %a3@(4)
+  0008ae:  6700 00e8             beqw 0x998
+  0008b2:  7601                  moveq #1,%d3
+  0008b4:  2012                  movel %a2@,%d0
+  0008b6:  4eb9 0000 0148        jsr 0x148  ; -> 0x000148/file:0x000148 (name unknown)
+  0008bc:  00d6                  .short 0x00d6
+  0008be:  4151                  .short 0x4151
+  0008c0:  5554                  subqw #2,%a4@
+  0008c2:  5345                  subqw #1,%d5
+  0008c4:  4e44                  trap #4
+  0008c6:  0006 4151             orib #81,%d6
+  0008ca:  5554                  subqw #2,%a4@
+  0008cc:  00b2 4153 4f4b        oril #1095978827,%a2@(52,%d0:w)
+  0008d4:  434c                  .short 0x434c
+  0008d6:  534d                  subqw #1,%a5
+  0008d8:  0096 434f 4e53        oril #1129270867,%fp@
+  0008de:  002e 4944 454e        orib #68,%fp@(17742)
+  0008e4:  0068 4f50 4e4d        oriw #20304,%a0@(20045)
+  0008ea:  0052 5345             oriw #21317,%a2@
+  0008ee:  4e44                  trap #4
+  0008f0:  0002 2f2a             orib #42,%d2
+  0008f4:  0006 2f0b             orib #11,%d6
+  0008f8:  2057                  moveal %sp@,%a0
+  0008fa:  2250                  moveal %a0@,%a1
+  0008fc:  2269 0014             moveal %a1@(20),%a1
+  000900:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  000902:  3540 0004             movew %d0,%a2@(4)
+  000906:  504f                  addqw #8,%sp
+  000908:  6000 008a             braw 0x994
+  00090c:  2f2a 0006             movel %a2@(6),%sp@-
+  000910:  2f0b                  movel %a3,%sp@-
+  000912:  2057                  moveal %sp@,%a0
+  000914:  2250                  moveal %a0@,%a1
+  000916:  2269 0030             moveal %a1@(48),%a1
+  00091a:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  00091c:  3540 0004             movew %d0,%a2@(4)
+  000920:  504f                  addqw #8,%sp
+  000922:  6070                  bras 0x994
+  000924:  2f2a 0006             movel %a2@(6),%sp@-
+  000928:  2f0b                  movel %a3,%sp@-
+  00092a:  2057                  moveal %sp@,%a0
+  00092c:  2250                  moveal %a0@,%a1
+  00092e:  2269 0034             moveal %a1@(52),%a1
+  000932:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  000934:  3540 0004             movew %d0,%a2@(4)
+  000938:  504f                  addqw #8,%sp
+  00093a:  6058                  bras 0x994
+  00093c:  2f0b                  movel %a3,%sp@-
+  00093e:  2057                  moveal %sp@,%a0
+  000940:  2250                  moveal %a0@,%a1
+  000942:  2269 0024             moveal %a1@(36),%a1
+  000946:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  000948:  584f                  addqw #4,%sp
+  00094a:  6048                  bras 0x994
+  00094c:  204b                  moveal %a3,%a0
+  00094e:  5088                  addql #8,%a0
+  000950:  226a 0006             moveal %a2@(6),%a1
+  000954:  22d8                  movel %a0@+,%a1@+
+  000956:  22d8                  movel %a0@+,%a1@+
+  000958:  22d8                  movel %a0@+,%a1@+
+  00095a:  22d8                  movel %a0@+,%a1@+
+  00095c:  22d8                  movel %a0@+,%a1@+
+  00095e:  22d8                  movel %a0@+,%a1@+
+  000960:  22d8                  movel %a0@+,%a1@+
+  000962:  22d8                  movel %a0@+,%a1@+
+  000964:  22d8                  movel %a0@+,%a1@+
+  000966:  22d8                  movel %a0@+,%a1@+
+  000968:  22d8                  movel %a0@+,%a1@+
+  00096a:  22d8                  movel %a0@+,%a1@+
+  00096c:  6026                  bras 0x994
+  00096e:  2f0b                  movel %a3,%sp@-
+  000970:  2057                  moveal %sp@,%a0
+  000972:  2250                  moveal %a0@,%a1
+  000974:  2269 0028             moveal %a1@(40),%a1
+  000978:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  00097a:  584f                  addqw #4,%sp
+  00097c:  6016                  bras 0x994
+  00097e:  2f2a 0006             movel %a2@(6),%sp@-
+  000982:  2f0b                  movel %a3,%sp@-
+  000984:  2057                  moveal %sp@,%a0
+  000986:  2250                  moveal %a0@,%a1
+  000988:  2269 002c             moveal %a1@(44),%a1
+  00098c:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  00098e:  504f                  addqw #8,%sp
+  000990:  6002                  bras 0x994
+  000992:  7600                  moveq #0,%d3
+  000994:  1003                  moveb %d3,%d0
+  000996:  6002                  bras 0x99a
+  000998:  7000                  moveq #0,%d0
+  00099a:  4cdf 0c08             moveml %sp@+,%d3/%a2-%a3
+  00099e:  4e5e                  unlk %fp
+
+; ============================================================
+; CALL GRAPH (all JSR/BSR targets)
+; ============================================================
+;   0x0008b6  jsr 0x000148 (file:0x000148)  ->  (name not found)
+
+; ============================================================
+; NEARBY FUNCTIONS (within 0x5000 of target range)
+; ============================================================
+;   0x00070c  main  [main]
+;   0x0007ac    [__ct__11CMESAPlugInFv]
+;   0x000812    [__dt__11CMESAPlugInFv]
+;   0x000856  CMESAPlugInFPFP11MESACommand_v::SetMESAProc  [SetMESAProc__11CMESAPlugInFPFP11MESACommand_v]
+;   0x00089a  CMESAPlugInFP11MESACommand::DoMESACommand  [DoMESACommand__11CMESAPlugInFP11MESACommand]
+;   0x0009d2  CMESAPlugInFP10SocketInfo::ConnectToSocket  [ConnectToSocket__11CMESAPlugInFP10SocketInfo]
+;   0x000a5e  CMESAPlugInFP10SocketInfo::ActivateSocket  [ActivateSocket__11CMESAPlugInFP10SocketInfo]
+;   0x000ae6  CMESAPlugInFUc::BusyCursor  [BusyCursor__11CMESAPlugInFUc]
+;   0x000b40  CMESAPlugInFUs::KeyIsPressed  [KeyIsPressed__11CMESAPlugInFUs]
+;   0x000b98  CMESAPlugInFv::GetSockets  [GetSockets__11CMESAPlugInFv]
+;   0x000bc6    [__ct__9CSCSIPlugFv]
+;   0x000c8a    [__dt__9CSCSIPlugFv]
+;   0x000ce4  CSCSIPlugFP11MESACommand::DoMESACommand  [DoMESACommand__9CSCSIPlugFP11MESACommand]
+;   0x000d8e  CSCSIPlugFv::Open  [Open__9CSCSIPlugFv]
+;   0x000dac  CSCSIPlugFv::Close  [Close__9CSCSIPlugFv]
+;   0x000dca  CSCSIPlugFPl::DoAboutToQuit  [DoAboutToQuit__9CSCSIPlugFPl]
+;   0x000df2  CSCSIPlugFP7IP_Data::SendData  [SendData__9CSCSIPlugFP7IP_Data]
+;   0x001240  CSCSIPlugFsUcUc::SetSCSIMIDIMode  [SetSCSIMIDIMode__9CSCSIPlugFsUcUc]
+;   0x0012f2  CSCSIPlugFsUc::SMDataByteEnquiry  [SMDataByteEnquiry__9CSCSIPlugFsUc]
+;   0x00139a  CSCSIPlugFsPUcUcPl::SMDispatchReply  [SMDispatchReply__9CSCSIPlugFsPUcUcPl]
+;   0x00160c  CSCSIPlugFsUcPUcPUclPl::SMSendData  [SMSendData__9CSCSIPlugFsUcPUcPUclPl]
+;   0x001700  CSCSIPlugFUl::ChooseSCSI  [ChooseSCSI__9CSCSIPlugFUl]
+;   0x001b1c    [__ct__10CSCSIUtilsFv]
+;   0x001bbe  CSCSIUtilsFsP3CdbPUcUlls::SCSICommand  [SCSICommand__10CSCSIUtilsFsP3CdbPUcUlls]
+;   0x001d4a  CSCSIUtilsFccPUcUl::Inquiry  [Inquiry__10CSCSIUtilsFccPUcUl]
+;   0x001dc2  CSCSIUtilsFs::TestUnitReady  [TestUnitReady__10CSCSIUtilsFs]
+;   0x001e1c  CSCSIUtilsFs::WaitUntilReady  [WaitUntilReady__10CSCSIUtilsFs]
+;   0x001eb8  CSCSIUtilsFc::ResetBus  [ResetBus__10CSCSIUtilsFc]
+;   0x001f0e  CSCSIUtilsFv::IdentifyBusses  [IdentifyBusses__10CSCSIUtilsFv]
+;   0x002150    [__ct__7CDialogFsPv]
+;   0x0021ac    [__dt__7CDialogFv]
+;   0x0021fe  CDialogFv::Show  [Show__7CDialogFv]
+;   0x002234  CDialogFv::Draw  [Draw__7CDialogFv]
+;   0x002280  CDialogFv::Do  [Do__7CDialogFv]
+;   0x002524  CDialogFsPUc::GetItemText  [GetItemText__7CDialogFsPUc]
+;   0x00256e  CDialogFs::GetItemValue  [GetItemValue__7CDialogFs]
+;   0x0025c0  CDialogFs::ToggleCheckBox  [ToggleCheckBox__7CDialogFs]
+;   0x002624  CDialogFUc::SetIsMovable  [SetIsMovable__7CDialogFUc]
+;   0x002652  CDialogFv::IsMovable  [IsMovable__7CDialogFv]
+;   0x00267a  CDialogFPUc::SetTitle  [SetTitle__7CDialogFPUc]
+;   0x0026aa    [__ct__11CSCSIDialogFsPv]
+;   0x002728    [__dt__11CSCSIDialogFv]
+;   0x00277a  CSCSIDialogFsPUc::SetLine  [SetLine__11CSCSIDialogFsPUc]
+;   0x0027f4  CSCSIDialogFs::DoItemHit  [DoItemHit__11CSCSIDialogFs]
+;   0x00283a  CSCSIDialogFv::DoDraw  [DoDraw__11CSCSIDialogFv]
+;   0x002922  CSCSIDialogFcs::DoKeyPress  [DoKeyPress__11CSCSIDialogFcs]
+;   0x00294c  CSCSIDialogFv::DoNull  [DoNull__11CSCSIDialogFv]
+;   0x002982  CSCSIDialogF5PointsPs::DoMouseDown  [DoMouseDown__11CSCSIDialogF5PointsPs]

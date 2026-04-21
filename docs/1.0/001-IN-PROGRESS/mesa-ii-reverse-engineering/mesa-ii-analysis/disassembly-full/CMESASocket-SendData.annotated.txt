@@ -1,0 +1,339 @@
+; ============================================================
+; Function: unknown
+;   Mangled: unknown
+;   File offset: 0x05a109 - 0x05a1bf (182 bytes)
+;   Binary: sampler-editor-rsrc.bin
+; ============================================================
+
+  05a109:  4e75                  rts
+  05a10b:  8024                  orb %a4@-,%d0
+  05a10d:  4163                  .short 0x4163
+  05a10f:  7469                  moveq #105,%d2
+  05a111:  7661                  moveq #97,%d3
+  05a113:  7465                  moveq #101,%d2
+  05a115:  5468 6973             addqw #2,%a0@(26995)
+  05a119:  536f 636b             subqw #1,%sp@(25451)
+  05a11d:  6574                  bcss 0x5a193
+  05a11f:  5f5f                  subqw #7,%sp@+
+  05a121:  3131 434d             movew %a1@(0)@(0),%a0@-
+  05a125:  4553                  .short 0x4553
+  05a127:  4153                  .short 0x4153
+  05a129:  6f63                  bles 0x5a18e
+  05a12b:  6b65                  bmis 0x5a192
+  05a12d:  7446                  moveq #70,%d2
+  05a12f:  5563                  subqw #2,%a3@-
+  05a131:  0000 4e56             orib #86,%d0
+  05a135:  ffe6                  .short 0xffe6
+  05a137:  2f0a                  movel %a2,%sp@-
+  05a139:  2f03                  movel %d3,%sp@-
+  05a13b:  246e 0008             moveal %fp@(8),%a2
+  05a13f:  363c d508             movew #-11000,%d3
+  05a143:  4aaa 0046             tstl %a2@(70)
+  05a147:  676e                  beqs 0x5a1b7
+  05a149:  2f0a                  movel %a2,%sp@-
+  05a14b:  2057                  moveal %sp@,%a0
+  05a14d:  2250                  moveal %a0@,%a1
+  05a14f:  2269 002c             moveal %a1@(44),%a1
+  05a153:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  05a155:  41ec 30b2             lea %a4@(12466),%a0
+  05a159:  43ee fff0             lea %fp@(-16),%a1
+  05a15d:  22d8                  movel %a0@+,%a1@+
+  05a15f:  22d8                  movel %a0@+,%a1@+
+  05a161:  22d8                  movel %a0@+,%a1@+
+  05a163:  22d8                  movel %a0@+,%a1@+
+  05a165:  2d6e 0010 fff0        movel %fp@(16),%fp@(-16)
+  05a16b:  2d6e 000c fff4        movel %fp@(12),%fp@(-12)
+  05a171:  2d6e 0014 fff8        movel %fp@(20),%fp@(-8)
+  05a177:  2d6a 003e fffc        movel %a2@(62),%fp@(-4)
+  05a17d:  41ec 30a8             lea %a4@(12456),%a0
+  05a181:  43ee ffe6             lea %fp@(-26),%a1
+  05a185:  22d8                  movel %a0@+,%a1@+
+  05a187:  22d8                  movel %a0@+,%a1@+
+  05a189:  32d8                  movew %a0@+,%a1@+
+  05a18b:  41ee fff0             lea %fp@(-16),%a0
+  05a18f:  2d48 ffec             movel %a0,%fp@(-20)
+  05a193:  7030                  moveq #48,%d0
+  05a195:  c1ea 09aa             mulsw %a2@(2474),%d0
+  05a199:  4ab2 0852             tstl %a2@(52,%d0:l)
+  05a19d:  584f                  addqw #4,%sp
+  05a19f:  6712                  beqs 0x5a1b3
+  05a1a1:  486e ffe6             pea %fp@(-26)
+  05a1a5:  7030                  moveq #48,%d0
+  05a1a7:  c1ea 09aa             mulsw %a2@(2474),%d0
+  05a1ab:  2072 0852             moveal %a2@(52,%d0:l),%a0
+  05a1af:  4e90                  jsr %a0@  ; vtable dispatch (indirect)
+  05a1b1:  584f                  addqw #4,%sp
+  05a1b3:  362e ffea             movew %fp@(-22),%d3
+  05a1b7:  3003                  movew %d3,%d0
+  05a1b9:  261f                  movel %sp@+,%d3
+  05a1bb:  245f                  moveal %sp@+,%a2
+  05a1bd:  4e5e                  unlk %fp
+
+; ============================================================
+; CALL GRAPH (all JSR/BSR targets)
+; ============================================================
+
+; ============================================================
+; NEARBY FUNCTIONS (within 0x5000 of target range)
+; ============================================================
+;   0x055195  LViewFll::FindShallowSubPaneContaining  [FindShallowSubPaneContaining__5LViewFll]
+;   0x05524d  LViewFR15SMouseDownEvent::Click  [Click__5LViewFR15SMouseDownEvent]
+;   0x0552cb  LViewF5PointRC11EventRecord::AdjustCursor  [AdjustCursor__5LViewF5PointRC11EventRecord]
+;   0x055361  LViewFl::FindPaneByID  [FindPaneByID__5LViewFl]
+;   0x0553f5  LViewFl::GetValueForPaneID  [GetValueForPaneID__5LViewFl]
+;   0x055455  LViewFll::SetValueForPaneID  [SetValueForPaneID__5LViewFll]
+;   0x0554b1  LViewFlPUc::GetDescriptorForPaneID  [GetDescriptorForPaneID__5LViewFlPUc]
+;   0x055519  LViewFlPCUc::SetDescriptorForPaneID  [SetDescriptorForPaneID__5LViewFlPCUc]
+;   0x05564d    [__dt__11LAttachableFv]
+;   0x05569f  LAttachableFP11LAttachmentP11LAttachmentUc::AddAttachment  [AddAttachment__11LAttachableFP11LAttachmentP11LAttachmentUc]
+;   0x05577f  LAttachableFP11LAttachment::RemoveAttachment  [RemoveAttachment__11LAttachableFP11LAttachment]
+;   0x055803  LAttachableFv::RemoveAllAttachments  [RemoveAllAttachments__11LAttachableFv]
+;   0x0558cd  LAttachableFlPv::ExecuteAttachments  [ExecuteAttachments__11LAttachableFlPv]
+;   0x05596b    [__ct__6LArrayFUlP11LComparatorUc]
+;   0x055a6f    [__dt__6LArrayFv]
+;   0x055b79  LArrayCFlPv::FetchItemAt  [FetchItemAt__6LArrayCFlPv]
+;   0x055bd1  LArrayCFlPvRUl::FetchItemAt  [FetchItemAt__6LArrayCFlPvRUl]
+;   0x055c71  LArrayCFPCvUl::FetchIndexOf  [FetchIndexOf__6LArrayCFPCvUl]
+;   0x055ceb  LArrayFUllPCvUl::InsertItemsAt  [InsertItemsAt__6LArrayFUllPCvUl]
+;   0x055dfb  LArrayFUll::RemoveItemsAt  [RemoveItemsAt__6LArrayFUll]
+;   0x055ee7  LArrayFUllPCvUl::AssignItemsAt  [AssignItemsAt__6LArrayFUllPCvUl]
+;   0x055fb1  LArrayFll::SwapItems  [SwapItems__6LArrayFll]
+;   0x05604f  LArrayFll::MoveItem  [MoveItem__6LArrayFll]
+;   0x0560f7  LArrayFPCvUl::Remove  [Remove__6LArrayFPCvUl]
+;   0x056153  LArrayCFv::Lock  [Lock__6LArrayCFv]
+;   0x05618f  LArrayCFv::Unlock  [Unlock__6LArrayCFv]
+;   0x056207  LArrayFUlUl::AdjustAllocation  [AdjustAllocation__6LArrayFUlUl]
+;   0x05625f  LArrayFUlUl::InternalAdjustAllocation  [InternalAdjustAllocation__6LArrayFUlUl]
+;   0x0562eb  LArrayFll::AdjustStorage  [AdjustStorage__6LArrayFll]
+;   0x056381  LArrayFv::Sort  [Sort__6LArrayFv]
+;   0x0564ef  LArrayCFPCv::FetchIndexOfKey  [FetchIndexOfKey__6LArrayCFPCv]
+;   0x056555  LArrayCFPCvUl::FetchInsertIndexOf  [FetchInsertIndexOf__6LArrayCFPCvUl]
+;   0x05662f  LArrayCFPCv::FetchInsertIndexOfKey  [FetchInsertIndexOfKey__6LArrayCFPCv]
+;   0x0566fd  LArrayFP14LArrayIterator::AttachIterator  [AttachIterator__6LArrayFP14LArrayIterator]
+;   0x05674f  LArrayFP14LArrayIterator::DetachIterator  [DetachIterator__6LArrayFP14LArrayIterator]
+;   0x0567e1  LArrayFUll::ItemsInserted  [ItemsInserted__6LArrayFUll]
+;   0x056837  LArrayFUll::ItemsRemoved  [ItemsRemoved__6LArrayFUll]
+;   0x05688b  LArrayCFlPv::PeekItem  [PeekItem__6LArrayCFlPv]
+;   0x056903  LArrayFlPCvUl::PokeItem  [PokeItem__6LArrayFlPCvUl]
+;   0x056971  LArrayFllll::ShiftItems  [ShiftItems__6LArrayFllll]
+;   0x0569eb  LArrayFUllPCvUl::StoreNewItems  [StoreNewItems__6LArrayFUllPCvUl]
+;   0x056a55  LArrayFllPv::InternalSwapItems  [InternalSwapItems__6LArrayFllPv]
+;   0x056add  LArrayFllPv::InternalMoveItem  [InternalMoveItem__6LArrayFllPv]
+;   0x056b9f  LArrayFll::InternalCopyItem  [InternalCopyItem__6LArrayFll]
+;   0x056bfb  LArrayCFPCvUl::LinearSearch  [LinearSearch__6LArrayCFPCvUl]
+;   0x056c8f  LArrayCFPCv::LinearSearchByKey  [LinearSearchByKey__6LArrayCFPCv]
+;   0x056d21  LArrayCFPCvUl::BinarySearch  [BinarySearch__6LArrayCFPCvUl]
+;   0x056ddd  LArrayCFPCv::BinarySearchByKey  [BinarySearchByKey__6LArrayCFPCv]
+;   0x056f1d    [__ct__14LArrayIteratorFR6LArrayl]
+;   0x056f7b    [__dt__14LArrayIteratorFv]
+;   0x057033  LArrayIteratorFl::ResetTo  [ResetTo__14LArrayIteratorFl]
+;   0x0570a1  LArrayIteratorFPv::Current  [Current__14LArrayIteratorFPv]
+;   0x0570f7  LArrayIteratorFPv::Next  [Next__14LArrayIteratorFPv]
+;   0x057149  LArrayIteratorFPv::Previous  [Previous__14LArrayIteratorFPv]
+;   0x057199  LArrayIteratorFv::CalcPreviousIndex  [CalcPreviousIndex__14LArrayIteratorFv]
+;   0x0572df  LArrayIteratorFUll::ItemsInserted  [ItemsInserted__14LArrayIteratorFUll]
+;   0x057349  LArrayIteratorFUll::ItemsRemoved  [ItemsRemoved__14LArrayIteratorFUll]
+;   0x0573c7    [__ct__5LListFv]
+;   0x057405    [__dt__5LListFv]
+;   0x05744f  LListFlPCv::SetItemAt  [SetItemAt__5LListFlPCv]
+;   0x05748d    [__ct__13LListIteratorFR5LListl]
+;   0x0574cd    [__dt__13LListIteratorFv]
+;   0x057519    [__ct__14StHandleLockerFPPc]
+;   0x05755f    [__dt__14StHandleLockerFv]
+;   0x0575a9    [__ct__14StPointerBlockFlUc]
+;   0x057619    [__dt__14StPointerBlockFv]
+;   0x0576c7  abort  [abort]
+;   0x057705    [__ct__12StColorStateFv]
+;   0x057735    [__dt__12StColorStateFv]
+;   0x05777f  StColorStateFv::Save  [Save__12StColorStateFv]
+;   0x0577b1  StColorStateFv::Restore  [Restore__12StColorStateFv]
+;   0x0577e5    [__ct__15StColorPenStateFv]
+;   0x057821    [__dt__15StColorPenStateFv]
+;   0x057875    [__ct__11StTextStateFv]
+;   0x0578a3    [__dt__11StTextStateFv]
+;   0x0578eb  StTextStateFv::Save  [Save__11StTextStateFv]
+;   0x057937  StTextStateFv::Restore  [Restore__11StTextStateFv]
+;   0x057979    [__ct__14StClipRgnStateFv]
+;   0x0579b3    [__dt__14StClipRgnStateFv]
+;   0x057a07  StClipRgnStateFv::Save  [Save__14StClipRgnStateFv]
+;   0x057a47  StClipRgnStateFv::Restore  [Restore__14StClipRgnStateFv]
+;   0x057a7d    [__ct__17StPortOriginStateFP8GrafPort]
+;   0x057abf    [__dt__17StPortOriginStateFv]
+;   0x057b0d  StPortOriginStateFP8GrafPort::Save  [Save__17StPortOriginStateFP8GrafPort]
+;   0x057b5b  StPortOriginStateFv::Restore  [Restore__17StPortOriginStateFv]
+;   0x057b9b    [__ct__16StColorPortStateFP8GrafPort]
+;   0x057c01    [__dt__16StColorPortStateFv]
+;   0x057cbb    [__ct__12CDragAndDropFP8GrafPortP10CDragOwner]
+;   0x057d87    [__dt__12CDragAndDropFv]
+;   0x057dfd  CDragAndDropFP8GrafPort::CreateHiliteRgn  [CreateHiliteRgn__12CDragAndDropFP8GrafPort]
+;   0x058077  CDragAndDropFv::GetOwner  [GetOwner__12CDragAndDropFv]
+;   0x0580a5  CDragAndDropFUc::SetInDragContent  [SetInDragContent__12CDragAndDropFUc]
+;   0x0580df  CDragAndDropFv::GetHiliteRgn  [GetHiliteRgn__12CDragAndDropFv]
+;   0x058111  CDragAndDropFv::GetInDragContent  [GetInDragContent__12CDragAndDropFv]
+;   0x058413  CDragAndDropFv::GetDragToSelf  [GetDragToSelf__12CDragAndDropFv]
+;   0x058445  CDragAndDropFv::DragStartedHere  [DragStartedHere__12CDragAndDropFv]
+;   0x05847b  CDragAndDropFP11EventRecordlPFUlPvUlP19OpaqueDragReference_s::StartNewDrag  [StartNewDrag__12CDragAndDropFP11EventRecordlPFUlPvUlP19OpaqueDragReference_s]
+;   0x0585e5  CDragAndDropFUc::SetStartedHere  [SetStartedHere__12CDragAndDropFUc]
+;   0x05861d  CDragAndDropFPP9MacRegion::OutlineRegion  [OutlineRegion__12CDragAndDropFPP9MacRegion]
+;   0x058683  CDragAndDropFP19OpaqueDragReferenceP6FSSpec::GetDropFSSpec  [GetDropFSSpec__12CDragAndDropFP19OpaqueDragReferenceP6FSSpec]
+;   0x058739  CDragAndDropFslPUcPlPUc::GetDirID  [GetDirID__12CDragAndDropFslPUcPlPUc]
+;   0x0587b1  CDragAndDropFP19OpaqueDragReferencelUlUl::AddPromiseHFSItem  [AddPromiseHFSItem__12CDragAndDropFP19OpaqueDragReferencelUlUl]
+;   0x05885f  CDragAndDropFP6FSSpecslPUc::MakeUniqueSpec  [MakeUniqueSpec__12CDragAndDropFP6FSSpecslPUc]
+;   0x058965  CDragAndDropFUc::SetDragToSelf  [SetDragToSelf__12CDragAndDropFUc]
+;   0x05899b  CDragAndDropFv::GetWindow  [GetWindow__12CDragAndDropFv]
+;   0x0589c7    [__ct__17CMESAGrafPortViewFv]
+;   0x058adf    [__dt__17CMESAGrafPortViewFv]
+;   0x058b93  CMESAGrafPortViewFP8GrafPortP9QDGlobalsP10LCommanderUcsls::InitialiseMESAView  [InitialiseMESAView__17CMESAGrafPortViewFP8GrafPortP9QDGlobalsP10LCommanderUcsls]
+;   0x058d07  CMESAGrafPortViewFlPv::ListenToMessage  [ListenToMessage__17CMESAGrafPortViewFlPv]
+;   0x058d3b  CMESAGrafPortViewFv::Show  [Show__17CMESAGrafPortViewFv]
+;   0x058da5  CMESAGrafPortViewFv::Hide  [Hide__17CMESAGrafPortViewFv]
+;   0x058df5  CMESAGrafPortViewFv::ShowSelf  [ShowSelf__17CMESAGrafPortViewFv]
+;   0x058e1f  CMESAGrafPortViewFv::HideSelf  [HideSelf__17CMESAGrafPortViewFv]
+;   0x058e49  CMESAGrafPortViewFv::ActivateSelf  [ActivateSelf__17CMESAGrafPortViewFv]
+;   0x058e79  CMESAGrafPortViewFv::DeactivateSelf  [DeactivateSelf__17CMESAGrafPortViewFv]
+;   0x058eab  CMESAGrafPortViewFv::EnableSelf  [EnableSelf__17CMESAGrafPortViewFv]
+;   0x058ed9  CMESAGrafPortViewFv::DisableSelf  [DisableSelf__17CMESAGrafPortViewFv]
+;   0x058f07  CMESAGrafPortViewFPP9MacRegion::Draw  [Draw__17CMESAGrafPortViewFPP9MacRegion]
+;   0x0590c7  CMESAGrafPortViewFcs::MESAKeyPress  [MESAKeyPress__17CMESAGrafPortViewFcs]
+;   0x0590f9  CMESAGrafPortViewFR4RectRC8RGBColorss::DrawLabelBox  [DrawLabelBox__17CMESAGrafPortViewFR4RectRC8RGBColorss]
+;   0x059193  CMESAGrafPortViewFssss::DrawLabel  [DrawLabel__17CMESAGrafPortViewFssss]
+;   0x059261  CMESAGrafPortViewFssss::Draw3DLine  [Draw3DLine__17CMESAGrafPortViewFssss]
+;   0x0592f9  CMESAGrafPortViewFRC4Rects::DrawTexture  [DrawTexture__17CMESAGrafPortViewFRC4Rects]
+;   0x059385  CMESAGrafPortViewFsR8RGBColor::GetColour  [GetColour__17CMESAGrafPortViewFsR8RGBColor]
+;   0x0593f3  CMESAGrafPortViewFPP9MacRegionP4RectsPP9MacRegionPF5PointPv_lPv::DragRegion  [DragRegion__17CMESAGrafPortViewFPP9MacRegionP4RectsPP9MacRegionPF5PointPv_lPv]
+;   0x05965f    [__ct__11CMESAEditorFv]
+;   0x059733    [__dt__11CMESAEditorFv]
+;   0x0597f1  CMESAEditorFlPv::ObeyCommand  [ObeyCommand__11CMESAEditorFlPv]
+;   0x05982d  CMESAEditorFlRUcRUcRUsPUc::FindCommandStatus  [FindCommandStatus__11CMESAEditorFlRUcRUcRUsPUc]
+;   0x0598a5  CMESAEditorFP11MESACommand::DoMESACommand  [DoMESACommand__11CMESAEditorFP11MESACommand]
+;   0x059c3d  CMESAEditorFUc::BusyCursor  [BusyCursor__11CMESAEditorFUc]
+;   0x059c97  CMESAEditorFUc::BarCursor  [BarCursor__11CMESAEditorFUc]
+;   0x059d1d    [__ct__11CMESASocketFv]
+;   0x059d7b    [__dt__11CMESASocketFv]
+;   0x059dbf  CMESASocketFl::SetBuffer  [SetBuffer__11CMESASocketFl]
+;   0x059e4b  CMESASocketFPFP11MESACommand_vUlRl::ConnectToPlug  [ConnectToPlug__11CMESASocketFPFP11MESACommand_vUlRl]
+;   0x05a053  CMESASocketFl::SelectPlug  [SelectPlug__11CMESASocketFl]
+;   0x05a0a7  CMESASocketFUc::ActivateThisSocket  [ActivateThisSocket__11CMESASocketFUc]
+;   0x05a133  CMESASocketFPcll::SendData  [SendData__11CMESASocketFPcll]
+;   0x05a1e1  CMESASocketFP7IP_Data::AcceptData  [AcceptData__11CMESASocketFP7IP_Data]
+;   0x05a257    [__ct__7CDialogFsPv]
+;   0x05a2b3    [__dt__7CDialogFv]
+;   0x05a305  CDialogFv::Show  [Show__7CDialogFv]
+;   0x05a33b  CDialogFv::Do  [Do__7CDialogFv]
+;   0x05a66f  CDialogFsPUc::GetItemText  [GetItemText__7CDialogFsPUc]
+;   0x05a6b9  CDialogFs::GetItemValue  [GetItemValue__7CDialogFs]
+;   0x05a70b  CDialogFs::ToggleCheckBox  [ToggleCheckBox__7CDialogFs]
+;   0x05a76f  CDialogFv::Draw  [Draw__7CDialogFv]
+;   0x05a79b    [__ct__11CErrorAlertFsPCUcsssPcl]
+;   0x05a823    [__dt__11CErrorAlertFv]
+;   0x05a867    [__ct__15CPrompterDialogFssPUcss]
+;   0x05a94b    [__dt__15CPrompterDialogFv]
+;   0x05a99d  CPrompterDialogFssPUc::SetPrompt  [SetPrompt__15CPrompterDialogFssPUc]
+;   0x05aa31    [__ct__14CTextBoxDialogFv]
+;   0x05aa6f    [__dt__14CTextBoxDialogFv]
+;   0x05aab9  CTextBoxDialogFPUcRC4Rects::DoTextBoxDialog  [DoTextBoxDialog__14CTextBoxDialogFPUcRC4Rects]
+;   0x05ac6b  CTextBoxDialogFlRC4Rects::GetValue  [GetValue__14CTextBoxDialogFlRC4Rects]
+;   0x05ae3b  CTextBoxDialogFss::SetFont  [SetFont__14CTextBoxDialogFss]
+;   0x05ae73  CTextBoxDialogFPUc::CheckEntry  [CheckEntry__14CTextBoxDialogFPUc]
+;   0x05af5f    [__ct__7CButtonFRC4RectRC8RGBColorPUcUc]
+;   0x05b079    [__dt__7CButtonFv]
+;   0x05b0e1  CButtonFUl::SetControlType  [SetControlType__7CButtonFUl]
+;   0x05b133  CButtonFl::SetValue  [SetValue__7CButtonFl]
+;   0x05b179  CButtonFv::Draw  [Draw__7CButtonFv]
+;   0x05b239  CButtonF5Point::MouseInPart  [MouseInPart__7CButtonF5Point]
+;   0x05b291  CButtonF5Points::Track  [Track__7CButtonF5Points]
+;   0x05b3bf  CButtonFss::Draw3DLabel  [Draw3DLabel__7CButtonFss]
+;   0x05b45d  CButtonFss::SetLabel  [SetLabel__7CButtonFss]
+;   0x05b4e5  CButtonFss::MoveFrameTo  [MoveFrameTo__7CButtonFss]
+;   0x05b53b  C3DBoxFR4Rect::SetFrame  [SetFrame__6C3DBoxFR4Rect]
+;   0x05b571  CButtonFR4Rect::GetLEDFrame  [GetLEDFrame__7CButtonFR4Rect]
+;   0x05b5a3  CButtonFR4Rect::GetControlFrame  [GetControlFrame__7CButtonFR4Rect]
+;   0x05b651    [__ct__13CDummyControlFRC4RectRC8RGBColor]
+;   0x05b6a7    [__dt__13CDummyControlFv]
+;   0x05b6f9  CDummyControlFv::Draw  [Draw__13CDummyControlFv]
+;   0x05b71b  CDummyControlF5Point::MouseInPart  [MouseInPart__13CDummyControlF5Point]
+;   0x05b74d  CDummyControlF5Points::Track  [Track__13CDummyControlF5Points]
+;   0x05b779  CDummyControlFR4Rect::GetControlFrame  [GetControlFrame__13CDummyControlFR4Rect]
+;   0x05b7b7  CDummyControlFR4Rect::GetLEDFrame  [GetLEDFrame__13CDummyControlFR4Rect]
+;   0x05b7f9  CDummyControlFll::DoAction  [DoAction__13CDummyControlFll]
+;   0x05b865  CDummyControlFss::SetLabel  [SetLabel__13CDummyControlFss]
+;   0x05b88d  CDummyControlFR4Rect::SetLEDFrame  [SetLEDFrame__13CDummyControlFR4Rect]
+;   0x05b8cf    [__ct__6CFaderFRC4RectRC8RGBColor]
+;   0x05b985    [__dt__6CFaderFv]
+;   0x05b9eb  CFaderFv::Draw  [Draw__6CFaderFv]
+;   0x05baa3  CFaderFv::GetThumbCentre  [GetThumbCentre__6CFaderFv]
+;   0x05bb3d  CFaderFv::SetThumbPosition  [SetThumbPosition__6CFaderFv]
+;   0x05bbcf  CFaderF5Point::MouseInPart  [MouseInPart__6CFaderF5Point]
+;   0x05bc53  CFaderF5Points::Track  [Track__6CFaderF5Points]
+;   0x05be0b  CFaderFss::SetLabel  [SetLabel__6CFaderFss]
+;   0x05bead  CFaderFR4Rect::GetLEDFrame  [GetLEDFrame__6CFaderFR4Rect]
+;   0x05bee5  CFaderFR4Rect::GetControlFrame  [GetControlFrame__6CFaderFR4Rect]
+;   0x05bf79    [__ct__15CGraphicControlFv]
+;   0x05c02d    [__dt__15CGraphicControlFv]
+;   0x05c081  CGraphicControlFl::SetValue  [SetValue__15CGraphicControlFl]
+;   0x05c0c9  CGraphicControlFl::SetValueAndDraw  [SetValueAndDraw__15CGraphicControlFl]
+;   0x05c12d  CGraphicControlFv::DrawOffscreen  [DrawOffscreen__15CGraphicControlFv]
+;   0x05c211  CGraphicControlFv::Activate  [Activate__15CGraphicControlFv]
+;   0x05c343  CGraphicControlFv::Deactivate  [Deactivate__15CGraphicControlFv]
+;   0x05c423  CGraphicControlFv::IsActive  [IsActive__15CGraphicControlFv]
+;   0x05c469  CGraphicControlFcs::KeyPress  [KeyPress__15CGraphicControlFcs]
+;   0x05c4ef  CGraphicControlFv::HiliteText  [HiliteText__15CGraphicControlFv]
+;   0x05c53d  CGraphicControlF5Point::TextClick  [TextClick__15CGraphicControlF5Point]
+;   0x05c587  CGraphicControlFv::CopyToScrap  [CopyToScrap__15CGraphicControlFv]
+;   0x05c5d7  CGraphicControlFv::PasteFromScrap  [PasteFromScrap__15CGraphicControlFv]
+;   0x05c63b  CGraphicControlFv::DrawLabel  [DrawLabel__15CGraphicControlFv]
+;   0x05c6c9  CGraphicControlFsss::SetFontForUse  [SetFontForUse__15CGraphicControlFsss]
+;   0x05c72b    [__ct__19CGraphicControlListFs]
+;   0x05c7a7    [__dt__19CGraphicControlListFv]
+;   0x05c83f  CGraphicControlListFsP18GraphicControlDatas::CreateListFromData  [CreateListFromData__19CGraphicControlListFsP18GraphicControlDatas]
+;   0x05cd71  CGraphicControlListFP15CGraphicControl::AddControl  [AddControl__19CGraphicControlListFP15CGraphicControl]
+;   0x05cdf3  CGraphicControlListFv::Draw  [Draw__19CGraphicControlListFv]
+;   0x05ce5b  CGraphicControlListF5Points::Track  [Track__19CGraphicControlListF5Points]
+;   0x05d121  CGraphicControlListFcs::KeyPress  [KeyPress__19CGraphicControlListFcs]
+;   0x05d1c1  CGraphicControlListFv::Activate  [Activate__19CGraphicControlListFv]
+;   0x05d269  CGraphicControlListFv::Deactivate  [Deactivate__19CGraphicControlListFv]
+;   0x05d2f3  CGraphicControlListFv::GetActiveControl  [GetActiveControl__19CGraphicControlListFv]
+;   0x05d36f  CGraphicControlListFv::FindCopyStatus  [FindCopyStatus__19CGraphicControlListFv]
+;   0x05d3c3  CGraphicControlListFv::FindPasteStatus  [FindPasteStatus__19CGraphicControlListFv]
+;   0x05d437  CGraphicControlListFv::CopyToClip  [CopyToClip__19CGraphicControlListFv]
+;   0x05d48f  CGraphicControlListFv::PasteFromClip  [PasteFromClip__19CGraphicControlListFv]
+;   0x05d4e9  CGraphicControlListFsl::Set  [Set__19CGraphicControlListFsl]
+;   0x05d55f  CGraphicControlListFs::Get  [Get__19CGraphicControlListFs]
+;   0x05d5db  CGraphicControlListFsl::SetAndDraw  [SetAndDraw__19CGraphicControlListFsl]
+;   0x05d659  CGraphicControlListFs::DrawOne  [DrawOne__19CGraphicControlListFs]
+;   0x05d6cf  CGraphicControlListFs::GetRefcon  [GetRefcon__19CGraphicControlListFs]
+;   0x05d743  CGraphicControlListFsl::SetFlags  [SetFlags__19CGraphicControlListFsl]
+;   0x05d7b3  CGraphicControlListFs::GetFlags  [GetFlags__19CGraphicControlListFs]
+;   0x05d827  CGraphicControlListFslll::SetMinMax  [SetMinMax__19CGraphicControlListFslll]
+;   0x05d8a5  CGraphicControlListFs::GetMin  [GetMin__19CGraphicControlListFs]
+;   0x05d915  CGraphicControlListFs::GetMax  [GetMax__19CGraphicControlListFs]
+;   0x05d985  CGraphicControlListFs::GetOffset  [GetOffset__19CGraphicControlListFs]
+;   0x05d9f9  CGraphicControlListFs::GetControl  [GetControl__19CGraphicControlListFs]
+;   0x05da4f    [__ct__6CPopupFRC4RectRC8RGBColors]
+;   0x05db35    [__dt__6CPopupFv]
+;   0x05db9b  CPopupFl::SetValue  [SetValue__6CPopupFl]
+;   0x05dbff  CPopupFv::Draw  [Draw__6CPopupFv]
+;   0x05dd4b  CPopupF5Point::MouseInPart  [MouseInPart__6CPopupF5Point]
+;   0x05dd8b  CPopupF5Points::Track  [Track__6CPopupF5Points]
+;   0x05dead  CPopupFPUc::SetText  [SetText__6CPopupFPUc]
+;   0x05dee7  CPopupFss::SetLabel  [SetLabel__6CPopupFss]
+;   0x05df6f  CPopupFR4Rect::GetLEDFrame  [GetLEDFrame__6CPopupFR4Rect]
+;   0x05dfa7  CPopupFR4Rect::GetControlFrame  [GetControlFrame__6CPopupFR4Rect]
+;   0x05e047    [__ct__4CPotFRC4RectRC8RGBColor]
+;   0x05e13f    [__dt__4CPotFv]
+;   0x05e1a3  CPotFv::Draw  [Draw__4CPotFv]
+;   0x05e25d  CPotF5Point::MouseInPart  [MouseInPart__4CPotF5Point]
+;   0x05e2f1  CPotF5Points::Track  [Track__4CPotF5Points]
+;   0x05e461  CPotFR4Rect::DrawMarker  [DrawMarker__4CPotFR4Rect]
+;   0x05e56d  CPotFss::SetLabel  [SetLabel__4CPotFss]
+;   0x05e60d  CPotFss::MoveFrameTo  [MoveFrameTo__4CPotFss]
+;   0x05e6c5  CPotFR4Rect::GetLEDFrame  [GetLEDFrame__4CPotFR4Rect]
+;   0x05e6fb  CPotFR4Rect::GetControlFrame  [GetControlFrame__4CPotFR4Rect]
+;   0x05e78d    [__ct__11CGRPHButtonFRC4RectRC8RGBColorPUcUlss]
+;   0x05e9d7    [__dt__11CGRPHButtonFv]
+;   0x05ea4b  CGRPHButtonFUl::SetControlType  [SetControlType__11CGRPHButtonFUl]
+;   0x05ea9f  CGRPHButtonFv::Draw  [Draw__11CGRPHButtonFv]
+;   0x05ec45    [__ct__9CGRPHEnv1FR4RectR8RGBColorUlss]
+;   0x05ee15    [__dt__9CGRPHEnv1Fv]
+;   0x05eecf  CGRPHEnv1Fv::Draw  [Draw__9CGRPHEnv1Fv]
+;   0x05f0a9  CGRPHEnv1Fv::Deactivate  [Deactivate__9CGRPHEnv1Fv]

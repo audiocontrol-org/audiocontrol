@@ -11,6 +11,73 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-20: Install-edge static decode CLOSED via Path A → A.5 → A.6 → A.7
+
+### Feature: mesa-ii-reverse-engineering
+### Worktree: audiocontrol-mesa-ii-reverse-engineering
+
+### Goal
+Execute Path A (task #31) per the prior session's plan; based on outcome, decide between further static decode and harness work.
+
+### Accomplished
+
+**Four chained agent decode rounds, each verified from primary evidence before propagation:**
+
+- **Path A** (hardware-protocol-engineer agent): identified the prior session's "$106e is a do-nothing stub" as wrong. Bytes at scsi-plug 0x106e are `60 00 00 f0` = `BRA.W +0xf0` inside `CSCSIPlug::SendData` (THINK C shared-entry; 4 JSR sites all reach shared epilogue at 0x1160). No installer. Termination Point 1 dissolved. Termination Point 2 (slot fn_ptr at $11fe) reframed.
+- **Path A.5**: byte-by-byte decode of `CMESAEditor::ctor` (file 0x05965f, 188 bytes) + all 5 sub-ctors (LAttachable / LCommander / LBroadcaster / CMESASocket / SetTarget — PowerPlant framework classes with mangled-name labels embedded after each function body). Zero stores to `[+0x80]` = `SocketInfo[+12]`. Reply-handler dispatch is via static vtable[+52] at file 0x071a1f → `CMESAEditor::DoMESACommand` at file 0x0598a5. Verified via THINK C symbol `DoMESACommand__11CMESAEditorFP11MESACommand` at file 0x059c0e.
+- **Path A.6**: settled where plug-side `$11fe` slot fn_ptr comes from. Bytes 0x11fa-0x11fe: `MOVEA.L D5, A0; MOVEA.L (A0), A0; JSR (A0)` — A0 = `*D5` = `slot[+0]`. Slot is populated by `CMESAPlugIn::ConnectToSocket` (file 0x09d2) when plug receives "CONS" SCSI command (string at 0x08d2). Copy loop at 0x0a06 with seven `20 d9` (`MOVE.L (A1)+, (A0)+`) opcodes copies SocketInfo verbatim. So slot[+0] = SocketInfo[+0] from the wire payload — the editor's reply-receive callback transmitted at connection time. Outcome B with correction to A.5: A.5's SocketInfo[+12] was right but pointed at the wrong direction (plug→editor); the install is editor→plug via SocketInfo[+0].
+- **Path A.7**: located the editor's construction site for SocketInfo[+0]. At sampler-editor file 0x0596e7-0x0596f0 (inside `CMESAEditor::ctor`): `41 f9 00 00 02 12 25 48 00 8c` = `LEA $0x00000212, A0; MOVE.L A0, A2@(0x8c)`. `[+0x8c]` = embedded `CMESASocket[+24]` = `SocketInfo[+0]`. EDIT-rel 0x212 = file 0x028169 = function with THINK C symbol `\x84main\0` at file 0x028206. (A.5 had tabled this `[+0x8c]` store but didn't recognize its significance — interesting nucleation pattern.)
+- **Direct-read of `main` body**: 155 bytes; only ONE magic check (`'INIT'` at 0x02817f); all other messages dispatch via `vtable[+0xA8]` of a global handle constructed by `JSR $0x272A4` at INIT time. No SRAW/SYSX/BULK constants present. So the actual SRAW data handler is one layer further in (Path A.8 territory).
+
+**Cross-check with Codex parity branch:**
+- User surfaced 3 new Codex comments (idx 1-3 on #315, posted 21:51-22:06 today) mid-session.
+- Codex's broader tactical direction (no ordinary install; computed/table-driven dispatch) is correct in spirit and aligned with A.5/A.7's findings.
+- Codex's specific JSR-target classifications were wrong: Codex enumerated 4 JSR sites in CMESAEditor::ctor (actual is 5; missed 4eb9 0002 7e00 at file 0x596fb); claimed 0x02797c lands in "table data" (actual: clean `LCommander::ctor` at file 0x04f8d3); claimed 0x0287a8 lands in "string band" (actual: `LBroadcaster::ctor` at file 0x0506ff).
+- I posted two #315 sync comments documenting the cross-check + Codex correction (#issuecomment-4284876474 and #issuecomment-4285206275), each with primary-evidence citations.
+
+**Documentation:**
+- `sraw-decoded.md` correction banner now reflects the closed state of the install-edge decode (sections 2/8/9 superseded).
+- `path-a5-socketinfo-construction.md` reframed banner notes A.5 was hunting in the wrong direction; primary finding (SocketInfo[+12] = NULL) stands.
+- `path-a-install-edge.md` cross-references A.5 → A.7.
+- README.md Phase 3 row + workplan.md Phase 3 step-0 entry updated.
+
+### Didn't Work
+
+- **Initial Path A delegation incorporated session-10 framing as fact.** I delegated Path A with the prior session's "$106e is a do-nothing stub" as background context, presenting it as established. The agent's correction was specifically because it ignored that framing and decoded fresh from bytes. Lesson: when delegating decode work, don't pre-bias the agent with prior-session conclusions that haven't been verified — let the agent decode from scratch and check the prior conclusions as a separate step.
+- **A.5 had the right data but the wrong question.** Its table at §1 included the very `[+0x8c]` store (file 0x0596e7) that A.7 later identified as the install. A.5 was so focused on hunting `[+0x80]` (SocketInfo[+12]) that it didn't notice `[+0x8c]` (SocketInfo[+0]) was in the same struct. A wider question framing could have made A.5 the closing decode instead of A.7.
+- **Codex's JSR-target misclassifications** highlight a brittle decoder pattern (treating JSR targets as "table data" without computing the EDIT-base translation correctly). Worth flagging back if the parity work continues.
+
+### Course Corrections
+
+- **[FABRICATION] (caught by primary-evidence verification, not user)** A.6's report described the slot copy-loop opcode as `22 d9` (which would be `move.l (A1)+, (A1)+`); actual opcode is `20 d9` (`move.l (A1)+, (A0)+`). Conceptually identical claim (it's a copy loop), but sloppy on encoding. Flagged in A.7 delegation prompt to prevent the same slip propagating.
+- **[FABRICATION] (caught by primary-evidence verification)** A.5's vtable claim ("function name confirmed from decorated symbol string in the binary") for `CMESAEditor::DoMESACommand` at file 0x0598a5 didn't cite an offset for the symbol. Verification from `xxd | grep 'DoMESA'` returned only ONE hit, and that was for `CSamplerModule::DoMESACommand` (0x0289c0). I had to dig further to find the actual `__11CMESAEditorFP11MESACommand` mangled name at file 0x059c0e, which IS immediately after the function body's RTS at 0x059c08 — confirming A.5 right but for a DIFFERENT reason than its claim asserted. Lesson: agents claiming "verified from symbol" should cite the symbol's exact file offset.
+- **[PROCESS] (self-applied)** Checked #315 for new Codex comments mid-session before propagating Path A.6 findings — caught 3 new Codex updates that needed cross-checking. The previous session's correction (check Codex BEFORE acting) is now habit. Worth keeping.
+- **[PROCESS] (self-applied)** Updated `sraw-decoded.md` correction banner incrementally as each new Path round refined the picture, rather than waiting for "the final answer." Three banner updates (after A, after A.5, after A.6/A.7) prevented future agent runs from inheriting wrong frames. The pattern is: when correcting a doc whose claims propagate to other agents, update the doc IMMEDIATELY rather than batching.
+
+### Quantitative
+
+- User messages this session: ~10
+- Agent delegations: 4 (Path A, A.5, A.6, A.7) — each verified from primary evidence before propagation
+- Commits this session: pending (session-end batch coming)
+- #315 sync comments: 2 (cross-check + static-decode-closed)
+- Tasks: 1 closed (#31), 1 created (#32 Path A.8)
+- User course corrections this session: 0 explicit FABRICATION calls (vs session 10's 1) — discipline holding
+- Self-corrections (caught by spot-verification before propagation): 2 minor encoding/citation slips in agent reports
+
+### Insights
+
+1. **Chained agent decode + per-step primary-evidence verification is highly effective.** Four sequential agent rounds each refined the picture, and each round's load-bearing claims were spot-verified by my own `xxd` reads BEFORE propagating to docs or new delegations. Catching A.5's wrong-direction frame, A.6's `22d9` slip, and the missing 5th JSR in CMESAEditor::ctor all happened because of the verification step. The per-step verification cost (≈5-10 min per round) is far smaller than the cost of building further decode atop wrong claims.
+
+2. **The "install edge mystery" turned out to be a frame error compounded across sessions.** Session 10 inherited Codex's "$106e is a stub" interpretation as fact. That seeded sraw-decoded.md with the wrong picture, which then influenced session 10's strategic commitment language. Path A's correction unwound it in 30 minutes of actual decode work. Lesson: when the strategic question changes (e.g., "should we commit to Option 2?"), re-verify the foundational technical claims that frame the question, even if those claims feel "settled."
+
+3. **A.5 vs A.7 demonstrates the value of widening the question.** A.5 had the answer in its own data table — the `[+0x8c]` store at file 0x0596e7 — but didn't notice it because it was hunting a different field (`[+0x80]`). A.7 found it because the question changed (after A.6 reframed the relevant direction). Sometimes the right next move isn't more decode; it's a wider scan of what you already have.
+
+4. **Codex's JSR-target misclassifications are a useful negative result for the parity protocol.** Two of three flagged JSR targets land cleanly in PowerPlant framework class ctors (with mangled-name labels visible immediately after each body). Codex's "table data" / "string band" reading suggests its EDIT-base / section-table translation is off in places. Worth surfacing back to the parity branch as a calibration item — but the broader tactical direction Codex offered (don't trust ordinary direct calls) was useful even when its specific claims were wrong.
+
+5. **The right scope for harness P1 is now much smaller.** Original framing: "extend the harness to execute arbitrary Sampler Editor code paths." Refined framing: "execute the editor's ctor + drive ConnectToPlug to emit CONS + let the constructed-by-INIT object handle data-delivery." That's a much more bounded engineering problem. The terrain-as-necessary frame combined with the static-decode-first investment paid off here — we now know what minimum infrastructure the harness needs.
+
+---
+
 ## 2026-04-19: SRAW decode terminates at runtime boundary → strategic commit to Option 2
 
 ### Feature: mesa-ii-reverse-engineering

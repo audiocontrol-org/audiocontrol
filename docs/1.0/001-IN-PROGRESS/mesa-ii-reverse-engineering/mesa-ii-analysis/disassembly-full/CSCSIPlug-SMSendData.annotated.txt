@@ -1,77 +1,77 @@
 ; ============================================================
-; Function: 
-;   Mangled: __ct__9CSCSIPlugFv
-;   File offset: 0x000bc6 - 0x000c8c (198 bytes)
+; Function: CSCSIPlugFsUcPUcPUclPl::SMSendData
+;   Mangled: SMSendData__9CSCSIPlugFsUcPUcPUclPl
+;   File offset: 0x00160c - 0x0016d6 (202 bytes)
 ;   Binary: scsi-plug-rsrc.bin
 ; ============================================================
 
-  000bc6:  4e56 0000             linkw %fp,#0
-  000bca:  2f0a                  movel %a2,%sp@-
-  000bcc:  2f03                  movel %d3,%sp@-
-  000bce:  246e 0008             moveal %fp@(8),%a2
-  000bd2:  2f0a                  movel %a2,%sp@-
-  000bd4:  4eb9 0000 020e        jsr 0x20e  ; -> 0x00020e/file:0x00020e (name unknown)
-  000bda:  204a                  moveal %a2,%a0
-  000bdc:  4868 093a             pea %a0@(2362)
-  000be0:  4eb9 0000 157e        jsr 0x157e  ; -> 0x00157e/file:0x00157e (name unknown)
-  000be6:  41ec 013c             lea %a4@(316),%a0
-  000bea:  2488                  movel %a0,%a2@
-  000bec:  257c 5343 5349        movel #1396921161,%a2@(8)
-  000bf4:  257c 5041 5343        movel #1346458435,%a2@(12)
-  000bfc:  42aa 0d66             clrl %a2@(3430)
-  000c00:  7000                  moveq #0,%d0
-  000c02:  3540 0d6c             movew %d0,%a2@(3436)
-  000c06:  3540 0d6a             movew %d0,%a2@(3434)
-  000c0a:  426a 0d6e             clrw %a2@(3438)
-  000c0e:  203c 0000 8000        movel #32768,%d0
-  000c14:  a322                  .short 0xa322
-  000c16:  2548 0e38             movel %a0,%a2@(3640)
-  000c1a:  4aaa 0e38             tstl %a2@(3640)
-  000c1e:  504f                  addqw #8,%sp
-  000c20:  6716                  beqs 0xc38
-  000c22:  206a 0e38             moveal %a2@(3640),%a0
-  000c26:  a064                  .short 0xa064
-  000c28:  206a 0e38             moveal %a2@(3640),%a0
-  000c2c:  a029                  .short 0xa029
-  000c2e:  206a 0e38             moveal %a2@(3640),%a0
-  000c32:  2550 0e3c             movel %a0@,%a2@(3644)
-  000c36:  6004                  bras 0xc3c
-  000c38:  42aa 0e3c             clrl %a2@(3644)
-  000c3c:  7600                  moveq #0,%d3
-  000c3e:  6010                  bras 0xc50
-  000c40:  3043                  moveaw %d3,%a0
-  000c42:  2008                  movel %a0,%d0
-  000c44:  e588                  lsll #2,%d0
-  000c46:  204a                  moveal %a2,%a0
-  000c48:  d1c0                  addal %d0,%a0
-  000c4a:  42a8 0d70             clrl %a0@(3440)
-  000c4e:  5243                  addqw #1,%d3
-  000c50:  0c43 0032             cmpiw #50,%d3
-  000c54:  6dea                  blts 0xc40
-  000c56:  422a 0e40             clrb %a2@(3648)
-  000c5a:  422a 0e46             clrb %a2@(3654)
-  000c5e:  422a 0e47             clrb %a2@(3655)
-  000c62:  257c 0000 0708        movel #1800,%a2@(3650)
-  000c6a:  204a                  moveal %a2,%a0
-  000c6c:  261f                  movel %sp@+,%d3
-  000c6e:  245f                  moveal %sp@+,%a2
-  000c70:  4e5e                  unlk %fp
-  000c72:  4e75                  rts
-  000c74:  925f                  subw %sp@+,%d1
-  000c76:  5f63                  subqw #7,%a3@-
-  000c78:  745f                  moveq #95,%d2
-  000c7a:  5f39 4353 4353        subqb #7,0x43534353
-  000c80:  4950                  .short 0x4950
-  000c82:  6c75                  bges 0xcf9
-  000c84:  6746                  beqs 0xccc
-  000c86:  7600                  moveq #0,%d3
-  000c88:  0000 4e56             orib #86,%d0
+  00160c:  4e56 fffa             linkw %fp,#-6
+  001610:  48e7 1f30             moveml %d3-%d7/%a2-%a3,%sp@-
+  001614:  246e 0008             moveal %fp@(8),%a2
+  001618:  3c2e 000c             movew %fp@(12),%d6
+  00161c:  2e2e 0018             movel %fp@(24),%d7
+  001620:  266e 001c             moveal %fp@(28),%a3
+  001624:  7800                  moveq #0,%d4
+  001626:  4293                  clrl %a3@
+  001628:  3f06                  movew %d6,%sp@-
+  00162a:  486a 093a             pea %a2@(2362)
+  00162e:  4eb9 0000 187e        jsr 0x187e  ; -> 0x00187e/file:0x00187e (name unknown)
+  001634:  4a00                  tstb %d0
+  001636:  5c4f                  addqw #6,%sp
+  001638:  6700 008e             beqw 0x16c8
+  00163c:  1d7c 000c fffa        moveb #12,%fp@(-6)
+  001642:  422e fffb             clrb %fp@(-5)
+  001646:  2607                  movel %d7,%d3
+  001648:  2003                  movel %d3,%d0
+  00164a:  0280 0000 00ff        andil #255,%d0
+  001650:  1d40 fffe             moveb %d0,%fp@(-2)
+  001654:  e083                  asrl #8,%d3
+  001656:  2003                  movel %d3,%d0
+  001658:  0280 0000 00ff        andil #255,%d0
+  00165e:  1d40 fffd             moveb %d0,%fp@(-3)
+  001662:  e083                  asrl #8,%d3
+  001664:  2003                  movel %d3,%d0
+  001666:  0280 0000 00ff        andil #255,%d0
+  00166c:  1d40 fffc             moveb %d0,%fp@(-4)
+  001670:  4a2e 000e             tstb %fp@(14)
+  001674:  6706                  beqs 0x167c
+  001676:  3a3c 0080             movew #128,%d5
+  00167a:  6002                  bras 0x167e
+  00167c:  7a00                  moveq #0,%d5
+  00167e:  1d45 ffff             moveb %d5,%fp@(-1)
+  001682:  3f3c 0002             movew #2,%sp@-
+  001686:  4878 03e8             pea 0x3e8
+  00168a:  2f07                  movel %d7,%sp@-
+  00168c:  2f2e 0010             movel %fp@(16),%sp@-
+  001690:  486e fffa             pea %fp@(-6)
+  001694:  3f06                  movew %d6,%sp@-
+  001696:  486a 093a             pea %a2@(2362)
+  00169a:  4eb9 0000 1620        jsr 0x1620  ; -> 0x001620/file:0x001620 (name unknown)
+  0016a0:  3800                  movew %d0,%d4
+  0016a2:  4fef 0018             lea %sp@(24),%sp
+  0016a6:  6626                  bnes 0x16ce
+  0016a8:  4aae 0014             tstl %fp@(20)
+  0016ac:  6720                  beqs 0x16ce
+  0016ae:  2f0b                  movel %a3,%sp@-
+  0016b0:  1f2e 000e             moveb %fp@(14),%sp@-
+  0016b4:  2f2e 0014             movel %fp@(20),%sp@-
+  0016b8:  3f06                  movew %d6,%sp@-
+  0016ba:  2f0a                  movel %a2,%sp@-
+  0016bc:  4eba fcdc             jsr %pc@(0x139a)
+  0016c0:  3800                  movew %d0,%d4
+  0016c2:  4fef 0010             lea %sp@(16),%sp
+  0016c6:  6006                  bras 0x16ce
+  0016c8:  303c c948             movew #-14008,%d0
+  0016cc:  6002                  bras 0x16d0
+  0016ce:  3004                  movew %d4,%d0
+  0016d0:  4cdf 0cf8             moveml %sp@+,%d3-%d7/%a2-%a3
+  0016d4:  4e5e                  unlk %fp
 
 ; ============================================================
 ; CALL GRAPH (all JSR/BSR targets)
 ; ============================================================
-;   0x000bd4  jsr 0x00020e (file:0x00020e)  ->  (name not found)
-;   0x000be0  jsr 0x00157e (file:0x00157e)  ->  (name not found)
+;   0x00162e  jsr 0x00187e (file:0x00187e)  ->  (name not found)
+;   0x00169a  jsr 0x001620 (file:0x001620)  ->  (name not found)
 
 ; ============================================================
 ; NEARBY FUNCTIONS (within 0x5000 of target range)

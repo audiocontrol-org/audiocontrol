@@ -1,0 +1,567 @@
+; ============================================================
+; Function: CMESAEditorFP11MESACommand::DoMESACommand
+;   Mangled: DoMESACommand__11CMESAEditorFP11MESACommand
+;   File offset: 0x0598a5 - 0x059c3d (920 bytes)
+;   Binary: sampler-editor-rsrc.bin
+; ============================================================
+
+  0598a5:  4e56 fff2             linkw %fp,#-14
+  0598a9:  48e7 1c30             moveml %d3-%d5/%a2-%a3,%sp@-
+  0598ad:  266e 0008             moveal %fp@(8),%a3
+  0598b1:  262e 000c             movel %fp@(12),%d3
+  0598b5:  4aab 0a20             tstl %a3@(2592)
+  0598b9:  6700 0348             beqw 0x59c03
+  0598bd:  7801                  moveq #1,%d4
+  0598bf:  2043                  moveal %d3,%a0
+  0598c1:  2468 0006             moveal %a0@(6),%a2
+  0598c5:  2043                  moveal %d3,%a0
+  0598c7:  2010                  movel %a0@,%d0
+  0598c9:  0480 4143 5456        subil #1094931542,%d0
+  0598cf:  6700 0136             beqw 0x59a07
+  0598d3:  0480 0000 ecfe        subil #60670,%d0
+  0598d9:  6700 00cc             beqw 0x599a7
+  0598dd:  0480 0000 08ef        subil #2287,%d0
+  0598e3:  6700 01e0             beqw 0x59ac5
+  0598e7:  0480 000d 0b11        subil #854801,%d0
+  0598ed:  6700 02b4             beqw 0x59ba3
+  0598f1:  0480 0002 edf8        subil #191992,%d0
+  0598f7:  6700 0266             beqw 0x59b5f
+  0598fb:  0480 0003 0602        subil #198146,%d0
+  059901:  6700 0230             beqw 0x59b33
+  059905:  0480 01f4 fffd        subil #32833533,%d0
+  05990b:  6700 01e4             beqw 0x59af1
+  05990f:  0480 0000 0a02        subil #2562,%d0
+  059915:  6700 02a4             beqw 0x59bbb
+  059919:  0480 00f8 edf6        subil #16313846,%d0
+  05991f:  6700 0100             beqw 0x59a21
+  059923:  0480 0000 0b14        subil #2836,%d0
+  059929:  6700 0250             beqw 0x59b7b
+  05992d:  0480 000c f500        subil #849152,%d0
+  059933:  6700 01a6             beqw 0x59adb
+  059937:  0480 00fc 0100        subil #16515328,%d0
+  05993d:  6700 020a             beqw 0x59b49
+  059941:  0480 05f7 16f9        subil #100079353,%d0
+  059947:  6700 01be             beqw 0x59b07
+  05994b:  0480 0002 f300        subil #193280,%d0
+  059951:  6700 0296             beqw 0x59be9
+  059955:  0480 0200 0000        subil #33554432,%d0
+  05995b:  6700 0270             beqw 0x59bcd
+  05995f:  0480 010c fffc        subil #17629180,%d0
+  059965:  6700 014a             beqw 0x59ab1
+  059969:  0480 00ec f90d        subil #15530253,%d0
+  05996f:  6700 0110             beqw 0x59a81
+  059973:  0480 000e 08f4        subil #919796,%d0
+  059979:  674c                  beqs 0x599c7
+  05997b:  0480 01f3 f8ff        subil #32766207,%d0
+  059981:  6700 0120             beqw 0x59aa3
+  059985:  0480 010f 130b        subil #17765131,%d0
+  05998b:  6700 0202             beqw 0x59b8f
+  05998f:  0480 00f4 eded        subil #16051693,%d0
+  059995:  6700 0186             beqw 0x59b1d
+  059999:  0480 0104 fd0a        subil #17104138,%d0
+  05999f:  6700 0098             beqw 0x59a39
+  0599a3:  6000 0258             braw 0x59bfd
+  0599a7:  2043                  moveal %d3,%a0
+  0599a9:  2f28 0006             movel %a0@(6),%sp@-
+  0599ad:  486b 0074             pea %a3@(116)
+  0599b1:  2057                  moveal %sp@,%a0
+  0599b3:  2250                  moveal %a0@,%a1
+  0599b5:  2269 0018             moveal %a1@(24),%a1
+  0599b9:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  0599bb:  2043                  moveal %d3,%a0
+  0599bd:  3140 0004             movew %d0,%a0@(4)
+  0599c1:  504f                  addqw #8,%sp
+  0599c3:  6000 023a             braw 0x59bff
+  0599c7:  4aab 0a20             tstl %a3@(2592)
+  0599cb:  6726                  beqs 0x599f3
+  0599cd:  2d7c 4752 5048        movel #1196576840,%fp@(-10)
+  0599d5:  426e fffa             clrw %fp@(-6)
+  0599d9:  41ee fff2             lea %fp@(-14),%a0
+  0599dd:  2d48 fffc             movel %a0,%fp@(-4)
+  0599e1:  486e fff6             pea %fp@(-10)
+  0599e5:  206b 0a20             moveal %a3@(2592),%a0
+  0599e9:  4e90                  jsr %a0@  ; vtable dispatch (indirect)
+  0599eb:  376e fff2 0a24        movew %fp@(-14),%a3@(2596)
+  0599f1:  584f                  addqw #4,%sp
+  0599f3:  2f0b                  movel %a3,%sp@-
+  0599f5:  2057                  moveal %sp@,%a0
+  0599f7:  2268 0004             moveal %a0@(4),%a1
+  0599fb:  2269 00b0             moveal %a1@(176),%a1
+  0599ff:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  059a01:  584f                  addqw #4,%sp
+  059a03:  6000 01fa             braw 0x59bff
+  059a07:  177c 0001 0a28        moveb #1,%a3@(2600)
+  059a0d:  2f0b                  movel %a3,%sp@-
+  059a0f:  2057                  moveal %sp@,%a0
+  059a11:  2268 0004             moveal %a0@(4),%a1
+  059a15:  2269 00b4             moveal %a1@(180),%a1
+  059a19:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  059a1b:  584f                  addqw #4,%sp
+  059a1d:  6000 01e0             braw 0x59bff
+  059a21:  2f0b                  movel %a3,%sp@-
+  059a23:  2057                  moveal %sp@,%a0
+  059a25:  2268 0004             moveal %a0@(4),%a1
+  059a29:  2269 00b8             moveal %a1@(184),%a1
+  059a2d:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  059a2f:  422b 0a28             clrb %a3@(2600)
+  059a33:  584f                  addqw #4,%sp
+  059a35:  6000 01c8             braw 0x59bff
+  059a39:  1d6a 0005 fff5        moveb %a2@(5),%fp@(-11)
+  059a3f:  1d6a 0007 fff4        moveb %a2@(7),%fp@(-12)
+  059a45:  2f2a 000a             movel %a2@(10),%sp@-
+  059a49:  486a 0008             pea %a2@(8)
+  059a4d:  486e fff4             pea %fp@(-12)
+  059a51:  486e fff5             pea %fp@(-11)
+  059a55:  2f12                  movel %a2@,%sp@-
+  059a57:  2f0b                  movel %a3,%sp@-
+  059a59:  2057                  moveal %sp@,%a0
+  059a5b:  2268 0004             moveal %a0@(4),%a1
+  059a5f:  2269 002c             moveal %a1@(44),%a1
+  059a63:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  059a65:  7000                  moveq #0,%d0
+  059a67:  102e fff5             moveb %fp@(-11),%d0
+  059a6b:  3540 0004             movew %d0,%a2@(4)
+  059a6f:  7000                  moveq #0,%d0
+  059a71:  102e fff4             moveb %fp@(-12),%d0
+  059a75:  3540 0006             movew %d0,%a2@(6)
+  059a79:  4fef 0018             lea %sp@(24),%sp
+  059a7d:  6000 0180             braw 0x59bff
+  059a81:  42a7                  clrl %sp@-
+  059a83:  2f12                  movel %a2@,%sp@-
+  059a85:  2f0b                  movel %a3,%sp@-
+  059a87:  2057                  moveal %sp@,%a0
+  059a89:  2268 0004             moveal %a0@(4),%a1
+  059a8d:  2269 0024             moveal %a1@(36),%a1
+  059a91:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  059a93:  7200                  moveq #0,%d1
+  059a95:  1200                  moveb %d0,%d1
+  059a97:  3541 0004             movew %d1,%a2@(4)
+  059a9b:  4fef 000c             lea %sp@(12),%sp
+  059a9f:  6000 015e             braw 0x59bff
+  059aa3:  2043                  moveal %d3,%a0
+  059aa5:  2a28 0006             movel %a0@(6),%d5
+  059aa9:  2945 5d0a             movel %d5,%a4@(23818)
+  059aad:  6000 0150             braw 0x59bff
+  059ab1:  2f0b                  movel %a3,%sp@-
+  059ab3:  2057                  moveal %sp@,%a0
+  059ab5:  2268 0004             moveal %a0@(4),%a1
+  059ab9:  2269 00c0             moveal %a1@(192),%a1
+  059abd:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  059abf:  584f                  addqw #4,%sp
+  059ac1:  6000 013c             braw 0x59bff
+  059ac5:  2f0a                  movel %a2,%sp@-
+  059ac7:  2f0b                  movel %a3,%sp@-
+  059ac9:  2057                  moveal %sp@,%a0
+  059acb:  2268 0004             moveal %a0@(4),%a1
+  059acf:  2269 00bc             moveal %a1@(188),%a1
+  059ad3:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  059ad5:  504f                  addqw #8,%sp
+  059ad7:  6000 0126             braw 0x59bff
+  059adb:  2f0a                  movel %a2,%sp@-
+  059add:  2f0b                  movel %a3,%sp@-
+  059adf:  2057                  moveal %sp@,%a0
+  059ae1:  2268 0004             moveal %a0@(4),%a1
+  059ae5:  2269 00c4             moveal %a1@(196),%a1
+  059ae9:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  059aeb:  504f                  addqw #8,%sp
+  059aed:  6000 0110             braw 0x59bff
+  059af1:  2f0a                  movel %a2,%sp@-
+  059af3:  2f0b                  movel %a3,%sp@-
+  059af5:  2057                  moveal %sp@,%a0
+  059af7:  2268 0004             moveal %a0@(4),%a1
+  059afb:  2269 00c8             moveal %a1@(200),%a1
+  059aff:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  059b01:  504f                  addqw #8,%sp
+  059b03:  6000 00fa             braw 0x59bff
+  059b07:  2f0a                  movel %a2,%sp@-
+  059b09:  2f0b                  movel %a3,%sp@-
+  059b0b:  2057                  moveal %sp@,%a0
+  059b0d:  2268 0004             moveal %a0@(4),%a1
+  059b11:  2269 00cc             moveal %a1@(204),%a1
+  059b15:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  059b17:  504f                  addqw #8,%sp
+  059b19:  6000 00e4             braw 0x59bff
+  059b1d:  2f0a                  movel %a2,%sp@-
+  059b1f:  2f0b                  movel %a3,%sp@-
+  059b21:  2057                  moveal %sp@,%a0
+  059b23:  2268 0004             moveal %a0@(4),%a1
+  059b27:  2269 00d0             moveal %a1@(208),%a1
+  059b2b:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  059b2d:  504f                  addqw #8,%sp
+  059b2f:  6000 00ce             braw 0x59bff
+  059b33:  2f0a                  movel %a2,%sp@-
+  059b35:  2f0b                  movel %a3,%sp@-
+  059b37:  2057                  moveal %sp@,%a0
+  059b39:  2268 0004             moveal %a0@(4),%a1
+  059b3d:  2269 00d4             moveal %a1@(212),%a1
+  059b41:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  059b43:  504f                  addqw #8,%sp
+  059b45:  6000 00b8             braw 0x59bff
+  059b49:  2f0a                  movel %a2,%sp@-
+  059b4b:  2f0b                  movel %a3,%sp@-
+  059b4d:  2057                  moveal %sp@,%a0
+  059b4f:  2268 0004             moveal %a0@(4),%a1
+  059b53:  2269 00d8             moveal %a1@(216),%a1
+  059b57:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  059b59:  504f                  addqw #8,%sp
+  059b5b:  6000 00a2             braw 0x59bff
+  059b5f:  357c 0001 000c        movew #1,%a2@(12)
+  059b65:  2f0a                  movel %a2,%sp@-
+  059b67:  2f0b                  movel %a3,%sp@-
+  059b69:  2057                  moveal %sp@,%a0
+  059b6b:  2268 0004             moveal %a0@(4),%a1
+  059b6f:  2269 00dc             moveal %a1@(220),%a1
+  059b73:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  059b75:  504f                  addqw #8,%sp
+  059b77:  6000 0086             braw 0x59bff
+  059b7b:  2f0a                  movel %a2,%sp@-
+  059b7d:  2f0b                  movel %a3,%sp@-
+  059b7f:  2057                  moveal %sp@,%a0
+  059b81:  2268 0004             moveal %a0@(4),%a1
+  059b85:  2269 00e0             moveal %a1@(224),%a1
+  059b89:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  059b8b:  504f                  addqw #8,%sp
+  059b8d:  6070                  bras 0x59bff
+  059b8f:  2f0a                  movel %a2,%sp@-
+  059b91:  2f0b                  movel %a3,%sp@-
+  059b93:  2057                  moveal %sp@,%a0
+  059b95:  2268 0004             moveal %a0@(4),%a1
+  059b99:  2269 00e4             moveal %a1@(228),%a1
+  059b9d:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  059b9f:  504f                  addqw #8,%sp
+  059ba1:  605c                  bras 0x59bff
+  059ba3:  2043                  moveal %d3,%a0
+  059ba5:  2f28 0006             movel %a0@(6),%sp@-
+  059ba9:  2f0b                  movel %a3,%sp@-
+  059bab:  2057                  moveal %sp@,%a0
+  059bad:  2268 0004             moveal %a0@(4),%a1
+  059bb1:  2269 00e8             moveal %a1@(232),%a1
+  059bb5:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  059bb7:  504f                  addqw #8,%sp
+  059bb9:  6044                  bras 0x59bff
+  059bbb:  2f0b                  movel %a3,%sp@-
+  059bbd:  2057                  moveal %sp@,%a0
+  059bbf:  2268 0004             moveal %a0@(4),%a1
+  059bc3:  2269 00ec             moveal %a1@(236),%a1
+  059bc7:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  059bc9:  584f                  addqw #4,%sp
+  059bcb:  6032                  bras 0x59bff
+  059bcd:  2f12                  movel %a2@,%sp@-
+  059bcf:  2f0b                  movel %a3,%sp@-
+  059bd1:  2057                  moveal %sp@,%a0
+  059bd3:  2268 0004             moveal %a0@(4),%a1
+  059bd7:  2269 00f0             moveal %a1@(240),%a1
+  059bdb:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  059bdd:  7200                  moveq #0,%d1
+  059bdf:  1200                  moveb %d0,%d1
+  059be1:  3541 0004             movew %d1,%a2@(4)
+  059be5:  504f                  addqw #8,%sp
+  059be7:  6016                  bras 0x59bff
+  059be9:  2f0a                  movel %a2,%sp@-
+  059beb:  2f0b                  movel %a3,%sp@-
+  059bed:  2057                  moveal %sp@,%a0
+  059bef:  2268 0004             moveal %a0@(4),%a1
+  059bf3:  2269 00f4             moveal %a1@(244),%a1
+  059bf7:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  059bf9:  504f                  addqw #8,%sp
+  059bfb:  6002                  bras 0x59bff
+  059bfd:  7800                  moveq #0,%d4
+  059bff:  1004                  moveb %d4,%d0
+  059c01:  6002                  bras 0x59c05
+  059c03:  7000                  moveq #0,%d0
+  059c05:  4cdf 0c38             moveml %sp@+,%d3-%d5/%a2-%a3
+  059c09:  4e5e                  unlk %fp
+  059c0b:  4e75                  rts
+  059c0d:  802b 446f             orb %a3@(17519),%d0
+  059c11:  4d45                  .short 0x4d45
+  059c13:  5341                  subqw #1,%d1
+  059c15:  436f                  .short 0x436f
+  059c17:  6d6d                  blts 0x59c86
+  059c19:  616e                  bsrs 0x59c89  ; -> 0x059c89/file:0x081be0 (name unknown)
+  059c1b:  645f                  bccs 0x59c7c
+  059c1d:  5f31 3143 4d45        subqb #7,%a1@(0)@(4d455341)
+  059c25:  4564                  .short 0x4564
+  059c27:  6974                  bvss 0x59c9d
+  059c29:  6f72                  bles 0x59c9d
+  059c2b:  4650                  notw %a0@
+  059c2d:  3131 4d45             movew %a1@(0)@(0),%a0@-
+  059c31:  5341                  subqw #1,%d1
+  059c33:  436f                  .short 0x436f
+  059c35:  6d6d                  blts 0x59ca4
+  059c37:  616e                  bsrs 0x59ca7  ; -> 0x059ca7/file:0x081bfe (name unknown)
+  059c39:  6400 0000             bccw 0x59c3b
+
+; ============================================================
+; CALL GRAPH (all JSR/BSR targets)
+; ============================================================
+;   0x059c19  jsr 0x059c89 (file:0x081be0)  ->  (name not found)
+;   0x059c37  jsr 0x059ca7 (file:0x081bfe)  ->  (name not found)
+
+; ============================================================
+; NEARBY FUNCTIONS (within 0x5000 of target range)
+; ============================================================
+;   0x05495b  LViewFRC9PanelSpec::ScrollToPanel  [ScrollToPanel__5LViewFRC9PanelSpec]
+;   0x054a0f  LViewFllUc::ScrollImageTo  [ScrollImageTo__5LViewFllUc]
+;   0x054a6f  LViewFllUc::ScrollPinnedImageBy  [ScrollPinnedImageBy__5LViewFllUc]
+;   0x054bbf  LViewFllUc::ScrollImageBy  [ScrollImageBy__5LViewFllUc]
+;   0x054cf1  LViewFll::ScrollBits  [ScrollBits__5LViewFll]
+;   0x054dab  LViewF5Point::AutoScrollImage  [AutoScrollImage__5LViewF5Point]
+;   0x054e61  LViewFllUc::ResizeImageTo  [ResizeImageTo__5LViewFllUc]
+;   0x054eb9  LViewFllUc::ResizeImageBy  [ResizeImageBy__5LViewFllUc]
+;   0x054f25  LViewFUc::ReconcileFrameAndImage  [ReconcileFrameAndImage__5LViewFUc]
+;   0x055025  LViewFll::FindSubPaneHitBy  [FindSubPaneHitBy__5LViewFll]
+;   0x0550bf  LViewFll::FindDeepSubPaneContaining  [FindDeepSubPaneContaining__5LViewFll]
+;   0x055195  LViewFll::FindShallowSubPaneContaining  [FindShallowSubPaneContaining__5LViewFll]
+;   0x05524d  LViewFR15SMouseDownEvent::Click  [Click__5LViewFR15SMouseDownEvent]
+;   0x0552cb  LViewF5PointRC11EventRecord::AdjustCursor  [AdjustCursor__5LViewF5PointRC11EventRecord]
+;   0x055361  LViewFl::FindPaneByID  [FindPaneByID__5LViewFl]
+;   0x0553f5  LViewFl::GetValueForPaneID  [GetValueForPaneID__5LViewFl]
+;   0x055455  LViewFll::SetValueForPaneID  [SetValueForPaneID__5LViewFll]
+;   0x0554b1  LViewFlPUc::GetDescriptorForPaneID  [GetDescriptorForPaneID__5LViewFlPUc]
+;   0x055519  LViewFlPCUc::SetDescriptorForPaneID  [SetDescriptorForPaneID__5LViewFlPCUc]
+;   0x05564d    [__dt__11LAttachableFv]
+;   0x05569f  LAttachableFP11LAttachmentP11LAttachmentUc::AddAttachment  [AddAttachment__11LAttachableFP11LAttachmentP11LAttachmentUc]
+;   0x05577f  LAttachableFP11LAttachment::RemoveAttachment  [RemoveAttachment__11LAttachableFP11LAttachment]
+;   0x055803  LAttachableFv::RemoveAllAttachments  [RemoveAllAttachments__11LAttachableFv]
+;   0x0558cd  LAttachableFlPv::ExecuteAttachments  [ExecuteAttachments__11LAttachableFlPv]
+;   0x05596b    [__ct__6LArrayFUlP11LComparatorUc]
+;   0x055a6f    [__dt__6LArrayFv]
+;   0x055b79  LArrayCFlPv::FetchItemAt  [FetchItemAt__6LArrayCFlPv]
+;   0x055bd1  LArrayCFlPvRUl::FetchItemAt  [FetchItemAt__6LArrayCFlPvRUl]
+;   0x055c71  LArrayCFPCvUl::FetchIndexOf  [FetchIndexOf__6LArrayCFPCvUl]
+;   0x055ceb  LArrayFUllPCvUl::InsertItemsAt  [InsertItemsAt__6LArrayFUllPCvUl]
+;   0x055dfb  LArrayFUll::RemoveItemsAt  [RemoveItemsAt__6LArrayFUll]
+;   0x055ee7  LArrayFUllPCvUl::AssignItemsAt  [AssignItemsAt__6LArrayFUllPCvUl]
+;   0x055fb1  LArrayFll::SwapItems  [SwapItems__6LArrayFll]
+;   0x05604f  LArrayFll::MoveItem  [MoveItem__6LArrayFll]
+;   0x0560f7  LArrayFPCvUl::Remove  [Remove__6LArrayFPCvUl]
+;   0x056153  LArrayCFv::Lock  [Lock__6LArrayCFv]
+;   0x05618f  LArrayCFv::Unlock  [Unlock__6LArrayCFv]
+;   0x056207  LArrayFUlUl::AdjustAllocation  [AdjustAllocation__6LArrayFUlUl]
+;   0x05625f  LArrayFUlUl::InternalAdjustAllocation  [InternalAdjustAllocation__6LArrayFUlUl]
+;   0x0562eb  LArrayFll::AdjustStorage  [AdjustStorage__6LArrayFll]
+;   0x056381  LArrayFv::Sort  [Sort__6LArrayFv]
+;   0x0564ef  LArrayCFPCv::FetchIndexOfKey  [FetchIndexOfKey__6LArrayCFPCv]
+;   0x056555  LArrayCFPCvUl::FetchInsertIndexOf  [FetchInsertIndexOf__6LArrayCFPCvUl]
+;   0x05662f  LArrayCFPCv::FetchInsertIndexOfKey  [FetchInsertIndexOfKey__6LArrayCFPCv]
+;   0x0566fd  LArrayFP14LArrayIterator::AttachIterator  [AttachIterator__6LArrayFP14LArrayIterator]
+;   0x05674f  LArrayFP14LArrayIterator::DetachIterator  [DetachIterator__6LArrayFP14LArrayIterator]
+;   0x0567e1  LArrayFUll::ItemsInserted  [ItemsInserted__6LArrayFUll]
+;   0x056837  LArrayFUll::ItemsRemoved  [ItemsRemoved__6LArrayFUll]
+;   0x05688b  LArrayCFlPv::PeekItem  [PeekItem__6LArrayCFlPv]
+;   0x056903  LArrayFlPCvUl::PokeItem  [PokeItem__6LArrayFlPCvUl]
+;   0x056971  LArrayFllll::ShiftItems  [ShiftItems__6LArrayFllll]
+;   0x0569eb  LArrayFUllPCvUl::StoreNewItems  [StoreNewItems__6LArrayFUllPCvUl]
+;   0x056a55  LArrayFllPv::InternalSwapItems  [InternalSwapItems__6LArrayFllPv]
+;   0x056add  LArrayFllPv::InternalMoveItem  [InternalMoveItem__6LArrayFllPv]
+;   0x056b9f  LArrayFll::InternalCopyItem  [InternalCopyItem__6LArrayFll]
+;   0x056bfb  LArrayCFPCvUl::LinearSearch  [LinearSearch__6LArrayCFPCvUl]
+;   0x056c8f  LArrayCFPCv::LinearSearchByKey  [LinearSearchByKey__6LArrayCFPCv]
+;   0x056d21  LArrayCFPCvUl::BinarySearch  [BinarySearch__6LArrayCFPCvUl]
+;   0x056ddd  LArrayCFPCv::BinarySearchByKey  [BinarySearchByKey__6LArrayCFPCv]
+;   0x056f1d    [__ct__14LArrayIteratorFR6LArrayl]
+;   0x056f7b    [__dt__14LArrayIteratorFv]
+;   0x057033  LArrayIteratorFl::ResetTo  [ResetTo__14LArrayIteratorFl]
+;   0x0570a1  LArrayIteratorFPv::Current  [Current__14LArrayIteratorFPv]
+;   0x0570f7  LArrayIteratorFPv::Next  [Next__14LArrayIteratorFPv]
+;   0x057149  LArrayIteratorFPv::Previous  [Previous__14LArrayIteratorFPv]
+;   0x057199  LArrayIteratorFv::CalcPreviousIndex  [CalcPreviousIndex__14LArrayIteratorFv]
+;   0x0572df  LArrayIteratorFUll::ItemsInserted  [ItemsInserted__14LArrayIteratorFUll]
+;   0x057349  LArrayIteratorFUll::ItemsRemoved  [ItemsRemoved__14LArrayIteratorFUll]
+;   0x0573c7    [__ct__5LListFv]
+;   0x057405    [__dt__5LListFv]
+;   0x05744f  LListFlPCv::SetItemAt  [SetItemAt__5LListFlPCv]
+;   0x05748d    [__ct__13LListIteratorFR5LListl]
+;   0x0574cd    [__dt__13LListIteratorFv]
+;   0x057519    [__ct__14StHandleLockerFPPc]
+;   0x05755f    [__dt__14StHandleLockerFv]
+;   0x0575a9    [__ct__14StPointerBlockFlUc]
+;   0x057619    [__dt__14StPointerBlockFv]
+;   0x0576c7  abort  [abort]
+;   0x057705    [__ct__12StColorStateFv]
+;   0x057735    [__dt__12StColorStateFv]
+;   0x05777f  StColorStateFv::Save  [Save__12StColorStateFv]
+;   0x0577b1  StColorStateFv::Restore  [Restore__12StColorStateFv]
+;   0x0577e5    [__ct__15StColorPenStateFv]
+;   0x057821    [__dt__15StColorPenStateFv]
+;   0x057875    [__ct__11StTextStateFv]
+;   0x0578a3    [__dt__11StTextStateFv]
+;   0x0578eb  StTextStateFv::Save  [Save__11StTextStateFv]
+;   0x057937  StTextStateFv::Restore  [Restore__11StTextStateFv]
+;   0x057979    [__ct__14StClipRgnStateFv]
+;   0x0579b3    [__dt__14StClipRgnStateFv]
+;   0x057a07  StClipRgnStateFv::Save  [Save__14StClipRgnStateFv]
+;   0x057a47  StClipRgnStateFv::Restore  [Restore__14StClipRgnStateFv]
+;   0x057a7d    [__ct__17StPortOriginStateFP8GrafPort]
+;   0x057abf    [__dt__17StPortOriginStateFv]
+;   0x057b0d  StPortOriginStateFP8GrafPort::Save  [Save__17StPortOriginStateFP8GrafPort]
+;   0x057b5b  StPortOriginStateFv::Restore  [Restore__17StPortOriginStateFv]
+;   0x057b9b    [__ct__16StColorPortStateFP8GrafPort]
+;   0x057c01    [__dt__16StColorPortStateFv]
+;   0x057cbb    [__ct__12CDragAndDropFP8GrafPortP10CDragOwner]
+;   0x057d87    [__dt__12CDragAndDropFv]
+;   0x057dfd  CDragAndDropFP8GrafPort::CreateHiliteRgn  [CreateHiliteRgn__12CDragAndDropFP8GrafPort]
+;   0x058077  CDragAndDropFv::GetOwner  [GetOwner__12CDragAndDropFv]
+;   0x0580a5  CDragAndDropFUc::SetInDragContent  [SetInDragContent__12CDragAndDropFUc]
+;   0x0580df  CDragAndDropFv::GetHiliteRgn  [GetHiliteRgn__12CDragAndDropFv]
+;   0x058111  CDragAndDropFv::GetInDragContent  [GetInDragContent__12CDragAndDropFv]
+;   0x058413  CDragAndDropFv::GetDragToSelf  [GetDragToSelf__12CDragAndDropFv]
+;   0x058445  CDragAndDropFv::DragStartedHere  [DragStartedHere__12CDragAndDropFv]
+;   0x05847b  CDragAndDropFP11EventRecordlPFUlPvUlP19OpaqueDragReference_s::StartNewDrag  [StartNewDrag__12CDragAndDropFP11EventRecordlPFUlPvUlP19OpaqueDragReference_s]
+;   0x0585e5  CDragAndDropFUc::SetStartedHere  [SetStartedHere__12CDragAndDropFUc]
+;   0x05861d  CDragAndDropFPP9MacRegion::OutlineRegion  [OutlineRegion__12CDragAndDropFPP9MacRegion]
+;   0x058683  CDragAndDropFP19OpaqueDragReferenceP6FSSpec::GetDropFSSpec  [GetDropFSSpec__12CDragAndDropFP19OpaqueDragReferenceP6FSSpec]
+;   0x058739  CDragAndDropFslPUcPlPUc::GetDirID  [GetDirID__12CDragAndDropFslPUcPlPUc]
+;   0x0587b1  CDragAndDropFP19OpaqueDragReferencelUlUl::AddPromiseHFSItem  [AddPromiseHFSItem__12CDragAndDropFP19OpaqueDragReferencelUlUl]
+;   0x05885f  CDragAndDropFP6FSSpecslPUc::MakeUniqueSpec  [MakeUniqueSpec__12CDragAndDropFP6FSSpecslPUc]
+;   0x058965  CDragAndDropFUc::SetDragToSelf  [SetDragToSelf__12CDragAndDropFUc]
+;   0x05899b  CDragAndDropFv::GetWindow  [GetWindow__12CDragAndDropFv]
+;   0x0589c7    [__ct__17CMESAGrafPortViewFv]
+;   0x058adf    [__dt__17CMESAGrafPortViewFv]
+;   0x058b93  CMESAGrafPortViewFP8GrafPortP9QDGlobalsP10LCommanderUcsls::InitialiseMESAView  [InitialiseMESAView__17CMESAGrafPortViewFP8GrafPortP9QDGlobalsP10LCommanderUcsls]
+;   0x058d07  CMESAGrafPortViewFlPv::ListenToMessage  [ListenToMessage__17CMESAGrafPortViewFlPv]
+;   0x058d3b  CMESAGrafPortViewFv::Show  [Show__17CMESAGrafPortViewFv]
+;   0x058da5  CMESAGrafPortViewFv::Hide  [Hide__17CMESAGrafPortViewFv]
+;   0x058df5  CMESAGrafPortViewFv::ShowSelf  [ShowSelf__17CMESAGrafPortViewFv]
+;   0x058e1f  CMESAGrafPortViewFv::HideSelf  [HideSelf__17CMESAGrafPortViewFv]
+;   0x058e49  CMESAGrafPortViewFv::ActivateSelf  [ActivateSelf__17CMESAGrafPortViewFv]
+;   0x058e79  CMESAGrafPortViewFv::DeactivateSelf  [DeactivateSelf__17CMESAGrafPortViewFv]
+;   0x058eab  CMESAGrafPortViewFv::EnableSelf  [EnableSelf__17CMESAGrafPortViewFv]
+;   0x058ed9  CMESAGrafPortViewFv::DisableSelf  [DisableSelf__17CMESAGrafPortViewFv]
+;   0x058f07  CMESAGrafPortViewFPP9MacRegion::Draw  [Draw__17CMESAGrafPortViewFPP9MacRegion]
+;   0x0590c7  CMESAGrafPortViewFcs::MESAKeyPress  [MESAKeyPress__17CMESAGrafPortViewFcs]
+;   0x0590f9  CMESAGrafPortViewFR4RectRC8RGBColorss::DrawLabelBox  [DrawLabelBox__17CMESAGrafPortViewFR4RectRC8RGBColorss]
+;   0x059193  CMESAGrafPortViewFssss::DrawLabel  [DrawLabel__17CMESAGrafPortViewFssss]
+;   0x059261  CMESAGrafPortViewFssss::Draw3DLine  [Draw3DLine__17CMESAGrafPortViewFssss]
+;   0x0592f9  CMESAGrafPortViewFRC4Rects::DrawTexture  [DrawTexture__17CMESAGrafPortViewFRC4Rects]
+;   0x059385  CMESAGrafPortViewFsR8RGBColor::GetColour  [GetColour__17CMESAGrafPortViewFsR8RGBColor]
+;   0x0593f3  CMESAGrafPortViewFPP9MacRegionP4RectsPP9MacRegionPF5PointPv_lPv::DragRegion  [DragRegion__17CMESAGrafPortViewFPP9MacRegionP4RectsPP9MacRegionPF5PointPv_lPv]
+;   0x05965f    [__ct__11CMESAEditorFv]
+;   0x059733    [__dt__11CMESAEditorFv]
+;   0x0597f1  CMESAEditorFlPv::ObeyCommand  [ObeyCommand__11CMESAEditorFlPv]
+;   0x05982d  CMESAEditorFlRUcRUcRUsPUc::FindCommandStatus  [FindCommandStatus__11CMESAEditorFlRUcRUcRUsPUc]
+;   0x0598a5  CMESAEditorFP11MESACommand::DoMESACommand  [DoMESACommand__11CMESAEditorFP11MESACommand]
+;   0x059c3d  CMESAEditorFUc::BusyCursor  [BusyCursor__11CMESAEditorFUc]
+;   0x059c97  CMESAEditorFUc::BarCursor  [BarCursor__11CMESAEditorFUc]
+;   0x059d1d    [__ct__11CMESASocketFv]
+;   0x059d7b    [__dt__11CMESASocketFv]
+;   0x059dbf  CMESASocketFl::SetBuffer  [SetBuffer__11CMESASocketFl]
+;   0x059e4b  CMESASocketFPFP11MESACommand_vUlRl::ConnectToPlug  [ConnectToPlug__11CMESASocketFPFP11MESACommand_vUlRl]
+;   0x05a053  CMESASocketFl::SelectPlug  [SelectPlug__11CMESASocketFl]
+;   0x05a0a7  CMESASocketFUc::ActivateThisSocket  [ActivateThisSocket__11CMESASocketFUc]
+;   0x05a133  CMESASocketFPcll::SendData  [SendData__11CMESASocketFPcll]
+;   0x05a1e1  CMESASocketFP7IP_Data::AcceptData  [AcceptData__11CMESASocketFP7IP_Data]
+;   0x05a257    [__ct__7CDialogFsPv]
+;   0x05a2b3    [__dt__7CDialogFv]
+;   0x05a305  CDialogFv::Show  [Show__7CDialogFv]
+;   0x05a33b  CDialogFv::Do  [Do__7CDialogFv]
+;   0x05a66f  CDialogFsPUc::GetItemText  [GetItemText__7CDialogFsPUc]
+;   0x05a6b9  CDialogFs::GetItemValue  [GetItemValue__7CDialogFs]
+;   0x05a70b  CDialogFs::ToggleCheckBox  [ToggleCheckBox__7CDialogFs]
+;   0x05a76f  CDialogFv::Draw  [Draw__7CDialogFv]
+;   0x05a79b    [__ct__11CErrorAlertFsPCUcsssPcl]
+;   0x05a823    [__dt__11CErrorAlertFv]
+;   0x05a867    [__ct__15CPrompterDialogFssPUcss]
+;   0x05a94b    [__dt__15CPrompterDialogFv]
+;   0x05a99d  CPrompterDialogFssPUc::SetPrompt  [SetPrompt__15CPrompterDialogFssPUc]
+;   0x05aa31    [__ct__14CTextBoxDialogFv]
+;   0x05aa6f    [__dt__14CTextBoxDialogFv]
+;   0x05aab9  CTextBoxDialogFPUcRC4Rects::DoTextBoxDialog  [DoTextBoxDialog__14CTextBoxDialogFPUcRC4Rects]
+;   0x05ac6b  CTextBoxDialogFlRC4Rects::GetValue  [GetValue__14CTextBoxDialogFlRC4Rects]
+;   0x05ae3b  CTextBoxDialogFss::SetFont  [SetFont__14CTextBoxDialogFss]
+;   0x05ae73  CTextBoxDialogFPUc::CheckEntry  [CheckEntry__14CTextBoxDialogFPUc]
+;   0x05af5f    [__ct__7CButtonFRC4RectRC8RGBColorPUcUc]
+;   0x05b079    [__dt__7CButtonFv]
+;   0x05b0e1  CButtonFUl::SetControlType  [SetControlType__7CButtonFUl]
+;   0x05b133  CButtonFl::SetValue  [SetValue__7CButtonFl]
+;   0x05b179  CButtonFv::Draw  [Draw__7CButtonFv]
+;   0x05b239  CButtonF5Point::MouseInPart  [MouseInPart__7CButtonF5Point]
+;   0x05b291  CButtonF5Points::Track  [Track__7CButtonF5Points]
+;   0x05b3bf  CButtonFss::Draw3DLabel  [Draw3DLabel__7CButtonFss]
+;   0x05b45d  CButtonFss::SetLabel  [SetLabel__7CButtonFss]
+;   0x05b4e5  CButtonFss::MoveFrameTo  [MoveFrameTo__7CButtonFss]
+;   0x05b53b  C3DBoxFR4Rect::SetFrame  [SetFrame__6C3DBoxFR4Rect]
+;   0x05b571  CButtonFR4Rect::GetLEDFrame  [GetLEDFrame__7CButtonFR4Rect]
+;   0x05b5a3  CButtonFR4Rect::GetControlFrame  [GetControlFrame__7CButtonFR4Rect]
+;   0x05b651    [__ct__13CDummyControlFRC4RectRC8RGBColor]
+;   0x05b6a7    [__dt__13CDummyControlFv]
+;   0x05b6f9  CDummyControlFv::Draw  [Draw__13CDummyControlFv]
+;   0x05b71b  CDummyControlF5Point::MouseInPart  [MouseInPart__13CDummyControlF5Point]
+;   0x05b74d  CDummyControlF5Points::Track  [Track__13CDummyControlF5Points]
+;   0x05b779  CDummyControlFR4Rect::GetControlFrame  [GetControlFrame__13CDummyControlFR4Rect]
+;   0x05b7b7  CDummyControlFR4Rect::GetLEDFrame  [GetLEDFrame__13CDummyControlFR4Rect]
+;   0x05b7f9  CDummyControlFll::DoAction  [DoAction__13CDummyControlFll]
+;   0x05b865  CDummyControlFss::SetLabel  [SetLabel__13CDummyControlFss]
+;   0x05b88d  CDummyControlFR4Rect::SetLEDFrame  [SetLEDFrame__13CDummyControlFR4Rect]
+;   0x05b8cf    [__ct__6CFaderFRC4RectRC8RGBColor]
+;   0x05b985    [__dt__6CFaderFv]
+;   0x05b9eb  CFaderFv::Draw  [Draw__6CFaderFv]
+;   0x05baa3  CFaderFv::GetThumbCentre  [GetThumbCentre__6CFaderFv]
+;   0x05bb3d  CFaderFv::SetThumbPosition  [SetThumbPosition__6CFaderFv]
+;   0x05bbcf  CFaderF5Point::MouseInPart  [MouseInPart__6CFaderF5Point]
+;   0x05bc53  CFaderF5Points::Track  [Track__6CFaderF5Points]
+;   0x05be0b  CFaderFss::SetLabel  [SetLabel__6CFaderFss]
+;   0x05bead  CFaderFR4Rect::GetLEDFrame  [GetLEDFrame__6CFaderFR4Rect]
+;   0x05bee5  CFaderFR4Rect::GetControlFrame  [GetControlFrame__6CFaderFR4Rect]
+;   0x05bf79    [__ct__15CGraphicControlFv]
+;   0x05c02d    [__dt__15CGraphicControlFv]
+;   0x05c081  CGraphicControlFl::SetValue  [SetValue__15CGraphicControlFl]
+;   0x05c0c9  CGraphicControlFl::SetValueAndDraw  [SetValueAndDraw__15CGraphicControlFl]
+;   0x05c12d  CGraphicControlFv::DrawOffscreen  [DrawOffscreen__15CGraphicControlFv]
+;   0x05c211  CGraphicControlFv::Activate  [Activate__15CGraphicControlFv]
+;   0x05c343  CGraphicControlFv::Deactivate  [Deactivate__15CGraphicControlFv]
+;   0x05c423  CGraphicControlFv::IsActive  [IsActive__15CGraphicControlFv]
+;   0x05c469  CGraphicControlFcs::KeyPress  [KeyPress__15CGraphicControlFcs]
+;   0x05c4ef  CGraphicControlFv::HiliteText  [HiliteText__15CGraphicControlFv]
+;   0x05c53d  CGraphicControlF5Point::TextClick  [TextClick__15CGraphicControlF5Point]
+;   0x05c587  CGraphicControlFv::CopyToScrap  [CopyToScrap__15CGraphicControlFv]
+;   0x05c5d7  CGraphicControlFv::PasteFromScrap  [PasteFromScrap__15CGraphicControlFv]
+;   0x05c63b  CGraphicControlFv::DrawLabel  [DrawLabel__15CGraphicControlFv]
+;   0x05c6c9  CGraphicControlFsss::SetFontForUse  [SetFontForUse__15CGraphicControlFsss]
+;   0x05c72b    [__ct__19CGraphicControlListFs]
+;   0x05c7a7    [__dt__19CGraphicControlListFv]
+;   0x05c83f  CGraphicControlListFsP18GraphicControlDatas::CreateListFromData  [CreateListFromData__19CGraphicControlListFsP18GraphicControlDatas]
+;   0x05cd71  CGraphicControlListFP15CGraphicControl::AddControl  [AddControl__19CGraphicControlListFP15CGraphicControl]
+;   0x05cdf3  CGraphicControlListFv::Draw  [Draw__19CGraphicControlListFv]
+;   0x05ce5b  CGraphicControlListF5Points::Track  [Track__19CGraphicControlListF5Points]
+;   0x05d121  CGraphicControlListFcs::KeyPress  [KeyPress__19CGraphicControlListFcs]
+;   0x05d1c1  CGraphicControlListFv::Activate  [Activate__19CGraphicControlListFv]
+;   0x05d269  CGraphicControlListFv::Deactivate  [Deactivate__19CGraphicControlListFv]
+;   0x05d2f3  CGraphicControlListFv::GetActiveControl  [GetActiveControl__19CGraphicControlListFv]
+;   0x05d36f  CGraphicControlListFv::FindCopyStatus  [FindCopyStatus__19CGraphicControlListFv]
+;   0x05d3c3  CGraphicControlListFv::FindPasteStatus  [FindPasteStatus__19CGraphicControlListFv]
+;   0x05d437  CGraphicControlListFv::CopyToClip  [CopyToClip__19CGraphicControlListFv]
+;   0x05d48f  CGraphicControlListFv::PasteFromClip  [PasteFromClip__19CGraphicControlListFv]
+;   0x05d4e9  CGraphicControlListFsl::Set  [Set__19CGraphicControlListFsl]
+;   0x05d55f  CGraphicControlListFs::Get  [Get__19CGraphicControlListFs]
+;   0x05d5db  CGraphicControlListFsl::SetAndDraw  [SetAndDraw__19CGraphicControlListFsl]
+;   0x05d659  CGraphicControlListFs::DrawOne  [DrawOne__19CGraphicControlListFs]
+;   0x05d6cf  CGraphicControlListFs::GetRefcon  [GetRefcon__19CGraphicControlListFs]
+;   0x05d743  CGraphicControlListFsl::SetFlags  [SetFlags__19CGraphicControlListFsl]
+;   0x05d7b3  CGraphicControlListFs::GetFlags  [GetFlags__19CGraphicControlListFs]
+;   0x05d827  CGraphicControlListFslll::SetMinMax  [SetMinMax__19CGraphicControlListFslll]
+;   0x05d8a5  CGraphicControlListFs::GetMin  [GetMin__19CGraphicControlListFs]
+;   0x05d915  CGraphicControlListFs::GetMax  [GetMax__19CGraphicControlListFs]
+;   0x05d985  CGraphicControlListFs::GetOffset  [GetOffset__19CGraphicControlListFs]
+;   0x05d9f9  CGraphicControlListFs::GetControl  [GetControl__19CGraphicControlListFs]
+;   0x05da4f    [__ct__6CPopupFRC4RectRC8RGBColors]
+;   0x05db35    [__dt__6CPopupFv]
+;   0x05db9b  CPopupFl::SetValue  [SetValue__6CPopupFl]
+;   0x05dbff  CPopupFv::Draw  [Draw__6CPopupFv]
+;   0x05dd4b  CPopupF5Point::MouseInPart  [MouseInPart__6CPopupF5Point]
+;   0x05dd8b  CPopupF5Points::Track  [Track__6CPopupF5Points]
+;   0x05dead  CPopupFPUc::SetText  [SetText__6CPopupFPUc]
+;   0x05dee7  CPopupFss::SetLabel  [SetLabel__6CPopupFss]
+;   0x05df6f  CPopupFR4Rect::GetLEDFrame  [GetLEDFrame__6CPopupFR4Rect]
+;   0x05dfa7  CPopupFR4Rect::GetControlFrame  [GetControlFrame__6CPopupFR4Rect]
+;   0x05e047    [__ct__4CPotFRC4RectRC8RGBColor]
+;   0x05e13f    [__dt__4CPotFv]
+;   0x05e1a3  CPotFv::Draw  [Draw__4CPotFv]
+;   0x05e25d  CPotF5Point::MouseInPart  [MouseInPart__4CPotF5Point]
+;   0x05e2f1  CPotF5Points::Track  [Track__4CPotF5Points]
+;   0x05e461  CPotFR4Rect::DrawMarker  [DrawMarker__4CPotFR4Rect]
+;   0x05e56d  CPotFss::SetLabel  [SetLabel__4CPotFss]
+;   0x05e60d  CPotFss::MoveFrameTo  [MoveFrameTo__4CPotFss]
+;   0x05e6c5  CPotFR4Rect::GetLEDFrame  [GetLEDFrame__4CPotFR4Rect]
+;   0x05e6fb  CPotFR4Rect::GetControlFrame  [GetControlFrame__4CPotFR4Rect]
+;   0x05e78d    [__ct__11CGRPHButtonFRC4RectRC8RGBColorPUcUlss]

@@ -4,6 +4,25 @@
 **Method:** Static decode of scsi-plug-full.asm + vtable data read from binary  
 **Date:** 2026-04-16
 
+> **CORRECTION 2026-04-20 — supersedes Sections 2, 8, 9. Static decode of the install edge is now CLOSED. See in order:**
+> [`path-a-install-edge.md`](./path-a-install-edge.md) → [`path-a5-socketinfo-construction.md`](./path-a5-socketinfo-construction.md) → [`path-a6-plug-slot-origin.md`](./path-a6-plug-slot-origin.md) → [`path-a7-cons-construction.md`](./path-a7-cons-construction.md)
+>
+> **Resolved findings:**
+>
+> 1. **$106e is not a patchable slot.** Bytes at 0x106e: `60 00 00 f0` = `BRA.W +0xf0` inside `CSCSIPlug::SendData` (THINK C shared-entry; 4 JSR sites at 0x0f60/0x0fbc/0x102c/0x10b2 all reach the shared epilogue at 0x1160). No installer.
+>
+> 2. **The editor does NOT install via `SocketInfo[+12]`** (verified across `CMESAEditor::ctor` + 5 PowerPlant sub-ctors). That field stays NULL.
+>
+> 3. **The plug `$11fe` indirect call dispatches through `plug_slot[+0]` = `SocketInfo[+0]`** — a different field, in the editor→plug direction. The plug copies it from the wire payload received in the "CONS" SCSI command (handled by `CMESAPlugIn::ConnectToSocket` at scsi-plug file 0x09d2; copy loop at 0x0a06 with `20 d9` opcodes).
+>
+> 4. **The editor sets `SocketInfo[+0]` at ctor time** (file 0x0596e7-0x0596f0): `LEA $00000212, A0; MOVE.L A0, A2@(0x8c)`. Address 0x212 (EDIT-relative) = file 0x028169.
+>
+> 5. **The installed callback at file 0x028169 is named `main`** (THINK C symbol `\x84main\0` at file 0x028206 immediately after the function's RTS at 0x028204). It is NOT a magic-tag dispatcher — it has only one immediate magic check (`'INIT'` at 0x02817f); everything else falls through to a generic vtable dispatch via `vtable[+0xA8]` on a global handle stored at `A4@(0x5EA2)` (set by the INIT branch via `JSR $0x272A4`).
+>
+> 6. **The actual SRAW data handler is therefore at `vtable[+0xA8]` of whatever object `JSR $0x272A4` constructs at INIT time.** That last layer is reachable via Path A.8 (not yet decoded).
+>
+> Sections 8/9 of this doc are obsolete. Trust the path-a*.md docs.
+
 All claims are marked with one of:
 - **Measured** — file offset + decoded assembly cited  
 - **Inferred** — explicit reasoning noted, needs verification tag applied  

@@ -1,10 +1,20 @@
 ; ============================================================
-; Function: 
-;   Mangled: __ct__9CSCSIPlugFv
-;   File offset: 0x000bc6 - 0x000c8c (198 bytes)
+; Function: unknown
+;   Mangled: unknown
+;   File offset: 0x000ba6 - 0x000c72 (204 bytes)
 ;   Binary: scsi-plug-rsrc.bin
 ; ============================================================
 
+  000ba6:  4e75                  rts
+  000ba8:  9b47                  subxw %d7,%d5
+  000baa:  6574                  bcss 0xc20
+  000bac:  536f 636b             subqw #1,%sp@(25451)
+  000bb0:  6574                  bcss 0xc26
+  000bb2:  735f                  .short 0x735f
+  000bb4:  5f31 3143 4d45        subqb #7,%a1@(0)@(4d455341)
+  000bbc:  506c 7567             addqw #8,%a4@(30055)
+  000bc0:  496e                  .short 0x496e
+  000bc2:  4676 0000             notw %fp@(0,%d0:w)
   000bc6:  4e56 0000             linkw %fp,#0
   000bca:  2f0a                  movel %a2,%sp@-
   000bcc:  2f03                  movel %d3,%sp@-
@@ -56,16 +66,6 @@
   000c6c:  261f                  movel %sp@+,%d3
   000c6e:  245f                  moveal %sp@+,%a2
   000c70:  4e5e                  unlk %fp
-  000c72:  4e75                  rts
-  000c74:  925f                  subw %sp@+,%d1
-  000c76:  5f63                  subqw #7,%a3@-
-  000c78:  745f                  moveq #95,%d2
-  000c7a:  5f39 4353 4353        subqb #7,0x43534353
-  000c80:  4950                  .short 0x4950
-  000c82:  6c75                  bges 0xcf9
-  000c84:  6746                  beqs 0xccc
-  000c86:  7600                  moveq #0,%d3
-  000c88:  0000 4e56             orib #86,%d0
 
 ; ============================================================
 ; CALL GRAPH (all JSR/BSR targets)

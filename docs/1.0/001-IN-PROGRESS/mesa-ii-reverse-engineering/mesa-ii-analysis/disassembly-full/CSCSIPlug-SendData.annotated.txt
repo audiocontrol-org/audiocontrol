@@ -1,0 +1,390 @@
+; ============================================================
+; Function: CSCSIPlugFP7IP_Data::SendData
+;   Mangled: SendData__9CSCSIPlugFP7IP_Data
+;   File offset: 0x000df2 - 0x00121c (1066 bytes)
+;   Binary: scsi-plug-rsrc.bin
+; ============================================================
+
+  000df2:  4e56 ffd0             linkw %fp,#-48
+  000df6:  48e7 1f30             moveml %d3-%d7/%a2-%a3,%sp@-
+  000dfa:  246e 0008             moveal %fp@(8),%a2
+  000dfe:  266e 000c             moveal %fp@(12),%a3
+  000e02:  7600                  moveq #0,%d3
+  000e04:  426a 0d6e             clrw %a2@(3438)
+  000e08:  7800                  moveq #0,%d4
+  000e0a:  6022                  bras 0xe2e
+  000e0c:  702e                  moveq #46,%d0
+  000e0e:  c1c4                  mulsw %d4,%d0
+  000e10:  2032 0862             movel %a2@(62,%d0:l),%d0
+  000e14:  b0ab 000c             cmpl %a3@(12),%d0
+  000e18:  6612                  bnes 0xe2c
+  000e1a:  3044                  moveaw %d4,%a0
+  000e1c:  2008                  movel %a0,%d0
+  000e1e:  e588                  lsll #2,%d0
+  000e20:  204a                  moveal %a2,%a0
+  000e22:  d1c0                  addal %d0,%a0
+  000e24:  3568 0d72 0d6e        movew %a0@(3442),%a2@(3438)
+  000e2a:  600a                  bras 0xe36
+  000e2c:  5244                  addqw #1,%d4
+  000e2e:  3044                  moveaw %d4,%a0
+  000e30:  b1ea 0038             cmpal %a2@(56),%a0
+  000e34:  6dd6                  blts 0xe0c
+  000e36:  4a6a 0d6e             tstw %a2@(3438)
+  000e3a:  6608                  bnes 0xe44
+  000e3c:  303c c950             movew #-14000,%d0
+  000e40:  6000 03d4             braw 0x1216
+  000e44:  4a43                  tstw %d3
+  000e46:  6600 03cc             bnew 0x1214
+  000e4a:  42ae ffe2             clrl %fp@(-30)
+  000e4e:  202b 0008             movel %a3@(8),%d0
+  000e52:  4eb9 0000 0148        jsr 0x148  ; -> 0x000148/file:0x000148 (name unknown)
+  000e58:  0308 424f             movepw %a0@(16975),%d1
+  000e5c:  4646                  notw %d6
+  000e5e:  5359                  subqw #1,%a1@+
+  000e60:  5358                  subqw #1,%a0@+
+  000e62:  0004 424f             orib #79,%d4
+  000e66:  4646                  notw %d6
+  000e68:  001a 4255             orib #85,%a2@+
+  000e6c:  4c4b                  .short 0x4c4b
+  000e6e:  0030 4d49 4449        orib #73,%a0@(49,%d4:w:4)
+  000e74:  02a2 5352 4157        andil #1397899607,%a2@-
+  000e7a:  0046 5359             oriw #21337,%d6
+  000e7e:  5358                  subqw #1,%a0@+
+  000e80:  0246 4227             andiw #16935,%d6
+  000e84:  4227                  clrb %sp@-
+  000e86:  3f2a 0d6e             movew %a2@(3438),%sp@-
+  000e8a:  2f0a                  movel %a2,%sp@-
+  000e8c:  4eb9 0000 0ca2        jsr 0xca2  ; -> 0x000ca2/file:0x000ca2 (name unknown)
+  000e92:  422a 0e40             clrb %a2@(3648)
+  000e96:  4fef 000a             lea %sp@(10),%sp
+  000e9a:  6000 02c4             braw 0x1160
+  000e9e:  4a2a 0e40             tstb %a2@(3648)
+  000ea2:  661c                  bnes 0xec0
+  000ea4:  1f3c 0001             moveb #1,%sp@-  ; SDS-OPCODE-PUSH (opcode=0x01 = SDS dump header)
+  000ea8:  1f3c 0001             moveb #1,%sp@-  ; SDS-OPCODE-PUSH (opcode=0x01 = SDS dump header)
+  000eac:  3f2a 0d6e             movew %a2@(3438),%sp@-
+  000eb0:  2f0a                  movel %a2,%sp@-
+  000eb2:  4eb9 0000 0ca2        jsr 0xca2  ; -> 0x000ca2/file:0x000ca2 (name unknown)
+  000eb8:  1540 0e40             moveb %d0,%a2@(3648)
+  000ebc:  4fef 000a             lea %sp@(10),%sp
+  000ec0:  4a2a 0e40             tstb %a2@(3648)
+  000ec4:  6700 01ac             beqw 0x1072
+  000ec8:  363c d505             movew #-11003,%d3
+  000ecc:  2c2b 0004             movel %a3@(4),%d6
+  000ed0:  666e                  bnes 0xf40
+  000ed2:  4a93                  tstl %a3@
+  000ed4:  666a                  bnes 0xf40
+  000ed6:  4227                  clrb %sp@-
+  000ed8:  3f2a 0d6e             movew %a2@(3438),%sp@-
+  000edc:  2f0a                  movel %a2,%sp@-
+  000ede:  4eb9 0000 0d54        jsr 0xd54  ; -> 0x000d54/file:0x000d54 (name unknown)
+  000ee4:  4a80                  tstl %d0
+  000ee6:  504f                  addqw #8,%sp
+  000ee8:  6750                  beqs 0xf3a
+  000eea:  486e ffe2             pea %fp@(-30)
+  000eee:  4227                  clrb %sp@-
+  000ef0:  2f2a 0e3c             movel %a2@(3644),%sp@-
+  000ef4:  3f2a 0d6e             movew %a2@(3438),%sp@-
+  000ef8:  2f0a                  movel %a2,%sp@-
+  000efa:  4eb9 0000 0dfc        jsr 0xdfc  ; -> 0x000dfc/file:0x000dfc (name unknown)
+  000f00:  3600                  movew %d0,%d3
+  000f02:  4fef 0010             lea %sp@(16),%sp
+  000f06:  662c                  bnes 0xf34
+  000f08:  206a 0e3c             moveal %a2@(3644),%a0
+  000f0c:  0c10 00f0             cmpib #-16,%a0@
+  000f10:  661a                  bnes 0xf2c
+  000f12:  206a 0e3c             moveal %a2@(3644),%a0
+  000f16:  0c28 007e 0001        cmpib #126,%a0@(1)
+  000f1c:  660e                  bnes 0xf2c
+  000f1e:  206a 0e3c             moveal %a2@(3644),%a0
+  000f22:  7000                  moveq #0,%d0
+  000f24:  1028 0003             moveb %a0@(3),%d0
+  000f28:  6000 02ec             braw 0x1216
+  000f2c:  303c d505             movew #-11003,%d0
+  000f30:  6000 02e4             braw 0x1216
+  000f34:  3003                  movew %d3,%d0
+  000f36:  6000 02de             braw 0x1216
+  000f3a:  707c                  moveq #124,%d0
+  000f3c:  6000 02d8             braw 0x1216
+  000f40:  0cab 5352 4157        cmpil #1397899607,%a3@(8)
+  000f48:  6626                  bnes 0xf70
+  000f4a:  486e ffe2             pea %fp@(-30)
+  000f4e:  2f13                  movel %a3@,%sp@-
+  000f50:  2f2a 0e3c             movel %a2@(3644),%sp@-
+  000f54:  2f06                  movel %d6,%sp@-
+  000f56:  1f3c 0001             moveb #1,%sp@-  ; SDS-OPCODE-PUSH (opcode=0x01 = SDS dump header)
+  000f5a:  3f2a 0d6e             movew %a2@(3438),%sp@-
+  000f5e:  2f0a                  movel %a2,%sp@-
+  000f60:  4eb9 0000 106e        jsr 0x106e  ; -> 0x00106e/file:0x00106e (name unknown)
+  000f66:  3600                  movew %d0,%d3
+  000f68:  4fef 0018             lea %sp@(24),%sp
+  000f6c:  6000 01f2             braw 0x1160
+  000f70:  2046                  moveal %d6,%a0
+  000f72:  0c10 00f0             cmpib #-16,%a0@
+  000f76:  6600 00f2             bnew 0x106a
+  000f7a:  2046                  moveal %d6,%a0
+  000f7c:  0c28 0047 0001        cmpib #71,%a0@(1)
+  000f82:  6600 00e6             bnew 0x106a
+  000f86:  2046                  moveal %d6,%a0
+  000f88:  0c28 0048 0004        cmpib #72,%a0@(4)
+  000f8e:  6600 00da             bnew 0x106a
+  000f92:  2046                  moveal %d6,%a0
+  000f94:  7000                  moveq #0,%d0
+  000f96:  1028 0003             moveb %a0@(3),%d0
+  000f9a:  0440 000b             subiw #11,%d0
+  000f9e:  6708                  beqs 0xfa8
+  000fa0:  5340                  subqw #1,%d0
+  000fa2:  6728                  beqs 0xfcc
+  000fa4:  6000 01ba             braw 0x1160
+  000fa8:  486e ffe2             pea %fp@(-30)
+  000fac:  2f13                  movel %a3@,%sp@-
+  000fae:  2f2a 0e3c             movel %a2@(3644),%sp@-
+  000fb2:  2f06                  movel %d6,%sp@-
+  000fb4:  4227                  clrb %sp@-
+  000fb6:  3f2a 0d6e             movew %a2@(3438),%sp@-
+  000fba:  2f0a                  movel %a2,%sp@-
+  000fbc:  4eb9 0000 106e        jsr 0x106e  ; -> 0x00106e/file:0x00106e (name unknown)
+  000fc2:  3600                  movew %d0,%d3
+  000fc4:  4fef 0018             lea %sp@(24),%sp
+  000fc8:  6000 0196             braw 0x1160
+  000fcc:  2046                  moveal %d6,%a0
+  000fce:  7000                  moveq #0,%d0
+  000fd0:  1028 000e             moveb %a0@(14),%d0
+  000fd4:  2d40 ffda             movel %d0,%fp@(-38)
+  000fd8:  202e ffda             movel %fp@(-38),%d0
+  000fdc:  ef88                  lsll #7,%d0
+  000fde:  2d40 ffda             movel %d0,%fp@(-38)
+  000fe2:  2046                  moveal %d6,%a0
+  000fe4:  7000                  moveq #0,%d0
+  000fe6:  1028 000d             moveb %a0@(13),%d0
+  000fea:  d1ae ffda             addl %d0,%fp@(-38)
+  000fee:  202e ffda             movel %fp@(-38),%d0
+  000ff2:  ef88                  lsll #7,%d0
+  000ff4:  2d40 ffda             movel %d0,%fp@(-38)
+  000ff8:  2046                  moveal %d6,%a0
+  000ffa:  7000                  moveq #0,%d0
+  000ffc:  1028 000c             moveb %a0@(12),%d0
+  001000:  d1ae ffda             addl %d0,%fp@(-38)
+  001004:  202e ffda             movel %fp@(-38),%d0
+  001008:  ef88                  lsll #7,%d0
+  00100a:  2d40 ffda             movel %d0,%fp@(-38)
+  00100e:  2046                  moveal %d6,%a0
+  001010:  7000                  moveq #0,%d0
+  001012:  1028 000b             moveb %a0@(11),%d0
+  001016:  d1ae ffda             addl %d0,%fp@(-38)
+  00101a:  486e ffe2             pea %fp@(-30)
+  00101e:  2f13                  movel %a3@,%sp@-
+  001020:  42a7                  clrl %sp@-
+  001022:  2f06                  movel %d6,%sp@-
+  001024:  4227                  clrb %sp@-
+  001026:  3f2a 0d6e             movew %a2@(3438),%sp@-
+  00102a:  2f0a                  movel %a2,%sp@-
+  00102c:  4eb9 0000 106e        jsr 0x106e  ; -> 0x00106e/file:0x00106e (name unknown)
+  001032:  3600                  movew %d0,%d3
+  001034:  202e ffda             movel %fp@(-38),%d0
+  001038:  d080                  addl %d0,%d0
+  00103a:  2d40 ffe2             movel %d0,%fp@(-30)
+  00103e:  4a43                  tstw %d3
+  001040:  4fef 0018             lea %sp@(24),%sp
+  001044:  6600 011a             bnew 0x1160
+  001048:  486e ffe2             pea %fp@(-30)
+  00104c:  1f3c 0001             moveb #1,%sp@-  ; SDS-OPCODE-PUSH (opcode=0x01 = SDS dump header)
+  001050:  2f2a 0e3c             movel %a2@(3644),%sp@-
+  001054:  3f2a 0d6e             movew %a2@(3438),%sp@-
+  001058:  2f0a                  movel %a2,%sp@-
+  00105a:  4eb9 0000 0dfc        jsr 0xdfc  ; -> 0x000dfc/file:0x000dfc (name unknown)
+  001060:  3600                  movew %d0,%d3
+  001062:  4fef 0010             lea %sp@(16),%sp
+  001066:  6000 00f8             braw 0x1160
+  00106a:  363c d505             movew #-11003,%d3
+  00106e:  6000 00f0             braw 0x1160
+  001072:  2d6b 0004 ffd2        movel %a3@(4),%fp@(-46)
+  001078:  157c 0001 0e46        moveb #1,%a2@(3654)
+  00107e:  206e ffd2             moveal %fp@(-46),%a0
+  001082:  0810 0007             btst #7,%a0@
+  001086:  6708                  beqs 0x1090
+  001088:  1d7c 0001 ffd1        moveb #1,%fp@(-47)
+  00108e:  6004                  bras 0x1094
+  001090:  422e ffd1             clrb %fp@(-47)
+  001094:  156e ffd1 0e47        moveb %fp@(-47),%a2@(3655)
+  00109a:  486e ffe2             pea %fp@(-30)
+  00109e:  2f13                  movel %a3@,%sp@-
+  0010a0:  2f2a 0e3c             movel %a2@(3644),%sp@-
+  0010a4:  2f2e ffd2             movel %fp@(-46),%sp@-
+  0010a8:  1f3c 0001             moveb #1,%sp@-  ; SDS-OPCODE-PUSH (opcode=0x01 = SDS dump header)
+  0010ac:  3f2a 0d6e             movew %a2@(3438),%sp@-
+  0010b0:  2f0a                  movel %a2,%sp@-
+  0010b2:  4eb9 0000 106e        jsr 0x106e  ; -> 0x00106e/file:0x00106e (name unknown)
+  0010b8:  3600                  movew %d0,%d3
+  0010ba:  422a 0e46             clrb %a2@(3654)
+  0010be:  4fef 0018             lea %sp@(24),%sp
+  0010c2:  6000 009c             braw 0x1160
+  0010c6:  4227                  clrb %sp@-
+  0010c8:  1f3c 0001             moveb #1,%sp@-  ; SDS-OPCODE-PUSH (opcode=0x01 = SDS dump header)
+  0010cc:  3f2a 0d6e             movew %a2@(3438),%sp@-
+  0010d0:  2f0a                  movel %a2,%sp@-
+  0010d2:  4eb9 0000 0ca2        jsr 0xca2  ; -> 0x000ca2/file:0x000ca2 (name unknown)
+  0010d8:  4a00                  tstb %d0
+  0010da:  4fef 000a             lea %sp@(10),%sp
+  0010de:  6700 0080             beqw 0x1160
+  0010e2:  486e ffe2             pea %fp@(-30)
+  0010e6:  2f13                  movel %a3@,%sp@-
+  0010e8:  2f2a 0e3c             movel %a2@(3644),%sp@-
+  0010ec:  2f2b 0004             movel %a3@(4),%sp@-
+  0010f0:  4227                  clrb %sp@-
+  0010f2:  3f2a 0d6e             movew %a2@(3438),%sp@-
+  0010f6:  2f0a                  movel %a2,%sp@-
+  0010f8:  4eb9 0000 106e        jsr 0x106e  ; -> 0x00106e/file:0x00106e (name unknown)
+  0010fe:  3600                  movew %d0,%d3
+  001100:  4227                  clrb %sp@-
+  001102:  4227                  clrb %sp@-
+  001104:  3f2a 0d6e             movew %a2@(3438),%sp@-
+  001108:  2f0a                  movel %a2,%sp@-
+  00110a:  4eb9 0000 0ca2        jsr 0xca2  ; -> 0x000ca2/file:0x000ca2 (name unknown)
+  001110:  4fef 0022             lea %sp@(34),%sp
+  001114:  604a                  bras 0x1160
+  001116:  4227                  clrb %sp@-
+  001118:  1f3c 0001             moveb #1,%sp@-  ; SDS-OPCODE-PUSH (opcode=0x01 = SDS dump header)
+  00111c:  3f2a 0d6e             movew %a2@(3438),%sp@-
+  001120:  2f0a                  movel %a2,%sp@-
+  001122:  4eb9 0000 0ca2        jsr 0xca2  ; -> 0x000ca2/file:0x000ca2 (name unknown)
+  001128:  4a00                  tstb %d0
+  00112a:  4fef 000a             lea %sp@(10),%sp
+  00112e:  6730                  beqs 0x1160
+  001130:  486e ffe2             pea %fp@(-30)
+  001134:  2f13                  movel %a3@,%sp@-
+  001136:  42a7                  clrl %sp@-
+  001138:  2f2b 0004             movel %a3@(4),%sp@-
+  00113c:  4227                  clrb %sp@-
+  00113e:  3f2a 0d6e             movew %a2@(3438),%sp@-
+  001142:  2f0a                  movel %a2,%sp@-
+  001144:  4eb9 0000 106e        jsr 0x106e  ; -> 0x00106e/file:0x00106e (name unknown)
+  00114a:  3600                  movew %d0,%d3
+  00114c:  4227                  clrb %sp@-
+  00114e:  4227                  clrb %sp@-
+  001150:  3f2a 0d6e             movew %a2@(3438),%sp@-
+  001154:  2f0a                  movel %a2,%sp@-
+  001156:  4eb9 0000 0ca2        jsr 0xca2  ; -> 0x000ca2/file:0x000ca2 (name unknown)
+  00115c:  4fef 0022             lea %sp@(34),%sp
+  001160:  4a43                  tstw %d3
+  001162:  6600 00b0             bnew 0x1214
+  001166:  4aae ffe2             tstl %fp@(-30)
+  00116a:  6700 00a8             beqw 0x1214
+  00116e:  2f0a                  movel %a2,%sp@-
+  001170:  2057                  moveal %sp@,%a0
+  001172:  2250                  moveal %a0@,%a1
+  001174:  2269 0018             moveal %a1@(24),%a1
+  001178:  4e91                  jsr %a1@  ; vtable dispatch (indirect)
+  00117a:  2d48 ffd6             movel %a0,%fp@(-42)
+  00117e:  7e00                  moveq #0,%d7
+  001180:  584f                  addqw #4,%sp
+  001182:  6000 0084             braw 0x1208
+  001186:  702e                  moveq #46,%d0
+  001188:  c1c7                  mulsw %d7,%d0
+  00118a:  206e ffd6             moveal %fp@(-42),%a0
+  00118e:  d1c0                  addal %d0,%a0
+  001190:  5888                  addql #4,%a0
+  001192:  2a08                  movel %a0,%d5
+  001194:  2045                  moveal %d5,%a0
+  001196:  4a68 0024             tstw %a0@(36)
+  00119a:  676a                  beqs 0x1206
+  00119c:  41ec 018a             lea %a4@(394),%a0
+  0011a0:  43ee fff0             lea %fp@(-16),%a1
+  0011a4:  22d8                  movel %a0@+,%a1@+
+  0011a6:  22d8                  movel %a0@+,%a1@+
+  0011a8:  22d8                  movel %a0@+,%a1@+
+  0011aa:  22d8                  movel %a0@+,%a1@+
+  0011ac:  2d6e ffe2 fff0        movel %fp@(-30),%fp@(-16)
+  0011b2:  2d6a 0e3c fff4        movel %a2@(3644),%fp@(-12)
+  0011b8:  206a 0e3c             moveal %a2@(3644),%a0
+  0011bc:  0c10 00f0             cmpib #-16,%a0@
+  0011c0:  660a                  bnes 0x11cc
+  0011c2:  2d7c 5359 5358        movel #1398362968,%fp@(-34)  ; TAG=SYSX
+  0011ca:  6008                  bras 0x11d4
+  0011cc:  2d7c 5352 4157        movel #1397899607,%fp@(-34)  ; TAG=SRAW
+  0011d4:  2d6e ffde fff8        movel %fp@(-34),%fp@(-8)
+  0011da:  41ec 0180             lea %a4@(384),%a0
+  0011de:  43ee ffe6             lea %fp@(-26),%a1
+  0011e2:  22d8                  movel %a0@+,%a1@+
+  0011e4:  22d8                  movel %a0@+,%a1@+
+  0011e6:  32d8                  movew %a0@+,%a1@+
+  0011e8:  41ee fff0             lea %fp@(-16),%a0
+  0011ec:  2d48 ffec             movel %a0,%fp@(-20)
+  0011f0:  2045                  moveal %d5,%a0
+  0011f2:  4a90                  tstl %a0@
+  0011f4:  670c                  beqs 0x1202
+  0011f6:  486e ffe6             pea %fp@(-26)
+  0011fa:  2045                  moveal %d5,%a0
+  0011fc:  2050                  moveal %a0@,%a0
+  0011fe:  4e90                  jsr %a0@  ; vtable dispatch (indirect)
+  001200:  584f                  addqw #4,%sp
+  001202:  362e ffea             movew %fp@(-22),%d3
+  001206:  5247                  addqw #1,%d7
+  001208:  206e ffd6             moveal %fp@(-42),%a0
+  00120c:  3247                  moveaw %d7,%a1
+  00120e:  b3d0                  cmpal %a0@,%a1
+  001210:  6d00 ff74             bltw 0x1186
+  001214:  3003                  movew %d3,%d0
+  001216:  4cdf 0cf8             moveml %sp@+,%d3-%d7/%a2-%a3
+  00121a:  4e5e                  unlk %fp
+
+; ============================================================
+; CALL GRAPH (all JSR/BSR targets)
+; ============================================================
+;   0x000e52  jsr 0x000148 (file:0x000148)  ->  (name not found)
+;   0x000e8c  jsr 0x000ca2 (file:0x000ca2)  ->  (name not found)
+;   0x000ede  jsr 0x000d54 (file:0x000d54)  ->  (name not found)
+;   0x000efa  jsr 0x000dfc (file:0x000dfc)  ->  (name not found)
+;   0x000f60  jsr 0x00106e (file:0x00106e)  ->  (name not found)
+
+; ============================================================
+; NEARBY FUNCTIONS (within 0x5000 of target range)
+; ============================================================
+;   0x00070c  main  [main]
+;   0x0007ac    [__ct__11CMESAPlugInFv]
+;   0x000812    [__dt__11CMESAPlugInFv]
+;   0x000856  CMESAPlugInFPFP11MESACommand_v::SetMESAProc  [SetMESAProc__11CMESAPlugInFPFP11MESACommand_v]
+;   0x00089a  CMESAPlugInFP11MESACommand::DoMESACommand  [DoMESACommand__11CMESAPlugInFP11MESACommand]
+;   0x0009d2  CMESAPlugInFP10SocketInfo::ConnectToSocket  [ConnectToSocket__11CMESAPlugInFP10SocketInfo]
+;   0x000a5e  CMESAPlugInFP10SocketInfo::ActivateSocket  [ActivateSocket__11CMESAPlugInFP10SocketInfo]
+;   0x000ae6  CMESAPlugInFUc::BusyCursor  [BusyCursor__11CMESAPlugInFUc]
+;   0x000b40  CMESAPlugInFUs::KeyIsPressed  [KeyIsPressed__11CMESAPlugInFUs]
+;   0x000b98  CMESAPlugInFv::GetSockets  [GetSockets__11CMESAPlugInFv]
+;   0x000bc6    [__ct__9CSCSIPlugFv]
+;   0x000c8a    [__dt__9CSCSIPlugFv]
+;   0x000ce4  CSCSIPlugFP11MESACommand::DoMESACommand  [DoMESACommand__9CSCSIPlugFP11MESACommand]
+;   0x000d8e  CSCSIPlugFv::Open  [Open__9CSCSIPlugFv]
+;   0x000dac  CSCSIPlugFv::Close  [Close__9CSCSIPlugFv]
+;   0x000dca  CSCSIPlugFPl::DoAboutToQuit  [DoAboutToQuit__9CSCSIPlugFPl]
+;   0x000df2  CSCSIPlugFP7IP_Data::SendData  [SendData__9CSCSIPlugFP7IP_Data]
+;   0x001240  CSCSIPlugFsUcUc::SetSCSIMIDIMode  [SetSCSIMIDIMode__9CSCSIPlugFsUcUc]
+;   0x0012f2  CSCSIPlugFsUc::SMDataByteEnquiry  [SMDataByteEnquiry__9CSCSIPlugFsUc]
+;   0x00139a  CSCSIPlugFsPUcUcPl::SMDispatchReply  [SMDispatchReply__9CSCSIPlugFsPUcUcPl]
+;   0x00160c  CSCSIPlugFsUcPUcPUclPl::SMSendData  [SMSendData__9CSCSIPlugFsUcPUcPUclPl]
+;   0x001700  CSCSIPlugFUl::ChooseSCSI  [ChooseSCSI__9CSCSIPlugFUl]
+;   0x001b1c    [__ct__10CSCSIUtilsFv]
+;   0x001bbe  CSCSIUtilsFsP3CdbPUcUlls::SCSICommand  [SCSICommand__10CSCSIUtilsFsP3CdbPUcUlls]
+;   0x001d4a  CSCSIUtilsFccPUcUl::Inquiry  [Inquiry__10CSCSIUtilsFccPUcUl]
+;   0x001dc2  CSCSIUtilsFs::TestUnitReady  [TestUnitReady__10CSCSIUtilsFs]
+;   0x001e1c  CSCSIUtilsFs::WaitUntilReady  [WaitUntilReady__10CSCSIUtilsFs]
+;   0x001eb8  CSCSIUtilsFc::ResetBus  [ResetBus__10CSCSIUtilsFc]
+;   0x001f0e  CSCSIUtilsFv::IdentifyBusses  [IdentifyBusses__10CSCSIUtilsFv]
+;   0x002150    [__ct__7CDialogFsPv]
+;   0x0021ac    [__dt__7CDialogFv]
+;   0x0021fe  CDialogFv::Show  [Show__7CDialogFv]
+;   0x002234  CDialogFv::Draw  [Draw__7CDialogFv]
+;   0x002280  CDialogFv::Do  [Do__7CDialogFv]
+;   0x002524  CDialogFsPUc::GetItemText  [GetItemText__7CDialogFsPUc]
+;   0x00256e  CDialogFs::GetItemValue  [GetItemValue__7CDialogFs]
+;   0x0025c0  CDialogFs::ToggleCheckBox  [ToggleCheckBox__7CDialogFs]
+;   0x002624  CDialogFUc::SetIsMovable  [SetIsMovable__7CDialogFUc]
+;   0x002652  CDialogFv::IsMovable  [IsMovable__7CDialogFv]
+;   0x00267a  CDialogFPUc::SetTitle  [SetTitle__7CDialogFPUc]
+;   0x0026aa    [__ct__11CSCSIDialogFsPv]
+;   0x002728    [__dt__11CSCSIDialogFv]
+;   0x00277a  CSCSIDialogFsPUc::SetLine  [SetLine__11CSCSIDialogFsPUc]
+;   0x0027f4  CSCSIDialogFs::DoItemHit  [DoItemHit__11CSCSIDialogFs]
+;   0x00283a  CSCSIDialogFv::DoDraw  [DoDraw__11CSCSIDialogFv]
+;   0x002922  CSCSIDialogFcs::DoKeyPress  [DoKeyPress__11CSCSIDialogFcs]
+;   0x00294c  CSCSIDialogFv::DoNull  [DoNull__11CSCSIDialogFv]
+;   0x002982  CSCSIDialogF5PointsPs::DoMouseDown  [DoMouseDown__11CSCSIDialogF5PointsPs]
