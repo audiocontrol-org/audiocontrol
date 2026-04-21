@@ -152,6 +152,12 @@ So the current best read is:
 - the remaining static frontier is the socket/vtable path and the plug-side slot family
   it reaches, not a missing runtime install moment
 
+The plug-side half of that frontier is also sharper now. Codex has independently
+confirmed Claude's Path A.6 claim that the callback at `scsi-plug` `$11fe` is read from
+`plug_slot[+0]`, and that `CMESAPlugIn::ConnectToSocket` installs that field by copying
+the incoming 46-byte `SocketInfo` verbatim. So the next concrete static question is:
+what editor-side function address becomes `SocketInfo[+0]` in the `CONS` payload?
+
 That is still a narrow static frontier, not a return to broad helper hunting. Codex
 should use it for boundary-proof and contradiction-handling work in parallel with
 Claude's runtime Option 2 path.

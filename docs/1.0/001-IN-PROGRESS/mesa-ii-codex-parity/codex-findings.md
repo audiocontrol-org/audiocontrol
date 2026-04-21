@@ -2233,6 +2233,27 @@ correct. Every finding should distinguish direct evidence from inference.
   path. The remaining static frontier is now the compile-time socket/vtable path and the
   plug-side slot family it reaches, not a missing runtime install moment.
 
+- Finding 118: the plug-side reply callback at `scsi-plug` `$11fe` is read from
+  `plug_slot[+0]`, and that field is installed by `CMESAPlugIn::ConnectToSocket` as a
+  verbatim copy of `SocketInfo[+0]`.
+  Evidence:
+  direct bytes at `scsi-plug` file `0x11f6-0x11fe` show the exact call-through sequence
+  Claude highlighted earlier:
+  `486e ffe6 2045 2050 4e90`, i.e. push local arg, load `D5` as slot pointer, load
+  `(A0)` into `A0`, then `jsr (A0)`. That is a call through `plug_slot[+0]`, not
+  `plug_slot[+12]`.
+  The install side matches too: `CMESAPlugIn::ConnectToSocket` at file `0x09fc-0x0a1e`
+  computes `this + 0x3c + 46*n` and then performs a straight copy loop beginning
+  `43d3 20d9 20d9 ... 30d9`, i.e. copy the incoming 46-byte `SocketInfo` into the slot
+  verbatim. `GetSockets` at file `0x0b98-0x0ba6` returns `this+0x38`, which matches the
+  slot-iterator path at file `0x1170+` that reads vtable[+24], receives `this+56`, then
+  iterates 46-byte records from `+60`.
+  Interpretation:
+  this corrects the older Codex/Claude conflation around `SocketInfo[+12]`. The plug-side
+  callback slot used by `$11fe` is `SocketInfo[+0] -> plug_slot[+0]`. So the next static
+  question is no longer "where is `SocketInfo[+12]` installed?" but "what editor-side
+  function address is transmitted as `SocketInfo[+0]` in the `CONS` payload?"
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

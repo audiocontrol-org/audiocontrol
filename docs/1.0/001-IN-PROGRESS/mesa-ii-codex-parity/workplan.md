@@ -238,6 +238,14 @@ So the more accurate current split is:
 - the next static target is the socket/vtable path and the plug-side slot family it
   reaches, not another search for a runtime install event
 
+Newest plug-side refinement:
+
+- `$11fe` reads `plug_slot[+0]`, not `plug_slot[+12]`
+- `CMESAPlugIn::ConnectToSocket` installs that field by verbatim-copying the incoming
+  46-byte `SocketInfo`
+- so the next best static question is the editor-side identity of `SocketInfo[+0]` in
+  the `CONS` payload, not any remaining `SocketInfo[+12]` install story
+
 That split uses the two efforts complementarily: Claude pushes runtime terrain and
 hardware truth, while Codex keeps pressure on the same install-edge path statically and
 records which static branches are now convincingly ruled out.
@@ -268,7 +276,8 @@ records which static branches are now convincingly ruled out.
 - Treat Claude's Path A / task `#31` as the step-0 prequel to Option 2, per the latest
   `#315` reply, not as a rival strategy branch
 - Keep Codex on the same static install-edge question in parallel:
-  test the compile-time socket/vtable path above `CMESAEditor`, and keep the older
+  test the compile-time socket/vtable path above `CMESAEditor`, then follow the
+  `CONS -> SocketInfo[+0] -> plug_slot[+0]` callback chain; keep the older
   “the install edge leaves the recovered resource graph” framing limited to the narrow
   direct `+0xa20` path unless new evidence broadens it again
 - Prefer explicit terminal-boundary documentation over additional broad helper hunting:

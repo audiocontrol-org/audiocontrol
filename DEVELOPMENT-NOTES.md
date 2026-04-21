@@ -1773,6 +1773,52 @@ model was too broad.
 3. The remaining static frontier is now sharper again: compile-time socket/vtable
    binding and the plug-side slot family, not a missing runtime install event.
 
+## 2026-04-20: MESA II Plug-Side Callback Slot Corrected To `SocketInfo[+0]`
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Use Claude's new Path A.6 result as the next concrete parity target: verify the exact
+plug-side callback slot and decide whether the remaining static question is still about
+`SocketInfo[+12]` or something cleaner.
+
+### Accomplished
+- Verified directly from `scsi-plug-rsrc.bin` that the `$11fe` callback path calls
+  through `plug_slot[+0]`, not `plug_slot[+12]`
+- Verified that `CMESAPlugIn::ConnectToSocket` at `0x09fc-0x0a1e` verbatim-copies the
+  incoming 46-byte `SocketInfo` into the plug slot
+- Verified that `GetSockets` returns `this+0x38`, matching the slot-array iteration that
+  reaches the `$11fe` call-through path
+- Updated parity docs to replace the older `SocketInfo[+12]` framing with the cleaner
+  current target: the editor-side identity of `SocketInfo[+0]` in the `CONS` payload
+
+### Didn't Work
+- This still did not identify the editor-side callback function that becomes
+  `SocketInfo[+0]`
+- The editor's exact `CONS` payload construction path remains unresolved on the Codex
+  side
+
+### Course Corrections
+- **[EVIDENCE]** The slot-field correction is important because it removes a whole class
+  of stale questions. The plug-side live callback is not waiting on `SocketInfo[+12]`.
+- **[PROCESS]** Following Claude's sharper sub-problem was the right move here; it
+  converted a fuzzy "socket/vtable frontier" into one exact unresolved field.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 118`
+- Feature docs updated: 4
+  `codex-findings.md`, `comparison-record.md`, `README.md`, `workplan.md`
+
+### Insights
+1. The remaining static frontier is now one field narrower than before.
+2. Once the plug-side copy/install semantics are fixed, the next real question belongs
+   entirely on the editor side.
+3. This is the kind of cross-pollination that justifies running Path A in parallel:
+   a Claude-side narrowing became a Codex-side primary-artifact correction within one
+   pass.
+
 ## 2026-04-20: MESA II Ambiguous Raw-Hex Hits Kept Below Finding Threshold
 
 ### Feature: mesa-ii-codex-parity

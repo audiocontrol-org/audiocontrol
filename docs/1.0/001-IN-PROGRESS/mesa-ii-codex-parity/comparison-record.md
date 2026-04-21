@@ -485,7 +485,14 @@ cleanly.
   current best shared model is now compile-time vtable binding inside the recovered
   graph, not a runtime install edge outside it. The older Codex "outside the recovered
   graph" conclusion should now be read as applying only to the narrower direct `+0xa20`
-  install hunt, not to the full reply-handler path.
+  install hunt, not to the full reply-handler path. Claude's newer Path A.6 result also
+  survives Codex spot-checking on the plug side: the `$11fe` callback path does a
+  `moveal (A0),A0; jsr (A0)` through `plug_slot[+0]`, and `CMESAPlugIn::ConnectToSocket`
+  verbatim-copies the incoming 46-byte `SocketInfo` into the plug slot. So the live
+  plug-side callback is now best modeled as `SocketInfo[+0] -> plug_slot[+0]`, not
+  `SocketInfo[+12]`. That shifts the remaining static target one step cleaner again:
+  the unresolved identity is the editor-side function address transmitted as
+  `SocketInfo[+0]` in the `CONS` payload.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.
