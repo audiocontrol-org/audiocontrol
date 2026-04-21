@@ -580,6 +580,13 @@ cleanly.
   not in different outer call shapes. So the remaining open static question is now the
   wire meaning of those varying fields, especially the mode byte, the nullable context
   long, and the `%a3@` long that stays live across all caller families.
+  Codex now also has a cleaner front-end routing read on `IP_Data` itself. Before any
+  branch-specific send logic runs, `SendData` clears `CSCSIPlug+0x0d6e`, loops over
+  connected entries, compares a per-entry long loaded from `self@(62 + 46*i)` against
+  `IP_Data[+12]`, and on match copies a per-entry word from the `0x0d72`-rooted table
+  into `CSCSIPlug+0x0d6e`. If no match is found, `SendData` returns `-14000`
+  immediately. So `IP_Data[+12]` is now measured as the front-end routing key that
+  selects the downstream target word used by every later `0x106e` caller family.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

@@ -2474,6 +2474,23 @@ correct. Every finding should distinguish direct evidence from inference.
   is no longer “which branch reaches `0x106e`?” but “what concrete wire semantics are
   encoded by mode byte, source-pointer family, and the nullable context long?”
 
+- Finding 128: `IP_Data[+12]` is the front-end target-selection key used by
+  `CSCSIPlug::SendData` to choose `CSCSIPlug+0x0d6e` before any branch-specific send
+  logic runs.
+  Evidence:
+  `SendData__9CSCSIPlugFP7IP_Data` starts by clearing `CSCSIPlug+0x0d6e`, then looping
+  over connected entries with `i` in `%d4`. For each entry it loads a per-entry long
+  from `self@(62 + 46*i)` at file `0x0e10`, compares it against `%a3@(12)` at
+  `0x0e14-0x0e18`, and on match writes a per-entry word from the `0x0d72`-rooted table
+  into `self@(0x0d6e)` at `0x0e24-0x0e28`. If no match is found, `SendData` returns
+  `-14000` immediately from `0x0e3c-0x0e40`.
+  Interpretation:
+  whatever `IP_Data[+12]` semantically names, it is not part of the later `0x106e`
+  caller-family split. It is the earlier dispatch key that selects the active target
+  word used by every downstream send shape. That makes `IP_Data[+12]` a measured
+  routing field, while the remaining `0x106e` unknowns stay concentrated in mode/source/
+  context and the persistent `%a3@` long.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
@@ -2515,6 +2532,9 @@ correct. Every finding should distinguish direct evidence from inference.
 - What does `arg5 = %a3@` represent in the shared `0x106e` sender frame across all
   caller families, and is it an `IP_Data*`, a higher-level command descriptor, or
   another transport-control block?
+- What exact per-entry long at `self@(62 + 46*i)` is being matched against `IP_Data[+12]`,
+  and how does that routing key relate to the plug/socket identity established by the
+  earlier `CONS` handshake?
 - What concrete `CSamplerModule`-side method lives at the `vtable[0x28]` `UALL` call
   site, and does it in turn route into a sampler object, a UI update path, or both?
 - Can Codex decode the function body behind `CAkaiSampler` slot `0x0170` directly

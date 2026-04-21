@@ -2304,3 +2304,49 @@ different call contracts, or whether they are variants of one stable send-frame 
 2. The branch-local differences are sparse and analyzable: mode, source family, context.
 3. The next best static target is the persistent `%a3@` field, because it survives
    across all caller families and may carry the higher-level send descriptor.
+
+## 2026-04-21: MESA II `IP_Data[+12]` Selects the Send Target Before Branch Dispatch
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Clarify whether any part of the `IP_Data` structure already controls routing before the
+shared `0x106e` sender frame is assembled, instead of treating all uncertainty as
+downstream send-engine ambiguity.
+
+### Accomplished
+- Re-decoded the `SendData` prologue at file `0x0df2-0x0e40`
+- Verified that `SendData`:
+  - clears `CSCSIPlug+0x0d6e`
+  - loops over connected entries with index `i`
+  - loads a per-entry long from `self@(62 + 46*i)`
+  - compares that long against `IP_Data[+12]`
+  - on match, copies a per-entry word from the `0x0d72`-rooted table into
+    `CSCSIPlug+0x0d6e`
+  - returns `-14000` immediately if no match is found
+- Updated parity docs to record `IP_Data[+12]` as measured front-end routing input,
+  distinct from the later mode/source/context differences feeding `0x106e`
+
+### Didn't Work
+- This still does not identify the exact semantic name of the per-entry long matched
+  against `IP_Data[+12]`
+- It also does not yet explain what `%a3@` means inside the later shared sender frame
+
+### Course Corrections
+- **[EVIDENCE]** The shared sender is not the first routing decision point. One piece of
+  `IP_Data` already selects the downstream target word before any branch-specific send
+  logic runs.
+- **[PROCESS]** This is the right kind of upstream clarification: isolate front-end
+  routing fields before trying to decode deeper send semantics.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 128`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. `IP_Data[+12]` is a measured target-selection key, not part of the later branch split.
+2. The later `0x106e` frame should now be read as operating on an already-selected target.
+3. The next high-value unresolved `IP_Data` field is `%a3@`, not `IP_Data[+12]`.
