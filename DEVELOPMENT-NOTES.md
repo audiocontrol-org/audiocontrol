@@ -2258,3 +2258,49 @@ caller-side shapes already visible in the recovered `SendData` body.
    the shared sender contract.
 3. The highest-value next static question is how those caller-family differences map to
    concrete live-in fields and wire-mode selection.
+
+## 2026-04-21: MESA II `0x106e` Uses One Stable Seven-Slot Caller Frame
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Determine whether the multiple measured caller families into `0x106e` actually imply
+different call contracts, or whether they are variants of one stable send-frame schema.
+
+### Accomplished
+- Re-decoded `scsi-plug` file `0x0f40-0x1144` around every direct `jsr 0x106e`
+- Verified that all six sites push the same outer seven-slot call frame:
+  - `arg0 = self`
+  - `arg1 = CSCSIPlug+0x0d6e`
+  - `arg2 = mode byte`
+  - `arg3 = source pointer`
+  - `arg4 = nullable context long`
+  - `arg5 = %a3@`
+  - `arg6 = &fp@(-30)`
+- Classified the branch-local differences as concentrated in only three positions:
+  mode byte, source pointer family, and nullable context long
+- Updated parity docs to treat `0x106e` as a stable central send routine with varying
+  mode/source/context fields, not as a family of unrelated hidden helpers
+
+### Didn't Work
+- This still does not decode the concrete wire meaning of the mode byte
+- It also does not yet identify what `%a3@` represents in the shared sender frame
+
+### Course Corrections
+- **[EVIDENCE]** The important structural claim is no longer “many branches call
+  `0x106e`,” but “they already agree on one stable caller contract.”
+- **[PROCESS]** That moves the frontier from branch classification to argument
+  semantics: mode, context, and `%a3@` now matter more than hunting more `jsr` sites.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 127`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. `0x106e` now looks like one central send routine with a fixed outer frame.
+2. The branch-local differences are sparse and analyzable: mode, source family, context.
+3. The next best static target is the persistent `%a3@` field, because it survives
+   across all caller families and may carry the higher-level send descriptor.

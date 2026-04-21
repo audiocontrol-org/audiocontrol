@@ -2448,6 +2448,32 @@ correct. Every finding should distinguish direct evidence from inference.
   send shapes. That makes the remaining unknown more likely to be a small parameterized
   send engine than a one-off SRAW helper.
 
+- Finding 127: those four caller families still share one measured seven-slot argument
+  layout into `0x106e`; the branch-local differences are concentrated in mode/source/
+  context fields rather than in wholly different call contracts.
+  Evidence:
+  direct `objdump` of file `0x0f40-0x1144` shows every `jsr 0x106e` site pushing the
+  same outer frame shape:
+  callee `arg0` = `self` (`movel %a2,%sp@-`);
+  `arg1` = selected-target word from `CSCSIPlug+0x0d6e`;
+  `arg2` = one-byte mode flag (`#1` or `#0`);
+  `arg3` = source pointer (`%d6` or `%a3@(4)`);
+  `arg4` = context long (`CSCSIPlug+0x0e3c` or zero);
+  `arg5` = `%a3@` long;
+  `arg6` = `pea %fp@(-30)` output-length pointer.
+  The measured branch differences are:
+  `0x0f60`: mode `#1`, source `%d6`, context `CSCSIPlug+0x0e3c`;
+  `0x0fbc`: mode `#0`, source `%d6`, context `CSCSIPlug+0x0e3c`;
+  `0x102c`: mode `#0`, source `%d6`, context `0`;
+  `0x10b2`: mode `#1`, source `%a3@(4)`, context `CSCSIPlug+0x0e3c`;
+  `0x10f8`: mode `#0`, source `%a3@(4)`, context `CSCSIPlug+0x0e3c`;
+  `0x1144`: mode `#0`, source `%a3@(4)`, context `0`.
+  Interpretation:
+  `0x106e` now looks less like an opaque one-off jump target and more like a stable
+  central send routine with a fixed caller contract. The highest-value static question
+  is no longer “which branch reaches `0x106e`?” but “what concrete wire semantics are
+  encoded by mode byte, source-pointer family, and the nullable context long?”
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
@@ -2486,6 +2512,9 @@ correct. Every finding should distinguish direct evidence from inference.
 - How do the measured caller families into `0x106e` map onto concrete wire modes:
   raw-SRAW, SDS-header-like control sends, and the derived-length path that post-processes
   `%fp@(-30)` after return?
+- What does `arg5 = %a3@` represent in the shared `0x106e` sender frame across all
+  caller families, and is it an `IP_Data*`, a higher-level command descriptor, or
+  another transport-control block?
 - What concrete `CSamplerModule`-side method lives at the `vtable[0x28]` `UALL` call
   site, and does it in turn route into a sampler object, a UI update path, or both?
 - Can Codex decode the function body behind `CAkaiSampler` slot `0x0170` directly

@@ -566,6 +566,20 @@ cleanly.
   All four converge on the same post-send/report block at `0x1160`. So the remaining
   open question is now better framed as the parameter contract of a central send engine,
   not “what hidden SRAW helper lives before `0x106e`?”
+  Codex has now tightened that parameter-contract framing further. Direct `objdump` of
+  file `0x0f40-0x1144` shows all six `jsr 0x106e` sites pushing one stable seven-slot
+  call frame:
+  `self`,
+  selected-target word from `CSCSIPlug+0x0d6e`,
+  one-byte mode flag,
+  source pointer,
+  nullable context long,
+  `%a3@` long,
+  and `&fp@(-30)` output-length pointer.
+  The branch-local differences are concentrated in the mode/source/context positions,
+  not in different outer call shapes. So the remaining open static question is now the
+  wire meaning of those varying fields, especially the mode byte, the nullable context
+  long, and the `%a3@` long that stays live across all caller families.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.
