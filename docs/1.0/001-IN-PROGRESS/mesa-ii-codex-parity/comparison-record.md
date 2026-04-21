@@ -634,6 +634,14 @@ cleanly.
   `0x1b56` is just a constructor-side internal entry inside a larger helper body. So the
   remaining pre-send-gate semantics are now below both the visible `0x0ca2` local code
   and the obvious next two callees.
+  One more alternate-source escape hatch is now closed too. Direct byte comparison of
+  the checked-in `scsi-plug.macbin` against the extracted `scsi-plug-rsrc.bin` shows a
+  zero-length data fork, a `12053`-byte resource fork, full resource-fork equality, and
+  identical bytes at the sender-stub offsets
+  (`0x106e = 600000f0`, `0x1070 = 00f02d6b`). So for the binary sources currently in
+  the repo, "look at the MacBinary copy instead" does not reopen a different sender
+  body. The remaining explanations are runtime patching, a different binary source not
+  yet in hand, or another nonlocal mechanism beyond these identical artifacts.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

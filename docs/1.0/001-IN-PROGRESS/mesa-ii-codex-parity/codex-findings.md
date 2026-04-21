@@ -2631,6 +2631,26 @@ correct. Every finding should distinguish direct evidence from inference.
   if more meaning remains here, it is in the trap/nonlocal boundary, not in another
   missed ordinary helper body inside the recovered plug binary.
 
+- Finding 136: the checked-in `scsi-plug.macbin` does not preserve an alternate sender
+  stub image; its resource fork is byte-identical to the extracted `scsi-plug-rsrc.bin`,
+  including the unresolved `0x106e` / `0x1070` region.
+  Evidence:
+  direct byte reads of
+  `docs/1.0/001-IN-PROGRESS/akai-ux-improvement/mesa-ii-analysis/binaries/scsi-plug.macbin`
+  show a MacBinary header with `data_fork_len = 0` and `rsrc_fork_len = 12053`.
+  Slicing the resource fork from offset `128` yields a byte string that matches
+  `binaries/scsi-plug-rsrc.bin` exactly across the full resource length.
+  At the key sender-stub offsets, both copies contain the same bytes:
+  `0x106e = 600000f0`
+  `0x1070 = 00f02d6b`
+  which is the same unresolved branch-plus-following-bytes already documented in the
+  extracted resource.
+  Interpretation:
+  for the checked-in artifacts currently in the repo, the "bad extraction lost the real
+  patched bytes" sub-hypothesis is eliminated. The remaining static possibilities are
+  not "look at the MacBinary instead"; they are runtime patching, a different binary
+  source, or some other nonlocal mechanism outside these two identical copies.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

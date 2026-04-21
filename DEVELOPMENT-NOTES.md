@@ -2671,3 +2671,50 @@ whether the helper boundary has effectively dropped below the recovered local bi
 1. `0x0ca2` does not reopen into a clean helper tree below the local layer.
 2. The deeper explanation is now pushed into low-address/trap/nonlocal territory.
 3. Static RE is approaching a real stopping point on this specific pre-send-gate question.
+
+## 2026-04-21: MESA II MacBinary Copy Does Not Preserve Different `0x106e` Stub Bytes
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Test the remaining cheap static sub-hypothesis from the patcher question brief: whether
+the checked-in `scsi-plug.macbin` contains a different resource fork than the extracted
+`scsi-plug-rsrc.bin`, especially at the unresolved sender-stub region around `0x106e`.
+
+### Accomplished
+- Compared the checked-in MacBinary file against the extracted resource binary directly
+- Verified from the MacBinary header that:
+  - `data_fork_len = 0`
+  - `rsrc_fork_len = 12053`
+- Sliced the resource fork from the MacBinary container and confirmed it is
+  byte-identical to `scsi-plug-rsrc.bin` across the full resource length
+- Verified the key patch-site bytes match exactly in both copies:
+  - `0x106e = 600000f0`
+  - `0x1070 = 00f02d6b`
+- Updated parity docs to record that the "bad extraction lost the real patched bytes"
+  sub-hypothesis is eliminated for the checked-in binary sources
+
+### Didn't Work
+- This does not reveal what production MESA actually patches or ships at runtime
+- It also does not rule out a different plug binary source that is simply not present in
+  the current repo artifacts
+
+### Course Corrections
+- **[EVIDENCE]** This is a useful negative result because it closes one cheap alternate
+  binary-source explanation cleanly.
+- **[PROCESS]** The remaining sender question should not spend more cycles on these two
+  checked-in copies; further static work now needs either a genuinely new binary source
+  or a different boundary question.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 136`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. The checked-in MacBinary copy is not hiding a different `0x106e` body.
+2. For the repo artifacts in hand, extraction error is no longer a live explanation.
+3. The remaining plausible explanations are runtime patching, another binary source, or
+   some other nonlocal mechanism.
