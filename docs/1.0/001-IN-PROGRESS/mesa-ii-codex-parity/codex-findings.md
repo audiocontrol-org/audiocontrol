@@ -2572,6 +2572,24 @@ correct. Every finding should distinguish direct evidence from inference.
   `+0x0e40` a measured pre-send routing flag, while the still-open mode semantics stay
   downstream of that choice.
 
+- Finding 133: `CSCSIPlug+0x0e40` has an extremely tight write surface: constructor
+  reset, one cold-arm clear, and one `0x0ca2`-fed update in `SendData`. That makes it
+  look like a sticky cached pre-send capability/state byte, not a general-purpose mode.
+  Evidence:
+  direct raw-byte search finds only five in-binary touches of `+0x0e40`:
+  constructor clear at `0x0c56`,
+  send-path tests at `0x0e9e` and `0x0ec0`,
+  `0x0ca2`-fed store at `0x0eb8`,
+  and cold-arm clear at `0x0e92`.
+  The constructor clear sits beside the constructor's other persistent send-state resets
+  for `+0x0e46/+0x0e47` and timeout seed `+0x0e42`, while the non-constructor writes all
+  occur in the `SendData` front half.
+  Interpretation:
+  `+0x0e40` is unlikely to be a broad user-mode selector or generic plug setting. The
+  current best static read is narrower: it is a sticky cached send-path capability/state
+  byte that `SendData` consults and refreshes through `0x0ca2` before choosing wrapper
+  versus direct sender family.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
@@ -2621,6 +2639,8 @@ correct. Every finding should distinguish direct evidence from inference.
   context/length fields are factored out?
 - What exact state or capability does `CSCSIPlug+0x0e40` represent when it selects the
   wrapper path at `0x1072` instead of the later direct `%d6` branch family?
+- Does `0x0ca2(self, target, 1, 1)` compute a "direct-send available" result into
+  `+0x0e40`, or is the cached byte tracking some other transport readiness distinction?
 - What concrete `CSamplerModule`-side method lives at the `vtable[0x28]` `UALL` call
   site, and does it in turn route into a sampler object, a UI update path, or both?
 - Can Codex decode the function body behind `CAkaiSampler` slot `0x0170` directly

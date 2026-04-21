@@ -2536,3 +2536,48 @@ contract.
 2. The wrapper path at `0x1072` is selected before the shared sender-frame matrix matters.
 3. The remaining unknowns are now layered cleanly: `+0x0e40` chooses family, then mode/
    context refine behavior inside the shared `0x106e` contract.
+
+## 2026-04-21: MESA II `+0x0e40` Looks Like a Sticky Cached Send-State Byte
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Decide whether `+0x0e40` still looks broad and unconstrained, or whether its write
+surface is tight enough to support a narrower role.
+
+### Accomplished
+- Performed a direct raw-byte search for every in-binary touch of `CSCSIPlug+0x0e40`
+- Verified only five touch points:
+  - constructor clear at `0x0c56`
+  - send-path tests at `0x0e9e` and `0x0ec0`
+  - `0x0ca2`-fed store at `0x0eb8`
+  - cold-arm clear at `0x0e92`
+- Rechecked that the constructor clear sits beside other persistent send-state resets
+  (`+0x0e46`, `+0x0e47`) and timeout seed `+0x0e42`
+- Updated parity docs to record the tighter current read:
+  `+0x0e40` is likely a sticky cached pre-send capability/state byte, not a general
+  plug mode or broad configuration field
+
+### Didn't Work
+- This still does not identify what concrete capability or readiness condition
+  `0x0ca2` computes into `+0x0e40`
+- It also does not yet prove whether the byte is transport-specific, target-specific, or
+  some higher-level send-family readiness state
+
+### Course Corrections
+- **[EVIDENCE]** The write-surface result matters because it sharply reduces the role
+  `+0x0e40` can plausibly play.
+- **[PROCESS]** This is the right kind of late-stage static progress: narrow the state
+  byte from “mystery flag” to “cached send-state gate” without overnaming it.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 133`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. `+0x0e40` does not sprawl across the plug. Its lifecycle is very tight.
+2. That makes it much more likely to be a cached send-state/capability result.
+3. The remaining unknown is now mostly what `0x0ca2` is actually testing or enabling.

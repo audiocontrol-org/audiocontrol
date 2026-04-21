@@ -614,6 +614,12 @@ cleanly.
   execution continue into the later direct `%d6`/`SRAW` family. So `+0x0e40` is now
   measured as an earlier routing flag that decides which sender-family surface is even
   reachable before the shared `0x106e` contract comes into play.
+  Codex has tightened that field one step further: `+0x0e40` has only five in-binary
+  touches at all: constructor clear, two send-path tests, one `0x0ca2`-fed store, and
+  one cold-arm clear. That makes the current best static read narrower than “mode
+  byte” or “general plug setting.” It looks more like a sticky cached pre-send
+  capability/state byte that `SendData` refreshes through `0x0ca2` before choosing
+  wrapper versus direct sender family.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.
