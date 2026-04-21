@@ -493,6 +493,17 @@ cleanly.
   `SocketInfo[+12]`. That shifts the remaining static target one step cleaner again:
   the unresolved identity is the editor-side function address transmitted as
   `SocketInfo[+0]` in the `CONS` payload.
+  Codex has now also reconciled the apparent remaining conflict with the editor-side
+  `ConnectToPlug` disassembly. The measured split is:
+  - `PLST` phase: `ConnectToPlug` calls the immediate handler callback, gets a 48-byte
+    descriptor array back, and installs `descriptor[+12]` into editor-local socket slots
+    (`editor_slot[+8]`)
+  - `CONS` phase: `ConnectToPlug` builds a second command block, points it at `this+24`,
+    and the plug later verbatim-copies that 46-byte `SocketInfo` so
+    `SocketInfo[+0] -> plug_slot[+0]`
+  So the current Claude/Codex model is aligned: `descriptor[+12]` and `SocketInfo[+0]`
+  belong to different halves of the same exchange rather than competing explanations for
+  the same field.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

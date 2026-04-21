@@ -2254,6 +2254,36 @@ correct. Every finding should distinguish direct evidence from inference.
   question is no longer "where is `SocketInfo[+12]` installed?" but "what editor-side
   function address is transmitted as `SocketInfo[+0]` in the `CONS` payload?"
 
+- Finding 119: the apparent `ConnectToPlug` / `$11fe` conflict dissolves cleanly once the
+  editor-side path is split into its measured `PLST` and `CONS` phases: the editor first
+  iterates 48-byte plug descriptors, then separately ships its own 46-byte `SocketInfo`
+  payload.
+  Evidence:
+  `CMESASocket::ConnectToPlug` at file `0x059e91` copies a 10-byte command block from the
+  high A4 string table, and the adjacent raw bytes in `sampler-editor-rsrc.bin` contain
+  exactly the paired records `CONS` and `PLST` in that order:
+  `... 43 4f 4e 53 ... 50 4c 53 54 ...`.
+  The first copied block is the later `PLST` record, then the function calls the immediate
+  handler callback at `0x059eab`, receives a descriptor-array pointer in `fp@(-4)`, and
+  iterates entries using a 48-byte stride (`moveq #48`, `mulsw %d3,%d0`).
+  In that descriptor phase, `descriptor[+12]` is tested and, if non-null, called at
+  `0x059f1f`; when a matching entry is accepted, the editor copies 12 longs beginning at
+  `entry+4` into its own local slot storage at `this+74`, so the editor-local function
+  field becomes `editor_slot[+8] = descriptor[+12]`.
+  Later, at file `0x059ed1`, the function copies the earlier 10-byte `CONS` record into a
+  second local command block, stores `this+24` into `fp@(-8)` at `0x059ee5`, and then
+  invokes `descriptor[+12]` with that `CONS` command. On the plug side,
+  `CMESAPlugIn::ConnectToSocket` at file `0x09fc-0x0a1e` verbatim-copies a 46-byte
+  `SocketInfo` into `plug_slot`, making `plug_slot[+0] = SocketInfo[+0]`.
+  Interpretation:
+  the two binaries are handling two different structures on opposite sides of the same
+  exchange. The editor's `PLST` phase consumes 48-byte plug descriptors and installs
+  `descriptor[+12]` into editor-local socket slots; the later `CONS` phase sends the
+  editor's own 46-byte `SocketInfo`, whose first long becomes `plug_slot[+0]` and is the
+  callback used at `$11fe`. So `descriptor[+12] -> editor_slot[+8]` and
+  `SocketInfo[+0] -> plug_slot[+0]` are complementary measured flows, not contradictory
+  claims.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

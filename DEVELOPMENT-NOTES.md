@@ -1862,3 +1862,55 @@ did not.
    ownership or install mechanism.
 3. Writing down what does *not* qualify as a finding helps prevent the static side from
    drifting back into low-yield graph mining.
+
+## 2026-04-20: MESA II `PLST` vs `CONS` Flow Split Clarified
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Resolve the remaining apparent conflict between the editor-side
+`descriptor[+12] -> editor_slot[+8]` path in `CMESASocket::ConnectToPlug` and the
+plug-side `$11fe` callback path that clearly reads `plug_slot[+0]`.
+
+### Accomplished
+- Verified from primary artifacts that `CMESASocket::ConnectToPlug` contains two distinct
+  command phases, not one:
+  - a first phase using the `PLST` command record to fetch and iterate 48-byte plug
+    descriptors
+  - a later phase using the `CONS` command record to send the editor's own
+    46-byte `SocketInfo`
+- Confirmed that the editor-side descriptor phase tests and calls `descriptor[+12]`, then
+  installs that field into editor-local socket storage at `editor_slot[+8]`
+- Confirmed that the plug-side `ConnectToSocket` path still verbatim-copies
+  `SocketInfo[+0]` into `plug_slot[+0]`, which is the field later called at `$11fe`
+- Updated parity docs to make those two flows explicit instead of letting them look like
+  contradictory explanations
+
+### Didn't Work
+- This still did not identify the editor-side function address that becomes
+  `SocketInfo[+0]` in the `CONS` payload
+- The exact plug `DoMESACommand` arm mapping for `CONS` vs `ASOK` still remains one step
+  short of a fully body-decoded proof
+
+### Course Corrections
+- **[EVIDENCE]** The right way to treat the raw disassembly here is as a two-structure
+  handshake, not a single-slot mystery. Once the measured `PLST`/`CONS` split is made
+  explicit, the older apparent conflict disappears.
+- **[PROCESS]** This is the kind of static clarification worth publishing quickly even
+  without a new function identity, because it narrows the next unresolved field cleanly
+  and removes a false contradiction from the active model.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 119`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. The editor and plug are not mirroring one struct blindly; they are participating in a
+   measured two-phase exchange with different record shapes.
+2. `descriptor[+12]` and `SocketInfo[+0]` now belong to different halves of the same
+   handshake, which makes the remaining unknown narrower and more actionable.
+3. The next real question is still editor-side: what concrete function address becomes
+   `SocketInfo[+0]` in the `CONS` payload?
