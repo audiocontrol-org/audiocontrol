@@ -2284,6 +2284,26 @@ correct. Every finding should distinguish direct evidence from inference.
   `SocketInfo[+0] -> plug_slot[+0]` are complementary measured flows, not contradictory
   claims.
 
+- Finding 120: the first concrete post-ctor writer to `CMESASocket[+12]` is
+  `CMESASocket::AcceptData`, and it writes reply/result state there rather than anything
+  callback-like.
+  Evidence:
+  `CMESASocket::AcceptData` at file `0x05a1e1` loads `this` into `A2` and `IP_Data*`
+  into `A3`. In the successful branch, after checking `this[+8]` and validating the
+  incoming length against `this[+16]`, it copies the payload from `IP_Data[+4]` into the
+  buffer at `this[+8]`, then stores `IP_Data[+8]` into `this[+12]` at file `0x05a20b`,
+  and stores the transferred length into `this[+4]` at file `0x05a211`. In the failure
+  branch, it stores the literal `OVER` into `this[+12]` at file `0x05a217-0x05a21d` and
+  returns error `-11005`.
+  The constructor had previously only cleared `this[+8]` and did not seed `this[+12]`
+  with any function pointer.
+  Interpretation:
+  this makes `CMESASocket[+12]` look like reply/result state associated with the
+  receive-buffer path, not like the live callback field used by the plug-side `$11fe`
+  indirect call. That independently strengthens the newer Path A model: the callback
+  question remains focused on `SocketInfo[+0]`, while `SocketInfo[+12]` now looks more
+  like data/reply bookkeeping on the editor side.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

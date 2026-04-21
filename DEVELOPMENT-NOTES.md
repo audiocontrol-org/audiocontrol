@@ -1914,3 +1914,51 @@ plug-side `$11fe` callback path that clearly reads `plug_slot[+0]`.
    handshake, which makes the remaining unknown narrower and more actionable.
 3. The next real question is still editor-side: what concrete function address becomes
    `SocketInfo[+0]` in the `CONS` payload?
+
+## 2026-04-20: MESA II `CMESASocket[+12]` Narrows to Reply-State, Not Callback
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Push one step further on the `CONS`/`SocketInfo` frontier by checking whether the
+editor-side `CMESASocket` fields exposed any concrete post-constructor write that could
+clarify the lingering `SocketInfo[+12]` question.
+
+### Accomplished
+- Decoded `CMESASocket::AcceptData` from raw bytes at file `0x05a1e1`
+- Verified that it is a real post-ctor writer to `CMESASocket[+12]`
+- Verified the successful branch writes `IP_Data[+8]` into `this[+12]` after copying the
+  payload into the receive buffer at `this[+8]`
+- Verified the failure branch writes literal `OVER` into `this[+12]` and returns
+  `-11005`
+- Updated parity docs to treat `CMESASocket[+12]` as reply/result bookkeeping rather
+  than as a plausible live callback field
+
+### Didn't Work
+- This still did not identify the editor-side function address that becomes
+  `SocketInfo[+0]` in the `CONS` payload
+- It also did not yet prove whether `this+24` is the exact plug-visible `SocketInfo`
+  base or a nearby structure passed through the same command
+
+### Course Corrections
+- **[EVIDENCE]** The useful move here was to stop treating `SocketInfo[+12]` as an
+  abstract unknown and look for any concrete write. `AcceptData` gives that write, and it
+  pushes the field firmly toward reply/result state.
+- **[PROCESS]** This is a good example of staying adjacent to the active frontier without
+  reopening broad graph mining: one concrete socket method materially narrowed a live
+  field model.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 120`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. `CMESASocket[+12]` now looks like receive-side status/result storage, not sender-side
+   callback identity.
+2. The plug callback question is therefore even more cleanly isolated at
+   `SocketInfo[+0]`.
+3. Adjacent concrete writes are more valuable than another round of speculative owner-path
+   chasing when the frontier is this narrow.

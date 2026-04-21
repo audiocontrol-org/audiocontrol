@@ -504,6 +504,11 @@ cleanly.
   So the current Claude/Codex model is aligned: `descriptor[+12]` and `SocketInfo[+0]`
   belong to different halves of the same exchange rather than competing explanations for
   the same field.
+  Codex also tightened the residual `SocketInfo[+12]` question from primary artifacts:
+  `CMESASocket::AcceptData` is now the first concrete post-ctor writer to
+  `CMESASocket[+12]`, and it writes either `IP_Data[+8]` on success or literal `OVER`
+  on failure. That makes the field look like reply/result bookkeeping rather than the
+  live callback used at plug `$11fe`.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.
