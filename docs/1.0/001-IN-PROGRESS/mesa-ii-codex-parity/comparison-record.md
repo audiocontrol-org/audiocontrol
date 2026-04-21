@@ -620,6 +620,14 @@ cleanly.
   byte” or “general plug setting.” It looks more like a sticky cached pre-send
   capability/state byte that `SendData` refreshes through `0x0ca2` before choosing
   wrapper versus direct sender family.
+  Codex has now also tightened the `0x0ca2` side of that story. Correcting the helper
+  alignment yields a real parent body at `0x0c8a`, but the direct `SendData` call sites
+  enter at the internal label `0x0ca2`. From that internal entry onward, the recovered
+  local code only touches `self@(0x0e38)`, the nested `jsr 0x0274`, `%fp@(12)`, and the
+  optional `jsr 0x1b56`; it does not explicitly inspect the `0/0` vs `1/1` caller flags
+  that `SendData` pushes before `jsr 0x0ca2`. So the remaining semantics of that gate
+  are now pushed one layer deeper again: into the trap/helper layer below the recovered
+  local instructions, not into any still-missed branch logic around `0x0ca2` itself.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

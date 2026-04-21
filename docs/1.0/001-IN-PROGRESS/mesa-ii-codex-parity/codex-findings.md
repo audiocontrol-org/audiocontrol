@@ -2590,6 +2590,31 @@ correct. Every finding should distinguish direct evidence from inference.
   byte that `SendData` consults and refreshes through `0x0ca2` before choosing wrapper
   versus direct sender family.
 
+- Finding 134: the visible local instructions at the `0x0ca2` internal entry do not
+  themselves consume the explicit `0/0` vs `1/1` caller arguments that `SendData` pushes
+  before `jsr 0x0ca2`; any semantics for those flags must live deeper in the trap/helper
+  layer, not in the recovered local code between `0x0ca2` and `0x0ccc`.
+  Evidence:
+  correcting the parent function alignment yields a real helper body at `0x0c8a`:
+  `linkw #0; save %a2; load self from %fp@(8); null-check self; install vtable; load
+  self@(0x0e38); trap 0xa02a; load self@(0x0e38); trap 0xa023; push 0 and self; jsr 0x274;
+  tstw %fp@(12); optional jsr 0x1b56; return self in %a0`.
+  The direct `SendData` call sites target the internal entry `0x0ca2`, not the aligned
+  top of the function at `0x0c8a`. From that internal entry onward, the recovered local
+  instructions reference only:
+  `self@(0x0e38)`,
+  the nested `jsr 0x274`,
+  `%fp@(12)` in the caller's frame,
+  and optional `jsr 0x1b56`.
+  There is no explicit local read of the mode-like values that `SendData` pushes before
+  calling `0x0ca2` (`0/0` in the cold arm, `1/1` in the active arm).
+  Interpretation:
+  this is a useful terminal narrowing for the `0x0ca2` path. The recovered local helper
+  does not itself explain the `0/0` vs `1/1` distinction. So the remaining semantics of
+  that pre-send gate most likely live in the deeper trap/helper layer (`0xa02a`,
+  `0xa023`, `0x0274`, or `0x1b56`) rather than in any still-missed branch logic around
+  the `0x0ca2` entry.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
@@ -2641,6 +2666,8 @@ correct. Every finding should distinguish direct evidence from inference.
   wrapper path at `0x1072` instead of the later direct `%d6` branch family?
 - Does `0x0ca2(self, target, 1, 1)` compute a "direct-send available" result into
   `+0x0e40`, or is the cached byte tracking some other transport readiness distinction?
+- Are the pushed `0/0` vs `1/1` values consumed by `0x0274`, by the `0xa02a`/`0xa023`
+  trap layer, or by some other stack-sensitive system path below the recovered helper?
 - What concrete `CSamplerModule`-side method lives at the `vtable[0x28]` `UALL` call
   site, and does it in turn route into a sampler object, a UI update path, or both?
 - Can Codex decode the function body behind `CAkaiSampler` slot `0x0170` directly

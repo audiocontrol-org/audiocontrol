@@ -2581,3 +2581,50 @@ surface is tight enough to support a narrower role.
 1. `+0x0e40` does not sprawl across the plug. Its lifecycle is very tight.
 2. That makes it much more likely to be a cached send-state/capability result.
 3. The remaining unknown is now mostly what `0x0ca2` is actually testing or enabling.
+
+## 2026-04-21: MESA II `0x0ca2` Local Code Does Not Consume the Pushed Flag Pair
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Determine whether the visible local code around `0x0ca2` actually explains the `0/0`
+vs `1/1` caller-flag distinction, or whether that meaning already falls below the
+recovered local helper layer.
+
+### Accomplished
+- Corrected the helper alignment to recover a real parent body at `0x0c8a`
+- Verified that direct `SendData` call sites enter at the internal label `0x0ca2`,
+  not the aligned top of the function
+- Verified the local instruction surface from `0x0ca2` onward:
+  - load `self@(0x0e38)` and issue trap `0xa02a`
+  - load `self@(0x0e38)` and issue trap `0xa023`
+  - push `0` and `self`, then `jsr 0x0274`
+  - test `%fp@(12)` and optionally `jsr 0x1b56`
+- Verified that no explicit local instruction in that recovered segment reads the
+  `0/0` vs `1/1` values that `SendData` pushes before calling `0x0ca2`
+- Updated parity docs to record the resulting boundary shift: if those flags matter,
+  their semantics are now below the visible local helper instructions
+
+### Didn't Work
+- This still does not tell us whether the pushed flags are consumed by `0x0274`, by the
+  `0xa02a` / `0xa023` trap layer, or by some deeper stack-sensitive path
+- It also does not yet reveal the concrete capability/readiness meaning of `+0x0e40`
+
+### Course Corrections
+- **[EVIDENCE]** This is another useful terminal narrowing: the visible local helper is
+  no longer the right place to expect flag semantics.
+- **[PROCESS]** That means further static effort should be judged against a stricter bar:
+  either decode the deeper helper/trap boundary, or stop pretending the answer is still
+  in nearby local branch logic.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 134`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. `0x0ca2` is no longer a broad mystery helper; its local surface is now well bounded.
+2. The pushed flag-pair semantics are not exposed in the recovered local instructions.
+3. The remaining unknown has moved below the local helper layer into the deeper trap/helper boundary.
