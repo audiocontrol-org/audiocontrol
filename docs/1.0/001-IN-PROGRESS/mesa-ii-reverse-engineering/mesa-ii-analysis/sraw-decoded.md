@@ -23,7 +23,15 @@
 >
 > 7. **MEASURED (REPLY direction only):** Path A.8 traced the dispatch chain from `main`'s non-INIT branch through `vtable[+0xA8]` → dispatcher at file 0x0287C5 → 'ADAT' handler at 0x599a7 → `CMESASocket::AcceptData` at file 0x5A1E1 (`_BlockMove` reply bytes into `CMESASocket[+8]`; store 'SRAW'/'SYSX' tag at `[+12]`).
 >
-> 8. **MEASURED (Path A.9, 2026-04-21):** OUTBOUND CDB wire bytes for SRAW = `0C 00 [len_hi] [len_mid] [len_lo] 80` (24-bit big-endian byte count; byte 5 = 0x80 when flag=1/SRAW, 0x00 otherwise). CDB opcode write at scsi-plug file 0x163c: `1d 7c 00 0c ff fa` = `MOVE.B #$0C, (-6, A6)`. No nibble or 7-bit encoding observed in SRAW handler body. Bus emission via JSR 0x1620 at scsi-plug file 0x169a → CSCSIUtils::SCSICommand → SCSIDispatch `$A089` (downstream chain CANDIDATE). **CANDIDATE:** audio buffer is sent as raw bytes (no encoding observed statically in the handler; encoding inside SMSendData's bus emission body is OPEN — A.11 may surface it). **OPEN:** who patches 0x1070-0x1071 at load time (task #35 / Path A.11).
+> 8. **MEASURED (Path A.9 + A.12 + A.13, 2026-04-21):** OUTBOUND wire format for SRAW audio upload:
+>    - **CDB:** `0C 00 [len_hi] [len_mid] [len_lo] 80` (MIDI Send opcode; 24-bit big-endian byte count; byte 5 = 0x80 for mode=0x01, 0x00 for mode=0x00).
+>    - **Data:** raw audio bytes, `byte_count` bytes long. **No nibble-encoding, no 7-bit encoding, no transformation** (A.13 exhaustive negative scan of SMSendData/ChooseSCSI/sub-functions).
+>    - **Driver:** old Mac SCSI Manager `_SCSIWrite` trap `$A981` at scsi-plug file 0x224e (NOT new `_SCSIDispatch $A089` as A.9 had inferred — `_SCSIDispatch` only appears in Inquiry/ResetBus paths).
+>    - **Mode-byte semantics (A.12):** 6 JSR 0x106e sites total. mode=0x01 → CDB[5]=0x80 (SRAW audio + BULK-via-SCSI fallthrough). mode=0x00 → CDB[5]=0x00 (SYSX/MIDI). BULK handler at 0x0e9e falls into SRAW handler at 0x0ec0 when `CSCSIPlug+0xe40` SCSI-mode flag is set.
+>    - **Tag dispatch table (A.12):** BOFF→0x0e82, BULK→0x0e9e (→0x0ec0), MIDI→0x1116, SRAW→0x0ec0, SYSX→0x10c6.
+>    - **SMSendData CDB[5] formula** at 0x1670: `TST.B fp@(14)` + branch to `MOVE.W #0x80, D5` or `MOVEQ #0, D5`.
+>
+>    **Remaining OPEN:** who patches 0x1070-0x1071 at load time (task #35/A.11) — production-behavior question, not on critical path to bridge fix.
 >
 > Sections 8/9 of this doc below are obsolete. Trust the path-a*.md docs (each carries its own calibration banner).
 
