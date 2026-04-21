@@ -8,6 +8,27 @@
 
 All claims tagged per-claim: **MEASURED** (file offset + bytes cited) / **CANDIDATE** (reasoned, not byte-verified) / **OPEN** (decode boundary not crossed)
 
+> **CALIBRATION 2026-04-21 (per Codex parity #315 idx 20:09 — IP_Data field map MEASURED from AcceptData):**
+>
+> This doc's labeling of IP_Data fields was inferred from local SRAW-handler usage and does **not** match the field semantics MEASURED from `CMESASocket::AcceptData` (file 0x05a1e1). Codex's reading is more authoritative because it's grounded in actual receive-side usage (`A3@` is used as both copy length and capacity-comparison value; `A3@(4)` is used as source pointer for `_BlockMove`).
+>
+> **Codex's MEASURED IP_Data layout:**
+> | Offset | Field | Evidence (AcceptData) |
+> |---|---|---|
+> | `[+0]` | byte count | compared against socket capacity; used as length for `_BlockMove (0xa02e)` |
+> | `[+4]` | payload pointer | source for `_BlockMove` |
+> | `[+8]` | reply/result tag | stored into `CMESASocket[+12]` |
+>
+> **Implication for this doc:** The byte-level decodes (instruction bytes, hex offsets, control flow) are unchanged. But the field LABELS in the prepared-struct catalog (Section 5+) are flipped relative to Codex's reading:
+> - This doc says arg3 (D6) = byte_count and arg5 (A3@) = audio_buf_ptr
+> - Codex's mapping says arg3 (source pointer) = payload pointer (= IP_Data[+4]) and arg5 (byte count) = IP_Data[+0]
+>
+> Both readings produce coherent local control flow, but Codex's reading is consistent across BOTH the call frame and AcceptData's receive-side usage. The SRAW-handler control flow still works either way (the `tstl A3@` and `tstl D6` non-zero checks behave identically regardless of which is byte_count vs which is pointer); only the semantic labels are wrong.
+>
+> **Practical impact:** the CDB construction inside `SMSendData` is MEASURED unchanged. The CDB byte count comes from the slot that contains byte count, regardless of which slot we call which name. The wire-bytes finding (`0C 00 [len_hi] [len_mid] [len_lo] 80`) is unaffected.
+>
+> Treat all field labels in Sections 5+ as renamed per Codex's mapping until this doc is reconciled in full.
+
 ---
 
 ### Bottom Line
