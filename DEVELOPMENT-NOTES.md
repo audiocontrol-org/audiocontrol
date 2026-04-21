@@ -1962,3 +1962,52 @@ clarify the lingering `SocketInfo[+12]` question.
    `SocketInfo[+0]`.
 3. Adjacent concrete writes are more valuable than another round of speculative owner-path
    chasing when the frontier is this narrow.
+
+## 2026-04-20: MESA II `this+24` Remains a Pressure Point, Not a Settled Callback
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Check whether the currently recovered `CMESASocket` method surface exposes any direct
+overwrite of `this+24`, since `ConnectToPlug`'s `CONS` phase currently points at that
+address and the plug-side frontier still asks what becomes `SocketInfo[+0]`.
+
+### Accomplished
+- Verified again from raw bytes that embedded-socket `+24` is editor `+0x8c`, and the
+  constructor seeds that field with `0x212`
+- Ran a bounded scan over the recovered `CMESASocket` method set
+  (`ctor`, `SetBuffer`, `ConnectToPlug`, `SelectPlug`, `ActivateThisSocket`, `SendData`,
+  `AcceptData`)
+- Confirmed that this method surface uses `+24` for address calculation but does not
+  expose a direct `move* -> this@(24)` overwrite
+- Captured that tension explicitly in the parity docs instead of silently treating
+  `this+24` as a settled callback field
+
+### Didn't Work
+- This still did not identify the concrete editor-side function address that becomes
+  `SocketInfo[+0]`
+- It also did not yet tell us whether the plug sees raw `this+24` or a transformed view
+  of that data through another command-layer structure
+
+### Course Corrections
+- **[EVIDENCE]** The right stance here is pressure, not overclaim. The recovered methods
+  do not yet support a clean "raw `this+24` is the callback pointer" story, but that is
+  not the same thing as disproving the broader frontier.
+- **[PROCESS]** This is another good narrow static move: turn a fuzzy discomfort into a
+  documented bounded exception that Claude can either resolve dynamically or cross-check
+  from a different static angle.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 121`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. `this+24` is now an explicit tension point in the current Path A model, not an
+   unexamined assumption.
+2. The remaining question is no longer just "what function is `SocketInfo[+0]`?" but
+   also "what layer makes that field plug-visible?"
+3. A bounded negative result is still useful when it narrows where the next overwrite can
+   plausibly live.

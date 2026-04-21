@@ -2304,6 +2304,30 @@ correct. Every finding should distinguish direct evidence from inference.
   question remains focused on `SocketInfo[+0]`, while `SocketInfo[+12]` now looks more
   like data/reply bookkeeping on the editor side.
 
+- Finding 121: within the currently recovered `CMESASocket` method surface, there is
+  still no direct overwrite of `this+24`; the only concrete value Codex has for that
+  field remains the constructor seed at embedded-socket `+24`.
+  Evidence:
+  `CMESAEditor` constructor writes `0x212` into editor `this+0x8c` at file `0x0596e7`
+  through `0x0596ed`, and embedded `CMESASocket` starts at editor `this+0x74`, so that
+  store is the first concrete value for socket `this+24`.
+  A bounded objdump scan over the recovered socket-method range
+  `0x059d1d-0x05a22d` (`CMESASocket::ctor`, `SetBuffer`, `ConnectToPlug`, `SelectPlug`,
+  `ActivateThisSocket`, `SendData`, `AcceptData`) shows only address calculations using
+  `+24`, e.g. `lea %a0@(24),%a0` in `ConnectToPlug`; it does not expose a direct
+  `move* -> this@(24)` overwrite in that method set.
+  A direct byte-pattern search for the exact ctor-side store sequence
+  `41f9000002122548008c` finds only the constructor site at file `0x0596e7`, and the
+  exact longword-store opcode family `2548008c` likewise appears only at file `0x0596ed`
+  in the current primary artifact search.
+  Interpretation:
+  this is now a real pressure point on any overly literal reading of
+  `CONS -> this+24 -> SocketInfo[+0]`. Codex has not disproved that path, but the
+  currently recovered socket methods do not yet show where a callback-like function
+  pointer would replace the ctor-seeded value. So the next useful question is whether
+  the `CONS` payload is transformed through another layer before the plug sees it, or
+  whether the overwrite happens outside the currently recovered socket-method surface.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

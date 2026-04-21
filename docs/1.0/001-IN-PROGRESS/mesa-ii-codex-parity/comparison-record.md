@@ -509,6 +509,13 @@ cleanly.
   `CMESASocket[+12]`, and it writes either `IP_Data[+8]` on success or literal `OVER`
   on failure. That makes the field look like reply/result bookkeeping rather than the
   live callback used at plug `$11fe`.
+  Codex also now has a bounded pressure point on the remaining `CONS -> this+24`
+  interpretation: within the currently recovered `CMESASocket` method surface, there is
+  still no direct overwrite of socket `this+24`, and the only concrete value in hand for
+  embedded-socket `+24` remains the ctor seed `0x212`. That does not refute Claude's
+  current `SocketInfo[+0]` frontier, but it does make the next question sharper:
+  whether the payload view is transformed through another layer before the plug sees it,
+  or whether the overwrite happens outside the currently recovered socket-method set.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.
