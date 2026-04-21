@@ -2615,6 +2615,22 @@ correct. Every finding should distinguish direct evidence from inference.
   `0xa023`, `0x0274`, or `0x1b56`) rather than in any still-missed branch logic around
   the `0x0ca2` entry.
 
+- Finding 135: the two named deeper callees under `0x0ca2` do not reopen an ordinary
+  local-code explanation either: `0x0274` lands in the same low-address non-code band,
+  while `0x1b56` is just a constructor-side internal entry.
+  Evidence:
+  direct `objdump` of file `0x0260-0x02b0` shows `0x0274` sitting in the dense
+  low-address data-like region, with no credible function prologue/epilogue and the same
+  non-code byte grammar seen elsewhere in low-memory/resource-style territory.
+  Separately, `objdump` of file `0x1b40-0x1b80` shows `0x1b56` entering the already-known
+  constructor-side helper family in the middle of a body, not at a standalone function
+  boundary.
+  Interpretation:
+  the remaining `0x0ca2` semantics have now dropped below both the visible local helper
+  surface and the obvious next two callees. That reinforces the current stopping-rule:
+  if more meaning remains here, it is in the trap/nonlocal boundary, not in another
+  missed ordinary helper body inside the recovered plug binary.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
@@ -2668,6 +2684,9 @@ correct. Every finding should distinguish direct evidence from inference.
   `+0x0e40`, or is the cached byte tracking some other transport readiness distinction?
 - Are the pushed `0/0` vs `1/1` values consumed by `0x0274`, by the `0xa02a`/`0xa023`
   trap layer, or by some other stack-sensitive system path below the recovered helper?
+- Is the right next move on the static side still `0x0ca2`, or has this now reached the
+  point where only runtime instrumentation or a different binary source is likely to
+  resolve the remaining pre-send gate semantics?
 - What concrete `CSamplerModule`-side method lives at the `vtable[0x28]` `UALL` call
   site, and does it in turn route into a sampler object, a UI update path, or both?
 - Can Codex decode the function body behind `CAkaiSampler` slot `0x0170` directly

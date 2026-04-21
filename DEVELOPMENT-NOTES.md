@@ -2628,3 +2628,46 @@ recovered local helper layer.
 1. `0x0ca2` is no longer a broad mystery helper; its local surface is now well bounded.
 2. The pushed flag-pair semantics are not exposed in the recovered local instructions.
 3. The remaining unknown has moved below the local helper layer into the deeper trap/helper boundary.
+
+## 2026-04-21: MESA II `0x0ca2`'s Next Callees Also Collapse the Local Explanation
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Test whether the next obvious callees under `0x0ca2` reopen a normal local-code path, or
+whether the helper boundary has effectively dropped below the recovered local binary.
+
+### Accomplished
+- Decoded the two obvious deeper callees under `0x0ca2`:
+  - `0x0274`
+  - `0x1b56`
+- Verified that `0x0274` sits in the same dense low-address non-code band as other
+  resource/low-memory-style targets, with no credible standalone function structure
+- Verified that `0x1b56` is just a constructor-side internal entry inside the already
+  known helper family, not a new standalone semantic target
+- Updated parity docs to record the resulting stop-rule: the remaining `0x0ca2`
+  semantics are now below both the visible local helper surface and the obvious next
+  two callees
+
+### Didn't Work
+- This still does not reveal the meaning of the `0/0` vs `1/1` caller flags
+- It also does not identify whether the trap layer is stack-sensitive to those flags or
+  whether the decision really lies outside the recovered binary altogether
+
+### Course Corrections
+- **[EVIDENCE]** The useful result here is negative but load-bearing: there is no longer
+  a credible ordinary-helper explanation immediately below `0x0ca2`.
+- **[PROCESS]** This is close to a terminal static boundary. Further local digging now
+  needs a much higher bar than “one more adjacent callee.”
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 135`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. `0x0ca2` does not reopen into a clean helper tree below the local layer.
+2. The deeper explanation is now pushed into low-address/trap/nonlocal territory.
+3. Static RE is approaching a real stopping point on this specific pre-send-gate question.

@@ -628,6 +628,12 @@ cleanly.
   that `SendData` pushes before `jsr 0x0ca2`. So the remaining semantics of that gate
   are now pushed one layer deeper again: into the trap/helper layer below the recovered
   local instructions, not into any still-missed branch logic around `0x0ca2` itself.
+  Codex has tightened that deeper layer one step further too. The two obvious named
+  callees under `0x0ca2` do not reopen an ordinary local-code explanation:
+  `0x0274` lands in the same low-address non-code band already seen elsewhere, while
+  `0x1b56` is just a constructor-side internal entry inside a larger helper body. So the
+  remaining pre-send-gate semantics are now below both the visible `0x0ca2` local code
+  and the obvious next two callees.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.
