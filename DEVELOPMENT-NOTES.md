@@ -11,6 +11,65 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-20 (continuation): Path A.8 + Codex pressure point — re-orientation needed
+
+### Feature: mesa-ii-reverse-engineering
+### Worktree: audiocontrol-mesa-ii-reverse-engineering
+
+### Goal
+Continue chaining static decode rounds: spawn Path A.8 to identify the actual SRAW data handler at `vtable[+0xA8]` of the JSR 0x272a4-constructed object.
+
+### Accomplished
+
+**Path A.8 (hardware-protocol-engineer agent):** decoded the dispatch chain from `main`'s non-INIT branch. Outcome A (partial). Doc: `path-a8-sraw-handler.md`. Findings:
+
+- Non-INIT path in `main` reads global handle from `A4@(0x5EA2)` and dispatches via `vtable[+0xA8]` of that handle's underlying object.
+- Vtable[+0xA8] resolves to a dispatcher at file 0x0287C5 that routes by `struct[+0]` tag through a range table ('OTFL'..'aete').
+- 'ADAT' tag (audio data) → handler at file 0x599a7 → calls `CMESASocket::AcceptData` at file 0x5A1E1 via vtable[+24].
+- `AcceptData` validates `CMESASocket[+8]` (receive buffer) is non-null, then `_BlockMove`s reply bytes from MIDI buf into [+8], stores 'SRAW' or 'SYSX' tag at `[+12]`, byte count at `[+4]`. Error path stores 'OVER' at [+12].
+- Key structural finding: `struct[+6]` in the IP_Data passed to the callback is a self-referential pointer (`&struct[+10]`) constructed by scsi-plug at `$11E8-$11EC`.
+
+**Codex's 3 new comments on #315** (idx 0/2 today, after my static-decode-closed comment):
+- Codex confirms ctor seeds editor[+0x8c] with 0x212 and that file 0x028169 is a real function, but treats this as "strong candidate, not proved identity."
+- Codex's pressure point: in the currently recovered socket-method surface (ctor, SetBuffer, ConnectToPlug, SelectPlug, ActivateThisSocket, SendData, AcceptData), no decoded code reads `CMESASocket[+24]` and passes it to the plug. The link from "ctor sets this field" to "plug receives this exact byte during CONS" is undecoded.
+- AcceptData writes to socket [+12] (reply/result bookkeeping; not a live callback). Consistent with A.8's finding above.
+
+**Tasks updated:**
+- #32 marked complete (Path A.8 done)
+- #33 created (Path A.9: decode outbound SendData SRAW handler body for CDB emission — the actual Phase 3 deliverable)
+- #34 created (Path A.10: close Codex pressure point on editor→plug SocketInfo transmission, lower priority)
+
+### Didn't Work
+
+- **A.8 was scoped at the wrong direction.** I delegated A.8 to find the "actual SRAW data handler" via vtable[+0xA8]. The agent dutifully traced that chain — but it's the REPLY direction (sampler→editor incoming dispatch), not the OUTBOUND direction (editor→sampler audio upload). A.8 itself flagged this in its own open-questions section ("CDB bytes for outbound SRAW audio still unresolved (goes through SEND_FUNC_SLOT at scsi-plug $1106e)"). Delegation prompt was framed by the chain we'd been tracing (which goes plug→editor) without recognizing that the original Phase 3 question is the opposite direction.
+- **My #315 comment "Editor sends CONS over SCSI with the 46-byte SocketInfo payload" was speculative framing.** The architecture is more likely in-process function call (plug is loaded as code resource in editor's address space), not SCSI wire transmission. Codex correctly flagged this gap. I propagated it as fact in a public comment without primary-evidence verification.
+
+### Course Corrections
+
+- **[FABRICATION] (caught by Codex)** Treated the "CONS sent over SCSI" framing as fact in #315 sync comment without primary evidence. The plug is a code resource in the editor's address space; CONS is more likely an in-process command tag passed via direct function call. Codex's pressure point is valid; queued as A.10. **Lesson:** when posting external sync comments that synthesize across multiple decode rounds, distinguish "decoded" from "inferred from architecture." Keep speculative framing in private notes, not public comments.
+- **[PROCESS] (self-noticed mid-decode)** A.8's delegation prompt inherited the framing from the prior decode chain (plug→editor direction) without re-questioning whether that's the direction the original Phase 3 question lives in. The question is: what bytes does MESA EMIT for SRAW upload? That's editor→sampler outbound — opposite direction. **Lesson:** before each delegation, restate the ORIGINAL goal (not just the immediate decode question) to check whether the next round actually advances it.
+
+### Quantitative
+
+- User messages this session: ~14 (up from ~10 previously reported; A.8 + Codex review added)
+- Agent delegations: 5 (Path A, A.5, A.6, A.7, A.8)
+- Commits this session: 2 (one before A.8 returned; one for session-end)
+- #315 sync comments: 2 (cross-check + static-decode-closed; second one had the "CONS over SCSI" speculative framing flagged by Codex)
+- Tasks: 1 closed (#32), 2 created (#33, #34)
+- User course corrections this session: 0 explicit FABRICATION calls; 1 indirect via Codex (the "CONS over SCSI" framing flagged in Codex's pressure point comment)
+
+### Insights
+
+1. **The "what direction is the original question in" check has to happen at every delegation boundary.** Path A → A.7 chain was tracing the plug→editor direction (how the install edge gets set up so the plug can call back to the editor). That's a coherent decode line. But A.8 continued in the same direction, when the original Phase 3 question lives in the OPPOSITE direction (what does MESA emit going TO the sampler). The chain's momentum carried us past the actual goal. **Worth saving as a feedback memory:** before each agent delegation, re-state the ORIGINAL project goal and verify the next round advances it.
+
+2. **External sync comments compound the cost of speculative framing.** When I synthesize across multiple decode rounds in a #315 comment, my speculative framing ("CONS over SCSI") gets propagated to Codex's reading of our work. Codex then has to spend cycles checking the framing before it can build on it. The marginal cost of inferring vs. measuring is much higher in shared-state docs than in private notes. **Lesson reinforced from session 8/10:** distinguish measured-from-bytes vs. inferred-from-architecture in sync comments.
+
+3. **Codex's "candidate, not proved identity" calibration is exactly the right discipline.** Codex's 2026-04-21 comment was careful to qualify the 0x212/main identification as a strong candidate while still flagging the unresolved transmission step. That kind of explicit candidate/proved distinction is what I should be doing in my #315 comments too. Worth adopting as a sync-comment convention: each load-bearing claim labeled CANDIDATE / PROVED / OPEN.
+
+4. **The original Phase 3 question now has a clearer shape.** "What bytes does MESA emit for SRAW?" needs to be answered in `CSCSIPlug::SendData` SRAW handler body (file 0x0ec0) BEFORE the shared-entry JSR at $106e. That body must contain CDB construction + a SCSI bus emission call. A.9 (task #33) is the next focused decode round. We're closer than the chain suggests — just looking in the wrong room.
+
+---
+
 ## 2026-04-20: Install-edge static decode CLOSED via Path A → A.5 → A.6 → A.7
 
 ### Feature: mesa-ii-reverse-engineering
