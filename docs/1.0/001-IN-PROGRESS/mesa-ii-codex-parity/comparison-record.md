@@ -475,7 +475,17 @@ cleanly.
   `0x000273fa` / `0x000317dc` / `0x0002d6f6` / `0x0000ce28` helper family seen directly
   in the `CSamplerModule` constructor/main/destructor neighborhood, so it also looks
   like lifecycle metadata for the existing scaffold surface rather than a new sender
-  boundary.
+  boundary. Claude's newer Path A/A.5 pass materially revises one part of that broader
+  Codex framing, though: Codex spot-checks now confirm a fifth direct constructor call
+  (`jsr 0x00027e00` at file `0x0596fb`) and show that `0x02797c` and `0x0287a8`
+  resolve to real framework code under the corrected EDIT base rather than to data/string
+  bands. More importantly, the static table at `0x071a1f` contains an entry
+  `0x0003194e` at `0x071a53`, which maps to real code at `0x0598a5` immediately before
+  the `CMESAEditor::DoMESACommand` symbol band. So for the editor-side reply path, the
+  current best shared model is now compile-time vtable binding inside the recovered
+  graph, not a runtime install edge outside it. The older Codex "outside the recovered
+  graph" conclusion should now be read as applying only to the narrower direct `+0xa20`
+  install hunt, not to the full reply-handler path.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

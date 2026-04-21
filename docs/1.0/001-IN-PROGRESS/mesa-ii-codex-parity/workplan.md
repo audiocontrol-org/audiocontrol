@@ -221,6 +221,23 @@ Current Codex read after the latest far-out reductions:
   a deeper nonliteral/table-driven framework handoff or behavior outside the recovered
   resource graph entirely
 
+This assessment is now revised for the specific editor-side reply path. Claude's newer
+Path A/A.5 pass, plus Codex spot-checks, show that:
+
+- `CMESAEditor` ctor has five direct absolute calls, not four
+- several previously dismissed targets resolve to real framework code under the corrected
+  EDIT base
+- a static vtable entry at `0x071a53` maps to real code at `0x0598a5` immediately before
+  the `CMESAEditor::DoMESACommand` symbol band
+
+So the more accurate current split is:
+
+- the narrow direct `+0xa20` install hunt is effectively exhausted
+- the broader editor-side reply path is reopened inside the recovered graph as a
+  compile-time vtable-binding problem
+- the next static target is the socket/vtable path and the plug-side slot family it
+  reaches, not another search for a runtime install event
+
 That split uses the two efforts complementarily: Claude pushes runtime terrain and
 hardware truth, while Codex keeps pressure on the same install-edge path statically and
 records which static branches are now convincingly ruled out.
@@ -251,8 +268,9 @@ records which static branches are now convincingly ruled out.
 - Treat Claude's Path A / task `#31` as the step-0 prequel to Option 2, per the latest
   `#315` reply, not as a rival strategy branch
 - Keep Codex on the same static install-edge question in parallel:
-  test computed or table-driven owner paths above `CMESAEditor`, and treat
-  “the install edge leaves the recovered resource graph” as a valid terminal finding
+  test the compile-time socket/vtable path above `CMESAEditor`, and keep the older
+  “the install edge leaves the recovered resource graph” framing limited to the narrow
+  direct `+0xa20` path unless new evidence broadens it again
 - Prefer explicit terminal-boundary documentation over additional broad helper hunting:
   if a remaining static surface only re-encodes already-classified scaffolding, resource
   descriptors, or lifecycle metadata, record that as another exclusion rather than
@@ -264,6 +282,9 @@ records which static branches are now convincingly ruled out.
 - Use the recent constructor/tag/resource results as an exclusion boundary:
   that branch now looks like file/resource/document plumbing, so do not keep mining it
   as if it were still a likely live-sender path unless new evidence points back to it
+- Recheck any parity claims that depend on the older constructor-target decoding or the
+  "outside recovered graph" install-edge framing; those are now partially superseded by
+  the compile-time vtable model
 - Leave runtime install/intercept validation, live sender observation, and hardware
   throughput checks to the parallel Claude effort unless new evidence makes Codex-side
   runtime work necessary

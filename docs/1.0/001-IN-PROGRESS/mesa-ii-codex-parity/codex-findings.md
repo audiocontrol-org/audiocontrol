@@ -2197,6 +2197,42 @@ correct. Every finding should distinguish direct evidence from inference.
   framework layer than the recovered graph exposes, or the decisive install behavior lies
   outside the recovered resource entirely.
 
+- Finding 116: the `CMESAEditor` constructor-call surface needs a base-corrected
+  reinterpretation: it contains five real direct-call targets, not four, and several of
+  the previously dismissed targets are ordinary PowerPlant code rather than
+  descriptor/string bands.
+  Evidence:
+  direct bytes at file `0x0596fb` show a fifth absolute call
+  `4e b9 00 02 7e 00`, i.e. `jsr 0x00027e00`, immediately before the A-trap at
+  `0x059701`. Using the EDIT-relative base implied by the static vtable entry check
+  below (`0x027f57`), the constructor-era call targets resolve to:
+  - `0x02797c -> file 0x04f8d3`, whose bytes begin `4e56 0000 48e7 0030`
+  - `0x027e00 -> file 0x04fd57`, whose bytes begin `4e56 0000 2f0a 246e`
+  - `0x0287a8 -> file 0x0506ff`, whose bytes begin `4e56 0000 2f0a 246e`
+  - `0x02d6c8 -> file 0x05561f`, whose bytes begin `226f 0004 41ec 00f8`
+  - `0x031dc6 -> file 0x059d1d`, whose bytes begin `4e56 0000 2f0a 246e`
+  Interpretation:
+  this directly refutes Codex's earlier claim that `0x02797c` and `0x0287a8` landed in
+  data/string territory. The constructor surface is still framework-heavy, but it is
+  more ordinary code than the prior parity pass allowed.
+
+- Finding 117: the editor-side reply path is now better modeled as compile-time
+  vtable-bound inside the recovered graph, which materially weakens the earlier Codex
+  "outside the recovered resource graph" framing for this specific boundary.
+  Evidence:
+  the static table at file `0x071a1f` contains an entry at file `0x071a53` with value
+  `0x0003194e`. Using the same EDIT base `0x027f57`, that target resolves to
+  file `0x0598a5`, whose bytes begin `4e56 fff2 48e7 1c30`, i.e. clear function code,
+  immediately before the `DoMESACommand__11CMESAEditorFP11MESACommand` symbol band.
+  Combined with Finding 116's corrected constructor-target decoding, this supports
+  Claude's newer Path A/A.5 model that the embedded socket reply handler is statically
+  bound through a vtable path rather than discovered through a runtime install event.
+  Interpretation:
+  the "ordinary recovered graph is exhausted" conclusion was too broad. It still holds
+  for the narrow `+0xa20` direct-install hunt, but not for the full editor-side reply
+  path. The remaining static frontier is now the compile-time socket/vtable path and the
+  plug-side slot family it reaches, not a missing runtime install moment.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

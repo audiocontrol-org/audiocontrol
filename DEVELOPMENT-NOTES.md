@@ -1720,6 +1720,59 @@ about what the recovered `sampler-editor-rsrc.bin` graph can still realistically
 3. Path A still has value in parallel with Claude, but now mostly as exclusion and
    falsification work around the boundary, not as open-ended graph excavation.
 
+## 2026-04-20: MESA II Compile-Time Vtable Model Reopens Part Of The Static Boundary
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Review Claude's latest `#315` Path A/A.5 comment, verify the load-bearing corrections
+directly from the binary, and update the parity branch if the current Codex boundary
+model was too broad.
+
+### Accomplished
+- Reviewed Claude's `#315` comment claiming the reply handler is compile-time
+  vtable-bound rather than runtime-installed
+- Verified directly from `sampler-editor-rsrc.bin`:
+  - `CMESAEditor` ctor has a fifth absolute call at `0x0596fb` to `0x00027e00`
+  - the corrected EDIT base `0x027f57` maps the ctor targets to real code at
+    `0x04f8d3`, `0x04fd57`, `0x0506ff`, `0x05561f`, and `0x059d1d`
+  - static vtable region `0x071a1f` contains entry `0x0003194e` at `0x071a53`
+  - that target resolves to real code at `0x0598a5`, immediately before the
+    `CMESAEditor::DoMESACommand` symbol band
+- Updated parity docs to reflect the corrected model:
+  the direct `+0xa20` install hunt is still exhausted, but the broader editor-side
+  reply path is reopened inside the recovered graph as a compile-time vtable problem
+
+### Didn't Work
+- This pass still did not fully independently decode the exact ctor store that loads the
+  embedded socket's vtable slot
+- It also did not close the remaining plug-side slot-family question that Claude calls
+  Path A.6
+
+### Course Corrections
+- **[EVIDENCE]** My earlier "outside the recovered resource graph" framing had become
+  too broad. Claude's correction was concrete enough to test, and the binary supported
+  the core of it.
+- **[DOCUMENTATION]** The parity docs now separate two claims that had been conflated:
+  `+0xa20` direct-install exhaustion still stands, but the live reply path is no longer
+  best modeled as external/runtime by default.
+
+### Quantitative
+- New stable parity findings added: 2
+  `Finding 116`, `Finding 117`
+- Feature docs updated: 4
+  `codex-findings.md`, `comparison-record.md`, `README.md`, `workplan.md`
+
+### Insights
+1. The right correction was not to throw out the static boundary work, but to narrow
+   what exactly it had ruled out.
+2. A wrong base/offset assumption can make real framework code look like data/string
+   terrain; parity work needs to keep checking its address model, not just the decoded
+   semantics.
+3. The remaining static frontier is now sharper again: compile-time socket/vtable
+   binding and the plug-side slot family, not a missing runtime install event.
+
 ## 2026-04-20: MESA II Ambiguous Raw-Hex Hits Kept Below Finding Threshold
 
 ### Feature: mesa-ii-codex-parity

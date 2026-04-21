@@ -132,18 +132,26 @@ redirected, or otherwise made reachable. Claude is best placed to push that boun
 runtime; Codex remains useful by pursuing the same static boundary from a second angle
 and documenting which side branches are now effectively ruled out.
 
-The latest Codex static pass now makes the boundary sharper than earlier versions of
-this README said explicitly: the ordinary recovered `sampler-editor-rsrc.bin` graph is
-effectively exhausted as a direct owner/install path. The visible constructor call
-surface, generic scaffold layer, post-scaffold helpers, constructor/tag/resource branch,
-and remaining far-out table exceptions all collapse into framework scaffolding,
-file/resource dispatch, UI/resource descriptor data, or lifecycle metadata. So the
-remaining install edge should now be treated as either:
+The latest Codex/Claude cross-check revises that boundary again. The broad exclusion
+still holds for the narrow `+0xa20` direct-install hunt and for the ruled-out
+constructor/tag/resource and far-out table branches. But it no longer applies wholesale
+to the editor-side reply path. Claude's newer Path A/A.5 work, plus Codex spot-checks,
+show that:
 
-- a deeper nonliteral/table-driven framework handoff, or
-- behavior outside the recovered resource graph entirely
+- `CMESAEditor` ctor has five direct absolute calls, not four
+- several targets Codex had treated as data/string territory (`0x02797c`, `0x0287a8`)
+  are real framework code under the corrected EDIT base
+- a static vtable entry at `0x071a53` points to real code at `0x0598a5` immediately
+  before the `CMESAEditor::DoMESACommand` symbol band
 
-That is not a reason for Codex to stop. It is the stopping rule for a certain class of
-static work: further broad mining of ordinary in-resource helper paths is now lower value
-than staying tightly focused on boundary proof and cross-checking Claude's runtime Option
-2 work.
+So the current best read is:
+
+- the direct `+0xa20` install hunt is effectively exhausted
+- the editor-side reply path is better modeled as compile-time vtable binding inside the
+  recovered graph
+- the remaining static frontier is the socket/vtable path and the plug-side slot family
+  it reaches, not a missing runtime install moment
+
+That is still a narrow static frontier, not a return to broad helper hunting. Codex
+should use it for boundary-proof and contradiction-handling work in parallel with
+Claude's runtime Option 2 path.
