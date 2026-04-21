@@ -2397,3 +2397,48 @@ descriptor pointer.
 2. `IP_Data` is becoming a concrete field map rather than a vague transport blob.
 3. The remaining sender-side semantic unknowns are now narrower: mode byte and nullable
    context long.
+
+## 2026-04-21: MESA II Nonzero Sender Context Is the Ctor-Seeded `+0x0e3c` Root
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Narrow the remaining nullable-context ambiguity in the shared `0x106e` sender frame
+without overclaiming what that context means on the wire.
+
+### Accomplished
+- Reused the constructor-side and post-send/report evidence already recovered for
+  `CSCSIPlug+0x0e3c`
+- Verified the three connected facts:
+  - `CSCSIPlug::__ct__` allocates `0x8000` bytes into `+0x0e38` and copies the first
+    longword of that allocation into `+0x0e3c`
+  - the measured `0x106e` caller families only ever pass `arg4 = +0x0e3c` or `arg4 = 0`
+  - the shared post-send/report block later stores `+0x0e3c` into its local report
+    block and dereferences its first byte to choose `SYSX` versus `SRAW`
+- Updated parity docs to record the nonzero sender-context case as a specific
+  constructor-seeded plug-local root, not an unbounded mystery long
+
+### Didn't Work
+- This still does not prove whether `+0x0e3c` is a prebuilt transport buffer, a framing
+  template root, or some other plug-local state anchor
+- It also does not yet decode what semantic difference `arg4 = 0` causes inside or
+  beyond the shared sender
+
+### Course Corrections
+- **[EVIDENCE]** The right claim here is identity restriction, not semantic naming:
+  nonzero context is exactly `+0x0e3c`, not just “some context pointer.”
+- **[PROCESS]** This keeps the boundary honest while still shrinking the space Claude
+  and Codex need to consider in the outbound path.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 130`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. The nullable sender-context slot is now narrowed to one concrete nonzero value.
+2. `CSCSIPlug+0x0e3c` participates in both send setup and post-send protocol labeling.
+3. The remaining sender-side semantic unknowns are now essentially mode byte and the
+   `arg4 = 0` versus `arg4 = +0x0e3c` distinction.

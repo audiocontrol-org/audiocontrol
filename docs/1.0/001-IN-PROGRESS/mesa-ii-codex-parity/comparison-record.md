@@ -595,6 +595,12 @@ cleanly.
   caller frame is no longer carrying an opaque extra long there: it is carrying byte
   count. This narrows the remaining sender-side semantic unknowns to the mode byte and
   the nullable context long.
+  Codex has now also tightened that nullable context long. In its nonzero form, every
+  measured `0x106e` caller family passes the same constructor-seeded `CSCSIPlug+0x0e3c`
+  value, which the shared post-send/report block later stores into its local report
+  block and dereferences to choose `SYSX` versus `SRAW` by first byte. So the remaining
+  sender-side semantic unknowns are now basically the mode byte and the exact wire-path
+  distinction between `arg4 = 0` and `arg4 = CSCSIPlug+0x0e3c`.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.
