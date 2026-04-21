@@ -2685,6 +2685,33 @@ correct. Every finding should distinguish direct evidence from inference.
   context, but an optional post-send buffer/descriptor argument that is only live on one
   branch of the candidate body.
 
+- Finding 138: the nested helper at `0x139a` strengthens that read further: the optional
+  argument passed through the `0x160c` candidate behaves like a mutable length/control
+  pointer, not a generic opaque sender context.
+  Evidence:
+  bounded `objdump` of file `0x139a-0x15dc` shows the helper reading:
+  `self = %fp@(8)`,
+  `channel = %fp@(12)`,
+  `buffer_ptr = %fp@(14)`,
+  `flag = %fp@(18)`,
+  `count_ptr = %fp@(20)`.
+  On the `flag != 0` branch at `0x13f4-0x14ec`, it dereferences `count_ptr` immediately,
+  copies `*count_ptr` into local `-14`, tracks accumulated transfer bytes in local `-10`,
+  repeatedly calls `SetSCSIMIDIMode(1)` plus the internal `0x1620` send entry, and then
+  writes the accumulated byte count back through `count_ptr` at `0x14e2-0x14e8`.
+  On the `flag == 0` branch at `0x1504-0x15da`, it zeroes `*count_ptr` first, repeatedly
+  increments it by each returned chunk length, and again uses `0x1620` as the emission
+  primitive.
+  The same helper also gates on the already-known send-state cluster
+  `+0x0e46/+0x0e47/+0x0e42`, including the timeout long at `+0x0e42`.
+  Interpretation:
+  if `0x160c` really is the runtime target behind `0x106e`, then its nullable long is
+  best modeled as a pointer to mutable send-count/control state, not arbitrary sender
+  context. That does not prove that the measured caller-family `arg4 = +0x0e3c` is
+  exactly such a structure, but it does make the nonzero-vs-zero split more specific:
+  nonzero `arg4` would enable a tracked follow-on send/readback path, while zero `arg4`
+  would skip it entirely.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

@@ -660,6 +660,16 @@ cleanly.
   That still leaves the `0x106e -> 0x160c` identity at `CANDIDATE`, but it is now a
   stronger structural fit across the whole measured caller family, not just the SRAW
   arm alone.
+  Codex has now also pushed one step into that optional branch. The nested helper at
+  `0x139a-0x15dc` reads the forwarded extra argument as a pointer, dereferences it
+  immediately, uses it as a mutable byte-count/control slot across repeated send loops,
+  and writes the accumulated count back through it. That means the nonzero-vs-zero
+  `arg4` split in the measured `0x106e` caller family is now less vague than before:
+  under the `0x160c` candidate model, nonzero `arg4` would enable a tracked follow-on
+  send/readback path, while zero `arg4` would skip that path entirely.
+  This still does not prove that the measured `arg4 = CSCSIPlug+0x0e3c` is exactly that
+  control structure, but it is another structural match that strengthens the candidate
+  without promoting it past `CANDIDATE`.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

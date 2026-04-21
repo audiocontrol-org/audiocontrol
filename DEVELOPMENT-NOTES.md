@@ -2772,3 +2772,55 @@ full measured `0x106e` caller-family frame, rather than only against the SRAW ar
    like an optional post-send argument.
 3. This is enough to strengthen the candidate materially, but not enough to promote it
    past `CANDIDATE` without runtime confirmation.
+
+## 2026-04-21: MESA II `0x139a` Makes the Nullable Sender Arg Look Like Count/Control State
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Push one level deeper on the strengthened `0x160c` candidate by decoding the nested
+optional-branch helper at `0x139a`, to see whether the nullable argument has a concrete
+role instead of remaining vague sender context.
+
+### Accomplished
+- Disassembled the nested helper body at `0x139a-0x15dc`
+- Verified it reads:
+  - `self`
+  - `channel`
+  - `buffer_ptr`
+  - `flag`
+  - `count_ptr`
+- Verified that `count_ptr` is dereferenced immediately and then updated as mutable state
+  across repeated send loops
+- Verified both helper branches reuse:
+  - `SetSCSIMIDIMode`
+  - the internal `0x1620` send entry
+  - the known send-state cluster at `+0x0e46/+0x0e47/+0x0e42`
+- Updated parity docs to record the narrower interpretation:
+  under the `0x160c` candidate model, the nullable long behaves like a mutable
+  count/control pointer rather than arbitrary opaque context
+
+### Didn't Work
+- This still does not prove that the measured caller-family nonzero `arg4 = +0x0e3c` is
+  exactly the structure consumed as `count_ptr` here
+- It also does not prove that `0x160c` is the actual runtime target of `0x106e`
+
+### Course Corrections
+- **[EVIDENCE]** This is another good falsification-oriented check: the optional arg did
+  not dissolve into noise; it acquired a specific behavioral shape.
+- **[PROCESS]** The right calibration remains the same: stronger candidate semantics,
+  not solved install-edge identity.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 138`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. The optional sender arg now looks like mutable count/control state under the
+   candidate model.
+2. That makes the measured `arg4 = 0` vs `arg4 = +0x0e3c` split more informative:
+   one path would enable tracked follow-on send/readback behavior, the other would skip it.
+3. This materially strengthens the candidate without changing its confidence grade.
