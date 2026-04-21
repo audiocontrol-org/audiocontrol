@@ -2718,3 +2718,57 @@ the checked-in `scsi-plug.macbin` contains a different resource fork than the ex
 2. For the repo artifacts in hand, extraction error is no longer a live explanation.
 3. The remaining plausible explanations are runtime patching, another binary source, or
    some other nonlocal mechanism.
+
+## 2026-04-21: MESA II `0x160c` Matches the Full Measured `0x106e` Caller Frame
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Try to falsify the `SMSendData` candidate by comparing its actual stack reads against the
+full measured `0x106e` caller-family frame, rather than only against the SRAW arm.
+
+### Accomplished
+- Disassembled the candidate body at `0x160c-0x16d6` directly from the checked-in plug
+  binary
+- Verified the body reads this concrete argument layout:
+  - `self = %fp@(8)`
+  - `channel = %fp@(12)`
+  - `flag = %fp@(14)`
+  - `source_ptr = %fp@(16)`
+  - `optional_long = %fp@(20)`
+  - `byte_count = %fp@(24)`
+  - `out_ptr = %fp@(28)`
+- Compared that to the measured direct `0x106e` caller frame and confirmed the outer
+  layout matches across the family
+- Verified that inside the candidate body:
+  - `byte_count` is split into three outbound header bytes
+  - `flag` is converted into `0x80` versus `0x00`
+  - the nullable long is only tested and forwarded on the optional post-send branch,
+    not consumed by the primary bus-emission call
+- Updated parity docs to record that this materially strengthens the candidate without
+  promoting it to measured identity
+
+### Didn't Work
+- This still does not prove that `0x106e` is actually patched to `0x160c`
+- It also does not yet tell us whether the nullable long is a reply buffer, transport
+  descriptor, or some other optional follow-on-send argument
+
+### Course Corrections
+- **[EVIDENCE]** This is a good narrow static check because it tried to break the
+  candidate and instead strengthened it structurally.
+- **[PROCESS]** The right calibration still holds: stronger candidate, not solved
+  patcher identity.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 137`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. The `0x160c` candidate now fits the whole measured outer call frame, not just SRAW.
+2. The nullable long is no longer pure mystery; inside the candidate body it behaves
+   like an optional post-send argument.
+3. This is enough to strengthen the candidate materially, but not enough to promote it
+   past `CANDIDATE` without runtime confirmation.

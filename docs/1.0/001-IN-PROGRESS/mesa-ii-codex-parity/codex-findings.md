@@ -2651,6 +2651,40 @@ correct. Every finding should distinguish direct evidence from inference.
   not "look at the MacBinary instead"; they are runtime patching, a different binary
   source, or some other nonlocal mechanism outside these two identical copies.
 
+- Finding 137: the candidate sender body at `0x160c` is structurally consistent with the
+  full measured `0x106e` caller frame, not just the SRAW arm, and its optional argument
+  use fits the current `arg4 = 0` / `arg4 = +0x0e3c` split.
+  Evidence:
+  direct bounded `objdump` of file `0x160c-0x16d6` shows the candidate body reading:
+  `self = %fp@(8)`,
+  `channel = %fp@(12)`,
+  `flag = %fp@(14)`,
+  `source_ptr = %fp@(16)`,
+  `optional_long = %fp@(20)`,
+  `byte_count = %fp@(24)`,
+  `out_ptr = %fp@(28)`.
+  That matches the already measured seven-slot caller frame at all direct `jsr 0x106e`
+  sites:
+  `self`,
+  `CSCSIPlug+0x0d6e`,
+  mode/flag byte,
+  source pointer,
+  nullable context long,
+  `IP_Data[+0]` byte count,
+  `&fp@(-30)` output pointer.
+  Inside the candidate body, `byte_count` is copied into `%d7` and split into three
+  bytes for the outbound header at `0x1646-0x166c`; `flag` is tested at `0x1670` and
+  converted into `0x80` versus `0x00`; and `optional_long` is not used in the primary
+  bus-emission call at `0x1682-0x169a` but is tested afterward at `0x16a8` and only then
+  passed into the follow-on helper call at `0x16ae-0x16bc`.
+  Interpretation:
+  this does not prove that `0x106e` is patched to `0x160c`, but it materially
+  strengthens the candidate. The candidate body consumes exactly the argument structure
+  that Codex has already measured at the `0x106e` call sites. It also gives the
+  previously opaque nullable long a cleaner candidate meaning: not arbitrary sender
+  context, but an optional post-send buffer/descriptor argument that is only live on one
+  branch of the candidate body.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

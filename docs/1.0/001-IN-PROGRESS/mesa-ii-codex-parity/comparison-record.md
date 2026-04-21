@@ -642,6 +642,24 @@ cleanly.
   the repo, "look at the MacBinary copy instead" does not reopen a different sender
   body. The remaining explanations are runtime patching, a different binary source not
   yet in hand, or another nonlocal mechanism beyond these identical artifacts.
+  Codex has also now pushed one level harder on the `SMSendData` candidate without
+  overpromoting it. Bounded `objdump` of file `0x160c-0x16d6` shows the candidate body
+  reading exactly the same outer argument layout that Codex already measured at the
+  direct `jsr 0x106e` sites:
+  `self`,
+  target/channel word,
+  one-byte flag,
+  source pointer,
+  nullable long,
+  byte count,
+  and output pointer.
+  The candidate body then uses those fields in a way that fits the current parity model:
+  the byte count is split into three outbound header bytes, the one-byte flag is turned
+  into `0x80` versus `0x00`, and the nullable long is not needed for the primary
+  emission call but is only tested and forwarded on an optional follow-on branch.
+  That still leaves the `0x106e -> 0x160c` identity at `CANDIDATE`, but it is now a
+  stronger structural fit across the whole measured caller family, not just the SRAW
+  arm alone.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.
