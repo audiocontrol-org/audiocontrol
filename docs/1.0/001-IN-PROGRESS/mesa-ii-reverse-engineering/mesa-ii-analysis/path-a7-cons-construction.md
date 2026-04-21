@@ -8,11 +8,13 @@
 
 All claims: **Measured** / **Inferred** / **Unknown**
 
+> **CALIBRATION 2026-04-21 (per Codex parity #315 idx 4):** the Bottom Line below uses "Outcome A" framing that is stronger than the underlying evidence supports. The MEASURED facts (ctor stores 0x212 at file 0x0596e7; 0x212 + EDIT_BASE = file 0x028169 is a real function entry) are solid. The CANDIDATE inferences (that this is the SocketInfo[+0] field that the plug ultimately reads, AND that this transit happens via a "CONS SCSI command") have not been fully closed. Specifically: no decoded socket-method body shows `CMESASocket[+24]` being read and packed for transmission to the plug. That is the OPEN editor-side packing step (task #34 = Path A.10). Trust the byte-level decodes in this doc; treat the install-edge identity as CANDIDATE, not PROVED, until A.10 closes.
+
 ---
 
 ### Bottom Line
 
-**Outcome A.** The construction site is in `CMESAEditor::ctor` at file `0x0596e7..0x0596ed`. The editor stores EDIT-relative address `0x212` (= file `0x028169`) into `CMESAEditor[+0x8C]` = `CMESASocket[+24]` = `SocketInfo[+0]`. The installed function at file `0x028169` has a valid LINK prologue and is designed to be called from outside the normal THINK C calling chain (it re-initializes A4/A5 at entry). It takes one arg: an IP_Data-like struct ptr.
+**CANDIDATE (per calibration banner above; framing was "Outcome A" before downgrade).** The construction site is in `CMESAEditor::ctor` at file `0x0596e7..0x0596ed`. The editor stores EDIT-relative address `0x212` (= file `0x028169`) into `CMESAEditor[+0x8C]`, which is **inferred** (not yet measured by tracing reads) to be `CMESASocket[+24]` = `SocketInfo[+0]`. The installed function at file `0x028169` has a valid LINK prologue and is designed to be called from outside the normal THINK C calling chain (it re-initializes A4/A5 at entry). It takes one arg: an IP_Data-like struct ptr.
 
 This corrects path-a6's conjecture that the callback was `CMESASocket::AcceptData` at file `0x05A1E1`. That function exists (and is `CMESASocket vtable[+24]`) but is NOT the SocketInfo[+0] fn_ptr.
 

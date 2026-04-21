@@ -4,7 +4,7 @@
 **Method:** Static decode of scsi-plug-full.asm + vtable data read from binary  
 **Date:** 2026-04-16
 
-> **CORRECTION 2026-04-20 — supersedes Sections 2, 8, 9. Static decode of the install edge is now CLOSED. See in order:**
+> **CORRECTION 2026-04-20 — supersedes Sections 2, 8, 9. Per CALIBRATION 2026-04-21 (Codex parity #315 idx 4): the install-edge picture is CANDIDATE-grade, not PROVED. See in order:**
 > [`path-a-install-edge.md`](./path-a-install-edge.md) → [`path-a5-socketinfo-construction.md`](./path-a5-socketinfo-construction.md) → [`path-a6-plug-slot-origin.md`](./path-a6-plug-slot-origin.md) → [`path-a7-cons-construction.md`](./path-a7-cons-construction.md)
 >
 > **Resolved findings:**
@@ -13,15 +13,19 @@
 >
 > 2. **The editor does NOT install via `SocketInfo[+12]`** (verified across `CMESAEditor::ctor` + 5 PowerPlant sub-ctors). That field stays NULL.
 >
-> 3. **The plug `$11fe` indirect call dispatches through `plug_slot[+0]` = `SocketInfo[+0]`** — a different field, in the editor→plug direction. The plug copies it from the wire payload received in the "CONS" SCSI command (handled by `CMESAPlugIn::ConnectToSocket` at scsi-plug file 0x09d2; copy loop at 0x0a06 with `20 d9` opcodes).
+> 3. **MEASURED:** the plug `$11fe` indirect call dispatches through `plug_slot[+0]`, populated by the plug's `CMESAPlugIn::ConnectToSocket` handler (scsi-plug file 0x09d2) when invoked with the CONS command (copy loop at scsi-plug 0x0a06 with `20 d9` opcodes copies an incoming `SocketInfo*` arg into the slot).
 >
-> 4. **The editor sets `SocketInfo[+0]` at ctor time** (file 0x0596e7-0x0596f0): `LEA $00000212, A0; MOVE.L A0, A2@(0x8c)`. Address 0x212 (EDIT-relative) = file 0x028169.
+> 4. **MEASURED:** the editor's ctor at file 0x0596e7-0x0596f0 (`LEA $00000212, A0; MOVE.L A0, A2@(0x8c)`) writes EDIT-relative `0x212` (= file 0x028169) into `editor[+0x8c]`.
 >
-> 5. **The installed callback at file 0x028169 is named `main`** (THINK C symbol `\x84main\0` at file 0x028206 immediately after the function's RTS at 0x028204). It is NOT a magic-tag dispatcher — it has only one immediate magic check (`'INIT'` at 0x02817f); everything else falls through to a generic vtable dispatch via `vtable[+0xA8]` on a global handle stored at `A4@(0x5EA2)` (set by the INIT branch via `JSR $0x272A4`).
+> 5. **CANDIDATE:** that `editor[+0x8c]` field corresponds to `SocketInfo[+0]` (i.e., `editor[+0x74] = embedded CMESASocket; CMESASocket[+24] = SocketInfo[+0]; editor[+0x8c] = editor[+0x74] + 24`). The byte arithmetic is correct; what's not yet measured is a code path that READS `editor[+0x8c]` and PASSES it to the plug. Codex pressure point #315 idx 0/2 flagged this; A.10 (task #34) targets it.
 >
-> 6. **The actual SRAW data handler is therefore at `vtable[+0xA8]` of whatever object `JSR $0x272A4` constructs at INIT time.** That last layer is reachable via Path A.8 (not yet decoded).
+> 6. **MEASURED:** the function at file 0x028169 has a clean LINK A6 prologue, embeds the THINK C symbol `\x84main\0` at file 0x028206 after RTS, contains exactly one immediate magic check (`'INIT'` at 0x02817f), and on the non-INIT path dispatches via `vtable[+0xA8]` of a global handle constructed at INIT time via `JSR $0x272A4`. **CANDIDATE** (depends on item 5): that this function is what the plug's `$11fe` call ultimately reaches.
 >
-> Sections 8/9 of this doc are obsolete. Trust the path-a*.md docs.
+> 7. **MEASURED (REPLY direction only):** Path A.8 traced the dispatch chain from `main`'s non-INIT branch through `vtable[+0xA8]` → dispatcher at file 0x0287C5 → 'ADAT' handler at 0x599a7 → `CMESASocket::AcceptData` at file 0x5A1E1 (`_BlockMove` reply bytes into `CMESASocket[+8]`; store 'SRAW'/'SYSX' tag at `[+12]`).
+>
+> 8. **OPEN:** the OUTBOUND CDB emission for SRAW audio uploads (the original Phase 3 question) lives in `CSCSIPlug::SendData` SRAW handler body at scsi-plug file 0x0ec0, BEFORE the shared-entry JSR at $106e. Task #33 (Path A.9) targets it.
+>
+> Sections 8/9 of this doc below are obsolete. Trust the path-a*.md docs (each carries its own calibration banner).
 
 All claims are marked with one of:
 - **Measured** — file offset + decoded assembly cited  

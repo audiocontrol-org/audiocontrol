@@ -8,15 +8,21 @@
 
 All claims: **Measured** / **Inferred** / **Unknown**
 
+> **CALIBRATION 2026-04-21 (per Codex parity #315 idx 4):**
+> 1. **Direction qualifier:** this doc traces the REPLY direction (sampler→editor incoming dispatch). The original Phase 3 question (what bytes does MESA emit for SRAW *upload*) is the OPPOSITE direction and is OPEN — see task #33 / Path A.9.
+> 2. **Install-edge identity downgrade:** any claim in this doc that frames the editor-side `main` callback (file 0x028169) as "installed via CONS/ConnectToSocket" should be read as CANDIDATE, not PROVED. The byte-level decode of the dispatch chain that ENDS at this callback is MEASURED; the framing of how the callback got registered is inherited from path-a7 and now downgraded to CANDIDATE pending A.10.
+
 ---
 
 ### Bottom Line
 
-**Outcome A (partial — chain terminates at a static function within this binary).**
+**MEASURED for the REPLY-direction dispatch chain; CANDIDATE for the install-edge framing.**
 
-The path from INIT-time allocation through vtable[+0xA8] to the SRAW reply handler is fully traceable in `sampler-editor-rsrc.bin`. The terminal function is `CMESASocket::AcceptData` at file `0x05A1E1`, which copies the SCSI reply payload from the plug's IP_Data struct into the `CMESASocket` internal receive buffer. No further runtime dispatch occurs within this path.
+The path from INIT-time allocation through vtable[+0xA8] to the SRAW REPLY-direction handler is fully traceable in `sampler-editor-rsrc.bin`. The terminal function is `CMESASocket::AcceptData` at file `0x05A1E1`, which copies the SCSI reply payload from the plug's IP_Data struct into the `CMESASocket` internal receive buffer. No further runtime dispatch occurs within this REPLY path.
 
 The 'SRAW'/'SYSX' tag distinction (built by the plug at scsi-plug `$11cc/$11c2`) is only consulted after `AcceptData` returns — it is stored in `CMESASocket[+12]` by `AcceptData` itself as a status tag for the caller to read, not dispatched on.
+
+**Not addressed by this doc:** the OUTBOUND audio direction (editor→sampler SRAW upload). That CDB construction lives in `CSCSIPlug::SendData` SRAW handler body at scsi-plug file 0x0ec0, before the shared-entry JSR at $106e. Task #33 (Path A.9) targets it.
 
 ---
 

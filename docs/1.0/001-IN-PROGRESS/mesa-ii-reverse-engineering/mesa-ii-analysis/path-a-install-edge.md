@@ -4,7 +4,9 @@
 **Method:** Static decode of both binaries; no harness execution  
 **Date:** 2026-04-20  
 **Prior doc corrected:** `sraw-decoded.md` sections 2 and 9  
-**Follow-up:** see [`path-a5-socketinfo-construction.md`](./path-a5-socketinfo-construction.md) — Path A.5 supersedes this doc's framing of "the editor must build a SocketInfo with +12 fn_ptr." Primary-evidence decode shows SocketInfo[+12] is never set; reply dispatch is via static vtable[+52], not a runtime-installed fn_ptr. This doc's findings about $106e (THINK C shared-entry) and the slot fn_ptr at $11fe are still valid; the framing about where/what gets "installed" is refined by A.5.
+**Follow-ups:** see in order — [`path-a5-socketinfo-construction.md`](./path-a5-socketinfo-construction.md), [`path-a6-plug-slot-origin.md`](./path-a6-plug-slot-origin.md), [`path-a7-cons-construction.md`](./path-a7-cons-construction.md), [`path-a8-sraw-handler.md`](./path-a8-sraw-handler.md).
+
+> **CALIBRATION 2026-04-21 (per Codex parity #315 idx 4):** This doc's $106e finding (THINK C shared-entry) is **MEASURED** and stands. The frame about the slot fn_ptr at $11fe being installed via "the editor's CONS payload" is **CANDIDATE** until A.10 settles the editor-side packing/transmission step. Trust the byte-level decodes; treat install-edge identity claims that propagate from this doc as candidate-grade.
 
 All claims are marked with one of:
 - **Measured** — file offset + decoded assembly cited

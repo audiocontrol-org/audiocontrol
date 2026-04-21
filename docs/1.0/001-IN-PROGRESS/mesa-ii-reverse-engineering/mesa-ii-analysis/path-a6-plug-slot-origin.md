@@ -10,13 +10,15 @@ All claims are marked with one of:
 - **Inferred** — explicit reasoning noted
 - **Unknown** — decode terminated; described precisely
 
+> **CALIBRATION 2026-04-21 (per Codex parity #315 idx 4):** the wording "incoming SocketInfo data from the editor's 'CONS' (ConnectToSocket) SCSI message payload" treats the transmission mechanism as decided when it is not. **MEASURED** within this doc: plug-side `CONS → ConnectToSocket` handler; copy loop at scsi-plug 0x0a06 copying an incoming `SocketInfo*` arg into `plug_slot[+0]`. **OPEN:** the editor-side packing/transmission step that puts `editor[+0x8c]` into the plug's incoming arg. Likely architecture is in-process function call (plug loaded as code resource in editor address space), not SCSI bus transmission — A.10 (task #34) will settle.
+
 ---
 
 ## Bottom Line
 
-**Outcome B — runtime-installed by scsi-plug-side `ConnectToSocket`, sourced from the editor binary.**
+**Outcome B — runtime-populated by scsi-plug-side `ConnectToSocket`. The VALUE source from the editor side is CANDIDATE, not MEASURED (see calibration banner above).**
 
-The fn_ptr called at scsi-plug file `$11fe` lives in `plug_slot[+0]` — the first long of the plug's socket slot array entry. It was placed there by `CMESAPlugIn::ConnectToSocket` (file `0x09d2`) which verbatim copies 46 bytes of incoming `SocketInfo` data from the editor's "CONS" (ConnectToSocket) SCSI message payload. `SocketInfo[+0]` is a function pointer in the **sampler-editor binary** — the editor's reply-receive callback — not present in the scsi-plug binary. The exact identity of that function is **Unknown** from static decode alone, because the editor's "CONS" payload construction path was not traced.
+The fn_ptr called at scsi-plug file `$11fe` lives in `plug_slot[+0]` — the first long of the plug's socket slot array entry. It was placed there by `CMESAPlugIn::ConnectToSocket` (file `0x09d2`) which verbatim copies 46 bytes of incoming `SocketInfo` data. The transmission mechanism that brings that `SocketInfo*` into the plug's `ConnectToSocket` from the editor is the OPEN step. `SocketInfo[+0]` is a function pointer in the **sampler-editor binary** — the editor's reply-receive callback — not present in the scsi-plug binary. The exact identity of that function is **Unknown** from static decode alone, because the editor's "CONS" payload construction path was not traced.
 
 This corrects and refines the prior description in `path-a-install-edge.md` section 7: that document stated the termination point was `CMESASocket::ConnectToPlug` copying a fn_ptr from `SocketInfo[+12]` into `slot[+8]`. The actual fn_ptr read at `$11fe` is at `plug_slot[+0]` (not [+8]), and it is `SocketInfo[+0]` (not [+12]). `SocketInfo[+12]` (which Path A.5 found is NULL) is a different field that is checked by the editor in `ConnectToPlug` phase 3 (file `0x059f09`) but is NOT the fn_ptr called at plug `$11fe`.
 
