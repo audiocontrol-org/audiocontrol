@@ -2428,6 +2428,26 @@ correct. Every finding should distinguish direct evidence from inference.
   the `0x1072` wrapper, with two transient state bytes at `+0x0e46/+0x0e47` carrying
   per-send metadata derived from the first source byte.
 
+- Finding 126: the shared `0x106e` sender contract is already fed by at least four
+  distinct caller families inside `SendData`, not just the measured `SRAW` path.
+  Evidence:
+  `m68k-elf-objdump` of file `0x0ec0-0x1160` shows six direct `jsr 0x106e` call sites at
+  `0x0f60`, `0x0fbc`, `0x102c`, `0x10b2`, `0x10f8`, and `0x1144`.
+  These collapse into four measured argument families:
+  `0x0f60`: SRAW-tagged path using `%d6` plus mode byte `#1`;
+  `0x0fbc`: sibling path using `%d6` plus mode byte `#0`;
+  `0x102c`: derived-length path using `%d6`, a zero long in the third payload slot, and
+  post-call length doubling into `%fp@(-30)`;
+  `0x10b2` / `0x10f8` / `0x1144`: wrapper-driven variants using `%a3@(4)` as the source
+  pointer, with `0x1072` adding transient state bytes at `+0x0e46/+0x0e47`.
+  All four families converge on the same post-send/report block at `0x1160`, which then
+  walks the callback list and labels the reply/report block as `SYSX` or `SRAW`.
+  Interpretation:
+  the unresolved static question at `0x106e` is broader than “what does the SRAW call
+  emit?” The shared sender already acts like a central emission contract for multiple
+  send shapes. That makes the remaining unknown more likely to be a small parameterized
+  send engine than a one-off SRAW helper.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
@@ -2463,6 +2483,9 @@ correct. Every finding should distinguish direct evidence from inference.
 - What exact meaning do the transient send-state bytes at `CSCSIPlug+0x0e46` and
   `+0x0e47` carry, and do they determine whether the shared `0x106e` path emits one
   wire shape versus another?
+- How do the measured caller families into `0x106e` map onto concrete wire modes:
+  raw-SRAW, SDS-header-like control sends, and the derived-length path that post-processes
+  `%fp@(-30)` after return?
 - What concrete `CSamplerModule`-side method lives at the `vtable[0x28]` `UALL` call
   site, and does it in turn route into a sampler object, a UI update path, or both?
 - Can Codex decode the function body behind `CAkaiSampler` slot `0x0170` directly

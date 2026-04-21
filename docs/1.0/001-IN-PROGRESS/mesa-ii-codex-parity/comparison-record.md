@@ -555,6 +555,17 @@ cleanly.
   shape used by the measured SRAW branch. That further narrows the static frontier:
   the unresolved question is the shared sender contract itself and what those transient
   state bytes mean for wire emission, not whether `0x1072` is a separate hidden answer.
+  Codex now also has a stronger structural read on that shared sender contract. Raw
+  `objdump` over file `0x0ec0-0x1160` shows six direct `jsr 0x106e` call sites at
+  `0x0f60`, `0x0fbc`, `0x102c`, `0x10b2`, `0x10f8`, and `0x1144`, collapsing into four
+  measured caller families rather than one SRAW-specialized helper:
+  the measured `SRAW` arm at `0x0f60`,
+  a sibling mode-`#0` arm at `0x0fbc`,
+  a derived-length path at `0x102c`,
+  and the wrapper-driven variants at `0x10b2` / `0x10f8` / `0x1144`.
+  All four converge on the same post-send/report block at `0x1160`. So the remaining
+  open question is now better framed as the parameter contract of a central send engine,
+  not “what hidden SRAW helper lives before `0x106e`?”
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

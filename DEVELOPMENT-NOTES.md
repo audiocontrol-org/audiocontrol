@@ -2208,3 +2208,53 @@ wraps the same unresolved shared sender contract behind `0x106e`.
 2. `0x1072` contributes per-send state, not a distinct static emission mechanism.
 3. The highest-value remaining static question is the meaning of `+0x0e46/+0x0e47` and
    how `0x106e` uses them when choosing the actual wire emission path.
+
+## 2026-04-21: MESA II `0x106e` Is Fed by Multiple Measured Caller Families
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Determine whether the shared `0x106e` sender target should still be modeled as a
+one-off SRAW mystery helper, or as a broader central send engine with multiple
+caller-side shapes already visible in the recovered `SendData` body.
+
+### Accomplished
+- Re-decoded `scsi-plug` file `0x0ec0-0x1160` to classify every direct `jsr 0x106e`
+  call site in the recovered `SendData` window
+- Verified six direct call sites at:
+  `0x0f60`, `0x0fbc`, `0x102c`, `0x10b2`, `0x10f8`, `0x1144`
+- Collapsed those six sites into four measured caller families:
+  - measured `SRAW` arm at `0x0f60`
+  - sibling mode-`#0` arm at `0x0fbc`
+  - derived-length path at `0x102c`
+  - wrapper-driven variants at `0x10b2` / `0x10f8` / `0x1144`
+- Verified that all four families converge on the same shared post-send/report block at
+  `0x1160`
+- Updated parity docs to record the remaining unknown as the parameter contract of a
+  central send engine rather than “the hidden SRAW helper before `0x106e`”
+
+### Didn't Work
+- This still does not reveal the outbound wire bytes emitted by the shared sender
+- It also does not yet decode how the caller-family differences map onto concrete
+  wire-mode selection inside or beyond `0x106e`
+
+### Course Corrections
+- **[EVIDENCE]** The strongest static claim is now structural: `0x106e` already serves
+  multiple measured caller shapes. That is stronger than treating it as an unresolved
+  SRAW-only helper.
+- **[PROCESS]** In this phase, publishing the argument-contract framing matters more
+  than chasing one more speculative branch-local byte pattern.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 126`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. The remaining `0x106e` question is broader than outbound SRAW alone.
+2. The recovered `SendData` body already exposes four distinct caller families feeding
+   the shared sender contract.
+3. The highest-value next static question is how those caller-family differences map to
+   concrete live-in fields and wire-mode selection.
