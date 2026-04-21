@@ -5,7 +5,7 @@
 **PLUG binary**: `scsi-plug-rsrc.bin` (resource data start: file `0x00059e`)  
 **Date**: 2026-04-20
 
-> **REFRAMED 2026-04-20 by [`path-a6-plug-slot-origin.md`](./path-a6-plug-slot-origin.md) and [`path-a7-cons-construction.md`](./path-a7-cons-construction.md):** This doc was hunting in the wrong direction. SocketInfo[+12] (plug→editor direction) is correctly identified as NULL — that finding stands. But the relevant install is via SocketInfo[+0] (editor→plug direction), which IS set in CMESAEditor::ctor (the `[+0x8c]` store this doc tabled in §1 but didn't recognize as significant). The store at file 0x0596e7 (`LEA $00000212, A0; MOVE.L A0, A2@(0x8c)`) writes the editor's "main" callback fn_ptr (file 0x028169) into SocketInfo[+0]. Read path-a6 + path-a7 for the corrected picture.
+> **REFRAMED 2026-04-20 by [`path-a6-plug-slot-origin.md`](./path-a6-plug-slot-origin.md) and [`path-a7-cons-construction.md`](./path-a7-cons-construction.md):** This doc was hunting in the wrong direction. `SocketInfo[+12]` (plug→editor direction) is correctly identified as NULL — that finding stands. But the more relevant frontier is `SocketInfo[+0]` (editor→plug direction). What is **measured** here is the ctor store at file `0x0596e7` (`LEA $00000212, A0; MOVE.L A0, A2@(0x8c)`) into editor offset `+0x8c`. What remains **candidate-grade** is the stronger claim that this exact field is what later becomes plug-visible `SocketInfo[+0]`. Read path-a6 + path-a7 for the calibrated picture.
 
 ---
 

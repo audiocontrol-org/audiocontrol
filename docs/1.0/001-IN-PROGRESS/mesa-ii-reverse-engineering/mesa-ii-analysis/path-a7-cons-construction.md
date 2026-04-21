@@ -56,7 +56,9 @@ file 0x0596ed: 25 48 00 8c          ; MOVE.L A0, (140,A2)
 
 `140 = 0x8C`. `A2` = CMESAEditor* (set at `0x059667: MOVEA.L (8,A6), A2`). **Measured.**
 
-`CMESAEditor[+0x8C]` = `CMESASocket[+24]` = `SocketInfo[+0]` = EDIT-relative `0x00000212` = file `0x028169`.
+`CMESAEditor[+0x8C]` is **measured**. The stronger mapping
+`CMESAEditor[+0x8C]` -> `CMESASocket[+24]` -> `SocketInfo[+0]` remains
+**candidate-grade** pending the editor-side packing/transmission step.
 
 **Claim**: This is the only store to offset `0x8C` in CMESAEditor that sets a fn_ptr. Exhaustive search for `MOVE.L ?, (24,Ax)` instructions in the code section found no occurrences matching the layout (the two raw hits at file `0x057D17` and `0x0562B5` fall in data regions, not code). **Measured.**
 
@@ -196,7 +198,8 @@ path-a6's open question "Likely CMESASocket::AcceptData at file 0x05A1E1" was in
 | Claim | Tag | Evidence |
 |-------|-----|----------|
 | CMESASocket embedded at CMESAEditor[+0x74] | Measured | PEA (0x74,A0) at file 0x05969F, bytes `48 68 00 74` |
-| SocketInfo[+0] = CMESASocket[+24] = CMESAEditor[+0x8C] | Measured | +0x74 + 24 = +0x8C (arithmetic) |
+| `CMESAEditor[+0x8C] = CMESASocket[+24]` by layout arithmetic | Measured | +0x74 + 24 = +0x8C (arithmetic) |
+| `CMESASocket[+24]` is the exact field that becomes plug-visible `SocketInfo[+0]` | Candidate | Requires the still-open editor-side packing/transmission step |
 | CMESAEditor::ctor stores 0x212 at CMESAEditor[+0x8C] | Measured | LEA $212, A0 + MOVE.L A0,(140,A2) at file 0x0596E7-0x0596ED |
 | fn_ptr = EDIT-relative 0x212 = file 0x028169 | Measured | 0x027F57 + 0x212 = 0x028169 |
 | File 0x028169 is a valid function entry | Measured | `4E 56 00 00 48 E7 1C 30` = LINK A6,#0; MOVEM |

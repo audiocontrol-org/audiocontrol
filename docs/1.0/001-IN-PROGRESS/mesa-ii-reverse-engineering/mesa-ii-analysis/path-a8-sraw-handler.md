@@ -221,7 +221,7 @@ The return code (D0) is written back into `IP_Data[+4]` by the ADAT handler at `
 | [+8] | receive buffer ptr (must be non-null for AcceptData to proceed) | CMESASocket::ctor (Inferred — not decoded) |
 | [+12] | status tag: `'SRAW'`, `'SYSX'`, or `'OVER'` | AcceptData |
 | [+16] | capacity or limit value (compared in AcceptData) | Unknown |
-| [+24] | SocketInfo fn_ptr = EDIT-rel 0x212 = file `0x028169` | CMESAEditor::ctor (path-a7) |
+| [+24] | candidate callback field seeded to EDIT-rel `0x212` = file `0x028169` | CMESAEditor::ctor (path-a7); exact plug-visible `SocketInfo[+0]` link still open |
 
 ---
 
@@ -231,7 +231,7 @@ Starting point: scsi-plug fires `JSR (slot_fn_ptr)` at file `0x11FE`, passing `p
 
 ```
 scsi-plug $11FE
-  → file 0x028169 "main" callback (EDIT-rel 0x212, installed via CONS/ConnectToSocket)
+  → file 0x028169 "main" callback (EDIT-rel 0x212; plug-visible install path still candidate-grade per A.10)
     reads struct[+0] = 'ADAT'
     struct[+18] = 'SRAW' or 'SYSX' (set by plug at $11cc or $11c2)
     struct[+6] = &struct[+10] (self-referential ptr)
