@@ -2162,3 +2162,49 @@ shared sender entry at `0x106e`.
 3. The highest-value remaining static question is now whether `0x106e` itself builds the
    outbound CDB from that call frame or whether the real wire emission still crosses a
    runtime boundary.
+
+## 2026-04-21: MESA II `0x1072` Is a Shared-Sender Wrapper, Not a Separate Outbound Answer
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Clarify whether the `0x1072` body changes the outbound-SRAW picture materially, or just
+wraps the same unresolved shared sender contract behind `0x106e`.
+
+### Accomplished
+- Re-decoded `scsi-plug` file `0x1072-0x10c2` with `m68k-elf-objdump`
+- Verified that `0x1072`:
+  - copies `%a3@(4)` into local `%fp@(-46)`
+  - sets `CSCSIPlug+0x0e46 = 1`
+  - derives a second transient flag from bit 7 of the first source byte and stores it
+    at `CSCSIPlug+0x0e47`
+  - then pushes the same broad seven-argument send frame and calls `jsr 0x106e` at
+    `0x10b2`
+  - clears `+0x0e46` on return and falls into the same shared post-send/report path at
+    `0x1160`
+- Updated parity docs to record `0x1072` as wrapper logic around the shared sender, not
+  as a separate final emitter
+
+### Didn't Work
+- This still does not reveal what `0x106e` ultimately emits on the wire
+- It also does not yet explain the semantic meaning of the transient state bytes
+  `+0x0e46/+0x0e47`
+
+### Course Corrections
+- **[EVIDENCE]** The right static distinction here is between “different caller shape”
+  and “different final emitter.” `0x1072` only proves the former.
+- **[PROCESS]** This is another case where the frontier narrows by removing a false
+  branch: `0x1072` is no longer a competing mystery target.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 125`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. The shared sender contract now has at least two measured caller shapes feeding it.
+2. `0x1072` contributes per-send state, not a distinct static emission mechanism.
+3. The highest-value remaining static question is the meaning of `+0x0e46/+0x0e47` and
+   how `0x106e` uses them when choosing the actual wire emission path.

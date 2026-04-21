@@ -2404,6 +2404,30 @@ correct. Every finding should distinguish direct evidence from inference.
   path, which makes the SRAW branch look more like a rawer higher-level send shape
   handed off to the shared sender rather than a local mirror of the BULK builder.
 
+- Finding 125: `0x1072` is a wrapper over the shared sender path, not a distinct final
+  emitter; it derives transient send-state flags from the source buffer and then calls
+  back into `0x106e` with the same seven-argument shape.
+  Evidence:
+  `m68k-elf-objdump` of file `0x1072-0x10c2` shows `0x1072` starting by copying
+  `%a3@(4)` into `%fp@(-46)`, setting `%a2@(0x0e46) = 1`, testing bit 7 of the first
+  byte at that source pointer (`btst #7,%a0@`), and then mirroring the result into
+  `%a2@(0x0e47)`.
+  After that state setup, the wrapper pushes the same six core arguments seen in the
+  measured SRAW branch plus a source pointer from `%fp@(-46)` and calls `jsr 0x106e`
+  at `0x10b2`:
+  `pea %fp@(-30)`, `movel %a3@,-(sp)`, `movel %a2@(0x0e3c),-(sp)`,
+  `movel %fp@(-46),-(sp)`, `moveb #1,-(sp)`, `movew %a2@(0x0d6e),-(sp)`,
+  `movel %a2,-(sp)`.
+  On return, it stores `%d0` in `%d3`, clears `%a2@(0x0e46)`, unwinds the 24-byte
+  call frame, and branches into the shared post-send path at `0x1160`.
+  Interpretation:
+  this wrapper is not a separate static answer to the outbound-SRAW question. It is a
+  flag-setting prelude around the same unresolved shared sender contract. The useful
+  narrowing is that the shared path already supports at least two closely related call
+  shapes: one taking `%d6` as the payload/source pointer, and one taking `%a3@(4)` via
+  the `0x1072` wrapper, with two transient state bytes at `+0x0e46/+0x0e47` carrying
+  per-send metadata derived from the first source byte.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
@@ -2436,6 +2460,9 @@ correct. Every finding should distinguish direct evidence from inference.
 - Does the shared sender behind `0x106e` construct the actual outbound SRAW CDB/wire
   bytes from the seven-argument call frame prepared by the `0x0f40` branch, or does a
   later runtime-installed layer still intervene before bus emission?
+- What exact meaning do the transient send-state bytes at `CSCSIPlug+0x0e46` and
+  `+0x0e47` carry, and do they determine whether the shared `0x106e` path emits one
+  wire shape versus another?
 - What concrete `CSamplerModule`-side method lives at the `vtable[0x28]` `UALL` call
   site, and does it in turn route into a sampler object, a UI update path, or both?
 - Can Codex decode the function body behind `CAkaiSampler` slot `0x0170` directly

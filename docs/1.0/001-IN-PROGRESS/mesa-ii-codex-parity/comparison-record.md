@@ -547,6 +547,14 @@ cleanly.
   pre-`0x106e` SRAW path looks like a higher-level raw send shape handed to the shared
   sender, while the more explicit byte-level header work lives in the neighboring
   non-`SRAW` path.
+  Codex now also has a cleaner read on `0x1072`: it is not a second final emitter, but
+  a wrapper around the same unresolved shared sender contract. Raw `objdump` of
+  `0x1072-0x10c2` shows it copying `%a3@(4)` into a local source pointer, setting
+  transient bytes at `CSCSIPlug+0x0e46/+0x0e47` based on bit 7 of the first source
+  byte, and then calling `0x106e` at `0x10b2` with the same broad seven-argument send
+  shape used by the measured SRAW branch. That further narrows the static frontier:
+  the unresolved question is the shared sender contract itself and what those transient
+  state bytes mean for wire emission, not whether `0x1072` is a separate hidden answer.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.
