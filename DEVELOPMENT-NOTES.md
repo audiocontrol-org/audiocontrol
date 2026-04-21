@@ -2442,3 +2442,52 @@ without overclaiming what that context means on the wire.
 2. `CSCSIPlug+0x0e3c` participates in both send setup and post-send protocol labeling.
 3. The remaining sender-side semantic unknowns are now essentially mode byte and the
    `arg4 = 0` versus `arg4 = +0x0e3c` distinction.
+
+## 2026-04-21: MESA II Zero-Context Sends Are a Narrow Mode-`#0` Subcase
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Constrain the remaining mode/context ambiguity without claiming more than the current
+caller-family evidence supports.
+
+### Accomplished
+- Re-aligned all measured direct `0x106e` caller sites against mode byte and context long
+- Verified the full matrix:
+  - `0x0f60`: mode `#1`, context `+0x0e3c`
+  - `0x0fbc`: mode `#0`, context `+0x0e3c`
+  - `0x102c`: mode `#0`, context `0`
+  - `0x10b2`: mode `#1`, context `+0x0e3c`
+  - `0x10f8`: mode `#0`, context `+0x0e3c`
+  - `0x1144`: mode `#0`, context `0`
+- Verified that the zero-context sites are also the branches with extra branch-local
+  work around the send:
+  - `0x102c` does derived-length reconstruction and doubles the returned out-length
+  - `0x1144` is wrapped by `0x0ca2` gating before and after the send
+- Updated parity docs to record the resulting restriction:
+  mode `#1` currently implies nonzero context, while `arg4 = 0` is a narrower subcase
+  within mode `#0`
+
+### Didn't Work
+- This still does not decode the exact semantic meaning of mode `#1` vs `#0`
+- It also does not yet explain whether the extra branch-local work is cause, effect, or
+  merely correlated with `arg4 = 0`
+
+### Course Corrections
+- **[EVIDENCE]** The useful result here is a restricted matrix, not a named protocol
+  meaning. That is enough to narrow the frontier honestly.
+- **[PROCESS]** This is the right endgame move for the static sender contract: tighten
+  admissible combinations before trying to assign semantic names.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 131`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. Mode `#1` is not a free-standing toggle; it is currently only seen with nonzero context.
+2. Zero-context sends are real, but only inside a narrower subset of mode-`#0` paths.
+3. The remaining sender-side unknown is now a very small matrix: mode meaning and why
+   some mode-`#0` paths null out the context long.

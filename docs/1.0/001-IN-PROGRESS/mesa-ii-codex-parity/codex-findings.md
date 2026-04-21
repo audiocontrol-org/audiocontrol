@@ -2531,6 +2531,28 @@ correct. Every finding should distinguish direct evidence from inference.
   the mode byte, and what semantic difference `arg4 = 0` versus `arg4 = CSCSIPlug+0x0e3c`
   causes inside or beyond the shared sender.
 
+- Finding 131: mode byte `#1` is only observed together with the nonzero
+  `CSCSIPlug+0x0e3c` context, while zero-context sends are only observed inside a subset
+  of mode-`#0` branches that do extra branch-local work around `0x106e`.
+  Evidence:
+  the measured direct `0x106e` sites are:
+  `0x0f60`: mode `#1`, context `CSCSIPlug+0x0e3c`;
+  `0x0fbc`: mode `#0`, context `CSCSIPlug+0x0e3c`;
+  `0x102c`: mode `#0`, context `0`;
+  `0x10b2`: mode `#1`, context `CSCSIPlug+0x0e3c`;
+  `0x10f8`: mode `#0`, context `CSCSIPlug+0x0e3c`;
+  `0x1144`: mode `#0`, context `0`.
+  The zero-context sites are not arbitrary copies of the other branches:
+  `0x102c` is the derived-length path that reconstructs length from source bytes
+  `11..14` and doubles the returned out-length afterward;
+  `0x1144` is the wrapper-driven variant that is surrounded by `0x0ca2` gating before
+  and after the send.
+  Interpretation:
+  this does not yet decode the exact meaning of the mode byte, but it does constrain the
+  contract: mode `#1` currently implies the nonzero `+0x0e3c` transport/root context,
+  while `arg4 = 0` is a narrower subcase inside mode `#0`, associated with branches that
+  perform additional branch-local processing around the shared send engine.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
@@ -2576,6 +2598,8 @@ correct. Every finding should distinguish direct evidence from inference.
   prebuilt transport buffer, framing template, or some other plug-local state root?
 - What concrete wire-path distinction does `arg4 = 0` versus
   `arg4 = CSCSIPlug+0x0e3c` encode across the measured caller families?
+- What exact semantic difference does mode byte `#1` vs `#0` encode once the now-measured
+  context/length fields are factored out?
 - What concrete `CSamplerModule`-side method lives at the `vtable[0x28]` `UALL` call
   site, and does it in turn route into a sampler object, a UI update path, or both?
 - Can Codex decode the function body behind `CAkaiSampler` slot `0x0170` directly

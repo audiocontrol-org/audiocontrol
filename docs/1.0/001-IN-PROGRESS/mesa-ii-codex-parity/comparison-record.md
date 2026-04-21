@@ -601,6 +601,12 @@ cleanly.
   block and dereferences to choose `SYSX` versus `SRAW` by first byte. So the remaining
   sender-side semantic unknowns are now basically the mode byte and the exact wire-path
   distinction between `arg4 = 0` and `arg4 = CSCSIPlug+0x0e3c`.
+  Codex has also added one more measured restriction on that split: mode byte `#1` is
+  only observed together with nonzero `arg4 = CSCSIPlug+0x0e3c`, while zero-context
+  sends are only observed in a subset of mode-`#0` branches (`0x102c`, `0x1144`) that
+  also perform extra branch-local work around `0x106e`. That does not yet identify the
+  exact semantics of mode `#1` vs `#0`, but it does show that `arg4 = 0` is not a
+  general alternative caller shape. It is a narrower subcase within mode-`#0`.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.
