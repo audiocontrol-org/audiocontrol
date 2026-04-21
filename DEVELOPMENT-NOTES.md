@@ -1719,3 +1719,47 @@ about what the recovered `sampler-editor-rsrc.bin` graph can still realistically
    proof or contradiction handling if new evidence appears.
 3. Path A still has value in parallel with Claude, but now mostly as exclusion and
    falsification work around the boundary, not as open-ended graph excavation.
+
+## 2026-04-20: MESA II Ambiguous Raw-Hex Hits Kept Below Finding Threshold
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Probe one last angle on the exhausted owner boundary by checking whether nearby
+constructor-era addresses showed up in raw-hex/table form even though `SetCommandProc`
+did not.
+
+### Accomplished
+- Ran permissive full-file raw-hex searches over the `0x028xxx` constructor-era family
+- Confirmed again that `0x0286f3` / `SetCommandProc` and nearby owner anchors still do
+  not show up as straightforward longword references in the recovered resource
+- Rejected the tempting follow-up interpretation when some nearby addresses appeared:
+  the resulting hits were ordinary control-flow immediates inside code, not a clear
+  table-driven owner/install structure
+- Tightened the workplan to make that process rule explicit
+
+### Didn't Work
+- This pass did not produce a new stable owner-boundary finding
+- It did not reveal a deeper table-driven caller into `SetCommandProc`
+
+### Course Corrections
+- **[EVIDENCE]** I did not promote ambiguous raw-hex hits into a structural claim just
+  because they landed near constructor-era addresses. They were not clean table entries
+  or callback-install metadata.
+- **[PROCESS]** Once the branch-level terminal boundary had been written down, the right
+  standard became stricter: ambiguous branch/immediate coincidences are now negative
+  process evidence, not near-miss findings.
+
+### Quantitative
+- Feature docs updated: 2
+  `workplan.md`, `DEVELOPMENT-NOTES.md`
+- New stable parity findings added: 0
+
+### Insights
+1. The exhausted-boundary phase needs a higher evidence bar than the earlier discovery
+   phase.
+2. "Interesting nearby address hit" is no longer enough; it must resolve to a real
+   ownership or install mechanism.
+3. Writing down what does *not* qualify as a finding helps prevent the static side from
+   drifting back into low-yield graph mining.

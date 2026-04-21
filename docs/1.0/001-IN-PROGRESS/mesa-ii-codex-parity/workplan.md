@@ -257,6 +257,10 @@ records which static branches are now convincingly ruled out.
   if a remaining static surface only re-encodes already-classified scaffolding, resource
   descriptors, or lifecycle metadata, record that as another exclusion rather than
   treating it as a fresh reverse-engineering frontier
+- Treat failed attempts to promote ambiguous raw-hex/control-flow hits as negative
+  process evidence rather than findings:
+  do not convert nearby branch/immediate coincidences into owner-boundary claims unless
+  they resolve to a clear table-driven or callback-install mechanism
 - Use the recent constructor/tag/resource results as an exclusion boundary:
   that branch now looks like file/resource/document plumbing, so do not keep mining it
   as if it were still a likely live-sender path unless new evidence points back to it
