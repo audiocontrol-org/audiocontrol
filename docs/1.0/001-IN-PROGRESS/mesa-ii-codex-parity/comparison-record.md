@@ -607,6 +607,13 @@ cleanly.
   also perform extra branch-local work around `0x106e`. That does not yet identify the
   exact semantics of mode `#1` vs `#0`, but it does show that `arg4 = 0` is not a
   general alternative caller shape. It is a narrower subcase within mode-`#0`.
+  Codex now also has a cleaner pre-send gate above that matrix. `SendData` tests
+  `CSCSIPlug+0x0e40` at `0x0e9e`; if it is unset, it calls `0x0ca2(self, target, 1, 1)`,
+  stores the returned byte into `+0x0e40`, and if the byte is still zero it branches
+  directly to the wrapper path at `0x1072`. Only when `+0x0e40` is nonzero does
+  execution continue into the later direct `%d6`/`SRAW` family. So `+0x0e40` is now
+  measured as an earlier routing flag that decides which sender-family surface is even
+  reachable before the shared `0x106e` contract comes into play.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

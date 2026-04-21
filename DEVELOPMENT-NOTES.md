@@ -2491,3 +2491,48 @@ caller-family evidence supports.
 2. Zero-context sends are real, but only inside a narrower subset of mode-`#0` paths.
 3. The remaining sender-side unknown is now a very small matrix: mode meaning and why
    some mode-`#0` paths null out the context long.
+
+## 2026-04-21: MESA II `+0x0e40` Gates Wrapper vs Direct Sender Families
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Identify whether any earlier plug-local state decides which sender-family surface is
+entered before the already-measured mode/context split around the shared `0x106e`
+contract.
+
+### Accomplished
+- Re-decoded the `SendData` front half around `0x0e9e-0x0ec4`
+- Verified that `SendData`:
+  - tests `CSCSIPlug+0x0e40`
+  - if zero, calls `0x0ca2(self, target, 1, 1)`
+  - stores the returned byte back into `+0x0e40`
+  - if `+0x0e40` is still zero, branches directly to `0x1072`
+  - only when `+0x0e40` is nonzero continues into the later direct `%d6`/`SRAW` family
+- Also rechecked the earlier cold arm at `0x0e82-0x0e96`, where `0x0ca2(self, target, 0, 0)`
+  is followed by clearing `+0x0e40`
+- Updated parity docs to record `+0x0e40` as a measured pre-send routing flag
+
+### Didn't Work
+- This still does not reveal the exact semantic meaning of `+0x0e40`
+- It also does not settle whether `0x0ca2` is testing capability, mode availability, or
+  some other transport-state predicate
+
+### Course Corrections
+- **[EVIDENCE]** The remaining sender-side split is not just the `0x106e` frame. There is
+  one earlier gate: `+0x0e40` decides which sender-family surface is even reachable.
+- **[PROCESS]** This is the right upstream narrowing step before trying to name the mode
+  byte, because it separates family selection from in-family call-frame semantics.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 132`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. `+0x0e40` is a real pre-send router, not just another incidental flag byte.
+2. The wrapper path at `0x1072` is selected before the shared sender-frame matrix matters.
+3. The remaining unknowns are now layered cleanly: `+0x0e40` chooses family, then mode/
+   context refine behavior inside the shared `0x106e` contract.

@@ -2553,6 +2553,25 @@ correct. Every finding should distinguish direct evidence from inference.
   while `arg4 = 0` is a narrower subcase inside mode `#0`, associated with branches that
   perform additional branch-local processing around the shared send engine.
 
+- Finding 132: `CSCSIPlug+0x0e40` is the front-door gate that decides whether
+  `SendData` takes the wrapper/source-pointer family at `0x1072` or continues into the
+  direct `%d6`/`SRAW` branch family.
+  Evidence:
+  at `0x0e9e-0x0ec4`, `SendData` tests `CSCSIPlug+0x0e40`; if it is zero, it invokes
+  `0x0ca2(self, target, 1, 1)`, stores the returned byte into `+0x0e40`, and then tests
+  `+0x0e40` again. If the byte is still zero, control branches directly to `0x1072`.
+  Only when `+0x0e40` is nonzero does execution continue into the later `%d6`/`SRAW` path
+  at `0x0ec8` onward. Separately, the earlier cold arm at `0x0e82-0x0e96` calls
+  `0x0ca2(self, target, 0, 0)` and then clears `+0x0e40`, which matches the same field
+  participating in ordinary control-plane setup rather than in the `0x106e` frame
+  itself.
+  Interpretation:
+  the remaining sender-side split is not only “mode byte versus context.” There is one
+  earlier branch gate too: `+0x0e40` selects whether `SendData` will use the wrapper/
+  source-pointer family rooted at `0x1072` or the later direct `%d6` family. That makes
+  `+0x0e40` a measured pre-send routing flag, while the still-open mode semantics stay
+  downstream of that choice.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
@@ -2600,6 +2619,8 @@ correct. Every finding should distinguish direct evidence from inference.
   `arg4 = CSCSIPlug+0x0e3c` encode across the measured caller families?
 - What exact semantic difference does mode byte `#1` vs `#0` encode once the now-measured
   context/length fields are factored out?
+- What exact state or capability does `CSCSIPlug+0x0e40` represent when it selects the
+  wrapper path at `0x1072` instead of the later direct `%d6` branch family?
 - What concrete `CSamplerModule`-side method lives at the `vtable[0x28]` `UALL` call
   site, and does it in turn route into a sampler object, a UI update path, or both?
 - Can Codex decode the function body behind `CAkaiSampler` slot `0x0170` directly
