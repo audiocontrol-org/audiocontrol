@@ -733,6 +733,15 @@ cleanly.
   ordinary local branch in context. So the surviving app/editor install theories are
   now narrower: non-literal setup, object/service wiring, or some runtime path that
   reaches the send body without a simple visible slot patch sequence.
+  Codex has now also identified the first concrete raw transport primitive inside the
+  plug. The unnamed utility body at file `0x1bbe-0x1d1e` is explicitly labeled by the
+  following symbol string as `SCSICommand__10CSCSIUtilsFsP3CdbPUcUlls`, and bounded
+  `objdump` shows it building a PB-like structure, copying six CDB bytes into offsets
+  `68..73`, storing the data pointer and payload length, selecting one of three control
+  values, and then calling `_SCSIDispatch` at file `0x1cd8`. So the remaining harness
+  loop after `SMSendData` CDB construction is now best modeled as still sitting above
+  `CSCSIUtils::SCSICommand`, in the wrapper chain that should hand the local CDB and
+  payload down to the utility layer.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

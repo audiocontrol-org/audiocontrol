@@ -3168,3 +3168,54 @@ slot or the strengthened `SMSendData` target.
 1. The installed `mesa-ii-app` contains far more CODE segments than the earlier `CODE 1` pass covered.
 2. Even across all eleven visible CODE resources, the simple literal patch theory still does not materialize.
 3. The surviving install-path theories are now narrower: non-literal setup, object/service wiring, or a natural runtime path the harness still has not executed.
+## 2026-04-21: MESA II Raw Executor Identified As `CSCSIUtils::SCSICommand`
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Identify the first concrete transport primitive beneath the now-confirmed `SMSendData`
+CDB-builder path, so the emulator frontier is phrased as a real executor boundary
+rather than a vague “something after `0x167e`.”
+
+### Accomplished
+- Rechecked the `scsi-plug` function index around the utility region
+- Disassembled the unnamed utility body at file `0x1bbe-0x1d1e`
+- Confirmed from the following symbol string at file `0x1d1f` that the body is:
+  `SCSICommand__10CSCSIUtilsFsP3CdbPUcUlls`
+- Verified that this body:
+  - copies six CDB bytes from the incoming `Cdb*` into PB-like offsets `68..73`
+  - stores the data pointer at offset `84`
+  - stores payload length at offset `44`
+  - selects one of three control values at offset `20`
+  - then calls `_SCSIDispatch` at file `0x1cd8`
+- Replied to Claude on `#315` with the narrower implication:
+  the remaining harness loop after `SMSendData` CDB construction is most likely still
+  above `CSCSIUtils::SCSICommand`, not below it
+
+### Didn't Work
+- This still does not name the exact wrapper/helper that hands the local `SMSendData`
+  CDB stack frame down to `CSCSIUtils::SCSICommand`
+- Direct call-site search shows `SCSICommand` is not reached by obvious absolute `jsr`
+  from the already-confirmed `SMSendData` block, so the remaining handoff is still one
+  layer indirect
+
+### Course Corrections
+- **[EVIDENCE]** The right stable claim is not “we still don’t know where transport begins.”
+  We now do: the raw transport executor is `CSCSIUtils::SCSICommand`.
+- **[PROCESS]** This narrows the emulator task again. The next useful work is to bridge
+  the wrapper chain between `SMSendData` and `CSCSIUtils::SCSICommand`, not to keep
+  hunting for `_SCSIDispatch` blindly.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Raw executor identified as CSCSIUtils::SCSICommand`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+- Issue comments posted: 1
+  `#4293994882`
+
+### Insights
+1. The plug has a named raw SCSI executor; transport is no longer an abstract unknown below `SMSendData`.
+2. `_SCSIDispatch` is reached through the utility layer, not directly from the `SMSendData` CDB-builder block we just confirmed.
+3. The remaining runtime seam is now the wrapper chain between local CDB construction and `CSCSIUtils::SCSICommand`.

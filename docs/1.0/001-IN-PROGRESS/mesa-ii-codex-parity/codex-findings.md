@@ -2926,6 +2926,20 @@ correct. Every finding should distinguish direct evidence from inference.
   through a simple literal slot-write or jump sequence in the visible app CODE
   resources.
 
+- MESA II's first concrete raw transport primitive is `CSCSIUtils::SCSICommand`, not a hidden `_SCSIDispatch` inside `SMSendData`
+  The unnamed utility body at file `0x1bbe-0x1d1e` is now explicitly identified by the
+  following symbol string as `SCSICommand__10CSCSIUtilsFsP3CdbPUcUlls`.
+  Bounded `objdump` of that body shows it building a PB-like structure and then calling
+  `_SCSIDispatch` at file `0x1cd8`:
+  it copies six CDB bytes from the incoming `Cdb*` into offsets `68..73`, stores the
+  data pointer at offset `84`, stores the payload length at offset `44`, selects one of
+  three control values (`0x40040000`, `0x80040000`, `0xC0040000`) at offset `20` based
+  on the final `short` argument, and only then executes `_SCSIDispatch`.
+  So the post-`SMSendData` frontier is sharper now:
+  the raw executor exists and is named, which means the remaining harness loop/blocker
+  is likely still above `CSCSIUtils::SCSICommand`, in the wrapper chain between the
+  local CDB builder and this utility path.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
