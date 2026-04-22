@@ -3375,3 +3375,63 @@ hot rebased low targets by function shape, not just by address.
 1. The plug’s low rebased target range is now mostly demystified: helper math, tag dispatch, ctor/dtor, and command-dispatch bodies all live there.
 2. That makes the harness bug much more concrete and bounded than the older runtime-slot framing.
 3. Once the PLUG-body load model is corrected, several downstream “mystery seam” theories should be treated as suspect until re-tested from the top.
+
+## 2026-04-22: Editor Resource-Body Base Confirmed; Early Trap Surface Narrows
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Confirm whether the plug-side PLUG-relative relocation correction is a one-off or part
+of a broader resource-body-relative code model, and narrow the next post-load trap seam
+for Claude’s harness work.
+
+### Accomplished
+- Parsed the editor resource fork enough to confirm its real code body is the single
+  `EDIT` resource at file `0x27f57`
+- Verified the editor’s hot low absolute targets also resolve cleanly when rebased from
+  that `EDIT` base:
+  - `0x0104 -> 0x2805b`
+  - `0x0116 -> 0x2806d`
+  - `0x0148 -> 0x2809f`
+  - `0x01a6 -> 0x280fd`
+  - `0x01c8 -> 0x2811f`
+  - `0x01ec -> 0x28143`
+  - `0x02b6 -> 0x2820d`
+- Classified the helper family from primary bytes:
+  - `0x0104`: A4/world-style setup helper
+  - `0x0116`: multiply helper
+  - `0x0148`: division helper
+  - `0x01a6`: signed division wrapper
+  - `0x01c8` / `0x01ec`: 16-bit / 32-bit inline-table dispatchers
+- Re-read the corrected plug ctor trap surface and tightened two candidates:
+  - `0xA994` strongly looks like `CurResFile`
+  - `0xA064` strongly looks like `MoveHHi`
+- Posted the narrowed read back to Claude on `#315`
+
+### Didn't Work
+- No new contradiction appeared here; the main course correction was realizing the
+  editor-side low-address evidence was also another resource-body-base issue, not an
+  independent runtime-slot clue.
+
+### Course Corrections
+- **[EVIDENCE]** Both the plug and editor artifacts now fit a resource-body-relative
+  addressing model. Low absolute helper calls should be evaluated against the resource
+  body base first, not against the start of the whole resource fork.
+- **[TACTICS]** After the load fix, the next truly new emulator contract is narrowing
+  toward the real SCSI-manager traps (`A1AD`, `A31E`), not a broad unknown toolbox
+  swamp.
+
+### Quantitative
+- New stable parity findings added: 2
+  `editor also uses resource-body-relative low helper calls`
+  `early corrected ctor trap surface narrows to likely CurResFile/MoveHHi plus real SCSI-manager calls`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+- Issue comments posted: 1
+  `#4299781925`
+
+### Insights
+1. The editor and plug now share the same structural correction: code lives in resource bodies, not at raw offsets from the fork header.
+2. The editor’s low helper cluster is richer than the plug’s, but it is still ordinary in-band helper code once rebased correctly.
+3. After the load fix, the harness’s earliest genuinely new contract is looking increasingly like a small SCSI-manager/toolbox seam rather than another deep static mystery.

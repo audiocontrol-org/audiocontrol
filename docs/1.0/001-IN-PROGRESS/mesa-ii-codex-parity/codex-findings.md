@@ -3435,3 +3435,26 @@ correct. Every finding should distinguish direct evidence from inference.
   harness target is no longer “make low addresses less weird.” It is simply: relocate
   PLUG-internal absolute calls against the PLUG resource base, then re-run the ctor/init
   path against those now-ordinary helper bodies.
+
+- The editor artifact follows the same resource-body-relative model, but with its own helper family
+  The older editor-side low-address mystery was also another base-address mixup. The
+  extracted `sampler-editor-rsrc.bin` file is a full resource fork whose real code body
+  is the single `EDIT` resource starting at file `0x27f57`. Once that base is applied,
+  the hot editor low absolute targets also resolve into ordinary helper code:
+  `0x0104 -> 0x2805b` is the same A4/world-style setup helper shape seen in the plug,
+  `0x0116 -> 0x2806d` is the same multiply helper, `0x0148 -> 0x2809f` is a division
+  helper, `0x01a6 -> 0x280fd` is a signed wrapper around that division helper, and
+  `0x01c8` / `0x01ec` are the 16-bit / 32-bit inline-table dispatchers rooted at
+  `0x2811f` / `0x28143`. So the editor-side low addresses should no longer be used as
+  evidence for a generic runtime-slot mystery either. They are another resource-body
+  relative helper cluster, just with a broader arithmetic/dispatch family than the plug.
+
+- The corrected ctor trap surface is smaller than it first looked
+  With the load model fixed, the next unknowns are no longer a broad swamp of random
+  toolbox calls. Two of the early ctor traps now have strong caller-shape identities:
+  `0xA994` is a strong `CurResFile` candidate because the code does
+  `subq #2,sp ; trap ; movew (sp)+,d0` and stores the result as a short object field,
+  and `0xA064` is a strong `MoveHHi` candidate because it is called on the fresh handle
+  from `NewHandleSys` immediately before `HLock (0xA029)`. That leaves the genuinely new
+  emulator-relevant seam concentrated much more tightly on the real SCSI-manager calls
+  (`0xA1AD`, `0xA31E`) reached by the corrected ctor/init/open path.

@@ -1016,6 +1016,24 @@ cleanly.
   correctly, then re-run ctor/init/open without carrying forward chooser-side
   workaround assumptions.
 
+- The same resource-body-relative correction now applies on the editor side too
+  Codex checked the editor artifact instead of carrying forward the older plug-specific
+  framing. `sampler-editor-rsrc.bin` is also a full resource fork, and its real code
+  body is the single `EDIT` resource at file `0x27f57`. Under that base, the old hot low
+  targets resolve cleanly into ordinary helper code:
+  `0x0104` (A4/world setup), `0x0116` (multiply), `0x0148` (division),
+  `0x01a6` (signed division wrapper), and `0x01c8` / `0x01ec` (16-bit / 32-bit inline
+  table dispatchers). So the earlier editor-side low-address evidence should also be
+  treated as another resource-body base issue, not as support for a generic runtime-slot
+  mystery.
+
+- The corrected early trap surface is shrinking to a mostly SCSI-manager problem
+  After the load fix, Codex's current best caller-shape read is:
+  `0xA994` is likely `CurResFile`, `0xA064` is likely `MoveHHi`, and `0xA029` remains
+  `HLock`. That means the genuinely new post-load contract is concentrating more tightly
+  on the real SCSI-manager seam (`0xA1AD`, `0xA31E`) rather than on a broad unknown
+  toolbox layer.
+
 - One hot-path symbol correction itself needed correcting. A fuller raw string-table
   reread around `0x139a` / `0x160c` shows the binary's symbol strings are naming the
   **preceding** function bodies, not the following ones. On that pattern:
