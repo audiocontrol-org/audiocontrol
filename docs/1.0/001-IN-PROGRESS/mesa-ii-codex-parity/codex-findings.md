@@ -3402,3 +3402,16 @@ correct. Every finding should distinguish direct evidence from inference.
   low-address region that is non-code as stored. The safest current interpretation is
   that these are runtime-resolved jump-table / segment / support slots that the raw
   artifact does not materialize as normal local functions.
+
+- The low-address support-slot pattern is cross-binary, not plug-specific
+  One older editor-side result now becomes more important in light of the ctor probe.
+  In the editor binary, the valid callback-style function at file `0x028169` begins with
+  a normal `link`/`movem` prologue and then immediately does `jsr 0x0104` before its
+  `INIT` tag check. That means the same low-address slot family is exercised from a
+  demonstrably real function body in a different artifact, not just from ambiguous plug
+  helper sites. Combined with the raw plug-side evidence that `0x0104`, `0x0116`,
+  `0x0148`, `0x020e`, and `0x0274` all land in non-code when viewed as stored bytes, the
+  safer class-level interpretation is now stronger: these low absolute targets behave
+  like shared runtime / segment / THINK-C-support entry slots that are meaningful in
+  production but are not materialized as ordinary local code in the extracted raw
+  resource bodies.

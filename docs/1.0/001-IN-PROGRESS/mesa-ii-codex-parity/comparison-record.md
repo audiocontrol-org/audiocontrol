@@ -996,6 +996,16 @@ cleanly.
   class of missing runtime resolution (jump-table / segment / support slots), not just
   a single mysterious ctor target.
 
+- The same low-address-slot interpretation is now supported from the editor side too.
+  An older editor finding already had a valid callback-style function at file `0x028169`
+  beginning with a normal `link`/`movem` prologue and then immediately doing
+  `jsr 0x0104` before its `INIT` tag check. So the low-address slot family is not just a
+  quirk of ambiguous plug helper sites. It is a cross-binary pattern: real-looking
+  functions in both artifacts can call into `0x0104`-class low addresses even though the
+  raw extracted bytes at those addresses are not ordinary code as stored. That makes the
+  runtime-support/jump-table-slot interpretation materially stronger than a plug-local
+  corruption theory.
+
 - One hot-path symbol correction itself needed correcting. A fuller raw string-table
   reread around `0x139a` / `0x160c` shows the binary's symbol strings are naming the
   **preceding** function bodies, not the following ones. On that pattern:
