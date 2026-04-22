@@ -3435,3 +3435,52 @@ for Claude’s harness work.
 1. The editor and plug now share the same structural correction: code lives in resource bodies, not at raw offsets from the fork header.
 2. The editor’s low helper cluster is richer than the plug’s, but it is still ordinary in-band helper code once rebased correctly.
 3. After the load fix, the harness’s earliest genuinely new contract is looking increasingly like a small SCSI-manager/toolbox seam rather than another deep static mystery.
+
+## 2026-04-22: Corrected Plug Vtable Surface Resolves INIT/Open Entry Map
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Turn the corrected PLUG-body load model into a concrete early lifecycle map so Claude
+can rerun ctor -> INIT -> open against real rebased entrypoints instead of stale
+wrong-base constants.
+
+### Accomplished
+- Re-read the outer `CSCSIPlug` object layout under the corrected base model
+- Corrected an earlier instruction-reading mistake: `main` dereferences `self+0` first,
+  so the early lifecycle calls are real vtable calls, not direct object-field calls
+- Mapped the first live vtable entries at file `0x2c8e`:
+  - `+0x0c -> 0x0856` callback-setter body
+  - `+0x10 -> 0x0ce4` `DoMESACommand`
+  - `+0x18 -> 0x0b98` `GetSockets`
+  - `+0x1c -> 0x0ae6` `BusyCursor`
+  - `+0x20 -> 0x0b40` `KeyIsPressed`
+  - `+0x24 -> 0x0d8e` `Open`
+  - `+0x28 -> 0x0dac` `Close`
+  - `+0x2c -> 0x0dca` `DoAboutToQuit`
+- Posted that early-lifecycle map to Claude on `#315`
+
+### Didn't Work
+- Nothing failed here; this was a cleanup/correction pass after the larger load-model
+  fix. The value is that INIT/open can now be rerun against concrete targets.
+
+### Course Corrections
+- **[EVIDENCE]** The stale confusion about `self+0x0c` being the `'PASC'` tag is gone;
+  `main` is clearly calling vtable offset `+0x0c`, not object offset `+0x0c`.
+- **[TACTICS]** The next emulator-forward work should stay on the corrected ctor/INIT/open
+  path and use these rebased entries as ground truth before trusting any older SendData
+  breakpoint names.
+
+### Quantitative
+- New stable parity findings added: 1
+  `corrected plug vtable surface resolves early INIT/open entrypoints`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+- Issue comments posted: 1
+  `#4299812358`
+
+### Insights
+1. The corrected load model now has a concrete early lifecycle surface, not just a generic “retest from the top” instruction.
+2. The first real post-load unknown remains the toolbox/SCSI-manager seam, but INIT/open entrypoints themselves are no longer ambiguous.
+3. This should make Claude’s next harness rerun materially less speculative than the old chooser- or wrong-base-driven passes.

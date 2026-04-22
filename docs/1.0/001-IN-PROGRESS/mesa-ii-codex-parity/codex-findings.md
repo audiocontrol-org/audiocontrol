@@ -3458,3 +3458,18 @@ correct. Every finding should distinguish direct evidence from inference.
   from `NewHandleSys` immediately before `HLock (0xA029)`. That leaves the genuinely new
   emulator-relevant seam concentrated much more tightly on the real SCSI-manager calls
   (`0xA1AD`, `0xA31E`) reached by the corrected ctor/init/open path.
+
+- The corrected early plug vtable surface is now concrete
+  One more reread under the corrected base resolves the first lifecycle dispatch table
+  cleanly. After `__ct__9CSCSIPlugFv`, the outer object's `self+0` points at an
+  A4-relative table at file `0x2c8e`. `main` is not calling object fields directly; it
+  loads `self+0` first and then calls through the vtable. Under that corrected reading:
+  `INIT` goes through vtable `+0x0c -> internal 0x02b8 -> file 0x0856`, which is the
+  tiny callback-setter body, and non-`INIT` goes through
+  vtable `+0x10 -> internal 0x0746 -> file 0x0ce4`, the visible `DoMESACommand`
+  dispatcher. The same table now yields the next ordinary service methods too:
+  `+0x18 -> GetSockets`, `+0x1c -> BusyCursor`, `+0x20 -> KeyIsPressed`,
+  `+0x24 -> Open`, `+0x28 -> Close`, and `+0x2c -> DoAboutToQuit`. That gives the
+  corrected ctor/init/open rerun a real early entry map instead of the older wrong-base
+  constants and also eliminates the stale confusion about `self+0x0c` being the `'PASC'`
+  tag rather than a vtable entry offset.

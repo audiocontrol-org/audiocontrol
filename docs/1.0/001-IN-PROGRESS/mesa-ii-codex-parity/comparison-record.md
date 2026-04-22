@@ -1034,6 +1034,16 @@ cleanly.
   on the real SCSI-manager seam (`0xA1AD`, `0xA31E`) rather than on a broad unknown
   toolbox layer.
 
+- The corrected early plug vtable map is now strong enough to guide INIT/open directly
+  Codex resolved the first `CSCSIPlug` vtable surface under the corrected PLUG-body base.
+  `main` dereferences `self+0` and calls vtable `+0x0c` for `INIT`, which lands at
+  internal `0x02b8` / file `0x0856` (the tiny callback setter), and vtable `+0x10` for
+  non-`INIT`, which lands at internal `0x0746` / file `0x0ce4` (the visible
+  `DoMESACommand` dispatcher). The same table also gives concrete rebased entries for
+  `GetSockets`, `BusyCursor`, `KeyIsPressed`, `Open`, `Close`, and `DoAboutToQuit`.
+  So the next top-down harness work can use a real early entry map instead of any of the
+  older wrong-base constants.
+
 - One hot-path symbol correction itself needed correcting. A fuller raw string-table
   reread around `0x139a` / `0x160c` shows the binary's symbol strings are naming the
   **preceding** function bodies, not the following ones. On that pattern:
