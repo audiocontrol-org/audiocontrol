@@ -2913,6 +2913,19 @@ correct. Every finding should distinguish direct evidence from inference.
   construction layer, even though Claude's newly observed BULK shape
   `0c 00 00 01 96 80` is structurally consistent with it.
 
+- MESA II app-side literal patch search is now exhausted across all visible CODE resources
+  A direct resource-map parse of the installed `mesa-ii-app` shows eleven CODE
+  resources: `Application`, `Libraries`, `Commanders`, `Features`, `Panes`,
+  `File & Stream`, `Apple Events`, `Lists`, `Support`, `Utilities`, and `CODE 0`.
+  A bounded byte search over every one of those CODE bodies found no literal references
+  to `0x106e`, `0x1070`, or `0x160c`, and no direct `JMP` pattern to either address.
+  The only residue was one `600000f0` sequence in `CODE 2` (`Libraries`), but in
+  context it is just an ordinary local branch, not a send-slot template.
+  So the current best read is tighter than before:
+  if the app/editor side really installs or redirects the send path, it is not doing so
+  through a simple literal slot-write or jump sequence in the visible app CODE
+  resources.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

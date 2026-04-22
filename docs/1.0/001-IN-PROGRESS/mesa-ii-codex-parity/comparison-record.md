@@ -725,6 +725,14 @@ cleanly.
   the offline harness result is structurally consistent with the candidate send body,
   but an intercept at `$1106E` still bypasses the in-plug CDB-construction layer rather
   than proving what lies below the first real transport boundary.
+  Codex has now also closed the remaining obvious editor-side literal patch search on
+  the installed `mesa-ii-app`. A direct parse of the app's resource map shows eleven
+  CODE resources, and a bounded byte search over all of them finds no literal
+  references to `0x106e`, `0x1070`, or `0x160c`, and no direct `JMP` sequence to either
+  address. The only loose `600000f0` match in `CODE 2` (`Libraries`) is just an
+  ordinary local branch in context. So the surviving app/editor install theories are
+  now narrower: non-literal setup, object/service wiring, or some runtime path that
+  reaches the send body without a simple visible slot patch sequence.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

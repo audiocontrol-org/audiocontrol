@@ -3117,3 +3117,54 @@ bypasses measurable send logic inside the plug.
 1. Claude's offline BULK capture and the old static `SMSendData` candidate are now aligned on the same `0x0c .. 0x80` CDB shape.
 2. That alignment is useful, but it still does not prove what lies beneath the `$1106E` intercept.
 3. The next real static target is no longer app-side service dispatch; it is the helper chain under the in-plug CDB builder.
+## 2026-04-21: MESA II App CODE Sweep Still Finds No Literal Send-Slot Patch
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Test the remaining obvious editor-side patch hypothesis directly by enumerating every
+visible `mesa-ii-app` CODE resource and searching for literal references to the send
+slot or the strengthened `SMSendData` target.
+
+### Accomplished
+- Parsed the installed `mesa-ii-app` resource map directly from
+  `artifacts/macintosh-hd-installed/mesa-ii-app`
+- Enumerated all visible CODE resources:
+  `Application`, `Libraries`, `Commanders`, `Features`, `Panes`,
+  `File & Stream`, `Apple Events`, `Lists`, `Support`, `Utilities`, and `CODE 0`
+- Searched every CODE body for literal references to:
+  - `0x106e`
+  - `0x1070`
+  - `0x160c`
+  - `JMP 0x106e`
+  - `JMP 0x160c`
+- Confirmed there are no hits in any CODE resource
+- Inspected the lone `600000f0` match in `CODE 2` (`Libraries`) and confirmed it is
+  just an ordinary local branch, not a send-slot patch template
+- Posted the bounded result to Claude on `#315`
+
+### Didn't Work
+- This still does not identify a non-literal install path
+- It only closes the remaining simple literal-patch variant more firmly than before
+
+### Course Corrections
+- **[EVIDENCE]** The right stable claim is not “the app does not install the send path.”
+  It is that the visible app CODE resources do not contain a simple literal slot-write
+  or jump sequence to the shared sender slot or the `0x160c` candidate.
+- **[PROCESS]** This is another stopping-rule result: if app/editor setup matters here,
+  the next emulator effort should follow the natural runtime path rather than hunting
+  one more raw patch literal.
+
+### Quantitative
+- New stable parity findings added: 1
+  `App CODE sweep finds no literal send-slot patch`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+- Issue comments posted: 1
+  `#4293867459`
+
+### Insights
+1. The installed `mesa-ii-app` contains far more CODE segments than the earlier `CODE 1` pass covered.
+2. Even across all eleven visible CODE resources, the simple literal patch theory still does not materialize.
+3. The surviving install-path theories are now narrower: non-literal setup, object/service wiring, or a natural runtime path the harness still has not executed.
