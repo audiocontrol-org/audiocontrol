@@ -3577,3 +3577,48 @@ command path the harness can drive next.
 1. The first corrected `SendData` blocker is already visible in ordinary plug command code, which is exactly where we want the next harness move to land.
 2. `ConnectToSocket` and `ActivateSocket` now provide the cleanest bridge between the corrected init path and the real transfer path.
 3. This is the first time the pre-send state problem is expressed as an explicit command sequence rather than a field-level theory.
+
+## 2026-04-22: `CONS` / `ASOK` Clarified as Immediate Plug Contract, Not Whole Production Lifecycle
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Keep the corrected harness guidance from collapsing the broader production lifecycle into
+only the immediate plug-side `CONS` / `ASOK` commands.
+
+### Accomplished
+- Re-read the older module-side bring-up findings alongside the corrected plug-side
+  `DoMESACommand` map
+- Reconfirmed the higher-level top-down model already present in the parity docs:
+  `CSamplerModule::OpenModule` visibly performs
+  `ConnectToPlug('MIDI')`, `ConnectToPlug('SCSI')`, `SelectPlug(...)`, then
+  `ActivateThisSocket(1)`
+- Recorded the narrower correction:
+  corrected `CONS` / `ASOK` are still the immediate plug-local state-establishing steps
+  Claude should drive next, but they sit inside a broader socket/plug selection
+  lifecycle above the raw plug command surface
+
+### Didn't Work
+- Nothing failed here; this was a consistency pass to keep the current harness guidance
+  aligned with the older top-down module evidence.
+
+### Course Corrections
+- **[TACTICS]** The next harness move remains chained `ctor -> INIT -> CONS -> ASOK -> SendData`.
+  But if that still diverges from real behavior, the next likely gap is not another
+  random plug field. It is the higher-level `SelectPlug` / `ActivateThisSocket`
+  choreography already visible in `OpenModule`.
+- **[CALIBRATION]** The corrected plug-side command surface should be treated as the
+  immediate local contract, not automatically as the entire production pre-send
+  lifecycle.
+
+### Quantitative
+- New stable parity findings added: 1
+  `CONS/ASOK are immediate plug-local state steps inside a broader OpenModule lifecycle`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+- Issue comments posted: 0
+
+### Insights
+1. The corrected plug-side `DoMESACommand` map is strong enough to drive the next bounded harness step, but not strong enough to erase the older top-down `OpenModule` bring-up evidence.
+2. If chained `CONS` / `ASOK` still leave unexplained transfer behavior, the most likely missing contract is plug selection and socket activation above raw plug command entry, not another hidden transport primitive below it.

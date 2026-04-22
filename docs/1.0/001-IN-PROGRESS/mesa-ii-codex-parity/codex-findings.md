@@ -3504,3 +3504,19 @@ correct. Every finding should distinguish direct evidence from inference.
   no longer abstract socket state. It is the visible `CONS` -> `ASOK` command sequence
   through corrected `DoMESACommand`, which should populate the 46-byte socket-entry
   table and the selected-socket machinery before `SendData` is attempted again.
+
+- The broader production-shaped pre-send lifecycle is still one level higher than raw plug `CONS` / `ASOK`
+  The corrected plug-side command surface is now explicit, but the older top-down
+  sampler-module evidence still matters: `CSamplerModule::OpenModule` is the visible
+  higher-level bring-up path, and it does more than just enter plug `DoMESACommand`.
+  In the checked-in module-side disassembly, `OpenModule` calls
+  `ConnectToPlug('MIDI')`, `ConnectToPlug('SCSI')`, then `SelectPlug(...)`, and only
+  after that calls socket slot `0x30` with byte `1`, i.e. `ActivateThisSocket(1)`.
+  So the safest current read is:
+  `CONS` / `ASOK` are the immediate plug-local state-establishing steps Claude should
+  drive next, but they still sit inside a broader production lifecycle that includes
+  plug selection and socket activation. That means a successful chained
+  `ctor -> INIT -> CONS -> ASOK -> SendData` run would be a strong local improvement,
+  but it should still be compared against the larger
+  `OpenModule -> ConnectToPlug -> SelectPlug -> ActivateThisSocket(1)` model before
+  either branch treats the pre-send contract as fully matched.

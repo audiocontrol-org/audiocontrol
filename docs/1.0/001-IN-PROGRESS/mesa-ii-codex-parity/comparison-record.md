@@ -1065,6 +1065,18 @@ cleanly.
   `ASOK` before retrying `SendData`, rather than manually pre-seeding the socket table as
   the primary path.
 
+- The corrected plug command surface is necessary, but the older module-side bring-up model still frames it
+  Codex's earlier top-down module pass still shows a wider production-shaped lifecycle:
+  `CSamplerModule::OpenModule` calls `ConnectToPlug('MIDI')`, then
+  `ConnectToPlug('SCSI')`, then `SelectPlug(...)`, and only after that calls socket
+  slot `0x30` with byte `1`, i.e. `ActivateThisSocket(1)`. That means the current
+  corrected plug-side `CONS -> ASOK` path should be treated as the immediate local
+  contract Claude can drive next, not automatically as the whole production contract.
+  If the chained `ctor -> INIT -> CONS -> ASOK -> SendData` path still diverges from
+  real behavior, the next likely gap is not another random plug field. It is the
+  higher-level plug-selection / socket-activation choreography already visible in
+  `OpenModule`.
+
 - One hot-path symbol correction itself needed correcting. A fuller raw string-table
   reread around `0x139a` / `0x160c` shows the binary's symbol strings are naming the
   **preceding** function bodies, not the following ones. On that pattern:
