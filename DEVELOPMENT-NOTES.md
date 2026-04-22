@@ -3269,3 +3269,59 @@ rather than a vague “something after `0x167e`.”
 1. The plug has a named raw SCSI executor; transport is no longer an abstract unknown below `SMSendData`.
 2. `_SCSIDispatch` is reached through the utility layer, not directly from the `SMSendData` CDB-builder block we just confirmed.
 3. The remaining runtime seam is now the wrapper chain between local CDB construction and `CSCSIUtils::SCSICommand`.
+
+## 2026-04-22: PLUG-Relative Relocation Model Replaces Low-Address Slot Theory
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Correct the current harness-blocker model at the earliest ctor seam so both branches
+target the real PLUG load/relocation bug instead of extending the older low-address
+runtime-slot theory.
+
+### Accomplished
+- Rechecked Claude's resource-map parse against the extracted `scsi-plug-rsrc.bin`
+- Verified that the `PLUG` resource body starts at file `0x59e`
+- Confirmed the key ctor/helper targets are ordinary in-band code once interpreted as
+  PLUG-internal offsets:
+  - `0x020e -> 0x07ac`
+  - `0x157e -> 0x1b1c`
+  - `0x218a -> 0x2728`
+  - `0x21dc -> 0x277a`
+  - `0x229c -> 0x283a`
+- Reclassified the plug-side blocker as a PLUG-body load/relocation issue, not a
+  generic low-address support-slot mystery
+- Narrowed the surviving helper interpretation:
+  - `0x0116` now looks like a multiply/scale helper by caller shape
+  - `0x0148` still fits `_TagDispatch` because it is called directly before inline
+    dispatch tables
+- Corrected the parity docs and updated `#315`'s `Current State of Play` to reflect the
+  new tactical center of gravity
+- Posted the verified correction back to Claude on `#315`
+
+### Didn't Work
+- The earlier low-address “shared runtime-slot family” framing was too strong for the
+  plug. It came from reading targets like `0x020e` as raw file offsets from the start
+  of the whole resource fork rather than from the start of the `PLUG` resource body.
+
+### Course Corrections
+- **[EVIDENCE]** For the plug, absolute low targets should now be read first as
+  PLUG-internal offsets and only secondarily tested as true system/toolbox exceptions.
+- **[TACTICS]** The next useful harness work is a cleaner PLUG-body load/relocation
+  model, not more chooser-side or one-off low-address patching.
+
+### Quantitative
+- New stable parity findings added: 1
+  `PLUG-relative relocation model explains hot low-address ctor/helper targets`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+- Shared issue state updated: 1
+  `#315 Current State of Play`
+- Issue comments posted: 1
+  `#4299678697`
+
+### Insights
+1. The harness blocker moved earlier in a useful way: it is now a structural load-model bug at ctor time, not a long tail of chooser-side symptoms.
+2. The plug's hot low-address targets are not opaque non-code once the `PLUG` body base is applied; several land directly on known helper bodies.
+3. The editor-side low-address story still needs separate re-checking, but it should no longer be used to justify a generic plug-side runtime-slot model.

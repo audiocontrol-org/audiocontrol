@@ -986,33 +986,24 @@ cleanly.
   tactical shift upward: the missing pre-state is more likely in earlier editor/module
   lifecycle or deeper callback/service behavior above this plug command surface.
 
-- Claude's new ctor blocker at `0x020e` now has a stronger static frame: it is part of
-  a broader low-address unresolved-target band, not a lone bad jump. A direct caller
-  scan across the plug shows absolute `jsr` targets into `0x0104`, `0x0116`, `0x0148`,
-  `0x020e`, and `0x0274`. But the raw extracted bytes at file `0x0100-0x0300` are not
-  ordinary code there: `0x0104` / `0x0116` / `0x0148` sit in the version/string region,
-  `0x020e` sits in the bitmap/table-like low band, and `0x0274` is in the same data
-  neighborhood. So the current safest read is that the harness is now hitting a real
-  class of missing runtime resolution (jump-table / segment / support slots), not just
-  a single mysterious ctor target.
+- Claude's ctor blocker at `0x020e` is now better explained as a PLUG-relative relocation bug
+  Claude's resource-map parse materially changes the interpretation. The `PLUG` resource
+  body starts at file `0x59e`, and the hot ctor target `0x020e` maps cleanly to file
+  `0x07ac`, where the bytes are a normal prologue. The same base correction also turns
+  `0x157e`, `0x218a`, `0x21dc`, and `0x229c` into ordinary in-band code addresses. So
+  the live harness blocker is no longer well-modeled as a generic low-address runtime
+  slot family. It is that the harness is currently loading or relocating the whole
+  resource fork image incorrectly for code that expects absolute calls to be based at
+  the start of the `PLUG` resource body.
 
-- The same low-address-slot interpretation is now supported from the editor side too.
-  An older editor finding already had a valid callback-style function at file `0x028169`
-  beginning with a normal `link`/`movem` prologue and then immediately doing
-  `jsr 0x0104` before its `INIT` tag check. So the low-address slot family is not just a
-  quirk of ambiguous plug helper sites. It is a cross-binary pattern: real-looking
-  functions in both artifacts can call into `0x0104`-class low addresses even though the
-  raw extracted bytes at those addresses are not ordinary code as stored. That makes the
-  runtime-support/jump-table-slot interpretation materially stronger than a plug-local
-  corruption theory.
-
-- A direct raw reread of the editor's own `0x0100-0x0300` band makes that stronger
-  still: the editor low band is also non-code as stored. `0x0104` sits in the header /
-  string-heavy region near the version banner, and `0x0274` is likewise in the same
-  data-like band rather than at a normal function prologue. So the editor's valid
-  callback body at `0x028169` and the plug ctor at `0x0bc6` are both calling into the
-  same kind of low-address slot family. That pushes the next harness question away from
-  per-target patching and toward a single shared runtime-slot model.
+- The plug-side low-address theory needs narrowing, not extension
+  After that correction, the strongest remaining shared claim is only that the harness
+  must distinguish real internal PLUG-relative helpers from true system/toolbox targets.
+  `0x0116` still looks like a generic multiply/scale helper by use, and `0x0148` still
+  fits `_TagDispatch` because the plug calls it immediately before inline dispatch
+  tables. But the earlier broader “shared runtime-slot model” language is now too strong
+  for the plug and should be treated as superseded by the verified PLUG-relative
+  relocation model.
 
 - One hot-path symbol correction itself needed correcting. A fuller raw string-table
   reread around `0x139a` / `0x160c` shows the binary's symbol strings are naming the

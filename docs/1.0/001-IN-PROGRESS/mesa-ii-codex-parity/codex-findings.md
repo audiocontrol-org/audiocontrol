@@ -3389,41 +3389,35 @@ correct. Every finding should distinguish direct evidence from inference.
   pre-state. That pushes the next meaningful search upward: earlier editor/module
   lifecycle or deeper callback/service effects above this visible plug command layer.
 
-- The new ctor blocker at `0x020e` belongs to a broader low-address unresolved-target band, not a one-off bad jump
-  The upstream ctor probe now aligns with a wider primary-evidence pattern in the raw
-  plug image. A direct caller scan shows absolute `jsr` targets into the low-address
-  band at `0x0104`, `0x0116`, `0x0148`, `0x020e`, and `0x0274`. But a raw disassembly
-  of file `0x0100-0x0300` shows that band is not ordinary code in the extracted
-  artifact: `0x0104` / `0x0116` / `0x0148` sit inside version/string-like bytes,
-  `0x020e` sits in a dense bitmap/table-like region, and `0x0274` is in the same
-  non-code low-address data band. So Claude's new ctor stop at `JSR $20e` should not be
-  treated as an isolated mystery. It is the clearest current instance of a broader
-  problem: the extracted plug still contains real-looking absolute calls into a
-  low-address region that is non-code as stored. The safest current interpretation is
-  that these are runtime-resolved jump-table / segment / support slots that the raw
-  artifact does not materialize as normal local functions.
+- The ctor blocker at `0x020e` is best explained by PLUG-relative relocation, not a raw low-address slot family
+  Claude's ctor probe exposed a real harness bug, but the first explanation I wrote
+  down was too broad because it mixed whole-resource-fork file offsets with the `PLUG`
+  resource's own internal address space. The `scsi-plug-rsrc.bin` file is a full
+  resource fork, and the `PLUG` resource data begins at file `0x59e`. Once that base is
+  applied, the supposedly “non-code” ctor target `0x020e` maps to file `0x07ac`, where
+  the bytes are a normal prologue (`4e56 0000 ...`) for the `CMESAPlugIn` constructor
+  body. The same correction holds for other hot plug-side targets:
+  `0x157e -> 0x1b1c`, `0x218a -> 0x2728`, `0x21dc -> 0x277a`, and
+  `0x229c -> 0x283a`, all of which land in ordinary in-band code once interpreted as
+  PLUG-internal offsets. So the live plug-side seam is no longer “mystery low-address
+  runtime slot.” It is that the harness is loading or relocating the whole resource fork
+  incorrectly for code that expects absolute internal calls to be based at the start of
+  the `PLUG` resource body.
 
-- The low-address support-slot pattern is cross-binary, not plug-specific
-  One older editor-side result now becomes more important in light of the ctor probe.
-  In the editor binary, the valid callback-style function at file `0x028169` begins with
-  a normal `link`/`movem` prologue and then immediately does `jsr 0x0104` before its
-  `INIT` tag check. That means the same low-address slot family is exercised from a
-  demonstrably real function body in a different artifact, not just from ambiguous plug
-  helper sites. Combined with the raw plug-side evidence that `0x0104`, `0x0116`,
-  `0x0148`, `0x020e`, and `0x0274` all land in non-code when viewed as stored bytes, the
-  safer class-level interpretation is now stronger: these low absolute targets behave
-  like shared runtime / segment / THINK-C-support entry slots that are meaningful in
-  production but are not materialized as ordinary local code in the extracted raw
-  resource bodies.
+- The surviving low-address claim is now narrower and more concrete
+  The plug case no longer supports the stronger “shared runtime-slot family” story.
+  What remains true is narrower: the hot absolute `jsr` targets such as `0x0104`,
+  `0x0116`, `0x0148`, `0x020e`, and `0x0274` behave like ordinary PLUG-internal helper
+  calls once relocated from `0x59e`. That means the next useful harness abstraction is
+  not a generic low-address support model; it is a cleaner PLUG-body load/relocation
+  model with explicit exceptions only for true system/toolbox targets.
 
-- The editor's own low-address band is also non-code as stored, reinforcing the shared-slot model
-  A direct raw disassembly of the editor's file `0x0100-0x0300` closes the remaining
-  easy counterargument. That band is also overwhelmingly non-code as stored:
-  `0x0104` sits amid header/string-like bytes near the editor version banner, and
-  `0x0274` lands in the same text/data-heavy region rather than at an ordinary function
-  prologue. So when the valid editor callback at `0x028169` immediately `jsr 0x0104`,
-  it is doing the same kind of thing the plug ctor does at `0x020e`: calling into a
-  low-address slot that is meaningful in production but not materialized as normal local
-  code in the extracted resource body. That makes the shared runtime-slot interpretation
-  substantially stronger than either a plug-only corruption theory or a one-off bad
-  symbol attribution.
+- The hottest low-address helpers are also becoming classifiable by use, not just by address
+  The corrected base model makes it easier to read the helper targets by their callers.
+  `0x0116` is called with pairs like `(index, 46)` in the plug and many small-factor
+  pairs in the editor, which fits a multiply/scale helper. `0x0148` is called
+  immediately before inline dispatch tables in the plug, which fits the existing
+  `_TagDispatch` interpretation rather than a segment-loader-style jump slot. So even
+  before the harness relocation is fixed, the current evidence points away from “opaque
+  support slots” and toward ordinary PLUG-relative helper code plus a few known
+  classic-Mac helper patterns.
