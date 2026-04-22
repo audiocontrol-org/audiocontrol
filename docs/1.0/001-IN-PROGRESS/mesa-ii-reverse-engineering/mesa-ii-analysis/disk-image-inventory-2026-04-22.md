@@ -125,3 +125,60 @@ Ready to proceed with whatever direction Codex prefers:
 - (a) Run a focused decode of MESA II app for plug-loading + runtime patch logic (Path A.16?)
 - (b) Compare MESA II app structure to sampler-editor structure for tactical groundwork
 - (c) Other direction
+
+---
+
+## ADDENDUM 2026-04-22: MESA 1.3 disk image inventory (Mac OS 7.6)
+
+A second SheepShaver disk image is now available:
+- **Local copy:** `binaries-large/macos7-mesa-i-disk.hfv` (1.0 GB; gitignored)
+- **Original:** `/Users/orion/Downloads/macos-7-disk.hfv`
+- **SHA256:** `5ac3f9d95727e9245306ca2b31752059f6f058dd2518c57454f2b90180990f6b` (different from macos9 disk: `589bfdbf...4b5978f7ee461c`)
+- **OS:** Mac OS 7.6 (Jan 1997 era)
+- **MESA version:** 1.3 (predecessor to MESA II v1.2)
+
+### MESA 1.3 inventory
+
+`:Applications:M.E.S.A ™:` contents:
+- **MESA** — APPL/**AK09** — **242,598 bytes** (the loader app)
+- **MESA1.3 MANUAL** — APPL/eSRD — 359,494 bytes
+- **MESA Pouch/** (modules):
+  - AIFF — MODU/AK09 — 16,122
+  - Buttons & Faders — UDEF/AK09 — 110,573
+  - File Manager — MODU/AK09 — 104,319
+  - OnLine Help — MODU/AK09 — 49,028
+  - **S2000** — MODU/AK09 — 91,739 (sampler-specific)
+  - **S3 HD Provider** — MODU/AK09 — **62,063** (closest analog to MESA II's SCSI Plug — SCSI/HD comms)
+  - **S3000 FX** — MODU/AK09 — 73,899
+  - **Sampler Editor** — MODU/AK09 — 218,819 (predecessor of Sampler Editor 2.3)
+  - SD2 — MODU/AK09 — 9,600
+  - Shared — SHAR/AK09 — 50,179
+  - Wave Editor — MODU/AK09 — 93,467
+- **New OS for Samplers/** (sampler firmware blobs for S2000, S3000 XL, S3200 XL)
+- STOP PRESS.READ ME
+
+### Key architectural differences MESA 1.3 vs MESA II
+
+| Aspect | MESA 1.3 (Mac OS 7.6, 1997) | MESA II v1.2 (Mac OS 9, 1999) |
+|---|---|---|
+| Creator code | `AK09` | `AK11` |
+| Module type code | `MODU` | `PLUG` (transport) + `EDIT` (editor) |
+| SCSI module | `S3 HD Provider` (62 KB) | `SCSI Plug 2.1.2` (12 KB) |
+| Editor module | `Sampler Editor` (218 KB, single) | `Sampler Editor 2.3` (506 KB) + Audio Editor (169 KB) + Keyboard (62 KB) |
+| Folder name | `MESA Pouch/` (flat) | `MESA Pouch/{Editors,PlugIns,Example Scripts}` (organized) |
+| Plug subfolders | none | Audio Filing, DSP |
+
+**The MESA 1.3 architecture appears materially different.** Different resource type code (MODU vs PLUG) suggests a different loading mechanism between versions.
+
+### Status of MESA 1.3 artifacts
+
+- Disk image copy: stable at `binaries-large/macos7-mesa-i-disk.hfv` (gitignored)
+- Files NOT yet extracted — would do so when needed (or if comparative MESA-1.3-vs-MESA-II decode becomes useful for the patch question)
+
+### Why MESA 1.3 might or might not help the current patch question
+
+Path A.16 currently in flight is hunting for the MESA II runtime patcher. The MESA 1.3 architecture is sufficiently different (MODU vs PLUG resource types) that:
+- **If A.16 finds the patcher in MESA II:** MESA 1.3 is comparative-only; not on critical path.
+- **If A.16 doesn't find it:** MESA 1.3's `S3 HD Provider` (the SCSI-equivalent module) might show whether the patch idiom predates MESA II OR is unique to the PLUG-typed loading mechanism.
+
+Defer extraction/decode of MESA 1.3 artifacts unless A.16 returns Outcome B or C and we need a comparative reference.
