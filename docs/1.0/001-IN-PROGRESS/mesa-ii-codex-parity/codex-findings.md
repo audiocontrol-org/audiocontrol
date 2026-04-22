@@ -2712,6 +2712,30 @@ correct. Every finding should distinguish direct evidence from inference.
   nonzero `arg4` would enable a tracked follow-on send/readback path, while zero `arg4`
   would skip it entirely.
 
+- Finding 139: `CSCSIPlug+0x0e3c` itself is now best modeled as a pointer-like control
+  root, not merely an uninterpreted context long.
+  Evidence:
+  bounded `objdump` of the constructor body at `0x0c22-0x0c32` shows the only visible
+  store to `+0x0e3c`:
+  `moveal self@(0x0e38), %a0; ... ; movel %a0@, self@(0x0e3c)`.
+  So `+0x0e3c` is populated from the first longword stored at the allocated
+  `+0x0e38` block, not from an immediate scalar constant.
+  The later observed uses are all pointer-like:
+  at `0x11b8`, the post-send/report block does `moveal self@(0x0e3c), %a0` and then
+  immediately tests the first byte at `%a0@` to choose `SYSX` versus `SRAW`;
+  the measured nonzero `0x106e` caller families push `self@(0x0e3c)` in the same slot
+  that the `0x160c` candidate body forwards into the `0x139a` helper's mutable
+  `count_ptr` parameter;
+  and `0x139a` itself dereferences that forwarded parameter immediately and writes back
+  through it across the tracked-send path.
+  Interpretation:
+  this still does not prove that `+0x0e3c` is exactly the same structure consumed as
+  `count_ptr` under the `0x160c` candidate model. But it does materially narrow the
+  possibilities: `+0x0e3c` no longer looks like a generic scalar mode/context word.
+  In the currently recovered graph it behaves consistently like a pointer-bearing control
+  root, which is a better fit for the strengthened `0x106e -> 0x160c` candidate than
+  the earlier vague "context long" label.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

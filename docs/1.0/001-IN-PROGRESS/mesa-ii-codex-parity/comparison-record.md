@@ -670,6 +670,15 @@ cleanly.
   This still does not prove that the measured `arg4 = CSCSIPlug+0x0e3c` is exactly that
   control structure, but it is another structural match that strengthens the candidate
   without promoting it past `CANDIDATE`.
+  Codex has now also tightened the source of that nonzero argument itself. The only
+  visible store to `CSCSIPlug+0x0e3c` comes from the first longword of the allocated
+  `+0x0e38` block, and the later observed uses are all pointer-like:
+  the post-send/report block loads it as an address and tests its first byte, and the
+  strengthened `0x160c -> 0x139a` candidate path forwards it into a helper that
+  dereferences and writes back through the same argument slot. So `+0x0e3c` is now a
+  better fit for a pointer-bearing control root than for a generic scalar mode/context
+  word. This still stops short of proving exact identity, but it narrows the candidate
+  model in the same direction rather than against it.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

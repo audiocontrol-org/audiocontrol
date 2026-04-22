@@ -2824,3 +2824,47 @@ role instead of remaining vague sender context.
 2. That makes the measured `arg4 = 0` vs `arg4 = +0x0e3c` split more informative:
    one path would enable tracked follow-on send/readback behavior, the other would skip it.
 3. This materially strengthens the candidate without changing its confidence grade.
+
+## 2026-04-21: MESA II `+0x0e3c` Now Looks Pointer-Like, Not Scalar
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Test the sharpest remaining contradiction seam against the `0x160c` candidate: whether
+the measured nonzero sender arg `CSCSIPlug+0x0e3c` can plausibly be the pointer-like
+count/control structure implied by the strengthened `0x160c -> 0x139a` path.
+
+### Accomplished
+- Rechecked the constructor store into `+0x0e3c`
+- Rechecked the post-send/report use at `0x11b8`
+- Rechecked the nested helper dereference path at `0x13f4`
+- Confirmed the current observed lifecycle is consistently pointer-like:
+  - constructor seeds `+0x0e3c` from the first longword of the allocated `+0x0e38` block
+  - post-send/report logic loads `+0x0e3c` as an address and tests its first byte
+  - the strengthened candidate path forwards the same argument slot into a helper that
+    dereferences and writes back through it
+- Updated parity docs to tighten the description from vague \"context long\" toward
+  pointer-bearing control root
+
+### Didn't Work
+- This still does not prove that `+0x0e3c` is exactly the same structure consumed as the
+  mutable `count_ptr` under the `0x160c` candidate path
+- It also does not prove the patcher identity itself
+
+### Course Corrections
+- **[EVIDENCE]** The useful result here is that the strongest remaining contradiction did
+  not materialize; `+0x0e3c` keeps behaving in the same direction as the candidate.
+- **[PROCESS]** That means future static work should stop treating `+0x0e3c` as a generic
+  scalar \"context long\" unless new evidence forces that downgrade.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 139`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. `+0x0e3c` is now a better fit for pointer-bearing control state than for a scalar mode word.
+2. The current strongest static evidence keeps strengthening the `0x160c` candidate rather than weakening it.
+3. The remaining uncertainty is still identity/patching, not outer-frame compatibility.
