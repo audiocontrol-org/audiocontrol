@@ -2736,6 +2736,38 @@ correct. Every finding should distinguish direct evidence from inference.
   root, which is a better fit for the strengthened `0x106e -> 0x160c` candidate than
   the earlier vague "context long" label.
 
+- Finding 140: that strengthened candidate model now has a concrete internal tension:
+  if the measured `arg4 = CSCSIPlug+0x0e3c` is exactly the mutable `count_ptr` consumed
+  by `0x139a`, then the later `0x1160` report classifier would appear to be reading back
+  a mutated count value where it expects a stable `SYSX` / `SRAW` discriminator.
+  Evidence:
+  the measured nonzero-`arg4` caller family includes both:
+  `0x0f60` / `0x10b2` (mode `#1`, nonzero `arg4 = +0x0e3c`)
+  and
+  `0x0fbc` / `0x10f8` (mode `#0`, nonzero `arg4 = +0x0e3c`).
+  In particular, the `0x0f70-0x0fbc` path is entered only after the source buffer in
+  `%d6` matches a literal Akai SysEx header shape:
+  byte `0 = 0xf0`,
+  byte `1 = 0x47`,
+  byte `4 = 0x48`,
+  byte `3 = 0x0b`.
+  Under the strengthened `0x160c` candidate model, any successful nonzero-`arg4` send
+  would then enter `0x139a`, which dereferences the forwarded pointer immediately and
+  writes accumulated byte-count state back through it.
+  But after `0x106e` returns, the common `0x1160` block still loads `self@(0x0e3c)` as
+  an address and classifies the payload as `SYSX` only when the first byte at that
+  pointee is `0xf0`; otherwise it labels the payload `SRAW`.
+  Interpretation:
+  this is not yet a disproof of the `0x106e -> 0x160c` candidate, but it is now the
+  sharpest remaining structural pressure point against the exact current mapping.
+  If `arg4 = +0x0e3c` is literally the same mutable count pointer consumed by `0x139a`,
+  then the later `SYSX` / `SRAW` tag check at `0x1160` would be reading a location that
+  has already been overwritten with count/control state on the tracked-send path.
+  So at least one extra detail remains unresolved:
+  either `+0x0e3c` is a more structured pointer than the current simple model implies,
+  or the live target behind `0x106e` is not exactly the currently recovered `0x160c`
+  body, or some path-specific condition prevents the apparent conflict from arising.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

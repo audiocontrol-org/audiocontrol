@@ -679,6 +679,18 @@ cleanly.
   better fit for a pointer-bearing control root than for a generic scalar mode/context
   word. This still stops short of proving exact identity, but it narrows the candidate
   model in the same direction rather than against it.
+  Codex has now also identified the sharpest remaining pressure point against the exact
+  current mapping. The measured nonzero-`arg4` caller family includes the
+  `0x0f70-0x0fbc` path, which is only reached after the source buffer matches a literal
+  Akai SysEx header shape starting with `0xf0`. But after the strengthened
+  `0x160c -> 0x139a` candidate path, `0x139a` appears to write count/control state back
+  through the forwarded pointer, while the later common `0x1160` report block still
+  loads `self@(0x0e3c)` as an address and classifies the payload as `SYSX` only when
+  the first byte at that pointee is `0xf0`. So if measured `arg4 = +0x0e3c` is exactly
+  the mutable `count_ptr` consumed by `0x139a`, the later `SYSX` / `SRAW` tag check
+  would appear to be reading a location already overwritten with count/control data.
+  That is not yet a disproof, but it is now the strongest unresolved tension in the
+  exact `0x106e -> 0x160c` candidate mapping.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.
