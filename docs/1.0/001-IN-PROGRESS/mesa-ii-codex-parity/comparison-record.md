@@ -1054,6 +1054,17 @@ cleanly.
   `IdentifyBusses`. So the next harness target is no longer a broad SCSI Manager model;
   it is the narrow constructor-time capability contract needed to make that gate pass.
 
+- The first real post-init transfer blocker now points at an explicit `CONS` / `ASOK` path
+  After Claude's corrected `SendData` rerun stopped on `this+0x38 == 0` / `0xc950`,
+  Codex mapped the visible pre-send command surface under corrected `DoMESACommand`.
+  The non-`INIT` path dispatches `CONS` through `0x09d2` (`ConnectToSocket`), which
+  increments `this+0x38` and copies a 46-byte `SocketInfo` into the table at
+  `this+0x3c`, and `ASOK` through `0x0a5e` (`ActivateSocket`), which walks that table,
+  matches the entry, updates its activation fields, and clears a pointed-to field at
+  offset `+16`. So both sides now agree on the next clean move: drive real `CONS` /
+  `ASOK` before retrying `SendData`, rather than manually pre-seeding the socket table as
+  the primary path.
+
 - One hot-path symbol correction itself needed correcting. A fuller raw string-table
   reread around `0x139a` / `0x160c` shows the binary's symbol strings are naming the
   **preceding** function bodies, not the following ones. On that pattern:

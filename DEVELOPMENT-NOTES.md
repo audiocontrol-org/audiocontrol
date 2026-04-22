@@ -3528,3 +3528,52 @@ that Claude can stub minimally, instead of a broad “implement SCSI Manager” 
 1. The corrected load model is now paying off in a useful way: the next emulator target is a small, specific capability gate, not an abstract subsystem.
 2. `IdentifyBusses` is no longer just “some later chooser path” — it is directly wired into successful `CSCSIUtils` initialization.
 3. The harness can now move forward with a much tighter next stub than before: `A31E` plus `A1AD('scsi')`, then rerun top-down.
+
+## 2026-04-22: Real `CONS` / `ASOK` Path Explains First Trustworthy `SendData` Failure
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Turn the first trustworthy corrected-`SendData` blocker into an explicit pre-send
+command path the harness can drive next.
+
+### Accomplished
+- Re-read corrected non-`INIT` dispatch through `DoMESACommand`
+- Confirmed the visible command table includes `SEND`, `ASOK`, `CONS`, and `IDEN`
+- Decoded the two socket-relevant bodies:
+  - `0x09d2` `ConnectToSocket`
+    - checks `this+0x38` against max `50`
+    - increments `this+0x38`
+    - computes `index * 46`
+    - copies incoming `SocketInfo` into table rooted at `this+0x3c`
+  - `0x0a5e` `ActivateSocket`
+    - walks the same table up to `this+0x38`
+    - matches on incoming entry fields
+    - updates activation/state fields in the matching entry
+    - clears `entry->ptr@(16)`
+- Posted the corrected `CONS` / `ASOK` guidance to Claude on `#315`
+
+### Didn't Work
+- Nothing failed here; this was a clarification pass after Claude’s first trustworthy
+  `SendData` failure at `0xc950`.
+
+### Course Corrections
+- **[EVIDENCE]** The new `SendData` blocker is not an abstract “socket state missing”
+  statement anymore. It is concretely the visible absence of the real `CONS` / `ASOK`
+  lifecycle on the corrected path.
+- **[TACTICS]** The next clean harness move is real `CONS` then `ASOK`, not manual
+  socket-table prepopulation as the primary strategy.
+
+### Quantitative
+- New stable parity findings added: 1
+  `corrected DoMESACommand exposes explicit CONS/ASOK pre-send path`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+- Issue comments posted: 1
+  `#4300149899`
+
+### Insights
+1. The first corrected `SendData` blocker is already visible in ordinary plug command code, which is exactly where we want the next harness move to land.
+2. `ConnectToSocket` and `ActivateSocket` now provide the cleanest bridge between the corrected init path and the real transfer path.
+3. This is the first time the pre-send state problem is expressed as an explicit command sequence rather than a field-level theory.

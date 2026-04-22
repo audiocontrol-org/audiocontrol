@@ -3488,3 +3488,19 @@ correct. Every finding should distinguish direct evidence from inference.
   must succeed with bit 0 set in the returned capability long. That is a much narrower
   emulator target than a generic SCSI Manager implementation and it bridges directly
   into the older bus-enumeration story through the proper lifecycle path.
+
+- The corrected pre-`SendData` socket-registration path is now explicit in `DoMESACommand`
+  The new real transfer blocker (`this+0x38 == 0`, no selected socket, `0xc950`) now
+  has a direct command-surface explanation. Under the corrected PLUG-relative model,
+  non-`INIT` enters `DoMESACommand` at `0x0ce4`, which uses the rebased tag-dispatch
+  helper at `0x0148` over a visible command table including `SEND`, `ASOK`, `CONS`,
+  and `IDEN`. The two socket-relevant bodies are now concrete:
+  `0x09d2` (`ConnectToSocket`) checks `this+0x38` against max `50`, increments
+  `this+0x38` on success, computes `index * 46` via helper `0x0116`, and copies the
+  incoming `SocketInfo` into the table rooted at `this+0x3c`;
+  `0x0a5e` (`ActivateSocket`) walks that same table up to `this+0x38`, matches on the
+  incoming fields, updates the matching entry's activation/state fields, clears
+  `entry->ptr@(16)`, and returns `0` or `-11004`. So the next real pre-send contract is
+  no longer abstract socket state. It is the visible `CONS` -> `ASOK` command sequence
+  through corrected `DoMESACommand`, which should populate the 46-byte socket-entry
+  table and the selected-socket machinery before `SendData` is attempted again.
