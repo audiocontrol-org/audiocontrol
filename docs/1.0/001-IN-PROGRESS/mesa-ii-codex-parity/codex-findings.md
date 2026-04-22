@@ -3415,3 +3415,15 @@ correct. Every finding should distinguish direct evidence from inference.
   like shared runtime / segment / THINK-C-support entry slots that are meaningful in
   production but are not materialized as ordinary local code in the extracted raw
   resource bodies.
+
+- The editor's own low-address band is also non-code as stored, reinforcing the shared-slot model
+  A direct raw disassembly of the editor's file `0x0100-0x0300` closes the remaining
+  easy counterargument. That band is also overwhelmingly non-code as stored:
+  `0x0104` sits amid header/string-like bytes near the editor version banner, and
+  `0x0274` lands in the same text/data-heavy region rather than at an ordinary function
+  prologue. So when the valid editor callback at `0x028169` immediately `jsr 0x0104`,
+  it is doing the same kind of thing the plug ctor does at `0x020e`: calling into a
+  low-address slot that is meaningful in production but not materialized as normal local
+  code in the extracted resource body. That makes the shared runtime-slot interpretation
+  substantially stronger than either a plug-only corruption theory or a one-off bad
+  symbol attribution.

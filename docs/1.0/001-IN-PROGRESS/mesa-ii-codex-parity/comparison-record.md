@@ -1006,6 +1006,14 @@ cleanly.
   runtime-support/jump-table-slot interpretation materially stronger than a plug-local
   corruption theory.
 
+- A direct raw reread of the editor's own `0x0100-0x0300` band makes that stronger
+  still: the editor low band is also non-code as stored. `0x0104` sits in the header /
+  string-heavy region near the version banner, and `0x0274` is likewise in the same
+  data-like band rather than at a normal function prologue. So the editor's valid
+  callback body at `0x028169` and the plug ctor at `0x0bc6` are both calling into the
+  same kind of low-address slot family. That pushes the next harness question away from
+  per-target patching and toward a single shared runtime-slot model.
+
 - One hot-path symbol correction itself needed correcting. A fuller raw string-table
   reread around `0x139a` / `0x160c` shows the binary's symbol strings are naming the
   **preceding** function bodies, not the following ones. On that pattern:
