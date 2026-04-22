@@ -790,6 +790,13 @@ cleanly.
   while `ActivateSocket__11CMESAPlugInFP10SocketInfo` updates the selected entry. So if
   the affirmative `ModalDialog` probe still fails, the next missing harness precondition
   is likely earlier `CONS`/`ASOK` table state, not dialog semantics.
+  Codex then narrowed the return contract one step further: the apparent success exit of
+  `0x187e` does not return a locally computed boolean at all, but the pre-existing field
+  `CSCSIPlug+0x0d68`. In the current plug artifact that field has visible reads but no
+  visible writes, while neighboring state fields (`0x0d6e`, `0x0d70`) do have explicit
+  writers. So there is now a very concrete harness-side check: if `0x187e` gets to its
+  success leg but `0x0d68` is still zero, `SMSendData` will still fail its `tst.b d0`
+  gate even after valid enumeration.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

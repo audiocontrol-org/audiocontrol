@@ -3052,6 +3052,22 @@ correct. Every finding should distinguish direct evidence from inference.
   `CSCSIPlug+0x093a` has been populated and activated the same way real `CONS` and
   `ASOK` would have done.
 
+- MESA II `0x187e` success flow returns the pre-existing field at `CSCSIPlug+0x0d68`, and that field currently has no visible in-binary writer
+  The tail of the large `SMSendData` body now narrows the return contract:
+  `0x1aa6` and `0x1ac2` both return the local `-10003` error word after dialog-service
+  cleanup, while the only apparent success leg at `0x1ade` loads `self+0x0d68` into a
+  local word and returns that value. `SMSendData` then immediately does `tst.b d0` on
+  that return at `0x1634`, so a zero low byte there still forces the local error exit.
+  A full-object disassembly search currently finds only reads of `self+0x0d68`
+  (`0x1568`, `0x1ade`) and no local write in the visible plug binary. Nearby state
+  fields do have visible writers:
+  `self+0x0d6e` is written at `0x0d20`, `0x0e24`, and `0x1a9e`, and `self+0x0d70` is
+  written at `0x0c4a` and `0x1a8c`.
+  This gives the harness a sharper next check:
+  if `0x187e` reaches the nominal success leg but `CSCSIPlug+0x0d68` is still zero
+  under Musashi, the missing precondition is likely an earlier selection/state field,
+  not the dialog loop itself.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
