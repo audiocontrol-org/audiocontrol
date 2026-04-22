@@ -2965,6 +2965,20 @@ correct. Every finding should distinguish direct evidence from inference.
   likely helper semantics or surrounding state than a simple late-bound function
   address.
 
+- MESA II runtime `0x1187e` corresponds to file `0x187e`, and that region is inside the large `SMSendData` body, not a separate named helper
+  The nearby symbol string at file `0x16d8` identifies the `0x1700-0x1afe` body as
+  `SMSendData__9CSCSIPlugFsUcPUcPUclPl`, while the next symbol string at `0x1afe`
+  starts `ChooseSCSI__9CSCSIPlugFUl`.
+  So the whole `0x1700-0x1afe` span belongs to `SMSendData`, and the `0x187e` entry
+  sits inside that body. In the harness, Claude's runtime `0x1187e` notation is the
+  load-address form of the same file offset, which explains why the observed loop lives
+  inside the `SMSendData` region rather than at a truly separate helper target.
+  Practical implication:
+  the old `scsi-plug-functions.txt` label that treated `0x1700-0x1b00` as
+  `ChooseSCSI__9CSCSIPlugFUl` is stale in exactly the region that matters here, and the
+  harness should treat `0x1187e` as an internal `SMSendData` entry point, not as a
+  separate helper body waiting to be installed.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

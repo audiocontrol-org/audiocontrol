@@ -752,6 +752,15 @@ cleanly.
   testing `%d0`. So the sharper current read is:
   Musashi's remaining problem is more likely helper semantics or surrounding state than
   a simple unresolved install of `0x1620` or `0x187e`.
+  The new symbol-string pass tightens that further. The string immediately before
+  `0x1700` names the whole `0x1700-0x1afe` body as
+  `SMSendData__9CSCSIPlugFsUcPUcPUclPl`, while the next symbol string only begins at
+  `0x1afe` with `ChooseSCSI__9CSCSIPlugFUl`. So Claude's runtime `0x1187e` observations
+  map back to file `0x187e` inside the large `SMSendData` body, not to a separate named
+  helper region. That means the old function-index view is stale in the exact region
+  the harness is now exercising, and the right model is: internal `SMSendData` entry
+  points with shared caller-state assumptions, not a late-bound helper waiting to be
+  installed.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.
