@@ -2828,6 +2828,21 @@ correct. Every finding should distinguish direct evidence from inference.
   if the same architectural responsibility survived, it was likely folded into the app
   / resource system rather than remaining a separately named install artifact.
 
+- MESA I app exposes host-side module registry and service surface
+  The host app in MESA I is not just a dumb loader. Its strings show an explicit
+  application-side registry/service layer above the modules themselves. In addition to
+  pouch scanning and shared-file lookup, `mesa1-app` exposes:
+  `MESA Events`, `module id`, `modulescMOD`, `all modules`, and a pouch-service verb
+  `path to pouch` whose description is `returns an alias of the M.E.S.A Pouch`.
+  The same binary also contains multiple AppleEvent-ish tags (`IAEH`, `DAECH`, `DOAEH`,
+  `AECBH`, `AECRH`, `AEDLH`) and service descriptions for module metadata like name,
+  version, and owner module id. The stable read is that MESA I's app side is already a
+  real service/registry layer for modules, not merely a bootstrapper that hands control
+  off once and disappears. That matters for MESA II because it makes a service-style
+  callback outcome historically plausible: if Claude's current CODE-resource callback
+  turns out to be resource/service-facing rather than a direct patcher, that would fit
+  a known Akai pattern rather than being an ad hoc fallback explanation.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
