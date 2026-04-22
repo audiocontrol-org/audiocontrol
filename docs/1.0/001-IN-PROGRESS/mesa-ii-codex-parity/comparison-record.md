@@ -853,6 +853,23 @@ cleanly.
 - Full download-path parity (`GetSampleData` / `ExportSampleData`)
 - Throughput comparison against the bridge implementation
 
+### New bounded result
+
+- The simple editor/plug-side immediate-offset theory for the older latch cluster is
+  now effectively closed. A bounded follow-up scan across the installed
+  `scsi-plug-2.1.2.rsrc.bin` and `mesa-ii-app` artifacts did not find any meaningful
+  `ADDA/LEA/PEA 0x0d68`-style setup path that would explain `CSCSIPlug+0x0d68` as a
+  straightforward indirect writer target.
+- In the editor binary, the one non-noise `pea 0x0d68` hit at file `0x6091a` sits
+  inside the same tag-registration table that also pushes offsets like `0x0c48`,
+  `0x0c88`, `0x0d30`, `0x0aa8`, and `0x0e70` alongside literal names like `butn`,
+  `capt`, `dlog`, `edit`, `lbox`, and `pane`; it is not an object-field write.
+- Other raw `0x0d6a` / `0x0d6c` hits in the editor binary fall in dense data regions,
+  not executable setup code.
+- So the surviving `0x0d68/0x0d6a/0x0d6c` writer hypotheses now point even more
+  strongly toward higher-level host/open/init state rather than one missed immediate
+  offset store inside the visible binaries.
+
 ## Comparison Rules
 
 - Codex should compare against the latest Claude branch docs plus its `DEVELOPMENT-NOTES.md`,
