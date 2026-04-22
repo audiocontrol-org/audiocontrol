@@ -147,8 +147,10 @@ Skipped if Phase C fails — D requires C to be valid.
 - Test script lives at `modules/e2e-infra/src/node/lib/test-mesa-cdb-flag.ts` (already drafted; needs Phase B + Phase C + sense-capture additions)
 - Output captured to timestamped logs under `/tmp/mesa-cdb-flag-run-N.log`
 
-## Open question for the user (Orion) — partially answered by Codex 2026-04-22
+## Phase D slot selection — RESOLVED 2026-04-22
 
-**Codex's recommendation:** "Do not pick a write slot blindly. Read the device catalog first and choose an empty or sacrificial slot before any 0x0B roundtrip probe."
+Per Codex's recommendation + Orion's decision: Phase D will read the device catalog first and **use the first empty sample slot** returned by the catalog read.
 
-Plan updated: Phase D will start with a catalog-read step that lists all sample slots, identifies an empty one (or a designated sacrificial one), and uses that as the write target. Standing question for Orion: is there a designated sacrificial slot, or should I just pick the first empty one returned by the catalog read?
+Concrete sub-step at the start of Phase D:
+- D0: catalog read (RSLIST or equivalent) → enumerate occupied slots → pick lowest-numbered empty index
+- If no empty slot is found, abort Phase D and surface to the user (don't overwrite anything).
