@@ -11,6 +11,48 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-21: Record Mac OS 9 Disk Image So It Survives Context Loss
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Preserve the location of the installed Mac OS 9 disk image that may contain the missing
+MESA system extension / companion binaries, so future sessions do not forget that the
+artifact already exists locally.
+
+### Accomplished
+- Verified that the user-supplied path `/Users/orion/Downloads/Macintosh HD` is a local
+  1 GB disk-image file, not a mounted folder
+- Copied that image into the feature workspace at:
+  `docs/1.0/001-IN-PROGRESS/mesa-ii-codex-parity/artifacts/macintosh-hd-2026-04-16.img`
+- Updated the parity README and workplan so the image is now an explicit feature
+  dependency and artifact reminder
+
+### Didn't Work
+- I did not have this artifact recorded anywhere durable before the user reminded me,
+  even though it was already available locally
+
+### Course Corrections
+- **[DOCUMENTATION]** The missing binary-source hunt had started to sound blocked on
+  artifact acquisition when a likely source was already present on disk.
+- **[PROCESS]** When an external artifact becomes critical-path, write its exact path
+  into feature docs immediately instead of trusting session memory.
+
+### Quantitative
+- Feature docs updated: 3
+  `README.md`, `workplan.md`, `DEVELOPMENT-NOTES.md`
+- New local artifact copy created: 1
+  `docs/1.0/001-IN-PROGRESS/mesa-ii-codex-parity/artifacts/macintosh-hd-2026-04-16.img`
+
+### Insights
+1. The installed Mac OS 9 image is now part of the active MESA II working set, not just
+   an external convenience.
+2. Context wipes are predictable enough that critical artifact paths should be treated as
+   first-class documentation, not scratch knowledge.
+3. The next time the MESA system-extension hunt comes up, the first answer should be the
+   disk image path, not “we need another binary source.”
+
 ## 2026-04-20: MESA II Parity Baseline Resynced To Claude Option 2 Reply
 
 ### Feature: mesa-ii-codex-parity

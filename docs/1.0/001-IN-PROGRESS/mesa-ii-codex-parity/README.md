@@ -22,6 +22,7 @@ Parallel Codex-driven reverse engineering of Akai's MESA II sampler editor, desi
 | Claude Branch Baseline | [claude-baseline.md](./claude-baseline.md) |
 | Comparison Record | [comparison-record.md](./comparison-record.md) |
 | Codex Findings Log | [codex-findings.md](./codex-findings.md) |
+| Mac OS 9 Disk Image Copy | [macintosh-hd-2026-04-16.img](./artifacts/macintosh-hd-2026-04-16.img) |
 | Parent Issue | TBD |
 
 ## Overview
@@ -131,6 +132,19 @@ The shared critical path remains the same: identify where the live sender is ins
 redirected, or otherwise made reachable. Claude is best placed to push that boundary at
 runtime; Codex remains useful by pursuing the same static boundary from a second angle
 and documenting which side branches are now effectively ruled out.
+
+## Artifact Reminder
+
+Do not forget the installed Mac OS 9 disk image. It is now a live feature artifact for
+the MESA system-extension / companion-binary hunt.
+
+- Original local path:
+  `/Users/orion/Downloads/Macintosh HD`
+- Workspace copy:
+  [artifacts/macintosh-hd-2026-04-16.img](./artifacts/macintosh-hd-2026-04-16.img)
+
+If future work needs installed MESA files beyond `sampler-editor` and `scsi-plug`, this
+disk image is the first place to check.
 
 The latest Codex/Claude cross-check revises that boundary again. The broad exclusion
 still holds for the narrow `+0xa20` direct-install hunt and for the ruled-out

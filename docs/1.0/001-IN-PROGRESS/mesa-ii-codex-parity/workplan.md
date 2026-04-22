@@ -45,6 +45,9 @@
 - Existing MESA II analysis artifacts under
   `docs/1.0/001-IN-PROGRESS/mesa-ii-reverse-engineering/mesa-ii-analysis/`
 - Binary extraction and disassembly tooling already captured in the repo
+- Installed Mac OS 9 disk image with MESA II:
+  original path `/Users/orion/Downloads/Macintosh HD`,
+  workspace copy `docs/1.0/001-IN-PROGRESS/mesa-ii-codex-parity/artifacts/macintosh-hd-2026-04-16.img`
 - Hardware and transport notes where experimental confirmation is required
 - Coordination points with the parallel Claude-driven effort so outputs can be compared
 
@@ -249,6 +252,12 @@ Newest plug-side refinement:
 That split uses the two efforts complementarily: Claude pushes runtime terrain and
 hardware truth, while Codex keeps pressure on the same install-edge path statically and
 records which static branches are now convincingly ruled out.
+
+Current reminder:
+
+- Do not forget the installed Mac OS 9 disk image. It is now the first artifact to use
+  for the MESA system-extension / companion-binary hunt if Claude or Codex needs files
+  beyond the two extracted MacBinary/resource-fork pairs.
 
 ---
 
