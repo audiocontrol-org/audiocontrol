@@ -1005,6 +1005,17 @@ cleanly.
   for the plug and should be treated as superseded by the verified PLUG-relative
   relocation model.
 
+- The rebased low plug targets are now concrete enough to guide the harness fix directly
+  Codex pushed the corrected model one layer deeper: `0x0104 -> 0x06a2` is an ordinary
+  helper body that appears to establish the plug's A4/world pointer, `0x0116 -> 0x06b4`
+  is a compact multiply/scale helper, and `0x0148 -> 0x06e6` matches the existing
+  `_TagDispatch` interpretation. The next rebased targets also line up with named bodies:
+  `0x020e -> __ct__11CMESAPlugInFv`, `0x0274 -> __dt__11CMESAPlugInFv`, and
+  `0x02fc ->` the visible command-dispatch body. So the shared next step is now much
+  cleaner than before: fix the harness to load/relocate the `PLUG` resource body
+  correctly, then re-run ctor/init/open without carrying forward chooser-side
+  workaround assumptions.
+
 - One hot-path symbol correction itself needed correcting. A fuller raw string-table
   reread around `0x139a` / `0x160c` shows the binary's symbol strings are naming the
   **preceding** function bodies, not the following ones. On that pattern:

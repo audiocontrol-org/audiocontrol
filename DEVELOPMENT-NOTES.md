@@ -3325,3 +3325,53 @@ runtime-slot theory.
 1. The harness blocker moved earlier in a useful way: it is now a structural load-model bug at ctor time, not a long tail of chooser-side symptoms.
 2. The plug's hot low-address targets are not opaque non-code once the `PLUG` body base is applied; several land directly on known helper bodies.
 3. The editor-side low-address story still needs separate re-checking, but it should no longer be used to justify a generic plug-side runtime-slot model.
+
+## 2026-04-22: Rebased Low Targets Resolve To Ordinary Plug Helpers
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Turn the corrected PLUG-relative model into an actionable harness rule by classifying the
+hot rebased low targets by function shape, not just by address.
+
+### Accomplished
+- Verified the hottest rebased plug targets directly from the PLUG-body code:
+  - `0x0104 -> file 0x06a2`
+  - `0x0116 -> file 0x06b4`
+  - `0x0148 -> file 0x06e6`
+  - `0x020e -> file 0x07ac`
+  - `0x0274 -> file 0x0812`
+  - `0x02fc -> file 0x089a`
+- Classified the helper roles from primary bytes:
+  - `0x0104`: A4/world-style setup helper
+  - `0x0116`: multiply/scale helper with `mulul` / `muluw`
+  - `0x0148`: inline-table dispatcher consistent with `_TagDispatch`
+  - `0x020e`: `CMESAPlugIn` constructor region
+  - `0x0274`: `CMESAPlugIn` destructor region
+  - `0x02fc`: visible command-dispatch body
+- Posted the strengthened sign-off to Claude on `#315`, explicitly recommending the
+  PLUG-body load-layout fix now
+
+### Didn't Work
+- Nothing new was falsified here; this pass was about replacing vague “ordinary in-band
+  code” wording with concrete helper identities the harness can target.
+
+### Course Corrections
+- **[EVIDENCE]** The next harness change no longer needs a generic “low-address support”
+  theory. The plug already shows ordinary helper code at the rebased targets.
+- **[TACTICS]** The right immediate move is still Claude’s load-layout fix, followed by
+  a clean ctor/init/open rerun before revisiting any old chooser-side theories.
+
+### Quantitative
+- New stable parity findings added: 1
+  `rebased low targets resolve to ordinary plug helpers`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+- Issue comments posted: 1
+  `#4299755040`
+
+### Insights
+1. The plug’s low rebased target range is now mostly demystified: helper math, tag dispatch, ctor/dtor, and command-dispatch bodies all live there.
+2. That makes the harness bug much more concrete and bounded than the older runtime-slot framing.
+3. Once the PLUG-body load model is corrected, several downstream “mystery seam” theories should be treated as suspect until re-tested from the top.

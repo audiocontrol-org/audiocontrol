@@ -3421,3 +3421,17 @@ correct. Every finding should distinguish direct evidence from inference.
   before the harness relocation is fixed, the current evidence points away from “opaque
   support slots” and toward ordinary PLUG-relative helper code plus a few known
   classic-Mac helper patterns.
+
+- The hottest rebased low targets now have concrete helper identities in the plug
+  A direct reread of the rebased code region `0x59e + target` makes the load-layout fix
+  more actionable. `0x0104 -> 0x06a2` is an ordinary helper body that computes a pointer
+  from `pc+0x59e`, moves it through `d0`, and swaps it into `a4`, which fits world/A4
+  setup rather than a loader thunk. `0x0116 -> 0x06b4` is a compact arithmetic helper
+  with a jump table and `mulul` / `muluw` instructions, matching the many caller sites
+  that use it like a scale/multiply routine. `0x0148 -> 0x06e6` is an inline-table
+  dispatcher, consistent with `_TagDispatch`. And the next rebased entries line up with
+  named bodies too: `0x020e -> __ct__11CMESAPlugInFv`, `0x0274 -> __dt__11CMESAPlugInFv`,
+  and `0x02fc ->` the visible command-dispatch body at `0x089a`. So the plug-side
+  harness target is no longer “make low addresses less weird.” It is simply: relocate
+  PLUG-internal absolute calls against the PLUG resource base, then re-run the ctor/init
+  path against those now-ordinary helper bodies.
