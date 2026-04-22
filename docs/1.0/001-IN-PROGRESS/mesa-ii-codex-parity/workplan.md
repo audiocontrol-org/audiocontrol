@@ -193,28 +193,36 @@ Phase 3 is still active, but the frontier has changed materially again:
   executable `PLUG` body starts at file `0x59e`
 - under that corrected model, Claude’s harness now reaches the real chained
   `ctor -> INIT -> CONS` lifecycle instead of the older wrong-base artifacts
-- the newest exact fault is pinned to PLUG-internal `0x00a0`, inside the plug’s own
-  packed-displacement self-relocation loop
-- Codex has independently confirmed the surrounding relocation setup helper:
-  - `a4+0x266` caches the current relocated PLUG base
-  - `a4+0x26a` is a trap-dependent flag set during relocation setup
-  - the plug only re-runs relocation when the current base changes
+- the harness `A055 StripAddress` bug is now identified as a root-cause failure:
+  it had been zeroing `D0`, which broke both A4-world setup and the relocation-table
+  pointer returned by helper `0x0028`
+- after fixing `A055`, the previously suspect relocation values now match the static
+  model:
+  - `A4 = 0x125b4` at the relocation caller
+  - helper `0x0028` returns `0x1281f`
+  - the relocation loop sees the sane table count `0x6e`
+- the live blocker is therefore no longer “why is the relocation path garbage?” but
+  whether the harness’s old manual relocation pass is redundantly relocating the same
+  targets the plug is correctly relocating for itself
 
 The current cross-check therefore narrows to one bounded emulator seam:
 
-- who owns relocation under Musashi: the harness or the plug
-- whether the harness’s old manual relocation is now double-relocating internal pointers
+- can the plug’s own self-relocation carry the full path on a clean rerun with manual
+  relocation disabled
+- if not, what exact target class remains uncovered and truly requires harness-side help
 - and what the first true post-relocation blocker is once the plug is allowed to
-  relocate itself
+  relocate itself without the redundant harness pass
 
 Current recommended work split:
 
 - Claude:
-  disable manual PLUG relocation, let the plug self-relocate, log `D6` once, and stop
-  at the first genuinely new post-relocation blocker
+  rerun from the top with manual relocation disabled, now that `A055` is fixed and the
+  plug’s own self-relocation is producing sane values
 - Codex:
-  recover the relocation/setup contract around PLUG-internal `0x00ae -> 0x0038`,
-  especially the cache/flag behavior at `a4+0x266` and `a4+0x26a`
+  recover enough of the relocation/setup contract to interpret the first failure on
+  that clean rerun immediately, especially the relationship between the A4-rooted data
+  block, the relocation-table pointer, and any truly uncovered target class if the plug
+  does not relocate everything by itself
 
 Current reminder:
 
@@ -248,11 +256,11 @@ Current reminder:
   older wrapper-only or bridge-acceptance language.
 - Treat the current state as an emulator-contract problem, not a product decision:
   - `MEASURED`: corrected PLUG-relative load model, real chained `ctor -> INIT -> CONS`
-    path reached, exact OOB pinned to the plug’s own self-relocation loop at internal
-    `0x00a0`
-  - `OPEN`: whether Musashi should stop manual PLUG relocation entirely, whether `D6`
-    is sane on the first self-relocation run, and what the first post-relocation
-    blocker is
+    path reached, harness `A055 StripAddress` bug fixed, plug self-relocation now sees
+    sane A4/table values
+  - `OPEN`: whether Musashi can now rely on the plug’s own self-relocation alone, what
+    exact target class remains if it cannot, and what the first post-relocation blocker
+    is on a clean rerun
 - Use new static work only if it helps Musashi get farther.
 - Reopen older callback/constructor/install surfaces only if new runtime evidence points
   back to them directly.

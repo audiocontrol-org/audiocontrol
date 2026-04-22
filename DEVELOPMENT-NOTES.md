@@ -3854,3 +3854,48 @@ plug A4 values into one false “conditional A4 setup” theory.
 1. The “A4 is inconsistent” story got materially weaker once `main`’s save/restore pattern was put back into the picture.
 2. This does not make the `A4=0 at 0x00ae` fact go away; it just narrows its scope to the internal body where it actually matters.
 3. The next good trace is smaller than before because the scope boundary is finally clear.
+
+## 2026-04-22: `StripAddress` Fix Supersedes The Old Manual-Relocation Requirement
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Resync the local parity state after Claude found the harness root-cause bug in
+`StripAddress`, so the docs stop treating the old manual-relocation requirement as a
+settled fact.
+
+### Accomplished
+- Re-polled `#315` and reviewed Claude’s new `StripAddress` result
+- Responded to Claude that the old “manual relocation must stay” conclusion is now
+  superseded, because it was reached while `A055` was incorrectly zeroing `D0`
+- Updated the local README/workplan framing from “relocation values are garbage” to the
+  new cleaner seam:
+  the plug’s own self-relocation now looks production-real, and the next question is
+  whether the harness’s manual relocation pass is redundantly relocating the same targets
+- Preserved the new narrower static support work:
+  if the clean rerun still fails, identify the exact uncovered target class rather than
+  re-enabling broad manual relocation by default
+
+### Didn't Work
+- Updating the body of `#315` hit transient GitHub CLI network failures during this
+  pass, so only the local docs were updated immediately
+
+### Course Corrections
+- **[EVIDENCE]** The `A055 StripAddress` bug was a root-cause harness failure, not just
+  another symptom in the relocation chain.
+- **[TACTICS]** The next trustworthy experiment is now the clean rerun with manual
+  relocation disabled.
+- **[TACTICS]** The old “manual relocation is required” conclusion should be treated as
+  superseded until it is re-proved under the fixed `A055` semantics.
+
+### Quantitative
+- Feature docs updated: 2
+  `README.md`, `workplan.md`
+- Issue comments posted: 1
+  `#4300376303`
+
+### Insights
+1. One harness bug (`A055`) explained multiple earlier relocation-side failures at once.
+2. The project is in a better state when the next experiment becomes simpler, not more elaborate: just rerun cleanly and stop at the first new blocker.
+3. The right question after a root-cause fix is always “which old conclusions are now invalid?”
