@@ -742,6 +742,16 @@ cleanly.
   loop after `SMSendData` CDB construction is now best modeled as still sitting above
   `CSCSIUtils::SCSICommand`, in the wrapper chain that should hand the local CDB and
   payload down to the utility layer.
+  Codex has now also re-checked the two helper addresses Claude asked about from that
+  seam. In the current static artifact set, `0x1620` still does not look like a missing
+  install slot; it is the shared internal entry inside the `0x160c-0x16d6`
+  `SMSendData`/wrapper family, reused by five absolute call sites. Likewise, `0x187e`
+  does not look like a standalone late-bound target; bounded `objdump` over the larger
+  `0x1700-0x1afe` family shows `0x187e` landing mid-body with no prologue, and its
+  three callers all use the same selector-word + `self+0x093a` gate shape before
+  testing `%d0`. So the sharper current read is:
+  Musashi's remaining problem is more likely helper semantics or surrounding state than
+  a simple unresolved install of `0x1620` or `0x187e`.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

@@ -2940,6 +2940,31 @@ correct. Every finding should distinguish direct evidence from inference.
   is likely still above `CSCSIUtils::SCSICommand`, in the wrapper chain between the
   local CDB builder and this utility path.
 
+- MESA II `0x1620` is a shared internal entry into the `SMSendData` wrapper family, not a fresh runtime-installed slot
+  A direct `objdump` pass over file `0x160c-0x16d6` now reconfirms the exact body shape:
+  the only real prologue is at `0x160c`, while `0x1620` begins after register/setup
+  work at the shared sequence `moveal %fp@(28),%a3; clrl %a3@; ...`.
+  All five absolute `jsr 0x1620` call sites in the plug (`0x12a6`, `0x133a`, `0x14ac`,
+  `0x15b8`, `0x169a`) reuse that same entry, and there is no independent prologue or
+  symbol boundary at `0x1620`.
+  So the practical emulator implication is narrower than “install the missing 0x1620
+  target”:
+  in the current static artifact set, `0x1620` is already the common internal dispatch
+  entry that the surrounding wrappers expect to call.
+
+- MESA II `0x187e` is likewise a shared internal helper entry inside the larger `0x1700-0x1afe` family, not a standalone slot target
+  Bounded `objdump` over file `0x1760-0x1afe` shows that `0x187e` lands in the middle of
+  a larger helper body with no local prologue and with internal backward branches to
+  `0x17aa` and `0x17b0`.
+  The three absolute `jsr 0x187e` call sites (`0x1286`, `0x14f6`, `0x162e`) all use the
+  same two-argument shape: push a selector/status word plus `self+0x093a`, call
+  `0x187e`, then test `%d0` as a boolean gate before continuing.
+  That makes the best current read:
+  `0x187e` is another shared helper entry with caller-state expectations, not an
+  unresolved runtime-installed target. Whatever Musashi is still missing here is more
+  likely helper semantics or surrounding state than a simple late-bound function
+  address.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
