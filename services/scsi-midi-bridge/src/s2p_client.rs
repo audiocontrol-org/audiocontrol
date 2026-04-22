@@ -255,12 +255,62 @@ impl S2pClient {
             None => return Err("No SCSI response in result".to_string()),
         };
 
-        Ok(ScsiExecResult {
+        let mut exec_result = ScsiExecResult {
             status: scsi_resp.varints.get(&1).copied().unwrap_or(0) as u8,
             sense_data: scsi_resp.bytes.get(&2).cloned().unwrap_or_default(),
             data_in: scsi_resp.bytes.get(&3).cloned().unwrap_or_default(),
             bytes_transferred: scsi_resp.varints.get(&4).copied().unwrap_or(0) as u32,
-        })
+        };
+
+        // If the device returned CHECK CONDITION (status=0x02) and s2p did
+        // not auto-include sense data, issue REQUEST SENSE so the caller can
+        // diagnose the rejection. Critical for protocol probes — without sense
+        // bytes, "rejected" tells us nothing about WHY.
+        //
+        // We only auto-fetch for CHECK CONDITION (0x02). Other non-zero statuses
+        // (BUSY 0x08, RESERVATION CONFLICT 0x18, etc.) don't carry sense data
+        // and would be wasted CDBs. We also avoid recursion (REQUEST SENSE
+        // itself can return CHECK CONDITION but we don't probe further).
+        const CHECK_CONDITION: u8 = 0x02;
+        const REQUEST_SENSE_OPCODE: u8 = 0x03;
+        let is_request_sense = !cdb.is_empty() && cdb[0] == REQUEST_SENSE_OPCODE;
+        if exec_result.status == CHECK_CONDITION
+            && exec_result.sense_data.is_empty()
+            && !is_request_sense
+        {
+            // REQUEST SENSE CDB: 03 00 00 00 18 00 (allocation length 0x18 = 24 bytes,
+            // covers fixed-format sense including additional sense bytes 12-17).
+            let sense_cdb = [0x03u8, 0x00, 0x00, 0x00, 0x18, 0x00];
+            let sense_req =
+                build_scsi_request(target_id, lun, &sense_cdb, &[], 0x18, timeout);
+            let sense_cmd = build_scsi_command(&sense_req);
+            match self.send_command(SCSI_EXEC, &sense_cmd).await {
+                Ok(sense_result) => {
+                    if let Some(data) = sense_result.bytes.get(&102) {
+                        let sense_resp = Fields::parse(data);
+                        let sense_status =
+                            sense_resp.varints.get(&1).copied().unwrap_or(0) as u8;
+                        let sense_bytes =
+                            sense_resp.bytes.get(&3).cloned().unwrap_or_default();
+                        if sense_status == 0 && !sense_bytes.is_empty() {
+                            debug!(
+                                sense_len = sense_bytes.len(),
+                                key = sense_bytes.get(2).copied().unwrap_or(0) & 0x0F,
+                                asc = sense_bytes.get(12).copied().unwrap_or(0),
+                                ascq = sense_bytes.get(13).copied().unwrap_or(0),
+                                "auto-fetched REQUEST SENSE on CHECK CONDITION"
+                            );
+                            exec_result.sense_data = sense_bytes;
+                        }
+                    }
+                }
+                Err(e) => {
+                    debug!(error = %e, "REQUEST SENSE follow-up failed");
+                }
+            }
+        }
+
+        Ok(exec_result)
     }
 
     // -- SCSI MIDI transport (vendor-specific CDBs) ----------------------------
