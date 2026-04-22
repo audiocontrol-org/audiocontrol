@@ -3583,3 +3583,17 @@ correct. Every finding should distinguish direct evidence from inference.
   different scopes. That means future harness traces should compare `A4` inside
   `main`—especially right after `0x0112` and at `0x00ae`—rather than flattening those
   values together with caller-side A4 observations from separate top-level invocations.
+
+- The A4-world block strongly suggests the plug's own self-relocation is meant to patch data/vtable/function-pointer tables
+  One more static pass through the A4-rooted block at PLUG+`0x25b4` strengthens the
+  likely relocation split. The first visible run of longs there is a dense cluster of
+  low PLUG-internal pointers:
+  `0x218a`, `0x1c60`, `0x1ce2`, `0x1f86`, `0x1fd0`, `0x2086`, `0x20b4`, `0x20dc`,
+  `0x1c96`, `0x2256`, `0x229c`, `0x2384`, `0x23ae`, and `0x23e4`. Those are plainly
+  stored data pointers, not inline code immediates, and they sit in the same A4-rooted
+  region as the relocation cache/flag and the relocation-table header. That is good
+  evidence that the plug's self-relocation is at least intended to patch A4-rooted
+  data/vtable/function-pointer tables. So if the clean no-manual-reloc rerun still
+  fails, the most plausible uncovered class is narrower than “relocation in general”:
+  code-entry immediates or other loader-level code references are now a stronger
+  fallback candidate than A4-rooted table pointers.

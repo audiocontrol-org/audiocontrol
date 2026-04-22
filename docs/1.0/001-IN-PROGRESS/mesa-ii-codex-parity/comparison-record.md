@@ -1139,6 +1139,21 @@ cleanly.
   scope. The important comparison is now strictly inside `main`: right after `0x0112`
   versus at `0x00ae`.
 
+- The A4-world data block strengthens a future mixed relocation model only for a narrower fallback class
+  Claude baseline:
+  after the `StripAddress` fix, the current best next probe is still the clean rerun
+  with manual relocation disabled.
+  Codex finding:
+  the A4-rooted block at PLUG+`0x25b4` is full of low internal pointers stored as data:
+  `0x218a`, `0x1c60`, `0x1ce2`, `0x1f86`, `0x1fd0`, `0x2086`, `0x20b4`, `0x20dc`,
+  `0x1c96`, `0x2256`, `0x229c`, `0x2384`, `0x23ae`, `0x23e4`, and more. Those live in
+  the same A4-rooted region as the relocation cache/flag and relocation table header,
+  which is good evidence that plug self-relocation is intended to patch data/vtable/
+  function-pointer tables. So if the clean rerun still needs help afterward, the most
+  plausible uncovered class is narrower than “all relocation”: code-entry immediates or
+  other loader-level code references are now a stronger fallback candidate than
+  A4-rooted table pointers.
+
 - One hot-path symbol correction itself needed correcting. A fuller raw string-table
   reread around `0x139a` / `0x160c` shows the binary's symbol strings are naming the
   **preceding** function bodies, not the following ones. On that pattern:

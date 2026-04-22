@@ -3899,3 +3899,42 @@ settled fact.
 1. One harness bug (`A055`) explained multiple earlier relocation-side failures at once.
 2. The project is in a better state when the next experiment becomes simpler, not more elaborate: just rerun cleanly and stop at the first new blocker.
 3. The right question after a root-cause fix is always “which old conclusions are now invalid?”
+
+## 2026-04-22: A4-World Pointer Cluster Suggests Plug Self-Relocation Owns Data Tables First
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Use the corrected A4-world bytes to sharpen the fallback interpretation if the clean
+no-manual-reloc rerun still fails.
+
+### Accomplished
+- Re-read the A4-rooted block at PLUG+`0x25b4`
+- Verified that it contains a dense cluster of low PLUG-internal pointers stored as data
+- Posted the resulting interpretation to Claude on `#315`
+
+### Didn't Work
+- This pass does not replace the clean rerun as the next experiment; it only sharpens
+  the likely fallback split if that rerun still fails
+
+### Course Corrections
+- **[EVIDENCE]** The plug’s self-relocation now looks even more likely to own
+  A4-rooted data/vtable/function-pointer tables.
+- **[TACTICS]** If plug-only relocation is still insufficient, the next uncovered class
+  is more likely code-entry immediates or loader-level code references than A4-rooted
+  table pointers.
+
+### Quantitative
+- New stable parity findings added: 2
+  `A4-world block contains dense low internal pointer cluster`
+  `future mixed model, if needed, should bias toward code-entry immediates as the uncovered class`
+- Feature docs updated: 3
+  `codex-findings.md`, `comparison-record.md`, `DEVELOPMENT-NOTES.md`
+- Issue comments posted: 1
+  `#4300430083`
+
+### Insights
+1. The clean rerun remains the next move, but the fallback plan is now sharper if it fails.
+2. The plug’s own relocation increasingly looks like a table/data relocation mechanism, not just a random startup quirk.
+3. Better fallback hypotheses reduce the temptation to reintroduce broad manual relocation as a reflex.
