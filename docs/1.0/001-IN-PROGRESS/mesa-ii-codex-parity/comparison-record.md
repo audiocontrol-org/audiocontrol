@@ -1077,6 +1077,17 @@ cleanly.
   higher-level plug-selection / socket-activation choreography already visible in
   `OpenModule`.
 
+- The newest chained-lifecycle blocker is no longer vtable setup or raw plug dispatch; it is `NewHandleSys`
+  Claude's latest harness result confirms the corrected object model directly: with
+  `A4 = 0x125b4`, the ctor writes `this+0 = 0x126f0`, `this+8 = 'SCSI'`, and
+  `this+0x0c = 'PASC'`, and the vtable contents at `0x126f0` match the static Codex
+  map (`+0x0c = 0x02b8`, `+0x10 = 0x0746`, `+0x14 = 0x0854`, `+0x18 = 0x05fa`).
+  That removes the older “maybe the harness still has the wrong plug object shape”
+  escape hatch. The new blocker is the ctor's `0xA322` call: the path now expects real
+  classic-Mac handle/master-pointer semantics for the object field at `this+0x0e38`.
+  So both sides should now treat minimal `NewHandleSys` behavior as the next bounded
+  emulator contract, not more speculation about the plug vtable or `CONS` entry path.
+
 - One hot-path symbol correction itself needed correcting. A fuller raw string-table
   reread around `0x139a` / `0x160c` shows the binary's symbol strings are naming the
   **preceding** function bodies, not the following ones. On that pattern:

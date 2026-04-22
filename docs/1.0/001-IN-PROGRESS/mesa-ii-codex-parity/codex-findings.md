@@ -3520,3 +3520,17 @@ correct. Every finding should distinguish direct evidence from inference.
   but it should still be compared against the larger
   `OpenModule -> ConnectToPlug -> SelectPlug -> ActivateThisSocket(1)` model before
   either branch treats the pre-send contract as fully matched.
+
+- The chained object-model path is now materially correct through the plug vtable; the next live blocker is classic Mac handle semantics
+  Claude's newest top-down harness result moved the seam again in a useful way. With
+  `A4 = 0x125b4`, `__ct__9CSCSIPlugFv` now writes the exact vtable and identity fields
+  predicted by the corrected PLUG-base model: `this+0 = 0x126f0`, `this+8 = 'SCSI'`,
+  and `this+0x0c = 'PASC'`. The vtable bytes at `0x126f0` also match the earlier
+  static map (`+0x0c = 0x02b8`, `+0x10 = 0x0746`, `+0x14 = 0x0854`, `+0x18 = 0x05fa`),
+  so the chained `ctor -> INIT -> CONS` path is no longer failing on an invented
+  object layout. The first new blocker is now a real Memory Manager contract:
+  the ctor calls `0xA322` (`NewHandleSys` candidate), stores the returned handle at
+  `this+0x0e38`, and later expects normal handle/master-pointer dereference semantics.
+  So the next bounded harness target is not another plug-lifecycle guess. It is
+  minimal `NewHandleSys` behavior: allocate a handle slot, allocate a backing block,
+  store the block address through the master pointer, and return the handle address.

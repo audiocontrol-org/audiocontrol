@@ -3622,3 +3622,51 @@ only the immediate plug-side `CONS` / `ASOK` commands.
 ### Insights
 1. The corrected plug-side `DoMESACommand` map is strong enough to drive the next bounded harness step, but not strong enough to erase the older top-down `OpenModule` bring-up evidence.
 2. If chained `CONS` / `ASOK` still leave unexplained transfer behavior, the most likely missing contract is plug selection and socket activation above raw plug command entry, not another hidden transport primitive below it.
+
+## 2026-04-22: Chained Plug Object Model Confirmed; `NewHandleSys` Becomes Live Blocker
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Capture the new tactical shift after Claude's chained ctor/INIT/CONS attempt: the live
+blocker is now minimal Memory Manager handle semantics, not plug-vtable speculation.
+
+### Accomplished
+- Reviewed Claude's chained lifecycle result on `#315`
+- Confirmed the harness now reproduces the corrected plug object/vtable model:
+  - `A4 = 0x125b4`
+  - `this+0 = 0x126f0`
+  - `this+8 = 'SCSI'`
+  - `this+0xc = 'PASC'`
+- Recorded that the vtable contents at `0x126f0` match the static map:
+  - `+0x0c = 0x02b8`
+  - `+0x10 = 0x0746`
+  - `+0x14 = 0x0854`
+  - `+0x18 = 0x05fa`
+- Tightened the next bounded emulator contract:
+  the ctor's `0xA322` call needs real minimal handle/master-pointer semantics
+
+### Didn't Work
+- The chained lifecycle still OOBs after ctor because the current harness does not yet
+  model `NewHandleSys` well enough for the later `this+0x0e38` dereferences.
+
+### Course Corrections
+- **[EVIDENCE]** The harness is no longer failing because of a guessed plug object
+  layout. The object/vtable side now matches the corrected static model directly.
+- **[TACTICS]** The next bounded emulator step is minimal `A322 NewHandleSys`
+  semantics, not more plug-lifecycle or vtable surgery.
+- **[TACTICS]** After `A322` is in place, rerun the full
+  `ctor -> INIT -> CONS -> ASOK -> SendData` chain and stop at the first new blocker.
+
+### Quantitative
+- New stable parity findings added: 1
+  `corrected chained object model now points to A322/NewHandleSys as the next contract`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+- Issue comments posted: 1
+  `#4300219071`
+
+### Insights
+1. The chained real path is now paying off again: it has converted a broad “maybe the vtable is still wrong” worry into a narrow Memory Manager contract.
+2. The next useful emulator fix is classic-Mac handle behavior, not another synthetic bypass into `DoMESACommand`.
