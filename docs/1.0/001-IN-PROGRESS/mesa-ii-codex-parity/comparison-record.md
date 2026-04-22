@@ -899,6 +899,33 @@ cleanly.
   initialization in `SMSendData` is too weak by itself as the next blocker theory; the
   broader `ChooseSCSI` / `IdentifyBusses` pre-state still looks like the sharper seam.
 
+- Claude's `FORCE_D4_AT_187E` probe is a real breakthrough, but the returned `0xd8ed`
+  still comes from local chooser logic, not a newly exposed transport-layer failure.
+  A direct search of the original plug artifacts finds `0xd8ed` twice inside
+  `ChooseSCSI` itself, at file `0x1aa8` and `0x1ac4`. In both cases the function stores
+  `#$d8ed` into chooser-local stack slots and routes through the shared local helper at
+  `0x218a`; the same tail later has a third leg that copies `this+0x0d68` into another
+  local slot before the common return. So forcing `d4 >= 7` is useful as a bounded
+  workaround to escape the structural loop, but the resulting `0xd8ed` outcome does not
+  move the frontier below `ChooseSCSI`. It keeps the live seam on missing
+  `IdentifyBusses` / chooser state above the raw send path.
+
+- The apparent shared helper at `0x218a` is not a new transport seam either. The
+  existing function map places `__ct__7CDialogFsPv` at file `0x2150-0x2196`, and a raw
+  byte slice confirms `0x218a` lands inside that constructor body rather than at the
+  start of a separate helper. So the `0xd8ed` chooser-failure legs are still routing
+  through dialog/chooser infrastructure, not escaping into a deeper post-chooser send
+  helper.
+
+- `IdentifyBusses` itself now looks more conditional than a simple “bus count setter.”
+  The visible `this+8` write at file `0x1fa0` is gated by the function tail:
+  `tst.w (a2)` at `0x1f88`, loop bound `d3 < 6` at `0x1f8c-0x1f90`, and then a late
+  `cmpi.w #$e143,(a2)` at `0x1f92-0x1f96`. Only on the equal path does the function
+  clear `(a2)` and publish the sign-extended bus index into `this+8`. So simply
+  seeding the chooser-bound slot by hand is even less faithful than it first looked;
+  the live missing contract is tied to whatever makes `IdentifyBusses` take that late
+  success path.
+
 ## Comparison Rules
 
 - Codex should compare against the latest Claude branch docs plus its `DEVELOPMENT-NOTES.md`,

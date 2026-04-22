@@ -3253,3 +3253,40 @@ correct. Every finding should distinguish direct evidence from inference.
   “`SMSendData` fails because it forgot to initialize `d5`” is too weak as the next
   blocker theory by itself. The better next probe remains the surrounding `ChooseSCSI`
   / bus-state setup, not just one register at the `SMSendData` call site.
+
+- The post-loop `0xd8ed` result is a local `ChooseSCSI` failure code, not a deeper transport error
+  After Claude's bounded `FORCE_D4_AT_187E` probe broke the structural loop, the next
+  visible result was `D0 = 0xd8ed`. A direct search through the original plug artifacts
+  closes that seam further: `0xd8ed` appears twice inside `ChooseSCSI__9CSCSIPlugFUl`,
+  at file `0x1aa8` and `0x1ac4`. In both cases the body does a local `MOVE.W #$d8ed`
+  into stack temporaries (`fp@(-1902)` / `fp@(-1904)` in the older decode), pushes
+  `#$ffff` plus the chooser scratch buffer at `fp@(-1856)`, and calls the shared local
+  helper at `0x218a` before returning. The same tail later has a third return leg that
+  copies `this+0x0d68` into another local slot at `0x1ade`. So the current harness
+  behavior after forcing `d4 >= 7` is still chooser-local: it escapes the structural
+  loop and lands in one of `ChooseSCSI`'s built-in local failure exits. That means the
+  next live seam is still the missing bus-enumeration / chooser state above this block,
+  not a newly exposed raw transport failure below `SMSendData`.
+
+- The shared helper at `0x218a` is inside `CDialog` construction, not a deeper transport utility
+  A bounded reread of the raw plug bytes closes the obvious next escape hatch under the
+  `0xd8ed` failure path. The existing function map already places
+  `__ct__7CDialogFsPv` at file `0x2150-0x2196`, and a direct hex slice around
+  `0x2150` confirms that `0x218a` lands inside that body, not at the start of a
+  separate helper. The bytes at `0x218a` (`2f 0a a9 18 20 4a 24 5f 4e 5e 4e 75`) are
+  just the constructor's late internal entry / tail, ending in the common `UNLK/RTS`.
+  So the `ChooseSCSI` failure legs at `0x1aa8` / `0x1ac4` are still routing through
+  chooser/dialog infrastructure, not exposing a new transport-significant function below
+  the chooser itself.
+
+- `IdentifyBusses` writes the chooser bound slot only on a late success gate
+  A tighter decode of `IdentifyBusses__10CSCSIUtilsFv` adds one useful constraint to the
+  current harness seam. The earlier primary-evidence result still stands: the function
+  visibly writes `this+8` at file `0x1fa0`. But that write is not unconditional. In the
+  tail, the function first tests `tst.w (a2)` at `0x1f88`, bounds the probe loop against
+  `d3 < 6` at `0x1f8c-0x1f90`, then does a late `cmpi.w #$e143,(a2)` at
+  `0x1f92-0x1f96`; only on the equal path does it clear `(a2)` and store the sign-
+  extended bus index into `this+8` at `0x1fa0`. So the current seam is not just “field
+  `+8` needs a nonzero value.” It is “`IdentifyBusses` has a visible internal success
+  gate for deciding when to publish that value at all.” That makes direct field seeding
+  an even less faithful harness substitute than before.
