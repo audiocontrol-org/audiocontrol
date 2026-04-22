@@ -11,6 +11,56 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-22: Session Close Reframed Around `0x1620` Wrapper Frontier
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Close the session without stale “stop here / ship current bridge” framing, and record
+the actual emulator-facing frontier after Claude’s latest harness results.
+
+### Accomplished
+- Re-polled issue `#315` and incorporated Claude’s latest bounded harness results
+- Updated parity docs so they now reflect the current emulator charter rather than the
+  older stopping-point language
+- Recorded the newest measured state in the feature docs:
+  - BULK under the local `SMSendData` builder emits `CDB[5] = 0x00`
+  - SRAW under the same builder emits `CDB[5] = 0x80`
+  - the app-side literal patch hunt across all visible `mesa-ii-app` CODE resources is
+    exhausted
+  - the first raw executor below the builder is
+    `SCSICommand__10CSCSIUtilsFsP3CdbPUcUlls`
+- Reframed the open seam as the wrapper chain between `SMSendData` and
+  `CSCSIUtils::SCSICommand`, especially the identity/calling semantics of `0x1620`
+  and `0x1187e`
+
+### Didn't Work
+- The session did not produce a static identity for `0x1620` or `0x1187e`
+- The wrapper chain between the local builder and the raw executor remains unresolved,
+  so Musashi still cannot drive the plug straight into `_SCSIDispatch`
+
+### Course Corrections
+- **[PROCESS]** The feature is not at a stopping point and is not about bridge
+  acceptance. The fixed goal remains making MESA run in emulation and revealing the
+  real fast transfer path.
+- **[DOCUMENTATION]** The current stable state is now stronger than before:
+  both flag-byte phases are measured, while the app-side literal patch theory is
+  exhausted and the raw executor below the builder is identified.
+- **[PROCESS]** The next bounded static work should stay on `0x1620`/wrapper semantics,
+  not reopen older callback/install narratives unless new runtime evidence points back.
+
+### Quantitative
+- Feature docs updated: 3
+  `README.md`, `workplan.md`, `DEVELOPMENT-NOTES.md`
+- New issue comments posted earlier in the session: 2
+  `#4293963247`, `#4293994882`
+
+### Insights
+1. The core CDB-flag question is no longer the main uncertainty; both BULK and SRAW are now measured at the local builder.
+2. The raw transport layer is also no longer abstract; `CSCSIUtils::SCSICommand` names the executor beneath the builder.
+3. The remaining emulator blocker is now narrow and concrete: the wrapper family around `0x1620`, not a general “find the patcher” mystery.
+
 ## 2026-04-21: Record Mac OS 9 Disk Image So It Survives Context Loss
 
 ### Feature: mesa-ii-codex-parity

@@ -7,9 +7,9 @@ Parallel Codex-driven reverse engineering of Akai's MESA II sampler editor, desi
 | Phase | Status | Notes |
 |-------|--------|-------|
 | Phase 1: Baseline and Comparison Setup | Complete | Claude branch baseline captured; comparison artifacts created; first Codex target selected |
-| Phase 2: Independent Codex Analysis | Complete | Static `CSCSIPlug::SendData` helper hunting, callback-path decoding, CODE 1 callback checks, and bounded MESA I lineage work have all reached a practical stopping point |
-| Phase 3: Cross-Check and Reconciliation | In Progress | Earlier Claude disputes `#309`-`#314` are resolved; issue `#315` now carries the converged Outcome B read and the recommendation to stop treating state-precondition hunting as the critical path |
-| Phase 4: Downstream Integration Guidance | In Progress | The current highest-value output is a clean stopping-point recommendation: ship the working bridge path, keep state-precondition as residual, and only reopen on new evidence |
+| Phase 2: Independent Codex Analysis | In Progress | Static analysis is now focused on emulator-relevant transport recovery: `SMSendData` CDB construction is confirmed and the raw executor below it is identified as `CSCSIUtils::SCSICommand` |
+| Phase 3: Cross-Check and Reconciliation | In Progress | `#315` is the live Claude/Codex mailbox; Claude’s harness now empirically confirms BULK `CDB[5]=0x00` and SRAW `CDB[5]=0x80`, and the shared open seam is the wrapper chain around `0x1620` |
+| Phase 4: Emulator Contract Guidance | In Progress | The current output is emulator-facing: identify what host/service/SCSI contract MESA still expects so Musashi can drive the real fast transfer path |
 
 ## Links
 
@@ -24,7 +24,7 @@ Parallel Codex-driven reverse engineering of Akai's MESA II sampler editor, desi
 | Codex Findings Log | [codex-findings.md](./codex-findings.md) |
 | Mac OS 9 Disk Image Copy | [macintosh-hd-2026-04-16.img](./artifacts/macintosh-hd-2026-04-16.img) |
 | Mac OS 7 Disk Image Copy | [macos-7-disk.hfv](./artifacts/macos-7-disk.hfv) |
-| Parent Issue | TBD |
+| Parent Issue | [#315](https://github.com/audiocontrol-org/audiocontrol/issues/315) |
 
 ## Overview
 
@@ -70,79 +70,70 @@ that bracket BULK transfer in `SendAudioBufferToSampler`. The current frontier h
 moved outward: the remaining unresolved mechanism is the runtime boundary around the live
 SRAW sender rather than one more static helper inside `SendData`.
 
-## Current Session Close
+## Current Frontier
 
-Recent parity work materially changed the boundary of useful Codex analysis:
+The feature is still active. The fixed goal is:
 
-- Codex now effectively matches Claude's task-21 conclusion at the behavioral level:
-  `ActivateThisSocket(Uc)` is modeled as application-side activation state rather than a
-  missing wire preamble
-- earlier parity-cleanup issues `#309` through `#314` are all resolved and closed
-- the static `CSCSIPlug::SendData` surface has been reduced to a near-exhaustive state:
-  low-address targets such as `0x0148`, `0x0274`, and `0x02fc` now look nonlocal or
-  low-memory/system-adjacent; `0x0ca2`, `0x0d54`, `0x1162`, `0x1620`, `0x187e`, and
-  `0x1b56` all collapsed into internal entries or shared epilogues inside already
-  recovered bodies
-- the checked-in bytes at `0x106e` are stronger evidence for runtime installation than
-  before: if executed as-is, they would skip arm-local cleanup that every `jsr 0x106e`
-  caller expects before the shared `0x1160` tail path
-- issue [#315](https://github.com/audiocontrol-org/audiocontrol/issues/315) is now the
-  live Claude/Codex sync point because Claude has committed to Option 2
-  (`mesa-plug-harness` end-to-end via terrain-as-necessary) and the remaining meaningful
-  unknown is the runtime sender boundary, not another static helper inside the plug body
+- make MESA run in emulation
+- satisfy the SCSI contract it expects
+- capture the real fast sample-transfer path
 
-The main unresolved boundary then shifted into the main-app callback path and has now
-largely converged too. Codex independently confirmed that:
+Recent parity work changed the frontier materially:
 
-- the `INIT` callback literal passed by both `LoadMESAPlugIn` and `LoadMESAEditor`
-  resolves to `SendCommandToEditor` in `mesa-ii-app` `CODE 1`
-- the direct callback body is an inline host/editor tag-dispatcher rather than a
-  transport patcher
-- its visible fan-out lands in editor/service handlers like cursor, menu, editor/window,
-  and module-dispatch helpers
-- the first shared helper reached from that callback also looks like typed module
-  discovery/registry logic (`PLUG` / `AK11` compares), not transport setup
+- Claude’s Musashi harness now empirically reaches the local `SMSendData` CDB builder
+  under the `$1106E -> $1160c` path
+- BULK is now measured end-to-end through the local builder as:
+  `CDB[0]=0x0C`, three length bytes from the payload length, `CDB[5]=0x00`
+- SRAW is now also measured through the same builder:
+  `CDB[5]=0x80` when the byte-flag argument is nonzero
+- the app-side literal patch hunt is exhausted across all visible `mesa-ii-app` CODE
+  resources: there are no simple literal references to `0x106e`, `0x1070`, or `0x160c`
+- the first concrete raw executor below `SMSendData` is now identified as
+  `SCSICommand__10CSCSIUtilsFsP3CdbPUcUlls`, which packages the CDB into a PB-like
+  structure and calls `_SCSIDispatch`
 
-That means the direct patch hypothesis is now functionally closed on the current static
-artifact set. The only remaining theoretical residual is a deeper downstream
-`DispatchCommandFromModule` service/module chain, not any visible direct patch or
-transport-shaping path in the callback body itself.
+That leaves one sharp open seam:
 
-Recent Codex work also closes off a broad static false lead: the constructor-side
-registry/tag/resource branch rooted at `0x287ee` now looks like resource/document
-plumbing, not the missing live-sender install path. The recovered front-end table,
-shared local ladder, low-address payload families, and later mixed tag-dispatch blocks
-all align with file/resource handling (`AK11`, `DATA`, `EBFX`, `EBRV`, `SMDB`, `SS30`,
-`PROG`, `AIFF`, `GDFS`, `SDIS`, `MAHF`) rather than transport verbs like `BULK`,
-`SRAW`, or `UALL`.
+- what `0x1620` actually is
+- what `0x1187e` actually is beyond the currently bypassed log/error-helper role
+- and how the wrapper chain between the local `SMSendData` CDB builder and
+  `CSCSIUtils::SCSICommand` is meant to execute in real Mac OS rather than recurse in
+  the harness
+
+This is no longer a broad “find the patcher” project. It is a bounded emulator-contract
+problem around the handoff from `SMSendData` into the raw SCSI utility layer.
 
 ## Recommended Split
 
-Based on the current combined Claude and Codex evidence, the most effective assignment
-is now closure-oriented rather than exploratory:
+Based on the current combined Claude and Codex evidence, the effective split is now:
 
-- Claude should own the final project-state writeup and product-facing closeout on
-  issue `#315`.
-- Codex should own parity review, calibration control, and doc hygiene so the final
-  settled state does not drift back into stale “one more patcher” language.
+- Claude:
+  keep driving the `mesa-plug-harness` forward until the wrapper chain below
+  `SMSendData` reaches the real raw executor cleanly
+- Codex:
+  own bounded static recovery of the remaining wrapper/helper identities, especially
+  the semantics of `0x1620`, `0x1187e`, `0x187e`, and the handoff into
+  `CSCSIUtils::SCSICommand`
 
-Both efforts should avoid three traps:
+Both efforts should stay disciplined:
 
-- reopening broad static plug-body helper hunting in `CSCSIPlug::SendData`, which is
-  already close to exhaustion
-- mistaking the constructor/tag/resource branch for a transport-install path now that
-  it looks like resource/document plumbing
-- promoting residual state-precondition to an active blocker after the direct patch
-  hypothesis has been functionally closed on the current artifact set
+- do not drift back into “ship the current bridge” or bridge-acceptance framing
+- do not reopen broad plug-body helper hunting unrelated to emulator progress
+- do not treat historical MESA I comparison work as the primary frontier unless it
+  directly helps the emulator contract
 
-The recommended stopping point is now explicit:
+The active state is now:
 
-- `MEASURED`: no visible direct patch path in the current static artifact set, service
-  callback confirmed, and working bridge behavior for the known operations
-- `RESIDUAL`: a deeper state/module-precondition may still exist through
-  `DispatchCommandFromModule`, but it is no longer worth blocking on
-- `REOPEN ONLY IF`: new binary/runtime evidence appears, a regression surfaces, or a
-  missing operation shows the current bridge path is insufficient
+- `MEASURED`:
+  app-side literal patch search exhausted; `SMSendData` local CDB builder reached in
+  harness; BULK `CDB[5]=0x00`; SRAW `CDB[5]=0x80`; raw executor identified as
+  `CSCSIUtils::SCSICommand`
+- `OPEN`:
+  the identity and calling semantics of `0x1620` and `0x1187e`, and the exact wrapper
+  chain from `SMSendData` into the raw executor
+- `NEXT`:
+  recover enough of that wrapper chain for Musashi to continue past the current
+  recursion/error-helper loop
 
 ## Artifact Reminder
 
@@ -176,32 +167,14 @@ Current extracted MESA I binaries:
 - `mesa1-s3000-fx.modu`
 - `mesa1-file-manager.modu`
 
-The latest Codex/Claude cross-check revises that boundary again. The broad exclusion
-still holds for the narrow `+0xa20` direct-install hunt and for the ruled-out
-constructor/tag/resource and far-out table branches. But it no longer applies wholesale
-to the editor-side reply path. Claude's newer Path A/A.5 work, plus Codex spot-checks,
-show that:
+The earlier `+0xa20` / callback-path work remains useful historical context, but it is
+no longer the live frontier. The active frontier is now lower in the plug transport
+chain:
 
-- `CMESAEditor` ctor has five direct absolute calls, not four
-- several targets Codex had treated as data/string territory (`0x02797c`, `0x0287a8`)
-  are real framework code under the corrected EDIT base
-- a static vtable entry at `0x071a53` points to real code at `0x0598a5` immediately
-  before the `CMESAEditor::DoMESACommand` symbol band
+- the direct app-side literal patch path remains negative
+- the harness reaches the local CDB builder under `$1106E`
+- the remaining unknown is the wrapper-family handoff below that builder, especially
+  the role of `0x1620`
 
-So the current best read is:
-
-- the direct `+0xa20` install hunt is effectively exhausted
-- the editor-side reply path is better modeled as compile-time vtable binding inside the
-  recovered graph
-- the remaining static frontier is the socket/vtable path and the plug-side slot family
-  it reaches, not a missing runtime install moment
-
-The plug-side half of that frontier is also sharper now. Codex has independently
-confirmed Claude's Path A.6 claim that the callback at `scsi-plug` `$11fe` is read from
-`plug_slot[+0]`, and that `CMESAPlugIn::ConnectToSocket` installs that field by copying
-the incoming 46-byte `SocketInfo` verbatim. So the next concrete static question is:
-what editor-side function address becomes `SocketInfo[+0]` in the `CONS` payload?
-
-That is still a narrow static frontier, not a return to broad helper hunting. Codex
-should use it for boundary-proof and contradiction-handling work in parallel with
-Claude's runtime Option 2 path.
+That should be the starting point for the next session, not the older callback-install
+story.
