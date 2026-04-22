@@ -3025,3 +3025,45 @@ direct patch/transport path or a host/editor service dispatcher.
 1. `SendCommandToEditor` is a real host-side dispatcher, not just a symbolic label on an opaque callback token.
 2. The visible `CODE 1` callback surface is dominated by editor/service handlers and loader vocabulary, not transport verbs.
 3. The strongest remaining uncertainty is now downstream effects through service/module handlers, not the direct callback body itself.
+
+## 2026-04-21: MESA II Shared Callback Helper Also Looks Module-Facing
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Check the last callback-side helper that still looked capable of hiding something more
+transport-significant than the direct `SendCommandToEditor` body.
+
+### Accomplished
+- Rechecked the shared helper at `mesa-ii-app` `CODE 1` offset `0x1630`
+- Confirmed the same helper is referenced from both callback stubs and the broader
+  plug-scan/load surface
+- Verified bounded bytes at `0x1630` explicitly compare four-char values `PLUG` and
+  `AK11`
+- Updated parity docs to record the tighter read:
+  the helper is best modeled as typed module discovery/registry logic reused by loaders
+  and callback branches, not as a transport-specific patch helper
+
+### Didn't Work
+- This still does not prove that no later module/service branch can affect transport
+- It only narrows the direct callback-side helper layer
+
+### Course Corrections
+- **[EVIDENCE]** The useful claim is not “service callback proves no transport effects.”
+  It is that even the callback's shared helper now points toward module-registry logic
+  rather than transport verbs.
+- **[PROCESS]** This is another stopping-rule result: if more transport relevance exists
+  here, it likely lives downstream of module/service dispatch rather than in the direct
+  callback body or its first shared helper.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 141`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. The callback-side helper most likely to hide “something patchy” is also reused by the typed plug-scan/load path.
+2. Explicit `PLUG` / `AK11` compares push that helper toward module identity/registry semantics.
+3. The remaining callback-side uncertainty is now downstream of service/module dispatch, not in the first shared helper layer.

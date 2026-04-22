@@ -535,6 +535,15 @@ cleanly.
   looks host/editor-service-facing rather than like an obvious plug-transport patcher
   path. That still leaves room for indirect downstream effects through service/module
   handlers, but it narrows the simple patch hypothesis further.
+  Codex has now also tightened the one callback-side helper that still looked capable of
+  hiding something more consequential. The shared helper at `0x1630`, reached from
+  several `SendCommandToEditor` branch stubs, is also referenced from the broader
+  plug-scan/load surface and bounded bytes there show explicit compares against `PLUG`
+  and `AK11`. So the strongest current read is that this helper belongs to typed module
+  discovery/registry work reused by both loaders and callback paths, not to a
+  transport-specific patch path. That still leaves downstream module/service effects
+  open, but it narrows the direct callback body another step toward host-side service
+  dispatch and away from an obvious patcher.
   Codex has now also closed the plug-side selector gap from raw bytes alone. In the
   inline selector table embedded directly after `CMESAPlugIn::DoMESACommand`'s
   `jsr 0x0148`, the offset word for `CONS` sits at file `0x08de` with value `0x002e`,

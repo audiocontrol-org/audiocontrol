@@ -2885,6 +2885,19 @@ correct. Every finding should distinguish direct evidence from inference.
   through module/service handlers, so it narrows the direct-patch hypothesis without
   fully killing it.
 
+- MESA II callback's shared helper `0x1630` looks like typed module-registry logic, not transport control
+  The remaining callback-side pressure point is the shared helper reached from several
+  `0x1e5a` branch stubs. Bounded bytes at `0x1630` show explicit four-char compares
+  against `PLUG` and `AK11`, plus the same helper is referenced not only from callback
+  stubs at `0x1f50`, `0x1fb0`, `0x1fd0`, `0x1ff0`, and `0x2146`, but also from the
+  broader plug-scan/load surface at `0x1820`, `0x183a`, `0x1892`, `0x1cea`, and
+  `0x1d00`. That makes the best current read:
+  this shared helper belongs to typed module discovery/registry work reused by both the
+  loaders and the callback, rather than to a transport-specific patch path.
+  This still stops short of proving that no later module/service branch can affect
+  transport, but it pushes the direct callback body one step farther away from an
+  obvious patcher interpretation.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
