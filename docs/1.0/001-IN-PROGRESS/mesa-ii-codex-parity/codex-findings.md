@@ -3321,3 +3321,16 @@ correct. Every finding should distinguish direct evidence from inference.
   `A1`-address probe optional rather than essential and reinforces the current
   explanation that the harness is still missing chooser/dialog-manager state, not a
   deeper transport-specific callback.
+
+- The function at plug file `0x160c` is named `SMDispatchReply`, not `SMSendData`
+  A fresh raw-symbol reread around the `0x139a` / `0x160c` region corrects an older
+  naming assumption that had leaked too far. The string immediately before file
+  `0x139a` is `SMDataByteEnquiry__9CSCSIPlugFsUc`, which cleanly matches the body that
+  starts at `0x139a`. The next string immediately before file `0x160c` is
+  `SMDispatchReply__9CSCSIPlugFsPUcUcPl`, and the function body begins right there at
+  `0x160c`. That means the long-lived shorthand “`0x160c` = `SMSendData`” should now be
+  retired. The current primary-evidence read is: `0x160c-0x16d8` is the
+  `SMDispatchReply` body that the runtime harness has been reaching. This does not by
+  itself invalidate the measured CDB-construction block at `0x163c-0x167e`, but it does
+  change how that block should be described: it is a CDB builder inside the
+  `SMDispatchReply`-named path, not a proved `SMSendData` symbol body.

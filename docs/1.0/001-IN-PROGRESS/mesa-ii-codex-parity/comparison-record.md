@@ -947,6 +947,15 @@ cleanly.
   evidence still points to missing chooser/dialog-manager state rather than a deeper
   transport-specific method.
 
+- One older symbol naming on the hot path should now be corrected. A raw string-table
+  reread around the `0x139a` / `0x160c` region shows that the function beginning at
+  `0x139a` matches the preceding symbol `SMDataByteEnquiry__9CSCSIPlugFsUc`, and the
+  next string immediately before `0x160c` is `SMDispatchReply__9CSCSIPlugFsPUcUcPl`.
+  So the body at `0x160c-0x16d8` should no longer be described as a proved
+  `SMSendData` symbol. The measured CDB-construction block at `0x163c-0x167e` still
+  exists, but it is inside the `SMDispatchReply`-named path according to the current
+  raw symbol evidence.
+
 ## Comparison Rules
 
 - Codex should compare against the latest Claude branch docs plus its `DEVELOPMENT-NOTES.md`,
