@@ -2768,6 +2768,26 @@ correct. Every finding should distinguish direct evidence from inference.
   or the live target behind `0x106e` is not exactly the currently recovered `0x160c`
   body, or some path-specific condition prevents the apparent conflict from arising.
 
+- MESA I architecture baseline from the Mac OS 7 corpus
+  The extracted MESA I binaries expose a much clearer packaging model than the current
+  MESA II working set. Raw strings in `mesa1-app` explicitly describe an application
+  that scans `MESA Pouch` for modules and expects a separate shared resource file:
+  `Scanning for modules`, `Could not find any modules!`, and
+  `Could not find shared resource file!` all appear alongside type names `MODU` and
+  `SHAR`. The module binaries expose the contract directly. For example,
+  `mesa1-s3-hd-provider.modu` contains `S3Disk.InitModule`,
+  `S3Disk.GetResourcesForModule`, `S3Disk.DoCommand`, `ProvideToDBHandler`,
+  `ProvideSamples`, and `ProvidePrograms`, while `mesa1-sampler-editor.modu` contains
+  `S3000Module.InitModule`, `S3000Module.DoCommand`, `S3000Module.OpenModule`, and an
+  explicit dependency string:
+  `Could not save because M.E.S.A. could not find the S3000 Disk Provider module.`
+  The stable architectural read is that MESA I is an explicit `APPL + SHAR + MODU`
+  system where the host app scans a pouch, loads modules, resolves shared resources,
+  and relies on provider modules for device/storage services. This does not solve the
+  live MESA II `0x106e` question directly, but it strengthens the historical
+  expectation that Akai's glue logic can live in a shared/provider layer rather than in
+  the editor module alone.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

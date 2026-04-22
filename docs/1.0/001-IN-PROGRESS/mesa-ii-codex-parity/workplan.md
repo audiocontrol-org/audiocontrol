@@ -215,6 +215,10 @@ Current recommended work split:
   whether the install edge has effectively left the recovered resource graph. The point
   of the second track is cross-checking and different search order, not avoiding
   overlap at all costs.
+  In parallel, Codex now also owns a bounded MESA I lineage pass against the extracted
+  Mac OS 7 corpus: not as a replacement mystery, but to recover Akai's earlier
+  `APPL + SHAR + MODU` packaging model and see whether that historical split suggests
+  where later MESA II glue would be expected to live.
 
 Current Codex read after the latest far-out reductions:
 
