@@ -23,15 +23,16 @@
 >
 > 7. **MEASURED (REPLY direction only):** Path A.8 traced the dispatch chain from `main`'s non-INIT branch through `vtable[+0xA8]` → dispatcher at file 0x0287C5 → 'ADAT' handler at 0x599a7 → `CMESASocket::AcceptData` at file 0x5A1E1 (`_BlockMove` reply bytes into `CMESASocket[+8]`; store 'SRAW'/'SYSX' tag at `[+12]`).
 >
-> 8. **MEASURED (Path A.9 + A.12 + A.13, 2026-04-21):** OUTBOUND wire format for SRAW audio upload:
->    - **CDB:** `0C 00 [len_hi] [len_mid] [len_lo] 80` (MIDI Send opcode; 24-bit big-endian byte count; byte 5 = 0x80 for mode=0x01, 0x00 for mode=0x00).
->    - **Data:** raw audio bytes, `byte_count` bytes long. **No nibble-encoding, no 7-bit encoding, no transformation** (A.13 exhaustive negative scan of SMSendData/ChooseSCSI/sub-functions).
->    - **Driver:** old Mac SCSI Manager `_SCSIWrite` trap `$A981` at scsi-plug file 0x224e (NOT new `_SCSIDispatch $A089` as A.9 had inferred — `_SCSIDispatch` only appears in Inquiry/ResetBus paths).
->    - **Mode-byte semantics (A.12):** 6 JSR 0x106e sites total. mode=0x01 → CDB[5]=0x80 (SRAW audio + BULK-via-SCSI fallthrough). mode=0x00 → CDB[5]=0x00 (SYSX/MIDI). BULK handler at 0x0e9e falls into SRAW handler at 0x0ec0 when `CSCSIPlug+0xe40` SCSI-mode flag is set.
->    - **Tag dispatch table (A.12):** BOFF→0x0e82, BULK→0x0e9e (→0x0ec0), MIDI→0x1116, SRAW→0x0ec0, SYSX→0x10c6.
->    - **SMSendData CDB[5] formula** at 0x1670: `TST.B fp@(14)` + branch to `MOVE.W #0x80, D5` or `MOVEQ #0, D5`.
+> 8. **MEASURED (Path A.9 + A.12 + A.13 + A.14, 2026-04-21/22):** if the live production path reaches `SMSendData`, the OUTBOUND wire format would be:
+>    - **CDB:** `0C 00 [len_hi] [len_mid] [len_lo] 80` (MIDI Send; 24-bit BE byte count; byte 5 = 0x80 for mode=0x01, 0x00 for mode=0x00).
+>    - **Data:** raw audio bytes, `byte_count` bytes long. No nibble-encoding, no 7-bit encoding, no transformation (A.13 exhaustive negative scan).
+>    - **Driver:** old Mac SCSI Manager `_SCSIWrite` trap `$A981` at scsi-plug file 0x224e.
+>    - **Mode-byte semantics (A.12):** 6 JSR 0x106e sites; mode=0x01 → CDB[5]=0x80 (SRAW + BULK-via-SCSI fallthrough); mode=0x00 → CDB[5]=0x00 (SYSX/MIDI). BULK handler at 0x0e9e falls into SRAW at 0x0ec0 when `CSCSIPlug+0xe40` SCSI-mode flag is set.
+>    - **SMSendData CDB[5] formula MEASURED-deterministic** (A.14): no path from 0x160c entry to 0x1670 CDB-construction nullifies the mode byte. SMDispatchReply (0x139a) is BSR'd at 0x16bc, AFTER the SCSI write at 0x169a — cannot retroactively affect CDB.
 >
->    **Remaining OPEN:** who patches 0x1070-0x1071 at load time (task #35/A.11) — production-behavior question, not on critical path to bridge fix.
+>    **HOWEVER — combined with hardware (Phase A-D, 2026-04-22):** S3000XL rejects `flag=0x80` for both opcode families tested (`0x0A` RSDATA + `0x0B` SDATA) with sense `03 00 00 00`. flag=0x00 universally accepted. Since SMSendData would emit `flag=0x80` deterministically and MESA II works on hardware, **the live production path does NOT reach `SMSendData` (or any wire-equivalent body)**. The wire format above describes the candidate target body's behavior, NOT the production wire format.
+>
+>    **Strongest remaining hypothesis (per Codex 2026-04-22):** production patches `0x106e` to a target that emits `CDB[5]=0x00`. **Next critical-path move:** binary-source hunt (find a known-working MESA II distribution to byte-compare at 0x1070-0x1071 — task #35/A.11/B1).
 >
 > Sections 8/9 of this doc below are obsolete. Trust the path-a*.md docs (each carries its own calibration banner).
 
