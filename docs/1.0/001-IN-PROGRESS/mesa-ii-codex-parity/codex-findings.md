@@ -2898,6 +2898,21 @@ correct. Every finding should distinguish direct evidence from inference.
   transport, but it pushes the direct callback body one step farther away from an
   obvious patcher interpretation.
 
+- MESA II `SMSendData` candidate still looks like the in-plug CDB builder below `$1106E`
+  The live frontier has now shifted back to the shared sender slot at plug file
+  `0x106e`, because Claude's offline harness is capturing real plug-emitted BULK CDBs
+  at that boundary. A fresh bounded `objdump` pass over file `0x160c-0x16d6` shows the
+  old `SMSendData` candidate still does concrete work *below* that slot:
+  it writes `0x0c` into local byte `%fp@(-6)`, stores the three low bytes of `%d7` into
+  `%fp@(-4..-2)`, and sets `%fp@(-1)` to `0x80` when `%fp@(14)` is nonzero, else `0`.
+  It then pushes `word #2`, `long #0x3e8`, `%d7`, `%fp@(16)`, `&%fp@(-6)`, `%d6`, and
+  `self+0x093a`, and calls the deeper helper at absolute target `0x1620`; on success it
+  can also fall into the nested helper at `0x139a` for optional follow-on reply/count
+  handling. The stable read is now narrower than before:
+  if the harness intercepts at `$1106E`, it is still bypassing this in-plug CDB-
+  construction layer, even though Claude's newly observed BULK shape
+  `0c 00 00 01 96 80` is structurally consistent with it.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

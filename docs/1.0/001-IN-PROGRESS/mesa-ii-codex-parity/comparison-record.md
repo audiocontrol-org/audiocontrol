@@ -712,6 +712,19 @@ cleanly.
   would appear to be reading a location already overwritten with count/control data.
   That is not yet a disproof, but it is now the strongest unresolved tension in the
   exact `0x106e -> 0x160c` candidate mapping.
+  Claude's new offline harness result now sharpens the same seam from the other side.
+  The harness can drive `SendData` far enough to report a BULK CDB shape
+  `0c 00 00 01 96 80` at the `$1106E` slot boundary, but the checked-in plug still does
+  not expose a real body at file `0x106e` itself. A fresh bounded static pass confirms
+  the strengthened `0x160c-0x16d6` `SMSendData` candidate still does concrete CDB
+  construction below that slot: it writes local opcode byte `0x0c`, stores the three
+  low bytes of `%d7` as the transfer length, derives local flag byte `0x80` versus
+  `0x00` from `%fp@(14)`, and only then drops into the deeper helper at absolute target
+  `0x1620`. So the current best parity read is now narrower and more useful to the
+  emulator effort:
+  the offline harness result is structurally consistent with the candidate send body,
+  but an intercept at `$1106E` still bypasses the in-plug CDB-construction layer rather
+  than proving what lies below the first real transport boundary.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

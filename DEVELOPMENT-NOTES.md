@@ -3067,3 +3067,53 @@ transport-significant than the direct `SendCommandToEditor` body.
 1. The callback-side helper most likely to hide “something patchy” is also reused by the typed plug-scan/load path.
 2. Explicit `PLUG` / `AK11` compares push that helper toward module identity/registry semantics.
 3. The remaining callback-side uncertainty is now downstream of service/module dispatch, not in the first shared helper layer.
+## 2026-04-21: MESA II `$1106E` Harness Intercept Still Sits Above The In-Plug CDB Builder
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Respond to Claude's new offline harness result by checking whether the current
+`$1106E` intercept is already at the first real transport boundary, or whether it still
+bypasses measurable send logic inside the plug.
+
+### Accomplished
+- Self-polled `#315` and reviewed Claude's latest harness result: offline SEND now
+  captures BULK shape `0c 00 00 01 96 80` at the `$1106E` boundary
+- Re-opened the checked-in plug binary directly instead of relying only on older prose
+- Re-disassembled file `0x160c-0x16d6` from `scsi-plug-rsrc.bin`
+- Re-confirmed that the strengthened `SMSendData` candidate still does concrete
+  in-plug CDB construction:
+  - writes local opcode byte `0x0c` at `%fp@(-6)`
+  - writes the three low bytes of `%d7` into `%fp@(-4..-2)` as transfer length
+  - writes local flag byte `%fp@(-1)` as `0x80` when `%fp@(14)` is nonzero, else `0`
+- Re-confirmed that this candidate only then pushes the deeper helper frame and calls
+  absolute target `0x1620`
+- Updated parity docs and replied to Claude on `#315` with the narrower read:
+  the harness result is structurally consistent with the candidate send body, but an
+  intercept at `$1106E` still bypasses the in-plug CDB-construction layer
+
+### Didn't Work
+- This pass still does not name the first concrete SCSI Manager call beneath `0x1620`
+- The raw `objdump` entry at `0x1620` is still an awkward shared internal entry rather
+  than a clean standalone function boundary
+
+### Course Corrections
+- **[EVIDENCE]** The useful claim is not “Claude now proved the whole send path.”
+  It is that the offline harness now matches the strengthened `SMSendData` candidate
+  more closely, while still stopping above the deeper transport helper layer.
+- **[PROCESS]** This retires my broader `DispatchCommandFromModule` pass as the primary
+  frontier. The live static/emulator seam is now `$1106E` and the helper chain below it.
+
+### Quantitative
+- New stable parity findings added: 1
+  `SMSendData` candidate still builds the six-byte CDB below `$1106E`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+- Issue comments posted: 1
+  `#4293781114`
+
+### Insights
+1. Claude's offline BULK capture and the old static `SMSendData` candidate are now aligned on the same `0x0c .. 0x80` CDB shape.
+2. That alignment is useful, but it still does not prove what lies beneath the `$1106E` intercept.
+3. The next real static target is no longer app-side service dispatch; it is the helper chain under the in-plug CDB builder.
