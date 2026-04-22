@@ -2843,6 +2843,48 @@ correct. Every finding should distinguish direct evidence from inference.
   turns out to be resource/service-facing rather than a direct patcher, that would fit
   a known Akai pattern rather than being an ad hoc fallback explanation.
 
+- MESA II callback `0x1e5a` resolves in `CODE 1` as `SendCommandToEditor`
+  Independent parsing of the installed `mesa-ii-app` resource fork now gives a direct
+  identifier for the callback Claude is chasing. The app contains 11 `CODE` resources,
+  including `CODE 1` named `Application`. The app-side loader bodies live there:
+  `strings -t x` over the extracted `CODE 1` body shows
+  `LoadMESAPlugIn__7CMESAv2FP10ModuleData` at `0x18b3`,
+  `LoadMESAEditor__7CMESAv2FP10ModuleData` at `0x1d21`,
+  `SendCommandToPlugIn__7CMESAv2FP11MESACommandl` at `0x19a5`, and
+  `SendCommandToEditor__7CMESAv2FP11MESACommandl` at `0x1e29`.
+  Direct disassembly of that same segment shows both loader paths embedding the callback
+  literal:
+  `0x1846: lea 0x1e5a,%a0`
+  `0x1cb4: lea 0x1e5a,%a0`
+  and `0x1e5a` itself begins a real function:
+  `4e56 fff8 48e7 1838 ...`
+  So the callback passed in the `INIT` struct is no longer an opaque runtime token. It
+  is best modeled as an app-side function named `SendCommandToEditor`. This does not by
+  itself prove the patch hypothesis is dead, because the callback body could still
+  influence later transport state indirectly or dispatch further. But it materially
+  strengthens the service-callback branch over the direct-patcher branch.
+
+- MESA II callback `0x1e5a` dispatches app/editor service commands, not visible plug transport verbs
+  A tighter bounded decode of `mesa-ii-app` `CODE 1` now sharpens that callback model.
+  The body at `0x1e5a` immediately enters an inline tag-dispatch structure, then fans
+  out through internal stubs at `0x1f10-0x2168` to a stable set of app-side handlers:
+  direct `jsr` targets include `0x21a4`, `0x2204`, and `0x2264`, whose nearby symbol
+  strings identify them as `BusyCursor__7CMESAv2FUc`,
+  `BarCursor__7CMESAv2FUc`, and `HandCursor__7CMESAv2FUc`. The same callback body also
+  reaches later handlers whose nearby symbol strings identify editor/service methods
+  such as `ActivateCurrentEditor__7CMESAv2Fv`,
+  `MESADeleteMenu__7CMESAv2FP19MESAInstallMenuData`,
+  `MESAInstallMenu__7CMESAv2FP19MESAInstallMenuData`,
+  and `DispatchCommandFromModule__7CMESAv2FP11MESACommand`.
+  A bounded string scan over the same `CODE 1` body shows loader-side tokens like
+  `PLUG`, `EDIT`, and `INIT`, but no occurrences of transport-facing terms such as
+  `SCSI`, `MIDI`, `CONS`, `ASOK`, `SRAW`, `UALL`, or `BULK`.
+  The stable read is:
+  the callback currently looks like host/editor service dispatch rather than a direct
+  plug-transport patcher path. This still leaves room for indirect downstream effects
+  through module/service handlers, so it narrows the direct-patch hypothesis without
+  fully killing it.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

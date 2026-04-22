@@ -523,6 +523,18 @@ cleanly.
   not close the `SocketInfo[+0]` question yet, but it raises the status of Claude's
   current candidate from loose speculation to the strongest concrete function candidate
   currently visible in the recovered graph.
+  Codex has now pushed one layer deeper into the main-app callback body too. The
+  callback at `0x1e5a` in `mesa-ii-app` `CODE 1` is no longer just a named target; it
+  is now bounded as a host/editor command dispatcher. The visible fan-out from
+  `SendCommandToEditor` goes through an inline tag table and reaches app-side service
+  handlers whose nearby symbol strings identify `BusyCursor`, `BarCursor`,
+  `HandCursor`, `ActivateCurrentEditor`, `MESADeleteMenu`, `MESAInstallMenu`, and
+  `DispatchCommandFromModule`. A bounded string scan over the same `CODE 1` body still
+  shows loader-side `PLUG` / `EDIT` / `INIT` vocabulary but no visible `SCSI`, `MIDI`,
+  `CONS`, `ASOK`, `SRAW`, `UALL`, or `BULK` terms. So the direct callback body now
+  looks host/editor-service-facing rather than like an obvious plug-transport patcher
+  path. That still leaves room for indirect downstream effects through service/module
+  handlers, but it narrows the simple patch hypothesis further.
   Codex has now also closed the plug-side selector gap from raw bytes alone. In the
   inline selector table embedded directly after `CMESAPlugIn::DoMESACommand`'s
   `jsr 0x0148`, the offset word for `CONS` sits at file `0x08de` with value `0x002e`,

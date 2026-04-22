@@ -2969,3 +2969,59 @@ count/control structure implied by the strengthened `0x160c -> 0x139a` path.
 1. `+0x0e3c` is now a better fit for pointer-bearing control state than for a scalar mode word.
 2. The current strongest static evidence keeps strengthening the `0x160c` candidate rather than weakening it.
 3. The remaining uncertainty is still identity/patching, not outer-frame compatibility.
+
+## 2026-04-21: MESA II App Callback Looks Service-Facing
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Push the most fruitful remaining static unknown after the MESA I comparison pass:
+determine whether the `mesa-ii-app` callback at `0x1e5a` in `CODE 1` looks like a
+direct patch/transport path or a host/editor service dispatcher.
+
+### Accomplished
+- Rechecked the installed `mesa-ii-app` resource fork and the extracted `CODE 1`
+  segment at `artifacts/mesa-ii-code1.bin`
+- Verified that both `LoadMESAPlugIn` and `LoadMESAEditor` embed the same callback
+  literal: `lea 0x1e5a,%a0`
+- Bounded the `0x1e5a` body enough to classify it as an inline tag-dispatch path rather
+  than a tiny opaque thunk
+- Mapped the visible direct fan-out to app-side handlers with nearby symbol strings:
+  - `BusyCursor__7CMESAv2FUc`
+  - `BarCursor__7CMESAv2FUc`
+  - `HandCursor__7CMESAv2FUc`
+  - `ActivateCurrentEditor__7CMESAv2Fv`
+  - `MESADeleteMenu__7CMESAv2FP19MESAInstallMenuData`
+  - `MESAInstallMenu__7CMESAv2FP19MESAInstallMenuData`
+  - `DispatchCommandFromModule__7CMESAv2FP11MESACommand`
+- Ran a bounded string scan over the same `CODE 1` body and confirmed it contains
+  loader-side `PLUG` / `EDIT` / `INIT` vocabulary but no visible transport-facing
+  `SCSI`, `MIDI`, `CONS`, `ASOK`, `SRAW`, `UALL`, or `BULK` tokens
+- Updated parity docs to record the tighter read: direct callback body looks
+  host/editor-service-facing rather than like an obvious plug-transport patcher
+
+### Didn't Work
+- This still does not prove the callback cannot influence transport indirectly through
+  downstream module/service handlers
+- It also does not yet replace Claude's A.18 decode; it is a bounded independent check
+  against the same frontier
+
+### Course Corrections
+- **[EVIDENCE]** The right stable claim here is not “patching is dead.” It is that the
+  visible callback body does not currently expose the transport vocabulary or direct
+  patch shape that a simple patch hypothesis would want.
+- **[PROCESS]** This is now the right calibration point for reviewing Claude's A.18
+  result: direct patcher vs service callback vs service callback with downstream side
+  effects.
+
+### Quantitative
+- New stable parity findings added: 1
+  `Finding 140`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. `SendCommandToEditor` is a real host-side dispatcher, not just a symbolic label on an opaque callback token.
+2. The visible `CODE 1` callback surface is dominated by editor/service handlers and loader vocabulary, not transport verbs.
+3. The strongest remaining uncertainty is now downstream effects through service/module handlers, not the direct callback body itself.
