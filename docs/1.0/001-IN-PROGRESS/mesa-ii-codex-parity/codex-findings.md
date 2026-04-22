@@ -3561,3 +3561,14 @@ correct. Every finding should distinguish direct evidence from inference.
   the first thing to distrust. The tighter next seam is:
   does `0x0028` / `A055` return the correct runtime-mapped pointer to PLUG+`0x281f`,
   or is that returned pointer already wrong before `0x0038` reads through it?
+
+- The A4-world layout now couples the cache/flag fields and the relocation-table header into one stronger invariant
+  One more raw-byte pass makes the A4 story sharper. Under the fixed A4-world helper,
+  `A4` is supposed to root the PLUG data block at internal `0x25b4`. That means
+  `a4+0x266 = PLUG+0x281a` and `a4+0x26a = PLUG+0x281e`, while the static relocation
+  table that helper `0x0028` returns starts immediately after them at PLUG+`0x281f`.
+  So the cached base, the trap-dependent flag, and the relocation-table header all live
+  contiguously in the same A4-rooted region. That strengthens the next harness
+  discriminator: if `A4` is wrong by the time execution reaches `0x00ae`, then bogus
+  reads of `a4+0x266`, `a4+0x26a`, and the relocation-table count are all expected
+  downstream effects of the same upstream A4 failure, not three independent bugs.

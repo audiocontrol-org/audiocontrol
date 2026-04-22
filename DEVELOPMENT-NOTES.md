@@ -3764,3 +3764,47 @@ or whether the wrong runtime pointer is being handed into the relocation loop.
 1. The relocation-table corruption theory got strictly weaker today; the pointer-to-table theory got stronger.
 2. `A055 StripAddress` is now a much more plausible next missing runtime contract than “random malformed relocation data.”
 3. This is exactly the kind of narrowing that keeps the harness on the production path instead of turning into another bypass experiment.
+
+## 2026-04-22: A4-World Adjacency Makes The Relocation Fields A Single Coupled Seam
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Decide whether the A4 failure and the bad relocation-table reads are really separate
+bugs, or just one upstream A4-world failure manifesting three times.
+
+### Accomplished
+- Re-read the raw PLUG-body bytes around the A4-world base `0x25b4`
+- Verified the exact derived locations:
+  - `a4+0x266 = PLUG+0x281a`
+  - `a4+0x26a = PLUG+0x281e`
+  - relocation table header begins at `PLUG+0x281f`
+- Posted the coupling correction to Claude on `#315`
+
+### Didn't Work
+- The earlier framing still treated the cache/flag reads and the relocation-table
+  pointer as if they might be independent failures
+
+### Course Corrections
+- **[EVIDENCE]** The cached base, trap-dependent flag, and relocation-table header all
+  live contiguously in the same A4-rooted block.
+- **[TACTICS]** If `A4` is wrong before `0x00ae`, then the bad `a4+0x266`,
+  `a4+0x26a`, and relocation-count observations should all be treated as downstream
+  effects of that one failure first.
+- **[TACTICS]** This raises the priority of proving whether `A4` survives `0x0104`
+  above any deeper relocation-table theory.
+
+### Quantitative
+- New stable parity findings added: 2
+  `a4+0x266/0x26a and relocation table are contiguous in one A4-world block`
+  `wrong A4 can explain all three downstream bad reads at once`
+- Feature docs updated: 3
+  `codex-findings.md`, `comparison-record.md`, `DEVELOPMENT-NOTES.md`
+- Issue comments posted: 1
+  `#4300346386`
+
+### Insights
+1. The harness now has a strong ordering rule: prove A4 survives `0x0104` before treating relocation-table reads as an independent seam.
+2. This is a better discriminator than either “conditional A4 setup” or “bad relocation table” because it unifies the observed failures into one memory-layout fact.
+3. The next useful dynamic trace is still small, but it now has a sharper interpretation budget once it lands.

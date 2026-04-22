@@ -1116,6 +1116,18 @@ cleanly.
   tighter: either `0x0028` / `A055` is returning the wrong runtime pointer, or that
   pointer is being clobbered before `0x0038` reads through it.
 
+- The A4-world layout makes the cache fields and the relocation table one coupled seam, not separate bugs
+  Claude baseline:
+  the newest dynamic trace reports `A4 = 0` at `0x00ae`, while the relocation-side
+  reads also look wrong downstream.
+  Codex finding:
+  with the fixed A4-world base at PLUG+`0x25b4`, the key fields are physically adjacent:
+  `a4+0x266 = PLUG+0x281a`, `a4+0x26a = PLUG+0x281e`, and the relocation-table header
+  begins immediately after them at PLUG+`0x281f`. So if `A4` is wrong before `0x00ae`,
+  bogus reads of `a4+0x266`, `a4+0x26a`, and the relocation-table count are expected
+  downstream consequences of the same A4 failure. That raises the priority of proving
+  whether `A4` survives `0x0104` above any deeper relocation-table theory.
+
 - One hot-path symbol correction itself needed correcting. A fuller raw string-table
   reread around `0x139a` / `0x160c` shows the binary's symbol strings are naming the
   **preceding** function bodies, not the following ones. On that pattern:
