@@ -36,7 +36,7 @@
 >
 >    **Hypothesis ranking after A.14 (per Codex framework):** (1) STRONGEST CANDIDATE: production reaches a different target or non-wire-equivalent live path; (2) STILL OPEN: state condition makes the same emitted `0x80` acceptable; (3) our interpretation of the candidate body — refuted by A.14.
 >
->    **Next critical-path move:** binary-source hunt (task #35/A.11/B1) + ONE narrow static subtrack on patch-mechanism / relocation-table hunting (task #39/A.15).
+>    **Next critical-path move:** binary-source hunt (task #35/A.11/B1), now sharpened by A.15 to **acquisition of the MESA system extension binary** specifically (not just any MESA II distribution variant). A.15 found the editor doesn't reference `'PLUG'` literal — strong pointer (per Codex calibration: not proof, but combined with absent CODE/cfrg/PTCH resource types and macbin/rsrc.bin equality, strongest current explanation is external loader). Sources to try: original MESA installer disks, classic Mac System Folder captures, vintage Akai user community.
 >
 > Sections 8/9 of this doc below are obsolete. Trust the path-a*.md docs (each carries its own calibration banner).
 
