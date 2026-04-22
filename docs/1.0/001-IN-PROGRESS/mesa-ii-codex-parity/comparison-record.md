@@ -955,6 +955,18 @@ cleanly.
   evidence still points to missing chooser/dialog-manager state rather than a deeper
   transport-specific method.
 
+- The next chooser stub should treat `$A976` as producing a usable `DialogPtr`, not a
+  dialog-side vtable. A fresh pass over `__ct__7CDialogFsPv` and the later chooser
+  calls makes that split explicit. In `__ct__7CDialogFsPv` at `0x2150-0x2196`, the
+  plug's own local object gets its method table from `a4+0x4c` written into `this+0x0e`
+  and separately stores the trap-returned dialog handle into `this+4`. The chooser
+  then calls its methods through that local object's vtable (`+0x0c` at
+  `0x177a-0x1784`, `+0x10` at `0x19ea-0x19f4`). So the minimal harness contract is not
+  “fake vtable bytes inside the `DialogPtr` returned by `GetNewDialog`.” It is “return
+  a non-null `DialogPtr` that survives the small dialog-manager trap surface used by the
+  plug's local `CDialog` methods, while letting the plug code keep supplying the
+  chooser vtable itself.”
+
 - One hot-path symbol correction itself needed correcting. A fuller raw string-table
   reread around `0x139a` / `0x160c` shows the binary's symbol strings are naming the
   **preceding** function bodies, not the following ones. On that pattern:

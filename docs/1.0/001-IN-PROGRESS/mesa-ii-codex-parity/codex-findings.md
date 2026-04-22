@@ -3346,3 +3346,17 @@ correct. Every finding should distinguish direct evidence from inference.
   the earlier hot-path naming: the measured CDB-construction block at `0x163c-0x167e`
   really does sit inside the `SMSendData`-named path, while the earlier
   `0x139a-0x15e0` body is the separate `SMDispatchReply` handler.
+
+- The chooser vtable lives in the local `CDialog` object, not in the `DialogPtr` returned by `GetNewDialog`
+  A direct disassembly pass over the `CDialog` cluster at file `0x2150-0x22d0` sharpens
+  the next harness contract. `__ct__7CDialogFsPv` at `0x2150-0x2196` explicitly writes
+  the method-table pointer `a4+0x4c` into `this+0x0e`, stores the trap-returned dialog
+  handle into `this+4`, copies the third ctor arg into `this+8`, and sets byte
+  `this+0x0c = 1`. The later chooser-side calls in `ChooseSCSI` then read the vtable
+  from the stack-local object itself: `0x177a-0x1784` loads `object->vtable[+0x0c]`,
+  and `0x19ea-0x19f4` loads `object->vtable[+0x10]`. So the missing `$A976`
+  `GetNewDialog` contract should not be modeled as “return a dialog pointer with a
+  fake vtable inside it.” The better minimal read is: return a non-null `DialogPtr`
+  that can survive the small set of dialog-manager traps used by the local `CDialog`
+  methods, while letting the plug's own stack-local `CDialog` object supply the
+  chooser vtable.
