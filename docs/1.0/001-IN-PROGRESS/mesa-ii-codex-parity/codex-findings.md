@@ -3204,3 +3204,16 @@ correct. Every finding should distinguish direct evidence from inference.
   not executable setup code. So the remaining plausible writer for the older
   `0x0d68/0x0d6a/0x0d6c` latch cluster looks even less like a missed immediate offset
   store and more like a higher-level host/open/init state path.
+
+- `LoadMESAPlugIn` still passes only a tiny `INIT` struct, not a fat loader-state block
+  A bounded reread of `mesa-ii-app` `CODE 1` around `LoadMESAPlugIn__7CMESAv2FP10ModuleData`
+  at file `0x17f4-0x18b0` tightens the host/open boundary again. After looking up the
+  `PLUG` resource and locking it, the loader builds an on-stack 10-byte record:
+  `fp@(-10..-7) = 'INIT'`, `fp@(-6..-5) = 0`, `fp@(-4..-1) = 0x1e5a
+  (SendCommandToEditor)`, then passes only `&fp@(-10)` to the plug entry via `jsr a4@`.
+  On success it stores `a4` into `ModuleData+72` and the resource ID `d3` into
+  `ModuleData+70`; on failure it runs the alert path and clears those slots. So the
+  visible app-side loader is still not passing any obvious selection/latch-bearing state
+  into the plug `INIT` entry beyond the callback and a writable result word. That makes
+  the older `0x0d68/0x0d6a/0x0d6c` latch cluster look even less like something seeded by
+  a simple loader-side struct and more like a later host/open/init service effect.

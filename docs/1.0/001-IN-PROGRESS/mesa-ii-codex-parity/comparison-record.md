@@ -870,6 +870,15 @@ cleanly.
   strongly toward higher-level host/open/init state rather than one missed immediate
   offset store inside the visible binaries.
 
+- A bounded reread of `mesa-ii-app` `CODE 1` around `LoadMESAPlugIn` tightens the
+  loader boundary too. The visible loader still passes only a tiny 10-byte `INIT`
+  struct to the plug entry:
+  `'INIT'`, a zero result word, and callback `0x1e5a (SendCommandToEditor)`.
+  On success it caches only the plug entry pointer at `ModuleData+72` and the resource
+  ID at `ModuleData+70`. So the older latch cluster does not look like it is being
+  seeded by a fat loader-side state block either; the remaining writer is more likely a
+  later host/open/init service effect.
+
 ## Comparison Rules
 
 - Codex should compare against the latest Claude branch docs plus its `DEVELOPMENT-NOTES.md`,
