@@ -2812,6 +2812,22 @@ correct. Every finding should distinguish direct evidence from inference.
   for it is the main app / resource system, not another obvious `SHAR`-typed companion
   file in the installed tree.
 
+- MESA I shared-resource API is explicit at the module boundary
+  The `mesa1-shared.shar` binary itself is mostly opaque from a quick string pass, but
+  the surrounding module contracts make its role clear enough for architectural use.
+  Multiple MESA I `MODU` files explicitly expose:
+  `GetResourcesForModule`, `GetSharedResource`, and `SetSharedResource`, while the
+  provider-side module also exposes `ModulePane.GetSharedResources`. For example:
+  `mesa1-file-manager.modu`, `mesa1-s2000.modu`, and `mesa1-s3000-fx.modu` all contain
+  `SetSharedResource__11CModuleViewFs` and `GetSharedResource__11CModuleViewCFv`
+  alongside their module `InitModule` / `DoCommand` / `GetResourcesForModule` methods.
+  `mesa1-s3-hd-provider.modu` likewise contains `ModulePane.GetSharedResources` next to
+  its provider contract. The stable read is that MESA I's shared layer is not just an
+  incidental file in the pouch; it is a first-class part of the module API. That makes
+  the absence of an equally visible `SHAR`-style file in MESA II more meaningful:
+  if the same architectural responsibility survived, it was likely folded into the app
+  / resource system rather than remaining a separately named install artifact.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
