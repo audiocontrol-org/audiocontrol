@@ -2788,6 +2788,30 @@ correct. Every finding should distinguish direct evidence from inference.
   expectation that Akai's glue logic can live in a shared/provider layer rather than in
   the editor module alone.
 
+- MESA I vs MESA II packaging comparison
+  The installed MESA II files now make the lineage contrast more explicit. In MESA I,
+  the host side talks about scanning `MESA Pouch` for `MODU` modules and needing a
+  separate `SHAR` resource file, while the editor and provider modules expose paired
+  contracts like `InitModule`, `GetResourcesForModule`, and `DoCommand`. In the
+  extracted MESA II install set, the visible packaging vocabulary changes:
+  `mesa-ii-app` contains `Could not find Editors or PlugIns folder!`,
+  `To install an Editor you must put it into the Editors folder in the MESA Pouch
+  folder and reboot MESA.`, and
+  `To install a PlugIn you must put it into the PlugIns folder in the MESA Pouch folder
+  and reboot MESA.`, plus the typed loader tokens `EDIT`, `PLUG`, and
+  `LoadMESAPlugIn__7CMESAv2FP10ModuleData`. Meanwhile `sampler-editor-2.3` exposes
+  `InitModule__14CSamplerModuleFPFP11MESACommand_v`, `GetPlugList__14CSamplerModuleFv`,
+  and `OpenModule__14CSamplerModuleFv`, and emits the runtime error
+  `Sampler Editor cannot find a MIDI or a SCSI plugin to handle data transfer!`
+  The stable comparison read is:
+  MESA II appears to replace the older visible `SHAR + MODU provider` packaging with an
+  `APPL + EDIT + PLUG` layout where the app owns the pouch/folder scan and loads typed
+  editor/plug resources directly. That does not prove there is no hidden shared layer
+  inside the app, but it does support the historical model Claude is now converging on:
+  if MESA II has the equivalent of MESA I shared/provider glue, the best visible place
+  for it is the main app / resource system, not another obvious `SHAR`-typed companion
+  file in the installed tree.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
