@@ -59,3 +59,8 @@ devenv.lock
 # Session analyzer (cloned tool, not tracked)
 tools/session-analyzer/
 .analyzer-data/
+
+# MESA II reverse engineering — large disk images (1GB+ Mac OS HFS images)
+# Extracted small artifacts under binaries-large/extracted/ ARE committed
+docs/1.0/001-IN-PROGRESS/mesa-ii-reverse-engineering/mesa-ii-analysis/binaries-large/*.hfs
+docs/1.0/001-IN-PROGRESS/mesa-ii-reverse-engineering/mesa-ii-analysis/binaries-large/*.hfv
