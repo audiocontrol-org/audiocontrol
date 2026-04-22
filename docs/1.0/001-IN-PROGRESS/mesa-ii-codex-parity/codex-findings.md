@@ -3221,3 +3221,20 @@ correct. Every finding should distinguish direct evidence from inference.
   writable result word. That makes the older `0x0d68/0x0d6a/0x0d6c` latch cluster look
   even less like something seeded by a simple loader-side struct and more like a later
   host/open/init service effect.
+
+- The `0x187e` loop bound is a bus-count/state slot, not the visible socket-entry count
+  A new primary-evidence reread of the plug bytes tightens the live Musashi seam
+  sharply. The large body at file `0x1700-0x1afc` is not `SMSendData`; it is
+  `ChooseSCSI__9CSCSIPlugFUl`, with the next symbol string starting at `0x1b01`.
+  Inside that body, the outer loop at `0x197e-0x198a` increments `%d5`, sign-extends it,
+  and compares it against `CSCSIPlug+0x0942`. That field is **not** the visible
+  `CMESAPlugIn+56` socket-entry count. The embedded `CMESAPlugIn` constructor at
+  `0x07ac` seeds `subobject+8` with literal `'NULL'`, which maps to the same outer
+  offset `0x0942`, while the visible entry count is at `subobject+56` / outer `0x0972`.
+  More importantly, the later helper `IdentifyBusses__10CSCSIUtilsFv` at
+  `0x1f0e-0x1faa` explicitly writes `%a2@(8)` with `%d3` at `0x1fa0` on its success path.
+  So the live outer loop is best modeled as a bus-enumeration bound derived from
+  `IdentifyBusses`, not as a loop over the socket table count. That means the current
+  harness seam is no longer “populate the socket table correctly” in the narrow sense;
+  it is “make the `ChooseSCSI` / `IdentifyBusses` path establish a sane bus-count/state
+  value in `CMESAPlugIn+8` before the selection loop runs.”

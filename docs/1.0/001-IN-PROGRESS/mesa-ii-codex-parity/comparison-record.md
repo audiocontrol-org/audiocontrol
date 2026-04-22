@@ -880,6 +880,16 @@ cleanly.
   fat loader-side state block either; the remaining writer is more likely a later
   host/open/init service effect.
 
+- The live loop seam in the plug is now sharper and changes the harness focus. The large
+  body at `0x1700-0x1afc` is `ChooseSCSI`, not `SMSendData`. Its outer loop compares the
+  bus index in `%d5` against `CSCSIPlug+0x0942`, but that offset is **not** the visible
+  `CMESAPlugIn+56` socket-entry count. The embedded `CMESAPlugIn` ctor seeds
+  `subobject+8` (outer `0x0942`) to `'NULL'`, while the visible entry count is
+  `subobject+56` (outer `0x0972`). The later helper `IdentifyBusses__10CSCSIUtilsFv`
+  explicitly writes `%a2@(8)` on success. So the current harness seam is better modeled
+  as missing bus-enumeration state from `IdentifyBusses` / `ChooseSCSI`, not a simple
+  socket-table count mismatch.
+
 ## Comparison Rules
 
 - Codex should compare against the latest Claude branch docs plus its `DEVELOPMENT-NOTES.md`,
