@@ -974,6 +974,18 @@ cleanly.
   stricter requirement is only: a stable non-null handle plus trap handlers that do not
   reject that handle along the chooser-specific path.
 
+- A bounded reread of the plug's visible top-level entry surface now argues against one
+  easy upstream escape hatch. `main` only treats `INIT` specially, routing it to
+  vtable `+0x0c` (matching the tiny `SetMESAProc` body that stores the callback at
+  object `+4`), and every later command goes through `DoMESACommand`. Inside that
+  visible command selector, the obvious pre-`SEND` arms remain thin: `CONS` and `ASOK`
+  go to the already-known socket-table paths, one no-arg arm matches the empty
+  `Open__9CSCSIPlugFv` stub, and another just copies the plug identifier block out
+  through the command buffer. So the currently visible plug entry/command layer still
+  does not reveal an obvious pre-send bus-state initializer. That supports the new
+  tactical shift upward: the missing pre-state is more likely in earlier editor/module
+  lifecycle or deeper callback/service behavior above this plug command surface.
+
 - One hot-path symbol correction itself needed correcting. A fuller raw string-table
   reread around `0x139a` / `0x160c` shows the binary's symbol strings are naming the
   **preceding** function bodies, not the following ones. On that pattern:

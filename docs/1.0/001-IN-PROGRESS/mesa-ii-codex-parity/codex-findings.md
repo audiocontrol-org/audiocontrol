@@ -3371,3 +3371,20 @@ correct. Every finding should distinguish direct evidence from inference.
   static evidence does **not** require the harness to fabricate a byte-accurate dialog
   record layout for `GetNewDialog`'s return value. It only needs a stable non-null
   handle that the small chooser-specific trap surface can accept.
+
+- The visible plug entry surface above `SEND` is thinner than it first looked, and it does not expose an obvious pre-send bus-state initializer
+  A bounded reread of plug `main` (`0x070c-0x07a2`), `CMESAPlugIn::SetMESAProc`
+  (`0x0856-0x0868`), and the top-level `CMESAPlugIn::DoMESACommand` selector body
+  (`0x089a-0x099e`) narrows the higher lifecycle surface. `main` only handles `INIT`
+  specially: it constructs the plug object, stores it in the global slot at `a4+0x262`,
+  and calls vtable `+0x0c` with the `INIT` payload, which matches the separate tiny
+  `SetMESAProc` body storing the callback at object `+4`. Every non-`INIT` command then
+  routes through vtable `+0x10` into `DoMESACommand`. Inside that visible command
+  surface, the pre-`SEND` arms stay narrow: `CONS` and `ASOK` feed the already-known
+  `ConnectToSocket` / `ActivateSocket` paths, one no-arg arm matches the empty
+  `Open__9CSCSIPlugFv` stub at `0x0d8e-0x0d96`, and one copy-style arm simply copies the
+  plug's identifier block at `this+8` out through the command buffer. So the current
+  visible plug-side lifecycle between `INIT` and `SEND` still does **not** expose any
+  obvious command arm that would establish the missing chooser / bus-enumeration
+  pre-state. That pushes the next meaningful search upward: earlier editor/module
+  lifecycle or deeper callback/service effects above this visible plug command layer.
