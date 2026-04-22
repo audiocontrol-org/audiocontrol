@@ -23,6 +23,7 @@ Parallel Codex-driven reverse engineering of Akai's MESA II sampler editor, desi
 | Comparison Record | [comparison-record.md](./comparison-record.md) |
 | Codex Findings Log | [codex-findings.md](./codex-findings.md) |
 | Mac OS 9 Disk Image Copy | [macintosh-hd-2026-04-16.img](./artifacts/macintosh-hd-2026-04-16.img) |
+| Mac OS 7 Disk Image Copy | [macos-7-disk.hfv](./artifacts/macos-7-disk.hfv) |
 | Parent Issue | TBD |
 
 ## Overview
@@ -145,6 +146,25 @@ the MESA system-extension / companion-binary hunt.
 
 If future work needs installed MESA files beyond `sampler-editor` and `scsi-plug`, this
 disk image is the first place to check.
+
+There is now also a second historical artifact for lineage comparison:
+
+- Original local path:
+  `/Users/orion/Downloads/macos-7-disk.hfv`
+- Workspace copy:
+  [artifacts/macos-7-disk.hfv](./artifacts/macos-7-disk.hfv)
+- Extracted installed MESA I corpus:
+  [artifacts/macos-7-installed](./artifacts/macos-7-installed)
+
+Current extracted MESA I binaries:
+
+- `mesa1-app`
+- `mesa1-sampler-editor.modu`
+- `mesa1-shared.shar`
+- `mesa1-s3-hd-provider.modu`
+- `mesa1-s2000.modu`
+- `mesa1-s3000-fx.modu`
+- `mesa1-file-manager.modu`
 
 The latest Codex/Claude cross-check revises that boundary again. The broad exclusion
 still holds for the narrow `+0xa20` direct-install hunt and for the ruled-out

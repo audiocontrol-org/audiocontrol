@@ -48,6 +48,9 @@
 - Installed Mac OS 9 disk image with MESA II:
   original path `/Users/orion/Downloads/Macintosh HD`,
   workspace copy `docs/1.0/001-IN-PROGRESS/mesa-ii-codex-parity/artifacts/macintosh-hd-2026-04-16.img`
+- Installed Mac OS 7 disk image with MESA I:
+  original path `/Users/orion/Downloads/macos-7-disk.hfv`,
+  workspace copy `docs/1.0/001-IN-PROGRESS/mesa-ii-codex-parity/artifacts/macos-7-disk.hfv`
 - Hardware and transport notes where experimental confirmation is required
 - Coordination points with the parallel Claude-driven effort so outputs can be compared
 
@@ -258,6 +261,11 @@ Current reminder:
 - Do not forget the installed Mac OS 9 disk image. It is now the first artifact to use
   for the MESA system-extension / companion-binary hunt if Claude or Codex needs files
   beyond the two extracted MacBinary/resource-fork pairs.
+- Do not forget the installed Mac OS 7 disk image either. It now provides a historical
+  MESA I comparison corpus under
+  `docs/1.0/001-IN-PROGRESS/mesa-ii-codex-parity/artifacts/macos-7-installed/`,
+  including `MESA`, `Sampler Editor`, `Shared`, `S3 HD Provider`, `S2000`,
+  `S3000 FX`, and `File Manager`.
 
 ---
 

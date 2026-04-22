@@ -53,6 +53,65 @@ artifact already exists locally.
 3. The next time the MESA system-extension hunt comes up, the first answer should be the
    disk image path, not “we need another binary source.”
 
+## 2026-04-21: Mine Mac OS 7 MESA I Disk Image For Historical Comparison Corpus
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Copy the user-supplied Mac OS 7 disk image into the workspace, extract the installed
+MESA I binaries from it, and preserve the result as a lineage-comparison corpus for the
+ongoing MESA II reverse-engineering effort.
+
+### Accomplished
+- Verified the user-supplied path `/Users/orion/Downloads/macos-7-disk.hfv` as a local
+  HFS bootable disk image and copied it into the workspace at:
+  `docs/1.0/001-IN-PROGRESS/mesa-ii-codex-parity/artifacts/macos-7-disk.hfv`
+- Mounted the image and identified the installed MESA I tree under
+  `Applications:M.E.S.A ...`
+- Extracted the core installed MESA I binaries into:
+  `docs/1.0/001-IN-PROGRESS/mesa-ii-codex-parity/artifacts/macos-7-installed/`
+- Captured a first historical corpus including:
+  - `mesa1-app`
+  - `mesa1-sampler-editor.modu`
+  - `mesa1-shared.shar`
+  - `mesa1-s3-hd-provider.modu`
+  - `mesa1-s2000.modu`
+  - `mesa1-s3000-fx.modu`
+  - `mesa1-file-manager.modu`
+- Recorded the new artifact in the parity README and workplan so it survives future
+  context loss
+
+### Didn't Work
+- The Mac OS 7 image did not instantly answer the active MESA II patch-mechanism
+  question; it produced historical comparison artifacts, not an immediate runtime
+  loader breakthrough
+
+### Course Corrections
+- **[PROCESS]** The user correctly pushed back on the vague “we need more binaries”
+  framing. Once a disk image exists locally, the next step is extraction and inventory,
+  not abstract blocker language.
+- **[DOCUMENTATION]** Historical artifacts should be written into the feature docs as
+  soon as they become relevant, just like the Mac OS 9 image, so they are not lost in a
+  later session wipe.
+
+### Quantitative
+- New local disk-image copy created: 1
+  `docs/1.0/001-IN-PROGRESS/mesa-ii-codex-parity/artifacts/macos-7-disk.hfv`
+- New extracted MESA I binaries captured: 7
+- Feature docs updated: 3
+  `README.md`, `workplan.md`, `DEVELOPMENT-NOTES.md`
+
+### Insights
+1. MESA I packages the system as a clearer module family (`MODU/AK09`, `SHAR/AK09`,
+   `APPL/AK09`) than the later MESA II working set we have been treating mainly as
+   `EDIT` plus `PLUG`.
+2. Even when an older corpus does not solve the immediate MESA II patch question, it
+   still changes the comparison landscape by giving us an earlier reference point for
+   Akai’s app/shared/provider/editor decomposition.
+3. The phrase “need another binary” is too lossy. The right question is always:
+   “which locally available artifact have we not mined yet?”
+
 ## 2026-04-20: MESA II Parity Baseline Resynced To Claude Option 2 Reply
 
 ### Feature: mesa-ii-codex-parity
