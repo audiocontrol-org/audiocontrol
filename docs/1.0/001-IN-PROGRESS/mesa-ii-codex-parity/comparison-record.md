@@ -947,14 +947,14 @@ cleanly.
   evidence still points to missing chooser/dialog-manager state rather than a deeper
   transport-specific method.
 
-- One older symbol naming on the hot path should now be corrected. A raw string-table
-  reread around the `0x139a` / `0x160c` region shows that the function beginning at
-  `0x139a` matches the preceding symbol `SMDataByteEnquiry__9CSCSIPlugFsUc`, and the
-  next string immediately before `0x160c` is `SMDispatchReply__9CSCSIPlugFsPUcUcPl`.
-  So the body at `0x160c-0x16d8` should no longer be described as a proved
-  `SMSendData` symbol. The measured CDB-construction block at `0x163c-0x167e` still
-  exists, but it is inside the `SMDispatchReply`-named path according to the current
-  raw symbol evidence.
+- One hot-path symbol correction itself needed correcting. A fuller raw string-table
+  reread around `0x139a` / `0x160c` shows the binary's symbol strings are naming the
+  **preceding** function bodies, not the following ones. On that pattern:
+  `SMDataByteEnquiry__9CSCSIPlugFsUc` labels `0x12f2-0x1370`,
+  `SMDispatchReply__9CSCSIPlugFsPUcUcPl` labels `0x139a-0x15e0`, and
+  `SMSendData__9CSCSIPlugFsUcPUcPUclPl` labels `0x160c-0x16d8`. So the measured
+  CDB-construction block at `0x163c-0x167e` does still live inside the `SMSendData`
+  body after all; the separate earlier body is the `SMDispatchReply` handler.
 
 ## Comparison Rules
 
