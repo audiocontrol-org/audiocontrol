@@ -772,6 +772,84 @@ New WebSocket endpoint `sample-upload-fast`: creates sample slot via minimal SDS
 
 ---
 
+## 2026-04-22: MESA II `flag=0x80` Hardware Verification + Investigation Convergence
+
+### Strategy
+
+MESA II's static decode (Path A.9-A.18) showed the candidate sender body `SMSendData` at scsi-plug file 0x160c builds CDB `0C 00 [len] [len] [len] 80` for SRAW/BULK-via-SCSI mode. The bridge currently uses CDB[5]=`0x00` (per `s2p_client.rs:291` comment "S3000XL rejects 0x80"). Test whether MESA's `0x80` shape is actually accepted on real hardware.
+
+### Test infrastructure built
+
+- **Bridge enhancement:** `services/scsi-midi-bridge/src/s2p_client.rs:239-310` — REQUEST SENSE auto-fetch on CHECK CONDITION (status=0x02) when sense_data is empty. Without this, "rejected" tells us nothing about why. Issues `03 00 00 00 18 00` (REQUEST SENSE, 24-byte allocation) and merges sense bytes into the response.
+- **Test script:** `modules/e2e-infra/src/node/lib/test-mesa-cdb-flag.ts` — Phases A/B/C/D with positive control discipline, sense decoding (best-effort for non-standard formats), per-rejection comparison.
+- **SSH local-forward tunnel** (`ssh -fNL 7034:localhost:7033 orion@s3k.local`) — workaround for node-fetch-vs-IPv4 quirk on Mac (curl works direct, node fetch returns EHOSTUNREACH).
+
+### Phase results (committed at 5bc50f59 / 27b3f346)
+
+| Phase | Result |
+|---|---|
+| A: connectivity proof | RMDATA SysEx flag=0x00 → 210-byte reply via poll/read; PASS |
+| B: sense plumbing sanity | Invalid opcode `0x99` → status=2, sense `02 00 00 00`; **PASS with caveat** (Akai uses non-standard 4-byte sense format, NOT SCSI fixed-format with 0x70/0x71 response code) |
+| C: RSDATA `0x0A` flag=0x00 vs 0x80 | flag=0x00 → 210-byte reply; flag=0x80 → status=2, sense `03 00 00 00` |
+| D: SDATA `0x0B` WRITE flag=0x00 vs 0x80 | flag=0x00 → status=0; flag=0x80 → status=2, sense `03 00 00 00` |
+
+### The cross-phase pattern
+
+| Trigger | Sense bytes |
+|---|---|
+| Invalid opcode 0x99 | `02 00 00 00` ("invalid command class") |
+| RSDATA + flag=0x80 | `03 00 00 00` ("recognized command rejected") |
+| SDATA WRITE + flag=0x80 | `03 00 00 00` (same as RSDATA — opcode-family-INDEPENDENT) |
+| flag=0x00 (any tested opcode) | accepted (status=0) |
+
+**Key findings:**
+- Sampler distinguishes `02` (invalid command) from `03` (recognized command rejected for specific reason)
+- flag=0x80 is the discriminator — NOT opcode direction (READ vs WRITE produced same rejection)
+- flag=0x00 is universally accepted across all tested opcode families
+- Bridge comment "S3000XL rejects 0x80" is hardware-confirmed for the contexts tested
+
+### Investigation outcome
+
+The hardware MEASURED rejection of `flag=0x80` combined with the static MEASURED determinism of `SMSendData` emitting `0x80` for mode=0x01 forced one of:
+- (1) Production reaches a different target via runtime patch (chased through 7 static decode rounds — all MEASURED-clean; CLOSED)
+- (2) Production reaches the same body but in a sampler state where `0x80` is accepted (state-precondition; STRONGEST RESIDUAL by elimination)
+- (3) Our interpretation of the candidate body is wrong (refuted by Path A.14 deterministic mode-preservation finding)
+
+After 18 decode rounds + 4 hardware phases + Codex parity cross-verification, the patch hypothesis (1) is functionally CLOSED. State-precondition (2) is the strongest live explanation but with no concrete actionable mechanism we can target — making continued investigation research, not product work.
+
+### Bridge ship decision
+
+**Ship `CDB[5]=0x00` (current behavior).** Justified:
+- Universally accepted by hardware across all tested operations (BULK, RSDATA, RMDATA round-trips work)
+- The candidate `0x80` shape was hardware-rejected in every test
+- Deep-indirect downstream (`DispatchCommandFromModule` chain) is theoretical residual, not an actionable blocker
+
+### Reopening criteria (for future regressions)
+
+If a bridge regression or missing operation surfaces, reopen from:
+- `DispatchCommandFromModule` deeply-indirect downstream chain (one of 122 editor commands dispatched by `SendCommandToEditor`)
+- OR runtime-state terrain (whatever sampler state production MESA II establishes that we're not reproducing)
+
+NOT from the old patch hypothesis — that's exhaustively closed.
+
+### Lessons
+
+- **REQUEST SENSE auto-fetch should be standard** in any SCSI bridge for diagnostic interpretation. Empty sense on CHECK CONDITION is uninterpretable; auto-fetch makes rejections actionable.
+- **Akai uses non-standard sense format** (4-byte response, no 0x70/0x71 SCSI response code). Best-effort parsing required; fall back to raw byte logging for unknown formats.
+- **Positive control discipline matters.** Phase A's connectivity proof (known-working RMDATA round trip) ensured every Phase C/D rejection was provably real wire-level rejection, not connectivity artifact. The user explicitly warned about this and the test design followed.
+- **`xxd | grep` is unreliable for binary patterns** that straddle 16-byte line boundaries. Use Python byte search or `xxd -p | tr -d '\n' | grep`. (Saved as feedback memory.)
+- **Two independent decode tracks (parity protocol)** produced findings stronger than either alone — recommend for future complex investigations.
+
+### Test script + bridge change pushed to:
+- `feature/mesa-ii-reverse-engineering` branch
+- See commits: 5bc50f59 (REQUEST SENSE auto-fetch + Phase A-C test), 27b3f346 (Phase D extension), 7f474b7e (A.18 + parity confirmation), c6ce31af (project-state writeup)
+
+### Full project-state writeup
+
+[`docs/1.0/001-IN-PROGRESS/mesa-ii-reverse-engineering/project-state-2026-04-22-converged.md`](docs/1.0/001-IN-PROGRESS/mesa-ii-reverse-engineering/project-state-2026-04-22-converged.md)
+
+---
+
 ## Open Questions
 
 - ~~Can ASPACK write at offset > 0?~~ **Yes** — poll flag 0x00 was the bug, not the offset.

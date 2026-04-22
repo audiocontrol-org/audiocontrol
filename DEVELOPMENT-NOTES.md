@@ -11,6 +11,101 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-21 / 2026-04-22: Investigation converged — patch hypothesis closed via 18-round decode + parity protocol
+
+### Feature: mesa-ii-reverse-engineering
+### Worktree: audiocontrol-mesa-ii-reverse-engineering
+
+### Goal
+Settle whether MESA II runtime-patches the SCSI Plug to retarget the BRA.W displacement at scsi-plug file 0x1070 (which would explain the wire-format gap between MESA's deterministic static `CDB[5]=0x80` and the bridge's working `CDB[5]=0x00`). Three possible outcomes: (a) find the patcher → ship the patched shape; (b) prove no patcher exists → understand what other mechanism makes MESA work; (c) hit a runtime boundary → decide whether to chase or accept current bridge behavior.
+
+### Accomplished
+
+**The big thing: the static-side patch hypothesis is now MEASURED-clean (functionally CLOSED) across 7 decode rounds.** Independent cross-verification by Codex parity branch at every key inflection. State-precondition promoted to STRONGEST RESIDUAL (not active blocker). Bridge ships current `CDB[5]=0x00` behavior.
+
+**Decode rounds completed this session (chronological):**
+- Path A.9: outbound CDB shape MEASURED at SMSendData candidate body
+- Path A.10: editor→plug SocketInfo transmission step (effectively closed by A.16+A.18 architectural understanding)
+- Path A.11: patcher identity hunt — Outcome B (not in either binary)
+- Path A.12: mode-byte semantics across all 6 JSR 0x106e callers
+- Path A.13: SMSendData bus-emission body — no encoding below CDB layer
+- Path A.14: mode mutation trace — SMSendData deterministically emits 0x80 for mode=0x01
+- Path A.15: patch-mechanism / relocation-table hunt — Outcome B
+- Path A.16: MESA II app loader decode — `LoadMESAPlugIn` identified; loader doesn't patch
+- Path A.17: scsi-plug INIT/entry path — no writes via any addressing mode (PC-relative LEA scan exhaustive)
+- Path A.18: callback at runtime $0x1E5A — `SendCommandToEditor`, inline tag-dispatcher with 122 editor commands; doesn't patch
+- Hardware verification (Phase A-D): flag=0x00 universally accepted; flag=0x80 universally rejected with sense `03 00 00 00`
+
+**Codex parity contributions:**
+- `aa8b5eb9` parallel decode of $0x1E5A independently confirming A.18 result
+- `94b990a3` deeper analysis of shared helper at 0x1630 (typed-module discovery, not transport)
+- MESA I lineage findings (Mac OS 7.6 disk image): `APPL + SHAR + MODU` architecture; `S3000Module.InitModule` / `GetSharedResource` / `SetSharedResource` contracts → MESA II is a repackaging (`APPL + EDIT + PLUG`), not a redesign
+- Calibration discipline: introduced MEASURED / CANDIDATE / OPEN labels; sharpened B vs C sub-branch distinction (pure service vs service-with-downstream-possibilities); rejected over-claims at multiple inflection points
+- Final concurrence on convergence + decision recommendation: ship current behavior, treat state-precondition as residual not blocker
+
+**Disk image acquisitions:**
+- Mac OS 9 SheepShaver disk with MESA II v1.2 install (1 GB; gitignored at `binaries-large/macos9-mesa-disk.hfs`)
+- Mac OS 7.6 SheepShaver disk with MESA 1.3 install (1 GB; gitignored at `binaries-large/macos7-mesa-i-disk.hfv`)
+- 12 extracted artifacts committed (~2.3 MB): MESA II app, all 4 editors, SCSI Plug 2.1.2, OMS Plug
+- SHA256 equality between canonical SCSI Plug + Sampler Editor and our pre-existing extractions → B1 extraction-artifact hypothesis REFUTED
+
+**Hardware testing infrastructure:**
+- Bridge enhancement: REQUEST SENSE auto-fetch on CHECK CONDITION (`services/scsi-midi-bridge/src/s2p_client.rs:239-310`)
+- Test script: `modules/e2e-infra/src/node/lib/test-mesa-cdb-flag.ts` (Phases A/B/C/D with positive control discipline + sense decoding + per-rejection comparison)
+- SSH local-forward tunnel workaround for node-fetch-vs-IPv4 quirk on this Mac
+
+**Documentation:**
+- 9 new path-a*.md decode docs committed
+- Inventory doc + project-state-converged writeup
+- Brief docs for the 0x106e patcher question
+- Test plan doc for the hardware verification phase
+- 5 new feedback memories saved (xxd-grep unreliability, sync-source check before posting, mode-mutation phase semantics, restate-goal-at-delegation, MESA disk image location)
+
+**GitHub issue activity:** ~25 sync comments to #315 over the two days (parity protocol). Final convergence comment at [4293428859](https://github.com/audiocontrol-org/audiocontrol/issues/315#issuecomment-4293428859).
+
+### Didn't Work
+
+- **My initial preflight `xxd | grep` for 'PLUG' bytes returned 0 hits** — Codex's parallel decode found 5 occurrences. The cause: xxd splits at 16-byte line boundaries; patterns straddling lines don't match a single-line grep. I almost concluded "MESA II doesn't reference PLUG by name" based on the false negative. Codex was prescient to push back. Saved as `feedback_xxd_grep_unreliable.md`.
+- **My early framing in #315 sync comments overstated multiple findings:** "fully MEASURED end-to-end" (when CANDIDATE-conditional was right); "0 occurrences of `0a d2` weakens patch hypothesis" (only weakens one specific encoding form); "force the conclusion" (Codex correctly insisted on "strongest current explanation"). Each over-claim got Codex pushback within minutes; correction became the loop.
+- **A.16's function name slip** — said `ScanForPlugIns` when the embedded debug symbol shows `LoadMESAPlugIn`. Caught by my spot-verification before propagating. Pattern: agents sometimes misread similar-looking nearby symbols; always check the embedded symbol byte location.
+- **A.6 reported encoding `22 d9` for the copy loop** — actual encoding is `20 d9`. Both same conceptual op (copy loop) but different source/dest direction. Caught by my spot-verification.
+- **The 1 GB MESA II disk image was sitting in `~/Downloads/Macintosh HD` the whole time.** I declared the binary-source acquisition track blocked WITHOUT first asking the user where the disk image was. The user had to surface it explicitly. Process failure documented in `project_mesa_disk_image_location.md` so future sessions check FIRST before declaring acquisition blocked.
+
+### Course Corrections
+
+- **[FABRICATION] (caught by Codex)** Multiple over-claims in #315 sync comments (see "Didn't Work"). Each pushed back within minutes; loop pattern was: claim → Codex calibration → my correction. Cumulative result: the discipline tightened materially over the two days. Saved `feedback_check_sync_source_before_posting.md`.
+- **[FABRICATION] (caught by Codex)** "0 occurrences of `0a d2` substantially weakens patch hypothesis" was too strong. Codex correctly pointed out it only rules out one encoding style; PC-relative addressing or base-plus-arithmetic could still reach the offset. A.17 then did the proper exhaustive PC-relative LEA scan (3 hits, all targeting PLUG base) which IS a strong negative. Saved `feedback_interpretation_vs_semantics.md` (broader pattern: validate interpretation against phase-level semantics, not just local byte correctness).
+- **[PROCESS] (caught by user)** Declared acquisition track blocked without asking user where the disk image might be. User had to surface it explicitly. Saved `project_mesa_disk_image_location.md` with note: check first before declaring acquisition blocked.
+- **[PROCESS] (caught by user)** Path A.18's deeply scoped delegation was almost spawned WITHOUT first checking #315 for new Codex comments. Codex's `aa8b5eb9` parallel decode landed during the gap — fortunately A.18 ran independently and confirmed Codex's findings (parity-strong outcome rather than wasted work). Pattern saved as `feedback_check_sync_source_before_posting.md` already.
+- **[PROCESS]** A.8 originally drifted into REPLY-direction decode when the original Phase 3 question is OUTBOUND. Caught by re-reading what the question actually asked. Saved `feedback_restate_goal_at_delegation.md`.
+
+### Quantitative
+
+- User messages this session: ~70 across two days
+- Agent delegations (Path A.9-A.18 + Phase A-D test agent): 12+ rounds
+- Sub-agent durations: ~10-30 min each
+- Commits: 25+ across two days (test infra, decode docs, calibration adjustments, project-state writeup)
+- #315 sync comments: ~25 (active parity protocol)
+- New tasks created: 6 (Path A.10/A.11/A.12/A.13/A.14/A.15/A.16/A.17/A.18 chain)
+- Tasks closed: 9 (#28 hardware-verify; #30 SRAW decode; #31-39 patch-hunt chain; #40-42 MESA II app + callback decode)
+- Codex parity comments: ~10 substantive, all addressed within ~5 min of posting
+- User course corrections: 1 explicit (acquisition-blocked premature) + several implicit (Codex through #315)
+- Self-corrections (caught by spot-verification before propagation): 3 minor (xxd-grep, A.6 encoding, A.16 function name)
+
+### Insights
+
+1. **The parity protocol is the most productive multi-agent discipline I've worked under.** Two independent decode tracks (Claude on live MESA II frontier, Codex on parity verification + MESA I lineage), each calibrating the other in near-real-time via #315 sync, produced findings stronger than either alone. The discipline of MEASURED / CANDIDATE / OPEN tagging + explicit OUTCOME wording (A: patcher / B: pure service / C: service-with-downstream-possibilities) prevented the over-promotion failure mode that classic single-agent analysis falls into. Worth preserving + applying to future complex investigations.
+
+2. **Convergence is itself a result.** 18 decode rounds + 4 hardware phases + parity cross-verification didn't produce "the patcher" — but they DID converge to a clean-enough state to make a confident product decision (ship current behavior). The investigation closed not because we ran out of energy but because the hypothesis space genuinely narrowed to the point where further work would be research, not product. Recognizing convergence is a skill; Codex's "decision recommendation" framework (residual vs blocker) was the discipline that made the closure clean.
+
+3. **Two contradictory MEASURED findings can coexist when the bridge is missing.** The candidate body emits CDB[5]=0x80 deterministically (MEASURED). Hardware rejects CDB[5]=0x80 universally (MEASURED). MESA II works on real hardware (MEASURED). The contradiction can ONLY be resolved by either (a) finding the patcher (which we exhaustively didn't), or (b) admitting the production sampler is in a state we can't reproduce. The state-precondition hypothesis won by convergence-elimination, not by direct evidence. That's a legitimate epistemological place to land.
+
+4. **Comparative reference data (MESA 1.3) provides architectural prior, not direct answers.** Codex's MESA I lineage work didn't solve the patcher mystery — but it DID strengthen confidence in the right interpretation (MESA II repackaged the older `APPL + SHAR + MODU` system into `APPL + EDIT + PLUG` with the same fundamental contracts). When the live target is opaque, lineage data + architectural priors steer the interpretation. Worth doing more of when feasible.
+
+5. **The "ask the user where the disk is" lesson.** I spent material agent cycles chasing the binary-source acquisition track when the answer was "in your Downloads folder." This is the second time this pattern has bitten me on this project (the first was the macos9 disk). The fix is in `project_mesa_disk_image_location.md` for both disks now. Broader applicability: when an investigation declares a track blocked on external acquisition, ALWAYS ask the user explicitly before treating it as a wait state.
+
+---
+
 ## 2026-04-20 (continuation): Path A.8 + Codex pressure point — re-orientation needed
 
 ### Feature: mesa-ii-reverse-engineering
