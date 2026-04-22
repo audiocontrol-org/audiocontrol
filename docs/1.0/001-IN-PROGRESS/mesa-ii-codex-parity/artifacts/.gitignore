@@ -1,0 +1,13 @@
+*
+!.gitignore
+!macos-7-installed/
+macos-7-installed/*
+!macos-7-installed/README.md
+!macos-7-installed/SHA256SUMS.txt
+!macos-7-installed/mesa1-app
+!macos-7-installed/mesa1-file-manager.modu
+!macos-7-installed/mesa1-s2000.modu
+!macos-7-installed/mesa1-s3-hd-provider.modu
+!macos-7-installed/mesa1-s3000-fx.modu
+!macos-7-installed/mesa1-sampler-editor.modu
+!macos-7-installed/mesa1-shared.shar
