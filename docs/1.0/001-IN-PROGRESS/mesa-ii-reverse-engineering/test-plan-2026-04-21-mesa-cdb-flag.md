@@ -18,10 +18,20 @@ Specifically: the byte 5 = `0x80` (mode=0x01 in MESA's parameterization), used b
 
 ## Going in: what's MEASURED, what's CANDIDATE, what's OPEN
 
+> **Calibration update 2026-04-22 (per Codex parity #4292950920):** the prior framing "SRAW wire format is fully MEASURED end-to-end" was too strong. What is MEASURED is the static behavior of the candidate target body at file 0x160c. What remains CANDIDATE is whether the live production sender actually dispatches to that body (or to a wire-equivalent one). This plan is now framed as testing the CANDIDATE shape, not validating a fully-MEASURED claim.
+
 **MEASURED on the static side (this session, A.9 + A.12 + A.13):**
-- SMSendData at scsi-plug file 0x160c builds CDB `0C 00 [len_hi] [len_mid] [len_lo] [flag5]` where flag5 = 0x80 if mode_byte != 0, else 0x00 (formula at file 0x1670).
-- Mode byte values across all 6 `JSR 0x106e` caller families: only 0x00 (SYSX/MIDI sites) and 0x01 (SRAW + BULK-via-SCSI-fallthrough sites).
-- Audio buffer passes raw to bus emission (no nibble or 7-bit encoding in any code path between SRAW handler and `_SCSIWrite`).
+- The extracted binary's 0x106e caller-family frame, mode-byte split (0x00 / 0x01), stub bytes at 0x106e, and the internal behavior of the candidate target body at file 0x160c (`SMSendData`).
+- Inside `SMSendData`: CDB construction `0C 00 [len_hi] [len_mid] [len_lo] [flag5]` where flag5 = 0x80 if mode_byte != 0, else 0x00 (formula at file 0x1670).
+- Audio buffer passes raw to bus emission inside that body (no nibble or 7-bit encoding).
+
+**CANDIDATE (structural fit, not proved):**
+- That `SMSendData` is the actual production target of the `0x106e` shared slot, OR that the production target is wire-equivalent to `SMSendData`.
+- Codex parity (2026-04-22) further strengthens but does not prove the candidate: 0x139a body matches the full measured 0x106e caller-family frame; nested optional branch makes the nullable arg look like mutable count/control state rather than arbitrary context.
+
+**OPEN:**
+- Whether the harness/hardware path reaches that exact body or an equivalent sender.
+- Whether the mode-byte split (0x00 / 0x01) carries control-path consequences beyond CDB[5] (Codex 2026-04-22 — possible per the 0x139a body shape).
 
 **MEASURED on the hardware side (test run earlier in this session):**
 - INQUIRY, MIDI enable, RMDATA SysEx with flag=0x00, poll, read all work end-to-end. Sampler reports `S3000XL SAMPLER` and returns 210-byte RMDATA reply.
@@ -88,15 +98,20 @@ Two sub-tests, each in fresh state (drain + cycle MIDI mode between).
 | C1a | RSDATA for sample 0 with flag=0x00 (baseline) | status=0; reply via poll ≥ ~192 bytes; reply starts `F0 47 cc 0A 48` |
 | C1b | Same RSDATA with flag=0x80 | record status, sense (KEY/ASC/ASCQ), data_in length, poll-result-after |
 
-Compare C1a vs C1b. Three meaningful outcomes:
+Compare C1a vs C1b. **This is a constrained opcode-plus-flag probe, NOT a validation/falsification of the MESA shape from the flag byte alone.** Phase C result tells us how the sampler reacts to one specific BULK-family opcode + flag combination. Multiple failure modes are consistent with MESA still being correct.
+
+Possible outcomes and what they mean (per Codex parity 2026-04-22 calibration):
 
 | C1b result | Interpretation |
 |---|---|
-| status=0; reply via poll ≥ ~192 bytes | MESA's flag=0x80 is accepted in BULK context; existing bridge comment is too strong; bridge can adopt 0x80 for BULK |
-| status=0; reply inline in `data_in` of the send CDB | MESA's flag=0x80 changes reply mechanism (data_in carries reply directly, bypassing poll/read) — different protocol pattern |
-| status != 0; sense KEY=0x05 ASC=0x20 INVALID_OPCODE | sampler rejects BULK-family + flag=0x80 outright. MEASURED MESA shape doesn't run on this device as-is. Strong signal something's missing in our model. |
-| status != 0; sense indicates state precondition (e.g., COMMAND_SEQUENCE_ERROR 0x2C) | MESA flag=0x80 needs a state setup we're not doing. Identify what setup MESA does first. |
-| status != 0; sense data still empty even after REQUEST SENSE | sampler doesn't surface failure reason via standard sense — protocol is non-standard. Falls back to MESA bus-capture. |
+| status=0; reply via poll ≥ ~192 bytes | flag=0x80 is accepted in this BULK-family context. Promotes the candidate target identity (SMSendData or equivalent) by one more consistency point. Existing bridge comment is too strong for BULK. |
+| status=0; reply inline in `data_in` of the send CDB | flag=0x80 changes reply mechanism. Promotes the candidate further AND tells us the protocol pattern inline-vs-poll. |
+| status != 0; sense KEY=0x05 ASC=0x20 INVALID_OPCODE | sampler rejects BULK-family + flag=0x80. **DOES NOT REFUTE the MESA shape.** Could mean: (a) production binary has a different patch target after all; (b) state setup precondition is missing; (c) opcode 0x0A is wrong family choice for this probe. Flag does not let us distinguish — need wider probing. |
+| status != 0; sense indicates state precondition (e.g., COMMAND_SEQUENCE_ERROR 0x2C) | flag=0x80 needs a state setup we're not doing. Suggests MESA issues setup commands before SRAW/BULK that we should replicate. Doesn't refute MESA. |
+| status != 0; sense data still empty even after REQUEST SENSE | sampler doesn't surface failure reason via standard sense. Akai may use non-standard fields, or rejection is happening at a layer that doesn't generate sense. Bus capture would be next. |
+| status != 0; some other sense pattern | document the KEY/ASC/ASCQ; consult Akai service manual / SCSI standards before drawing conclusions. |
+
+**Key calibration:** even a clean C1b PASS does not promote the wire format to fully MEASURED. It promotes the candidate identity to "more strongly supported." Final promotion to MEASURED-on-the-wire requires either a hardware bus capture matching MESA's emission OR running MESA II in an emulator with bus capture and confirming the bytes match.
 
 ### Phase D (only if Phase C passes): BULK SDATA write probe
 
@@ -132,6 +147,8 @@ Skipped if Phase C fails — D requires C to be valid.
 - Test script lives at `modules/e2e-infra/src/node/lib/test-mesa-cdb-flag.ts` (already drafted; needs Phase B + Phase C + sense-capture additions)
 - Output captured to timestamped logs under `/tmp/mesa-cdb-flag-run-N.log`
 
-## Open question for the user (Orion)
+## Open question for the user (Orion) — partially answered by Codex 2026-04-22
 
-Phase D writes to a sample slot. Which slot is safe to use? Is slot 0 always available, or should I read the disk catalog and pick an empty one?
+**Codex's recommendation:** "Do not pick a write slot blindly. Read the device catalog first and choose an empty or sacrificial slot before any 0x0B roundtrip probe."
+
+Plan updated: Phase D will start with a catalog-read step that lists all sample slots, identifies an empty one (or a designated sacrificial one), and uses that as the write target. Standing question for Orion: is there a designated sacrificial slot, or should I just pick the first empty one returned by the catalog read?
