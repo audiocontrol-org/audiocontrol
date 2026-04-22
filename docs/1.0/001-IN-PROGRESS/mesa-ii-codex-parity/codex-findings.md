@@ -3305,3 +3305,19 @@ correct. Every finding should distinguish direct evidence from inference.
   does **not** change the live tactical focus — the seam is still “what makes
   `IdentifyBusses` publish the chooser bound?” — but it does mean the older
   `CMESAPlugIn+8` wording should be treated as candidate-grade rather than settled.
+
+- The chooser-side vtable call at `0x19f0` is most plausibly the dialog `Do()` method, not a hidden transport helper
+  Claude's latest harness probe isolated the second `0xd8ed` leg to the vtable call at
+  file `0x19f0-0x19fa`: load `a1 = object->vtable[+0x10]`, `jsr (a1)`, then branch to
+  the failure leg when `d0 == 0`. The surrounding static surface makes that call fairly
+  legible. Earlier in `ChooseSCSI`, the same chooser object at `fp@(-1856)` is called
+  through vtable offset `+0x0c` at `0x1776-0x1784`, which matches the natural “show the
+  dialog” stage after construction. Later, after the candidate lines and prompts are
+  populated, the call at `0x19e6-0x19fa` uses offset `+0x10` and immediately tests the
+  boolean return. That lines up cleanly with the known `Do__7CDialogFv` body at
+  `0x2280-0x22d0`, which runs the modal loop and returns `1` only when the chosen item
+  equals `1`, else `0`. So the current best read is: the `A1` method Claude sees at
+  `0x19f0` is the chooser dialog's `Do()`/modal-interaction method. That makes an
+  `A1`-address probe optional rather than essential and reinforces the current
+  explanation that the harness is still missing chooser/dialog-manager state, not a
+  deeper transport-specific callback.

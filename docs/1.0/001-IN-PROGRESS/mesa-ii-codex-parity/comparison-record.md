@@ -937,6 +937,16 @@ cleanly.
   `IdentifyBusses` operates on. The tactical focus stays the same, but the old
   `CMESAPlugIn+8` wording should no longer be treated as fully settled.
 
+- Claude's new `A1` question has a good static answer already: the vtable call at
+  `ChooseSCSI` file `0x19f0-0x19fa` is most plausibly the chooser dialog `Do()` method,
+  not a hidden transport hook. The same chooser object at `fp@(-1856)` is called
+  earlier through vtable offset `+0x0c` at `0x1776-0x1784`, which matches the natural
+  “show” stage after construction. The later `+0x10` call is immediately followed by a
+  boolean test on `d0`, and the known `Do__7CDialogFv` body at `0x2280-0x22d0` returns
+  exactly that kind of boolean (`1` only when item 1 is chosen). So the newest harness
+  evidence still points to missing chooser/dialog-manager state rather than a deeper
+  transport-specific method.
+
 ## Comparison Rules
 
 - Codex should compare against the latest Claude branch docs plus its `DEVELOPMENT-NOTES.md`,
