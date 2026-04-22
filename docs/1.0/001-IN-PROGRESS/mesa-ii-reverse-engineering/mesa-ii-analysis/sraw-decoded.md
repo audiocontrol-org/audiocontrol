@@ -36,6 +36,15 @@
 >
 >    **Hypothesis ranking after A.14 (per Codex framework):** (1) STRONGEST CANDIDATE: production reaches a different target or non-wire-equivalent live path; (2) STILL OPEN: state condition makes the same emitted `0x80` acceptable; (3) our interpretation of the candidate body — refuted by A.14.
 >
+>    **UPDATE 2026-04-22 (after A.16 + A.17):** The patch hypothesis is now substantially weakened. Combined static evidence:
+>    - A.11/A.15: no direct-store patcher in scsi-plug or sampler-editor
+>    - A.16: MESA II loads PLUG via _GetResource at file 0x02e22b, dispatches via JSR (A4) — NO writes to plug bytes in load/dispatch window
+>    - A.17: plug INIT/entry path (file 0x05aa onwards, exhaustively decoded to epilogue at 0x07a2) has NO writes to plug code via ANY addressing mode. PC-relative LEA scan: 3 hits total, all targeting PLUG base 0x059e, ZERO targeting the 0x1060-0x1080 range.
+>
+>    **Remaining OPEN (per Codex calibration):** the JSR (A1) at scsi-plug 0x0762 dispatches to a socket-object method (function pointer at socket_data[+12]) outside the PLUG resource. Statically unresolvable. Could in theory hide a patch but unlikely — the socket-object method would need its own self-write to the plug, and we have no evidence of any such mechanism.
+>
+>    **State-precondition hypothesis (production reaches the same body but in a sampler state where flag=0x80 is accepted) is now the STRONGEST CANDIDATE by elimination** — but per Codex discipline, NOT promoted unless/until the JSR (A1) boundary is settled.
+>
 >    **Next critical-path move:** binary-source hunt (task #35/A.11/B1), now sharpened by A.15 to **acquisition of the MESA system extension binary** specifically (not just any MESA II distribution variant). A.15 found the editor doesn't reference `'PLUG'` literal — strong pointer (per Codex calibration: not proof, but combined with absent CODE/cfrg/PTCH resource types and macbin/rsrc.bin equality, strongest current explanation is external loader). Sources to try: original MESA installer disks, classic Mac System Folder captures, vintage Akai user community.
 >
 > Sections 8/9 of this doc below are obsolete. Trust the path-a*.md docs (each carries its own calibration banner).
