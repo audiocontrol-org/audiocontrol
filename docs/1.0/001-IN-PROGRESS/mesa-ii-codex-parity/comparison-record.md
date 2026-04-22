@@ -890,6 +890,15 @@ cleanly.
   as missing bus-enumeration state from `IdentifyBusses` / `ChooseSCSI`, not a simple
   socket-table count mismatch.
 
+- The new `d5` suspicion is not strong enough to replace that bus-state seam on its own.
+  The mid-body `ChooseSCSI` entry at `0x187e` is called from three wrappers:
+  `SendData`, `SMDataByteEnquiry`, and `SMSendData`. Only the `SendData` caller
+  explicitly derives both `d4` and `d5` locally before the jump. The other two callers
+  reach `0x187e` without a fresh local `d5` setup, which means inherited register/state
+  context is already part of the visible contract. So the lack of a new `d5`
+  initialization in `SMSendData` is too weak by itself as the next blocker theory; the
+  broader `ChooseSCSI` / `IdentifyBusses` pre-state still looks like the sharper seam.
+
 ## Comparison Rules
 
 - Codex should compare against the latest Claude branch docs plus its `DEVELOPMENT-NOTES.md`,

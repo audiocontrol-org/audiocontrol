@@ -3238,3 +3238,18 @@ correct. Every finding should distinguish direct evidence from inference.
   harness seam is no longer “populate the socket table correctly” in the narrow sense;
   it is “make the `ChooseSCSI` / `IdentifyBusses` path establish a sane bus-count/state
   value in `CMESAPlugIn+8` before the selection loop runs.”
+
+- The `0x187e` internal entry uses inherited caller state across multiple wrappers
+  Another bounded reread tightens the `0x187e` contract. The entry at file `0x187e` is a
+  mid-body internal target inside `ChooseSCSI`, and it is called from three places:
+  `SendData__9CSCSIPlugFP7IP_Data` at `0x1286`, `SMDataByteEnquiry__9CSCSIPlugFsUc` at
+  `0x14f6`, and `SMSendData__9CSCSIPlugFsUcPUcPUclPl` at `0x162e`. The `SendData`
+  caller explicitly derives both `d4` and `d5` from its own flag bytes before jumping
+  there, but the other two callers do not fully initialize the same register set first:
+  `SMDataByteEnquiry` sets `d4` from `fp@(12)` and reaches the `0x14f6` call without a
+  fresh local `d5` write, while `SMSendData` sets `d4 = 0` and likewise does not
+  initialize `d5` before `0x162e`. So the visible code already treats `0x187e` as a
+  shared internal target that can consume inherited register/state context. That means
+  “`SMSendData` fails because it forgot to initialize `d5`” is too weak as the next
+  blocker theory by itself. The better next probe remains the surrounding `ChooseSCSI`
+  / bus-state setup, not just one register at the `SMSendData` call site.
