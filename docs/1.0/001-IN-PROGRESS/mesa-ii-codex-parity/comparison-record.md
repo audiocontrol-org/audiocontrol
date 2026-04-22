@@ -967,6 +967,13 @@ cleanly.
   plug's local `CDialog` methods, while letting the plug code keep supplying the
   chooser vtable itself.”
 
+- The same static pass also shrinks the expected fake dialog layout. In the visible
+  chooser path, the returned `DialogPtr` at `this+4` is never dereferenced as a struct;
+  the local `CDialog` methods only pass it through toolbox traps. So the current
+  evidence does not force a byte-accurate dialog record in harness memory. The
+  stricter requirement is only: a stable non-null handle plus trap handlers that do not
+  reject that handle along the chooser-specific path.
+
 - One hot-path symbol correction itself needed correcting. A fuller raw string-table
   reread around `0x139a` / `0x160c` shows the binary's symbol strings are naming the
   **preceding** function bodies, not the following ones. On that pattern:

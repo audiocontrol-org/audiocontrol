@@ -3360,3 +3360,14 @@ correct. Every finding should distinguish direct evidence from inference.
   that can survive the small set of dialog-manager traps used by the local `CDialog`
   methods, while letting the plug's own stack-local `CDialog` object supply the
   chooser vtable.
+
+- The returned `DialogPtr` can stay opaque; the visible chooser code never dereferences it as a record
+  The same `CDialog` reread removes one more source of harness over-building. In the
+  visible chooser path, `this+4` is only ever passed straight into toolbox traps:
+  `Show__7CDialogFv` pushes `this+4` into three traps, `__dt__7CDialogFv` pushes
+  `this+4` into its disposal-related traps, and `Draw__7CDialogFv` uses `this+4`
+  only as a trap argument before calling the local vtable `+0x30` method. None of
+  those methods reads fields out of the returned dialog handle directly. So the current
+  static evidence does **not** require the harness to fabricate a byte-accurate dialog
+  record layout for `GetNewDialog`'s return value. It only needs a stable non-null
+  handle that the small chooser-specific trap surface can accept.
