@@ -926,6 +926,17 @@ cleanly.
   the live missing contract is tied to whatever makes `IdentifyBusses` take that late
   success path.
 
+- One older field identity should now be downgraded. Earlier parity notes treated outer
+  `CSCSIPlug+0x0942` as a settled `CMESAPlugIn+8` slot because `0x093a` had been read as
+  an embedded `CMESAPlugIn` base. A bounded reread of `__ct__9CSCSIPlugFv` weakens that:
+  the ctor visibly passes `self+0x093a` into an internal helper at `0x157e`, not into
+  the visible `CMESAPlugIn` ctor, and `ChooseSCSI` later pushes the same `self+0x093a`
+  base into its internal chooser path. Combined with the visible `IdentifyBusses`
+  `this+8` write, the safer current read is: outer `0x0942` is the `+8` field of the
+  helper subobject rooted at `self+0x093a`, plausibly the same family that
+  `IdentifyBusses` operates on. The tactical focus stays the same, but the old
+  `CMESAPlugIn+8` wording should no longer be treated as fully settled.
+
 ## Comparison Rules
 
 - Codex should compare against the latest Claude branch docs plus its `DEVELOPMENT-NOTES.md`,

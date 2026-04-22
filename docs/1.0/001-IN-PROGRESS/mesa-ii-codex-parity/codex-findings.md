@@ -3290,3 +3290,18 @@ correct. Every finding should distinguish direct evidence from inference.
   `+8` needs a nonzero value.” It is “`IdentifyBusses` has a visible internal success
   gate for deciding when to publish that value at all.” That makes direct field seeding
   an even less faithful harness substitute than before.
+
+- The live chooser-bound slot may belong to the helper subobject at `CSCSIPlug+0x093a`, not a visible `CMESAPlugIn` field
+  One bounded constructor reread weakens an older identification that had become too
+  concrete in the working notes. In `__ct__9CSCSIPlugFv` at file `0x0bc6-0x0c74`, the
+  ctor does **not** visibly call `__ct__11CMESAPlugInFv` on `self+0x093a`. Instead it
+  first calls a separate base/helper ctor at `0x020e`, then explicitly passes
+  `self+0x093a` into another internal setup helper at `0x157e`. That same `self+0x093a`
+  base later reappears in `ChooseSCSI` at `0x17bc` when the code pushes it into the
+  internal chooser path. Combined with the fact that `IdentifyBusses__10CSCSIUtilsFv`
+  is the visible routine that writes `this+8`, the current best static read is now:
+  outer `CSCSIPlug+0x0942` is more likely `subobject(+0x093a)+8` in the same helper
+  family that `IdentifyBusses` operates on, not a proved `CMESAPlugIn+8` identity. That
+  does **not** change the live tactical focus — the seam is still “what makes
+  `IdentifyBusses` publish the chooser bound?” — but it does mean the older
+  `CMESAPlugIn+8` wording should be treated as candidate-grade rather than settled.
