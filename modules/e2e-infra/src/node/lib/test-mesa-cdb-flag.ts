@@ -367,8 +367,121 @@ async function phaseC(): Promise<void> {
   console.log('  matching MESA emission OR emulator with bus capture confirming the bytes match.');
 }
 
+// ---------------------------------------------------------------------------
+// PHASE D — WRITE-direction probe per Codex parity recommendation 2026-04-22
+// (Codex: "minimal WRITE-direction 0x0B/SDATA family with the candidate-style
+// flag behavior, not more 0x0A/RSDATA work")
+// ---------------------------------------------------------------------------
+
+function build7BitFour(value: number): number[] {
+  // Akai 7-bit-per-byte little-endian for 28-bit values (offset, count)
+  return [
+    value & 0x7f,
+    (value >> 7) & 0x7f,
+    (value >> 14) & 0x7f,
+    (value >> 21) & 0x7f,
+  ];
+}
+
+async function phaseD(): Promise<void> {
+  console.log('\n\n=== Phase D: SDATA WRITE (BULK-family opcode 0x0B) flag comparison ===');
+  console.log('WRITE-direction probe per Codex recommendation: tests the strongest remaining');
+  console.log('structural ambiguity (READ-vs-WRITE family) before any preconditioning experiments.');
+
+  // Build SDATA WRITE SysEx: F0 47 cc 0B 48 [ss ss] [oo oo oo oo] [nn nn nn nn] 01 00 F7
+  // Sample 0 (known to exist per Phase A/C), offset 0, count 0 — zero-byte no-op write.
+  // Zero count means even if the device honors the write semantically, no data is altered.
+  const sampleIdx = 0;
+  const offset = 0;
+  const count = 0;
+  const sdata = [
+    0xf0, 0x47, MIDI_CHANNEL, 0x0b, 0x48,
+    ...build7BitTwo(sampleIdx),
+    ...build7BitFour(offset),
+    ...build7BitFour(count),
+    0x01, // interval
+    0x00, // reserved
+    0xf7,
+  ];
+  console.log(`\nSDATA WRITE payload (sample ${sampleIdx}, offset ${offset}, count ${count}, ${sdata.length} bytes total):`);
+  console.log(`  ${hex(sdata)}`);
+
+  // D1a: baseline flag=0x00
+  console.log('\n[D1a] Drain queue, then SEND SDATA WRITE flag=0x00');
+  await drainQueue(5);
+  const d1a = await midiSendCdb(sdata, 0x00);
+  describeResult('SEND D1a flag=0x00', d1a);
+  const d1aPolled = await pollUntilReady(2000);
+  console.log(`    Poll: ${d1aPolled.pollCount} attempts, ${d1aPolled.bytes} bytes pending`);
+  let d1aReply: number[] = [];
+  if (d1aPolled.bytes > 0) {
+    const rd = await midiRead(d1aPolled.bytes);
+    d1aReply = rd.data_in;
+    console.log(`    Reply (${d1aReply.length}): ${hex(d1aReply, 64)}`);
+  }
+
+  // D1b: test flag=0x80
+  console.log('\n[D1b] Drain queue, then SEND SDATA WRITE flag=0x80');
+  await drainQueue(5);
+  const d1b = await midiSendCdb(sdata, 0x80);
+  describeResult('SEND D1b flag=0x80', d1b);
+  const d1bInline = d1b.data_in;
+  const d1bPolled = await pollUntilReady(2000);
+  console.log(`    Poll after: ${d1bPolled.pollCount} attempts, ${d1bPolled.bytes} bytes pending`);
+  let d1bViaPoll: number[] = [];
+  if (d1bPolled.bytes > 0) {
+    const rd = await midiRead(d1bPolled.bytes);
+    d1bViaPoll = rd.data_in;
+    console.log(`    Reply via poll (${d1bViaPoll.length}): ${hex(d1bViaPoll, 64)}`);
+  }
+
+  // Summary + interpretation
+  console.log('\n=== Phase D SUMMARY ===');
+  console.log(`  D1a flag=0x00 (baseline):`);
+  console.log(`    SCSI status: ${d1a.status}; sense ${d1a.sense_data.length} bytes: ${hex(d1a.sense_data)}`);
+  console.log(`    inline data_in: ${d1a.data_in.length} bytes; reply via poll: ${d1aReply.length} bytes`);
+  console.log(`  D1b flag=0x80 (test):`);
+  console.log(`    SCSI status: ${d1b.status}; sense ${d1b.sense_data.length} bytes: ${hex(d1b.sense_data)}`);
+  console.log(`    inline data_in: ${d1bInline.length} bytes; reply via poll: ${d1bViaPoll.length} bytes`);
+
+  console.log('\n  CROSS-PHASE COMPARISON (sense bytes):');
+  console.log(`    Invalid opcode (0x99, Phase B):       ${hex([0x02, 0x00, 0x00, 0x00])}  ← non-standard 4-byte`);
+  console.log(`    RSDATA 0x0A + flag=0x80 (Phase C C1b): 03 00 00 00  ← non-standard 4-byte`);
+  console.log(`    SDATA  0x0B + flag=0x00 (Phase D D1a): ${hex(d1a.sense_data)}`);
+  console.log(`    SDATA  0x0B + flag=0x80 (Phase D D1b): ${hex(d1b.sense_data)}`);
+
+  console.log('\n  INTERPRETATION:');
+  if (d1a.status !== 0 && d1b.status !== 0) {
+    if (JSON.stringify(d1a.sense_data) === JSON.stringify(d1b.sense_data)) {
+      console.log('    → Both flags rejected with IDENTICAL sense. The flag byte is NOT the discriminator');
+      console.log('      for SDATA. Sense reflects something else (state, count=0 invalidity, etc.).');
+    } else {
+      console.log('    → Both flags rejected but with DIFFERENT sense. The flag byte produces a');
+      console.log('      different rejection mode. Captures the discrimination signal.');
+    }
+  } else if (d1a.status === 0 && d1b.status !== 0) {
+    console.log('    → flag=0x00 ACCEPTED, flag=0x80 REJECTED for SDATA WRITE.');
+    console.log('      Same pattern as RSDATA. The candidate-style WRITE+flag=0x80 path is');
+    console.log('      rejected on hardware. DOES NOT REFUTE MESA shape — could mean different');
+    console.log('      production patch target OR missing state setup.');
+  } else if (d1a.status === 0 && d1b.status === 0) {
+    console.log('    → BOTH flags ACCEPTED for SDATA WRITE. flag=0x80 works in WRITE direction!');
+    console.log('      Strong promotion of the candidate target identity. Existing bridge comment');
+    console.log('      "S3000XL rejects 0x80" applies to READ-family only, NOT WRITE.');
+  } else if (d1a.status !== 0 && d1b.status === 0) {
+    console.log('    → SURPRISING: flag=0x80 accepted but flag=0x00 rejected for SDATA WRITE.');
+    console.log('      Strongly suggests the device requires flag=0x80 for WRITE direction.');
+    console.log('      Existing bridge code (which always uses 0x00) may be working only because');
+    console.log('      the device tolerates BULK-via-fallthrough differently than direct SDATA.');
+  }
+
+  console.log('\n  Reminder: per Codex 2026-04-22 — even a clean PASS does not promote the');
+  console.log('  wire format to fully MEASURED. It promotes the candidate identity to');
+  console.log('  "more strongly supported." This is a constrained probe, not full validation.');
+}
+
 async function main() {
-  console.log('=== MESA II CDB[5] flag-byte hardware validation (Phases A-C) ===');
+  console.log('=== MESA II CDB[5] flag-byte hardware validation (Phases A-D) ===');
   console.log(`Bridge: ${BRIDGE_URL}`);
   console.log(`Target: SCSI ID ${TARGET_ID}`);
 
@@ -383,12 +496,13 @@ async function main() {
     const b = await phaseB();
     if (!b.pass) {
       console.error(`\n[ABORT] Phase B failed: ${b.reason}`);
-      console.error('Sense plumbing not working — Phase C rejection results would be uninterpretable.');
+      console.error('Sense plumbing not working — subsequent rejection results would be uninterpretable.');
       await midiDisable().catch(() => {});
       process.exit(3);
     }
 
     await phaseC();
+    await phaseD();
 
     console.log('\n=== Test complete. Disabling MIDI mode. ===');
     await midiDisable();
