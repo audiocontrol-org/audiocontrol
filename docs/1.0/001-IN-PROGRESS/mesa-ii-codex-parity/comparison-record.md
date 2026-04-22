@@ -774,6 +774,15 @@ cleanly.
   That makes Claude's proposed `ModalDialog -> affirmative item` probe a good bounded
   next step: it is semantically plausible and much better grounded than guessing a
   hidden `CSCSIPlug` suppress-dialog flag.
+  Codex has now tightened the *meaning* of that probe too. The `0x187e` internal entry
+  first enumerates candidate bus/ID targets through the internal `0x17ac` probe,
+  accepts only zero-result entries whose descriptor bytes match the `AK` prefix and
+  `S`/`C` discriminator, and counts those valid lines in `d6` before it ever reaches the
+  dialog call. Only when at least one candidate line exists does the routine prime a
+  default selection (`fp@(-298)=1`) before calling the dialog method that reaches
+  `ModalDialog`. So the affirmative-item probe is now more informative than before:
+  if it still returns the local `-10003` error path, then the missing precondition is
+  upstream target enumeration state, not just UI interaction semantics.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

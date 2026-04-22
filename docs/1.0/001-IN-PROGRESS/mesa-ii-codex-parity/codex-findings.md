@@ -3006,6 +3006,30 @@ correct. Every finding should distinguish direct evidence from inference.
   inside the dialog/error branch, without needing to invent a hidden suppress-dialog
   field in `CSCSIPlug` first.
 
+- MESA II internal entry `0x187e` is a target-enumeration-and-selection routine, not just a naked dialog branch
+  Clean `objdump` of the live plug bytes shows `SMSendData` calls `0x187e` at `0x162e`
+  and branches to the local error exit only when its low byte is zero (`0x1634-0x1638`).
+  Inside the large `0x1700-0x1afe` `SMSendData` body, the same `0x187e` region first
+  scans bus/ID candidates:
+  `0x17b0-0x17d4` calls the internal `0x17ac` entry with `(self+0x093a, d4, d5,
+  buffer, 0x24)`, stores the result at `self+0x0d66`, and skips line construction when
+  that result is nonzero.
+  When the probe result is zero, `0x17dc-0x180e` checks the returned descriptor bytes
+  for the `AK` prefix and `S`/`C` discriminator, `0x1812-0x195c` builds the visible
+  `Bus X, ID=Y:` line, and `0x1936-0x1962` appends it to the dialog object. The nested
+  loops at `0x1974-0x198a` walk `d4 = 0..7` and `d5 < self+0x0942`, so `d6` becomes the
+  count of valid candidate lines.
+  The dialog phase only happens after that enumeration pass:
+  `0x198e-0x19e6` sets up the prompt, primes a default selected line (`fp@(-298)=1`)
+  only when at least one candidate was found, and `0x19e6-0x19fa` calls the dialog
+  method that eventually reaches `ModalDialog`.
+  This tightens the harness interpretation:
+  the affirmative `ModalDialog` probe is still the right bounded next test, but it now
+  specifically answers whether Musashi is blocked only on UI interaction or still lacks
+  valid target-enumeration state. If affirmative dialog flow still returns the local
+  `-10003` error path (`0x1aa6` / `0x1ac2`), the next missing precondition is upstream
+  target discovery, not a hidden dialog flag.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
