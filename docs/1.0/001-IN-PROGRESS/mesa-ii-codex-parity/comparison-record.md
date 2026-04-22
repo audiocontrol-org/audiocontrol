@@ -803,6 +803,18 @@ cleanly.
   field `0x0d68`. So `0x0d68` no longer looks like a synonym for the dialog’s current
   choice; it looks like an earlier latched selection/status field that the harness may
   still be failing to establish before `SMSendData` runs.
+  Codex then widened that picture by one field group: the constructor clears
+  `0x0d68/0x0d6a/0x0d6c` alongside `0x0d6e`, but the visible post-ctor local writes still
+  only target the newer `0x0d6e/0x0d70` selection machinery. So the older
+  `0x0d68/0x0d6a/0x0d6c` cluster now looks even more like pre-existing plug/session
+  latch state that `SMSendData` consumes rather than produces locally.
+  Codex then checked the obvious embedded-`CMESAPlugIn` command surface and got another
+  useful exclusion: `DoMESACommand__11CMESAPlugIn`, `ConnectToSocket`, and
+  `ActivateSocket` visibly handle the `CONS`/`ASOK`/`AQUT`-style flows, but their local
+  writes still stay on the return/status word, copied `SocketInfo` records, and the
+  newer `0x0d6e/0x0d70` selection machinery. They still do not visibly establish
+  `0x0d68/0x0d6a/0x0d6c`. So the older latch cluster is now excluded not just from
+  `SMSendData` itself but from the obvious visible plug-side command/activation path too.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

@@ -3085,6 +3085,37 @@ correct. Every finding should distinguish direct evidence from inference.
   looks like an older latched selection/status field that must already be established by
   some earlier path outside the locally visible selection writes.
 
+- MESA II ctor-visible sibling fields `0x0d68/0x0d6a/0x0d6c` look like an older latched-state cluster, while the active selection machinery has moved to `0x0d6e/0x0d70`
+  `__ct__9CSCSIPlugFv` at `0x0bfc-0x0c0a` explicitly clears `self+0x0d6c`,
+  `self+0x0d6a`, and `self+0x0d6e` together at construction time.
+  Later local code continues to use the newer pair:
+  `0x0d70` scratch entries are zeroed at ctor time, written at `0x1a8c`, and read back
+  through `0x0d72` into `0x0d6e` at `0x0e1a-0x0e24`.
+  But the only visible uses of the older neighbor `0x0d68` are still the two reads on
+  the return path (`0x1568`, `0x1ade`), and there are no visible local writes to
+  `0x0d68`, `0x0d6a`, or `0x0d6c` after construction in the current plug artifact.
+  That makes the latch interpretation stronger:
+  the older `0x0d68/0x0d6a/0x0d6c` cluster looks like pre-existing plug/session state
+  that local `SMSendData` logic consumes, while the visible selection path only produces
+  the newer `0x0d6e/0x0d70` state.
+
+- MESA II visible `CMESAPlugIn` command handling still does not establish the older `0x0d68/0x0d6a/0x0d6c` latch cluster
+  A bounded reread of the embedded `CMESAPlugIn` surface around
+  `DoMESACommand__11CMESAPlugInFP11MESACommand`, `ConnectToSocket`, and
+  `ActivateSocket` now supports a stronger exclusion:
+  the command selector body around `0x0898-0x099a` handles tags like `CONS`, `ASOK`,
+  `AQUT`, `IDEN`, `OPNM`, and `RSEND`, but its visible writes stay on:
+  - the local return/status word at `this+4`
+  - the copied 46-byte `SocketInfo` records
+  - the active/scratch selection machinery through `0x0d6e/0x0d70`
+  `ConnectToSocket__11CMESAPlugInFP10SocketInfo` grows the entry table and
+  `ActivateSocket__11CMESAPlugInFP10SocketInfo` updates selected entry fields, but
+  neither visible method writes `0x0d68`, `0x0d6a`, or `0x0d6c`.
+  So the current exclusion boundary is tighter:
+  the older latch cluster is not just “not written by `SMSendData`”; it is also not
+  established by the obvious visible `CMESAPlugIn` command/activation surface in the
+  plug artifact.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
