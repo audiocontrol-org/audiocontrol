@@ -30,9 +30,13 @@
 >    - **Mode-byte semantics (A.12):** 6 JSR 0x106e sites; mode=0x01 → CDB[5]=0x80 (SRAW + BULK-via-SCSI fallthrough); mode=0x00 → CDB[5]=0x00 (SYSX/MIDI). BULK handler at 0x0e9e falls into SRAW at 0x0ec0 when `CSCSIPlug+0xe40` SCSI-mode flag is set.
 >    - **SMSendData CDB[5] formula MEASURED-deterministic** (A.14): no path from 0x160c entry to 0x1670 CDB-construction nullifies the mode byte. SMDispatchReply (0x139a) is BSR'd at 0x16bc, AFTER the SCSI write at 0x169a — cannot retroactively affect CDB.
 >
->    **HOWEVER — combined with hardware (Phase A-D, 2026-04-22):** S3000XL rejects `flag=0x80` for both opcode families tested (`0x0A` RSDATA + `0x0B` SDATA) with sense `03 00 00 00`. flag=0x00 universally accepted. Since SMSendData would emit `flag=0x80` deterministically and MESA II works on hardware, **the live production path does NOT reach `SMSendData` (or any wire-equivalent body)**. The wire format above describes the candidate target body's behavior, NOT the production wire format.
+>    **HOWEVER — combined with hardware (Phase A-D, 2026-04-22):** S3000XL rejects `flag=0x80` for both opcode families tested with sense `03 00 00 00`. flag=0x00 universally accepted. Since SMSendData would emit `flag=0x80` deterministically and MESA II works on hardware, **the strongest current explanation (Codex calibration 2026-04-22) is that the live production path does not reach `SMSendData`**. The wire format above describes the candidate target body's behavior, NOT a proven production wire format.
 >
->    **Strongest remaining hypothesis (per Codex 2026-04-22):** production patches `0x106e` to a target that emits `CDB[5]=0x00`. **Next critical-path move:** binary-source hunt (find a known-working MESA II distribution to byte-compare at 0x1070-0x1071 — task #35/A.11/B1).
+>    **Still OPEN per Codex:** whether some unreproduced state/path condition changes the meaning/acceptability of the same emitted `0x80` form. The state-precondition hypothesis is logically alive — production might reach the same body but in a state where the sampler accepts `0x80`.
+>
+>    **Hypothesis ranking after A.14 (per Codex framework):** (1) STRONGEST CANDIDATE: production reaches a different target or non-wire-equivalent live path; (2) STILL OPEN: state condition makes the same emitted `0x80` acceptable; (3) our interpretation of the candidate body — refuted by A.14.
+>
+>    **Next critical-path move:** binary-source hunt (task #35/A.11/B1) + ONE narrow static subtrack on patch-mechanism / relocation-table hunting (task #39/A.15).
 >
 > Sections 8/9 of this doc below are obsolete. Trust the path-a*.md docs (each carries its own calibration banner).
 
