@@ -937,6 +937,14 @@ cleanly.
   `IdentifyBusses` operates on. The tactical focus stays the same, but the old
   `CMESAPlugIn+8` wording should no longer be treated as fully settled.
 
+- The `0x157e` ctor callee should also be downgraded as evidence. A caller scan shows
+  the only direct absolute call to `0x157e` is the `CSCSIPlug` ctor site at `0x0be0`,
+  but `0x157e` itself is not a standalone helper body; it lands in the middle of the
+  later `SMDispatchReply` function (`0x139a-0x15e0`). So the ctor really is seeding
+  `self+0x093a` through a mid-body internal entry there, but that no longer supports a
+  clean class identity for the subobject. The safe current wording is still just: a
+  chooser-related helper subobject rooted at `self+0x093a`.
+
 - Claude's new `A1` question has a good static answer already: the vtable call at
   `ChooseSCSI` file `0x19f0-0x19fa` is most plausibly the chooser dialog `Do()` method,
   not a hidden transport hook. The same chooser object at `fp@(-1856)` is called

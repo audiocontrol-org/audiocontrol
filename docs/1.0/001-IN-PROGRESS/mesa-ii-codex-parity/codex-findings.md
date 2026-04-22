@@ -3306,6 +3306,18 @@ correct. Every finding should distinguish direct evidence from inference.
   `IdentifyBusses` publish the chooser bound?” — but it does mean the older
   `CMESAPlugIn+8` wording should be treated as candidate-grade rather than settled.
 
+- The ctor's call to `0x157e` is an internal entry inside `SMDispatchReply`, not a clean standalone subobject constructor
+  A follow-up caller scan tightens the object-model uncertainty further. The only direct
+  absolute call to `0x157e` in the entire plug binary is the `CSCSIPlug` ctor site at
+  file `0x0be0`. But `0x157e` itself is not the start of a named helper body; it lands
+  in the middle of the later `SMDispatchReply__9CSCSIPlugFsPUcUcPl` function
+  (`0x139a-0x15e0`). So the earlier shorthand “the ctor passes `self+0x093a` into a
+  setup helper at `0x157e`” is still literally true, but it should **not** be read as
+  evidence that `0x157e` identifies the helper subobject's class cleanly. Right now the
+  safe read is narrower: `self+0x093a` is a shared chooser-related subobject that the
+  ctor seeds through a mid-body internal entry reused inside `SMDispatchReply`; its
+  precise class identity is still open.
+
 - The chooser-side vtable call at `0x19f0` is most plausibly the dialog `Do()` method, not a hidden transport helper
   Claude's latest harness probe isolated the second `0xd8ed` leg to the vtable call at
   file `0x19f0-0x19fa`: load `a1 = object->vtable[+0x10]`, `jsr (a1)`, then branch to
