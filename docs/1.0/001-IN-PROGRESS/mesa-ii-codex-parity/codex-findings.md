@@ -3030,6 +3030,28 @@ correct. Every finding should distinguish direct evidence from inference.
   `-10003` error path (`0x1aa6` / `0x1ac2`), the next missing precondition is upstream
   target discovery, not a hidden dialog flag.
 
+- MESA II target enumeration under `0x187e` walks the embedded `CMESAPlugIn` socket table, so the harness must satisfy earlier `ConnectToSocket`/`ActivateSocket` state before dialog success is even possible
+  The surrounding symbol and code surface now reconcile cleanly:
+  `GetSockets__11CMESAPlugInFv` at file `0x0b96-0x0ba6` returns `this+56`, and
+  `__ct__9CSCSIPlugFv` at `0x0bc6-0x0c72` explicitly initializes the embedded
+  `CMESAPlugIn` subobject at `CSCSIPlug+0x093a`, including zeroing its count field at
+  subobject offset `+56`.
+  `ConnectToSocket__11CMESAPlugInFP10SocketInfo` at `0x09d2-0x0a2c` increments that
+  count and copies a full 46-byte `SocketInfo` record into the per-entry table at
+  subobject offset `+60 + 46*n`.
+  `ActivateSocket__11CMESAPlugInFP10SocketInfo` at `0x0a5c-0x0ab4` then searches those
+  entries by the longword at `SocketInfo+38`, writes the selected word/long fields back
+  into the entry (`+60` / `+66`), and clears a downstream pointed longword.
+  That makes the later `0x187e` scan much more concrete:
+  the `d5 < this+56` / `entry = this+60+46*d5` walk is not abstract transport magic; it
+  is traversing the embedded `CMESAPlugIn` socket table that should already have been
+  built by the `CONS`/`ASOK` phase.
+  This sharpens the emulator implication again:
+  if the affirmative `ModalDialog` probe still returns `-10003`, the next thing to check
+  is not a hidden UI flag but whether the embedded `CMESAPlugIn` table at
+  `CSCSIPlug+0x093a` has been populated and activated the same way real `CONS` and
+  `ASOK` would have done.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the

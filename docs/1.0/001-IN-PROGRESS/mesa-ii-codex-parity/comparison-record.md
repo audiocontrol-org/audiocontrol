@@ -783,6 +783,13 @@ cleanly.
   `ModalDialog`. So the affirmative-item probe is now more informative than before:
   if it still returns the local `-10003` error path, then the missing precondition is
   upstream target enumeration state, not just UI interaction semantics.
+  Codex has now pinned where that upstream state lives: `0x187e` is walking the
+  embedded `CMESAPlugIn` table at `CSCSIPlug+0x093a`, not an abstract hidden structure.
+  `ConnectToSocket__11CMESAPlugInFP10SocketInfo` grows the `count` field at subobject
+  offset `+56` and copies each 46-byte `SocketInfo` into the `+60+46*n` entry table,
+  while `ActivateSocket__11CMESAPlugInFP10SocketInfo` updates the selected entry. So if
+  the affirmative `ModalDialog` probe still fails, the next missing harness precondition
+  is likely earlier `CONS`/`ASOK` table state, not dialog semantics.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.
