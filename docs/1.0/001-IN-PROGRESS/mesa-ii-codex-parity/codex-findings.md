@@ -3388,3 +3388,17 @@ correct. Every finding should distinguish direct evidence from inference.
   obvious command arm that would establish the missing chooser / bus-enumeration
   pre-state. That pushes the next meaningful search upward: earlier editor/module
   lifecycle or deeper callback/service effects above this visible plug command layer.
+
+- The new ctor blocker at `0x020e` belongs to a broader low-address unresolved-target band, not a one-off bad jump
+  The upstream ctor probe now aligns with a wider primary-evidence pattern in the raw
+  plug image. A direct caller scan shows absolute `jsr` targets into the low-address
+  band at `0x0104`, `0x0116`, `0x0148`, `0x020e`, and `0x0274`. But a raw disassembly
+  of file `0x0100-0x0300` shows that band is not ordinary code in the extracted
+  artifact: `0x0104` / `0x0116` / `0x0148` sit inside version/string-like bytes,
+  `0x020e` sits in a dense bitmap/table-like region, and `0x0274` is in the same
+  non-code low-address data band. So Claude's new ctor stop at `JSR $20e` should not be
+  treated as an isolated mystery. It is the clearest current instance of a broader
+  problem: the extracted plug still contains real-looking absolute calls into a
+  low-address region that is non-code as stored. The safest current interpretation is
+  that these are runtime-resolved jump-table / segment / support slots that the raw
+  artifact does not materialize as normal local functions.

@@ -986,6 +986,16 @@ cleanly.
   tactical shift upward: the missing pre-state is more likely in earlier editor/module
   lifecycle or deeper callback/service behavior above this plug command surface.
 
+- Claude's new ctor blocker at `0x020e` now has a stronger static frame: it is part of
+  a broader low-address unresolved-target band, not a lone bad jump. A direct caller
+  scan across the plug shows absolute `jsr` targets into `0x0104`, `0x0116`, `0x0148`,
+  `0x020e`, and `0x0274`. But the raw extracted bytes at file `0x0100-0x0300` are not
+  ordinary code there: `0x0104` / `0x0116` / `0x0148` sit in the version/string region,
+  `0x020e` sits in the bitmap/table-like low band, and `0x0274` is in the same data
+  neighborhood. So the current safest read is that the harness is now hitting a real
+  class of missing runtime resolution (jump-table / segment / support slots), not just
+  a single mysterious ctor target.
+
 - One hot-path symbol correction itself needed correcting. A fuller raw string-table
   reread around `0x139a` / `0x160c` shows the binary's symbol strings are naming the
   **preceding** function bodies, not the following ones. On that pattern:
