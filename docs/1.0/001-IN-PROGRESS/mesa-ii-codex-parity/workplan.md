@@ -256,9 +256,22 @@ Newest plug-side refinement:
 - so the next best static question is the editor-side identity of `SocketInfo[+0]` in
   the `CONS` payload, not any remaining `SocketInfo[+12]` install story
 
-That split uses the two efforts complementarily: Claude pushes runtime terrain and
-hardware truth, while Codex keeps pressure on the same install-edge path statically and
-records which static branches are now convincingly ruled out.
+That split then converged further. The main-app callback path is now bounded too:
+
+- the `INIT` callback literal used by both `LoadMESAPlugIn` and `LoadMESAEditor`
+  resolves to `SendCommandToEditor` in `mesa-ii-app` `CODE 1`
+- the direct callback body is an inline host/editor tag-dispatcher, not a visible
+  transport patcher
+- its visible fan-out lands in editor/service handlers and module-dispatch helpers
+- the first shared helper hanging off that path also looks like typed module
+  discovery/registry logic (`PLUG` / `AK11`), not transport setup
+
+So the current practical assessment is:
+
+- the direct patch hypothesis is functionally closed on the current static artifact set
+- the only residual static uncertainty is the deeply indirect
+  `DispatchCommandFromModule` downstream chain
+- that residual is no longer a good blocker for product work or for bridge acceptance
 
 Current reminder:
 
@@ -279,10 +292,10 @@ Current reminder:
 
 ### Tasks
 
-- [ ] Summarize which findings are safe to consume in downstream implementation work
-- [ ] Record unresolved questions and recommended next experiments
+- [x] Summarize which findings are safe to consume in downstream implementation work
+- [x] Record unresolved questions and recommended next experiments
 - [ ] Identify any follow-up feature or issue work needed for validated findings
-- [ ] Add maintenance guidance for keeping the two analysis tracks comparable over time
+- [x] Add maintenance guidance for keeping the two analysis tracks comparable over time
 
 ### Acceptance Criteria
 
@@ -292,33 +305,16 @@ Current reminder:
 
 ### Next Experiments
 
-- Review Claude's latest `#315` updates and keep the parity docs aligned with any new
-  runtime/harness evidence around the live sender and the Option 2 bootstrap plan
-- Treat Claude's Path A / task `#31` as the step-0 prequel to Option 2, per the latest
-  `#315` reply, not as a rival strategy branch
-- Keep Codex on the same static install-edge question in parallel:
-  test the compile-time socket/vtable path above `CMESAEditor`, then follow the
-  `CONS -> SocketInfo[+0] -> plug_slot[+0]` callback chain; keep the older
-  “the install edge leaves the recovered resource graph” framing limited to the narrow
-  direct `+0xa20` path unless new evidence broadens it again
-- Prefer explicit terminal-boundary documentation over additional broad helper hunting:
-  if a remaining static surface only re-encodes already-classified scaffolding, resource
-  descriptors, or lifecycle metadata, record that as another exclusion rather than
-  treating it as a fresh reverse-engineering frontier
-- Treat failed attempts to promote ambiguous raw-hex/control-flow hits as negative
-  process evidence rather than findings:
-  do not convert nearby branch/immediate coincidences into owner-boundary claims unless
-  they resolve to a clear table-driven or callback-install mechanism
-- Use the recent constructor/tag/resource results as an exclusion boundary:
-  that branch now looks like file/resource/document plumbing, so do not keep mining it
-  as if it were still a likely live-sender path unless new evidence points back to it
-- Recheck any parity claims that depend on the older constructor-target decoding or the
-  "outside recovered graph" install-edge framing; those are now partially superseded by
-  the compile-time vtable model
-- Leave runtime install/intercept validation, live sender observation, and hardware
-  throughput checks to the parallel Claude effort unless new evidence makes Codex-side
-  runtime work necessary
-- Keep the earlier sampler-side findings available as context, but avoid spending more
-  cycles on local `SendData` helper hunting unless new evidence reopens that surface
-- If new runtime evidence contradicts the current static model, capture that as an
-  explicit parity note or issue rather than letting the branch drift informally
+- Review Claude's final `#315` writeup and keep the parity docs aligned with the
+  settled Outcome B / residual-state-precondition calibration
+- Treat the current state as a clean stopping point:
+  direct patch path closed on current static artifacts, service callback confirmed,
+  current bridge behavior acceptable for known operations, residual deeper
+  state-precondition not worth blocking on
+- Reopen only if:
+  - a new binary or runtime artifact appears
+  - a regression or unsupported operation surfaces in the bridge
+  - runtime evidence directly contradicts the current service-callback / no-direct-patch
+    model
+- If reopened, start from the bounded `DispatchCommandFromModule` downstream chain, not
+  from the older patch-hunt surfaces that are already exhausted

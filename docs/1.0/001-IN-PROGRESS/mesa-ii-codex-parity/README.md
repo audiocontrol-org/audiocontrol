@@ -7,9 +7,9 @@ Parallel Codex-driven reverse engineering of Akai's MESA II sampler editor, desi
 | Phase | Status | Notes |
 |-------|--------|-------|
 | Phase 1: Baseline and Comparison Setup | Complete | Claude branch baseline captured; comparison artifacts created; first Codex target selected |
-| Phase 2: Independent Codex Analysis | In Progress | Task-21 activation-state model is effectively matched; static `CSCSIPlug::SendData` helper hunting is now effectively exhausted down to `0x106e` |
-| Phase 3: Cross-Check and Reconciliation | In Progress | Earlier Claude disputes `#309`-`#314` are resolved; active sync now runs through issue `#315` as Claude commits to Option 2 and the runtime sender boundary becomes the shared critical path |
-| Phase 4: Downstream Integration Guidance | In Progress | Runtime-boundary guidance is now the highest-value downstream output from the parity branch |
+| Phase 2: Independent Codex Analysis | Complete | Static `CSCSIPlug::SendData` helper hunting, callback-path decoding, CODE 1 callback checks, and bounded MESA I lineage work have all reached a practical stopping point |
+| Phase 3: Cross-Check and Reconciliation | In Progress | Earlier Claude disputes `#309`-`#314` are resolved; issue `#315` now carries the converged Outcome B read and the recommendation to stop treating state-precondition hunting as the critical path |
+| Phase 4: Downstream Integration Guidance | In Progress | The current highest-value output is a clean stopping-point recommendation: ship the working bridge path, keep state-precondition as residual, and only reopen on new evidence |
 
 ## Links
 
@@ -91,13 +91,22 @@ Recent parity work materially changed the boundary of useful Codex analysis:
   (`mesa-plug-harness` end-to-end via terrain-as-necessary) and the remaining meaningful
   unknown is the runtime sender boundary, not another static helper inside the plug body
 
-The main unresolved boundary has shifted again. The important next question is no longer
-whether `UALL` is plug-side or whether one more local `SendData` helper remains to be
-found. It is how the live sender is installed, intercepted, or otherwise redirected at
-runtime now that Claude's branch has committed to Option 2 harness work and adopted the
-runtime/hardware versus static-boundary split on issue `#315`. Claude's latest reply on
-that issue also makes the sequencing explicit: Path A / task `#31` is now treated as the
-step-0 prequel to Option 2, not as a competing strategy.
+The main unresolved boundary then shifted into the main-app callback path and has now
+largely converged too. Codex independently confirmed that:
+
+- the `INIT` callback literal passed by both `LoadMESAPlugIn` and `LoadMESAEditor`
+  resolves to `SendCommandToEditor` in `mesa-ii-app` `CODE 1`
+- the direct callback body is an inline host/editor tag-dispatcher rather than a
+  transport patcher
+- its visible fan-out lands in editor/service handlers like cursor, menu, editor/window,
+  and module-dispatch helpers
+- the first shared helper reached from that callback also looks like typed module
+  discovery/registry logic (`PLUG` / `AK11` compares), not transport setup
+
+That means the direct patch hypothesis is now functionally closed on the current static
+artifact set. The only remaining theoretical residual is a deeper downstream
+`DispatchCommandFromModule` service/module chain, not any visible direct patch or
+transport-shaping path in the callback body itself.
 
 Recent Codex work also closes off a broad static false lead: the constructor-side
 registry/tag/resource branch rooted at `0x287ee` now looks like resource/document
@@ -109,30 +118,31 @@ all align with file/resource handling (`AK11`, `DATA`, `EBFX`, `EBRV`, `SMDB`, `
 
 ## Recommended Split
 
-Based on the current combined Claude and Codex evidence, the most effective parallel
-assignment is now complementary rather than duplicated:
+Based on the current combined Claude and Codex evidence, the most effective assignment
+is now closure-oriented rather than exploratory:
 
-- Claude should own runtime and hardware validation:
-  initialization-time behavior, live sender installation or redirection, and the
-  product-facing question of whether any recovered path can plausibly reach
-  MESA-class throughput.
-- Codex should keep following Path A in parallel:
-  continue static owner-boundary work around `+0xa20`, `SetCommandProc`, and the
-  install-edge path in `sampler-editor-rsrc.bin`, even though Claude is also pursuing
-  Path A as step 0 of Option 2. The value of the second track is cross-pollination,
-  different search order, and independent falsification.
+- Claude should own the final project-state writeup and product-facing closeout on
+  issue `#315`.
+- Codex should own parity review, calibration control, and doc hygiene so the final
+  settled state does not drift back into stale “one more patcher” language.
 
-Both efforts should avoid two specific traps:
+Both efforts should avoid three traps:
 
 - reopening broad static plug-body helper hunting in `CSCSIPlug::SendData`, which is
   already close to exhaustion
 - mistaking the constructor/tag/resource branch for a transport-install path now that
   it looks like resource/document plumbing
+- promoting residual state-precondition to an active blocker after the direct patch
+  hypothesis has been functionally closed on the current artifact set
 
-The shared critical path remains the same: identify where the live sender is installed,
-redirected, or otherwise made reachable. Claude is best placed to push that boundary at
-runtime; Codex remains useful by pursuing the same static boundary from a second angle
-and documenting which side branches are now effectively ruled out.
+The recommended stopping point is now explicit:
+
+- `MEASURED`: no visible direct patch path in the current static artifact set, service
+  callback confirmed, and working bridge behavior for the known operations
+- `RESIDUAL`: a deeper state/module-precondition may still exist through
+  `DispatchCommandFromModule`, but it is no longer worth blocking on
+- `REOPEN ONLY IF`: new binary/runtime evidence appears, a regression surfaces, or a
+  missing operation shows the current bridge path is insufficient
 
 ## Artifact Reminder
 
