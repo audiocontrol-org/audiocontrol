@@ -761,6 +761,13 @@ cleanly.
   the harness is now exercising, and the right model is: internal `SMSendData` entry
   points with shared caller-state assumptions, not a late-bound helper waiting to be
   installed.
+  One more consequence now looks stable enough to say out loud: the `0x187e` /
+  runtime-`0x1187e` path is visibly UI/dialog-heavy. The same large `SMSendData` body
+  allocates a dialog-like object, dispatches through dialog methods, formats strings
+  like `Bus X, ID=Y:`, and calls helpers that land in the `CSCSIDialog` method region.
+  So Claude's observed `ModalDialog` trap is statically consistent with the code, which
+  shifts the harness question again: why the send flow is reaching the dialog/error
+  branch, not whether Musashi has simply jumped into an invalid helper target.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

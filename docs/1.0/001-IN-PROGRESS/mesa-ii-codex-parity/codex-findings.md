@@ -2979,6 +2979,21 @@ correct. Every finding should distinguish direct evidence from inference.
   harness should treat `0x1187e` as an internal `SMSendData` entry point, not as a
   separate helper body waiting to be installed.
 
+- MESA II internal entry `0x187e` / runtime `0x1187e` is part of a real UI/dialog path, not random recursion into garbage
+  The large `SMSendData` body around file `0x1700-0x1afe` is visibly dialog-heavy.
+  It allocates a dialog-like object at `0x1762-0x1770`, dispatches through object
+  methods at `0x1784` and again at `0x19f4`, builds user-facing strings like
+  `Bus X, ID=Y:` in the `0x1812-0x1934` range, and uses helper calls at absolute
+  addresses `0x21dc`, `0x229c`, and `0x218a` that map into the `CSCSIDialog` method
+  region.
+  So Claude's observed `ModalDialog` trap on the runtime `0x1187e` path is consistent
+  with the static body: this entry is inside a legitimate bus/ID selection or error UI
+  path, not an accidental jump into unrelated bytes.
+  Practical implication:
+  if Musashi falls into the `0x1187e` path, the right question is why the send flow is
+  reaching the dialog/error-selection branch at all, not whether that branch is a bogus
+  unresolved install target.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
