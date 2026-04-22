@@ -797,6 +797,12 @@ cleanly.
   writers. So there is now a very concrete harness-side check: if `0x187e` gets to its
   success leg but `0x0d68` is still zero, `SMSendData` will still fail its `tst.b d0`
   gate even after valid enumeration.
+  Codex then tightened that state split further: the dialog path clearly writes a new
+  selected bus/ID word through the `0x0d70/0x0d72` scratch array and into the active
+  field `0x0d6e`, but the final `0x187e` success return still uses the distinct older
+  field `0x0d68`. So `0x0d68` no longer looks like a synonym for the dialog’s current
+  choice; it looks like an earlier latched selection/status field that the harness may
+  still be failing to establish before `SMSendData` runs.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

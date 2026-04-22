@@ -3068,6 +3068,23 @@ correct. Every finding should distinguish direct evidence from inference.
   under Musashi, the missing precondition is likely an earlier selection/state field,
   not the dialog loop itself.
 
+- MESA II dialog selection writes a new active value through `0x0d70/0x0d72 -> 0x0d6e`, but the `0x187e` return path still uses the distinct older field at `0x0d68`
+  The surrounding state fields are now better separated:
+  `0x1a8c` stores the chosen 16-bit bus/ID word into the per-index scratch area at
+  `self+0x0d70 + 4*n` (via a sign-extended long), and `0x1a9e` writes the same chosen
+  word into the active field at `self+0x0d6e`.
+  Earlier, the pre-send selector path at `0x0e04-0x0e24` scans the embedded
+  `CMESAPlugIn` table and copies the low word of one of those scratch slots
+  (`self+0x0d72 + 4*n`) back into `self+0x0d6e`.
+  So the plug clearly has a visible “current selected socket word” path through
+  `0x0d70/0x0d72/0x0d6e`.
+  But the apparent success return from `0x187e` still bypasses that newer active field
+  and returns `self+0x0d68` instead.
+  That makes the current static read stronger:
+  `0x0d68` is not just another spelling of the dialog’s current selection state. It
+  looks like an older latched selection/status field that must already be established by
+  some earlier path outside the locally visible selection writes.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
