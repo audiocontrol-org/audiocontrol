@@ -3473,3 +3473,18 @@ correct. Every finding should distinguish direct evidence from inference.
   corrected ctor/init/open rerun a real early entry map instead of the older wrong-base
   constants and also eliminates the stale confusion about `self+0x0c` being the `'PASC'`
   tag rather than a vtable entry offset.
+
+- The first real `A1AD` / `A31E` contract is now concrete inside the rebased `CSCSIUtils` ctor
+  The rebased ctor helper `0x157e -> 0x1b1c` is the `CSCSIUtils` constructor body, and
+  it already narrows the next harness target sharply. After local zero/init work and two
+  calls to helper `0x24e2`, it loads `D0 = 0x00010000`, calls `0xA31E`, and stores the
+  returned `A0` into `this+2`, treating failure as error `-108`. Then it loads
+  `D0 = 'scsi'`, passes `A1 = &local_long`, calls `0xA1AD`, stores the returned `A0`
+  through that out-local, checks `D0` as a status word, and only if `D0 == 0` and
+  `(local_long & 1) != 0` does it set `this+6 = 1` and immediately call rebased
+  `IdentifyBusses` at `0x1970`. So the corrected top-down path now exposes a concrete
+  constructor-time capability gate:
+  `A31E` must succeed enough to yield a non-null handle/pointer, and `A1AD('scsi')`
+  must succeed with bit 0 set in the returned capability long. That is a much narrower
+  emulator target than a generic SCSI Manager implementation and it bridges directly
+  into the older bus-enumeration story through the proper lifecycle path.

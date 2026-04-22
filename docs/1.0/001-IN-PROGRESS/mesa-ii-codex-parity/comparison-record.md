@@ -1044,6 +1044,16 @@ cleanly.
   So the next top-down harness work can use a real early entry map instead of any of the
   older wrong-base constants.
 
+- The corrected SCSI-manager seam is now narrower than “implement A1AD somehow”
+  Codex pushed the next ctor helper one layer deeper. The rebased target
+  `0x157e -> 0x1b1c` is the `CSCSIUtils` constructor body, and it shows the exact gate
+  between the corrected load model and the older bus-enumeration story. That ctor:
+  calls `A31E` with `D0 = 0x00010000`, stores returned `A0` into `this+2`, then calls
+  `A1AD` with selector `'scsi'` and an out-long pointer. Only when `D0 == 0` and bit 0
+  of the returned long is set does it mark `this+6 = 1` and immediately call
+  `IdentifyBusses`. So the next harness target is no longer a broad SCSI Manager model;
+  it is the narrow constructor-time capability contract needed to make that gate pass.
+
 - One hot-path symbol correction itself needed correcting. A fuller raw string-table
   reread around `0x139a` / `0x160c` shows the binary's symbol strings are naming the
   **preceding** function bodies, not the following ones. On that pattern:

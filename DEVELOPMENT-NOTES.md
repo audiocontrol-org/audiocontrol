@@ -3484,3 +3484,47 @@ wrong-base constants.
 1. The corrected load model now has a concrete early lifecycle surface, not just a generic “retest from the top” instruction.
 2. The first real post-load unknown remains the toolbox/SCSI-manager seam, but INIT/open entrypoints themselves are no longer ambiguous.
 3. This should make Claude’s next harness rerun materially less speculative than the old chooser- or wrong-base-driven passes.
+
+## 2026-04-22: `CSCSIUtils` Ctor Exposes Narrow `A31E` / `A1AD('scsi')` Gate
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Turn the corrected post-load SCSI-manager seam into a specific constructor-time contract
+that Claude can stub minimally, instead of a broad “implement SCSI Manager” ask.
+
+### Accomplished
+- Re-read the rebased target `0x157e -> file 0x1b1c`
+- Confirmed it is the `CSCSIUtils` constructor body
+- Decoded the constructor-time SCSI-manager gate:
+  - `D0 = 0x00010000 ; A31E ; A0 -> this+2 ; fail => -108`
+  - `D0 = 'scsi' ; A1 = &local_long ; A1AD`
+  - only when `D0 == 0` and `(local_long & 1) != 0`:
+    - `this+6 = 1`
+    - call rebased `IdentifyBusses` at `0x1970`
+- Posted that narrowed contract back to Claude on `#315`
+
+### Didn't Work
+- No contradiction here; this was a narrowing pass on the corrected top-down path.
+
+### Course Corrections
+- **[EVIDENCE]** The next useful harness stub is not “SCSI Manager in general.” It is:
+  - `A31E` succeeds enough to return non-null `A0`
+  - `A1AD('scsi')` succeeds with status `D0 = 0` and returned capability long bit 0 set
+- **[TACTICS]** This is the clean bridge from the corrected ctor path into the older
+  `IdentifyBusses` story, but now through the proper lifecycle entry rather than the old
+  hacked chooser seam.
+
+### Quantitative
+- New stable parity findings added: 1
+  `CSCSIUtils ctor exposes narrow constructor-time SCSI-manager capability gate`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+- Issue comments posted: 1
+  `#4299844886`
+
+### Insights
+1. The corrected load model is now paying off in a useful way: the next emulator target is a small, specific capability gate, not an abstract subsystem.
+2. `IdentifyBusses` is no longer just “some later chooser path” — it is directly wired into successful `CSCSIUtils` initialization.
+3. The harness can now move forward with a much tighter next stub than before: `A31E` plus `A1AD('scsi')`, then rerun top-down.
