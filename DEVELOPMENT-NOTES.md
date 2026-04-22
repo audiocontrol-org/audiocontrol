@@ -3670,3 +3670,97 @@ blocker is now minimal Memory Manager handle semantics, not plug-vtable speculat
 ### Insights
 1. The chained real path is now paying off again: it has converted a broad “maybe the vtable is still wrong” worry into a narrow Memory Manager contract.
 2. The next useful emulator fix is classic-Mac handle behavior, not another synthetic bypass into `DoMESACommand`.
+
+## 2026-04-22: Relocation Seam Tightened From “Ownership Conflict” To `0x00ae -> 0x0028 -> 0x0038` Argument Contract
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Resync the shared state after the new `CONS` trace: the live blocker is no longer just
+“manual relocation versus plug relocation,” but the exact argument pipeline that feeds
+the plug’s own self-relocation loop.
+
+### Accomplished
+- Re-polled `#315` and reviewed Claude’s new relocation trace
+- Responded directly on `#315` with the static correction:
+  the relocation loop at internal `0x0038` does not read its count from raw `(SP)`
+- Re-read the corrected PLUG-body disassembly around internal `0x0038` and `0x00ae`
+- Recorded the tighter contract:
+  - `0x0038` takes `A0 = sp@(16)`, `A1 = sp@(20)`, `D6 = sp@(24)`
+  - it copies the first long from `A0@` into a local temp and uses that as the loop count
+  - `0x00ae` computes `D3 = A2 - a4@(0x266)`, calls helper `0x0028`, then pushes
+    returned `D0` as the first argument into `0x0038`
+- Updated local parity docs so the live blocker is now the
+  `0x00ae -> 0x0028 -> 0x0038` argument contract, not the older `NewHandleSys` seam
+
+### Didn't Work
+- The initial relocation framing was still too coarse:
+  “ownership conflict” explained why the fault moved, but not what exact value had gone bad
+
+### Course Corrections
+- **[EVIDENCE]** The bogus relocation count is not a raw stack-word phenomenon. It comes
+  from the memory pointed to by the first relocation argument.
+- **[TACTICS]** The next bounded harness probe should log:
+  `a4+0x266`, `a4+0x26a`, `A2`, `D3`, returned `D0` from `0x0028`, and the first bytes
+  at `[D0]`, rather than skipping relocation or fabricating a count.
+- **[DOCUMENTATION]** `#315`’s current state of play and the parity docs needed to move
+  from “Memory Manager blocker” to the newer relocation-argument seam.
+
+### Quantitative
+- New stable parity findings added: 2
+  `relocation count comes from A0@, not raw SP`
+  `live seam is 0x00ae -> 0x0028 -> 0x0038 argument pipeline`
+- Feature docs updated: 4
+  `README.md`, `workplan.md`, `codex-findings.md`, `comparison-record.md`
+- Issue comments posted: 1
+  `#4300289792`
+
+### Insights
+1. The plug’s self-relocation loop still looks production-real; the bad state is now more likely in the handoff that supplies its relocation-table pointer than in the existence of the loop itself.
+2. Manual code-entry relocation and plug-owned pointer relocation can both be real at once; the next discriminator is their interface, not a forced either/or story.
+3. The fastest way to waste time now would be another bypass. The next useful move is to instrument the exact values feeding `0x0028` and `0x0038`.
+
+## 2026-04-22: Static Relocation Table Verified; `A055` / Returned Pointer Becomes The Tighter Seam
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Use the corrected PLUG-body bytes to decide whether the relocation table itself is bad,
+or whether the wrong runtime pointer is being handed into the relocation loop.
+
+### Accomplished
+- Re-read helper `0x0028` directly in the corrected PLUG-body disassembly
+- Verified that `0x0028` does not consume the pushed `A2` / `D3`; it computes one fixed
+  PLUG-internal address, runs it through `A055 StripAddress`, and returns that pointer
+  in `D0`
+- Checked the raw PLUG-body bytes at the static table target `0x281f`
+- Verified the first long there is `0x0000006e`, a sane relocation count
+- Posted the tighter correction to Claude on `#315`
+
+### Didn't Work
+- The earlier “maybe the relocation table header itself is garbage” framing no longer
+  holds up against the raw PLUG-body bytes
+
+### Course Corrections
+- **[EVIDENCE]** The static relocation table looks sane. The next likely bad value is
+  the runtime pointer returned through `0x0028` / `A055`, not the table header itself.
+- **[TACTICS]** The next bounded harness probe should trace:
+  - returned `D0` from `0x0028`
+  - the first long at `[D0]`
+  before any relocation suppression or count fabrication is attempted.
+
+### Quantitative
+- New stable parity findings added: 2
+  `helper 0x0028 returns fixed stripped pointer to PLUG+0x281f`
+  `static relocation table header at 0x281f begins with sane count 0x0000006e`
+- Feature docs updated: 3
+  `README.md`, `codex-findings.md`, `comparison-record.md`
+- Issue comments posted: 1
+  `#4300308058`
+
+### Insights
+1. The relocation-table corruption theory got strictly weaker today; the pointer-to-table theory got stronger.
+2. `A055 StripAddress` is now a much more plausible next missing runtime contract than “random malformed relocation data.”
+3. This is exactly the kind of narrowing that keeps the harness on the production path instead of turning into another bypass experiment.

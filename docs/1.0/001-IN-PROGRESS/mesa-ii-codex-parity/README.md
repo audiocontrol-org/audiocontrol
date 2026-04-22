@@ -8,8 +8,8 @@ Parallel Codex-driven reverse engineering of Akai's MESA II sampler editor, desi
 |-------|--------|-------|
 | Phase 1: Baseline and Comparison Setup | Complete | Claude branch baseline captured; comparison artifacts created; first Codex target selected |
 | Phase 2: Independent Codex Analysis | In Progress | Static analysis is now focused on emulator-relevant transport recovery: `SMSendData` CDB construction is confirmed and the raw executor below it is identified as `CSCSIUtils::SCSICommand` |
-| Phase 3: Cross-Check and Reconciliation | In Progress | `#315` is the live Claude/Codex mailbox; Claude’s harness now empirically confirms BULK `CDB[5]=0x00` and SRAW `CDB[5]=0x80`, and the shared open seam is the wrapper chain around `0x1620` |
-| Phase 4: Emulator Contract Guidance | In Progress | The current output is emulator-facing: identify what host/service/SCSI contract MESA still expects so Musashi can drive the real fast transfer path |
+| Phase 3: Cross-Check and Reconciliation | In Progress | `#315` is the live Claude/Codex mailbox; the current shared blocker is the plug’s own self-relocation path on `CONS`, not the older wrapper-only seam below the local CDB builder |
+| Phase 4: Emulator Contract Guidance | In Progress | The current output is emulator-facing: identify the minimum Mac runtime and SCSI contract MESA still expects so Musashi can drive the real fast transfer path |
 
 ## Links
 
@@ -78,42 +78,47 @@ The feature is still active. The fixed goal is:
 - satisfy the SCSI contract it expects
 - capture the real fast sample-transfer path
 
-Recent parity work changed the frontier materially:
+Recent parity work changed the frontier materially again:
 
-- Claude’s Musashi harness now empirically reaches the local `SMSendData` CDB builder
-  under the `$1106E -> $1160c` path
-- BULK is now measured end-to-end through the local builder as:
-  `CDB[0]=0x0C`, three length bytes from the payload length, `CDB[5]=0x00`
-- SRAW is now also measured through the same builder:
-  `CDB[5]=0x80` when the byte-flag argument is nonzero
-- the app-side literal patch hunt is exhausted across all visible `mesa-ii-app` CODE
-  resources: there are no simple literal references to `0x106e`, `0x1070`, or `0x160c`
-- the first concrete raw executor below `SMSendData` is now identified as
-  `SCSICommand__10CSCSIUtilsFsP3CdbPUcUlls`, which packages the CDB into a PB-like
-  structure and calls `_SCSIDispatch`
+- `scsi-plug-rsrc.bin` is now confirmed to be a full resource fork whose executable code
+  is the `PLUG` resource body starting at file `0x59e`
+- the earlier low-address mystery was a base-address error: internal targets like
+  `0x020e`, `0x157e`, and `0x0274` are ordinary PLUG-relative code bodies once rebased
+  from the `PLUG` resource start
+- under that corrected model, Claude’s harness now runs the real chained
+  `ctor -> INIT -> CONS` lifecycle far enough to hit the plug’s own relocation/setup
+  logic instead of the older wrong-base artifacts
+- the exact out-of-bounds fault on the `CONS` path is now pinned to PLUG-internal
+  `0x00a0`, inside a packed-displacement relocation loop that adds `D6` into pointer
+  slots rooted at the loaded PLUG base
+- the helper immediately above it caches the current relocated base at `a4+0x266` and
+  only re-runs relocation when that base changes; it also computes a trap-dependent flag
+  at `a4+0x26a` before final relocation handoff
 
 That leaves one sharp open seam:
 
-- what `0x1620` actually is
-- what `0x1187e` actually is beyond the currently bypassed log/error-helper role
-- and how the wrapper chain between the local `SMSendData` CDB builder and
-  `CSCSIUtils::SCSICommand` is meant to execute in real Mac OS rather than recurse in
-  the harness
+- who owns relocation under Musashi: the harness or the plug
+- whether the harness is currently double-relocating PLUG-internal pointers before the
+  plug’s own self-relocation loop runs
+- and, once relocation ownership is corrected, what the first genuinely new post-relocation
+  blocker is on the real chained path
 
-This is no longer a broad “find the patcher” project. It is a bounded emulator-contract
-problem around the handoff from `SMSendData` into the raw SCSI utility layer.
+This is no longer a broad “find the patcher” or wrapper-only project. It is now a
+bounded emulator-contract problem around PLUG-body load semantics, self-relocation
+ownership, and the first real post-relocation runtime contract.
 
 ## Recommended Split
 
 Based on the current combined Claude and Codex evidence, the effective split is now:
 
 - Claude:
-  keep driving the `mesa-plug-harness` forward until the wrapper chain below
-  `SMSendData` reaches the real raw executor cleanly
+  keep driving the real chained lifecycle under the corrected PLUG-relative model, but
+  stop doing manual per-target relocation and let the plug’s own self-relocation path
+  run first
 - Codex:
-  own bounded static recovery of the remaining wrapper/helper identities, especially
-  the semantics of `0x1620`, `0x1187e`, `0x187e`, and the handoff into
-  `CSCSIUtils::SCSICommand`
+  own bounded static recovery of the relocation/setup helper around PLUG-internal
+  `0x00ae -> 0x0038`, including the meaning of the cached base at `a4+0x266`, the flag
+  at `a4+0x26a`, and what post-relocation contract should surface next
 
 Both efforts should stay disciplined:
 
@@ -125,15 +130,17 @@ Both efforts should stay disciplined:
 The active state is now:
 
 - `MEASURED`:
-  app-side literal patch search exhausted; `SMSendData` local CDB builder reached in
-  harness; BULK `CDB[5]=0x00`; SRAW `CDB[5]=0x80`; raw executor identified as
-  `CSCSIUtils::SCSICommand`
+  corrected PLUG-relative load model; real chained `ctor -> INIT -> CONS` path reached;
+  exact OOB pinned to the plug’s own self-relocation loop at PLUG-internal `0x00a0`;
+  relocation cache at `a4+0x266` and flag at `a4+0x26a` identified in the surrounding
+  setup helper
 - `OPEN`:
-  the identity and calling semantics of `0x1620` and `0x1187e`, and the exact wrapper
-  chain from `SMSendData` into the raw executor
+  whether Musashi should stop manual PLUG relocation entirely and let the plug own it;
+  whether `D6` is sane on the first real relocation run; and what first post-relocation
+  blocker appears once ownership is corrected
 - `NEXT`:
-  recover enough of that wrapper chain for Musashi to continue past the current
-  recursion/error-helper loop
+  rerun `CONS` with harness relocation disabled, log `D6` once, and stop at the first
+  new blocker after the plug self-relocates its own body
 
 ## Artifact Reminder
 
@@ -168,13 +175,13 @@ Current extracted MESA I binaries:
 - `mesa1-file-manager.modu`
 
 The earlier `+0xa20` / callback-path work remains useful historical context, but it is
-no longer the live frontier. The active frontier is now lower in the plug transport
-chain:
+no longer the live frontier. The active frontier is now earlier and more structural:
 
 - the direct app-side literal patch path remains negative
-- the harness reaches the local CDB builder under `$1106E`
-- the remaining unknown is the wrapper-family handoff below that builder, especially
-  the role of `0x1620`
+- the harness now reaches the real chained plug lifecycle under corrected PLUG-relative
+  load semantics
+- the remaining unknown is relocation ownership and the first true post-relocation
+  contract, not the older wrapper-family mystery below the local CDB builder
 
 That should be the starting point for the next session, not the older callback-install
-story.
+or wrapper-only story.

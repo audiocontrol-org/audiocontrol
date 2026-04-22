@@ -185,36 +185,36 @@ earlier sampler-side `+0xda4` calls.
 
 ### Current Assessment
 
-Phase 3 is still active, but the frontier has changed substantially:
+Phase 3 is still active, but the frontier has changed materially again:
 
-- issue `#315` is the canonical Claude/Codex mailbox and the emulator-facing charter
-- Claude’s `mesa-plug-harness` now reaches the local `SMSendData` builder under the
-  `$1106E -> $1160c` runtime path
-- the local CDB builder at `0x163c-0x167e` is now empirically confirmed for both
-  flag-byte phases:
-  - BULK / SDATA SysEx emits `CDB[5] = 0x00`
-  - SRAW / raw-audio emits `CDB[5] = 0x80`
-- Codex has independently confirmed that the visible `mesa-ii-app` CODE resources do
-  not contain a simple literal patch/write sequence to `0x106e`, `0x1070`, or `0x160c`
-- Codex has also identified the first raw executor beneath the builder as
-  `SCSICommand__10CSCSIUtilsFsP3CdbPUcUlls`, which packages the CDB into a PB-like
-  structure and calls `_SCSIDispatch`
+- issue `#315` remains the canonical Claude/Codex mailbox and emulator-facing charter
+- the earlier low-address and wrapper-only story is now superseded by the corrected
+  PLUG-relative load model: `scsi-plug-rsrc.bin` is a full resource fork and the
+  executable `PLUG` body starts at file `0x59e`
+- under that corrected model, Claude’s harness now reaches the real chained
+  `ctor -> INIT -> CONS` lifecycle instead of the older wrong-base artifacts
+- the newest exact fault is pinned to PLUG-internal `0x00a0`, inside the plug’s own
+  packed-displacement self-relocation loop
+- Codex has independently confirmed the surrounding relocation setup helper:
+  - `a4+0x266` caches the current relocated PLUG base
+  - `a4+0x26a` is a trap-dependent flag set during relocation setup
+  - the plug only re-runs relocation when the current base changes
 
 The current cross-check therefore narrows to one bounded emulator seam:
 
-- what `0x1620` actually is
-- what `0x1187e` actually is beyond the currently bypassed log/error-helper role
-- how the wrapper chain below `SMSendData` is supposed to reach
-  `CSCSIUtils::SCSICommand` in real Mac OS rather than recurse/error-loop in the harness
+- who owns relocation under Musashi: the harness or the plug
+- whether the harness’s old manual relocation is now double-relocating internal pointers
+- and what the first true post-relocation blocker is once the plug is allowed to
+  relocate itself
 
 Current recommended work split:
 
 - Claude:
-  keep pushing the Musashi harness through the wrapper/error-helper layer until it
-  reaches the raw SCSI executor cleanly
+  disable manual PLUG relocation, let the plug self-relocate, log `D6` once, and stop
+  at the first genuinely new post-relocation blocker
 - Codex:
-  recover the static identity and calling semantics of `0x1620`, `0x1187e`, `0x187e`,
-  and the wrapper chain between the local builder and `CSCSIUtils::SCSICommand`
+  recover the relocation/setup contract around PLUG-internal `0x00ae -> 0x0038`,
+  especially the cache/flag behavior at `a4+0x266` and `a4+0x26a`
 
 Current reminder:
 
@@ -245,12 +245,14 @@ Current reminder:
 ### Next Experiments
 
 - Keep the parity docs aligned with Claude’s live `#315` harness results rather than
-  older “stopping point” or bridge-acceptance language.
+  older wrapper-only or bridge-acceptance language.
 - Treat the current state as an emulator-contract problem, not a product decision:
-  - `MEASURED`: BULK `CDB[5]=0x00`, SRAW `CDB[5]=0x80`, app-side literal patch search
-    exhausted, raw executor identified as `CSCSIUtils::SCSICommand`
-  - `OPEN`: `0x1620` identity, `0x1187e` identity, and the wrapper chain between
-    `SMSendData` and the raw executor
+  - `MEASURED`: corrected PLUG-relative load model, real chained `ctor -> INIT -> CONS`
+    path reached, exact OOB pinned to the plug’s own self-relocation loop at internal
+    `0x00a0`
+  - `OPEN`: whether Musashi should stop manual PLUG relocation entirely, whether `D6`
+    is sane on the first self-relocation run, and what the first post-relocation
+    blocker is
 - Use new static work only if it helps Musashi get farther.
 - Reopen older callback/constructor/install surfaces only if new runtime evidence points
   back to them directly.

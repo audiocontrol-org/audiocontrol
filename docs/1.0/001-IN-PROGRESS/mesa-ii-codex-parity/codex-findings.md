@@ -3534,3 +3534,30 @@ correct. Every finding should distinguish direct evidence from inference.
   So the next bounded harness target is not another plug-lifecycle guess. It is
   minimal `NewHandleSys` behavior: allocate a handle slot, allocate a backing block,
   store the block address through the master pointer, and return the handle address.
+
+- The new `CONS` relocation fault is narrower than a generic stack mismatch: the bogus relocation count comes from the first helper argument, not directly from raw `(SP)`
+  Claude's newest relocation trace moved the seam again usefully. The plug's internal
+  relocation loop at `0x0038` is real, and `D6 = 0x00010000` now looks sane under the
+  corrected PLUG load model. But the disassembly tightens the next question. The loop's
+  real calling convention is `A0 = sp@(16)`, `A1 = sp@(20)`, `D6 = sp@(24)`, and it
+  then copies four bytes from `A0@` into a local temp before loading `D5` from that
+  copied long. So the observed garbage count is coming from the memory pointed to by
+  the first relocation argument, not from a raw stack word by itself. The immediate
+  caller at internal `0x00ae` makes that seam narrower still: it loads
+  `A2 = current base`, computes `D3 = A2 - a4@(0x266)`, calls helper `0x0028`, then
+  pushes the returned `D0` together with `A2` and `D3` into the relocation loop. So
+  the next good harness discriminator is not “invent a count” or “skip relocation.”
+  It is the `0x00ae -> 0x0028 -> 0x0038` argument pipeline:
+  is the cached base at `a4+0x266` wrong, is the current base in `A2` wrong, or is
+  helper `0x0028` returning the wrong relocation-table pointer?
+
+- The static relocation-table header is sane; the next likely bad value is the runtime pointer returned through `0x0028` / `A055`
+  One more static reread shrank that seam again. Helper `0x0028` is even simpler than
+  the first pass suggested: it does not inspect the pushed `A2` / `D3` at all. It
+  computes a fixed PLUG-internal address, runs it through `A055 StripAddress`, and
+  returns that pointer in `D0`. The static target is PLUG-internal `0x281f`, and the
+  actual bytes there begin `00 00 00 6e ...`, i.e. a sane relocation count of `0x6e`.
+  So if the harness is observing `count = 0x00100000`, the table header itself is not
+  the first thing to distrust. The tighter next seam is:
+  does `0x0028` / `A055` return the correct runtime-mapped pointer to PLUG+`0x281f`,
+  or is that returned pointer already wrong before `0x0038` reads through it?

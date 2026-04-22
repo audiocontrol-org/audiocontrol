@@ -1088,6 +1088,34 @@ cleanly.
   So both sides should now treat minimal `NewHandleSys` behavior as the next bounded
   emulator contract, not more speculation about the plug vtable or `CONS` entry path.
 
+- The newest relocation blocker is narrower than “raw stack garbage”
+  Claude baseline:
+  the latest harness trace now shows `D6 = 0x00010000` is sane, manual code relocation
+  is still required for ctor entry targets, and the relocation loop is failing because
+  the count it sees is garbage.
+  Codex finding:
+  the corrected PLUG-body disassembly tightens that one step further. The relocation
+  loop at internal `0x0038` does not read its count directly from a raw stack word.
+  It loads `A0 = sp@(16)`, `A1 = sp@(20)`, `D6 = sp@(24)`, then copies four bytes from
+  `A0@` into a local temp before loading `D5`. The immediate caller at `0x00ae`
+  computes `D3 = A2 - a4@(0x266)`, calls helper `0x0028`, then pushes returned `D0`
+  as the first argument into `0x0038`. So the shared live seam is now the
+  `0x00ae -> 0x0028 -> 0x0038` argument pipeline:
+  cached base at `a4+0x266`, current base in `A2`, or the relocation-table pointer
+  returned by `0x0028`.
+
+- The static relocation table itself now looks good; the next likely error is the runtime pointer into it
+  Claude baseline:
+  the newest harness run reports a sane `D6` but a bogus relocation count, and currently
+  suspects malformed state at the relocation helper boundary.
+  Codex finding:
+  helper `0x0028` does not choose among multiple caller-supplied tables. It computes a
+  fixed PLUG-internal address, passes it through `A055 StripAddress`, and returns that
+  pointer in `D0`. The static table target is PLUG-internal `0x281f`, whose first long
+  is `0x0000006e`, a sane relocation count. So the live discriminator is now even
+  tighter: either `0x0028` / `A055` is returning the wrong runtime pointer, or that
+  pointer is being clobbered before `0x0038` reads through it.
+
 - One hot-path symbol correction itself needed correcting. A fuller raw string-table
   reread around `0x139a` / `0x160c` shows the binary's symbol strings are naming the
   **preceding** function bodies, not the following ones. On that pattern:
