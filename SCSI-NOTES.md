@@ -22,6 +22,46 @@ Browser ──HTTP/WS──► scsi-midi-bridge (Pi:7033)
 
 ---
 
+## 2026-04-22: MESA II's plug emits CDB[5]=0x00 for SDATA, CDB[5]=0x80 for SRAW (emulator-captured)
+
+### Setup
+Drove `scsi-plug-rsrc.bin` under `mesa-plug-harness` (Musashi 68k emulator). Patched `$1106E → $1160c` (mimicking what the editor's runtime install does) so SMSendData is reached. Bypassed C++ runtime stubs that would otherwise abort SMSendData before CDB construction.
+
+### Findings (#315 7th-result comment)
+SMSendData at file `0x1160c` constructs the 6-byte CDB at `0x163c-0x167e` based on the byte_flag arg:
+```
+0x163c: move.b #$c, (-$6,A6)        ← CDB[0] = 0x0C
+0x1650: move.b D0, (-$2,A6)         ← CDB[4] = length low byte
+0x165e: move.b D0, (-$3,A6)         ← CDB[3] = length mid byte
+0x166c: move.b D0, (-$4,A6)         ← CDB[2] = length high byte (zero in observed paths)
+0x1670: tst.b ($e,A6)               ← test byte_flag at A6+0xe
+0x1674: beq $1167c                  ← if 0, skip to D5=0
+0x1676: move.w #$80, D5             ← else D5 = 0x80
+0x167e: move.b D5, (-$1,A6)         ← CDB[5] = D5
+```
+
+| Phase | flag pushed | CDB[5] |
+|---|---|---|
+| BULK (SDATA SysEx wrapper) | 0 (`clr.b -(A7)` at file 0x10fb4) | **0x00** |
+| SRAW (raw audio data) | 1 (`move.b #1, -(A7)` at file 0x10f56) | **0x80** |
+
+### Implications for the bridge
+
+The prior hardware test that rejected `CDB[5]=0x80` was sending it for ALL `0x0C` commands — including SDATA SysEx wrappers, which MESA sends with `0x00`. MESA only sends `0x80` for SRAW (raw audio chunks following SDATA, before BOFF).
+
+To replicate MESA's full transfer path the bridge must:
+1. Send SDATA SysEx wrapper with `CDB[5]=0x00` (current behavior)
+2. Then send raw audio chunks with `CDB[5]=0x80` (NEW — must verify device accepts under the post-SDATA state)
+3. Then send BOFF (end transfer)
+
+Whether the device accepts `0x80` in the post-SDATA state is the OPEN question — needs to be tested with the MESA-style sequence, not in isolation.
+
+### Outstanding
+- Path E.3: capture the actual `$A089` SCSIDispatch firing with the constructed CDB (requires resolving the `JSR $1620.l` recursion; deferred to Codex's static decode)
+- Hardware verification: replay the captured BULK→SRAW→BOFF sequence against the S3000XL to confirm `0x80` is accepted under MESA's preconditions
+
+---
+
 ## 2026-04-01 20:44 PDT: SCMP — First Attempt at SCSI MIDI
 
 ### Strategy

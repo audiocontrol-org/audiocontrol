@@ -83,6 +83,24 @@ Goal: Validate the disassembly findings against real hardware with test scripts.
 
 **INVESTIGATION CONVERGED 2026-04-22.** See [`project-state-2026-04-22-converged.md`](./project-state-2026-04-22-converged.md). Bridge ships `CDB[5]=0x00`. State-precondition is STRONGEST RESIDUAL (not active blocker). Reopening criteria: regression → reopen from `DispatchCommandFromModule` / runtime-state terrain.
 
+### Path E (Emulator-Forward 2026-04-22) — UNCONVERGED, ACTIVE
+
+Per [#315 joint charter](https://github.com/audiocontrol-org/audiocontrol/issues/315), the "ship current bridge" framing is retracted as anti-goal. Sole charter goal: capture MESA's actual fast sample-transfer path under emulation.
+
+- [x] **Path E.1 (8 bounded iterations 2026-04-22): drive plug SEND under harness; capture CDB.**
+   - Iter 1: identified A-line trap dispatch wiring missing; first contract requirement
+   - Iter 2: plug INIT path completes through main dispatch; `$A918` (SetWRefCon) identified as next trap
+   - Iter 3: `$A918` confirmed via macemu trap table; "return 0" stub semantically correct
+   - Iter 4: drove SEND, captured arg shapes at `$1106E` boundary — **RETRACTED** (CDB[5]=0x80 was harness-substituted, not plug-emitted)
+   - Iter 5: patched `$1106E → $1160c` (mimicking editor install of SMSendData); SMSendData reached; new blocker = C++ runtime stubs
+   - Iter 6: stubs + log-helper bypass → CDB construction observed; **BULK CDB[5]=0x00 MEASURED**
+   - Iter 7: SRAW driven first; **SRAW CDB[5]=0x80 MEASURED**; Codex `0x163c-0x167e` static decode empirically confirmed byte-for-byte in both branches
+   - Iter 8: tried bypassing recursive `JSR $1620.l` — insufficient; multiple call sites; deferred to Codex static identification
+- [ ] **Path E.2: identify `JSR $1620.l` target.** What `0x1620` represents in real Mac OS — internal subroutine of plug, CODE 0 jump table slot, or vtable dispatch. Static identification is Codex's strength; my emulator-side work is blocked on this.
+- [ ] **Path E.3: observe CDB transferred into SCSI PB and dispatched via `$A089`.** Once the post-CDB-construction path is unblocked, see the local CDB bytes loaded into a SCSIExecIO PB and the `$A089` SCSIDispatch trap fire.
+
+**Charter deliverable:** the actual CDB MESA emits + the wire-side conditions under which CDB[5]=0x80 is accepted by the S3000XL. Half-answered: the CDB shape is now known. The "wire-side conditions" half is open — depends on Path E.3.
+
 ### What NOT to do (from Codex's explicit prohibitions)
 
 - Don't handcraft speculative SRAW/SYSX payloads as if they were MESA's

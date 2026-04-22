@@ -11,6 +11,68 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-22: Path E.1 — emulator-forward harness drove SMSendData, captured the actual CDB MESA emits
+
+### Feature: mesa-ii-reverse-engineering
+### Worktree: audiocontrol-mesa-ii-reverse-engineering
+
+### Goal
+Per #315 joint charter (post-retraction of "ship current bridge" framing): drive MESA's plug under the existing Musashi harness (`scsi2pi-work/mesa-plug-harness`), identify each missing host/service/SCSI contract requirement at every stop point, and capture the actual CDB MESA emits for sample sends. Charter cadence: one bounded step each, regroup with Codex via #315.
+
+### Accomplished
+
+**Major artifact:** captured the actual `CDB[5]` value MESA's plug constructs, byte-for-byte verified against Codex's static decode.
+
+- BULK (SDATA SysEx wrapper) → `CDB[5] = 0x00` (MEASURED)
+- SRAW (raw audio data) → `CDB[5] = 0x80` (MEASURED)
+- The flag is determined by the byte_flag arg pushed by SendData at the SEND_FUNC_SLOT call site (`clr.b -(A7)` for BULK, `move.b #1, -(A7)` for SRAW)
+
+This empirically confirms Codex's static decode of `0x163c-0x167e` in both branches and answers the original ship-vs-no-ship question: **MESA emits different CDB[5] values per transfer phase**. Our prior hardware test rejected `0x80` because we sent it for ALL `0x0C` commands; MESA only sends `0x80` for SRAW.
+
+Eight bounded harness iterations, all reported to #315:
+- Iter 1: identified A-line trap dispatch wiring missing (M68K_ILLG_CALLBACK in musashi/m68kconf.h)
+- Iter 2: plug INIT path completes; `$A918` (SetWRefCon) identified as next trap
+- Iter 3: `$A918` confirmed via macemu trap table
+- Iter 4: drove SEND via existing harness intercept — **issued retraction** when I realized `CDB[5]=0x80` was harness-hardcoded, not plug-emitted
+- Iter 5: patched `$1106E → $1160c`; SMSendData reached; identified C++ runtime stubs as new blocker
+- Iter 6: bypassed log helper + stubbed runtime; BULK CDB construction observed
+- Iter 7: drove SRAW first; SRAW CDB construction observed
+- Iter 8: tried bypassing recursive `JSR $1620.l` — insufficient (5 call sites); deferred to Codex
+
+Coordination protocol (Codex's proposal): both sides self-poll #315 at session start / after each bounded step / before asking user / before session end. User is not the mailman. Adopted.
+
+### Didn't Work
+
+- **Iter 4 fabrication:** posted "MESA emits CDB[5]=0x80" based on harness-substituted output (the harness's `$1106E` intercept hardcodes `cdb[5]=0x80` in C, not from plug bytes). The plug at $1106E was just a stub that branched to error epilogue. Caught it within ~5 minutes, posted retraction. Root cause: confused harness output for plug measurement.
+- **Iter 8 single-site bypass:** patching only one of 5 call sites for `0x1620` didn't break the loop. Would need to either patch all sites or understand what `0x1620` semantically is in real Mac OS.
+- **Stubs returning D0=0** caused SMSendData's BEQ at `0x1638` to skip CDB construction (branch logic was inverted from my assumption); had to switch to D0=1 stubs and direct JSR bypass.
+
+### Course Corrections
+
+- **[FABRICATION]** — reported harness-substituted CDB byte as plug-emitted measurement. Retracted within minutes. Process correction: "harness substitution" is a CLAIM by the harness, not a measurement of the plug. Need to show plug-executed instructions producing the bytes.
+- **[PROCESS]** — I missed Codex's responses on #315 multiple times because I set my self-poll filter timestamp slightly in the future. User had to say "you are missing it" before I checked properly. Fix: use `>=` against last-mine-timestamp, not arbitrary cutoff.
+- **[PROCESS]** — confused file offsets vs runtime PCs when extending the trace range. Wasted one rebuild cycle on a wrong-range condition. The harness uses runtime PCs but I added `PLUG_CODE_BASE + 0x121dc` (doubling the offset). Convention: `PLUG_CODE_BASE + file_offset = runtime_PC`.
+
+### Quantitative
+
+- User messages: ~12 (mostly "check now" prompts)
+- #315 comments posted: 8 bounded results + 1 protocol acknowledgement + 1 context-add + 1 retraction
+- Codex responses: 3 substantive (kickoff concur, 4th-result review, 6th-result review)
+- Harness rebuilds: ~10
+- Major artifacts captured: 2 (BULK CDB[5]=0x00, SRAW CDB[5]=0x80)
+- Retractions issued: 1 (iter 4)
+- Files modified: 1 (`harness/main.c` — added Phase 1.6 SEND-driver block, env-var-gated patches for $1106E install, log-helper bypass, runtime stubs, SRAW-first ordering)
+
+### Insights
+
+- **Coordination protocol works.** Self-polling #315 at fixed checkpoints removed the user-relay bottleneck. Codex and I traded results in tight loops without user mediation.
+- **Trust harness substitutions only as a baseline shape, not as plug measurements.** Iter 4's retraction was caught fast because Codex's static decode set the expectation that the answer should come from plug bytes. Without that expectation I might have shipped the false claim.
+- **Bounded steps + regroup cadence stops scope creep.** Each iteration produced a single concrete artifact and immediately reported. Eight iterations in one session without losing the thread.
+- **The `0x1620` recursion is the actual frontier.** SMSendData's CDB construction is empirically settled. The unknown is what the post-CDB transport call resolves to in real Mac OS. That's static-decode work — handed off cleanly to Codex.
+- **The original Phase 3 question is half-answered.** CDB shape is now known; MESA uses 0x00 for SDATA and 0x80 for SRAW. The other half ("under what wire-side state does the device accept 0x80") depends on E.3 (capture the SCSIDispatch).
+
+---
+
 ## 2026-04-21 / 2026-04-22: Investigation converged — patch hypothesis closed via 18-round decode + parity protocol
 
 ### Feature: mesa-ii-reverse-engineering
