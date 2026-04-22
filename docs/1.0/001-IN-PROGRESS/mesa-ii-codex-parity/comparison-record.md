@@ -1128,6 +1128,17 @@ cleanly.
   downstream consequences of the same A4 failure. That raises the priority of proving
   whether `A4` survives `0x0104` above any deeper relocation-table theory.
 
+- Rebased `main` means caller A4 and internal plug A4 must be read as different scopes
+  Claude baseline:
+  the newest trace sequence mixes entry-time A4 values, post-`0x0104` observations, and
+  the later `0x00ae` failure as if they were one linear A4 storyline.
+  Codex finding:
+  rebased `main` at `0x16e` explicitly restores the caller's incoming A4 on exit with
+  `move.l d4,d0 ; exg d0,a4` at `0x1fa-0x1fc`. So traces that include both entry/return
+  A4 and internal-body A4 are not directly comparable unless they are separated by
+  scope. The important comparison is now strictly inside `main`: right after `0x0112`
+  versus at `0x00ae`.
+
 - One hot-path symbol correction itself needed correcting. A fuller raw string-table
   reread around `0x139a` / `0x160c` shows the binary's symbol strings are naming the
   **preceding** function bodies, not the following ones. On that pattern:

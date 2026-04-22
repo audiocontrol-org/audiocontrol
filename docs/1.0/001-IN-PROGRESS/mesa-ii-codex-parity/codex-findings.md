@@ -3572,3 +3572,14 @@ correct. Every finding should distinguish direct evidence from inference.
   discriminator: if `A4` is wrong by the time execution reaches `0x00ae`, then bogus
   reads of `a4+0x266`, `a4+0x26a`, and the relocation-table count are all expected
   downstream effects of the same upstream A4 failure, not three independent bugs.
+
+- Rebased `main` explicitly preserves caller A4 around the plug's internal A4 world
+  One more rebased disassembly pass at `0x16e` explains why the latest harness traces
+  can look contradictory if multiple top-level calls are flattened together. `main`
+  calls helper `0x0104`, then immediately saves its return value in `D4`, runs the
+  `INIT` or non-`INIT` body, and finally restores the incoming caller A4 on exit with
+  `move.l d4,d0 ; exg d0,a4` at `0x1fa-0x1fc`. So caller-facing A4 at function entry or
+  return and the internal plug A4 used between `0x0104` and `0x1fa` are intentionally
+  different scopes. That means future harness traces should compare `A4` inside
+  `main`—especially right after `0x0112` and at `0x00ae`—rather than flattening those
+  values together with caller-side A4 observations from separate top-level invocations.

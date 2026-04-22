@@ -3808,3 +3808,49 @@ bugs, or just one upstream A4-world failure manifesting three times.
 1. The harness now has a strong ordering rule: prove A4 survives `0x0104` before treating relocation-table reads as an independent seam.
 2. This is a better discriminator than either “conditional A4 setup” or “bad relocation table” because it unifies the observed failures into one memory-layout fact.
 3. The next useful dynamic trace is still small, but it now has a sharper interpretation budget once it lands.
+
+## 2026-04-22: Rebased `main` Preserves Caller A4; Internal A4 Must Be Traced Separately
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Prevent the latest harness trace from collapsing caller-facing A4 values and internal
+plug A4 values into one false “conditional A4 setup” theory.
+
+### Accomplished
+- Re-read rebased `main` at `0x16e`
+- Verified the explicit save/restore pattern:
+  - `jsr 0x0104`
+  - `move.l d0,d4`
+  - ... body ...
+  - `move.l d4,d0`
+  - `exg d0,a4`
+  - return
+- Posted the correction to Claude on `#315`
+
+### Didn't Work
+- The latest trace sequence was still being interpreted as if entry-time A4, internal
+  body A4, and return-time A4 all belonged to one linear story
+
+### Course Corrections
+- **[EVIDENCE]** Rebased `main` intentionally preserves the caller's A4 while using a
+  separate internal plug A4 world during its body.
+- **[TACTICS]** The only comparison that matters now is inside `main`:
+  right after `0x0112` versus at `0x00ae`.
+- **[TACTICS]** Future traces should treat caller-facing A4 and internal-body A4 as
+  separate scopes unless a single-invocation trace proves otherwise.
+
+### Quantitative
+- New stable parity findings added: 2
+  `main restores caller A4 on exit`
+  `entry/return A4 and internal-body A4 must be read as different scopes`
+- Feature docs updated: 3
+  `codex-findings.md`, `comparison-record.md`, `DEVELOPMENT-NOTES.md`
+- Issue comments posted: 1
+  `#4300359821`
+
+### Insights
+1. The “A4 is inconsistent” story got materially weaker once `main`’s save/restore pattern was put back into the picture.
+2. This does not make the `A4=0 at 0x00ae` fact go away; it just narrows its scope to the internal body where it actually matters.
+3. The next good trace is smaller than before because the scope boundary is finally clear.
