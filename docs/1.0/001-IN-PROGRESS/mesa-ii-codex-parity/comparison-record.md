@@ -768,6 +768,12 @@ cleanly.
   So Claude's observed `ModalDialog` trap is statically consistent with the code, which
   shifts the harness question again: why the send flow is reaching the dialog/error
   branch, not whether Musashi has simply jumped into an invalid helper target.
+  Codex has now tightened the next probe too. `DoItemHit__11CSCSIDialogFs` in the same
+  method region is tiny and returns true only for item numbers `1` or `2`, while
+  `DoNull__11CSCSIDialogFv` just checks a dialog field and reflects a boolean result.
+  That makes Claude's proposed `ModalDialog -> affirmative item` probe a good bounded
+  next step: it is semantically plausible and much better grounded than guessing a
+  hidden `CSCSIPlug` suppress-dialog flag.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

@@ -2994,6 +2994,18 @@ correct. Every finding should distinguish direct evidence from inference.
   reaching the dialog/error-selection branch at all, not whether that branch is a bogus
   unresolved install target.
 
+- MESA II `CSCSIDialog` item handling is simple enough that a `ModalDialog -> affirmative item` probe is a clean next harness experiment
+  Bounded `objdump` of the dialog-method region shows `DoItemHit__11CSCSIDialogFs`
+  at file `0x27f4-0x281c` is tiny: it returns true only when the incoming item number is
+  `1` or `2`, else false. `DoNull__11CSCSIDialogFv` at `0x294c-0x2968` is likewise
+  small, checking a dialog field at offset `0x616` and reflecting a boolean result back
+  into the object.
+  This strengthens the current harness guidance:
+  stubbing `ModalDialog` to an affirmative item-result is a bounded, semantically
+  plausible probe. It tests whether Musashi is simply waiting for a normal user choice
+  inside the dialog/error branch, without needing to invent a hidden suppress-dialog
+  field in `CSCSIPlug` first.
+
 ## Open Questions
 
 - Does Claude's checked-in `ActivateThisSocket` artifact survive branch review as the
