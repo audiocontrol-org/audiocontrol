@@ -1,19 +1,38 @@
 # midi-macro-bridge configuration
 # Copy this file to config.toml and edit.
 
-# Substring match against MIDI port names (case-insensitive).
-# Run with --list-ports to see available ports on your system.
-# Examples: "MC-500", "UM-ONE", "IAC Driver Bus 1"
+# Substring match against the MC-500 transport MIDI input port
+# (case-insensitive). Run with --list-ports to see available ports.
+# Examples: "MC-500", "UM-ONE", "828mk3 Hybrid MIDI"
 midi_input_port = "MC-500"
 
+# Set to false to start in a disabled state (reserved for future use).
+enabled_on_startup = true
+
+[transport]
+# Which output path the bridge uses to drive the DAW:
+#
+#   "mcu"         (default) — emits MCU control-surface messages on
+#                 the bridge's virtual MIDI output. Works regardless
+#                 of keyboard focus; no macOS Accessibility permission
+#                 required. LUNA must have "MIDI Macro Bridge" selected
+#                 in Preferences > Controllers > MIDI Control Surfaces
+#                 as both INPUT and OUTPUT DEVICE on an enabled row
+#                 (protocol: MCU).
+#
+#   "keystrokes"  — Phase 1-2 fallback. Synthesises keystrokes via
+#                 enigo / macOS CGEvent. Requires LUNA to be frontmost
+#                 and Accessibility permission granted to the binary.
+#                 The keystroke_delay_ms and require_frontmost_app
+#                 settings below only apply in this mode.
+backend = "mcu"
+
 # Delay in milliseconds between chained keystrokes.
-# If LUNA occasionally misses Return-then-Space sequences, increase this.
+# Only used when backend = "keystrokes".
 keystroke_delay_ms = 20
 
 # Only emit keystrokes when this app is frontmost.
 # Prevents accidental Spacebar leaks into Safari, Finder, etc.
 # Set to empty string to disable the check (not recommended).
+# Only used when backend = "keystrokes".
 require_frontmost_app = "LUNA"
-
-# Set to false to start in a disabled state (reserved for future use).
-enabled_on_startup = true

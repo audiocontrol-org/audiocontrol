@@ -12,11 +12,16 @@
 //! duplicate messages from the MC-500. The second line of defense
 //! is routing topology — see README.md.
 //!
-//! LUNA's keyboard shortcuts (default, US layout):
-//! - Spacebar: toggle play/stop
-//! - Return:   return playhead to zero
+//! The `Action` variants are backend-agnostic: they describe *what*
+//! the DAW should do, not *how* to make it do it. The `McuBackend`
+//! maps each Action to an MCU byte sequence; the `KeystrokeBackend`
+//! maps them to `Space`, `Return`, `[`, `]` keystrokes. Both
+//! backends preserve Phase 1-2 transport semantics:
 //!
-//! There is no "play from top" shortcut, hence Start → [Return, Space].
+//! - Start from stopped → rewind + play
+//! - Start from playing → stop + rewind + play (restart from top)
+//! - Continue from stopped → play from current position
+//! - Stop / Continue duplicates → no-op (echo guard)
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransportState {
@@ -32,12 +37,31 @@ pub enum TransportEvent {
     Stop,     // 0xFC — stop
 }
 
-/// Keystrokes we emit toward LUNA. Order within a sequence matters;
-/// execute them in order with a small inter-key delay.
+/// Abstract, backend-agnostic actions emitted by the state machine.
+/// The McuBackend turns each of these into an MCU byte sequence; the
+/// KeystrokeBackend turns them into enigo keystrokes.
+///
+/// `Play` covers both "start playback" and "continue from current
+/// position" — both translate to MCU note `0x5E` or keystroke
+/// `Space`, so the state machine doesn't bother distinguishing them
+/// at this layer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum KeyAction {
-    Space,  // play/stop toggle
-    Return, // return to zero
+pub enum Action {
+    /// Begin (or resume) playback from the current playhead position.
+    /// MCU: `90 5E 7F; 90 5E 00`. Keystroke: `Space`.
+    Play,
+    /// Stop playback. MCU: `90 5D 7F; 90 5D 00`. Keystroke: `Space`
+    /// (toggles playing → stopped).
+    Stop,
+    /// Jump playhead to bar 1. MCU: `90 5B 7F; 90 5B 00`.
+    /// Keystroke: `Return`.
+    ReturnToZero,
+    /// Nudge playhead forward by one bar. MCU: `B0 3C 01`.
+    /// Keystroke: `]`.
+    BarForward,
+    /// Nudge playhead backward by one bar. MCU: `B0 3C 41`.
+    /// Keystroke: `[`.
+    BarBackward,
 }
 
 pub struct Machine {
@@ -62,36 +86,41 @@ impl Machine {
     }
 
     /// Handle an incoming transport event. Returns the sequence of
-    /// keystrokes to emit (possibly empty) and updates internal state.
-    pub fn handle(&mut self, event: TransportEvent) -> Vec<KeyAction> {
-        use KeyAction::*;
-        use TransportEvent::*;
+    /// `Action`s to dispatch to the backend (possibly empty) and
+    /// updates internal state.
+    ///
+    /// Imports are explicit because `Action::Stop` and
+    /// `TransportEvent::Stop` share a variant name. We use pattern
+    /// arms and full paths rather than `use *` to keep the compiler
+    /// unambiguous.
+    pub fn handle(&mut self, event: TransportEvent) -> Vec<Action> {
+        use TransportEvent as E;
         use TransportState::*;
 
         match (self.state, event) {
             // Start from stopped: rewind and play.
-            (Stopped, Start) => {
+            (Stopped, E::Start) => {
                 self.state = Playing;
-                vec![Return, Space]
+                vec![Action::ReturnToZero, Action::Play]
             }
             // Start while playing: stop, rewind, play. Stay in Playing.
-            (Playing, Start) => vec![Space, Return, Space],
+            (Playing, E::Start) => vec![Action::Stop, Action::ReturnToZero, Action::Play],
 
             // Continue from stopped: just play.
-            (Stopped, Continue) => {
+            (Stopped, E::Continue) => {
                 self.state = Playing;
-                vec![Space]
+                vec![Action::Play]
             }
             // Continue while playing: no-op. Defends against echoes.
-            (Playing, Continue) => vec![],
+            (Playing, E::Continue) => vec![],
 
             // Stop while playing: stop.
-            (Playing, Stop) => {
+            (Playing, E::Stop) => {
                 self.state = Stopped;
-                vec![Space]
+                vec![Action::Stop]
             }
             // Stop while stopped: no-op. Defends against echoes.
-            (Stopped, Stop) => vec![],
+            (Stopped, E::Stop) => vec![],
         }
     }
 
@@ -105,60 +134,67 @@ impl Machine {
 
 #[cfg(test)]
 mod tests {
+    // Action and TransportEvent both have a `Stop` variant, so we
+    // import them aliased rather than globbing to keep assertions
+    // unambiguous. Action is the "expected output" side; E is the
+    // "input event" side.
+    use super::Action as A;
+    use super::TransportEvent as E;
+    use super::TransportState::*;
     use super::*;
-    use KeyAction::*;
-    use TransportEvent::*;
-    use TransportState::*;
 
     #[test]
     fn start_from_stopped_rewinds_and_plays() {
         let mut m = Machine::new();
-        assert_eq!(m.handle(Start), vec![Return, Space]);
+        assert_eq!(m.handle(E::Start), vec![A::ReturnToZero, A::Play]);
         assert_eq!(m.state(), Playing);
     }
 
     #[test]
     fn start_while_playing_restarts_from_top() {
         let mut m = Machine::new();
-        m.handle(Start);
-        assert_eq!(m.handle(Start), vec![Space, Return, Space]);
+        m.handle(E::Start);
+        assert_eq!(
+            m.handle(E::Start),
+            vec![A::Stop, A::ReturnToZero, A::Play]
+        );
         assert_eq!(m.state(), Playing);
     }
 
     #[test]
     fn continue_while_stopped_plays() {
         let mut m = Machine::new();
-        assert_eq!(m.handle(Continue), vec![Space]);
+        assert_eq!(m.handle(E::Continue), vec![A::Play]);
         assert_eq!(m.state(), Playing);
     }
 
     #[test]
     fn continue_while_playing_is_noop() {
         let mut m = Machine::new();
-        m.handle(Start);
-        assert_eq!(m.handle(Continue), vec![]);
+        m.handle(E::Start);
+        assert_eq!(m.handle(E::Continue), vec![]);
         assert_eq!(m.state(), Playing);
     }
 
     #[test]
     fn stop_while_playing_stops() {
         let mut m = Machine::new();
-        m.handle(Start);
-        assert_eq!(m.handle(Stop), vec![Space]);
+        m.handle(E::Start);
+        assert_eq!(m.handle(E::Stop), vec![A::Stop]);
         assert_eq!(m.state(), Stopped);
     }
 
     #[test]
     fn stop_while_stopped_is_noop() {
         let mut m = Machine::new();
-        assert_eq!(m.handle(Stop), vec![]);
+        assert_eq!(m.handle(E::Stop), vec![]);
         assert_eq!(m.state(), Stopped);
     }
 
     #[test]
     fn reset_returns_to_stopped() {
         let mut m = Machine::new();
-        m.handle(Start);
+        m.handle(E::Start);
         assert_eq!(m.state(), Playing);
         m.reset();
         assert_eq!(m.state(), Stopped);
@@ -168,10 +204,10 @@ mod tests {
     #[test]
     fn realistic_session() {
         let mut m = Machine::new();
-        assert_eq!(m.handle(Start), vec![Return, Space]);
-        assert_eq!(m.handle(Stop), vec![Space]);
-        assert_eq!(m.handle(Continue), vec![Space]);
-        assert_eq!(m.handle(Stop), vec![Space]);
+        assert_eq!(m.handle(E::Start), vec![A::ReturnToZero, A::Play]);
+        assert_eq!(m.handle(E::Stop), vec![A::Stop]);
+        assert_eq!(m.handle(E::Continue), vec![A::Play]);
+        assert_eq!(m.handle(E::Stop), vec![A::Stop]);
     }
 
     /// Duplicate Stop messages (e.g., from button bounce or echo)
@@ -179,10 +215,10 @@ mod tests {
     #[test]
     fn duplicate_stops_dont_double_fire() {
         let mut m = Machine::new();
-        m.handle(Start);
-        assert_eq!(m.handle(Stop), vec![Space]);
-        assert_eq!(m.handle(Stop), vec![]);
-        assert_eq!(m.handle(Stop), vec![]);
+        m.handle(E::Start);
+        assert_eq!(m.handle(E::Stop), vec![A::Stop]);
+        assert_eq!(m.handle(E::Stop), vec![]);
+        assert_eq!(m.handle(E::Stop), vec![]);
     }
 
     /// Duplicate Continue messages while playing should not
@@ -191,9 +227,9 @@ mod tests {
     #[test]
     fn duplicate_continues_while_playing_dont_double_fire() {
         let mut m = Machine::new();
-        m.handle(Start);
-        assert_eq!(m.handle(Continue), vec![]);
-        assert_eq!(m.handle(Continue), vec![]);
+        m.handle(E::Start);
+        assert_eq!(m.handle(E::Continue), vec![]);
+        assert_eq!(m.handle(E::Continue), vec![]);
         assert_eq!(m.state(), Playing);
     }
 }

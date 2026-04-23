@@ -11,13 +11,15 @@ use std::sync::mpsc;
 use std::time::Duration;
 use tracing::{error, info, warn};
 
+mod backend;
 mod config;
 mod keys;
 mod mcu;
 mod midi;
 mod state;
 
-use crate::config::Config;
+use crate::backend::{Backend, KeystrokeBackend, McuBackend};
+use crate::config::{BackendKind, Config};
 use crate::keys::Emitter;
 use crate::state::{Machine, TransportEvent};
 
@@ -94,11 +96,13 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    let mut emitter = Emitter::new(config.keystroke_delay_ms, config.frontmost_filter())?;
+    let mut backend = build_backend(&config)?;
+    info!(backend = backend.name(), "transport backend ready");
+
     let mut machine = Machine::new();
 
     if self_test {
-        return run_self_test(&mut machine, &mut emitter);
+        return run_self_test(&mut machine, backend.as_mut());
     }
 
     let (tx, rx) = mpsc::channel::<TransportEvent>();
@@ -146,10 +150,10 @@ fn main() -> Result<()> {
                         ?state_before,
                         ?state_after,
                         ?actions,
-                        "emitting keystrokes"
+                        "emitting actions"
                     );
-                    if let Err(e) = emitter.emit_sequence(&actions) {
-                        warn!(?e, "keystroke emission failed");
+                    if let Err(e) = backend.emit(&actions) {
+                        warn!(?e, "backend emit failed");
                     }
                 }
             }
@@ -158,6 +162,32 @@ fn main() -> Result<()> {
                 error!("MIDI channel disconnected");
                 return Ok(());
             }
+        }
+    }
+}
+
+/// Build the configured transport backend. The MCU backend registers
+/// the virtual endpoint pair (`MIDI Macro Bridge`) so LUNA can pick
+/// it in MIDI Control Surfaces. The Keystroke backend constructs an
+/// Emitter and expects LUNA-as-frontmost + Accessibility permission
+/// at runtime.
+fn build_backend(config: &Config) -> Result<Box<dyn Backend>> {
+    match config.transport.backend {
+        BackendKind::Mcu => {
+            // The virtual endpoint's inbound-byte callback is a
+            // no-op for transport-only Phase 3d — position-display
+            // parsing lands in Phase 3e when the LocateController
+            // comes online. The endpoint still needs to exist so
+            // LUNA has something to route to.
+            let pair = midi::create_virtual_mcu(MCU_ENDPOINT_NAME, |_| {})?;
+            Ok(Box::new(McuBackend::new(pair)))
+        }
+        BackendKind::Keystrokes => {
+            let emitter = Emitter::new(
+                config.transport.keystroke_delay_ms,
+                config.transport.frontmost_filter(),
+            )?;
+            Ok(Box::new(KeystrokeBackend::new(emitter)))
         }
     }
 }
@@ -582,13 +612,15 @@ fn classify_midi(bytes: &[u8]) -> &'static str {
     }
 }
 
-/// Emit a canned sequence of events so the user can validate the
-/// keystroke path (and Accessibility permissions) without the MC-500
-/// being connected. LUNA should respond as if the MC-500 sent these.
-fn run_self_test(machine: &mut Machine, emitter: &mut Emitter) -> Result<()> {
+/// Emit a canned sequence of events through the configured backend
+/// so the user can validate the output path without the MC-500 being
+/// connected. For the keystroke backend this means focusing LUNA
+/// first; for the MCU backend LUNA just needs the surface configured
+/// and ON.
+fn run_self_test(machine: &mut Machine, backend: &mut dyn Backend) -> Result<()> {
     use std::thread::sleep;
 
-    info!("self-test: focus LUNA now, starting in 3 seconds");
+    info!(backend = backend.name(), "self-test: starting in 3 seconds");
     sleep(Duration::from_secs(3));
 
     let script = [
@@ -602,7 +634,7 @@ fn run_self_test(machine: &mut Machine, emitter: &mut Emitter) -> Result<()> {
         info!(?event, description, "self-test step");
         let actions = machine.handle(event);
         if !actions.is_empty() {
-            emitter.emit_sequence(&actions)?;
+            backend.emit(&actions)?;
         }
         sleep(Duration::from_secs(2));
     }
