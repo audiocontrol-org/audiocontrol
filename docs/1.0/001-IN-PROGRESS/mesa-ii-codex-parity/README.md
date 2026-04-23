@@ -8,7 +8,7 @@ Parallel Codex-driven reverse engineering of Akai's MESA II sampler editor, desi
 |-------|--------|-------|
 | Phase 1: Baseline and Comparison Setup | Complete | Claude branch baseline captured; comparison artifacts created; first Codex target selected |
 | Phase 2: Independent Codex Analysis | In Progress | Static analysis is now focused on emulator-relevant transport recovery: `SMSendData` CDB construction is confirmed and the raw executor below it is identified as `CSCSIUtils::SCSICommand` |
-| Phase 3: Cross-Check and Reconciliation | In Progress | `#315` is the live Claude/Codex mailbox; the latest root-cause fix is the harness `StripAddress` bug, and the current shared blocker is the relocation overlap question on a clean rerun |
+| Phase 3: Cross-Check and Reconciliation | In Progress | `#315` is the live Claude/Codex mailbox; the `StripAddress` bug and relocation-overlap question are now behind us, and the current shared blocker is ordinary `CONS` state mutation on the persistent plug object under correct `$A998` semantics |
 | Phase 4: Emulator Contract Guidance | In Progress | The current output is emulator-facing: identify the minimum Mac runtime and SCSI contract MESA still expects so Musashi can drive the real fast transfer path |
 
 ## Links
