@@ -180,6 +180,33 @@ fn main() -> Result<()> {
         )
     };
 
+    // MIDI output to the MC-500 for sync-on-stop. Warn-and-continue
+    // if the port can't be opened — the forward direction still
+    // works, we just can't sync positions back.
+    let mut mc500_out: Option<midir::MidiOutputConnection> = if config.mc500_output_port.is_empty() {
+        info!("no `mc500_output_port` configured — sync-on-stop is disabled");
+        None
+    } else {
+        match midi::connect_output(&config.mc500_output_port) {
+            Ok(conn) => {
+                info!(
+                    port = %config.mc500_output_port,
+                    "MC-500 sync output ready"
+                );
+                Some(conn)
+            }
+            Err(e) => {
+                warn!(
+                    ?e,
+                    port = %config.mc500_output_port,
+                    "couldn't open MC-500 sync output — sync-on-stop will be disabled \
+                     for this session. The forward MC-500 → LUNA path is unaffected."
+                );
+                None
+            }
+        }
+    };
+
     // Ctrl-C handling — forward through a channel the main loop polls.
     let (shutdown_tx, shutdown_rx) = mpsc::channel();
     ctrlc::set_handler(move || {
@@ -212,20 +239,19 @@ fn main() -> Result<()> {
             Ok(event) => {
                 let state_before = machine.state();
                 let actions = machine.handle(event);
-                let state_after = machine.state();
 
                 if actions.is_empty() {
                     info!(
                         ?event,
                         ?state_before,
-                        ?state_after,
+                        state_after = ?machine.state(),
                         "no-op event (echo guard or state change only)"
                     );
                 } else {
                     info!(
                         ?event,
                         ?state_before,
-                        ?state_after,
+                        state_after = ?machine.state(),
                         ?actions,
                         "dispatching actions"
                     );
@@ -249,6 +275,25 @@ fn main() -> Result<()> {
                         locate_enabled,
                         &mut machine,
                     )?;
+                }
+
+                // Sync-on-stop: if the state just transitioned from
+                // anything-non-Stopped to Stopped (because we hit
+                // Stop, or a locate cancelled/failed, or a locate
+                // completed without a queued Play), LUNA will snap
+                // to its play-start position. Wait briefly for that
+                // to settle, then push SPP at the new bar to the
+                // MC-500 so both machines agree.
+                let state_after = machine.state();
+                let transitioned_to_stopped = state_after == TransportState::Stopped
+                    && !matches!(state_before, TransportState::Stopped);
+                if transitioned_to_stopped {
+                    sync_mc500_to_luna_after_stop(
+                        &mcu_bytes_rx,
+                        &pair,
+                        &mut tracker,
+                        mc500_out.as_mut(),
+                    );
                 }
 
                 true
@@ -305,6 +350,54 @@ fn build_backend(
     };
 
     Ok((backend, pair))
+}
+
+/// Tail of a Stop transition. Gives LUNA a short window to settle
+/// at its play-start position (we actively drain inbound MCU bytes
+/// during the wait so the tracker reflects the post-snap bar), then
+/// sends an SPP message to the MC-500 so it jumps to the same bar.
+/// Silent on all failure modes — sync is an enhancement; the
+/// forward path has already fired.
+fn sync_mc500_to_luna_after_stop(
+    mcu_bytes_rx: &mpsc::Receiver<Vec<u8>>,
+    pair: &Option<Rc<RefCell<VirtualMcuPair>>>,
+    tracker: &mut PositionTracker,
+    mc500_out: Option<&mut midir::MidiOutputConnection>,
+) {
+    // Observed timing from probe-send-stop.log: LUNA takes ~170 ms
+    // between "Stop received" and the final snap-to-play-start
+    // position update. 500 ms gives comfortable headroom.
+    const SETTLE_WINDOW: Duration = Duration::from_millis(500);
+
+    let Some(out) = mc500_out else {
+        return;
+    };
+
+    let deadline = Instant::now() + SETTLE_WINDOW;
+    while Instant::now() < deadline {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        let poll = remaining.min(Duration::from_millis(50));
+        match mcu_bytes_rx.recv_timeout(poll) {
+            Ok(bytes) => handle_mcu_byte_idle(&bytes, pair, tracker),
+            Err(mpsc::RecvTimeoutError::Timeout) => continue,
+            Err(mpsc::RecvTimeoutError::Disconnected) => break,
+        }
+    }
+
+    let bar = tracker.current_bar();
+    if bar == 0 {
+        // Tracker has no position — we never saw LUNA settle on
+        // anything. Don't send SPP; it'd tell the MC-500 to go to a
+        // bar that may not reflect reality.
+        info!("sync-on-stop: no tracked position from LUNA; skipping SPP");
+        return;
+    }
+
+    let spp = midi::bar_to_spp_message(bar);
+    match out.send(&spp) {
+        Ok(()) => info!(bar, "sync-on-stop: sent SPP to MC-500"),
+        Err(e) => warn!(?e, bar, "sync-on-stop: SPP send failed"),
+    }
 }
 
 /// Idle-path handling for a received MCU byte sequence: reply to

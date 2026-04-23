@@ -21,6 +21,25 @@ pub struct Config {
     #[serde(default = "default_midi_input_port")]
     pub midi_input_port: String,
 
+    /// Substring match against the MC-500 MIDI input port — the
+    /// *output side* of the bridge, routed back to the MC-500's
+    /// MIDI IN. Used only for sync-on-stop: after LUNA snaps to its
+    /// play-start position, the bridge sends Song Position Pointer
+    /// to the MC-500 so both machines agree on where the playhead
+    /// is.
+    ///
+    /// Defaults to the same port name as `midi_input_port` (the
+    /// 828mk3) — midir distinguishes inputs from outputs at the
+    /// port-enumeration level, so the same substring resolves to
+    /// two different endpoints.
+    ///
+    /// Empty string disables the sync feature. If the port exists
+    /// but isn't reachable (MC-500 unplugged, cable routed
+    /// elsewhere), the bridge warns at startup and continues
+    /// without the sync — MC-500 → LUNA direction still works.
+    #[serde(default = "default_mc500_output_port")]
+    pub mc500_output_port: String,
+
     /// Reserved for future use (e.g., menu bar enable/disable).
     #[serde(default = "default_true")]
     pub enabled_on_startup: bool,
@@ -43,6 +62,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             midi_input_port: default_midi_input_port(),
+            mc500_output_port: default_mc500_output_port(),
             enabled_on_startup: true,
             transport: TransportConfig::default(),
             locate: LocateConfigToml::default(),
@@ -53,6 +73,12 @@ impl Default for Config {
 fn default_midi_input_port() -> String {
     // Placeholder; general port discovery deferred to release
     // hardening. See Config::midi_input_port docs.
+    "828mk3 Hybrid MIDI".to_string()
+}
+
+fn default_mc500_output_port() -> String {
+    // Same default as the input; midir separates inputs from
+    // outputs so the same substring resolves to distinct endpoints.
     "828mk3 Hybrid MIDI".to_string()
 }
 

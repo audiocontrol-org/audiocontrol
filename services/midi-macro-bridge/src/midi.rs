@@ -25,7 +25,7 @@
 //! called from arbitrary threads.
 
 use anyhow::{anyhow, Context, Result};
-use midir::{MidiInput, MidiInputConnection};
+use midir::{MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
 use tracing::{debug, info};
 
 #[cfg(target_os = "macos")]
@@ -100,6 +100,57 @@ pub fn list_ports() -> Result<Vec<String>> {
         .iter()
         .map(|p| midi_in.port_name(p).context("read port name"))
         .collect()
+}
+
+/// Connect to the first MIDI *output* port matching `port_substring`
+/// (case-insensitive). Used for sending SPP back to the MC-500 so it
+/// can stay in sync with LUNA's play-start-on-stop behaviour.
+/// Returns a live MidiOutputConnection; dropping it closes the port.
+pub fn connect_output(port_substring: &str) -> Result<MidiOutputConnection> {
+    let midi_out = MidiOutput::new("midi-macro-bridge-out")?;
+    let ports = midi_out.ports();
+    let matching = ports
+        .iter()
+        .find(|p| {
+            midi_out
+                .port_name(p)
+                .map(|n| n.to_lowercase().contains(&port_substring.to_lowercase()))
+                .unwrap_or(false)
+        })
+        .ok_or_else(|| {
+            anyhow!(
+                "no MIDI output port matching '{}'. Try --list-ports (note: that lists \
+                 inputs; the output with the same name generally exists alongside).",
+                port_substring
+            )
+        })?;
+
+    let port_name = midi_out.port_name(matching)?;
+    info!(port = %port_name, "connecting to MIDI output");
+
+    let conn = midi_out
+        .connect(matching, "mc500-spp-out")
+        .map_err(|e| anyhow!("midir output connect failed: {e}"))?;
+
+    Ok(conn)
+}
+
+/// Encode a 1-based bar number as a MIDI Song Position Pointer
+/// message. SPP carries position as 14-bit MIDI beats (16th notes)
+/// with bit-level split: `F2 ll hh` where `(hh << 7) | ll` is the
+/// beat count. In 4/4, bar N corresponds to `(N - 1) * 16` beats.
+///
+/// The current assumption is 4/4. A session in other time signatures
+/// will see the MC-500 land on the right bar number but not
+/// necessarily the musically-matching place — acceptable for the
+/// sync-on-stop use case since bar accuracy is what matters.
+pub fn bar_to_spp_message(bar: u32) -> [u8; 3] {
+    let midi_beats = bar.saturating_sub(1).saturating_mul(16);
+    // 14-bit limit: SPP's two data bytes carry 7 bits each.
+    let clamped = midi_beats.min((1 << 14) - 1);
+    let ll = (clamped & 0x7F) as u8;
+    let hh = ((clamped >> 7) & 0x7F) as u8;
+    [0xF2, ll, hh]
 }
 
 /// Connect to the first MIDI input port matching `port_substring` and
@@ -406,6 +457,41 @@ mod tests {
         // SPP without its two data bytes — not a complete message.
         assert_eq!(parse_transport(&[0xF2]), None);
         assert_eq!(parse_transport(&[0xF2, 0x00]), None);
+    }
+
+    #[test]
+    fn bar_to_spp_round_trips_through_parse_transport() {
+        // Every bar we could emit should, when encoded and then
+        // parsed, recover the same bar — confirms the encode/decode
+        // functions agree on the 4/4 × 16 midi-beats-per-bar model.
+        for bar in [1, 2, 5, 10, 99, 255, 500] {
+            let msg = bar_to_spp_message(bar);
+            assert_eq!(parse_transport(&msg), Some(TransportEvent::Spp(bar)));
+        }
+    }
+
+    #[test]
+    fn bar_to_spp_has_sysex_status_and_two_data_bytes() {
+        let msg = bar_to_spp_message(1);
+        assert_eq!(msg[0], 0xF2);
+        assert!(msg[1] < 0x80);
+        assert!(msg[2] < 0x80);
+    }
+
+    #[test]
+    fn bar_1_encodes_as_zero_position() {
+        assert_eq!(bar_to_spp_message(1), [0xF2, 0x00, 0x00]);
+    }
+
+    #[test]
+    fn bar_to_spp_clamps_at_14_bit_max() {
+        // (16384 - 1) / 16 + 1 ≈ bar 1025 is roughly the top of the
+        // 14-bit range. Beyond that the encoder saturates rather
+        // than wrapping so a stray huge bar number doesn't alias.
+        let msg = bar_to_spp_message(10_000);
+        assert_eq!(msg[0], 0xF2);
+        assert_eq!(msg[1], 0x7F);
+        assert_eq!(msg[2], 0x7F);
     }
 
     #[test]

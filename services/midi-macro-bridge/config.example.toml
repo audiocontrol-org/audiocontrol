@@ -10,6 +10,17 @@
 # interface name is stable.
 midi_input_port = "828mk3 Hybrid MIDI"
 
+# Substring match against the MIDI output port that reaches the
+# MC-500's MIDI IN. Used for sync-on-stop: after LUNA snaps to its
+# play-start position on Stop, the bridge sends SPP to the MC-500
+# so both machines agree on where the playhead is.
+#
+# Default is the same name as midi_input_port (since a typical
+# interface exposes inputs and outputs under the same name); midir
+# resolves inputs and outputs as distinct endpoints. Set to an
+# empty string to disable sync-on-stop.
+mc500_output_port = "828mk3 Hybrid MIDI"
+
 # Set to false to start in a disabled state (reserved for future use).
 enabled_on_startup = true
 
