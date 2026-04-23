@@ -84,6 +84,36 @@ Two structural changes ship together in this phase: replace the keystroke transp
 - **What exact position messages does LUNA emit on the MCU output, and at what rate?** The MCU protocol defines multiple position-reporting paths (timecode display SysEx, BEATS-mode display). Phase 3's first task is reverse-engineering the actual byte stream; this informs the parser design.
 - **Does LUNA's `[` / `]` keystroke honour the nudge-value setting, and does that setting map to musical bars or to some raw tick count?** Phase 4 hardware validation answers this empirically.
 
+## Appendix: Known MC-500 hardware quirks
+
+Documented after 2026-04-23 hardware testing — not bridge bugs,
+hardware limitations of the Roland MC-500mkII.
+
+**SPP is gated by MIDI sync mode, and the gate is one-way at a time.**
+The MC-500 only accepts inbound SPP when in MIDI sync mode, and it
+only sends outbound SPP when *not* in MIDI sync mode. The two paths
+are mutually exclusive — the user picks which direction to enable:
+
+- **MIDI sync mode OFF** (default for the bridge's locate feature):
+  MC-500 sends SPP when the user hits LOCATE → bridge drives LUNA
+  via closed-loop locate. But sync-on-stop (bridge → MC-500 SPP)
+  is ignored.
+- **MIDI sync mode ON**: MC-500 accepts SPP from the bridge →
+  sync-on-stop works (MC-500 follows LUNA's snapped position). But
+  the MC-500 no longer sends SPP on LOCATE, so closed-loop locate
+  from the MC-500 side stops working.
+
+**Implication for users:** if you want the bridge to drive LUNA
+from MC-500 LOCATE, keep the MC-500 out of MIDI sync mode and
+accept that sync-on-stop is a no-op (manually return the MC-500
+to bar 1 as part of your Stop workflow). If you want sync-on-stop
+to mirror LUNA's behaviour, enable MIDI sync mode and drive locate
+some other way.
+
+This is not something the bridge can solve — SPP is the only
+position-exchange primitive in the MIDI spec that the MC-500
+honours, and the MC-500 firmware gates it by mode.
+
 ## Appendix: Future Direction
 
 This service will evolve into a general-purpose MIDI-to-macro translator with:

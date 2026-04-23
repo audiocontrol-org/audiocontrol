@@ -101,8 +101,30 @@ listens to.
 
 ## Known limitations
 
-- No SPP. Discussed above; no workaround.
-- Cross-app keystroke leakage is mitigated by frontmost-app check but
-  not fully prevented. Don't Cmd-Tab mid-session.
+- **MC-500 SPP is gated by MIDI sync mode.** The MC-500 only
+  *accepts* SPP when in MIDI sync mode, and only *sends* SPP when
+  NOT in MIDI sync mode. The two directions are mutually exclusive
+  — the user picks one:
+  - **MIDI sync OFF** (default for closed-loop locate): MC-500
+    LOCATE → SPP → bridge → LUNA. But sync-on-stop's SPP from the
+    bridge back to the MC-500 is ignored; the user has to manually
+    reset the MC-500 position after a Stop.
+  - **MIDI sync ON**: sync-on-stop works (MC-500 follows LUNA's
+    snapped position). But MC-500 LOCATE stops sending SPP, so the
+    closed-loop locate feature is unavailable.
+
+  This is a Roland firmware quirk, not a bridge limitation; there's
+  no workaround at the MIDI protocol layer.
+- Cross-app keystroke leakage (keystroke backend only, opt-in) is
+  mitigated by the frontmost-app check but not fully prevented.
+  Don't Cmd-Tab mid-session.
 - State drift if you use LUNA's transport via mouse/keyboard directly
   while the bridge is running. Hit Stop on the MC-500 twice to re-sync.
+
+> **Note:** the rest of this README reflects the pre-Phase-3
+> keystroke-only architecture and needs a refresh before release.
+> The MCU backend (default today) doesn't require Accessibility
+> permission and works with LUNA in the background — the
+> Accessibility / frontmost-app instructions above are only
+> relevant if you set `[transport] backend = "keystrokes"` in
+> config.toml.
