@@ -13,6 +13,7 @@ use tracing::{error, info, warn};
 
 mod config;
 mod keys;
+mod mcu;
 mod midi;
 mod state;
 
@@ -176,32 +177,75 @@ fn run_probe_midi(port_substring: &str) -> Result<()> {
     drive_probe_loop(rx)
 }
 
-/// Register the bridge's virtual MCU endpoint pair and dump every
-/// byte arriving on its virtual input. The user then configures
-/// LUNA's MIDI Control Surfaces to pick the bridge as both INPUT and
-/// OUTPUT DEVICE on a free row (protocol: MCU), and LUNA starts
-/// streaming position updates into the probe.
+/// Register the bridge's virtual MCU endpoint pair, answer LUNA's
+/// heartbeat probe so the surface stays alive, and dump every byte
+/// arriving on the virtual input. The user then configures LUNA's
+/// MIDI Control Surfaces to pick the bridge as both INPUT and OUTPUT
+/// DEVICE on a free row (protocol: MCU), and LUNA streams position
+/// updates into the probe.
 fn run_probe_mcu() -> Result<()> {
-    let (rx, _pair_lifecycle) = {
-        use std::time::Instant;
-        let start = Instant::now();
-        let (tx, rx) = mpsc::channel::<(u128, Vec<u8>)>();
-        let pair = midi::create_virtual_mcu(MCU_ENDPOINT_NAME, move |bytes| {
-            let _ = tx.send((start.elapsed().as_micros(), bytes.to_vec()));
-        })?;
-        (rx, pair)
-    };
+    use std::time::Instant;
 
-    eprintln!(
-        "# probe-mcu: virtual endpoint '{MCU_ENDPOINT_NAME}' is now registered."
-    );
-    eprintln!(
-        "# In LUNA, open MIDI Control Surfaces and select '{MCU_ENDPOINT_NAME}' as"
-    );
+    let start = Instant::now();
+    let (tx, rx) = mpsc::channel::<(u128, Vec<u8>)>();
+    let mut pair = midi::create_virtual_mcu(MCU_ENDPOINT_NAME, move |bytes| {
+        let _ = tx.send((start.elapsed().as_micros(), bytes.to_vec()));
+    })?;
+
+    let (shutdown_tx, shutdown_rx) = mpsc::channel();
+    ctrlc::set_handler(move || {
+        let _ = shutdown_tx.send(());
+    })
+    .context("installing Ctrl-C handler")?;
+
+    eprintln!("# probe-mcu: virtual endpoint '{MCU_ENDPOINT_NAME}' is now registered.");
+    eprintln!("# In LUNA, open MIDI Control Surfaces and select '{MCU_ENDPOINT_NAME}' as");
     eprintln!("# both INPUT DEVICE and OUTPUT DEVICE on a free row (protocol: MCU).");
+    eprintln!(
+        "# Heartbeat responder active: replies to model 0x{:02X} probes with identity.",
+        mcu::MCU_MODEL_ID
+    );
     eprintln!("# Ctrl-C to stop. Dropping the bridge removes the endpoint from LUNA's list.");
     eprintln!("# columns: <microseconds since start>  [<byte count>]  <label>  <hex>");
-    drive_probe_loop(rx)
+
+    loop {
+        if shutdown_rx.try_recv().is_ok() {
+            eprintln!("# probe stopped");
+            return Ok(());
+        }
+        match rx.recv_timeout(Duration::from_millis(200)) {
+            Ok((us, bytes)) => {
+                // Heartbeat responder — reply to LUNA's model-ID query so
+                // the surface doesn't time out. Only respond to our
+                // declared model ID; the other queries LUNA sprays across
+                // 0x10-0x15 are checking for *other* MCU variants.
+                if let Some(model) = mcu::parse_heartbeat_query(&bytes) {
+                    if model == mcu::MCU_MODEL_ID {
+                        let reply = mcu::mcu_identity_reply(model);
+                        match pair.send(&reply) {
+                            Ok(()) => eprintln!(
+                                "# -> identity reply sent for model 0x{model:02X}"
+                            ),
+                            Err(e) => eprintln!("# heartbeat reply failed: {e}"),
+                        }
+                    }
+                }
+
+                let hex: Vec<String> = bytes.iter().map(|b| format!("{b:02X}")).collect();
+                println!(
+                    "{us:>12}us  [{:>3}]  {:<18}  {}",
+                    bytes.len(),
+                    classify_midi(&bytes),
+                    hex.join(" ")
+                );
+            }
+            Err(mpsc::RecvTimeoutError::Timeout) => continue,
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                eprintln!("# MIDI channel disconnected");
+                return Ok(());
+            }
+        }
+    }
 }
 
 /// Shared event-print loop for the probe modes. Runs until Ctrl-C or

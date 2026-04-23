@@ -79,7 +79,18 @@ pub fn list_ports() -> Result<Vec<String>> {
 /// removes them from the system's MIDI device list.
 pub struct VirtualMcuPair {
     _input: MidiInputConnection<()>,
-    _output: MidiOutputConnection,
+    output: MidiOutputConnection,
+}
+
+impl VirtualMcuPair {
+    /// Send a MIDI message out the virtual output. DAWs that have
+    /// selected the pair as their MCU control surface INPUT DEVICE
+    /// will receive it.
+    pub fn send(&mut self, bytes: &[u8]) -> Result<()> {
+        self.output
+            .send(bytes)
+            .map_err(|e| anyhow!("virtual MCU send failed: {e}"))
+    }
 }
 
 /// Register a paired virtual MIDI input + output under
@@ -112,7 +123,7 @@ where
 
     Ok(VirtualMcuPair {
         _input: input,
-        _output: output,
+        output,
     })
 }
 
