@@ -324,6 +324,32 @@ some kind) before starting the nudge loop; otherwise a locate that
 fires before LUNA has pushed a position will read `bar 0` and
 nudge wildly.
 
+### Cursor-left / cursor-right are marker navigation, not bar-step
+
+Tested 2026-04-23 via `probe-send-cursor-right.log` — tap of note
+`0x63` with LUNA's playhead at bar 1. Result: LUNA jumped the
+playhead to bar 9 (next arrangement marker), **and didn't push any
+`B0 40-49` position updates to the MCU surface**. Visible side
+effects: full surface-state refresh (fader pitch-bends, V-Pot
+rings reset, STOP LED lit).
+
+User confirmed: cursor-right in LUNA's MCU implementation is bound
+to "next marker," not "next bar." Cursor-left is the symmetric
+"previous marker."
+
+Two problems with this primitive for closed-loop locate:
+
+1. **Magnitude is wrong.** 8-bar jump in this test, whatever the
+   marker spacing is in other songs. Not useful for 1-bar nudge.
+2. **LUNA doesn't report the new position via MCU.** Even if the
+   magnitude were right, we'd have no way to verify closed-loop
+   without the position feedback.
+
+Moving on to the MCU jog wheel (`B0 3C vv` with signed 7-bit value)
+as the next candidate — it's the standard MCU scrub/nudge primitive
+and in most DAWs it *does* trigger a surface state push, including
+position digits.
+
 ### How Start composes
 
 Phase 1-2's Start event ("rewind and play from bar 1") has no direct
