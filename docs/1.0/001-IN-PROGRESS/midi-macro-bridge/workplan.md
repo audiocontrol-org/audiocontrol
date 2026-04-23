@@ -108,16 +108,17 @@
 
 ### Phase 3a — MCU input parser
 
-- [ ] Create `src/mcu.rs` with `parse_cc_display(cc_index: u8, value: u8) -> Option<DigitUpdate>` (pure function that maps `B0 4X vv` into a typed `DigitUpdate` for digits 0-9)
-- [ ] `PositionTracker` struct that maintains the 10-digit display state, exposes `current_bar() -> Option<u32>` (composed from `d7`/`d8`/`d9`), and fires a `PositionUpdate { bar }` event whenever the composed bar value changes
-- [ ] Unit tests: feed the parser the exact byte sequences captured in `probe-barstep.log` (bar 1 → 2 → ... → 6 → 5 → ... → 1) and assert the tracker reports the right bar at each step. Include the digit-carry case from `probe-ts.log` (bar 69 → 70 triggers both `d47` and `d48` in the same batch).
-- [ ] Classify the rest of LUNA's inbound stream (notes, CCs outside `B0 40-49`, pitch-bend, channel pressure, LCD SysEx, heartbeat SysEx) as no-ops in the parser. They're observable in the logs but not our concern.
+- [x] Create `src/mcu.rs` with `parse_cc_display(bytes: &[u8]) -> Option<DigitUpdate>` (pure function that maps `B0 4X vv` into a typed `DigitUpdate` for digits 0-9)
+- [x] `PositionTracker` struct that maintains the 10-digit display state, exposes `current_bar() -> u32` (composed from `d7`/`d8`/`d9`), and fires a `PositionUpdate { previous_bar, bar }` event whenever the composed bar value changes
+- [x] Unit tests: replay of the byte sequences captured in `probe-barstep.log` (bar 1 → 2 → ... → 6 → 5 → ... → 1); digit-carry case from `probe-ts.log` (bar 69 → 70 triggers both `d47` and `d48` in the same batch)
+- [x] Rest of LUNA's inbound stream (notes, CCs outside `B0 40-49`, pitch-bend, channel pressure, LCD SysEx, heartbeat SysEx) is not consumed by the parser — observable in the probe logs but not our concern for closed-loop locate
 
 ### Phase 3b — MCU heartbeat responder
 
-- [ ] Add `midi::send_virtual_mcu(&VirtualMcuPair, &[u8])` so the bridge can emit bytes on its virtual output (currently the pair is receive-only)
-- [ ] Detect LUNA's heartbeat SysEx (`F0 00 00 66 1X 00 F7` for X in 0x10-0x15) in the incoming stream; reply with an MCU identity response addressed to device 0x14 (Logic Control) — exact reply bytes informed by the MCU spec (typical form: `F0 00 00 66 14 01 <serial> <version> F7`)
-- [ ] Confirm empirically (by running the heartbeat responder live against LUNA for 60+ seconds and watching the probe output) that LUNA keeps the surface activated and doesn't repeatedly re-init
+- [x] `VirtualMcuPair::send(&mut self, &[u8])` so the bridge can emit bytes on its virtual output (previously receive-only)
+- [x] `mcu::parse_heartbeat_query` detects LUNA's `F0 00 00 66 1X 00 F7` probe and returns the model ID; `mcu::mcu_identity_reply(model)` builds a plausible MCU identity SysEx reply (`F0 00 00 66 <model> 01 <serial 7 ASCII> <version 4 ASCII> F7`)
+- [x] `--probe-mcu` replies to model `0x14` heartbeats with the identity message and logs `-> identity reply sent ...` on stderr
+- [ ] Confirm empirically (by running `--probe-mcu` live against LUNA for 60+ seconds) that LUNA keeps the surface activated and doesn't re-init repeatedly — **next session**
 - [ ] **Pause here** and coordinate with the user to set up the 3c discovery session
 
 ### Phase 3c — MCU transmit discovery
