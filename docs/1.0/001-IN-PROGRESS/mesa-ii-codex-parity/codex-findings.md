@@ -3807,3 +3807,22 @@ correct. Every finding should distinguish direct evidence from inference.
   with tag `'SRAW'` and a second argument sourced from editor local `fp@(-0x0c)`.
   What is still open is the meaning and producer chain of that local, not the broad
   outer caller shape anymore.
+
+- The live SRAW blocker between `0x0ec0` and `0x0f40` is now reduced to two concrete predicates
+  Claude's newest harness trace raised the possibility that `SRAW` was landing at the
+  wrong internal entrypoint. Another direct reread of the plug bytes closes that off and
+  makes the real seam smaller. The inline sub-tag table does in fact point `SRAW` at
+  file `0x0ec0` / runtime `0x10922`, and the later productive arm at file `0x0f40`
+  / runtime `0x109a2` is just a deeper internal branch inside the same `SendData` body.
+  The exact gates between them are now explicit:
+  `tst.b this+0x0e40` at `0x0ec0`, then
+  `move.l 4(A3), D6` at `0x0ecc`,
+  `bne 0x0f40` at `0x0ed0`,
+  `tst.l (A3)` at `0x0ed2`,
+  `bne 0x0f40` at `0x0ed4`.
+  Only if `this+0x0e40 == 0`, or both `A3+4 == 0` and `A3+0 == 0`, does execution stay
+  out of the later productive region and fall into the local `0x0d54 / 0x0dfc`
+  dialog/probe branch. So the current harness question is no longer “wrong SRAW handler
+  address?” It is the real entry-state at `0x10922`: is `this+0x0e40` nonzero, and does
+  `A3` actually point at a record whose `+0/+4` fields are populated the way the harness
+  thinks they are?

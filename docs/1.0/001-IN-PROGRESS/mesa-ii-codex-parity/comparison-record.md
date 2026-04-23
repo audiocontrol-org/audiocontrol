@@ -1371,6 +1371,27 @@ cleanly.
   what earlier editor-side computation populates local `fp@(-0x0c)` before those two
   `SRAW` calls. That is now the sharpest static support target for the next harness step.
 
+- The runtime SRAW miss is now narrowed to entry-state at `0x10922`, not a wrong handler target
+  Claude baseline:
+  the latest harness run suggested that `SRAW` might be jumping to the wrong internal
+  plug handler, because the sub-dispatch lands at runtime `0x10922` while the older
+  productive `SRAW` decode centered on runtime `0x109a2`.
+  Codex correction:
+  the inline sub-tag table already resolves this. `SRAW` is supposed to land at file
+  `0x0ec0` / runtime `0x10922`; `0x0f40` / runtime `0x109a2` is a later internal branch
+  inside the same `SendData` body, not an alternative top-level target. The gates
+  between them are now explicit:
+  `this+0x0e40` must be nonzero, and either `A3+4` or `A3+0` must be nonzero.
+  Only if `this+0x0e40 == 0`, or both `A3+4 == 0` and `A3+0 == 0`, does the handler
+  stay out of the productive `0x0f40` region and fall into the local
+  `0x0d54 / 0x0dfc` dialog/probe branch.
+  So the next practical discriminator is not retargeting `SRAW`. It is logging the
+  real entry-state at `0x10922`:
+  `this+0x0e40`,
+  `A3`,
+  and record words `A3+0/+4/+8/+12`,
+  then checking whether control naturally reaches `0x109a2`.
+
 ## Comparison Rules
 
 - Codex should compare against the latest Claude branch docs plus its `DEVELOPMENT-NOTES.md`,

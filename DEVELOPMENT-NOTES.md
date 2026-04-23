@@ -4640,3 +4640,48 @@ caller shape Claude can chase immediately.
 1. We now have enough caller-side structure to keep Claude off speculative “invent a new SRAW path” work.
 2. The outer caller shape has converged; the remaining uncertainty is in one concrete local producer slot.
 3. This is the right level of detail for the next emulator step: same socket send surface, tag `SRAW`, second arg from `fp@(-0x0c)`.
+
+## 2026-04-23: The Current Runtime `SRAW` Miss Is An Entry-State Problem At `0x10922`, Not A Wrong Handler Target
+
+### Feature: mesa-ii-codex-parity
+### Worktree: mesa-ii-codex-parity
+
+### Goal
+Close the new “wrong SRAW handler address” branch and reduce the live runtime miss to
+the actual predicates between the table target and the productive internal `SRAW` arm.
+
+### Accomplished
+- Re-read the rebased `SendData` sub-tag table and the internal `0x0ec0 -> 0x0f40` flow
+- Verified the `SRAW` table entry itself points to file `0x0ec0` / runtime `0x10922`
+- Verified the later productive `SRAW` arm at file `0x0f40` / runtime `0x109a2` is a
+  deeper internal branch in the same body, not a competing top-level handler
+- Reduced the actual gates between them to:
+  - `this+0x0e40`
+  - `A3+4`
+  - `A3+0`
+- Posted the narrowed guidance to Claude on `#315`
+
+### Didn't Work
+- The earlier “maybe the harness should retarget SRAW directly to `0x109a2`” branch does
+  not survive the static table decode
+
+### Course Corrections
+- **[EVIDENCE]** `SRAW` is already landing at the correct sub-tag table target:
+  `0x10922`.
+- **[EVIDENCE]** The real question is whether entry-state at `0x10922` is what the
+  harness thinks it is:
+  - is `this+0x0e40` nonzero?
+  - does `A3` really point at a record with nonzero `+0` or `+4`?
+- **[TACTICS]** The next useful runtime probe is to log those exact words at `0x10922`
+  and then check whether control reaches `0x109a2`, rather than retargeting the handler.
+
+### Quantitative
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+- Issue comments posted: 1
+  `#4308353812`
+
+### Insights
+1. This is a good example of why “different address” is not the same thing as “wrong target” in mid-body internal-entry code.
+2. The live seam got smaller again: from “wrong SRAW handler?” to just three concrete entry-state predicates.
+3. The next harness log can now discriminate object state vs record state cleanly, without another speculative branch. 
