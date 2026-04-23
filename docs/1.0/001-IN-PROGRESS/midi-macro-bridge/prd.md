@@ -44,9 +44,10 @@ Beyond basic transport, the user needs LUNA's playhead to follow the MC-500's lo
 
 - SPP-driven locate: parse Song Position Pointer (`0xF2 ll hh`) as the *target* (bar destination requested by the MC-500); drive LUNA's playhead to that target by iteratively emitting `[` / `]` keystrokes and reading LUNA's MCU position output to verify each nudge landed where expected. Closed-loop is required, not optimising — a bar-off locate would leave the MC-500 running with a persistent bar-offset against LUNA for the rest of the session.
 - Parse LUNA's MCU position output (bars/beats/subdivisions) and maintain a tracked-playhead model used for both closed-loop verification and deciding nudge direction.
+- Register the bridge as a virtual MIDI device named `MIDI Macro Bridge` (input + output pair via CoreMIDI virtual endpoints) so it appears in LUNA's MIDI Control Surfaces dropdown and can be selected as both INPUT DEVICE and OUTPUT DEVICE on a control-surface row. This is how MCU routing is established — no IAC bus or manual routing required.
 - Extend `KeyAction` with `BarForward` / `BarBackward` (bracket keys; numpad 1/2 opt-in via config).
 - Extend state machine with a `Locating` state and atomic-locate semantics: SPP events coalesced while locating, Stop cancels the in-flight locate, Start arriving during locate is queued as Continue so the played-from-zero rewind doesn't undo the locate.
-- Add `[locate]` TOML section: `enabled`, `mcu_input_port` (substring match, may be the same port as transport or separate), `max_iterations` safety cap, `use_numpad_keys`.
+- Add `[locate]` TOML section: `enabled`, `max_iterations` safety cap, `position_timeout_ms`, `use_numpad_keys`. MCU port is implicit — always the bridge's own virtual input.
 - `info!`-level logging of every locate: target bar (from SPP), starting bar (from MCU), per-iteration keystroke + delta, final bar, total iterations — fully diagnosable when locates misfire.
 - Closed-loop naturally supports bidirectional navigation: move in whichever direction (forward or backward) is closer to the target; no always-rewind penalty.
 
@@ -69,7 +70,7 @@ Beyond basic transport, the user needs LUNA's playhead to follow the MC-500's lo
 
 - None on other audiocontrol modules -- standalone Rust binary
 - Hardware (Phases 1-2): MC-500mkII connected via MIDI interface, LUNA installed
-- Hardware (Phases 3-4): LUNA's MCU position output reaching the bridge's MIDI input (either LUNA's MCU virtual output routed to the same 828mk3 input the MC-500 uses, or a second MIDI input the bridge is configured to read)
+- Hardware (Phases 3-4): the user configures LUNA's MIDI Control Surfaces to select `MIDI Macro Bridge` (the virtual endpoint pair registered by the bridge at startup) as both INPUT DEVICE and OUTPUT DEVICE on a free control-surface row, protocol MCU. No additional MIDI cabling or routing is required — the bridge is the endpoint LUNA talks to.
 
 ## Open Questions
 

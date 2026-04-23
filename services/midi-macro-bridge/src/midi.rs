@@ -7,8 +7,11 @@
 //! well with being called from arbitrary threads.
 
 use anyhow::{anyhow, Context, Result};
-use midir::{MidiInput, MidiInputConnection};
+use midir::{MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
 use tracing::{debug, info};
+
+#[cfg(unix)]
+use midir::os::unix::{VirtualInput, VirtualOutput};
 
 use crate::state::TransportEvent;
 
@@ -68,6 +71,98 @@ pub fn list_ports() -> Result<Vec<String>> {
         .iter()
         .map(|p| midi_in.port_name(p).context("read port name"))
         .collect()
+}
+
+/// Handles to the virtual MIDI input + output endpoints the bridge
+/// registers so DAWs (e.g., LUNA) can select the bridge as an MCU
+/// control surface. Dropping this value closes both endpoints and
+/// removes them from the system's MIDI device list.
+pub struct VirtualMcuPair {
+    _input: MidiInputConnection<()>,
+    _output: MidiOutputConnection,
+}
+
+/// Register a paired virtual MIDI input + output under
+/// `endpoint_name`. The pair shows up in macOS CoreMIDI (and ALSA on
+/// Linux) as a selectable device, so LUNA can pick the bridge as both
+/// its MCU INPUT DEVICE and OUTPUT DEVICE. Incoming bytes on the
+/// virtual input are forwarded to `on_bytes` on midir's callback
+/// thread.
+#[cfg(unix)]
+pub fn create_virtual_mcu<F>(endpoint_name: &str, on_bytes: F) -> Result<VirtualMcuPair>
+where
+    F: FnMut(&[u8]) + Send + 'static,
+{
+    let midi_in = MidiInput::new("midi-macro-bridge-mcu")?;
+    let mut on_bytes = on_bytes;
+    let input = midi_in
+        .create_virtual(
+            endpoint_name,
+            move |_timestamp, bytes, _| on_bytes(bytes),
+            (),
+        )
+        .map_err(|e| anyhow!("failed to create virtual MIDI input '{endpoint_name}': {e}"))?;
+
+    let midi_out = MidiOutput::new("midi-macro-bridge-mcu")?;
+    let output = midi_out
+        .create_virtual(endpoint_name)
+        .map_err(|e| anyhow!("failed to create virtual MIDI output '{endpoint_name}': {e}"))?;
+
+    info!(endpoint = endpoint_name, "created virtual MCU endpoint pair");
+
+    Ok(VirtualMcuPair {
+        _input: input,
+        _output: output,
+    })
+}
+
+#[cfg(not(unix))]
+pub fn create_virtual_mcu<F>(_endpoint_name: &str, _on_bytes: F) -> Result<VirtualMcuPair>
+where
+    F: FnMut(&[u8]) + Send + 'static,
+{
+    anyhow::bail!("virtual MIDI endpoints are only supported on macOS and Linux")
+}
+
+/// Connect to the first MIDI input port matching `port_substring` and
+/// forward every incoming byte sequence verbatim to `on_bytes`. Used
+/// by `--probe-midi` to reverse-engineer unknown device outputs on
+/// existing physical or virtual ports.
+pub fn connect_raw<F>(port_substring: &str, mut on_bytes: F) -> Result<MidiInputConnection<()>>
+where
+    F: FnMut(&[u8]) + Send + 'static,
+{
+    let midi_in = MidiInput::new("midi-macro-bridge-probe")?;
+
+    let ports = midi_in.ports();
+    let matching = ports
+        .iter()
+        .find(|p| {
+            midi_in
+                .port_name(p)
+                .map(|n| n.to_lowercase().contains(&port_substring.to_lowercase()))
+                .unwrap_or(false)
+        })
+        .ok_or_else(|| {
+            anyhow!(
+                "no MIDI input port matching '{}'. Try --list-ports to see available ports.",
+                port_substring
+            )
+        })?;
+
+    let port_name = midi_in.port_name(matching)?;
+    info!(port = %port_name, "probe: connecting to MIDI input");
+
+    let conn = midi_in
+        .connect(
+            matching,
+            "probe",
+            move |_timestamp, bytes, _| on_bytes(bytes),
+            (),
+        )
+        .map_err(|e| anyhow!("midir connect failed: {e}"))?;
+
+    Ok(conn)
 }
 
 /// Extract a transport event from a raw MIDI message.

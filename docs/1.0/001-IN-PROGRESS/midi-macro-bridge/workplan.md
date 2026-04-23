@@ -44,11 +44,12 @@
 - `services/midi-macro-bridge/src/mcu.rs` (new) — MCU position parser
 - `services/midi-macro-bridge/src/locate.rs` (new) — `PositionTracker`, `LocateController` (closed-loop)
 - `services/midi-macro-bridge/src/state.rs` — add `Locating` state and SPP handling
-- `services/midi-macro-bridge/src/midi.rs` — add `Event::Spp(u16)` and SPP parsing
+- `services/midi-macro-bridge/src/midi.rs` — add `Event::Spp(u16)` and SPP parsing; virtual MCU endpoint registration (done in Phase 3 scaffolding commit)
 - `services/midi-macro-bridge/src/keys.rs` — add `BarForward` / `BarBackward` match arms (verify `Key::Unicode` vs `Key::Layout` on enigo 0.2.1)
 - `services/midi-macro-bridge/src/config.rs` — add `[locate]` section
-- `services/midi-macro-bridge/src/main.rs` — wire two MIDI inputs (transport + MCU), drive the closed-loop controller
-- `services/midi-macro-bridge/README.md` — document the MCU input precondition and `[locate]` config
+- `services/midi-macro-bridge/src/main.rs` — open transport input, register the virtual MCU endpoint, drive the closed-loop controller (already has `--probe-midi` / `--probe-mcu` from scaffolding)
+- `services/midi-macro-bridge/README.md` — document the LUNA control-surface selection flow and `[locate]` config
+- `services/midi-macro-bridge/MCU-NOTES.md` (new) — capture log of LUNA's MCU output format + latency measurements
 
 ## Phase 1: Integration and Build
 
@@ -95,12 +96,18 @@
 
 ### Tasks
 
+**Bridge registers as a virtual MCU device (foundation for the probe)**
+
+- [x] Add `midi::create_virtual_mcu` using `midir::os::unix::{VirtualInput, VirtualOutput}`; bridge registers the endpoint pair `MIDI Macro Bridge` in CoreMIDI so LUNA sees it in the MIDI Control Surfaces dropdown
+- [x] Add `--probe-midi <port>` CLI mode for generic physical-port probing
+- [x] Add `--probe-mcu` CLI mode: register the virtual endpoint and dump every byte arriving on its virtual input
+
 **Hardware probe (do this first; the parser design depends on it)**
 
-- [ ] Confirm LUNA can emit MCU position output and route it to a MIDI port the bridge can read (same 828mk3 port as MC-500, or a second port). Document the routing path.
-- [ ] With the bridge in a probe mode (or a small throwaway `--probe-mcu` script), capture raw MIDI bytes from LUNA's MCU output during: idle, playback, scrubbing, bar-step with `[` / `]`, time-signature change mid-song
+- [ ] User configures LUNA's MIDI Control Surfaces: pick `MIDI Macro Bridge` as both INPUT DEVICE and OUTPUT DEVICE on a free row, protocol MCU
+- [ ] Run `./target/release/midi-macro-bridge --probe-mcu > probe-<scenario>.log` while exercising LUNA in each scenario: idle, playback, scrubbing, bar-step with `[` / `]`, time-signature change mid-song
 - [ ] Document LUNA's position message format (SysEx vs CC, byte layout, units — bars/beats/sub vs timecode) in `services/midi-macro-bridge/MCU-NOTES.md`
-- [ ] Measure round-trip latency: time between emitting a `]` keystroke and seeing the resulting position update. Informs the closed-loop timeout per iteration.
+- [ ] Measure round-trip latency: time between emitting a `]` keystroke and seeing the resulting position update on the probe. Informs the closed-loop per-iteration timeout default.
 
 **Core implementation**
 
@@ -120,8 +127,8 @@
   - Emit `BarForward` if delta > 0, `BarBackward` if delta < 0
   - Wait up to `cfg.position_timeout_ms` for a new `PositionUpdate`
   - If no update within timeout, return `Outcome::Timeout { last_known_bar }`
-- [ ] Add `[locate]` TOML section with `enabled` (default `false`), `mcu_input_port` (substring, may equal `midi_input_port`), `max_iterations` (default e.g. 64), `position_timeout_ms` (default informed by probe measurements), `use_numpad_keys` (default `false`)
-- [ ] Main loop: open a second MIDI input (or the same one, per config), forward position bytes into the `PositionTracker`, forward transport+SPP events into the state machine; when the state machine transitions to Locating, spawn the `LocateController::run` on a helper thread (keeping the main event loop responsive to Stop during locate)
+- [ ] Add `[locate]` TOML section with `enabled` (default `false`), `max_iterations` (default e.g. 64), `position_timeout_ms` (default informed by probe measurements), `use_numpad_keys` (default `false`). The MCU input comes from the bridge's own virtual endpoint — no port config.
+- [ ] Main loop: at startup (when `locate.enabled = true`) register the virtual MCU endpoint pair; forward incoming MCU bytes into the `PositionTracker`; forward transport+SPP from the physical MC-500 input into the state machine; when the state machine transitions to Locating, spawn the `LocateController::run` on a helper thread (keeping the main event loop responsive to Stop during locate)
 - [ ] `info!`-level log on each locate: target bar (from SPP), starting bar (from MCU), each iteration's delta + keystroke, final bar, total iterations, outcome
 - [ ] Startup log: configured locate mode (enabled/disabled, MCU port, iteration cap, timeout)
 - [ ] README: "Closed-loop locate" section with the MCU routing prerequisite, config example, troubleshooting (timeouts, oscillation errors)

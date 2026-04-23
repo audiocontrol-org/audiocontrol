@@ -33,6 +33,27 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
+    // --probe-midi <port-substring>: dump every received byte sequence
+    // on the given existing MIDI input port. Useful for probing
+    // physical interfaces or other virtual ports.
+    if let Some(idx) = args.iter().position(|a| a == "--probe-midi") {
+        let port = args
+            .get(idx + 1)
+            .filter(|a| !a.starts_with("--"))
+            .context("--probe-midi requires a port name substring: --probe-midi \"828mk3\"")?;
+        return run_probe_midi(port);
+    }
+
+    // --probe-mcu: register the bridge's virtual MCU endpoint pair
+    // under the name "MIDI Macro Bridge" and dump every byte arriving
+    // on the virtual input. The user configures LUNA to use that
+    // endpoint pair as a MIDI control surface (INPUT + OUTPUT DEVICE,
+    // protocol MCU); LUNA then streams position updates to the bridge
+    // and we capture them for offline analysis.
+    if args.iter().any(|a| a == "--probe-mcu") {
+        return run_probe_mcu();
+    }
+
     // --self-test: emit a hardcoded event sequence with delays, for
     // validating the keystroke path without needing hardware.
     let self_test = args.iter().any(|a| a == "--self-test");
@@ -128,6 +149,126 @@ fn init_tracing() {
         .with_env_filter(filter)
         .with_target(false)
         .init();
+}
+
+/// Name under which the bridge registers its virtual MCU endpoint
+/// pair. This is the string that shows up in LUNA's "MIDI Control
+/// Surfaces" INPUT DEVICE / OUTPUT DEVICE dropdowns.
+const MCU_ENDPOINT_NAME: &str = "MIDI Macro Bridge";
+
+/// Dump every MIDI byte sequence received on an existing port to
+/// stdout, with a microsecond-offset timestamp and a coarse label.
+/// Useful for probing physical interfaces (e.g., the 828mk3) or
+/// other apps' virtual ports.
+fn run_probe_midi(port_substring: &str) -> Result<()> {
+    let (rx, _conn_lifecycle) = {
+        use std::time::Instant;
+        let start = Instant::now();
+        let (tx, rx) = mpsc::channel::<(u128, Vec<u8>)>();
+        let conn = midi::connect_raw(port_substring, move |bytes| {
+            let _ = tx.send((start.elapsed().as_micros(), bytes.to_vec()));
+        })?;
+        (rx, conn)
+    };
+
+    eprintln!("# probe-midi: listening on port matching '{port_substring}' — Ctrl-C to stop");
+    eprintln!("# columns: <microseconds since start>  [<byte count>]  <label>  <hex>");
+    drive_probe_loop(rx)
+}
+
+/// Register the bridge's virtual MCU endpoint pair and dump every
+/// byte arriving on its virtual input. The user then configures
+/// LUNA's MIDI Control Surfaces to pick the bridge as both INPUT and
+/// OUTPUT DEVICE on a free row (protocol: MCU), and LUNA starts
+/// streaming position updates into the probe.
+fn run_probe_mcu() -> Result<()> {
+    let (rx, _pair_lifecycle) = {
+        use std::time::Instant;
+        let start = Instant::now();
+        let (tx, rx) = mpsc::channel::<(u128, Vec<u8>)>();
+        let pair = midi::create_virtual_mcu(MCU_ENDPOINT_NAME, move |bytes| {
+            let _ = tx.send((start.elapsed().as_micros(), bytes.to_vec()));
+        })?;
+        (rx, pair)
+    };
+
+    eprintln!(
+        "# probe-mcu: virtual endpoint '{MCU_ENDPOINT_NAME}' is now registered."
+    );
+    eprintln!(
+        "# In LUNA, open MIDI Control Surfaces and select '{MCU_ENDPOINT_NAME}' as"
+    );
+    eprintln!("# both INPUT DEVICE and OUTPUT DEVICE on a free row (protocol: MCU).");
+    eprintln!("# Ctrl-C to stop. Dropping the bridge removes the endpoint from LUNA's list.");
+    eprintln!("# columns: <microseconds since start>  [<byte count>]  <label>  <hex>");
+    drive_probe_loop(rx)
+}
+
+/// Shared event-print loop for the probe modes. Runs until Ctrl-C or
+/// the MIDI channel disconnects. The MIDI connection handle must be
+/// held alive by the caller for the duration of the loop (dropping
+/// it closes the port / virtual endpoint).
+fn drive_probe_loop(rx: mpsc::Receiver<(u128, Vec<u8>)>) -> Result<()> {
+    let (shutdown_tx, shutdown_rx) = mpsc::channel();
+    ctrlc::set_handler(move || {
+        let _ = shutdown_tx.send(());
+    })
+    .context("installing Ctrl-C handler")?;
+
+    loop {
+        if shutdown_rx.try_recv().is_ok() {
+            eprintln!("# probe stopped");
+            return Ok(());
+        }
+        match rx.recv_timeout(Duration::from_millis(200)) {
+            Ok((us, bytes)) => {
+                let hex: Vec<String> = bytes.iter().map(|b| format!("{b:02X}")).collect();
+                println!(
+                    "{us:>12}us  [{:>3}]  {:<18}  {}",
+                    bytes.len(),
+                    classify_midi(&bytes),
+                    hex.join(" ")
+                );
+            }
+            Err(mpsc::RecvTimeoutError::Timeout) => continue,
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                eprintln!("# MIDI channel disconnected");
+                return Ok(());
+            }
+        }
+    }
+}
+
+/// Coarse classification of the first status byte. Good enough for
+/// probe logs; real parsing is the job of `midi.rs` / `mcu.rs`.
+fn classify_midi(bytes: &[u8]) -> &'static str {
+    let Some(first) = bytes.first().copied() else {
+        return "(empty)";
+    };
+    match first {
+        0xF0 => "SysEx",
+        0xF1 => "MTC qframe",
+        0xF2 => "SPP",
+        0xF3 => "Song select",
+        0xF6 => "Tune request",
+        0xF7 => "SysEx end",
+        0xF8 => "Clock",
+        0xFA => "Start",
+        0xFB => "Continue",
+        0xFC => "Stop",
+        0xFE => "Active sensing",
+        0xFF => "Reset",
+        b => match b & 0xF0 {
+            0x80 => "Note off",
+            0x90 => "Note on",
+            0xA0 => "Poly pressure",
+            0xB0 => "CC",
+            0xC0 => "Program change",
+            0xD0 => "Channel pressure",
+            0xE0 => "Pitch bend",
+            _ => "(unknown)",
+        },
+    }
 }
 
 /// Emit a canned sequence of events so the user can validate the
