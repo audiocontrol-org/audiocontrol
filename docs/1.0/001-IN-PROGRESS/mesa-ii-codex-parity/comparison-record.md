@@ -1392,6 +1392,24 @@ cleanly.
   and record words `A3+0/+4/+8/+12`,
   then checking whether control naturally reaches `0x109a2`.
 
+- The editor-side `SRAW` second argument on the file-upload path is not yet proved to be a raw PCM pointer
+  Claude baseline:
+  the harness is now on the productive `SRAW -> SMSendData` path, but the exact meaning
+  of the editor-side second `SRAW` argument remains open.
+  Codex finding:
+  a direct decode of `SendAudioFileToSampler` around file `0x02ef4d-0x02f13f` tightens
+  that outer contract. Before the first later `SRAW` send, the function computes a
+  bounded chunk-size value into local `fp@(-0x0c)`, then passes `&fp@(-0x0c)` by
+  address, together with `fp@(-28)` and module `this+0x7c`, to helper `0x046512`.
+  Only if that helper reports success does the code later push the resulting
+  `fp@(-0x0c)` value as the second argument to the first `SRAW` call at `0x02eff7`.
+  Before the second `SRAW` call at `0x02f113`, the same local is updated again and run
+  through low helper `0x01a6` with `d1 = 2`.
+  So the current safe read is:
+  the editor file-upload path does not visibly push a naked PCM pointer as the second
+  outer `SRAW` argument. It pushes a mutable local value that begins as a size/shape
+  slot and is transformed by helper code before reaching the socket send surface.
+
 ## Comparison Rules
 
 - Codex should compare against the latest Claude branch docs plus its `DEVELOPMENT-NOTES.md`,

@@ -3826,3 +3826,18 @@ correct. Every finding should distinguish direct evidence from inference.
   address?” It is the real entry-state at `0x10922`: is `this+0x0e40` nonzero, and does
   `A3` actually point at a record whose `+0/+4` fields are populated the way the harness
   thinks they are?
+
+- On the editor file-upload path, local `fp@(-0x0c)` behaves like an in/out payload-descriptor slot, not a naked PCM pointer
+  A fresh direct decode of `SendAudioFileToSampler` around the two later `SRAW` sends
+  at file `0x02eff7` and `0x02f113` sharpens the outer caller contract. Before the first
+  `SRAW` send, the code computes a bounded chunk-size value into local `fp@(-0x0c)`:
+  `2 * min(d7, fp@(-8))` on the `a0@(16) == 1` branch, or a different scaled bound on
+  the other branch. It then passes `&fp@(-0x0c)` by address, together with `fp@(-28)`
+  and module `this+0x7c`, to helper `0x046512`. Only on success does it later push the
+  resulting `fp@(-0x0c)` value as the second argument to the first `SRAW` call at
+  `0x02eff7`. Before the second `SRAW` call at `0x02f113`, the same local is updated
+  again and passed through low helper `0x01a6` with `d1 = 2`. So the safe current read
+  is: on the real editor-side file-upload path, `SRAW` does not receive a raw PCM
+  pointer as its second outer argument. It receives a mutable local value that starts
+  life as a requested chunk-size/shape slot and is transformed by helper code before it
+  is handed to the socket send surface.

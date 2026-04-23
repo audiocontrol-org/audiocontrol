@@ -4685,3 +4685,51 @@ the actual predicates between the table target and the productive internal `SRAW
 1. This is a good example of why “different address” is not the same thing as “wrong target” in mid-body internal-entry code.
 2. The live seam got smaller again: from “wrong SRAW handler?” to just three concrete entry-state predicates.
 3. The next harness log can now discriminate object state vs record state cleanly, without another speculative branch. 
+
+## 2026-04-23: Editor File-Upload `SRAW` Calls Use A Mutable Local Descriptor Slot, Not A Proven Raw PCM Pointer
+
+### Feature: mesa-ii-codex-parity
+### Worktree: mesa-ii-codex-parity
+
+### Goal
+Tighten the outer `SRAW` caller model one step further by determining what editor local
+`fp@(-0x0c)` actually looks like on the real file-upload path.
+
+### Accomplished
+- Re-decoded `SendAudioFileToSampler` around file `0x02ef4d-0x02f13f`
+- Verified that before the first later `SRAW` send, the function computes a bounded value
+  into local `fp@(-0x0c)`:
+  - `2 * min(d7, fp@(-8))` on the `a0@(16) == 1` branch
+  - a different scaled bound on the other branch
+- Verified that it then passes `&fp@(-0x0c)` by address, together with `fp@(-28)` and
+  module `this+0x7c`, to helper `0x046512`
+- Verified that only on success does it later push the resulting `fp@(-0x0c)` value as
+  the second argument to the first `SRAW` send at `0x02eff7`
+- Verified that before the second `SRAW` send at `0x02f113`, the same local is updated
+  again and passed through low helper `0x01a6` with `d1 = 2`
+
+### Didn't Work
+- This still does not fully name helper `0x046512`
+- It still does not fully prove the final semantic type of the value pushed from
+  `fp@(-0x0c)`
+
+### Course Corrections
+- **[EVIDENCE]** The second outer `SRAW` argument on the editor file-upload path is no
+  longer well-modeled as “probably a raw PCM pointer.”
+- **[TACTICS]** The safer current read is: it is a mutable local value that begins as a
+  chunk-size/shape slot and is transformed by helper code before reaching the socket send
+  surface.
+- **[TACTICS]** That means the next harness-side cut should prefer measuring the
+  `SMSendData` frame/CDB-source pointer around the productive `SRAW` path over assuming
+  the editor would have passed a naked sample buffer pointer there.
+
+### Quantitative
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+- Issue comments posted: 1
+  `#4308917589`
+
+### Insights
+1. The productive `SRAW` path is now real enough that wrong assumptions about the outer argument shape matter more than one more chooser/dialog theory.
+2. The editor-side second `SRAW` argument is transformed through helper code before it is pushed, so it should be treated as a descriptor-like local until proven otherwise.
+3. The right next discriminator is now the live `SMSendData` frame content around the CDB-source pointer, not a richer fake dialog object by default.
