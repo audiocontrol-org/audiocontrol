@@ -14,16 +14,41 @@
 
 ## Technical Approach
 
+### Phases 1-2 (shipped in PR #316)
+
 - Copy existing scaffolded Rust code into `services/midi-macro-bridge/`
 - 5 source files: main.rs, config.rs, state.rs, midi.rs, keys.rs
 - Resolve dependency version skew if needed (enigo 0.2, midir 0.10)
 - Add Makefile build target following scsi-midi-bridge pattern
 - Hardware validation with MC-500 + LUNA
 
+### Phases 3-4 — closed-loop locate
+
+- **Reverse-engineer first, then build.** Phase 3 opens with a hardware probe session (LUNA running, MCU output routed to the bridge) to capture the actual position message format LUNA emits and measure the post-keystroke position-update latency. The parser and closed-loop timing are informed by what we observe, not assumed.
+- Add an MCU position parser (new `src/mcu.rs`) that consumes raw MIDI bytes and surfaces `PositionUpdate { bar, beat, sub }` events.
+- Add a `PositionTracker` that ingests `PositionUpdate` events and exposes "current bar" to the locate controller.
+- Add a closed-loop `LocateController` that, given an SPP-derived target bar, iteratively: reads tracked position, computes signed delta, emits one `BarForward` or `BarBackward` keystroke, waits for the next position update (bounded by a timeout), repeats until delta is zero or `max_iterations` is exhausted.
+- Detect oscillation: if delta reverses sign between iterations without hitting zero, LUNA's nudge is larger than one bar. Abort locate with a clear log message and return an actionable error; do not silently loop.
+- Extend the transport state machine with a `Locating` state; the atomic-locate semantics (coalesce SPP, Stop cancels, Start-during-locate becomes Continue) stay the same as the open-loop design.
+- Hardware validation in Phase 4 covers forward/backward/from-zero locate, time-signature changes mid-song (should now work automatically), and the oscillation-abort path for nudge > 1 bar.
+
 ## Modules Affected
+
+### Phases 1-2 (shipped in PR #316)
 
 - `services/midi-macro-bridge/` (new)
 - Root `Makefile`
+
+### Phases 3-4
+
+- `services/midi-macro-bridge/src/mcu.rs` (new) — MCU position parser
+- `services/midi-macro-bridge/src/locate.rs` (new) — `PositionTracker`, `LocateController` (closed-loop)
+- `services/midi-macro-bridge/src/state.rs` — add `Locating` state and SPP handling
+- `services/midi-macro-bridge/src/midi.rs` — add `Event::Spp(u16)` and SPP parsing
+- `services/midi-macro-bridge/src/keys.rs` — add `BarForward` / `BarBackward` match arms (verify `Key::Unicode` vs `Key::Layout` on enigo 0.2.1)
+- `services/midi-macro-bridge/src/config.rs` — add `[locate]` section
+- `services/midi-macro-bridge/src/main.rs` — wire two MIDI inputs (transport + MCU), drive the closed-loop controller
+- `services/midi-macro-bridge/README.md` — document the MCU input precondition and `[locate]` config
 
 ## Phase 1: Integration and Build
 
@@ -64,52 +89,75 @@
 - [x] No double-fire on duplicate messages
 - [x] Frontmost-app check prevents keystroke leaks
 
-## Phase 3: SPP Locate Implementation
+## Phase 3: Closed-Loop Locate Implementation
 
-**Deliverable:** Bridge translates MIDI SPP into bar-step keystrokes driving LUNA's playhead, with an atomic-locate state machine that coalesces rapid SPP and collapses post-locate Start into Continue.
+**Deliverable:** Bridge drives LUNA's playhead to the bar specified by an MC-500 SPP message using closed-loop nudging — emit `[` or `]`, read LUNA's MCU position output, recompute delta, repeat until the target bar is reached (or oscillation/iteration cap triggers abort).
 
 ### Tasks
 
-- [ ] Create `src/locate.rs` with pure `spp_to_bar(spp: u16, numerator: u8, denominator: u8) -> u32`
-- [ ] Unit tests for `spp_to_bar`: 4/4, 3/4, 6/8, 7/8, 5/4 (including non-bar-boundary round-down behaviour)
-- [ ] Add `LocateController::compute_keystrokes(target_bar: u32) -> Vec<KeyAction>` (pure, tested; always-rewind-on-locate)
+**Hardware probe (do this first; the parser design depends on it)**
+
+- [ ] Confirm LUNA can emit MCU position output and route it to a MIDI port the bridge can read (same 828mk3 port as MC-500, or a second port). Document the routing path.
+- [ ] With the bridge in a probe mode (or a small throwaway `--probe-mcu` script), capture raw MIDI bytes from LUNA's MCU output during: idle, playback, scrubbing, bar-step with `[` / `]`, time-signature change mid-song
+- [ ] Document LUNA's position message format (SysEx vs CC, byte layout, units — bars/beats/sub vs timecode) in `services/midi-macro-bridge/MCU-NOTES.md`
+- [ ] Measure round-trip latency: time between emitting a `]` keystroke and seeing the resulting position update. Informs the closed-loop timeout per iteration.
+
+**Core implementation**
+
+- [ ] Create `src/mcu.rs` with `parse_mcu_bytes(bytes: &[u8]) -> Option<PositionUpdate>` (pure; returns `Some` only when bytes form a valid position message based on what we observed in the probe)
+- [ ] Unit tests for `parse_mcu_bytes`: the captured sample messages, plus malformed-input rejection
+- [ ] `PositionTracker` struct: ingests `PositionUpdate` events via an mpsc channel; exposes `current_bar() -> Option<u32>` (`None` until the first update arrives)
 - [ ] Extend `KeyAction` with `BarForward` and `BarBackward`
-- [ ] Extend `Emitter` with match arms for bracket keys; verify `Key::Unicode('[' / ']')` vs `Key::Layout` on enigo 0.2.1
+- [ ] Extend `Emitter` with match arms for `[` / `]`; verify `Key::Unicode('[' / ']')` vs `Key::Layout` on enigo 0.2.1 (probe before writing)
 - [ ] Add `Locating` state to `TransportState`
-- [ ] Extend `Machine::handle` for SPP events and state transitions (SPP-while-Stopped → Locating; SPP-while-Playing ignored; Stop-during-Locating cancels; Start-during-Locating queued as Continue to suppress the post-locate rewind; duplicate SPP during Locating ignored)
-- [ ] Add `Event::Spp(u16)` variant to the event enum; extend `parse_transport` (or rename to `parse_bridge_event`) to surface SPP
-- [ ] Add `[locate]` TOML section with `enabled` (default false), `time_signature_numerator` (default 4), `time_signature_denominator` (default 4), `use_numpad_keys` (default false)
-- [ ] Main loop: handle SPP events, drive the Locating state, and log configured locate mode at startup (`info!`)
-- [ ] `info!`-level log on each locate: raw SPP value, target bar, time signature used, keystroke count
-- [ ] README: document the LUNA nudge-value precondition; add a "SPP-driven locate" section with config example
+- [ ] Add `Event::Spp(u16)` variant to the event enum; extend the MIDI input parser to surface SPP
+- [ ] Extend `Machine::handle` for SPP events and state transitions: SPP-while-Stopped → enter Locating with the target bar; SPP-while-Playing → ignored; SPP-while-Locating → update the target bar in-place (coalesce); Stop-while-Locating → cancel; Start-while-Locating → queue as Continue for post-locate so the played-from-zero rewind doesn't undo the locate
+- [ ] `LocateController::run(target_bar, tracker, emitter, cfg) -> Result<LocateOutcome>`:
+  - Loop up to `cfg.max_iterations` times
+  - Read `tracker.current_bar()`; if `None`, wait up to `cfg.position_timeout_ms` for first update; abort if still `None`
+  - Compute signed delta; if zero, return `Outcome::Reached { iterations }`
+  - If delta has reversed sign since the previous iteration without reaching zero, return `Outcome::NudgeTooLarge { consecutive_overshoots }` — abort and log actionable error
+  - Emit `BarForward` if delta > 0, `BarBackward` if delta < 0
+  - Wait up to `cfg.position_timeout_ms` for a new `PositionUpdate`
+  - If no update within timeout, return `Outcome::Timeout { last_known_bar }`
+- [ ] Add `[locate]` TOML section with `enabled` (default `false`), `mcu_input_port` (substring, may equal `midi_input_port`), `max_iterations` (default e.g. 64), `position_timeout_ms` (default informed by probe measurements), `use_numpad_keys` (default `false`)
+- [ ] Main loop: open a second MIDI input (or the same one, per config), forward position bytes into the `PositionTracker`, forward transport+SPP events into the state machine; when the state machine transitions to Locating, spawn the `LocateController::run` on a helper thread (keeping the main event loop responsive to Stop during locate)
+- [ ] `info!`-level log on each locate: target bar (from SPP), starting bar (from MCU), each iteration's delta + keystroke, final bar, total iterations, outcome
+- [ ] Startup log: configured locate mode (enabled/disabled, MCU port, iteration cap, timeout)
+- [ ] README: "Closed-loop locate" section with the MCU routing prerequisite, config example, troubleshooting (timeouts, oscillation errors)
 
 ### Acceptance Criteria
 
-- [ ] All new unit tests pass (spp_to_bar across time signatures, compute_keystrokes, new Locating state transitions)
+- [ ] `MCU-NOTES.md` committed; position parser is backed by captured real-hardware bytes, not guessed
+- [ ] All new unit tests pass: `parse_mcu_bytes` sample + rejection cases, state machine Locating transitions, `LocateController` simulation with a mocked `PositionTracker` (fake updates driven into the tracker to exercise the control loop's delta / overshoot / timeout / reached outcomes)
 - [ ] All existing tests (state, config, MIDI parser) still pass
 - [ ] `cargo build --release` succeeds; `make build-midi-macro-bridge` green
 - [ ] Config with `[locate]` section parses; startup log reports locate mode
 - [ ] Config without `[locate]` section still parses (backward-compat with Phase 1-2 configs)
+- [ ] Oscillation detection triggers a clean abort with a user-actionable error message, not a runaway loop
 
-## Phase 4: SPP Locate Hardware Validation
+## Phase 4: Closed-Loop Locate Hardware Validation
 
-**Deliverable:** MC-500 LOCATE operations drive LUNA's playhead to the matching bar.
+**Deliverable:** MC-500 LOCATE operations drive LUNA's playhead to the matching bar, verified end-to-end, regardless of time signature.
 
 ### Tasks
 
-- [ ] Set `[locate]` config to 4/4, `enabled = true`
-- [ ] MC-500 locate to bar 5 -- LUNA lands on bar 5
-- [ ] MC-500 locate to bar 33 -- LUNA lands on bar 33
-- [ ] MC-500 locate back to bar 1 from bar 33 -- LUNA lands on bar 1
-- [ ] After a locate, hit PLAY on MC-500 -- LUNA starts from the located position (not zero)
-- [ ] Rapid SPP during MC-500 value-dial entry does not cause LUNA to re-seek mid-sequence
-- [ ] Hit LOCATE while LUNA is playing -- SPP ignored, playback uninterrupted
-- [ ] Confirm empirically whether LUNA's `[` / `]` always move exactly one bar (regardless of nudge value). If yes, drop the nudge-value caveat from the README; if no, keep it and document the workaround.
+- [ ] Configure `[locate]` with `enabled = true` and the MCU input port observed during the probe
+- [ ] MC-500 locate to bar 5 from bar 0 in 4/4 — LUNA lands on bar 5; log shows finite iteration count, no overshoots
+- [ ] MC-500 locate to bar 33 from bar 5 in 4/4 — LUNA lands on bar 33 via forward nudges
+- [ ] MC-500 locate back to bar 1 from bar 33 — LUNA lands on bar 1 via backward nudges (no full rewind)
+- [ ] MC-500 locate to bar 7 in a 3/4 section of the song — LUNA lands on bar 7 (validates that no hardcoded time signature is in play)
+- [ ] After a locate, hit PLAY on MC-500 — LUNA starts from the located position (not zero), because Start-while-Locating was queued as Continue
+- [ ] Rapid SPP during MC-500 value-dial entry — bridge coalesces to the final SPP; no intermediate locates fire; log shows target-bar update without restart
+- [ ] Hit LOCATE while LUNA is playing — SPP ignored, playback uninterrupted
+- [ ] Deliberately set LUNA's nudge value to > 1 bar — bridge detects oscillation, aborts, logs an actionable error, and does not leak keystrokes indefinitely
+- [ ] Disconnect LUNA's MCU output mid-locate — bridge times out per-iteration with a clean error, doesn't hang
 
 ### Acceptance Criteria
 
-- [ ] Locate lands on the correct bar in 4/4 for forward, backward, and from-zero cases
-- [ ] Locate sequence is atomic (no restart from mid-entry SPP)
+- [ ] Locate lands on the correct bar for forward, backward, from-zero, and cross-time-signature cases
+- [ ] Locate sequence is atomic (rapid SPP coalesced; no mid-sequence restart)
 - [ ] Post-locate PLAY uses the located position, not zero
 - [ ] SPP during playback is ignored
-- [ ] README's nudge-value guidance matches observed LUNA behaviour
+- [ ] Nudge-value > 1 bar is detected and surfaces as a clear configuration error, not silent misbehaviour
+- [ ] Missing / stalled MCU position feed is detected and surfaces as a clean timeout, not a hang

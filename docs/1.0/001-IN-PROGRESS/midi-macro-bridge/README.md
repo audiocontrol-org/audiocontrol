@@ -10,8 +10,8 @@
 |-------|--------|-------|
 | Phase 1: Integration and Build | Complete | Shipped in #316. |
 | Phase 2: Hardware Validation | Complete | MC-500 → 828mk3 → LUNA transport round trip verified. Shipped in #316. |
-| Phase 3: SPP Locate Implementation | Not Started | Adds `Locating` state, SPP parsing, bar-step keystrokes, `[locate]` config. |
-| Phase 4: SPP Locate Hardware Validation | Not Started | Verify MC-500 LOCATE drives LUNA's playhead in 4/4. |
+| Phase 3: Closed-Loop Locate Implementation | Not Started | Reverse-engineer LUNA's MCU position output, add MCU parser + `PositionTracker` + `LocateController`, extend state machine with `Locating`, add `[locate]` config. |
+| Phase 4: Closed-Loop Locate Hardware Validation | Not Started | Verify MC-500 LOCATE drives LUNA's playhead across time-signature changes via closed-loop nudging. |
 
 ## Documentation
 

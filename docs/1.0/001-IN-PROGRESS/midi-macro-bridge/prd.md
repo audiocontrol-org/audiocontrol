@@ -23,7 +23,7 @@ There is no way to control LUNA's transport from the MC-500mkII sequencer. LUNA 
 - `--self-test` emits keystrokes to LUNA when focused
 - Root Makefile has a `build-midi-macro-bridge` target
 - Hardware-validated: MC-500 Play/Stop/Continue controls LUNA transport
-- Hardware-validated: MC-500 LOCATE drives LUNA to the matching bar (4/4 time, bar-accurate, audio-sync covers finer alignment)
+- Hardware-validated: MC-500 LOCATE drives LUNA to the matching bar, regardless of time signature, via closed-loop nudging against LUNA's MCU position output
 
 ## In Scope
 
@@ -38,23 +38,25 @@ There is no way to control LUNA's transport from the MC-500mkII sequencer. LUNA 
 - `--list-ports` and `--self-test` CLI modes
 - Makefile build target
 
-### Phases 3–4 (this extension)
+### Phases 3–4 (this extension) — closed-loop locate
 
-- SPP-driven locate: parse Song Position Pointer (`0xF2 ll hh`), convert to target bar using configured time signature, drive LUNA's playhead with `[` / `]` keystrokes (Pro Tools style bar-step, inherited by LUNA). Open-loop; tape audio-sync covers finer alignment.
-- Extend `KeyAction` with `BarForward` / `BarBackward` (bracket keys; numpad 1/2 opt-in via config)
-- Extend state machine with a `Locating` state and atomic-locate semantics: SPP events coalesced while locating, Stop cancels the in-flight locate, Start arriving during locate is queued as Continue so the played-from-zero rewind doesn't undo the locate
-- Add `[locate]` TOML section: `enabled`, `time_signature_numerator`, `time_signature_denominator`, `use_numpad_keys`
-- `info!`-level logging of every locate (raw SPP, target bar, time signature, keystroke count) for diagnosability
-- Document the LUNA nudge-value precondition in README (or drop it once we confirm empirically that `[` / `]` always move exactly one bar)
+- SPP-driven locate: parse Song Position Pointer (`0xF2 ll hh`) as the *target* (bar destination requested by the MC-500); drive LUNA's playhead to that target by iteratively emitting `[` / `]` keystrokes and reading LUNA's MCU position output to verify each nudge landed where expected.
+- Parse LUNA's MCU position output (bars/beats/subdivisions) and maintain a tracked-playhead model used for both closed-loop verification and deciding nudge direction.
+- Extend `KeyAction` with `BarForward` / `BarBackward` (bracket keys; numpad 1/2 opt-in via config).
+- Extend state machine with a `Locating` state and atomic-locate semantics: SPP events coalesced while locating, Stop cancels the in-flight locate, Start arriving during locate is queued as Continue so the played-from-zero rewind doesn't undo the locate.
+- Add `[locate]` TOML section: `enabled`, `mcu_input_port` (substring match, may be the same port as transport or separate), `max_iterations` safety cap, `use_numpad_keys`.
+- `info!`-level logging of every locate: target bar (from SPP), starting bar (from MCU), per-iteration keystroke + delta, final bar, total iterations — fully diagnosable when locates misfire.
+- Closed-loop naturally supports bidirectional navigation: move in whichever direction (forward or backward) is closer to the target; no always-rewind penalty.
+
+**Deliberate closed-loop constraint:** the approach only works if LUNA's `[` / `]` keystroke moves the playhead by ≤ 1 bar. If the user has configured a nudge value larger than 1 bar, closed-loop will overshoot and potentially oscillate — detect this (delta reverses sign between iterations) and abort with a clear error message directing the user to reconfigure LUNA's nudge value to ≤ 1 bar. Falling back to open-loop is an option if this turns out to be unworkable (see Appendix: Open-Loop Locate Fallback).
 
 ## Out of Scope
 
 - MIDI clock forwarding
-- MCU feedback / bidirectional sync (closed-loop position tracking, MCU surface emulation) -- see Appendix: Closed-Loop Locate for the path this enables
-- Tempo / time-signature changes mid-song — v1 assumes a single time signature per session, set in config
+- **Full** MCU surface emulation (transport, automation, channel strip control). Phases 3-4 consume only the MCU *position* output stream for closed-loop locate verification — we do not emit MCU messages back toward LUNA, nor parse the rest of the MCU protocol.
 - Sample-accurate positioning — bar-accurate is the bar; tape audio sync handles finer chase
 - Locate during playback — SPP received while LUNA is playing is ignored
-- Backward-locate optimisation (skipping the rewind when moving a short distance back) — always-rewind-on-locate is sufficient for v1
+- LUNA nudge value greater than 1 bar — closed-loop assumes `[` / `]` moves ≤ 1 bar; larger nudge values are detected at runtime and surfaced as a configuration error rather than silently misbehaving
 - GUI -- CLI with config file only
 - Windows support in v1
 - Program Change to marker navigation (future feature)
@@ -64,12 +66,15 @@ There is no way to control LUNA's transport from the MC-500mkII sequencer. LUNA 
 ## Dependencies
 
 - None on other audiocontrol modules -- standalone Rust binary
-- Hardware: MC-500mkII connected via MIDI interface, LUNA installed
+- Hardware (Phases 1-2): MC-500mkII connected via MIDI interface, LUNA installed
+- Hardware (Phases 3-4): LUNA's MCU position output reaching the bridge's MIDI input (either LUNA's MCU virtual output routed to the same 828mk3 input the MC-500 uses, or a second MIDI input the bridge is configured to read)
 
 ## Open Questions
 
-- enigo 0.2 API compatibility -- need to verify current crate version matches scaffolded code
-- midir 0.10 API compatibility -- similar concern
+- enigo 0.2 API compatibility -- need to verify current crate version matches scaffolded code *(resolved in Phase 1: enigo 0.2.1 API matches)*
+- midir 0.10 API compatibility -- similar concern *(resolved in Phase 1: midir 0.10.4 API matches)*
+- **What exact position messages does LUNA emit on the MCU output, and at what rate?** The MCU protocol defines multiple position-reporting paths (timecode display SysEx, BEATS-mode display). Phase 3's first task is reverse-engineering the actual byte stream; this informs the parser design.
+- **Does LUNA's `[` / `]` keystroke honour the nudge-value setting, and does that setting map to musical bars or to some raw tick count?** Phase 4 hardware validation answers this empirically.
 
 ## Appendix: Future Direction
 
@@ -80,23 +85,19 @@ This service will evolve into a general-purpose MIDI-to-macro translator with:
 - Configurable MIDI CC/note to keystroke/macro mappings
 - Possibly a menu bar app wrapper
 
-## Appendix: Closed-Loop Locate (future, when warranted)
+## Appendix: Open-Loop Locate Fallback (deferred unless needed)
 
-LUNA's MCU output transmits the current transport position back to the control surface. A future phase could have the bridge listen to that feed and close the loop on locate:
+If closed-loop locate (Phase 3-4 primary approach) turns out to be unworkable in practice — for example, LUNA's MCU position output doesn't report position reliably enough, or the round-trip latency between keystroke and position update is too high to run an iterative loop — the following open-loop strategy is the fallback:
 
-- After each `[` / `]` keystroke, read LUNA's reported position from the MCU stream
-- Compute the remaining delta to the target bar
-- Emit another nudge in the needed direction
-- Stop when the delta is zero
+- Parse SPP, compute target bar from a configured time signature
+- Always rewind to bar 0 (Return), then emit *N* `BarForward` keystrokes to advance
+- User-configured time signature in the `[locate]` TOML section; documented LUNA nudge-value precondition (nudge must equal one bar)
+- Atomic-locate state machine stays the same (`Locating` state, coalesce SPP while locating, Stop cancels, Start-during-locate becomes Continue)
 
-What this buys us:
+Downsides that motivate trying closed-loop first:
 
-- **Time signature becomes irrelevant.** LUNA reports the position in bars/beats directly; the bridge no longer needs the time-signature numerator/denominator from config. Mid-song TS changes stop being a limitation.
-- **Nudge-length becomes irrelevant.** The bridge doesn't need to know or assume how far a single `[` / `]` keystroke moves; it just observes the delta and keeps nudging until zero. The LUNA nudge-value precondition in the v1 README disappears.
-- **Bidirectional navigation is natural.** The always-rewind-on-locate approach from v1 can be replaced with "move in whichever direction is shorter."
+- Locate to bar 200 emits 200 keystrokes (4 s at 20 ms per stroke)
+- Time signature changes mid-song are not handled — first-TS assumption drifts
+- LUNA nudge-value setting must match the bridge's expectations or locates land on the wrong bar
 
-Constraint: this only works if LUNA's nudge length is **≤ 1 bar**. If a single `[` / `]` moves more than one bar, the loop can overshoot the target and oscillate around it. If the user has nudge configured to a larger value (e.g., 4 bars), either fall back to v1's open-loop strategy, ask the user to change nudge, or add a coarser primitive (e.g., use the `[` `]` bar-step in combination with MCU's jog-wheel emulation for fractional bar adjustments).
-
-Prerequisite: an MCU output path from LUNA reaching the bridge's MIDI input (LUNA's MCU virtual port or a routed MIDI bus). The bridge would add an MCU parser and a playhead-position model.
-
-Not scoped into Phases 3-4 — those ship open-loop with config-driven time signature. Revisit once we have hands-on data about how often the time-signature/nudge assumptions actually break, and whether the keystroke count for large locates becomes a real complaint.
+Revisit only if Phase 4 hardware validation shows closed-loop cannot be made reliable.
