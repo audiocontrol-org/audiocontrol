@@ -235,6 +235,20 @@ cleanly.
   `fp@(8)` to equal literal `CONS`; it should verify the tag in bytes `+1..+4` and
   the pointer in bytes `+6..+9`, which for `CONS` should target the 46-byte
   `SocketInfo` rooted at socket `this+24`.
+- Outer `CSCSIPlug` dispatch vs embedded `CMESAPlugIn` dispatch on the live `CONS` seam
+  Claude baseline:
+  the newest harness trace through rebased outer vtable `+0x10` shows a `SHOW`-class
+  selector chain and a default `jsr 0x02fc` handoff, which initially made “wrong
+  top-level vtable slot for `CONS`” look plausible.
+  Codex status:
+  the safer current interpretation is two-layer dispatch, not a wrong-slot pivot.
+  Rebasing still puts outer vtable `+0x10` at internal `0x0746` / file `0x0ce4`, but
+  rebased `0x02fc` itself lands at file `0x089a`, i.e. the already-proved embedded
+  `CMESAPlugIn::DoMESACommand` selector table with raw-table-backed `CONS` and `ASOK`
+  arms. So the next discriminator is not “hunt a different outer vtable slot.” It is
+  what command bytes and tag source the embedded rebased `0x02fc` body actually sees
+  on the default-arm handoff, and whether that live command block is still shifted
+  relative to the editor-canonical 10-byte format.
 - Direct behavioral decode of `CAkaiSampler` slot `0x0170`
   Claude baseline:
   active Claude docs still leave `vtable[0x0170]` unverified.

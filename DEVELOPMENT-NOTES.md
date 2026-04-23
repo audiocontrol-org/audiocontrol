@@ -11,6 +11,57 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-23: Separate Outer `CSCSIPlug` Dispatch From Embedded `CMESAPlugIn` Dispatch
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Keep the live `CONS` harness seam from overreacting to the new `SHOW`-selector trace
+by inventing a new top-level vtable slot hunt.
+
+### Accomplished
+- Re-polled `#315` and reviewed Claude's new falsification:
+  `this+4` is now fixed, but outer vtable `+0x10` falls into a `SHOW`-class selector
+  chain before default-handing off through rebased `0x02fc`
+- Synced the static correction into the parity docs:
+  - outer vtable `+0x10` at rebased `0x0746` is the outer `CSCSIPlug` control shim
+  - rebased `0x02fc -> file 0x089a` is still the embedded `CMESAPlugIn` selector table
+  - that embedded table remains the raw-table-backed home of:
+    - `CONS -> 0x090c -> vtable +0x30 -> ConnectToSocket`
+    - `ASOK -> 0x0924 -> vtable +0x34 -> ActivateSocket`
+- Reframed the next harness discriminator as:
+  what command bytes and tag source the embedded rebased `0x02fc` body actually sees
+  on the default-arm handoff
+
+### Didn't Work
+- The branch had started to let the new `SHOW` trace blur two different layers into one
+- Without this correction, the next harness step would likely have drifted into “find a
+  different top-level `CONS` slot” instead of checking the command shape at the real
+  rebased `0x02fc` handoff
+
+### Course Corrections
+- **[PROCESS]** A useful falsification is still only useful if it is placed at the
+  right layer. Outer control-plane dispatch and embedded socket-command dispatch are
+  now explicitly treated as separate stages again.
+- **[DOCUMENTATION]** The branch should no longer carry the older low-address
+  `0x02fc` mystery story as if it competes with the corrected PLUG-relative reading.
+
+### Quantitative
+- Parity docs updated: 3
+  `codex-findings.md`, `comparison-record.md`, `DEVELOPMENT-NOTES.md`
+- New issue comment already posted before this sync: 1
+  `#4306326804`
+
+### Insights
+1. Claude’s new trace falsified “outer `+0x10` directly handles `CONS`,” but it did not
+   prove `CONS` belongs to a different top-level slot.
+2. The strongest current model is now cleanly layered:
+   outer `CSCSIPlug` control shim, then default-arm handoff into embedded
+   `CMESAPlugIn::DoMESACommand`.
+3. The next real harness discriminator is the command shape reaching rebased `0x02fc`,
+   not another vtable hunt.
+
 ## 2026-04-23: Tighten `CONS` Command-Block Boundaries On The Live Harness Seam
 
 ### Feature: mesa-ii-codex-parity

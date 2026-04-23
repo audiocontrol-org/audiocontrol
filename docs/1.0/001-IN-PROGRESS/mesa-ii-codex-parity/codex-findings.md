@@ -3674,3 +3674,20 @@ correct. Every finding should distinguish direct evidence from inference.
   the expected tag, and do bytes `+6..+9` contain the live pointer field? For the
   editor-side `CONS` fallback, that means bytes `+1..+4 = 'CONS'` and bytes `+6..+9`
   equal the address of socket `this+24`.
+
+- The outer `CSCSIPlug` command shim and the embedded `CMESAPlugIn` selector table must now be treated as separate layers
+  Claude's latest harness trace usefully falsified one stale shortcut in the parity
+  model. Rebasing still says outer vtable `+0x10` lands at internal `0x0746`
+  / file `0x0ce4`, and that body really does contain the `SHOW`-class selector chain
+  plus a default `jsr 0x02fc` handoff. But that does not force `CONS` into some other
+  outer vtable slot. Under the corrected PLUG-relative model, rebased `0x02fc`
+  lands at file `0x089a`, which is the already-proved embedded `CMESAPlugIn`
+  selector table containing `SEND`, `ASOK`, `CLSM`, `CONS`, `IDEN`, and `OPNM`, with
+  the raw-table-backed `CONS -> 0x090c -> vtable +0x30 -> ConnectToSocket` and
+  `ASOK -> 0x0924 -> vtable +0x34 -> ActivateSocket` landings. So the better current
+  model is:
+  outer `CSCSIPlug` control shim at `0x0746`, then default-arm handoff into embedded
+  `CMESAPlugIn::DoMESACommand` at rebased `0x02fc`. The live harness seam is therefore
+  no longer “find another top-level `CONS` slot.” It is whether the command shape
+  reaching rebased `0x02fc` is still shifted relative to the editor-canonical 10-byte
+  records.
