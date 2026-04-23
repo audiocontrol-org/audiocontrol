@@ -2,7 +2,7 @@
 
 **Branch:** `feature/midi-macro-bridge`
 **Worktree:** `~/work/audiocontrol-work/audiocontrol-midi-macro-bridge`
-**Overall Status:** Phases 1-2 shipped via [#316](https://github.com/audiocontrol-org/audiocontrol/pull/316). Phases 3-4 complete on-branch, awaiting a follow-up PR.
+**Overall Status:** Phases 1-2 shipped via [#316](https://github.com/audiocontrol-org/audiocontrol/pull/316). Phases 3-4 open for review in [#317](https://github.com/audiocontrol-org/audiocontrol/pull/317).
 
 ## Status
 
@@ -22,6 +22,6 @@
 ## GitHub Tracking
 
 - Phases 1-2 Pull Request: [#316](https://github.com/audiocontrol-org/audiocontrol/pull/316) (merged)
-- Phases 3-4 Pull Request: TBD
+- Phases 3-4 Pull Request: [#317](https://github.com/audiocontrol-org/audiocontrol/pull/317) (open)
 - Milestone: TBD
 - Parent Issue: TBD
