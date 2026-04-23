@@ -36,3 +36,32 @@ keystroke_delay_ms = 20
 # Set to empty string to disable the check (not recommended).
 # Only used when backend = "keystrokes".
 require_frontmost_app = "LUNA"
+
+[locate]
+# Closed-loop locate: translates MC-500 SPP (Song Position Pointer)
+# messages into bar-accurate jumps of LUNA's playhead. The bridge
+# emits bar-nudge actions via the transport backend and watches
+# LUNA's MCU position feedback to verify each step lands on the
+# next bar. Iterates until the target is reached, or aborts cleanly
+# on one of several safety outcomes (timeout, oscillation, cap).
+#
+# Requires the MCU backend (keystrokes backend has no position
+# feedback). Requires LUNA's jog/scrub resolution = 1 bar.
+#
+# Default: disabled. Flip to true once you've verified your rig.
+enabled = false
+
+# Hard cap on bar-nudge iterations. At 1 bar per iteration this is
+# also the maximum locate distance in bars. Raise if your songs are
+# longer than this.
+max_iterations = 128
+
+# Per-iteration timeout in ms. If LUNA hasn't pushed a new bar
+# value within this window after our nudge, abort. 500 ms has ~9x
+# headroom over the ~55 ms observed during Phase 3c.
+position_timeout_ms = 500
+
+# Initial-position timeout in ms. Longer because LUNA pauses its
+# position-display stream briefly during the MCU surface-init
+# handshake after a bridge restart.
+initial_position_timeout_ms = 3000

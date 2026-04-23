@@ -23,18 +23,34 @@
 //! - Continue from stopped → play from current position
 //! - Stop / Continue duplicates → no-op (echo guard)
 
+/// The Machine's current observed state.
+///
+/// The `Locating` variant carries the target bar and a `queued_start`
+/// flag: if Start or Continue arrive while a locate is in flight, we
+/// keep locating and set the flag so the main loop can emit `Play`
+/// after the locate lands — otherwise a Start would trigger
+/// Return-to-zero and throw away our locate work.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransportState {
     Stopped,
     Playing,
+    Locating {
+        target: u32,
+        queued_start: bool,
+    },
 }
 
-/// Transport events from the MC-500 (MIDI real-time bytes).
+/// Events the bridge handles — transport bytes from the MC-500 plus
+/// Song Position Pointer. SPP's payload is the 14-bit target position
+/// reconstructed from the two MIDI data bytes, translated to a
+/// whole-bar target by the caller before it reaches us (see
+/// `midi::parse_transport`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransportEvent {
-    Start,    // 0xFA — play from top
-    Continue, // 0xFB — resume from current position
-    Stop,     // 0xFC — stop
+    Start,       // 0xFA — play from top
+    Continue,    // 0xFB — resume from current position
+    Stop,        // 0xFC — stop
+    Spp(u32),    // 0xF2 ll hh — target bar (1-based) for closed-loop locate
 }
 
 /// Abstract, backend-agnostic actions emitted by the state machine.
@@ -89,15 +105,27 @@ impl Machine {
     /// `Action`s to dispatch to the backend (possibly empty) and
     /// updates internal state.
     ///
+    /// Locate semantics: entering `Locating` produces no Actions —
+    /// the main loop is responsible for running the LocateController,
+    /// which drives the actual bar-nudge sequence based on the
+    /// target that the state carries. Events arriving during a
+    /// locate are coalesced or queued:
+    ///
+    /// - New SPP → target is replaced in-place (latest-wins)
+    /// - Start or Continue → `queued_start` flag is set so the main
+    ///   loop can emit `Play` when the locate completes
+    /// - Stop → locate is cancelled, state returns to Stopped
+    ///
     /// Imports are explicit because `Action::Stop` and
-    /// `TransportEvent::Stop` share a variant name. We use pattern
-    /// arms and full paths rather than `use *` to keep the compiler
-    /// unambiguous.
+    /// `TransportEvent::Stop` share a variant name; pattern arms use
+    /// full paths to keep the compiler unambiguous.
     pub fn handle(&mut self, event: TransportEvent) -> Vec<Action> {
         use TransportEvent as E;
         use TransportState::*;
 
         match (self.state, event) {
+            // --- transport events while idle --------------------------------
+
             // Start from stopped: rewind and play.
             (Stopped, E::Start) => {
                 self.state = Playing;
@@ -121,6 +149,83 @@ impl Machine {
             }
             // Stop while stopped: no-op. Defends against echoes.
             (Stopped, E::Stop) => vec![],
+
+            // --- SPP: enter Locating (from stopped) or ignore (from playing)
+
+            // SPP while stopped: begin a closed-loop locate.
+            (Stopped, E::Spp(target)) => {
+                self.state = Locating {
+                    target,
+                    queued_start: false,
+                };
+                vec![]
+            }
+            // SPP while playing: intentionally ignored. Per PRD, locate
+            // during playback is out of scope — user must stop first.
+            (Playing, E::Spp(_)) => vec![],
+
+            // --- events while locating --------------------------------------
+
+            // New SPP while locating: coalesce by updating target in
+            // place. Preserves any queued_start flag.
+            (
+                Locating { queued_start, .. },
+                E::Spp(target),
+            ) => {
+                self.state = Locating {
+                    target,
+                    queued_start,
+                };
+                vec![]
+            }
+            // Stop during locate: cancel, return to Stopped. Any
+            // queued-Start is discarded — user explicitly said stop.
+            (Locating { .. }, E::Stop) => {
+                self.state = Stopped;
+                vec![]
+            }
+            // Start or Continue during locate: keep locating, but
+            // flip the queued_start bit so the main loop emits Play
+            // once the locate finishes. Start and Continue produce
+            // the same post-locate action (Play from the located
+            // position), so we don't distinguish them here.
+            (
+                Locating { target, .. },
+                E::Start,
+            )
+            | (
+                Locating { target, .. },
+                E::Continue,
+            ) => {
+                self.state = Locating {
+                    target,
+                    queued_start: true,
+                };
+                vec![]
+            }
+        }
+    }
+
+    /// Called by the main loop once the LocateController reports its
+    /// outcome. Transitions out of `Locating` back to the appropriate
+    /// resting state and returns any Actions that should fire as a
+    /// result (specifically `Play` if a Start or Continue was queued
+    /// during the locate).
+    ///
+    /// Safe to call even if the state isn't Locating (no-op), which
+    /// simplifies error paths in the main loop.
+    pub fn complete_locate(&mut self, reached: bool) -> Vec<Action> {
+        let queued_start = match self.state {
+            TransportState::Locating { queued_start, .. } => queued_start,
+            _ => return vec![],
+        };
+
+        if reached && queued_start {
+            self.state = TransportState::Playing;
+            vec![Action::Play]
+        } else {
+            self.state = TransportState::Stopped;
+            vec![]
         }
     }
 
@@ -230,6 +335,160 @@ mod tests {
         m.handle(E::Start);
         assert_eq!(m.handle(E::Continue), vec![]);
         assert_eq!(m.handle(E::Continue), vec![]);
+        assert_eq!(m.state(), Playing);
+    }
+
+    // ---- Locate (SPP) semantics ------------------------------------------
+
+    #[test]
+    fn spp_from_stopped_enters_locating_with_target() {
+        let mut m = Machine::new();
+        assert_eq!(m.handle(E::Spp(42)), vec![]);
+        assert_eq!(
+            m.state(),
+            Locating {
+                target: 42,
+                queued_start: false
+            }
+        );
+    }
+
+    #[test]
+    fn spp_from_playing_is_ignored() {
+        let mut m = Machine::new();
+        m.handle(E::Start);
+        assert_eq!(m.handle(E::Spp(42)), vec![]);
+        assert_eq!(m.state(), Playing);
+    }
+
+    #[test]
+    fn spp_during_locating_coalesces_target() {
+        let mut m = Machine::new();
+        m.handle(E::Spp(42));
+        assert_eq!(
+            m.state(),
+            Locating {
+                target: 42,
+                queued_start: false
+            }
+        );
+        // Rapid second SPP: target updates in place.
+        assert_eq!(m.handle(E::Spp(99)), vec![]);
+        assert_eq!(
+            m.state(),
+            Locating {
+                target: 99,
+                queued_start: false
+            }
+        );
+    }
+
+    #[test]
+    fn spp_during_locating_preserves_queued_start_flag() {
+        let mut m = Machine::new();
+        m.handle(E::Spp(42));
+        m.handle(E::Start); // queue a start
+        assert_eq!(
+            m.state(),
+            Locating {
+                target: 42,
+                queued_start: true
+            }
+        );
+        // New SPP arrives — target updates, queued_start is preserved.
+        m.handle(E::Spp(99));
+        assert_eq!(
+            m.state(),
+            Locating {
+                target: 99,
+                queued_start: true
+            }
+        );
+    }
+
+    #[test]
+    fn stop_during_locating_cancels() {
+        let mut m = Machine::new();
+        m.handle(E::Spp(42));
+        assert_eq!(m.handle(E::Stop), vec![]);
+        assert_eq!(m.state(), Stopped);
+    }
+
+    #[test]
+    fn stop_during_locating_discards_queued_start() {
+        let mut m = Machine::new();
+        m.handle(E::Spp(42));
+        m.handle(E::Start); // queued
+        m.handle(E::Stop); // cancel
+        // Even though a start was queued, explicit Stop wins.
+        assert_eq!(m.state(), Stopped);
+    }
+
+    #[test]
+    fn start_during_locating_queues_play_for_completion() {
+        let mut m = Machine::new();
+        m.handle(E::Spp(42));
+        assert_eq!(m.handle(E::Start), vec![]);
+        assert_eq!(
+            m.state(),
+            Locating {
+                target: 42,
+                queued_start: true
+            }
+        );
+    }
+
+    #[test]
+    fn continue_during_locating_queues_play_for_completion() {
+        let mut m = Machine::new();
+        m.handle(E::Spp(42));
+        assert_eq!(m.handle(E::Continue), vec![]);
+        assert_eq!(
+            m.state(),
+            Locating {
+                target: 42,
+                queued_start: true
+            }
+        );
+    }
+
+    #[test]
+    fn complete_locate_with_queued_start_emits_play_and_transitions_to_playing() {
+        let mut m = Machine::new();
+        m.handle(E::Spp(42));
+        m.handle(E::Start); // queue
+        assert_eq!(m.complete_locate(true), vec![A::Play]);
+        assert_eq!(m.state(), Playing);
+    }
+
+    #[test]
+    fn complete_locate_without_queued_start_returns_to_stopped() {
+        let mut m = Machine::new();
+        m.handle(E::Spp(42));
+        assert_eq!(m.complete_locate(true), vec![]);
+        assert_eq!(m.state(), Stopped);
+    }
+
+    #[test]
+    fn complete_locate_after_failure_does_not_emit_play_even_if_queued() {
+        // If the locate didn't reach the target (timeout, iteration
+        // cap, oscillation), we don't start playback from a wrong
+        // position — better for the user to see a stopped machine
+        // than an un-synced "playing from an unknown bar" state.
+        let mut m = Machine::new();
+        m.handle(E::Spp(42));
+        m.handle(E::Start);
+        assert_eq!(m.complete_locate(false), vec![]);
+        assert_eq!(m.state(), Stopped);
+    }
+
+    #[test]
+    fn complete_locate_is_no_op_when_not_locating() {
+        let mut m = Machine::new();
+        m.handle(E::Start);
+        assert_eq!(m.state(), Playing);
+        // Calling complete_locate while playing is a harmless no-op.
+        assert_eq!(m.complete_locate(true), vec![]);
         assert_eq!(m.state(), Playing);
     }
 }

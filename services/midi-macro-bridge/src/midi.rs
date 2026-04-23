@@ -311,16 +311,45 @@ where
 // Transport byte parsing
 // ---------------------------------------------------------------------------
 
-/// Extract a transport event from a raw MIDI message.
-/// Returns None for non-transport messages (including SPP, clock, notes, etc.).
+/// Extract a transport or locate event from a raw MIDI message from
+/// the MC-500. Recognises the four byte sequences we care about:
 ///
-/// We intentionally discard SPP (0xF2). LUNA has no way to accept
-/// absolute position, so there is nothing useful we could do with it.
+/// - `0xFA` — Start (play from top)
+/// - `0xFB` — Continue (play from current position)
+/// - `0xFC` — Stop
+/// - `0xF2 ll hh` — SPP (Song Position Pointer) — the 14-bit value
+///   `(hh << 7) | ll` is the target **in MIDI beats** (16ths). We
+///   convert to whole-bar target assuming 4/4 (16 MIDI beats per
+///   bar), rounding down so mid-bar SPPs land on the containing bar.
+///   The MC-500's locate targets bar boundaries in practice, so
+///   rounding is a defensive fallback; a bar-accurate LOCATE on the
+///   MC-500 emits an SPP that's an exact multiple of 16.
+///
+/// Returns None for anything else (clock, active sensing, notes, etc.).
+///
+/// The 4/4 assumption here only affects what bar value we *request*
+/// of the locate controller. The controller's closed-loop verifies
+/// against LUNA's actual bar display (from the MCU position stream)
+/// regardless of time signature, so an SPP target in a 3/4 section
+/// will still land on the bar LUNA considers to match — it just
+/// won't necessarily be what the MC-500 operator *intended* if the
+/// session has time-signature changes. Acceptable v1 limitation;
+/// the closed-loop design is correct, only the target interpretation
+/// is approximate.
 fn parse_transport(bytes: &[u8]) -> Option<TransportEvent> {
     match bytes.first().copied()? {
         0xFA => Some(TransportEvent::Start),
         0xFB => Some(TransportEvent::Continue),
         0xFC => Some(TransportEvent::Stop),
+        0xF2 if bytes.len() == 3 => {
+            let lsb = bytes[1] as u32;
+            let msb = bytes[2] as u32;
+            let midi_beats = (msb << 7) | lsb;
+            // 16 MIDI beats per bar in 4/4. `+ 1` because SPP value 0
+            // is bar 1 in our (1-based) bar numbering convention.
+            let bar = (midi_beats / 16) + 1;
+            Some(TransportEvent::Spp(bar))
+        }
         _ => None,
     }
 }
@@ -352,11 +381,31 @@ mod tests {
     }
 
     #[test]
-    fn ignores_spp() {
-        // Song Position Pointer: 0xF2 followed by 2 data bytes.
-        // Intentionally discarded (see module docs).
-        assert_eq!(parse_transport(&[0xF2, 0x00, 0x00]), None);
-        assert_eq!(parse_transport(&[0xF2, 0x40, 0x01]), None);
+    fn parses_spp_as_bar_target_in_4_4() {
+        // `0xF2 00 00` → midi_beats = 0 → bar 1 (start of song).
+        assert_eq!(parse_transport(&[0xF2, 0x00, 0x00]), Some(TransportEvent::Spp(1)));
+        // 16 MIDI beats = 1 bar in 4/4 → bar 2.
+        assert_eq!(parse_transport(&[0xF2, 0x10, 0x00]), Some(TransportEvent::Spp(2)));
+        // 32 MIDI beats = bar 3.
+        assert_eq!(parse_transport(&[0xF2, 0x20, 0x00]), Some(TransportEvent::Spp(3)));
+        // `0xF2 40 01` = (0x01 << 7) | 0x40 = 192 midi beats = 12 bars
+        // → bar 13.
+        assert_eq!(parse_transport(&[0xF2, 0x40, 0x01]), Some(TransportEvent::Spp(13)));
+    }
+
+    #[test]
+    fn spp_rounds_mid_bar_to_containing_bar() {
+        // 15 MIDI beats = not quite a full bar; rounds down to bar 1.
+        assert_eq!(parse_transport(&[0xF2, 0x0F, 0x00]), Some(TransportEvent::Spp(1)));
+        // 17 MIDI beats = just past bar 2 downbeat; bar 2.
+        assert_eq!(parse_transport(&[0xF2, 0x11, 0x00]), Some(TransportEvent::Spp(2)));
+    }
+
+    #[test]
+    fn rejects_malformed_spp() {
+        // SPP without its two data bytes — not a complete message.
+        assert_eq!(parse_transport(&[0xF2]), None);
+        assert_eq!(parse_transport(&[0xF2, 0x00]), None);
     }
 
     #[test]

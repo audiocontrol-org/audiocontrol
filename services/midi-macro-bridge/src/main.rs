@@ -14,6 +14,7 @@ use tracing::{error, info, warn};
 mod backend;
 mod config;
 mod keys;
+mod locate;
 mod mcu;
 mod midi;
 mod state;
