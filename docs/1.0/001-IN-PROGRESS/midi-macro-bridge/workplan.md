@@ -49,6 +49,12 @@
 - `services/midi-macro-bridge/README.md` — document the MCU control-surface selection flow, the `[transport]` backend choice, and the `[locate]` config
 - `services/midi-macro-bridge/MCU-NOTES.md` — capture log of LUNA's MCU input/output format; appended during 3c discovery with the definitive Play/Stop/Continue/RTZ/BarFwd/BarBack encodings
 
+## Deferred — cross-platform MIDI abstraction layer
+
+The virtual MCU endpoints in `src/midi.rs` are currently cfg-split three ways: macOS uses `coremidi` directly (so we can stamp stable `kMIDIPropertyUniqueID` values and LUNA recognises the bridge across restarts); Linux keeps `midir`'s ALSA path (ephemeral IDs, documented limitation); Windows / other platforms bail.
+
+This works but is cfg-noisy. A future cleanup pass should introduce a `VirtualMcuBackend` trait with platform-specific implementations so callers are cfg-free. Out of scope for Phase 3; tracked here so it isn't forgotten.
+
 ## Phase 1: Integration and Build
 
 **Deliverable:** Service exists in monorepo, builds, and tests pass.

@@ -16,6 +16,15 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 ctrlc = "3"
 
+# Virtual MCU endpoints on macOS go through CoreMIDI directly (not
+# midir) so we can stamp stable UniqueIDs and DAWs like LUNA recognise
+# the bridge across restarts. coremidi is already a transitive dep via
+# midir on macOS; making it a direct dep is a no-op for the dep tree.
+# Linux keeps midir's existing virtual-endpoint path via ALSA, with
+# ephemeral UniqueIDs as a documented limitation. Windows is unsupported.
+[target.'cfg(target_os = "macos")'.dependencies]
+coremidi = "0.9"
+
 [profile.release]
 lto = true
 codegen-units = 1

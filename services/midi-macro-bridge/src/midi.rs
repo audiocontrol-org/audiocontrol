@@ -1,19 +1,48 @@
-//! MIDI input handling via midir.
+//! MIDI plumbing for the bridge.
 //!
-//! The callback runs on midir's own thread. It does NOT call into
-//! the keystroke emitter directly — instead it sends events through
-//! an mpsc channel to the main thread. This is deliberate: macOS
-//! CGEvent (which enigo uses for keystroke synthesis) does not play
-//! well with being called from arbitrary threads.
+//! Physical MIDI input (transport events from the MC-500, the probe
+//! port listener) goes through `midir` on every platform. Virtual
+//! MCU endpoints take a different path on macOS so we can stamp
+//! stable CoreMIDI `kMIDIPropertyUniqueID` values onto them — LUNA
+//! keys its "same device across restarts" recognition off the
+//! UniqueID, not the name, so without this each bridge invocation
+//! looks like a brand-new device and the user has to reconfigure
+//! LUNA's Control Surface row every time.
+//!
+//! TODO(abstraction): cross-platform MIDI abstraction trait.
+//! The current file cfg-splits the virtual endpoint implementations
+//! between coremidi (macOS, stable UniqueID) and midir's ALSA path
+//! (Linux, ephemeral IDs) to preserve Linux build-ability while
+//! getting the UniqueID win on macOS. A `VirtualMcuBackend` trait
+//! with platform-specific impls would let the rest of the code be
+//! cfg-free. Left for a future cleanup pass.
+//!
+//! Callbacks from the MIDI layer run on platform threads (midir's
+//! or CoreMIDI's), not the main thread. They do NOT call into the
+//! keystroke emitter directly — instead they forward events through
+//! an mpsc channel to the main thread, because macOS CGEvent (which
+//! enigo uses for keystroke synthesis) does not play well with being
+//! called from arbitrary threads.
 
 use anyhow::{anyhow, Context, Result};
-use midir::{MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
+use midir::{MidiInput, MidiInputConnection};
 use tracing::{debug, info};
 
-#[cfg(unix)]
+#[cfg(target_os = "macos")]
+use coremidi::{
+    Client as CoreMidiClient, PacketBuffer, Properties, VirtualDestination, VirtualSource,
+};
+
+#[cfg(all(unix, not(target_os = "macos")))]
 use midir::os::unix::{VirtualInput, VirtualOutput};
+#[cfg(all(unix, not(target_os = "macos")))]
+use midir::{MidiOutput, MidiOutputConnection};
 
 use crate::state::TransportEvent;
+
+// ---------------------------------------------------------------------------
+// Physical MIDI input (all platforms, via midir)
+// ---------------------------------------------------------------------------
 
 /// Connect to the first MIDI input port whose name contains
 /// `port_substring` (case-insensitive). Events are delivered by
@@ -73,68 +102,6 @@ pub fn list_ports() -> Result<Vec<String>> {
         .collect()
 }
 
-/// Handles to the virtual MIDI input + output endpoints the bridge
-/// registers so DAWs (e.g., LUNA) can select the bridge as an MCU
-/// control surface. Dropping this value closes both endpoints and
-/// removes them from the system's MIDI device list.
-pub struct VirtualMcuPair {
-    _input: MidiInputConnection<()>,
-    output: MidiOutputConnection,
-}
-
-impl VirtualMcuPair {
-    /// Send a MIDI message out the virtual output. DAWs that have
-    /// selected the pair as their MCU control surface INPUT DEVICE
-    /// will receive it.
-    pub fn send(&mut self, bytes: &[u8]) -> Result<()> {
-        self.output
-            .send(bytes)
-            .map_err(|e| anyhow!("virtual MCU send failed: {e}"))
-    }
-}
-
-/// Register a paired virtual MIDI input + output under
-/// `endpoint_name`. The pair shows up in macOS CoreMIDI (and ALSA on
-/// Linux) as a selectable device, so LUNA can pick the bridge as both
-/// its MCU INPUT DEVICE and OUTPUT DEVICE. Incoming bytes on the
-/// virtual input are forwarded to `on_bytes` on midir's callback
-/// thread.
-#[cfg(unix)]
-pub fn create_virtual_mcu<F>(endpoint_name: &str, on_bytes: F) -> Result<VirtualMcuPair>
-where
-    F: FnMut(&[u8]) + Send + 'static,
-{
-    let midi_in = MidiInput::new("midi-macro-bridge-mcu")?;
-    let mut on_bytes = on_bytes;
-    let input = midi_in
-        .create_virtual(
-            endpoint_name,
-            move |_timestamp, bytes, _| on_bytes(bytes),
-            (),
-        )
-        .map_err(|e| anyhow!("failed to create virtual MIDI input '{endpoint_name}': {e}"))?;
-
-    let midi_out = MidiOutput::new("midi-macro-bridge-mcu")?;
-    let output = midi_out
-        .create_virtual(endpoint_name)
-        .map_err(|e| anyhow!("failed to create virtual MIDI output '{endpoint_name}': {e}"))?;
-
-    info!(endpoint = endpoint_name, "created virtual MCU endpoint pair");
-
-    Ok(VirtualMcuPair {
-        _input: input,
-        output,
-    })
-}
-
-#[cfg(not(unix))]
-pub fn create_virtual_mcu<F>(_endpoint_name: &str, _on_bytes: F) -> Result<VirtualMcuPair>
-where
-    F: FnMut(&[u8]) + Send + 'static,
-{
-    anyhow::bail!("virtual MIDI endpoints are only supported on macOS and Linux")
-}
-
 /// Connect to the first MIDI input port matching `port_substring` and
 /// forward every incoming byte sequence verbatim to `on_bytes`. Used
 /// by `--probe-midi` to reverse-engineer unknown device outputs on
@@ -175,6 +142,174 @@ where
 
     Ok(conn)
 }
+
+// ---------------------------------------------------------------------------
+// Virtual MCU endpoint pair (platform-specific)
+// ---------------------------------------------------------------------------
+
+/// Stable `kMIDIPropertyUniqueID` for the macOS virtual source — the
+/// endpoint that shows up in LUNA's MCU INPUT DEVICE dropdown (LUNA
+/// reads position / LED updates from it). LUNA stores this ID in its
+/// preferences; changing it would force the user to reconfigure
+/// LUNA's Control Surface row. ASCII "MMBI" = MCU Macro Bridge Input.
+#[cfg(target_os = "macos")]
+const VIRTUAL_SOURCE_UID: i32 = 0x4D4D_4249;
+
+/// Stable `kMIDIPropertyUniqueID` for the macOS virtual destination
+/// — the endpoint that shows up in LUNA's MCU OUTPUT DEVICE dropdown
+/// (LUNA writes transport / display updates to it). ASCII "MMBO" =
+/// MCU Macro Bridge Output.
+#[cfg(target_os = "macos")]
+const VIRTUAL_DESTINATION_UID: i32 = 0x4D4D_424F;
+
+/// Handles to the virtual MIDI input + output endpoints the bridge
+/// registers so DAWs (e.g., LUNA) can select the bridge as an MCU
+/// control surface. Dropping this value closes both endpoints and
+/// removes them from the system's MIDI device list.
+#[cfg(target_os = "macos")]
+pub struct VirtualMcuPair {
+    // Field order matters for Drop: endpoints must drop before the
+    // client they were created under, otherwise CoreMIDI logs
+    // complaints about orphaned endpoints.
+    source: VirtualSource,
+    _destination: VirtualDestination,
+    _client: CoreMidiClient,
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+pub struct VirtualMcuPair {
+    _input: MidiInputConnection<()>,
+    output: MidiOutputConnection,
+}
+
+#[cfg(not(unix))]
+pub struct VirtualMcuPair {
+    _unsupported: (),
+}
+
+impl VirtualMcuPair {
+    /// Send a MIDI message out the virtual output. DAWs that have
+    /// selected the pair as their MCU control surface INPUT DEVICE
+    /// will receive it.
+    #[cfg(target_os = "macos")]
+    pub fn send(&mut self, bytes: &[u8]) -> Result<()> {
+        let packets = PacketBuffer::new(0, bytes);
+        self.source
+            .received(&packets)
+            .map_err(|os_status| anyhow!("virtual MCU send failed: OSStatus {os_status}"))
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    pub fn send(&mut self, bytes: &[u8]) -> Result<()> {
+        self.output
+            .send(bytes)
+            .map_err(|e| anyhow!("virtual MCU send failed: {e}"))
+    }
+
+    #[cfg(not(unix))]
+    pub fn send(&mut self, _bytes: &[u8]) -> Result<()> {
+        anyhow::bail!("virtual MIDI endpoints are not supported on this platform")
+    }
+}
+
+/// Register a paired virtual MIDI input + output under `endpoint_name`.
+/// The pair shows up in the system's MIDI device list (CoreMIDI on
+/// macOS, ALSA on Linux) so DAWs can select it as an MCU control
+/// surface. Incoming bytes on the virtual input are forwarded to
+/// `on_bytes` on a platform callback thread.
+///
+/// On macOS the endpoints are assigned stable `UniqueID`s so LUNA
+/// recognises them across bridge restarts. On Linux the IDs are
+/// ephemeral (ALSA assigns a fresh client ID each run); users who
+/// hit this limitation will need to reconfigure their DAW's control
+/// surface selection each time the bridge starts.
+#[cfg(target_os = "macos")]
+pub fn create_virtual_mcu<F>(endpoint_name: &str, on_bytes: F) -> Result<VirtualMcuPair>
+where
+    F: FnMut(&[u8]) + Send + 'static,
+{
+    let client = CoreMidiClient::new("midi-macro-bridge-mcu")
+        .map_err(|os_status| anyhow!("CoreMIDI client create failed: OSStatus {os_status}"))?;
+
+    let mut on_bytes = on_bytes;
+    let destination = client
+        .virtual_destination(endpoint_name, move |packet_list| {
+            for packet in packet_list.iter() {
+                on_bytes(packet.data());
+            }
+        })
+        .map_err(|os_status| {
+            anyhow!("virtual destination create failed: OSStatus {os_status}")
+        })?;
+    destination
+        .set_property(&Properties::unique_id(), VIRTUAL_DESTINATION_UID)
+        .map_err(|os_status| {
+            anyhow!("setting destination UniqueID failed: OSStatus {os_status}")
+        })?;
+
+    let source = client
+        .virtual_source(endpoint_name)
+        .map_err(|os_status| anyhow!("virtual source create failed: OSStatus {os_status}"))?;
+    source
+        .set_property(&Properties::unique_id(), VIRTUAL_SOURCE_UID)
+        .map_err(|os_status| anyhow!("setting source UniqueID failed: OSStatus {os_status}"))?;
+
+    info!(
+        endpoint = endpoint_name,
+        source_uid = format!("0x{VIRTUAL_SOURCE_UID:08X}"),
+        destination_uid = format!("0x{VIRTUAL_DESTINATION_UID:08X}"),
+        "created virtual MCU endpoint pair (stable UniqueIDs via CoreMIDI)"
+    );
+
+    Ok(VirtualMcuPair {
+        source,
+        _destination: destination,
+        _client: client,
+    })
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+pub fn create_virtual_mcu<F>(endpoint_name: &str, on_bytes: F) -> Result<VirtualMcuPair>
+where
+    F: FnMut(&[u8]) + Send + 'static,
+{
+    let midi_in = MidiInput::new("midi-macro-bridge-mcu")?;
+    let mut on_bytes = on_bytes;
+    let input = midi_in
+        .create_virtual(
+            endpoint_name,
+            move |_timestamp, bytes, _| on_bytes(bytes),
+            (),
+        )
+        .map_err(|e| anyhow!("failed to create virtual MIDI input '{endpoint_name}': {e}"))?;
+
+    let midi_out = MidiOutput::new("midi-macro-bridge-mcu")?;
+    let output = midi_out
+        .create_virtual(endpoint_name)
+        .map_err(|e| anyhow!("failed to create virtual MIDI output '{endpoint_name}': {e}"))?;
+
+    info!(
+        endpoint = endpoint_name,
+        "created virtual MCU endpoint pair (ALSA; ephemeral UniqueID — DAW may see a new device on each bridge restart)"
+    );
+
+    Ok(VirtualMcuPair {
+        _input: input,
+        output,
+    })
+}
+
+#[cfg(not(unix))]
+pub fn create_virtual_mcu<F>(_endpoint_name: &str, _on_bytes: F) -> Result<VirtualMcuPair>
+where
+    F: FnMut(&[u8]) + Send + 'static,
+{
+    anyhow::bail!("virtual MIDI endpoints are only supported on macOS and Linux")
+}
+
+// ---------------------------------------------------------------------------
+// Transport byte parsing
+// ---------------------------------------------------------------------------
 
 /// Extract a transport event from a raw MIDI message.
 /// Returns None for non-transport messages (including SPP, clock, notes, etc.).
