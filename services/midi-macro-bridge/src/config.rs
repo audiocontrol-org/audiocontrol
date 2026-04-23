@@ -7,7 +7,11 @@ use std::path::Path;
 #[derive(Debug, Deserialize)]
 pub struct Config {
     /// Substring match against the MC-500 transport MIDI input port.
-    /// Case-insensitive.
+    /// Case-insensitive. Empty string (the default) disables the
+    /// transport-input path entirely — the bridge still registers
+    /// its virtual MCU endpoint, but no MC-500 transport events are
+    /// received. `main.rs` warns on startup if this is empty.
+    #[serde(default)]
     pub midi_input_port: String,
 
     /// Reserved for future use (e.g., menu bar enable/disable).
@@ -22,11 +26,21 @@ pub struct Config {
     pub transport: TransportConfig,
 
     /// SPP-driven closed-loop locate settings. Optional; when absent
-    /// from the TOML, defaults are used and `enabled = false` so the
-    /// locate feature is opt-in until the user has verified Phase 4
-    /// hardware behaviour on their rig.
+    /// from the TOML, defaults are used — `enabled = true` so the
+    /// feature is on out of the box (see LocateConfigToml::default()).
     #[serde(default)]
     pub locate: LocateConfigToml,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            midi_input_port: String::new(),
+            enabled_on_startup: true,
+            transport: TransportConfig::default(),
+            locate: LocateConfigToml::default(),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -158,11 +172,27 @@ fn default_true() -> bool {
     true
 }
 
+/// Result of attempting to load a config file. `Ok(Some(cfg))` on
+/// successful load; `Ok(None)` when the file wasn't found (caller
+/// should fall back to `Config::default()`); `Err` on other I/O
+/// problems or TOML parse failures.
+pub enum LoadOutcome {
+    Loaded(Config),
+    NotFound,
+}
+
 impl Config {
-    pub fn load(path: &Path) -> Result<Self> {
-        let text = std::fs::read_to_string(path)
-            .with_context(|| format!("reading config from {}", path.display()))?;
-        toml::from_str(&text).context("parsing config TOML")
+    pub fn load(path: &Path) -> Result<LoadOutcome> {
+        match std::fs::read_to_string(path) {
+            Ok(text) => {
+                let cfg = toml::from_str(&text)
+                    .with_context(|| format!("parsing TOML from {}", path.display()))?;
+                Ok(LoadOutcome::Loaded(cfg))
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(LoadOutcome::NotFound),
+            Err(e) => Err(anyhow::anyhow!(e))
+                .with_context(|| format!("reading config from {}", path.display())),
+        }
     }
 }
 
@@ -183,6 +213,32 @@ mod tests {
         assert_eq!(cfg.transport.backend, BackendKind::Mcu);
         assert_eq!(cfg.transport.keystroke_delay_ms, 20);
         assert_eq!(cfg.transport.require_frontmost_app, "LUNA");
+    }
+
+    #[test]
+    fn empty_toml_parses_to_all_defaults() {
+        // Users who launch the bridge without a config file get
+        // Config::default() via the NotFound branch in Config::load;
+        // an empty TOML takes the same path via serde's defaults.
+        let cfg: Config = toml::from_str("").unwrap();
+        assert_eq!(cfg.midi_input_port, "");
+        assert!(cfg.enabled_on_startup);
+        assert_eq!(cfg.transport.backend, BackendKind::Mcu);
+        assert!(cfg.locate.enabled);
+    }
+
+    #[test]
+    fn config_default_matches_empty_toml() {
+        // Config::default() (used by main.rs when the config file is
+        // missing) must agree with what we'd get from parsing an
+        // empty TOML. If these drift, the in-the-wild behaviour of
+        // "no config" and "empty config" would differ subtly.
+        let from_toml: Config = toml::from_str("").unwrap();
+        let from_default = Config::default();
+        assert_eq!(from_toml.midi_input_port, from_default.midi_input_port);
+        assert_eq!(from_toml.enabled_on_startup, from_default.enabled_on_startup);
+        assert_eq!(from_toml.transport.backend, from_default.transport.backend);
+        assert_eq!(from_toml.locate.enabled, from_default.locate.enabled);
     }
 
     #[test]

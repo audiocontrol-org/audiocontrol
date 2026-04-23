@@ -22,7 +22,7 @@ mod midi;
 mod state;
 
 use crate::backend::{Backend, KeystrokeBackend, McuBackend};
-use crate::config::{BackendKind, Config};
+use crate::config::{BackendKind, Config, LoadOutcome};
 use crate::keys::Emitter;
 use crate::locate::{
     transport_to_locate_event, EventSource, LocateController, LocateEvent, LocateOutcome,
@@ -96,9 +96,24 @@ fn main() -> Result<()> {
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("config.toml"));
 
-    let config = Config::load(&config_path)
-        .with_context(|| format!("loading config from {}", config_path.display()))?;
-    info!(?config, "loaded config");
+    let config = match Config::load(&config_path)
+        .with_context(|| format!("loading config from {}", config_path.display()))?
+    {
+        LoadOutcome::Loaded(cfg) => {
+            info!(?cfg, path = %config_path.display(), "loaded config");
+            cfg
+        }
+        LoadOutcome::NotFound => {
+            warn!(
+                path = %config_path.display(),
+                "config file not found — running with defaults. \
+                 MC-500 transport input will be disabled until you create \
+                 a config.toml with midi_input_port set. \
+                 See services/midi-macro-bridge/config.example.toml."
+            );
+            Config::default()
+        }
+    };
 
     if !config.enabled_on_startup {
         info!("enabled_on_startup = false; exiting");
@@ -137,13 +152,35 @@ fn main() -> Result<()> {
     let (tx, rx) = mpsc::channel::<TransportEvent>();
 
     // Keep the MIDI connection alive for the life of the program.
-    // Dropping it would close the port and stop the callback.
-    let _midi_conn = midi::connect(&config.midi_input_port, move |event| {
-        if let Err(e) = tx.send(event) {
-            // Channel closed — main loop has exited. Nothing to do.
-            error!(?e, "channel send failed");
-        }
-    })?;
+    // Dropping it would close the port and stop the callback. If the
+    // user's config has no MC-500 transport port (or the config file
+    // is missing), skip this — the bridge's virtual MCU endpoint is
+    // still useful on its own for LUNA testing, even without
+    // transport input.
+    let _midi_conn = if config.midi_input_port.is_empty() {
+        warn!(
+            "no `midi_input_port` configured — MC-500 transport input is disabled. \
+             The bridge is still running as an MCU control surface; set \
+             midi_input_port in config.toml to receive transport events."
+        );
+        None
+    } else {
+        Some(
+            midi::connect(&config.midi_input_port, move |event| {
+                if let Err(e) = tx.send(event) {
+                    // Channel closed — main loop has exited. Nothing to do.
+                    error!(?e, "channel send failed");
+                }
+            })
+            .with_context(|| {
+                format!(
+                    "opening MIDI input matching '{}'. Run --list-ports to see \
+                     available ports.",
+                    config.midi_input_port
+                )
+            })?,
+        )
+    };
 
     // Ctrl-C handling — forward through a channel the main loop polls.
     let (shutdown_tx, shutdown_rx) = mpsc::channel();
