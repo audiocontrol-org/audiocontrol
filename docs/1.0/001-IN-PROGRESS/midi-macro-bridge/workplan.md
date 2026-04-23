@@ -124,39 +124,32 @@ This works but is cfg-noisy. A future cleanup pass should introduce a `VirtualMc
 - [x] `VirtualMcuPair::send(&mut self, &[u8])` so the bridge can emit bytes on its virtual output (previously receive-only)
 - [x] `mcu::parse_heartbeat_query` detects LUNA's `F0 00 00 66 1X 00 F7` probe and returns the model ID; `mcu::mcu_identity_reply(model)` builds a plausible MCU identity SysEx reply (`F0 00 00 66 <model> 01 <serial 7 ASCII> <version 4 ASCII> F7`)
 - [x] `--probe-mcu` replies to model `0x14` heartbeats with the identity message and logs `-> identity reply sent ...` on stderr
-- [ ] Confirm empirically (by running `--probe-mcu` live against LUNA for 60+ seconds) that LUNA keeps the surface activated and doesn't re-init repeatedly — **next session**
-- [ ] **Pause here** and coordinate with the user to set up the 3c discovery session
+- [x] Confirmed empirically (probe-heartbeat-test.log, 186 s): LUNA stops probing after one identity reply — surface stays active without re-initialisation bursts.
+- [x] Paused, coordinated with user, and kicked off the 3c discovery session.
 
 ### Phase 3c — MCU transmit discovery
 
-- [ ] Add `--send-mcu <spec>` CLI mode that registers the virtual endpoint, waits for LUNA to handshake, then sends the specified MCU message. Specs: `play`, `stop`, `rewind-start`, `rewind-end`, `ff-start`, `ff-end`, `nudge-fwd`, `nudge-back`, `raw <hex-bytes>`
-- [ ] Empirical discovery session: send each candidate and observe LUNA. Start with the MCU-standard notes (0x5B rewind, 0x5C fast-forward, 0x5D stop, 0x5E play, 0x5F record). For "return to zero" test modifier-press combinations, jog-wheel pitch-bend with specific values, or LUNA-specific note mappings. For "1-bar nudge" test 0x62/0x63 (cursor), jog-wheel at known increments, and any NUDGE-mode combinations.
-- [ ] Append a "LUNA MCU input mapping" section to MCU-NOTES.md with the definitive byte sequences for Play, Stop, Continue (= Play from current position), Return-to-zero, Bar-forward, Bar-backward. Include the reasoning / alternatives considered where the mapping wasn't obvious.
+- [x] Added `--send-mcu <spec>` CLI mode that registers the virtual endpoint, waits for LUNA's activation burst to settle, then sends the specified MCU message. Specs shipped: `play`, `stop`, `rewind`, `ff`, `record`, `cursor-{left,right,up,down}`, split `*-press` / `*-release`, and `raw <hex-bytes>`.
+- [x] Discovery session complete. Confirmed byte sequences on hardware: Continue = `90 5E 7F; 90 5E 00`, Stop = `90 5D 7F; 90 5D 00`, Return-to-zero = `90 5B 7F; 90 5B 00`, Bar-forward = `B0 3C 01`, Bar-backward = `B0 3C 41`. Ruled out cursor navigation as a bar-step primitive (marker-nav + no position feedback).
+- [x] MCU-NOTES.md has the full action map plus rationale, latency measurements, and notes on LUNA's post-stop play-start-snap behaviour and the cursor-nav dead end.
 
 ### Phase 3d — Backend trait + Action refactor
 
-- [ ] Rename `KeyAction` → `Action` in `state.rs` with variants `Play`, `Stop`, `Continue`, `ReturnToZero`, `BarForward`, `BarBackward`. Update all state-machine transitions.
-- [ ] Introduce `Backend` trait in `src/backend.rs`: `fn execute(&mut self, action: Action) -> Result<()>`
-- [ ] `McuBackend` implementation (default): maps each `Action` to the MCU byte sequence discovered in 3c, emits via `midi::send_virtual_mcu`
-- [ ] `KeystrokeBackend` implementation (fallback): existing enigo-based logic, translates `Action` back to `Return`/`Space`/`[`/`]` sequences
-- [ ] Update state machine: Start = `[ReturnToZero, Play]`, Continue = `[Play]` (Continue is semantically "play from current position"), Stop = `[Stop]`, bar-nudge during locate = `[BarForward]` or `[BarBackward]`
-- [ ] Add `[transport]` TOML section: `backend` (default `"mcu"`, alt `"keystrokes"`); also move `keystroke_delay_ms`, `require_frontmost_app` into this section (only relevant for the keystroke backend). Preserve backward-compat with Phase 1-2 configs by defaulting sensibly.
-- [ ] Unit tests: a mock Backend that records the Actions it receives; assert the state machine emits the expected sequences across the existing 22 test scenarios, now expressed in terms of `Action` not `KeyAction`.
+- [x] `KeyAction` replaced with `Action` enum. Final variants: `Play` (covers both "start" and "continue"), `Stop`, `ReturnToZero`, `BarForward`, `BarBackward`.
+- [x] `Backend` trait in `src/backend.rs` with `emit(&[Action])` + `name()`.
+- [x] `McuBackend`: maps each Action to its discovered MCU bytes via `VirtualMcuPair::send`.
+- [x] `KeystrokeBackend`: translates Action → `KeyStroke` (Space, Return, `[`, `]`) and emits via enigo.
+- [x] State machine updated: Start = `[ReturnToZero, Play]`, Continue = `[Play]`, Stop = `[Stop]`, Locating bar-nudge via controller.
+- [x] `[transport]` TOML section with `backend` (`"mcu"` default, `"keystrokes"` fallback); Phase 1-2 legacy top-level keystroke fields silently ignored.
+- [x] Unit tests cover backend translation preservation. All 22 original state-machine tests reworked to assert on `Action`.
 
 ### Phase 3e — Closed-loop locate
 
-- [ ] Extend `Event` with `Spp(u16)`; extend the MIDI input parser to surface SPP from the MC-500
-- [ ] Add `Locating` state to `TransportState`; atomic-locate semantics (coalesce SPP, Stop cancels, Start-during-locate becomes Continue for post-locate so Return-to-zero doesn't undo the locate)
-- [ ] `LocateController::run(target_bar, tracker, backend, cfg) -> Result<LocateOutcome>`:
-  - Loop up to `cfg.max_iterations` times
-  - Read `tracker.current_bar()`; if `None`, wait up to `cfg.position_timeout_ms` for first update; abort if still `None`
-  - Compute signed delta; if zero, return `Outcome::Reached { iterations }`
-  - If delta has reversed sign since the previous iteration without reaching zero, return `Outcome::NudgeTooLarge` — abort and log actionable error
-  - Dispatch `Action::BarForward` or `Action::BarBackward` via the Backend
-  - Wait up to `cfg.position_timeout_ms` for a new `PositionUpdate` from the tracker
-  - If no update within timeout, return `Outcome::Timeout { last_known_bar }`
-- [ ] Add `[locate]` TOML section with `enabled` (default `false`), `max_iterations` (default 64), `position_timeout_ms` (default 500)
-- [ ] Unit tests: `LocateController` against a mocked PositionTracker and a mocked Backend. Cover: Reached (forward, backward, zero delta), NudgeTooLarge (sign reversal), Timeout (tracker doesn't update), IterationCap, tracker still pre-initialised.
+- [x] `TransportEvent::Spp(u32)` variant + SPP parsing in `midi::parse_transport` (4/4 assumption with mid-bar round-down).
+- [x] `TransportState::Locating { target, queued_start }` with atomic-locate semantics — target coalescing, Stop cancels, Start/Continue queues post-locate Play.
+- [x] `LocateController::run(target) -> Result<LocateOutcome>` with six outcomes: Reached / Cancelled / NudgeTooLarge / Timeout / IterationCap / NoInitialPosition. Pure `plan_step` function tested in isolation; run() orchestrates I/O through `PositionSource` and `EventSource` traits.
+- [x] `[locate]` TOML section: `enabled` (default `true`), `max_iterations` (128), `position_timeout_ms` (500), `initial_position_timeout_ms` (3000).
+- [x] Unit tests: 17 in locate.rs covering every outcome plus mocked PositionSource / EventSource / Backend.
 - [x] `info!` log on each locate: target bar, starting bar, per-iteration action + delta, final bar, iterations, outcome
 
 ### Phase 3f — Integration + docs
