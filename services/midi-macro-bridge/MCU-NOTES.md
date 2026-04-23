@@ -252,6 +252,49 @@ care whether intermediate bars were 4/4, 3/4, 7/8, or anything
 else. The closed-loop algorithm is correct across arbitrary mixed
 time signatures.
 
+## LUNA MCU input mapping (Phase 3c discovery — in progress)
+
+Byte sequences LUNA accepts from the bridge's virtual output. Each
+entry is verified against live LUNA by `--send-mcu <spec>` and a
+visual / log-trace confirmation of the effect.
+
+| Action      | Byte sequence            | Notes                                  |
+|-------------|--------------------------|----------------------------------------|
+| Continue    | `90 5E 7F` + `90 5E 00`  | Standard MCU PLAY button tap. See below. |
+| Stop        | *(pending 3c test)*      |                                        |
+| Start       | *(composite: rewind + Continue — pending)* |                        |
+| Return-to-zero | *(pending 3c test)*   |                                        |
+| Bar-forward    | *(pending 3c test)*   |                                        |
+| Bar-backward   | *(pending 3c test)*   |                                        |
+
+### Continue — `90 5E 7F; 90 5E 00`
+
+Standard MCU transport PLAY (note 0x5E) press + release, 50 ms apart.
+Verified 2026-04-23 via `probe-send-play.log` against live LUNA with
+the playhead stopped at bar 9 beat 1. Observed behaviour:
+
+- LUNA starts playing from the current playhead position (bar 9 in
+  the test), not from bar 1. That's Continue semantics, not Start.
+- LUNA echoes the button press back as MCU state feedback
+  (`90 5E 7F` ~15 ms after our press, `90 5E 00` ~280 ms after our
+  release). The echoed LED event is a single flash, not held for the
+  duration of playback — so we can't use the LED echo as a play-state
+  indicator. Position updates on `B0 40-49` are the authoritative
+  playback signal.
+- Position updates begin flowing within ~40 ms of the button press.
+- LUNA briefly blanks the position digits (`B0 45 20`, `B0 47 20`)
+  for ~650 ms right after the button release, then resumes sending
+  position CCs with the playback advancing. Harmless quirk; the
+  PositionTracker will see the intermediate blank and immediately
+  re-sync on the next update.
+
+### How Start composes
+
+Phase 1-2's Start event ("rewind and play from bar 1") has no direct
+MCU equivalent. We'll build it from `ReturnToZero; Continue` once we
+discover the Return-to-zero mapping. The state machine already
+separates these two primitives, so no refactor needed.
+
 ## Bar-step results (decisive for closed-loop locate)
 
 Timeline from `probe-barstep.log` (LUNA stopped at bar 1):
