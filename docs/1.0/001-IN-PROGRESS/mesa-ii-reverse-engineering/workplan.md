@@ -98,6 +98,9 @@ Per [#315 joint charter](https://github.com/audiocontrol-org/audiocontrol/issues
    - Iter 8: tried bypassing recursive `JSR $1620.l` — insufficient; multiple call sites; deferred to Codex static identification
 - [ ] **Path E.2: identify `JSR $1620.l` target.** What `0x1620` represents in real Mac OS — internal subroutine of plug, CODE 0 jump table slot, or vtable dispatch. Static identification is Codex's strength; my emulator-side work is blocked on this.
 - [ ] **Path E.3: observe CDB transferred into SCSI PB and dispatched via `$A089`.** Once the post-CDB-construction path is unblocked, see the local CDB bytes loaded into a SCSIExecIO PB and the `$A089` SCSIDispatch trap fire.
+- [x] **Path E.4 (2026-04-22/23): adopt resource-fork load model + fix `$A055` D0 clobber bug.** Plug self-relocation now functions; manual JSR/JMP relocation confirmed redundant. Full INIT→CONS→ASOK→SEND chain runs end-to-end; SendData hits real plug error (D0=0xc950 "no socket selected") rather than OOB cascade.
+- [x] **Path E.5 (2026-04-23): implement `$A998` UseResFile + `$A994` CurResFile pair.** Per Codex static decode: ctor seeds `this+0x0938` from CurResFile; `main` save/switch/restores around DoMESACommand. UseResFile now correctly pops stack arg and updates harness state.
+- [ ] **Path E.6: resolve CONS not mutating persistent object state.** CONS returns cleanly but `this+0x38` and `this+0x3c` (socket table) stay zero. Three hypotheses on table; awaiting Codex decode of where `main` reads `this` from (A0? A1? stack slot?). Without this, ASOK/SEND can't progress.
 
 **Charter deliverable:** the actual CDB MESA emits + the wire-side conditions under which CDB[5]=0x80 is accepted by the S3000XL. Half-answered: the CDB shape is now known. The "wire-side conditions" half is open — depends on Path E.3.
 

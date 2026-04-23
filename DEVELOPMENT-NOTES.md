@@ -11,6 +11,47 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-23: Path E.4-E.6 — full plug lifecycle reaches real plug error path; CONS still doesn't mutate persistent object
+
+### Feature: mesa-ii-reverse-engineering
+### Worktree: audiocontrol-mesa-ii-reverse-engineering
+
+### Goal
+Continue Path E (emulator-forward) per #315 joint charter. Race Codex on identifying remaining contract gaps. Bounded probes: each step stops at first new blocker, reports to #315, awaits static-decode response.
+
+### Accomplished
+- **Critical harness bug fix:** `$A055 StripAddress` was clobbering D0 to 0 (claiming "noErr"). StripAddress actually returns the stripped address in D0. Fix removes the clobber. Was masking multiple cascading OOB/NULL-deref failures.
+- **Plug self-relocation now functional.** With StripAddress fix, the plug's own self-relocation pass produces correct addresses (table at PLUG+0x281f, count 0x6e). Manual JSR/JMP relocation pass confirmed redundant — disabled.
+- **Full INIT→CONS→ASOK→SEND chain runs end-to-end.** No OOB, no NULL derefs. SendData hits a real plug error (D0=0xc950, "no socket selected") rather than emulator garbage. Cleanest production-shaped lifecycle execution achieved.
+- **`$A998` UseResFile + `$A994` CurResFile pair implemented** per Codex static decode of `__ct__11CMESAPlugInFv` (ctor seeds `this+0x0938` from CurResFile) and `main` (save/switch/restore around DoMESACommand).
+- **Falsification result on CONS:** with `$A998` and seeded `this+0x0938`, CONS still returns cleanly without mutating `this+0x38` or `this+0x3c` on the persistent object. Per Codex's stop rule, halted and reported. Three hypotheses framed; awaiting Codex's static decode of where `main` reads `this` from.
+
+### Didn't Work
+- Initial assumption that `$A998` was DialogDispatch — wrong; Codex corrected to UseResFile (Resource Manager).
+- Pre-fix theory that "manual relocation is required" — wrong; was an artifact of the StripAddress clobber bug. Once D0 propagated correctly, plug self-relocation handles everything.
+- A4 trace at 0x100ae appeared to show A4=0 mid-execution — was actually pre-A4-setup, not a clobber. Codex corrected my interpretation.
+
+### Course Corrections
+- **[FABRICATION]** Initially interpreted `$A998` as DialogDispatch based on weak association ($A998 = `_DialogDispatch` in some trap tables). Codex's static call-shape analysis (save/switch/restore pattern around vtable+0x10) was the right authority. Should have asked for static identification before naming the trap.
+- **[PROCESS]** Lost time to a binary-path search (find /Users in background) when the path was already in `.claude/settings.local.json`. Should have grepped settings first before launching wide find.
+- **[PROCESS]** Stale `/tmp` build script for plug-harness (no Makefile in /harness/). Spent two iterations finding the gcc command — eventually grep'd it from settings.local.json. Should commit a `harness/build.sh` script.
+
+### Quantitative
+- User messages this session: ~10 (mostly "check for updates" / "race them")
+- GitHub comments posted to #315: 2 (full-chain result + CONS-only falsification)
+- Codex comments responded to: 4 (StripAddress confirmation, A998 contract, ctor 0x938 finding, CONS recommendation)
+- Harness iterations: 2 full (full-chain, CONS-only)
+- Bugs fixed in harness: 1 (StripAddress D0 clobber — high impact)
+- New plug contract elements implemented: 2 (`$A998` UseResFile, `$A994` returning real refnum)
+
+### Insights
+- **Race-against-Codex worked well.** The collaboration model (Claude runs experiments, Codex decodes statically, both meet at #315) caught the StripAddress bug fast — Codex's static decode of `0x0028`'s expected return semantics (`move A0, D0; A055; rts` → D0 must be stripped address) gave me the precise failure mode to look for. Without the divisor of labor I'd have spent more time on the symptom (NULL-deref cascades).
+- **Stop-at-first-new-blocker is the right discipline.** Without it I'd have chased ASOK / SEND issues that were downstream of CONS's failure to populate state. Per Codex's exact phrasing: "if `this+0x38` stays zero ... stop there and report that exact result."
+- **Resource-fork load + plug self-relocation is the right model.** The earlier "load whole file + manual relocate everything" was a layered hack on top of a missing structural understanding. With the resource fork properly parsed and self-relocation trusted, the codebase simplifies dramatically.
+- **Save/switch/restore patterns betray contract intent.** The `A994/A998/A998` triple is not generic toolbox plumbing; it's an explicit save/switch/restore. Recognizing the shape (not just the trap codes) revealed the contract.
+
+---
+
 ## 2026-04-22: Path E.1 — emulator-forward harness drove SMSendData, captured the actual CDB MESA emits
 
 ### Feature: mesa-ii-reverse-engineering
