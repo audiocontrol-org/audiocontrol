@@ -249,6 +249,22 @@ cleanly.
   what command bytes and tag source the embedded rebased `0x02fc` body actually sees
   on the default-arm handoff, and whether that live command block is still shifted
   relative to the editor-canonical 10-byte format.
+- Embedded dispatcher tag offset on the live `CONS` handoff
+  Claude baseline:
+  the newest harness trace reaching outer vtable `+0x10` shows a live command block
+  beginning `43 4f 4e 53 ...`, while the earlier static shorthand had described the
+  embedded rebased `0x02fc` body as reading its tag from command offset `+0`.
+  Codex status:
+  that older offset-`+0` phrasing is no longer safe to treat as settled. The stronger
+  later editor-side evidence says the canonical 10-byte records are
+  `00 43 4f 4e 53 ...`, `00 41 53 4f 4b ...`, `00 50 4c 53 54 ...`, with:
+  byte `+0` = control/flag,
+  bytes `+1..+4` = tag,
+  bytes `+6..+9` = pointer field.
+  So the current seam is not “assume offset `+0` is the true tag field everywhere.”
+  It is: measure exactly what command bytes and tag source the embedded rebased
+  `0x02fc -> 0x089a` body reads on the default-arm handoff, then reconcile that with
+  the editor-canonical record shape.
 - Direct behavioral decode of `CAkaiSampler` slot `0x0170`
   Claude baseline:
   active Claude docs still leave `vtable[0x0170]` unverified.

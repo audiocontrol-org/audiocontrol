@@ -11,6 +11,60 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-23: Downgrade The Old `tag-at-+0` Shorthand On The Embedded `CONS` Handoff
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Keep the live `CONS` investigation from leaning on an older field-boundary shorthand
+that no longer survives the newer outer-vs-embedded dispatch split plus the corrected
+editor command-template evidence.
+
+### Accomplished
+- Re-polled `#315` and confirmed there was still no newer Claude result after the
+  outer-vs-embedded dispatch correction
+- Recorded one stricter parity correction:
+  the older wording “embedded rebased `0x02fc` reads the four-byte tag from offset
+  `+0`” is no longer safe to treat as settled
+- Wrote down the reason explicitly:
+  - editor-canonical 10-byte records are
+    `00 43 4f 4e 53 ...`,
+    `00 41 53 4f 4b ...`,
+    `00 50 4c 53 54 ...`
+  - so byte `+0` is a control/flag byte, bytes `+1..+4` are the four-character tag,
+    and bytes `+6..+9` are the pointer field
+  - Claude’s live `CONS` dump reaching the outer shim begins `43 4f 4e 53 00 00 00 09 ...`
+  - therefore the exact command format reaching embedded rebased `0x02fc` is still an
+    open measured seam, not something to collapse back into the old offset-`+0`
+    shorthand
+
+### Didn't Work
+- The branch still carried enough old wording that someone could reasonably infer
+  “embedded `0x02fc` definitely sees the editor-canonical block unchanged and keys on
+  byte `+0`”
+- That would bias the next harness probe toward selector arithmetic instead of the
+  more immediate question: what bytes and pointer does the embedded body actually read?
+
+### Course Corrections
+- **[DOCUMENTATION]** The live seam now has to be described as a handoff-format
+  question, not just a vtable-routing question.
+- **[PROCESS]** Once new evidence exposes a boundary contradiction, downgrade the old
+  shorthand immediately instead of letting both versions coexist in the docs.
+
+### Quantitative
+- Parity docs updated: 3
+  `codex-findings.md`, `comparison-record.md`, `DEVELOPMENT-NOTES.md`
+
+### Insights
+1. The outer-vs-embedded dispatch split solved one confusion and exposed another:
+   we still do not know the exact command representation handed into embedded
+   rebased `0x02fc`.
+2. The older “tag at `+0`” phrase was acceptable as a working shorthand earlier, but
+   it is now risky enough to treat as stale.
+3. The next useful harness measurement is not more selector decoding in the abstract;
+   it is the exact bytes and tag source consumed by the embedded dispatcher.
+
 ## 2026-04-23: Separate Outer `CSCSIPlug` Dispatch From Embedded `CMESAPlugIn` Dispatch
 
 ### Feature: mesa-ii-codex-parity

@@ -3691,3 +3691,19 @@ correct. Every finding should distinguish direct evidence from inference.
   no longer “find another top-level `CONS` slot.” It is whether the command shape
   reaching rebased `0x02fc` is still shifted relative to the editor-canonical 10-byte
   records.
+
+- The older “embedded dispatcher reads the four-byte tag from offset `+0`” wording is no longer safe enough to treat as settled
+  One consequence of the new outer-vs-embedded split is that two previously separate
+  observations now collide. Older plug-side notes described rebased `0x02fc -> 0x089a`
+  as loading the command tag from `MESACommand[0]`. But the stronger later evidence on
+  the editor side is that the canonical 10-byte records are
+  `00 43 4f 4e 53 ...`, `00 41 53 4f 4b ...`, `00 50 4c 53 54 ...`, with
+  byte `+0` as a control/flag byte, bytes `+1..+4` as the four-character tag, and
+  bytes `+6..+9` as the embedded pointer field. Claude's latest live `CONS` dump also
+  shows a shape beginning `43 4f 4e 53 00 00 00 09 ...`, i.e. not byte-for-byte the
+  same canonical editor template. So the safe current read is no longer “the embedded
+  dispatcher definitely keys on offset `+0` of the exact editor-canonical block.”
+  It is:
+  the embedded rebased `0x02fc` body is the right command-dispatch layer, but the exact
+  handoff format reaching it is still open and should be measured at that body directly
+  before any more selector arithmetic is treated as authoritative.
