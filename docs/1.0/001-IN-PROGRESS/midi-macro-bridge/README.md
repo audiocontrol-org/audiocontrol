@@ -2,6 +2,7 @@
 
 **Branch:** `feature/midi-macro-bridge`
 **Worktree:** `~/work/audiocontrol-work/audiocontrol-midi-macro-bridge`
+**Overall Status:** PR Open — [#316](https://github.com/audiocontrol-org/audiocontrol/pull/316)
 
 ## Status
 
@@ -18,5 +19,6 @@
 
 ## GitHub Tracking
 
+- Pull Request: [#316](https://github.com/audiocontrol-org/audiocontrol/pull/316)
 - Milestone: TBD
 - Parent Issue: TBD
