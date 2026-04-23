@@ -3629,3 +3629,22 @@ correct. Every finding should distinguish direct evidence from inference.
   routes by the tag at command offset `+0` via the rebased selector helper, so the
   fallback remains payload shape at `MESACommand+6`, not a missing `this` input
   register.
+
+- The older exact `ASOK` / `CONS` template-offset alignment is now weaker than the later measured `PLST` / `CONS` split
+  One more raw-byte reread of `sampler-editor-rsrc.bin` around file `0x71972` is useful
+  mainly as a calibration correction. The compact editor template region does clearly
+  contain 10-byte records for `SEND`, `ASOK`, `CONS`, and `PLST` in that order:
+  `40 53 45 4e 44 00 00 00 00 00`,
+  `00 41 53 4f 4b 00 00 00 00 00`,
+  `00 43 4f 4e 53 00 00 00 00 00`,
+  `00 50 4c 53 54 00 00 00 00 00`.
+  But the older exact A4-offset alignment used in Findings 24/25 (`A4+12502 -> CONS`,
+  `A4+12492 -> ASOK`) is no longer the strongest thing to lean on for live harness
+  guidance. The stronger measured editor-side result is the later split in
+  `CMESASocket::ConnectToPlug`: one phase fetches descriptors through a `PLST` record,
+  while the later registration phase copies a `CONS` record, stores socket `this+24`
+  into the outgoing command block, and sends that 46-byte `SocketInfo` onward. So the
+  safest current payload rule for Claude is:
+  trust the measured `PLST` / `CONS` phase split and the `this+24` pointer placement,
+  not the older exact template-offset labeling, when comparing live `MESACommand+6`
+  bytes against the editor-canonical `CONS` payload.

@@ -1197,6 +1197,20 @@ cleanly.
   and then comparing the live `MESACommand+6` payload against the editor-canonical
   46-byte `SocketInfo` rooted at socket `this+24` if `CONS` still stays inert.
 
+- One older Codex-side editor-template alignment should now be treated as superseded by stronger later evidence.
+  Claude baseline:
+  the live fallback after `$A998` is “compare the actual `CONS` payload bytes.”
+  Codex correction:
+  raw bytes still confirm the compact 10-byte editor template region contains
+  `SEND`, `ASOK`, `CONS`, and `PLST` records. But the older exact A4-offset labeling
+  used in early Findings 24/25 (`A4+12502 -> CONS`, `A4+12492 -> ASOK`) is no longer
+  the safest thing to drive the harness from. The stronger measured editor-side result
+  is the later `CMESASocket::ConnectToPlug` phase split:
+  descriptor fetch through `PLST`, then a later `CONS` command block that points at
+  socket `this+24`. So the live payload comparison should key off the measured
+  `PLST` / `CONS` phase split and the `this+24 -> 46-byte SocketInfo` rule, not the
+  older exact template-offset labels by themselves.
+
 ## Comparison Rules
 
 - Codex should compare against the latest Claude branch docs plus its `DEVELOPMENT-NOTES.md`,

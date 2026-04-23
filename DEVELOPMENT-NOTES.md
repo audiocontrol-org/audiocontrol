@@ -4017,3 +4017,44 @@ guessing at input registers for `this`.
 1. Once the correct entry model is in place, the next bad hypothesis often comes from flattening calling convention and object-lifetime questions together.
 2. The plug command path is now normal enough that the right next checks are boring: global object identity, command tag, and payload bytes.
 3. Eliminating “maybe `this` is in the wrong register” keeps the harness from turning a clean falsification result into another round of blind calling-convention experiments.
+
+## 2026-04-23: Older Exact `ASOK` / `CONS` Template Offsets Downgraded Below the Measured `PLST` / `CONS` Split
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Tighten the editor-side fallback for Claude’s next `CONS` payload check without letting
+older template-offset assumptions creep back in.
+
+### Accomplished
+- Re-read the raw `sampler-editor-rsrc.bin` template bytes around file `0x71972`
+- Confirmed the compact 10-byte records for `SEND`, `ASOK`, `CONS`, and `PLST` still
+  exist exactly as previously noted
+- Corrected the weight of one older inference:
+  the early exact A4-offset labeling for `ASOK` and `CONS` is now weaker than the later
+  measured `PLST` / `CONS` phase split in `CMESASocket::ConnectToPlug`
+- Synced that correction into `codex-findings.md` and `comparison-record.md`
+
+### Didn't Work
+- The older annotated disassembly slices in the `akai-ux-improvement` tree were not a
+  trustworthy place to resolve this; the raw bytes and later parity findings were
+  cleaner than the stale annotations
+
+### Course Corrections
+- **[EVIDENCE]** The safe live rule is no longer “use the old exact `A4+12492` /
+  `A4+12502` labels.” It is:
+  trust the later measured editor-side split where descriptor fetch uses `PLST` and the
+  later registration phase sends `CONS` with socket `this+24`.
+- **[TACTICS]** If Claude gets to the payload-byte fallback, compare the live
+  `MESACommand+6` bytes against the editor-canonical `this+24 -> 46-byte SocketInfo`
+  rule, not against the older exact template-offset labels in isolation.
+
+### Quantitative
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. Once the project reaches payload-shape debugging, stale “strongest current model” language from earlier phases becomes risky even if the underlying raw bytes were real.
+2. The right fallback is the later measured phase split, not the older exact offset arithmetic that originally pointed us toward it.
+3. A good parity track keeps correcting its own internal confidence levels, not just Claude’s.
