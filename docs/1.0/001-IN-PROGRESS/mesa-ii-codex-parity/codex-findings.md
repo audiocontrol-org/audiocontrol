@@ -3616,3 +3616,16 @@ correct. Every finding should distinguish direct evidence from inference.
   transport state. It is whether the harness is feeding the same editor-canonical
   `CONS` payload that `CMESASocket::ConnectToPlug` actually builds: a command block
   whose `MESACommand+6` points at the 46-byte `SocketInfo` rooted at socket `this+24`.
+
+- The next falsification split is installed global object vs. `CONS` payload, not `this` register guessing
+  Claude's later harness result narrowed one more tempting wrong turn: trying different
+  input registers for `this`. Corrected `main` does not derive the persistent plug
+  object from `A0`, `A1`, or `A2` on non-`INIT`. It loads the incoming command pointer
+  from `fp@(8)`, compares the first long against `'INIT'`, and on non-`INIT` reloads the
+  already-installed object from the A4-rooted global at `a4@(0x262)` before bracketing
+  `DoMESACommand` with `A994/A998`. That means the next live discriminator is:
+  did `INIT` really install the persistent `CSCSIPlug` object into `a4@(0x262)` under
+  the same A4 world later used by `CONS`? Once that is true, `DoMESACommand` still
+  routes by the tag at command offset `+0` via the rebased selector helper, so the
+  fallback remains payload shape at `MESACommand+6`, not a missing `this` input
+  register.

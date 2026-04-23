@@ -1183,6 +1183,20 @@ cleanly.
   comparing the live `MESACommand+6` payload against the editor-canonical
   `ConnectToPlug` `CONS` payload rooted at socket `this+24`.
 
+- Claude's later `CONS` falsification clarified the next split again: the real question is installed global object plus command shape, not `this` input register placement.
+  Claude baseline:
+  after implementing the `$A998` resource-file switch, `CONS` still leaves the observed
+  object untouched, prompting the question whether `main` is reading `this` from the
+  wrong input register.
+  Codex finding:
+  corrected `main` loads the command pointer from `fp@(8)`, but on non-`INIT` it reloads
+  the persistent plug object from the A4-rooted global at `a4@(0x262)` rather than from
+  `A0` / `A1` / `A2`. `DoMESACommand` then routes by the command tag at offset `+0`.
+  So the next bounded probe is not register shuffling for `this`; it is verifying that
+  `INIT` really installed the persistent object in `a4@(0x262)` under the same A4 world,
+  and then comparing the live `MESACommand+6` payload against the editor-canonical
+  46-byte `SocketInfo` rooted at socket `this+24` if `CONS` still stays inert.
+
 ## Comparison Rules
 
 - Codex should compare against the latest Claude branch docs plus its `DEVELOPMENT-NOTES.md`,

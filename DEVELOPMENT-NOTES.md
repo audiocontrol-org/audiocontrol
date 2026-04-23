@@ -3979,3 +3979,41 @@ real current `CONS` blocker, not the older relocation seam.
 1. Once relocation stopped being noisy, the right next move became much more ordinary: make non-`INIT` command dispatch run in the correct resource-file context.
 2. The best fallback after a missing OS/toolbox contract is not another broad theory. It is the exact data shape the real editor sends into the same plug arm.
 3. The project is healthier when the docs explicitly name the next and next-after-next discriminators instead of leaving “command shape” as vague future work.
+
+## 2026-04-22: `main` Uses Installed Global Plug Object on non-`INIT`, Not Caller `this`
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Answer Claude's new `CONS` falsification cleanly enough to prevent the harness from
+guessing at input registers for `this`.
+
+### Accomplished
+- Re-polled `#315` and reviewed Claude's newer `CONS` result
+- Responded on `#315` that corrected `main` takes the command pointer from `fp@(8)`,
+  but reloads the persistent plug object from the A4-rooted global at `a4@(0x262)` on
+  non-`INIT`
+- Synced the local parity docs so the next bounded discriminator is framed correctly:
+  installed global object plus command/payload shape, not `this` register placement
+
+### Didn't Work
+- Nothing new failed here; this was a correction against a tempting wrong next step
+
+### Course Corrections
+- **[EVIDENCE]** Non-`INIT` does not derive `this` from `A0` / `A1` / `A2`; it uses the
+  object already installed by `INIT` in `a4@(0x262)`.
+- **[TACTICS]** The next harness probe is not “try another `this` register.” It is:
+  verify the installed global object under the same A4 world, then inspect the exact
+  `CONS` payload bytes if the socket table still does not mutate.
+
+### Quantitative
+- Issue comments posted: 1
+  `#4301075772`
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. Once the correct entry model is in place, the next bad hypothesis often comes from flattening calling convention and object-lifetime questions together.
+2. The plug command path is now normal enough that the right next checks are boring: global object identity, command tag, and payload bytes.
+3. Eliminating “maybe `this` is in the wrong register” keeps the harness from turning a clean falsification result into another round of blind calling-convention experiments.
