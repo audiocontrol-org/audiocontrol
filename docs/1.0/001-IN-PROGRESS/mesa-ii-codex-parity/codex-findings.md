@@ -3779,3 +3779,18 @@ correct. Every finding should distinguish direct evidence from inference.
   the harness has reached the right sub-handler, but without a nonzero `IP_Data+0/+4`
   payload record it stays on the local dialog/probe branch instead of a meaningful send
   shape.
+
+- The editor-side upload caller now weakens the “BULK itself must carry payload” reading
+  One more bounded editor-side reread changes the interpretation of the previous BULK
+  finding. In `SendAudioFileToSampler`, the sample-upload path at file `0x02ee63`
+  pushes `#'BULK'`, then `clr.l`, then `clr.l`, and only then calls the socket send
+  path on the object rooted at `this+0x74`. The same function later reaches the same
+  socket send slot twice more with `'SRAW'` at `0x02eff7` and `0x02f113`, then pushes
+  `'BOFF'` at `0x02f1c3`. So the safer current production model is:
+  `BULK` is likely a control/open phase that can legitimately travel with zero count and
+  zero data pointer, while later `SRAW` phases carry the real payload. That does not
+  make the rebased BULK-body decode wrong; it does mean the earlier tactical advice
+  “populate nonzero `IP_Data+0/+4` for BULK first” is too strong. The better next move
+  is to preserve the now-correct lifecycle through `SEND`, treat the current BULK path
+  as an opener unless evidence disproves it, and push forward to the first later `SRAW`
+  emission on the same path.

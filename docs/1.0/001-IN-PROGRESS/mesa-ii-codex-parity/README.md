@@ -95,19 +95,23 @@ Recent parity work changed the frontier materially again:
 
 That leaves one sharp open seam:
 
-- the BULK sub-handler now looks blocked on its `IP_Data` payload record, not on
+- the BULK sub-handler is now bounded enough that the next question is phase role, not
   chooser state
 - the live record fields are:
   - `IP_Data+0` = byte count
   - `IP_Data+4` = payload pointer
   - `IP_Data+8` = sub-tag
   - `IP_Data+12` = target-selection key used earlier by `SEND`
-- the current zero-CDB run is best explained by the empty-record branch where both
-  `IP_Data+0` and `IP_Data+4` are zero
+- the current zero-CDB run is no longer best treated as proof that BULK itself must
+  carry payload bytes, because the real editor upload caller appears to issue `BULK`
+  with two zero longs before later `SRAW` payload phases
+- the better current production model is:
+  `BULK` opener/control phase, later `SRAW` payload phase(s), then `BOFF`
 
 This is no longer a relocation or chooser-state project on the active path. It is now a
-bounded emulator-contract problem around the post-`SEND` BULK `IP_Data` layout and the
-first meaningful transport-side CDB emission that follows from it.
+bounded emulator-contract problem around the post-`SEND` phase sequence:
+what the `BULK` opener really has to establish, and how to reach the first later
+payload-bearing `SRAW` emission on the corrected persistent-object path.
 
 ## Recommended Split
 

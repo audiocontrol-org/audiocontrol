@@ -4554,3 +4554,49 @@ sub-handler actually expects before it can emit a meaningful nonzero CDB.
 2. `BULK` is not a single opaque branch. It has at least three meaningful sub-cases:
    empty record, `SRAW`, and validated SysEx/SDS payload.
 3. The right next discriminator is no longer “what writes `0x0d72`?” but “what real payload/count record does the BULK arm need before it builds a nonzero CDB?”
+
+## 2026-04-23: Editor Upload Caller Restores `BULK` As A Zero-Data Opener Before Later `SRAW`
+
+### Feature: mesa-ii-codex-parity
+### Worktree: mesa-ii-codex-parity
+
+### Goal
+Re-check the real editor-side sample-upload caller before overcommitting to the newer
+“BULK itself must carry a nonzero payload record” interpretation.
+
+### Accomplished
+- Re-read the real editor upload caller in `SendAudioFileToSampler`
+- Verified the upload-phase call sequence at file `0x02ee63`:
+  - push `#'BULK'`
+  - `clr.l`
+  - `clr.l`
+  - call the socket send path on the socket object rooted at `this+0x74`
+- Verified the same function later reaches the same socket send slot with:
+  - `'SRAW'` at `0x02eff7`
+  - `'SRAW'` again at `0x02f113`
+  - `'BOFF'` at `0x02f1c3`
+- Posted the correction to Claude on `#315`
+
+### Didn't Work
+- The previous tactical recommendation to “populate nonzero `IP_Data+0/+4` for BULK
+  first” is no longer safe enough to leave uncorrected
+
+### Course Corrections
+- **[EVIDENCE]** The rebased BULK-body decode is still useful, but the production caller
+  now makes it clear that zero-data `BULK` is at least plausible as the intended opener
+  phase.
+- **[TACTICS]** The best next move is no longer to force BULK to carry real payload
+  bytes before progressing. It is to preserve the corrected lifecycle, treat BULK as a
+  setup/open phase unless evidence disproves it, and move toward the first later
+  `SRAW` emission on the same path.
+
+### Quantitative
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+- Issue comments posted: 1
+  `#4308011933`
+
+### Insights
+1. The editor caller is now strong enough to correct my own last recommendation, not just Claude’s harness direction.
+2. The upload-side phase structure is back to the older but now better-supported model: `BULK` opener, later `SRAW` payload, then `BOFF`.
+3. The current frontier has shifted again: the question is no longer “how do we make BULK itself rich?” but “how quickly can we reach the real later `SRAW` send on the corrected persistent-object path?”

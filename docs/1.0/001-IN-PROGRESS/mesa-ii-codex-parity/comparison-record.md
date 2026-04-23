@@ -1337,6 +1337,25 @@ cleanly.
   harness is supplying a non-empty `IP_Data` record that the BULK arm recognizes as a
   real payload/header send.
 
+- The real editor upload caller makes the previous “BULK needs payload bytes immediately” reading too strong
+  Claude baseline:
+  the newest transport trace shows `SEND` succeeding, then `SocketInfo+8 = 'BULK'`
+  reaching the BULK sub-handler and emitting the first real `$A089 SCSIDispatch`.
+  Codex correction:
+  the editor-side upload caller at `SendAudioFileToSampler` file `0x02ee63` now shows
+  the production phase sequence more clearly. It pushes `#'BULK'`, then two zero longs,
+  and only then calls the socket send path on the socket object at `this+0x74`.
+  Later in the same function, the same socket send slot is reached again with `'SRAW'`
+  at `0x02eff7` and `0x02f113`, then `'BOFF'` at `0x02f1c3`.
+  So the safer current shared model is:
+  `BULK` is likely an opener/control phase that can legitimately travel with zero count
+  and zero data pointer, while the later `SRAW` phases carry the real payload. That
+  weakens the earlier tactical recommendation to force a rich `IP_Data` record into
+  BULK before moving on. The better next move is to preserve the now-correct
+  `INIT -> CONS -> ASOK -> SEND` chain, treat the current BULK trace as a setup phase
+  unless evidence proves otherwise, and advance to the first later `SRAW` emission on
+  the same path.
+
 ## Comparison Rules
 
 - Codex should compare against the latest Claude branch docs plus its `DEVELOPMENT-NOTES.md`,
