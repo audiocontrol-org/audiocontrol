@@ -107,8 +107,6 @@ fn main() -> Result<()> {
             warn!(
                 path = %config_path.display(),
                 "config file not found — running with defaults. \
-                 MC-500 transport input will be disabled until you create \
-                 a config.toml with midi_input_port set. \
                  See services/midi-macro-bridge/config.example.toml."
             );
             Config::default()

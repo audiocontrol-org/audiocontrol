@@ -4,7 +4,11 @@
 # Substring match against the MC-500 transport MIDI input port
 # (case-insensitive). Run with --list-ports to see available ports.
 # Examples: "MC-500", "UM-ONE", "828mk3 Hybrid MIDI"
-midi_input_port = "MC-500"
+#
+# If omitted, defaults to "828mk3 Hybrid MIDI" — a convenience for
+# this project's primary rig. Set explicitly once your own MIDI
+# interface name is stable.
+midi_input_port = "828mk3 Hybrid MIDI"
 
 # Set to false to start in a disabled state (reserved for future use).
 enabled_on_startup = true

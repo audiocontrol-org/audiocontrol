@@ -7,11 +7,18 @@ use std::path::Path;
 #[derive(Debug, Deserialize)]
 pub struct Config {
     /// Substring match against the MC-500 transport MIDI input port.
-    /// Case-insensitive. Empty string (the default) disables the
-    /// transport-input path entirely — the bridge still registers
-    /// its virtual MCU endpoint, but no MC-500 transport events are
-    /// received. `main.rs` warns on startup if this is empty.
-    #[serde(default)]
+    /// Case-insensitive.
+    ///
+    /// Defaults to `"828mk3 Hybrid MIDI"` — the interface used on
+    /// Orion's primary rig. That's a placeholder default to make
+    /// the out-of-the-box bridge useful without any config; a
+    /// general port-discovery approach will come during release
+    /// hardening. Set this explicitly if your MC-500 is routed
+    /// through a different interface.
+    ///
+    /// If no port matches the substring, midir's connect fails with
+    /// an actionable error pointing at `--list-ports`.
+    #[serde(default = "default_midi_input_port")]
     pub midi_input_port: String,
 
     /// Reserved for future use (e.g., menu bar enable/disable).
@@ -35,12 +42,18 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            midi_input_port: String::new(),
+            midi_input_port: default_midi_input_port(),
             enabled_on_startup: true,
             transport: TransportConfig::default(),
             locate: LocateConfigToml::default(),
         }
     }
+}
+
+fn default_midi_input_port() -> String {
+    // Placeholder; general port discovery deferred to release
+    // hardening. See Config::midi_input_port docs.
+    "828mk3 Hybrid MIDI".to_string()
 }
 
 #[derive(Debug, Deserialize)]
@@ -221,7 +234,7 @@ mod tests {
         // Config::default() via the NotFound branch in Config::load;
         // an empty TOML takes the same path via serde's defaults.
         let cfg: Config = toml::from_str("").unwrap();
-        assert_eq!(cfg.midi_input_port, "");
+        assert_eq!(cfg.midi_input_port, "828mk3 Hybrid MIDI");
         assert!(cfg.enabled_on_startup);
         assert_eq!(cfg.transport.backend, BackendKind::Mcu);
         assert!(cfg.locate.enabled);
