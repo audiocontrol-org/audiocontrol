@@ -261,8 +261,8 @@ visual / log-trace confirmation of the effect.
 | Action      | Byte sequence            | Notes                                  |
 |-------------|--------------------------|----------------------------------------|
 | Continue    | `90 5E 7F` + `90 5E 00`  | Standard MCU PLAY button tap. See below. |
-| Stop        | *(pending 3c test)*      |                                        |
-| Start       | *(composite: rewind + Continue — pending)* |                        |
+| Stop        | `90 5D 7F` + `90 5D 00`  | Standard MCU STOP button tap. See below. |
+| Start       | *(composite: ReturnToZero + Continue — pending)* |              |
 | Return-to-zero | *(pending 3c test)*   |                                        |
 | Bar-forward    | *(pending 3c test)*   |                                        |
 | Bar-backward   | *(pending 3c test)*   |                                        |
@@ -287,6 +287,42 @@ the playhead stopped at bar 9 beat 1. Observed behaviour:
   position CCs with the playback advancing. Harmless quirk; the
   PositionTracker will see the intermediate blank and immediately
   re-sync on the next update.
+
+### Stop — `90 5D 7F; 90 5D 00`
+
+Standard MCU transport STOP (note 0x5D) press + release, 50 ms
+apart. Verified 2026-04-23 via `probe-send-stop.log` against live
+LUNA that had been playing. Observed behaviour:
+
+- Position-update stream ceases within ~230 ms of the press.
+- LUNA echoes the button press (`90 5D 7F`) as LED-on feedback, same
+  pattern as PLAY.
+- **LUNA returns the playhead to the play-start position on stop.**
+  In the test, playback started at bar 9; STOP returned the playhead
+  to bar 9 beat 1 tick 0, not the position where the audio was at
+  the moment STOP fired. Pro Tools / Logic convention. Our
+  PositionTracker sees the "return" position naturally and
+  doesn't need special handling.
+- Audio-tail VU-meter activity (channel-pressure `D0 XX` at ~50 Hz)
+  continues for ~1-2 s after STOP as the audio ramps down. Not
+  relevant to our parser; VU meters aren't on `B0 40-49`.
+
+### Reconnection quirk — position stream pauses during handshake
+
+After the bridge reconnects (on startup, after a LUNA row toggle),
+LUNA does its init-burst handshake — blanks all digits, pushes
+surface state, starts heartbeats — but **does not resume the
+position-display stream until the next transport event**. If the
+DAW was playing, the audio continues but the MCU surface shows the
+display frozen until something prods it (e.g., STOP, PLAY, or a
+scrub on LUNA's side).
+
+Implication for Phase 3e: the `LocateController` must not assume
+the `PositionTracker` has valid state immediately on startup. Block
+on the first real `PositionUpdate` (or emit a "wake" message of
+some kind) before starting the nudge loop; otherwise a locate that
+fires before LUNA has pushed a position will read `bar 0` and
+nudge wildly.
 
 ### How Start composes
 
