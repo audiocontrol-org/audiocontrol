@@ -205,10 +205,52 @@ production locate session that runs for an hour will need it.
       mid-scrub produces a burst of position updates or coalesces
       to one at drag-end (affects whether scrubbing could trigger
       spurious closed-loop activity).
-- [ ] `probe-tschange.log` — playback across a 4/4 → 3/4 boundary.
-      Confirm the bar count keeps the same meaning across TS
-      changes (it should — LUNA reports bar numbers directly, TS
-      is irrelevant to the display).
+- [x] `probe-ts.log` — playback across 4/4 → 3/4 → 4/4. Results
+      below.
+
+## Time-signature transition results (the last structural check)
+
+Capture started mid-session (user cued to bar 65, played four bars
+of 4/4, five bars of 3/4, then four bars of 4/4 back into the 4/4
+section).
+
+| Bar | `d47`/`d48`  | Beats observed | Time signature |
+|-----|--------------|----------------|----------------|
+| 65  | `35`         | 2, 3, 4        | 4/4 (caught mid-bar)|
+| 66  | `36`         | 1, 2, 3, 4     | 4/4            |
+| 67  | `37`         | 1, 2, 3, 4     | 4/4            |
+| 68  | `38`         | 1, 2, 3, 4     | 4/4            |
+| 69  | `39`         | 1, 2, 3        | **3/4**        |
+| 70  | `30`,`48=37` | 1, 2, 3        | 3/4            |
+| 71  | `31`         | 1, 2, 3        | 3/4            |
+| 72  | `32`         | 1, 2, 3        | 3/4            |
+| 73  | `33`         | 1, 2, 3        | 3/4            |
+| 74  | `34`         | 1, 2, 3, 4     | **4/4**        |
+| 75  | `35`         | 1, 2, 3, 4     | 4/4            |
+| 76  | `36`         | 1, 2, 3, 4     | 4/4            |
+| 77  | `37`         | 1, 2, 3, 4     | 4/4            |
+
+**Structural findings:**
+
+1. **LUNA's bar counter is strictly monotonic across TS changes.**
+   65 → 66 → ... → 77 is an unbroken `+1` increment sequence. No
+   reset, no jump, no discontinuity at either boundary.
+2. **The TS change is observable *only* via the `d5` cycle length**
+   — 1→3 in 3/4 bars, 1→4 in 4/4 bars. The bar counter (`d7`/`d8`/`d9`)
+   has no knowledge of the current time signature.
+3. **The bar-wrap at 69 → 70 correctly carried into `d8`**: the
+   message batch at t=26.16 s sent `d47=30` *and* `d48=37`
+   simultaneously (i.e., `bar 69 (d48=6, d47=9)` → `bar 70 (d48=7, d47=0)`).
+   Our parser can process these per-digit updates in order — by the
+   time the batch's last CC is consumed, the composed bar value is
+   correct.
+
+**Closed-loop design implication (confirmed):** `mcu.rs` needs no
+TS-aware logic at all. The `PositionTracker` just reads digits 7-9
+as a 3-digit decimal bar number; the `LocateController` doesn't
+care whether intermediate bars were 4/4, 3/4, 7/8, or anything
+else. The closed-loop algorithm is correct across arbitrary mixed
+time signatures.
 
 ## Bar-step results (decisive for closed-loop locate)
 
