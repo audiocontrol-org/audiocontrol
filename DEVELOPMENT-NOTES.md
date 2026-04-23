@@ -11,6 +11,55 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-23: Promote The Frontier From `CONS` To `ASOK`
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Sync the parity branch to the first real emulator milestone after the long-running
+`CONS` seam: ordinary registration now works on the persistent plug object, so the next
+frontier is activation and then real send-path behavior.
+
+### Accomplished
+- Re-polled `#315` and reviewed Claude’s new end-to-end `CONS` trace on the real
+  persistent object
+- Recorded the milestone explicitly:
+  - `INIT` callback installation into `this+4` is now proven
+  - outer rebased vtable `+0x10` does default into embedded rebased `0x02fc`
+  - embedded `0x02fc -> 0x089a` is observed matching literal `CONS` at `(cmd)+0`
+  - `CONS -> 0x090c -> vtable +0x30 -> ConnectToSocket` now really increments
+    `this+0x38` and copies the 46-byte `SocketInfo` into `this+0x3c`
+- Updated the feature README and workplan so they no longer describe `CONS` or the
+  `0x02fc` handoff as the active blocker
+- Shifted the recommended next move to:
+  - `ASOK` on the same persistent object
+  - then `SEND`
+
+### Didn't Work
+- The local feature docs were still lagging behind the issue thread and were treating
+  the `CONS` / `0x02fc` seam as if it were still the live blocker
+
+### Course Corrections
+- **[DOCUMENTATION]** Once a command path is proven end-to-end in emulation, stop
+  writing about it as if it is still an open blocker.
+- **[PROCESS]** The next bounded step is now activation-state measurement at
+  `ASOK -> 0x0924 -> vtable +0x34 -> ActivateSocket`, not another registration or
+  handoff-format loop.
+
+### Quantitative
+- Feature docs updated: 3
+  `README.md`, `workplan.md`, `DEVELOPMENT-NOTES.md`
+- New issue comment already posted before this sync: 1
+  `#4306400879`
+
+### Insights
+1. `CONS` is now behind us as a blocker; it is a measured working part of the emulated
+   lifecycle.
+2. The emulator work has earned a real forward move: activation, then send.
+3. The next failure will be more valuable than the previous ones, because it will occur
+   after real registration state exists on the persistent object.
+
 ## 2026-04-23: Close The `0x02fc` Stack-Contract Ambiguity
 
 ### Feature: mesa-ii-codex-parity

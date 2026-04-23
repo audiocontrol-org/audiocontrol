@@ -194,42 +194,32 @@ Phase 3 is still active, but the frontier has changed materially again:
 - the `A055 StripAddress` bug and the old manual-relocation overlap question are now
   behind us; the plug’s own self-relocation carries the chained
   `ctor -> INIT -> CONS -> ASOK -> SEND` lifecycle without manual relocation
-- the first trustworthy downstream error is now the plug-local no-selection path:
-  `D0 = 0xc950` with `this+0x38 == 0` and `this+0x0d6e == 0`
-- static rebasing still shows that ordinary `CONS -> ConnectToSocket` should itself:
-  - check `this+0x38 < 50`
-  - increment `this+0x38`
-  - compute `index * 46`
-  - copy the incoming 46-byte `SocketInfo` into the table rooted at `this+0x3c`
-- the strongest immediate missing contract is now the non-`INIT` resource-file switch
-  around `DoMESACommand`:
-  - `__ct__11CMESAPlugInFv` seeds `this+0x0938` from `A994`
-  - non-`INIT` `main` does `A994`, pushes `this+0x0938`, calls `$A998`, dispatches
-    through vtable `+0x10`, then restores the old file through a second `$A998`
-- if `$A998` semantics still leave `CONS` inert, the next bounded discriminator is not
-  broad transport or calling-convention guessing; it is the actual `CONS` payload:
-  `MESACommand+6` should point at the same editor-canonical 46-byte `SocketInfo`
-  record that `CMESASocket::ConnectToPlug` builds at socket `this+24`
+- the `INIT` callback-setter gate and the `CONS` registration seam are now both behind
+  us:
+  - `INIT` installs callback `0x1e5a` into `this+4` on the persistent object
+  - outer rebased vtable `+0x10` defaults into embedded rebased `0x02fc`
+  - embedded `0x02fc -> 0x089a` now visibly matches literal `CONS` at `(cmd)+0`
+  - `CONS -> 0x090c -> vtable +0x30 -> ConnectToSocket` now really increments
+    `this+0x38` and copies the 46-byte `SocketInfo` into `this+0x3c`
+- the next trustworthy frontier is now the activation step on that same object:
+  `ASOK -> 0x0924 -> vtable +0x34 -> ActivateSocket`
 
 The current cross-check therefore narrows to one bounded emulator seam:
 
-- can ordinary non-`INIT` dispatch run in the correct resource-file context and let
-  `CONS` mutate the live socket table on the persistent plug object
-- if not, is the next blocker the actual `CONS` command/payload shape at
-  `MESACommand+6`
-- and only after `CONS` / `ASOK` state mutation is real, what the next true
-  transport-facing blocker is below the plug’s local no-selection guard
+- what exact state changes does ordinary `ASOK` establish on the persistent plug
+  object after the now-proven `CONS` path
+- and only after `ASOK` is real, what the next true transport-facing blocker is below
+  `SEND`
 
 Current recommended work split:
 
 - Claude:
-  implement `$A998` as Resource Manager current-file switch/restore semantics, rerun
-  only through `CONS` on the persistent object, and if `CONS` still stays inert log the
-  live `MESACommand+6` pointer and the 46 bytes it addresses
+  run `ASOK` next on the same persistent object, log the first slot plus the outer
+  selection/activation cluster (`0x0d6e / 0x0d70 / 0x0d72`), and only after that move
+  to `SEND`
 - Codex:
-  keep the corrected non-`INIT` object/resource model in sync and compare any inert
-  `CONS` payload against the editor-canonical `ConnectToPlug` `CONS` payload rooted at
-  socket `this+24`
+  keep the corrected outer/embedded dispatch model in sync and be ready to interpret
+  the first `ASOK` mutation trace or the first real `SEND` blocker immediately
 
 Current reminder:
 
@@ -263,13 +253,10 @@ Current reminder:
   older wrapper-only or bridge-acceptance language.
 - Treat the current state as an emulator-contract problem, not a product decision:
   - `MEASURED`: corrected PLUG-relative load model; plug self-relocation carries the
-    real chained `ctor -> INIT -> CONS -> ASOK -> SEND` lifecycle; `CONS` is still
-    supposed to populate `this+0x38` and copy a 46-byte `SocketInfo` into `this+0x3c`;
-    ctor seeds `this+0x0938` from `CurResFile`, and non-`INIT` dispatch brackets
-    `DoMESACommand` with save/switch/restore calls through `$A998`
-  - `OPEN`: whether Musashi can now rely on the plug’s own self-relocation alone, what
-    exact target class remains if it cannot, and what the first post-relocation blocker
-    is on a clean rerun
+    real chained `ctor -> INIT -> CONS -> ASOK -> SEND` lifecycle; `INIT` callback
+    installation is real; `CONS` registration on the persistent object is real
+  - `OPEN`: what `ASOK` changes on that same object, and after that what the first
+    trustworthy `SEND` / transport blocker is
 - Use new static work only if it helps Musashi get farther.
 - Reopen older callback/constructor/install surfaces only if new runtime evidence points
   back to them directly.

@@ -138,20 +138,20 @@ The active state is now:
 - `MEASURED`:
   corrected PLUG-relative load model; harness `A055 StripAddress` bug fixed; plug
   self-relocation now carries the real chained `ctor -> INIT -> CONS -> ASOK -> SEND`
-  lifecycle without manual relocation; `CONS` is still supposed to populate
-  `this+0x38` and copy a 46-byte `SocketInfo` into `this+0x3c`; ctor seeds
-  `this+0x0938` from `CurResFile`, and non-`INIT` dispatch brackets `DoMESACommand`
-  with save/switch/restore calls through `$A998`
+  lifecycle without manual relocation; rebased `INIT` vtable `+0x0c` at `0x0856`
+  installs the callback into `this+4`; outer rebased vtable `+0x10` now demonstrably
+  defaults into embedded rebased `0x02fc`; and `CONS` is now proven end-to-end on the
+  real persistent object:
+  `this+0x38` increments to `1` and the 46-byte `SocketInfo` is copied into
+  `this+0x3c`
 - `OPEN`:
-  whether implementing `$A998` as Resource Manager current-file switch/restore is enough
-  to make ordinary `CONS -> ConnectToSocket` mutate the live socket table, or whether the
-  next blocker is command/payload shape on the `MESACommand+6 -> 46-byte SocketInfo`
-  path
+  what ordinary `ASOK -> ActivateSocket` changes on that same persistent object, and
+  after that what the first real `SEND` / transport blocker is
 - `NEXT`:
-  implement `$A998` semantics, rerun only through `CONS` on the persistent object, and
-  log `this`, `this+0x38`, and the first 46 bytes at `this+0x3c`; if `CONS` still stays
-  inert, compare the live `MESACommand+6` payload against the editor-canonical
-  `ConnectToPlug` `CONS` payload rooted at socket `this+24`
+  run `ASOK` next on the same persistent object and log:
+  `a4@(0x262)`, `this+0x38`, the first 46-byte slot at `this+0x3c`, the outer
+  selection/activation cluster around `0x0d6e / 0x0d70 / 0x0d72`, and return `D0`;
+  only after `ASOK` is measured should the harness move forward to `SEND`
 
 ## Artifact Reminder
 
@@ -186,15 +186,16 @@ Current extracted MESA I binaries:
 - `mesa1-file-manager.modu`
 
 The earlier `+0xa20` / callback-path work remains useful historical context, but it is
-no longer the live frontier. The active frontier is now earlier and more structural:
+no longer the live frontier. The active frontier is now later and more concrete:
 
 - the direct app-side literal patch path remains negative
 - the harness now reaches the real chained plug lifecycle under corrected PLUG-relative
   load semantics
 - the `A055` fix removed a root-cause harness bug in that path
-- the remaining unknown is now the non-`INIT` resource-file/context contract around
-  `$A998`, plus whether the harness is feeding `CONS` the same 46-byte `SocketInfo`
-  payload that the real editor builds at socket `this+24`
+- `INIT` callback installation and `CONS` registration are now both proven on the real
+  persistent object in emulation
+- the remaining unknown is now the ordinary `ASOK` activation transition on that same
+  object, and after that the first trustworthy `SEND` / transport blocker
 
 That should be the starting point for the next session, not the older callback-install
-or wrapper-only story.
+or `CONS`-registration story.
