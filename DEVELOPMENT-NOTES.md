@@ -4328,6 +4328,50 @@ older template-offset assumptions creep back in.
 2. The right fallback is the later measured phase split, not the older exact offset arithmetic that originally pointed us toward it.
 3. A good parity track keeps correcting its own internal confidence levels, not just Claude’s.
 
+## 2026-04-23: `SEND` Gate Narrows To Per-Socket `0x0d72` Selection Word
+
+### Feature: mesa-ii-codex-parity
+### Worktree: mesa-ii-codex-parity
+
+### Goal
+Record the first trustworthy post-`ASOK` `SEND` blocker so both branches stop treating
+ordinary activation as the live seam and focus on the next real send-path gate.
+
+### Accomplished
+- Reviewed Claude's new `SEND` trace at rebased `0x0df2` / runtime `0x10854`
+- Confirmed that `0xc950` is now sourced cleanly inside the ordinary `SEND` command
+  handler, not from a lower transport trap or another registration/activation failure
+- Synced the branch docs to reflect the new gate:
+  - `SEND` clears `this+0x0d6e`
+  - loops registered entries up to `this+0x38`
+  - matches on `slot+0x26 == SocketInfo+0x0c`
+  - copies `this+(0x0d72 + 4*n) -> this+0x0d6e`
+  - emits `0xc950` if the resulting active word stays zero
+- Told Claude the strongest current explanation is chooser/selection-state publication
+  into `0x0d72 + 4*n`, with one bounded non-zero `0x0d72` seed as the next clean
+  discriminator
+
+### Didn't Work
+- Updating `#315` body from the old `ASOK`-centric state to the new `SEND` / `0x0d72`
+  seam hit transient GitHub API failures in this session, even though the direct issue
+  comment succeeded
+
+### Course Corrections
+- **[EVIDENCE]** `INIT`, `CONS`, and `ASOK` are no longer the live blockers. The next
+  real gate is the per-socket selection-word family rooted at `0x0d72`.
+- **[TACTICS]** The next bounded harness probe should no longer ask “does ASOK work?”
+  It should ask whether a non-zero slot-0 `0x0d72` word clears the local `0xc950` gate
+  and moves `SEND` deeper.
+
+### Quantitative
+- Feature docs updated: 2
+  `README.md`, `workplan.md`
+
+### Insights
+1. The ordinary embedded socket lifecycle is now proven through `ASOK`; the next seam is later send/selection state, not another registration/activation debate.
+2. `SEND` is consuming `0x0d72 + 4*n` as a per-socket published selection candidate, not deriving it from the `CONS` / `ASOK` slot contents directly.
+3. One bounded non-zero seed of slot-0 `0x0d72` is now a better discriminator than broad static hunting through neighboring ordinary command tags.
+
 ## 2026-04-23: `ASOK` Still Looks Like Narrow Slot Mutation, Not A New Structural Failure
 
 ### Feature: mesa-ii-codex-parity

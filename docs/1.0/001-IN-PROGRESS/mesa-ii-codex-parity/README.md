@@ -143,15 +143,18 @@ The active state is now:
   defaults into embedded rebased `0x02fc`; and `CONS` is now proven end-to-end on the
   real persistent object:
   `this+0x38` increments to `1` and the 46-byte `SocketInfo` is copied into
-  `this+0x3c`
+  `this+0x3c`; `ASOK` is also proven on that same object:
+  it matches `SocketInfo+0x26 == slot+0x26`, copies `SocketInfo+0x24 -> slot+0x24`,
+  copies `SocketInfo+0x2a -> slot+0x2a`, and the earlier “no visible mutation” result
+  was a zero-to-zero copy artifact
 - `OPEN`:
-  what ordinary `ASOK -> ActivateSocket` changes on that same persistent object, and
-  after that what the first real `SEND` / transport blocker is
+  what first real `SEND` / transport blocker appears after the now-proven
+  `INIT -> CONS -> ASOK` lifecycle on the persistent object; current strongest
+  measured gate is the per-socket selection-word family rooted at `this+0x0d72`
 - `NEXT`:
-  run `ASOK` next on the same persistent object and log:
-  `a4@(0x262)`, `this+0x38`, the first 46-byte slot at `this+0x3c`, the outer
-  selection/activation cluster around `0x0d6e / 0x0d70 / 0x0d72`, and return `D0`;
-  only after `ASOK` is measured should the harness move forward to `SEND`
+  drive `SEND` next on the same persistent object and stop at the first new blocker;
+  strongest next bounded discriminator is to seed slot-0 `this+0x0d72` with a
+  non-zero test word before `SEND` and see whether the local `0xc950` gate clears
 
 ## Artifact Reminder
 

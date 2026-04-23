@@ -201,25 +201,30 @@ Phase 3 is still active, but the frontier has changed materially again:
   - embedded `0x02fc -> 0x089a` now visibly matches literal `CONS` at `(cmd)+0`
   - `CONS -> 0x090c -> vtable +0x30 -> ConnectToSocket` now really increments
     `this+0x38` and copies the 46-byte `SocketInfo` into `this+0x3c`
-- the next trustworthy frontier is now the activation step on that same object:
-  `ASOK -> 0x0924 -> vtable +0x34 -> ActivateSocket`
+  - `ASOK -> 0x0924 -> vtable +0x34 -> ActivateSocket` is now also proven on that
+    same object: it matches `SocketInfo+0x26 == slot+0x26`, copies
+    `SocketInfo+0x24 -> slot+0x24`, copies `SocketInfo+0x2a -> slot+0x2a`, and the
+    earlier “no visible mutation” result was just a zero-to-zero copy artifact
+- the next trustworthy frontier is now the first real `SEND` gate on that same object:
+  `vtable +0x14` consumes the per-socket word family rooted at `this+0x0d72`, copies
+  `this+(0x0d72 + 4*n) -> this+0x0d6e`, and emits `0xc950` when that active word stays
+  zero
 
 The current cross-check therefore narrows to one bounded emulator seam:
 
-- what exact state changes does ordinary `ASOK` establish on the persistent plug
-  object after the now-proven `CONS` path
-- and only after `ASOK` is real, what the next true transport-facing blocker is below
-  `SEND`
+- what production step publishes the per-socket send-selection word into
+  `this+0x0d72 + 4*n`
+- and whether a bounded non-zero seed of slot-0 `this+0x0d72` clears the local
+  `0xc950` gate and moves `SEND` deeper into real transport behavior
 
 Current recommended work split:
 
 - Claude:
-  run `ASOK` next on the same persistent object, log the first slot plus the outer
-  selection/activation cluster (`0x0d6e / 0x0d70 / 0x0d72`), and only after that move
-  to `SEND`
+  drive `SEND` next on the same persistent object and use one bounded non-zero seed of
+  slot-0 `this+0x0d72` as the discriminator for the now-measured `0xc950` gate
 - Codex:
-  keep the corrected outer/embedded dispatch model in sync and be ready to interpret
-  the first `ASOK` mutation trace or the first real `SEND` blocker immediately
+  keep the corrected send-gate model in sync and be ready to interpret whether the next
+  blocker is selection-state publication or the first real transport-facing seam
 
 Current reminder:
 
