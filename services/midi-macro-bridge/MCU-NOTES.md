@@ -58,30 +58,88 @@ bars, not timecode.
 Format: `B0 3c vv` where `c` is the strip index (0-7). Encodes the
 V-Pot LED ring state (dot, bar, boost/cut). Not relevant for locate.
 
-### 3. Timecode display: CC `B0 40`-`B0 49` **(parser target)**
+### 3. Timecode display: CC `B0 40`-`B0 49` **(parser target — decoded)**
 
-Format: `B0 4d vv` where `d` is the digit position (0-9, most-sig to
-least-sig) and `vv` is a 7-bit ASCII character.
+Format: `B0 4d vv` where `d` is the digit position and `vv` is a 7-bit
+ASCII character (`0x20` = blank, `0x30`-`0x39` = digits '0'-'9').
 
-Observed idle values: `0x20` (space/blank) on most digits, with a
-later burst setting digits `0, 1, 2, 5, 7` to `0x30` ('0'). This
-looks like the display being initialized to a "0 0 0 0" layout
-consistent with a BBT readout of `0.0.0.0` or `000.0.00.00` in
-some layout.
+**Digit numbering:** the MCU display has 10 digits arranged left-to-
+right on the physical surface. `B0 40` is the **rightmost** digit,
+`B0 49` is the **leftmost**. So CC indices run right-to-left across
+the display.
 
-**What we still need from the playback capture:**
+**Decoded layout for LUNA in BEATS/BBT mode (from `probe-playback.log`):**
 
-- The full 10-digit display layout while playing. Likely formats:
-  - BBT: `BAR.BEAT.SUB.TICK` e.g. `001.01.000` (10 chars including
-    separators encoded as periods or spaces between digits)
-  - SMPTE: `HH:MM:SS:FF`
-- Which digit positions carry bars, and how many leading digits bars
-  can occupy (e.g., is it 3-digit bars like `001`–`999`, or more?)
-- Whether the decimal separators are separate characters or baked
-  into the digit encoding (some MCU firmware encodes `.` as the
-  high bit of the preceding digit byte; unclear if LUNA does this)
-- Update rate during playback (per beat? per tick?) — relevant to
-  the closed-loop per-iteration timeout
+```
+CC:         49 48 47   46 45    44 43 42 41 40
+Digit:      d9 d8 d7   d6 d5    d4 d3 d2 d1 d0
+Field:      [   BAR  ] [ BEAT ] [     TICK    ]
+Width:       3 digits   2 digits  5 digits
+Blank when:   bar<100    beat<10   (unused hi digits blank)
+             bar<10
+```
+
+Only `d7`, `d5`, and `d0`-`d2` update during 4/4 playback through the
+first 9 bars. `d3`, `d4`, `d6`, `d8`, `d9` only appear in the initial
+blank-out; they would activate when bar≥10 or the TS pushes beat≥10.
+
+**Verification from the 18.6-second playback capture:**
+
+- `d7` increments monotonically every ~2.19 s: `1 → 2 → 3 → ... → 9`,
+  then wraps back to `1` when the user stopped and LUNA rewound.
+  At ~2.19 s per bar, that's ≈ 109 BPM (4/4) — the song's tempo.
+- `d5` cycles `1 → 2 → 3 → 4` every ~555 ms, repeating 4 cycles per
+  `d7` increment. That's the beat within the bar (4/4).
+- `d2` cycles `0 → 1 → ... → 9` every ~555 ms (one cycle per beat).
+- `d1` and `d0` cycle faster; together with `d2` they carry the tick
+  within the beat.
+
+**LUNA's update rate is ~16 position-display updates per second**
+(a new position snapshot every ~62 ms). This sets the floor on the
+closed-loop per-iteration timeout: a `]` keystroke should produce a
+visible digit change within ~60–100 ms. A 500 ms per-iteration
+timeout gives comfortable headroom for OS keystroke latency and any
+LUNA processing delay.
+
+**Tick precision:** we see `d0`-`d2` as three decimal digits (0-999)
+but the rate is slower than a clean 480-PPQN tick counter would
+produce. Probably LUNA is emitting tens/hundreds of some finer
+subdivision. For closed-loop locate we only need bar-level accuracy,
+so the tick digits are useful for debugging but not required by the
+LocateController.
+
+**Separator encoding:** no decimal-separator characters observed.
+LUNA just leaves `d3`, `d4`, `d6` blank (`0x20`), relying on the
+physical display's static period/colon LEDs between fields. The
+parser treats these positions as "ignore".
+
+**Important parsing rule:** when LUNA rewinds to bar 1 beat 1, the
+tick digits (`d0`-`d2`) go **back to blank** (`0x20`), not to `0`.
+The parser must treat blank as equivalent to 0 for numeric value,
+but must not confuse blank with "stale / unset". Safe rule: on
+receiving a blank (`0x20`) for a digit, treat it as `0` in the
+decoded position, but retain the blank/set distinction if needed
+for display purposes.
+
+**The parser only cares about `d7`, `d8`, `d9` for bar number.** In
+4/4 with fewer than 100 bars, that's just `d7` (ones) and `d8`
+(tens); `d9` appears at bar ≥ 100.
+
+Pseudocode:
+
+```
+bar_value = digit_to_u32(d9) * 100 + digit_to_u32(d8) * 10 + digit_to_u32(d7)
+
+fn digit_to_u32(c: u8) -> u32 {
+    if c == 0x20 { 0 }           // blank = 0
+    else if c >= 0x30 && c <= 0x39 { (c - 0x30) as u32 }
+    else { /* unexpected; log and ignore */ 0 }
+}
+```
+
+A "PositionUpdate" event should be emitted whenever any of `d7`,
+`d8`, `d9` changes and the resulting 3-digit bar value is different
+from the last emitted bar.
 
 ### 4. VU meters: Channel Pressure `D0 xy`
 
@@ -138,28 +196,51 @@ production locate session that runs for an hour will need it.
 
 ## Pending captures
 
-- [ ] `probe-playback.log` — stream during Space-play, 8 bars, Space-stop
-- [ ] `probe-barstep.log` — `]` 5× then `[` 5× from stopped
-- [ ] `probe-scrub.log` — mouse-drag the playhead
-- [ ] `probe-tschange.log` — playback across a 4/4 → 3/4 boundary (needs
-      a session with an authored TS change)
+- [x] `probe-idle.log` — surface init + 5 s heartbeat — decoded
+- [x] `probe-playback.log` — 18.6 s of 4/4 playback at ~109 BPM —
+      decoded the `B0 40-49` BBT layout (see section 3 above)
+- [ ] `probe-barstep.log` — `]` 5× then `[` 5× from stopped. Confirm
+      a single keystroke causes exactly one bar step, and measure
+      the keystroke-to-position-update latency.
+- [ ] `probe-scrub.log` — mouse-drag the playhead. Check whether
+      mid-scrub produces a burst of position updates or coalesces
+      to one at drag-end (affects whether scrubbing could trigger
+      spurious closed-loop activity).
+- [ ] `probe-tschange.log` — playback across a 4/4 → 3/4 boundary.
+      Confirm the bar count keeps the same meaning across TS
+      changes (it should — LUNA reports bar numbers directly, TS
+      is irrelevant to the display).
 
-Each capture should be fresh (Ctrl-C the probe between runs so the
-timestamps restart, making it easier to correlate events to actions).
+## Answered questions
 
-## Open questions for the parser
+1. **BBT vs SMPTE on the MCU surface:** LUNA sent BEATS-mode output
+   (note `0x2A` BEATS LED lit, and the observed digit cycling rates
+   match 4/4 at ~109 BPM). Whether LUNA's main transport display
+   affects the MCU output needs confirmation, but for Phase 3 we'll
+   assume BEATS mode. A runtime-detectable "this isn't BBT" error
+   (e.g., if the bar digit cycles too fast to be bars) would be a
+   good defensive check in `mcu.rs`.
+2. **Partial updates vs full refreshes:** LUNA sends **only the
+   digits that changed**. The parser must maintain display state
+   across messages and apply deltas. Initial state: all 10 digits
+   start blank (`0x20`) after the activation burst.
+3. **Separators:** LUNA does not encode separators as characters;
+   `d3`, `d4`, `d6` are left blank, and the MCU's physical display
+   has fixed separator LEDs between BAR-BEAT and BEAT-TICK.
+4. **Stream during playback:** LUNA pushes ~16 position updates per
+   second while playing; when stopped, the position display holds
+   its last value and LUNA only re-emits it on transport events.
 
-1. Does LUNA always emit BBT on `B0 40-49`, or does it depend on
-   LUNA's own display-mode toggle (the BBT vs SMPTE switch near the
-   transport bar)? If the user has LUNA set to timecode display,
-   does LUNA still send BBT on the MCU surface, or does it mirror?
-2. Are all 10 digits updated every tick, or only the digits that
-   changed? (Partial updates are common on MCU; the parser will
-   need to maintain display state and apply deltas.)
-3. What character does LUNA emit for the BBT separator — ASCII `.`
-   (0x2E), or are separators encoded by setting the high bit of the
-   preceding digit byte (some MCU firmwares do this)?
-4. Does the position-display stream pause when LUNA is stopped, or
-   does it keep emitting at some reduced rate?
+## Still-open questions
 
-Answer these from the playback and bar-step captures.
+- Does the bar-step keystroke (`]`) while LUNA is **stopped** produce
+  a single position update, or a burst? (Affects parser's
+  `PositionUpdate` debouncing.)
+- What does LUNA do when scrubbing? (Continuous updates could flood
+  the parser mid-scrub — but closed-loop locate is only active in
+  the Locating state, so scrub outside a locate should be harmless
+  unless it somehow triggers a spurious SPP.)
+- Does LUNA emit a position update at the exact moment the user
+  presses the transport Stop key, reflecting the stopped bar? (Yes,
+  based on line 3019: after Stop, `d7=1` and `d5=1` confirm the
+  rewind.)
