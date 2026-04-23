@@ -8,11 +8,13 @@
 
 There is no way to control LUNA's transport from the MC-500mkII sequencer. LUNA does not support MMC, and MCU lacks locate-to-position. The validated approach is translating MIDI transport bytes into keyboard events. A working Rust implementation exists in a standalone zip but needs to be integrated into the audiocontrol monorepo as a service.
 
+Beyond basic transport, the user needs LUNA's playhead to follow the MC-500's locate operations bar-for-bar. Audio tape sync is *not* a forgiveness mechanism here: the MC-500 chases sync to lock its own tempo and nearest-bar reference, but it preserves whatever bar-offset exists at the moment sync is established — if the MC-500 thinks it's on bar 17 while the DAW is on bar 25, the MC-500 holds that 8-bar gap indefinitely. An open-loop locate that misses the target bar by any amount therefore desyncs the two machines *permanently* for the duration of the session. Bar-exact is the requirement, not a nice-to-have.
+
 ## User Stories
 
 - As a studio user, I want to hit Play/Stop/Continue on the MC-500 and have LUNA follow, so I can use the hardware sequencer as my transport controller.
 - As a developer, I want the bridge integrated into the monorepo build system, so it is built and tested alongside other services.
-- As a studio user, I want locating on the MC-500 (LOCATE button, numeric entry, or locate-memory recall) to move LUNA's playhead to the same bar, so I can use the MC-500 as a positioning controller. Bar-accurate is sufficient — audio tape sync covers the rest.
+- As a studio user, I want locating on the MC-500 (LOCATE button, numeric entry, or locate-memory recall) to move LUNA's playhead to the *exact* same bar, so audio tape sync locks the two machines together without a persistent offset. Closed-loop verification against LUNA's MCU position output is what makes this reliable; open-loop keystroke counting is not trustworthy enough given that any mistake is permanent.
 
 ## Success Criteria
 
@@ -23,7 +25,7 @@ There is no way to control LUNA's transport from the MC-500mkII sequencer. LUNA 
 - `--self-test` emits keystrokes to LUNA when focused
 - Root Makefile has a `build-midi-macro-bridge` target
 - Hardware-validated: MC-500 Play/Stop/Continue controls LUNA transport
-- Hardware-validated: MC-500 LOCATE drives LUNA to the matching bar, regardless of time signature, via closed-loop nudging against LUNA's MCU position output
+- Hardware-validated: MC-500 LOCATE drives LUNA to the matching bar *exactly* (no 1-bar-off errors), regardless of time signature, via closed-loop nudging against LUNA's MCU position output
 
 ## In Scope
 
@@ -40,7 +42,7 @@ There is no way to control LUNA's transport from the MC-500mkII sequencer. LUNA 
 
 ### Phases 3–4 (this extension) — closed-loop locate
 
-- SPP-driven locate: parse Song Position Pointer (`0xF2 ll hh`) as the *target* (bar destination requested by the MC-500); drive LUNA's playhead to that target by iteratively emitting `[` / `]` keystrokes and reading LUNA's MCU position output to verify each nudge landed where expected.
+- SPP-driven locate: parse Song Position Pointer (`0xF2 ll hh`) as the *target* (bar destination requested by the MC-500); drive LUNA's playhead to that target by iteratively emitting `[` / `]` keystrokes and reading LUNA's MCU position output to verify each nudge landed where expected. Closed-loop is required, not optimising — a bar-off locate would leave the MC-500 running with a persistent bar-offset against LUNA for the rest of the session.
 - Parse LUNA's MCU position output (bars/beats/subdivisions) and maintain a tracked-playhead model used for both closed-loop verification and deciding nudge direction.
 - Extend `KeyAction` with `BarForward` / `BarBackward` (bracket keys; numpad 1/2 opt-in via config).
 - Extend state machine with a `Locating` state and atomic-locate semantics: SPP events coalesced while locating, Stop cancels the in-flight locate, Start arriving during locate is queued as Continue so the played-from-zero rewind doesn't undo the locate.
@@ -85,19 +87,20 @@ This service will evolve into a general-purpose MIDI-to-macro translator with:
 - Configurable MIDI CC/note to keystroke/macro mappings
 - Possibly a menu bar app wrapper
 
-## Appendix: Open-Loop Locate Fallback (deferred unless needed)
+## Appendix: Open-Loop Locate Fallback (fragile, documented for completeness only)
 
-If closed-loop locate (Phase 3-4 primary approach) turns out to be unworkable in practice — for example, LUNA's MCU position output doesn't report position reliably enough, or the round-trip latency between keystroke and position update is too high to run an iterative loop — the following open-loop strategy is the fallback:
+If closed-loop locate (Phase 3-4 primary approach) turns out to be unworkable in practice — for example, LUNA's MCU position output doesn't report position reliably enough, or the round-trip latency between keystroke and position update is too high to run an iterative loop — an open-loop strategy exists but is **not a drop-in substitute**:
 
 - Parse SPP, compute target bar from a configured time signature
 - Always rewind to bar 0 (Return), then emit *N* `BarForward` keystrokes to advance
 - User-configured time signature in the `[locate]` TOML section; documented LUNA nudge-value precondition (nudge must equal one bar)
 - Atomic-locate state machine stays the same (`Locating` state, coalesce SPP while locating, Stop cancels, Start-during-locate becomes Continue)
 
-Downsides that motivate trying closed-loop first:
+Why this is a last resort, not a graceful fallback — the MC-500's sync behaviour doesn't forgive landing-error:
 
-- Locate to bar 200 emits 200 keystrokes (4 s at 20 ms per stroke)
-- Time signature changes mid-song are not handled — first-TS assumption drifts
-- LUNA nudge-value setting must match the bridge's expectations or locates land on the wrong bar
+- **Any bar-off locate is permanent.** Tape sync preserves whatever offset exists at sync-lock time; it does not chase LUNA's absolute position. A single keystroke miscount puts MC-500 and LUNA out of sync for the rest of the session.
+- **The bridge cannot verify correctness.** Without an MCU position feed there is no way to detect that a locate landed wrong — the error only surfaces when the user notices audio isn't on the expected downbeat.
+- **Three silent failure modes stack.** LUNA's nudge-value setting not matching 1 bar, time-signature mismatches mid-song, or LUNA dropping a keystroke under load all produce bar-off locates with no in-band signal.
+- **Large locates are slow regardless.** Locate to bar 200 emits 200 keystrokes (~4 s at 20 ms per stroke) even when nothing goes wrong.
 
-Revisit only if Phase 4 hardware validation shows closed-loop cannot be made reliable.
+If Phase 4 shows closed-loop cannot be made reliable, the right response is to re-evaluate the problem rather than ship open-loop — perhaps by finding another LUNA output path that reports position, by constraining the user to session layouts where MC-500 and LUNA both reset to bar 1 on every locate, or by marking the feature unsupported until LUNA exposes a machine-readable position feed. Open-loop without closed-loop verification is not safe enough to ship as the primary path for this user's workflow.
