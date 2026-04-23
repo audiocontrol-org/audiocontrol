@@ -87,10 +87,11 @@ pub enum BackendKind {
 /// form the `LocateController` uses.
 #[derive(Debug, Deserialize)]
 pub struct LocateConfigToml {
-    /// Enable closed-loop locate. Off by default — flip on once the
-    /// user has verified their MCU surface is wired up and LUNA's
-    /// jog resolution is 1 bar.
-    #[serde(default)]
+    /// Enable closed-loop locate. On by default — if LUNA hasn't been
+    /// set up as an MCU control surface the controller times out
+    /// cleanly with an actionable error, so there's no real downside
+    /// to leaving this enabled.
+    #[serde(default = "default_locate_enabled")]
     pub enabled: bool,
 
     /// Hard cap on bar-nudge iterations. At 1 bar per iteration this
@@ -113,7 +114,7 @@ pub struct LocateConfigToml {
 impl Default for LocateConfigToml {
     fn default() -> Self {
         Self {
-            enabled: false,
+            enabled: default_locate_enabled(),
             max_iterations: default_max_iterations(),
             position_timeout_ms: default_position_timeout_ms(),
             initial_position_timeout_ms: default_initial_position_timeout_ms(),
@@ -134,6 +135,9 @@ impl LocateConfigToml {
     }
 }
 
+fn default_locate_enabled() -> bool {
+    true
+}
 fn default_max_iterations() -> u32 {
     128
 }
@@ -256,15 +260,27 @@ mod tests {
     }
 
     #[test]
-    fn locate_defaults_to_disabled() {
+    fn locate_defaults_to_enabled() {
         let toml_text = r#"
             midi_input_port = "MC-500"
         "#;
         let cfg: Config = toml::from_str(toml_text).unwrap();
-        assert!(!cfg.locate.enabled);
+        assert!(cfg.locate.enabled);
         assert_eq!(cfg.locate.max_iterations, 128);
         assert_eq!(cfg.locate.position_timeout_ms, 500);
         assert_eq!(cfg.locate.initial_position_timeout_ms, 3000);
+    }
+
+    #[test]
+    fn locate_can_be_explicitly_disabled() {
+        let toml_text = r#"
+            midi_input_port = "MC-500"
+
+            [locate]
+            enabled = false
+        "#;
+        let cfg: Config = toml::from_str(toml_text).unwrap();
+        assert!(!cfg.locate.enabled);
     }
 
     #[test]

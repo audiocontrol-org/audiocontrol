@@ -48,8 +48,12 @@ require_frontmost_app = "LUNA"
 # Requires the MCU backend (keystrokes backend has no position
 # feedback). Requires LUNA's jog/scrub resolution = 1 bar.
 #
-# Default: disabled. Flip to true once you've verified your rig.
-enabled = false
+# Enabled by default. If LUNA hasn't been configured as an MCU
+# control surface, SPP events will time out cleanly with an
+# actionable log message rather than misbehaving, so the default
+# is safe. Set to false if you explicitly want the bridge to
+# ignore SPP events entirely.
+enabled = true
 
 # Hard cap on bar-nudge iterations. At 1 bar per iteration this is
 # also the maximum locate distance in bars. Raise if your songs are
