@@ -3648,3 +3648,18 @@ correct. Every finding should distinguish direct evidence from inference.
   trust the measured `PLST` / `CONS` phase split and the `this+24` pointer placement,
   not the older exact template-offset labeling, when comparing live `MESACommand+6`
   bytes against the editor-canonical `CONS` payload.
+
+- The editor-side `ConnectToPlug` stack layout now makes the 10-byte command-block shape concrete: offset `+6` is the embedded pointer field
+  One more raw-byte pass through `CMESASocket::ConnectToPlug` upgrades the current
+  payload fallback from “pointer-shaped” to an actual field layout. At file `0x059e91`,
+  the editor copies 10 bytes from the A4 template region into local storage at
+  `fp@(-24)` using `move.l`, `move.l`, `move.w`. Immediately after, it computes
+  `lea fp@(-4),a0` and stores that long to `fp@(-18)`. Since `-18` is exactly six bytes
+  past the start of the 10-byte block at `-24`, that proves the first phase command
+  block has a 4-byte pointer field at offset `+6`. The same pattern repeats in the
+  later `CONS` phase: at file `0x059ed1` the function copies 10 bytes into `fp@(-14)`,
+  then computes `this+24` and stores that long to `fp@(-8)`. Again, `-8` is exactly six
+  bytes past the start of the 10-byte block at `-14`. So the editor-canonical command
+  shape is now stronger than “tag plus payload pointer”: it is a 10-byte record where
+  bytes `+6..+9` are the live pointer field, and in the `CONS` phase that field is
+  filled with socket `this+24`, i.e. the 46-byte `SocketInfo` sent onward to the plug.

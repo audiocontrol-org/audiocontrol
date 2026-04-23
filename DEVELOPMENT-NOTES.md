@@ -4058,3 +4058,44 @@ older template-offset assumptions creep back in.
 1. Once the project reaches payload-shape debugging, stale “strongest current model” language from earlier phases becomes risky even if the underlying raw bytes were real.
 2. The right fallback is the later measured phase split, not the older exact offset arithmetic that originally pointed us toward it.
 3. A good parity track keeps correcting its own internal confidence levels, not just Claude’s.
+
+## 2026-04-23: `ConnectToPlug` Local Stack Layout Proves `MESACommand+6` Is the Embedded Pointer Field
+
+### Feature: mesa-ii-codex-parity
+### Worktree: mesa-ii-codex-parity
+
+### Goal
+Upgrade the current `CONS` payload fallback from “pointer-shaped bytes at
+`MESACommand+6`” to an actual editor-side field layout Claude can test directly.
+
+### Accomplished
+- Re-read the raw `CMESASocket::ConnectToPlug` bytes around file `0x059e91` and
+  `0x059ed1`
+- Confirmed both phases copy 10-byte command templates into stack locals via
+  `move.l`, `move.l`, `move.w`
+- Confirmed the editor then overwrites offset `+6` of those 10-byte locals with a long:
+  - first phase: local block at `fp@(-24)`, pointer stored at `fp@(-18)`
+  - later `CONS` phase: local block at `fp@(-14)`, pointer stored at `fp@(-8)`
+- Synced that concrete field-layout result into the parity docs and posted it to Claude
+
+### Didn't Work
+- Nothing new failed here; this was a refinement of the existing fallback, not a new
+  branch of work
+
+### Course Corrections
+- **[EVIDENCE]** `MESACommand+6` is no longer just an inferred payload pointer location.
+  The editor-side stack layout now proves it is the final 4-byte field inside the 10-byte
+  command block.
+- **[TACTICS]** If Claude reaches the payload-byte fallback after `$A998`, the right
+  check is now exact:
+  do bytes `+6..+9` of the live 10-byte `CONS` command block point at the 46-byte
+  `SocketInfo` rooted at socket `this+24`?
+
+### Quantitative
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. Once the next harness probe is down to bytes, upgrading “offset of interest” into “actual field boundary” is worth real leverage.
+2. The stack-local layout is strong evidence because it does not depend on the still-imperfect higher-level class labeling.
+3. The safest fallback path is now very concrete: 10-byte command block, pointer field at `+6`, `CONS` fills that field with `this+24`.

@@ -1211,6 +1211,21 @@ cleanly.
   `PLST` / `CONS` phase split and the `this+24 -> 46-byte SocketInfo` rule, not the
   older exact template-offset labels by themselves.
 
+- The editor-side fallback can now target a concrete command-block field, not just a vague pointer rule.
+  Claude baseline:
+  if `$A998` still leaves `CONS` inert, the next fallback is to inspect the live
+  `MESACommand+6` payload bytes.
+  Codex refinement:
+  raw stack-layout reread of `CMESASocket::ConnectToPlug` now makes that offset exact.
+  In the first phase, the editor copies 10 bytes into `fp@(-24)` and then writes a long
+  to `fp@(-18)`, which is exactly offset `+6` inside that 10-byte block. In the later
+  `CONS` phase, it copies 10 bytes into `fp@(-14)` and then writes `this+24` to
+  `fp@(-8)`, again exactly offset `+6` inside the 10-byte block. So the live fallback
+  is now byte-precise:
+  the final four bytes of the 10-byte command block are the embedded pointer field, and
+  for `CONS` that field should contain the address of the 46-byte `SocketInfo` rooted at
+  socket `this+24`.
+
 ## Comparison Rules
 
 - Codex should compare against the latest Claude branch docs plus its `DEVELOPMENT-NOTES.md`,
