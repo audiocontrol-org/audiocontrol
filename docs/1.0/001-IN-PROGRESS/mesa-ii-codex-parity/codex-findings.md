@@ -404,9 +404,11 @@ correct. Every finding should distinguish direct evidence from inference.
   `0x0a5e`, `CMESAPlugIn::GetSockets` at `0x0b98`, and `CSCSIPlug::SendData` at
   `0x0df2`.
   The decoded `CMESAPlugIn::ActivateSocket` body at `0x0a5e` performs a slot scan and
-  then only three local writes: it copies a word from `SocketInfo+36` into the plug's
-  slot record, copies a long from `SocketInfo+42` into that slot record, and clears
-  `buffer_ptr[16]`. The body contains no visible A-traps, no
+  then only three local writes: it compares the incoming activation key at
+  `SocketInfo+0x26` against each entry longword at `slot+0x26`, copies a word from
+  `SocketInfo+0x24` into `slot+0x24`, copies a long from `SocketInfo+0x2a` into
+  `slot+0x2a`, and clears the pointed longword at `slot+0x10`. The body contains no
+  visible A-traps, no
   `_SCSIDispatch`-style call sites, and no jump into the later `CSCSIPlug::SendData`
   region.
   Interpretation:

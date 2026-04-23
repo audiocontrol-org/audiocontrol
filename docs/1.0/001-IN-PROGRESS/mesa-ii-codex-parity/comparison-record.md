@@ -1130,10 +1130,14 @@ cleanly.
   The non-`INIT` path dispatches `CONS` through `0x09d2` (`ConnectToSocket`), which
   increments `this+0x38` and copies a 46-byte `SocketInfo` into the table at
   `this+0x3c`, and `ASOK` through `0x0a5e` (`ActivateSocket`), which walks that table,
-  matches the entry, updates its activation fields, and clears a pointed-to field at
-  offset `+16`. So both sides now agree on the next clean move: drive real `CONS` /
-  `ASOK` before retrying `SendData`, rather than manually pre-seeding the socket table as
-  the primary path.
+  matches on the activation key at `SocketInfo+0x26`, copies the incoming word/long at
+  `SocketInfo+0x24` / `SocketInfo+0x2a` into the matched slot's `+0x24` / `+0x2a`
+  fields, and clears the longword pointed to by slot `+0x10`. That means Claude's later
+  “ASOK returns success but the object diff stays visually unchanged” result is
+  consistent with the static body when those incoming source fields are still zero. So
+  both sides now agree on the next clean move: make the `ASOK` writes visible with a
+  non-zero synthetic `SocketInfo+0x24/+0x2a`, then retry `SendData`, rather than
+  reopening solved registration/dispatch layers.
 
 - The corrected plug command surface is necessary, but the older module-side bring-up model still frames it
   Codex's earlier top-down module pass still shows a wider production-shaped lifecycle:

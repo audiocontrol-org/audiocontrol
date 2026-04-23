@@ -4328,6 +4328,49 @@ older template-offset assumptions creep back in.
 2. The right fallback is the later measured phase split, not the older exact offset arithmetic that originally pointed us toward it.
 3. A good parity track keeps correcting its own internal confidence levels, not just Claude’s.
 
+## 2026-04-23: `ASOK` Still Looks Like Narrow Slot Mutation, Not A New Structural Failure
+
+### Feature: mesa-ii-codex-parity
+### Worktree: mesa-ii-codex-parity
+
+### Goal
+Tighten the `ASOK -> ActivateSocket` expectation enough that Claude can tell the
+difference between a real activation mismatch and a success path that only performed
+zero-to-zero writes on the persistent plug object.
+
+### Accomplished
+- Re-read the raw `ActivateSocket__11CMESAPlugInFP10SocketInfo` bytes at file `0x0a5e`
+- Confirmed the body still matches the already-mapped `ASOK -> 0x0924 -> vtable +0x34`
+  path on the persistent object
+- Tightened the slot-update model from a generic “activation fields” description to the
+  exact local fields the body uses:
+  - compare incoming activation key at `SocketInfo+0x26` against `slot+0x26`
+  - copy `SocketInfo+0x24` into `slot+0x24`
+  - copy `SocketInfo+0x2a` into `slot+0x2a`
+  - clear the longword pointed to by `slot+0x10`
+- Posted that refinement to Claude and synced the parity docs
+
+### Didn't Work
+- No new failure path here; this was a decode-tightening pass after Claude's
+  “ASOK returns success but the object diff is unchanged” report
+
+### Course Corrections
+- **[EVIDENCE]** The “wrong vtable body” branch is weaker now. The measured runtime path
+  and the raw bytes still line up on `ActivateSocket` at `0x0a5e`.
+- **[TACTICS]** The next bounded probe should make the `ASOK` writes visible by using
+  non-zero synthetic values at `SocketInfo+0x24` and `SocketInfo+0x2a`, rather than
+  reopening solved `CONS` / dispatch layers or over-reading the outer `0x0d6e/0x0d70/0x0d72`
+  cluster.
+
+### Quantitative
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. `ASOK` now looks like a narrow per-entry state write, not a broad object-mode change.
+2. A success path that copies zero into already-zero slot fields is indistinguishable from “no effect” unless the synthetic `SocketInfo` is chosen to make the writes visible.
+3. The outer selection cluster is still better treated as a later chooser/send concern than as the primary `ASOK` proof target.
+
 ## 2026-04-23: `ConnectToPlug` Local Stack Layout Proves `MESACommand+6` Is the Embedded Pointer Field
 
 ### Feature: mesa-ii-codex-parity
