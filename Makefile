@@ -77,7 +77,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland build-midi-macro-bridge
 
 build: $(ALL_STAMPS)
 
@@ -256,6 +256,24 @@ check-scsi-bridge: $(S2P_STAMP) $(SCSI_BRIDGE_STAMP)
 	@test -f "$(SCSI_BRIDGE_BIN)" || (echo "ERROR: scsi-midi-bridge binary not found at $(SCSI_BRIDGE_BIN)" && exit 1)
 	@echo "✓ s2p ready: $(S2P_BIN)"
 	@echo "✓ scsi-midi-bridge ready: $(SCSI_BRIDGE_BIN)"
+
+# ---------------------------------------------------------------------------
+# midi-macro-bridge (in-tree Rust service, native macOS)
+# ---------------------------------------------------------------------------
+# Runs locally on macOS: uses CoreMIDI (via midir) and CGEvent (via enigo).
+# No cross-compilation — build natively with cargo.
+
+MIDI_MACRO_BRIDGE_SRC_DIR := $(CURDIR)/services/midi-macro-bridge
+MIDI_MACRO_BRIDGE_BIN := $(MIDI_MACRO_BRIDGE_SRC_DIR)/target/release/midi-macro-bridge
+MIDI_MACRO_BRIDGE_STAMP := $(MIDI_MACRO_BRIDGE_SRC_DIR)/.build-stamp
+
+$(MIDI_MACRO_BRIDGE_STAMP): $(shell find $(MIDI_MACRO_BRIDGE_SRC_DIR)/src -name '*.rs' 2>/dev/null) $(MIDI_MACRO_BRIDGE_SRC_DIR)/Cargo.toml
+	cd $(MIDI_MACRO_BRIDGE_SRC_DIR) && cargo build --release
+	@touch $@
+
+build-midi-macro-bridge: $(MIDI_MACRO_BRIDGE_STAMP)
+	@test -x "$(MIDI_MACRO_BRIDGE_BIN)" || (echo "ERROR: midi-macro-bridge binary not found at $(MIDI_MACRO_BRIDGE_BIN)" && exit 1)
+	@echo "✓ midi-macro-bridge ready: $(MIDI_MACRO_BRIDGE_BIN)"
 
 # SCSI write validation (Node.js CLI — no browser, no Playwright)
 # Provisions Pi (deploys s2p + bridge, starts daemons, validates), then runs CLI tests.

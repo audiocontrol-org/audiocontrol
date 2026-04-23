@@ -1,0 +1,19 @@
+# midi-macro-bridge configuration
+# Copy this file to config.toml and edit.
+
+# Substring match against MIDI port names (case-insensitive).
+# Run with --list-ports to see available ports on your system.
+# Examples: "MC-500", "UM-ONE", "IAC Driver Bus 1"
+midi_input_port = "MC-500"
+
+# Delay in milliseconds between chained keystrokes.
+# If LUNA occasionally misses Return-then-Space sequences, increase this.
+keystroke_delay_ms = 20
+
+# Only emit keystrokes when this app is frontmost.
+# Prevents accidental Spacebar leaks into Safari, Finder, etc.
+# Set to empty string to disable the check (not recommended).
+require_frontmost_app = "LUNA"
+
+# Set to false to start in a disabled state (reserved for future use).
+enabled_on_startup = true

@@ -1,0 +1,26 @@
+[package]
+name = "midi-macro-bridge"
+version = "0.1.0"
+edition = "2021"
+authors = ["Orion"]
+description = "Translate MIDI events into keystrokes / macros. v1: Roland MC-500mkII transport to UAD LUNA."
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+midir = "0.10"
+enigo = "0.2"
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+ctrlc = "3"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+
+[[bin]]
+name = "midi-macro-bridge"
+path = "src/main.rs"
