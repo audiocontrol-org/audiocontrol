@@ -10,8 +10,8 @@
 |-------|--------|-------|
 | Phase 1: Integration and Build | Complete | Shipped in #316. |
 | Phase 2: Hardware Validation | Complete | MC-500 → 828mk3 → LUNA transport round trip verified. Shipped in #316. |
-| Phase 3: Closed-Loop Locate Implementation | Not Started | Reverse-engineer LUNA's MCU position output, add MCU parser + `PositionTracker` + `LocateController`, extend state machine with `Locating`, add `[locate]` config. |
-| Phase 4: Closed-Loop Locate Hardware Validation | Not Started | Verify MC-500 LOCATE drives LUNA's playhead across time-signature changes via closed-loop nudging. |
+| Phase 3: MCU Transport + Closed-Loop Locate Implementation | In Progress | Probe complete (MCU-NOTES.md). Broken into 6 sub-phases (3a–3f): MCU input parser, heartbeat responder, MCU output discovery, Backend trait refactor (MCU default, keystrokes fallback), LocateController, integration. |
+| Phase 4: Hardware Validation | Not Started | Transport via MCU with LUNA backgrounded; closed-loop locate across TS changes; keystroke-backend regression. |
 
 ## Documentation
 

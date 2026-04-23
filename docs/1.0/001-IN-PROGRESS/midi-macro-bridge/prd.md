@@ -6,7 +6,7 @@
 
 ## Problem Statement
 
-There is no way to control LUNA's transport from the MC-500mkII sequencer. LUNA does not support MMC, and MCU lacks locate-to-position. The validated approach is translating MIDI transport bytes into keyboard events. A working Rust implementation exists in a standalone zip but needs to be integrated into the audiocontrol monorepo as a service.
+There is no way to control LUNA's transport from the MC-500mkII sequencer. LUNA does not support MMC, and MCU lacks locate-to-position. The originally validated workaround was translating MIDI transport bytes into keyboard events, and that's what Phases 1-2 shipped. In practice, keystroke emulation has real limitations: it requires LUNA to be the frontmost app (transport commands get swallowed or leak into other apps when focus is elsewhere), it depends on macOS Accessibility permission (a brittle onboarding step for non-technical users), and the OS can rate-limit or drop synthesised keystrokes under load. MCU output bypasses all three: LUNA accepts control-surface input regardless of which app is frontmost, there is no Accessibility gate, and MCU messages are delivered via the same MIDI plumbing that already carries the MC-500's transport.
 
 Beyond basic transport, the user needs LUNA's playhead to follow the MC-500's locate operations bar-for-bar. Audio tape sync is *not* a forgiveness mechanism here: the MC-500 chases sync to lock its own tempo and nearest-bar reference, but it preserves whatever bar-offset exists at the moment sync is established — if the MC-500 thinks it's on bar 17 while the DAW is on bar 25, the MC-500 holds that 8-bar gap indefinitely. An open-loop locate that misses the target bar by any amount therefore desyncs the two machines *permanently* for the duration of the session. Bar-exact is the requirement, not a nice-to-have.
 
@@ -24,8 +24,9 @@ Beyond basic transport, the user needs LUNA's playhead to follow the MC-500's lo
 - `--list-ports` shows available MIDI inputs
 - `--self-test` emits keystrokes to LUNA when focused
 - Root Makefile has a `build-midi-macro-bridge` target
-- Hardware-validated: MC-500 Play/Stop/Continue controls LUNA transport
+- Hardware-validated: MC-500 Play/Stop/Continue controls LUNA transport via MCU (works with LUNA in the background; no Accessibility permission required)
 - Hardware-validated: MC-500 LOCATE drives LUNA to the matching bar *exactly* (no 1-bar-off errors), regardless of time signature, via closed-loop nudging against LUNA's MCU position output
+- Keystroke backend remains selectable via `[transport] backend = "keystrokes"` for environments where MCU isn't available, preserving Phase 1-2 behaviour as an opt-in fallback
 
 ## In Scope
 
@@ -40,23 +41,27 @@ Beyond basic transport, the user needs LUNA's playhead to follow the MC-500's lo
 - `--list-ports` and `--self-test` CLI modes
 - Makefile build target
 
-### Phases 3–4 (this extension) — closed-loop locate
+### Phases 3–4 (this extension) — MCU transport + closed-loop locate
 
-- SPP-driven locate: parse Song Position Pointer (`0xF2 ll hh`) as the *target* (bar destination requested by the MC-500); drive LUNA's playhead to that target by iteratively emitting `[` / `]` keystrokes and reading LUNA's MCU position output to verify each nudge landed where expected. Closed-loop is required, not optimising — a bar-off locate would leave the MC-500 running with a persistent bar-offset against LUNA for the rest of the session.
-- Parse LUNA's MCU position output (bars/beats/subdivisions) and maintain a tracked-playhead model used for both closed-loop verification and deciding nudge direction.
-- Register the bridge as a virtual MIDI device named `MIDI Macro Bridge` (input + output pair via CoreMIDI virtual endpoints) so it appears in LUNA's MIDI Control Surfaces dropdown and can be selected as both INPUT DEVICE and OUTPUT DEVICE on a control-surface row. This is how MCU routing is established — no IAC bus or manual routing required.
-- Extend `KeyAction` with `BarForward` / `BarBackward` (bracket keys; numpad 1/2 opt-in via config).
-- Extend state machine with a `Locating` state and atomic-locate semantics: SPP events coalesced while locating, Stop cancels the in-flight locate, Start arriving during locate is queued as Continue so the played-from-zero rewind doesn't undo the locate.
-- Add `[locate]` TOML section: `enabled`, `max_iterations` safety cap, `position_timeout_ms`, `use_numpad_keys`. MCU port is implicit — always the bridge's own virtual input.
-- `info!`-level logging of every locate: target bar (from SPP), starting bar (from MCU), per-iteration keystroke + delta, final bar, total iterations — fully diagnosable when locates misfire.
+Two structural changes ship together in this phase: replace the keystroke transport path with MCU output (with keystrokes demoted to an opt-in fallback backend), and add SPP-driven closed-loop locate that reuses the same MCU plumbing.
+
+- Register the bridge as a virtual MIDI device named `MIDI Macro Bridge` (input + output pair via CoreMIDI virtual endpoints) so it appears in LUNA's MIDI Control Surfaces dropdown and can be selected as both INPUT DEVICE and OUTPUT DEVICE on a control-surface row. This is how MCU routing is established — no IAC bus or manual routing required. **Scaffolded in an earlier Phase 3 commit; extended here to emit.**
+- Respond to LUNA's MCU heartbeat probe (`F0 00 00 66 1X 00 F7`, every 5 s) with a proper identity reply so the surface stays alive for long-running sessions and so LUNA reliably accepts the bridge's input.
+- Emit MCU button messages on the virtual output for transport actions: **Play**, **Stop**, **Continue (= play-from-position)**, **Return-to-zero**, **Bar-forward**, **Bar-backward**. The exact MCU note numbers / sequences are discovered empirically during Phase 3c against the live LUNA instance — the MCU standard gives strong candidates (transport 0x5B-0x5F, navigation 0x62/0x63) but DAWs vary on how "return to zero" and "1-bar nudge" map.
+- Parse LUNA's MCU position output (bars/beats/subdivisions — `B0 40-49` per MCU-NOTES.md) and maintain a tracked-playhead model used for both closed-loop verification and deciding nudge direction.
+- SPP-driven locate: parse Song Position Pointer (`0xF2 ll hh`) as the *target* (bar destination requested by the MC-500); drive LUNA's playhead to that target by iteratively emitting bar-nudge actions (via the configured backend) and reading LUNA's MCU position output to verify each nudge landed where expected. Closed-loop is required, not optimising — a bar-off locate would leave the MC-500 running with a persistent bar-offset against LUNA for the rest of the session.
+- Introduce an `Action` enum (`Play`, `Stop`, `Continue`, `ReturnToZero`, `BarForward`, `BarBackward`) emitted by the state machine. Introduce a `Backend` trait implemented by `McuBackend` (default) and `KeystrokeBackend` (existing Phase 1-2 logic, preserved). A `[transport] backend = "mcu" | "keystrokes"` config switches between them; default is `"mcu"`.
+- Extend state machine with a `Locating` state and atomic-locate semantics: SPP events coalesced while locating, Stop cancels the in-flight locate, Start arriving during locate is queued as Continue so a return-to-zero doesn't undo the locate.
+- Add `[locate]` TOML section: `enabled`, `max_iterations` safety cap, `position_timeout_ms`.
+- `info!`-level logging of every locate: target bar (from SPP), starting bar (from MCU), per-iteration action + delta, final bar, total iterations — fully diagnosable when locates misfire.
 - Closed-loop naturally supports bidirectional navigation: move in whichever direction (forward or backward) is closer to the target; no always-rewind penalty.
 
-**Deliberate closed-loop constraint:** the approach only works if LUNA's `[` / `]` keystroke moves the playhead by ≤ 1 bar. If the user has configured a nudge value larger than 1 bar, closed-loop will overshoot and potentially oscillate — detect this (delta reverses sign between iterations) and abort with a clear error message directing the user to reconfigure LUNA's nudge value to ≤ 1 bar. Falling back to open-loop is an option if this turns out to be unworkable (see Appendix: Open-Loop Locate Fallback).
+**Deliberate closed-loop constraint:** the approach only works if LUNA's bar-nudge primitive moves the playhead by ≤ 1 bar per invocation. The hardware probe confirms this for the bracket keystrokes; the MCU-equivalent primitive needs the same property. If an unexpected nudge size is discovered in Phase 3c or seen at runtime (delta reverses sign between iterations), the controller aborts with a clear configuration error — it does not silently oscillate.
 
 ## Out of Scope
 
 - MIDI clock forwarding
-- **Full** MCU surface emulation (transport, automation, channel strip control). Phases 3-4 consume only the MCU *position* output stream for closed-loop locate verification — we do not emit MCU messages back toward LUNA, nor parse the rest of the MCU protocol.
+- **Full** MCU surface emulation. Phases 3-4 consume the MCU position output stream and emit a **limited** set of outbound MCU messages: transport button presses (Play/Stop/Continue/Return-to-zero), bar-nudge button presses (Bar-forward/Bar-backward), and the heartbeat identity reply. We do not emit faders, V-Pot rotations, jog-wheel moves, channel-strip selects, automation mode changes, or any of the rest of the MCU vocabulary. We do not parse those inbound either (LUNA sends the full surface state for an 8-strip mixer, which we ignore aside from the 10-digit position display).
 - Sample-accurate positioning — bar-accurate is the bar; tape audio sync handles finer chase
 - Locate during playback — SPP received while LUNA is playing is ignored
 - LUNA nudge value greater than 1 bar — closed-loop assumes `[` / `]` moves ≤ 1 bar; larger nudge values are detected at runtime and surfaced as a configuration error rather than silently misbehaving

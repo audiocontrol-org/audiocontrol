@@ -22,15 +22,12 @@
 - Add Makefile build target following scsi-midi-bridge pattern
 - Hardware validation with MC-500 + LUNA
 
-### Phases 3-4 — closed-loop locate
+### Phases 3-4 — MCU transport + closed-loop locate
 
-- **Reverse-engineer first, then build.** Phase 3 opens with a hardware probe session (LUNA running, MCU output routed to the bridge) to capture the actual position message format LUNA emits and measure the post-keystroke position-update latency. The parser and closed-loop timing are informed by what we observe, not assumed.
-- Add an MCU position parser (new `src/mcu.rs`) that consumes raw MIDI bytes and surfaces `PositionUpdate { bar, beat, sub }` events.
-- Add a `PositionTracker` that ingests `PositionUpdate` events and exposes "current bar" to the locate controller.
-- Add a closed-loop `LocateController` that, given an SPP-derived target bar, iteratively: reads tracked position, computes signed delta, emits one `BarForward` or `BarBackward` keystroke, waits for the next position update (bounded by a timeout), repeats until delta is zero or `max_iterations` is exhausted.
-- Detect oscillation: if delta reverses sign between iterations without hitting zero, LUNA's nudge is larger than one bar. Abort locate with a clear log message and return an actionable error; do not silently loop.
-- Extend the transport state machine with a `Locating` state; the atomic-locate semantics (coalesce SPP, Stop cancels, Start-during-locate becomes Continue) stay the same as the open-loop design.
-- Hardware validation in Phase 4 covers forward/backward/from-zero locate, time-signature changes mid-song (should now work automatically), and the oscillation-abort path for nudge > 1 bar.
+- **Reverse-engineer first, then build.** Phase 3 opened with hardware probe sessions (LUNA running, MCU output routed to the bridge) to capture LUNA's position message format and confirm structural assumptions. Findings are in `services/midi-macro-bridge/MCU-NOTES.md`: 10-digit BBT display on `B0 40-49`, right-to-left digit numbering, ~16 Hz update rate, bar counter is strictly monotonic across time-signature changes, each `[`/`]` keystroke moves exactly ±1 bar with sub-100 ms latency.
+- **Two structural shifts land together.** (1) Transport moves from keystroke emission to MCU output — Phase 1-2's `Return`+`Space` approach is refactored into a pluggable backend, with `McuBackend` (default) and `KeystrokeBackend` (opt-in fallback). MCU bypasses the frontmost-app requirement, Accessibility permission, and OS keystroke rate limits. (2) Closed-loop locate uses the same MCU plumbing: read position from `B0 40-49`, emit bar-nudge MCU messages, verify landing.
+- **Sub-phase split.** Phase 3 is broken into six linear sub-steps (3a–3f) so discovery against LUNA can happen in the middle, informed by a solid parser and a heartbeat responder, before committing to the backend refactor. Details in the per-phase sections below.
+- Hardware validation in Phase 4 covers transport via MCU (Play/Stop/Continue/RTZ round-tripping against LUNA with LUNA backgrounded), closed-loop locate forward/backward/from-zero, time-signature changes, and the oscillation-abort path for the nudge > 1 bar misconfiguration.
 
 ## Modules Affected
 
@@ -41,15 +38,16 @@
 
 ### Phases 3-4
 
-- `services/midi-macro-bridge/src/mcu.rs` (new) — MCU position parser
-- `services/midi-macro-bridge/src/locate.rs` (new) — `PositionTracker`, `LocateController` (closed-loop)
-- `services/midi-macro-bridge/src/state.rs` — add `Locating` state and SPP handling
-- `services/midi-macro-bridge/src/midi.rs` — add `Event::Spp(u16)` and SPP parsing; virtual MCU endpoint registration (done in Phase 3 scaffolding commit)
-- `services/midi-macro-bridge/src/keys.rs` — add `BarForward` / `BarBackward` match arms (verify `Key::Unicode` vs `Key::Layout` on enigo 0.2.1)
-- `services/midi-macro-bridge/src/config.rs` — add `[locate]` section
-- `services/midi-macro-bridge/src/main.rs` — open transport input, register the virtual MCU endpoint, drive the closed-loop controller (already has `--probe-midi` / `--probe-mcu` from scaffolding)
-- `services/midi-macro-bridge/README.md` — document the LUNA control-surface selection flow and `[locate]` config
-- `services/midi-macro-bridge/MCU-NOTES.md` (new) — capture log of LUNA's MCU output format + latency measurements
+- `services/midi-macro-bridge/src/mcu.rs` (new) — MCU input parser (`PositionTracker`, `parse_mcu_bytes`) and MCU output encoder (`encode_button_press`, `encode_heartbeat_reply`)
+- `services/midi-macro-bridge/src/backend.rs` (new) — `Backend` trait; `McuBackend` (default) and `KeystrokeBackend` (fallback)
+- `services/midi-macro-bridge/src/locate.rs` (new) — `LocateController` (closed-loop, Backend-agnostic)
+- `services/midi-macro-bridge/src/state.rs` — replace `KeyAction` with abstract `Action` enum (`Play`, `Stop`, `Continue`, `ReturnToZero`, `BarForward`, `BarBackward`); add `Locating` state and SPP handling
+- `services/midi-macro-bridge/src/midi.rs` — add `Event::Spp(u16)` and SPP parsing; virtual MCU endpoint registration (done in Phase 3 scaffolding commit); heartbeat responder wiring
+- `services/midi-macro-bridge/src/keys.rs` — shrinks to a pure emitter for the `KeystrokeBackend`, no state-machine coupling; keeps `Return`/`Space`/bracket keys
+- `services/midi-macro-bridge/src/config.rs` — add `[transport]` and `[locate]` sections
+- `services/midi-macro-bridge/src/main.rs` — open transport input, register the virtual MCU endpoint, run heartbeat responder, construct selected Backend, drive the closed-loop controller (already has `--probe-midi` / `--probe-mcu` from scaffolding; adds `--send-mcu <spec>` for 3c discovery)
+- `services/midi-macro-bridge/README.md` — document the MCU control-surface selection flow, the `[transport]` backend choice, and the `[locate]` config
+- `services/midi-macro-bridge/MCU-NOTES.md` — capture log of LUNA's MCU input/output format; appended during 3c discovery with the definitive Play/Stop/Continue/RTZ/BarFwd/BarBack encodings
 
 ## Phase 1: Integration and Build
 
@@ -90,81 +88,116 @@
 - [x] No double-fire on duplicate messages
 - [x] Frontmost-app check prevents keystroke leaks
 
-## Phase 3: Closed-Loop Locate Implementation
+## Phase 3: MCU Transport + Closed-Loop Locate Implementation
 
-**Deliverable:** Bridge drives LUNA's playhead to the bar specified by an MC-500 SPP message using closed-loop nudging — emit `[` or `]`, read LUNA's MCU position output, recompute delta, repeat until the target bar is reached (or oscillation/iteration cap triggers abort).
+**Deliverable:** Bridge drives LUNA's transport via MCU (Play/Stop/Continue/Return-to-zero), responds to MCU heartbeat to stay alive as a surface, and performs closed-loop bar-accurate locate by iteratively emitting MCU bar-nudge messages and verifying against LUNA's MCU position output. Keystroke backend preserved as opt-in fallback.
 
-### Tasks
-
-**Bridge registers as a virtual MCU device (foundation for the probe)**
+### Phase 3 scaffolding (already landed)
 
 - [x] Add `midi::create_virtual_mcu` using `midir::os::unix::{VirtualInput, VirtualOutput}`; bridge registers the endpoint pair `MIDI Macro Bridge` in CoreMIDI so LUNA sees it in the MIDI Control Surfaces dropdown
 - [x] Add `--probe-midi <port>` CLI mode for generic physical-port probing
 - [x] Add `--probe-mcu` CLI mode: register the virtual endpoint and dump every byte arriving on its virtual input
 
-**Hardware probe (do this first; the parser design depends on it)**
+### Phase 3 hardware probe (already completed; results in MCU-NOTES.md)
 
-- [ ] User configures LUNA's MIDI Control Surfaces: pick `MIDI Macro Bridge` as both INPUT DEVICE and OUTPUT DEVICE on a free row, protocol MCU
-- [ ] Run `./target/release/midi-macro-bridge --probe-mcu > probe-<scenario>.log` while exercising LUNA in each scenario: idle, playback, scrubbing, bar-step with `[` / `]`, time-signature change mid-song
-- [ ] Document LUNA's position message format (SysEx vs CC, byte layout, units — bars/beats/sub vs timecode) in `services/midi-macro-bridge/MCU-NOTES.md`
-- [ ] Measure round-trip latency: time between emitting a `]` keystroke and seeing the resulting position update on the probe. Informs the closed-loop per-iteration timeout default.
+- [x] User configured LUNA's MIDI Control Surfaces, picked `MIDI Macro Bridge` as both INPUT DEVICE and OUTPUT DEVICE
+- [x] Captured `probe-idle.log`, `probe-playback.log`, `probe-barstep.log`, `probe-ts.log`
+- [x] Decoded LUNA's `B0 40-49` 10-digit BBT display and documented in MCU-NOTES.md
+- [x] Measured ~16 Hz position update rate and sub-100 ms keystroke-to-update latency
+- [x] Confirmed bar counter is TS-independent (structural assumption for closed-loop)
 
-**Core implementation**
+### Phase 3a — MCU input parser
 
-- [ ] Create `src/mcu.rs` with `parse_mcu_bytes(bytes: &[u8]) -> Option<PositionUpdate>` (pure; returns `Some` only when bytes form a valid position message based on what we observed in the probe)
-- [ ] Unit tests for `parse_mcu_bytes`: the captured sample messages, plus malformed-input rejection
-- [ ] `PositionTracker` struct: ingests `PositionUpdate` events via an mpsc channel; exposes `current_bar() -> Option<u32>` (`None` until the first update arrives)
-- [ ] Extend `KeyAction` with `BarForward` and `BarBackward`
-- [ ] Extend `Emitter` with match arms for `[` / `]`; verify `Key::Unicode('[' / ']')` vs `Key::Layout` on enigo 0.2.1 (probe before writing)
-- [ ] Add `Locating` state to `TransportState`
-- [ ] Add `Event::Spp(u16)` variant to the event enum; extend the MIDI input parser to surface SPP
-- [ ] Extend `Machine::handle` for SPP events and state transitions: SPP-while-Stopped → enter Locating with the target bar; SPP-while-Playing → ignored; SPP-while-Locating → update the target bar in-place (coalesce); Stop-while-Locating → cancel; Start-while-Locating → queue as Continue for post-locate so the played-from-zero rewind doesn't undo the locate
-- [ ] `LocateController::run(target_bar, tracker, emitter, cfg) -> Result<LocateOutcome>`:
+- [ ] Create `src/mcu.rs` with `parse_cc_display(cc_index: u8, value: u8) -> Option<DigitUpdate>` (pure function that maps `B0 4X vv` into a typed `DigitUpdate` for digits 0-9)
+- [ ] `PositionTracker` struct that maintains the 10-digit display state, exposes `current_bar() -> Option<u32>` (composed from `d7`/`d8`/`d9`), and fires a `PositionUpdate { bar }` event whenever the composed bar value changes
+- [ ] Unit tests: feed the parser the exact byte sequences captured in `probe-barstep.log` (bar 1 → 2 → ... → 6 → 5 → ... → 1) and assert the tracker reports the right bar at each step. Include the digit-carry case from `probe-ts.log` (bar 69 → 70 triggers both `d47` and `d48` in the same batch).
+- [ ] Classify the rest of LUNA's inbound stream (notes, CCs outside `B0 40-49`, pitch-bend, channel pressure, LCD SysEx, heartbeat SysEx) as no-ops in the parser. They're observable in the logs but not our concern.
+
+### Phase 3b — MCU heartbeat responder
+
+- [ ] Add `midi::send_virtual_mcu(&VirtualMcuPair, &[u8])` so the bridge can emit bytes on its virtual output (currently the pair is receive-only)
+- [ ] Detect LUNA's heartbeat SysEx (`F0 00 00 66 1X 00 F7` for X in 0x10-0x15) in the incoming stream; reply with an MCU identity response addressed to device 0x14 (Logic Control) — exact reply bytes informed by the MCU spec (typical form: `F0 00 00 66 14 01 <serial> <version> F7`)
+- [ ] Confirm empirically (by running the heartbeat responder live against LUNA for 60+ seconds and watching the probe output) that LUNA keeps the surface activated and doesn't repeatedly re-init
+- [ ] **Pause here** and coordinate with the user to set up the 3c discovery session
+
+### Phase 3c — MCU transmit discovery
+
+- [ ] Add `--send-mcu <spec>` CLI mode that registers the virtual endpoint, waits for LUNA to handshake, then sends the specified MCU message. Specs: `play`, `stop`, `rewind-start`, `rewind-end`, `ff-start`, `ff-end`, `nudge-fwd`, `nudge-back`, `raw <hex-bytes>`
+- [ ] Empirical discovery session: send each candidate and observe LUNA. Start with the MCU-standard notes (0x5B rewind, 0x5C fast-forward, 0x5D stop, 0x5E play, 0x5F record). For "return to zero" test modifier-press combinations, jog-wheel pitch-bend with specific values, or LUNA-specific note mappings. For "1-bar nudge" test 0x62/0x63 (cursor), jog-wheel at known increments, and any NUDGE-mode combinations.
+- [ ] Append a "LUNA MCU input mapping" section to MCU-NOTES.md with the definitive byte sequences for Play, Stop, Continue (= Play from current position), Return-to-zero, Bar-forward, Bar-backward. Include the reasoning / alternatives considered where the mapping wasn't obvious.
+
+### Phase 3d — Backend trait + Action refactor
+
+- [ ] Rename `KeyAction` → `Action` in `state.rs` with variants `Play`, `Stop`, `Continue`, `ReturnToZero`, `BarForward`, `BarBackward`. Update all state-machine transitions.
+- [ ] Introduce `Backend` trait in `src/backend.rs`: `fn execute(&mut self, action: Action) -> Result<()>`
+- [ ] `McuBackend` implementation (default): maps each `Action` to the MCU byte sequence discovered in 3c, emits via `midi::send_virtual_mcu`
+- [ ] `KeystrokeBackend` implementation (fallback): existing enigo-based logic, translates `Action` back to `Return`/`Space`/`[`/`]` sequences
+- [ ] Update state machine: Start = `[ReturnToZero, Play]`, Continue = `[Play]` (Continue is semantically "play from current position"), Stop = `[Stop]`, bar-nudge during locate = `[BarForward]` or `[BarBackward]`
+- [ ] Add `[transport]` TOML section: `backend` (default `"mcu"`, alt `"keystrokes"`); also move `keystroke_delay_ms`, `require_frontmost_app` into this section (only relevant for the keystroke backend). Preserve backward-compat with Phase 1-2 configs by defaulting sensibly.
+- [ ] Unit tests: a mock Backend that records the Actions it receives; assert the state machine emits the expected sequences across the existing 22 test scenarios, now expressed in terms of `Action` not `KeyAction`.
+
+### Phase 3e — Closed-loop locate
+
+- [ ] Extend `Event` with `Spp(u16)`; extend the MIDI input parser to surface SPP from the MC-500
+- [ ] Add `Locating` state to `TransportState`; atomic-locate semantics (coalesce SPP, Stop cancels, Start-during-locate becomes Continue for post-locate so Return-to-zero doesn't undo the locate)
+- [ ] `LocateController::run(target_bar, tracker, backend, cfg) -> Result<LocateOutcome>`:
   - Loop up to `cfg.max_iterations` times
   - Read `tracker.current_bar()`; if `None`, wait up to `cfg.position_timeout_ms` for first update; abort if still `None`
   - Compute signed delta; if zero, return `Outcome::Reached { iterations }`
-  - If delta has reversed sign since the previous iteration without reaching zero, return `Outcome::NudgeTooLarge { consecutive_overshoots }` — abort and log actionable error
-  - Emit `BarForward` if delta > 0, `BarBackward` if delta < 0
-  - Wait up to `cfg.position_timeout_ms` for a new `PositionUpdate`
+  - If delta has reversed sign since the previous iteration without reaching zero, return `Outcome::NudgeTooLarge` — abort and log actionable error
+  - Dispatch `Action::BarForward` or `Action::BarBackward` via the Backend
+  - Wait up to `cfg.position_timeout_ms` for a new `PositionUpdate` from the tracker
   - If no update within timeout, return `Outcome::Timeout { last_known_bar }`
-- [ ] Add `[locate]` TOML section with `enabled` (default `false`), `max_iterations` (default e.g. 64), `position_timeout_ms` (default informed by probe measurements), `use_numpad_keys` (default `false`). The MCU input comes from the bridge's own virtual endpoint — no port config.
-- [ ] Main loop: at startup (when `locate.enabled = true`) register the virtual MCU endpoint pair; forward incoming MCU bytes into the `PositionTracker`; forward transport+SPP from the physical MC-500 input into the state machine; when the state machine transitions to Locating, spawn the `LocateController::run` on a helper thread (keeping the main event loop responsive to Stop during locate)
-- [ ] `info!`-level log on each locate: target bar (from SPP), starting bar (from MCU), each iteration's delta + keystroke, final bar, total iterations, outcome
-- [ ] Startup log: configured locate mode (enabled/disabled, MCU port, iteration cap, timeout)
-- [ ] README: "Closed-loop locate" section with the MCU routing prerequisite, config example, troubleshooting (timeouts, oscillation errors)
+- [ ] Add `[locate]` TOML section with `enabled` (default `false`), `max_iterations` (default 64), `position_timeout_ms` (default 500)
+- [ ] Unit tests: `LocateController` against a mocked PositionTracker and a mocked Backend. Cover: Reached (forward, backward, zero delta), NudgeTooLarge (sign reversal), Timeout (tracker doesn't update), IterationCap, tracker still pre-initialised.
+- [ ] `info!` log on each locate: target bar, starting bar, per-iteration action + delta, final bar, iterations, outcome
 
-### Acceptance Criteria
+### Phase 3f — Integration + docs
 
-- [ ] `MCU-NOTES.md` committed; position parser is backed by captured real-hardware bytes, not guessed
-- [ ] All new unit tests pass: `parse_mcu_bytes` sample + rejection cases, state machine Locating transitions, `LocateController` simulation with a mocked `PositionTracker` (fake updates driven into the tracker to exercise the control loop's delta / overshoot / timeout / reached outcomes)
-- [ ] All existing tests (state, config, MIDI parser) still pass
-- [ ] `cargo build --release` succeeds; `make build-midi-macro-bridge` green
-- [ ] Config with `[locate]` section parses; startup log reports locate mode
-- [ ] Config without `[locate]` section still parses (backward-compat with Phase 1-2 configs)
-- [ ] Oscillation detection triggers a clean abort with a user-actionable error message, not a runaway loop
+- [ ] `main.rs`: always open the virtual MCU endpoint pair; always run the heartbeat responder (so the surface stays healthy even in keystroke-backend mode, since users may still have LUNA configured with the bridge selected); always spawn the PositionTracker; construct the configured Backend; gate the LocateController on `locate.enabled`. Keep `--probe-midi`, `--probe-mcu`, `--send-mcu`, `--self-test`, `--list-ports` modes.
+- [ ] README: new "MCU vs keystrokes" section explaining the transport-backend choice and when to pick which; update the setup instructions so MCU is the default path; keep keystroke setup (Accessibility permission, frontmost app) as the fallback recipe
+- [ ] `config.example.toml`: show both `[transport]` and `[locate]` sections with comments
+- [ ] Update startup logs to report: active backend, heartbeat responder status, locate-enabled flag
+- [ ] Run the full Phase 1-2 regression with the keystroke backend config (`[transport] backend = "keystrokes"`) to confirm no behaviour change for users who opt in
 
-## Phase 4: Closed-Loop Locate Hardware Validation
+### Phase 3 Acceptance Criteria
 
-**Deliverable:** MC-500 LOCATE operations drive LUNA's playhead to the matching bar, verified end-to-end, regardless of time signature.
+- [ ] All unit tests green, including new tests for `mcu.rs`, `backend.rs`, `locate.rs`, and the refactored `state.rs`
+- [ ] All existing Phase 1-2 tests still pass (now exercising the KeystrokeBackend path)
+- [ ] `cargo build --release` clean; `make build-midi-macro-bridge` green
+- [ ] `MCU-NOTES.md` contains the definitive Play/Stop/Continue/RTZ/BarFwd/BarBack MCU encodings, backed by 3c discovery
+- [ ] Config with `[transport] backend = "mcu"` (default) produces MCU output for transport; config with `backend = "keystrokes"` reproduces Phase 1-2 behaviour
+- [ ] Config without `[transport]` or `[locate]` sections parses and defaults correctly
+- [ ] Oscillation detection aborts cleanly with a user-actionable error
+- [ ] Heartbeat responder keeps the surface alive over at least one full LUNA session idle period (~5 minutes of connectivity without LUNA re-initialising)
+
+## Phase 4: Hardware Validation
+
+**Deliverable:** MC-500 transport drives LUNA via MCU, and MC-500 LOCATE operations drive LUNA's playhead to the matching bar — both verified end-to-end.
 
 ### Tasks
 
-- [ ] Configure `[locate]` with `enabled = true` and the MCU input port observed during the probe
+- [ ] Run the bridge with default config (`[transport] backend = "mcu"`, `[locate] enabled = true`). Confirm startup logs show "MCU backend" and "locate enabled"
+- [ ] Bring LUNA to the background (another app frontmost). Hit Play / Stop / Continue on the MC-500. LUNA transport responds correctly. This is the core win over keystroke emulation.
+- [ ] With LUNA backgrounded, run a full Play → Stop → Continue → Stop cycle three times. No dropped commands, no focus-stealing.
 - [ ] MC-500 locate to bar 5 from bar 0 in 4/4 — LUNA lands on bar 5; log shows finite iteration count, no overshoots
-- [ ] MC-500 locate to bar 33 from bar 5 in 4/4 — LUNA lands on bar 33 via forward nudges
+- [ ] MC-500 locate to bar 33 from bar 5 — LUNA lands on bar 33 via forward nudges
 - [ ] MC-500 locate back to bar 1 from bar 33 — LUNA lands on bar 1 via backward nudges (no full rewind)
-- [ ] MC-500 locate to bar 7 in a 3/4 section of the song — LUNA lands on bar 7 (validates that no hardcoded time signature is in play)
-- [ ] After a locate, hit PLAY on MC-500 — LUNA starts from the located position (not zero), because Start-while-Locating was queued as Continue
-- [ ] Rapid SPP during MC-500 value-dial entry — bridge coalesces to the final SPP; no intermediate locates fire; log shows target-bar update without restart
+- [ ] MC-500 locate to a bar inside a 3/4 section of the song — LUNA lands on the exact bar (validates TS-independence at runtime)
+- [ ] After a locate, hit PLAY on MC-500 — LUNA starts from the located position (Start-while-Locating was queued as Continue)
+- [ ] Rapid SPP during MC-500 value-dial entry — bridge coalesces to the final SPP; no intermediate locates fire
 - [ ] Hit LOCATE while LUNA is playing — SPP ignored, playback uninterrupted
-- [ ] Deliberately set LUNA's nudge value to > 1 bar — bridge detects oscillation, aborts, logs an actionable error, and does not leak keystrokes indefinitely
-- [ ] Disconnect LUNA's MCU output mid-locate — bridge times out per-iteration with a clean error, doesn't hang
+- [ ] Deliberately set LUNA's nudge value to > 1 bar (if the MCU nudge primitive is affected by LUNA's nudge-value setting at all; if not, this acceptance criterion may be moot) — bridge detects oscillation, aborts with an actionable error
+- [ ] Disconnect LUNA's MCU output mid-locate (quit LUNA) — bridge times out per-iteration with a clean error, doesn't hang
+- [ ] Switch config to `[transport] backend = "keystrokes"`, restart the bridge, confirm Phase 1-2 behaviour is reproduced (LUNA must be frontmost, Accessibility permission gates the keystroke path)
 
 ### Acceptance Criteria
 
+- [ ] Transport works with LUNA backgrounded when the MCU backend is in use
+- [ ] Transport works with LUNA frontmost + Accessibility granted when the keystroke backend is selected
 - [ ] Locate lands on the correct bar for forward, backward, from-zero, and cross-time-signature cases
 - [ ] Locate sequence is atomic (rapid SPP coalesced; no mid-sequence restart)
 - [ ] Post-locate PLAY uses the located position, not zero
 - [ ] SPP during playback is ignored
-- [ ] Nudge-value > 1 bar is detected and surfaces as a clear configuration error, not silent misbehaviour
+- [ ] Nudge-size misconfiguration (if applicable) is detected and surfaces as a clear runtime error
 - [ ] Missing / stalled MCU position feed is detected and surfaces as a clean timeout, not a hang
