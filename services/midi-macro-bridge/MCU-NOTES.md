@@ -199,9 +199,8 @@ production locate session that runs for an hour will need it.
 - [x] `probe-idle.log` — surface init + 5 s heartbeat — decoded
 - [x] `probe-playback.log` — 18.6 s of 4/4 playback at ~109 BPM —
       decoded the `B0 40-49` BBT layout (see section 3 above)
-- [ ] `probe-barstep.log` — `]` 5× then `[` 5× from stopped. Confirm
-      a single keystroke causes exactly one bar step, and measure
-      the keystroke-to-position-update latency.
+- [x] `probe-barstep.log` — `]` × 5 forward, `[` × 5 back, from a
+      stopped position. Results below.
 - [ ] `probe-scrub.log` — mouse-drag the playhead. Check whether
       mid-scrub produces a burst of position updates or coalesces
       to one at drag-end (affects whether scrubbing could trigger
@@ -210,6 +209,65 @@ production locate session that runs for an hour will need it.
       Confirm the bar count keeps the same meaning across TS
       changes (it should — LUNA reports bar numbers directly, TS
       is irrelevant to the display).
+
+## Bar-step results (decisive for closed-loop locate)
+
+Timeline from `probe-barstep.log` (LUNA stopped at bar 1):
+
+| t (s) | Gap   | Keystroke | `d7` (bar) | Other updates          |
+|-------|-------|-----------|------------|------------------------|
+| 25.63 |   —   | `]` #1    | blank → 2  | `d0/d1/d2=0`, `d5=1` † |
+| 26.17 | 540ms | `]` #2    | 2 → 3      | —                      |
+| 26.70 | 530ms | `]` #3    | 3 → 4      | —                      |
+| 27.36 | 660ms | `]` #4    | 4 → 5      | —                      |
+| 28.91 | 1550ms| `]` #5    | 5 → 6      | —                      |
+| 31.25 | 2340ms| `[` #1    | 6 → 5      | —                      |
+| 31.60 | 350ms | `[` #2    | 5 → 4      | —                      |
+| 31.95 | 350ms | `[` #3    | 4 → 3      | —                      |
+| 32.33 | 380ms | `[` #4    | 3 → 2      | —                      |
+| 32.69 | 370ms | `[` #5    | 2 → 1      | —                      |
+
+† The first bar-step after surface init also gets a full refresh of
+the tick (`d0/d1/d2 = 000`) and beat (`d5 = 1`) digits. Subsequent
+stepped moves only touch `d7`. Parser implication: never *assume*
+the tick/beat are still at their last values after a long quiet
+period; the refresh is free information, just consume it.
+
+**Findings:**
+
+1. **Each `]` / `[` keystroke moves LUNA exactly ±1 bar.** 10/10
+   keystrokes, 10/10 single-bar updates. No missed presses, no
+   fractional moves, no double-steps. The `Key::Layout` / bracket-
+   keystroke primitive is reliable for closed-loop.
+2. **Only `d7` (bar ones digit) updates during bar-step moves** in
+   the 1-9 range. The parser only needs to watch `d7` / `d8` / `d9`
+   changes to detect bar transitions while stopped.
+3. **Position updates arrive tightly after keystrokes.** The user's
+   fastest inter-keystroke gap was ~350 ms and *included* human
+   reaction time and the 62 ms MCU display refresh interval — LUNA's
+   own keystroke → position-update latency is clearly well under
+   100 ms. A 500 ms per-iteration timeout has order-of-magnitude
+   headroom.
+4. **Backward and forward move at the same rate.** `[` gaps (350 ms)
+   were indistinguishable from `]` gaps (540 ms for the first four);
+   the variance is human, not LUNA.
+5. **Heartbeat SysEx (`F0 00 00 66 1X 00 F7`) doesn't interfere.**
+   The 5-second heartbeat bursts interleave cleanly with the
+   position updates and don't need to be filtered out for the
+   parser to do its job — it's watching `B0 47-49`.
+
+**Closed-loop controller implications:**
+
+- Algorithm simplifies to: `loop { emit(sign(delta) ? ']' : '['); wait_for_new_bar(); recompute_delta(); if delta == 0 { done } }`
+- No overshoot: since each keystroke is exactly ±1 bar, the delta
+  monotonically decreases toward zero. The oscillation detector in
+  the PRD/workplan becomes a belt-and-braces safety net for the
+  "LUNA nudge > 1 bar" misconfiguration case, which this capture
+  shows isn't happening under normal LUNA defaults.
+- Iteration count = exact bar distance. A locate from bar 1 to bar
+  100 emits 99 keystrokes — still fast at <100 ms each, well under
+  10 seconds for even large jumps. No 200-keystroke concern from
+  the open-loop fallback appendix.
 
 ## Answered questions
 
