@@ -258,14 +258,19 @@ Byte sequences LUNA accepts from the bridge's virtual output. Each
 entry is verified against live LUNA by `--send-mcu <spec>` and a
 visual / log-trace confirmation of the effect.
 
-| Action      | Byte sequence            | Notes                                  |
-|-------------|--------------------------|----------------------------------------|
-| Continue    | `90 5E 7F` + `90 5E 00`  | Standard MCU PLAY button tap. See below. |
-| Stop        | `90 5D 7F` + `90 5D 00`  | Standard MCU STOP button tap. See below. |
-| Start       | *(composite: ReturnToZero + Continue — pending)* |              |
-| Return-to-zero | *(pending 3c test)*   |                                        |
-| Bar-forward    | *(pending 3c test)*   |                                        |
-| Bar-backward   | *(pending 3c test)*   |                                        |
+| Action          | Byte sequence                                   | Latency   |
+|-----------------|-------------------------------------------------|-----------|
+| Continue        | `90 5E 7F; 90 5E 00`                            | ~40 ms    |
+| Stop            | `90 5D 7F; 90 5D 00`                            | ~230 ms   |
+| Return-to-zero  | `90 5B 7F; 90 5B 00`                            | ~41 ms    |
+| Bar-forward     | `B0 3C 01`                                      | ~51 ms    |
+| Bar-backward    | `B0 3C 41`                                      | ~58 ms    |
+| Start (composite) | `ReturnToZero; Continue` (all 8 bytes above)  | ~80 ms    |
+
+All six primitives discovered 2026-04-23. All three bar primitives
+(Return-to-zero, Bar-forward, Bar-backward) emit `B0 47-49` position
+updates on the MCU surface — the closed-loop controller's feedback
+path is solid.
 
 ### Continue — `90 5E 7F; 90 5E 00`
 
@@ -350,12 +355,60 @@ as the next candidate — it's the standard MCU scrub/nudge primitive
 and in most DAWs it *does* trigger a surface state push, including
 position digits.
 
+### Return-to-zero — `90 5B 7F; 90 5B 00`
+
+Standard MCU transport REWIND (note 0x5B) tap. In LUNA, a single
+rewind tap jumps the playhead directly to bar 1 (discrete jump, not
+a continuous scrub). Verified 2026-04-23 via `probe-send-rewind.log`
+— playhead moved from bar 9 to bar 1 in a single update (`B0 47 31`
+at +41 ms after our press).
+
+LUNA does NOT echo the REWIND button press as an LED event — unlike
+PLAY and STOP. REWIND is a momentary / edge-triggered button in
+MCU convention, not a state toggle. Doesn't affect us; we just
+don't expect a `90 5B 7F` response.
+
+### Bar-forward — `B0 3C 01`; Bar-backward — `B0 3C 41`
+
+Standard MCU jog wheel (CC#60 = 0x3C) on channel 0 with a signed
+7-bit offset. `0x01` = +1 unit, `0x41` = −1 unit (bit 6 is the sign).
+The "unit" is DAW-configurable; in LUNA with its default scrub
+resolution, **one jog message = one bar**. (User confirmed the
+same 1-bar-per-click behaviour on a physical Behringer control
+surface with LUNA, so the mapping isn't bridge-specific.)
+
+Verified 2026-04-23 via `probe-send-jog-fwd.log` and
+`probe-send-jog-back.log`:
+
+- `B0 3C 01` moved LUNA from bar 9 to bar 10 (+1 bar). Position
+  update arrived at +51 ms as a `B0 47 30`, `B0 48 31` digit-carry
+  batch. The parser's digit-carry test (already written in
+  `mcu.rs`) covers this exact case.
+- `B0 3C 41` moved LUNA from bar 9 to bar 8 (−1 bar). Position
+  update arrived at +58 ms as a single `B0 47 38`.
+
+Unlike the transport buttons (PLAY/STOP/REWIND), jog-wheel messages
+are *not* paired — one CC is a complete message. No press/release
+needed, no inter-message gap required.
+
+**Implication for the closed-loop LocateController:**
+
+- Iteration loop emits one `B0 3C 01` or `B0 3C 41` per step.
+- Waits up to ~150 ms for the next position update from the
+  tracker (generous vs. the observed ~55 ms latency).
+- Each iteration moves exactly 1 bar per the user's scrub-
+  resolution setting; if the user has it set to anything other
+  than "1 bar" we'll see the magnitude drift, which the
+  oscillation detector will catch.
+
 ### How Start composes
 
-Phase 1-2's Start event ("rewind and play from bar 1") has no direct
-MCU equivalent. We'll build it from `ReturnToZero; Continue` once we
-discover the Return-to-zero mapping. The state machine already
-separates these two primitives, so no refactor needed.
+Phase 1-2's Start event ("rewind and play from bar 1") has no
+direct MCU equivalent. It composes as `[ReturnToZero, Continue]`
+in the `Action` sequence — four SysEx-free button messages
+emitted back-to-back (8 bytes total at ~100 ms combined latency).
+The state machine already emits `Vec<Action>`, so no refactor
+needed to support composites.
 
 ## Bar-step results (decisive for closed-loop locate)
 
