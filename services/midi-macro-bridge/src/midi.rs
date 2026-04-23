@@ -35,8 +35,9 @@ use coremidi::{
 
 #[cfg(all(unix, not(target_os = "macos")))]
 use midir::os::unix::{VirtualInput, VirtualOutput};
-#[cfg(all(unix, not(target_os = "macos")))]
-use midir::{MidiOutput, MidiOutputConnection};
+// MidiOutput / MidiOutputConnection are imported unconditionally
+// at the top of the file — the Linux virtual-endpoint path uses
+// them, but so does connect_output on every platform.
 
 use crate::state::TransportEvent;
 

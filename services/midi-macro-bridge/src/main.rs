@@ -446,7 +446,7 @@ fn run_locate_step(
             target,
             "SPP received but [locate] enabled=false in config — cancelling"
         );
-        let post = machine.complete_locate(false);
+        let post = machine.complete_locate(false, false);
         if !post.is_empty() {
             backend.emit(&post)?;
         }
@@ -465,10 +465,17 @@ fn run_locate_step(
         controller.run(target)?
     };
 
-    let reached = matches!(outcome, LocateOutcome::Reached { .. });
-    info!(?outcome, reached, "locate outcome");
+    // queued_start is observed by the LocateController (since it
+    // consumes transport events during the locate), so the Machine
+    // hasn't had a chance to record it. Extract the flag from the
+    // outcome and pass it through explicitly.
+    let (reached, queued_start) = match &outcome {
+        LocateOutcome::Reached { queued_start, .. } => (true, *queued_start),
+        _ => (false, false),
+    };
+    info!(?outcome, reached, queued_start, "locate outcome");
 
-    let post = machine.complete_locate(reached);
+    let post = machine.complete_locate(reached, queued_start);
     if !post.is_empty() {
         info!(?post, "emitting post-locate actions");
         backend.emit(&post)?;
