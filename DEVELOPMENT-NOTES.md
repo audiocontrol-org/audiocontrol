@@ -4600,3 +4600,43 @@ Re-check the real editor-side sample-upload caller before overcommitting to the 
 1. The editor caller is now strong enough to correct my own last recommendation, not just Claude’s harness direction.
 2. The upload-side phase structure is back to the older but now better-supported model: `BULK` opener, later `SRAW` payload, then `BOFF`.
 3. The current frontier has shifted again: the question is no longer “how do we make BULK itself rich?” but “how quickly can we reach the real later `SRAW` send on the corrected persistent-object path?”
+
+## 2026-04-23: The Two Later `SRAW` Payload Calls Share One Concrete Outer Caller Shape
+
+### Feature: mesa-ii-codex-parity
+### Worktree: mesa-ii-codex-parity
+
+### Goal
+Tighten the next post-BULK target from “some later SRAW send” into a concrete editor-side
+caller shape Claude can chase immediately.
+
+### Accomplished
+- Re-read the later upload-phase region in `SendAudioFileToSampler`
+- Verified the first payload-bearing `SRAW` call at file `0x02eff7`
+- Verified the second payload-bearing `SRAW` call at file `0x02f113`
+- Confirmed both use the same outer argument pattern:
+  - `move.l #'SRAW', -(sp)`
+  - `move.l fp@(-0x0c), -(sp)`
+  - reload the socket object at `this+0x74`
+  - indirect through the same socket send slot earlier used by `BULK`
+- Posted that narrowing result to Claude on `#315`
+
+### Didn't Work
+- This still does not resolve what editor local `fp@(-0x0c)` semantically is
+
+### Course Corrections
+- **[EVIDENCE]** The next runtime target is no longer an abstract later `SRAW` phase.
+  It is a concrete repeated outer call shape using the same socket send surface.
+- **[TACTICS]** The sharpest remaining static support question is now:
+  what producer chain populates editor local `fp@(-0x0c)` before those two `SRAW` sends?
+
+### Quantitative
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+- Issue comments posted: 1
+  `#4308204007`
+
+### Insights
+1. We now have enough caller-side structure to keep Claude off speculative “invent a new SRAW path” work.
+2. The outer caller shape has converged; the remaining uncertainty is in one concrete local producer slot.
+3. This is the right level of detail for the next emulator step: same socket send surface, tag `SRAW`, second arg from `fp@(-0x0c)`.

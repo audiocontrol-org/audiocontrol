@@ -1356,6 +1356,21 @@ cleanly.
   unless evidence proves otherwise, and advance to the first later `SRAW` emission on
   the same path.
 
+- The later `SRAW` payload phases now have a concrete editor-side outer call shape
+  Claude baseline:
+  after the corrected BULK opener and selection-word seed, the next useful runtime
+  target is the first later `SRAW` send on the same corrected path.
+  Codex finding:
+  `SendAudioFileToSampler` now yields that outer shape directly. The two later payload
+  phases at file `0x02eff7` and `0x02f113` both do:
+  `move.l #'SRAW', -(sp)`,
+  `move.l fp@(-0x0c), -(sp)`,
+  then reload the socket object at `this+0x74` and indirect through the same socket send
+  slot that earlier carried `BULK`.
+  So the next open question is no longer “what broad caller shape does SRAW use?” It is:
+  what earlier editor-side computation populates local `fp@(-0x0c)` before those two
+  `SRAW` calls. That is now the sharpest static support target for the next harness step.
+
 ## Comparison Rules
 
 - Codex should compare against the latest Claude branch docs plus its `DEVELOPMENT-NOTES.md`,

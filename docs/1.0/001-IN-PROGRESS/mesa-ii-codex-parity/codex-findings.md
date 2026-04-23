@@ -3794,3 +3794,16 @@ correct. Every finding should distinguish direct evidence from inference.
   is to preserve the now-correct lifecycle through `SEND`, treat the current BULK path
   as an opener unless evidence disproves it, and push forward to the first later `SRAW`
   emission on the same path.
+
+- The later editor-side `SRAW` payload phases now have a concrete outer caller shape
+  The next bounded reread closes one more ambiguity above the transport seam. In
+  `SendAudioFileToSampler`, the two later payload-bearing phases at file `0x02eff7`
+  and `0x02f113` both use the same outer call pattern:
+  `move.l #'SRAW', -(sp)`,
+  `move.l fp@(-0x0c), -(sp)`,
+  then reload the socket object at `this+0x74` and indirect through the same socket send
+  slot that earlier carried the `BULK` opener. So the real next harness target is now
+  narrower than “some later SRAW path.” The next phase uses the same socket send surface
+  with tag `'SRAW'` and a second argument sourced from editor local `fp@(-0x0c)`.
+  What is still open is the meaning and producer chain of that local, not the broad
+  outer caller shape anymore.
