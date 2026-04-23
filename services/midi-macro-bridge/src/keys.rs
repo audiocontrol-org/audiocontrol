@@ -20,7 +20,7 @@ use anyhow::{Context, Result};
 use enigo::{Direction, Enigo, Key, Keyboard, Settings};
 use std::thread;
 use std::time::Duration;
-use tracing::{debug, trace};
+use tracing::{debug, trace, warn};
 
 use crate::state::KeyAction;
 
@@ -64,10 +64,13 @@ impl Emitter {
                     return Ok(());
                 }
                 Err(e) => {
-                    // Don't fail the whole operation if the check
-                    // errors — log and proceed. Better to occasionally
-                    // leak a keystroke than to silently miss transport.
-                    debug!(?e, "frontmost check failed; emitting anyway");
+                    // Fail closed: if we can't verify the frontmost app,
+                    // don't emit. Leaking a Spacebar into Finder or
+                    // Safari is worse than missing a transport event,
+                    // since the state machine will typically re-sync on
+                    // the next event.
+                    warn!(?e, app = %app, "frontmost check failed; skipping keystrokes");
+                    return Ok(());
                 }
             }
         }

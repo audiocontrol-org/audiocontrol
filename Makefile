@@ -523,6 +523,8 @@ clean:
 	rm -f $(MODULES_DIR)/*/.build-stamp
 	rm -f $(INSTALL_STAMP)
 	rm -f $(MODULES_DIR)/*/*.tsbuildinfo
+	rm -rf $(MIDI_MACRO_BRIDGE_SRC_DIR)/target
+	rm -f $(MIDI_MACRO_BRIDGE_STAMP)
 
 clean-deps:
 	rm -rf .deps
