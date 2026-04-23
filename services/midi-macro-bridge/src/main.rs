@@ -323,12 +323,19 @@ fn parse_mcu_spec(spec: &str, extra: &[String]) -> Result<Vec<Vec<u8>>> {
 /// `--send-mcu play`, `--send-mcu stop`, etc.; the output shows the
 /// exact bytes we emitted and whatever LUNA pushed back (position
 /// updates, LED changes, etc.).
+///
+/// The tool waits for LUNA to activate the surface (signalled by the
+/// init burst from LUNA) before emitting, rather than running on a
+/// fixed settle timer. That way the user has as long as they need to
+/// switch apps and toggle the Control Surface row ON.
 fn run_send_mcu(spec: &str, extra: &[String]) -> Result<()> {
     use std::thread::sleep;
     use std::time::Instant;
 
-    const SETTLE_MS: u64 = 1500; // let LUNA handshake before we emit
+    const MAX_WAIT_S: u64 = 120; // how long we wait for LUNA to activate
+    const QUIET_MS: u64 = 250; // silence window after init burst
     const TAP_GAP_MS: u64 = 50; // press -> release gap for button taps
+    const PRE_EMIT_MS: u64 = 200; // small pause after activation before we emit
     const OBSERVE_S: u64 = 3; // post-send listen window
 
     // Parse first so spec errors are reported before we touch MIDI.
@@ -340,15 +347,32 @@ fn run_send_mcu(spec: &str, extra: &[String]) -> Result<()> {
         let _ = tx.send((start.elapsed().as_micros(), bytes.to_vec()));
     })?;
 
-    eprintln!("# send-mcu: spec='{spec}', {} message(s) to emit", messages.len());
+    eprintln!("# send-mcu: spec='{spec}', {} message(s) queued to emit", messages.len());
     for (i, msg) in messages.iter().enumerate() {
         let hex: Vec<String> = msg.iter().map(|b| format!("{b:02X}")).collect();
         eprintln!("#   msg[{i}] = {}", hex.join(" "));
     }
-    eprintln!("# settling {SETTLE_MS} ms for LUNA handshake...");
-    drain_with_heartbeats(&rx, &mut pair, Duration::from_millis(SETTLE_MS))?;
+    eprintln!(
+        "# waiting for LUNA to activate surface '{MCU_ENDPOINT_NAME}' \
+         (up to {MAX_WAIT_S}s)..."
+    );
+    eprintln!(
+        "# In LUNA: Preferences > Controllers > MIDI Control Surfaces; select"
+    );
+    eprintln!(
+        "# '{MCU_ENDPOINT_NAME}' as both INPUT and OUTPUT DEVICE and toggle the row ON."
+    );
 
-    eprintln!("# emitting...");
+    wait_for_luna_activation(
+        &rx,
+        &mut pair,
+        Duration::from_secs(MAX_WAIT_S),
+        Duration::from_millis(QUIET_MS),
+    )?;
+
+    eprintln!("# surface ready — waiting {PRE_EMIT_MS}ms then emitting");
+    sleep(Duration::from_millis(PRE_EMIT_MS));
+
     for (i, msg) in messages.iter().enumerate() {
         pair.send(msg)
             .with_context(|| format!("sending message {i}"))?;
@@ -365,6 +389,85 @@ fn run_send_mcu(spec: &str, extra: &[String]) -> Result<()> {
 
     eprintln!("# done");
     Ok(())
+}
+
+/// Block until LUNA has activated the virtual surface and finished
+/// pushing the init burst. Detected by: any non-heartbeat inbound
+/// message, followed by `quiet` of no further non-heartbeat
+/// traffic. Heartbeats arriving during the wait are answered so the
+/// surface stays alive. Returns `Err` if no activation is seen
+/// within `max_wait`.
+fn wait_for_luna_activation(
+    rx: &mpsc::Receiver<(u128, Vec<u8>)>,
+    pair: &mut midi::VirtualMcuPair,
+    max_wait: Duration,
+    quiet: Duration,
+) -> Result<()> {
+    use std::time::Instant;
+
+    let start = Instant::now();
+    let mut activated_at: Option<Instant> = None;
+    let mut last_non_heartbeat: Option<Instant> = None;
+
+    loop {
+        if start.elapsed() >= max_wait {
+            anyhow::bail!(
+                "no surface activation from LUNA in {}s — is the Control Surface \
+                 row set to '{MCU_ENDPOINT_NAME}' (INPUT + OUTPUT) and toggled ON?",
+                max_wait.as_secs()
+            );
+        }
+
+        if let Some(last) = last_non_heartbeat {
+            if last.elapsed() >= quiet {
+                let elapsed = activated_at
+                    .map(|a| a.elapsed().as_millis() as u64)
+                    .unwrap_or(0);
+                eprintln!(
+                    "# init burst finished ({}ms of activity, then {}ms quiet) — ready",
+                    elapsed,
+                    quiet.as_millis()
+                );
+                return Ok(());
+            }
+        }
+
+        let poll = Duration::from_millis(200).min(quiet);
+        match rx.recv_timeout(poll) {
+            Ok((us, bytes)) => {
+                let heartbeat_model = mcu::parse_heartbeat_query(&bytes);
+
+                if let Some(model) = heartbeat_model {
+                    if model == mcu::MCU_MODEL_ID {
+                        let reply = mcu::mcu_identity_reply(model);
+                        if let Err(e) = pair.send(&reply) {
+                            eprintln!("# heartbeat reply failed: {e}");
+                        }
+                    }
+                }
+
+                let hex: Vec<String> = bytes.iter().map(|b| format!("{b:02X}")).collect();
+                println!(
+                    "{us:>12}us  [{:>3}]  {:<18}  {}",
+                    bytes.len(),
+                    classify_midi(&bytes),
+                    hex.join(" ")
+                );
+
+                if heartbeat_model.is_none() {
+                    if activated_at.is_none() {
+                        activated_at = Some(Instant::now());
+                        eprintln!("# LUNA activation detected; waiting for init burst to settle...");
+                    }
+                    last_non_heartbeat = Some(Instant::now());
+                }
+            }
+            Err(mpsc::RecvTimeoutError::Timeout) => continue,
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                anyhow::bail!("MIDI channel disconnected while waiting for LUNA");
+            }
+        }
+    }
 }
 
 /// Drain the inbound channel for `duration`, printing each message
