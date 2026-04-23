@@ -3087,6 +3087,19 @@ correct. Every finding should distinguish direct evidence from inference.
   looks like an older latched selection/status field that must already be established by
   some earlier path outside the locally visible selection writes.
 
+- MESA II runtime `~0x114c0` is not a separate helper; it is the `ChooseSCSI` success tail that publishes the per-socket selection word consumed later by `SEND`
+  Rebased runtime `0x114c0` maps to file `0x1a5e`, inside
+  `ChooseSCSI__9CSCSIPlugFUl` (`0x1700-0x1afe`), not to a standalone top-level body.
+  The surrounding `0x1a1e-0x1a9e` tail runs only after a successful chooser return:
+  it computes a pointer to the selected dialog line, parses ASCII digits at offsets
+  `+5` and `+10`, builds a 16-bit bus/ID word, scans registered sockets up to
+  `self+0x38` matching `slot+0x26` against the incoming key at `fp@(12)`, stores the
+  chosen word to `self+0x0d70 + 4*n`, and finally writes the same word into active
+  `self+0x0d6e`.
+  That closes the identity of the `0x0d70/0x0d72` publisher behind Claude's later
+  `0x0d72` harness shortcut: the shortcut stands in for the already-identified chooser
+  success path rather than an arbitrary mystery write.
+
 - MESA II ctor-visible sibling fields `0x0d68/0x0d6a/0x0d6c` look like an older latched-state cluster, while the active selection machinery has moved to `0x0d6e/0x0d70`
   `__ct__9CSCSIPlugFv` at `0x0bfc-0x0c0a` explicitly clears `self+0x0d6c`,
   `self+0x0d6a`, and `self+0x0d6e` together at construction time.

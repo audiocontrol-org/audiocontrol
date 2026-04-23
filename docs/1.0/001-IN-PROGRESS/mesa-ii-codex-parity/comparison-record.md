@@ -885,6 +885,14 @@ cleanly.
   newer `0x0d6e/0x0d70` selection machinery. They still do not visibly establish
   `0x0d68/0x0d6a/0x0d6c`. So the older latch cluster is now excluded not just from
   `SMSendData` itself but from the obvious visible plug-side command/activation path too.
+  Much later, when Claude's bounded `0x0d72` probe cleared the `SEND`-side `0xc950`
+  gate, Codex closed the identity of the publisher behind that shortcut too: runtime
+  `~0x114c0` is not a separate helper, but the `ChooseSCSI` success tail inside file
+  `0x1a1e-0x1a9e`. That tail parses the selected dialog line, computes the chosen 16-bit
+  bus/ID word, scans sockets by the same `slot+0x26` key, stores the word to
+  `self+0x0d70 + 4*n`, and then copies it into active `self+0x0d6e`. So the harness
+  seed of `0x0d72` is now an evidence-backed shortcut for an already identified
+  production chooser stage, not an unexplained magic write.
 - UALL handler path
   Claude baseline:
   not in `SendData` TagDispatch; expected through a different vtable entry.

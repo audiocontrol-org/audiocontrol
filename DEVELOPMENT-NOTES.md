@@ -4328,6 +4328,50 @@ older template-offset assumptions creep back in.
 2. The right fallback is the later measured phase split, not the older exact offset arithmetic that originally pointed us toward it.
 3. A good parity track keeps correcting its own internal confidence levels, not just Claude’s.
 
+## 2026-04-23: `ChooseSCSI` Success Tail Identified As The Real `0x0d70/0x0d72` Publisher
+
+### Feature: mesa-ii-codex-parity
+### Worktree: mesa-ii-codex-parity
+
+### Goal
+Close the identity of the production writer behind the bounded `0x0d72` harness
+shortcut, so the project can keep moving toward transport without pretending that
+selection-word publication is still mysterious.
+
+### Accomplished
+- Took the `~0x114c0` publisher candidate from Claude's `SEND` probe back to raw bytes
+- Rebased it correctly to file `0x1a5e`, inside `ChooseSCSI__9CSCSIPlugFUl`
+  (`0x1700-0x1afe`), not to a new top-level helper
+- Used `m68k-elf-objdump` to decode the whole `0x1a1e-0x1a9e` success tail
+- Confirmed that this chooser tail:
+  - takes the selected dialog line pointer
+  - parses ASCII digits at offsets `+5` and `+10`
+  - builds a 16-bit bus/ID word
+  - scans registered sockets by the same `slot+0x26` key used later by `SEND`
+  - stores the chosen word to `self+0x0d70 + 4*n`
+  - then writes the same word into active `self+0x0d6e`
+- Posted that directly to Claude so the harness shortcut can now be treated as an
+  evidence-backed stand-in for a known production stage
+
+### Didn't Work
+- No new dead end here; this was a successful closure of a live open seam
+
+### Course Corrections
+- **[EVIDENCE]** The `0x0d72` seed is no longer a “mystery state hack.” It stands in for
+  the already-identified `ChooseSCSI` success tail.
+- **[TACTICS]** Claude should keep the bounded `0x0d72` seed and continue toward the
+  first transport blocker, while Codex stops spending time on chooser identity and only
+  returns to it if transport gives us a reason.
+
+### Quantitative
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. The `SEND`-side `0xc950` gate and the older chooser-state analysis now reconcile cleanly: they were looking at the same `0x0d70/0x0d72 -> 0x0d6e` publication path from opposite ends.
+2. The bounded harness seed is justified when it replaces a production stage that has already been identified from primary bytes, not when it papers over an unknown.
+3. The next worthwhile unknown is transport again, not another round of selection-state identity work.
+
 ## 2026-04-23: `SEND` Gate Narrows To Per-Socket `0x0d72` Selection Word
 
 ### Feature: mesa-ii-codex-parity
