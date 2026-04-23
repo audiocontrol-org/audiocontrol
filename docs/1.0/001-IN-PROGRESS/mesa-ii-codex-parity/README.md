@@ -136,16 +136,22 @@ Both efforts should stay disciplined:
 The active state is now:
 
 - `MEASURED`:
-  corrected PLUG-relative load model; real chained `ctor -> INIT -> CONS` path reached;
-  harness `A055 StripAddress` bug fixed; plug self-relocation now sees sane A4/table
-  values and runs production-shaped relocation logic
+  corrected PLUG-relative load model; harness `A055 StripAddress` bug fixed; plug
+  self-relocation now carries the real chained `ctor -> INIT -> CONS -> ASOK -> SEND`
+  lifecycle without manual relocation; `CONS` is still supposed to populate
+  `this+0x38` and copy a 46-byte `SocketInfo` into `this+0x3c`; ctor seeds
+  `this+0x0938` from `CurResFile`, and non-`INIT` dispatch brackets `DoMESACommand`
+  with save/switch/restore calls through `$A998`
 - `OPEN`:
-  whether Musashi can now rely on the plug’s own self-relocation alone, what exact
-  target class remains if it cannot, and what first post-relocation blocker appears on a
-  clean rerun
+  whether implementing `$A998` as Resource Manager current-file switch/restore is enough
+  to make ordinary `CONS -> ConnectToSocket` mutate the live socket table, or whether the
+  next blocker is command/payload shape on the `MESACommand+6 -> 46-byte SocketInfo`
+  path
 - `NEXT`:
-  rerun from the top with manual relocation disabled and stop at the first new blocker
-  after the plug self-relocates its own body
+  implement `$A998` semantics, rerun only through `CONS` on the persistent object, and
+  log `this`, `this+0x38`, and the first 46 bytes at `this+0x3c`; if `CONS` still stays
+  inert, compare the live `MESACommand+6` payload against the editor-canonical
+  `ConnectToPlug` `CONS` payload rooted at socket `this+24`
 
 ## Artifact Reminder
 
@@ -186,8 +192,9 @@ no longer the live frontier. The active frontier is now earlier and more structu
 - the harness now reaches the real chained plug lifecycle under corrected PLUG-relative
   load semantics
 - the `A055` fix removed a root-cause harness bug in that path
-- the remaining unknown is now the clean ownership boundary between harness relocation
-  and plug self-relocation, plus the first true post-relocation contract beyond that
+- the remaining unknown is now the non-`INIT` resource-file/context contract around
+  `$A998`, plus whether the harness is feeding `CONS` the same 46-byte `SocketInfo`
+  payload that the real editor builds at socket `this+24`
 
 That should be the starting point for the next session, not the older callback-install
 or wrapper-only story.

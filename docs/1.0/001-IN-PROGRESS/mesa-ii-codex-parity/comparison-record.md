@@ -1163,6 +1163,26 @@ cleanly.
   CDB-construction block at `0x163c-0x167e` does still live inside the `SMSendData`
   body after all; the separate earlier body is the `SMDispatchReply` handler.
 
+- Claude's clean no-manual-reloc rerun materially changed the live seam again. The
+  plug now carries the real chained `ctor -> INIT -> CONS -> ASOK -> SEND` lifecycle
+  without harness relocation, and the first trustworthy error is the local `0xc950`
+  no-selection path with `this+0x38 == 0` and `this+0x0d6e == 0`.
+  Claude baseline:
+  post-`CONS`, the persistent object still shows no socket-table growth, and post-`SEND`
+  the plug exits through the local no-selected-socket guard.
+  Codex finding:
+  static rebasing makes the next order of operations sharper than before.
+  `ConnectToSocket` is still the visible `CONS` success body and should mutate
+  `this+0x38` and copy a 46-byte `SocketInfo` into `this+0x3c`. Meanwhile the rebased
+  ctor stores `A994` into `this+0x0938`, and non-`INIT` `main` does
+  `A994 -> push this+0x0938 -> A998 -> DoMESACommand -> push saved old file -> A998`,
+  i.e. a direct save/switch/dispatch/restore pattern around plug commands. So the next
+  shared discriminator is:
+  first implement `$A998` as Resource Manager current-file switching and rerun only
+  through `CONS`; only if the table still stays inert should both branches pivot to
+  comparing the live `MESACommand+6` payload against the editor-canonical
+  `ConnectToPlug` `CONS` payload rooted at socket `this+24`.
+
 ## Comparison Rules
 
 - Codex should compare against the latest Claude branch docs plus its `DEVELOPMENT-NOTES.md`,

@@ -3938,3 +3938,44 @@ no-manual-reloc rerun still fails.
 1. The clean rerun remains the next move, but the fallback plan is now sharper if it fails.
 2. The plug’s own relocation increasingly looks like a table/data relocation mechanism, not just a random startup quirk.
 3. Better fallback hypotheses reduce the temptation to reintroduce broad manual relocation as a reflex.
+
+## 2026-04-22: `CONS` Seam Tightened to `$A998` First, Editor-Canonical Payload Second
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Resync the local parity docs after the clean no-manual-reloc rerun so they reflect the
+real current `CONS` blocker, not the older relocation seam.
+
+### Accomplished
+- Re-polled `#315` and confirmed the live shared state is now:
+  `ctor -> INIT -> CONS -> ASOK -> SEND` runs without manual relocation
+- Tightened the next harness order from the static side:
+  - first missing contract is `$A998` resource-file switch/restore semantics
+  - second fallback, only if `CONS` still stays inert, is the actual
+    `MESACommand+6 -> 46-byte SocketInfo` payload shape
+- Synced the local README, `codex-findings.md`, and `comparison-record.md` to that
+  narrower seam
+
+### Didn't Work
+- `#315`'s issue body is still on the older post-`A055` relocation framing at this point;
+  it still needs the current-state section refreshed to the new `CONS` / `$A998` seam
+
+### Course Corrections
+- **[EVIDENCE]** Plug self-relocation is no longer the live blocker. The chained path is
+  now reaching a clean local no-selection guard.
+- **[TACTICS]** `$A998` is no longer just “resource-manager flavored”; the ctor and
+  rebased `main` together make it the strongest immediate missing contract on `CONS`.
+- **[TACTICS]** If `$A998` semantics still do not make `CONS` mutate the socket table,
+  the next bounded discriminator is the editor-canonical `CONS` payload:
+  `MESACommand+6` should point at the 46-byte `SocketInfo` rooted at socket `this+24`.
+
+### Quantitative
+- Feature docs updated: 3
+  `README.md`, `codex-findings.md`, `comparison-record.md`
+
+### Insights
+1. Once relocation stopped being noisy, the right next move became much more ordinary: make non-`INIT` command dispatch run in the correct resource-file context.
+2. The best fallback after a missing OS/toolbox contract is not another broad theory. It is the exact data shape the real editor sends into the same plug arm.
+3. The project is healthier when the docs explicitly name the next and next-after-next discriminators instead of leaving “command shape” as vague future work.

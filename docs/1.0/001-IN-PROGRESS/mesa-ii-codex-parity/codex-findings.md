@@ -3597,3 +3597,22 @@ correct. Every finding should distinguish direct evidence from inference.
   fails, the most plausible uncovered class is narrower than “relocation in general”:
   code-entry immediates or other loader-level code references are now a stronger
   fallback candidate than A4-rooted table pointers.
+
+- The live post-relocation seam is now `CONS` resource-file context first, command/payload shape second
+  After Claude's clean no-manual-reloc rerun reached the real chained
+  `ctor -> INIT -> CONS -> ASOK -> SEND` lifecycle, the first trustworthy plug-side
+  error became the local `0xc950` no-selection path with `this+0x38 == 0` and
+  `this+0x0d6e == 0`. Static reread tightens the next harness order. First,
+  `ConnectToSocket` is still the visible `CONS` body under corrected `DoMESACommand`:
+  it checks `this+0x38 < 50`, increments `this+0x38`, computes `index * 46`, and copies
+  the incoming 46-byte `SocketInfo` into the table rooted at `this+0x3c`. Second, the
+  surrounding non-`INIT` dispatch is now sharper than “resource-manager flavored.”
+  In rebased `__ct__11CMESAPlugInFv`, the ctor stores the result of `A994` into
+  `this+0x0938`; then rebased `main` does `A994`, pushes `this+0x0938`, calls `$A998`,
+  dispatches through vtable `+0x10`, pushes the saved old file, and calls `$A998`
+  again. That is a direct save/switch/dispatch/restore pattern. So if `CONS` still does
+  not mutate the live object's socket table after `$A998` is modeled as
+  `UseResFile`-style switching, the next discriminator is no longer broad `ASOK` or
+  transport state. It is whether the harness is feeding the same editor-canonical
+  `CONS` payload that `CMESASocket::ConnectToPlug` actually builds: a command block
+  whose `MESACommand+6` points at the 46-byte `SocketInfo` rooted at socket `this+24`.
