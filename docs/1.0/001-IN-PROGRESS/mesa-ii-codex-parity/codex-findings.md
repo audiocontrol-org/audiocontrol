@@ -3841,3 +3841,20 @@ correct. Every finding should distinguish direct evidence from inference.
   pointer as its second outer argument. It receives a mutable local value that starts
   life as a requested chunk-size/shape slot and is transformed by helper code before it
   is handed to the socket send surface.
+
+- `SMSendData` itself provably builds the 6-byte local CDB on its own stack before it calls the deeper helper
+  A clean direct disassembly of the extracted PLUG body at file `0x106e-0x1104` sharpens
+  the current productive `SRAW -> SMSendData` seam. The body at `0x106e` starts with
+  `linkw fp,#-6`, loads `this`, selection word, count, and out-pointer from the outer
+  frame, and after the `0x187e` gate succeeds it writes the six local CDB bytes directly
+  into its own stack frame:
+  `fp@(-6)=0x0c`,
+  `fp@(-5)=0x00`,
+  `fp@(-4..-2)=low 24 bits of count`,
+  `fp@(-1)=0x80` iff mode byte `fp@(14)` is nonzero, else `0x00`.
+  Then it passes `&fp@(-6)` onward via `pea fp@(-6)` before calling the deeper helper
+  at `0x1620`.
+  So the immediate CDB source is not best modeled as “something inside the fake dialog
+  object.” The local builder already exists inside `SMSendData` before that later helper
+  path runs. The live runtime question is therefore: where do those already-built local
+  bytes get consumed or clobbered after `SMSendData` constructs them?

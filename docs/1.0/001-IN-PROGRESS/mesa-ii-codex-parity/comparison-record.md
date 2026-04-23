@@ -1410,6 +1410,25 @@ cleanly.
   outer `SRAW` argument. It pushes a mutable local value that begins as a size/shape
   slot and is transformed by helper code before reaching the socket send surface.
 
+- `SMSendData` locally builds the 6-byte CDB before the deeper helper path, so the empty-CDB bug is probably downstream of local construction
+  Claude baseline:
+  the productive `SRAW -> SMSendData` path now reaches the post-dialog send layer, but
+  the emitted PB CDB is still all zeros.
+  Codex correction:
+  a clean direct disassembly of the PLUG body at file `0x106e-0x1104` shows that
+  `SMSendData` itself already constructs the 6-byte local CDB on its own stack before it
+  calls the deeper helper. After the `0x187e` gate succeeds, the function writes:
+  `fp@(-6)=0x0c`,
+  `fp@(-5)=0x00`,
+  `fp@(-4..-2)=low 24 bits of count`,
+  `fp@(-1)=0x80` iff mode byte `fp@(14)` is nonzero, else `0x00`.
+  It then passes `&fp@(-6)` onward via `pea fp@(-6)` before calling helper `0x1620`.
+  So the immediate CDB source is not best modeled as “bytes that must come from the fake
+  `GetNewDialog` record.” The local builder already exists upstream of that theory.
+  The sharper live question is now:
+  where do those already-built local bytes get consumed or clobbered after local CDB
+  construction inside `SMSendData`?
+
 ## Comparison Rules
 
 - Codex should compare against the latest Claude branch docs plus its `DEVELOPMENT-NOTES.md`,

@@ -4733,3 +4733,49 @@ Tighten the outer `SRAW` caller model one step further by determining what edito
 1. The productive `SRAW` path is now real enough that wrong assumptions about the outer argument shape matter more than one more chooser/dialog theory.
 2. The editor-side second `SRAW` argument is transformed through helper code before it is pushed, so it should be treated as a descriptor-like local until proven otherwise.
 3. The right next discriminator is now the live `SMSendData` frame content around the CDB-source pointer, not a richer fake dialog object by default.
+
+## 2026-04-23: `SMSendData` Locally Builds The 6-Byte CDB Before The Deeper Helper Path
+
+### Feature: mesa-ii-codex-parity
+### Worktree: mesa-ii-codex-parity
+
+### Goal
+Replace the current vague “maybe the fake dialog object should contain the real CDB”
+story with a primary-evidence model of where the CDB bytes are first constructed.
+
+### Accomplished
+- Extracted the PLUG body from `scsi-plug-rsrc.bin` and directly disassembled file
+  `0x106e-0x1104`
+- Verified that `SMSendData` begins with `linkw fp,#-6`
+- Verified that after the `0x187e` gate succeeds it writes the six local CDB bytes
+  directly into its own stack frame:
+  - `fp@(-6)=0x0c`
+  - `fp@(-5)=0x00`
+  - `fp@(-4..-2)=low 24 bits of count`
+  - `fp@(-1)=0x80` iff mode byte `fp@(14)` is nonzero, else `0x00`
+- Verified that it then passes `&fp@(-6)` onward via `pea fp@(-6)` before calling the
+  deeper helper at `0x1620`
+- Posted that correction to Claude on `#315`
+
+### Didn't Work
+- This still does not name the exact downstream clobber/consumption point after local CDB
+  construction
+
+### Course Corrections
+- **[EVIDENCE]** The immediate CDB source is the local `SMSendData` stack frame, not a
+  dialog-returned record by default.
+- **[TACTICS]** The next runtime probe should log the six local bytes in
+  `SMSendData` itself and then determine where they are consumed or lost after that.
+- **[TACTICS]** This materially weakens the default “make the fake dialog richer”
+  theory as the next move.
+
+### Quantitative
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+- Issue comments posted: 1
+  `#4308996153`
+
+### Insights
+1. The productive `SRAW -> SMSendData` path is now constrained enough that we can separate local CDB construction from later helper/UI behavior.
+2. The local builder proves the empty-CDB bug is probably downstream of initial construction, not upstream of it.
+3. The right next discriminator is now “where do the already-built local bytes go?” not “does the fake dialog record contain them?”
