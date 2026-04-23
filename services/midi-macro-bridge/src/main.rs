@@ -55,6 +55,25 @@ fn main() -> Result<()> {
         return run_probe_mcu();
     }
 
+    // --send-mcu <spec> [args...]: emit a candidate MCU message to
+    // LUNA and dump any inbound response for a few seconds. Used
+    // during Phase 3c to empirically map actions (play, stop, bar-
+    // nudge, ...) to the byte sequences LUNA actually responds to.
+    if let Some(idx) = args.iter().position(|a| a == "--send-mcu") {
+        let spec = args
+            .get(idx + 1)
+            .filter(|a| !a.starts_with("--"))
+            .context("--send-mcu requires a spec (e.g. 'play', 'stop', 'raw 90 5E 7F')")?
+            .clone();
+        let extra: Vec<String> = args
+            .iter()
+            .skip(idx + 2)
+            .take_while(|a| !a.starts_with("--"))
+            .cloned()
+            .collect();
+        return run_send_mcu(&spec, &extra);
+    }
+
     // --self-test: emit a hardcoded event sequence with delays, for
     // validating the keystroke path without needing hardware.
     let self_test = args.iter().any(|a| a == "--self-test");
@@ -231,6 +250,151 @@ fn run_probe_mcu() -> Result<()> {
                     }
                 }
 
+                let hex: Vec<String> = bytes.iter().map(|b| format!("{b:02X}")).collect();
+                println!(
+                    "{us:>12}us  [{:>3}]  {:<18}  {}",
+                    bytes.len(),
+                    classify_midi(&bytes),
+                    hex.join(" ")
+                );
+            }
+            Err(mpsc::RecvTimeoutError::Timeout) => continue,
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                eprintln!("# MIDI channel disconnected");
+                return Ok(());
+            }
+        }
+    }
+}
+
+/// Parse a `--send-mcu <spec> [extra...]` command into one or more
+/// MIDI byte sequences to emit on the virtual MCU output. Buttons
+/// emit a press (velocity 0x7F) followed by a release (velocity
+/// 0x00) with a short inter-message gap. Split `-press` / `-release`
+/// variants let us test non-tap behaviours (e.g. whether LUNA
+/// interprets a held-down rewind differently from a tap).
+fn parse_mcu_spec(spec: &str, extra: &[String]) -> Result<Vec<Vec<u8>>> {
+    let button_tap = |note: u8| {
+        vec![
+            vec![0x90, note, 0x7F], // press
+            vec![0x90, note, 0x00], // release
+        ]
+    };
+    Ok(match spec {
+        "play" => button_tap(0x5E),
+        "stop" => button_tap(0x5D),
+        "rewind" => button_tap(0x5B),
+        "ff" | "fast-forward" => button_tap(0x5C),
+        "record" => button_tap(0x5F),
+        "cursor-left" => button_tap(0x62),
+        "cursor-right" => button_tap(0x63),
+        "cursor-up" => button_tap(0x60),
+        "cursor-down" => button_tap(0x61),
+        "rewind-press" => vec![vec![0x90, 0x5B, 0x7F]],
+        "rewind-release" => vec![vec![0x90, 0x5B, 0x00]],
+        "ff-press" => vec![vec![0x90, 0x5C, 0x7F]],
+        "ff-release" => vec![vec![0x90, 0x5C, 0x00]],
+        "raw" => {
+            anyhow::ensure!(
+                !extra.is_empty(),
+                "raw spec requires hex bytes: --send-mcu raw 90 5E 7F"
+            );
+            let bytes: Vec<u8> = extra
+                .iter()
+                .map(|s| {
+                    let trimmed = s.trim_start_matches("0x").trim_start_matches("0X");
+                    u8::from_str_radix(trimmed, 16)
+                        .with_context(|| format!("not a hex byte: {s:?}"))
+                })
+                .collect::<Result<_>>()?;
+            vec![bytes]
+        }
+        other => anyhow::bail!(
+            "unknown --send-mcu spec '{other}'. Known: play, stop, rewind, ff, record, \
+             cursor-left, cursor-right, cursor-up, cursor-down, rewind-press, rewind-release, \
+             ff-press, ff-release, raw <hex-bytes>"
+        ),
+    })
+}
+
+/// Emit a candidate MCU message to LUNA via the virtual output, then
+/// dump any inbound bytes for a few seconds so we can see LUNA's
+/// reaction. Intended for Phase 3c discovery — drive it with
+/// `--send-mcu play`, `--send-mcu stop`, etc.; the output shows the
+/// exact bytes we emitted and whatever LUNA pushed back (position
+/// updates, LED changes, etc.).
+fn run_send_mcu(spec: &str, extra: &[String]) -> Result<()> {
+    use std::thread::sleep;
+    use std::time::Instant;
+
+    const SETTLE_MS: u64 = 1500; // let LUNA handshake before we emit
+    const TAP_GAP_MS: u64 = 50; // press -> release gap for button taps
+    const OBSERVE_S: u64 = 3; // post-send listen window
+
+    // Parse first so spec errors are reported before we touch MIDI.
+    let messages = parse_mcu_spec(spec, extra)?;
+
+    let start = Instant::now();
+    let (tx, rx) = mpsc::channel::<(u128, Vec<u8>)>();
+    let mut pair = midi::create_virtual_mcu(MCU_ENDPOINT_NAME, move |bytes| {
+        let _ = tx.send((start.elapsed().as_micros(), bytes.to_vec()));
+    })?;
+
+    eprintln!("# send-mcu: spec='{spec}', {} message(s) to emit", messages.len());
+    for (i, msg) in messages.iter().enumerate() {
+        let hex: Vec<String> = msg.iter().map(|b| format!("{b:02X}")).collect();
+        eprintln!("#   msg[{i}] = {}", hex.join(" "));
+    }
+    eprintln!("# settling {SETTLE_MS} ms for LUNA handshake...");
+    drain_with_heartbeats(&rx, &mut pair, Duration::from_millis(SETTLE_MS))?;
+
+    eprintln!("# emitting...");
+    for (i, msg) in messages.iter().enumerate() {
+        pair.send(msg)
+            .with_context(|| format!("sending message {i}"))?;
+        let hex: Vec<String> = msg.iter().map(|b| format!("{b:02X}")).collect();
+        let ts = start.elapsed().as_micros();
+        println!("{ts:>12}us  SENT  {}", hex.join(" "));
+        if i + 1 < messages.len() {
+            sleep(Duration::from_millis(TAP_GAP_MS));
+        }
+    }
+
+    eprintln!("# observing {OBSERVE_S}s for LUNA's response...");
+    drain_with_heartbeats(&rx, &mut pair, Duration::from_secs(OBSERVE_S))?;
+
+    eprintln!("# done");
+    Ok(())
+}
+
+/// Drain the inbound channel for `duration`, printing each message
+/// and replying to MCU heartbeat queries so LUNA keeps the surface
+/// alive during the send-mcu settle / observe windows.
+fn drain_with_heartbeats(
+    rx: &mpsc::Receiver<(u128, Vec<u8>)>,
+    pair: &mut midi::VirtualMcuPair,
+    duration: Duration,
+) -> Result<()> {
+    use std::time::Instant;
+    let deadline = Instant::now() + duration;
+    loop {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            return Ok(());
+        }
+        let poll = remaining.min(Duration::from_millis(200));
+        match rx.recv_timeout(poll) {
+            Ok((us, bytes)) => {
+                if let Some(model) = mcu::parse_heartbeat_query(&bytes) {
+                    if model == mcu::MCU_MODEL_ID {
+                        let reply = mcu::mcu_identity_reply(model);
+                        if let Err(e) = pair.send(&reply) {
+                            eprintln!("# heartbeat reply failed: {e}");
+                        } else {
+                            eprintln!("# -> identity reply sent for model 0x{model:02X}");
+                        }
+                    }
+                }
                 let hex: Vec<String> = bytes.iter().map(|b| format!("{b:02X}")).collect();
                 println!(
                     "{us:>12}us  [{:>3}]  {:<18}  {}",
