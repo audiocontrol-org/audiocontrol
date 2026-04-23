@@ -1308,6 +1308,35 @@ cleanly.
   for `CONS` that field should contain the address of the 46-byte `SocketInfo` rooted at
   socket `this+24`.
 
+- The `SEND` success path is now proven far enough that the next blocker is BULK `IP_Data`, not chooser state
+  Claude baseline:
+  keeping the evidence-backed `0x0d72` seed clears the local `0xc950` gate, and the
+  corrected persistent-object path now reaches the post-`SEND` sub-dispatch where
+  `SocketInfo+8` is loaded as a sub-tag. With `SocketInfo+8 = 'BULK'`, the harness sees
+  the BULK sub-handler run, hit `$A976 GetNewDialog`, then emit a zero-filled
+  `$A089 SCSIDispatch` CDB.
+  Codex finding:
+  the rebased BULK arm at runtime `0x10900` / file `0x0e9e` is not waiting on another
+  chooser or activation step. It is a concrete `IP_Data` consumer:
+  `IP_Data+0` is the byte count,
+  `IP_Data+4` is the payload pointer,
+  `IP_Data+8` is the sub-tag,
+  and the outer `SEND` gate has already consumed `IP_Data+12` as the target key.
+  After a front-door `this+0x0e40` refresh through `0x0ca2`, the BULK body does:
+  if `IP_Data+4 == 0` and `IP_Data+0 == 0`, branch into the local
+  `0x0d54` / `0x0dfc` probe-or-error path;
+  else if `IP_Data+8 == 'SRAW'`, call the shared sender with mode `1`;
+  else validate `IP_Data+4` as Akai SysEx/SDS bytes and branch on opcode byte `3`.
+  Opcode `0x0B` calls the shared sender with mode `0`, context `this+0x0e3c`,
+  payload `IP_Data+4`, and byte count `IP_Data+0`.
+  Opcode `0x0C` parses 7-bit bytes `11..14` into a local count, calls the shared sender
+  with mode `0` and null context, then follows with `0x0dfc`.
+  So the current shared read is no longer “BULK reached SCSI but maybe still lacks one
+  more chooser precondition.” It is:
+  the chooser-side shortcut is doing its job, and the next real blocker is whether the
+  harness is supplying a non-empty `IP_Data` record that the BULK arm recognizes as a
+  real payload/header send.
+
 ## Comparison Rules
 
 - Codex should compare against the latest Claude branch docs plus its `DEVELOPMENT-NOTES.md`,

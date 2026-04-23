@@ -4499,3 +4499,58 @@ Upgrade the current `CONS` payload fallback from “pointer-shaped bytes at
 1. Once the next harness probe is down to bytes, upgrading “offset of interest” into “actual field boundary” is worth real leverage.
 2. The stack-local layout is strong evidence because it does not depend on the still-imperfect higher-level class labeling.
 3. The safest fallback path is now very concrete: 10-byte command block, pointer field at `+6`, `CONS` fills that field with `this+24`.
+
+## 2026-04-23: Post-`SEND` BULK Failure Is An `IP_Data` Contract Problem, Not Another Chooser Blocker
+
+### Feature: mesa-ii-codex-parity
+### Worktree: mesa-ii-codex-parity
+
+### Goal
+Support Claude’s first real post-`SEND` transport trace by determining what the BULK
+sub-handler actually expects before it can emit a meaningful nonzero CDB.
+
+### Accomplished
+- Re-polled `#315` after Claude proved the evidence-backed `0x0d72` seed clears
+  `0xc950` and carries the path through `SEND`
+- Statistically decoded the rebased BULK arm at runtime `0x10900` / file `0x0e9e`
+  inside `SendData__9CSCSIPlugFP7IP_Data`
+- Confirmed the live record fields at this stage are:
+  - `IP_Data+0` = byte count
+  - `IP_Data+4` = payload pointer
+  - `IP_Data+8` = sub-tag
+  - earlier-proved outer `SEND` gate already used `IP_Data+12` as the target key
+- Traced the key branches:
+  - front-door `this+0x0e40` refresh through `0x0ca2(self, this+0x0d6e, 1, 1)`
+  - empty-record branch when both `IP_Data+4` and `IP_Data+0` are zero, via
+    `0x0d54` then `0x0dfc`
+  - `SRAW` sub-tag branch calling the shared sender with mode `1`
+  - SysEx/SDS validation branch for non-`SRAW` payloads:
+    - opcode `0x0B` calls the shared sender with mode `0`, context `this+0x0e3c`
+    - opcode `0x0C` parses 7-bit bytes `11..14`, calls the shared sender with null
+      context, then follows with `0x0dfc`
+- Posted the bounded result to Claude on `#315`
+
+### Didn't Work
+- The earlier “maybe BULK is still blocked on one more chooser/select step” framing
+  no longer holds up once the post-`SEND` body is decoded
+
+### Course Corrections
+- **[EVIDENCE]** The seeded `0x0d72` shortcut is now doing exactly what it should:
+  it gets the harness past the local `SEND` gate and into the actual BULK sub-handler.
+- **[EVIDENCE]** The zero-CDB run is best explained by an empty or malformed
+  `IP_Data` record, not by missing chooser state.
+- **[TACTICS]** The next bounded harness move should be to keep the proven `0x0d72`
+  seed, keep `SocketInfo+8 = 'BULK'`, and populate a real `IP_Data` payload record
+  (`+0` count, `+4` payload pointer) before hunting deeper transport issues.
+
+### Quantitative
+- Feature docs updated: 2
+  `codex-findings.md`, `comparison-record.md`
+- Issue comments posted: 1
+  `#4307972290`
+
+### Insights
+1. The project is now past chooser/activation debate on this path; the live contract has shifted into the concrete send record.
+2. `BULK` is not a single opaque branch. It has at least three meaningful sub-cases:
+   empty record, `SRAW`, and validated SysEx/SDS payload.
+3. The right next discriminator is no longer “what writes `0x0d72`?” but “what real payload/count record does the BULK arm need before it builds a nonzero CDB?”

@@ -3751,3 +3751,31 @@ correct. Every finding should distinguish direct evidence from inference.
   no longer argument order or “maybe it reads the tag elsewhere.” It is either the
   selector-helper behavior at `0x0148` or a remaining mismatch between the live handoff
   record and the editor-canonical 10-byte format after that first longword load.
+
+- The post-`SEND` BULK sub-handler is now bounded as an `IP_Data` contract, not another chooser or vtable mystery
+  Claude's newest harness step moved past the local `SEND` gate by keeping the
+  evidence-backed `0x0d72` seed and then setting `SocketInfo+8 = 'BULK'`. On the static
+  side, the rebased BULK arm at runtime `0x10900` / file `0x0e9e` now closes the next
+  seam tightly enough to guide the harness. It still has `A2 = this` and `A3 = IP_Data*`.
+  Its first live record fields are:
+  `IP_Data+0` = leading long / byte count,
+  `IP_Data+4` = payload pointer,
+  `IP_Data+8` = sub-tag,
+  with the already-proved outer `SEND` gate consuming `IP_Data+12` as the target key.
+  After the front-door `this+0x0e40` refresh through `0x0ca2(self, this+0x0d6e, 1, 1)`,
+  the BULK arm splits three ways:
+  if both `IP_Data+4 == 0` and `IP_Data+0 == 0`, it falls into the local
+  `0x0d54` / `0x0dfc` probe-or-error branch;
+  if `IP_Data+8 == 'SRAW'`, it pushes the already-known seven-slot sender frame and
+  calls `0x106e(this, this+0x0d6e, 1, IP_Data+4, this+0x0e3c, IP_Data+0, &local)`;
+  otherwise it validates the buffer at `IP_Data+4` as Akai SysEx/SDS framing
+  (`0xF0`, `0x47`, `0x48`) and then branches on opcode byte `3`.
+  Opcode `0x0B` calls
+  `0x106e(this, this+0x0d6e, 0, IP_Data+4, this+0x0e3c, IP_Data+0, &local)`.
+  Opcode `0x0C` parses 7-bit bytes `11..14` into a local count, calls
+  `0x106e(this, this+0x0d6e, 0, IP_Data+4, 0, IP_Data+0, &local)`,
+  then follows with `0x0dfc(self, this+0x0d6e, this+0x0e3c, 1, &local)`.
+  That means the zero-CDB BULK run is best read as an empty-record problem:
+  the harness has reached the right sub-handler, but without a nonzero `IP_Data+0/+4`
+  payload record it stays on the local dialog/probe branch instead of a meaningful send
+  shape.

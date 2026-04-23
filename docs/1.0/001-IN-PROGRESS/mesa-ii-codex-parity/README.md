@@ -8,7 +8,7 @@ Parallel Codex-driven reverse engineering of Akai's MESA II sampler editor, desi
 |-------|--------|-------|
 | Phase 1: Baseline and Comparison Setup | Complete | Claude branch baseline captured; comparison artifacts created; first Codex target selected |
 | Phase 2: Independent Codex Analysis | In Progress | Static analysis is now focused on emulator-relevant transport recovery: `SMSendData` CDB construction is confirmed and the raw executor below it is identified as `CSCSIUtils::SCSICommand` |
-| Phase 3: Cross-Check and Reconciliation | In Progress | `#315` is the live Claude/Codex mailbox; the `StripAddress` bug and relocation-overlap question are now behind us, and the current shared blocker is ordinary `CONS` state mutation on the persistent plug object under correct `$A998` semantics |
+| Phase 3: Cross-Check and Reconciliation | In Progress | `#315` is the live Claude/Codex mailbox; `INIT`, `CONS`, `ASOK`, and `SEND` are now proven on the persistent object path, and the current shared blocker is the post-`SEND` BULK `IP_Data` contract |
 | Phase 4: Emulator Contract Guidance | In Progress | The current output is emulator-facing: identify the minimum Mac runtime and SCSI contract MESA still expects so Musashi can drive the real fast transfer path |
 
 ## Links
@@ -80,37 +80,34 @@ The feature is still active. The fixed goal is:
 
 Recent parity work changed the frontier materially again:
 
-- `scsi-plug-rsrc.bin` is now confirmed to be a full resource fork whose executable code
-  is the `PLUG` resource body starting at file `0x59e`
-- the earlier low-address mystery was a base-address error: internal targets like
-  `0x020e`, `0x157e`, and `0x0274` are ordinary PLUG-relative code bodies once rebased
-  from the `PLUG` resource start
-- under that corrected model, Claude’s harness now runs the real chained
-  `ctor -> INIT -> CONS` lifecycle far enough to exercise the plug’s own
-  packed-displacement self-relocation path instead of the older wrong-base artifacts
-- the harness `A055 StripAddress` handler was then found to be the root-cause bug
-  behind multiple earlier OOB / NULL-pointer cascades: it had been zeroing `D0`
-  instead of returning the stripped address
-- after fixing `A055`, the previously suspect relocation values now line up with the
-  static model:
-  - `A4 = 0x125b4` at the relocation caller
-  - helper `0x0028` returns `0x1281f`
-  - the relocation loop sees the sane table count `0x6e`
-- the live blocker is therefore no longer “why is the relocation path garbage?” but
-  whether the harness’s old manual relocation pass is now redundantly relocating the
-  same targets the plug is correctly relocating for itself
+- the corrected PLUG-relative load model and `A055 StripAddress` fix are now behind us
+- the harness has proven the persistent-object lifecycle through:
+  - `INIT`
+  - `CONS`
+  - `ASOK`
+  - `SEND`
+- `SEND`'s local `0xc950` gate is now explained by the per-socket selection-word family
+  rooted at `0x0d72`, and the bounded harness seed for that word is backed by the real
+  `ChooseSCSI` success tail
+- the first post-`SEND` sub-dispatch is now real:
+  `SocketInfo+8` is loaded as a sub-tag, and `SocketInfo+8 = 'BULK'` reaches the BULK
+  sub-handler and emits the first post-`SEND` `$A089 SCSIDispatch`
 
 That leaves one sharp open seam:
 
-- can the plug’s own self-relocation carry the full path on a clean rerun with manual
-  relocation disabled
-- if not, what exact target class remains uncovered and truly requires harness-side help
-- and, once relocation ownership is corrected, what the first genuinely new
-  post-relocation blocker is on the real chained path
+- the BULK sub-handler now looks blocked on its `IP_Data` payload record, not on
+  chooser state
+- the live record fields are:
+  - `IP_Data+0` = byte count
+  - `IP_Data+4` = payload pointer
+  - `IP_Data+8` = sub-tag
+  - `IP_Data+12` = target-selection key used earlier by `SEND`
+- the current zero-CDB run is best explained by the empty-record branch where both
+  `IP_Data+0` and `IP_Data+4` are zero
 
-This is no longer a broad “find the patcher” or wrapper-only project. It is now a
-bounded emulator-contract problem around PLUG-body load semantics, self-relocation
-ownership, and the first real post-relocation runtime contract.
+This is no longer a relocation or chooser-state project on the active path. It is now a
+bounded emulator-contract problem around the post-`SEND` BULK `IP_Data` layout and the
+first meaningful transport-side CDB emission that follows from it.
 
 ## Recommended Split
 
