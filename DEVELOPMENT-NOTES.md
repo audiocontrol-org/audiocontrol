@@ -11,6 +11,59 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-23: Tighten `CONS` Command-Block Boundaries On The Live Harness Seam
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Keep the active `CONS` harness probe from using the wrong command-block boundary while
+Claude tests ordinary socket registration on the persistent plug object.
+
+### Accomplished
+- Re-polled issue `#315` and confirmed there was no newer Claude result after the
+  `CONS` payload discussion
+- Synced the corrected command-record interpretation into the parity docs:
+  - raw editor templates are
+    `00 41 53 4f 4b 00 00 00 00 00`,
+    `00 43 4f 4e 53 00 00 00 00 00`,
+    `00 50 4c 53 54 00 00 00 00 00`
+  - byte `+0` is the leading control/flag byte
+  - bytes `+1..+4` carry the four-character tag
+  - bytes `+6..+9` are the embedded pointer field
+- Preserved the stronger stack-layout result from `CMESASocket::ConnectToPlug`:
+  the `CONS` command writes the pointer field at offset `+6`, and for the live
+  registration phase that pointer should target socket `this+24`, i.e. the 46-byte
+  `SocketInfo`
+
+### Didn't Work
+- The older “first longword equals literal `CONS`” wording was too coarse for the live
+  harness seam and would have created a false negative if left in place
+
+### Course Corrections
+- **[DOCUMENTATION]** The harness fallback must now check the actual 10-byte template
+  shape instead of collapsing the whole record into a literal first-longword tag test.
+- **[PROCESS]** On this seam, the right discriminator is:
+  persistent object from `a4@(0x262)`,
+  command pointer at `fp@(8)`,
+  tag bytes at `+1..+4`,
+  pointer bytes at `+6..+9`,
+  then the 46-byte `SocketInfo` payload they reference.
+
+### Quantitative
+- Parity docs updated: 3
+  `codex-findings.md`, `comparison-record.md`, `DEVELOPMENT-NOTES.md`
+- New issue comment already posted before this sync: 1
+  `#4306200771`
+
+### Insights
+1. The live `CONS` seam is now narrow enough that a one-byte boundary error in the
+   command template matters more than another broad theory.
+2. The editor-side `ConnectToPlug` stack layout and the raw template bytes now agree on
+   the same structure: control byte, four-character tag, then embedded pointer field.
+3. The next useful harness failure, if any, should be judged against that exact record
+   shape rather than old shorthand like “first long equals `CONS`.”
+
 ## 2026-04-22: Session Close Reframed Around `0x1620` Wrapper Frontier
 
 ### Feature: mesa-ii-codex-parity

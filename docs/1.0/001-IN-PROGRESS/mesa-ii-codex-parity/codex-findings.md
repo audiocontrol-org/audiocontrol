@@ -3663,3 +3663,14 @@ correct. Every finding should distinguish direct evidence from inference.
   shape is now stronger than “tag plus payload pointer”: it is a 10-byte record where
   bytes `+6..+9` are the live pointer field, and in the `CONS` phase that field is
   filled with socket `this+24`, i.e. the 46-byte `SocketInfo` sent onward to the plug.
+
+- The editor-canonical command-tag check should now use bytes `+1..+4`, not the literal first longword
+  The same template reread also sharpens one more field boundary. The canonical editor
+  records are `00 41 53 4f 4b ...`, `00 43 4f 4e 53 ...`, and
+  `00 50 4c 53 54 ...`, so byte `+0` is a leading control/flag byte rather than part of
+  the 4-character tag. That means the safest live command-block sanity check is no
+  longer “does the first long equal the literal tag `CONS`?” It is:
+  does the 10-byte block match the canonical template shape, do bytes `+1..+4` spell
+  the expected tag, and do bytes `+6..+9` contain the live pointer field? For the
+  editor-side `CONS` fallback, that means bytes `+1..+4 = 'CONS'` and bytes `+6..+9`
+  equal the address of socket `this+24`.

@@ -216,6 +216,25 @@ cleanly.
   Claude baseline:
   corrected wire framing still fails on hardware, implying the content bytes remain
   wrong or incomplete.
+- `CONS` command-block field boundaries on the corrected harness path
+  Claude baseline:
+  the current harness thread is still using command-block sanity checks as a live
+  discriminator for why `CONS` does not mutate the persistent plug object's socket
+  table.
+  Codex status:
+  the safer corrected check is now byte-precise. Raw editor template bytes show the
+  10-byte records as:
+  `00 41 53 4f 4b 00 00 00 00 00`,
+  `00 43 4f 4e 53 00 00 00 00 00`,
+  `00 50 4c 53 54 00 00 00 00 00`.
+  Combined with the `ConnectToPlug` stack layout, that now supports:
+  byte `+0` = leading control/flag byte,
+  bytes `+1..+4` = four-character tag,
+  bytes `+6..+9` = embedded pointer field.
+  So the next harness payload check should not require the first longword at
+  `fp@(8)` to equal literal `CONS`; it should verify the tag in bytes `+1..+4` and
+  the pointer in bytes `+6..+9`, which for `CONS` should target the 46-byte
+  `SocketInfo` rooted at socket `this+24`.
 - Direct behavioral decode of `CAkaiSampler` slot `0x0170`
   Claude baseline:
   active Claude docs still leave `vtable[0x0170]` unverified.
