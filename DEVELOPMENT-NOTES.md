@@ -1123,6 +1123,41 @@ Add CSS file tracking to Makefile source dependencies and add inline documentati
 
 ---
 
+## 2026-04-22: midi-macro-bridge Phase 1 Integration
+
+### Feature: midi-macro-bridge
+### Worktree: audiocontrol-midi-macro-bridge
+
+### Goal
+Integrate the scaffolded MC-500→LUNA transport bridge into the monorepo as `services/midi-macro-bridge/`: get `cargo test` + `cargo build --release` green, wire a `build-midi-macro-bridge` Makefile target, and verify `--list-ports` works. Phase 1 acceptance criteria.
+
+### Accomplished
+- **Phase 2 hardware validation passed.** Self-test emitted keystrokes into LUNA correctly; live MC-500 Play/Stop/Continue drove LUNA transport through the 828mk3 interface; echo-resilience (duplicate Stop, duplicate Continue) behaved as designed. Default `keystroke_delay_ms = 20` needed no tuning.
+- Extracted the scaffold from `~/Downloads/mc500-luna-bridge.zip` into `services/midi-macro-bridge/` and renamed the package/binary/client identifiers from `mc500-luna-bridge` to `midi-macro-bridge` (aligns with monorepo feature slug; README narrative kept the MC-500→LUNA v1 scope).
+- `cargo check --tests` resolved cleanly on first try — no enigo 0.2 / midir 0.10 API skew (open questions in the PRD are now resolved: enigo 0.2.1, midir 0.10.4).
+- `cargo test` passes: 22/22 unit tests (state machine, config, MIDI parser).
+- `cargo build --release` produces a working macOS binary. One benign `dead_code` warning on `Machine::reset` — left intact because the scaffold's GETTING_STARTED.md flags the state machine as "don't change without asking" and `reset` is the documented manual-drift-recovery API.
+- Added `build-midi-macro-bridge` Makefile target using native cargo (no Docker — unlike scsi-midi-bridge, this service runs on macOS and depends on CoreMIDI + CGEvent). Follows the same stamp-file + source-change-detection pattern (`.build-stamp`).
+- `--list-ports` runs and enumerates 3 local MIDI inputs.
+- Updated `services/midi-macro-bridge/.gitignore` to ignore `.build-stamp` (local dev state) while keeping `Cargo.lock` tracked (standard for application binaries).
+- Phase 1 acceptance criteria all checked off in workplan.md; README status table shows Phase 1 complete.
+
+### Didn't Work
+- First scaffold-locating attempt hit `~/Downloads/1mbMacrom.zip`, which turned out to be an unrelated Macintosh Performa ROM (1MB Mac ROM, not "1mb Macro" as the filename suggested). Actual scaffold was `~/Downloads/mc500-luna-bridge.zip`. Lesson: verify zip contents before assuming filename accuracy.
+
+### Course Corrections
+- None from the user this session — the scaffold zip was well-structured and the integration was mechanical.
+
+### Quantitative
+- User messages: 2 (session start + "do it")
+- Commits: 0 (deferred — asking before committing and before creating GitHub issues per auto-mode shared-state rules)
+- User corrections: 0
+
+### Insights
+1. The scaffold's `GETTING_STARTED.md` anticipated the two most likely friction points (enigo/midir API skew) but both resolved cleanly on current crate versions — worth noting for future Rust scaffolds: pin the major versions, accept patch skew.
+2. Native vs cross-compiled Rust services need different Makefile patterns. Scsi-midi-bridge uses Docker for ARM64 (runs on Pi); midi-macro-bridge uses plain cargo (runs on the host Mac). Both use the same stamp-file source-tracking pattern, which keeps them consistent at the interface layer.
+3. Phase 2 (hardware validation with MC-500 + LUNA) requires the user: Accessibility permission grant and a routed MC-500 MIDI Out signal path. Nothing more for the agent to do in Phase 1.
+
 ## 2026-04-17: Codex and Claude Parity Baseline and Alignment
 
 ### Feature: codex-claude-parity
