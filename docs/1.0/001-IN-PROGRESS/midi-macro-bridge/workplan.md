@@ -47,16 +47,16 @@
 
 ### Tasks
 
-- [ ] Run `--self-test` with LUNA focused, verify keystrokes land
-- [ ] Connect MC-500 via MIDI interface
-- [ ] Test Play (0xFA) -- LUNA rewinds and plays
-- [ ] Test Stop (0xFC) -- LUNA stops
-- [ ] Test Continue (0xFB) -- LUNA resumes
-- [ ] Test echo resilience (duplicate Stop, duplicate Continue)
-- [ ] Document any inter-keystroke delay tuning needed
+- [x] Run `--self-test` with LUNA focused, verify keystrokes land
+- [x] Connect MC-500 via MIDI interface
+- [x] Test Play (0xFA) -- LUNA rewinds and plays
+- [x] Test Stop (0xFC) -- LUNA stops
+- [x] Test Continue (0xFB) -- LUNA resumes
+- [x] Test echo resilience (duplicate Stop, duplicate Continue)
+- [x] Document any inter-keystroke delay tuning needed -- default 20ms worked, no tuning required
 
 ### Acceptance Criteria
 
-- All three transport commands work reliably
-- No double-fire on duplicate messages
-- Frontmost-app check prevents keystroke leaks
+- [x] All three transport commands work reliably
+- [x] No double-fire on duplicate messages
+- [x] Frontmost-app check prevents keystroke leaks

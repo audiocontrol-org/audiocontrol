@@ -1132,6 +1132,7 @@ Add CSS file tracking to Makefile source dependencies and add inline documentati
 Integrate the scaffolded MC-500→LUNA transport bridge into the monorepo as `services/midi-macro-bridge/`: get `cargo test` + `cargo build --release` green, wire a `build-midi-macro-bridge` Makefile target, and verify `--list-ports` works. Phase 1 acceptance criteria.
 
 ### Accomplished
+- **Phase 2 hardware validation passed.** Self-test emitted keystrokes into LUNA correctly; live MC-500 Play/Stop/Continue drove LUNA transport through the 828mk3 interface; echo-resilience (duplicate Stop, duplicate Continue) behaved as designed. Default `keystroke_delay_ms = 20` needed no tuning.
 - Extracted the scaffold from `~/Downloads/mc500-luna-bridge.zip` into `services/midi-macro-bridge/` and renamed the package/binary/client identifiers from `mc500-luna-bridge` to `midi-macro-bridge` (aligns with monorepo feature slug; README narrative kept the MC-500→LUNA v1 scope).
 - `cargo check --tests` resolved cleanly on first try — no enigo 0.2 / midir 0.10 API skew (open questions in the PRD are now resolved: enigo 0.2.1, midir 0.10.4).
 - `cargo test` passes: 22/22 unit tests (state machine, config, MIDI parser).
