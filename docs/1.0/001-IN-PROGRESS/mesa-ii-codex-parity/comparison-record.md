@@ -265,6 +265,27 @@ cleanly.
   It is: measure exactly what command bytes and tag source the embedded rebased
   `0x02fc -> 0x089a` body reads on the default-arm handoff, then reconcile that with
   the editor-canonical record shape.
+- The embedded rebased `0x02fc` handoff now has a directly measured caller/callee stack contract
+  Claude baseline:
+  the live seam still centered on “what bytes and tag source does embedded `0x02fc`
+  actually consume?” after the outer `SHOW`-class shim fell into its default arm.
+  Codex refinement:
+  primary bytes now close the argument-order part of that question. The outer default
+  arm at rebased `0x0746 / file `0x0ce4`` pushes `A2` (cmd) then `A3` (this) before
+  `JSR 0x02fc`, and the embedded rebased `0x02fc / 0x089a` body begins with:
+  `MOVEA.L 8(A6),A3`,
+  `MOVEA.L 12(A6),A2`,
+  `TST.L 4(A3)`,
+  `MOVE.L (A2),D0`,
+  `JSR 0x0148`.
+  So on the static side, embedded `0x02fc` really does see:
+  `8(A6)=this`,
+  `12(A6)=cmd`,
+  and it really does load its initial selector longword from `(cmd)+0` before the
+  tag helper runs. If the live command at `A2` begins with `0x434f4e53`, the remaining
+  seam is therefore narrower:
+  selector-helper behavior at `0x0148`, or a remaining handoff-format mismatch after
+  that initial load, not argument order or hidden stack rewriting.
 - Direct behavioral decode of `CAkaiSampler` slot `0x0170`
   Claude baseline:
   active Claude docs still leave `vtable[0x0170]` unverified.

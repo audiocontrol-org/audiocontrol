@@ -3707,3 +3707,32 @@ correct. Every finding should distinguish direct evidence from inference.
   the embedded rebased `0x02fc` body is the right command-dispatch layer, but the exact
   handoff format reaching it is still open and should be measured at that body directly
   before any more selector arithmetic is treated as authoritative.
+
+- The embedded rebased `0x02fc` body now has a directly measured stack contract and initial tag load
+  One more raw-byte pass through the checked-in plug binary tightens the live seam
+  again. Rebasing `0x02fc -> file 0x089a` gives:
+  `MOVEA.L 8(A6),A3`,
+  `MOVEA.L 12(A6),A2`,
+  `TST.L 4(A3)`,
+  `MOVEQ #1,D3`,
+  `MOVE.L (A2),D0`,
+  `JSR 0x0148`,
+  followed immediately by the inline selector table bytes:
+  default offset `00D6`,
+  `SEND 0006`,
+  `ASOK 0052`,
+  `CLSM 0096`,
+  `CONS 002E`,
+  `IDEN 0068`,
+  `OPNM 0052`.
+  The outer default arm at rebased `0x0746 / file 0x0ce4` also now closes the caller
+  contract from primary bytes:
+  it pushes `A2` (cmd) then `A3` (this) before `JSR 0x02fc`, so embedded `0x02fc`
+  sees the same ordinary stack order as the outer shim:
+  `8(A6)=this`, `12(A6)=cmd`.
+  That means one ambiguity is now gone. On the static side, embedded `0x02fc`
+  really does read its initial selector value from `(cmd)+0`.
+  So if the live command block at `A2` begins with `43 4f 4e 53 ...`, the next seam is
+  no longer argument order or “maybe it reads the tag elsewhere.” It is either the
+  selector-helper behavior at `0x0148` or a remaining mismatch between the live handoff
+  record and the editor-canonical 10-byte format after that first longword load.

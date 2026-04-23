@@ -11,6 +11,68 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-23: Close The `0x02fc` Stack-Contract Ambiguity
+
+### Feature: mesa-ii-codex-parity
+### Worktree: audiocontrol-mesa-ii-codex-parity
+
+### Goal
+Turn the current `0x02fc` handoff seam from a broad “what does the embedded dispatcher
+see?” question into a narrower raw-byte contract check.
+
+### Accomplished
+- Re-polled `#315` and confirmed there was still no newer Claude result after the
+  `0x02fc` handoff-format guidance
+- Read the raw rebased bytes for both:
+  - outer `CSCSIPlug` default arm at file `0x0ce4`
+  - embedded rebased `0x02fc -> 0x089a`
+- Closed the caller/callee stack contract from primary bytes:
+  - outer default arm pushes `A2` (cmd) then `A3` (this) before `JSR 0x02fc`
+  - embedded `0x02fc` begins with:
+    - `MOVEA.L 8(A6),A3`
+    - `MOVEA.L 12(A6),A2`
+    - `TST.L 4(A3)`
+    - `MOVE.L (A2),D0`
+    - `JSR 0x0148`
+- Reconfirmed the adjacent inline selector table bytes at rebased `0x089a`:
+  - default `00D6`
+  - `SEND 0006`
+  - `ASOK 0052`
+  - `CLSM 0096`
+  - `CONS 002E`
+  - `IDEN 0068`
+  - `OPNM 0052`
+- Told Claude that the next seam is now narrower:
+  if `(A2)+0` really is `CONS`, the remaining uncertainty is the selector helper at
+  `0x0148` or a residual handoff-format mismatch after that first load, not argument
+  order
+
+### Didn't Work
+- The branch was still carrying a broader “tag source still open” phrasing that no
+  longer reflected the raw caller/callee bytes
+
+### Course Corrections
+- **[DOCUMENTATION]** The `0x02fc` seam should now be described as:
+  command bytes at `A2`,
+  initial `MOVE.L (A2),D0`,
+  then helper `0x0148`.
+- **[PROCESS]** Once raw caller/callee bytes are available, stop talking about stack
+  order as if it is still hypothetical.
+
+### Quantitative
+- Parity docs updated: 3
+  `codex-findings.md`, `comparison-record.md`, `DEVELOPMENT-NOTES.md`
+- New issue comment already posted before this sync: 1
+  `#4306384135`
+
+### Insights
+1. The outer-vs-embedded split is now stronger because the actual stack contract between
+   them is no longer inferred.
+2. Embedded rebased `0x02fc` really does start from `(cmd)+0`, so any continued `CONS`
+   mismatch has to be explained after that load, not before it.
+3. The next meaningful harness discriminator is now very tight: what is in `D0` and
+   what does helper `0x0148` do with it?
+
 ## 2026-04-23: Downgrade The Old `tag-at-+0` Shorthand On The Embedded `CONS` Handoff
 
 ### Feature: mesa-ii-codex-parity
