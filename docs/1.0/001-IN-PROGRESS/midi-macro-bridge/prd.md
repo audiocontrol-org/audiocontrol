@@ -50,7 +50,7 @@ There is no way to control LUNA's transport from the MC-500mkII sequencer. LUNA 
 ## Out of Scope
 
 - MIDI clock forwarding
-- MCU feedback / bidirectional sync (closed-loop position tracking, MCU surface emulation)
+- MCU feedback / bidirectional sync (closed-loop position tracking, MCU surface emulation) -- see Appendix: Closed-Loop Locate for the path this enables
 - Tempo / time-signature changes mid-song — v1 assumes a single time signature per session, set in config
 - Sample-accurate positioning — bar-accurate is the bar; tape audio sync handles finer chase
 - Locate during playback — SPP received while LUNA is playing is ignored
@@ -79,3 +79,24 @@ This service will evolve into a general-purpose MIDI-to-macro translator with:
 - DAW presets (LUNA, Logic, Ableton)
 - Configurable MIDI CC/note to keystroke/macro mappings
 - Possibly a menu bar app wrapper
+
+## Appendix: Closed-Loop Locate (future, when warranted)
+
+LUNA's MCU output transmits the current transport position back to the control surface. A future phase could have the bridge listen to that feed and close the loop on locate:
+
+- After each `[` / `]` keystroke, read LUNA's reported position from the MCU stream
+- Compute the remaining delta to the target bar
+- Emit another nudge in the needed direction
+- Stop when the delta is zero
+
+What this buys us:
+
+- **Time signature becomes irrelevant.** LUNA reports the position in bars/beats directly; the bridge no longer needs the time-signature numerator/denominator from config. Mid-song TS changes stop being a limitation.
+- **Nudge-length becomes irrelevant.** The bridge doesn't need to know or assume how far a single `[` / `]` keystroke moves; it just observes the delta and keeps nudging until zero. The LUNA nudge-value precondition in the v1 README disappears.
+- **Bidirectional navigation is natural.** The always-rewind-on-locate approach from v1 can be replaced with "move in whichever direction is shorter."
+
+Constraint: this only works if LUNA's nudge length is **≤ 1 bar**. If a single `[` / `]` moves more than one bar, the loop can overshoot the target and oscillate around it. If the user has nudge configured to a larger value (e.g., 4 bars), either fall back to v1's open-loop strategy, ask the user to change nudge, or add a coarser primitive (e.g., use the `[` `]` bar-step in combination with MCU's jog-wheel emulation for fractional bar adjustments).
+
+Prerequisite: an MCU output path from LUNA reaching the bridge's MIDI input (LUNA's MCU virtual port or a routed MIDI bus). The bridge would add an MCU parser and a playhead-position model.
+
+Not scoped into Phases 3-4 — those ship open-loop with config-driven time signature. Revisit once we have hands-on data about how often the time-signature/nudge assumptions actually break, and whether the keystroke count for large locates becomes a real complaint.
