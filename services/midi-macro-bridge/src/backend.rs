@@ -8,6 +8,8 @@
 //! behind a `Box<dyn Backend>`.
 
 use anyhow::{Context, Result};
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::thread;
 use std::time::Duration;
 use tracing::trace;
@@ -61,13 +63,18 @@ const MCU_BYTES_BAR_BACKWARD: [u8; 3] = [0xB0, 0x3C, 0x41];
 /// control surface) receives and acts on them just as if a physical
 /// Mackie Control were the source. No keyboard focus, no
 /// Accessibility permission, no rate-limiting.
+///
+/// The virtual pair is held behind `Rc<RefCell<>>` because the main
+/// loop needs the same pair to reply to MCU heartbeat queries.
+/// Single-threaded so `Rc` suffices; all borrows are brief and
+/// non-overlapping.
 pub struct McuBackend {
-    pair: VirtualMcuPair,
+    pair: Rc<RefCell<VirtualMcuPair>>,
     tap_gap: Duration,
 }
 
 impl McuBackend {
-    pub fn new(pair: VirtualMcuPair) -> Self {
+    pub fn new(pair: Rc<RefCell<VirtualMcuPair>>) -> Self {
         Self {
             pair,
             tap_gap: Duration::from_millis(MCU_TAP_GAP_MS),
@@ -79,9 +86,9 @@ impl McuBackend {
     /// Stop, Rewind) behave identically whether driven by a tap or
     /// by an abrupt press-release; the gap is purely defensive.
     fn tap(&mut self, press: &[u8], release: &[u8]) -> Result<()> {
-        self.pair.send(press)?;
+        self.pair.borrow_mut().send(press)?;
         thread::sleep(self.tap_gap);
-        self.pair.send(release)?;
+        self.pair.borrow_mut().send(release)?;
         Ok(())
     }
 
@@ -91,8 +98,8 @@ impl McuBackend {
             Action::Play => self.tap(&MCU_BYTES_PLAY_PRESS, &MCU_BYTES_PLAY_RELEASE),
             Action::Stop => self.tap(&MCU_BYTES_STOP_PRESS, &MCU_BYTES_STOP_RELEASE),
             Action::ReturnToZero => self.tap(&MCU_BYTES_REWIND_PRESS, &MCU_BYTES_REWIND_RELEASE),
-            Action::BarForward => self.pair.send(&MCU_BYTES_BAR_FORWARD),
-            Action::BarBackward => self.pair.send(&MCU_BYTES_BAR_BACKWARD),
+            Action::BarForward => self.pair.borrow_mut().send(&MCU_BYTES_BAR_FORWARD),
+            Action::BarBackward => self.pair.borrow_mut().send(&MCU_BYTES_BAR_BACKWARD),
         }
     }
 }

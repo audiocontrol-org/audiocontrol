@@ -6,9 +6,11 @@
 //! See README.md for user-facing docs.
 
 use anyhow::{Context, Result};
+use std::cell::RefCell;
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::sync::mpsc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tracing::{error, info, warn};
 
 mod backend;
@@ -22,7 +24,13 @@ mod state;
 use crate::backend::{Backend, KeystrokeBackend, McuBackend};
 use crate::config::{BackendKind, Config};
 use crate::keys::Emitter;
-use crate::state::{Machine, TransportEvent};
+use crate::locate::{
+    transport_to_locate_event, EventSource, LocateController, LocateEvent, LocateOutcome,
+    PositionSource,
+};
+use crate::mcu::PositionTracker;
+use crate::midi::VirtualMcuPair;
+use crate::state::{Machine, TransportEvent, TransportState};
 
 fn main() -> Result<()> {
     init_tracing();
@@ -97,10 +105,30 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    let mut backend = build_backend(&config)?;
-    info!(backend = backend.name(), "transport backend ready");
+    // MCU input channel: the virtual endpoint's callback forwards
+    // received byte sequences here; the main loop drains them to
+    // reply to heartbeat queries and feed position updates into the
+    // PositionTracker. Created before build_backend so the MCU
+    // backend's endpoint callback can plug into the same channel.
+    let (mcu_bytes_tx, mcu_bytes_rx) = mpsc::channel::<Vec<u8>>();
+
+    // Whether we need the virtual MCU endpoint pair at all. MCU
+    // backend needs it for both directions; KeystrokeBackend +
+    // locate.enabled needs it for input only; KeystrokeBackend +
+    // no locate doesn't need it.
+    let needs_virtual_pair = matches!(config.transport.backend, BackendKind::Mcu)
+        || config.locate.enabled;
+
+    let (mut backend, pair) = build_backend(&config, needs_virtual_pair, mcu_bytes_tx)?;
+    info!(
+        backend = backend.name(),
+        has_mcu_pair = pair.is_some(),
+        locate_enabled = config.locate.enabled,
+        "bridge ready"
+    );
 
     let mut machine = Machine::new();
+    let mut tracker = PositionTracker::new();
 
     if self_test {
         return run_self_test(&mut machine, backend.as_mut());
@@ -124,7 +152,10 @@ fn main() -> Result<()> {
     })
     .context("installing Ctrl-C handler")?;
 
-    info!("ready — waiting for MIDI transport events (Ctrl-C to exit)");
+    info!("ready — waiting for MIDI events (Ctrl-C to exit)");
+
+    let locate_runtime_cfg = config.locate.to_runtime();
+    let locate_enabled = config.locate.enabled;
 
     loop {
         if shutdown_rx.try_recv().is_ok() {
@@ -132,7 +163,17 @@ fn main() -> Result<()> {
             return Ok(());
         }
 
-        match rx.recv_timeout(Duration::from_millis(200)) {
+        // Drain any pending MCU bytes: reply to heartbeats and keep
+        // the PositionTracker current so the next locate starts
+        // with fresh state.
+        let mut mcu_bytes_drained = false;
+        while let Ok(bytes) = mcu_bytes_rx.try_recv() {
+            handle_mcu_byte_idle(&bytes, &pair, &mut tracker);
+            mcu_bytes_drained = true;
+        }
+
+        // Process at most one transport event per iteration.
+        let transport_drained = match rx.recv_timeout(Duration::from_millis(50)) {
             Ok(event) => {
                 let state_before = machine.state();
                 let actions = machine.handle(event);
@@ -143,7 +184,7 @@ fn main() -> Result<()> {
                         ?event,
                         ?state_before,
                         ?state_after,
-                        "ignored (redundant event)"
+                        "no-op event (echo guard or state change only)"
                     );
                 } else {
                     info!(
@@ -151,44 +192,254 @@ fn main() -> Result<()> {
                         ?state_before,
                         ?state_after,
                         ?actions,
-                        "emitting actions"
+                        "dispatching actions"
                     );
                     if let Err(e) = backend.emit(&actions) {
                         warn!(?e, "backend emit failed");
                     }
                 }
+
+                // If the state machine transitioned into Locating,
+                // run the closed-loop controller before returning to
+                // the event loop. Blocks until the locate completes.
+                if let TransportState::Locating { target, .. } = machine.state() {
+                    run_locate_step(
+                        target,
+                        &mcu_bytes_rx,
+                        &rx,
+                        &pair,
+                        &mut tracker,
+                        backend.as_mut(),
+                        locate_runtime_cfg,
+                        locate_enabled,
+                        &mut machine,
+                    )?;
+                }
+
+                true
             }
-            Err(mpsc::RecvTimeoutError::Timeout) => continue,
+            Err(mpsc::RecvTimeoutError::Timeout) => false,
             Err(mpsc::RecvTimeoutError::Disconnected) => {
                 error!("MIDI channel disconnected");
                 return Ok(());
             }
+        };
+
+        // Brief idle sleep if both channels were empty, keeping CPU
+        // cost low during long quiet periods.
+        if !mcu_bytes_drained && !transport_drained {
+            std::thread::sleep(Duration::from_millis(5));
         }
     }
 }
 
-/// Build the configured transport backend. The MCU backend registers
-/// the virtual endpoint pair (`MIDI Macro Bridge`) so LUNA can pick
-/// it in MIDI Control Surfaces. The Keystroke backend constructs an
-/// Emitter and expects LUNA-as-frontmost + Accessibility permission
-/// at runtime.
-fn build_backend(config: &Config) -> Result<Box<dyn Backend>> {
-    match config.transport.backend {
+/// Build the configured transport backend and (if needed) the
+/// virtual MCU endpoint pair. The pair is returned separately so the
+/// main loop can share it with the heartbeat responder and the
+/// LocateController's PositionSource.
+fn build_backend(
+    config: &Config,
+    needs_virtual_pair: bool,
+    mcu_bytes_tx: mpsc::Sender<Vec<u8>>,
+) -> Result<(Box<dyn Backend>, Option<Rc<RefCell<VirtualMcuPair>>>)> {
+    let pair = if needs_virtual_pair {
+        let tx_for_callback = mcu_bytes_tx;
+        let pair = midi::create_virtual_mcu(MCU_ENDPOINT_NAME, move |bytes| {
+            let _ = tx_for_callback.send(bytes.to_vec());
+        })?;
+        Some(Rc::new(RefCell::new(pair)))
+    } else {
+        None
+    };
+
+    let backend: Box<dyn Backend> = match config.transport.backend {
         BackendKind::Mcu => {
-            // The virtual endpoint's inbound-byte callback is a
-            // no-op for transport-only Phase 3d — position-display
-            // parsing lands in Phase 3e when the LocateController
-            // comes online. The endpoint still needs to exist so
-            // LUNA has something to route to.
-            let pair = midi::create_virtual_mcu(MCU_ENDPOINT_NAME, |_| {})?;
-            Ok(Box::new(McuBackend::new(pair)))
+            let pair = pair
+                .as_ref()
+                .expect("MCU backend requires needs_virtual_pair to be true")
+                .clone();
+            Box::new(McuBackend::new(pair))
         }
         BackendKind::Keystrokes => {
             let emitter = Emitter::new(
                 config.transport.keystroke_delay_ms,
                 config.transport.frontmost_filter(),
             )?;
-            Ok(Box::new(KeystrokeBackend::new(emitter)))
+            Box::new(KeystrokeBackend::new(emitter))
+        }
+    };
+
+    Ok((backend, pair))
+}
+
+/// Idle-path handling for a received MCU byte sequence: reply to
+/// heartbeat queries, apply position CCs to the tracker. Non-CC /
+/// non-heartbeat bytes are ignored (LCD dumps, V-Pot updates, etc).
+fn handle_mcu_byte_idle(
+    bytes: &[u8],
+    pair: &Option<Rc<RefCell<VirtualMcuPair>>>,
+    tracker: &mut PositionTracker,
+) {
+    if let Some(pair) = pair {
+        if let Some(model) = mcu::parse_heartbeat_query(bytes) {
+            if model == mcu::MCU_MODEL_ID {
+                let reply = mcu::mcu_identity_reply(model);
+                if let Err(e) = pair.borrow_mut().send(&reply) {
+                    warn!(?e, "heartbeat reply send failed");
+                }
+            }
+        }
+    }
+    if let Some(update) = mcu::parse_cc_display(bytes) {
+        tracker.apply(update);
+    }
+}
+
+/// Invoked when `Machine::handle` has transitioned into the
+/// `Locating` state. If locate is enabled in config, constructs the
+/// LocateController I/O sources and runs the closed-loop. Always
+/// calls `Machine::complete_locate` at the end so the state machine
+/// returns to Stopped / Playing regardless of outcome, then emits
+/// any post-locate Play action the state machine produced.
+#[allow(clippy::too_many_arguments)]
+fn run_locate_step(
+    target: u32,
+    mcu_bytes_rx: &mpsc::Receiver<Vec<u8>>,
+    transport_rx: &mpsc::Receiver<TransportEvent>,
+    pair: &Option<Rc<RefCell<VirtualMcuPair>>>,
+    tracker: &mut PositionTracker,
+    backend: &mut dyn Backend,
+    cfg: locate::LocateConfig,
+    locate_enabled: bool,
+    machine: &mut Machine,
+) -> Result<()> {
+    if !locate_enabled {
+        warn!(
+            target,
+            "SPP received but [locate] enabled=false in config — cancelling"
+        );
+        let post = machine.complete_locate(false);
+        if !post.is_empty() {
+            backend.emit(&post)?;
+        }
+        return Ok(());
+    }
+
+    let outcome = {
+        let mut position = McuPositionSource::new(mcu_bytes_rx, tracker, pair.as_ref());
+        let mut events = TransportLocateEventSource { rx: transport_rx };
+        let controller = LocateController {
+            position: &mut position,
+            events: &mut events,
+            backend,
+            config: cfg,
+        };
+        controller.run(target)?
+    };
+
+    let reached = matches!(outcome, LocateOutcome::Reached { .. });
+    info!(?outcome, reached, "locate outcome");
+
+    let post = machine.complete_locate(reached);
+    if !post.is_empty() {
+        info!(?post, "emitting post-locate actions");
+        backend.emit(&post)?;
+    }
+    Ok(())
+}
+
+/// PositionSource implementation backed by an mpsc channel of raw
+/// MCU bytes. Parses inbound CCs into `DigitUpdate`s, feeds them to
+/// the shared tracker, and returns Some(bar) when the composed bar
+/// changes. Also replies to MCU heartbeat queries so LUNA doesn't
+/// drop the surface during long locates.
+struct McuPositionSource<'a> {
+    bytes_rx: &'a mpsc::Receiver<Vec<u8>>,
+    tracker: &'a mut PositionTracker,
+    pair: Option<&'a Rc<RefCell<VirtualMcuPair>>>,
+    /// True once we've seen any position update — distinguishes
+    /// "tracker has known state" from "tracker still at zero because
+    /// nothing has arrived." Initialised from the tracker's current
+    /// state at construction time, so a locate that starts with the
+    /// tracker already holding real data doesn't block waiting.
+    has_seen_position: bool,
+}
+
+impl<'a> McuPositionSource<'a> {
+    fn new(
+        bytes_rx: &'a mpsc::Receiver<Vec<u8>>,
+        tracker: &'a mut PositionTracker,
+        pair: Option<&'a Rc<RefCell<VirtualMcuPair>>>,
+    ) -> Self {
+        let has_seen_position = tracker.current_bar() != 0;
+        Self {
+            bytes_rx,
+            tracker,
+            pair,
+            has_seen_position,
+        }
+    }
+
+    fn handle_heartbeat(&self, bytes: &[u8]) {
+        let Some(pair) = self.pair else { return };
+        if let Some(model) = mcu::parse_heartbeat_query(bytes) {
+            if model == mcu::MCU_MODEL_ID {
+                let reply = mcu::mcu_identity_reply(model);
+                if let Err(e) = pair.borrow_mut().send(&reply) {
+                    warn!(?e, "heartbeat reply send failed during locate");
+                }
+            }
+        }
+    }
+}
+
+impl<'a> PositionSource for McuPositionSource<'a> {
+    fn current_bar(&self) -> Option<u32> {
+        if self.has_seen_position {
+            Some(self.tracker.current_bar())
+        } else {
+            None
+        }
+    }
+
+    fn wait_for_position_change(&mut self, timeout: Duration) -> Option<u32> {
+        let deadline = Instant::now() + timeout;
+        loop {
+            let remaining = deadline.saturating_duration_since(Instant::now());
+            if remaining.is_zero() {
+                return None;
+            }
+            let poll = remaining.min(Duration::from_millis(100));
+            match self.bytes_rx.recv_timeout(poll) {
+                Ok(bytes) => {
+                    self.handle_heartbeat(&bytes);
+                    if let Some(update) = mcu::parse_cc_display(&bytes) {
+                        if let Some(pos) = self.tracker.apply(update) {
+                            self.has_seen_position = true;
+                            return Some(pos.bar);
+                        }
+                    }
+                    // Other bytes: keep waiting.
+                }
+                Err(mpsc::RecvTimeoutError::Timeout) => continue,
+                Err(mpsc::RecvTimeoutError::Disconnected) => return None,
+            }
+        }
+    }
+}
+
+/// EventSource implementation backed by the transport-event channel.
+/// Translates each received TransportEvent into a LocateEvent the
+/// controller understands (new target / cancel / queue play).
+struct TransportLocateEventSource<'a> {
+    rx: &'a mpsc::Receiver<TransportEvent>,
+}
+
+impl<'a> EventSource for TransportLocateEventSource<'a> {
+    fn try_recv(&mut self) -> Option<LocateEvent> {
+        match self.rx.try_recv() {
+            Ok(ev) => transport_to_locate_event(ev),
+            Err(_) => None,
         }
     }
 }
