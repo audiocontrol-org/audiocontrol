@@ -1429,6 +1429,40 @@ cleanly.
   where do those already-built local bytes get consumed or clobbered after local CDB
   construction inside `SMSendData`?
 
+- `0x1187e` is the earlier chooser/dialog gate inside `SMSendData`, not the later PB/CDB helper
+  Claude baseline:
+  the current productive harness trace was being read as if runtime `0x1187e` were a
+  later post-builder helper implicated directly in the empty-CDB result.
+  Codex correction:
+  a clean direct disassembly of file `0x106e-0x1138` fixes the order. Inside
+  `SMSendData`, the call at `0x1090` goes to file `0x187e` / runtime `0x1187e`
+  **before** the local CDB bytes are written. Only after that gate returns success does
+  the function build the six local bytes at `fp@(-6..-1)`, then pass `&fp@(-6)` to
+  helper `0x1620`. A separate aligned disassembly of `0x1620` shows that helper is the
+  one that copies the six bytes from its incoming CDB pointer into PB offsets `68..73`
+  and then calls `$A089`.
+  So the sharper current runtime seam is:
+  chooser success at `0x1187e` -> local CDB build in `SMSendData` -> PB copy in `0x1620`.
+  The next useful discriminator is no longer “does `0x1187e` supply the real CDB?” but
+  “does chooser success really fall through into the local builder, and what bytes then
+  reach `0x1620`?”
+
+- A mismatched CDB pointer at `0x1620` should first be debugged as caller/callee stack reconciliation, not as a new `0x1187e` fabrication theory
+  Claude baseline:
+  the latest harness trace saw an unexpected stack-local-looking pointer at the helper
+  frame around runtime `0x11620`, and tentatively blamed `0x1187e` / dialog processing
+  for manufacturing the wrong CDB source.
+  Codex correction:
+  `SMSendData` itself is the only visible code that pushes the CDB pointer into
+  `0x1620`, via `pea fp@(-6)` at file `0x10f2`, after `0x1187e` has already returned and
+  after the local bytes have already been built. So the first-line explanation for a
+  weird helper-frame pointer should be narrower: either the helper-entry mixed
+  word/long parameter layout is being decoded wrong in the trace, or the control-flow /
+  frame identity between caller and callee is not the one currently assumed.
+  That makes the next bounded runtime cut very concrete:
+  caller-side `A6`, `&fp@(-6)`, and six local bytes immediately before `jsr 0x1620`,
+  then raw helper-frame words/longs at `fp+8..fp+0x1e` on entry to `0x1620`.
+
 ## Comparison Rules
 
 - Codex should compare against the latest Claude branch docs plus its `DEVELOPMENT-NOTES.md`,

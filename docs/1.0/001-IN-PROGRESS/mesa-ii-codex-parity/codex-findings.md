@@ -3858,3 +3858,29 @@ correct. Every finding should distinguish direct evidence from inference.
   object.” The local builder already exists inside `SMSendData` before that later helper
   path runs. The live runtime question is therefore: where do those already-built local
   bytes get consumed or clobbered after `SMSendData` constructs them?
+
+- The current harness interpretation of `0x1187e` inside `SMSendData` was time-ordered wrong: chooser/dialog gate first, local CDB builder second, PB helper third
+  One more direct disassembly pass over file `0x106e-0x1138` materially tightens the live
+  emulator seam. Inside `SMSendData`, the call at `0x1090` goes to file `0x187e`
+  (runtime `0x1187e`) **before** the local CDB bytes are written. Only if that gate
+  succeeds does the function continue into the local builder at `0x109e-0x10e0`, then
+  pass `&fp@(-6)` to helper `0x1620` via `pea fp@(-6)` at `0x10f2`, then call `0x1620`
+  at `0x10fc`. A separate direct disassembly of the correctly aligned `0x1620` body
+  shows that helper receives the CDB pointer as `fp@(14)`, copies six bytes from that
+  pointer into PB offsets `68..73`, fills payload/count fields, and then calls `$A089`.
+  So the live runtime question is not “does `0x1187e` supply the real CDB?” It is:
+  does chooser success actually fall through into the local builder, and what bytes/pointer
+  then reach `0x1620` and the PB copy layer?
+
+- The CDB-source pointer passed to `0x1620` comes directly from `SMSendData`'s own `pea fp@(-6)`, so a helper-entry mismatch should be debugged as caller/callee stack reconciliation, not as new `0x1187e` state fabrication
+  Another direct control-flow correction follows from the same `SMSendData` disassembly.
+  The only visible push of the CDB pointer into helper `0x1620` is `pea fp@(-6)` at
+  `0x10f2`, after `0x1187e` has already returned and after the local CDB bytes have
+  already been written. So if the harness currently sees an unexpected pointer value at
+  the `0x1620` helper frame, the first-line explanation should not be “`0x1187e` built
+  the wrong local CDB source.” The sharper live question is whether the caller-side
+  `pea fp@(-6)` and the callee-side mixed word/long parameter layout at `0x1620` are
+  being interpreted consistently in the trace. The next useful runtime cut is therefore:
+  log `SMSendData` caller-side `A6`, `&fp@(-6)`, and the six local bytes immediately
+  before `jsr 0x1620`; then log raw helper-frame words/longs at `fp+8..fp+0x1e` on
+  entry to `0x1620`, and only then decode which slot is actually the CDB pointer.
