@@ -163,6 +163,16 @@ impl PositionTracker {
         self.digits[idx] = update.value;
 
         let bar = self.current_bar();
+        // LUNA's bars are 1-based; a composed bar of 0 after we've
+        // already emitted a real bar is a digit-carry transient at
+        // decade boundaries (e.g. 9→10: d7 rolls '9'→'0' before d8
+        // goes blank→'1', so the midpoint composes to 0). Treating it
+        // as a real position update fools the closed-loop controller
+        // into nudging backward for one iteration before the second
+        // update arrives.
+        if bar == 0 && self.last_emitted_bar != 0 {
+            return None;
+        }
         if bar != self.last_emitted_bar {
             let previous_bar = self.last_emitted_bar;
             self.last_emitted_bar = bar;
@@ -445,6 +455,55 @@ mod tests {
         assert_eq!(
             committed,
             Some(PositionUpdate { previous_bar: 60, bar: 70 })
+        );
+    }
+
+    /// 9→10 boundary where the d8 tens-digit is still blank during the
+    /// first-phase d7 update. The composed intermediate is bar=0,
+    /// which we filter so the closed-loop controller doesn't nudge
+    /// backward on spurious decade-carry transients.
+    ///
+    /// Captured from `luna-locate.log`: at iterations 9/19/29/39, the
+    /// controller observed `before_bar=N9 after_bar=0` with
+    /// `actual_delta=-9`, then a second update arrived with
+    /// `wait_ms=0` reporting the real post-nudge bar.
+    #[test]
+    fn suppresses_bar_zero_transient_at_decade_boundary() {
+        let mut t = PositionTracker::new();
+
+        // Arrive at bar 9 from start (single d7 update).
+        let to_nine = feed(&mut t, 0x47, 0x39);
+        assert_eq!(to_nine, Some(PositionUpdate { previous_bar: 0, bar: 9 }));
+
+        // LUNA's first-phase update: d7 rolls '9' → '0'. d8 is still
+        // blank, so current_bar composes to 0. Guard must swallow it.
+        let transient = feed(&mut t, 0x47, 0x30);
+        assert_eq!(transient, None);
+        assert_eq!(t.current_bar(), 0);
+        // Internal last_emitted_bar must stay at 9 so the next real
+        // emission carries the correct previous_bar.
+
+        // Second-phase update: d8 blank → '1'. Composed bar = 10.
+        let committed = feed(&mut t, 0x48, 0x31);
+        assert_eq!(
+            committed,
+            Some(PositionUpdate { previous_bar: 9, bar: 10 })
+        );
+    }
+
+    /// Initial composed value of 0 (before the first non-zero bar is
+    /// seen) must not be filtered — the guard only applies after
+    /// `last_emitted_bar` has advanced past 0.
+    #[test]
+    fn bar_zero_filter_does_not_suppress_initial_state() {
+        let mut t = PositionTracker::new();
+        // No emission on a blank→'0' digit write because bar is still 0
+        // and last_emitted_bar is still 0 (nothing to report).
+        assert_eq!(feed(&mut t, 0x47, 0x30), None);
+        // Then an actual move to bar 1 emits normally.
+        assert_eq!(
+            feed(&mut t, 0x47, 0x31),
+            Some(PositionUpdate { previous_bar: 0, bar: 1 })
         );
     }
 
