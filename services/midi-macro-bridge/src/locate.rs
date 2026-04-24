@@ -23,7 +23,7 @@
 //! MCU-input parser and the transport-MIDI callback respectively.
 
 use anyhow::Result;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tracing::{info, warn};
 
 use crate::backend::Backend;
@@ -168,14 +168,44 @@ pub struct LocateController<'a> {
     pub config: LocateConfig,
 }
 
+/// Running tally of per-iteration wait latencies, for end-of-locate
+/// summary logging. Keeps just enough state to report min / max /
+/// average without carrying the full series.
+#[derive(Debug, Default)]
+struct LatencyStats {
+    count: u32,
+    sum_ms: u128,
+    min_ms: Option<u128>,
+    max_ms: Option<u128>,
+}
+
+impl LatencyStats {
+    fn record(&mut self, wait_ms: u128) {
+        self.count += 1;
+        self.sum_ms += wait_ms;
+        self.min_ms = Some(self.min_ms.map_or(wait_ms, |m| m.min(wait_ms)));
+        self.max_ms = Some(self.max_ms.map_or(wait_ms, |m| m.max(wait_ms)));
+    }
+
+    fn avg_ms(&self) -> u128 {
+        if self.count == 0 {
+            0
+        } else {
+            self.sum_ms / self.count as u128
+        }
+    }
+}
+
 impl<'a> LocateController<'a> {
     /// Drive the closed-loop locate. Blocks until the locate reaches
     /// the target, is cancelled, times out, or hits a safety cap.
     pub fn run(self, initial_target: u32) -> Result<LocateOutcome> {
+        let locate_start = Instant::now();
         let mut target = initial_target;
         let mut queued_start = false;
         let mut iterations: u32 = 0;
         let mut prev_delta_sign: i32 = 0;
+        let mut stats = LatencyStats::default();
 
         // Block on the first position reading. Covers the
         // reconnection-quirk case documented in MCU-NOTES.md where
@@ -211,7 +241,7 @@ impl<'a> LocateController<'a> {
                         target = t;
                     }
                     LocateEvent::Stop => {
-                        info!(iterations, "locate: cancelled by Stop");
+                        log_locate_exit("cancelled by Stop", iterations, target, &stats, locate_start);
                         return Ok(LocateOutcome::Cancelled { iterations });
                     }
                     LocateEvent::QueuePlay => {
@@ -225,7 +255,7 @@ impl<'a> LocateController<'a> {
 
             match plan_step(current, target, prev_delta_sign) {
                 StepDecision::Reached => {
-                    info!(iterations, final_bar = current, queued_start, "locate reached");
+                    log_locate_exit("reached", iterations, target, &stats, locate_start);
                     return Ok(LocateOutcome::Reached {
                         iterations,
                         queued_start,
@@ -237,8 +267,9 @@ impl<'a> LocateController<'a> {
                         iterations,
                         current,
                         target,
-                        "locate: overshoot detected — LUNA's nudge resolution is > 1 bar"
+                        "locate: overshoot detected — DAW's nudge resolution appears to be > 1 bar"
                     );
+                    log_locate_exit("NudgeTooLarge", iterations, target, &stats, locate_start);
                     return Ok(LocateOutcome::NudgeTooLarge { iterations });
                 }
                 StepDecision::Emit(action) => {
@@ -247,6 +278,7 @@ impl<'a> LocateController<'a> {
                             iterations,
                             current, target, "locate: iteration cap reached without landing"
                         );
+                        log_locate_exit("IterationCap", iterations, target, &stats, locate_start);
                         return Ok(LocateOutcome::IterationCap {
                             last_known_bar: current,
                         });
@@ -255,6 +287,12 @@ impl<'a> LocateController<'a> {
                     let delta = target as i64 - current as i64;
                     prev_delta_sign = if delta > 0 { 1 } else { -1 };
 
+                    // Measure wait latency from just-before emit to
+                    // the arrival of the next bar-changing position
+                    // update. Includes outbound MIDI latency, DAW
+                    // processing, and the MCU surface's display
+                    // refresh cycle.
+                    let wait_start = Instant::now();
                     self.backend.emit(&[action])?;
                     iterations += 1;
 
@@ -262,15 +300,33 @@ impl<'a> LocateController<'a> {
                         .position
                         .wait_for_position_change(self.config.position_timeout)
                     {
-                        Some(_) => continue,
+                        Some(new_bar) => {
+                            let wait_ms = wait_start.elapsed().as_millis();
+                            stats.record(wait_ms);
+                            let actual_delta = new_bar as i64 - current as i64;
+                            info!(
+                                iteration = iterations,
+                                ?action,
+                                before_bar = current,
+                                after_bar = new_bar,
+                                expected_sign = prev_delta_sign,
+                                actual_delta,
+                                wait_ms = wait_ms as u64,
+                                "locate step"
+                            );
+                            continue;
+                        }
                         None => {
+                            let wait_ms = wait_start.elapsed().as_millis();
                             warn!(
                                 iterations,
                                 current,
                                 target,
+                                wait_ms = wait_ms as u64,
                                 timeout_ms = self.config.position_timeout.as_millis() as u64,
                                 "locate: no position update within timeout"
                             );
+                            log_locate_exit("Timeout", iterations, target, &stats, locate_start);
                             return Ok(LocateOutcome::Timeout {
                                 iterations,
                                 last_known_bar: self.position.current_bar(),
@@ -281,6 +337,30 @@ impl<'a> LocateController<'a> {
             }
         }
     }
+}
+
+/// End-of-locate summary log. Emitted once per locate with rolled-up
+/// latency stats alongside the outcome name — grep-friendly for
+/// post-hoc analysis of DAWs with variable response times.
+fn log_locate_exit(
+    outcome: &str,
+    iterations: u32,
+    target: u32,
+    stats: &LatencyStats,
+    locate_start: Instant,
+) {
+    let total_ms = locate_start.elapsed().as_millis() as u64;
+    info!(
+        outcome,
+        target,
+        iterations,
+        total_ms,
+        latency_samples = stats.count,
+        latency_min_ms = stats.min_ms.map(|v| v as u64).unwrap_or(0),
+        latency_max_ms = stats.max_ms.map(|v| v as u64).unwrap_or(0),
+        latency_avg_ms = stats.avg_ms() as u64,
+        "locate exit"
+    );
 }
 
 // ---------------------------------------------------------------------------
