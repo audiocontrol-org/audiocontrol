@@ -3884,3 +3884,25 @@ correct. Every finding should distinguish direct evidence from inference.
   log `SMSendData` caller-side `A6`, `&fp@(-6)`, and the six local bytes immediately
   before `jsr 0x1620`; then log raw helper-frame words/longs at `fp+8..fp+0x1e` on
   entry to `0x1620`, and only then decode which slot is actually the CDB pointer.
+
+- The mixed-size call frame into `0x1620` is now exact, so helper-entry traces can be decoded without guesswork
+  The direct caller/callee pair around `0x10e4-0x10fc` and `0x1620-0x1638` now gives the
+  precise helper argument layout. `SMSendData` pushes, in order:
+  `word #2`,
+  `pea 0x3e8`,
+  `long count (d7)`,
+  `long fp@(16)`,
+  `pea fp@(-6)`,
+  `word selection (d6)`,
+  `pea self+0x093a`,
+  then `jsr 0x1620`.
+  That matches the callee-side accesses exactly:
+  `fp@(8)` = `self+0x093a`,
+  `fp@(12)` = selection word,
+  `fp@(14)` = CDB pointer (`&caller_fp@(-6)`),
+  `fp@(18)` = long context / nullable pointer from caller `fp@(16)`,
+  `fp@(22)` = count,
+  `fp@(26)` = timeout `0x3e8`,
+  `fp@(30)` = mode word `2`.
+  So if the harness logs raw helper-frame memory at entry to `0x1620`, the CDB pointer
+  should be decoded from `fp+14`, not inferred from later helper-local addresses.

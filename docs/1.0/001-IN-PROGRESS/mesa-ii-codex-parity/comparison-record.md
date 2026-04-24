@@ -1463,6 +1463,32 @@ cleanly.
   caller-side `A6`, `&fp@(-6)`, and six local bytes immediately before `jsr 0x1620`,
   then raw helper-frame words/longs at `fp+8..fp+0x1e` on entry to `0x1620`.
 
+- The `0x1620` helper frame now has an exact mixed-size argument map
+  Claude baseline:
+  the remaining uncertainty at the productive `SRAW` seam is now concentrated in the
+  helper-entry frame at runtime `0x11620`.
+  Codex finding:
+  the `SMSendData` caller and `0x1620` callee now line up exactly. `SMSendData` pushes:
+  `word #2`,
+  `pea 0x3e8`,
+  `long count`,
+  `long fp@(16)`,
+  `pea fp@(-6)`,
+  `word selection`,
+  `pea self+0x093a`,
+  then calls `0x1620`.
+  The callee-side accesses confirm the exact map:
+  `fp@(8)=self+0x093a`,
+  `fp@(12)=selection`,
+  `fp@(14)=CDB pointer`,
+  `fp@(18)=long context/nullable pointer`,
+  `fp@(22)=count`,
+  `fp@(26)=timeout 0x3e8`,
+  `fp@(30)=mode word 2`.
+  So the next harness-side trace should decode the helper entry using that exact map,
+  especially `fp+14` as the CDB pointer, rather than inferring the source from later
+  helper-local addresses.
+
 ## Comparison Rules
 
 - Codex should compare against the latest Claude branch docs plus its `DEVELOPMENT-NOTES.md`,
