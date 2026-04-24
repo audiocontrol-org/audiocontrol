@@ -11,6 +11,59 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-23/24: Path E.6-E.11 — PRIMARY RE GOAL ACHIEVED. Full transport captured; real CDB family measured.
+
+### Feature: mesa-ii-reverse-engineering
+### Worktree: audiocontrol-mesa-ii-reverse-engineering
+
+### Goal
+Continue Path E (emulator-forward) per #315 joint charter. Per prior session's stop-rule, advance from CONS state-mutation question through ASOK and SEND into the actual SCSI transport. Each step: bounded probe, report to #315, race Codex on static decode.
+
+### Accomplished
+- **Fixed CONS state-mutation bug.** Two root causes: (1) harness inspected wrong object (CSCSIPLUG_OBJ at 0x91000) — plug's `main` actually reads `this` from `a4@(0x262)` (set by INIT to a NewHandle-allocated obj at 0x0005f1b8); (2) `init_struct` lived at SCSI_BUFFER (0x50000) and plug's first `NewPtrClear(0x10000)` wiped it, causing INIT setter at 0x102b8 to store callback=0 into `this+4`, tripping DoMESACommand's precondition gate. Moved init_struct to 0x70000; inspect `a4@(0x262)` first.
+- **ASOK fully proven.** `vtable+0x34 ActivateSocket` at runtime 0x104c0 scans registered sockets by key match (this+0x62+N*46 == SocketInfo+0x26), copies SocketInfo+0x24 (W) → this+0x60 and +0x2a (L) → this+0x66. Non-zero BEEF/DEADC0DE probe confirmed byte-for-byte.
+- **SEND command decoded.** vtable+0x14 at runtime 0x10854 is the selection/dispatch step. Clears this+0xd6e, loops matching SocketInfo+0xc against this+0x62+N*46, copies `mem16(this + N*4 + 0xd72)` → this+0xd6e. If zero → `MOVE.W #0xc950, D0` (source of long-seen 0xc950 error). Then loads SocketInfo+8 as sub-tag, dispatches to BOFF/BULK/SRAW/MIDI/SYSX.
+- **ChooseSCSI success-tail found.** Runtime ~0x114c0 is the success tail inside `ChooseSCSI__9CSCSIPlugFUl` (file 0x1700-0x1afe). Parses ASCII bus/target digits from chosen dialog line at offsets +5 and +10, builds selection word, scans sockets, writes to `this+0x0d70+4*n`. (Codex decode.)
+- **SRAW productive path reached.** With `this+0xd72` and `this+0xe40` seeded, and `$1187e` chooser bypassed via BYPASS_1187E shortcut, SEND-cmd with SocketInfo+8='SRAW' flows through SendData's internal arm at 0x10922 → 0x109a2 (productive SRAW check) → pushes 7-arg frame → JSR SMSendData at 0x1106e.
+- **🎯 REAL CDB FAMILY CAPTURED END-TO-END.** SMSendData's local CDB builder at 0x1109e-0x110e0 runs. Built CDB at `fp@(-6..-1)` matches exactly what Codex statically predicted. Measured:
+  - BULK opener (0x0B): `0c 00 00 01 00 00` (mode=0)
+  - BULK continuation (0x0C): `0c 00 00 01 00 00` (mode=0)
+  - SRAW payload: `0c 00 00 01 00 80` (mode=1)
+  - CDB family: opcode 0x0C (Akai MIDI Send), 24-bit BE count, mode byte 0x00 (BULK) / 0x80 (SRAW), WRITE direction, target = chooser-selected device.
+- **PB/SCSIDispatch helper `0x11620` reconciled.** Takes CDB pointer at `fp@(14)` (from caller-side `PEA fp@(-6)`), copies 6 bytes into SCSI Manager 4.3 PB at PB+0x44..+0x49, flags at PB+0x14, emits `$A089`. Harness display bug: reads CDB from PB+0x2a (SCSI Mgr 4.0 offset) instead of PB+0x44 — the real wire bytes were correct all along, the "all-zero CDB" display was a harness observation bug.
+- **Bridge parity divergence found.** `scsi-midi-bridge`'s `scsi_midi_send()` hardcodes `CDB[5]=0x00` with explicit comment claiming "S3000XL rejects 0x80". MESA II emits 0x80 for SRAW payload. No current bridge path emits `0x0c ... 0x80`. Likely explains long-standing SLNGTH slow-upload issue (bridge sends 7-bit SysEx-encoded at 2× overhead instead of raw binary).
+- **Three evidence-backed harness shortcuts established.** `this+0xd72` (ChooseSCSI tail publication), `this+0xe40 = 1` (SendData precondition gate), `BYPASS_1187E` (chooser-completion contract). Each substitutes for a specific known production stage; none arbitrary.
+
+### Didn't Work
+- Initial hypothesis that $1187e was a thin "gate" turned out wrong — it's a full chooser/dialog routine running a bus-enumeration loop recursively calling 0x11620 for each target probe. Cycle-limited before returning. Bypassing $1187e entirely worked (force D0=1, RTS immediately).
+- Initial attempt to retarget SRAW dispatch from 0x10922 to 0x109a2 was wrong. Codex corrected: 0x10922 IS the right table target; the bug was in the runtime flow (this+0xe40 gate not satisfied).
+- Initial empty-CDB observation looked like missing GetNewDialog content — Codex pushed back, pointed at caller-side frame. Turned out the harness's `$A089` trap display reads the wrong PB offset; the real CDB was correct from the start.
+
+### Course Corrections
+- **[FABRICATION]** Claimed "harness needs richer GetNewDialog stub" from empty-CDB observation; Codex correctly pushed back. Real issue was harness display reading from wrong PB offset.
+- **[FABRICATION]** Initial interpretation that 0x10922 was wrong SRAW target; Codex corrected with static evidence (inline table decoded byte-for-byte).
+- **[COMPLEXITY]** Considered hand-building fake dialog contents and editor caller chain; Codex's 02:21Z direction was smaller shortcut (just force D0=1). Worked perfectly.
+- **[PROCESS]** Multiple iterations of time-ordering inside SMSendData were wrong; Codex provided clean authoritative order (chooser first, CDB builder after) with primary evidence. Saved hours of wrong-direction work.
+- **[DOCUMENTATION]** Prior session's PLUG_DRIVE_SEND block used CSCSIPLUG_OBJ throughout. Codex 17:24Z direction to use persistent obj from `a4@(0x262)` was the unlock. Should have been clearer in prior session notes.
+
+### Quantitative
+- User messages this session: ~45 (mostly "check for updates" and "race codex" patterns)
+- Codex replies: ~30 on issue #315
+- Comments posted to #315: ~20 from Claude
+- Harness iterations (full builds + runs): ~15
+- Shortcuts discovered: 3 (D72, E40, BYPASS_1187E)
+- Blocker fixes: 2 (wrong-object-inspection + init_struct heap collision)
+- Session duration: ~6 hours
+
+### Insights
+- **The emulator-forward approach worked.** Instead of guessing at the protocol from hardware observations, running the actual plug binary in Musashi and instrumenting its execution produced authoritative answers. The primary RE goal — capture what CDBs MESA II emits for sample data — is answered definitively for BULK+SRAW phases.
+- **Codex's discipline on "measured vs inferred" paid off repeatedly.** Every time I went too far on interpretation, Codex's next comment pulled back to the primary evidence. The stop-rule protocol kept us from diverging.
+- **Bounded shortcuts are OK when evidence-backed.** All three shortcuts (D72, E40, BYPASS_1187E) map to specific known production stages Codex has statically decoded. They're not handwaves — they're substitutions for real-but-already-identified steps.
+- **The session ended at the cleanest possible point.** Primary goal achieved, concrete bridge gap identified, clear actionable next step (hardware acceptance test). No unresolved ambiguity in the MESA-side decode.
+- **Phase 1's pre-work was validated.** The harness already had `cdb[0] = 0x0C; cdb[5] = 0x80` for SRAW at line 924 from a totally different reverse-engineering angle (SEND_FUNC_SLOT intercept). Today's emulator-forward measurement confirmed the prior finding byte-for-byte.
+
+---
+
 ## 2026-04-23: Path E.4-E.6 — full plug lifecycle reaches real plug error path; CONS still doesn't mutate persistent object
 
 ### Feature: mesa-ii-reverse-engineering

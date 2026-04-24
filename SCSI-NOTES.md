@@ -62,6 +62,70 @@ Whether the device accepts `0x80` in the post-SDATA state is the OPEN question �
 
 ---
 
+## 2026-04-23/24: CDB family END-TO-END CAPTURED via emulator. Bridge parity divergence confirmed.
+
+### Status — PRIMARY RE GOAL ANSWERED
+
+Full MESA II plug transport path captured in pure emulation under bounded, evidence-backed harness shortcuts. The "outstanding" items from the 2026-04-22 entry above are now closed — `$A089 SCSIDispatch` fires with the constructed CDB.
+
+### Lifecycle proven (with runtime addresses)
+
+1. **INIT** (plug main via BRA.S+10→BSR1→main at 0x10000) — plug allocates persistent obj at 0x0005f1b8 via NewHandle, stores into `a4@(0x262)`; INIT setter at `0x102b8` writes host callback to `this+4`.
+2. **CONS** — vtable+0x30 `ConnectToSocket` at runtime 0x10434; copies 46-byte SocketInfo to `this+0x3c+N*46`; increments `this+0x38` (socket count).
+3. **ASOK** — vtable+0x34 `ActivateSocket` at runtime 0x104c0; matches SocketInfo+0x26 against `this+0x62+N*46`; copies SocketInfo+0x24 (W) → this+0x60, +0x2a (L) → this+0x66.
+4. **ChooseSCSI** — runtime ~0x114c0 is the success tail inside `ChooseSCSI__9CSCSIPlugFUl`. Parses ASCII bus/target digits from chosen dialog line (offsets +5, +10), writes per-socket selection word to `this+0x0d70+4*n`. (Harness shortcut: seed `this+0xd72` directly.)
+5. **SEND command** — vtable+0x14 at runtime 0x10854. Copies `mem16(this + N*4 + 0xd72)` → `this+0xd6e` on key match. `this+0xd6e = 0` → `MOVE.W #0xc950, D0` (source of long-standing 0xc950 error code). Success path dispatches SocketInfo+8 as sub-tag.
+6. **Chooser/dialog routine `$1187e`** — runs a recursive bus-enumeration loop calling `0x11620` per target. (Harness shortcut: bypass via force D0=1 and RTS.)
+7. **SMSendData `0x1106e`** — local CDB builder at 0x1109e-0x110e0 after $1187e returns. Builds CDB in `fp@(-6..-1)`, then PEAs the address and JSRs `0x11620`.
+8. **PB/SCSIDispatch helper `0x11620`** — takes CDB pointer at `fp@(14)`, copies 6 bytes to SCSI Manager 4.3 PB at PB+0x44..+0x49, flags at PB+0x14, emits `$A089 SCSIDispatch`.
+
+### Real CDB family (byte-for-byte captured)
+
+| Phase | Sub-tag (SocketInfo+8) | Mode byte | Built CDB at `fp@(-6..-1)` |
+|-------|-----------------------|-----------|---------------------------|
+| BULK opener (0x0B SysEx) | `'BULK'` | 0 | `0c 00 00 01 00 00` |
+| BULK continuation (0x0C SysEx) | `'BULK'` | 0 | `0c 00 00 01 00 00` |
+| SRAW payload | `'SRAW'` | 1 | `0c 00 00 01 00 80` |
+
+Common structure:
+- byte 0: `0x0C` (Akai MIDI Send opcode)
+- byte 1: `0x00`
+- bytes 2..4: 24-bit big-endian byte count
+- byte 5: `0x80` for SRAW payload, `0x00` for BULK control
+- flags (PB+0x14): `0x80040000` (WRITE, transfer)
+- target: chooser-selected (test case: target=6, LUN=0)
+
+### Harness display bug (important gotcha)
+
+The `$A089 SCSIDispatch` trap display in the harness reads CDB from `PB+0x2a` (SCSI Manager 4.0 offset). The plug writes CDB to `PB+0x44` (SCSI Manager 4.3 layout). So for a long time we thought the CDB was all zeros — the wire bytes were correct all along; the display was wrong. Fix point: `src/main.c` line 335 needs `g_mem[a0 + 0x44 + i]` not `g_mem[a0 + 42 + i]`.
+
+### Bridge parity divergence
+
+Current `services/scsi-midi-bridge/src/s2p_client.rs:334` (`scsi_midi_send()`) hardcodes `CDB[5] = 0x00` with explicit comment "S3000XL rejects 0x80". But MESA II emits `CDB[5] = 0x80` for the SRAW payload phase. No current bridge path emits `0x0c ... 0x80`.
+
+### Implication for SLNGTH slow-upload issue
+
+The long-standing SLNGTH upload slowness (2.91 KB/s ≈ 1.4× serial MIDI) may be explained by the bridge sending samples as 7-bit SysEx-encoded (2× overhead) via `CDB[5] = 0x00` instead of raw 8-bit binary via `CDB[5] = 0x80` as MESA II does.
+
+### Next steps (hardware acceptance test)
+
+1. Test `CDB[5] = 0x80` on real S3000XL in proper MESA II sequence: BULK opener (0x00) → SRAW payload (0x80). Prior rejection-of-0x80 finding was single-command in isolation, not the full BULK→SRAW sequence.
+2. If device accepts: add mode-aware send helper to bridge.
+3. Measure throughput vs existing 0x00 path (expected ~2×).
+4. Confirm SLNGTH fields land correctly end-to-end.
+
+### Evidence-backed harness shortcuts used (and what they stand for)
+
+| Shortcut | Stands in for |
+|---------|---------------|
+| Seed `this+0xd72 = <target-LUN-word>` | ChooseSCSI success tail's per-socket selection publication |
+| Seed `this+0xe40 = 1` | Refresh-via-`0x0ca2` that fills this flag when SCSI Mgr state is ready |
+| `BYPASS_1187E`: force D0=1 and RTS at 0x1187e entry | Chooser-completion contract; real chooser returns with D0!=0 after user selects device |
+
+None arbitrary — all map to specific Codex-identified production stages that aren't feasible to fully emulate without a working SCSI bus beneath us.
+
+---
+
 ## 2026-04-01 20:44 PDT: SCMP — First Attempt at SCSI MIDI
 
 ### Strategy
