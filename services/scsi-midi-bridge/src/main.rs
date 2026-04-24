@@ -56,6 +56,7 @@ async fn main() {
         .route("/sds/poll", get(routes::sds_poll))
         .route("/sds/stream", get(routes::sds_stream))
         .route("/scsi/exec", post(routes::scsi_exec))
+        .route("/scsi/midi-send-flag", post(routes::midi_send_flag))
         .route("/scsi/inquiry/:target_id", get(routes::scsi_inquiry))
         .route("/scsi/capacity/:target_id", get(routes::scsi_capacity))
         .route("/scsi/read", post(routes::scsi_read))

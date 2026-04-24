@@ -95,6 +95,18 @@ pub struct ScsiReadRequest {
 }
 
 #[derive(Deserialize)]
+pub struct MidiSendFlagRequest {
+    pub target_id: u8,
+    pub flag: u8,
+    pub data: Vec<u8>,
+}
+
+#[derive(Serialize)]
+pub struct MidiSendFlagResponse {
+    pub response: Vec<u8>,
+}
+
+#[derive(Deserialize)]
 pub struct ScsiWriteRequest {
     pub target_id: u8,
     pub lba: u32,
@@ -669,6 +681,26 @@ pub async fn scsi_exec(
         data_in: result.data_in,
         bytes_transferred: result.bytes_transferred,
     }))
+}
+
+pub async fn midi_send_flag(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<MidiSendFlagRequest>,
+) -> Result<Json<MidiSendFlagResponse>, (StatusCode, String)> {
+    let timeout = Duration::from_secs(15);
+    let result = submit_and_await(
+        &state.scsi_tx,
+        timeout,
+        |reply| ScsiWork::SysExSendWithFlag {
+            target_id: body.target_id,
+            message: body.data,
+            flag: body.flag,
+            reply,
+        },
+    ).await?
+    .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
+
+    Ok(Json(MidiSendFlagResponse { response: result }))
 }
 
 pub async fn scsi_inquiry(

@@ -445,7 +445,6 @@ impl S2pClient {
         }
 
         self.scsi_midi_send_with_flag(self.target_id, sysex, flag).await?;
-
         let mut result = Vec::new();
         let mut empty_polls = 0;
         for _ in 0..30 {

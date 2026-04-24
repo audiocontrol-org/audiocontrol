@@ -23,6 +23,15 @@ pub enum ScsiWork {
         expect_response: bool,
         reply: oneshot::Sender<Result<Vec<u8>, String>>,
     },
+    /// Send SysEx via CDB 0x0C with explicit CDB[5] flag and drain MIDI response.
+    /// Test harness for issue #315 / Path F.1 — proves whether `flag=0x80` commits
+    /// data by enabling write-then-readback inside a single bridge request.
+    SysExSendWithFlag {
+        target_id: u8,
+        message: Vec<u8>,
+        flag: u8,
+        reply: oneshot::Sender<Result<Vec<u8>, String>>,
+    },
     /// Poll for pending MIDI data
     Poll {
         reply: oneshot::Sender<Result<Vec<u8>, String>>,
@@ -98,6 +107,15 @@ pub async fn scsi_worker(
                     s2p.scsi_midi_send(s2p.target_id, &message).await.map(|_| Vec::new())
                 };
                 // Broadcast to WebSocket clients on success
+                if let Ok(ref data) = result {
+                    if !data.is_empty() && data[0] == 0xF0 {
+                        let _ = ws_tx.send(data.clone());
+                    }
+                }
+                let _ = reply.send(result);
+            }
+            ScsiWork::SysExSendWithFlag { target_id: _target_id, message, flag, reply } => {
+                let result = s2p.send_with_flag_and_receive(&message, flag).await;
                 if let Ok(ref data) = result {
                     if !data.is_empty() && data[0] == 0xF0 {
                         let _ = ws_tx.send(data.clone());
