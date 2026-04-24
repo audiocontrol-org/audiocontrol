@@ -15,6 +15,10 @@ Before writing code:
 3. Read the latest relevant entry in `DEVELOPMENT-NOTES.md`.
 4. If the work touches hardware or transport behavior, read the relevant notes file first, such as `SCSI-NOTES.md`.
 5. Check related GitHub issues when the task depends on issue state.
+   For MESA II coordination on `#315`, prefer the repo-local skills:
+   - `issue-315-read` to self-poll the mailbox issue
+   - `issue-315-write` to post comments or update `Current State of Play`
+   Use `gh` CLI only for those issue reads/writes.
 6. Tell the user what you found and what you plan to do next.
 
 ## Session End
@@ -26,6 +30,9 @@ Before wrapping a feature session:
 3. Write a `DEVELOPMENT-NOTES.md` entry.
 4. Update hardware notes if device behavior was investigated.
 5. Update or close relevant GitHub issues.
+   For MESA II coordination on `#315`, re-read the latest comments, and if the tactical
+   center changed, update the issue body’s `Current State of Play` section with
+   `issue-315-write`.
 6. Commit documentation changes with the implementation changes they describe.
 
 ## Feature Workflow
@@ -54,8 +61,17 @@ Codex equivalents of the Claude skills live under `.agents/skills/`:
 - `feature-teardown`
 - `deploy-bridge`
 - `analyze-session`
+- `issue-315-read`
+- `issue-315-write`
 
 Prefer these skills when the user asks for that workflow explicitly.
+
+For the shared Claude/Codex mailbox on issue `#315`:
+
+- use `issue-315-read` at session start, after bounded work, before asking for
+  direction, and before session end
+- use `issue-315-write` for posting findings or updating `Current State of Play`
+- use `gh` CLI only for those reads/writes; do not use the GitHub connector
 
 ## Core Engineering Rules
 

@@ -17,6 +17,8 @@ Use this when the user wants the current feature state summarized before work be
 3. If the task is hardware-facing, read the latest relevant entries in `SCSI-NOTES.md` or the matching device notes file.
 4. If `data/sessions/report-all.md` exists, extract the top correction patterns that should influence this session.
 5. If issue state matters, inspect the relevant GitHub issues.
+   If the active coordination thread is issue `#315`, use `issue-315-read` to self-poll
+   the mailbox issue before proposing the session goal.
 6. Report:
    - current phase
    - completed vs pending work
