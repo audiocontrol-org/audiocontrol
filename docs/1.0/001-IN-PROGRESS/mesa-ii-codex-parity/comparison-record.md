@@ -1526,6 +1526,22 @@ cleanly.
   production-faithful `SRAW` CDB capture under bounded, evidence-backed harness
   shortcuts.
 
+- The first bridge-side parity check now isolates one concrete divergence: the bridge hardcodes `CDB[5] = 0x00`
+  Claude baseline:
+  the measured productive family is now:
+  `BULK -> 0c 00 <len24> 00`
+  and
+  `SRAW -> 0c 00 <len24> 80`.
+  Codex finding:
+  the live bridge helper in `services/scsi-midi-bridge/src/s2p_client.rs` still exposes
+  only one generic send shape via `scsi_midi_send()`, and that helper always emits
+  `0x0c 00 <len24> 00`. The inline code comment still asserts that the S3000XL rejects
+  `0x80`, but no current bridge path actually emits the measured `SRAW`-mode `0x80`
+  variant. So the next verification seam is now sharper than “compare against the
+  bridge” in the abstract: the bridge already matches measured `BULK`, but it does not
+  yet appear able to emit the measured productive `SRAW` CDB family without a new
+  mode-aware send path or a lower-level bypass of `scsi_midi_send()`.
+
 ## Comparison Rules
 
 - Codex should compare against the latest Claude branch docs plus its `DEVELOPMENT-NOTES.md`,

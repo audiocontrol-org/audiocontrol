@@ -3937,3 +3937,16 @@ correct. Every finding should distinguish direct evidence from inference.
   productive `SRAW` transport path emits opcode `0x0c`, a 24-bit big-endian count in
   bytes `2..4`, and mode byte `0x80`, then hands that intact local CDB to `0x1620` for
   PB population and `SCSIDispatch`.
+
+- The current bridge implementation matches measured `BULK` CDB shape but diverges from measured `SRAW`
+  The first code-side parity check against the live bridge now lands on one concrete
+  mismatch. In `services/scsi-midi-bridge/src/s2p_client.rs`, `scsi_midi_send()` always
+  builds CDB `0x0c 00 <len24> 00`; byte `5` is hardcoded to `0x00`, with an inline
+  comment claiming the S3000XL rejects `0x80`. That helper shape now agrees with the
+  measured `BULK` opener/continuation family, but it does **not** agree with the newly
+  measured productive `SRAW` family, where `SMSendData` builds `0x0c 00 <len24> 80`.
+  No other live bridge path currently emits a `0x0c ... 0x80` send CDB. So the next
+  bridge-side parity question is no longer abstract "does the bridge use the same fast
+  path?" It is: can the bridge express the measured `SRAW` mode bit at all, or is the
+  current abstraction layer limited to the older fire-and-forget `0x00` send shape used
+  by SDS/ASPACK-oriented helpers?
