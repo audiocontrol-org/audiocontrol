@@ -547,11 +547,36 @@ impl<'a> PositionSource for McuPositionSource<'a> {
             let poll = remaining.min(Duration::from_millis(100));
             match self.bytes_rx.recv_timeout(poll) {
                 Ok(bytes) => {
+                    // Raw-byte trace for diagnosing surprise jumps in
+                    // the position stream (wait_ms=0 with large deltas,
+                    // etc). Hex only; small enough to leave on during
+                    // normal operation.
+                    let hex = bytes
+                        .iter()
+                        .map(|b| format!("{b:02X}"))
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    tracing::debug!(len = bytes.len(), %hex, "locate: rx bytes");
                     self.handle_heartbeat(&bytes);
                     if let Some(update) = mcu::parse_cc_display(&bytes) {
+                        let before_bar = self.tracker.current_bar();
                         if let Some(pos) = self.tracker.apply(update) {
+                            tracing::debug!(
+                                idx = update.index,
+                                ?update.value,
+                                before_bar,
+                                after_bar = pos.bar,
+                                "locate: bar-changing update"
+                            );
                             self.has_seen_position = true;
                             return Some(pos.bar);
+                        } else {
+                            tracing::debug!(
+                                idx = update.index,
+                                ?update.value,
+                                tracker_bar = self.tracker.current_bar(),
+                                "locate: non-bar update applied"
+                            );
                         }
                     }
                     // Other bytes: keep waiting.
