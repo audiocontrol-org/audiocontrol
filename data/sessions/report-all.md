@@ -1,19 +1,19 @@
 ## Session Analytics Report
 
-**Date range:** 2026-02-19 to 2026-04-07
+**Date range:** 2026-02-19 to 2026-04-18
 
 ### Overview
 
 | Metric | Value |
 |--------|-------|
-| Total sessions | 37 |
-| Total commits | 892 |
-| Total tool calls | 23,384 |
-| Total tokens (input) | 15.4B |
-| Total tokens (output) | 7.1M |
-| Avg session duration (wall clock) | 2650 min |
-| Avg user messages/session | 741 |
-| Agent spawns/session | 12.14 |
+| Total sessions | 63 |
+| Total commits | 1,261 |
+| Total tool calls | 32,201 |
+| Total tokens (input) | 19.7B |
+| Total tokens (output) | 15.3M |
+| Avg session duration (wall clock) | 2088 min |
+| Avg user messages/session | 602 |
+| Agent spawns/session | 10.19 |
 
 ### Sessions by Project
 
@@ -22,50 +22,73 @@
 | audiocontrol-s550-support | 11 |
 | audiocontrol-test-e2e | 10 |
 | orion-work | 8 |
-| audiocontrol-continuous-improvement | 2 |
+| audiocontrol | 6 |
+| audiocontrol-continuous-improvement | 3 |
+| audiocontrol-library-ux | 2 |
 | audiocontrol-s330-editor | 2 |
-| audiocontrol | 1 |
-| audiocontrol-library-ux | 1 |
+| audiocontrol-org | 2 |
+| audiocontrol-akai-ux-improvement | 2 |
+| audiocontrol-org-editorial-calendar | 2 |
 | audiocontrol-test-e2e-modules-roland-sxx0-editor | 1 |
 | midi-server-sse-events | 1 |
+| audiocontrol-build-source-deps | 1 |
+| audiocontrol-contracts | 1 |
+| audiocontrol-demo-video-gen | 1 |
+| audiocontrol-draggable-zones | 1 |
+| audiocontrol-orchestrator-agent | 1 |
+| audiocontrol-program-based-slicing | 1 |
+| audiocontrol-standalone-sampler | 1 |
+| audiocontrol-test-infra | 1 |
+| audiocontrol-org--claude-worktrees-hopeful-northcutt | 1 |
+| audiocontrol-mesa-ii-reverse-engineering | 1 |
+| audiocontrol-org-automated-analytics | 1 |
+| audiocontrol-org-editorialcontrol-site | 1 |
+| audiocontrol-org-feature-image-generator | 1 |
 
 ### Sessions by Machine
 
 | Machine | Sessions |
 |---------|----------|
-| orion-m4 | 37 |
+| orion-m4 | 63 |
 
 ### Tool Distribution
 
 | Tool | Sessions Using |
 |------|---------------|
-| Bash | 34 |
-| Read | 33 |
-| Write | 32 |
-| Edit | 31 |
-| Glob | 28 |
-| Grep | 27 |
+| Bash | 60 |
+| Read | 58 |
+| Edit | 54 |
+| Write | 54 |
+| Glob | 45 |
+| Grep | 45 |
+| TaskCreate | 27 |
+| ExitPlanMode | 26 |
+| TaskUpdate | 26 |
+| Agent | 26 |
 | Task | 25 |
-| ExitPlanMode | 23 |
-| TaskCreate | 15 |
-| TaskUpdate | 15 |
-| AskUserQuestion | 13 |
-| EnterPlanMode | 11 |
-| WebFetch | 9 |
-| Agent | 7 |
-| WebSearch | 5 |
+| ToolSearch | 23 |
+| AskUserQuestion | 19 |
+| WebFetch | 15 |
+| EnterPlanMode | 13 |
+| Skill | 9 |
+| WebSearch | 6 |
 | TaskOutput | 5 |
-| ToolSearch | 5 |
-| Skill | 3 |
-| TaskList | 2 |
-| TaskStop | 2 |
+| TaskStop | 4 |
+| TaskList | 3 |
+| Monitor | 2 |
+| mcp__plugin_playwright_playwright__browser_console_messages | 1 |
+| mcp__plugin_playwright_playwright__browser_evaluate | 1 |
+| mcp__plugin_playwright_playwright__browser_navigate | 1 |
+| mcp__plugin_playwright_playwright__browser_resize | 1 |
+| mcp__plugin_playwright_playwright__browser_take_screenshot | 1 |
 
 ### Models Used
 
 | Model | Sessions |
 |-------|----------|
 | claude-opus-4-5-20251101 | 29 |
-| claude-opus-4-6 | 4 |
+| claude-opus-4-6 | 26 |
+| claude-opus-4-7 | 4 |
 | (no assistant messages) | 3 |
 | <synthetic> | 1 |
 
@@ -79,7 +102,8 @@
 | 2026-03-16 | 6 |
 | 2026-03-23 | 17 |
 | 2026-03-30 | 2 |
-| 2026-04-06 | 3 |
+| 2026-04-06 | 12 |
+| 2026-04-13 | 17 |
 
 ### Longest Sessions by Wall Clock (top 10)
 
@@ -89,12 +113,12 @@
 | orion-work | 2026-03-29 | 241h (14,463min) | 308 | 8 |
 | audiocontrol-test-e2e | 2026-03-30 | 220h (13,173min) | 2151 | 105 |
 | audiocontrol-s550-support | 2026-03-21 | 168h (10,064min) | 369 | 13 |
+| audiocontrol-akai-ux-improvement | 2026-04-12 | 77h (4,617min) | 1374 | 42 |
 | audiocontrol-continuous-improvement | 2026-04-07 | 74h (4,416min) | 8156 | 275 |
 | audiocontrol-library-ux | 2026-04-07 | 74h (4,416min) | 4797 | 161 |
 | audiocontrol-continuous-improvement | 2026-04-07 | 72h (4,329min) | 4719 | 157 |
+| audiocontrol-org-feature-image-generator | 2026-04-15 | 69h (4,129min) | 937 | 40 |
 | audiocontrol-s330-editor | 2026-03-09 | 69h (4,126min) | 1321 | 35 |
-| audiocontrol-s550-support | 2026-03-14 | 42h (2,538min) | 260 | 3 |
-| audiocontrol-s330-editor | 2026-03-12 | 39h (2,322min) | 494 | 15 |
 
 ### Token-Heaviest Sessions (top 10)
 
@@ -104,37 +128,38 @@
 | audiocontrol-library-ux | 2026-04-07 | 3.4B | 4797 | 4416min |
 | audiocontrol-continuous-improvement | 2026-04-07 | 3.3B | 4719 | 4329min |
 | audiocontrol-test-e2e | 2026-03-30 | 1.3B | 2151 | 13173min |
+| audiocontrol-library-ux | 2026-04-11 | 1.3B | 1835 | 745min |
+| audiocontrol-akai-ux-improvement | 2026-04-12 | 785.4M | 1374 | 4617min |
+| audiocontrol-org-editorial-calendar | 2026-04-17 | 503.1M | 877 | 2235min |
+| audiocontrol-mesa-ii-reverse-engineering | 2026-04-16 | 437.9M | 705 | 2829min |
+| audiocontrol-org-feature-image-generator | 2026-04-15 | 377.4M | 937 | 4129min |
 | audiocontrol-s330-editor | 2026-03-09 | 319.2M | 1321 | 4126min |
-| audiocontrol-s550-support | 2026-03-13 | 191.7M | 829 | 1615min |
-| audiocontrol-s330-editor | 2026-03-12 | 110.0M | 494 | 2322min |
-| audiocontrol-test-e2e | 2026-03-29 | 93.6M | 499 | 1085min |
-| audiocontrol-test-e2e | 2026-03-29 | 93.6M | 498 | 1084min |
-| audiocontrol-s550-support | 2026-03-21 | 86.1M | 369 | 10064min |
 
 ### LLM Session Analysis
 
-*35 sessions analyzed via Claude Haiku*
+*62 sessions analyzed via Claude Haiku*
 
 **Arc types:**
 
 | Type | Sessions |
 |------|----------|
-| feature | 19 |
-| mixed | 6 |
-| quick-task | 5 |
-| exploration | 3 |
-| debug | 2 |
+| feature | 34 |
+| mixed | 9 |
+| exploration | 8 |
+| quick-task | 7 |
+| debug | 3 |
+| unknown | 1 |
 
 **Corrections:**
 
-Total: 54 across 35 sessions
+Total: 94 across 62 sessions
 
 | Category | Count |
 |----------|-------|
-| PROCESS | 32 |
-| FABRICATION | 6 |
-| UX | 5 |
-| DOCUMENTATION | 5 |
+| PROCESS | 65 |
+| FABRICATION | 10 |
+| UX | 8 |
+| DOCUMENTATION | 7 |
 | COMPLEXITY | 3 |
 | ARCHITECTURE | 3 |
 
@@ -147,11 +172,11 @@ Total: 54 across 35 sessions
 | 2026-03-28_de5bea43 | feature | 5 |
 | 2026-03-30_81e7c13f | mixed | 5 |
 | 2026-03-30_f6329a25 | mixed | 5 |
+| 2026-04-15_544d7878 | debug | 5 |
 | 2026-03-21_27263c0e | feature | 4 |
 | 2026-03-29_593e17b4 | feature | 4 |
+| 2026-04-13_885f8871 | feature | 4 |
 | 2026-02-19_8db89009 | quick-task | 3 |
-| 2026-03-28_a2ec33b7 | exploration | 3 |
-| 2026-03-20_5ced7864 | feature | 2 |
 
 **Correction details:**
 
