@@ -330,19 +330,33 @@ impl S2pClient {
         Ok(())
     }
 
-    /// Send MIDI SysEx data to device (CDB 0x0C). Flag byte is always 0x00.
-    pub async fn scsi_midi_send(&self, target_id: u8, data: &[u8]) -> Result<(), String> {
+    /// Send MIDI data to device via CDB 0x0C with an explicit mode/flag byte.
+    ///
+    /// Current bridge callers all use `0x00`, which matches the older SDS/ASPACK
+    /// bridge path. A future MESA-style fast path may need to drive `0x80` for the
+    /// productive SRAW payload phase.
+    pub async fn scsi_midi_send_with_flag(
+        &self,
+        target_id: u8,
+        data: &[u8],
+        flag: u8,
+    ) -> Result<(), String> {
         let len = data.len();
         let cdb = vec![
             0x0C, 0x00,
             ((len >> 16) & 0xFF) as u8,
             ((len >> 8) & 0xFF) as u8,
             (len & 0xFF) as u8,
-            0x00, // flag=0x00, NOT 0x80 — S3000XL rejects 0x80
+            flag,
         ];
         // Send may return CHECK CONDITION but data is still accepted — ignore status
         let _ = self.execute_scsi(target_id, 0, &cdb, data, 0, 10).await;
         Ok(())
+    }
+
+    /// Send MIDI SysEx data to device (CDB 0x0C) using the legacy bridge flag `0x00`.
+    pub async fn scsi_midi_send(&self, target_id: u8, data: &[u8]) -> Result<(), String> {
+        self.scsi_midi_send_with_flag(target_id, data, 0x00).await
     }
 
     /// Poll for available MIDI bytes (CDB 0x0D). Returns 24-bit byte count.
@@ -391,6 +405,49 @@ impl S2pClient {
         let result = self.send_and_receive_inner(sysex).await;
         let _ = self.scsi_midi_disable(self.target_id).await;
         result
+    }
+
+    /// Like `send_and_receive`, but with explicit CDB[5] flag byte.
+    /// Test harness for the MESA II 0x80 path investigation (issue #315).
+    /// Drains the MIDI response in the same call so the background worker
+    /// can't consume it first — required for write-then-readback testing.
+    pub async fn send_with_flag_and_receive(
+        &mut self,
+        sysex: &[u8],
+        flag: u8,
+    ) -> Result<Vec<u8>, String> {
+        self.scsi_midi_enable(self.target_id).await?;
+        let result = self.send_with_flag_and_receive_inner(sysex, flag).await;
+        let _ = self.scsi_midi_disable(self.target_id).await;
+        result
+    }
+
+    async fn send_with_flag_and_receive_inner(
+        &self,
+        sysex: &[u8],
+        flag: u8,
+    ) -> Result<Vec<u8>, String> {
+        self.scsi_midi_send_with_flag(self.target_id, sysex, flag).await?;
+        let mut result = Vec::new();
+        let mut empty_polls = 0;
+        for _ in 0..30 {
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            let pending = self.scsi_midi_poll(self.target_id).await?;
+            if pending > 0 {
+                let chunk = self.scsi_midi_read(self.target_id, pending).await?;
+                result.extend_from_slice(&chunk);
+                empty_polls = 0;
+            } else if !result.is_empty() {
+                empty_polls += 1;
+                if empty_polls >= 2 {
+                    break;
+                }
+            }
+        }
+        if let Some(end) = result.iter().rposition(|&b| b == 0xF7) {
+            result.truncate(end + 1);
+        }
+        Ok(result)
     }
 
     async fn send_and_receive_inner(&self, sysex: &[u8]) -> Result<Vec<u8>, String> {
