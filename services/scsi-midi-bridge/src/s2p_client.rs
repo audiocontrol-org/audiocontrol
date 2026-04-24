@@ -427,7 +427,25 @@ impl S2pClient {
         sysex: &[u8],
         flag: u8,
     ) -> Result<Vec<u8>, String> {
+        // Per SCSI-NOTES.md "Complete MIDI transaction flow":
+        //   enable → drain → send → poll → read → disable
+        // Drain stale bytes from prior sessions BEFORE sending so the
+        // post-send poll sees only the response to our send.
+        let mut drain_iters = 0;
+        loop {
+            let pending = self.scsi_midi_poll(self.target_id).await?;
+            if pending == 0 {
+                break;
+            }
+            let _ = self.scsi_midi_read(self.target_id, pending).await?;
+            drain_iters += 1;
+            if drain_iters >= 5 {
+                break; // safety bound
+            }
+        }
+
         self.scsi_midi_send_with_flag(self.target_id, sysex, flag).await?;
+
         let mut result = Vec::new();
         let mut empty_polls = 0;
         for _ in 0..30 {
