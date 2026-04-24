@@ -2,14 +2,16 @@
 
 **Branch:** `feature/midi-macro-bridge`
 **Worktree:** `~/work/audiocontrol-work/audiocontrol-midi-macro-bridge`
-**Overall Status:** PR Open — [#316](https://github.com/audiocontrol-org/audiocontrol/pull/316)
+**Overall Status:** Phases 1-2 shipped via [#316](https://github.com/audiocontrol-org/audiocontrol/pull/316). Phases 3-4 open for review in [#317](https://github.com/audiocontrol-org/audiocontrol/pull/317).
 
 ## Status
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| Phase 1: Integration and Build | Complete | All acceptance criteria met. |
-| Phase 2: Hardware Validation | Complete | MC-500 → 828mk3 → LUNA round trip verified. Default 20ms inter-key delay worked. |
+| Phase 1: Integration and Build | Complete | Shipped in #316. |
+| Phase 2: Hardware Validation | Complete | MC-500 → 828mk3 → LUNA transport round trip verified. Shipped in #316. |
+| Phase 3: MCU Transport + Closed-Loop Locate Implementation | Complete | MCU input parser, heartbeat responder, byte-sequence discovery, Backend trait (MCU default / keystrokes fallback), Locating state, LocateController, main-loop integration, stable CoreMIDI UniqueIDs, sync-on-stop. 84 unit tests passing. |
+| Phase 4: Hardware Validation | Complete (core scenarios) | User confirmed MCU transport with LUNA backgrounded + forward/backward locate + post-locate PLAY + sync-on-stop. Edge-case scenarios (TS changes, nudge-size misconfig, LUNA disconnect mid-locate, keystrokes regression) covered by unit tests; not exercised on hardware this session. |
 
 ## Documentation
 
@@ -19,6 +21,7 @@
 
 ## GitHub Tracking
 
-- Pull Request: [#316](https://github.com/audiocontrol-org/audiocontrol/pull/316)
+- Phases 1-2 Pull Request: [#316](https://github.com/audiocontrol-org/audiocontrol/pull/316) (merged)
+- Phases 3-4 Pull Request: [#317](https://github.com/audiocontrol-org/audiocontrol/pull/317) (open)
 - Milestone: TBD
 - Parent Issue: TBD

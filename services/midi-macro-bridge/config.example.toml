@@ -1,19 +1,86 @@
 # midi-macro-bridge configuration
 # Copy this file to config.toml and edit.
 
-# Substring match against MIDI port names (case-insensitive).
-# Run with --list-ports to see available ports on your system.
-# Examples: "MC-500", "UM-ONE", "IAC Driver Bus 1"
-midi_input_port = "MC-500"
+# Substring match against the MC-500 transport MIDI input port
+# (case-insensitive). Run with --list-ports to see available ports.
+# Examples: "MC-500", "UM-ONE", "828mk3 Hybrid MIDI"
+#
+# If omitted, defaults to "828mk3 Hybrid MIDI" — a convenience for
+# this project's primary rig. Set explicitly once your own MIDI
+# interface name is stable.
+midi_input_port = "828mk3 Hybrid MIDI"
+
+# Substring match against the MIDI output port that reaches the
+# MC-500's MIDI IN. Used for sync-on-stop: after LUNA snaps to its
+# play-start position on Stop, the bridge sends SPP to the MC-500
+# so both machines agree on where the playhead is.
+#
+# Default is the same name as midi_input_port (since a typical
+# interface exposes inputs and outputs under the same name); midir
+# resolves inputs and outputs as distinct endpoints. Set to an
+# empty string to disable sync-on-stop.
+mc500_output_port = "828mk3 Hybrid MIDI"
+
+# Set to false to start in a disabled state (reserved for future use).
+enabled_on_startup = true
+
+[transport]
+# Which output path the bridge uses to drive the DAW:
+#
+#   "mcu"         (default) — emits MCU control-surface messages on
+#                 the bridge's virtual MIDI output. Works regardless
+#                 of keyboard focus; no macOS Accessibility permission
+#                 required. LUNA must have "MIDI Macro Bridge" selected
+#                 in Preferences > Controllers > MIDI Control Surfaces
+#                 as both INPUT and OUTPUT DEVICE on an enabled row
+#                 (protocol: MCU).
+#
+#   "keystrokes"  — Phase 1-2 fallback. Synthesises keystrokes via
+#                 enigo / macOS CGEvent. Requires LUNA to be frontmost
+#                 and Accessibility permission granted to the binary.
+#                 The keystroke_delay_ms and require_frontmost_app
+#                 settings below only apply in this mode.
+backend = "mcu"
 
 # Delay in milliseconds between chained keystrokes.
-# If LUNA occasionally misses Return-then-Space sequences, increase this.
+# Only used when backend = "keystrokes".
 keystroke_delay_ms = 20
 
 # Only emit keystrokes when this app is frontmost.
 # Prevents accidental Spacebar leaks into Safari, Finder, etc.
 # Set to empty string to disable the check (not recommended).
+# Only used when backend = "keystrokes".
 require_frontmost_app = "LUNA"
 
-# Set to false to start in a disabled state (reserved for future use).
-enabled_on_startup = true
+[locate]
+# Closed-loop locate: translates MC-500 SPP (Song Position Pointer)
+# messages into bar-accurate jumps of LUNA's playhead. The bridge
+# emits bar-nudge actions via the transport backend and watches
+# LUNA's MCU position feedback to verify each step lands on the
+# next bar. Iterates until the target is reached, or aborts cleanly
+# on one of several safety outcomes (timeout, oscillation, cap).
+#
+# Requires the MCU backend (keystrokes backend has no position
+# feedback). Requires LUNA's jog/scrub resolution = 1 bar.
+#
+# Enabled by default. If LUNA hasn't been configured as an MCU
+# control surface, SPP events will time out cleanly with an
+# actionable log message rather than misbehaving, so the default
+# is safe. Set to false if you explicitly want the bridge to
+# ignore SPP events entirely.
+enabled = true
+
+# Hard cap on bar-nudge iterations. At 1 bar per iteration this is
+# also the maximum locate distance in bars. Raise if your songs are
+# longer than this.
+max_iterations = 128
+
+# Per-iteration timeout in ms. If LUNA hasn't pushed a new bar
+# value within this window after our nudge, abort. 500 ms has ~9x
+# headroom over the ~55 ms observed during Phase 3c.
+position_timeout_ms = 500
+
+# Initial-position timeout in ms. Longer because LUNA pauses its
+# position-display stream briefly during the MCU surface-init
+# handshake after a bridge restart.
+initial_position_timeout_ms = 3000

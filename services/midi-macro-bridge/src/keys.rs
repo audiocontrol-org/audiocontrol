@@ -22,7 +22,19 @@ use std::thread;
 use std::time::Duration;
 use tracing::{debug, trace, warn};
 
-use crate::state::KeyAction;
+/// The set of individual keystrokes the emitter knows how to send.
+/// `KeystrokeBackend` maps each `Action` to one of these.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum KeyStroke {
+    /// Space — LUNA's play/stop toggle.
+    Space,
+    /// Return — LUNA's return-to-zero.
+    Return,
+    /// `[` — LUNA's nudge-backward-one-bar (Pro Tools convention).
+    BracketLeft,
+    /// `]` — LUNA's nudge-forward-one-bar (Pro Tools convention).
+    BracketRight,
+}
 
 pub struct Emitter {
     enigo: Enigo,
@@ -51,8 +63,8 @@ impl Emitter {
 
     /// Emit a sequence of keystrokes, with `self.delay` between each.
     /// Skips emission entirely if the frontmost-app filter doesn't match.
-    pub fn emit_sequence(&mut self, actions: &[KeyAction]) -> Result<()> {
-        if actions.is_empty() {
+    pub fn emit_sequence(&mut self, strokes: &[KeyStroke]) -> Result<()> {
+        if strokes.is_empty() {
             return Ok(());
         }
 
@@ -75,15 +87,17 @@ impl Emitter {
             }
         }
 
-        for (i, action) in actions.iter().enumerate() {
+        for (i, stroke) in strokes.iter().enumerate() {
             if i > 0 {
                 thread::sleep(self.delay);
             }
-            let key = match action {
-                KeyAction::Space => Key::Space,
-                KeyAction::Return => Key::Return,
+            let key = match stroke {
+                KeyStroke::Space => Key::Space,
+                KeyStroke::Return => Key::Return,
+                KeyStroke::BracketLeft => Key::Unicode('['),
+                KeyStroke::BracketRight => Key::Unicode(']'),
             };
-            trace!(?action, "emitting keystroke");
+            trace!(?stroke, "emitting keystroke");
             self.enigo
                 .key(key, Direction::Click)
                 .map_err(|e| anyhow::anyhow!("keystroke failed: {e}"))?;
