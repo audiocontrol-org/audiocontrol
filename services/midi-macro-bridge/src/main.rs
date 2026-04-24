@@ -526,6 +526,15 @@ impl<'a> McuPositionSource<'a> {
             }
         }
     }
+
+    fn apply_bytes_update(&mut self, bytes: &[u8], result: &mut Option<u32>) {
+        self.handle_heartbeat(bytes);
+        if let Some(update) = mcu::parse_cc_display(bytes) {
+            if let Some(pos) = self.tracker.apply(update) {
+                *result = Some(pos.bar);
+            }
+        }
+    }
 }
 
 impl<'a> PositionSource for McuPositionSource<'a> {
@@ -539,52 +548,63 @@ impl<'a> PositionSource for McuPositionSource<'a> {
 
     fn wait_for_position_change(&mut self, timeout: Duration) -> Option<u32> {
         let deadline = Instant::now() + timeout;
+        let mut result: Option<u32> = None;
+
+        // Phase 1: block until the first bar-changing update lands.
         loop {
             let remaining = deadline.saturating_duration_since(Instant::now());
             if remaining.is_zero() {
-                return None;
+                return result;
             }
             let poll = remaining.min(Duration::from_millis(100));
             match self.bytes_rx.recv_timeout(poll) {
                 Ok(bytes) => {
-                    // Raw-byte trace for diagnosing surprise jumps in
-                    // the position stream (wait_ms=0 with large deltas,
-                    // etc). Hex only; small enough to leave on during
-                    // normal operation.
-                    let hex = bytes
-                        .iter()
-                        .map(|b| format!("{b:02X}"))
-                        .collect::<Vec<_>>()
-                        .join(" ");
-                    tracing::debug!(len = bytes.len(), %hex, "locate: rx bytes");
                     self.handle_heartbeat(&bytes);
                     if let Some(update) = mcu::parse_cc_display(&bytes) {
-                        let before_bar = self.tracker.current_bar();
                         if let Some(pos) = self.tracker.apply(update) {
-                            tracing::debug!(
-                                idx = update.index,
-                                ?update.value,
-                                before_bar,
-                                after_bar = pos.bar,
-                                "locate: bar-changing update"
-                            );
                             self.has_seen_position = true;
-                            return Some(pos.bar);
-                        } else {
-                            tracing::debug!(
-                                idx = update.index,
-                                ?update.value,
-                                tracker_bar = self.tracker.current_bar(),
-                                "locate: non-bar update applied"
-                            );
+                            result = Some(pos.bar);
+                            break;
                         }
                     }
-                    // Other bytes: keep waiting.
                 }
                 Err(mpsc::RecvTimeoutError::Timeout) => continue,
-                Err(mpsc::RecvTimeoutError::Disconnected) => return None,
+                Err(mpsc::RecvTimeoutError::Disconnected) => return result,
             }
         }
+
+        // Phase 2: drain the decade-carry companion CC, if any.
+        //
+        // At decade boundaries LUNA emits d7 and d8 as two separate
+        // 3-byte CCs ~1 µs apart. Without this drain the controller
+        // would consume d7 alone (composing a transient like bar=49
+        // for a 40→39 move) then use that bogus reading to decide the
+        // next nudge — costing an extra BarForward/BarBackward that
+        // eventually overshoots a target sitting on a decade boundary.
+        //
+        // The companion CC is in the mpsc channel within microseconds
+        // of the first one per probe-send-jog-fwd.log (1 µs gap). A
+        // non-blocking try_recv drain catches it reliably, plus one
+        // very short blocking wait to cover jitter on busy systems.
+        const CARRY_SETTLE: Duration = Duration::from_millis(5);
+        let settle_deadline = Instant::now() + CARRY_SETTLE;
+        loop {
+            match self.bytes_rx.try_recv() {
+                Ok(bytes) => self.apply_bytes_update(&bytes, &mut result),
+                Err(mpsc::TryRecvError::Empty) => break,
+                Err(mpsc::TryRecvError::Disconnected) => return result,
+            }
+        }
+        while Instant::now() < settle_deadline {
+            let remaining = settle_deadline.saturating_duration_since(Instant::now());
+            match self.bytes_rx.recv_timeout(remaining) {
+                Ok(bytes) => self.apply_bytes_update(&bytes, &mut result),
+                Err(mpsc::RecvTimeoutError::Timeout) => break,
+                Err(mpsc::RecvTimeoutError::Disconnected) => break,
+            }
+        }
+
+        result
     }
 }
 
