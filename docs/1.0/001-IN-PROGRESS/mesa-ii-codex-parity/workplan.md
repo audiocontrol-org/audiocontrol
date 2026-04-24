@@ -205,26 +205,36 @@ Phase 3 is still active, but the frontier has changed materially again:
     same object: it matches `SocketInfo+0x26 == slot+0x26`, copies
     `SocketInfo+0x24 -> slot+0x24`, copies `SocketInfo+0x2a -> slot+0x2a`, and the
     earlier “no visible mutation” result was just a zero-to-zero copy artifact
-- the next trustworthy frontier is now the first real `SEND` gate on that same object:
+- the old local `0xc950` send gate is now explained and crossed:
   `vtable +0x14` consumes the per-socket word family rooted at `this+0x0d72`, copies
-  `this+(0x0d72 + 4*n) -> this+0x0d6e`, and emits `0xc950` when that active word stays
-  zero
+  `this+(0x0d72 + 4*n) -> this+0x0d6e`, and the bounded nonzero seed of slot-0
+  `this+0x0d72` is now proven enough to move `SEND` deeper into the real transport path
+- the productive `SRAW` phase is now captured end-to-end under evidence-backed chooser
+  shortcuts:
+  `SEND -> SRAW -> SMSendData -> 0x1620 -> $A089`
+- the earlier empty-CDB story is closed:
+  `SMSendData` builds the local 6-byte CDB itself and passes it intact to `0x1620`; the
+  all-zero CDB previously seen at `$A089` came from the harness reading the wrong PB
+  offsets instead of the 4.3-layout CDB region
 
 The current cross-check therefore narrows to one bounded emulator seam:
 
-- what production step publishes the per-socket send-selection word into
-  `this+0x0d72 + 4*n`
-- and whether a bounded non-zero seed of slot-0 `this+0x0d72` clears the local
-  `0xc950` gate and moves `SEND` deeper into real transport behavior
+- how far the now-captured productive transport path can proceed with the smallest set
+  of evidence-backed shortcuts still in place
+- and what the next real post-capture validation target should be:
+  `BULK` opener family, `BOFF`, or bridge/device-side acceptance of the measured `SRAW`
+  CDB
 
 Current recommended work split:
 
 - Claude:
-  drive `SEND` next on the same persistent object and use one bounded non-zero seed of
-  slot-0 `this+0x0d72` as the discriminator for the now-measured `0xc950` gate
+  keep the productive `SRAW` path intact with the bounded chooser/selection shortcuts
+  already justified by static evidence, and stop at the first new transport-facing
+  blocker or validation seam beyond the captured `SRAW` CDB family
 - Codex:
-  keep the corrected send-gate model in sync and be ready to interpret whether the next
-  blocker is selection-state publication or the first real transport-facing seam
+  keep the productive-path static model in sync, recover any remaining opener/closer
+  phase shape that materially affects emulation, and cross-check that newer harness
+  claims stay aligned with the direct `SMSendData` / `0x1620` decode
 
 Current reminder:
 
@@ -258,10 +268,12 @@ Current reminder:
   older wrapper-only or bridge-acceptance language.
 - Treat the current state as an emulator-contract problem, not a product decision:
   - `MEASURED`: corrected PLUG-relative load model; plug self-relocation carries the
-    real chained `ctor -> INIT -> CONS -> ASOK -> SEND` lifecycle; `INIT` callback
-    installation is real; `CONS` registration on the persistent object is real
-  - `OPEN`: what `ASOK` changes on that same object, and after that what the first
-    trustworthy `SEND` / transport blocker is
+    real chained `ctor -> INIT -> CONS -> ASOK -> SEND` lifecycle; `INIT`, `CONS`,
+    and `ASOK` are real on the persistent object; bounded chooser/selection shortcuts
+    now carry the productive `SRAW -> SMSendData -> 0x1620` path; and the measured
+    256-byte `SRAW` CDB is `0c 00 00 01 00 80`
+  - `OPEN`: what minimum remaining production stages can replace the current shortcuts,
+    and what the next trustworthy post-capture validation target is
 - Use new static work only if it helps Musashi get farther.
 - Reopen older callback/constructor/install surfaces only if new runtime evidence points
   back to them directly.

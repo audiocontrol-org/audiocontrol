@@ -3906,3 +3906,34 @@ correct. Every finding should distinguish direct evidence from inference.
   `fp@(30)` = mode word `2`.
   So if the harness logs raw helper-frame memory at entry to `0x1620`, the CDB pointer
   should be decoded from `fp+14`, not inferred from later helper-local addresses.
+
+- The smallest chooser-completion shortcut for this `SMSendData` caller is now explicit: force a nonzero return at `0x1090` and keep the already-seeded selection state
+  A bounded reread of the chooser-success tail at file `0x1448-0x155a` sharpens both the
+  full contract and the minimal shortcut. A visible “real” chooser success requires:
+  dialog method success at `0x1456`, nonzero selected-line index `fp@(-298)`, a parsable
+  line buffer whose digits at offsets `+5` and `+10` produce the bus/ID word, a slot-key
+  match against `fp@(12)`, writes into `this+0x0d70 + 4*n` and `this+0x0d6e`, and then a
+  final return of the pre-existing `this+0x0d68`. But the current `SMSendData` caller at
+  `0x1090` only does `tst.b d0` after the call, and the harness already has
+  `this+0x0d72` / `this+0x0d6e` seeded from earlier known state. So if the immediate
+  goal is only to cross into the real post-chooser local CDB builder once, the smallest
+  bounded experiment is simpler: bypass `0x187e` at the `0x1090` call site, force a
+  nonzero `d0` return there, leave the existing seeded selection state alone, and then
+  check whether `0x109e..0x10e0` and `0x10fc` finally fire.
+
+- With bounded chooser shortcuts in place, the productive `SRAW -> SMSendData -> 0x1620` transport path is now captured end-to-end
+  Claude's newest harness run confirms that the smallest chooser shortcut was enough to
+  cross from chooser/probe traffic into the real post-chooser send path. After the
+  forced-success return from `0x187e`, `SMSendData` really does execute its local CDB
+  builder at `0x109e..0x10e0`, producing `0c 00 00 01 00 80` for the 256-byte `SRAW`
+  test case. Immediately before `jsr 0x1620`, the caller-side stack contains the exact
+  mixed-size frame already decoded statically, including `&fp@(-6)` as the CDB pointer.
+  On entry to `0x1620`, `fp@(14)` is measured as that same caller-built pointer, and the
+  six bytes at the pointed-to address still read `0c 00 00 01 00 80`. This closes the
+  earlier empty-CDB ambiguity: the productive `SRAW` path does not depend on hidden
+  dialog-generated CDB bytes, and the apparent all-zero CDB at `$A089` was a harness
+  observation bug caused by reading the wrong PB offsets. The current highest-confidence
+  read is therefore: under evidence-backed chooser/selection shortcuts, MESA II's
+  productive `SRAW` transport path emits opcode `0x0c`, a 24-bit big-endian count in
+  bytes `2..4`, and mode byte `0x80`, then hands that intact local CDB to `0x1620` for
+  PB population and `SCSIDispatch`.

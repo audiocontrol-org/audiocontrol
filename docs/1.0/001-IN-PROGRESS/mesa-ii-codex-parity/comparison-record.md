@@ -1489,6 +1489,43 @@ cleanly.
   especially `fp+14` as the CDB pointer, rather than inferring the source from later
   helper-local addresses.
 
+- The smallest bounded chooser shortcut is now narrower than “emulate chooser success”: just force a nonzero return at the `SMSendData` call site and preserve the already-seeded selection state
+  Claude baseline:
+  the productive `SRAW` path is still blocked inside `0x187e` / runtime `0x1187e`,
+  which appears to run the full chooser/probe loop and never returns.
+  Codex finding:
+  the visible chooser-success tail at file `0x1448-0x155a` does confirm a fuller
+  publication contract: dialog method success, nonzero selected-line index, parsable
+  line buffer, slot-key match, writes into `this+0x0d70 + 4*n` and `this+0x0d6e`, and a
+  final return of the pre-existing `this+0x0d68`. But for the current `SMSendData`
+  caller at `0x1090`, the immediate caller-side requirement is much smaller: after the
+  call it only does `tst.b d0`, while the harness already has `this+0x0d72` /
+  `this+0x0d6e` seeded from earlier known state. So the smallest bounded experiment to
+  cross the chooser boundary once is:
+  bypass `0x187e` at the `0x1090` call site, force a nonzero `d0` return there, keep the
+  existing seeded selection state, and then see whether `0x109e..0x10e0` and `0x10fc`
+  finally fire.
+
+- The bounded chooser shortcut now yields a production-faithful `SRAW` transport CDB capture
+  Claude baseline:
+  with `0x0d72` / `0x0d6e` already seeded and the minimal `0x187e` bypass in place,
+  the harness now reaches the real post-chooser `SMSendData` path, executes
+  `0x109e..0x10e0`, and logs caller-side local CDB bytes
+  `0c 00 00 01 00 80` for the 256-byte `SRAW` test case. The same run shows that
+  helper `0x1620` receives the exact caller-built CDB pointer at `fp@(14)` and the same
+  six bytes, while the earlier all-zero CDB seen at `$A089` was caused by the harness
+  reading the wrong PB offsets instead of the 4.3-layout `+0x44` CDB region.
+  Codex finding:
+  that is consistent with the direct static decode of `SMSendData` and `0x1620`:
+  `SMSendData` builds the local 6-byte CDB after chooser success, then `pea fp@(-6)`
+  passes it directly into `0x1620`, which copies those bytes into the PB and calls
+  `SCSIDispatch`. So the old “empty CDB on SRAW” question is now closed. The sharper
+  remaining distinction is only methodological: this is still a bounded-shortcut capture,
+  not yet a fully natural chooser-complete run. But because the shortcuts stand in for
+  already-decoded production stages, the best current shared description is:
+  production-faithful `SRAW` CDB capture under bounded, evidence-backed harness
+  shortcuts.
+
 ## Comparison Rules
 
 - Codex should compare against the latest Claude branch docs plus its `DEVELOPMENT-NOTES.md`,

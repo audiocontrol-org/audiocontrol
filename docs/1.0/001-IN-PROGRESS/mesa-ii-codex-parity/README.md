@@ -8,7 +8,7 @@ Parallel Codex-driven reverse engineering of Akai's MESA II sampler editor, desi
 |-------|--------|-------|
 | Phase 1: Baseline and Comparison Setup | Complete | Claude branch baseline captured; comparison artifacts created; first Codex target selected |
 | Phase 2: Independent Codex Analysis | In Progress | Static analysis is now focused on emulator-relevant transport recovery: `SMSendData` CDB construction is confirmed and the raw executor below it is identified as `CSCSIUtils::SCSICommand` |
-| Phase 3: Cross-Check and Reconciliation | In Progress | `#315` is the live Claude/Codex mailbox; `INIT`, `CONS`, `ASOK`, and `SEND` are now proven on the persistent object path, and the current shared blocker is the post-`SEND` BULK `IP_Data` contract |
+| Phase 3: Cross-Check and Reconciliation | In Progress | `#315` is the live Claude/Codex mailbox; `INIT`, `CONS`, `ASOK`, `SEND`, and the bounded-shortcut `SRAW -> SMSendData -> 0x1620` transport path are now proven enough to capture the real `SRAW` CDB family |
 | Phase 4: Emulator Contract Guidance | In Progress | The current output is emulator-facing: identify the minimum Mac runtime and SCSI contract MESA still expects so Musashi can drive the real fast transfer path |
 
 ## Links
@@ -89,29 +89,32 @@ Recent parity work changed the frontier materially again:
 - `SEND`'s local `0xc950` gate is now explained by the per-socket selection-word family
   rooted at `0x0d72`, and the bounded harness seed for that word is backed by the real
   `ChooseSCSI` success tail
-- the first post-`SEND` sub-dispatch is now real:
-  `SocketInfo+8` is loaded as a sub-tag, and `SocketInfo+8 = 'BULK'` reaches the BULK
-  sub-handler and emits the first post-`SEND` `$A089 SCSIDispatch`
+- the first post-`SEND` sub-dispatches are now real:
+  `SocketInfo+8` is loaded as a sub-tag, and the corrected path reaches both the
+  opener/control `BULK` phase and, later, the productive `SRAW` phase
+- under evidence-backed chooser/selection shortcuts, the productive `SRAW` path now
+  crosses into `SMSendData`, executes the local post-chooser CDB builder, and hands the
+  resulting 6-byte CDB intact into helper `0x1620`
+- for the 256-byte `SRAW` test case, the measured caller-built local CDB is:
+  `0c 00 00 01 00 80`
+- the earlier all-zero CDB seen at `$A089` is now explained as a harness PB-offset
+  observation bug, not a plug-side zero-CDB bug
 
-That leaves one sharp open seam:
+That leaves one sharper, later open seam:
 
-- the BULK sub-handler is now bounded enough that the next question is phase role, not
-  chooser state
-- the live record fields are:
-  - `IP_Data+0` = byte count
-  - `IP_Data+4` = payload pointer
-  - `IP_Data+8` = sub-tag
-  - `IP_Data+12` = target-selection key used earlier by `SEND`
-- the current zero-CDB run is no longer best treated as proof that BULK itself must
-  carry payload bytes, because the real editor upload caller appears to issue `BULK`
-  with two zero longs before later `SRAW` payload phases
-- the better current production model is:
+- the current zero-CDB mystery is closed, but the productive path is still using
+  evidence-backed shortcuts for chooser completion and selection publication
+- the better current production model remains:
   `BULK` opener/control phase, later `SRAW` payload phase(s), then `BOFF`
+- the next useful frontier is therefore no longer “what CDB does `SRAW` build?”
+  but either:
+  - confirm the corresponding `BULK` opener CDB family on the same corrected path, or
+  - move the measured `SRAW` CDB family against a real bridge/hardware acceptance check
 
-This is no longer a relocation or chooser-state project on the active path. It is now a
-bounded emulator-contract problem around the post-`SEND` phase sequence:
-what the `BULK` opener really has to establish, and how to reach the first later
-payload-bearing `SRAW` emission on the corrected persistent-object path.
+This is no longer a relocation, object-model, or empty-CDB project on the active path.
+It is now a bounded emulator-contract problem around carrying the productive transport
+path farther with as few shortcuts as possible and validating the now-measured fast-path
+CDB family against the real bridge/device boundary.
 
 ## Recommended Split
 
