@@ -1542,6 +1542,27 @@ cleanly.
   yet appear able to emit the measured productive `SRAW` CDB family without a new
   mode-aware send path or a lower-level bypass of `scsi_midi_send()`.
 
+- The old bridge-side `0x80 rejected` rule belongs to the earlier SDS/ASPACK bridge context, and both current sample-upload paths are still locked to that same `0x00` helper
+  Claude baseline:
+  after seeing the concrete bridge mismatch, Claude asked whether the older `0x80`
+  rejection claim was broad enough to kill the new `SRAW` result, and whether the
+  current bridge sample-upload path actually uses the hardcoded helper.
+  Codex finding:
+  a provenance pass now answers both. `git blame` ties the helper to commit
+  `0b5767415`, while the explicit written justification for `0x00` lives in the older
+  SDS/ASPACK bridge notes:
+  `docs/1.0/003-COMPLETE/scsi-midi-bridge/workplan.md`,
+  `SCSI-NOTES.md`,
+  and the raw matrix in `modules/e2e-infra/src/node/lib/test-aspack-multichunk.ts`.
+  Those artifacts are all scoped to the bridge's earlier SDS/ASPACK experimentation, not
+  to a measured MESA-style `BULK -> SRAW` fast path. At the same time, the current
+  bridge's real sample-upload implementations (`SdsUpload` and `AspackUpload`) still
+  route through that same `scsi_midi_send()` helper for their outbound `0x0c` writes.
+  So the shared read is now sharper: the old `0x80 rejected` finding is real in its
+  original context, but the current bridge upload stack is also structurally incapable of
+  expressing the newly measured productive `SRAW` `0x80` mode bit without a new
+  mode-aware send path.
+
 ## Comparison Rules
 
 - Codex should compare against the latest Claude branch docs plus its `DEVELOPMENT-NOTES.md`,

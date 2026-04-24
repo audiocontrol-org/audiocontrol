@@ -3950,3 +3950,23 @@ correct. Every finding should distinguish direct evidence from inference.
   path?" It is: can the bridge express the measured `SRAW` mode bit at all, or is the
   current abstraction layer limited to the older fire-and-forget `0x00` send shape used
   by SDS/ASPACK-oriented helpers?
+
+- The bridge's `0x00` send-flag rule comes from older SDS/ASPACK-oriented testing, and both current sample-upload paths still depend on that same generic helper
+  A provenance pass on the current bridge code and notes makes the divergence sharper.
+  `git blame` shows the `scsi_midi_send()` hardcode came in with commit `0b5767415`
+  ("SDS sample download via SCSI_EXEC"), and the nearby primary-evidence notes that
+  justify `0x00` are all from the older SDS/ASPACK bridge work:
+  `docs/1.0/003-COMPLETE/scsi-midi-bridge/workplan.md` records “CDB byte 5 = 0x00 —
+  device rejects 0x80 with CHECK CONDITION,” and `SCSI-NOTES.md` (2026-04-10) ties the
+  same rule to the multi-chunk ASPACK investigation. The raw test matrix in
+  `modules/e2e-infra/src/node/lib/test-aspack-multichunk.ts` is also clearly
+  SDS/ASPACK-oriented, not a measured production-shaped `BULK -> SRAW` fast path.
+  Meanwhile, the current bridge's real sample-upload implementations still route through
+  that same generic helper: `worker.rs` sends `SdsUpload` to `scsi_midi::upload_sample`
+  and `AspackUpload` to `scsi_midi::upload_sample_aspack`, and both functions use
+  `s2p.scsi_midi_send()` for their outbound CDB `0x0c` writes. So the bridge does not
+  currently have a separate sample-upload path that can express the measured productive
+  `SRAW` `0x80` mode bit at all. The safe parity read is therefore narrower and stronger:
+  the old `0x80 rejected` lore is real, but it belongs to the earlier SDS/ASPACK bridge
+  context, and today's bridge upload stack is structurally locked to that same `0x00`
+  helper until a mode-aware send path exists.
