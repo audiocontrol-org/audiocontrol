@@ -507,6 +507,37 @@ mod tests {
         );
     }
 
+    /// Backward 10→9 boundary mirror of the 9→10 case. d7 rolls
+    /// '0'→'9' before d8 goes '1'→blank, producing a transient
+    /// composed bar of 19. The drain layer in McuPositionSource is
+    /// the primary defense — captured in luna-locate.log iter 32-33
+    /// (10→19 then 19→9 with wait_ms=0). This test pins the tracker's
+    /// underlying behaviour so the drain has a known transient to
+    /// coalesce against.
+    #[test]
+    fn emits_decade_carry_intermediate_on_backward_boundary() {
+        let mut t = PositionTracker::new();
+
+        // Arrive at bar 10 (d7='0', d8='1').
+        feed(&mut t, 0x47, 0x30);
+        feed(&mut t, 0x48, 0x31);
+        assert_eq!(t.current_bar(), 10);
+
+        // First-phase: d7 rolls '0' → '9'. d8 still '1'. composed = 19.
+        let intermediate = feed(&mut t, 0x47, 0x39);
+        assert_eq!(
+            intermediate,
+            Some(PositionUpdate { previous_bar: 10, bar: 19 })
+        );
+
+        // Second-phase: d8 rolls '1' → blank. composed = 9.
+        let committed = feed(&mut t, 0x48, 0x20);
+        assert_eq!(
+            committed,
+            Some(PositionUpdate { previous_bar: 19, bar: 9 })
+        );
+    }
+
     #[test]
     fn current_beat_composes_across_two_digits() {
         let mut t = PositionTracker::new();
