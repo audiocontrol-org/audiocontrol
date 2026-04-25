@@ -408,6 +408,17 @@ fn handle_mcu_byte_idle(
     pair: &Option<Rc<RefCell<VirtualMcuPair>>>,
     tracker: &mut PositionTracker,
 ) {
+    // Mirror of the locate-path byte trace, so a single RUST_LOG=debug
+    // run captures both idle and locate windows. Useful for diagnosing
+    // DAWs that only emit position info on rare events (e.g. Logic's
+    // surface-init bursts) — the burst hits handle_mcu_byte_idle, not
+    // wait_for_position_change.
+    let hex = bytes
+        .iter()
+        .map(|b| format!("{b:02X}"))
+        .collect::<Vec<_>>()
+        .join(" ");
+    tracing::debug!(len = bytes.len(), %hex, "idle: rx bytes");
     if let Some(pair) = pair {
         if let Some(model) = mcu::parse_heartbeat_query(bytes) {
             if model == mcu::MCU_MODEL_ID {
@@ -419,7 +430,23 @@ fn handle_mcu_byte_idle(
         }
     }
     if let Some(update) = mcu::parse_cc_display(bytes) {
-        tracker.apply(update);
+        let before_bar = tracker.current_bar();
+        if let Some(pos) = tracker.apply(update) {
+            tracing::debug!(
+                idx = update.index,
+                ?update.value,
+                before_bar,
+                after_bar = pos.bar,
+                "idle: bar-changing update"
+            );
+        } else {
+            tracing::debug!(
+                idx = update.index,
+                ?update.value,
+                tracker_bar = tracker.current_bar(),
+                "idle: non-bar update applied"
+            );
+        }
     }
 }
 
