@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::path::Path;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Config {
     /// Substring match against the MC-500 transport MIDI input port.
     /// Case-insensitive.
@@ -65,6 +65,13 @@ pub struct Config {
     /// state back. See `LcxlConfig::default()`.
     #[serde(default)]
     pub lcxl3: LcxlConfig,
+
+    /// Embedded HTTP control interface settings. Optional; defaults to
+    /// `enabled = true` so the web UI starts automatically. Set
+    /// `enabled = false` to run in CLI-only mode (useful under launchd
+    /// or on headless machines). See `WebConfig::default()`.
+    #[serde(default)]
+    pub web: WebConfig,
 }
 
 impl Default for Config {
@@ -76,6 +83,7 @@ impl Default for Config {
             transport: TransportConfig::default(),
             locate: LocateConfigToml::default(),
             lcxl3: LcxlConfig::default(),
+            web: WebConfig::default(),
         }
     }
 }
@@ -92,7 +100,7 @@ fn default_mc500_output_port() -> String {
     "828mk3 Hybrid MIDI".to_string()
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct TransportConfig {
     /// Which Backend the bridge should use to drive the DAW. `mcu`
     /// (default) emits MCU control-surface messages on the virtual
@@ -136,7 +144,7 @@ impl TransportConfig {
     }
 }
 
-#[derive(Debug, Deserialize, Default, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum BackendKind {
     #[default]
@@ -148,7 +156,7 @@ pub enum BackendKind {
 /// scalars so TOML users don't have to think about Duration types.
 /// `TryInto<LocateConfig>` converts the ms values into the Duration
 /// form the `LocateController` uses.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct LocateConfigToml {
     /// Enable closed-loop locate. On by default — if LUNA hasn't been
     /// set up as an MCU control surface the controller times out
@@ -217,7 +225,7 @@ fn default_initial_position_timeout_ms() -> u64 {
 /// runs the activation handshake (the `lcxl3::handshake_send`
 /// sequence), listens for transport events, and pushes LED state
 /// back when the transport state changes.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct LcxlConfig {
     /// Master switch. False by default — explicit opt-in keeps the
     /// existing MC-500-only path unaffected.
@@ -274,6 +282,57 @@ fn default_frontmost() -> String {
     "LUNA".to_string()
 }
 fn default_true() -> bool {
+    true
+}
+
+// ── Web config ────────────────────────────────────────────────────────────────
+
+/// Settings for the embedded HTTP control interface (Phase 6).
+/// All fields default to on so the web UI starts out of the box.
+#[derive(Debug, Clone, Deserialize)]
+pub struct WebConfig {
+    /// Master switch. `true` by default — the web UI starts
+    /// automatically unless the user opts out. Set `enabled = false`
+    /// in `[web]` for headless / launchd-managed deployments.
+    #[serde(default = "default_web_enabled")]
+    pub enabled: bool,
+
+    /// TCP port the HTTP listener binds to. Defaults to 8765. If the
+    /// port is taken at startup, the bridge falls back to an
+    /// OS-assigned port and logs the chosen URL.
+    #[serde(default = "default_web_bind_port")]
+    pub bind_port: u16,
+
+    /// Whether to run `open http://127.0.0.1:<port>` after the
+    /// listener binds. Defaults to `true` on macOS for first-run UX;
+    /// set `false` when running under launchd or SSH where browser
+    /// launch would be wrong or impossible.
+    ///
+    /// NOTE: not acted upon until Phase 6h. Field exists so
+    /// configs written now are forward-compatible.
+    // Phase 6h wires this; suppress dead_code until then.
+    #[allow(dead_code)]
+    #[serde(default = "default_web_auto_open")]
+    pub auto_open_browser: bool,
+}
+
+impl Default for WebConfig {
+    fn default() -> Self {
+        Self {
+            enabled: default_web_enabled(),
+            bind_port: default_web_bind_port(),
+            auto_open_browser: default_web_auto_open(),
+        }
+    }
+}
+
+fn default_web_enabled() -> bool {
+    true
+}
+fn default_web_bind_port() -> u16 {
+    8765
+}
+fn default_web_auto_open() -> bool {
     true
 }
 

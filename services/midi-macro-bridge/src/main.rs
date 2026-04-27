@@ -21,6 +21,7 @@ mod locate;
 mod mcu;
 mod midi;
 mod state;
+mod web;
 
 use crate::backend::{Backend, KeystrokeBackend, McuBackend};
 use crate::config::{BackendKind, Config, LoadOutcome};
@@ -32,11 +33,283 @@ use crate::locate::{
 use crate::mcu::PositionTracker;
 use crate::midi::VirtualMcuPair;
 use crate::state::{Machine, TransportEvent, TransportState};
+use crate::web::state::{
+    BridgeState, Cmd, PortStatus, PortStatuses, Status, WebState, build_channels,
+};
+
+// ── MIDI connection bundle ────────────────────────────────────────────────────
+
+/// All live MIDI connection handles plus the backend/pair they depend
+/// on. Dropping this struct closes every open port cleanly.
+///
+/// Named with a leading underscore on connection fields because midir
+/// drops the port on `Drop` — the compiler would otherwise warn about
+/// "unused" bindings.
+struct MidiConnections {
+    _midi_conn: Option<midir::MidiInputConnection<()>>,
+    _lcxl3_input_conn: Option<midir::MidiInputConnection<()>>,
+    lcxl3_out: Option<midir::MidiOutputConnection>,
+    mc500_out: Option<midir::MidiOutputConnection>,
+    backend: Box<dyn Backend>,
+    pair: Option<Rc<RefCell<VirtualMcuPair>>>,
+    mcu_bytes_rx: mpsc::Receiver<Vec<u8>>,
+    // tx half kept alive so the channel stays open even if no callback
+    // fires (e.g. when midi_input_port is empty and no receiver drains
+    // the channel). Dropped alongside the struct.
+    _mcu_bytes_tx: mpsc::Sender<Vec<u8>>,
+    /// Captures connection-attempt outcomes for the status publisher.
+    port_statuses: PortStatuses,
+}
+
+/// Open all MIDI connections described by `config` and build the
+/// transport backend.
+///
+/// This function is idempotent in the sense that calling it twice with
+/// the same `Config` produces structurally equivalent `MidiConnections`
+/// — same port-name resolution logic, same backend kind, same virtual
+/// endpoint name. If the underlying platform rejects a second open of
+/// the same port (e.g. because the previous connection is still alive),
+/// the second call will fail; the caller (the reload handler) must drop
+/// the previous `MidiConnections` before invoking this function.
+fn setup_midi_connections(
+    config: &Config,
+) -> Result<(MidiConnections, mpsc::Receiver<TransportEvent>)> {
+    // Per-event transport channel.
+    let (transport_tx, transport_rx) = mpsc::channel::<TransportEvent>();
+
+    // MCU byte channel: virtual-endpoint callback → main loop.
+    let (mcu_bytes_tx, mcu_bytes_rx) = mpsc::channel::<Vec<u8>>();
+
+    let needs_virtual_pair = matches!(config.transport.backend, BackendKind::Mcu)
+        || config.locate.enabled;
+
+    let (backend, pair) = build_backend(config, needs_virtual_pair, mcu_bytes_tx.clone())?;
+    info!(
+        backend = backend.name(),
+        has_mcu_pair = pair.is_some(),
+        locate_enabled = config.locate.enabled,
+        "bridge ready"
+    );
+
+    let mut port_statuses = PortStatuses::default();
+
+    // MC-500 transport input.
+    let _midi_conn = if config.midi_input_port.is_empty() {
+        warn!(
+            "no `midi_input_port` configured — MC-500 transport input is disabled. \
+             The bridge is still running as an MCU control surface; set \
+             midi_input_port in config.toml to receive transport events."
+        );
+        port_statuses.mc500_input = PortStatus {
+            configured: None,
+            connected: false,
+            error: None,
+        };
+        None
+    } else {
+        let tx_mc500 = transport_tx.clone();
+        let port = config.midi_input_port.clone();
+        match midi::connect(&port, move |event| {
+            if let Err(e) = tx_mc500.send(event) {
+                error!(?e, "channel send failed");
+            }
+        }) {
+            Ok(conn) => {
+                port_statuses.mc500_input = PortStatus {
+                    configured: Some(port.clone()),
+                    connected: true,
+                    error: None,
+                };
+                Some(conn)
+            }
+            Err(e) => {
+                return Err(e).with_context(|| {
+                    format!(
+                        "opening MIDI input matching '{}'. Run --list-ports to see \
+                         available ports.",
+                        port
+                    )
+                });
+            }
+        }
+    };
+
+    // MC-500 sync output.
+    let mc500_out: Option<midir::MidiOutputConnection> =
+        if config.mc500_output_port.is_empty() {
+            info!("no `mc500_output_port` configured — sync-on-stop is disabled");
+            port_statuses.mc500_sync = PortStatus {
+                configured: None,
+                connected: false,
+                error: None,
+            };
+            None
+        } else {
+            let port = config.mc500_output_port.clone();
+            match midi::connect_output(&port) {
+                Ok(conn) => {
+                    info!(port = %port, "MC-500 sync output ready");
+                    port_statuses.mc500_sync = PortStatus {
+                        configured: Some(port),
+                        connected: true,
+                        error: None,
+                    };
+                    Some(conn)
+                }
+                Err(e) => {
+                    warn!(
+                        ?e,
+                        port = %port,
+                        "couldn't open MC-500 sync output — sync-on-stop will be disabled \
+                         for this session. The forward MC-500 → LUNA path is unaffected."
+                    );
+                    port_statuses.mc500_sync = PortStatus {
+                        configured: Some(port),
+                        connected: false,
+                        error: Some(e.to_string()),
+                    };
+                    None
+                }
+            }
+        };
+
+    // LCXL3 input.
+    let _lcxl3_input_conn = if config.lcxl3.enabled {
+        let tx_lcxl3 = transport_tx.clone();
+        let port = config.lcxl3.input_port.clone();
+        match midi::connect_raw(&port, move |bytes| {
+            if let Some(event) = lcxl3::parse(bytes) {
+                if let Err(e) = tx_lcxl3.send(event) {
+                    error!(?e, "lcxl3 channel send failed");
+                }
+            }
+        }) {
+            Ok(conn) => {
+                info!(port = %port, "LCXL3 input ready");
+                port_statuses.lcxl3_input = PortStatus {
+                    configured: Some(port),
+                    connected: true,
+                    error: None,
+                };
+                Some(conn)
+            }
+            Err(e) => {
+                warn!(
+                    ?e,
+                    port = %port,
+                    "LCXL3 input port unavailable — disabling LCXL3 input for this session. \
+                     Bridge continues with MC-500 input only."
+                );
+                port_statuses.lcxl3_input = PortStatus {
+                    configured: Some(port),
+                    connected: false,
+                    error: Some(e.to_string()),
+                };
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    // LCXL3 output.
+    let lcxl3_out: Option<midir::MidiOutputConnection> = if config.lcxl3.enabled {
+        let port = config.lcxl3.output_port.clone();
+        match midi::connect_output(&port) {
+            Ok(mut conn) => {
+                if let Err(e) =
+                    lcxl3::handshake_send(&mut conn, config.lcxl3.host_name.as_bytes())
+                {
+                    warn!(?e, "LCXL3 activation handshake failed; LEDs may not initialise");
+                } else {
+                    info!(port = %port, host_name = %config.lcxl3.host_name, "LCXL3 output ready (activated)");
+                }
+                port_statuses.lcxl3_output = PortStatus {
+                    configured: Some(port),
+                    connected: true,
+                    error: None,
+                };
+                Some(conn)
+            }
+            Err(e) => {
+                warn!(
+                    ?e,
+                    port = %port,
+                    "LCXL3 output port unavailable — handshake skipped. The device's \
+                     transport buttons will likely stay dormant (no DAW claim sent)."
+                );
+                port_statuses.lcxl3_output = PortStatus {
+                    configured: Some(port),
+                    connected: false,
+                    error: Some(e.to_string()),
+                };
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    // Virtual MCU endpoint status.
+    port_statuses.mcu_virtual = PortStatus {
+        configured: Some(MCU_ENDPOINT_NAME.to_string()),
+        connected: pair.is_some(),
+        error: None,
+    };
+
+    Ok((
+        MidiConnections {
+            _midi_conn,
+            _lcxl3_input_conn,
+            lcxl3_out,
+            mc500_out,
+            backend,
+            pair,
+            mcu_bytes_rx,
+            _mcu_bytes_tx: mcu_bytes_tx,
+            port_statuses,
+        },
+        transport_rx,
+    ))
+}
+
+// ── Status builder ────────────────────────────────────────────────────────────
+
+/// Construct a `Status` snapshot from current runtime values. Called
+/// after every state mutation that should be visible to the HTTP
+/// server.
+fn build_status(
+    bridge_state: BridgeState,
+    machine: &Machine,
+    tracker: &PositionTracker,
+    last_event_at: Option<Instant>,
+    mcu_heartbeat_at: Option<Instant>,
+    connections: &MidiConnections,
+    config: &Config,
+) -> Status {
+    let last_bar = {
+        let b = tracker.current_bar();
+        if b == 0 { None } else { Some(b) }
+    };
+    Status {
+        bridge_state,
+        transport: machine.state(),
+        last_bar,
+        last_event_at,
+        ports: connections.port_statuses.clone(),
+        mcu_heartbeat_at,
+        config: config.clone(),
+    }
+}
+
+// ── Entry point ───────────────────────────────────────────────────────────────
 
 fn main() -> Result<()> {
     init_tracing();
 
     let args: Vec<String> = std::env::args().collect();
+
+    // ── CLI modes that bypass the web server ──────────────────────────────────
 
     // --list-ports: print available MIDI inputs and exit.
     if args.iter().any(|a| a == "--list-ports") {
@@ -47,8 +320,7 @@ fn main() -> Result<()> {
     }
 
     // --probe-midi <port-substring>: dump every received byte sequence
-    // on the given existing MIDI input port. Useful for probing
-    // physical interfaces or other virtual ports.
+    // on the given existing MIDI input port.
     if let Some(idx) = args.iter().position(|a| a == "--probe-midi") {
         let port = args
             .get(idx + 1)
@@ -57,25 +329,14 @@ fn main() -> Result<()> {
         return run_probe_midi(port);
     }
 
-    // --probe-mcu: register the bridge's virtual MCU endpoint pair
-    // under the name "MIDI Macro Bridge" and dump every byte arriving
-    // on the virtual input. The user configures LUNA to use that
-    // endpoint pair as a MIDI control surface (INPUT + OUTPUT DEVICE,
-    // protocol MCU); LUNA then streams position updates to the bridge
-    // and we capture them for offline analysis.
+    // --probe-mcu: register the virtual MCU endpoint pair and dump
+    // every byte arriving on the virtual input.
     if args.iter().any(|a| a == "--probe-mcu") {
         return run_probe_mcu();
     }
 
-    // --lcxl3-activate [substring]: send the Novation DAW-mode
-    // activation SysEx to a Launch Control XL Mk3, then dump
-    // everything the device emits on its DAW Out port. This is a
-    // one-shot probe to confirm the device's transport buttons
-    // wake up once a "host" claims to be a DAW.
-    //
-    // Optional substring narrows the port match (default "LCXL3").
-    // Sends the deactivation SysEx on Ctrl-C so the device returns
-    // to its idle state.
+    // --lcxl3-activate [substring]: send the DAW-mode activation
+    // SysEx to a Launch Control XL Mk3, then dump everything it emits.
     if let Some(idx) = args.iter().position(|a| a == "--lcxl3-activate") {
         let substring = args
             .get(idx + 1)
@@ -86,9 +347,7 @@ fn main() -> Result<()> {
     }
 
     // --send-mcu <spec> [args...]: emit a candidate MCU message to
-    // LUNA and dump any inbound response for a few seconds. Used
-    // during Phase 3c to empirically map actions (play, stop, bar-
-    // nudge, ...) to the byte sequences LUNA actually responds to.
+    // LUNA for discovery.
     if let Some(idx) = args.iter().position(|a| a == "--send-mcu") {
         let spec = args
             .get(idx + 1)
@@ -104,8 +363,8 @@ fn main() -> Result<()> {
         return run_send_mcu(&spec, &extra);
     }
 
-    // --self-test: emit a hardcoded event sequence with delays, for
-    // validating the keystroke path without needing hardware.
+    // ── Config load ───────────────────────────────────────────────────────────
+
     let self_test = args.iter().any(|a| a == "--self-test");
 
     let config_path = args
@@ -137,297 +396,281 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    // MCU input channel: the virtual endpoint's callback forwards
-    // received byte sequences here; the main loop drains them to
-    // reply to heartbeat queries and feed position updates into the
-    // PositionTracker. Created before build_backend so the MCU
-    // backend's endpoint callback can plug into the same channel.
-    let (mcu_bytes_tx, mcu_bytes_rx) = mpsc::channel::<Vec<u8>>();
+    // ── Channel setup ─────────────────────────────────────────────────────────
 
-    // Whether we need the virtual MCU endpoint pair at all. MCU
-    // backend needs it for both directions; KeystrokeBackend +
-    // locate.enabled needs it for input only; KeystrokeBackend +
-    // no locate doesn't need it.
-    let needs_virtual_pair = matches!(config.transport.backend, BackendKind::Mcu)
-        || config.locate.enabled;
+    let initial_status = Status::initialising(config.clone());
+    let (cmd_tx, mut cmd_rx, status_tx, status_rx, events_tx) =
+        build_channels(initial_status);
 
-    let (mut backend, pair) = build_backend(&config, needs_virtual_pair, mcu_bytes_tx)?;
-    info!(
-        backend = backend.name(),
-        has_mcu_pair = pair.is_some(),
-        locate_enabled = config.locate.enabled,
-        "bridge ready"
-    );
+    // ── Web server (skipped for --self-test) ──────────────────────────────────
+
+    // Hold the JoinHandle for the lifetime of main so the thread
+    // isn't dropped while the process is running. We never explicitly
+    // join it — the tokio runtime inside runs until the process exits.
+    let _server_handle = if config.web.enabled && !self_test {
+        let web_state = WebState::new(status_rx, events_tx.clone(), cmd_tx.clone());
+        let bind_addr = format!("127.0.0.1:{}", config.web.bind_port)
+            .parse()
+            .expect("invalid bind address");
+        let handle = web::run_server_thread(bind_addr, web_state);
+        // Phase 6h wires auto-open browser here; for now, just log.
+        info!(port = config.web.bind_port, "web server spawned (auto-open deferred to Phase 6h)");
+        Some(handle)
+    } else {
+        None
+    };
+
+    // ── MIDI connections ──────────────────────────────────────────────────────
+    //
+    // Wrapped in `Option` so the reload handler can move the value out
+    // and replace it, giving the borrow checker a clear ownership
+    // picture across loop iterations. `None` means the bridge is in
+    // the `Panicked` state; the loop spins but does no MIDI I/O.
+
+    let (conns, rx) = setup_midi_connections(&config)?;
+    let mut connections: Option<MidiConnections> = Some(conns);
+    let mut transport_rx: Option<mpsc::Receiver<TransportEvent>> = Some(rx);
 
     let mut machine = Machine::new();
     let mut tracker = PositionTracker::new();
+    let mut last_event_at: Option<Instant> = None;
+    let mut mcu_heartbeat_at: Option<Instant> = None;
 
     if self_test {
-        return run_self_test(&mut machine, backend.as_mut());
+        let c = connections.as_mut().unwrap();
+        return run_self_test(&mut machine, c.backend.as_mut());
     }
 
-    let (tx, rx) = mpsc::channel::<TransportEvent>();
-
-    // Keep the MIDI connection alive for the life of the program.
-    // Dropping it would close the port and stop the callback. If the
-    // user's config has no MC-500 transport port (or the config file
-    // is missing), skip this — the bridge's virtual MCU endpoint is
-    // still useful on its own for LUNA testing, even without
-    // transport input.
-    let _midi_conn = if config.midi_input_port.is_empty() {
-        warn!(
-            "no `midi_input_port` configured — MC-500 transport input is disabled. \
-             The bridge is still running as an MCU control surface; set \
-             midi_input_port in config.toml to receive transport events."
-        );
-        None
-    } else {
-        let tx_mc500 = tx.clone();
-        Some(
-            midi::connect(&config.midi_input_port, move |event| {
-                if let Err(e) = tx_mc500.send(event) {
-                    // Channel closed — main loop has exited. Nothing to do.
-                    error!(?e, "channel send failed");
-                }
-            })
-            .with_context(|| {
-                format!(
-                    "opening MIDI input matching '{}'. Run --list-ports to see \
-                     available ports.",
-                    config.midi_input_port
-                )
-            })?,
-        )
-    };
-
-    // LCXL3 input — second transport-event source alongside the MC-500.
-    // Opt-in via `[lcxl3] enabled = true` in config; defaults off so
-    // existing MC-500-only setups see no behaviour change. Both input
-    // sources feed the same `tx` channel; the state machine arbitrates
-    // events from either source the same way.
-    //
-    // Failures are handled with warn-and-continue: a missing LCXL3 (or
-    // a port-name mismatch) shouldn't take down the MC-500 path.
-    let _lcxl3_input_conn = if config.lcxl3.enabled {
-        let tx_lcxl3 = tx.clone();
-        let port = config.lcxl3.input_port.clone();
-        match midi::connect_raw(&port, move |bytes| {
-            if let Some(event) = lcxl3::parse(bytes) {
-                if let Err(e) = tx_lcxl3.send(event) {
-                    error!(?e, "lcxl3 channel send failed");
-                }
-            }
-        }) {
-            Ok(conn) => {
-                info!(port = %port, "LCXL3 input ready");
-                Some(conn)
-            }
-            Err(e) => {
-                warn!(
-                    ?e,
-                    port = %port,
-                    "LCXL3 input port unavailable — disabling LCXL3 input for this session. \
-                     Bridge continues with MC-500 input only."
-                );
-                None
-            }
-        }
-    } else {
-        None
-    };
-
-    // LCXL3 output — for the activation handshake at startup, LED
-    // mirroring during operation, and the deactivation SysEx at
-    // shutdown. Only opened when LCXL3 is enabled in config. Errors
-    // here disable the LCXL3 output but leave any other LCXL3 input
-    // intact (the device will still emit, we just won't see lit
-    // transport buttons or have the device claim DAW mode).
-    let mut lcxl3_out: Option<midir::MidiOutputConnection> = if config.lcxl3.enabled {
-        let port = config.lcxl3.output_port.clone();
-        match midi::connect_output(&port) {
-            Ok(mut conn) => {
-                if let Err(e) = lcxl3::handshake_send(&mut conn, config.lcxl3.host_name.as_bytes()) {
-                    warn!(?e, "LCXL3 activation handshake failed; LEDs may not initialise");
-                } else {
-                    info!(port = %port, host_name = %config.lcxl3.host_name, "LCXL3 output ready (activated)");
-                }
-                Some(conn)
-            }
-            Err(e) => {
-                warn!(
-                    ?e,
-                    port = %port,
-                    "LCXL3 output port unavailable — handshake skipped. The device's \
-                     transport buttons will likely stay dormant (no DAW claim sent)."
-                );
-                None
-            }
-        }
-    } else {
-        None
-    };
-
-    // MIDI output to the MC-500 for sync-on-stop. Warn-and-continue
-    // if the port can't be opened — the forward direction still
-    // works, we just can't sync positions back.
-    let mut mc500_out: Option<midir::MidiOutputConnection> = if config.mc500_output_port.is_empty() {
-        info!("no `mc500_output_port` configured — sync-on-stop is disabled");
-        None
-    } else {
-        match midi::connect_output(&config.mc500_output_port) {
-            Ok(conn) => {
-                info!(
-                    port = %config.mc500_output_port,
-                    "MC-500 sync output ready"
-                );
-                Some(conn)
-            }
-            Err(e) => {
-                warn!(
-                    ?e,
-                    port = %config.mc500_output_port,
-                    "couldn't open MC-500 sync output — sync-on-stop will be disabled \
-                     for this session. The forward MC-500 → LUNA path is unaffected."
-                );
-                None
-            }
-        }
-    };
-
-    // Ctrl-C handling — forward through a channel the main loop polls.
+    // Ctrl-C handling.
     let (shutdown_tx, shutdown_rx) = mpsc::channel();
     ctrlc::set_handler(move || {
         let _ = shutdown_tx.send(());
     })
     .context("installing Ctrl-C handler")?;
 
+    // Publish initial Running status.
+    if let Some(c) = &connections {
+        let _ = status_tx.send(build_status(
+            BridgeState::Running,
+            &machine,
+            &tracker,
+            last_event_at,
+            mcu_heartbeat_at,
+            c,
+            &config,
+        ));
+    }
+
     info!("ready — waiting for MIDI events (Ctrl-C to exit)");
 
-    let locate_runtime_cfg = config.locate.to_runtime();
-    let locate_enabled = config.locate.enabled;
+    let mut active_config = config;
+    let locate_enabled = active_config.locate.enabled;
+    let mut locate_runtime_cfg = active_config.locate.to_runtime();
 
     loop {
+        // ── Shutdown check ────────────────────────────────────────────────────
         if shutdown_rx.try_recv().is_ok() {
             info!("shutting down");
-            // Best-effort LCXL3 deactivation so the device returns to
-            // its idle state. If the user power-cycles the LCXL3
-            // mid-session this will fail silently — fine, the device
-            // is already disconnected.
-            if let Some(out) = lcxl3_out.as_mut() {
-                lcxl3::deactivate_send(out);
-                info!("LCXL3 deactivation SysEx sent");
+            if let Some(c) = connections.as_mut() {
+                if let Some(out) = c.lcxl3_out.as_mut() {
+                    lcxl3::deactivate_send(out);
+                    info!("LCXL3 deactivation SysEx sent");
+                }
             }
             return Ok(());
         }
 
-        // Drain any pending MCU bytes: reply to heartbeats and keep
-        // the PositionTracker current so the next locate starts
-        // with fresh state.
-        let mut mcu_bytes_drained = false;
-        while let Ok(bytes) = mcu_bytes_rx.try_recv() {
-            handle_mcu_byte_idle(&bytes, &pair, &mut tracker);
-            mcu_bytes_drained = true;
-        }
+        // ── Drain web commands ────────────────────────────────────────────────
+        while let Ok(cmd) = cmd_rx.try_recv() {
+            match cmd {
+                Cmd::Halt => {
+                    info!("halt requested via web UI");
+                    std::process::exit(2);
+                }
+                Cmd::Reload(new_config) => {
+                    info!("reloading MIDI connections from new config");
+                    let _ = status_tx.send_modify(|s| {
+                        s.bridge_state = BridgeState::Reconnecting;
+                    });
 
-        // Process at most one transport event per iteration.
-        let transport_drained = match rx.recv_timeout(Duration::from_millis(50)) {
-            Ok(event) => {
-                let state_before = machine.state();
-                let actions = machine.handle(event);
-
-                if actions.is_empty() {
-                    info!(
-                        ?event,
-                        ?state_before,
-                        state_after = ?machine.state(),
-                        "no-op event (echo guard or state change only)"
-                    );
-                } else {
-                    info!(
-                        ?event,
-                        ?state_before,
-                        state_after = ?machine.state(),
-                        ?actions,
-                        "dispatching actions"
-                    );
-                    if let Err(e) = backend.emit(&actions) {
-                        warn!(?e, "backend emit failed");
+                    // Deactivate LCXL3 before dropping old connections.
+                    if let Some(c) = connections.as_mut() {
+                        if let Some(out) = c.lcxl3_out.as_mut() {
+                            lcxl3::deactivate_send(out);
+                        }
                     }
-                }
 
-                // If the state machine transitioned into Locating,
-                // run the closed-loop controller before returning to
-                // the event loop. Blocks until the locate completes.
-                if let TransportState::Locating { target, .. } = machine.state() {
-                    run_locate_step(
-                        target,
-                        &mcu_bytes_rx,
-                        &rx,
-                        &pair,
-                        &mut tracker,
-                        backend.as_mut(),
-                        locate_runtime_cfg,
-                        locate_enabled,
-                        &mut machine,
-                    )?;
-                }
+                    // Move out (drop) old connections, then rebuild.
+                    let _ = connections.take();
+                    let _ = transport_rx.take();
 
-                // Sync-on-stop: if the state just transitioned from
-                // anything-non-Stopped to Stopped (because we hit
-                // Stop, or a locate cancelled/failed, or a locate
-                // completed without a queued Play), LUNA will snap
-                // to its play-start position. Wait briefly for that
-                // to settle, then push SPP at the new bar to the
-                // MC-500 so both machines agree.
-                let state_after = machine.state();
-                let transitioned_to_stopped = state_after == TransportState::Stopped
-                    && !matches!(state_before, TransportState::Stopped);
-                if transitioned_to_stopped {
-                    sync_mc500_to_luna_after_stop(
-                        &mcu_bytes_rx,
-                        &pair,
-                        &mut tracker,
-                        mc500_out.as_mut(),
-                    );
-                }
-
-                // LCXL3 LED mirror: if the state changed at all, push
-                // the corresponding transport-button colour to the
-                // device. `led_for_state` returns the same bytes for
-                // Stopped and Locating so we don't flash twice during
-                // a normal stop → locate → reached cycle, but we do
-                // need to fire when crossing in/out of Playing.
-                if state_after != state_before {
-                    if let Some(out) = lcxl3_out.as_mut() {
-                        if let Some(led) = lcxl3::led_for_state(&state_after) {
-                            if let Err(e) = out.send(&led) {
-                                warn!(?e, "LCXL3 LED state push failed");
+                    match setup_midi_connections(&new_config) {
+                        Ok((new_conns, new_rx)) => {
+                            connections = Some(new_conns);
+                            transport_rx = Some(new_rx);
+                            active_config = new_config;
+                            locate_runtime_cfg = active_config.locate.to_runtime();
+                            info!("MIDI connections rebuilt successfully");
+                            if let Some(c) = &connections {
+                                let _ = status_tx.send(build_status(
+                                    BridgeState::Running,
+                                    &machine,
+                                    &tracker,
+                                    last_event_at,
+                                    mcu_heartbeat_at,
+                                    c,
+                                    &active_config,
+                                ));
                             }
+                        }
+                        Err(e) => {
+                            error!(?e, "failed to rebuild MIDI connections after reload");
+                            let _ = status_tx.send_modify(|s| {
+                                s.bridge_state = BridgeState::Panicked;
+                            });
                         }
                     }
                 }
+            }
+        }
 
-                true
+        // ── Drain MCU bytes ───────────────────────────────────────────────────
+        let mut mcu_bytes_drained = false;
+        if let Some(c) = connections.as_mut() {
+            while let Ok(bytes) = c.mcu_bytes_rx.try_recv() {
+                let hb_fired = handle_mcu_byte_idle(&bytes, &c.pair, &mut tracker);
+                if hb_fired {
+                    mcu_heartbeat_at = Some(Instant::now());
+                }
+                mcu_bytes_drained = true;
             }
-            Err(mpsc::RecvTimeoutError::Timeout) => false,
-            Err(mpsc::RecvTimeoutError::Disconnected) => {
-                error!("MIDI channel disconnected");
-                return Ok(());
+        }
+
+        // ── Process one transport event ───────────────────────────────────────
+        let transport_drained = if let Some(rx) = transport_rx.as_ref() {
+            match rx.recv_timeout(Duration::from_millis(50)) {
+                Ok(event) => {
+                    let state_before = machine.state();
+                    let actions = machine.handle(event);
+                    last_event_at = Some(Instant::now());
+
+                    if actions.is_empty() {
+                        info!(
+                            ?event,
+                            ?state_before,
+                            state_after = ?machine.state(),
+                            "no-op event (echo guard or state change only)"
+                        );
+                    } else {
+                        info!(
+                            ?event,
+                            ?state_before,
+                            state_after = ?machine.state(),
+                            ?actions,
+                            "dispatching actions"
+                        );
+                        if let Some(c) = connections.as_mut() {
+                            if let Err(e) = c.backend.emit(&actions) {
+                                warn!(?e, "backend emit failed");
+                            }
+                        }
+                    }
+
+                    if let TransportState::Locating { target, .. } = machine.state() {
+                        if let (Some(c), Some(trx)) =
+                            (connections.as_mut(), transport_rx.as_ref())
+                        {
+                            run_locate_step(
+                                target,
+                                &c.mcu_bytes_rx,
+                                trx,
+                                &c.pair,
+                                &mut tracker,
+                                c.backend.as_mut(),
+                                locate_runtime_cfg,
+                                locate_enabled,
+                                &mut machine,
+                            )?;
+                        }
+                    }
+
+                    let state_after = machine.state();
+                    let transitioned_to_stopped = state_after == TransportState::Stopped
+                        && !matches!(state_before, TransportState::Stopped);
+                    if transitioned_to_stopped {
+                        if let Some(c) = connections.as_mut() {
+                            sync_mc500_to_luna_after_stop(
+                                &c.mcu_bytes_rx,
+                                &c.pair,
+                                &mut tracker,
+                                c.mc500_out.as_mut(),
+                            );
+                        }
+                    }
+
+                    if state_after != state_before {
+                        if let Some(c) = connections.as_mut() {
+                            if let Some(out) = c.lcxl3_out.as_mut() {
+                                if let Some(led) = lcxl3::led_for_state(&state_after) {
+                                    if let Err(e) = out.send(&led) {
+                                        warn!(?e, "LCXL3 LED state push failed");
+                                    }
+                                }
+                            }
+                        }
+
+                        // Publish updated status after any transport state change.
+                        if let Some(c) = &connections {
+                            let _ = status_tx.send(build_status(
+                                BridgeState::Running,
+                                &machine,
+                                &tracker,
+                                last_event_at,
+                                mcu_heartbeat_at,
+                                c,
+                                &active_config,
+                            ));
+                        }
+                    }
+
+                    true
+                }
+                Err(mpsc::RecvTimeoutError::Timeout) => false,
+                Err(mpsc::RecvTimeoutError::Disconnected) => {
+                    error!("MIDI channel disconnected");
+                    return Ok(());
+                }
             }
+        } else {
+            // No transport channel — bridge is in Panicked state. Sleep briefly
+            // to avoid a tight spin while waiting for a Reload command.
+            std::thread::sleep(Duration::from_millis(50));
+            false
         };
 
-        // Brief idle sleep if both channels were empty, keeping CPU
-        // cost low during long quiet periods.
+        // Publish status after heartbeat state update.
+        if mcu_bytes_drained {
+            if let Some(c) = &connections {
+                let _ = status_tx.send(build_status(
+                    BridgeState::Running,
+                    &machine,
+                    &tracker,
+                    last_event_at,
+                    mcu_heartbeat_at,
+                    c,
+                    &active_config,
+                ));
+            }
+        }
+
         if !mcu_bytes_drained && !transport_drained {
             std::thread::sleep(Duration::from_millis(5));
         }
     }
 }
 
-/// Build the configured transport backend and (if needed) the
-/// virtual MCU endpoint pair. The pair is returned separately so the
-/// main loop can share it with the heartbeat responder and the
-/// LocateController's PositionSource.
+// ── Backend construction ──────────────────────────────────────────────────────
+
 fn build_backend(
     config: &Config,
     needs_virtual_pair: bool,
@@ -463,21 +706,17 @@ fn build_backend(
     Ok((backend, pair))
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 /// Tail of a Stop transition. Gives LUNA a short window to settle
-/// at its play-start position (we actively drain inbound MCU bytes
-/// during the wait so the tracker reflects the post-snap bar), then
-/// sends an SPP message to the MC-500 so it jumps to the same bar.
-/// Silent on all failure modes — sync is an enhancement; the
-/// forward path has already fired.
+/// at its play-start position, then sends an SPP message to the
+/// MC-500 so it jumps to the same bar.
 fn sync_mc500_to_luna_after_stop(
     mcu_bytes_rx: &mpsc::Receiver<Vec<u8>>,
     pair: &Option<Rc<RefCell<VirtualMcuPair>>>,
     tracker: &mut PositionTracker,
     mc500_out: Option<&mut midir::MidiOutputConnection>,
 ) {
-    // Observed timing from probe-send-stop.log: LUNA takes ~170 ms
-    // between "Stop received" and the final snap-to-play-start
-    // position update. 500 ms gives comfortable headroom.
     const SETTLE_WINDOW: Duration = Duration::from_millis(500);
 
     let Some(out) = mc500_out else {
@@ -492,14 +731,11 @@ fn sync_mc500_to_luna_after_stop(
             Ok(bytes) => handle_mcu_byte_idle(&bytes, pair, tracker),
             Err(mpsc::RecvTimeoutError::Timeout) => continue,
             Err(mpsc::RecvTimeoutError::Disconnected) => break,
-        }
+        };
     }
 
     let bar = tracker.current_bar();
     if bar == 0 {
-        // Tracker has no position — we never saw LUNA settle on
-        // anything. Don't send SPP; it'd tell the MC-500 to go to a
-        // bar that may not reflect reality.
         info!("sync-on-stop: no tracked position from LUNA; skipping SPP");
         return;
     }
@@ -511,31 +747,30 @@ fn sync_mc500_to_luna_after_stop(
     }
 }
 
-/// Idle-path handling for a received MCU byte sequence: reply to
-/// heartbeat queries, apply position CCs to the tracker. Non-CC /
-/// non-heartbeat bytes are ignored (LCD dumps, V-Pot updates, etc).
+/// Idle-path handling for a received MCU byte sequence. Returns
+/// `true` if a heartbeat reply was sent (so the caller can update
+/// `mcu_heartbeat_at`).
 fn handle_mcu_byte_idle(
     bytes: &[u8],
     pair: &Option<Rc<RefCell<VirtualMcuPair>>>,
     tracker: &mut PositionTracker,
-) {
-    // Mirror of the locate-path byte trace, so a single RUST_LOG=debug
-    // run captures both idle and locate windows. Useful for diagnosing
-    // DAWs that only emit position info on rare events (e.g. Logic's
-    // surface-init bursts) — the burst hits handle_mcu_byte_idle, not
-    // wait_for_position_change.
+) -> bool {
     let hex = bytes
         .iter()
         .map(|b| format!("{b:02X}"))
         .collect::<Vec<_>>()
         .join(" ");
     tracing::debug!(len = bytes.len(), %hex, "idle: rx bytes");
+
+    let mut heartbeat_sent = false;
     if let Some(pair) = pair {
         if let Some(model) = mcu::parse_heartbeat_query(bytes) {
             if model == mcu::MCU_MODEL_ID {
                 let reply = mcu::mcu_identity_reply(model);
                 if let Err(e) = pair.borrow_mut().send(&reply) {
                     warn!(?e, "heartbeat reply send failed");
+                } else {
+                    heartbeat_sent = true;
                 }
             }
         }
@@ -559,14 +794,9 @@ fn handle_mcu_byte_idle(
             );
         }
     }
+    heartbeat_sent
 }
 
-/// Invoked when `Machine::handle` has transitioned into the
-/// `Locating` state. If locate is enabled in config, constructs the
-/// LocateController I/O sources and runs the closed-loop. Always
-/// calls `Machine::complete_locate` at the end so the state machine
-/// returns to Stopped / Playing regardless of outcome, then emits
-/// any post-locate Play action the state machine produced.
 #[allow(clippy::too_many_arguments)]
 fn run_locate_step(
     target: u32,
@@ -603,10 +833,6 @@ fn run_locate_step(
         controller.run(target)?
     };
 
-    // queued_start is observed by the LocateController (since it
-    // consumes transport events during the locate), so the Machine
-    // hasn't had a chance to record it. Extract the flag from the
-    // outcome and pass it through explicitly.
     let (reached, queued_start) = match &outcome {
         LocateOutcome::Reached { queued_start, .. } => (true, *queued_start),
         _ => (false, false),
@@ -621,20 +847,12 @@ fn run_locate_step(
     Ok(())
 }
 
-/// PositionSource implementation backed by an mpsc channel of raw
-/// MCU bytes. Parses inbound CCs into `DigitUpdate`s, feeds them to
-/// the shared tracker, and returns Some(bar) when the composed bar
-/// changes. Also replies to MCU heartbeat queries so LUNA doesn't
-/// drop the surface during long locates.
+// ── MCU position source ───────────────────────────────────────────────────────
+
 struct McuPositionSource<'a> {
     bytes_rx: &'a mpsc::Receiver<Vec<u8>>,
     tracker: &'a mut PositionTracker,
     pair: Option<&'a Rc<RefCell<VirtualMcuPair>>>,
-    /// True once we've seen any position update — distinguishes
-    /// "tracker has known state" from "tracker still at zero because
-    /// nothing has arrived." Initialised from the tracker's current
-    /// state at construction time, so a locate that starts with the
-    /// tracker already holding real data doesn't block waiting.
     has_seen_position: bool,
 }
 
@@ -688,7 +906,6 @@ impl<'a> PositionSource for McuPositionSource<'a> {
         let deadline = Instant::now() + timeout;
         let mut result: Option<u32> = None;
 
-        // Phase 1: block until the first bar-changing update lands.
         loop {
             let remaining = deadline.saturating_duration_since(Instant::now());
             if remaining.is_zero() {
@@ -711,19 +928,6 @@ impl<'a> PositionSource for McuPositionSource<'a> {
             }
         }
 
-        // Phase 2: drain the decade-carry companion CC, if any.
-        //
-        // At decade boundaries LUNA emits d7 and d8 as two separate
-        // 3-byte CCs ~1 µs apart. Without this drain the controller
-        // would consume d7 alone (composing a transient like bar=49
-        // for a 40→39 move) then use that bogus reading to decide the
-        // next nudge — costing an extra BarForward/BarBackward that
-        // eventually overshoots a target sitting on a decade boundary.
-        //
-        // The companion CC is in the mpsc channel within microseconds
-        // of the first one per probe-send-jog-fwd.log (1 µs gap). A
-        // non-blocking try_recv drain catches it reliably, plus one
-        // very short blocking wait to cover jitter on busy systems.
         const CARRY_SETTLE: Duration = Duration::from_millis(5);
         let settle_deadline = Instant::now() + CARRY_SETTLE;
         loop {
@@ -746,9 +950,8 @@ impl<'a> PositionSource for McuPositionSource<'a> {
     }
 }
 
-/// EventSource implementation backed by the transport-event channel.
-/// Translates each received TransportEvent into a LocateEvent the
-/// controller understands (new target / cancel / queue play).
+// ── Transport locate event source ─────────────────────────────────────────────
+
 struct TransportLocateEventSource<'a> {
     rx: &'a mpsc::Receiver<TransportEvent>,
 }
@@ -762,6 +965,8 @@ impl<'a> EventSource for TransportLocateEventSource<'a> {
     }
 }
 
+// ── Tracing init ──────────────────────────────────────────────────────────────
+
 fn init_tracing() {
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"));
@@ -771,52 +976,27 @@ fn init_tracing() {
         .init();
 }
 
-/// Name under which the bridge registers its virtual MCU endpoint
-/// pair. This is the string that shows up in LUNA's "MIDI Control
-/// Surfaces" INPUT DEVICE / OUTPUT DEVICE dropdowns.
 const MCU_ENDPOINT_NAME: &str = "MIDI Macro Bridge";
 
-/// Dump every MIDI byte sequence received on an existing port to
-/// stdout, with a microsecond-offset timestamp and a coarse label.
-/// Useful for probing physical interfaces (e.g., the 828mk3) or
-/// other apps' virtual ports.
-fn run_probe_midi(port_substring: &str) -> Result<()> {
-    let (rx, _conn_lifecycle) = {
-        use std::time::Instant;
-        let start = Instant::now();
-        let (tx, rx) = mpsc::channel::<(u128, Vec<u8>)>();
-        let conn = midi::connect_raw(port_substring, move |bytes| {
-            let _ = tx.send((start.elapsed().as_micros(), bytes.to_vec()));
-        })?;
-        (rx, conn)
-    };
+// ── CLI probe modes ───────────────────────────────────────────────────────────
 
+fn run_probe_midi(port_substring: &str) -> Result<()> {
+    use std::time::Instant;
+    let start = Instant::now();
+    let (tx, rx) = mpsc::channel::<(u128, Vec<u8>)>();
+    let conn = midi::connect_raw(port_substring, move |bytes| {
+        let _ = tx.send((start.elapsed().as_micros(), bytes.to_vec()));
+    })?;
     eprintln!("# probe-midi: listening on port matching '{port_substring}' — Ctrl-C to stop");
     eprintln!("# columns: <microseconds since start>  [<byte count>]  <label>  <hex>");
-    drive_probe_loop(rx)
+    drive_probe_loop(rx)?;
+    drop(conn);
+    Ok(())
 }
 
-// LCXL3 handshake bytes, parser, and LED helpers all live in the
-// `lcxl3` module — see services/midi-macro-bridge/src/lcxl3.rs and the
-// annotated decode in
-// docs/1.0/001-IN-PROGRESS/midi-macro-bridge/lcxl3-handshake-trace.md.
-
-/// Send the LCXL3 Mk3 DAW-mode activation SysEx and dump everything
-/// the device emits on its DAW Out port. One-shot probe to confirm
-/// the device's transport buttons activate when the bridge claims to
-/// be a DAW. Sends the deactivation SysEx on Ctrl-C so the device
-/// returns to its idle state.
-///
-/// The LCXL3 exposes a port pair named "<substring> ... DAW In" and
-/// "<substring> ... DAW Out" (typically "LCXL3 1 DAW In" / "...Out").
-/// We send to the In port and listen on the Out port.
 fn run_lcxl3_activate(substring: &str) -> Result<()> {
     use std::time::Instant;
 
-    // Find the actual port names that contain both the user's
-    // substring AND the role marker. Concatenating directly fails
-    // because the device puts a port-index between the two (e.g.
-    // "LCXL3 1 DAW Out" — "LCXL3 DAW Out" isn't a substring).
     let all_ports = midi::list_ports()?;
     let find_port = |role: &str| -> Result<String> {
         let s = substring.to_lowercase();
@@ -837,10 +1017,6 @@ fn run_lcxl3_activate(substring: &str) -> Result<()> {
     };
     let out_query = find_port("DAW Out")?;
     let in_query = find_port("DAW In").unwrap_or_else(|_| {
-        // The "DAW In" port doesn't appear in midir's input listing
-        // (it's the device's input direction; we send to it). Fall
-        // back to an output-side substring assumption: same prefix
-        // as the matched DAW Out port, with "Out" → "In".
         out_query.replace("DAW Out", "DAW In")
     });
 
@@ -854,9 +1030,6 @@ fn run_lcxl3_activate(substring: &str) -> Result<()> {
     let mut output = midi::connect_output(&in_query)
         .with_context(|| format!("opening LCXL3 output port matching '{in_query}'"))?;
 
-    // Full handshake — matches Ableton Live 12's sequence (probe → UDI
-    // → claim → host-name page → transport-LED preset). All byte
-    // sequences and pacing live in the lcxl3 module.
     lcxl3::handshake_send(&mut output, b"Bridge")
         .context("sending LCXL3 DAW activation handshake")?;
     eprintln!("# lcxl3-activate: handshake sent (probe → UDI → claim → host name → LED preset)");
@@ -873,10 +1046,6 @@ fn run_lcxl3_activate(substring: &str) -> Result<()> {
 
     loop {
         if shutdown_rx.try_recv().is_ok() {
-            // Best-effort deactivation so the device returns to idle
-            // even if the user re-runs the bridge in a different
-            // mode. Ignore send errors; the user can power-cycle if
-            // the device gets stuck.
             lcxl3::deactivate_send(&mut output);
             eprintln!("# lcxl3-activate: sent deactivation SysEx, exiting");
             return Ok(());
@@ -900,12 +1069,6 @@ fn run_lcxl3_activate(substring: &str) -> Result<()> {
     }
 }
 
-/// Register the bridge's virtual MCU endpoint pair, answer LUNA's
-/// heartbeat probe so the surface stays alive, and dump every byte
-/// arriving on the virtual input. The user then configures LUNA's
-/// MIDI Control Surfaces to pick the bridge as both INPUT and OUTPUT
-/// DEVICE on a free row (protocol: MCU), and LUNA streams position
-/// updates into the probe.
 fn run_probe_mcu() -> Result<()> {
     use std::time::Instant;
 
@@ -938,10 +1101,6 @@ fn run_probe_mcu() -> Result<()> {
         }
         match rx.recv_timeout(Duration::from_millis(200)) {
             Ok((us, bytes)) => {
-                // Heartbeat responder — reply to LUNA's model-ID query so
-                // the surface doesn't time out. Only respond to our
-                // declared model ID; the other queries LUNA sprays across
-                // 0x10-0x15 are checking for *other* MCU variants.
                 if let Some(model) = mcu::parse_heartbeat_query(&bytes) {
                     if model == mcu::MCU_MODEL_ID {
                         let reply = mcu::mcu_identity_reply(model);
@@ -953,7 +1112,6 @@ fn run_probe_mcu() -> Result<()> {
                         }
                     }
                 }
-
                 let hex: Vec<String> = bytes.iter().map(|b| format!("{b:02X}")).collect();
                 println!(
                     "{us:>12}us  [{:>3}]  {:<18}  {}",
@@ -971,17 +1129,11 @@ fn run_probe_mcu() -> Result<()> {
     }
 }
 
-/// Parse a `--send-mcu <spec> [extra...]` command into one or more
-/// MIDI byte sequences to emit on the virtual MCU output. Buttons
-/// emit a press (velocity 0x7F) followed by a release (velocity
-/// 0x00) with a short inter-message gap. Split `-press` / `-release`
-/// variants let us test non-tap behaviours (e.g. whether LUNA
-/// interprets a held-down rewind differently from a tap).
 fn parse_mcu_spec(spec: &str, extra: &[String]) -> Result<Vec<Vec<u8>>> {
     let button_tap = |note: u8| {
         vec![
-            vec![0x90, note, 0x7F], // press
-            vec![0x90, note, 0x00], // release
+            vec![0x90, note, 0x7F],
+            vec![0x90, note, 0x00],
         ]
     };
     Ok(match spec {
@@ -1021,28 +1173,16 @@ fn parse_mcu_spec(spec: &str, extra: &[String]) -> Result<Vec<Vec<u8>>> {
     })
 }
 
-/// Emit a candidate MCU message to LUNA via the virtual output, then
-/// dump any inbound bytes for a few seconds so we can see LUNA's
-/// reaction. Intended for Phase 3c discovery — drive it with
-/// `--send-mcu play`, `--send-mcu stop`, etc.; the output shows the
-/// exact bytes we emitted and whatever LUNA pushed back (position
-/// updates, LED changes, etc.).
-///
-/// The tool waits for LUNA to activate the surface (signalled by the
-/// init burst from LUNA) before emitting, rather than running on a
-/// fixed settle timer. That way the user has as long as they need to
-/// switch apps and toggle the Control Surface row ON.
 fn run_send_mcu(spec: &str, extra: &[String]) -> Result<()> {
     use std::thread::sleep;
     use std::time::Instant;
 
-    const MAX_WAIT_S: u64 = 120; // how long we wait for LUNA to activate
-    const QUIET_MS: u64 = 250; // silence window after init burst
-    const TAP_GAP_MS: u64 = 50; // press -> release gap for button taps
-    const PRE_EMIT_MS: u64 = 200; // small pause after activation before we emit
-    const OBSERVE_S: u64 = 3; // post-send listen window
+    const MAX_WAIT_S: u64 = 120;
+    const QUIET_MS: u64 = 250;
+    const TAP_GAP_MS: u64 = 50;
+    const PRE_EMIT_MS: u64 = 200;
+    const OBSERVE_S: u64 = 3;
 
-    // Parse first so spec errors are reported before we touch MIDI.
     let messages = parse_mcu_spec(spec, extra)?;
 
     let start = Instant::now();
@@ -1060,9 +1200,7 @@ fn run_send_mcu(spec: &str, extra: &[String]) -> Result<()> {
         "# waiting for LUNA to activate surface '{MCU_ENDPOINT_NAME}' \
          (up to {MAX_WAIT_S}s)..."
     );
-    eprintln!(
-        "# In LUNA: Preferences > Controllers > MIDI Control Surfaces; select"
-    );
+    eprintln!("# In LUNA: Preferences > Controllers > MIDI Control Surfaces; select");
     eprintln!(
         "# '{MCU_ENDPOINT_NAME}' as both INPUT and OUTPUT DEVICE and toggle the row ON."
     );
@@ -1095,12 +1233,6 @@ fn run_send_mcu(spec: &str, extra: &[String]) -> Result<()> {
     Ok(())
 }
 
-/// Block until LUNA has activated the virtual surface and finished
-/// pushing the init burst. Detected by: any non-heartbeat inbound
-/// message, followed by `quiet` of no further non-heartbeat
-/// traffic. Heartbeats arriving during the wait are answered so the
-/// surface stays alive. Returns `Err` if no activation is seen
-/// within `max_wait`.
 fn wait_for_luna_activation(
     rx: &mpsc::Receiver<(u128, Vec<u8>)>,
     pair: &mut midi::VirtualMcuPair,
@@ -1161,7 +1293,9 @@ fn wait_for_luna_activation(
                 if heartbeat_model.is_none() {
                     if activated_at.is_none() {
                         activated_at = Some(Instant::now());
-                        eprintln!("# LUNA activation detected; waiting for init burst to settle...");
+                        eprintln!(
+                            "# LUNA activation detected; waiting for init burst to settle..."
+                        );
                     }
                     last_non_heartbeat = Some(Instant::now());
                 }
@@ -1174,9 +1308,6 @@ fn wait_for_luna_activation(
     }
 }
 
-/// Drain the inbound channel for `duration`, printing each message
-/// and replying to MCU heartbeat queries so LUNA keeps the surface
-/// alive during the send-mcu settle / observe windows.
 fn drain_with_heartbeats(
     rx: &mpsc::Receiver<(u128, Vec<u8>)>,
     pair: &mut midi::VirtualMcuPair,
@@ -1219,10 +1350,6 @@ fn drain_with_heartbeats(
     }
 }
 
-/// Shared event-print loop for the probe modes. Runs until Ctrl-C or
-/// the MIDI channel disconnects. The MIDI connection handle must be
-/// held alive by the caller for the duration of the loop (dropping
-/// it closes the port / virtual endpoint).
 fn drive_probe_loop(rx: mpsc::Receiver<(u128, Vec<u8>)>) -> Result<()> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel();
     ctrlc::set_handler(move || {
@@ -1254,8 +1381,6 @@ fn drive_probe_loop(rx: mpsc::Receiver<(u128, Vec<u8>)>) -> Result<()> {
     }
 }
 
-/// Coarse classification of the first status byte. Good enough for
-/// probe logs; real parsing is the job of `midi.rs` / `mcu.rs`.
 fn classify_midi(bytes: &[u8]) -> &'static str {
     let Some(first) = bytes.first().copied() else {
         return "(empty)";
@@ -1286,11 +1411,6 @@ fn classify_midi(bytes: &[u8]) -> &'static str {
     }
 }
 
-/// Emit a canned sequence of events through the configured backend
-/// so the user can validate the output path without the MC-500 being
-/// connected. For the keystroke backend this means focusing LUNA
-/// first; for the MCU backend LUNA just needs the surface configured
-/// and ON.
 fn run_self_test(machine: &mut Machine, backend: &mut dyn Backend) -> Result<()> {
     use std::thread::sleep;
 
@@ -1315,4 +1435,52 @@ fn run_self_test(machine: &mut Machine, backend: &mut dyn Backend) -> Result<()>
 
     info!("self-test complete");
     Ok(())
+}
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::Config;
+
+    /// Call `setup_midi_connections` twice with a config that has empty
+    /// port names and uses the keystroke backend (so no virtual MCU
+    /// endpoint is registered). Both calls must succeed — empty-port
+    /// paths are warn-and-continue, not errors.
+    ///
+    /// The MCU / CoreMIDI virtual endpoint path is NOT tested here
+    /// because macOS's CoreMIDI rejects a second `kMIDIPropertyUniqueID`
+    /// registration in the same process (OSStatus -10843). That
+    /// constraint is a platform limitation, not a bridge bug. The
+    /// virtual-endpoint test for correctness is covered by the
+    /// hardware-validation phase (Phase 6i) which runs out-of-process.
+    #[test]
+    fn setup_midi_connections_idempotent_with_empty_ports() {
+        use crate::config::{BackendKind, LocateConfigToml, TransportConfig};
+
+        let config = Config {
+            midi_input_port: String::new(),
+            mc500_output_port: String::new(),
+            transport: TransportConfig {
+                backend: BackendKind::Keystrokes,
+                ..TransportConfig::default()
+            },
+            locate: LocateConfigToml {
+                enabled: false,
+                ..LocateConfigToml::default()
+            },
+            ..Config::default()
+        };
+
+        let result1 = setup_midi_connections(&config);
+        assert!(result1.is_ok(), "first call failed: {:?}", result1.err());
+
+        // Drop the first connections before the second call so both
+        // can safely be "alive" sequentially (not simultaneously).
+        drop(result1);
+
+        let result2 = setup_midi_connections(&config);
+        assert!(result2.is_ok(), "second call failed: {:?}", result2.err());
+    }
 }
