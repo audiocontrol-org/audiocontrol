@@ -475,20 +475,20 @@ The full UX/interaction specification is captured in [`web-ui-design.md`](web-ui
 
 **Deliverable:** The bottom-of-page event stream renders incoming SSE events as tape-printer log lines with source-tagged chips, supports pause-on-hover, and ring-buffers to the last 200 lines client-side.
 
-- [ ] Wire `htmx-sse` to subscribe the event-stream container to `/api/events`; new events append as `<div>` elements
-- [ ] Server pre-renders each `EventLine` as a fragment: timestamp, source-chip (MC-500 / LCXL3 / MCU OUT / BRIDGE with subtle colour fill), event description text
-- [ ] Client-side ring-buffer at 200 lines: when a new line arrives, remove the oldest if the buffer is full
-- [ ] Auto-scroll to bottom on new event; pause auto-scroll while the user hovers the stream container; show a subtle "PAUSE" indicator dot when paused
-- [ ] Subtle scroll-into-view animation (140ms ease-out) on each new line so movement is intentional, not distracting
+- [x] Wire `htmx-sse` to subscribe the event-stream container to `/api/events`; new events append as `<div>` elements
+- [x] Server pre-renders each `EventLine` as a fragment: timestamp, source-chip (MC-500 / LCXL3 / MCU OUT / BRIDGE with subtle colour fill), event description text
+- [x] Client-side ring-buffer at 200 lines: when a new line arrives, remove the oldest if the buffer is full
+- [x] Auto-scroll to bottom on new event; pause auto-scroll while the user hovers the stream container; show a subtle "PAUSE" indicator dot when paused
+- [x] Subtle scroll-into-view animation (140ms ease-out) on each new line so movement is intentional, not distracting
 - [ ] Verify: trigger MC-500 transport and LCXL3 encoder events; confirm both appear in the stream within one event-loop tick
 
 ### Acceptance Criteria
 
 - [ ] Every `Machine::handle()` event emitted by the MIDI loop appears in the browser's event stream within ~50ms
 - [ ] Source-tag chips visually distinguish the four event sources at a glance
-- [ ] Hover the stream → auto-scroll pauses immediately, "PAUSE" indicator visible
-- [ ] Ring buffer caps at 200 lines (verify by triggering > 200 events; oldest are removed cleanly)
-- [ ] SSE reconnects gracefully after a transient network blip (browser handles this; verify connection state recovers)
+- [x] Hover the stream → auto-scroll pauses immediately, "PAUSE" indicator visible
+- [x] Ring buffer caps at 200 lines (verify by triggering > 200 events; oldest are removed cleanly)
+- [x] SSE reconnects gracefully after a transient network blip (browser handles this; verify connection state recovers)
 
 ### Phase 6g — HALT button + master LED
 

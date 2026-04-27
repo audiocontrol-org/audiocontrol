@@ -839,6 +839,45 @@ h3,
   text-overflow: ellipsis;
 }
 
+/* ── Phase 6f: event-stream polish ────────────────────────────────────────── */
+
+/* Rest-state transition for newly-appended event lines. The
+   `.mmb-event-line-enter` class (added by app.js) sets the initial off-screen
+   state; removing the class on the next frame triggers the 140ms ease-out
+   lerp back to the rest state (opacity:1, transform:none). */
+.event-line {
+  transition: opacity 140ms ease-out, transform 140ms ease-out;
+}
+
+.event-line.mmb-event-line-enter {
+  opacity: 0;
+  transform: translateY(4px);
+  /* skip the transition on entry — only the return to rest is animated */
+  transition: none;
+}
+
+/* Pause indicator — a subtle warm-accent badge in the top-right of the
+   .mmb-events panel. Hidden by default; revealed when the inner stream is
+   hovered. The JS toggles `.mmb-stream-paused` on the inner stream element
+   and the panel reacts via :has(). */
+.mmb-pause-indicator {
+  position: absolute;
+  top: calc(var(--base) * 2);
+  right: calc(var(--base) * 3);
+  font-family: 'Departure Mono', ui-monospace, monospace;
+  font-size: 0.625rem;
+  letter-spacing: 0.18em;
+  color: var(--accent-warm);
+  opacity: 0;
+  transition: opacity 100ms ease-out;
+  pointer-events: none;
+  text-transform: uppercase;
+}
+
+.mmb-events:has(.mmb-stream-paused) .mmb-pause-indicator {
+  opacity: 0.85;
+}
+
 /* ── Animations ──────────────────────────────────────────────────────────── */
 
 @keyframes led-pulse-green {
@@ -857,7 +896,8 @@ h3,
 }
 
 /* Honour reduced-motion preference — equipment LEDs are fine, but disable
-   continuous pulses for users who ask for less motion. */
+   continuous pulses for users who ask for less motion. Also kill the
+   event-line entry transition so newly-appended lines just appear. */
 @media (prefers-reduced-motion: reduce) {
   .led.led-green,
   .led.led-red,
@@ -866,5 +906,11 @@ h3,
   .mmb-apply.mmb-apply-dirty,
   .mmb-routing.htmx-request .led {
     animation: none;
+  }
+
+  .event-line,
+  .event-line.mmb-event-line-enter,
+  .mmb-pause-indicator {
+    transition: none;
   }
 }
