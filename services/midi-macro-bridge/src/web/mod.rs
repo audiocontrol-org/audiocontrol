@@ -94,6 +94,7 @@ pub fn build_app(state: WebState) -> Router {
         .route("/api/events", get(handlers::events))
         .route("/api/config-form", get(handlers::config_form))
         .route("/api/config", post(handlers::config_post))
+        .route("/api/halt", post(handlers::halt))
         .with_state(state)
 }
 

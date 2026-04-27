@@ -200,7 +200,7 @@ h3,
   box-shadow: none;
 }
 
-/* HALT button — red-LED treatment */
+/* HALT button — red-LED treatment with 3-second hold-to-confirm progress ring */
 .mmb-halt {
   font-family: 'Departure Mono', ui-monospace, monospace;
   font-size: 0.875rem;
@@ -211,9 +211,14 @@ h3,
   border-radius: var(--panel-radius);
   padding: calc(var(--base) * 1.5) calc(var(--base) * 3);
   cursor: pointer;
-  transition: color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
-  /* leave room for the hold-progress ring that lands in 6g */
+  transition: color 120ms ease, border-color 120ms ease, box-shadow 120ms ease,
+              background 120ms ease;
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--base) * 1.5);
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .mmb-halt:hover,
@@ -226,6 +231,48 @@ h3,
 
 .mmb-halt:active {
   background: rgba(255, 91, 91, 0.08);
+}
+
+/* Progress ring SVG — overlays the button content during hold */
+.mmb-halt-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.mmb-halt-ring-bg {
+  fill: none;
+  stroke: var(--border-hairline);
+  stroke-width: 2;
+}
+
+.mmb-halt-ring-fg {
+  fill: none;
+  stroke: var(--led-red);
+  stroke-width: 2;
+  /* circumference of r=14: 2π×14 ≈ 87.96, rounded to 88 */
+  stroke-dasharray: 88;
+  stroke-dashoffset: 88;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+  /* no transition at rest — dashoffset snaps back instantly on release */
+  transition: none;
+}
+
+/* When holding, animate the ring fill over exactly 3 s */
+.mmb-halt.mmb-halt-holding .mmb-halt-ring-fg {
+  transition: stroke-dashoffset 3000ms linear;
+  stroke-dashoffset: 0;
+}
+
+/* After the timer fires, invert the button to signal "firing" */
+.mmb-halt.mmb-halt-firing {
+  background: var(--led-red);
+  color: var(--background);
+  border-color: var(--led-red);
 }
 
 /* ── Transport readout ───────────────────────────────────────────────────── */
@@ -910,7 +957,8 @@ h3,
 
   .event-line,
   .event-line.mmb-event-line-enter,
-  .mmb-pause-indicator {
+  .mmb-pause-indicator,
+  .mmb-halt.mmb-halt-holding .mmb-halt-ring-fg {
     transition: none;
   }
 }

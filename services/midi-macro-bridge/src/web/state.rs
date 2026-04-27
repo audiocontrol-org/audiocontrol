@@ -133,6 +133,25 @@ impl Default for PortStatuses {
     }
 }
 
+impl PortStatuses {
+    /// Returns `true` if any of the four physical port slots (mc500_input,
+    /// mc500_sync, lcxl3_input, lcxl3_output) is configured but not connected.
+    /// The virtual MCU endpoint is excluded because it is always configured when
+    /// the MCU backend is active — a transient virtual-port failure is already
+    /// surfaced via the slot's own LED.
+    pub fn is_any_configured_port_disconnected(&self) -> bool {
+        let slots = [
+            &self.mc500_input,
+            &self.mc500_sync,
+            &self.lcxl3_input,
+            &self.lcxl3_output,
+        ];
+        slots
+            .iter()
+            .any(|s| s.configured.is_some() && !s.connected)
+    }
+}
+
 // ── Status snapshot ───────────────────────────────────────────────────────────
 
 /// Full status snapshot published by the MIDI loop each time
@@ -277,6 +296,71 @@ mod tests {
 
     fn default_status() -> Status {
         Status::initialising(Config::default())
+    }
+
+    // ── PortStatuses::is_any_configured_port_disconnected ─────────────────────
+
+    fn make_connected_port(name: &str) -> PortStatus {
+        PortStatus {
+            configured: Some(name.to_string()),
+            connected: true,
+            error: None,
+        }
+    }
+
+    fn make_disconnected_port(name: &str) -> PortStatus {
+        PortStatus {
+            configured: Some(name.to_string()),
+            connected: false,
+            error: None,
+        }
+    }
+
+    #[test]
+    fn is_any_configured_port_disconnected_all_connected_returns_false() {
+        let ports = PortStatuses {
+            mc500_input: make_connected_port("MC-500 In"),
+            mc500_sync: make_connected_port("MC-500 Sync"),
+            lcxl3_input: make_connected_port("LCXL3 In"),
+            lcxl3_output: make_connected_port("LCXL3 Out"),
+            mcu_virtual: make_connected_port("MCU Virtual"),
+        };
+        assert!(!ports.is_any_configured_port_disconnected());
+    }
+
+    #[test]
+    fn is_any_configured_port_disconnected_unconfigured_returns_false() {
+        // All slots unconfigured (None) — not "configured but disconnected".
+        let ports = PortStatuses::default();
+        assert!(!ports.is_any_configured_port_disconnected());
+    }
+
+    #[test]
+    fn is_any_configured_port_disconnected_mc500_input_disconnected() {
+        let ports = PortStatuses {
+            mc500_input: make_disconnected_port("MC-500 In"),
+            ..PortStatuses::default()
+        };
+        assert!(ports.is_any_configured_port_disconnected());
+    }
+
+    #[test]
+    fn is_any_configured_port_disconnected_lcxl3_output_disconnected() {
+        let ports = PortStatuses {
+            lcxl3_output: make_disconnected_port("LCXL3 Out"),
+            ..PortStatuses::default()
+        };
+        assert!(ports.is_any_configured_port_disconnected());
+    }
+
+    #[test]
+    fn is_any_configured_port_disconnected_mcu_virtual_ignored() {
+        // mcu_virtual disconnected but physical slots all fine — should be false.
+        let ports = PortStatuses {
+            mcu_virtual: make_disconnected_port("MCU Virtual"),
+            ..PortStatuses::default()
+        };
+        assert!(!ports.is_any_configured_port_disconnected());
     }
 
     #[test]

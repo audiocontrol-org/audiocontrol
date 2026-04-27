@@ -177,6 +177,93 @@ pub fn render_config_form(cfg: &Config) -> String {
     html
 }
 
+// ── Master LED rollup ─────────────────────────────────────────────────────────
+
+/// Compute the master LED colour from the current `Status` snapshot.
+///
+/// Returns one of: `"green"`, `"amber"`, `"red"`, `"off"`.
+///
+/// | Bridge state      | LED    | Notes                                      |
+/// |-------------------|--------|--------------------------------------------|
+/// | Initialising      | amber  | startup in progress                        |
+/// | Reconnecting      | amber  | config reload in progress                  |
+/// | Panicked          | red    | fatal error; manual intervention required  |
+/// | Running (healthy) | green  | all configured ports connected             |
+/// | Running (degraded)| amber  | a configured port is disconnected, or MCU  |
+/// |                   |        | heartbeat stale (port configured + active) |
+pub fn master_led_state(status: &Status) -> &'static str {
+    match status.bridge_state {
+        BridgeState::Initialising | BridgeState::Reconnecting => "amber",
+        BridgeState::Panicked => "red",
+        BridgeState::Running => {
+            let any_disconnected = status.ports.is_any_configured_port_disconnected();
+            let stale_heartbeat = if status.ports.mcu_virtual.connected {
+                match status.mcu_heartbeat_at {
+                    None => true, // virtual endpoint active but heartbeat never seen
+                    Some(t) => t.elapsed() > Duration::from_secs(5),
+                }
+            } else {
+                false
+            };
+            if any_disconnected || stale_heartbeat {
+                "amber"
+            } else {
+                "green"
+            }
+        }
+    }
+}
+
+/// Build a human-readable tooltip explaining the current master LED state.
+///
+/// Returns `"bridge healthy"` for green. For non-green states, lists
+/// the reasons separated by `", "`.
+pub fn master_led_reason(status: &Status) -> String {
+    match status.bridge_state {
+        BridgeState::Initialising => "starting up...".to_string(),
+        BridgeState::Reconnecting => "reloading configuration".to_string(),
+        BridgeState::Panicked => "bridge in panic state".to_string(),
+        BridgeState::Running => {
+            let mut reasons: Vec<String> = Vec::new();
+
+            // Check each physical port slot.
+            let slots: [(&crate::web::state::PortStatus, &str); 4] = [
+                (&status.ports.mc500_input, "MC-500 input"),
+                (&status.ports.mc500_sync, "MC-500 sync"),
+                (&status.ports.lcxl3_input, "LCXL3 input"),
+                (&status.ports.lcxl3_output, "LCXL3 output"),
+            ];
+            for (slot, label) in &slots {
+                if slot.configured.is_some() && !slot.connected {
+                    reasons.push(format!("{label} disconnected"));
+                }
+            }
+
+            // Check MCU heartbeat staleness.
+            if status.ports.mcu_virtual.connected {
+                match status.mcu_heartbeat_at {
+                    None => reasons.push("MCU heartbeat not seen".to_string()),
+                    Some(t) => {
+                        let elapsed = t.elapsed();
+                        if elapsed > Duration::from_secs(5) {
+                            reasons.push(format!(
+                                "MCU heartbeat stale ({}s ago)",
+                                elapsed.as_secs()
+                            ));
+                        }
+                    }
+                }
+            }
+
+            if reasons.is_empty() {
+                "bridge healthy".to_string()
+            } else {
+                reasons.join(", ")
+            }
+        }
+    }
+}
+
 // ── Status fragment ───────────────────────────────────────────────────────────
 
 /// Render the full status panel as an HTML fragment. Wrapped in
@@ -202,6 +289,11 @@ pub fn render_status_fragment(status: &Status) -> String {
 
     let ports_html = render_port_statuses(&status.ports);
 
+    // Master LED OOB block — htmx swaps this into the header LED element
+    // independently of the main #mmb-status swap.
+    let led_state = master_led_state(status);
+    let led_reason = escape_html(&master_led_reason(status));
+
     format!(
         r#"<div id="mmb-status">
   <div class="status-row">
@@ -214,7 +306,8 @@ pub fn render_status_fragment(status: &Status) -> String {
   <div class="status-ports">
     {ports_html}
   </div>
-</div>"#
+</div>
+<div class="mmb-master-led" id="mmb-master-led" data-state="{led_state}" title="{led_reason}" hx-swap-oob="true"></div>"#
     )
 }
 
@@ -397,6 +490,221 @@ mod tests {
         let html = render_ports_fragment(&[], &[]);
         assert!(html.contains(r#"<datalist id="mmb-input-ports">"#));
         assert!(html.contains(r#"<datalist id="mmb-output-ports">"#));
+    }
+
+    // ── master_led_state ──────────────────────────────────────────────────────
+
+    fn make_running_status() -> Status {
+        Status {
+            bridge_state: BridgeState::Running,
+            transport: crate::state::TransportState::Stopped,
+            last_bar: None,
+            last_event_at: None,
+            ports: PortStatuses::default(),
+            mcu_heartbeat_at: None,
+            config: Config::default(),
+        }
+    }
+
+    #[test]
+    fn master_led_state_running_no_ports_green() {
+        // All unconfigured (default) ports + no MCU virtual connection = green.
+        let status = make_running_status();
+        assert_eq!(master_led_state(&status), "green");
+    }
+
+    #[test]
+    fn master_led_state_running_all_configured_connected_green() {
+        use crate::web::state::PortStatus;
+        let mut status = make_running_status();
+        let connected = PortStatus { configured: Some("x".into()), connected: true, error: None };
+        status.ports.mc500_input = connected.clone();
+        status.ports.mc500_sync = connected.clone();
+        status.ports.lcxl3_input = connected.clone();
+        status.ports.lcxl3_output = connected;
+        assert_eq!(master_led_state(&status), "green");
+    }
+
+    #[test]
+    fn master_led_state_running_configured_port_disconnected_amber() {
+        use crate::web::state::PortStatus;
+        let mut status = make_running_status();
+        status.ports.mc500_input = PortStatus {
+            configured: Some("MC-500".into()),
+            connected: false,
+            error: None,
+        };
+        assert_eq!(master_led_state(&status), "amber");
+    }
+
+    #[test]
+    fn master_led_state_running_stale_heartbeat_amber() {
+        use crate::web::state::PortStatus;
+        use std::time::Instant;
+        let mut status = make_running_status();
+        // Mark the virtual port as connected so heartbeat staleness is checked.
+        status.ports.mcu_virtual = PortStatus {
+            configured: Some("MCU Virtual".into()),
+            connected: true,
+            error: None,
+        };
+        // Set heartbeat to 6 seconds ago (stale threshold is 5s).
+        status.mcu_heartbeat_at = Some(Instant::now() - Duration::from_secs(6));
+        assert_eq!(master_led_state(&status), "amber");
+    }
+
+    #[test]
+    fn master_led_state_running_fresh_heartbeat_green() {
+        use crate::web::state::PortStatus;
+        use std::time::Instant;
+        let mut status = make_running_status();
+        status.ports.mcu_virtual = PortStatus {
+            configured: Some("MCU Virtual".into()),
+            connected: true,
+            error: None,
+        };
+        status.mcu_heartbeat_at = Some(Instant::now());
+        assert_eq!(master_led_state(&status), "green");
+    }
+
+    #[test]
+    fn master_led_state_reconnecting_amber() {
+        let mut status = make_running_status();
+        status.bridge_state = BridgeState::Reconnecting;
+        assert_eq!(master_led_state(&status), "amber");
+    }
+
+    #[test]
+    fn master_led_state_panicked_red() {
+        let mut status = make_running_status();
+        status.bridge_state = BridgeState::Panicked;
+        assert_eq!(master_led_state(&status), "red");
+    }
+
+    #[test]
+    fn master_led_state_initialising_amber() {
+        let mut status = make_running_status();
+        status.bridge_state = BridgeState::Initialising;
+        assert_eq!(master_led_state(&status), "amber");
+    }
+
+    // ── master_led_reason ─────────────────────────────────────────────────────
+
+    #[test]
+    fn master_led_reason_running_healthy_is_bridge_healthy() {
+        let status = make_running_status();
+        assert_eq!(master_led_reason(&status), "bridge healthy");
+    }
+
+    #[test]
+    fn master_led_reason_initialising() {
+        let mut status = make_running_status();
+        status.bridge_state = BridgeState::Initialising;
+        assert_eq!(master_led_reason(&status), "starting up...");
+    }
+
+    #[test]
+    fn master_led_reason_reconnecting() {
+        let mut status = make_running_status();
+        status.bridge_state = BridgeState::Reconnecting;
+        assert_eq!(master_led_reason(&status), "reloading configuration");
+    }
+
+    #[test]
+    fn master_led_reason_panicked() {
+        let mut status = make_running_status();
+        status.bridge_state = BridgeState::Panicked;
+        assert_eq!(master_led_reason(&status), "bridge in panic state");
+    }
+
+    #[test]
+    fn master_led_reason_disconnected_port_names_slot() {
+        use crate::web::state::PortStatus;
+        let mut status = make_running_status();
+        status.ports.mc500_input = PortStatus {
+            configured: Some("MC-500 In".into()),
+            connected: false,
+            error: None,
+        };
+        let reason = master_led_reason(&status);
+        assert!(
+            reason.contains("MC-500 input"),
+            "expected 'MC-500 input' in reason: {reason}"
+        );
+    }
+
+    #[test]
+    fn master_led_reason_stale_heartbeat_includes_elapsed() {
+        use crate::web::state::PortStatus;
+        use std::time::Instant;
+        let mut status = make_running_status();
+        status.ports.mcu_virtual = PortStatus {
+            configured: Some("MCU Virtual".into()),
+            connected: true,
+            error: None,
+        };
+        status.mcu_heartbeat_at = Some(Instant::now() - Duration::from_secs(8));
+        let reason = master_led_reason(&status);
+        assert!(
+            reason.contains("MCU heartbeat stale"),
+            "expected 'MCU heartbeat stale' in reason: {reason}"
+        );
+    }
+
+    // ── render_status_fragment master LED OOB ─────────────────────────────────
+
+    #[test]
+    fn render_status_fragment_includes_master_led_oob_block() {
+        let status = make_running_status();
+        let html = render_status_fragment(&status);
+        assert!(
+            html.contains(r#"id="mmb-master-led""#),
+            "missing mmb-master-led id in OOB block: {html}"
+        );
+        assert!(
+            html.contains(r#"hx-swap-oob="true""#),
+            "missing hx-swap-oob attribute in OOB block: {html}"
+        );
+        assert!(
+            html.contains(r#"data-state="green""#),
+            "expected green state for healthy running bridge: {html}"
+        );
+    }
+
+    #[test]
+    fn render_status_fragment_master_led_oob_amber_for_initialising() {
+        let status = Status {
+            bridge_state: BridgeState::Initialising,
+            transport: crate::state::TransportState::Stopped,
+            last_bar: None,
+            last_event_at: None,
+            ports: PortStatuses::default(),
+            mcu_heartbeat_at: None,
+            config: Config::default(),
+        };
+        let html = render_status_fragment(&status);
+        assert!(
+            html.contains(r#"data-state="amber""#),
+            "expected amber state for initialising bridge: {html}"
+        );
+    }
+
+    #[test]
+    fn render_status_fragment_master_led_oob_red_for_panicked() {
+        let status = Status {
+            bridge_state: BridgeState::Panicked,
+            transport: crate::state::TransportState::Stopped,
+            last_bar: None,
+            last_event_at: None,
+            ports: PortStatuses::default(),
+            mcu_heartbeat_at: None,
+            config: Config::default(),
+        };
+        let html = render_status_fragment(&status);
+        assert!(
+            html.contains(r#"data-state="red""#),
+            "expected red state for panicked bridge: {html}"
+        );
     }
 
     // ── render_status_fragment ────────────────────────────────────────────────

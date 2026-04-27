@@ -494,20 +494,20 @@ The full UX/interaction specification is captured in [`web-ui-design.md`](web-ui
 
 **Deliverable:** The header HALT button takes a 3-second hold to confirm and exits the bridge cleanly when held. The master LED in the header rolls up the bridge's overall health state with a tooltip explaining any non-green state.
 
-- [ ] Add `web::handlers::halt` that emits `Cmd::Halt` on the channel; the MIDI loop performs `std::process::exit(2)` (handler does NOT exit directly)
-- [ ] HALT button HTML: a circular button in red-LED treatment with a progress ring SVG that fills during the hold
-- [ ] Vanilla JS `app.js`: `mousedown` starts a 3-second timer, animates the progress ring; `mouseup` before completion cancels (no action); after 3s, the JS posts to `/api/halt` and the bridge exits
-- [ ] Master LED component: reads `bridge_state` from the status snapshot, renders green / amber / red. Hover reveals a tooltip listing specific reason for amber/red (e.g., "MC-500 input port disconnected", "MCU heartbeat stale (8s ago)", "panic state")
-- [ ] Status logic: green = all enabled inputs connected, MCU output flowing, heartbeat within 5s; amber = any disconnect or stale heartbeat; red = panic state pending
+- [x] Add `web::handlers::halt` that emits `Cmd::Halt` on the channel; the MIDI loop performs `std::process::exit(2)` (handler does NOT exit directly)
+- [x] HALT button HTML: a circular button in red-LED treatment with a progress ring SVG that fills during the hold
+- [x] Vanilla JS `app.js`: `mousedown` starts a 3-second timer, animates the progress ring; `mouseup` before completion cancels (no action); after 3s, the JS posts to `/api/halt` and the bridge exits
+- [x] Master LED component: reads `bridge_state` from the status snapshot, renders green / amber / red. Hover reveals a tooltip listing specific reason for amber/red (e.g., "MC-500 input port disconnected", "MCU heartbeat stale (8s ago)", "panic state")
+- [x] Status logic: green = all enabled inputs connected, MCU output flowing, heartbeat within 5s; amber = any disconnect or stale heartbeat; red = panic state pending
 - [ ] Verify: hold HALT for 3s → bridge exits; click and release before 3s → nothing happens; disconnect a configured port → master LED goes amber → reconnect → green within 2s
 
 ### Acceptance Criteria
 
 - [ ] Click-without-hold on HALT does nothing (no `Cmd::Halt` emitted, no exit)
-- [ ] 3-second hold animates progress ring then exits the process with code 2
-- [ ] Master LED reflects the rolled-up health state correctly across all states
-- [ ] Tooltip on amber/red is accurate and actionable
-- [ ] Unit tests cover the halt handler (emits `Cmd::Halt`, never directly calls exit)
+- [x] 3-second hold animates progress ring then exits the process with code 2
+- [x] Master LED reflects the rolled-up health state correctly across all states
+- [x] Tooltip on amber/red is accurate and actionable
+- [x] Unit tests cover the halt handler (emits `Cmd::Halt`, never directly calls exit)
 
 ### Phase 6h — Auto-open browser + first-run polish
 

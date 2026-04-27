@@ -105,6 +105,46 @@ pub async fn events(State(state): State<WebState>) -> impl IntoResponse {
     Sse::new(combined).keep_alive(KeepAlive::default())
 }
 
+// ── POST /api/halt ────────────────────────────────────────────────────────────
+
+/// `POST /api/halt` — send `Cmd::Halt` to the MIDI loop and return 202.
+///
+/// The handler MUST NOT call `std::process::exit` directly. The MIDI loop
+/// receives `Cmd::Halt` on its next tick and performs the exit, which keeps
+/// shutdown logic in one place and ensures any pending cleanup runs.
+///
+/// Rate-limit safety: if the command channel happens to be full (capacity 16,
+/// so practically impossible under normal use), the handler logs a warning and
+/// returns 503 rather than blocking.
+pub async fn halt(State(state): State<WebState>) -> impl IntoResponse {
+    match state.cmd_tx.try_send(Cmd::Halt) {
+        Ok(()) => (
+            StatusCode::ACCEPTED,
+            Html(r#"<div class="mmb-success">halt requested</div>"#.to_string()),
+        )
+            .into_response(),
+        Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+            warn!("Cmd::Halt dropped — command channel full; retry");
+            (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Html(r#"<div class="mmb-error">queue full, retry</div>"#.to_string()),
+            )
+                .into_response()
+        }
+        Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+            // The MIDI loop already exited (or is about to). The process is
+            // going away regardless — return success so the UI doesn't show
+            // a misleading error.
+            warn!("Cmd::Halt: channel closed — MIDI loop already exiting");
+            (
+                StatusCode::ACCEPTED,
+                Html(r#"<div class="mmb-success">halt requested</div>"#.to_string()),
+            )
+                .into_response()
+        }
+    }
+}
+
 // ── /api/config-form ─────────────────────────────────────────────────────────
 
 /// `GET /api/config-form` — return the config form fragment populated from
@@ -259,6 +299,66 @@ mod tests {
             .uri(uri)
             .body(axum::body::Body::empty())
             .unwrap()
+    }
+
+    fn make_post_halt_request() -> Request<axum::body::Body> {
+        Request::builder()
+            .method("POST")
+            .uri("/api/halt")
+            .body(axum::body::Body::empty())
+            .unwrap()
+    }
+
+    // ── POST /api/halt tests ──────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn halt_handler_returns_202() {
+        let app = crate::web::build_app(make_test_state());
+        let resp = app
+            .oneshot(make_post_halt_request())
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::ACCEPTED);
+    }
+
+    #[tokio::test]
+    async fn halt_handler_emits_cmd_halt() {
+        let initial = Status::initialising(Config::default());
+        let (cmd_tx, mut cmd_rx, _status_tx, status_rx, events_tx, history) =
+            build_channels(initial);
+        let state = WebState::new(
+            status_rx,
+            events_tx,
+            cmd_tx,
+            history,
+            std::path::PathBuf::from("config.toml"),
+        );
+        let app = crate::web::build_app(state);
+
+        app.oneshot(make_post_halt_request()).await.unwrap();
+
+        let cmd = cmd_rx
+            .try_recv()
+            .expect("Cmd::Halt should have been sent");
+        assert!(
+            matches!(cmd, crate::web::state::Cmd::Halt),
+            "expected Cmd::Halt, got: {cmd:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn halt_handler_body_contains_success_fragment() {
+        let app = crate::web::build_app(make_test_state());
+        let resp = app
+            .oneshot(make_post_halt_request())
+            .await
+            .unwrap();
+        let body = to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+        let html = String::from_utf8_lossy(&body);
+        assert!(
+            html.contains("mmb-success"),
+            "missing mmb-success in response: {html}"
+        );
     }
 
     // ── /api/status tests ─────────────────────────────────────────────────────
