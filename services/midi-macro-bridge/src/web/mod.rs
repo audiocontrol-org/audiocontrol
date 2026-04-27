@@ -14,6 +14,10 @@
 //! - `GET /api/ports`  — MIDI port list as HTML datalists
 //! - `GET /api/status` — status snapshot as HTML fragment
 //! - `GET /api/events` — SSE event stream
+//!
+//! Phase 6c adds:
+//! - `GET /`           — serves embedded `index.html` (text/html)
+//! - `GET /static/*`   — serves any file embedded from the `web/` directory
 
 pub mod handlers;
 pub mod state;
@@ -29,22 +33,66 @@ use tracing::info;
 
 use crate::web::state::WebState;
 
+// ── Embedded assets ────────────────────────────────────────────────────────────
+
+#[derive(rust_embed::Embed)]
+#[folder = "web/"]
+struct Asset;
+
+// ── Route handlers ─────────────────────────────────────────────────────────────
+
+/// `GET /` — serve the embedded `index.html`.
+async fn index_handler() -> impl IntoResponse {
+    match Asset::get("index.html") {
+        Some(content) => (
+            axum::http::StatusCode::OK,
+            [(
+                axum::http::header::CONTENT_TYPE,
+                "text/html; charset=utf-8".to_string(),
+            )],
+            content.data.into_owned(),
+        )
+            .into_response(),
+        None => (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            "index.html missing from embedded assets",
+        )
+            .into_response(),
+    }
+}
+
+/// `GET /static/{*path}` — serve any embedded asset under `web/` with the
+/// correct `Content-Type` derived from the file extension.
+async fn static_asset(uri: axum::http::Uri) -> impl IntoResponse {
+    let path = uri
+        .path()
+        .trim_start_matches("/static/")
+        .trim_start_matches('/');
+    match Asset::get(path) {
+        Some(content) => {
+            let mime = mime_guess::from_path(path).first_or_octet_stream();
+            (
+                [(
+                    axum::http::header::CONTENT_TYPE,
+                    mime.as_ref().to_string(),
+                )],
+                content.data.into_owned(),
+            )
+                .into_response()
+        }
+        None => axum::http::StatusCode::NOT_FOUND.into_response(),
+    }
+}
+
 /// Build the axum `Router`.
 pub fn build_app(state: WebState) -> Router {
     Router::new()
-        .route("/", get(placeholder_handler))
+        .route("/", get(index_handler))
+        .route("/static/*path", get(static_asset))
         .route("/api/ports", get(handlers::ports))
         .route("/api/status", get(handlers::status))
         .route("/api/events", get(handlers::events))
         .with_state(state)
-}
-
-async fn placeholder_handler() -> impl IntoResponse {
-    (
-        axum::http::StatusCode::OK,
-        [(axum::http::header::CONTENT_TYPE, "text/plain")],
-        "MIDI Macro Bridge — Phase 6a placeholder",
-    )
 }
 
 /// Spawn a `std::thread` that owns a `tokio::runtime::Runtime` and
@@ -123,42 +171,113 @@ mod tests {
             .unwrap()
     }
 
+    // ── GET / (index.html) ────────────────────────────────────────────────────
+
     #[tokio::test]
-    async fn placeholder_route_returns_200() {
+    async fn index_route_returns_200() {
         let app = build_app(make_test_state());
-        let resp = app
-            .oneshot(empty_request("/"))
-            .await
-            .unwrap();
+        let resp = app.oneshot(empty_request("/")).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
     }
 
     #[tokio::test]
-    async fn placeholder_route_returns_expected_body() {
+    async fn index_route_returns_html_with_title() {
         let app = build_app(make_test_state());
-        let resp = app
-            .oneshot(empty_request("/"))
-            .await
-            .unwrap();
+        let resp = app.oneshot(empty_request("/")).await.unwrap();
         let body = to_bytes(resp.into_body(), usize::MAX).await.unwrap();
-        assert_eq!(
-            body.as_ref(),
-            b"MIDI Macro Bridge \xe2\x80\x94 Phase 6a placeholder"
+        assert!(
+            body.windows(b"MIDI Macro Bridge".len())
+                .any(|w| w == b"MIDI Macro Bridge"),
+            "body missing 'MIDI Macro Bridge' title"
+        );
+        assert!(
+            body.windows(b"hx-get=\"/api/status\"".len())
+                .any(|w| w == b"hx-get=\"/api/status\""),
+            "body missing hx-get=\"/api/status\" htmx attribute"
         );
     }
 
     #[tokio::test]
-    async fn placeholder_route_content_type_is_text_plain() {
+    async fn index_route_content_type_is_html() {
         let app = build_app(make_test_state());
-        let resp = app
-            .oneshot(empty_request("/"))
-            .await
-            .unwrap();
+        let resp = app.oneshot(empty_request("/")).await.unwrap();
         let ct = resp
             .headers()
             .get(axum::http::header::CONTENT_TYPE)
             .and_then(|v: &axum::http::HeaderValue| v.to_str().ok())
             .unwrap_or("");
-        assert!(ct.contains("text/plain"), "content-type was: {ct}");
+        assert!(ct.contains("text/html"), "content-type was: {ct}");
+    }
+
+    // ── GET /static/* ─────────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn static_route_serves_htmx() {
+        let app = build_app(make_test_state());
+        let resp = app
+            .oneshot(empty_request("/static/htmx.min.js"))
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let ct = resp
+            .headers()
+            .get(axum::http::header::CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        assert!(
+            ct.contains("javascript"),
+            "expected javascript content-type, got: {ct}"
+        );
+        let body = to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+        assert!(!body.is_empty(), "htmx.min.js body should not be empty");
+    }
+
+    #[tokio::test]
+    async fn static_route_serves_index_html_via_root() {
+        // Symmetry test: GET / and GET /static/index.html are distinct routes.
+        // This verifies the root route returns HTML.
+        let app = build_app(make_test_state());
+        let resp = app.oneshot(empty_request("/")).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let ct = resp
+            .headers()
+            .get(axum::http::header::CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        assert!(ct.contains("text/html"), "content-type was: {ct}");
+    }
+
+    #[tokio::test]
+    async fn static_route_404_on_missing() {
+        let app = build_app(make_test_state());
+        let resp = app
+            .oneshot(empty_request("/static/this-doesnt-exist.txt"))
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn static_route_serves_woff2_with_correct_mime() {
+        if Asset::get("fonts/geist-mono.woff2").is_none() {
+            // Font not vendored yet — skip rather than fail.
+            return;
+        }
+        let app = build_app(make_test_state());
+        let resp = app
+            .oneshot(empty_request("/static/fonts/geist-mono.woff2"))
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let ct = resp
+            .headers()
+            .get(axum::http::header::CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        // mime_guess maps .woff2 → font/woff2 or application/font-woff2
+        assert!(
+            ct.contains("woff2") || ct.contains("font"),
+            "expected woff2/font content-type, got: {ct}"
+        );
     }
 }

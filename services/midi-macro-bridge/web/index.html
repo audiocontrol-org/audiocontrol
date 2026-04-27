@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MIDI Macro Bridge</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <style>
+    /* Inline @font-face so the page works even before app.css is added in 6d.
+       6d will move these to app.css. */
+    @font-face {
+      font-family: 'Geist Mono';
+      src: url('/static/fonts/geist-mono.woff2') format('woff2');
+      font-weight: 400;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Departure Mono';
+      src: url('/static/fonts/departure-mono.woff2') format('woff2');
+      font-weight: 400;
+      font-display: swap;
+    }
+  </style>
+</head>
+<body>
+  <header class="mmb-header">
+    <h1 class="mmb-title">MIDI Macro Bridge</h1>
+    <div class="mmb-master-led" data-state="green" title="bridge healthy"></div>
+    <span class="mmb-version">v1.0</span>
+    <button type="button" class="mmb-halt" id="mmb-halt-btn" aria-label="halt bridge (hold 3s)">HALT</button>
+  </header>
+
+  <section class="mmb-transport-readout" aria-label="transport readout">
+    <div class="mmb-state-badge">STOPPED</div>
+    <div class="mmb-bar-readout">BAR ----</div>
+    <div class="mmb-last-event-timer">last event —</div>
+  </section>
+
+  <section class="mmb-routing" aria-label="routing matrix">
+    <h2 class="mmb-section-label">ROUTING</h2>
+    <div class="mmb-routing-grid">
+      <div class="mmb-sources">
+        <h3 class="mmb-col-label">SOURCES</h3>
+        <div class="mmb-port-slot" data-slot="mc500-input">
+          <span class="led led-off"></span>
+          <span class="port-name">MC-500</span>
+          <span class="port-config">—</span>
+        </div>
+        <div class="mmb-port-slot" data-slot="lcxl3-input">
+          <span class="led led-off"></span>
+          <span class="port-name">LCXL3</span>
+          <span class="port-config">—</span>
+        </div>
+      </div>
+      <div class="mmb-bridge-center">
+        <h3 class="mmb-col-label">BRIDGE</h3>
+        <div class="mmb-machine-state">stopped</div>
+      </div>
+      <div class="mmb-destinations">
+        <h3 class="mmb-col-label">DESTINATIONS</h3>
+        <div class="mmb-port-slot" data-slot="mcu-virtual">
+          <span class="led led-off"></span>
+          <span class="port-name">DAW (MCU)</span>
+          <span class="port-config">virtual endpoint</span>
+        </div>
+        <div class="mmb-port-slot" data-slot="mc500-sync">
+          <span class="led led-off"></span>
+          <span class="port-name">MC-500 sync</span>
+          <span class="port-config">—</span>
+        </div>
+        <div class="mmb-port-slot" data-slot="lcxl3-output">
+          <span class="led led-off"></span>
+          <span class="port-name">LCXL3 LEDs</span>
+          <span class="port-config">—</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mmb-config" aria-label="configuration">
+    <h2 class="mmb-section-label">CONFIGURATION</h2>
+    <div id="mmb-config-form">
+      <!-- placeholder for Phase 6e -->
+      <p class="mmb-placeholder">Configuration form lands in Phase 6e.</p>
+    </div>
+  </section>
+
+  <section class="mmb-events" aria-label="event stream">
+    <h2 class="mmb-section-label">EVENT STREAM</h2>
+    <div id="mmb-event-stream" hx-ext="sse" sse-connect="/api/events" sse-swap="message" hx-swap="beforeend">
+      <!-- SSE-driven event lines append here -->
+    </div>
+  </section>
+
+  <!-- Initial population of the status panel via htmx -->
+  <div hx-get="/api/status" hx-trigger="load" hx-target="this" hx-swap="innerHTML"></div>
+
+  <script src="/static/htmx.min.js"></script>
+  <script src="/static/htmx-sse.js"></script>
+</body>
+</html>

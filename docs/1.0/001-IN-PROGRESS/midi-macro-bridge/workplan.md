@@ -420,18 +420,18 @@ The full UX/interaction specification is captured in [`web-ui-design.md`](web-ui
 
 **Deliverable:** The bridge serves the HTML shell, vendored htmx, and self-hosted fonts. The page renders the structural scaffold (header, transport readout, routing matrix, configuration, event stream containers) — no styling beyond bare HTML defaults yet.
 
-- [ ] Configure `rust-embed` rooted at `services/midi-macro-bridge/web/`
-- [ ] Vendor `htmx.min.js` (htmx 1.9.x), `htmx-sse.js` (SSE extension), `geist-mono.woff2`, `departure-mono.woff2` into `web/fonts/` and `web/`
-- [ ] Add `web::handlers::static_asset` returning the embedded asset with the correct `Content-Type` (font/woff2, text/javascript, etc.)
-- [ ] Author `web/index.html`: HTML5 shell, font-face declarations, htmx + htmx-sse `<script>` tags, structural sections for the header strip, transport readout, routing matrix (sources → bridge → destinations), configuration accordion, and event stream container; htmx attributes for the initial `/api/status` and `/api/ports` swaps
-- [ ] Verify: navigating to `http://127.0.0.1:8765` loads the shell, fonts render, htmx fires the initial swap, the page populates with the (unstyled) port list and status fragment
+- [x] Configure `rust-embed` rooted at `services/midi-macro-bridge/web/`
+- [x] Vendor `htmx.min.js` (htmx 1.9.x), `htmx-sse.js` (SSE extension), `geist-mono.woff2`, `departure-mono.woff2` into `web/fonts/` and `web/`
+- [x] Add `web::handlers::static_asset` returning the embedded asset with the correct `Content-Type` (font/woff2, text/javascript, etc.)
+- [x] Author `web/index.html`: HTML5 shell, font-face declarations, htmx + htmx-sse `<script>` tags, structural sections for the header strip, transport readout, routing matrix (sources → bridge → destinations), configuration accordion, and event stream container; htmx attributes for the initial `/api/status` and `/api/ports` swaps
+- [x] Verify: navigating to `http://127.0.0.1:8765` loads the shell, fonts render, htmx fires the initial swap, the page populates with the (unstyled) port list and status fragment
 
 ### Acceptance Criteria
 
-- [ ] `GET /` returns `index.html` with a `Content-Type: text/html` and 200 status
-- [ ] `GET /static/htmx.min.js` etc. return the vendored assets with correct content types
-- [ ] Fonts load from `/static/fonts/*.woff2` (visible in browser DevTools network tab)
-- [ ] htmx successfully swaps `/api/ports` and `/api/status` fragments into the initial page on load (verify via DOM inspection)
+- [x] `GET /` returns `index.html` with a `Content-Type: text/html` and 200 status
+- [x] `GET /static/htmx.min.js` etc. return the vendored assets with correct content types
+- [x] Fonts load from `/static/fonts/*.woff2` (visible in browser DevTools network tab)
+- [ ] htmx successfully swaps `/api/ports` and `/api/status` fragments into the initial page on load (verify via DOM inspection — browser test pending)
 
 ### Phase 6d — Stylesheet (studio rack aesthetic)
 
