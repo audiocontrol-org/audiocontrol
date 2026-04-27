@@ -39,6 +39,9 @@ lto = true
 codegen-units = 1
 strip = true
 
+[dev-dependencies]
+tempfile = "3"
+
 [[bin]]
 name = "midi-macro-bridge"
 path = "src/main.rs"

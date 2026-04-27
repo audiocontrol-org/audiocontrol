@@ -9,6 +9,7 @@
 
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use crate::config::{BackendKind, Config};
 use crate::web::state::{BridgeState, EventLine, EventSource, PortStatus, Status};
 
 // ── HTML escaping ─────────────────────────────────────────────────────────────
@@ -51,6 +52,127 @@ pub fn render_ports_fragment(inputs: &[String], outputs: &[String]) -> String {
         html.push_str(&format!(r#"<option value="{}"></option>"#, escape_html(port)));
     }
     html.push_str("</datalist>\n");
+
+    html
+}
+
+// ── Config form ───────────────────────────────────────────────────────────────
+
+/// Render the configuration form as a self-contained HTML fragment.
+///
+/// The fragment includes inline `<datalist>` elements (empty by default;
+/// the page calls `/api/ports` on load to populate them) so the form can
+/// function even before the ports endpoint responds.
+///
+/// The form posts via htmx to `POST /api/config`. While the request is
+/// in flight htmx adds `.htmx-request` to `#mmb-routing` (the
+/// `hx-indicator` target on the form), which triggers the reconnecting
+/// animation in `app.css`.
+pub fn render_config_form(cfg: &Config) -> String {
+    let mi = escape_html(&cfg.midi_input_port);
+    let mo = escape_html(&cfg.mc500_output_port);
+    let li = escape_html(&cfg.lcxl3.input_port);
+    let lo = escape_html(&cfg.lcxl3.output_port);
+    let hn = escape_html(&cfg.lcxl3.host_name);
+    let lcxl3_checked = if cfg.lcxl3.enabled { " checked" } else { "" };
+    let mcu_checked = if cfg.transport.backend == BackendKind::Mcu { " checked" } else { "" };
+    let keys_checked = if cfg.transport.backend == BackendKind::Keystrokes { " checked" } else { "" };
+    let keys_delay = cfg.transport.keystroke_delay_ms;
+    let fa = escape_html(&cfg.transport.require_frontmost_app);
+    let keys_display = if cfg.transport.backend == BackendKind::Keystrokes { "block" } else { "none" };
+
+    // Build with string concatenation to avoid raw-string delimiter collisions
+    // with `"#` sequences inside HTML attribute values.
+    let mut html = String::with_capacity(2048);
+
+    html.push_str("<form id=\"mmb-config-form\" hx-post=\"/api/config\"\n");
+    html.push_str("      hx-target=\"#mmb-config-result\" hx-swap=\"innerHTML\"\n");
+    html.push_str("      hx-indicator=\"#mmb-routing\">\n\n");
+
+    // MC-500 panel
+    html.push_str("  <fieldset class=\"mmb-device-panel\" data-device=\"mc500\">\n");
+    html.push_str("    <legend class=\"mmb-section-label\">MC-500</legend>\n");
+    html.push_str("    <label class=\"mmb-field\">\n");
+    html.push_str("      <span class=\"mmb-field-label\">Input port</span>\n");
+    html.push_str(&format!(
+        "      <input type=\"text\" name=\"midi_input_port\" list=\"mmb-input-ports\"\n             value=\"{mi}\" autocomplete=\"off\">\n"
+    ));
+    html.push_str("    </label>\n");
+    html.push_str("    <label class=\"mmb-field\">\n");
+    html.push_str("      <span class=\"mmb-field-label\">Sync output port</span>\n");
+    html.push_str(&format!(
+        "      <input type=\"text\" name=\"mc500_output_port\" list=\"mmb-output-ports\"\n             value=\"{mo}\" autocomplete=\"off\">\n"
+    ));
+    html.push_str("    </label>\n");
+    html.push_str("  </fieldset>\n\n");
+
+    // LCXL3 panel
+    html.push_str("  <fieldset class=\"mmb-device-panel\" data-device=\"lcxl3\">\n");
+    html.push_str("    <legend class=\"mmb-section-label\">LCXL3</legend>\n");
+    html.push_str("    <label class=\"mmb-field mmb-toggle\">\n");
+    html.push_str(&format!(
+        "      <input type=\"checkbox\" name=\"lcxl3_enabled\"{lcxl3_checked}>\n"
+    ));
+    html.push_str("      <span class=\"mmb-field-label\">Enabled</span>\n");
+    html.push_str("    </label>\n");
+    html.push_str("    <label class=\"mmb-field\">\n");
+    html.push_str("      <span class=\"mmb-field-label\">Input port (DAW Out)</span>\n");
+    html.push_str(&format!(
+        "      <input type=\"text\" name=\"lcxl3_input_port\" list=\"mmb-input-ports\" value=\"{li}\" autocomplete=\"off\">\n"
+    ));
+    html.push_str("    </label>\n");
+    html.push_str("    <label class=\"mmb-field\">\n");
+    html.push_str("      <span class=\"mmb-field-label\">Output port (DAW In)</span>\n");
+    html.push_str(&format!(
+        "      <input type=\"text\" name=\"lcxl3_output_port\" list=\"mmb-output-ports\" value=\"{lo}\" autocomplete=\"off\">\n"
+    ));
+    html.push_str("    </label>\n");
+    html.push_str("    <label class=\"mmb-field\">\n");
+    html.push_str("      <span class=\"mmb-field-label\">Host name</span>\n");
+    html.push_str(&format!(
+        "      <input type=\"text\" name=\"lcxl3_host_name\" value=\"{hn}\" maxlength=\"32\">\n"
+    ));
+    html.push_str("    </label>\n");
+    html.push_str("  </fieldset>\n\n");
+
+    // Backend panel
+    html.push_str("  <fieldset class=\"mmb-device-panel\" data-device=\"backend\">\n");
+    html.push_str("    <legend class=\"mmb-section-label\">Backend</legend>\n");
+    html.push_str("    <div class=\"mmb-segmented\" role=\"radiogroup\">\n");
+    html.push_str(&format!(
+        "      <input type=\"radio\" name=\"backend\" value=\"mcu\" id=\"mmb-backend-mcu\"{mcu_checked}>\n"
+    ));
+    html.push_str("      <label for=\"mmb-backend-mcu\">MCU</label>\n");
+    html.push_str(&format!(
+        "      <input type=\"radio\" name=\"backend\" value=\"keystrokes\" id=\"mmb-backend-keys\"{keys_checked}>\n"
+    ));
+    html.push_str("      <label for=\"mmb-backend-keys\">Keystrokes</label>\n");
+    html.push_str("    </div>\n");
+    html.push_str(&format!(
+        "    <div class=\"mmb-keys-only\" data-show-when-backend=\"keystrokes\" style=\"display:{keys_display}\">\n"
+    ));
+    html.push_str("      <label class=\"mmb-field\">\n");
+    html.push_str("        <span class=\"mmb-field-label\">Keystroke delay (ms)</span>\n");
+    html.push_str(&format!(
+        "        <input type=\"number\" name=\"keystroke_delay_ms\" value=\"{keys_delay}\" min=\"1\" max=\"500\">\n"
+    ));
+    html.push_str("      </label>\n");
+    html.push_str("      <label class=\"mmb-field\">\n");
+    html.push_str("        <span class=\"mmb-field-label\">Frontmost app</span>\n");
+    html.push_str(&format!(
+        "        <input type=\"text\" name=\"require_frontmost_app\" value=\"{fa}\">\n"
+    ));
+    html.push_str("      </label>\n");
+    html.push_str("    </div>\n");
+    html.push_str("  </fieldset>\n\n");
+
+    // Inline datalists — start empty; /api/ports populates them on page load.
+    html.push_str("  <datalist id=\"mmb-input-ports\"></datalist>\n");
+    html.push_str("  <datalist id=\"mmb-output-ports\"></datalist>\n\n");
+
+    html.push_str("  <button type=\"submit\" class=\"mmb-apply\" id=\"mmb-apply-btn\">APPLY CHANGES</button>\n");
+    html.push_str("</form>\n");
+    html.push_str("<div id=\"mmb-config-result\" aria-live=\"polite\"></div>\n");
 
     html
 }
@@ -439,5 +561,160 @@ mod tests {
         let html = render_event_line(&make_event(EventSource::Mc500, "start event"));
         assert!(html.contains("start event"), "text missing from: {html}");
         assert!(html.contains(r#"class="ev-text""#), "missing ev-text span in: {html}");
+    }
+
+    // ── render_config_form ────────────────────────────────────────────────────
+
+    fn make_config_for_form() -> Config {
+        use crate::config::{LcxlConfig, TransportConfig, BackendKind};
+        Config {
+            midi_input_port: "My MC-500 In".to_string(),
+            mc500_output_port: "My MC-500 Out".to_string(),
+            transport: TransportConfig {
+                backend: BackendKind::Mcu,
+                keystroke_delay_ms: 30,
+                require_frontmost_app: "LUNA".to_string(),
+            },
+            lcxl3: LcxlConfig {
+                enabled: true,
+                input_port: "LCXL3 1 DAW Out".to_string(),
+                output_port: "LCXL3 1 DAW In".to_string(),
+                host_name: "Bridge".to_string(),
+            },
+            ..Config::default()
+        }
+    }
+
+    #[test]
+    fn render_config_form_has_all_field_name_attributes() {
+        let html = render_config_form(&make_config_for_form());
+        for name in &[
+            "midi_input_port",
+            "mc500_output_port",
+            "lcxl3_enabled",
+            "lcxl3_input_port",
+            "lcxl3_output_port",
+            "lcxl3_host_name",
+            "backend",
+            "keystroke_delay_ms",
+            "require_frontmost_app",
+        ] {
+            assert!(
+                html.contains(&format!(r#"name="{name}""#)),
+                "missing name={name}: {html}"
+            );
+        }
+    }
+
+    #[test]
+    fn render_config_form_has_inline_datalists() {
+        let html = render_config_form(&make_config_for_form());
+        assert!(
+            html.contains(r#"<datalist id="mmb-input-ports">"#),
+            "missing inline input datalist: {html}"
+        );
+        assert!(
+            html.contains(r#"<datalist id="mmb-output-ports">"#),
+            "missing inline output datalist: {html}"
+        );
+    }
+
+    #[test]
+    fn render_config_form_mcu_backend_checked() {
+        use crate::config::{TransportConfig, BackendKind};
+        let mut cfg = make_config_for_form();
+        cfg.transport = TransportConfig { backend: BackendKind::Mcu, ..cfg.transport };
+        let html = render_config_form(&cfg);
+        assert!(
+            html.contains(r#"value="mcu" id="mmb-backend-mcu" checked"#),
+            "mcu radio not checked: {html}"
+        );
+        // When mcu is selected, keystrokes radio is present but not checked.
+        assert!(
+            html.contains(r#"value="keystrokes" id="mmb-backend-keys""#),
+            "keystrokes radio missing: {html}"
+        );
+        assert!(
+            !html.contains(r#"value="keystrokes" id="mmb-backend-keys" checked"#),
+            "keystrokes radio unexpectedly checked: {html}"
+        );
+    }
+
+    #[test]
+    fn render_config_form_keystrokes_backend_checked() {
+        use crate::config::{TransportConfig, BackendKind};
+        let mut cfg = make_config_for_form();
+        cfg.transport = TransportConfig { backend: BackendKind::Keystrokes, ..cfg.transport };
+        let html = render_config_form(&cfg);
+        assert!(
+            html.contains(r#"value="keystrokes" id="mmb-backend-keys" checked"#),
+            "keystrokes radio not checked: {html}"
+        );
+    }
+
+    #[test]
+    fn render_config_form_lcxl3_enabled_checkbox_checked_when_enabled() {
+        let html = render_config_form(&make_config_for_form());
+        assert!(
+            html.contains(r#"name="lcxl3_enabled" checked"#),
+            "lcxl3_enabled checkbox not checked when enabled: {html}"
+        );
+    }
+
+    #[test]
+    fn render_config_form_lcxl3_enabled_checkbox_unchecked_when_disabled() {
+        let mut cfg = make_config_for_form();
+        cfg.lcxl3.enabled = false;
+        let html = render_config_form(&cfg);
+        // The checkbox should be present but NOT have "checked".
+        assert!(
+            html.contains(r#"name="lcxl3_enabled""#),
+            "lcxl3_enabled checkbox missing: {html}"
+        );
+        assert!(
+            !html.contains(r#"name="lcxl3_enabled" checked"#),
+            "lcxl3_enabled checkbox unexpectedly checked: {html}"
+        );
+    }
+
+    #[test]
+    fn render_config_form_port_values_are_present() {
+        let cfg = make_config_for_form();
+        let html = render_config_form(&cfg);
+        assert!(html.contains("My MC-500 In"), "midi_input_port value missing");
+        assert!(html.contains("My MC-500 Out"), "mc500_output_port value missing");
+        assert!(html.contains("LCXL3 1 DAW Out"), "lcxl3_input_port value missing");
+        assert!(html.contains("LCXL3 1 DAW In"), "lcxl3_output_port value missing");
+        assert!(html.contains("Bridge"), "lcxl3_host_name value missing");
+    }
+
+    #[test]
+    fn render_config_form_escapes_special_chars_in_values() {
+        let mut cfg = make_config_for_form();
+        cfg.midi_input_port = r#"Port "test" & <more>"#.to_string();
+        let html = render_config_form(&cfg);
+        assert!(
+            !html.contains(r#"Port "test" & <more>"#),
+            "unescaped special chars in: {html}"
+        );
+        assert!(html.contains("&amp;"), "missing &amp; escape in: {html}");
+    }
+
+    #[test]
+    fn render_config_form_has_hx_post_attribute() {
+        let html = render_config_form(&make_config_for_form());
+        assert!(
+            html.contains(r#"hx-post="/api/config""#),
+            "missing hx-post: {html}"
+        );
+    }
+
+    #[test]
+    fn render_config_form_has_apply_button() {
+        let html = render_config_form(&make_config_for_form());
+        assert!(
+            html.contains(r#"id="mmb-apply-btn""#),
+            "missing apply button: {html}"
+        );
     }
 }

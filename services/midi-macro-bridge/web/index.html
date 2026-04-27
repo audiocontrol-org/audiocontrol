@@ -63,9 +63,12 @@
 
   <section class="mmb-config" aria-label="configuration">
     <h2 class="mmb-section-label">CONFIGURATION</h2>
-    <div id="mmb-config-form">
-      <!-- placeholder for Phase 6e -->
-      <p class="mmb-placeholder">Configuration form lands in Phase 6e.</p>
+    <div id="mmb-config-form-container"
+         hx-get="/api/config-form"
+         hx-trigger="load"
+         hx-target="this"
+         hx-swap="innerHTML">
+      <!-- populated by /api/config-form on page load -->
     </div>
   </section>
 
@@ -81,5 +84,6 @@
 
   <script src="/static/htmx.min.js"></script>
   <script src="/static/htmx-sse.js"></script>
+  <script src="/static/app.js" defer></script>
 </body>
 </html>

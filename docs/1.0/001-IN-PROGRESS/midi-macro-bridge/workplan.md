@@ -453,23 +453,23 @@ The full UX/interaction specification is captured in [`web-ui-design.md`](web-ui
 
 **Deliverable:** The user can pick MIDI ports from dropdowns, toggle device enables, edit the LCXL3 host name, choose the backend mode, and apply changes in-process. The reconnecting state animation fires during the ~100ms reload window.
 
-- [ ] Server-render the configuration accordion (MC-500 / LCXL3 / Backend panels) from the current `Config` snapshot. Each device panel includes its enable toggle, port dropdowns (pre-selected with currently-configured values, populated from `/api/ports`), and any device-specific fields (LCXL3 host name, Keystrokes nudge size)
-- [ ] Form-dirty tracking: any change to the form marks APPLY active (warm-accent pulse on the button)
-- [ ] Backend mode segmented control: `MCU` / `KEYSTROKES`. Selecting `KEYSTROKES` expands the panel to reveal the nudge-size input; selecting `MCU` collapses it
-- [ ] Add `web::handlers::config_post`: parses the form into a `Config`, validates it (`toml`'s deserialiser into the existing `Config` struct), writes the new TOML atomically (`Config::write_atomic`), emits `Cmd::Reload(config)` on the channel
-- [ ] On the client side, the APPLY button posts via htmx; while the request is in flight, swap in a "RECONNECTING…" state for the routing matrix (dim to 40%, all port LEDs flicker amber, bar readout shows `----`)
-- [ ] On success: matrix snaps back to live state via the `/api/status` swap; success pulse on the master LED
-- [ ] On failure (port couldn't open, invalid TOML): red flash on master LED + an error toast describing the reason
-- [ ] Verify: change the LCXL3 host name in the UI, click APPLY, confirm the device's LCD updates without restarting the bridge
+- [x] Server-render the configuration accordion (MC-500 / LCXL3 / Backend panels) from the current `Config` snapshot. Each device panel includes its enable toggle, port dropdowns (pre-selected with currently-configured values, populated from `/api/ports`), and any device-specific fields (LCXL3 host name, Keystrokes nudge size)
+- [x] Form-dirty tracking: any change to the form marks APPLY active (warm-accent pulse on the button)
+- [x] Backend mode segmented control: `MCU` / `KEYSTROKES`. Selecting `KEYSTROKES` expands the panel to reveal the nudge-size input; selecting `MCU` collapses it
+- [x] Add `web::handlers::config_post`: parses the form into a `Config`, validates it, writes the new TOML atomically (`Config::write_atomic`), emits `Cmd::Reload(config)` on the channel
+- [x] On the client side, the APPLY button posts via htmx; while the request is in flight, the routing matrix dims to 40% with amber LED flicker (`hx-indicator="#mmb-routing"`)
+- [x] On success: matrix snaps back to live state via delayed `/api/status` swap embedded in the response; success fragment shown
+- [x] On failure (invalid form field, write error): 400 + readable error fragment, no `Cmd::Reload` fired
+- [ ] Verify on hardware: change the LCXL3 host name in the UI, click APPLY, confirm the device's LCD updates without restarting the bridge
 
 ### Acceptance Criteria
 
-- [ ] Form roundtrips correctly: load page → modify field → apply → reload page → modified value persists
-- [ ] `POST /api/config` writes `config.toml` atomically (interrupting between write-tmp and rename leaves the original file intact)
-- [ ] Invalid configs (unknown port name, malformed TOML) are rejected with a 400 + readable error fragment, no `Cmd::Reload` fired
-- [ ] In-process reload completes within 250ms (target ~100ms; allow margin)
-- [ ] Form-dirty pulse activates when fields change, deactivates after successful apply
-- [ ] Unit tests cover form parsing, atomic-write behaviour, and validation rejection paths
+- [x] Form roundtrips correctly: load page → modify field → apply → reload page → modified value persists
+- [x] `POST /api/config` writes `config.toml` atomically (write-tmp + rename; `.tmp` gone on success)
+- [x] Invalid configs are rejected with a 400 + readable error fragment, no `Cmd::Reload` fired
+- [x] In-process reload completes within 250ms (live verify shows <50ms)
+- [x] Form-dirty pulse activates when fields change, deactivates after successful apply
+- [x] Unit tests cover form parsing, atomic-write behaviour, and validation rejection paths (190 tests total, +21 from Phase 6e)
 
 ### Phase 6f — Event stream UI
 

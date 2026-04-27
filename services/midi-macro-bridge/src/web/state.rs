@@ -22,6 +22,7 @@
 //!   drains via `mpsc::Receiver<Cmd>::try_recv` each tick.
 
 use std::collections::VecDeque;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{Instant, SystemTime};
 
@@ -196,6 +197,9 @@ pub struct WebState {
     /// here, and the axum handler clones the deque and drops the lock
     /// before `.await`-ing, so the critical section is always short.
     pub events_history: Arc<Mutex<VecDeque<EventLine>>>,
+    /// Path to `config.toml`. The `POST /api/config` handler writes the
+    /// updated config here atomically before sending `Cmd::Reload`.
+    pub config_path: PathBuf,
 }
 
 impl WebState {
@@ -204,12 +208,14 @@ impl WebState {
         events_tx: broadcast::Sender<EventLine>,
         cmd_tx: mpsc::Sender<Cmd>,
         events_history: Arc<Mutex<VecDeque<EventLine>>>,
+        config_path: PathBuf,
     ) -> Self {
         Self {
             status_rx,
             events_tx,
             cmd_tx,
             events_history,
+            config_path,
         }
     }
 
@@ -309,7 +315,13 @@ mod tests {
     fn web_state_subscribe_events_gives_independent_receivers() {
         let (_cmd_tx, _cmd_rx, _status_tx, status_rx, events_tx, history) =
             build_channels(default_status());
-        let state = WebState::new(status_rx, events_tx, _cmd_tx, history);
+        let state = WebState::new(
+            status_rx,
+            events_tx,
+            _cmd_tx,
+            history,
+            std::path::PathBuf::from("config.toml"),
+        );
 
         let _r1 = state.subscribe_events();
         let _r2 = state.subscribe_events();

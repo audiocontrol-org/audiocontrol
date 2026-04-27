@@ -10,17 +10,22 @@
 //! - `GET /api/status` → `status`
 //! - `GET /api/events` → `events` (SSE stream)
 
+use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::convert::Infallible;
 
 use axum::extract::State;
+use axum::http::StatusCode;
 use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::response::{Html, IntoResponse};
+use axum::Form;
 use futures::stream::{self, StreamExt};
 use tokio_stream::wrappers::BroadcastStream;
+use tracing::warn;
 
+use crate::config::{BackendKind, Config, LcxlConfig, TransportConfig};
 use crate::midi;
-use crate::web::state::{EventLine, WebState};
+use crate::web::state::{Cmd, EventLine, WebState};
 use crate::web::views;
 
 // ── /api/ports ────────────────────────────────────────────────────────────────
@@ -100,6 +105,126 @@ pub async fn events(State(state): State<WebState>) -> impl IntoResponse {
     Sse::new(combined).keep_alive(KeepAlive::default())
 }
 
+// ── /api/config-form ─────────────────────────────────────────────────────────
+
+/// `GET /api/config-form` — return the config form fragment populated from
+/// the current `Status::config` snapshot.
+pub async fn config_form(State(state): State<WebState>) -> impl IntoResponse {
+    let cfg = state.status_rx.borrow().config.clone();
+    Html(views::render_config_form(&cfg))
+}
+
+// ── POST /api/config ──────────────────────────────────────────────────────────
+
+/// Parse the flat form fields into a `Config`. Preserves fields the form
+/// doesn't expose (locate config, web config, enabled_on_startup) from the
+/// snapshot stored in `status_rx`.
+fn parse_config_form(
+    fields: &HashMap<String, String>,
+    snapshot: &Config,
+) -> Result<Config, String> {
+    let get = |key: &str| -> Result<&str, String> {
+        fields
+            .get(key)
+            .map(String::as_str)
+            .ok_or_else(|| format!("Missing required field: {key}"))
+    };
+
+    let backend_str = get("backend")?;
+    let backend = match backend_str {
+        "mcu" => BackendKind::Mcu,
+        "keystrokes" => BackendKind::Keystrokes,
+        other => {
+            return Err(format!(
+                "Backend must be 'mcu' or 'keystrokes', got: {other}"
+            ))
+        }
+    };
+
+    let keystroke_delay_ms = get("keystroke_delay_ms")?
+        .parse::<u64>()
+        .map_err(|_| "keystroke_delay_ms must be a positive integer".to_string())?;
+
+    Ok(Config {
+        midi_input_port: get("midi_input_port")?.to_string(),
+        mc500_output_port: get("mc500_output_port")?.to_string(),
+        // Checkbox presence = true; absence = false (standard HTML form behaviour).
+        lcxl3: LcxlConfig {
+            enabled: fields.contains_key("lcxl3_enabled"),
+            input_port: get("lcxl3_input_port")?.to_string(),
+            output_port: get("lcxl3_output_port")?.to_string(),
+            host_name: get("lcxl3_host_name")?.to_string(),
+        },
+        transport: TransportConfig {
+            backend,
+            keystroke_delay_ms,
+            require_frontmost_app: get("require_frontmost_app")?.to_string(),
+        },
+        // Preserve fields the form doesn't expose.
+        locate: snapshot.locate.clone(),
+        web: snapshot.web.clone(),
+        enabled_on_startup: snapshot.enabled_on_startup,
+    })
+}
+
+fn error_fragment(msg: &str) -> String {
+    format!(
+        r#"<div class="mmb-error">{}</div>"#,
+        views::escape_html(msg)
+    )
+}
+
+/// `POST /api/config` — parse form fields into a new `Config`, write it
+/// atomically to `config.toml`, and send `Cmd::Reload(config)` to the
+/// MIDI loop. Returns an HTML fragment suitable for htmx target-swap.
+///
+/// The handler MUST NOT touch any MIDI handle. It communicates with the
+/// MIDI loop exclusively via `state.cmd_tx`.
+pub async fn config_post(
+    State(state): State<WebState>,
+    Form(fields): Form<HashMap<String, String>>,
+) -> impl IntoResponse {
+    // Read the current config snapshot to preserve fields the form doesn't expose.
+    let snapshot = state.status_rx.borrow().config.clone();
+
+    let new_config = match parse_config_form(&fields, &snapshot) {
+        Ok(cfg) => cfg,
+        Err(msg) => {
+            return (StatusCode::BAD_REQUEST, Html(error_fragment(&msg))).into_response();
+        }
+    };
+
+    // Atomic write to config.toml.
+    if let Err(e) = new_config.write_atomic(&state.config_path) {
+        let msg = format!("Failed to write config: {e}");
+        return (StatusCode::INTERNAL_SERVER_ERROR, Html(error_fragment(&msg))).into_response();
+    }
+
+    // Send Cmd::Reload to the MIDI loop (non-blocking).
+    match state.cmd_tx.try_send(Cmd::Reload(new_config)) {
+        Ok(()) => {}
+        Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+            warn!("Cmd channel full; Reload queued by the loop — continuing");
+        }
+        Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+            warn!("Cmd channel closed; MIDI loop may have exited");
+        }
+    }
+
+    // Return a success fragment. A 200ms-delayed htmx status refresh is
+    // embedded so the routing matrix LEDs snap to the reconnected state
+    // without requiring a page reload.
+    // Note: avoid r"#...#" raw string delimiters — the `"#` inside
+    // attribute values would close the delimiter early.
+    let success_html = concat!(
+        "<div class=\"mmb-success\">Configuration applied \u{2014} reconnecting\u{2026}</div>\n",
+        "<div hx-get=\"/api/status\" hx-trigger=\"load delay:200ms\"",
+        " hx-target=\"#mmb-status\" hx-swap=\"outerHTML\"></div>"
+    );
+
+    Html(success_html.to_string()).into_response()
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -120,7 +245,13 @@ mod tests {
         let initial = Status::initialising(Config::default());
         let (cmd_tx, _cmd_rx, _status_tx, status_rx, events_tx, history) =
             build_channels(initial);
-        WebState::new(status_rx, events_tx, cmd_tx, history)
+        WebState::new(
+            status_rx,
+            events_tx,
+            cmd_tx,
+            history,
+            std::path::PathBuf::from("config.toml"),
+        )
     }
 
     fn empty_request(uri: &str) -> Request<axum::body::Body> {
@@ -280,5 +411,282 @@ mod tests {
         let received = live_rx.try_recv().expect("event was sent synchronously");
         assert_eq!(received.text, "live event test");
         assert!(matches!(received.source, EventSource::Mc500));
+    }
+
+    // ── /api/config-form tests ────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn config_form_handler_returns_200() {
+        let app = crate::web::build_app(make_test_state());
+        let resp = app
+            .oneshot(empty_request("/api/config-form"))
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn config_form_handler_contains_form_element() {
+        let app = crate::web::build_app(make_test_state());
+        let resp = app
+            .oneshot(empty_request("/api/config-form"))
+            .await
+            .unwrap();
+        let body = to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+        let html = String::from_utf8_lossy(&body);
+        assert!(
+            html.contains(r#"id="mmb-config-form""#),
+            "missing config form id: {html}"
+        );
+        assert!(
+            html.contains(r#"hx-post="/api/config""#),
+            "missing hx-post: {html}"
+        );
+    }
+
+    // ── POST /api/config tests ────────────────────────────────────────────────
+
+    fn valid_form_body() -> &'static str {
+        "midi_input_port=test-input\
+         &mc500_output_port=test-output\
+         &lcxl3_input_port=LCXL3+1+DAW+Out\
+         &lcxl3_output_port=LCXL3+1+DAW+In\
+         &lcxl3_host_name=Bridge\
+         &backend=mcu\
+         &keystroke_delay_ms=20\
+         &require_frontmost_app=LUNA"
+    }
+
+    fn make_post_request(uri: &str, body: &str) -> Request<axum::body::Body> {
+        Request::builder()
+            .method("POST")
+            .uri(uri)
+            .header("content-type", "application/x-www-form-urlencoded")
+            .body(axum::body::Body::from(body.to_string()))
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn config_post_valid_form_returns_200_and_success_fragment() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_path = dir.path().join("config.toml");
+
+        let initial = Status::initialising(Config::default());
+        let (cmd_tx, _cmd_rx, _status_tx, status_rx, events_tx, history) =
+            build_channels(initial);
+        let state = WebState::new(status_rx, events_tx, cmd_tx, history, config_path);
+        let app = crate::web::build_app(state);
+
+        let resp = app
+            .oneshot(make_post_request("/api/config", valid_form_body()))
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body = to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+        let html = String::from_utf8_lossy(&body);
+        assert!(
+            html.contains("mmb-success"),
+            "missing success fragment: {html}"
+        );
+    }
+
+    #[tokio::test]
+    async fn config_post_valid_form_emits_cmd_reload() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_path = dir.path().join("config.toml");
+
+        let initial = Status::initialising(Config::default());
+        let (cmd_tx, mut cmd_rx, _status_tx, status_rx, events_tx, history) =
+            build_channels(initial);
+        let state = WebState::new(
+            status_rx,
+            events_tx,
+            cmd_tx,
+            history,
+            config_path,
+        );
+        let app = crate::web::build_app(state);
+
+        app.oneshot(make_post_request("/api/config", valid_form_body()))
+            .await
+            .unwrap();
+
+        let cmd = cmd_rx.try_recv().expect("Cmd::Reload should have been sent");
+        assert!(
+            matches!(cmd, crate::web::state::Cmd::Reload(_)),
+            "expected Cmd::Reload, got: {cmd:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn config_post_valid_form_writes_config_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_path = dir.path().join("config.toml");
+
+        let initial = Status::initialising(Config::default());
+        let (cmd_tx, _cmd_rx, _status_tx, status_rx, events_tx, history) =
+            build_channels(initial);
+        let state = WebState::new(
+            status_rx,
+            events_tx,
+            cmd_tx,
+            history,
+            config_path.clone(),
+        );
+        let app = crate::web::build_app(state);
+
+        app.oneshot(make_post_request("/api/config", valid_form_body()))
+            .await
+            .unwrap();
+
+        assert!(config_path.exists(), "config.toml not written");
+        // Verify it's parseable.
+        let loaded = crate::config::Config::load(&config_path).unwrap();
+        assert!(matches!(loaded, crate::config::LoadOutcome::Loaded(_)));
+    }
+
+    #[tokio::test]
+    async fn config_post_bad_backend_returns_400() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_path = dir.path().join("config.toml");
+
+        let initial = Status::initialising(Config::default());
+        let (cmd_tx, mut cmd_rx, _status_tx, status_rx, events_tx, history) =
+            build_channels(initial);
+        let state = WebState::new(status_rx, events_tx, cmd_tx, history, config_path);
+        let app = crate::web::build_app(state);
+
+        let bad_body = "midi_input_port=x\
+                        &mc500_output_port=x\
+                        &lcxl3_input_port=x\
+                        &lcxl3_output_port=x\
+                        &lcxl3_host_name=x\
+                        &backend=invalid\
+                        &keystroke_delay_ms=20\
+                        &require_frontmost_app=";
+
+        let resp = app
+            .oneshot(make_post_request("/api/config", bad_body))
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+
+        // No Cmd::Reload should have been sent.
+        assert!(
+            cmd_rx.try_recv().is_err(),
+            "Cmd::Reload should NOT be sent on bad backend"
+        );
+    }
+
+    #[tokio::test]
+    async fn config_post_missing_required_field_returns_400() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_path = dir.path().join("config.toml");
+
+        let initial = Status::initialising(Config::default());
+        let (cmd_tx, _cmd_rx, _status_tx, status_rx, events_tx, history) =
+            build_channels(initial);
+        let state = WebState::new(status_rx, events_tx, cmd_tx, history, config_path);
+        let app = crate::web::build_app(state);
+
+        // Omit midi_input_port entirely.
+        let incomplete_body = "mc500_output_port=x\
+                               &lcxl3_input_port=x\
+                               &lcxl3_output_port=x\
+                               &lcxl3_host_name=x\
+                               &backend=mcu\
+                               &keystroke_delay_ms=20\
+                               &require_frontmost_app=";
+
+        let resp = app
+            .oneshot(make_post_request("/api/config", incomplete_body))
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn config_post_lcxl3_enabled_absent_means_false() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_path = dir.path().join("config.toml");
+
+        let initial = Status::initialising(Config::default());
+        let (cmd_tx, mut cmd_rx, _status_tx, status_rx, events_tx, history) =
+            build_channels(initial);
+        let state = WebState::new(
+            status_rx,
+            events_tx,
+            cmd_tx,
+            history,
+            config_path,
+        );
+        let app = crate::web::build_app(state);
+
+        // lcxl3_enabled field is absent (checkbox unchecked = not submitted).
+        let body = "midi_input_port=x\
+                    &mc500_output_port=x\
+                    &lcxl3_input_port=x\
+                    &lcxl3_output_port=x\
+                    &lcxl3_host_name=x\
+                    &backend=mcu\
+                    &keystroke_delay_ms=20\
+                    &require_frontmost_app=";
+
+        app.oneshot(make_post_request("/api/config", body))
+            .await
+            .unwrap();
+
+        let cmd = cmd_rx.try_recv().expect("Cmd::Reload should be sent");
+        if let crate::web::state::Cmd::Reload(cfg) = cmd {
+            assert!(
+                !cfg.lcxl3.enabled,
+                "lcxl3.enabled should be false when checkbox absent"
+            );
+        } else {
+            panic!("expected Cmd::Reload");
+        }
+    }
+
+    #[tokio::test]
+    async fn config_post_lcxl3_enabled_present_means_true() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_path = dir.path().join("config.toml");
+
+        let initial = Status::initialising(Config::default());
+        let (cmd_tx, mut cmd_rx, _status_tx, status_rx, events_tx, history) =
+            build_channels(initial);
+        let state = WebState::new(
+            status_rx,
+            events_tx,
+            cmd_tx,
+            history,
+            config_path,
+        );
+        let app = crate::web::build_app(state);
+
+        // lcxl3_enabled present (checkbox checked = submitted with value "on").
+        let body = "midi_input_port=x\
+                    &mc500_output_port=x\
+                    &lcxl3_enabled=on\
+                    &lcxl3_input_port=x\
+                    &lcxl3_output_port=x\
+                    &lcxl3_host_name=x\
+                    &backend=mcu\
+                    &keystroke_delay_ms=20\
+                    &require_frontmost_app=";
+
+        app.oneshot(make_post_request("/api/config", body))
+            .await
+            .unwrap();
+
+        let cmd = cmd_rx.try_recv().expect("Cmd::Reload should be sent");
+        if let crate::web::state::Cmd::Reload(cfg) = cmd {
+            assert!(
+                cfg.lcxl3.enabled,
+                "lcxl3.enabled should be true when checkbox present"
+            );
+        } else {
+            panic!("expected Cmd::Reload");
+        }
     }
 }

@@ -27,7 +27,7 @@ use std::net::SocketAddr;
 use std::thread::JoinHandle;
 
 use axum::response::IntoResponse;
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::Router;
 use tracing::info;
 
@@ -92,6 +92,8 @@ pub fn build_app(state: WebState) -> Router {
         .route("/api/ports", get(handlers::ports))
         .route("/api/status", get(handlers::status))
         .route("/api/events", get(handlers::events))
+        .route("/api/config-form", get(handlers::config_form))
+        .route("/api/config", post(handlers::config_post))
         .with_state(state)
 }
 
@@ -161,7 +163,13 @@ mod tests {
         let initial = Status::initialising(Config::default());
         let (cmd_tx, _cmd_rx, _status_tx, status_rx, events_tx, history) =
             build_channels(initial);
-        WebState::new(status_rx, events_tx, cmd_tx, history)
+        WebState::new(
+            status_rx,
+            events_tx,
+            cmd_tx,
+            history,
+            std::path::PathBuf::from("config.toml"),
+        )
     }
 
     fn empty_request(uri: &str) -> Request<axum::body::Body> {

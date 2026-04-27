@@ -1,10 +1,10 @@
 //! Configuration file loading.
 
 use anyhow::{Context, Result};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Config {
     /// Substring match against the MC-500 transport MIDI input port.
     /// Case-insensitive.
@@ -100,7 +100,7 @@ fn default_mc500_output_port() -> String {
     "828mk3 Hybrid MIDI".to_string()
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TransportConfig {
     /// Which Backend the bridge should use to drive the DAW. `mcu`
     /// (default) emits MCU control-surface messages on the virtual
@@ -144,7 +144,7 @@ impl TransportConfig {
     }
 }
 
-#[derive(Debug, Clone, Copy, Deserialize, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum BackendKind {
     #[default]
@@ -156,7 +156,7 @@ pub enum BackendKind {
 /// scalars so TOML users don't have to think about Duration types.
 /// `TryInto<LocateConfig>` converts the ms values into the Duration
 /// form the `LocateController` uses.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LocateConfigToml {
     /// Enable closed-loop locate. On by default — if LUNA hasn't been
     /// set up as an MCU control surface the controller times out
@@ -225,7 +225,7 @@ fn default_initial_position_timeout_ms() -> u64 {
 /// runs the activation handshake (the `lcxl3::handshake_send`
 /// sequence), listens for transport events, and pushes LED state
 /// back when the transport state changes.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LcxlConfig {
     /// Master switch. False by default — explicit opt-in keeps the
     /// existing MC-500-only path unaffected.
@@ -289,7 +289,7 @@ fn default_true() -> bool {
 
 /// Settings for the embedded HTTP control interface (Phase 6).
 /// All fields default to on so the web UI starts out of the box.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct WebConfig {
     /// Master switch. `true` by default — the web UI starts
     /// automatically unless the user opts out. Set `enabled = false`
@@ -357,6 +357,34 @@ impl Config {
             Err(e) => Err(anyhow::anyhow!(e))
                 .with_context(|| format!("reading config from {}", path.display())),
         }
+    }
+
+    /// Atomically write the config to `path` by serialising to a `.tmp`
+    /// file in the same directory and then renaming it over `path`. On
+    /// POSIX systems `rename` is atomic within a filesystem, so a reader
+    /// will always see either the old file or the new one — never a
+    /// partial write.
+    pub fn write_atomic(&self, path: &Path) -> Result<()> {
+        let toml_text = toml::to_string_pretty(self)
+            .with_context(|| "serialising config to TOML")?;
+
+        // Build the .tmp path in the same directory so the rename is
+        // guaranteed to stay on one filesystem (a cross-device rename
+        // would fail on most Unixes).
+        let tmp_path = path.with_extension("toml.tmp");
+
+        std::fs::write(&tmp_path, &toml_text)
+            .with_context(|| format!("writing temp config to {}", tmp_path.display()))?;
+
+        std::fs::rename(&tmp_path, path).with_context(|| {
+            format!(
+                "renaming {} → {} (atomic swap)",
+                tmp_path.display(),
+                path.display()
+            )
+        })?;
+
+        Ok(())
     }
 }
 
@@ -562,6 +590,46 @@ mod tests {
         assert_eq!(from_toml.lcxl3.input_port, from_default.lcxl3.input_port);
         assert_eq!(from_toml.lcxl3.output_port, from_default.lcxl3.output_port);
         assert_eq!(from_toml.lcxl3.host_name, from_default.lcxl3.host_name);
+    }
+
+    // ── write_atomic ──────────────────────────────────────────────────────────
+
+    #[test]
+    fn write_atomic_roundtrips_config() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("config.toml");
+
+        let original = Config {
+            midi_input_port: "TestInput".to_string(),
+            mc500_output_port: "TestOutput".to_string(),
+            ..Config::default()
+        };
+        original.write_atomic(&path).expect("write_atomic failed");
+
+        // The .tmp file must NOT be left behind.
+        let tmp = path.with_extension("toml.tmp");
+        assert!(!tmp.exists(), ".tmp file was left behind after successful write");
+
+        // The written file must re-parse to the same values.
+        let loaded = match Config::load(&path).expect("load") {
+            LoadOutcome::Loaded(c) => c,
+            LoadOutcome::NotFound => panic!("config file not found after write"),
+        };
+        assert_eq!(loaded.midi_input_port, original.midi_input_port);
+        assert_eq!(loaded.mc500_output_port, original.mc500_output_port);
+        assert_eq!(loaded.transport.backend, original.transport.backend);
+        assert_eq!(loaded.lcxl3.enabled, original.lcxl3.enabled);
+    }
+
+    #[test]
+    fn write_atomic_no_tmp_on_success() {
+        // If write_atomic succeeds, the .tmp file is gone.
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("config.toml");
+        let cfg = Config::default();
+        cfg.write_atomic(&path).expect("write_atomic failed");
+        let tmp = path.with_extension("toml.tmp");
+        assert!(!tmp.exists(), ".tmp left behind on success: {}", tmp.display());
     }
 
     #[test]

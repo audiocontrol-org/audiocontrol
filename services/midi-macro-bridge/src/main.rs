@@ -412,7 +412,13 @@ fn main() -> Result<()> {
     // isn't dropped while the process is running. We never explicitly
     // join it — the tokio runtime inside runs until the process exits.
     let _server_handle = if config.web.enabled && !self_test {
-        let web_state = WebState::new(status_rx, events_tx.clone(), cmd_tx.clone(), events_history.clone());
+        let web_state = WebState::new(
+            status_rx,
+            events_tx.clone(),
+            cmd_tx.clone(),
+            events_history.clone(),
+            config_path.clone(),
+        );
         let bind_addr = format!("127.0.0.1:{}", config.web.bind_port)
             .parse()
             .expect("invalid bind address");

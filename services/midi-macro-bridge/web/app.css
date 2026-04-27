@@ -553,13 +553,184 @@ h3,
   background: rgba(255, 209, 102, 0.05);
 }
 
-/* ── Configuration panel (placeholder until 6e) ──────────────────────────── */
+/* ── Configuration panel (Phase 6e) ─────────────────────────────────────── */
 
-.mmb-placeholder {
-  font-style: italic;
+/* Device panel — groups related fields with a labelled border */
+.mmb-device-panel {
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--panel-radius);
+  padding: calc(var(--base) * 3);
+  margin-bottom: calc(var(--base) * 3);
+  background: var(--surface-recess);
+}
+
+.mmb-device-panel legend {
+  padding: 0 calc(var(--base) * 2);
+}
+
+/* Individual field row — label + input */
+.mmb-field {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--base) * 3);
+  margin-bottom: calc(var(--base) * 2);
+}
+
+.mmb-field:last-child {
+  margin-bottom: 0;
+}
+
+.mmb-field-label {
+  min-width: 160px;
+  font-size: 0.75rem;
   color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.mmb-field input[type="text"],
+.mmb-field input[type="number"] {
+  flex: 1;
+  background: var(--surface-panel);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--panel-radius);
+  color: var(--text-screenprint);
+  font-family: 'Geist Mono', ui-monospace, monospace;
   font-size: 0.8125rem;
-  margin: 0;
+  letter-spacing: 0.04em;
+  padding: calc(var(--base) * 1.5) calc(var(--base) * 2);
+  outline: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.mmb-field input[type="text"]:focus,
+.mmb-field input[type="number"]:focus {
+  border-color: rgba(158, 255, 142, 0.5);
+  box-shadow: 0 0 0 1px rgba(158, 255, 142, 0.2);
+}
+
+/* Toggle row — checkbox + label inline */
+.mmb-toggle {
+  cursor: pointer;
+}
+
+.mmb-toggle input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--signal-green);
+  cursor: pointer;
+}
+
+/* Segmented radio control — MCU / Keystrokes */
+.mmb-segmented {
+  display: flex;
+  gap: 0;
+  margin-bottom: calc(var(--base) * 3);
+}
+
+.mmb-segmented input[type="radio"] {
+  display: none;
+}
+
+.mmb-segmented label {
+  padding: calc(var(--base) * 1.5) calc(var(--base) * 4);
+  border: 1px solid var(--border-hairline);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  background: var(--surface-recess);
+  color: var(--text-secondary);
+  transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
+  user-select: none;
+}
+
+.mmb-segmented label:first-of-type {
+  border-radius: var(--panel-radius) 0 0 var(--panel-radius);
+}
+
+.mmb-segmented label:last-of-type {
+  border-radius: 0 var(--panel-radius) var(--panel-radius) 0;
+  border-left: none;
+}
+
+.mmb-segmented input[type="radio"]:checked + label {
+  background: rgba(158, 255, 142, 0.08);
+  color: var(--signal-green);
+  border-color: rgba(158, 255, 142, 0.35);
+}
+
+/* Keystrokes-only expanded block */
+.mmb-keys-only {
+  border-top: 1px solid var(--border-hairline);
+  padding-top: calc(var(--base) * 2);
+  margin-top: calc(var(--base) * 2);
+}
+
+/* APPLY button */
+.mmb-apply {
+  font-family: 'Departure Mono', ui-monospace, monospace;
+  font-size: 0.875rem;
+  letter-spacing: 0.18em;
+  color: var(--signal-green);
+  background: var(--surface-recess);
+  border: 1px solid rgba(158, 255, 142, 0.4);
+  border-radius: var(--panel-radius);
+  padding: calc(var(--base) * 2) calc(var(--base) * 5);
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+  margin-top: calc(var(--base) * 2);
+}
+
+.mmb-apply:hover,
+.mmb-apply:focus-visible {
+  color: var(--text-screenprint);
+  border-color: rgba(158, 255, 142, 0.7);
+  box-shadow: 0 0 8px rgba(158, 255, 142, 0.2);
+  outline: none;
+}
+
+/* Result area */
+#mmb-config-result {
+  margin-top: calc(var(--base) * 2);
+  min-height: 1.4em;
+}
+
+.mmb-success {
+  font-size: 0.8125rem;
+  color: var(--signal-green);
+  letter-spacing: 0.04em;
+}
+
+.mmb-error {
+  font-size: 0.8125rem;
+  color: var(--led-red);
+  letter-spacing: 0.04em;
+}
+
+/* ── htmx in-flight indicator: routing matrix dims while config posts ─────── */
+
+.mmb-routing.htmx-request {
+  opacity: 0.4;
+  transition: opacity 80ms ease-out;
+}
+
+.mmb-routing.htmx-request .led {
+  animation: led-flicker-amber 0.5s ease-in-out infinite !important;
+}
+
+/* ── Form-dirty: APPLY pulses warm-accent when changes pending ───────────── */
+
+@keyframes apply-dirty-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px var(--accent-warm); }
+  50% { box-shadow: 0 0 8px var(--accent-warm), 0 0 0 1px var(--accent-warm); }
+}
+
+.mmb-apply.mmb-apply-dirty {
+  animation: apply-dirty-pulse 1.2s ease-in-out infinite;
+  color: var(--accent-warm);
+  border-color: var(--accent-warm);
 }
 
 /* ── Event stream ────────────────────────────────────────────────────────── */
@@ -680,13 +851,20 @@ h3,
   50% { opacity: 0.6; }
 }
 
+@keyframes led-flicker-amber {
+  0%, 100% { opacity: 1.0; box-shadow: 0 0 6px var(--led-amber), inset 0 0 1.5px var(--led-amber); }
+  50% { opacity: 0.5; box-shadow: none; }
+}
+
 /* Honour reduced-motion preference — equipment LEDs are fine, but disable
    continuous pulses for users who ask for less motion. */
 @media (prefers-reduced-motion: reduce) {
   .led.led-green,
   .led.led-red,
   .mmb-master-led[data-state="green"],
-  .mmb-master-led[data-state="red"] {
+  .mmb-master-led[data-state="red"],
+  .mmb-apply.mmb-apply-dirty,
+  .mmb-routing.htmx-request .led {
     animation: none;
   }
 }
