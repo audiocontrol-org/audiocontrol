@@ -182,9 +182,10 @@ fn main() -> Result<()> {
         );
         None
     } else {
+        let tx_mc500 = tx.clone();
         Some(
             midi::connect(&config.midi_input_port, move |event| {
-                if let Err(e) = tx.send(event) {
+                if let Err(e) = tx_mc500.send(event) {
                     // Channel closed — main loop has exited. Nothing to do.
                     error!(?e, "channel send failed");
                 }
@@ -197,6 +198,73 @@ fn main() -> Result<()> {
                 )
             })?,
         )
+    };
+
+    // LCXL3 input — second transport-event source alongside the MC-500.
+    // Opt-in via `[lcxl3] enabled = true` in config; defaults off so
+    // existing MC-500-only setups see no behaviour change. Both input
+    // sources feed the same `tx` channel; the state machine arbitrates
+    // events from either source the same way.
+    //
+    // Failures are handled with warn-and-continue: a missing LCXL3 (or
+    // a port-name mismatch) shouldn't take down the MC-500 path.
+    let _lcxl3_input_conn = if config.lcxl3.enabled {
+        let tx_lcxl3 = tx.clone();
+        let port = config.lcxl3.input_port.clone();
+        match midi::connect_raw(&port, move |bytes| {
+            if let Some(event) = lcxl3::parse(bytes) {
+                if let Err(e) = tx_lcxl3.send(event) {
+                    error!(?e, "lcxl3 channel send failed");
+                }
+            }
+        }) {
+            Ok(conn) => {
+                info!(port = %port, "LCXL3 input ready");
+                Some(conn)
+            }
+            Err(e) => {
+                warn!(
+                    ?e,
+                    port = %port,
+                    "LCXL3 input port unavailable — disabling LCXL3 input for this session. \
+                     Bridge continues with MC-500 input only."
+                );
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    // LCXL3 output — for the activation handshake at startup, LED
+    // mirroring during operation, and the deactivation SysEx at
+    // shutdown. Only opened when LCXL3 is enabled in config. Errors
+    // here disable the LCXL3 output but leave any other LCXL3 input
+    // intact (the device will still emit, we just won't see lit
+    // transport buttons or have the device claim DAW mode).
+    let mut lcxl3_out: Option<midir::MidiOutputConnection> = if config.lcxl3.enabled {
+        let port = config.lcxl3.output_port.clone();
+        match midi::connect_output(&port) {
+            Ok(mut conn) => {
+                if let Err(e) = lcxl3::handshake_send(&mut conn, config.lcxl3.host_name.as_bytes()) {
+                    warn!(?e, "LCXL3 activation handshake failed; LEDs may not initialise");
+                } else {
+                    info!(port = %port, host_name = %config.lcxl3.host_name, "LCXL3 output ready (activated)");
+                }
+                Some(conn)
+            }
+            Err(e) => {
+                warn!(
+                    ?e,
+                    port = %port,
+                    "LCXL3 output port unavailable — handshake skipped. The device's \
+                     transport buttons will likely stay dormant (no DAW claim sent)."
+                );
+                None
+            }
+        }
+    } else {
+        None
     };
 
     // MIDI output to the MC-500 for sync-on-stop. Warn-and-continue
@@ -241,6 +309,14 @@ fn main() -> Result<()> {
     loop {
         if shutdown_rx.try_recv().is_ok() {
             info!("shutting down");
+            // Best-effort LCXL3 deactivation so the device returns to
+            // its idle state. If the user power-cycles the LCXL3
+            // mid-session this will fail silently — fine, the device
+            // is already disconnected.
+            if let Some(out) = lcxl3_out.as_mut() {
+                lcxl3::deactivate_send(out);
+                info!("LCXL3 deactivation SysEx sent");
+            }
             return Ok(());
         }
 
@@ -313,6 +389,22 @@ fn main() -> Result<()> {
                         &mut tracker,
                         mc500_out.as_mut(),
                     );
+                }
+
+                // LCXL3 LED mirror: if the state changed at all, push
+                // the corresponding transport-button colour to the
+                // device. `led_for_state` returns the same bytes for
+                // Stopped and Locating so we don't flash twice during
+                // a normal stop → locate → reached cycle, but we do
+                // need to fire when crossing in/out of Playing.
+                if state_after != state_before {
+                    if let Some(out) = lcxl3_out.as_mut() {
+                        if let Some(led) = lcxl3::led_for_state(&state_after) {
+                            if let Err(e) = out.send(&led) {
+                                warn!(?e, "LCXL3 LED state push failed");
+                            }
+                        }
+                    }
                 }
 
                 true

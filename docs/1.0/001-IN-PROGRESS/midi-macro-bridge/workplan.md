@@ -288,19 +288,20 @@ The existing `--lcxl3-activate` one-shot CLI mode (already shipped) demonstrates
 
 **Deliverable:** Bridge run with `[lcxl3] enabled = true` activates the device on startup, processes events from both MC-500 and LCXL3 inputs, mirrors LED state to the device, and deactivates on shutdown.
 
-- [ ] In `main.rs` after the existing MC-500 `midi::connect`, add a second `midi::connect_raw` for the LCXL3 input port. Each callback's parser converts bytes to `Option<TransportEvent>` (`parse_transport` for MC-500, `lcxl3::parse` for LCXL3); both forward into the same `tx` channel
-- [ ] Open the LCXL3 output port via `midi::connect_output` (same pattern as the existing `mc500_out` for sync-on-stop)
-- [ ] On startup with LCXL3 enabled, call a new `lcxl3::handshake_send(&mut MidiOutputConnection, host_name: &str)` helper that fires the full activation sequence
-- [ ] In the main loop, after `machine.handle(event)`, if `machine.state()` differs from the previous state, send the corresponding LED bytes to the LCXL3 output port (gated on the LCXL3 connection existing)
-- [ ] In the Ctrl-C / shutdown path, send the deactivation SysEx so the LCXL3 returns to idle
-- [ ] If the LCXL3 input port is not available at startup, log a warning and continue without LCXL3 input — the MC-500 path still works
+- [x] In `main.rs` after the existing MC-500 `midi::connect`, add a second `midi::connect_raw` for the LCXL3 input port. Each callback's parser converts bytes to `Option<TransportEvent>` (`parse_transport` for MC-500, `lcxl3::parse` for LCXL3); both forward into the same `tx` channel
+- [x] Open the LCXL3 output port via `midi::connect_output` (same pattern as the existing `mc500_out` for sync-on-stop)
+- [x] On startup with LCXL3 enabled, call `lcxl3::handshake_send(&mut MidiOutputConnection, host_name: &[u8])` to fire the full activation sequence
+- [x] In the main loop, after `machine.handle(event)`, if `machine.state()` differs from the previous state, send the corresponding LED bytes via `lcxl3::led_for_state` to the LCXL3 output port (gated on the LCXL3 connection existing)
+- [x] In the Ctrl-C / shutdown path, send the deactivation SysEx so the LCXL3 returns to idle
+- [x] If the LCXL3 input port is not available at startup, log a warning and continue without LCXL3 input — the MC-500 path still works
+- [x] Removed the transitional `#![allow(dead_code)]` from `lcxl3.rs` — exports are now consumed
 
 ### Acceptance Criteria
 
-- [ ] Bridge starts cleanly with both MC-500 and LCXL3 enabled
-- [ ] Bridge starts cleanly with only one of MC-500 / LCXL3 enabled (the other empty in config)
-- [ ] Bridge starts cleanly with neither configured (effectively a no-op session, useful for `--list-ports`)
-- [ ] Ctrl-C sends the deactivation SysEx visibly in the log
+- [x] Bridge starts cleanly with both MC-500 and LCXL3 enabled (sanity-checked on hardware: handshake fired, encoder events parse, deactivation on shutdown)
+- [x] Bridge starts cleanly with only one of MC-500 / LCXL3 enabled (the other empty / disabled in config) — `enabled = false` skips both LCXL3 connection paths
+- [x] Bridge starts cleanly with neither configured (existing degrade-gracefully behaviour preserved)
+- [x] Ctrl-C sends the deactivation SysEx visibly in the log (`LCXL3 deactivation SysEx sent`)
 
 ### Phase 5e — Hardware validation
 

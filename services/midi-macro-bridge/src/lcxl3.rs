@@ -28,13 +28,6 @@
 //! the low bits carry the magnitude. The parser unpacks this and clamps
 //! magnitude to `MAX_NUDGE_PER_PACKET` so a fast spin can't queue a
 //! runaway sequence of nudges into the state machine.
-//!
-//! The `dead_code` allow on the module is transitional: Phase 5a ships
-//! these symbols, Phase 5d (`main.rs` wiring) consumes them. Once 5d
-//! lands, remove the allow and let the compiler catch genuinely unused
-//! exports.
-
-#![allow(dead_code)]
 
 use std::thread;
 use std::time::Duration;
