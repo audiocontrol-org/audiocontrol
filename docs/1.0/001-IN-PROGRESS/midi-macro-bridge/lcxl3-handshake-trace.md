@@ -135,18 +135,29 @@ The Play/Stop button is a **single toggle**: same byte for "start" and
 "stop", with the host responsible for resolving the toggle into the
 right action based on its current transport state.
 
-Encoder turns produce **relative** values on channel 7:
+The dedicated transport jog wheel is on **channel 16, CC `0x5D`**, with
+**center-at-64** encoding — the value is `64 + delta`, where positive
+delta means forward and negative means backward. Each tick of the
+wheel produces one CC; a fast spin produces a stream:
 
 ```
-device → host  B6 1E 01     encoder #1 (top row, leftmost) +1 tick
-device → host  B6 1E 02     encoder #1 +2 ticks (fast spin)
-device → host  B6 1E 7F     encoder #1 −1 tick (mode-1 sign-magnitude:
-                                bit 6 set + magnitude in low bits)
+device → host  BF 5D 41     +1 forward (value 65 = 64 + 1)
+device → host  BF 5D 42     +2 forward (faster spin)
+device → host  BF 5D 3F     −1 backward (value 63 = 64 - 1)
+device → host  BF 5D 3E     −2 backward
+device → host  BF 5D 40     (would be no-op at rest; not normally seen)
 ```
 
-Phase 5 binds **only** the dedicated transport encoder (`B6 1E xx` /
-`B6 1F xx`) to playhead nudge, with magnitude clamped to ≤ 4 at the
-parser. Other encoders stay unmapped.
+The bridge clamps `|delta|` to `MAX_NUDGE_PER_PACKET` (= 4) so a fast
+spin can't queue a runaway sequence of `BarForward` actions to the
+state machine.
+
+The other encoders / V-pots produce CCs on channels 1–8 (and a few on
+ch16); the bridge ignores all of them in v1. Notably, the device
+streams its **current encoder absolute positions** on
+`B6 1E xx` / `B6 1F xx` (and similar) on every DAW handshake — those
+are state-mirror CCs, not relative ticks, and the bridge's parser
+explicitly ignores them.
 
 ## Bridge → LCXL3 protocol summary
 
@@ -173,13 +184,23 @@ Everything the bridge consumes in v1:
 |-------------------------|-----------------------------|----------------------------|
 | Play/Stop press         | `B0 74 7F`                  | `TogglePlay`               |
 | Play/Stop release       | `B0 74 00`                  | (ignored — only press fires the event) |
-| Transport encoder fwd   | `B6 1E nn` / `B6 1F nn`     | `NudgeForward(min(nn, 4))` |
-| Transport encoder back  | `B6 1E nn` (sign bit set)   | `NudgeBackward(min(nn, 4))`|
+| Jog wheel forward (continuous rotary, +N) | `BF 5D nn` (nn = 64+delta, e.g. `0x41` = +1, `0x42` = +2) | `NudgeForward(min(delta, 4))` |
+| Jog wheel backward (-N)                    | `BF 5D nn` (nn = 64-delta, e.g. `0x3F` = -1, `0x3E` = -2) | `NudgeBackward(min(delta, 4))`|
+| Jog wheel at rest                          | `BF 5D 40`                  | (ignored, no movement)        |
 | Everything else         | (any other CC)              | (ignored)                  |
 
-Sign-magnitude encoding for encoders: bit 6 (`0x40`) set means negative
-direction; low 6 bits carry the magnitude. The parser unpacks this and
-clamps magnitude to 4.
+Center-at-64 encoding for the jog wheel: the value is `64 + delta`,
+where `delta` is signed and represents the change in playhead position
+since the last CC. `value > 64` is forward, `value < 64` is backward,
+exactly `64` is "no movement". The parser computes `|delta|` and
+clamps it to `MAX_NUDGE_PER_PACKET` (= 4) so a fast spin can't queue
+a runaway sequence of nudges. Each CC the device emits during a spin
+becomes one `NudgeForward(n)` / `NudgeBackward(n)` event.
+
+(An earlier parser version assumed sign-magnitude encoding with the
+direction in bit 6 — that turned out to be the wrong model and was
+mapped to the wrong CC pair entirely. The Phase 5e hardware probe
+captured the actual byte stream and corrected both.)
 
 ## What this document deliberately does not cover
 

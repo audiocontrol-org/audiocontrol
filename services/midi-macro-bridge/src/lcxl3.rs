@@ -102,23 +102,26 @@ const PLAY_BUTTON_CC: u8 = 0x74;
 /// machine only fires on press; the release event is silently dropped.
 const PRESS_VELOCITY: u8 = 0x7F;
 
-/// LCXL3 channel-7 status byte for the transport encoder (the
-/// dedicated forward/back encoder, not the V-pots). The encoder
-/// sends sign-magnitude values on CCs `0x1E` and `0x1F` — captured
-/// during the live trace.
-const CH7_CC_STATUS: u8 = 0xB6;
-const ENCODER_CC_PRIMARY: u8 = 0x1E;
-const ENCODER_CC_SECONDARY: u8 = 0x1F;
-/// Bit 6 of the encoder value indicates direction — set means
-/// negative (backward), clear means positive (forward). The low six
-/// bits carry the magnitude.
-const ENCODER_DIR_MASK: u8 = 0x40;
-const ENCODER_MAG_MASK: u8 = 0x3F;
+/// LCXL3 channel-16 status byte for the transport jog wheel. The
+/// encoder sends one `BF 5D nn` CC per tick during a spin, with the
+/// value center-at-64 — i.e. `0x41` (65) = +1, `0x42` (66) = +2,
+/// `0x3F` (63) = -1, `0x3E` (62) = -2. Captured live in the LCXL3
+/// hardware probe (`5e-controls.log`); matches the original Live →
+/// LCXL3 trace.
+///
+/// The bridge initially mis-mapped the encoder to channel-7 CCs
+/// `B6 1E` / `B6 1F`, which turned out to be a different encoder
+/// emitting absolute position state on every DAW handshake. The
+/// resulting "phantom" `NudgeForward(4)` events at startup were the
+/// telltale sign — real ticks only appear when the user spins.
+const JOG_CC_STATUS: u8 = 0xBF;
+const JOG_CC: u8 = 0x5D;
+const JOG_CENTER: u8 = 0x40;
 
-/// Hard cap on nudge magnitude per encoder packet. A fast spin can
-/// pack many ticks into one packet; without a cap, the state machine
-/// would emit dozens of `BarForward` actions and the user would lose
-/// control of the playhead. Four bars per packet is enough to feel
+/// Hard cap on nudge magnitude per encoder CC. A fast spin emits a
+/// stream of CCs with magnitudes 1..7 each; the cap keeps any single
+/// CC from queuing more than this many `BarForward` / `BarBackward`
+/// actions to the state machine. Four bars per CC is enough to feel
 /// responsive without runaway risk.
 pub const MAX_NUDGE_PER_PACKET: u32 = 4;
 
@@ -145,20 +148,21 @@ pub fn parse(bytes: &[u8]) -> Option<TransportEvent> {
         return Some(TransportEvent::TogglePlay);
     }
 
-    // Transport encoder rotation. Both CCs (#30 and #31) appear in
-    // captures; treat them identically for nudge purposes.
-    if status == CH7_CC_STATUS
-        && (cc == ENCODER_CC_PRIMARY || cc == ENCODER_CC_SECONDARY)
-    {
-        let magnitude = (value & ENCODER_MAG_MASK) as u32;
-        if magnitude == 0 {
+    // Transport jog wheel. Center-at-64 encoding: `value > 64` is
+    // forward by `value - 64`, `value < 64` is backward by
+    // `64 - value`, exactly `64` is no-op. Magnitude clamped to
+    // `MAX_NUDGE_PER_PACKET` so a fast spin still feels responsive
+    // without overrunning LUNA's playhead.
+    if status == JOG_CC_STATUS && cc == JOG_CC {
+        if value == JOG_CENTER {
             return None;
         }
-        let clamped = magnitude.min(MAX_NUDGE_PER_PACKET);
-        if value & ENCODER_DIR_MASK != 0 {
-            return Some(TransportEvent::NudgeBackward(clamped));
+        if value > JOG_CENTER {
+            let mag = ((value - JOG_CENTER) as u32).min(MAX_NUDGE_PER_PACKET);
+            return Some(TransportEvent::NudgeForward(mag));
         } else {
-            return Some(TransportEvent::NudgeForward(clamped));
+            let mag = ((JOG_CENTER - value) as u32).min(MAX_NUDGE_PER_PACKET);
+            return Some(TransportEvent::NudgeBackward(mag));
         }
     }
 
@@ -262,43 +266,55 @@ mod tests {
     }
 
     #[test]
-    fn encoder_forward_one_tick_emits_nudge_forward_one() {
-        assert_eq!(parse(&[0xB6, 0x1E, 0x01]), Some(E::NudgeForward(1)));
-        assert_eq!(parse(&[0xB6, 0x1F, 0x01]), Some(E::NudgeForward(1)));
+    fn jog_wheel_forward_one_tick_emits_nudge_forward_one() {
+        // Captured: BF 5D 41 — value 65 = center 64 + 1.
+        assert_eq!(parse(&[0xBF, 0x5D, 0x41]), Some(E::NudgeForward(1)));
     }
 
     #[test]
-    fn encoder_backward_one_tick_emits_nudge_backward_one() {
-        // 0x41 = bit 6 set + magnitude 1 → backward 1.
-        assert_eq!(parse(&[0xB6, 0x1E, 0x41]), Some(E::NudgeBackward(1)));
+    fn jog_wheel_backward_one_tick_emits_nudge_backward_one() {
+        // Captured: BF 5D 3F — value 63 = center 64 - 1.
+        assert_eq!(parse(&[0xBF, 0x5D, 0x3F]), Some(E::NudgeBackward(1)));
     }
 
     #[test]
-    fn encoder_magnitude_is_clamped_to_max_per_packet() {
-        // 0x10 = magnitude 16, no direction bit → clamps to MAX (4) forward.
+    fn jog_wheel_two_ticks_per_cc_is_passed_through() {
+        // Fast spin: BF 5D 42 = +2, BF 5D 3E = -2.
+        assert_eq!(parse(&[0xBF, 0x5D, 0x42]), Some(E::NudgeForward(2)));
+        assert_eq!(parse(&[0xBF, 0x5D, 0x3E]), Some(E::NudgeBackward(2)));
+    }
+
+    #[test]
+    fn jog_wheel_magnitude_is_clamped_to_max_per_cc() {
+        // BF 5D 50 = 80 = +16 → clamps to MAX (4).
         assert_eq!(
-            parse(&[0xB6, 0x1E, 0x10]),
+            parse(&[0xBF, 0x5D, 0x50]),
             Some(E::NudgeForward(MAX_NUDGE_PER_PACKET))
         );
-        // 0x50 = bit 6 set + magnitude 16 → clamps to MAX backward.
+        // BF 5D 30 = 48 = -16 → clamps to MAX backward.
         assert_eq!(
-            parse(&[0xB6, 0x1E, 0x50]),
+            parse(&[0xBF, 0x5D, 0x30]),
             Some(E::NudgeBackward(MAX_NUDGE_PER_PACKET))
         );
     }
 
     #[test]
-    fn encoder_zero_magnitude_emits_nothing() {
-        // Some controllers send a zero-magnitude tick on direction
-        // change; treat as no-op rather than an extra event.
-        assert_eq!(parse(&[0xB6, 0x1E, 0x00]), None);
-        assert_eq!(parse(&[0xB6, 0x1E, 0x40]), None); // 0x40 = backward, mag 0
+    fn jog_wheel_at_center_emits_nothing() {
+        // Encoder at rest sends BF 5D 40 = no movement.
+        assert_eq!(parse(&[0xBF, 0x5D, 0x40]), None);
     }
 
     #[test]
     fn unmapped_ccs_return_none() {
         // V-pots, faders, pads — every other CC the LCXL3 emits.
-        assert_eq!(parse(&[0xB0, 0x05, 0x40]), None); // V-pot
+        // Specifically: B6 1E nn / B6 1F nn (channel-7 encoder) is
+        // the V-pot the LCXL3 streams absolute-position state for on
+        // every handshake. Earlier parser versions matched these; we
+        // now correctly ignore them.
+        assert_eq!(parse(&[0xB6, 0x1E, 0x06]), None);
+        assert_eq!(parse(&[0xB6, 0x1F, 0x06]), None);
+        assert_eq!(parse(&[0xB0, 0x05, 0x40]), None); // V-pot on ch1
+        assert_eq!(parse(&[0xBF, 0x05, 0x14]), None); // fader CC on ch16
         assert_eq!(parse(&[0xE0, 0x00, 0x00]), None); // pitch bend (faders)
         assert_eq!(parse(&[0x90, 0x40, 0x7F]), None); // note-on (pads)
     }
