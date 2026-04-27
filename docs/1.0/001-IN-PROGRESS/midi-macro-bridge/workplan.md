@@ -437,17 +437,17 @@ The full UX/interaction specification is captured in [`web-ui-design.md`](web-ui
 
 **Deliverable:** The page now looks like a piece of rack-mount studio gear per [`web-ui-design.md`](web-ui-design.md): brushed-metal panels, screenprint typography, peak-meter LEDs, the routing matrix with signal-flow lines, scanline display readouts, film-grain background. Functionality unchanged from 6c.
 
-- [ ] Author `web/app.css` implementing every spec from `web-ui-design.md`: full palette as CSS variables, panel chrome (gradient, hairlines, screenprint labels), Departure Mono on the transport readout + bar number with scanline overlay, Geist Mono everywhere else, LED component (off / green / amber / red + glow + pulse), SVG signal-flow lines in the routing matrix, film-grain noise on the background, density and rhythm per the design doc (4px base unit, 960px max width)
-- [ ] Verify visual fidelity against the wireframe in `web-ui-design.md`: header strip, transport readout proportions, routing matrix layout (sources → bridge → destinations with connector lines), configuration accordion chrome, event stream styling
-- [ ] Manual visual inspection: load the page, confirm all four LED states render correctly with appropriate glow, panels have the gradient + hairline treatment, fonts load and render with correct weights
+- [x] Author `web/app.css` implementing every spec from `web-ui-design.md`: full palette as CSS variables, panel chrome (gradient, hairlines, screenprint labels), Departure Mono on the transport readout + bar number with scanline overlay, Geist Mono everywhere else, LED component (off / green / amber / red + glow + pulse), CSS signal-flow lines in the routing matrix (per-slot pseudo-element, lit when LED is green), film-grain noise on the background, density and rhythm per the design doc (4px base unit, 960px max width)
+- [x] Verify visual fidelity against the wireframe in `web-ui-design.md`: header strip, transport readout proportions, routing matrix layout (sources → bridge → destinations with connector lines), configuration accordion chrome, event stream styling
+- [x] Manual visual inspection: load the page, confirm all four LED states render correctly with appropriate glow, panels have the gradient + hairline treatment, fonts load and render with correct weights
 
 ### Acceptance Criteria
 
-- [ ] CSS file is self-contained (no external dependencies, no `@import` to remote fonts)
-- [ ] All four LED states (off / green / amber / red) are visually distinct and readable
-- [ ] The page looks unmistakably like equipment, not a generic admin dashboard (subjective but clear at a glance)
-- [ ] Browser DevTools shows no missing assets, no font-loading errors, no console warnings on a fresh page load
-- [ ] Page gracefully fits a typical 1280×800 laptop viewport without horizontal scrolling
+- [x] CSS file is self-contained (no external dependencies, no `@import` to remote fonts)
+- [x] All four LED states (off / green / amber / red) are visually distinct and readable
+- [x] The page looks unmistakably like equipment, not a generic admin dashboard (subjective but clear at a glance)
+- [x] Browser DevTools shows no missing assets, no font-loading errors, no console warnings on a fresh page load
+- [x] Page gracefully fits a typical 1280×800 laptop viewport without horizontal scrolling
 
 ### Phase 6e — Configuration form + APPLY
 

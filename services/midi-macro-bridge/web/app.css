@@ -1,0 +1,692 @@
+/* ============================================================================
+   MIDI Macro Bridge — Studio Rack Utility stylesheet
+   Phase 6d. Self-contained: no @import, no remote CDN. Fonts vendored under
+   /static/fonts/ and declared inline below.
+   ============================================================================ */
+
+/* ── Vendored fonts ──────────────────────────────────────────────────────── */
+
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('/static/fonts/geist-mono.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Departure Mono';
+  src: url('/static/fonts/departure-mono.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+
+/* ── Palette + rhythm tokens ─────────────────────────────────────────────── */
+
+:root {
+  --background: #0a0b0a;
+  --surface-panel: #161816;
+  --surface-recess: #0e0f0e;
+  --border-hairline: #2a2c2a;
+  --text-screenprint: #e8e9e2;
+  --text-secondary: #6c6e68;
+  --led-green: #7dffa6;
+  --led-amber: #ffd166;
+  --led-red: #ff5b5b;
+  --signal-green: #9eff8e;
+  --accent-warm: #ff9b51;
+
+  --base: 4px;
+  --max-width: 960px;
+
+  --panel-gradient: linear-gradient(180deg, #181a18 0%, #141614 100%);
+  --panel-radius: 2px;
+}
+
+/* ── Reset / base ────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--background);
+  color: var(--text-screenprint);
+  font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.45;
+  min-height: 100vh;
+  padding: calc(var(--base) * 4) calc(var(--base) * 4) calc(var(--base) * 4);
+  position: relative;
+  /* center the rack-unit page */
+  max-width: var(--max-width);
+  margin: 0 auto;
+}
+
+/* Film-grain overlay — fixed, full-viewport, ~3-4% opacity */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.04'/></svg>");
+  mix-blend-mode: overlay;
+  opacity: 1;
+}
+
+/* keep our own UI above the grain */
+body > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* ── Typography (silkscreen labels) ──────────────────────────────────────── */
+
+h1,
+h2,
+h3,
+.mmb-section-label,
+.mmb-col-label {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-family: 'Geist Mono', ui-monospace, monospace;
+}
+
+.mmb-title {
+  font-size: 0.75rem;
+  color: var(--text-screenprint);
+  letter-spacing: 0.22em;
+  font-weight: 500;
+}
+
+.mmb-section-label {
+  font-size: 0.625rem; /* 10px */
+  margin-bottom: calc(var(--base) * 2);
+}
+
+.mmb-col-label {
+  font-size: 0.625rem;
+  margin-bottom: calc(var(--base) * 2);
+}
+
+.mmb-version {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.12em;
+}
+
+/* ── Generic panel chrome ────────────────────────────────────────────────── */
+
+.mmb-header,
+.mmb-transport-readout,
+.mmb-routing,
+.mmb-config,
+.mmb-events {
+  background: var(--panel-gradient);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--panel-radius);
+  padding: calc(var(--base) * 3); /* 12px */
+  margin-bottom: calc(var(--base) * 4); /* 16px */
+  position: relative;
+}
+
+/* Panel sections that have a screenprint label want a touch more top-padding
+   so the label visually sits in the panel-edge margin. */
+.mmb-routing,
+.mmb-config,
+.mmb-events {
+  padding-top: calc(var(--base) * 3);
+}
+
+/* ── Header strip ────────────────────────────────────────────────────────── */
+
+.mmb-header {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--base) * 3);
+  padding: calc(var(--base) * 2) calc(var(--base) * 3);
+}
+
+.mmb-header .mmb-title {
+  flex: 0 0 auto;
+}
+
+.mmb-header .mmb-master-led {
+  margin-left: auto; /* push to the right cluster */
+}
+
+/* Master LED — 14px disc with glow + per-state animation */
+.mmb-master-led {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #2a2c2a;
+  box-shadow: none;
+  flex: 0 0 auto;
+  display: inline-block;
+}
+
+.mmb-master-led[data-state="green"] {
+  background: var(--led-green);
+  box-shadow: 0 0 8px var(--led-green), inset 0 0 2px var(--led-green);
+  animation: led-pulse-green 1.5s ease-in-out infinite;
+}
+
+.mmb-master-led[data-state="amber"] {
+  background: var(--led-amber);
+  box-shadow: 0 0 8px var(--led-amber), inset 0 0 2px var(--led-amber);
+}
+
+.mmb-master-led[data-state="red"] {
+  background: var(--led-red);
+  box-shadow: 0 0 10px var(--led-red), inset 0 0 2px var(--led-red);
+  animation: led-flicker-red 0.6s ease-in-out infinite;
+}
+
+.mmb-master-led[data-state="off"] {
+  background: #2a2c2a;
+  box-shadow: none;
+}
+
+/* HALT button — red-LED treatment */
+.mmb-halt {
+  font-family: 'Departure Mono', ui-monospace, monospace;
+  font-size: 0.875rem;
+  letter-spacing: 0.18em;
+  color: var(--led-red);
+  background: var(--surface-recess);
+  border: 1px solid var(--led-red);
+  border-radius: var(--panel-radius);
+  padding: calc(var(--base) * 1.5) calc(var(--base) * 3);
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+  /* leave room for the hold-progress ring that lands in 6g */
+  position: relative;
+}
+
+.mmb-halt:hover,
+.mmb-halt:focus-visible {
+  color: var(--accent-warm);
+  border-color: var(--accent-warm);
+  box-shadow: 0 0 8px rgba(255, 155, 81, 0.35);
+  outline: none;
+}
+
+.mmb-halt:active {
+  background: rgba(255, 91, 91, 0.08);
+}
+
+/* ── Transport readout ───────────────────────────────────────────────────── */
+
+.mmb-transport-readout {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: calc(var(--base) * 6);
+  padding: calc(var(--base) * 5) calc(var(--base) * 4);
+}
+
+.mmb-state-badge {
+  font-family: 'Departure Mono', ui-monospace, monospace;
+  font-size: 2.5rem;
+  letter-spacing: 0.08em;
+  color: var(--text-screenprint);
+  padding: calc(var(--base) * 2) calc(var(--base) * 4);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--panel-radius);
+  background: var(--surface-recess);
+  text-align: center;
+  min-width: 220px;
+  line-height: 1.0;
+}
+
+/* state-specific tinting, applied when the state class is present */
+.mmb-state-badge.badge-stopped,
+.mmb-state-badge:where([data-state="stopped"]) {
+  background: var(--surface-recess);
+  color: var(--text-secondary);
+}
+
+.mmb-state-badge.badge-playing,
+.mmb-state-badge:where([data-state="playing"]) {
+  background: rgba(125, 255, 166, 0.08);
+  color: var(--led-green);
+  border-color: rgba(125, 255, 166, 0.35);
+}
+
+.mmb-state-badge.badge-locating,
+.mmb-state-badge:where([data-state="locating"]) {
+  background: rgba(255, 209, 102, 0.08);
+  color: var(--led-amber);
+  border-color: rgba(255, 209, 102, 0.35);
+}
+
+.mmb-bar-readout {
+  font-family: 'Departure Mono', ui-monospace, monospace;
+  font-size: 3rem;
+  letter-spacing: 0.06em;
+  color: var(--text-screenprint);
+  padding: calc(var(--base) * 2) calc(var(--base) * 5);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--panel-radius);
+  background-color: var(--surface-recess);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 2px,
+    rgba(255, 255, 255, 0.04) 2px,
+    rgba(255, 255, 255, 0.04) 3px
+  );
+  text-align: center;
+  min-width: 260px;
+  line-height: 1.0;
+  /* faint inner glow as if backlit */
+  box-shadow: inset 0 0 12px rgba(125, 255, 166, 0.04);
+}
+
+.mmb-last-event-timer {
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.06em;
+  align-self: end;
+}
+
+/* ── Routing matrix ──────────────────────────────────────────────────────── */
+
+.mmb-routing-grid {
+  display: grid;
+  grid-template-columns: 1fr minmax(140px, 0.7fr) 1fr;
+  gap: calc(var(--base) * 4);
+  align-items: stretch;
+}
+
+.mmb-sources,
+.mmb-destinations,
+.mmb-bridge-center {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--base) * 2);
+}
+
+.mmb-bridge-center {
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 calc(var(--base) * 2);
+  /* faint vertical lines hinting at signal flow into/out of the bridge */
+  background-image:
+    linear-gradient(to right, rgba(158, 255, 142, 0.08) 1px, transparent 1px),
+    linear-gradient(to left, rgba(158, 255, 142, 0.08) 1px, transparent 1px);
+  background-position: left center, right center;
+  background-size: 1px 60%, 1px 60%;
+  background-repeat: no-repeat;
+}
+
+.mmb-machine-state {
+  font-family: 'Departure Mono', ui-monospace, monospace;
+  font-size: 1.25rem;
+  letter-spacing: 0.08em;
+  color: var(--text-screenprint);
+  background: var(--surface-recess);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--panel-radius);
+  padding: calc(var(--base) * 2) calc(var(--base) * 3);
+  text-align: center;
+  min-width: 100px;
+  text-transform: uppercase;
+}
+
+/* Port slot — patch-jack card */
+.mmb-port-slot {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: calc(var(--base) * 2);
+  background: var(--surface-recess);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--panel-radius);
+  padding: calc(var(--base) * 2);
+}
+
+.mmb-port-slot .led {
+  /* slot-led specifically has its own row */
+  align-self: center;
+}
+
+.mmb-port-slot .port-name {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--text-screenprint);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.mmb-port-slot .port-config {
+  display: block;
+  font-size: 0.6875rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+  margin-top: 1px;
+}
+
+/* stack the name + config in the right column */
+.mmb-port-slot > .port-name,
+.mmb-port-slot > .port-config {
+  grid-column: 2;
+}
+
+/* Signal-flow visualisation: each port-slot extends a thin horizontal line
+   toward the bridge center. Source slots emit on the right edge,
+   destinations on the left edge. The line is hidden by default and only
+   appears when the slot's LED is in the green state.
+   This is intentionally a CSS-only gesture — not a precise SVG path. */
+.mmb-port-slot::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  height: 1px;
+  width: calc(var(--base) * 4);
+  background: var(--signal-green);
+  opacity: 0;
+  transition: opacity 200ms ease;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.mmb-sources .mmb-port-slot::after {
+  right: calc(var(--base) * -4);
+}
+
+.mmb-destinations .mmb-port-slot::after {
+  left: calc(var(--base) * -4);
+}
+
+/* When the slot's first child LED is green, light up the connector line. */
+.mmb-port-slot:has(.led.led-green)::after {
+  opacity: 0.6;
+  box-shadow: 0 0 4px var(--signal-green);
+}
+
+/* ── LED component ───────────────────────────────────────────────────────── */
+
+.led {
+  display: inline-block;
+  vertical-align: middle;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2a2c2a;
+  box-shadow: none;
+  flex: 0 0 auto;
+}
+
+.led.led-off {
+  background: #2a2c2a;
+  box-shadow: inset 0 0 1px rgba(0, 0, 0, 0.6);
+}
+
+.led.led-green {
+  background: var(--led-green);
+  box-shadow: 0 0 6px var(--led-green), inset 0 0 1.5px var(--led-green);
+  animation: led-pulse-green 1.5s ease-in-out infinite;
+}
+
+.led.led-amber {
+  background: var(--led-amber);
+  box-shadow: 0 0 6px var(--led-amber), inset 0 0 1.5px var(--led-amber);
+}
+
+.led.led-red {
+  background: var(--led-red);
+  box-shadow: 0 0 8px var(--led-red), inset 0 0 1.5px var(--led-red);
+  animation: led-flicker-red 0.6s ease-in-out infinite;
+}
+
+/* led-label is rendered inline by views.rs render_port_led; keep it readable */
+.led-label {
+  display: inline-block;
+  margin-left: calc(var(--base) * 2);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+/* ── Status fragment (mmb-status — server-rendered) ──────────────────────── */
+
+#mmb-status {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--base) * 2);
+}
+
+#mmb-status .status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--base) * 3);
+}
+
+#mmb-status .status-bar,
+#mmb-status .status-last-event,
+#mmb-status .status-heartbeat {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+}
+
+#mmb-status .status-bar strong {
+  color: var(--text-screenprint);
+  font-weight: 500;
+}
+
+#mmb-status .status-ports {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--base) * 3);
+}
+
+/* Status badges — tight pill-tags, font is Departure for that gear feel */
+.badge {
+  display: inline-block;
+  font-family: 'Departure Mono', ui-monospace, monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: calc(var(--base) * 1) calc(var(--base) * 2);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--panel-radius);
+  background: var(--surface-recess);
+  color: var(--text-secondary);
+}
+
+.badge.badge-init {
+  color: var(--led-amber);
+  border-color: rgba(255, 209, 102, 0.35);
+}
+
+.badge.badge-run {
+  color: var(--led-green);
+  border-color: rgba(125, 255, 166, 0.35);
+  background: rgba(125, 255, 166, 0.04);
+}
+
+.badge.badge-reconnect {
+  color: var(--led-amber);
+  border-color: rgba(255, 209, 102, 0.4);
+  background: rgba(255, 209, 102, 0.05);
+}
+
+.badge.badge-panic {
+  color: var(--led-red);
+  border-color: rgba(255, 91, 91, 0.5);
+  background: rgba(255, 91, 91, 0.06);
+}
+
+.badge.badge-stopped {
+  color: var(--text-secondary);
+}
+
+.badge.badge-playing {
+  color: var(--led-green);
+  border-color: rgba(125, 255, 166, 0.35);
+  background: rgba(125, 255, 166, 0.04);
+}
+
+.badge.badge-locating {
+  color: var(--led-amber);
+  border-color: rgba(255, 209, 102, 0.35);
+  background: rgba(255, 209, 102, 0.05);
+}
+
+/* ── Configuration panel (placeholder until 6e) ──────────────────────────── */
+
+.mmb-placeholder {
+  font-style: italic;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  margin: 0;
+}
+
+/* ── Event stream ────────────────────────────────────────────────────────── */
+
+.mmb-events {
+  /* Last visual section — keep an internal scroll so it doesn't push the rack
+     off the bottom of a 1280×800 viewport. */
+  max-height: 200px;
+  overflow: hidden;
+  padding-bottom: calc(var(--base) * 2);
+}
+
+#mmb-event-stream {
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  max-height: 160px;
+  overflow-y: auto;
+  padding: calc(var(--base) * 1) calc(var(--base) * 2);
+  background: var(--surface-recess);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--panel-radius);
+  /* faint scanline echo of the bar readout */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 2px,
+    rgba(255, 255, 255, 0.015) 2px,
+    rgba(255, 255, 255, 0.015) 3px
+  );
+}
+
+#mmb-event-stream::-webkit-scrollbar {
+  width: 8px;
+}
+
+#mmb-event-stream::-webkit-scrollbar-track {
+  background: var(--surface-recess);
+}
+
+#mmb-event-stream::-webkit-scrollbar-thumb {
+  background: var(--border-hairline);
+  border-radius: 1px;
+}
+
+.event-line {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--base) * 2);
+  padding: 1px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ev-ts {
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  flex: 0 0 auto;
+  letter-spacing: 0.02em;
+}
+
+.ev-source {
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 1px calc(var(--base) * 1.5);
+  border-radius: 2px;
+  flex: 0 0 auto;
+  min-width: 64px;
+  text-align: center;
+  color: var(--text-screenprint);
+}
+
+.ev-source.ev-mc500 {
+  background: rgba(125, 200, 255, 0.12);
+  color: #b0d7ff;
+  border: 1px solid rgba(125, 200, 255, 0.25);
+}
+
+.ev-source.ev-lcxl3 {
+  background: rgba(220, 130, 230, 0.12);
+  color: #e7b9ee;
+  border: 1px solid rgba(220, 130, 230, 0.25);
+}
+
+.ev-source.ev-mcu-out {
+  background: rgba(255, 155, 81, 0.12);
+  color: var(--accent-warm);
+  border: 1px solid rgba(255, 155, 81, 0.3);
+}
+
+.ev-source.ev-bridge {
+  background: rgba(108, 110, 104, 0.18);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-hairline);
+}
+
+.ev-text {
+  flex: 1 1 auto;
+  color: var(--text-screenprint);
+  letter-spacing: 0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Animations ──────────────────────────────────────────────────────────── */
+
+@keyframes led-pulse-green {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1.0; }
+}
+
+@keyframes led-flicker-red {
+  0%, 100% { opacity: 1.0; }
+  50% { opacity: 0.6; }
+}
+
+/* Honour reduced-motion preference — equipment LEDs are fine, but disable
+   continuous pulses for users who ask for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  .led.led-green,
+  .led.led-red,
+  .mmb-master-led[data-state="green"],
+  .mmb-master-led[data-state="red"] {
+    animation: none;
+  }
+}
