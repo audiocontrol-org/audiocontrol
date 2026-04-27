@@ -11,6 +11,93 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-27: midi-macro-bridge — Decade-Boundary Tolerance, Ableton Compat, LCXL3 Phase 5
+
+### Feature: midi-macro-bridge
+### Worktree: audiocontrol-midi-macro-bridge
+
+### Goal
+
+Long compound session that started as "investigate why LUNA locate overshoots by 1-2 bars sometimes" and ended with shipping a complete second input source for the bridge. Three sub-arcs:
+
+1. **Decade-boundary tolerance** — close out the LUNA / Logic overshoot bug surfaced from previous-session telemetry.
+2. **Ableton Live compatibility** — find out why locate and even basic playhead tracking didn't work with Live; discover that Live and the bridge's existing protocol stack don't align.
+3. **Phase 5: LCXL3 multi-input** — design + ship the Novation Launch Control XL Mk3 as a second, parallel input source for the bridge alongside the MC-500.
+
+### Accomplished
+
+**Decade-boundary tolerance (PRs #318, #319):**
+
+- Diagnosed the overshoot via per-iteration latency instrumentation in the LocateController. The smoking gun was `wait_ms=0` on iteration 2 of every locate that crossed a decade — meaning a position update was already queued in the mpsc channel when the controller asked for one. Iteration 2 was returning bogus position data because LUNA emits the `d7` and `d8` digits of the 10-digit BBT display as **two separate 3-byte CCs ~1 µs apart** at every decade boundary, and the controller was returning on the first one alone.
+- Fix landed in `McuPositionSource::wait_for_position_change` (PR #318): after the first bar-changing CC, drain the mpsc channel non-blocking + a 5 ms blocking settle window before returning. Companion CC catches up; controller sees the post-carry composite. Belt-and-braces tracker filter for the `bar=0` transient (9→10 case) as defense-in-depth.
+- Mirror byte-trace into `handle_mcu_byte_idle` (PR #319) so a single `RUST_LOG=debug` run captures every byte the DAW emits, idle and locate windows alike. Earned its keep diagnosing the next arc (Ableton).
+- Hardware-validated: target=41 from bar=1 reaches cleanly with no overshoot, both LUNA and Logic Pro work with the same controller code path.
+
+**Ableton Live compatibility (committed `02eeced2`):**
+
+Two compounding problems that the existing LUNA / Logic captures had never exposed:
+
+1. **CoreMIDI multi-message packet bundling.** Ableton sends ~10+ MIDI messages per packet (timecode display burst plus VU meters can total 30-189 bytes). The CoreMIDI virtual-destination callback delivered the whole packet as one `&[u8]`; `mcu::parse_cc_display` rejected anything ≠ 3 bytes, dropping every bundled position update wholesale. Fix: new `midi::split_midi_messages` (full MIDI parser — 3-byte channel msgs, 2-byte channel msgs, SysEx, System Common, System Realtime, orphan-data skip) wired into both the macOS CoreMIDI and Linux midir callbacks so downstream parsers always see one message per slice.
+
+2. **BBT separator-bit encoding.** Ableton flags the trailing decimal point on each BBT field by setting bit 6 on the digit byte (`0x71` = "'1' with separator dot lit"). LUNA / Logic use plain ASCII (`0x31`); Ableton's dotted variant didn't match `0x30..=0x39`. Fix: mask bit 6 in `DigitChar::from_byte`, so `0x60` parses as Blank and `0x70-0x79` parse as their unmasked digit.
+
+After both fixes, Ableton's playhead position parsed correctly during playback. Closed-loop locate from MC-500 SPP still doesn't work with Ableton (Ableton's MCU emulation ignores the jog-wheel CC), but that's an Ableton-side architectural fact — for Ableton the right path is its native external sync mode, not bridge-driven locate.
+
+**LCXL3 → Phase 5 (8 commits, 122 unit tests passing):**
+
+Started by capturing the Novation LCXL3 ↔ Live conversation against real hardware. Decoded the DAW activation handshake (probe `02 00` → echo → Universal Device Inquiry → claim `02 7F` → host-name page metadata → transport-LED preset). Built the `--lcxl3-activate` one-shot CLI mode that fires the full handshake; confirmed on hardware that the device's transport buttons illuminate and emit clean CCs (`B0 74 7F` = Play press, etc.).
+
+Designed the architecture in plan mode, wrote feature documentation (PRD update, workplan with sub-phases 5a-5e, README status table, GitHub issues #320 parent + #321-325 children, decoded handshake reference doc `lcxl3-handshake-trace.md`), then implemented in dependency order:
+
+- **5b** (`aaa8c4ca`) — `state.rs`: new `TransportEvent` variants `TogglePlay`, `NudgeForward(u32)`, `NudgeBackward(u32)`. `Machine::handle` resolves toggles (Stopped→Playing emits bare `[Play]` since LUNA snaps to play-start on Stop; no `ReturnToZero` needed). Nudge events emit N × `BarForward`/`BarBackward` while Stopped, ignored while Playing or Locating. `transport_to_locate_event` returns `None` for the new variants so the LocateController drops LCXL3 events mid-locate. 9 new state-machine tests.
+
+- **5a** (`dd70825f`) — `src/lcxl3.rs`: handshake byte constants (`DAW_PROBE`, `DAW_CLAIM`, `UDI`, `DAW_DEACTIVATE`), `host_name_sequence()` builder, transport-LED CCs, `parse(&[u8]) -> Option<TransportEvent>`, `led_for_state(&TransportState) -> Option<[u8; 3]>`, `handshake_send(&mut MidiOutputConnection, host_name)` and `deactivate_send(...)` helpers. Migrated `--lcxl3-activate` to use the new module. 14 new unit tests.
+
+- **5c** (`777dac93`) — `config.rs`: `[lcxl3]` TOML section (`enabled` default false, `input_port`, `output_port`, `host_name`). 4 new round-trip tests covering absent / partial / full / default-vs-empty parity.
+
+- **5d** (`1a799c76`) — `main.rs`: cloned the transport-event Sender so MC-500 and LCXL3 callbacks both push into the existing channel. Opened LCXL3 input via `connect_raw`, output via `connect_output`, fired `handshake_send` on startup, mirrored LED state on every `Machine` transition via `lcxl3::led_for_state`, sent deactivation SysEx on Ctrl-C. Warn-and-continue on every LCXL3 failure path so MC-500 never goes down.
+
+- **5e** (`38b44ffc`) — Hardware validation. User confirmed "Works great." Captured live: TogglePlay drives LUNA both directions, jog encoder nudges 1-2 bars per CC with magnitude clamp respected, encoder during playback silently dropped, sync-on-stop fires correctly after `TogglePlay → Stop`, deactivation SysEx fires on Ctrl-C. Bonus parser fix discovered during 5e: original parser matched the wrong CC pair (channel-7 CCs `0x1E`/`0x1F` with sign-magnitude, which turned out to be a V-pot's absolute-position state-mirror that the device emits on every handshake). Real jog wheel is on channel-16 CC `0x5D` with center-at-64 encoding (`0x41` = +1, `0x3F` = -1). Tests, parser, and reference doc all corrected.
+
+Final state: branch `feature/midi-macro-bridge-ableton` has 8 commits ahead of `main`. All Phase 5 issues (#320–#325) closed. 122 unit tests passing (was 94 at session start). Hardware-validated end-to-end on user's rig (LUNA + LCXL3 + MC-500 simultaneous).
+
+### Didn't Work
+
+- **First Ableton overshoot diagnosis was wrong.** I initially hypothesised that LUNA was receiving SPP directly via MIDI routing and competing with the bridge's locate. User flatly contradicted: "I know for a fact that LUNA ignores incoming SPP, sync and transport control messages." Correct diagnosis (CoreMIDI packet bundling) only landed after I added byte-level tracing.
+- **First LCXL3 activation attempt sent only `02 7F`** (just the DAW-claim SysEx). Device went into a half-handshake state — buttons emitted bytes but the panel looked broken visually. Had to capture a fresh Live → LCXL3 trace and replicate the full sequence (probe → UDI → claim → host name → LED preset).
+- **Initial parser for the LCXL3 jog encoder used the wrong CC pair.** Picked channel-7 `0x1E` / `0x1F` because that's what the device emitted in the early capture I had — turned out those were the *current absolute V-pot position* sent on every handshake, not encoder ticks. The actual jog wheel is channel-16 CC `0x5D`. Caught during 5e hardware validation when the bridge fired phantom `NudgeForward(4)` events at startup with no human input.
+
+### Course Corrections
+
+- [FABRICATION] Hypothesised Ableton's locate problem was about LUNA receiving SPP directly without checking. User shut it down with concrete fact-claim. Lesson: when the user has an authoritative claim about behaviour, take it as a constraint and re-examine my diagnosis against it.
+- [PROCESS] Tried the LCXL3 activation with just one SysEx (`02 7F`) before doing the full handshake captured from Live. User pointed out the device entered a "bad state" — visual indicator that something was incomplete. Should have replicated the full Live → LCXL3 sequence from the start; the captured trace was already in front of me.
+- [DOCUMENTATION] Wrote `lcxl3-handshake-trace.md` initially documenting the wrong jog-encoder CC. Caught only when running 5e hardware tests and seeing phantom events. Lesson: when documenting captured byte sequences, run a deliberate "press just this one control, see exactly which bytes appear" probe before writing them up — don't infer from one ambiguous capture.
+- [COMPLEXITY] User pushed back on the idea of replicating Live's full ~250-message LCXL3 init sequence. "Replicating Live's full init… is significant work." Pivoted to a minimum subset: handshake + transport-LED preset only. Other LEDs stay dark; device looks "minimal" rather than "broken." Acceptable for v1.
+- [PROCESS] Originally planned 5a, 5b, 5c as parallelisable. They aren't — 5a's parser needs 5b's `TransportEvent` variants. Re-ordered to 5b → 5a → 5c → 5d → 5e at implementation time. Lesson: when the plan claims "parallelisable", verify the dependency direction by checking whether each phase's API references types defined in the others.
+- [UX] User course-corrected the LCXL3 Play button semantics: "Luna automatically returns to its start position on stop. I like that behavior." So `TogglePlay` while Stopped emits bare `[Play]` (not `[ReturnToZero, Play]` like Start does) — the existing snap-on-stop behaviour is sufficient, no extra rewind needed. Saved a redundant action emit per Play press.
+- [PROCESS] Started auto-running things in background and then leaving them. User flagged that for hardware-touching work I should explicitly tell them when the bridge is ready and wait for them to drive interactions, then read logs after. Adopted that loop for all subsequent hardware tests.
+
+### Quantitative
+
+- Session length: ~12 hours wall-clock spread over multiple Claude sessions (compaction summary indicates this is a continuation of the LUNA tolerance investigation).
+- Branch commits this session: 8 (`feature/midi-macro-bridge-ableton`)
+- PRs landed in `main` during the session: 2 (#318 decade-boundary fix, #319 idle byte-trace)
+- GitHub issues created and closed: 6 (#320 parent + #321-325 sub-phases for Phase 5)
+- Tests added: +28 (94 → 122)
+- Approximate user messages: ~80
+- Approximate user course-corrections: ~7 (counted above)
+- Fresh hardware probe captures during the session: 4 (Logic-locate-debug, Ableton-locate-debug, LCXL3-activate, LCXL3-controls)
+
+### Insights
+
+- **Per-iteration instrumentation pays for itself within hours.** The `wait_ms=0` data point in the locate-step log was the diagnostic key for the decade-boundary bug. Adding latency telemetry was a 30-line change; without it the fix would have been guesswork.
+- **DAW protocols are not interchangeable.** LUNA, Logic, Ableton, and the LCXL3 each speak a different dialect of MCU/DAW protocols. LUNA uses HUI-style per-digit CCs. Logic uses similar but with different burst patterns. Ableton bundles messages and uses dot-flag bytes. The LCXL3 uses Novation-specific CC mappings layered on top of MCU. Generic "MCU support" is fictional; each DAW needs its own captured-bytes baseline.
+- **Capture before code, even when you think you remember the protocol.** The LCXL3 jog-CC bug came from "I think this is the encoder" inference. The ground-truth fix was a deliberate empirical probe — press one specific control, see exactly which bytes appear. 30 minutes of capture saved hours of speculative code.
+- **The "minimum init for v1" pattern is reusable.** Replicating a DAW's full init sequence is huge work and produces fragile code. Identifying the minimum subset required for the controls *we actually use* is much smaller and won't break when the DAW updates its init burst. Phase 5 documented this approach in the LCXL3 handshake trace; future device integrations should follow the same pattern.
+- **Defense-in-depth is justified at protocol boundaries.** The decade-boundary fix landed both a `bar=0` tracker filter AND a CC-drain settle window. They're independent: the drain handles the locate-loop case; the filter handles every other consumer (sync-on-stop, idle drain). Code review's instinct was "this is redundant" — but each layer protects a different code path. Documented in the commit message so future readers see why both exist.
+
+---
+
 ## 2026-04-23: midi-macro-bridge Phase 3 + Phase 4 Implementation and Validation
 
 ### Feature: midi-macro-bridge

@@ -42,16 +42,27 @@ pub enum TransportState {
 }
 
 /// Events the bridge handles — transport bytes from the MC-500 plus
-/// Song Position Pointer. SPP's payload is the 14-bit target position
+/// Song Position Pointer, plus the LCXL3-style toggle / nudge events
+/// added in Phase 5. SPP's payload is the 14-bit target position
 /// reconstructed from the two MIDI data bytes, translated to a
 /// whole-bar target by the caller before it reaches us (see
 /// `midi::parse_transport`).
+///
+/// `TogglePlay`, `NudgeForward`, and `NudgeBackward` come from
+/// LCXL3-style devices that don't speak MIDI System Realtime — the
+/// LCXL3 sends a single CC for "Play/Stop pressed" (toggle) and CCs
+/// for relative encoder ticks. The state machine resolves the toggle
+/// based on its current state and clamps nudge counts the parser
+/// already pre-clamped at the input layer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransportEvent {
-    Start,       // 0xFA — play from top
-    Continue,    // 0xFB — resume from current position
-    Stop,        // 0xFC — stop
-    Spp(u32),    // 0xF2 ll hh — target bar (1-based) for closed-loop locate
+    Start,             // 0xFA — play from top (MC-500)
+    Continue,          // 0xFB — resume from current position (MC-500)
+    Stop,              // 0xFC — stop (MC-500)
+    Spp(u32),          // 0xF2 ll hh — target bar (1-based) for closed-loop locate (MC-500)
+    TogglePlay,        // LCXL3 Play/Stop button — Play if Stopped, Stop if Playing
+    NudgeForward(u32), // LCXL3 transport encoder forward by N bars (clamped at parser)
+    NudgeBackward(u32),// LCXL3 transport encoder backward by N bars
 }
 
 /// Abstract, backend-agnostic actions emitted by the state machine.
@@ -190,6 +201,37 @@ impl Machine {
                 self.state = Locating { target };
                 vec![]
             }
+
+            // --- LCXL3-style toggle and nudge events -----------------------
+            //
+            // TogglePlay resolves to Play or Stop based on current state.
+            // LUNA snaps the playhead to its play-start position on Stop, so
+            // the Stopped → Playing transition uses bare `Play` (not
+            // `[ReturnToZero, Play]` like Start does) — pressing Play after
+            // a previous Stop resumes from the right place naturally.
+
+            (Stopped, E::TogglePlay) => {
+                self.state = Playing;
+                vec![Action::Play]
+            }
+            (Playing, E::TogglePlay) => {
+                self.state = Stopped;
+                vec![Action::Stop]
+            }
+            // Toggle while locating: ignore. The LocateController is busy;
+            // the user can press Stop on the MC-500 to cancel if they want.
+            (Locating { .. }, E::TogglePlay) => vec![],
+
+            // Nudge events emit one BarForward / BarBackward per tick while
+            // stopped. Nudging during playback or a locate is intentionally
+            // ignored — bar-stepping while playing would fight LUNA's
+            // playhead, and nudging during a closed-loop locate would fight
+            // the controller. The parser is responsible for clamping `n`
+            // before the event reaches the state machine.
+            (Stopped, E::NudgeForward(n)) => vec![Action::BarForward; n as usize],
+            (Stopped, E::NudgeBackward(n)) => vec![Action::BarBackward; n as usize],
+            (Playing, E::NudgeForward(_)) | (Playing, E::NudgeBackward(_)) => vec![],
+            (Locating { .. }, E::NudgeForward(_)) | (Locating { .. }, E::NudgeBackward(_)) => vec![],
         }
     }
 
@@ -418,5 +460,93 @@ mod tests {
         // Calling complete_locate while playing is a harmless no-op.
         assert_eq!(m.complete_locate(true, true), vec![]);
         assert_eq!(m.state(), Playing);
+    }
+
+    // ---- LCXL3 toggle / nudge events --------------------------------------
+
+    #[test]
+    fn toggle_play_from_stopped_emits_bare_play() {
+        // No ReturnToZero — LUNA's snap-on-stop means the playhead is
+        // already where the user expects.
+        let mut m = Machine::new();
+        assert_eq!(m.handle(E::TogglePlay), vec![A::Play]);
+        assert_eq!(m.state(), Playing);
+    }
+
+    #[test]
+    fn toggle_play_from_playing_stops() {
+        let mut m = Machine::new();
+        m.handle(E::Start);
+        assert_eq!(m.handle(E::TogglePlay), vec![A::Stop]);
+        assert_eq!(m.state(), Stopped);
+    }
+
+    #[test]
+    fn toggle_play_round_trip_alternates_states() {
+        let mut m = Machine::new();
+        assert_eq!(m.handle(E::TogglePlay), vec![A::Play]);
+        assert_eq!(m.handle(E::TogglePlay), vec![A::Stop]);
+        assert_eq!(m.handle(E::TogglePlay), vec![A::Play]);
+        assert_eq!(m.state(), Playing);
+    }
+
+    #[test]
+    fn toggle_play_during_locate_is_ignored() {
+        let mut m = Machine::new();
+        m.handle(E::Spp(17));
+        assert_eq!(m.state(), Locating { target: 17 });
+        assert_eq!(m.handle(E::TogglePlay), vec![]);
+        assert_eq!(m.state(), Locating { target: 17 });
+    }
+
+    #[test]
+    fn nudge_forward_while_stopped_emits_n_bar_forwards() {
+        let mut m = Machine::new();
+        assert_eq!(m.handle(E::NudgeForward(1)), vec![A::BarForward]);
+        assert_eq!(m.state(), Stopped);
+
+        assert_eq!(
+            m.handle(E::NudgeForward(3)),
+            vec![A::BarForward, A::BarForward, A::BarForward]
+        );
+        assert_eq!(m.state(), Stopped);
+    }
+
+    #[test]
+    fn nudge_backward_while_stopped_emits_n_bar_backwards() {
+        let mut m = Machine::new();
+        assert_eq!(
+            m.handle(E::NudgeBackward(2)),
+            vec![A::BarBackward, A::BarBackward]
+        );
+        assert_eq!(m.state(), Stopped);
+    }
+
+    #[test]
+    fn nudge_zero_emits_no_actions() {
+        // Defensive: a clamp-to-zero from the parser should produce no
+        // actions, not panic or fall through to some default arm.
+        let mut m = Machine::new();
+        assert_eq!(m.handle(E::NudgeForward(0)), vec![]);
+        assert_eq!(m.handle(E::NudgeBackward(0)), vec![]);
+        assert_eq!(m.state(), Stopped);
+    }
+
+    #[test]
+    fn nudge_during_playback_is_ignored() {
+        let mut m = Machine::new();
+        m.handle(E::Start);
+        assert_eq!(m.handle(E::NudgeForward(2)), vec![]);
+        assert_eq!(m.handle(E::NudgeBackward(2)), vec![]);
+        assert_eq!(m.state(), Playing);
+    }
+
+    #[test]
+    fn nudge_during_locate_is_ignored() {
+        let mut m = Machine::new();
+        m.handle(E::Spp(17));
+        assert_eq!(m.handle(E::NudgeForward(1)), vec![]);
+        assert_eq!(m.handle(E::NudgeBackward(1)), vec![]);
+        assert_eq!(m.state(), Locating { target: 17 });
     }
 }

@@ -65,9 +65,15 @@ impl DigitChar {
     }
 
     fn from_byte(value: u8) -> Option<DigitChar> {
-        match value {
+        // Ableton flags the trailing decimal point of each BBT field by
+        // setting bit 6 (0x40) on the digit byte — so `0x71` is "'1'
+        // with the separator dot lit", not a different character. Strip
+        // bit 6 before matching the digit range so DAWs that use this
+        // convention parse identically to ones that don't (LUNA, Logic).
+        let masked = value & !0x40;
+        match masked {
             0x20 => Some(DigitChar::Blank),
-            0x30..=0x39 => Some(DigitChar::Digit(value - 0x30)),
+            0x30..=0x39 => Some(DigitChar::Digit(masked - 0x30)),
             _ => None,
         }
     }
@@ -302,11 +308,32 @@ mod tests {
 
     #[test]
     fn rejects_unexpected_byte_values() {
-        // LUNA only ever emits blank (0x20) or ASCII digit (0x30-0x39).
+        // LUNA only ever emits blank (0x20) or ASCII digit (0x30-0x39),
+        // optionally with bit 6 set as a separator-dot flag (Ableton).
         // Anything else is a parse error, not silently zero.
         assert_eq!(parse_cc_display(&[0xB0, 0x40, 0x2E]), None); // '.'
-        assert_eq!(parse_cc_display(&[0xB0, 0x40, 0x41]), None); // 'A'
-        assert_eq!(parse_cc_display(&[0xB0, 0x40, 0x7F]), None); // max 7-bit
+        assert_eq!(parse_cc_display(&[0xB0, 0x40, 0x41]), None); // 'A' → masked 0x01
+        assert_eq!(parse_cc_display(&[0xB0, 0x40, 0x7F]), None); // 7F → masked 0x3F
+        assert_eq!(parse_cc_display(&[0xB0, 0x40, 0x00]), None); // null
+        assert_eq!(parse_cc_display(&[0xB0, 0x40, 0x6F]), None); // 6F → masked 0x2F
+    }
+
+    /// Ableton sets bit 6 (0x40) on digit bytes to indicate the BBT
+    /// separator dot is lit on that field. `0x71` decodes as "'1' with
+    /// dot" — same numeric value as `0x31`. Captured live in
+    /// ableton-locate-debug.log: a stopped Ableton session at
+    /// bar 1 beat 1 sixteenth 1 tick 1 sends d7=d5=d3=0x71 and d0=0x31
+    /// (no dot after the trailing tick field).
+    #[test]
+    fn parses_digit_with_bit6_separator_flag() {
+        let dotted = parse_cc_display(&[0xB0, 0x47, 0x71]).unwrap();
+        assert_eq!(dotted.value, DigitChar::Digit(1));
+        let plain = parse_cc_display(&[0xB0, 0x47, 0x31]).unwrap();
+        assert_eq!(plain.value, DigitChar::Digit(1));
+
+        // Blank with the dot bit set is still blank.
+        let blank_with_dot = parse_cc_display(&[0xB0, 0x40, 0x60]).unwrap();
+        assert_eq!(blank_with_dot.value, DigitChar::Blank);
     }
 
     #[test]

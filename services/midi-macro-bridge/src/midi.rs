@@ -42,6 +42,79 @@ use midir::os::unix::{VirtualInput, VirtualOutput};
 use crate::state::TransportEvent;
 
 // ---------------------------------------------------------------------------
+// MIDI message splitter — converts a CoreMIDI packet (which can carry many
+// concatenated MIDI messages) into individual messages so downstream
+// parsers can rely on "one message per byte slice".
+// ---------------------------------------------------------------------------
+
+/// Split a buffer of concatenated MIDI bytes into individual messages.
+///
+/// CoreMIDI delivers packets that may contain N MIDI messages
+/// back-to-back (Ableton bundles up to ~189 bytes per packet). Our
+/// downstream parsers (`mcu::parse_cc_display`, `mcu::parse_heartbeat_query`)
+/// expect a single complete message per `&[u8]`, so without splitting
+/// they reject every bundled packet wholesale — which silently drops
+/// position info from any DAW that bundles.
+///
+/// Behaviour:
+/// - 3-byte channel messages: Note On/Off, Poly AT, CC, Pitch Bend
+///   (status `0x80`-`0xBF`, `0xE0`-`0xEF`).
+/// - 2-byte channel messages: Program Change, Channel Pressure
+///   (status `0xC0`-`0xDF`).
+/// - SysEx: `0xF0` ... `0xF7`, variable length.
+/// - System Common: `0xF1`/`0xF3` (2 byte), `0xF2` (3 byte), single-byte
+///   `0xF4`-`0xF6`.
+/// - System Realtime: `0xF8`-`0xFF` (1 byte each).
+/// - Stray bytes without a leading status (orphan data, running-status
+///   mid-packet) are skipped — we don't carry running status across
+///   message boundaries because MCU surfaces don't use it in practice.
+///
+/// Truncated trailing messages (status byte without the expected data)
+/// are dropped silently — a well-formed packet shouldn't produce this.
+pub fn split_midi_messages(bytes: &[u8]) -> Vec<Vec<u8>> {
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < bytes.len() {
+        let status = bytes[i];
+        // Skip orphan data bytes (high bit clear) until we find the
+        // next status byte.
+        if status < 0x80 {
+            i += 1;
+            continue;
+        }
+        let len = match status {
+            0x80..=0xBF | 0xE0..=0xEF => 3,
+            0xC0..=0xDF => 2,
+            0xF0 => {
+                // SysEx: scan for terminating 0xF7. If unterminated,
+                // drop the rest of the buffer (malformed).
+                let mut j = i + 1;
+                while j < bytes.len() && bytes[j] != 0xF7 {
+                    j += 1;
+                }
+                if j == bytes.len() {
+                    return out;
+                }
+                j - i + 1
+            }
+            0xF1 | 0xF3 => 2,
+            0xF2 => 3,
+            // Stray 0xF7 (end-of-SysEx without start), single-byte
+            // System Common (0xF4-F6), and System Realtime (0xF8-FF)
+            // are all 1-byte. The early `< 0x80` skip means we can't
+            // see data bytes here.
+            _ => 1,
+        };
+        if i + len > bytes.len() {
+            return out;
+        }
+        out.push(bytes[i..i + len].to_vec());
+        i += len;
+    }
+    out
+}
+
+// ---------------------------------------------------------------------------
 // Physical MIDI input (all platforms, via midir)
 // ---------------------------------------------------------------------------
 
@@ -287,7 +360,13 @@ where
     let destination = client
         .virtual_destination(endpoint_name, move |packet_list| {
             for packet in packet_list.iter() {
-                on_bytes(packet.data());
+                // Split bundled messages — Ableton can pack 10+
+                // messages per packet (timecode display + VU meters in
+                // one batch), and downstream parsers want one message
+                // per call.
+                for msg in split_midi_messages(packet.data()) {
+                    on_bytes(&msg);
+                }
             }
         })
         .map_err(|os_status| {
@@ -330,7 +409,14 @@ where
     let input = midi_in
         .create_virtual(
             endpoint_name,
-            move |_timestamp, bytes, _| on_bytes(bytes),
+            move |_timestamp, bytes, _| {
+                // Match the macOS path: split bundled MIDI messages so
+                // downstream consumers see one message per call,
+                // regardless of how the underlying transport batched.
+                for msg in split_midi_messages(bytes) {
+                    on_bytes(&msg);
+                }
+            },
             (),
         )
         .map_err(|e| anyhow!("failed to create virtual MIDI input '{endpoint_name}': {e}"))?;
@@ -509,5 +595,107 @@ mod tests {
     fn ignores_active_sensing() {
         // 0xFE is Active Sensing — some hardware spams it.
         assert_eq!(parse_transport(&[0xFE]), None);
+    }
+
+    // ---- split_midi_messages ---------------------------------------------
+
+    #[test]
+    fn splitter_passes_through_single_3byte_message() {
+        let msgs = split_midi_messages(&[0xB0, 0x47, 0x32]);
+        assert_eq!(msgs, vec![vec![0xB0, 0x47, 0x32]]);
+    }
+
+    #[test]
+    fn splitter_separates_back_to_back_ccs() {
+        // 6 bytes = two 3-byte CC messages back-to-back. This is the
+        // decade-carry batch pattern (probe-send-jog-fwd.log).
+        let msgs = split_midi_messages(&[0xB0, 0x47, 0x30, 0xB0, 0x48, 0x31]);
+        assert_eq!(
+            msgs,
+            vec![vec![0xB0, 0x47, 0x30], vec![0xB0, 0x48, 0x31]]
+        );
+    }
+
+    #[test]
+    fn splitter_handles_ableton_timecode_burst() {
+        // Captured live in ableton-locate-debug.log: a 38-byte packet
+        // carrying d0..d9 of the BBT display followed by 8 channel-
+        // pressure VU updates. Every B0 4X CC must come out as its own
+        // 3-byte message; D0 channel pressures as 2-byte messages.
+        let packet = [
+            0xB0, 0x40, 0x31, 0xB0, 0x41, 0x30, 0xB0, 0x42, 0x30, 0xB0, 0x43, 0x71, 0xB0, 0x44,
+            0x30, 0xB0, 0x45, 0x71, 0xB0, 0x46, 0x30, 0xB0, 0x47, 0x71, 0xB0, 0x48, 0x30, 0xB0,
+            0x49, 0x30, 0xD0, 0x00, 0xD0, 0x10, 0xD0, 0x20, 0xD0, 0x30,
+        ];
+        let msgs = split_midi_messages(&packet);
+        assert_eq!(msgs.len(), 14, "10 CCs + 4 channel pressures");
+        for msg in &msgs[..10] {
+            assert_eq!(msg.len(), 3, "CC messages are 3 bytes");
+            assert_eq!(msg[0], 0xB0);
+        }
+        for msg in &msgs[10..] {
+            assert_eq!(msg.len(), 2, "Channel pressure messages are 2 bytes");
+            assert_eq!(msg[0], 0xD0);
+        }
+    }
+
+    #[test]
+    fn splitter_handles_sysex_inside_packet() {
+        // Heartbeat probe (7 bytes) followed by a CC. SysEx terminates
+        // at 0xF7 and the splitter should recover to status parsing.
+        let packet = [
+            0xF0, 0x00, 0x00, 0x66, 0x14, 0x00, 0xF7, // heartbeat for 0x14
+            0xB0, 0x47, 0x32, // d7='2'
+        ];
+        let msgs = split_midi_messages(&packet);
+        assert_eq!(msgs.len(), 2);
+        assert_eq!(msgs[0].len(), 7);
+        assert_eq!(msgs[0][0], 0xF0);
+        assert_eq!(*msgs[0].last().unwrap(), 0xF7);
+        assert_eq!(msgs[1], vec![0xB0, 0x47, 0x32]);
+    }
+
+    #[test]
+    fn splitter_drops_unterminated_sysex() {
+        // SysEx with no F7 — drop and stop, don't try to parse what's
+        // after it as a fresh message (we'd risk reading SysEx data
+        // bytes as status).
+        let packet = [0xF0, 0x00, 0x00, 0x66, 0x14, 0x00];
+        assert!(split_midi_messages(&packet).is_empty());
+    }
+
+    #[test]
+    fn splitter_skips_orphan_data_bytes() {
+        // Leading data bytes (no status) — we don't track running
+        // status across packet boundaries, so just discard them and
+        // resync at the next status byte.
+        let packet = [0x40, 0x32, 0xB0, 0x47, 0x31];
+        let msgs = split_midi_messages(&packet);
+        assert_eq!(msgs, vec![vec![0xB0, 0x47, 0x31]]);
+    }
+
+    #[test]
+    fn splitter_truncates_on_short_trailing_message() {
+        // Status byte at the end with insufficient data bytes — drop
+        // the partial message rather than reading past the buffer.
+        let packet = [0xB0, 0x47, 0x32, 0xB0, 0x48]; // CC then partial
+        let msgs = split_midi_messages(&packet);
+        assert_eq!(msgs, vec![vec![0xB0, 0x47, 0x32]]);
+    }
+
+    #[test]
+    fn splitter_handles_2_and_3_byte_channel_messages_mixed() {
+        // Program change (0xC0, 2 bytes) + Note on (0x90, 3 bytes) +
+        // Channel pressure (0xD0, 2 bytes).
+        let packet = [0xC0, 0x05, 0x90, 0x3C, 0x7F, 0xD0, 0x40];
+        let msgs = split_midi_messages(&packet);
+        assert_eq!(
+            msgs,
+            vec![
+                vec![0xC0, 0x05],
+                vec![0x90, 0x3C, 0x7F],
+                vec![0xD0, 0x40],
+            ]
+        );
     }
 }

@@ -56,6 +56,15 @@ pub struct Config {
     /// feature is on out of the box (see LocateConfigToml::default()).
     #[serde(default)]
     pub locate: LocateConfigToml,
+
+    /// Novation Launch Control XL Mk3 input + LED-output settings.
+    /// Optional; defaults to `enabled = false` so MC-500-only users
+    /// see no behaviour change. When enabled, the bridge opens the
+    /// LCXL3's DAW Out / DAW In ports, runs the activation handshake
+    /// at startup, listens for transport events, and mirrors LED
+    /// state back. See `LcxlConfig::default()`.
+    #[serde(default)]
+    pub lcxl3: LcxlConfig,
 }
 
 impl Default for Config {
@@ -66,6 +75,7 @@ impl Default for Config {
             enabled_on_startup: true,
             transport: TransportConfig::default(),
             locate: LocateConfigToml::default(),
+            lcxl3: LcxlConfig::default(),
         }
     }
 }
@@ -199,6 +209,62 @@ fn default_position_timeout_ms() -> u64 {
 }
 fn default_initial_position_timeout_ms() -> u64 {
     3000
+}
+
+/// Novation Launch Control XL Mk3 settings. Disabled by default so
+/// existing MC-500-only users see no behaviour change. When enabled,
+/// the bridge opens the device's DAW Out / DAW In ports at startup,
+/// runs the activation handshake (the `lcxl3::handshake_send`
+/// sequence), listens for transport events, and pushes LED state
+/// back when the transport state changes.
+#[derive(Debug, Deserialize)]
+pub struct LcxlConfig {
+    /// Master switch. False by default — explicit opt-in keeps the
+    /// existing MC-500-only path unaffected.
+    #[serde(default = "default_lcxl3_enabled")]
+    pub enabled: bool,
+
+    /// Substring match for the LCXL3's DAW Out port (the device's
+    /// output → bridge's input). Default `"LCXL3 1 DAW Out"` matches
+    /// the macOS port name as Novation registers it.
+    #[serde(default = "default_lcxl3_input_port")]
+    pub input_port: String,
+
+    /// Substring match for the LCXL3's DAW In port (bridge's output
+    /// → device's input). Default `"LCXL3 1 DAW In"`.
+    #[serde(default = "default_lcxl3_output_port")]
+    pub output_port: String,
+
+    /// ASCII text shown on the device's display as the host name
+    /// during DAW mode. Mirrored from Live's pattern (Live sends
+    /// `"Live 12"`); `"Bridge"` is short and identifies what's
+    /// actually driving the device.
+    #[serde(default = "default_lcxl3_host_name")]
+    pub host_name: String,
+}
+
+impl Default for LcxlConfig {
+    fn default() -> Self {
+        Self {
+            enabled: default_lcxl3_enabled(),
+            input_port: default_lcxl3_input_port(),
+            output_port: default_lcxl3_output_port(),
+            host_name: default_lcxl3_host_name(),
+        }
+    }
+}
+
+fn default_lcxl3_enabled() -> bool {
+    false
+}
+fn default_lcxl3_input_port() -> String {
+    "LCXL3 1 DAW Out".to_string()
+}
+fn default_lcxl3_output_port() -> String {
+    "LCXL3 1 DAW In".to_string()
+}
+fn default_lcxl3_host_name() -> String {
+    "Bridge".to_string()
 }
 
 fn default_delay() -> u64 {
@@ -376,6 +442,67 @@ mod tests {
         "#;
         let cfg: Config = toml::from_str(toml_text).unwrap();
         assert!(!cfg.locate.enabled);
+    }
+
+    #[test]
+    fn lcxl3_defaults_to_disabled() {
+        // Existing MC-500-only configs must continue to behave
+        // identically — no [lcxl3] section means feature is off.
+        let toml_text = r#"
+            midi_input_port = "MC-500"
+        "#;
+        let cfg: Config = toml::from_str(toml_text).unwrap();
+        assert!(!cfg.lcxl3.enabled);
+        assert_eq!(cfg.lcxl3.input_port, "LCXL3 1 DAW Out");
+        assert_eq!(cfg.lcxl3.output_port, "LCXL3 1 DAW In");
+        assert_eq!(cfg.lcxl3.host_name, "Bridge");
+    }
+
+    #[test]
+    fn lcxl3_partial_section_uses_per_field_defaults() {
+        // Setting just `enabled = true` keeps everything else at
+        // default — important for a "smallest opt-in" UX.
+        let toml_text = r#"
+            midi_input_port = "MC-500"
+
+            [lcxl3]
+            enabled = true
+        "#;
+        let cfg: Config = toml::from_str(toml_text).unwrap();
+        assert!(cfg.lcxl3.enabled);
+        assert_eq!(cfg.lcxl3.input_port, "LCXL3 1 DAW Out");
+        assert_eq!(cfg.lcxl3.output_port, "LCXL3 1 DAW In");
+        assert_eq!(cfg.lcxl3.host_name, "Bridge");
+    }
+
+    #[test]
+    fn lcxl3_full_section_parses_overrides() {
+        let toml_text = r#"
+            midi_input_port = "MC-500"
+
+            [lcxl3]
+            enabled = true
+            input_port = "Custom Device DAW Out"
+            output_port = "Custom Device DAW In"
+            host_name = "MyBridge"
+        "#;
+        let cfg: Config = toml::from_str(toml_text).unwrap();
+        assert!(cfg.lcxl3.enabled);
+        assert_eq!(cfg.lcxl3.input_port, "Custom Device DAW Out");
+        assert_eq!(cfg.lcxl3.output_port, "Custom Device DAW In");
+        assert_eq!(cfg.lcxl3.host_name, "MyBridge");
+    }
+
+    #[test]
+    fn lcxl3_default_matches_empty_toml() {
+        // Same invariant as the top-level config: the no-config
+        // path (Config::default) must agree with empty-TOML parsing.
+        let from_toml: Config = toml::from_str("").unwrap();
+        let from_default = Config::default();
+        assert_eq!(from_toml.lcxl3.enabled, from_default.lcxl3.enabled);
+        assert_eq!(from_toml.lcxl3.input_port, from_default.lcxl3.input_port);
+        assert_eq!(from_toml.lcxl3.output_port, from_default.lcxl3.output_port);
+        assert_eq!(from_toml.lcxl3.host_name, from_default.lcxl3.host_name);
     }
 
     #[test]

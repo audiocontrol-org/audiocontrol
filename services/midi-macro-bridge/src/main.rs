@@ -16,6 +16,7 @@ use tracing::{error, info, warn};
 mod backend;
 mod config;
 mod keys;
+mod lcxl3;
 mod locate;
 mod mcu;
 mod midi;
@@ -64,6 +65,24 @@ fn main() -> Result<()> {
     // and we capture them for offline analysis.
     if args.iter().any(|a| a == "--probe-mcu") {
         return run_probe_mcu();
+    }
+
+    // --lcxl3-activate [substring]: send the Novation DAW-mode
+    // activation SysEx to a Launch Control XL Mk3, then dump
+    // everything the device emits on its DAW Out port. This is a
+    // one-shot probe to confirm the device's transport buttons
+    // wake up once a "host" claims to be a DAW.
+    //
+    // Optional substring narrows the port match (default "LCXL3").
+    // Sends the deactivation SysEx on Ctrl-C so the device returns
+    // to its idle state.
+    if let Some(idx) = args.iter().position(|a| a == "--lcxl3-activate") {
+        let substring = args
+            .get(idx + 1)
+            .filter(|a| !a.starts_with("--"))
+            .map(String::as_str)
+            .unwrap_or("LCXL3");
+        return run_lcxl3_activate(substring);
     }
 
     // --send-mcu <spec> [args...]: emit a candidate MCU message to
@@ -163,9 +182,10 @@ fn main() -> Result<()> {
         );
         None
     } else {
+        let tx_mc500 = tx.clone();
         Some(
             midi::connect(&config.midi_input_port, move |event| {
-                if let Err(e) = tx.send(event) {
+                if let Err(e) = tx_mc500.send(event) {
                     // Channel closed — main loop has exited. Nothing to do.
                     error!(?e, "channel send failed");
                 }
@@ -178,6 +198,73 @@ fn main() -> Result<()> {
                 )
             })?,
         )
+    };
+
+    // LCXL3 input — second transport-event source alongside the MC-500.
+    // Opt-in via `[lcxl3] enabled = true` in config; defaults off so
+    // existing MC-500-only setups see no behaviour change. Both input
+    // sources feed the same `tx` channel; the state machine arbitrates
+    // events from either source the same way.
+    //
+    // Failures are handled with warn-and-continue: a missing LCXL3 (or
+    // a port-name mismatch) shouldn't take down the MC-500 path.
+    let _lcxl3_input_conn = if config.lcxl3.enabled {
+        let tx_lcxl3 = tx.clone();
+        let port = config.lcxl3.input_port.clone();
+        match midi::connect_raw(&port, move |bytes| {
+            if let Some(event) = lcxl3::parse(bytes) {
+                if let Err(e) = tx_lcxl3.send(event) {
+                    error!(?e, "lcxl3 channel send failed");
+                }
+            }
+        }) {
+            Ok(conn) => {
+                info!(port = %port, "LCXL3 input ready");
+                Some(conn)
+            }
+            Err(e) => {
+                warn!(
+                    ?e,
+                    port = %port,
+                    "LCXL3 input port unavailable — disabling LCXL3 input for this session. \
+                     Bridge continues with MC-500 input only."
+                );
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    // LCXL3 output — for the activation handshake at startup, LED
+    // mirroring during operation, and the deactivation SysEx at
+    // shutdown. Only opened when LCXL3 is enabled in config. Errors
+    // here disable the LCXL3 output but leave any other LCXL3 input
+    // intact (the device will still emit, we just won't see lit
+    // transport buttons or have the device claim DAW mode).
+    let mut lcxl3_out: Option<midir::MidiOutputConnection> = if config.lcxl3.enabled {
+        let port = config.lcxl3.output_port.clone();
+        match midi::connect_output(&port) {
+            Ok(mut conn) => {
+                if let Err(e) = lcxl3::handshake_send(&mut conn, config.lcxl3.host_name.as_bytes()) {
+                    warn!(?e, "LCXL3 activation handshake failed; LEDs may not initialise");
+                } else {
+                    info!(port = %port, host_name = %config.lcxl3.host_name, "LCXL3 output ready (activated)");
+                }
+                Some(conn)
+            }
+            Err(e) => {
+                warn!(
+                    ?e,
+                    port = %port,
+                    "LCXL3 output port unavailable — handshake skipped. The device's \
+                     transport buttons will likely stay dormant (no DAW claim sent)."
+                );
+                None
+            }
+        }
+    } else {
+        None
     };
 
     // MIDI output to the MC-500 for sync-on-stop. Warn-and-continue
@@ -222,6 +309,14 @@ fn main() -> Result<()> {
     loop {
         if shutdown_rx.try_recv().is_ok() {
             info!("shutting down");
+            // Best-effort LCXL3 deactivation so the device returns to
+            // its idle state. If the user power-cycles the LCXL3
+            // mid-session this will fail silently — fine, the device
+            // is already disconnected.
+            if let Some(out) = lcxl3_out.as_mut() {
+                lcxl3::deactivate_send(out);
+                info!("LCXL3 deactivation SysEx sent");
+            }
             return Ok(());
         }
 
@@ -294,6 +389,22 @@ fn main() -> Result<()> {
                         &mut tracker,
                         mc500_out.as_mut(),
                     );
+                }
+
+                // LCXL3 LED mirror: if the state changed at all, push
+                // the corresponding transport-button colour to the
+                // device. `led_for_state` returns the same bytes for
+                // Stopped and Locating so we don't flash twice during
+                // a normal stop → locate → reached cycle, but we do
+                // need to fire when crossing in/out of Playing.
+                if state_after != state_before {
+                    if let Some(out) = lcxl3_out.as_mut() {
+                        if let Some(led) = lcxl3::led_for_state(&state_after) {
+                            if let Err(e) = out.send(&led) {
+                                warn!(?e, "LCXL3 LED state push failed");
+                            }
+                        }
+                    }
                 }
 
                 true
@@ -683,6 +794,110 @@ fn run_probe_midi(port_substring: &str) -> Result<()> {
     eprintln!("# probe-midi: listening on port matching '{port_substring}' — Ctrl-C to stop");
     eprintln!("# columns: <microseconds since start>  [<byte count>]  <label>  <hex>");
     drive_probe_loop(rx)
+}
+
+// LCXL3 handshake bytes, parser, and LED helpers all live in the
+// `lcxl3` module — see services/midi-macro-bridge/src/lcxl3.rs and the
+// annotated decode in
+// docs/1.0/001-IN-PROGRESS/midi-macro-bridge/lcxl3-handshake-trace.md.
+
+/// Send the LCXL3 Mk3 DAW-mode activation SysEx and dump everything
+/// the device emits on its DAW Out port. One-shot probe to confirm
+/// the device's transport buttons activate when the bridge claims to
+/// be a DAW. Sends the deactivation SysEx on Ctrl-C so the device
+/// returns to its idle state.
+///
+/// The LCXL3 exposes a port pair named "<substring> ... DAW In" and
+/// "<substring> ... DAW Out" (typically "LCXL3 1 DAW In" / "...Out").
+/// We send to the In port and listen on the Out port.
+fn run_lcxl3_activate(substring: &str) -> Result<()> {
+    use std::time::Instant;
+
+    // Find the actual port names that contain both the user's
+    // substring AND the role marker. Concatenating directly fails
+    // because the device puts a port-index between the two (e.g.
+    // "LCXL3 1 DAW Out" — "LCXL3 DAW Out" isn't a substring).
+    let all_ports = midi::list_ports()?;
+    let find_port = |role: &str| -> Result<String> {
+        let s = substring.to_lowercase();
+        let r = role.to_lowercase();
+        all_ports
+            .iter()
+            .find(|n| {
+                let l = n.to_lowercase();
+                l.contains(&s) && l.contains(&r)
+            })
+            .cloned()
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "no MIDI port name contains both '{substring}' and '{role}'. \
+                     Run --list-ports to see available ports."
+                )
+            })
+    };
+    let out_query = find_port("DAW Out")?;
+    let in_query = find_port("DAW In").unwrap_or_else(|_| {
+        // The "DAW In" port doesn't appear in midir's input listing
+        // (it's the device's input direction; we send to it). Fall
+        // back to an output-side substring assumption: same prefix
+        // as the matched DAW Out port, with "Out" → "In".
+        out_query.replace("DAW Out", "DAW In")
+    });
+
+    let start = Instant::now();
+    let (tx, rx) = mpsc::channel::<(u128, Vec<u8>)>();
+    let _input_conn = midi::connect_raw(&out_query, move |bytes| {
+        let _ = tx.send((start.elapsed().as_micros(), bytes.to_vec()));
+    })
+    .with_context(|| format!("opening LCXL3 input port matching '{out_query}'"))?;
+
+    let mut output = midi::connect_output(&in_query)
+        .with_context(|| format!("opening LCXL3 output port matching '{in_query}'"))?;
+
+    // Full handshake — matches Ableton Live 12's sequence (probe → UDI
+    // → claim → host-name page → transport-LED preset). All byte
+    // sequences and pacing live in the lcxl3 module.
+    lcxl3::handshake_send(&mut output, b"Bridge")
+        .context("sending LCXL3 DAW activation handshake")?;
+    eprintln!("# lcxl3-activate: handshake sent (probe → UDI → claim → host name → LED preset)");
+    eprintln!("# Listening on port matching '{out_query}'.");
+    eprintln!("# Press transport buttons / move encoders on the device.");
+    eprintln!("# Ctrl-C to stop (will send deactivation SysEx).");
+    eprintln!("# columns: <microseconds since start>  [<byte count>]  <label>  <hex>");
+
+    let (shutdown_tx, shutdown_rx) = mpsc::channel();
+    ctrlc::set_handler(move || {
+        let _ = shutdown_tx.send(());
+    })
+    .context("installing Ctrl-C handler")?;
+
+    loop {
+        if shutdown_rx.try_recv().is_ok() {
+            // Best-effort deactivation so the device returns to idle
+            // even if the user re-runs the bridge in a different
+            // mode. Ignore send errors; the user can power-cycle if
+            // the device gets stuck.
+            lcxl3::deactivate_send(&mut output);
+            eprintln!("# lcxl3-activate: sent deactivation SysEx, exiting");
+            return Ok(());
+        }
+        match rx.recv_timeout(Duration::from_millis(200)) {
+            Ok((us, bytes)) => {
+                let hex: Vec<String> = bytes.iter().map(|b| format!("{b:02X}")).collect();
+                println!(
+                    "{us:>12}us  [{:>3}]  {:<18}  {}",
+                    bytes.len(),
+                    classify_midi(&bytes),
+                    hex.join(" ")
+                );
+            }
+            Err(mpsc::RecvTimeoutError::Timeout) => continue,
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                eprintln!("# MIDI channel disconnected");
+                return Ok(());
+            }
+        }
+    }
 }
 
 /// Register the bridge's virtual MCU endpoint pair, answer LUNA's
