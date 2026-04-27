@@ -259,15 +259,16 @@ The existing `--lcxl3-activate` one-shot CLI mode (already shipped) demonstrates
 
 **Deliverable:** `state.rs` accepts the new `TransportEvent` variants and emits the right `Action` vector for each (state, event) combination.
 
-- [ ] Add `TogglePlay`, `NudgeForward(u32)`, `NudgeBackward(u32)` to `TransportEvent`
-- [ ] Extend `Machine::handle` per the table in the workplan's Technical Approach section above
-- [ ] Unit tests: `TogglePlay` while Stopped → `[Play]`, transitions to Playing; while Playing → `[Stop]`, transitions to Stopped; while Locating → `[]`, no transition. Nudge while Stopped emits N actions; while Playing or Locating → `[]`.
-- [ ] Existing `Start` / `Continue` / `Stop` / `Spp` tests continue to pass unchanged
+- [x] Add `TogglePlay`, `NudgeForward(u32)`, `NudgeBackward(u32)` to `TransportEvent`
+- [x] Extend `Machine::handle` per the table in the workplan's Technical Approach section above
+- [x] Unit tests: `TogglePlay` while Stopped → `[Play]`, transitions to Playing; while Playing → `[Stop]`, transitions to Stopped; while Locating → `[]`, no transition. Nudge while Stopped emits N actions; while Playing or Locating → `[]`.
+- [x] Existing `Start` / `Continue` / `Stop` / `Spp` tests continue to pass unchanged
+- [x] `transport_to_locate_event` returns `None` for the new variants so the LocateController ignores LCXL3 events mid-locate
 
 ### Acceptance Criteria
 
-- [ ] All Phase 1-4 state-machine tests still pass
-- [ ] New tests cover every (state × new event) combination
+- [x] All Phase 1-4 state-machine tests still pass
+- [x] New tests cover every (state × new event) combination
 
 ### Phase 5c — Config schema
 

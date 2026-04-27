@@ -376,6 +376,14 @@ pub fn transport_to_locate_event(event: TransportEvent) -> Option<LocateEvent> {
         TransportEvent::Spp(target) => Some(LocateEvent::NewTarget(target)),
         TransportEvent::Stop => Some(LocateEvent::Stop),
         TransportEvent::Start | TransportEvent::Continue => Some(LocateEvent::QueuePlay),
+        // LCXL3 events are intentionally ignored mid-locate. The
+        // closed-loop controller is the authority on the playhead until
+        // it exits; LCXL3 toggle / nudge presses arriving during a
+        // locate are dropped on the floor (the user can press Stop on
+        // the MC-500 to cancel if they really want to interrupt).
+        TransportEvent::TogglePlay
+        | TransportEvent::NudgeForward(_)
+        | TransportEvent::NudgeBackward(_) => None,
     }
 }
 
