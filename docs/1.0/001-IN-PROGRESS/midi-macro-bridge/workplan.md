@@ -16,10 +16,21 @@
 | Phase 5c Issue | [#323](https://github.com/audiocontrol-org/audiocontrol/issues/323) — `[lcxl3]` config section |
 | Phase 5d Issue | [#324](https://github.com/audiocontrol-org/audiocontrol/issues/324) — wire LCXL3 input + LED output into main loop |
 | Phase 5e Issue | [#325](https://github.com/audiocontrol-org/audiocontrol/issues/325) — LCXL3 hardware validation |
+| Phase 6 Parent Issue | [#327](https://github.com/audiocontrol-org/audiocontrol/issues/327) — Web Control Interface |
+| Phase 6a Issue | [#328](https://github.com/audiocontrol-org/audiocontrol/issues/328) — server skeleton + reload plumbing |
+| Phase 6b Issue | [#329](https://github.com/audiocontrol-org/audiocontrol/issues/329) — port enumeration + status APIs |
+| Phase 6c Issue | [#330](https://github.com/audiocontrol-org/audiocontrol/issues/330) — static asset embedding + base layout |
+| Phase 6d Issue | [#331](https://github.com/audiocontrol-org/audiocontrol/issues/331) — stylesheet (studio rack aesthetic) |
+| Phase 6e Issue | [#332](https://github.com/audiocontrol-org/audiocontrol/issues/332) — configuration form + APPLY |
+| Phase 6f Issue | [#333](https://github.com/audiocontrol-org/audiocontrol/issues/333) — event stream UI |
+| Phase 6g Issue | [#334](https://github.com/audiocontrol-org/audiocontrol/issues/334) — HALT button + master LED |
+| Phase 6h Issue | [#335](https://github.com/audiocontrol-org/audiocontrol/issues/335) — auto-open browser + first-run polish |
+| Phase 6i Issue | [#336](https://github.com/audiocontrol-org/audiocontrol/issues/336) — Phase 6 hardware validation |
 | Phase 1-2 PR | [#316](https://github.com/audiocontrol-org/audiocontrol/pull/316) (merged) |
 | Phase 3-4 PR | [#317](https://github.com/audiocontrol-org/audiocontrol/pull/317) (merged) |
 | Tolerance fix PR | [#318](https://github.com/audiocontrol-org/audiocontrol/pull/318) (merged) |
 | Idle byte-trace PR | [#319](https://github.com/audiocontrol-org/audiocontrol/pull/319) (merged) |
+| Phase 5 + Ableton PR | [#326](https://github.com/audiocontrol-org/audiocontrol/pull/326) (merged) |
 
 ## Technical Approach
 
@@ -46,6 +57,17 @@
 - **State-machine extensions.** `TogglePlay` while Stopped emits `[Play]` (LUNA's snap-on-stop means no `ReturnToZero` needed); while Playing emits `[Stop]`; while Locating ignored. Nudge events emit N × `BarForward` / `BarBackward` while Stopped (capped at 4 per packet at the parser layer); ignored while Playing or Locating.
 - **LED feedback.** After every `Machine::handle()`, if the state changed, write the corresponding transport-button LED CC to the LCXL3's DAW In port: `B0 74 21` for Playing, `B0 74 27` for Stopped/Locating.
 - **Activation lifecycle.** On startup with `[lcxl3] enabled = true`, the bridge runs the full Live-equivalent handshake (probe + UDI + claim + host name `"Bridge"` + transport LED preset). On Ctrl-C, the bridge sends the deactivation SysEx so the device returns to its idle state. Power-cycle mid-session requires a bridge restart in v1.
+
+### Phase 6 — Embedded web control interface
+
+- **Why a web UI:** the MIDI port-name problem has no factory default. Every machine sees different port names depending on what's plugged in, what virtual buses are configured, and what other apps have claimed devices. A picker that enumerates the actual currently-connected ports — and surfaces per-port status (configured/connected/missing/failed) — is the only ergonomic way to get a non-technical user past the very first hurdle. Hand-edited TOML stays as a fallback path for power users; it's not the onboarding flow.
+- **Why embedded HTTP, not native:** htmx + axum + `rust-embed` ship as a single binary, run offline (no CDN), don't require Apple's notarization story for a separate GUI app, and don't drag in a JS toolchain. The existing daemon is already long-running; adding an HTTP listener is a much smaller change than building a Tauri / Swift menu-bar app, and the picker fits htmx's strengths well (server-rendered fragment swaps, minimal client logic).
+- **Why studio-rack aesthetic:** the bridge is virtually a piece of MIDI patch hardware. Reflecting that identity in the UI — peak-meter LEDs, signal-flow routing, screenprint typography — gives musicians a familiar mental model and avoids generic-dashboard look. Full design captured in [`web-ui-design.md`](web-ui-design.md).
+- **Tokio runtime in a dedicated thread, not async-everywhere.** The MIDI event loop stays synchronous on its existing `std::thread` — it owns all `MidiInputConnection` / `MidiOutputConnection` handles, and rewriting it as `async` would be a much bigger refactor than this work warrants. The HTTP server runs in its own `tokio::runtime::Runtime` on a second thread. The two communicate exclusively through `tokio::sync::watch<Status>` (server reads), `tokio::sync::broadcast<EventLine>` (server reads), and `tokio::sync::mpsc<Cmd>` (server writes). HTTP handlers never touch MIDI handles directly.
+- **In-process reload, not process restart.** `POST /api/config` writes `config.toml` atomically (tmp + rename), then sends `Cmd::Reload(Config)` on the channel. The MIDI loop drops its current connections, calls a new `setup_midi_connections(&Config)` factory, and the watch-broadcast `Status` flips through `Reconnecting` → `Running`. Targeted at ~100ms downtime; the UI shows a "RECONNECTING…" state during the window. Avoids the "config-change requires restart" UX wart and means no launchd dependency for the v1 web UI.
+- **`POST /api/halt` is not a direct exit.** The handler emits `Cmd::Halt` and the MIDI loop performs the actual `std::process::exit(2)`. Keeps the exit-path single — easier to reason about, easier to instrument with shutdown logging. The web UI uses a 3-second hold-to-confirm interaction so an accidental click can't take the bridge down.
+- **Server-rendered fragments, not JSON.** `GET /api/ports` returns HTML `<option>` elements ready for swap into the picker; `GET /api/status` returns the full status panel as a fragment; SSE event lines are pre-rendered HTML. Means client-side code is roughly zero — htmx handles the swap, no JS state management, no JSON-to-DOM mapping logic to maintain.
+- **Auto-open on startup.** On macOS, after the listener binds, run `open http://127.0.0.1:<port>` so the user lands on the UI without typing a URL. `--no-open` flag suppresses for headless / launchd-managed cases. The chosen URL is also written to `~/Library/Application Support/MidiMacroBridge/url.txt` for future tooling (menu-bar app, `open --bridge` helper).
 
 ## Modules Affected
 
@@ -76,6 +98,27 @@
 - `services/midi-macro-bridge/config.example.toml` — document the new `[lcxl3]` section with all defaults
 - `services/midi-macro-bridge/README.md` — add an LCXL3 setup section: how to enable, port-name conventions, what works in v1, the power-cycle restart caveat
 - `docs/1.0/001-IN-PROGRESS/midi-macro-bridge/lcxl3-handshake-trace.md` (new) — annotated decode of the captured Live → LCXL3 init sequence; reference document for the byte values used in `lcxl3.rs`
+
+### Phase 6
+
+- `services/midi-macro-bridge/Cargo.toml` — add `axum`, `tokio` (with `rt-multi-thread`, `signal`, `sync`, `time` features), `tower-http`, `rust-embed`, `serde_json`, `futures` dependencies
+- `services/midi-macro-bridge/src/web/mod.rs` (new) — axum app builder, route definitions, embedded-asset handler, runtime spawn helper
+- `services/midi-macro-bridge/src/web/handlers.rs` (new) — request handlers for `/api/status`, `/api/ports`, `/api/config`, `/api/halt`, `/api/events`
+- `services/midi-macro-bridge/src/web/views.rs` (new) — server-rendered HTML fragments (port picker rows, status badges, transport readout, event lines, configuration form blocks)
+- `services/midi-macro-bridge/src/web/state.rs` (new) — `WebState`, `Cmd`, `Status`, `EventLine`, `EventSource`, channel wiring between HTTP and MIDI threads
+- `services/midi-macro-bridge/src/main.rs` — extract `setup_midi_connections(&Config) -> Connections` factory; spawn the tokio runtime; wire `Cmd` / `Status` channels; handle `Cmd::Reload` / `Cmd::Halt` in the existing loop; call `open` on startup unless `--no-open`
+- `services/midi-macro-bridge/src/midi.rs` — split `list_ports()` into `list_ports_input()` and `list_ports_output()`; existing callers updated
+- `services/midi-macro-bridge/src/config.rs` — add `WebConfig` struct + `[web]` TOML section (`enabled` default true, `bind_port` default 8765, `auto_open_browser` default true); add `Config::write_atomic(&Path)` for the POST handler
+- `services/midi-macro-bridge/web/index.html` (new) — the SPA shell: header strip, transport readout placeholder, routing matrix scaffold, configuration accordion, event stream container
+- `services/midi-macro-bridge/web/app.css` (new) — full studio-rack stylesheet: palette CSS variables, panel chrome, brushed-metal gradient, hairlines, screenprint labels, LED component, scanline overlay, film-grain noise
+- `services/midi-macro-bridge/web/app.js` (new) — minimal vanilla JS for the HALT hold-to-confirm interaction and SSE pause-on-hover behaviour; no other client logic
+- `services/midi-macro-bridge/web/htmx.min.js` (vendored, new) — htmx 1.9.x core
+- `services/midi-macro-bridge/web/htmx-sse.js` (vendored, new) — htmx SSE extension for the live event stream
+- `services/midi-macro-bridge/web/fonts/geist-mono.woff2` (vendored, new, OFL)
+- `services/midi-macro-bridge/web/fonts/departure-mono.woff2` (vendored, new, OFL)
+- `services/midi-macro-bridge/config.example.toml` — document the new `[web]` section with all field defaults
+- `services/midi-macro-bridge/README.md` — replace "config-by-hand" setup instructions with web-UI flow as the primary path; keep the TOML reference as a power-user fallback
+- `docs/1.0/001-IN-PROGRESS/midi-macro-bridge/web-ui-design.md` (new) — canonical UX/UI design reference: aesthetic direction, palette, typography, wireframes, interaction patterns, v1-vs-deferred split
 
 ## Deferred — cross-platform MIDI abstraction layer
 
@@ -325,3 +368,180 @@ The existing `--lcxl3-activate` one-shot CLI mode (already shipped) demonstrates
 - [x] All hardware test cases above pass on the user's rig
 - [x] No regression in MC-500 transport / locate behaviour with both inputs enabled (sync-on-stop confirmed firing post-`TogglePlay → Stop`)
 - [x] LCXL3 LEDs reflect transport state correctly after every press (visually confirmed by user; state-change push fires `lcxl3::led_for_state` bytes on every Machine state transition)
+
+## Phase 6: Embedded Web Control Interface
+
+**Deliverable:** The bridge binary serves a single-page htmx control interface at `http://127.0.0.1:8765` (auto-opened in the user's browser on startup). Musicians configure MIDI ports through a graphical picker, see live transport state and an event stream, and apply configuration changes in-process without restarting the bridge — without ever touching `config.toml`. Distribution work (.pkg installer, launchd, signing, notarization) is **not** in this phase.
+
+The full UX/interaction specification is captured in [`web-ui-design.md`](web-ui-design.md). This workplan section is the implementation breakdown.
+
+### Phase 6a — Server skeleton + reload plumbing
+
+**Deliverable:** The bridge binary spawns a tokio runtime in a dedicated thread, runs an axum server with a single "hello, bridge" handler, and the existing MIDI event loop handles `Cmd::Reload` / `Cmd::Halt` without otherwise changing behaviour. No UI yet; this phase is purely the channel-wiring refactor.
+
+- [ ] Add `axum`, `tokio` (with `rt-multi-thread`, `signal`, `sync`, `time` features), `tower-http`, `rust-embed`, `serde_json`, `futures` to `services/midi-macro-bridge/Cargo.toml`
+- [ ] Create `src/web/state.rs` with `WebState`, `Cmd { Reload(Config), Halt }`, `Status`, `EventLine`, `EventSource` types and the channel-creation helpers (`mpsc<Cmd>`, `watch<Status>`, `broadcast<EventLine>`)
+- [ ] Create `src/web/mod.rs` with the axum app builder + a single placeholder route returning `text/plain "MIDI Macro Bridge"`
+- [ ] In `main.rs`, factor the existing per-startup MIDI wiring into `setup_midi_connections(&Config) -> Result<Connections>` so the loop can rebuild connections on reload
+- [ ] Spawn a dedicated `std::thread` running `tokio::runtime::Runtime::new()` that drives the axum server bound to `127.0.0.1:8765` (fall back to `:0` if 8765 is taken; log the chosen port)
+- [ ] In the MIDI event loop, drain `cmd_rx` each tick and handle `Cmd::Reload` (drop connections, call factory, publish new `Status`) and `Cmd::Halt` (`std::process::exit(2)`)
+- [ ] Emit a `Status` snapshot through the watch channel after every state change
+- [ ] Verify: `cargo run` starts the bridge as before, `curl http://127.0.0.1:8765` returns the placeholder, MC-500 transport still drives LUNA, and a manually-triggered `Cmd::Reload` (test harness) tears down + rebuilds connections without process exit
+
+### Acceptance Criteria
+
+- [ ] `cargo build --release` clean with new dependencies
+- [ ] All existing unit tests still pass
+- [ ] New unit tests for `setup_midi_connections` (idempotent across same-config calls), `Cmd` channel plumbing
+- [ ] Server starts on the configured port, logs the URL clearly, falls back to OS-assigned port if 8765 is taken
+- [ ] Existing CLI modes (`--list-ports`, `--self-test`, `--probe-midi`, `--probe-mcu`, `--send-mcu`, `--lcxl3-activate`) all still work — the web server is gated and these modes bypass it
+
+### Phase 6b — Port enumeration + status APIs
+
+**Deliverable:** The HTTP server exposes the data the UI needs: live MIDI port lists, the full status snapshot, and an SSE event stream.
+
+- [ ] Split `midi::list_ports()` into `midi::list_ports_input()` and `midi::list_ports_output()` returning `Vec<String>`; update existing callers
+- [ ] Add `web::handlers::ports` returning an HTML fragment containing two `<select>` blocks (input + output) populated from the live enumeration
+- [ ] Add `web::handlers::status` returning an HTML fragment with the current bridge state, transport state, last bar, last event timestamp, per-port-slot status, MCU heartbeat freshness
+- [ ] Add `web::handlers::events` returning a `text/event-stream` SSE response that subscribes to the `broadcast<EventLine>` channel and forwards each event as a pre-rendered HTML line
+- [ ] In the MIDI loop, push an `EventLine` to the broadcast channel after every `Machine::handle()` and on each MCU heartbeat reply / error
+- [ ] Server-side ring-buffer the last 200 `EventLine`s so a freshly-opened tab gets recent history
+- [ ] Verify: `curl http://127.0.0.1:8765/api/ports` shows current ports, `/api/status` shows current state, `/api/events` streams new events as they happen
+
+### Acceptance Criteria
+
+- [ ] `GET /api/ports` returns valid HTML with `<option>` elements for every connected MIDI port
+- [ ] `GET /api/status` returns valid HTML with status, transport, and per-port indicators
+- [ ] `GET /api/events` keeps a long-lived connection open and emits each new `Machine::handle()` event within one event-loop tick of the MIDI thread observing it
+- [ ] Unit tests cover handler output shape (assert key elements exist in the fragment)
+- [ ] SSE handler closes cleanly when the client disconnects (no zombie subscribers)
+
+### Phase 6c — Static asset embedding + base layout
+
+**Deliverable:** The bridge serves the HTML shell, vendored htmx, and self-hosted fonts. The page renders the structural scaffold (header, transport readout, routing matrix, configuration, event stream containers) — no styling beyond bare HTML defaults yet.
+
+- [ ] Configure `rust-embed` rooted at `services/midi-macro-bridge/web/`
+- [ ] Vendor `htmx.min.js` (htmx 1.9.x), `htmx-sse.js` (SSE extension), `geist-mono.woff2`, `departure-mono.woff2` into `web/fonts/` and `web/`
+- [ ] Add `web::handlers::static_asset` returning the embedded asset with the correct `Content-Type` (font/woff2, text/javascript, etc.)
+- [ ] Author `web/index.html`: HTML5 shell, font-face declarations, htmx + htmx-sse `<script>` tags, structural sections for the header strip, transport readout, routing matrix (sources → bridge → destinations), configuration accordion, and event stream container; htmx attributes for the initial `/api/status` and `/api/ports` swaps
+- [ ] Verify: navigating to `http://127.0.0.1:8765` loads the shell, fonts render, htmx fires the initial swap, the page populates with the (unstyled) port list and status fragment
+
+### Acceptance Criteria
+
+- [ ] `GET /` returns `index.html` with a `Content-Type: text/html` and 200 status
+- [ ] `GET /static/htmx.min.js` etc. return the vendored assets with correct content types
+- [ ] Fonts load from `/static/fonts/*.woff2` (visible in browser DevTools network tab)
+- [ ] htmx successfully swaps `/api/ports` and `/api/status` fragments into the initial page on load (verify via DOM inspection)
+
+### Phase 6d — Stylesheet (studio rack aesthetic)
+
+**Deliverable:** The page now looks like a piece of rack-mount studio gear per [`web-ui-design.md`](web-ui-design.md): brushed-metal panels, screenprint typography, peak-meter LEDs, the routing matrix with signal-flow lines, scanline display readouts, film-grain background. Functionality unchanged from 6c.
+
+- [ ] Author `web/app.css` implementing every spec from `web-ui-design.md`: full palette as CSS variables, panel chrome (gradient, hairlines, screenprint labels), Departure Mono on the transport readout + bar number with scanline overlay, Geist Mono everywhere else, LED component (off / green / amber / red + glow + pulse), SVG signal-flow lines in the routing matrix, film-grain noise on the background, density and rhythm per the design doc (4px base unit, 960px max width)
+- [ ] Verify visual fidelity against the wireframe in `web-ui-design.md`: header strip, transport readout proportions, routing matrix layout (sources → bridge → destinations with connector lines), configuration accordion chrome, event stream styling
+- [ ] Manual visual inspection: load the page, confirm all four LED states render correctly with appropriate glow, panels have the gradient + hairline treatment, fonts load and render with correct weights
+
+### Acceptance Criteria
+
+- [ ] CSS file is self-contained (no external dependencies, no `@import` to remote fonts)
+- [ ] All four LED states (off / green / amber / red) are visually distinct and readable
+- [ ] The page looks unmistakably like equipment, not a generic admin dashboard (subjective but clear at a glance)
+- [ ] Browser DevTools shows no missing assets, no font-loading errors, no console warnings on a fresh page load
+- [ ] Page gracefully fits a typical 1280×800 laptop viewport without horizontal scrolling
+
+### Phase 6e — Configuration form + APPLY
+
+**Deliverable:** The user can pick MIDI ports from dropdowns, toggle device enables, edit the LCXL3 host name, choose the backend mode, and apply changes in-process. The reconnecting state animation fires during the ~100ms reload window.
+
+- [ ] Server-render the configuration accordion (MC-500 / LCXL3 / Backend panels) from the current `Config` snapshot. Each device panel includes its enable toggle, port dropdowns (pre-selected with currently-configured values, populated from `/api/ports`), and any device-specific fields (LCXL3 host name, Keystrokes nudge size)
+- [ ] Form-dirty tracking: any change to the form marks APPLY active (warm-accent pulse on the button)
+- [ ] Backend mode segmented control: `MCU` / `KEYSTROKES`. Selecting `KEYSTROKES` expands the panel to reveal the nudge-size input; selecting `MCU` collapses it
+- [ ] Add `web::handlers::config_post`: parses the form into a `Config`, validates it (`toml`'s deserialiser into the existing `Config` struct), writes the new TOML atomically (`Config::write_atomic`), emits `Cmd::Reload(config)` on the channel
+- [ ] On the client side, the APPLY button posts via htmx; while the request is in flight, swap in a "RECONNECTING…" state for the routing matrix (dim to 40%, all port LEDs flicker amber, bar readout shows `----`)
+- [ ] On success: matrix snaps back to live state via the `/api/status` swap; success pulse on the master LED
+- [ ] On failure (port couldn't open, invalid TOML): red flash on master LED + an error toast describing the reason
+- [ ] Verify: change the LCXL3 host name in the UI, click APPLY, confirm the device's LCD updates without restarting the bridge
+
+### Acceptance Criteria
+
+- [ ] Form roundtrips correctly: load page → modify field → apply → reload page → modified value persists
+- [ ] `POST /api/config` writes `config.toml` atomically (interrupting between write-tmp and rename leaves the original file intact)
+- [ ] Invalid configs (unknown port name, malformed TOML) are rejected with a 400 + readable error fragment, no `Cmd::Reload` fired
+- [ ] In-process reload completes within 250ms (target ~100ms; allow margin)
+- [ ] Form-dirty pulse activates when fields change, deactivates after successful apply
+- [ ] Unit tests cover form parsing, atomic-write behaviour, and validation rejection paths
+
+### Phase 6f — Event stream UI
+
+**Deliverable:** The bottom-of-page event stream renders incoming SSE events as tape-printer log lines with source-tagged chips, supports pause-on-hover, and ring-buffers to the last 200 lines client-side.
+
+- [ ] Wire `htmx-sse` to subscribe the event-stream container to `/api/events`; new events append as `<div>` elements
+- [ ] Server pre-renders each `EventLine` as a fragment: timestamp, source-chip (MC-500 / LCXL3 / MCU OUT / BRIDGE with subtle colour fill), event description text
+- [ ] Client-side ring-buffer at 200 lines: when a new line arrives, remove the oldest if the buffer is full
+- [ ] Auto-scroll to bottom on new event; pause auto-scroll while the user hovers the stream container; show a subtle "PAUSE" indicator dot when paused
+- [ ] Subtle scroll-into-view animation (140ms ease-out) on each new line so movement is intentional, not distracting
+- [ ] Verify: trigger MC-500 transport and LCXL3 encoder events; confirm both appear in the stream within one event-loop tick
+
+### Acceptance Criteria
+
+- [ ] Every `Machine::handle()` event emitted by the MIDI loop appears in the browser's event stream within ~50ms
+- [ ] Source-tag chips visually distinguish the four event sources at a glance
+- [ ] Hover the stream → auto-scroll pauses immediately, "PAUSE" indicator visible
+- [ ] Ring buffer caps at 200 lines (verify by triggering > 200 events; oldest are removed cleanly)
+- [ ] SSE reconnects gracefully after a transient network blip (browser handles this; verify connection state recovers)
+
+### Phase 6g — HALT button + master LED
+
+**Deliverable:** The header HALT button takes a 3-second hold to confirm and exits the bridge cleanly when held. The master LED in the header rolls up the bridge's overall health state with a tooltip explaining any non-green state.
+
+- [ ] Add `web::handlers::halt` that emits `Cmd::Halt` on the channel; the MIDI loop performs `std::process::exit(2)` (handler does NOT exit directly)
+- [ ] HALT button HTML: a circular button in red-LED treatment with a progress ring SVG that fills during the hold
+- [ ] Vanilla JS `app.js`: `mousedown` starts a 3-second timer, animates the progress ring; `mouseup` before completion cancels (no action); after 3s, the JS posts to `/api/halt` and the bridge exits
+- [ ] Master LED component: reads `bridge_state` from the status snapshot, renders green / amber / red. Hover reveals a tooltip listing specific reason for amber/red (e.g., "MC-500 input port disconnected", "MCU heartbeat stale (8s ago)", "panic state")
+- [ ] Status logic: green = all enabled inputs connected, MCU output flowing, heartbeat within 5s; amber = any disconnect or stale heartbeat; red = panic state pending
+- [ ] Verify: hold HALT for 3s → bridge exits; click and release before 3s → nothing happens; disconnect a configured port → master LED goes amber → reconnect → green within 2s
+
+### Acceptance Criteria
+
+- [ ] Click-without-hold on HALT does nothing (no `Cmd::Halt` emitted, no exit)
+- [ ] 3-second hold animates progress ring then exits the process with code 2
+- [ ] Master LED reflects the rolled-up health state correctly across all states
+- [ ] Tooltip on amber/red is accurate and actionable
+- [ ] Unit tests cover the halt handler (emits `Cmd::Halt`, never directly calls exit)
+
+### Phase 6h — Auto-open browser + first-run polish
+
+**Deliverable:** Launching the bridge auto-opens the browser to the UI on macOS. URL is recorded for follow-on tooling. First-run experience handles the no-MIDI-ports case gracefully.
+
+- [ ] After the listener binds, on macOS run `std::process::Command::new("open").arg(url).spawn()` to launch the default browser
+- [ ] Add a `--no-open` CLI flag that suppresses the auto-open (useful when running under launchd, where browser-launching from a daemon would be wrong)
+- [ ] Write the chosen URL to `~/Library/Application Support/MidiMacroBridge/url.txt` after the listener binds (create the directory if needed); existing tooling and a future menu-bar app can read this
+- [ ] First-run UX: if no MIDI ports are configured (fresh install with empty config), the UI shows an explicit "no devices configured yet" empty state in the routing matrix instead of empty silhouettes; configuration panels are pre-expanded so the user lands on the picker
+- [ ] Add a `[web]` config section: `enabled` (default true), `bind_port` (default 8765), `auto_open_browser` (default true)
+- [ ] Document the new config section in `config.example.toml`
+
+### Acceptance Criteria
+
+- [ ] First `cargo run` on a machine without `config.toml` opens the browser to the bridge URL within 1s
+- [ ] `--no-open` skips the browser launch but still binds the server
+- [ ] `url.txt` exists at the documented path with the correct URL after startup
+- [ ] First-run empty state is obviously friendlier than a generic "no data" placeholder
+- [ ] Setting `[web] enabled = false` in config disables the HTTP server entirely (CLI-only mode preserved)
+
+### Phase 6i — Hardware validation
+
+**Deliverable:** End-to-end fresh-machine flow verified on hardware. The user starts the bridge with no config, configures it through the browser, applies, and MC-500 + LCXL3 + LUNA all work — without ever opening a terminal again after the initial launch.
+
+- [ ] Fresh-config flow: delete `config.toml`, run the bridge, confirm browser auto-opens, no ports configured, master LED amber. Pick MC-500 input + MCU output via the UI → APPLY → reconnecting animation → green LEDs → MC-500 Play drives LUNA Play
+- [ ] Add LCXL3 picker (input + output ports, enable toggle, host name "Bridge") → APPLY → LCXL3 enters DAW mode (transport buttons illuminate) → encoder ticks LUNA's playhead
+- [ ] Live event stream verified: every transport event from MC-500 and LCXL3 appears in the stream with the right source tag and within ~50ms
+- [ ] Disconnect a configured MIDI device's USB cable → master LED goes amber within 2s → reconnect → returns to green within 2s. Per-port LED in the routing matrix follows the same transitions
+- [ ] HALT (hold 3s) → bridge exits cleanly. (Re-launch is manual; launchd integration is a separate feature.)
+- [ ] Re-test the existing Phase 4 + Phase 5 hardware flows with the web UI active to confirm no regression: closed-loop locate, sync-on-stop, LCXL3 LED follower, dual-input simultaneous operation
+
+### Acceptance Criteria
+
+- [ ] User can complete the full setup (MC-500 → bridge → LUNA + LCXL3) end-to-end via the browser without touching `config.toml` or a terminal
+- [ ] Live event stream confirms every transport event from both input devices
+- [ ] In-process reload completes cleanly across a port-name change without dropping LUNA's MCU surface association
+- [ ] Existing Phase 1-5 acceptance criteria all still pass on hardware

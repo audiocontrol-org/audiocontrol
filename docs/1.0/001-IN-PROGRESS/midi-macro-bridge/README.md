@@ -2,7 +2,7 @@
 
 **Branch:** `feature/midi-macro-bridge-ableton`
 **Worktree:** `~/work/audiocontrol-work/audiocontrol-midi-macro-bridge`
-**Overall Status:** Phases 1-2 shipped via [#316](https://github.com/audiocontrol-org/audiocontrol/pull/316). Phases 3-4 shipped via [#317](https://github.com/audiocontrol-org/audiocontrol/pull/317). Decade-boundary tolerance fix shipped via [#318](https://github.com/audiocontrol-org/audiocontrol/pull/318). Idle byte-trace shipped via [#319](https://github.com/audiocontrol-org/audiocontrol/pull/319). Phase 5 (LCXL3 multi-input) + Ableton compatibility open for review in [#326](https://github.com/audiocontrol-org/audiocontrol/pull/326).
+**Overall Status:** Phases 1-2 shipped via [#316](https://github.com/audiocontrol-org/audiocontrol/pull/316). Phases 3-4 shipped via [#317](https://github.com/audiocontrol-org/audiocontrol/pull/317). Decade-boundary tolerance fix shipped via [#318](https://github.com/audiocontrol-org/audiocontrol/pull/318). Idle byte-trace shipped via [#319](https://github.com/audiocontrol-org/audiocontrol/pull/319). Phase 5 (LCXL3 multi-input) + Ableton compatibility shipped via [#326](https://github.com/audiocontrol-org/audiocontrol/pull/326). Phase 6 (Embedded Web Control Interface) planned.
 
 ## Status
 
@@ -14,8 +14,9 @@
 | Phase 4: Hardware Validation | Complete (core scenarios) | User confirmed MCU transport with LUNA backgrounded + forward/backward locate + post-locate PLAY + sync-on-stop. Edge-case scenarios (TS changes, nudge-size misconfig, LUNA disconnect mid-locate, keystrokes regression) covered by unit tests; not exercised on hardware this session. |
 | Tolerance: decade-boundary overshoot | Complete | Shipped in [#318](https://github.com/audiocontrol-org/audiocontrol/pull/318). Closed-loop locate to LUNA was overshooting at every decade crossing because the controller consumed only the first of LUNA's two-phase d7+d8 CC pair. Fixed by draining companion CCs (5 ms settle) before reporting bar; tracker filter for bar=0 transient as defense-in-depth. Hardware-validated. |
 | Idle byte-trace | Complete | Shipped in [#319](https://github.com/audiocontrol-org/audiocontrol/pull/319). Mirrored locate-window debug logging into `handle_mcu_byte_idle` so a single `RUST_LOG=debug` run captures every byte the DAW emits. Earned its keep diagnosing the Ableton multi-message-packet issue. |
-| Ableton parser fixes | PR Open ([#326](https://github.com/audiocontrol-org/audiocontrol/pull/326)) | Multi-message MIDI splitter in `midi.rs` plus BBT separator-bit mask in `mcu.rs::DigitChar::from_byte`. Ableton bundles 10+ messages per CoreMIDI packet and uses `0x70-0x79` for "digit + dot" — both prevented its position CCs from being parsed. Tests added; bridge correctly tracks Ableton's playhead. |
-| Phase 5: LCXL3 multi-input | PR Open ([#326](https://github.com/audiocontrol-org/audiocontrol/pull/326)) | LCXL3 as a second input source alongside MC-500. Sub-phases 5a (lcxl3 protocol module), 5b (state-machine variants), 5c (config), 5d (main wiring), 5e (hardware validation) all on `feature/midi-macro-bridge-ableton`. Hardware-validated 2026-04-27: Play/Stop toggle drives LUNA, jog encoder nudges bars, LED follows state, encoder during playback ignored, sync-on-stop still fires. 122 unit tests passing. |
+| Ableton parser fixes | Complete | Shipped in [#326](https://github.com/audiocontrol-org/audiocontrol/pull/326). Multi-message MIDI splitter in `midi.rs` plus BBT separator-bit mask in `mcu.rs::DigitChar::from_byte`. Ableton bundles 10+ messages per CoreMIDI packet and uses `0x70-0x79` for "digit + dot" — both prevented its position CCs from being parsed. Tests added; bridge correctly tracks Ableton's playhead. |
+| Phase 5: LCXL3 multi-input | Complete | Shipped in [#326](https://github.com/audiocontrol-org/audiocontrol/pull/326). LCXL3 as a second input source alongside MC-500. Sub-phases 5a (lcxl3 protocol module), 5b (state-machine variants), 5c (config), 5d (main wiring), 5e (hardware validation). Hardware-validated 2026-04-27: Play/Stop toggle drives LUNA, jog encoder nudges bars, LED follows state, encoder during playback ignored, sync-on-stop still fires. 122 unit tests passing. |
+| Phase 6: Web Control Interface | Planned | Embedded htmx + axum web UI on `http://127.0.0.1:8765`, auto-opened on startup. Live MIDI port pickers, in-process config reload, transport status readout, SSE event stream, hold-to-confirm HALT. "Studio Rack Utility" aesthetic. Distribution work (.pkg, launchd, signing) is a separate follow-on feature. Design captured in [web-ui-design.md](web-ui-design.md). |
 
 ## Documentation
 
@@ -23,6 +24,7 @@
 - [Workplan](workplan.md)
 - [Implementation Summary](implementation-summary.md)
 - [LCXL3 handshake trace](lcxl3-handshake-trace.md) — annotated decode of the captured Live → LCXL3 init sequence (Phase 5 reference)
+- [Web UI design](web-ui-design.md) — UX/UI specification for the Phase 6 embedded control interface
 
 ## GitHub Tracking
 
@@ -32,4 +34,7 @@
 - Idle byte-trace Pull Request: [#319](https://github.com/audiocontrol-org/audiocontrol/pull/319) (merged)
 - Phase 5 Parent Issue: [#320](https://github.com/audiocontrol-org/audiocontrol/issues/320)
 - Phase 5a–5e Issues: [#321](https://github.com/audiocontrol-org/audiocontrol/issues/321), [#322](https://github.com/audiocontrol-org/audiocontrol/issues/322), [#323](https://github.com/audiocontrol-org/audiocontrol/issues/323), [#324](https://github.com/audiocontrol-org/audiocontrol/issues/324), [#325](https://github.com/audiocontrol-org/audiocontrol/issues/325)
+- Phase 5 + Ableton Pull Request: [#326](https://github.com/audiocontrol-org/audiocontrol/pull/326) (merged)
+- Phase 6 Parent Issue: [#327](https://github.com/audiocontrol-org/audiocontrol/issues/327)
+- Phase 6a–6i Issues: [#328](https://github.com/audiocontrol-org/audiocontrol/issues/328), [#329](https://github.com/audiocontrol-org/audiocontrol/issues/329), [#330](https://github.com/audiocontrol-org/audiocontrol/issues/330), [#331](https://github.com/audiocontrol-org/audiocontrol/issues/331), [#332](https://github.com/audiocontrol-org/audiocontrol/issues/332), [#333](https://github.com/audiocontrol-org/audiocontrol/issues/333), [#334](https://github.com/audiocontrol-org/audiocontrol/issues/334), [#335](https://github.com/audiocontrol-org/audiocontrol/issues/335), [#336](https://github.com/audiocontrol-org/audiocontrol/issues/336)
 - Milestone: TBD
