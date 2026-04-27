@@ -379,22 +379,22 @@ The full UX/interaction specification is captured in [`web-ui-design.md`](web-ui
 
 **Deliverable:** The bridge binary spawns a tokio runtime in a dedicated thread, runs an axum server with a single "hello, bridge" handler, and the existing MIDI event loop handles `Cmd::Reload` / `Cmd::Halt` without otherwise changing behaviour. No UI yet; this phase is purely the channel-wiring refactor.
 
-- [ ] Add `axum`, `tokio` (with `rt-multi-thread`, `signal`, `sync`, `time` features), `tower-http`, `rust-embed`, `serde_json`, `futures` to `services/midi-macro-bridge/Cargo.toml`
-- [ ] Create `src/web/state.rs` with `WebState`, `Cmd { Reload(Config), Halt }`, `Status`, `EventLine`, `EventSource` types and the channel-creation helpers (`mpsc<Cmd>`, `watch<Status>`, `broadcast<EventLine>`)
-- [ ] Create `src/web/mod.rs` with the axum app builder + a single placeholder route returning `text/plain "MIDI Macro Bridge"`
-- [ ] In `main.rs`, factor the existing per-startup MIDI wiring into `setup_midi_connections(&Config) -> Result<Connections>` so the loop can rebuild connections on reload
-- [ ] Spawn a dedicated `std::thread` running `tokio::runtime::Runtime::new()` that drives the axum server bound to `127.0.0.1:8765` (fall back to `:0` if 8765 is taken; log the chosen port)
-- [ ] In the MIDI event loop, drain `cmd_rx` each tick and handle `Cmd::Reload` (drop connections, call factory, publish new `Status`) and `Cmd::Halt` (`std::process::exit(2)`)
-- [ ] Emit a `Status` snapshot through the watch channel after every state change
-- [ ] Verify: `cargo run` starts the bridge as before, `curl http://127.0.0.1:8765` returns the placeholder, MC-500 transport still drives LUNA, and a manually-triggered `Cmd::Reload` (test harness) tears down + rebuilds connections without process exit
+- [x] Add `axum`, `tokio` (with `rt-multi-thread`, `signal`, `sync`, `time` features), `tower-http`, `rust-embed`, `serde_json`, `futures` to `services/midi-macro-bridge/Cargo.toml`
+- [x] Create `src/web/state.rs` with `WebState`, `Cmd { Reload(Config), Halt }`, `Status`, `EventLine`, `EventSource` types and the channel-creation helpers (`mpsc<Cmd>`, `watch<Status>`, `broadcast<EventLine>`)
+- [x] Create `src/web/mod.rs` with the axum app builder + a single placeholder route returning `text/plain "MIDI Macro Bridge — Phase 6a placeholder"`
+- [x] In `main.rs`, factor the existing per-startup MIDI wiring into `setup_midi_connections(&Config) -> Result<MidiConnections>` so the loop can rebuild connections on reload
+- [x] Spawn a dedicated `std::thread` running `tokio::runtime::Runtime::new()` that drives the axum server bound to `127.0.0.1:8765` (fall back to `:0` if 8765 is taken; log the chosen port)
+- [x] In the MIDI event loop, drain `cmd_rx` each tick and handle `Cmd::Reload` (drop connections, call factory, publish new `Status`) and `Cmd::Halt` (`std::process::exit(2)`)
+- [x] Emit a `Status` snapshot through the watch channel after every state change
+- [x] Verify: `cargo run` starts the bridge as before, `curl http://127.0.0.1:8765` returns the placeholder, MC-500 transport still drives LUNA, and a manually-triggered `Cmd::Reload` (test harness) tears down + rebuilds connections without process exit
 
 ### Acceptance Criteria
 
-- [ ] `cargo build --release` clean with new dependencies
-- [ ] All existing unit tests still pass
-- [ ] New unit tests for `setup_midi_connections` (idempotent across same-config calls), `Cmd` channel plumbing
-- [ ] Server starts on the configured port, logs the URL clearly, falls back to OS-assigned port if 8765 is taken
-- [ ] Existing CLI modes (`--list-ports`, `--self-test`, `--probe-midi`, `--probe-mcu`, `--send-mcu`, `--lcxl3-activate`) all still work — the web server is gated and these modes bypass it
+- [x] `cargo build --release` clean with new dependencies (2 pre-existing warnings only)
+- [x] All existing unit tests still pass (130 total, 8 new)
+- [x] New unit tests for `setup_midi_connections` (idempotent across same-config calls), `Cmd` channel plumbing, axum placeholder route
+- [x] Server starts on the configured port, logs the URL clearly, falls back to OS-assigned port if 8765 is taken
+- [x] Existing CLI modes (`--list-ports`, `--self-test`, `--probe-midi`, `--probe-mcu`, `--send-mcu`, `--lcxl3-activate`) all still work — the web server is gated and these modes bypass it
 
 ### Phase 6b — Port enumeration + status APIs
 
