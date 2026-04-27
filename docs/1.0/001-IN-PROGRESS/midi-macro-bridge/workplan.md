@@ -244,16 +244,16 @@ The existing `--lcxl3-activate` one-shot CLI mode (already shipped) demonstrates
 
 **Deliverable:** `src/lcxl3.rs` exists with the byte sequences, parser, and LED helpers, fully unit-tested.
 
-- [ ] Create `src/lcxl3.rs` with handshake byte-sequence constants (probe `02 00`, UDI exchange, claim `02 7F`, host-name SysEx via `04 36 62` / `06 36 01 <ascii>` / `04 36 7F`, transport LED CCs)
-- [ ] Implement `parse(bytes: &[u8]) -> Option<TransportEvent>` — recognises Play/Stop toggle (`B0 74 7F`) and encoder ticks (`B6 1E nn` / `B6 1F nn`), clamps encoder magnitude to ≤ 4
-- [ ] Implement `led_for_state(state: &TransportState) -> Option<[u8; 3]>` — returns transport-button CC for Playing / Stopped / Locating; `None` if no LED change is needed
-- [ ] Move existing `LCXL3_DAW_PROBE` / `LCXL3_DAW_CLAIM` / `LCXL3_UDI` / `lcxl3_host_name_sequence` / LED constants from `main.rs` into the new module; update `--lcxl3-activate` to import from `lcxl3.rs`
-- [ ] Unit tests: every captured CC from `lcxl3-handshake-trace.md` parses to the expected `TransportEvent`; encoder magnitude cap clamps high values; LED helper returns the right bytes for each state
+- [x] Create `src/lcxl3.rs` with handshake byte-sequence constants (probe `02 00`, UDI exchange, claim `02 7F`, host-name SysEx via `04 36 62` / `06 36 01 <ascii>` / `04 36 7F`, transport LED CCs)
+- [x] Implement `parse(bytes: &[u8]) -> Option<TransportEvent>` — recognises Play/Stop toggle (`B0 74 7F`) and encoder ticks (`B6 1E nn` / `B6 1F nn`), clamps encoder magnitude to ≤ 4
+- [x] Implement `led_for_state(state: &TransportState) -> Option<[u8; 3]>` — returns transport-button CC for Playing / Stopped / Locating; `None` if no LED change is needed
+- [x] Move existing `LCXL3_DAW_PROBE` / `LCXL3_DAW_CLAIM` / `LCXL3_UDI` / `lcxl3_host_name_sequence` / LED constants from `main.rs` into the new module; update `--lcxl3-activate` to import from `lcxl3.rs`
+- [x] Unit tests: every captured CC from `lcxl3-handshake-trace.md` parses to the expected `TransportEvent`; encoder magnitude cap clamps high values; LED helper returns the right bytes for each state
 
 ### Acceptance Criteria
 
-- [ ] `cargo test lcxl3` passes
-- [ ] `--lcxl3-activate` still works (regression check; no behaviour change)
+- [x] `cargo test lcxl3` passes (14 new tests)
+- [x] `--lcxl3-activate` still works (sanity-checked end-to-end: device echoes probe + UDI reply + claim ack as before)
 
 ### Phase 5b — State-machine extensions
 

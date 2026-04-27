@@ -16,6 +16,7 @@ use tracing::{error, info, warn};
 mod backend;
 mod config;
 mod keys;
+mod lcxl3;
 mod locate;
 mod mcu;
 mod midi;
@@ -703,54 +704,10 @@ fn run_probe_midi(port_substring: &str) -> Result<()> {
     drive_probe_loop(rx)
 }
 
-// ---- Launch Control XL Mk3 DAW handshake ----------------------------------
-//
-// Captured from a fresh Ableton Live launch (`ableton-trace 21:58:26`):
-//
-//   Live → LCXL3   F0 00 20 29 02 15 02 00 F7        (DAW probe)
-//   LCXL3 → Live   F0 00 20 29 02 15 02 00 F7        (echo)
-//   Live → LCXL3   F0 7E 7F 06 01 F7                 (Universal Device Inquiry)
-//   LCXL3 → Live   F0 7E 00 06 02 00 20 29 48 ... F7 (identity reply)
-//   Live → LCXL3   F0 00 20 29 02 15 02 7F F7        (claim DAW mode)
-//   Live → LCXL3   F0 00 20 29 02 15 04 36 62 F7     (open page 0x36)
-//   Live → LCXL3   F0 00 20 29 02 15 06 36 01 "Live 12" F7  (host name)
-//   Live → LCXL3   F0 00 20 29 02 15 04 36 7F F7     (close page)
-//   LCXL3 → Live   F0 00 20 29 02 15 02 7F F7        (DAW-mode ack)
-//
-// Sending only `02 7F` puts the device in a half-handshake state — it
-// emits transport bytes but its LEDs/displays look "broken" because it
-// never agreed to be claimed. Doing the probe + UDI + claim sequence
-// produces the same steady state Live does.
-
-const LCXL3_DAW_PROBE: [u8; 9] = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x02, 0x00, 0xF7];
-const LCXL3_DAW_CLAIM: [u8; 9] = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x02, 0x7F, 0xF7];
-const LCXL3_UDI: [u8; 6] = [0xF0, 0x7E, 0x7F, 0x06, 0x01, 0xF7];
-
-/// Build the host-identification SysEx Live sends after `02 7F`. Uses
-/// page 0x36 with sub-id 01 carrying ASCII bytes for the host name.
-/// We claim "Bridge" so the device's display reflects what's actually
-/// driving it.
-fn lcxl3_host_name_sequence(name: &[u8]) -> Vec<Vec<u8>> {
-    // page-open: 04 36 62; name: 06 36 01 <name>; page-close: 04 36 7F
-    let mut name_msg = vec![0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x06, 0x36, 0x01];
-    name_msg.extend_from_slice(name);
-    name_msg.push(0xF7);
-    vec![
-        vec![0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x04, 0x36, 0x62, 0xF7],
-        name_msg,
-        vec![0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x04, 0x36, 0x7F, 0xF7],
-    ]
-}
-
-/// Minimal LED state push so the transport buttons show "stopped /
-/// idle" colors after activation. Captured values come from the same
-/// fresh-launch trace.
-const LCXL3_LED_PLAY_STOPPED: [u8; 3] = [0xB0, 0x74, 0x27];
-#[allow(dead_code)] // Reserved for future Play→playing-color follower.
-const LCXL3_LED_PLAY_PLAYING: [u8; 3] = [0xB0, 0x74, 0x21];
-const LCXL3_LED_RECORD_IDLE: [u8; 3] = [0xB0, 0x76, 0x07];
-
-const LCXL3_DAW_DEACTIVATE: [u8; 9] = LCXL3_DAW_PROBE;
+// LCXL3 handshake bytes, parser, and LED helpers all live in the
+// `lcxl3` module — see services/midi-macro-bridge/src/lcxl3.rs and the
+// annotated decode in
+// docs/1.0/001-IN-PROGRESS/midi-macro-bridge/lcxl3-handshake-trace.md.
 
 /// Send the LCXL3 Mk3 DAW-mode activation SysEx and dump everything
 /// the device emits on its DAW Out port. One-shot probe to confirm
@@ -805,31 +762,12 @@ fn run_lcxl3_activate(substring: &str) -> Result<()> {
     let mut output = midi::connect_output(&in_query)
         .with_context(|| format!("opening LCXL3 output port matching '{in_query}'"))?;
 
-    // Full handshake (matches Ableton Live 12's sequence).
-    // Tiny gaps between messages so the device gets a chance to ack
-    // each one before the next arrives — Live waits ~30ms between
-    // probe/UDI/claim, ~0ms within the post-claim burst.
-    let mut send = |label: &str, bytes: &[u8]| -> Result<()> {
-        output
-            .send(bytes)
-            .map_err(|e| anyhow::anyhow!("send '{label}' failed: {e}"))?;
-        eprintln!("# -> {label}");
-        Ok(())
-    };
-
-    send("DAW probe (02 00)", &LCXL3_DAW_PROBE)?;
-    std::thread::sleep(Duration::from_millis(30));
-    send("Universal Device Inquiry", &LCXL3_UDI)?;
-    std::thread::sleep(Duration::from_millis(30));
-    send("DAW claim (02 7F)", &LCXL3_DAW_CLAIM)?;
-    for msg in lcxl3_host_name_sequence(b"Bridge") {
-        send("host-name SysEx", &msg)?;
-    }
-    std::thread::sleep(Duration::from_millis(10));
-    send("LED Play=stopped (B0 74 27)", &LCXL3_LED_PLAY_STOPPED)?;
-    send("LED Record=idle (B0 76 07)", &LCXL3_LED_RECORD_IDLE)?;
-
-    eprintln!("# lcxl3-activate: handshake complete.");
+    // Full handshake — matches Ableton Live 12's sequence (probe → UDI
+    // → claim → host-name page → transport-LED preset). All byte
+    // sequences and pacing live in the lcxl3 module.
+    lcxl3::handshake_send(&mut output, b"Bridge")
+        .context("sending LCXL3 DAW activation handshake")?;
+    eprintln!("# lcxl3-activate: handshake sent (probe → UDI → claim → host name → LED preset)");
     eprintln!("# Listening on port matching '{out_query}'.");
     eprintln!("# Press transport buttons / move encoders on the device.");
     eprintln!("# Ctrl-C to stop (will send deactivation SysEx).");
@@ -847,7 +785,7 @@ fn run_lcxl3_activate(substring: &str) -> Result<()> {
             // even if the user re-runs the bridge in a different
             // mode. Ignore send errors; the user can power-cycle if
             // the device gets stuck.
-            let _ = output.send(&LCXL3_DAW_DEACTIVATE);
+            lcxl3::deactivate_send(&mut output);
             eprintln!("# lcxl3-activate: sent deactivation SysEx, exiting");
             return Ok(());
         }
