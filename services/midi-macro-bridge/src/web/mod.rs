@@ -26,12 +26,25 @@ pub mod views;
 use std::net::SocketAddr;
 use std::thread::JoinHandle;
 
+use anyhow::{Context, Result};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::Router;
 use tracing::info;
 
 use crate::web::state::WebState;
+
+// ── ServerHandle ───────────────────────────────────────────────────────────────
+
+/// Return value from `run_server_thread`. The caller receives both the
+/// thread's `JoinHandle` (to keep alive for the process lifetime) and the
+/// `SocketAddr` the listener actually bound to (preferred port or OS-assigned
+/// fallback). Having the bound address lets `main` open a browser tab to
+/// the correct URL and persist it to disk.
+pub struct ServerHandle {
+    pub join_handle: JoinHandle<()>,
+    pub bound_addr: SocketAddr,
+}
 
 // ── Embedded assets ────────────────────────────────────────────────────────────
 
@@ -101,16 +114,26 @@ pub fn build_app(state: WebState) -> Router {
 /// Spawn a `std::thread` that owns a `tokio::runtime::Runtime` and
 /// runs the axum server.
 ///
-/// The server tries to bind `addr_pref` first. If that port is
-/// already taken it falls back to `0.0.0.0:0` (OS-assigned port).
-/// Either way the chosen address is logged via `tracing::info!`.
+/// The server tries to bind `addr_pref` first. If that port is already
+/// taken it falls back to `127.0.0.1:0` (OS-assigned port). Either way
+/// the chosen address is reported back to the caller via a sync channel
+/// before this function returns, so the caller knows the actual port
+/// before the first HTTP request is possible.
 ///
-/// The returned `JoinHandle` must be held alive by the caller (`main`)
-/// for the duration of the process. Dropping it would join the thread,
-/// which would block; store it but never explicitly join in the happy
-/// path.
-pub fn run_server_thread(addr_pref: SocketAddr, state: WebState) -> JoinHandle<()> {
-    std::thread::Builder::new()
+/// The returned `ServerHandle` contains:
+/// - `join_handle` — must be held alive by `main` for the process lifetime
+///   (never explicitly joined in the happy path)
+/// - `bound_addr` — the `SocketAddr` the listener actually bound to
+///
+/// Returns `Err` only if the OS refuses to spawn the server thread or the
+/// inner server fails to bind before reporting back (which would be a
+/// fatal OS-level failure).
+pub fn run_server_thread(addr_pref: SocketAddr, state: WebState) -> Result<ServerHandle> {
+    // A one-shot channel: the server thread fires the bound address once
+    // the listener is up, before `axum::serve` takes over.
+    let (addr_tx, addr_rx) = std::sync::mpsc::channel::<SocketAddr>();
+
+    let join_handle = std::thread::Builder::new()
         .name("axum-server".into())
         .spawn(move || {
             let rt = tokio::runtime::Runtime::new().expect("failed to build tokio runtime");
@@ -140,12 +163,25 @@ pub fn run_server_thread(addr_pref: SocketAddr, state: WebState) -> JoinHandle<(
                     }
                 };
 
+                // Report the bound address to the caller before blocking on serve.
+                let bound = listener.local_addr().expect("listener has no local addr");
+                let _ = addr_tx.send(bound);
+
                 axum::serve(listener, app)
                     .await
                     .expect("axum server error");
             });
         })
-        .expect("failed to spawn axum server thread")
+        .context("failed to spawn axum server thread")?;
+
+    let bound_addr = addr_rx
+        .recv()
+        .context("server thread failed to report bound address")?;
+
+    Ok(ServerHandle {
+        join_handle,
+        bound_addr,
+    })
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

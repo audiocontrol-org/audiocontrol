@@ -313,6 +313,13 @@ fn main() -> Result<()> {
 
     let args: Vec<String> = std::env::args().collect();
 
+    // ── CLI flags ─────────────────────────────────────────────────────────────
+
+    // --no-open: suppress the auto-open browser launch even when
+    // `config.web.auto_open_browser = true`. Useful when running under
+    // launchd (where browser-launching from a daemon is wrong) or in CI.
+    let no_open = args.iter().any(|a| a == "--no-open");
+
     // ── CLI modes that bypass the web server ──────────────────────────────────
 
     // --list-ports: print available MIDI inputs and exit.
@@ -422,10 +429,25 @@ fn main() -> Result<()> {
         let bind_addr = format!("127.0.0.1:{}", config.web.bind_port)
             .parse()
             .expect("invalid bind address");
-        let handle = web::run_server_thread(bind_addr, web_state);
-        // Phase 6h wires auto-open browser here; for now, just log.
-        info!(port = config.web.bind_port, "web server spawned (auto-open deferred to Phase 6h)");
-        Some(handle)
+        let handle = web::run_server_thread(bind_addr, web_state)
+            .context("starting web server")?;
+        let url = format!("http://{}", handle.bound_addr);
+        info!(%url, "web server ready");
+
+        // Persist the URL so follow-on tooling (menu-bar app, `open --bridge`)
+        // can find it without scanning ports.
+        persist_bridge_url(&url);
+
+        // Auto-open browser — gated on config setting AND --no-open flag.
+        if config.web.auto_open_browser && !no_open {
+            open_browser(&url);
+        } else if no_open {
+            info!("--no-open: skipping browser launch");
+        } else {
+            info!("auto_open_browser=false: skipping browser launch");
+        }
+
+        Some(handle.join_handle)
     } else {
         None
     };
@@ -1061,6 +1083,62 @@ fn init_tracing() {
 }
 
 const MCU_ENDPOINT_NAME: &str = "MIDI Macro Bridge";
+
+// ── Browser open / URL persistence ───────────────────────────────────────────
+
+/// Write `url` to the platform-appropriate state file so follow-on
+/// tooling (menu-bar app, shell helper) can find the bridge URL without
+/// scanning ports. Errors are non-fatal — log a warning and continue.
+fn persist_bridge_url(url: &str) {
+    let path = bridge_url_path();
+    let Some(path) = path else {
+        info!("skipping url.txt persistence (no suitable state dir on this platform)");
+        return;
+    };
+    if let Some(parent) = path.parent() {
+        if let Err(e) = std::fs::create_dir_all(parent) {
+            warn!(?e, dir = %parent.display(), "failed to create bridge state dir; url.txt will not be written");
+            return;
+        }
+    }
+    match std::fs::write(&path, url) {
+        Ok(()) => info!(path = %path.display(), "bridge URL written"),
+        Err(e) => warn!(?e, path = %path.display(), "failed to write bridge URL"),
+    }
+}
+
+/// Return the platform-specific path where the bridge URL should be persisted.
+/// Returns `None` on platforms where no suitable location is available.
+fn bridge_url_path() -> Option<std::path::PathBuf> {
+    #[cfg(target_os = "macos")]
+    {
+        // ~/Library/Application Support/MidiMacroBridge/url.txt
+        dirs::data_dir().map(|d| d.join("MidiMacroBridge").join("url.txt"))
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        // $XDG_RUNTIME_DIR/midi-macro-bridge/url.txt on Linux; skip elsewhere.
+        std::env::var_os("XDG_RUNTIME_DIR")
+            .map(|d| std::path::PathBuf::from(d).join("midi-macro-bridge").join("url.txt"))
+    }
+}
+
+/// Launch the default browser to `url`. On macOS, uses `open(1)`.
+/// On other platforms, logs that auto-open is not implemented.
+fn open_browser(url: &str) {
+    #[cfg(target_os = "macos")]
+    {
+        info!(%url, "opening browser");
+        match std::process::Command::new("open").arg(url).spawn() {
+            Ok(_) => {}
+            Err(e) => warn!(?e, "failed to spawn 'open' for browser launch"),
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        info!(%url, "auto-open browser not implemented for this platform");
+    }
+}
 
 // ── CLI probe modes ───────────────────────────────────────────────────────────
 

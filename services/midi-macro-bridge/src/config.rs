@@ -9,12 +9,9 @@ pub struct Config {
     /// Substring match against the MC-500 transport MIDI input port.
     /// Case-insensitive.
     ///
-    /// Defaults to `"828mk3 Hybrid MIDI"` — the interface used on
-    /// Orion's primary rig. That's a placeholder default to make
-    /// the out-of-the-box bridge useful without any config; a
-    /// general port-discovery approach will come during release
-    /// hardening. Set this explicitly if your MC-500 is routed
-    /// through a different interface.
+    /// Defaults to `""` (empty) — no port is correct for a fresh
+    /// install. Set this via the web UI or `config.toml` to the
+    /// substring of the MIDI input port connected to the MC-500.
     ///
     /// If no port matches the substring, midir's connect fails with
     /// an actionable error pointing at `--list-ports`.
@@ -28,15 +25,15 @@ pub struct Config {
     /// to the MC-500 so both machines agree on where the playhead
     /// is.
     ///
-    /// Defaults to the same port name as `midi_input_port` (the
-    /// 828mk3) — midir distinguishes inputs from outputs at the
-    /// port-enumeration level, so the same substring resolves to
-    /// two different endpoints.
+    /// Defaults to `""` (empty), which disables sync-on-stop.
+    /// Set this to the same port name as `midi_input_port` (midir
+    /// distinguishes inputs from outputs at the port-enumeration
+    /// level, so the same substring resolves to distinct endpoints).
     ///
-    /// Empty string disables the sync feature. If the port exists
-    /// but isn't reachable (MC-500 unplugged, cable routed
-    /// elsewhere), the bridge warns at startup and continues
-    /// without the sync — MC-500 → LUNA direction still works.
+    /// If the port exists but isn't reachable (MC-500 unplugged,
+    /// cable routed elsewhere), the bridge warns at startup and
+    /// continues without the sync — MC-500 → LUNA direction still
+    /// works.
     #[serde(default = "default_mc500_output_port")]
     pub mc500_output_port: String,
 
@@ -89,15 +86,16 @@ impl Default for Config {
 }
 
 fn default_midi_input_port() -> String {
-    // Placeholder; general port discovery deferred to release
-    // hardening. See Config::midi_input_port docs.
-    "828mk3 Hybrid MIDI".to_string()
+    // Empty by default — no port is correct for a fresh install.
+    // The user must pick their port via the web UI or config.toml.
+    // See Config::midi_input_port docs.
+    String::new()
 }
 
 fn default_mc500_output_port() -> String {
-    // Same default as the input; midir separates inputs from
-    // outputs so the same substring resolves to distinct endpoints.
-    "828mk3 Hybrid MIDI".to_string()
+    // Empty by default — sync-on-stop is disabled until the user
+    // configures an output port. See Config::mc500_output_port docs.
+    String::new()
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -308,10 +306,8 @@ pub struct WebConfig {
     /// set `false` when running under launchd or SSH where browser
     /// launch would be wrong or impossible.
     ///
-    /// NOTE: not acted upon until Phase 6h. Field exists so
-    /// configs written now are forward-compatible.
-    // Phase 6h wires this; suppress dead_code until then.
-    #[allow(dead_code)]
+    /// Can also be suppressed per-invocation with the `--no-open`
+    /// CLI flag regardless of this setting.
     #[serde(default = "default_web_auto_open")]
     pub auto_open_browser: bool,
 }
@@ -413,7 +409,10 @@ mod tests {
         // Config::default() via the NotFound branch in Config::load;
         // an empty TOML takes the same path via serde's defaults.
         let cfg: Config = toml::from_str("").unwrap();
-        assert_eq!(cfg.midi_input_port, "828mk3 Hybrid MIDI");
+        // Phase 6h: default ports are empty — no port is correct for
+        // a fresh install; the user must pick via the web UI.
+        assert_eq!(cfg.midi_input_port, "");
+        assert_eq!(cfg.mc500_output_port, "");
         assert!(cfg.enabled_on_startup);
         assert_eq!(cfg.transport.backend, BackendKind::Mcu);
         assert!(cfg.locate.enabled);
@@ -428,9 +427,19 @@ mod tests {
         let from_toml: Config = toml::from_str("").unwrap();
         let from_default = Config::default();
         assert_eq!(from_toml.midi_input_port, from_default.midi_input_port);
+        assert_eq!(from_toml.mc500_output_port, from_default.mc500_output_port);
         assert_eq!(from_toml.enabled_on_startup, from_default.enabled_on_startup);
         assert_eq!(from_toml.transport.backend, from_default.transport.backend);
         assert_eq!(from_toml.locate.enabled, from_default.locate.enabled);
+    }
+
+    #[test]
+    fn config_default_has_empty_port_fields() {
+        // Phase 6h: no default port is correct for a fresh install.
+        // Users see the empty-state UX and configure via the web UI.
+        let cfg = Config::default();
+        assert_eq!(cfg.midi_input_port, "", "midi_input_port should default to empty");
+        assert_eq!(cfg.mc500_output_port, "", "mc500_output_port should default to empty");
     }
 
     #[test]

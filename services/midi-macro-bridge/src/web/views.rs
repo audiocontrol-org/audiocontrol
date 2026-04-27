@@ -266,8 +266,21 @@ pub fn master_led_reason(status: &Status) -> String {
 
 // ── Status fragment ───────────────────────────────────────────────────────────
 
+/// Returns `true` when no MIDI ports are configured and LCXL3 is
+/// disabled — i.e. the bridge is in the "fresh install" empty state.
+fn is_empty_config(status: &Status) -> bool {
+    let cfg = &status.config;
+    cfg.midi_input_port.is_empty()
+        && cfg.mc500_output_port.is_empty()
+        && !cfg.lcxl3.enabled
+}
+
 /// Render the full status panel as an HTML fragment. Wrapped in
 /// `<div id="mmb-status">` so htmx can target it for an OOB swap.
+///
+/// When no devices are configured (`is_empty_config` returns true), an
+/// empty-state hint is rendered inside the routing area so first-run
+/// users immediately know what to do.
 pub fn render_status_fragment(status: &Status) -> String {
     let bridge_badge = render_bridge_state_badge(&status.bridge_state);
     let transport_badge = render_transport_badge(&status.transport);
@@ -294,6 +307,13 @@ pub fn render_status_fragment(status: &Status) -> String {
     let led_state = master_led_state(status);
     let led_reason = escape_html(&master_led_reason(status));
 
+    // Empty-state hint: shown only when no devices are configured.
+    let empty_state_html = if is_empty_config(status) {
+        r#"<div class="mmb-empty-state"><span>No devices configured. Open the configuration panel below to pick MIDI ports.</span></div>"#
+    } else {
+        ""
+    };
+
     format!(
         r#"<div id="mmb-status">
   <div class="status-row">
@@ -303,7 +323,7 @@ pub fn render_status_fragment(status: &Status) -> String {
     <span class="status-last-event">Last event: {secs_since}</span>
     <span class="status-heartbeat">MCU heartbeat: {hb_text}</span>
   </div>
-  <div class="status-ports">
+  {empty_state_html}<div class="status-ports">
     {ports_html}
   </div>
 </div>
@@ -803,6 +823,67 @@ mod tests {
         let status = make_status(BridgeState::Running);
         let html = render_status_fragment(&status);
         assert!(html.contains("--"), "expected -- for missing bar in: {html}");
+    }
+
+    // ── Empty-state hint ──────────────────────────────────────────────────────
+
+    #[test]
+    fn render_status_fragment_shows_empty_state_when_no_ports_configured() {
+        // Config::default() now has empty port fields and lcxl3 disabled —
+        // should trigger the empty-state hint.
+        let status = make_status(BridgeState::Running);
+        let html = render_status_fragment(&status);
+        assert!(
+            html.contains("mmb-empty-state"),
+            "expected mmb-empty-state class when no ports configured: {html}"
+        );
+        assert!(
+            html.contains("No devices configured"),
+            "expected empty-state message when no ports configured: {html}"
+        );
+    }
+
+    #[test]
+    fn render_status_fragment_no_empty_state_when_ports_configured() {
+        use crate::config::Config;
+        let status = Status {
+            bridge_state: BridgeState::Running,
+            transport: crate::state::TransportState::Stopped,
+            last_bar: None,
+            last_event_at: None,
+            ports: PortStatuses::default(),
+            mcu_heartbeat_at: None,
+            config: Config {
+                midi_input_port: "MC-500".to_string(),
+                ..Config::default()
+            },
+        };
+        let html = render_status_fragment(&status);
+        assert!(
+            !html.contains("mmb-empty-state"),
+            "unexpected mmb-empty-state when a port is configured: {html}"
+        );
+    }
+
+    #[test]
+    fn render_status_fragment_no_empty_state_when_lcxl3_enabled() {
+        use crate::config::Config;
+        let mut cfg = Config::default();
+        cfg.lcxl3.enabled = true;
+        let status = Status {
+            bridge_state: BridgeState::Running,
+            transport: crate::state::TransportState::Stopped,
+            last_bar: None,
+            last_event_at: None,
+            ports: PortStatuses::default(),
+            mcu_heartbeat_at: None,
+            config: cfg,
+        };
+        let html = render_status_fragment(&status);
+        assert!(
+            !html.contains("mmb-empty-state"),
+            "unexpected mmb-empty-state when lcxl3 is enabled: {html}"
+        );
     }
 
     // ── render_event_line ─────────────────────────────────────────────────────

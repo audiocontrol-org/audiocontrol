@@ -513,20 +513,20 @@ The full UX/interaction specification is captured in [`web-ui-design.md`](web-ui
 
 **Deliverable:** Launching the bridge auto-opens the browser to the UI on macOS. URL is recorded for follow-on tooling. First-run experience handles the no-MIDI-ports case gracefully.
 
-- [ ] After the listener binds, on macOS run `std::process::Command::new("open").arg(url).spawn()` to launch the default browser
-- [ ] Add a `--no-open` CLI flag that suppresses the auto-open (useful when running under launchd, where browser-launching from a daemon would be wrong)
-- [ ] Write the chosen URL to `~/Library/Application Support/MidiMacroBridge/url.txt` after the listener binds (create the directory if needed); existing tooling and a future menu-bar app can read this
-- [ ] First-run UX: if no MIDI ports are configured (fresh install with empty config), the UI shows an explicit "no devices configured yet" empty state in the routing matrix instead of empty silhouettes; configuration panels are pre-expanded so the user lands on the picker
-- [ ] Add a `[web]` config section: `enabled` (default true), `bind_port` (default 8765), `auto_open_browser` (default true)
-- [ ] Document the new config section in `config.example.toml`
+- [x] After the listener binds, on macOS run `std::process::Command::new("open").arg(url).spawn()` to launch the default browser
+- [x] Add a `--no-open` CLI flag that suppresses the auto-open (useful when running under launchd, where browser-launching from a daemon would be wrong)
+- [x] Write the chosen URL to `~/Library/Application Support/MidiMacroBridge/url.txt` after the listener binds (create the directory if needed); existing tooling and a future menu-bar app can read this
+- [x] First-run UX: if no MIDI ports are configured (fresh install with empty config), the UI shows an explicit "no devices configured yet" empty state in the routing matrix instead of empty silhouettes; configuration panels are pre-expanded so the user lands on the picker
+- [x] Add a `[web]` config section: `enabled` (default true), `bind_port` (default 8765), `auto_open_browser` (default true)
+- [ ] Document the new config section in `config.example.toml` (deferred to 6i — config.example.toml already describes the [web] section)
 
 ### Acceptance Criteria
 
-- [ ] First `cargo run` on a machine without `config.toml` opens the browser to the bridge URL within 1s
-- [ ] `--no-open` skips the browser launch but still binds the server
-- [ ] `url.txt` exists at the documented path with the correct URL after startup
-- [ ] First-run empty state is obviously friendlier than a generic "no data" placeholder
-- [ ] Setting `[web] enabled = false` in config disables the HTTP server entirely (CLI-only mode preserved)
+- [x] First `cargo run` on a machine without `config.toml` opens the browser to the bridge URL within 1s
+- [x] `--no-open` skips the browser launch but still binds the server
+- [x] `url.txt` exists at the documented path with the correct URL after startup
+- [x] First-run empty state is obviously friendlier than a generic "no data" placeholder
+- [x] Setting `[web] enabled = false` in config disables the HTTP server entirely (CLI-only mode preserved)
 
 ### Phase 6i — Hardware validation
 
