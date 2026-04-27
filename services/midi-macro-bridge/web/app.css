@@ -657,6 +657,52 @@ h3,
   box-shadow: 0 0 0 1px rgba(158, 255, 142, 0.2);
 }
 
+/* Port-picker select — patch-jack dropdown.
+   Strip native chrome, paint a custom panel arrow so the select reads as
+   equipment, not a system widget. */
+.mmb-port-select {
+  flex: 1;
+  background: var(--surface-panel);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--panel-radius);
+  color: var(--text-screenprint);
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 0.8125rem;
+  letter-spacing: 0.04em;
+  padding: calc(var(--base) * 1.5) calc(var(--base) * 6) calc(var(--base) * 1.5)
+    calc(var(--base) * 2);
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none' stroke='%236c6e68' stroke-width='1.5'><path d='M2 2 L6 6 L10 2'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right calc(var(--base) * 2) center;
+  background-size: 10px 7px;
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.mmb-port-select:focus {
+  border-color: rgba(158, 255, 142, 0.5);
+  box-shadow: 0 0 0 1px rgba(158, 255, 142, 0.2);
+}
+
+/* Disconnected option: visually mark the configured-but-unavailable state.
+   Styling per-option support varies by browser; both Chromium and Firefox
+   honour color on <option> in modern versions. The class is also used as
+   a hook for the JS to flag the parent select. */
+.mmb-port-select option.mmb-port-disconnected {
+  color: var(--led-amber);
+  font-style: italic;
+}
+
+/* When a select has the disconnected option selected, tint the trigger
+   text so the closed-state value reads as "warning" instead of "fine". */
+.mmb-port-select:has(option.mmb-port-disconnected:checked) {
+  color: var(--led-amber);
+  border-color: rgba(255, 209, 102, 0.35);
+}
+
 /* Toggle row — checkbox + label inline */
 .mmb-toggle {
   cursor: pointer;

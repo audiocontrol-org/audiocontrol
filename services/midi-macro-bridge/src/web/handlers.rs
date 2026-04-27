@@ -148,10 +148,25 @@ pub async fn halt(State(state): State<WebState>) -> impl IntoResponse {
 // ── /api/config-form ─────────────────────────────────────────────────────────
 
 /// `GET /api/config-form` — return the config form fragment populated from
-/// the current `Status::config` snapshot.
+/// the current `Status::config` snapshot, with port-select dropdowns
+/// populated from the live MIDI port enumeration.
+///
+/// Port enumeration runs in `tokio::task::spawn_blocking` since the
+/// midir calls are sync and touch the OS MIDI subsystem.
 pub async fn config_form(State(state): State<WebState>) -> impl IntoResponse {
     let cfg = state.status_rx.borrow().config.clone();
-    Html(views::render_config_form(&cfg))
+
+    let inputs = tokio::task::spawn_blocking(midi::list_ports_input)
+        .await
+        .unwrap_or_else(|_| Ok(vec![]))
+        .unwrap_or_default();
+
+    let outputs = tokio::task::spawn_blocking(midi::list_ports_output)
+        .await
+        .unwrap_or_else(|_| Ok(vec![]))
+        .unwrap_or_default();
+
+    Html(views::render_config_form(&cfg, &inputs, &outputs))
 }
 
 // ── POST /api/config ──────────────────────────────────────────────────────────

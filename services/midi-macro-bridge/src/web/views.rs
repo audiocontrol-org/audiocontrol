@@ -56,23 +56,75 @@ pub fn render_ports_fragment(inputs: &[String], outputs: &[String]) -> String {
     html
 }
 
+// ── Port-picker select ────────────────────────────────────────────────────────
+
+/// Render a `<select>` MIDI port picker.
+///
+/// `name` is the form field name; `current_value` is the value currently
+/// stored in config; `port_list` is the live list of currently-connected
+/// ports of the matching direction.
+///
+/// Rules:
+/// - An empty `<option value="">(none)</option>` is always present so the
+///   user can clear the slot.
+/// - If `current_value` is non-empty AND not in `port_list`, prepend a
+///   `<option ... class="mmb-port-disconnected">{name} (disconnected)</option>`
+///   so the saved value stays visible even when the device is unplugged.
+/// - If `port_list` is empty, render a disabled `(no MIDI ports detected)`
+///   option as a hint.
+fn render_port_select(name: &str, current_value: &str, port_list: &[String]) -> String {
+    let mut html = String::with_capacity(256);
+    let name_esc = escape_html(name);
+    html.push_str(&format!(
+        "<select name=\"{name_esc}\" class=\"mmb-port-select\">"
+    ));
+
+    let empty_selected = if current_value.is_empty() {
+        " selected"
+    } else {
+        ""
+    };
+    html.push_str(&format!(
+        "<option value=\"\"{empty_selected}>(none)</option>"
+    ));
+
+    let configured_in_list = port_list.iter().any(|p| p == current_value);
+    if !current_value.is_empty() && !configured_in_list {
+        let escaped = escape_html(current_value);
+        html.push_str(&format!(
+            "<option value=\"{escaped}\" selected class=\"mmb-port-disconnected\">{escaped} (disconnected)</option>"
+        ));
+    }
+
+    if port_list.is_empty() && current_value.is_empty() {
+        html.push_str("<option value=\"\" disabled>(no MIDI ports detected)</option>");
+    }
+
+    for port in port_list {
+        let escaped = escape_html(port);
+        let selected = if port == current_value { " selected" } else { "" };
+        html.push_str(&format!(
+            "<option value=\"{escaped}\"{selected}>{escaped}</option>"
+        ));
+    }
+
+    html.push_str("</select>");
+    html
+}
+
 // ── Config form ───────────────────────────────────────────────────────────────
 
 /// Render the configuration form as a self-contained HTML fragment.
-///
-/// The fragment includes inline `<datalist>` elements (empty by default;
-/// the page calls `/api/ports` on load to populate them) so the form can
-/// function even before the ports endpoint responds.
 ///
 /// The form posts via htmx to `POST /api/config`. While the request is
 /// in flight htmx adds `.htmx-request` to `#mmb-routing` (the
 /// `hx-indicator` target on the form), which triggers the reconnecting
 /// animation in `app.css`.
-pub fn render_config_form(cfg: &Config) -> String {
-    let mi = escape_html(&cfg.midi_input_port);
-    let mo = escape_html(&cfg.mc500_output_port);
-    let li = escape_html(&cfg.lcxl3.input_port);
-    let lo = escape_html(&cfg.lcxl3.output_port);
+///
+/// `inputs` / `outputs` are the live MIDI port lists used to populate the
+/// port-select dropdowns. Pass empty slices if enumeration failed; the
+/// renderer handles that gracefully.
+pub fn render_config_form(cfg: &Config, inputs: &[String], outputs: &[String]) -> String {
     let hn = escape_html(&cfg.lcxl3.host_name);
     let lcxl3_checked = if cfg.lcxl3.enabled { " checked" } else { "" };
     let mcu_checked = if cfg.transport.backend == BackendKind::Mcu { " checked" } else { "" };
@@ -94,15 +146,23 @@ pub fn render_config_form(cfg: &Config) -> String {
     html.push_str("    <legend class=\"mmb-section-label\">MC-500</legend>\n");
     html.push_str("    <label class=\"mmb-field\">\n");
     html.push_str("      <span class=\"mmb-field-label\">Input port</span>\n");
-    html.push_str(&format!(
-        "      <input type=\"text\" name=\"midi_input_port\" list=\"mmb-input-ports\"\n             value=\"{mi}\" autocomplete=\"off\">\n"
+    html.push_str("      ");
+    html.push_str(&render_port_select(
+        "midi_input_port",
+        &cfg.midi_input_port,
+        inputs,
     ));
+    html.push('\n');
     html.push_str("    </label>\n");
     html.push_str("    <label class=\"mmb-field\">\n");
     html.push_str("      <span class=\"mmb-field-label\">Sync output port</span>\n");
-    html.push_str(&format!(
-        "      <input type=\"text\" name=\"mc500_output_port\" list=\"mmb-output-ports\"\n             value=\"{mo}\" autocomplete=\"off\">\n"
+    html.push_str("      ");
+    html.push_str(&render_port_select(
+        "mc500_output_port",
+        &cfg.mc500_output_port,
+        outputs,
     ));
+    html.push('\n');
     html.push_str("    </label>\n");
     html.push_str("  </fieldset>\n\n");
 
@@ -117,15 +177,23 @@ pub fn render_config_form(cfg: &Config) -> String {
     html.push_str("    </label>\n");
     html.push_str("    <label class=\"mmb-field\">\n");
     html.push_str("      <span class=\"mmb-field-label\">Input port (DAW Out)</span>\n");
-    html.push_str(&format!(
-        "      <input type=\"text\" name=\"lcxl3_input_port\" list=\"mmb-input-ports\" value=\"{li}\" autocomplete=\"off\">\n"
+    html.push_str("      ");
+    html.push_str(&render_port_select(
+        "lcxl3_input_port",
+        &cfg.lcxl3.input_port,
+        inputs,
     ));
+    html.push('\n');
     html.push_str("    </label>\n");
     html.push_str("    <label class=\"mmb-field\">\n");
     html.push_str("      <span class=\"mmb-field-label\">Output port (DAW In)</span>\n");
-    html.push_str(&format!(
-        "      <input type=\"text\" name=\"lcxl3_output_port\" list=\"mmb-output-ports\" value=\"{lo}\" autocomplete=\"off\">\n"
+    html.push_str("      ");
+    html.push_str(&render_port_select(
+        "lcxl3_output_port",
+        &cfg.lcxl3.output_port,
+        outputs,
     ));
+    html.push('\n');
     html.push_str("    </label>\n");
     html.push_str("    <label class=\"mmb-field\">\n");
     html.push_str("      <span class=\"mmb-field-label\">Host name</span>\n");
@@ -165,10 +233,6 @@ pub fn render_config_form(cfg: &Config) -> String {
     html.push_str("      </label>\n");
     html.push_str("    </div>\n");
     html.push_str("  </fieldset>\n\n");
-
-    // Inline datalists — start empty; /api/ports populates them on page load.
-    html.push_str("  <datalist id=\"mmb-input-ports\"></datalist>\n");
-    html.push_str("  <datalist id=\"mmb-output-ports\"></datalist>\n\n");
 
     html.push_str("  <button type=\"submit\" class=\"mmb-apply\" id=\"mmb-apply-btn\">APPLY CHANGES</button>\n");
     html.push_str("</form>\n");
@@ -976,7 +1040,7 @@ mod tests {
 
     #[test]
     fn render_config_form_has_all_field_name_attributes() {
-        let html = render_config_form(&make_config_for_form());
+        let html = render_config_form(&make_config_for_form(), &[], &[]);
         for name in &[
             "midi_input_port",
             "mc500_output_port",
@@ -996,15 +1060,76 @@ mod tests {
     }
 
     #[test]
-    fn render_config_form_has_inline_datalists() {
-        let html = render_config_form(&make_config_for_form());
+    fn render_config_form_has_port_selects_not_text_inputs() {
+        let html = render_config_form(&make_config_for_form(), &[], &[]);
+        // Each port field is a <select>, not an <input type="text">.
+        for name in &[
+            "midi_input_port",
+            "mc500_output_port",
+            "lcxl3_input_port",
+            "lcxl3_output_port",
+        ] {
+            assert!(
+                html.contains(&format!(r#"<select name="{name}""#)),
+                "missing <select> for {name}: {html}"
+            );
+            assert!(
+                !html.contains(&format!(r#"<input type="text" name="{name}""#)),
+                "{name} is still rendered as text input: {html}"
+            );
+        }
+        // Datalists are gone — they were tied to the text-input UX.
         assert!(
-            html.contains(r#"<datalist id="mmb-input-ports">"#),
-            "missing inline input datalist: {html}"
+            !html.contains(r#"<datalist id="mmb-input-ports">"#),
+            "stale input datalist still rendered: {html}"
         );
         assert!(
-            html.contains(r#"<datalist id="mmb-output-ports">"#),
-            "missing inline output datalist: {html}"
+            !html.contains(r#"<datalist id="mmb-output-ports">"#),
+            "stale output datalist still rendered: {html}"
+        );
+    }
+
+    #[test]
+    fn render_config_form_select_options_populated_from_live_lists() {
+        let inputs = vec!["Port A".to_string(), "Port B".to_string()];
+        let outputs = vec!["Out X".to_string()];
+        let mut cfg = make_config_for_form();
+        cfg.midi_input_port = "Port A".to_string();
+        cfg.mc500_output_port = "Out X".to_string();
+        cfg.lcxl3.input_port = "Port B".to_string();
+        cfg.lcxl3.output_port = "Out X".to_string();
+
+        let html = render_config_form(&cfg, &inputs, &outputs);
+
+        // Every live port appears as an option in the right-direction selects.
+        assert!(html.contains(r#"<option value="Port A""#));
+        assert!(html.contains(r#"<option value="Port B""#));
+        assert!(html.contains(r#"<option value="Out X""#));
+        // Selected attribute on the matching option.
+        assert!(
+            html.contains(r#"<option value="Port A" selected>Port A</option>"#),
+            "Port A not marked selected: {html}"
+        );
+    }
+
+    #[test]
+    fn render_config_form_marks_disconnected_when_configured_value_not_in_list() {
+        let inputs = vec!["Other Port".to_string()];
+        let outputs: Vec<String> = vec![];
+        let mut cfg = make_config_for_form();
+        cfg.midi_input_port = "My MC-500 In".to_string();
+
+        let html = render_config_form(&cfg, &inputs, &outputs);
+
+        // The configured value isn't in the live list, so it gets a
+        // disconnected option that's still selected.
+        assert!(
+            html.contains(r#"class="mmb-port-disconnected""#),
+            "missing disconnected class: {html}"
+        );
+        assert!(
+            html.contains("My MC-500 In (disconnected)"),
+            "missing disconnected label text: {html}"
         );
     }
 
@@ -1013,7 +1138,7 @@ mod tests {
         use crate::config::{TransportConfig, BackendKind};
         let mut cfg = make_config_for_form();
         cfg.transport = TransportConfig { backend: BackendKind::Mcu, ..cfg.transport };
-        let html = render_config_form(&cfg);
+        let html = render_config_form(&cfg, &[], &[]);
         assert!(
             html.contains(r#"value="mcu" id="mmb-backend-mcu" checked"#),
             "mcu radio not checked: {html}"
@@ -1034,7 +1159,7 @@ mod tests {
         use crate::config::{TransportConfig, BackendKind};
         let mut cfg = make_config_for_form();
         cfg.transport = TransportConfig { backend: BackendKind::Keystrokes, ..cfg.transport };
-        let html = render_config_form(&cfg);
+        let html = render_config_form(&cfg, &[], &[]);
         assert!(
             html.contains(r#"value="keystrokes" id="mmb-backend-keys" checked"#),
             "keystrokes radio not checked: {html}"
@@ -1043,7 +1168,7 @@ mod tests {
 
     #[test]
     fn render_config_form_lcxl3_enabled_checkbox_checked_when_enabled() {
-        let html = render_config_form(&make_config_for_form());
+        let html = render_config_form(&make_config_for_form(), &[], &[]);
         assert!(
             html.contains(r#"name="lcxl3_enabled" checked"#),
             "lcxl3_enabled checkbox not checked when enabled: {html}"
@@ -1054,7 +1179,7 @@ mod tests {
     fn render_config_form_lcxl3_enabled_checkbox_unchecked_when_disabled() {
         let mut cfg = make_config_for_form();
         cfg.lcxl3.enabled = false;
-        let html = render_config_form(&cfg);
+        let html = render_config_form(&cfg, &[], &[]);
         // The checkbox should be present but NOT have "checked".
         assert!(
             html.contains(r#"name="lcxl3_enabled""#),
@@ -1069,7 +1194,9 @@ mod tests {
     #[test]
     fn render_config_form_port_values_are_present() {
         let cfg = make_config_for_form();
-        let html = render_config_form(&cfg);
+        let html = render_config_form(&cfg, &[], &[]);
+        // With empty live lists, the configured values appear as
+        // "(disconnected)" options — still selected, still readable.
         assert!(html.contains("My MC-500 In"), "midi_input_port value missing");
         assert!(html.contains("My MC-500 Out"), "mc500_output_port value missing");
         assert!(html.contains("LCXL3 1 DAW Out"), "lcxl3_input_port value missing");
@@ -1081,7 +1208,7 @@ mod tests {
     fn render_config_form_escapes_special_chars_in_values() {
         let mut cfg = make_config_for_form();
         cfg.midi_input_port = r#"Port "test" & <more>"#.to_string();
-        let html = render_config_form(&cfg);
+        let html = render_config_form(&cfg, &[], &[]);
         assert!(
             !html.contains(r#"Port "test" & <more>"#),
             "unescaped special chars in: {html}"
@@ -1091,7 +1218,7 @@ mod tests {
 
     #[test]
     fn render_config_form_has_hx_post_attribute() {
-        let html = render_config_form(&make_config_for_form());
+        let html = render_config_form(&make_config_for_form(), &[], &[]);
         assert!(
             html.contains(r#"hx-post="/api/config""#),
             "missing hx-post: {html}"
@@ -1100,10 +1227,71 @@ mod tests {
 
     #[test]
     fn render_config_form_has_apply_button() {
-        let html = render_config_form(&make_config_for_form());
+        let html = render_config_form(&make_config_for_form(), &[], &[]);
         assert!(
             html.contains(r#"id="mmb-apply-btn""#),
             "missing apply button: {html}"
         );
+    }
+
+    // ── render_port_select ────────────────────────────────────────────────────
+
+    #[test]
+    fn render_port_select_includes_none_option_first() {
+        let html = render_port_select("test_port", "", &["Port A".to_string()]);
+        // The very first option should be the empty "(none)" — selected when current is empty.
+        assert!(
+            html.contains(r#"<option value="" selected>(none)</option>"#),
+            "missing selected (none) option: {html}"
+        );
+    }
+
+    #[test]
+    fn render_port_select_marks_matching_port_selected() {
+        let html = render_port_select(
+            "test_port",
+            "Port B",
+            &["Port A".to_string(), "Port B".to_string()],
+        );
+        assert!(html.contains(r#"<option value="Port A">Port A</option>"#));
+        assert!(html.contains(r#"<option value="Port B" selected>Port B</option>"#));
+    }
+
+    #[test]
+    fn render_port_select_disconnected_option_for_missing_port() {
+        let html = render_port_select(
+            "test_port",
+            "Old Device",
+            &["Live Port".to_string()],
+        );
+        // Disconnected option appears, marked selected with the special class.
+        assert!(html.contains("Old Device (disconnected)"));
+        assert!(html.contains(r#"class="mmb-port-disconnected""#));
+        // The (none) option is NOT selected because the disconnected one is.
+        assert!(html.contains(r#"<option value="">(none)</option>"#));
+    }
+
+    #[test]
+    fn render_port_select_no_ports_detected_hint() {
+        let html = render_port_select("test_port", "", &[]);
+        assert!(
+            html.contains("(no MIDI ports detected)"),
+            "missing no-ports hint: {html}"
+        );
+    }
+
+    #[test]
+    fn render_port_select_escapes_port_names() {
+        let html = render_port_select(
+            "test_port",
+            r#"Port "<weird>""#,
+            &[r#"Port "<weird>""#.to_string()],
+        );
+        assert!(
+            !html.contains(r#"Port "<weird>""#),
+            "unescaped chars in: {html}"
+        );
+        assert!(html.contains("&lt;weird&gt;"));
+        assert!(html.contains("&quot;"));
     }
 }
