@@ -274,15 +274,15 @@ The existing `--lcxl3-activate` one-shot CLI mode (already shipped) demonstrates
 
 **Deliverable:** `[lcxl3]` section parses from TOML; defaults work when section is absent.
 
-- [ ] Add `LcxlConfig` struct (with `serde(default)` field defaults) to `config.rs`: `enabled: bool` (default false), `input_port: String` (default "LCXL3 1 DAW Out"), `output_port: String` (default "LCXL3 1 DAW In"), `host_name: String` (default "Bridge")
-- [ ] Add `lcxl3: LcxlConfig` field to `Config` (with `#[serde(default)]`)
-- [ ] Document the new section in `config.example.toml` with all field defaults
-- [ ] Unit tests: minimal config (no `[lcxl3]`) parses with defaults; full config parses with overridden values; partial section parses with per-field defaults
+- [x] Add `LcxlConfig` struct (with `serde(default)` field defaults) to `config.rs`: `enabled: bool` (default false), `input_port: String` (default "LCXL3 1 DAW Out"), `output_port: String` (default "LCXL3 1 DAW In"), `host_name: String` (default "Bridge")
+- [x] Add `lcxl3: LcxlConfig` field to `Config` (with `#[serde(default)]`)
+- [x] Document the new section in `config.example.toml` with all field defaults
+- [x] Unit tests: minimal config (no `[lcxl3]`) parses with defaults; full config parses with overridden values; partial section parses with per-field defaults
 
 ### Acceptance Criteria
 
-- [ ] `cargo test config::tests::` passes including new round-trip tests
-- [ ] Existing config files (no `[lcxl3]` section) continue to load without error
+- [x] `cargo test config::tests::` passes including new round-trip tests (4 new tests)
+- [x] Existing config files (no `[lcxl3]` section) continue to load without error
 
 ### Phase 5d — Wire into main loop
 

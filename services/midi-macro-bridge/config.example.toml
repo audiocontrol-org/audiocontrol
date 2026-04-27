@@ -84,3 +84,42 @@ position_timeout_ms = 500
 # position-display stream briefly during the MCU surface-init
 # handshake after a bridge restart.
 initial_position_timeout_ms = 3000
+
+[lcxl3]
+# Novation Launch Control XL Mk3 — second input source for the bridge,
+# alongside the MC-500 transport input. When enabled, the bridge:
+#
+#   1. Opens the LCXL3's DAW Out / DAW In ports at startup.
+#   2. Runs the full Live-equivalent DAW activation handshake so the
+#      device's transport buttons start emitting (probe → Universal
+#      Device Inquiry → claim → host-name SysEx → transport-LED preset).
+#   3. Listens for transport-button presses (B0 74 7F = Play/Stop
+#      toggle) and the transport encoder's relative ticks (B6 1E nn /
+#      B6 1F nn) and feeds them into the same TransportEvent channel
+#      the MC-500 input uses.
+#   4. Mirrors transport state back to the device's Play LED on every
+#      state change (green when playing, idle colour when stopped).
+#   5. On Ctrl-C, sends the deactivation SysEx so the device returns
+#      to its idle state.
+#
+# Disabled by default — explicit opt-in keeps existing MC-500-only
+# behaviour unchanged. v1 only maps the Play/Stop button and the
+# transport encoder; faders, V-pots, pads, and Record are unmapped.
+#
+# Power-cycling the LCXL3 mid-session breaks the connection; restart
+# the bridge to re-handshake.
+enabled = false
+
+# Substring match against the LCXL3's DAW Out port (the device's
+# output → bridge's input). Default matches Novation's macOS port name.
+input_port = "LCXL3 1 DAW Out"
+
+# Substring match against the LCXL3's DAW In port (bridge's output →
+# device's input). The bridge sends the activation handshake and LED
+# state to this port.
+output_port = "LCXL3 1 DAW In"
+
+# ASCII text shown on the device's display as the host-name string
+# when it has nothing else to show. Mirrors what Live sends ("Live 12").
+# Keep it short — the device's display has limited width.
+host_name = "Bridge"
