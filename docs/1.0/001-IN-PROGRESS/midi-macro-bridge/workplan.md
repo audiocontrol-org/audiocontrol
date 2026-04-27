@@ -10,7 +10,16 @@
 | Phase 2 Issue | TBD |
 | Phase 3 Issue | TBD |
 | Phase 4 Issue | TBD |
+| Phase 5 Parent Issue | [#320](https://github.com/audiocontrol-org/audiocontrol/issues/320) |
+| Phase 5a Issue | [#321](https://github.com/audiocontrol-org/audiocontrol/issues/321) — LCXL3 protocol module |
+| Phase 5b Issue | [#322](https://github.com/audiocontrol-org/audiocontrol/issues/322) — `TogglePlay` + Nudge state-machine variants |
+| Phase 5c Issue | [#323](https://github.com/audiocontrol-org/audiocontrol/issues/323) — `[lcxl3]` config section |
+| Phase 5d Issue | [#324](https://github.com/audiocontrol-org/audiocontrol/issues/324) — wire LCXL3 input + LED output into main loop |
+| Phase 5e Issue | [#325](https://github.com/audiocontrol-org/audiocontrol/issues/325) — LCXL3 hardware validation |
 | Phase 1-2 PR | [#316](https://github.com/audiocontrol-org/audiocontrol/pull/316) (merged) |
+| Phase 3-4 PR | [#317](https://github.com/audiocontrol-org/audiocontrol/pull/317) (merged) |
+| Tolerance fix PR | [#318](https://github.com/audiocontrol-org/audiocontrol/pull/318) (merged) |
+| Idle byte-trace PR | [#319](https://github.com/audiocontrol-org/audiocontrol/pull/319) (merged) |
 
 ## Technical Approach
 
@@ -28,6 +37,15 @@
 - **Two structural shifts land together.** (1) Transport moves from keystroke emission to MCU output — Phase 1-2's `Return`+`Space` approach is refactored into a pluggable backend, with `McuBackend` (default) and `KeystrokeBackend` (opt-in fallback). MCU bypasses the frontmost-app requirement, Accessibility permission, and OS keystroke rate limits. (2) Closed-loop locate uses the same MCU plumbing: read position from `B0 40-49`, emit bar-nudge MCU messages, verify landing.
 - **Sub-phase split.** Phase 3 is broken into six linear sub-steps (3a–3f) so discovery against LUNA can happen in the middle, informed by a solid parser and a heartbeat responder, before committing to the backend refactor. Details in the per-phase sections below.
 - Hardware validation in Phase 4 covers transport via MCU (Play/Stop/Continue/RTZ round-tripping against LUNA with LUNA backgrounded), closed-loop locate forward/backward/from-zero, time-signature changes, and the oscillation-abort path for the nudge > 1 bar misconfiguration.
+
+### Phase 5 — Novation Launch Control XL Mk3 as a second input source
+
+- **Empirical first.** The handshake the LCXL3 expects, the bytes its transport buttons emit, and the LED CCs that bring its panel to life were all captured against Ableton Live's LCXL3 integration before any code was written. Decoded handshake reference lives in `docs/1.0/001-IN-PROGRESS/midi-macro-bridge/lcxl3-handshake-trace.md` and the `--lcxl3-activate` CLI mode (already shipped) demonstrated end-to-end that the handshake plus LED preset is enough for the device's transport buttons to become functional.
+- **Additive, not replacement.** The MC-500 input pipeline stays exactly as it is. The LCXL3 plugs in as a second `midi::connect_raw` callback feeding the same `mpsc::Sender<TransportEvent>` the MC-500 already uses. The state machine arbitrates between them; existing echo/dedup logic handles near-simultaneous events from both sources.
+- **New `TransportEvent` variants.** `TogglePlay` (Play/Stop button), `NudgeForward(u32)`, `NudgeBackward(u32)` (encoder ticks). MC-500 path keeps emitting `Start` / `Continue` / `Stop` / `Spp` unchanged.
+- **State-machine extensions.** `TogglePlay` while Stopped emits `[Play]` (LUNA's snap-on-stop means no `ReturnToZero` needed); while Playing emits `[Stop]`; while Locating ignored. Nudge events emit N × `BarForward` / `BarBackward` while Stopped (capped at 4 per packet at the parser layer); ignored while Playing or Locating.
+- **LED feedback.** After every `Machine::handle()`, if the state changed, write the corresponding transport-button LED CC to the LCXL3's DAW In port: `B0 74 21` for Playing, `B0 74 27` for Stopped/Locating.
+- **Activation lifecycle.** On startup with `[lcxl3] enabled = true`, the bridge runs the full Live-equivalent handshake (probe + UDI + claim + host name `"Bridge"` + transport LED preset). On Ctrl-C, the bridge sends the deactivation SysEx so the device returns to its idle state. Power-cycle mid-session requires a bridge restart in v1.
 
 ## Modules Affected
 
@@ -48,6 +66,16 @@
 - `services/midi-macro-bridge/src/main.rs` — open transport input, register the virtual MCU endpoint, run heartbeat responder, construct selected Backend, drive the closed-loop controller (already has `--probe-midi` / `--probe-mcu` from scaffolding; adds `--send-mcu <spec>` for 3c discovery)
 - `services/midi-macro-bridge/README.md` — document the MCU control-surface selection flow, the `[transport]` backend choice, and the `[locate]` config
 - `services/midi-macro-bridge/MCU-NOTES.md` — capture log of LUNA's MCU input/output format; appended during 3c discovery with the definitive Play/Stop/Continue/RTZ/BarFwd/BarBack encodings
+
+### Phase 5
+
+- `services/midi-macro-bridge/src/lcxl3.rs` (new) — LCXL3 protocol module: CC-byte parser (`parse(&[u8]) -> Option<TransportEvent>`), handshake byte-sequence constants (probe / UDI / claim / host-name SysEx), LED color constants and `led_for_state(&TransportState) -> Option<[u8; 3]>` helper, all unit-tested against captured byte sequences from `lcxl3-handshake-trace.md`
+- `services/midi-macro-bridge/src/state.rs` — extend `TransportEvent` with `TogglePlay`, `NudgeForward(u32)`, `NudgeBackward(u32)`; extend `Machine::handle` arms per the per-state table above; add unit tests for each new transition
+- `services/midi-macro-bridge/src/config.rs` — new `LcxlConfig` struct + `[lcxl3]` TOML section (`enabled` default false, `input_port`, `output_port`, `host_name`); TOML round-trip tests for minimal / full / missing variants
+- `services/midi-macro-bridge/src/main.rs` — second `midi::connect_raw` for the LCXL3 input alongside the existing MC-500 `midi::connect`; second `midi::connect_output` for LCXL3 LED output (mirrors the existing MC-500 sync output pattern); call `lcxl3::handshake_send` on startup if config enables it; after each `machine.handle()` push state-change LED bytes; send deactivation SysEx in the Ctrl-C path; existing `--lcxl3-activate` one-shot mode imports its byte constants from the new `lcxl3` module rather than duplicating them
+- `services/midi-macro-bridge/config.example.toml` — document the new `[lcxl3]` section with all defaults
+- `services/midi-macro-bridge/README.md` — add an LCXL3 setup section: how to enable, port-name conventions, what works in v1, the power-cycle restart caveat
+- `docs/1.0/001-IN-PROGRESS/midi-macro-bridge/lcxl3-handshake-trace.md` (new) — annotated decode of the captured Live → LCXL3 init sequence; reference document for the byte values used in `lcxl3.rs`
 
 ## Deferred — cross-platform MIDI abstraction layer
 
@@ -205,3 +233,86 @@ User confirmed on 2026-04-23: "the bridge works great" / "it seems to work prett
 - [x] SPP during playback is ignored (unit-tested)
 - [x] Nudge-size misconfiguration is detected and surfaces as a clear runtime error (unit-tested)
 - [x] Missing / stalled MCU position feed is detected and surfaces as a clean timeout, not a hang (unit-tested)
+
+## Phase 5: Novation Launch Control XL Mk3 as a second input source
+
+**Deliverable:** With `[lcxl3] enabled = true` in config, the bridge runs the LCXL3's DAW handshake on startup, listens for transport-button and encoder events, and translates them into the existing `Action` vocabulary that drives LUNA. Transport-state LED feedback is sent back to the device. The MC-500 input pipeline is unchanged; both input sources can run simultaneously.
+
+The existing `--lcxl3-activate` one-shot CLI mode (already shipped) demonstrates the handshake works end-to-end. Phase 5 is about wiring the same logic into the normal bridge run-loop and adding the input/output translation paths.
+
+### Phase 5a — LCXL3 protocol module
+
+**Deliverable:** `src/lcxl3.rs` exists with the byte sequences, parser, and LED helpers, fully unit-tested.
+
+- [ ] Create `src/lcxl3.rs` with handshake byte-sequence constants (probe `02 00`, UDI exchange, claim `02 7F`, host-name SysEx via `04 36 62` / `06 36 01 <ascii>` / `04 36 7F`, transport LED CCs)
+- [ ] Implement `parse(bytes: &[u8]) -> Option<TransportEvent>` — recognises Play/Stop toggle (`B0 74 7F`) and encoder ticks (`B6 1E nn` / `B6 1F nn`), clamps encoder magnitude to ≤ 4
+- [ ] Implement `led_for_state(state: &TransportState) -> Option<[u8; 3]>` — returns transport-button CC for Playing / Stopped / Locating; `None` if no LED change is needed
+- [ ] Move existing `LCXL3_DAW_PROBE` / `LCXL3_DAW_CLAIM` / `LCXL3_UDI` / `lcxl3_host_name_sequence` / LED constants from `main.rs` into the new module; update `--lcxl3-activate` to import from `lcxl3.rs`
+- [ ] Unit tests: every captured CC from `lcxl3-handshake-trace.md` parses to the expected `TransportEvent`; encoder magnitude cap clamps high values; LED helper returns the right bytes for each state
+
+### Acceptance Criteria
+
+- [ ] `cargo test lcxl3` passes
+- [ ] `--lcxl3-activate` still works (regression check; no behaviour change)
+
+### Phase 5b — State-machine extensions
+
+**Deliverable:** `state.rs` accepts the new `TransportEvent` variants and emits the right `Action` vector for each (state, event) combination.
+
+- [ ] Add `TogglePlay`, `NudgeForward(u32)`, `NudgeBackward(u32)` to `TransportEvent`
+- [ ] Extend `Machine::handle` per the table in the workplan's Technical Approach section above
+- [ ] Unit tests: `TogglePlay` while Stopped → `[Play]`, transitions to Playing; while Playing → `[Stop]`, transitions to Stopped; while Locating → `[]`, no transition. Nudge while Stopped emits N actions; while Playing or Locating → `[]`.
+- [ ] Existing `Start` / `Continue` / `Stop` / `Spp` tests continue to pass unchanged
+
+### Acceptance Criteria
+
+- [ ] All Phase 1-4 state-machine tests still pass
+- [ ] New tests cover every (state × new event) combination
+
+### Phase 5c — Config schema
+
+**Deliverable:** `[lcxl3]` section parses from TOML; defaults work when section is absent.
+
+- [ ] Add `LcxlConfig` struct (with `serde(default)` field defaults) to `config.rs`: `enabled: bool` (default false), `input_port: String` (default "LCXL3 1 DAW Out"), `output_port: String` (default "LCXL3 1 DAW In"), `host_name: String` (default "Bridge")
+- [ ] Add `lcxl3: LcxlConfig` field to `Config` (with `#[serde(default)]`)
+- [ ] Document the new section in `config.example.toml` with all field defaults
+- [ ] Unit tests: minimal config (no `[lcxl3]`) parses with defaults; full config parses with overridden values; partial section parses with per-field defaults
+
+### Acceptance Criteria
+
+- [ ] `cargo test config::tests::` passes including new round-trip tests
+- [ ] Existing config files (no `[lcxl3]` section) continue to load without error
+
+### Phase 5d — Wire into main loop
+
+**Deliverable:** Bridge run with `[lcxl3] enabled = true` activates the device on startup, processes events from both MC-500 and LCXL3 inputs, mirrors LED state to the device, and deactivates on shutdown.
+
+- [ ] In `main.rs` after the existing MC-500 `midi::connect`, add a second `midi::connect_raw` for the LCXL3 input port. Each callback's parser converts bytes to `Option<TransportEvent>` (`parse_transport` for MC-500, `lcxl3::parse` for LCXL3); both forward into the same `tx` channel
+- [ ] Open the LCXL3 output port via `midi::connect_output` (same pattern as the existing `mc500_out` for sync-on-stop)
+- [ ] On startup with LCXL3 enabled, call a new `lcxl3::handshake_send(&mut MidiOutputConnection, host_name: &str)` helper that fires the full activation sequence
+- [ ] In the main loop, after `machine.handle(event)`, if `machine.state()` differs from the previous state, send the corresponding LED bytes to the LCXL3 output port (gated on the LCXL3 connection existing)
+- [ ] In the Ctrl-C / shutdown path, send the deactivation SysEx so the LCXL3 returns to idle
+- [ ] If the LCXL3 input port is not available at startup, log a warning and continue without LCXL3 input — the MC-500 path still works
+
+### Acceptance Criteria
+
+- [ ] Bridge starts cleanly with both MC-500 and LCXL3 enabled
+- [ ] Bridge starts cleanly with only one of MC-500 / LCXL3 enabled (the other empty in config)
+- [ ] Bridge starts cleanly with neither configured (effectively a no-op session, useful for `--list-ports`)
+- [ ] Ctrl-C sends the deactivation SysEx visibly in the log
+
+### Phase 5e — Hardware validation
+
+**Deliverable:** End-to-end LCXL3 → bridge → LUNA verified on hardware.
+
+- [ ] Bridge launches with `[lcxl3] enabled = true` and `mc500_*` empty. LCXL3 transport buttons illuminate. Press Play → LUNA plays. Press again → LUNA stops. Encoder ticks → LUNA's bar position advances/retreats by one bar each
+- [ ] Bridge launches with both MC-500 and LCXL3 enabled. Hit Play on LCXL3 → LUNA plays. Hit Stop on MC-500 → LUNA stops. LED on LCXL3 follows. No echo loop or duplicate-event issues
+- [ ] Ctrl-C the bridge → LCXL3 returns to idle (LEDs go off / factory state)
+- [ ] Power-cycle the LCXL3 mid-session → bridge logs a port disconnect; user restarts the bridge and resumes (matches v1 documented behaviour)
+- [ ] LCXL3 transport while LUNA is in the middle of a closed-loop locate (driven by MC-500 SPP) — events ignored cleanly, no state corruption
+
+### Acceptance Criteria
+
+- [ ] All Phase 5e hardware tasks pass on the user's rig
+- [ ] No regression in MC-500 transport / locate behaviour with both inputs enabled
+- [ ] LCXL3 LEDs reflect transport state correctly after every press

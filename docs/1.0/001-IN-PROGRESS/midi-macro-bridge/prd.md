@@ -15,6 +15,7 @@ Beyond basic transport, the user needs LUNA's playhead to follow the MC-500's lo
 - As a studio user, I want to hit Play/Stop/Continue on the MC-500 and have LUNA follow, so I can use the hardware sequencer as my transport controller.
 - As a developer, I want the bridge integrated into the monorepo build system, so it is built and tested alongside other services.
 - As a studio user, I want locating on the MC-500 (LOCATE button, numeric entry, or locate-memory recall) to move LUNA's playhead to the *exact* same bar, so audio tape sync locks the two machines together without a persistent offset. Closed-loop verification against LUNA's MCU position output is what makes this reliable; open-loop keystroke counting is not trustworthy enough given that any mistake is permanent.
+- As a studio user with a Novation Launch Control XL Mk3 on the desk, I want to drive LUNA's transport (Play/Stop) and nudge the playhead bar-by-bar from the LCXL3's transport buttons and encoders, so I can operate LUNA without reaching for the keyboard or having the MC-500 plugged in for trivial sessions. The LCXL3 should run alongside the MC-500 when both are connected — neither input source disables the other.
 
 ## Success Criteria
 
@@ -27,6 +28,8 @@ Beyond basic transport, the user needs LUNA's playhead to follow the MC-500's lo
 - Hardware-validated: MC-500 Play/Stop/Continue controls LUNA transport via MCU (works with LUNA in the background; no Accessibility permission required)
 - Hardware-validated: MC-500 LOCATE drives LUNA to the matching bar *exactly* (no 1-bar-off errors), regardless of time signature, via closed-loop nudging against LUNA's MCU position output
 - Keystroke backend remains selectable via `[transport] backend = "keystrokes"` for environments where MCU isn't available, preserving Phase 1-2 behaviour as an opt-in fallback
+- Hardware-validated: LCXL3 Play/Stop button toggles LUNA transport; LCXL3 encoder ticks nudge LUNA's bar position; LCXL3 transport LEDs reflect the bridge's playing/stopped state. The bridge runs the full Live-equivalent activation handshake on startup and the deactivation handshake on Ctrl-C
+- Hardware-validated: with both MC-500 and LCXL3 enabled, transport events from either device drive LUNA correctly and neither input source masks the other
 
 ## In Scope
 
@@ -58,6 +61,22 @@ Two structural changes ship together in this phase: replace the keystroke transp
 
 **Deliberate closed-loop constraint:** the approach only works if LUNA's bar-nudge primitive moves the playhead by ≤ 1 bar per invocation. The hardware probe confirms this for the bracket keystrokes; the MCU-equivalent primitive needs the same property. If an unexpected nudge size is discovered in Phase 3c or seen at runtime (delta reverses sign between iterations), the controller aborts with a clear configuration error — it does not silently oscillate.
 
+### Phase 5 — Novation Launch Control XL Mk3 as a second input source
+
+The bridge gains a second, parallel input source. Phases 1–4 keep working unchanged; Phase 5 is purely additive.
+
+- Open the LCXL3's "DAW In" / "DAW Out" port pair via midir alongside the existing MC-500 connection. Both inputs feed the same `TransportEvent` channel; the existing state machine arbitrates.
+- On startup (when LCXL3 is enabled in config), perform the full Live-equivalent DAW activation handshake against the device: Novation probe (`F0 00 20 29 02 15 02 00 F7`), Universal Device Inquiry exchange, DAW claim (`02 7F`), host-name SysEx page (`04 36 …` / `06 36 01 "Bridge"` / `04 36 7F`), and a minimal LED preset for the transport buttons. Without this, the LCXL3's transport buttons stay dormant — they only emit when the device believes a host is connected. On Ctrl-C the bridge sends the deactivation handshake (`02 00`) so the device returns to its idle state.
+- Translate LCXL3 control messages into existing `Action` vocabulary:
+  - Play/Stop toggle button (`B0 74 7F` press) → `TogglePlay` event → `[Play]` if currently Stopped, `[Stop]` if currently Playing. LUNA's snap-on-stop behaviour means `[Play]` (without a preceding `ReturnToZero`) resumes from the right place naturally.
+  - Encoder rotation (`B6 1E nn` / `B6 1F nn`) → `NudgeForward(n)` / `NudgeBackward(n)` → N × `BarForward` / `BarBackward` actions, with a hard cap of 4 nudges per packet so a fast spin can't flood the backend.
+  - Other controls (faders, V-pots, pads, fader buttons, Record button) are intentionally unmapped in v1 — adding them later is purely additive.
+- Push transport-state LED feedback back to the LCXL3 after every state transition: `B0 74 21` (green) when entering Playing, `B0 74 27` (idle) when returning to Stopped. Locating intermediate state shows idle since locates complete in seconds.
+- New `[lcxl3]` config section (`enabled` defaults to `false`, plus `input_port`, `output_port`, `host_name`). MC-500-only users see no behaviour change.
+- New `src/lcxl3.rs` module owns the LCXL3 protocol details (CC parsing, handshake byte sequences, LED helpers); `state.rs` gains the new `TransportEvent` variants and `Machine::handle` arms; `main.rs` wires the second input alongside the existing MC-500 path; the existing `--lcxl3-activate` one-shot CLI mode now imports its constants from `lcxl3.rs` rather than duplicating them.
+
+**Power-cycle behaviour (v1):** if the user power-cycles the LCXL3 mid-session, midir's input connection breaks. The bridge logs the disconnect and the user restarts the bridge to re-handshake. Auto-reconnect is out of scope for v1.
+
 ## Out of Scope
 
 - MIDI clock forwarding
@@ -68,14 +87,16 @@ Two structural changes ship together in this phase: replace the keystroke transp
 - GUI -- CLI with config file only
 - Windows support in v1
 - Program Change to marker navigation (future feature)
-- Novation LaunchControl XL integration (future use case)
-- General-purpose preset system (future -- v1 is hardcoded MC-500 to LUNA mapping)
+- LCXL3 fader / V-pot / pad / Record-button mappings — Phase 5 covers transport buttons + encoder only; the rest of the LCXL3 surface stays unmapped (additive future work)
+- LCXL3 auto-reconnect on device power-cycle — bridge restart required in v1
+- General-purpose preset system (future -- v1 is hardcoded MC-500 + LCXL3 to LUNA mapping)
 
 ## Dependencies
 
 - None on other audiocontrol modules -- standalone Rust binary
 - Hardware (Phases 1-2): MC-500mkII connected via MIDI interface, LUNA installed
 - Hardware (Phases 3-4): the user configures LUNA's MIDI Control Surfaces to select `MIDI Macro Bridge` (the virtual endpoint pair registered by the bridge at startup) as both INPUT DEVICE and OUTPUT DEVICE on a free control-surface row, protocol MCU. No additional MIDI cabling or routing is required — the bridge is the endpoint LUNA talks to.
+- Hardware (Phase 5): Novation Launch Control XL Mk3 connected via USB; the device exposes `LCXL3 1 DAW In` / `LCXL3 1 DAW Out` MIDI ports that the bridge opens directly. No Live, Logic, or other DAW configuration is required — the bridge runs the activation handshake itself.
 
 ## Open Questions
 
