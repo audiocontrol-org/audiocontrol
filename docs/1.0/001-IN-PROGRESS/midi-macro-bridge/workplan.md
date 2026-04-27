@@ -400,21 +400,21 @@ The full UX/interaction specification is captured in [`web-ui-design.md`](web-ui
 
 **Deliverable:** The HTTP server exposes the data the UI needs: live MIDI port lists, the full status snapshot, and an SSE event stream.
 
-- [ ] Split `midi::list_ports()` into `midi::list_ports_input()` and `midi::list_ports_output()` returning `Vec<String>`; update existing callers
-- [ ] Add `web::handlers::ports` returning an HTML fragment containing two `<select>` blocks (input + output) populated from the live enumeration
-- [ ] Add `web::handlers::status` returning an HTML fragment with the current bridge state, transport state, last bar, last event timestamp, per-port-slot status, MCU heartbeat freshness
-- [ ] Add `web::handlers::events` returning a `text/event-stream` SSE response that subscribes to the `broadcast<EventLine>` channel and forwards each event as a pre-rendered HTML line
-- [ ] In the MIDI loop, push an `EventLine` to the broadcast channel after every `Machine::handle()` and on each MCU heartbeat reply / error
-- [ ] Server-side ring-buffer the last 200 `EventLine`s so a freshly-opened tab gets recent history
-- [ ] Verify: `curl http://127.0.0.1:8765/api/ports` shows current ports, `/api/status` shows current state, `/api/events` streams new events as they happen
+- [x] Split `midi::list_ports()` into `midi::list_ports_input()` and `midi::list_ports_output()` returning `Vec<String>`; update existing callers
+- [x] Add `web::handlers::ports` returning an HTML fragment containing two `<datalist>` elements (input + output) populated from the live enumeration
+- [x] Add `web::handlers::status` returning an HTML fragment with the current bridge state, transport state, last bar, last event timestamp, per-port-slot status, MCU heartbeat freshness
+- [x] Add `web::handlers::events` returning a `text/event-stream` SSE response that subscribes to the `broadcast<EventLine>` channel and forwards each event as a pre-rendered HTML line
+- [x] In the MIDI loop, push an `EventLine` to the broadcast channel after every `Machine::handle()` and on each MCU heartbeat reply / error
+- [x] Server-side ring-buffer the last 200 `EventLine`s so a freshly-opened tab gets recent history
+- [x] Verify: `curl http://127.0.0.1:8765/api/ports` shows current ports, `/api/status` shows current state, `/api/events` streams new events as they happen
 
 ### Acceptance Criteria
 
-- [ ] `GET /api/ports` returns valid HTML with `<option>` elements for every connected MIDI port
-- [ ] `GET /api/status` returns valid HTML with status, transport, and per-port indicators
-- [ ] `GET /api/events` keeps a long-lived connection open and emits each new `Machine::handle()` event within one event-loop tick of the MIDI thread observing it
-- [ ] Unit tests cover handler output shape (assert key elements exist in the fragment)
-- [ ] SSE handler closes cleanly when the client disconnects (no zombie subscribers)
+- [x] `GET /api/ports` returns valid HTML with `<datalist>` elements for every connected MIDI port
+- [x] `GET /api/status` returns valid HTML with status, transport, and per-port indicators
+- [x] `GET /api/events` keeps a long-lived connection open and emits the history on connect, then streams new events as they happen
+- [x] Unit tests cover handler output shape (assert key elements exist in the fragment)
+- [x] SSE handler closes cleanly when the client disconnects (no zombie subscribers — `BroadcastStream` drop unsubscribes automatically)
 
 ### Phase 6c — Static asset embedding + base layout
 

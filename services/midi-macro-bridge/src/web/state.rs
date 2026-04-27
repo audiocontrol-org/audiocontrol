@@ -21,6 +21,8 @@
 //! - `mpsc::Sender<Cmd>` — HTTP handlers post commands; MIDI loop
 //!   drains via `mpsc::Receiver<Cmd>::try_recv` each tick.
 
+use std::collections::VecDeque;
+use std::sync::{Arc, Mutex};
 use std::time::{Instant, SystemTime};
 
 use tokio::sync::{broadcast, mpsc, watch};
@@ -175,7 +177,7 @@ impl Status {
 /// wrapped in an `Arc` by axum's `State` extractor.
 ///
 /// Handlers read the current `Status` via `status_rx.borrow()` and
-/// subscribe to new events via `events_rx_factory()`. Commands are
+/// subscribe to new events via `subscribe_events()`. Commands are
 /// sent via `cmd_tx`.
 #[derive(Clone)]
 pub struct WebState {
@@ -186,6 +188,14 @@ pub struct WebState {
     /// three.
     pub events_tx: broadcast::Sender<EventLine>,
     pub cmd_tx: mpsc::Sender<Cmd>,
+    /// Ring buffer of the most recent `EVENT_HISTORY_CAPACITY` events.
+    /// The SSE handler drains a clone of this deque before subscribing
+    /// to the live broadcast so a freshly-opened tab gets recent history.
+    ///
+    /// The std `Mutex` is intentional: the MIDI loop (std::thread) pushes
+    /// here, and the axum handler clones the deque and drops the lock
+    /// before `.await`-ing, so the critical section is always short.
+    pub events_history: Arc<Mutex<VecDeque<EventLine>>>,
 }
 
 impl WebState {
@@ -193,11 +203,13 @@ impl WebState {
         status_rx: watch::Receiver<Status>,
         events_tx: broadcast::Sender<EventLine>,
         cmd_tx: mpsc::Sender<Cmd>,
+        events_history: Arc<Mutex<VecDeque<EventLine>>>,
     ) -> Self {
         Self {
             status_rx,
             events_tx,
             cmd_tx,
+            events_history,
         }
     }
 
@@ -215,17 +227,24 @@ impl WebState {
 /// fall this far behind, which is acceptable for a UI stream.
 pub const EVENT_BROADCAST_CAPACITY: usize = 256;
 
+/// How many recent `EventLine`s to keep in the history ring buffer.
+/// A freshly-opened SSE connection first drains this buffer before
+/// subscribing to new live events.
+pub const EVENT_HISTORY_CAPACITY: usize = 200;
+
 /// The mpsc channel capacity for `Cmd`. A small buffer is enough
 /// because commands are rare and the MIDI loop drains promptly.
 pub const CMD_CHANNEL_CAPACITY: usize = 16;
 
-/// Build all three inter-thread channels in one call.
+/// Build all inter-thread channels and shared state in one call.
 ///
 /// Returns:
 /// - `cmd_tx` / `cmd_rx`: HTTP → MIDI-loop command pipe.
 /// - `status_tx` / `status_rx`: MIDI-loop → HTTP status watch.
 /// - `events_tx`: MIDI-loop → SSE broadcast (handlers call
 ///   `.subscribe()` for their own receiver).
+/// - `events_history`: shared ring buffer for recent events; the MIDI
+///   loop holds a clone for pushing, `WebState` holds one for reading.
 pub fn build_channels(
     initial_status: Status,
 ) -> (
@@ -234,11 +253,13 @@ pub fn build_channels(
     watch::Sender<Status>,
     watch::Receiver<Status>,
     broadcast::Sender<EventLine>,
+    Arc<Mutex<VecDeque<EventLine>>>,
 ) {
     let (cmd_tx, cmd_rx) = mpsc::channel(CMD_CHANNEL_CAPACITY);
     let (status_tx, status_rx) = watch::channel(initial_status);
     let (events_tx, _events_rx) = broadcast::channel(EVENT_BROADCAST_CAPACITY);
-    (cmd_tx, cmd_rx, status_tx, status_rx, events_tx)
+    let events_history = Arc::new(Mutex::new(VecDeque::with_capacity(EVENT_HISTORY_CAPACITY)));
+    (cmd_tx, cmd_rx, status_tx, status_rx, events_tx, events_history)
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -254,7 +275,7 @@ mod tests {
 
     #[test]
     fn build_channels_smoke_test() {
-        let (cmd_tx, mut cmd_rx, _status_tx, _status_rx, _events_tx) =
+        let (cmd_tx, mut cmd_rx, _status_tx, _status_rx, _events_tx, _history) =
             build_channels(default_status());
 
         // Send a Halt command and immediately poll for it.
@@ -265,7 +286,7 @@ mod tests {
 
     #[test]
     fn build_channels_reload_roundtrips() {
-        let (cmd_tx, mut cmd_rx, _status_tx, _status_rx, _events_tx) =
+        let (cmd_tx, mut cmd_rx, _status_tx, _status_rx, _events_tx, _history) =
             build_channels(default_status());
 
         let cfg = Config::default();
@@ -286,9 +307,9 @@ mod tests {
 
     #[test]
     fn web_state_subscribe_events_gives_independent_receivers() {
-        let (_cmd_tx, _cmd_rx, _status_tx, status_rx, events_tx) =
+        let (_cmd_tx, _cmd_rx, _status_tx, status_rx, events_tx, history) =
             build_channels(default_status());
-        let state = WebState::new(status_rx, events_tx, _cmd_tx);
+        let state = WebState::new(status_rx, events_tx, _cmd_tx, history);
 
         let _r1 = state.subscribe_events();
         let _r2 = state.subscribe_events();

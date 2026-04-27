@@ -9,8 +9,15 @@
 //! - `build_app`: axum `Router` with a single placeholder `GET /`
 //! - `run_server_thread`: spawns the tokio runtime in a dedicated
 //!   `std::thread` and binds the axum listener
+//!
+//! Phase 6b adds:
+//! - `GET /api/ports`  — MIDI port list as HTML datalists
+//! - `GET /api/status` — status snapshot as HTML fragment
+//! - `GET /api/events` — SSE event stream
 
+pub mod handlers;
 pub mod state;
+pub mod views;
 
 use std::net::SocketAddr;
 use std::thread::JoinHandle;
@@ -23,12 +30,12 @@ use tracing::info;
 use crate::web::state::WebState;
 
 /// Build the axum `Router`.
-///
-/// Phase 6a: a single placeholder `GET /` that returns a plain-text
-/// greeting. Subsequent phases add the real API and asset routes.
 pub fn build_app(state: WebState) -> Router {
     Router::new()
         .route("/", get(placeholder_handler))
+        .route("/api/ports", get(handlers::ports))
+        .route("/api/status", get(handlers::status))
+        .route("/api/events", get(handlers::events))
         .with_state(state)
 }
 
@@ -104,9 +111,9 @@ mod tests {
 
     fn make_test_state() -> WebState {
         let initial = Status::initialising(Config::default());
-        let (cmd_tx, _cmd_rx, _status_tx, status_rx, events_tx) =
+        let (cmd_tx, _cmd_rx, _status_tx, status_rx, events_tx, history) =
             build_channels(initial);
-        WebState::new(status_rx, events_tx, cmd_tx)
+        WebState::new(status_rx, events_tx, cmd_tx, history)
     }
 
     fn empty_request(uri: &str) -> Request<axum::body::Body> {

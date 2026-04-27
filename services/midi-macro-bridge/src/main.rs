@@ -7,10 +7,11 @@
 
 use anyhow::{Context, Result};
 use std::cell::RefCell;
+use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::sync::mpsc;
-use std::time::{Duration, Instant};
+use std::sync::{mpsc, Arc, Mutex};
+use std::time::{Duration, Instant, SystemTime};
 use tracing::{error, info, warn};
 
 mod backend;
@@ -27,15 +28,17 @@ use crate::backend::{Backend, KeystrokeBackend, McuBackend};
 use crate::config::{BackendKind, Config, LoadOutcome};
 use crate::keys::Emitter;
 use crate::locate::{
-    transport_to_locate_event, EventSource, LocateController, LocateEvent, LocateOutcome,
-    PositionSource,
+    transport_to_locate_event, EventSource as LocateEventSource, LocateController, LocateEvent,
+    LocateOutcome, PositionSource,
 };
 use crate::mcu::PositionTracker;
 use crate::midi::VirtualMcuPair;
 use crate::state::{Machine, TransportEvent, TransportState};
 use crate::web::state::{
-    BridgeState, Cmd, PortStatus, PortStatuses, Status, WebState, build_channels,
+    BridgeState, Cmd, EventLine, EventSource, PortStatus, PortStatuses, Status, WebState,
+    build_channels,
 };
+use tokio::sync::broadcast;
 
 // ── MIDI connection bundle ────────────────────────────────────────────────────
 
@@ -73,9 +76,10 @@ struct MidiConnections {
 /// the previous `MidiConnections` before invoking this function.
 fn setup_midi_connections(
     config: &Config,
-) -> Result<(MidiConnections, mpsc::Receiver<TransportEvent>)> {
-    // Per-event transport channel.
-    let (transport_tx, transport_rx) = mpsc::channel::<TransportEvent>();
+) -> Result<(MidiConnections, mpsc::Receiver<(EventSource, TransportEvent)>)> {
+    // Per-event transport channel. Each event is tagged with its source
+    // (MC-500 or LCXL3) so the main loop can emit correctly-tagged EventLines.
+    let (transport_tx, transport_rx) = mpsc::channel::<(EventSource, TransportEvent)>();
 
     // MCU byte channel: virtual-endpoint callback → main loop.
     let (mcu_bytes_tx, mcu_bytes_rx) = mpsc::channel::<Vec<u8>>();
@@ -110,7 +114,7 @@ fn setup_midi_connections(
         let tx_mc500 = transport_tx.clone();
         let port = config.midi_input_port.clone();
         match midi::connect(&port, move |event| {
-            if let Err(e) = tx_mc500.send(event) {
+            if let Err(e) = tx_mc500.send((EventSource::Mc500, event)) {
                 error!(?e, "channel send failed");
             }
         }) {
@@ -179,7 +183,7 @@ fn setup_midi_connections(
         let port = config.lcxl3.input_port.clone();
         match midi::connect_raw(&port, move |bytes| {
             if let Some(event) = lcxl3::parse(bytes) {
-                if let Err(e) = tx_lcxl3.send(event) {
+                if let Err(e) = tx_lcxl3.send((EventSource::Lcxl3, event)) {
                     error!(?e, "lcxl3 channel send failed");
                 }
             }
@@ -313,7 +317,7 @@ fn main() -> Result<()> {
 
     // --list-ports: print available MIDI inputs and exit.
     if args.iter().any(|a| a == "--list-ports") {
-        for name in midi::list_ports()? {
+        for name in midi::list_ports_input()? {
             println!("{name}");
         }
         return Ok(());
@@ -399,7 +403,7 @@ fn main() -> Result<()> {
     // ── Channel setup ─────────────────────────────────────────────────────────
 
     let initial_status = Status::initialising(config.clone());
-    let (cmd_tx, mut cmd_rx, status_tx, status_rx, events_tx) =
+    let (cmd_tx, mut cmd_rx, status_tx, status_rx, events_tx, events_history) =
         build_channels(initial_status);
 
     // ── Web server (skipped for --self-test) ──────────────────────────────────
@@ -408,7 +412,7 @@ fn main() -> Result<()> {
     // isn't dropped while the process is running. We never explicitly
     // join it — the tokio runtime inside runs until the process exits.
     let _server_handle = if config.web.enabled && !self_test {
-        let web_state = WebState::new(status_rx, events_tx.clone(), cmd_tx.clone());
+        let web_state = WebState::new(status_rx, events_tx.clone(), cmd_tx.clone(), events_history.clone());
         let bind_addr = format!("127.0.0.1:{}", config.web.bind_port)
             .parse()
             .expect("invalid bind address");
@@ -429,7 +433,7 @@ fn main() -> Result<()> {
 
     let (conns, rx) = setup_midi_connections(&config)?;
     let mut connections: Option<MidiConnections> = Some(conns);
-    let mut transport_rx: Option<mpsc::Receiver<TransportEvent>> = Some(rx);
+    let mut transport_rx: Option<mpsc::Receiver<(EventSource, TransportEvent)>> = Some(rx);
 
     let mut machine = Machine::new();
     let mut tracker = PositionTracker::new();
@@ -448,7 +452,7 @@ fn main() -> Result<()> {
     })
     .context("installing Ctrl-C handler")?;
 
-    // Publish initial Running status.
+    // Publish initial Running status and bridge-ready event.
     if let Some(c) = &connections {
         let _ = status_tx.send(build_status(
             BridgeState::Running,
@@ -460,6 +464,12 @@ fn main() -> Result<()> {
             &config,
         ));
     }
+    emit_event(
+        &events_tx,
+        &events_history,
+        EventSource::Bridge,
+        "bridge ready".to_string(),
+    );
 
     info!("ready — waiting for MIDI events (Ctrl-C to exit)");
 
@@ -492,6 +502,12 @@ fn main() -> Result<()> {
                     let _ = status_tx.send_modify(|s| {
                         s.bridge_state = BridgeState::Reconnecting;
                     });
+                    emit_event(
+                        &events_tx,
+                        &events_history,
+                        EventSource::Bridge,
+                        "reconnecting — dropping MIDI connections".to_string(),
+                    );
 
                     // Deactivate LCXL3 before dropping old connections.
                     if let Some(c) = connections.as_mut() {
@@ -511,6 +527,12 @@ fn main() -> Result<()> {
                             active_config = new_config;
                             locate_runtime_cfg = active_config.locate.to_runtime();
                             info!("MIDI connections rebuilt successfully");
+                            emit_event(
+                                &events_tx,
+                                &events_history,
+                                EventSource::Bridge,
+                                "reconnected — MIDI connections rebuilt".to_string(),
+                            );
                             if let Some(c) = &connections {
                                 let _ = status_tx.send(build_status(
                                     BridgeState::Running,
@@ -525,6 +547,12 @@ fn main() -> Result<()> {
                         }
                         Err(e) => {
                             error!(?e, "failed to rebuild MIDI connections after reload");
+                            emit_event(
+                                &events_tx,
+                                &events_history,
+                                EventSource::Bridge,
+                                format!("panic: failed to rebuild MIDI connections: {e}"),
+                            );
                             let _ = status_tx.send_modify(|s| {
                                 s.bridge_state = BridgeState::Panicked;
                             });
@@ -541,6 +569,12 @@ fn main() -> Result<()> {
                 let hb_fired = handle_mcu_byte_idle(&bytes, &c.pair, &mut tracker);
                 if hb_fired {
                     mcu_heartbeat_at = Some(Instant::now());
+                    emit_event(
+                        &events_tx,
+                        &events_history,
+                        EventSource::McuOut,
+                        "heartbeat reply".to_string(),
+                    );
                 }
                 mcu_bytes_drained = true;
             }
@@ -549,7 +583,7 @@ fn main() -> Result<()> {
         // ── Process one transport event ───────────────────────────────────────
         let transport_drained = if let Some(rx) = transport_rx.as_ref() {
             match rx.recv_timeout(Duration::from_millis(50)) {
-                Ok(event) => {
+                Ok((ev_source, event)) => {
                     let state_before = machine.state();
                     let actions = machine.handle(event);
                     last_event_at = Some(Instant::now());
@@ -561,6 +595,12 @@ fn main() -> Result<()> {
                             state_after = ?machine.state(),
                             "no-op event (echo guard or state change only)"
                         );
+                        emit_event(
+                            &events_tx,
+                            &events_history,
+                            ev_source,
+                            format!("{event:?} → no-op (state: {:?})", machine.state()),
+                        );
                     } else {
                         info!(
                             ?event,
@@ -568,6 +608,16 @@ fn main() -> Result<()> {
                             state_after = ?machine.state(),
                             ?actions,
                             "dispatching actions"
+                        );
+                        emit_event(
+                            &events_tx,
+                            &events_history,
+                            ev_source,
+                            format!(
+                                "{event:?} → {actions:?} (state: {:?} → {:?})",
+                                state_before,
+                                machine.state()
+                            ),
                         );
                         if let Some(c) = connections.as_mut() {
                             if let Err(e) = c.backend.emit(&actions) {
@@ -708,6 +758,34 @@ fn build_backend(
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/// Push an `EventLine` to both the broadcast channel and the history ring
+/// buffer. The broadcast notifies live SSE subscribers; the ring buffer
+/// provides history to freshly-opened tabs.
+///
+/// `SendError` on the broadcast (no subscribers) is silently ignored —
+/// that's normal when no browser tab is open.
+fn emit_event(
+    events_tx: &broadcast::Sender<EventLine>,
+    history: &Arc<Mutex<VecDeque<EventLine>>>,
+    source: EventSource,
+    text: String,
+) {
+    let line = EventLine {
+        at: SystemTime::now(),
+        source,
+        text,
+    };
+    {
+        let mut h = history.lock().unwrap();
+        if h.len() >= crate::web::state::EVENT_HISTORY_CAPACITY {
+            h.pop_front();
+        }
+        h.push_back(line.clone());
+    }
+    // Ignore SendError — no subscribers is fine.
+    let _ = events_tx.send(line);
+}
+
 /// Tail of a Stop transition. Gives LUNA a short window to settle
 /// at its play-start position, then sends an SPP message to the
 /// MC-500 so it jumps to the same bar.
@@ -801,7 +879,7 @@ fn handle_mcu_byte_idle(
 fn run_locate_step(
     target: u32,
     mcu_bytes_rx: &mpsc::Receiver<Vec<u8>>,
-    transport_rx: &mpsc::Receiver<TransportEvent>,
+    transport_rx: &mpsc::Receiver<(EventSource, TransportEvent)>,
     pair: &Option<Rc<RefCell<VirtualMcuPair>>>,
     tracker: &mut PositionTracker,
     backend: &mut dyn Backend,
@@ -953,13 +1031,13 @@ impl<'a> PositionSource for McuPositionSource<'a> {
 // ── Transport locate event source ─────────────────────────────────────────────
 
 struct TransportLocateEventSource<'a> {
-    rx: &'a mpsc::Receiver<TransportEvent>,
+    rx: &'a mpsc::Receiver<(EventSource, TransportEvent)>,
 }
 
-impl<'a> EventSource for TransportLocateEventSource<'a> {
+impl<'a> LocateEventSource for TransportLocateEventSource<'a> {
     fn try_recv(&mut self) -> Option<LocateEvent> {
         match self.rx.try_recv() {
-            Ok(ev) => transport_to_locate_event(ev),
+            Ok((_source, ev)) => transport_to_locate_event(ev),
             Err(_) => None,
         }
     }
@@ -997,7 +1075,7 @@ fn run_probe_midi(port_substring: &str) -> Result<()> {
 fn run_lcxl3_activate(substring: &str) -> Result<()> {
     use std::time::Instant;
 
-    let all_ports = midi::list_ports()?;
+    let all_ports = midi::list_ports_input()?;
     let find_port = |role: &str| -> Result<String> {
         let s = substring.to_lowercase();
         let r = role.to_lowercase();
