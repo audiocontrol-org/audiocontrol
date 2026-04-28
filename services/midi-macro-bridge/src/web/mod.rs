@@ -32,7 +32,7 @@ use axum::routing::{get, post};
 use axum::Router;
 use tracing::info;
 
-use crate::web::state::WebState;
+use crate::web::state::{spawn_status_broadcaster, WebState};
 
 // ── ServerHandle ───────────────────────────────────────────────────────────────
 
@@ -138,6 +138,10 @@ pub fn run_server_thread(addr_pref: SocketAddr, state: WebState) -> Result<Serve
         .spawn(move || {
             let rt = tokio::runtime::Runtime::new().expect("failed to build tokio runtime");
             rt.block_on(async move {
+                // Spawn the status broadcaster before building the app so
+                // the first status frame fires as soon as the runtime starts.
+                let _status_broadcaster = spawn_status_broadcaster(&state);
+
                 let app = build_app(state);
 
                 // Try the preferred port first; fall back to OS-assigned if taken.
@@ -235,10 +239,12 @@ mod tests {
                 .any(|w| w == b"MIDI Macro Bridge"),
             "body missing 'MIDI Macro Bridge' title"
         );
+        // Phase 8a: status updates are push-driven via SSE, not polling.
+        // The page must have the SSE event connector that listens for status-updated.
         assert!(
-            body.windows(b"hx-get=\"/api/status\"".len())
-                .any(|w| w == b"hx-get=\"/api/status\""),
-            "body missing hx-get=\"/api/status\" htmx attribute"
+            body.windows(b"sse-connect=\"/api/events\"".len())
+                .any(|w| w == b"sse-connect=\"/api/events\""),
+            "body missing sse-connect=\"/api/events\" SSE attribute"
         );
     }
 

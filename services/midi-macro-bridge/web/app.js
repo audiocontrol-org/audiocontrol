@@ -173,3 +173,40 @@ function setupHalt() {
 }
 
 document.addEventListener('DOMContentLoaded', setupHalt);
+
+// ── Phase 8a: elapsed-time displays ──────────────────────────────────────────
+// Tick every second against absolute epoch-ms timestamps embedded by the
+// server in `data-timestamp` attributes on status indicator spans.
+// When the SSE "status-updated" event arrives and htmx swaps in new spans,
+// the `htmx:afterSwap` listener re-ticks so freshly-arrived timestamps are
+// immediately formatted rather than waiting up to 1s for the next interval.
+
+function formatElapsed(ms) {
+  if (ms < 0) return "—";        // future timestamp (clock skew)
+  if (ms < 1000) return "0s";
+  if (ms < 60000) return `${Math.floor(ms / 1000)}s`;
+  if (ms < 3600000) {
+    const m = Math.floor(ms / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    return `${m}m ${s}s`;
+  }
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  return `${h}h ${m}m`;
+}
+
+function tickElapsedTimers() {
+  const now = Date.now();
+  document.querySelectorAll('[data-timestamp]').forEach(el => {
+    const ts = parseInt(el.dataset.timestamp, 10);
+    if (Number.isFinite(ts) && ts > 0) {
+      el.textContent = formatElapsed(now - ts);
+    }
+  });
+}
+
+setInterval(tickElapsedTimers, 1000);
+// Run once on DOMContentLoaded so the initial render reflects current time.
+document.addEventListener('DOMContentLoaded', tickElapsedTimers);
+// Also run after each htmx swap so freshly-arriving timestamps render correctly.
+document.addEventListener('htmx:afterSwap', tickElapsedTimers);

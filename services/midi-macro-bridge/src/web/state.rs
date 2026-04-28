@@ -16,15 +16,16 @@
 //!
 //! - `watch::Sender<Status>` — MIDI loop publishes `Status` snapshots;
 //!   HTTP handlers read via `watch::Receiver<Status>`.
-//! - `broadcast::Sender<EventLine>` — MIDI loop pushes events; SSE
-//!   handlers subscribe (not wired to live events yet in Phase 6a).
+//! - `broadcast::Sender<SseFrame>` — MIDI loop pushes events (wrapped in
+//!   `SseFrame::Event`); SSE handlers subscribe. Status broadcasts are sent
+//!   by the `spawn_status_broadcaster` tokio task.
 //! - `mpsc::Sender<Cmd>` — HTTP handlers post commands; MIDI loop
 //!   drains via `mpsc::Receiver<Cmd>::try_recv` each tick.
 
 use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use std::time::{Instant, SystemTime};
+use std::time::SystemTime;
 
 use tokio::sync::{broadcast, mpsc, watch};
 
@@ -165,13 +166,33 @@ pub struct Status {
     /// `None` until the tracker has received at least one update.
     pub last_bar: Option<u32>,
     /// Wall-clock time of the most recent transport event handled by
-    /// the state machine.
-    pub last_event_at: Option<Instant>,
+    /// the state machine. `SystemTime` (not `Instant`) so the web UI
+    /// can compute absolute epoch-ms timestamps for the browser timer.
+    pub last_event_at: Option<SystemTime>,
     pub ports: PortStatuses,
     /// Wall-clock time of the most recent MCU heartbeat reply sent.
-    pub mcu_heartbeat_at: Option<Instant>,
+    /// `SystemTime` (not `Instant`) for the same reason as `last_event_at`.
+    pub mcu_heartbeat_at: Option<SystemTime>,
     /// Active config snapshot (for the web UI's config form).
     pub config: Config,
+}
+
+// ── SSE frame type ────────────────────────────────────────────────────────────
+
+/// Wrapper for the multi-flavour SSE stream emitted by `/api/events`.
+///
+/// The broadcast channel carries `SseFrame` so a single channel supports
+/// both transport-event lines (Phase 6f) and status-pushed OOB fragments
+/// (Phase 8a) without needing two separate channels.
+#[derive(Clone, Debug)]
+pub enum SseFrame {
+    /// Transport / heartbeat / bridge events — Phase 6 / 6f.
+    /// SSE event name: default ("message"); htmx appends to `#mmb-event-stream`.
+    Event(EventLine),
+    /// Pre-rendered HTML fragment containing OOB swap blocks for every
+    /// visible status indicator — Phase 8a.
+    /// SSE event name: "status-updated"; htmx swaps by element id.
+    StatusUpdated(String),
 }
 
 impl Status {
@@ -206,7 +227,10 @@ pub struct WebState {
     /// to get a per-connection receiver. Stored here because axum state
     /// must be `Clone + Send + Sync`, and `broadcast::Sender` is all
     /// three.
-    pub events_tx: broadcast::Sender<EventLine>,
+    ///
+    /// Carries `SseFrame` — both raw `EventLine` events and pre-rendered
+    /// OOB HTML status fragments flow through the same channel.
+    pub events_tx: broadcast::Sender<SseFrame>,
     pub cmd_tx: mpsc::Sender<Cmd>,
     /// Ring buffer of the most recent `EVENT_HISTORY_CAPACITY` events.
     /// The SSE handler drains a clone of this deque before subscribing
@@ -224,7 +248,7 @@ pub struct WebState {
 impl WebState {
     pub fn new(
         status_rx: watch::Receiver<Status>,
-        events_tx: broadcast::Sender<EventLine>,
+        events_tx: broadcast::Sender<SseFrame>,
         cmd_tx: mpsc::Sender<Cmd>,
         events_history: Arc<Mutex<VecDeque<EventLine>>>,
         config_path: PathBuf,
@@ -238,11 +262,44 @@ impl WebState {
         }
     }
 
-    /// Subscribe to the event broadcast channel. Each call returns a
+    /// Subscribe to the SSE broadcast channel. Each call returns a
     /// fresh receiver so SSE connections get independent cursors.
-    pub fn subscribe_events(&self) -> broadcast::Receiver<EventLine> {
+    pub fn subscribe_events(&self) -> broadcast::Receiver<SseFrame> {
         self.events_tx.subscribe()
     }
+}
+
+// ── Status broadcaster ────────────────────────────────────────────────────────
+
+/// Spawn a tokio task that watches for `Status` changes and broadcasts a
+/// `SseFrame::StatusUpdated` OOB fragment for each change.
+///
+/// The task also fires one initial frame on startup so connecting clients
+/// immediately get the current status even if no change has occurred recently.
+///
+/// Watch's coalescing semantics mean rapid status changes collapse to one
+/// notification per `.await` boundary — a natural debounce at no extra cost.
+///
+/// The returned `JoinHandle` should be held for the server's lifetime;
+/// dropping it aborts the task.
+pub fn spawn_status_broadcaster(
+    state: &WebState,
+) -> tokio::task::JoinHandle<()> {
+    use crate::web::views;
+    let mut status_rx = state.status_rx.clone();
+    let events_tx = state.events_tx.clone();
+    tokio::spawn(async move {
+        // Emit one initial status frame so connecting clients get current
+        // state even if no change has happened since the server started.
+        let html = views::render_status_oob(&status_rx.borrow().clone());
+        let _ = events_tx.send(SseFrame::StatusUpdated(html));
+
+        // Push on every change.
+        while status_rx.changed().await.is_ok() {
+            let html = views::render_status_oob(&status_rx.borrow().clone());
+            let _ = events_tx.send(SseFrame::StatusUpdated(html));
+        }
+    })
 }
 
 // ── Channel factory ───────────────────────────────────────────────────────────
@@ -267,7 +324,8 @@ pub const CMD_CHANNEL_CAPACITY: usize = 16;
 /// - `cmd_tx` / `cmd_rx`: HTTP → MIDI-loop command pipe.
 /// - `status_tx` / `status_rx`: MIDI-loop → HTTP status watch.
 /// - `events_tx`: MIDI-loop → SSE broadcast (handlers call
-///   `.subscribe()` for their own receiver).
+///   `.subscribe()` for their own receiver). Carries `SseFrame` so both
+///   raw event lines and OOB status fragments flow through one channel.
 /// - `events_history`: shared ring buffer for recent events; the MIDI
 ///   loop holds a clone for pushing, `WebState` holds one for reading.
 pub fn build_channels(
@@ -277,7 +335,7 @@ pub fn build_channels(
     mpsc::Receiver<Cmd>,
     watch::Sender<Status>,
     watch::Receiver<Status>,
-    broadcast::Sender<EventLine>,
+    broadcast::Sender<SseFrame>,
     Arc<Mutex<VecDeque<EventLine>>>,
 ) {
     let (cmd_tx, cmd_rx) = mpsc::channel(CMD_CHANNEL_CAPACITY);
@@ -410,5 +468,53 @@ mod tests {
         let _r1 = state.subscribe_events();
         let _r2 = state.subscribe_events();
         // If we get here without panic, the subscribe API works.
+    }
+
+    #[test]
+    fn sse_frame_event_roundtrips_through_broadcast() {
+        let (_cmd_tx, _cmd_rx, _status_tx, status_rx, events_tx, history) =
+            build_channels(default_status());
+        let state = WebState::new(
+            status_rx,
+            events_tx,
+            _cmd_tx,
+            history,
+            std::path::PathBuf::from("config.toml"),
+        );
+        let mut rx = state.subscribe_events();
+
+        let line = EventLine {
+            at: std::time::SystemTime::now(),
+            source: EventSource::Bridge,
+            text: "test".to_string(),
+        };
+        let _ = state.events_tx.send(SseFrame::Event(line.clone()));
+        let frame = rx.try_recv().expect("frame should be available");
+        match frame {
+            SseFrame::Event(received) => assert_eq!(received.text, "test"),
+            other => panic!("expected SseFrame::Event, got: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn sse_frame_status_updated_roundtrips_through_broadcast() {
+        let (_cmd_tx, _cmd_rx, _status_tx, status_rx, events_tx, history) =
+            build_channels(default_status());
+        let state = WebState::new(
+            status_rx,
+            events_tx,
+            _cmd_tx,
+            history,
+            std::path::PathBuf::from("config.toml"),
+        );
+        let mut rx = state.subscribe_events();
+
+        let html = "<div id=\"mmb-master-led\" hx-swap-oob=\"true\"></div>".to_string();
+        let _ = state.events_tx.send(SseFrame::StatusUpdated(html.clone()));
+        let frame = rx.try_recv().expect("frame should be available");
+        match frame {
+            SseFrame::StatusUpdated(received) => assert_eq!(received, html),
+            other => panic!("expected SseFrame::StatusUpdated, got: {other:?}"),
+        }
     }
 }

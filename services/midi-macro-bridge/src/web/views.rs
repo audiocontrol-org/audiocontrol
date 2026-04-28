@@ -10,6 +10,7 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::config::{BackendKind, Config};
+use crate::state::TransportState;
 use crate::web::state::{BridgeState, EventLine, EventSource, PortStatus, Status};
 
 // ── HTML escaping ─────────────────────────────────────────────────────────────
@@ -241,6 +242,17 @@ pub fn render_config_form(cfg: &Config, inputs: &[String], outputs: &[String]) -
     html
 }
 
+// ── Time helpers ─────────────────────────────────────────────────────────────
+
+/// Compute how many seconds have elapsed since `t` (a `SystemTime`).
+/// Returns 0.0 if the system clock runs backward.
+fn system_time_elapsed_secs(t: SystemTime) -> f64 {
+    SystemTime::now()
+        .duration_since(t)
+        .unwrap_or(Duration::ZERO)
+        .as_secs_f64()
+}
+
 // ── Master LED rollup ─────────────────────────────────────────────────────────
 
 /// Compute the master LED colour from the current `Status` snapshot.
@@ -264,7 +276,7 @@ pub fn master_led_state(status: &Status) -> &'static str {
             let stale_heartbeat = if status.ports.mcu_virtual.connected {
                 match status.mcu_heartbeat_at {
                     None => true, // virtual endpoint active but heartbeat never seen
-                    Some(t) => t.elapsed() > Duration::from_secs(5),
+                    Some(t) => system_time_elapsed_secs(t) > 5.0,
                 }
             } else {
                 false
@@ -308,11 +320,11 @@ pub fn master_led_reason(status: &Status) -> String {
                 match status.mcu_heartbeat_at {
                     None => reasons.push("MCU heartbeat not seen".to_string()),
                     Some(t) => {
-                        let elapsed = t.elapsed();
-                        if elapsed > Duration::from_secs(5) {
+                        let elapsed_secs = system_time_elapsed_secs(t);
+                        if elapsed_secs > 5.0 {
                             reasons.push(format!(
                                 "MCU heartbeat stale ({}s ago)",
-                                elapsed.as_secs()
+                                elapsed_secs as u64
                             ));
                         }
                     }
@@ -355,12 +367,12 @@ pub fn render_status_fragment(status: &Status) -> String {
     };
 
     let secs_since = match status.last_event_at {
-        Some(inst) => format!("{:.1}s ago", inst.elapsed().as_secs_f64()),
+        Some(t) => format!("{:.1}s ago", system_time_elapsed_secs(t)),
         None => "never".to_string(),
     };
 
     let hb_text = match status.mcu_heartbeat_at {
-        Some(inst) => format!("{:.1}s ago", inst.elapsed().as_secs_f64()),
+        Some(t) => format!("{:.1}s ago", system_time_elapsed_secs(t)),
         None => "never".to_string(),
     };
 
@@ -392,6 +404,165 @@ pub fn render_status_fragment(status: &Status) -> String {
   </div>
 </div>
 <div class="mmb-master-led" id="mmb-master-led" data-state="{led_state}" title="{led_reason}" hx-swap-oob="true"></div>"#
+    )
+}
+
+/// Render status as OOB-only fragments — no wrapping `<div id="mmb-status">`.
+///
+/// Each element has `hx-swap-oob="true"` so htmx matches it to a target
+/// element by `id` in the live DOM. Used by Phase 8a's SSE push path.
+///
+/// The fragment contains one block per stable id: master LED, state badge,
+/// bar readout, machine-state label, last-event timer span, MCU heartbeat
+/// span, and the five port-slot divs.
+pub fn render_status_oob(status: &Status) -> String {
+    let mut html = String::with_capacity(2048);
+
+    // Master LED (Phase 6g pattern preserved)
+    let led_state = master_led_state(status);
+    let led_reason = escape_html(&master_led_reason(status));
+    html.push_str(&format!(
+        r#"<div class="mmb-master-led" id="mmb-master-led" data-state="{led_state}" title="{led_reason}" hx-swap-oob="true"></div>"#
+    ));
+
+    // Transport state badge
+    let (state_class, state_label) = transport_state_class_label(&status.transport);
+    html.push_str(&format!(
+        r#"<div class="mmb-state-badge" id="mmb-state-badge" data-state="{state_class}" hx-swap-oob="true">{state_label}</div>"#
+    ));
+
+    // Bar readout
+    let bar_text = match status.last_bar {
+        Some(b) => format!("BAR {b}"),
+        None => "BAR ----".to_string(),
+    };
+    html.push_str(&format!(
+        r#"<div class="mmb-bar-readout" id="mmb-bar-readout" hx-swap-oob="true">{bar_text}</div>"#
+    ));
+
+    // Bridge-center machine state label
+    html.push_str(&format!(
+        r#"<div class="mmb-machine-state" id="mmb-machine-state" hx-swap-oob="true">{}</div>"#,
+        state_label.to_lowercase()
+    ));
+
+    // Last-event timer span
+    html.push_str(&render_timestamp_span("mmb-last-event-text", status.last_event_at));
+
+    // MCU heartbeat span
+    html.push_str(&render_timestamp_span("mmb-mcu-heartbeat-text", status.mcu_heartbeat_at));
+
+    // Five port slots
+    html.push_str(&render_slot_oob(
+        "mc500-input",
+        "MC-500",
+        &status.ports.mc500_input,
+    ));
+    html.push_str(&render_slot_oob(
+        "mc500-sync",
+        "MC-500 sync",
+        &status.ports.mc500_sync,
+    ));
+    html.push_str(&render_slot_oob(
+        "lcxl3-input",
+        "LCXL3",
+        &status.ports.lcxl3_input,
+    ));
+    html.push_str(&render_slot_oob(
+        "lcxl3-output",
+        "LCXL3 LEDs",
+        &status.ports.lcxl3_output,
+    ));
+    html.push_str(&render_slot_oob(
+        "mcu-virtual",
+        "DAW (MCU)",
+        &status.ports.mcu_virtual,
+    ));
+
+    html
+}
+
+/// Returns `("stopped", "STOPPED")` / `("playing", "PLAYING")` / `("locating", "LOCATING")`
+/// for the given `TransportState`.
+fn transport_state_class_label(state: &TransportState) -> (&'static str, &'static str) {
+    match state {
+        TransportState::Stopped => ("stopped", "STOPPED"),
+        TransportState::Playing => ("playing", "PLAYING"),
+        TransportState::Locating { .. } => ("locating", "LOCATING"),
+    }
+}
+
+/// Render a `<span>` with a `data-timestamp` attribute (epoch ms) and an
+/// initial relative-time text. The browser-side `tickElapsedTimers()` function
+/// updates the text every second against the absolute timestamp.
+///
+/// When `t` is `None`, emits `data-timestamp="0"` and the text `"—"`.
+fn render_timestamp_span(span_id: &str, t: Option<SystemTime>) -> String {
+    match t {
+        None => format!(
+            r#"<span id="{span_id}" data-timestamp="0" hx-swap-oob="true">—</span>"#
+        ),
+        Some(ts) => {
+            let epoch_ms = ts
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or(Duration::ZERO)
+                .as_millis();
+            // Initial text: compute elapsed at render time; client will overwrite immediately.
+            let now_ms = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or(Duration::ZERO)
+                .as_millis();
+            let elapsed_ms = now_ms.saturating_sub(epoch_ms);
+            let initial_text = format_elapsed_ms(elapsed_ms);
+            format!(
+                r#"<span id="{span_id}" data-timestamp="{epoch_ms}" hx-swap-oob="true">{initial_text}</span>"#
+            )
+        }
+    }
+}
+
+/// Format an elapsed millisecond count as a human-readable string.
+/// Mirrors the JavaScript `formatElapsed` in `app.js`.
+fn format_elapsed_ms(ms: u128) -> String {
+    if ms < 1000 {
+        return "0s".to_string();
+    }
+    if ms < 60_000 {
+        return format!("{}s", ms / 1000);
+    }
+    if ms < 3_600_000 {
+        let m = ms / 60_000;
+        let s = (ms % 60_000) / 1000;
+        return format!("{m}m {s}s");
+    }
+    let h = ms / 3_600_000;
+    let m = (ms % 3_600_000) / 60_000;
+    format!("{h}h {m}m")
+}
+
+/// Render a port slot `<div>` as an OOB swap block.
+///
+/// The element id is `mmb-slot-{slot}`, matching the HTML ids added in
+/// Phase 8a. The inner structure mirrors the static HTML in `index.html`
+/// (led, port-name, port-config) but with live state from `port_status`.
+fn render_slot_oob(slot: &str, label: &str, port_status: &PortStatus) -> String {
+    let led_class = if port_status.configured.is_none() {
+        "led-off"
+    } else if port_status.error.is_some() {
+        "led-red"
+    } else if port_status.connected {
+        "led-green"
+    } else {
+        "led-amber"
+    };
+
+    let port_config_text = match &port_status.configured {
+        Some(name) => escape_html(name),
+        None => "—".to_string(),
+    };
+
+    format!(
+        r#"<div class="mmb-port-slot" id="mmb-slot-{slot}" data-slot="{slot}" hx-swap-oob="true"><span class="led {led_class}"></span><span class="port-name">{label}</span><span class="port-config">{port_config_text}</span></div>"#
     )
 }
 
@@ -624,7 +795,6 @@ mod tests {
     #[test]
     fn master_led_state_running_stale_heartbeat_amber() {
         use crate::web::state::PortStatus;
-        use std::time::Instant;
         let mut status = make_running_status();
         // Mark the virtual port as connected so heartbeat staleness is checked.
         status.ports.mcu_virtual = PortStatus {
@@ -633,21 +803,20 @@ mod tests {
             error: None,
         };
         // Set heartbeat to 6 seconds ago (stale threshold is 5s).
-        status.mcu_heartbeat_at = Some(Instant::now() - Duration::from_secs(6));
+        status.mcu_heartbeat_at = Some(SystemTime::now() - Duration::from_secs(6));
         assert_eq!(master_led_state(&status), "amber");
     }
 
     #[test]
     fn master_led_state_running_fresh_heartbeat_green() {
         use crate::web::state::PortStatus;
-        use std::time::Instant;
         let mut status = make_running_status();
         status.ports.mcu_virtual = PortStatus {
             configured: Some("MCU Virtual".into()),
             connected: true,
             error: None,
         };
-        status.mcu_heartbeat_at = Some(Instant::now());
+        status.mcu_heartbeat_at = Some(SystemTime::now());
         assert_eq!(master_led_state(&status), "green");
     }
 
@@ -720,14 +889,13 @@ mod tests {
     #[test]
     fn master_led_reason_stale_heartbeat_includes_elapsed() {
         use crate::web::state::PortStatus;
-        use std::time::Instant;
         let mut status = make_running_status();
         status.ports.mcu_virtual = PortStatus {
             configured: Some("MCU Virtual".into()),
             connected: true,
             error: None,
         };
-        status.mcu_heartbeat_at = Some(Instant::now() - Duration::from_secs(8));
+        status.mcu_heartbeat_at = Some(SystemTime::now() - Duration::from_secs(8));
         let reason = master_led_reason(&status);
         assert!(
             reason.contains("MCU heartbeat stale"),
@@ -1293,5 +1461,182 @@ mod tests {
         );
         assert!(html.contains("&lt;weird&gt;"));
         assert!(html.contains("&quot;"));
+    }
+
+    // ── render_status_oob ─────────────────────────────────────────────────────
+
+    fn make_oob_status(bridge_state: BridgeState) -> Status {
+        Status {
+            bridge_state,
+            transport: crate::state::TransportState::Stopped,
+            last_bar: None,
+            last_event_at: None,
+            ports: PortStatuses::default(),
+            mcu_heartbeat_at: None,
+            config: Config::default(),
+        }
+    }
+
+    #[test]
+    fn render_status_oob_has_all_stable_ids_with_swap_oob() {
+        let status = make_oob_status(BridgeState::Running);
+        let html = render_status_oob(&status);
+        for id in &[
+            "mmb-master-led",
+            "mmb-state-badge",
+            "mmb-bar-readout",
+            "mmb-machine-state",
+            "mmb-last-event-text",
+            "mmb-mcu-heartbeat-text",
+            "mmb-slot-mc500-input",
+            "mmb-slot-mc500-sync",
+            "mmb-slot-lcxl3-input",
+            "mmb-slot-lcxl3-output",
+            "mmb-slot-mcu-virtual",
+        ] {
+            assert!(
+                html.contains(&format!(r#"id="{id}""#)),
+                "missing id={id} in oob html"
+            );
+            // Every OOB element must carry hx-swap-oob="true"
+        }
+        assert!(
+            html.contains(r#"hx-swap-oob="true""#),
+            "missing hx-swap-oob in oob html"
+        );
+    }
+
+    #[test]
+    fn render_status_oob_state_badge_data_state_matches_transport() {
+        let mut status = make_oob_status(BridgeState::Running);
+        status.transport = crate::state::TransportState::Playing;
+        let html = render_status_oob(&status);
+        assert!(
+            html.contains(r#"data-state="playing""#),
+            "expected data-state=playing: {html}"
+        );
+        assert!(html.contains("PLAYING"), "expected PLAYING label: {html}");
+    }
+
+    #[test]
+    fn render_status_oob_state_badge_stopped() {
+        let status = make_oob_status(BridgeState::Running);
+        let html = render_status_oob(&status);
+        assert!(
+            html.contains(r#"data-state="stopped""#),
+            "expected data-state=stopped: {html}"
+        );
+        assert!(html.contains("STOPPED"), "expected STOPPED label: {html}");
+    }
+
+    #[test]
+    fn render_status_oob_bar_readout_with_bar() {
+        let mut status = make_oob_status(BridgeState::Running);
+        status.last_bar = Some(42);
+        let html = render_status_oob(&status);
+        assert!(html.contains("BAR 42"), "expected BAR 42: {html}");
+    }
+
+    #[test]
+    fn render_status_oob_bar_readout_no_bar() {
+        let status = make_oob_status(BridgeState::Running);
+        let html = render_status_oob(&status);
+        assert!(html.contains("BAR ----"), "expected BAR ---- when no bar: {html}");
+    }
+
+    #[test]
+    fn render_status_oob_timestamp_present_when_last_event_some() {
+        let mut status = make_oob_status(BridgeState::Running);
+        status.last_event_at = Some(SystemTime::now());
+        let html = render_status_oob(&status);
+        // The last-event span must have a non-zero epoch-ms timestamp.
+        // Extract just the last-event span to avoid matching the mcu-heartbeat span.
+        let last_event_span_start = html.find(r#"id="mmb-last-event-text""#)
+            .expect("mmb-last-event-text span missing");
+        let span_html = &html[last_event_span_start..last_event_span_start + 100.min(html.len() - last_event_span_start)];
+        assert!(
+            !span_html.contains(r#"data-timestamp="0""#),
+            "last-event data-timestamp should not be 0 when last_event_at is Some: {span_html}"
+        );
+    }
+
+    #[test]
+    fn render_status_oob_timestamp_zero_when_last_event_none() {
+        let status = make_oob_status(BridgeState::Running);
+        let html = render_status_oob(&status);
+        // Both last-event and mcu-heartbeat are None → both spans should have timestamp="0".
+        assert!(
+            html.contains(r#"data-timestamp="0""#),
+            "expected data-timestamp=0 when last_event_at is None: {html}"
+        );
+    }
+
+    #[test]
+    fn render_status_oob_slot_led_off_for_unconfigured() {
+        let status = make_oob_status(BridgeState::Running);
+        let html = render_status_oob(&status);
+        // All ports default to unconfigured → led-off
+        assert!(html.contains("led-off"), "expected led-off: {html}");
+    }
+
+    #[test]
+    fn render_status_oob_slot_led_green_for_connected() {
+        use crate::web::state::PortStatus;
+        let mut status = make_oob_status(BridgeState::Running);
+        status.ports.mc500_input = PortStatus {
+            configured: Some("MC-500 In".to_string()),
+            connected: true,
+            error: None,
+        };
+        let html = render_status_oob(&status);
+        assert!(html.contains("led-green"), "expected led-green: {html}");
+    }
+
+    #[test]
+    fn render_status_oob_slot_led_amber_for_configured_disconnected() {
+        use crate::web::state::PortStatus;
+        let mut status = make_oob_status(BridgeState::Running);
+        status.ports.mc500_input = PortStatus {
+            configured: Some("MC-500 In".to_string()),
+            connected: false,
+            error: None,
+        };
+        let html = render_status_oob(&status);
+        assert!(html.contains("led-amber"), "expected led-amber: {html}");
+    }
+
+    #[test]
+    fn render_status_oob_slot_led_red_for_error() {
+        use crate::web::state::PortStatus;
+        let mut status = make_oob_status(BridgeState::Running);
+        status.ports.mc500_input = PortStatus {
+            configured: Some("MC-500 In".to_string()),
+            connected: false,
+            error: Some("port missing".to_string()),
+        };
+        let html = render_status_oob(&status);
+        assert!(html.contains("led-red"), "expected led-red: {html}");
+    }
+
+    #[test]
+    fn render_status_oob_no_mmb_status_wrapper() {
+        // OOB output must NOT contain an outer #mmb-status wrapper —
+        // it's pure OOB fragments, not the full status panel.
+        let status = make_oob_status(BridgeState::Running);
+        let html = render_status_oob(&status);
+        assert!(
+            !html.contains(r#"id="mmb-status""#),
+            "render_status_oob must not emit mmb-status wrapper: {html}"
+        );
+    }
+
+    #[test]
+    fn render_status_oob_master_led_state_initialising_amber() {
+        let status = make_oob_status(BridgeState::Initialising);
+        let html = render_status_oob(&status);
+        assert!(
+            html.contains(r#"data-state="amber""#),
+            "expected amber for initialising: {html}"
+        );
     }
 }

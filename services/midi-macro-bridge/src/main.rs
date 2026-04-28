@@ -35,8 +35,8 @@ use crate::mcu::PositionTracker;
 use crate::midi::VirtualMcuPair;
 use crate::state::{Machine, TransportEvent, TransportState};
 use crate::web::state::{
-    BridgeState, Cmd, EventLine, EventSource, PortStatus, PortStatuses, Status, WebState,
-    build_channels,
+    BridgeState, Cmd, EventLine, EventSource, PortStatus, PortStatuses, SseFrame, Status,
+    WebState, build_channels,
 };
 use tokio::sync::broadcast;
 
@@ -286,8 +286,8 @@ fn build_status(
     bridge_state: BridgeState,
     machine: &Machine,
     tracker: &PositionTracker,
-    last_event_at: Option<Instant>,
-    mcu_heartbeat_at: Option<Instant>,
+    last_event_at: Option<SystemTime>,
+    mcu_heartbeat_at: Option<SystemTime>,
     connections: &MidiConnections,
     config: &Config,
 ) -> Status {
@@ -465,8 +465,8 @@ fn main() -> Result<()> {
 
     let mut machine = Machine::new();
     let mut tracker = PositionTracker::new();
-    let mut last_event_at: Option<Instant> = None;
-    let mut mcu_heartbeat_at: Option<Instant> = None;
+    let mut last_event_at: Option<SystemTime> = None;
+    let mut mcu_heartbeat_at: Option<SystemTime> = None;
 
     if self_test {
         let c = connections.as_mut().unwrap();
@@ -596,7 +596,7 @@ fn main() -> Result<()> {
             while let Ok(bytes) = c.mcu_bytes_rx.try_recv() {
                 let hb_fired = handle_mcu_byte_idle(&bytes, &c.pair, &mut tracker);
                 if hb_fired {
-                    mcu_heartbeat_at = Some(Instant::now());
+                    mcu_heartbeat_at = Some(SystemTime::now());
                     emit_event(
                         &events_tx,
                         &events_history,
@@ -614,7 +614,7 @@ fn main() -> Result<()> {
                 Ok((ev_source, event)) => {
                     let state_before = machine.state();
                     let actions = machine.handle(event);
-                    last_event_at = Some(Instant::now());
+                    last_event_at = Some(SystemTime::now());
 
                     if actions.is_empty() {
                         info!(
@@ -790,10 +790,14 @@ fn build_backend(
 /// buffer. The broadcast notifies live SSE subscribers; the ring buffer
 /// provides history to freshly-opened tabs.
 ///
+/// The line is wrapped in `SseFrame::Event` before broadcasting so the
+/// single `broadcast::Sender<SseFrame>` can carry both event lines and
+/// status OOB fragments.
+///
 /// `SendError` on the broadcast (no subscribers) is silently ignored —
 /// that's normal when no browser tab is open.
 fn emit_event(
-    events_tx: &broadcast::Sender<EventLine>,
+    events_tx: &broadcast::Sender<SseFrame>,
     history: &Arc<Mutex<VecDeque<EventLine>>>,
     source: EventSource,
     text: String,
@@ -811,7 +815,7 @@ fn emit_event(
         h.push_back(line.clone());
     }
     // Ignore SendError — no subscribers is fine.
-    let _ = events_tx.send(line);
+    let _ = events_tx.send(SseFrame::Event(line));
 }
 
 /// Tail of a Stop transition. Gives LUNA a short window to settle

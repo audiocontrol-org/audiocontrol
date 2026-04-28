@@ -25,7 +25,7 @@ use tracing::warn;
 
 use crate::config::{BackendKind, Config, LcxlConfig, TransportConfig};
 use crate::midi;
-use crate::web::state::{Cmd, EventLine, WebState};
+use crate::web::state::{Cmd, EventLine, SseFrame, WebState};
 use crate::web::views;
 
 // ── /api/ports ────────────────────────────────────────────────────────────────
@@ -64,13 +64,18 @@ pub async fn status(State(state): State<WebState>) -> impl IntoResponse {
 ///
 /// On connect:
 /// 1. Clones the history ring buffer (lock held only briefly, never
-///    across an `.await`), then yields each historical `EventLine`.
-/// 2. Subscribes to the live `broadcast::Sender<EventLine>` and yields
-///    new events as they arrive.
+///    across an `.await`), then yields each historical `EventLine` as
+///    a default-event SSE frame (htmx appends to `#mmb-event-stream`).
+/// 2. Emits ONE `status-updated` SSE frame from the current `status_rx`
+///    snapshot so the client immediately gets current status without
+///    waiting for the next `Status` change.
+/// 3. Subscribes to the live `broadcast::Sender<SseFrame>` and yields
+///    new frames as they arrive:
+///    - `SseFrame::Event(line)` → default SSE event (Phase 6f compatible)
+///    - `SseFrame::StatusUpdated(html)` → `event: status-updated` SSE event
 ///
-/// Each event is rendered via `views::render_event_line` and wrapped in
-/// an SSE `data:` frame. When the client disconnects, the `BroadcastStream`
-/// is dropped and the subscription is automatically released.
+/// When the client disconnects, the `BroadcastStream` is dropped and the
+/// subscription is automatically released.
 pub async fn events(State(state): State<WebState>) -> impl IntoResponse {
     // 1. Snapshot history while holding the lock as briefly as possible.
     let history_snapshot: VecDeque<EventLine> = {
@@ -79,28 +84,44 @@ pub async fn events(State(state): State<WebState>) -> impl IntoResponse {
         // lock drops here, well before any .await
     };
 
-    // 2. Subscribe to live events.
+    // 2. Capture current status for the per-connect initial push.
+    let initial_status_html = views::render_status_oob(&state.status_rx.borrow().clone());
+
+    // 3. Subscribe to live frames.
     let live_rx = state.subscribe_events();
 
-    // Build the combined stream: history first, then live.
+    // Build the combined stream: history events → initial status → live frames.
     let history_stream = stream::iter(history_snapshot)
         .map(|line| -> Result<Event, Infallible> {
             Ok(Event::default().data(views::render_event_line(&line)))
         });
 
+    // Single initial status-updated frame to sync the UI on connect.
+    let initial_status_stream = stream::once(async move {
+        Ok::<Event, Infallible>(
+            Event::default()
+                .event("status-updated")
+                .data(initial_status_html),
+        )
+    });
+
     let live_stream = BroadcastStream::new(live_rx).filter_map(|result| async move {
         match result {
-            Ok(line) => Some(Ok::<Event, Infallible>(
+            Ok(SseFrame::Event(line)) => Some(Ok::<Event, Infallible>(
                 Event::default().data(views::render_event_line(&line)),
             )),
-            // BroadcastStream::Lagged means we missed some events — skip
-            // the gap indicator and continue; the browser-side ring buffer
-            // handles missing entries gracefully.
+            Ok(SseFrame::StatusUpdated(html)) => Some(Ok::<Event, Infallible>(
+                Event::default().event("status-updated").data(html),
+            )),
+            // BroadcastStream::Lagged means we missed some frames — skip
+            // the gap and continue; the browser-side state handles this.
             Err(_) => None,
         }
     });
 
-    let combined = history_stream.chain(live_stream);
+    let combined = history_stream
+        .chain(initial_status_stream)
+        .chain(live_stream);
 
     Sse::new(combined).keep_alive(KeepAlive::default())
 }
@@ -292,7 +313,7 @@ mod tests {
 
     use super::*;
     use crate::config::Config;
-    use crate::web::state::{EventLine, EventSource, Status, build_channels};
+    use crate::web::state::{EventLine, EventSource, SseFrame, Status, build_channels};
     #[allow(unused_imports)]
     use crate::web::views;
 
@@ -519,13 +540,41 @@ mod tests {
             source: EventSource::Mc500,
             text: "live event test".to_string(),
         };
-        let _ = events_tx.send(sent.clone());
+        let _ = events_tx.send(SseFrame::Event(sent));
 
         // Should receive within one recv call — the sender and receiver
         // are in the same process.
-        let received = live_rx.try_recv().expect("event was sent synchronously");
-        assert_eq!(received.text, "live event test");
-        assert!(matches!(received.source, EventSource::Mc500));
+        let received = live_rx.try_recv().expect("frame was sent synchronously");
+        match received {
+            SseFrame::Event(line) => {
+                assert_eq!(line.text, "live event test");
+                assert!(matches!(line.source, EventSource::Mc500));
+            }
+            other => panic!("expected SseFrame::Event, got: {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn events_handler_status_updated_frame_has_named_event() {
+        // Verify that a StatusUpdated frame is emitted as event: status-updated
+        // via the broadcast channel.
+        let state = make_test_state();
+        let events_tx = state.events_tx.clone();
+        let mut live_rx = state.subscribe_events();
+
+        let html = r#"<div id="mmb-master-led" hx-swap-oob="true" data-state="green"></div>"#.to_string();
+        let _ = events_tx.send(SseFrame::StatusUpdated(html.clone()));
+
+        let received = live_rx.try_recv().expect("frame was sent synchronously");
+        match received {
+            SseFrame::StatusUpdated(received_html) => {
+                assert_eq!(received_html, html);
+                // Confirm the html contains stable ids and hx-swap-oob
+                assert!(received_html.contains(r#"hx-swap-oob="true""#));
+                assert!(received_html.contains(r#"id="mmb-master-led""#));
+            }
+            other => panic!("expected SseFrame::StatusUpdated, got: {other:?}"),
+        }
     }
 
     // ── /api/config-form tests ────────────────────────────────────────────────
