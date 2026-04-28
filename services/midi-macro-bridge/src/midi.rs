@@ -167,12 +167,31 @@ where
 }
 
 /// List all available MIDI input port names.
+///
+/// Deprecated name kept as a thin wrapper so any callers outside this
+/// file continue to compile. New code should call `list_ports_input`.
+#[allow(dead_code)]
 pub fn list_ports() -> Result<Vec<String>> {
+    list_ports_input()
+}
+
+/// List all available MIDI input port names.
+pub fn list_ports_input() -> Result<Vec<String>> {
     let midi_in = MidiInput::new("midi-macro-bridge-list")?;
     midi_in
         .ports()
         .iter()
         .map(|p| midi_in.port_name(p).context("read port name"))
+        .collect()
+}
+
+/// List all available MIDI output port names.
+pub fn list_ports_output() -> Result<Vec<String>> {
+    let midi_out = MidiOutput::new("midi-macro-bridge-list-out")?;
+    midi_out
+        .ports()
+        .iter()
+        .map(|p| midi_out.port_name(p).context("read port name"))
         .collect()
 }
 

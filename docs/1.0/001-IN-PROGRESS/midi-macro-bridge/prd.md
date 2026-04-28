@@ -16,6 +16,7 @@ Beyond basic transport, the user needs LUNA's playhead to follow the MC-500's lo
 - As a developer, I want the bridge integrated into the monorepo build system, so it is built and tested alongside other services.
 - As a studio user, I want locating on the MC-500 (LOCATE button, numeric entry, or locate-memory recall) to move LUNA's playhead to the *exact* same bar, so audio tape sync locks the two machines together without a persistent offset. Closed-loop verification against LUNA's MCU position output is what makes this reliable; open-loop keystroke counting is not trustworthy enough given that any mistake is permanent.
 - As a studio user with a Novation Launch Control XL Mk3 on the desk, I want to drive LUNA's transport (Play/Stop) and nudge the playhead bar-by-bar from the LCXL3's transport buttons and encoders, so I can operate LUNA without reaching for the keyboard or having the MC-500 plugged in for trivial sessions. The LCXL3 should run alongside the MC-500 when both are connected — neither input source disables the other.
+- As a non-technical user installing the bridge for the first time, I want to configure MIDI port routings through a graphical interface that opens automatically in my browser, so I can pick from a list of currently-connected ports without ever opening a TOML file or a terminal. Hand-editing config files isn't a workflow musicians know — and MIDI port names vary per machine, so there's no factory default that works for everyone.
 
 ## Success Criteria
 
@@ -30,6 +31,8 @@ Beyond basic transport, the user needs LUNA's playhead to follow the MC-500's lo
 - Keystroke backend remains selectable via `[transport] backend = "keystrokes"` for environments where MCU isn't available, preserving Phase 1-2 behaviour as an opt-in fallback
 - Hardware-validated: LCXL3 Play/Stop button toggles LUNA transport; LCXL3 encoder ticks nudge LUNA's bar position; LCXL3 transport LEDs reflect the bridge's playing/stopped state. The bridge runs the full Live-equivalent activation handshake on startup and the deactivation handshake on Ctrl-C
 - Hardware-validated: with both MC-500 and LCXL3 enabled, transport events from either device drive LUNA correctly and neither input source masks the other
+- Hardware-validated: a fresh install of the bridge auto-opens a browser-based control interface, lets the user pick MIDI input/output ports from live-enumerated dropdowns, applies the configuration in-process (no restart, ~100ms downtime), and shows live transport state plus a recent-events stream — without the user ever touching `config.toml`
+- Hardware-validated: plugging or unplugging a MIDI device while the configuration form is open surfaces a "PORTS UPDATED" indicator within ~1 s; clicking it refreshes the dropdown options in place while preserving any selected values and any other in-flight form edits. No code outside `src/midi/` touches CoreMIDI or midir APIs directly after the abstraction lands
 
 ## In Scope
 
@@ -77,6 +80,81 @@ The bridge gains a second, parallel input source. Phases 1–4 keep working unch
 
 **Power-cycle behaviour (v1):** if the user power-cycles the LCXL3 mid-session, midir's input connection breaks. The bridge logs the disconnect and the user restarts the bridge to re-handshake. Auto-reconnect is out of scope for v1.
 
+### Phase 6 — Embedded web control interface
+
+The bridge gains a graphical configuration and status interface served from the binary itself. Hand-edited TOML stays as a fallback path; the web UI becomes the primary onboarding experience. Distribution work (notarized `.pkg`, launchd LaunchAgent, signing, auto-update) is tracked separately and is *not* part of this scope.
+
+- Embed an HTTP server (`axum` on a `tokio` runtime spawned in a dedicated thread) inside the bridge binary. The MIDI event loop stays on its existing `std::thread` — the two communicate exclusively through `tokio::sync::watch` (status snapshots, server reads) and `tokio::sync::mpsc` (commands, server writes). HTTP handlers never touch `MidiInputConnection` / `MidiOutputConnection` handles directly; the MIDI thread retains exclusive ownership.
+- Bind to `127.0.0.1:8765` (with `0.0.0.0` and authentication explicitly out of scope for v1) and fall back to OS-assigned (`:0`) when 8765 is taken; record the chosen URL in `~/Library/Application Support/MidiMacroBridge/url.txt` for follow-on tooling.
+- Auto-open the browser to the bridge URL on startup via macOS `open`. A `--no-open` CLI flag suppresses this for headless reload scenarios.
+- Serve a single-page htmx-driven control surface from compiled-in static assets (`rust-embed`): no JS bundler, no node_modules, no SPA framework. Self-host fonts (Geist Mono, Departure Mono) — the bridge runs offline.
+- Visual identity: "Studio Rack Utility" — the interface presents as a virtual rack-mount MIDI patch utility. Panel-screened typography, peak-meter LEDs (off / green-steady / amber / red), signal-flow routing visualisation (sources → bridge → destinations), tape-printer event log. Full design captured in [`web-ui-design.md`](web-ui-design.md).
+- HTTP API surface (htmx-targeted; endpoints return HTML fragments rather than JSON):
+  - `GET /` — single-page HTML shell
+  - `GET /static/*` — embedded assets (CSS, JS, fonts)
+  - `GET /api/ports` — live-enumerated MIDI input + output port lists
+  - `GET /api/status` — bridge state, transport state, current-bar, per-port-slot status (Off / Connected / Missing / Failed), MCU heartbeat freshness, current loaded `Config`
+  - `GET /api/events` — Server-Sent Events stream of `Machine::handle()` events (ring-buffered to last 200 server-side so a freshly-opened tab sees recent history)
+  - `POST /api/config` — receives form data, writes `config.toml` atomically (write-tmp + rename), emits `Cmd::Reload` on the channel
+  - `POST /api/halt` — emits `Cmd::Halt`; the MIDI loop performs the actual `std::process::exit(2)` (the HTTP handler never exits the process directly)
+- In-process reload: on `Cmd::Reload`, the MIDI loop drops its current `MidiInputConnection` / `MidiOutputConnection` handles and calls a new `setup_midi_connections(&Config)` factory to rebuild them. Designed to complete within ~100ms; the UI shows a "RECONNECTING…" state during the reload window.
+- Configuration form covers MC-500 (input port + sync output port + enable toggle), LCXL3 (input port + LED output port + enable toggle + host-name string), and Backend mode (MCU / Keystrokes; the latter expands to reveal the nudge-size config). The single APPLY button is the only way changes take effect — picking from a dropdown marks the form dirty; nothing happens until APPLY.
+- HALT button uses a 3-second hold-to-confirm interaction so an accidental click can't take the bridge down. On confirm the bridge process exits with code 2; under launchd (added by the follow-on packaging feature) it respawns within 1s.
+- Master health LED in the page header (green / amber / red) summarises the rolled-up state of all enabled inputs, MCU output, and DAW heartbeat freshness; tooltip describes the specific reason for any non-green state.
+
+**v1 deferred (tracked but not blocking):** keyboard shortcuts, theme toggle, bar/beat/tick precision in the transport readout (just bar in v1), per-source event colour customisation, export/share config snapshot, mobile/touch optimisation, raw-byte diagnostics panel, multi-instance support. LAN access with auth is a separate feature in the distribution track.
+
+### Phase 7 — MIDI subsystem abstraction + hot-plug detection
+
+The web UI's port pickers are populated once at form-load time, so plugging or unplugging a MIDI device after opening the page is invisible until the user reloads. Phase 7 fixes that with two coupled changes: a structural cleanup (factor MIDI plumbing behind a trait) and a feature (push hot-plug events to the browser).
+
+- Introduce a `MidiSubsystem` trait that owns every MIDI primitive the bridge currently calls directly: input/output port enumeration, port-by-substring connections, raw byte connections, and virtual MCU endpoint registration. Two implementations land in this phase: `CoreMidiSubsystem` (macOS, the primary platform) and `MidirSubsystem` (Linux/Windows fallback covering whatever midir exposes — Linux is currently a documented limitation, Windows remains unsupported per the existing scope). The bridge selects an impl at startup via `cfg`; **no other code in the crate touches `coremidi::*` or `midir::*` directly after this refactor.** That isolation is the whole point of the abstraction — keep the OS-specific MIDI tendrils out of the rest of the codebase so future Linux/Windows work is purely additive.
+- Add hot-plug detection on macOS via `MIDIClientCreateWithBlock` notifications. The CoreMidi subsystem listens for `kMIDIMsgObjectAdded` / `kMIDIMsgObjectRemoved` / `kMIDIMsgPropertyChanged` and emits a coalesced `MidiTopologyChange` event on a `tokio::sync::watch` channel — multiple rapid plug events collapse to a single re-enumeration. The `MidirSubsystem` returns a watch receiver that never fires (Linux ALSA seq has notification primitives but they're a separate future feature; Windows likewise).
+- Push topology changes through SSE as a named event (`event: ports-changed`) using the existing `/api/events` endpoint's stream. The web UI shows a small **opt-in indicator** — a "PORTS UPDATED — REFRESH" pill near the configuration section — when a topology change arrives. The user clicks the pill to apply the refresh; the dropdown options swap in via htmx while preserving any currently-selected value. **No automatic replacement** — the UI never re-renders the port list under the user's cursor mid-edit.
+- Add `GET /api/port-options` returning HTML fragments that the pill's click triggers; each `<select>` has a stable id so the response uses htmx out-of-band swaps to update the option lists in place without disturbing other form state.
+- The configuration form's `<select>`-with-disconnected-option pattern (already shipped) integrates cleanly: when ports change, an option that was previously "(disconnected)" might re-appear as a normal option, and vice versa. The refresh handles both transitions.
+
+**Out of scope for Phase 7:** Linux ALSA seq hot-plug, Windows WinMIDI hot-plug, automatic refresh without user opt-in, refresh-on-network-blip recovery (htmx-sse handles SSE reconnection natively).
+
+### Phase 8 — Brand alignment + status wiring fixes
+
+A design review of the Phase 6 web UI (informed by a live Playwright snapshot of audiocontrol.org and a snapshot of the running bridge) surfaced two structural issues that need to be resolved before the UI is shippable:
+
+1. **Live indicators don't update.** The transport readout (`STOPPED / BAR ----`) and the routing matrix LEDs in the page body are hardcoded in `index.html`; the master LED in the header only updates on initial page load because `/api/status` is fetched once via `hx-trigger="load"` with no polling. Meanwhile the actual `#mmb-status` fragment that the server renders (with bridge state, transport, bar, port LEDs, heartbeat) lands in an invisible bottom div, where it appears as an unstyled blob below the configuration section. The user sees a dashboard that looks live but isn't.
+
+2. **Brand mismatch with audiocontrol.org.** The Phase 6 UI shipped a "Studio Rack Utility" aesthetic — dark CRT/peak-meter, heavy film-grain, scanline overlay on the bar readout, brushed-metal panel gradient, Geist Mono everywhere, warm-orange peak-meter accent. Audiocontrol.org's official brand language (named **"service-manual / flight-instrumentation"** in the parent repo's `design-tokens.css`) is dark, warm-ink, with phosphor amber primary, Roland-blue secondary used sparingly, Departure Mono for the identity voice / headlines / labels, IBM Plex Sans for body, JetBrains Mono for code and tabular meta. The parent site DOES use grain, scanlines, and a warm vignette — but at very low alpha (3.5% / 6%) so they read as atmosphere rather than decoration. Card chrome is flat with hairline borders, soft glow shadow, and L-shaped corner brackets (`.dimension-bracket`) drawn with pseudo-elements. The bridge UI is in the right *neighbourhood* (we already use Departure Mono, a warm amber accent, and a dark theme) but the body font is wrong, the panel chrome is the wrong language, and the atmospheric layers are too heavy and styled bespoke instead of using the canonical utility classes.
+
+Phase 8 fixes the wiring first (so the live state is correct before we restyle), then re-skins to match audiocontrol.org's canonical design tokens. The "device-feel" Departure Mono accents on the bar number and transport state badge are preserved — they're already in family — but the surrounding chrome shifts from studio-rack-hardware to service-manual-tooling.
+
+**Canonical audiocontrol.org tokens (extracted via Playwright from the live site):**
+
+```
+--background: hsl(30 12% 7%)           warm near-black, NOT green-tinted
+--card: hsl(30 14% 11%)                flat card surface (no gradient)
+--card-hover: hsl(30 14% 14%)
+--foreground: hsl(35 18% 88%)          warm cream text
+--muted-foreground: hsl(30 10% 55%)
+--primary: hsl(35 95% 62%)             single warm amber accent
+--border: hsl(30 10% 18%)
+--badge-available: hsl(152 55% 55%) on hsl(152 40% 13%) bg     (connected = green pill)
+--badge-coming: hsl(35 80% 55%)        (configured-but-pending = amber)
+--font-display / --font-heading: "Departure Mono"
+--font-body: "IBM Plex Sans"
+--font-mono: "JetBrains Mono"
+--card-glow: 0 0 0 1px hsl(30 10% 18%), 0 10px 36px -12px hsl(0 0% 0% / .65)
+--phosphor-glow: 0 0 14px hsl(35 95% 62% / .35), 0 0 2px hsl(35 95% 62% / .55)
+```
+
+**Phase 8 deliverables:**
+
+- **Status wiring (push-driven via SSE, not polling):** the bridge already maintains a `tokio::sync::watch::Sender<Status>` updated by the MIDI loop on every observable state change — that's the right abstraction for "subscribe to state changes." A new tokio task awaits `status_rx.changed()` and broadcasts a pre-rendered OOB-fragment as a named SSE event (`event: status-updated`) on the existing `/api/events` stream. The web UI listens for that event via htmx-sse; OOB elements in the payload swap each visible indicator (master LED, transport state badge, bar readout, last-event timer, MCU heartbeat, five port-slot LEDs, machine-state label) by stable id, instantly. Time-elapsed displays (`last event 3.2s`) tick smoothly client-side via a small `setInterval` against `data-timestamp="<epoch_ms>"` attributes in the payload — no per-second HTTP traffic. The orphaned hidden `#mmb-status` block and its one-shot `hx-get="/api/status"` are deleted. Polling was rejected: it'd introduce up to 1s of latency on every state edge and burn requests when idle; push fits the existing eventing pattern (Phases 6, 7) and the watch channel's coalescing semantics naturally debounce a busy locate.
+- **Routing matrix LED rewire:** the existing `<div class="mmb-port-slot" data-slot="...">` elements in the routing matrix gain stable ids (`#mmb-slot-mc500-input`, etc.) and the status fragment renders OOB updates targeting them. Each slot's `<span class="led led-{state}">` swaps in place; the surrounding port-name and port-config text update from the live config snapshot.
+- **Brand realignment** — copy the parent site's canonical design system into the bridge rather than re-derive. Source of truth: `/Users/orion/work/audiocontrol.org-work/audiocontrol.org/src/sites/audiocontrol/styles/design-tokens.css`. The official aesthetic name (per that file's own header comment) is **"service-manual / flight-instrumentation"** — warm-ink background, warm-cream foreground, phosphor amber primary (VFD / flight instrument), Roland-blue accent used sparingly. The file ships utility classes the bridge can adopt directly: `.panel-label` (eyebrow text), `.signal-led` (8px amber dot with phosphor glow + built-in pulse), `.dimension-bracket` (L-shaped corner brackets — pseudo-elements that frame a wrapper), `.card-glow`, `.rule-hairline`, `.rule-accent`, `.rule-ticked`, `.atmosphere-grain`, `.atmosphere-scanlines`, `.atmosphere-vignette`, `.phosphor`, `.site-container`. Phase 8b copies the file verbatim into `services/midi-macro-bridge/web/design-tokens.css` (adjusting `@font-face` URLs from `/fonts/` to `/static/fonts/`) and copies the four IBM Plex Sans weights + JetBrains Mono regular from the parent's `public/fonts/`. App-specific styles in `app.css` reference the canonical tokens via `var(--primary)` etc. Future brand updates are a literal `cp` plus rebuild. **The atmospheric layers (grain, scanlines, vignette) ARE part of the parent brand — re-tune to the canonical low-alpha values rather than dropping them.**
+- **Master LED uses `--phosphor-glow`:** the bridge's master LED gains the same glow recipe the parent site uses. Per-port LEDs reuse the recipe at smaller scale.
+- The `web-ui-design.md` reference document is rewritten to reflect the actual brand direction; the original "Studio Rack Utility" copy moves to a "Design history (Phase 6)" appendix so context is preserved.
+
+**Out of scope for Phase 8:** light-mode toggle (the parent site is dark-only; we follow), per-device accent variation (the bridge isn't a device editor), the editor-core CSS tokens are explicitly **not** the brand reference (the user has confirmed the editor code is itself behind the website's brand standards).
+
 ## Out of Scope
 
 - MIDI clock forwarding
@@ -84,12 +162,18 @@ The bridge gains a second, parallel input source. Phases 1–4 keep working unch
 - Sample-accurate positioning — bar-accurate is the bar; tape audio sync handles finer chase
 - Locate during playback — SPP received while LUNA is playing is ignored
 - LUNA nudge value greater than 1 bar — closed-loop assumes `[` / `]` moves ≤ 1 bar; larger nudge values are detected at runtime and surfaced as a configuration error rather than silently misbehaving
-- GUI -- CLI with config file only
 - Windows support in v1
 - Program Change to marker navigation (future feature)
 - LCXL3 fader / V-pot / pad / Record-button mappings — Phase 5 covers transport buttons + encoder only; the rest of the LCXL3 surface stays unmapped (additive future work)
 - LCXL3 auto-reconnect on device power-cycle — bridge restart required in v1
 - General-purpose preset system (future -- v1 is hardcoded MC-500 + LCXL3 to LUNA mapping)
+- macOS `.pkg` installer + notarization + signing — distribution work tracked as a separate follow-on feature, not Phase 6
+- launchd LaunchAgent / auto-start at login — same follow-on
+- Auto-update mechanism, crash reporting, telemetry
+- LAN-reachable web UI / iPad use case — Phase 6 binds to `127.0.0.1` only; LAN access requires auth + HTTPS, deferred
+- SPA frontend framework (React, Svelte, Vue) — Phase 6 is htmx + plain HTML by design; no JS bundler, no node_modules
+- Native menu-bar status app — possible follow-on once the web UI is established
+- Multi-bridge / multi-instance management — single bridge per machine in v1
 
 ## Dependencies
 

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MIDI Macro Bridge</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <header class="mmb-header">
+    <h1 class="mmb-title">MIDI Macro Bridge</h1>
+    <!-- Phase 8a: master LED is OOB-swapped by status-updated SSE events -->
+    <div class="mmb-master-led" id="mmb-master-led" data-state="amber" title="starting up..."></div>
+    <span class="mmb-version">v1.0</span>
+    <button type="button" class="mmb-halt" id="mmb-halt-btn" aria-label="halt bridge (hold 3s)">
+      <svg class="mmb-halt-ring" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="14" class="mmb-halt-ring-bg"></circle>
+        <circle cx="16" cy="16" r="14" class="mmb-halt-ring-fg"></circle>
+      </svg>
+      <span class="mmb-halt-label">HALT</span>
+    </button>
+  </header>
+
+  <!-- Phase 8a: all readout elements have stable ids for OOB swap -->
+  <section class="mmb-transport-readout" aria-label="transport readout">
+    <div class="mmb-state-badge" id="mmb-state-badge" data-state="stopped">STOPPED</div>
+    <div class="mmb-bar-readout" id="mmb-bar-readout">BAR ----</div>
+    <div class="mmb-last-event-timer">last event <span id="mmb-last-event-text" data-timestamp="0">—</span></div>
+    <div class="mmb-mcu-heartbeat">MCU heartbeat <span id="mmb-mcu-heartbeat-text" data-timestamp="0">—</span></div>
+  </section>
+
+  <section class="mmb-routing" aria-label="routing matrix">
+    <h2 class="mmb-section-label">ROUTING</h2>
+    <div class="mmb-routing-grid">
+      <div class="mmb-sources">
+        <h3 class="mmb-col-label">SOURCES</h3>
+        <!-- Phase 8a: slot divs have stable ids for OOB swap -->
+        <div class="mmb-port-slot" id="mmb-slot-mc500-input" data-slot="mc500-input">
+          <span class="led led-off"></span>
+          <span class="port-name">MC-500</span>
+          <span class="port-config">—</span>
+        </div>
+        <div class="mmb-port-slot" id="mmb-slot-lcxl3-input" data-slot="lcxl3-input">
+          <span class="led led-off"></span>
+          <span class="port-name">LCXL3</span>
+          <span class="port-config">—</span>
+        </div>
+      </div>
+      <div class="mmb-bridge-center">
+        <h3 class="mmb-col-label">BRIDGE</h3>
+        <div class="mmb-machine-state" id="mmb-machine-state">stopped</div>
+      </div>
+      <div class="mmb-destinations">
+        <h3 class="mmb-col-label">DESTINATIONS</h3>
+        <div class="mmb-port-slot" id="mmb-slot-mcu-virtual" data-slot="mcu-virtual">
+          <span class="led led-off"></span>
+          <span class="port-name">DAW (MCU)</span>
+          <span class="port-config">virtual endpoint</span>
+        </div>
+        <div class="mmb-port-slot" id="mmb-slot-mc500-sync" data-slot="mc500-sync">
+          <span class="led led-off"></span>
+          <span class="port-name">MC-500 sync</span>
+          <span class="port-config">—</span>
+        </div>
+        <div class="mmb-port-slot" id="mmb-slot-lcxl3-output" data-slot="lcxl3-output">
+          <span class="led led-off"></span>
+          <span class="port-name">LCXL3 LEDs</span>
+          <span class="port-config">—</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mmb-config" aria-label="configuration">
+    <h2 class="mmb-section-label">CONFIGURATION</h2>
+    <div id="mmb-config-form-container"
+         hx-get="/api/config-form"
+         hx-trigger="load"
+         hx-target="this"
+         hx-swap="innerHTML">
+      <!-- populated by /api/config-form on page load -->
+    </div>
+  </section>
+
+  <section class="mmb-events" aria-label="event stream">
+    <h2 class="mmb-section-label">EVENT STREAM</h2>
+    <span class="mmb-pause-indicator" aria-hidden="true">PAUSE</span>
+    <div id="mmb-event-stream" hx-ext="sse" sse-connect="/api/events" sse-swap="message" hx-swap="beforeend">
+      <!-- SSE-driven event lines append here -->
+    </div>
+  </section>
+
+  <!-- Phase 8a: push-driven status updates via SSE.
+       htmx-sse receives "status-updated" events and performs OOB swaps
+       for each element by id. This replaces the one-shot hx-get polling div.
+       A second sse-connect to /api/events is fine — each creates its own
+       SSE connection. The event-stream section above handles "message" events
+       for the transport log; this handles "status-updated" events for indicators. -->
+  <div hx-ext="sse" sse-connect="/api/events" sse-swap="status-updated" hx-swap="none"></div>
+
+  <script src="/static/htmx.min.js"></script>
+  <script src="/static/htmx-sse.js"></script>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

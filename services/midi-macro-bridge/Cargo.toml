@@ -15,6 +15,16 @@ anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 ctrlc = "3"
+axum = "0.7"
+tokio = { version = "1", features = ["rt-multi-thread", "signal", "sync", "time", "macros"] }
+tower = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.5", features = ["trace"] }
+rust-embed = "8"
+mime_guess = "2"
+serde_json = "1"
+futures = "0.3"
+tokio-stream = { version = "0.1", features = ["sync"] }
+dirs = "5"
 
 # Virtual MCU endpoints on macOS go through CoreMIDI directly (not
 # midir) so we can stamp stable UniqueIDs and DAWs like LUNA recognise
@@ -29,6 +39,9 @@ coremidi = "0.9"
 lto = true
 codegen-units = 1
 strip = true
+
+[dev-dependencies]
+tempfile = "3"
 
 [[bin]]
 name = "midi-macro-bridge"

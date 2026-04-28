@@ -1,20 +1,17 @@
 //! Configuration file loading.
 
 use anyhow::{Context, Result};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Config {
     /// Substring match against the MC-500 transport MIDI input port.
     /// Case-insensitive.
     ///
-    /// Defaults to `"828mk3 Hybrid MIDI"` — the interface used on
-    /// Orion's primary rig. That's a placeholder default to make
-    /// the out-of-the-box bridge useful without any config; a
-    /// general port-discovery approach will come during release
-    /// hardening. Set this explicitly if your MC-500 is routed
-    /// through a different interface.
+    /// Defaults to `""` (empty) — no port is correct for a fresh
+    /// install. Set this via the web UI or `config.toml` to the
+    /// substring of the MIDI input port connected to the MC-500.
     ///
     /// If no port matches the substring, midir's connect fails with
     /// an actionable error pointing at `--list-ports`.
@@ -28,15 +25,15 @@ pub struct Config {
     /// to the MC-500 so both machines agree on where the playhead
     /// is.
     ///
-    /// Defaults to the same port name as `midi_input_port` (the
-    /// 828mk3) — midir distinguishes inputs from outputs at the
-    /// port-enumeration level, so the same substring resolves to
-    /// two different endpoints.
+    /// Defaults to `""` (empty), which disables sync-on-stop.
+    /// Set this to the same port name as `midi_input_port` (midir
+    /// distinguishes inputs from outputs at the port-enumeration
+    /// level, so the same substring resolves to distinct endpoints).
     ///
-    /// Empty string disables the sync feature. If the port exists
-    /// but isn't reachable (MC-500 unplugged, cable routed
-    /// elsewhere), the bridge warns at startup and continues
-    /// without the sync — MC-500 → LUNA direction still works.
+    /// If the port exists but isn't reachable (MC-500 unplugged,
+    /// cable routed elsewhere), the bridge warns at startup and
+    /// continues without the sync — MC-500 → LUNA direction still
+    /// works.
     #[serde(default = "default_mc500_output_port")]
     pub mc500_output_port: String,
 
@@ -65,6 +62,13 @@ pub struct Config {
     /// state back. See `LcxlConfig::default()`.
     #[serde(default)]
     pub lcxl3: LcxlConfig,
+
+    /// Embedded HTTP control interface settings. Optional; defaults to
+    /// `enabled = true` so the web UI starts automatically. Set
+    /// `enabled = false` to run in CLI-only mode (useful under launchd
+    /// or on headless machines). See `WebConfig::default()`.
+    #[serde(default)]
+    pub web: WebConfig,
 }
 
 impl Default for Config {
@@ -76,23 +80,25 @@ impl Default for Config {
             transport: TransportConfig::default(),
             locate: LocateConfigToml::default(),
             lcxl3: LcxlConfig::default(),
+            web: WebConfig::default(),
         }
     }
 }
 
 fn default_midi_input_port() -> String {
-    // Placeholder; general port discovery deferred to release
-    // hardening. See Config::midi_input_port docs.
-    "828mk3 Hybrid MIDI".to_string()
+    // Empty by default — no port is correct for a fresh install.
+    // The user must pick their port via the web UI or config.toml.
+    // See Config::midi_input_port docs.
+    String::new()
 }
 
 fn default_mc500_output_port() -> String {
-    // Same default as the input; midir separates inputs from
-    // outputs so the same substring resolves to distinct endpoints.
-    "828mk3 Hybrid MIDI".to_string()
+    // Empty by default — sync-on-stop is disabled until the user
+    // configures an output port. See Config::mc500_output_port docs.
+    String::new()
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TransportConfig {
     /// Which Backend the bridge should use to drive the DAW. `mcu`
     /// (default) emits MCU control-surface messages on the virtual
@@ -136,7 +142,7 @@ impl TransportConfig {
     }
 }
 
-#[derive(Debug, Deserialize, Default, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum BackendKind {
     #[default]
@@ -148,7 +154,7 @@ pub enum BackendKind {
 /// scalars so TOML users don't have to think about Duration types.
 /// `TryInto<LocateConfig>` converts the ms values into the Duration
 /// form the `LocateController` uses.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LocateConfigToml {
     /// Enable closed-loop locate. On by default — if LUNA hasn't been
     /// set up as an MCU control surface the controller times out
@@ -217,7 +223,7 @@ fn default_initial_position_timeout_ms() -> u64 {
 /// runs the activation handshake (the `lcxl3::handshake_send`
 /// sequence), listens for transport events, and pushes LED state
 /// back when the transport state changes.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LcxlConfig {
     /// Master switch. False by default — explicit opt-in keeps the
     /// existing MC-500-only path unaffected.
@@ -277,6 +283,55 @@ fn default_true() -> bool {
     true
 }
 
+// ── Web config ────────────────────────────────────────────────────────────────
+
+/// Settings for the embedded HTTP control interface (Phase 6).
+/// All fields default to on so the web UI starts out of the box.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct WebConfig {
+    /// Master switch. `true` by default — the web UI starts
+    /// automatically unless the user opts out. Set `enabled = false`
+    /// in `[web]` for headless / launchd-managed deployments.
+    #[serde(default = "default_web_enabled")]
+    pub enabled: bool,
+
+    /// TCP port the HTTP listener binds to. Defaults to 8765. If the
+    /// port is taken at startup, the bridge falls back to an
+    /// OS-assigned port and logs the chosen URL.
+    #[serde(default = "default_web_bind_port")]
+    pub bind_port: u16,
+
+    /// Whether to run `open http://127.0.0.1:<port>` after the
+    /// listener binds. Defaults to `true` on macOS for first-run UX;
+    /// set `false` when running under launchd or SSH where browser
+    /// launch would be wrong or impossible.
+    ///
+    /// Can also be suppressed per-invocation with the `--no-open`
+    /// CLI flag regardless of this setting.
+    #[serde(default = "default_web_auto_open")]
+    pub auto_open_browser: bool,
+}
+
+impl Default for WebConfig {
+    fn default() -> Self {
+        Self {
+            enabled: default_web_enabled(),
+            bind_port: default_web_bind_port(),
+            auto_open_browser: default_web_auto_open(),
+        }
+    }
+}
+
+fn default_web_enabled() -> bool {
+    true
+}
+fn default_web_bind_port() -> u16 {
+    8765
+}
+fn default_web_auto_open() -> bool {
+    true
+}
+
 /// Result of attempting to load a config file. `Ok(Some(cfg))` on
 /// successful load; `Ok(None)` when the file wasn't found (caller
 /// should fall back to `Config::default()`); `Err` on other I/O
@@ -298,6 +353,34 @@ impl Config {
             Err(e) => Err(anyhow::anyhow!(e))
                 .with_context(|| format!("reading config from {}", path.display())),
         }
+    }
+
+    /// Atomically write the config to `path` by serialising to a `.tmp`
+    /// file in the same directory and then renaming it over `path`. On
+    /// POSIX systems `rename` is atomic within a filesystem, so a reader
+    /// will always see either the old file or the new one — never a
+    /// partial write.
+    pub fn write_atomic(&self, path: &Path) -> Result<()> {
+        let toml_text = toml::to_string_pretty(self)
+            .with_context(|| "serialising config to TOML")?;
+
+        // Build the .tmp path in the same directory so the rename is
+        // guaranteed to stay on one filesystem (a cross-device rename
+        // would fail on most Unixes).
+        let tmp_path = path.with_extension("toml.tmp");
+
+        std::fs::write(&tmp_path, &toml_text)
+            .with_context(|| format!("writing temp config to {}", tmp_path.display()))?;
+
+        std::fs::rename(&tmp_path, path).with_context(|| {
+            format!(
+                "renaming {} → {} (atomic swap)",
+                tmp_path.display(),
+                path.display()
+            )
+        })?;
+
+        Ok(())
     }
 }
 
@@ -326,7 +409,10 @@ mod tests {
         // Config::default() via the NotFound branch in Config::load;
         // an empty TOML takes the same path via serde's defaults.
         let cfg: Config = toml::from_str("").unwrap();
-        assert_eq!(cfg.midi_input_port, "828mk3 Hybrid MIDI");
+        // Phase 6h: default ports are empty — no port is correct for
+        // a fresh install; the user must pick via the web UI.
+        assert_eq!(cfg.midi_input_port, "");
+        assert_eq!(cfg.mc500_output_port, "");
         assert!(cfg.enabled_on_startup);
         assert_eq!(cfg.transport.backend, BackendKind::Mcu);
         assert!(cfg.locate.enabled);
@@ -341,9 +427,19 @@ mod tests {
         let from_toml: Config = toml::from_str("").unwrap();
         let from_default = Config::default();
         assert_eq!(from_toml.midi_input_port, from_default.midi_input_port);
+        assert_eq!(from_toml.mc500_output_port, from_default.mc500_output_port);
         assert_eq!(from_toml.enabled_on_startup, from_default.enabled_on_startup);
         assert_eq!(from_toml.transport.backend, from_default.transport.backend);
         assert_eq!(from_toml.locate.enabled, from_default.locate.enabled);
+    }
+
+    #[test]
+    fn config_default_has_empty_port_fields() {
+        // Phase 6h: no default port is correct for a fresh install.
+        // Users see the empty-state UX and configure via the web UI.
+        let cfg = Config::default();
+        assert_eq!(cfg.midi_input_port, "", "midi_input_port should default to empty");
+        assert_eq!(cfg.mc500_output_port, "", "mc500_output_port should default to empty");
     }
 
     #[test]
@@ -503,6 +599,46 @@ mod tests {
         assert_eq!(from_toml.lcxl3.input_port, from_default.lcxl3.input_port);
         assert_eq!(from_toml.lcxl3.output_port, from_default.lcxl3.output_port);
         assert_eq!(from_toml.lcxl3.host_name, from_default.lcxl3.host_name);
+    }
+
+    // ── write_atomic ──────────────────────────────────────────────────────────
+
+    #[test]
+    fn write_atomic_roundtrips_config() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("config.toml");
+
+        let original = Config {
+            midi_input_port: "TestInput".to_string(),
+            mc500_output_port: "TestOutput".to_string(),
+            ..Config::default()
+        };
+        original.write_atomic(&path).expect("write_atomic failed");
+
+        // The .tmp file must NOT be left behind.
+        let tmp = path.with_extension("toml.tmp");
+        assert!(!tmp.exists(), ".tmp file was left behind after successful write");
+
+        // The written file must re-parse to the same values.
+        let loaded = match Config::load(&path).expect("load") {
+            LoadOutcome::Loaded(c) => c,
+            LoadOutcome::NotFound => panic!("config file not found after write"),
+        };
+        assert_eq!(loaded.midi_input_port, original.midi_input_port);
+        assert_eq!(loaded.mc500_output_port, original.mc500_output_port);
+        assert_eq!(loaded.transport.backend, original.transport.backend);
+        assert_eq!(loaded.lcxl3.enabled, original.lcxl3.enabled);
+    }
+
+    #[test]
+    fn write_atomic_no_tmp_on_success() {
+        // If write_atomic succeeds, the .tmp file is gone.
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("config.toml");
+        let cfg = Config::default();
+        cfg.write_atomic(&path).expect("write_atomic failed");
+        let tmp = path.with_extension("toml.tmp");
+        assert!(!tmp.exists(), ".tmp left behind on success: {}", tmp.display());
     }
 
     #[test]
