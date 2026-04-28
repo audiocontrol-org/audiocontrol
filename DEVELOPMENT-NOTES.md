@@ -11,6 +11,123 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-28: midi-macro-bridge — Embedded Web Control Interface (Phase 6 + 8a)
+
+### Feature: midi-macro-bridge
+### Worktree: audiocontrol-midi-macro-bridge
+
+### Goal
+
+The longest compound session of the project so far. Started as an exploratory question ("if we packaged this as a VST3/AU plugin, would it still work?") and turned into shipping a complete embedded web control interface — htmx + axum + SSE — in a single squash-merged PR.
+
+The arc:
+
+1. **Distribution shape** — quick exploration of plugin vs standalone vs menu-bar vs web; settled on standalone Rust binary with embedded localhost web UI.
+2. **Phase 6 (a–h) implementation** — full embedded htmx + axum web UI: server skeleton + reload plumbing, port enumeration + status APIs, static asset embedding, configuration form + APPLY, event stream UI, HALT button + master LED, auto-open browser, first-run polish.
+3. **Phase 7 + Phase 8 documentation work** — scoped MIDI subsystem abstraction + hot-plug detection (Phase 7) and brand alignment + status wiring (Phase 8); created 9 GitHub issues across them.
+4. **/frontend-design design review** — found that the Phase 6 UI shipped with major wiring breaks (visible status indicators were hardcoded, the actual live status fragment was hidden in an invisible bottom div) and a brand mismatch with audiocontrol.org.
+5. **Phase 8a SSE-driven status implementation** — push-driven status updates via named SSE event (`status-updated`) on the existing `/api/events` stream; client-side `setInterval` ticker for elapsed-time displays. No polling.
+6. **PR #346 ship** — pre-PR review caught 2 HIGH items (`Cmd::Halt` skipped LCXL3 deactivation; server-thread panics not surfaced) — fixed before merge. Squash-merged after resolving the survivor-branch conflict via `rebase --onto`.
+
+### Accomplished
+
+**Distribution shape (no code, conversation only):**
+
+- Cleared up that VST3/AU plugin packaging would NOT work due to plugin-host MIDI sandboxing.
+- Ruled out App Store (same sandbox issue), .pkg-only (insufficient — port pickers required), Tauri/Swift menu-bar app (right destination but heavyweight v1).
+- Settled on: standalone Rust binary with embedded htmx web UI on localhost. Self-hosted assets (no CDN). One signed `.pkg` distributable (deferred to a separate follow-on feature).
+
+**Phase 6 (8 sub-phases, all shipped via #346):**
+
+- 6a — Server skeleton: tokio runtime spawned in dedicated `std::thread`, axum router, `Cmd::Reload(Config)` / `Cmd::Halt` / `WebState` / `SseFrame` channel plumbing. `setup_midi_connections(&Config)` factored from `main()`. 8 new tests.
+- 6b — Status APIs: `/api/ports` (live MIDI port enumeration via `tokio::task::spawn_blocking`), `/api/status` (rendered status fragment), `/api/events` (SSE event stream with 200-line server-side ring buffer for connect-time replay). Transport channel retyped from `mpsc::Sender<TransportEvent>` to `mpsc::Sender<(EventSource, TransportEvent)>` for source tagging. +35 tests.
+- 6c — Static asset embedding: `rust-embed` configured against `web/`, vendored `htmx.min.js`, `htmx-sse.js`, `geist-mono.woff2`, `departure-mono.woff2`. Initial `index.html` shell with structural sections. +4 tests.
+- 6d — Studio Rack Utility stylesheet: 18.5KB self-contained CSS. Brushed-metal panels, peak-meter LEDs with phosphor glow, scanline overlay on bar readout, film-grain noise, signal-flow lines via `:has()`, full visual language captured in `web-ui-design.md`.
+- 6e — Configuration form + APPLY: server-rendered form fragment, atomic `Config::write_atomic` (write-tmp + rename), `POST /api/config` parses + validates + writes + emits `Cmd::Reload`. Form-dirty tracking + reconnecting-state animation. +21 tests (atomic write round-trip, no-residue, form rendering, handlers, validation rejection paths). Added `tempfile` as dev-dep.
+- 6f — Event stream UI polish: `htmx:sseMessage` handler, ring-buffer trim at 200 lines client-side, pause-on-hover + `mmb-pause-indicator`, double-RAF fade-in animation, `prefers-reduced-motion` guard.
+- 6g — HALT button + master LED: SVG progress-ring hold-to-confirm (3s), `master_led_state(status)` rollup (green/amber/red), `master_led_reason(status)` tooltip text, OOB swap pattern in `render_status_fragment` so a single `/api/status` swap updates both the inline status panel and the header LED. +25 tests.
+- 6h — Auto-open browser + first-run polish: `web::run_server_thread` returns `ServerHandle { join_handle, bound_addr }` via a sync mpsc oneshot fired AFTER bind (no polling). macOS `open` invocation gated on `config.web.auto_open_browser` and `--no-open` CLI flag. URL persisted to `~/Library/Application Support/MidiMacroBridge/url.txt`. `default_midi_input_port` and `default_mc500_output_port` switched to empty strings (fresh-install UX). Empty-state hint in `render_status_fragment`.
+
+**Phase 6 polish — port-picker UX correction:**
+
+- Shipped Phase 6e with `<input type="text" list="...">` text-input-with-`<datalist>` port pickers. User noticed and asked why not `<select>` dropdowns — and they were right. Original spec called for dropdowns; I'd traded better UX for substring-matching pragmatism that musicians don't actually need. Switched to proper `<select>` with `(none)` as first option, all live ports as normal options, and a `<option class="mmb-port-disconnected">{name} (disconnected)</option>` prepended when the configured value isn't in the live list. CSS `:has(option.mmb-port-disconnected:checked)` recolors the trigger amber. +7 tests. Found a pre-existing inconsistency between substring-match (runtime layer, succeeds) and exact-match (form layer, flags as disconnected) but didn't fix in this PR.
+
+**Phase 8a — SSE-driven live status (the wiring fix):**
+
+- /frontend-design review revealed that Phase 6's visible status indicators were decorative — hardcoded `STOPPED / BAR ----` in `index.html`, `/api/status` only fetched once on page load, and the actual live status fragment was rendered into an invisible bottom div where it appeared as an unstyled overlapping blob below the configuration section. Confirmed via Playwright snapshot.
+- Initial scope used htmx polling (`hx-trigger="load, every 1s"`); user pushed back ("Is the live status designed to use polling? If so, why isn't it designed to use an event model like SSE or websockets?"). They were right — the bridge already has a `tokio::sync::watch::Sender<Status>` updated on every state change, and Phase 6 already uses SSE. Polling was the wrong fit.
+- Redesigned as push: `SseFrame` enum (`Event(EventLine)` / `StatusUpdated(String)`) on the broadcast channel. Tokio task `spawn_status_broadcaster` awaits `status_rx.changed().await`, renders OOB fragment via `render_status_oob`, sends as `SseFrame::StatusUpdated`. SSE handler emits as named event `event: status-updated`. Browser listens via htmx-sse with `hx-swap="none"` so OOB elements in the payload swap by id automatically. Watch coalescing naturally debounces a busy locate.
+- Time-elapsed displays solved client-side: `data-timestamp="<epoch_ms>"` attributes embedded in payload + `setInterval(1000)` ticker that re-renders every `[data-timestamp]` span. No per-second HTTP traffic. `Status::last_event_at` and `mcu_heartbeat_at` migrated from `Instant` to `SystemTime` so the browser can interpret them directly. +16 tests.
+- Visual proof captured in `bridge-after-8a.png`: routing matrix shows live data ("828mk3 Hybrid MIDI", "LCXL3 1 DAW Out", "MIDI Macro Bridge", "LCXL3 1 DAW In"), green LEDs on connected ports, signal-flow lines lit only on connected slots, no overlapping mangled text at the bottom.
+
+**Phase 7 + Phase 8b/c documentation (no code):**
+
+- Phase 7: MIDI subsystem abstraction + hot-plug detection. `MidiSubsystem` trait isolates CoreMIDI / midir behind a single boundary so future Linux/Windows hot-plug work is purely additive. macOS `CoreMidiSubsystem` subscribes to `MIDIClientCreateWithBlock` notifications. Topology changes push a named SSE event; web UI shows opt-in "PORTS UPDATED — REFRESH" pill (per user choice — not auto-replace). 5 GitHub issues (#337–#341).
+- Phase 8: brand alignment + status wiring. After the user pointed me at the actual `audiocontrol.org` source code at `/Users/orion/work/audiocontrol.org-work/audiocontrol.org`, found the canonical `design-tokens.css` with the official aesthetic name "service-manual / flight-instrumentation" — warm-ink dark background, phosphor amber primary, IBM Plex Sans body, Departure Mono headlines, JetBrains Mono numerics, `.signal-led` / `.dimension-bracket` / `.card-glow` / `.atmosphere-grain` / `.atmosphere-scanlines` / `.atmosphere-vignette` utility classes. Phase 8b plan is to copy this file verbatim into the bridge bundle (rather than re-derive). 4 GitHub issues (#342–#345).
+
+**LCXL3 jog regression (false alarm — but useful diagnostic shipped):**
+
+- After Phase 8a shipped, user reported LCXL3 jog wheel "used to work, now doesn't". Static analysis confirmed lcxl3.rs / state.rs / backend.rs unchanged since Phase 5e; data path intact. Captured the user's `control-ui.log` (8835 lines, debug-level): TogglePlay events fired correctly, but no Nudge events at all — and the LCXL3 input path had no byte-trace, only logged when `lcxl3::parse()` returned `Some`. Couldn't tell whether bytes weren't arriving or weren't being recognised.
+- Shipped a quick diagnostic: byte-trace at debug level on the LCXL3 input callback (mirrors the `idle: rx bytes` pattern from `handle_mcu_byte_idle` that earned its keep on the Ableton multi-message-packet issue). 15 lines, 1 commit, ~5 minutes from question to commit.
+- User reported back "it works now" — root cause was on their end (LUNA's MCU surface binding or LCXL3 mode), not the bridge. Diagnostic stays as permanent infrastructure.
+
+**Pre-PR review HIGH-severity fixes (commit 0afd161f, in PR #346):**
+
+- `Cmd::Halt` skipped the LCXL3 deactivation SysEx that the Ctrl-C path runs. Factored a `shutdown_cleanup()` helper from the Ctrl-C handler; both shutdown routes now call it. Live-verified: `POST /api/halt` log shows `"halt requested via web UI"` → `"LCXL3 deactivation SysEx sent"` before exit.
+- Server-thread post-bind panics were silently fatal — `axum::serve` was wrapped in `.expect()`, so any post-bind failure killed the spawned thread while the MIDI loop kept running, leaving a zombie process. Added `Cmd::WebServerPanic(String)` variant; wrapped `axum::serve` in match handling that logs visibly and pushes the reason to the MIDI loop via existing `cmd_tx`. MIDI loop logs again, emits a `Bridge` event line into the live SSE stream, and flips `BridgeState::Panicked` so the master LED goes red.
+
+**PR #346 squash-merged 2026-04-28 04:27Z** (commit `3278d9ee`): 24 files, ~8000 insertions, 22 substantive commits. 242 tests passing.
+
+### Didn't Work
+
+- **Initial WebFetch on audiocontrol.org reported wrong colors.** WebFetch only sees HTML (it converts to markdown without CSS). It claimed audiocontrol.org was "light, near-white background" — completely wrong. The site is dark warm-near-black with phosphor amber accent. Lesson: use Playwright for visual reality checks on websites; WebFetch only works for content extraction.
+- **Initial Phase 6e port-picker UX choice (text-input + datalist) was wrong** — shipped, then reverted to proper `<select>` after user pushback. The text-input traded better UX for substring-matching pragmatism that target users don't need.
+- **Initial Phase 8a status wiring used htmx polling instead of SSE push** — designed and partially documented before user pushback. SSE was the right fit given the bridge already had a `watch::Sender<Status>` updated on every state change. Switched before implementation started.
+
+### Course Corrections
+
+- **[FABRICATION] WebFetch result on audiocontrol.org was completely wrong.** Reported "light theme, near-white background, modern minimal" — actual site is dark warm-near-black with phosphor amber. WebFetch only processes HTML→markdown; CSS is invisible to it. User course-corrected: "audiocontrol.org is dark themed." Lesson: Playwright (which actually loads CSS) for any visual reality check on a website. WebFetch is fine for content but NOT for design.
+
+- **[DOCUMENTATION] Editor-core CSS tokens were treated as the brand reference; user clarified they're not.** First Explore-agent pass on audiocontrol.org branding correctly noted dark slate + Inter, but user clarified "the editor code is not up to brand standards yet" and pointed me at `/Users/orion/work/audiocontrol.org-work/audiocontrol.org` — the canonical `design-tokens.css` is in the parent website's source, not the editor. Lesson: when researching cross-project conventions, ASK which source is authoritative rather than assuming the most-touched file.
+
+- **[PROCESS] Defaulted to polling for live status; user pushed back to SSE.** Initial Phase 8a workplan proposed `hx-trigger="load, every 1s"` polling. User questioned: "Is the live status designed to use polling? If so, why isn't it designed to use an event model like SSE or websockets?" — and they were right. The bridge already has the `watch::Sender<Status>` infrastructure (Phase 6); SSE is the architecturally consistent answer. Switched before implementation. Lesson: when a "lazy default" pattern doesn't match existing infrastructure, ask whether the existing infrastructure should be extended.
+
+- **[UX] Port pickers shipped as text inputs with `<datalist>` instead of proper `<select>` dropdowns.** Phase 6e implementation used text inputs because the runtime config layer uses substring matching. User noticed: "why are the midi port selections text input instead of either dropdowns or check box lists?" — the original UX spec literally said "dropdown below" and I'd traded UX for pragmatism. Fixed in commit dcdc13c6 with `<select>` + `(disconnected)` affordance. Lesson: read the design spec when implementing the form layer; don't second-guess based on lower-layer pragmatism.
+
+- **[PROCESS] Squash-merge survivor problem at PR time.** PR #346 reported `CONFLICTING / DIRTY` on first merge attempt because the branch contained both the original Phase 5 individual commits AND Phase 6+ work; main had the Phase 5 squash from PR #326 plus had advanced no further. GitHub's squash-merge tries to apply the branch's full diff against main; the original individual commits' content overlaps the squash, causing apparent conflict. Resolved with `git rebase --onto origin/main 96c1ba28` to drop the redundant pre-#326 commits, force-push, retry merge. Cure works but the symptom is non-obvious. Lesson: after a squash merge, either reset the feature branch to main or proactively rebase before continuing — don't keep stacking commits on the unsquashed history.
+
+- **[COMPLEXITY] Initial Phase 6 design ("Studio Rack Utility") was too retro/maximalist.** Shipped peak-meter LEDs, brushed-metal panel gradients, heavy film-grain, scanline overlays, Geist Mono everywhere — visually striking but out of family with the audiocontrol.org parent brand. Brand audit (Phase 8b scope) reveals the parent uses much more restrained atmospheric layers, IBM Plex Sans body, flat cards. Phase 8b will rework. Lesson: when a sub-product needs to be "sympathetic" with a parent brand, audit the parent FIRST and adopt their tokens, don't build a new style language.
+
+- **[PROCESS] /feature-extend used heavily for sub-features that arguably weren't strict extensions.** Phase 7 (MIDI subsystem abstraction + hot-plug) and Phase 8 (brand realignment + status wiring) are both meaningful new initiatives but were scoped via /feature-extend rather than /feature-define. Worked fine for keeping feature scope coherent, but stretched the "extension" semantic. Worth considering whether very large additions warrant breaking out into sibling features instead. Not a correction so much as a process question.
+
+### Quantitative
+
+- User messages this session: ~50
+- Commits in PR #346 (squashed): 22 substantive
+- Documentation commits across the session: ~6 (post-merge README updates, Phase 7 + 8 + 8a redesign + Phase 6 design-review screenshots)
+- GitHub issues created: 19 (Phase 6 #327–336, Phase 7 #337–341, Phase 8 #342–345)
+- Pull requests created and merged: 1 (#346)
+- Tests: 122 (start) → 242 (end), +120 across the session
+- Files in PR: 24, ~8000 insertions, 486 deletions
+- Major delegations to sub-agents: 12 (Phase 6a–h via hardware-protocol-engineer + javascript-pro + general-purpose; Phase 8a via hardware-protocol-engineer; pre-PR review via code-reviewer; brand-research via Explore)
+- Course corrections from user: 6 (counted above)
+
+### Insights
+
+1. **The "agent-orchestrator pattern" works for daemon-shaped projects.** Each sub-phase had a clear acceptance-criteria contract; agents executed against the contract; main agent reviewed + verified live. Output quality was consistently high.
+
+2. **Playwright access changed the design-review game.** Being able to actually load the live UI and snapshot it caught the "invisible status fragment at the bottom of the page" bug that pure code review would have missed (the data path was correct; only the visual destination was wrong). Same for the audiocontrol.org branding correction — Playwright loaded the actual CSS-rendered page; WebFetch only saw HTML.
+
+3. **SSE > polling whenever you already have a watch channel.** The bridge had `watch::Sender<Status>` from Phase 6 that the MIDI loop updated on every state change. Polling would have been wasted work. The "tokio task awaits watch.changed() and broadcasts" pattern is reusable across any state-change push need.
+
+4. **Squash-merge survivor branches are a recurring papercut.** This is the second time in the bridge feature lifecycle. Worth either: (a) always tearing down the worktree after a merge, or (b) automating `git reset --hard origin/main` after each merge in the session-end skill. Probably (b).
+
+5. **The "user noticed something was off" path produces high-quality fixes.** Three of this session's biggest improvements (port-picker dropdowns, SSE push, brand realignment scope) came from the user noticing inconsistencies in shipped work and asking direct questions. Worth optimising the loop for: keep work shippable in small increments so the user can see + react.
+
+6. **The byte-trace debugging pattern keeps paying off.** First shipped in PR #319 for MCU input, repeated in this session for LCXL3 input (commit f8a26a3b). Both have already earned their keep — Ableton multi-message issue and the LCXL3 jog "regression" diagnosis. The pattern: every received MIDI byte sequence gets a debug-level log line with hex + parsed-event (if any) before any further filtering. RUST_LOG=debug becomes a one-liner that captures whatever the user is debugging, even when we don't know in advance what they'll need.
+
+---
+
 ## 2026-04-27: midi-macro-bridge — Decade-Boundary Tolerance, Ableton Compat, LCXL3 Phase 5
 
 ### Feature: midi-macro-bridge

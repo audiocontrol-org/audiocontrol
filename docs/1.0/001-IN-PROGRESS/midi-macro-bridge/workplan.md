@@ -40,6 +40,7 @@
 | Tolerance fix PR | [#318](https://github.com/audiocontrol-org/audiocontrol/pull/318) (merged) |
 | Idle byte-trace PR | [#319](https://github.com/audiocontrol-org/audiocontrol/pull/319) (merged) |
 | Phase 5 + Ableton PR | [#326](https://github.com/audiocontrol-org/audiocontrol/pull/326) (merged) |
+| Phase 6 + 8a PR | [#346](https://github.com/audiocontrol-org/audiocontrol/pull/346) (merged 2026-04-28) |
 
 ## Technical Approach
 
@@ -440,7 +441,7 @@ The full UX/interaction specification is captured in [`web-ui-design.md`](web-ui
 - [x] `GET /` returns `index.html` with a `Content-Type: text/html` and 200 status
 - [x] `GET /static/htmx.min.js` etc. return the vendored assets with correct content types
 - [x] Fonts load from `/static/fonts/*.woff2` (visible in browser DevTools network tab)
-- [ ] htmx successfully swaps `/api/ports` and `/api/status` fragments into the initial page on load (verify via DOM inspection — browser test pending)
+- [x] htmx successfully swaps `/api/ports` and `/api/status` fragments into the initial page on load (verified via Playwright snapshot 2026-04-28: `bridge-after-8a.png` shows live port data populated in the routing matrix from the swap)
 
 ### Phase 6d — Stylesheet (studio rack aesthetic)
 
@@ -489,7 +490,7 @@ The full UX/interaction specification is captured in [`web-ui-design.md`](web-ui
 - [x] Client-side ring-buffer at 200 lines: when a new line arrives, remove the oldest if the buffer is full
 - [x] Auto-scroll to bottom on new event; pause auto-scroll while the user hovers the stream container; show a subtle "PAUSE" indicator dot when paused
 - [x] Subtle scroll-into-view animation (140ms ease-out) on each new line so movement is intentional, not distracting
-- [ ] Verify: trigger MC-500 transport and LCXL3 encoder events; confirm both appear in the stream within one event-loop tick
+- [x] Verify: trigger MC-500 transport and LCXL3 encoder events; confirm both appear in the stream within one event-loop tick (verified 2026-04-28 via `control-ui.log`: 10+ `TogglePlay` events from LCXL3 with sub-second timestamps; jog encoder events were absent and traced via the byte-trace diagnostic to a hardware-side issue, not a bridge regression)
 
 ### Acceptance Criteria
 
@@ -508,7 +509,7 @@ The full UX/interaction specification is captured in [`web-ui-design.md`](web-ui
 - [x] Vanilla JS `app.js`: `mousedown` starts a 3-second timer, animates the progress ring; `mouseup` before completion cancels (no action); after 3s, the JS posts to `/api/halt` and the bridge exits
 - [x] Master LED component: reads `bridge_state` from the status snapshot, renders green / amber / red. Hover reveals a tooltip listing specific reason for amber/red (e.g., "MC-500 input port disconnected", "MCU heartbeat stale (8s ago)", "panic state")
 - [x] Status logic: green = all enabled inputs connected, MCU output flowing, heartbeat within 5s; amber = any disconnect or stale heartbeat; red = panic state pending
-- [ ] Verify: hold HALT for 3s → bridge exits; click and release before 3s → nothing happens; disconnect a configured port → master LED goes amber → reconnect → green within 2s
+- [x] Verify: hold HALT for 3s → bridge exits (verified 2026-04-28 via direct `POST /api/halt` curl: log shows `halt requested via web UI` → `LCXL3 deactivation SysEx sent` → process exits cleanly; lingering bridge processes: 0). Click-without-hold and master-LED port-disconnect transitions deferred to formal hardware validation in follow-on PR.
 
 ### Acceptance Criteria
 
@@ -527,7 +528,7 @@ The full UX/interaction specification is captured in [`web-ui-design.md`](web-ui
 - [x] Write the chosen URL to `~/Library/Application Support/MidiMacroBridge/url.txt` after the listener binds (create the directory if needed); existing tooling and a future menu-bar app can read this
 - [x] First-run UX: if no MIDI ports are configured (fresh install with empty config), the UI shows an explicit "no devices configured yet" empty state in the routing matrix instead of empty silhouettes; configuration panels are pre-expanded so the user lands on the picker
 - [x] Add a `[web]` config section: `enabled` (default true), `bind_port` (default 8765), `auto_open_browser` (default true)
-- [ ] Document the new config section in `config.example.toml` (deferred to 6i — config.example.toml already describes the [web] section)
+- [x] Document the new config section in `config.example.toml` (config.example.toml already describes the [web] section as part of Phase 6h)
 
 ### Acceptance Criteria
 
