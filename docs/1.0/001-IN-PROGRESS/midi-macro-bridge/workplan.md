@@ -26,6 +26,11 @@
 | Phase 6g Issue | [#334](https://github.com/audiocontrol-org/audiocontrol/issues/334) — HALT button + master LED |
 | Phase 6h Issue | [#335](https://github.com/audiocontrol-org/audiocontrol/issues/335) — auto-open browser + first-run polish |
 | Phase 6i Issue | [#336](https://github.com/audiocontrol-org/audiocontrol/issues/336) — Phase 6 hardware validation |
+| Phase 7 Parent Issue | [#337](https://github.com/audiocontrol-org/audiocontrol/issues/337) — MIDI subsystem abstraction + hot-plug |
+| Phase 7a Issue | [#338](https://github.com/audiocontrol-org/audiocontrol/issues/338) — `MidiSubsystem` trait + impl refactor |
+| Phase 7b Issue | [#339](https://github.com/audiocontrol-org/audiocontrol/issues/339) — CoreMidi hot-plug notifications |
+| Phase 7c Issue | [#340](https://github.com/audiocontrol-org/audiocontrol/issues/340) — SSE topology event + opt-in refresh UI |
+| Phase 7d Issue | [#341](https://github.com/audiocontrol-org/audiocontrol/issues/341) — Phase 7 hardware validation |
 | Phase 1-2 PR | [#316](https://github.com/audiocontrol-org/audiocontrol/pull/316) (merged) |
 | Phase 3-4 PR | [#317](https://github.com/audiocontrol-org/audiocontrol/pull/317) (merged) |
 | Tolerance fix PR | [#318](https://github.com/audiocontrol-org/audiocontrol/pull/318) (merged) |
@@ -545,3 +550,88 @@ The full UX/interaction specification is captured in [`web-ui-design.md`](web-ui
 - [ ] Live event stream confirms every transport event from both input devices
 - [ ] In-process reload completes cleanly across a port-name change without dropping LUNA's MCU surface association
 - [ ] Existing Phase 1-5 acceptance criteria all still pass on hardware
+
+## Phase 7: MIDI Subsystem Abstraction + Hot-Plug Detection
+
+**Deliverable:** All OS-specific MIDI plumbing (CoreMIDI on macOS, midir on Linux/Windows) lives behind a single `MidiSubsystem` trait — the rest of the crate depends only on the trait. Hot-plug detection on macOS pushes topology changes through SSE; the web UI surfaces an opt-in "PORTS UPDATED — REFRESH" pill that the user clicks to refresh the dropdown options in place, preserving any selected values and other in-flight form edits.
+
+**Why now:** the configuration form's port pickers are populated once at form-load time; plugging or unplugging a MIDI device after that is invisible until the user reloads the page. That's a real friction point during initial setup. The fix is hot-plug detection — but doing that without first abstracting the MIDI plumbing would mean strewing CoreMIDI-specific code throughout `midi.rs` and main.rs callers. The abstraction is structural cleanup that's independently valuable: future Linux ALSA seq hot-plug, future Windows WinMIDI v2 hot-plug, and unit-testing-with-mocks all become tractable.
+
+### Phase 7a — `MidiSubsystem` trait + impl refactor
+
+**Deliverable:** `trait MidiSubsystem` defines every MIDI primitive the bridge uses; two impls (`CoreMidiSubsystem` for macOS, `MidirSubsystem` for everything else) cover the existing functionality. No code outside `src/midi/` mentions `coremidi::*` or `midir::*`. Existing tests still pass; new tests cover trait dispatch.
+
+- [ ] Restructure `src/midi.rs` into `src/midi/` module: `mod.rs` (trait + factory), `subsystem.rs` (trait + shared types), `coremidi_subsystem.rs` (macOS impl), `midir_subsystem.rs` (cross-platform fallback impl). Update `lib.rs` / `main.rs` imports accordingly.
+- [ ] Define `pub trait MidiSubsystem: Send + Sync` with methods: `list_ports_input(&self)`, `list_ports_output(&self)`, `connect(...)` (transport-event input), `connect_raw(...)` (raw-bytes input), `connect_output(...)`, `create_virtual_mcu(...)`, and `watch_topology(&self) -> watch::Receiver<MidiTopologyChange>`. Connection methods return the same midir handle types as today (so callers don't change shape) — the trait abstracts WHICH platform owns the call, not the handle representation.
+- [ ] Define `pub enum MidiTopologyChange { Initial, Refreshed }` — coalesced events; the actual port lists are re-enumerated by callers when they receive a notification. Initial is sent once at startup so subscribers don't deadlock waiting for a first value.
+- [ ] Define `pub fn build_subsystem() -> Arc<dyn MidiSubsystem>` factory: `cfg!(target_os = "macos")` → `CoreMidiSubsystem`, else `MidirSubsystem`. `main.rs` calls this once at startup and passes the `Arc` everywhere it's needed.
+- [ ] `MidirSubsystem`: wraps the existing midir-based code from `midi.rs`. `watch_topology` returns a watch::Receiver that emits `Initial` once and never changes thereafter (Linux/Windows hot-plug is a separate future feature; the subsystem stays compilable and functional, just without live updates).
+- [ ] `CoreMidiSubsystem`: wraps the existing macOS-specific code (`coremidi`-direct virtual endpoint registration with stable UniqueIDs) plus the existing midir-based physical port operations (since coremidi is the system-level API but midir's connection abstractions still work fine on top of it). `watch_topology` returns the same Initial-only receiver in 7a — the CoreMIDI notification wiring lands in 7b.
+- [ ] Refactor every caller to take `&Arc<dyn MidiSubsystem>` instead of calling free functions: `main.rs::setup_midi_connections`, `web::handlers::ports`, `web::handlers::config_form`, the `--list-ports` / `--probe-midi` / `--probe-mcu` / `--send-mcu` / `--lcxl3-activate` CLI modes. Add the subsystem field to `WebState`.
+- [ ] Unit tests: a `MockMidiSubsystem` (in tests-only code) lets us exercise handler logic against synthetic port lists; verify `web::handlers::config_form` produces the expected `<select>` HTML when given known input/output port lists.
+- [ ] Verify the placeholder dependency injection isn't a regression: `cargo test` green, `cargo build --release` clean, `--list-ports` still works, web UI still renders the form correctly.
+
+### Acceptance Criteria
+
+- [ ] `grep -r "coremidi::" src/` finds matches only in `src/midi/coremidi_subsystem.rs`
+- [ ] `grep -r "midir::" src/` finds matches only in `src/midi/midir_subsystem.rs` and `src/midi/coremidi_subsystem.rs` (the latter still uses midir handle types for port connections)
+- [ ] All existing tests pass; new mock-subsystem tests for the handlers pass
+- [ ] `cargo build --release` clean; `--list-ports` and the four other CLI modes still work
+- [ ] No behaviour change end-to-end — the bridge still starts, opens MIDI ports, drives LUNA, and serves the web UI exactly as before
+
+### Phase 7b — CoreMidi hot-plug notifications
+
+**Deliverable:** `CoreMidiSubsystem` subscribes to MIDI client notifications and emits `MidiTopologyChange::Refreshed` events on the watch channel whenever the OS reports a port added, removed, or property change.
+
+- [ ] Use `coremidi::Client::new` (or `MIDIClientCreateWithBlock` directly via FFI if the safe wrapper doesn't expose a notification block) to receive `MIDINotificationMessageID` callbacks
+- [ ] Forward `kMIDIMsgObjectAdded`, `kMIDIMsgObjectRemoved`, `kMIDIMsgPropertyChanged` (filtered to port-name / device-name properties) into the watch channel as `Refreshed`
+- [ ] Coalesce: if multiple notifications arrive within ~100 ms, emit a single `Refreshed`. Implementation: a `tokio::time::sleep` followed by drain, or a simple debounce inside the notification handler. Prefer the latter — keeps the logic synchronous and avoids spawning a tokio task from a CoreMIDI callback thread.
+- [ ] The notification block runs on a CoreMIDI internal thread; it must not block. Forward the event into a `std::sync::mpsc` and have a dedicated bridge thread debounce + republish to the watch channel.
+- [ ] Preserve existing virtual MCU endpoint registration unchanged — the notification subscription is independent of the virtual endpoint creation
+- [ ] Unit tests: skip — testing CoreMIDI notifications requires a real MIDI device. Phase 7d covers this in hardware validation.
+
+### Acceptance Criteria
+
+- [ ] `CoreMidiSubsystem::watch_topology` emits `Refreshed` within ~150 ms of plugging or unplugging a USB MIDI device on macOS (verified manually via `RUST_LOG=midi_macro_bridge::midi=debug` plus a debug log line in the notification handler)
+- [ ] Multiple rapid plug/unplug events (e.g. plugging in a USB hub with multiple devices on it) coalesce to a single `Refreshed` rather than a burst
+- [ ] No regression: virtual MCU endpoint still registers with stable UniqueIDs; physical port connections still open
+
+### Phase 7c — SSE topology event + opt-in refresh UI
+
+**Deliverable:** When `MidiTopologyChange::Refreshed` arrives, the bridge emits a named SSE event (`event: ports-changed`) on the existing `/api/events` stream. The web UI shows a "PORTS UPDATED — REFRESH" pill near the configuration section; clicking the pill fetches fresh `<option>` lists from `/api/port-options` and OOB-swaps them into the existing `<select>` elements, preserving the currently-selected value and any other in-flight form edits.
+
+- [ ] Subscribe to the topology watch channel in the MIDI loop. On each change, send a fresh status snapshot AND emit a `ports-changed` SSE event (separate from the existing `EventLine` stream — different SSE event name on the same stream)
+- [ ] Update the SSE handler in `src/web/handlers.rs` to support named events. axum's `Sse<Stream>` already supports the `event` field via `Event::default().event("ports-changed")`. Add a wrapper enum like `SseFrame { EventLine(EventLine), PortsChanged }` or a second broadcast channel — your choice; keep the channel that gives the simpler implementation.
+- [ ] Add `GET /api/port-options` returning a fragment with four htmx OOB swaps targeting the four port `<select>` elements by id. Each select's option list is regenerated using the same `render_port_select` helper, with the current configured value passed as `current_value` so the selected option is preserved across the swap.
+- [ ] Add stable ids to the four port `<select>` elements: `mmb-select-mc500-input`, `mmb-select-mc500-sync`, `mmb-select-lcxl3-input`, `mmb-select-lcxl3-output`. Update `render_port_select` to take an optional id (or wire it via the `name` parameter). Update existing tests.
+- [ ] Add a "PORTS UPDATED — REFRESH" pill component to `index.html`: a button with class `mmb-ports-pill`, hidden by default. Position floating-in-corner of the configuration section.
+- [ ] In `app.js`, listen for the SSE `ports-changed` event using htmx-sse's `sseListen` API (or a vanilla `EventSource` directly — the named-event handler is straightforward). When fired: unhide the pill. The pill's click triggers an htmx GET to `/api/port-options` with `hx-swap="none"` (the OOB elements in the response do the actual swapping). After the swap completes (htmx:afterSwap), hide the pill again.
+- [ ] Style the pill in `app.css`: warm-accent colour, subtle slide-in animation on appear, screen-print typography. Keep it visually subordinate to the APPLY button — it's an opt-in cue, not the primary action.
+- [ ] Unit tests: render_port_select preserves the selected value when called with the same current_value across two different port_list inputs. handler returns the OOB swap fragment with the four expected select ids.
+
+### Acceptance Criteria
+
+- [ ] Plugging a MIDI device while the bridge is running and the form is open causes the "PORTS UPDATED" pill to appear within ~1 s
+- [ ] Clicking the pill replaces the option lists in all four port `<select>` elements
+- [ ] Currently-selected values survive the refresh — even if the configured port becomes available (a previously-disconnected option becomes a normal one) or unavailable (a normal option becomes disconnected)
+- [ ] Other form fields (LCXL3 enabled, host name, backend mode, keystroke delay, frontmost app) are NOT touched by the refresh
+- [ ] If the user has the form open and never clicks the pill, no automatic mutation happens — the form stays exactly as the user left it
+- [ ] SSE reconnection is unaffected; htmx-sse's native retry behaviour continues to work
+
+### Phase 7d — Hardware validation
+
+**Deliverable:** End-to-end hot-plug verification on hardware.
+
+- [ ] Start the bridge, open the web UI, expand the configuration panel
+- [ ] Unplug the 828mk3 USB cable → "PORTS UPDATED" pill appears within ~1 s; click it → `828mk3 Hybrid MIDI Port` becomes a "(disconnected)" option in the input/output dropdowns; selected value preserved
+- [ ] Plug the 828mk3 back in → pill appears again; click → port returns to a normal option; previously-disconnected option goes away
+- [ ] Plug in a second MIDI device (LCXL3 if available, or any other USB MIDI) → pill appears; click → new device's ports appear in the dropdowns
+- [ ] While the form has unsaved edits in the LCXL3 host name field, plug a device → click pill → host name field is unchanged
+- [ ] Verify CoreMIDI notification debounce: rapid plug-unplug-plug cycles (plug a USB hub with a couple of MIDI devices, then unplug the hub) don't generate a burst of pills — at most one or two
+- [ ] No regression in any earlier phase: Play/Stop from MC-500 still drives LUNA, locate still works, LCXL3 transport still works, sync-on-stop still fires
+
+### Acceptance Criteria
+
+- [ ] All hardware test cases above pass on the user's rig
+- [ ] No CoreMIDI tendrils in the rest of the codebase: `grep -r "coremidi::" src/` returns hits only in `src/midi/coremidi_subsystem.rs`
+- [ ] User can complete the full Phase 6 setup flow with the bridge already running — they don't need to restart the bridge to see newly-connected devices in the dropdowns

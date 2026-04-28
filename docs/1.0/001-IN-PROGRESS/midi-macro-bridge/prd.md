@@ -32,6 +32,7 @@ Beyond basic transport, the user needs LUNA's playhead to follow the MC-500's lo
 - Hardware-validated: LCXL3 Play/Stop button toggles LUNA transport; LCXL3 encoder ticks nudge LUNA's bar position; LCXL3 transport LEDs reflect the bridge's playing/stopped state. The bridge runs the full Live-equivalent activation handshake on startup and the deactivation handshake on Ctrl-C
 - Hardware-validated: with both MC-500 and LCXL3 enabled, transport events from either device drive LUNA correctly and neither input source masks the other
 - Hardware-validated: a fresh install of the bridge auto-opens a browser-based control interface, lets the user pick MIDI input/output ports from live-enumerated dropdowns, applies the configuration in-process (no restart, ~100ms downtime), and shows live transport state plus a recent-events stream — without the user ever touching `config.toml`
+- Hardware-validated: plugging or unplugging a MIDI device while the configuration form is open surfaces a "PORTS UPDATED" indicator within ~1 s; clicking it refreshes the dropdown options in place while preserving any selected values and any other in-flight form edits. No code outside `src/midi/` touches CoreMIDI or midir APIs directly after the abstraction lands
 
 ## In Scope
 
@@ -102,6 +103,18 @@ The bridge gains a graphical configuration and status interface served from the 
 - Master health LED in the page header (green / amber / red) summarises the rolled-up state of all enabled inputs, MCU output, and DAW heartbeat freshness; tooltip describes the specific reason for any non-green state.
 
 **v1 deferred (tracked but not blocking):** keyboard shortcuts, theme toggle, bar/beat/tick precision in the transport readout (just bar in v1), per-source event colour customisation, export/share config snapshot, mobile/touch optimisation, raw-byte diagnostics panel, multi-instance support. LAN access with auth is a separate feature in the distribution track.
+
+### Phase 7 — MIDI subsystem abstraction + hot-plug detection
+
+The web UI's port pickers are populated once at form-load time, so plugging or unplugging a MIDI device after opening the page is invisible until the user reloads. Phase 7 fixes that with two coupled changes: a structural cleanup (factor MIDI plumbing behind a trait) and a feature (push hot-plug events to the browser).
+
+- Introduce a `MidiSubsystem` trait that owns every MIDI primitive the bridge currently calls directly: input/output port enumeration, port-by-substring connections, raw byte connections, and virtual MCU endpoint registration. Two implementations land in this phase: `CoreMidiSubsystem` (macOS, the primary platform) and `MidirSubsystem` (Linux/Windows fallback covering whatever midir exposes — Linux is currently a documented limitation, Windows remains unsupported per the existing scope). The bridge selects an impl at startup via `cfg`; **no other code in the crate touches `coremidi::*` or `midir::*` directly after this refactor.** That isolation is the whole point of the abstraction — keep the OS-specific MIDI tendrils out of the rest of the codebase so future Linux/Windows work is purely additive.
+- Add hot-plug detection on macOS via `MIDIClientCreateWithBlock` notifications. The CoreMidi subsystem listens for `kMIDIMsgObjectAdded` / `kMIDIMsgObjectRemoved` / `kMIDIMsgPropertyChanged` and emits a coalesced `MidiTopologyChange` event on a `tokio::sync::watch` channel — multiple rapid plug events collapse to a single re-enumeration. The `MidirSubsystem` returns a watch receiver that never fires (Linux ALSA seq has notification primitives but they're a separate future feature; Windows likewise).
+- Push topology changes through SSE as a named event (`event: ports-changed`) using the existing `/api/events` endpoint's stream. The web UI shows a small **opt-in indicator** — a "PORTS UPDATED — REFRESH" pill near the configuration section — when a topology change arrives. The user clicks the pill to apply the refresh; the dropdown options swap in via htmx while preserving any currently-selected value. **No automatic replacement** — the UI never re-renders the port list under the user's cursor mid-edit.
+- Add `GET /api/port-options` returning HTML fragments that the pill's click triggers; each `<select>` has a stable id so the response uses htmx out-of-band swaps to update the option lists in place without disturbing other form state.
+- The configuration form's `<select>`-with-disconnected-option pattern (already shipped) integrates cleanly: when ports change, an option that was previously "(disconnected)" might re-appear as a normal option, and vice versa. The refresh handles both transitions.
+
+**Out of scope for Phase 7:** Linux ALSA seq hot-plug, Windows WinMIDI hot-plug, automatic refresh without user opt-in, refresh-on-network-blip recovery (htmx-sse handles SSE reconnection natively).
 
 ## Out of Scope
 
