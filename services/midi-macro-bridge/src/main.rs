@@ -182,10 +182,25 @@ fn setup_midi_connections(
         let tx_lcxl3 = transport_tx.clone();
         let port = config.lcxl3.input_port.clone();
         match midi::connect_raw(&port, move |bytes| {
+            // Trace every received byte sequence at debug level so the
+            // user can capture device-emitted bytes when diagnosing
+            // unrecognised input (e.g. the jog encoder bytes on a fresh
+            // device firmware revision). Mirrors `handle_mcu_byte_idle`
+            // on the MCU side which earned its keep diagnosing the
+            // Ableton multi-message-packet issue. RUST_LOG=midi_macro_bridge=debug
+            // emits these.
+            let hex: String = bytes
+                .iter()
+                .map(|b| format!("{b:02X}"))
+                .collect::<Vec<_>>()
+                .join(" ");
             if let Some(event) = lcxl3::parse(bytes) {
+                tracing::debug!(len = bytes.len(), %hex, ?event, "lcxl3: rx → event");
                 if let Err(e) = tx_lcxl3.send((EventSource::Lcxl3, event)) {
                     error!(?e, "lcxl3 channel send failed");
                 }
+            } else {
+                tracing::debug!(len = bytes.len(), %hex, "lcxl3: rx (ignored)");
             }
         }) {
             Ok(conn) => {
