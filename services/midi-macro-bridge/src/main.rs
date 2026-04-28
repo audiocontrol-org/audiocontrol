@@ -524,12 +524,7 @@ fn main() -> Result<()> {
         // ── Shutdown check ────────────────────────────────────────────────────
         if shutdown_rx.try_recv().is_ok() {
             info!("shutting down");
-            if let Some(c) = connections.as_mut() {
-                if let Some(out) = c.lcxl3_out.as_mut() {
-                    lcxl3::deactivate_send(out);
-                    info!("LCXL3 deactivation SysEx sent");
-                }
-            }
+            shutdown_cleanup(connections.as_mut());
             return Ok(());
         }
 
@@ -538,7 +533,24 @@ fn main() -> Result<()> {
             match cmd {
                 Cmd::Halt => {
                     info!("halt requested via web UI");
+                    shutdown_cleanup(connections.as_mut());
                     std::process::exit(2);
+                }
+                Cmd::WebServerPanic(reason) => {
+                    error!(
+                        %reason,
+                        "web server thread reported fatal failure — bridge UI is dead but \
+                         MIDI loop continues. Restart the bridge to recover."
+                    );
+                    emit_event(
+                        &events_tx,
+                        &events_history,
+                        EventSource::Bridge,
+                        format!("WEB SERVER PANIC: {reason}"),
+                    );
+                    let _ = status_tx.send_modify(|s| {
+                        s.bridge_state = BridgeState::Panicked;
+                    });
                 }
                 Cmd::Reload(new_config) => {
                     info!("reloading MIDI connections from new config");
@@ -808,6 +820,20 @@ fn build_backend(
 /// The line is wrapped in `SseFrame::Event` before broadcasting so the
 /// single `broadcast::Sender<SseFrame>` can carry both event lines and
 /// status OOB fragments.
+/// Run the shared shutdown cleanup before the bridge exits. Currently
+/// just sends the LCXL3 deactivation SysEx so the device returns to its
+/// idle state. Called from both the Ctrl-C handler path and the web UI
+/// HALT command path so neither leaves the device in indeterminate LED
+/// state.
+///
+/// Best-effort — failures are logged but don't block exit.
+fn shutdown_cleanup(connections: Option<&mut MidiConnections>) {
+    let Some(c) = connections else { return };
+    let Some(out) = c.lcxl3_out.as_mut() else { return };
+    lcxl3::deactivate_send(out);
+    info!("LCXL3 deactivation SysEx sent");
+}
+
 ///
 /// `SendError` on the broadcast (no subscribers) is silently ignored —
 /// that's normal when no browser tab is open.

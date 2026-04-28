@@ -32,7 +32,7 @@ use axum::routing::{get, post};
 use axum::Router;
 use tracing::info;
 
-use crate::web::state::{spawn_status_broadcaster, WebState};
+use crate::web::state::{spawn_status_broadcaster, Cmd, WebState};
 
 // ── ServerHandle ───────────────────────────────────────────────────────────────
 
@@ -133,10 +133,21 @@ pub fn run_server_thread(addr_pref: SocketAddr, state: WebState) -> Result<Serve
     // the listener is up, before `axum::serve` takes over.
     let (addr_tx, addr_rx) = std::sync::mpsc::channel::<SocketAddr>();
 
+    // Clone the cmd_tx out of WebState so the server thread can report
+    // post-bind failures back to the MIDI loop via Cmd::WebServerPanic.
+    // We have to do this BEFORE moving `state` into `build_app`.
+    let panic_tx = state.cmd_tx.clone();
+
     let join_handle = std::thread::Builder::new()
         .name("axum-server".into())
         .spawn(move || {
-            let rt = tokio::runtime::Runtime::new().expect("failed to build tokio runtime");
+            let rt = match tokio::runtime::Runtime::new() {
+                Ok(rt) => rt,
+                Err(e) => {
+                    tracing::error!(error = %e, "failed to build tokio runtime");
+                    return;
+                }
+            };
             rt.block_on(async move {
                 // Spawn the status broadcaster before building the app so
                 // the first status frame fires as soon as the runtime starts.
@@ -158,22 +169,48 @@ pub fn run_server_thread(addr_pref: SocketAddr, state: WebState) -> Result<Serve
                             error = %e,
                             "preferred port unavailable; falling back to OS-assigned port"
                         );
-                        let l = tokio::net::TcpListener::bind(fallback)
-                            .await
-                            .expect("failed to bind on fallback port");
-                        let addr = l.local_addr().unwrap_or(fallback);
-                        info!(url = %format!("http://{addr}"), "web server listening (fallback port)");
-                        l
+                        match tokio::net::TcpListener::bind(fallback).await {
+                            Ok(l) => {
+                                let addr = l.local_addr().unwrap_or(fallback);
+                                info!(url = %format!("http://{addr}"), "web server listening (fallback port)");
+                                l
+                            }
+                            Err(e2) => {
+                                tracing::error!(
+                                    error = %e2,
+                                    "failed to bind on fallback port — web UI will not start"
+                                );
+                                // Don't send addr; addr_rx.recv() in the parent
+                                // will return Err and the bridge will fail to
+                                // start with a clear error.
+                                return;
+                            }
+                        }
                     }
                 };
 
                 // Report the bound address to the caller before blocking on serve.
-                let bound = listener.local_addr().expect("listener has no local addr");
+                let bound = match listener.local_addr() {
+                    Ok(addr) => addr,
+                    Err(e) => {
+                        tracing::error!(error = %e, "listener has no local addr — web UI will not start");
+                        return;
+                    }
+                };
                 let _ = addr_tx.send(bound);
 
-                axum::serve(listener, app)
-                    .await
-                    .expect("axum server error");
+                // Post-bind: any axum::serve error is fatal for the web
+                // subsystem but the MIDI loop should keep running. Surface
+                // the failure as a Cmd::WebServerPanic so the MIDI loop can
+                // log it visibly and flip BridgeState::Panicked. Without
+                // this, a serve failure would silently kill the web server
+                // thread while the bridge process kept running with a dead
+                // UI ("zombie process" anti-pattern).
+                if let Err(e) = axum::serve(listener, app).await {
+                    let reason = format!("axum::serve failed: {e}");
+                    tracing::error!(error = %e, "web server serve loop failed — bridge UI is now dead. Investigate logs and restart the bridge.");
+                    let _ = panic_tx.send(Cmd::WebServerPanic(reason)).await;
+                }
             });
         })
         .context("failed to spawn axum server thread")?;

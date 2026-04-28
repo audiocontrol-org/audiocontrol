@@ -45,6 +45,14 @@ pub enum Cmd {
     /// Exit the process cleanly. The loop calls `std::process::exit(2)`;
     /// the HTTP handler itself must NOT exit — separation of concerns.
     Halt,
+    /// The web server thread reports a fatal post-bind failure (e.g.
+    /// `axum::serve` returned an error). The MIDI loop logs the reason
+    /// and flips `BridgeState::Panicked` so the master LED goes red and
+    /// the operator can see something is wrong via the live SSE status
+    /// stream — even though the underlying SSE may itself be dead, any
+    /// client already-connected sees the state change in the next status
+    /// frame the broadcaster fires (until the broadcaster's send fails).
+    WebServerPanic(String),
 }
 
 // ── Bridge state ─────────────────────────────────────────────────────────────
