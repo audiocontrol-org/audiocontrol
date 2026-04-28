@@ -650,33 +650,70 @@ The Phase 6 UI shipped two structural problems:
 
 Phase 8 fixes the wiring first (so live state is correct before restyling), then re-skins to mirror the audiocontrol.org canonical token table.
 
-### Phase 8a — Wire live status into the visible UI
+### Phase 8a — Wire live status into the visible UI (push-driven via SSE)
 
-**Deliverable:** Every status indicator visible in the page reflects live bridge state. The hidden bottom `#mmb-status` block is deleted. There is exactly one source of truth for status display.
+**Deliverable:** Every status indicator visible in the page reflects live bridge state, pushed instantly when state changes via a named SSE event on the existing `/api/events` stream. Time-elapsed displays (`last event 3.2s`, `MCU heartbeat 1.7s`) tick smoothly via a small client-side `setInterval` that re-renders against absolute timestamps emitted in the SSE payload. The hidden bottom `#mmb-status` block is deleted. There is exactly one source of truth for status display, and no per-second HTTP polling.
+
+**Why SSE instead of polling:** the bridge already maintains a `tokio::sync::watch::Sender<Status>` that the MIDI loop updates whenever observable state changes — that's the right abstraction for "subscribe to state changes." Polling would introduce up to 1s of latency on every transport or port-state transition and burn HTTP requests when the bridge is idle. Phases 6, 7, and the existing `/api/events` already establish SSE as the bridge's eventing pattern; status fits naturally on the same stream. The one wrinkle (time-elapsed displays not changing on state edges) is solved on the client with a tiny `setInterval` against absolute timestamps in the payload — no per-second server traffic.
+
+**Architecture:**
+
+```
+MIDI loop ─ updates ─► watch::Sender<Status>
+                         │
+                         ▼
+   tokio task ─ awaits ─ status_rx.changed() ─► render_status_oob(&status)
+                                                         │
+                                                         ▼
+                                       broadcast::Sender<SseFrame::StatusUpdated(html)>
+                                                         │
+                                                         ▼
+                                  axum SSE handler emits  Event::default()
+                                                            .event("status-updated")
+                                                            .data(html)
+
+Browser  ─ htmx-sse listens for "status-updated" event ─► OOB swaps land in place
+        ─ setInterval(1000) ─► re-renders [data-timestamp] elapsed-time spans
+```
 
 - [ ] Add stable ids to the visible status indicators in `index.html`:
   - `#mmb-state-badge` on the transport state badge
   - `#mmb-bar-readout` on the bar number readout
-  - `#mmb-last-event-timer` on the last-event timer
-  - `#mmb-slot-mc500-input`, `#mmb-slot-lcxl3-input`, `#mmb-slot-mcu-virtual`, `#mmb-slot-mc500-sync`, `#mmb-slot-lcxl3-output` on the five port slots in the routing matrix
+  - `#mmb-last-event-timer` on the last-event timer (also gets `data-timestamp="..."` attribute)
+  - `#mmb-mcu-heartbeat` on the MCU heartbeat freshness label (also gets `data-timestamp="..."`)
+  - `#mmb-slot-mc500-input`, `#mmb-slot-lcxl3-input`, `#mmb-slot-mcu-virtual`, `#mmb-slot-mc500-sync`, `#mmb-slot-lcxl3-output` on the five port slots
   - `#mmb-machine-state` on the bridge-center machine-state label
-- [ ] Add a top-level `<div hx-get="/api/status" hx-trigger="load, every 1s" hx-target="this" hx-swap="innerHTML">` that polls every 1 s. The response is the OOB-swap fragment.
-- [ ] Update `views::render_status_fragment` to emit OOB swaps for each visible indicator instead of (or in addition to, transitionally) the wrapping `<div id="mmb-status">`. Each OOB element matches a stable id from the index. The master LED's existing OOB pattern stays unchanged.
-- [ ] Per-port-slot OOB element rebuilds the `.mmb-port-slot` content from the current `Status::ports.<slot>` plus the configured port name from `Status::config`: LED state class, port-name text, port-config text (the user's saved port name or `"—"` if unconfigured). Preserves the slot's id so subsequent swaps keep working.
-- [ ] Transport state badge OOB swap: writes `STOPPED` / `PLAYING` / `LOCATING` text and applies the corresponding `data-state` attribute for CSS variant styling.
-- [ ] Bar readout OOB swap: writes `"BAR " + bar_number` or `"BAR ----"` if `last_bar` is `None`.
-- [ ] Last-event timer OOB swap: writes `"last event "` + relative time (e.g. `"3.2s"`) or `"last event —"` if `last_event_at` is `None`. Updates every poll cycle so the timer ticks visibly.
-- [ ] Delete the now-orphaned bottom `<div hx-get="/api/status" ...></div>` and the `<div id="mmb-status">` wrapper inside `render_status_fragment`. The function instead returns a sequence of OOB-only fragments.
-- [ ] Update existing tests for `render_status_fragment` to assert on the OOB structure (one OOB per stable id) rather than the wrapping div.
-- [ ] Add tests for the per-slot OOB rendering: configured-and-connected → green; configured-but-not-connected → amber; configured-with-error → red; unconfigured → off.
+  - `#mmb-master-led` already exists from Phase 6g
+- [ ] Server-side: extend the existing event broadcast channel (or add a parallel one) to carry an `SseFrame` enum: `EventLine(EventLine)` (existing) and `StatusUpdated(String)` (new — pre-rendered HTML fragment containing the OOB-swap blocks for every visible indicator).
+- [ ] Spawn a tokio task that loops on `status_rx.changed().await`, then:
+  1. clones the latest `Status` via `status_rx.borrow().clone()`
+  2. calls `views::render_status_oob(&status)` to build the multi-OOB HTML fragment
+  3. sends `SseFrame::StatusUpdated(html)` on the broadcast channel
+  Watch's coalescing semantics naturally debounce — multiple rapid changes between awaits collapse to a single notification.
+- [ ] Extend `web::handlers::events` to emit named SSE events: `EventLine` frames are unnamed (default `message`, preserves Phase 6f behaviour); `StatusUpdated` frames use `Event::default().event("status-updated").data(html)`.
+- [ ] On startup, also fire one initial `StatusUpdated` so a freshly-opened tab gets the current state without waiting for the next change.
+- [ ] Rewrite `views::render_status_fragment` → `views::render_status_oob`: the function returns a sequence of OOB-only fragments (one per stable id) — no wrapping `<div id="mmb-status">`. The master LED's existing OOB block (Phase 6g) is preserved.
+- [ ] Per-port-slot OOB rebuilds the `.mmb-port-slot` content from the current `Status::ports.<slot>` plus the configured port name from `Status::config`: LED state class, port-name text, port-config text (or `"—"` if unconfigured).
+- [ ] Transport state badge OOB writes `STOPPED` / `PLAYING` / `LOCATING` text + the `data-state` attribute for CSS variant styling.
+- [ ] Bar readout OOB writes `BAR <n>` or `BAR ----` if `last_bar.is_none()`.
+- [ ] Last-event timer OOB writes the static prefix `last event` + a `<span id="mmb-last-event-text" data-timestamp="<epoch_ms>">3.2s</span>`. The `data-timestamp` is the absolute `last_event_at` rendered via `SystemTime::duration_since(UNIX_EPOCH)` to milliseconds. If `last_event_at.is_none()`, omit the data-attribute and emit `—` as the text.
+- [ ] MCU heartbeat OOB uses the same `data-timestamp` pattern.
+- [ ] In `index.html`, add `<div hx-ext="sse" sse-connect="/api/events" sse-swap="status-updated" hx-swap="none">` so htmx-sse listens for the named `status-updated` event. Because the event payload contains OOB elements with `hx-swap-oob="true"`, htmx pulls them out automatically and swaps them by id; `hx-swap="none"` says "don't do anything with the response body itself, just process the OOBs."
+- [ ] Add a small JS helper in `app.js` (`tickElapsedTimers()`) that runs every 1000ms via `setInterval`. It finds all `[data-timestamp]` elements, computes `Date.now() - parseInt(ts)`, and re-renders the text content as `1.2s`, `45s`, `2m 5s`, etc. This is the only client-side computation needed; everything else is server-rendered.
+- [ ] Delete the existing one-shot `<div hx-get="/api/status" hx-trigger="load" ...>` from `index.html`. Status flows over SSE only.
+- [ ] Update existing `render_status_fragment` tests to test `render_status_oob` instead — assert on OOB structure (one OOB per stable id) rather than the wrapping div.
+- [ ] Add tests for per-slot OOB rendering: configured-and-connected → green; configured-but-not-connected → amber; configured-with-error → red; unconfigured → off. Same as before but against the new fragment shape.
+- [ ] Add a test for the SSE status-updated frame: spin up a test broadcast channel, send a `StatusUpdated(html)` frame, assert the SSE handler emits `event: status-updated\ndata: <html>` framing.
 
 ### Acceptance Criteria
 
-- [ ] Visiting `http://127.0.0.1:8765/` shows live state in every visible indicator within 1 s — no stale `STOPPED / BAR ----` fragments
-- [ ] Plugging or unplugging a configured device updates the matching port-slot LED within ~2 s (one poll cycle)
-- [ ] The master LED in the header reflects rolled-up health continuously, not just on page load
+- [ ] Visiting `http://127.0.0.1:8765/` shows live state in every visible indicator within ~50ms of any state change (push-driven, not poll-driven)
+- [ ] Time-elapsed displays (`last event`, `MCU heartbeat`) tick visibly every second without server traffic
+- [ ] Plugging or unplugging a configured device updates the matching port-slot LED within ~150ms (state-change push, not poll cycle)
+- [ ] The master LED reflects rolled-up health continuously
 - [ ] No invisible status block at the bottom of the page; document outline is clean
-- [ ] All existing tests still pass; new OOB-render tests pass
+- [ ] No periodic `/api/status` polling — DevTools Network tab shows the SSE connection only, no per-second GETs
+- [ ] All existing tests pass; new OOB-render tests pass; new SSE-frame test passes
 - [ ] `cargo build --release` clean
 
 ### Phase 8b — Brand realignment to audiocontrol.org
