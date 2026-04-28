@@ -1,0 +1,126 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - heading "MIDI Macro Bridge" [level=1] [ref=e3]
+    - generic "MCU heartbeat not seen" [ref=e4]
+    - generic [ref=e5]: v1.0
+    - button "halt bridge (hold 3s)" [ref=e6] [cursor=pointer]:
+      - img
+      - generic [ref=e7]: HALT
+  - region "transport readout" [ref=e8]:
+    - generic [ref=e9]: STOPPED
+    - generic [ref=e10]: BAR ----
+    - generic [ref=e11]: last event —
+  - region "routing matrix" [ref=e12]:
+    - heading "ROUTING" [level=2] [ref=e13]
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - heading "SOURCES" [level=3] [ref=e16]
+        - generic [ref=e17]:
+          - generic [ref=e19]: MC-500
+          - generic [ref=e20]: —
+        - generic [ref=e21]:
+          - generic [ref=e23]: LCXL3
+          - generic [ref=e24]: —
+      - generic [ref=e25]:
+        - heading "BRIDGE" [level=3] [ref=e26]
+        - generic [ref=e27]: stopped
+      - generic [ref=e28]:
+        - heading "DESTINATIONS" [level=3] [ref=e29]
+        - generic [ref=e30]:
+          - generic [ref=e32]: DAW (MCU)
+          - generic [ref=e33]: virtual endpoint
+        - generic [ref=e34]:
+          - generic [ref=e36]: MC-500 sync
+          - generic [ref=e37]: —
+        - generic [ref=e38]:
+          - generic [ref=e40]: LCXL3 LEDs
+          - generic [ref=e41]: —
+  - region "configuration" [ref=e42]:
+    - heading "CONFIGURATION" [level=2] [ref=e43]
+    - generic [ref=e45]:
+      - group "MC-500" [ref=e46]:
+        - generic [ref=e47]: MC-500
+        - generic [ref=e48]:
+          - generic [ref=e49]: Input port
+          - combobox "Input port" [ref=e50] [cursor=pointer]:
+            - option "(none)"
+            - option "828mk3 Hybrid MIDI (disconnected)" [selected]
+            - option "828mk3 Hybrid MIDI Port"
+            - option "828mk3 Hybrid Sync Port"
+            - option "LCXL3 1 MIDI Out"
+            - option "LCXL3 1 DAW Out"
+            - option "MidiFire"
+            - option "MIDI Macro Bridge"
+        - generic [ref=e51]:
+          - generic [ref=e52]: Sync output port
+          - combobox "Sync output port" [ref=e53] [cursor=pointer]:
+            - option "(none)" [selected]
+            - option "828mk3 Hybrid MIDI Port"
+            - option "LCXL3 1 MIDI In"
+            - option "LCXL3 1 DAW In"
+            - option "LCXL3 1 To DIN Out"
+            - option "LCXL3 1 To DIN Out 2"
+            - option "MidiFire"
+            - option "MIDI Macro Bridge"
+      - group "LCXL3" [ref=e54]:
+        - generic [ref=e55]: LCXL3
+        - generic [ref=e56] [cursor=pointer]:
+          - checkbox "Enabled" [checked] [ref=e57]
+          - generic [ref=e58]: Enabled
+        - generic [ref=e59]:
+          - generic [ref=e60]: Input port (DAW Out)
+          - combobox "Input port (DAW Out)" [ref=e61] [cursor=pointer]:
+            - option "(none)"
+            - option "828mk3 Hybrid MIDI Port"
+            - option "828mk3 Hybrid Sync Port"
+            - option "LCXL3 1 MIDI Out"
+            - option "LCXL3 1 DAW Out" [selected]
+            - option "MidiFire"
+            - option "MIDI Macro Bridge"
+        - generic [ref=e62]:
+          - generic [ref=e63]: Output port (DAW In)
+          - combobox "Output port (DAW In)" [ref=e64] [cursor=pointer]:
+            - option "(none)"
+            - option "828mk3 Hybrid MIDI Port"
+            - option "LCXL3 1 MIDI In"
+            - option "LCXL3 1 DAW In" [selected]
+            - option "LCXL3 1 To DIN Out"
+            - option "LCXL3 1 To DIN Out 2"
+            - option "MidiFire"
+            - option "MIDI Macro Bridge"
+        - generic [ref=e65]:
+          - generic [ref=e66]: Host name
+          - textbox "Host name" [ref=e67]: Bridge
+      - group "Backend" [ref=e68]:
+        - generic [ref=e69]: Backend
+        - radiogroup [ref=e70]:
+          - generic [ref=e71] [cursor=pointer]: MCU
+          - generic [ref=e72] [cursor=pointer]: Keystrokes
+      - button "APPLY CHANGES" [ref=e73] [cursor=pointer]
+  - region "event stream" [ref=e75]:
+    - heading "EVENT STREAM" [level=2] [ref=e76]
+    - generic: PAUSE
+    - generic [ref=e78]:
+      - generic [ref=e79]: 00:12:20.001
+      - generic [ref=e80]: BRIDGE
+      - generic [ref=e81]: bridge ready
+  - generic [ref=e83]:
+    - generic [ref=e84]:
+      - generic [ref=e85]: RUN
+      - generic [ref=e86]: STOPPED
+      - generic [ref=e87]:
+        - text: "Bar:"
+        - strong [ref=e88]: "--"
+      - generic [ref=e89]: "Last event: never"
+      - generic [ref=e90]: "MCU heartbeat: never"
+    - generic [ref=e91]:
+      - 'generic "MC-500 In: 828mk3 Hybrid MIDI" [ref=e92]':
+        - generic [ref=e93]: MC-500 In
+      - 'generic "MC-500 Sync: not configured" [ref=e94]':
+        - generic [ref=e95]: MC-500 Sync
+      - 'generic "LCXL3 In: LCXL3 1 DAW Out" [ref=e96]':
+        - generic [ref=e97]: LCXL3 In
+      - 'generic "LCXL3 Out: LCXL3 1 DAW In" [ref=e98]':
+        - generic [ref=e99]: LCXL3 Out
+      - 'generic "MCU Virtual: MIDI Macro Bridge" [ref=e100]':
+        - generic [ref=e101]: MCU Virtual

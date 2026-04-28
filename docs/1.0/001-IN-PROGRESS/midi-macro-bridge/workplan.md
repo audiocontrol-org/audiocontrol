@@ -31,6 +31,10 @@
 | Phase 7b Issue | [#339](https://github.com/audiocontrol-org/audiocontrol/issues/339) — CoreMidi hot-plug notifications |
 | Phase 7c Issue | [#340](https://github.com/audiocontrol-org/audiocontrol/issues/340) — SSE topology event + opt-in refresh UI |
 | Phase 7d Issue | [#341](https://github.com/audiocontrol-org/audiocontrol/issues/341) — Phase 7 hardware validation |
+| Phase 8 Parent Issue | [#342](https://github.com/audiocontrol-org/audiocontrol/issues/342) — Brand alignment + status wiring fixes |
+| Phase 8a Issue | [#343](https://github.com/audiocontrol-org/audiocontrol/issues/343) — wire live status into the visible UI |
+| Phase 8b Issue | [#344](https://github.com/audiocontrol-org/audiocontrol/issues/344) — brand realignment to audiocontrol.org canonical tokens |
+| Phase 8c Issue | [#345](https://github.com/audiocontrol-org/audiocontrol/issues/345) — Phase 8 hardware validation |
 | Phase 1-2 PR | [#316](https://github.com/audiocontrol-org/audiocontrol/pull/316) (merged) |
 | Phase 3-4 PR | [#317](https://github.com/audiocontrol-org/audiocontrol/pull/317) (merged) |
 | Tolerance fix PR | [#318](https://github.com/audiocontrol-org/audiocontrol/pull/318) (merged) |
@@ -635,3 +639,99 @@ The full UX/interaction specification is captured in [`web-ui-design.md`](web-ui
 - [ ] All hardware test cases above pass on the user's rig
 - [ ] No CoreMIDI tendrils in the rest of the codebase: `grep -r "coremidi::" src/` returns hits only in `src/midi/coremidi_subsystem.rs`
 - [ ] User can complete the full Phase 6 setup flow with the bridge already running — they don't need to restart the bridge to see newly-connected devices in the dropdowns
+
+## Phase 8: Brand Alignment + Status Wiring Fixes
+
+**Deliverable:** The web UI's visible indicators (transport readout, routing matrix LEDs, master LED) reflect live bridge state via periodic OOB-swapped `/api/status` polling, and the visual language is realigned to audiocontrol.org's canonical brand tokens (warm-near-black service-manual aesthetic with Departure Mono headlines, IBM Plex Sans body, JetBrains Mono numerics, and the L-shaped corner-bracket card chrome).
+
+The Phase 6 UI shipped two structural problems:
+1. **Decorative status indicators.** The transport readout (`STOPPED / BAR ----`), routing matrix LEDs, and master LED are hardcoded in `index.html` and only update on initial page load (`hx-trigger="load"` once). The actual `#mmb-status` fragment that the server renders lands in an invisible bottom div, where it appears as an unstyled overlapping blob below the configuration section.
+2. **Brand mismatch.** The Studio Rack Utility direction (film grain, scanlines, brushed-metal gradient, Geist Mono body) is in the right neighbourhood (dark theme, Departure Mono, warm amber) but visibly out of family with audiocontrol.org. Decoration is too heavy; body font is wrong; panel chrome is wrong.
+
+Phase 8 fixes the wiring first (so live state is correct before restyling), then re-skins to mirror the audiocontrol.org canonical token table.
+
+### Phase 8a — Wire live status into the visible UI
+
+**Deliverable:** Every status indicator visible in the page reflects live bridge state. The hidden bottom `#mmb-status` block is deleted. There is exactly one source of truth for status display.
+
+- [ ] Add stable ids to the visible status indicators in `index.html`:
+  - `#mmb-state-badge` on the transport state badge
+  - `#mmb-bar-readout` on the bar number readout
+  - `#mmb-last-event-timer` on the last-event timer
+  - `#mmb-slot-mc500-input`, `#mmb-slot-lcxl3-input`, `#mmb-slot-mcu-virtual`, `#mmb-slot-mc500-sync`, `#mmb-slot-lcxl3-output` on the five port slots in the routing matrix
+  - `#mmb-machine-state` on the bridge-center machine-state label
+- [ ] Add a top-level `<div hx-get="/api/status" hx-trigger="load, every 1s" hx-target="this" hx-swap="innerHTML">` that polls every 1 s. The response is the OOB-swap fragment.
+- [ ] Update `views::render_status_fragment` to emit OOB swaps for each visible indicator instead of (or in addition to, transitionally) the wrapping `<div id="mmb-status">`. Each OOB element matches a stable id from the index. The master LED's existing OOB pattern stays unchanged.
+- [ ] Per-port-slot OOB element rebuilds the `.mmb-port-slot` content from the current `Status::ports.<slot>` plus the configured port name from `Status::config`: LED state class, port-name text, port-config text (the user's saved port name or `"—"` if unconfigured). Preserves the slot's id so subsequent swaps keep working.
+- [ ] Transport state badge OOB swap: writes `STOPPED` / `PLAYING` / `LOCATING` text and applies the corresponding `data-state` attribute for CSS variant styling.
+- [ ] Bar readout OOB swap: writes `"BAR " + bar_number` or `"BAR ----"` if `last_bar` is `None`.
+- [ ] Last-event timer OOB swap: writes `"last event "` + relative time (e.g. `"3.2s"`) or `"last event —"` if `last_event_at` is `None`. Updates every poll cycle so the timer ticks visibly.
+- [ ] Delete the now-orphaned bottom `<div hx-get="/api/status" ...></div>` and the `<div id="mmb-status">` wrapper inside `render_status_fragment`. The function instead returns a sequence of OOB-only fragments.
+- [ ] Update existing tests for `render_status_fragment` to assert on the OOB structure (one OOB per stable id) rather than the wrapping div.
+- [ ] Add tests for the per-slot OOB rendering: configured-and-connected → green; configured-but-not-connected → amber; configured-with-error → red; unconfigured → off.
+
+### Acceptance Criteria
+
+- [ ] Visiting `http://127.0.0.1:8765/` shows live state in every visible indicator within 1 s — no stale `STOPPED / BAR ----` fragments
+- [ ] Plugging or unplugging a configured device updates the matching port-slot LED within ~2 s (one poll cycle)
+- [ ] The master LED in the header reflects rolled-up health continuously, not just on page load
+- [ ] No invisible status block at the bottom of the page; document outline is clean
+- [ ] All existing tests still pass; new OOB-render tests pass
+- [ ] `cargo build --release` clean
+
+### Phase 8b — Brand realignment to audiocontrol.org
+
+**Deliverable:** The bridge UI inherits audiocontrol.org's canonical design system **verbatim** — same tokens, same utility classes, same atmospheric layers, same component vocabulary. The aesthetic direction is officially named **"service-manual / flight-instrumentation"** in the parent site's source. Phase 6's heavier retro decoration is replaced by the parent's restrained, schematic-document language.
+
+**Source of truth:** `/Users/orion/work/audiocontrol.org-work/audiocontrol.org/src/sites/audiocontrol/styles/design-tokens.css` is the canonical token + utility-class definition. **We copy that file into the bridge's web bundle rather than re-derive** — keeps the bridge in sync with the parent and makes future updates a literal `cp` plus rebuild.
+
+- [ ] Copy the canonical token file: `cp /Users/orion/work/audiocontrol.org-work/audiocontrol.org/src/sites/audiocontrol/styles/design-tokens.css services/midi-macro-bridge/web/design-tokens.css`. Adjust the `@font-face` URLs in the copy from `/fonts/...` to `/static/fonts/...` to match the bridge's static-asset prefix.
+- [ ] Vendor the same fonts the parent site uses: `ibm-plex-sans-400.woff2` (regular), `ibm-plex-sans-500.woff2` (medium), `ibm-plex-sans-600.woff2` (semibold), `ibm-plex-sans-700.woff2` (bold), `jetbrains-mono-regular.woff2`, plus the existing Departure Mono. Pull from the parent site's `public/fonts/` directory — they're already vetted and OFL-licensed. Path: `cp /Users/orion/work/audiocontrol.org-work/audiocontrol.org/src/sites/audiocontrol/public/fonts/{ibm-plex-sans-400,ibm-plex-sans-500,ibm-plex-sans-600,ibm-plex-sans-700,jetbrains-mono-regular}.woff2 services/midi-macro-bridge/web/fonts/`.
+- [ ] Update `index.html` to `<link rel="stylesheet" href="/static/design-tokens.css">` BEFORE `<link rel="stylesheet" href="/static/app.css">` so app.css can reference the canonical tokens.
+- [ ] Strip every CSS variable from `app.css` that has a parent-site analogue (`--background`, `--surface-panel`, `--surface-recess`, `--text-screenprint`, `--text-secondary`, `--led-green/amber/red`, `--signal-green`, `--accent-warm`). All references migrate to the canonical tokens: `hsl(var(--background))`, `hsl(var(--card))`, `hsl(var(--foreground))`, `hsl(var(--muted-foreground))`, `hsl(var(--primary))`, `hsl(var(--border))`, `hsl(var(--badge-available))`, `hsl(var(--badge-coming))`. The bridge defines its own `--badge-error: hsl(0 60% 55%)` since the parent doesn't expose an error colour.
+- [ ] Body font: replace Geist Mono with `var(--font-body)` (IBM Plex Sans). Drop the Geist Mono `@font-face` and `geist-mono.woff2` from the bundle — no longer needed.
+- [ ] Section labels (`.mmb-section-label`, `.mmb-col-label`, all field labels): replace bespoke styling with the canonical `.panel-label` utility class from `design-tokens.css`. All-caps Departure Mono, 0.14em tracking, muted-foreground.
+- [ ] Master LED in header: replace bespoke styling with the canonical `.signal-led` utility class — 8px amber dot with `--phosphor-glow` and built-in `signal-led-pulse` keyframes. The `data-state="amber"|"red"|"off"` variants stay in `app.css` as overrides on `.signal-led` (e.g. amber recolours to `--badge-coming`, red recolours to `--badge-error` with a faster flicker animation).
+- [ ] Per-port-slot LEDs in routing matrix: same `.signal-led` base with smaller-scale variants (4–6px dot, lower-intensity glow).
+- [ ] Major panels (`.mmb-header`, `.mmb-transport-readout`, `.mmb-routing`, `.mmb-config`, `.mmb-events`): apply `.card-glow` utility class from `design-tokens.css`. Drop the brushed-metal vertical gradient — the canonical card is flat `hsl(var(--card))` with the standard `--card-glow` shadow recipe. Hover variants get `--card-glow-hover` where appropriate (mostly the configuration form field states).
+- [ ] Add the canonical `.dimension-bracket` corner-bracket detail to the routing matrix and configuration sections — the L-shaped technical-drawing callouts that frame the panel. Apply by adding the class to wrapper elements and letting the canonical pseudo-element rules render.
+- [ ] Section dividers between panels: use `.rule-hairline` and `.rule-accent` utility classes — the parent's signature horizontal dividers, including the short amber underscore accent.
+- [ ] Atmospheric layers — the parent site **does** have grain, scanlines, and a vignette, but at much lower alpha than Phase 6 currently ships. **Don't drop the atmospheric layers — re-tune to match.** Apply the canonical `.atmosphere-grain` (3.5% opacity radial dot pattern), `.atmosphere-scanlines` (6% black at 2px stripe), and `.atmosphere-vignette` (radial amber-to-ink) classes to `<body>`. Drop the bespoke `body::before` noise overlay from `app.css`.
+- [ ] Transport state badge and bar readout keep Departure Mono via `var(--font-display)`. Drop the bespoke scanline gradient on the bar readout — the page-level `.atmosphere-scanlines` already provides the same effect uniformly.
+- [ ] Event-stream timestamps and any tabular numeric content shift to `var(--font-mono)` (JetBrains Mono).
+- [ ] Status pills (`.badge-init`, `.badge-run`, `.badge-stopped`, `.badge-playing`, `.badge-locating`): restyle to mirror the parent site's `STATUS: AVAILABLE` / `STATUS: PENDING` pill pattern — small Departure Mono uppercase tracked text on a darker-background-of-the-same-hue pill. Use `--badge-available` / `--badge-coming` paired with their `-bg` partner colours.
+- [ ] APPLY button (`.mmb-apply`) gains `.card-glow-hover` treatment for the dirty-state pulse. Replace the bespoke `apply-dirty-pulse` keyframes with a `box-shadow` transition that reuses the canonical glow recipe.
+- [ ] HALT button (`.mmb-halt`): keep the SVG progress ring (Phase 6g), retune colours to use `--badge-error` (the bridge-defined error colour). Hover state uses `--card-glow-hover`.
+- [ ] Phosphor accent on key text moments: any small amber emphasis (the bridge wordmark accent, "PORTS UPDATED" pill from Phase 7c, locate-bar countdown if added later) gains the `.phosphor` utility class.
+- [ ] Layout container: wrap the page body with `.site-container` from `design-tokens.css` — same max-width and padding the parent site uses (`1400px` / `2rem`).
+- [ ] Re-test interactive elements visually: HALT hold-to-confirm progress ring, APPLY dirty pulse, backend toggle, port-select dropdown including the `(disconnected)` amber option. Each reads correctly in the new palette.
+- [ ] Take a Playwright screenshot at the end of 8b. Place it side-by-side with `audiocontrol-org-home.png` (already captured during the Phase 8 design review). Both should read as part of the same brand family.
+- [ ] Rewrite `web-ui-design.md` with the new direction; move the original "Studio Rack Utility" copy to a "Design history (Phase 6)" appendix. Add a "Brand sync" section documenting the `cp` workflow and pointing at the parent site's `design-tokens.css` as the source of truth.
+
+### Acceptance Criteria
+
+- [ ] `services/midi-macro-bridge/web/design-tokens.css` is byte-identical to (or a minimally-adapted copy of) the parent site's canonical file
+- [ ] Side-by-side screenshots of audiocontrol.org and the bridge UI read as part of the same brand family
+- [ ] All canonical utility classes are in use where applicable: `.panel-label`, `.signal-led`, `.card-glow`, `.dimension-bracket`, `.rule-hairline`, `.rule-accent`, `.atmosphere-grain`, `.atmosphere-scanlines`, `.atmosphere-vignette`, `.phosphor`, `.site-container`
+- [ ] No bespoke CSS variables remain that duplicate parent-site tokens
+- [ ] Geist Mono `.woff2` removed from the bundle; IBM Plex Sans (4 weights) + JetBrains Mono regular added; Departure Mono retained
+- [ ] All four LED states (off / connected / pending / error) are visually distinct using `--badge-*` colour variables
+- [ ] Tests pass; `cargo build --release` clean
+- [ ] `web-ui-design.md` rewritten with the canonical token reference and the parent-site sync workflow documented
+
+### Phase 8c — Hardware validation
+
+**Deliverable:** End-to-end verification that the rebrand and wiring fixes don't regress functionality.
+
+- [ ] Bridge starts; web UI loads; no console errors in browser DevTools
+- [ ] Transport readout updates live: start MC-500 playback → page shows `PLAYING` within ~1 s; stop → `STOPPED` within ~1 s
+- [ ] Bar number ticks live during playback (within polling resolution of ~1 s)
+- [ ] Routing matrix LEDs reflect actual port state: configured-and-open ports show connected; unplug a USB cable → LED transitions to amber within ~2 s
+- [ ] Master LED in header rolls up correctly: green when all configured ports connected; amber when any disconnected; red on panic
+- [ ] HALT hold-to-confirm still works; APPLY config form still works; SSE event stream still flows
+- [ ] No regression in any earlier phase: Play/Stop from MC-500 still drives LUNA, locate still works, LCXL3 transport still works, sync-on-stop still fires
+
+### Acceptance Criteria
+
+- [ ] All test cases above pass on the user's rig
+- [ ] User confirms the new UI reads as part of the audiocontrol.org family

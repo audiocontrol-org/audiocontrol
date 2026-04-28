@@ -116,6 +116,45 @@ The web UI's port pickers are populated once at form-load time, so plugging or u
 
 **Out of scope for Phase 7:** Linux ALSA seq hot-plug, Windows WinMIDI hot-plug, automatic refresh without user opt-in, refresh-on-network-blip recovery (htmx-sse handles SSE reconnection natively).
 
+### Phase 8 — Brand alignment + status wiring fixes
+
+A design review of the Phase 6 web UI (informed by a live Playwright snapshot of audiocontrol.org and a snapshot of the running bridge) surfaced two structural issues that need to be resolved before the UI is shippable:
+
+1. **Live indicators don't update.** The transport readout (`STOPPED / BAR ----`) and the routing matrix LEDs in the page body are hardcoded in `index.html`; the master LED in the header only updates on initial page load because `/api/status` is fetched once via `hx-trigger="load"` with no polling. Meanwhile the actual `#mmb-status` fragment that the server renders (with bridge state, transport, bar, port LEDs, heartbeat) lands in an invisible bottom div, where it appears as an unstyled blob below the configuration section. The user sees a dashboard that looks live but isn't.
+
+2. **Brand mismatch with audiocontrol.org.** The Phase 6 UI shipped a "Studio Rack Utility" aesthetic — dark CRT/peak-meter, heavy film-grain, scanline overlay on the bar readout, brushed-metal panel gradient, Geist Mono everywhere, warm-orange peak-meter accent. Audiocontrol.org's official brand language (named **"service-manual / flight-instrumentation"** in the parent repo's `design-tokens.css`) is dark, warm-ink, with phosphor amber primary, Roland-blue secondary used sparingly, Departure Mono for the identity voice / headlines / labels, IBM Plex Sans for body, JetBrains Mono for code and tabular meta. The parent site DOES use grain, scanlines, and a warm vignette — but at very low alpha (3.5% / 6%) so they read as atmosphere rather than decoration. Card chrome is flat with hairline borders, soft glow shadow, and L-shaped corner brackets (`.dimension-bracket`) drawn with pseudo-elements. The bridge UI is in the right *neighbourhood* (we already use Departure Mono, a warm amber accent, and a dark theme) but the body font is wrong, the panel chrome is the wrong language, and the atmospheric layers are too heavy and styled bespoke instead of using the canonical utility classes.
+
+Phase 8 fixes the wiring first (so the live state is correct before we restyle), then re-skins to match audiocontrol.org's canonical design tokens. The "device-feel" Departure Mono accents on the bar number and transport state badge are preserved — they're already in family — but the surrounding chrome shifts from studio-rack-hardware to service-manual-tooling.
+
+**Canonical audiocontrol.org tokens (extracted via Playwright from the live site):**
+
+```
+--background: hsl(30 12% 7%)           warm near-black, NOT green-tinted
+--card: hsl(30 14% 11%)                flat card surface (no gradient)
+--card-hover: hsl(30 14% 14%)
+--foreground: hsl(35 18% 88%)          warm cream text
+--muted-foreground: hsl(30 10% 55%)
+--primary: hsl(35 95% 62%)             single warm amber accent
+--border: hsl(30 10% 18%)
+--badge-available: hsl(152 55% 55%) on hsl(152 40% 13%) bg     (connected = green pill)
+--badge-coming: hsl(35 80% 55%)        (configured-but-pending = amber)
+--font-display / --font-heading: "Departure Mono"
+--font-body: "IBM Plex Sans"
+--font-mono: "JetBrains Mono"
+--card-glow: 0 0 0 1px hsl(30 10% 18%), 0 10px 36px -12px hsl(0 0% 0% / .65)
+--phosphor-glow: 0 0 14px hsl(35 95% 62% / .35), 0 0 2px hsl(35 95% 62% / .55)
+```
+
+**Phase 8 deliverables:**
+
+- **Status wiring:** add periodic `/api/status` polling (every ~1 s) at the page level via `hx-trigger="load, every 1s"` on a top-level `<div hx-get="/api/status">`. The response uses htmx out-of-band swaps to update *all* live indicators in place: master LED in header, transport state badge in the readout, bar number, last-event timer, MCU heartbeat freshness, and each of the five port-slot LEDs in the routing matrix. The hidden bottom `#mmb-status` block is **deleted entirely** — there's exactly one source of truth for status display, the visible UI.
+- **Routing matrix LED rewire:** the existing `<div class="mmb-port-slot" data-slot="...">` elements in the routing matrix gain stable ids (`#mmb-slot-mc500-input`, etc.) and the status fragment renders OOB updates targeting them. Each slot's `<span class="led led-{state}">` swaps in place; the surrounding port-name and port-config text update from the live config snapshot.
+- **Brand realignment** — copy the parent site's canonical design system into the bridge rather than re-derive. Source of truth: `/Users/orion/work/audiocontrol.org-work/audiocontrol.org/src/sites/audiocontrol/styles/design-tokens.css`. The official aesthetic name (per that file's own header comment) is **"service-manual / flight-instrumentation"** — warm-ink background, warm-cream foreground, phosphor amber primary (VFD / flight instrument), Roland-blue accent used sparingly. The file ships utility classes the bridge can adopt directly: `.panel-label` (eyebrow text), `.signal-led` (8px amber dot with phosphor glow + built-in pulse), `.dimension-bracket` (L-shaped corner brackets — pseudo-elements that frame a wrapper), `.card-glow`, `.rule-hairline`, `.rule-accent`, `.rule-ticked`, `.atmosphere-grain`, `.atmosphere-scanlines`, `.atmosphere-vignette`, `.phosphor`, `.site-container`. Phase 8b copies the file verbatim into `services/midi-macro-bridge/web/design-tokens.css` (adjusting `@font-face` URLs from `/fonts/` to `/static/fonts/`) and copies the four IBM Plex Sans weights + JetBrains Mono regular from the parent's `public/fonts/`. App-specific styles in `app.css` reference the canonical tokens via `var(--primary)` etc. Future brand updates are a literal `cp` plus rebuild. **The atmospheric layers (grain, scanlines, vignette) ARE part of the parent brand — re-tune to the canonical low-alpha values rather than dropping them.**
+- **Master LED uses `--phosphor-glow`:** the bridge's master LED gains the same glow recipe the parent site uses. Per-port LEDs reuse the recipe at smaller scale.
+- The `web-ui-design.md` reference document is rewritten to reflect the actual brand direction; the original "Studio Rack Utility" copy moves to a "Design history (Phase 6)" appendix so context is preserved.
+
+**Out of scope for Phase 8:** light-mode toggle (the parent site is dark-only; we follow), per-device accent variation (the bridge isn't a device editor), the editor-core CSS tokens are explicitly **not** the brand reference (the user has confirmed the editor code is itself behind the website's brand standards).
+
 ## Out of Scope
 
 - MIDI clock forwarding
