@@ -872,69 +872,100 @@ The decision tree:
 - [ ] All test cases above pass on the user's rig
 - [ ] User confirms LCXL3 mixer feels usable for typical LUNA mixing workflow
 
-## Phase 10: LCXL3 Row-Aware V-Pot Mapping (Sends + Plugin Parameters)
+## Phase 10: LCXL3 Page-Aware V-Pot Mapping (Trim + Tape + Sends + EQ/Plugin)
 
-**Deliverable:** the LCXL3's three V-pot rows control independent functions per the user's preferred mapping (default: Row 1 = Send 1, Row 2 = Send 2, Row 3 = Pan). The bridge auto-negotiates LUNA's MCU surface mode + sub-selection based on which row the user is touching, and reverts to Pan after a quiet idle so LUNA's strip-name display is the default-visible state.
+**Deliverable:** the LCXL3's three V-pot rows control LUNA parameters per a Page Up/Down navigation model. In DAW Mixer mode, the bottom row stays on Pan and the top two rows shift through pages: Page 0 = Trim/Tape (default), Pages 1-4 = paired sends. In DAW Control mode the top two rows control the selected-track EQ or focused-plugin parameters. The single LCXL3 LCD shows the name + value of the currently-adjusted control (Live/Logic style).
 
-**Why now:** Phase 9b's V-pot handler routes all three rows to pan. The user has three rows of physical encoders and has explicitly opted into bridge-managed function negotiation rather than manual MIDI mapping in LUNA (which is fragile across machines / reinstalls). MCU's eight-V-pots-one-mode constraint means the bridge has to switch LUNA's mode per-gesture, which is genuinely new architecture relative to Phase 9b.
+**Why now:** Phase 9b's V-pot handler routes all three rows to pan. The user has three rows of physical encoders, has explicitly opted into bridge-managed function negotiation (manual MIDI mapping in LUNA is fragile across machines / reinstalls), and has confirmed via the LCXL3 reference that Page navigation drives the top two rows. MCU's eight-V-pots-one-mode constraint means the bridge has to switch LUNA's mode + sub-selection on every Page change, which is genuinely new architecture relative to Phase 9b.
+
+**Page table (DAW Mixer mode):**
+
+| Page | Row 1 (top)    | Row 2 (middle)         | Row 3 (bottom) |
+|------|----------------|------------------------|----------------|
+| 0    | Channel Trim   | Tape-plugin saturation | Pan |
+| 1    | Send 1         | Send 2                 | Pan |
+| 2    | Send 3         | Send 4                 | Pan |
+| 3    | Send 5         | Send 6                 | Pan |
+| 4    | Send 7         | Send 8                 | Pan |
+
+Page Up / Page Down clamps at 0 and 4. Bottom row is always Pan. Page 0 (Trim + Tape) is the user's primary working state; send pages are the secondary "I need to fiddle with a send" affordance.
+
+**DAW Control mode V-pot routing (separate from DAW Mixer):**
+
+Per LCXL3 reference, in DAW Control mode the top two V-pot rows control the EQ controls of the selected track or the parameters of the currently focused plugin. Rows are pre-assigned by the device — no Page navigation in DAW Control. Bottom-row V-pot 1 stays as the jog-wheel (Phase 5 behaviour).
+
+**LCXL3 single-LCD display mirror:**
+
+The LCXL3 has one LCD screen, not eight per-strip displays. In Live and Logic this LCD shows the parameter name + value of whichever control the user is currently adjusting (fader, V-pot, etc.). Phase 10 mirrors this for LUNA: parse LUNA's strip-name SysEx push-back (`F0 00 00 66 14 12 ...` per Phase 9a notes), extract the active parameter's name + value, format for the LCXL3's LCD protocol. After ~500 ms of idle, the LCD reverts to a neutral display (likely the active page's row labels: e.g. "Page 0 — Trim / Tape" at the top, "Pan" at the bottom).
+
+**Page state scaffolding** (already landed in main.rs as `vpot_page: u8` with Page Up/Down handlers): Page state is observable in the event log; Phase 10b's V-pot router will read it.
 
 **Pre-research uncertainties (drive Phase 10a):**
 
-1. **Sends-mode drill-down bytes** — Phase 9a captured `90 29 7F` enters Sends mode but did not capture how to pick a specific Send (1 / 2 / etc.) from inside that mode. Likely a V-pot click (notes in the `0x20`-`0x27` range) or a V-pot CC on a specific column, but unconfirmed.
-2. **Plug-In-mode drill-down bytes** — `90 2B 7F` enters Plug-In mode and shows "Tape | Consol | Insrts"; the bytes to pick "Tape" and to navigate to Tape's saturation parameter are not yet captured.
-3. **MCU mode-stickiness vs simultaneity** — confirm whether all 24 LCXL3 V-pots share one MCU mode at a time (per spec), or whether LUNA tolerates a hybrid where different V-pot CCs are interpreted differently. Default assumption: shared mode → bridge must switch on every row change.
-4. **Quiet-period revert latency** — what idle window (200 ms? 1 s? 2 s?) feels natural before the bridge reverts LUNA to Pan mode and the strip-name display returns? Tuned in 10c.
+1. **Plug-In-mode drill-down for Page 0** — `90 2B 7F` enters Plug-In mode showing "Tape | Consol | Insrts"; bytes to pick Tape and locate its saturation parameter are not captured. Channel Trim's location is unclear (Console plugin? separate channel-strip parameter? focused-plugin path?).
+2. **Sends-mode drill-down for Pages 1-4** — `90 29 7F` enters Sends mode with a "Pick a Send" menu; bytes to pick Send 1, Send 2, etc. are not captured.
+3. **DAW Control V-pot byte vocabulary** — does the device emit different CCs for V-pots in DAW Control vs DAW Mixer? Does LUNA route those CCs to EQ / focused-plugin without bridge mode-switch?
+4. **MCU mode stickiness** — does LUNA stay in selected sub-mode indefinitely, or auto-revert? Does pan still work in Row 3 while the surface is in Sends mode (MCU spec says no — verify)?
+5. **Page-revert UX** — auto-revert to Page 0 after V-pot idle, or sticky until Page button is pressed? Tuned in 10c.
+6. **LCXL3 LCD output protocol** — bytes to write text to the device's single LCD. Likely a Novation-specific SysEx; Phase 10a captures.
 
-### Phase 10a — V-pot row drill-down profiling
+### Phase 10a — V-pot drill-down + LCD-output profiling
 
-**Deliverable:** decoded byte map for "pick Send N" inside Sends mode and "pick Tape + navigate to saturation" inside Plug-In mode. Findings appended to `research/luna-mcu-mixer-notes.md`.
+**Deliverable:** decoded byte map for "pick Tape + saturation" + "pick Trim parameter" inside Plug-In mode (Page 0); "pick Send N" inside Sends mode (Pages 1-4); DAW Control V-pot byte map; LCXL3 LCD-write protocol. Findings appended to `research/luna-mcu-mixer-notes.md` and `lcxl3-handshake-trace.md`.
 
-- [ ] Use `--probe-mcu-interactive` to enter Sends mode (`90 29 7F`), then exercise: (a) V-pot button clicks on each column, (b) V-pot CC deltas on each column. Record which combination triggers "now V-pots control Send 1 across the bank" vs Send 2 etc. Capture LUNA's display SysEx push-back to confirm the selection.
-- [ ] Same for Plug-In mode (`90 2B 7F`): probe how to pick "Tape" from the V-pot 1 / 2 / 3 menu. Once Tape is selected, capture LUNA's response (does it list Tape's parameters across the V-pots? what's their order?) — find the index of the "saturation" parameter.
-- [ ] Decide and document the bridge's revert strategy: does it stay in Sends-with-Send-N mode indefinitely, or does it revert to Pan after idle? Capture LUNA's behaviour in both cases (does the strip-name display update? does pan input still work in row 3 while in Sends mode?).
-- [ ] If drill-down for Plug-In mode is unworkable in a single session (e.g. requires per-track plugin instance navigation that's hard to scope), descope the Trim+Tape stretch mapping and ship Phase 10 with the Sends-only mapping. Document the descope reason in `luna-mcu-mixer-notes.md`.
-
-### Acceptance Criteria
-
-- [ ] `luna-mcu-mixer-notes.md` extended with: bytes to pick Send 1 from Sends-mode menu; bytes to pick Send 2 etc.; bytes to pick Tape from Plug-In menu (or descope note + reason)
-- [ ] Sends-mode revert behaviour documented (does LUNA auto-revert? after how long?)
-- [ ] Bridge revert-to-Pan policy ratified by user before 10b code lands
-
-### Phase 10b — Row-aware sticky-mode state machine
-
-**Deliverable:** `main.rs` V-pot handler tracks the bridge's view of LUNA's current MCU surface mode and routes V-pot gestures based on row. Mode switches are emitted lazily (only when the user actually moves a V-pot in a different-row's mode). Quiet-period idle reverts to Pan.
-
-- [ ] Add `LunaSurfaceMode` enum in `state.rs` or `lcxl3.rs`: `Pan`, `Sends(u8)`, `PlugIn(u8)`, with helper `from_row` that maps `(VRow, RowMapping) -> LunaSurfaceMode`.
-- [ ] Add `RowMapping` config field in `[lcxl3.mixer]`: `vpot_row_mapping = "sends-1-2"` (default) or `"trim-tape"` (stretch). Serde-defaulted; document in `config.example.toml`.
-- [ ] In the V-pot SurfaceEvent handler in `main.rs`, replace the existing "all rows → pan" logic with: (a) compute target mode from row + RowMapping; (b) if current mode != target, emit the mode-switch + drill-down byte sequence (per Phase 10a findings) and update tracked mode; (c) emit the V-pot CC delta; (d) record the timestamp.
-- [ ] Add an idle-revert timer: each iteration of the main loop checks "if last_vpot_at + 2s < now AND tracked_mode != Pan, revert to Pan + clear tracked_mode". Tunable via `[lcxl3.mixer] vpot_revert_idle_ms` (default 2000).
-- [ ] Bottom row (Pan) is special-cased: it never triggers mode-switch — Pan IS LUNA's idle/default mode. Bottom-row V-pot deltas just emit the pan CC.
-- [ ] Unit tests: `LunaSurfaceMode::from_row` mapping; mode-switch state machine (sequence of row-1 then row-2 then row-3 gestures emits correct mode-switches); idle-revert path triggers when expected and not when not.
-- [ ] Integration: ensure no regression in DAW Control mode jog-wheel handling (the existing `row == VRow::Bottom && col == 0` branch must still work).
+- [ ] Use `--probe-mcu-interactive` to enter Plug-In mode (`90 2B 7F`); exercise V-pot button clicks on V-pots 1/2/3 to find the byte that picks "Tape". Once picked, identify which V-pot column controls saturation and capture the relevant note/CC bytes.
+- [ ] Locate channel Trim — probe Console plugin (pick Consol from same menu) and the focused-plugin path. Document path and bytes for whichever route works. Descope to "Trim unreachable, Page 0 Row 1 = something else" if blocked.
+- [ ] Drill into Sends mode (`90 29 7F`): bytes to pick Send 1, Send 2, etc.; verify Pages 1-4 mapping (Sends 1+2, 3+4, 5+6, 7+8) is reachable.
+- [ ] Capture DAW Control mode V-pot byte map. Switch the LCXL3 to DAW Control (Mode + DAW Control); exercise top two rows of V-pots; log the bytes the device emits. Compare to DAW Mixer mode bytes — same CCs (LUNA routes via current MCU mode), or different?
+- [ ] Decide page-revert policy: auto-revert to Page 0 after idle (and how long), or sticky.
+- [ ] Capture the LCXL3 LCD-write protocol. Probe Novation reference + run experiments via `--lcxl3-activate`-style probe modes: send candidate SysEx forms targeting the LCD, observe what renders. Likely a Novation-specific SysEx (`F0 00 20 29 ...`). Capture: opcode for "write text"; addressable regions (top line / bottom line / both); character set; max length per line.
+- [ ] Document the LCD-revert UX: after ~500 ms of idle, what does the LCD show? Options: blank; current page label ("Page 0 — Trim / Tape"); track name of the currently-selected channel.
 
 ### Acceptance Criteria
 
-- [ ] Row 1 V-pot moves with `vpot_row_mapping = "sends-1-2"` drive LUNA Send 1 across the bank
-- [ ] Row 2 V-pot moves drive LUNA Send 2 across the bank
-- [ ] Row 3 V-pot moves drive Pan (no regression from Phase 9b)
-- [ ] After ~2 s of V-pot idle, bridge reverts to Pan mode and LUNA's strip-name display returns
-- [ ] Mode switches are observable but not flickery — at most one mode switch per row change, none per gesture-within-the-same-row
+- [ ] `luna-mcu-mixer-notes.md` extended with: bytes to pick Tape + saturation; bytes to address channel Trim (or descope note); bytes to pick Send 1-8 in pairs; DAW Control V-pot byte map
+- [ ] `lcxl3-handshake-trace.md` extended with: LCD-write SysEx form; addressable regions; max chars per line
+- [ ] Page-revert policy + LCD-revert policy ratified by user before 10b code lands
+
+### Phase 10b — Page-aware sticky-mode state machine + LCD mirror
+
+**Deliverable:** the V-pot SurfaceEvent handler in `main.rs` reads `vpot_page` to drive LUNA's MCU mode + sub-selection on Row 1 / Row 2 V-pot motion. Bottom row stays on Pan. Optional auto-revert to Page 0 after idle. Separate routing for DAW Control mode if 10a finds it needs distinct handling. The LCXL3 LCD mirrors the currently-adjusted parameter's name + value, sourced from LUNA's strip-name SysEx push-back.
+
+- [ ] Add `LunaSurfaceMode` type in `state.rs` or `lcxl3.rs`: `Pan`, `Sends(u8)`, `PlugInTape`, `PlugInTrim`, with helper `from_page_and_row` that maps `(vpot_page, VRow) -> LunaSurfaceMode`.
+- [ ] In the V-pot SurfaceEvent handler in `main.rs`, replace the existing "all rows → pan" logic with: (a) for Row 3, emit Pan as today; (b) for Row 1 / Row 2, compute target mode from `(vpot_page, row)`; if LUNA's current mode != target, emit the mode-switch + drill-down byte sequence (per 10a) and update tracked mode; (c) emit the V-pot delta; (d) record `last_vpot_at`.
+- [ ] Optional auto-revert: each iteration of the main loop checks "if last_vpot_at + idle > now AND vpot_page != 0, revert to Page 0 + emit corresponding mode-switch". Tunable via `[lcxl3.mixer] vpot_page_revert_idle_ms` (default per 10a — likely 0 = sticky).
+- [ ] Page Up / Page Down handlers (already scaffolded) emit Page transitions; on a Page change the bridge eagerly emits the appropriate mode-switch so LUNA's surface follows even before the next V-pot move.
+- [ ] DAW Control mode V-pot routing — implement per 10a's findings. May be simply "pass through V-pot CCs and let LUNA handle EQ / focused-plugin" if 10a confirms the bytes route correctly without bridge intervention.
+- [ ] LCD mirror: parse LUNA's strip-name SysEx push-back (`F0 00 00 66 14 12 ...`); extract the active parameter's name + value (whichever strip / row LUNA is updating); format for the LCXL3's single LCD per the protocol captured in 10a. Maintain a "last-touched control" tracker so a fader move and a V-pot move on different strips both update the LCD with the relevant parameter.
+- [ ] LCD idle revert: after ~500 ms of no parameter-display SysEx from LUNA, write a neutral readout to the LCD per 10a's chosen policy (likely the active page label, e.g. "Page 0 — Trim / Tape").
+- [ ] Unit tests: `LunaSurfaceMode::from_page_and_row` mapping; Page Up / Page Down clamps; mode-switch state machine emits correct sequence on Page changes; LCD-format helper renders LUNA's parameter SysEx into the right LCXL3 LCD bytes.
+- [ ] Integration: ensure no regression in DAW Control jog-wheel (`row == VRow::Bottom && col == 0`) and no regression in Phase 9b pan behaviour.
+
+### Acceptance Criteria
+
+- [ ] Page 0 default: Row 1 drives channel Trim; Row 2 drives Tape saturation; Row 3 drives Pan (or descope note if Trim/Tape unreachable per 10a)
+- [ ] Page Down advances through Sends 1+2, 3+4, 5+6, 7+8 with correct LUNA response
+- [ ] Page Up retreats; clamps at 0 and 4
+- [ ] DAW Control mode V-pots drive EQ / focused-plugin per 10a
+- [ ] LCXL3 LCD shows parameter name + value of the currently-adjusted control (Live/Logic style); reverts to a neutral readout after ~500 ms of idle
+- [ ] No regression in faders, fader buttons, banking, transport, or LED feedback from Phase 9b
 - [ ] All existing unit tests still pass; `cargo build --release` clean
-- [ ] DAW Control mode jog-wheel (LCXL3 row 3 col 0 V-pot in DawControl) still nudges the transport per Phase 5
 
 ### Phase 10c — Hardware validation
 
-**Deliverable:** end-to-end verification of both mapping options on the user's LCXL3 + LUNA. Pick the default that feels best.
+**Deliverable:** end-to-end verification on the user's LCXL3 + LUNA in both DAW modes.
 
-- [ ] With `vpot_row_mapping = "sends-1-2"`: confirm Row 1 drives Send 1 reliably across all 8 strips of the current bank; confirm Row 2 drives Send 2; confirm gesture-to-effect latency is acceptable
-- [ ] If 10a captured Trim+Tape drill-down: with `vpot_row_mapping = "trim-tape"`, confirm Row 1 drives channel trim, Row 2 drives tape saturation
-- [ ] User compares the two mappings, picks the default for `LcxlMixerConfig::default()`
-- [ ] Verify idle-revert timing feels right; tune `vpot_revert_idle_ms` if needed; document the chosen default
-- [ ] Confirm LUNA's strip-name display behaviour is acceptable — flicker on row-change is expected; flicker on within-row is a bug; flicker on idle-revert is expected
-- [ ] No regression in faders, fader buttons, banking, transport, or LED feedback from Phase 9b
-- [ ] Document the final mapping + revert policy in `lcxl3-handshake-trace.md` or a new `phase-10-implementation-notes.md`
+- [ ] In DAW Mixer mode at Page 0: confirm Row 1 drives channel trim across all 8 strips; Row 2 drives tape saturation; Row 3 drives pan
+- [ ] Page Down → Page 1: Row 1 = Send 1, Row 2 = Send 2 — confirm visible LUNA response on the send slots
+- [ ] Page Down through Pages 2, 3, 4 — confirm Sends 3+4, 5+6, 7+8 each work
+- [ ] Page Up walks back through the same pages; clamps at 0 cleanly
+- [ ] In DAW Control mode: confirm top two V-pot rows drive EQ / focused-plugin per 10a
+- [ ] LCXL3 LCD shows parameter name + value of the currently-adjusted control during fader / V-pot motion; reverts cleanly to the neutral idle readout
+- [ ] No regression in faders, fader buttons, banking, transport, or LED feedback
+- [ ] Final Page-revert + LCD-revert policy confirmed comfortable for typical mixing workflow
+- [ ] Document the final design in `lcxl3-handshake-trace.md` or a new `phase-10-implementation-notes.md`
 
 ### Acceptance Criteria
 
 - [ ] All test cases above pass on the user's rig
-- [ ] User confirms the row-aware V-pot mapping is more useful than the Phase 9b "all rows → pan" baseline
+- [ ] User confirms the page-aware V-pot mapping + LCD mirror is more useful than the Phase 9b "all rows → pan" baseline

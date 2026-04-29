@@ -534,6 +534,18 @@ fn main() -> Result<()> {
     // shift with Shift held. Reset to false on bridge startup; the device
     // sends a press/release pair on each touch.
     let mut shift_held = false;
+    // Current V-pot page (Phase 10 scaffolding). Page Up/Down on the LCXL3
+    // navigates which LUNA parameters the top two V-pot rows control:
+    //   page 0 — Row 1 = channel trim,    Row 2 = tape-plugin saturation (default)
+    //   page 1 — Row 1 = Send 1,          Row 2 = Send 2
+    //   page 2 — Row 1 = Send 3,          Row 2 = Send 4
+    //   page 3 — Row 1 = Send 5,          Row 2 = Send 6
+    //   page 4 — Row 1 = Send 7,          Row 2 = Send 8
+    // Phase 9b's V-pot handler still routes all rows to Pan; Phase 10b's
+    // implementation reads `vpot_page` to drive the per-row mode-switch state
+    // machine. Until then this state is observed via the event log only.
+    let mut vpot_page: u8 = 0;
+    const VPOT_PAGE_MAX: u8 = 4;
     let mut mixer_state = LcxlMixerState::default();
     // Stage 6a: per-strip state mirrored from LUNA's MCU output stream.
     // Starts fully false; LUNA's surface-init burst will populate it.
@@ -938,34 +950,31 @@ fn main() -> Result<()> {
                                     }
                                 }
                                 SideButton::PageUp => {
-                                    // 8-channel bank shift forward (MCU note 0x2F).
-                                    let action = MixerAction::BankNext;
+                                    // Navigate the V-pot page state toward 0 (default
+                                    // = Trim/Tape). Phase 10b will use the page to
+                                    // route Row 1/2 V-pots to LUNA parameters.
+                                    if vpot_page > 0 {
+                                        vpot_page -= 1;
+                                    }
                                     emit_event(
                                         &events_tx,
                                         &events_history,
                                         ev_source,
-                                        format!("SideButton PageUp → {action:?}"),
+                                        format!("SideButton PageUp → vpot_page={vpot_page}"),
                                     );
-                                    if let Some(c) = connections.as_mut() {
-                                        if let Err(e) = c.backend.emit_mixer(&action) {
-                                            warn!(?e, "mixer backend emit failed");
-                                        }
-                                    }
                                 }
                                 SideButton::PageDown => {
-                                    // 8-channel bank shift backward (MCU note 0x2E).
-                                    let action = MixerAction::BankPrev;
+                                    // Navigate the V-pot page state toward
+                                    // VPOT_PAGE_MAX (Sends 7+8). Clamped at the top.
+                                    if vpot_page < VPOT_PAGE_MAX {
+                                        vpot_page += 1;
+                                    }
                                     emit_event(
                                         &events_tx,
                                         &events_history,
                                         ev_source,
-                                        format!("SideButton PageDown → {action:?}"),
+                                        format!("SideButton PageDown → vpot_page={vpot_page}"),
                                     );
-                                    if let Some(c) = connections.as_mut() {
-                                        if let Err(e) = c.backend.emit_mixer(&action) {
-                                            warn!(?e, "mixer backend emit failed");
-                                        }
-                                    }
                                 }
                                 SideButton::SmallButton => {
                                     // Phase 9c — toggle LUNA into Cue mode (headphone
