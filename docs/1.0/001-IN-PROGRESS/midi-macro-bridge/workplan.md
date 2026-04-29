@@ -50,6 +50,7 @@
 | Phase 10a Issue | [#353](https://github.com/audiocontrol-org/audiocontrol/issues/353) — V-pot row drill-down profiling |
 | Phase 10b Issue | [#354](https://github.com/audiocontrol-org/audiocontrol/issues/354) — row-aware sticky-mode state machine |
 | Phase 10c Issue | [#355](https://github.com/audiocontrol-org/audiocontrol/issues/355) — Phase 10 hardware validation |
+| Track ◀/▶ ignored by LUNA | [#356](https://github.com/audiocontrol-org/audiocontrol/issues/356) — open issue, deferred |
 
 ## Technical Approach
 
@@ -969,3 +970,18 @@ The LCXL3 has one LCD screen, not eight per-strip displays. In Live and Logic th
 
 - [ ] All test cases above pass on the user's rig
 - [ ] User confirms the page-aware V-pot mapping + LCD mirror is more useful than the Phase 9b "all rows → pan" baseline
+
+## Open Issues
+
+### Track ◀/▶ buttons don't move LUNA selection
+
+Tracking issue: [#356](https://github.com/audiocontrol-org/audiocontrol/issues/356)
+
+LUNA does not respond to MCU notes `0x30` / `0x31` (the standard "Channel Left / Channel Right" cursor-by-1 commands). The bridge correctly emits these from the LCXL3's Track ◀/▶ buttons via `MixerAction::ChannelPrev / ChannelNext`, but LUNA's selected-track indicator does not move. Per Phase 9a research notes, LUNA appears to use these notes only as **outbound** LED-state indicators ("channel-prev/next available"), not as inbound cursor commands.
+
+Workarounds available (deferred):
+
+- Probe alternative MCU notes (cursor keys `0x60`-`0x63`) during Phase 10a to find what LUNA actually accepts for cursor-by-1
+- Implement bridge-side selection tracking: mirror LUNA's select-note echoes into a "current selected channel" state, and on Track ◀/▶ emit `90 (0x18+new_channel) 7F` for the new channel (absolute select is known to work)
+
+Functional impact small — users can still select tracks via the per-strip select buttons under the faders. Shift + Track ◀/▶ (bank shift via `0x2E` / `0x2F`) works correctly.
