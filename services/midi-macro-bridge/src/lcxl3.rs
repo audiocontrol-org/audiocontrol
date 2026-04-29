@@ -283,6 +283,12 @@ pub enum SurfaceEvent {
 
     /// Device reported a sub-mode change (`B6 1E vv`).
     ModeChange(LcxlMode),
+
+    /// Shift key pressed or released. Shift is a momentary modifier on
+    /// channel 7 CC `0x3F`; the bridge tracks held state and uses it to
+    /// alter the meaning of other buttons (e.g. Track ◀/▶ → channel
+    /// cursor without Shift, bank shift with Shift).
+    Shift { pressed: bool },
 }
 
 // ---- Phase 9b parser helpers ---------------------------------------------
@@ -413,10 +419,10 @@ fn parse_mixer_only(bytes: &[u8]) -> Option<SurfaceEvent> {
         // Always co-emitted with 0x1E; suppress to avoid double-handling.
         (0xB6, 0x1F) => None,
 
-        // Channel 7, CC 0x3F = Shift. Not a SurfaceEvent variant in stage 1
-        // (Phase 5 also doesn't surface Shift). Return None and let the
-        // fallback handle it (which will also return None).
-        (0xB6, 0x3F) => None,
+        // Channel 7, CC 0x3F = Shift (momentary, value 0x7F press / 0x00
+        // release). Surface as a held-state event so the main loop can
+        // route Track ◀/▶ to bank shift while held.
+        (0xB6, 0x3F) => Some(SurfaceEvent::Shift { pressed }),
 
         // Record button CC 0x76 — not mapped as a SurfaceEvent in stage 1;
         // Phase 5 ignores it too (only sets its LED). Return None so neither

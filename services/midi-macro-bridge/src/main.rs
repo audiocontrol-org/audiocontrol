@@ -529,6 +529,11 @@ fn main() -> Result<()> {
     // to "now" so the bridge's own enter_mixer_mode call doesn't immediately
     // trigger a reclaim.
     let mut last_daw_mode_at: Option<std::time::Instant> = Some(std::time::Instant::now());
+    // Track LCXL3 Shift held-state (CC `B6 3F`). Used as a modifier:
+    // Track ◀/▶ buttons send single-channel cursor without Shift, bank
+    // shift with Shift held. Reset to false on bridge startup; the device
+    // sends a press/release pair on each touch.
+    let mut shift_held = false;
     let mut mixer_state = LcxlMixerState::default();
     // Stage 6a: per-strip state mirrored from LUNA's MCU output stream.
     // Starts fully false; LUNA's surface-init burst will populate it.
@@ -893,13 +898,18 @@ fn main() -> Result<()> {
                                     }
                                 }
                                 SideButton::TrackLeft => {
-                                    // Single-track step left (MCU note 0x30).
-                                    let action = MixerAction::ChannelPrev;
+                                    // Shift held → 8-track bank shift; otherwise
+                                    // single-track cursor. Per LCXL3 reference.
+                                    let action = if shift_held {
+                                        MixerAction::BankPrev
+                                    } else {
+                                        MixerAction::ChannelPrev
+                                    };
                                     emit_event(
                                         &events_tx,
                                         &events_history,
                                         ev_source,
-                                        format!("SideButton TrackLeft → {action:?}"),
+                                        format!("SideButton TrackLeft (shift={shift_held}) → {action:?}"),
                                     );
                                     if let Some(c) = connections.as_mut() {
                                         if let Err(e) = c.backend.emit_mixer(&action) {
@@ -908,13 +918,18 @@ fn main() -> Result<()> {
                                     }
                                 }
                                 SideButton::TrackRight => {
-                                    // Single-track step right (MCU note 0x31).
-                                    let action = MixerAction::ChannelNext;
+                                    // Shift held → 8-track bank shift; otherwise
+                                    // single-track cursor. Per LCXL3 reference.
+                                    let action = if shift_held {
+                                        MixerAction::BankNext
+                                    } else {
+                                        MixerAction::ChannelNext
+                                    };
                                     emit_event(
                                         &events_tx,
                                         &events_history,
                                         ev_source,
-                                        format!("SideButton TrackRight → {action:?}"),
+                                        format!("SideButton TrackRight (shift={shift_held}) → {action:?}"),
                                     );
                                     if let Some(c) = connections.as_mut() {
                                         if let Err(e) = c.backend.emit_mixer(&action) {
@@ -970,6 +985,11 @@ fn main() -> Result<()> {
                                     );
                                 }
                             }
+                        }
+
+                        // ── Shift modifier: track held state, do not emit ─────
+                        SurfaceEvent::Shift { pressed } => {
+                            shift_held = pressed;
                         }
 
                         // ── Mode change from device ───────────────────────────
