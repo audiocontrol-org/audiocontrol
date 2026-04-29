@@ -11,6 +11,72 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-29: midi-macro-bridge — LCXL3 Mixer UX Polish + Phase 10 Reframe
+
+### Feature: midi-macro-bridge
+### Worktree: audiocontrol-midi-macro-bridge
+
+### Goal
+
+Continue Phase 9b hardware testing and respond to UX issues the user found while exercising DAW Mixer mode on the LCXL3 + LUNA. Three named issues going in: (1) Page buttons don't appear to do anything; (2) Track buttons do what Page should do; (3) faders feel jumpy. The session expanded as the user did parallel research on the LCXL3 reference and found that the bridge's button mapping was wrong in a different direction than initially diagnosed.
+
+### Accomplished
+
+**Hot-fixes during hardware testing:**
+
+- Reclaim debounce — the LCXL3 emits paired `B6 1E 01` + `B6 1E 06` reports back-to-back when activated; my initial `force_mixer_mode` reclaim treated the second report as a real mode-change and looped at ~125ms cadence flickering the LEDs. Fixed by tracking `last_daw_mode_at` and only reclaiming when no DawMixer/DawControl report has been seen in the last 800ms.
+- Fader 7→14-bit mapping changed from `(v as u16) << 7` (caps at 0x3F80, LSB always zero, multiples-of-128 quantisation) to `(v << 7) | v` (full-scale, evenly distributed). Removes one quantisation artifact at the top of the fader. True temporal smoothing deferred.
+- Reclaim trigger refined: switching DAW Control ↔ DAW Mixer is legitimate user navigation via Mode + DAW Control / DAW Mixer buttons; only switching to a Custom mode (Mode + 1-16) triggers reclaim. User caught my over-aggressive reclaim via direct hardware feedback.
+
+**Button mapping iteration:**
+
+- Round 1: swapped Track ↔ Page semantics based on user's initial reading. Wired Track ◀/▶ → ChannelPrev/Next (MCU notes `0x30`/`0x31`), Page Up/Down → BankNext/Prev (`0x2F`/`0x2E`).
+- Round 2: user's LCXL3 reference research said Track buttons alone = single-channel cursor, **Shift + Track buttons** = bank shift. Surfaced `SurfaceEvent::Shift { pressed }` (previously suppressed in the parser) and made Track handlers branch on `shift_held`.
+- Round 3: user's continued research said Page Up/Down navigates **what the top two V-pot rows control** — pages of sends in Live/Logic. Repointed Page Up/Down to advance/retreat a bridge-local `vpot_page: u8` state (0..4) instead of bank-shifting.
+
+**Phase 10 reframe (twice):**
+
+- First version (after the original /feature-extend): "row-aware sticky-mode" with one fixed mapping per row. Row 1 = Send 1, Row 2 = Send 2 default; stretch alternative Row 1 = Trim, Row 2 = Tape Saturation. Single config knob to choose between mappings.
+- Second version (after user's Page-button research): "page-aware V-pot mapping" with Page Up/Down navigating a 5-page table. Page 0 (default) = Trim/Tape; Pages 1-4 = paired Sends. Bottom row always Pan. Plus DAW Control mode finding (top two rows = EQ / focused-plugin) and single-LCD mirror requirement. Updated PRD, workplan, README, and re-bodied issues #352-#355 to match.
+
+**Open issue surfaced:**
+
+- LUNA does not respond to MCU notes `0x30` / `0x31` as inbound cursor commands — the bridge correctly emits them from Track ◀/▶ but LUNA's selected-track indicator doesn't move. Per Phase 9a notes, LUNA appears to use these only as outbound LED-state indicators. Filed [#356](https://github.com/audiocontrol-org/audiocontrol/issues/356) with two workaround paths (probe alternative MCU notes; bridge-side selection tracking + absolute Select emit). Documented in workplan's "Open Issues" section.
+
+**Shipped:**
+
+- Pull request [#357](https://github.com/audiocontrol-org/audiocontrol/pull/357) opens the whole stack: Phase 9a + 9b + 9c (already on the branch) + this session's UX fixes + Phase 10 scaffolding. 331 cargo tests passing. Code-reviewer agent returned clean (5 non-blocking observations: continue-pattern in main loop, debounce-init footgun comment, defensive masking, parser inconsistency, potential clippy lints).
+
+### Didn't Work
+
+- Initial reclaim logic. The LCXL3 protocol detail (paired `B6 1E` reports) wasn't in any documentation I'd read; I had to be told by user feedback ("the device's leds are flashing like crazy") that the symptom was happening. By that point I'd left an orphaned bridge process running that was holding the virtual MCU UniqueID, which then blocked the user's own bridge from starting (`OSStatus -10843 + Address already in use`). Killed the process; user was unblocked.
+- Initial Phase 10 design ("row-aware sticky mode"). I assumed each LCXL3 V-pot row should be permanently bound to one parameter. The actual LCXL3 reference behaviour (which the user discovered via research) is that Page Up/Down dynamically reassigns the top two rows to pages of parameters, with a single LCD showing the active parameter. The first design wasn't wrong-shaped — it was a reasonable v1 — but it required two redesign rounds before reaching the model the user actually wanted.
+
+### Course Corrections
+
+- **[FABRICATION]** Initial reclaim logic claimed the device "left DAW Mixer" on every paired report. Without a `last_daw_mode_at` debounce I had no evidence it had actually left. The fix required a hardware symptom report from the user; should have been more cautious about treating `Custom(N)` reports as authoritative without persistence.
+- **[UX]** "Force mixer mode" was over-aggressive at first — reclaimed on any non-DawMixer report, including DAW Control. User had to correct: "Pressing the mode button and then the daw control or daw mixer buttons is how you're supposed to switch between daw control and daw mixer mode." The right model is: only Custom modes are device-leaving-the-DAW-umbrella; DawControl ↔ DawMixer is legitimate user navigation.
+- **[DOCUMENTATION]** Phase 10 needed two redesigns based on user research. Each redesign was authored without full LCXL3 reference understanding — I extrapolated from generic MCU spec rather than reading the device documentation. The user's iterative research caught both gaps. Lesson: when the user mentions "I'm doing research", expect the model to change based on findings; the right move is light-touch implementation that's easy to repoint.
+- **[PROCESS]** Left an orphaned bridge process running between sessions that broke the user's startup. Should kill background processes proactively when restarting.
+- **[COMPLEXITY]** Original Phase 10 design over-specified (sticky-mode state machine with idle revert) for the ratified design (page-driven V-pot routing with explicit Page Up/Down). The simpler model fits the actual LCXL3 reference better. Lesson: when the protocol target is uncertain, scope the implementation phase narrower and let the profiling phase ratify.
+
+### Quantitative
+
+- User messages: ~25
+- User corrections: 6 (reclaim logic; force_mixer trigger; button-mapping direction; Shift modifier; Page button semantics; LCD count and mirror requirement)
+- Commits: 9 (one for the README PR-Open mark)
+- GitHub issues: 4 created (#352-#355 Phase 10), 1 created (#356 open issue), 1 PR opened (#357)
+- Tests: 331 cargo tests passing throughout
+
+### Insights
+
+- **Hardware-test feedback is the only ground truth for protocol implementations.** The LCXL3 paired-report behaviour, the LUNA `0x30`/`0x31` cursor-input gap, and the Page-button semantics were all unknowable from documentation alone. The bridge's design should make iterative-redesign cheap — Phase 10 went through two redesigns and the cost was just doc updates because the actual code only landed scaffolding.
+- **Iterative-PR pattern works well for this feature.** Each PR (#316, #317, #326, #346, now #357) ships one or two phases of work that's hardware-validated. Long phases (Phase 7, Phase 8b/c, Phase 10b/c) stay on the planned list; the branch lives and continues. The README's status table reflects this clearly.
+- **The user's "I'm researching, hold on" framing was the correct flag.** When the user said "I'm doing a little research" before correcting me on Page/Track, that's the cue to expect a model change. I correctly held off on full Phase 10b implementation and did only scaffolding (vpot_page state with no LUNA effect yet) — which made the redesign trivial when the model changed.
+- **Five non-blocking code-review observations is the right shape.** A clean review with five "this is fine but worth knowing" notes is much more useful than an empty review or one with critical-looking-but-actually-non-blocking nitpicks.
+
+---
+
 ## 2026-04-28: midi-macro-bridge — Embedded Web Control Interface (Phase 6 + 8a)
 
 ### Feature: midi-macro-bridge
