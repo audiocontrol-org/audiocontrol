@@ -1,0 +1,68 @@
+# Probe 1: pitch-bend max on channel 1 — expect channel 1 fader to top
+E0 7F 7F
+# Batch: pitch-bend max on each of 8 channels, 1.5s apart
+E0 7F 7F
+E1 7F 7F
+E2 7F 7F
+E3 7F 7F
+E4 7F 7F
+E5 7F 7F
+E6 7F 7F
+E7 7F 7F
+# Probe: press MCU mute button for channel 1 (note on 0x10 ch1, then release)
+90 10 7F
+90 10 00
+# Probe: fader-touch protocol — touch-on, pitch-bend max, touch-off
+90 68 7F
+E0 7F 7F
+90 68 00
+# Probe pan: CC 0x10-0x17 are V-Pot 1-8 in MCU spec, relative encoding
+# Sending +1 click (value 0x01 in MCU CC pan; some impls use 0x41)
+B0 10 01
+B0 10 41
+# Solo channel 1 (note 0x08)
+90 08 7F
+90 08 00
+# Record arm channel 1 (note 0x00)
+90 00 7F
+90 00 00
+# Channel select (note 0x18)
+90 18 7F
+90 18 00
+# Bank prev (note 0x2E)
+90 2E 7F
+90 2E 00
+# Bank next (note 0x2F)
+90 2F 7F
+90 2F 00
+# Clear UAD MINI's mute (latch off)
+90 10 7F
+90 10 00
+# Solo on UAD MINI (note 0x08 ch1)
+90 08 7F
+90 08 00
+# Bank next — should shift strip names from tracks 1-8 to tracks 9-16
+90 2F 7F
+90 2F 00
+# Bank prev — should restore previous strip view (tracks 1-8)
+90 2E 7F
+90 2E 00
+# Now plugin: try MCU 'Plug-in' button (note 0x33 per some specs)
+90 33 7F
+90 33 00
+# Plugin family — MCU spec assignments
+# 0x2A = Pan/Surround
+90 2A 7F
+90 2A 00
+# 0x2B = Plug-In
+90 2B 7F
+90 2B 00
+# 0x2C = EQ
+90 2C 7F
+90 2C 00
+# 0x29 = Sends
+90 29 7F
+90 29 00
+# 0x2D = Instrument / Track
+90 2D 7F
+90 2D 00

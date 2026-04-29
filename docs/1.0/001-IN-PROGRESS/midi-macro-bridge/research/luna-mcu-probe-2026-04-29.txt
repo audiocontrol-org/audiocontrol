@@ -1,0 +1,539 @@
+[2m2026-04-29T02:13:03.050802Z[0m [32m INFO[0m created virtual MCU endpoint pair (stable UniqueIDs via CoreMIDI) [3mendpoint[0m[2m=[0m"MIDI Macro Bridge" [3msource_uid[0m[2m=[0m"0x4D4D4249" [3mdestination_uid[0m[2m=[0m"0x4D4D424F"
+# probe-mcu-interactive: virtual endpoint 'MIDI Macro Bridge' is now registered.
+# In LUNA, open MIDI Control Surfaces and select 'MIDI Macro Bridge' as
+# both INPUT DEVICE and OUTPUT DEVICE on a free row (protocol: MCU), and toggle ON.
+# Heartbeat responder active: replies to model 0x14 probes with identity.
+# Type hex byte sequences on stdin (one per line). '#' starts a comment.
+# Ctrl-C to stop. Dropping the bridge removes the endpoint from LUNA's list.
+# columns: <microseconds since start>  [<byte count>]  <label>  <hex>
+      864908us  [  3]  Note on             90 00 00
+      864917us  [  3]  Note on             90 01 00
+      864918us  [  3]  Note on             90 0A 00
+      864918us  [  3]  Note on             90 64 00
+      864919us  [  3]  Note on             90 0B 00
+      864919us  [  3]  Note on             90 71 00
+      864920us  [  3]  Note on             90 72 00
+      864920us  [  3]  Note on             90 0C 00
+      864920us  [  3]  Note on             90 0D 00
+      864921us  [  3]  Note on             90 0E 00
+      864921us  [  3]  Note on             90 0F 00
+      864921us  [  3]  Note on             90 10 00
+      864922us  [  3]  Note on             90 11 00
+      864922us  [  3]  Note on             90 12 00
+      864923us  [  3]  Note on             90 13 00
+      864923us  [  3]  Note on             90 02 00
+      864923us  [  3]  Note on             90 14 00
+      864925us  [  3]  Note on             90 15 00
+      864926us  [  3]  Note on             90 16 00
+      864926us  [  3]  Note on             90 17 00
+      864927us  [  3]  Note on             90 18 00
+      864937us  [  3]  Note on             90 19 00
+      864939us  [  3]  Note on             90 1A 00
+      864939us  [  3]  Note on             90 1B 00
+      864939us  [  3]  Note on             90 1C 00
+      864940us  [  3]  Note on             90 1D 00
+      864940us  [  3]  Note on             90 03 00
+      864940us  [  3]  Note on             90 1E 00
+      864941us  [  3]  Note on             90 1F 00
+      864941us  [  3]  Note on             90 04 00
+      864941us  [  3]  Note on             90 28 00
+      864942us  [  3]  Note on             90 29 00
+      864942us  [  3]  Note on             90 2A 00
+      864943us  [  3]  Note on             90 2B 00
+      865018us  [  3]  Note on             90 2C 00
+      865019us  [  3]  Note on             90 2D 00
+      865020us  [  3]  Note on             90 2E 00
+      865020us  [  3]  Note on             90 2F 00
+      865020us  [  3]  Note on             90 30 00
+      865021us  [  3]  Note on             90 31 00
+      865021us  [  3]  Note on             90 05 00
+      865021us  [  3]  Note on             90 32 00
+      865022us  [  3]  Note on             90 36 00
+      865022us  [  3]  Note on             90 37 00
+      865022us  [  3]  Note on             90 06 00
+      865023us  [  3]  Note on             90 07 00
+      865023us  [  3]  Note on             90 46 00
+      865024us  [  3]  Note on             90 47 00
+      865024us  [  3]  Note on             90 48 00
+      865024us  [  3]  Note on             90 49 00
+      865025us  [  3]  Note on             90 4A 00
+      865110us  [  3]  Note on             90 4B 00
+      865111us  [  3]  Note on             90 4C 00
+      865111us  [  3]  Note on             90 4D 00
+      865111us  [  3]  Note on             90 4E 00
+      865112us  [  3]  Note on             90 4F 00
+      865112us  [  3]  Note on             90 08 00
+      865112us  [  3]  Note on             90 51 00
+      865113us  [  3]  Note on             90 52 00
+      865113us  [  3]  Note on             90 53 00
+      865113us  [  3]  Note on             90 56 00
+      865114us  [  3]  Note on             90 59 00
+      865114us  [  3]  Note on             90 09 00
+      865115us  [  3]  Note on             90 5A 00
+      865115us  [  3]  Note on             90 5B 00
+      865115us  [  3]  Note on             90 5C 00
+      865116us  [  3]  Note on             90 5D 00
+      865116us  [  3]  Note on             90 5E 00
+      865224us  [  3]  Note on             90 5F 00
+      865225us  [  3]  Note on             90 60 00
+      865225us  [  3]  Note on             90 61 00
+      865226us  [  3]  Note on             90 62 00
+      865226us  [  3]  Note on             90 63 00
+      865226us  [  3]  CC                  B0 30 00
+      865227us  [  3]  CC                  B0 31 00
+      865227us  [  3]  CC                  B0 32 00
+      865227us  [  3]  CC                  B0 33 00
+      865228us  [  3]  CC                  B0 34 00
+      865228us  [  3]  CC                  B0 35 00
+      865228us  [  3]  CC                  B0 36 00
+      865228us  [  3]  CC                  B0 37 00
+      865229us  [  3]  CC                  B0 40 20
+      865229us  [  3]  CC                  B0 41 20
+      865229us  [  3]  CC                  B0 42 20
+      865230us  [  3]  CC                  B0 43 20
+      865313us  [  3]  CC                  B0 44 20
+      865313us  [  3]  CC                  B0 45 20
+      865314us  [  3]  CC                  B0 46 20
+      865314us  [  3]  CC                  B0 47 20
+      865314us  [  3]  CC                  B0 48 20
+      865315us  [  3]  CC                  B0 49 20
+      865315us  [  2]  Channel pressure    D0 00
+      865316us  [  2]  Channel pressure    D0 0F
+      865317us  [  2]  Channel pressure    D0 10
+      865317us  [  2]  Channel pressure    D0 1F
+      865317us  [  2]  Channel pressure    D0 20
+      865318us  [  2]  Channel pressure    D0 2F
+      865318us  [  2]  Channel pressure    D0 30
+      865318us  [  2]  Channel pressure    D0 3F
+      865319us  [  2]  Channel pressure    D0 40
+      865319us  [  2]  Channel pressure    D0 4F
+      865319us  [  2]  Channel pressure    D0 50
+      865402us  [  2]  Channel pressure    D0 5F
+      865402us  [  2]  Channel pressure    D0 60
+      865403us  [  2]  Channel pressure    D0 6F
+      865403us  [  2]  Channel pressure    D0 70
+      865404us  [  2]  Channel pressure    D0 7F
+      865404us  [  3]  Pitch bend          E0 00 00
+      865409us  [  3]  Pitch bend          E1 00 00
+      865409us  [  3]  Pitch bend          E2 00 00
+      865410us  [  3]  Pitch bend          E3 00 00
+      865410us  [  3]  Pitch bend          E4 00 00
+      865410us  [  3]  Pitch bend          E5 00 00
+      865410us  [  3]  Pitch bend          E6 00 00
+      865411us  [  3]  Pitch bend          E7 00 00
+      865411us  [  3]  Pitch bend          E8 00 00
+      865411us  [  8]  SysEx               F0 00 00 66 14 21 01 F7
+      865486us  [  9]  SysEx               F0 00 00 66 14 20 00 07 F7
+      865487us  [  9]  SysEx               F0 00 00 66 14 20 01 07 F7
+      865487us  [  9]  SysEx               F0 00 00 66 14 20 02 07 F7
+      865488us  [  9]  SysEx               F0 00 00 66 14 20 03 07 F7
+      865488us  [  9]  SysEx               F0 00 00 66 14 20 04 07 F7
+      865594us  [  9]  SysEx               F0 00 00 66 14 20 05 07 F7
+      865595us  [  9]  SysEx               F0 00 00 66 14 20 06 07 F7
+      865595us  [  9]  SysEx               F0 00 00 66 14 20 07 07 F7
+      865596us  [  3]  Note on             90 00 00
+      865596us  [  3]  Note on             90 01 00
+      865596us  [  3]  Note on             90 0A 00
+      865596us  [  3]  Note on             90 64 00
+      865597us  [  3]  Note on             90 0B 00
+      865597us  [  3]  Note on             90 71 00
+      865597us  [  3]  Note on             90 72 00
+      865598us  [  3]  Note on             90 0C 00
+      865598us  [  3]  Note on             90 0D 00
+      865598us  [  3]  Note on             90 0E 00
+      865678us  [  3]  Note on             90 0F 00
+      865680us  [  3]  Note on             90 10 00
+      865680us  [  3]  Note on             90 11 00
+      865681us  [  3]  Note on             90 12 00
+      865681us  [  3]  Note on             90 13 00
+      865682us  [  3]  Note on             90 02 00
+      865682us  [  3]  Note on             90 14 00
+      865682us  [  3]  Note on             90 15 00
+      865683us  [  3]  Note on             90 16 00
+      865683us  [  3]  Note on             90 17 00
+      865684us  [  3]  Note on             90 18 00
+      865684us  [  3]  Note on             90 19 00
+      865685us  [  3]  Note on             90 1A 00
+      865685us  [  3]  Note on             90 1B 00
+      865685us  [  3]  Note on             90 1C 00
+      865686us  [  3]  Note on             90 1D 00
+      865686us  [  3]  Note on             90 03 00
+      865776us  [  3]  Note on             90 1E 00
+      865777us  [  3]  Note on             90 1F 00
+      865778us  [  3]  Note on             90 04 00
+      865789us  [  3]  Note on             90 28 00
+      865790us  [  3]  Note on             90 29 00
+      865790us  [  3]  Note on             90 2A 00
+      865790us  [  3]  Note on             90 2B 00
+      865791us  [  3]  Note on             90 2C 00
+      865791us  [  3]  Note on             90 2D 00
+      865792us  [  3]  Note on             90 2E 00
+      865792us  [  3]  Note on             90 2F 00
+      865793us  [  3]  Note on             90 30 00
+      865793us  [  3]  Note on             90 31 00
+      865793us  [  3]  Note on             90 05 00
+      865794us  [  3]  Note on             90 32 00
+      865794us  [  3]  Note on             90 36 00
+      865795us  [  3]  Note on             90 37 00
+      865879us  [  3]  Note on             90 06 00
+      865879us  [  3]  Note on             90 07 00
+      865880us  [  3]  Note on             90 46 00
+      865880us  [  3]  Note on             90 47 00
+      865881us  [  3]  Note on             90 48 00
+      865881us  [  3]  Note on             90 49 00
+      865882us  [  3]  Note on             90 4A 00
+      865883us  [  3]  Note on             90 4B 00
+      865883us  [  3]  Note on             90 4C 00
+      865884us  [  3]  Note on             90 4D 00
+      865884us  [  3]  Note on             90 4E 00
+      865885us  [  3]  Note on             90 4F 00
+      865885us  [  3]  Note on             90 08 00
+      865886us  [  3]  Note on             90 51 00
+      865886us  [  3]  Note on             90 52 00
+      865887us  [  3]  Note on             90 53 00
+      865887us  [  3]  Note on             90 56 00
+      865981us  [  3]  Note on             90 59 00
+      865982us  [  3]  Note on             90 09 00
+      865982us  [  3]  Note on             90 5A 00
+      865983us  [  3]  Note on             90 5B 00
+      865983us  [  3]  Note on             90 5C 00
+      865983us  [  3]  Note on             90 5D 00
+      865984us  [  3]  Note on             90 5E 00
+      865984us  [  3]  Note on             90 5F 00
+      865985us  [  3]  Note on             90 60 00
+      865985us  [  3]  Note on             90 61 00
+      865986us  [  3]  Note on             90 62 00
+      865986us  [  3]  Note on             90 63 00
+      865986us  [  3]  CC                  B0 30 00
+      865987us  [  3]  CC                  B0 31 00
+      865988us  [  3]  CC                  B0 32 00
+      865989us  [  3]  CC                  B0 33 00
+      865989us  [  3]  CC                  B0 34 00
+      866084us  [  3]  CC                  B0 35 00
+      866084us  [  3]  CC                  B0 36 00
+      866085us  [  3]  CC                  B0 37 00
+      866085us  [  3]  CC                  B0 40 20
+      866086us  [  3]  CC                  B0 41 20
+      866086us  [  3]  CC                  B0 42 20
+      866087us  [  3]  CC                  B0 43 20
+      866087us  [  3]  CC                  B0 44 20
+      866088us  [  3]  CC                  B0 45 20
+      866088us  [  3]  CC                  B0 46 20
+      866089us  [  3]  CC                  B0 47 20
+      866089us  [  3]  CC                  B0 48 20
+      866090us  [  3]  CC                  B0 49 20
+      866090us  [  2]  Channel pressure    D0 00
+      866091us  [  2]  Channel pressure    D0 0F
+      866092us  [  2]  Channel pressure    D0 10
+      866092us  [  2]  Channel pressure    D0 1F
+      866186us  [  2]  Channel pressure    D0 20
+      866187us  [  2]  Channel pressure    D0 2F
+      866187us  [  2]  Channel pressure    D0 30
+      866188us  [  2]  Channel pressure    D0 3F
+      866188us  [  2]  Channel pressure    D0 40
+      866189us  [  2]  Channel pressure    D0 4F
+      866189us  [  2]  Channel pressure    D0 50
+      866190us  [  2]  Channel pressure    D0 5F
+      866190us  [  2]  Channel pressure    D0 60
+      866190us  [  2]  Channel pressure    D0 6F
+      866191us  [  2]  Channel pressure    D0 70
+      866191us  [  2]  Channel pressure    D0 7F
+      866192us  [  3]  Pitch bend          E0 00 00
+      866192us  [  3]  Pitch bend          E1 00 00
+      866192us  [  3]  Pitch bend          E2 00 00
+      866193us  [  3]  Pitch bend          E3 00 00
+      866193us  [  3]  Pitch bend          E4 00 00
+      866290us  [  3]  Pitch bend          E5 00 00
+      866291us  [  3]  Pitch bend          E6 00 00
+      866291us  [  3]  Pitch bend          E7 00 00
+      866292us  [  3]  Pitch bend          E8 00 00
+      866292us  [  3]  Note on             90 00 00
+      866293us  [  3]  Note on             90 01 00
+      866293us  [  3]  Note on             90 0A 00
+      866293us  [  3]  Note on             90 64 00
+      866294us  [  3]  Note on             90 0B 00
+      866294us  [  3]  Note on             90 71 00
+      866295us  [  3]  Note on             90 72 00
+      866296us  [  3]  Note on             90 0C 00
+      866296us  [  3]  Note on             90 0D 00
+      866296us  [  3]  Note on             90 0E 00
+      866297us  [  3]  Note on             90 0F 00
+      866297us  [  3]  Note on             90 10 00
+      866298us  [  3]  Note on             90 11 00
+      866393us  [  3]  Note on             90 12 00
+      866393us  [  3]  Note on             90 13 00
+      866394us  [  3]  Note on             90 02 00
+      866394us  [  3]  Note on             90 14 00
+      866395us  [  3]  Note on             90 15 00
+      866395us  [  3]  Note on             90 16 00
+      866396us  [  3]  Note on             90 17 00
+      866396us  [  3]  Note on             90 18 00
+      866397us  [  3]  Note on             90 19 00
+      866398us  [  3]  Note on             90 1A 00
+      866399us  [  3]  Note on             90 1B 00
+      866400us  [  3]  Note on             90 1C 00
+      866400us  [  3]  Note on             90 1D 00
+      866401us  [  3]  Note on             90 03 00
+      866401us  [  3]  Note on             90 1E 00
+      866402us  [  3]  Note on             90 1F 00
+      866402us  [  3]  Note on             90 04 00
+      866496us  [  3]  Note on             90 28 00
+      866497us  [  3]  Note on             90 29 00
+      866497us  [  3]  Note on             90 2A 00
+      866497us  [  3]  Note on             90 2B 00
+      866498us  [  3]  Note on             90 2C 00
+      866498us  [  3]  Note on             90 2D 00
+      866499us  [  3]  Note on             90 2E 00
+      866499us  [  3]  Note on             90 2F 00
+      866500us  [  3]  Note on             90 30 00
+      866501us  [  3]  Note on             90 31 00
+      866501us  [  3]  Note on             90 05 00
+      866501us  [  3]  Note on             90 32 00
+      866502us  [  3]  Note on             90 36 00
+      866502us  [  3]  Note on             90 37 00
+      866503us  [  3]  Note on             90 06 00
+      866503us  [  3]  Note on             90 07 00
+      866504us  [  3]  Note on             90 46 00
+      866600us  [  3]  Note on             90 47 00
+      866600us  [  3]  Note on             90 48 00
+      866601us  [  3]  Note on             90 49 00
+      866601us  [  3]  Note on             90 4A 00
+      866602us  [  3]  Note on             90 4B 00
+      866602us  [  3]  Note on             90 4C 00
+      866603us  [  3]  Note on             90 4D 00
+      866603us  [  3]  Note on             90 4E 00
+      866604us  [  3]  Note on             90 4F 00
+      866604us  [  3]  Note on             90 08 00
+      866605us  [  3]  Note on             90 51 00
+      866606us  [  3]  Note on             90 52 00
+      866606us  [  3]  Note on             90 53 00
+      866607us  [  3]  Note on             90 56 00
+      866607us  [  3]  Note on             90 59 00
+      866608us  [  3]  Note on             90 09 00
+      866608us  [  3]  Note on             90 5A 00
+      866703us  [  3]  Note on             90 5B 00
+      866704us  [  3]  Note on             90 5C 00
+      866705us  [  3]  Note on             90 5D 00
+      866705us  [  3]  Note on             90 5E 00
+      866705us  [  3]  Note on             90 5F 00
+      866706us  [  3]  Note on             90 60 00
+      866707us  [  3]  Note on             90 61 00
+      866707us  [  3]  Note on             90 62 00
+      866708us  [  3]  Note on             90 63 00
+      866708us  [  3]  CC                  B0 30 00
+      866708us  [  3]  CC                  B0 31 00
+      866709us  [  3]  CC                  B0 32 00
+      866710us  [  3]  CC                  B0 33 00
+      866710us  [  3]  CC                  B0 34 00
+      866711us  [  3]  CC                  B0 35 00
+      866711us  [  3]  CC                  B0 36 00
+      866712us  [  3]  CC                  B0 37 00
+      866808us  [  3]  CC                  B0 40 20
+      866809us  [  3]  CC                  B0 41 20
+      866809us  [  3]  CC                  B0 42 20
+      866810us  [  3]  CC                  B0 43 20
+      866811us  [  3]  CC                  B0 44 20
+      866811us  [  3]  CC                  B0 45 20
+      866812us  [  3]  CC                  B0 46 20
+      866812us  [  3]  CC                  B0 47 20
+      866812us  [  3]  CC                  B0 48 20
+      866813us  [  3]  CC                  B0 49 20
+      866813us  [  2]  Channel pressure    D0 00
+      866814us  [  2]  Channel pressure    D0 0F
+      866814us  [  2]  Channel pressure    D0 10
+      866815us  [  2]  Channel pressure    D0 1F
+      866815us  [  2]  Channel pressure    D0 20
+      866816us  [  2]  Channel pressure    D0 2F
+      866816us  [  2]  Channel pressure    D0 30
+      866911us  [  2]  Channel pressure    D0 3F
+      866912us  [  2]  Channel pressure    D0 40
+      866913us  [  2]  Channel pressure    D0 4F
+      866914us  [  2]  Channel pressure    D0 50
+      866914us  [  2]  Channel pressure    D0 5F
+      866915us  [  2]  Channel pressure    D0 60
+      866915us  [  2]  Channel pressure    D0 6F
+      866915us  [  2]  Channel pressure    D0 70
+      866916us  [  2]  Channel pressure    D0 7F
+      866916us  [  3]  Pitch bend          E0 00 00
+      866917us  [  3]  Pitch bend          E1 00 00
+      866917us  [  3]  Pitch bend          E2 00 00
+      866918us  [  3]  Pitch bend          E3 00 00
+      866918us  [  3]  Pitch bend          E4 00 00
+      866919us  [  3]  Pitch bend          E5 00 00
+      866919us  [  3]  Pitch bend          E6 00 00
+      866920us  [  3]  Pitch bend          E7 00 00
+      867012us  [  3]  Pitch bend          E8 00 00
+     1387240us  [  3]  Note on             90 2A 7F
+     1494447us  [  3]  Pitch bend          E8 10 64
+     1494637us  [  3]  Pitch bend          E0 10 64
+     1494902us  [  3]  Pitch bend          E1 10 64
+     1494905us  [  3]  Pitch bend          E2 10 64
+     1494906us  [  3]  Pitch bend          E3 10 64
+     1494906us  [  3]  CC                  B0 30 16
+     1494907us  [  3]  Note on             90 5D 7F
+     1494907us  [  3]  Note on             90 4A 7F
+     1597118us  [  3]  Note on             90 1A 7F
+     2016094us  [120]  SysEx               F0 00 00 66 14 12 00 55 41 44 4D 49 4E 20 4B 49 43 4B 20 20 20 53 54 52 49 50 45 20 4D 41 49 4E 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 F7
+     5864644us  [  7]  SysEx               F0 00 00 66 10 00 F7
+     5864652us  [  7]  SysEx               F0 00 00 66 11 00 F7
+     5864653us  [  7]  SysEx               F0 00 00 66 12 00 F7
+     5864653us  [  7]  SysEx               F0 00 00 66 13 00 F7
+# -> identity reply sent for model 0x14
+     5864655us  [  7]  SysEx               F0 00 00 66 14 00 F7
+     5864728us  [  7]  SysEx               F0 00 00 66 15 00 F7
+     5865742us  [ 18]  SysEx               F0 00 00 66 14 02 41 43 4D 4D 42 30 31 00 25 1A 6F F7
+     5865746us  [  8]  SysEx               F0 00 00 66 14 21 01 F7
+     5865747us  [  9]  SysEx               F0 00 00 66 14 20 00 07 F7
+     5865748us  [  9]  SysEx               F0 00 00 66 14 20 01 07 F7
+     5865853us  [  9]  SysEx               F0 00 00 66 14 20 02 07 F7
+     5865856us  [  9]  SysEx               F0 00 00 66 14 20 03 07 F7
+     5865856us  [  9]  SysEx               F0 00 00 66 14 20 04 07 F7
+     5865857us  [  9]  SysEx               F0 00 00 66 14 20 05 07 F7
+     5865857us  [  9]  SysEx               F0 00 00 66 14 20 06 07 F7
+     5865857us  [  9]  SysEx               F0 00 00 66 14 20 07 07 F7
+# Probe 1: pitch-bend max on channel 1 — expect channel 1 fader to top
+    76299942us  SENT                    E0 7F 7F
+# Batch: pitch-bend max on each of 8 channels, 1.5s apart
+   234212230us  SENT                    E0 7F 7F
+   235699904us  SENT                    E1 7F 7F
+   237225179us  SENT                    E2 7F 7F
+   238710249us  SENT                    E3 7F 7F
+   240251209us  SENT                    E4 7F 7F
+   241732265us  SENT                    E5 7F 7F
+   243267011us  SENT                    E6 7F 7F
+   244750998us  SENT                    E7 7F 7F
+   264071318us  [  3]  Note on             90 1A 00
+   264071324us  [  3]  Note on             90 4A 00
+# Probe: press MCU mute button for channel 1 (note on 0x10 ch1, then release)
+   271690511us  SENT                    90 10 7F
+   271696565us  [  3]  Note on             90 10 7F
+   272006344us  SENT                    90 10 00
+# Probe: fader-touch protocol — touch-on, pitch-bend max, touch-off
+   291142613us  SENT                    90 68 7F
+   291360490us  SENT                    E0 7F 7F
+   291364442us  [  3]  Pitch bend          E0 6F 7F
+   291683119us  SENT                    90 68 00
+   292296852us  [ 71]  SysEx               F0 00 00 66 14 12 00 47 61 69 6E 20 20 20 4B 49 43 4B 20 20 20 53 54 52 49 50 45 20 4D 41 49 4E 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 2B 31 32 2E 30 20 20 F7
+   292794410us  [ 71]  SysEx               F0 00 00 66 14 12 00 55 41 44 4D 49 4E 20 4B 49 43 4B 20 20 20 53 54 52 49 50 45 20 4D 41 49 4E 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 43 20 20 20 20 20 20 F7
+# Probe pan: CC 0x10-0x17 are V-Pot 1-8 in MCU spec, relative encoding
+# Sending +1 click (value 0x01 in MCU CC pan; some impls use 0x41)
+   336810771us  SENT                    B0 10 01
+   336813396us  [  3]  CC                  B0 30 16
+   336917199us  [ 71]  SysEx               F0 00 00 66 14 12 00 50 61 6E 20 20 20 20 4B 49 43 4B 20 20 20 53 54 52 49 50 45 20 4D 41 49 4E 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 31 52 20 20 20 20 20 F7
+   337989812us  SENT                    B0 10 41
+   337993757us  [  3]  CC                  B0 30 16
+   338097599us  [ 15]  SysEx               F0 00 00 66 14 12 38 43 20 20 20 20 20 20 F7
+# Solo channel 1 (note 0x08)
+   339230803us  SENT                    90 08 7F
+   339234913us  [  3]  Note on             90 08 7F
+   339245351us  [  3]  Note on             90 5A 7F
+   339386311us  [ 15]  SysEx               F0 00 00 66 14 12 00 55 41 44 4D 49 4E 20 F7
+   339538005us  SENT                    90 08 00
+# Record arm channel 1 (note 0x00)
+   340761014us  SENT                    90 00 7F
+   340778262us  [  3]  Note on             90 00 7F
+   341039389us  SENT                    90 00 00
+# Channel select (note 0x18)
+   342256619us  SENT                    90 18 7F
+   342372275us  [  3]  Note on             90 18 7F
+   342372334us  [  3]  Note on             90 4A 7F
+   342589610us  SENT                    90 18 00
+# Bank prev (note 0x2E)
+   343751289us  SENT                    90 2E 7F
+   343906446us  [  3]  Note on             90 18 00
+   343906452us  [  3]  Note on             90 1A 7F
+   344070032us  SENT                    90 2E 00
+# Bank next (note 0x2F)
+   345604770us  SENT                    90 2F 7F
+   345919418us  SENT                    90 2F 00
+# Clear UAD MINI's mute (latch off)
+   451308269us  SENT                    90 10 7F
+   451310477us  [  3]  Note on             90 10 00
+   451526138us  SENT                    90 10 00
+# Solo on UAD MINI (note 0x08 ch1)
+   461668398us  SENT                    90 08 7F
+   461671232us  [  3]  Note on             90 08 00
+   461687644us  [  3]  Note on             90 5A 00
+   461902107us  SENT                    90 08 00
+   588162542us  [  3]  Note on             90 00 00
+   612470837us  [  3]  Note on             90 1A 00
+   612543994us  [  3]  Note on             90 2F 7F
+   612543999us  [  3]  Note on             90 31 7F
+   612544086us  [  3]  Pitch bend          E4 10 64
+   612544087us  [  3]  Pitch bend          E5 10 64
+   612544087us  [  3]  Pitch bend          E6 10 64
+   612544087us  [  3]  Pitch bend          E7 10 64
+   612544088us  [  3]  CC                  B0 33 16
+   612544088us  [  3]  CC                  B0 34 16
+   612544088us  [  3]  CC                  B0 35 16
+   612544089us  [  3]  CC                  B0 36 16
+   612544089us  [  3]  CC                  B0 37 16
+   612648533us  [ 99]  SysEx               F0 00 00 66 14 12 15 54 52 41 43 4B 31 20 54 52 41 43 4B 32 20 54 52 41 43 4B 33 20 54 52 41 43 4B 34 20 54 52 41 43 4B 35 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 F7
+   612648541us  [  3]  Note on             90 1C 7F
+   612648608us  [  3]  Note on             90 1D 7F
+   612648609us  [  3]  Note on             90 1E 7F
+   612648609us  [  3]  Note on             90 1F 7F
+   612648610us  [  3]  Note on             90 1B 7F
+# Bank next — should shift strip names from tracks 1-8 to tracks 9-16
+   642741731us  SENT                    90 2F 7F
+   642950723us  SENT                    90 2F 00
+   642956400us  [  3]  Note on             90 2E 7F
+   642956409us  [  3]  Note on             90 30 7F
+   642956409us  [  3]  Pitch bend          E0 10 64
+   643057624us  [120]  SysEx               F0 00 00 66 14 12 00 54 52 41 43 4B 36 20 54 52 41 43 4B 37 20 54 52 41 43 4B 38 20 54 52 41 43 4B 39 20 54 52 43 4B 31 30 20 54 52 43 4B 31 31 20 54 52 43 4B 31 32 20 54 52 43 4B 31 33 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 F7
+   643057636us  [  3]  Note on             90 18 7F
+   643057638us  [  3]  Note on             90 19 7F
+   643057638us  [  3]  Note on             90 1A 7F
+# Bank prev — should restore previous strip view (tracks 1-8)
+   694234071us  SENT                    90 2E 7F
+   694449575us  SENT                    90 2E 00
+   694452011us  [  3]  Note on             90 2E 00
+   694452017us  [  3]  Note on             90 30 00
+   694452110us  [  3]  CC                  B0 30 11
+   694452115us  [  3]  CC                  B0 30 16
+   694452115us  [  3]  Pitch bend          E0 6F 7F
+   694556995us  [120]  SysEx               F0 00 00 66 14 12 00 55 41 44 4D 49 4E 20 4B 49 43 4B 20 20 20 53 54 52 49 50 45 20 54 52 41 43 4B 31 20 54 52 41 43 4B 32 20 54 52 41 43 4B 33 20 54 52 41 43 4B 34 20 54 52 41 43 4B 35 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 F7
+   694557011us  [  3]  Note on             90 18 00
+   694557013us  [  3]  Note on             90 19 00
+   694557013us  [  3]  Note on             90 1A 00
+# Now plugin: try MCU 'Plug-in' button (note 0x33 per some specs)
+   695453293us  SENT                    90 33 7F
+   695778301us  SENT                    90 33 00
+# Plugin family — MCU spec assignments
+# 0x2A = Pan/Surround
+   730557901us  SENT                    90 2A 7F
+   730773027us  SENT                    90 2A 00
+   730880407us  [120]  SysEx               F0 00 00 66 14 12 00 55 41 44 4D 49 4E 20 4B 49 43 4B 20 20 20 53 54 52 49 50 45 20 54 52 41 43 4B 31 20 54 52 41 43 4B 32 20 54 52 41 43 4B 33 20 54 52 41 43 4B 34 20 54 52 41 43 4B 35 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 43 20 20 20 20 20 20 F7
+# 0x2B = Plug-In
+   731732569us  SENT                    90 2B 7F
+   731944213us  SENT                    90 2B 00
+   731946976us  [  3]  CC                  B0 30 00
+   731946989us  [  3]  CC                  B0 31 00
+   731946990us  [  3]  CC                  B0 32 00
+   731946990us  [  3]  CC                  B0 33 00
+   731946991us  [  3]  CC                  B0 34 00
+   731946991us  [  3]  CC                  B0 35 00
+   731946991us  [  3]  CC                  B0 36 00
+   731946992us  [  3]  CC                  B0 37 00
+   731946992us  [  3]  Note on             90 2A 00
+   731946992us  [  3]  Note on             90 2B 7F
+   732050949us  [120]  SysEx               F0 00 00 66 14 12 00 50 69 63 6B 20 20 20 61 20 20 20 20 20 20 70 6C 75 67 69 6E 20 74 79 70 65 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 54 61 70 65 20 20 20 43 6F 6E 73 6F 6C 20 49 6E 73 72 74 73 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 F7
+# 0x2C = EQ
+   732953486us  SENT                    90 2C 7F
+   732955416us  [  3]  Note on             90 2B 00
+   733059036us  [106]  SysEx               F0 00 00 66 14 12 0E 43 75 65 20 20 20 20 74 6F 20 20 20 20 20 61 73 73 69 67 6E 20 74 6F 20 20 20 20 20 56 50 6F 74 73 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 F7
+   733160472us  SENT                    90 2C 00
+   733162755us  [  3]  Note on             90 2C 7F
+   733267310us  [120]  SysEx               F0 00 00 66 14 12 00 4E 6F 20 43 75 65 20 4E 6F 20 43 75 65 20 4E 6F 20 43 75 65 20 4E 6F 20 43 75 65 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 50 67 20 31 2F 33 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 F7
+# 0x29 = Sends
+   734169479us  SENT                    90 29 7F
+   734171690us  [  3]  Note on             90 2C 00
+   734274323us  [120]  SysEx               F0 00 00 66 14 12 00 50 69 63 6B 20 20 20 61 20 20 20 20 20 20 53 65 6E 64 20 20 20 74 6F 20 20 20 20 20 61 73 73 69 67 6E 20 74 6F 20 20 20 20 20 56 50 6F 74 73 20 20 20 20 20 20 20 20 20 53 65 6E 64 20 31 20 53 65 6E 64 20 32 20 53 65 6E 64 20 33 20 53 65 6E 64 20 34 20 53 65 6E 64 20 35 20 53 65 6E 64 20 36 20 53 65 6E 64 20 37 20 53 65 6E 64 20 38 20 F7
+   734381025us  SENT                    90 29 00
+   734384006us  [  3]  Note on             90 29 7F
+   734487665us  [120]  SysEx               F0 00 00 66 14 12 00 4E 6F 53 65 6E 64 20 4E 6F 53 65 6E 64 20 4E 6F 53 65 6E 64 20 4E 6F 53 65 6E 64 20 4E 6F 53 65 6E 64 20 4E 6F 53 65 6E 64 20 4E 6F 53 65 6E 64 20 50 67 20 31 2F 35 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 30 2E 30 20 20 20 20 F7
+# 0x2D = Instrument / Track
+   735395762us  SENT                    90 2D 7F
+   735491592us  [ 71]  SysEx               F0 00 00 66 14 12 31 4E 6F 53 65 6E 64 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 F7
+   735598176us  SENT                    90 2D 00
+# probe stopped
