@@ -741,8 +741,16 @@ fn main() -> Result<()> {
                         }
 
                         // ── Fader: 7-bit value → 14-bit volume ───────────────
+                        // Bit-replication maps v=0..=127 to value14=0..=16383
+                        // (full scale). A bare `<< 7` would cap at 16256 and
+                        // leave the LSB always zero, biasing the response down
+                        // and quantising to multiples of 128 — perceived as
+                        // "jumpy" at the top of the fader. Replicating the
+                        // upper bits into the lower 7 spreads the 128 distinct
+                        // positions evenly across the 14-bit range.
                         SurfaceEvent::Fader { strip, value } => {
-                            let value14 = (value as u16) << 7;
+                            let v = value as u16;
+                            let value14 = (v << 7) | v;
                             let action = MixerAction::Volume { channel: strip, value14 };
                             emit_event(
                                 &events_tx,
@@ -877,7 +885,8 @@ fn main() -> Result<()> {
                                     }
                                 }
                                 SideButton::TrackLeft => {
-                                    let action = MixerAction::BankPrev;
+                                    // Single-track step left (MCU note 0x30).
+                                    let action = MixerAction::ChannelPrev;
                                     emit_event(
                                         &events_tx,
                                         &events_history,
@@ -891,7 +900,8 @@ fn main() -> Result<()> {
                                     }
                                 }
                                 SideButton::TrackRight => {
-                                    let action = MixerAction::BankNext;
+                                    // Single-track step right (MCU note 0x31).
+                                    let action = MixerAction::ChannelNext;
                                     emit_event(
                                         &events_tx,
                                         &events_history,
@@ -905,39 +915,34 @@ fn main() -> Result<()> {
                                     }
                                 }
                                 SideButton::PageUp => {
-                                    // Phase 9c — toggle LUNA's MCU surface into Plug-In
-                                    // mode. V-Pots become plugin-parameter selectors;
-                                    // strip LCDs (managed by LUNA, mirrored later by
-                                    // stage 6b) show "Pick a plugin type" / parameter
-                                    // names + values. Press again (or another mode
-                                    // button) to leave this mode.
-                                    let action = MixerAction::EnterMode(McuMode::PlugIn);
-                                    if let Some(c) = connections.as_mut() {
-                                        if let Err(e) = c.backend.emit_mixer(&action) {
-                                            warn!(?e, "mixer backend emit failed (PlugIn enter)");
-                                        }
-                                    }
+                                    // 8-channel bank shift forward (MCU note 0x2F).
+                                    let action = MixerAction::BankNext;
                                     emit_event(
                                         &events_tx,
                                         &events_history,
                                         ev_source,
-                                        "PageUp → EnterMode(PlugIn)".to_string(),
+                                        format!("SideButton PageUp → {action:?}"),
                                     );
+                                    if let Some(c) = connections.as_mut() {
+                                        if let Err(e) = c.backend.emit_mixer(&action) {
+                                            warn!(?e, "mixer backend emit failed");
+                                        }
+                                    }
                                 }
                                 SideButton::PageDown => {
-                                    // Phase 9c — toggle LUNA into Sends mode.
-                                    let action = MixerAction::EnterMode(McuMode::Sends);
-                                    if let Some(c) = connections.as_mut() {
-                                        if let Err(e) = c.backend.emit_mixer(&action) {
-                                            warn!(?e, "mixer backend emit failed (Sends enter)");
-                                        }
-                                    }
+                                    // 8-channel bank shift backward (MCU note 0x2E).
+                                    let action = MixerAction::BankPrev;
                                     emit_event(
                                         &events_tx,
                                         &events_history,
                                         ev_source,
-                                        "PageDown → EnterMode(Sends)".to_string(),
+                                        format!("SideButton PageDown → {action:?}"),
                                     );
+                                    if let Some(c) = connections.as_mut() {
+                                        if let Err(e) = c.backend.emit_mixer(&action) {
+                                            warn!(?e, "mixer backend emit failed");
+                                        }
+                                    }
                                 }
                                 SideButton::SmallButton => {
                                     // Phase 9c — toggle LUNA into Cue mode (headphone

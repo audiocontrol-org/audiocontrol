@@ -152,6 +152,12 @@ pub enum MixerAction {
     Select { channel: u8 },
     BankPrev,
     BankNext,
+    /// Move LUNA's selected-channel cursor by one strip to the left.
+    /// MCU note `0x30` on channel 1.
+    ChannelPrev,
+    /// Move LUNA's selected-channel cursor by one strip to the right.
+    /// MCU note `0x31` on channel 1.
+    ChannelNext,
     /// Phase 9c — switch LUNA's MCU surface into a "menu" mode where the
     /// V-Pots become parameter selectors. Pressing any mode button when a
     /// different mode is active toggles to the new mode (LUNA echoes the
@@ -1332,12 +1338,15 @@ mod tests {
 
     #[test]
     fn mixer_action_volume_14bit_from_7bit_fader() {
-        // 7-bit fader value 64 → 14-bit value64 << 7 = 8192 (0x2000)
-        let fader_value: u8 = 64;
-        let value14 = (fader_value as u16) << 7;
-        assert_eq!(value14, 0x2000);
-        let action = MixerAction::Volume { channel: 0, value14 };
-        assert_eq!(action, MixerAction::Volume { channel: 0, value14: 0x2000 });
+        // Bit-replication mapping (matches main.rs Fader handler):
+        // value14 = (v << 7) | v, so v=0..=127 → value14=0..=16383.
+        let f = |v: u8| -> u16 { ((v as u16) << 7) | v as u16 };
+        assert_eq!(f(0), 0);
+        assert_eq!(f(127), 0x3FFF);
+        assert_eq!(f(64), (64 << 7) | 64);
+
+        let action = MixerAction::Volume { channel: 0, value14: f(64) };
+        assert_eq!(action, MixerAction::Volume { channel: 0, value14: 0x2040 });
     }
 
     // -- enter_mixer_mode (smoke test: just checks it returns Ok with a

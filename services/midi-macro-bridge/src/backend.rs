@@ -231,6 +231,12 @@ pub fn mixer_action_to_messages(action: &MixerAction) -> Vec<Vec<u8>> {
         MixerAction::BankNext => {
             vec![vec![0x90, 0x2F, 0x7F], vec![0x90, 0x2F, 0x00]]
         }
+        MixerAction::ChannelPrev => {
+            vec![vec![0x90, 0x30, 0x7F], vec![0x90, 0x30, 0x00]]
+        }
+        MixerAction::ChannelNext => {
+            vec![vec![0x90, 0x31, 0x7F], vec![0x90, 0x31, 0x00]]
+        }
         MixerAction::EnterMode(mode) => {
             // Phase 9c — surface mode select. LUNA listens on channel 1
             // notes per Phase 9a profiling (luna-mcu-mixer-notes.md).
