@@ -8,12 +8,19 @@ needs to settle before Phase 9b code lands. Two questions:
 2. **V-pot encoding:** do we force the device into relative mode at
    startup, or accept absolute values and translate to deltas?
 
-## Decision 1 — generalised `SurfaceEvent` enum (NOT a parallel channel)
+## Decision 1 (RATIFIED) — generalised `SurfaceEvent` enum
 
-Wrap the existing `TransportEvent` inside a broader `SurfaceEvent` enum.
-The transport-event channel becomes a surface-event channel; existing
-state-machine code keeps consuming the wrapped `TransportEvent` variants
-exactly as today.
+**Plain-language framing of the issue (added after user push-back: "I don't understand the issue"):**
+
+The existing channel between MIDI input callbacks and the main loop carries `TransportEvent` values — `Start`, `Stop`, `TogglePlay`, `NudgeForward(n)`, etc. The state machine (`Machine::handle`) consumes `TransportEvent` directly and decides what `Action`s to emit. Phase 9 adds *new event kinds* — fader moved, V-pot turned, fader button pressed — that don't belong in the state machine (they don't have echo dedup, don't transition transport state, don't get arbitrated).
+
+Three implementation shapes, only two reasonable:
+
+1. **Add new variants to `TransportEvent`** — would force `Machine::handle` to handle (or default-ignore) each mixer variant. Misleading name; mixer-event matches in the state machine become noise.
+2. **Wrap `TransportEvent` inside `SurfaceEvent`** — the channel carries `SurfaceEvent`; main loop pattern-matches and routes Transport variants to the state machine, mixer variants to a new mixer translation function. State machine code is untouched.
+3. **Run two parallel channels** — one for transport, one for mixer. Two drains, two error paths, no real benefit since the main loop sees both anyway.
+
+Picking option 2 (wrap) because it's the cleanest separation and reuses the existing channel/dispatch wiring with a one-line type shift. Doesn't affect user-visible behaviour — purely internal architecture.
 
 ```rust
 pub enum SurfaceEvent {
@@ -72,10 +79,17 @@ mixer events anyway (no echo dedup, no arbitration), so isolating
 mixer events in a separate channel buys nothing — they're already
 visible to the main loop and routable via match.
 
-## Decision 2 — V-pots in relative mode (force at startup)
+## Decision 2 (RATIFIED — refined per user feedback) — V-pots relative, faders pickup
 
-After the activation handshake and `B6 1E 01` mode-select, the bridge
-ALSO sends:
+User push-back: "I don't like either absolute or relative mode; I like catch mode, where values below or above the current value are ignored until the encoder catches up to the current value, then the encoder is in sync with the software. Also, these are continuous controllers, so this only matters if they only ever send out CC values (or equivalent) instead of +1/-1."
+
+The user's preference is **catch / pickup mode** as the user-facing model. The Phase 9a research clarifies that catch matters differently for V-pots vs faders, so the implementation splits along that axis:
+
+### V-pots — relative mode (no catch needed)
+
+V-pots are continuous rotary encoders (no end stops). In relative mode they emit `+1`/`-1` deltas per detent — there's no notion of an "absolute value" the encoder could be ahead of or behind. Catch mode is simply not applicable. The bridge forces relative mode at startup so V-pots emit deltas, and the bridge translates each delta into the corresponding LUNA pan-CC tick.
+
+After the activation handshake + `B6 1E 01`, also send:
 
 ```
 B6 45 7F   row 1 → relative
@@ -83,37 +97,52 @@ B6 48 7F   row 2 → relative
 B6 49 7F   row 3 → relative
 ```
 
-This puts all 24 V-pots in relative mode (`BF 4D-64 nn`,
-centre-at-`40`) instead of absolute mode (`BF 0D-24 nn`, raw 7-bit).
+This puts all 24 V-pots into delta mode (`BF 4D-64 nn`, centre-at-`40`).
+Each detent of rotation emits one CC; `value > 40` = clockwise, `value
+< 40` = counter-clockwise; magnitude = how many detents in that one
+packet. Same encoding Phase 5 already handles for the row-3-col-1 V-pot
+in DAW Control mode (the "jog wheel"). Phase 9b's parser reuses Phase
+5's relative-decode path.
 
-### Why force relative
+### Faders — DAW Fader Pickup ON (catch mode at the device level)
 
-- **Matches LUNA's MCU input expectation.** The MCU spec specifies
-  pan (CC `0x10-0x17`) as relative-encoded values (positive = clockwise,
-  negative = counter-clockwise). LUNA presumably implements this. If
-  the bridge accepted absolute values, it'd need to do
-  `current_absolute - last_absolute = delta` per V-pot tick anyway —
-  doing the conversion at the source is simpler.
-- **Stateless parser.** Relative mode doesn't require the parser to
-  remember the previous value per V-pot. Absolute mode does (without
-  it, every initial absolute value would look like a huge delta). The
-  parser stays a pure function `parse(bytes) -> Option<SurfaceEvent>`.
-- **Reuses Phase 5's existing relative encoding.** Phase 5's jog wheel
-  parser already handles `BF 5D nn` centre-at-`40` correctly. Same
-  encoding for all 24 V-pots — same code path.
-- **Initial-position consistency.** In absolute mode the V-pot's
-  emitted value depends on the encoder's last-touched physical position
-  (the device remembers across power cycles). The first byte after
-  Mixer-mode entry could be any value, looking like an unintended jump.
-  Relative mode emits no initial byte at all (only on user motion),
-  avoiding the spurious initial event.
+Faders are physical motorless controls. They DO have an absolute
+position the user sets by hand, and they CAN be out of sync with
+LUNA's stored value. This is exactly where catch matters.
 
-### Trade-off — absolute mode would have given automatic LED ring positioning
+The LCXL3 has a built-in feature for this: feature control CC `0x46`
+(decimal 70) — "DAW Fader Pickup". When enabled, the device only
+starts emitting fader-CC events once the fader passes through its
+current "DAW value" position. Below catch-up: silent. Above catch-up:
+silent. At catch-up: engaged, emits subsequent values normally.
 
-Some MCU surfaces use absolute V-pot values to drive their own LED
-rings (the device displays its current value). On the LCXL3, the V-pot
-LED rings are controlled separately via SysEx, not via the absolute
-value. So we lose nothing by going relative.
+Send at startup:
+
+```
+B6 46 7F   DAW Fader Pickup ON
+```
+
+The device handles catch-up internally. The bridge just consumes
+`BF 05-0C nn` events as they arrive and forwards as 14-bit pitch-bend
+to LUNA. No bridge-side per-fader state needed.
+
+The DAW (LUNA) needs to push fader positions back to the device for
+this to work — when the user changes a track's volume in LUNA's UI,
+LUNA pushes the new value via inbound MCU bytes; the LCXL3 picks that
+up as the fader's "current DAW value" reference for catch. Phase 9a's
+LUNA profiling step confirms this push-back behaviour.
+
+### Why this two-track approach instead of bridge-side catch logic
+
+- **The device implements pickup natively for faders.** Reusing the
+  built-in feature avoids reinventing it in Rust.
+- **V-pots in relative mode sidestep the problem entirely.** No
+  absolute-vs-DAW divergence is even possible with deltas.
+- **No per-control state in the bridge parser.** Stateless `parse`
+  function stays pure. Mode-tracking state (which sub-mode is active,
+  which row is in relative mode) lives in the caller, not the parser.
+- **Reuses Phase 5's relative-encoding code path.** Same byte format
+  the existing jog-wheel parser handles.
 
 ## Phase 9b implementation order (proposed)
 
@@ -156,14 +185,11 @@ Once this design is ratified, Phase 9b can land in stages:
 Stages 1-4 can land BEFORE LUNA profiling completes. Stages 5-7
 need the LUNA profile.
 
-## Open question — does the user ratify?
+## Ratification
 
-If you're OK with:
-- **`SurfaceEvent` enum** (Decision 1)
-- **Force V-pots to relative at startup** (Decision 2)
-- **Stages 1-4 land first; 5-7 wait for LUNA profile**
+Both decisions ratified 2026-04-29:
 
-… reply "ratified" and I'll start Phase 9b stage 1 (parser extension).
+- **Decision 1**: `SurfaceEvent` enum wraps `TransportEvent`. User had no preference between options once the issue was reframed in plain language; picked the wrap because it's the cleanest separation.
+- **Decision 2**: V-pots → relative (no catch needed), faders → built-in pickup mode (`B6 46 7F`). Refined from the original "everything relative" proposal after user clarified their preference for catch-mode behaviour where it matters (the faders).
 
-If you want to adjust either decision, this doc is the canonical place
-to capture the rationale — please push back here.
+Phase 9b stages 1-4 (parser, types, routing, mode lifecycle) can now land. Stages 5-7 (MCU translation, LED feedback, banking) wait for the LUNA profiling.
