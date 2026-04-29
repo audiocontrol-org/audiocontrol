@@ -373,6 +373,15 @@ fn main() -> Result<()> {
         return run_probe_mcu();
     }
 
+    // --probe-mcu-interactive: same as --probe-mcu but also reads hex byte
+    // sequences from stdin and sends them on the virtual MCU output. Used
+    // for collaborative LUNA-vocabulary discovery (Phase 9a) — the user
+    // configures LUNA to use the persistent endpoint, then we send probes
+    // by typing hex into the bridge's stdin.
+    if args.iter().any(|a| a == "--probe-mcu-interactive") {
+        return run_probe_mcu_interactive();
+    }
+
     // --lcxl3-activate [substring]: send the DAW-mode activation
     // SysEx to a Launch Control XL Mk3, then dump everything it emits.
     //
@@ -1556,6 +1565,130 @@ fn run_lcxl3_activate(substring: &str, mode: Option<u8>) -> Result<()> {
         }
         match rx.recv_timeout(Duration::from_millis(200)) {
             Ok((us, bytes)) => {
+                let hex: Vec<String> = bytes.iter().map(|b| format!("{b:02X}")).collect();
+                println!(
+                    "{us:>12}us  [{:>3}]  {:<18}  {}",
+                    bytes.len(),
+                    classify_midi(&bytes),
+                    hex.join(" ")
+                );
+            }
+            Err(mpsc::RecvTimeoutError::Timeout) => continue,
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                eprintln!("# MIDI channel disconnected");
+                return Ok(());
+            }
+        }
+    }
+}
+
+/// Interactive MCU probe: registers the virtual endpoint, replies to
+/// heartbeats, dumps every received byte, AND reads hex-byte commands
+/// from stdin and sends them on the virtual MCU output. Lets a session
+/// drive systematic probes against LUNA without the per-probe endpoint
+/// re-registration overhead of `--send-mcu`.
+///
+/// Stdin format: one line per probe, hex bytes whitespace-separated, e.g.
+///
+///     E0 7F 7F          ← pitch-bend channel 1 max (volume)
+///     B0 10 41          ← CC channel 1 0x10 +1 (pan?)
+///     90 10 7F          ← note-on 0x10 (mute / solo / arm?)
+///     #
+///
+/// Lines starting with `#` are treated as comments (printed back, no MIDI sent).
+/// Empty lines are ignored. Ctrl-C exits cleanly.
+fn run_probe_mcu_interactive() -> Result<()> {
+    use std::io::BufRead;
+    use std::time::Instant;
+
+    let start = Instant::now();
+    let (rx_tx, rx_rx) = mpsc::channel::<(u128, Vec<u8>)>();
+    let mut pair = midi::create_virtual_mcu(MCU_ENDPOINT_NAME, move |bytes| {
+        let _ = rx_tx.send((start.elapsed().as_micros(), bytes.to_vec()));
+    })?;
+
+    // Outbound-send channel: stdin reader thread parses lines, pushes
+    // bytes here; main thread sends via the (non-Send) virtual pair.
+    let (send_tx, send_rx) = mpsc::channel::<Vec<u8>>();
+
+    let (shutdown_tx, shutdown_rx) = mpsc::channel();
+    ctrlc::set_handler(move || {
+        let _ = shutdown_tx.send(());
+    })
+    .context("installing Ctrl-C handler")?;
+
+    // Stdin-reader thread.
+    {
+        let send_tx = send_tx.clone();
+        std::thread::spawn(move || {
+            let stdin = std::io::stdin();
+            let lock = stdin.lock();
+            for line in lock.lines() {
+                let Ok(line) = line else { break };
+                let trimmed = line.trim();
+                if trimmed.is_empty() {
+                    continue;
+                }
+                if let Some(comment) = trimmed.strip_prefix('#') {
+                    eprintln!("# {}", comment.trim());
+                    continue;
+                }
+                let parsed: Result<Vec<u8>, _> = trimmed
+                    .split_whitespace()
+                    .map(|tok| {
+                        let t = tok.trim_start_matches("0x").trim_start_matches("0X");
+                        u8::from_str_radix(t, 16)
+                    })
+                    .collect();
+                match parsed {
+                    Ok(bytes) if !bytes.is_empty() => {
+                        let _ = send_tx.send(bytes);
+                    }
+                    Ok(_) => {} // empty after split — ignore
+                    Err(e) => eprintln!("# parse error: {e} ({trimmed:?})"),
+                }
+            }
+        });
+    }
+
+    eprintln!("# probe-mcu-interactive: virtual endpoint '{MCU_ENDPOINT_NAME}' is now registered.");
+    eprintln!("# In LUNA, open MIDI Control Surfaces and select '{MCU_ENDPOINT_NAME}' as");
+    eprintln!("# both INPUT DEVICE and OUTPUT DEVICE on a free row (protocol: MCU), and toggle ON.");
+    eprintln!(
+        "# Heartbeat responder active: replies to model 0x{:02X} probes with identity.",
+        mcu::MCU_MODEL_ID
+    );
+    eprintln!("# Type hex byte sequences on stdin (one per line). '#' starts a comment.");
+    eprintln!("# Ctrl-C to stop. Dropping the bridge removes the endpoint from LUNA's list.");
+    eprintln!("# columns: <microseconds since start>  [<byte count>]  <label>  <hex>");
+
+    loop {
+        if shutdown_rx.try_recv().is_ok() {
+            eprintln!("# probe stopped");
+            return Ok(());
+        }
+
+        // Drain pending outbound sends from the stdin-reader thread.
+        while let Ok(bytes) = send_rx.try_recv() {
+            let hex: Vec<String> = bytes.iter().map(|b| format!("{b:02X}")).collect();
+            let ts = start.elapsed().as_micros();
+            match pair.send(&bytes) {
+                Ok(()) => println!("{ts:>12}us  SENT                    {}", hex.join(" ")),
+                Err(e) => eprintln!("# send failed ({e}): {}", hex.join(" ")),
+            }
+        }
+
+        match rx_rx.recv_timeout(Duration::from_millis(50)) {
+            Ok((us, bytes)) => {
+                if let Some(model) = mcu::parse_heartbeat_query(&bytes) {
+                    if model == mcu::MCU_MODEL_ID {
+                        let reply = mcu::mcu_identity_reply(model);
+                        match pair.send(&reply) {
+                            Ok(()) => eprintln!("# -> identity reply sent for model 0x{model:02X}"),
+                            Err(e) => eprintln!("# heartbeat reply failed: {e}"),
+                        }
+                    }
+                }
                 let hex: Vec<String> = bytes.iter().map(|b| format!("{b:02X}")).collect();
                 println!(
                     "{us:>12}us  [{:>3}]  {:<18}  {}",
