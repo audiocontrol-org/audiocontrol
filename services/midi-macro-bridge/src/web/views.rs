@@ -1201,6 +1201,7 @@ mod tests {
                 input_port: "LCXL3 1 DAW Out".to_string(),
                 output_port: "LCXL3 1 DAW In".to_string(),
                 host_name: "Bridge".to_string(),
+                mixer: crate::config::LcxlMixerConfig::default(),
             },
             ..Config::default()
         }

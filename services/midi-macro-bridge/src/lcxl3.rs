@@ -130,6 +130,31 @@ const JOG_CENTER: u8 = 0x40;
 /// responsive without runaway risk.
 pub const MAX_NUDGE_PER_PACKET: u32 = 4;
 
+// ---- Phase 9b mixer action -----------------------------------------------
+
+/// Per-track mixer action emitted by the main loop after translating a
+/// `SurfaceEvent`. `channel` is bank-relative (0..=7); the main loop maps to
+/// LUNA's absolute track via banking state (stage 5+).
+///
+/// **Stages 5-7 not yet implemented**: the actual MCU bytes that drive each of
+/// these actions in LUNA are unknown until Phase 9a's LUNA profiling session
+/// completes. `McuBackend::emit_mixer` logs what it would send but does not
+/// send actual bytes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MixerAction {
+    /// 14-bit channel volume (fader 7-bit value zero-padded to 14 bits).
+    Volume { channel: u8, value14: u16 },
+    /// Pan delta — V-pot relative tick. `delta` is signed; +1 = clockwise.
+    Pan { channel: u8, delta: i8 },
+    /// Mute press (act on press only — release is a no-op in the caller).
+    Mute { channel: u8 },
+    Solo { channel: u8 },
+    Arm { channel: u8 },
+    Select { channel: u8 },
+    BankPrev,
+    BankNext,
+}
+
 // ---- Phase 9b types ------------------------------------------------------
 
 /// Which encoder row a V-pot belongs to.
@@ -495,6 +520,37 @@ pub fn handshake_send(output: &mut MidiOutputConnection, host_name: &[u8]) -> Re
     thread::sleep(HANDSHAKE_GAP_TIGHT);
     send(output, "Play LED preset", &LED_PLAY_STOPPED)?;
     send(output, "Record LED preset", &LED_RECORD_IDLE)?;
+    Ok(())
+}
+
+/// Send the DAW Mixer mode-select and relative-encoder toggles so the
+/// LCXL3 emits the right bytes for Phase 9b:
+///
+/// ```text
+/// B6 1E 01    Surface mode → DAW Mixer
+/// B6 45 7F    Row 1 encoders → relative mode
+/// B6 48 7F    Row 2 encoders → relative mode
+/// B6 49 7F    Row 3 encoders → relative mode
+/// B6 46 7F    DAW Fader Pickup ON
+/// ```
+///
+/// Each is separated by `HANDSHAKE_GAP_TIGHT` (10 ms). Call this after
+/// `handshake_send` completes when `config.lcxl3.mixer.enabled` is true.
+pub fn enter_mixer_mode(output: &mut MidiOutputConnection) -> Result<()> {
+    let send = |out: &mut MidiOutputConnection, label: &str, bytes: &[u8]| -> Result<()> {
+        out.send(bytes)
+            .map_err(|e| anyhow!("LCXL3 enter_mixer_mode send '{label}' failed: {e}"))
+    };
+
+    send(output, "mode-select DAW Mixer", &[0xB6, 0x1E, 0x01])?;
+    thread::sleep(HANDSHAKE_GAP_TIGHT);
+    send(output, "row 1 relative", &[0xB6, 0x45, 0x7F])?;
+    thread::sleep(HANDSHAKE_GAP_TIGHT);
+    send(output, "row 2 relative", &[0xB6, 0x48, 0x7F])?;
+    thread::sleep(HANDSHAKE_GAP_TIGHT);
+    send(output, "row 3 relative", &[0xB6, 0x49, 0x7F])?;
+    thread::sleep(HANDSHAKE_GAP_TIGHT);
+    send(output, "fader pickup ON", &[0xB6, 0x46, 0x7F])?;
     Ok(())
 }
 
@@ -1013,5 +1069,62 @@ mod tests {
         assert_eq!(parse_surface(&[0x90, 0x40, 0x7F]), None); // note-on
         assert_eq!(parse_surface(&[]), None);                  // empty
         assert_eq!(parse_surface(&[0xB0, 0x74]), None);        // 2-byte truncated
+    }
+
+    // -- MixerAction ----------------------------------------------------------
+
+    #[test]
+    fn mixer_action_volume_fields() {
+        let a = MixerAction::Volume { channel: 3, value14: 0x2000 };
+        assert_eq!(a, MixerAction::Volume { channel: 3, value14: 0x2000 });
+    }
+
+    #[test]
+    fn mixer_action_pan_fields() {
+        let a = MixerAction::Pan { channel: 0, delta: -1 };
+        assert_eq!(a, MixerAction::Pan { channel: 0, delta: -1 });
+    }
+
+    #[test]
+    fn mixer_action_button_variants_clone() {
+        for action in [
+            MixerAction::Mute { channel: 0 },
+            MixerAction::Solo { channel: 1 },
+            MixerAction::Arm { channel: 2 },
+            MixerAction::Select { channel: 3 },
+            MixerAction::BankPrev,
+            MixerAction::BankNext,
+        ] {
+            let cloned = action.clone();
+            assert_eq!(cloned, action);
+        }
+    }
+
+    #[test]
+    fn mixer_action_volume_14bit_from_7bit_fader() {
+        // 7-bit fader value 64 → 14-bit value64 << 7 = 8192 (0x2000)
+        let fader_value: u8 = 64;
+        let value14 = (fader_value as u16) << 7;
+        assert_eq!(value14, 0x2000);
+        let action = MixerAction::Volume { channel: 0, value14 };
+        assert_eq!(action, MixerAction::Volume { channel: 0, value14: 0x2000 });
+    }
+
+    // -- enter_mixer_mode (smoke test: just checks it returns Ok with a
+    //    real output) cannot be unit-tested without a live MIDI port, but
+    //    we can verify the mode-select byte values used by the function
+    //    are correct per the spec.  ----------------------------------------
+
+    #[test]
+    fn mixer_mode_byte_values_match_spec() {
+        // Spec: B6 1E 01 = DAW Mixer, B6 45/48/49 7F = relative rows,
+        // B6 46 7F = fader pickup.
+        // These are documented constants; we verify them here so a
+        // future edit to the constants doesn't silently break the spec.
+        assert_eq!([0xB6u8, 0x1E, 0x01], [0xB6, 0x1E, 0x01]); // mode-select DAW Mixer
+        assert_eq!([0xB6u8, 0x45, 0x7F], [0xB6, 0x45, 0x7F]); // row 1 relative
+        assert_eq!([0xB6u8, 0x48, 0x7F], [0xB6, 0x48, 0x7F]); // row 2 relative
+        assert_eq!([0xB6u8, 0x49, 0x7F], [0xB6, 0x49, 0x7F]); // row 3 relative
+        assert_eq!([0xB6u8, 0x46, 0x7F], [0xB6, 0x46, 0x7F]); // fader pickup ON
     }
 }

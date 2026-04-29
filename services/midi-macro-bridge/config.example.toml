@@ -123,3 +123,23 @@ output_port = "LCXL3 1 DAW In"
 # when it has nothing else to show. Mirrors what Live sends ("Live 12").
 # Keep it short — the device's display has limited width.
 host_name = "Bridge"
+
+[lcxl3.mixer]
+# Phase 9b — mixer control. When enabled (the default), the bridge puts
+# the LCXL3 into DAW Mixer mode at startup by sending:
+#
+#   B6 1E 01    Surface mode → DAW Mixer
+#   B6 45 7F    Row 1 encoders → relative mode (V-pot pan)
+#   B6 48 7F    Row 2 encoders → relative mode
+#   B6 49 7F    Row 3 encoders → relative mode
+#   B6 46 7F    DAW Fader Pickup ON (catch mode for faders)
+#
+# Set to false to stay in DAW Control mode (Phase 5 default — transport
+# buttons + jog wheel only) and skip these startup commands.
+enabled = true
+
+# Starting bank (0-indexed). 0 = LUNA tracks 1-8 visible on the LCXL3
+# strips. The TrackLeft / TrackRight side buttons shift the bank window
+# by 8 each press. Stages 5+ implement banking; this value is stored
+# but not yet acted on in stages 2-4.
+starting_bank = 0

@@ -27,6 +27,7 @@ mod web;
 use crate::backend::{Backend, KeystrokeBackend, McuBackend};
 use crate::config::{BackendKind, Config, LoadOutcome};
 use crate::keys::Emitter;
+use crate::lcxl3::{ButtonRow, LcxlMode, MixerAction, SideButton, SurfaceEvent, VRow};
 use crate::locate::{
     transport_to_locate_event, EventSource as LocateEventSource, LocateController, LocateEvent,
     LocateOutcome, PositionSource,
@@ -38,7 +39,7 @@ use crate::web::state::{
     BridgeState, Cmd, EventLine, EventSource, PortStatus, PortStatuses, SseFrame, Status,
     WebState, build_channels,
 };
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, watch};
 
 // ── MIDI connection bundle ────────────────────────────────────────────────────
 
@@ -76,10 +77,11 @@ struct MidiConnections {
 /// the previous `MidiConnections` before invoking this function.
 fn setup_midi_connections(
     config: &Config,
-) -> Result<(MidiConnections, mpsc::Receiver<(EventSource, TransportEvent)>)> {
-    // Per-event transport channel. Each event is tagged with its source
+) -> Result<(MidiConnections, mpsc::Receiver<(EventSource, SurfaceEvent)>)> {
+    // Per-event surface channel. Each event is tagged with its source
     // (MC-500 or LCXL3) so the main loop can emit correctly-tagged EventLines.
-    let (transport_tx, transport_rx) = mpsc::channel::<(EventSource, TransportEvent)>();
+    // Phase 9b: channel carries SurfaceEvent (wraps TransportEvent for MC-500).
+    let (transport_tx, transport_rx) = mpsc::channel::<(EventSource, SurfaceEvent)>();
 
     // MCU byte channel: virtual-endpoint callback → main loop.
     let (mcu_bytes_tx, mcu_bytes_rx) = mpsc::channel::<Vec<u8>>();
@@ -114,7 +116,7 @@ fn setup_midi_connections(
         let tx_mc500 = transport_tx.clone();
         let port = config.midi_input_port.clone();
         match midi::connect(&port, move |event| {
-            if let Err(e) = tx_mc500.send((EventSource::Mc500, event)) {
+            if let Err(e) = tx_mc500.send((EventSource::Mc500, SurfaceEvent::Transport(event))) {
                 error!(?e, "channel send failed");
             }
         }) {
@@ -194,7 +196,9 @@ fn setup_midi_connections(
                 .map(|b| format!("{b:02X}"))
                 .collect::<Vec<_>>()
                 .join(" ");
-            if let Some(event) = lcxl3::parse(bytes) {
+            // Phase 9b: use parse_surface so faders, V-pots, side buttons,
+            // and mode changes all flow through the SurfaceEvent channel.
+            if let Some(event) = lcxl3::parse_surface(bytes) {
                 tracing::debug!(len = bytes.len(), %hex, ?event, "lcxl3: rx → event");
                 if let Err(e) = tx_lcxl3.send((EventSource::Lcxl3, event)) {
                     error!(?e, "lcxl3 channel send failed");
@@ -242,6 +246,14 @@ fn setup_midi_connections(
                     warn!(?e, "LCXL3 activation handshake failed; LEDs may not initialise");
                 } else {
                     info!(port = %port, host_name = %config.lcxl3.host_name, "LCXL3 output ready (activated)");
+                    // Stage 4: enter DAW Mixer mode if configured.
+                    if config.lcxl3.mixer.enabled {
+                        if let Err(e) = lcxl3::enter_mixer_mode(&mut conn) {
+                            warn!(?e, "LCXL3 enter_mixer_mode failed; device may stay in DAW Control mode");
+                        } else {
+                            info!("lcxl3-activate: entered mixer mode (mode-select + 3 relative-toggles + fader pickup)");
+                        }
+                    }
                 }
                 port_statuses.lcxl3_output = PortStatus {
                     configured: Some(port),
@@ -490,7 +502,15 @@ fn main() -> Result<()> {
 
     let (conns, rx) = setup_midi_connections(&config)?;
     let mut connections: Option<MidiConnections> = Some(conns);
-    let mut transport_rx: Option<mpsc::Receiver<(EventSource, TransportEvent)>> = Some(rx);
+    let mut transport_rx: Option<mpsc::Receiver<(EventSource, SurfaceEvent)>> = Some(rx);
+
+    // Phase 9b mode and mixer sub-mode state.
+    // Default to DawMixer so the main loop routes V-pots as pan from the
+    // start — the device enters DAW Mixer on startup (via enter_mixer_mode).
+    // If mixer.enabled = false the device boots in DAW Control; the mode
+    // state below will be overridden by the first ModeChange event anyway.
+    let mut current_mode = LcxlMode::DawMixer;
+    let mut mixer_state = LcxlMixerState::default();
 
     let mut machine = Machine::new();
     let mut tracker = PositionTracker::new();
@@ -649,106 +669,200 @@ fn main() -> Result<()> {
             }
         }
 
-        // ── Process one transport event ───────────────────────────────────────
+        // ── Process one surface event ─────────────────────────────────────────
         let transport_drained = if let Some(rx) = transport_rx.as_ref() {
             match rx.recv_timeout(Duration::from_millis(50)) {
-                Ok((ev_source, event)) => {
-                    let state_before = machine.state();
-                    let actions = machine.handle(event);
+                Ok((ev_source, surface_event)) => {
                     last_event_at = Some(SystemTime::now());
 
-                    if actions.is_empty() {
-                        info!(
-                            ?event,
-                            ?state_before,
-                            state_after = ?machine.state(),
-                            "no-op event (echo guard or state change only)"
-                        );
-                        emit_event(
-                            &events_tx,
-                            &events_history,
-                            ev_source,
-                            format!("{event:?} → no-op (state: {:?})", machine.state()),
-                        );
-                    } else {
-                        info!(
-                            ?event,
-                            ?state_before,
-                            state_after = ?machine.state(),
-                            ?actions,
-                            "dispatching actions"
-                        );
-                        emit_event(
-                            &events_tx,
-                            &events_history,
-                            ev_source,
-                            format!(
-                                "{event:?} → {actions:?} (state: {:?} → {:?})",
-                                state_before,
-                                machine.state()
-                            ),
-                        );
-                        if let Some(c) = connections.as_mut() {
-                            if let Err(e) = c.backend.emit(&actions) {
-                                warn!(?e, "backend emit failed");
-                            }
-                        }
-                    }
-
-                    if let TransportState::Locating { target, .. } = machine.state() {
-                        if let (Some(c), Some(trx)) =
-                            (connections.as_mut(), transport_rx.as_ref())
-                        {
-                            run_locate_step(
-                                target,
-                                &c.mcu_bytes_rx,
-                                trx,
-                                &c.pair,
+                    match surface_event {
+                        // ── Transport arm: existing state-machine path ────────
+                        SurfaceEvent::Transport(event) => {
+                            handle_transport_event(
+                                event,
+                                ev_source,
+                                &mut machine,
+                                &mut connections,
+                                transport_rx.as_ref(),
                                 &mut tracker,
-                                c.backend.as_mut(),
                                 locate_runtime_cfg,
                                 locate_enabled,
-                                &mut machine,
+                                &events_tx,
+                                &events_history,
+                                &status_tx,
+                                mcu_heartbeat_at,
+                                &active_config,
                             )?;
                         }
-                    }
 
-                    let state_after = machine.state();
-                    let transitioned_to_stopped = state_after == TransportState::Stopped
-                        && !matches!(state_before, TransportState::Stopped);
-                    if transitioned_to_stopped {
-                        if let Some(c) = connections.as_mut() {
-                            sync_mc500_to_luna_after_stop(
-                                &c.mcu_bytes_rx,
-                                &c.pair,
-                                &mut tracker,
-                                c.mc500_out.as_mut(),
+                        // ── Fader: 7-bit value → 14-bit volume ───────────────
+                        SurfaceEvent::Fader { strip, value } => {
+                            let value14 = (value as u16) << 7;
+                            let action = MixerAction::Volume { channel: strip, value14 };
+                            emit_event(
+                                &events_tx,
+                                &events_history,
+                                ev_source,
+                                format!("Fader {strip} → {action:?}"),
                             );
+                            if let Some(c) = connections.as_mut() {
+                                if let Err(e) = c.backend.emit_mixer(&action) {
+                                    warn!(?e, "mixer backend emit failed");
+                                }
+                            }
                         }
-                    }
 
-                    if state_after != state_before {
-                        if let Some(c) = connections.as_mut() {
-                            if let Some(out) = c.lcxl3_out.as_mut() {
-                                if let Some(led) = lcxl3::led_for_state(&state_after) {
-                                    if let Err(e) = out.send(&led) {
-                                        warn!(?e, "LCXL3 LED state push failed");
+                        // ── V-pot: mode-aware routing ─────────────────────────
+                        SurfaceEvent::VPotDelta { row, col, delta } => {
+                            if current_mode == LcxlMode::DawControl
+                                && row == VRow::Bottom
+                                && col == 0
+                            {
+                                // Jog-wheel path: route through transport state machine.
+                                let transport = if delta > 0 {
+                                    TransportEvent::NudgeForward(delta as u32)
+                                } else if delta < 0 {
+                                    TransportEvent::NudgeBackward((-delta) as u32)
+                                } else {
+                                    // delta == 0: no-op
+                                    continue;
+                                };
+                                handle_transport_event(
+                                    transport,
+                                    ev_source,
+                                    &mut machine,
+                                    &mut connections,
+                                    transport_rx.as_ref(),
+                                    &mut tracker,
+                                    locate_runtime_cfg,
+                                    locate_enabled,
+                                    &events_tx,
+                                    &events_history,
+                                    &status_tx,
+                                    mcu_heartbeat_at,
+                                    &active_config,
+                                )?;
+                            } else {
+                                // Mixer pan path.
+                                let action = MixerAction::Pan { channel: col, delta };
+                                emit_event(
+                                    &events_tx,
+                                    &events_history,
+                                    ev_source,
+                                    format!("V-pot ({row:?}, {col}) → {action:?}"),
+                                );
+                                if let Some(c) = connections.as_mut() {
+                                    if let Err(e) = c.backend.emit_mixer(&action) {
+                                        warn!(?e, "mixer backend emit failed");
                                     }
                                 }
                             }
                         }
 
-                        // Publish updated status after any transport state change.
-                        if let Some(c) = &connections {
-                            let _ = status_tx.send(build_status(
-                                BridgeState::Running,
-                                &machine,
-                                &tracker,
-                                last_event_at,
-                                mcu_heartbeat_at,
-                                c,
-                                &active_config,
-                            ));
+                        // ── Fader buttons: Solo/Arm and Mute/Select rows ──────
+                        SurfaceEvent::FaderButton { row, strip, pressed } => {
+                            if !pressed {
+                                continue; // ignore release
+                            }
+                            let action = match row {
+                                ButtonRow::TopSoloArm => {
+                                    if mixer_state.solo_arm_in_arm_mode {
+                                        MixerAction::Arm { channel: strip }
+                                    } else {
+                                        MixerAction::Solo { channel: strip }
+                                    }
+                                }
+                                ButtonRow::BottomMuteSelect => {
+                                    if mixer_state.mute_select_in_select_mode {
+                                        MixerAction::Select { channel: strip }
+                                    } else {
+                                        MixerAction::Mute { channel: strip }
+                                    }
+                                }
+                            };
+                            emit_event(
+                                &events_tx,
+                                &events_history,
+                                ev_source,
+                                format!("FaderButton {row:?} {strip} → {action:?}"),
+                            );
+                            if let Some(c) = connections.as_mut() {
+                                if let Err(e) = c.backend.emit_mixer(&action) {
+                                    warn!(?e, "mixer backend emit failed");
+                                }
+                            }
+                        }
+
+                        // ── Side-panel buttons ────────────────────────────────
+                        SurfaceEvent::SideButton { button, pressed } => {
+                            if !pressed {
+                                continue; // ignore release
+                            }
+                            match button {
+                                SideButton::SoloArmRowToggle => {
+                                    mixer_state.solo_arm_in_arm_mode =
+                                        !mixer_state.solo_arm_in_arm_mode;
+                                    info!(
+                                        in_arm = mixer_state.solo_arm_in_arm_mode,
+                                        "LCXL3 Solo/Arm row toggled"
+                                    );
+                                }
+                                SideButton::MuteSelectRowToggle => {
+                                    mixer_state.mute_select_in_select_mode =
+                                        !mixer_state.mute_select_in_select_mode;
+                                    info!(
+                                        in_select = mixer_state.mute_select_in_select_mode,
+                                        "LCXL3 Mute/Select row toggled"
+                                    );
+                                }
+                                SideButton::TrackLeft => {
+                                    let action = MixerAction::BankPrev;
+                                    emit_event(
+                                        &events_tx,
+                                        &events_history,
+                                        ev_source,
+                                        format!("SideButton TrackLeft → {action:?}"),
+                                    );
+                                    if let Some(c) = connections.as_mut() {
+                                        if let Err(e) = c.backend.emit_mixer(&action) {
+                                            warn!(?e, "mixer backend emit failed");
+                                        }
+                                    }
+                                }
+                                SideButton::TrackRight => {
+                                    let action = MixerAction::BankNext;
+                                    emit_event(
+                                        &events_tx,
+                                        &events_history,
+                                        ev_source,
+                                        format!("SideButton TrackRight → {action:?}"),
+                                    );
+                                    if let Some(c) = connections.as_mut() {
+                                        if let Err(e) = c.backend.emit_mixer(&action) {
+                                            warn!(?e, "mixer backend emit failed");
+                                        }
+                                    }
+                                }
+                                SideButton::PageUp | SideButton::PageDown => {
+                                    // Stage 5+ may map these to LUNA page navigation.
+                                    info!(?button, "side button (Page Up/Down) — unmapped in stages 2-4");
+                                }
+                                SideButton::SmallButton => {
+                                    info!("LCXL3 small button (0x68) pressed — unmapped");
+                                }
+                            }
+                        }
+
+                        // ── Mode change from device ───────────────────────────
+                        SurfaceEvent::ModeChange(new_mode) => {
+                            info!(?new_mode, "LCXL3 mode changed");
+                            current_mode = new_mode;
+                            emit_event(
+                                &events_tx,
+                                &events_history,
+                                ev_source,
+                                format!("LCXL3 mode → {new_mode:?}"),
+                            );
                         }
                     }
 
@@ -786,6 +900,23 @@ fn main() -> Result<()> {
             std::thread::sleep(Duration::from_millis(5));
         }
     }
+}
+
+// ── LCXL3 mixer sub-mode state ────────────────────────────────────────────────
+
+/// Tracks the device-managed row-toggle sub-modes so the main loop can
+/// interpret fader-button presses correctly.
+///
+/// Both flags start as `false` — Solo and Mute are the default row labels
+/// printed on the LCXL3 panel.
+#[derive(Debug, Default)]
+pub struct LcxlMixerState {
+    /// True after the first press of B0 41 (Solo/Arm row toggle).
+    /// Top fader-button row is Arm when true, Solo when false.
+    pub solo_arm_in_arm_mode: bool,
+    /// True after the first press of B0 42 (Mute/Select row toggle).
+    /// Bottom fader-button row is Select when true, Mute when false.
+    pub mute_select_in_select_mode: bool,
 }
 
 // ── Backend construction ──────────────────────────────────────────────────────
@@ -962,11 +1093,136 @@ fn handle_mcu_byte_idle(
     heartbeat_sent
 }
 
+// ── Transport event handler ───────────────────────────────────────────────────
+
+/// Route a single `TransportEvent` through the state machine and execute
+/// the resulting actions. Called from both the `SurfaceEvent::Transport`
+/// arm in the main loop AND from the `VPotDelta` jog-wheel path (when the
+/// device is in DAW Control mode and the bottom-row col-0 V-pot is used as
+/// a jog wheel).
+///
+/// This function encapsulates everything that was previously inlined in the
+/// main loop under `Ok((ev_source, event)) => { ... }`.
+#[allow(clippy::too_many_arguments)]
+fn handle_transport_event(
+    event: TransportEvent,
+    ev_source: EventSource,
+    machine: &mut Machine,
+    connections: &mut Option<MidiConnections>,
+    transport_rx: Option<&mpsc::Receiver<(EventSource, SurfaceEvent)>>,
+    tracker: &mut PositionTracker,
+    locate_runtime_cfg: locate::LocateConfig,
+    locate_enabled: bool,
+    events_tx: &broadcast::Sender<SseFrame>,
+    events_history: &Arc<Mutex<VecDeque<EventLine>>>,
+    status_tx: &watch::Sender<Status>,
+    mcu_heartbeat_at: Option<SystemTime>,
+    active_config: &Config,
+) -> Result<()> {
+    let state_before = machine.state();
+    let actions = machine.handle(event);
+
+    if actions.is_empty() {
+        info!(
+            ?event,
+            ?state_before,
+            state_after = ?machine.state(),
+            "no-op event (echo guard or state change only)"
+        );
+        emit_event(
+            events_tx,
+            events_history,
+            ev_source,
+            format!("{event:?} → no-op (state: {:?})", machine.state()),
+        );
+    } else {
+        info!(
+            ?event,
+            ?state_before,
+            state_after = ?machine.state(),
+            ?actions,
+            "dispatching actions"
+        );
+        emit_event(
+            events_tx,
+            events_history,
+            ev_source,
+            format!(
+                "{event:?} → {actions:?} (state: {:?} → {:?})",
+                state_before,
+                machine.state()
+            ),
+        );
+        if let Some(c) = connections.as_mut() {
+            if let Err(e) = c.backend.emit(&actions) {
+                warn!(?e, "backend emit failed");
+            }
+        }
+    }
+
+    if let TransportState::Locating { target, .. } = machine.state() {
+        if let (Some(c), Some(trx)) = (connections.as_mut(), transport_rx) {
+            run_locate_step(
+                target,
+                &c.mcu_bytes_rx,
+                trx,
+                &c.pair,
+                tracker,
+                c.backend.as_mut(),
+                locate_runtime_cfg,
+                locate_enabled,
+                machine,
+            )?;
+        }
+    }
+
+    let state_after = machine.state();
+    let transitioned_to_stopped = state_after == TransportState::Stopped
+        && !matches!(state_before, TransportState::Stopped);
+    if transitioned_to_stopped {
+        if let Some(c) = connections.as_mut() {
+            sync_mc500_to_luna_after_stop(
+                &c.mcu_bytes_rx,
+                &c.pair,
+                tracker,
+                c.mc500_out.as_mut(),
+            );
+        }
+    }
+
+    if state_after != state_before {
+        if let Some(c) = connections.as_mut() {
+            if let Some(out) = c.lcxl3_out.as_mut() {
+                if let Some(led) = lcxl3::led_for_state(&state_after) {
+                    if let Err(e) = out.send(&led) {
+                        warn!(?e, "LCXL3 LED state push failed");
+                    }
+                }
+            }
+        }
+
+        // Publish updated status after any transport state change.
+        if let Some(c) = connections.as_ref() {
+            let _ = status_tx.send(build_status(
+                BridgeState::Running,
+                machine,
+                tracker,
+                Some(SystemTime::now()),
+                mcu_heartbeat_at,
+                c,
+                active_config,
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 #[allow(clippy::too_many_arguments)]
 fn run_locate_step(
     target: u32,
     mcu_bytes_rx: &mpsc::Receiver<Vec<u8>>,
-    transport_rx: &mpsc::Receiver<(EventSource, TransportEvent)>,
+    transport_rx: &mpsc::Receiver<(EventSource, SurfaceEvent)>,
     pair: &Option<Rc<RefCell<VirtualMcuPair>>>,
     tracker: &mut PositionTracker,
     backend: &mut dyn Backend,
@@ -1117,14 +1373,21 @@ impl<'a> PositionSource for McuPositionSource<'a> {
 
 // ── Transport locate event source ─────────────────────────────────────────────
 
+/// Adapts the `SurfaceEvent` channel for the `LocateController`, which only
+/// cares about `TransportEvent`s. Non-transport surface events (faders, V-pots,
+/// etc.) arriving during a locate are silently dropped — the user can't operate
+/// the mixer while a locate is in progress, and the LocateController shouldn't
+/// have to know about them.
 struct TransportLocateEventSource<'a> {
-    rx: &'a mpsc::Receiver<(EventSource, TransportEvent)>,
+    rx: &'a mpsc::Receiver<(EventSource, SurfaceEvent)>,
 }
 
 impl<'a> LocateEventSource for TransportLocateEventSource<'a> {
     fn try_recv(&mut self) -> Option<LocateEvent> {
         match self.rx.try_recv() {
-            Ok((_source, ev)) => transport_to_locate_event(ev),
+            Ok((_source, SurfaceEvent::Transport(ev))) => transport_to_locate_event(ev),
+            // Non-transport surface events during a locate are discarded.
+            Ok((_source, _)) => None,
             Err(_) => None,
         }
     }

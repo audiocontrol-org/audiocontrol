@@ -230,6 +230,8 @@ fn parse_config_form(
             input_port: get("lcxl3_input_port")?.to_string(),
             output_port: get("lcxl3_output_port")?.to_string(),
             host_name: get("lcxl3_host_name")?.to_string(),
+            // Preserve mixer sub-config — the web form doesn't expose it yet.
+            mixer: snapshot.lcxl3.mixer.clone(),
         },
         transport: TransportConfig {
             backend,

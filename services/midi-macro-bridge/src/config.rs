@@ -247,6 +247,13 @@ pub struct LcxlConfig {
     /// actually driving the device.
     #[serde(default = "default_lcxl3_host_name")]
     pub host_name: String,
+
+    /// Phase 9b mixer control settings. When absent from the TOML the
+    /// sub-section defaults to `enabled = true` so mixer mode activates
+    /// automatically for any user who already has `[lcxl3] enabled = true`.
+    /// Opt out via `[lcxl3.mixer] enabled = false`.
+    #[serde(default)]
+    pub mixer: LcxlMixerConfig,
 }
 
 impl Default for LcxlConfig {
@@ -256,8 +263,46 @@ impl Default for LcxlConfig {
             input_port: default_lcxl3_input_port(),
             output_port: default_lcxl3_output_port(),
             host_name: default_lcxl3_host_name(),
+            mixer: LcxlMixerConfig::default(),
         }
     }
+}
+
+/// Phase 9b mixer control sub-configuration.
+///
+/// Lives under `[lcxl3.mixer]` in the TOML. Older configs (Phase 5) that lack
+/// this sub-section get `enabled = true` by default — mixer mode is on unless
+/// the user explicitly opts out.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct LcxlMixerConfig {
+    /// Whether to put the LCXL3 into DAW Mixer mode at startup (and
+    /// re-enter after a config reload). When true the bridge sends:
+    ///   B6 1E 01  — mode-select DAW Mixer
+    ///   B6 45/48/49 7F — all three V-pot rows → relative mode
+    ///   B6 46 7F  — DAW Fader Pickup ON
+    /// When false the LCXL3 stays in whatever sub-mode it boots into
+    /// (typically DAW Control — the Phase 5 default).
+    #[serde(default = "default_lcxl3_mixer_enabled")]
+    pub enabled: bool,
+
+    /// Starting bank (0-indexed). 0 = LUNA tracks 1-8 on the LCXL3 strips.
+    /// Bank-prev / bank-next on the device shifts the window by 8 each press.
+    /// Stage 5+ uses this; stages 2-4 store it but do not act on it.
+    #[serde(default)]
+    pub starting_bank: u8,
+}
+
+impl Default for LcxlMixerConfig {
+    fn default() -> Self {
+        Self {
+            enabled: default_lcxl3_mixer_enabled(),
+            starting_bank: 0,
+        }
+    }
+}
+
+fn default_lcxl3_mixer_enabled() -> bool {
+    true
 }
 
 fn default_lcxl3_enabled() -> bool {
@@ -639,6 +684,79 @@ mod tests {
         cfg.write_atomic(&path).expect("write_atomic failed");
         let tmp = path.with_extension("toml.tmp");
         assert!(!tmp.exists(), ".tmp left behind on success: {}", tmp.display());
+    }
+
+    // ── LcxlMixerConfig ───────────────────────────────────────────────────────
+
+    #[test]
+    fn lcxl3_mixer_defaults_to_enabled_true() {
+        // Phase 5 users who haven't set [lcxl3.mixer] at all get mixer mode
+        // enabled by default. Verify via both the Default impl and empty-TOML.
+        let cfg = LcxlMixerConfig::default();
+        assert!(cfg.enabled, "LcxlMixerConfig::default() must have enabled=true");
+        assert_eq!(cfg.starting_bank, 0);
+    }
+
+    #[test]
+    fn lcxl3_mixer_absent_section_defaults_to_enabled() {
+        // An [lcxl3] section with no [lcxl3.mixer] sub-section should still
+        // parse and have mixer.enabled = true.
+        let toml_text = r#"
+            midi_input_port = "MC-500"
+
+            [lcxl3]
+            enabled = true
+        "#;
+        let cfg: Config = toml::from_str(toml_text).unwrap();
+        assert!(cfg.lcxl3.enabled);
+        assert!(
+            cfg.lcxl3.mixer.enabled,
+            "mixer.enabled must default to true when [lcxl3.mixer] is absent"
+        );
+        assert_eq!(cfg.lcxl3.mixer.starting_bank, 0);
+    }
+
+    #[test]
+    fn lcxl3_mixer_can_be_explicitly_disabled() {
+        let toml_text = r#"
+            midi_input_port = "MC-500"
+
+            [lcxl3]
+            enabled = true
+
+            [lcxl3.mixer]
+            enabled = false
+        "#;
+        let cfg: Config = toml::from_str(toml_text).unwrap();
+        assert!(cfg.lcxl3.enabled);
+        assert!(!cfg.lcxl3.mixer.enabled);
+    }
+
+    #[test]
+    fn lcxl3_mixer_starting_bank_parses() {
+        let toml_text = r#"
+            midi_input_port = "MC-500"
+
+            [lcxl3.mixer]
+            enabled = true
+            starting_bank = 2
+        "#;
+        let cfg: Config = toml::from_str(toml_text).unwrap();
+        assert_eq!(cfg.lcxl3.mixer.starting_bank, 2);
+    }
+
+    #[test]
+    fn lcxl3_mixer_empty_toml_has_mixer_enabled() {
+        // Empty TOML → Config::default() path. Mixer must be enabled.
+        let cfg: Config = toml::from_str("").unwrap();
+        assert!(cfg.lcxl3.mixer.enabled);
+    }
+
+    #[test]
+    fn lcxl3_default_includes_mixer_with_enabled_true() {
+        let cfg = Config::default();
+        assert!(cfg.lcxl3.mixer.enabled);
+        assert_eq!(cfg.lcxl3.mixer.starting_bank, 0);
     }
 
     #[test]

@@ -15,6 +15,7 @@ use std::time::Duration;
 use tracing::trace;
 
 use crate::keys::{Emitter, KeyStroke};
+use crate::lcxl3::MixerAction;
 use crate::midi::VirtualMcuPair;
 use crate::state::Action;
 
@@ -40,6 +41,40 @@ pub trait Backend {
     fn emit(&mut self, actions: &[Action]) -> Result<()>;
 
     /// Human-readable name for logging at startup.
+    fn name(&self) -> &'static str;
+
+    /// Emit a mixer control action toward the DAW. Defaults to a
+    /// logged no-op so backends that have no mixer capability
+    /// (`KeystrokeBackend`) don't need to implement it explicitly.
+    ///
+    /// `McuBackend` overrides this with debug-log stubs for stages 5-7.
+    ///
+    /// **Note on design intent**: the `MixerBackend` trait below is the
+    /// *standalone* interface for code that only needs mixer dispatch
+    /// (e.g., tests). `Backend::emit_mixer` delegates to the same logic
+    /// at runtime so the main loop can use a single `Box<dyn Backend>`
+    /// for both transport and mixer dispatch without downcasting.
+    fn emit_mixer(&mut self, action: &MixerAction) -> Result<()> {
+        tracing::debug!(?action, "mixer: emit_mixer no-op on keystroke backend");
+        Ok(())
+    }
+}
+
+/// Standalone interface for emitting MCU mixer-control messages to the DAW.
+///
+/// Implemented by `McuBackend`. `KeystrokeBackend` does NOT implement this —
+/// no keystroke equivalent exists for mixer control (no DAW handles "press
+/// space to set channel 1 volume to 0.65"). Code that only needs mixer
+/// dispatch (test doubles, future sub-systems) can depend on this narrower
+/// trait instead of the full `Backend`.
+///
+/// **Stages 5-7 pending**: actual MCU byte translation requires LUNA profiling.
+/// Until that lands, `McuBackend::emit_mixer` logs what it would send.
+pub trait MixerBackend {
+    /// Emit a single mixer action toward the DAW.
+    fn emit_mixer(&mut self, action: &MixerAction) -> Result<()>;
+
+    /// Human-readable name for logging.
     fn name(&self) -> &'static str;
 }
 
@@ -119,6 +154,25 @@ impl Backend for McuBackend {
     fn name(&self) -> &'static str {
         "mcu"
     }
+
+    /// Override the default no-op with the real (currently stub) MCU mixer path.
+    fn emit_mixer(&mut self, action: &MixerAction) -> Result<()> {
+        MixerBackend::emit_mixer(self, action)
+    }
+}
+
+impl MixerBackend for McuBackend {
+    fn emit_mixer(&mut self, action: &MixerAction) -> Result<()> {
+        // STAGE 5-7 PENDING: actual MCU byte translation needs LUNA profiling.
+        // Log what we'd emit so the user can verify routing works end-to-end
+        // before the LUNA session that determines the correct byte vocabulary.
+        tracing::info!(?action, "mixer: would emit (LUNA profiling pending)");
+        Ok(())
+    }
+
+    fn name(&self) -> &'static str {
+        "mcu-mixer"
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -194,5 +248,40 @@ mod tests {
         ] {
             let _ = action_to_keystroke(&action);
         }
+    }
+
+    // ---- MixerBackend trait surface checks ----------------------------------
+    // These compile-time tests verify that MixerAction is publicly accessible
+    // and that the MixerBackend trait is visible. The McuBackend impl is tested
+    // via main.rs integration; these just confirm the types are wired.
+
+    #[test]
+    fn mixer_action_volume_debug_format() {
+        let a = MixerAction::Volume { channel: 2, value14: 8192 };
+        let s = format!("{a:?}");
+        assert!(s.contains("Volume"), "debug should contain 'Volume'");
+    }
+
+    #[test]
+    fn mixer_action_bank_nav_debug_format() {
+        assert!(format!("{:?}", MixerAction::BankPrev).contains("BankPrev"));
+        assert!(format!("{:?}", MixerAction::BankNext).contains("BankNext"));
+    }
+
+    #[test]
+    fn mixer_action_all_variants_are_eq() {
+        // Verify PartialEq derived correctly — same channel = equal, different = not.
+        assert_eq!(
+            MixerAction::Mute { channel: 3 },
+            MixerAction::Mute { channel: 3 }
+        );
+        assert_ne!(
+            MixerAction::Mute { channel: 3 },
+            MixerAction::Mute { channel: 4 }
+        );
+        assert_ne!(
+            MixerAction::Mute { channel: 0 },
+            MixerAction::Solo { channel: 0 }
+        );
     }
 }
