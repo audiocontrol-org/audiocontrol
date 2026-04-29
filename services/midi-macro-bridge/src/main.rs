@@ -21,6 +21,7 @@ mod lcxl3;
 mod locate;
 mod mcu;
 mod midi;
+mod mixer_state;
 mod state;
 mod web;
 
@@ -33,6 +34,7 @@ use crate::locate::{
     LocateOutcome, PositionSource,
 };
 use crate::mcu::PositionTracker;
+use crate::mixer_state::StripStates;
 use crate::midi::VirtualMcuPair;
 use crate::state::{Machine, TransportEvent, TransportState};
 use crate::web::state::{
@@ -520,6 +522,9 @@ fn main() -> Result<()> {
     // state below will be overridden by the first ModeChange event anyway.
     let mut current_mode = LcxlMode::DawMixer;
     let mut mixer_state = LcxlMixerState::default();
+    // Stage 6a: per-strip state mirrored from LUNA's MCU output stream.
+    // Starts fully false; LUNA's surface-init burst will populate it.
+    let mut strip_states = StripStates::default();
 
     let mut machine = Machine::new();
     let mut tracker = PositionTracker::new();
@@ -556,6 +561,15 @@ fn main() -> Result<()> {
         EventSource::Bridge,
         "bridge ready".to_string(),
     );
+
+    // Stage 6a: push initial all-OFF LED state to LCXL3 fader buttons so they
+    // start dark. LUNA's surface-init burst will arrive on the MCU input and
+    // light the buttons that reflect the DAW's current mixer state.
+    if let Some(c) = connections.as_mut() {
+        if config.lcxl3.mixer.enabled {
+            push_led_refresh(c.lcxl3_out.as_mut(), &strip_states, &mixer_state);
+        }
+    }
 
     info!("ready — waiting for MIDI events (Ctrl-C to exit)");
 
@@ -631,6 +645,17 @@ fn main() -> Result<()> {
                                 EventSource::Bridge,
                                 "reconnected — MIDI connections rebuilt".to_string(),
                             );
+                            // Stage 6a: re-push LED state after reconnect so the LCXL3
+                            // reflects the last-known strip states immediately.
+                            if let Some(c) = connections.as_mut() {
+                                if active_config.lcxl3.mixer.enabled {
+                                    push_led_refresh(
+                                        c.lcxl3_out.as_mut(),
+                                        &strip_states,
+                                        &mixer_state,
+                                    );
+                                }
+                            }
                             if let Some(c) = &connections {
                                 let _ = status_tx.send(build_status(
                                     BridgeState::Running,
@@ -664,7 +689,8 @@ fn main() -> Result<()> {
         let mut mcu_bytes_drained = false;
         if let Some(c) = connections.as_mut() {
             while let Ok(bytes) = c.mcu_bytes_rx.try_recv() {
-                let hb_fired = handle_mcu_byte_idle(&bytes, &c.pair, &mut tracker);
+                let (hb_fired, state_change) =
+                    handle_mcu_byte_idle(&bytes, &c.pair, &mut tracker);
                 if hb_fired {
                     mcu_heartbeat_at = Some(SystemTime::now());
                     emit_event(
@@ -673,6 +699,16 @@ fn main() -> Result<()> {
                         EventSource::McuOut,
                         "heartbeat reply".to_string(),
                     );
+                }
+                // Stage 6a: mirror LUNA's button-state echoes to LCXL3 LEDs.
+                if let Some(change) = state_change {
+                    if strip_states.apply(change) {
+                        push_led_refresh(
+                            c.lcxl3_out.as_mut(),
+                            &strip_states,
+                            &mixer_state,
+                        );
+                    }
                 }
                 mcu_bytes_drained = true;
             }
@@ -815,6 +851,14 @@ fn main() -> Result<()> {
                                         in_arm = mixer_state.solo_arm_in_arm_mode,
                                         "LCXL3 Solo/Arm row toggled"
                                     );
+                                    // Stage 6a: refresh top-row LEDs to reflect new mode.
+                                    if let Some(c) = connections.as_mut() {
+                                        push_led_refresh(
+                                            c.lcxl3_out.as_mut(),
+                                            &strip_states,
+                                            &mixer_state,
+                                        );
+                                    }
                                 }
                                 SideButton::MuteSelectRowToggle => {
                                     mixer_state.mute_select_in_select_mode =
@@ -823,6 +867,14 @@ fn main() -> Result<()> {
                                         in_select = mixer_state.mute_select_in_select_mode,
                                         "LCXL3 Mute/Select row toggled"
                                     );
+                                    // Stage 6a: refresh bottom-row LEDs to reflect new mode.
+                                    if let Some(c) = connections.as_mut() {
+                                        push_led_refresh(
+                                            c.lcxl3_out.as_mut(),
+                                            &strip_states,
+                                            &mixer_state,
+                                        );
+                                    }
                                 }
                                 SideButton::TrackLeft => {
                                     let action = MixerAction::BankPrev;
@@ -1033,7 +1085,7 @@ fn sync_mc500_to_luna_after_stop(
         let remaining = deadline.saturating_duration_since(Instant::now());
         let poll = remaining.min(Duration::from_millis(50));
         match mcu_bytes_rx.recv_timeout(poll) {
-            Ok(bytes) => handle_mcu_byte_idle(&bytes, pair, tracker),
+            Ok(bytes) => { handle_mcu_byte_idle(&bytes, pair, tracker); },
             Err(mpsc::RecvTimeoutError::Timeout) => continue,
             Err(mpsc::RecvTimeoutError::Disconnected) => break,
         };
@@ -1052,14 +1104,44 @@ fn sync_mc500_to_luna_after_stop(
     }
 }
 
-/// Idle-path handling for a received MCU byte sequence. Returns
-/// `true` if a heartbeat reply was sent (so the caller can update
-/// `mcu_heartbeat_at`).
+/// Stage 6a: send the full 16-LED refresh to the LCXL3 fader buttons.
+///
+/// Renders `render_led_bytes` and sends each `[B0 cc colour]` message to
+/// the LCXL3 output. No-ops gracefully if `lcxl3_out` is `None` (device
+/// not connected). Errors are logged as warnings — an LED hiccup is
+/// non-fatal.
+fn push_led_refresh(
+    lcxl3_out: Option<&mut midir::MidiOutputConnection>,
+    states: &StripStates,
+    mixer_state: &LcxlMixerState,
+) {
+    let Some(out) = lcxl3_out else { return };
+    let msgs = lcxl3::render_led_bytes(
+        states,
+        mixer_state.solo_arm_in_arm_mode,
+        mixer_state.mute_select_in_select_mode,
+    );
+    for msg in &msgs {
+        if let Err(e) = out.send(msg) {
+            warn!(?e, "LCXL3 LED send failed");
+            return;
+        }
+    }
+}
+
+/// Idle-path handling for a received MCU byte sequence.
+///
+/// Returns a pair:
+/// - `bool`: `true` if a heartbeat reply was sent (so the caller can update
+///   `mcu_heartbeat_at`).
+/// - `Option<mcu::McuStateChange>`: a button-state echo from LUNA if the
+///   message was one of the stage-6a state-change note-on messages. The
+///   caller applies this to `StripStates` and pushes LED bytes to the LCXL3.
 fn handle_mcu_byte_idle(
     bytes: &[u8],
     pair: &Option<Rc<RefCell<VirtualMcuPair>>>,
     tracker: &mut PositionTracker,
-) -> bool {
+) -> (bool, Option<mcu::McuStateChange>) {
     let hex = bytes
         .iter()
         .map(|b| format!("{b:02X}"))
@@ -1099,7 +1181,8 @@ fn handle_mcu_byte_idle(
             );
         }
     }
-    heartbeat_sent
+    let state_change = mcu::parse_state_change(bytes);
+    (heartbeat_sent, state_change)
 }
 
 // ── Transport event handler ───────────────────────────────────────────────────

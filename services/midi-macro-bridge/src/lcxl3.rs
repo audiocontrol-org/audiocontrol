@@ -480,6 +480,76 @@ pub fn led_for_state(state: &TransportState) -> Option<[u8; 3]> {
     }
 }
 
+// ---- Stage 6a: LCXL3 LED colour helpers ----------------------------------
+
+/// LCXL3 colour palette index for "LED dark / off". Value `0x00` is the
+/// first entry in Novation's 128-colour palette, which corresponds to the
+/// LED being extinguished.
+pub const COLOUR_OFF: u8 = 0x00;
+
+/// Bright red — used for Record Arm state. Entry `0x05` in Novation's
+/// palette is a saturated red, matching the conventional Mackie arm colour.
+///
+/// Reference: `research/lcxl3-color-palette-hex.png` row 0, col 5.
+pub const COLOUR_ARM: u8 = 0x05;
+
+/// Amber/orange — used for Mute state. Entry `0x0D` reads as a warm
+/// yellow-orange. Conventional "muted" colour on Mackie and SSL surfaces.
+///
+/// Reference: `research/lcxl3-color-palette-hex.png` row 1, col 5.
+pub const COLOUR_MUTE: u8 = 0x0D;
+
+/// Bright green — used for Solo state. Entry `0x15` in Novation's palette
+/// is a saturated lime-green, matching the conventional Mackie solo colour.
+///
+/// Reference: `research/lcxl3-color-palette-hex.png` row 2, col 5.
+pub const COLOUR_SOLO: u8 = 0x15;
+
+/// Blue/violet — used for Channel Select state. Entry `0x2D` in Novation's
+/// palette is a blue-purple that reads as "selected" without clashing with
+/// the red/green/amber already in use for the other three states.
+///
+/// Reference: `research/lcxl3-color-palette-hex.png` row 5, col 5.
+pub const COLOUR_SELECT: u8 = 0x2D;
+
+/// Compute the 16 LED messages to push to the LCXL3 fader buttons given the
+/// current LUNA-mirrored strip states and the LCXL3 device's row-mode toggles.
+///
+/// Top fader-button row (CC `0x25`-`0x2C`) reflects either Solo or Arm state,
+/// depending on `solo_arm_in_arm_mode`. Bottom row (CC `0x2D`-`0x34`) reflects
+/// either Mute or Select state. Each message is `[0xB0, cc, colour]`.
+///
+/// The 16-message full refresh is fine for occasional updates (mode toggles,
+/// init burst); stage 6a uses it on every state change (at most 48 bytes per
+/// change, negligible relative to LCXL3 timing requirements).
+pub fn render_led_bytes(
+    states: &crate::mixer_state::StripStates,
+    solo_arm_in_arm_mode: bool,
+    mute_select_in_select_mode: bool,
+) -> Vec<[u8; 3]> {
+    let mut out = Vec::with_capacity(16);
+    for strip in 0..8usize {
+        // Top row: Solo or Arm, depending on toggle.
+        let top_cc = 0x25u8 + strip as u8;
+        let top_colour = if solo_arm_in_arm_mode {
+            if states.arm[strip] { COLOUR_ARM } else { COLOUR_OFF }
+        } else {
+            if states.solo[strip] { COLOUR_SOLO } else { COLOUR_OFF }
+        };
+        out.push([0xB0, top_cc, top_colour]);
+
+        // Bottom row: Mute or Select, depending on toggle.
+        let bot_cc = 0x2Du8 + strip as u8;
+        let bot_colour = if mute_select_in_select_mode {
+            if states.select[strip] { COLOUR_SELECT } else { COLOUR_OFF }
+        } else {
+            if states.mute[strip] { COLOUR_MUTE } else { COLOUR_OFF }
+        };
+        out.push([0xB0, bot_cc, bot_colour]);
+    }
+    out
+}
+
 // ---- Send helpers --------------------------------------------------------
 
 /// Inter-message gap used inside the activation handshake. Live waits
@@ -1057,6 +1127,139 @@ mod tests {
         // Record is not mapped as a SurfaceEvent in stage 1.
         assert_eq!(parse_surface(&[0xB0, 0x76, 0x7F]), None);
         assert_eq!(parse_surface(&[0xB0, 0x76, 0x00]), None);
+    }
+
+    // -- render_led_bytes (Stage 6a) ------------------------------------------
+
+    use crate::mixer_state::StripStates;
+
+    fn all_off_states() -> StripStates {
+        StripStates::default()
+    }
+
+    #[test]
+    fn render_led_bytes_returns_16_messages() {
+        let msgs = render_led_bytes(&all_off_states(), false, false);
+        assert_eq!(msgs.len(), 16);
+    }
+
+    #[test]
+    fn render_led_bytes_all_off_all_dark() {
+        let msgs = render_led_bytes(&all_off_states(), false, false);
+        for msg in &msgs {
+            assert_eq!(msg[0], 0xB0, "status should be B0");
+            assert_eq!(msg[2], COLOUR_OFF, "colour should be OFF when all states false");
+        }
+    }
+
+    #[test]
+    fn render_led_bytes_top_row_cc_range() {
+        let msgs = render_led_bytes(&all_off_states(), false, false);
+        // Messages alternate top/bottom: indices 0,2,4,...14 are top row
+        for strip in 0usize..8 {
+            assert_eq!(msgs[strip * 2][1], 0x25 + strip as u8, "top row CC for strip {strip}");
+        }
+    }
+
+    #[test]
+    fn render_led_bytes_bottom_row_cc_range() {
+        let msgs = render_led_bytes(&all_off_states(), false, false);
+        // Messages alternate top/bottom: indices 1,3,5,...15 are bottom row
+        for strip in 0usize..8 {
+            assert_eq!(msgs[strip * 2 + 1][1], 0x2D + strip as u8, "bottom row CC for strip {strip}");
+        }
+    }
+
+    #[test]
+    fn render_led_bytes_strip0_mute_on_lights_bottom_row_strip0() {
+        let mut states = all_off_states();
+        states.mute[0] = true;
+        let msgs = render_led_bytes(&states, false, false); // mute mode
+        // Strip 0 bottom row = msg index 1
+        assert_eq!(msgs[1], [0xB0, 0x2D, COLOUR_MUTE]);
+        // Other bottom strips remain off
+        for strip in 1..8usize {
+            assert_eq!(msgs[strip * 2 + 1][2], COLOUR_OFF, "strip {strip} should be off");
+        }
+    }
+
+    #[test]
+    fn render_led_bytes_strip3_solo_on_in_solo_mode() {
+        let mut states = all_off_states();
+        states.solo[3] = true;
+        let msgs = render_led_bytes(&states, false, false); // top row = solo mode
+        // Strip 3 top row = msg index 6 (3 * 2)
+        assert_eq!(msgs[6], [0xB0, 0x28, COLOUR_SOLO]);
+    }
+
+    #[test]
+    fn render_led_bytes_strip5_arm_on_in_arm_mode() {
+        let mut states = all_off_states();
+        states.arm[5] = true;
+        let msgs = render_led_bytes(&states, true, false); // solo_arm_in_arm_mode = true
+        // Strip 5 top row = msg index 10 (5 * 2)
+        assert_eq!(msgs[10], [0xB0, 0x2A, COLOUR_ARM]);
+    }
+
+    #[test]
+    fn render_led_bytes_strip7_select_on_in_select_mode() {
+        let mut states = all_off_states();
+        states.select[7] = true;
+        let msgs = render_led_bytes(&states, false, true); // mute_select_in_select_mode = true
+        // Strip 7 bottom row = msg index 15 (7 * 2 + 1)
+        assert_eq!(msgs[15], [0xB0, 0x34, COLOUR_SELECT]);
+    }
+
+    #[test]
+    fn render_led_bytes_solo_state_hidden_when_in_arm_mode() {
+        // If top row is in Arm mode, Solo state should not light up the top row.
+        let mut states = all_off_states();
+        states.solo[2] = true;
+        let msgs = render_led_bytes(&states, true, false); // arm mode: solo invisible
+        // Strip 2 top row should be off (arm[2] is false)
+        assert_eq!(msgs[4][2], COLOUR_OFF);
+    }
+
+    #[test]
+    fn render_led_bytes_arm_state_hidden_when_in_solo_mode() {
+        let mut states = all_off_states();
+        states.arm[4] = true;
+        let msgs = render_led_bytes(&states, false, false); // solo mode: arm invisible
+        // Strip 4 top row should be off (solo[4] is false)
+        assert_eq!(msgs[8][2], COLOUR_OFF);
+    }
+
+    #[test]
+    fn render_led_bytes_mute_state_hidden_when_in_select_mode() {
+        let mut states = all_off_states();
+        states.mute[1] = true;
+        let msgs = render_led_bytes(&states, false, true); // select mode: mute invisible
+        // Strip 1 bottom row should be off (select[1] is false)
+        assert_eq!(msgs[3][2], COLOUR_OFF);
+    }
+
+    #[test]
+    fn render_led_bytes_select_state_hidden_when_in_mute_mode() {
+        let mut states = all_off_states();
+        states.select[6] = true;
+        let msgs = render_led_bytes(&states, false, false); // mute mode: select invisible
+        // Strip 6 bottom row should be off (mute[6] is false)
+        assert_eq!(msgs[13][2], COLOUR_OFF);
+    }
+
+    #[test]
+    fn render_led_bytes_multiple_active_strips_all_correct_colours() {
+        let mut states = all_off_states();
+        states.mute[0] = true;
+        states.mute[7] = true;
+        states.solo[3] = true;
+        let msgs = render_led_bytes(&states, false, false);
+        // Bottom strip 0 = msg 1
+        assert_eq!(msgs[1][2], COLOUR_MUTE);
+        // Bottom strip 7 = msg 15
+        assert_eq!(msgs[15][2], COLOUR_MUTE);
+        // Top strip 3 = msg 6
+        assert_eq!(msgs[6][2], COLOUR_SOLO);
     }
 
     // -- Unrecognised bytes ---------------------------------------------------
