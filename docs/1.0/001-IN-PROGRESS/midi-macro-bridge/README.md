@@ -21,6 +21,7 @@
 | Phase 8a: SSE-Driven Live Status | Complete | Shipped in [#346](https://github.com/audiocontrol-org/audiocontrol/pull/346). Replaces Phase 6's hardcoded indicators with push-driven live updates. `SseFrame::StatusUpdated(html)` named SSE event broadcast by a tokio task watching `status_rx.changed()`. Time-elapsed displays tick smoothly client-side via `setInterval` against `data-timestamp` attributes embedded in the payload — no per-second HTTP traffic. Verified via Playwright snapshot showing live port LEDs, transport state, and routing matrix populated from real config. |
 | Phase 8b: Brand Realignment | Planned | Copy audiocontrol.org's canonical `design-tokens.css` ("service-manual / flight-instrumentation" — warm-ink background, phosphor amber, Departure Mono headlines, IBM Plex Sans body, JetBrains Mono numerics, `.signal-led` / `.dimension-bracket` / `.card-glow` / atmospheric-grain utility classes) into the bridge bundle so the embedded UI reads as part of the parent product. Supersedes Phase 6d's bespoke "Studio Rack Utility" stylesheet. |
 | Phase 8c: Hardware Validation | Planned | End-to-end verification across the rebrand and wiring fixes. |
+| Phase 9: LCXL3 DAW Mixer + Plugin Control | Planned | Extends Phase 5's transport-only mapping to the LCXL3's DAW Mixer mode (faders → LUNA channel volume, V-pots → pan, fader buttons → mute/solo/arm/select, banking, LED feedback) and — scope contingent on Phase 9a research — the LCXL3's plugin-parameter control. Requires research on LCXL3's two DAW sub-modes (DAW Control vs DAW Mixer) and LUNA's MCU mixer/plugin byte vocabulary. Sub-phases: 9a research + profiling, 9b mixer mode implementation, 9c plugin / DAW control extension (scope per 9a), 9d hardware validation. |
 
 ## Documentation
 
@@ -46,4 +47,6 @@
 - Phase 8 Parent Issue: [#342](https://github.com/audiocontrol-org/audiocontrol/issues/342)
 - Phase 8a–8c Issues: [#343](https://github.com/audiocontrol-org/audiocontrol/issues/343), [#344](https://github.com/audiocontrol-org/audiocontrol/issues/344), [#345](https://github.com/audiocontrol-org/audiocontrol/issues/345)
 - Phase 6 + 8a Pull Request: [#346](https://github.com/audiocontrol-org/audiocontrol/pull/346) (merged 2026-04-28)
+- Phase 9 Parent Issue: [#347](https://github.com/audiocontrol-org/audiocontrol/issues/347)
+- Phase 9a–9d Issues: [#348](https://github.com/audiocontrol-org/audiocontrol/issues/348), [#349](https://github.com/audiocontrol-org/audiocontrol/issues/349), [#350](https://github.com/audiocontrol-org/audiocontrol/issues/350), [#351](https://github.com/audiocontrol-org/audiocontrol/issues/351)
 - Milestone: TBD

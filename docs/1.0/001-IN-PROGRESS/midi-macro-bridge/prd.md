@@ -155,6 +155,25 @@ Phase 8 fixes the wiring first (so the live state is correct before we restyle),
 
 **Out of scope for Phase 8:** light-mode toggle (the parent site is dark-only; we follow), per-device accent variation (the bridge isn't a device editor), the editor-core CSS tokens are explicitly **not** the brand reference (the user has confirmed the editor code is itself behind the website's brand standards).
 
+### Phase 9 — LCXL3 DAW Mixer + Plugin Control
+
+Phase 5 mapped the LCXL3's transport buttons and jog wheel to LUNA's transport — what Novation calls "DAW Control" mode of the device's two DAW-mode variants. The device has a second DAW-mode variant called "DAW Mixer" that exposes the eight channel strips (faders, V-pots, fader buttons) for direct DAW mixer control. Phase 9 picks up where Phase 5's Out-of-Scope left off ("LCXL3 fader / V-pot / pad / Record-button mappings — Phase 5 covers transport buttons + encoder only; the rest of the LCXL3 surface stays unmapped — additive future work") and extends the bridge to drive LUNA's mixer + plugin parameters.
+
+This is research-heavy work. We don't yet know:
+
+1. **How the LCXL3 distinguishes DAW Control vs DAW Mixer mode** at the protocol level. Possibilities: an on-device button emits a SysEx telling the host which sub-mode is active; the user presses a button and the device internally switches the bytes the strip controls emit; the activation handshake (`02 7F`) selects a default and the device toggles independently. Phase 5 captured DAW Control mode bytes only; Phase 9a captures Mixer mode and the mode-switch mechanism.
+2. **What LUNA's MCU surface accepts** for mixer-control: channel-volume changes are likely 14-bit pitch-bend on channels 1-8 (one per track strip — standard MCU), V-pot pan likely CC `0x10`-`0x17` with relative-encoding values, fader buttons likely note-on / note-off in the `0x10`-`0x27` range (mute / solo / arm / select), bank navigation likely notes `0x2E`/`0x2F`. Confirmed via `--send-mcu` discovery against LUNA, same pattern as Phase 3c's transport-byte discovery.
+3. **What LUNA exposes for plugin parameters.** The MCU spec has a focused-plugin section (V-pots become the active plugin's eight parameters); whether LUNA implements it, or uses HUI's plugin section (notes `0x36`-`0x3F`), or uses some UA-specific extension — unknown. Phase 9a's research output decides whether 9c implements the protocol LUNA exposes or punts plugin support to a later feature.
+
+**Phase 9 deliverables:**
+
+- **Research and profiling (9a):** capture DAW Mixer-mode byte traces from the LCXL3 (via the existing `--lcxl3-activate` probe mode plus a new `--lcxl3-capture` mode if needed), decode the mode-switch mechanism, and profile LUNA's MCU mixer vocabulary via `--send-mcu` discovery. Surface any structural protocol decisions (new event taxonomy alongside `TransportEvent`, new backend trait methods for mixer emit) before 9b code lands. The Phase 9a output document lists what LUNA accepts for plugin parameters; if non-trivial, 9c is sized off that finding.
+- **Mixer mode implementation (9b):** new event taxonomy for non-transport surface events (fader-change, V-pot-tick, fader-button-press, bank-nav). The transport channel stays as it is — mixer events flow through a parallel pipeline (or a more general "surface event" pipeline; structural choice ratified in 9a). LCXL3 parser extended to recognise Mixer mode bytes. `McuBackend` gains mixer-emit methods (Keystrokes backend out of scope — mixer doesn't have a keystroke equivalent). 7-bit-fader → 14-bit-pitch-bend resolution conversion (faders move at 7-bit fidelity to keep parser logic simple; the bridge zero-pads to 14-bit before pitch-bend output, accepting the resolution loss as a v1 trade-off until banking and per-channel offset tracking become a felt limitation). V-pot relative-encoding decoder, banking, and LED feedback so the fader buttons mirror LUNA's mute/solo/arm states.
+- **Plugin / DAW Control mode (9c):** scope contingent on 9a findings. If LUNA exposes a focused-plugin vocabulary on a known MCU section, implement that mapping; if the protocol is HUI-extension or UA-specific and substantial, document the findings and punt the implementation to a successor feature.
+- **Hardware validation (9d):** end-to-end on real LCXL3 + LUNA. Drive 8 channels of mixer (volume, pan, mute, solo, arm), banking, plugin parameters where applicable. No regression in Phase 5 transport behaviour.
+
+**Out of scope for Phase 9:** mixer support for any DAW other than LUNA (the same MCU vocabulary should mostly work for Logic / Ableton if those tests are run, but only LUNA is the target device this phase); LCXL3 pad RGB lighting (decoded handshake notes mentioned this as future-phase work — not part of mixer/plugin mode); per-track name display on LCXL3 LCD strips (audiocontrol.org-flavour text would require Phase 5-style page metadata SysEx for each strip, deferred).
+
 ## Out of Scope
 
 - MIDI clock forwarding
@@ -164,7 +183,8 @@ Phase 8 fixes the wiring first (so the live state is correct before we restyle),
 - LUNA nudge value greater than 1 bar — closed-loop assumes `[` / `]` moves ≤ 1 bar; larger nudge values are detected at runtime and surfaced as a configuration error rather than silently misbehaving
 - Windows support in v1
 - Program Change to marker navigation (future feature)
-- LCXL3 fader / V-pot / pad / Record-button mappings — Phase 5 covers transport buttons + encoder only; the rest of the LCXL3 surface stays unmapped (additive future work)
+- LCXL3 fader / V-pot / Record-button mappings in v1 (Phase 5) — picked up in Phase 9 (DAW Mixer mode + plugin control); Phase 5 covers transport buttons + encoder only
+- LCXL3 pad RGB lighting — Phase 9 covers mixer / plugin control; pads remain unmapped
 - LCXL3 auto-reconnect on device power-cycle — bridge restart required in v1
 - General-purpose preset system (future -- v1 is hardcoded MC-500 + LCXL3 to LUNA mapping)
 - macOS `.pkg` installer + notarization + signing — distribution work tracked as a separate follow-on feature, not Phase 6
