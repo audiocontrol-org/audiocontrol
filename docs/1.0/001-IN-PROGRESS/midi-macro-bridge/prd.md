@@ -174,6 +174,31 @@ This is research-heavy work. We don't yet know:
 
 **Out of scope for Phase 9:** mixer support for any DAW other than LUNA (the same MCU vocabulary should mostly work for Logic / Ableton if those tests are run, but only LUNA is the target device this phase); LCXL3 pad RGB lighting (decoded handshake notes mentioned this as future-phase work — not part of mixer/plugin mode); per-track name display on LCXL3 LCD strips (audiocontrol.org-flavour text would require Phase 5-style page metadata SysEx for each strip, deferred).
 
+### Phase 10 — LCXL3 row-aware V-pot mapping (sends + plugin parameters)
+
+Phase 9b mapped all three rows of LCXL3 V-pots to the same parameter (pan), because LUNA's MCU surface only exposes eight V-pots at a time, mode-switched between Pan / Sends / Plug-In / Cue. The user has three rows of physical V-pots and wants each row to control a different parameter without manual MIDI mapping in LUNA — manual mapping is fragile across machines and reinstalls, so the bridge needs to manage the function-negotiation itself.
+
+Target mapping (user preference, ratified by hardware experiment in Phase 10c):
+
+- **Row 3 (bottom):** Pan (already working)
+- **Row 1 (top):** Send 1 across the bank — bridge auto-switches LUNA into Sends mode + selects "Send 1" before forwarding the V-pot delta
+- **Row 2 (middle):** Send 2 across the bank — same approach, "Send 2" selected
+- **Stretch:** alternative mapping where Row 1 = channel trim and Row 2 = built-in tape-plugin saturation, each driving a specific LUNA channel-strip plugin parameter via Plug-In mode drill-down
+
+**Pre-research uncertainties (drive Phase 10a):**
+
+1. **Sends-mode drill-down bytes** — Phase 9a captured that `90 29 7F` enters Sends mode and shows a "Pick a Send to assign to VPots" menu, but did not capture how to actually pick Send 1 vs Send 2 from inside that menu. Likely a V-pot button click (notes `0x20`-`0x27`?) or a V-pot delta on a specific column, but unconfirmed.
+2. **Plug-In-mode drill-down bytes** — same situation: `90 2B 7F` enters Plug-In mode and shows "Tape | Consol | Insrts" on V-pots 1-3, but the bytes to actually pick "Tape" or to navigate within Tape's parameter set are not captured. The Tape plugin's specific saturation parameter index is unknown.
+3. **Mode-revert behaviour** — does LUNA stay in the selected sub-mode indefinitely or time out on its own? If the bridge sticks in Sends-mode-Send-1 for the duration of a row-1 gesture, does pan still work in the bottom row in parallel, or does sending V-pot bytes route them all to Sends? The MCU spec says all eight V-pots share one assignment at a time — answer is "no parallel" — but verify against LUNA's actual behaviour.
+
+**Phase 10 deliverables:**
+
+- **Profiling session (10a):** capture the drill-down byte sequences for Sends mode (pick Send 1, pick Send 2) and Plug-In mode (pick Tape, navigate to saturation parameter). Append findings to `luna-mcu-mixer-notes.md`. Decide whether the implementation can rely on "stay in Sends-with-Send-N" or needs to switch back to Pan between gestures.
+- **Row-aware sticky-mode state machine (10b):** track the bridge's view of LUNA's current MCU mode + sub-selection. On a V-pot move from row R, ensure LUNA is in the mode the row maps to; if not, emit the mode-switch + drill-down byte sequence first, then forward the delta. Stay in that mode until the user touches a different row or until ~2 s of idle, then revert to Pan so the LUNA strip-name display returns. Configuration via `[lcxl3.mixer]` section adds a `vpot_row_mapping` field with values like `"sends-1-2"` (default) and `"trim-tape"` (stretch).
+- **Hardware validation (10c):** verify both mappings on the user's rig, compare UX qualitatively, document which feels best as the default, capture caveats.
+
+**Out of scope for Phase 10:** plugin instance navigation beyond the LUNA channel strip (Insrts → 3rd-party plugin chain → individual parameters needs deeper Plug-In mode profiling — successor feature); custom row-mapping via the web UI (config-file only in v1); per-track-different mapping (the row mapping is bank-wide).
+
 ## Out of Scope
 
 - MIDI clock forwarding
