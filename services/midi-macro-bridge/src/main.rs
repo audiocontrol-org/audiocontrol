@@ -966,9 +966,58 @@ fn main() -> Result<()> {
                             emit_event(
                                 &events_tx,
                                 &events_history,
-                                ev_source,
+                                ev_source.clone(),
                                 format!("LCXL3 mode → {new_mode:?}"),
                             );
+
+                            // Phase 9 — reclaim DAW mode if the device left
+                            // the DAW family entirely (user cycled into a
+                            // Custom mode via Mode + 1-16 buttons). Switching
+                            // between DAW Control and DAW Mixer is legitimate
+                            // user navigation (Mode + DAW Control / DAW Mixer
+                            // buttons) and the bridge supports both — Phase 5
+                            // transport works in DAW Control, Phase 9 mixer
+                            // works in DAW Mixer — so no reclaim there.
+                            //
+                            // Custom modes take the device entirely outside
+                            // the DAW umbrella. Live / Logic / etc. reclaim
+                            // by re-running the activation handshake. Users
+                            // who genuinely want Custom-mode access opt out
+                            // via `[lcxl3.mixer] force_mixer_mode = false`
+                            // or `[lcxl3] enabled = false`.
+                            if active_config.lcxl3.enabled
+                                && active_config.lcxl3.mixer.enabled
+                                && active_config.lcxl3.mixer.force_mixer_mode
+                                && matches!(new_mode, LcxlMode::Custom(_))
+                            {
+                                if let Some(c) = connections.as_mut() {
+                                    if let Some(out) = c.lcxl3_out.as_mut() {
+                                        warn!(
+                                            ?new_mode,
+                                            "LCXL3 left DAW Mixer — reclaiming"
+                                        );
+                                        // Re-run the full activation + mode-select.
+                                        // Custom modes exit the DAW-mode umbrella
+                                        // entirely so a bare B6 1E 01 isn't enough;
+                                        // the bridge must re-claim via 02 7F.
+                                        if let Err(e) = lcxl3::handshake_send(
+                                            out,
+                                            active_config.lcxl3.host_name.as_bytes(),
+                                        ) {
+                                            warn!(?e, "LCXL3 reclaim handshake failed");
+                                        } else if let Err(e) = lcxl3::enter_mixer_mode(out) {
+                                            warn!(?e, "LCXL3 reclaim enter_mixer_mode failed");
+                                        } else {
+                                            emit_event(
+                                                &events_tx,
+                                                &events_history,
+                                                ev_source,
+                                                "LCXL3 reclaim → DAW Mixer".to_string(),
+                                            );
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
 

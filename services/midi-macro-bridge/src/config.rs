@@ -290,6 +290,21 @@ pub struct LcxlMixerConfig {
     /// Stage 5+ uses this; stages 2-4 store it but do not act on it.
     #[serde(default)]
     pub starting_bank: u8,
+
+    /// When true (default), the bridge re-claims DAW Mixer mode if the LCXL3
+    /// reports a mode change to anything other than DAW Mixer (typically
+    /// because the user pressed the on-device Mode button to cycle into a
+    /// Custom mode). The bridge re-runs the activation handshake and the
+    /// mode-select / relative-mode / fader-pickup byte sequence to put the
+    /// device back into DAW Mixer.
+    ///
+    /// Matches the behaviour of Live, Logic, and other DAW integrations:
+    /// once a DAW claims the surface the user can't accidentally exit
+    /// DAW mode by bumping a button. To use the LCXL3's Custom modes
+    /// (free-assign MIDI controller mode), set this to `false` or set
+    /// `[lcxl3] enabled = false` so the bridge doesn't claim the device.
+    #[serde(default = "default_lcxl3_force_mixer_mode")]
+    pub force_mixer_mode: bool,
 }
 
 impl Default for LcxlMixerConfig {
@@ -297,9 +312,12 @@ impl Default for LcxlMixerConfig {
         Self {
             enabled: default_lcxl3_mixer_enabled(),
             starting_bank: 0,
+            force_mixer_mode: default_lcxl3_force_mixer_mode(),
         }
     }
 }
+
+fn default_lcxl3_force_mixer_mode() -> bool { true }
 
 fn default_lcxl3_mixer_enabled() -> bool {
     true
