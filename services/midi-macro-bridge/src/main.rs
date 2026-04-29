@@ -521,6 +521,14 @@ fn main() -> Result<()> {
     // If mixer.enabled = false the device boots in DAW Control; the mode
     // state below will be overridden by the first ModeChange event anyway.
     let mut current_mode = LcxlMode::DawMixer;
+    // Time of the most recent DawMixer or DawControl mode report. Used by the
+    // reclaim debouncer: the LCXL3 emits paired `B6 1E 01` + `B6 1E 06`
+    // messages back-to-back when activated, where the second is a status
+    // companion (not a real mode change). Without persistence we'd reclaim
+    // on every paired report and flicker the LEDs at ~125ms cadence. Initialise
+    // to "now" so the bridge's own enter_mixer_mode call doesn't immediately
+    // trigger a reclaim.
+    let mut last_daw_mode_at: Option<std::time::Instant> = Some(std::time::Instant::now());
     let mut mixer_state = LcxlMixerState::default();
     // Stage 6a: per-strip state mirrored from LUNA's MCU output stream.
     // Starts fully false; LUNA's surface-init burst will populate it.
@@ -968,6 +976,9 @@ fn main() -> Result<()> {
                         SurfaceEvent::ModeChange(new_mode) => {
                             info!(?new_mode, "LCXL3 mode changed");
                             current_mode = new_mode;
+                            if matches!(new_mode, LcxlMode::DawMixer | LcxlMode::DawControl) {
+                                last_daw_mode_at = Some(std::time::Instant::now());
+                            }
                             emit_event(
                                 &events_tx,
                                 &events_history,
@@ -980,20 +991,29 @@ fn main() -> Result<()> {
                             // Custom mode via Mode + 1-16 buttons). Switching
                             // between DAW Control and DAW Mixer is legitimate
                             // user navigation (Mode + DAW Control / DAW Mixer
-                            // buttons) and the bridge supports both — Phase 5
-                            // transport works in DAW Control, Phase 9 mixer
-                            // works in DAW Mixer — so no reclaim there.
+                            // buttons) and the bridge supports both.
                             //
-                            // Custom modes take the device entirely outside
-                            // the DAW umbrella. Live / Logic / etc. reclaim
-                            // by re-running the activation handshake. Users
-                            // who genuinely want Custom-mode access opt out
-                            // via `[lcxl3.mixer] force_mixer_mode = false`
-                            // or `[lcxl3] enabled = false`.
+                            // Persistence guard: the LCXL3 emits paired
+                            // `B6 1E 01` + `B6 1E 06` reports back-to-back
+                            // when entering DAW mode, where the `06` byte is
+                            // a status companion (not a real "switched to
+                            // Custom 1" event). Without the persistence
+                            // requirement we'd reclaim on every paired
+                            // report and flicker the LEDs. We require the
+                            // most recent DawMixer / DawControl report to
+                            // be older than `RECLAIM_DEBOUNCE` before we
+                            // believe the device has actually left the
+                            // DAW umbrella.
+                            const RECLAIM_DEBOUNCE: std::time::Duration =
+                                std::time::Duration::from_millis(800);
+                            let custom_persists = last_daw_mode_at
+                                .map(|t| t.elapsed() >= RECLAIM_DEBOUNCE)
+                                .unwrap_or(true);
                             if active_config.lcxl3.enabled
                                 && active_config.lcxl3.mixer.enabled
                                 && active_config.lcxl3.mixer.force_mixer_mode
                                 && matches!(new_mode, LcxlMode::Custom(_))
+                                && custom_persists
                             {
                                 if let Some(c) = connections.as_mut() {
                                     if let Some(out) = c.lcxl3_out.as_mut() {
