@@ -363,13 +363,27 @@ fn main() -> Result<()> {
 
     // --lcxl3-activate [substring]: send the DAW-mode activation
     // SysEx to a Launch Control XL Mk3, then dump everything it emits.
+    //
+    // Optional companion: --lcxl3-mode <hex> picks a sub-mode after
+    // activation. Per Novation's reference, send `B6 1E vv` where vv =
+    // 01 (DAW Mixer) / 02 (DAW Control) / 06-09 (Custom 1-4) / 12-1D
+    // (Custom 5-16). Useful for Phase 9a capture sessions: switch the
+    // device into Mixer mode programmatically and capture each control's
+    // bytes.
     if let Some(idx) = args.iter().position(|a| a == "--lcxl3-activate") {
         let substring = args
             .get(idx + 1)
             .filter(|a| !a.starts_with("--"))
             .map(String::as_str)
             .unwrap_or("LCXL3");
-        return run_lcxl3_activate(substring);
+        let mode = args
+            .iter()
+            .position(|a| a == "--lcxl3-mode")
+            .and_then(|i| args.get(i + 1))
+            .map(|s| u8::from_str_radix(s.trim_start_matches("0x"), 16))
+            .transpose()
+            .with_context(|| "--lcxl3-mode requires a hex byte (e.g. --lcxl3-mode 01 for DAW Mixer)")?;
+        return run_lcxl3_activate(substring, mode);
     }
 
     // --send-mcu <spec> [args...]: emit a candidate MCU message to
@@ -1201,7 +1215,7 @@ fn run_probe_midi(port_substring: &str) -> Result<()> {
     Ok(())
 }
 
-fn run_lcxl3_activate(substring: &str) -> Result<()> {
+fn run_lcxl3_activate(substring: &str, mode: Option<u8>) -> Result<()> {
     use std::time::Instant;
 
     let all_ports = midi::list_ports_input()?;
@@ -1240,6 +1254,26 @@ fn run_lcxl3_activate(substring: &str) -> Result<()> {
     lcxl3::handshake_send(&mut output, b"Bridge")
         .context("sending LCXL3 DAW activation handshake")?;
     eprintln!("# lcxl3-activate: handshake sent (probe → UDI → claim → host name → LED preset)");
+
+    // Optional sub-mode select: B6 1E vv (channel 7 CC 0x1E with mode byte).
+    // 01 = DAW Mixer, 02 = DAW Control, 06-09 = Custom 1-4, 12-1D = Custom 5-16.
+    if let Some(m) = mode {
+        let bytes = [0xB6u8, 0x1E, m];
+        match output.send(&bytes) {
+            Ok(()) => eprintln!(
+                "# lcxl3-activate: sent mode-select B6 1E {m:02X} ({})",
+                match m {
+                    0x01 => "DAW Mixer",
+                    0x02 => "DAW Control",
+                    0x06..=0x09 => "Custom 1-4",
+                    0x12..=0x1D => "Custom 5-16",
+                    _ => "(unknown)",
+                }
+            ),
+            Err(e) => eprintln!("# lcxl3-activate: mode-select send failed: {e}"),
+        }
+    }
+
     eprintln!("# Listening on port matching '{out_query}'.");
     eprintln!("# Press transport buttons / move encoders on the device.");
     eprintln!("# Ctrl-C to stop (will send deactivation SysEx).");
