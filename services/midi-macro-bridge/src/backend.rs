@@ -161,12 +161,86 @@ impl Backend for McuBackend {
     }
 }
 
+/// Pure function — translate a `MixerAction` into the sequence of MCU
+/// MIDI byte messages LUNA's surface accepts. Vocabulary captured in
+/// `docs/.../research/luna-mcu-mixer-notes.md` from the 2026-04-29
+/// hardware profiling session.
+///
+/// Channel index in the action is bank-relative 0..7; banking state
+/// is tracked at a higher layer (main.rs).
+///
+/// Returns an empty vec for actions that emit nothing (e.g. pan delta 0).
+pub fn mixer_action_to_messages(action: &MixerAction) -> Vec<Vec<u8>> {
+    match action {
+        MixerAction::Volume { channel, value14 } => {
+            // Volume requires fader-touch context — LUNA silently
+            // discards pitch-bend without a preceding 90 (0x68+ch) 7F
+            // touch-on. Synthesise the touch around each value. Adds
+            // 2 extra MIDI messages per emission but keeps the bridge
+            // stateless. Future optimisation (Phase 9b stage 6+):
+            // enable LCXL3 touch events and forward them naturally so
+            // touch-on fires once per fader-grab instead of per value.
+            let ch = *channel & 0x07;
+            let touch_note = 0x68 + ch;
+            let pb_status = 0xE0 | ch;
+            let lo = (*value14 & 0x7F) as u8;
+            let hi = ((*value14 >> 7) & 0x7F) as u8;
+            vec![
+                vec![0x90, touch_note, 0x7F],
+                vec![pb_status, lo, hi],
+                vec![0x90, touch_note, 0x00],
+            ]
+        }
+        MixerAction::Pan { channel, delta } => {
+            // Sign-magnitude on CC 0x10-0x17 (channel 1):
+            //   bit 6 clear = clockwise / right (positive)
+            //   bit 6 set   = counter-clockwise / left (negative)
+            //   bits 0-5    = magnitude (1..63)
+            let ch = *channel & 0x07;
+            let cc = 0x10 + ch;
+            let vv = if *delta >= 0 {
+                (*delta as u8) & 0x3F
+            } else {
+                0x40 | ((-*delta as u8) & 0x3F)
+            };
+            if vv == 0 {
+                vec![]
+            } else {
+                vec![vec![0xB0, cc, vv]]
+            }
+        }
+        MixerAction::Mute { channel } => {
+            let note = 0x10 + (*channel & 0x07);
+            vec![vec![0x90, note, 0x7F], vec![0x90, note, 0x00]]
+        }
+        MixerAction::Solo { channel } => {
+            let note = 0x08 + (*channel & 0x07);
+            vec![vec![0x90, note, 0x7F], vec![0x90, note, 0x00]]
+        }
+        MixerAction::Arm { channel } => {
+            let note = *channel & 0x07;
+            vec![vec![0x90, note, 0x7F], vec![0x90, note, 0x00]]
+        }
+        MixerAction::Select { channel } => {
+            let note = 0x18 + (*channel & 0x07);
+            vec![vec![0x90, note, 0x7F], vec![0x90, note, 0x00]]
+        }
+        MixerAction::BankPrev => {
+            vec![vec![0x90, 0x2E, 0x7F], vec![0x90, 0x2E, 0x00]]
+        }
+        MixerAction::BankNext => {
+            vec![vec![0x90, 0x2F, 0x7F], vec![0x90, 0x2F, 0x00]]
+        }
+    }
+}
+
 impl MixerBackend for McuBackend {
     fn emit_mixer(&mut self, action: &MixerAction) -> Result<()> {
-        // STAGE 5-7 PENDING: actual MCU byte translation needs LUNA profiling.
-        // Log what we'd emit so the user can verify routing works end-to-end
-        // before the LUNA session that determines the correct byte vocabulary.
-        tracing::info!(?action, "mixer: would emit (LUNA profiling pending)");
+        let messages = mixer_action_to_messages(action);
+        let mut pair = self.pair.borrow_mut();
+        for msg in messages {
+            pair.send(&msg)?;
+        }
         Ok(())
     }
 
@@ -283,5 +357,141 @@ mod tests {
             MixerAction::Mute { channel: 0 },
             MixerAction::Solo { channel: 0 }
         );
+    }
+
+    // ---- mixer_action_to_messages — Phase 9b stage 5 byte translation -------
+    // Bytes verified against research/luna-mcu-mixer-notes.md.
+
+    #[test]
+    fn volume_channel_1_max_emits_touch_pitchbend_touch() {
+        let msgs = mixer_action_to_messages(&MixerAction::Volume {
+            channel: 0,
+            value14: 0x3FFF,
+        });
+        assert_eq!(msgs.len(), 3);
+        assert_eq!(msgs[0], vec![0x90, 0x68, 0x7F]); // touch-on ch 1
+        assert_eq!(msgs[1], vec![0xE0, 0x7F, 0x7F]); // pitch-bend max ch 1
+        assert_eq!(msgs[2], vec![0x90, 0x68, 0x00]); // touch-off ch 1
+    }
+
+    #[test]
+    fn volume_channel_8_min_uses_correct_status_bytes() {
+        let msgs = mixer_action_to_messages(&MixerAction::Volume {
+            channel: 7,
+            value14: 0,
+        });
+        assert_eq!(msgs.len(), 3);
+        assert_eq!(msgs[0], vec![0x90, 0x6F, 0x7F]); // touch-on ch 8 (note 0x68+7)
+        assert_eq!(msgs[1], vec![0xE7, 0x00, 0x00]); // pitch-bend min ch 8
+        assert_eq!(msgs[2], vec![0x90, 0x6F, 0x00]); // touch-off ch 8
+    }
+
+    #[test]
+    fn volume_mid_value_splits_correctly_into_lo_hi() {
+        let msgs = mixer_action_to_messages(&MixerAction::Volume {
+            channel: 0,
+            value14: 0x2000, // 14-bit midpoint
+        });
+        assert_eq!(msgs[1], vec![0xE0, 0x00, 0x40]); // 0x2000 = lo=0, hi=0x40
+    }
+
+    #[test]
+    fn pan_positive_delta_clockwise_no_bit6() {
+        let msgs = mixer_action_to_messages(&MixerAction::Pan {
+            channel: 0,
+            delta: 1,
+        });
+        assert_eq!(msgs, vec![vec![0xB0, 0x10, 0x01]]);
+    }
+
+    #[test]
+    fn pan_negative_delta_counter_clockwise_bit6_set() {
+        let msgs = mixer_action_to_messages(&MixerAction::Pan {
+            channel: 0,
+            delta: -1,
+        });
+        assert_eq!(msgs, vec![vec![0xB0, 0x10, 0x41]]); // 0x40 | 1
+    }
+
+    #[test]
+    fn pan_zero_delta_emits_nothing() {
+        let msgs = mixer_action_to_messages(&MixerAction::Pan {
+            channel: 0,
+            delta: 0,
+        });
+        assert!(msgs.is_empty());
+    }
+
+    #[test]
+    fn pan_channel_index_offsets_cc() {
+        // Channel 5 → CC 0x14
+        let msgs = mixer_action_to_messages(&MixerAction::Pan {
+            channel: 4,
+            delta: 3,
+        });
+        assert_eq!(msgs, vec![vec![0xB0, 0x14, 0x03]]);
+    }
+
+    #[test]
+    fn mute_channel_3_emits_note_0x12_press_release() {
+        let msgs = mixer_action_to_messages(&MixerAction::Mute { channel: 2 });
+        assert_eq!(
+            msgs,
+            vec![vec![0x90, 0x12, 0x7F], vec![0x90, 0x12, 0x00]]
+        );
+    }
+
+    #[test]
+    fn solo_channel_1_emits_note_0x08() {
+        let msgs = mixer_action_to_messages(&MixerAction::Solo { channel: 0 });
+        assert_eq!(
+            msgs,
+            vec![vec![0x90, 0x08, 0x7F], vec![0x90, 0x08, 0x00]]
+        );
+    }
+
+    #[test]
+    fn arm_channel_1_emits_note_0x00() {
+        let msgs = mixer_action_to_messages(&MixerAction::Arm { channel: 0 });
+        assert_eq!(
+            msgs,
+            vec![vec![0x90, 0x00, 0x7F], vec![0x90, 0x00, 0x00]]
+        );
+    }
+
+    #[test]
+    fn select_channel_8_emits_note_0x1F() {
+        let msgs = mixer_action_to_messages(&MixerAction::Select { channel: 7 });
+        assert_eq!(
+            msgs,
+            vec![vec![0x90, 0x1F, 0x7F], vec![0x90, 0x1F, 0x00]]
+        );
+    }
+
+    #[test]
+    fn bank_prev_emits_note_0x2e() {
+        let msgs = mixer_action_to_messages(&MixerAction::BankPrev);
+        assert_eq!(
+            msgs,
+            vec![vec![0x90, 0x2E, 0x7F], vec![0x90, 0x2E, 0x00]]
+        );
+    }
+
+    #[test]
+    fn bank_next_emits_note_0x2f() {
+        let msgs = mixer_action_to_messages(&MixerAction::BankNext);
+        assert_eq!(
+            msgs,
+            vec![vec![0x90, 0x2F, 0x7F], vec![0x90, 0x2F, 0x00]]
+        );
+    }
+
+    #[test]
+    fn channel_indices_above_7_are_masked() {
+        // Defence in depth — main loop should always send 0..7, but mask
+        // here too so a bug elsewhere can't generate invalid MIDI.
+        let msgs = mixer_action_to_messages(&MixerAction::Mute { channel: 99 });
+        // 99 & 0x07 = 3 → note 0x10 + 3 = 0x13
+        assert_eq!(msgs[0], vec![0x90, 0x13, 0x7F]);
     }
 }
