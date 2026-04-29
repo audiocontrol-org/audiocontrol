@@ -136,10 +136,9 @@ pub const MAX_NUDGE_PER_PACKET: u32 = 4;
 /// `SurfaceEvent`. `channel` is bank-relative (0..=7); the main loop maps to
 /// LUNA's absolute track via banking state (stage 5+).
 ///
-/// **Stages 5-7 not yet implemented**: the actual MCU bytes that drive each of
-/// these actions in LUNA are unknown until Phase 9a's LUNA profiling session
-/// completes. `McuBackend::emit_mixer` logs what it would send but does not
-/// send actual bytes.
+/// Each variant maps to a sequence of MCU MIDI bytes via
+/// `backend::mixer_action_to_messages` per LUNA's vocabulary captured in
+/// `docs/.../research/luna-mcu-mixer-notes.md`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MixerAction {
     /// 14-bit channel volume (fader 7-bit value zero-padded to 14 bits).
@@ -153,6 +152,34 @@ pub enum MixerAction {
     Select { channel: u8 },
     BankPrev,
     BankNext,
+    /// Phase 9c — switch LUNA's MCU surface into a "menu" mode where the
+    /// V-Pots become parameter selectors. Pressing any mode button when a
+    /// different mode is active toggles to the new mode (LUNA echoes the
+    /// previous mode's note OFF and the new mode's note ON). Pressing
+    /// the SAME mode's button again typically returns to the default Pan
+    /// view.
+    EnterMode(McuMode),
+}
+
+/// MCU surface "mode" — what the V-Pots are assigned to. Confirmed via
+/// Phase 9a profiling against LUNA. Each mode is selected by pressing
+/// a single MCU note on channel 1.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum McuMode {
+    /// Default V-Pot assignment: pan per strip. No explicit "enter Pan"
+    /// button needed — pressing any other mode's button when it's already
+    /// active typically reverts here. Included for symmetry with the
+    /// surface's `90 2A` button (Pan/Surround).
+    Pan,
+    /// `90 29 7F`/`00` — V-Pots assign to sends. Strip LCDs show Send 1-8
+    /// menu; rotating a V-Pot picks the send to drive on that strip.
+    Sends,
+    /// `90 2B 7F`/`00` — V-Pots assign to plugin parameters. Strip LCDs
+    /// show "Pick a plugin type / Tape | Console | Inserts" then drill
+    /// into a plugin's 8 parameters.
+    PlugIn,
+    /// `90 2C 7F`/`00` — V-Pots assign to cue (headphone) mixes.
+    Cue,
 }
 
 // ---- Phase 9b types ------------------------------------------------------

@@ -28,7 +28,7 @@ mod web;
 use crate::backend::{Backend, KeystrokeBackend, McuBackend};
 use crate::config::{BackendKind, Config, LoadOutcome};
 use crate::keys::Emitter;
-use crate::lcxl3::{ButtonRow, LcxlMode, MixerAction, SideButton, SurfaceEvent, VRow};
+use crate::lcxl3::{ButtonRow, LcxlMode, McuMode, MixerAction, SideButton, SurfaceEvent, VRow};
 use crate::locate::{
     transport_to_locate_event, EventSource as LocateEventSource, LocateController, LocateEvent,
     LocateOutcome, PositionSource,
@@ -904,12 +904,57 @@ fn main() -> Result<()> {
                                         }
                                     }
                                 }
-                                SideButton::PageUp | SideButton::PageDown => {
-                                    // Stage 5+ may map these to LUNA page navigation.
-                                    info!(?button, "side button (Page Up/Down) — unmapped in stages 2-4");
+                                SideButton::PageUp => {
+                                    // Phase 9c — toggle LUNA's MCU surface into Plug-In
+                                    // mode. V-Pots become plugin-parameter selectors;
+                                    // strip LCDs (managed by LUNA, mirrored later by
+                                    // stage 6b) show "Pick a plugin type" / parameter
+                                    // names + values. Press again (or another mode
+                                    // button) to leave this mode.
+                                    let action = MixerAction::EnterMode(McuMode::PlugIn);
+                                    if let Some(c) = connections.as_mut() {
+                                        if let Err(e) = c.backend.emit_mixer(&action) {
+                                            warn!(?e, "mixer backend emit failed (PlugIn enter)");
+                                        }
+                                    }
+                                    emit_event(
+                                        &events_tx,
+                                        &events_history,
+                                        ev_source,
+                                        "PageUp → EnterMode(PlugIn)".to_string(),
+                                    );
+                                }
+                                SideButton::PageDown => {
+                                    // Phase 9c — toggle LUNA into Sends mode.
+                                    let action = MixerAction::EnterMode(McuMode::Sends);
+                                    if let Some(c) = connections.as_mut() {
+                                        if let Err(e) = c.backend.emit_mixer(&action) {
+                                            warn!(?e, "mixer backend emit failed (Sends enter)");
+                                        }
+                                    }
+                                    emit_event(
+                                        &events_tx,
+                                        &events_history,
+                                        ev_source,
+                                        "PageDown → EnterMode(Sends)".to_string(),
+                                    );
                                 }
                                 SideButton::SmallButton => {
-                                    info!("LCXL3 small button (0x68) pressed — unmapped");
+                                    // Phase 9c — toggle LUNA into Cue mode (headphone
+                                    // mix assignments). Pressing another mode button
+                                    // (PageUp / PageDown) reverts.
+                                    let action = MixerAction::EnterMode(McuMode::Cue);
+                                    if let Some(c) = connections.as_mut() {
+                                        if let Err(e) = c.backend.emit_mixer(&action) {
+                                            warn!(?e, "mixer backend emit failed (Cue enter)");
+                                        }
+                                    }
+                                    emit_event(
+                                        &events_tx,
+                                        &events_history,
+                                        ev_source,
+                                        "SmallButton → EnterMode(Cue)".to_string(),
+                                    );
                                 }
                             }
                         }

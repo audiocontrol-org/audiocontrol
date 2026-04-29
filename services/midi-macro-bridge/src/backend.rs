@@ -231,6 +231,20 @@ pub fn mixer_action_to_messages(action: &MixerAction) -> Vec<Vec<u8>> {
         MixerAction::BankNext => {
             vec![vec![0x90, 0x2F, 0x7F], vec![0x90, 0x2F, 0x00]]
         }
+        MixerAction::EnterMode(mode) => {
+            // Phase 9c — surface mode select. LUNA listens on channel 1
+            // notes per Phase 9a profiling (luna-mcu-mixer-notes.md).
+            // Pressing a mode-button toggles into that mode; pressing
+            // again reverts. The same per-press protocol as buttons:
+            // note-on velocity 7F (press) followed by velocity 0 (release).
+            let note = match mode {
+                crate::lcxl3::McuMode::Sends  => 0x29,
+                crate::lcxl3::McuMode::Pan    => 0x2A,
+                crate::lcxl3::McuMode::PlugIn => 0x2B,
+                crate::lcxl3::McuMode::Cue    => 0x2C,
+            };
+            vec![vec![0x90, note, 0x7F], vec![0x90, note, 0x00]]
+        }
     }
 }
 
@@ -493,5 +507,43 @@ mod tests {
         let msgs = mixer_action_to_messages(&MixerAction::Mute { channel: 99 });
         // 99 & 0x07 = 3 → note 0x10 + 3 = 0x13
         assert_eq!(msgs[0], vec![0x90, 0x13, 0x7F]);
+    }
+
+    // ---- Phase 9c — mode-entry byte translation -----------------------------
+
+    #[test]
+    fn enter_pan_mode_emits_note_0x2a() {
+        let msgs = mixer_action_to_messages(&MixerAction::EnterMode(crate::lcxl3::McuMode::Pan));
+        assert_eq!(
+            msgs,
+            vec![vec![0x90, 0x2A, 0x7F], vec![0x90, 0x2A, 0x00]]
+        );
+    }
+
+    #[test]
+    fn enter_sends_mode_emits_note_0x29() {
+        let msgs = mixer_action_to_messages(&MixerAction::EnterMode(crate::lcxl3::McuMode::Sends));
+        assert_eq!(
+            msgs,
+            vec![vec![0x90, 0x29, 0x7F], vec![0x90, 0x29, 0x00]]
+        );
+    }
+
+    #[test]
+    fn enter_plugin_mode_emits_note_0x2b() {
+        let msgs = mixer_action_to_messages(&MixerAction::EnterMode(crate::lcxl3::McuMode::PlugIn));
+        assert_eq!(
+            msgs,
+            vec![vec![0x90, 0x2B, 0x7F], vec![0x90, 0x2B, 0x00]]
+        );
+    }
+
+    #[test]
+    fn enter_cue_mode_emits_note_0x2c() {
+        let msgs = mixer_action_to_messages(&MixerAction::EnterMode(crate::lcxl3::McuMode::Cue));
+        assert_eq!(
+            msgs,
+            vec![vec![0x90, 0x2C, 0x7F], vec![0x90, 0x2C, 0x00]]
+        );
     }
 }
