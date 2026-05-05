@@ -216,6 +216,58 @@ impl PositionTracker {
     }
 }
 
+// ---- LUNA button-state echo parsing ----------------------------------
+
+/// State change observed in LUNA's MCU output stream. The bridge tracks
+/// these per bank-relative strip and mirrors them to LCXL3 fader-button LEDs.
+///
+/// Note on the note-on encoding: LUNA echoes button states back to the
+/// surface using note-on (`0x90`) with velocity `0x7F` (ON) or `0x00`
+/// (OFF). The same note-on/off pair is what the bridge *sends* to LUNA
+/// to trigger an action, so this is an MCU idiom, not LUNA-specific.
+///
+/// Reference: `research/luna-mcu-mixer-notes.md` (2026-04-29 capture).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum McuStateChange {
+    Mute { strip: u8, on: bool },
+    Solo { strip: u8, on: bool },
+    Arm { strip: u8, on: bool },
+    Select { strip: u8, on: bool },
+}
+
+/// Recognise LUNA's button-state echoes in inbound MCU bytes. Returns
+/// `None` for any sequence that isn't a tracked state-change.
+///
+/// Format: `90 NN VV` where:
+///   `NN` = `0x00-0x07` (arm), `0x08-0x0F` (solo), `0x10-0x17` (mute),
+///          `0x18-0x1F` (select)
+///   `VV` = `0x7F` (state ON) or `0x00` (state OFF). Any other velocity
+///          is ignored because MCU note-on velocity has no defined meaning
+///          for toggle state — if LUNA ever sends a non-standard velocity
+///          we don't want a silent misparse.
+pub fn parse_state_change(bytes: &[u8]) -> Option<McuStateChange> {
+    if bytes.len() != 3 {
+        return None;
+    }
+    // Channel 1 note-on only (status byte exactly 0x90).
+    if bytes[0] != 0x90 {
+        return None;
+    }
+    let on = match bytes[2] {
+        0x7F => true,
+        0x00 => false,
+        _ => return None,
+    };
+    let note = bytes[1];
+    Some(match note {
+        0x00..=0x07 => McuStateChange::Arm { strip: note, on },
+        0x08..=0x0F => McuStateChange::Solo { strip: note - 0x08, on },
+        0x10..=0x17 => McuStateChange::Mute { strip: note - 0x10, on },
+        0x18..=0x1F => McuStateChange::Select { strip: note - 0x18, on },
+        _ => return None,
+    })
+}
+
 // ---- MCU handshake output --------------------------------------------
 
 /// Mackie MCU manufacturer ID prefix (shared across the protocol
@@ -630,5 +682,164 @@ mod tests {
             let reply = mcu_identity_reply(model);
             assert_eq!(reply[4], model);
         }
+    }
+
+    // ---- parse_state_change -------------------------------------------
+
+    // Arm: notes 0x00-0x07
+
+    #[test]
+    fn parse_state_change_arm_all_strips_on() {
+        for strip in 0u8..8 {
+            let bytes = [0x90, strip, 0x7F];
+            assert_eq!(
+                parse_state_change(&bytes),
+                Some(McuStateChange::Arm { strip, on: true }),
+                "arm on strip={strip}"
+            );
+        }
+    }
+
+    #[test]
+    fn parse_state_change_arm_all_strips_off() {
+        for strip in 0u8..8 {
+            let bytes = [0x90, strip, 0x00];
+            assert_eq!(
+                parse_state_change(&bytes),
+                Some(McuStateChange::Arm { strip, on: false }),
+                "arm off strip={strip}"
+            );
+        }
+    }
+
+    // Solo: notes 0x08-0x0F → strip 0-7
+
+    #[test]
+    fn parse_state_change_solo_all_strips_on() {
+        for strip in 0u8..8 {
+            let note = 0x08 + strip;
+            let bytes = [0x90, note, 0x7F];
+            assert_eq!(
+                parse_state_change(&bytes),
+                Some(McuStateChange::Solo { strip, on: true }),
+                "solo on strip={strip} note={note:#04x}"
+            );
+        }
+    }
+
+    #[test]
+    fn parse_state_change_solo_all_strips_off() {
+        for strip in 0u8..8 {
+            let note = 0x08 + strip;
+            let bytes = [0x90, note, 0x00];
+            assert_eq!(
+                parse_state_change(&bytes),
+                Some(McuStateChange::Solo { strip, on: false }),
+                "solo off strip={strip}"
+            );
+        }
+    }
+
+    // Mute: notes 0x10-0x17 → strip 0-7
+
+    #[test]
+    fn parse_state_change_mute_all_strips_on() {
+        for strip in 0u8..8 {
+            let note = 0x10 + strip;
+            let bytes = [0x90, note, 0x7F];
+            assert_eq!(
+                parse_state_change(&bytes),
+                Some(McuStateChange::Mute { strip, on: true }),
+                "mute on strip={strip} note={note:#04x}"
+            );
+        }
+    }
+
+    #[test]
+    fn parse_state_change_mute_all_strips_off() {
+        for strip in 0u8..8 {
+            let note = 0x10 + strip;
+            let bytes = [0x90, note, 0x00];
+            assert_eq!(
+                parse_state_change(&bytes),
+                Some(McuStateChange::Mute { strip, on: false }),
+                "mute off strip={strip}"
+            );
+        }
+    }
+
+    // Select: notes 0x18-0x1F → strip 0-7
+
+    #[test]
+    fn parse_state_change_select_all_strips_on() {
+        for strip in 0u8..8 {
+            let note = 0x18 + strip;
+            let bytes = [0x90, note, 0x7F];
+            assert_eq!(
+                parse_state_change(&bytes),
+                Some(McuStateChange::Select { strip, on: true }),
+                "select on strip={strip} note={note:#04x}"
+            );
+        }
+    }
+
+    #[test]
+    fn parse_state_change_select_all_strips_off() {
+        for strip in 0u8..8 {
+            let note = 0x18 + strip;
+            let bytes = [0x90, note, 0x00];
+            assert_eq!(
+                parse_state_change(&bytes),
+                Some(McuStateChange::Select { strip, on: false }),
+                "select off strip={strip}"
+            );
+        }
+    }
+
+    // Rejection cases
+
+    #[test]
+    fn parse_state_change_rejects_note_outside_ranges() {
+        // 0x20-0x7F are not mapped
+        for note in [0x20u8, 0x40, 0x5E, 0x7F] {
+            assert_eq!(
+                parse_state_change(&[0x90, note, 0x7F]),
+                None,
+                "note {note:#04x} should be None"
+            );
+        }
+    }
+
+    #[test]
+    fn parse_state_change_rejects_non_note_on_status() {
+        // Note-off (0x80), CC (0xB0), pitch-bend (0xE0), SysEx (0xF0)
+        for status in [0x80u8, 0xB0, 0xE0, 0xF0] {
+            assert_eq!(
+                parse_state_change(&[status, 0x10, 0x7F]),
+                None,
+                "status {status:#04x} should be None"
+            );
+        }
+        // Note-on on channel 2 (0x91) is also rejected — MCU is channel 1.
+        assert_eq!(parse_state_change(&[0x91, 0x10, 0x7F]), None);
+    }
+
+    #[test]
+    fn parse_state_change_rejects_non_toggle_velocity() {
+        // velocity 0x01, 0x40, 0x7E — not 0x00 or 0x7F
+        for vel in [0x01u8, 0x40, 0x7E] {
+            assert_eq!(
+                parse_state_change(&[0x90, 0x10, vel]),
+                None,
+                "velocity {vel:#04x} should be None"
+            );
+        }
+    }
+
+    #[test]
+    fn parse_state_change_rejects_wrong_length() {
+        assert_eq!(parse_state_change(&[]), None);
+        assert_eq!(parse_state_change(&[0x90, 0x10]), None);
+        assert_eq!(parse_state_change(&[0x90, 0x10, 0x7F, 0x00]), None);
     }
 }

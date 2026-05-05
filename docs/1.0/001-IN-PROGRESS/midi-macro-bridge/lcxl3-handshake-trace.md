@@ -202,14 +202,146 @@ direction in bit 6 — that turned out to be the wrong model and was
 mapped to the wrong CC pair entirely. The Phase 5e hardware probe
 captured the actual byte stream and corrected both.)
 
+## Phase 9a — DAW Mixer mode and the full CC byte map
+
+Phase 9 adds DAW Mixer-mode support (faders + V-pots + fader buttons →
+LUNA channel volume / pan / mute / solo / arm). Phase 9a captured the
+full surface byte map against real hardware on 2026-04-29 — see
+`research/lcxl3-mixer-mode-decode.md` for the source decode and
+`research/lcxl3-mixer-mode-capture-2026-04-29.txt` for the raw byte
+trace (6091 lines).
+
+Earlier in this doc the "What this document deliberately does not
+cover" section noted that fader / V-pot bytes were "documented in
+Novation's published programmer reference and not currently consumed".
+That guess about pitch-bend encoding turned out to be **wrong** —
+Phase 9a confirmed faders + V-pots emit on channel 16 (status `BF`)
+with 7-bit absolute values, NOT pitch-bend on per-strip channels.
+
+### Mode hierarchy
+
+```
+Standalone (MIDI) mode  ← default after power-on; outputs on DIN + USB
+DAW mode                ← claimed by sending `02 7F` SysEx (Phase 5 handshake)
+  ├── DAW Control mode  ← Phase 5 ships transport + jog (V-pot row 3 col 1
+  │                       in relative mode emits BF 5D nn)
+  └── DAW Mixer mode    ← Phase 9 target (full mixer surface)
+Custom Modes 1-16       ← out of scope
+```
+
+### Sub-mode select / report
+
+Channel 7 (status `B6`), CC `0x1E` (30). Bidirectional:
+
+```
+B6 1E 01    DAW Mixer
+B6 1E 02    DAW Control
+B6 1E 06-09 Custom Mode 1-4
+B6 1E 12-1D Custom Mode 5-16
+```
+
+The bridge sends this to switch the device into the desired sub-mode;
+the device emits the same byte when the user toggles via on-device Mode
+button.
+
+**Undocumented finding:** every mode change emits a PAIR (~100 µs apart):
+
+```
+B6 1E 02    documented mode-report
+B6 1F 02    UNDOCUMENTED companion (identical value)
+```
+
+`B6 1F vv` is not in Novation's published feature-controls reference
+but reliably co-emits with `B6 1E vv` on every mode change. The
+parser should treat the pair as a single event keyed off `B6 1E`,
+ignoring the `B6 1F` companion.
+
+### The full DAW Mixer CC byte map (canonical, hardware-confirmed)
+
+#### Faders — channel 16 (status `BF`)
+
+| Strip | CC byte | Encoding |
+|-------|---------|----------|
+| 1-8 | `BF 05-0C nn` | 7-bit absolute, nn = 0..127 |
+
+#### V-pots (encoders) — channel 16 (status `BF`), absolute by default in Mixer mode
+
+| Position | CC byte (absolute) | CC byte (relative, after `B6 45/48/49 7F` toggle) |
+|----------|--------------------|-----------------------------------------------------|
+| Row 1 col 1-8 | `BF 0D-14 nn` | `BF 4D-54 nn` (centre-at-`40`) |
+| Row 2 col 1-8 | `BF 15-1C nn` | `BF 55-5C nn` |
+| Row 3 col 1-8 | `BF 1D-24 nn` | `BF 5D-64 nn` ← Phase 5's "jog wheel" is row 3 col 1 in relative mode |
+
+**Mode discrimination matters for parsing:** the same physical row 3
+col 1 V-pot emits `BF 5D nn` (relative, Phase 5 jog) in DAW Control
+mode and `BF 1D nn` (absolute) in DAW Mixer mode. The parser must
+key off the active sub-mode, not the CC byte alone.
+
+#### Fader buttons — channel 1 (status `B0`), press `7F` / release `00`
+
+| Strip | Top row (Solo/Arm) | Bottom row (Mute/Select) |
+|-------|--------------------|--------------------------|
+| 1-8 | `B0 25-2C 7F`/`00` | `B0 2D-34 7F`/`00` |
+
+#### Side-panel buttons — channel 1 (`B0`) and channel 7 (`B6`)
+
+| Button | Byte | Notes |
+|--------|------|-------|
+| Page Up | `B0 6A 7F`/`00` | upper of "Page" pair |
+| Page Down | `B0 6B 7F`/`00` | lower of "Page" pair |
+| Track Right | `B0 66 7F`/`00` | mixer-bank-next analogue |
+| Track Left | `B0 67 7F`/`00` | mixer-bank-prev analogue |
+| Record | `B0 76 7F`/`00` | LED-set via `B0 76 <colour>` |
+| Play | `B0 74 7F`/`00` | LED-set via `B0 74 <colour>` |
+| Shift | `B6 3F 7F`/`00` | channel 7 (feature-control linked) |
+| Solo / Arm row toggle | `B0 41 7F`/`00` | host-managed sub-state |
+| Mute / Select row toggle | `B0 42 7F`/`00` | host-managed sub-state |
+| Small unlabelled (left of fader 1) | `B0 68 7F`/`00` | function unclear |
+
+The Solo/Arm and Mute/Select toggles emit MIDI press/release but **do
+not separately report which sub-mode** (Solo vs Arm; Mute vs Select)
+the device is currently in. The host tracks this state itself.
+
+The on-device "Mode" button has no discrete CC of its own — pressing
+it triggers the device's mode-change report (`B6 1E + B6 1F` pair).
+
+### Initial LED state after handshake + DAW Mixer mode-select
+
+After the Phase 5 activation handshake plus a `B6 1E 01` mode-select,
+the device's LED state is:
+
+- **Lit:** Record button (Phase 5 preset `B0 76 07`), Play button
+  (`B0 74 27`), Shift + Mode (device-managed)
+- **Dark:** all 24 V-pots, all 16 fader buttons, all 4 page/track
+  side buttons, the 3 left-side toggles (Solo/Arm, Mute/Select, small)
+
+Phase 9b will need to push initial LED colours for any control it
+wants illuminated. Reference for V-pot LED rings (12-LED rings around
+each encoder) needs further capture — Phase 9a only exercised input,
+not output.
+
+### Open questions for Phase 9a continued (LUNA-side)
+
+Independent of the LCXL3 capture above:
+
+- LUNA's MCU mixer vocabulary: what bytes drive volume / pan /
+  mute / solo / arm / select / bank-nav?
+- LUNA's plugin-parameter vocabulary: focused-plugin section, HUI
+  extension, or UA-specific?
+- V-pot LED ring control protocol on the LCXL3 (output direction,
+  not yet captured).
+
+These are addressed in a separate hands-on session against LUNA + the
+bridge's `--send-mcu` discovery mode.
+
 ## What this document deliberately does not cover
 
-- **Page-metadata SysEx for the strips and knobs.** Phase 5 doesn't use
-  these. If a future phase maps V-pots to LUNA parameters, document the
-  per-strip page IDs (`0x05–0x24` block, four banks of eight) here.
-- **Fader / V-pot bytes.** Faders emit pitch-bend messages on channels
-  1–8 (one fader per channel); V-pots emit relative CCs on channels
-  1–8. Documented in Novation's published programmer reference and not
-  currently consumed.
-- **Pad RGB lighting.** The pads support per-pad RGB via SysEx (cmd
-  `0x09`-ish). Not used in v1.
+- **Custom Modes 1-16** — out of scope for Phase 5 and Phase 9.
+- **Pad RGB lighting** — out of scope for Phase 9 (mixer surface
+  doesn't include the pads). Future work if pad mappings are added.
+- **Touch events on faders** — supported via `B6 47 7F` enable, then
+  fader touches emit on channel 15 (`BE`). Phase 9 doesn't enable
+  by default; could be added if LUNA's fader-pickup behaviour needs it.
+- **Per-strip / per-V-pot LCD page metadata** (the `0x05-0x24` block
+  of display targets). Phase 5 only uses page `0x36` for the host name.
+  Phase 9b might add per-strip channel-name display as a polish item.

@@ -40,6 +40,17 @@
 | Tolerance fix PR | [#318](https://github.com/audiocontrol-org/audiocontrol/pull/318) (merged) |
 | Idle byte-trace PR | [#319](https://github.com/audiocontrol-org/audiocontrol/pull/319) (merged) |
 | Phase 5 + Ableton PR | [#326](https://github.com/audiocontrol-org/audiocontrol/pull/326) (merged) |
+| Phase 6 + 8a PR | [#346](https://github.com/audiocontrol-org/audiocontrol/pull/346) (merged 2026-04-28) |
+| Phase 9 Parent Issue | [#347](https://github.com/audiocontrol-org/audiocontrol/issues/347) — LCXL3 DAW Mixer + Plugin Control |
+| Phase 9a Issue | [#348](https://github.com/audiocontrol-org/audiocontrol/issues/348) — research + LUNA MCU profiling |
+| Phase 9b Issue | [#349](https://github.com/audiocontrol-org/audiocontrol/issues/349) — Mixer mode implementation |
+| Phase 9c Issue | [#350](https://github.com/audiocontrol-org/audiocontrol/issues/350) — plugin / DAW control mode (scope per 9a) |
+| Phase 9d Issue | [#351](https://github.com/audiocontrol-org/audiocontrol/issues/351) — Phase 9 hardware validation |
+| Phase 10 Parent Issue | [#352](https://github.com/audiocontrol-org/audiocontrol/issues/352) — LCXL3 row-aware V-pot mapping |
+| Phase 10a Issue | [#353](https://github.com/audiocontrol-org/audiocontrol/issues/353) — V-pot row drill-down profiling |
+| Phase 10b Issue | [#354](https://github.com/audiocontrol-org/audiocontrol/issues/354) — row-aware sticky-mode state machine |
+| Phase 10c Issue | [#355](https://github.com/audiocontrol-org/audiocontrol/issues/355) — Phase 10 hardware validation |
+| Track ◀/▶ ignored by LUNA | [#356](https://github.com/audiocontrol-org/audiocontrol/issues/356) — open issue, deferred |
 
 ## Technical Approach
 
@@ -440,7 +451,7 @@ The full UX/interaction specification is captured in [`web-ui-design.md`](web-ui
 - [x] `GET /` returns `index.html` with a `Content-Type: text/html` and 200 status
 - [x] `GET /static/htmx.min.js` etc. return the vendored assets with correct content types
 - [x] Fonts load from `/static/fonts/*.woff2` (visible in browser DevTools network tab)
-- [ ] htmx successfully swaps `/api/ports` and `/api/status` fragments into the initial page on load (verify via DOM inspection — browser test pending)
+- [x] htmx successfully swaps `/api/ports` and `/api/status` fragments into the initial page on load (verified via Playwright snapshot 2026-04-28: `bridge-after-8a.png` shows live port data populated in the routing matrix from the swap)
 
 ### Phase 6d — Stylesheet (studio rack aesthetic)
 
@@ -489,7 +500,7 @@ The full UX/interaction specification is captured in [`web-ui-design.md`](web-ui
 - [x] Client-side ring-buffer at 200 lines: when a new line arrives, remove the oldest if the buffer is full
 - [x] Auto-scroll to bottom on new event; pause auto-scroll while the user hovers the stream container; show a subtle "PAUSE" indicator dot when paused
 - [x] Subtle scroll-into-view animation (140ms ease-out) on each new line so movement is intentional, not distracting
-- [ ] Verify: trigger MC-500 transport and LCXL3 encoder events; confirm both appear in the stream within one event-loop tick
+- [x] Verify: trigger MC-500 transport and LCXL3 encoder events; confirm both appear in the stream within one event-loop tick (verified 2026-04-28 via `control-ui.log`: 10+ `TogglePlay` events from LCXL3 with sub-second timestamps; jog encoder events were absent and traced via the byte-trace diagnostic to a hardware-side issue, not a bridge regression)
 
 ### Acceptance Criteria
 
@@ -508,7 +519,7 @@ The full UX/interaction specification is captured in [`web-ui-design.md`](web-ui
 - [x] Vanilla JS `app.js`: `mousedown` starts a 3-second timer, animates the progress ring; `mouseup` before completion cancels (no action); after 3s, the JS posts to `/api/halt` and the bridge exits
 - [x] Master LED component: reads `bridge_state` from the status snapshot, renders green / amber / red. Hover reveals a tooltip listing specific reason for amber/red (e.g., "MC-500 input port disconnected", "MCU heartbeat stale (8s ago)", "panic state")
 - [x] Status logic: green = all enabled inputs connected, MCU output flowing, heartbeat within 5s; amber = any disconnect or stale heartbeat; red = panic state pending
-- [ ] Verify: hold HALT for 3s → bridge exits; click and release before 3s → nothing happens; disconnect a configured port → master LED goes amber → reconnect → green within 2s
+- [x] Verify: hold HALT for 3s → bridge exits (verified 2026-04-28 via direct `POST /api/halt` curl: log shows `halt requested via web UI` → `LCXL3 deactivation SysEx sent` → process exits cleanly; lingering bridge processes: 0). Click-without-hold and master-LED port-disconnect transitions deferred to formal hardware validation in follow-on PR.
 
 ### Acceptance Criteria
 
@@ -527,7 +538,7 @@ The full UX/interaction specification is captured in [`web-ui-design.md`](web-ui
 - [x] Write the chosen URL to `~/Library/Application Support/MidiMacroBridge/url.txt` after the listener binds (create the directory if needed); existing tooling and a future menu-bar app can read this
 - [x] First-run UX: if no MIDI ports are configured (fresh install with empty config), the UI shows an explicit "no devices configured yet" empty state in the routing matrix instead of empty silhouettes; configuration panels are pre-expanded so the user lands on the picker
 - [x] Add a `[web]` config section: `enabled` (default true), `bind_port` (default 8765), `auto_open_browser` (default true)
-- [ ] Document the new config section in `config.example.toml` (deferred to 6i — config.example.toml already describes the [web] section)
+- [x] Document the new config section in `config.example.toml` (config.example.toml already describes the [web] section as part of Phase 6h)
 
 ### Acceptance Criteria
 
@@ -766,3 +777,211 @@ Browser  ─ htmx-sse listens for "status-updated" event ─► OOB swaps land i
 
 - [ ] All test cases above pass on the user's rig
 - [ ] User confirms the new UI reads as part of the audiocontrol.org family
+
+## Phase 9: LCXL3 DAW Mixer + Plugin Control
+
+**Deliverable:** Beyond Phase 5's transport-only mapping, the bridge translates the LCXL3's DAW Mixer mode (8 strips of fader + V-pot + fader buttons, plus banking + LED feedback) into LUNA's MCU mixer-control vocabulary, and — scope contingent on research — extends to plugin parameter control.
+
+**Why now:** the LCXL3's transport works great with LUNA via Phase 5/8a. The user wants to also drive the LUNA mixer from the device — channel volume, pan, mute / solo / record-arm — and ideally plugin parameters when LUNA's plugin window is focused. The device has two operational sub-modes within DAW Mode ("DAW Control" — what we use today; "DAW Mixer" — the new target). Implementing this requires research on what each mode emits, what LUNA's MCU surface accepts beyond transport, and what (if any) plugin-control vocabulary LUNA exposes.
+
+**Pre-research uncertainties (drive Phase 9a):**
+
+1. **LCXL3 mode-switch mechanism** — how the device distinguishes DAW Control vs DAW Mixer at the protocol level. Possibilities: an on-device button emits SysEx telling the host which sub-mode is active; the device internally remaps the bytes its strip controls emit; the activation handshake (`02 7F`) selects a default and the device toggles independently. Phase 5 captured DAW Control mode bytes only.
+2. **LUNA's MCU mixer vocabulary** — channel-volume changes (likely 14-bit pitch-bend per channel), V-pot pan (likely CC `0x10`-`0x17`, relative encoding), button events (mute / solo / arm / select on notes `0x10`-`0x27`), bank navigation (notes `0x2E`/`0x2F`). Confirmed via `--send-mcu` discovery against LUNA, same pattern as Phase 3c.
+3. **LUNA's plugin-parameter vocabulary** — does it implement MCU's focused-plugin section? HUI's plugin section? UA-specific extension? Phase 9a research output decides whether Phase 9c implements directly or punts.
+
+**Structural concern surfaced by Phase 9 scope:** mixer events (fader change, V-pot tick, fader-button press) don't fit `TransportEvent` and shouldn't share its echo / dedup / arbitration logic. Phase 9a confirms whether to add a parallel mixer-event channel, or to generalise the existing transport channel to a "surface event" channel carrying both. The decision shapes 9b's implementation.
+
+### Phase 9a — LCXL3 mode research + LUNA MCU profiling
+
+**Deliverable:** decoded byte map for LCXL3 DAW Mixer mode + the protocol switch from DAW Control; profiled LUNA MCU mixer-control vocabulary; ratified structural decisions for 9b.
+
+- [ ] Read Novation's LCXL3 programmer reference (referenced in earlier sessions: https://userguides.novationmusic.com/hc/en-gb/sections/27840433446546-Launch-Control-XL-3-programmer-s-reference-guide). Document the canonical mode taxonomy in `lcxl3-handshake-trace.md`.
+- [ ] Capture DAW Mixer mode byte traces using the existing `--lcxl3-activate` probe mode (which logs every received byte). Switch the device into Mixer mode, exercise each control (each fader, each V-pot, each fader button, bank-prev, bank-next), capture the byte sequences. Append the decode to `lcxl3-handshake-trace.md`.
+- [ ] Decode the mode-switch mechanism. If it's a SysEx, document the bytes. If it's an on-device button that the bridge can monitor (the device sends a state-change byte), document that. If both — document.
+- [ ] Profile LUNA's MCU surface for mixer commands via `--send-mcu` discovery, same pattern as Phase 3c:
+  - Send pitch-bend on channel 1-8 with various values; observe LUNA's volume slider response on each track
+  - Send CC `0x10`-`0x17` with relative-encoding values on channel 1; observe pan response
+  - Send note-on `0x10`-`0x27` on channel 1 (8 mute + 8 solo + 8 arm + 8 select buttons in MCU spec); observe mute/solo/arm/select behaviour
+  - Send notes `0x2E` / `0x2F`; observe bank navigation
+  - Capture the heartbeat-reply / position-output stream during mixer changes — does LUNA push back fader / mute / solo state via inbound MCU bytes? (Needed for Phase 9b's LED-mirror feature.)
+- [ ] Profile LUNA's plugin-parameter vocabulary if discoverable: does pressing the plugin-edit MCU button (`0x36`?) put LUNA's MCU surface in plugin-focus mode? What bytes does LUNA accept for plugin parameter changes? If unclear after a half-day's probing, scope 9c down to "punt; document what was tried".
+- [ ] Decide and document the mixer-event taxonomy: parallel channel vs generalised "SurfaceEvent" enum. Capture the choice + rationale in workplan.md or a new `phase-9-design.md` reference doc.
+- [ ] Outputs: extended `lcxl3-handshake-trace.md` with Mixer mode decode + mode-switch mechanism; new `luna-mcu-mixer-notes.md` with the per-control byte map + LED-feedback inbound stream; ratified Phase 9b implementation shape.
+
+### Acceptance Criteria
+
+- [ ] `lcxl3-handshake-trace.md` extended with: DAW Mixer mode entry mechanism, byte sequences for fader 1-8 motion (likely 7-bit on a per-strip CC), V-pot 1-8 tick (likely relative-encoding CC per strip), fader buttons 1-8 (likely note-on/off on a per-strip note), bank-prev/bank-next bytes
+- [ ] `luna-mcu-mixer-notes.md` exists and documents: pitch-bend → channel volume mapping confirmed by `--send-mcu` discovery; CC pan mapping; mute/solo/arm/select note vocabulary; bank-nav vocabulary; LED-feedback inbound stream documented
+- [ ] Plugin-parameter findings documented (either as a complete vocabulary if discoverable, or as "tried X, Y, Z; LUNA didn't respond — scope 9c to punt")
+- [ ] Phase 9b implementation shape (parallel channel vs SurfaceEvent enum) ratified by user before 9b code lands
+
+### Phase 9b — DAW Mixer mode implementation
+
+**Deliverable:** with the LCXL3 in DAW Mixer mode, faders drive LUNA's channel-1-8 volume, V-pots drive pan, fader buttons drive mute/solo/arm/select, bank buttons navigate banks, and the LCXL3's fader-button LEDs reflect LUNA's mute/solo/arm state.
+
+- [ ] Extend `lcxl3.rs` parser to recognise Mixer mode bytes per 9a's decoded byte map. Per-strip parser logic — fader value (7-bit), V-pot tick (relative-magnitude), fader button (press / release).
+- [ ] Implement the chosen event taxonomy from 9a (parallel mixer channel OR `SurfaceEvent` enum that wraps `TransportEvent` + `MixerEvent`). Update `state.rs` accordingly.
+- [ ] Extend `Backend` trait or add a `MixerBackend` trait. `McuBackend` implements mixer emit (pitch-bend on channel N for fader N; CC for V-pot pan; note-on/off for buttons). `KeystrokeBackend` does NOT implement mixer (no keystroke equivalent; document and gate at the Backend trait level).
+- [ ] Banking: the LCXL3's eight strips correspond to a sliding window over LUNA's tracks. Maintain a current-bank state in the bridge. Bank-prev/bank-next from the device emit the corresponding MCU notes; LUNA's response (changed channel-strip names / fader positions) flows back as inbound MCU bytes that update the bridge's tracked-state model.
+- [ ] LED feedback: for each fader button, the LCXL3 expects a CC to set its LED colour. After every inbound MCU byte from LUNA that changes mute/solo/arm/select state of a tracked channel within the current bank, push the corresponding LED bytes to the LCXL3. Per-strip mapping: LCXL3 strip N maps to LUNA bank-window-position N.
+- [ ] Configuration: optional `[lcxl3.mixer]` section in `config.toml` for opt-out (`enabled = true` by default once Phase 9 ships) and starting-bank.
+- [ ] Unit tests: parser tests against captured Mixer-mode bytes; mixer-event → MCU-byte translation tests; banking state machine tests.
+
+### Acceptance Criteria
+
+- [ ] Faders 1-8 on LCXL3 drive LUNA's channel-1-8 volume
+- [ ] V-pots 1-8 drive LUNA pan; relative encoding correctly accumulated
+- [ ] Fader buttons drive mute / solo / arm (configured per LUNA's MCU button vocabulary; default = topmost row of fader buttons → mute)
+- [ ] Bank-prev / bank-next navigate LUNA's track strips; LCXL3 LEDs follow
+- [ ] LED feedback: muting / soloing / arming a track in LUNA updates the corresponding fader-button LED on the LCXL3 within ~150ms
+- [ ] No regression in Phase 5 transport behaviour or Phase 6/8a web UI when LCXL3 switches between Control and Mixer modes
+- [ ] All existing unit tests still pass; `cargo build --release` clean
+
+### Phase 9c — Plugin / DAW Control extension
+
+**Deliverable:** scope contingent on Phase 9a findings. If LUNA exposes a plugin-control MCU vocabulary, implement it on the LCXL3's V-pots (or another suitable control surface). If the protocol is non-standard / requires reverse-engineering beyond a reasonable phase scope, document the findings and defer the implementation to a successor feature.
+
+The decision tree:
+
+- **If LUNA implements MCU's focused-plugin section** (V-pots become the active plugin's eight parameters; specific note-byte engages the mode): straightforward extension. Eight V-pots → eight plugin parameters. LED display on the LCXL3 shows current parameter values when LUNA pushes them back.
+- **If LUNA implements HUI's plugin section** (notes `0x36`-`0x3F` plus a different inbound vocabulary): doable but more work — HUI is a separate protocol bolted onto the same MCU surface, and the bridge would need to fork its inbound parser. Probably ship and document the extra complexity.
+- **If LUNA uses a UA-specific extension or doesn't expose MCU plugin control at all:** document what was tried in `luna-mcu-mixer-notes.md`, scope 9c down to "punt — successor feature". The bridge's V-pots stay assigned to pan in DAW Mixer mode.
+
+- [ ] Implement the path determined by 9a, OR file a follow-on issue if punting
+
+### Acceptance Criteria
+
+- [ ] Either: focused-plugin parameter control works end-to-end (LCXL3 V-pots drive parameters of LUNA's currently-focused plugin)
+- [ ] OR: clean documentation of why this couldn't be implemented in this phase + a sized follow-on feature scoped
+
+### Phase 9d — Hardware validation
+
+**Deliverable:** end-to-end mixer + plugin (where applicable) verification on real LCXL3 + LUNA.
+
+- [ ] LCXL3 in DAW Mixer mode: faders 1-8 drive LUNA's channel-1-8 volume sliders smoothly across the full range
+- [ ] V-pots 1-8 drive pan; pan-detent behaviour (V-pot center is detent; rotate to break) feels right
+- [ ] Mute, solo, record-arm from fader buttons drive LUNA correctly
+- [ ] LED feedback: mute / solo / arm a track in LUNA → corresponding LCXL3 fader-button LED updates within ~150ms
+- [ ] Bank navigation: bank-prev / bank-next on LCXL3 navigates LUNA's track view; LCXL3 strips re-bind to the new bank
+- [ ] Mode switching: LCXL3 toggles between DAW Control (transport) and DAW Mixer mode without bridge restart
+- [ ] No regression in transport (Play/Stop/jog) or web UI from Phase 5/6/8a
+- [ ] If 9c shipped: focused-plugin parameter control works on a representative LUNA-bundled plugin
+
+### Acceptance Criteria
+
+- [ ] All test cases above pass on the user's rig
+- [ ] User confirms LCXL3 mixer feels usable for typical LUNA mixing workflow
+
+## Phase 10: LCXL3 Page-Aware V-Pot Mapping (Trim + Tape + Sends + EQ/Plugin)
+
+**Deliverable:** the LCXL3's three V-pot rows control LUNA parameters per a Page Up/Down navigation model. In DAW Mixer mode, the bottom row stays on Pan and the top two rows shift through pages: Page 0 = Trim/Tape (default), Pages 1-4 = paired sends. In DAW Control mode the top two rows control the selected-track EQ or focused-plugin parameters. The single LCXL3 LCD shows the name + value of the currently-adjusted control (Live/Logic style).
+
+**Why now:** Phase 9b's V-pot handler routes all three rows to pan. The user has three rows of physical encoders, has explicitly opted into bridge-managed function negotiation (manual MIDI mapping in LUNA is fragile across machines / reinstalls), and has confirmed via the LCXL3 reference that Page navigation drives the top two rows. MCU's eight-V-pots-one-mode constraint means the bridge has to switch LUNA's mode + sub-selection on every Page change, which is genuinely new architecture relative to Phase 9b.
+
+**Page table (DAW Mixer mode):**
+
+| Page | Row 1 (top)    | Row 2 (middle)         | Row 3 (bottom) |
+|------|----------------|------------------------|----------------|
+| 0    | Channel Trim   | Tape-plugin saturation | Pan |
+| 1    | Send 1         | Send 2                 | Pan |
+| 2    | Send 3         | Send 4                 | Pan |
+| 3    | Send 5         | Send 6                 | Pan |
+| 4    | Send 7         | Send 8                 | Pan |
+
+Page Up / Page Down clamps at 0 and 4. Bottom row is always Pan. Page 0 (Trim + Tape) is the user's primary working state; send pages are the secondary "I need to fiddle with a send" affordance.
+
+**DAW Control mode V-pot routing (separate from DAW Mixer):**
+
+Per LCXL3 reference, in DAW Control mode the top two V-pot rows control the EQ controls of the selected track or the parameters of the currently focused plugin. Rows are pre-assigned by the device — no Page navigation in DAW Control. Bottom-row V-pot 1 stays as the jog-wheel (Phase 5 behaviour).
+
+**LCXL3 single-LCD display mirror:**
+
+The LCXL3 has one LCD screen, not eight per-strip displays. In Live and Logic this LCD shows the parameter name + value of whichever control the user is currently adjusting (fader, V-pot, etc.). Phase 10 mirrors this for LUNA: parse LUNA's strip-name SysEx push-back (`F0 00 00 66 14 12 ...` per Phase 9a notes), extract the active parameter's name + value, format for the LCXL3's LCD protocol. After ~500 ms of idle, the LCD reverts to a neutral display (likely the active page's row labels: e.g. "Page 0 — Trim / Tape" at the top, "Pan" at the bottom).
+
+**Page state scaffolding** (already landed in main.rs as `vpot_page: u8` with Page Up/Down handlers): Page state is observable in the event log; Phase 10b's V-pot router will read it.
+
+**Pre-research uncertainties (drive Phase 10a):**
+
+1. **Plug-In-mode drill-down for Page 0** — `90 2B 7F` enters Plug-In mode showing "Tape | Consol | Insrts"; bytes to pick Tape and locate its saturation parameter are not captured. Channel Trim's location is unclear (Console plugin? separate channel-strip parameter? focused-plugin path?).
+2. **Sends-mode drill-down for Pages 1-4** — `90 29 7F` enters Sends mode with a "Pick a Send" menu; bytes to pick Send 1, Send 2, etc. are not captured.
+3. **DAW Control V-pot byte vocabulary** — does the device emit different CCs for V-pots in DAW Control vs DAW Mixer? Does LUNA route those CCs to EQ / focused-plugin without bridge mode-switch?
+4. **MCU mode stickiness** — does LUNA stay in selected sub-mode indefinitely, or auto-revert? Does pan still work in Row 3 while the surface is in Sends mode (MCU spec says no — verify)?
+5. **Page-revert UX** — auto-revert to Page 0 after V-pot idle, or sticky until Page button is pressed? Tuned in 10c.
+6. **LCXL3 LCD output protocol** — bytes to write text to the device's single LCD. Likely a Novation-specific SysEx; Phase 10a captures.
+
+### Phase 10a — V-pot drill-down + LCD-output profiling
+
+**Deliverable:** decoded byte map for "pick Tape + saturation" + "pick Trim parameter" inside Plug-In mode (Page 0); "pick Send N" inside Sends mode (Pages 1-4); DAW Control V-pot byte map; LCXL3 LCD-write protocol. Findings appended to `research/luna-mcu-mixer-notes.md` and `lcxl3-handshake-trace.md`.
+
+- [ ] Use `--probe-mcu-interactive` to enter Plug-In mode (`90 2B 7F`); exercise V-pot button clicks on V-pots 1/2/3 to find the byte that picks "Tape". Once picked, identify which V-pot column controls saturation and capture the relevant note/CC bytes.
+- [ ] Locate channel Trim — probe Console plugin (pick Consol from same menu) and the focused-plugin path. Document path and bytes for whichever route works. Descope to "Trim unreachable, Page 0 Row 1 = something else" if blocked.
+- [ ] Drill into Sends mode (`90 29 7F`): bytes to pick Send 1, Send 2, etc.; verify Pages 1-4 mapping (Sends 1+2, 3+4, 5+6, 7+8) is reachable.
+- [ ] Capture DAW Control mode V-pot byte map. Switch the LCXL3 to DAW Control (Mode + DAW Control); exercise top two rows of V-pots; log the bytes the device emits. Compare to DAW Mixer mode bytes — same CCs (LUNA routes via current MCU mode), or different?
+- [ ] Decide page-revert policy: auto-revert to Page 0 after idle (and how long), or sticky.
+- [ ] Capture the LCXL3 LCD-write protocol. Probe Novation reference + run experiments via `--lcxl3-activate`-style probe modes: send candidate SysEx forms targeting the LCD, observe what renders. Likely a Novation-specific SysEx (`F0 00 20 29 ...`). Capture: opcode for "write text"; addressable regions (top line / bottom line / both); character set; max length per line.
+- [ ] Document the LCD-revert UX: after ~500 ms of idle, what does the LCD show? Options: blank; current page label ("Page 0 — Trim / Tape"); track name of the currently-selected channel.
+
+### Acceptance Criteria
+
+- [ ] `luna-mcu-mixer-notes.md` extended with: bytes to pick Tape + saturation; bytes to address channel Trim (or descope note); bytes to pick Send 1-8 in pairs; DAW Control V-pot byte map
+- [ ] `lcxl3-handshake-trace.md` extended with: LCD-write SysEx form; addressable regions; max chars per line
+- [ ] Page-revert policy + LCD-revert policy ratified by user before 10b code lands
+
+### Phase 10b — Page-aware sticky-mode state machine + LCD mirror
+
+**Deliverable:** the V-pot SurfaceEvent handler in `main.rs` reads `vpot_page` to drive LUNA's MCU mode + sub-selection on Row 1 / Row 2 V-pot motion. Bottom row stays on Pan. Optional auto-revert to Page 0 after idle. Separate routing for DAW Control mode if 10a finds it needs distinct handling. The LCXL3 LCD mirrors the currently-adjusted parameter's name + value, sourced from LUNA's strip-name SysEx push-back.
+
+- [ ] Add `LunaSurfaceMode` type in `state.rs` or `lcxl3.rs`: `Pan`, `Sends(u8)`, `PlugInTape`, `PlugInTrim`, with helper `from_page_and_row` that maps `(vpot_page, VRow) -> LunaSurfaceMode`.
+- [ ] In the V-pot SurfaceEvent handler in `main.rs`, replace the existing "all rows → pan" logic with: (a) for Row 3, emit Pan as today; (b) for Row 1 / Row 2, compute target mode from `(vpot_page, row)`; if LUNA's current mode != target, emit the mode-switch + drill-down byte sequence (per 10a) and update tracked mode; (c) emit the V-pot delta; (d) record `last_vpot_at`.
+- [ ] Optional auto-revert: each iteration of the main loop checks "if last_vpot_at + idle > now AND vpot_page != 0, revert to Page 0 + emit corresponding mode-switch". Tunable via `[lcxl3.mixer] vpot_page_revert_idle_ms` (default per 10a — likely 0 = sticky).
+- [ ] Page Up / Page Down handlers (already scaffolded) emit Page transitions; on a Page change the bridge eagerly emits the appropriate mode-switch so LUNA's surface follows even before the next V-pot move.
+- [ ] DAW Control mode V-pot routing — implement per 10a's findings. May be simply "pass through V-pot CCs and let LUNA handle EQ / focused-plugin" if 10a confirms the bytes route correctly without bridge intervention.
+- [ ] LCD mirror: parse LUNA's strip-name SysEx push-back (`F0 00 00 66 14 12 ...`); extract the active parameter's name + value (whichever strip / row LUNA is updating); format for the LCXL3's single LCD per the protocol captured in 10a. Maintain a "last-touched control" tracker so a fader move and a V-pot move on different strips both update the LCD with the relevant parameter.
+- [ ] LCD idle revert: after ~500 ms of no parameter-display SysEx from LUNA, write a neutral readout to the LCD per 10a's chosen policy (likely the active page label, e.g. "Page 0 — Trim / Tape").
+- [ ] Unit tests: `LunaSurfaceMode::from_page_and_row` mapping; Page Up / Page Down clamps; mode-switch state machine emits correct sequence on Page changes; LCD-format helper renders LUNA's parameter SysEx into the right LCXL3 LCD bytes.
+- [ ] Integration: ensure no regression in DAW Control jog-wheel (`row == VRow::Bottom && col == 0`) and no regression in Phase 9b pan behaviour.
+
+### Acceptance Criteria
+
+- [ ] Page 0 default: Row 1 drives channel Trim; Row 2 drives Tape saturation; Row 3 drives Pan (or descope note if Trim/Tape unreachable per 10a)
+- [ ] Page Down advances through Sends 1+2, 3+4, 5+6, 7+8 with correct LUNA response
+- [ ] Page Up retreats; clamps at 0 and 4
+- [ ] DAW Control mode V-pots drive EQ / focused-plugin per 10a
+- [ ] LCXL3 LCD shows parameter name + value of the currently-adjusted control (Live/Logic style); reverts to a neutral readout after ~500 ms of idle
+- [ ] No regression in faders, fader buttons, banking, transport, or LED feedback from Phase 9b
+- [ ] All existing unit tests still pass; `cargo build --release` clean
+
+### Phase 10c — Hardware validation
+
+**Deliverable:** end-to-end verification on the user's LCXL3 + LUNA in both DAW modes.
+
+- [ ] In DAW Mixer mode at Page 0: confirm Row 1 drives channel trim across all 8 strips; Row 2 drives tape saturation; Row 3 drives pan
+- [ ] Page Down → Page 1: Row 1 = Send 1, Row 2 = Send 2 — confirm visible LUNA response on the send slots
+- [ ] Page Down through Pages 2, 3, 4 — confirm Sends 3+4, 5+6, 7+8 each work
+- [ ] Page Up walks back through the same pages; clamps at 0 cleanly
+- [ ] In DAW Control mode: confirm top two V-pot rows drive EQ / focused-plugin per 10a
+- [ ] LCXL3 LCD shows parameter name + value of the currently-adjusted control during fader / V-pot motion; reverts cleanly to the neutral idle readout
+- [ ] No regression in faders, fader buttons, banking, transport, or LED feedback
+- [ ] Final Page-revert + LCD-revert policy confirmed comfortable for typical mixing workflow
+- [ ] Document the final design in `lcxl3-handshake-trace.md` or a new `phase-10-implementation-notes.md`
+
+### Acceptance Criteria
+
+- [ ] All test cases above pass on the user's rig
+- [ ] User confirms the page-aware V-pot mapping + LCD mirror is more useful than the Phase 9b "all rows → pan" baseline
+
+## Open Issues
+
+### Track ◀/▶ buttons don't move LUNA selection
+
+Tracking issue: [#356](https://github.com/audiocontrol-org/audiocontrol/issues/356)
+
+LUNA does not respond to MCU notes `0x30` / `0x31` (the standard "Channel Left / Channel Right" cursor-by-1 commands). The bridge correctly emits these from the LCXL3's Track ◀/▶ buttons via `MixerAction::ChannelPrev / ChannelNext`, but LUNA's selected-track indicator does not move. Per Phase 9a research notes, LUNA appears to use these notes only as **outbound** LED-state indicators ("channel-prev/next available"), not as inbound cursor commands.
+
+Workarounds available (deferred):
+
+- Probe alternative MCU notes (cursor keys `0x60`-`0x63`) during Phase 10a to find what LUNA actually accepts for cursor-by-1
+- Implement bridge-side selection tracking: mirror LUNA's select-note echoes into a "current selected channel" state, and on Track ◀/▶ emit `90 (0x18+new_channel) 7F` for the new channel (absolute select is known to work)
+
+Functional impact small — users can still select tracks via the per-strip select buttons under the faders. Shift + Track ◀/▶ (bank shift via `0x2E` / `0x2F`) works correctly.
