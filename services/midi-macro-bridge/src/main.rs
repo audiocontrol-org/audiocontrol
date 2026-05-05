@@ -63,6 +63,11 @@ struct MidiConnections {
     // fires (e.g. when midi_input_port is empty and no receiver drains
     // the channel). Dropped alongside the struct.
     _mcu_bytes_tx: mpsc::Sender<Vec<u8>>,
+    // Same pattern for the surface-event channel: the per-callback clones
+    // (MC-500 / LCXL3) only exist when their respective inputs are configured,
+    // so without this anchor the receiver sees Disconnected the moment
+    // setup_midi_connections returns under the default (empty) config.
+    _transport_tx: mpsc::Sender<(EventSource, SurfaceEvent)>,
     /// Captures connection-attempt outcomes for the status publisher.
     port_statuses: PortStatuses,
 }
@@ -300,6 +305,7 @@ fn setup_midi_connections(
             pair,
             mcu_bytes_rx,
             _mcu_bytes_tx: mcu_bytes_tx,
+            _transport_tx: transport_tx,
             port_statuses,
         },
         transport_rx,
