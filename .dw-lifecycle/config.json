@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "docs": {
+    "root": "docs",
+    "byVersion": true,
+    "defaultTargetVersion": "1.0",
+    "knownVersions": [
+      "1.0"
+    ],
+    "statusDirs": {
+      "inProgress": "001-IN-PROGRESS",
+      "waiting": "002-BLOCKED",
+      "complete": "003-COMPLETE"
+    }
+  },
+  "branches": {
+    "prefix": "feature/"
+  },
+  "worktrees": {
+    "naming": "<repo>-<slug>"
+  },
+  "journal": {
+    "path": "DEVELOPMENT-NOTES.md",
+    "enabled": true
+  },
+  "tracking": {
+    "platform": "github",
+    "parentLabels": [
+      "enhancement"
+    ],
+    "phaseLabels": [
+      "enhancement"
+    ]
+  },
+  "session": {
+    "start": {
+      "preamble": ""
+    },
+    "end": {
+      "preamble": ""
+    }
+  }
+}
