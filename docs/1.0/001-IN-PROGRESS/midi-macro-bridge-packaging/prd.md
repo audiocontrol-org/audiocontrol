@@ -3,7 +3,7 @@ slug: midi-macro-bridge-packaging
 title: midi-macro-bridge packaging and release
 targetVersion: "1.0"
 date: 2026-05-05
-parentIssue: TBD
+parentIssue: 358
 deskwork:
   id:
 ---

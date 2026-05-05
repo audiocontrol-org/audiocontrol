@@ -3,7 +3,7 @@ slug: midi-macro-bridge-packaging
 targetVersion: "1.0"
 date: 2026-05-05
 branch: feature/midi-macro-bridge-packaging
-parentIssue: TBD
+parentIssue: 358
 ---
 
 # Feature: midi-macro-bridge packaging and release
@@ -14,12 +14,12 @@ Ship per-platform tarballs (`aarch64-apple-darwin`, `x86_64-unknown-linux-gnu`) 
 
 | Phase | Description | Status |
 |---|---|---|
-| 1 | Runtime path resolution (`paths.rs` + `--config` flag + env var + namespaced state dir) | Not started |
-| 2 | Tarball assembly (`package.sh`, `install.sh`, launchd plist, systemd unit, QUARANTINE.md, Makefile target) | Not started |
-| 3 | Release CI workflow (tag-driven, parallel macOS-14 + ubuntu-latest builds, smoke test, version assertion) | Not started |
-| 4 | Homebrew tap (`audiocontrol-org/homebrew-audiocontrol` repo + formula + SHA256 update helper) | Not started |
-| 5 | Documentation (README install section, CHANGELOG seed, INSTALL.md service activation steps) | Not started |
-| 6 | First release v0.1.0 (workflow_dispatch dry run, tag, end-to-end smoke tests, formula publish) | Not started |
+| 1 | Runtime path resolution (`paths.rs` + `--config` flag + env var + namespaced state dir) | Not started ([#359](https://github.com/audiocontrol-org/audiocontrol/issues/359)) |
+| 2 | Tarball assembly (`package.sh`, `install.sh`, launchd plist, systemd unit, QUARANTINE.md, Makefile target) | Not started ([#360](https://github.com/audiocontrol-org/audiocontrol/issues/360)) |
+| 3 | Release CI workflow (tag-driven, parallel macOS-14 + ubuntu-latest builds, smoke test, version assertion) | Not started ([#361](https://github.com/audiocontrol-org/audiocontrol/issues/361)) |
+| 4 | Homebrew tap (`audiocontrol-org/homebrew-audiocontrol` repo + formula + SHA256 update helper) | Not started ([#362](https://github.com/audiocontrol-org/audiocontrol/issues/362)) |
+| 5 | Documentation (README install section, CHANGELOG seed, INSTALL.md service activation steps) | Not started ([#363](https://github.com/audiocontrol-org/audiocontrol/issues/363)) |
+| 6 | First release v0.1.0 (workflow_dispatch dry run, tag, end-to-end smoke tests, formula publish) | Not started ([#364](https://github.com/audiocontrol-org/audiocontrol/issues/364)) |
 
 ## Key Links
 
@@ -27,7 +27,7 @@ Ship per-platform tarballs (`aarch64-apple-darwin`, `x86_64-unknown-linux-gnu`) 
 - Worktree: `~/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging`
 - PRD: [prd.md](prd.md)
 - Workplan: [workplan.md](workplan.md)
-- Parent Issue: TBD (run `/dw-lifecycle:issues` to create)
+- Parent Issue: [#358](https://github.com/audiocontrol-org/audiocontrol/issues/358)
 
 ## Out of Scope (deferred)
 
