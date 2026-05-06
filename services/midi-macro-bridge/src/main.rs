@@ -440,6 +440,7 @@ fn main() -> Result<()> {
         args.iter()
             .position(|a| a == "--config")
             .and_then(|i| args.get(i + 1))
+            .filter(|a| !a.starts_with("--"))
             .map(|s| s.as_str()),
         |k| std::env::var(k).ok(),
         || dirs::config_dir(),
