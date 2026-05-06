@@ -23,7 +23,7 @@ const ENV_VAR: &str = "MIDI_MACRO_BRIDGE_CONFIG";
 pub fn resolve_config_path(
     flag: Option<&str>,
     env_lookup: impl Fn(&str) -> Option<String>,
-    home_lookup: impl Fn() -> Option<PathBuf>,
+    config_dir_lookup: impl Fn() -> Option<PathBuf>,
     cwd_lookup: impl Fn() -> Option<PathBuf>,
     exists: impl Fn(&std::path::Path) -> bool,
 ) -> PathBuf {
@@ -33,8 +33,8 @@ pub fn resolve_config_path(
     if let Some(p) = env_lookup(ENV_VAR) {
         return PathBuf::from(p);
     }
-    if let Some(home) = home_lookup() {
-        let default = home
+    if let Some(config_dir) = config_dir_lookup() {
+        let default = config_dir
             .join(APP_NAMESPACE)
             .join(APP_NAME)
             .join(CONFIG_FILENAME);
@@ -55,8 +55,9 @@ pub fn resolve_config_path(
 }
 
 /// Resolve the state directory (where url.txt and similar runtime files
-/// are written). Always returns a path; caller is responsible for creating
-/// the directory if needed.
+/// are written). Returns `None` only when the OS provides no data directory
+/// (rare, typically a container/CI environment). Caller is responsible for
+/// creating the directory if needed.
 pub fn resolve_state_dir(data_lookup: impl Fn() -> Option<PathBuf>) -> Option<PathBuf> {
     data_lookup().map(|d| d.join(APP_NAMESPACE).join(APP_NAME))
 }
@@ -66,7 +67,7 @@ mod tests {
     use super::*;
     use std::path::Path;
 
-    fn home() -> Option<PathBuf> {
+    fn config_dir() -> Option<PathBuf> {
         Some(PathBuf::from("/home/test/.config"))
     }
     fn cwd() -> Option<PathBuf> {
@@ -84,7 +85,7 @@ mod tests {
         let p = resolve_config_path(
             Some("/explicit/path/config.toml"),
             |_| Some("/env/path".into()),
-            home,
+            config_dir,
             cwd,
             all_files,
         );
@@ -102,7 +103,7 @@ mod tests {
                     None
                 }
             },
-            home,
+            config_dir,
             cwd,
             all_files,
         );
@@ -111,7 +112,7 @@ mod tests {
 
     #[test]
     fn os_default_when_it_exists() {
-        let p = resolve_config_path(None, |_| None, home, cwd, |path| {
+        let p = resolve_config_path(None, |_| None, config_dir, cwd, |path| {
             path == Path::new("/home/test/.config/audiocontrol/midi-macro-bridge/config.toml")
         });
         assert_eq!(
@@ -122,7 +123,7 @@ mod tests {
 
     #[test]
     fn cwd_fallback_when_os_default_missing() {
-        let p = resolve_config_path(None, |_| None, home, cwd, |path| {
+        let p = resolve_config_path(None, |_| None, config_dir, cwd, |path| {
             path == Path::new("/work/config.toml")
         });
         assert_eq!(p, PathBuf::from("/work/config.toml"));
@@ -130,7 +131,7 @@ mod tests {
 
     #[test]
     fn returns_os_default_when_nothing_exists() {
-        let p = resolve_config_path(None, |_| None, home, cwd, no_files);
+        let p = resolve_config_path(None, |_| None, config_dir, cwd, no_files);
         assert_eq!(
             p,
             PathBuf::from("/home/test/.config/audiocontrol/midi-macro-bridge/config.toml")
@@ -150,5 +151,47 @@ mod tests {
     fn state_dir_returns_none_when_data_dir_missing() {
         let p = resolve_state_dir(|| None);
         assert_eq!(p, None);
+    }
+
+    #[test]
+    fn falls_back_to_cwd_when_no_config_dir() {
+        let p = resolve_config_path(None, |_| None, || None, cwd, no_files);
+        assert_eq!(p, PathBuf::from("/work/config.toml"));
+    }
+
+    #[test]
+    fn falls_back_to_bare_filename_when_no_config_dir_and_no_cwd() {
+        let p = resolve_config_path(None, |_| None, || None, || None, no_files);
+        assert_eq!(p, PathBuf::from("config.toml"));
+    }
+
+    #[test]
+    fn flag_bypasses_existence_check() {
+        let p = resolve_config_path(
+            Some("/nonexistent/config.toml"),
+            |_| None,
+            config_dir,
+            cwd,
+            no_files,
+        );
+        assert_eq!(p, PathBuf::from("/nonexistent/config.toml"));
+    }
+
+    #[test]
+    fn env_bypasses_existence_check() {
+        let p = resolve_config_path(
+            None,
+            |k| {
+                if k == ENV_VAR {
+                    Some("/nonexistent/env-config.toml".into())
+                } else {
+                    None
+                }
+            },
+            config_dir,
+            cwd,
+            no_files,
+        );
+        assert_eq!(p, PathBuf::from("/nonexistent/env-config.toml"));
     }
 }
