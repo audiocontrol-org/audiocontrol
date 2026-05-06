@@ -22,6 +22,7 @@ mod locate;
 mod mcu;
 mod midi;
 mod mixer_state;
+mod paths;
 mod state;
 mod web;
 
