@@ -29,15 +29,25 @@ pub enum UserEvent {
 /// Open the bridge UI window and run the macOS event loop until the user
 /// quits via the status bar menu or `halt` fires from another source.
 ///
-/// Signature preserved from Phase 7: `url` is the local HTTP URL for the
-/// embedded web UI; `halt` is a zero-argument closure that triggers the
-/// bridge's graceful shutdown path (e.g. sends a Cmd::Halt to the runtime).
+/// `url` is the local HTTP URL for the embedded web UI; `halt` is a
+/// zero-argument closure that triggers the bridge's graceful shutdown path
+/// (e.g. sends a Cmd::Halt to the runtime).
+///
+/// `setup` is called once, synchronously, immediately after the event-loop
+/// proxy is constructed and before `run()` is called. The proxy is passed to
+/// the closure so callers can stash it (e.g. to forward single-instance
+/// "show" wakeups into the loop via `UserEvent::ShowWindow`).
 ///
 /// The function blocks the calling thread (must be the main thread on macOS)
 /// for the lifetime of the process. It returns only when the event loop exits.
-pub fn run_window(url: &str, halt: impl Fn() + Send + 'static) -> anyhow::Result<()> {
+pub fn run_window(
+    url: &str,
+    halt: impl Fn() + Send + 'static,
+    setup: impl FnOnce(tao::event_loop::EventLoopProxy<UserEvent>) + Send + 'static,
+) -> anyhow::Result<()> {
     let event_loop: EventLoop<UserEvent> = EventLoopBuilder::with_user_event().build();
     let event_loop_proxy = event_loop.create_proxy();
+    setup(event_loop_proxy.clone());
 
     let window = build_window(&event_loop)?;
     let _webview = WebViewBuilder::new(&window)

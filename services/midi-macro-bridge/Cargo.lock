@@ -1747,6 +1747,7 @@ dependencies = [
  "dirs 5.0.1",
  "enigo",
  "futures",
+ "libc",
  "midir",
  "mime_guess",
  "png",

@@ -18,6 +18,8 @@ mod config;
 #[cfg(target_os = "macos")]
 mod gui;
 mod keys;
+#[cfg(target_os = "macos")]
+mod single_instance;
 mod lcxl3;
 mod locate;
 mod mcu;
@@ -542,6 +544,24 @@ fn main() -> Result<()> {
         if resolve_gui_mode(&args) {
             #[cfg(target_os = "macos")]
             {
+                // Single-instance enforcement: try to acquire an exclusive lock.
+                // If another instance already holds it, message that instance to
+                // show its window and exit 0.
+                let instance_listener = match single_instance::acquire()? {
+                    single_instance::AcquireOutcome::Primary(lock, listener) => {
+                        // Hold the lock for process lifetime. We use mem::forget
+                        // here because the lock must not be dropped until the
+                        // process exits; stashing it in the GUI state would
+                        // require threading it through the event loop.
+                        std::mem::forget(lock);
+                        Some(listener)
+                    }
+                    single_instance::AcquireOutcome::Secondary => {
+                        info!("another instance already running; messaged primary and exiting");
+                        return Ok(());
+                    }
+                };
+
                 // gui::run_window takes a closure; bridge the Cmd channel here
                 // so gui.rs stays decoupled from the bridge's channel types.
                 // Deviation from workplan option (a): using option (b) — closure
@@ -553,10 +573,24 @@ fn main() -> Result<()> {
                         let _ = tx.send(Cmd::Halt);
                     }
                 };
+
+                // setup callback: once the event-loop proxy exists, wire the
+                // instance listener thread so secondary launches wake the window.
+                let setup_closure = move |proxy: tao::event_loop::EventLoopProxy<gui::UserEvent>| {
+                    if let Some(listener) = instance_listener {
+                        single_instance::spawn_listener_thread(
+                            listener,
+                            Arc::new(move || {
+                                let _ = proxy.send_event(gui::UserEvent::ShowWindow);
+                            }),
+                        );
+                    }
+                };
+
                 // run_window blocks the main thread until the window closes or
                 // halt fires. Bridge exits cleanly via the same path as the
                 // HALT button.
-                if let Err(e) = gui::run_window(&url, halt_closure) {
+                if let Err(e) = gui::run_window(&url, halt_closure, setup_closure) {
                     warn!(error = ?e, "gui window failed to open; falling back to web-only");
                     if config.web.auto_open_browser && !no_open {
                         open_browser(&url);

@@ -25,6 +25,7 @@ serde_json = "1"
 futures = "0.3"
 tokio-stream = { version = "0.1", features = ["sync"] }
 dirs = "5"
+libc = "0.2"
 # Virtual MCU endpoints on macOS go through CoreMIDI directly (not
 # midir) so we can stamp stable UniqueIDs and DAWs like LUNA recognise
 # the bridge across restarts. coremidi is already a transitive dep via
