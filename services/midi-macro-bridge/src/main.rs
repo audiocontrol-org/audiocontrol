@@ -8,7 +8,6 @@
 use anyhow::{Context, Result};
 use std::cell::RefCell;
 use std::collections::VecDeque;
-use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::{mpsc, Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime};
@@ -437,12 +436,16 @@ fn main() -> Result<()> {
 
     let self_test = args.iter().any(|a| a == "--self-test");
 
-    let config_path = args
-        .iter()
-        .skip(1)
-        .find(|a| !a.starts_with("--"))
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("config.toml"));
+    let config_path = paths::resolve_config_path(
+        args.iter()
+            .position(|a| a == "--config")
+            .and_then(|i| args.get(i + 1))
+            .map(|s| s.as_str()),
+        |k| std::env::var(k).ok(),
+        || dirs::config_dir(),
+        || std::env::current_dir().ok(),
+        |p| p.exists(),
+    );
 
     let config = match Config::load(&config_path)
         .with_context(|| format!("loading config from {}", config_path.display()))?
