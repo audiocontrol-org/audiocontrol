@@ -1,0 +1,19 @@
+{
+  "kind": "entry-annotation",
+  "at": "2026-05-06T04:11:26.919Z",
+  "entryId": "09f42ab3-bbef-4660-bd38-d14feae92c3d",
+  "annotation": {
+    "type": "comment",
+    "workflowId": "09f42ab3-bbef-4660-bd38-d14feae92c3d",
+    "version": 1,
+    "range": {
+      "start": 10791,
+      "end": 10852
+    },
+    "text": "I don't want this to run as a daemon or login process. There are too many edge cases to sand down. If people want to use it, they start the app.",
+    "category": "other",
+    "anchor": "macOS Login Items registration (user adds manually if wanted)",
+    "id": "39b695da-2d83-4ca5-a6cb-74056e9aff01",
+    "createdAt": "2026-05-06T04:11:26.919Z"
+  }
+}

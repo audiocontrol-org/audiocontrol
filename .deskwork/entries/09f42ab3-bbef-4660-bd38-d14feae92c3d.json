@@ -5,8 +5,11 @@
   "keywords": [],
   "source": "manual",
   "currentStage": "Drafting",
-  "iterationByStage": {},
+  "iterationByStage": {
+    "Drafting": 1
+  },
   "artifactPath": "docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/2026-05-05-macos-app-distribution-design.md",
   "createdAt": "2026-05-06T04:00:58.535Z",
-  "updatedAt": "2026-05-06T04:00:58.535Z"
+  "updatedAt": "2026-05-06T04:15:04.036Z",
+  "reviewState": "in-review"
 }

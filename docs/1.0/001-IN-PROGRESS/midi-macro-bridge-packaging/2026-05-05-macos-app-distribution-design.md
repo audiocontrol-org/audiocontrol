@@ -223,18 +223,32 @@ New Makefile targets:
 5. Brew install (`brew install audiocontrol-org/audiocontrol/midi-macro-bridge`) and tarball install (Phase 2 + 3) continue to work unchanged. The new GUI code path is gated by bundle detection or `--gui` flag and does not affect the headless service modes.
 6. `make release VERSION=v0.2.0` includes the `.dmg` in the GitHub Release alongside the existing tarballs.
 7. Phase 6 regression check (no `MIDI channel disconnected` within 2.5s of default-config startup) still passes for the GUI-launched binary.
+8. The `.app` does **not** register a `LaunchAgent`, Login Items entry, or any other auto-start mechanism (per Non-goals §). Verified: a freshly-installed `.app` does not appear in System Settings → General → Login Items, and `launchctl list | grep midi-macro-bridge` returns nothing after a double-click launch + window close.
+9. Every item in the "Deferred to later releases" table has a corresponding GitHub issue filed against the `audiocontrol` repo with the issue number back-filled into the spec, AND a mirrored entry exists in the PRD's Out-of-Scope section AND in the workplan's Future Phases section. Phase 7 cannot move to Complete until this gate passes.
 
-## Out of scope for v0.2.0
+## Non-goals (permanently excluded)
 
-- Status bar icon / menubar item (defer to v0.3 — adds `tray-icon` crate)
-- Single-instance lock (defer to v0.3)
-- macOS Login Items registration (user adds manually if wanted)
-- Auto-updater (Sparkle or similar) — user re-downloads `.dmg`
-- Linux / Windows GUI — wry supports both, but those install paths are covered by tarball + brew today
-- Custom DMG background image / window layout — plain `hdiutil create` is enough; pretty DMG via `create-dmg` is polish for later
-- Universal binary (Intel + arm64) — arm64 only for v0.2; Intel is in the project's broader Out of Scope list
-- Real icon — placeholder for v0.2; commission an icon when there's user demand
-- Bundle the binary inside the brew formula (so brew users get a `.app` too) — defer; brew is the headless service path
+These are **not** deferred — they are intentional non-goals for the `.app` distribution. Do not propose them in a future iteration without an explicit reversal of this decision in the PRD.
+
+- **Daemon / background-service behavior for the `.app`.** The `.app` is interactive-launch-only: the user starts it explicitly when they want to use the bridge. No `LaunchAgent` registration, no Login Items entry, no auto-start on login, no "keep running after window close". There are too many edge cases — Accessibility prompts, MCU UniqueID collisions on second launch, surprise daemons running on login — for a polished UX, and the daemon use case is already served by the existing `brew services` and tarball + launchd-plist paths (Phase 2, Phase 4). The `.app` is the GUI front door; the brew formula is the daemon path. They are different artifacts with different lifecycles by design.
+
+## Deferred to later releases
+
+Each item below MUST be tracked as a **GitHub issue against the `audiocontrol` repo** (as a child of the `midi-macro-bridge-packaging` parent issue or a successor feature) AND mirrored in the **PRD's Out-of-Scope section** AND in the **workplan's Future Phases section** **before this spec moves to Review**. The list here is a forwarding reference, not the durable record — issues + PRD + workplan are the durable record. This is a hard rule: items that live only in this spec get lost in the mists of time.
+
+| Item | Suggested issue title | PRD/workplan location |
+|---|---|---|
+| Status bar icon / menubar item (`tray-icon` crate) | `Phase 8a: Status bar icon for MidiMacroBridge.app` | New Phase 8a in workplan; PRD Future Phases |
+| Single-instance lock + focus-existing-window | `Phase 8b: Single-instance lock for MidiMacroBridge.app` | New Phase 8b in workplan; PRD Future Phases |
+| Auto-updater (Sparkle or similar) | `Phase 8c: Sparkle auto-updater for MidiMacroBridge.app` | New Phase 8c in workplan; PRD Future Phases |
+| Linux / Windows GUI (wry supports both) | `wry GUI for Linux + Windows distributions` | PRD Out-of-Scope; new feature later |
+| Custom DMG background / window layout (`create-dmg`) | `Pretty DMG layout via create-dmg` | Polish task in workplan |
+| Universal binary (arm64 + Intel) | `Universal binary for MidiMacroBridge.app` | PRD Out-of-Scope; revisit if Intel demand surfaces |
+| Real app icon | `Commission AppIcon.icns for MidiMacroBridge.app` | Design-asset task in workplan |
+| Brew formula bottling the `.app` | `Brew formula: bottle the .app for brew install` | PRD Out-of-Scope; reconsider after v0.2 ships |
+| Quit menu (`Cmd-Q` via proper menubar) | `Phase 8d: macOS menubar with Quit/About for MidiMacroBridge.app` | New Phase 8d in workplan |
+
+The Phase 7 close-out task (analogous to Phase 6's Task 6.6) MUST file these issues and back-fill their numbers into this table before flipping Phase 7 to Complete. AC9 below enforces this at the acceptance gate.
 
 ## Open questions (resolved or accepted defaults — not blockers)
 

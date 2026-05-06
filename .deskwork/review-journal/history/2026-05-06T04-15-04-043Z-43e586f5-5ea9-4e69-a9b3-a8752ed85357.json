@@ -1,0 +1,15 @@
+{
+  "kind": "entry-annotation",
+  "at": "2026-05-06T04:15:04.043Z",
+  "entryId": "09f42ab3-bbef-4660-bd38-d14feae92c3d",
+  "annotation": {
+    "type": "address",
+    "workflowId": "09f42ab3-bbef-4660-bd38-d14feae92c3d",
+    "commentId": "39b695da-2d83-4ca5-a6cb-74056e9aff01",
+    "version": 1,
+    "disposition": "addressed",
+    "reason": "Removed 'Login Items registration' from the deferred list and moved it to a new Non-goals (permanently excluded) section, articulating that the .app is interactive-launch-only and that daemon/auto-start use cases are served by the existing brew + launchd-plist paths instead. Added Acceptance Criterion #8 verifying no LaunchAgent/Login Items registration.",
+    "id": "3184ee96-6f78-487e-a69c-02800fab92a1",
+    "createdAt": "2026-05-06T04:15:04.043Z"
+  }
+}
