@@ -1347,7 +1347,7 @@ git commit -m "feat(midi-macro-bridge): add Homebrew formula SHA256 update helpe
 **Files:**
 - Modify: `services/midi-macro-bridge/README.md`
 
-- [ ] **Step 1: Replace the existing "Build" section**
+- [x] **Step 1: Replace the existing "Build" section**
 
 Find the `## Setup` section in `services/midi-macro-bridge/README.md`. Replace its body with:
 
@@ -1378,7 +1378,7 @@ On macOS, unsigned binaries are quarantined by Gatekeeper. See
     cp config.example.toml config.toml
 ```
 
-- [ ] **Step 2: Add a "Run" section after install**
+- [x] **Step 2: Add a "Run" section after install**
 
 ```markdown
 ## Run
@@ -1398,7 +1398,7 @@ The bridge reads its config from (in order):
 To run as a background service, see [INSTALL.md](INSTALL.md).
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add services/midi-macro-bridge/README.md
@@ -1410,7 +1410,7 @@ git commit -m "docs(midi-macro-bridge): rewrite install + run sections for packa
 **Files:**
 - Create: `services/midi-macro-bridge/CHANGELOG.md`
 
-- [ ] **Step 1: Write the changelog**
+- [x] **Step 1: Write the changelog**
 
 Create `services/midi-macro-bridge/CHANGELOG.md`:
 
@@ -1447,7 +1447,7 @@ First public release.
 - Linux: midir's virtual MCU endpoints have ephemeral UniqueIDs.
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add services/midi-macro-bridge/CHANGELOG.md
@@ -1459,7 +1459,7 @@ git commit -m "docs(midi-macro-bridge): seed CHANGELOG with v0.1.0 entry"
 **Files:**
 - Create: `services/midi-macro-bridge/INSTALL.md`
 
-- [ ] **Step 1: Write the doc**
+- [x] **Step 1: Write the doc**
 
 Create `services/midi-macro-bridge/INSTALL.md`:
 
@@ -1502,7 +1502,7 @@ To stop:
     systemctl --user disable --now midi-macro-bridge.service
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add services/midi-macro-bridge/INSTALL.md

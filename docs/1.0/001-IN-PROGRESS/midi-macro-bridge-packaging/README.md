@@ -20,7 +20,7 @@ Build and release happen **locally** via Makefile + Docker (no GitHub Actions); 
 | 2 | Tarball assembly (`package.sh`, `install.sh`, launchd plist, systemd unit, QUARANTINE.md, Makefile target) | Complete ([#360](https://github.com/audiocontrol-org/audiocontrol/issues/360)) |
 | 3 | Local release build — Linux Docker builder + `make package-{macos,linux,all}` targets, host-driven smoke tests, SHA256SUMS aggregation | Complete ([#366](https://github.com/audiocontrol-org/audiocontrol/issues/366) — replaces closed [#361](https://github.com/audiocontrol-org/audiocontrol/issues/361)) |
 | 4 | Homebrew tap (`audiocontrol-org/homebrew-audiocontrol` repo + formula + SHA256 update helper) | Complete ([#362](https://github.com/audiocontrol-org/audiocontrol/issues/362)) |
-| 5 | Documentation (README install section, CHANGELOG seed, INSTALL.md service activation steps) | Not started ([#363](https://github.com/audiocontrol-org/audiocontrol/issues/363)) |
+| 5 | Documentation (README install section, CHANGELOG seed, INSTALL.md service activation steps) | Complete ([#363](https://github.com/audiocontrol-org/audiocontrol/issues/363)) |
 | 6 | First release v0.1.0 — operator-driven `make release VERSION=v0.1.0` (build → smoke → tag → upload via `gh release create`) | Not started ([#364](https://github.com/audiocontrol-org/audiocontrol/issues/364)) |
 
 ## Key Links
