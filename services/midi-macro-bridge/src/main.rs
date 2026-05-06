@@ -543,6 +543,11 @@ fn main() -> Result<()> {
         //   1. --no-gui or --gui flag: explicit override
         //   2. launched from .app bundle: open native window
         //   3. config.web.auto_open_browser (and no --no-open): open browser
+        //
+        // Issue #391: in `--gui` mode on macOS the AppKit event loop blocks the
+        // main thread for the lifetime of the process, so the MIDI loop must run
+        // on a separate thread. In headless mode it stays on the main thread.
+        let auto_open_browser = config.web.auto_open_browser;
         if resolve_gui_mode(&args) {
             #[cfg(target_os = "macos")]
             {
@@ -566,16 +571,12 @@ fn main() -> Result<()> {
 
                 // gui::run_window takes a closure; bridge the Cmd channel here
                 // so gui.rs stays decoupled from the bridge's channel types.
-                // Deviation from workplan option (a): using option (b) — closure
-                // adapter — avoids an extra adapter thread and keeps gui.rs free
-                // of Cmd type knowledge.
                 let halt_closure = {
                     let tx = cmd_tx.clone();
                     move || {
                         let _ = tx.send(Cmd::Halt);
                     }
                 };
-
                 // setup callback: once the event-loop proxy exists, wire the
                 // instance listener thread so secondary launches wake the window.
                 let setup_closure = move |proxy: tao::event_loop::EventLoopProxy<gui::UserEvent>| {
@@ -589,24 +590,41 @@ fn main() -> Result<()> {
                     }
                 };
 
-                // run_window blocks the main thread until the window closes or
-                // halt fires. Bridge exits cleanly via the same path as the
-                // HALT button.
+                // Spawn the MIDI loop on a background thread BEFORE calling
+                // gui::run_window. AppKit requires the GUI on the main thread;
+                // CoreMIDI does not.
+                let _midi_handle = std::thread::spawn(move || {
+                    if let Err(e) = run_bridge(
+                        config,
+                        cmd_rx,
+                        status_tx,
+                        events_tx,
+                        events_history,
+                        self_test,
+                    ) {
+                        error!(error = ?e, "bridge loop exited with error");
+                    }
+                });
+
+                // run_window blocks the main thread until the user quits. When
+                // it returns, exit the process — the spawned MIDI thread dies
+                // with it.
                 if let Err(e) = gui::run_window(&url, halt_closure, setup_closure) {
                     warn!(error = ?e, "gui window failed to open; falling back to web-only");
-                    if config.web.auto_open_browser && !no_open {
+                    if auto_open_browser && !no_open {
                         open_browser(&url);
                     }
                 }
+                return Ok(());
             }
             #[cfg(not(target_os = "macos"))]
             {
                 warn!("--gui requested but only macOS supports the wry window today; falling back to web-only");
-                if config.web.auto_open_browser && !no_open {
+                if auto_open_browser && !no_open {
                     open_browser(&url);
                 }
             }
-        } else if config.web.auto_open_browser && !no_open {
+        } else if auto_open_browser && !no_open {
             open_browser(&url);
         } else if no_open {
             info!("--no-open: skipping browser launch");
@@ -619,6 +637,25 @@ fn main() -> Result<()> {
         None
     };
 
+    // Headless mode (no --gui, or non-macOS): run the bridge loop on the main thread.
+    run_bridge(config, cmd_rx, status_tx, events_tx, events_history, self_test)
+}
+
+// ── Bridge runtime loop ─────────────────────────────────────────────────────
+//
+// Extracted from `main` so it can run on a background thread when the macOS
+// .app is launched with `--gui`. AppKit requires the GUI event loop on the
+// main thread; CoreMIDI does not. Issue #391: keeping this body inline in
+// `main` meant `gui::run_window` blocked startup and the virtual MCU endpoint
+// was never created in any .app launch from v0.3.0 through v0.3.2.
+fn run_bridge(
+    config: Config,
+    mut cmd_rx: tokio::sync::mpsc::Receiver<crate::web::state::Cmd>,
+    status_tx: tokio::sync::watch::Sender<crate::web::state::Status>,
+    events_tx: tokio::sync::broadcast::Sender<crate::web::state::SseFrame>,
+    events_history: Arc<Mutex<VecDeque<crate::web::state::EventLine>>>,
+    self_test: bool,
+) -> Result<()> {
     // ── MIDI connections ──────────────────────────────────────────────────────
     //
     // Wrapped in `Option` so the reload handler can move the value out
