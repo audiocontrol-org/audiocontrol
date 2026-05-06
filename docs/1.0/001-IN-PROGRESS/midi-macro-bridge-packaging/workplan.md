@@ -4223,3 +4223,523 @@ git push origin HEAD:main
 5. With the window hidden, pressing Cmd-, both shows the window AND scrolls to the config form.
 6. Phase 6 regression check (no `MIDI channel disconnected` within 2.5s of default-config startup) still passes.
 7. Headless / brew-services modes unchanged — no new behavior in the non-`--gui` path.
+
+---
+
+## Phase 11: Built-in help screen — bridge setup + DAW configuration
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task.
+
+**Goal:** Add a built-in help section to the control interface that walks the user through configuring the bridge and configuring their DAW to use the bridge's MCU virtual endpoint. Initial DAW coverage: LUNA, Logic Pro, Ableton Live (the three DAWs tested with the bridge to date). Ship as **v0.4.0** (minor bump — new user-visible feature).
+
+**Architecture:** New `<section class="mmb-help">` block in the web UI's main page, embedded inline in `web/index.html` (consistent with how CONFIGURATION and EVENT STREAM sections live on the same page today). Per-DAW content rendered as collapsible cards. New `Help` menu added to the macOS app menubar with a `Show Help` item (Cmd-?) that scrolls the in-app WebView to `#mmb-help-section` — same pattern as Cmd-, → config-form scroll from Phase 10. Static HTML; no new endpoints.
+
+**Tech Stack:** HTML/CSS/JS only for the web UI changes; `muda` (already in `tray-icon`'s re-exports) for the new menu. No new crates.
+
+---
+
+### File Structure
+
+| Path | Responsibility | Task |
+|---|---|---|
+| `services/midi-macro-bridge/web/index.html` | New `<section class="mmb-help">` with collapsible per-DAW cards | 11.1 |
+| `services/midi-macro-bridge/web/app.css` | New `.mmb-help`, `.mmb-help-card`, `.mmb-help-card[open]` rules consistent with the Studio Rack Utility aesthetic | 11.1 |
+| `services/midi-macro-bridge/web/app.js` | Optional: `<details>`-element open-state coordination if multiple cards shouldn't be open at once. Default behavior of `<details>` is fine for v0.4.0. | 11.1 (skip JS unless needed) |
+| `services/midi-macro-bridge/web/index.html` | DAW configuration content (LUNA, Logic Pro, Ableton Live) inside the new section | 11.2 |
+| `services/midi-macro-bridge/src/gui_menu.rs` | New top-level `Help` submenu with `Show Help` item, Cmd-? accelerator | 11.3 |
+| `services/midi-macro-bridge/src/gui.rs` | Add `UserEvent::ShowHelp` variant + handler that scrolls webview to `#mmb-help-section` | 11.3 |
+
+---
+
+### Task 11.1: Add HELP section structural markup + styling
+
+**Files:**
+- Modify: `services/midi-macro-bridge/web/index.html`
+- Modify: `services/midi-macro-bridge/web/app.css`
+
+The existing main page has sections in this order: header, transport readout, ROUTING, CONFIGURATION, EVENT STREAM. Add HELP between CONFIGURATION and EVENT STREAM. Place above EVENT STREAM so first-time users discover it before scrolling past the running event log.
+
+- [ ] **Step 1: Add the HELP section markup**
+
+Edit `services/midi-macro-bridge/web/index.html`. Find the EVENT STREAM section. ABOVE it, insert:
+
+```html
+  <section class="mmb-help" id="mmb-help-section" aria-label="help and DAW configuration">
+    <h2 class="mmb-section-label">HELP</h2>
+
+    <details class="mmb-help-card" id="mmb-help-bridge">
+      <summary>Configuring the bridge</summary>
+      <div class="mmb-help-card-body">
+        <!-- bridge configuration text — populated in Task 11.2 -->
+      </div>
+    </details>
+
+    <details class="mmb-help-card" id="mmb-help-luna">
+      <summary>LUNA — UAD</summary>
+      <div class="mmb-help-card-body">
+        <!-- LUNA setup instructions — populated in Task 11.2 -->
+      </div>
+    </details>
+
+    <details class="mmb-help-card" id="mmb-help-logic">
+      <summary>Logic Pro</summary>
+      <div class="mmb-help-card-body">
+        <!-- Logic Pro setup instructions — populated in Task 11.2 -->
+      </div>
+    </details>
+
+    <details class="mmb-help-card" id="mmb-help-ableton">
+      <summary>Ableton Live</summary>
+      <div class="mmb-help-card-body">
+        <!-- Ableton Live setup instructions — populated in Task 11.2 -->
+      </div>
+    </details>
+  </section>
+```
+
+`<details>` and `<summary>` are native HTML — no JS needed for the open/close behavior. Defaults to closed; user clicks to expand. Each card has a stable `id` so the menubar's `Show Help` can deep-link if desired (Task 11.3 just scrolls to the section header).
+
+- [ ] **Step 2: Add CSS rules**
+
+Edit `services/midi-macro-bridge/web/app.css`. Find the `.mmb-config` panel rules (or wherever the panel-chrome generic rules live). Add a new `.mmb-help` panel block plus card-specific styles:
+
+```css
+/* ── Help section ────────────────────────────────────────────────────────── */
+
+.mmb-help {
+  /* inherits .mmb-section panel chrome (background, border, padding) */
+}
+
+.mmb-help-card {
+  border: 1px solid var(--border-hairline);
+  background: var(--surface-recess);
+  margin-bottom: calc(var(--base) * 1);
+  padding: 0;
+  border-radius: var(--panel-radius);
+}
+
+.mmb-help-card > summary {
+  list-style: none; /* hide the default disclosure triangle */
+  cursor: pointer;
+  padding: calc(var(--base) * 2) calc(var(--base) * 3);
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  user-select: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mmb-help-card > summary::after {
+  content: '+';
+  font-size: 1rem;
+  color: var(--text-secondary);
+  transition: transform 100ms ease;
+}
+
+.mmb-help-card[open] > summary::after {
+  content: '–'; /* en-dash, not minus */
+}
+
+.mmb-help-card[open] > summary {
+  color: var(--text-screenprint);
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.mmb-help-card-body {
+  padding: calc(var(--base) * 3);
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 0.8125rem; /* 13px — slightly larger than the screenprint labels for readability */
+  line-height: 1.6;
+  color: var(--text-screenprint);
+}
+
+.mmb-help-card-body p {
+  margin: 0 0 calc(var(--base) * 2);
+}
+
+.mmb-help-card-body ol {
+  padding-left: calc(var(--base) * 4);
+  margin: 0 0 calc(var(--base) * 2);
+}
+
+.mmb-help-card-body ol > li {
+  margin-bottom: calc(var(--base) * 1);
+}
+
+.mmb-help-card-body code {
+  background: rgba(255, 209, 102, 0.08); /* led-amber tint */
+  padding: 0 4px;
+  border-radius: 2px;
+  color: var(--led-amber);
+  font-size: 0.875em;
+}
+```
+
+(Adjust to match the existing CSS variables exactly — use `--led-amber` etc. as defined in the `:root` block.)
+
+- [ ] **Step 3: Build + smoke**
+
+```bash
+cd /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging
+cargo build --manifest-path services/midi-macro-bridge/Cargo.toml 2>&1 | tail -3
+```
+
+Expected: clean build (the web assets are embedded via `rust_embed`, so any HTML/CSS file change requires a rebuild).
+
+```bash
+pkill -f midi-macro-bridge 2>&1 ; sleep 1
+rm -f "$HOME/Library/Application Support/audiocontrol/midi-macro-bridge/instance.lock"
+rm -f "$HOME/Library/Application Support/audiocontrol/midi-macro-bridge/instance.sock"
+./services/midi-macro-bridge/target/debug/midi-macro-bridge --no-gui --no-open >/tmp/11.1-smoke.log 2>&1 &
+PID=$!
+sleep 3
+HELP_REFS=$(curl -s http://127.0.0.1:8765/ | grep -c 'mmb-help' || echo "0")
+echo "mmb-help references in served HTML: $HELP_REFS"   # should be > 0
+kill $PID 2>/dev/null || true
+wait $PID 2>/dev/null || true
+```
+
+Manual: open the bridge in a browser. Scroll to HELP section. Confirm:
+- Section header renders consistently with ROUTING / CONFIGURATION / EVENT STREAM.
+- Cards are collapsed by default. Clicking the summary expands; clicking again collapses.
+- The `+` / `–` indicator on the summary right-aligns and toggles.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add services/midi-macro-bridge/web/index.html services/midi-macro-bridge/web/app.css
+git commit -m "feat(midi-macro-bridge): add HELP section structural markup + styling"
+```
+
+---
+
+### Task 11.2: Author DAW configuration content
+
+**Files:**
+- Modify: `services/midi-macro-bridge/web/index.html` (fill in the four card bodies from Task 11.1)
+
+The card bodies left empty in Task 11.1 get populated here. Content must be **accurate** — fabricated DAW menu paths waste user time worse than no help at all. Where exact paths aren't directly verifiable from the operator's working knowledge, use the conservative wording "your DAW's MIDI control-surface preferences" and let the user fill in the specifics during review.
+
+> **Operator note:** The implementer should ASK the operator for the exact menu paths before writing each DAW card. The user has tested all three DAWs with the bridge and has authoritative knowledge of the paths and labels. Don't fabricate menu trees from training data.
+
+- [ ] **Step 1: Configure-the-bridge card**
+
+Populate `#mmb-help-bridge`'s body. This content is fully derivable from existing project state:
+
+```html
+<div class="mmb-help-card-body">
+  <p>The bridge auto-starts on launch with sensible defaults — for many users no configuration is needed.</p>
+  <p>To customize, scroll up to the <strong>CONFIGURATION</strong> section above. Common adjustments:</p>
+  <ol>
+    <li><strong>MC-500 input port</strong> — substring match against your MIDI interface's name. Click the dropdown for the live list of detected ports.</li>
+    <li><strong>Backend</strong> — leave on <code>MCU</code> for the default DAW-control-surface workflow. Use <code>Keystrokes</code> only if your DAW doesn't accept MCU and you want the bridge to type the equivalent transport keys instead.</li>
+    <li><strong>LCXL3</strong> — enable if you have a Novation Launch Control XL Mk3 connected; the bridge's transport buttons + encoder will mirror the MC-500 inputs.</li>
+  </ol>
+  <p>The bridge persists changes to <code>~/Library/Application Support/audiocontrol/midi-macro-bridge/config.toml</code>. To reset, delete that file.</p>
+</div>
+```
+
+- [ ] **Step 2: LUNA card**
+
+Ask the operator for the exact path. Suggested template (verify before writing):
+
+```html
+<div class="mmb-help-card-body">
+  <p>Make LUNA discover the bridge as a Mackie Control surface.</p>
+  <ol>
+    <li>Open LUNA → <strong>Preferences</strong> → <strong>Controllers</strong> → <strong>MIDI Control Surfaces</strong>.</li>
+    <li>On an enabled row, set <strong>INPUT DEVICE</strong> to <code>MIDI Macro Bridge</code>.</li>
+    <li>On the same row, set <strong>OUTPUT DEVICE</strong> to <code>MIDI Macro Bridge</code>.</li>
+    <li>Set the protocol/type to <code>MCU</code>.</li>
+    <li>Save preferences. The bridge's bar-position display will update with LUNA's playhead within ~1 second.</li>
+  </ol>
+  <p>If LUNA doesn't list <code>MIDI Macro Bridge</code> in the device dropdown, quit LUNA, confirm the bridge is running (the status bar icon is visible), then re-launch LUNA. Some DAWs only enumerate MIDI devices on startup.</p>
+</div>
+```
+
+- [ ] **Step 3: Logic Pro card**
+
+```html
+<div class="mmb-help-card-body">
+  <ol>
+    <li>Open Logic → <strong>Preferences</strong> → <strong>Control Surfaces</strong> → <strong>Setup</strong>.</li>
+    <li>Click <strong>New</strong> → <strong>Install</strong> → choose <strong>Logic Control</strong> (or <strong>Mackie Control</strong>) → <strong>Add</strong>.</li>
+    <li>In the surface's properties panel, set <strong>Input Port</strong> to <code>MIDI Macro Bridge</code> and <strong>Output Port</strong> to <code>MIDI Macro Bridge</code>.</li>
+    <li>Close the setup window. Logic remembers the surface across sessions.</li>
+  </ol>
+</div>
+```
+
+- [ ] **Step 4: Ableton Live card**
+
+```html
+<div class="mmb-help-card-body">
+  <ol>
+    <li>Open Live → <strong>Preferences</strong> → <strong>Link, Tempo &amp; MIDI</strong>.</li>
+    <li>In the <strong>Control Surface</strong> table, choose <strong>MackieControl</strong> in the first dropdown.</li>
+    <li>Set <strong>Input</strong> to <code>MIDI Macro Bridge</code> and <strong>Output</strong> to <code>MIDI Macro Bridge</code>.</li>
+    <li>Live applies the change immediately — no restart required.</li>
+  </ol>
+</div>
+```
+
+- [ ] **Step 5: Operator review**
+
+Before committing, the operator reviews each DAW card by actually opening the DAW and walking through the steps. Any divergence from the written instructions gets corrected in-place. The implementer adapts the wording based on operator feedback.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add services/midi-macro-bridge/web/index.html
+git commit -m "feat(midi-macro-bridge): help content for bridge config + LUNA/Logic/Ableton DAW setup"
+```
+
+---
+
+### Task 11.3: macOS menubar Help menu
+
+**Files:**
+- Modify: `services/midi-macro-bridge/src/gui_menu.rs`
+- Modify: `services/midi-macro-bridge/src/gui.rs`
+
+Add a new top-level `Help` submenu to the macOS app menubar (rightmost-position convention on macOS). The submenu has one item: `Show Help` with the Cmd-? accelerator (Cmd-Shift-/, which on US keyboards types `?`). Routes to a new `UserEvent::ShowHelp` that scrolls the in-app WebView to `#mmb-help-section`.
+
+- [ ] **Step 1: Add `UserEvent::ShowHelp` variant**
+
+Edit `services/midi-macro-bridge/src/gui.rs`. Add to the existing `UserEvent` enum:
+
+```rust
+pub enum UserEvent {
+    ShowWindow,
+    Quit,
+    CloseWindow,
+    OpenPreferences,
+    /// Scroll the in-app WebView to the HELP section anchor.
+    ShowHelp,
+}
+```
+
+- [ ] **Step 2: Add the event handler in `run_window`**
+
+In the same `match event` block where `OpenPreferences` lives, add:
+
+```rust
+Event::UserEvent(UserEvent::ShowHelp) => {
+    window.set_visible(true);
+    window.set_focus();
+    let _ = webview.evaluate_script(
+        "document.getElementById('mmb-help-section')?.scrollIntoView({behavior: 'smooth', block: 'start'});"
+    );
+}
+```
+
+Mirror Phase 10's `OpenPreferences` handler exactly — same pattern, different anchor.
+
+- [ ] **Step 3: Add the Help submenu in `gui_menu.rs`**
+
+Edit `services/midi-macro-bridge/src/gui_menu.rs`. Find where the existing `Window` submenu is constructed. After it, add a `Help` submenu:
+
+```rust
+let help_submenu = Submenu::new("Help", true);
+let help_show: Accelerator = "CMD+SHIFT+SLASH".parse()?;
+let show_help = MenuItem::new("Show Help", true, Some(help_show));
+help_submenu.append(&show_help)?;
+menubar.append(&help_submenu)?;
+```
+
+(Adapt to whatever the existing `Submenu` / `Menu` builder pattern is — the exact API name of `append` varies between muda versions. The implementer of Phase 10 Task 10.1 used `"CMD+1".parse()?` for the accelerator string, so use the same string-parse style.)
+
+- [ ] **Step 4: Add `show_help` field to `MenuIds`**
+
+Same file. Find the `MenuIds` struct + add the new field:
+
+```rust
+pub struct MenuIds {
+    pub about: tray_icon::menu::MenuId,
+    pub preferences: tray_icon::menu::MenuId,
+    pub quit: tray_icon::menu::MenuId,
+    pub show_main_window: tray_icon::menu::MenuId,
+    pub show_help: tray_icon::menu::MenuId,  // NEW
+}
+```
+
+Populate when constructing `menu_ids`:
+
+```rust
+let menu_ids = MenuIds {
+    about: about.id().clone(),
+    preferences: preferences.id().clone(),
+    quit: quit.id().clone(),
+    show_main_window: show_main_window.id().clone(),
+    show_help: show_help.id().clone(),
+};
+```
+
+- [ ] **Step 5: Wire the routing in `gui.rs::run_window`'s MenuEvent handler**
+
+**Critical step — this is what Phase 10 Task 10.1's implementer missed for `Cmd-1`.** In `services/midi-macro-bridge/src/gui.rs`, find the `MenuEvent::set_event_handler` block. Add a routing arm for `menu_ids.show_help`:
+
+```rust
+MenuEvent::set_event_handler(Some(move |event: MenuEvent| {
+    let _ = if event.id == tray_show_id || event.id == menu_ids.show_main_window {
+        proxy_clone.send_event(UserEvent::ShowWindow)
+    } else if event.id == tray_quit_id || event.id == menu_ids.quit {
+        proxy_clone.send_event(UserEvent::Quit)
+    } else if event.id == menu_ids.preferences {
+        proxy_clone.send_event(UserEvent::OpenPreferences)
+    } else if event.id == menu_ids.show_help {     // NEW
+        proxy_clone.send_event(UserEvent::ShowHelp)
+    } else {
+        Ok(())
+    };
+}));
+```
+
+**This is the split-routing miss the runbook calls out in §2.5.** Verify pre-commit by grepping:
+
+```bash
+grep -A1 "MenuEvent::set_event_handler" services/midi-macro-bridge/src/gui.rs | grep "show_help"
+# Should print one match. If empty: routing isn't wired; the menu item will silently no-op.
+```
+
+- [ ] **Step 6: Build + smoke**
+
+```bash
+cargo build --manifest-path services/midi-macro-bridge/Cargo.toml 2>&1 | tail -3
+```
+
+Expected: clean build.
+
+Manual interactive test (orchestrator runs after task lands):
+- Launch the .app.
+- Confirm `Help` is in the menubar (rightmost top-level submenu).
+- Confirm `Help → Show Help  ⌘?` is listed.
+- Press Cmd-? — page scrolls to the HELP section.
+- Press Cmd-W to close window. Press Cmd-? — window reappears AND scrolls to help.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add services/midi-macro-bridge/src/gui_menu.rs services/midi-macro-bridge/src/gui.rs
+git commit -m "feat(midi-macro-bridge): macOS Help menu with Cmd-? scrolls to in-app help section"
+```
+
+---
+
+### Task 11.4: Phase 11 close-out + v0.4.0 release
+
+Standard release flow per the [`/release-midi-macro-bridge`](../../../../.claude/skills/release-midi-macro-bridge/SKILL.md) skill.
+
+- [ ] **Step 1: Bump Cargo.toml + add CHANGELOG entry**
+
+Edit `services/midi-macro-bridge/Cargo.toml`:
+
+```toml
+version = "0.4.0"
+```
+
+Insert in `services/midi-macro-bridge/CHANGELOG.md` above the previous entry:
+
+```markdown
+## v0.4.0
+
+### Highlights
+- Built-in HELP section in the control interface — explains how to configure the bridge and how to set up LUNA, Logic Pro, and Ableton Live to use the bridge as an MCU control surface (#390). Collapsible per-DAW cards.
+- New macOS Help menu with `Show Help` (Cmd-?) — scrolls the in-app web UI to the help section.
+
+### Notes
+- Help content is intentionally lean for v0.4.0 — covers the three DAWs we've actually tested. Adding more DAWs (Pro Tools, Cubase, Reaper, FL Studio, Bitwig) is a future scope item.
+- Help opens collapsed by default; click any card to expand. Multiple cards can be open at once.
+```
+
+```bash
+cargo build --release --target aarch64-apple-darwin --manifest-path services/midi-macro-bridge/Cargo.toml
+git add services/midi-macro-bridge/Cargo.toml services/midi-macro-bridge/Cargo.lock services/midi-macro-bridge/CHANGELOG.md
+git commit -m "chore(midi-macro-bridge): bump to v0.4.0 + changelog"
+```
+
+- [ ] **Step 2: Cut the release**
+
+```bash
+make -C services/midi-macro-bridge release VERSION=v0.4.0
+```
+
+Per the runbook §2.5, also run the pre-release self-checks:
+
+```bash
+rm -rf services/midi-macro-bridge/target/release-package/MidiMacroBridge.app   # force fresh
+grep -A8 "MenuEvent::set_event_handler" services/midi-macro-bridge/src/gui.rs | grep -E "show_help|show_main_window"   # both must match
+file services/midi-macro-bridge/packaging/macos/AppIcon.icns   # ~33KB Mac OS X icon
+```
+
+- [ ] **Step 3: Update Homebrew formula**
+
+```bash
+./services/midi-macro-bridge/scripts/update-homebrew-formula.sh v0.4.0 \
+    /Users/orion/work/audiocontrol-work/homebrew-audiocontrol
+cd /Users/orion/work/audiocontrol-work/homebrew-audiocontrol
+git add Formula/midi-macro-bridge.rb
+git commit -m "midi-macro-bridge 0.4.0"
+git push origin main
+```
+
+- [ ] **Step 4: Push feature branch HEAD to main**
+
+```bash
+cd /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging
+git push origin HEAD:main
+```
+
+- [ ] **Step 5: Comment + close child issue**
+
+```bash
+gh issue comment 390 --repo audiocontrol-org/audiocontrol \
+    --body "Fixed in v0.4.0: https://github.com/audiocontrol-org/audiocontrol/releases/tag/v0.4.0"
+gh issue close 390 --repo audiocontrol-org/audiocontrol --reason completed
+```
+
+
+
+- [ ] **Step 6: Mark Phase 11 checkboxes complete + flip README phase row**
+
+```bash
+python3 -c "
+from pathlib import Path
+p = Path('docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/workplan.md')
+text = p.read_text()
+lines = text.splitlines(keepends=True)
+start_idx = next(i for i, line in enumerate(lines) if line.startswith('## Phase 11:'))
+end_idx = next((i for i, line in enumerate(lines) if i > start_idx and line.startswith('## Phase ')), len(lines))
+flipped = 0
+for i in range(start_idx, end_idx):
+    if lines[i].startswith('- [ ] '):
+        lines[i] = '- [x] ' + lines[i][6:]
+        flipped += 1
+p.write_text(''.join(lines))
+print(f'flipped {flipped} Phase 11 checkboxes')
+"
+```
+
+Edit `docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/README.md`'s Phase 11 row from "Not started" to "Complete; [shipped in v0.4.0](https://github.com/audiocontrol-org/audiocontrol/releases/tag/v0.4.0)".
+
+```bash
+git add docs/
+git commit -m "docs(midi-macro-bridge-packaging): mark Phase 11 complete — v0.4.0 shipped"
+git push origin HEAD:main
+```
+
+---
+
+## Phase 11 Acceptance Criteria
+
+1. The control interface (web UI) has a HELP section between CONFIGURATION and EVENT STREAM, styled consistently with the Studio Rack Utility aesthetic.
+2. The HELP section contains four collapsible cards: bridge configuration, LUNA, Logic Pro, Ableton Live. Each is independently expandable.
+3. macOS menubar has a `Help` submenu (rightmost-position convention) with a `Show Help  ⌘?` item.
+4. Pressing Cmd-? brings the window to the front (showing it if hidden) AND scrolls to the HELP section header.
+5. Operator-reviewed DAW content matches the actual menu paths in shipped LUNA / Logic Pro / Ableton Live versions; no fabricated menu trees.
+6. Phase 6 regression check (no `MIDI channel disconnected` within 2.5s of default-config startup) still passes.
+7. Headless / brew-services modes unchanged — the help section is web-UI-only and adds no dependencies for the headless paths.

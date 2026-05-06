@@ -79,6 +79,12 @@ Sparkle auto-updater (8c, [#370](https://github.com/audiocontrol-org/audiocontro
 
 Ships as `v0.3.0`.
 
+### Phase 11 — Built-in help screen (in progress, v0.4.0)
+
+[#390](https://github.com/audiocontrol-org/audiocontrol/issues/390). Adds a HELP section to the control interface explaining bridge configuration and DAW setup for the three DAWs we've tested: LUNA, Logic Pro, Ableton Live. New macOS Help submenu with `Show Help` (Cmd-?) scrolls the in-app WebView to the help section — reuses the Cmd-, scroll-to-anchor pattern from Phase 10. Static HTML; no new endpoints. DAW content is operator-reviewed (no fabricated menu paths from training data).
+
+Ships as `v0.4.0` (minor bump — new user-visible feature).
+
 ### Phase 9 — v0.2.1 polish (in progress)
 
 [#380](https://github.com/audiocontrol-org/audiocontrol/issues/380). Resolves three audiocontrol-repo bugs surfaced during the v0.2.0 release:
