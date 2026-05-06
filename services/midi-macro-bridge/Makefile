@@ -8,14 +8,15 @@ STAMP := .build-stamp
 
 ARGS ?=
 
-.PHONY: help build release test check run list-ports probe-mcu probe-mcu-interactive lcxl3-activate clean lint lint-fix fmt fmt-check all package package-macos package-linux package-all
+.PHONY: help build release release-binary test check run list-ports probe-mcu probe-mcu-interactive lcxl3-activate clean lint lint-fix fmt fmt-check all package package-macos package-linux package-all
 
 help:
 	@echo "midi-macro-bridge — service-local Makefile"
 	@echo
 	@echo "Targets:"
 	@echo "  build              cargo build (debug) — fast iteration"
-	@echo "  release            cargo build --release — produces $(RELEASE_BIN)"
+	@echo "  release-binary     cargo build --release — produces $(RELEASE_BIN)"
+	@echo "  release VERSION=v0.1.0  end-to-end release: build + smoke + tag + upload"
 	@echo "  test               cargo test"
 	@echo "  check              cargo check --tests"
 	@echo "  run                cargo run -- \$$(ARGS)"
@@ -40,7 +41,7 @@ help:
 build:
 	$(CARGO) build
 
-release: $(STAMP)
+release-binary: $(STAMP)
 	@test -x "$(RELEASE_BIN)" || (echo "ERROR: $(BIN_NAME) binary not found at $(RELEASE_BIN)" && exit 1)
 	@echo "$(BIN_NAME) ready: $(RELEASE_BIN)"
 
@@ -88,7 +89,7 @@ clean:
 	@rm -f $(STAMP)
 
 # Convenience: lint + test + release build, like a pre-commit gate.
-all: fmt-check lint test release
+all: fmt-check lint test release-binary
 
 # Release packaging.
 #   make package-macos VERSION=v0.1.0   builds aarch64-apple-darwin natively
@@ -119,3 +120,9 @@ package-all: package-macos package-linux
 	@ls -1 target/release-package/midi-macro-bridge-$(VERSION)-*.tar.gz \
 	       target/release-package/midi-macro-bridge-$(VERSION)-*.sha256 \
 	       target/release-package/SHA256SUMS
+
+# End-to-end release: precondition checks → package-all → macOS smoke test →
+# git tag + push → gh release create. VERSION is required.
+#   make release VERSION=v0.1.0
+release:
+	@./scripts/release.sh --version $(VERSION)
