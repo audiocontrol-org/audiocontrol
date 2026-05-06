@@ -1,6 +1,6 @@
 [package]
 name = "midi-macro-bridge"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2021"
 authors = ["Orion"]
 description = "Translate MIDI events into keystrokes / macros. v1: Roland MC-500mkII transport to UAD LUNA."

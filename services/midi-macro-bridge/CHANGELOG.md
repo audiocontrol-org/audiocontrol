@@ -5,6 +5,12 @@ All notable changes to `midi-macro-bridge` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.3.2
+
+### Fixes
+- Window menu now has `Show Main Window` (Cmd-1) to re-open the window after closing — previously, the only path was the macOS status bar item ([#383](https://github.com/audiocontrol-org/audiocontrol/issues/383)).
+- `MIDI Macro Bridge → Preferences...` (Cmd-,) now scrolls the in-app web UI to the configuration section instead of opening an unstyled `/api/config-form` browser tab. If the window is hidden, Cmd-, also brings it back ([#384](https://github.com/audiocontrol-org/audiocontrol/issues/384)).
+
 ## v0.3.1
 
 Fix-only release. v0.3.0's `.dmg` shipped with the v0.2.0-flavored placeholder app icon instead of the new branded "M" glyph (#382 — `package-dmg.sh` reused a stale `MidiMacroBridge.app` from a prior staging run, silently dropping the icon change). v0.3.1 ships the same code as v0.3.0 with the correct branded icon embedded in the `.dmg`.
