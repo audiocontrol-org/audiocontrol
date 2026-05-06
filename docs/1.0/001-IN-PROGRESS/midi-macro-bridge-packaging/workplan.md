@@ -3224,7 +3224,7 @@ The current `run_window` blocks until the window closes, then exits. After 8.1, 
 - On window close → hide window (don't exit). On tray "Show Window" → unhide + raise.
 - On tray "Quit" → `halt.send()`, then break the event loop.
 
-- [ ] **Step 1: Add the `tray-icon` dep**
+- [x] **Step 1: Add the `tray-icon` dep**
 
 Edit `services/midi-macro-bridge/Cargo.toml`. Add to the macOS-gated deps section (where `tao` and `wry` already live):
 
@@ -3235,7 +3235,7 @@ wry = "0.45"
 tray-icon = "0.21"
 ```
 
-- [ ] **Step 2: Embed a status bar icon image**
+- [x] **Step 2: Embed a status bar icon image**
 
 Create a 22x22 PNG (macOS menubar standard icon size) at `services/midi-macro-bridge/packaging/macos/StatusBarIcon.png`. Generate via the same approach as the AppIcon placeholder (Phase 7 Task 7.4) but at 22x22 — text "M" or a single bridge glyph.
 
@@ -3252,7 +3252,7 @@ file services/midi-macro-bridge/packaging/macos/StatusBarIcon.png
 
 Expected: `PNG image data, 22 x 22, 8-bit/color RGBA`.
 
-- [ ] **Step 3: Embed the icon at compile time + refactor `run_window`**
+- [x] **Step 3: Embed the icon at compile time + refactor `run_window`**
 
 Replace `services/midi-macro-bridge/src/gui.rs` with the new event-loop-persistent version:
 
@@ -3364,7 +3364,7 @@ fn build_tray_icon(
 
 (The exact `tray-icon` API may have shifted — adapt as needed. Intent: 22x22 menubar icon; menu with "Show Window" + "Quit"; menu events route through the tao event-loop proxy.)
 
-- [ ] **Step 4: Build + verify**
+- [x] **Step 4: Build + verify**
 
 ```bash
 cd services/midi-macro-bridge && cargo build 2>&1 | tail -10
@@ -3372,7 +3372,7 @@ cd services/midi-macro-bridge && cargo build 2>&1 | tail -10
 
 Expected: clean build. tray-icon pulls in a few macOS framework links; first build takes 1-3 minutes.
 
-- [ ] **Step 5: Manual smoke test**
+- [x] **Step 5: Manual smoke test**
 
 ```bash
 ./target/debug/midi-macro-bridge --gui &
@@ -3385,7 +3385,7 @@ wait $PID 2>/dev/null || true
 
 Acceptance: 22x22 menubar icon visible in macOS status bar; clicking it opens a menu with "Show Window" + "Quit MIDI Macro Bridge"; closing the window hides it (icon stays); clicking "Show Window" re-opens it; clicking "Quit MIDI Macro Bridge" exits cleanly.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add services/midi-macro-bridge/Cargo.toml services/midi-macro-bridge/Cargo.lock services/midi-macro-bridge/src/gui.rs services/midi-macro-bridge/packaging/macos/StatusBarIcon.png
@@ -3404,7 +3404,7 @@ Pattern: at startup, try to acquire an exclusive `flock` on `~/Library/Applicati
 
 The first instance owns both the lock and the socket; it accepts incoming "show" messages and forwards them to the gui event loop's `UserEvent::ShowWindow`.
 
-- [ ] **Step 1: Author `single_instance.rs`**
+- [x] **Step 1: Author `single_instance.rs`**
 
 Create `services/midi-macro-bridge/src/single_instance.rs`:
 
@@ -3498,7 +3498,7 @@ pub fn spawn_listener_thread(listener: UnixListener, on_show: Arc<dyn Fn() + Sen
 
 Add `libc = "0.2"` to `Cargo.toml` regular deps (not macOS-gated; it's already used on Linux).
 
-- [ ] **Step 2: Wire into `main.rs`**
+- [x] **Step 2: Wire into `main.rs`**
 
 Find `fn main` in `services/midi-macro-bridge/src/main.rs`. After args parsing but before the web server bind, add:
 
@@ -3559,7 +3559,7 @@ gui::run_window(&url, halt_closure, move |proxy| {
 
 (Adapt to whatever the existing main.rs structure is; the key is that the listener thread runs INSIDE the primary instance and forwards "show" messages to the gui event loop.)
 
-- [ ] **Step 3: Smoke test single-instance behavior**
+- [x] **Step 3: Smoke test single-instance behavior**
 
 ```bash
 ./target/debug/midi-macro-bridge --gui &
@@ -3577,7 +3577,7 @@ wait $PID1 2>/dev/null || true
 
 Acceptance: PID2 exits cleanly; PID1's window comes to the front (or unhides if it was hidden).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add services/midi-macro-bridge/src/single_instance.rs services/midi-macro-bridge/src/main.rs services/midi-macro-bridge/src/gui.rs services/midi-macro-bridge/Cargo.toml services/midi-macro-bridge/Cargo.lock
@@ -3598,7 +3598,7 @@ Add a proper macOS app menubar with:
 
 `tao` provides menubar APIs via its `Menu` and `MenuBar` types; on macOS these become `NSMenu`-backed.
 
-- [ ] **Step 1: Author `gui_menu.rs`**
+- [x] **Step 1: Author `gui_menu.rs`**
 
 Create `services/midi-macro-bridge/src/gui_menu.rs`:
 
@@ -3684,7 +3684,7 @@ pub fn route_menu_event(
 
 (Tao's `Menu` API has shifted across versions; adapt the exact builder calls as needed. Intent: app menu with three items + window menu with Close.)
 
-- [ ] **Step 2: Wire into `gui.rs`**
+- [x] **Step 2: Wire into `gui.rs`**
 
 Add `mod gui_menu;` to gui.rs (or keep as a sibling of gui.rs — adjust `mod` declarations in main.rs accordingly).
 
@@ -3730,7 +3730,7 @@ Event::UserEvent(UserEvent::OpenPreferences) => {
 }
 ```
 
-- [ ] **Step 3: Implement `show_about_dialog`**
+- [x] **Step 3: Implement `show_about_dialog`**
 
 For minimum viable About: use macOS's built-in NSAlert via `objc2`:
 
@@ -3755,7 +3755,7 @@ fn show_about_dialog(_window: &Window) {
 
 Add `objc2 = "0.5"`, `objc2-foundation = "0.2"`, `objc2-app-kit = "0.2"` to the macOS-gated deps. (Versions may shift; `cargo add` to lock current.)
 
-- [ ] **Step 4: Build + smoke**
+- [x] **Step 4: Build + smoke**
 
 ```bash
 cd services/midi-macro-bridge && cargo build 2>&1 | tail -5
@@ -3768,7 +3768,7 @@ sleep 2
 # - "MIDI Macro Bridge → Preferences..." (Cmd-,) opens browser to /api/config-form
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add services/midi-macro-bridge/src/gui_menu.rs services/midi-macro-bridge/src/gui.rs services/midi-macro-bridge/Cargo.toml services/midi-macro-bridge/Cargo.lock
@@ -3810,7 +3810,7 @@ Insert above `## v0.2.x` (whatever the current top entry is) in `services/midi-m
 - Headless / brew-services modes unchanged — single-instance + status bar are macOS GUI-only.
 ```
 
-- [ ] **Step 3: Mark Phase 8 checkboxes complete**
+- [x] **Step 3: Mark Phase 8 checkboxes complete**
 
 ```bash
 cd /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging
@@ -3834,7 +3834,7 @@ print(f'flipped {flipped} Phase 8 checkboxes')
 "
 ```
 
-- [ ] **Step 4: Flip README phase 8 row to Complete**
+- [x] **Step 4: Flip README phase 8 row to Complete**
 
 Edit `docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/README.md` — change Phase 8's status column from "Not started" to "Complete; v0.3.0 shipped".
 
