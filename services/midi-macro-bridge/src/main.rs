@@ -1665,7 +1665,7 @@ const MCU_ENDPOINT_NAME: &str = "MIDI Macro Bridge";
 fn persist_bridge_url(url: &str) {
     let path = bridge_url_path();
     let Some(path) = path else {
-        info!("skipping url.txt persistence (no suitable state dir on this platform)");
+        info!("skipping url.txt persistence (no data dir available)");
         return;
     };
     if let Some(parent) = path.parent() {
@@ -1680,20 +1680,11 @@ fn persist_bridge_url(url: &str) {
     }
 }
 
-/// Return the platform-specific path where the bridge URL should be persisted.
-/// Returns `None` on platforms where no suitable location is available.
+/// Return the path where the bridge URL should be persisted, namespaced under
+/// the OS-conventional data directory at `audiocontrol/midi-macro-bridge/url.txt`.
+/// Returns `None` only when the OS provides no data directory (rare).
 fn bridge_url_path() -> Option<std::path::PathBuf> {
-    #[cfg(target_os = "macos")]
-    {
-        // ~/Library/Application Support/MidiMacroBridge/url.txt
-        dirs::data_dir().map(|d| d.join("MidiMacroBridge").join("url.txt"))
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        // $XDG_RUNTIME_DIR/midi-macro-bridge/url.txt on Linux; skip elsewhere.
-        std::env::var_os("XDG_RUNTIME_DIR")
-            .map(|d| std::path::PathBuf::from(d).join("midi-macro-bridge").join("url.txt"))
-    }
+    paths::resolve_state_dir(|| dirs::data_dir()).map(|d| d.join("url.txt"))
 }
 
 /// Launch the default browser to `url`. On macOS, uses `open(1)`.
