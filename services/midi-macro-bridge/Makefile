@@ -8,7 +8,7 @@ STAMP := .build-stamp
 
 ARGS ?=
 
-.PHONY: help build release test check run list-ports probe-mcu probe-mcu-interactive lcxl3-activate clean lint lint-fix fmt fmt-check all
+.PHONY: help build release test check run list-ports probe-mcu probe-mcu-interactive lcxl3-activate clean lint lint-fix fmt fmt-check all package
 
 help:
 	@echo "midi-macro-bridge — service-local Makefile"
@@ -28,6 +28,7 @@ help:
 	@echo "  fmt                cargo fmt"
 	@echo "  fmt-check          cargo fmt --check"
 	@echo "  clean              cargo clean (drops debug + release artifacts)"
+	@echo "  package            assemble release tarball — TRIPLE/VERSION overridable"
 	@echo
 	@echo "The root Makefile target 'build-midi-macro-bridge' produces the"
 	@echo "release binary under $(STAMP) tracking; this Makefile is for"
@@ -85,3 +86,11 @@ clean:
 
 # Convenience: lint + test + release build, like a pre-commit gate.
 all: fmt-check lint test release
+
+# Build a release tarball for the current host triple. Override TRIPLE/VERSION
+# to package for cross-targets (CI passes both explicitly).
+TRIPLE ?= $(shell rustc -vV | sed -n 's/^host: //p')
+VERSION ?= v0.0.1-dev
+
+package:
+	./scripts/package.sh --target $(TRIPLE) --version $(VERSION)
