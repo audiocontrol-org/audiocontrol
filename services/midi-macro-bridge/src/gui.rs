@@ -12,6 +12,8 @@ use tray_icon::menu::{Menu, MenuEvent, MenuItem};
 use tray_icon::{Icon, TrayIconBuilder};
 use wry::WebViewBuilder;
 
+use crate::gui_menu;
+
 const STATUS_BAR_ICON_PNG: &[u8] =
     include_bytes!("../packaging/macos/StatusBarIcon.png");
 
@@ -24,6 +26,10 @@ const STATUS_BAR_ICON_PNG: &[u8] =
 pub enum UserEvent {
     ShowWindow,
     Quit,
+    /// Hide the window (same effect as clicking the red close button).
+    CloseWindow,
+    /// Open Preferences in the default browser at /api/config-form.
+    OpenPreferences,
 }
 
 /// Open the bridge UI window and run the macOS event loop until the user
@@ -54,16 +60,41 @@ pub fn run_window(
         .with_url(url)
         .build()?;
 
-    let (_tray, _menu_show, _menu_quit) = build_tray_icon(&event_loop_proxy)?;
+    let (_tray, _menu_show, _menu_quit, tray_show_id, tray_quit_id) =
+        build_tray_icon(&event_loop_proxy)?;
+
+    let (_menubar, menu_ids) = gui_menu::build_menubar()?;
+
+    // Route all muda/tray menu events through the tao user-event channel.
+    // `MenuEvent::set_event_handler` is global and may only be called once;
+    // both the status-bar tray menu IDs and the app menubar IDs are merged
+    // into this single handler.
+    let proxy_clone = event_loop_proxy.clone();
+    MenuEvent::set_event_handler(Some(move |event: MenuEvent| {
+        let _ = if event.id == tray_show_id {
+            proxy_clone.send_event(UserEvent::ShowWindow)
+        } else if event.id == tray_quit_id || event.id == menu_ids.quit {
+            proxy_clone.send_event(UserEvent::Quit)
+        } else if event.id == menu_ids.preferences {
+            proxy_clone.send_event(UserEvent::OpenPreferences)
+        } else {
+            Ok(())
+        };
+    }));
+
+    // Capture the URL for the Preferences handler.
+    let prefs_url = format!("{}/api/config-form", url);
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
         match event {
-            // Window close → hide window; keep the app alive via the status bar.
+            // Window close button or CloseWindow menu item → hide the window;
+            // keep the app alive via the status bar.
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
                 ..
-            } => {
+            }
+            | Event::UserEvent(UserEvent::CloseWindow) => {
                 window.set_visible(false);
             }
             Event::UserEvent(UserEvent::ShowWindow) => {
@@ -73,6 +104,9 @@ pub fn run_window(
             Event::UserEvent(UserEvent::Quit) => {
                 halt();
                 *control_flow = ControlFlow::Exit;
+            }
+            Event::UserEvent(UserEvent::OpenPreferences) => {
+                let _ = std::process::Command::new("open").arg(&prefs_url).spawn();
             }
             _ => {}
         }
@@ -110,14 +144,30 @@ fn icon_from_png_bytes(png_bytes: &[u8]) -> anyhow::Result<Icon> {
     Ok(Icon::from_rgba(rgba, info.width, info.height)?)
 }
 
+/// Build the system status-bar (tray) icon and its context menu.
+///
+/// Returns the tray icon handle (must stay alive), the show/quit `MenuItem`
+/// handles (must stay alive for ID validity), and the two menu-item IDs for
+/// routing in the combined `MenuEvent` handler in `run_window`.
+///
+/// Note: `MenuEvent::set_event_handler` is NOT called here; the combined
+/// handler in `run_window` covers both tray and app-menubar events.
 fn build_tray_icon(
-    proxy: &tao::event_loop::EventLoopProxy<UserEvent>,
-) -> anyhow::Result<(tray_icon::TrayIcon, MenuItem, MenuItem)> {
+    _proxy: &tao::event_loop::EventLoopProxy<UserEvent>,
+) -> anyhow::Result<(
+    tray_icon::TrayIcon,
+    MenuItem,
+    MenuItem,
+    tray_icon::menu::MenuId,
+    tray_icon::menu::MenuId,
+)> {
     let icon = icon_from_png_bytes(STATUS_BAR_ICON_PNG)?;
 
     let menu = Menu::new();
     let show = MenuItem::new("Show Window", true, None);
     let quit = MenuItem::new("Quit MIDI Macro Bridge", true, None);
+    let show_id = show.id().clone();
+    let quit_id = quit.id().clone();
     menu.append(&show)?;
     menu.append(&quit)?;
 
@@ -127,20 +177,5 @@ fn build_tray_icon(
         .with_tooltip("MIDI Macro Bridge")
         .build()?;
 
-    // Wire menu events to the tao user-event channel so the event loop
-    // wakes up on menu interactions without polling.
-    let proxy_clone = proxy.clone();
-    let show_id = show.id().clone();
-    let quit_id = quit.id().clone();
-    MenuEvent::set_event_handler(Some(move |event: MenuEvent| {
-        let _ = if event.id == show_id {
-            proxy_clone.send_event(UserEvent::ShowWindow)
-        } else if event.id == quit_id {
-            proxy_clone.send_event(UserEvent::Quit)
-        } else {
-            Ok(())
-        };
-    }));
-
-    Ok((tray, show, quit))
+    Ok((tray, show, quit, show_id, quit_id))
 }

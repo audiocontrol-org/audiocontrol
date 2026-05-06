@@ -17,6 +17,8 @@ mod backend;
 mod config;
 #[cfg(target_os = "macos")]
 mod gui;
+#[cfg(target_os = "macos")]
+mod gui_menu;
 mod keys;
 #[cfg(target_os = "macos")]
 mod single_instance;
