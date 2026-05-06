@@ -8,7 +8,7 @@ STAMP := .build-stamp
 
 ARGS ?=
 
-.PHONY: help build release test check run list-ports probe-mcu probe-mcu-interactive lcxl3-activate clean lint lint-fix fmt fmt-check all package
+.PHONY: help build release test check run list-ports probe-mcu probe-mcu-interactive lcxl3-activate clean lint lint-fix fmt fmt-check all package package-macos package-linux package-all
 
 help:
 	@echo "midi-macro-bridge — service-local Makefile"
@@ -28,7 +28,10 @@ help:
 	@echo "  fmt                cargo fmt"
 	@echo "  fmt-check          cargo fmt --check"
 	@echo "  clean              cargo clean (drops debug + release artifacts)"
-	@echo "  package            assemble release tarball — TRIPLE/VERSION overridable"
+	@echo "  package            assemble release tarball for host triple — TRIPLE/VERSION overridable"
+	@echo "  package-macos      assemble macOS arm64 tarball — VERSION overridable"
+	@echo "  package-linux      assemble Linux x86_64 tarball via Docker — VERSION overridable"
+	@echo "  package-all        both, plus aggregate SHA256SUMS"
 	@echo
 	@echo "The root Makefile target 'build-midi-macro-bridge' produces the"
 	@echo "release binary under $(STAMP) tracking; this Makefile is for"
@@ -87,10 +90,32 @@ clean:
 # Convenience: lint + test + release build, like a pre-commit gate.
 all: fmt-check lint test release
 
-# Build a release tarball for the current host triple. Override TRIPLE/VERSION
-# to package for cross-targets (CI passes both explicitly).
+# Release packaging.
+#   make package-macos VERSION=v0.1.0   builds aarch64-apple-darwin natively
+#   make package-linux VERSION=v0.1.0   builds x86_64-unknown-linux-gnu via Docker
+#   make package-all   VERSION=v0.1.0   both above + aggregate SHA256SUMS
+#
+# `package` (no -OS suffix) remains as a host-triple convenience for dev use.
 TRIPLE ?= $(shell rustc -vV | sed -n 's/^host: //p')
 VERSION ?= v0.0.1-dev
 
 package:
 	./scripts/package.sh --target $(TRIPLE) --version $(VERSION)
+
+package-macos:
+	./scripts/package.sh --target aarch64-apple-darwin --version $(VERSION)
+
+package-linux:
+	./scripts/build-in-docker.sh --version $(VERSION)
+
+package-all: package-macos package-linux
+	@cd target/release-package && \
+	  rm -f SHA256SUMS && \
+	  cat midi-macro-bridge-$(VERSION)-aarch64-apple-darwin.tar.gz.sha256 \
+	      midi-macro-bridge-$(VERSION)-x86_64-unknown-linux-gnu.tar.gz.sha256 \
+	      > SHA256SUMS
+	@echo
+	@echo "✓ Release artifacts for $(VERSION):"
+	@ls -1 target/release-package/midi-macro-bridge-$(VERSION)-*.tar.gz \
+	       target/release-package/midi-macro-bridge-$(VERSION)-*.sha256 \
+	       target/release-package/SHA256SUMS
