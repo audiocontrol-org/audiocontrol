@@ -129,50 +129,6 @@ if (document.readyState === 'loading') {
   setupEventStream();
 }
 
-// ── Phase 6g: HALT button — 3-second hold-to-confirm ─────────────────────────
-// The user must hold the HALT button for 3 full seconds before the bridge
-// is asked to exit. Releasing early cancels silently. A circular progress
-// ring (SVG in the button HTML) animates via CSS during the hold.
-
-function setupHalt() {
-  const btn = document.getElementById('mmb-halt-btn');
-  if (!btn) return;
-
-  const HOLD_MS = 3000;
-  let timer = null;
-
-  function start() {
-    btn.classList.add('mmb-halt-holding');
-    timer = setTimeout(async () => {
-      btn.classList.add('mmb-halt-firing');
-      // POST the halt request. The server is about to exit, so the response
-      // may not arrive — catch and discard any network error.
-      try {
-        await fetch('/api/halt', { method: 'POST' });
-      } catch (_) {
-        // Server exiting; request may not return. That's expected.
-      }
-    }, HOLD_MS);
-  }
-
-  function cancel() {
-    btn.classList.remove('mmb-halt-holding');
-    btn.classList.remove('mmb-halt-firing');
-    if (timer !== null) {
-      clearTimeout(timer);
-      timer = null;
-    }
-  }
-
-  btn.addEventListener('mousedown', start);
-  btn.addEventListener('touchstart', start, { passive: true });
-  btn.addEventListener('mouseup', cancel);
-  btn.addEventListener('mouseleave', cancel);
-  btn.addEventListener('touchend', cancel);
-  btn.addEventListener('touchcancel', cancel);
-}
-
-document.addEventListener('DOMContentLoaded', setupHalt);
 
 // ── Phase 8a: elapsed-time displays ──────────────────────────────────────────
 // Tick every second against absolute epoch-ms timestamps embedded by the
