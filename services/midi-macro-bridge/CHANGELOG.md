@@ -5,6 +5,14 @@ All notable changes to `midi-macro-bridge` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.3.1
+
+Fix-only release. v0.3.0's `.dmg` shipped with the v0.2.0-flavored placeholder app icon instead of the new branded "M" glyph (#382 — `package-dmg.sh` reused a stale `MidiMacroBridge.app` from a prior staging run, silently dropping the icon change). v0.3.1 ships the same code as v0.3.0 with the correct branded icon embedded in the `.dmg`.
+
+If you installed v0.3.0, drag-replace the `.app` from this release's `.dmg` (or `brew upgrade midi-macro-bridge` — the brew install path was already shipping the new icon since brew installs the binary, not the `.app` bundle).
+
+`package-dmg.sh` no longer reuses a stale `.app`; it now rebuilds the bundle every release. Same principle as the silent-stale-output fix in v0.3.0 (#379).
+
 ## v0.3.0
 
 ### Highlights

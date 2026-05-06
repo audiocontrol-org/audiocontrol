@@ -35,11 +35,12 @@ cd "$SERVICE_DIR"
 DEVELOPER_ID_APP="${AUDIOCONTROL_DEVELOPER_ID_APP:-Developer ID Application: Orion Letizi (ES3R29MZ5A)}"
 NOTARY_PROFILE="${AUDIOCONTROL_NOTARY_PROFILE:-midi-macro-bridge}"
 
-# Build the .app first if not present.
-if [[ ! -d "target/release-package/MidiMacroBridge.app" ]]; then
-    echo "-> MidiMacroBridge.app not found; running package-app.sh first"
-    ./scripts/package-app.sh --version "$VERSION"
-fi
+# Always rebuild the .app from current sources. package-app.sh wipes the
+# staging dir at the top, so this is clean and idempotent. (Do NOT reintroduce
+# an "if not present" guard — it lets stale .app artifacts from prior runs
+# ship with stale icons / Info.plist / entitlements; #382.)
+echo "-> rebuilding MidiMacroBridge.app from current sources"
+./scripts/package-app.sh --version "$VERSION"
 
 DMG_NAME="MidiMacroBridge-${VERSION}.dmg"
 DMG_PATH="target/release-package/$DMG_NAME"
