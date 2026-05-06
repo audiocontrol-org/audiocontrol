@@ -44,6 +44,31 @@ Decide `vNEXT`. Conventions:
 
 ---
 
+## 2.5. Pre-release self-checks (paranoia layer)
+
+The script-level guards (#379 fail-loud regex, #382 always-rebuild .app) catch most regression vectors. These extra checks are cheap and catch the next class of bug before you ship.
+
+```bash
+# 1) Force a fresh staging dir so make release rebuilds the .app from current sources.
+#    Belt-and-suspenders for #382's stale-.app fix.
+rm -rf services/midi-macro-bridge/target/release-package/MidiMacroBridge.app
+
+# 2) If you've made any changes to gui.rs / gui_menu.rs since the last release,
+#    grep that new menu IDs are routed in BOTH the definition file (gui_menu.rs)
+#    AND the MenuEvent handler in gui.rs::run_window. Subagents adding a menu
+#    item often update gui_menu.rs but miss the handler block in gui.rs:
+grep -A1 "MenuEvent::set_event_handler" services/midi-macro-bridge/src/gui.rs | head -20
+# Confirm every menu_ids.* field defined in gui_menu.rs has a matching arm
+# in the gui.rs handler. Silent miss = menu item shows but does nothing.
+
+# 3) Confirm the brand mark master is what you intend to ship:
+file services/midi-macro-bridge/packaging/macos/AppIcon.icns
+# Should report ~33KB Mac OS X icon. If it's 585KB, that's the
+# GenericApplicationIcon placeholder — regenerate via build-icons.sh first.
+```
+
+---
+
 ## 3. Bump the version
 
 Edit two files:
@@ -136,18 +161,24 @@ The new tag points at a commit that's now on `main`. The GitHub UI's "this commi
 
 ---
 
-## 7. Comment on phase / parent issues
+## 7. Comment + close fixed issues
 
-For each child issue resolved by this release, comment with the release URL. Don't autonomously close — leave for user acceptance per project memory rule.
+For each child issue resolved by this release, comment with the release URL describing what shipped. **Don't autonomously close** — leave for operator acceptance per project memory rule.
 
 ```bash
-for issue in <list>; do
-    gh issue comment $issue --repo audiocontrol-org/audiocontrol \
-        --body "Fixed in vX.Y.Z: https://github.com/audiocontrol-org/audiocontrol/releases/tag/vX.Y.Z"
-done
+gh issue comment <num> --repo audiocontrol-org/audiocontrol \
+    --body "Fixed in vX.Y.Z: https://github.com/audiocontrol-org/audiocontrol/releases/tag/vX.Y.Z — <one-sentence summary of what shipped + how to verify>"
 ```
 
-For phase-parent issues (the umbrella issues), include a short summary of what landed.
+If the operator authorizes closure (or if you ARE the operator), the typical follow-up is:
+
+```bash
+gh issue close <num> --repo audiocontrol-org/audiocontrol --reason completed
+```
+
+For **phase-parent issues** (umbrellas like Phase 7's #367 or Phase 10's #385), include a short summary of every child issue that resolved into this release. Pattern that's worked across this feature: comment listing the child issues + which version each fix lands in, then close the parent.
+
+**Don't close the overall feature parent (#358 for `midi-macro-bridge-packaging`)** — that's the umbrella for the entire feature lifecycle and stays open until `/dw-lifecycle:complete` runs.
 
 ---
 
@@ -192,6 +223,64 @@ brew test midi-macro-bridge   # the formula's `system bin/"midi-macro-bridge", "
 | Port 8765 in use during `release.sh` smoke step | Stray prior bridge instance | `pkill -f midi-macro-bridge`, retry. Smoke test will fall back to OS-assigned port if 8765 is taken — that's not a failure, just a log line |
 | Tag pushed but `gh release create` failed | Network / auth glitch mid-pipeline | The tag is on origin; the release object is missing. Re-run: `gh release create vX.Y.Z --notes-file ... <artifacts>`. Don't re-run `make release` — preflight will reject the existing tag |
 | `--force` push tag rewriting | Don't | Cut a new patch instead. Tags are append-only signals |
+| Menu item / button visible but invoking it does nothing | Subagent split-routing miss: a feature added a definition (in `gui_menu.rs`'s `MenuIds` struct, `web/index.html`'s markup, etc.) but didn't wire the routing/handler in the consuming file (`gui.rs::run_window`'s `MenuEvent` block, `web/app.js`'s registration) | Caught in §2.5's pre-release grep. If it ships anyway: cut a patch with the wiring fix. Pattern observed at v0.3.2's Phase 10 (Cmd-1 menu defined in gui_menu.rs but the gui.rs MenuEvent handler didn't route it; spec review caught pre-release; commit `06254b29`) |
+
+---
+
+## 9.5. Patch follow-up rhythm
+
+The release pipeline is local + cheap (~10 min including notarization), which means the right answer to "I just shipped vX.Y.Z and immediately found a defect" is **cut vX.Y.Z+1 today**, not "let it ride until next minor".
+
+### Hot-fix pattern (e.g., v0.3.0 → v0.3.1)
+
+When a release ships with a defect that's caught in post-release smoke (§8) or shortly after:
+
+1. File an issue documenting the defect (separate from any pre-existing scope).
+2. Apply the fix on the same feature branch / `main` head.
+3. Bump to vX.Y.Z+1 (patch increment).
+4. CHANGELOG entry pattern:
+
+   ```markdown
+   ## vX.Y.Z+1
+
+   Fix-only release. vX.Y.Z shipped with [defect summary] (#NNN — [one-line root cause]). vX.Y.Z+1 ships [the fix].
+
+   If you installed vX.Y.Z, [recovery step — e.g., drag-replace the .app, or `brew upgrade`].
+   ```
+
+5. Cut vX.Y.Z+1 via the same `make release` flow. The hot-fix release ships ~15 min after the originally broken one.
+
+Real example: v0.3.0 shipped with the wrong bundled `.icns` (#382 stale-.app bug). v0.3.1 shipped 15 min later with the icon-correct bundle and the script-level fix that prevents the class. CHANGELOG entry references both the original defect and the script fix that prevents recurrence.
+
+### Subsumed-version pattern (e.g., planned v0.2.1 → shipped as v0.3.0)
+
+When a smaller planned release rolls into the next minor instead of being cut on its own:
+
+1. Skip the in-between version.
+2. The CHANGELOG entry for the larger release calls out what got subsumed:
+
+   ```markdown
+   ## v0.3.0
+
+   ### Highlights
+   - <minor-version content>
+   - <patch content>
+
+   ### Notes
+   - Subsumes the originally-planned v0.2.1; <child issue> fixes ship as part of this release.
+   ```
+
+3. Mention this in the Phase issue's close-out comment so trace-followers don't wonder where v0.2.1 went.
+
+Real example: v0.2.1 (Phase 9 polish) was planned standalone but the operator chose to combine it with Phase 8 into v0.3.0 to ship one coherent unit. CHANGELOG documents the subsumption; #380 (Phase 9 parent) closed with the v0.3.0 link.
+
+### When NOT to cut a patch
+
+- Cosmetic changes that aren't user-visible (e.g., comment cleanup, internal refactors). Hold for the next minor.
+- Test infrastructure changes. Same.
+- Documentation-only changes that don't affect the runbook itself. Update on `main` without a tag.
+
+The bar for cutting a patch: **a user can demonstrably hit the bug** (visible in the UI, breaks an install path, fails a documented promise from the CHANGELOG/README).
 
 ---
 
@@ -207,14 +296,15 @@ brew test midi-macro-bridge   # the formula's `system bin/"midi-macro-bridge", "
 ## Checklist (copy into your terminal as you go)
 
 ```
-[ ] §1 Prereqs: cert in keychain + notarytool profile + Docker + gh + tap clone
-[ ] §2 Pre-release sanity: Cargo.toml version, clean tree, branch, tag not present
-[ ] §3 Bump Cargo.toml + Cargo.lock + add CHANGELOG ## vX.Y.Z; commit
-[ ] §4 make release VERSION=vX.Y.Z (~5-10 min including notarization)
-[ ] §5 update-homebrew-formula.sh + commit + push tap
-[ ] §6 git push origin HEAD:main (fast-forward)
-[ ] §7 gh issue comment on resolved issues + phase parent(s)
-[ ] §8 Post-release smoke: download .dmg, install, verify icon + version + status bar
+[ ] §1   Prereqs: cert in keychain + notarytool profile + Docker + gh + tap clone
+[ ] §2   Pre-release sanity: Cargo.toml version, clean tree, branch, tag not present
+[ ] §2.5 Self-checks: rm staged .app + grep MenuEvent routing + verify .icns size
+[ ] §3   Bump Cargo.toml + Cargo.lock + add CHANGELOG ## vX.Y.Z; commit
+[ ] §4   make release VERSION=vX.Y.Z (~5-10 min including notarization)
+[ ] §5   update-homebrew-formula.sh + commit + push tap
+[ ] §6   git push origin HEAD:main (fast-forward)
+[ ] §7   gh issue comment on resolved issues + phase parent(s); close if authorized
+[ ] §8   Post-release smoke: download .dmg, install, verify icon + version + menu items
 ```
 
 ---
