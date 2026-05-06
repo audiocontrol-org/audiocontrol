@@ -751,7 +751,7 @@ git commit -m "feat(midi-macro-bridge): add Makefile package target"
 - Create: `services/midi-macro-bridge/Dockerfile.linux-builder`
 - Create: `services/midi-macro-bridge/scripts/build-in-docker.sh`
 
-- [ ] **Step 1: Author the Dockerfile**
+- [x] **Step 1: Author the Dockerfile**
 
 Create `services/midi-macro-bridge/Dockerfile.linux-builder`:
 
@@ -777,7 +777,7 @@ WORKDIR /workspace
 CMD ["bash"]
 ```
 
-- [ ] **Step 2: Author the build wrapper**
+- [x] **Step 2: Author the build wrapper**
 
 Create `services/midi-macro-bridge/scripts/build-in-docker.sh`:
 
@@ -827,13 +827,13 @@ docker run --rm \
 echo "✓ Linux tarball assembled"
 ```
 
-- [ ] **Step 3: Mark scripts executable**
+- [x] **Step 3: Mark scripts executable**
 
 ```bash
 chmod +x services/midi-macro-bridge/scripts/build-in-docker.sh
 ```
 
-- [ ] **Step 4: Verify the Docker build end-to-end**
+- [x] **Step 4: Verify the Docker build end-to-end**
 
 ```bash
 cd services/midi-macro-bridge
@@ -856,7 +856,7 @@ rm -rf /tmp/extract-linux
 
 Expected output contains `ELF 64-bit LSB executable, x86-64`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add services/midi-macro-bridge/Dockerfile.linux-builder \
@@ -871,7 +871,7 @@ git commit -m "feat(midi-macro-bridge): add Linux Docker builder for cross-platf
 
 The existing `package` target builds for the host triple (Task 2.3). Add explicit per-OS targets and an aggregate target that produces both tarballs plus an aggregated `SHA256SUMS` file for release distribution.
 
-- [ ] **Step 1: Replace the single `package` block with per-OS targets**
+- [x] **Step 1: Replace the single `package` block with per-OS targets**
 
 Find the existing `package` block in `services/midi-macro-bridge/Makefile` (added in Task 2.3):
 
@@ -921,7 +921,7 @@ package-all: package-macos package-linux
 
 Add `package-macos package-linux package-all` to the `.PHONY` line.
 
-- [ ] **Step 2: Update help text**
+- [x] **Step 2: Update help text**
 
 Find the help block. Replace the single `package` line with three lines:
 
@@ -933,7 +933,7 @@ Find the help block. Replace the single `package` line with three lines:
 
 (Drop the original generic `package` help line if it's still there, OR keep it as a host-triple convenience and add a brief note. Both are fine; prefer keeping it since `package` is still in the Makefile.)
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
 
 ```bash
 cd services/midi-macro-bridge
@@ -959,7 +959,7 @@ grep -q "MIDI channel disconnected" /tmp/smoke-macos.log && echo "REGRESSION pre
 
 Expected: `STAY_UP: ok`, `REGRESSION clean`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add services/midi-macro-bridge/Makefile
@@ -973,7 +973,7 @@ git commit -m "feat(midi-macro-bridge): add per-OS package targets + SHA256SUMS 
 
 One-shot release flow: assert preconditions, build both tarballs, smoke-test macOS, tag, push, upload via `gh release create`. Operator runs `make release VERSION=v0.1.0` and walks away.
 
-- [ ] **Step 1: Add the target**
+- [x] **Step 1: Add the target**
 
 Append to `services/midi-macro-bridge/Makefile`:
 
@@ -1002,7 +1002,7 @@ Add `release` to the `.PHONY` line. Add a help text line:
 	@echo "  release VERSION=v0.1.0  end-to-end release: build + smoke + tag + upload"
 ```
 
-- [ ] **Step 2: Author the release script**
+- [x] **Step 2: Author the release script**
 
 Create `services/midi-macro-bridge/scripts/release.sh`:
 
@@ -1124,7 +1124,7 @@ echo "  https://github.com/audiocontrol-org/audiocontrol/releases/tag/$VERSION"
 chmod +x services/midi-macro-bridge/scripts/release.sh
 ```
 
-- [ ] **Step 3: Verify the script's preflight checks (without actually releasing)**
+- [x] **Step 3: Verify the script's preflight checks (without actually releasing)**
 
 Smoke-test the precondition checks by invoking with a deliberately wrong version:
 
@@ -1137,7 +1137,7 @@ Expected: exits non-zero with "Cargo.toml version (...) does not match VERSION (
 
 Don't run the full release — Phase 6 Task 6.2 is the controlled v0.1.0 invocation.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add services/midi-macro-bridge/Makefile services/midi-macro-bridge/scripts/release.sh
