@@ -4,6 +4,8 @@ status: draft
 date: 2026-05-05
 feature: midi-macro-bridge-packaging
 phase: 7 (proposed extension)
+deskwork:
+  id: 09f42ab3-bbef-4660-bd38-d14feae92c3d
 ---
 
 # macOS `.app` + `.dmg` distribution

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "sites": {
+    "engineering-design-specs": {
+      "contentDir": "docs",
+      "calendarPath": "docs/design-spec-calendar.md"
+    }
+  },
+  "defaultSite": "engineering-design-specs"
+}

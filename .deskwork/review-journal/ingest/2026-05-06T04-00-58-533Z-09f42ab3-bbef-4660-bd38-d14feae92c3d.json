@@ -1,0 +1,22 @@
+{
+  "id": "09f42ab3-bbef-4660-bd38-d14feae92c3d",
+  "timestamp": "2026-05-06T04:00:58.533Z",
+  "event": "ingest",
+  "slug": "midi-macro-bridge-packaging/macos-app-distribution-design",
+  "entryId": "09f42ab3-bbef-4660-bd38-d14feae92c3d",
+  "site": "engineering-design-specs",
+  "stage": "Drafting",
+  "sourceFile": "docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/2026-05-05-macos-app-distribution-design.md",
+  "frontmatterSnapshot": {
+    "title": "macOS .app + .dmg distribution for midi-macro-bridge",
+    "status": "draft",
+    "date": "2026-05-05",
+    "feature": "midi-macro-bridge-packaging",
+    "phase": "7 (proposed extension)"
+  },
+  "derivation": {
+    "slug": "path",
+    "state": "frontmatter",
+    "date": "frontmatter"
+  }
+}

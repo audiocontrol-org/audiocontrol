@@ -1,0 +1,12 @@
+{
+  "uuid": "09f42ab3-bbef-4660-bd38-d14feae92c3d",
+  "slug": "midi-macro-bridge-packaging/macos-app-distribution-design",
+  "title": "macOS .app + .dmg distribution for midi-macro-bridge",
+  "keywords": [],
+  "source": "manual",
+  "currentStage": "Drafting",
+  "iterationByStage": {},
+  "artifactPath": "docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/2026-05-05-macos-app-distribution-design.md",
+  "createdAt": "2026-05-06T04:00:58.535Z",
+  "updatedAt": "2026-05-06T04:00:58.535Z"
+}
