@@ -1,0 +1,13 @@
+[Unit]
+Description=midi-macro-bridge — translate MIDI events into keystrokes/macros
+Documentation=https://github.com/audiocontrol-org/audiocontrol
+After=sound.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/midi-macro-bridge --no-open
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target
