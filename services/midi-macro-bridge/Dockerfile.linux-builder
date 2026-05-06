@@ -1,0 +1,20 @@
+# Linux x86_64 builder for midi-macro-bridge.
+# Pinned to a stable Rust + Debian bookworm so reproducibility doesn't drift.
+# Used by `make package-linux` from the host; not intended for runtime use.
+FROM rust:1.91-slim-bookworm
+
+# midir's ALSA backend needs libasound2 headers at compile time.
+# pkg-config helps the build script find it.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      pkg-config \
+      libasound2-dev \
+      libxdo-dev \
+      ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+# Pre-create the workspace mount point so bind-mounts have a target.
+WORKDIR /workspace
+
+# Default command is overridden by build-in-docker.sh; keep this minimal.
+CMD ["bash"]

@@ -33,13 +33,13 @@ OUT_DIR="target/release-package"
 TARBALL="${OUT_DIR}/${NAME}.tar.gz"
 
 echo "→ building release binary for ${TRIPLE}"
-cargo build --release
+cargo build --release --target "${TRIPLE}"
 
 echo "→ staging tarball at ${STAGING}"
 rm -rf "${STAGING}"
 mkdir -p "${STAGING}/bin" "${STAGING}/share/midi-macro-bridge" "${STAGING}/doc"
 
-cp target/release/midi-macro-bridge "${STAGING}/bin/"
+cp "target/${TRIPLE}/release/midi-macro-bridge" "${STAGING}/bin/"
 cp config.example.toml "${STAGING}/share/midi-macro-bridge/"
 
 case "$TRIPLE" in
