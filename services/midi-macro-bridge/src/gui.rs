@@ -71,7 +71,7 @@ pub fn run_window(
     // into this single handler.
     let proxy_clone = event_loop_proxy.clone();
     MenuEvent::set_event_handler(Some(move |event: MenuEvent| {
-        let _ = if event.id == tray_show_id {
+        let _ = if event.id == tray_show_id || event.id == menu_ids.show_main_window {
             proxy_clone.send_event(UserEvent::ShowWindow)
         } else if event.id == tray_quit_id || event.id == menu_ids.quit {
             proxy_clone.send_event(UserEvent::Quit)
