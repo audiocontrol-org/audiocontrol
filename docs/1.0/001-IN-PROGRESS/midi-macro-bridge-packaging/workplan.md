@@ -3060,7 +3060,7 @@ git commit -m "fix(midi-macro-bridge): structure-aware sha256 substitution in up
 
 ### Task 9.4: Phase 9 close-out + v0.2.1 release
 
-- [ ] **Step 1: Bump Cargo.toml to 0.2.1**
+- [x] **Step 1: Bump Cargo.toml to 0.2.1**
 
 ```bash
 cd /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging
@@ -3078,7 +3078,7 @@ Refresh Cargo.lock:
 cargo build --release --target aarch64-apple-darwin --manifest-path services/midi-macro-bridge/Cargo.toml 2>&1 | tail -3
 ```
 
-- [ ] **Step 2: Add v0.2.1 entry to CHANGELOG.md**
+- [x] **Step 2: Add v0.2.1 entry to CHANGELOG.md**
 
 Insert above the existing `## v0.2.0` section in `services/midi-macro-bridge/CHANGELOG.md`:
 
@@ -3091,7 +3091,7 @@ Insert above the existing `## v0.2.0` section in `services/midi-macro-bridge/CHA
 - Fixed `update-homebrew-formula.sh` to do structure-aware sha256 substitution; the script now fails loudly if substitution didn't match (#379). Previously, subsequent releases would silently ship stale SHAs.
 ```
 
-- [ ] **Step 3: Commit version + changelog**
+- [x] **Step 3: Commit version + changelog**
 
 ```bash
 git add services/midi-macro-bridge/Cargo.toml services/midi-macro-bridge/Cargo.lock services/midi-macro-bridge/CHANGELOG.md
@@ -3121,7 +3121,7 @@ print(f'flipped {flipped} Phase 9 checkboxes')
 "
 ```
 
-- [ ] **Step 5: Flip README phase 9 row to Complete**
+- [x] **Step 5: Flip README phase 9 row to Complete**
 
 ```bash
 sed -i '' 's|^| 9 | v0.2.1 polish.*Not started.*$| 9 | v0.2.1 polish — UI cleanup + tooling fixes (HALT button removed; version string wired to CARGO_PKG_VERSION; formula update script regex fixed) | Complete |g' \
@@ -3130,7 +3130,7 @@ sed -i '' 's|^| 9 | v0.2.1 polish.*Not started.*$| 9 | v0.2.1 polish — UI clea
 
 (If sed isn't a clean fit, edit the README phase table line manually with the Edit tool.)
 
-- [ ] **Step 6: Cut the release**
+- [x] **Step 6: Cut the release**
 
 ```bash
 make -C services/midi-macro-bridge release VERSION=v0.2.1
@@ -3138,7 +3138,7 @@ make -C services/midi-macro-bridge release VERSION=v0.2.1
 
 Expected: preflight passes, `package-all` builds tarballs + .dmg with notarization, .app smoke test passes, tag pushed, GitHub Release created with all 7 artifacts.
 
-- [ ] **Step 7: Update Homebrew formula**
+- [x] **Step 7: Update Homebrew formula**
 
 ```bash
 ./services/midi-macro-bridge/scripts/update-homebrew-formula.sh v0.2.1 \
@@ -3155,14 +3155,14 @@ git commit -m "midi-macro-bridge 0.2.1"
 git push origin main
 ```
 
-- [ ] **Step 8: Push feature branch HEAD to main**
+- [x] **Step 8: Push feature branch HEAD to main**
 
 ```bash
 cd /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging
 git push origin HEAD:main
 ```
 
-- [ ] **Step 9: Comment on each fixed issue with the v0.2.1 release link**
+- [x] **Step 9: Comment on each fixed issue with the v0.2.1 release link**
 
 ```bash
 for issue in 377 378 379; do
@@ -3779,7 +3779,7 @@ git commit -m "feat(midi-macro-bridge): macOS app menubar with About/Preferences
 
 ### Task 8.4: Phase 8 close-out + v0.3.0 release
 
-- [ ] **Step 1: Bump Cargo.toml to 0.3.0**
+- [x] **Step 1: Bump Cargo.toml to 0.3.0**
 
 Edit `services/midi-macro-bridge/Cargo.toml`:
 
@@ -3793,7 +3793,7 @@ Refresh `Cargo.lock`:
 cd services/midi-macro-bridge && cargo build --release --target aarch64-apple-darwin 2>&1 | tail -3
 ```
 
-- [ ] **Step 2: Add v0.3.0 entry to CHANGELOG.md**
+- [x] **Step 2: Add v0.3.0 entry to CHANGELOG.md**
 
 Insert above `## v0.2.x` (whatever the current top entry is) in `services/midi-macro-bridge/CHANGELOG.md`:
 
@@ -3838,14 +3838,14 @@ print(f'flipped {flipped} Phase 8 checkboxes')
 
 Edit `docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/README.md` — change Phase 8's status column from "Not started" to "Complete; v0.3.0 shipped".
 
-- [ ] **Step 5: Commit version bump + CHANGELOG**
+- [x] **Step 5: Commit version bump + CHANGELOG**
 
 ```bash
 git add services/midi-macro-bridge/Cargo.toml services/midi-macro-bridge/Cargo.lock services/midi-macro-bridge/CHANGELOG.md docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/
 git commit -m "chore(midi-macro-bridge): bump to v0.3.0 + Phase 8 close-out"
 ```
 
-- [ ] **Step 6: Cut the release**
+- [x] **Step 6: Cut the release**
 
 ```bash
 make -C services/midi-macro-bridge release VERSION=v0.3.0
@@ -3853,7 +3853,7 @@ make -C services/midi-macro-bridge release VERSION=v0.3.0
 
 Expected: preflight passes, `package-all` builds tarballs + .dmg with notarization, .app smoke test passes, tag pushed, GitHub Release created.
 
-- [ ] **Step 7: Update Homebrew formula**
+- [x] **Step 7: Update Homebrew formula**
 
 ```bash
 ./services/midi-macro-bridge/scripts/update-homebrew-formula.sh v0.3.0 \
@@ -3870,14 +3870,14 @@ git commit -m "midi-macro-bridge 0.3.0"
 git push origin main
 ```
 
-- [ ] **Step 8: Push feature branch HEAD to main**
+- [x] **Step 8: Push feature branch HEAD to main**
 
 ```bash
 cd /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging
 git push origin HEAD:main
 ```
 
-- [ ] **Step 9: Comment on each child issue with the v0.3.0 release link**
+- [x] **Step 9: Comment on each child issue with the v0.3.0 release link**
 
 ```bash
 for issue in 368 369 376; do
