@@ -425,7 +425,7 @@ Build a script that produces a per-platform tarball locally. Drives the same lay
 - Create: `services/midi-macro-bridge/share/systemd/midi-macro-bridge.service`
 - Create: `services/midi-macro-bridge/QUARANTINE.md`
 
-- [ ] **Step 1: Write the launchd plist**
+- [x] **Step 1: Write the launchd plist**
 
 Create `services/midi-macro-bridge/share/launchd/com.audiocontrol.midi-macro-bridge.plist`:
 
@@ -453,7 +453,7 @@ Create `services/midi-macro-bridge/share/launchd/com.audiocontrol.midi-macro-bri
 </plist>
 ```
 
-- [ ] **Step 2: Write the systemd user unit**
+- [x] **Step 2: Write the systemd user unit**
 
 Create `services/midi-macro-bridge/share/systemd/midi-macro-bridge.service`:
 
@@ -473,7 +473,7 @@ RestartSec=2
 WantedBy=default.target
 ```
 
-- [ ] **Step 3: Write QUARANTINE.md**
+- [x] **Step 3: Write QUARANTINE.md**
 
 Create `services/midi-macro-bridge/QUARANTINE.md`:
 
@@ -501,7 +501,7 @@ Notarization is on the roadmap but deferred until v1.x. Track via the
 `midi-macro-bridge-packaging` workplan.
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add services/midi-macro-bridge/share services/midi-macro-bridge/QUARANTINE.md
@@ -513,7 +513,7 @@ git commit -m "feat(midi-macro-bridge): add service unit templates + quarantine 
 **Files:**
 - Create: `services/midi-macro-bridge/scripts/package.sh`
 
-- [ ] **Step 1: Write the script**
+- [x] **Step 1: Write the script**
 
 Create `services/midi-macro-bridge/scripts/package.sh`:
 
@@ -604,7 +604,7 @@ Make it executable:
 chmod +x services/midi-macro-bridge/scripts/package.sh
 ```
 
-- [ ] **Step 2: Author install.sh**
+- [x] **Step 2: Author install.sh**
 
 Create `services/midi-macro-bridge/scripts/install.sh`:
 
@@ -648,7 +648,7 @@ Make it executable:
 chmod +x services/midi-macro-bridge/scripts/install.sh
 ```
 
-- [ ] **Step 3: Run package.sh locally**
+- [x] **Step 3: Run package.sh locally**
 
 ```bash
 cd services/midi-macro-bridge
@@ -662,7 +662,7 @@ Expected output ends with:
 ✓ ...sha256 (<64-hex-chars>  midi-macro-bridge-v0.0.1-test-aarch64-apple-darwin.tar.gz)
 ```
 
-- [ ] **Step 4: Verify the tarball contents**
+- [x] **Step 4: Verify the tarball contents**
 
 ```bash
 tar -tzf target/release-package/midi-macro-bridge-v0.0.1-test-aarch64-apple-darwin.tar.gz | head -20
@@ -670,7 +670,7 @@ tar -tzf target/release-package/midi-macro-bridge-v0.0.1-test-aarch64-apple-darw
 
 Expected: `bin/midi-macro-bridge`, `share/midi-macro-bridge/config.example.toml`, `share/midi-macro-bridge/launchd/com.audiocontrol.midi-macro-bridge.plist`, `doc/README.md`, `doc/QUARANTINE.md`, `install.sh`.
 
-- [ ] **Step 5: Smoke test the binary inside the staging dir**
+- [x] **Step 5: Smoke test the binary inside the staging dir**
 
 ```bash
 cd target/release-package/midi-macro-bridge-v0.0.1-test-aarch64-apple-darwin
@@ -682,7 +682,7 @@ kill $PID 2>/dev/null
 
 Expected: bridge starts, logs `web server listening url=http://127.0.0.1:8765`, stays up until killed.
 
-- [ ] **Step 6: Add `target/release-package/` to .gitignore**
+- [x] **Step 6: Add `target/release-package/` to .gitignore**
 
 Edit `services/midi-macro-bridge/.gitignore` and append:
 
@@ -690,7 +690,7 @@ Edit `services/midi-macro-bridge/.gitignore` and append:
 target/release-package/
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add services/midi-macro-bridge/scripts services/midi-macro-bridge/.gitignore
@@ -702,7 +702,7 @@ git commit -m "feat(midi-macro-bridge): add package.sh + install.sh for tarball 
 **Files:**
 - Modify: `services/midi-macro-bridge/Makefile`
 
-- [ ] **Step 1: Add the target**
+- [x] **Step 1: Add the target**
 
 Append to `services/midi-macro-bridge/Makefile`:
 
@@ -718,7 +718,7 @@ package:
 
 Add `package` to the `.PHONY` line (find it near the top of the file).
 
-- [ ] **Step 2: Verify**
+- [x] **Step 2: Verify**
 
 ```bash
 make -C services/midi-macro-bridge package VERSION=v0.0.1-test 2>&1 | tail -5
@@ -726,11 +726,11 @@ make -C services/midi-macro-bridge package VERSION=v0.0.1-test 2>&1 | tail -5
 
 Expected: produces a tarball at `target/release-package/`.
 
-- [ ] **Step 3: Update help text**
+- [x] **Step 3: Update help text**
 
 In the Makefile's `help:` target, add a line for `package`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add services/midi-macro-bridge/Makefile
@@ -739,225 +739,410 @@ git commit -m "feat(midi-macro-bridge): add Makefile package target"
 
 ---
 
-## Phase 3: Release CI Workflow
+## Phase 3: Local Release Build (Makefile + Docker)
 
-### Task 3.1: Author the workflow file
+**Scope reshape from the original "Release CI Workflow"**: build and ship from the operator's host instead of GitHub Actions. macOS arm64 builds natively; Linux x86_64 builds inside a `rust:slim-bookworm` Docker container so the operator doesn't need a Linux box. CI is intentionally out of scope for v1; revisit if release cadence makes local builds tedious.
+
+**Verification trade-off**: the macOS binary smoke test (binary stays up 2s, no `MIDI channel disconnected`) runs natively on the build host. The Linux binary smoke test is **deferred to Phase 6 Task 6.4** (real Linux host or privileged Docker with `/dev/snd`) — midir's ALSA backend won't initialise inside a stock unprivileged container. A future improvement (out of scope here) is to convert the regression check into a `cargo test` unit test so it runs cross-platform without ALSA.
+
+### Task 3.1: Linux Docker builder image
 
 **Files:**
-- Create: `.github/workflows/midi-macro-bridge-release.yml`
+- Create: `services/midi-macro-bridge/Dockerfile.linux-builder`
+- Create: `services/midi-macro-bridge/scripts/build-in-docker.sh`
 
-- [ ] **Step 1: Write the workflow**
+- [ ] **Step 1: Author the Dockerfile**
 
-Create `.github/workflows/midi-macro-bridge-release.yml`:
+Create `services/midi-macro-bridge/Dockerfile.linux-builder`:
 
-```yaml
-name: midi-macro-bridge release
+```dockerfile
+# Linux x86_64 builder for midi-macro-bridge.
+# Pinned to a stable Rust + Debian bookworm so reproducibility doesn't drift.
+# Used by `make package-linux` from the host; not intended for runtime use.
+FROM rust:1.83-slim-bookworm
 
-on:
-  push:
-    tags:
-      - 'v*'
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version tag for dry-run (e.g. v0.0.1-rc1). No release will be published.'
-        required: true
+# midir's ALSA backend needs libasound2 headers at compile time.
+# pkg-config helps the build script find it.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      pkg-config \
+      libasound2-dev \
+      ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
 
-permissions:
-  contents: write
+# Pre-create the workspace mount point so bind-mounts have a target.
+WORKDIR /workspace
 
-jobs:
-  preflight:
-    name: Pre-flight checks
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.resolve.outputs.version }}
-      is_dry_run: ${{ steps.resolve.outputs.is_dry_run }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Resolve version
-        id: resolve
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
-            echo "is_dry_run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "version=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
-            echo "is_dry_run=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Assert Cargo.toml version matches tag
-        run: |
-          TAG="${{ steps.resolve.outputs.version }}"
-          CARGO_VERSION="$(grep -E '^version = ' services/midi-macro-bridge/Cargo.toml | head -1 | sed -E 's/.*"([^"]+)".*/\1/')"
-          EXPECTED="${TAG#v}"
-          if [[ "$CARGO_VERSION" != "$EXPECTED" ]]; then
-            echo "::error::Cargo.toml version ($CARGO_VERSION) does not match tag ($EXPECTED)"
-            exit 1
-          fi
-          echo "✓ version match: $CARGO_VERSION"
-
-  build:
-    name: Build ${{ matrix.target }}
-    needs: preflight
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: macos-14
-            target: aarch64-apple-darwin
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
-
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: services/midi-macro-bridge
-
-      - name: Build + test
-        working-directory: services/midi-macro-bridge
-        run: |
-          cargo test --release
-          cargo build --release --target ${{ matrix.target }}
-          # package.sh expects target/release/<bin>; symlink for cross-target builds.
-          mkdir -p target/release
-          cp target/${{ matrix.target }}/release/midi-macro-bridge target/release/
-
-      - name: Smoke test (binary stays up)
-        working-directory: services/midi-macro-bridge
-        run: |
-          ./target/release/midi-macro-bridge --no-open &
-          PID=$!
-          sleep 2
-          if ! kill -0 $PID 2>/dev/null; then
-            echo "::error::binary exited within 2 seconds"
-            wait $PID
-            exit 1
-          fi
-          kill $PID
-          wait $PID 2>/dev/null || true
-
-      - name: Package tarball
-        working-directory: services/midi-macro-bridge
-        run: ./scripts/package.sh --target ${{ matrix.target }} --version ${{ needs.preflight.outputs.version }}
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: midi-macro-bridge-${{ matrix.target }}
-          path: |
-            services/midi-macro-bridge/target/release-package/*.tar.gz
-            services/midi-macro-bridge/target/release-package/*.sha256
-
-  release:
-    name: Publish GitHub Release
-    needs: [preflight, build]
-    if: needs.preflight.outputs.is_dry_run == 'false'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts/
-
-      - name: Aggregate SHA256SUMS
-        run: |
-          cd artifacts
-          find . -name '*.sha256' -exec cat {} \; > SHA256SUMS
-          cat SHA256SUMS
-
-      - name: Extract release notes from CHANGELOG
-        id: notes
-        run: |
-          VERSION="${{ needs.preflight.outputs.version }}"
-          # Grab everything between "## VERSION" and the next "## " heading
-          awk -v v="$VERSION" '
-            $0 ~ "^## " v "$" {flag=1; next}
-            flag && /^## / {exit}
-            flag {print}
-          ' services/midi-macro-bridge/CHANGELOG.md > release-notes.md
-          echo "--- release notes:"
-          cat release-notes.md
-
-      - name: Create GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          VERSION="${{ needs.preflight.outputs.version }}"
-          gh release create "$VERSION" \
-            --title "midi-macro-bridge $VERSION" \
-            --notes-file release-notes.md \
-            artifacts/**/*.tar.gz artifacts/**/*.sha256 artifacts/SHA256SUMS
+# Default command is overridden by build-in-docker.sh; keep this minimal.
+CMD ["bash"]
 ```
 
-- [ ] **Step 2: Lint the workflow YAML**
+- [ ] **Step 2: Author the build wrapper**
+
+Create `services/midi-macro-bridge/scripts/build-in-docker.sh`:
 
 ```bash
-# Use the GitHub Actions runner-image lint or just a YAML parser
-python3 -c "import yaml; yaml.safe_load(open('.github/workflows/midi-macro-bridge-release.yml'))" && echo OK
+#!/usr/bin/env bash
+# Build the midi-macro-bridge Linux x86_64 release inside a Docker container,
+# then assemble the release tarball via package.sh.
+#
+# Usage:
+#   scripts/build-in-docker.sh --version <vX.Y.Z>
+#
+# Produces under target/release-package/:
+#   midi-macro-bridge-<version>-x86_64-unknown-linux-gnu.tar.gz
+#   midi-macro-bridge-<version>-x86_64-unknown-linux-gnu.tar.gz.sha256
+
+set -euo pipefail
+
+VERSION=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --version) VERSION="$2"; shift 2 ;;
+        *) echo "unknown arg: $1" >&2; exit 2 ;;
+    esac
+done
+[[ -n "$VERSION" ]] || { echo "ERROR: --version required" >&2; exit 2; }
+
+SERVICE_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
+WORKSPACE_ROOT="$(cd "$SERVICE_DIR/../.." && pwd -P)"
+
+IMAGE_TAG="midi-macro-bridge-linux-builder:latest"
+
+echo "→ building Docker image $IMAGE_TAG"
+docker build \
+    -t "$IMAGE_TAG" \
+    -f "$SERVICE_DIR/Dockerfile.linux-builder" \
+    "$SERVICE_DIR"
+
+echo "→ cargo build --release inside container (target=x86_64-unknown-linux-gnu)"
+# Bind-mount the entire workspace so package.sh's workspace-root LICENSE lookup
+# also works. The cargo target dir is workspace-internal so artifacts persist.
+docker run --rm \
+    -v "$WORKSPACE_ROOT":/workspace \
+    -w /workspace/services/midi-macro-bridge \
+    "$IMAGE_TAG" \
+    bash -c "cargo build --release && ./scripts/package.sh --target x86_64-unknown-linux-gnu --version $VERSION"
+
+echo "✓ Linux tarball assembled"
 ```
 
-Expected: `OK`.
-
-- [ ] **Step 3: Commit and push**
+- [ ] **Step 3: Mark scripts executable**
 
 ```bash
-git add .github/workflows/midi-macro-bridge-release.yml
-git commit -m "ci(midi-macro-bridge): add tag-driven release workflow"
-git push origin feature/midi-macro-bridge-packaging
+chmod +x services/midi-macro-bridge/scripts/build-in-docker.sh
 ```
 
-### Task 3.2: Workflow_dispatch dry run
-
-- [ ] **Step 1: Trigger a dry run**
-
-Via the GitHub web UI or:
+- [ ] **Step 4: Verify the Docker build end-to-end**
 
 ```bash
-gh workflow run midi-macro-bridge-release.yml \
-    --ref feature/midi-macro-bridge-packaging \
-    -f version=v0.0.1-rc1
+cd services/midi-macro-bridge
+./scripts/build-in-docker.sh --version v0.0.1-test
+ls -la target/release-package/midi-macro-bridge-v0.0.1-test-x86_64-unknown-linux-gnu.tar.gz
+ls -la target/release-package/midi-macro-bridge-v0.0.1-test-x86_64-unknown-linux-gnu.tar.gz.sha256
+tar -tzf target/release-package/midi-macro-bridge-v0.0.1-test-x86_64-unknown-linux-gnu.tar.gz | head -20
 ```
 
-(For this to work, `Cargo.toml` must say `version = "0.0.1-rc1"` — temporarily bump it on the branch for the dry run, then revert.)
+Expected: tarball exists; contents include `bin/midi-macro-bridge` (Linux ELF), `share/midi-macro-bridge/systemd/midi-macro-bridge.service`, `share/midi-macro-bridge/config.example.toml`, `doc/README.md`, `install.sh`. No `launchd/` or `QUARANTINE.md` (those are macOS-only per package.sh).
 
-- [ ] **Step 2: Watch the run**
+Confirm the binary is a Linux ELF, not a Mach-O:
 
 ```bash
-gh run watch
+mkdir -p /tmp/extract-linux
+tar -xzf target/release-package/midi-macro-bridge-v0.0.1-test-x86_64-unknown-linux-gnu.tar.gz -C /tmp/extract-linux
+file /tmp/extract-linux/midi-macro-bridge-v0.0.1-test-x86_64-unknown-linux-gnu/bin/midi-macro-bridge
+rm -rf /tmp/extract-linux
 ```
 
-Expected: pre-flight, both build jobs, no release-publish (dry run skips it).
+Expected output contains `ELF 64-bit LSB executable, x86-64`.
 
-- [ ] **Step 3: Download the artifacts and verify**
+- [ ] **Step 5: Commit**
 
 ```bash
-gh run download
-ls midi-macro-bridge-*-darwin/ midi-macro-bridge-*-linux-gnu/
+git add services/midi-macro-bridge/Dockerfile.linux-builder \
+        services/midi-macro-bridge/scripts/build-in-docker.sh
+git commit -m "feat(midi-macro-bridge): add Linux Docker builder for cross-platform release"
 ```
 
-Expected: each contains a `.tar.gz` and `.sha256`.
+### Task 3.2: Makefile per-OS package targets
 
-- [ ] **Step 4: Revert the temporary Cargo.toml bump**
+**Files:**
+- Modify: `services/midi-macro-bridge/Makefile`
+
+The existing `package` target builds for the host triple (Task 2.3). Add explicit per-OS targets and an aggregate target that produces both tarballs plus an aggregated `SHA256SUMS` file for release distribution.
+
+- [ ] **Step 1: Replace the single `package` block with per-OS targets**
+
+Find the existing `package` block in `services/midi-macro-bridge/Makefile` (added in Task 2.3):
+
+```make
+# Build a release tarball for the current host triple. Override TRIPLE/VERSION
+# to package for cross-targets (CI passes both explicitly).
+TRIPLE ?= $(shell rustc -vV | sed -n 's/^host: //p')
+VERSION ?= v0.0.1-dev
+
+package:
+	./scripts/package.sh --target $(TRIPLE) --version $(VERSION)
+```
+
+Replace with:
+
+```make
+# Release packaging.
+#   make package-macos VERSION=v0.1.0   builds aarch64-apple-darwin natively
+#   make package-linux VERSION=v0.1.0   builds x86_64-unknown-linux-gnu via Docker
+#   make package-all   VERSION=v0.1.0   both above + aggregate SHA256SUMS
+#
+# `package` (no -OS suffix) remains as a host-triple convenience for dev use.
+TRIPLE ?= $(shell rustc -vV | sed -n 's/^host: //p')
+VERSION ?= v0.0.1-dev
+
+package:
+	./scripts/package.sh --target $(TRIPLE) --version $(VERSION)
+
+package-macos:
+	./scripts/package.sh --target aarch64-apple-darwin --version $(VERSION)
+
+package-linux:
+	./scripts/build-in-docker.sh --version $(VERSION)
+
+package-all: package-macos package-linux
+	@cd target/release-package && \
+	  rm -f SHA256SUMS && \
+	  cat midi-macro-bridge-$(VERSION)-aarch64-apple-darwin.tar.gz.sha256 \
+	      midi-macro-bridge-$(VERSION)-x86_64-unknown-linux-gnu.tar.gz.sha256 \
+	      > SHA256SUMS
+	@echo
+	@echo "✓ Release artifacts for $(VERSION):"
+	@ls -1 target/release-package/midi-macro-bridge-$(VERSION)-*.tar.gz \
+	       target/release-package/midi-macro-bridge-$(VERSION)-*.sha256 \
+	       target/release-package/SHA256SUMS
+```
+
+Add `package-macos package-linux package-all` to the `.PHONY` line.
+
+- [ ] **Step 2: Update help text**
+
+Find the help block. Replace the single `package` line with three lines:
+
+```make
+	@echo "  package-macos      assemble macOS arm64 tarball"
+	@echo "  package-linux      assemble Linux x86_64 tarball via Docker"
+	@echo "  package-all        both, plus aggregate SHA256SUMS"
+```
+
+(Drop the original generic `package` help line if it's still there, OR keep it as a host-triple convenience and add a brief note. Both are fine; prefer keeping it since `package` is still in the Makefile.)
+
+- [ ] **Step 3: Verify**
 
 ```bash
-git restore services/midi-macro-bridge/Cargo.toml
+cd services/midi-macro-bridge
+rm -rf target/release-package
+make package-all VERSION=v0.0.1-test 2>&1 | tail -10
+ls -la target/release-package/
 ```
 
-- [ ] **Step 5: Commit any workflow tweaks discovered during dry run**
+Expected: two tarballs, two `.sha256`, one `SHA256SUMS` aggregate. The macOS smoke test (Task 2.2 Step 5) is implicit via `package-macos` → `package.sh` (which only builds; the runtime smoke is operator-driven).
 
-If the dry run revealed bugs, fix and recommit before tagging.
+Manually run the macOS host-binary smoke test once to satisfy Phase 6 acceptance criterion #5:
+
+```bash
+cd target/release-package/midi-macro-bridge-v0.0.1-test-aarch64-apple-darwin
+./bin/midi-macro-bridge --no-open >/tmp/smoke-macos.log 2>&1 &
+PID=$!
+sleep 2.5
+if kill -0 $PID 2>/dev/null; then echo "STAY_UP: ok"; else echo "STAY_UP: FAIL"; fi
+kill $PID 2>/dev/null || true
+wait $PID 2>/dev/null || true
+grep -q "MIDI channel disconnected" /tmp/smoke-macos.log && echo "REGRESSION present" || echo "REGRESSION clean"
+```
+
+Expected: `STAY_UP: ok`, `REGRESSION clean`.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add services/midi-macro-bridge/Makefile
+git commit -m "feat(midi-macro-bridge): add per-OS package targets + SHA256SUMS aggregate"
+```
+
+### Task 3.3: `make release VERSION=...` end-to-end target
+
+**Files:**
+- Modify: `services/midi-macro-bridge/Makefile`
+
+One-shot release flow: assert preconditions, build both tarballs, smoke-test macOS, tag, push, upload via `gh release create`. Operator runs `make release VERSION=v0.1.0` and walks away.
+
+- [ ] **Step 1: Add the target**
+
+Append to `services/midi-macro-bridge/Makefile`:
+
+```make
+# End-to-end release: build → smoke → tag → upload.
+#   make release VERSION=v0.1.0
+#
+# Preconditions enforced before any work:
+#   - VERSION starts with 'v'
+#   - Cargo.toml version (without 'v') matches VERSION
+#   - working tree clean
+#   - on main branch (warns; doesn't block)
+#   - origin/main matches local main (warns; doesn't block)
+#
+# After build + smoke pass, this creates and pushes a git tag, then calls
+# `gh release create` with the tarballs + SHA256SUMS attached. Release notes
+# are extracted from CHANGELOG.md (`## VERSION` section); falls back to a
+# generic title if missing.
+release:
+	@./scripts/release.sh --version $(VERSION)
+```
+
+Add `release` to the `.PHONY` line. Add a help text line:
+
+```make
+	@echo "  release VERSION=v0.1.0  end-to-end release: build + smoke + tag + upload"
+```
+
+- [ ] **Step 2: Author the release script**
+
+Create `services/midi-macro-bridge/scripts/release.sh`:
+
+```bash
+#!/usr/bin/env bash
+# End-to-end release for midi-macro-bridge.
+# See services/midi-macro-bridge/Makefile `release` target for usage.
+set -euo pipefail
+
+VERSION=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --version) VERSION="$2"; shift 2 ;;
+        *) echo "unknown arg: $1" >&2; exit 2 ;;
+    esac
+done
+[[ -n "$VERSION" ]] || { echo "ERROR: --version required (e.g., v0.1.0)" >&2; exit 2; }
+[[ "$VERSION" == v* ]] || { echo "ERROR: VERSION must start with 'v'" >&2; exit 2; }
+
+SERVICE_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
+WORKSPACE_ROOT="$(cd "$SERVICE_DIR/../.." && pwd -P)"
+cd "$WORKSPACE_ROOT"
+
+VERSION_NO_V="${VERSION#v}"
+
+echo "→ pre-release checks"
+
+CARGO_VERSION="$(grep -E '^version = ' "$SERVICE_DIR/Cargo.toml" | head -1 | awk -F\" '{print $2}')"
+if [[ "$CARGO_VERSION" != "$VERSION_NO_V" ]]; then
+    echo "ERROR: Cargo.toml version ($CARGO_VERSION) does not match VERSION ($VERSION_NO_V)" >&2
+    echo "       Update services/midi-macro-bridge/Cargo.toml first." >&2
+    exit 1
+fi
+echo "  ✓ Cargo.toml version: $CARGO_VERSION"
+
+if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "ERROR: working tree has uncommitted changes" >&2
+    git status --short
+    exit 1
+fi
+echo "  ✓ working tree clean"
+
+CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+if [[ "$CURRENT_BRANCH" != "main" ]]; then
+    echo "  ⚠ on branch '$CURRENT_BRANCH' (not main) — proceeding anyway"
+fi
+
+if git show-ref --tags --verify --quiet "refs/tags/$VERSION"; then
+    echo "ERROR: tag $VERSION already exists locally" >&2
+    exit 1
+fi
+echo "  ✓ tag $VERSION does not yet exist"
+
+echo "→ building both tarballs"
+make -C "$SERVICE_DIR" package-all VERSION="$VERSION"
+
+# macOS smoke test (Phase 6 criterion #5: no `MIDI channel disconnected` within 2s).
+STAGED="$SERVICE_DIR/target/release-package/midi-macro-bridge-$VERSION-aarch64-apple-darwin"
+if [[ ! -d "$STAGED" ]]; then
+    echo "ERROR: macOS staging dir missing: $STAGED" >&2
+    exit 1
+fi
+echo "→ smoke testing macOS binary"
+SMOKE_LOG="$(mktemp)"
+"$STAGED/bin/midi-macro-bridge" --no-open >"$SMOKE_LOG" 2>&1 &
+PID=$!
+sleep 2.5
+if ! kill -0 "$PID" 2>/dev/null; then
+    echo "ERROR: macOS binary exited within 2.5s" >&2
+    cat "$SMOKE_LOG" >&2
+    exit 1
+fi
+kill "$PID" 2>/dev/null || true
+wait "$PID" 2>/dev/null || true
+if grep -q "MIDI channel disconnected" "$SMOKE_LOG"; then
+    echo "ERROR: regression — 'MIDI channel disconnected' in startup log" >&2
+    cat "$SMOKE_LOG" >&2
+    exit 1
+fi
+rm -f "$SMOKE_LOG"
+echo "  ✓ macOS smoke test clean"
+
+echo "→ tagging $VERSION and pushing"
+git tag -a "$VERSION" -m "midi-macro-bridge $VERSION"
+git push origin "$VERSION"
+
+echo "→ extracting release notes from CHANGELOG.md"
+NOTES_FILE="$(mktemp)"
+if [[ -f "$SERVICE_DIR/CHANGELOG.md" ]]; then
+    awk -v v="$VERSION" '
+        $0 ~ "^## " v "$" {flag=1; next}
+        flag && /^## / {exit}
+        flag {print}
+    ' "$SERVICE_DIR/CHANGELOG.md" > "$NOTES_FILE"
+fi
+if [[ ! -s "$NOTES_FILE" ]]; then
+    echo "midi-macro-bridge $VERSION" > "$NOTES_FILE"
+fi
+
+echo "→ creating GitHub Release"
+cd "$SERVICE_DIR/target/release-package"
+gh release create "$VERSION" \
+    --title "midi-macro-bridge $VERSION" \
+    --notes-file "$NOTES_FILE" \
+    "midi-macro-bridge-$VERSION-aarch64-apple-darwin.tar.gz" \
+    "midi-macro-bridge-$VERSION-aarch64-apple-darwin.tar.gz.sha256" \
+    "midi-macro-bridge-$VERSION-x86_64-unknown-linux-gnu.tar.gz" \
+    "midi-macro-bridge-$VERSION-x86_64-unknown-linux-gnu.tar.gz.sha256" \
+    SHA256SUMS
+
+rm -f "$NOTES_FILE"
+
+echo
+echo "✓ Released $VERSION"
+echo "  https://github.com/audiocontrol-org/audiocontrol/releases/tag/$VERSION"
+```
+
+```bash
+chmod +x services/midi-macro-bridge/scripts/release.sh
+```
+
+- [ ] **Step 3: Verify the script's preflight checks (without actually releasing)**
+
+Smoke-test the precondition checks by invoking with a deliberately wrong version:
+
+```bash
+cd /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging
+./services/midi-macro-bridge/scripts/release.sh --version v999.99.99 || echo "(expected failure — Cargo.toml mismatch)"
+```
+
+Expected: exits non-zero with "Cargo.toml version (...) does not match VERSION (999.99.99)".
+
+Don't run the full release — Phase 6 Task 6.2 is the controlled v0.1.0 invocation.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add services/midi-macro-bridge/Makefile services/midi-macro-bridge/scripts/release.sh
+git commit -m "feat(midi-macro-bridge): add make release end-to-end target"
+```
 
 ---
 
@@ -1328,7 +1513,9 @@ git commit -m "docs(midi-macro-bridge): add service activation instructions"
 
 ## Phase 6: First Release (v0.1.0)
 
-### Task 6.1: Final pre-tag verification
+**Reshape note**: this phase was originally tag-driven CI ("push v0.1.0 → GitHub Actions builds and uploads"). It is now **operator-driven local release**: `make release VERSION=v0.1.0` (Phase 3 Task 3.3) runs the full pipeline on the developer's host. The post-release smoke tests (download from GitHub, install, run) and the Homebrew formula update remain.
+
+### Task 6.1: Final pre-release verification
 
 - [ ] **Step 1: Confirm Cargo.toml version is `0.1.0`**
 
@@ -1336,57 +1523,53 @@ git commit -m "docs(midi-macro-bridge): add service activation instructions"
 grep '^version = ' services/midi-macro-bridge/Cargo.toml
 ```
 
-If not, edit it.
+If not, edit it. The `make release` target asserts the match and refuses to proceed if they disagree.
 
-- [ ] **Step 2: Run a workflow_dispatch dry run from main**
-
-After the feature branch is merged to main:
+- [ ] **Step 2: Confirm CHANGELOG.md has a `## v0.1.0` section**
 
 ```bash
-gh workflow run midi-macro-bridge-release.yml --ref main -f version=v0.1.0-rc1
-gh run watch
+grep -n '^## v0.1.0' services/midi-macro-bridge/CHANGELOG.md
 ```
 
-(Same caveat: temporarily bump Cargo.toml to `0.1.0-rc1` for the dry run if you want the version assertion to pass against the dispatch input — or skip the assertion check via a workflow flag if you add one.)
+The `make release` target extracts release notes from this section. Without it, the GitHub Release falls back to a generic title.
 
-- [ ] **Step 3: Verify smoke-test step passed in both build jobs**
-
-The smoke test asserts the binary doesn't exit within 2 seconds of launch under default config. This is the regression coverage for the `MIDI channel disconnected` bug fixed in commit `814e7d27`.
-
-### Task 6.2: Tag and ship v0.1.0
-
-- [ ] **Step 1: From main, tag and push**
+- [ ] **Step 3: Confirm working tree is clean and on `main`**
 
 ```bash
-git checkout main
-git pull
-git tag v0.1.0
-git push origin v0.1.0
+git status
+git rev-parse --abbrev-ref HEAD
 ```
 
-- [ ] **Step 2: Watch the workflow**
+`make release` enforces clean tree; off-main is a warning, not a block, in case you cut from a release branch.
+
+### Task 6.2: Build, smoke-test, tag, and ship v0.1.0
+
+- [ ] **Step 1: Run the end-to-end release**
+
+From the workspace root:
 
 ```bash
-gh run watch
+make -C services/midi-macro-bridge release VERSION=v0.1.0
 ```
 
-Expected: pre-flight passes (Cargo.toml = 0.1.0 matches v0.1.0 tag), both builds pass smoke test, release publish creates the GitHub Release with both tarballs and SHA256SUMS attached.
+The script runs Phase 3 Task 3.3's pipeline: assert preconditions → `package-all` (macOS arm64 native + Linux x86_64 via Docker) → macOS smoke test (regression check for `MIDI channel disconnected`) → tag + push → `gh release create` with both tarballs, both `.sha256`, and the aggregate `SHA256SUMS`.
 
-- [ ] **Step 3: Verify the GitHub Release**
+- [ ] **Step 2: Verify the GitHub Release**
 
 ```bash
 gh release view v0.1.0
 ```
 
-Expected: lists `midi-macro-bridge-v0.1.0-aarch64-apple-darwin.tar.gz`,
-`...-x86_64-unknown-linux-gnu.tar.gz`, `*.sha256`, `SHA256SUMS`.
+Expected: lists `midi-macro-bridge-v0.1.0-aarch64-apple-darwin.tar.gz`, `...-x86_64-unknown-linux-gnu.tar.gz`, both `.sha256` files, and `SHA256SUMS`.
 
-### Task 6.3: Smoke-test the macOS arm64 tarball
+### Task 6.3: Smoke-test the macOS arm64 release tarball (download path)
 
-- [ ] **Step 1: Download and extract**
+The `make release` smoke test validates the locally-built binary. This task validates the **downloaded** tarball — confirms the upload was complete and the install path works for a fresh user.
+
+- [ ] **Step 1: Download and verify checksum**
 
 ```bash
-cd /tmp
+mkdir -p /tmp/release-test && cd /tmp/release-test
 gh release download v0.1.0 --repo audiocontrol-org/audiocontrol \
     --pattern '*aarch64-apple-darwin*'
 shasum -a 256 -c midi-macro-bridge-v0.1.0-aarch64-apple-darwin.tar.gz.sha256
@@ -1401,20 +1584,25 @@ cd midi-macro-bridge-v0.1.0-aarch64-apple-darwin
 xattr -d com.apple.quarantine "$HOME/.local/bin/midi-macro-bridge" || true
 ```
 
-- [ ] **Step 3: Run the binary**
+- [ ] **Step 3: Run the installed binary from outside the build tree**
 
 ```bash
+cd /tmp
 "$HOME/.local/bin/midi-macro-bridge" --no-open &
 PID=$!
 sleep 2
-kill $PID 2>/dev/null
+if kill -0 $PID 2>/dev/null; then echo "STAY_UP: ok"; else echo "STAY_UP: FAIL"; fi
+kill $PID 2>/dev/null || true
+wait $PID 2>/dev/null || true
 ```
 
-Expected: bridge starts, logs `web server listening`, stays up. Confirms paths.rs resolution works for an installed binary launched from elsewhere.
+Expected: `STAY_UP: ok`. Confirms `paths.rs` resolution works for an installed binary launched from `/tmp`, not the build directory.
 
-### Task 6.4: Smoke-test the Linux x86_64 tarball
+### Task 6.4: Smoke-test the Linux x86_64 release tarball
 
-- [ ] **Step 1: On a Linux x86_64 host (e.g., a Debian VM or container)**
+Two paths — pick one based on what's available:
+
+- [ ] **Path A: Real Linux x86_64 host**
 
 ```bash
 cd /tmp
@@ -1425,17 +1613,42 @@ cd midi-macro-bridge-v0.1.0-x86_64-unknown-linux-gnu
 ./install.sh
 ~/.local/bin/midi-macro-bridge --no-open &
 sleep 2
-kill %1 2>/dev/null
+if kill -0 %1 2>/dev/null; then echo "STAY_UP: ok"; else echo "STAY_UP: FAIL"; fi
+kill %1 2>/dev/null || true
 ```
 
-Expected: similar to macOS — bridge starts, stays up.
+Expected: `STAY_UP: ok`.
+
+- [ ] **Path B: Privileged Docker (if no Linux host available)**
+
+ALSA-aware container with `/dev/snd` mounted (host must have a sound device). Builds on operator's macOS via Docker Desktop won't have `/dev/snd`; this path is for Linux-on-Linux Docker only.
+
+```bash
+docker run --rm \
+    --device /dev/snd \
+    -v "$(pwd)":/work -w /work \
+    debian:bookworm \
+    bash -c "
+        apt-get update >/dev/null 2>&1 && apt-get install -y -qq libasound2 ca-certificates curl >/dev/null 2>&1
+        curl -L -o /tmp/mmb.tar.gz \
+            'https://github.com/audiocontrol-org/audiocontrol/releases/download/v0.1.0/midi-macro-bridge-v0.1.0-x86_64-unknown-linux-gnu.tar.gz'
+        tar -xzf /tmp/mmb.tar.gz -C /tmp
+        /tmp/midi-macro-bridge-v0.1.0-x86_64-unknown-linux-gnu/bin/midi-macro-bridge --no-open &
+        PID=\$!
+        sleep 2
+        if kill -0 \$PID 2>/dev/null; then echo STAY_UP: ok; else echo STAY_UP: FAIL; fi
+        kill \$PID 2>/dev/null || true
+    "
+```
+
+If neither path is available on this machine, mark this task complete with a note in the commit message (e.g., "Linux smoke deferred to next available Linux host").
 
 ### Task 6.5: Update Homebrew formula and ship
 
 - [ ] **Step 1: Run the SHA256 update helper**
 
 ```bash
-cd /Users/orion/work/audiocontrol-work/audiocontrol
+cd /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging
 ./services/midi-macro-bridge/scripts/update-homebrew-formula.sh v0.1.0 \
     /path/to/homebrew-audiocontrol
 ```
@@ -1459,7 +1672,7 @@ git push origin main
 
 - [ ] **Step 4: End-to-end brew install test**
 
-On a clean macOS Apple Silicon machine (or via `brew uninstall` first):
+On a clean macOS Apple Silicon machine (or via `brew uninstall midi-macro-bridge` first):
 
 ```bash
 brew tap audiocontrol-org/audiocontrol
@@ -1492,8 +1705,9 @@ The skill will move the feature docs to `002-COMPLETE/`, update ROADMAP.md, and 
 
 A v0.1.0 release passes when:
 
-1. Pushing tag `v0.1.0` on `main` (with `Cargo.toml` version `0.1.0`) creates a GitHub Release containing two tarballs + per-tarball SHA256 + aggregate SHA256SUMS, attached automatically.
-2. The macOS tarball, after `xattr -d com.apple.quarantine`, runs the installed binary successfully from a directory other than the build tree (validates paths.rs resolution).
-3. The Linux tarball runs the installed binary successfully on a stock Ubuntu/Debian host.
-4. `brew tap audiocontrol-org/audiocontrol && brew install midi-macro-bridge` succeeds on macOS Apple Silicon, and `brew services start midi-macro-bridge` launches it.
-5. The smoke test in CI does not regress: a default-config startup must not produce `MIDI channel disconnected` within 2 seconds.
+1. `make release VERSION=v0.1.0` (run from a clean `main` with `Cargo.toml` version `0.1.0`) creates a GitHub Release containing both tarballs, both per-tarball SHA256 files, and an aggregate `SHA256SUMS` — without manual intervention after invocation.
+2. `make release` refuses to proceed if `Cargo.toml` version disagrees with `VERSION`, working tree is dirty, or the tag already exists locally.
+3. The macOS smoke test inside `make release` does not regress: default-config startup must not produce `MIDI channel disconnected` within 2.5 seconds.
+4. The macOS tarball downloaded from the GitHub Release, after `xattr -d com.apple.quarantine`, runs the installed binary successfully from a directory other than the build tree (validates `paths.rs` resolution).
+5. The Linux tarball runs the installed binary successfully on a stock Ubuntu/Debian host (or in a privileged Docker container with `/dev/snd`). Mark with a deferral note if no Linux host is reachable from this session.
+6. `brew tap audiocontrol-org/audiocontrol && brew install midi-macro-bridge` succeeds on macOS Apple Silicon, and `brew services start midi-macro-bridge` launches it as a daemon.

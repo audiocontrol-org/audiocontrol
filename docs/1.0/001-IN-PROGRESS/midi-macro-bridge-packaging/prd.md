@@ -18,36 +18,42 @@ This blocks distribution to anyone who isn't already an audiocontrol contributor
 
 ## Solution
 
-A tag-driven GitHub Actions workflow on this repo produces two artifact tarballs per `vX.Y.Z` tag — one for `aarch64-apple-darwin` (built on a `macos-14` runner), one for `x86_64-unknown-linux-gnu` (built on `ubuntu-latest`). Each tarball contains the binary under `bin/`, opt-in service files (launchd plist for macOS, systemd unit for Linux) under `share/`, license + README + CHANGELOG + QUARANTINE doc under `doc/`, and an idempotent `install.sh` at the root. The workflow attaches the tarballs, per-tarball SHA256s, and an aggregate `SHA256SUMS` file to a GitHub Release.
+A **local Makefile + Docker** release pipeline, invoked by the operator on their host with one command (`make release VERSION=vX.Y.Z`). macOS arm64 builds natively via `cargo build --release`. Linux x86_64 builds inside a `rust:slim-bookworm` Docker container so the same operator host can produce both artifacts without provisioning a Linux box. The release script asserts preconditions (`Cargo.toml` version matches `VERSION`, working tree clean, tag doesn't yet exist), runs both builds, executes the macOS smoke test (regression coverage for `MIDI channel disconnected`), creates and pushes the git tag, then calls `gh release create` to upload both tarballs, both per-tarball SHA256s, and an aggregate `SHA256SUMS` file.
+
+Each tarball contains the binary under `bin/`, opt-in service files (launchd plist for macOS, systemd unit for Linux) under `share/`, license + README + CHANGELOG + QUARANTINE doc under `doc/`, and an idempotent `install.sh` at the root.
 
 A separate `audiocontrol-org/homebrew-audiocontrol` tap repo carries a thin formula that downloads the GitHub Release tarball, installs the binary to `bin/`, places `share/` contents under `pkgshare`, and provides a `brew services` integration block. `brew install audiocontrol-org/audiocontrol/midi-macro-bridge` becomes the canonical macOS install path. Linux users either use Homebrew on Linux or extract the tarball manually.
 
 Inside the binary itself, a small refactor introduces a `paths.rs` module that resolves config from `--config` flag → `$MIDI_MACRO_BRIDGE_CONFIG` env → OS-conventional default → cwd fallback. OS defaults are namespaced under `audiocontrol/<service>` so future services in this monorepo don't trample each other. The existing `url.txt` state file relocates to the same namespaced state directory.
 
+**Reshape note**: this solution intentionally drops the originally-planned tag-driven GitHub Actions workflow. Local-build keeps iteration fast (no CI feedback loop), avoids long CI iteration cycles, and is sufficient at the expected v1 release cadence (low). CI can be added later if release frequency grows or contributors need automated builds without the operator being present.
+
 ## Acceptance Criteria
 
-- [ ] Pushing tag `v0.1.0` on `main` (with `services/midi-macro-bridge/Cargo.toml` version `0.1.0`) creates a GitHub Release with both tarballs, both per-tarball SHA256 files, and an aggregate `SHA256SUMS` file attached automatically.
-- [ ] The pre-flight CI job refuses the release if `Cargo.toml` version disagrees with the pushed tag.
-- [ ] A smoke test runs in each build job that boots the binary briefly with default config and asserts it stays up — encoding the `MIDI channel disconnected` regression fix from commit `814e7d27` as durable coverage.
+- [ ] `make release VERSION=v0.1.0` (run from a clean `main` with `services/midi-macro-bridge/Cargo.toml` version `0.1.0`) creates a GitHub Release with both tarballs, both per-tarball SHA256 files, and an aggregate `SHA256SUMS` file attached — without manual intervention after invocation.
+- [ ] The release script refuses to proceed if `Cargo.toml` version disagrees with `VERSION`, working tree is dirty, or the tag already exists locally.
+- [ ] The macOS smoke test inside `make release` boots the binary briefly with default config and asserts it stays up — encoding the `MIDI channel disconnected` regression fix from commit `814e7d27` as durable coverage.
 - [ ] The macOS tarball, after `xattr -d com.apple.quarantine`, runs the installed binary successfully from a directory other than the build tree.
-- [ ] The Linux tarball runs the installed binary successfully on a stock Ubuntu/Debian host.
+- [ ] The Linux tarball runs the installed binary successfully on a stock Ubuntu/Debian host (or a privileged Docker container with `/dev/snd`).
 - [ ] `brew tap audiocontrol-org/audiocontrol && brew install midi-macro-bridge` succeeds on macOS Apple Silicon, and `brew services start midi-macro-bridge` launches it as a daemon.
 - [ ] The installed binary reads its config from the OS-conventional path (`~/Library/Application Support/audiocontrol/midi-macro-bridge/config.toml` on macOS; `~/.config/audiocontrol/midi-macro-bridge/config.toml` on Linux) without `cd`-ing into the install dir.
 
 ## Out of Scope
 
+- **GitHub Actions release workflow.** Build and ship are operator-driven from a local host. Revisit if release cadence outgrows the local model.
 - macOS code signing and notarization. Released binaries will be unsigned for v1; `QUARANTINE.md` documents the `xattr -d com.apple.quarantine` workaround. Revisit when there's user demand and an Apple Developer Program membership.
 - Auto-update mechanism.
 - Crash reporting / telemetry.
 - Additional Linux targets: `aarch64-unknown-linux-gnu`, `musl` static variant, AUR `PKGBUILD`, `.deb` / `.rpm` packages.
 - Intel Mac (`x86_64-apple-darwin`) build / universal binary.
+- Cross-platform Linux binary smoke testing in CI. Linux smoke runs at Phase 6 on a real Linux host or privileged Docker; the Docker builder only validates the build, not the runtime.
 - `cargo-release` workflow tooling for local release-cutting ergonomics.
 - `git-cliff` automated CHANGELOG generation. Revisit when release cadence makes hand-editing tedious.
 - Multi-service tag scheme (`midi-macro-bridge-vX.Y.Z`). Plain `vX.Y.Z` is fine while midi-macro-bridge owns the version namespace; revisit when another service in the repo also wants tagged releases.
 
 ## Technical Approach
 
-The release CI uses GitHub-hosted runners exclusively — no local cross-compilation. The macOS arm64 build runs natively on `macos-14`, the Linux x86_64 build runs natively on `ubuntu-latest`. Each runner runs `cargo build --release`, then a shared `services/midi-macro-bridge/scripts/package.sh` script that assembles the tarball layout and computes SHA256. A final release job downloads both runners' artifacts and calls `gh release create` with a CHANGELOG excerpt as release notes.
+The release pipeline is operator-driven, invoked via `make release VERSION=vX.Y.Z` from the workspace root on a macOS Apple Silicon host. The macOS arm64 build runs natively on the host. The Linux x86_64 build runs inside a `rust:slim-bookworm` Docker container that bind-mounts the workspace and runs `cargo build --release` — the host doesn't need a Linux toolchain installed. Both builds delegate to the shared `services/midi-macro-bridge/scripts/package.sh` for tarball layout + SHA256 computation. The release script (`services/midi-macro-bridge/scripts/release.sh`) orchestrates: precondition checks → `make package-all` → macOS smoke test → `git tag` + push → `gh release create` with both tarballs, both `.sha256`, and an aggregate `SHA256SUMS`. CHANGELOG.md's `## VERSION` section is extracted as release notes; missing entries fall back to a generic title.
 
 The path-resolution refactor (`services/midi-macro-bridge/src/paths.rs`) wraps the existing `dirs` crate dependency: `dirs::config_dir()` for config, `dirs::data_dir()` for state. Resolution is implemented as a pure function that takes closures for env/home/cwd/exists lookups, making it trivially unit-testable with no I/O. The `--config` flag follows the existing argv-parsing style in `main.rs` (`args.iter().position(|a| a == "...")`) — no new dependencies. The cwd-relative lookup is preserved as the lowest-precedence fallback so the dev workflow (`cd services/midi-macro-bridge && ./target/release/midi-macro-bridge`) continues to work unchanged.
 

@@ -8,18 +8,20 @@ parentIssue: 358
 
 # Feature: midi-macro-bridge packaging and release
 
-Ship per-platform tarballs (`aarch64-apple-darwin`, `x86_64-unknown-linux-gnu`) of the `midi-macro-bridge` Rust service from each `vX.Y.Z` git tag, plus a Homebrew tap for one-command install. Replaces the current "clone the monorepo and `cargo build`" workflow with `brew install midi-macro-bridge` (or a tarball download + `install.sh`), and refactors runtime config/state paths under an OS-conventional `audiocontrol/<service>` namespace so installed binaries don't depend on launch directory.
+Ship per-platform tarballs (`aarch64-apple-darwin`, `x86_64-unknown-linux-gnu`) of the `midi-macro-bridge` Rust service for each `vX.Y.Z` release, plus a Homebrew tap for one-command install. Replaces the current "clone the monorepo and `cargo build`" workflow with `brew install midi-macro-bridge` (or a tarball download + `install.sh`), and refactors runtime config/state paths under an OS-conventional `audiocontrol/<service>` namespace so installed binaries don't depend on launch directory.
+
+Build and release happen **locally** via Makefile + Docker (no GitHub Actions); the operator runs `make release VERSION=v0.1.0` on their host to assemble both tarballs (macOS arm64 native; Linux x86_64 via Docker), run smoke tests, tag, and upload via `gh release create`. This is an explicit scope reshape from the original tag-driven CI design — see issues [#361](https://github.com/audiocontrol-org/audiocontrol/issues/361) and [#358](https://github.com/audiocontrol-org/audiocontrol/issues/358) for context.
 
 ## Status
 
 | Phase | Description | Status |
 |---|---|---|
 | 1 | Runtime path resolution (`paths.rs` + `--config` flag + env var + namespaced state dir) | Complete ([#359](https://github.com/audiocontrol-org/audiocontrol/issues/359)) |
-| 2 | Tarball assembly (`package.sh`, `install.sh`, launchd plist, systemd unit, QUARANTINE.md, Makefile target) | Not started ([#360](https://github.com/audiocontrol-org/audiocontrol/issues/360)) |
-| 3 | Release CI workflow (tag-driven, parallel macOS-14 + ubuntu-latest builds, smoke test, version assertion) | Not started ([#361](https://github.com/audiocontrol-org/audiocontrol/issues/361)) |
+| 2 | Tarball assembly (`package.sh`, `install.sh`, launchd plist, systemd unit, QUARANTINE.md, Makefile target) | Complete ([#360](https://github.com/audiocontrol-org/audiocontrol/issues/360)) |
+| 3 | Local release build — Linux Docker builder + `make package-{macos,linux,all}` targets, host-driven smoke tests, SHA256SUMS aggregation | Not started ([#366](https://github.com/audiocontrol-org/audiocontrol/issues/366) — replaces closed [#361](https://github.com/audiocontrol-org/audiocontrol/issues/361)) |
 | 4 | Homebrew tap (`audiocontrol-org/homebrew-audiocontrol` repo + formula + SHA256 update helper) | Not started ([#362](https://github.com/audiocontrol-org/audiocontrol/issues/362)) |
 | 5 | Documentation (README install section, CHANGELOG seed, INSTALL.md service activation steps) | Not started ([#363](https://github.com/audiocontrol-org/audiocontrol/issues/363)) |
-| 6 | First release v0.1.0 (workflow_dispatch dry run, tag, end-to-end smoke tests, formula publish) | Not started ([#364](https://github.com/audiocontrol-org/audiocontrol/issues/364)) |
+| 6 | First release v0.1.0 — operator-driven `make release VERSION=v0.1.0` (build → smoke → tag → upload via `gh release create`) | Not started ([#364](https://github.com/audiocontrol-org/audiocontrol/issues/364)) |
 
 ## Key Links
 
