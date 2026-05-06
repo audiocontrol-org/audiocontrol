@@ -2832,7 +2832,7 @@ Stub references — full task breakdowns get authored when each phase is picked 
 - Modify: `services/midi-macro-bridge/web/app.css`
 - Modify: `services/midi-macro-bridge/src/web/mod.rs` (optional — keep `/api/halt` as undocumented escape hatch, OR remove)
 
-- [ ] **Step 1: Locate the HALT button markup**
+- [x] **Step 1: Locate the HALT button markup**
 
 ```bash
 grep -n 'mmb-halt\|HALT\|halt' services/midi-macro-bridge/web/index.html
@@ -2840,11 +2840,11 @@ grep -n 'mmb-halt\|HALT\|halt' services/midi-macro-bridge/web/index.html
 
 Note the line range of the `.mmb-halt` div in `index.html`.
 
-- [ ] **Step 2: Remove the markup from index.html**
+- [x] **Step 2: Remove the markup from index.html**
 
 Open `services/midi-macro-bridge/web/index.html`. Find the `<div class="mmb-halt">...</div>` block (likely a sibling of the `.mmb-version` span in the top-bar area). Delete the entire div. Preserve surrounding markup.
 
-- [ ] **Step 3: Locate and remove the JS handler**
+- [x] **Step 3: Locate and remove the JS handler**
 
 ```bash
 grep -n 'halt\|setupHaltButton\|holdToConfirm\|/api/halt' services/midi-macro-bridge/web/app.js
@@ -2857,7 +2857,7 @@ Delete:
 
 If the helpers are also used by other parts of the UI, leave them but rename if their HALT-flavored names are now misleading.
 
-- [ ] **Step 4: Remove the CSS rules**
+- [x] **Step 4: Remove the CSS rules**
 
 ```bash
 grep -n 'mmb-halt\|halt-' services/midi-macro-bridge/web/app.css
@@ -2865,7 +2865,7 @@ grep -n 'mmb-halt\|halt-' services/midi-macro-bridge/web/app.css
 
 Delete `.mmb-halt`, `.mmb-halt:hover`, `.halt-ring`, `.halt-fill`, and any other `.halt-*` selectors.
 
-- [ ] **Step 5: Decide on the route**
+- [x] **Step 5: Decide on the route**
 
 The `POST /api/halt` route in `src/web/mod.rs` either stays (as an undocumented escape hatch reachable via curl) or goes (full removal of the surface).
 
@@ -2873,7 +2873,7 @@ The `POST /api/halt` route in `src/web/mod.rs` either stays (as an undocumented 
 
 If you choose to remove it: delete the route registration in `mod.rs`, remove the handler function, optionally remove the `Cmd::Halt` variant if no other consumer remains. Verify build clean.
 
-- [ ] **Step 6: Build + manual verify**
+- [x] **Step 6: Build + manual verify**
 
 ```bash
 cd /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging
@@ -2887,7 +2887,7 @@ Open the running bridge in a browser (or via the .app's window). Verify:
 - Layout doesn't have a hole where the button used to be (CSS adjacent margins look right).
 - Status indicator + version string remain.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add services/midi-macro-bridge/web/ services/midi-macro-bridge/src/web/mod.rs
@@ -2902,7 +2902,7 @@ git commit -m "fix(midi-macro-bridge): remove HALT button from web UI (#377)"
 - Modify: `services/midi-macro-bridge/web/index.html`
 - Modify: `services/midi-macro-bridge/src/web/mod.rs`
 
-- [ ] **Step 1: Replace the static literal with a placeholder**
+- [x] **Step 1: Replace the static literal with a placeholder**
 
 Edit `services/midi-macro-bridge/web/index.html`. The `mmb-version` span currently contains the literal `v1.0`. Replace with a substitution placeholder:
 
@@ -2912,7 +2912,7 @@ Edit `services/midi-macro-bridge/web/index.html`. The `mmb-version` span current
 
 (Reuse the same `__VERSION__` token convention used by Phase 7's `Info.plist.tmpl` for consistency.)
 
-- [ ] **Step 2: Substitute at server startup in src/web/mod.rs**
+- [x] **Step 2: Substitute at server startup in src/web/mod.rs**
 
 Find the route handler that serves `/` (returns the embedded `index.html`). It looks something like:
 
@@ -2951,7 +2951,7 @@ async fn serve_index() -> impl IntoResponse {
 }
 ```
 
-- [ ] **Step 3: Build + verify**
+- [x] **Step 3: Build + verify**
 
 ```bash
 cd services/midi-macro-bridge && cargo build 2>&1 | tail -3
@@ -2965,7 +2965,7 @@ wait $PID 2>/dev/null || true
 
 Expected output: `<span class="mmb-version">0.2.1</span>` (whatever the current Cargo.toml version is at the time of the run).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add services/midi-macro-bridge/web/index.html services/midi-macro-bridge/src/web/mod.rs
@@ -2979,7 +2979,7 @@ git commit -m "fix(midi-macro-bridge): wire CARGO_PKG_VERSION into web UI (#378)
 **Files:**
 - Modify: `services/midi-macro-bridge/scripts/update-homebrew-formula.sh`
 
-- [ ] **Step 1: Replace the broken substitution block**
+- [x] **Step 1: Replace the broken substitution block**
 
 Open `services/midi-macro-bridge/scripts/update-homebrew-formula.sh`. Find the Python heredoc that does `re.sub`. Replace the body with a structure-aware version that anchors by URL:
 
@@ -3027,7 +3027,7 @@ The key changes:
 2. `subn` instead of `sub` — counts matches.
 3. Hard fail if either substitution didn't happen.
 
-- [ ] **Step 2: Smoke test on the live tap**
+- [x] **Step 2: Smoke test on the live tap**
 
 The tap at `/Users/orion/work/audiocontrol-work/homebrew-audiocontrol` is currently at v0.2.0. Test the script against a synthetic v0.2.0-test pretending we're updating to it. We'll undo afterward.
 
@@ -3049,7 +3049,7 @@ cp /tmp/midi-macro-bridge.rb.bak /Users/orion/work/audiocontrol-work/homebrew-au
 
 The new "fail loudly if substitution didn't match" behavior will be exercised on the next real release (v0.2.1 will be the first end-to-end test).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add services/midi-macro-bridge/scripts/update-homebrew-formula.sh
@@ -3098,7 +3098,7 @@ git add services/midi-macro-bridge/Cargo.toml services/midi-macro-bridge/Cargo.l
 git commit -m "chore(midi-macro-bridge): bump to v0.2.1 + changelog entry"
 ```
 
-- [ ] **Step 4: Mark Phase 9 checkboxes complete in workplan**
+- [x] **Step 4: Mark Phase 9 checkboxes complete in workplan**
 
 ```bash
 python3 -c "
