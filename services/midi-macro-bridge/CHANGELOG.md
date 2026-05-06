@@ -5,6 +5,20 @@ All notable changes to `midi-macro-bridge` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.3.0
+
+### Highlights
+- **macOS app polish**: persistent menubar status bar icon, single-instance lock (second launch focuses the existing window), proper macOS app menubar with Cmd-Q / Cmd-W / Cmd-, accelerators and a native About panel.
+- **Brand mark**: pixel-grid "M" glyph mirroring the audiocontrol.org family — phosphor amber on warm-ink, 2×2-pixel cells on a centered grid. Replaces the Phase 7 placeholder icon. New status bar icon is a macOS template image (auto-tinted by the system per menubar appearance).
+- **Web UI cleanup**: removed the HALT button (bad hold-to-confirm UX, redundant in v0.2.0+ where window-close already triggers graceful shutdown). The `POST /api/halt` route remains as an undocumented curl escape hatch.
+- **Version string**: web UI now reads from `CARGO_PKG_VERSION` at server startup instead of the hardcoded `v1.0` literal.
+- **Tooling fix**: `update-homebrew-formula.sh` now does structure-aware sha256 substitution and fails loudly if it can't match — previously silently shipped stale SHAs on subsequent releases.
+
+### Notes
+- The window now hides on close instead of exiting. Use the status bar icon's "Quit" or Cmd-Q to fully exit.
+- Headless / brew-services modes unchanged — status bar icon, single-instance, and menubar are macOS GUI-only.
+- Subsumes the originally-planned v0.2.1; Phase 9 fixes ship as part of this release.
+
 ## v0.2.0
 
 ### Highlights
