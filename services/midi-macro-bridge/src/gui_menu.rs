@@ -25,6 +25,7 @@ use tao::event_loop::EventLoopProxy;
 pub struct MenuIds {
     pub preferences: tray_icon::menu::MenuId,
     pub quit: tray_icon::menu::MenuId,
+    pub show_main_window: tray_icon::menu::MenuId,
 }
 
 /// Build and install the macOS application menubar.
@@ -65,9 +66,13 @@ pub fn build_menubar() -> anyhow::Result<(Menu, MenuIds)> {
     let quit_accel: Accelerator = "CMD+Q".parse()?;
     let quit = MenuItem::new("Quit MIDI Macro Bridge", true, Some(quit_accel));
 
+    let show_main_window_accel: Accelerator = "CMD+1".parse()?;
+    let show_main_window = MenuItem::new("Show Main Window", true, Some(show_main_window_accel));
+
     let menu_ids = MenuIds {
         preferences: preferences.id().clone(),
         quit: quit.id().clone(),
+        show_main_window: show_main_window.id().clone(),
     };
 
     let app_menu = Submenu::with_items(
@@ -83,7 +88,11 @@ pub fn build_menubar() -> anyhow::Result<(Menu, MenuIds)> {
     )?;
 
     let close_window = PredefinedMenuItem::close_window(None);
-    let window_menu = Submenu::with_items("Window", true, &[&close_window])?;
+    let window_menu = Submenu::with_items(
+        "Window",
+        true,
+        &[&show_main_window, &close_window],
+    )?;
     window_menu.set_as_windows_menu_for_nsapp();
 
     menu.append_items(&[&app_menu, &window_menu])?;
@@ -106,6 +115,9 @@ pub fn route_menu_event(
         true
     } else if id == &ids.preferences {
         let _ = proxy.send_event(UserEvent::OpenPreferences);
+        true
+    } else if id == &ids.show_main_window {
+        let _ = proxy.send_event(UserEvent::ShowWindow);
         true
     } else {
         false
