@@ -15,52 +15,62 @@ into keyboard events for Universal Audio LUNA.
 absolute position from any external source. This is a fundamental
 limitation of LUNA, not of this tool.
 
-## Setup
+## Install
 
-### Prerequisites
+### macOS (Apple Silicon) — Homebrew (recommended)
 
-- macOS
-- Rust toolchain (1.70+)
-- A MIDI interface connected to the MC-500's MIDI OUT
-- LUNA installed
+    brew tap audiocontrol-org/audiocontrol
+    brew install midi-macro-bridge
 
-### Build
+### macOS / Linux — release tarball
 
-```sh
-cargo build --release
-```
+Download the latest release tarball from
+https://github.com/audiocontrol-org/audiocontrol/releases, then:
 
-### Configure
+    tar -xzf midi-macro-bridge-vX.Y.Z-<triple>.tar.gz
+    cd midi-macro-bridge-vX.Y.Z-<triple>
+    ./install.sh           # installs to $HOME/.local (or /usr/local if root)
 
-```sh
-cp config.example.toml config.toml
-# Edit config.toml — at minimum set midi_input_port
-```
+On macOS, unsigned binaries are quarantined by Gatekeeper. See
+[QUARANTINE.md](QUARANTINE.md) for the recovery one-liner.
 
-Find your MIDI port name:
+### From source
 
-```sh
-./target/release/midi-macro-bridge --list-ports
-```
+    cd services/midi-macro-bridge
+    cargo build --release
+    cp config.example.toml config.toml
 
-### Grant Accessibility permission
+### Find your MIDI port name
 
-First run will fail to emit keystrokes until you grant the binary
-Accessibility permission:
+    midi-macro-bridge --list-ports
+
+### Grant Accessibility permission (keystrokes backend only)
+
+Only required if you set `[transport] backend = "keystrokes"` in `config.toml`.
+The default MCU backend doesn't need Accessibility permission and works regardless
+of which app is frontmost. For the keystrokes backend:
 
 1. **System Settings → Privacy & Security → Accessibility**
 2. Add `midi-macro-bridge` (or the terminal you're running it from)
 3. Toggle it on
 
-If keystrokes silently don't fire, this is the first thing to check.
+## Run
 
-### Run
+    midi-macro-bridge                              # foreground; auto-opens browser
+    midi-macro-bridge --no-open                    # foreground; no browser
+    midi-macro-bridge --config /path/to/config.toml
 
-```sh
-./target/release/midi-macro-bridge config.toml
-```
+The bridge reads its config from (in order):
+
+  1. `--config <path>` flag
+  2. `$MIDI_MACRO_BRIDGE_CONFIG` environment variable
+  3. macOS: `~/Library/Application Support/audiocontrol/midi-macro-bridge/config.toml`
+     Linux: `~/.config/audiocontrol/midi-macro-bridge/config.toml`
+  4. `./config.toml` (legacy / dev fallback)
 
 Logs stream to stderr. Set `RUST_LOG=debug` for verbose output.
+
+To run as a background service, see [INSTALL.md](INSTALL.md).
 
 ## How it works
 
