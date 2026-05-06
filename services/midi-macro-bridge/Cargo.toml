@@ -34,6 +34,8 @@ dirs = "5"
 # ephemeral UniqueIDs as a documented limitation. Windows is unsupported.
 [target.'cfg(target_os = "macos")'.dependencies]
 coremidi = "0.9"
+tao = "0.30"
+wry = "0.45"
 
 [profile.release]
 lto = true

@@ -15,6 +15,8 @@ use tracing::{error, info, warn};
 
 mod backend;
 mod config;
+#[cfg(target_os = "macos")]
+mod gui;
 mod keys;
 mod lcxl3;
 mod locate;
