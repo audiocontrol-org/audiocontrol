@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  midi-macro-bridge brand mark.
+
+  Mirrors the audiocontrol.org favicon's treatment: warm-ink panel background
+  (hsl(30 12% 7%) → #14110E), phosphor amber glyph (hsl(35 95% 62%) → #FBA237).
+  5x5 cell grid centered on 10x10 area, 2x2-pixel cells. Letter "M" instead of
+  the parent's "A" — same family, different module.
+
+  Use this as the master. Rasterize via rsvg-convert at any size for app icon
+  multi-resolution variants and the menubar tray icon.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16">
+  <!-- Warm-ink panel background. -->
+  <rect width="16" height="16" fill="#14110E"/>
+  <!-- 5x5 phosphor amber "M" glyph. Pattern:
+         #...#
+         ##.##
+         #.#.#
+         #...#
+         #...#
+  -->
+  <g fill="#FBA237">
+    <!-- Row 0: #...# -->
+    <rect x="3" y="3" width="2" height="2"/>
+    <rect x="11" y="3" width="2" height="2"/>
+    <!-- Row 1: ##.## -->
+    <rect x="3" y="5" width="2" height="2"/>
+    <rect x="5" y="5" width="2" height="2"/>
+    <rect x="9" y="5" width="2" height="2"/>
+    <rect x="11" y="5" width="2" height="2"/>
+    <!-- Row 2: #.#.# -->
+    <rect x="3" y="7" width="2" height="2"/>
+    <rect x="7" y="7" width="2" height="2"/>
+    <rect x="11" y="7" width="2" height="2"/>
+    <!-- Row 3: #...# -->
+    <rect x="3" y="9" width="2" height="2"/>
+    <rect x="11" y="9" width="2" height="2"/>
+    <!-- Row 4: #...# -->
+    <rect x="3" y="11" width="2" height="2"/>
+    <rect x="11" y="11" width="2" height="2"/>
+  </g>
+</svg>

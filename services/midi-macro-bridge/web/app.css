@@ -163,6 +163,15 @@ h3,
   flex: 0 0 auto;
 }
 
+/* Brand mark — phosphor "M" glyph at the leading edge of the header.
+   Pixel-perfect rendering: never let the browser smooth the 2x2-cell grid. */
+.mmb-header .mmb-brand-mark {
+  flex: 0 0 auto;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  border: 1px solid hsl(35 95% 62% / 0.18);
+}
+
 .mmb-header .mmb-master-led {
   margin-left: auto; /* push to the right cluster */
 }

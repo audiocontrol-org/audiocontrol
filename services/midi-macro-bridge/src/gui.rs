@@ -174,6 +174,7 @@ fn build_tray_icon(
     let tray = TrayIconBuilder::new()
         .with_menu(Box::new(menu))
         .with_icon(icon)
+        .with_icon_as_template(true) // black-on-transparent → macOS tints per menubar appearance
         .with_tooltip("MIDI Macro Bridge")
         .build()?;
 
