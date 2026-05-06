@@ -1665,7 +1665,7 @@ const MCU_ENDPOINT_NAME: &str = "MIDI Macro Bridge";
 fn persist_bridge_url(url: &str) {
     let path = bridge_url_path();
     let Some(path) = path else {
-        info!("skipping url.txt persistence (no data dir available)");
+        warn!("skipping url.txt persistence (no data dir available)");
         return;
     };
     if let Some(parent) = path.parent() {
@@ -1682,6 +1682,16 @@ fn persist_bridge_url(url: &str) {
 
 /// Return the path where the bridge URL should be persisted, namespaced under
 /// the OS-conventional data directory at `audiocontrol/midi-macro-bridge/url.txt`.
+///
+/// Resolves to `dirs::data_dir()`:
+/// - macOS: `~/Library/Application Support/audiocontrol/midi-macro-bridge/url.txt`
+/// - Linux: `$XDG_DATA_HOME/audiocontrol/midi-macro-bridge/url.txt`
+///   (or `~/.local/share/...` if XDG_DATA_HOME is unset)
+///
+/// Note: prior to packaging Phase 1, the Linux path was based on
+/// `$XDG_RUNTIME_DIR` (transient). It was moved to persistent data storage
+/// so follow-on tooling can find the URL across bridge restarts.
+///
 /// Returns `None` only when the OS provides no data directory (rare).
 fn bridge_url_path() -> Option<std::path::PathBuf> {
     paths::resolve_state_dir(|| dirs::data_dir()).map(|d| d.join("url.txt"))
