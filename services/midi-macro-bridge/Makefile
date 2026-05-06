@@ -8,7 +8,7 @@ STAMP := .build-stamp
 
 ARGS ?=
 
-.PHONY: help build release release-binary test check run list-ports probe-mcu probe-mcu-interactive lcxl3-activate clean lint lint-fix fmt fmt-check all package package-macos package-linux package-all
+.PHONY: help build release release-binary test check run list-ports probe-mcu probe-mcu-interactive lcxl3-activate clean lint lint-fix fmt fmt-check all package package-macos package-linux package-app package-dmg package-all
 
 help:
 	@echo "midi-macro-bridge — service-local Makefile"
@@ -32,6 +32,8 @@ help:
 	@echo "  package            assemble release tarball for host triple — TRIPLE/VERSION overridable"
 	@echo "  package-macos      assemble macOS arm64 tarball — VERSION overridable"
 	@echo "  package-linux      assemble Linux x86_64 tarball via Docker — VERSION overridable"
+	@echo "  package-app        assemble + sign MidiMacroBridge.app (no notarize)"
+	@echo "  package-dmg        wrap .app in notarized + stapled .dmg"
 	@echo "  package-all        both, plus aggregate SHA256SUMS"
 	@echo
 	@echo "The root Makefile target 'build-midi-macro-bridge' produces the"
@@ -109,16 +111,25 @@ package-macos:
 package-linux:
 	./scripts/build-in-docker.sh --version $(VERSION)
 
-package-all: package-macos package-linux
+package-app:
+	./scripts/package-app.sh --version $(VERSION)
+
+package-dmg:
+	./scripts/package-dmg.sh --version $(VERSION)
+
+package-all: package-macos package-linux package-dmg
 	@cd target/release-package && \
 	  rm -f SHA256SUMS && \
 	  cat midi-macro-bridge-$(VERSION)-aarch64-apple-darwin.tar.gz.sha256 \
 	      midi-macro-bridge-$(VERSION)-x86_64-unknown-linux-gnu.tar.gz.sha256 \
+	      MidiMacroBridge-$(VERSION).dmg.sha256 \
 	      > SHA256SUMS
 	@echo
 	@echo "✓ Release artifacts for $(VERSION):"
 	@ls -1 target/release-package/midi-macro-bridge-$(VERSION)-*.tar.gz \
 	       target/release-package/midi-macro-bridge-$(VERSION)-*.sha256 \
+	       target/release-package/MidiMacroBridge-$(VERSION).dmg \
+	       target/release-package/MidiMacroBridge-$(VERSION).dmg.sha256 \
 	       target/release-package/SHA256SUMS
 
 # End-to-end release: precondition checks → package-all → macOS smoke test →
