@@ -3900,3 +3900,326 @@ Don't autonomously close — leave for user acceptance.
 6. Cmd-, (or `MIDI Macro Bridge → Preferences...`) opens the system default browser to `http://127.0.0.1:8765/api/config-form`.
 7. Brew install + tarball install paths still work unchanged. Status bar / single-instance / menubar are macOS GUI-only; service modes are not affected.
 8. Phase 6 regression check (`MIDI channel disconnected` within 2.5s of default-config startup) still passes.
+
+---
+
+## Phase 10: Window-management polish — Cmd-1 + in-app Preferences
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task.
+
+**Goal:** Resolve two follow-up usability defects from Phase 8's app-menubar work: (1) once the window is hidden, no menubar path to bring it back; (2) Preferences menu opens an unstyled browser tab instead of staying in-app. Ship as **v0.3.2**.
+
+**Architecture:** Both fixes route through the existing `UserEvent` plumbing in `gui.rs` from Phase 8a/8d. No new event-loop architecture. Issue #383 is purely additive (one new MenuItem + Cmd-1 accelerator); #384 swaps the `OpenPreferences` handler from `Command::new("open")` to a `webview.evaluate_script(...)` call that scrolls the in-app WebView to the config-form anchor.
+
+**Tech Stack:** Existing `tao`, `wry`, `tray-icon`/`muda`. No new crates.
+
+---
+
+### File Structure
+
+| Path | Responsibility | Task |
+|---|---|---|
+| `services/midi-macro-bridge/src/gui_menu.rs` | Add `Show Main Window` MenuItem with Cmd-1 accelerator under the Window submenu | 10.1 |
+| `services/midi-macro-bridge/src/gui.rs` | Replace `OpenPreferences` browser-launch with `webview.evaluate_script()` in-app scroll to `#mmb-config-form-container` | 10.2 |
+
+---
+
+### Task 10.1: Add `Show Main Window` (Cmd-1) menu item (resolves #383)
+
+**Files:**
+- Modify: `services/midi-macro-bridge/src/gui_menu.rs`
+
+The Window submenu currently has only `Close Window` (Cmd-W). After Phase 8's window-hides-on-close behavior, this is incomplete — once hidden, the user has no menubar path to bring the window back. Add `Show Main Window` (Cmd-1) above `Close Window`.
+
+The `UserEvent::ShowWindow` variant already exists from Phase 8a (used by the status bar's "Show Window" item). The fix routes the new menu item to the same event — the in-event-loop handler is already in place.
+
+- [ ] **Step 1: Add the menu item to `gui_menu.rs`**
+
+Open `services/midi-macro-bridge/src/gui_menu.rs`. Locate the Window submenu construction (look for `Menu::new()` followed by `append(...)` calls for window-related items). The current block looks roughly like:
+
+```rust
+let window_menu = Menu::new();
+window_menu.append(&PredefinedMenuItem::close_window(None))?;
+menubar.append(&Submenu::with_items("Window", true, &[&window_menu])?)?;
+```
+
+(Adapt to whatever the actual structure looks like — `gui_menu.rs` was built using `tray_icon::menu` re-exporting `muda`. The submenu construction may use different builder calls.)
+
+Add a `Show Main Window` menu item BEFORE the `close_window` entry:
+
+```rust
+let show_main = MenuItem::with_id(
+    MenuId::ShowMainWindow,
+    "Show Main Window",
+    true,
+    Some(Accelerator::new(Some(Modifiers::SUPER), Code::Digit1)),
+);
+window_menu.append(&show_main)?;
+window_menu.append(&PredefinedMenuItem::close_window(None))?;
+```
+
+Add `ShowMainWindow` to whatever `MenuId` enum the file uses for stable IDs (mirror the pattern of existing IDs like `About`, `Preferences`, `Quit`, `CloseWindow`).
+
+- [ ] **Step 2: Route the menu event to `UserEvent::ShowWindow`**
+
+In the same file's menu-event router (likely `route_menu_event` or similar), add the case for the new ID:
+
+```rust
+match id {
+    // ... existing cases ...
+    MenuId::ShowMainWindow => {
+        let _ = proxy.send_event(UserEvent::ShowWindow);
+        true
+    }
+    // ... existing cases ...
+}
+```
+
+`UserEvent::ShowWindow` already exists. The handler in `gui.rs::run_window`'s event loop already does:
+
+```rust
+Event::UserEvent(UserEvent::ShowWindow) => {
+    window.set_visible(true);
+    window.set_focus();
+}
+```
+
+No changes to `gui.rs` for this task.
+
+- [ ] **Step 3: Build + manual smoke**
+
+```bash
+cd /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging
+cargo build --manifest-path services/midi-macro-bridge/Cargo.toml 2>&1 | tail -3
+```
+
+Expected: clean build.
+
+Manual interactive verification (the orchestrator runs this — automated tests can't verify menubar items):
+
+```bash
+pkill -f midi-macro-bridge 2>&1 ; sleep 1
+rm -f "$HOME/Library/Application Support/audiocontrol/midi-macro-bridge/instance.lock"
+rm -f "$HOME/Library/Application Support/audiocontrol/midi-macro-bridge/instance.sock"
+./services/midi-macro-bridge/target/debug/midi-macro-bridge --gui &
+sleep 3
+# Manual:
+# 1. Confirm Window menu has "Show Main Window  ⌘1" listed above "Close Window  ⌘W"
+# 2. Press Cmd-W to close window. Window hides. App stays running.
+# 3. Press Cmd-1. Window reappears, focused.
+# 4. Quit via Cmd-Q.
+```
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add services/midi-macro-bridge/src/gui_menu.rs
+git commit -m "feat(midi-macro-bridge): add 'Show Main Window' (Cmd-1) to Window submenu (#383)"
+```
+
+---
+
+### Task 10.2: Make Preferences (Cmd-,) open in-app, scrolling to config form (resolves #384)
+
+**Files:**
+- Modify: `services/midi-macro-bridge/src/gui.rs`
+
+The `OpenPreferences` handler currently launches the system browser at `/api/config-form`, which is an HTMX fragment endpoint that serves unstyled HTML (intended for HTMX injection into the main page). Replace with an in-app WebView scroll-to-anchor — the main page already has the config form embedded via `<div id="mmb-config-form-container">`.
+
+This task touches both the event handler AND adds a `webview` reference to its closure scope so we can call `evaluate_script`. The `_webview` binding in `run_window` is currently named with a leading underscore (suggesting unused) — it needs to be promoted to a normal binding accessible inside the event-loop closure.
+
+- [ ] **Step 1: Promote `_webview` to a usable binding in `run_window`**
+
+In `services/midi-macro-bridge/src/gui.rs`, find:
+
+```rust
+let _webview = WebViewBuilder::new(&window)
+    .with_url(url)
+    .build()?;
+```
+
+Change to:
+
+```rust
+let webview = WebViewBuilder::new(&window)
+    .with_url(url)
+    .build()?;
+```
+
+The webview must outlive the event loop. `tao::EventLoop::run` takes a closure with `'static` lifetime — variables captured into the closure must be `Send + 'static` or moved by value. `wry::WebView` is `Send`, so we can move it in (or we can move an Arc/Rc clone if multiple captures need it; check the existing pattern in `run_window`).
+
+If the existing closure capture pattern doesn't easily accommodate moving the webview in, an alternative is to wrap it in a `Rc<RefCell<Option<WebView>>>` set just before `event_loop.run` and read inside the handler. But the cleaner approach is direct move-by-value if the closure structure allows.
+
+- [ ] **Step 2: Replace the `OpenPreferences` handler**
+
+Find the existing handler:
+
+```rust
+Event::UserEvent(UserEvent::OpenPreferences) => {
+    let prefs_url = format!("{}/api/config-form", url_for_prefs);
+    let _ = std::process::Command::new("open").arg(&prefs_url).spawn();
+}
+```
+
+(Adapt — the `url_for_prefs` variable name may differ; it's the captured copy of `url` for the closure.)
+
+Replace with:
+
+```rust
+Event::UserEvent(UserEvent::OpenPreferences) => {
+    // Show + focus window first, then scroll to config form section.
+    window.set_visible(true);
+    window.set_focus();
+    let _ = webview.evaluate_script(
+        "document.getElementById('mmb-config-form-container')?.scrollIntoView({behavior: 'smooth', block: 'start'});"
+    );
+}
+```
+
+The `?.` optional-chain in JS means: if the element doesn't exist (e.g., page hasn't loaded yet), silently no-op. The scroll happens after the page is rendered — Cmd-, on a freshly-launched app may fire before HTMX has loaded the form fragment, but the user is unlikely to hit that timing in practice.
+
+- [ ] **Step 3: Build + manual smoke**
+
+```bash
+cd /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging
+cargo build --manifest-path services/midi-macro-bridge/Cargo.toml 2>&1 | tail -3
+```
+
+Expected: clean build.
+
+Manual:
+
+```bash
+pkill -f midi-macro-bridge 2>&1 ; sleep 1
+rm -f "$HOME/Library/Application Support/audiocontrol/midi-macro-bridge/instance.lock"
+rm -f "$HOME/Library/Application Support/audiocontrol/midi-macro-bridge/instance.sock"
+./services/midi-macro-bridge/target/debug/midi-macro-bridge --gui &
+sleep 3
+# Manual:
+# 1. App opens at the top of the control surface.
+# 2. Press Cmd-,. The page scrolls smoothly down to the CONFIGURATION section.
+# 3. NO browser tab opens. The system default browser does NOT come to focus.
+# 4. With the window hidden (Cmd-W first), pressing Cmd-, brings the window back AND scrolls to config.
+```
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add services/midi-macro-bridge/src/gui.rs
+git commit -m "fix(midi-macro-bridge): Cmd-, / Preferences scrolls in-app to config form (#384)"
+```
+
+---
+
+### Task 10.3: Phase 10 close-out + v0.3.2 release
+
+Standard release flow per the [`/release-midi-macro-bridge`](../../../../.claude/skills/release-midi-macro-bridge/SKILL.md) skill. Operator decides when to ship.
+
+- [ ] **Step 1: Bump Cargo.toml to 0.3.2 + add CHANGELOG entry**
+
+Edit `services/midi-macro-bridge/Cargo.toml`:
+
+```toml
+version = "0.3.2"
+```
+
+Insert in `services/midi-macro-bridge/CHANGELOG.md` above the previous entry:
+
+```markdown
+## v0.3.2
+
+### Fixes
+- Window menu now has `Show Main Window` (Cmd-1) to re-open the window after closing — previously, the only path was the macOS menubar status bar item (#383).
+- `MIDI Macro Bridge → Preferences...` (Cmd-,) now scrolls the in-app web UI to the configuration section instead of opening an unstyled browser tab (#384).
+```
+
+```bash
+cargo build --release --target aarch64-apple-darwin --manifest-path services/midi-macro-bridge/Cargo.toml
+git add services/midi-macro-bridge/Cargo.toml services/midi-macro-bridge/Cargo.lock services/midi-macro-bridge/CHANGELOG.md
+git commit -m "chore(midi-macro-bridge): bump to v0.3.2 + changelog"
+```
+
+- [ ] **Step 2: Cut the release**
+
+```bash
+make -C services/midi-macro-bridge release VERSION=v0.3.2
+```
+
+- [ ] **Step 3: Update the Homebrew formula**
+
+```bash
+./services/midi-macro-bridge/scripts/update-homebrew-formula.sh v0.3.2 \
+    /Users/orion/work/audiocontrol-work/homebrew-audiocontrol
+cd /Users/orion/work/audiocontrol-work/homebrew-audiocontrol
+git diff Formula/midi-macro-bridge.rb
+git add Formula/midi-macro-bridge.rb
+git commit -m "midi-macro-bridge 0.3.2"
+git push origin main
+```
+
+- [ ] **Step 4: Push feature branch HEAD to main**
+
+```bash
+cd /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging
+git push origin HEAD:main
+```
+
+- [ ] **Step 5: Comment + close the child issues**
+
+```bash
+gh issue comment 383 --repo audiocontrol-org/audiocontrol \
+    --body "Fixed in v0.3.2: https://github.com/audiocontrol-org/audiocontrol/releases/tag/v0.3.2"
+gh issue close 383 --repo audiocontrol-org/audiocontrol --reason completed
+gh issue comment 384 --repo audiocontrol-org/audiocontrol \
+    --body "Fixed in v0.3.2: https://github.com/audiocontrol-org/audiocontrol/releases/tag/v0.3.2"
+gh issue close 384 --repo audiocontrol-org/audiocontrol --reason completed
+```
+
+- [ ] **Step 6: Comment + close the Phase 10 parent**
+
+After both child issues are closed, comment on Phase 10's parent issue with the v0.3.2 release URL and close.
+
+- [ ] **Step 7: Mark Phase 10 checkboxes complete in workplan + flip README phase row to Complete**
+
+```bash
+python3 -c "
+from pathlib import Path
+p = Path('docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/workplan.md')
+lines = p.read_text().splitlines(keepends=True)
+flipped = 0
+in_phase = False
+for i, line in enumerate(lines):
+    if line.startswith('## Phase 10:'):
+        in_phase = True
+        continue
+    if line.startswith('## Phase ') and in_phase:
+        in_phase = False
+    if in_phase and line.startswith('- [ ] '):
+        lines[i] = '- [x] ' + line[6:]
+        flipped += 1
+p.write_text(''.join(lines))
+print(f'flipped {flipped} Phase 10 checkboxes')
+"
+```
+
+Edit `docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/README.md`:
+
+| 10 | Window-management polish — Cmd-1 Show Main Window + in-app Preferences | Complete; [shipped in v0.3.2](https://github.com/audiocontrol-org/audiocontrol/releases/tag/v0.3.2) (resolves [#383](https://github.com/audiocontrol-org/audiocontrol/issues/383), [#384](https://github.com/audiocontrol-org/audiocontrol/issues/384)) |
+
+```bash
+git add docs/
+git commit -m "docs(midi-macro-bridge-packaging): mark Phase 10 complete — v0.3.2 shipped"
+git push origin HEAD:main
+```
+
+---
+
+## Phase 10 Acceptance Criteria
+
+1. With the app launched and the main window closed (red X / Cmd-W), opening the `Window` submenu shows `Show Main Window  ⌘1` listed above `Close Window  ⌘W`.
+2. Pressing Cmd-1 (or clicking the menu item) makes the window appear and brings it to focus.
+3. Pressing Cmd-, opens the configuration section IN the existing app window — no browser tab spawned, no Safari/Chrome focus shift.
+4. The configuration form displayed when scrolled-to is styled to match the rest of the app (Studio Rack Utility aesthetic — Geist Mono, dark panel chrome, `.mmb-config` rules from `app.css`).
+5. With the window hidden, pressing Cmd-, both shows the window AND scrolls to the config form.
+6. Phase 6 regression check (no `MIDI channel disconnected` within 2.5s of default-config startup) still passes.
+7. Headless / brew-services modes unchanged — no new behavior in the non-`--gui` path.
