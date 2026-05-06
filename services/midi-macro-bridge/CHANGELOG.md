@@ -5,6 +5,14 @@ All notable changes to `midi-macro-bridge` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.3.3
+
+Fix-only release. v0.3.0 through v0.3.2 shipped a regression that prevented the `.app` bundle from registering its virtual Mackie Control MIDI endpoint with CoreMIDI ([#391](https://github.com/audiocontrol-org/audiocontrol/issues/391) — `gui::run_window` blocked the main thread, and the MIDI initialization that followed in `main()` was unreachable for the lifetime of the process). The control interface UI worked, the bridge URL was written, but no MIDI passed through and no DAW could see the bridge.
+
+If you installed v0.3.0–v0.3.2, drag-replace the `.app` from this release's `.dmg`. The brew install path was unaffected — `brew install midi-macro-bridge` runs the headless binary which never entered the broken GUI code path.
+
+The MIDI loop now runs on a background thread spawned before the GUI event loop blocks the main thread. AppKit requires the GUI on the main thread; CoreMIDI does not.
+
 ## v0.3.2
 
 ### Fixes
