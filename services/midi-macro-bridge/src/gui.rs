@@ -56,7 +56,7 @@ pub fn run_window(
     setup(event_loop_proxy.clone());
 
     let window = build_window(&event_loop)?;
-    let _webview = WebViewBuilder::new(&window)
+    let webview = WebViewBuilder::new(&window)
         .with_url(url)
         .build()?;
 
@@ -82,9 +82,6 @@ pub fn run_window(
         };
     }));
 
-    // Capture the URL for the Preferences handler.
-    let prefs_url = format!("{}/api/config-form", url);
-
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
         match event {
@@ -106,7 +103,14 @@ pub fn run_window(
                 *control_flow = ControlFlow::Exit;
             }
             Event::UserEvent(UserEvent::OpenPreferences) => {
-                let _ = std::process::Command::new("open").arg(&prefs_url).spawn();
+                // Show + focus window first (in case it's hidden via Cmd-W), then scroll
+                // to the config form section. The form is already embedded on the main
+                // page via HTMX <div id="mmb-config-form-container" hx-get="/api/config-form" />.
+                window.set_visible(true);
+                window.set_focus();
+                let _ = webview.evaluate_script(
+                    "document.getElementById('mmb-config-form-container')?.scrollIntoView({behavior: 'smooth', block: 'start'});"
+                );
             }
             _ => {}
         }
