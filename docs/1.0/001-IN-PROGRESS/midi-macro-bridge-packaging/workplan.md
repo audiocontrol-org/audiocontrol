@@ -2628,7 +2628,7 @@ Quitting:
 All three trigger the same graceful shutdown.
 ```
 
-- [ ] **Step 3: Seed CHANGELOG v0.2.0 entry**
+- [x] **Step 3: Seed CHANGELOG v0.2.0 entry**
 
 In `services/midi-macro-bridge/CHANGELOG.md`, add a new section ABOVE `## v0.1.0`:
 
@@ -2647,7 +2647,7 @@ In `services/midi-macro-bridge/CHANGELOG.md`, add a new section ABOVE `## v0.1.0
 - v0.2.0 ships a placeholder app icon; a real icon is planned for a later release.
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add services/midi-macro-bridge/README.md services/midi-macro-bridge/INSTALL.md services/midi-macro-bridge/CHANGELOG.md
@@ -2662,7 +2662,7 @@ git commit -m "docs(midi-macro-bridge): document .dmg install path + seed CHANGE
 
 This task implements **AC #9** from the spec. Per the spec's "Deferred to later releases" table, every item must be tracked as a GitHub issue + PRD entry + workplan entry before Phase 7 can move to Complete.
 
-- [ ] **Step 1: File one GitHub issue per deferred item**
+- [x] **Step 1: File one GitHub issue per deferred item**
 
 For each row in the spec's "Deferred to later releases" table, run:
 
@@ -2676,7 +2676,7 @@ gh issue create --repo audiocontrol-org/audiocontrol \
 
 Repeat for each row in the table (Phase 8a, 8b, 8c, 8d, plus four PRD-only items: Linux/Windows GUI, custom DMG layout, universal binary, brew bottling). Capture each new issue number.
 
-- [ ] **Step 2: Back-fill issue numbers into the spec**
+- [x] **Step 2: Back-fill issue numbers into the spec**
 
 In the spec's "Deferred to later releases" table, edit each row to append the issue number:
 
@@ -2684,15 +2684,15 @@ In the spec's "Deferred to later releases" table, edit each row to append the is
 | Status bar icon / menubar item (`tray-icon` crate) | `Phase 8a: Status bar icon for MidiMacroBridge.app` ([#XYZ](...)) | New Phase 8a in workplan; PRD Future Phases |
 ```
 
-- [ ] **Step 3: Update the PRD's Out-of-Scope section**
+- [x] **Step 3: Update the PRD's Out-of-Scope section**
 
 In `docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/prd.md`, add a "Future phases" subsection under "Out of Scope" listing each deferred item with its issue link.
 
-- [ ] **Step 4: Add Phase 8 stubs to workplan**
+- [x] **Step 4: Add Phase 8 stubs to workplan**
 
 Append placeholder Phase 8a / 8b / 8c / 8d sections to the workplan, each with a one-line description and a link to the corresponding GitHub issue. The actual implementation tasks for Phase 8 are out of scope for now — but the phase scaffolding ensures the work is tracked structurally.
 
-- [ ] **Step 5: Mark all Phase 7 checkboxes complete**
+- [x] **Step 5: Mark all Phase 7 checkboxes complete**
 
 ```bash
 python3 -c "
@@ -2718,11 +2718,11 @@ print(f'flipped {flipped} Phase 7 checkboxes')
 
 Flip the Phase 7 row in `docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/README.md` from "In progress" → "Complete". Note: per AC #9, do NOT mark Complete until Steps 1-4 above are done.
 
-- [ ] **Step 7: Comment on the Phase 7 GitHub issue with completion summary**
+- [x] **Step 7: Comment on the Phase 7 GitHub issue with completion summary**
 
 Use `gh issue comment <phase7-issue-number> --body-file <file>` with a summary of the commits, the GitHub Release URL, the .dmg SHA, and the back-filled deferred-item issue numbers. Don't autonomously close the issue (per project memory).
 
-- [ ] **Step 8: Cut v0.2.0 release**
+- [x] **Step 8: Cut v0.2.0 release**
 
 After the close-out is documented:
 
@@ -2732,7 +2732,7 @@ make -C services/midi-macro-bridge release VERSION=v0.2.0
 
 This invokes `release.sh` which now produces the .dmg alongside tarballs (Tasks 7.6–7.8) and uploads everything to a v0.2.0 GitHub Release.
 
-- [ ] **Step 9: Update Homebrew formula**
+- [x] **Step 9: Update Homebrew formula**
 
 After v0.2.0 ships:
 
@@ -2743,7 +2743,7 @@ After v0.2.0 ships:
 
 Review diff in the tap repo, commit, push.
 
-- [ ] **Step 10: Final commit + push to main**
+- [x] **Step 10: Final commit + push to main**
 
 ```bash
 git add docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/
