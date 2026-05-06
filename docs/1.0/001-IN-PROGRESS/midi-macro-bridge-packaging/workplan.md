@@ -1754,7 +1754,7 @@ A v0.1.0 release passes when:
 - Create: `services/midi-macro-bridge/src/gui.rs`
 - Modify: `services/midi-macro-bridge/src/main.rs`
 
-- [ ] **Step 1: Add macOS-gated dependencies**
+- [x] **Step 1: Add macOS-gated dependencies**
 
 Edit `services/midi-macro-bridge/Cargo.toml`. Find the `[dependencies]` block. After it, add a new section:
 
@@ -1764,7 +1764,7 @@ tao = "0.30"
 wry = "0.45"
 ```
 
-- [ ] **Step 2: Create the gui.rs module stub**
+- [x] **Step 2: Create the gui.rs module stub**
 
 Create `services/midi-macro-bridge/src/gui.rs`:
 
@@ -1790,7 +1790,7 @@ pub fn run_window(_url: &str, _halt: HaltSender) -> anyhow::Result<()> {
 }
 ```
 
-- [ ] **Step 3: Wire the module into main.rs (cfg-gated)**
+- [x] **Step 3: Wire the module into main.rs (cfg-gated)**
 
 Edit `services/midi-macro-bridge/src/main.rs`. Find the existing `mod` declarations (around line 17-26). Add a cfg-gated declaration alphabetically:
 
@@ -1799,7 +1799,7 @@ Edit `services/midi-macro-bridge/src/main.rs`. Find the existing `mod` declarati
 mod gui;
 ```
 
-- [ ] **Step 4: Verify clean build**
+- [x] **Step 4: Verify clean build**
 
 Run from the worktree root:
 
@@ -1809,7 +1809,7 @@ cd services/midi-macro-bridge && cargo build 2>&1 | tail -10
 
 Expected: clean build, possibly some `unused_variables` warnings on the stub function (they go away in Task 7.2). No errors.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add services/midi-macro-bridge/Cargo.toml services/midi-macro-bridge/src/gui.rs services/midi-macro-bridge/src/main.rs
@@ -1823,7 +1823,7 @@ git commit -m "feat(midi-macro-bridge): scaffold gui module + wry/tao deps (macO
 **Files:**
 - Modify: `services/midi-macro-bridge/src/gui.rs`
 
-- [ ] **Step 1: Replace the stub with a real implementation**
+- [x] **Step 1: Replace the stub with a real implementation**
 
 Open `services/midi-macro-bridge/src/gui.rs`. Replace the entire `run_window` function body with:
 
@@ -1869,7 +1869,7 @@ pub fn run_window(url: &str, halt: HaltSender) -> anyhow::Result<()> {
 }
 ```
 
-- [ ] **Step 2: Verify compile**
+- [x] **Step 2: Verify compile**
 
 ```bash
 cd services/midi-macro-bridge && cargo build 2>&1 | tail -10
@@ -1877,7 +1877,7 @@ cd services/midi-macro-bridge && cargo build 2>&1 | tail -10
 
 Expected: clean build. wry pulls in WebKit framework links; the link line gets longer but should succeed on stock macOS.
 
-- [ ] **Step 3: Smoke test the window in isolation (manual)**
+- [x] **Step 3: Smoke test the window in isolation (manual)**
 
 Add a temporary test runner. We don't commit this — it's an inline verification. Open a Rust REPL or write a 5-line throwaway:
 
@@ -1893,7 +1893,7 @@ EOF
 
 Actually skip the throwaway — Task 7.3 wires `--gui` into the real binary, which is the proper smoke. Move to Task 7.3 and verify there.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add services/midi-macro-bridge/src/gui.rs
@@ -1907,7 +1907,7 @@ git commit -m "feat(midi-macro-bridge): implement gui::run_window with tao + wry
 **Files:**
 - Modify: `services/midi-macro-bridge/src/main.rs`
 
-- [ ] **Step 1: Add bundle detection helper**
+- [x] **Step 1: Add bundle detection helper**
 
 Edit `services/midi-macro-bridge/src/main.rs`. Add this helper function near the top (after the `use` block but before `fn main`):
 
@@ -1929,7 +1929,7 @@ fn launched_from_app_bundle() -> bool {
 }
 ```
 
-- [ ] **Step 2: Add the gui-mode resolver**
+- [x] **Step 2: Add the gui-mode resolver**
 
 After `launched_from_app_bundle`, add:
 
@@ -1949,7 +1949,7 @@ fn resolve_gui_mode(args: &[String]) -> bool {
 }
 ```
 
-- [ ] **Step 3: Wire the call site**
+- [x] **Step 3: Wire the call site**
 
 Find the existing `open_browser(&url)` call in `main.rs` (search: `grep -n 'open_browser' services/midi-macro-bridge/src/main.rs`). It's currently gated by `config.web.auto_open_browser && !no_open`. Wrap it with the new gui-mode check. Replace the existing block:
 
@@ -1988,7 +1988,7 @@ if resolve_gui_mode(&args) {
 
 (Adapt `halt_tx` to whatever the existing channel sender is named — look for the symbol the HALT-API handler posts to. It's likely a `Cmd` enum variant via `mpsc::Sender<Cmd>`; in that case, define a small adapter closure that wraps `halt.send(()) -> tx.send(Cmd::Halt)`.)
 
-- [ ] **Step 4: Test --gui smoke (with browser fallback to verify default path)**
+- [x] **Step 4: Test --gui smoke (with browser fallback to verify default path)**
 
 Build and run. From the worktree root:
 
@@ -2018,7 +2018,7 @@ grep -q "MIDI channel disconnected" /tmp/gui-default.log && echo "REGRESSION pre
 
 Expected: a 900x700 native AppKit window opens within ~2s showing the bridge's HTMX UI. Click the HALT button (3-second hold) — bridge exits. OR close the window with red X / Cmd-W — bridge exits the same way.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add services/midi-macro-bridge/src/main.rs
@@ -2034,7 +2034,7 @@ git commit -m "feat(midi-macro-bridge): wire --gui flag + bundle detection; wind
 - Create: `services/midi-macro-bridge/packaging/macos/entitlements.plist`
 - Create: `services/midi-macro-bridge/packaging/macos/AppIcon.icns`
 
-- [ ] **Step 1: Author Info.plist template**
+- [x] **Step 1: Author Info.plist template**
 
 Create `services/midi-macro-bridge/packaging/macos/Info.plist.tmpl`:
 
@@ -2073,7 +2073,7 @@ Create `services/midi-macro-bridge/packaging/macos/Info.plist.tmpl`:
 
 `LSUIElement = false` keeps the Dock icon visible (per spec defaults). `__VERSION__` is a sed-substituted placeholder; package-app.sh fills it in.
 
-- [ ] **Step 2: Lint the plist template**
+- [x] **Step 2: Lint the plist template**
 
 ```bash
 plutil -lint services/midi-macro-bridge/packaging/macos/Info.plist.tmpl
@@ -2081,7 +2081,7 @@ plutil -lint services/midi-macro-bridge/packaging/macos/Info.plist.tmpl
 
 Expected: `OK`. (The `__VERSION__` placeholder is a string value, so plutil parses it as valid XML.)
 
-- [ ] **Step 3: Author entitlements.plist**
+- [x] **Step 3: Author entitlements.plist**
 
 Create `services/midi-macro-bridge/packaging/macos/entitlements.plist`:
 
@@ -2104,7 +2104,7 @@ plutil -lint services/midi-macro-bridge/packaging/macos/entitlements.plist
 
 Expected: `OK`.
 
-- [ ] **Step 4: Generate a placeholder AppIcon.icns**
+- [x] **Step 4: Generate a placeholder AppIcon.icns**
 
 Use `sips` + `iconutil` (both ship with macOS). Build an iconset from a single 1024x1024 PNG with a generic glyph, then convert.
 
@@ -2151,7 +2151,7 @@ file services/midi-macro-bridge/packaging/macos/AppIcon.icns
 
 Expected: `Mac OS X icon`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add services/midi-macro-bridge/packaging/macos/
@@ -2165,7 +2165,7 @@ git commit -m "feat(midi-macro-bridge): add Info.plist template + entitlements +
 **Files:**
 - Create: `services/midi-macro-bridge/scripts/package-app.sh`
 
-- [ ] **Step 1: Locate the midi-server signing config**
+- [x] **Step 1: Locate the midi-server signing config**
 
 The script sources `release.config.sh` and `release-secrets.sh` from the midi-server repo. Verify the path before authoring the script:
 
@@ -2176,7 +2176,7 @@ ls /Users/orion/work/midi-server-work/midi-server/packaging/macos/release-secret
 
 Expected: both files exist. If the path differs on this machine, set `AUDIOCONTROL_SIGNING_INFRA_DIR` accordingly.
 
-- [ ] **Step 2: Author the script**
+- [x] **Step 2: Author the script**
 
 Create `services/midi-macro-bridge/scripts/package-app.sh`:
 
@@ -2275,7 +2275,7 @@ Mark executable:
 chmod +x services/midi-macro-bridge/scripts/package-app.sh
 ```
 
-- [ ] **Step 3: Smoke test**
+- [x] **Step 3: Smoke test**
 
 ```bash
 cd services/midi-macro-bridge && ./scripts/package-app.sh --version v0.0.2-test 2>&1 | tail -10
@@ -2289,7 +2289,7 @@ target/release-package/MidiMacroBridge.app: satisfies its Designated Requirement
 ✓ target/release-package/MidiMacroBridge.app (signed, not yet notarized)
 ```
 
-- [ ] **Step 4: Manual launch test**
+- [x] **Step 4: Manual launch test**
 
 ```bash
 open services/midi-macro-bridge/target/release-package/MidiMacroBridge.app
@@ -2297,7 +2297,7 @@ open services/midi-macro-bridge/target/release-package/MidiMacroBridge.app
 
 Expected: a native AppKit window opens within ~2s showing the bridge's HTMX UI. Close the window; bridge exits cleanly.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add services/midi-macro-bridge/scripts/package-app.sh
@@ -2311,7 +2311,7 @@ git commit -m "feat(midi-macro-bridge): add package-app.sh — assemble + sign M
 **Files:**
 - Create: `services/midi-macro-bridge/scripts/package-dmg.sh`
 
-- [ ] **Step 1: Author the script**
+- [x] **Step 1: Author the script**
 
 Create `services/midi-macro-bridge/scripts/package-dmg.sh`:
 
@@ -2415,7 +2415,7 @@ Mark executable:
 chmod +x services/midi-macro-bridge/scripts/package-dmg.sh
 ```
 
-- [ ] **Step 2: Smoke test (full pipeline including notarization)**
+- [x] **Step 2: Smoke test (full pipeline including notarization)**
 
 This takes ~3-7 minutes due to the notarization round trip. Make sure `RELEASE_SECRETS_PASSWORD` is set in the environment before running:
 
@@ -2433,7 +2433,7 @@ source=Notarized Developer ID
 ✓ target/release-package/MidiMacroBridge-v0.0.2-test.dmg.sha256 (<sha>  MidiMacroBridge-v0.0.2-test.dmg)
 ```
 
-- [ ] **Step 3: Manual install test**
+- [x] **Step 3: Manual install test**
 
 ```bash
 open target/release-package/MidiMacroBridge-v0.0.2-test.dmg
@@ -2453,7 +2453,7 @@ Cleanup:
 rm -rf /Applications/MidiMacroBridge.app
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add services/midi-macro-bridge/scripts/package-dmg.sh
@@ -2467,7 +2467,7 @@ git commit -m "feat(midi-macro-bridge): add package-dmg.sh — wrap + notarize +
 **Files:**
 - Modify: `services/midi-macro-bridge/Makefile`
 
-- [ ] **Step 1: Add new targets**
+- [x] **Step 1: Add new targets**
 
 Edit `services/midi-macro-bridge/Makefile`. Find the `package-all` target. Modify the file to add `package-app` and `package-dmg` targets and extend `package-all` to depend on `package-dmg`:
 
@@ -2496,7 +2496,7 @@ package-all: package-macos package-linux package-dmg
 
 Add `package-app package-dmg` to the `.PHONY` line.
 
-- [ ] **Step 2: Update help text**
+- [x] **Step 2: Update help text**
 
 Add to the help block:
 
@@ -2505,7 +2505,7 @@ Add to the help block:
 	@echo "  package-dmg        wrap .app in notarized + stapled .dmg"
 ```
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
 
 ```bash
 cd services/midi-macro-bridge && rm -rf target/release-package && make package-all VERSION=v0.0.2-test 2>&1 | tail -15
@@ -2513,7 +2513,7 @@ cd services/midi-macro-bridge && rm -rf target/release-package && make package-a
 
 Expected: 5 artifacts (2 tarballs, .dmg, 3 .sha256, 1 aggregate SHA256SUMS) listed at the end. Notarization round-trip means this takes ~5-10 minutes total.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add services/midi-macro-bridge/Makefile
@@ -2527,7 +2527,7 @@ git commit -m "feat(midi-macro-bridge): wire .dmg into Makefile package-all + ad
 **Files:**
 - Modify: `services/midi-macro-bridge/scripts/release.sh`
 
-- [ ] **Step 1: Update the gh release create call**
+- [x] **Step 1: Update the gh release create call**
 
 Edit `services/midi-macro-bridge/scripts/release.sh`. Find the `gh release create` invocation near the end. Add the .dmg + .sha256 to the asset list:
 
@@ -2560,7 +2560,7 @@ echo "  ✓ MidiMacroBridge.app signature valid"
 
 Add this smoke step after the existing macOS tarball smoke test, before the tagging step.
 
-- [ ] **Step 2: Verify by running release.sh against a non-existent version**
+- [x] **Step 2: Verify by running release.sh against a non-existent version**
 
 The preflight should still reject mismatches:
 
@@ -2570,7 +2570,7 @@ The preflight should still reject mismatches:
 
 Expected: same `Cargo.toml` mismatch error as before; release.sh extension didn't break preflight.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add services/midi-macro-bridge/scripts/release.sh
@@ -2586,7 +2586,7 @@ git commit -m "feat(midi-macro-bridge): extend release.sh to attach .dmg to GitH
 - Modify: `services/midi-macro-bridge/INSTALL.md`
 - Modify: `services/midi-macro-bridge/CHANGELOG.md`
 
-- [ ] **Step 1: Add .dmg path to README Install section**
+- [x] **Step 1: Add .dmg path to README Install section**
 
 In `services/midi-macro-bridge/README.md`, find the `## Install` section. Add a new subsection AT THE TOP (before Homebrew) since the .dmg is the most user-friendly path:
 
@@ -2606,7 +2606,7 @@ For service / daemon / always-on use, see Homebrew below or
 [INSTALL.md](INSTALL.md).
 ```
 
-- [ ] **Step 2: Add .dmg flow to INSTALL.md**
+- [x] **Step 2: Add .dmg flow to INSTALL.md**
 
 In `services/midi-macro-bridge/INSTALL.md`, add a section near the top:
 
@@ -2714,7 +2714,7 @@ print(f'flipped {flipped} Phase 7 checkboxes')
 "
 ```
 
-- [ ] **Step 6: Update README phase status row**
+- [x] **Step 6: Update README phase status row**
 
 Flip the Phase 7 row in `docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/README.md` from "In progress" → "Complete". Note: per AC #9, do NOT mark Complete until Steps 1-4 above are done.
 
@@ -2766,3 +2766,34 @@ git push origin HEAD:main
 7. Phase 6 regression check (no `MIDI channel disconnected` within 2.5s of default-config startup) still passes for the GUI-launched binary.
 8. The `.app` does not register a `LaunchAgent`, Login Items entry, or any other auto-start mechanism (per spec Non-goals). Verified: a freshly-installed `.app` does not appear in System Settings → General → Login Items, and `launchctl list | grep midi-macro-bridge` returns nothing after a double-click launch + window close.
 9. Every item in the spec's "Deferred to later releases" table has a corresponding GitHub issue filed against the audiocontrol repo, with the issue number back-filled into the spec, AND a mirrored entry in the PRD's Out-of-Scope section AND in the workplan's Future Phases section. Phase 7 cannot move to Complete until this gate passes.
+
+
+---
+
+## Future Phases (deferred from Phase 7)
+
+Stub references — full task breakdowns get authored when each phase is picked up.
+
+### Phase 8a — Status bar icon for `MidiMacroBridge.app`
+
+[#368](https://github.com/audiocontrol-org/audiocontrol/issues/368). Adds the `tray-icon` crate; persistent menubar item with bridge state indicator, "Open Window" menu item (re-show closed window), Quit. Requires reworking `gui::run_window` to be re-entrant or surfacing window state separately.
+
+### Phase 8b — Single-instance lock for `MidiMacroBridge.app`
+
+[#369](https://github.com/audiocontrol-org/audiocontrol/issues/369). Detect existing instance via lockfile or Mach port; second launch focuses the first window instead of failing on the CoreMIDI UniqueID collision.
+
+### Phase 8c — Sparkle auto-updater
+
+[#370](https://github.com/audiocontrol-org/audiocontrol/issues/370). Integrate Sparkle (or Tauri's updater) so installed `.app`s auto-update from GitHub Releases. Requires signed update feeds and the `SUPublicEDKey` for verification.
+
+### Phase 8d — macOS menubar with Quit/About
+
+[#376](https://github.com/audiocontrol-org/audiocontrol/issues/376). Proper macOS menubar via `tao`'s window-menu API: Cmd-Q (quit), Cmd-W (close window — same as today), About dialog, Preferences (open browser to `/api/config-form`).
+
+### Polish + design assets
+
+- [#371](https://github.com/audiocontrol-org/audiocontrol/issues/371) — wry GUI for Linux + Windows
+- [#372](https://github.com/audiocontrol-org/audiocontrol/issues/372) — Pretty DMG layout (`create-dmg`)
+- [#373](https://github.com/audiocontrol-org/audiocontrol/issues/373) — Universal binary (arm64 + Intel)
+- [#374](https://github.com/audiocontrol-org/audiocontrol/issues/374) — Commission real `AppIcon.icns`
+- [#375](https://github.com/audiocontrol-org/audiocontrol/issues/375) — Brew formula bottling the `.app`

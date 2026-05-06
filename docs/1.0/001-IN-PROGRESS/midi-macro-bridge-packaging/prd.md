@@ -41,15 +41,29 @@ Inside the binary itself, a small refactor introduces a `paths.rs` module that r
 ## Out of Scope
 
 - **GitHub Actions release workflow.** Build and ship are operator-driven from a local host. Revisit if release cadence outgrows the local model.
-- macOS code signing and notarization. Released binaries will be unsigned for v1; `QUARANTINE.md` documents the `xattr -d com.apple.quarantine` workaround. Revisit when there's user demand and an Apple Developer Program membership.
-- Auto-update mechanism.
+- ~~macOS code signing and notarization.~~ Implemented in v0.2.0 (Phase 7). Developer ID Application cert + notarytool keychain profile pipeline.
 - Crash reporting / telemetry.
 - Additional Linux targets: `aarch64-unknown-linux-gnu`, `musl` static variant, AUR `PKGBUILD`, `.deb` / `.rpm` packages.
-- Intel Mac (`x86_64-apple-darwin`) build / universal binary.
 - Cross-platform Linux binary smoke testing in CI. Linux smoke runs at Phase 6 on a real Linux host or privileged Docker; the Docker builder only validates the build, not the runtime.
 - `cargo-release` workflow tooling for local release-cutting ergonomics.
 - `git-cliff` automated CHANGELOG generation. Revisit when release cadence makes hand-editing tedious.
 - Multi-service tag scheme (`midi-macro-bridge-vX.Y.Z`). Plain `vX.Y.Z` is fine while midi-macro-bridge owns the version namespace; revisit when another service in the repo also wants tagged releases.
+
+### Future phases (deferred from Phase 7 / v0.2.0)
+
+Tracked separately as GitHub issues per Phase 7 AC #9:
+
+- [#368](https://github.com/audiocontrol-org/audiocontrol/issues/368) — Phase 8a: Status bar icon for `MidiMacroBridge.app` (`tray-icon` crate)
+- [#369](https://github.com/audiocontrol-org/audiocontrol/issues/369) — Phase 8b: Single-instance lock + focus-existing-window
+- [#370](https://github.com/audiocontrol-org/audiocontrol/issues/370) — Phase 8c: Sparkle auto-updater
+- [#371](https://github.com/audiocontrol-org/audiocontrol/issues/371) — wry GUI for Linux + Windows distributions
+- [#372](https://github.com/audiocontrol-org/audiocontrol/issues/372) — Pretty DMG layout via `create-dmg`
+- [#373](https://github.com/audiocontrol-org/audiocontrol/issues/373) — Universal binary (arm64 + Intel)
+- [#374](https://github.com/audiocontrol-org/audiocontrol/issues/374) — Real `AppIcon.icns` (replace v0.2 placeholder)
+- [#375](https://github.com/audiocontrol-org/audiocontrol/issues/375) — Brew formula bottling the `.app`
+- [#376](https://github.com/audiocontrol-org/audiocontrol/issues/376) — Phase 8d: macOS menubar with Quit/About
+- Auto-update mechanism (covered by #370 above; no separate item)
+- Intel Mac universal binary (covered by #373 above)
 
 ## Technical Approach
 

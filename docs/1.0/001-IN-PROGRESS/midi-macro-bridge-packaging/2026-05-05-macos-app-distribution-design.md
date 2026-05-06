@@ -236,17 +236,17 @@ These are **not** deferred — they are intentional non-goals for the `.app` dis
 
 Each item below MUST be tracked as a **GitHub issue against the `audiocontrol` repo** (as a child of the `midi-macro-bridge-packaging` parent issue or a successor feature) AND mirrored in the **PRD's Out-of-Scope section** AND in the **workplan's Future Phases section** **before this spec moves to Review**. The list here is a forwarding reference, not the durable record — issues + PRD + workplan are the durable record. This is a hard rule: items that live only in this spec get lost in the mists of time.
 
-| Item | Suggested issue title | PRD/workplan location |
+| Item | Issue | PRD/workplan location |
 |---|---|---|
-| Status bar icon / menubar item (`tray-icon` crate) | `Phase 8a: Status bar icon for MidiMacroBridge.app` | New Phase 8a in workplan; PRD Future Phases |
-| Single-instance lock + focus-existing-window | `Phase 8b: Single-instance lock for MidiMacroBridge.app` | New Phase 8b in workplan; PRD Future Phases |
-| Auto-updater (Sparkle or similar) | `Phase 8c: Sparkle auto-updater for MidiMacroBridge.app` | New Phase 8c in workplan; PRD Future Phases |
-| Linux / Windows GUI (wry supports both) | `wry GUI for Linux + Windows distributions` | PRD Out-of-Scope; new feature later |
-| Custom DMG background / window layout (`create-dmg`) | `Pretty DMG layout via create-dmg` | Polish task in workplan |
-| Universal binary (arm64 + Intel) | `Universal binary for MidiMacroBridge.app` | PRD Out-of-Scope; revisit if Intel demand surfaces |
-| Real app icon | `Commission AppIcon.icns for MidiMacroBridge.app` | Design-asset task in workplan |
-| Brew formula bottling the `.app` | `Brew formula: bottle the .app for brew install` | PRD Out-of-Scope; reconsider after v0.2 ships |
-| Quit menu (`Cmd-Q` via proper menubar) | `Phase 8d: macOS menubar with Quit/About for MidiMacroBridge.app` | New Phase 8d in workplan |
+| Status bar icon / menubar item (`tray-icon` crate) | [#368](https://github.com/audiocontrol-org/audiocontrol/issues/368) | New Phase 8a in workplan; PRD Future Phases |
+| Single-instance lock + focus-existing-window | [#369](https://github.com/audiocontrol-org/audiocontrol/issues/369) | New Phase 8b in workplan; PRD Future Phases |
+| Auto-updater (Sparkle or similar) | [#370](https://github.com/audiocontrol-org/audiocontrol/issues/370) | New Phase 8c in workplan; PRD Future Phases |
+| Linux / Windows GUI (wry supports both) | [#371](https://github.com/audiocontrol-org/audiocontrol/issues/371) | PRD Out-of-Scope; new feature later |
+| Custom DMG background / window layout (`create-dmg`) | [#372](https://github.com/audiocontrol-org/audiocontrol/issues/372) | Polish task in workplan |
+| Universal binary (arm64 + Intel) | [#373](https://github.com/audiocontrol-org/audiocontrol/issues/373) | PRD Out-of-Scope; revisit if Intel demand surfaces |
+| Real app icon | [#374](https://github.com/audiocontrol-org/audiocontrol/issues/374) | Design-asset task in workplan |
+| Brew formula bottling the `.app` | [#375](https://github.com/audiocontrol-org/audiocontrol/issues/375) | PRD Out-of-Scope; reconsider after v0.2 ships |
+| Quit menu (`Cmd-Q` via proper menubar) | [#376](https://github.com/audiocontrol-org/audiocontrol/issues/376) | New Phase 8d in workplan |
 
 The Phase 7 close-out task (analogous to Phase 6's Task 6.6) MUST file these issues and back-fill their numbers into this table before flipping Phase 7 to Complete. AC9 below enforces this at the acceptance gate.
 
