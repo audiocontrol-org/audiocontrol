@@ -65,6 +65,16 @@ Tracked separately as GitHub issues per Phase 7 AC #9:
 - Auto-update mechanism (covered by #370 above; no separate item)
 - Intel Mac universal binary (covered by #373 above)
 
+### Phase 9 — v0.2.1 polish (in progress)
+
+[#380](https://github.com/audiocontrol-org/audiocontrol/issues/380). Resolves three audiocontrol-repo bugs surfaced during the v0.2.0 release:
+
+- [#377](https://github.com/audiocontrol-org/audiocontrol/issues/377) — Remove HALT button from web UI (bad hold-to-confirm UX, redundant given window-close)
+- [#378](https://github.com/audiocontrol-org/audiocontrol/issues/378) — Hardcoded `v1.0` string in web UI; wire `CARGO_PKG_VERSION` instead
+- [#379](https://github.com/audiocontrol-org/audiocontrol/issues/379) — `update-homebrew-formula.sh` silently shipped stale SHAs on subsequent releases (regex bug)
+
+Ships as `v0.2.1`.
+
 ## Technical Approach
 
 The release pipeline is operator-driven, invoked via `make release VERSION=vX.Y.Z` from the workspace root on a macOS Apple Silicon host. The macOS arm64 build runs natively on the host. The Linux x86_64 build runs inside a `rust:slim-bookworm` Docker container that bind-mounts the workspace and runs `cargo build --release` — the host doesn't need a Linux toolchain installed. Both builds delegate to the shared `services/midi-macro-bridge/scripts/package.sh` for tarball layout + SHA256 computation. The release script (`services/midi-macro-bridge/scripts/release.sh`) orchestrates: precondition checks → `make package-all` → macOS smoke test → `git tag` + push → `gh release create` with both tarballs, both `.sha256`, and an aggregate `SHA256SUMS`. CHANGELOG.md's `## VERSION` section is extracted as release notes; missing entries fall back to a generic title.

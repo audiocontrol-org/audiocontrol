@@ -2797,3 +2797,387 @@ Stub references — full task breakdowns get authored when each phase is picked 
 - [#373](https://github.com/audiocontrol-org/audiocontrol/issues/373) — Universal binary (arm64 + Intel)
 - [#374](https://github.com/audiocontrol-org/audiocontrol/issues/374) — Commission real `AppIcon.icns`
 - [#375](https://github.com/audiocontrol-org/audiocontrol/issues/375) — Brew formula bottling the `.app`
+
+---
+
+## Phase 9: v0.2.1 polish — UI cleanup + tooling fixes
+
+**Goal:** Resolve the three audiocontrol-repo bugs surfaced during the v0.2.0 release process. Ship as `v0.2.1`.
+
+**Architecture:** Three independent fixes — HALT button removal in the embedded web UI, wiring `env!("CARGO_PKG_VERSION")` into the served HTML, and rewriting `update-homebrew-formula.sh`'s sha256 substitution to be structure-aware. None depend on each other; could be done in parallel, but workplan orders them by file locality (web/ then scripts/).
+
+**Tech Stack:** No new dependencies. Existing Rust + Python 3 + bash.
+
+---
+
+### File Structure
+
+| Path | Responsibility | Phase |
+|---|---|---|
+| `services/midi-macro-bridge/web/index.html` | Remove `.mmb-halt` div; replace `v1.0` literal with `__VERSION__` placeholder | 9.1 + 9.2 |
+| `services/midi-macro-bridge/web/app.js` | Remove HALT hold-confirm logic | 9.1 |
+| `services/midi-macro-bridge/web/app.css` | Remove `.mmb-halt` and related rules | 9.1 |
+| `services/midi-macro-bridge/src/web/mod.rs` | Substitute `__VERSION__` for `env!("CARGO_PKG_VERSION")` in served `index.html`; optional: remove `POST /api/halt` route | 9.1 + 9.2 |
+| `services/midi-macro-bridge/scripts/update-homebrew-formula.sh` | Rewrite sha256 substitution as structure-aware (URL-anchored) | 9.3 |
+
+---
+
+### Task 9.1: Remove HALT button (resolves #377)
+
+**Files:**
+- Modify: `services/midi-macro-bridge/web/index.html`
+- Modify: `services/midi-macro-bridge/web/app.js`
+- Modify: `services/midi-macro-bridge/web/app.css`
+- Modify: `services/midi-macro-bridge/src/web/mod.rs` (optional — keep `/api/halt` as undocumented escape hatch, OR remove)
+
+- [ ] **Step 1: Locate the HALT button markup**
+
+```bash
+grep -n 'mmb-halt\|HALT\|halt' services/midi-macro-bridge/web/index.html
+```
+
+Note the line range of the `.mmb-halt` div in `index.html`.
+
+- [ ] **Step 2: Remove the markup from index.html**
+
+Open `services/midi-macro-bridge/web/index.html`. Find the `<div class="mmb-halt">...</div>` block (likely a sibling of the `.mmb-version` span in the top-bar area). Delete the entire div. Preserve surrounding markup.
+
+- [ ] **Step 3: Locate and remove the JS handler**
+
+```bash
+grep -n 'halt\|setupHaltButton\|holdToConfirm\|/api/halt' services/midi-macro-bridge/web/app.js
+```
+
+Delete:
+- The `setupHaltButton` function (or whatever the hold-to-confirm handler is named)
+- Its registration in the DOMContentLoaded / module init
+- Any helper functions used only by HALT (`startHaltTimer`, `cancelHaltTimer`, etc.)
+
+If the helpers are also used by other parts of the UI, leave them but rename if their HALT-flavored names are now misleading.
+
+- [ ] **Step 4: Remove the CSS rules**
+
+```bash
+grep -n 'mmb-halt\|halt-' services/midi-macro-bridge/web/app.css
+```
+
+Delete `.mmb-halt`, `.mmb-halt:hover`, `.halt-ring`, `.halt-fill`, and any other `.halt-*` selectors.
+
+- [ ] **Step 5: Decide on the route**
+
+The `POST /api/halt` route in `src/web/mod.rs` either stays (as an undocumented escape hatch reachable via curl) or goes (full removal of the surface).
+
+**Recommendation:** keep the route. It's small (~5 lines), provides a graceful curl-driven shutdown for headless brew users who want a remote stop without `brew services stop`, and removing it requires also removing the `Cmd::Halt` channel sender — more code surface for marginal benefit.
+
+If you choose to remove it: delete the route registration in `mod.rs`, remove the handler function, optionally remove the `Cmd::Halt` variant if no other consumer remains. Verify build clean.
+
+- [ ] **Step 6: Build + manual verify**
+
+```bash
+cd /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging
+cargo build --release --target aarch64-apple-darwin --manifest-path services/midi-macro-bridge/Cargo.toml 2>&1 | tail -3
+```
+
+Expected: clean build.
+
+Open the running bridge in a browser (or via the .app's window). Verify:
+- HALT button is gone from the top-bar UI.
+- Layout doesn't have a hole where the button used to be (CSS adjacent margins look right).
+- Status indicator + version string remain.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add services/midi-macro-bridge/web/ services/midi-macro-bridge/src/web/mod.rs
+git commit -m "fix(midi-macro-bridge): remove HALT button from web UI (#377)"
+```
+
+---
+
+### Task 9.2: Wire `CARGO_PKG_VERSION` into the web UI (resolves #378)
+
+**Files:**
+- Modify: `services/midi-macro-bridge/web/index.html`
+- Modify: `services/midi-macro-bridge/src/web/mod.rs`
+
+- [ ] **Step 1: Replace the static literal with a placeholder**
+
+Edit `services/midi-macro-bridge/web/index.html`. The `mmb-version` span currently contains the literal `v1.0`. Replace with a substitution placeholder:
+
+```html
+<span class="mmb-version">__VERSION__</span>
+```
+
+(Reuse the same `__VERSION__` token convention used by Phase 7's `Info.plist.tmpl` for consistency.)
+
+- [ ] **Step 2: Substitute at server startup in src/web/mod.rs**
+
+Find the route handler that serves `/` (returns the embedded `index.html`). It looks something like:
+
+```rust
+async fn serve_index() -> impl IntoResponse {
+    Html(WebAssets::get("index.html").unwrap().data.into_owned())
+}
+```
+
+(Adapt to whatever the existing handler shape is — `axum::response::Html<String>` or equivalent.)
+
+Add a module-level `OnceLock<String>` for the rendered HTML so we only do the substitution once:
+
+```rust
+use std::sync::OnceLock;
+
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+fn rendered_index() -> &'static str {
+    static CACHED: OnceLock<String> = OnceLock::new();
+    CACHED.get_or_init(|| {
+        let raw = WebAssets::get("index.html")
+            .expect("index.html embedded via rust_embed");
+        let html = std::str::from_utf8(&raw.data)
+            .expect("index.html is valid UTF-8");
+        html.replace("__VERSION__", VERSION)
+    })
+}
+```
+
+Update the `/` handler to serve `rendered_index()`:
+
+```rust
+async fn serve_index() -> impl IntoResponse {
+    Html(rendered_index())
+}
+```
+
+- [ ] **Step 3: Build + verify**
+
+```bash
+cd services/midi-macro-bridge && cargo build 2>&1 | tail -3
+./target/debug/midi-macro-bridge --no-open >/tmp/version-smoke.log 2>&1 &
+PID=$!
+sleep 2
+curl -s http://127.0.0.1:8765/ | grep -o '<span class="mmb-version">[^<]*</span>'
+kill $PID 2>/dev/null || true
+wait $PID 2>/dev/null || true
+```
+
+Expected output: `<span class="mmb-version">0.2.1</span>` (whatever the current Cargo.toml version is at the time of the run).
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add services/midi-macro-bridge/web/index.html services/midi-macro-bridge/src/web/mod.rs
+git commit -m "fix(midi-macro-bridge): wire CARGO_PKG_VERSION into web UI (#378)"
+```
+
+---
+
+### Task 9.3: Fix `update-homebrew-formula.sh` regex (resolves #379)
+
+**Files:**
+- Modify: `services/midi-macro-bridge/scripts/update-homebrew-formula.sh`
+
+- [ ] **Step 1: Replace the broken substitution block**
+
+Open `services/midi-macro-bridge/scripts/update-homebrew-formula.sh`. Find the Python heredoc that does `re.sub`. Replace the body with a structure-aware version that anchors by URL:
+
+```python
+import re
+
+with open("$FORMULA") as f:
+    src = f.read()
+
+# Update the version literal first.
+src = re.sub(r'version "[^"]+"', 'version "$VERSION_NO_V"', src)
+
+# First-install path: replace placeholder strings if still present.
+src = src.replace('PLACEHOLDER_MAC_ARM64_SHA256', '$MAC_ARM_SHA')
+src = src.replace('PLACEHOLDER_LINUX_X86_64_SHA256', '$LINUX_X64_SHA')
+
+# Subsequent-install path: replace the sha256 line that immediately follows
+# a url containing the platform substring. Multi-line, structure-aware:
+def replace_sha_for_platform(src, platform_substr, new_sha):
+    pattern = re.compile(
+        r'(url\s+"[^"]*' + re.escape(platform_substr) + r'[^"]*"\s*\n\s*sha256\s+")[a-f0-9]{64}(")',
+        re.MULTILINE,
+    )
+    new_src, n = pattern.subn(rf'\g<1>{new_sha}\g<2>', src)
+    return new_src, n
+
+src, mac_n = replace_sha_for_platform(src, 'aarch64-apple-darwin', '$MAC_ARM_SHA')
+src, linux_n = replace_sha_for_platform(src, 'x86_64-unknown-linux-gnu', '$LINUX_X64_SHA')
+
+# Verify substitutions actually happened. Refuse silent success.
+if mac_n == 0:
+    raise SystemExit('ERROR: failed to substitute macOS arm64 sha256 — formula structure may have changed')
+if linux_n == 0:
+    raise SystemExit('ERROR: failed to substitute Linux x86_64 sha256 — formula structure may have changed')
+
+with open("$FORMULA", "w") as f:
+    f.write(src)
+
+print(f'  ✓ macOS arm64 sha256 substitution: {mac_n} match(es)')
+print(f'  ✓ Linux x86_64 sha256 substitution: {linux_n} match(es)')
+```
+
+The key changes:
+1. Multi-line URL-then-sha256 pattern (was single-line).
+2. `subn` instead of `sub` — counts matches.
+3. Hard fail if either substitution didn't happen.
+
+- [ ] **Step 2: Smoke test on the live tap**
+
+The tap at `/Users/orion/work/audiocontrol-work/homebrew-audiocontrol` is currently at v0.2.0. Test the script against a synthetic v0.2.0-test pretending we're updating to it. We'll undo afterward.
+
+```bash
+# Save the current formula so we can restore it.
+cp /Users/orion/work/audiocontrol-work/homebrew-audiocontrol/Formula/midi-macro-bridge.rb /tmp/midi-macro-bridge.rb.bak
+
+# Run the script. Should now substitute the SHAs even though placeholders are absent.
+./services/midi-macro-bridge/scripts/update-homebrew-formula.sh v0.2.0 \
+    /Users/orion/work/audiocontrol-work/homebrew-audiocontrol 2>&1 | tail -10
+
+# Verify.
+diff /tmp/midi-macro-bridge.rb.bak /Users/orion/work/audiocontrol-work/homebrew-audiocontrol/Formula/midi-macro-bridge.rb
+# Expected: no diff (re-applying v0.2.0 over v0.2.0 is a no-op).
+
+# Restore (in case anything drifted).
+cp /tmp/midi-macro-bridge.rb.bak /Users/orion/work/audiocontrol-work/homebrew-audiocontrol/Formula/midi-macro-bridge.rb
+```
+
+The new "fail loudly if substitution didn't match" behavior will be exercised on the next real release (v0.2.1 will be the first end-to-end test).
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add services/midi-macro-bridge/scripts/update-homebrew-formula.sh
+git commit -m "fix(midi-macro-bridge): structure-aware sha256 substitution in update-homebrew-formula.sh (#379)"
+```
+
+---
+
+### Task 9.4: Phase 9 close-out + v0.2.1 release
+
+- [ ] **Step 1: Bump Cargo.toml to 0.2.1**
+
+```bash
+cd /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging
+```
+
+Edit `services/midi-macro-bridge/Cargo.toml` line 3:
+
+```toml
+version = "0.2.1"
+```
+
+Refresh Cargo.lock:
+
+```bash
+cargo build --release --target aarch64-apple-darwin --manifest-path services/midi-macro-bridge/Cargo.toml 2>&1 | tail -3
+```
+
+- [ ] **Step 2: Add v0.2.1 entry to CHANGELOG.md**
+
+Insert above the existing `## v0.2.0` section in `services/midi-macro-bridge/CHANGELOG.md`:
+
+```markdown
+## v0.2.1
+
+### Highlights
+- Removed HALT button from the web UI (#377). The .app's window-close + brew services stop already provide graceful shutdown; the hold-to-confirm UX was non-discoverable and redundant.
+- Fixed the version string shown in the web UI — now reads from `CARGO_PKG_VERSION` instead of the hardcoded `v1.0` literal (#378).
+- Fixed `update-homebrew-formula.sh` to do structure-aware sha256 substitution; the script now fails loudly if substitution didn't match (#379). Previously, subsequent releases would silently ship stale SHAs.
+```
+
+- [ ] **Step 3: Commit version + changelog**
+
+```bash
+git add services/midi-macro-bridge/Cargo.toml services/midi-macro-bridge/Cargo.lock services/midi-macro-bridge/CHANGELOG.md
+git commit -m "chore(midi-macro-bridge): bump to v0.2.1 + changelog entry"
+```
+
+- [ ] **Step 4: Mark Phase 9 checkboxes complete in workplan**
+
+```bash
+python3 -c "
+from pathlib import Path
+p = Path('docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/workplan.md')
+lines = p.read_text().splitlines(keepends=True)
+flipped = 0
+in_phase9 = False
+for i, line in enumerate(lines):
+    if line.startswith('## Phase 9:'):
+        in_phase9 = True
+        continue
+    if line.startswith('## Phase ') and in_phase9:
+        in_phase9 = False
+    if in_phase9 and line.startswith('- [ ] '):
+        lines[i] = '- [x] ' + line[6:]
+        flipped += 1
+p.write_text(''.join(lines))
+print(f'flipped {flipped} Phase 9 checkboxes')
+"
+```
+
+- [ ] **Step 5: Flip README phase 9 row to Complete**
+
+```bash
+sed -i '' 's|^| 9 | v0.2.1 polish.*Not started.*$| 9 | v0.2.1 polish — UI cleanup + tooling fixes (HALT button removed; version string wired to CARGO_PKG_VERSION; formula update script regex fixed) | Complete |g' \
+    docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/README.md
+```
+
+(If sed isn't a clean fit, edit the README phase table line manually with the Edit tool.)
+
+- [ ] **Step 6: Cut the release**
+
+```bash
+make -C services/midi-macro-bridge release VERSION=v0.2.1
+```
+
+Expected: preflight passes, `package-all` builds tarballs + .dmg with notarization, .app smoke test passes, tag pushed, GitHub Release created with all 7 artifacts.
+
+- [ ] **Step 7: Update Homebrew formula**
+
+```bash
+./services/midi-macro-bridge/scripts/update-homebrew-formula.sh v0.2.1 \
+    /Users/orion/work/audiocontrol-work/homebrew-audiocontrol
+```
+
+Verify the diff in the tap repo. The Task 9.3 fix means the SHAs should now actually update (and fail loudly if they don't).
+
+```bash
+cd /Users/orion/work/audiocontrol-work/homebrew-audiocontrol
+git diff Formula/midi-macro-bridge.rb  # version + 2 sha256s should change
+git add Formula/midi-macro-bridge.rb
+git commit -m "midi-macro-bridge 0.2.1"
+git push origin main
+```
+
+- [ ] **Step 8: Push feature branch HEAD to main**
+
+```bash
+cd /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging
+git push origin HEAD:main
+```
+
+- [ ] **Step 9: Comment on each fixed issue with the v0.2.1 release link**
+
+```bash
+for issue in 377 378 379; do
+    gh issue comment $issue --repo audiocontrol-org/audiocontrol \
+        --body "Fixed in v0.2.1: https://github.com/audiocontrol-org/audiocontrol/releases/tag/v0.2.1"
+done
+```
+
+Don't autonomously close — leave for user acceptance per project memory rule.
+
+---
+
+## Phase 9 Acceptance Criteria
+
+1. `make package-app VERSION=v0.0.2-test-p9` (from a clean state) produces a signed `.app` whose web UI shows the actual version (`0.0.2-test-p9`) and has no HALT button.
+2. The `.app`'s window-close still triggers graceful shutdown (regression check).
+3. The `.app`'s web UI status indicator + config form + event stream + apply-button work as before — only the HALT button is gone.
+4. `update-homebrew-formula.sh v0.2.1 <tap>` produces a formula with the correct v0.2.1 SHAs (no manual editing required).
+5. If the regex substitution fails to match (e.g., we change the formula's structure later), the script exits non-zero with an explicit error rather than reporting silent success.
+6. v0.2.1 ships via `make release` with all three fixes landed.
