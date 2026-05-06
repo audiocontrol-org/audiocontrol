@@ -45,6 +45,38 @@ use crate::web::state::{
 };
 use tokio::sync::{broadcast, watch};
 
+// ── GUI / bundle helpers ──────────────────────────────────────────────────────
+
+/// Detect whether the current executable lives inside a macOS .app bundle.
+/// Returns false on non-macOS platforms.
+fn launched_from_app_bundle() -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(exe) = std::env::current_exe() {
+            return exe.to_string_lossy().contains(".app/Contents/MacOS/");
+        }
+        false
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        false
+    }
+}
+
+/// Resolve whether the binary should open a native window:
+///   - `--gui` flag forces ON
+///   - `--no-gui` flag forces OFF
+///   - Otherwise, true iff launched from an .app bundle
+fn resolve_gui_mode(args: &[String]) -> bool {
+    if args.iter().any(|a| a == "--no-gui") {
+        return false;
+    }
+    if args.iter().any(|a| a == "--gui") {
+        return true;
+    }
+    launched_from_app_bundle()
+}
+
 // ── MIDI connection bundle ────────────────────────────────────────────────────
 
 /// All live MIDI connection handles plus the backend/pair they depend
@@ -503,8 +535,42 @@ fn main() -> Result<()> {
         // can find it without scanning ports.
         persist_bridge_url(&url);
 
-        // Auto-open browser — gated on config setting AND --no-open flag.
-        if config.web.auto_open_browser && !no_open {
+        // GUI / browser launch — resolved in priority order:
+        //   1. --no-gui or --gui flag: explicit override
+        //   2. launched from .app bundle: open native window
+        //   3. config.web.auto_open_browser (and no --no-open): open browser
+        if resolve_gui_mode(&args) {
+            #[cfg(target_os = "macos")]
+            {
+                // gui::run_window takes a closure; bridge the Cmd channel here
+                // so gui.rs stays decoupled from the bridge's channel types.
+                // Deviation from workplan option (a): using option (b) — closure
+                // adapter — avoids an extra adapter thread and keeps gui.rs free
+                // of Cmd type knowledge.
+                let halt_closure = {
+                    let tx = cmd_tx.clone();
+                    move || {
+                        let _ = tx.send(Cmd::Halt);
+                    }
+                };
+                // run_window blocks the main thread until the window closes or
+                // halt fires. Bridge exits cleanly via the same path as the
+                // HALT button.
+                if let Err(e) = gui::run_window(&url, halt_closure) {
+                    warn!(error = ?e, "gui window failed to open; falling back to web-only");
+                    if config.web.auto_open_browser && !no_open {
+                        open_browser(&url);
+                    }
+                }
+            }
+            #[cfg(not(target_os = "macos"))]
+            {
+                warn!("--gui requested but only macOS supports the wry window today; falling back to web-only");
+                if config.web.auto_open_browser && !no_open {
+                    open_browser(&url);
+                }
+            }
+        } else if config.web.auto_open_browser && !no_open {
             open_browser(&url);
         } else if no_open {
             info!("--no-open: skipping browser launch");
