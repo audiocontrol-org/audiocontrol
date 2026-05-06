@@ -2,6 +2,8 @@
 slug: midi-macro-bridge-packaging
 targetVersion: "1.0"
 date: 2026-05-05
+deskwork:
+  id: df280d9f-17eb-4193-987d-942dc40492c9
 ---
 
 # midi-macro-bridge Packaging — Implementation Workplan

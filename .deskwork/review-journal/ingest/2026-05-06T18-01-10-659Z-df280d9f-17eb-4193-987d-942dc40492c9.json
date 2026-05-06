@@ -1,0 +1,20 @@
+{
+  "id": "df280d9f-17eb-4193-987d-942dc40492c9",
+  "timestamp": "2026-05-06T18:01:10.659Z",
+  "event": "ingest",
+  "slug": "midi-macro-bridge-packaging/workplan",
+  "entryId": "df280d9f-17eb-4193-987d-942dc40492c9",
+  "site": "engineering-design-specs",
+  "stage": "Drafting",
+  "sourceFile": "docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/workplan.md",
+  "frontmatterSnapshot": {
+    "slug": "midi-macro-bridge-packaging",
+    "targetVersion": "1.0",
+    "date": "2026-05-05"
+  },
+  "derivation": {
+    "slug": "path",
+    "state": "default",
+    "date": "frontmatter"
+  }
+}

@@ -5,7 +5,7 @@ targetVersion: "1.0"
 date: 2026-05-05
 parentIssue: 358
 deskwork:
-  id:
+  id: 00352ee3-424e-4a96-84af-48fe5d1b8de7
 ---
 
 # PRD: midi-macro-bridge packaging and release

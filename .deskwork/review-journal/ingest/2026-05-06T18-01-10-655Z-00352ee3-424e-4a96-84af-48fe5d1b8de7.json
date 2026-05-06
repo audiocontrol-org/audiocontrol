@@ -1,0 +1,25 @@
+{
+  "id": "00352ee3-424e-4a96-84af-48fe5d1b8de7",
+  "timestamp": "2026-05-06T18:01:10.655Z",
+  "event": "ingest",
+  "slug": "midi-macro-bridge-packaging/prd",
+  "entryId": "00352ee3-424e-4a96-84af-48fe5d1b8de7",
+  "site": "engineering-design-specs",
+  "stage": "Drafting",
+  "sourceFile": "docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/prd.md",
+  "frontmatterSnapshot": {
+    "slug": "midi-macro-bridge-packaging",
+    "title": "midi-macro-bridge packaging and release",
+    "targetVersion": "1.0",
+    "date": "2026-05-05",
+    "parentIssue": 358,
+    "deskwork": {
+      "id": null
+    }
+  },
+  "derivation": {
+    "slug": "path",
+    "state": "default",
+    "date": "frontmatter"
+  }
+}
