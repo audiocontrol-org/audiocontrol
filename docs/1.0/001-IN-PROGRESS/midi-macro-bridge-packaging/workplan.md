@@ -1517,7 +1517,7 @@ git commit -m "docs(midi-macro-bridge): add service activation instructions"
 
 ### Task 6.1: Final pre-release verification
 
-- [ ] **Step 1: Confirm Cargo.toml version is `0.1.0`**
+- [x] **Step 1: Confirm Cargo.toml version is `0.1.0`**
 
 ```bash
 grep '^version = ' services/midi-macro-bridge/Cargo.toml
@@ -1525,7 +1525,7 @@ grep '^version = ' services/midi-macro-bridge/Cargo.toml
 
 If not, edit it. The `make release` target asserts the match and refuses to proceed if they disagree.
 
-- [ ] **Step 2: Confirm CHANGELOG.md has a `## v0.1.0` section**
+- [x] **Step 2: Confirm CHANGELOG.md has a `## v0.1.0` section**
 
 ```bash
 grep -n '^## v0.1.0' services/midi-macro-bridge/CHANGELOG.md
@@ -1533,7 +1533,7 @@ grep -n '^## v0.1.0' services/midi-macro-bridge/CHANGELOG.md
 
 The `make release` target extracts release notes from this section. Without it, the GitHub Release falls back to a generic title.
 
-- [ ] **Step 3: Confirm working tree is clean and on `main`**
+- [x] **Step 3: Confirm working tree is clean and on `main`**
 
 ```bash
 git status
@@ -1544,7 +1544,7 @@ git rev-parse --abbrev-ref HEAD
 
 ### Task 6.2: Build, smoke-test, tag, and ship v0.1.0
 
-- [ ] **Step 1: Run the end-to-end release**
+- [x] **Step 1: Run the end-to-end release**
 
 From the workspace root:
 
@@ -1554,7 +1554,7 @@ make -C services/midi-macro-bridge release VERSION=v0.1.0
 
 The script runs Phase 3 Task 3.3's pipeline: assert preconditions → `package-all` (macOS arm64 native + Linux x86_64 via Docker) → macOS smoke test (regression check for `MIDI channel disconnected`) → tag + push → `gh release create` with both tarballs, both `.sha256`, and the aggregate `SHA256SUMS`.
 
-- [ ] **Step 2: Verify the GitHub Release**
+- [x] **Step 2: Verify the GitHub Release**
 
 ```bash
 gh release view v0.1.0
@@ -1566,7 +1566,7 @@ Expected: lists `midi-macro-bridge-v0.1.0-aarch64-apple-darwin.tar.gz`, `...-x86
 
 The `make release` smoke test validates the locally-built binary. This task validates the **downloaded** tarball — confirms the upload was complete and the install path works for a fresh user.
 
-- [ ] **Step 1: Download and verify checksum**
+- [x] **Step 1: Download and verify checksum**
 
 ```bash
 mkdir -p /tmp/release-test && cd /tmp/release-test
@@ -1577,14 +1577,14 @@ tar -xzf midi-macro-bridge-v0.1.0-aarch64-apple-darwin.tar.gz
 cd midi-macro-bridge-v0.1.0-aarch64-apple-darwin
 ```
 
-- [ ] **Step 2: Run install.sh + clear quarantine**
+- [x] **Step 2: Run install.sh + clear quarantine**
 
 ```bash
 ./install.sh
 xattr -d com.apple.quarantine "$HOME/.local/bin/midi-macro-bridge" || true
 ```
 
-- [ ] **Step 3: Run the installed binary from outside the build tree**
+- [x] **Step 3: Run the installed binary from outside the build tree**
 
 ```bash
 cd /tmp
@@ -1645,7 +1645,7 @@ If neither path is available on this machine, mark this task complete with a not
 
 ### Task 6.5: Update Homebrew formula and ship
 
-- [ ] **Step 1: Run the SHA256 update helper**
+- [x] **Step 1: Run the SHA256 update helper**
 
 ```bash
 cd /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging
@@ -1653,7 +1653,7 @@ cd /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging
     /path/to/homebrew-audiocontrol
 ```
 
-- [ ] **Step 2: Review the diff in the tap repo**
+- [x] **Step 2: Review the diff in the tap repo**
 
 ```bash
 cd /path/to/homebrew-audiocontrol
@@ -1662,7 +1662,7 @@ git diff Formula/midi-macro-bridge.rb
 
 Expected: version bump + two real SHA256s replacing placeholders.
 
-- [ ] **Step 3: Commit and push the tap**
+- [x] **Step 3: Commit and push the tap**
 
 ```bash
 git add Formula/midi-macro-bridge.rb
@@ -1670,7 +1670,7 @@ git commit -m "midi-macro-bridge 0.1.0"
 git push origin main
 ```
 
-- [ ] **Step 4: End-to-end brew install test**
+- [x] **Step 4: End-to-end brew install test**
 
 On a clean macOS Apple Silicon machine (or via `brew uninstall midi-macro-bridge` first):
 
@@ -1687,11 +1687,11 @@ Expected: install succeeds, `--help` prints, `brew services start` launches it a
 
 ### Task 6.6: Close out the feature
 
-- [ ] **Step 1: Update the feature README status table**
+- [x] **Step 1: Update the feature README status table**
 
 Mark phases 1–6 complete in `docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/README.md`.
 
-- [ ] **Step 2: Write a DEVELOPMENT-NOTES.md entry**
+- [x] **Step 2: Write a DEVELOPMENT-NOTES.md entry**
 
 In `DEVELOPMENT-NOTES.md`, add an entry following the project journal template (see `.claude/CLAUDE.md`'s Development Journal section).
 

@@ -11,6 +11,55 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-05-05: midi-macro-bridge-packaging — v0.1.0 release
+
+### Feature: midi-macro-bridge-packaging
+### Worktree: audiocontrol-midi-macro-bridge-packaging
+
+### Goal
+Drive `feature/midi-macro-bridge-packaging` end-to-end: implement Phases 1–6, ship v0.1.0 to GitHub Releases, publish a Homebrew tap. Single session, dw-lifecycle:implement loop.
+
+### Accomplished
+- **Phase 1 (#359)** — `paths.rs` module + 11 unit tests (TDD, dependency-injected closures); `--config` flag + `MIDI_MACRO_BRIDGE_CONFIG` env var; `url.txt` writer migrated to namespaced state dir under `audiocontrol/midi-macro-bridge/`. Cross-platform unification dropped `XDG_RUNTIME_DIR` for persistent `dirs::data_dir()` on Linux. 8 commits including 2 review-driven fixes (param rename `home_lookup` → `config_dir_lookup`; mistyped flag-value guard).
+- **Phase 2 (#360)** — launchd plist + systemd user unit + QUARANTINE.md; `package.sh` + `install.sh` for tarball release; `make package` Makefile target. macOS-staged-binary smoke-tested clean.
+- **Phase 3 (#366, replaces closed #361)** — scope reshape from CI workflow to local Makefile + Docker. `Dockerfile.linux-builder` (`rust:1.91-slim-bookworm`, `--platform linux/amd64`); `make package-{macos,linux,all}` per-OS targets with SHA256SUMS aggregation; `make release VERSION=v0.1.0` end-to-end target with preflight checks → `package-all` → macOS smoke → tag + push → `gh release create`. Side-fixed `package.sh` to use `cargo build --release --target $TRIPLE` so per-arch binaries don't collide in `target/release/`. Renamed existing `release` Makefile target to `release-binary`.
+- **Phase 4 (#362)** — created public `audiocontrol-org/homebrew-audiocontrol` tap repo; `Formula/midi-macro-bridge.rb` with placeholder SHA256s and `service do` block; tap README; `update-homebrew-formula.sh` helper that pulls SHA256SUMS from the GitHub Release.
+- **Phase 5 (#363)** — README install + run sections rewritten for packaged-release workflow; CHANGELOG.md seeded with `## v0.1.0` (consumed by `release.sh`'s release-notes extractor); INSTALL.md service activation steps for brew, launchd, systemd.
+- **Phase 6 (#364)** — `make release VERSION=v0.1.0` ran cleanly: built both tarballs, smoke-tested macOS, tagged `v0.1.0`, pushed, created [GitHub Release](https://github.com/audiocontrol-org/audiocontrol/releases/tag/v0.1.0). Downloaded macOS tarball + `install.sh` + run from `/tmp` confirmed `paths.rs` resolves OS-conventional config when invoked outside the build tree. `update-homebrew-formula.sh` filled in real SHA256s; `brew tap`, `brew install`, `brew test`, `brew services start`/`stop` all verified end-to-end.
+
+### Commits
+36 commits on `feature/midi-macro-bridge-packaging` plus 4 commits on `audiocontrol-org/homebrew-audiocontrol` (initial formula, SHA256 fill, two test-block fixes).
+
+### Didn't Work / Surprises
+- **Stale `target/release/midi-macro-bridge` from Docker build** — Linux build inside the container wrote to the bind-mounted `target/release/` (host path), polluting macOS builds. Fixed by switching `package.sh` to `cargo build --release --target $TRIPLE` so per-arch binaries land at `target/$TRIPLE/release/`.
+- **`rust:1.83` was too old** — workspace dep `hashbrown 0.17.0` requires Cargo `edition2024`, stabilised in Rust 1.85. Bumped Dockerfile base to `rust:1.91`.
+- **Linker error inside container** — `enigo` needs `libxdo`. Added `libxdo-dev` to apt-get install in the Dockerfile.
+- **Docker on Apple Silicon defaulted to arm64 image** — first Linux build produced an aarch64-linux-gnu binary, not x86_64. Forced `--platform linux/amd64` in `build-in-docker.sh`.
+- **Brew formula `test do` block broken twice** — first pass used `--help` (no such flag); second pass used `assert_predicate output.length, :>=, 0` (wrong syntax). Final form uses `system bin/"midi-macro-bridge", "--list-ports"` which fails the test on non-zero exit.
+- **Stale midi-macro-bridge process from a prior session** caused the staged binary's CoreMIDI virtual endpoint creation to fail on UniqueID collision (during Phase 2 smoke). User confirmed kill; smoke then ran clean. Lesson: the bridge can't have two instances live (stable UniqueID by design).
+
+### Course Corrections
+- **[ARCHITECTURE]** User asked "why is the macOS package a tarball instead of a pkg?" — surfaced an honest tradeoff (Gatekeeper still blocks unsigned `.pkg` until notarization is in scope; Homebrew consumes tarballs anyway). User accepted tarball-only for v0.1.0; `.pkg` deferred to v0.2.0 with code signing.
+- **[PROCESS]** User redirected scope mid-feature: CI workflow (Phase 3) → local Makefile + Docker. Reshape took ~30 min including PRD/workplan/issue updates and a new Phase 3 issue (#366) replacing closed #361. The reshape was clean because Phase 1 + 2 were already content-stable; only Phase 3 + Phase 6 were CI-flavored.
+- **[PROCESS]** User flagged that `make release` from the feature branch (not main) was acceptable since `main` is checked out in another worktree. The `release.sh` script was already written to warn-but-proceed on off-main; design held up.
+- **[PROCESS]** Permission gate blocked `gh repo create` for the public Homebrew tap (correctly — "continue" wasn't specific enough). Asked for explicit confirmation; user authorized.
+
+### Quantitative
+- User messages: ~30 (mostly course corrections + auto-mode toggles + the tarball-vs-pkg question)
+- Commits: 36 on feature branch + 4 on tap repo
+- User corrections: 4
+- Sub-agents dispatched: ~10 (mostly Phase 1 implementer/reviewer rounds; Phase 2+ went direct since the workplan was prescriptive)
+- Time: single session, ~3 hours wall-clock
+
+### Insights
+1. **Fresh-subagent two-stage review (spec → quality) caught real issues in Phase 1**: the reviewer's `home_lookup` → `config_dir_lookup` rename request prevented a downstream bug in Task 1.2 where `dirs::config_dir()` (not `dirs::home_dir()`) is the right call.
+2. **Per-target build dirs (`target/$TRIPLE/release/`)** are the right default whenever a host has multi-arch builds. Caught here because Linux-via-Docker shares the host's `target/`. Worth standardizing across other Rust services in the monorepo.
+3. **Local Makefile + Docker is faster than CI for v1 iteration** by a wide margin. CI iteration cycles (push → wait for runner → 5 min round-trip per fix) would have made the brew formula test bugs (2 fix passes) painful. Local iteration was seconds per fix.
+4. **The brew formula test bug** is a real-world example of why `brew test <formula>` is worth running locally before publishing the tap. Catches Ruby DSL syntax errors that aren't obvious from reading the formula.
+5. **`gh repo create --public` permission gate was correctly tight** — the harness refused the action even when the user said "continue" because the prior context was about shipping, not about repo creation. The right behavior; would have been a real footgun if it had auto-fired.
+
+---
+
 ## 2026-04-29: midi-macro-bridge — LCXL3 Mixer UX Polish + Phase 10 Reframe
 
 ### Feature: midi-macro-bridge
