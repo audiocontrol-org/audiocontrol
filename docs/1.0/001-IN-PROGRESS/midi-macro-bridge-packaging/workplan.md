@@ -1711,3 +1711,1058 @@ A v0.1.0 release passes when:
 4. The macOS tarball downloaded from the GitHub Release, after `xattr -d com.apple.quarantine`, runs the installed binary successfully from a directory other than the build tree (validates `paths.rs` resolution).
 5. The Linux tarball runs the installed binary successfully on a stock Ubuntu/Debian host (or in a privileged Docker container with `/dev/snd`). Mark with a deferral note if no Linux host is reachable from this session.
 6. `brew tap audiocontrol-org/audiocontrol && brew install midi-macro-bridge` succeeds on macOS Apple Silicon, and `brew services start midi-macro-bridge` launches it as a daemon.
+
+---
+
+## Phase 7: macOS .app + .dmg distribution
+
+> **Design spec:** [`2026-05-05-macos-app-distribution-design.md`](2026-05-05-macos-app-distribution-design.md). The spec is the source of truth for architecture, defaults, and acceptance criteria. This workplan section translates the spec into bite-sized implementation tasks.
+
+**Goal:** Ship a signed and notarized `MidiMacroBridge.app` inside a signed and notarized `.dmg` alongside the existing tarballs. Native AppKit window via `wry` + `tao` hosts the existing HTMX web UI.
+
+**Architecture:** New `gui.rs` module opens a `wry::WebView` window pointed at `http://127.0.0.1:8765` when the binary detects it's running from a `.app` bundle (or when `--gui` is passed). Window close → same graceful halt path as the existing HALT button. Reuses midi-server's macOS signing infrastructure (Developer ID + notarytool credentials) without duplicating it.
+
+**Tech Stack:** Rust 1.85+ on the host, `tao = "0.30"`, `wry = "0.45"` (macOS-only deps), `codesign`, `productsign`, `hdiutil`, `xcrun notarytool`, `xcrun stapler`, `spctl`.
+
+---
+
+### File Structure
+
+| Path | Responsibility | Created in task |
+|---|---|---|
+| `services/midi-macro-bridge/Cargo.toml` | Add `tao` + `wry` under `[target.'cfg(target_os = "macos")'.dependencies]` | 7.1 |
+| `services/midi-macro-bridge/src/gui.rs` | `run_window(url, halt) -> Result<()>` — tao event loop + wry WebView | 7.2 |
+| `services/midi-macro-bridge/src/main.rs` | Wire bundle detection + `--gui`/`--no-gui` flags + call `gui::run_window` after web server binds | 7.3 |
+| `services/midi-macro-bridge/packaging/macos/Info.plist.tmpl` | Template; `__VERSION__` substituted at build time | 7.4 |
+| `services/midi-macro-bridge/packaging/macos/entitlements.plist` | Network server + client only (no JIT, no sandbox) | 7.4 |
+| `services/midi-macro-bridge/packaging/macos/AppIcon.icns` | Placeholder icon (generic) for v0.2.0 | 7.4 |
+| `services/midi-macro-bridge/scripts/package-app.sh` | Build → assemble `.app` → codesign → verify | 7.5 |
+| `services/midi-macro-bridge/scripts/package-dmg.sh` | Stage → `hdiutil create` → codesign → notarize → staple → spctl assess | 7.6 |
+| `services/midi-macro-bridge/Makefile` | Add `package-app`, `package-dmg`; extend `package-all` to include `.dmg` | 7.7 |
+| `services/midi-macro-bridge/scripts/release.sh` | Extend `gh release create` to attach `.dmg` + `.sha256` | 7.8 |
+| `services/midi-macro-bridge/README.md` | New "macOS .app" install path under Install section | 7.9 |
+| `services/midi-macro-bridge/INSTALL.md` | New "Install via .dmg" subsection | 7.9 |
+| `services/midi-macro-bridge/CHANGELOG.md` | Seed `## v0.2.0` entry mentioning .app + .dmg | 7.9 |
+| (PRD + workplan + GitHub issues) | File issues for each deferred item per AC #9 | 7.10 |
+
+---
+
+### Task 7.1: Add tao + wry dependencies + gui.rs scaffolding
+
+**Files:**
+- Modify: `services/midi-macro-bridge/Cargo.toml`
+- Create: `services/midi-macro-bridge/src/gui.rs`
+- Modify: `services/midi-macro-bridge/src/main.rs`
+
+- [ ] **Step 1: Add macOS-gated dependencies**
+
+Edit `services/midi-macro-bridge/Cargo.toml`. Find the `[dependencies]` block. After it, add a new section:
+
+```toml
+[target.'cfg(target_os = "macos")'.dependencies]
+tao = "0.30"
+wry = "0.45"
+```
+
+- [ ] **Step 2: Create the gui.rs module stub**
+
+Create `services/midi-macro-bridge/src/gui.rs`:
+
+```rust
+//! Native AppKit window hosting the embedded web UI via wry/WebView.
+//!
+//! Compiled only on macOS. Other platforms skip the module entirely
+//! (the `mod gui;` declaration in main.rs is also cfg-gated).
+
+use std::sync::mpsc;
+
+/// Channel sender used by the existing HALT button path. The window-close
+/// handler reuses this to graceful-shutdown the bridge — no second shutdown
+/// path to maintain.
+pub type HaltSender = mpsc::Sender<()>;
+
+/// Open a native AppKit window pointing at `url`. Blocks the calling thread
+/// (must be the main thread on macOS) until the user closes the window or
+/// `halt` fires from another source (e.g., the in-page HALT button).
+pub fn run_window(_url: &str, _halt: HaltSender) -> anyhow::Result<()> {
+    // Real implementation lands in Task 7.2.
+    Ok(())
+}
+```
+
+- [ ] **Step 3: Wire the module into main.rs (cfg-gated)**
+
+Edit `services/midi-macro-bridge/src/main.rs`. Find the existing `mod` declarations (around line 17-26). Add a cfg-gated declaration alphabetically:
+
+```rust
+#[cfg(target_os = "macos")]
+mod gui;
+```
+
+- [ ] **Step 4: Verify clean build**
+
+Run from the worktree root:
+
+```bash
+cd services/midi-macro-bridge && cargo build 2>&1 | tail -10
+```
+
+Expected: clean build, possibly some `unused_variables` warnings on the stub function (they go away in Task 7.2). No errors.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add services/midi-macro-bridge/Cargo.toml services/midi-macro-bridge/src/gui.rs services/midi-macro-bridge/src/main.rs
+git commit -m "feat(midi-macro-bridge): scaffold gui module + wry/tao deps (macOS only)"
+```
+
+---
+
+### Task 7.2: Implement gui::run_window with tao + wry
+
+**Files:**
+- Modify: `services/midi-macro-bridge/src/gui.rs`
+
+- [ ] **Step 1: Replace the stub with a real implementation**
+
+Open `services/midi-macro-bridge/src/gui.rs`. Replace the entire `run_window` function body with:
+
+```rust
+use std::sync::mpsc;
+use tao::event::{Event, WindowEvent};
+use tao::event_loop::{ControlFlow, EventLoop};
+use tao::window::WindowBuilder;
+use wry::WebViewBuilder;
+
+pub type HaltSender = mpsc::Sender<()>;
+
+pub fn run_window(url: &str, halt: HaltSender) -> anyhow::Result<()> {
+    let event_loop = EventLoop::new();
+    let window = WindowBuilder::new()
+        .with_title("MIDI Macro Bridge")
+        .with_inner_size(tao::dpi::LogicalSize::new(900.0, 700.0))
+        .build(&event_loop)?;
+
+    // wry attaches the WebView to the tao window.
+    let _webview = WebViewBuilder::new()
+        .with_url(url)
+        .build(&window)?;
+
+    event_loop.run(move |event, _, control_flow| {
+        *control_flow = ControlFlow::Wait;
+        if let Event::WindowEvent {
+            event: WindowEvent::CloseRequested,
+            ..
+        } = event
+        {
+            // Window close = same graceful shutdown path as the HALT button.
+            // The receiver side is the main MIDI loop; ignore send errors
+            // (already-closed channel = bridge is already shutting down).
+            let _ = halt.send(());
+            *control_flow = ControlFlow::Exit;
+        }
+    });
+    // event_loop.run never returns on macOS; this line is unreachable but
+    // keeps the function signature honest for non-macOS callers.
+    #[allow(unreachable_code)]
+    Ok(())
+}
+```
+
+- [ ] **Step 2: Verify compile**
+
+```bash
+cd services/midi-macro-bridge && cargo build 2>&1 | tail -10
+```
+
+Expected: clean build. wry pulls in WebKit framework links; the link line gets longer but should succeed on stock macOS.
+
+- [ ] **Step 3: Smoke test the window in isolation (manual)**
+
+Add a temporary test runner. We don't commit this — it's an inline verification. Open a Rust REPL or write a 5-line throwaway:
+
+```bash
+cd services/midi-macro-bridge
+cat > /tmp/gui-smoke.rs <<'EOF'
+fn main() {
+    let (tx, _rx) = std::sync::mpsc::channel();
+    midi_macro_bridge::gui::run_window("http://example.com", tx).unwrap();
+}
+EOF
+```
+
+Actually skip the throwaway — Task 7.3 wires `--gui` into the real binary, which is the proper smoke. Move to Task 7.3 and verify there.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add services/midi-macro-bridge/src/gui.rs
+git commit -m "feat(midi-macro-bridge): implement gui::run_window with tao + wry WebView"
+```
+
+---
+
+### Task 7.3: Bundle context detection + main.rs flag wiring
+
+**Files:**
+- Modify: `services/midi-macro-bridge/src/main.rs`
+
+- [ ] **Step 1: Add bundle detection helper**
+
+Edit `services/midi-macro-bridge/src/main.rs`. Add this helper function near the top (after the `use` block but before `fn main`):
+
+```rust
+/// Detect whether the current executable lives inside a macOS .app bundle.
+/// Returns false on non-macOS platforms.
+fn launched_from_app_bundle() -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(exe) = std::env::current_exe() {
+            return exe.to_string_lossy().contains(".app/Contents/MacOS/");
+        }
+        false
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        false
+    }
+}
+```
+
+- [ ] **Step 2: Add the gui-mode resolver**
+
+After `launched_from_app_bundle`, add:
+
+```rust
+/// Resolve whether the binary should open a native window:
+///   - `--gui` flag forces ON
+///   - `--no-gui` flag forces OFF
+///   - Otherwise, true iff launched from an .app bundle
+fn resolve_gui_mode(args: &[String]) -> bool {
+    if args.iter().any(|a| a == "--no-gui") {
+        return false;
+    }
+    if args.iter().any(|a| a == "--gui") {
+        return true;
+    }
+    launched_from_app_bundle()
+}
+```
+
+- [ ] **Step 3: Wire the call site**
+
+Find the existing `open_browser(&url)` call in `main.rs` (search: `grep -n 'open_browser' services/midi-macro-bridge/src/main.rs`). It's currently gated by `config.web.auto_open_browser && !no_open`. Wrap it with the new gui-mode check. Replace the existing block:
+
+```rust
+if config.web.auto_open_browser && !no_open {
+    open_browser(&url);
+}
+```
+
+with:
+
+```rust
+if resolve_gui_mode(&args) {
+    #[cfg(target_os = "macos")]
+    {
+        // run_window blocks the main thread until the window closes or halt fires.
+        // Bridge exits cleanly afterward via the same path as the HALT button.
+        if let Err(e) = gui::run_window(&url, halt_tx.clone()) {
+            warn!(error = ?e, "gui window failed to open; falling back to web-only");
+            if config.web.auto_open_browser && !no_open {
+                open_browser(&url);
+            }
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        warn!("--gui requested but only macOS supports the wry window today; falling back to web-only");
+        if config.web.auto_open_browser && !no_open {
+            open_browser(&url);
+        }
+    }
+} else if config.web.auto_open_browser && !no_open {
+    open_browser(&url);
+}
+```
+
+(Adapt `halt_tx` to whatever the existing channel sender is named — look for the symbol the HALT-API handler posts to. It's likely a `Cmd` enum variant via `mpsc::Sender<Cmd>`; in that case, define a small adapter closure that wraps `halt.send(()) -> tx.send(Cmd::Halt)`.)
+
+- [ ] **Step 4: Test --gui smoke (with browser fallback to verify default path)**
+
+Build and run. From the worktree root:
+
+```bash
+cd services/midi-macro-bridge && cargo build 2>&1 | tail -5
+```
+
+Expected: clean build.
+
+Default behavior (no flag) — should still open browser:
+
+```bash
+./target/debug/midi-macro-bridge --no-open >/tmp/gui-default.log 2>&1 &
+PID=$!
+sleep 2
+if kill -0 $PID 2>/dev/null; then echo "STAY_UP: ok"; else echo "STAY_UP: FAIL"; fi
+kill $PID 2>/dev/null || true
+wait $PID 2>/dev/null || true
+grep -q "MIDI channel disconnected" /tmp/gui-default.log && echo "REGRESSION present" || echo "REGRESSION clean"
+```
+
+`--gui` flag should open the window. This requires interactive verification on macOS:
+
+```bash
+./target/debug/midi-macro-bridge --gui
+```
+
+Expected: a 900x700 native AppKit window opens within ~2s showing the bridge's HTMX UI. Click the HALT button (3-second hold) — bridge exits. OR close the window with red X / Cmd-W — bridge exits the same way.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add services/midi-macro-bridge/src/main.rs
+git commit -m "feat(midi-macro-bridge): wire --gui flag + bundle detection; window path uses gui::run_window"
+```
+
+---
+
+### Task 7.4: Authoring Info.plist template, entitlements, and placeholder icon
+
+**Files:**
+- Create: `services/midi-macro-bridge/packaging/macos/Info.plist.tmpl`
+- Create: `services/midi-macro-bridge/packaging/macos/entitlements.plist`
+- Create: `services/midi-macro-bridge/packaging/macos/AppIcon.icns`
+
+- [ ] **Step 1: Author Info.plist template**
+
+Create `services/midi-macro-bridge/packaging/macos/Info.plist.tmpl`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>midi-macro-bridge</string>
+    <key>CFBundleIdentifier</key>
+    <string>org.audiocontrol.midi-macro-bridge</string>
+    <key>CFBundleName</key>
+    <string>MIDI Macro Bridge</string>
+    <key>CFBundleDisplayName</key>
+    <string>MIDI Macro Bridge</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleSignature</key>
+    <string>????</string>
+    <key>CFBundleVersion</key>
+    <string>__VERSION__</string>
+    <key>CFBundleShortVersionString</key>
+    <string>__VERSION__</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>11.0</string>
+    <key>LSUIElement</key>
+    <false/>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+</dict>
+</plist>
+```
+
+`LSUIElement = false` keeps the Dock icon visible (per spec defaults). `__VERSION__` is a sed-substituted placeholder; package-app.sh fills it in.
+
+- [ ] **Step 2: Lint the plist template**
+
+```bash
+plutil -lint services/midi-macro-bridge/packaging/macos/Info.plist.tmpl
+```
+
+Expected: `OK`. (The `__VERSION__` placeholder is a string value, so plutil parses it as valid XML.)
+
+- [ ] **Step 3: Author entitlements.plist**
+
+Create `services/midi-macro-bridge/packaging/macos/entitlements.plist`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.network.server</key>
+    <true/>
+    <key>com.apple.security.network.client</key>
+    <true/>
+</dict>
+</plist>
+```
+
+```bash
+plutil -lint services/midi-macro-bridge/packaging/macos/entitlements.plist
+```
+
+Expected: `OK`.
+
+- [ ] **Step 4: Generate a placeholder AppIcon.icns**
+
+Use `sips` + `iconutil` (both ship with macOS). Build an iconset from a single 1024x1024 PNG with a generic glyph, then convert.
+
+```bash
+mkdir -p /tmp/AppIcon.iconset
+# Generate a 1024x1024 dark square with white "MMB" text using sips's image-creation isn't built in;
+# use an alternate one-liner with `qlmanage` or `convert` if ImageMagick is installed,
+# or hand-craft the PNG. Here we generate a flat color square:
+python3 - <<'PY'
+from PIL import Image, ImageDraw, ImageFont
+img = Image.new('RGBA', (1024, 1024), (28, 28, 32, 255))
+d = ImageDraw.Draw(img)
+try:
+    f = ImageFont.truetype('/System/Library/Fonts/Helvetica.ttc', 320)
+except Exception:
+    f = ImageFont.load_default()
+text = 'MMB'
+bbox = d.textbbox((0, 0), text, font=f)
+w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+d.text(((1024 - w) / 2 - bbox[0], (1024 - h) / 2 - bbox[1]), text, fill=(220, 220, 230, 255), font=f)
+img.save('/tmp/AppIcon.iconset/icon_1024x1024.png')
+PY
+
+# Generate the required size variants from the 1024x1024 master.
+cd /tmp/AppIcon.iconset
+for sz in 16 32 64 128 256 512; do
+    sips -z $sz $sz icon_1024x1024.png --out icon_${sz}x${sz}.png >/dev/null
+    sips -z $((sz*2)) $((sz*2)) icon_1024x1024.png --out icon_${sz}x${sz}@2x.png >/dev/null
+done
+sips -z 1024 1024 icon_1024x1024.png --out icon_512x512@2x.png >/dev/null
+
+iconutil -c icns -o /tmp/AppIcon.icns /tmp/AppIcon.iconset
+mv /tmp/AppIcon.icns /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging/services/midi-macro-bridge/packaging/macos/AppIcon.icns
+rm -rf /tmp/AppIcon.iconset
+```
+
+If `python3` doesn't have PIL: `pip3 install --user Pillow` first, or skip the Python step and place a hand-made 1024x1024 PNG at `/tmp/AppIcon.iconset/icon_1024x1024.png`. The placeholder content doesn't matter for v0.2.0 — a real icon ships later (per spec Non-goals).
+
+Verify the icon:
+
+```bash
+file services/midi-macro-bridge/packaging/macos/AppIcon.icns
+```
+
+Expected: `Mac OS X icon`.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add services/midi-macro-bridge/packaging/macos/
+git commit -m "feat(midi-macro-bridge): add Info.plist template + entitlements + placeholder AppIcon"
+```
+
+---
+
+### Task 7.5: package-app.sh — assemble + sign .app
+
+**Files:**
+- Create: `services/midi-macro-bridge/scripts/package-app.sh`
+
+- [ ] **Step 1: Locate the midi-server signing config**
+
+The script sources `release.config.sh` and `release-secrets.sh` from the midi-server repo. Verify the path before authoring the script:
+
+```bash
+ls /Users/orion/work/midi-server-work/midi-server/packaging/macos/release.config.sh
+ls /Users/orion/work/midi-server-work/midi-server/packaging/macos/release-secrets.sh
+```
+
+Expected: both files exist. If the path differs on this machine, set `AUDIOCONTROL_SIGNING_INFRA_DIR` accordingly.
+
+- [ ] **Step 2: Author the script**
+
+Create `services/midi-macro-bridge/scripts/package-app.sh`:
+
+```bash
+#!/usr/bin/env bash
+# Assemble + sign MidiMacroBridge.app from a release binary.
+#
+# Usage:
+#   scripts/package-app.sh --version <vX.Y.Z>
+#
+# Produces under target/release-package/:
+#   MidiMacroBridge-<version>.app  (signed, NOT notarized — that happens in package-dmg.sh)
+
+set -euo pipefail
+
+VERSION=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --version) VERSION="$2"; shift 2 ;;
+        *) echo "unknown arg: $1" >&2; exit 2 ;;
+    esac
+done
+[[ -n "$VERSION" ]] || { echo "ERROR: --version required (e.g., v0.2.0)" >&2; exit 2; }
+[[ "$VERSION" == v* ]] || { echo "ERROR: VERSION must start with 'v'" >&2; exit 2; }
+
+VERSION_NO_V="${VERSION#v}"
+SERVICE_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
+cd "$SERVICE_DIR"
+
+# Source midi-server's signing config + secrets.
+SIGNING_INFRA_DIR="${AUDIOCONTROL_SIGNING_INFRA_DIR:-$HOME/work/midi-server-work/midi-server/packaging/macos}"
+[[ -f "$SIGNING_INFRA_DIR/release.config.sh" ]] || {
+    echo "ERROR: signing config not found at $SIGNING_INFRA_DIR/release.config.sh" >&2
+    echo "       Set AUDIOCONTROL_SIGNING_INFRA_DIR to the correct path." >&2
+    exit 1
+}
+# shellcheck disable=SC1091
+source "$SIGNING_INFRA_DIR/release.config.sh"
+# Secrets script reads $RELEASE_SECRETS_PASSWORD from the env, decrypts and exports
+# APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD. We don't need them for codesign — only for
+# notarytool in package-dmg.sh — but sourcing here lets us fail fast if creds aren't
+# available before doing the build.
+# shellcheck disable=SC1091
+source "$SIGNING_INFRA_DIR/release-secrets.sh"
+
+DEVELOPER_ID_APP="${DEVELOPER_ID_APP:-$DEVELOPER_ID_APP_DEFAULT}"
+[[ -n "$DEVELOPER_ID_APP" ]] || { echo "ERROR: DEVELOPER_ID_APP unset" >&2; exit 1; }
+
+APP_NAME="MidiMacroBridge.app"
+STAGING="target/release-package/$APP_NAME"
+TRIPLE="aarch64-apple-darwin"
+
+echo "→ building release binary for $TRIPLE"
+cargo build --release --target "$TRIPLE"
+
+echo "→ assembling $STAGING"
+rm -rf "$STAGING"
+mkdir -p "$STAGING/Contents/MacOS" "$STAGING/Contents/Resources"
+
+cp "target/$TRIPLE/release/midi-macro-bridge" "$STAGING/Contents/MacOS/"
+
+# Substitute __VERSION__ into Info.plist.
+python3 -c "
+import sys
+src = open('packaging/macos/Info.plist.tmpl').read()
+out = src.replace('__VERSION__', '$VERSION_NO_V')
+open('$STAGING/Contents/Info.plist', 'w').write(out)
+"
+
+# PkgInfo is a 4-byte type code + 4-byte signature. APPLE_PACKAGE_TYPE = APPL.
+printf 'APPL????' > "$STAGING/Contents/PkgInfo"
+
+cp packaging/macos/AppIcon.icns "$STAGING/Contents/Resources/AppIcon.icns"
+
+echo "→ codesigning"
+codesign --force --options runtime \
+    --entitlements packaging/macos/entitlements.plist \
+    --sign "$DEVELOPER_ID_APP" \
+    "$STAGING/Contents/MacOS/midi-macro-bridge"
+
+codesign --force --options runtime \
+    --entitlements packaging/macos/entitlements.plist \
+    --sign "$DEVELOPER_ID_APP" \
+    "$STAGING"
+
+echo "→ verifying signature"
+codesign --verify --deep --strict --verbose=2 "$STAGING"
+
+echo "✓ $STAGING (signed, not yet notarized)"
+echo "  Run scripts/package-dmg.sh --version $VERSION to produce a notarized .dmg."
+```
+
+Mark executable:
+
+```bash
+chmod +x services/midi-macro-bridge/scripts/package-app.sh
+```
+
+- [ ] **Step 3: Smoke test**
+
+```bash
+cd services/midi-macro-bridge && ./scripts/package-app.sh --version v0.0.2-test 2>&1 | tail -10
+```
+
+Expected output ends with:
+```
+→ verifying signature
+target/release-package/MidiMacroBridge.app: valid on disk
+target/release-package/MidiMacroBridge.app: satisfies its Designated Requirement
+✓ target/release-package/MidiMacroBridge.app (signed, not yet notarized)
+```
+
+- [ ] **Step 4: Manual launch test**
+
+```bash
+open services/midi-macro-bridge/target/release-package/MidiMacroBridge.app
+```
+
+Expected: a native AppKit window opens within ~2s showing the bridge's HTMX UI. Close the window; bridge exits cleanly.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add services/midi-macro-bridge/scripts/package-app.sh
+git commit -m "feat(midi-macro-bridge): add package-app.sh — assemble + sign MidiMacroBridge.app"
+```
+
+---
+
+### Task 7.6: package-dmg.sh — wrap, notarize, staple
+
+**Files:**
+- Create: `services/midi-macro-bridge/scripts/package-dmg.sh`
+
+- [ ] **Step 1: Author the script**
+
+Create `services/midi-macro-bridge/scripts/package-dmg.sh`:
+
+```bash
+#!/usr/bin/env bash
+# Wrap MidiMacroBridge.app in a signed + notarized .dmg.
+#
+# Usage:
+#   scripts/package-dmg.sh --version <vX.Y.Z>
+#
+# Requires that scripts/package-app.sh has already produced
+# target/release-package/MidiMacroBridge.app for the matching version.
+#
+# Produces:
+#   target/release-package/MidiMacroBridge-<version>.dmg
+#   target/release-package/MidiMacroBridge-<version>.dmg.sha256
+
+set -euo pipefail
+
+VERSION=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --version) VERSION="$2"; shift 2 ;;
+        *) echo "unknown arg: $1" >&2; exit 2 ;;
+    esac
+done
+[[ -n "$VERSION" ]] || { echo "ERROR: --version required" >&2; exit 2; }
+[[ "$VERSION" == v* ]] || { echo "ERROR: VERSION must start with 'v'" >&2; exit 2; }
+
+SERVICE_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
+cd "$SERVICE_DIR"
+
+# Build the .app first if not present (idempotent — package-app.sh handles its own staging).
+if [[ ! -d "target/release-package/MidiMacroBridge.app" ]]; then
+    echo "→ MidiMacroBridge.app not found; running package-app.sh first"
+    ./scripts/package-app.sh --version "$VERSION"
+fi
+
+SIGNING_INFRA_DIR="${AUDIOCONTROL_SIGNING_INFRA_DIR:-$HOME/work/midi-server-work/midi-server/packaging/macos}"
+# shellcheck disable=SC1091
+source "$SIGNING_INFRA_DIR/release.config.sh"
+# shellcheck disable=SC1091
+source "$SIGNING_INFRA_DIR/release-secrets.sh"
+
+DEVELOPER_ID_APP="${DEVELOPER_ID_APP:-$DEVELOPER_ID_APP_DEFAULT}"
+[[ -n "$DEVELOPER_ID_APP" ]] || { echo "ERROR: DEVELOPER_ID_APP unset" >&2; exit 1; }
+[[ -n "${APPLE_ID:-}" ]] || { echo "ERROR: APPLE_ID unset (release-secrets.sh failed?)" >&2; exit 1; }
+[[ -n "${APPLE_APP_SPECIFIC_PASSWORD:-}" ]] || { echo "ERROR: APPLE_APP_SPECIFIC_PASSWORD unset" >&2; exit 1; }
+[[ -n "${APPLE_TEAM_ID:-}" ]] || APPLE_TEAM_ID="${APPLE_TEAM_ID_DEFAULT:-}"
+[[ -n "$APPLE_TEAM_ID" ]] || { echo "ERROR: APPLE_TEAM_ID unset" >&2; exit 1; }
+
+DMG_NAME="MidiMacroBridge-${VERSION}.dmg"
+DMG_PATH="target/release-package/$DMG_NAME"
+STAGING="target/release-package/dmg-staging"
+
+echo "→ staging DMG contents at $STAGING"
+rm -rf "$STAGING"
+mkdir -p "$STAGING"
+cp -R target/release-package/MidiMacroBridge.app "$STAGING/"
+ln -s /Applications "$STAGING/Applications"
+
+echo "→ creating $DMG_PATH (hdiutil)"
+rm -f "$DMG_PATH"
+hdiutil create \
+    -volname "MIDI Macro Bridge" \
+    -srcfolder "$STAGING" \
+    -ov \
+    -format UDZO \
+    "$DMG_PATH"
+
+echo "→ codesigning DMG"
+codesign --force --sign "$DEVELOPER_ID_APP" "$DMG_PATH"
+
+echo "→ submitting to notarytool (this takes ~2-5 min)"
+xcrun notarytool submit "$DMG_PATH" \
+    --apple-id "$APPLE_ID" \
+    --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+    --team-id "$APPLE_TEAM_ID" \
+    --wait
+
+echo "→ stapling notarization ticket"
+xcrun stapler staple "$DMG_PATH"
+
+echo "→ Gatekeeper assessment"
+spctl --assess --type install --verbose=2 "$DMG_PATH"
+
+echo "→ computing SHA256"
+( cd target/release-package && shasum -a 256 "$DMG_NAME" > "${DMG_NAME}.sha256" )
+
+# Cleanup staging dir.
+rm -rf "$STAGING"
+
+echo
+echo "✓ $DMG_PATH"
+echo "✓ ${DMG_PATH}.sha256 ($(cat ${DMG_PATH}.sha256))"
+```
+
+Mark executable:
+
+```bash
+chmod +x services/midi-macro-bridge/scripts/package-dmg.sh
+```
+
+- [ ] **Step 2: Smoke test (full pipeline including notarization)**
+
+This takes ~3-7 minutes due to the notarization round trip. Make sure `RELEASE_SECRETS_PASSWORD` is set in the environment before running:
+
+```bash
+cd services/midi-macro-bridge && ./scripts/package-dmg.sh --version v0.0.2-test 2>&1 | tail -20
+```
+
+Expected output ends with:
+```
+→ Gatekeeper assessment
+target/release-package/MidiMacroBridge-v0.0.2-test.dmg: accepted
+source=Notarized Developer ID
+→ computing SHA256
+✓ target/release-package/MidiMacroBridge-v0.0.2-test.dmg
+✓ target/release-package/MidiMacroBridge-v0.0.2-test.dmg.sha256 (<sha>  MidiMacroBridge-v0.0.2-test.dmg)
+```
+
+- [ ] **Step 3: Manual install test**
+
+```bash
+open target/release-package/MidiMacroBridge-v0.0.2-test.dmg
+```
+
+Expected: Finder mounts the DMG, shows MidiMacroBridge.app + an Applications symlink. Drag the .app to Applications. Eject. Then:
+
+```bash
+open /Applications/MidiMacroBridge.app
+```
+
+Expected: window opens, bridge runs, no Gatekeeper warning (because notarized). Close the window; bridge exits.
+
+Cleanup:
+
+```bash
+rm -rf /Applications/MidiMacroBridge.app
+```
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add services/midi-macro-bridge/scripts/package-dmg.sh
+git commit -m "feat(midi-macro-bridge): add package-dmg.sh — wrap + notarize + staple"
+```
+
+---
+
+### Task 7.7: Makefile targets
+
+**Files:**
+- Modify: `services/midi-macro-bridge/Makefile`
+
+- [ ] **Step 1: Add new targets**
+
+Edit `services/midi-macro-bridge/Makefile`. Find the `package-all` target. Modify the file to add `package-app` and `package-dmg` targets and extend `package-all` to depend on `package-dmg`:
+
+```make
+package-app:
+	./scripts/package-app.sh --version $(VERSION)
+
+package-dmg:
+	./scripts/package-dmg.sh --version $(VERSION)
+
+package-all: package-macos package-linux package-dmg
+	@cd target/release-package && \
+	  rm -f SHA256SUMS && \
+	  cat midi-macro-bridge-$(VERSION)-aarch64-apple-darwin.tar.gz.sha256 \
+	      midi-macro-bridge-$(VERSION)-x86_64-unknown-linux-gnu.tar.gz.sha256 \
+	      MidiMacroBridge-$(VERSION).dmg.sha256 \
+	      > SHA256SUMS
+	@echo
+	@echo "✓ Release artifacts for $(VERSION):"
+	@ls -1 target/release-package/midi-macro-bridge-$(VERSION)-*.tar.gz \
+	       target/release-package/midi-macro-bridge-$(VERSION)-*.sha256 \
+	       target/release-package/MidiMacroBridge-$(VERSION).dmg \
+	       target/release-package/MidiMacroBridge-$(VERSION).dmg.sha256 \
+	       target/release-package/SHA256SUMS
+```
+
+Add `package-app package-dmg` to the `.PHONY` line.
+
+- [ ] **Step 2: Update help text**
+
+Add to the help block:
+
+```make
+	@echo "  package-app        assemble + sign MidiMacroBridge.app (no notarize)"
+	@echo "  package-dmg        wrap .app in notarized + stapled .dmg"
+```
+
+- [ ] **Step 3: Verify**
+
+```bash
+cd services/midi-macro-bridge && rm -rf target/release-package && make package-all VERSION=v0.0.2-test 2>&1 | tail -15
+```
+
+Expected: 5 artifacts (2 tarballs, .dmg, 3 .sha256, 1 aggregate SHA256SUMS) listed at the end. Notarization round-trip means this takes ~5-10 minutes total.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add services/midi-macro-bridge/Makefile
+git commit -m "feat(midi-macro-bridge): wire .dmg into Makefile package-all + add per-target shortcuts"
+```
+
+---
+
+### Task 7.8: Extend release.sh to upload .dmg
+
+**Files:**
+- Modify: `services/midi-macro-bridge/scripts/release.sh`
+
+- [ ] **Step 1: Update the gh release create call**
+
+Edit `services/midi-macro-bridge/scripts/release.sh`. Find the `gh release create` invocation near the end. Add the .dmg + .sha256 to the asset list:
+
+```bash
+gh release create "$VERSION" \
+    --title "midi-macro-bridge $VERSION" \
+    --notes-file "$NOTES_FILE" \
+    "midi-macro-bridge-$VERSION-aarch64-apple-darwin.tar.gz" \
+    "midi-macro-bridge-$VERSION-aarch64-apple-darwin.tar.gz.sha256" \
+    "midi-macro-bridge-$VERSION-x86_64-unknown-linux-gnu.tar.gz" \
+    "midi-macro-bridge-$VERSION-x86_64-unknown-linux-gnu.tar.gz.sha256" \
+    "MidiMacroBridge-$VERSION.dmg" \
+    "MidiMacroBridge-$VERSION.dmg.sha256" \
+    SHA256SUMS
+```
+
+The macOS smoke test (which currently runs against the staged tarball binary) should ALSO smoke-test the staged .app:
+
+```bash
+echo "→ smoke testing macOS .app"
+APP_PATH="$SERVICE_DIR/target/release-package/MidiMacroBridge.app"
+if [[ ! -d "$APP_PATH" ]]; then
+    echo "ERROR: MidiMacroBridge.app missing: $APP_PATH" >&2
+    exit 1
+fi
+# Just verify the signature is valid; runtime smoke needs interactive launch.
+codesign --verify --deep --strict "$APP_PATH"
+echo "  ✓ MidiMacroBridge.app signature valid"
+```
+
+Add this smoke step after the existing macOS tarball smoke test, before the tagging step.
+
+- [ ] **Step 2: Verify by running release.sh against a non-existent version**
+
+The preflight should still reject mismatches:
+
+```bash
+./services/midi-macro-bridge/scripts/release.sh --version v9.99.99 2>&1 | head -5
+```
+
+Expected: same `Cargo.toml` mismatch error as before; release.sh extension didn't break preflight.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add services/midi-macro-bridge/scripts/release.sh
+git commit -m "feat(midi-macro-bridge): extend release.sh to attach .dmg to GitHub Release + smoke .app"
+```
+
+---
+
+### Task 7.9: Documentation updates
+
+**Files:**
+- Modify: `services/midi-macro-bridge/README.md`
+- Modify: `services/midi-macro-bridge/INSTALL.md`
+- Modify: `services/midi-macro-bridge/CHANGELOG.md`
+
+- [ ] **Step 1: Add .dmg path to README Install section**
+
+In `services/midi-macro-bridge/README.md`, find the `## Install` section. Add a new subsection AT THE TOP (before Homebrew) since the .dmg is the most user-friendly path:
+
+```markdown
+### macOS (Apple Silicon) — drag-to-Applications .dmg (easiest, no Terminal)
+
+Download `MidiMacroBridge-vX.Y.Z.dmg` from the
+[latest release](https://github.com/audiocontrol-org/audiocontrol/releases),
+double-click to mount, drag `MidiMacroBridge.app` to Applications,
+double-click the app to launch.
+
+A native window opens showing the bridge's web UI. Close the window
+to quit; the bridge runs only while the window is open. The .dmg is
+signed and notarized — no Gatekeeper workaround needed.
+
+For service / daemon / always-on use, see Homebrew below or
+[INSTALL.md](INSTALL.md).
+```
+
+- [ ] **Step 2: Add .dmg flow to INSTALL.md**
+
+In `services/midi-macro-bridge/INSTALL.md`, add a section near the top:
+
+```markdown
+## .app installed from .dmg (interactive launch)
+
+The .dmg distribution installs `MidiMacroBridge.app` to `/Applications`.
+Launch it like any macOS app — by double-clicking. **The .app does not
+register itself as a daemon, LaunchAgent, or Login Item.** This is
+intentional: the .app is for interactive use; if you want the bridge
+running continuously in the background, use the Homebrew install path
+with `brew services start midi-macro-bridge` instead.
+
+Quitting:
+- Click the **HALT** button in the app window (3-second hold), or
+- Close the window (red X / Cmd-W), or
+- Cmd-Q (when implemented in a future version with proper menubar)
+
+All three trigger the same graceful shutdown.
+```
+
+- [ ] **Step 3: Seed CHANGELOG v0.2.0 entry**
+
+In `services/midi-macro-bridge/CHANGELOG.md`, add a new section ABOVE `## v0.1.0`:
+
+```markdown
+## v0.2.0
+
+### Highlights
+- macOS `.app` distribution via signed + notarized `.dmg`.
+- Native AppKit window via `wry` + `tao` hosts the existing web UI — feels like a real Mac app, not a browser tab.
+- New `--gui` and `--no-gui` flags; bundle context auto-detected.
+- Reuses midi-server's macOS code-signing infrastructure (no duplication).
+
+### Notes
+- The `.app` is interactive-launch-only by design. For daemon / always-on use, the Homebrew + `brew services` install path remains.
+- Linux + Windows GUI is supported by `wry` but out of scope for this release.
+- v0.2.0 ships a placeholder app icon; a real icon is planned for a later release.
+```
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add services/midi-macro-bridge/README.md services/midi-macro-bridge/INSTALL.md services/midi-macro-bridge/CHANGELOG.md
+git commit -m "docs(midi-macro-bridge): document .dmg install path + seed CHANGELOG v0.2.0"
+```
+
+---
+
+### Task 7.10: Phase 7 close-out — file deferred-item issues + back-fill
+
+**Files (multiple GitHub issues + spec + workplan + PRD):**
+
+This task implements **AC #9** from the spec. Per the spec's "Deferred to later releases" table, every item must be tracked as a GitHub issue + PRD entry + workplan entry before Phase 7 can move to Complete.
+
+- [ ] **Step 1: File one GitHub issue per deferred item**
+
+For each row in the spec's "Deferred to later releases" table, run:
+
+```bash
+# Phase 8a: Status bar icon
+gh issue create --repo audiocontrol-org/audiocontrol \
+    --title "[midi-macro-bridge-packaging] Phase 8a: Status bar icon for MidiMacroBridge.app" \
+    --body "Tracks the deferred 'status bar icon / menubar item' from the v0.2.0 macOS .app design spec. Adds the tray-icon crate and a status item with HALT/About menu items. See spec: https://github.com/audiocontrol-org/audiocontrol/blob/main/docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/2026-05-05-macos-app-distribution-design.md" \
+    --label enhancement
+```
+
+Repeat for each row in the table (Phase 8a, 8b, 8c, 8d, plus four PRD-only items: Linux/Windows GUI, custom DMG layout, universal binary, brew bottling). Capture each new issue number.
+
+- [ ] **Step 2: Back-fill issue numbers into the spec**
+
+In the spec's "Deferred to later releases" table, edit each row to append the issue number:
+
+```
+| Status bar icon / menubar item (`tray-icon` crate) | `Phase 8a: Status bar icon for MidiMacroBridge.app` ([#XYZ](...)) | New Phase 8a in workplan; PRD Future Phases |
+```
+
+- [ ] **Step 3: Update the PRD's Out-of-Scope section**
+
+In `docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/prd.md`, add a "Future phases" subsection under "Out of Scope" listing each deferred item with its issue link.
+
+- [ ] **Step 4: Add Phase 8 stubs to workplan**
+
+Append placeholder Phase 8a / 8b / 8c / 8d sections to the workplan, each with a one-line description and a link to the corresponding GitHub issue. The actual implementation tasks for Phase 8 are out of scope for now — but the phase scaffolding ensures the work is tracked structurally.
+
+- [ ] **Step 5: Mark all Phase 7 checkboxes complete**
+
+```bash
+python3 -c "
+from pathlib import Path
+p = Path('docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/workplan.md')
+lines = p.read_text().splitlines(keepends=True)
+flipped = 0
+in_phase7 = False
+for i, line in enumerate(lines):
+    if line.startswith('## Phase 7:'):
+        in_phase7 = True
+    elif line.startswith('## Phase ') and in_phase7:
+        in_phase7 = False
+    if in_phase7 and line.startswith('- [ ] '):
+        lines[i] = '- [x] ' + line[6:]
+        flipped += 1
+p.write_text(''.join(lines))
+print(f'flipped {flipped} Phase 7 checkboxes')
+"
+```
+
+- [ ] **Step 6: Update README phase status row**
+
+Flip the Phase 7 row in `docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/README.md` from "In progress" → "Complete". Note: per AC #9, do NOT mark Complete until Steps 1-4 above are done.
+
+- [ ] **Step 7: Comment on the Phase 7 GitHub issue with completion summary**
+
+Use `gh issue comment <phase7-issue-number> --body-file <file>` with a summary of the commits, the GitHub Release URL, the .dmg SHA, and the back-filled deferred-item issue numbers. Don't autonomously close the issue (per project memory).
+
+- [ ] **Step 8: Cut v0.2.0 release**
+
+After the close-out is documented:
+
+```bash
+make -C services/midi-macro-bridge release VERSION=v0.2.0
+```
+
+This invokes `release.sh` which now produces the .dmg alongside tarballs (Tasks 7.6–7.8) and uploads everything to a v0.2.0 GitHub Release.
+
+- [ ] **Step 9: Update Homebrew formula**
+
+After v0.2.0 ships:
+
+```bash
+./services/midi-macro-bridge/scripts/update-homebrew-formula.sh v0.2.0 \
+    /Users/orion/work/audiocontrol-work/homebrew-audiocontrol
+```
+
+Review diff in the tap repo, commit, push.
+
+- [ ] **Step 10: Final commit + push to main**
+
+```bash
+git add docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/
+git commit -m "docs(midi-macro-bridge-packaging): close out Phase 7 — v0.2.0 shipped + deferred items tracked"
+git push origin HEAD:main
+```
+
+---
+
+## Phase 7 Acceptance Criteria
+
+(Mirrors `2026-05-05-macos-app-distribution-design.md` §"Acceptance criteria".)
+
+1. `make package-app VERSION=v0.0.2-test` produces a signed `MidiMacroBridge.app`. `codesign --verify --deep --strict` passes.
+2. Double-click the `.app` from Finder → a native AppKit window opens within ~2s showing the bridge's existing HTMX UI. The HALT button quits the app cleanly. Closing the window (red X / Cmd-W) also quits cleanly.
+3. `make package-dmg VERSION=v0.0.2-test` produces a signed and notarized `.dmg`. `spctl --assess --type install` passes.
+4. Mounting the `.dmg`, dragging `MidiMacroBridge.app` to Applications, and double-clicking from `/Applications` reproduces the same launch flow as #2 — confirms `paths.rs` resolution works for an installed `.app`.
+5. Brew install and tarball install (Phase 2 + 3) continue to work unchanged. The new GUI code path is gated by bundle detection or `--gui` flag and does not affect the headless service modes.
+6. `make release VERSION=v0.2.0` includes the `.dmg` in the GitHub Release alongside the existing tarballs.
+7. Phase 6 regression check (no `MIDI channel disconnected` within 2.5s of default-config startup) still passes for the GUI-launched binary.
+8. The `.app` does not register a `LaunchAgent`, Login Items entry, or any other auto-start mechanism (per spec Non-goals). Verified: a freshly-installed `.app` does not appear in System Settings → General → Login Items, and `launchctl list | grep midi-macro-bridge` returns nothing after a double-click launch + window close.
+9. Every item in the spec's "Deferred to later releases" table has a corresponding GitHub issue filed against the audiocontrol repo, with the issue number back-filled into the spec, AND a mirrored entry in the PRD's Out-of-Scope section AND in the workplan's Future Phases section. Phase 7 cannot move to Complete until this gate passes.

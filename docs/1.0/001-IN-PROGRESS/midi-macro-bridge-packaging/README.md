@@ -22,6 +22,7 @@ Build and release happen **locally** via Makefile + Docker (no GitHub Actions); 
 | 4 | Homebrew tap (`audiocontrol-org/homebrew-audiocontrol` repo + formula + SHA256 update helper) | Complete ([#362](https://github.com/audiocontrol-org/audiocontrol/issues/362)) |
 | 5 | Documentation (README install section, CHANGELOG seed, INSTALL.md service activation steps) | Complete ([#363](https://github.com/audiocontrol-org/audiocontrol/issues/363)) |
 | 6 | First release v0.1.0 — operator-driven `make release VERSION=v0.1.0` (build → smoke → tag → upload via `gh release create`) | Complete (Linux runtime smoke deferred) ([#364](https://github.com/audiocontrol-org/audiocontrol/issues/364)) |
+| 7 | macOS `.app` + `.dmg` distribution (signed + notarized; native AppKit window via wry/tao hosting the existing web UI; no Terminal install required) | Not started ([#367](https://github.com/audiocontrol-org/audiocontrol/issues/367); spec [`2026-05-05-macos-app-distribution-design.md`](2026-05-05-macos-app-distribution-design.md)) |
 
 ## Key Links
 
