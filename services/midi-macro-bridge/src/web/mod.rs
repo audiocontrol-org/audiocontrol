@@ -24,6 +24,7 @@ pub mod state;
 pub mod views;
 
 use std::net::SocketAddr;
+use std::sync::OnceLock;
 use std::thread::JoinHandle;
 
 use anyhow::{Context, Result};
@@ -54,24 +55,24 @@ struct Asset;
 
 // ── Route handlers ─────────────────────────────────────────────────────────────
 
-/// `GET /` — serve the embedded `index.html`.
+const WEB_UI_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// Returns the embedded `index.html` with `__VERSION__` substituted once at
+/// first call; subsequent calls return the same cached `&'static str`.
+fn rendered_index() -> &'static str {
+    static CACHED: OnceLock<String> = OnceLock::new();
+    CACHED.get_or_init(|| {
+        let asset = Asset::get("index.html")
+            .expect("index.html embedded via rust_embed");
+        let html = std::str::from_utf8(&asset.data)
+            .expect("index.html is valid UTF-8");
+        html.replace("__VERSION__", WEB_UI_VERSION)
+    })
+}
+
+/// `GET /` — serve the embedded `index.html` with the Cargo version injected.
 async fn index_handler() -> impl IntoResponse {
-    match Asset::get("index.html") {
-        Some(content) => (
-            axum::http::StatusCode::OK,
-            [(
-                axum::http::header::CONTENT_TYPE,
-                "text/html; charset=utf-8".to_string(),
-            )],
-            content.data.into_owned(),
-        )
-            .into_response(),
-        None => (
-            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-            "index.html missing from embedded assets",
-        )
-            .into_response(),
-    }
+    axum::response::Html(rendered_index())
 }
 
 /// `GET /static/{*path}` — serve any embedded asset under `web/` with the
