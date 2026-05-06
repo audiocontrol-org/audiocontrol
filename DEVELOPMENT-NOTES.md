@@ -11,6 +11,52 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-05-06: midi-macro-bridge-packaging — v0.3.3 hot-fix: .app MIDI regression diagnosis + refactor
+
+### Feature: midi-macro-bridge-packaging
+### Worktree: audiocontrol-midi-macro-bridge-packaging
+
+### Goal
+
+Diagnose and ship a fix for the user-reported defect that v0.3.0–v0.3.2 .app launches register no virtual MCU MIDI endpoint with CoreMIDI. Control interface UI worked, bridge URL was written, but DAWs couldn't see the bridge in Audio MIDI Setup. The brew binary worked.
+
+### Accomplished
+
+- **Root-caused via process sample.** `pkill` + clear lock files + launch .app binary directly + `sample <pid> 2 -mayDie`. Stack showed main thread in `[NSApplication run]`, web/listener threads healthy, **zero CoreMIDI threads**. The MIDI init never started — `gui::run_window` blocked the main thread and the inline MIDI loop in `main()` was unreachable for the lifetime of the process.
+- Filed [#391](https://github.com/audiocontrol-org/audiocontrol/issues/391) with the diagnosis (sample stack frames, brew vs .app side-by-side, root cause, fix outline, acceptance criteria).
+- **Refactored `main.rs`** (commit `578f5ea0`): extracted the MIDI loop body (~605 lines from line 622-1226) into `fn run_bridge(config, cmd_rx, status_tx, events_tx, events_history, self_test) -> Result<()>`. In `--gui` mode on macOS, spawn `run_bridge` on a background thread *before* calling `gui::run_window`. In headless mode, call `run_bridge` directly on the main thread (unchanged). AppKit requires the GUI on main; CoreMIDI does not. Used a Python script for the surgical 600-line extraction rather than Edit-tool block matching.
+- **Cut v0.3.3** via the `release-midi-macro-bridge` skill runbook. DMG notarized, accepted, stapled. All 7 artifacts on the GitHub release. Homebrew tap updated and pushed (commit `1afadda`). Smoke-tested the released `.app` from /Applications/ — virtual MCU endpoint registers, `MIDI Macro Bridge` visible to other CoreMIDI clients via second `--list-ports` invocation.
+- Commented on #391 with the v0.3.3 release link.
+
+### Didn't Work
+
+- **First post-release smoke run gave a false-negative**: after `cp -R "/Volumes/MIDI Macro Bridge/..."` the install showed v0.3.2 behavior (broken). The DMG had auto-mounted to `/Volumes/MIDI Macro Bridge 1` (with a "1" suffix from a stale prior mount), so the cp source path didn't exist and silently no-op'd; the launch hit the prior 0.3.2 install. Caught by `plutil -p Info.plist | grep CFBundleShortVersion` showing 0.3.2. Fix: detached all stale mounts, re-mounted, re-copied — second run logged the full happy path including `created virtual MCU endpoint pair`.
+- **Push to main blocked by permission gate** at §6 of the runbook. The user had previously authorized push-to-main for workflow testing, but the gate is fresh-session-scoped. Worked around by reporting it to the user, who pushed manually.
+
+### Course Corrections
+
+- **[PROCESS]** User asked early "did the single-instance lock break it causing a deadlock?" — that was a useful pressure-test of my hypothesis. I had already run `sample` which showed the listener thread blocked on `accept()` (correct behavior, not deadlock), but verbalizing the answer ("no, here's why — the lock isn't the cause") forced me to re-examine the sample output and find the actual root cause (no MIDI thread *at all*) rather than chase the lock theory.
+- **[PROCESS]** Used a Python script for the 600-line function extraction instead of trying to match a 600-line block in the Edit tool. The script asserts file boundaries (e.g., `assert lines[621].startswith("    // ── MIDI connections")`) before mutating, so a structural drift between the read and the write would fail loudly. This was the right call vs. either (a) one giant Edit prone to whitespace drift, or (b) many small Edits that would each need separate matches.
+- **[PROCESS]** Smoke-test caught a self-foot-shoot. The CFBundleShortVersionString check (`plutil -p Info.plist | grep CFBundleShort`) is now a permanent step I should add to the runbook §8 as a "verify the version actually installed" gate before claiming the smoke test passed. Without it I'd have shipped an "I tested it" claim against a stale install.
+
+### Quantitative
+
+- User messages this session: ~6 ("did the lock break it?", "file and fix", "cut v0.3.3", "git push origin HEAD:main run in the worktree", "What's next?", session-end skill)
+- Commits: 3 (`578f5ea0` fix, `5a3039f4` version bump, plus the homebrew tap commit `1afadda`)
+- Issues filed: 1 (#391)
+- Releases shipped: 1 (v0.3.3)
+- User corrections: 0 (auto mode, executed continuously)
+- Files modified: 4 (main.rs, Cargo.toml, Cargo.lock, CHANGELOG.md, plus formula in tap repo)
+
+### Insights
+
+- **A blocking API change in a control-flow path is a class of bug that pre-release smoke does not catch.** The Phase 8 architectural shift "gui::run_window event loop persists for process lifetime" was correct as a UX decision, but it silently turned the inline MIDI loop dead-code-after-blocking. The release pipeline's smoke test (boot for 2.5s, no `MIDI channel disconnected` log) didn't catch it because the headless binary doesn't enter the GUI path. **Lesson: any release that touches the GUI event loop needs a separate `--gui` smoke test that confirms the virtual MCU endpoint is registered**, not just that the process stays up. Worth adding to the release runbook §4.
+- **Sampling a hung process is a 30-second diagnostic that beats every speculation cycle.** I should have sampled before forming any hypotheses about coremidi or hardened-runtime entitlements. The sample answered the question definitively in one pass: "main thread is in NSApplication.run, no MIDI thread exists" → MIDI never started → search the code path for what runs before MIDI init. Per memory `feedback_dont_blame_device.md`: prove four things first before blaming the device — I almost went down the entitlements path before sampling.
+- **The MIDI loop body in `main.rs` was 605 lines inside `main()`.** The refactor extracted it to a function but main.rs is still 2503 lines, well over the 300-500 line CLAUDE.md threshold. The fix surfaced the file-size violation as a follow-up; not blocking for v0.3.3 but worth a focused pass when there's headroom.
+- **The release runbook held up.** Issued v0.3.3 in ~12 min including notarization, 0 deviations from §1-§5, only §6 blocked by the permission gate. The §2.5 self-checks (rm staged .app, MenuEvent grep, .icns size) all passed and gave confidence. The §9.5 "patch follow-up rhythm" pattern (file issue → fix → bump → cut) was exactly the right shape.
+
+---
+
 ## 2026-05-06: midi-macro-bridge-packaging — Phases 7-10, v0.2.0 → v0.3.2, brand mark, release runbook
 
 ### Feature: midi-macro-bridge-packaging
