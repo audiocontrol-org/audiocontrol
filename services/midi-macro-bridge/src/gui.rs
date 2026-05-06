@@ -1,48 +1,136 @@
-//! Native AppKit window hosting the embedded web UI via wry/WebView.
+//! Native AppKit window hosting the embedded web UI via wry/WebView,
+//! plus a persistent status bar item and signal-driven shutdown.
 //!
 //! Compiled only on macOS. Other platforms skip the module entirely
 //! (the `mod gui;` declaration in main.rs is also cfg-gated).
 
+use tao::dpi::LogicalSize;
 use tao::event::{Event, WindowEvent};
-use tao::event_loop::{ControlFlow, EventLoop};
-use tao::window::WindowBuilder;
+use tao::event_loop::{ControlFlow, EventLoop, EventLoopBuilder};
+use tao::window::{Window, WindowBuilder};
+use tray_icon::menu::{Menu, MenuEvent, MenuItem};
+use tray_icon::{Icon, TrayIconBuilder};
 use wry::WebViewBuilder;
 
-/// Open a native AppKit window pointing at `url`. Blocks the calling thread
-/// (must be the main thread on macOS) until the user closes the window or
-/// `halt` is invoked from another source (e.g., the in-page HALT button).
-///
-/// `halt` is a closure rather than a typed channel sender so that callers can
-/// bridge to whatever shutdown mechanism they use (e.g. `mpsc::Sender<Cmd>`)
-/// without gui.rs depending on the caller's channel types.
-pub fn run_window(url: &str, halt: impl Fn() + Send + 'static) -> anyhow::Result<()> {
-    let event_loop = EventLoop::new();
-    let window = WindowBuilder::new()
-        .with_title("MIDI Macro Bridge")
-        .with_inner_size(tao::dpi::LogicalSize::new(900.0, 700.0))
-        .build(&event_loop)?;
+const STATUS_BAR_ICON_PNG: &[u8] =
+    include_bytes!("../packaging/macos/StatusBarIcon.png");
 
-    // wry 0.45 takes the window reference in WebViewBuilder::new(), not in build().
+/// Events routed through the tao event-loop proxy so that tray-icon menu
+/// callbacks can safely cross the thread boundary into the main event loop.
+///
+/// `pub` so that Tasks 8.2 and 8.3 can add new variants without touching
+/// the internals of `run_window`.
+#[derive(Debug, Clone)]
+pub enum UserEvent {
+    ShowWindow,
+    Quit,
+}
+
+/// Open the bridge UI window and run the macOS event loop until the user
+/// quits via the status bar menu or `halt` fires from another source.
+///
+/// Signature preserved from Phase 7: `url` is the local HTTP URL for the
+/// embedded web UI; `halt` is a zero-argument closure that triggers the
+/// bridge's graceful shutdown path (e.g. sends a Cmd::Halt to the runtime).
+///
+/// The function blocks the calling thread (must be the main thread on macOS)
+/// for the lifetime of the process. It returns only when the event loop exits.
+pub fn run_window(url: &str, halt: impl Fn() + Send + 'static) -> anyhow::Result<()> {
+    let event_loop: EventLoop<UserEvent> = EventLoopBuilder::with_user_event().build();
+    let event_loop_proxy = event_loop.create_proxy();
+
+    let window = build_window(&event_loop)?;
     let _webview = WebViewBuilder::new(&window)
         .with_url(url)
         .build()?;
 
+    let (_tray, _menu_show, _menu_quit) = build_tray_icon(&event_loop_proxy)?;
+
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
-        if let Event::WindowEvent {
-            event: WindowEvent::CloseRequested,
-            ..
-        } = event
-        {
-            // Window close = same graceful shutdown path as the HALT button.
-            // Ignore errors: an already-closed channel means the bridge is
-            // already shutting down.
-            halt();
-            *control_flow = ControlFlow::Exit;
+        match event {
+            // Window close → hide window; keep the app alive via the status bar.
+            Event::WindowEvent {
+                event: WindowEvent::CloseRequested,
+                ..
+            } => {
+                window.set_visible(false);
+            }
+            Event::UserEvent(UserEvent::ShowWindow) => {
+                window.set_visible(true);
+                window.set_focus();
+            }
+            Event::UserEvent(UserEvent::Quit) => {
+                halt();
+                *control_flow = ControlFlow::Exit;
+            }
+            _ => {}
         }
     });
-    // event_loop.run never returns on macOS; this line is unreachable but
-    // keeps the function signature honest for non-macOS callers.
+
+    // event_loop.run never returns on macOS; this is unreachable but keeps
+    // the return type honest for the compiler.
     #[allow(unreachable_code)]
     Ok(())
+}
+
+fn build_window(event_loop: &EventLoop<UserEvent>) -> anyhow::Result<Window> {
+    Ok(WindowBuilder::new()
+        .with_title("MIDI Macro Bridge")
+        .with_inner_size(LogicalSize::new(900.0_f64, 700.0_f64))
+        .build(event_loop)?)
+}
+
+/// Decode a PNG byte slice to raw RGBA pixels and build a `tray_icon::Icon`.
+///
+/// API deviation from workplan: `Icon::from_rgba_bytes` does not exist in
+/// tray-icon 0.23. The actual API is `Icon::from_rgba(rgba: Vec<u8>, w, h)`,
+/// which takes pre-decoded RGBA bytes. We decode the embedded PNG via the
+/// `png` crate (already a transitive dependency of `tray-icon`; declared
+/// explicitly in the macOS-gated `[target.*.dependencies]` block).
+fn icon_from_png_bytes(png_bytes: &[u8]) -> anyhow::Result<Icon> {
+    let decoder = png::Decoder::new(std::io::Cursor::new(png_bytes));
+    let mut reader = decoder.read_info()?;
+    let buf_size = reader
+        .output_buffer_size()
+        .ok_or_else(|| anyhow::anyhow!("png: output_buffer_size unavailable before first frame"))?;
+    let mut buf = vec![0u8; buf_size];
+    let info = reader.next_frame(&mut buf)?;
+    let rgba = buf[..info.buffer_size()].to_vec();
+    Ok(Icon::from_rgba(rgba, info.width, info.height)?)
+}
+
+fn build_tray_icon(
+    proxy: &tao::event_loop::EventLoopProxy<UserEvent>,
+) -> anyhow::Result<(tray_icon::TrayIcon, MenuItem, MenuItem)> {
+    let icon = icon_from_png_bytes(STATUS_BAR_ICON_PNG)?;
+
+    let menu = Menu::new();
+    let show = MenuItem::new("Show Window", true, None);
+    let quit = MenuItem::new("Quit MIDI Macro Bridge", true, None);
+    menu.append(&show)?;
+    menu.append(&quit)?;
+
+    let tray = TrayIconBuilder::new()
+        .with_menu(Box::new(menu))
+        .with_icon(icon)
+        .with_tooltip("MIDI Macro Bridge")
+        .build()?;
+
+    // Wire menu events to the tao user-event channel so the event loop
+    // wakes up on menu interactions without polling.
+    let proxy_clone = proxy.clone();
+    let show_id = show.id().clone();
+    let quit_id = quit.id().clone();
+    MenuEvent::set_event_handler(Some(move |event: MenuEvent| {
+        let _ = if event.id == show_id {
+            proxy_clone.send_event(UserEvent::ShowWindow)
+        } else if event.id == quit_id {
+            proxy_clone.send_event(UserEvent::Quit)
+        } else {
+            Ok(())
+        };
+    }));
+
+    Ok((tray, show, quit))
 }
