@@ -3933,7 +3933,7 @@ The Window submenu currently has only `Close Window` (Cmd-W). After Phase 8's wi
 
 The `UserEvent::ShowWindow` variant already exists from Phase 8a (used by the status bar's "Show Window" item). The fix routes the new menu item to the same event — the in-event-loop handler is already in place.
 
-- [ ] **Step 1: Add the menu item to `gui_menu.rs`**
+- [x] **Step 1: Add the menu item to `gui_menu.rs`**
 
 Open `services/midi-macro-bridge/src/gui_menu.rs`. Locate the Window submenu construction (look for `Menu::new()` followed by `append(...)` calls for window-related items). The current block looks roughly like:
 
@@ -3960,7 +3960,7 @@ window_menu.append(&PredefinedMenuItem::close_window(None))?;
 
 Add `ShowMainWindow` to whatever `MenuId` enum the file uses for stable IDs (mirror the pattern of existing IDs like `About`, `Preferences`, `Quit`, `CloseWindow`).
 
-- [ ] **Step 2: Route the menu event to `UserEvent::ShowWindow`**
+- [x] **Step 2: Route the menu event to `UserEvent::ShowWindow`**
 
 In the same file's menu-event router (likely `route_menu_event` or similar), add the case for the new ID:
 
@@ -3986,7 +3986,7 @@ Event::UserEvent(UserEvent::ShowWindow) => {
 
 No changes to `gui.rs` for this task.
 
-- [ ] **Step 3: Build + manual smoke**
+- [x] **Step 3: Build + manual smoke**
 
 ```bash
 cd /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging
@@ -4010,7 +4010,7 @@ sleep 3
 # 4. Quit via Cmd-Q.
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add services/midi-macro-bridge/src/gui_menu.rs
@@ -4028,7 +4028,7 @@ The `OpenPreferences` handler currently launches the system browser at `/api/con
 
 This task touches both the event handler AND adds a `webview` reference to its closure scope so we can call `evaluate_script`. The `_webview` binding in `run_window` is currently named with a leading underscore (suggesting unused) — it needs to be promoted to a normal binding accessible inside the event-loop closure.
 
-- [ ] **Step 1: Promote `_webview` to a usable binding in `run_window`**
+- [x] **Step 1: Promote `_webview` to a usable binding in `run_window`**
 
 In `services/midi-macro-bridge/src/gui.rs`, find:
 
@@ -4050,7 +4050,7 @@ The webview must outlive the event loop. `tao::EventLoop::run` takes a closure w
 
 If the existing closure capture pattern doesn't easily accommodate moving the webview in, an alternative is to wrap it in a `Rc<RefCell<Option<WebView>>>` set just before `event_loop.run` and read inside the handler. But the cleaner approach is direct move-by-value if the closure structure allows.
 
-- [ ] **Step 2: Replace the `OpenPreferences` handler**
+- [x] **Step 2: Replace the `OpenPreferences` handler**
 
 Find the existing handler:
 
@@ -4078,7 +4078,7 @@ Event::UserEvent(UserEvent::OpenPreferences) => {
 
 The `?.` optional-chain in JS means: if the element doesn't exist (e.g., page hasn't loaded yet), silently no-op. The scroll happens after the page is rendered — Cmd-, on a freshly-launched app may fire before HTMX has loaded the form fragment, but the user is unlikely to hit that timing in practice.
 
-- [ ] **Step 3: Build + manual smoke**
+- [x] **Step 3: Build + manual smoke**
 
 ```bash
 cd /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging
@@ -4102,7 +4102,7 @@ sleep 3
 # 4. With the window hidden (Cmd-W first), pressing Cmd-, brings the window back AND scrolls to config.
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add services/midi-macro-bridge/src/gui.rs
@@ -4115,7 +4115,7 @@ git commit -m "fix(midi-macro-bridge): Cmd-, / Preferences scrolls in-app to con
 
 Standard release flow per the [`/release-midi-macro-bridge`](../../../../.claude/skills/release-midi-macro-bridge/SKILL.md) skill. Operator decides when to ship.
 
-- [ ] **Step 1: Bump Cargo.toml to 0.3.2 + add CHANGELOG entry**
+- [x] **Step 1: Bump Cargo.toml to 0.3.2 + add CHANGELOG entry**
 
 Edit `services/midi-macro-bridge/Cargo.toml`:
 
@@ -4139,13 +4139,13 @@ git add services/midi-macro-bridge/Cargo.toml services/midi-macro-bridge/Cargo.l
 git commit -m "chore(midi-macro-bridge): bump to v0.3.2 + changelog"
 ```
 
-- [ ] **Step 2: Cut the release**
+- [x] **Step 2: Cut the release**
 
 ```bash
 make -C services/midi-macro-bridge release VERSION=v0.3.2
 ```
 
-- [ ] **Step 3: Update the Homebrew formula**
+- [x] **Step 3: Update the Homebrew formula**
 
 ```bash
 ./services/midi-macro-bridge/scripts/update-homebrew-formula.sh v0.3.2 \
@@ -4157,14 +4157,14 @@ git commit -m "midi-macro-bridge 0.3.2"
 git push origin main
 ```
 
-- [ ] **Step 4: Push feature branch HEAD to main**
+- [x] **Step 4: Push feature branch HEAD to main**
 
 ```bash
 cd /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging
 git push origin HEAD:main
 ```
 
-- [ ] **Step 5: Comment + close the child issues**
+- [x] **Step 5: Comment + close the child issues**
 
 ```bash
 gh issue comment 383 --repo audiocontrol-org/audiocontrol \
@@ -4175,11 +4175,11 @@ gh issue comment 384 --repo audiocontrol-org/audiocontrol \
 gh issue close 384 --repo audiocontrol-org/audiocontrol --reason completed
 ```
 
-- [ ] **Step 6: Comment + close the Phase 10 parent**
+- [x] **Step 6: Comment + close the Phase 10 parent**
 
 After both child issues are closed, comment on Phase 10's parent issue with the v0.3.2 release URL and close.
 
-- [ ] **Step 7: Mark Phase 10 checkboxes complete in workplan + flip README phase row to Complete**
+- [x] **Step 7: Mark Phase 10 checkboxes complete in workplan + flip README phase row to Complete**
 
 ```bash
 python3 -c "
