@@ -1150,7 +1150,7 @@ git commit -m "feat(midi-macro-bridge): add make release end-to-end target"
 
 ### Task 4.1: Create the tap repo
 
-- [ ] **Step 1: Bootstrap the repo on GitHub**
+- [x] **Step 1: Bootstrap the repo on GitHub**
 
 ```bash
 gh repo create audiocontrol-org/homebrew-audiocontrol \
@@ -1161,14 +1161,14 @@ gh repo create audiocontrol-org/homebrew-audiocontrol \
 
 Resulting clone: `~/homebrew-audiocontrol/` (or wherever `gh` deposits it).
 
-- [ ] **Step 2: Bootstrap the formula directory**
+- [x] **Step 2: Bootstrap the formula directory**
 
 ```bash
 cd /path/to/homebrew-audiocontrol
 mkdir -p Formula
 ```
 
-- [ ] **Step 3: Write the formula skeleton (placeholder URLs/SHA256s)**
+- [x] **Step 3: Write the formula skeleton (placeholder URLs/SHA256s)**
 
 Create `Formula/midi-macro-bridge.rb`:
 
@@ -1228,7 +1228,7 @@ class MidiMacroBridge < Formula
 end
 ```
 
-- [ ] **Step 4: Initial README.md for the tap**
+- [x] **Step 4: Initial README.md for the tap**
 
 Create `README.md`:
 
@@ -1249,7 +1249,7 @@ Run:
     brew services start midi-macro-bridge  # daemon
 ```
 
-- [ ] **Step 5: Commit and push the tap**
+- [x] **Step 5: Commit and push the tap**
 
 ```bash
 cd /path/to/homebrew-audiocontrol
@@ -1263,7 +1263,7 @@ git push origin main
 **Files:** (back in audiocontrol worktree)
 - Create: `services/midi-macro-bridge/scripts/update-homebrew-formula.sh`
 
-- [ ] **Step 1: Write the helper**
+- [x] **Step 1: Write the helper**
 
 Create `services/midi-macro-bridge/scripts/update-homebrew-formula.sh`:
 
@@ -1331,7 +1331,7 @@ Make executable:
 chmod +x services/midi-macro-bridge/scripts/update-homebrew-formula.sh
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add services/midi-macro-bridge/scripts/update-homebrew-formula.sh
