@@ -76,6 +76,15 @@ fi
 rm -f "$SMOKE_LOG"
 echo "  ✓ macOS smoke test clean"
 
+echo "→ smoke testing macOS .app"
+APP_PATH="$SERVICE_DIR/target/release-package/MidiMacroBridge.app"
+if [[ ! -d "$APP_PATH" ]]; then
+    echo "ERROR: MidiMacroBridge.app missing: $APP_PATH" >&2
+    exit 1
+fi
+codesign --verify --deep --strict "$APP_PATH"
+echo "  ✓ MidiMacroBridge.app signature valid"
+
 echo "→ tagging $VERSION and pushing"
 git tag -a "$VERSION" -m "midi-macro-bridge $VERSION"
 git push origin "$VERSION"
@@ -102,6 +111,8 @@ gh release create "$VERSION" \
     "midi-macro-bridge-$VERSION-aarch64-apple-darwin.tar.gz.sha256" \
     "midi-macro-bridge-$VERSION-x86_64-unknown-linux-gnu.tar.gz" \
     "midi-macro-bridge-$VERSION-x86_64-unknown-linux-gnu.tar.gz.sha256" \
+    "MidiMacroBridge-$VERSION.dmg" \
+    "MidiMacroBridge-$VERSION.dmg.sha256" \
     SHA256SUMS
 
 rm -f "$NOTES_FILE"
