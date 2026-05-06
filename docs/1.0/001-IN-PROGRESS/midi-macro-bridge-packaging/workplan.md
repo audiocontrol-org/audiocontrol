@@ -47,7 +47,7 @@ The bridge currently looks for `config.toml` relative to cwd and writes `url.txt
 - Create: `services/midi-macro-bridge/src/paths.rs`
 - Test: same file, `#[cfg(test)] mod tests`
 
-- [ ] **Step 1: Write failing tests for `resolve_config_path`**
+- [x] **Step 1: Write failing tests for `resolve_config_path`**
 
 Add to `services/midi-macro-bridge/src/paths.rs`:
 
@@ -186,13 +186,13 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: Run tests and verify they fail to compile**
+- [x] **Step 2: Run tests and verify they fail to compile**
 
 Run: `cd services/midi-macro-bridge && cargo test --lib paths 2>&1 | head -30`
 
 Expected: compile error — `paths` module not yet declared in `lib.rs` / `main.rs`.
 
-- [ ] **Step 3: Wire the module**
+- [x] **Step 3: Wire the module**
 
 Edit `services/midi-macro-bridge/src/main.rs`. Find the existing `mod` declarations (typically near the top after `use` statements) and add:
 
@@ -200,13 +200,13 @@ Edit `services/midi-macro-bridge/src/main.rs`. Find the existing `mod` declarati
 mod paths;
 ```
 
-- [ ] **Step 4: Run tests and verify they pass**
+- [x] **Step 4: Run tests and verify they pass**
 
 Run: `cd services/midi-macro-bridge && cargo test paths`
 
 Expected: 5 passed.
 
-- [ ] **Step 5: Add `resolve_state_dir` (TDD)**
+- [x] **Step 5: Add `resolve_state_dir` (TDD)**
 
 Append to `services/midi-macro-bridge/src/paths.rs`:
 
@@ -240,7 +240,7 @@ Add tests:
 
 Run: `cd services/midi-macro-bridge && cargo test paths`. Expected: 7 passed.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add services/midi-macro-bridge/src/paths.rs services/midi-macro-bridge/src/main.rs
@@ -254,13 +254,13 @@ git commit -m "feat(midi-macro-bridge): add paths module for config/state resolu
 
 The bridge uses hand-rolled `args.iter().position(...)` argv parsing (see existing `--probe-mcu`, `--list-ports` patterns). Follow the same style for `--config`.
 
-- [ ] **Step 1: Locate the config-load site**
+- [x] **Step 1: Locate the config-load site**
 
 Run: `grep -n "config.toml\|Config::load\|fn load" services/midi-macro-bridge/src/main.rs | head -10`
 
 Note the line numbers where config is loaded; you'll modify that block.
 
-- [ ] **Step 2: Replace the config load with the resolution chain**
+- [x] **Step 2: Replace the config load with the resolution chain**
 
 Find the config load (probably near startup, looks like `Config::load_from_path("config.toml")` or similar). Replace it with:
 
@@ -288,15 +288,15 @@ let config = Config::load_from_path(&config_path).unwrap_or_else(|e| {
 
 (Adapt the exact API call to whatever `Config::load_from_path` is named — check `src/config.rs`.)
 
-- [ ] **Step 3: Update the existing `path=config.toml` log statement**
+- [x] **Step 3: Update the existing `path=config.toml` log statement**
 
 The current WARN logs `path=config.toml`. Update it to log the resolved path so users know where the bridge actually looked. The replacement above already does this.
 
-- [ ] **Step 4: Compile**
+- [x] **Step 4: Compile**
 
 Run: `cd services/midi-macro-bridge && cargo build`. Expected: clean build.
 
-- [ ] **Step 5: Smoke test the flag**
+- [x] **Step 5: Smoke test the flag**
 
 ```bash
 cd services/midi-macro-bridge
@@ -308,7 +308,7 @@ kill $PID 2>/dev/null
 
 Expected log line: `path=/tmp/nonexistent.toml` (resolved path is the explicit flag).
 
-- [ ] **Step 6: Smoke test the env var**
+- [x] **Step 6: Smoke test the env var**
 
 ```bash
 MIDI_MACRO_BRIDGE_CONFIG=/tmp/from-env.toml ./target/debug/midi-macro-bridge &
@@ -319,7 +319,7 @@ kill $PID 2>/dev/null
 
 Expected log line: `path=/tmp/from-env.toml`.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add services/midi-macro-bridge/src/main.rs
@@ -331,13 +331,13 @@ git commit -m "feat(midi-macro-bridge): wire --config flag and MIDI_MACRO_BRIDGE
 **Files:**
 - Modify: `services/midi-macro-bridge/src/main.rs` (the url.txt write site)
 
-- [ ] **Step 1: Locate the url.txt write**
+- [x] **Step 1: Locate the url.txt write**
 
 Run: `grep -n "url.txt\|MidiMacroBridge\|Application Support" services/midi-macro-bridge/src/main.rs`.
 
 You should see the existing `~/Library/Application Support/MidiMacroBridge/url.txt` writer.
 
-- [ ] **Step 2: Replace with `resolve_state_dir`**
+- [x] **Step 2: Replace with `resolve_state_dir`**
 
 Replace the hardcoded `MidiMacroBridge` directory with:
 
@@ -358,7 +358,7 @@ if let Some(state_dir) = paths::resolve_state_dir(|| dirs::data_dir()) {
 
 (Adapt port variable and existing logic — preserve any in-flight behavior beyond just the path.)
 
-- [ ] **Step 3: Build + smoke test**
+- [x] **Step 3: Build + smoke test**
 
 ```bash
 cd services/midi-macro-bridge
@@ -372,7 +372,7 @@ kill $PID 2>/dev/null
 
 Expected: file exists at the new path.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add services/midi-macro-bridge/src/main.rs
@@ -384,7 +384,7 @@ git commit -m "refactor(midi-macro-bridge): namespace state dir under audiocontr
 **Files:**
 - Modify: `services/midi-macro-bridge/config.example.toml`
 
-- [ ] **Step 1: Add a header block**
+- [x] **Step 1: Add a header block**
 
 Prepend:
 
@@ -405,7 +405,7 @@ Prepend:
 #   cp config.example.toml <path-above>/config.toml
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add services/midi-macro-bridge/config.example.toml

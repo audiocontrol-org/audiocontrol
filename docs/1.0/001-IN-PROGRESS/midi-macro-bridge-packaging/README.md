@@ -14,7 +14,7 @@ Ship per-platform tarballs (`aarch64-apple-darwin`, `x86_64-unknown-linux-gnu`) 
 
 | Phase | Description | Status |
 |---|---|---|
-| 1 | Runtime path resolution (`paths.rs` + `--config` flag + env var + namespaced state dir) | Not started ([#359](https://github.com/audiocontrol-org/audiocontrol/issues/359)) |
+| 1 | Runtime path resolution (`paths.rs` + `--config` flag + env var + namespaced state dir) | Complete ([#359](https://github.com/audiocontrol-org/audiocontrol/issues/359)) |
 | 2 | Tarball assembly (`package.sh`, `install.sh`, launchd plist, systemd unit, QUARANTINE.md, Makefile target) | Not started ([#360](https://github.com/audiocontrol-org/audiocontrol/issues/360)) |
 | 3 | Release CI workflow (tag-driven, parallel macOS-14 + ubuntu-latest builds, smoke test, version assertion) | Not started ([#361](https://github.com/audiocontrol-org/audiocontrol/issues/361)) |
 | 4 | Homebrew tap (`audiocontrol-org/homebrew-audiocontrol` repo + formula + SHA256 update helper) | Not started ([#362](https://github.com/audiocontrol-org/audiocontrol/issues/362)) |
