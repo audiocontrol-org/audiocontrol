@@ -3183,3 +3183,720 @@ Don't autonomously close — leave for user acceptance per project memory rule.
 4. `update-homebrew-formula.sh v0.2.1 <tap>` produces a formula with the correct v0.2.1 SHAs (no manual editing required).
 5. If the regex substitution fails to match (e.g., we change the formula's structure later), the script exits non-zero with an explicit error rather than reporting silent success.
 6. v0.2.1 ships via `make release` with all three fixes landed.
+
+---
+
+## Phase 8: Mac-app polish — status bar + single-instance + menubar
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Bundle three tightly-related Mac-app-feel improvements that share `tao`/`tray-icon` infrastructure: a persistent menubar (status bar) icon, a single-instance lock that focuses the existing window on second launch, and a proper macOS app menubar (Cmd-Q, About, Preferences). Ship as **v0.3.0**.
+
+**Architecture:** The current `gui::run_window` blocks the main thread on a single tao event loop and exits when the window closes. Phase 8 inverts this: the event loop persists for the lifetime of the process, the window becomes a child surface that can be hidden+reshown without exiting, and a status bar item provides always-visible presence + a "Show Window" / "Quit" menu. Single-instance enforcement uses a lockfile + Unix domain socket — second launch sends a "show" message to the existing instance and exits. The macOS app menubar uses `tao`'s built-in menu APIs (no extra crate).
+
+**Tech Stack:** `tray-icon = "0.21"` (or current; macOS-gated like `tao`/`wry`); existing `tao 0.30` for menubar via its `MenuBuilder`; standard library `std::os::unix::net::UnixListener` + `flock` for single-instance.
+
+---
+
+### File Structure
+
+| Path | Responsibility | Task |
+|---|---|---|
+| `services/midi-macro-bridge/Cargo.toml` | Add `tray-icon` macOS-gated dep | 8.1 |
+| `services/midi-macro-bridge/src/gui.rs` | Refactor `run_window` to non-exiting model; expose `WindowHandle` to outside; install status bar item | 8.1 |
+| `services/midi-macro-bridge/src/single_instance.rs` (new) | Lockfile + Unix-socket "show" IPC; binds at startup, exits early if another instance owns the lock and successfully relays the message | 8.2 |
+| `services/midi-macro-bridge/src/main.rs` | Wire single-instance check before web server bind; pass `WindowHandle` to single-instance handler | 8.2 |
+| `services/midi-macro-bridge/src/gui_menu.rs` (new) | macOS app menubar via `tao::menu::MenuBuilder`: About / Preferences / Quit | 8.3 |
+| `services/midi-macro-bridge/CHANGELOG.md` | Seed `## v0.3.0` entry | 8.4 |
+| `services/midi-macro-bridge/Cargo.toml` | Bump version to 0.3.0 | 8.4 |
+
+---
+
+### Task 8.1: Status bar icon via `tray-icon` (resolves #368)
+
+**Files:**
+- Modify: `services/midi-macro-bridge/Cargo.toml`
+- Modify: `services/midi-macro-bridge/src/gui.rs`
+
+The current `run_window` blocks until the window closes, then exits. After 8.1, `run_window` runs an event loop that:
+- Manages the wry window (still WKWebView-backed)
+- Hosts a `tray_icon::TrayIcon` in the macOS menubar with a "Show Window" + "Quit" menu
+- On window close → hide window (don't exit). On tray "Show Window" → unhide + raise.
+- On tray "Quit" → `halt.send()`, then break the event loop.
+
+- [ ] **Step 1: Add the `tray-icon` dep**
+
+Edit `services/midi-macro-bridge/Cargo.toml`. Add to the macOS-gated deps section (where `tao` and `wry` already live):
+
+```toml
+[target.'cfg(target_os = "macos")'.dependencies]
+tao = "0.30"
+wry = "0.45"
+tray-icon = "0.21"
+```
+
+- [ ] **Step 2: Embed a status bar icon image**
+
+Create a 22x22 PNG (macOS menubar standard icon size) at `services/midi-macro-bridge/packaging/macos/StatusBarIcon.png`. Generate via the same approach as the AppIcon placeholder (Phase 7 Task 7.4) but at 22x22 — text "M" or a single bridge glyph.
+
+```bash
+cd /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging
+sips -z 22 22 services/midi-macro-bridge/packaging/macos/AppIcon.icns --out /tmp/StatusBarIcon.png 2>/dev/null
+# If sips can't read .icns directly, extract via iconutil:
+iconutil -c iconset -o /tmp/AppIcon.iconset services/midi-macro-bridge/packaging/macos/AppIcon.icns
+sips -z 22 22 /tmp/AppIcon.iconset/icon_16x16@2x.png --out /tmp/StatusBarIcon.png
+mv /tmp/StatusBarIcon.png services/midi-macro-bridge/packaging/macos/StatusBarIcon.png
+rm -rf /tmp/AppIcon.iconset
+file services/midi-macro-bridge/packaging/macos/StatusBarIcon.png
+```
+
+Expected: `PNG image data, 22 x 22, 8-bit/color RGBA`.
+
+- [ ] **Step 3: Embed the icon at compile time + refactor `run_window`**
+
+Replace `services/midi-macro-bridge/src/gui.rs` with the new event-loop-persistent version:
+
+```rust
+//! Native AppKit window hosting the embedded web UI via wry/WebView,
+//! plus a persistent status bar item and signal-driven shutdown.
+//!
+//! Compiled only on macOS. Other platforms skip the module entirely.
+
+use tao::dpi::LogicalSize;
+use tao::event::{Event, WindowEvent};
+use tao::event_loop::{ControlFlow, EventLoop, EventLoopBuilder};
+use tao::menu::{ContextMenu, MenuItemAttributes};
+use tao::system_tray::SystemTrayBuilder;
+use tao::window::{Window, WindowBuilder};
+use tray_icon::menu::{Menu, MenuEvent, MenuItem};
+use tray_icon::{Icon, TrayIconBuilder};
+use wry::WebViewBuilder;
+
+const STATUS_BAR_ICON_PNG: &[u8] = include_bytes!("../packaging/macos/StatusBarIcon.png");
+
+/// Open the bridge UI window and run the macOS event loop until the user
+/// quits via the status bar menu OR `halt` fires from another source
+/// (e.g., the in-page HALT button in earlier versions, or signal handler).
+pub fn run_window(url: &str, halt: impl Fn() + Send + 'static) -> anyhow::Result<()> {
+    let event_loop: EventLoop<UserEvent> = EventLoopBuilder::with_user_event().build();
+    let event_loop_proxy = event_loop.create_proxy();
+
+    let window = build_window(&event_loop)?;
+    let _webview = WebViewBuilder::new(&window)
+        .with_url(url)
+        .build()?;
+
+    let (tray, _menu_show, _menu_quit) = build_tray_icon(&event_loop_proxy)?;
+
+    event_loop.run(move |event, _, control_flow| {
+        *control_flow = ControlFlow::Wait;
+        match event {
+            // Window close → hide window, keep the app alive (status bar still there).
+            Event::WindowEvent {
+                event: WindowEvent::CloseRequested,
+                ..
+            } => {
+                window.set_visible(false);
+            }
+            Event::UserEvent(UserEvent::ShowWindow) => {
+                window.set_visible(true);
+                window.set_focus();
+            }
+            Event::UserEvent(UserEvent::Quit) => {
+                halt();
+                drop(tray.clone()); // explicit teardown; macOS clears the menubar item
+                *control_flow = ControlFlow::Exit;
+            }
+            _ => {}
+        }
+    });
+
+    #[allow(unreachable_code)]
+    Ok(())
+}
+
+#[derive(Debug, Clone)]
+enum UserEvent {
+    ShowWindow,
+    Quit,
+}
+
+fn build_window(event_loop: &EventLoop<UserEvent>) -> anyhow::Result<Window> {
+    Ok(WindowBuilder::new()
+        .with_title("MIDI Macro Bridge")
+        .with_inner_size(LogicalSize::new(900.0, 700.0))
+        .build(event_loop)?)
+}
+
+fn build_tray_icon(
+    proxy: &tao::event_loop::EventLoopProxy<UserEvent>,
+) -> anyhow::Result<(tray_icon::TrayIcon, MenuItem, MenuItem)> {
+    let icon = Icon::from_rgba_bytes(STATUS_BAR_ICON_PNG, 22, 22)?;
+    let menu = Menu::new();
+    let show = MenuItem::new("Show Window", true, None);
+    let quit = MenuItem::new("Quit MIDI Macro Bridge", true, None);
+    menu.append(&show)?;
+    menu.append(&quit)?;
+
+    let tray = TrayIconBuilder::new()
+        .with_menu(Box::new(menu))
+        .with_icon(icon)
+        .with_tooltip("MIDI Macro Bridge")
+        .build()?;
+
+    // Wire menu events to the tao event loop's user-event channel.
+    let proxy_clone = proxy.clone();
+    let show_id = show.id().clone();
+    let quit_id = quit.id().clone();
+    MenuEvent::set_event_handler(Some(move |event: MenuEvent| {
+        let _ = if event.id == show_id {
+            proxy_clone.send_event(UserEvent::ShowWindow)
+        } else if event.id == quit_id {
+            proxy_clone.send_event(UserEvent::Quit)
+        } else {
+            Ok(())
+        };
+    }));
+
+    Ok((tray, show, quit))
+}
+```
+
+(The exact `tray-icon` API may have shifted — adapt as needed. Intent: 22x22 menubar icon; menu with "Show Window" + "Quit"; menu events route through the tao event-loop proxy.)
+
+- [ ] **Step 4: Build + verify**
+
+```bash
+cd services/midi-macro-bridge && cargo build 2>&1 | tail -10
+```
+
+Expected: clean build. tray-icon pulls in a few macOS framework links; first build takes 1-3 minutes.
+
+- [ ] **Step 5: Manual smoke test**
+
+```bash
+./target/debug/midi-macro-bridge --gui &
+PID=$!
+sleep 3
+echo "Visible status bar icon? Click it."
+# Wait for user to verify; then quit via the menu.
+wait $PID 2>/dev/null || true
+```
+
+Acceptance: 22x22 menubar icon visible in macOS status bar; clicking it opens a menu with "Show Window" + "Quit MIDI Macro Bridge"; closing the window hides it (icon stays); clicking "Show Window" re-opens it; clicking "Quit MIDI Macro Bridge" exits cleanly.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add services/midi-macro-bridge/Cargo.toml services/midi-macro-bridge/Cargo.lock services/midi-macro-bridge/src/gui.rs services/midi-macro-bridge/packaging/macos/StatusBarIcon.png
+git commit -m "feat(midi-macro-bridge): persistent status bar icon (#368)"
+```
+
+---
+
+### Task 8.2: Single-instance lock + focus-existing-window (resolves #369)
+
+**Files:**
+- Create: `services/midi-macro-bridge/src/single_instance.rs`
+- Modify: `services/midi-macro-bridge/src/main.rs`
+
+Pattern: at startup, try to acquire an exclusive `flock` on `~/Library/Application Support/audiocontrol/midi-macro-bridge/instance.lock`. If held by another process, send a "show" message via a Unix domain socket at `~/Library/Application Support/audiocontrol/midi-macro-bridge/instance.sock` and exit cleanly.
+
+The first instance owns both the lock and the socket; it accepts incoming "show" messages and forwards them to the gui event loop's `UserEvent::ShowWindow`.
+
+- [ ] **Step 1: Author `single_instance.rs`**
+
+Create `services/midi-macro-bridge/src/single_instance.rs`:
+
+```rust
+//! Single-instance enforcement via lockfile + Unix socket IPC.
+//!
+//! At process start: try to flock(LOCK_EX|LOCK_NB) the instance.lock file.
+//! - Success → we are the primary; spawn a Unix-socket listener that emits
+//!   "show" requests to a callback when a secondary tries to launch.
+//! - Failure → there's already a primary; connect to the socket, send a
+//!   one-byte "show" command, exit 0.
+//!
+//! macOS-only for now (the rest of the GUI stack is too).
+
+use std::fs::{File, OpenOptions};
+use std::io::{Read, Write};
+use std::os::fd::AsRawFd;
+use std::os::unix::net::{UnixListener, UnixStream};
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::thread;
+
+use crate::paths;
+
+/// Returned to the caller. Holds the lock for the lifetime of the value.
+/// Drop to release.
+pub struct InstanceLock {
+    _file: File,
+}
+
+/// Try to become the primary instance. Returns `Ok(InstanceLock)` if we
+/// succeeded; returns `Err(SecondaryInstance)` if another primary exists.
+/// On secondary case, the function ALREADY relayed the "show" message to
+/// the primary before returning the error.
+pub enum AcquireOutcome {
+    Primary(InstanceLock, UnixListener),
+    Secondary, // we already messaged the primary; caller exits 0
+}
+
+pub fn acquire() -> anyhow::Result<AcquireOutcome> {
+    let state_dir = paths::resolve_state_dir(|| dirs::data_dir())
+        .ok_or_else(|| anyhow::anyhow!("no data dir available; cannot acquire instance lock"))?;
+    std::fs::create_dir_all(&state_dir)?;
+
+    let lock_path = state_dir.join("instance.lock");
+    let sock_path = state_dir.join("instance.sock");
+
+    let lock_file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .open(&lock_path)?;
+
+    // flock LOCK_EX | LOCK_NB
+    let fd = lock_file.as_raw_fd();
+    let r = unsafe { libc::flock(fd, libc::LOCK_EX | libc::LOCK_NB) };
+    if r != 0 {
+        // Couldn't lock → secondary. Send "show" to primary.
+        let mut stream = UnixStream::connect(&sock_path)?;
+        stream.write_all(b"show\n")?;
+        return Ok(AcquireOutcome::Secondary);
+    }
+
+    // We're primary. Replace any stale socket; create a new listener.
+    let _ = std::fs::remove_file(&sock_path);
+    let listener = UnixListener::bind(&sock_path)?;
+
+    Ok(AcquireOutcome::Primary(
+        InstanceLock { _file: lock_file },
+        listener,
+    ))
+}
+
+/// Spawn a thread that accepts incoming connections to the listener and
+/// invokes `on_show()` for each "show" message received.
+pub fn spawn_listener_thread(listener: UnixListener, on_show: Arc<dyn Fn() + Send + Sync>) {
+    thread::Builder::new()
+        .name("instance-listener".into())
+        .spawn(move || {
+            for stream in listener.incoming() {
+                let Ok(mut s) = stream else { continue };
+                let mut buf = [0u8; 16];
+                let _ = s.read(&mut buf);
+                if buf.starts_with(b"show") {
+                    on_show();
+                }
+            }
+        })
+        .expect("instance-listener thread spawn");
+}
+```
+
+Add `libc = "0.2"` to `Cargo.toml` regular deps (not macOS-gated; it's already used on Linux).
+
+- [ ] **Step 2: Wire into `main.rs`**
+
+Find `fn main` in `services/midi-macro-bridge/src/main.rs`. After args parsing but before the web server bind, add:
+
+```rust
+// Single-instance check (macOS GUI mode only).
+#[cfg(target_os = "macos")]
+let _instance_lock = if resolve_gui_mode(&args) {
+    match single_instance::acquire()? {
+        single_instance::AcquireOutcome::Primary(lock, listener) => {
+            // We'll wire the listener thread once the gui's UserEvent
+            // proxy is constructed (see gui::run_window). For now, hold
+            // the listener and pass it down.
+            Some((lock, listener))
+        }
+        single_instance::AcquireOutcome::Secondary => {
+            info!("another instance already running; messaged primary and exiting");
+            return Ok(());
+        }
+    }
+} else {
+    None
+};
+```
+
+Also add `mod single_instance;` to the existing module declarations (cfg-gated on macos).
+
+The listener-thread wiring requires passing the `EventLoopProxy<UserEvent>` from `gui::run_window` out to the listener. Refactor `gui::run_window` to accept an optional setup callback that runs immediately after the proxy is constructed:
+
+```rust
+// In gui.rs, change run_window's signature:
+pub fn run_window(
+    url: &str,
+    halt: impl Fn() + Send + 'static,
+    setup: impl FnOnce(tao::event_loop::EventLoopProxy<UserEvent>) + Send + 'static,
+) -> anyhow::Result<()> {
+    let event_loop: EventLoop<UserEvent> = EventLoopBuilder::with_user_event().build();
+    let proxy = event_loop.create_proxy();
+    setup(proxy.clone()); // give the caller a handle to wake the loop
+    // ... rest unchanged ...
+}
+```
+
+Then `main.rs` passes a `setup` closure that takes the listener and spawns the thread:
+
+```rust
+let listener = _instance_lock.as_mut().map(|(_, l)| l.try_clone().unwrap());
+gui::run_window(&url, halt_closure, move |proxy| {
+    if let Some(listener) = listener {
+        single_instance::spawn_listener_thread(
+            listener,
+            Arc::new(move || {
+                let _ = proxy.send_event(gui::UserEvent::ShowWindow);
+            }),
+        );
+    }
+})?;
+```
+
+(Adapt to whatever the existing main.rs structure is; the key is that the listener thread runs INSIDE the primary instance and forwards "show" messages to the gui event loop.)
+
+- [ ] **Step 3: Smoke test single-instance behavior**
+
+```bash
+./target/debug/midi-macro-bridge --gui &
+PID1=$!
+sleep 2
+echo "Primary launched (PID=$PID1)"
+./target/debug/midi-macro-bridge --gui &
+PID2=$!
+sleep 2
+echo "Second launch (PID=$PID2) should have exited 0; PID1 window should be visible/focused"
+ps -p $PID2 2>/dev/null && echo "FAIL: secondary still running" || echo "PASS: secondary exited"
+kill $PID1 2>/dev/null || true
+wait $PID1 2>/dev/null || true
+```
+
+Acceptance: PID2 exits cleanly; PID1's window comes to the front (or unhides if it was hidden).
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add services/midi-macro-bridge/src/single_instance.rs services/midi-macro-bridge/src/main.rs services/midi-macro-bridge/src/gui.rs services/midi-macro-bridge/Cargo.toml services/midi-macro-bridge/Cargo.lock
+git commit -m "feat(midi-macro-bridge): single-instance lock + focus-existing-window (#369)"
+```
+
+---
+
+### Task 8.3: macOS app menubar (resolves #376)
+
+**Files:**
+- Create: `services/midi-macro-bridge/src/gui_menu.rs`
+- Modify: `services/midi-macro-bridge/src/gui.rs`
+
+Add a proper macOS app menubar with:
+- **Application menu** — "About MIDI Macro Bridge" (modal showing CARGO_PKG_VERSION + license), "Preferences..." (Cmd-, opens browser to `/api/config-form`), separator, "Quit MIDI Macro Bridge" (Cmd-Q).
+- **Window menu** — "Close Window" (Cmd-W) routed to the existing window-close handler.
+
+`tao` provides menubar APIs via its `Menu` and `MenuBar` types; on macOS these become `NSMenu`-backed.
+
+- [ ] **Step 1: Author `gui_menu.rs`**
+
+Create `services/midi-macro-bridge/src/gui_menu.rs`:
+
+```rust
+//! macOS app menubar — App menu (About / Preferences / Quit) + Window menu (Close).
+//!
+//! Routes menu actions through the same `UserEvent` channel the status bar
+//! item uses (see gui.rs).
+
+use tao::keyboard::{Key, ModifiersState};
+use tao::menu::{Menu, MenuBar, MenuItemAttributes};
+
+use crate::gui::UserEvent;
+
+pub fn build_menubar() -> MenuBar {
+    let mut menubar = MenuBar::new();
+
+    // Application menu (first-position menus on macOS get the app name).
+    let mut app_menu = Menu::new();
+    app_menu.add_item(
+        MenuItemAttributes::new("About MIDI Macro Bridge")
+            .with_id(MenuId::About.into()),
+    );
+    app_menu.add_native_item(tao::menu::MenuItem::Separator);
+    app_menu.add_item(
+        MenuItemAttributes::new("Preferences...")
+            .with_id(MenuId::Preferences.into())
+            .with_accelerators(&Key::Character(",".into()), ModifiersState::SUPER),
+    );
+    app_menu.add_native_item(tao::menu::MenuItem::Separator);
+    app_menu.add_item(
+        MenuItemAttributes::new("Quit MIDI Macro Bridge")
+            .with_id(MenuId::Quit.into())
+            .with_accelerators(&Key::Character("q".into()), ModifiersState::SUPER),
+    );
+    menubar.add_submenu("MIDI Macro Bridge", true, app_menu);
+
+    // Window menu.
+    let mut window_menu = Menu::new();
+    window_menu.add_item(
+        MenuItemAttributes::new("Close Window")
+            .with_id(MenuId::CloseWindow.into())
+            .with_accelerators(&Key::Character("w".into()), ModifiersState::SUPER),
+    );
+    menubar.add_submenu("Window", true, window_menu);
+
+    menubar
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum MenuId {
+    About,
+    Preferences,
+    Quit,
+    CloseWindow,
+}
+
+impl From<MenuId> for tao::menu::MenuId {
+    fn from(id: MenuId) -> Self {
+        tao::menu::MenuId::new(match id {
+            MenuId::About => "about",
+            MenuId::Preferences => "preferences",
+            MenuId::Quit => "quit",
+            MenuId::CloseWindow => "close-window",
+        })
+    }
+}
+
+pub fn route_menu_event(
+    event: tao::menu::MenuId,
+    proxy: &tao::event_loop::EventLoopProxy<UserEvent>,
+) -> bool {
+    let s = event.0;
+    match s.as_str() {
+        "about" => { let _ = proxy.send_event(UserEvent::ShowAbout); true }
+        "preferences" => { let _ = proxy.send_event(UserEvent::OpenPreferences); true }
+        "quit" => { let _ = proxy.send_event(UserEvent::Quit); true }
+        "close-window" => { let _ = proxy.send_event(UserEvent::CloseWindow); true }
+        _ => false,
+    }
+}
+```
+
+(Tao's `Menu` API has shifted across versions; adapt the exact builder calls as needed. Intent: app menu with three items + window menu with Close.)
+
+- [ ] **Step 2: Wire into `gui.rs`**
+
+Add `mod gui_menu;` to gui.rs (or keep as a sibling of gui.rs — adjust `mod` declarations in main.rs accordingly).
+
+Extend `UserEvent`:
+
+```rust
+pub enum UserEvent {
+    ShowWindow,
+    CloseWindow,
+    ShowAbout,
+    OpenPreferences,
+    Quit,
+}
+```
+
+In `WindowBuilder` chain, attach the menubar:
+
+```rust
+let menubar = gui_menu::build_menubar();
+let window = WindowBuilder::new()
+    .with_title("MIDI Macro Bridge")
+    .with_inner_size(LogicalSize::new(900.0, 700.0))
+    .with_menu(menubar)
+    .build(&event_loop)?;
+```
+
+Add event handlers in the event loop:
+
+```rust
+Event::MenuEvent { menu_id, .. } => {
+    gui_menu::route_menu_event(menu_id, &proxy);
+}
+Event::UserEvent(UserEvent::CloseWindow) => {
+    window.set_visible(false);
+}
+Event::UserEvent(UserEvent::ShowAbout) => {
+    show_about_dialog(&window);  // small NSAlert call; see Step 3
+}
+Event::UserEvent(UserEvent::OpenPreferences) => {
+    let _ = std::process::Command::new("open")
+        .arg(format!("{}/api/config-form", url))
+        .spawn();
+}
+```
+
+- [ ] **Step 3: Implement `show_about_dialog`**
+
+For minimum viable About: use macOS's built-in NSAlert via `objc2`:
+
+```rust
+fn show_about_dialog(_window: &Window) {
+    use objc2::rc::Retained;
+    use objc2_app_kit::NSAlert;
+    use objc2_foundation::NSString;
+    let alert = unsafe { NSAlert::new() };
+    let title = NSString::from_str("MIDI Macro Bridge");
+    let info = NSString::from_str(&format!(
+        "Version {}\n\nMIT OR Apache-2.0",
+        env!("CARGO_PKG_VERSION")
+    ));
+    unsafe {
+        alert.setMessageText(&title);
+        alert.setInformativeText(&info);
+        alert.runModal();
+    }
+}
+```
+
+Add `objc2 = "0.5"`, `objc2-foundation = "0.2"`, `objc2-app-kit = "0.2"` to the macOS-gated deps. (Versions may shift; `cargo add` to lock current.)
+
+- [ ] **Step 4: Build + smoke**
+
+```bash
+cd services/midi-macro-bridge && cargo build 2>&1 | tail -5
+./target/debug/midi-macro-bridge --gui &
+sleep 2
+# Manually verify:
+# - Cmd-Q exits cleanly
+# - Cmd-W closes the window (status bar icon stays; "Show Window" reopens)
+# - "MIDI Macro Bridge → About" shows version 0.3.0
+# - "MIDI Macro Bridge → Preferences..." (Cmd-,) opens browser to /api/config-form
+```
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add services/midi-macro-bridge/src/gui_menu.rs services/midi-macro-bridge/src/gui.rs services/midi-macro-bridge/Cargo.toml services/midi-macro-bridge/Cargo.lock
+git commit -m "feat(midi-macro-bridge): macOS app menubar with About/Preferences/Quit (#376)"
+```
+
+---
+
+### Task 8.4: Phase 8 close-out + v0.3.0 release
+
+- [ ] **Step 1: Bump Cargo.toml to 0.3.0**
+
+Edit `services/midi-macro-bridge/Cargo.toml`:
+
+```toml
+version = "0.3.0"
+```
+
+Refresh `Cargo.lock`:
+
+```bash
+cd services/midi-macro-bridge && cargo build --release --target aarch64-apple-darwin 2>&1 | tail -3
+```
+
+- [ ] **Step 2: Add v0.3.0 entry to CHANGELOG.md**
+
+Insert above `## v0.2.x` (whatever the current top entry is) in `services/midi-macro-bridge/CHANGELOG.md`:
+
+```markdown
+## v0.3.0
+
+### Highlights
+- **Status bar icon** (#368). Persistent menubar item with "Show Window" + "Quit" — bridge stays running with no Dock icon when the window is closed.
+- **Single-instance lock** (#369). Second launch of the .app focuses the existing window via Unix-socket IPC instead of failing on CoreMIDI UniqueID collision.
+- **Proper macOS app menubar** (#376). Cmd-Q quits, Cmd-W closes the window (status bar reopens it), Cmd-, opens preferences in the browser, About dialog shows the actual version.
+
+### Notes
+- The window now hides on close instead of exiting. Use the status bar icon's "Quit" or Cmd-Q to fully exit.
+- Headless / brew-services modes unchanged — single-instance + status bar are macOS GUI-only.
+```
+
+- [ ] **Step 3: Mark Phase 8 checkboxes complete**
+
+```bash
+cd /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging
+python3 -c "
+from pathlib import Path
+p = Path('docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/workplan.md')
+lines = p.read_text().splitlines(keepends=True)
+flipped = 0
+in_phase8 = False
+for i, line in enumerate(lines):
+    if line.startswith('## Phase 8:'):
+        in_phase8 = True
+        continue
+    if line.startswith('## Phase ') and in_phase8:
+        in_phase8 = False
+    if in_phase8 and line.startswith('- [ ] '):
+        lines[i] = '- [x] ' + line[6:]
+        flipped += 1
+p.write_text(''.join(lines))
+print(f'flipped {flipped} Phase 8 checkboxes')
+"
+```
+
+- [ ] **Step 4: Flip README phase 8 row to Complete**
+
+Edit `docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/README.md` — change Phase 8's status column from "Not started" to "Complete; v0.3.0 shipped".
+
+- [ ] **Step 5: Commit version bump + CHANGELOG**
+
+```bash
+git add services/midi-macro-bridge/Cargo.toml services/midi-macro-bridge/Cargo.lock services/midi-macro-bridge/CHANGELOG.md docs/1.0/001-IN-PROGRESS/midi-macro-bridge-packaging/
+git commit -m "chore(midi-macro-bridge): bump to v0.3.0 + Phase 8 close-out"
+```
+
+- [ ] **Step 6: Cut the release**
+
+```bash
+make -C services/midi-macro-bridge release VERSION=v0.3.0
+```
+
+Expected: preflight passes, `package-all` builds tarballs + .dmg with notarization, .app smoke test passes, tag pushed, GitHub Release created.
+
+- [ ] **Step 7: Update Homebrew formula**
+
+```bash
+./services/midi-macro-bridge/scripts/update-homebrew-formula.sh v0.3.0 \
+    /Users/orion/work/audiocontrol-work/homebrew-audiocontrol
+```
+
+If Phase 9 Task 9.3 has shipped (regex fix), substitution succeeds automatically. Otherwise, manually verify SHAs as we did for v0.2.0.
+
+```bash
+cd /Users/orion/work/audiocontrol-work/homebrew-audiocontrol
+git diff Formula/midi-macro-bridge.rb
+git add Formula/midi-macro-bridge.rb
+git commit -m "midi-macro-bridge 0.3.0"
+git push origin main
+```
+
+- [ ] **Step 8: Push feature branch HEAD to main**
+
+```bash
+cd /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging
+git push origin HEAD:main
+```
+
+- [ ] **Step 9: Comment on each child issue with the v0.3.0 release link**
+
+```bash
+for issue in 368 369 376; do
+    gh issue comment $issue --repo audiocontrol-org/audiocontrol \
+        --body "Fixed in v0.3.0: https://github.com/audiocontrol-org/audiocontrol/releases/tag/v0.3.0"
+done
+```
+
+Don't autonomously close — leave for user acceptance.
+
+---
+
+## Phase 8 Acceptance Criteria
+
+1. `make package-app VERSION=v0.0.3-test` produces a signed `.app`. Launching it shows a 22x22 status bar icon in the macOS menubar.
+2. Closing the window (red X / Cmd-W) hides it. The status bar icon stays. Clicking "Show Window" in the status bar menu re-opens the window.
+3. Clicking "Quit MIDI Macro Bridge" in the status bar menu, OR pressing Cmd-Q, exits the bridge cleanly (drains MIDI, closes web server).
+4. Launching the `.app` while another instance is already running: the second launch exits cleanly; the first instance's window comes to the front.
+5. The `MIDI Macro Bridge → About` menu item shows a dialog with `Version 0.3.0` (or whatever the current Cargo.toml version is).
+6. Cmd-, (or `MIDI Macro Bridge → Preferences...`) opens the system default browser to `http://127.0.0.1:8765/api/config-form`.
+7. Brew install + tarball install paths still work unchanged. Status bar / single-instance / menubar are macOS GUI-only; service modes are not affected.
+8. Phase 6 regression check (`MIDI channel disconnected` within 2.5s of default-config startup) still passes.

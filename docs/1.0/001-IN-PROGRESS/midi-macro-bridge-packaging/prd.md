@@ -65,6 +65,20 @@ Tracked separately as GitHub issues per Phase 7 AC #9:
 - Auto-update mechanism (covered by #370 above; no separate item)
 - Intel Mac universal binary (covered by #373 above)
 
+### Phase 8 — Mac-app polish (in progress, v0.3.0)
+
+[#381](https://github.com/audiocontrol-org/audiocontrol/issues/381). Bundles three tightly-related Mac-app-feel improvements that share `tao` window-menu APIs + `tray-icon` infrastructure:
+
+- [#368](https://github.com/audiocontrol-org/audiocontrol/issues/368) — Status bar icon (8a)
+- [#369](https://github.com/audiocontrol-org/audiocontrol/issues/369) — Single-instance lock + focus-existing-window (8b)
+- [#376](https://github.com/audiocontrol-org/audiocontrol/issues/376) — macOS app menubar with About / Preferences / Quit (8d)
+
+Architectural shift: `gui::run_window`'s event loop persists for the lifetime of the process. Window-close hides instead of exits; "Quit" in the status bar (or Cmd-Q) is the new exit path. Single-instance enforcement uses flock + Unix-socket "show" IPC.
+
+Sparkle auto-updater (8c, [#370](https://github.com/audiocontrol-org/audiocontrol/issues/370)) intentionally deferred to a separate phase — different infrastructure (signed update feeds, server-side hosting) and a heavier lift than the menubar/status-bar bundle.
+
+Ships as `v0.3.0`.
+
 ### Phase 9 — v0.2.1 polish (in progress)
 
 [#380](https://github.com/audiocontrol-org/audiocontrol/issues/380). Resolves three audiocontrol-repo bugs surfaced during the v0.2.0 release:
