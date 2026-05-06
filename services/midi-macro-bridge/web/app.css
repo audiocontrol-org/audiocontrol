@@ -133,6 +133,7 @@ h3,
 .mmb-transport-readout,
 .mmb-routing,
 .mmb-config,
+.mmb-help,
 .mmb-events {
   background: var(--panel-gradient);
   border: 1px solid var(--border-hairline);
@@ -146,6 +147,7 @@ h3,
    so the label visually sits in the panel-edge margin. */
 .mmb-routing,
 .mmb-config,
+.mmb-help,
 .mmb-events {
   padding-top: calc(var(--base) * 3);
 }
@@ -759,6 +761,89 @@ h3,
   animation: apply-dirty-pulse 1.2s ease-in-out infinite;
   color: var(--accent-warm);
   border-color: var(--accent-warm);
+}
+
+/* ── Help section ────────────────────────────────────────────────────────── */
+
+.mmb-help-card {
+  border: 1px solid var(--border-hairline);
+  background: var(--surface-recess);
+  margin-bottom: calc(var(--base) * 1);
+  padding: 0;
+  border-radius: var(--panel-radius);
+}
+
+.mmb-help-card:last-of-type {
+  margin-bottom: 0;
+}
+
+.mmb-help-card > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: calc(var(--base) * 2) calc(var(--base) * 3);
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  user-select: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Suppress the WebKit default disclosure marker */
+.mmb-help-card > summary::-webkit-details-marker {
+  display: none;
+}
+
+.mmb-help-card > summary::after {
+  content: '+';
+  font-size: 1rem;
+  color: var(--text-secondary);
+  transition: transform 100ms ease;
+}
+
+.mmb-help-card[open] > summary::after {
+  content: '–'; /* en-dash, not minus */
+}
+
+.mmb-help-card[open] > summary {
+  color: var(--text-screenprint);
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.mmb-help-card-body {
+  padding: calc(var(--base) * 3);
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 0.8125rem; /* 13px — slightly larger than the screenprint labels for readability */
+  line-height: 1.6;
+  color: var(--text-screenprint);
+}
+
+.mmb-help-card-body p {
+  margin: 0 0 calc(var(--base) * 2);
+}
+
+.mmb-help-card-body p:last-child {
+  margin-bottom: 0;
+}
+
+.mmb-help-card-body ol {
+  padding-left: calc(var(--base) * 4);
+  margin: 0 0 calc(var(--base) * 2);
+}
+
+.mmb-help-card-body ol > li {
+  margin-bottom: calc(var(--base) * 1);
+}
+
+.mmb-help-card-body code {
+  background: rgba(255, 209, 102, 0.08); /* led-amber tint */
+  padding: 0 4px;
+  border-radius: 2px;
+  color: var(--led-amber);
+  font-size: 0.875em;
 }
 
 /* ── Event stream ────────────────────────────────────────────────────────── */
