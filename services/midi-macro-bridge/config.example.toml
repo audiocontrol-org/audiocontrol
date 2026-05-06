@@ -1,5 +1,17 @@
-# midi-macro-bridge configuration
-# Copy this file to config.toml and edit.
+# midi-macro-bridge config
+#
+# This file is read from one of these locations, in order:
+#   1. Path passed via --config <path> on the command line
+#   2. $MIDI_MACRO_BRIDGE_CONFIG environment variable
+#   3. OS-conventional default:
+#        macOS: ~/Library/Application Support/audiocontrol/midi-macro-bridge/config.toml
+#        Linux: ~/.config/audiocontrol/midi-macro-bridge/config.toml
+#   4. ./config.toml (current working directory — dev fallback)
+#
+# To install for the current user:
+#   mkdir -p ~/.config/audiocontrol/midi-macro-bridge                       # Linux
+#   mkdir -p ~/Library/Application\ Support/audiocontrol/midi-macro-bridge  # macOS
+#   cp config.example.toml <path-above>/config.toml
 
 # Substring match against the MC-500 transport MIDI input port
 # (case-insensitive). Run with --list-ports to see available ports.
