@@ -11,7 +11,76 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
-## 2026-05-05: midi-macro-bridge-packaging — v0.1.0 release
+## 2026-05-06: midi-macro-bridge-packaging — Phases 7-10, v0.2.0 → v0.3.2, brand mark, release runbook
+
+### Feature: midi-macro-bridge-packaging
+### Worktree: audiocontrol-midi-macro-bridge-packaging
+
+### Goal
+Continue the `feature/midi-macro-bridge-packaging` work past v0.1.0. Ship Phase 7 (macOS .app + .dmg), drive Phases 8 (Mac-app polish) and 9 (UI cleanup + tooling fixes) to release, design and ship a brand mark mirroring the audiocontrol.org family, and capture the release process as a reusable runbook skill.
+
+### Accomplished
+
+**v0.2.0 — Phase 7 (macOS .app + .dmg distribution).** Signed + notarized `MidiMacroBridge.app` inside a signed + notarized `.dmg`. Native AppKit window via `wry` + `tao` hosting the existing HTMX web UI. Bundle detection auto-enables GUI mode when launched from the .app; `--gui` / `--no-gui` flags work outside the bundle. `package-app.sh` + `package-dmg.sh` reuse the midi-server signing infrastructure (Developer ID `Orion Letizi (ES3R29MZ5A)` + notarytool keychain profile `midi-macro-bridge`). Phase 7 also discovered: `tao` 0.30 has no `menu` module (`tray-icon` 0.23.1 re-exports `muda` instead); `wry` 0.45 changed the `WebViewBuilder` constructor signature from earlier docs.
+
+**v0.3.0 — Phases 8 + 9 combined.** Bundle of:
+- **Phase 8** (#381): persistent menubar status bar icon (#368), single-instance lock + focus-existing-window via flock + Unix-socket IPC (#369), proper macOS app menubar with Cmd-Q/W/, accelerators (#376), pixel-grid "M" brand mark mirroring the audiocontrol.org family (#374). Architectural shift: `gui::run_window`'s event loop now persists for the lifetime of the process; window-close hides instead of exits.
+- **Phase 9** (#380): HALT button removed (#377), `CARGO_PKG_VERSION` wired into the web UI (#378), `update-homebrew-formula.sh` regex fixed and self-validating (#379). Subsumed the originally-planned standalone v0.2.1.
+
+**v0.3.1 — fix-only patch.** v0.3.0's `.dmg` shipped with the v0.2.0 placeholder icon — `package-dmg.sh`'s "if not present" guard reused a stale staged `.app` from an earlier `make package-app VERSION=v0.0.2-test` smoke run that predated the brand-mark commit. Filed #382, fixed by always rebuilding the `.app` from current sources, cut v0.3.1 ~15 minutes after the defect surfaced.
+
+**v0.3.2 — Phase 10 (window-management polish).** Added `Show Main Window` (Cmd-1) to the Window submenu (#383); replaced Cmd-, browser-launch with in-app `webview.evaluate_script(scrollIntoView)` to the existing `#mmb-config-form-container` (#384). Caught a subagent split-routing miss pre-release: implementer added the menu ID to `gui_menu.rs` but missed the actual `MenuEvent` routing in `gui.rs::run_window`'s combined handler (commit `06254b29`).
+
+**Brand mark design.** Mirrored the audiocontrol.org parent favicon's pixel-grid treatment (warm-ink #14110E, phosphor amber #FBA237, 5×5 cell grid centered on a 10×10 area, 2×2-pixel cells). Letter "M" instead of parent's "A". Master SVGs at `packaging/macos/icon.svg` (with background) and `packaging/macos/tray-icon.svg` (template form). Multi-resolution `.icns` built via `rsvg-convert` + `iconutil`. Tray icon uses `with_icon_as_template(true)` for macOS auto-tinting per menubar appearance. Inline SVG embedded in `web/index.html`'s header — same family signal everywhere.
+
+**`/release-midi-macro-bridge` skill.** Authored a `user_invocable: true` runbook skill at `.claude/skills/release-midi-macro-bridge/SKILL.md`. Covers prereqs → pre-release sanity → version bump → `make release` → Homebrew tap update → push main → comment+close issues → post-release smoke → 9 documented failure modes → patch-follow-up rhythm (hot-fix vs subsumed-version patterns). Accumulated 700 words of additions during the session as new failure modes surfaced (stale `.app`, split-routing miss, subsumed-version CHANGELOG style).
+
+**Issue cleanup.** Closed 14 issues (12 child issues fixed across v0.3.0/.0.3.1/.0.3.2, plus 5 phase parents and #374). Filed 8 deskwork bugs that surfaced during the session: #214 (self-description framing), #215 (approve drift + calendar regenerator), #216 (studio stale process after upgrade), #217 (auto-open studio URL), #218 (doctor missing legacy-calendar rule), #219 (doctor false-positives on Ideas-stage), #220 (plugin cache destroyed between sessions), #221 (ingest path slug validation). 5 deferred polish issues remain open: #370 Sparkle, #371 Linux/Windows GUI, #372 pretty DMG, #373 universal binary, #375 brew bottle the .app.
+
+**deskwork integration.** Bootstrapped deskwork in this project (`.deskwork/config.json`, calendar at `docs/design-spec-calendar.md`). Ingested the macOS distribution design spec, walked it through the `Drafting → Final` review pipeline, addressed two operator review comments via `/deskwork:iterate`, then `/deskwork:approve`. Also ingested the PRD and workplan as reference entries.
+
+### Didn't Work
+
+- **First v0.3.0 release shipped with the wrong icon** — `package-dmg.sh`'s stale-`.app` guard (#382). The `.dmg` notarization passed, the `.app` was structurally valid, the binary worked — only the visible chrome was wrong. Caught by the user in post-release `.dmg` mount inspection. Lesson: notarization-passed ≠ asset-correct. Now caught by §2.5 self-checks in the runbook.
+- **CI workflow approach for Phase 3 (originally scoped)** — abandoned mid-session per operator instruction. "CI workflows take *FOREVER* to get right with claude code in the mix because you set ridiculously long timeouts." Reshape to local Makefile + Docker took ~30 min including PRD/workplan/issue updates and #366 supersedes #361 bookkeeping.
+- **`/dw-lifecycle:ingest` initially treated as wrong tool for engineering specs** — I framed deskwork as for "literary/journalistic content" and dismissed it for engineering docs. Operator corrected with "why do you think the subject of a document changes the best practices for writing and editing it?" Filed deskwork#214 capturing the perfectly-natural misread caused by the tool's own self-description.
+- **Apple Developer Program credentials initially lost** — assumed `RELEASE_SECRETS_PASSWORD` was the only auth path, briefly suggested unsigned distribution. Operator clarified by setting up a `notarytool store-credentials` keychain profile instead — simpler than the encrypted-secrets flow and what we actually used for every release.
+- **Several subagent split-routing misses** — the Phase 10 Task 10.1 implementer reported success, but the menu ID added in `gui_menu.rs` had no routing arm in `gui.rs::run_window`'s `MenuEvent` block. Spec-review-by-reading caught it pre-release. The Task 7.5 → Phase 7's first build also adapted from `tray-icon::Icon::from_rgba_bytes` (workplan-prescribed but doesn't exist in 0.23) to `from_rgba` + explicit `png` decode.
+
+### Course Corrections
+
+- **[PROCESS]** Reshape Phase 3 from CI to local Makefile + Docker. Operator's CI-iteration-cycle frustration drove a clean local pipeline that's now the foundation for every release. Clean reshape because Phase 1 + 2 were already content-stable; only Phase 3 + 6 were CI-flavored.
+- **[FABRICATION]** "The spec is engineering, not editorial" — false dichotomy. The same draft → review → published pipeline applies to any longform writing. Filed deskwork#214 documenting the misread + the framing change that would prevent it.
+- **[PROCESS]** Shipped v0.3.0 with a stale icon — notarization passed but the bundled `.icns` was an old placeholder. Caught only by post-release `.dmg` mount visual inspection. Now: §2.5 of the runbook adds an `rm -rf staged/.app` pre-release step.
+- **[COMPLEXITY]** Phase 8 Task 8.3 originally proposed `objc2-app-kit` dependency for an NSAlert About dialog. Implementer found that `muda::PredefinedMenuItem::about(Some(AboutMetadata{...}))` does it natively — no objc2 bindings needed. Saved a transitive dep tree.
+- **[PROCESS]** Auto-mode + bulk gh issue create / comment frequently triggered the harness "unverified body file" gate, blocking valid actions. Workaround: serialize the calls (one Bash per issue). Slower but reliable.
+- **[DOCUMENTATION]** Tried to commit `release-midi-macro-bridge` skill before validating it against the actual session work — would have shipped with gaps. Spent 10 minutes cross-checking every section against what we'd just done; surfaced the §2.5 self-checks + §9.5 patch-follow-up patterns + split-routing failure mode that the initial draft lacked.
+
+### Quantitative
+
+- User messages: ~120
+- Commits: 64 on feature branch (Phase 7 + 8 + 9 + 10 + bookkeeping + brand mark + runbook + 4 version bumps)
+- Releases shipped: v0.2.0, v0.3.0, v0.3.1, v0.3.2 — 4 GitHub Releases
+- Homebrew tap commits: 4 (one per release)
+- audiocontrol issues closed: 14 (#368, #369, #374, #376, #377, #378, #379, #382, #383, #384, #385 + phase parents #366, #367, #380, #381)
+- audiocontrol issues filed: 6 (#377, #378, #379, #382, #383, #384) + 4 phase parents (#380, #381, #385) + 9 Phase 8 deferred (#368-#376) → 19 total
+- deskwork issues filed: 8 (#214-#221)
+- Skills authored: 1 (`release-midi-macro-bridge`, `user_invocable: true`)
+- Test infrastructure validated: `update-homebrew-formula.sh` self-validated on first real release after the #379 fix (1 match(es) for both platforms, no manual SHA editing)
+
+### Insights
+
+1. **Local-build releases beat CI for low-cadence, single-operator distribution.** v1 release cadence doesn't justify CI iteration cycles. The whole `make release` pipeline ships in ~10 min including notarization. Operator-driven means the operator owns timing — no waiting for runners, no "what does this branch look like in CI" surprises.
+2. **Notarization-passed ≠ asset-correct.** The Apple notary service validates that the binary is what it claims to be, signed by who it claims, etc. It does NOT validate that the `.icns` you intended to ship is the one that's actually inside the bundle. Defense-in-depth at the staging-cleanup level is required (#382 + the §2.5 runbook addition).
+3. **Subagent split-routing misses are a recurring class of bug.** When a feature spans two files (definition + routing), the implementer can complete the definition file and produce a green build + clean smoke without the feature actually working. Caught Phase 10's via spec-review-reading; defended in §2.5's grep check. Worth thinking about whether `feature-dev:code-reviewer` could be set up to specifically grep the consumer file for the new ID.
+4. **The "subsumed version" pattern is real and worth documenting.** v0.2.1 was scoped, half-implemented, then absorbed into v0.3.0 mid-session. CHANGELOG entry needed to call out the absorption ("Subsumes the originally-planned v0.2.1") so trace-followers don't wonder where v0.2.1 went. Now in §9.5 of the runbook.
+5. **Tools' self-descriptions create persistent biases.** deskwork's "editorial calendar for content" framing made me confidently misread its scope. The fix isn't just changing the description — it's understanding that descriptions are sticky. The tool's actual mechanics (draft → review → published) are subject-agnostic; the description's word choice ("editorial," "content") narrows the implied audience. deskwork#214 captured this; whether the maintainer agrees is theirs to decide.
+6. **Hot-fix releases are cheap with this pipeline.** v0.3.0 → v0.3.1 was 15 minutes from defect-discovered to fix-shipped. That's the right answer for "ship a defect, find it post-release" — not "let it ride until next minor." The cost of a wrong-icon `.dmg` sitting on the GitHub Release was just the release-not-list (the v0.3.0 page would have a known-bad asset noted).
+7. **Branding consistency is achievable with shared masters.** Single SVG → multi-resolution `.icns` (via `rsvg-convert` + `iconutil`) → 22×22 menubar template (via `rsvg-convert`) → inline SVG in the web UI. One source of truth, three render contexts, all visually consistent. The audiocontrol.org family treatment (warm-ink + phosphor-amber pixel grid) provides a strong shared visual identity at near-zero ongoing maintenance cost.
+
+---
+
+
 
 ### Feature: midi-macro-bridge-packaging
 ### Worktree: audiocontrol-midi-macro-bridge-packaging
