@@ -1,5 +1,21 @@
 # Installing midi-macro-bridge as a service
 
+## .app installed from .dmg (interactive launch)
+
+The .dmg distribution installs `MidiMacroBridge.app` to `/Applications`.
+Launch it like any macOS app — by double-clicking. **The .app does not
+register itself as a daemon, LaunchAgent, or Login Item.** This is
+intentional: the .app is for interactive use; if you want the bridge
+running continuously in the background, use the Homebrew install path
+with `brew services start midi-macro-bridge` instead.
+
+Quitting:
+- Click the **HALT** button in the app window (3-second hold), or
+- Close the window (red X / Cmd-W), or
+- Cmd-Q (when implemented in a future version with proper menubar)
+
+All three trigger the same graceful shutdown.
+
 ## Homebrew (macOS, Linux)
 
 After `brew install midi-macro-bridge`:

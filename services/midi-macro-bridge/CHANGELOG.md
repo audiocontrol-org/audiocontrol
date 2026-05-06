@@ -5,6 +5,19 @@ All notable changes to `midi-macro-bridge` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.2.0
+
+### Highlights
+- macOS `.app` distribution via signed + notarized `.dmg`.
+- Native AppKit window via `wry` + `tao` hosts the existing web UI — feels like a real Mac app, not a browser tab.
+- New `--gui` and `--no-gui` flags; bundle context auto-detected.
+- Reuses midi-server's macOS code-signing infrastructure (no duplication).
+
+### Notes
+- The `.app` is interactive-launch-only by design. For daemon / always-on use, the Homebrew + `brew services` install path remains.
+- Linux + Windows GUI is supported by `wry` but out of scope for this release.
+- v0.2.0 ships a placeholder app icon; a real icon is planned for a later release.
+
 ## v0.1.0
 
 First public release.

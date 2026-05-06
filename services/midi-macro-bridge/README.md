@@ -17,6 +17,20 @@ limitation of LUNA, not of this tool.
 
 ## Install
 
+### macOS (Apple Silicon) — drag-to-Applications .dmg (easiest, no Terminal)
+
+Download `MidiMacroBridge-vX.Y.Z.dmg` from the
+[latest release](https://github.com/audiocontrol-org/audiocontrol/releases),
+double-click to mount, drag `MidiMacroBridge.app` to Applications,
+double-click the app to launch.
+
+A native window opens showing the bridge's web UI. Close the window
+to quit; the bridge runs only while the window is open. The .dmg is
+signed and notarized — no Gatekeeper workaround needed.
+
+For service / daemon / always-on use, see Homebrew below or
+[INSTALL.md](INSTALL.md).
+
 ### macOS (Apple Silicon) — Homebrew (recommended)
 
     brew tap audiocontrol-org/audiocontrol
