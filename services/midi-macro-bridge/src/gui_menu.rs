@@ -26,6 +26,7 @@ pub struct MenuIds {
     pub preferences: tray_icon::menu::MenuId,
     pub quit: tray_icon::menu::MenuId,
     pub show_main_window: tray_icon::menu::MenuId,
+    pub show_help: tray_icon::menu::MenuId,
 }
 
 /// Build and install the macOS application menubar.
@@ -69,10 +70,16 @@ pub fn build_menubar() -> anyhow::Result<(Menu, MenuIds)> {
     let show_main_window_accel: Accelerator = "CMD+1".parse()?;
     let show_main_window = MenuItem::new("Show Main Window", true, Some(show_main_window_accel));
 
+    // Cmd-? on US keyboards is Cmd-Shift-/ — muda's parser uses key names,
+    // so the accelerator is spelled "CMD+SHIFT+SLASH".
+    let show_help_accel: Accelerator = "CMD+SHIFT+SLASH".parse()?;
+    let show_help = MenuItem::new("Show Help", true, Some(show_help_accel));
+
     let menu_ids = MenuIds {
         preferences: preferences.id().clone(),
         quit: quit.id().clone(),
         show_main_window: show_main_window.id().clone(),
+        show_help: show_help.id().clone(),
     };
 
     let app_menu = Submenu::with_items(
@@ -95,7 +102,9 @@ pub fn build_menubar() -> anyhow::Result<(Menu, MenuIds)> {
     )?;
     window_menu.set_as_windows_menu_for_nsapp();
 
-    menu.append_items(&[&app_menu, &window_menu])?;
+    let help_menu = Submenu::with_items("Help", true, &[&show_help])?;
+
+    menu.append_items(&[&app_menu, &window_menu, &help_menu])?;
     menu.init_for_nsapp();
 
     Ok((menu, menu_ids))

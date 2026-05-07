@@ -30,6 +30,8 @@ pub enum UserEvent {
     CloseWindow,
     /// Open Preferences in the default browser at /api/config-form.
     OpenPreferences,
+    /// Scroll the in-app WebView to the HELP section anchor.
+    ShowHelp,
 }
 
 /// Open the bridge UI window and run the macOS event loop until the user
@@ -77,6 +79,8 @@ pub fn run_window(
             proxy_clone.send_event(UserEvent::Quit)
         } else if event.id == menu_ids.preferences {
             proxy_clone.send_event(UserEvent::OpenPreferences)
+        } else if event.id == menu_ids.show_help {
+            proxy_clone.send_event(UserEvent::ShowHelp)
         } else {
             Ok(())
         };
@@ -110,6 +114,13 @@ pub fn run_window(
                 window.set_focus();
                 let _ = webview.evaluate_script(
                     "document.getElementById('mmb-config-form-container')?.scrollIntoView({behavior: 'smooth', block: 'start'});"
+                );
+            }
+            Event::UserEvent(UserEvent::ShowHelp) => {
+                window.set_visible(true);
+                window.set_focus();
+                let _ = webview.evaluate_script(
+                    "document.getElementById('mmb-help-section')?.scrollIntoView({behavior: 'smooth', block: 'start'});"
                 );
             }
             _ => {}
