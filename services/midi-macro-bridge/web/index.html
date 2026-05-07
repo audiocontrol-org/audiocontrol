@@ -23,6 +23,7 @@
       </g>
     </svg>
     <h1 class="mmb-title">MIDI Macro Bridge</h1>
+    <a class="mmb-help-toggle" href="#mmb-help-section" title="Help (⌘?)" aria-label="Jump to help section">?</a>
     <!-- Phase 8a: master LED is OOB-swapped by status-updated SSE events -->
     <div class="mmb-master-led" id="mmb-master-led" data-state="amber" title="starting up..."></div>
     <span class="mmb-version">v__VERSION__</span>
@@ -92,7 +93,7 @@
   <section class="mmb-help" id="mmb-help-section" aria-label="help and DAW configuration">
     <h2 class="mmb-section-label">HELP</h2>
 
-    <details class="mmb-help-card" id="mmb-help-bridge">
+    <details class="mmb-help-card" id="mmb-help-bridge" open>
       <summary>Configuring the bridge</summary>
       <div class="mmb-help-card-body">
         <p>The bridge auto-starts on launch with sensible defaults &mdash; for many users no configuration is needed.</p>

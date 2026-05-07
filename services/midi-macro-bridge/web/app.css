@@ -765,85 +765,202 @@ h3,
 
 /* ── Help section ────────────────────────────────────────────────────────── */
 
+/* Native smooth-scroll for anchor jumps (header `?` button → #mmb-help-section). */
+html {
+  scroll-behavior: smooth;
+}
+
+.mmb-help {
+  /* Generic panel chrome inherited above; give the help section
+     more interior breathing room than the dense readout panels. */
+  padding: calc(var(--base) * 4);
+  counter-reset: help-card;
+}
+
 .mmb-help-card {
   border: 1px solid var(--border-hairline);
   background: var(--surface-recess);
-  margin-bottom: calc(var(--base) * 1);
+  margin-bottom: calc(var(--base) * 2);
   padding: 0;
   border-radius: var(--panel-radius);
+  counter-increment: help-card;
+  transition: border-color 180ms ease;
 }
 
 .mmb-help-card:last-of-type {
   margin-bottom: 0;
 }
 
+.mmb-help-card[open] {
+  border-color: hsl(35 95% 62% / 0.28);
+}
+
 .mmb-help-card > summary {
   list-style: none;
   cursor: pointer;
-  padding: calc(var(--base) * 2) calc(var(--base) * 3);
-  font-family: 'Geist Mono', ui-monospace, monospace;
-  font-size: 0.75rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--text-secondary);
+  padding: calc(var(--base) * 3) calc(var(--base) * 4);
+  font-family: 'Departure Mono', 'Geist Mono', ui-monospace, monospace;
+  font-size: 0.875rem;
+  letter-spacing: 0.04em;
+  color: var(--text-screenprint);
   user-select: none;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  align-items: baseline;
+  gap: calc(var(--base) * 3);
+  transition: color 140ms ease;
 }
 
-/* Suppress the WebKit default disclosure marker */
+/* Suppress WebKit's default disclosure marker */
 .mmb-help-card > summary::-webkit-details-marker {
   display: none;
 }
 
-.mmb-help-card > summary::after {
-  content: '+';
-  font-size: 1rem;
-  color: var(--text-secondary);
-  transition: transform 100ms ease;
+/* Numeric badge — printed-manual page-number feel: 01, 02, 03, 04 */
+.mmb-help-card > summary::before {
+  content: counter(help-card, decimal-leading-zero);
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.16em;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-warm);
+  border-right: 1px solid hsl(35 95% 62% / 0.3);
+  padding-right: calc(var(--base) * 3);
+  flex: 0 0 auto;
+  align-self: center;
 }
 
-.mmb-help-card[open] > summary::after {
-  content: '–'; /* en-dash, not minus */
+/* Disclosure indicator on the right — `+` rotates to `×` on open */
+.mmb-help-card > summary::after {
+  content: '+';
+  margin-left: auto;
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 1.125rem;
+  font-weight: 300;
+  color: var(--text-secondary);
+  transition: transform 220ms cubic-bezier(0.32, 0.72, 0, 1), color 140ms ease;
+  flex: 0 0 auto;
+  align-self: center;
+  line-height: 1;
 }
 
 .mmb-help-card[open] > summary {
-  color: var(--text-screenprint);
-  border-bottom: 1px solid var(--border-hairline);
+  color: var(--accent-warm);
+}
+
+.mmb-help-card[open] > summary::after {
+  transform: rotate(45deg);
+  color: var(--accent-warm);
 }
 
 .mmb-help-card-body {
-  padding: calc(var(--base) * 3);
+  /* Indent body to align with the title text (after the badge column) so
+     content reads like a continuation of the heading, not a fresh column.
+     Right-pad generously so prose breathes against the panel edge. */
+  padding: 0 calc(var(--base) * 6) calc(var(--base) * 4) calc(var(--base) * 4 + 32px);
   font-family: 'Geist Mono', ui-monospace, monospace;
-  font-size: 0.8125rem; /* 13px — slightly larger than the screenprint labels for readability */
-  line-height: 1.6;
+  font-size: 0.8125rem; /* 13px */
+  line-height: 1.75;
   color: var(--text-screenprint);
+  /* The single biggest readability win: prose stops stretching to the panel
+     edge on wide viewports. ~70 characters is the upper end of comfortable. */
+  max-width: 70ch;
 }
 
 .mmb-help-card-body p {
-  margin: 0 0 calc(var(--base) * 2);
+  margin: 0 0 calc(var(--base) * 3);
 }
 
 .mmb-help-card-body p:last-child {
   margin-bottom: 0;
 }
 
+.mmb-help-card-body strong {
+  color: var(--text-screenprint);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* Numbered steps — monospace digits sit in a left gutter as accent-warm
+   page markers, matching the card's own numeric badge treatment. */
 .mmb-help-card-body ol {
-  padding-left: calc(var(--base) * 4);
-  margin: 0 0 calc(var(--base) * 2);
+  list-style: none;
+  padding: 0;
+  margin: 0 0 calc(var(--base) * 3);
+  counter-reset: help-step;
 }
 
 .mmb-help-card-body ol > li {
-  margin-bottom: calc(var(--base) * 1);
+  counter-increment: help-step;
+  position: relative;
+  padding-left: calc(var(--base) * 7);
+  margin-bottom: calc(var(--base) * 2);
 }
 
+.mmb-help-card-body ol > li:last-child {
+  margin-bottom: 0;
+}
+
+.mmb-help-card-body ol > li::before {
+  content: counter(help-step, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 0.6875rem;
+  color: var(--accent-warm);
+  letter-spacing: 0.12em;
+  font-variant-numeric: tabular-nums;
+  /* Nudge to align with body baseline — depends on the body line-height. */
+  line-height: 1.75;
+}
+
+/* Inline code — distinct color and weight, no background tint.
+   The previous heavy amber-on-amber-bg fought the body text; relying on
+   color + weight alone makes <code> stand out without flickering. */
 .mmb-help-card-body code {
-  background: rgba(255, 209, 102, 0.08); /* led-amber tint */
-  padding: 0 4px;
-  border-radius: 2px;
-  color: var(--led-amber);
-  font-size: 0.875em;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  color: var(--accent-warm);
+  font-size: 0.9375em;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* ── Header help affordance ─────────────────────────────────────────────── */
+
+.mmb-help-toggle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-left: auto; /* push the right cluster: ?  •  v0.x.x */
+  border: 1px solid var(--border-hairline);
+  border-radius: 50%;
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--surface-recess);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+}
+
+.mmb-help-toggle:hover,
+.mmb-help-toggle:focus-visible {
+  color: var(--accent-warm);
+  border-color: var(--accent-warm);
+  background: hsl(35 95% 62% / 0.06);
+  box-shadow: 0 0 6px hsl(20 100% 66% / 0.35);
+  outline: none;
+}
+
+/* When the toggle is the right-cluster anchor, the master LED loses its own
+   margin-left:auto so they pack tightly together (toggle, gap, LED, gap, version). */
+.mmb-help-toggle ~ .mmb-master-led {
+  margin-left: 0;
 }
 
 /* ── Event stream ────────────────────────────────────────────────────────── */
