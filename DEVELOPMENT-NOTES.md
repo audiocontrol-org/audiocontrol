@@ -11,6 +11,53 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-05-06: midi-macro-bridge-packaging — Phase 11 implementation, header help affordance, v0.4.0 release
+
+### Feature: midi-macro-bridge-packaging
+### Worktree: audiocontrol-midi-macro-bridge-packaging
+
+### Goal
+
+Implement Phase 11 (built-in HELP screen for the control interface + macOS Help menu with Cmd-? accelerator) and ship v0.4.0. Workplan covered all four tasks (11.1 markup/CSS, 11.2 DAW content, 11.3 menu wiring, 11.4 release).
+
+### Accomplished
+
+- **Task 11.1 — HELP section markup + styling.** Inserted `<section class="mmb-help">` between CONFIGURATION and EVENT STREAM in `web/index.html` with four `<details>` cards (bridge config + 3 DAWs). Added `.mmb-help-card` CSS following the Studio Rack Utility design tokens. Verified all referenced CSS variables (`--surface-recess`, `--border-hairline`, `--led-amber`, `--base`, `--panel-radius`) existed before applying. Build clean; smoke confirmed `mmb-help` rendered 9× in served HTML and `mmb-help-section` anchor present (commit `cadfdec2`).
+- **Task 11.2 — DAW content authored.** Populated all four card bodies from the workplan templates: bridge configuration (CONFIGURATION/MC-500/Backend/LCXL3/config.toml location), LUNA (Preferences → Controllers → MIDI Control Surfaces → MIDI Macro Bridge / MCU), Logic Pro (Preferences → Control Surfaces → Setup → Logic Control), Ableton Live (Link Tempo & MIDI → MackieControl). Operator approved "ship as is" without DAW menu corrections (commit `5c92dd2c`).
+- **Task 11.3 — macOS Help menu + Cmd-?.** Added `UserEvent::ShowHelp` variant + `Event::UserEvent(ShowHelp)` handler in `gui.rs` (mirror of Phase 10's `OpenPreferences` scroll pattern). Added `Help` submenu with `Show Help` item using `"CMD+SHIFT+SLASH".parse()?` accelerator + `show_help` field in `MenuIds` in `gui_menu.rs`. Critically wired the routing arm in the `MenuEvent::set_event_handler` block in `gui.rs::run_window` — the §2.5 split-routing check that Phase 10 missed for Cmd-1. Pre-commit grep confirmed all four `menu_ids.*` fields routed (commit `75fb7063`).
+- **Header help affordance + help section redesign** (operator feedback mid-flight via `/frontend-design:frontend-design`). Operator characterized the initial render as "pretty ghastly" and asked for a help affordance in the header. Added a small `?` button to the header's right cluster (anchor with `href="#mmb-help-section"` for native scroll + keyboard accessibility). Refined help section typography: prose constrained to `max-width: 70ch` (single biggest readability win on wide viewports), page-marker numeric badges (01–04) in `--accent-warm` flank each card title, card titles in Departure Mono at 14px, disclosure `+` rotates 45° to form `×` on open, inline `<code>` lost the heavy amber-bg tint and now relies on color + medium weight, numbered steps in body sit in a left gutter as amber markers, first card opens by default so the section shows content on arrival, `html { scroll-behavior: smooth }` for native anchor smooth-scroll. Operator approved "Looks great. Ship it." (commit `2be8e106`).
+- **Task 11.4 — v0.4.0 cut.** Bumped Cargo.toml + CHANGELOG (commit `fdc711f1`). `make release VERSION=v0.4.0` ran clean: notarytool Accepted, stapled, Gatekeeper accepted, all 7 artifacts uploaded. Homebrew tap updated and pushed (`1a10921`). #390 commented with the release link (left open per `feedback_no_autonomous_close.md`).
+- **Post-release smoke** from `/Applications/MidiMacroBridge.app`: virtual MCU endpoint registered (`bridge ready`, `ready — waiting for MIDI events`), header shows v0.4.0, help section renders, Cmd-? menu wiring functional. Ran the runbook §8 download path — DMG SHA verified, install via cp from mounted DMG, plutil-checked CFBundleShortVersionString to confirm 0.4.0 (avoiding the v0.3.3 false-negative trap from the prior session).
+- **Phase 11 close-out.** Flipped 23 Phase 11 checkboxes via the workplan's embedded Python helper. Updated README phase row from "Not started" to "Complete; shipped in v0.4.0" (commit `5bdb24f0`). Pushed to main (FF, `5a3039f4..5bdb24f0`).
+
+### Didn't Work
+
+- **Initial help section render was visually weak.** Shipped Task 11.1's CSS verbatim from the workplan template without a critical aesthetic pass; the result was full-width prose, all-caps card titles competing with the section label, and inline `<code>` with heavy amber-bg tint that flickered against the body text. Operator caught it after seeing the live output; would have been better to do a self-review pass before claiming the task complete. The redesign followed within a few minutes once flagged.
+
+### Course Corrections
+
+- **[UX]** Header help affordance was operator-suggested, not in the workplan. The Cmd-? menu shortcut alone isn't discoverable to first-time users — a visible `?` button in the header makes the keyboard shortcut findable AND gives mouse users equal access. Added even though strictly out of scope. Worth carrying forward as a UX principle: every keyboard shortcut should have a visible affordance unless it's an expert-only escape hatch.
+- **[PROCESS]** Used Edit tool directly for the known mechanical workplan tasks rather than dispatching subagents per the subagent-driven-development discipline. The workplan provided exact code blocks and the design-system variables existed; sub-agent overhead would have been pure waste. Per memory `feedback_compound_commands.md`. The skill's flowchart explicitly allows this judgment call ("Use Edit directly for simple known fixes").
+- **[PROCESS]** §2.5 split-routing pre-release grep caught nothing because I wired `show_help` correctly the first time. But the grep is the right kind of automated paranoia — Phase 10 missed Cmd-1 routing precisely because no automated check existed. The pattern: every time we add a `menu_ids.*` field, the grep must show it routed.
+
+### Quantitative
+
+- User messages this session: ~5 (frontend-design skill invocation, "ship as is", "Looks great. Ship it.", "push to main", session-end skill)
+- Commits: 6 (Task 11.1 markup/CSS, 11.2 DAW content, 11.3 menu wiring, redesign, v0.4.0 bump, close-out docs) plus the homebrew tap commit `1a10921`
+- Releases shipped: 1 (v0.4.0 — minor bump for Phase 11 user-visible feature)
+- Issues: 1 commented (#390, left open for operator close)
+- User corrections: 1 redesign request mid-flight (initial help render → refined typography + header affordance)
+- Files modified: 5 (web/index.html, web/app.css, src/gui.rs, src/gui_menu.rs, Cargo.toml/Cargo.lock/CHANGELOG.md, plus formula in tap repo)
+
+### Insights
+
+- **The release runbook + §2.5 self-checks held up.** Two releases this calendar day (v0.3.3 hot-fix + v0.4.0 feature) without ceremony, ~12 minutes each from `make release` to GitHub Release URL including notarization. Local-build pipeline + skill-driven runbook + auto mode + operator's "ship as is" closes the loop fast. The cost of shipping incrementally is low enough that there's no reason to batch.
+- **First-pass UI from a workplan template needs a critical review pass.** The workplan templates produce *correct* code that fits the design system tokens but isn't *thoughtfully designed*. Specifically: line-length, hierarchy, code-tag visual weight, density, default open/closed state — these are aesthetic decisions a workplan can't make for you. When implementing UI work, the implementer should treat the template as a starting point and ask "does this read well?" before declaring done. Operator's "ghastly" feedback was deserved.
+- **`max-width: 70ch` on prose is the single biggest readability win on wide viewports.** Worth keeping as a default for any new help/docs content in this codebase. Should propagate to other sections (CONFIGURATION's form-help text, EVENT STREAM error messages) if they grow.
+- **The `?` affordance pattern (visible button mirrors keyboard shortcut) is reusable.** Applies to Preferences (Cmd-,) and any future shortcut. Worth adding to a small DESIGN-NOTES file or the project's UI guideline file once such things exist.
+
+---
+
 ## 2026-05-06: midi-macro-bridge-packaging — v0.3.3 hot-fix: .app MIDI regression diagnosis + refactor
 
 ### Feature: midi-macro-bridge-packaging
