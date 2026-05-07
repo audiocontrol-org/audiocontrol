@@ -95,28 +95,53 @@
     <details class="mmb-help-card" id="mmb-help-bridge">
       <summary>Configuring the bridge</summary>
       <div class="mmb-help-card-body">
-        <!-- bridge configuration text — populated in Task 11.2 -->
+        <p>The bridge auto-starts on launch with sensible defaults &mdash; for many users no configuration is needed.</p>
+        <p>To customize, scroll up to the <strong>CONFIGURATION</strong> section above. Common adjustments:</p>
+        <ol>
+          <li><strong>MC-500 input port</strong> &mdash; substring match against your MIDI interface's name. Click the dropdown for the live list of detected ports.</li>
+          <li><strong>Backend</strong> &mdash; leave on <code>MCU</code> for the default DAW-control-surface workflow. Use <code>Keystrokes</code> only if your DAW doesn't accept MCU and you want the bridge to type the equivalent transport keys instead.</li>
+          <li><strong>LCXL3</strong> &mdash; enable if you have a Novation Launch Control XL Mk3 connected; the bridge's transport buttons + encoder will mirror the MC-500 inputs.</li>
+        </ol>
+        <p>The bridge persists changes to <code>~/Library/Application Support/audiocontrol/midi-macro-bridge/config.toml</code>. To reset, delete that file.</p>
       </div>
     </details>
 
     <details class="mmb-help-card" id="mmb-help-luna">
-      <summary>LUNA — UAD</summary>
+      <summary>LUNA &mdash; UAD</summary>
       <div class="mmb-help-card-body">
-        <!-- LUNA setup instructions — populated in Task 11.2 -->
+        <p>Make LUNA discover the bridge as a Mackie Control surface.</p>
+        <ol>
+          <li>Open LUNA &rarr; <strong>Preferences</strong> &rarr; <strong>Controllers</strong> &rarr; <strong>MIDI Control Surfaces</strong>.</li>
+          <li>On an enabled row, set <strong>INPUT DEVICE</strong> to <code>MIDI Macro Bridge</code>.</li>
+          <li>On the same row, set <strong>OUTPUT DEVICE</strong> to <code>MIDI Macro Bridge</code>.</li>
+          <li>Set the protocol/type to <code>MCU</code>.</li>
+          <li>Save preferences. The bridge's bar-position display will update with LUNA's playhead within ~1 second.</li>
+        </ol>
+        <p>If LUNA doesn't list <code>MIDI Macro Bridge</code> in the device dropdown, quit LUNA, confirm the bridge is running (the status bar icon is visible), then re-launch LUNA. Some DAWs only enumerate MIDI devices on startup.</p>
       </div>
     </details>
 
     <details class="mmb-help-card" id="mmb-help-logic">
       <summary>Logic Pro</summary>
       <div class="mmb-help-card-body">
-        <!-- Logic Pro setup instructions — populated in Task 11.2 -->
+        <ol>
+          <li>Open Logic &rarr; <strong>Preferences</strong> &rarr; <strong>Control Surfaces</strong> &rarr; <strong>Setup</strong>.</li>
+          <li>Click <strong>New</strong> &rarr; <strong>Install</strong> &rarr; choose <strong>Logic Control</strong> (or <strong>Mackie Control</strong>) &rarr; <strong>Add</strong>.</li>
+          <li>In the surface's properties panel, set <strong>Input Port</strong> to <code>MIDI Macro Bridge</code> and <strong>Output Port</strong> to <code>MIDI Macro Bridge</code>.</li>
+          <li>Close the setup window. Logic remembers the surface across sessions.</li>
+        </ol>
       </div>
     </details>
 
     <details class="mmb-help-card" id="mmb-help-ableton">
       <summary>Ableton Live</summary>
       <div class="mmb-help-card-body">
-        <!-- Ableton Live setup instructions — populated in Task 11.2 -->
+        <ol>
+          <li>Open Live &rarr; <strong>Preferences</strong> &rarr; <strong>Link, Tempo &amp; MIDI</strong>.</li>
+          <li>In the <strong>Control Surface</strong> table, choose <strong>MackieControl</strong> in the first dropdown.</li>
+          <li>Set <strong>Input</strong> to <code>MIDI Macro Bridge</code> and <strong>Output</strong> to <code>MIDI Macro Bridge</code>.</li>
+          <li>Live applies the change immediately &mdash; no restart required.</li>
+        </ol>
       </div>
     </details>
   </section>
