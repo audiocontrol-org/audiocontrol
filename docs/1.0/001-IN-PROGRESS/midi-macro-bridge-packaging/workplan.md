@@ -4259,7 +4259,7 @@ git push origin HEAD:main
 
 The existing main page has sections in this order: header, transport readout, ROUTING, CONFIGURATION, EVENT STREAM. Add HELP between CONFIGURATION and EVENT STREAM. Place above EVENT STREAM so first-time users discover it before scrolling past the running event log.
 
-- [ ] **Step 1: Add the HELP section markup**
+- [x] **Step 1: Add the HELP section markup**
 
 Edit `services/midi-macro-bridge/web/index.html`. Find the EVENT STREAM section. ABOVE it, insert:
 
@@ -4299,7 +4299,7 @@ Edit `services/midi-macro-bridge/web/index.html`. Find the EVENT STREAM section.
 
 `<details>` and `<summary>` are native HTML — no JS needed for the open/close behavior. Defaults to closed; user clicks to expand. Each card has a stable `id` so the menubar's `Show Help` can deep-link if desired (Task 11.3 just scrolls to the section header).
 
-- [ ] **Step 2: Add CSS rules**
+- [x] **Step 2: Add CSS rules**
 
 Edit `services/midi-macro-bridge/web/app.css`. Find the `.mmb-config` panel rules (or wherever the panel-chrome generic rules live). Add a new `.mmb-help` panel block plus card-specific styles:
 
@@ -4381,7 +4381,7 @@ Edit `services/midi-macro-bridge/web/app.css`. Find the `.mmb-config` panel rule
 
 (Adjust to match the existing CSS variables exactly — use `--led-amber` etc. as defined in the `:root` block.)
 
-- [ ] **Step 3: Build + smoke**
+- [x] **Step 3: Build + smoke**
 
 ```bash
 cd /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging
@@ -4408,7 +4408,7 @@ Manual: open the bridge in a browser. Scroll to HELP section. Confirm:
 - Cards are collapsed by default. Clicking the summary expands; clicking again collapses.
 - The `+` / `–` indicator on the summary right-aligns and toggles.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add services/midi-macro-bridge/web/index.html services/midi-macro-bridge/web/app.css
@@ -4426,7 +4426,7 @@ The card bodies left empty in Task 11.1 get populated here. Content must be **ac
 
 > **Operator note:** The implementer should ASK the operator for the exact menu paths before writing each DAW card. The user has tested all three DAWs with the bridge and has authoritative knowledge of the paths and labels. Don't fabricate menu trees from training data.
 
-- [ ] **Step 1: Configure-the-bridge card**
+- [x] **Step 1: Configure-the-bridge card**
 
 Populate `#mmb-help-bridge`'s body. This content is fully derivable from existing project state:
 
@@ -4443,7 +4443,7 @@ Populate `#mmb-help-bridge`'s body. This content is fully derivable from existin
 </div>
 ```
 
-- [ ] **Step 2: LUNA card**
+- [x] **Step 2: LUNA card**
 
 Ask the operator for the exact path. Suggested template (verify before writing):
 
@@ -4461,7 +4461,7 @@ Ask the operator for the exact path. Suggested template (verify before writing):
 </div>
 ```
 
-- [ ] **Step 3: Logic Pro card**
+- [x] **Step 3: Logic Pro card**
 
 ```html
 <div class="mmb-help-card-body">
@@ -4474,7 +4474,7 @@ Ask the operator for the exact path. Suggested template (verify before writing):
 </div>
 ```
 
-- [ ] **Step 4: Ableton Live card**
+- [x] **Step 4: Ableton Live card**
 
 ```html
 <div class="mmb-help-card-body">
@@ -4487,11 +4487,11 @@ Ask the operator for the exact path. Suggested template (verify before writing):
 </div>
 ```
 
-- [ ] **Step 5: Operator review**
+- [x] **Step 5: Operator review**
 
 Before committing, the operator reviews each DAW card by actually opening the DAW and walking through the steps. Any divergence from the written instructions gets corrected in-place. The implementer adapts the wording based on operator feedback.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add services/midi-macro-bridge/web/index.html
@@ -4508,7 +4508,7 @@ git commit -m "feat(midi-macro-bridge): help content for bridge config + LUNA/Lo
 
 Add a new top-level `Help` submenu to the macOS app menubar (rightmost-position convention on macOS). The submenu has one item: `Show Help` with the Cmd-? accelerator (Cmd-Shift-/, which on US keyboards types `?`). Routes to a new `UserEvent::ShowHelp` that scrolls the in-app WebView to `#mmb-help-section`.
 
-- [ ] **Step 1: Add `UserEvent::ShowHelp` variant**
+- [x] **Step 1: Add `UserEvent::ShowHelp` variant**
 
 Edit `services/midi-macro-bridge/src/gui.rs`. Add to the existing `UserEvent` enum:
 
@@ -4523,7 +4523,7 @@ pub enum UserEvent {
 }
 ```
 
-- [ ] **Step 2: Add the event handler in `run_window`**
+- [x] **Step 2: Add the event handler in `run_window`**
 
 In the same `match event` block where `OpenPreferences` lives, add:
 
@@ -4539,7 +4539,7 @@ Event::UserEvent(UserEvent::ShowHelp) => {
 
 Mirror Phase 10's `OpenPreferences` handler exactly — same pattern, different anchor.
 
-- [ ] **Step 3: Add the Help submenu in `gui_menu.rs`**
+- [x] **Step 3: Add the Help submenu in `gui_menu.rs`**
 
 Edit `services/midi-macro-bridge/src/gui_menu.rs`. Find where the existing `Window` submenu is constructed. After it, add a `Help` submenu:
 
@@ -4553,7 +4553,7 @@ menubar.append(&help_submenu)?;
 
 (Adapt to whatever the existing `Submenu` / `Menu` builder pattern is — the exact API name of `append` varies between muda versions. The implementer of Phase 10 Task 10.1 used `"CMD+1".parse()?` for the accelerator string, so use the same string-parse style.)
 
-- [ ] **Step 4: Add `show_help` field to `MenuIds`**
+- [x] **Step 4: Add `show_help` field to `MenuIds`**
 
 Same file. Find the `MenuIds` struct + add the new field:
 
@@ -4579,7 +4579,7 @@ let menu_ids = MenuIds {
 };
 ```
 
-- [ ] **Step 5: Wire the routing in `gui.rs::run_window`'s MenuEvent handler**
+- [x] **Step 5: Wire the routing in `gui.rs::run_window`'s MenuEvent handler**
 
 **Critical step — this is what Phase 10 Task 10.1's implementer missed for `Cmd-1`.** In `services/midi-macro-bridge/src/gui.rs`, find the `MenuEvent::set_event_handler` block. Add a routing arm for `menu_ids.show_help`:
 
@@ -4606,7 +4606,7 @@ grep -A1 "MenuEvent::set_event_handler" services/midi-macro-bridge/src/gui.rs | 
 # Should print one match. If empty: routing isn't wired; the menu item will silently no-op.
 ```
 
-- [ ] **Step 6: Build + smoke**
+- [x] **Step 6: Build + smoke**
 
 ```bash
 cargo build --manifest-path services/midi-macro-bridge/Cargo.toml 2>&1 | tail -3
@@ -4621,7 +4621,7 @@ Manual interactive test (orchestrator runs after task lands):
 - Press Cmd-? — page scrolls to the HELP section.
 - Press Cmd-W to close window. Press Cmd-? — window reappears AND scrolls to help.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add services/midi-macro-bridge/src/gui_menu.rs services/midi-macro-bridge/src/gui.rs
@@ -4634,7 +4634,7 @@ git commit -m "feat(midi-macro-bridge): macOS Help menu with Cmd-? scrolls to in
 
 Standard release flow per the [`/release-midi-macro-bridge`](../../../../.claude/skills/release-midi-macro-bridge/SKILL.md) skill.
 
-- [ ] **Step 1: Bump Cargo.toml + add CHANGELOG entry**
+- [x] **Step 1: Bump Cargo.toml + add CHANGELOG entry**
 
 Edit `services/midi-macro-bridge/Cargo.toml`:
 
@@ -4662,7 +4662,7 @@ git add services/midi-macro-bridge/Cargo.toml services/midi-macro-bridge/Cargo.l
 git commit -m "chore(midi-macro-bridge): bump to v0.4.0 + changelog"
 ```
 
-- [ ] **Step 2: Cut the release**
+- [x] **Step 2: Cut the release**
 
 ```bash
 make -C services/midi-macro-bridge release VERSION=v0.4.0
@@ -4676,7 +4676,7 @@ grep -A8 "MenuEvent::set_event_handler" services/midi-macro-bridge/src/gui.rs | 
 file services/midi-macro-bridge/packaging/macos/AppIcon.icns   # ~33KB Mac OS X icon
 ```
 
-- [ ] **Step 3: Update Homebrew formula**
+- [x] **Step 3: Update Homebrew formula**
 
 ```bash
 ./services/midi-macro-bridge/scripts/update-homebrew-formula.sh v0.4.0 \
@@ -4687,14 +4687,14 @@ git commit -m "midi-macro-bridge 0.4.0"
 git push origin main
 ```
 
-- [ ] **Step 4: Push feature branch HEAD to main**
+- [x] **Step 4: Push feature branch HEAD to main**
 
 ```bash
 cd /Users/orion/work/audiocontrol-work/audiocontrol-midi-macro-bridge-packaging
 git push origin HEAD:main
 ```
 
-- [ ] **Step 5: Comment + close child issue**
+- [x] **Step 5: Comment + close child issue**
 
 ```bash
 gh issue comment 390 --repo audiocontrol-org/audiocontrol \
@@ -4704,7 +4704,7 @@ gh issue close 390 --repo audiocontrol-org/audiocontrol --reason completed
 
 
 
-- [ ] **Step 6: Mark Phase 11 checkboxes complete + flip README phase row**
+- [x] **Step 6: Mark Phase 11 checkboxes complete + flip README phase row**
 
 ```bash
 python3 -c "
