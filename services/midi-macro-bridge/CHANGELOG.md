@@ -5,6 +5,18 @@ All notable changes to `midi-macro-bridge` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.4.0
+
+### Highlights
+- **Built-in HELP section** in the control interface ([#390](https://github.com/audiocontrol-org/audiocontrol/issues/390)): four collapsible cards covering bridge configuration and DAW setup for the three DAWs the bridge has been tested with — LUNA, Logic Pro, Ableton Live. The first card opens by default so first-time users see content on arrival.
+- **Header help affordance** — small `?` button in the header (right cluster) smooth-scrolls to the HELP section. Mirrors the `Cmd-?` menu shortcut as a visible discoverable affordance.
+- **macOS `Help` menu** with `Show Help` (`⌘?`) — scrolls the in-app web UI to the HELP section. Same pattern as `Cmd-,` → Preferences from v0.3.2. The Cmd-? accelerator brings the window to the front from a hidden state if needed.
+
+### Notes
+- Help content is intentionally lean for v0.4.0 — covers the three DAWs the bridge has been tested with. Adding more DAWs (Pro Tools, Cubase, Reaper, FL Studio, Bitwig) is a future scope item.
+- Help section typography refined: prose constrained to ~70 characters wide for readability on wide viewports; numeric page-marker badges (01–04) flank each card title; numbered steps in body sit in a left gutter as amber markers; inline `<code>` no longer carries a heavy background tint.
+- Headless / brew-services modes unchanged — the help section is web-UI-only and adds no dependencies for the headless paths.
+
 ## v0.3.3
 
 Fix-only release. v0.3.0 through v0.3.2 shipped a regression that prevented the `.app` bundle from registering its virtual Mackie Control MIDI endpoint with CoreMIDI ([#391](https://github.com/audiocontrol-org/audiocontrol/issues/391) — `gui::run_window` blocked the main thread, and the MIDI initialization that followed in `main()` was unreachable for the lifetime of the process). The control interface UI worked, the bridge URL was written, but no MIDI passed through and no DAW could see the bridge.
