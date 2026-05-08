@@ -1,0 +1,1440 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Phase 9 Task 2 — Design Language Exploration v1</title>
+<style>
+  /* ============================================================
+     DESIGN TOKENS — `--ac-*` namespace
+     Direction:
+       Dark-only, blue ink (NOT amber-cast). s330 blue is dominant
+       where audiocontrol.org would have used phosphor amber.
+       HSL fragments enable `hsl(var(--ac-color-*) / alpha)` composition.
+     ============================================================ */
+  :root {
+    color-scheme: dark;
+
+    /* --- color tokens (HSL fragments, no hsl() wrapper) --------- */
+    --ac-color-bg:               220 24% 7%;     /* warm-cool near-black, faint blue cast */
+    --ac-color-surface:          220 18% 11%;    /* card surface */
+    --ac-color-surface-hover:    220 18% 14%;    /* card hover */
+    --ac-color-fg:               215 18% 92%;    /* off-white, slight blue cast */
+    --ac-color-fg-muted:         220 12% 60%;    /* secondary text */
+    --ac-color-fg-subtle:        220 10% 42%;    /* tertiary text / placeholders */
+    --ac-color-border:           220 18% 22%;    /* hairline default */
+    --ac-color-border-hover:     220 18% 32%;    /* hairline emphasis */
+    --ac-color-accent:           215 78% 58%;    /* s330 BLUE — the identity */
+    --ac-color-accent-soft:      215 78% 68%;    /* hover lift */
+    --ac-color-highlight:        210 96% 72%;    /* keyline highlight */
+    --ac-color-danger:           358 72% 58%;    /* destructive */
+    --ac-color-warning:          38  80% 58%;    /* caution (used sparingly) */
+    --ac-color-success:          152 55% 52%;    /* available / done */
+
+    /* --- typography role tokens -------------------------------- */
+    --ac-font-display: "Departure Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --ac-font-body:    "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --ac-font-mono:    "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --ac-font-heading: var(--ac-font-display);
+
+    /* --- type scale -------------------------------------------- */
+    --ac-text-h1: clamp(1.75rem, 3.4vw, 2.35rem);
+    --ac-text-h2: 1.45rem;
+    --ac-text-h3: 1.15rem;
+    --ac-text-h4: 1rem;
+    --ac-text-eyebrow: 0.78rem;
+    --ac-text-body: 1rem;
+    --ac-text-small: 0.875rem;
+    --ac-text-tiny: 0.75rem;
+
+    /* --- weight tokens ----------------------------------------- */
+    --ac-fw-display: 400;
+    --ac-fw-body:    400;
+    --ac-fw-medium:  500;
+    --ac-fw-semibold:600;
+    --ac-fw-bold:    700;
+
+    /* --- letter-spacing ---------------------------------------- */
+    --ac-tracking-display: 0.01em;
+    --ac-tracking-eyebrow: 0.14em;
+    --ac-tracking-ticker:  0.12em;
+
+    /* --- spacing scale ----------------------------------------- */
+    --ac-space-1: 0.25rem;
+    --ac-space-2: 0.5rem;
+    --ac-space-3: 0.75rem;
+    --ac-space-4: 1rem;
+    --ac-space-5: 1.25rem;
+    --ac-space-6: 1.5rem;
+    --ac-space-7: 2rem;
+    --ac-space-8: 2.75rem;
+
+    /* --- layout tokens ----------------------------------------- */
+    --ac-container-max-width: 1400px;
+    --ac-container-padding:   2rem;
+    --ac-measure-reading:     36rem;
+    --ac-measure-narrow:      28rem;
+
+    /* --- rule weights ------------------------------------------ */
+    --ac-rule-hairline: 1px;
+    --ac-rule-medium:   2px;
+    --ac-rule-heavy:    3px;
+
+    /* --- shadow tokens ----------------------------------------- */
+    --ac-shadow-card: 0 0 0 1px hsl(var(--ac-color-border)),
+                      0 10px 36px -12px hsl(220 40% 0% / 0.65);
+    --ac-shadow-card-hover:
+      0 0 0 1px hsl(var(--ac-color-accent) / 0.5),
+      0 14px 40px -10px hsl(var(--ac-color-accent) / 0.18),
+      0 4px 18px -6px hsl(220 40% 0% / 0.55);
+
+    --ac-glow-accent: 0 0 14px hsl(var(--ac-color-accent) / 0.45),
+                      0 0 2px  hsl(var(--ac-color-accent) / 0.65);
+
+    /* --- motion tokens ----------------------------------------- */
+    --ac-duration-fast:    120ms;
+    --ac-duration-default: 220ms;
+    --ac-duration-slow:    420ms;
+    --ac-easing-default:   cubic-bezier(0.2, 0.6, 0.2, 1);
+
+    /* --- selection -------------------------------------------- */
+  }
+
+  ::selection {
+    background-color: hsl(var(--ac-color-accent) / 0.35);
+    color: hsl(var(--ac-color-fg));
+  }
+
+  /* ============================================================
+     RESETS
+     ============================================================ */
+  *, *::before, *::after { box-sizing: border-box; }
+  html { font-size: 16px; }
+  body {
+    margin: 0;
+    background: hsl(var(--ac-color-bg));
+    color: hsl(var(--ac-color-fg));
+    font-family: var(--ac-font-body);
+    font-size: var(--ac-text-body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* faint instrument-grid background — extremely subtle, not a real grid */
+    background-image:
+      linear-gradient(hsl(var(--ac-color-border) / 0.20) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--ac-color-border) / 0.20) 1px, transparent 1px);
+    background-size: 40px 40px, 40px 40px;
+    background-position: -1px -1px;
+    background-attachment: fixed;
+  }
+
+  /* ============================================================
+     CONTAINER
+     ============================================================ */
+  .ac-container {
+    max-width: var(--ac-container-max-width);
+    margin: 0 auto;
+    padding: 0 var(--ac-container-padding);
+  }
+
+  /* ============================================================
+     PAGE BANNER — self-identifying header for this exploration
+     ============================================================ */
+  .exploration-banner {
+    border-bottom: var(--ac-rule-medium) solid hsl(var(--ac-color-accent));
+    background:
+      linear-gradient(180deg,
+        hsl(var(--ac-color-bg)) 0%,
+        hsl(var(--ac-color-surface) / 0.7) 100%);
+    box-shadow: 0 1px 0 hsl(var(--ac-color-accent) / 0.25);
+  }
+  .exploration-banner__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--ac-space-4);
+    padding-block: var(--ac-space-6);
+  }
+  .exploration-banner__title {
+    font-family: var(--ac-font-display);
+    font-weight: var(--ac-fw-display);
+    font-size: var(--ac-text-h2);
+    letter-spacing: var(--ac-tracking-display);
+    margin: 0;
+  }
+  .exploration-banner__meta {
+    display: flex;
+    gap: var(--ac-space-4);
+    align-items: center;
+  }
+  .exploration-banner__chip {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-accent));
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-accent) / 0.6);
+    padding: var(--ac-space-1) var(--ac-space-3);
+    border-radius: 2px;
+  }
+  .exploration-banner__notes {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+
+  /* ============================================================
+     PAGE TOC
+     ============================================================ */
+  .toc {
+    margin-block: var(--ac-space-7);
+    padding: var(--ac-space-6);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-surface) / 0.6);
+    box-shadow: var(--ac-shadow-card);
+  }
+  .toc ol {
+    margin: 0;
+    padding-inline-start: 1.4em;
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    column-count: 2;
+    column-gap: var(--ac-space-7);
+  }
+  .toc ol li { padding-block: 2px; break-inside: avoid; }
+  .toc ol li::marker { color: hsl(var(--ac-color-accent)); }
+
+  /* ============================================================
+     SECTION SCAFFOLD + DIMENSION BRACKET
+     ============================================================ */
+  .ac-section {
+    padding-block: var(--ac-space-8);
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+  .ac-section + .ac-section { /* keep spacing tidy */ }
+
+  /* eyebrow / panel-label */
+  .ac-panel-label {
+    display: inline-block;
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .ac-panel-label--accent {
+    color: hsl(var(--ac-color-accent));
+    text-shadow: var(--ac-glow-accent);
+  }
+
+  /* dimension-bracket — corner L hairlines, 18×18px, 2px stroke */
+  .ac-dimension-bracket {
+    position: relative;
+    padding-top: var(--ac-space-5);
+    padding-inline: var(--ac-space-4);
+  }
+  .ac-dimension-bracket::before,
+  .ac-dimension-bracket::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    width: 18px;
+    height: 18px;
+    border-color: hsl(var(--ac-color-accent) / 0.6);
+    border-style: solid;
+    border-width: 0;
+  }
+  .ac-dimension-bracket::before {
+    left: 0;
+    border-top-width: var(--ac-rule-medium);
+    border-left-width: var(--ac-rule-medium);
+  }
+  .ac-dimension-bracket::after {
+    right: 0;
+    border-top-width: var(--ac-rule-medium);
+    border-right-width: var(--ac-rule-medium);
+  }
+
+  /* ============================================================
+     HEADINGS
+     ============================================================ */
+  h1, .ac-h1 {
+    font-family: var(--ac-font-display);
+    font-weight: var(--ac-fw-display);
+    font-size: var(--ac-text-h1);
+    line-height: 1.18;
+    letter-spacing: var(--ac-tracking-display);
+    margin: var(--ac-space-2) 0 var(--ac-space-5);
+  }
+  h2, .ac-h2 {
+    position: relative;
+    font-family: var(--ac-font-display);
+    font-weight: var(--ac-fw-display);
+    font-size: var(--ac-text-h2);
+    line-height: 1.2;
+    letter-spacing: var(--ac-tracking-display);
+    margin: var(--ac-space-7) 0 var(--ac-space-3);
+    padding-bottom: var(--ac-space-3);
+  }
+  h2::after, .ac-h2::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 2.25rem;
+    height: var(--ac-rule-medium);
+    background: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.45);
+  }
+  h3, .ac-h3 {
+    font-family: var(--ac-font-body);
+    font-weight: var(--ac-fw-semibold);
+    font-size: var(--ac-text-h3);
+    margin: var(--ac-space-6) 0 var(--ac-space-2);
+  }
+  h4, .ac-h4 {
+    font-family: var(--ac-font-body);
+    font-weight: var(--ac-fw-semibold);
+    font-size: var(--ac-text-h4);
+    margin: var(--ac-space-5) 0 var(--ac-space-2);
+  }
+  p, .ac-body { margin: 0 0 var(--ac-space-4); }
+
+  /* mono tabular spec for numeric readouts */
+  .ac-mono-tabular {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+  }
+  .ac-fg-muted { color: hsl(var(--ac-color-fg-muted)); }
+  .ac-fg-subtle { color: hsl(var(--ac-color-fg-subtle)); }
+
+  /* ============================================================
+     LINKS
+     ============================================================ */
+  a, .ac-link {
+    color: hsl(var(--ac-color-accent));
+    text-decoration: none;
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-accent) / 0.35);
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default),
+                color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  a:hover, .ac-link:hover {
+    color: hsl(var(--ac-color-accent-soft));
+    border-bottom-color: hsl(var(--ac-color-accent));
+  }
+  a:focus-visible, .ac-link:focus-visible {
+    outline: var(--ac-rule-medium) solid hsl(var(--ac-color-accent) / 0.6);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* ============================================================
+     COLOR TOKEN SWATCHES
+     ============================================================ */
+  .ac-swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--ac-space-4);
+    margin-top: var(--ac-space-5);
+  }
+  .ac-swatch {
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-surface));
+    overflow: hidden;
+  }
+  .ac-swatch__chip {
+    height: 88px;
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+  .ac-swatch__body {
+    padding: var(--ac-space-3) var(--ac-space-4);
+  }
+  .ac-swatch__name {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    letter-spacing: var(--ac-tracking-eyebrow);
+    text-transform: uppercase;
+    color: hsl(var(--ac-color-fg));
+    margin-bottom: var(--ac-space-2);
+  }
+  .ac-swatch__token {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-muted));
+    line-height: 1.5;
+  }
+
+  /* ============================================================
+     TYPE SPECIMENS
+     ============================================================ */
+  .ac-spec {
+    display: grid;
+    grid-template-columns: 13rem 1fr;
+    gap: var(--ac-space-6);
+    align-items: baseline;
+    padding-block: var(--ac-space-3);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.5);
+  }
+  .ac-spec:last-child { border-bottom: 0; }
+  .ac-spec__meta {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-muted));
+    line-height: 1.5;
+  }
+  .ac-spec__example { min-width: 0; }
+
+  /* ============================================================
+     LAYOUT PRIMITIVES DEMOS
+     ============================================================ */
+  .ac-container-demo {
+    border: var(--ac-rule-hairline) dashed hsl(var(--ac-color-accent) / 0.4);
+    padding: var(--ac-space-4);
+    background: hsl(var(--ac-color-surface) / 0.4);
+  }
+  .ac-measure-demo {
+    max-width: var(--ac-measure-reading);
+    border-left: var(--ac-rule-medium) solid hsl(var(--ac-color-accent) / 0.6);
+    padding-left: var(--ac-space-5);
+  }
+  .ac-rule-stack { display: flex; flex-direction: column; gap: var(--ac-space-3); }
+  .ac-rule {
+    width: 100%;
+    background: hsl(var(--ac-color-accent));
+  }
+  .ac-rule--hairline { height: var(--ac-rule-hairline); }
+  .ac-rule--medium { height: var(--ac-rule-medium); }
+  .ac-rule--heavy { height: var(--ac-rule-heavy); }
+
+  /* ============================================================
+     CARD-GLOW
+     ============================================================ */
+  .ac-card {
+    padding: var(--ac-space-5);
+    background: hsl(var(--ac-color-surface));
+    box-shadow: var(--ac-shadow-card);
+    transition: box-shadow var(--ac-duration-default) var(--ac-easing-default),
+                background-color var(--ac-duration-default) var(--ac-easing-default);
+    border-radius: 2px;
+  }
+  .ac-card--interactive { cursor: pointer; }
+  .ac-card--interactive:hover {
+    background: hsl(var(--ac-color-surface-hover));
+    box-shadow: var(--ac-shadow-card-hover);
+  }
+  .ac-card--interactive:focus-visible {
+    outline: var(--ac-rule-medium) solid hsl(var(--ac-color-accent) / 0.6);
+    outline-offset: 2px;
+  }
+
+  /* ============================================================
+     SIGNAL LED
+     ============================================================ */
+  .ac-signal-led {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: hsl(var(--ac-color-accent));
+    box-shadow:
+      0 0 8px hsl(var(--ac-color-accent) / 0.7),
+      0 0 2px hsl(var(--ac-color-highlight) / 0.9) inset;
+    animation: ac-signal-pulse 2.4s ease-in-out infinite;
+    vertical-align: middle;
+  }
+  .ac-signal-led--idle {
+    background: hsl(var(--ac-color-fg-subtle));
+    box-shadow: 0 0 0 transparent;
+    animation: none;
+  }
+  .ac-signal-led--danger {
+    background: hsl(var(--ac-color-danger));
+    box-shadow: 0 0 8px hsl(var(--ac-color-danger) / 0.7);
+  }
+  @keyframes ac-signal-pulse {
+    0%, 100% {
+      box-shadow:
+        0 0 8px hsl(var(--ac-color-accent) / 0.65),
+        0 0 2px hsl(var(--ac-color-highlight) / 0.9) inset;
+      opacity: 1;
+    }
+    50% {
+      box-shadow:
+        0 0 16px hsl(var(--ac-color-accent) / 0.95),
+        0 0 3px hsl(var(--ac-color-highlight) / 1) inset;
+      opacity: 0.85;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ac-signal-led { animation: none; }
+  }
+
+  /* ============================================================
+     FORMS — ac-input / ac-select / ac-checkbox / ac-button
+     ============================================================ */
+  .ac-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-2);
+    margin-block: var(--ac-space-3);
+  }
+  .ac-field__label {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+
+  .ac-input,
+  .ac-select {
+    width: 100%;
+    background: hsl(var(--ac-color-bg));
+    color: hsl(var(--ac-color-fg));
+    font-family: var(--ac-font-body);
+    font-size: var(--ac-text-body);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    padding: var(--ac-space-2) var(--ac-space-3);
+    border-radius: 2px;
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default),
+                box-shadow var(--ac-duration-fast) var(--ac-easing-default),
+                background-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .ac-input::placeholder { color: hsl(var(--ac-color-fg-subtle)); }
+  .ac-input:hover,
+  .ac-select:hover {
+    border-color: hsl(var(--ac-color-border-hover));
+  }
+  .ac-input:focus-visible,
+  .ac-select:focus-visible {
+    outline: none;
+    border-color: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 0 3px hsl(var(--ac-color-accent) / 0.25);
+    background: hsl(var(--ac-color-surface) / 0.5);
+  }
+  .ac-input:disabled,
+  .ac-select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    border-color: hsl(var(--ac-color-border) / 0.5);
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .ac-input--mono { font-family: var(--ac-font-mono); }
+
+  /* select chevron */
+  .ac-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%237ea0d6' stroke-width='1.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right var(--ac-space-3) center;
+    background-size: 12px 8px;
+    padding-right: calc(var(--ac-space-3) * 2 + 12px);
+  }
+
+  /* checkbox */
+  .ac-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-3);
+    cursor: pointer;
+    user-select: none;
+  }
+  .ac-checkbox__input {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1rem;
+    height: 1rem;
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-bg));
+    border-radius: 2px;
+    position: relative;
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default),
+                background-color var(--ac-duration-fast) var(--ac-easing-default),
+                box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+    flex-shrink: 0;
+  }
+  .ac-checkbox__input:hover {
+    border-color: hsl(var(--ac-color-border-hover));
+  }
+  .ac-checkbox__input:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px hsl(var(--ac-color-accent) / 0.25);
+    border-color: hsl(var(--ac-color-accent));
+  }
+  .ac-checkbox__input:checked {
+    border-color: hsl(var(--ac-color-accent));
+    background: hsl(var(--ac-color-accent));
+  }
+  .ac-checkbox__input:checked::after {
+    content: "";
+    position: absolute;
+    top: 1px;
+    left: 4px;
+    width: 5px;
+    height: 9px;
+    border: solid hsl(var(--ac-color-bg));
+    border-width: 0 var(--ac-rule-medium) var(--ac-rule-medium) 0;
+    transform: rotate(45deg);
+  }
+  .ac-checkbox__input:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .ac-checkbox__label {
+    font-family: var(--ac-font-body);
+    font-size: var(--ac-text-body);
+  }
+
+  /* buttons */
+  .ac-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ac-space-2);
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    line-height: 1;
+    padding: var(--ac-space-3) var(--ac-space-5);
+    border-radius: 2px;
+    border: var(--ac-rule-hairline) solid transparent;
+    cursor: pointer;
+    background: transparent;
+    color: hsl(var(--ac-color-fg));
+    transition: background-color var(--ac-duration-fast) var(--ac-easing-default),
+                border-color var(--ac-duration-fast) var(--ac-easing-default),
+                color var(--ac-duration-fast) var(--ac-easing-default),
+                box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .ac-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px hsl(var(--ac-color-accent) / 0.4);
+  }
+  .ac-btn:disabled,
+  .ac-btn[aria-disabled="true"] {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  /* primary */
+  .ac-btn--primary {
+    background: hsl(var(--ac-color-accent));
+    color: hsl(var(--ac-color-bg));
+    border-color: hsl(var(--ac-color-accent));
+  }
+  .ac-btn--primary:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: hsl(var(--ac-color-accent-soft));
+    border-color: hsl(var(--ac-color-accent-soft));
+    box-shadow: 0 0 18px hsl(var(--ac-color-accent) / 0.3);
+  }
+
+  /* secondary */
+  .ac-btn--secondary {
+    background: transparent;
+    color: hsl(var(--ac-color-fg));
+    border-color: hsl(var(--ac-color-border-hover));
+  }
+  .ac-btn--secondary:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: hsl(var(--ac-color-surface-hover));
+    border-color: hsl(var(--ac-color-accent));
+    color: hsl(var(--ac-color-accent));
+  }
+
+  /* ghost */
+  .ac-btn--ghost {
+    background: transparent;
+    color: hsl(var(--ac-color-fg-muted));
+    border-color: transparent;
+  }
+  .ac-btn--ghost:hover:not(:disabled):not([aria-disabled="true"]) {
+    color: hsl(var(--ac-color-fg));
+    background: hsl(var(--ac-color-surface) / 0.5);
+  }
+
+  /* danger */
+  .ac-btn--danger {
+    background: transparent;
+    color: hsl(var(--ac-color-danger));
+    border-color: hsl(var(--ac-color-danger) / 0.6);
+  }
+  .ac-btn--danger:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: hsl(var(--ac-color-danger) / 0.12);
+    border-color: hsl(var(--ac-color-danger));
+  }
+
+  .ac-btn--sm {
+    padding: var(--ac-space-2) var(--ac-space-4);
+    font-size: var(--ac-text-tiny);
+  }
+
+  /* ============================================================
+     PROGRESS + SPINNER
+     ============================================================ */
+  .ac-progress {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-2);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-surface) / 0.6);
+    padding: var(--ac-space-4);
+    border-radius: 2px;
+  }
+  .ac-progress__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--ac-space-3);
+  }
+  .ac-progress__label {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .ac-progress__pct {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--ac-color-accent));
+  }
+  .ac-progress__bar {
+    position: relative;
+    height: 4px;
+    background: hsl(var(--ac-color-bg));
+    overflow: hidden;
+    border-radius: 1px;
+  }
+  .ac-progress__fill {
+    position: absolute;
+    inset: 0;
+    width: var(--ac-progress, 0%);
+    background: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 12px hsl(var(--ac-color-accent) / 0.5);
+    transition: width var(--ac-duration-default) var(--ac-easing-default);
+  }
+  .ac-progress__meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--ac-space-3);
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    font-variant-numeric: tabular-nums;
+  }
+  .ac-progress__meta-item { display: flex; flex-direction: column; gap: 2px; }
+  .ac-progress__meta-label {
+    font-family: var(--ac-font-display);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .ac-progress__meta-value { color: hsl(var(--ac-color-fg)); }
+
+  /* spinner */
+  .ac-spinner {
+    display: inline-block;
+    width: 1.25rem;
+    height: 1.25rem;
+    border: var(--ac-rule-medium) solid hsl(var(--ac-color-border));
+    border-top-color: hsl(var(--ac-color-accent));
+    border-radius: 50%;
+    animation: ac-spin 0.9s linear infinite;
+  }
+  .ac-spinner--sm { width: 1rem; height: 1rem; }
+  @keyframes ac-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    .ac-spinner { animation-duration: 4s; }
+  }
+
+  /* ============================================================
+     EYEBROW STATUS-ROW (h2 + metric)
+     ============================================================ */
+  .ac-status-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--ac-space-5);
+    padding-bottom: var(--ac-space-3);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+  .ac-status-row__heading { margin: 0; padding: 0; }
+  .ac-status-row__heading::after { display: none; } /* underline lives at the row, not the heading */
+  .ac-status-row__heading-rule {
+    width: 2.25rem;
+    height: var(--ac-rule-medium);
+    background: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.45);
+    margin-top: var(--ac-space-2);
+  }
+  .ac-status-row__metric {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-2);
+    white-space: nowrap;
+  }
+  .ac-status-row__metric strong {
+    color: hsl(var(--ac-color-accent));
+    font-weight: var(--ac-fw-display);
+    font-family: var(--ac-font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ============================================================
+     PAIR LAYOUT — two-column demo
+     ============================================================ */
+  .ac-pair {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--ac-space-5);
+  }
+  @media (min-width: 720px) {
+    .ac-pair { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* ============================================================
+     UTILITIES
+     ============================================================ */
+  .ac-stack { display: flex; flex-direction: column; gap: var(--ac-space-4); }
+  .ac-row   { display: flex; flex-wrap: wrap; gap: var(--ac-space-4); align-items: center; }
+  .ac-pad-block { padding-block: var(--ac-space-5); }
+  .ac-mt-4 { margin-top: var(--ac-space-4); }
+  .ac-mt-5 { margin-top: var(--ac-space-5); }
+  .ac-mt-6 { margin-top: var(--ac-space-6); }
+  .ac-mb-4 { margin-bottom: var(--ac-space-4); }
+
+  /* ============================================================
+     FOOTER
+     ============================================================ */
+  .exploration-footer {
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    padding-block: var(--ac-space-7);
+    margin-top: var(--ac-space-8);
+    color: hsl(var(--ac-color-fg-muted));
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== BANNER ===== -->
+<header class="exploration-banner">
+  <div class="ac-container exploration-banner__inner">
+    <div>
+      <span class="ac-panel-label ac-panel-label--accent">PHASE 9 · TASK 2</span>
+      <h1 class="exploration-banner__title">Design Language Exploration v1</h1>
+      <p class="ac-fg-muted ac-mt-4" style="margin: 0;">Operator review. The per-page mockups (Home / Patches / Tones / Play / Workflows / Library / dialogs) reuse this language. Direction locked: dark only · self-hosted woff2 · third <em>editor-roland</em> brand.</p>
+    </div>
+    <div class="exploration-banner__meta">
+      <span class="exploration-banner__chip">v1</span>
+      <span class="exploration-banner__chip">s550-support</span>
+      <span class="exploration-banner__notes">2026-05-08</span>
+    </div>
+  </div>
+</header>
+
+<main class="ac-container">
+
+  <!-- ===== TOC ===== -->
+  <nav class="toc" aria-label="Sections">
+    <span class="ac-panel-label">Index</span>
+    <ol>
+      <li><a href="#color">Color tokens</a></li>
+      <li><a href="#type">Typography scale</a></li>
+      <li><a href="#layout">Layout primitives</a></li>
+      <li><a href="#vocab">Component vocabulary</a></li>
+      <li><a href="#forms">Form primitives</a></li>
+      <li><a href="#progress">Progress + spinner</a></li>
+      <li><a href="#status">Eyebrow status-row</a></li>
+      <li><a href="#decisions">Direction recap</a></li>
+    </ol>
+  </nav>
+
+  <!-- ===== 1. COLOR TOKENS ===== -->
+  <section id="color" class="ac-section">
+    <div class="ac-dimension-bracket">
+      <span class="ac-panel-label">§ 01 · Tokens</span>
+      <h2>Color tokens</h2>
+      <p class="ac-fg-muted" style="max-width: var(--ac-measure-reading);">
+        Stored as HSL fragments (no <code class="ac-mono-tabular">hsl()</code> wrapper) so they compose with alpha:
+        <code class="ac-mono-tabular">hsl(var(--ac-color-accent) / 0.35)</code>.
+        The dominant accent is <strong style="color: hsl(var(--ac-color-accent));">s330 blue</strong> — every place audiocontrol.org reaches for phosphor amber, the editor reaches for blue.
+      </p>
+    </div>
+
+    <div class="ac-swatch-grid" role="list">
+      <article class="ac-swatch" role="listitem">
+        <div class="ac-swatch__chip" style="background: hsl(var(--ac-color-bg));"></div>
+        <div class="ac-swatch__body">
+          <div class="ac-swatch__name">bg</div>
+          <div class="ac-swatch__token">--ac-color-bg<br>220 24% 7%</div>
+        </div>
+      </article>
+      <article class="ac-swatch" role="listitem">
+        <div class="ac-swatch__chip" style="background: hsl(var(--ac-color-surface));"></div>
+        <div class="ac-swatch__body">
+          <div class="ac-swatch__name">surface</div>
+          <div class="ac-swatch__token">--ac-color-surface<br>220 18% 11%</div>
+        </div>
+      </article>
+      <article class="ac-swatch" role="listitem">
+        <div class="ac-swatch__chip" style="background: hsl(var(--ac-color-surface-hover));"></div>
+        <div class="ac-swatch__body">
+          <div class="ac-swatch__name">surface-hover</div>
+          <div class="ac-swatch__token">--ac-color-surface-hover<br>220 18% 14%</div>
+        </div>
+      </article>
+      <article class="ac-swatch" role="listitem">
+        <div class="ac-swatch__chip" style="background: hsl(var(--ac-color-fg));"></div>
+        <div class="ac-swatch__body">
+          <div class="ac-swatch__name" style="color: hsl(var(--ac-color-bg));">fg</div>
+          <div class="ac-swatch__token">--ac-color-fg<br>215 18% 92%</div>
+        </div>
+      </article>
+      <article class="ac-swatch" role="listitem">
+        <div class="ac-swatch__chip" style="background: hsl(var(--ac-color-fg-muted));"></div>
+        <div class="ac-swatch__body">
+          <div class="ac-swatch__name">fg-muted</div>
+          <div class="ac-swatch__token">--ac-color-fg-muted<br>220 12% 60%</div>
+        </div>
+      </article>
+      <article class="ac-swatch" role="listitem">
+        <div class="ac-swatch__chip" style="background: hsl(var(--ac-color-fg-subtle));"></div>
+        <div class="ac-swatch__body">
+          <div class="ac-swatch__name">fg-subtle</div>
+          <div class="ac-swatch__token">--ac-color-fg-subtle<br>220 10% 42%</div>
+        </div>
+      </article>
+      <article class="ac-swatch" role="listitem">
+        <div class="ac-swatch__chip" style="background: hsl(var(--ac-color-border));"></div>
+        <div class="ac-swatch__body">
+          <div class="ac-swatch__name">border</div>
+          <div class="ac-swatch__token">--ac-color-border<br>220 18% 22%</div>
+        </div>
+      </article>
+      <article class="ac-swatch" role="listitem">
+        <div class="ac-swatch__chip" style="background: hsl(var(--ac-color-border-hover));"></div>
+        <div class="ac-swatch__body">
+          <div class="ac-swatch__name">border-hover</div>
+          <div class="ac-swatch__token">--ac-color-border-hover<br>220 18% 32%</div>
+        </div>
+      </article>
+      <article class="ac-swatch" role="listitem">
+        <div class="ac-swatch__chip" style="background: hsl(var(--ac-color-accent));"></div>
+        <div class="ac-swatch__body">
+          <div class="ac-swatch__name" style="color: hsl(var(--ac-color-bg));">accent · s330</div>
+          <div class="ac-swatch__token">--ac-color-accent<br>215 78% 58%</div>
+        </div>
+      </article>
+      <article class="ac-swatch" role="listitem">
+        <div class="ac-swatch__chip" style="background: hsl(var(--ac-color-accent-soft));"></div>
+        <div class="ac-swatch__body">
+          <div class="ac-swatch__name" style="color: hsl(var(--ac-color-bg));">accent-soft</div>
+          <div class="ac-swatch__token">--ac-color-accent-soft<br>215 78% 68%</div>
+        </div>
+      </article>
+      <article class="ac-swatch" role="listitem">
+        <div class="ac-swatch__chip" style="background: hsl(var(--ac-color-highlight));"></div>
+        <div class="ac-swatch__body">
+          <div class="ac-swatch__name" style="color: hsl(var(--ac-color-bg));">highlight</div>
+          <div class="ac-swatch__token">--ac-color-highlight<br>210 96% 72%</div>
+        </div>
+      </article>
+      <article class="ac-swatch" role="listitem">
+        <div class="ac-swatch__chip" style="background: hsl(var(--ac-color-success));"></div>
+        <div class="ac-swatch__body">
+          <div class="ac-swatch__name">success</div>
+          <div class="ac-swatch__token">--ac-color-success<br>152 55% 52%</div>
+        </div>
+      </article>
+      <article class="ac-swatch" role="listitem">
+        <div class="ac-swatch__chip" style="background: hsl(var(--ac-color-warning));"></div>
+        <div class="ac-swatch__body">
+          <div class="ac-swatch__name">warning</div>
+          <div class="ac-swatch__token">--ac-color-warning<br>38 80% 58%</div>
+        </div>
+      </article>
+      <article class="ac-swatch" role="listitem">
+        <div class="ac-swatch__chip" style="background: hsl(var(--ac-color-danger));"></div>
+        <div class="ac-swatch__body">
+          <div class="ac-swatch__name">danger</div>
+          <div class="ac-swatch__token">--ac-color-danger<br>358 72% 58%</div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ===== 2. TYPOGRAPHY ===== -->
+  <section id="type" class="ac-section">
+    <div class="ac-dimension-bracket">
+      <span class="ac-panel-label">§ 02 · Typography</span>
+      <h2>Typography scale</h2>
+      <p class="ac-fg-muted" style="max-width: var(--ac-measure-reading);">
+        Three families, three roles.
+        <strong>Departure Mono</strong> carries display headings + eyebrow labels (the identity voice — pixel mono at weight 400).
+        <strong>IBM Plex Sans</strong> carries body, UI labels, and h3/h4.
+        <strong>JetBrains Mono</strong> carries code and tabular numerics — parameter readouts, byte counts, MIDI values.
+      </p>
+    </div>
+
+    <div class="ac-mt-6">
+      <div class="ac-spec">
+        <div class="ac-spec__meta">
+          <strong>--ac-text-h1</strong><br>
+          clamp(1.75, 3.4vw, 2.35rem)<br>
+          400 · Departure Mono<br>
+          tracking 0.01em
+        </div>
+        <div class="ac-spec__example">
+          <h1 style="margin: 0;">Roland S-550 · Tone Editor</h1>
+        </div>
+      </div>
+
+      <div class="ac-spec">
+        <div class="ac-spec__meta">
+          <strong>--ac-text-h2</strong><br>
+          1.45rem · 400<br>
+          Departure Mono<br>
+          rule: 2.25rem × 2px accent + glow
+        </div>
+        <div class="ac-spec__example">
+          <h2 style="margin: 0;">Patch banks &amp; tone layers</h2>
+        </div>
+      </div>
+
+      <div class="ac-spec">
+        <div class="ac-spec__meta">
+          <strong>--ac-text-h3</strong><br>
+          1.15rem · 600<br>
+          IBM Plex Sans
+        </div>
+        <div class="ac-spec__example">
+          <h3 style="margin: 0;">Performance parameters</h3>
+        </div>
+      </div>
+
+      <div class="ac-spec">
+        <div class="ac-spec__meta">
+          <strong>--ac-text-h4</strong><br>
+          1rem · 600<br>
+          IBM Plex Sans
+        </div>
+        <div class="ac-spec__example">
+          <h4 style="margin: 0;">Envelope generator</h4>
+        </div>
+      </div>
+
+      <div class="ac-spec">
+        <div class="ac-spec__meta">
+          <strong>--ac-text-eyebrow</strong><br>
+          0.78rem · 400<br>
+          Departure Mono · uppercase<br>
+          tracking 0.14em<br>
+          color: fg-muted
+        </div>
+        <div class="ac-spec__example">
+          <span class="ac-panel-label">Bank · A · 32 patches</span>
+        </div>
+      </div>
+
+      <div class="ac-spec">
+        <div class="ac-spec__meta">
+          <strong>--ac-text-body</strong><br>
+          1rem · 400<br>
+          IBM Plex Sans<br>
+          line-height 1.6
+        </div>
+        <div class="ac-spec__example">
+          <p style="margin: 0;">Each patch references up to two tone layers, each layer addressing a tone slot in one of four banks. The S-550 doubles the tone count from 32 to 64 and the wave bank count from 2 to 4.</p>
+        </div>
+      </div>
+
+      <div class="ac-spec">
+        <div class="ac-spec__meta">
+          <strong>--ac-text-small</strong><br>
+          0.875rem · 400<br>
+          IBM Plex Sans<br>
+          color: fg-muted
+        </div>
+        <div class="ac-spec__example">
+          <p class="ac-fg-muted" style="margin: 0;">Helper copy and secondary labels. Used for descriptions, hints, and footnotes underneath inputs.</p>
+        </div>
+      </div>
+
+      <div class="ac-spec">
+        <div class="ac-spec__meta">
+          <strong>--ac-mono-tabular</strong><br>
+          0.875rem · 400<br>
+          JetBrains Mono<br>
+          tabular-nums
+        </div>
+        <div class="ac-spec__example">
+          <span class="ac-mono-tabular">0x1E · 12-bit · 22.05 kHz · 0xC400 → 0xCF6F · ΔT 4 ms</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 3. LAYOUT PRIMITIVES ===== -->
+  <section id="layout" class="ac-section">
+    <div class="ac-dimension-bracket">
+      <span class="ac-panel-label">§ 03 · Layout</span>
+      <h2>Layout primitives</h2>
+      <p class="ac-fg-muted" style="max-width: var(--ac-measure-reading);">
+        Container, reading measure, three rule weights, and the dimension-bracket section opener.
+        Same primitives as the parent site, recolored to s330 blue.
+      </p>
+    </div>
+
+    <div class="ac-mt-6 ac-stack">
+      <div>
+        <span class="ac-panel-label">Container · max 1400px · padding 2rem</span>
+        <div class="ac-container-demo ac-mt-4">
+          <span class="ac-mono-tabular ac-fg-muted">--ac-container-max-width: 1400px</span><br>
+          <span class="ac-mono-tabular ac-fg-muted">--ac-container-padding: 2rem</span>
+        </div>
+      </div>
+
+      <div>
+        <span class="ac-panel-label">Reading measure · 36rem</span>
+        <div class="ac-measure-demo ac-mt-4">
+          <p style="margin: 0;">Readable measure for in-editor docs, error-state copy, About / Help panels, and any future longform. Lines settle around 60–72 characters at the editor's body size, which keeps eyes moving without head-swivel.</p>
+          <p class="ac-fg-muted" style="margin-top: var(--ac-space-3); margin-bottom: 0;">A narrower measure of <code class="ac-mono-tabular">--ac-measure-narrow: 28rem</code> exists for pull quotes, standalone callouts, and confirmation prompts.</p>
+        </div>
+      </div>
+
+      <div>
+        <span class="ac-panel-label">Rule weights</span>
+        <div class="ac-rule-stack ac-mt-4">
+          <div>
+            <div class="ac-rule ac-rule--hairline"></div>
+            <span class="ac-mono-tabular ac-fg-muted">--ac-rule-hairline · 1px</span>
+          </div>
+          <div>
+            <div class="ac-rule ac-rule--medium"></div>
+            <span class="ac-mono-tabular ac-fg-muted">--ac-rule-medium · 2px</span>
+          </div>
+          <div>
+            <div class="ac-rule ac-rule--heavy"></div>
+            <span class="ac-mono-tabular ac-fg-muted">--ac-rule-heavy · 3px</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <span class="ac-panel-label">Dimension bracket — section opener</span>
+        <div class="ac-mt-4 ac-card ac-dimension-bracket" style="padding-top: var(--ac-space-7);">
+          <h3 style="margin-top: 0;">Hardware validation</h3>
+          <p style="margin: 0;">Used to open major sections. The corner-L hairlines read like a callout on a service-manual technical drawing — recolored to s330 blue at 60% alpha.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 4. COMPONENT VOCABULARY ===== -->
+  <section id="vocab" class="ac-section">
+    <div class="ac-dimension-bracket">
+      <span class="ac-panel-label">§ 04 · Vocabulary</span>
+      <h2>Component vocabulary</h2>
+      <p class="ac-fg-muted" style="max-width: var(--ac-measure-reading);">
+        Eyebrow label, signal LED, card-glow, link style, selection. The shared idioms every page composes from.
+      </p>
+    </div>
+
+    <div class="ac-mt-6 ac-pair">
+      <div class="ac-stack">
+        <div>
+          <span class="ac-panel-label">Panel label · default + accent</span>
+          <div class="ac-mt-4 ac-stack">
+            <span class="ac-panel-label">Memory · 4 banks · 64 tones</span>
+            <span class="ac-panel-label ac-panel-label--accent">Connected · MOTU 828mk3 · port 1</span>
+          </div>
+        </div>
+
+        <div>
+          <span class="ac-panel-label">Signal LED · pulses 2.4s · reduced-motion safe</span>
+          <div class="ac-mt-4 ac-row">
+            <span class="ac-row" style="gap: var(--ac-space-2);">
+              <span class="ac-signal-led" aria-label="connected"></span>
+              <span class="ac-mono-tabular">connected</span>
+            </span>
+            <span class="ac-row" style="gap: var(--ac-space-2);">
+              <span class="ac-signal-led ac-signal-led--idle" aria-label="idle"></span>
+              <span class="ac-mono-tabular ac-fg-muted">idle</span>
+            </span>
+            <span class="ac-row" style="gap: var(--ac-space-2);">
+              <span class="ac-signal-led ac-signal-led--danger" aria-label="error"></span>
+              <span class="ac-mono-tabular" style="color: hsl(var(--ac-color-danger));">error</span>
+            </span>
+          </div>
+        </div>
+
+        <div>
+          <span class="ac-panel-label">Link · prose-style border-bottom</span>
+          <p class="ac-mt-4" style="margin: 0;">
+            See the <a href="#decisions">direction decisions</a>, the <a href="https://audiocontrol.org">parent site</a>,
+            or the <a href="https://github.com/oletizi/audiocontrol.org">audiocontrol.org repo</a>. Hover lifts the underline from 35% alpha to solid.
+          </p>
+        </div>
+
+        <div>
+          <span class="ac-panel-label">Selection color</span>
+          <p class="ac-mt-4" style="margin: 0;">
+            Try selecting this paragraph. Selection highlight is <code class="ac-mono-tabular">hsl(var(--ac-color-accent) / 0.35)</code> — s330 blue at 35% alpha, never amber.
+          </p>
+        </div>
+      </div>
+
+      <div class="ac-stack">
+        <div>
+          <span class="ac-panel-label">Card · default + interactive hover</span>
+          <div class="ac-mt-4 ac-stack">
+            <article class="ac-card">
+              <span class="ac-panel-label">Bank A</span>
+              <h3 style="margin: var(--ac-space-2) 0 0;">8 patches loaded</h3>
+              <p class="ac-fg-muted" style="margin: var(--ac-space-2) 0 0;">Static card. Two-stop shadow: 1px hairline ring + soft drop.</p>
+            </article>
+            <article class="ac-card ac-card--interactive" tabindex="0">
+              <span class="ac-panel-label ac-panel-label--accent">Bank B · interactive</span>
+              <h3 style="margin: var(--ac-space-2) 0 0;">Hover or focus me</h3>
+              <p class="ac-fg-muted" style="margin: var(--ac-space-2) 0 0;">Hover ring shifts to s330 blue at 50% alpha; drop shadow tints with the accent at 18%.</p>
+            </article>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 5. FORM PRIMITIVES ===== -->
+  <section id="forms" class="ac-section">
+    <div class="ac-dimension-bracket">
+      <span class="ac-panel-label">§ 05 · Forms</span>
+      <h2>Form primitives</h2>
+      <p class="ac-fg-muted" style="max-width: var(--ac-measure-reading);">
+        Replaces the long copy-pasted Tailwind chains the audit found in every dialog. Default · hover · focus · disabled — all tokenized.
+      </p>
+    </div>
+
+    <div class="ac-mt-6 ac-pair">
+      <div>
+        <span class="ac-panel-label">ac-input · text</span>
+        <div class="ac-field">
+          <label class="ac-field__label" for="demo-input">Patch name</label>
+          <input id="demo-input" class="ac-input" type="text" placeholder="e.g. Strings A" value="" />
+        </div>
+        <div class="ac-field">
+          <label class="ac-field__label" for="demo-input-mono">Memory address</label>
+          <input id="demo-input-mono" class="ac-input ac-input--mono" type="text" value="0x00C40000" />
+        </div>
+        <div class="ac-field">
+          <label class="ac-field__label" for="demo-input-disabled">Disabled</label>
+          <input id="demo-input-disabled" class="ac-input" type="text" value="read-only" disabled />
+        </div>
+      </div>
+
+      <div>
+        <span class="ac-panel-label">ac-select</span>
+        <div class="ac-field">
+          <label class="ac-field__label" for="demo-select">Wave bank</label>
+          <select id="demo-select" class="ac-select">
+            <option>Bank A · 18 segments free</option>
+            <option>Bank B · 12 segments free</option>
+            <option>Bank C · 18 segments free</option>
+            <option>Bank D · 18 segments free</option>
+          </select>
+        </div>
+        <div class="ac-field">
+          <label class="ac-field__label" for="demo-select-disabled">Disabled</label>
+          <select id="demo-select-disabled" class="ac-select" disabled>
+            <option>Locked while loading</option>
+          </select>
+        </div>
+
+        <div style="margin-top: var(--ac-space-5);">
+          <span class="ac-panel-label">ac-checkbox</span>
+          <div class="ac-stack ac-mt-4">
+            <label class="ac-checkbox">
+              <input class="ac-checkbox__input" type="checkbox" checked />
+              <span class="ac-checkbox__label">Restore wave data after upload</span>
+            </label>
+            <label class="ac-checkbox">
+              <input class="ac-checkbox__input" type="checkbox" />
+              <span class="ac-checkbox__label">Allow overwriting tone slot 09</span>
+            </label>
+            <label class="ac-checkbox">
+              <input class="ac-checkbox__input" type="checkbox" disabled />
+              <span class="ac-checkbox__label ac-fg-subtle">Disabled · gated by connection state</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ac-mt-6">
+      <span class="ac-panel-label">ac-button · variants</span>
+      <div class="ac-row ac-mt-4">
+        <button class="ac-btn ac-btn--primary">Save Set</button>
+        <button class="ac-btn ac-btn--secondary">Cancel</button>
+        <button class="ac-btn ac-btn--ghost">Skip for now</button>
+        <button class="ac-btn ac-btn--danger">Delete tone slot</button>
+        <button class="ac-btn ac-btn--primary" disabled>Disabled primary</button>
+        <button class="ac-btn ac-btn--secondary ac-btn--sm">Small secondary</button>
+      </div>
+      <p class="ac-fg-muted ac-mt-4" style="margin-bottom: 0;">
+        Cancel is always <code class="ac-mono-tabular">ac-btn--secondary</code>. Skip / dismiss / "later" actions are <code class="ac-mono-tabular">ac-btn--ghost</code>. Destructive actions are <code class="ac-mono-tabular">ac-btn--danger</code>. The audit found Cancel switching between secondary and ghost across dialogs — this fixes that.
+      </p>
+    </div>
+  </section>
+
+  <!-- ===== 6. PROGRESS + SPINNER ===== -->
+  <section id="progress" class="ac-section">
+    <div class="ac-dimension-bracket">
+      <span class="ac-panel-label">§ 06 · Feedback</span>
+      <h2>Progress &amp; spinner</h2>
+      <p class="ac-fg-muted" style="max-width: var(--ac-measure-reading);">
+        One progress component. Bytes, elapsed, ETA, and current item — every long operation in the editor uses this exact shape. Replaces three hand-rolled progress bars on Patches / Tones / Play and one inside SaveSetDialog.
+      </p>
+    </div>
+
+    <div class="ac-mt-6 ac-pair">
+      <div class="ac-progress" style="--ac-progress: 38%;">
+        <div class="ac-progress__top">
+          <span class="ac-progress__label">Loading bank A · patches 1–8</span>
+          <span class="ac-progress__pct">38%</span>
+        </div>
+        <div class="ac-progress__bar"><div class="ac-progress__fill"></div></div>
+        <div class="ac-progress__meta">
+          <div class="ac-progress__meta-item">
+            <span class="ac-progress__meta-label">Bytes</span>
+            <span class="ac-progress__meta-value">194 KB / 512 KB</span>
+          </div>
+          <div class="ac-progress__meta-item">
+            <span class="ac-progress__meta-label">Elapsed</span>
+            <span class="ac-progress__meta-value">0:14</span>
+          </div>
+          <div class="ac-progress__meta-item">
+            <span class="ac-progress__meta-label">ETA</span>
+            <span class="ac-progress__meta-value">~0:23</span>
+          </div>
+          <div class="ac-progress__meta-item">
+            <span class="ac-progress__meta-label">Item</span>
+            <span class="ac-progress__meta-value">P14 · "FlutePad"</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ac-stack">
+        <div>
+          <span class="ac-panel-label">Inline spinner · default</span>
+          <div class="ac-row ac-mt-4">
+            <span class="ac-spinner" role="status" aria-label="Loading"></span>
+            <span class="ac-mono-tabular">Probing port 1…</span>
+          </div>
+        </div>
+        <div>
+          <span class="ac-panel-label">Inline spinner · small</span>
+          <div class="ac-row ac-mt-4">
+            <span class="ac-spinner ac-spinner--sm" role="status" aria-label="Loading"></span>
+            <span class="ac-mono-tabular">Verifying handshake…</span>
+          </div>
+        </div>
+        <p class="ac-fg-muted" style="margin: 0;">
+          Reduced-motion: the spinner doesn't disappear — it slows to 4s/rotation so the affordance "this is still working" survives accessibility prefs.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 7. STATUS ROW ===== -->
+  <section id="status" class="ac-section">
+    <div class="ac-dimension-bracket">
+      <span class="ac-panel-label">§ 07 · Header</span>
+      <h2>Eyebrow status-row pattern</h2>
+      <p class="ac-fg-muted" style="max-width: var(--ac-measure-reading);">
+        Replaces the mixed-rhythm "h2 + sibling span" the audit found on TonesPage:521-526. The metric uses eyebrow typography; the count uses the JetBrains Mono tabular face so the digits don't shift width as they tick.
+      </p>
+    </div>
+
+    <div class="ac-mt-6 ac-card">
+      <header class="ac-status-row">
+        <div>
+          <h2 class="ac-status-row__heading">Tones</h2>
+          <div class="ac-status-row__heading-rule"></div>
+        </div>
+        <span class="ac-status-row__metric">
+          <span class="ac-signal-led" aria-hidden="true"></span>
+          <span><strong>48</strong> of <strong>64</strong> loaded</span>
+        </span>
+      </header>
+      <p class="ac-fg-muted" style="margin: var(--ac-space-5) 0 0;">
+        Page content goes here. The header's accent rule and the eyebrow metric belong together visually but
+        compose independently — pages without a metric just drop the right-hand cluster.
+      </p>
+    </div>
+  </section>
+
+  <!-- ===== 8. DECISIONS ===== -->
+  <section id="decisions" class="ac-section">
+    <div class="ac-dimension-bracket">
+      <span class="ac-panel-label">§ 08 · Direction</span>
+      <h2>Direction recap</h2>
+      <p class="ac-fg-muted" style="max-width: var(--ac-measure-reading);">
+        Locked operator decisions that ground every per-page mockup that follows.
+      </p>
+    </div>
+
+    <div class="ac-mt-6 ac-stack">
+      <article class="ac-card">
+        <span class="ac-panel-label ac-panel-label--accent">01 · Theme</span>
+        <h3 style="margin-top: var(--ac-space-2);">Dark only</h3>
+        <p style="margin: 0;">Matches audiocontrol.org's <code class="ac-mono-tabular">color-scheme: dark</code>. The white-background editor migrates to a deep blue-cool ink. <code class="ac-mono-tabular">s330-*</code> tokens stay as identity but their on-surface assumptions are recalibrated for dark backgrounds.</p>
+      </article>
+      <article class="ac-card">
+        <span class="ac-panel-label ac-panel-label--accent">02 · Fonts</span>
+        <h3 style="margin-top: var(--ac-space-2);">Self-hosted woff2</h3>
+        <p style="margin: 0;">Departure Mono · IBM Plex Sans · JetBrains Mono. <code class="ac-mono-tabular">/fonts/*.woff2</code> with preload + preconnect. No CDN runtime dependency.</p>
+      </article>
+      <article class="ac-card">
+        <span class="ac-panel-label ac-panel-label--accent">03 · Brand contract</span>
+        <h3 style="margin-top: var(--ac-space-2);">Third <em>editor-roland</em> brand</h3>
+        <p style="margin: 0;">Defined in <code class="ac-mono-tabular">oletizi/audiocontrol.org/src/sites/editor-roland/brand.ts</code>. Shares typography + spacing with <code class="ac-mono-tabular">audiocontrol</code>; overrides only <code class="ac-mono-tabular">colors.primary</code> to s330 blue. The editor consumes this brand via the same <code class="ac-mono-tabular">BrandColors</code> / <code class="ac-mono-tabular">BrandTypography</code> / <code class="ac-mono-tabular">Brand</code> interfaces.</p>
+      </article>
+    </div>
+  </section>
+
+  <footer class="exploration-footer">
+    <p style="margin: 0;">
+      Phase 9 Task 2 · Design Language Exploration v1 · 2026-05-08 · s550-support feature ·
+      <a href="https://github.com/audiocontrol-org/audiocontrol/issues/392">issue #392</a>
+    </p>
+    <p style="margin: var(--ac-space-2) 0 0;">
+      Next: per-page mockups (Home / Patches / Tones / Play / Workflows / Library / dialog family) reusing this language. Operator review of v1 first.
+    </p>
+  </footer>
+
+</main>
+
+<script>
+  // tiny: respect reduced-motion at runtime so a user toggling system prefs
+  // mid-page doesn't get stuck with stale animation state
+  (function () {
+    var mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    function apply() {
+      document.documentElement.style.setProperty('--ac-motion', mq.matches ? '0' : '1');
+    }
+    apply();
+    if (mq.addEventListener) mq.addEventListener('change', apply);
+  })();
+</script>
+</body>
+</html>
