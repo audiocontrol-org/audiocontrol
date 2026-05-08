@@ -1,6 +1,6 @@
 # Roland S-550 Editor Support
 
-**Status:** In Progress (Phases 1-5 Complete, Phase 6-7 Remaining)
+**Status:** In Progress (Phases 1-6, 8 Complete; Phases 7, 9 Remaining)
 **Feature Branch:** `feature/s550-support`
 **GitHub Milestone:** [Week of Feb 24-28](https://github.com/audiocontrol-org/audiocontrol/milestone/4)
 
@@ -38,8 +38,8 @@ The S-550 shares model ID `0x1E` and SysEx protocol with the S-330 but has an in
 
 | Component | Description | Blocked By |
 |-----------|-------------|------------|
-| Hardware validation | Test with physical S-550 unit | Hardware access |
 | S-550 virtual front panel | Rack-mount panel layout variant | Nothing (cosmetic) |
+| UX/UI cleanup (Phase 9) | Visual polish across all pages via `/frontend-design` | Nothing |
 
 ## Key Architecture Decisions
 

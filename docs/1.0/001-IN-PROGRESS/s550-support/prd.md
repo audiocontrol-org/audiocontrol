@@ -1,3 +1,8 @@
+---
+title: "Roland S-550 Editor Support — PRD"
+deskwork:
+  id: 42c2da8a-ac63-45df-87ab-f1fc648001e1
+---
 # Roland S-550 Editor Support - Product Requirements Document
 
 **Created:** 2026-02-20

@@ -1,3 +1,8 @@
+---
+title: "Roland S-550 Editor Support — Workplan"
+deskwork:
+  id: ef6b601c-7e04-4282-86a4-850029254759
+---
 # Roland S-550 Editor Support - Workplan
 
 **GitHub Milestone:** [Week of Feb 24-28](https://github.com/audiocontrol-org/audiocontrol/milestone/4)
@@ -9,6 +14,7 @@
 - [Implement S-550 converters (#56)](https://github.com/audiocontrol-org/audiocontrol/issues/56)
 - [Create unified sampler-editor (#57)](https://github.com/audiocontrol-org/audiocontrol/issues/57)
 - [Evaluate shared code extraction (#58)](https://github.com/audiocontrol-org/audiocontrol/issues/58)
+- [Phase 9: UX/UI cleanup via /frontend-design (#392)](https://github.com/audiocontrol-org/audiocontrol/issues/392)
 
 ---
 
@@ -24,6 +30,7 @@
 | Phase 6: Hardware Validation | Complete | All tests passing against physical S-550 |
 | Phase 7: S-550 Front Panel | Not Started | Virtual front panel layout |
 | Phase 8: Memory Map Visualization | Complete | Graphical memory map in import dialogs |
+| Phase 9: UX/UI Cleanup | Not Started | Visual polish across all editor pages via `/frontend-design` |
 
 ---
 
@@ -329,6 +336,87 @@ Added a graphical memory map to all import dialogs (tone, drum kit, patch, load 
 
 ---
 
+## Phase 9: UX/UI Cleanup (Not Started)
+
+**GitHub Issue:** [#392](https://github.com/audiocontrol-org/audiocontrol/issues/392)
+
+
+A focused visual polish pass across all editor pages. **Every UI change in this phase is produced through the `/frontend-design` plugin** — exploration AND the resulting component refactors. UI changes made by hand bypass the plugin's design discipline and reliably look and feel wrong; this phase exists specifically to retire the hand-rolled visuals. The goal is consistent visual hierarchy, spacing, and typography across every page the editor exposes — and a visual identity that places the S-330 / S-550 editors inside the broader audiocontrol.org universe — without introducing device conditionals or pixel-width regressions.
+
+### Inputs
+
+- Existing design system: [DESIGN-SYSTEM.md](/DESIGN-SYSTEM.md) — `--ac-*` design tokens, `s330-*` color tokens, `ac-page-shell`, `ac-list-detail-grid`, typography rules, icon sizing, parameter editor density rules. **This phase will update the design system itself to align with the redesigned audiocontrol.org visual identity (preserving the S-330/S-550 blue+white color scheme).**
+- audiocontrol.org redesign — north-star visual reference for the editor's identity. Sources: public site at https://audiocontrol.org and source repo at https://github.com/oletizi/audiocontrol.org. The editors should read as "the same family" as the public website — same typography, same layout rhythm, same component vocabulary — while keeping their existing `s330-*` color palette intact.
+- Pages in scope: `HomePage`, `PatchesPage`, `TonesPage`, `PlayPage`, `WorkflowsPage`, `LibraryPage` (in `modules/roland-sxx0-editor/src/pages/`)
+- Dialogs in scope: import/export/save/load dialogs in `modules/roland-sxx0-editor/src/components/library/`
+- `/frontend-design` plugin (claude-plugins-official) — the **mandatory** source for every UI change in this phase, both exploration and the refactors that land in real components.
+
+### Constraints
+
+- **All UI changes go through `/frontend-design`.** No hand-edited JSX, CSS, or token churn outside of what the plugin produces. If a change can't be expressed through the plugin, escalate before hand-rolling it.
+- **Visual identity aligns with audiocontrol.org.** Editors should look and feel like part of the audiocontrol.org universe — typography, layout rhythm, and component vocabulary should match the public website's redesigned visual identity.
+- **Preserve the Roland S-330/S-550 color scheme.** The existing `s330-*` blue+white palette stays; alignment with audiocontrol.org happens through type, spacing, and component shapes — not by recoloring.
+- **No device conditionals in components.** Per multi-device architecture rule, behavior differences are injected via factories/configs, not branched in JSX.
+- **No hardcoded pixel widths.** Use flex ratios, grid fractions, `--ac-space-*` tokens, and `rem` for minimum constraints.
+- **Use existing tokens; add via the design system, not in components.** `s330-*` color tokens and `--ac-*` design tokens already cover most of the palette. New tokens land in `editor-core/src/design/tokens.css` first, documented in `DESIGN-SYSTEM.md`, before any component uses them.
+- **Files stay under 500 lines.** `TonesPage.tsx` is currently 691 lines and must be decomposed as part of this phase.
+- **Both devices must remain visually correct.** Any change verified against `/roland/s330/editor` and `/roland/s550/editor`.
+
+### Tasks
+
+1. **Audit current pages against the design system AND audiocontrol.org.**
+   - For each page, list deviations from `DESIGN-SYSTEM.md` (typography, spacing, color, hierarchy, icon sizing, layout container usage).
+   - For each page, also list mismatches with audiocontrol.org's redesigned visual identity (typography scale, layout rhythm, component vocabulary). Reference the public site and the `oletizi/audiocontrol.org` repo.
+   - Capture the audit as `docs/1.0/001-IN-PROGRESS/s550-support/ux-audit.md` so the cleanup is traceable.
+
+2. **Generate design exploration via `/frontend-design`.** This is the only source of UI changes in this phase.
+   - Invoke the `frontend-design:frontend-design` skill with the audit + screenshots of current pages + screenshots/source from audiocontrol.org as input.
+   - Produce candidate mockups (HTML or React previews) for the redesigned Home, Patches, Tones, Play, Workflows, and Library pages — keeping the `s330-*` blue+white palette, aligning the rest with audiocontrol.org.
+   - Stash explorations under `docs/1.0/001-IN-PROGRESS/s550-support/explorations/` for review before any production refactor begins.
+   - User reviews and selects a direction; commit the chosen direction's notes back into the audit doc.
+
+3. **Refactor `TonesPage.tsx` to fit under 500 lines.**
+   - `TonesPage.tsx` is 691 lines today. Split by responsibility (e.g., extract per-section editor groups into focused child components under `pages/tones/`) so the page composes them without growing.
+   - Acceptance: `wc -l modules/roland-sxx0-editor/src/pages/TonesPage.tsx` reports < 500.
+
+4. **Apply visual polish to each page via `/frontend-design`.** One commit per page so regressions are bisectable. Each page's polish is produced through the plugin — no hand-edited JSX/CSS slipped in alongside.
+   - HomePage — landing layout, calls to action, device identity affordance.
+   - PatchesPage — header/list/detail spacing, action affordances, status indicators.
+   - TonesPage — parameter editor density, section pairing per `DESIGN-SYSTEM.md` §"Parameter Editors".
+   - PlayPage — performance UI hierarchy, panic/all-notes-off labelling per accessibility rules.
+   - WorkflowsPage — list affordances, empty states.
+   - LibraryPage — tree view typography, dialog launcher polish, memory map panel integration spacing.
+
+5. **Apply visual polish to import/export/save/load dialogs.**
+   - Standardize header, body, footer rhythm.
+   - Confirm `MemoryMapPanel` color usage (`bg-s330-accent/20`, `bg-emerald-600/60`, `bg-s330-highlight/40`, `bg-red-500/40`) reads correctly in the polished context; adjust contrast if needed using existing tokens only.
+
+6. **Visual verification on both devices.**
+   - Take before/after screenshots of every page on `/roland/s330/editor` and `/roland/s550/editor`.
+   - Confirm no functional regressions (pages still load real data, dialogs still open/close, no device conditionals introduced).
+   - Attach screenshots to the GitHub issue and to the implementation summary.
+
+7. **Update DESIGN-SYSTEM.md to align with audiocontrol.org.**
+   - Codify the conventions adopted from audiocontrol.org's redesigned visual identity (typography scale, layout rhythm, component vocabulary) directly in `DESIGN-SYSTEM.md` so they cannot diverge.
+   - Codify any other new conventions discovered during cleanup (e.g., page header rhythm, dialog footer pattern).
+   - Confirm the `s330-*` color tokens are explicitly preserved as the editor palette; document that audiocontrol.org alignment happens through type/spacing/component shapes, not recoloring.
+   - If a new token is needed, add it to `editor-core/src/design/tokens.css` and document it in DESIGN-SYSTEM.md before using it in components.
+
+### Acceptance Criteria
+
+- [ ] `ux-audit.md` exists and lists every observed deviation per page — against `DESIGN-SYSTEM.md` AND against audiocontrol.org's redesigned identity.
+- [ ] `/frontend-design` exploration committed under `explorations/`; chosen direction noted in the audit.
+- [ ] **Every UI change in this phase is traceable to a `/frontend-design` invocation** — no hand-rolled JSX/CSS edits.
+- [ ] Editors at `/roland/s330/editor` and `/roland/s550/editor` read as part of the audiocontrol.org universe (typography, layout rhythm, component vocabulary) while preserving the existing `s330-*` blue+white color palette.
+- [ ] `TonesPage.tsx` is under 500 lines.
+- [ ] Every page in scope has been visually polished and screenshot-verified on both `/roland/s330/editor` and `/roland/s550/editor`.
+- [ ] No device conditionals introduced in any UI component.
+- [ ] No hardcoded pixel widths introduced.
+- [ ] All new visual rules codified in `DESIGN-SYSTEM.md` (and any new tokens added to `tokens.css`).
+- [ ] All existing unit / UI tests still pass.
+
+---
+
 ## Dependencies
 
 ```
@@ -342,9 +430,11 @@ Phase 3 (Client/Factory) ── Complete ──→ Phase 4 (Converters) ── C
                     ↓
             Phase 5 (Unified Editor) ── Complete
                     ↓
-            Phase 6 (Hardware Validation) ── Not Started
+            Phase 6 (Hardware Validation) ── Complete
                     ↓
             Phase 7 (Front Panel) ── Not Started
+            Phase 8 (Memory Map) ── Complete
+            Phase 9 (UX/UI Cleanup) ── Not Started
 ```
 
 ---
