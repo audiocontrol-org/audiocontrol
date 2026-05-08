@@ -1152,18 +1152,20 @@
     color: hsl(var(--ac-color-fg-subtle));
   }
 
-  /* Parameter grid — multi-column dense layout */
+  /* Parameter grid — multi-column dense layout.
+     Each row is now a 3-col grid (label | bar | readout), so the outer grid
+     holds at most 2 rows side-by-side at typical detail-pane widths. cols-3
+     and cols-4 are aliased to 2-col here — the previous 3/4-up layout was
+     too cramped now that param rows are horizontal range bars. */
   .tones__param-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--ac-space-2) var(--ac-space-5);
     margin-top: var(--ac-space-3);
   }
-  .tones__param-grid--cols-3 {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
+  .tones__param-grid--cols-3,
   .tones__param-grid--cols-4 {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   @media (max-width: 720px) {
     .tones__param-grid,
@@ -1171,92 +1173,107 @@
     .tones__param-grid--cols-4 { grid-template-columns: 1fr; }
   }
 
-  /* PARAMETER ROW — the principal primitive
-     Layout: eyebrow LABEL on top; bar + numeric value beneath, baseline-aligned.
-     Replaces the audit-flagged hand-rolled <select> + label rows.
-  */
+  /* PARAMETER ROW — validated range-bar primitive
+     Ported from PatchesPage .patches__range-* (03-patches.html). Each row is
+     a 3-col grid: LABEL | bar with start/end ticks INSIDE | mono readout.
+     Replaces the prior vertical (label-row above, 4px bar below) layout
+     which wrapped awkwardly and didn't match the validated visual. */
   .tones__param {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    display: grid;
+    grid-template-columns: 6.5rem minmax(0, 1fr) 5.5rem;
+    gap: var(--ac-space-3);
+    align-items: center;
     padding-block: var(--ac-space-2);
   }
   .tones__param-label {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--ac-space-2);
     font-family: var(--ac-font-display);
-    font-size: 0.7rem;
+    font-size: var(--ac-text-eyebrow);
     text-transform: uppercase;
     letter-spacing: var(--ac-tracking-eyebrow);
     color: hsl(var(--ac-color-fg-muted));
   }
-  .tones__param-label-text { white-space: nowrap; }
+  .tones__param-bar {
+    position: relative;
+    height: 1.25rem;
+    background: hsl(var(--ac-color-bg));
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: 1px;
+    overflow: hidden;
+  }
+  .tones__param-fill {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: var(--tones-fill, 0%);
+    background:
+      linear-gradient(90deg,
+        hsl(var(--ac-color-accent) / 0.18) 0%,
+        hsl(var(--ac-color-accent) / 0.34) 50%,
+        hsl(var(--ac-color-accent) / 0.18) 100%);
+    border-right: var(--ac-rule-medium) solid hsl(var(--ac-color-accent));
+    box-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.4) inset;
+  }
+  /* Bipolar: fill is anchored from center, growing left or right.
+     --tones-bipolar-l = left edge %, --tones-bipolar-w = width %.
+     Both edges get the accent border (it represents a value position
+     either side of the midpoint). */
+  .tones__param--bipolar .tones__param-fill {
+    left: var(--tones-bipolar-l, 50%);
+    width: var(--tones-bipolar-w, 0%);
+    border-left: var(--ac-rule-medium) solid hsl(var(--ac-color-accent));
+    border-right: var(--ac-rule-medium) solid hsl(var(--ac-color-accent));
+  }
+  .tones__param-tick {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--ac-font-mono);
+    font-size: 0.625rem;
+    color: hsl(var(--ac-color-fg-subtle));
+    line-height: 1;
+    padding-inline: 4px;
+    pointer-events: none;
+  }
+  .tones__param-tick--start { left: 4px; }
+  .tones__param-tick--mid { left: 50%; transform: translate(-50%, -50%); }
+  .tones__param-tick--end { right: 4px; }
   .tones__param-readout {
     font-family: var(--ac-font-mono);
     font-size: var(--ac-text-small);
-    font-variant-numeric: tabular-nums;
     color: hsl(var(--ac-color-fg));
-    letter-spacing: 0;
-    text-transform: none;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  .tones__param-readout strong {
+    color: hsl(var(--ac-color-accent));
+    font-weight: var(--ac-fw-display);
   }
   .tones__param-readout-unit {
     color: hsl(var(--ac-color-fg-subtle));
     margin-left: 2px;
     font-size: var(--ac-text-tiny);
   }
-  .tones__param-bar {
-    position: relative;
-    height: 4px;
-    background: hsl(var(--ac-color-bg));
-    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.6);
-    border-radius: 1px;
-    overflow: hidden;
-  }
-  .tones__param-bar-fill {
-    position: absolute;
-    top: 0; bottom: 0;
-    left: 0;
-    width: var(--tones-fill, 0%);
-    background: hsl(var(--ac-color-accent));
-    box-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.4);
-  }
-  /* Bipolar: fill grows from center either direction. The CSS uses
-     custom properties --tones-bipolar-l / --tones-bipolar-r to position. */
-  .tones__param-bar--bipolar .tones__param-bar-fill {
-    left: var(--tones-bipolar-l, 50%);
-    width: var(--tones-bipolar-w, 0%);
-  }
-  .tones__param-bar--bipolar::before {
-    content: "";
-    position: absolute;
-    top: -2px; bottom: -2px;
-    left: 50%;
-    width: 1px;
-    background: hsl(var(--ac-color-fg-subtle) / 0.6);
-  }
-  /* Discrete value rows (no bar) — for selectable enums like Loop Mode */
-  .tones__param--enum .tones__param-bar { display: none; }
-  .tones__param--enum .tones__param-readout {
-    color: hsl(var(--ac-color-fg));
-  }
+  /* Enum params: the bar slot holds a pip-track of N equal cells
+     spanning the bar width; the active cell is filled accent. The
+     readout shows the named enum value (e.g. "Forward"). */
   .tones__param--enum .tones__param-enum-track {
+    position: absolute;
+    inset: 0;
     display: flex;
-    gap: 2px;
-    margin-top: 2px;
+    gap: 1px;
+    padding: 2px;
   }
   .tones__param-enum-pip {
     flex: 1;
-    height: 4px;
     background: hsl(var(--ac-color-bg));
     border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.6);
     border-radius: 1px;
   }
   .tones__param-enum-pip[data-active="true"] {
-    background: hsl(var(--ac-color-accent));
+    background: hsl(var(--ac-color-accent) / 0.34);
     border-color: hsl(var(--ac-color-accent));
-    box-shadow: 0 0 6px hsl(var(--ac-color-accent) / 0.45);
+    box-shadow: 0 0 6px hsl(var(--ac-color-accent) / 0.45) inset;
   }
 
   /* Envelope-row — four-knob ADSR layout + visual preview area */
@@ -1619,96 +1636,100 @@
         <div class="tones__param-grid tones__param-grid--cols-3">
 
           <div class="tones__param">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">Wave Bank</span>
-              <span class="tones__param-readout">A <span class="tones__param-readout-unit">/ A-D</span></span>
-            </span>
-            <div class="tones__param-bar">
-              <div class="tones__param-bar-fill" style="--tones-fill: 0%"></div>
+            <span class="tones__param-label">Wave Bank</span>
+            <div class="tones__param-bar tones__param--enum" role="img" aria-label="Wave Bank A of A through D">
+              <div class="tones__param-enum-track" aria-hidden="true">
+                <span class="tones__param-enum-pip" data-active="true" title="A"></span>
+                <span class="tones__param-enum-pip" title="B"></span>
+                <span class="tones__param-enum-pip" title="C"></span>
+                <span class="tones__param-enum-pip" title="D"></span>
+              </div>
             </div>
+            <span class="tones__param-readout"><strong>A</strong></span>
           </div>
 
           <div class="tones__param">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">Source Tone</span>
-              <span class="tones__param-readout">0 <span class="tones__param-readout-unit">/ 63</span></span>
-            </span>
-            <div class="tones__param-bar">
-              <div class="tones__param-bar-fill" style="--tones-fill: 0%"></div>
+            <span class="tones__param-label">Source Tone</span>
+            <div class="tones__param-bar" role="img" aria-label="Source Tone 0 of 63">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">63</span>
+              <div class="tones__param-fill" style="--tones-fill: 0%"></div>
             </div>
+            <span class="tones__param-readout"><strong>0</strong></span>
           </div>
 
           <div class="tones__param">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">Sample Rate</span>
-              <span class="tones__param-readout">30 <span class="tones__param-readout-unit">kHz</span></span>
-            </span>
-            <div class="tones__param-bar">
-              <div class="tones__param-bar-fill" style="--tones-fill: 100%"></div>
+            <span class="tones__param-label">Sample Rate</span>
+            <div class="tones__param-bar" role="img" aria-label="Sample Rate 30 kHz of 30">
+              <span class="tones__param-tick tones__param-tick--start">15</span>
+              <span class="tones__param-tick tones__param-tick--end">30</span>
+              <div class="tones__param-fill" style="--tones-fill: 100%"></div>
             </div>
+            <span class="tones__param-readout"><strong>30</strong> <span class="tones__param-readout-unit">kHz</span></span>
           </div>
 
           <div class="tones__param">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">Start Point</span>
-              <span class="tones__param-readout">0 <span class="tones__param-readout-unit">smp</span></span>
-            </span>
-            <div class="tones__param-bar">
-              <div class="tones__param-bar-fill" style="--tones-fill: 0%"></div>
+            <span class="tones__param-label">Start Point</span>
+            <div class="tones__param-bar" role="img" aria-label="Start Point 0 of 39240 samples">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">39240</span>
+              <div class="tones__param-fill" style="--tones-fill: 0%"></div>
             </div>
+            <span class="tones__param-readout"><strong>0</strong> <span class="tones__param-readout-unit">smp</span></span>
           </div>
 
           <div class="tones__param">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">Loop Point</span>
-              <span class="tones__param-readout">14 902 <span class="tones__param-readout-unit">smp</span></span>
-            </span>
-            <div class="tones__param-bar">
-              <div class="tones__param-bar-fill" style="--tones-fill: 38%"></div>
+            <span class="tones__param-label">Loop Point</span>
+            <div class="tones__param-bar" role="img" aria-label="Loop Point 14902 of 39240 samples">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">39240</span>
+              <div class="tones__param-fill" style="--tones-fill: 38%"></div>
             </div>
+            <span class="tones__param-readout"><strong>14902</strong> <span class="tones__param-readout-unit">smp</span></span>
           </div>
 
           <div class="tones__param">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">End Point</span>
-              <span class="tones__param-readout">39 240 <span class="tones__param-readout-unit">smp</span></span>
-            </span>
-            <div class="tones__param-bar">
-              <div class="tones__param-bar-fill" style="--tones-fill: 100%"></div>
+            <span class="tones__param-label">End Point</span>
+            <div class="tones__param-bar" role="img" aria-label="End Point 39240 of 39240 samples">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">39240</span>
+              <div class="tones__param-fill" style="--tones-fill: 100%"></div>
             </div>
-          </div>
-
-          <div class="tones__param tones__param--enum">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">Loop Mode</span>
-              <span class="tones__param-readout">Forward</span>
-            </span>
-            <div class="tones__param-enum-track" aria-hidden="true">
-              <span class="tones__param-enum-pip" data-active="true" title="Forward"></span>
-              <span class="tones__param-enum-pip" title="Alternate"></span>
-              <span class="tones__param-enum-pip" title="One-shot"></span>
-              <span class="tones__param-enum-pip" title="None"></span>
-            </div>
+            <span class="tones__param-readout"><strong>39240</strong> <span class="tones__param-readout-unit">smp</span></span>
           </div>
 
           <div class="tones__param">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">Original Key</span>
-              <span class="tones__param-readout">A4 <span class="tones__param-readout-unit">69</span></span>
-            </span>
-            <div class="tones__param-bar">
-              <div class="tones__param-bar-fill" style="--tones-fill: 54%"></div>
+            <span class="tones__param-label">Loop Mode</span>
+            <div class="tones__param-bar tones__param--enum" role="img" aria-label="Loop Mode Forward">
+              <div class="tones__param-enum-track" aria-hidden="true">
+                <span class="tones__param-enum-pip" data-active="true" title="Forward"></span>
+                <span class="tones__param-enum-pip" title="Alternate"></span>
+                <span class="tones__param-enum-pip" title="One-shot"></span>
+                <span class="tones__param-enum-pip" title="None"></span>
+              </div>
             </div>
+            <span class="tones__param-readout"><strong>Forward</strong></span>
           </div>
 
           <div class="tones__param">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">Wave Length</span>
-              <span class="tones__param-readout">39 240 <span class="tones__param-readout-unit">smp</span></span>
-            </span>
-            <div class="tones__param-bar">
-              <div class="tones__param-bar-fill" style="--tones-fill: 78%"></div>
+            <span class="tones__param-label">Original Key</span>
+            <div class="tones__param-bar" role="img" aria-label="Original Key A4 (MIDI 69) of 0 to 127">
+              <span class="tones__param-tick tones__param-tick--start">C-1</span>
+              <span class="tones__param-tick tones__param-tick--mid">C3</span>
+              <span class="tones__param-tick tones__param-tick--end">G9</span>
+              <div class="tones__param-fill" style="--tones-fill: 54%"></div>
             </div>
+            <span class="tones__param-readout"><strong>A4</strong></span>
+          </div>
+
+          <div class="tones__param">
+            <span class="tones__param-label">Wave Length</span>
+            <div class="tones__param-bar" role="img" aria-label="Wave Length 39240 samples">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">50000</span>
+              <div class="tones__param-fill" style="--tones-fill: 78%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>39240</strong> <span class="tones__param-readout-unit">smp</span></span>
           </div>
 
         </div>
@@ -1722,44 +1743,46 @@
         </header>
         <div class="tones__param-grid tones__param-grid--cols-4">
 
-          <div class="tones__param">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">Coarse</span>
-              <span class="tones__param-readout">+0 <span class="tones__param-readout-unit">st</span></span>
-            </span>
-            <div class="tones__param-bar tones__param-bar--bipolar">
-              <div class="tones__param-bar-fill" style="--tones-bipolar-l: 50%; --tones-bipolar-w: 0%"></div>
+          <div class="tones__param tones__param--bipolar">
+            <span class="tones__param-label">Coarse</span>
+            <div class="tones__param-bar" role="img" aria-label="Coarse 0 semitones of -24 to +24">
+              <span class="tones__param-tick tones__param-tick--start">-24</span>
+              <span class="tones__param-tick tones__param-tick--mid">0</span>
+              <span class="tones__param-tick tones__param-tick--end">+24</span>
+              <div class="tones__param-fill" style="--tones-bipolar-l: 50%; --tones-bipolar-w: 0%"></div>
             </div>
+            <span class="tones__param-readout"><strong>+0</strong> <span class="tones__param-readout-unit">st</span></span>
+          </div>
+
+          <div class="tones__param tones__param--bipolar">
+            <span class="tones__param-label">Fine Tune</span>
+            <div class="tones__param-bar" role="img" aria-label="Fine Tune +12 cents of -50 to +50">
+              <span class="tones__param-tick tones__param-tick--start">-50</span>
+              <span class="tones__param-tick tones__param-tick--mid">0</span>
+              <span class="tones__param-tick tones__param-tick--end">+50</span>
+              <div class="tones__param-fill" style="--tones-bipolar-l: 50%; --tones-bipolar-w: 12%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>+12</strong> <span class="tones__param-readout-unit">cents</span></span>
           </div>
 
           <div class="tones__param">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">Fine Tune</span>
-              <span class="tones__param-readout">+12 <span class="tones__param-readout-unit">cents</span></span>
-            </span>
-            <div class="tones__param-bar tones__param-bar--bipolar">
-              <div class="tones__param-bar-fill" style="--tones-bipolar-l: 50%; --tones-bipolar-w: 12%"></div>
+            <span class="tones__param-label">Key Follow</span>
+            <div class="tones__param-bar" role="img" aria-label="Key Follow 100 percent of 0 to 100">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">100</span>
+              <div class="tones__param-fill" style="--tones-fill: 100%"></div>
             </div>
+            <span class="tones__param-readout"><strong>100</strong> <span class="tones__param-readout-unit">%</span></span>
           </div>
 
           <div class="tones__param">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">Key Follow</span>
-              <span class="tones__param-readout">100 <span class="tones__param-readout-unit">%</span></span>
-            </span>
-            <div class="tones__param-bar">
-              <div class="tones__param-bar-fill" style="--tones-fill: 100%"></div>
+            <span class="tones__param-label">LFO Pitch</span>
+            <div class="tones__param-bar" role="img" aria-label="LFO Pitch 8 of 127">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">127</span>
+              <div class="tones__param-fill" style="--tones-fill: 6%"></div>
             </div>
-          </div>
-
-          <div class="tones__param">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">LFO Pitch</span>
-              <span class="tones__param-readout">8 <span class="tones__param-readout-unit">/ 127</span></span>
-            </span>
-            <div class="tones__param-bar">
-              <div class="tones__param-bar-fill" style="--tones-fill: 6%"></div>
-            </div>
+            <span class="tones__param-readout"><strong>8</strong></span>
           </div>
 
         </div>
@@ -1774,66 +1797,69 @@
         <div class="tones__param-grid tones__param-grid--cols-3">
 
           <div class="tones__param">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">Cutoff</span>
-              <span class="tones__param-readout">96 <span class="tones__param-readout-unit">/ 127</span></span>
-            </span>
-            <div class="tones__param-bar">
-              <div class="tones__param-bar-fill" style="--tones-fill: 75%"></div>
+            <span class="tones__param-label">Cutoff</span>
+            <div class="tones__param-bar" role="img" aria-label="Cutoff 96 of 127">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">127</span>
+              <div class="tones__param-fill" style="--tones-fill: 75%"></div>
             </div>
+            <span class="tones__param-readout"><strong>96</strong></span>
           </div>
 
           <div class="tones__param">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">Resonance</span>
-              <span class="tones__param-readout">42 <span class="tones__param-readout-unit">/ 127</span></span>
-            </span>
-            <div class="tones__param-bar">
-              <div class="tones__param-bar-fill" style="--tones-fill: 33%"></div>
+            <span class="tones__param-label">Resonance</span>
+            <div class="tones__param-bar" role="img" aria-label="Resonance 42 of 127">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">127</span>
+              <div class="tones__param-fill" style="--tones-fill: 33%"></div>
             </div>
+            <span class="tones__param-readout"><strong>42</strong></span>
+          </div>
+
+          <div class="tones__param tones__param--bipolar">
+            <span class="tones__param-label">Key Follow</span>
+            <div class="tones__param-bar" role="img" aria-label="Key Follow +24 percent of -100 to +100">
+              <span class="tones__param-tick tones__param-tick--start">-100</span>
+              <span class="tones__param-tick tones__param-tick--mid">0</span>
+              <span class="tones__param-tick tones__param-tick--end">+100</span>
+              <div class="tones__param-fill" style="--tones-bipolar-l: 50%; --tones-bipolar-w: 12%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>+24</strong> <span class="tones__param-readout-unit">%</span></span>
+          </div>
+
+          <div class="tones__param tones__param--bipolar">
+            <span class="tones__param-label">Velocity</span>
+            <div class="tones__param-bar" role="img" aria-label="Velocity +58 of -63 to +63">
+              <span class="tones__param-tick tones__param-tick--start">-63</span>
+              <span class="tones__param-tick tones__param-tick--mid">0</span>
+              <span class="tones__param-tick tones__param-tick--end">+63</span>
+              <div class="tones__param-fill" style="--tones-bipolar-l: 50%; --tones-bipolar-w: 46%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>+58</strong></span>
+          </div>
+
+          <div class="tones__param tones__param--bipolar">
+            <span class="tones__param-label">Env Depth</span>
+            <div class="tones__param-bar" role="img" aria-label="Env Depth +38 of -63 to +63">
+              <span class="tones__param-tick tones__param-tick--start">-63</span>
+              <span class="tones__param-tick tones__param-tick--mid">0</span>
+              <span class="tones__param-tick tones__param-tick--end">+63</span>
+              <div class="tones__param-fill" style="--tones-bipolar-l: 50%; --tones-bipolar-w: 30%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>+38</strong></span>
           </div>
 
           <div class="tones__param">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">Key Follow</span>
-              <span class="tones__param-readout">+24 <span class="tones__param-readout-unit">%</span></span>
-            </span>
-            <div class="tones__param-bar tones__param-bar--bipolar">
-              <div class="tones__param-bar-fill" style="--tones-bipolar-l: 50%; --tones-bipolar-w: 12%"></div>
+            <span class="tones__param-label">Filter Type</span>
+            <div class="tones__param-bar tones__param--enum" role="img" aria-label="Filter Type LP-12">
+              <div class="tones__param-enum-track" aria-hidden="true">
+                <span class="tones__param-enum-pip" title="Bypass"></span>
+                <span class="tones__param-enum-pip" data-active="true" title="LP-12"></span>
+                <span class="tones__param-enum-pip" title="LP-24"></span>
+                <span class="tones__param-enum-pip" title="HP"></span>
+              </div>
             </div>
-          </div>
-
-          <div class="tones__param">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">Velocity</span>
-              <span class="tones__param-readout">+58 <span class="tones__param-readout-unit">/ ±63</span></span>
-            </span>
-            <div class="tones__param-bar tones__param-bar--bipolar">
-              <div class="tones__param-bar-fill" style="--tones-bipolar-l: 50%; --tones-bipolar-w: 46%"></div>
-            </div>
-          </div>
-
-          <div class="tones__param">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">Env Depth</span>
-              <span class="tones__param-readout">+38 <span class="tones__param-readout-unit">/ ±63</span></span>
-            </span>
-            <div class="tones__param-bar tones__param-bar--bipolar">
-              <div class="tones__param-bar-fill" style="--tones-bipolar-l: 50%; --tones-bipolar-w: 30%"></div>
-            </div>
-          </div>
-
-          <div class="tones__param tones__param--enum">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">Filter Type</span>
-              <span class="tones__param-readout">LP-12</span>
-            </span>
-            <div class="tones__param-enum-track" aria-hidden="true">
-              <span class="tones__param-enum-pip" title="Bypass"></span>
-              <span class="tones__param-enum-pip" data-active="true" title="LP-12"></span>
-              <span class="tones__param-enum-pip" title="LP-24"></span>
-              <span class="tones__param-enum-pip" title="HP"></span>
-            </div>
+            <span class="tones__param-readout"><strong>LP-12</strong></span>
           </div>
 
         </div>
@@ -1848,43 +1874,46 @@
         <div class="tones__param-grid tones__param-grid--cols-4">
 
           <div class="tones__param">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">Volume</span>
-              <span class="tones__param-readout">112 <span class="tones__param-readout-unit">/ 127</span></span>
-            </span>
-            <div class="tones__param-bar">
-              <div class="tones__param-bar-fill" style="--tones-fill: 88%"></div>
+            <span class="tones__param-label">Volume</span>
+            <div class="tones__param-bar" role="img" aria-label="Volume 112 of 127">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">127</span>
+              <div class="tones__param-fill" style="--tones-fill: 88%"></div>
             </div>
+            <span class="tones__param-readout"><strong>112</strong></span>
           </div>
 
-          <div class="tones__param">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">Velocity</span>
-              <span class="tones__param-readout">+44 <span class="tones__param-readout-unit">/ ±63</span></span>
-            </span>
-            <div class="tones__param-bar tones__param-bar--bipolar">
-              <div class="tones__param-bar-fill" style="--tones-bipolar-l: 50%; --tones-bipolar-w: 35%"></div>
+          <div class="tones__param tones__param--bipolar">
+            <span class="tones__param-label">Velocity</span>
+            <div class="tones__param-bar" role="img" aria-label="Velocity +44 of -63 to +63">
+              <span class="tones__param-tick tones__param-tick--start">-63</span>
+              <span class="tones__param-tick tones__param-tick--mid">0</span>
+              <span class="tones__param-tick tones__param-tick--end">+63</span>
+              <div class="tones__param-fill" style="--tones-bipolar-l: 50%; --tones-bipolar-w: 35%"></div>
             </div>
+            <span class="tones__param-readout"><strong>+44</strong></span>
           </div>
 
-          <div class="tones__param">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">Key Follow</span>
-              <span class="tones__param-readout">−8 <span class="tones__param-readout-unit">%</span></span>
-            </span>
-            <div class="tones__param-bar tones__param-bar--bipolar">
-              <div class="tones__param-bar-fill" style="--tones-bipolar-l: 46%; --tones-bipolar-w: 4%"></div>
+          <div class="tones__param tones__param--bipolar">
+            <span class="tones__param-label">Key Follow</span>
+            <div class="tones__param-bar" role="img" aria-label="Key Follow -8 percent of -100 to +100">
+              <span class="tones__param-tick tones__param-tick--start">-100</span>
+              <span class="tones__param-tick tones__param-tick--mid">0</span>
+              <span class="tones__param-tick tones__param-tick--end">+100</span>
+              <div class="tones__param-fill" style="--tones-bipolar-l: 46%; --tones-bipolar-w: 4%"></div>
             </div>
+            <span class="tones__param-readout"><strong>−8</strong> <span class="tones__param-readout-unit">%</span></span>
           </div>
 
-          <div class="tones__param">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">Pan</span>
-              <span class="tones__param-readout">L 12 <span class="tones__param-readout-unit">/ ±63</span></span>
-            </span>
-            <div class="tones__param-bar tones__param-bar--bipolar">
-              <div class="tones__param-bar-fill" style="--tones-bipolar-l: 40%; --tones-bipolar-w: 10%"></div>
+          <div class="tones__param tones__param--bipolar">
+            <span class="tones__param-label">Pan</span>
+            <div class="tones__param-bar" role="img" aria-label="Pan L 12 of -63 to +63">
+              <span class="tones__param-tick tones__param-tick--start">L63</span>
+              <span class="tones__param-tick tones__param-tick--mid">C</span>
+              <span class="tones__param-tick tones__param-tick--end">R63</span>
+              <div class="tones__param-fill" style="--tones-bipolar-l: 40%; --tones-bipolar-w: 10%"></div>
             </div>
+            <span class="tones__param-readout"><strong>L 12</strong></span>
           </div>
 
         </div>
@@ -1900,43 +1929,43 @@
           <div class="tones__param-grid tones__param-grid--cols-4">
 
             <div class="tones__param">
-              <span class="tones__param-label">
-                <span class="tones__param-label-text">Attack</span>
-                <span class="tones__param-readout">22 <span class="tones__param-readout-unit">/ 127</span></span>
-              </span>
-              <div class="tones__param-bar">
-                <div class="tones__param-bar-fill" style="--tones-fill: 17%"></div>
+              <span class="tones__param-label">Attack</span>
+              <div class="tones__param-bar" role="img" aria-label="Attack 22 of 127">
+                <span class="tones__param-tick tones__param-tick--start">0</span>
+                <span class="tones__param-tick tones__param-tick--end">127</span>
+                <div class="tones__param-fill" style="--tones-fill: 17%"></div>
               </div>
+              <span class="tones__param-readout"><strong>22</strong></span>
             </div>
 
             <div class="tones__param">
-              <span class="tones__param-label">
-                <span class="tones__param-label-text">Decay</span>
-                <span class="tones__param-readout">64 <span class="tones__param-readout-unit">/ 127</span></span>
-              </span>
-              <div class="tones__param-bar">
-                <div class="tones__param-bar-fill" style="--tones-fill: 50%"></div>
+              <span class="tones__param-label">Decay</span>
+              <div class="tones__param-bar" role="img" aria-label="Decay 64 of 127">
+                <span class="tones__param-tick tones__param-tick--start">0</span>
+                <span class="tones__param-tick tones__param-tick--end">127</span>
+                <div class="tones__param-fill" style="--tones-fill: 50%"></div>
               </div>
+              <span class="tones__param-readout"><strong>64</strong></span>
             </div>
 
             <div class="tones__param">
-              <span class="tones__param-label">
-                <span class="tones__param-label-text">Sustain</span>
-                <span class="tones__param-readout">82 <span class="tones__param-readout-unit">/ 127</span></span>
-              </span>
-              <div class="tones__param-bar">
-                <div class="tones__param-bar-fill" style="--tones-fill: 65%"></div>
+              <span class="tones__param-label">Sustain</span>
+              <div class="tones__param-bar" role="img" aria-label="Sustain 82 of 127">
+                <span class="tones__param-tick tones__param-tick--start">0</span>
+                <span class="tones__param-tick tones__param-tick--end">127</span>
+                <div class="tones__param-fill" style="--tones-fill: 65%"></div>
               </div>
+              <span class="tones__param-readout"><strong>82</strong></span>
             </div>
 
             <div class="tones__param">
-              <span class="tones__param-label">
-                <span class="tones__param-label-text">Release</span>
-                <span class="tones__param-readout">96 <span class="tones__param-readout-unit">/ 127</span></span>
-              </span>
-              <div class="tones__param-bar">
-                <div class="tones__param-bar-fill" style="--tones-fill: 76%"></div>
+              <span class="tones__param-label">Release</span>
+              <div class="tones__param-bar" role="img" aria-label="Release 96 of 127">
+                <span class="tones__param-tick tones__param-tick--start">0</span>
+                <span class="tones__param-tick tones__param-tick--end">127</span>
+                <div class="tones__param-fill" style="--tones-fill: 76%"></div>
               </div>
+              <span class="tones__param-readout"><strong>96</strong></span>
             </div>
 
           </div>
@@ -1974,43 +2003,43 @@
           <div class="tones__param-grid tones__param-grid--cols-4">
 
             <div class="tones__param">
-              <span class="tones__param-label">
-                <span class="tones__param-label-text">Attack</span>
-                <span class="tones__param-readout">8 <span class="tones__param-readout-unit">/ 127</span></span>
-              </span>
-              <div class="tones__param-bar">
-                <div class="tones__param-bar-fill" style="--tones-fill: 6%"></div>
+              <span class="tones__param-label">Attack</span>
+              <div class="tones__param-bar" role="img" aria-label="Attack 8 of 127">
+                <span class="tones__param-tick tones__param-tick--start">0</span>
+                <span class="tones__param-tick tones__param-tick--end">127</span>
+                <div class="tones__param-fill" style="--tones-fill: 6%"></div>
               </div>
+              <span class="tones__param-readout"><strong>8</strong></span>
             </div>
 
             <div class="tones__param">
-              <span class="tones__param-label">
-                <span class="tones__param-label-text">Decay</span>
-                <span class="tones__param-readout">42 <span class="tones__param-readout-unit">/ 127</span></span>
-              </span>
-              <div class="tones__param-bar">
-                <div class="tones__param-bar-fill" style="--tones-fill: 33%"></div>
+              <span class="tones__param-label">Decay</span>
+              <div class="tones__param-bar" role="img" aria-label="Decay 42 of 127">
+                <span class="tones__param-tick tones__param-tick--start">0</span>
+                <span class="tones__param-tick tones__param-tick--end">127</span>
+                <div class="tones__param-fill" style="--tones-fill: 33%"></div>
               </div>
+              <span class="tones__param-readout"><strong>42</strong></span>
             </div>
 
             <div class="tones__param">
-              <span class="tones__param-label">
-                <span class="tones__param-label-text">Sustain</span>
-                <span class="tones__param-readout">110 <span class="tones__param-readout-unit">/ 127</span></span>
-              </span>
-              <div class="tones__param-bar">
-                <div class="tones__param-bar-fill" style="--tones-fill: 86%"></div>
+              <span class="tones__param-label">Sustain</span>
+              <div class="tones__param-bar" role="img" aria-label="Sustain 110 of 127">
+                <span class="tones__param-tick tones__param-tick--start">0</span>
+                <span class="tones__param-tick tones__param-tick--end">127</span>
+                <div class="tones__param-fill" style="--tones-fill: 86%"></div>
               </div>
+              <span class="tones__param-readout"><strong>110</strong></span>
             </div>
 
             <div class="tones__param">
-              <span class="tones__param-label">
-                <span class="tones__param-label-text">Release</span>
-                <span class="tones__param-readout">58 <span class="tones__param-readout-unit">/ 127</span></span>
-              </span>
-              <div class="tones__param-bar">
-                <div class="tones__param-bar-fill" style="--tones-fill: 45%"></div>
+              <span class="tones__param-label">Release</span>
+              <div class="tones__param-bar" role="img" aria-label="Release 58 of 127">
+                <span class="tones__param-tick tones__param-tick--start">0</span>
+                <span class="tones__param-tick tones__param-tick--end">127</span>
+                <div class="tones__param-fill" style="--tones-fill: 45%"></div>
               </div>
+              <span class="tones__param-readout"><strong>58</strong></span>
             </div>
 
           </div>
@@ -2047,46 +2076,46 @@
         <div class="tones__param-grid tones__param-grid--cols-4">
 
           <div class="tones__param">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">Rate</span>
-              <span class="tones__param-readout">52 <span class="tones__param-readout-unit">/ 127</span></span>
-            </span>
-            <div class="tones__param-bar">
-              <div class="tones__param-bar-fill" style="--tones-fill: 41%"></div>
+            <span class="tones__param-label">Rate</span>
+            <div class="tones__param-bar" role="img" aria-label="Rate 52 of 127">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">127</span>
+              <div class="tones__param-fill" style="--tones-fill: 41%"></div>
             </div>
+            <span class="tones__param-readout"><strong>52</strong></span>
           </div>
 
           <div class="tones__param">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">Depth</span>
-              <span class="tones__param-readout">18 <span class="tones__param-readout-unit">/ 127</span></span>
-            </span>
-            <div class="tones__param-bar">
-              <div class="tones__param-bar-fill" style="--tones-fill: 14%"></div>
+            <span class="tones__param-label">Depth</span>
+            <div class="tones__param-bar" role="img" aria-label="Depth 18 of 127">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">127</span>
+              <div class="tones__param-fill" style="--tones-fill: 14%"></div>
             </div>
+            <span class="tones__param-readout"><strong>18</strong></span>
           </div>
 
           <div class="tones__param">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">Delay</span>
-              <span class="tones__param-readout">24 <span class="tones__param-readout-unit">/ 127</span></span>
-            </span>
-            <div class="tones__param-bar">
-              <div class="tones__param-bar-fill" style="--tones-fill: 19%"></div>
+            <span class="tones__param-label">Delay</span>
+            <div class="tones__param-bar" role="img" aria-label="Delay 24 of 127">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">127</span>
+              <div class="tones__param-fill" style="--tones-fill: 19%"></div>
             </div>
+            <span class="tones__param-readout"><strong>24</strong></span>
           </div>
 
-          <div class="tones__param tones__param--enum">
-            <span class="tones__param-label">
-              <span class="tones__param-label-text">Mode</span>
-              <span class="tones__param-readout">Sine</span>
-            </span>
-            <div class="tones__param-enum-track" aria-hidden="true">
-              <span class="tones__param-enum-pip" data-active="true" title="Sine"></span>
-              <span class="tones__param-enum-pip" title="Triangle"></span>
-              <span class="tones__param-enum-pip" title="Square"></span>
-              <span class="tones__param-enum-pip" title="S&H"></span>
+          <div class="tones__param">
+            <span class="tones__param-label">Mode</span>
+            <div class="tones__param-bar tones__param--enum" role="img" aria-label="LFO Mode Sine">
+              <div class="tones__param-enum-track" aria-hidden="true">
+                <span class="tones__param-enum-pip" data-active="true" title="Sine"></span>
+                <span class="tones__param-enum-pip" title="Triangle"></span>
+                <span class="tones__param-enum-pip" title="Square"></span>
+                <span class="tones__param-enum-pip" title="S&H"></span>
+              </div>
             </div>
+            <span class="tones__param-readout"><strong>Sine</strong></span>
           </div>
 
         </div>
