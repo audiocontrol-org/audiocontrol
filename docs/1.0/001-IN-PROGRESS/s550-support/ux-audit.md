@@ -339,6 +339,22 @@ These need operator decisions before Task 2's `/frontend-design` exploration can
 
 ---
 
+## Direction (operator decisions, 2026-05-08)
+
+These are the decisions taken before Task 2's `/frontend-design` invocation. Each one closes one of the Part D open questions.
+
+- **Color scheme:** **dark only**, to match audiocontrol.org. The editor migrates from its current white-background to a dark surface; existing `s330-*` blue tokens stay but their on-surface assumptions need recalibrating for dark backgrounds.
+- **Fonts:** **self-host woff2** (match the parent site's approach). Departure Mono, IBM Plex Sans, and JetBrains Mono ship in the editor build with preload + preconnect. Source files mirror `audiocontrol.org/public/fonts/`.
+- **Brand contract:** **mint a third `Brand` in the `oletizi/audiocontrol.org` repo** named `editor-roland`. It shares typography + spacing with the `audiocontrol` brand and overrides `colors.primary` to S-330/S-550 blue. The editor consumes this brand via the same `BrandColors` / `BrandTypography` / `Brand` interfaces. This is the architectural expression of "same family, different accent."
+
+Open questions deferred to Task 2 exploration (will be answered by mockups, not in advance):
+
+- (#4) Two-h2 idiom compatibility with `s3k-section`
+- (#5) Editor header treatment vs parent's sticky scroll-compress
+- (#6) Reading-measure adoption for in-editor docs/help
+- (#7) Naming for the eyebrow primitive (`ac-panel-label` vs `ac-section-eyebrow`)
+- (#8) `SlideDrawer` extension scope to support file pickers, multi-row import forms, progress drawers
+
 ## Part E — Next step
 
 Phase 9 Task 2 — invoke the `frontend-design:frontend-design` skill with this audit as input, plus screenshots of the current pages and the audiocontrol.org public site, to produce candidate mockups for the redesigned Home / Patches / Tones / Play / Workflows / Library pages and the dialog family. Stash explorations under `docs/1.0/001-IN-PROGRESS/s550-support/explorations/`. Operator reviews and selects a direction; the chosen direction's notes get committed back into this file as a new "Direction" section before Task 3 (TonesPage decomposition) begins.
