@@ -991,8 +991,8 @@
   /* List + detail split column */
   .tones__split {
     display: grid;
-    grid-template-columns: minmax(0, 27rem) minmax(0, 1fr);
-    gap: var(--ac-space-6);
+    grid-template-columns: minmax(0, 18rem) minmax(0, 1fr);
+    gap: var(--ac-space-5);
     margin-top: var(--ac-space-6);
     align-items: start;
   }
@@ -1157,20 +1157,13 @@
      holds at most 2 rows side-by-side at typical detail-pane widths. cols-3
      and cols-4 are aliased to 2-col here — the previous 3/4-up layout was
      too cramped now that param rows are horizontal range bars. */
-  .tones__param-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--ac-space-2) var(--ac-space-5);
-    margin-top: var(--ac-space-3);
-  }
+  .tones__param-grid,
   .tones__param-grid--cols-3,
   .tones__param-grid--cols-4 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  @media (max-width: 720px) {
-    .tones__param-grid,
-    .tones__param-grid--cols-3,
-    .tones__param-grid--cols-4 { grid-template-columns: 1fr; }
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    margin-top: var(--ac-space-3);
   }
 
   /* PARAMETER ROW — validated range-bar primitive
@@ -1180,11 +1173,13 @@
      which wrapped awkwardly and didn't match the validated visual. */
   .tones__param {
     display: grid;
-    grid-template-columns: 6.5rem minmax(0, 1fr) 5.5rem;
+    grid-template-columns: minmax(5.5rem, 7rem) minmax(0, 1fr) minmax(4rem, 6rem);
     gap: var(--ac-space-3);
     align-items: center;
     padding-block: var(--ac-space-2);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.4);
   }
+  .tones__param:last-child { border-bottom: 0; }
   .tones__param-label {
     font-family: var(--ac-font-display);
     font-size: var(--ac-text-eyebrow);
