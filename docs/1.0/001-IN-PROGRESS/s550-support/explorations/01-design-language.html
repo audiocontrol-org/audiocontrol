@@ -31,6 +31,19 @@
     --ac-color-warning:          38  80% 58%;    /* caution (used sparingly) */
     --ac-color-success:          152 55% 52%;    /* available / done */
 
+    /* --- CRT monitor tokens ------------------------------------ */
+    /* Reproduces the S-330/S-550 video-out display. Warm-grey
+       phosphor look — NOT the editor's blue palette. The CRT is
+       content (the device's actual screen state), not chrome. */
+    --ac-crt-bezel:    30 6% 6%;       /* outer bezel */
+    --ac-crt-frame:    30 5% 12%;      /* inner frame */
+    --ac-crt-bg:       30 4% 22%;      /* CRT screen background */
+    --ac-crt-fg-dim:   35 6% 68%;      /* normal phosphor text */
+    --ac-crt-fg:       35 8% 88%;      /* bright phosphor text */
+    --ac-crt-fg-active: 35 12% 96%;    /* active/cursor */
+    --ac-crt-btn-fill: 30 5% 80%;      /* MODE/MENU button fill */
+    --ac-crt-btn-text: 30 8% 12%;      /* button text on light fill */
+
     /* --- typography role tokens -------------------------------- */
     --ac-font-display: "Departure Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     --ac-font-body:    "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -752,6 +765,169 @@
   }
 
   /* ============================================================
+     CRT MONITOR — reproduces the device's video-out display
+     This is CONTENT, not chrome. Lives on every page. The
+     atmosphere (subtle phosphor cast + scanlines) is intentional
+     here — it's reproducing a CRT — but does NOT bleed into the
+     editor's chrome elsewhere.
+     ============================================================ */
+  .ac-crt-monitor {
+    background: hsl(var(--ac-crt-bezel));
+    padding: var(--ac-space-3);
+    border-radius: 6px;
+    box-shadow:
+      0 0 0 1px hsl(var(--ac-color-border)),
+      0 14px 40px -10px hsl(220 40% 0% / 0.6),
+      inset 0 1px 0 hsl(35 8% 30% / 0.4);
+  }
+  .ac-crt-monitor__bezel {
+    background: hsl(var(--ac-crt-frame));
+    padding: var(--ac-space-3);
+    border-radius: 4px;
+    box-shadow: inset 0 0 0 1px hsl(30 4% 4%);
+  }
+  .ac-crt-monitor__screen {
+    position: relative;
+    background: hsl(var(--ac-crt-bg));
+    color: hsl(var(--ac-crt-fg-dim));
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    line-height: 1.35;
+    padding: var(--ac-space-4) var(--ac-space-5) var(--ac-space-5);
+    border-radius: 2px;
+    overflow: hidden;
+    /* subtle phosphor scanlines — only inside the CRT panel */
+    background-image:
+      linear-gradient(180deg,
+        transparent 0,
+        hsl(220 14% 5% / 0.18) 50%,
+        transparent 100%),
+      repeating-linear-gradient(
+        180deg,
+        transparent 0,
+        transparent 2px,
+        hsl(30 4% 0% / 0.08) 2px,
+        hsl(30 4% 0% / 0.08) 3px
+      );
+  }
+  .ac-crt-monitor__chrome {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: var(--ac-space-2);
+    margin-bottom: var(--ac-space-2);
+  }
+  .ac-crt-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 1.5rem;
+    border: 1px solid hsl(var(--ac-crt-fg-dim) / 0.4);
+    background: transparent;
+    color: hsl(var(--ac-crt-fg));
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    letter-spacing: 0.04em;
+    padding-inline: var(--ac-space-2);
+  }
+  .ac-crt-btn--filled {
+    background: hsl(var(--ac-crt-btn-fill));
+    color: hsl(var(--ac-crt-btn-text));
+    border-color: hsl(var(--ac-crt-btn-fill));
+  }
+  .ac-crt-btn--blank {
+    border-color: hsl(var(--ac-crt-fg-dim) / 0.25);
+    background: hsl(var(--ac-crt-fg-dim) / 0.12);
+  }
+  .ac-crt-monitor__sub-row {
+    display: flex;
+    justify-content: space-between;
+    color: hsl(var(--ac-crt-fg));
+    margin-bottom: var(--ac-space-3);
+    padding-bottom: var(--ac-space-2);
+  }
+  .ac-crt-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--ac-crt-fg-dim));
+  }
+  .ac-crt-table thead th {
+    text-align: left;
+    color: hsl(var(--ac-crt-fg));
+    font-weight: 400;
+    padding-block: 1px;
+  }
+  .ac-crt-table thead th:nth-child(2),
+  .ac-crt-table thead th:nth-child(3),
+  .ac-crt-table thead th:nth-child(6),
+  .ac-crt-table thead th:nth-child(7) {
+    text-align: right;
+  }
+  .ac-crt-table tbody td {
+    padding-block: 1px;
+    color: hsl(var(--ac-crt-fg-dim));
+  }
+  .ac-crt-table tbody td:nth-child(2),
+  .ac-crt-table tbody td:nth-child(3),
+  .ac-crt-table tbody td:nth-child(6),
+  .ac-crt-table tbody td:nth-child(7) {
+    text-align: right;
+  }
+  .ac-crt-table tbody tr:first-child td { color: hsl(var(--ac-crt-fg)); }
+  .ac-crt-cell--selected {
+    background: hsl(var(--ac-crt-fg-dim));
+    color: hsl(var(--ac-crt-bg));
+    padding-inline: 4px;
+    margin-inline: -4px;
+    display: inline-block;
+  }
+  .ac-crt-monitor__display {
+    margin-top: var(--ac-space-4);
+    color: hsl(var(--ac-crt-fg));
+    display: flex;
+    gap: var(--ac-space-5);
+  }
+  .ac-crt-cursor {
+    display: inline-block;
+    width: 0.6em;
+    background: hsl(var(--ac-crt-fg));
+    color: hsl(var(--ac-crt-bg));
+    animation: ac-crt-blink 1s steps(1) infinite;
+  }
+  @keyframes ac-crt-blink {
+    50% { opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ac-crt-cursor { animation: none; }
+  }
+  .ac-crt-monitor__lookup {
+    margin-top: var(--ac-space-3);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: var(--ac-space-7);
+    row-gap: 1px;
+    color: hsl(var(--ac-crt-fg-dim));
+    padding-left: var(--ac-space-4);
+  }
+  .ac-crt-monitor__caption {
+    margin-top: var(--ac-space-3);
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+
+  /* compact variant for sticky page sidebars */
+  .ac-crt-monitor--compact .ac-crt-monitor__screen {
+    font-size: var(--ac-text-tiny);
+    padding: var(--ac-space-3) var(--ac-space-4) var(--ac-space-4);
+  }
+  .ac-crt-monitor--compact .ac-crt-btn { height: 1.25rem; }
+
+  /* ============================================================
      EYEBROW STATUS-ROW (h2 + metric)
      ============================================================ */
   .ac-status-row {
@@ -856,6 +1032,7 @@
       <li><a href="#forms">Form primitives</a></li>
       <li><a href="#progress">Progress + spinner</a></li>
       <li><a href="#status">Eyebrow status-row</a></li>
+      <li><a href="#crt">CRT monitor</a></li>
       <li><a href="#decisions">Direction recap</a></li>
     </ol>
   </nav>
@@ -1383,10 +1560,81 @@
     </div>
   </section>
 
-  <!-- ===== 8. DECISIONS ===== -->
+  <!-- ===== 8. CRT MONITOR ===== -->
+  <section id="crt" class="ac-section">
+    <div class="ac-dimension-bracket">
+      <span class="ac-panel-label">§ 08 · CRT Monitor</span>
+      <h2>CRT monitor — the device's actual screen</h2>
+      <p class="ac-fg-muted" style="max-width: var(--ac-measure-reading);">
+        Every editor page shows the S-330/S-550's video-out display in a persistent right-sidebar dock.
+        The CRT is <strong>content</strong> — the device's live screen state — not editor chrome.
+        Atmosphere (subtle phosphor cast, scanlines) is intentional inside this panel because it's
+        reproducing a real CRT. Atmosphere does not bleed into the editor's chrome elsewhere.
+      </p>
+    </div>
+
+    <div class="ac-mt-6" style="max-width: 32rem;">
+      <div class="ac-crt-monitor">
+        <div class="ac-crt-monitor__bezel">
+          <div class="ac-crt-monitor__screen">
+            <div class="ac-crt-monitor__chrome">
+              <span class="ac-crt-btn ac-crt-btn--filled">MODE</span>
+              <span class="ac-crt-btn ac-crt-btn--filled">MENU</span>
+              <span class="ac-crt-btn ac-crt-btn--blank"></span>
+              <span class="ac-crt-btn ac-crt-btn--blank"></span>
+              <span class="ac-crt-btn ac-crt-btn--filled">Dec</span>
+              <span class="ac-crt-btn ac-crt-btn--filled">Inc</span>
+            </div>
+            <div class="ac-crt-monitor__sub-row">
+              <span>Last Note Priority</span>
+              <span>PLAY-Standard</span>
+            </div>
+            <table class="ac-crt-table">
+              <thead>
+                <tr>
+                  <th></th><th>VAL</th><th>CH</th><th>Patch</th><th></th><th>Out</th><th>Level</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>A</td><td>*</td><td>1</td><td><span class="ac-crt-cell--selected">I11</span></td><td>MINI</td><td>1</td><td>127</td></tr>
+                <tr><td>B</td><td>*</td><td>2</td><td>I12</td><td></td><td>1</td><td>127</td></tr>
+                <tr><td>C</td><td>*</td><td>3</td><td>I13</td><td></td><td>1</td><td>127</td></tr>
+                <tr><td>D</td><td>*</td><td>4</td><td>I14</td><td></td><td>1</td><td>127</td></tr>
+                <tr><td>E</td><td>*</td><td>5</td><td>I15</td><td></td><td>1</td><td>127</td></tr>
+                <tr><td>F</td><td>*</td><td>6</td><td>I16</td><td></td><td>1</td><td>127</td></tr>
+                <tr><td>G</td><td>*</td><td>7</td><td>I17</td><td></td><td>1</td><td>127</td></tr>
+                <tr><td>H</td><td>*</td><td>8</td><td>I18</td><td></td><td>1</td><td>127</td></tr>
+              </tbody>
+            </table>
+            <div class="ac-crt-monitor__display">
+              <span>Display</span>
+              <span>I1<span class="ac-crt-cursor">_</span></span>
+            </div>
+            <div class="ac-crt-monitor__lookup">
+              <div>I11 MINI</div><div>I15</div>
+              <div>I12</div><div>I16</div>
+              <div>I13</div><div>I17</div>
+              <div>I14</div><div>I18</div>
+            </div>
+          </div>
+        </div>
+        <div class="ac-crt-monitor__caption">
+          <span>S-550 · Video out · NTSC</span>
+          <span>Live</span>
+        </div>
+      </div>
+      <p class="ac-fg-muted ac-mt-4" style="margin-bottom: 0;">
+        Modifiers: <code class="ac-mono-tabular">.ac-crt-monitor--compact</code> for narrow sidebars.
+        The monitor's table reproduces whatever mode the device is in (PLAY-Standard, MENU, edit screens, etc.).
+        The eight-row part list shown here is PLAY-Standard mode with part A selecting patch I11 (MINI).
+      </p>
+    </div>
+  </section>
+
+  <!-- ===== 9. DECISIONS ===== -->
   <section id="decisions" class="ac-section">
     <div class="ac-dimension-bracket">
-      <span class="ac-panel-label">§ 08 · Direction</span>
+      <span class="ac-panel-label">§ 09 · Direction</span>
       <h2>Direction recap</h2>
       <p class="ac-fg-muted" style="max-width: var(--ac-measure-reading);">
         Locked operator decisions that ground every per-page mockup that follows.
