@@ -41,6 +41,12 @@
     --ac-crt-btn-fill: 30 5% 80%;
     --ac-crt-btn-text: 30 8% 12%;
 
+    /* --- REC-LED accent (sparingly) ----------------------------
+       A nod to the S-550 front panel's red PLAY LED + REC LEVEL knob.
+       Use ONLY as a rare "device-active / signal-on-air" indicator —
+       NOT for danger (that's --ac-color-danger), NOT for s330 identity. */
+    --ac-color-rec:    4 92% 58%;
+
     /* --- typography role tokens -------------------------------- */
     --ac-font-display: "Departure Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     --ac-font-body:    "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -493,6 +499,17 @@
     background: hsl(var(--ac-color-fg-subtle));
     box-shadow: 0 0 0 transparent;
     animation: none;
+  }
+  .ac-signal-led--rec {
+    background: hsl(var(--ac-color-rec));
+    box-shadow:
+      0 0 8px hsl(var(--ac-color-rec) / 0.7),
+      0 0 2px hsl(4 100% 78% / 0.9) inset;
+    animation: ac-signal-pulse-rec 2.4s ease-in-out infinite;
+  }
+  @keyframes ac-signal-pulse-rec {
+    0%, 100% { box-shadow: 0 0 8px hsl(var(--ac-color-rec) / 0.7), 0 0 2px hsl(4 100% 78% / 0.9) inset; opacity: 1; }
+    50%      { box-shadow: 0 0 16px hsl(var(--ac-color-rec) / 0.95), 0 0 3px hsl(4 100% 80% / 1) inset; opacity: 0.85; }
   }
   .ac-signal-led--danger {
     background: hsl(var(--ac-color-danger));
@@ -1271,39 +1288,298 @@
     box-shadow: 0 0 6px hsl(var(--ac-color-accent) / 0.45) inset;
   }
 
-  /* Envelope-row — four-knob ADSR layout + visual preview area */
+  /* ============================================================
+     ENVELOPE — 8-segment variable-segment editor
+     Stacks: full-width VFD-style graphic on top, per-segment
+     numeric table below. Phosphor-glow aesthetic nods to the
+     S-550's actual cyan VFD text display on the front panel.
+     ============================================================ */
   .tones__envelope {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 9rem;
-    gap: var(--ac-space-5);
-    align-items: stretch;
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-4);
+    margin-top: var(--ac-space-3);
   }
-  @media (max-width: 720px) {
-    .tones__envelope { grid-template-columns: 1fr; }
-  }
-  .tones__envelope-shape {
+
+  /* The graphic (full-width "monitor" with phosphor glow) */
+  .tones__envelope-graph {
     position: relative;
-    border: var(--ac-rule-hairline) dashed hsl(var(--ac-color-border-hover));
-    background: hsl(var(--ac-color-bg) / 0.4);
-    border-radius: 2px;
-    min-height: 5.5rem;
+    height: 14.5rem;
+    background:
+      radial-gradient(ellipse at 50% 30%, hsl(220 22% 8%) 0%, hsl(220 30% 4%) 70%),
+      hsl(220 30% 4%);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: 4px;
     overflow: hidden;
   }
-  .tones__envelope-shape svg {
+  .tones__envelope-graph::after {
+    /* faint scanlines, a quiet VFD echo */
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      180deg,
+      transparent 0,
+      transparent 3px,
+      hsl(220 14% 0% / 0.18) 3px,
+      hsl(220 14% 0% / 0.18) 4px);
+    mix-blend-mode: multiply;
+  }
+  .tones__envelope-graph-label {
+    position: absolute;
+    top: 0.75rem;
+    left: 1rem;
+    font-family: var(--ac-font-display);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-accent));
+    text-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.6);
+    z-index: 2;
+    pointer-events: none;
+  }
+  .tones__envelope-graph-expand {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    background: transparent;
+    color: hsl(var(--ac-color-fg-muted));
+    cursor: pointer;
+    border-radius: 2px;
+    z-index: 2;
+    transition: color var(--ac-duration-fast) var(--ac-easing-default), background-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .tones__envelope-graph-expand:hover {
+    color: hsl(var(--ac-color-accent));
+    background: hsl(var(--ac-color-accent) / 0.12);
+  }
+  .tones__envelope-graph-expand:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--ac-color-accent) / 0.5);
+  }
+  .tones__envelope-graph-help {
+    position: absolute;
+    bottom: 0.4rem;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: var(--ac-font-mono);
+    font-size: 0.65rem;
+    color: hsl(var(--ac-color-fg-subtle));
+    pointer-events: none;
+    z-index: 2;
+  }
+  /* Canvas area — pads the inside so edge points & labels have breathing room */
+  .tones__envelope-canvas {
+    position: absolute;
+    top: 2rem;
+    left: 1rem;
+    right: 1rem;
+    bottom: 2.6rem;
+    z-index: 1;
+  }
+  .tones__envelope-canvas svg {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
+    display: block;
+    overflow: visible;
   }
-  .tones__envelope-shape-label {
+  /* SVG element styles */
+  .tones__envelope-grid-line {
+    stroke: hsl(220 16% 18%);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+  .tones__envelope-grid-line--baseline {
+    stroke: hsl(220 16% 28%);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+  .tones__envelope-segment-divider {
+    stroke: hsl(220 16% 14%);
+    stroke-width: 1;
+    stroke-dasharray: 2,3;
+    vector-effect: non-scaling-stroke;
+  }
+  .tones__envelope-active-guide {
+    stroke: hsl(var(--ac-color-accent));
+    stroke-width: 1;
+    stroke-dasharray: 4,3;
+    opacity: 0.7;
+    vector-effect: non-scaling-stroke;
+  }
+  .tones__envelope-fill {
+    fill: hsl(var(--ac-color-accent));
+    fill-opacity: 0.08;
+  }
+  .tones__envelope-line {
+    fill: none;
+    stroke: hsl(var(--ac-color-highlight));
+    stroke-width: 2;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 5px hsl(var(--ac-color-accent) / 0.65));
+    vector-effect: non-scaling-stroke;
+  }
+  /* HTML-positioned point markers (kept circular regardless of svg stretch) */
+  .tones__envelope-points {
     position: absolute;
-    top: var(--ac-space-2);
-    left: var(--ac-space-2);
+    inset: 0;
+    pointer-events: none;
+  }
+  .tones__envelope-point {
+    position: absolute;
+    width: 0.875rem;
+    height: 0.875rem;
+    border-radius: 50%;
+    background: hsl(220 30% 4%);
+    border: 2px solid hsl(var(--ac-color-highlight));
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 6px hsl(var(--ac-color-accent) / 0.5);
+    pointer-events: auto;
+    cursor: grab;
+    transition: transform var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .tones__envelope-point:hover {
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+  .tones__envelope-point--active {
+    width: 1.125rem;
+    height: 1.125rem;
+    background: hsl(var(--ac-color-highlight));
+    border-color: hsl(var(--ac-color-fg));
+    box-shadow:
+      0 0 12px hsl(var(--ac-color-accent) / 0.85),
+      0 0 4px hsl(var(--ac-color-highlight) / 0.9) inset;
+  }
+  /* X-axis labels (HTML, positioned by left percentage) */
+  .tones__envelope-axis {
+    position: absolute;
+    left: 1rem;
+    right: 1rem;
+    bottom: 1.4rem;
+    height: 0.875rem;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .tones__envelope-axis-tick {
+    position: absolute;
+    transform: translateX(-50%);
+    font-family: var(--ac-font-mono);
+    font-size: 0.625rem;
+    color: hsl(var(--ac-color-fg-subtle));
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .tones__envelope-axis-tick--active {
+    color: hsl(var(--ac-color-accent));
+    text-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.5);
+    font-weight: var(--ac-fw-display);
+  }
+  /* Horizontal level guides - drawn just inside the SVG; bigger labels here */
+  .tones__envelope-y-axis {
+    position: absolute;
+    top: 2rem;
+    bottom: 2.6rem;
+    right: 0.4rem;
+    width: 1.6rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-end;
+    z-index: 2;
+    pointer-events: none;
+    font-family: var(--ac-font-mono);
+    font-size: 0.55rem;
+    color: hsl(var(--ac-color-fg-subtle) / 0.7);
+  }
+
+  /* Per-segment numeric table (below the graph) */
+  .tones__envelope-table {
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.5);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .tones__envelope-table-row,
+  .tones__envelope-table-header {
+    display: grid;
+    grid-template-columns: 3rem minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--ac-space-3);
+    align-items: center;
+    padding: 0.4rem var(--ac-space-3);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.3);
+  }
+  .tones__envelope-table-row:last-child { border-bottom: 0; }
+  .tones__envelope-table-header {
+    background: hsl(var(--ac-color-surface) / 0.7);
+    border-bottom-color: hsl(var(--ac-color-border));
+  }
+  .tones__envelope-table-row[data-active="true"] {
+    background: hsl(var(--ac-color-accent) / 0.07);
+    box-shadow: inset 3px 0 0 hsl(var(--ac-color-accent));
+  }
+  .tones__envelope-table-row[data-sustain="true"] .tones__envelope-table-seg::after {
+    content: " ▸";
+    color: hsl(var(--ac-color-accent));
+  }
+  .tones__envelope-table-head,
+  .tones__envelope-table-seg {
     font-family: var(--ac-font-display);
-    font-size: 0.65rem;
+    font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: var(--ac-tracking-eyebrow);
     color: hsl(var(--ac-color-fg-subtle));
+  }
+  .tones__envelope-table-seg { color: hsl(var(--ac-color-fg-muted)); }
+  .tones__envelope-table-row[data-active="true"] .tones__envelope-table-seg {
+    color: hsl(var(--ac-color-accent));
+  }
+  .tones__envelope-table-cell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 2.75rem;
+    gap: var(--ac-space-2);
+    align-items: center;
+  }
+  .tones__envelope-mini {
+    position: relative;
+    height: 0.875rem;
+    background: hsl(var(--ac-color-bg));
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: 1px;
+    overflow: hidden;
+  }
+  .tones__envelope-mini-fill {
+    position: absolute;
+    inset: 0;
+    width: var(--mini-fill, 0%);
+    background:
+      linear-gradient(90deg,
+        hsl(var(--ac-color-accent) / 0.18) 0%,
+        hsl(var(--ac-color-accent) / 0.36) 100%);
+    border-right: var(--ac-rule-medium) solid hsl(var(--ac-color-accent));
+  }
+  .tones__envelope-table-row[data-active="true"] .tones__envelope-mini-fill {
+    filter: drop-shadow(0 0 4px hsl(var(--ac-color-accent) / 0.7));
+  }
+  .tones__envelope-mini-readout {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    color: hsl(var(--ac-color-fg));
+  }
+  .tones__envelope-table-row[data-active="true"] .tones__envelope-mini-readout {
+    color: hsl(var(--ac-color-accent));
+    font-weight: var(--ac-fw-display);
   }
 
   /* Footer action row (sticky-ish; just a bordered row at bottom of detail) */
@@ -1914,150 +2190,334 @@
         </div>
       </section>
 
-      <!-- TVF ENVELOPE -->
+      <!-- TVF ENVELOPE — 8-segment variable -->
       <section class="tones__section">
         <header class="tones__section-head">
           <h4 class="tones__section-title">Envelope — TVF</h4>
-          <span class="tones__section-eyebrow">Filter ADSR · §05</span>
+          <span class="tones__section-eyebrow">Filter envelope · 8 segments · §05</span>
         </header>
         <div class="tones__envelope">
-          <div class="tones__param-grid tones__param-grid--cols-4">
-
-            <div class="tones__param">
-              <span class="tones__param-label">Attack</span>
-              <div class="tones__param-bar" role="img" aria-label="Attack 22 of 127">
-                <span class="tones__param-tick tones__param-tick--start">0</span>
-                <span class="tones__param-tick tones__param-tick--end">127</span>
-                <div class="tones__param-fill" style="--tones-fill: 17%"></div>
-              </div>
-              <span class="tones__param-readout"><strong>22</strong></span>
+          <!-- VFD-style graphical envelope -->
+          <div class="tones__envelope-graph" role="region" aria-label="TVF envelope, 8 segments, segment 2 active">
+            <span class="tones__envelope-graph-label">TVF · 8-SEGMENT</span>
+            <button class="tones__envelope-graph-expand" type="button" aria-label="Expand for precision editing">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <path d="M2 5V2H5M9 2H12V5M12 9V12H9M5 12H2V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </button>
+            <div class="tones__envelope-y-axis" aria-hidden="true">
+              <span>127</span><span>96</span><span>64</span><span>32</span><span>0</span>
             </div>
-
-            <div class="tones__param">
-              <span class="tones__param-label">Decay</span>
-              <div class="tones__param-bar" role="img" aria-label="Decay 64 of 127">
-                <span class="tones__param-tick tones__param-tick--start">0</span>
-                <span class="tones__param-tick tones__param-tick--end">127</span>
-                <div class="tones__param-fill" style="--tones-fill: 50%"></div>
+            <div class="tones__envelope-canvas">
+              <svg viewBox="0 0 800 200" preserveAspectRatio="none" aria-hidden="true">
+                <!-- horizontal gridlines (level: 0 / 32 / 64 / 96 / 127) -->
+                <line x1="0" y1="0"   x2="800" y2="0"   class="tones__envelope-grid-line" />
+                <line x1="0" y1="50"  x2="800" y2="50"  class="tones__envelope-grid-line" />
+                <line x1="0" y1="100" x2="800" y2="100" class="tones__envelope-grid-line tones__envelope-grid-line--baseline" />
+                <line x1="0" y1="150" x2="800" y2="150" class="tones__envelope-grid-line" />
+                <line x1="0" y1="200" x2="800" y2="200" class="tones__envelope-grid-line tones__envelope-grid-line--baseline" />
+                <!-- segment column dividers (8 columns starting after start vertex) -->
+                <line x1="100" y1="0" x2="100" y2="200" class="tones__envelope-segment-divider" />
+                <line x1="200" y1="0" x2="200" y2="200" class="tones__envelope-segment-divider" />
+                <line x1="300" y1="0" x2="300" y2="200" class="tones__envelope-segment-divider" />
+                <line x1="400" y1="0" x2="400" y2="200" class="tones__envelope-segment-divider" />
+                <line x1="500" y1="0" x2="500" y2="200" class="tones__envelope-segment-divider" />
+                <line x1="600" y1="0" x2="600" y2="200" class="tones__envelope-segment-divider" />
+                <line x1="700" y1="0" x2="700" y2="200" class="tones__envelope-segment-divider" />
+                <!-- active segment guide (segment 2) -->
+                <line x1="200" y1="0" x2="200" y2="200" class="tones__envelope-active-guide" />
+                <!-- envelope fill area beneath the line -->
+                <path d="M 0,200 L 100,0 L 200,49 L 300,69 L 400,90 L 500,69 L 600,93 L 700,109 L 800,200 Z"
+                      class="tones__envelope-fill" />
+                <!-- envelope line (the phosphor stroke) -->
+                <polyline points="0,200 100,0 200,49 300,69 400,90 500,69 600,93 700,109 800,200"
+                          class="tones__envelope-line" />
+              </svg>
+              <!-- HTML-positioned points (kept circular regardless of svg stretch) -->
+              <div class="tones__envelope-points" aria-hidden="true">
+                <span class="tones__envelope-point" style="left: 0%;     top: 100%;"></span>
+                <span class="tones__envelope-point" style="left: 12.5%;  top: 0%;"></span>
+                <span class="tones__envelope-point tones__envelope-point--active" style="left: 25%; top: 24.4%;"></span>
+                <span class="tones__envelope-point" style="left: 37.5%;  top: 34.6%;"></span>
+                <span class="tones__envelope-point" style="left: 50%;    top: 44.9%;"></span>
+                <span class="tones__envelope-point" style="left: 62.5%;  top: 34.6%;"></span>
+                <span class="tones__envelope-point" style="left: 75%;    top: 46.5%;"></span>
+                <span class="tones__envelope-point" style="left: 87.5%;  top: 54.3%;"></span>
+                <span class="tones__envelope-point" style="left: 100%;   top: 100%;"></span>
               </div>
-              <span class="tones__param-readout"><strong>64</strong></span>
             </div>
-
-            <div class="tones__param">
-              <span class="tones__param-label">Sustain</span>
-              <div class="tones__param-bar" role="img" aria-label="Sustain 82 of 127">
-                <span class="tones__param-tick tones__param-tick--start">0</span>
-                <span class="tones__param-tick tones__param-tick--end">127</span>
-                <div class="tones__param-fill" style="--tones-fill: 65%"></div>
-              </div>
-              <span class="tones__param-readout"><strong>82</strong></span>
+            <!-- X-axis labels -->
+            <div class="tones__envelope-axis" aria-hidden="true">
+              <span class="tones__envelope-axis-tick" style="left: 0%;">Start</span>
+              <span class="tones__envelope-axis-tick" style="left: 12.5%;">1</span>
+              <span class="tones__envelope-axis-tick tones__envelope-axis-tick--active" style="left: 25%;">2</span>
+              <span class="tones__envelope-axis-tick" style="left: 37.5%;">3</span>
+              <span class="tones__envelope-axis-tick" style="left: 50%;">4</span>
+              <span class="tones__envelope-axis-tick" style="left: 62.5%;">5</span>
+              <span class="tones__envelope-axis-tick" style="left: 75%;">6</span>
+              <span class="tones__envelope-axis-tick" style="left: 87.5%;">7</span>
+              <span class="tones__envelope-axis-tick" style="left: 100%;">8</span>
             </div>
-
-            <div class="tones__param">
-              <span class="tones__param-label">Release</span>
-              <div class="tones__param-bar" role="img" aria-label="Release 96 of 127">
-                <span class="tones__param-tick tones__param-tick--start">0</span>
-                <span class="tones__param-tick tones__param-tick--end">127</span>
-                <div class="tones__param-fill" style="--tones-fill: 76%"></div>
-              </div>
-              <span class="tones__param-readout"><strong>96</strong></span>
-            </div>
-
+            <span class="tones__envelope-graph-help">Drag points to adjust · Click expand for precision editing · ▸ marks sustain</span>
           </div>
-          <div class="tones__envelope-shape" aria-label="TVF envelope shape preview">
-            <span class="tones__envelope-shape-label">TVF · ADSR</span>
-            <svg viewBox="0 0 100 60" preserveAspectRatio="none" aria-hidden="true">
-              <polyline
-                points="0,55 17,8 32,22 70,28 80,28 100,55"
-                fill="none"
-                stroke="hsl(215 78% 58%)"
-                stroke-width="1.5"
-                stroke-linejoin="round"
-                stroke-linecap="round"
-                vector-effect="non-scaling-stroke"
-              />
-              <polyline
-                points="0,55 100,55"
-                fill="none"
-                stroke="hsl(220 18% 22%)"
-                stroke-width="1"
-                vector-effect="non-scaling-stroke"
-              />
-            </svg>
+
+          <!-- Per-segment numeric controls -->
+          <div class="tones__envelope-table" role="table" aria-label="TVF envelope segments — 8 segments, sustain at segment 5">
+            <div class="tones__envelope-table-header" role="row">
+              <span class="tones__envelope-table-head" role="columnheader">Seg</span>
+              <span class="tones__envelope-table-head" role="columnheader">Time · 0–127</span>
+              <span class="tones__envelope-table-head" role="columnheader">Level · 0–127</span>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">1</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 15 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 12%"></div></div>
+                <span class="tones__envelope-mini-readout">15</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 127 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 100%"></div></div>
+                <span class="tones__envelope-mini-readout">127</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="true">
+              <span class="tones__envelope-table-seg" role="cell">2</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 22 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 17%"></div></div>
+                <span class="tones__envelope-mini-readout">22</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 96 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 75%"></div></div>
+                <span class="tones__envelope-mini-readout">96</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">3</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 18 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 14%"></div></div>
+                <span class="tones__envelope-mini-readout">18</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 82 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 65%"></div></div>
+                <span class="tones__envelope-mini-readout">82</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">4</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 30 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 24%"></div></div>
+                <span class="tones__envelope-mini-readout">30</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 70 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 55%"></div></div>
+                <span class="tones__envelope-mini-readout">70</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false" data-sustain="true">
+              <span class="tones__envelope-table-seg" role="cell">5</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 22 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 17%"></div></div>
+                <span class="tones__envelope-mini-readout">22</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 82 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 65%"></div></div>
+                <span class="tones__envelope-mini-readout">82</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">6</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 18 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 14%"></div></div>
+                <span class="tones__envelope-mini-readout">18</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 68 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 54%"></div></div>
+                <span class="tones__envelope-mini-readout">68</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">7</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 20 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 16%"></div></div>
+                <span class="tones__envelope-mini-readout">20</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 58 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 46%"></div></div>
+                <span class="tones__envelope-mini-readout">58</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">8</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 42 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 33%"></div></div>
+                <span class="tones__envelope-mini-readout">42</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 0 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 0%"></div></div>
+                <span class="tones__envelope-mini-readout">0</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <!-- TVA ENVELOPE -->
+      <!-- TVA ENVELOPE — 8-segment variable -->
       <section class="tones__section">
         <header class="tones__section-head">
           <h4 class="tones__section-title">Envelope — TVA</h4>
-          <span class="tones__section-eyebrow">Amplifier ADSR · §06</span>
+          <span class="tones__section-eyebrow">Amplifier envelope · 8 segments · §06</span>
         </header>
         <div class="tones__envelope">
-          <div class="tones__param-grid tones__param-grid--cols-4">
-
-            <div class="tones__param">
-              <span class="tones__param-label">Attack</span>
-              <div class="tones__param-bar" role="img" aria-label="Attack 8 of 127">
-                <span class="tones__param-tick tones__param-tick--start">0</span>
-                <span class="tones__param-tick tones__param-tick--end">127</span>
-                <div class="tones__param-fill" style="--tones-fill: 6%"></div>
-              </div>
-              <span class="tones__param-readout"><strong>8</strong></span>
+          <div class="tones__envelope-graph" role="region" aria-label="TVA envelope, 8 segments, segment 4 active (sustain)">
+            <span class="tones__envelope-graph-label">TVA · 8-SEGMENT</span>
+            <button class="tones__envelope-graph-expand" type="button" aria-label="Expand for precision editing">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <path d="M2 5V2H5M9 2H12V5M12 9V12H9M5 12H2V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </button>
+            <div class="tones__envelope-y-axis" aria-hidden="true">
+              <span>127</span><span>96</span><span>64</span><span>32</span><span>0</span>
             </div>
-
-            <div class="tones__param">
-              <span class="tones__param-label">Decay</span>
-              <div class="tones__param-bar" role="img" aria-label="Decay 42 of 127">
-                <span class="tones__param-tick tones__param-tick--start">0</span>
-                <span class="tones__param-tick tones__param-tick--end">127</span>
-                <div class="tones__param-fill" style="--tones-fill: 33%"></div>
+            <div class="tones__envelope-canvas">
+              <svg viewBox="0 0 800 200" preserveAspectRatio="none" aria-hidden="true">
+                <line x1="0" y1="0"   x2="800" y2="0"   class="tones__envelope-grid-line" />
+                <line x1="0" y1="50"  x2="800" y2="50"  class="tones__envelope-grid-line" />
+                <line x1="0" y1="100" x2="800" y2="100" class="tones__envelope-grid-line tones__envelope-grid-line--baseline" />
+                <line x1="0" y1="150" x2="800" y2="150" class="tones__envelope-grid-line" />
+                <line x1="0" y1="200" x2="800" y2="200" class="tones__envelope-grid-line tones__envelope-grid-line--baseline" />
+                <line x1="100" y1="0" x2="100" y2="200" class="tones__envelope-segment-divider" />
+                <line x1="200" y1="0" x2="200" y2="200" class="tones__envelope-segment-divider" />
+                <line x1="300" y1="0" x2="300" y2="200" class="tones__envelope-segment-divider" />
+                <line x1="400" y1="0" x2="400" y2="200" class="tones__envelope-segment-divider" />
+                <line x1="500" y1="0" x2="500" y2="200" class="tones__envelope-segment-divider" />
+                <line x1="600" y1="0" x2="600" y2="200" class="tones__envelope-segment-divider" />
+                <line x1="700" y1="0" x2="700" y2="200" class="tones__envelope-segment-divider" />
+                <!-- active segment guide (segment 4 — sustain hold) -->
+                <line x1="400" y1="0" x2="400" y2="200" class="tones__envelope-active-guide" />
+                <path d="M 0,200 L 100,0 L 200,27 L 300,61 L 400,61 L 500,96 L 600,131 L 700,165 L 800,200 Z"
+                      class="tones__envelope-fill" />
+                <polyline points="0,200 100,0 200,27 300,61 400,61 500,96 600,131 700,165 800,200"
+                          class="tones__envelope-line" />
+              </svg>
+              <div class="tones__envelope-points" aria-hidden="true">
+                <span class="tones__envelope-point" style="left: 0%;     top: 100%;"></span>
+                <span class="tones__envelope-point" style="left: 12.5%;  top: 0%;"></span>
+                <span class="tones__envelope-point" style="left: 25%;    top: 13.4%;"></span>
+                <span class="tones__envelope-point" style="left: 37.5%;  top: 30.7%;"></span>
+                <span class="tones__envelope-point tones__envelope-point--active" style="left: 50%; top: 30.7%;"></span>
+                <span class="tones__envelope-point" style="left: 62.5%;  top: 48.0%;"></span>
+                <span class="tones__envelope-point" style="left: 75%;    top: 65.4%;"></span>
+                <span class="tones__envelope-point" style="left: 87.5%;  top: 82.7%;"></span>
+                <span class="tones__envelope-point" style="left: 100%;   top: 100%;"></span>
               </div>
-              <span class="tones__param-readout"><strong>42</strong></span>
             </div>
-
-            <div class="tones__param">
-              <span class="tones__param-label">Sustain</span>
-              <div class="tones__param-bar" role="img" aria-label="Sustain 110 of 127">
-                <span class="tones__param-tick tones__param-tick--start">0</span>
-                <span class="tones__param-tick tones__param-tick--end">127</span>
-                <div class="tones__param-fill" style="--tones-fill: 86%"></div>
-              </div>
-              <span class="tones__param-readout"><strong>110</strong></span>
+            <div class="tones__envelope-axis" aria-hidden="true">
+              <span class="tones__envelope-axis-tick" style="left: 0%;">Start</span>
+              <span class="tones__envelope-axis-tick" style="left: 12.5%;">1</span>
+              <span class="tones__envelope-axis-tick" style="left: 25%;">2</span>
+              <span class="tones__envelope-axis-tick" style="left: 37.5%;">3</span>
+              <span class="tones__envelope-axis-tick tones__envelope-axis-tick--active" style="left: 50%;">4</span>
+              <span class="tones__envelope-axis-tick" style="left: 62.5%;">5</span>
+              <span class="tones__envelope-axis-tick" style="left: 75%;">6</span>
+              <span class="tones__envelope-axis-tick" style="left: 87.5%;">7</span>
+              <span class="tones__envelope-axis-tick" style="left: 100%;">8</span>
             </div>
-
-            <div class="tones__param">
-              <span class="tones__param-label">Release</span>
-              <div class="tones__param-bar" role="img" aria-label="Release 58 of 127">
-                <span class="tones__param-tick tones__param-tick--start">0</span>
-                <span class="tones__param-tick tones__param-tick--end">127</span>
-                <div class="tones__param-fill" style="--tones-fill: 45%"></div>
-              </div>
-              <span class="tones__param-readout"><strong>58</strong></span>
-            </div>
-
+            <span class="tones__envelope-graph-help">Drag points to adjust · Click expand for precision editing · ▸ marks sustain</span>
           </div>
-          <div class="tones__envelope-shape" aria-label="TVA envelope shape preview">
-            <span class="tones__envelope-shape-label">TVA · ADSR</span>
-            <svg viewBox="0 0 100 60" preserveAspectRatio="none" aria-hidden="true">
-              <polyline
-                points="0,55 6,5 30,16 70,16 80,16 88,55"
-                fill="none"
-                stroke="hsl(215 78% 58%)"
-                stroke-width="1.5"
-                stroke-linejoin="round"
-                stroke-linecap="round"
-                vector-effect="non-scaling-stroke"
-              />
-              <polyline
-                points="0,55 100,55"
-                fill="none"
-                stroke="hsl(220 18% 22%)"
-                stroke-width="1"
-                vector-effect="non-scaling-stroke"
-              />
-            </svg>
+
+          <div class="tones__envelope-table" role="table" aria-label="TVA envelope segments — 8 segments, sustain at segment 4">
+            <div class="tones__envelope-table-header" role="row">
+              <span class="tones__envelope-table-head" role="columnheader">Seg</span>
+              <span class="tones__envelope-table-head" role="columnheader">Time · 0–127</span>
+              <span class="tones__envelope-table-head" role="columnheader">Level · 0–127</span>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">1</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 8 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 6%"></div></div>
+                <span class="tones__envelope-mini-readout">8</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 127 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 100%"></div></div>
+                <span class="tones__envelope-mini-readout">127</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">2</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 14 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 11%"></div></div>
+                <span class="tones__envelope-mini-readout">14</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 110 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 87%"></div></div>
+                <span class="tones__envelope-mini-readout">110</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">3</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 20 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 16%"></div></div>
+                <span class="tones__envelope-mini-readout">20</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 88 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 69%"></div></div>
+                <span class="tones__envelope-mini-readout">88</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="true" data-sustain="true">
+              <span class="tones__envelope-table-seg" role="cell">4</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 26 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 20%"></div></div>
+                <span class="tones__envelope-mini-readout">26</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 88 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 69%"></div></div>
+                <span class="tones__envelope-mini-readout">88</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">5</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 22 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 17%"></div></div>
+                <span class="tones__envelope-mini-readout">22</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 66 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 52%"></div></div>
+                <span class="tones__envelope-mini-readout">66</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">6</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 18 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 14%"></div></div>
+                <span class="tones__envelope-mini-readout">18</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 44 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 35%"></div></div>
+                <span class="tones__envelope-mini-readout">44</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">7</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 24 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 19%"></div></div>
+                <span class="tones__envelope-mini-readout">24</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 22 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 17%"></div></div>
+                <span class="tones__envelope-mini-readout">22</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">8</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 36 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 28%"></div></div>
+                <span class="tones__envelope-mini-readout">36</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 0 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 0%"></div></div>
+                <span class="tones__envelope-mini-readout">0</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -2185,7 +2645,7 @@
     </div>
     <div class="ac-crt-monitor__caption">
       <span>S-550 · Video out · NTSC</span>
-      <span><span class="ac-signal-led" aria-hidden="true" style="margin-right: 6px; vertical-align: middle;"></span>Live</span>
+      <span><span class="ac-signal-led ac-signal-led--rec" aria-hidden="true" style="margin-right: 6px; vertical-align: middle;"></span>Live</span>
     </div>
   </div>
 </aside>
