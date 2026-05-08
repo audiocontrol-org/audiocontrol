@@ -1,0 +1,2321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Phase 9 Task 4 — LibraryPage Mockup v1</title>
+<style>
+  /* ============================================================
+     DESIGN TOKENS — `--ac-*` namespace
+     Direction:
+       Dark-only, blue ink (NOT amber-cast). s330 blue is dominant
+       where audiocontrol.org would have used phosphor amber.
+       HSL fragments enable `hsl(var(--ac-color-*) / alpha)` composition.
+     ============================================================ */
+  :root {
+    color-scheme: dark;
+
+    /* --- color tokens (HSL fragments, no hsl() wrapper) --------- */
+    --ac-color-bg:               220 24% 7%;     /* warm-cool near-black, faint blue cast */
+    --ac-color-surface:          220 18% 11%;    /* card surface */
+    --ac-color-surface-hover:    220 18% 14%;    /* card hover */
+    --ac-color-fg:               215 18% 92%;    /* off-white, slight blue cast */
+    --ac-color-fg-muted:         220 12% 60%;    /* secondary text */
+    --ac-color-fg-subtle:        220 10% 42%;    /* tertiary text / placeholders */
+    --ac-color-border:           220 18% 22%;    /* hairline default */
+    --ac-color-border-hover:     220 18% 32%;    /* hairline emphasis */
+    --ac-color-accent:           215 78% 58%;    /* s330 BLUE — the identity */
+    --ac-color-accent-soft:      215 78% 68%;    /* hover lift */
+    --ac-color-highlight:        210 96% 72%;    /* keyline highlight */
+    --ac-color-danger:           358 72% 58%;    /* destructive */
+    --ac-color-warning:          38  80% 58%;    /* caution (used sparingly) */
+    --ac-color-success:          152 55% 52%;    /* available / done */
+
+    /* --- CRT monitor tokens ------------------------------------ */
+    --ac-crt-bezel:    30 6% 6%;
+    --ac-crt-frame:    30 5% 12%;
+    --ac-crt-bg:       30 4% 22%;
+    --ac-crt-fg-dim:   35 6% 68%;
+    --ac-crt-fg:       35 8% 88%;
+    --ac-crt-fg-active: 35 12% 96%;
+    --ac-crt-btn-fill: 30 5% 80%;
+    --ac-crt-btn-text: 30 8% 12%;
+
+    /* --- typography role tokens -------------------------------- */
+    --ac-font-display: "Departure Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --ac-font-body:    "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --ac-font-mono:    "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --ac-font-heading: var(--ac-font-display);
+
+    /* --- type scale -------------------------------------------- */
+    --ac-text-h1: clamp(1.75rem, 3.4vw, 2.35rem);
+    --ac-text-h2: 1.45rem;
+    --ac-text-h3: 1.15rem;
+    --ac-text-h4: 1rem;
+    --ac-text-eyebrow: 0.78rem;
+    --ac-text-body: 1rem;
+    --ac-text-small: 0.875rem;
+    --ac-text-tiny: 0.75rem;
+
+    /* --- weight tokens ----------------------------------------- */
+    --ac-fw-display: 400;
+    --ac-fw-body:    400;
+    --ac-fw-medium:  500;
+    --ac-fw-semibold:600;
+    --ac-fw-bold:    700;
+
+    /* --- letter-spacing ---------------------------------------- */
+    --ac-tracking-display: 0.01em;
+    --ac-tracking-eyebrow: 0.14em;
+    --ac-tracking-ticker:  0.12em;
+
+    /* --- spacing scale ----------------------------------------- */
+    --ac-space-1: 0.25rem;
+    --ac-space-2: 0.5rem;
+    --ac-space-3: 0.75rem;
+    --ac-space-4: 1rem;
+    --ac-space-5: 1.25rem;
+    --ac-space-6: 1.5rem;
+    --ac-space-7: 2rem;
+    --ac-space-8: 2.75rem;
+
+    /* --- layout tokens ----------------------------------------- */
+    --ac-container-max-width: 1400px;
+    --ac-container-padding:   2rem;
+    --ac-measure-reading:     36rem;
+    --ac-measure-narrow:      28rem;
+
+    /* --- rule weights ------------------------------------------ */
+    --ac-rule-hairline: 1px;
+    --ac-rule-medium:   2px;
+    --ac-rule-heavy:    3px;
+
+    /* --- shadow tokens ----------------------------------------- */
+    --ac-shadow-card: 0 0 0 1px hsl(var(--ac-color-border)),
+                      0 10px 36px -12px hsl(220 40% 0% / 0.65);
+    --ac-shadow-card-hover:
+      0 0 0 1px hsl(var(--ac-color-accent) / 0.5),
+      0 14px 40px -10px hsl(var(--ac-color-accent) / 0.18),
+      0 4px 18px -6px hsl(220 40% 0% / 0.55);
+
+    --ac-glow-accent: 0 0 14px hsl(var(--ac-color-accent) / 0.45),
+                      0 0 2px  hsl(var(--ac-color-accent) / 0.65);
+
+    /* --- motion tokens ----------------------------------------- */
+    --ac-duration-fast:    120ms;
+    --ac-duration-default: 220ms;
+    --ac-duration-slow:    420ms;
+    --ac-easing-default:   cubic-bezier(0.2, 0.6, 0.2, 1);
+
+    /* --- selection -------------------------------------------- */
+  }
+
+  ::selection {
+    background-color: hsl(var(--ac-color-accent) / 0.35);
+    color: hsl(var(--ac-color-fg));
+  }
+
+  /* ============================================================
+     CRT MONITOR — see 01-design-language.html § 08
+     ============================================================ */
+  .ac-crt-monitor {
+    background: hsl(var(--ac-crt-bezel));
+    padding: var(--ac-space-3);
+    border-radius: 6px;
+    box-shadow:
+      0 0 0 1px hsl(var(--ac-color-border)),
+      0 14px 40px -10px hsl(220 40% 0% / 0.6),
+      inset 0 1px 0 hsl(35 8% 30% / 0.4);
+  }
+  .ac-crt-monitor__bezel {
+    background: hsl(var(--ac-crt-frame));
+    padding: var(--ac-space-3);
+    border-radius: 4px;
+    box-shadow: inset 0 0 0 1px hsl(30 4% 4%);
+  }
+  .ac-crt-monitor__screen {
+    position: relative;
+    background: hsl(var(--ac-crt-bg));
+    color: hsl(var(--ac-crt-fg-dim));
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    line-height: 1.35;
+    padding: var(--ac-space-4) var(--ac-space-5) var(--ac-space-5);
+    border-radius: 2px;
+    overflow: hidden;
+    background-image:
+      linear-gradient(180deg, transparent 0, hsl(220 14% 5% / 0.18) 50%, transparent 100%),
+      repeating-linear-gradient(180deg, transparent 0, transparent 2px, hsl(30 4% 0% / 0.08) 2px, hsl(30 4% 0% / 0.08) 3px);
+  }
+  .ac-crt-monitor__chrome {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: var(--ac-space-2);
+    margin-bottom: var(--ac-space-2);
+  }
+  .ac-crt-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 1.5rem;
+    border: 1px solid hsl(var(--ac-crt-fg-dim) / 0.4);
+    background: transparent;
+    color: hsl(var(--ac-crt-fg));
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    letter-spacing: 0.04em;
+    padding-inline: var(--ac-space-2);
+  }
+  .ac-crt-btn--filled { background: hsl(var(--ac-crt-btn-fill)); color: hsl(var(--ac-crt-btn-text)); border-color: hsl(var(--ac-crt-btn-fill)); }
+  .ac-crt-btn--blank { border-color: hsl(var(--ac-crt-fg-dim) / 0.25); background: hsl(var(--ac-crt-fg-dim) / 0.12); }
+  .ac-crt-monitor__sub-row {
+    display: flex; justify-content: space-between;
+    color: hsl(var(--ac-crt-fg));
+    margin-bottom: var(--ac-space-3);
+    padding-bottom: var(--ac-space-2);
+  }
+  .ac-crt-table {
+    width: 100%; border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--ac-crt-fg-dim));
+  }
+  .ac-crt-table thead th { text-align: left; color: hsl(var(--ac-crt-fg)); font-weight: 400; padding-block: 1px; }
+  .ac-crt-table thead th:nth-child(2),
+  .ac-crt-table thead th:nth-child(3),
+  .ac-crt-table thead th:nth-child(6),
+  .ac-crt-table thead th:nth-child(7) { text-align: right; }
+  .ac-crt-table tbody td { padding-block: 1px; color: hsl(var(--ac-crt-fg-dim)); }
+  .ac-crt-table tbody td:nth-child(2),
+  .ac-crt-table tbody td:nth-child(3),
+  .ac-crt-table tbody td:nth-child(6),
+  .ac-crt-table tbody td:nth-child(7) { text-align: right; }
+  .ac-crt-table tbody tr:first-child td { color: hsl(var(--ac-crt-fg)); }
+  .ac-crt-cell--selected {
+    background: hsl(var(--ac-crt-fg-dim));
+    color: hsl(var(--ac-crt-bg));
+    padding-inline: 4px; margin-inline: -4px; display: inline-block;
+  }
+  .ac-crt-monitor__display {
+    margin-top: var(--ac-space-4);
+    color: hsl(var(--ac-crt-fg));
+    display: flex; gap: var(--ac-space-5);
+  }
+  .ac-crt-cursor {
+    display: inline-block; width: 0.6em;
+    background: hsl(var(--ac-crt-fg)); color: hsl(var(--ac-crt-bg));
+    animation: ac-crt-blink 1s steps(1) infinite;
+  }
+  @keyframes ac-crt-blink { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .ac-crt-cursor { animation: none; } }
+  .ac-crt-monitor__lookup {
+    margin-top: var(--ac-space-3);
+    display: grid; grid-template-columns: 1fr 1fr;
+    column-gap: var(--ac-space-7); row-gap: 1px;
+    color: hsl(var(--ac-crt-fg-dim));
+    padding-left: var(--ac-space-4);
+  }
+  .ac-crt-monitor__caption {
+    margin-top: var(--ac-space-3);
+    display: flex; justify-content: space-between;
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .ac-crt-monitor--compact .ac-crt-monitor__screen {
+    font-size: var(--ac-text-tiny);
+    padding: var(--ac-space-3) var(--ac-space-4) var(--ac-space-4);
+  }
+  .ac-crt-monitor--compact .ac-crt-btn { height: 1.25rem; }
+
+  /* ============================================================
+     APP SHELL — page content + persistent CRT dock
+     ============================================================ */
+  .app-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--ac-space-7);
+    padding-block: var(--ac-space-6) var(--ac-space-8);
+  }
+  .app-shell__crt {
+    align-self: start;
+  }
+  @media (min-width: 1100px) {
+    .app-shell {
+      grid-template-columns: minmax(0, 1fr) 30rem;
+    }
+    .app-shell__crt {
+      position: sticky;
+      top: var(--ac-space-4);
+    }
+  }
+
+  /* ============================================================
+     RESETS
+     ============================================================ */
+  *, *::before, *::after { box-sizing: border-box; }
+  html { font-size: 16px; }
+  body {
+    margin: 0;
+    background: hsl(var(--ac-color-bg));
+    color: hsl(var(--ac-color-fg));
+    font-family: var(--ac-font-body);
+    font-size: var(--ac-text-body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* faint instrument-grid background — extremely subtle, not a real grid */
+    background-image:
+      linear-gradient(hsl(var(--ac-color-border) / 0.20) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--ac-color-border) / 0.20) 1px, transparent 1px);
+    background-size: 40px 40px, 40px 40px;
+    background-position: -1px -1px;
+    background-attachment: fixed;
+  }
+
+  /* ============================================================
+     CONTAINER
+     ============================================================ */
+  .ac-container {
+    max-width: var(--ac-container-max-width);
+    margin: 0 auto;
+    padding: 0 var(--ac-container-padding);
+  }
+
+  /* ============================================================
+     PAGE BANNER — self-identifying header for this exploration
+     ============================================================ */
+  .exploration-banner {
+    border-bottom: var(--ac-rule-medium) solid hsl(var(--ac-color-accent));
+    background:
+      linear-gradient(180deg,
+        hsl(var(--ac-color-bg)) 0%,
+        hsl(var(--ac-color-surface) / 0.7) 100%);
+    box-shadow: 0 1px 0 hsl(var(--ac-color-accent) / 0.25);
+  }
+  .exploration-banner__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--ac-space-4);
+    padding-block: var(--ac-space-6);
+  }
+  .exploration-banner__title {
+    font-family: var(--ac-font-display);
+    font-weight: var(--ac-fw-display);
+    font-size: var(--ac-text-h2);
+    letter-spacing: var(--ac-tracking-display);
+    margin: 0;
+  }
+  .exploration-banner__meta {
+    display: flex;
+    gap: var(--ac-space-4);
+    align-items: center;
+  }
+  .exploration-banner__chip {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-accent));
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-accent) / 0.6);
+    padding: var(--ac-space-1) var(--ac-space-3);
+    border-radius: 2px;
+  }
+  .exploration-banner__notes {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+
+  /* ============================================================
+     SECTION SCAFFOLD + DIMENSION BRACKET
+     ============================================================ */
+  .ac-section {
+    padding-block: var(--ac-space-8);
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+
+  /* eyebrow / panel-label */
+  .ac-panel-label {
+    display: inline-block;
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .ac-panel-label--accent {
+    color: hsl(var(--ac-color-accent));
+    text-shadow: var(--ac-glow-accent);
+  }
+
+  /* dimension-bracket — corner L hairlines, 18×18px, 2px stroke */
+  .ac-dimension-bracket {
+    position: relative;
+    padding-top: var(--ac-space-5);
+    padding-inline: var(--ac-space-4);
+  }
+  .ac-dimension-bracket::before,
+  .ac-dimension-bracket::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    width: 18px;
+    height: 18px;
+    border-color: hsl(var(--ac-color-accent) / 0.6);
+    border-style: solid;
+    border-width: 0;
+  }
+  .ac-dimension-bracket::before {
+    left: 0;
+    border-top-width: var(--ac-rule-medium);
+    border-left-width: var(--ac-rule-medium);
+  }
+  .ac-dimension-bracket::after {
+    right: 0;
+    border-top-width: var(--ac-rule-medium);
+    border-right-width: var(--ac-rule-medium);
+  }
+
+  /* ============================================================
+     HEADINGS
+     ============================================================ */
+  h1, .ac-h1 {
+    font-family: var(--ac-font-display);
+    font-weight: var(--ac-fw-display);
+    font-size: var(--ac-text-h1);
+    line-height: 1.18;
+    letter-spacing: var(--ac-tracking-display);
+    margin: var(--ac-space-2) 0 var(--ac-space-5);
+  }
+  h2, .ac-h2 {
+    position: relative;
+    font-family: var(--ac-font-display);
+    font-weight: var(--ac-fw-display);
+    font-size: var(--ac-text-h2);
+    line-height: 1.2;
+    letter-spacing: var(--ac-tracking-display);
+    margin: var(--ac-space-7) 0 var(--ac-space-3);
+    padding-bottom: var(--ac-space-3);
+  }
+  h2::after, .ac-h2::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 2.25rem;
+    height: var(--ac-rule-medium);
+    background: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.45);
+  }
+  h3, .ac-h3 {
+    font-family: var(--ac-font-body);
+    font-weight: var(--ac-fw-semibold);
+    font-size: var(--ac-text-h3);
+    margin: var(--ac-space-6) 0 var(--ac-space-2);
+  }
+  h4, .ac-h4 {
+    font-family: var(--ac-font-body);
+    font-weight: var(--ac-fw-semibold);
+    font-size: var(--ac-text-h4);
+    margin: var(--ac-space-5) 0 var(--ac-space-2);
+  }
+  p, .ac-body { margin: 0 0 var(--ac-space-4); }
+
+  /* mono tabular spec for numeric readouts */
+  .ac-mono-tabular {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+  }
+  .ac-fg-muted { color: hsl(var(--ac-color-fg-muted)); }
+  .ac-fg-subtle { color: hsl(var(--ac-color-fg-subtle)); }
+
+  /* ============================================================
+     LINKS
+     ============================================================ */
+  a, .ac-link {
+    color: hsl(var(--ac-color-accent));
+    text-decoration: none;
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-accent) / 0.35);
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default),
+                color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  a:hover, .ac-link:hover {
+    color: hsl(var(--ac-color-accent-soft));
+    border-bottom-color: hsl(var(--ac-color-accent));
+  }
+  a:focus-visible, .ac-link:focus-visible {
+    outline: var(--ac-rule-medium) solid hsl(var(--ac-color-accent) / 0.6);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* ============================================================
+     CARD-GLOW
+     ============================================================ */
+  .ac-card {
+    padding: var(--ac-space-5);
+    background: hsl(var(--ac-color-surface));
+    box-shadow: var(--ac-shadow-card);
+    transition: box-shadow var(--ac-duration-default) var(--ac-easing-default),
+                background-color var(--ac-duration-default) var(--ac-easing-default);
+    border-radius: 2px;
+  }
+  .ac-card--interactive { cursor: pointer; }
+  .ac-card--interactive:hover {
+    background: hsl(var(--ac-color-surface-hover));
+    box-shadow: var(--ac-shadow-card-hover);
+  }
+  .ac-card--interactive:focus-visible {
+    outline: var(--ac-rule-medium) solid hsl(var(--ac-color-accent) / 0.6);
+    outline-offset: 2px;
+  }
+
+  /* ============================================================
+     SIGNAL LED
+     ============================================================ */
+  .ac-signal-led {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: hsl(var(--ac-color-accent));
+    box-shadow:
+      0 0 8px hsl(var(--ac-color-accent) / 0.7),
+      0 0 2px hsl(var(--ac-color-highlight) / 0.9) inset;
+    animation: ac-signal-pulse 2.4s ease-in-out infinite;
+    vertical-align: middle;
+  }
+  .ac-signal-led--idle {
+    background: hsl(var(--ac-color-fg-subtle));
+    box-shadow: 0 0 0 transparent;
+    animation: none;
+  }
+  .ac-signal-led--danger {
+    background: hsl(var(--ac-color-danger));
+    box-shadow: 0 0 8px hsl(var(--ac-color-danger) / 0.7);
+  }
+  @keyframes ac-signal-pulse {
+    0%, 100% {
+      box-shadow:
+        0 0 8px hsl(var(--ac-color-accent) / 0.65),
+        0 0 2px hsl(var(--ac-color-highlight) / 0.9) inset;
+      opacity: 1;
+    }
+    50% {
+      box-shadow:
+        0 0 16px hsl(var(--ac-color-accent) / 0.95),
+        0 0 3px hsl(var(--ac-color-highlight) / 1) inset;
+      opacity: 0.85;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ac-signal-led { animation: none; }
+  }
+
+  /* ============================================================
+     FORMS — ac-input / ac-select / ac-checkbox / ac-button
+     ============================================================ */
+  .ac-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-2);
+    margin-block: var(--ac-space-3);
+  }
+  .ac-field__label {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+
+  .ac-input,
+  .ac-select {
+    width: 100%;
+    background: hsl(var(--ac-color-bg));
+    color: hsl(var(--ac-color-fg));
+    font-family: var(--ac-font-body);
+    font-size: var(--ac-text-body);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    padding: var(--ac-space-2) var(--ac-space-3);
+    border-radius: 2px;
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default),
+                box-shadow var(--ac-duration-fast) var(--ac-easing-default),
+                background-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .ac-input::placeholder { color: hsl(var(--ac-color-fg-subtle)); }
+  .ac-input:hover,
+  .ac-select:hover {
+    border-color: hsl(var(--ac-color-border-hover));
+  }
+  .ac-input:focus-visible,
+  .ac-select:focus-visible {
+    outline: none;
+    border-color: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 0 3px hsl(var(--ac-color-accent) / 0.25);
+    background: hsl(var(--ac-color-surface) / 0.5);
+  }
+  .ac-input:disabled,
+  .ac-select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    border-color: hsl(var(--ac-color-border) / 0.5);
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .ac-input--mono { font-family: var(--ac-font-mono); }
+
+  /* select chevron */
+  .ac-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%237ea0d6' stroke-width='1.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right var(--ac-space-3) center;
+    background-size: 12px 8px;
+    padding-right: calc(var(--ac-space-3) * 2 + 12px);
+  }
+
+  /* checkbox */
+  .ac-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-3);
+    cursor: pointer;
+    user-select: none;
+  }
+  .ac-checkbox__input {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1rem;
+    height: 1rem;
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-bg));
+    border-radius: 2px;
+    position: relative;
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default),
+                background-color var(--ac-duration-fast) var(--ac-easing-default),
+                box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+    flex-shrink: 0;
+  }
+  .ac-checkbox__input:hover {
+    border-color: hsl(var(--ac-color-border-hover));
+  }
+  .ac-checkbox__input:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px hsl(var(--ac-color-accent) / 0.25);
+    border-color: hsl(var(--ac-color-accent));
+  }
+  .ac-checkbox__input:checked {
+    border-color: hsl(var(--ac-color-accent));
+    background: hsl(var(--ac-color-accent));
+  }
+  .ac-checkbox__input:checked::after {
+    content: "";
+    position: absolute;
+    top: 1px;
+    left: 4px;
+    width: 5px;
+    height: 9px;
+    border: solid hsl(var(--ac-color-bg));
+    border-width: 0 var(--ac-rule-medium) var(--ac-rule-medium) 0;
+    transform: rotate(45deg);
+  }
+  .ac-checkbox__input:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .ac-checkbox__label {
+    font-family: var(--ac-font-body);
+    font-size: var(--ac-text-body);
+  }
+
+  /* buttons */
+  .ac-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ac-space-2);
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    line-height: 1;
+    padding: var(--ac-space-3) var(--ac-space-5);
+    border-radius: 2px;
+    border: var(--ac-rule-hairline) solid transparent;
+    cursor: pointer;
+    background: transparent;
+    color: hsl(var(--ac-color-fg));
+    transition: background-color var(--ac-duration-fast) var(--ac-easing-default),
+                border-color var(--ac-duration-fast) var(--ac-easing-default),
+                color var(--ac-duration-fast) var(--ac-easing-default),
+                box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .ac-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px hsl(var(--ac-color-accent) / 0.4);
+  }
+  .ac-btn:disabled,
+  .ac-btn[aria-disabled="true"] {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  /* primary */
+  .ac-btn--primary {
+    background: hsl(var(--ac-color-accent));
+    color: hsl(var(--ac-color-bg));
+    border-color: hsl(var(--ac-color-accent));
+  }
+  .ac-btn--primary:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: hsl(var(--ac-color-accent-soft));
+    border-color: hsl(var(--ac-color-accent-soft));
+    box-shadow: 0 0 18px hsl(var(--ac-color-accent) / 0.3);
+  }
+
+  /* secondary */
+  .ac-btn--secondary {
+    background: transparent;
+    color: hsl(var(--ac-color-fg));
+    border-color: hsl(var(--ac-color-border-hover));
+  }
+  .ac-btn--secondary:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: hsl(var(--ac-color-surface-hover));
+    border-color: hsl(var(--ac-color-accent));
+    color: hsl(var(--ac-color-accent));
+  }
+
+  /* ghost */
+  .ac-btn--ghost {
+    background: transparent;
+    color: hsl(var(--ac-color-fg-muted));
+    border-color: transparent;
+  }
+  .ac-btn--ghost:hover:not(:disabled):not([aria-disabled="true"]) {
+    color: hsl(var(--ac-color-fg));
+    background: hsl(var(--ac-color-surface) / 0.5);
+  }
+
+  /* danger */
+  .ac-btn--danger {
+    background: transparent;
+    color: hsl(var(--ac-color-danger));
+    border-color: hsl(var(--ac-color-danger) / 0.6);
+  }
+  .ac-btn--danger:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: hsl(var(--ac-color-danger) / 0.12);
+    border-color: hsl(var(--ac-color-danger));
+  }
+
+  .ac-btn--sm {
+    padding: var(--ac-space-2) var(--ac-space-4);
+    font-size: var(--ac-text-tiny);
+  }
+
+  /* ============================================================
+     PROGRESS + SPINNER
+     ============================================================ */
+  .ac-progress {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-2);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-surface) / 0.6);
+    padding: var(--ac-space-4);
+    border-radius: 2px;
+  }
+  .ac-progress__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--ac-space-3);
+  }
+  .ac-progress__label {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .ac-progress__pct {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--ac-color-accent));
+  }
+  .ac-progress__bar {
+    position: relative;
+    height: 4px;
+    background: hsl(var(--ac-color-bg));
+    overflow: hidden;
+    border-radius: 1px;
+  }
+  .ac-progress__fill {
+    position: absolute;
+    inset: 0;
+    width: var(--ac-progress, 0%);
+    background: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 12px hsl(var(--ac-color-accent) / 0.5);
+    transition: width var(--ac-duration-default) var(--ac-easing-default);
+  }
+  .ac-progress__meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--ac-space-3);
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    font-variant-numeric: tabular-nums;
+  }
+  .ac-progress__meta-item { display: flex; flex-direction: column; gap: 2px; }
+  .ac-progress__meta-label {
+    font-family: var(--ac-font-display);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .ac-progress__meta-value { color: hsl(var(--ac-color-fg)); }
+
+  /* spinner */
+  .ac-spinner {
+    display: inline-block;
+    width: 1.25rem;
+    height: 1.25rem;
+    border: var(--ac-rule-medium) solid hsl(var(--ac-color-border));
+    border-top-color: hsl(var(--ac-color-accent));
+    border-radius: 50%;
+    animation: ac-spin 0.9s linear infinite;
+  }
+  .ac-spinner--sm { width: 1rem; height: 1rem; }
+  @keyframes ac-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    .ac-spinner { animation-duration: 4s; }
+  }
+
+  /* ============================================================
+     EYEBROW STATUS-ROW (h2 + metric)
+     ============================================================ */
+  .ac-status-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--ac-space-5);
+    padding-bottom: var(--ac-space-3);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+  .ac-status-row__heading { margin: 0; padding: 0; }
+  .ac-status-row__heading::after { display: none; }
+  .ac-status-row__heading-rule {
+    width: 2.25rem;
+    height: var(--ac-rule-medium);
+    background: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.45);
+    margin-top: var(--ac-space-2);
+  }
+  .ac-status-row__metric {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-2);
+    white-space: nowrap;
+  }
+  .ac-status-row__metric strong {
+    color: hsl(var(--ac-color-accent));
+    font-weight: var(--ac-fw-display);
+    font-family: var(--ac-font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ============================================================
+     UTILITIES
+     ============================================================ */
+  .ac-stack { display: flex; flex-direction: column; gap: var(--ac-space-4); }
+  .ac-row   { display: flex; flex-wrap: wrap; gap: var(--ac-space-4); align-items: center; }
+  .ac-pad-block { padding-block: var(--ac-space-5); }
+  .ac-mt-2 { margin-top: var(--ac-space-2); }
+  .ac-mt-3 { margin-top: var(--ac-space-3); }
+  .ac-mt-4 { margin-top: var(--ac-space-4); }
+  .ac-mt-5 { margin-top: var(--ac-space-5); }
+  .ac-mt-6 { margin-top: var(--ac-space-6); }
+  .ac-mt-7 { margin-top: var(--ac-space-7); }
+  .ac-mb-4 { margin-bottom: var(--ac-space-4); }
+
+  /* ============================================================
+     FOOTER
+     ============================================================ */
+  .exploration-footer {
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    padding-block: var(--ac-space-7);
+    margin-top: var(--ac-space-8);
+    color: hsl(var(--ac-color-fg-muted));
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+  }
+
+  /* ============================================================
+     ===== HOMEPAGE-SCOPED STYLES =====
+     Page-specific composition; nothing here introduces new tokens.
+     All values reference --ac-* tokens or layered classes above.
+     ============================================================ */
+
+  /* App chrome — sticky page header at top of editor (drawer trigger lives here) */
+  .homepage__appbar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: hsl(var(--ac-color-bg) / 0.85);
+    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+  .homepage__appbar-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ac-space-5);
+    padding-block: var(--ac-space-4);
+  }
+  .homepage__brand {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--ac-space-3);
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg));
+  }
+  .homepage__brand-mark {
+    color: hsl(var(--ac-color-accent));
+    text-shadow: var(--ac-glow-accent);
+  }
+  .homepage__brand-divider {
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .homepage__brand-device {
+    font-family: var(--ac-font-mono);
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--ac-color-fg-muted));
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .homepage__nav {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-1);
+  }
+  .homepage__nav-link {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+    padding: var(--ac-space-2) var(--ac-space-3);
+    border-bottom: 0;
+    border-radius: 2px;
+  }
+  .homepage__nav-link:hover {
+    color: hsl(var(--ac-color-fg));
+    background: hsl(var(--ac-color-surface) / 0.5);
+    border-bottom: 0;
+  }
+  .homepage__nav-link[aria-current="page"] {
+    color: hsl(var(--ac-color-accent));
+    background: hsl(var(--ac-color-accent) / 0.1);
+    border-bottom: 0;
+  }
+
+  .homepage__appbar-status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-3);
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-muted));
+    padding: var(--ac-space-2) var(--ac-space-3);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: 2px;
+    background: hsl(var(--ac-color-surface) / 0.5);
+    cursor: pointer;
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .homepage__appbar-status:hover {
+    border-color: hsl(var(--ac-color-border-hover));
+  }
+  .homepage__appbar-status--connected {
+    border-color: hsl(var(--ac-color-accent) / 0.4);
+  }
+
+  /* ============================================================
+     ===== LIBRARYPAGE-SCOPED STYLES =====
+     Namespaced under `.library`. Composition only — nothing here
+     introduces new tokens; values reference --ac-* tokens.
+     ============================================================ */
+
+  /* Page intro band — minimal, replaces homepage hero */
+  .library__intro {
+    padding-block: var(--ac-space-7) var(--ac-space-5);
+  }
+  .library__intro-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-3);
+    flex-wrap: wrap;
+  }
+  .library__intro-sep {
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .library__intro-title {
+    font-family: var(--ac-font-display);
+    font-weight: var(--ac-fw-display);
+    font-size: var(--ac-text-h1);
+    line-height: 1.18;
+    letter-spacing: var(--ac-tracking-display);
+    margin: var(--ac-space-3) 0 var(--ac-space-3);
+  }
+  .library__intro-tagline {
+    color: hsl(var(--ac-color-fg-muted));
+    max-width: var(--ac-measure-reading);
+    margin: 0;
+  }
+
+  /* Status row with refresh + save + load affordances on the title row.
+     CRUD-Affordances rule: no separate "Refresh Device" toolbar. */
+  .library .ac-status-row {
+    flex-wrap: wrap;
+    gap: var(--ac-space-4);
+  }
+  .library__title-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-2);
+  }
+  .library__icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-surface) / 0.5);
+    color: hsl(var(--ac-color-fg-muted));
+    cursor: pointer;
+    border-radius: 2px;
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default),
+                color var(--ac-duration-fast) var(--ac-easing-default),
+                background-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .library__icon-btn:hover {
+    border-color: hsl(var(--ac-color-accent) / 0.6);
+    color: hsl(var(--ac-color-accent));
+    background: hsl(var(--ac-color-accent) / 0.08);
+  }
+  .library__icon-btn:focus-visible {
+    outline: var(--ac-rule-medium) solid hsl(var(--ac-color-accent) / 0.6);
+    outline-offset: 2px;
+  }
+  .library__icon-btn svg {
+    width: 1rem;
+    height: 1rem;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    fill: none;
+  }
+
+  /* Status notice — replaces yellow "Experimental" pill (audit flag).
+     Uses s330 blue instead of yellow. */
+  .library__notice {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--ac-space-3);
+    padding: var(--ac-space-3) var(--ac-space-4);
+    margin-block: var(--ac-space-5);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-accent) / 0.4);
+    background: hsl(var(--ac-color-accent) / 0.08);
+    border-radius: 2px;
+  }
+  .library__notice-icon {
+    flex-shrink: 0;
+    width: 1rem;
+    height: 1rem;
+    color: hsl(var(--ac-color-accent));
+    margin-top: 0.15rem;
+  }
+  .library__notice-icon svg {
+    width: 100%;
+    height: 100%;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    fill: none;
+  }
+  .library__notice-text {
+    margin: 0;
+    font-size: var(--ac-text-small);
+    color: hsl(var(--ac-color-fg));
+    line-height: 1.55;
+  }
+  .library__notice-eyebrow {
+    display: inline-block;
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-accent));
+    text-shadow: var(--ac-glow-accent);
+    margin-right: var(--ac-space-2);
+  }
+
+  /* Tree + detail split */
+  .library__split {
+    display: grid;
+    grid-template-columns: minmax(0, 27rem) minmax(0, 1fr);
+    gap: var(--ac-space-5);
+    margin-top: var(--ac-space-6);
+  }
+  @media (max-width: 880px) {
+    .library__split {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Tree pane */
+  .library__tree {
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-surface));
+    box-shadow: var(--ac-shadow-card);
+    border-radius: 2px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .library__tree-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ac-space-3);
+    padding: var(--ac-space-3) var(--ac-space-4);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.6);
+  }
+  .library__tree-title {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .library__tree-count {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-subtle));
+    font-variant-numeric: tabular-nums;
+  }
+  .library__tree-search {
+    padding: var(--ac-space-3) var(--ac-space-4);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.6);
+  }
+  .library__tree-body {
+    padding: var(--ac-space-2) 0;
+    overflow: auto;
+  }
+
+  .library__tree-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .library__tree-list--nested {
+    padding-left: var(--ac-space-5);
+    border-left: var(--ac-rule-hairline) dashed hsl(var(--ac-color-border) / 0.7);
+    margin-left: var(--ac-space-4);
+  }
+  .library__tree-row {
+    display: flex;
+    align-items: center;
+    gap: var(--ac-space-2);
+    padding: var(--ac-space-2) var(--ac-space-4);
+    cursor: pointer;
+    color: hsl(var(--ac-color-fg-muted));
+    border-left: var(--ac-rule-medium) solid transparent;
+    transition: background-color var(--ac-duration-fast) var(--ac-easing-default),
+                color var(--ac-duration-fast) var(--ac-easing-default),
+                border-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .library__tree-row:hover {
+    background: hsl(var(--ac-color-surface-hover));
+    color: hsl(var(--ac-color-fg));
+  }
+  .library__tree-row:focus-visible {
+    outline: none;
+    background: hsl(var(--ac-color-surface-hover));
+    box-shadow: inset 0 0 0 var(--ac-rule-medium) hsl(var(--ac-color-accent) / 0.6);
+  }
+  .library__tree-row[aria-selected="true"] {
+    background: hsl(var(--ac-color-accent) / 0.12);
+    color: hsl(var(--ac-color-fg));
+    border-left-color: hsl(var(--ac-color-accent));
+  }
+  .library__tree-row[aria-selected="true"] .library__tree-row-name {
+    color: hsl(var(--ac-color-accent));
+  }
+  .library__tree-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1rem;
+    height: 1rem;
+    color: hsl(var(--ac-color-fg-subtle));
+    transition: transform var(--ac-duration-fast) var(--ac-easing-default),
+                color var(--ac-duration-fast) var(--ac-easing-default);
+    flex-shrink: 0;
+  }
+  .library__tree-chevron svg {
+    width: 100%;
+    height: 100%;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    fill: none;
+  }
+  .library__tree-chevron--open { transform: rotate(90deg); }
+  .library__tree-chevron--leaf { visibility: hidden; }
+  .library__tree-icon {
+    width: 1rem;
+    height: 1rem;
+    color: hsl(var(--ac-color-fg-subtle));
+    flex-shrink: 0;
+  }
+  .library__tree-icon svg {
+    width: 100%;
+    height: 100%;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    fill: none;
+  }
+  .library__tree-row[aria-selected="true"] .library__tree-icon,
+  .library__tree-row:hover .library__tree-icon {
+    color: hsl(var(--ac-color-accent) / 0.85);
+  }
+  .library__tree-row-name {
+    font-size: var(--ac-text-small);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .library__tree-row-meta {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--ac-color-fg-subtle));
+    flex-shrink: 0;
+  }
+
+  /* Detail pane */
+  .library__detail {
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-surface));
+    box-shadow: var(--ac-shadow-card);
+    border-radius: 2px;
+    padding: var(--ac-space-5) var(--ac-space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-4);
+  }
+  .library__detail-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-3);
+    flex-wrap: wrap;
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .library__detail-eyebrow strong {
+    color: hsl(var(--ac-color-accent));
+    font-weight: var(--ac-fw-display);
+    font-family: var(--ac-font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  .library__detail-title-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--ac-space-4);
+    flex-wrap: wrap;
+  }
+  .library__detail-title {
+    font-family: var(--ac-font-display);
+    font-weight: var(--ac-fw-display);
+    font-size: 1.55rem;
+    letter-spacing: var(--ac-tracking-display);
+    color: hsl(var(--ac-color-fg));
+    margin: 0;
+  }
+  .library__detail-mini-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-2);
+  }
+  .library__detail-notes {
+    color: hsl(var(--ac-color-fg-muted));
+    font-size: var(--ac-text-small);
+    line-height: 1.6;
+    margin: 0;
+    max-width: var(--ac-measure-reading);
+  }
+  .library__detail-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--ac-space-3);
+    padding: var(--ac-space-3) 0;
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.6);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.6);
+  }
+  .library__detail-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .library__detail-meta-label {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .library__detail-meta-value {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--ac-color-fg));
+  }
+
+  /* Detail action row */
+  .library__detail-actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: var(--ac-space-3);
+  }
+
+  /* ===== Memory Map Panel =====
+     Color encoding:
+       empty    → hsl(var(--ac-color-accent) / 0.20)   (s330 blue, faint)
+       occupied → hsl(var(--ac-color-success) / 0.6)    (emerald)
+       proposed → hsl(var(--ac-color-highlight) / 0.4)  (s330 highlight)
+       conflict → hsl(var(--ac-color-danger) / 0.4)     (red)
+     Replaces the audit-flagged Tailwind tokens
+     (bg-s330-accent/20, bg-emerald-600/60,
+      bg-s330-highlight/40, bg-red-500/40) with the
+     equivalent --ac-color-* / --ac-color-success /
+     --ac-color-highlight / --ac-color-danger composition. */
+  .library__map {
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-bg) / 0.6);
+    border-radius: 2px;
+    padding: var(--ac-space-4) var(--ac-space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-4);
+  }
+  .library__map-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--ac-space-4);
+    flex-wrap: wrap;
+  }
+  .library__map-title {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+    margin: 0;
+  }
+  .library__map-summary {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-subtle));
+    font-variant-numeric: tabular-nums;
+  }
+
+  .library__map-section-label {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-subtle));
+    margin: 0 0 var(--ac-space-2);
+  }
+
+  /* Tone slot grid — 8 columns × 8 rows for S-550's 64 tones */
+  .library__map-tones {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+  }
+  .library__map-tone {
+    aspect-ratio: 1 / 1;
+    border-radius: 1px;
+    background: hsl(var(--ac-color-accent) / 0.20);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.5);
+    transition: transform var(--ac-duration-fast) var(--ac-easing-default),
+                box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+    cursor: pointer;
+    position: relative;
+  }
+  .library__map-tone--occupied {
+    background: hsl(var(--ac-color-success) / 0.6);
+    border-color: hsl(var(--ac-color-success) / 0.7);
+  }
+  .library__map-tone--proposed {
+    background: hsl(var(--ac-color-highlight) / 0.4);
+    border-color: hsl(var(--ac-color-highlight) / 0.55);
+  }
+  .library__map-tone--conflict {
+    background: hsl(var(--ac-color-danger) / 0.4);
+    border-color: hsl(var(--ac-color-danger) / 0.6);
+  }
+  .library__map-tone:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0 0 1px hsl(var(--ac-color-accent) / 0.7),
+                0 0 8px hsl(var(--ac-color-accent) / 0.35);
+    z-index: 1;
+  }
+
+  /* Wave bank segment bars — 4 banks (A–D), 18 segs each */
+  .library__map-banks {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-2);
+  }
+  .library__map-bank {
+    display: grid;
+    grid-template-columns: 2.25rem 1fr 5rem;
+    gap: var(--ac-space-3);
+    align-items: center;
+  }
+  .library__map-bank-label {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-muted));
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+  }
+  .library__map-bank-bar {
+    display: grid;
+    grid-template-columns: repeat(18, 1fr);
+    gap: 2px;
+    height: 1.1rem;
+  }
+  .library__map-seg {
+    background: hsl(var(--ac-color-accent) / 0.20);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.5);
+    border-radius: 1px;
+    transition: transform var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .library__map-seg:hover { transform: scaleY(1.15); }
+  .library__map-seg--occupied {
+    background: hsl(var(--ac-color-success) / 0.6);
+    border-color: hsl(var(--ac-color-success) / 0.7);
+  }
+  .library__map-seg--proposed {
+    background: hsl(var(--ac-color-highlight) / 0.4);
+    border-color: hsl(var(--ac-color-highlight) / 0.55);
+  }
+  .library__map-seg--conflict {
+    background: hsl(var(--ac-color-danger) / 0.4);
+    border-color: hsl(var(--ac-color-danger) / 0.6);
+  }
+  .library__map-bank-meta {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-subtle));
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  /* Legend */
+  .library__map-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ac-space-4);
+    padding-top: var(--ac-space-3);
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.6);
+  }
+  .library__map-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-2);
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .library__map-legend-swatch {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 1px;
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+  .library__map-legend-swatch--empty    { background: hsl(var(--ac-color-accent) / 0.20); }
+  .library__map-legend-swatch--occupied { background: hsl(var(--ac-color-success) / 0.6); }
+  .library__map-legend-swatch--proposed { background: hsl(var(--ac-color-highlight) / 0.4); }
+  .library__map-legend-swatch--conflict { background: hsl(var(--ac-color-danger) / 0.4); }
+
+  /* Set composition row — patches / tones / wave-bank bullets */
+  .library__composition {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--ac-space-3);
+  }
+  .library__composition-cell {
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.7);
+    background: hsl(var(--ac-color-bg) / 0.4);
+    padding: var(--ac-space-3) var(--ac-space-4);
+    border-radius: 2px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-1);
+  }
+  .library__composition-cell-label {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .library__composition-cell-value {
+    font-family: var(--ac-font-mono);
+    font-size: 1.35rem;
+    line-height: 1;
+    color: hsl(var(--ac-color-fg));
+    font-variant-numeric: tabular-nums;
+  }
+  .library__composition-cell-value strong {
+    color: hsl(var(--ac-color-accent));
+    font-weight: var(--ac-fw-display);
+  }
+  .library__composition-cell-meta {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-subtle));
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Dialog launcher footnote */
+  .library__launchers {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--ac-space-4);
+    margin-top: var(--ac-space-7);
+  }
+  .library__launcher {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-2);
+    padding: var(--ac-space-4) var(--ac-space-5);
+    background: hsl(var(--ac-color-surface));
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: 2px;
+    text-decoration: none;
+    color: hsl(var(--ac-color-fg));
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default),
+                background-color var(--ac-duration-fast) var(--ac-easing-default),
+                box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .library__launcher:hover {
+    background: hsl(var(--ac-color-surface-hover));
+    border-color: hsl(var(--ac-color-accent) / 0.5);
+    box-shadow: var(--ac-shadow-card-hover);
+    color: hsl(var(--ac-color-fg));
+  }
+  .library__launcher-eyebrow {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .library__launcher-title {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-h4);
+    color: hsl(var(--ac-color-fg));
+    letter-spacing: var(--ac-tracking-display);
+    margin: 0;
+  }
+  .library__launcher:hover .library__launcher-title {
+    color: hsl(var(--ac-color-accent));
+  }
+  .library__launcher-desc {
+    font-size: var(--ac-text-small);
+    color: hsl(var(--ac-color-fg-muted));
+    line-height: 1.55;
+    margin: 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== EXPLORATION BANNER ===== -->
+<header class="exploration-banner">
+  <div class="ac-container exploration-banner__inner">
+    <div>
+      <span class="ac-panel-label ac-panel-label--accent">PHASE 9 · TASK 4 · MOCKUP</span>
+      <h1 class="exploration-banner__title">LibraryPage Mockup v1</h1>
+      <p class="ac-fg-muted ac-mt-4" style="margin: 0;">
+        Hierarchical sets directory with detail pane and graphical Memory Map Panel. Demonstrates: tree-view typography, dialog launcher polish, memory-map slot grid + wave-segment bars. Replaces the yellow Experimental pill, the "Refresh Device" toolbar, and the magic <code class="ac-mono-tabular">h-[calc(100vh-12rem)]</code> offset flagged in the audit.
+      </p>
+    </div>
+    <div class="exploration-banner__meta">
+      <span class="exploration-banner__chip">v1</span>
+      <span class="exploration-banner__chip">s550-support</span>
+      <span class="exploration-banner__chip">07 / 07</span>
+      <span class="exploration-banner__notes">2026-05-08</span>
+    </div>
+  </div>
+</header>
+
+<!-- ===== APP CHROME (sticky bar with connection drawer trigger) ===== -->
+<div class="homepage__appbar">
+  <div class="ac-container homepage__appbar-inner">
+    <div class="homepage__brand">
+      <span class="homepage__brand-mark">audiocontrol</span>
+      <span class="homepage__brand-divider">·</span>
+      <span class="homepage__brand-device">roland / s550 / editor</span>
+    </div>
+    <nav class="homepage__nav" aria-label="Primary">
+      <a class="homepage__nav-link" href="#">Home</a>
+      <a class="homepage__nav-link" href="#">Patches</a>
+      <a class="homepage__nav-link" href="#">Tones</a>
+      <a class="homepage__nav-link" href="#">Play</a>
+      <a class="homepage__nav-link" href="#">Workflows</a>
+      <a class="homepage__nav-link" href="#" aria-current="page">Library</a>
+    </nav>
+    <button class="homepage__appbar-status homepage__appbar-status--connected" aria-haspopup="dialog" aria-expanded="false">
+      <span class="ac-signal-led" aria-hidden="true"></span>
+      <span>Connected · MOTU 828mk3 · Port 1</span>
+      <span class="ac-fg-subtle" aria-hidden="true">⌥C</span>
+    </button>
+  </div>
+</div>
+
+<main class="ac-container">
+<div class="app-shell">
+<div class="app-shell__page library">
+
+  <!-- ===== INTRO BAND ===== -->
+  <section class="library__intro" aria-labelledby="library-title">
+    <div class="library__intro-eyebrow">
+      <span class="ac-panel-label">§ Library · v1.0.0</span>
+      <span class="library__intro-sep">·</span>
+      <span class="ac-panel-label ac-panel-label--accent">Working set · Touring 2026</span>
+      <span class="library__intro-sep">·</span>
+      <span class="ac-panel-label">Last sync 14:02</span>
+    </div>
+    <h1 id="library-title" class="library__intro-title">Library</h1>
+    <p class="library__intro-tagline">
+      Saved sets and bundles. Snapshot the entire device state to disk; restore complete sets back to the S-550 in one shot. Browse the directory tree on the left, preview the selected set's memory map on the right.
+    </p>
+  </section>
+
+  <!-- ===== STATUS ROW + CRUD AFFORDANCES ON THE TITLE ROW ===== -->
+  <header class="ac-status-row">
+    <div>
+      <h2 id="library-heading" class="ac-status-row__heading">
+        Library
+        <!-- Refresh affordance lives on the h2 title row, NOT a global toolbar.
+             CRUD-Affordances rule: object-level CRUD is colocated with its object. -->
+        <span class="library__title-actions" style="margin-left: var(--ac-space-3); vertical-align: middle;">
+          <button class="library__icon-btn" type="button" aria-label="Refresh device">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"></path>
+              <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"></path>
+            </svg>
+          </button>
+          <button class="library__icon-btn" type="button" aria-label="Save current device state to library">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17 21 17 13 7 13 7 21"></polyline>
+              <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+          </button>
+          <button class="library__icon-btn" type="button" aria-label="Load selected set into device">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+          </button>
+        </span>
+      </h2>
+      <div class="ac-status-row__heading-rule"></div>
+    </div>
+    <span class="ac-status-row__metric">
+      <span class="ac-signal-led" aria-hidden="true"></span>
+      <span>Roland · S-550 · <strong>4</strong> sets / <strong>18</strong> patches / <strong>73</strong> tones in working set</span>
+    </span>
+  </header>
+
+  <!-- ===== STATUS NOTICE — replaces the yellow Experimental pill ===== -->
+  <div class="library__notice" role="status">
+    <span class="library__notice-icon" aria-hidden="true">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="16" x2="12" y2="12"></line>
+        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+      </svg>
+    </span>
+    <p class="library__notice-text">
+      <span class="library__notice-eyebrow">Preview · S-550 support</span>
+      Set bundles capture the whole device — 32 patches, 64 tones, all 4 wave banks (A·B·C·D, 18 segments each). Save before destructive operations. Restore replaces the working set in one shot. Round-trip parity with S-330 is in progress; report mismatches on issue #392.
+    </p>
+  </div>
+
+  <!-- ===== TREE + DETAIL SPLIT ===== -->
+  <div class="library__split">
+
+    <!-- Tree pane -->
+    <section class="library__tree" aria-labelledby="tree-heading">
+      <header class="library__tree-header">
+        <span class="library__tree-title" id="tree-heading">§ Sets directory</span>
+        <span class="library__tree-count">14 items · 14.2 MB</span>
+      </header>
+
+      <div class="library__tree-search">
+        <input type="search" class="ac-input" placeholder="Filter by name…" aria-label="Filter sets" />
+      </div>
+
+      <div class="library__tree-body" role="tree" aria-label="Sets directory">
+
+        <ul class="library__tree-list">
+
+          <!-- Production folder (open) -->
+          <li role="none">
+            <div role="treeitem" aria-expanded="true" aria-selected="false" tabindex="0" class="library__tree-row">
+              <span class="library__tree-chevron library__tree-chevron--open" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </span>
+              <span class="library__tree-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+              </span>
+              <span class="library__tree-row-name">Production</span>
+              <span class="library__tree-row-meta">2 sets</span>
+            </div>
+
+            <ul class="library__tree-list library__tree-list--nested" role="group">
+
+              <!-- Touring 2026 (selected, expanded) -->
+              <li role="none">
+                <div role="treeitem" aria-expanded="true" aria-selected="true" tabindex="-1" class="library__tree-row">
+                  <span class="library__tree-chevron library__tree-chevron--open" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                  </span>
+                  <span class="library__tree-icon" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                      <rect x="3" y="3" width="18" height="18" rx="1"></rect>
+                      <line x1="3" y1="9" x2="21" y2="9"></line>
+                      <line x1="9" y1="21" x2="9" y2="9"></line>
+                    </svg>
+                  </span>
+                  <span class="library__tree-row-name">Touring 2026</span>
+                  <span class="library__tree-row-meta">1.4 MB</span>
+                </div>
+
+                <ul class="library__tree-list library__tree-list--nested" role="group">
+                  <li role="none">
+                    <div role="treeitem" aria-selected="false" tabindex="-1" class="library__tree-row">
+                      <span class="library__tree-chevron library__tree-chevron--leaf" aria-hidden="true"></span>
+                      <span class="library__tree-icon" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                          <rect x="3" y="4" width="18" height="16" rx="1"></rect>
+                          <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                      </span>
+                      <span class="library__tree-row-name">Patches</span>
+                      <span class="library__tree-row-meta">18 / 32</span>
+                    </div>
+                  </li>
+                  <li role="none">
+                    <div role="treeitem" aria-selected="false" tabindex="-1" class="library__tree-row">
+                      <span class="library__tree-chevron library__tree-chevron--leaf" aria-hidden="true"></span>
+                      <span class="library__tree-icon" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                          <path d="M9 18V5l12-2v13"></path>
+                          <circle cx="6" cy="18" r="3"></circle>
+                          <circle cx="18" cy="16" r="3"></circle>
+                        </svg>
+                      </span>
+                      <span class="library__tree-row-name">Tones</span>
+                      <span class="library__tree-row-meta">41 / 64</span>
+                    </div>
+                  </li>
+                  <li role="none">
+                    <div role="treeitem" aria-expanded="false" aria-selected="false" tabindex="-1" class="library__tree-row">
+                      <span class="library__tree-chevron" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                      </span>
+                      <span class="library__tree-icon" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                          <path d="M2 12s2-6 10-6 10 6 10 6-2 6-10 6S2 12 2 12z"></path>
+                          <line x1="6" y1="12" x2="18" y2="12"></line>
+                        </svg>
+                      </span>
+                      <span class="library__tree-row-name">Wave banks · A · B · C · D</span>
+                      <span class="library__tree-row-meta">73 segs</span>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+
+              <!-- Studio 2025 — Live Pads -->
+              <li role="none">
+                <div role="treeitem" aria-expanded="false" aria-selected="false" tabindex="-1" class="library__tree-row">
+                  <span class="library__tree-chevron" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                  </span>
+                  <span class="library__tree-icon" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                      <rect x="3" y="3" width="18" height="18" rx="1"></rect>
+                      <line x1="3" y1="9" x2="21" y2="9"></line>
+                      <line x1="9" y1="21" x2="9" y2="9"></line>
+                    </svg>
+                  </span>
+                  <span class="library__tree-row-name">Studio 2025 — Live Pads</span>
+                  <span class="library__tree-row-meta">986 KB</span>
+                </div>
+              </li>
+            </ul>
+          </li>
+
+          <!-- Live folder -->
+          <li role="none">
+            <div role="treeitem" aria-expanded="true" aria-selected="false" tabindex="-1" class="library__tree-row">
+              <span class="library__tree-chevron library__tree-chevron--open" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </span>
+              <span class="library__tree-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+              </span>
+              <span class="library__tree-row-name">Live</span>
+              <span class="library__tree-row-meta">1 set</span>
+            </div>
+
+            <ul class="library__tree-list library__tree-list--nested" role="group">
+              <li role="none">
+                <div role="treeitem" aria-expanded="false" aria-selected="false" tabindex="-1" class="library__tree-row">
+                  <span class="library__tree-chevron" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                  </span>
+                  <span class="library__tree-icon" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                      <rect x="3" y="3" width="18" height="18" rx="1"></rect>
+                      <line x1="3" y1="9" x2="21" y2="9"></line>
+                      <line x1="9" y1="21" x2="9" y2="9"></line>
+                    </svg>
+                  </span>
+                  <span class="library__tree-row-name">Pad Selection — 2026-05-07</span>
+                  <span class="library__tree-row-meta">512 KB</span>
+                </div>
+              </li>
+            </ul>
+          </li>
+
+          <!-- Archive folder (collapsed) -->
+          <li role="none">
+            <div role="treeitem" aria-expanded="false" aria-selected="false" tabindex="-1" class="library__tree-row">
+              <span class="library__tree-chevron" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </span>
+              <span class="library__tree-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+              </span>
+              <span class="library__tree-row-name">Archive</span>
+              <span class="library__tree-row-meta">5 sets</span>
+            </div>
+          </li>
+
+        </ul>
+      </div>
+    </section>
+
+    <!-- Detail / preview pane -->
+    <section class="library__detail" aria-labelledby="detail-title">
+
+      <span class="library__detail-eyebrow">
+        <span>SET</span>
+        <span class="library__intro-sep">·</span>
+        <span><strong>2026-04-22</strong></span>
+        <span class="library__intro-sep">·</span>
+        <span><strong>1.4 MB</strong></span>
+        <span class="library__intro-sep">·</span>
+        <span>Production / Touring 2026</span>
+      </span>
+
+      <div class="library__detail-title-row">
+        <h3 id="detail-title" class="library__detail-title">Touring 2026</h3>
+        <div class="library__detail-mini-actions">
+          <!-- Save / Load affordances live on the detail title row, scoped to this set -->
+          <button class="library__icon-btn" type="button" aria-label="Rename set">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"></path>
+            </svg>
+          </button>
+          <button class="library__icon-btn" type="button" aria-label="Move set">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+              <polyline points="5 9 2 12 5 15"></polyline>
+              <polyline points="9 5 12 2 15 5"></polyline>
+              <polyline points="15 19 12 22 9 19"></polyline>
+              <polyline points="19 9 22 12 19 15"></polyline>
+              <line x1="2" y1="12" x2="22" y2="12"></line>
+              <line x1="12" y1="2" x2="12" y2="22"></line>
+            </svg>
+          </button>
+          <button class="library__icon-btn" type="button" aria-label="Delete set">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+              <path d="M10 11v6"></path>
+              <path d="M14 11v6"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <p class="library__detail-notes">
+        Festival rig — gentle pads, two flute layers, a brass stab on P14, and the strings program from the 2024 record. Loaded onto the S-550 for the spring tour. Tones T17 "Strings A" and T22 "FlutePad" share wave segments in bank A. Wave bank D is reserved for the encore drone.
+      </p>
+
+      <div class="library__detail-meta">
+        <div class="library__detail-meta-item">
+          <span class="library__detail-meta-label">Saved</span>
+          <span class="library__detail-meta-value">2026-04-22 18:14</span>
+        </div>
+        <div class="library__detail-meta-item">
+          <span class="library__detail-meta-label">Author</span>
+          <span class="library__detail-meta-value">oletizi</span>
+        </div>
+        <div class="library__detail-meta-item">
+          <span class="library__detail-meta-label">Format</span>
+          <span class="library__detail-meta-value">.s550-set v1.0</span>
+        </div>
+        <div class="library__detail-meta-item">
+          <span class="library__detail-meta-label">Checksum</span>
+          <span class="library__detail-meta-value">0x8a3f · ok</span>
+        </div>
+      </div>
+
+      <div class="library__composition">
+        <div class="library__composition-cell">
+          <span class="library__composition-cell-label">Patches</span>
+          <span class="library__composition-cell-value"><strong>18</strong> / 32</span>
+          <span class="library__composition-cell-meta">P11–P28 · 56% used</span>
+        </div>
+        <div class="library__composition-cell">
+          <span class="library__composition-cell-label">Tones</span>
+          <span class="library__composition-cell-value"><strong>41</strong> / 64</span>
+          <span class="library__composition-cell-meta">groups 1–6 · 64% used</span>
+        </div>
+        <div class="library__composition-cell">
+          <span class="library__composition-cell-label">Wave segs</span>
+          <span class="library__composition-cell-value"><strong>73</strong> / 72</span>
+          <span class="library__composition-cell-meta">A·B·C·D · 4 banks</span>
+        </div>
+        <div class="library__composition-cell">
+          <span class="library__composition-cell-label">Wave RAM</span>
+          <span class="library__composition-cell-value"><strong>1.4</strong> M</span>
+          <span class="library__composition-cell-meta">786 KB · 51%</span>
+        </div>
+      </div>
+
+      <!-- ===== Memory Map Panel — graphical preview ===== -->
+      <article class="library__map" aria-labelledby="memmap-title">
+        <header class="library__map-header">
+          <h4 id="memmap-title" class="library__map-title">§ Memory map · proposed load</h4>
+          <span class="library__map-summary">41 occupied · 7 proposed · 2 conflict · 14 empty</span>
+        </header>
+
+        <div>
+          <p class="library__map-section-label">Tone slots · 8 × 8 · 64 total</p>
+          <!-- 64 cells laid out 8 cols × 8 rows.
+               State distribution mirrors the summary line above. -->
+          <div class="library__map-tones" role="img" aria-label="Tone slot map: 41 occupied, 7 proposed, 2 conflict, 14 empty across 64 slots">
+            <!-- row 1 (T11–T18) -->
+            <div class="library__map-tone library__map-tone--occupied" title="T11 · BrassStab"></div>
+            <div class="library__map-tone library__map-tone--occupied" title="T12 · BrassStab L2"></div>
+            <div class="library__map-tone library__map-tone--occupied" title="T13"></div>
+            <div class="library__map-tone library__map-tone--occupied" title="T14"></div>
+            <div class="library__map-tone library__map-tone--occupied" title="T15"></div>
+            <div class="library__map-tone library__map-tone--occupied" title="T16"></div>
+            <div class="library__map-tone library__map-tone--occupied" title="T17 · Strings A"></div>
+            <div class="library__map-tone library__map-tone--occupied" title="T18 · Strings B"></div>
+            <!-- row 2 (T21–T28) -->
+            <div class="library__map-tone library__map-tone--occupied" title="T21"></div>
+            <div class="library__map-tone library__map-tone--occupied" title="T22 · FlutePad"></div>
+            <div class="library__map-tone library__map-tone--occupied" title="T23"></div>
+            <div class="library__map-tone library__map-tone--occupied" title="T24"></div>
+            <div class="library__map-tone library__map-tone--occupied" title="T25"></div>
+            <div class="library__map-tone library__map-tone--occupied" title="T26"></div>
+            <div class="library__map-tone library__map-tone--proposed" title="T27 · proposed: SoftBell"></div>
+            <div class="library__map-tone library__map-tone--proposed" title="T28 · proposed: AirVox"></div>
+            <!-- row 3 (T31–T38) -->
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <div class="library__map-tone library__map-tone--conflict" title="T36 · conflict: existing tone differs"></div>
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <!-- row 4 (T41–T48) -->
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <div class="library__map-tone library__map-tone--proposed" title="T44 · proposed"></div>
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <!-- row 5 (T51–T58) -->
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <!-- row 6 (T61–T68) -->
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <div class="library__map-tone library__map-tone--proposed" title="T63 · proposed"></div>
+            <div class="library__map-tone library__map-tone--proposed" title="T64 · proposed"></div>
+            <div class="library__map-tone library__map-tone--proposed" title="T65 · proposed"></div>
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <div class="library__map-tone library__map-tone--conflict" title="T67 · conflict"></div>
+            <div class="library__map-tone library__map-tone--occupied"></div>
+            <!-- row 7 (T71–T78) -->
+            <div class="library__map-tone"></div>
+            <div class="library__map-tone"></div>
+            <div class="library__map-tone"></div>
+            <div class="library__map-tone"></div>
+            <div class="library__map-tone"></div>
+            <div class="library__map-tone"></div>
+            <div class="library__map-tone"></div>
+            <div class="library__map-tone"></div>
+            <!-- row 8 (T81–T88) -->
+            <div class="library__map-tone"></div>
+            <div class="library__map-tone"></div>
+            <div class="library__map-tone"></div>
+            <div class="library__map-tone"></div>
+            <div class="library__map-tone"></div>
+            <div class="library__map-tone"></div>
+            <div class="library__map-tone"></div>
+            <div class="library__map-tone"></div>
+          </div>
+        </div>
+
+        <div>
+          <p class="library__map-section-label">Wave banks · A · B · C · D · 18 segs each</p>
+          <div class="library__map-banks">
+
+            <!-- Bank A — heavy use -->
+            <div class="library__map-bank">
+              <span class="library__map-bank-label">A</span>
+              <div class="library__map-bank-bar" role="img" aria-label="Bank A: 18 segments, 17 occupied, 1 proposed">
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--proposed"></div>
+              </div>
+              <span class="library__map-bank-meta">17 / 18</span>
+            </div>
+
+            <!-- Bank B — half full with some conflicts -->
+            <div class="library__map-bank">
+              <span class="library__map-bank-label">B</span>
+              <div class="library__map-bank-bar" role="img" aria-label="Bank B: 18 segments, 9 occupied, 2 conflict, 1 proposed">
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--conflict"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--conflict"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--proposed"></div>
+                <div class="library__map-seg"></div>
+                <div class="library__map-seg"></div>
+                <div class="library__map-seg"></div>
+                <div class="library__map-seg"></div>
+                <div class="library__map-seg"></div>
+                <div class="library__map-seg"></div>
+              </div>
+              <span class="library__map-bank-meta">12 / 18</span>
+            </div>
+
+            <!-- Bank C — proposed-heavy -->
+            <div class="library__map-bank">
+              <span class="library__map-bank-label">C</span>
+              <div class="library__map-bank-bar" role="img" aria-label="Bank C: 18 segments, 6 occupied, 5 proposed">
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--proposed"></div>
+                <div class="library__map-seg library__map-seg--proposed"></div>
+                <div class="library__map-seg library__map-seg--proposed"></div>
+                <div class="library__map-seg library__map-seg--proposed"></div>
+                <div class="library__map-seg library__map-seg--proposed"></div>
+                <div class="library__map-seg"></div>
+                <div class="library__map-seg"></div>
+                <div class="library__map-seg"></div>
+                <div class="library__map-seg"></div>
+                <div class="library__map-seg"></div>
+                <div class="library__map-seg"></div>
+                <div class="library__map-seg"></div>
+              </div>
+              <span class="library__map-bank-meta">11 / 18</span>
+            </div>
+
+            <!-- Bank D — encore drone -->
+            <div class="library__map-bank">
+              <span class="library__map-bank-label">D</span>
+              <div class="library__map-bank-bar" role="img" aria-label="Bank D: 18 segments, 4 occupied, all reserved for encore drone">
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg library__map-seg--occupied"></div>
+                <div class="library__map-seg"></div>
+                <div class="library__map-seg"></div>
+                <div class="library__map-seg"></div>
+                <div class="library__map-seg"></div>
+                <div class="library__map-seg"></div>
+                <div class="library__map-seg"></div>
+                <div class="library__map-seg"></div>
+                <div class="library__map-seg"></div>
+                <div class="library__map-seg"></div>
+                <div class="library__map-seg"></div>
+                <div class="library__map-seg"></div>
+                <div class="library__map-seg"></div>
+                <div class="library__map-seg"></div>
+                <div class="library__map-seg"></div>
+              </div>
+              <span class="library__map-bank-meta">4 / 18</span>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="library__map-legend" aria-label="Memory map legend">
+          <span class="library__map-legend-item">
+            <span class="library__map-legend-swatch library__map-legend-swatch--empty" aria-hidden="true"></span>
+            Empty
+          </span>
+          <span class="library__map-legend-item">
+            <span class="library__map-legend-swatch library__map-legend-swatch--occupied" aria-hidden="true"></span>
+            Occupied
+          </span>
+          <span class="library__map-legend-item">
+            <span class="library__map-legend-swatch library__map-legend-swatch--proposed" aria-hidden="true"></span>
+            Proposed
+          </span>
+          <span class="library__map-legend-item">
+            <span class="library__map-legend-swatch library__map-legend-swatch--conflict" aria-hidden="true"></span>
+            Conflict
+          </span>
+        </div>
+      </article>
+
+      <!-- Detail action row -->
+      <div class="library__detail-actions">
+        <button class="ac-btn ac-btn--primary" type="button">Load to device</button>
+        <button class="ac-btn ac-btn--secondary" type="button">Compare with current</button>
+        <button class="ac-btn ac-btn--ghost" type="button">Export…</button>
+      </div>
+
+    </section>
+
+  </div><!-- /.library__split -->
+
+  <!-- ===== DIALOG LAUNCHERS — every dialog the page can summon ===== -->
+  <section class="ac-section" aria-labelledby="launchers-heading">
+    <div class="ac-dimension-bracket">
+      <span class="ac-panel-label">§ 02 · Operations</span>
+      <h2 id="launchers-heading">Library operations</h2>
+      <p class="ac-fg-muted" style="max-width: var(--ac-measure-reading);">
+        Each launcher opens a SlideDrawer. No centred-modal dialogs; no toolbar above the tree. Object-level CRUD is colocated with the affected node — these launchers cover whole-library operations.
+      </p>
+    </div>
+
+    <div class="library__launchers">
+      <a class="library__launcher" href="#">
+        <span class="library__launcher-eyebrow">01 / 06 · Save</span>
+        <h3 class="library__launcher-title">Save current set…</h3>
+        <p class="library__launcher-desc">
+          Snapshot the working device state into a new set on disk. Names, descriptions, target folder.
+        </p>
+      </a>
+      <a class="library__launcher" href="#">
+        <span class="library__launcher-eyebrow">02 / 06 · Load</span>
+        <h3 class="library__launcher-title">Load selected set…</h3>
+        <p class="library__launcher-desc">
+          Restore the highlighted set into the device. Memory map preview, conflict detection, dry-run option.
+        </p>
+      </a>
+      <a class="library__launcher" href="#">
+        <span class="library__launcher-eyebrow">03 / 06 · Import</span>
+        <h3 class="library__launcher-title">Import patches / tones / samples…</h3>
+        <p class="library__launcher-desc">
+          Bring in individual objects from another set. Slot picker, allocation preview, segment auditing.
+        </p>
+      </a>
+      <a class="library__launcher" href="#">
+        <span class="library__launcher-eyebrow">04 / 06 · Export</span>
+        <h3 class="library__launcher-title">Export patch / tone / set…</h3>
+        <p class="library__launcher-desc">
+          Write a single patch, tone, or full set out. Optional WAV bundle for downstream tools.
+        </p>
+      </a>
+      <a class="library__launcher" href="#">
+        <span class="library__launcher-eyebrow">05 / 06 · Folder</span>
+        <h3 class="library__launcher-title">Create / rename folder…</h3>
+        <p class="library__launcher-desc">
+          Organise the directory. Folders contain other folders or sets; no depth limit beyond filesystem.
+        </p>
+      </a>
+      <a class="library__launcher" href="#">
+        <span class="library__launcher-eyebrow">06 / 06 · Delete</span>
+        <h3 class="library__launcher-title">Delete folder / set…</h3>
+        <p class="library__launcher-desc">
+          Confirm-and-purge. Uses the shared ConfirmDialog primitive — no hand-rolled centred modal.
+        </p>
+      </a>
+    </div>
+  </section>
+
+  <!-- ===== EXPLORATION FOOTER ===== -->
+  <footer class="exploration-footer">
+    <p style="margin: 0;">
+      Phase 9 Task 4 · LibraryPage Mockup v1 · 2026-05-08 · s550-support feature ·
+      <a href="https://github.com/audiocontrol-org/audiocontrol/issues/392">issue #392</a> ·
+      Language reference: <a href="01-design-language.html">01-design-language.html</a> ·
+      Page template: <a href="02-homepage.html">02-homepage.html</a>
+    </p>
+    <p style="margin: var(--ac-space-2) 0 0;">
+      Resolves audit flags: yellow Experimental pill (replaced with s330-blue notice), <code>h-[calc(100vh-12rem)]</code> magic offset (removed; flex/grid fills naturally), "Refresh Device" toolbar (relocated to the h2 title row as an icon-button), centred-modal dialog launchers (described as SlideDrawer triggers).
+    </p>
+  </footer>
+
+</div><!-- /.app-shell__page -->
+
+<aside class="app-shell__crt" aria-label="Device video output">
+  <div class="ac-crt-monitor ac-crt-monitor--compact">
+    <div class="ac-crt-monitor__bezel">
+      <div class="ac-crt-monitor__screen">
+        <div class="ac-crt-monitor__chrome">
+          <span class="ac-crt-btn ac-crt-btn--filled">MODE</span>
+          <span class="ac-crt-btn ac-crt-btn--filled">MENU</span>
+          <span class="ac-crt-btn ac-crt-btn--blank"></span>
+          <span class="ac-crt-btn ac-crt-btn--blank"></span>
+          <span class="ac-crt-btn ac-crt-btn--filled">Dec</span>
+          <span class="ac-crt-btn ac-crt-btn--filled">Inc</span>
+        </div>
+        <div class="ac-crt-monitor__sub-row">
+          <span>Library · Touring 2026</span>
+          <span>SET-Preview</span>
+        </div>
+        <table class="ac-crt-table">
+          <thead>
+            <tr><th></th><th>VAL</th><th>CH</th><th>Patch</th><th></th><th>Out</th><th>Level</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>A</td><td>*</td><td>1</td><td><span class="ac-crt-cell--selected">I11</span></td><td>BRSS</td><td>1</td><td>127</td></tr>
+            <tr><td>B</td><td>*</td><td>2</td><td>I12</td><td>BRSS</td><td>1</td><td>127</td></tr>
+            <tr><td>C</td><td>*</td><td>3</td><td>I13</td><td>FLT</td><td>1</td><td>118</td></tr>
+            <tr><td>D</td><td>*</td><td>4</td><td>I14</td><td>FLT</td><td>1</td><td>118</td></tr>
+            <tr><td>E</td><td>*</td><td>5</td><td>I15</td><td>STR</td><td>2</td><td>110</td></tr>
+            <tr><td>F</td><td>*</td><td>6</td><td>I16</td><td>STR</td><td>2</td><td>110</td></tr>
+            <tr><td>G</td><td>*</td><td>7</td><td>I17</td><td>PAD</td><td>3</td><td>96</td></tr>
+            <tr><td>H</td><td>*</td><td>8</td><td>I18</td><td>PAD</td><td>3</td><td>96</td></tr>
+          </tbody>
+        </table>
+        <div class="ac-crt-monitor__display">
+          <span>Display</span>
+          <span>SET<span class="ac-crt-cursor">_</span></span>
+        </div>
+        <div class="ac-crt-monitor__lookup">
+          <div>I11 BRSS</div><div>I15 STR</div>
+          <div>I12 BRSS</div><div>I16 STR</div>
+          <div>I13 FLT</div><div>I17 PAD</div>
+          <div>I14 FLT</div><div>I18 PAD</div>
+        </div>
+      </div>
+    </div>
+    <div class="ac-crt-monitor__caption">
+      <span>S-550 · Video out · NTSC</span>
+      <span><span class="ac-signal-led" aria-hidden="true" style="margin-right: 6px; vertical-align: middle;"></span>Live</span>
+    </div>
+  </div>
+</aside>
+
+</div><!-- /.app-shell -->
+</main>
+
+<script>
+  // tiny: respect reduced-motion at runtime so a user toggling system prefs
+  // mid-page doesn't get stuck with stale animation state
+  (function () {
+    var mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    function apply() {
+      document.documentElement.style.setProperty('--ac-motion', mq.matches ? '0' : '1');
+    }
+    apply();
+    if (mq.addEventListener) mq.addEventListener('change', apply);
+  })();
+</script>
+</body>
+</html>

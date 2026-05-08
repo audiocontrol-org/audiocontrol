@@ -1,0 +1,2056 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Phase 9 Task 4 — PatchesPage Mockup v1</title>
+<style>
+  /* ============================================================
+     DESIGN TOKENS — `--ac-*` namespace
+     Direction:
+       Dark-only, blue ink (NOT amber-cast). s330 blue is dominant
+       where audiocontrol.org would have used phosphor amber.
+       HSL fragments enable `hsl(var(--ac-color-*) / alpha)` composition.
+     ============================================================ */
+  :root {
+    color-scheme: dark;
+
+    /* --- color tokens (HSL fragments, no hsl() wrapper) --------- */
+    --ac-color-bg:               220 24% 7%;     /* warm-cool near-black, faint blue cast */
+    --ac-color-surface:          220 18% 11%;    /* card surface */
+    --ac-color-surface-hover:    220 18% 14%;    /* card hover */
+    --ac-color-fg:               215 18% 92%;    /* off-white, slight blue cast */
+    --ac-color-fg-muted:         220 12% 60%;    /* secondary text */
+    --ac-color-fg-subtle:        220 10% 42%;    /* tertiary text / placeholders */
+    --ac-color-border:           220 18% 22%;    /* hairline default */
+    --ac-color-border-hover:     220 18% 32%;    /* hairline emphasis */
+    --ac-color-accent:           215 78% 58%;    /* s330 BLUE — the identity */
+    --ac-color-accent-soft:      215 78% 68%;    /* hover lift */
+    --ac-color-highlight:        210 96% 72%;    /* keyline highlight */
+    --ac-color-danger:           358 72% 58%;    /* destructive */
+    --ac-color-warning:          38  80% 58%;    /* caution (used sparingly) */
+    --ac-color-success:          152 55% 52%;    /* available / done */
+
+    /* --- CRT monitor tokens ------------------------------------ */
+    --ac-crt-bezel:    30 6% 6%;
+    --ac-crt-frame:    30 5% 12%;
+    --ac-crt-bg:       30 4% 22%;
+    --ac-crt-fg-dim:   35 6% 68%;
+    --ac-crt-fg:       35 8% 88%;
+    --ac-crt-fg-active: 35 12% 96%;
+    --ac-crt-btn-fill: 30 5% 80%;
+    --ac-crt-btn-text: 30 8% 12%;
+
+    /* --- typography role tokens -------------------------------- */
+    --ac-font-display: "Departure Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --ac-font-body:    "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --ac-font-mono:    "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --ac-font-heading: var(--ac-font-display);
+
+    /* --- type scale -------------------------------------------- */
+    --ac-text-h1: clamp(1.75rem, 3.4vw, 2.35rem);
+    --ac-text-h2: 1.45rem;
+    --ac-text-h3: 1.15rem;
+    --ac-text-h4: 1rem;
+    --ac-text-eyebrow: 0.78rem;
+    --ac-text-body: 1rem;
+    --ac-text-small: 0.875rem;
+    --ac-text-tiny: 0.75rem;
+
+    /* --- weight tokens ----------------------------------------- */
+    --ac-fw-display: 400;
+    --ac-fw-body:    400;
+    --ac-fw-medium:  500;
+    --ac-fw-semibold:600;
+    --ac-fw-bold:    700;
+
+    /* --- letter-spacing ---------------------------------------- */
+    --ac-tracking-display: 0.01em;
+    --ac-tracking-eyebrow: 0.14em;
+    --ac-tracking-ticker:  0.12em;
+
+    /* --- spacing scale ----------------------------------------- */
+    --ac-space-1: 0.25rem;
+    --ac-space-2: 0.5rem;
+    --ac-space-3: 0.75rem;
+    --ac-space-4: 1rem;
+    --ac-space-5: 1.25rem;
+    --ac-space-6: 1.5rem;
+    --ac-space-7: 2rem;
+    --ac-space-8: 2.75rem;
+
+    /* --- layout tokens ----------------------------------------- */
+    --ac-container-max-width: 1400px;
+    --ac-container-padding:   2rem;
+    --ac-measure-reading:     36rem;
+    --ac-measure-narrow:      28rem;
+
+    /* --- rule weights ------------------------------------------ */
+    --ac-rule-hairline: 1px;
+    --ac-rule-medium:   2px;
+    --ac-rule-heavy:    3px;
+
+    /* --- shadow tokens ----------------------------------------- */
+    --ac-shadow-card: 0 0 0 1px hsl(var(--ac-color-border)),
+                      0 10px 36px -12px hsl(220 40% 0% / 0.65);
+    --ac-shadow-card-hover:
+      0 0 0 1px hsl(var(--ac-color-accent) / 0.5),
+      0 14px 40px -10px hsl(var(--ac-color-accent) / 0.18),
+      0 4px 18px -6px hsl(220 40% 0% / 0.55);
+
+    --ac-glow-accent: 0 0 14px hsl(var(--ac-color-accent) / 0.45),
+                      0 0 2px  hsl(var(--ac-color-accent) / 0.65);
+
+    /* --- motion tokens ----------------------------------------- */
+    --ac-duration-fast:    120ms;
+    --ac-duration-default: 220ms;
+    --ac-duration-slow:    420ms;
+    --ac-easing-default:   cubic-bezier(0.2, 0.6, 0.2, 1);
+
+    /* --- selection -------------------------------------------- */
+  }
+
+  ::selection {
+    background-color: hsl(var(--ac-color-accent) / 0.35);
+    color: hsl(var(--ac-color-fg));
+  }
+
+  /* ============================================================
+     CRT MONITOR — see 01-design-language.html § 08
+     ============================================================ */
+  .ac-crt-monitor {
+    background: hsl(var(--ac-crt-bezel));
+    padding: var(--ac-space-3);
+    border-radius: 6px;
+    box-shadow:
+      0 0 0 1px hsl(var(--ac-color-border)),
+      0 14px 40px -10px hsl(220 40% 0% / 0.6),
+      inset 0 1px 0 hsl(35 8% 30% / 0.4);
+  }
+  .ac-crt-monitor__bezel {
+    background: hsl(var(--ac-crt-frame));
+    padding: var(--ac-space-3);
+    border-radius: 4px;
+    box-shadow: inset 0 0 0 1px hsl(30 4% 4%);
+  }
+  .ac-crt-monitor__screen {
+    position: relative;
+    background: hsl(var(--ac-crt-bg));
+    color: hsl(var(--ac-crt-fg-dim));
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    line-height: 1.35;
+    padding: var(--ac-space-4) var(--ac-space-5) var(--ac-space-5);
+    border-radius: 2px;
+    overflow: hidden;
+    background-image:
+      linear-gradient(180deg, transparent 0, hsl(220 14% 5% / 0.18) 50%, transparent 100%),
+      repeating-linear-gradient(180deg, transparent 0, transparent 2px, hsl(30 4% 0% / 0.08) 2px, hsl(30 4% 0% / 0.08) 3px);
+  }
+  .ac-crt-monitor__chrome {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: var(--ac-space-2);
+    margin-bottom: var(--ac-space-2);
+  }
+  .ac-crt-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 1.5rem;
+    border: 1px solid hsl(var(--ac-crt-fg-dim) / 0.4);
+    background: transparent;
+    color: hsl(var(--ac-crt-fg));
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    letter-spacing: 0.04em;
+    padding-inline: var(--ac-space-2);
+  }
+  .ac-crt-btn--filled { background: hsl(var(--ac-crt-btn-fill)); color: hsl(var(--ac-crt-btn-text)); border-color: hsl(var(--ac-crt-btn-fill)); }
+  .ac-crt-btn--blank { border-color: hsl(var(--ac-crt-fg-dim) / 0.25); background: hsl(var(--ac-crt-fg-dim) / 0.12); }
+  .ac-crt-monitor__sub-row {
+    display: flex; justify-content: space-between;
+    color: hsl(var(--ac-crt-fg));
+    margin-bottom: var(--ac-space-3);
+    padding-bottom: var(--ac-space-2);
+  }
+  .ac-crt-table {
+    width: 100%; border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--ac-crt-fg-dim));
+  }
+  .ac-crt-table thead th { text-align: left; color: hsl(var(--ac-crt-fg)); font-weight: 400; padding-block: 1px; }
+  .ac-crt-table thead th:nth-child(2),
+  .ac-crt-table thead th:nth-child(3),
+  .ac-crt-table thead th:nth-child(6),
+  .ac-crt-table thead th:nth-child(7) { text-align: right; }
+  .ac-crt-table tbody td { padding-block: 1px; color: hsl(var(--ac-crt-fg-dim)); }
+  .ac-crt-table tbody td:nth-child(2),
+  .ac-crt-table tbody td:nth-child(3),
+  .ac-crt-table tbody td:nth-child(6),
+  .ac-crt-table tbody td:nth-child(7) { text-align: right; }
+  .ac-crt-table tbody tr:first-child td { color: hsl(var(--ac-crt-fg)); }
+  .ac-crt-cell--selected {
+    background: hsl(var(--ac-crt-fg-dim));
+    color: hsl(var(--ac-crt-bg));
+    padding-inline: 4px; margin-inline: -4px; display: inline-block;
+  }
+  .ac-crt-monitor__display {
+    margin-top: var(--ac-space-4);
+    color: hsl(var(--ac-crt-fg));
+    display: flex; gap: var(--ac-space-5);
+  }
+  .ac-crt-cursor {
+    display: inline-block; width: 0.6em;
+    background: hsl(var(--ac-crt-fg)); color: hsl(var(--ac-crt-bg));
+    animation: ac-crt-blink 1s steps(1) infinite;
+  }
+  @keyframes ac-crt-blink { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .ac-crt-cursor { animation: none; } }
+  .ac-crt-monitor__lookup {
+    margin-top: var(--ac-space-3);
+    display: grid; grid-template-columns: 1fr 1fr;
+    column-gap: var(--ac-space-7); row-gap: 1px;
+    color: hsl(var(--ac-crt-fg-dim));
+    padding-left: var(--ac-space-4);
+  }
+  .ac-crt-monitor__caption {
+    margin-top: var(--ac-space-3);
+    display: flex; justify-content: space-between;
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .ac-crt-monitor--compact .ac-crt-monitor__screen {
+    font-size: var(--ac-text-tiny);
+    padding: var(--ac-space-3) var(--ac-space-4) var(--ac-space-4);
+  }
+  .ac-crt-monitor--compact .ac-crt-btn { height: 1.25rem; }
+
+  /* ============================================================
+     APP SHELL — page content + persistent CRT dock
+     ============================================================ */
+  .app-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--ac-space-7);
+    padding-block: var(--ac-space-6) var(--ac-space-8);
+  }
+  .app-shell__crt {
+    align-self: start;
+  }
+  @media (min-width: 1100px) {
+    .app-shell {
+      grid-template-columns: minmax(0, 1fr) 30rem;
+    }
+    .app-shell__crt {
+      position: sticky;
+      top: var(--ac-space-4);
+    }
+  }
+
+  /* ============================================================
+     RESETS
+     ============================================================ */
+  *, *::before, *::after { box-sizing: border-box; }
+  html { font-size: 16px; }
+  body {
+    margin: 0;
+    background: hsl(var(--ac-color-bg));
+    color: hsl(var(--ac-color-fg));
+    font-family: var(--ac-font-body);
+    font-size: var(--ac-text-body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-image:
+      linear-gradient(hsl(var(--ac-color-border) / 0.20) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--ac-color-border) / 0.20) 1px, transparent 1px);
+    background-size: 40px 40px, 40px 40px;
+    background-position: -1px -1px;
+    background-attachment: fixed;
+  }
+
+  /* ============================================================
+     CONTAINER
+     ============================================================ */
+  .ac-container {
+    max-width: var(--ac-container-max-width);
+    margin: 0 auto;
+    padding: 0 var(--ac-container-padding);
+  }
+
+  /* ============================================================
+     PAGE BANNER — self-identifying header for this exploration
+     ============================================================ */
+  .exploration-banner {
+    border-bottom: var(--ac-rule-medium) solid hsl(var(--ac-color-accent));
+    background:
+      linear-gradient(180deg,
+        hsl(var(--ac-color-bg)) 0%,
+        hsl(var(--ac-color-surface) / 0.7) 100%);
+    box-shadow: 0 1px 0 hsl(var(--ac-color-accent) / 0.25);
+  }
+  .exploration-banner__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--ac-space-4);
+    padding-block: var(--ac-space-6);
+  }
+  .exploration-banner__title {
+    font-family: var(--ac-font-display);
+    font-weight: var(--ac-fw-display);
+    font-size: var(--ac-text-h2);
+    letter-spacing: var(--ac-tracking-display);
+    margin: 0;
+  }
+  .exploration-banner__meta {
+    display: flex;
+    gap: var(--ac-space-4);
+    align-items: center;
+  }
+  .exploration-banner__chip {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-accent));
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-accent) / 0.6);
+    padding: var(--ac-space-1) var(--ac-space-3);
+    border-radius: 2px;
+  }
+  .exploration-banner__notes {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+
+  /* ============================================================
+     SECTION SCAFFOLD + DIMENSION BRACKET
+     ============================================================ */
+  .ac-section {
+    padding-block: var(--ac-space-8);
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+
+  .ac-panel-label {
+    display: inline-block;
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .ac-panel-label--accent {
+    color: hsl(var(--ac-color-accent));
+    text-shadow: var(--ac-glow-accent);
+  }
+
+  .ac-dimension-bracket {
+    position: relative;
+    padding-top: var(--ac-space-5);
+    padding-inline: var(--ac-space-4);
+  }
+  .ac-dimension-bracket::before,
+  .ac-dimension-bracket::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    width: 18px;
+    height: 18px;
+    border-color: hsl(var(--ac-color-accent) / 0.6);
+    border-style: solid;
+    border-width: 0;
+  }
+  .ac-dimension-bracket::before {
+    left: 0;
+    border-top-width: var(--ac-rule-medium);
+    border-left-width: var(--ac-rule-medium);
+  }
+  .ac-dimension-bracket::after {
+    right: 0;
+    border-top-width: var(--ac-rule-medium);
+    border-right-width: var(--ac-rule-medium);
+  }
+
+  /* ============================================================
+     HEADINGS
+     ============================================================ */
+  h1, .ac-h1 {
+    font-family: var(--ac-font-display);
+    font-weight: var(--ac-fw-display);
+    font-size: var(--ac-text-h1);
+    line-height: 1.18;
+    letter-spacing: var(--ac-tracking-display);
+    margin: var(--ac-space-2) 0 var(--ac-space-5);
+  }
+  h2, .ac-h2 {
+    position: relative;
+    font-family: var(--ac-font-display);
+    font-weight: var(--ac-fw-display);
+    font-size: var(--ac-text-h2);
+    line-height: 1.2;
+    letter-spacing: var(--ac-tracking-display);
+    margin: var(--ac-space-7) 0 var(--ac-space-3);
+    padding-bottom: var(--ac-space-3);
+  }
+  h2::after, .ac-h2::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 2.25rem;
+    height: var(--ac-rule-medium);
+    background: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.45);
+  }
+  h3, .ac-h3 {
+    font-family: var(--ac-font-body);
+    font-weight: var(--ac-fw-semibold);
+    font-size: var(--ac-text-h3);
+    margin: var(--ac-space-6) 0 var(--ac-space-2);
+  }
+  h4, .ac-h4 {
+    font-family: var(--ac-font-body);
+    font-weight: var(--ac-fw-semibold);
+    font-size: var(--ac-text-h4);
+    margin: var(--ac-space-5) 0 var(--ac-space-2);
+  }
+  p, .ac-body { margin: 0 0 var(--ac-space-4); }
+
+  .ac-mono-tabular {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+  }
+  .ac-fg-muted { color: hsl(var(--ac-color-fg-muted)); }
+  .ac-fg-subtle { color: hsl(var(--ac-color-fg-subtle)); }
+
+  /* ============================================================
+     LINKS
+     ============================================================ */
+  a, .ac-link {
+    color: hsl(var(--ac-color-accent));
+    text-decoration: none;
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-accent) / 0.35);
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default),
+                color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  a:hover, .ac-link:hover {
+    color: hsl(var(--ac-color-accent-soft));
+    border-bottom-color: hsl(var(--ac-color-accent));
+  }
+  a:focus-visible, .ac-link:focus-visible {
+    outline: var(--ac-rule-medium) solid hsl(var(--ac-color-accent) / 0.6);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* ============================================================
+     CARD-GLOW
+     ============================================================ */
+  .ac-card {
+    padding: var(--ac-space-5);
+    background: hsl(var(--ac-color-surface));
+    box-shadow: var(--ac-shadow-card);
+    transition: box-shadow var(--ac-duration-default) var(--ac-easing-default),
+                background-color var(--ac-duration-default) var(--ac-easing-default);
+    border-radius: 2px;
+  }
+  .ac-card--interactive { cursor: pointer; }
+  .ac-card--interactive:hover {
+    background: hsl(var(--ac-color-surface-hover));
+    box-shadow: var(--ac-shadow-card-hover);
+  }
+  .ac-card--interactive:focus-visible {
+    outline: var(--ac-rule-medium) solid hsl(var(--ac-color-accent) / 0.6);
+    outline-offset: 2px;
+  }
+
+  /* ============================================================
+     SIGNAL LED
+     ============================================================ */
+  .ac-signal-led {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: hsl(var(--ac-color-accent));
+    box-shadow:
+      0 0 8px hsl(var(--ac-color-accent) / 0.7),
+      0 0 2px hsl(var(--ac-color-highlight) / 0.9) inset;
+    animation: ac-signal-pulse 2.4s ease-in-out infinite;
+    vertical-align: middle;
+  }
+  .ac-signal-led--idle {
+    background: hsl(var(--ac-color-fg-subtle));
+    box-shadow: 0 0 0 transparent;
+    animation: none;
+  }
+  .ac-signal-led--danger {
+    background: hsl(var(--ac-color-danger));
+    box-shadow: 0 0 8px hsl(var(--ac-color-danger) / 0.7);
+  }
+  @keyframes ac-signal-pulse {
+    0%, 100% {
+      box-shadow:
+        0 0 8px hsl(var(--ac-color-accent) / 0.65),
+        0 0 2px hsl(var(--ac-color-highlight) / 0.9) inset;
+      opacity: 1;
+    }
+    50% {
+      box-shadow:
+        0 0 16px hsl(var(--ac-color-accent) / 0.95),
+        0 0 3px hsl(var(--ac-color-highlight) / 1) inset;
+      opacity: 0.85;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ac-signal-led { animation: none; }
+  }
+
+  /* ============================================================
+     FORMS — ac-input / ac-select / ac-checkbox / ac-button
+     ============================================================ */
+  .ac-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-2);
+    margin-block: var(--ac-space-3);
+  }
+  .ac-field__label {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+
+  .ac-input,
+  .ac-select {
+    width: 100%;
+    background: hsl(var(--ac-color-bg));
+    color: hsl(var(--ac-color-fg));
+    font-family: var(--ac-font-body);
+    font-size: var(--ac-text-body);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    padding: var(--ac-space-2) var(--ac-space-3);
+    border-radius: 2px;
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default),
+                box-shadow var(--ac-duration-fast) var(--ac-easing-default),
+                background-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .ac-input::placeholder { color: hsl(var(--ac-color-fg-subtle)); }
+  .ac-input:hover,
+  .ac-select:hover {
+    border-color: hsl(var(--ac-color-border-hover));
+  }
+  .ac-input:focus-visible,
+  .ac-select:focus-visible {
+    outline: none;
+    border-color: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 0 3px hsl(var(--ac-color-accent) / 0.25);
+    background: hsl(var(--ac-color-surface) / 0.5);
+  }
+  .ac-input:disabled,
+  .ac-select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    border-color: hsl(var(--ac-color-border) / 0.5);
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .ac-input--mono { font-family: var(--ac-font-mono); }
+
+  .ac-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%237ea0d6' stroke-width='1.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right var(--ac-space-3) center;
+    background-size: 12px 8px;
+    padding-right: calc(var(--ac-space-3) * 2 + 12px);
+  }
+
+  .ac-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-3);
+    cursor: pointer;
+    user-select: none;
+  }
+  .ac-checkbox__input {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1rem;
+    height: 1rem;
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-bg));
+    border-radius: 2px;
+    position: relative;
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default),
+                background-color var(--ac-duration-fast) var(--ac-easing-default),
+                box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+    flex-shrink: 0;
+  }
+  .ac-checkbox__input:hover {
+    border-color: hsl(var(--ac-color-border-hover));
+  }
+  .ac-checkbox__input:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px hsl(var(--ac-color-accent) / 0.25);
+    border-color: hsl(var(--ac-color-accent));
+  }
+  .ac-checkbox__input:checked {
+    border-color: hsl(var(--ac-color-accent));
+    background: hsl(var(--ac-color-accent));
+  }
+  .ac-checkbox__input:checked::after {
+    content: "";
+    position: absolute;
+    top: 1px;
+    left: 4px;
+    width: 5px;
+    height: 9px;
+    border: solid hsl(var(--ac-color-bg));
+    border-width: 0 var(--ac-rule-medium) var(--ac-rule-medium) 0;
+    transform: rotate(45deg);
+  }
+  .ac-checkbox__input:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .ac-checkbox__label {
+    font-family: var(--ac-font-body);
+    font-size: var(--ac-text-body);
+  }
+
+  .ac-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ac-space-2);
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    line-height: 1;
+    padding: var(--ac-space-3) var(--ac-space-5);
+    border-radius: 2px;
+    border: var(--ac-rule-hairline) solid transparent;
+    cursor: pointer;
+    background: transparent;
+    color: hsl(var(--ac-color-fg));
+    transition: background-color var(--ac-duration-fast) var(--ac-easing-default),
+                border-color var(--ac-duration-fast) var(--ac-easing-default),
+                color var(--ac-duration-fast) var(--ac-easing-default),
+                box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .ac-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px hsl(var(--ac-color-accent) / 0.4);
+  }
+  .ac-btn:disabled,
+  .ac-btn[aria-disabled="true"] {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .ac-btn--primary {
+    background: hsl(var(--ac-color-accent));
+    color: hsl(var(--ac-color-bg));
+    border-color: hsl(var(--ac-color-accent));
+  }
+  .ac-btn--primary:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: hsl(var(--ac-color-accent-soft));
+    border-color: hsl(var(--ac-color-accent-soft));
+    box-shadow: 0 0 18px hsl(var(--ac-color-accent) / 0.3);
+  }
+
+  .ac-btn--secondary {
+    background: transparent;
+    color: hsl(var(--ac-color-fg));
+    border-color: hsl(var(--ac-color-border-hover));
+  }
+  .ac-btn--secondary:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: hsl(var(--ac-color-surface-hover));
+    border-color: hsl(var(--ac-color-accent));
+    color: hsl(var(--ac-color-accent));
+  }
+
+  .ac-btn--ghost {
+    background: transparent;
+    color: hsl(var(--ac-color-fg-muted));
+    border-color: transparent;
+  }
+  .ac-btn--ghost:hover:not(:disabled):not([aria-disabled="true"]) {
+    color: hsl(var(--ac-color-fg));
+    background: hsl(var(--ac-color-surface) / 0.5);
+  }
+
+  .ac-btn--danger {
+    background: transparent;
+    color: hsl(var(--ac-color-danger));
+    border-color: hsl(var(--ac-color-danger) / 0.6);
+  }
+  .ac-btn--danger:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: hsl(var(--ac-color-danger) / 0.12);
+    border-color: hsl(var(--ac-color-danger));
+  }
+
+  .ac-btn--sm {
+    padding: var(--ac-space-2) var(--ac-space-4);
+    font-size: var(--ac-text-tiny);
+  }
+
+  /* ============================================================
+     PROGRESS + SPINNER
+     ============================================================ */
+  .ac-progress {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-2);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-surface) / 0.6);
+    padding: var(--ac-space-4);
+    border-radius: 2px;
+  }
+  .ac-progress__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--ac-space-3);
+  }
+  .ac-progress__label {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .ac-progress__pct {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--ac-color-accent));
+  }
+  .ac-progress__bar {
+    position: relative;
+    height: 4px;
+    background: hsl(var(--ac-color-bg));
+    overflow: hidden;
+    border-radius: 1px;
+  }
+  .ac-progress__fill {
+    position: absolute;
+    inset: 0;
+    width: var(--ac-progress, 0%);
+    background: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 12px hsl(var(--ac-color-accent) / 0.5);
+    transition: width var(--ac-duration-default) var(--ac-easing-default);
+  }
+  .ac-progress__meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--ac-space-3);
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    font-variant-numeric: tabular-nums;
+  }
+  .ac-progress__meta-item { display: flex; flex-direction: column; gap: 2px; }
+  .ac-progress__meta-label {
+    font-family: var(--ac-font-display);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .ac-progress__meta-value { color: hsl(var(--ac-color-fg)); }
+
+  .ac-spinner {
+    display: inline-block;
+    width: 1.25rem;
+    height: 1.25rem;
+    border: var(--ac-rule-medium) solid hsl(var(--ac-color-border));
+    border-top-color: hsl(var(--ac-color-accent));
+    border-radius: 50%;
+    animation: ac-spin 0.9s linear infinite;
+  }
+  .ac-spinner--sm { width: 1rem; height: 1rem; }
+  @keyframes ac-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    .ac-spinner { animation-duration: 4s; }
+  }
+
+  /* ============================================================
+     EYEBROW STATUS-ROW (h2 + metric)
+     ============================================================ */
+  .ac-status-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--ac-space-5);
+    padding-bottom: var(--ac-space-3);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+  .ac-status-row__heading { margin: 0; padding: 0; }
+  .ac-status-row__heading::after { display: none; }
+  .ac-status-row__heading-rule {
+    width: 2.25rem;
+    height: var(--ac-rule-medium);
+    background: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.45);
+    margin-top: var(--ac-space-2);
+  }
+  .ac-status-row__metric {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-2);
+    white-space: nowrap;
+  }
+  .ac-status-row__metric strong {
+    color: hsl(var(--ac-color-accent));
+    font-weight: var(--ac-fw-display);
+    font-family: var(--ac-font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ============================================================
+     UTILITIES
+     ============================================================ */
+  .ac-stack { display: flex; flex-direction: column; gap: var(--ac-space-4); }
+  .ac-row   { display: flex; flex-wrap: wrap; gap: var(--ac-space-4); align-items: center; }
+  .ac-pad-block { padding-block: var(--ac-space-5); }
+  .ac-mt-2 { margin-top: var(--ac-space-2); }
+  .ac-mt-3 { margin-top: var(--ac-space-3); }
+  .ac-mt-4 { margin-top: var(--ac-space-4); }
+  .ac-mt-5 { margin-top: var(--ac-space-5); }
+  .ac-mt-6 { margin-top: var(--ac-space-6); }
+  .ac-mt-7 { margin-top: var(--ac-space-7); }
+  .ac-mb-4 { margin-bottom: var(--ac-space-4); }
+
+  /* ============================================================
+     FOOTER
+     ============================================================ */
+  .exploration-footer {
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    padding-block: var(--ac-space-7);
+    margin-top: var(--ac-space-8);
+    color: hsl(var(--ac-color-fg-muted));
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+  }
+
+  /* ============================================================
+     APP CHROME (sticky bar) — shared across pages
+     Note: kept under `.homepage__*` selectors verbatim to match
+     the v1 design language file. No changes from 02-homepage.html.
+     ============================================================ */
+  .homepage__appbar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: hsl(var(--ac-color-bg) / 0.85);
+    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+  .homepage__appbar-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ac-space-5);
+    padding-block: var(--ac-space-4);
+  }
+  .homepage__brand {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--ac-space-3);
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg));
+  }
+  .homepage__brand-mark {
+    color: hsl(var(--ac-color-accent));
+    text-shadow: var(--ac-glow-accent);
+  }
+  .homepage__brand-divider {
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .homepage__brand-device {
+    font-family: var(--ac-font-mono);
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--ac-color-fg-muted));
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .homepage__nav {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-1);
+  }
+  .homepage__nav-link {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+    padding: var(--ac-space-2) var(--ac-space-3);
+    border-bottom: 0;
+    border-radius: 2px;
+  }
+  .homepage__nav-link:hover {
+    color: hsl(var(--ac-color-fg));
+    background: hsl(var(--ac-color-surface) / 0.5);
+    border-bottom: 0;
+  }
+  .homepage__nav-link[aria-current="page"] {
+    color: hsl(var(--ac-color-accent));
+    background: hsl(var(--ac-color-accent) / 0.1);
+    border-bottom: 0;
+  }
+
+  .homepage__appbar-status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-3);
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-muted));
+    padding: var(--ac-space-2) var(--ac-space-3);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: 2px;
+    background: hsl(var(--ac-color-surface) / 0.5);
+    cursor: pointer;
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .homepage__appbar-status:hover {
+    border-color: hsl(var(--ac-color-border-hover));
+  }
+  .homepage__appbar-status--connected {
+    border-color: hsl(var(--ac-color-accent) / 0.4);
+  }
+
+  /* ============================================================
+     ===== PATCHESPAGE-SCOPED STYLES =====
+     Page-specific composition; nothing here introduces new tokens.
+     All values reference --ac-* tokens or layered classes above.
+     ============================================================ */
+
+  /* --- title row + refresh icon-button (replaces the toolbar) --- */
+  .patches__title-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--ac-space-5);
+    padding-bottom: var(--ac-space-3);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    margin-top: var(--ac-space-6);
+  }
+  .patches__title-block { display: flex; flex-direction: column; gap: var(--ac-space-2); }
+  .patches__title-eyebrow-row {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-3);
+    flex-wrap: wrap;
+  }
+  .patches__title-rule {
+    width: 2.25rem;
+    height: var(--ac-rule-medium);
+    background: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.45);
+  }
+  .patches__title-metric {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-3);
+    white-space: nowrap;
+  }
+  .patches__title-metric strong {
+    color: hsl(var(--ac-color-accent));
+    font-weight: var(--ac-fw-display);
+    font-family: var(--ac-font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+  .patches__icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-surface) / 0.6);
+    color: hsl(var(--ac-color-fg-muted));
+    border-radius: 2px;
+    cursor: pointer;
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default),
+                color var(--ac-duration-fast) var(--ac-easing-default),
+                background-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .patches__icon-btn:hover {
+    border-color: hsl(var(--ac-color-accent) / 0.6);
+    color: hsl(var(--ac-color-accent));
+    background: hsl(var(--ac-color-surface));
+  }
+  .patches__icon-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px hsl(var(--ac-color-accent) / 0.4);
+  }
+  .patches__icon-btn svg {
+    width: 1rem;
+    height: 1rem;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* --- list + detail split inside the page column -------------- */
+  .patches__split {
+    display: grid;
+    grid-template-columns: 22rem minmax(0, 1fr);
+    gap: var(--ac-space-6);
+    margin-top: var(--ac-space-6);
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .patches__split { grid-template-columns: 1fr; }
+  }
+
+  /* list pane */
+  .patches__list {
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-surface));
+    box-shadow: var(--ac-shadow-card);
+    border-radius: 2px;
+    max-height: 38rem;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--ac-color-border-hover)) transparent;
+  }
+  .patches__list::-webkit-scrollbar { width: 6px; }
+  .patches__list::-webkit-scrollbar-thumb {
+    background: hsl(var(--ac-color-border-hover));
+    border-radius: 3px;
+  }
+  .patches__list-bank-header {
+    position: sticky;
+    top: 0;
+    background: hsl(var(--ac-color-bg) / 0.92);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: var(--ac-space-3) var(--ac-space-4);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-subtle));
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    z-index: 1;
+  }
+  .patches__list-bank-header:not(:first-child) {
+    top: 0;
+  }
+  .patches__list-bank-header strong {
+    color: hsl(var(--ac-color-fg-muted));
+    font-weight: var(--ac-fw-display);
+    font-family: var(--ac-font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .patches__list-row {
+    display: grid;
+    grid-template-columns: 3rem minmax(0, 1fr) auto;
+    gap: var(--ac-space-3);
+    align-items: center;
+    padding: var(--ac-space-3) var(--ac-space-4);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.5);
+    border-left: 2px solid transparent;
+    cursor: pointer;
+    text-decoration: none;
+    color: hsl(var(--ac-color-fg));
+    transition: background-color var(--ac-duration-fast) var(--ac-easing-default),
+                border-left-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .patches__list-row:hover {
+    background: hsl(var(--ac-color-surface-hover));
+    border-bottom-color: hsl(var(--ac-color-border) / 0.5);
+  }
+  .patches__list-row[aria-current="true"] {
+    background: hsl(var(--ac-color-accent) / 0.08);
+    border-left-color: hsl(var(--ac-color-accent));
+  }
+  .patches__list-row[aria-current="true"] .patches__list-slot {
+    color: hsl(var(--ac-color-accent));
+    text-shadow: var(--ac-glow-accent);
+  }
+  .patches__list-row[aria-current="true"] .patches__list-name {
+    color: hsl(var(--ac-color-fg));
+  }
+  .patches__list-row:focus-visible {
+    outline: none;
+    background: hsl(var(--ac-color-accent) / 0.12);
+    box-shadow: inset 0 0 0 2px hsl(var(--ac-color-accent) / 0.5);
+  }
+  .patches__list-slot {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-subtle));
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+  }
+  .patches__list-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .patches__list-name {
+    font-family: var(--ac-font-body);
+    font-size: var(--ac-text-small);
+    font-weight: var(--ac-fw-medium);
+    color: hsl(var(--ac-color-fg));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .patches__list-eyebrow {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .patches__list-status {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-subtle));
+    font-variant-numeric: tabular-nums;
+  }
+  .patches__list-status--loaded { color: hsl(var(--ac-color-success) / 0.8); }
+  .patches__list-status--dirty { color: hsl(var(--ac-color-warning)); }
+
+  /* detail pane */
+  .patches__detail {
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-surface));
+    box-shadow: var(--ac-shadow-card);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .patches__detail-head {
+    padding: var(--ac-space-5) var(--ac-space-6) var(--ac-space-4);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background:
+      linear-gradient(180deg,
+        hsl(var(--ac-color-surface)) 0%,
+        hsl(var(--ac-color-bg) / 0.4) 100%);
+  }
+  .patches__detail-eyebrow-row {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-3);
+    margin-bottom: var(--ac-space-2);
+  }
+  .patches__detail-eyebrow-sep {
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .patches__detail-title {
+    font-family: var(--ac-font-display);
+    font-weight: var(--ac-fw-display);
+    font-size: 1.55rem;
+    line-height: 1.18;
+    letter-spacing: var(--ac-tracking-display);
+    margin: 0;
+    display: flex;
+    align-items: baseline;
+    gap: var(--ac-space-3);
+    flex-wrap: wrap;
+  }
+  .patches__detail-slot {
+    font-family: var(--ac-font-mono);
+    color: hsl(var(--ac-color-accent));
+    text-shadow: var(--ac-glow-accent);
+    letter-spacing: 0.02em;
+  }
+  .patches__detail-name {
+    color: hsl(var(--ac-color-fg));
+    font-family: var(--ac-font-display);
+  }
+
+  .patches__detail-body {
+    padding: var(--ac-space-5) var(--ac-space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-7);
+  }
+
+  /* parameter strip — eyebrow + value pairs in a grid */
+  .patches__param-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: var(--ac-space-4) var(--ac-space-5);
+    padding: var(--ac-space-4) var(--ac-space-5);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-bg) / 0.4);
+    border-radius: 2px;
+  }
+  .patches__param {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-1);
+  }
+  .patches__param-label {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .patches__param-value {
+    font-family: var(--ac-font-mono);
+    font-size: 1.05rem;
+    line-height: 1;
+    color: hsl(var(--ac-color-fg));
+    font-variant-numeric: tabular-nums;
+  }
+  .patches__param-value strong {
+    color: hsl(var(--ac-color-accent));
+    font-weight: var(--ac-fw-display);
+  }
+  .patches__param-unit {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-subtle));
+    margin-left: var(--ac-space-1);
+  }
+
+  /* tone-layer card */
+  .patches__layer-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-4);
+  }
+  .patches__layer {
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-bg) / 0.4);
+    border-radius: 2px;
+    padding: var(--ac-space-4) var(--ac-space-5);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-4);
+  }
+  .patches__layer::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--ac-rule-medium);
+    background: hsl(var(--ac-color-accent) / 0.6);
+  }
+  .patches__layer-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--ac-space-4);
+    flex-wrap: wrap;
+  }
+  .patches__layer-eyebrow {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .patches__layer-tone-ref {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--ac-space-3);
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    color: hsl(var(--ac-color-fg));
+    font-variant-numeric: tabular-nums;
+  }
+  .patches__layer-tone-slot {
+    color: hsl(var(--ac-color-accent));
+    font-weight: var(--ac-fw-display);
+  }
+  .patches__layer-tone-name {
+    color: hsl(var(--ac-color-fg));
+  }
+  .patches__layer-tone-link {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-accent));
+    border-bottom-color: hsl(var(--ac-color-accent) / 0.35);
+  }
+
+  /* range visualization — key range or velocity range bar */
+  .patches__range {
+    display: grid;
+    grid-template-columns: 7rem minmax(0, 1fr) 6rem;
+    gap: var(--ac-space-3);
+    align-items: center;
+  }
+  .patches__range-label {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .patches__range-bar {
+    position: relative;
+    height: 1.25rem;
+    background: hsl(var(--ac-color-bg));
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: 1px;
+    overflow: hidden;
+  }
+  .patches__range-bar::before,
+  .patches__range-bar::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: hsl(var(--ac-color-border-hover));
+    opacity: 0.7;
+  }
+  .patches__range-bar::before { left: 25%; }
+  .patches__range-bar::after { left: 75%; }
+  .patches__range-fill {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background:
+      linear-gradient(90deg,
+        hsl(var(--ac-color-accent) / 0.18) 0%,
+        hsl(var(--ac-color-accent) / 0.34) 50%,
+        hsl(var(--ac-color-accent) / 0.18) 100%);
+    border-left: var(--ac-rule-medium) solid hsl(var(--ac-color-accent));
+    border-right: var(--ac-rule-medium) solid hsl(var(--ac-color-accent));
+    box-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.4) inset;
+  }
+  .patches__range-tick {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--ac-font-mono);
+    font-size: 0.625rem;
+    color: hsl(var(--ac-color-fg-subtle));
+    line-height: 1;
+    padding-inline: 4px;
+    pointer-events: none;
+  }
+  .patches__range-tick--start { left: 4px; }
+  .patches__range-tick--mid { left: 50%; transform: translate(-50%, -50%); }
+  .patches__range-tick--end { right: 4px; }
+  .patches__range-readout {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    color: hsl(var(--ac-color-fg));
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  .patches__range-readout strong {
+    color: hsl(var(--ac-color-accent));
+    font-weight: var(--ac-fw-display);
+  }
+
+  /* performance section */
+  .patches__perf-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: var(--ac-space-3) var(--ac-space-5);
+  }
+  .patches__perf-row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-1);
+    padding-block: var(--ac-space-2);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.5);
+  }
+
+  /* footer action row */
+  .patches__detail-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--ac-space-3);
+    padding: var(--ac-space-4) var(--ac-space-6);
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-bg) / 0.4);
+  }
+  .patches__detail-actions-status {
+    margin-right: auto;
+    align-self: center;
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-muted));
+    font-variant-numeric: tabular-nums;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-2);
+  }
+  .patches__detail-actions-status strong {
+    color: hsl(var(--ac-color-warning));
+    font-weight: var(--ac-fw-display);
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== EXPLORATION BANNER ===== -->
+<header class="exploration-banner">
+  <div class="ac-container exploration-banner__inner">
+    <div>
+      <span class="ac-panel-label ac-panel-label--accent">PHASE 9 · TASK 4 · MOCKUP</span>
+      <h1 class="exploration-banner__title">PatchesPage Mockup v1</h1>
+      <p class="ac-fg-muted ac-mt-4" style="margin: 0;">
+        Per-page composition of the v1 design language. Replaces the per-bank reload toolbar with a list-title refresh affordance, surfaces the patch detail (parameters, two tone layers, key/velocity ranges) and grounds it in s330-blue. S-550 case shown — 32 patches across four banks.
+      </p>
+    </div>
+    <div class="exploration-banner__meta">
+      <span class="exploration-banner__chip">v1</span>
+      <span class="exploration-banner__chip">s550-support</span>
+      <span class="exploration-banner__chip">03 / 07</span>
+      <span class="exploration-banner__notes">2026-05-08</span>
+    </div>
+  </div>
+</header>
+
+<!-- ===== APP CHROME (sticky bar with connection drawer trigger) ===== -->
+<div class="homepage__appbar">
+  <div class="ac-container homepage__appbar-inner">
+    <div class="homepage__brand">
+      <span class="homepage__brand-mark">audiocontrol</span>
+      <span class="homepage__brand-divider">·</span>
+      <span class="homepage__brand-device">roland / s550 / editor</span>
+    </div>
+    <nav class="homepage__nav" aria-label="Primary">
+      <a class="homepage__nav-link" href="#">Home</a>
+      <a class="homepage__nav-link" href="#" aria-current="page">Patches</a>
+      <a class="homepage__nav-link" href="#">Tones</a>
+      <a class="homepage__nav-link" href="#">Play</a>
+      <a class="homepage__nav-link" href="#">Workflows</a>
+      <a class="homepage__nav-link" href="#">Library</a>
+    </nav>
+    <button class="homepage__appbar-status homepage__appbar-status--connected" aria-haspopup="dialog" aria-expanded="false">
+      <span class="ac-signal-led" aria-hidden="true"></span>
+      <span>Connected · MOTU 828mk3 · Port 1</span>
+      <span class="ac-fg-subtle" aria-hidden="true">⌥C</span>
+    </button>
+  </div>
+</div>
+
+<main class="ac-container">
+<div class="app-shell">
+<div class="app-shell__page">
+
+  <section class="patches" aria-labelledby="patches-heading">
+
+    <!-- ===== TITLE ROW (status row + refresh icon, no toolbar) ===== -->
+    <header class="patches__title-row">
+      <div class="patches__title-block">
+        <div class="patches__title-eyebrow-row">
+          <span class="ac-panel-label">§ 01 · Memory</span>
+          <span class="patches__detail-eyebrow-sep">·</span>
+          <span class="ac-panel-label ac-panel-label--accent">P11 → P48 · 4 banks</span>
+        </div>
+        <h2 id="patches-heading" class="ac-status-row__heading">Patches</h2>
+        <div class="patches__title-rule" aria-hidden="true"></div>
+      </div>
+      <div style="display: inline-flex; align-items: center; gap: var(--ac-space-3);">
+        <span class="patches__title-metric">
+          <span class="ac-signal-led" aria-hidden="true"></span>
+          <span><strong>32</strong> of <strong>32</strong> loaded</span>
+        </span>
+        <button
+          type="button"
+          class="patches__icon-btn"
+          aria-label="Refresh all patches from device"
+          title="Refresh all patches from device"
+        >
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M3 8a5 5 0 0 1 9-3" />
+            <polyline points="12 2 12 5 9 5" />
+            <path d="M13 8a5 5 0 0 1-9 3" />
+            <polyline points="4 14 4 11 7 11" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ===== LIST + DETAIL SPLIT ===== -->
+    <div class="patches__split">
+
+      <!-- ===== PATCHES LIST ===== -->
+      <aside class="patches__list" aria-label="Patch list">
+
+        <div class="patches__list-bank-header">
+          <span>Bank 1 · Internal</span>
+          <strong>P11–P18</strong>
+        </div>
+        <a class="patches__list-row" href="#" aria-current="true">
+          <span class="patches__list-slot">P11</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">Strings A</span>
+            <span class="patches__list-eyebrow">2 layers · split @ C3</span>
+          </span>
+          <span class="patches__list-status patches__list-status--dirty">●</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P12</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">FlutePad</span>
+            <span class="patches__list-eyebrow">2 layers · whole</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P13</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">Drum Kit 1</span>
+            <span class="patches__list-eyebrow">1 layer · key-map</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P14</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">Bass Synth</span>
+            <span class="patches__list-eyebrow">1 layer · whole</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P15</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">Piano EP</span>
+            <span class="patches__list-eyebrow">2 layers · velocity</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P16</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">Choir Pad</span>
+            <span class="patches__list-eyebrow">2 layers · whole</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P17</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">Marimba</span>
+            <span class="patches__list-eyebrow">1 layer · whole</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P18</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">SlapBass</span>
+            <span class="patches__list-eyebrow">2 layers · velocity</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+
+        <div class="patches__list-bank-header">
+          <span>Bank 2 · Internal</span>
+          <strong>P21–P28</strong>
+        </div>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P21</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">Brass Stack</span>
+            <span class="patches__list-eyebrow">2 layers · whole</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P22</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">VoxOoh</span>
+            <span class="patches__list-eyebrow">1 layer · whole</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P23</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">Glassy Bell</span>
+            <span class="patches__list-eyebrow">2 layers · whole</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P24</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">Solo Cello</span>
+            <span class="patches__list-eyebrow">1 layer · whole</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P25</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">DX Chime</span>
+            <span class="patches__list-eyebrow">2 layers · whole</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P26</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">Slow Strings</span>
+            <span class="patches__list-eyebrow">2 layers · whole</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P27</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">Fretless</span>
+            <span class="patches__list-eyebrow">1 layer · whole</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P28</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">Hit FX</span>
+            <span class="patches__list-eyebrow">1 layer · whole</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+
+        <div class="patches__list-bank-header">
+          <span>Bank 3 · Internal</span>
+          <strong>P31–P38</strong>
+        </div>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P31</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">Tine Wurly</span>
+            <span class="patches__list-eyebrow">2 layers · velocity</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P32</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">SynthLead</span>
+            <span class="patches__list-eyebrow">1 layer · whole</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P33</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">PercKit B</span>
+            <span class="patches__list-eyebrow">1 layer · key-map</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P34</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">Soft Pad</span>
+            <span class="patches__list-eyebrow">2 layers · whole</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P35</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">Vibraphone</span>
+            <span class="patches__list-eyebrow">1 layer · whole</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P36</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">Acid Lead</span>
+            <span class="patches__list-eyebrow">1 layer · whole</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P37</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">Ambient Wash</span>
+            <span class="patches__list-eyebrow">2 layers · whole</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P38</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">Steel Drum</span>
+            <span class="patches__list-eyebrow">1 layer · whole</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+
+        <div class="patches__list-bank-header">
+          <span>Bank 4 · Internal</span>
+          <strong>P41–P48</strong>
+        </div>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P41</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">Init Patch</span>
+            <span class="patches__list-eyebrow">1 layer · whole</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P42</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">Init Patch</span>
+            <span class="patches__list-eyebrow">1 layer · whole</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P43</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">SFX Door</span>
+            <span class="patches__list-eyebrow">1 layer · key-map</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P44</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">Foley Bed</span>
+            <span class="patches__list-eyebrow">2 layers · whole</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P45</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">Init Patch</span>
+            <span class="patches__list-eyebrow">1 layer · whole</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P46</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">TapeStop</span>
+            <span class="patches__list-eyebrow">1 layer · whole</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#">
+          <span class="patches__list-slot">P47</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">Init Patch</span>
+            <span class="patches__list-eyebrow">1 layer · whole</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+        <a class="patches__list-row" href="#" style="border-bottom: 0;">
+          <span class="patches__list-slot">P48</span>
+          <span class="patches__list-info">
+            <span class="patches__list-name">Init Patch</span>
+            <span class="patches__list-eyebrow">1 layer · whole</span>
+          </span>
+          <span class="patches__list-status patches__list-status--loaded">○</span>
+        </a>
+      </aside>
+
+      <!-- ===== PATCH EDITOR (DETAIL) ===== -->
+      <article class="patches__detail" aria-labelledby="patch-detail-title">
+
+        <header class="patches__detail-head">
+          <div class="patches__detail-eyebrow-row">
+            <span class="ac-panel-label">§ Patch · Bank 1</span>
+            <span class="patches__detail-eyebrow-sep">·</span>
+            <span class="ac-panel-label ac-panel-label--accent">Editing</span>
+            <span class="patches__detail-eyebrow-sep">·</span>
+            <span class="ac-panel-label">Source · device</span>
+          </div>
+          <h3 id="patch-detail-title" class="patches__detail-title">
+            <span class="patches__detail-slot">P11</span>
+            <span class="patches__detail-name">Strings A</span>
+          </h3>
+        </header>
+
+        <div class="patches__detail-body">
+
+          <!-- header parameter strip -->
+          <div>
+            <span class="ac-panel-label" style="display: block; margin-bottom: var(--ac-space-3);">§ Patch parameters</span>
+            <div class="patches__param-grid">
+              <div class="patches__param">
+                <span class="patches__param-label">Bender Range</span>
+                <span class="patches__param-value"><strong>±2</strong><span class="patches__param-unit">semi</span></span>
+              </div>
+              <div class="patches__param">
+                <span class="patches__param-label">Aftertouch Sens</span>
+                <span class="patches__param-value"><strong>+24</strong></span>
+              </div>
+              <div class="patches__param">
+                <span class="patches__param-label">Key Mode</span>
+                <span class="patches__param-value">Split</span>
+              </div>
+              <div class="patches__param">
+                <span class="patches__param-label">Velocity Threshold</span>
+                <span class="patches__param-value"><strong>064</strong></span>
+              </div>
+              <div class="patches__param">
+                <span class="patches__param-label">Voice Reserve</span>
+                <span class="patches__param-value"><strong>04</strong> / 16</span>
+              </div>
+              <div class="patches__param">
+                <span class="patches__param-label">MIDI Channel</span>
+                <span class="patches__param-value"><strong>01</strong></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- tone layers -->
+          <div>
+            <span class="ac-panel-label" style="display: block; margin-bottom: var(--ac-space-3);">§ Tone layers · 2</span>
+            <div class="patches__layer-stack">
+
+              <!-- Tone Layer 1 -->
+              <div class="patches__layer">
+                <div class="patches__layer-head">
+                  <span class="patches__layer-eyebrow">Layer 1 · lower</span>
+                  <span class="patches__layer-tone-ref">
+                    Tone <span class="patches__layer-tone-slot">09</span>
+                    <span class="patches__layer-tone-name">— STR-A1</span>
+                    <a class="patches__layer-tone-link" href="#">Edit tone →</a>
+                  </span>
+                </div>
+                <div class="patches__range">
+                  <span class="patches__range-label">Key range</span>
+                  <div class="patches__range-bar" role="img" aria-label="Key range C-1 to B2">
+                    <span class="patches__range-tick patches__range-tick--start">C-1</span>
+                    <span class="patches__range-tick patches__range-tick--mid">C3</span>
+                    <span class="patches__range-tick patches__range-tick--end">G9</span>
+                    <span class="patches__range-fill" style="left: 0%; width: 49%;"></span>
+                  </div>
+                  <span class="patches__range-readout"><strong>C-1</strong> → <strong>B2</strong></span>
+                </div>
+                <div class="patches__range">
+                  <span class="patches__range-label">Velocity</span>
+                  <div class="patches__range-bar" role="img" aria-label="Velocity range 0 to 127">
+                    <span class="patches__range-tick patches__range-tick--start">0</span>
+                    <span class="patches__range-tick patches__range-tick--mid">64</span>
+                    <span class="patches__range-tick patches__range-tick--end">127</span>
+                    <span class="patches__range-fill" style="left: 0%; width: 100%;"></span>
+                  </div>
+                  <span class="patches__range-readout"><strong>000</strong> → <strong>127</strong></span>
+                </div>
+              </div>
+
+              <!-- Tone Layer 2 -->
+              <div class="patches__layer">
+                <div class="patches__layer-head">
+                  <span class="patches__layer-eyebrow">Layer 2 · upper</span>
+                  <span class="patches__layer-tone-ref">
+                    Tone <span class="patches__layer-tone-slot">10</span>
+                    <span class="patches__layer-tone-name">— STR-A2</span>
+                    <a class="patches__layer-tone-link" href="#">Edit tone →</a>
+                  </span>
+                </div>
+                <div class="patches__range">
+                  <span class="patches__range-label">Key range</span>
+                  <div class="patches__range-bar" role="img" aria-label="Key range C3 to G9">
+                    <span class="patches__range-tick patches__range-tick--start">C-1</span>
+                    <span class="patches__range-tick patches__range-tick--mid">C3</span>
+                    <span class="patches__range-tick patches__range-tick--end">G9</span>
+                    <span class="patches__range-fill" style="left: 49%; width: 51%;"></span>
+                  </div>
+                  <span class="patches__range-readout"><strong>C3</strong> → <strong>G9</strong></span>
+                </div>
+                <div class="patches__range">
+                  <span class="patches__range-label">Velocity</span>
+                  <div class="patches__range-bar" role="img" aria-label="Velocity range 0 to 127">
+                    <span class="patches__range-tick patches__range-tick--start">0</span>
+                    <span class="patches__range-tick patches__range-tick--mid">64</span>
+                    <span class="patches__range-tick patches__range-tick--end">127</span>
+                    <span class="patches__range-fill" style="left: 0%; width: 100%;"></span>
+                  </div>
+                  <span class="patches__range-readout"><strong>000</strong> → <strong>127</strong></span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- performance params -->
+          <div>
+            <h3 style="margin: 0 0 var(--ac-space-3); font-size: var(--ac-text-h4);">Performance parameters</h3>
+            <div class="patches__perf-grid">
+              <div class="patches__perf-row">
+                <span class="patches__param-label">Patch Volume</span>
+                <span class="patches__param-value"><strong>120</strong> / 127</span>
+              </div>
+              <div class="patches__perf-row">
+                <span class="patches__param-label">Patch Pan</span>
+                <span class="patches__param-value">Centre</span>
+              </div>
+              <div class="patches__perf-row">
+                <span class="patches__param-label">Detune</span>
+                <span class="patches__param-value"><strong>+04</strong><span class="patches__param-unit">cents</span></span>
+              </div>
+              <div class="patches__perf-row">
+                <span class="patches__param-label">Output</span>
+                <span class="patches__param-value">Mix L/R</span>
+              </div>
+              <div class="patches__perf-row">
+                <span class="patches__param-label">Portamento</span>
+                <span class="patches__param-value">Off</span>
+              </div>
+              <div class="patches__perf-row">
+                <span class="patches__param-label">Mono / Poly</span>
+                <span class="patches__param-value">Poly</span>
+              </div>
+              <div class="patches__perf-row">
+                <span class="patches__param-label">Hold pedal</span>
+                <span class="patches__param-value">CC 64</span>
+              </div>
+              <div class="patches__perf-row">
+                <span class="patches__param-label">Mod wheel</span>
+                <span class="patches__param-value">LFO depth</span>
+              </div>
+              <div class="patches__perf-row">
+                <span class="patches__param-label">Coarse tune</span>
+                <span class="patches__param-value"><strong>+00</strong><span class="patches__param-unit">semi</span></span>
+              </div>
+              <div class="patches__perf-row">
+                <span class="patches__param-label">Fine tune</span>
+                <span class="patches__param-value"><strong>+00</strong><span class="patches__param-unit">cents</span></span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- footer action row -->
+        <footer class="patches__detail-actions">
+          <span class="patches__detail-actions-status">
+            <span class="ac-signal-led" aria-hidden="true" style="background: hsl(var(--ac-color-warning)); box-shadow: 0 0 8px hsl(var(--ac-color-warning) / 0.7);"></span>
+            <strong>3 unsaved changes</strong> · last edit 14:18:04
+          </span>
+          <button type="button" class="ac-btn ac-btn--ghost">Restore</button>
+          <button type="button" class="ac-btn ac-btn--primary">Save changes</button>
+        </footer>
+
+      </article>
+
+    </div><!-- /.patches__split -->
+
+  </section>
+
+  <!-- ===== EXPLORATION FOOTER ===== -->
+  <footer class="exploration-footer">
+    <p style="margin: 0;">
+      Phase 9 Task 4 · PatchesPage Mockup v1 · 2026-05-08 · s550-support feature ·
+      Language reference: <a href="01-design-language.html">01-design-language.html</a> ·
+      Companion mockups: <a href="02-homepage.html">02-homepage.html</a>
+    </p>
+    <p style="margin: var(--ac-space-2) 0 0;">
+      Eliminates the per-bank "(Re)load: P11-P18 …" toolbar. Refresh-from-device lives on the title row as a single icon-button (CRUD Affordances rule). Empty-state card removed — first patch (P11 "Strings A") is auto-selected. Detail pane composes parameters · two tone layers · key/velocity ranges · performance grid.
+    </p>
+  </footer>
+
+</div><!-- /.app-shell__page -->
+
+<aside class="app-shell__crt" aria-label="Device video output">
+  <div class="ac-crt-monitor ac-crt-monitor--compact">
+    <div class="ac-crt-monitor__bezel">
+      <div class="ac-crt-monitor__screen">
+        <div class="ac-crt-monitor__chrome">
+          <span class="ac-crt-btn ac-crt-btn--filled">MODE</span>
+          <span class="ac-crt-btn ac-crt-btn--filled">MENU</span>
+          <span class="ac-crt-btn ac-crt-btn--blank"></span>
+          <span class="ac-crt-btn ac-crt-btn--blank"></span>
+          <span class="ac-crt-btn ac-crt-btn--filled">Dec</span>
+          <span class="ac-crt-btn ac-crt-btn--filled">Inc</span>
+        </div>
+        <div class="ac-crt-monitor__sub-row">
+          <span>Last Note Priority</span>
+          <span>PLAY-Standard</span>
+        </div>
+        <table class="ac-crt-table">
+          <thead>
+            <tr><th></th><th>VAL</th><th>CH</th><th>Patch</th><th></th><th>Out</th><th>Level</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>A</td><td>*</td><td>1</td><td><span class="ac-crt-cell--selected">I11</span></td><td>MINI</td><td>1</td><td>127</td></tr>
+            <tr><td>B</td><td>*</td><td>2</td><td>I12</td><td></td><td>1</td><td>127</td></tr>
+            <tr><td>C</td><td>*</td><td>3</td><td>I13</td><td></td><td>1</td><td>127</td></tr>
+            <tr><td>D</td><td>*</td><td>4</td><td>I14</td><td></td><td>1</td><td>127</td></tr>
+            <tr><td>E</td><td>*</td><td>5</td><td>I15</td><td></td><td>1</td><td>127</td></tr>
+            <tr><td>F</td><td>*</td><td>6</td><td>I16</td><td></td><td>1</td><td>127</td></tr>
+            <tr><td>G</td><td>*</td><td>7</td><td>I17</td><td></td><td>1</td><td>127</td></tr>
+            <tr><td>H</td><td>*</td><td>8</td><td>I18</td><td></td><td>1</td><td>127</td></tr>
+          </tbody>
+        </table>
+        <div class="ac-crt-monitor__display">
+          <span>Display</span>
+          <span>I1<span class="ac-crt-cursor">_</span></span>
+        </div>
+        <div class="ac-crt-monitor__lookup">
+          <div>I11 MINI</div><div>I15</div>
+          <div>I12</div><div>I16</div>
+          <div>I13</div><div>I17</div>
+          <div>I14</div><div>I18</div>
+        </div>
+      </div>
+    </div>
+    <div class="ac-crt-monitor__caption">
+      <span>S-550 · Video out · NTSC</span>
+      <span><span class="ac-signal-led" aria-hidden="true" style="margin-right: 6px; vertical-align: middle;"></span>Live</span>
+    </div>
+  </div>
+</aside>
+
+</div><!-- /.app-shell -->
+</main>
+
+<script>
+  // tiny: respect reduced-motion at runtime so a user toggling system prefs
+  // mid-page doesn't get stuck with stale animation state
+  (function () {
+    var mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    function apply() {
+      document.documentElement.style.setProperty('--ac-motion', mq.matches ? '0' : '1');
+    }
+    apply();
+    if (mq.addEventListener) mq.addEventListener('change', apply);
+  })();
+</script>
+</body>
+</html>

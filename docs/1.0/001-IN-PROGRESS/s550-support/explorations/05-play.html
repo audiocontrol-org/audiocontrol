@@ -1,0 +1,1930 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Phase 9 Task 2 — PlayPage Mockup v1</title>
+<style>
+  /* ============================================================
+     DESIGN TOKENS — `--ac-*` namespace
+     Direction:
+       Dark-only, blue ink (NOT amber-cast). s330 blue is dominant
+       where audiocontrol.org would have used phosphor amber.
+       HSL fragments enable `hsl(var(--ac-color-*) / alpha)` composition.
+     ============================================================ */
+  :root {
+    color-scheme: dark;
+
+    /* --- color tokens (HSL fragments, no hsl() wrapper) --------- */
+    --ac-color-bg:               220 24% 7%;     /* warm-cool near-black, faint blue cast */
+    --ac-color-surface:          220 18% 11%;    /* card surface */
+    --ac-color-surface-hover:    220 18% 14%;    /* card hover */
+    --ac-color-fg:               215 18% 92%;    /* off-white, slight blue cast */
+    --ac-color-fg-muted:         220 12% 60%;    /* secondary text */
+    --ac-color-fg-subtle:        220 10% 42%;    /* tertiary text / placeholders */
+    --ac-color-border:           220 18% 22%;    /* hairline default */
+    --ac-color-border-hover:     220 18% 32%;    /* hairline emphasis */
+    --ac-color-accent:           215 78% 58%;    /* s330 BLUE — the identity */
+    --ac-color-accent-soft:      215 78% 68%;    /* hover lift */
+    --ac-color-highlight:        210 96% 72%;    /* keyline highlight */
+    --ac-color-danger:           358 72% 58%;    /* destructive */
+    --ac-color-warning:          38  80% 58%;    /* caution (used sparingly) */
+    --ac-color-success:          152 55% 52%;    /* available / done */
+
+    /* --- CRT monitor tokens ------------------------------------ */
+    --ac-crt-bezel:    30 6% 6%;
+    --ac-crt-frame:    30 5% 12%;
+    --ac-crt-bg:       30 4% 22%;
+    --ac-crt-fg-dim:   35 6% 68%;
+    --ac-crt-fg:       35 8% 88%;
+    --ac-crt-fg-active: 35 12% 96%;
+    --ac-crt-btn-fill: 30 5% 80%;
+    --ac-crt-btn-text: 30 8% 12%;
+
+    /* --- typography role tokens -------------------------------- */
+    --ac-font-display: "Departure Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --ac-font-body:    "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --ac-font-mono:    "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --ac-font-heading: var(--ac-font-display);
+
+    /* --- type scale -------------------------------------------- */
+    --ac-text-h1: clamp(1.75rem, 3.4vw, 2.35rem);
+    --ac-text-h2: 1.45rem;
+    --ac-text-h3: 1.15rem;
+    --ac-text-h4: 1rem;
+    --ac-text-eyebrow: 0.78rem;
+    --ac-text-body: 1rem;
+    --ac-text-small: 0.875rem;
+    --ac-text-tiny: 0.75rem;
+
+    /* --- weight tokens ----------------------------------------- */
+    --ac-fw-display: 400;
+    --ac-fw-body:    400;
+    --ac-fw-medium:  500;
+    --ac-fw-semibold:600;
+    --ac-fw-bold:    700;
+
+    /* --- letter-spacing ---------------------------------------- */
+    --ac-tracking-display: 0.01em;
+    --ac-tracking-eyebrow: 0.14em;
+    --ac-tracking-ticker:  0.12em;
+
+    /* --- spacing scale ----------------------------------------- */
+    --ac-space-1: 0.25rem;
+    --ac-space-2: 0.5rem;
+    --ac-space-3: 0.75rem;
+    --ac-space-4: 1rem;
+    --ac-space-5: 1.25rem;
+    --ac-space-6: 1.5rem;
+    --ac-space-7: 2rem;
+    --ac-space-8: 2.75rem;
+
+    /* --- layout tokens ----------------------------------------- */
+    --ac-container-max-width: 1400px;
+    --ac-container-padding:   2rem;
+    --ac-measure-reading:     36rem;
+    --ac-measure-narrow:      28rem;
+
+    /* --- rule weights ------------------------------------------ */
+    --ac-rule-hairline: 1px;
+    --ac-rule-medium:   2px;
+    --ac-rule-heavy:    3px;
+
+    /* --- shadow tokens ----------------------------------------- */
+    --ac-shadow-card: 0 0 0 1px hsl(var(--ac-color-border)),
+                      0 10px 36px -12px hsl(220 40% 0% / 0.65);
+    --ac-shadow-card-hover:
+      0 0 0 1px hsl(var(--ac-color-accent) / 0.5),
+      0 14px 40px -10px hsl(var(--ac-color-accent) / 0.18),
+      0 4px 18px -6px hsl(220 40% 0% / 0.55);
+
+    --ac-glow-accent: 0 0 14px hsl(var(--ac-color-accent) / 0.45),
+                      0 0 2px  hsl(var(--ac-color-accent) / 0.65);
+
+    /* --- motion tokens ----------------------------------------- */
+    --ac-duration-fast:    120ms;
+    --ac-duration-default: 220ms;
+    --ac-duration-slow:    420ms;
+    --ac-easing-default:   cubic-bezier(0.2, 0.6, 0.2, 1);
+
+    /* --- selection -------------------------------------------- */
+  }
+
+  ::selection {
+    background-color: hsl(var(--ac-color-accent) / 0.35);
+    color: hsl(var(--ac-color-fg));
+  }
+
+  /* ============================================================
+     CRT MONITOR — see 01-design-language.html § 08
+     ============================================================ */
+  .ac-crt-monitor {
+    background: hsl(var(--ac-crt-bezel));
+    padding: var(--ac-space-3);
+    border-radius: 6px;
+    box-shadow:
+      0 0 0 1px hsl(var(--ac-color-border)),
+      0 14px 40px -10px hsl(220 40% 0% / 0.6),
+      inset 0 1px 0 hsl(35 8% 30% / 0.4);
+  }
+  .ac-crt-monitor__bezel {
+    background: hsl(var(--ac-crt-frame));
+    padding: var(--ac-space-3);
+    border-radius: 4px;
+    box-shadow: inset 0 0 0 1px hsl(30 4% 4%);
+  }
+  .ac-crt-monitor__screen {
+    position: relative;
+    background: hsl(var(--ac-crt-bg));
+    color: hsl(var(--ac-crt-fg-dim));
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    line-height: 1.35;
+    padding: var(--ac-space-4) var(--ac-space-5) var(--ac-space-5);
+    border-radius: 2px;
+    overflow: hidden;
+    background-image:
+      linear-gradient(180deg, transparent 0, hsl(220 14% 5% / 0.18) 50%, transparent 100%),
+      repeating-linear-gradient(180deg, transparent 0, transparent 2px, hsl(30 4% 0% / 0.08) 2px, hsl(30 4% 0% / 0.08) 3px);
+  }
+  .ac-crt-monitor__chrome {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: var(--ac-space-2);
+    margin-bottom: var(--ac-space-2);
+  }
+  .ac-crt-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 1.5rem;
+    border: 1px solid hsl(var(--ac-crt-fg-dim) / 0.4);
+    background: transparent;
+    color: hsl(var(--ac-crt-fg));
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    letter-spacing: 0.04em;
+    padding-inline: var(--ac-space-2);
+  }
+  .ac-crt-btn--filled { background: hsl(var(--ac-crt-btn-fill)); color: hsl(var(--ac-crt-btn-text)); border-color: hsl(var(--ac-crt-btn-fill)); }
+  .ac-crt-btn--blank { border-color: hsl(var(--ac-crt-fg-dim) / 0.25); background: hsl(var(--ac-crt-fg-dim) / 0.12); }
+  .ac-crt-monitor__sub-row {
+    display: flex; justify-content: space-between;
+    color: hsl(var(--ac-crt-fg));
+    margin-bottom: var(--ac-space-3);
+    padding-bottom: var(--ac-space-2);
+  }
+  .ac-crt-table {
+    width: 100%; border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--ac-crt-fg-dim));
+  }
+  .ac-crt-table thead th { text-align: left; color: hsl(var(--ac-crt-fg)); font-weight: 400; padding-block: 1px; }
+  .ac-crt-table thead th:nth-child(2),
+  .ac-crt-table thead th:nth-child(3),
+  .ac-crt-table thead th:nth-child(6),
+  .ac-crt-table thead th:nth-child(7) { text-align: right; }
+  .ac-crt-table tbody td { padding-block: 1px; color: hsl(var(--ac-crt-fg-dim)); }
+  .ac-crt-table tbody td:nth-child(2),
+  .ac-crt-table tbody td:nth-child(3),
+  .ac-crt-table tbody td:nth-child(6),
+  .ac-crt-table tbody td:nth-child(7) { text-align: right; }
+  .ac-crt-table tbody tr:first-child td { color: hsl(var(--ac-crt-fg)); }
+  .ac-crt-cell--selected {
+    background: hsl(var(--ac-crt-fg-dim));
+    color: hsl(var(--ac-crt-bg));
+    padding-inline: 4px; margin-inline: -4px; display: inline-block;
+  }
+  .ac-crt-monitor__display {
+    margin-top: var(--ac-space-4);
+    color: hsl(var(--ac-crt-fg));
+    display: flex; gap: var(--ac-space-5);
+  }
+  .ac-crt-cursor {
+    display: inline-block; width: 0.6em;
+    background: hsl(var(--ac-crt-fg)); color: hsl(var(--ac-crt-bg));
+    animation: ac-crt-blink 1s steps(1) infinite;
+  }
+  @keyframes ac-crt-blink { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .ac-crt-cursor { animation: none; } }
+  .ac-crt-monitor__lookup {
+    margin-top: var(--ac-space-3);
+    display: grid; grid-template-columns: 1fr 1fr;
+    column-gap: var(--ac-space-7); row-gap: 1px;
+    color: hsl(var(--ac-crt-fg-dim));
+    padding-left: var(--ac-space-4);
+  }
+  .ac-crt-monitor__caption {
+    margin-top: var(--ac-space-3);
+    display: flex; justify-content: space-between;
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .ac-crt-monitor--compact .ac-crt-monitor__screen {
+    font-size: var(--ac-text-tiny);
+    padding: var(--ac-space-3) var(--ac-space-4) var(--ac-space-4);
+  }
+  .ac-crt-monitor--compact .ac-crt-btn { height: 1.25rem; }
+
+  /* ============================================================
+     APP SHELL — page content + persistent CRT dock
+     ============================================================ */
+  .app-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--ac-space-7);
+    padding-block: var(--ac-space-6) var(--ac-space-8);
+  }
+  .app-shell__crt {
+    align-self: start;
+  }
+  @media (min-width: 1100px) {
+    .app-shell {
+      grid-template-columns: minmax(0, 1fr) 30rem;
+    }
+    .app-shell__crt {
+      position: sticky;
+      top: var(--ac-space-4);
+    }
+  }
+
+  /* ============================================================
+     RESETS
+     ============================================================ */
+  *, *::before, *::after { box-sizing: border-box; }
+  html { font-size: 16px; }
+  body {
+    margin: 0;
+    background: hsl(var(--ac-color-bg));
+    color: hsl(var(--ac-color-fg));
+    font-family: var(--ac-font-body);
+    font-size: var(--ac-text-body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* faint instrument-grid background — extremely subtle, not a real grid */
+    background-image:
+      linear-gradient(hsl(var(--ac-color-border) / 0.20) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--ac-color-border) / 0.20) 1px, transparent 1px);
+    background-size: 40px 40px, 40px 40px;
+    background-position: -1px -1px;
+    background-attachment: fixed;
+  }
+
+  /* ============================================================
+     CONTAINER
+     ============================================================ */
+  .ac-container {
+    max-width: var(--ac-container-max-width);
+    margin: 0 auto;
+    padding: 0 var(--ac-container-padding);
+  }
+
+  /* ============================================================
+     PAGE BANNER — self-identifying header for this exploration
+     ============================================================ */
+  .exploration-banner {
+    border-bottom: var(--ac-rule-medium) solid hsl(var(--ac-color-accent));
+    background:
+      linear-gradient(180deg,
+        hsl(var(--ac-color-bg)) 0%,
+        hsl(var(--ac-color-surface) / 0.7) 100%);
+    box-shadow: 0 1px 0 hsl(var(--ac-color-accent) / 0.25);
+  }
+  .exploration-banner__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--ac-space-4);
+    padding-block: var(--ac-space-6);
+  }
+  .exploration-banner__title {
+    font-family: var(--ac-font-display);
+    font-weight: var(--ac-fw-display);
+    font-size: var(--ac-text-h2);
+    letter-spacing: var(--ac-tracking-display);
+    margin: 0;
+  }
+  .exploration-banner__meta {
+    display: flex;
+    gap: var(--ac-space-4);
+    align-items: center;
+  }
+  .exploration-banner__chip {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-accent));
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-accent) / 0.6);
+    padding: var(--ac-space-1) var(--ac-space-3);
+    border-radius: 2px;
+  }
+  .exploration-banner__notes {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+
+  /* ============================================================
+     SECTION SCAFFOLD + DIMENSION BRACKET
+     ============================================================ */
+  .ac-section {
+    padding-block: var(--ac-space-8);
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+
+  /* eyebrow / panel-label */
+  .ac-panel-label {
+    display: inline-block;
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .ac-panel-label--accent {
+    color: hsl(var(--ac-color-accent));
+    text-shadow: var(--ac-glow-accent);
+  }
+
+  /* dimension-bracket — corner L hairlines, 18×18px, 2px stroke */
+  .ac-dimension-bracket {
+    position: relative;
+    padding-top: var(--ac-space-5);
+    padding-inline: var(--ac-space-4);
+  }
+  .ac-dimension-bracket::before,
+  .ac-dimension-bracket::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    width: 18px;
+    height: 18px;
+    border-color: hsl(var(--ac-color-accent) / 0.6);
+    border-style: solid;
+    border-width: 0;
+  }
+  .ac-dimension-bracket::before {
+    left: 0;
+    border-top-width: var(--ac-rule-medium);
+    border-left-width: var(--ac-rule-medium);
+  }
+  .ac-dimension-bracket::after {
+    right: 0;
+    border-top-width: var(--ac-rule-medium);
+    border-right-width: var(--ac-rule-medium);
+  }
+
+  /* ============================================================
+     HEADINGS
+     ============================================================ */
+  h1, .ac-h1 {
+    font-family: var(--ac-font-display);
+    font-weight: var(--ac-fw-display);
+    font-size: var(--ac-text-h1);
+    line-height: 1.18;
+    letter-spacing: var(--ac-tracking-display);
+    margin: var(--ac-space-2) 0 var(--ac-space-5);
+  }
+  h2, .ac-h2 {
+    position: relative;
+    font-family: var(--ac-font-display);
+    font-weight: var(--ac-fw-display);
+    font-size: var(--ac-text-h2);
+    line-height: 1.2;
+    letter-spacing: var(--ac-tracking-display);
+    margin: var(--ac-space-7) 0 var(--ac-space-3);
+    padding-bottom: var(--ac-space-3);
+  }
+  h2::after, .ac-h2::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 2.25rem;
+    height: var(--ac-rule-medium);
+    background: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.45);
+  }
+  h3, .ac-h3 {
+    font-family: var(--ac-font-body);
+    font-weight: var(--ac-fw-semibold);
+    font-size: var(--ac-text-h3);
+    margin: var(--ac-space-6) 0 var(--ac-space-2);
+  }
+  h4, .ac-h4 {
+    font-family: var(--ac-font-body);
+    font-weight: var(--ac-fw-semibold);
+    font-size: var(--ac-text-h4);
+    margin: var(--ac-space-5) 0 var(--ac-space-2);
+  }
+  p, .ac-body { margin: 0 0 var(--ac-space-4); }
+
+  /* mono tabular spec for numeric readouts */
+  .ac-mono-tabular {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+  }
+  .ac-fg-muted { color: hsl(var(--ac-color-fg-muted)); }
+  .ac-fg-subtle { color: hsl(var(--ac-color-fg-subtle)); }
+
+  /* ============================================================
+     LINKS
+     ============================================================ */
+  a, .ac-link {
+    color: hsl(var(--ac-color-accent));
+    text-decoration: none;
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-accent) / 0.35);
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default),
+                color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  a:hover, .ac-link:hover {
+    color: hsl(var(--ac-color-accent-soft));
+    border-bottom-color: hsl(var(--ac-color-accent));
+  }
+  a:focus-visible, .ac-link:focus-visible {
+    outline: var(--ac-rule-medium) solid hsl(var(--ac-color-accent) / 0.6);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* ============================================================
+     CARD-GLOW
+     ============================================================ */
+  .ac-card {
+    padding: var(--ac-space-5);
+    background: hsl(var(--ac-color-surface));
+    box-shadow: var(--ac-shadow-card);
+    transition: box-shadow var(--ac-duration-default) var(--ac-easing-default),
+                background-color var(--ac-duration-default) var(--ac-easing-default);
+    border-radius: 2px;
+  }
+  .ac-card--interactive { cursor: pointer; }
+  .ac-card--interactive:hover {
+    background: hsl(var(--ac-color-surface-hover));
+    box-shadow: var(--ac-shadow-card-hover);
+  }
+  .ac-card--interactive:focus-visible {
+    outline: var(--ac-rule-medium) solid hsl(var(--ac-color-accent) / 0.6);
+    outline-offset: 2px;
+  }
+
+  /* ============================================================
+     SIGNAL LED
+     ============================================================ */
+  .ac-signal-led {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: hsl(var(--ac-color-accent));
+    box-shadow:
+      0 0 8px hsl(var(--ac-color-accent) / 0.7),
+      0 0 2px hsl(var(--ac-color-highlight) / 0.9) inset;
+    animation: ac-signal-pulse 2.4s ease-in-out infinite;
+    vertical-align: middle;
+  }
+  .ac-signal-led--idle {
+    background: hsl(var(--ac-color-fg-subtle));
+    box-shadow: 0 0 0 transparent;
+    animation: none;
+  }
+  .ac-signal-led--danger {
+    background: hsl(var(--ac-color-danger));
+    box-shadow: 0 0 8px hsl(var(--ac-color-danger) / 0.7);
+  }
+  @keyframes ac-signal-pulse {
+    0%, 100% {
+      box-shadow:
+        0 0 8px hsl(var(--ac-color-accent) / 0.65),
+        0 0 2px hsl(var(--ac-color-highlight) / 0.9) inset;
+      opacity: 1;
+    }
+    50% {
+      box-shadow:
+        0 0 16px hsl(var(--ac-color-accent) / 0.95),
+        0 0 3px hsl(var(--ac-color-highlight) / 1) inset;
+      opacity: 0.85;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ac-signal-led { animation: none; }
+  }
+
+  /* ============================================================
+     FORMS — ac-input / ac-select / ac-checkbox / ac-button
+     ============================================================ */
+  .ac-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-2);
+    margin-block: var(--ac-space-3);
+  }
+  .ac-field__label {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+
+  .ac-input,
+  .ac-select {
+    width: 100%;
+    background: hsl(var(--ac-color-bg));
+    color: hsl(var(--ac-color-fg));
+    font-family: var(--ac-font-body);
+    font-size: var(--ac-text-body);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    padding: var(--ac-space-2) var(--ac-space-3);
+    border-radius: 2px;
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default),
+                box-shadow var(--ac-duration-fast) var(--ac-easing-default),
+                background-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .ac-input::placeholder { color: hsl(var(--ac-color-fg-subtle)); }
+  .ac-input:hover,
+  .ac-select:hover {
+    border-color: hsl(var(--ac-color-border-hover));
+  }
+  .ac-input:focus-visible,
+  .ac-select:focus-visible {
+    outline: none;
+    border-color: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 0 3px hsl(var(--ac-color-accent) / 0.25);
+    background: hsl(var(--ac-color-surface) / 0.5);
+  }
+  .ac-input:disabled,
+  .ac-select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    border-color: hsl(var(--ac-color-border) / 0.5);
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .ac-input--mono { font-family: var(--ac-font-mono); }
+
+  /* select chevron */
+  .ac-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%237ea0d6' stroke-width='1.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right var(--ac-space-3) center;
+    background-size: 12px 8px;
+    padding-right: calc(var(--ac-space-3) * 2 + 12px);
+  }
+
+  /* checkbox */
+  .ac-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-3);
+    cursor: pointer;
+    user-select: none;
+  }
+  .ac-checkbox__input {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1rem;
+    height: 1rem;
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-bg));
+    border-radius: 2px;
+    position: relative;
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default),
+                background-color var(--ac-duration-fast) var(--ac-easing-default),
+                box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+    flex-shrink: 0;
+  }
+  .ac-checkbox__input:hover {
+    border-color: hsl(var(--ac-color-border-hover));
+  }
+  .ac-checkbox__input:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px hsl(var(--ac-color-accent) / 0.25);
+    border-color: hsl(var(--ac-color-accent));
+  }
+  .ac-checkbox__input:checked {
+    border-color: hsl(var(--ac-color-accent));
+    background: hsl(var(--ac-color-accent));
+  }
+  .ac-checkbox__input:checked::after {
+    content: "";
+    position: absolute;
+    top: 1px;
+    left: 4px;
+    width: 5px;
+    height: 9px;
+    border: solid hsl(var(--ac-color-bg));
+    border-width: 0 var(--ac-rule-medium) var(--ac-rule-medium) 0;
+    transform: rotate(45deg);
+  }
+  .ac-checkbox__input:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .ac-checkbox__label {
+    font-family: var(--ac-font-body);
+    font-size: var(--ac-text-body);
+  }
+
+  /* buttons */
+  .ac-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ac-space-2);
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    line-height: 1;
+    padding: var(--ac-space-3) var(--ac-space-5);
+    border-radius: 2px;
+    border: var(--ac-rule-hairline) solid transparent;
+    cursor: pointer;
+    background: transparent;
+    color: hsl(var(--ac-color-fg));
+    transition: background-color var(--ac-duration-fast) var(--ac-easing-default),
+                border-color var(--ac-duration-fast) var(--ac-easing-default),
+                color var(--ac-duration-fast) var(--ac-easing-default),
+                box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .ac-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px hsl(var(--ac-color-accent) / 0.4);
+  }
+  .ac-btn:disabled,
+  .ac-btn[aria-disabled="true"] {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  /* primary */
+  .ac-btn--primary {
+    background: hsl(var(--ac-color-accent));
+    color: hsl(var(--ac-color-bg));
+    border-color: hsl(var(--ac-color-accent));
+  }
+  .ac-btn--primary:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: hsl(var(--ac-color-accent-soft));
+    border-color: hsl(var(--ac-color-accent-soft));
+    box-shadow: 0 0 18px hsl(var(--ac-color-accent) / 0.3);
+  }
+
+  /* secondary */
+  .ac-btn--secondary {
+    background: transparent;
+    color: hsl(var(--ac-color-fg));
+    border-color: hsl(var(--ac-color-border-hover));
+  }
+  .ac-btn--secondary:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: hsl(var(--ac-color-surface-hover));
+    border-color: hsl(var(--ac-color-accent));
+    color: hsl(var(--ac-color-accent));
+  }
+
+  /* ghost */
+  .ac-btn--ghost {
+    background: transparent;
+    color: hsl(var(--ac-color-fg-muted));
+    border-color: transparent;
+  }
+  .ac-btn--ghost:hover:not(:disabled):not([aria-disabled="true"]) {
+    color: hsl(var(--ac-color-fg));
+    background: hsl(var(--ac-color-surface) / 0.5);
+  }
+
+  /* danger */
+  .ac-btn--danger {
+    background: transparent;
+    color: hsl(var(--ac-color-danger));
+    border-color: hsl(var(--ac-color-danger) / 0.6);
+  }
+  .ac-btn--danger:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: hsl(var(--ac-color-danger) / 0.12);
+    border-color: hsl(var(--ac-color-danger));
+  }
+
+  .ac-btn--sm {
+    padding: var(--ac-space-2) var(--ac-space-4);
+    font-size: var(--ac-text-tiny);
+  }
+
+  /* ============================================================
+     PROGRESS + SPINNER
+     ============================================================ */
+  .ac-progress {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-2);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-surface) / 0.6);
+    padding: var(--ac-space-4);
+    border-radius: 2px;
+  }
+  .ac-progress__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--ac-space-3);
+  }
+  .ac-progress__label {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .ac-progress__pct {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--ac-color-accent));
+  }
+  .ac-progress__bar {
+    position: relative;
+    height: 4px;
+    background: hsl(var(--ac-color-bg));
+    overflow: hidden;
+    border-radius: 1px;
+  }
+  .ac-progress__fill {
+    position: absolute;
+    inset: 0;
+    width: var(--ac-progress, 0%);
+    background: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 12px hsl(var(--ac-color-accent) / 0.5);
+    transition: width var(--ac-duration-default) var(--ac-easing-default);
+  }
+  .ac-progress__meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--ac-space-3);
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    font-variant-numeric: tabular-nums;
+  }
+  .ac-progress__meta-item { display: flex; flex-direction: column; gap: 2px; }
+  .ac-progress__meta-label {
+    font-family: var(--ac-font-display);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .ac-progress__meta-value { color: hsl(var(--ac-color-fg)); }
+
+  /* spinner */
+  .ac-spinner {
+    display: inline-block;
+    width: 1.25rem;
+    height: 1.25rem;
+    border: var(--ac-rule-medium) solid hsl(var(--ac-color-border));
+    border-top-color: hsl(var(--ac-color-accent));
+    border-radius: 50%;
+    animation: ac-spin 0.9s linear infinite;
+  }
+  .ac-spinner--sm { width: 1rem; height: 1rem; }
+  @keyframes ac-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    .ac-spinner { animation-duration: 4s; }
+  }
+
+  /* ============================================================
+     EYEBROW STATUS-ROW (h2 + metric)
+     ============================================================ */
+  .ac-status-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--ac-space-5);
+    padding-bottom: var(--ac-space-3);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+  .ac-status-row__heading { margin: 0; padding: 0; }
+  .ac-status-row__heading::after { display: none; }
+  .ac-status-row__heading-rule {
+    width: 2.25rem;
+    height: var(--ac-rule-medium);
+    background: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.45);
+    margin-top: var(--ac-space-2);
+  }
+  .ac-status-row__metric {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-2);
+    white-space: nowrap;
+  }
+  .ac-status-row__metric strong {
+    color: hsl(var(--ac-color-accent));
+    font-weight: var(--ac-fw-display);
+    font-family: var(--ac-font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ============================================================
+     UTILITIES
+     ============================================================ */
+  .ac-stack { display: flex; flex-direction: column; gap: var(--ac-space-4); }
+  .ac-row   { display: flex; flex-wrap: wrap; gap: var(--ac-space-4); align-items: center; }
+  .ac-pad-block { padding-block: var(--ac-space-5); }
+  .ac-mt-2 { margin-top: var(--ac-space-2); }
+  .ac-mt-3 { margin-top: var(--ac-space-3); }
+  .ac-mt-4 { margin-top: var(--ac-space-4); }
+  .ac-mt-5 { margin-top: var(--ac-space-5); }
+  .ac-mt-6 { margin-top: var(--ac-space-6); }
+  .ac-mt-7 { margin-top: var(--ac-space-7); }
+  .ac-mb-4 { margin-bottom: var(--ac-space-4); }
+
+  /* ============================================================
+     FOOTER
+     ============================================================ */
+  .exploration-footer {
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    padding-block: var(--ac-space-7);
+    margin-top: var(--ac-space-8);
+    color: hsl(var(--ac-color-fg-muted));
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+  }
+
+  /* ============================================================
+     ===== HOMEPAGE-SCOPED STYLES (shared app chrome) =====
+     Page-specific composition; nothing here introduces new tokens.
+     All values reference --ac-* tokens or layered classes above.
+     ============================================================ */
+
+  /* App chrome — sticky page header at top of editor (drawer trigger lives here) */
+  .homepage__appbar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: hsl(var(--ac-color-bg) / 0.85);
+    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+  .homepage__appbar-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ac-space-5);
+    padding-block: var(--ac-space-4);
+  }
+  .homepage__brand {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--ac-space-3);
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg));
+  }
+  .homepage__brand-mark {
+    color: hsl(var(--ac-color-accent));
+    text-shadow: var(--ac-glow-accent);
+  }
+  .homepage__brand-divider {
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .homepage__brand-device {
+    font-family: var(--ac-font-mono);
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--ac-color-fg-muted));
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .homepage__nav {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-1);
+  }
+  .homepage__nav-link {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+    padding: var(--ac-space-2) var(--ac-space-3);
+    border-bottom: 0;
+    border-radius: 2px;
+  }
+  .homepage__nav-link:hover {
+    color: hsl(var(--ac-color-fg));
+    background: hsl(var(--ac-color-surface) / 0.5);
+    border-bottom: 0;
+  }
+  .homepage__nav-link[aria-current="page"] {
+    color: hsl(var(--ac-color-accent));
+    background: hsl(var(--ac-color-accent) / 0.1);
+    border-bottom: 0;
+  }
+
+  .homepage__appbar-status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-3);
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-muted));
+    padding: var(--ac-space-2) var(--ac-space-3);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: 2px;
+    background: hsl(var(--ac-color-surface) / 0.5);
+    cursor: pointer;
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .homepage__appbar-status:hover {
+    border-color: hsl(var(--ac-color-border-hover));
+  }
+  .homepage__appbar-status--connected {
+    border-color: hsl(var(--ac-color-accent) / 0.4);
+  }
+
+  /* ============================================================
+     ===== AC-RANGE — input[type=range] primitive =====
+     NOTE: this is a NEW primitive introduced by the PlayPage
+     mockup (sliders for level). Promote to the language file
+     (01-design-language.html) and to library.css in the editor
+     after review. Mentioned in the reply notes.
+     ============================================================ */
+  .ac-range {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    background: transparent;
+    height: 1.25rem;
+    cursor: pointer;
+  }
+  .ac-range:focus { outline: none; }
+  .ac-range:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 3px hsl(var(--ac-color-accent) / 0.35),
+                0 0 8px hsl(var(--ac-color-accent) / 0.5);
+  }
+  .ac-range:focus-visible::-moz-range-thumb {
+    box-shadow: 0 0 0 3px hsl(var(--ac-color-accent) / 0.35),
+                0 0 8px hsl(var(--ac-color-accent) / 0.5);
+  }
+  /* webkit track */
+  .ac-range::-webkit-slider-runnable-track {
+    height: 2px;
+    background: hsl(var(--ac-color-border));
+    border-radius: 1px;
+  }
+  .ac-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    margin-top: -6px;
+    background: hsl(var(--ac-color-accent));
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-highlight));
+    border-radius: 2px;
+    box-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.5);
+    transition: box-shadow var(--ac-duration-fast) var(--ac-easing-default),
+                transform var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .ac-range:hover::-webkit-slider-thumb { transform: scale(1.08); }
+  /* firefox track */
+  .ac-range::-moz-range-track {
+    height: 2px;
+    background: hsl(var(--ac-color-border));
+    border-radius: 1px;
+  }
+  .ac-range::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    background: hsl(var(--ac-color-accent));
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-highlight));
+    border-radius: 2px;
+    box-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.5);
+  }
+  .ac-range:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ============================================================
+     ===== PLAY-PAGE-SCOPED STYLES =====
+     All selectors namespaced under `.play`.
+     ============================================================ */
+
+  /* Performance-controls strip — All Notes Off + Reset + tempo */
+  .play__controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--ac-space-5);
+    align-items: center;
+    margin-top: var(--ac-space-5);
+    padding: var(--ac-space-4) var(--ac-space-5);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-surface));
+    box-shadow: var(--ac-shadow-card);
+    border-radius: 2px;
+  }
+  @media (max-width: 720px) {
+    .play__controls {
+      grid-template-columns: 1fr;
+    }
+  }
+  .play__controls-actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: var(--ac-space-3);
+    align-items: center;
+  }
+  .play__controls-clock {
+    display: inline-flex;
+    flex-direction: column;
+    gap: var(--ac-space-1);
+    align-items: flex-end;
+    padding-left: var(--ac-space-5);
+    border-left: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+  @media (max-width: 720px) {
+    .play__controls-clock {
+      align-items: flex-start;
+      padding-left: 0;
+      padding-top: var(--ac-space-3);
+      border-left: 0;
+      border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    }
+  }
+  .play__controls-clock-label {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .play__controls-clock-value {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-h3);
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--ac-color-fg));
+  }
+  .play__controls-clock-value strong {
+    color: hsl(var(--ac-color-accent));
+    font-weight: var(--ac-fw-display);
+  }
+  .play__controls-clock-source {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-subtle));
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+  }
+
+  /* Parts-grid container */
+  .play__parts {
+    margin-top: var(--ac-space-6);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-surface));
+    box-shadow: var(--ac-shadow-card);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  /* Header row — descriptive labels (not VAL/CH/Out jargon) */
+  .play__parts-header,
+  .play__part {
+    display: grid;
+    grid-template-columns:
+      2.25rem        /* part letter */
+      4.5rem         /* activity */
+      4rem           /* channel */
+      minmax(0, 1fr) /* patch */
+      4.5rem         /* output */
+      minmax(0, 11rem); /* level */
+    gap: var(--ac-space-4);
+    align-items: center;
+  }
+  .play__parts-header {
+    padding: var(--ac-space-3) var(--ac-space-5);
+    background: hsl(var(--ac-color-bg) / 0.5);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+  .play__parts-header-cell {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .play__parts-header-cell--first {
+    /* spans the part-letter column heading */
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+
+  /* Part row */
+  .play__part {
+    padding: var(--ac-space-3) var(--ac-space-5);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.5);
+    transition: background-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .play__part:last-child { border-bottom: 0; }
+  .play__part:hover {
+    background: hsl(var(--ac-color-surface-hover) / 0.6);
+  }
+  .play__part--idle {
+    color: hsl(var(--ac-color-fg-muted));
+  }
+
+  .play__part-letter {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-h4);
+    color: hsl(var(--ac-color-accent));
+    text-shadow: var(--ac-glow-accent);
+    letter-spacing: var(--ac-tracking-display);
+  }
+  .play__part--idle .play__part-letter {
+    color: hsl(var(--ac-color-fg-subtle));
+    text-shadow: none;
+  }
+
+  .play__part-activity {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-2);
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-subtle));
+    font-variant-numeric: tabular-nums;
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+  }
+
+  .play__part-channel {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    color: hsl(var(--ac-color-fg));
+    font-variant-numeric: tabular-nums;
+  }
+  .play__part-channel-num {
+    color: hsl(var(--ac-color-fg));
+  }
+  .play__part--idle .play__part-channel-num {
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .play__part-channel-prefix {
+    color: hsl(var(--ac-color-fg-subtle));
+    margin-right: var(--ac-space-1);
+  }
+
+  .play__part-patch {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .play__part-patch-button {
+    background: transparent;
+    border: 0;
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-accent) / 0.35);
+    color: hsl(var(--ac-color-accent));
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    font-variant-numeric: tabular-nums;
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 0;
+    transition: color var(--ac-duration-fast) var(--ac-easing-default),
+                border-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .play__part-patch-button:hover {
+    color: hsl(var(--ac-color-accent-soft));
+    border-bottom-color: hsl(var(--ac-color-accent));
+  }
+  .play__part-patch-button:focus-visible {
+    outline: var(--ac-rule-medium) solid hsl(var(--ac-color-accent) / 0.6);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+  .play__part-patch-name {
+    font-family: var(--ac-font-body);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-muted));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .play__part--idle .play__part-patch-button {
+    color: hsl(var(--ac-color-fg-muted));
+    border-bottom-color: hsl(var(--ac-color-border));
+  }
+
+  .play__part-output {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    color: hsl(var(--ac-color-fg));
+    font-variant-numeric: tabular-nums;
+  }
+  .play__part-output-prefix {
+    color: hsl(var(--ac-color-fg-subtle));
+    margin-right: var(--ac-space-1);
+  }
+
+  .play__part-level {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 2.5rem;
+    gap: var(--ac-space-3);
+    align-items: center;
+  }
+  .play__part-level-value {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    color: hsl(var(--ac-color-fg));
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  .play__part--idle .play__part-level-value {
+    color: hsl(var(--ac-color-fg-muted));
+  }
+
+  /* Compact metric callouts under the parts grid */
+  .play__legend {
+    margin-top: var(--ac-space-5);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--ac-space-3);
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .play__legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-2);
+    padding: var(--ac-space-2) var(--ac-space-3);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.6);
+    border-radius: 2px;
+    background: hsl(var(--ac-color-surface) / 0.4);
+  }
+  .play__legend-key {
+    font-family: var(--ac-font-display);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+
+  /* responsive — collapse to two-line layout on narrow viewports */
+  @media (max-width: 720px) {
+    .play__parts-header { display: none; }
+    .play__part {
+      grid-template-columns: 2.25rem minmax(0, 1fr);
+      grid-template-rows: auto auto auto;
+      gap: var(--ac-space-2) var(--ac-space-3);
+    }
+    .play__part-letter { grid-row: 1 / span 3; align-self: start; }
+    .play__part-activity { grid-column: 2 / -1; }
+    .play__part-channel { grid-column: 2 / -1; }
+    .play__part-patch { grid-column: 2 / -1; }
+    .play__part-output { grid-column: 2 / -1; }
+    .play__part-level { grid-column: 2 / -1; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== EXPLORATION BANNER ===== -->
+<header class="exploration-banner">
+  <div class="ac-container exploration-banner__inner">
+    <div>
+      <span class="ac-panel-label ac-panel-label--accent">PHASE 9 · TASK 2 · MOCKUP</span>
+      <h1 class="exploration-banner__title">PlayPage Mockup v1</h1>
+      <p class="ac-fg-muted ac-mt-4" style="margin: 0;">
+        Performance UI hierarchy for the multi-timbral 16-part view. Replaces the bespoke font-mono shell, eliminates VAL/CH/Out jargon, drops device-specific bank literals, and surfaces "All Notes Off" + Reset + clock at the top of the page. Sliders use a real <code class="ac-mono-tabular">&lt;input type="range" class="ac-range"&gt;</code>.
+      </p>
+    </div>
+    <div class="exploration-banner__meta">
+      <span class="exploration-banner__chip">v1</span>
+      <span class="exploration-banner__chip">s550-support</span>
+      <span class="exploration-banner__chip">05 / 07</span>
+      <span class="exploration-banner__notes">2026-05-08</span>
+    </div>
+  </div>
+</header>
+
+<!-- ===== APP CHROME (sticky bar with connection drawer trigger) ===== -->
+<div class="homepage__appbar">
+  <div class="ac-container homepage__appbar-inner">
+    <div class="homepage__brand">
+      <span class="homepage__brand-mark">audiocontrol</span>
+      <span class="homepage__brand-divider">·</span>
+      <span class="homepage__brand-device">roland / s550 / editor</span>
+    </div>
+    <nav class="homepage__nav" aria-label="Primary">
+      <a class="homepage__nav-link" href="#">Home</a>
+      <a class="homepage__nav-link" href="#">Patches</a>
+      <a class="homepage__nav-link" href="#">Tones</a>
+      <a class="homepage__nav-link" href="#" aria-current="page">Play</a>
+      <a class="homepage__nav-link" href="#">Workflows</a>
+      <a class="homepage__nav-link" href="#">Library</a>
+    </nav>
+    <button class="homepage__appbar-status homepage__appbar-status--connected" aria-haspopup="dialog" aria-expanded="false">
+      <span class="ac-signal-led" aria-hidden="true"></span>
+      <span>Connected · MOTU 828mk3 · Port 1</span>
+      <span class="ac-fg-subtle" aria-hidden="true">⌥C</span>
+    </button>
+  </div>
+</div>
+
+<main class="ac-container">
+<div class="app-shell">
+<div class="app-shell__page play">
+
+  <!-- ===== STATUS-ROW HEADER ===== -->
+  <header class="ac-status-row" style="margin-top: var(--ac-space-4);">
+    <div>
+      <h2 class="ac-status-row__heading">Play</h2>
+      <div class="ac-status-row__heading-rule"></div>
+    </div>
+    <span class="ac-status-row__metric">
+      <span class="ac-signal-led" aria-hidden="true"></span>
+      <span>Performance · <strong>16</strong> parts · <strong>8</strong> active</span>
+    </span>
+  </header>
+
+  <p class="ac-fg-muted ac-mt-4" style="max-width: var(--ac-measure-reading);">
+    Live face of the device. Sixteen MIDI parts, six outputs, one performance preset. Channels, banks, and slot labels are read from the active <code class="ac-mono-tabular">memoryLayout</code> — no device conditionals in this view.
+  </p>
+
+  <!-- ===== PERFORMANCE CONTROLS (All Notes Off / Reset / clock) ===== -->
+  <div class="play__controls" role="group" aria-label="Performance controls">
+    <div class="play__controls-actions">
+      <button
+        class="ac-btn ac-btn--danger"
+        type="button"
+        aria-label="Send All Notes Off to all 16 MIDI channels"
+      >
+        All Notes Off
+      </button>
+      <button
+        class="ac-btn ac-btn--secondary"
+        type="button"
+        aria-label="Reset all parts to current performance preset"
+      >
+        Reset to Performance
+      </button>
+      <button class="ac-btn ac-btn--ghost ac-btn--sm" type="button">
+        Reload Performance
+      </button>
+    </div>
+    <div class="play__controls-clock" aria-live="polite">
+      <span class="play__controls-clock-label">MIDI Clock</span>
+      <span class="play__controls-clock-value"><strong>120.0</strong> BPM</span>
+      <span class="play__controls-clock-source">Source · External · stable</span>
+    </div>
+  </div>
+
+  <!-- ===== PARTS GRID ===== -->
+  <section aria-labelledby="parts-heading" style="margin-top: var(--ac-space-7);">
+    <div class="ac-dimension-bracket">
+      <span class="ac-panel-label">§ 01 · Multi-timbral</span>
+      <h2 id="parts-heading">Parts</h2>
+    </div>
+
+    <div class="play__parts ac-mt-5" role="table" aria-label="MIDI part assignments">
+      <div class="play__parts-header" role="row">
+        <span class="play__parts-header-cell play__parts-header-cell--first" role="columnheader">Part</span>
+        <span class="play__parts-header-cell" role="columnheader">Activity</span>
+        <span class="play__parts-header-cell" role="columnheader">Channel</span>
+        <span class="play__parts-header-cell" role="columnheader">Patch</span>
+        <span class="play__parts-header-cell" role="columnheader">Output</span>
+        <span class="play__parts-header-cell" role="columnheader">Level</span>
+      </div>
+
+      <!-- ===== PART A — active ===== -->
+      <div class="play__part" role="row">
+        <span class="play__part-letter" role="cell">A</span>
+        <span class="play__part-activity" role="cell">
+          <span class="ac-signal-led" aria-hidden="true"></span>
+          <span>Active</span>
+        </span>
+        <span class="play__part-channel" role="cell">
+          <span class="play__part-channel-prefix">CH</span><span class="play__part-channel-num">01</span>
+        </span>
+        <span class="play__part-patch" role="cell">
+          <button class="play__part-patch-button" type="button" aria-label="Edit patch P11 Strings A in drawer">
+            P11 Strings A
+          </button>
+          <span class="play__part-patch-name">Performance · slot 01</span>
+        </span>
+        <span class="play__part-output" role="cell">
+          <span class="play__part-output-prefix">OUT</span>1
+        </span>
+        <span class="play__part-level" role="cell">
+          <input
+            class="ac-range"
+            type="range"
+            min="0"
+            max="127"
+            value="118"
+            aria-label="Part A level (0 to 127)"
+            id="lvl-a"
+          />
+          <span class="play__part-level-value" aria-hidden="true">118</span>
+        </span>
+      </div>
+
+      <!-- ===== PART B — active ===== -->
+      <div class="play__part" role="row">
+        <span class="play__part-letter" role="cell">B</span>
+        <span class="play__part-activity" role="cell">
+          <span class="ac-signal-led" aria-hidden="true"></span>
+          <span>Active</span>
+        </span>
+        <span class="play__part-channel" role="cell">
+          <span class="play__part-channel-prefix">CH</span><span class="play__part-channel-num">02</span>
+        </span>
+        <span class="play__part-patch" role="cell">
+          <button class="play__part-patch-button" type="button">
+            P12 FlutePad
+          </button>
+          <span class="play__part-patch-name">Performance · slot 02</span>
+        </span>
+        <span class="play__part-output" role="cell">
+          <span class="play__part-output-prefix">OUT</span>1
+        </span>
+        <span class="play__part-level" role="cell">
+          <input class="ac-range" type="range" min="0" max="127" value="112" aria-label="Part B level (0 to 127)" />
+          <span class="play__part-level-value" aria-hidden="true">112</span>
+        </span>
+      </div>
+
+      <!-- ===== PART C — active ===== -->
+      <div class="play__part" role="row">
+        <span class="play__part-letter" role="cell">C</span>
+        <span class="play__part-activity" role="cell">
+          <span class="ac-signal-led" aria-hidden="true"></span>
+          <span>Active</span>
+        </span>
+        <span class="play__part-channel" role="cell">
+          <span class="play__part-channel-prefix">CH</span><span class="play__part-channel-num">03</span>
+        </span>
+        <span class="play__part-patch" role="cell">
+          <button class="play__part-patch-button" type="button">
+            P13 Glasshouse
+          </button>
+          <span class="play__part-patch-name">Performance · slot 03</span>
+        </span>
+        <span class="play__part-output" role="cell">
+          <span class="play__part-output-prefix">OUT</span>2
+        </span>
+        <span class="play__part-level" role="cell">
+          <input class="ac-range" type="range" min="0" max="127" value="124" aria-label="Part C level (0 to 127)" />
+          <span class="play__part-level-value" aria-hidden="true">124</span>
+        </span>
+      </div>
+
+      <!-- ===== PART D — active ===== -->
+      <div class="play__part" role="row">
+        <span class="play__part-letter" role="cell">D</span>
+        <span class="play__part-activity" role="cell">
+          <span class="ac-signal-led" aria-hidden="true"></span>
+          <span>Active</span>
+        </span>
+        <span class="play__part-channel" role="cell">
+          <span class="play__part-channel-prefix">CH</span><span class="play__part-channel-num">04</span>
+        </span>
+        <span class="play__part-patch" role="cell">
+          <button class="play__part-patch-button" type="button">
+            P14 Tine EP
+          </button>
+          <span class="play__part-patch-name">Performance · slot 04</span>
+        </span>
+        <span class="play__part-output" role="cell">
+          <span class="play__part-output-prefix">OUT</span>2
+        </span>
+        <span class="play__part-level" role="cell">
+          <input class="ac-range" type="range" min="0" max="127" value="106" aria-label="Part D level (0 to 127)" />
+          <span class="play__part-level-value" aria-hidden="true">106</span>
+        </span>
+      </div>
+
+      <!-- ===== PART E — active ===== -->
+      <div class="play__part" role="row">
+        <span class="play__part-letter" role="cell">E</span>
+        <span class="play__part-activity" role="cell">
+          <span class="ac-signal-led" aria-hidden="true"></span>
+          <span>Active</span>
+        </span>
+        <span class="play__part-channel" role="cell">
+          <span class="play__part-channel-prefix">CH</span><span class="play__part-channel-num">05</span>
+        </span>
+        <span class="play__part-patch" role="cell">
+          <button class="play__part-patch-button" type="button">
+            P15 Slow Bow
+          </button>
+          <span class="play__part-patch-name">Performance · slot 05</span>
+        </span>
+        <span class="play__part-output" role="cell">
+          <span class="play__part-output-prefix">OUT</span>3
+        </span>
+        <span class="play__part-level" role="cell">
+          <input class="ac-range" type="range" min="0" max="127" value="120" aria-label="Part E level (0 to 127)" />
+          <span class="play__part-level-value" aria-hidden="true">120</span>
+        </span>
+      </div>
+
+      <!-- ===== PART F — active ===== -->
+      <div class="play__part" role="row">
+        <span class="play__part-letter" role="cell">F</span>
+        <span class="play__part-activity" role="cell">
+          <span class="ac-signal-led" aria-hidden="true"></span>
+          <span>Active</span>
+        </span>
+        <span class="play__part-channel" role="cell">
+          <span class="play__part-channel-prefix">CH</span><span class="play__part-channel-num">06</span>
+        </span>
+        <span class="play__part-patch" role="cell">
+          <button class="play__part-patch-button" type="button">
+            P16 Marimba
+          </button>
+          <span class="play__part-patch-name">Performance · slot 06</span>
+        </span>
+        <span class="play__part-output" role="cell">
+          <span class="play__part-output-prefix">OUT</span>3
+        </span>
+        <span class="play__part-level" role="cell">
+          <input class="ac-range" type="range" min="0" max="127" value="100" aria-label="Part F level (0 to 127)" />
+          <span class="play__part-level-value" aria-hidden="true">100</span>
+        </span>
+      </div>
+
+      <!-- ===== PART G — active ===== -->
+      <div class="play__part" role="row">
+        <span class="play__part-letter" role="cell">G</span>
+        <span class="play__part-activity" role="cell">
+          <span class="ac-signal-led" aria-hidden="true"></span>
+          <span>Active</span>
+        </span>
+        <span class="play__part-channel" role="cell">
+          <span class="play__part-channel-prefix">CH</span><span class="play__part-channel-num">07</span>
+        </span>
+        <span class="play__part-patch" role="cell">
+          <button class="play__part-patch-button" type="button">
+            P17 Bass Pluck
+          </button>
+          <span class="play__part-patch-name">Performance · slot 07</span>
+        </span>
+        <span class="play__part-output" role="cell">
+          <span class="play__part-output-prefix">OUT</span>4
+        </span>
+        <span class="play__part-level" role="cell">
+          <input class="ac-range" type="range" min="0" max="127" value="115" aria-label="Part G level (0 to 127)" />
+          <span class="play__part-level-value" aria-hidden="true">115</span>
+        </span>
+      </div>
+
+      <!-- ===== PART H — active ===== -->
+      <div class="play__part" role="row">
+        <span class="play__part-letter" role="cell">H</span>
+        <span class="play__part-activity" role="cell">
+          <span class="ac-signal-led" aria-hidden="true"></span>
+          <span>Active</span>
+        </span>
+        <span class="play__part-channel" role="cell">
+          <span class="play__part-channel-prefix">CH</span><span class="play__part-channel-num">08</span>
+        </span>
+        <span class="play__part-patch" role="cell">
+          <button class="play__part-patch-button" type="button">
+            P18 Vox Sus
+          </button>
+          <span class="play__part-patch-name">Performance · slot 08</span>
+        </span>
+        <span class="play__part-output" role="cell">
+          <span class="play__part-output-prefix">OUT</span>5
+        </span>
+        <span class="play__part-level" role="cell">
+          <input class="ac-range" type="range" min="0" max="127" value="108" aria-label="Part H level (0 to 127)" />
+          <span class="play__part-level-value" aria-hidden="true">108</span>
+        </span>
+      </div>
+
+      <!-- ===== PART I — idle ===== -->
+      <div class="play__part play__part--idle" role="row">
+        <span class="play__part-letter" role="cell">I</span>
+        <span class="play__part-activity" role="cell">
+          <span class="ac-signal-led ac-signal-led--idle" aria-hidden="true"></span>
+          <span>Idle</span>
+        </span>
+        <span class="play__part-channel" role="cell">
+          <span class="play__part-channel-prefix">CH</span><span class="play__part-channel-num">09</span>
+        </span>
+        <span class="play__part-patch" role="cell">
+          <button class="play__part-patch-button" type="button">
+            P21 Drum Kit
+          </button>
+          <span class="play__part-patch-name">Performance · slot 09</span>
+        </span>
+        <span class="play__part-output" role="cell">
+          <span class="play__part-output-prefix">OUT</span>5
+        </span>
+        <span class="play__part-level" role="cell">
+          <input class="ac-range" type="range" min="0" max="127" value="100" aria-label="Part I level (0 to 127)" />
+          <span class="play__part-level-value" aria-hidden="true">100</span>
+        </span>
+      </div>
+
+      <!-- ===== PART J — idle ===== -->
+      <div class="play__part play__part--idle" role="row">
+        <span class="play__part-letter" role="cell">J</span>
+        <span class="play__part-activity" role="cell">
+          <span class="ac-signal-led ac-signal-led--idle" aria-hidden="true"></span>
+          <span>Idle</span>
+        </span>
+        <span class="play__part-channel" role="cell">
+          <span class="play__part-channel-prefix">CH</span><span class="play__part-channel-num">10</span>
+        </span>
+        <span class="play__part-patch" role="cell">
+          <button class="play__part-patch-button" type="button">
+            P22 Stick Hit
+          </button>
+          <span class="play__part-patch-name">Performance · slot 10</span>
+        </span>
+        <span class="play__part-output" role="cell">
+          <span class="play__part-output-prefix">OUT</span>5
+        </span>
+        <span class="play__part-level" role="cell">
+          <input class="ac-range" type="range" min="0" max="127" value="110" aria-label="Part J level (0 to 127)" />
+          <span class="play__part-level-value" aria-hidden="true">110</span>
+        </span>
+      </div>
+
+      <!-- ===== PART K — idle ===== -->
+      <div class="play__part play__part--idle" role="row">
+        <span class="play__part-letter" role="cell">K</span>
+        <span class="play__part-activity" role="cell">
+          <span class="ac-signal-led ac-signal-led--idle" aria-hidden="true"></span>
+          <span>Idle</span>
+        </span>
+        <span class="play__part-channel" role="cell">
+          <span class="play__part-channel-prefix">CH</span><span class="play__part-channel-num">11</span>
+        </span>
+        <span class="play__part-patch" role="cell">
+          <button class="play__part-patch-button" type="button">
+            P23 Choir
+          </button>
+          <span class="play__part-patch-name">Performance · slot 11</span>
+        </span>
+        <span class="play__part-output" role="cell">
+          <span class="play__part-output-prefix">OUT</span>6
+        </span>
+        <span class="play__part-level" role="cell">
+          <input class="ac-range" type="range" min="0" max="127" value="105" aria-label="Part K level (0 to 127)" />
+          <span class="play__part-level-value" aria-hidden="true">105</span>
+        </span>
+      </div>
+
+      <!-- ===== PART L — idle ===== -->
+      <div class="play__part play__part--idle" role="row">
+        <span class="play__part-letter" role="cell">L</span>
+        <span class="play__part-activity" role="cell">
+          <span class="ac-signal-led ac-signal-led--idle" aria-hidden="true"></span>
+          <span>Idle</span>
+        </span>
+        <span class="play__part-channel" role="cell">
+          <span class="play__part-channel-prefix">CH</span><span class="play__part-channel-num">12</span>
+        </span>
+        <span class="play__part-patch" role="cell">
+          <button class="play__part-patch-button" type="button">
+            P24 Rhodes
+          </button>
+          <span class="play__part-patch-name">Performance · slot 12</span>
+        </span>
+        <span class="play__part-output" role="cell">
+          <span class="play__part-output-prefix">OUT</span>6
+        </span>
+        <span class="play__part-level" role="cell">
+          <input class="ac-range" type="range" min="0" max="127" value="120" aria-label="Part L level (0 to 127)" />
+          <span class="play__part-level-value" aria-hidden="true">120</span>
+        </span>
+      </div>
+
+      <!-- ===== PART M — idle ===== -->
+      <div class="play__part play__part--idle" role="row">
+        <span class="play__part-letter" role="cell">M</span>
+        <span class="play__part-activity" role="cell">
+          <span class="ac-signal-led ac-signal-led--idle" aria-hidden="true"></span>
+          <span>Idle</span>
+        </span>
+        <span class="play__part-channel" role="cell">
+          <span class="play__part-channel-prefix">CH</span><span class="play__part-channel-num">13</span>
+        </span>
+        <span class="play__part-patch" role="cell">
+          <button class="play__part-patch-button" type="button">
+            P25 Mallet Bell
+          </button>
+          <span class="play__part-patch-name">Performance · slot 13</span>
+        </span>
+        <span class="play__part-output" role="cell">
+          <span class="play__part-output-prefix">OUT</span>4
+        </span>
+        <span class="play__part-level" role="cell">
+          <input class="ac-range" type="range" min="0" max="127" value="100" aria-label="Part M level (0 to 127)" />
+          <span class="play__part-level-value" aria-hidden="true">100</span>
+        </span>
+      </div>
+
+      <!-- ===== PART N — idle ===== -->
+      <div class="play__part play__part--idle" role="row">
+        <span class="play__part-letter" role="cell">N</span>
+        <span class="play__part-activity" role="cell">
+          <span class="ac-signal-led ac-signal-led--idle" aria-hidden="true"></span>
+          <span>Idle</span>
+        </span>
+        <span class="play__part-channel" role="cell">
+          <span class="play__part-channel-prefix">CH</span><span class="play__part-channel-num">14</span>
+        </span>
+        <span class="play__part-patch" role="cell">
+          <button class="play__part-patch-button" type="button">
+            P26 Steel Drum
+          </button>
+          <span class="play__part-patch-name">Performance · slot 14</span>
+        </span>
+        <span class="play__part-output" role="cell">
+          <span class="play__part-output-prefix">OUT</span>3
+        </span>
+        <span class="play__part-level" role="cell">
+          <input class="ac-range" type="range" min="0" max="127" value="118" aria-label="Part N level (0 to 127)" />
+          <span class="play__part-level-value" aria-hidden="true">118</span>
+        </span>
+      </div>
+
+      <!-- ===== PART O — idle ===== -->
+      <div class="play__part play__part--idle" role="row">
+        <span class="play__part-letter" role="cell">O</span>
+        <span class="play__part-activity" role="cell">
+          <span class="ac-signal-led ac-signal-led--idle" aria-hidden="true"></span>
+          <span>Idle</span>
+        </span>
+        <span class="play__part-channel" role="cell">
+          <span class="play__part-channel-prefix">CH</span><span class="play__part-channel-num">15</span>
+        </span>
+        <span class="play__part-patch" role="cell">
+          <button class="play__part-patch-button" type="button">
+            P27 Synth Brass
+          </button>
+          <span class="play__part-patch-name">Performance · slot 15</span>
+        </span>
+        <span class="play__part-output" role="cell">
+          <span class="play__part-output-prefix">OUT</span>2
+        </span>
+        <span class="play__part-level" role="cell">
+          <input class="ac-range" type="range" min="0" max="127" value="112" aria-label="Part O level (0 to 127)" />
+          <span class="play__part-level-value" aria-hidden="true">112</span>
+        </span>
+      </div>
+
+      <!-- ===== PART P — idle ===== -->
+      <div class="play__part play__part--idle" role="row">
+        <span class="play__part-letter" role="cell">P</span>
+        <span class="play__part-activity" role="cell">
+          <span class="ac-signal-led ac-signal-led--idle" aria-hidden="true"></span>
+          <span>Idle</span>
+        </span>
+        <span class="play__part-channel" role="cell">
+          <span class="play__part-channel-prefix">CH</span><span class="play__part-channel-num">16</span>
+        </span>
+        <span class="play__part-patch" role="cell">
+          <button class="play__part-patch-button" type="button">
+            P28 Wind Bell
+          </button>
+          <span class="play__part-patch-name">Performance · slot 16</span>
+        </span>
+        <span class="play__part-output" role="cell">
+          <span class="play__part-output-prefix">OUT</span>1
+        </span>
+        <span class="play__part-level" role="cell">
+          <input class="ac-range" type="range" min="0" max="127" value="125" aria-label="Part P level (0 to 127)" />
+          <span class="play__part-level-value" aria-hidden="true">125</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="play__legend" aria-label="Legend">
+      <span class="play__legend-item">
+        <span class="ac-signal-led" aria-hidden="true"></span>
+        <span class="play__legend-key">Active</span>
+        <span>MIDI traffic seen &lt; 1 s</span>
+      </span>
+      <span class="play__legend-item">
+        <span class="ac-signal-led ac-signal-led--idle" aria-hidden="true"></span>
+        <span class="play__legend-key">Idle</span>
+        <span>No traffic this session</span>
+      </span>
+      <span class="play__legend-item">
+        <span class="play__legend-key">Levels</span>
+        <span>0 – 127 · MIDI volume CC 7</span>
+      </span>
+      <span class="play__legend-item">
+        <span class="play__legend-key">Outputs</span>
+        <span>1 – 6 · M / L / R · indiv 1–4</span>
+      </span>
+    </div>
+  </section>
+
+  <!-- ===== EXPLORATION FOOTER ===== -->
+  <footer class="exploration-footer">
+    <p style="margin: 0;">
+      Phase 9 Task 2 · PlayPage Mockup v1 · 2026-05-08 · s550-support feature ·
+      <a href="https://github.com/audiocontrol-org/audiocontrol/issues/392">issue #392</a> ·
+      Language reference: <a href="01-design-language.html">01-design-language.html</a>
+    </p>
+    <p style="margin: var(--ac-space-2) 0 0;">
+      Adjacent per-page mockups: 02 Home · 03 Patches · 04 Tones · 06 Workflows · 07 Library. PlayPage introduces the <code class="ac-mono-tabular">.ac-range</code> primitive — promote to the language file before Tasks 3–7.
+    </p>
+  </footer>
+
+</div><!-- /.app-shell__page -->
+
+<aside class="app-shell__crt" aria-label="Device video output">
+  <div class="ac-crt-monitor ac-crt-monitor--compact">
+    <div class="ac-crt-monitor__bezel">
+      <div class="ac-crt-monitor__screen">
+        <div class="ac-crt-monitor__chrome">
+          <span class="ac-crt-btn ac-crt-btn--filled">MODE</span>
+          <span class="ac-crt-btn ac-crt-btn--filled">MENU</span>
+          <span class="ac-crt-btn ac-crt-btn--blank"></span>
+          <span class="ac-crt-btn ac-crt-btn--blank"></span>
+          <span class="ac-crt-btn ac-crt-btn--filled">Dec</span>
+          <span class="ac-crt-btn ac-crt-btn--filled">Inc</span>
+        </div>
+        <div class="ac-crt-monitor__sub-row">
+          <span>Last Note Priority</span>
+          <span>PLAY-Standard</span>
+        </div>
+        <table class="ac-crt-table">
+          <thead>
+            <tr><th></th><th>VAL</th><th>CH</th><th>Patch</th><th></th><th>Out</th><th>Level</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>A</td><td>*</td><td>1</td><td><span class="ac-crt-cell--selected">I11</span></td><td>MINI</td><td>1</td><td>127</td></tr>
+            <tr><td>B</td><td>*</td><td>2</td><td>I12</td><td></td><td>1</td><td>127</td></tr>
+            <tr><td>C</td><td>*</td><td>3</td><td>I13</td><td></td><td>1</td><td>127</td></tr>
+            <tr><td>D</td><td>*</td><td>4</td><td>I14</td><td></td><td>1</td><td>127</td></tr>
+            <tr><td>E</td><td>*</td><td>5</td><td>I15</td><td></td><td>1</td><td>127</td></tr>
+            <tr><td>F</td><td>*</td><td>6</td><td>I16</td><td></td><td>1</td><td>127</td></tr>
+            <tr><td>G</td><td>*</td><td>7</td><td>I17</td><td></td><td>1</td><td>127</td></tr>
+            <tr><td>H</td><td>*</td><td>8</td><td>I18</td><td></td><td>1</td><td>127</td></tr>
+          </tbody>
+        </table>
+        <div class="ac-crt-monitor__display">
+          <span>Display</span>
+          <span>I1<span class="ac-crt-cursor">_</span></span>
+        </div>
+        <div class="ac-crt-monitor__lookup">
+          <div>I11 MINI</div><div>I15</div>
+          <div>I12</div><div>I16</div>
+          <div>I13</div><div>I17</div>
+          <div>I14</div><div>I18</div>
+        </div>
+      </div>
+    </div>
+    <div class="ac-crt-monitor__caption">
+      <span>S-550 · Video out · NTSC</span>
+      <span><span class="ac-signal-led" aria-hidden="true" style="margin-right: 6px; vertical-align: middle;"></span>Live</span>
+    </div>
+  </div>
+</aside>
+
+</div><!-- /.app-shell -->
+</main>
+
+<script>
+  // tiny: respect reduced-motion at runtime so a user toggling system prefs
+  // mid-page doesn't get stuck with stale animation state
+  (function () {
+    var mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    function apply() {
+      document.documentElement.style.setProperty('--ac-motion', mq.matches ? '0' : '1');
+    }
+    apply();
+    if (mq.addEventListener) mq.addEventListener('change', apply);
+  })();
+
+  // tiny: live-update level value next to each ac-range so the demo
+  // shows the slider/value relationship without a framework
+  (function () {
+    var ranges = document.querySelectorAll('.ac-range');
+    ranges.forEach(function (r) {
+      var grid = r.parentElement;
+      var valEl = grid && grid.querySelector('.play__part-level-value');
+      if (!valEl) return;
+      r.addEventListener('input', function () { valEl.textContent = r.value; });
+    });
+  })();
+</script>
+</body>
+</html>
