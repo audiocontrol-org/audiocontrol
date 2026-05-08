@@ -828,8 +828,8 @@
   .ac-status-row__heading-rule {
     width: 2.25rem;
     height: var(--ac-rule-medium);
-    background: hsl(var(--ac-color-accent));
-    box-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.45);
+    background: hsl(var(--ac-color-rec));
+    box-shadow: 0 0 8px hsl(var(--ac-color-rec) / 0.55);
     margin-top: var(--ac-space-2);
   }
   .ac-status-row__metric {
@@ -1582,26 +1582,117 @@
     font-weight: var(--ac-fw-display);
   }
 
-  /* Footer action row (sticky-ish; just a bordered row at bottom of detail) */
-  .tones__detail-actions {
+  /* Live status footer — replaces the save/cancel/restore pattern.
+     Edits are sent to the device in real time; there is no commit step. */
+  .tones__detail-live {
     margin-top: var(--ac-space-6);
-    padding-top: var(--ac-space-4);
+    padding: var(--ac-space-3) var(--ac-space-4);
     border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
     display: flex;
-    gap: var(--ac-space-3);
-    justify-content: flex-end;
     align-items: center;
-  }
-  .tones__detail-dirty {
-    margin-right: auto;
+    gap: var(--ac-space-4);
     font-family: var(--ac-font-mono);
     font-size: var(--ac-text-tiny);
-    color: hsl(var(--ac-color-warning));
+    color: hsl(var(--ac-color-fg-muted));
     font-variant-numeric: tabular-nums;
   }
-  .tones__detail-dirty::before {
-    content: "● ";
-    color: hsl(var(--ac-color-warning));
+  .tones__detail-live-label {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-rec));
+    text-shadow: 0 0 8px hsl(var(--ac-color-rec) / 0.5);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-2);
+  }
+  .tones__detail-live-sep {
+    color: hsl(var(--ac-color-fg-subtle));
+    margin-inline: var(--ac-space-2);
+  }
+  .tones__detail-live-touch {
+    color: hsl(var(--ac-color-fg));
+  }
+
+  /* Envelope shape-meta controls — sustain point + end point */
+  .tones__envelope-meta {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--ac-space-5);
+    padding: var(--ac-space-3) var(--ac-space-3);
+    background: hsl(var(--ac-color-surface) / 0.5);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.5);
+    border-radius: 2px;
+  }
+  .tones__envelope-meta-control {
+    display: grid;
+    grid-template-columns: 5.5rem minmax(0, 1fr);
+    align-items: center;
+    gap: var(--ac-space-3);
+  }
+  .tones__envelope-meta-label {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-2);
+  }
+  .tones__envelope-meta-pips {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: 2px;
+  }
+  .tones__envelope-meta-pip {
+    height: 1.4rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: hsl(var(--ac-color-bg));
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: 1px;
+    color: hsl(var(--ac-color-fg-subtle));
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    user-select: none;
+    transition: color var(--ac-duration-fast) var(--ac-easing-default),
+                background-color var(--ac-duration-fast) var(--ac-easing-default),
+                border-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .tones__envelope-meta-pip:hover {
+    color: hsl(var(--ac-color-fg));
+    border-color: hsl(var(--ac-color-border-hover));
+  }
+  .tones__envelope-meta-pip[data-active="true"] {
+    background: hsl(var(--ac-color-accent));
+    border-color: hsl(var(--ac-color-accent));
+    color: hsl(var(--ac-color-bg));
+    box-shadow: 0 0 6px hsl(var(--ac-color-accent) / 0.45);
+  }
+  /* Pips beyond the end point are visually disabled */
+  .tones__envelope-meta-pip[data-disabled="true"] {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  /* Sustain marker label that floats above the sustain point in the graph */
+  .tones__envelope-sustain-label {
+    position: absolute;
+    transform: translate(-50%, -120%);
+    font-family: var(--ac-font-display);
+    font-size: 0.55rem;
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-accent));
+    text-shadow: 0 0 6px hsl(var(--ac-color-accent) / 0.5);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 3;
   }
 </style>
 </head>
@@ -2245,6 +2336,8 @@
                 <span class="tones__envelope-point" style="left: 87.5%;  top: 54.3%;"></span>
                 <span class="tones__envelope-point" style="left: 100%;   top: 100%;"></span>
               </div>
+              <!-- Sustain marker (floats above sustain segment 5) -->
+              <span class="tones__envelope-sustain-label" style="left: 62.5%; top: 34.6%;">▸ SUS</span>
             </div>
             <!-- X-axis labels -->
             <div class="tones__envelope-axis" aria-hidden="true">
@@ -2258,7 +2351,37 @@
               <span class="tones__envelope-axis-tick" style="left: 87.5%;">7</span>
               <span class="tones__envelope-axis-tick" style="left: 100%;">8</span>
             </div>
-            <span class="tones__envelope-graph-help">Drag points to adjust · Click expand for precision editing · ▸ marks sustain</span>
+            <span class="tones__envelope-graph-help">Drag points to adjust · Click expand for precision editing</span>
+          </div>
+
+          <!-- Sustain + End shape controls -->
+          <div class="tones__envelope-meta" role="group" aria-label="TVF envelope shape">
+            <div class="tones__envelope-meta-control">
+              <span class="tones__envelope-meta-label">Sustain ▸</span>
+              <div class="tones__envelope-meta-pips" role="radiogroup" aria-label="Sustain segment">
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">1</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">2</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">3</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">4</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="true" data-active="true">5</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">6</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">7</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">8</span>
+              </div>
+            </div>
+            <div class="tones__envelope-meta-control">
+              <span class="tones__envelope-meta-label">End ▣</span>
+              <div class="tones__envelope-meta-pips" role="radiogroup" aria-label="Envelope length">
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">1</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">2</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">3</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">4</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">5</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">6</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">7</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="true" data-active="true">8</span>
+              </div>
+            </div>
           </div>
 
           <!-- Per-segment numeric controls -->
@@ -2409,6 +2532,8 @@
                 <span class="tones__envelope-point" style="left: 87.5%;  top: 82.7%;"></span>
                 <span class="tones__envelope-point" style="left: 100%;   top: 100%;"></span>
               </div>
+              <!-- Sustain marker (floats above sustain segment 4 — same as active here) -->
+              <span class="tones__envelope-sustain-label" style="left: 50%; top: 30.7%;">▸ SUS</span>
             </div>
             <div class="tones__envelope-axis" aria-hidden="true">
               <span class="tones__envelope-axis-tick" style="left: 0%;">Start</span>
@@ -2421,7 +2546,37 @@
               <span class="tones__envelope-axis-tick" style="left: 87.5%;">7</span>
               <span class="tones__envelope-axis-tick" style="left: 100%;">8</span>
             </div>
-            <span class="tones__envelope-graph-help">Drag points to adjust · Click expand for precision editing · ▸ marks sustain</span>
+            <span class="tones__envelope-graph-help">Drag points to adjust · Click expand for precision editing</span>
+          </div>
+
+          <!-- Sustain + End shape controls -->
+          <div class="tones__envelope-meta" role="group" aria-label="TVA envelope shape">
+            <div class="tones__envelope-meta-control">
+              <span class="tones__envelope-meta-label">Sustain ▸</span>
+              <div class="tones__envelope-meta-pips" role="radiogroup" aria-label="Sustain segment">
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">1</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">2</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">3</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="true" data-active="true">4</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">5</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">6</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">7</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">8</span>
+              </div>
+            </div>
+            <div class="tones__envelope-meta-control">
+              <span class="tones__envelope-meta-label">End ▣</span>
+              <div class="tones__envelope-meta-pips" role="radiogroup" aria-label="Envelope length">
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">1</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">2</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">3</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">4</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">5</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">6</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">7</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="true" data-active="true">8</span>
+              </div>
+            </div>
           </div>
 
           <div class="tones__envelope-table" role="table" aria-label="TVA envelope segments — 8 segments, sustain at segment 4">
@@ -2576,11 +2731,15 @@
         </div>
       </section>
 
-      <!-- ACTIONS -->
-      <footer class="tones__detail-actions">
-        <span class="tones__detail-dirty">3 unsaved changes · TVF Cutoff, Pan, LFO Rate</span>
-        <button type="button" class="ac-btn ac-btn--ghost">Restore</button>
-        <button type="button" class="ac-btn ac-btn--primary">Save changes</button>
+      <!-- LIVE STATUS — there is no save / cancel / undo. Edits stream to the device. -->
+      <footer class="tones__detail-live" role="status" aria-live="polite">
+        <span class="tones__detail-live-label">
+          <span class="ac-signal-led ac-signal-led--rec" aria-hidden="true"></span>
+          Live
+        </span>
+        <span>Direct to device</span>
+        <span class="tones__detail-live-sep">·</span>
+        <span>Last sent <span class="tones__detail-live-touch">TVF Cutoff</span> 14:01:36</span>
       </footer>
 
     </section>
