@@ -30,7 +30,7 @@ deskwork:
 | Phase 6: Hardware Validation | Complete | All tests passing against physical S-550 |
 | Phase 7: S-550 Front Panel | Not Started | Virtual front panel layout |
 | Phase 8: Memory Map Visualization | Complete | Graphical memory map in import dialogs |
-| Phase 9: UX/UI Cleanup | Not Started | Visual polish across all editor pages via `/frontend-design` |
+| Phase 9: UX/UI Cleanup | In Progress (Tasks 1–2 done; 3–7 remaining) | Visual polish across all editor pages via `/frontend-design` |
 
 ---
 
@@ -404,16 +404,16 @@ A focused visual polish pass across all editor pages. **Every UI change in this 
 
 ### Acceptance Criteria
 
-- [ ] `ux-audit.md` exists and lists every observed deviation per page — against `DESIGN-SYSTEM.md` AND against audiocontrol.org's redesigned identity.
-- [ ] `/frontend-design` exploration committed under `explorations/`; chosen direction noted in the audit.
-- [ ] **Every UI change in this phase is traceable to a `/frontend-design` invocation** — no hand-rolled JSX/CSS edits.
-- [ ] Editors at `/roland/s330/editor` and `/roland/s550/editor` read as part of the audiocontrol.org universe (typography, layout rhythm, component vocabulary) while preserving the existing `s330-*` blue+white color palette.
-- [ ] `TonesPage.tsx` is under 500 lines.
-- [ ] Every page in scope has been visually polished and screenshot-verified on both `/roland/s330/editor` and `/roland/s550/editor`.
+- [x] `ux-audit.md` exists and lists every observed deviation per page — against `DESIGN-SYSTEM.md` AND against audiocontrol.org's redesigned identity. (Task 1, committed `921aef27`)
+- [x] `/frontend-design` exploration committed under `explorations/`; chosen direction noted in the audit. (Task 2 v3 — design language + 6 page mockups + tabbed tones detail + 8-segment VFD envelope + virtual front panel + cross-page consistency pass)
+- [ ] **Every UI change in this phase is traceable to a `/frontend-design` invocation** — no hand-rolled JSX/CSS edits. (Task 4+ — when production refactor begins)
+- [ ] Editors at `/roland/s330/editor` and `/roland/s550/editor` read as part of the audiocontrol.org universe (typography, layout rhythm, component vocabulary) while preserving the existing `s330-*` blue+white color palette. (Mockups demonstrate the alignment; production refactor pending)
+- [ ] `TonesPage.tsx` is under 500 lines. (Task 3 — decomposition still pending; mockup sketches the structure)
+- [ ] Every page in scope has been visually polished and screenshot-verified on both `/roland/s330/editor` and `/roland/s550/editor`. (Task 4–6 — pending real-component refactor)
 - [ ] No device conditionals introduced in any UI component.
 - [ ] No hardcoded pixel widths introduced.
-- [ ] All new visual rules codified in `DESIGN-SYSTEM.md` (and any new tokens added to `tokens.css`).
-- [ ] All existing unit / UI tests still pass.
+- [ ] All new visual rules codified in `DESIGN-SYSTEM.md` (and any new tokens added to `tokens.css`). (Task 7 — pending)
+- [ ] All existing unit / UI tests still pass. (Task 6 verification — pending)
 
 ---
 

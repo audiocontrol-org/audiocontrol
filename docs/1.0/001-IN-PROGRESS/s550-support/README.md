@@ -1,6 +1,6 @@
 # Roland S-550 Editor Support
 
-**Status:** In Progress (Phases 1-6, 8 Complete; Phases 7, 9 Remaining)
+**Status:** In Progress (Phases 1-6, 8 Complete; Phase 9 Tasks 1-2 Complete; Phase 7, Phase 9 Tasks 3-7 Remaining)
 **Feature Branch:** `feature/s550-support`
 **GitHub Milestone:** [Week of Feb 24-28](https://github.com/audiocontrol-org/audiocontrol/milestone/4)
 
@@ -39,7 +39,20 @@ The S-550 shares model ID `0x1E` and SysEx protocol with the S-330 but has an in
 | Component | Description | Blocked By |
 |-----------|-------------|------------|
 | S-550 virtual front panel | Rack-mount panel layout variant | Nothing (cosmetic) |
-| UX/UI cleanup (Phase 9) | Visual polish across all pages via `/frontend-design` | Nothing |
+| UX/UI cleanup Phase 9 — Tasks 3–7 | TonesPage decomposition (>500 lines), per-page real-component refactor, design-system update, screenshot verification | Operator review of v3 mockups |
+
+### Phase 9 Task 2 deliverables (committed under `docs/1.0/001-IN-PROGRESS/s550-support/explorations/`)
+
+- `01-design-language.html` — token system, typography, layout primitives, component vocabulary, CRT monitor (added in v2)
+- `02-homepage.html` — landing layout with device identity hero
+- `03-patches.html`, `04-tones.html`, `07-library.html` — full v3 list-detail editor pages with collapsible mockup banner, fixed-viewport flex shell, lean page header (red `--ac-color-rec` rule), 3-col grid with internal scrolls, virtual front panel under CRT, slim live-status footer
+- `05-play.html`, `06-workflows.html` — landing-pattern pages (not yet at v3)
+- Tones page additionally features: 5-tab detail (Wave / Pitch / Filter / Amp / LFO), 8-segment VFD-glow envelope editor with sustain/end controls, validated range-bar parameter primitive
+
+Open questions deferred to Task 2 v4 review or Task 3 prep:
+
+- Audiocontrol.org-aligned typography stack (Departure Mono / IBM Plex Sans / JetBrains Mono) — fonts not yet shipped; mockups show fallbacks
+- BEM-promotion of drifting primitives (`.patches__icon-btn` / `.tones__refresh-btn` / `.library__icon-btn` → `.ac-icon-btn`, etc.) — bigger refactor, deferred
 
 ## Key Architecture Decisions
 

@@ -11,6 +11,66 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-05-08: s550-support — Phase 9 Tasks 1-2 (UX audit + design language + 6 page mockups + tones-page polish)
+
+### Feature: s550-support
+
+### Worktree: audiocontrol-s550-support
+
+### Goal
+
+Define and execute Phase 9 (UX/UI cleanup) for the Roland S-330 / S-550 web editor: produce a UX audit, then a v3 design exploration that lands a design language + per-page mockups (Home / Patches / Tones / Play / Workflows / Library) ready for production refactor in subsequent tasks.
+
+### Accomplished
+
+- Set up Phase 9 via `/dw-lifecycle:extend`: workplan + README + GitHub issue [#392](https://github.com/audiocontrol-org/audiocontrol/issues/392) + deskwork ingest (`docs/design-spec-calendar.md`).
+- **Task 1 — UX audit** (`docs/1.0/001-IN-PROGRESS/s550-support/ux-audit.md`): 6-part document covering DESIGN-SYSTEM.md compliance per page, audiocontrol.org visual-identity alignment, cross-cutting themes, open questions, and recorded direction decisions (dark theme, self-hosted woff2 fonts, third `editor-roland` brand). Two parallel sub-agents: `codebase-auditor` for the design-system audit and `general-purpose` (with WebFetch) for the audiocontrol.org research.
+- **Task 2 — design exploration v3** under `docs/1.0/001-IN-PROGRESS/s550-support/explorations/`:
+  - `01-design-language.html` — token system, typography (Departure Mono / IBM Plex Sans / JetBrains Mono), layout primitives, component vocabulary (panel-label, signal-led, card-glow, dimension-bracket), forms, progress, eyebrow status-row, CRT monitor.
+  - `02-homepage.html` — landing layout with device identity hero (added during template iteration).
+  - `03-patches.html`, `04-tones.html`, `07-library.html` — full v3 list-detail editor pages with: collapsible mockup banner (default thin strip), fixed-viewport flex shell, lean page header (red `--ac-color-rec` rule), 3-col grid with internal scrolls, virtual front panel under CRT, slim live-status footer.
+  - Tones additionally features: 5-tab detail (Wave / Pitch / Filter / Amp / LFO), 8-segment VFD-glow envelope with sustain/end pip selectors and per-segment time/level table, validated range-bar parameter primitive.
+- 11 new project memory entries capturing validated patterns: range-bar viz, 8-segment envelope, rec-LED accent, live-editing/no-save rule, tabbed detail pane, fixed-viewport shell, virtual front panel, lean page header, consistency-critical, flex-main width gotcha, "actually review the result" rule.
+
+### Didn't work
+
+- **Sticky positioning for sidebar columns.** First-pass tones page layout used `position: sticky` on the list and CRT to keep them in place during scroll. Sticky elements pin only as long as their containing block extends past the sticky `top` line. With long detail content + a tall mockup footer, the list's grid cell ended too early relative to max document scroll, and sticky failed silently — the list scrolled with the page despite `position: sticky` being computed correctly. **Course correction:** switched to fixed-viewport flex layout (`body { height: 100vh; overflow: hidden }`), with each column taking its own `overflow-y: auto`. No more sticky gymnastics. **[COMPLEXITY]**
+- **Identical-looking CSS scaffolding ≠ identical layout.** After the cross-page consistency pass, computed-style checks all passed, but the operator noticed Patches' main rendered ~29px narrower than Tones' at viewport 2000. Root cause: `display: flex; flex-direction: column` on `<main>` with `flex: 1 1 0%` falls back to `width: max-content` in cross-axis when content's intrinsic max-content is less than the container's max-width. Tones' detail content happened to size larger and clamped at 1400; Patches' clamped at 1371. Fixed with explicit `width: 100%`. **[UX]**
+
+### Course corrections
+
+- **[UX] "Mockup banner pushes editor off-screen on my display."** Default-collapsed banner solved it; CSS-only checkbox + `:checked ~` siblings, no JS.
+- **[UX] "ADSR envelope is wrong — these are 8-segment envelopes."** Replaced four-knob ADSR widget with full-width VFD-style 8-segment editor (graphical + numeric table). Added VFD glow as homage to the device's cyan vacuum-fluorescent display.
+- **[UX] "Add a nod to the red PLAY LED + REC LEVEL knob accent — sparingly."** Introduced `--ac-color-rec` token + `.ac-signal-led--rec` variant. Used on CRT "● LIVE" indicator, page-title rule under each h2, and live-status footer dot.
+- **[UX] "Control changes stream live — no save/cancel/undo."** Replaced "Restore" + "Save changes" + dirty-indicator footer with a slim `● Last sent X · time` footer. Operator follow-up: drop "LIVE · Direct to device" announcement copy as redundant — only the "Last sent" line carries useful info.
+- **[UX] "Long scroll is bad; use tabs grouped by interaction. Filter envelope must live with cutoff/resonance because they interact."** Restructured tones detail into 5 tabs (Wave / Pitch / Filter / Amp / LFO); CSS-only via hidden radios. Filter and Amp tabs each contain BOTH the static params AND the matching envelope.
+- **[UX] "Page title and CRT shouldn't slide under site header during scroll. List should also not move."** Switched to fixed-viewport flex shell with internal column scrolls (see Didn't Work).
+- **[UX] "I can't see the whole mockup; the frontmatter header pushes everything down."** Made the exploration banner collapsible (described above).
+- **[UX] "Don't reintroduce eyebrow rows or preamble paragraphs in headers — be lean."** Stripped the patches `§ 01 · MEMORY · P11 → P48 · 4 BANKS` eyebrow, the library "Saved sets and bundles…" preamble, and the "Preview · S-550 support" announcement banner. Saved as `feedback_lean_page_header.md`.
+- **[UX] "There are a LOT of inconsistencies between pages — that erodes trust."** Triggered a structured cross-page audit (18 findings, 6 critical) followed by a targeted fix pass (icon-button hit-area, list-row selection, page-title padding, group-header sticky bg, mobile breakpoint, dead-CSS removal). Validated by Playwright `getBoundingClientRect` measurements at viewport 2000.
+- **[PROCESS] "Did you actually review the result of your last edit? It doesn't look like a design pass — just a code update."** Triggered after I shipped a sticky-positioning layout that broke on scroll. Wrote `feedback_actually_review.md`: every UI change must be verified by interacting with the rendered page (scroll, click, hover) and re-measuring positions, not just by reading computed styles.
+- **[FABRICATION] None to flag this session, but came close.** When I claimed Phase 9 Task 2 was "complete" after the v1 mockups landed, I should have qualified it more carefully — Tasks 3–7 (real-component refactor) are still pending and the mockups are exploration artifacts.
+
+### Quantitative
+
+- **20 commits** on `feature/s550-support` this session, all under Phase 9.
+- **18 cross-page audit findings** identified (6 critical, 8 moderate, 4 minor); 11 of the 18 fixed in a targeted pass; deeper BEM-promotion of drifting primitives deferred.
+- **11 new memory entries** added, all mirrored to both project memory directories.
+- **6 sub-agents** dispatched: codebase-auditor (audit), general-purpose+WebFetch (audiocontrol.org research), 5× ui-engineer (PatchesPage / TonesPage / PlayPage / WorkflowsPage / LibraryPage initial mockups), plus follow-up ui-engineer agents for tones-tab refactor, patches+library template port, and consistency-fix pass.
+- **3 Python scripts** written ad-hoc for surgical HTML restructuring (TonesPage tab restructure, layout hoist, front-panel injection) — saved at `/tmp/restructure-tones.py`, `/tmp/restructure-tones-layout.py`, `/tmp/add-front-panel.py`. Pattern: when a multi-step structural restructure needs careful regex anchoring across 700+ lines, a one-shot Python script is more reliable than a chain of Edit calls.
+
+### Insights
+
+- **The validated v3 editor template** (collapsible banner + fixed-viewport flex column + 3-col grid with internal scrolls + lean page header + CRT-and-front-panel right column) generalizes cleanly across list-detail editor pages. Patches and Library both adopted it without content changes — only structural rewiring. Future pages with similar shape (e.g., HomePage as an editor variant) can copy the template wholesale.
+
+- **`/frontend-design` skill best used at component level, not full-page level.** When dispatched to a single page mockup with a clear brief, it produces strong work. When dispatched to "design five pages in parallel," each agent makes ad-hoc local choices that drift between pages. **Lesson:** always dispatch the canonical reference page first (Tones), validate it with the operator, then port its template mechanically (Python script or sub-agent with explicit brief) to other pages.
+
+- **Computed-style equality is necessary but not sufficient.** Two pages can have identical `getComputedStyle` values for `display`, `flex`, `max-width`, `align-self` and still render different sizes because of intrinsic content sizing leaking up through the flex chain. UI verification has to use real position measurements (`getBoundingClientRect`) at the actual target viewport, not just style introspection. Encoded in `feedback_actually_review.md` and `feedback_flex_main_width_gotcha.md`.
+
+- **Memory is ROI-positive for design feedback.** Each non-obvious decision the operator made (red LED accent, no-save pattern, tabbed detail, fixed-viewport shell, lean header, range-bar widget) became a memory entry. Future sessions on the editor will inherit these without me needing to re-discover them or be re-corrected. The session generated 11 entries; the time invested in writing them will pay back the first time another agent (or this one in a fresh context) starts on a related editor page.
+
+---
+
 ## 2026-05-06: midi-macro-bridge-packaging — v0.3.3 hot-fix: .app MIDI regression diagnosis + refactor
 
 ### Feature: midi-macro-bridge-packaging
