@@ -362,22 +362,45 @@ A focused visual polish pass across all editor pages. **Every UI change in this 
 - **Files stay under 500 lines.** `TonesPage.tsx` is currently 691 lines and must be decomposed as part of this phase.
 - **Both devices must remain visually correct.** Any change verified against `/roland/s330/editor` and `/roland/s550/editor`.
 
+### Mandatory gate after EVERY task: duplication audit
+
+**No task in this phase is complete until the duplication audit passes for that task.** Past failure mode: when building S-550 alongside S-330, and again when building Akai S3000XL library alongside Roland library, code was duplicated instead of refactored to share — drift accumulated until consolidation cost was prohibitive. This gate catches it at the boundary.
+
+**Before checking off any task's acceptance criteria, the implementer MUST:**
+
+1. List every new file authored or substantially modified during the task.
+2. For each new function / hook / component / state bag:
+   - `grep -rn` the codebase by **operation verb** (not just by name): `requestWaveData`, `exportToneToDirectory`, `12BitTo16Bit`, `useExport*`, `useImport*`, etc.
+   - `grep -rn` siblings of the new path: `src/hooks/`, `src/components/library/`, sibling pages.
+3. For any device-specific module, identify the shared-base candidate (`s550/x.ts` → should it live in `roland-s-series/x.ts`?).
+4. **Document the audit explicitly** under the task's acceptance criteria: "Duplication audit: <N> candidates checked, <M> overlaps unified, <K> kept separate because <reason>." Just writing "no duplication" is not enough.
+5. If duplication is found, **either unify it now or open a tracked GitHub issue with a link**. Never commit "we'll consolidate later" without the issue link — past evidence shows "later" doesn't happen.
+
+See `.claude/rules/workflow-playbooks.md § Phase-completion duplication audit` for the full procedure with false-positive / false-negative examples.
+
 ### Tasks
 
 1. **Audit current pages against the design system AND audiocontrol.org.**
    - For each page, list deviations from `DESIGN-SYSTEM.md` (typography, spacing, color, hierarchy, icon sizing, layout container usage).
    - For each page, also list mismatches with audiocontrol.org's redesigned visual identity (typography scale, layout rhythm, component vocabulary). Reference the public site and the `oletizi/audiocontrol.org` repo.
    - Capture the audit as `docs/1.0/001-IN-PROGRESS/s550-support/ux-audit.md` so the cleanup is traceable.
+   - **Duplication audit gate:** N/A — research-only task, no code authored.
 
 2. **Generate design exploration via `/frontend-design`.** This is the only source of UI changes in this phase.
    - Invoke the `frontend-design:frontend-design` skill with the audit + screenshots of current pages + screenshots/source from audiocontrol.org as input.
    - Produce candidate mockups (HTML or React previews) for the redesigned Home, Patches, Tones, Play, Workflows, and Library pages — keeping the `s330-*` blue+white palette, aligning the rest with audiocontrol.org.
    - Stash explorations under `docs/1.0/001-IN-PROGRESS/s550-support/explorations/` for review before any production refactor begins.
    - User reviews and selects a direction; commit the chosen direction's notes back into the audit doc.
+   - **Duplication audit gate:** Mockup-only task; explorations are static HTML and don't ship to production. Cross-page mockup consistency was audited separately (`/tmp/cross-page-audit.md`, 18 findings). Production refactor (Tasks 3–6) is where the duplication-audit gate carries weight.
 
 3. **Refactor `TonesPage.tsx` to fit under 500 lines.**
    - `TonesPage.tsx` is 691 lines today. Split by responsibility (e.g., extract per-section editor groups into focused child components under `pages/tones/`) so the page composes them without growing.
+   - **Before extracting:** grep for existing hooks that already do what you're about to extract — `useLibraryExport`, `useImportSamples`, `useDeviceToneChopper`, etc. Reuse them; do NOT create page-local duplicates.
    - Acceptance: `wc -l modules/roland-sxx0-editor/src/pages/TonesPage.tsx` reports < 500.
+   - **Duplication audit gate:**
+     - [ ] Listed every new file authored under `pages/tones/` and every modified file in `pages/`, `hooks/`, `components/`.
+     - [ ] Grepped for existing hook coverage of every handler being extracted (export, import, wave-data caching, etc.). Documented matches.
+     - [ ] Each new hook explicitly justifies its existence: "<hook>: not duplicated by <existing>, because <X is unique to TonesPage>." OR "<hook>: superseded by <existing-hook>; deleted."
 
 4. **Apply visual polish to each page via `/frontend-design`.** One commit per page so regressions are bisectable. Each page's polish is produced through the plugin — no hand-edited JSX/CSS slipped in alongside.
    - HomePage — landing layout, calls to action, device identity affordance.
@@ -386,21 +409,33 @@ A focused visual polish pass across all editor pages. **Every UI change in this 
    - PlayPage — performance UI hierarchy, panic/all-notes-off labelling per accessibility rules.
    - WorkflowsPage — list affordances, empty states.
    - LibraryPage — tree view typography, dialog launcher polish, memory map panel integration spacing.
+   - **Duplication audit gate (per page):**
+     - [ ] Every page-scoped class introduced (`<page>__icon-btn`, `<page>__list-row`, `<page>__detail-head`, `<page>__page-title`, etc.) was checked against sibling pages. If two pages have the same primitive with different styles, **promote to `.ac-*` shared class before merging the polish**, not after.
+     - [ ] Every component file extracted under `<page>/` was checked for sibling components doing the same role on other pages.
+     - [ ] Document the per-page audit table in the commit message: "Page X: N candidates checked, M promotions to `.ac-*`, K kept page-scoped because <reason>."
 
 5. **Apply visual polish to import/export/save/load dialogs.**
    - Standardize header, body, footer rhythm.
    - Confirm `MemoryMapPanel` color usage (`bg-s330-accent/20`, `bg-emerald-600/60`, `bg-s330-highlight/40`, `bg-red-500/40`) reads correctly in the polished context; adjust contrast if needed using existing tokens only.
+   - **Duplication audit gate:** dialogs are the most copy-prone surface in this codebase (the audit found 11 hand-rolled centred-modal dialogs with identical input/select chrome). Before this task is complete:
+     - [ ] Confirmed every dialog uses shared `ac-input` / `ac-select` / `ac-checkbox` primitives, NOT page-local copies of the input chain.
+     - [ ] Confirmed every dialog uses `OperationProgressBar` / `OperationErrorBanner` / `OperationSuccessScreen` (existing shared components). Any dialog re-implementing them inline is treated as a regression and unified before merge.
+     - [ ] Document: "Dialogs audited: <N>, primitives extracted: <M>, primitives kept inline because <reason>."
 
 6. **Visual verification on both devices.**
    - Take before/after screenshots of every page on `/roland/s330/editor` and `/roland/s550/editor`.
    - Confirm no functional regressions (pages still load real data, dialogs still open/close, no device conditionals introduced).
    - Attach screenshots to the GitHub issue and to the implementation summary.
+   - **Duplication audit gate:** N/A — verification-only task.
 
 7. **Update DESIGN-SYSTEM.md to align with audiocontrol.org.**
    - Codify the conventions adopted from audiocontrol.org's redesigned visual identity (typography scale, layout rhythm, component vocabulary) directly in `DESIGN-SYSTEM.md` so they cannot diverge.
    - Codify any other new conventions discovered during cleanup (e.g., page header rhythm, dialog footer pattern).
    - Confirm the `s330-*` color tokens are explicitly preserved as the editor palette; document that audiocontrol.org alignment happens through type/spacing/component shapes, not recoloring.
    - If a new token is needed, add it to `editor-core/src/design/tokens.css` and document it in DESIGN-SYSTEM.md before using it in components.
+   - **Duplication audit gate:**
+     - [ ] Confirmed every primitive promoted to `.ac-*` during Tasks 4–5 has a corresponding section in `DESIGN-SYSTEM.md` so future agents reach for the shared class instead of re-inventing.
+     - [ ] Confirmed no new token duplicates an existing token (e.g., a fresh `--ac-color-warning-soft` when `--ac-color-warning` plus alpha would suffice).
 
 ### Acceptance Criteria
 
@@ -414,6 +449,7 @@ A focused visual polish pass across all editor pages. **Every UI change in this 
 - [ ] No hardcoded pixel widths introduced.
 - [ ] All new visual rules codified in `DESIGN-SYSTEM.md` (and any new tokens added to `tokens.css`). (Task 7 — pending)
 - [ ] All existing unit / UI tests still pass. (Task 6 verification — pending)
+- [ ] **Phase-completion duplication audit passes** — the per-task gates above (Tasks 3–5, 7) all have their audit tables filled in with concrete numbers, and any deferred consolidation work has a tracked GitHub issue link. **No "we'll consolidate later" without an issue link.**
 
 ---
 
