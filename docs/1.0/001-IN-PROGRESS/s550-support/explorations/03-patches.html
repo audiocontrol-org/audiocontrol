@@ -1737,19 +1737,12 @@
   <!-- ===== STATUS ROW HEADER (hoisted: sibling of app-shell) ===== -->
   <header class="ac-status-row patches__page-title" style="margin-top: var(--ac-space-6);">
     <div>
-      <div class="patches__title-eyebrow-row" style="margin-bottom: var(--ac-space-2);">
-        <span class="ac-panel-label">§ 01 · Memory</span>
-        <span class="patches__detail-eyebrow-sep">·</span>
-        <span class="ac-panel-label ac-panel-label--accent">P11 → P48 · 4 banks</span>
-      </div>
       <h2 id="patches-heading" class="ac-status-row__heading">Patches</h2>
       <div class="ac-status-row__heading-rule"></div>
     </div>
-    <div style="display: inline-flex; align-items: center; gap: var(--ac-space-3);">
-      <span class="patches__title-metric">
-        <span class="ac-signal-led" aria-hidden="true"></span>
-        <span><strong>32</strong> of <strong>32</strong> loaded</span>
-      </span>
+    <span class="ac-status-row__metric">
+      <span class="ac-signal-led" aria-hidden="true"></span>
+      <span><strong>32</strong> of <strong>32</strong> loaded</span>
       <button
         type="button"
         class="patches__icon-btn"
@@ -1763,7 +1756,7 @@
           <polyline points="4 14 4 11 7 11" />
         </svg>
       </button>
-    </div>
+    </span>
   </header>
 
 <div class="app-shell patches__app-shell" aria-labelledby="patches-heading">
