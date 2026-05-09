@@ -81,6 +81,14 @@ export function useLoopEditorSync({
   // Intentionally watches only `selectedToneIndex`. We do NOT want to reset
   // every time the tone object changes (e.g. after a parameter edit), only
   // when the user navigates to a different tone slot.
+  //
+  // CLAUDE.md deviation: the `react-hooks/exhaustive-deps` rule wants `tones`
+  // and `loopEditor` in the dep array. Including them defeats the
+  // "reset only on slot navigation" semantic above — `tones` mutates on every
+  // device parameter edit and `loopEditor` is a hook return whose identity
+  // we treat as a stable seam. The disable is scoped to this specific effect;
+  // do not copy this pattern. If this needs to expand, factor the reset call
+  // into a stable callback exposed by the loop editor instead.
   useEffect(() => {
     if (selectedToneIndex === null) return;
     const tone = tones[selectedToneIndex];

@@ -7,16 +7,22 @@
  *
  * Responsibilities:
  *   - Cache decoded `Int16Array` keyed by tone index.
- *   - Coalesce loads (no double-fetch if already cached).
+ *   - Coalesce loads (no double-fetch if already cached OR in-flight).
  *   - Expose progress + loading flags for UI.
  *   - Provide a range-invalidator for callers that just force-reloaded
  *     a bank (cached samples for those slots are now stale).
  *
  * Decode path: device sends packed 12-bit samples; we unpack to 16-bit
  * once and cache the result. Loop editor and waveform render want 16-bit.
+ *
+ * Concurrency: cache + in-flight tracking are kept in refs (not state)
+ * so the coalesce check always reads live values. With state-only
+ * tracking, two rapid `loadWaveData(N)` calls could both pass the
+ * `has()` guard against a stale closure and fire duplicate fetches.
+ * `setVersion` is bumped on cache writes to trigger consumer re-render.
  */
 
-import { useCallback, useState, type MutableRefObject } from 'react';
+import { useCallback, useRef, useState, type MutableRefObject } from 'react';
 import type { SamplerClientInterface } from '@/core/midi/SamplerClient';
 import { unpack12BitTo16Bit } from '@/lib/wave-export';
 
@@ -31,13 +37,13 @@ interface UseWaveDataCacheOptions {
 }
 
 export interface UseWaveDataCacheResult {
-  /** True while a load is in flight. */
+  /** True while any load is in flight. */
   isLoading: boolean;
   /** Current load progress as 0-100, or undefined when not loading. */
   progress: number | undefined;
   /**
-   * Fetch and cache wave data for a tone slot. No-op if already cached.
-   * Returns void; call `getSamples` afterwards to read the result.
+   * Fetch and cache wave data for a tone slot. No-op if already cached
+   * OR if a load for the same index is already in flight.
    */
   loadWaveData: (toneIndex: number) => Promise<void>;
   /** Synchronous read of cached samples, or null if not loaded. */
@@ -54,7 +60,13 @@ export function useWaveDataCache({
   clientRef,
   setError,
 }: UseWaveDataCacheOptions): UseWaveDataCacheResult {
-  const [cache, setCache] = useState<Map<number, Int16Array>>(new Map());
+  // Cache and in-flight set live in refs so the coalesce check below
+  // always reads live values. Using useState would freeze the closure.
+  const cacheRef = useRef<Map<number, Int16Array>>(new Map());
+  const inFlightRef = useRef<Set<number>>(new Set());
+
+  // Bump on cache writes / invalidations so `getSamples` consumers re-render.
+  const [, setVersion] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState<number | undefined>(undefined);
 
@@ -62,9 +74,13 @@ export function useWaveDataCache({
     async (toneIndex: number): Promise<void> => {
       if (!clientRef.current) return;
 
-      // Coalesce: if already cached, nothing to do.
-      if (cache.has(toneIndex)) return;
+      // Coalesce against both cached AND in-flight reads. Without the
+      // in-flight guard, rapid double-clicks on Load fire two fetches
+      // because the first fetch hasn't yet written to the cache.
+      if (cacheRef.current.has(toneIndex)) return;
+      if (inFlightRef.current.has(toneIndex)) return;
 
+      inFlightRef.current.add(toneIndex);
       setIsLoading(true);
       setProgress(0);
       setError(null);
@@ -81,35 +97,33 @@ export function useWaveDataCache({
         // Convert from packed 12-bit samples to 16-bit for downstream UI.
         const samples = unpack12BitTo16Bit(waveResponse.data);
 
-        setCache((prev) => {
-          const next = new Map(prev);
-          next.set(toneIndex, samples);
-          return next;
-        });
+        cacheRef.current.set(toneIndex, samples);
+        setVersion((v) => v + 1);
       } catch (err) {
         console.error('[useWaveDataCache] Failed to load wave data:', err);
         setError(err instanceof Error ? err.message : 'Failed to load wave data');
       } finally {
-        setIsLoading(false);
-        setProgress(undefined);
+        inFlightRef.current.delete(toneIndex);
+        if (inFlightRef.current.size === 0) {
+          setIsLoading(false);
+          setProgress(undefined);
+        }
       }
     },
-    [clientRef, cache, setError]
+    [clientRef, setError]
   );
 
   const getSamples = useCallback(
-    (toneIndex: number): Int16Array | null => cache.get(toneIndex) ?? null,
-    [cache]
+    (toneIndex: number): Int16Array | null => cacheRef.current.get(toneIndex) ?? null,
+    []
   );
 
   const invalidateRange = useCallback((startIndex: number, count: number) => {
-    setCache((prev) => {
-      const next = new Map(prev);
-      for (let i = startIndex; i < startIndex + count; i++) {
-        next.delete(i);
-      }
-      return next;
-    });
+    let changed = false;
+    for (let i = startIndex; i < startIndex + count; i++) {
+      if (cacheRef.current.delete(i)) changed = true;
+    }
+    if (changed) setVersion((v) => v + 1);
   }, []);
 
   return { isLoading, progress, loadWaveData, getSamples, invalidateRange };

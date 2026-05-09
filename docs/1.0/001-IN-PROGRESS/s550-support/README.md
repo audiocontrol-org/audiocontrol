@@ -14,6 +14,7 @@ The S-550 shares model ID `0x1E` and SysEx protocol with the S-330 but has an in
 
 - [PRD](./prd.md) - Product requirements, memory block comparison, architecture decisions
 - [Workplan](./workplan.md) - Implementation phases, status, and remaining work
+- [2026-05-08 Code Audit Findings](./2026-05-08-code-audit-findings.md) - Review of redesign implementation with duplication/refactor and cross-device drift focus
 - [Implementation Summary](./implementation-summary.md) - Post-completion report
 
 ## GitHub Tracking

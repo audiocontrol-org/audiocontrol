@@ -127,23 +127,35 @@ export function useLibraryExport({
   // Imperatively open the export-tone dialog by tone index.
   // Mirrors `handleDropDeviceTone` for callers that don't go through DnD
   // (e.g. a list-row "Export" button, a toolbar action). Same effects:
-  // sets the dialog state, clears progress and error.
+  // sets the dialog state, clears progress and error. Throws if the tone
+  // isn't loaded — the caller is responsible for ensuring the tone is
+  // present in the device-data store before invoking export.
   const openExportToneDialog = useCallback((toneIndex: number) => {
+    if (!libraryHandle && !allowDownloadFallback) {
+      throw new Error('Library not connected. Connect a library before exporting.');
+    }
     const tone = tones[toneIndex];
-    if (!tone) return;
+    if (!tone) {
+      throw new Error('Tone not loaded from device. Try refreshing device data first.');
+    }
     setExportProgress(undefined);
     setExportError(null);
     setExportToneDialog({ tone, toneIndex });
-  }, [tones]);
+  }, [tones, libraryHandle, allowDownloadFallback]);
 
   // Imperatively open the export-patch dialog by patch index.
   const openExportPatchDialog = useCallback((patchIndex: number) => {
+    if (!libraryHandle) {
+      throw new Error('Library not connected. Connect a library before exporting.');
+    }
     const patch = patches[patchIndex];
-    if (!patch) return;
+    if (!patch) {
+      throw new Error('Patch not loaded from device. Try refreshing device data first.');
+    }
     setExportPatchProgress(undefined);
     setExportPatchError(null);
     setExportPatchDialog({ patch, patchIndex });
-  }, [patches]);
+  }, [patches, libraryHandle]);
 
   // Handle drop from device memory to library (export tone) - opens dialog
   const handleDropDeviceTone = useCallback((data: DeviceDragData) => {
@@ -154,7 +166,6 @@ export function useLibraryExport({
     const tone = tones[data.index];
     if (!tone) {
       throw new Error('Tone not loaded from device. Try refreshing device data first.');
-      return;
     }
 
     // Open the export dialog
@@ -172,7 +183,6 @@ export function useLibraryExport({
     const patch = patches[data.index];
     if (!patch) {
       throw new Error('Patch not loaded from device. Try refreshing device data first.');
-      return;
     }
 
     // Open the export dialog
@@ -266,7 +276,7 @@ export function useLibraryExport({
         setIndividualTones(updatedTones);
       }
     } catch (err) {
-      console.error('[LibraryPage] Failed to export tone:', err);
+      console.error('[useLibraryExport] Failed to export tone:', err);
       const message = err instanceof Error ? err.message : 'Failed to export tone';
       setExportError(message);
       throw err;
@@ -408,7 +418,7 @@ export function useLibraryExport({
       const updatedPatches = await listIndividualPatches(libraryHandle);
       setIndividualPatches(updatedPatches);
     } catch (err) {
-      console.error('[LibraryPage] Failed to export patch:', err);
+      console.error('[useLibraryExport] Failed to export patch:', err);
       const message = err instanceof Error ? err.message : 'Failed to export patch';
       setExportPatchError(message);
       throw err;

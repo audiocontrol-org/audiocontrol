@@ -15,6 +15,8 @@ deskwork:
 - [Create unified sampler-editor (#57)](https://github.com/audiocontrol-org/audiocontrol/issues/57)
 - [Evaluate shared code extraction (#58)](https://github.com/audiocontrol-org/audiocontrol/issues/58)
 - [Phase 9: UX/UI cleanup via /frontend-design (#392)](https://github.com/audiocontrol-org/audiocontrol/issues/392)
+- [S-550 import dialog blocks wave banks C/D (#393)](https://github.com/audiocontrol-org/audiocontrol/issues/393) — surfaced by 2026-05-08 audit
+- [Empty-slot helper duplication (ToneList/PatchList/PlayPage) (#394)](https://github.com/audiocontrol-org/audiocontrol/issues/394) — surfaced by 2026-05-08 audit
 
 ---
 
@@ -393,7 +395,7 @@ See `.claude/rules/workflow-playbooks.md § Phase-completion duplication audit` 
    - User reviews and selects a direction; commit the chosen direction's notes back into the audit doc.
    - **Duplication audit gate:** Mockup-only task; explorations are static HTML and don't ship to production. Cross-page mockup consistency was audited separately (`/tmp/cross-page-audit.md`, 18 findings). Production refactor (Tasks 3–6) is where the duplication-audit gate carries weight.
 
-3. **Refactor `TonesPage.tsx` to fit under 500 lines.** ✓ Complete (commit `6df1ba6a`)
+3. **Refactor `TonesPage.tsx` to fit under 500 lines.** ✓ Complete (commits `6df1ba6a` + post-review fixes)
    - `TonesPage.tsx`: 691 → 492 lines.
    - Extended `useLibraryExport` with `openExportToneDialog` / `openExportPatchDialog` imperative openers + an `allowDownloadFallback` option for the tones-page download fallback.
    - New shared hook `useWaveDataCache` (per-tone Int16Array cache + on-demand loader + invalidateRange).
@@ -403,17 +405,27 @@ See `.claude/rules/workflow-playbooks.md § Phase-completion duplication audit` 
      - [x] Greps verified: `handleExportToLibrary` was a duplicate of `useLibraryExport.handleExportTone` — unified. `handleImportSample` is NOT a duplicate of `useImportSamples` (different operation: raw single-tone upload vs multi-tone bundle) — kept page-local with justification. `handleExportSample` (WAV download) is unique — kept page-local.
      - [x] Each new hook justified: `useWaveDataCache` (stateful Map cache + range invalidation, reusable beyond loop editor); `useLoopEditorSync` (well-defined seam protocol with prev-ref tracking, would recur in any page embedding `useLoopEditor`).
      - [x] Net duplication eliminated: ~150 lines of TonesPage-local re-implementation that mirrored `useLibraryExport`.
+   - **Post-task review (commit `6df1ba6a`) surfaced 7 findings.** Critical + moderate fixed inline; minor + out-of-scope tracked or absorbed into Tasks 4 / 6:
+     - [x] Critical — `useWaveDataCache.loadWaveData` had a stale-closure race (state-bound `cache` in deps coalesced via a frozen snapshot; rapid double-calls fired duplicate fetches). Fixed by moving cache + in-flight tracking to refs, with `setVersion` bump to drive re-render.
+     - [x] Moderate — `[LibraryPage]` log prefix in the now-shared `useLibraryExport` retagged `[useLibraryExport]`.
+     - [x] Moderate — `openExportToneDialog` / `openExportPatchDialog` previously silent-no-op'd on cache miss (CLAUDE.md "no fallbacks/silent failures" violation). Now throw with a clear error; library-disconnected invariant also enforced at dialog-open time, not just at execute time.
+     - [x] Minor — `eslint-disable-next-line` in `useLoopEditorSync` now carries the CLAUDE.md-required deviation comment.
+     - [→] Outstanding duplication tracked in audit doc (`docs/1.0/001-IN-PROGRESS/s550-support/2026-05-08-code-audit-findings.md`): `PatchesPage` still shims patch export instead of using `openExportPatchDialog` (audit finding 5; absorbed into Task 4); `useDeviceToneChopper` and `handleExportSample` duplicate the wave-fetch pattern that `useWaveDataCache` now provides (deferred — note in DEVELOPMENT-NOTES, revisit during Task 4).
+     - [→] **Reviewer 2 carry-over (intentionally not fixed):** original TonesPage flow called `setTone(toneIndex, tone, totalTones)` after `requestToneData` to refresh the device-data cache. The new contract requires the tone to be in cache *before* `openExportToneDialog`, so the post-export `setTone` becomes redundant — the cache already holds the source data. Documented here so future readers don't re-introduce the call.
 
 4. **Apply visual polish to each page via `/frontend-design`.** One commit per page so regressions are bisectable. Each page's polish is produced through the plugin — no hand-edited JSX/CSS slipped in alongside.
    - HomePage — landing layout, calls to action, device identity affordance.
    - PatchesPage — header/list/detail spacing, action affordances, status indicators.
+     - **Carry-over from Phase 9 Task 3 review:** migrate to `useLibraryExport.openExportPatchDialog` instead of the local connect-via-fake-DnD shim (matches audit doc finding 5).
    - TonesPage — parameter editor density, section pairing per `DESIGN-SYSTEM.md` §"Parameter Editors".
    - PlayPage — performance UI hierarchy, panic/all-notes-off labelling per accessibility rules.
    - WorkflowsPage — list affordances, empty states.
    - LibraryPage — tree view typography, dialog launcher polish, memory map panel integration spacing.
+   - **Cross-page concern from audit doc finding 4 — hard-coded "S-330" copy.** Every "Connect to your S-330" / "S-330's PLAY screen" / similar literal must be replaced with `useDeviceConfig().deviceName`. `HomePage` already does this — match that pattern. Pages confirmed affected: `TonesPage:306`, `PatchesPage:196`, `LibraryPage:233`, `PlayPage:252`, plus `ImportSampleDialog` header/docs. Treat this as part of each page's polish commit, not a separate sweep.
    - **Duplication audit gate (per page):**
      - [ ] Every page-scoped class introduced (`<page>__icon-btn`, `<page>__list-row`, `<page>__detail-head`, `<page>__page-title`, etc.) was checked against sibling pages. If two pages have the same primitive with different styles, **promote to `.ac-*` shared class before merging the polish**, not after.
      - [ ] Every component file extracted under `<page>/` was checked for sibling components doing the same role on other pages.
+     - [ ] Every "S-330" literal in the page touched was replaced with `useDeviceConfig().deviceName` (see above).
      - [ ] Document the per-page audit table in the commit message: "Page X: N candidates checked, M promotions to `.ac-*`, K kept page-scoped because <reason>."
 
 5. **Apply visual polish to import/export/save/load dialogs.**
@@ -425,6 +437,7 @@ See `.claude/rules/workflow-playbooks.md § Phase-completion duplication audit` 
      - [ ] Document: "Dialogs audited: <N>, primitives extracted: <M>, primitives kept inline because <reason>."
 
 6. **Visual verification on both devices.**
+   - **Prerequisite from audit doc finding 3 — UI-layer test infrastructure does not exist yet.** `playwright.test-harness.config.ts` points at `test/ui/` which contains only `.gitkeep`, and there are no `Test*Page.tsx` harness pages. (Note: integration coverage at `test/integration/library-import.test.ts` exists at the data layer; the gap is specifically UI-layer layout/interaction regression.) Before screenshotting, add at minimum: a `TestPagesHarnessPage` that mounts each redesigned page with mock data, registered in `App.tsx` behind a `/test/*` route, and one Playwright spec per page under `test/ui/<page>.spec.ts` that loads the harness and asserts the design-system invariants we want to defend (no hardcoded pixel widths in computed style, single page-title element, expected number of design-token rules applied).
    - Take before/after screenshots of every page on `/roland/s330/editor` and `/roland/s550/editor`.
    - Confirm no functional regressions (pages still load real data, dialogs still open/close, no device conditionals introduced).
    - Attach screenshots to the GitHub issue and to the implementation summary.
