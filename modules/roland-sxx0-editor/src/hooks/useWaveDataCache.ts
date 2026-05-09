@@ -44,8 +44,14 @@ export interface UseWaveDataCacheResult {
   /**
    * Fetch and cache wave data for a tone slot. No-op if already cached
    * OR if a load for the same index is already in flight.
+   *
+   * The optional `onProgress` callback receives the same 0-100 percentage
+   * that drives the cache's shared `progress` state. Per-call consumers
+   * (e.g., the sample-export UI) wire this to their local progress UI so
+   * they don't have to re-fetch just to observe transfer progress. When
+   * the load is a cache or in-flight hit, `onProgress` is NOT invoked.
    */
-  loadWaveData: (toneIndex: number) => Promise<void>;
+  loadWaveData: (toneIndex: number, onProgress?: (pct: number) => void) => Promise<void>;
   /** Synchronous read of cached samples, or null if not loaded. */
   getSamples: (toneIndex: number) => Int16Array | null;
   /**
@@ -71,7 +77,10 @@ export function useWaveDataCache({
   const [progress, setProgress] = useState<number | undefined>(undefined);
 
   const loadWaveData = useCallback(
-    async (toneIndex: number): Promise<void> => {
+    async (
+      toneIndex: number,
+      onProgress?: (pct: number) => void
+    ): Promise<void> => {
       if (!clientRef.current) return;
 
       // Coalesce against both cached AND in-flight reads. Without the
@@ -91,6 +100,7 @@ export function useWaveDataCache({
           (bytesReceived, totalBytes) => {
             const pct = totalBytes > 0 ? (bytesReceived / totalBytes) * 100 : 0;
             setProgress(pct);
+            onProgress?.(pct);
           }
         );
 

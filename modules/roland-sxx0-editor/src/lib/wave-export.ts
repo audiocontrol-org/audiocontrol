@@ -149,19 +149,44 @@ export function downloadBlob(blob: Blob, filename: string): void {
 }
 
 /**
- * Export S-330 wave data as a WAV file download
+ * Export already-decoded 16-bit samples as a WAV file download.
  *
- * @param waveData - S-330 wave data response
+ * Use this when the caller already has decoded samples (e.g., from
+ * `useWaveDataCache`) and just needs the WAV-build + sanitized-filename
+ * + download steps. Keeps the filename sanitization rule in ONE place.
+ *
+ * @param samples - Decoded 16-bit signed samples
+ * @param sampleRate - Sample rate in Hz (e.g., 15000 or 30000)
  * @param toneName - Name of the tone (used for filename)
  */
-export function exportWaveAsWav(waveData: SamplerWaveDataResponse, toneName: string): void {
-    const blob = createWavBlob(waveData);
+export function exportSamplesAsWav(
+    samples: Int16Array,
+    sampleRate: number,
+    toneName: string
+): void {
+    const blob = createWavBlobFromSamples(samples, sampleRate);
 
     // Sanitize filename - remove invalid characters
     const sanitizedName = toneName.trim().replace(/[<>:"/\\|?*]/g, '_') || 'sample';
     const filename = `${sanitizedName}.wav`;
 
     downloadBlob(blob, filename);
+}
+
+/**
+ * Export S-330 wave data as a WAV file download.
+ *
+ * Convenience wrapper for callers that hold a `SamplerWaveDataResponse`
+ * (i.e., they did the device fetch themselves and haven't decoded yet).
+ * Delegates to `exportSamplesAsWav` after unpacking — the sanitization +
+ * download path lives in one place.
+ *
+ * @param waveData - S-330 wave data response
+ * @param toneName - Name of the tone (used for filename)
+ */
+export function exportWaveAsWav(waveData: SamplerWaveDataResponse, toneName: string): void {
+    const samples = unpack12BitTo16Bit(waveData.data);
+    exportSamplesAsWav(samples, waveData.sampleRate, toneName);
 }
 
 /**

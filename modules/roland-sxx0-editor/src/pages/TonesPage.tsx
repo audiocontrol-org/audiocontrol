@@ -22,7 +22,7 @@ import { ToneEditor } from '@/components/tones/ToneEditor';
 import { ExportToneDialog } from '@/components/library/ExportToneDialog';
 import { ImportSampleDialog } from '@/components/library/ImportSampleDialog';
 import { cn } from '@/lib/utils';
-import { exportWaveAsWav } from '@/lib/wave-export';
+import { exportSamplesAsWav } from '@/lib/wave-export';
 import { useLibraryConnection } from '@audiocontrol/editor-core';
 import { useLoopEditor } from '@audiocontrol/loop-editor/ui';
 import { SampleChopperDialog } from '@audiocontrol/sample-chopper/ui';
@@ -118,8 +118,10 @@ export function TonesPage() {
   // Wave data cache — owns decoded Int16Array per tone (for the loop editor).
   const waveCache = useWaveDataCache({ clientRef, setError });
 
-  // Sample chopper hook — chop device tones into drum kits
-  const chopper = useDeviceToneChopper({ clientRef, libraryDirectoryHandle: libraryHandle });
+  // Sample chopper hook — chop device tones into drum kits.
+  // Inject the wave cache so the chopper reuses already-fetched samples
+  // (no redundant device read when the loop editor already loaded them).
+  const chopper = useDeviceToneChopper({ clientRef, libraryDirectoryHandle: libraryHandle, waveCache });
 
   // Loop editor hook — owns loop point state, detection, audio preview, and smoothing
   const selectedToneForLoop = selectedToneIndex !== null ? tones[selectedToneIndex] : null;
@@ -207,7 +209,9 @@ export function TonesPage() {
     [selectedToneIndex, setError]
   );
 
-  // Export sample as WAV file
+  // Export sample as WAV. Wave-data fetch routes through `useWaveDataCache`
+  // (hit = skip device read; miss = load + cache with per-call progress).
+  // Tone-data is a separate SysEx request and stays inline.
   const handleExportSample = useCallback(async () => {
     if (selectedToneIndex === null || !clientRef.current) return;
 
@@ -220,16 +224,26 @@ export function TonesPage() {
       const tone = await clientRef.current.requestToneData(selectedToneIndex);
       const toneName = tone?.name || `tone_${selectedToneIndex}`;
 
-      const waveData = await clientRef.current.requestWaveData(
-        selectedToneIndex,
-        (bytesReceived, totalBytes) => {
-          const progress = totalBytes > 0 ? (bytesReceived / totalBytes) * 100 : 0;
-          setExportProgress(progress);
+      let samples = waveCache.getSamples(selectedToneIndex);
+      if (samples === null) {
+        await waveCache.loadWaveData(selectedToneIndex, (pct) => setExportProgress(pct));
+        samples = waveCache.getSamples(selectedToneIndex);
+        if (samples === null) {
+          // Invariant: cache must contain the entry once loadWaveData resolves.
+          throw new Error(
+            `[TonesPage] Cache miss after loadWaveData(${selectedToneIndex}); ` +
+              'wave data unavailable for export.'
+          );
         }
-      );
+      } else {
+        // Cache hit: nothing to transfer; reflect that in the progress UI.
+        setExportProgress(100);
+      }
 
-      // Export the wave data as a WAV file
-      exportWaveAsWav(waveData, toneName);
+      // Sample rate comes from tone metadata (no wave-data response on cache hit).
+      const sampleRate = tone?.sampleRate === '30kHz' ? 30000 : 15000;
+
+      exportSamplesAsWav(samples, sampleRate, toneName);
 
       // Update cached tone data with fresh data
       if (tone) {
@@ -243,7 +257,7 @@ export function TonesPage() {
       setIsExporting(false);
       setExportProgress(undefined);
     }
-  }, [selectedToneIndex, setError, setTone, totalTones]);
+  }, [selectedToneIndex, setError, setTone, totalTones, waveCache]);
 
   // Open import sample dialog
   const handleOpenImportDialog = useCallback(() => {

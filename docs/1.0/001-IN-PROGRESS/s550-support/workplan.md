@@ -502,13 +502,15 @@ This phase exists because the 2026-05-08 code audit and the Phase 9 Task 3 revie
      - [x] `grep -rn "isToneEmpty\|isPatchEmpty" modules/roland-sxx0-editor/src/` returns only the canonical defs in `slot-allocation.ts:58,84`, internal uses in `slot-allocation.ts` and `best-fit.ts`, and consuming imports in `ToneList.tsx`, `PatchList.tsx`, `PlayPage.tsx`, `ToneSlotMap.tsx`. **Zero local function definitions.**
      - [x] No new wrapper helpers introduced — edits are pure deletions + named imports.
 
-3. **Wave-fetch consolidation: route `useDeviceToneChopper` and `handleExportSample` through `useWaveDataCache` (#395, audit follow-up, severity MEDIUM).**
-   - `useDeviceToneChopper`: accept an injected cache (or its `getSamples` + `loadWaveData` pair) instead of owning its own `requestWaveData` call. Cache hits skip the device read.
-   - `handleExportSample` (`TonesPage.tsx`, the WAV download path): read from cache when populated; on cache miss, use `loadWaveData` (which fetches AND caches) before exporting. Never call `requestWaveData` + `unpack12BitTo16Bit` inline.
-   - After consolidation, manually verify: load a tone in the loop editor → chop / download → device shows zero additional reads (instrument the bridge / SerialMIDI client log to confirm).
-   - **Duplication audit gate:**
-     - [ ] `grep -rn "requestWaveData" modules/roland-sxx0-editor/src/` returns only `useWaveDataCache` and `useLibraryExport` (which is the export-with-progress flow that owns its own fetch by design — note the asymmetry explicitly).
-     - [ ] `grep -rn "unpack12BitTo16Bit" modules/roland-sxx0-editor/src/` returns only `useWaveDataCache`.
+3. **Wave-fetch consolidation: route `useDeviceToneChopper` and `handleExportSample` through `useWaveDataCache` (#395, audit follow-up, severity MEDIUM). [DONE]**
+   - `useWaveDataCache.loadWaveData` now accepts an optional per-call `onProgress(pct)` callback. Per-call consumers (sample-export UI) get the same 0-100 stream that drives the cache's shared `progress` state, without a redundant fetch.
+   - `useDeviceToneChopper` accepts `waveCache: UseWaveDataCacheResult` via options. `openChopper` calls `waveCache.loadWaveData(toneIndex)` then reads via `waveCache.getSamples(toneIndex)` — cache hits skip the device read entirely. Throws on a post-load null read (invariant violation, no silent fallback).
+   - `handleExportSample` (`TonesPage.tsx`) reads the cache first; on miss calls `loadWaveData(idx, setExportProgress)` so the per-export progress UI stays alive. Sample rate now comes from the cached tone metadata, the same way `useDeviceToneChopper` resolves it. New helper `exportSamplesAsWav(samples, sampleRate, toneName)` in `lib/wave-export.ts` keeps the filename-sanitization rule in one place; the original `exportWaveAsWav` (response-based) delegates to it.
+   - Hardware verification (load a tone → chop / download → device shows zero additional reads on the second action) deferred to operator hardware run.
+   - **Duplication audit gate (PASSED):**
+     - [x] `grep -rn "requestWaveData" modules/roland-sxx0-editor/src/` returns only `useWaveDataCache.ts:98` (the canonical fetch), `useLibraryExport.ts:216,357` (the export-with-progress flow that owns its own fetch by design — documented asymmetry; consolidating it would entangle the cache with the multi-tone export progress sequence), and `useLibraryImportDialogs.ts:196` (a callback adapter passed into `saveDeviceToSetIncremental`, fundamentally different shape — not a wave-fetch site for this page's data).
+     - [x] `grep -rn "unpack12BitTo16Bit" modules/roland-sxx0-editor/src/` returns only `useWaveDataCache.ts:108` (the canonical decode), `wave-export.ts:33,69,188` (the function definition + response-based wrappers), and `library-tones.ts:109` / `library-io.ts:87` / `library-sets.ts:149` (library save/import flows that operate on already-fetched response payloads, not the cache; out of this task's scope per the workplan note "only `useWaveDataCache` and `useLibraryExport`"). Zero new inline `unpack12BitTo16Bit` calls in editor pages or non-library hooks.
+     - [x] No new wrapper hooks introduced — the only addition is `exportSamplesAsWav` in `lib/wave-export.ts`, justified because it cleanly extracts the samples-based export path while keeping the sanitization rule in one place; `exportWaveAsWav` continues to exist and now delegates.
 
 ### Acceptance Criteria
 

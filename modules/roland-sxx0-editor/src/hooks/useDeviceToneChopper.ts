@@ -8,12 +8,19 @@ import type { ChopperResult, ChopperSavePayload } from '@audiocontrol/sample-cho
 import { saveSample, createWav, type SampleYaml } from '@audiocontrol/sampler-library/browser';
 import type { SamplerClientInterface, SamplerTone } from '@/core/midi/SamplerClient';
 import type { S330KitConfig } from '@/components/library/S330KitOutputConfig';
-import { unpack12BitTo16Bit } from '@/lib/wave-export';
 import type { StorageDirectoryHandle } from '@/lib/library-service';
+import type { UseWaveDataCacheResult } from '@/hooks/useWaveDataCache';
 
 interface UseDeviceToneChopperOptions {
   clientRef: RefObject<SamplerClientInterface | null>;
   libraryDirectoryHandle: StorageDirectoryHandle | null;
+  /**
+   * Wave-data cache injected by the page. The chopper reads samples from
+   * the cache (cache hit = no device read) and falls through to
+   * `loadWaveData` only on miss. Routing through the cache keeps the
+   * fetch-and-decode logic in one place; see `useWaveDataCache` JSDoc.
+   */
+  waveCache: UseWaveDataCacheResult;
 }
 
 const DEFAULT_KIT_CONFIG: S330KitConfig = {
@@ -24,11 +31,19 @@ const DEFAULT_KIT_CONFIG: S330KitConfig = {
   velocitySensitivity: 2,
 };
 
-export function useDeviceToneChopper({ clientRef, libraryDirectoryHandle }: UseDeviceToneChopperOptions) {
+export function useDeviceToneChopper({
+  clientRef,
+  libraryDirectoryHandle,
+  waveCache,
+}: UseDeviceToneChopperOptions) {
   const [chopperOpen, setChopperOpen] = useState(false);
   const [chopperSamples, setChopperSamples] = useState<Int16Array | null>(null);
   const [chopperSampleRate, setChopperSampleRate] = useState(15000);
   const [kitConfig, setKitConfig] = useState<S330KitConfig>(DEFAULT_KIT_CONFIG);
+  // Local loading flag: mirrors the chopper open-flow (load + render),
+  // not the cache's shared `isLoading` (which is global across consumers).
+  // The Chop button gates on this; switching to `waveCache.isLoading` would
+  // disable the button while an unrelated loop-editor load is in flight.
   const [isLoadingWav, setIsLoadingWav] = useState(false);
 
   const openChopper = useCallback(async (toneIndex: number, tone: SamplerTone) => {
@@ -36,8 +51,21 @@ export function useDeviceToneChopper({ clientRef, libraryDirectoryHandle }: UseD
 
     setIsLoadingWav(true);
     try {
-      const waveResponse = await clientRef.current.requestWaveData(toneIndex);
-      const samples = unpack12BitTo16Bit(waveResponse.data);
+      // Route through the cache: hits skip the device read, misses
+      // fetch + cache. `loadWaveData` is a no-op on cache hit.
+      await waveCache.loadWaveData(toneIndex);
+      const samples = waveCache.getSamples(toneIndex);
+      if (samples === null) {
+        // Invariant: cache must contain the entry once `loadWaveData`
+        // resolves (success path). Null here means the load failed
+        // silently OR the cache was invalidated mid-flight, both of
+        // which the cache is expected to surface via `setError`. We
+        // refuse to silently fall back; throw with a clear message.
+        throw new Error(
+          `[useDeviceToneChopper] Cache miss after loadWaveData(${toneIndex}); ` +
+            'wave data unavailable.'
+        );
+      }
       const sampleRate = tone.sampleRate === '30kHz' ? 30000 : 15000;
 
       setChopperSamples(samples);
@@ -50,7 +78,7 @@ export function useDeviceToneChopper({ clientRef, libraryDirectoryHandle }: UseD
     } finally {
       setIsLoadingWav(false);
     }
-  }, [clientRef]);
+  }, [clientRef, waveCache]);
 
   const closeChopper = useCallback(() => {
     setChopperOpen(false);
