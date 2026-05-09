@@ -17,7 +17,7 @@ import {
   convertYamlToS330Tone,
   type StorageDirectoryHandle,
 } from '@/lib/library-service';
-import { suggestToneAllocation, isToneSlotEmpty } from '@/lib/slot-allocation';
+import { suggestToneAllocation, isToneSlotEmpty, type WaveBankIndex } from '@/lib/slot-allocation';
 import { cn } from '@/lib/utils';
 import { calculateSegmentsNeeded } from '@audiocontrol/sampler-devices/s330';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
@@ -49,7 +49,17 @@ export interface ImportLibraryToneDialogProps extends OperationState {
     tone: SamplerTone;
     wavData: Uint8Array;
     targetSlot: number;
-    waveBank: 0 | 1 | 2 | 3;
+    /**
+     * Wave bank index, typed as `number` (rather than `0 | 1 | 2 | 3`)
+     * because the bank `<option>` set is layout-driven via
+     * `targetGroup.waveBankIndices` / `targetGroup.waveBankLabels`. The
+     * literal-union would lie about which banks are valid for a given
+     * tone group on S-550 (tones 32-63 use banks C/D, not A/B), and
+     * runtime validation against the layout is the source of truth.
+     * Mirrors the same widening already in `ImportSampleDialog` (#393)
+     * and `ImportLibraryPatchDialog` (#396).
+     */
+    waveBank: number;
     segmentTop: number;
     segmentLength: number;
   }) => Promise<void>;
@@ -82,7 +92,7 @@ export function ImportLibraryToneDialog({
   // User selections
   const [selectedTargetIndex, setSelectedTargetIndex] = useState(0);
   const [targetSlot, setTargetSlot] = useState(initialTargetSlot ?? 0);
-  const [waveBank, setWaveBank] = useState<0 | 1 | 2 | 3>(0);
+  const [waveBank, setWaveBank] = useState<number>(0);
   const [segmentTop, setSegmentTop] = useState(0);
   const [segmentLength, setSegmentLength] = useState(1);
 
@@ -111,14 +121,19 @@ export function ImportLibraryToneDialog({
         const isIndividual = setName === '__individual__';
         let loadedWavData: Uint8Array;
         let convertedTone: SamplerTone;
-        let preferredBank: 0 | 1 | 2 | 3 = 0;
+        // `preferredBank` stays a `WaveBankIndex` because it feeds
+        // `suggestToneAllocation`, whose signature requires that
+        // literal-union. The user-visible `onImport.waveBank` is widened
+        // to `number` separately because the rendered `<option>` set is
+        // layout-driven via `targetGroup.waveBankIndices`.
+        let preferredBank: WaveBankIndex = 0;
 
         if (isIndividual) {
           // Load individual tone directly from library
           const { yaml, wavData: data } = await loadIndividualTone(libraryHandle, toneFile);
           loadedWavData = data;
           convertedTone = convertYamlToS330Tone(yaml);
-          preferredBank = convertedTone.wave.bank as 0 | 1 | 2 | 3;
+          preferredBank = convertedTone.wave.bank as WaveBankIndex;
         } else {
           // Load from a set
           const loadedManifest = await loadSetManifest(libraryHandle, setName);
@@ -319,7 +334,7 @@ export function ImportLibraryToneDialog({
                       g => g.firstIndex === importTargets[idx].toneIndexOffset
                     ) ?? memoryLayout.toneGroups[0];
                     setTargetSlot(newGroup.firstIndex);
-                    setWaveBank(newGroup.waveBankIndices[0] as 0 | 1 | 2 | 3);
+                    setWaveBank(newGroup.waveBankIndices[0]);
                   }}
                   disabled={isOperating}
                   className={cn(
@@ -386,7 +401,7 @@ export function ImportLibraryToneDialog({
                   <select
                     id="waveBank"
                     value={waveBank}
-                    onChange={(e) => setWaveBank(Number(e.target.value) as 0 | 1 | 2 | 3)}
+                    onChange={(e) => setWaveBank(Number(e.target.value))}
                     disabled={isOperating}
                     className={cn(
                       'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',

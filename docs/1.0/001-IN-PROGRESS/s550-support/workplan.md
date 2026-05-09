@@ -41,7 +41,7 @@ deskwork:
 | Phase 7: S-550 Front Panel | Not Started | Virtual front panel layout |
 | Phase 8: Memory Map Visualization | Complete | Graphical memory map in import dialogs |
 | Phase 9: UX/UI Cleanup | In Progress (Tasks 1–3 done; 4–7 remaining) | Visual polish across all editor pages via `/frontend-design` |
-| Phase 10: Post-Audit Cleanup | In Progress (Tasks 1–7 done pending hardware verification; Tasks 8–9 remaining) | Functional + duplication fixes surfaced by 2026-05-08 audit, Phase 9 Task 3 review, and Phase 10 Tasks 4–6 reviews. Tasks 1–7 done; Tasks 8–9 (#399 literal-union cleanup, #401 sample-rate helper) remaining. |
+| Phase 10: Post-Audit Cleanup | In Progress (Tasks 1–8 done pending hardware verification; Task 9 remaining) | Functional + duplication fixes surfaced by 2026-05-08 audit, Phase 9 Task 3 review, and Phase 10 Tasks 4–6 reviews. Tasks 1–8 done; Task 9 (#401 sample-rate helper) remaining. |
 
 ---
 
@@ -477,7 +477,7 @@ See `.claude/rules/workflow-playbooks.md § Phase-completion duplication audit` 
 
 ---
 
-## Phase 10: Post-Audit Cleanup (In Progress — Tasks 1–7 done pending hardware verification)
+## Phase 10: Post-Audit Cleanup (In Progress — Tasks 1–8 done pending hardware verification)
 
 This phase exists because the 2026-05-08 code audit and the Phase 9 Task 3 review (`/dw-lifecycle:review` on commit `6df1ba6a`) surfaced concrete cleanup items that fall outside Phase 9's "UX/UI cleanup via `/frontend-design`" scope. They land here so they have explicit acceptance criteria and a duplication-audit gate, not just a GitHub issue link that will rot.
 
@@ -623,23 +623,31 @@ This phase exists because the 2026-05-08 code audit and the Phase 9 Task 3 revie
    - [x] `lib/s330-format.ts` is removed (verified: `ls modules/roland-sxx0-editor/src/lib/s330-format.ts` → "No such file or directory").
    - [x] Slot-label rendering audit (within #400's file scope): **5 sites grepped — `ItemPreviewPanel.tsx` (5 sites), `ToneList.tsx` (1), `ExportPatchDialog.tsx` (3), `useLibraryImportDialogs.ts` (2 — including the line-233 tone-fallback sibling that the task description didn't list explicitly but is the same defect class). All 11 migrated to `memoryLayout.formatToneSlot` / `formatPatchSlot`.**
 
-8. **`ImportLibraryToneDialog` retains `0 | 1 | 2 | 3` literal-union pattern after #393 / #396 ([#399](https://github.com/audiocontrol-org/audiocontrol/issues/399), severity LOW). [Not Started]**
+8. **`ImportLibraryToneDialog` retains `0 | 1 | 2 | 3` literal-union pattern after #393 / #396 ([#399](https://github.com/audiocontrol-org/audiocontrol/issues/399), severity LOW). [Done]**
 
-   TypeScript discipline / consistency cleanup. `ImportLibraryToneDialog` is the third Roland import dialog; #393 and #396 widened `ImportSampleDialog` and `ImportLibraryPatchDialog` respectively. The rendered `<option>` set is already layout-driven (no correctness bug), but the literal-union `waveBank: 0 | 1 | 2 | 3` types and `as 0 | 1 | 2 | 3` casts at lines 52, 85, 322, 389 contradict the discipline established in those siblings.
+   TypeScript discipline / consistency cleanup. `ImportLibraryToneDialog` is the third Roland import dialog; #393 and #396 widened `ImportSampleDialog` and `ImportLibraryPatchDialog` respectively. The rendered `<option>` set is already layout-driven (no correctness bug), but the literal-union `waveBank: 0 | 1 | 2 | 3` types and `as 0 | 1 | 2 | 3` casts at lines 52, 85, 322, 389 contradicted the discipline established in those siblings.
 
-   - Widen `onImport.waveBank` (line 52), `useState<0 | 1 | 2 | 3>` (line 85), and the two `setWaveBank(... as 0 | 1 | 2 | 3)` casts (lines 322, 389) from `0 | 1 | 2 | 3` to `number`. Mirror the `ImportSampleDialog` pattern.
-   - Verify call-site continuity through `useLibraryImportDialogs.ts` (the `ImportToneParams` interface should already be `waveBank: number` after #393).
+   - [x] Widened `onImport.waveBank` (was line 52, `0 | 1 | 2 | 3` → `number`) with a JSDoc citing the layout-driven `<option>` source of truth and the `ImportSampleDialog` (#393) / `ImportLibraryPatchDialog` (#396) sibling precedents.
+   - [x] Widened `useState<0 | 1 | 2 | 3>(0)` → `useState<number>(0)` (line 85).
+   - [x] Removed the `as 0 | 1 | 2 | 3` cast at line 322 (`setWaveBank(newGroup.waveBankIndices[0])` — `waveBankIndices: number[]` per `configs/types.ts`, so the cast was a no-op narrowing the setter could no longer reject).
+   - [x] Removed the `as 0 | 1 | 2 | 3` cast at line 389 (`setWaveBank(Number(e.target.value))`).
+   - [x] **Sibling `preferredBank` cleanup (parity with `ImportLibraryPatchDialog.tsx:145-150,174`):** the local `preferredBank: 0 | 1 | 2 | 3` declaration and its `wave.bank as 0 | 1 | 2 | 3` cast (lines 124, 131) were retyped via the shared `WaveBankIndex` named alias imported from `@/lib/slot-allocation`, with a sibling-precedent JSDoc explaining why this stays a literal-union (it feeds `suggestToneAllocation`, whose signature requires `WaveBankIndex`). This is intentional and parity-aligned with the patch dialog's identical justification.
+   - [x] Verified call-site continuity: `useLibraryImportDialogs.ts:39-41 ImportToneParams.waveBank: number` was already widened by #393, so the chain is unbroken.
    - No new behavior; pure type-discipline fix.
 
    ### Acceptance criteria
 
-   - [ ] `grep -rn "0 | 1 | 2 | 3" modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx` returns zero hits in non-comment lines.
-   - [ ] All three Roland import dialogs (`ImportSampleDialog`, `ImportLibraryPatchDialog`, `ImportLibraryToneDialog`) use the same `waveBank: number` + layout-driven options pattern.
-   - [ ] No regressions in existing tests.
+   - [x] `grep -n "0 | 1 | 2 | 3" modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx` returns one hit on line 53 — the JSDoc that *names* the literal-union pattern being avoided. Zero hits in non-comment lines.
+   - [x] All three Roland import dialogs (`ImportSampleDialog`, `ImportLibraryPatchDialog`, `ImportLibraryToneDialog`) use the same `waveBank: number` + layout-driven options pattern.
+   - [x] No regressions in existing tests (`pnpm --filter @audiocontrol/roland-sxx0-editor test`: 36/36 passing; `make` clean).
 
-   ### Duplication audit gate
+   ### Duplication audit gate (PASSED)
 
-   - [ ] Confirm pattern parity across the three dialogs by reading each in turn.
+   - [x] Pattern parity confirmed across the three dialogs:
+     - `ImportSampleDialog.tsx:37` — `waveBank: number;` (#393).
+     - `ImportLibraryPatchDialog.tsx:51-59` — `waveBank: number;` with JSDoc (#396).
+     - `ImportLibraryToneDialog.tsx:46-66` — `waveBank: number;` with JSDoc (#399).
+   - [x] **Out-of-scope sibling defect surfaced during audit, not in #399's stated file scope:** `ImportSamplesDialog.tsx` (the multi-sample bulk import dialog, distinct from the singular `ImportSampleDialog`) still carries the same literal-union pattern at lines 39 (`waveBank: 0 | 1 | 2 | 3` in `onImport`), 69 (`useState<0 | 1 | 2 | 3>`), 145 (`as 0 | 1 | 2 | 3` cast), 329 (`as 0 | 1 | 2 | 3` cast). Same TypeScript-discipline issue, same fix shape — but a different dialog and not enumerated by #399. Tracked as a Phase 10 Task 8 follow-up to file as a new issue at session-end (sibling-instance of #399, severity LOW).
 
 9. **Extract sample-rate label-to-Hz helper ([#401](https://github.com/audiocontrol-org/audiocontrol/issues/401), severity LOW). [Not Started]**
 
@@ -690,7 +698,8 @@ Phase 3 (Client/Factory) ── Complete ──→ Phase 4 (Converters) ── C
             Phase 10 (Post-Audit Cleanup) ── In Progress
                     Tasks 1–3 done (#393, #394, #395)
                     Tasks 4–6 done (#396, #397, #398) — pending hardware verification
-                    Tasks 7–9 added (#400, #399, #401) — sibling-instance follow-ups
+                    Tasks 7–8 done (#400, #399) — pending hardware verification
+                    Task 9 remaining (#401) — sample-rate helper extraction
                     Independent of Phase 9 visual work; can run in parallel.
 ```
 
