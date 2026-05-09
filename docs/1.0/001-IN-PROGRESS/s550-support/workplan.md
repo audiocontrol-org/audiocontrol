@@ -24,6 +24,7 @@ deskwork:
 - [ImportLibraryToneDialog retains 0|1|2|3 literal-union pattern after #393/#396 (#399)](https://github.com/audiocontrol-org/audiocontrol/issues/399) — surfaced by Phase 10 Task 4 code-quality review
 - [lib/s330-format.ts consumers + ExportPatchDialog produce wrong patch labels — sibling of #397 (#400)](https://github.com/audiocontrol-org/audiocontrol/issues/400) — surfaced by Phase 10 Task 5 code-quality review
 - [Sample-rate resolution duplicated across useToneSampleExport / useDeviceToneChopper / TonesPage (#401)](https://github.com/audiocontrol-org/audiocontrol/issues/401) — surfaced by Phase 10 Task 6 code-quality review
+- [useLibraryExport + PatchesPage user-facing slot labels still use raw +1 arithmetic — sibling of #400 (#402)](https://github.com/audiocontrol-org/audiocontrol/issues/402) — surfaced by Phase 10 Task 7 code-quality review
 
 ---
 
@@ -594,16 +595,15 @@ This phase exists because the 2026-05-08 code audit and the Phase 9 Task 3 revie
    Sibling-instance finding from the Phase 10 Task 5 code-quality review. `lib/s330-format.ts:formatPatchSlot` returns `Math.floor(idx/8)+1`-prefixed labels (`P31..P48`) for S-550 patch index ≥ 16; correct labels are `II11..II28` per `MemoryLayout.formatPatchSlot`. Plus three more raw `+ 1` arithmetic surfaces wrong on S-550 for patch index ≥ 8.
 
    - [x] Migrated `ItemPreviewPanel.tsx` consumers (`LibraryPatchPreview` toneFiles fallback at lines 263/265, dependent-tone label at line 280, device-tone preview at line 490, device-patch preview at line 511) and `ToneList.tsx:91` from `lib/s330-format.ts` to `useDeviceConfig().memoryLayout.formatToneSlot` / `formatPatchSlot`. Both consumer files render under `DeviceConfigProvider` (top-level `main.tsx`); the `LibraryPatchPreview` sub-component reads `useDeviceConfig()` directly because it's in the same render tree, avoiding a prop-drilling roundtrip. No sort callback threading was needed — the formatter calls live in JSX and `Array.prototype.map` callbacks scoped inside the component, where `memoryLayout` is in lexical scope.
-   - [x] Replaced `Patch_${patchIndex + 1}` (lines 46, 58) and `P${String(patchIndex + 1).padStart(2, '0')}` (line 109) in `ExportPatchDialog.tsx` with `memoryLayout.formatPatchSlot(patchIndex)` via `useDeviceConfig()`. Default patch name is now the device-aware slot label itself (e.g., `II11` for S-550 patch index 16, `P11` for S-330 patch index 0); the body description reads `Export patch II11 with all its dependent tones…` instead of the wrong `Export patch P17…`.
+   - [x] Replaced `Patch_${patchIndex + 1}` (lines 46, 58) and `P${String(patchIndex + 1).padStart(2, '0')}` (line 109) in `ExportPatchDialog.tsx` with `memoryLayout.formatPatchSlot(patchIndex)` via `useDeviceConfig()`. **#400 review follow-up:** the default patch name keeps the `Patch_` prefix (`Patch_${memoryLayout.formatPatchSlot(patchIndex)}` → `Patch_II11` / `Patch_P11`) — preserves the "this is a name, not a slot id" affordance for what becomes the patch directory on disk. The body description at line 115 stays as a bare slot reference (`Export patch II11 with all its dependent tones…`) because that *is* a slot reference, not a name.
    - [x] Replaced `P${String(slot + 1).padStart(2, '0')}` in `useLibraryImportDialogs.ts:245` with `memoryLayout.formatPatchSlot(slot)`. Also fixed the sibling instance at line 233 where the tone fallback name used `T${Math.floor(targetSlot / 8) + 1}${(targetSlot % 8) + 1}` arithmetic — replaced with `memoryLayout.formatToneSlot(targetSlot)` so the load-set progress label is correct on S-550 for tone index ≥ 32 (block 2). `memoryLayout` injected via `useDeviceConfig()`; the hook is called from `LibraryPage`, which is already under the provider. `handleLoadSet`'s dep list updated to include `memoryLayout`.
    - [x] Deleted `modules/roland-sxx0-editor/src/lib/s330-format.ts`. No remaining consumers.
    - [x] Extended `test/unit/memory-layout.test.ts` with an explicit pin at S-550 patch index 24 (`formatPatchSlot(24) === 'II21'`) — the value the deleted helper produced was `P41`. Index 8/16/31 boundary pins were already in place from #397.
    - **Out-of-scope sibling defects surfaced during the audit (not in #400's stated file scope, deferred):**
-     - `PatchesPage.tsx:162` — `Patch ${patchIndex + 1}` for the device-drag default-name fallback. Wrong on S-550 patch index ≥ 8 (renders `Patch 17` instead of `II11`).
-     - `useLibraryExport.ts:327, 342, 366` — `T${... + 1}` template literals in error message + progress label. Wrong on any tone past index 7.
+     - `PatchesPage.tsx:162` — `Patch ${patchIndex + 1}` for the device-drag default-name fallback. Wrong on S-550 patch index ≥ 8 (renders `Patch 17` instead of `II11`). **Filed as [#402](https://github.com/audiocontrol-org/audiocontrol/issues/402).**
+     - `useLibraryExport.ts:327, 342, 366` — `T${... + 1}` template literals in error message + progress label. Wrong on any tone past index 7. **Filed as [#402](https://github.com/audiocontrol-org/audiocontrol/issues/402).**
      - `ImportLibraryPatchDialog.tsx:170` — `T${String(slot + 1).padStart(2, '0')}` for a *fileName* (storage key), not a user-facing label; the library sets convention uses sequential `T01..T64` filenames keyed by canonical slot order. NOT a slot-label-rendering context — out of scope.
      - `lib/library-sets.ts:141, 164` — same pattern, library-storage filenames. NOT a slot-label-rendering context — out of scope.
-     - File a follow-up issue for the first two (real defects) at session-end; treat the latter two as documented-as-not-defects.
    - Hardware verification (loading patches and exporting/importing on `/roland/s550/editor` block II at patch index ≥ 16, and on `/roland/s330/editor` patch index ≥ 8, confirming `II11..II28` / `P21..P28` labels render correctly across the device-tone/patch preview, tone list, export-dialog default name + body description, and load-set progress label) deferred to operator hardware run.
 
    ### Acceptance criteria
@@ -617,8 +617,8 @@ This phase exists because the 2026-05-08 code audit and the Phase 9 Task 3 revie
 
    - [x] `grep -rn "from '@/lib/s330-format'" modules/roland-sxx0-editor/src/` returns zero hits (was 2 — `ItemPreviewPanel.tsx`, `ToneList.tsx`).
    - [x] `grep -rn "patchIndex + 1\b\|slot + 1\b" modules/roland-sxx0-editor/src/` returns 6 hits, **none in surfaces #400 scoped**:
-     - `PatchesPage.tsx:162` — out of #400's scope; tracked as a follow-up sibling-instance defect (see deferred list above).
-     - `useLibraryExport.ts:327, 366` (and the related `+ 1` at 342) — out of #400's scope; tracked as follow-up.
+     - `PatchesPage.tsx:162` — out of #400's scope; tracked as [#402](https://github.com/audiocontrol-org/audiocontrol/issues/402).
+     - `useLibraryExport.ts:327, 366` (and the related `+ 1` at 342) — out of #400's scope; tracked as [#402](https://github.com/audiocontrol-org/audiocontrol/issues/402).
      - `ImportLibraryPatchDialog.tsx:170` and `lib/library-sets.ts:141, 164` — library-storage filename keys, not user-facing slot labels. Documented as not-a-defect.
    - [x] `lib/s330-format.ts` is removed (verified: `ls modules/roland-sxx0-editor/src/lib/s330-format.ts` → "No such file or directory").
    - [x] Slot-label rendering audit (within #400's file scope): **5 sites grepped — `ItemPreviewPanel.tsx` (5 sites), `ToneList.tsx` (1), `ExportPatchDialog.tsx` (3), `useLibraryImportDialogs.ts` (2 — including the line-233 tone-fallback sibling that the task description didn't list explicitly but is the same defect class). All 11 migrated to `memoryLayout.formatToneSlot` / `formatPatchSlot`.**

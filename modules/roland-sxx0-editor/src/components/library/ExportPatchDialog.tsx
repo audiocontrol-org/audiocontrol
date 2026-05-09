@@ -45,10 +45,13 @@ export function ExportPatchDialog({
   error: operationError,
 }: ExportPatchDialogProps): JSX.Element {
   const { memoryLayout } = useDeviceConfig();
-  // Device-aware default name (S-330: P11..P28; S-550: I11..I28 / II11..II28
-  // / III11..III28 / IV11..IV28). Never `Patch_${idx + 1}` — that produces
-  // `Patch_17` for S-550 patch index 16, which has no analogue on the device.
-  const defaultPatchName = memoryLayout.formatPatchSlot(patchIndex);
+  // Device-aware default name (S-330: Patch_P11..Patch_P28; S-550:
+  // Patch_I11..Patch_IV28). Never `Patch_${idx + 1}` — that produces
+  // `Patch_17` for S-550 patch index 16, which has no analogue on the
+  // device. The `Patch_` prefix preserves the "this is a name, not a slot
+  // id" affordance — the default is written to disk as the patch directory
+  // name, and a bare `II11/` directory is uncomfortable as a filename.
+  const defaultPatchName = `Patch_${memoryLayout.formatPatchSlot(patchIndex)}`;
   const [patchName, setPatchName] = useState(patch?.common.name || defaultPatchName);
   const [localError, setLocalError] = useState<string | null>(null);
 
