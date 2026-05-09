@@ -24,6 +24,8 @@ deskwork:
 - [ImportLibraryToneDialog retains 0|1|2|3 literal-union pattern after #393/#396 (#399)](https://github.com/audiocontrol-org/audiocontrol/issues/399) — surfaced by Phase 10 Task 4 code-quality review
 - [lib/s330-format.ts consumers + ExportPatchDialog produce wrong patch labels — sibling of #397 (#400)](https://github.com/audiocontrol-org/audiocontrol/issues/400) — surfaced by Phase 10 Task 5 code-quality review
 - [Sample-rate resolution duplicated across useToneSampleExport / useDeviceToneChopper / TonesPage (#401)](https://github.com/audiocontrol-org/audiocontrol/issues/401) — surfaced by Phase 10 Task 6 code-quality review
+- [useLibraryExport + PatchesPage user-facing slot labels — sibling of #397/#400 (#402)](https://github.com/audiocontrol-org/audiocontrol/issues/402) — surfaced by Phase 10 Task 7 code-quality review
+- [ImportSamplesDialog retains 0|1|2|3 literal-union after #393/#396/#399 (#403)](https://github.com/audiocontrol-org/audiocontrol/issues/403) — surfaced by Phase 10 Task 8 audit gate
 - [useLibraryExport + PatchesPage user-facing slot labels still use raw +1 arithmetic — sibling of #400 (#402)](https://github.com/audiocontrol-org/audiocontrol/issues/402) — surfaced by Phase 10 Task 7 code-quality review
 
 ---
@@ -41,7 +43,7 @@ deskwork:
 | Phase 7: S-550 Front Panel | Not Started | Virtual front panel layout |
 | Phase 8: Memory Map Visualization | Complete | Graphical memory map in import dialogs |
 | Phase 9: UX/UI Cleanup | In Progress (Tasks 1–3 done; 4–7 remaining) | Visual polish across all editor pages via `/frontend-design` |
-| Phase 10: Post-Audit Cleanup | In Progress (Tasks 1–9 done pending hardware verification on Task 7) | Functional + duplication fixes surfaced by 2026-05-08 audit, Phase 9 Task 3 review, and Phase 10 Tasks 4–6 reviews. All nine tasks done; Task 7 (#400) hardware verification deferred to operator. |
+| Phase 10: Post-Audit Cleanup | All Tasks Done (1–11 — pending hardware verification on Tasks 7 + 10) | Functional + duplication fixes surfaced by 2026-05-08 audit, Phase 9 Task 3 review, and Phase 10 reviews 4–8. All eleven tasks (#393–#403) complete; hardware verification deferred to operator. |
 
 ---
 
@@ -477,7 +479,7 @@ See `.claude/rules/workflow-playbooks.md § Phase-completion duplication audit` 
 
 ---
 
-## Phase 10: Post-Audit Cleanup (In Progress — Tasks 1–9 done; Task 7 pending hardware verification)
+## Phase 10: Post-Audit Cleanup (All Tasks Done — Tasks 7 + 10 pending hardware verification)
 
 This phase exists because the 2026-05-08 code audit and the Phase 9 Task 3 review (`/dw-lifecycle:review` on commit `6df1ba6a`) surfaced concrete cleanup items that fall outside Phase 9's "UX/UI cleanup via `/frontend-design`" scope. They land here so they have explicit acceptance criteria and a duplication-audit gate, not just a GitHub issue link that will rot.
 
@@ -681,9 +683,42 @@ This phase exists because the 2026-05-08 code audit and the Phase 9 Task 3 revie
    - [x] **Audit 3** — `grep -rn "? 30000 : 15000" modules/roland-sxx0-editor/src/ modules/sampler-devices/src/ modules/sampler-library/src/`: **1 hit** — `s-series-types.ts:286` (the helper body). No sample-rate-resolution literal anywhere else.
    - [x] **Sibling-instance audit (gate-surfaced):** two additional sites caught and unified (see implementation list above) — `ImportSampleDialog.tsx` (2 sites) and `sampler-library/.../tone-converter.ts:mapSampleRateToHz` (deleted). Inverse `mapSampleRateFromHz` retained as local — operates in the opposite direction (Hz → label) with no duplicate elsewhere.
 
+10. **`useLibraryExport` + `PatchesPage` user-facing slot labels ([#402](https://github.com/audiocontrol-org/audiocontrol/issues/402), severity MEDIUM). [DONE]**
+
+    Sibling-instance fix to #397 / #400 — same defect class (raw `+ 1` arithmetic in user-facing slot labels) in different layers. On S-550, error messages and progress labels surfaced wrong slot ids for any patch ≥ block 2 or any tone in block 2; on S-330 banks 2-4 tones were also wrong.
+
+    - [x] `useLibraryExport.ts:327` — error message `Source tone ${memoryLayout.formatToneSlot(sourceSlot)} for sub-tone ${memoryLayout.formatToneSlot(slot)} not loaded from device. Try refreshing device data first.` (was raw `T${sourceSlot + 1}` / `T${slot + 1}`).
+    - [x] `useLibraryExport.ts:342, 366` — patch-export progress label `Fetching tone ${memoryLayout.formatToneSlot(slot)}` (was `T${slot + 1}`).
+    - [x] `PatchesPage.tsx:162` — device-drag default name `Patch ${config.memoryLayout.formatPatchSlot(patchIndex)}` (was `Patch ${patchIndex + 1}`).
+    - [x] Added `useDeviceConfig` import + `const { memoryLayout } = useDeviceConfig()` at the top of `useLibraryExport`. The hook is called from `LibraryPage`, which renders under `DeviceConfigProvider`. `PatchesPage` already had `config.memoryLayout` in scope.
+    - [x] No regressions: `pnpm --filter @audiocontrol/roland-sxx0-editor test` 36/36 passing; `make` clean.
+    - Hardware verification (load patch with sub-tone references on S-550 ≥ block 2; export with progress visible) deferred to operator hardware run.
+
+    ### Duplication audit gate (PASSED)
+
+    - [x] `grep -rnE "T\$\{.*\+ 1\}|patchIndex \+ 1\b|sourceSlot \+ 1\b|slot \+ 1\b" modules/roland-sxx0-editor/src/` (excluding tests) returns only the 3 canonical-storage filename sites (`ImportLibraryPatchDialog.tsx:170`, `library-sets.ts:141,164`) — already classified as not-defects in #400's audit (`T01..T64` / `P01..P16` keys keyed by canonical slot order, not user-facing labels).
+    - [x] No new helper functions introduced.
+
+11. **`ImportSamplesDialog` literal-union ([#403](https://github.com/audiocontrol-org/audiocontrol/issues/403), severity LOW). [DONE]**
+
+    TypeScript-discipline cleanup — fourth and final Roland import dialog with the `0 | 1 | 2 | 3` literal-union pattern that #393 / #396 / #399 already removed from the others. No correctness bug (option set was already layout-driven via `availableBanks.indices`).
+
+    - [x] `ImportSamplesDialog.tsx:39` — `onImport.waveBank: 0 | 1 | 2 | 3` → `number` (with JSDoc citing the established pattern in #393 / #396 / #399).
+    - [x] `ImportSamplesDialog.tsx:69` — `useState<number>(0)` (was `useState<0 | 1 | 2 | 3>(0)`).
+    - [x] `ImportSamplesDialog.tsx:145, 329` — `as 0 | 1 | 2 | 3` casts removed.
+    - [x] **Type-chain follow-through:** `useImportSamples.ts:204, 339` (the `handleImportSamples` options shape) also widened from `0 | 1 | 2 | 3` to `number`, so `LibraryPage.tsx`'s `onImport=` assignment compiles.
+    - [x] No regressions: `pnpm --filter @audiocontrol/roland-sxx0-editor test` 36/36 passing; `make` clean.
+
+    ### Duplication audit gate (PASSED)
+
+    - [x] `grep "0 | 1 | 2 | 3" ImportSamplesDialog.tsx` → 1 hit, JSDoc-only (intentional reference to the avoided pattern).
+    - [x] `grep "as 0 | 1 | 2 | 3"` across the four Roland import dialogs → 0 hits.
+    - [x] All four Roland import dialogs (`ImportSampleDialog`, `ImportSamplesDialog`, `ImportLibraryPatchDialog`, `ImportLibraryToneDialog`) now use the same `waveBank: number` + layout-driven options pattern.
+    - **One unrelated literal-union cast remains at `MemoryMapPanel.tsx:95`** (`Map.get(index as 0 | 1 | 2 | 3)`) — collection-key narrowing, different defect class (not waveBank), out of #403 scope. Noted for future cleanup if the duplication-audit pass picks it up again.
+
 ### Acceptance Criteria
 
-- [ ] All nine issues (#393–#401) closed with their acceptance criteria met.
+- [ ] All eleven issues (#393–#403) closed with their acceptance criteria met.
 - [ ] No regressions in existing tests (`pnpm --filter roland-sxx0-editor test` + `make`).
 - [ ] **Phase-completion duplication audit passes** — each task's audit gate above is filled in with concrete grep results.
 - [ ] DEVELOPMENT-NOTES entry written for Phase 10 with what was unified, what was kept separate (and why), and any new follow-ups discovered.
@@ -709,11 +744,12 @@ Phase 3 (Client/Factory) ── Complete ──→ Phase 4 (Converters) ── C
             Phase 8 (Memory Map) ── Complete
             Phase 9 (UX/UI Cleanup) ── In Progress (Tasks 1–3 done)
                     ↓
-            Phase 10 (Post-Audit Cleanup) ── In Progress
+            Phase 10 (Post-Audit Cleanup) ── All Tasks Done
                     Tasks 1–3 done (#393, #394, #395)
                     Tasks 4–6 done (#396, #397, #398) — pending hardware verification
                     Tasks 7–8 done (#400, #399) — pending hardware verification (Task 7)
                     Task 9 done (#401) — sample-rate helper extraction
+                    Tasks 10–11 done (#402, #403) — pending hardware verification (Task 10)
                     Independent of Phase 9 visual work; can run in parallel.
 ```
 
