@@ -135,12 +135,15 @@ export function TonesPage() {
   const selectedToneForLoop = selectedToneIndex !== null ? tones[selectedToneIndex] : null;
   const loopEditorSamples =
     selectedToneIndex !== null ? waveCache.getSamples(selectedToneIndex) : null;
-  // When no tone is selected the loop editor still needs a sample-rate seed;
-  // 15 kHz preserves the prior optional-chain default (no-tone fell through
-  // the 30 kHz branch because `undefined !== '30kHz'`).
+  // When no tone is selected, `loopEditorSamples` is also null and every
+  // consumer of `sampleRate` inside `useLoopEditor` short-circuits on
+  // `!samples` (smoothedSamples / discontinuity / handleAutoDetect /
+  // useSamplePlayer). The seed below is therefore inert in that state — `0`
+  // makes the never-consulted nature unmistakable rather than implying a
+  // 15 kHz default.
   const loopEditor = useLoopEditor({
     samples: loopEditorSamples,
-    sampleRate: selectedToneForLoop ? toneSampleRateHz(selectedToneForLoop) : 15000,
+    sampleRate: selectedToneForLoop ? toneSampleRateHz(selectedToneForLoop) : 0,
     initialLoopStart: selectedToneForLoop?.wave.loopPoint,
     initialLoopEnd: selectedToneForLoop?.wave.endPoint,
     rootKey: selectedToneForLoop?.originalKey,
