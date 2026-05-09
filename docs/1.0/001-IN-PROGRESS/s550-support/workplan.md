@@ -514,26 +514,26 @@ This phase exists because the 2026-05-08 code audit and the Phase 9 Task 3 revie
      - [x] No new wrapper hooks introduced — the only addition is `exportSamplesAsWav` in `lib/wave-export.ts`, justified because it cleanly extracts the samples-based export path while keeping the sanitization rule in one place; `exportWaveAsWav` continues to exist and now delegates.
    - **Follow-up [#398](https://github.com/audiocontrol-org/audiocontrol/issues/398):** the cache-routing growth pushed `TonesPage.tsx` from 497 → 511 lines (11 over the project's 500-line guideline). Code-quality reviewer flagged this as structural rather than cosmetic — a defensible micro-trim of 6 prose lines exists, but the right resolution is extracting a `useToneSampleExport` hook mirroring the existing `useDeviceToneChopper` pattern. Filed as #398 (severity LOW). Added inline JSDoc cleanup in `lib/wave-export.ts` to drop "S-330" specificity now that the helpers serve both devices.
 
-4. **`ImportLibraryPatchDialog`: support wave banks C and D ([#396](https://github.com/audiocontrol-org/audiocontrol/issues/396), severity MEDIUM). [Not Started]**
+4. **`ImportLibraryPatchDialog`: support wave banks C and D ([#396](https://github.com/audiocontrol-org/audiocontrol/issues/396), severity MEDIUM). [Done — pending hardware verification]**
 
    Sibling instance of #393 surfaced by the Phase 10 Task 1 duplication audit. The patch-import dialog's per-tone-mapping wave-bank `<select>` hard-codes `<option>Bank A</option>` / `<option>Bank B</option>` at `ImportLibraryPatchDialog.tsx:579-580` instead of routing through `MemoryLayout.getWaveBanksForTone(targetSlot)` like `ImportSampleDialog` and `ImportLibraryToneDialog` already do. The data model is correct (`ToneImportMapping.waveBank: 0 | 1 | 2 | 3`); only the rendered option set is wrong.
 
-   - Replace hard-coded `<option>Bank A</option>` / `<option>Bank B</option>` at `ImportLibraryPatchDialog.tsx:579-580` with options derived from `useDeviceConfig().memoryLayout.getWaveBanksForTone(mapping.targetSlot)` (mirror the pattern in `ImportSampleDialog`).
-   - Default per-mapping `waveBank` to the first valid bank for the tone's target slot. Verify the auto-allocation flow at lines 360–372 already uses `MemoryLayout` (or update it to).
-   - Remove the `as 0 | 1 | 2 | 3` cast on the `onChange` (line 570) since the option set is now layout-driven; widen `mapping.waveBank` to `number` end-to-end if needed (mirror #393's type-widening in `useLibraryImportDialogs.ts`).
-   - Verify on `/roland/s550/editor` that importing a patch with target-slot ≥ 32 shows C/D in the bank selector and that target-slot < 32 shows A/B; verify on `/roland/s330/editor` that A/B remain the only options.
+   - [x] Replace hard-coded `<option>Bank A</option>` / `<option>Bank B</option>` at `ImportLibraryPatchDialog.tsx:579-580` with options derived from `useDeviceConfig().memoryLayout.getWaveBanksForTone(mapping.targetSlot)` (mirror the pattern in `ImportSampleDialog`).
+   - [x] Default per-mapping `waveBank` to the first valid bank for the tone's target slot. The auto-allocation flow at lines ~360-372 already routes through `findPatchBestFits(memoryLayout.toneGroups, ...)` and the mount-time `suggestPatchAllocation` flow takes the dependent tone's `preferredBank` from the source manifest/bundle, so initial defaults already pick a valid bank for the target. Added a target-slot `onChange` clamp that re-derives the bank when crossing the S-550 32-tone block boundary so the rendered option always matches the selectable indices.
+   - [x] Remove the `as 0 | 1 | 2 | 3` cast on the `onChange` — done. Widened `ToneImportMapping.waveBank`, the `onImport` prop's per-tone `waveBank`, the local `tonesData` array, and the `dependentTones[].preferredBank` boundary (kept `WaveBankIndex` only at the `suggestPatchAllocation` boundary; documented in-situ that the cast is pre-existing and out of scope for #396).
+   - Verify on `/roland/s550/editor` that importing a patch with target-slot ≥ 32 shows C/D in the bank selector and that target-slot < 32 shows A/B; verify on `/roland/s330/editor` that A/B remain the only options. **Hardware verification deferred to operator hardware run.**
 
    ### Acceptance criteria
 
-   - [ ] Bank `<option>` set is layout-driven; no hard-coded `Bank A` / `Bank B` literals in `ImportLibraryPatchDialog.tsx`.
-   - [ ] Default `waveBank` per mapping is the first valid bank for the target slot.
-   - [ ] No regressions in existing tests (`pnpm --filter roland-sxx0-editor test` + `make`).
+   - [x] Bank `<option>` set is layout-driven; no hard-coded `Bank A` / `Bank B` literals in `ImportLibraryPatchDialog.tsx`.
+   - [x] Default `waveBank` per mapping is the first valid bank for the target slot (initial allocation via `suggestPatchAllocation` + on-target-slot-change clamp).
+   - [x] No regressions in existing tests (`pnpm --filter @audiocontrol/roland-sxx0-editor test` 11/11 passing + `make` clean).
 
-   ### Duplication audit gate
+   ### Duplication audit gate (PASSED)
 
-   - [ ] `grep -rn "Bank A\|Bank B" modules/roland-sxx0-editor/src/components/` returns zero hits after the fix (every bank label routes through `MemoryLayout`).
-   - [ ] If `ImportLibraryPatchDialog` already had logic computing valid banks for its tone-mappings, verify it routes through `MemoryLayout.getWaveBanksForTone` rather than re-implementing the bank-for-tone rule inline.
-   - [ ] Document the audit explicitly: "Bank label sources: <N> grepped, <M> already routed, <K> migrated."
+   - [x] `grep -rn "Bank A\|Bank B" modules/roland-sxx0-editor/src/components/` returns zero hits after the fix (was 2 — both in `ImportLibraryPatchDialog.tsx:579-580` — now zero).
+   - [x] Wider scan `grep -rn "Bank A\|Bank B\|Bank C\|Bank D" modules/roland-sxx0-editor/src/` returns zero hits — every bank label is now derived from `MemoryLayout.getWaveBanksForTone` (`ImportSampleDialog`) or `targetGroup.waveBankLabels` (`ImportLibraryToneDialog`, sibling `MemoryLayout` API) or the new in-render derivation in `ImportLibraryPatchDialog`.
+   - [x] Bank label sources audit: **3 grepped, 2 already routed (ImportSampleDialog via `getWaveBanksForTone`, ImportLibraryToneDialog via `targetGroup.waveBankLabels`), 1 migrated (`ImportLibraryPatchDialog` from hard-coded literals to `getWaveBanksForTone(mapping.targetSlot)`)**.
 
 5. **Slot-label arithmetic: replace `+ 11` with `MemoryLayout` formatters ([#397](https://github.com/audiocontrol-org/audiocontrol/issues/397), severity MEDIUM). [Not Started]**
 
