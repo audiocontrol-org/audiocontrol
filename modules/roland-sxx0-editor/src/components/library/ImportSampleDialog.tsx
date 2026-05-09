@@ -132,20 +132,29 @@ export function ImportSampleDialog({
       return;
     }
 
-    // Defense-in-depth: refuse out-of-range banks loudly. The dialog only
-    // surfaces banks returned by `memoryLayout.getWaveBanksForTone(toneIndex)`,
-    // so a violation here means a programming bug (state drift, stale prop).
-    // Per project guidance: throw, don't silently fall back.
+    // Defense-in-depth: refuse out-of-range banks. The dialog only surfaces
+    // banks returned by `memoryLayout.getWaveBanksForTone(toneIndex)`, so a
+    // violation here means a programming bug (state drift, stale prop).
+    //
+    // Surface the error via `setLocalError + return` (matching the
+    // file/name guard above) so the message renders through
+    // `OperationErrorBanner`. Throwing from this async submit handler would
+    // escape the try/catch below and land as an unhandled promise rejection
+    // — the dialog would stay open with no visible feedback. The error
+    // message still names the offending value AND the valid range so the
+    // operator can see what went wrong.
     if (waveBank < 0 || waveBank > maxWaveBankIndex) {
-      throw new Error(
+      setLocalError(
         `Invalid wave bank ${waveBank} for ${config.deviceName} (max ${maxWaveBankIndex})`,
       );
+      return;
     }
     if (!bankIndices.includes(waveBank)) {
-      throw new Error(
+      setLocalError(
         `Wave bank ${waveBank} is not valid for tone ${toneIndex} on ${config.deviceName} ` +
         `(allowed: ${bankIndices.join(', ')})`,
       );
+      return;
     }
 
     setLocalError(null);

@@ -28,16 +28,26 @@ export interface ImportPatchDialogState {
   initialTargetSlot?: number;
 }
 
+/**
+ * `waveBank: number` because runtime validation against
+ * `DeviceConfig.maxWaveBankIndex` enforces the device-specific range; the
+ * editor cannot encode S-330's `0 | 1` and S-550's `0 | 1 | 2 | 3`
+ * simultaneously in a static literal union. Out-of-range values throw at the
+ * device-client boundary.
+ */
 export interface ImportToneParams {
   setName: string; toneFile: string; tone: SamplerTone; wavData: Uint8Array;
-  targetSlot: number; waveBank: 0 | 1 | 2 | 3; segmentTop: number; segmentLength: number;
+  targetSlot: number; waveBank: number; segmentTop: number; segmentLength: number;
 }
 
+/**
+ * `waveBank: number` for each tone — see `ImportToneParams` JSDoc above.
+ */
 export interface ImportPatchParams {
   setName: string; patchFile: string; patch: SamplerPatch; targetPatchSlot: number;
   tones: Array<{
     tone: SamplerTone; wavData: Uint8Array; targetSlot: number;
-    waveBank: 0 | 1 | 2 | 3; segmentTop: number; segmentLength: number;
+    waveBank: number; segmentTop: number; segmentLength: number;
   }>;
 }
 
