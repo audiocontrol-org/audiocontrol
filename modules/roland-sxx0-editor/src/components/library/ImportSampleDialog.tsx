@@ -198,7 +198,7 @@ export function ImportSampleDialog({
         <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
         <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-s330-panel border border-s330-accent rounded-lg shadow-xl w-full max-w-md p-6">
           <Dialog.Title className="text-lg font-bold text-s330-text mb-4">
-            Import Sample to T{toneIndex + 11}
+            Import Sample to {memoryLayout.formatToneSlot(toneIndex)}
           </Dialog.Title>
 
           {isComplete ? (

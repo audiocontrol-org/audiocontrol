@@ -18,6 +18,8 @@ deskwork:
 - [S-550 import dialog blocks wave banks C/D (#393)](https://github.com/audiocontrol-org/audiocontrol/issues/393) — surfaced by 2026-05-08 audit
 - [Empty-slot helper duplication (ToneList/PatchList/PlayPage) (#394)](https://github.com/audiocontrol-org/audiocontrol/issues/394) — surfaced by 2026-05-08 audit
 - [Wave-fetch duplication: consolidate useDeviceToneChopper + handleExportSample on useWaveDataCache (#395)](https://github.com/audiocontrol-org/audiocontrol/issues/395) — surfaced by Phase 9 Task 3 review
+- [ImportLibraryPatchDialog blocks wave banks C/D — sibling instance of #393 (#396)](https://github.com/audiocontrol-org/audiocontrol/issues/396) — surfaced by Phase 10 Task 1 duplication audit
+- [Slot label arithmetic bypasses MemoryLayout formatter (#397)](https://github.com/audiocontrol-org/audiocontrol/issues/397) — surfaced by Phase 10 Task 1 follow-up audit; ImportSampleDialog title fixed inline, ToneZoneEditor + PlayPage remaining
 
 ---
 
@@ -34,7 +36,7 @@ deskwork:
 | Phase 7: S-550 Front Panel | Not Started | Virtual front panel layout |
 | Phase 8: Memory Map Visualization | Complete | Graphical memory map in import dialogs |
 | Phase 9: UX/UI Cleanup | In Progress (Tasks 1–3 done; 4–7 remaining) | Visual polish across all editor pages via `/frontend-design` |
-| Phase 10: Post-Audit Cleanup | Not Started | Functional + duplication fixes surfaced by 2026-05-08 audit and Phase 9 Task 3 review (#393, #394, #395) |
+| Phase 10: Post-Audit Cleanup | In Progress (Task 1 done pending hardware verification; Tasks 2–3 remaining) | Functional + duplication fixes surfaced by 2026-05-08 audit and Phase 9 Task 3 review (#393, #394, #395). Sibling-bug follow-up filed as #396. |
 
 ---
 
@@ -480,14 +482,15 @@ This phase exists because the 2026-05-08 code audit and the Phase 9 Task 3 revie
 
 ### Tasks
 
-1. **S-550 import dialog: support wave banks C and D (#393, audit finding 1, severity HIGH). [DONE]**
-   - Replaced `waveBank: 0 | 1` literal-union types with `number` end-to-end, validated at runtime against `DeviceConfig.maxWaveBankIndex` plus `MemoryLayout.getWaveBanksForTone(toneIndex)`. Touched: `TonesPage.tsx:32-46`, `ImportSampleDialog.tsx:32-43`, `s330-types.ts` (`S330WaveDataInput.waveBank`, `S330ImportToneInput.waveBank`), `useImportSamples.ts:352`, `useLibraryImportDialogs.ts:125,152,220`, `useLibraryImport.ts:46,59,107,170`. Drum-kit-import helpers in `sampler-devices/devices/s330/` (`createDrumTone`, `MonolithicDrumKitConfig`, `DrumKitImportConfig`, `CreateToneConfig`) widened from `0 | 1` to `number` to match the editor's unified `SamplerClientInterface` (which serves both S-330 and S-550); the S-330 client itself still rejects bank > 1 at the runtime boundary.
+1. **S-550 import dialog: support wave banks C and D (#393, audit finding 1, severity HIGH). [DONE — pending hardware verification]**
+   - Replaced `waveBank: 0 | 1` literal-union types with `number` end-to-end, validated at runtime against `DeviceConfig.maxWaveBankIndex` plus `MemoryLayout.getWaveBanksForTone(toneIndex)`. Touched: `TonesPage.tsx:32-46`, `ImportSampleDialog.tsx:32-43`, `s330-types.ts` (`S330WaveDataInput.waveBank`, `S330ImportToneInput.waveBank`), `useImportSamples.ts:352`, `useLibraryImportDialogs.ts:33,40,125,152,220`, `useLibraryImport.ts:46,59,107,170`. Drum-kit-import helpers in `sampler-devices/devices/s330/` (`createDrumTone`, `MonolithicDrumKitConfig`, `DrumKitImportConfig`, `CreateToneConfig`) widened from `0 | 1` to `number` to match the editor's unified `SamplerClientInterface` (which serves both S-330 and S-550); the S-330 client itself still rejects bank > 1 at the runtime boundary. Implementation: commits `10a21a6d` + `dce1a8a4` (code-review follow-up: half-widened types in `useLibraryImportDialogs.ts:33,40`; submit-time guard converted from `throw` to `setLocalError + return` so invalid input renders via `OperationErrorBanner`).
    - `ImportSampleDialog` renders the bank `<option>` set from `MemoryLayout.getWaveBanksForTone(toneIndex)` (`Bank A` for index 0, `B` for 1, `C` for 2, `D` for 3) — no device conditionals; the dialog reads what the layout provides. Initial state and dialog-open reset use the first valid bank for the tone (`indices[0]`), so an S-550 user editing tone 32 (Block 2) sees Bank C as default.
    - Defense-in-depth runtime guard added in `handleImport`: rejects `waveBank` outside `[0, maxWaveBankIndex]` and outside the tone's allowed `bankIndices`. Per project guidance, throws (no silent fallback).
    - **Hardware verification deferred:** workplan mandates verifying on `/roland/s550/editor` that an import to bank C lands in the right segment-address space (`project_s550_wave_addressing` memory). The address-builder fix landed in earlier S-550 work; this task only widens the editor-side type chain and renders the right options. Hardware round-trip verification still owed before declaring #393 fully closed.
+   - **Follow-up audit (2026-05-09)** surfaced two additional findings beyond the bank-options fix: (a) `ImportSampleDialog` dialog title used arithmetic `T{toneIndex + 11}` instead of `memoryLayout.formatToneSlot(toneIndex)` — fixed inline in this task because it's the same dialog and same defect class. (b) Sibling arithmetic-label bugs in `ToneZoneEditor.tsx:196` and `PlayPage.tsx:383` — same defect class, different surfaces; filed as [#397](https://github.com/audiocontrol-org/audiocontrol/issues/397) for tracked cleanup. (c) Tests cover only the pure layout helper, not the dialogs — already absorbed into Phase 9 Task 6 (UI-test-harness prerequisite).
    - Unit test added: `roland-sxx0-editor/test/unit/memory-layout.test.ts` (7 tests) pins `getWaveBanksForTone(0/31/32/63)` for S-330 and S-550 — explicit coverage at the index 32 boundary.
    - **Duplication audit gate:**
-     - [x] Confirmed bank labels come from a single source: `MemoryLayout.getWaveBanksForTone(toneIndex)` for `ImportSampleDialog`; `targetGroup.waveBankLabels` (same `MemoryLayout`) for `ImportLibraryToneDialog`. Both editors source from the layout — no duplicated string literals. Hardcoded `Bank A` / `Bank B` `<option>` text remains in `ImportLibraryPatchDialog.tsx:579-580` (sibling dialog with the same #393 pattern, out of this task's scope per workplan; flagged as follow-up).
+     - [x] Confirmed bank labels come from a single source: `MemoryLayout.getWaveBanksForTone(toneIndex)` for `ImportSampleDialog`; `targetGroup.waveBankLabels` (same `MemoryLayout`) for `ImportLibraryToneDialog`. Both editors source from the layout — no duplicated string literals. Hardcoded `Bank A` / `Bank B` `<option>` text remains in `ImportLibraryPatchDialog.tsx:579-580` (sibling dialog with the same #393 pattern, out of this task's scope per workplan); filed as [#396](https://github.com/audiocontrol-org/audiocontrol/issues/396).
      - [x] Confirmed no second copy of the wave-bank validation rule was added: the runtime guard in `handleImport` reads `config.maxWaveBankIndex` and the layout's per-tone `bankIndices` — no new constants. The existing device-client validators (`s330-client.ts:1592,1632`, `s550-addresses.ts:168`) are unchanged and remain the authoritative runtime barrier.
 
 2. **Empty-slot helpers: replace name-only re-implementations with shared `slot-allocation.ts` (#394, audit finding 2, severity MEDIUM).**

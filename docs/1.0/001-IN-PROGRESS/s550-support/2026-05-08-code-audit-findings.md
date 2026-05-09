@@ -118,3 +118,75 @@ Impact: not a current correctness bug, but it is the same “reimplement instead
 3. Add a redesign harness route plus Playwright UI specs for shared page chrome on both `/roland/s330/editor/*` and `/roland/s550/editor/*`.
 4. Lift shared not-connected copy and similar page chrome into config-driven helpers/components.
 5. Finish centralizing export dialog opening so Patches and Tones use the same shared hook entry points.
+
+---
+
+## 2026-05-09 Follow-Up Audit
+
+Scope reviewed: latest implementation after the post-audit fixes on `feature/s550-support`, specifically the diff from `origin/feature/s550-support` to `HEAD`.
+
+### Status of Prior Finding 1
+
+The direct WAV import path was substantially improved:
+
+- `ImportSampleDialog` now sources bank options from `memoryLayout.getWaveBanksForTone(toneIndex)` and validates at runtime against both `config.maxWaveBankIndex` and the tone's allowed bank set:
+  - [modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:62)
+- The editor-side type chain was widened from `0 | 1` to `number` through the affected import hooks and shared S-series editor contract:
+  - [modules/roland-sxx0-editor/src/pages/TonesPage.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/pages/TonesPage.tsx:35)
+  - [modules/roland-sxx0-editor/src/hooks/useLibraryImport.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/hooks/useLibraryImport.ts:41)
+  - [modules/sampler-devices/src/devices/s330/s330-types.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/sampler-devices/src/devices/s330/s330-types.ts:134)
+- Unit coverage was added for the wave-bank boundary behavior:
+  - [modules/roland-sxx0-editor/test/unit/memory-layout.test.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/test/unit/memory-layout.test.ts:1)
+
+Targeted verification run:
+
+- `pnpm --filter ./modules/roland-sxx0-editor test -- memory-layout`
+- Result: 7 tests passed
+
+### New Findings
+
+#### 1. Medium — Wave-bank fix is still incomplete across shared import surfaces
+
+`ImportSampleDialog` was fixed, but `ImportLibraryPatchDialog` still hard-codes only `Bank A` / `Bank B`, so the S-550 block-2 patch import path can still drift from the corrected direct-import path.
+
+- `ImportSampleDialog` now uses memory-layout-driven bank options:
+  - [modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:69)
+- `ImportLibraryToneDialog` already uses `targetGroup.waveBankLabels`:
+  - [modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:322)
+- `ImportLibraryPatchDialog` still has inline A/B-only options:
+  - [modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx:567)
+  - [modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx:579)
+
+Impact: the business rule is still duplicated across sibling dialogs, and the S-550 import experience remains inconsistent depending on which import entry point the user takes.
+
+#### 2. Medium — `ImportSampleDialog` still formats the target tone label incorrectly instead of using `MemoryLayout`
+
+The dialog title still renders `Import Sample to T{toneIndex + 11}`, which is not the configured slot formatter and becomes wrong for many slots, especially S-550 block 2.
+
+- Arithmetic-based label:
+  - [modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:192)
+- Correct device-driven formatter contract:
+  - [modules/roland-sxx0-editor/src/configs/memory-layout.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/configs/memory-layout.ts:65)
+  - [modules/roland-sxx0-editor/src/configs/memory-layout.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/configs/memory-layout.ts:147)
+
+Concrete example:
+
+- S-550 tone index `32` should be `T51` per `MemoryLayout.formatToneSlot`
+- Current dialog title would render it as `T43`
+
+Impact: the dialog now offers the right bank choices but can still present the wrong destination identity, which is a UI correctness issue in the shared redesign surface.
+
+#### 3. Low — New tests cover only the pure layout helper, not the dialogs that consume it
+
+The new unit test file correctly pins `getWaveBanksForTone()`, but it does not exercise the dialog behavior that reads those values, which is why the patch-import hardcoding and incorrect title formatting still survive.
+
+- Pure layout coverage:
+  - [modules/roland-sxx0-editor/test/unit/memory-layout.test.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/test/unit/memory-layout.test.ts:1)
+
+Impact: the project now has better boundary coverage for the underlying layout logic, but still lacks component-level protection for these shared import surfaces.
+
+### Updated Refactor Priorities
+
+1. Apply the same memory-layout-driven bank-option source to `ImportLibraryPatchDialog` so all import dialogs share one bank-selection rule. **Status:** filed as [#396](https://github.com/audiocontrol-org/audiocontrol/issues/396).
+2. Replace arithmetic tone-slot labels in `ImportSampleDialog` with `memoryLayout.formatToneSlot(toneIndex)`. **Status:** fixed inline as part of Phase 10 Task 1 follow-up (commit accompanying this audit-doc update). Sibling arithmetic-label bugs in `ToneZoneEditor.tsx:196` and `PlayPage.tsx:383` filed as [#397](https://github.com/audiocontrol-org/audiocontrol/issues/397) — same defect class, different surfaces, latent for S-330 banks 2-4 too.
+3. Add component or UI-harness coverage around the import dialogs, not just the layout helper. **Status:** absorbed into Phase 9 Task 6 (UI-test-harness prerequisite — see workplan).
