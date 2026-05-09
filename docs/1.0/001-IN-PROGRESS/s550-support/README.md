@@ -1,6 +1,6 @@
 # Roland S-550 Editor Support
 
-**Status:** In Progress (Phases 1-6, 8 Complete; Phase 9 Tasks 1-3 Complete; Phase 7, Phase 9 Tasks 4-7 Remaining)
+**Status:** In Progress (Phases 1-6, 8 Complete; Phase 9 Tasks 1-3 Complete; Phase 7, Phase 9 Tasks 4-7, Phase 10 Remaining)
 **Feature Branch:** `feature/s550-support`
 **GitHub Milestone:** [Week of Feb 24-28](https://github.com/audiocontrol-org/audiocontrol/milestone/4)
 
@@ -40,7 +40,8 @@ The S-550 shares model ID `0x1E` and SysEx protocol with the S-330 but has an in
 | Component | Description | Blocked By |
 |-----------|-------------|------------|
 | S-550 virtual front panel | Rack-mount panel layout variant | Nothing (cosmetic) |
-| UX/UI cleanup Phase 9 — Tasks 3–7 | TonesPage decomposition (>500 lines), per-page real-component refactor, design-system update, screenshot verification | Operator review of v3 mockups |
+| UX/UI cleanup Phase 9 — Tasks 4–7 | Per-page real-component refactor (absorbing audit findings 4 + 5), dialog polish, UI-layer test harness + screenshot verification (audit finding 3), design-system update | Operator review of v3 mockups |
+| Phase 10 — Post-audit cleanup | [#393](https://github.com/audiocontrol-org/audiocontrol/issues/393) S-550 wave banks C/D, [#394](https://github.com/audiocontrol-org/audiocontrol/issues/394) empty-slot helpers, [#395](https://github.com/audiocontrol-org/audiocontrol/issues/395) wave-fetch consolidation | Independent — can run in parallel with Phase 9 |
 
 ### Phase 9 Task 2 deliverables (committed under `docs/1.0/001-IN-PROGRESS/s550-support/explorations/`)
 

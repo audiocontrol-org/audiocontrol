@@ -17,6 +17,7 @@ deskwork:
 - [Phase 9: UX/UI cleanup via /frontend-design (#392)](https://github.com/audiocontrol-org/audiocontrol/issues/392)
 - [S-550 import dialog blocks wave banks C/D (#393)](https://github.com/audiocontrol-org/audiocontrol/issues/393) — surfaced by 2026-05-08 audit
 - [Empty-slot helper duplication (ToneList/PatchList/PlayPage) (#394)](https://github.com/audiocontrol-org/audiocontrol/issues/394) — surfaced by 2026-05-08 audit
+- [Wave-fetch duplication: consolidate useDeviceToneChopper + handleExportSample on useWaveDataCache (#395)](https://github.com/audiocontrol-org/audiocontrol/issues/395) — surfaced by Phase 9 Task 3 review
 
 ---
 
@@ -33,6 +34,7 @@ deskwork:
 | Phase 7: S-550 Front Panel | Not Started | Virtual front panel layout |
 | Phase 8: Memory Map Visualization | Complete | Graphical memory map in import dialogs |
 | Phase 9: UX/UI Cleanup | In Progress (Tasks 1–3 done; 4–7 remaining) | Visual polish across all editor pages via `/frontend-design` |
+| Phase 10: Post-Audit Cleanup | Not Started | Functional + duplication fixes surfaced by 2026-05-08 audit and Phase 9 Task 3 review (#393, #394, #395) |
 
 ---
 
@@ -468,6 +470,50 @@ See `.claude/rules/workflow-playbooks.md § Phase-completion duplication audit` 
 
 ---
 
+## Phase 10: Post-Audit Cleanup (Not Started)
+
+This phase exists because the 2026-05-08 code audit and the Phase 9 Task 3 review (`/dw-lifecycle:review` on commit `6df1ba6a`) surfaced concrete cleanup items that fall outside Phase 9's "UX/UI cleanup via `/frontend-design`" scope. They land here so they have explicit acceptance criteria and a duplication-audit gate, not just a GitHub issue link that will rot.
+
+**Reading order:** the audit doc (`docs/1.0/001-IN-PROGRESS/s550-support/2026-05-08-code-audit-findings.md`) is the source of truth for severity and rationale. This phase translates audit findings into actionable tasks.
+
+**Phase boundary with Phase 9:** Phase 9 owns visual polish (typography / spacing / layout / design-token alignment) and the structural refactors that make polish possible (TonesPage decomposition, shared hook extraction). Phase 10 owns *correctness* and *duplication-cleanup* fixes that don't change the visual surface. Findings 3, 4, and 5 from the audit are absorbed into Phase 9 Tasks 4 / 6 because they ARE visual surface work; everything else lands here.
+
+### Tasks
+
+1. **S-550 import dialog: support wave banks C and D (#393, audit finding 1, severity HIGH).**
+   - Replace `waveBank: 0 | 1` literal-union types with `number`, validated at runtime against `DeviceConfig.maxWaveBankIndex`. Touched: `TonesPage.tsx:35`, `ImportSampleDialog.tsx:32,66,286,295`.
+   - `ImportSampleDialog` renders the bank `<option>` set from `DeviceConfig` (`Bank A` for index 0, `B` for 1, `C` for 2, `D` for 3) — no device conditionals; the dialog reads what config provides.
+   - Verify on `/roland/s550/editor` that all four banks appear AND that an import to bank C (index 2) actually lands in the right segment-address space on the device (cross-reference `project_s550_wave_addressing` memory: S-550 segment addresses differ from S-330 at segment > 0).
+   - Verify on `/roland/s330/editor` that only A and B appear and behavior is unchanged.
+   - **Duplication audit gate:**
+     - [ ] Confirmed bank labels (`'Bank A'`, etc.) come from a single source — either `DeviceConfig` or a derived helper — not duplicated in dialog and page.
+     - [ ] Confirmed no second copy of the wave-bank validation rule was added; if the existing one needed adjustment, it was adjusted in place.
+
+2. **Empty-slot helpers: replace name-only re-implementations with shared `slot-allocation.ts` (#394, audit finding 2, severity MEDIUM).**
+   - Delete `ToneList.isToneEmpty` (`components/tones/ToneList.tsx:31`), `PatchList.isPatchEmpty` (`components/patches/PatchList.tsx:30`), and the inline patch-empty check at `pages/PlayPage.tsx:239`.
+   - Import `isToneEmpty` / `isPatchEmpty` from `@/lib/slot-allocation`.
+   - Verify against a device with a known mix of empty / named-but-zero-segment / fully-occupied slots that the list labels match what allocation/import logic enforces (no slot can be "empty" in the list while "occupied" to import).
+   - **Duplication audit gate:**
+     - [ ] `grep -rn "isToneEmpty\|isPatchEmpty" modules/` returns only the shared helpers and their callers — zero local definitions.
+     - [ ] No new wrapper helpers introduced (the shared helpers are already simple enough).
+
+3. **Wave-fetch consolidation: route `useDeviceToneChopper` and `handleExportSample` through `useWaveDataCache` (#395, audit follow-up, severity MEDIUM).**
+   - `useDeviceToneChopper`: accept an injected cache (or its `getSamples` + `loadWaveData` pair) instead of owning its own `requestWaveData` call. Cache hits skip the device read.
+   - `handleExportSample` (`TonesPage.tsx`, the WAV download path): read from cache when populated; on cache miss, use `loadWaveData` (which fetches AND caches) before exporting. Never call `requestWaveData` + `unpack12BitTo16Bit` inline.
+   - After consolidation, manually verify: load a tone in the loop editor → chop / download → device shows zero additional reads (instrument the bridge / SerialMIDI client log to confirm).
+   - **Duplication audit gate:**
+     - [ ] `grep -rn "requestWaveData" modules/roland-sxx0-editor/src/` returns only `useWaveDataCache` and `useLibraryExport` (which is the export-with-progress flow that owns its own fetch by design — note the asymmetry explicitly).
+     - [ ] `grep -rn "unpack12BitTo16Bit" modules/roland-sxx0-editor/src/` returns only `useWaveDataCache`.
+
+### Acceptance Criteria
+
+- [ ] All three issues (#393, #394, #395) closed with their acceptance criteria met.
+- [ ] No regressions in existing tests (`pnpm --filter roland-sxx0-editor test` + `make`).
+- [ ] **Phase-completion duplication audit passes** — each task's audit gate above is filled in with concrete grep results.
+- [ ] DEVELOPMENT-NOTES entry written for Phase 10 with what was unified, what was kept separate (and why), and any new follow-ups discovered.
+
+---
+
 ## Dependencies
 
 ```
@@ -485,7 +531,11 @@ Phase 3 (Client/Factory) ── Complete ──→ Phase 4 (Converters) ── C
                     ↓
             Phase 7 (Front Panel) ── Not Started
             Phase 8 (Memory Map) ── Complete
-            Phase 9 (UX/UI Cleanup) ── Not Started
+            Phase 9 (UX/UI Cleanup) ── In Progress (Tasks 1–3 done)
+                    ↓
+            Phase 10 (Post-Audit Cleanup) ── Not Started
+                    (#393, #394, #395 — independent of Phase 9 visual work,
+                     can run in parallel)
 ```
 
 ---
