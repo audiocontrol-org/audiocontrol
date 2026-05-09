@@ -11,6 +11,58 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-05-08: s550-support — Phase 9 Task 3 review-driven fixes + audit follow-up scoping
+
+### Feature: s550-support
+
+### Worktree: audiocontrol-s550-support
+
+### Goal
+
+Continuation session after compaction. Pick up at the post-Task 3 review pause point: address review findings on commit `6df1ba6a` (TonesPage decomposition + new shared hooks), incorporate the parallel 2026-05-08 audit doc the operator pointed out, and make sure every deferred item lands in the workplan rather than evaporating into a GitHub issue list.
+
+### Accomplished
+
+- **Task 3 post-review fixes** committed as `f2e72732`:
+  - `useWaveDataCache.loadWaveData`: fixed a stale-closure race. State-bound `cache` was in the `useCallback` dep array, so the in-flight closure read a frozen Map snapshot — the `cache.has()` coalesce guard failed for rapid double-calls and two fetches fired for the same tone. Cache + in-flight tracking now live in refs; `setVersion` bumps drive consumer re-render.
+  - `useLibraryExport`: `openExportToneDialog` / `openExportPatchDialog` now throw on cache miss instead of silently returning (CLAUDE.md "no fallbacks/silent failures"). Library-disconnected invariant enforced at dialog-open time, not just at execute time, closing an API trap.
+  - `useLibraryExport`: log prefix corrected from `[LibraryPage]` to `[useLibraryExport]` now that the hook is shared across pages.
+  - `useLoopEditorSync`: `eslint-disable` now carries the CLAUDE.md-required deviation comment (what rule, why, where the semantic boundary is).
+- **Audit verification before action.** Read the 2026-05-08 audit doc, verified every finding against actual line-numbered code references before filing or absorbing. All 5 findings held up; mildly rephrased Finding 3 because "no automated mechanism to catch layout regressions" was slightly overstated (data-layer integration tests exist; the gap is specifically UI-layer coverage).
+- **3 GitHub issues filed** for deferred work: [#393](https://github.com/audiocontrol-org/audiocontrol/issues/393) (HIGH) S-550 import dialog blocks wave banks C/D; [#394](https://github.com/audiocontrol-org/audiocontrol/issues/394) (MED) empty-slot helper duplication; [#395](https://github.com/audiocontrol-org/audiocontrol/issues/395) (MED) wave-fetch consolidation onto `useWaveDataCache`.
+- **Phase 10 added to workplan** (commit `14b086e4`) — concrete tasks with files, acceptance criteria, and per-task duplication-audit gates for #393 / #394 / #395. Phase boundary with Phase 9 documented: Phase 9 owns visual surface; Phase 10 owns correctness + duplication. Phases run independently and can overlap.
+- **Audit findings 3, 4, 5 absorbed into existing Phase 9 tasks** with explicit sub-bullets (UI-layer test harness as Task 6 prerequisite; "S-330" hard-coded copy + `PatchesPage` migration as Task 4 cross-page concerns).
+- Build clean (TypeScript + Vite); 4/4 tests pass in `roland-sxx0-editor`.
+
+### Didn't work
+
+- **First-pass audit handling tried to file GitHub issues without scoping into the workplan.** Operator caught it: "Any issues you deferred must be scoped into the workplan so we don't forget them." A labeled link in the issue list is barely better than no follow-up at all — what makes a deferred item actually trackable is concrete files, acceptance criteria, and an audit gate that has to be filled in. Phase 10 was added in response.
+- **Initial reflex on the audit was to file every finding without verification.** Operator caught it: "push back on the code audit if you find anything unreasonable or incorrect." Spent the next ~5 minutes verifying each finding against actual code before acting; one finding got rephrased, the rest stood up unchanged.
+
+### Course corrections
+
+- **[PROCESS]** "Any issues you deferred must be scoped into the workplan so we don't forget them." This is the second time this session-cluster the operator has pushed the same rule (the first was the duplication-audit gate being added to the workplan, not just memory). Internalized: GitHub issues track *what*; workplan tracks *when*. A deferred item without a workplan home will be forgotten regardless of how many labels it has.
+- **[PROCESS]** "Push back on the code audit if you find anything unreasonable or incorrect." Sub-agent / audit-doc claims are claims, not facts. Cost of verification when the audit cites line numbers is near zero — Read each cited line, confirm the claim, then act.
+- **[PROCESS]** Earlier this turn (pre-compaction): "Did you add the code duplication audit as mandatory steps after each implementation step in the workplan? Memories are not enough. It MUST be in the workplan." Same rule, different surface. The pattern is consistent: process discipline lives in the workplan, not in agent memory.
+
+### Quantitative
+
+- **2 commits** on `feature/s550-support` this turn: `f2e72732` (review-fix + audit doc + workplan acknowledgement), `14b086e4` (Phase 10 scope-in).
+- **3 GitHub issues filed**: #393, #394, #395 — all linked from the workplan issue list AND scoped as Phase 10 tasks with acceptance criteria.
+- **7 review findings + 5 audit findings** processed. 4 fixed inline. 3 filed as issues. 3 absorbed into existing Phase 9 tasks. 2 documented as intentional design choices (rejected with rationale: Reviewer 2's "missing setTone after export" became moot once cache-miss-throws contract was in place; Audit Finding 3's "no automated mechanism" rephrased as "UI-layer coverage gap").
+- **2 parallel `feature-dev:code-reviewer` sub-agents** dispatched against commit `6df1ba6a` with different focuses (duplication + API boundaries; behavior preservation + TypeScript discipline). Both returned APPROVE WITH CHANGES; findings overlapped on 2 of 7.
+- **0 fabrications flagged** by the operator this turn.
+- **~6 user messages** (post-compaction).
+
+### Insights
+
+- **"In the workplan" is a higher bar than "in an issue list."** A workplan task forces concrete files, acceptance criteria, and an audit gate. An issue link in a list is just a pointer that depends on someone clicking it. The Phase 10 entry has weight because each task could be picked up and executed without re-reading the audit doc — that's the bar.
+- **Multi-source review caught more than any single reviewer.** Reviewer 1 (duplication / API boundaries) + Reviewer 2 (behavior preservation / TS discipline) + the standalone 2026-05-08 audit produced 12 distinct findings, of which only 3 overlapped between sources. Single reviewers reliably miss things; the ~30% non-overlap rate justifies the extra cost.
+- **Verifying audit claims is cheap when line numbers are cited.** Five Read calls per finding, max. The audit doc's discipline of citing exact line numbers (`TonesPage.tsx:35`, `ImportSampleDialog.tsx:32,66,286,295`) made verification mechanical. Audits without line numbers should be treated as a starting point, not a finding list.
+- **Cache-and-in-flight refs vs state.** `useState<Map<...>>` for a per-tone cache *looks* fine but creates a stale-closure trap any time the consuming `useCallback` includes the cache in its deps — the closure captures the Map at creation time, and `cache.has()` reads against a frozen snapshot mid-fetch. Refs are the right tool for cache state; bump a `setVersion` separately to drive re-render. Worth saving as a memory entry if it recurs.
+
+---
+
 ## 2026-05-08: s550-support — Phase 9 Tasks 1-2 (UX audit + design language + 6 page mockups + tones-page polish)
 
 ### Feature: s550-support
