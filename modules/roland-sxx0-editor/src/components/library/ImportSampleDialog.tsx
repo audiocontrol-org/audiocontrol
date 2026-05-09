@@ -24,6 +24,7 @@ import {
   DialogCloseButton,
 } from '@/components/ui/ImportStatus';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
+import { sampleRateLabelToHz } from '@/core/midi/SamplerClient';
 
 export interface ImportSampleDialogProps extends OperationState {
   open: boolean;
@@ -100,7 +101,7 @@ export function ImportSampleDialog({
 
   // Calculate segments needed based on output sample count after resampling
   const segmentsNeeded = wavFile
-    ? calculateWavSegmentsNeeded(wavFile.bytes, targetSampleRate === '30kHz' ? 30000 : 15000)
+    ? calculateWavSegmentsNeeded(wavFile.bytes, sampleRateLabelToHz(targetSampleRate))
     : 1;
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -161,7 +162,7 @@ export function ImportSampleDialog({
 
     try {
       // Convert to S-330 format using the single code path
-      const targetRate = targetSampleRate === '30kHz' ? 30000 : 15000;
+      const targetRate = sampleRateLabelToHz(targetSampleRate);
       const prepared = prepareWavForS330(wavFile.bytes, targetRate);
 
       await onImport({

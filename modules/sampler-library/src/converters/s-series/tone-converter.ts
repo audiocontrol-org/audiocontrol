@@ -16,6 +16,7 @@ import type {
     SSeriesTvfParams,
     SSeriesTvaParams,
 } from '@audiocontrol/sampler-devices/roland-s-series';
+import { sampleRateLabelToHz } from '@audiocontrol/sampler-devices/roland-s-series';
 import type { ToneConverter } from '@/converters/converter-registry.js';
 import type { ToneYaml, S330ToneExtension, S550ToneExtension } from '@/schemas/index.js';
 import type { LoopMode } from '@/types/index.js';
@@ -50,10 +51,9 @@ export function mapLoopModeFromYaml(mode: LoopMode): SSeriesLoopMode {
     }
 }
 
-export function mapSampleRateToHz(rate: SSeriesSampleRate): number {
-    return rate === '30kHz' ? 30000 : 15000;
-}
-
+// `mapSampleRateToHz` was previously defined here; consolidated onto
+// `sampleRateLabelToHz` from `@audiocontrol/sampler-devices/roland-s-series`
+// (#401). The Hz → label inverse stays local — it's not duplicated elsewhere.
 export function mapSampleRateFromHz(hz: number): SSeriesSampleRate {
     return hz >= 30000 ? '30kHz' : '15kHz';
 }
@@ -255,7 +255,7 @@ export function createSeriesToneConverter<TTone extends SSeriesBaseTone>(
                 name: tone.name,
                 wave: {
                     file: wavFilename,
-                    sampleRate: mapSampleRateToHz(tone.sampleRate),
+                    sampleRate: sampleRateLabelToHz(tone.sampleRate),
                     loopMode: mapLoopModeToYaml(tone.loopMode),
                     startPoint: tone.wave.startPoint || undefined,
                     endPoint: tone.wave.endPoint || undefined,

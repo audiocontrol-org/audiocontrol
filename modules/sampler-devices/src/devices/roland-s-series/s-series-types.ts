@@ -271,6 +271,31 @@ export interface SSeriesBaseTone {
 }
 
 /**
+ * Resolve an `SSeriesSampleRate` label to its sample-rate in Hz. Single edit
+ * site for the `'30kHz' | '15kHz'` → `30000 | 15000` mapping; a future third
+ * sample rate (e.g. a smaller device's `'7.5kHz'`) lands here. Returns the
+ * literal union `SSeriesWaveSampleRate` so downstream APIs that demand the
+ * literal type (e.g. `calculateWavSegmentsNeeded`, `wavToSeries`) accept it
+ * without a cast.
+ *
+ * Note: runtime helpers in an otherwise types-only file are co-located with
+ * `SSeriesSampleRate` so the contract — "this is how the label maps to Hz" —
+ * is unmistakable from the type.
+ */
+export function sampleRateLabelToHz(rate: SSeriesSampleRate): SSeriesWaveSampleRate {
+    return rate === '30kHz' ? 30000 : 15000;
+}
+
+/**
+ * Convenience wrapper: read the sample rate off a tone. Equivalent to
+ * `sampleRateLabelToHz(tone.sampleRate)`; lives next to `SSeriesBaseTone` so
+ * call sites that already hold a tone object don't have to thread the label.
+ */
+export function toneSampleRateHz(tone: Pick<SSeriesBaseTone, 'sampleRate'>): SSeriesWaveSampleRate {
+    return sampleRateLabelToHz(tone.sampleRate);
+}
+
+/**
  * Device-specific limits that vary between S-series models.
  * Used to parameterize shared parse/encode functions.
  */

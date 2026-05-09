@@ -18,6 +18,7 @@ import { useWaveDataCache } from '@/hooks/useWaveDataCache';
 import { useLoopEditorSync } from '@/hooks/useLoopEditorSync';
 import { useToneSampleExport } from '@/hooks/useToneSampleExport';
 import type { SamplerClientInterface, SamplerTone } from '@/core/midi/SamplerClient';
+import { toneSampleRateHz } from '@/core/midi/SamplerClient';
 import { ToneList } from '@/components/tones/ToneList';
 import { ToneEditor } from '@/components/tones/ToneEditor';
 import { ExportToneDialog } from '@/components/library/ExportToneDialog';
@@ -134,9 +135,12 @@ export function TonesPage() {
   const selectedToneForLoop = selectedToneIndex !== null ? tones[selectedToneIndex] : null;
   const loopEditorSamples =
     selectedToneIndex !== null ? waveCache.getSamples(selectedToneIndex) : null;
+  // When no tone is selected the loop editor still needs a sample-rate seed;
+  // 15 kHz preserves the prior optional-chain default (no-tone fell through
+  // the 30 kHz branch because `undefined !== '30kHz'`).
   const loopEditor = useLoopEditor({
     samples: loopEditorSamples,
-    sampleRate: selectedToneForLoop?.sampleRate === '30kHz' ? 30000 : 15000,
+    sampleRate: selectedToneForLoop ? toneSampleRateHz(selectedToneForLoop) : 15000,
     initialLoopStart: selectedToneForLoop?.wave.loopPoint,
     initialLoopEnd: selectedToneForLoop?.wave.endPoint,
     rootKey: selectedToneForLoop?.originalKey,

@@ -41,7 +41,7 @@ deskwork:
 | Phase 7: S-550 Front Panel | Not Started | Virtual front panel layout |
 | Phase 8: Memory Map Visualization | Complete | Graphical memory map in import dialogs |
 | Phase 9: UX/UI Cleanup | In Progress (Tasks 1–3 done; 4–7 remaining) | Visual polish across all editor pages via `/frontend-design` |
-| Phase 10: Post-Audit Cleanup | In Progress (Tasks 1–8 done pending hardware verification; Task 9 remaining) | Functional + duplication fixes surfaced by 2026-05-08 audit, Phase 9 Task 3 review, and Phase 10 Tasks 4–6 reviews. Tasks 1–8 done; Task 9 (#401 sample-rate helper) remaining. |
+| Phase 10: Post-Audit Cleanup | In Progress (Tasks 1–9 done pending hardware verification on Task 7) | Functional + duplication fixes surfaced by 2026-05-08 audit, Phase 9 Task 3 review, and Phase 10 Tasks 4–6 reviews. All nine tasks done; Task 7 (#400) hardware verification deferred to operator. |
 
 ---
 
@@ -477,7 +477,7 @@ See `.claude/rules/workflow-playbooks.md § Phase-completion duplication audit` 
 
 ---
 
-## Phase 10: Post-Audit Cleanup (In Progress — Tasks 1–8 done pending hardware verification)
+## Phase 10: Post-Audit Cleanup (In Progress — Tasks 1–9 done; Task 7 pending hardware verification)
 
 This phase exists because the 2026-05-08 code audit and the Phase 9 Task 3 review (`/dw-lifecycle:review` on commit `6df1ba6a`) surfaced concrete cleanup items that fall outside Phase 9's "UX/UI cleanup via `/frontend-design`" scope. They land here so they have explicit acceptance criteria and a duplication-audit gate, not just a GitHub issue link that will rot.
 
@@ -649,23 +649,37 @@ This phase exists because the 2026-05-08 code audit and the Phase 9 Task 3 revie
      - `ImportLibraryToneDialog.tsx:46-66` — `waveBank: number;` with JSDoc (#399).
    - [x] **Out-of-scope sibling defect surfaced during audit, not in #399's stated file scope:** `ImportSamplesDialog.tsx` (the multi-sample bulk import dialog, distinct from the singular `ImportSampleDialog`) still carries the same literal-union pattern at lines 39 (`waveBank: 0 | 1 | 2 | 3` in `onImport`), 69 (`useState<0 | 1 | 2 | 3>`), 145 (`as 0 | 1 | 2 | 3` cast), 329 (`as 0 | 1 | 2 | 3` cast). Same TypeScript-discipline issue, same fix shape — but a different dialog and not enumerated by #399. Tracked as a Phase 10 Task 8 follow-up to file as a new issue at session-end (sibling-instance of #399, severity LOW).
 
-9. **Extract sample-rate label-to-Hz helper ([#401](https://github.com/audiocontrol-org/audiocontrol/issues/401), severity LOW). [Not Started]**
+9. **Extract sample-rate label-to-Hz helper ([#401](https://github.com/audiocontrol-org/audiocontrol/issues/401), severity LOW). [Done]**
 
-   `tone.sampleRate === '30kHz' ? 30000 : 15000` is duplicated at three sites: `useToneSampleExport.ts:127`, `useDeviceToneChopper.ts` (sample-rate resolution path), and `TonesPage.tsx` (`useLoopEditor` call site). Surfaced by Phase 10 Task 6 code-quality re-review.
+   `tone.sampleRate === '30kHz' ? 30000 : 15000` is duplicated at three sites: `useToneSampleExport.ts:129`, `useDeviceToneChopper.ts:69`, and `TonesPage.tsx:139` (`useLoopEditor` call site). Surfaced by Phase 10 Task 6 code-quality re-review.
 
-   - Add a named helper, e.g., `toneSampleRateHz(tone: SamplerTone): number` co-located with the `SamplerTone` type (likely in `@audiocontrol/sampler-devices/roland-s-series` or `@/core/midi/SamplerClient`).
-   - Replace all three call sites with the helper. Keep the helper a one-liner (no new abstractions).
-   - A future third sample rate (e.g., a smaller device's `'7.5kHz'`) becomes a single edit site.
+   - [x] Added two helpers in `modules/sampler-devices/src/devices/roland-s-series/s-series-types.ts`, co-located with `SSeriesSampleRate` and `SSeriesBaseTone` so the contract is unmistakable from the type:
+     - `sampleRateLabelToHz(rate: SSeriesSampleRate): SSeriesWaveSampleRate` — root primitive (label → Hz).
+     - `toneSampleRateHz(tone: Pick<SSeriesBaseTone, 'sampleRate'>): SSeriesWaveSampleRate` — convenience wrapper that delegates to `sampleRateLabelToHz(tone.sampleRate)` for call sites already holding a tone object.
+     - Both return the literal union `SSeriesWaveSampleRate` (`15000 | 30000`) so downstream APIs that demand the literal type (`calculateWavSegmentsNeeded`, `wavToSeries`) accept the result without a cast.
+   - [x] Wired exports through `roland-s-series/index.ts` (value export), `s330/s330-params.ts` (re-export), `s330/index.ts` (re-export), and the editor's `core/midi/SamplerClient.ts` (consistent with the existing `parseWav` / `createWav` re-export pattern from `@audiocontrol/sampler-devices/roland-s-series`).
+   - [x] Replaced the three originally-scoped call sites with `toneSampleRateHz(tone)`:
+     - `useToneSampleExport.ts:129` (cache-hit / cache-miss export pipeline).
+     - `useDeviceToneChopper.ts:69` (open-chopper sample-rate resolution).
+     - `TonesPage.tsx:143` (`useLoopEditor` `sampleRate` prop). The original used `selectedToneForLoop?.sampleRate === '30kHz' ? 30000 : 15000` — the helper required a non-null tone, so the call site became `selectedToneForLoop ? toneSampleRateHz(selectedToneForLoop) : 15000`. The 15 kHz default preserves the prior optional-chain behaviour where a `null` tone fell through the 30 kHz branch (`undefined !== '30kHz'`); commented inline.
+   - [x] **Two additional sibling sites surfaced by the audit gate** (the gate working as designed, catching duplicates beyond the originally-scoped three):
+     - `ImportSampleDialog.tsx:104` and `:165` (`targetSampleRate === '30kHz' ? 30000 : 15000`) — same operation but on a label-typed local-state variable, not a tone object. Migrated to `sampleRateLabelToHz(targetSampleRate)`.
+     - `sampler-library/src/converters/s-series/tone-converter.ts:53` (`mapSampleRateToHz`) — local helper with identical body. Deleted; consumer migrated to `sampleRateLabelToHz`. Inverse `mapSampleRateFromHz` (Hz → label) stays local — different operation, no duplicate elsewhere.
+   - [x] Added unit tests in `modules/sampler-devices/test/unit/s330/s330-params.test.ts` for both helpers (4 cases covering `'15kHz'` and `'30kHz'` for each entry point).
+   - A future third sample rate (e.g., a smaller device's `'7.5kHz'`) becomes a single edit site (the body of `sampleRateLabelToHz`).
 
    ### Acceptance criteria
 
-   - [ ] Helper added at the appropriate shared location, named clearly.
-   - [ ] All three call sites updated; `grep -rn "sampleRate === '30kHz'" modules/` returns zero hits in non-helper code.
-   - [ ] No regressions in existing tests.
+   - [x] Helpers added at the appropriate shared location (`s-series-types.ts`), named descriptively (`sampleRateLabelToHz` for the label primitive, `toneSampleRateHz` for the tone convenience wrapper).
+   - [x] All three originally-scoped call sites updated; `grep -rn "sampleRate === '30kHz'" modules/roland-sxx0-editor/src/ modules/sampler-devices/src/ modules/sampler-library/src/` returns zero hits in non-helper code (one hit remains in `s-series-types.ts:286` — the helper body itself).
+   - [x] No regressions in existing tests: `pnpm --filter @audiocontrol/roland-sxx0-editor test` 36/36 passing; `pnpm --filter @audiocontrol/sampler-devices test` 587 passing (3 pre-existing failures unrelated to this task — Akai S3000XL translation/client tests; same failures present on baseline); `pnpm --filter @audiocontrol/sampler-library test` 693 passing (6 pre-existing failures unrelated — sample-chopper, schema, common-area import; same failures present on baseline); `make` clean.
 
-   ### Duplication audit gate
+   ### Duplication audit gate (PASSED)
 
-   - [ ] Confirm no fourth call site exists (`grep -rn "30000\|15000" modules/roland-sxx0-editor/src/` should not surface any sample-rate-resolution literal outside the helper).
+   - [x] **Audit 1** — `grep -rn "sampleRate === '30kHz'" modules/roland-sxx0-editor/src/ modules/sampler-devices/src/ modules/sampler-library/src/`: **0 code hits** outside the helper. (One match in `TonesPage.tsx:139` was an explanatory comment; rewritten to no longer carry the literal pattern.)
+   - [x] **Audit 2** — `grep -rn "=== '30kHz'" modules/roland-sxx0-editor/src/ modules/sampler-devices/src/ modules/sampler-library/src/`: 2 hits — `s-series-params.ts:178` (`encodeSampleRate`, label → byte 0/1, *different* operation) and `s-series-types.ts:286` (the new helper itself).
+   - [x] **Audit 3** — `grep -rn "? 30000 : 15000" modules/roland-sxx0-editor/src/ modules/sampler-devices/src/ modules/sampler-library/src/`: **1 hit** — `s-series-types.ts:286` (the helper body). No sample-rate-resolution literal anywhere else.
+   - [x] **Sibling-instance audit (gate-surfaced):** two additional sites caught and unified (see implementation list above) — `ImportSampleDialog.tsx` (2 sites) and `sampler-library/.../tone-converter.ts:mapSampleRateToHz` (deleted). Inverse `mapSampleRateFromHz` retained as local — operates in the opposite direction (Hz → label) with no duplicate elsewhere.
 
 ### Acceptance Criteria
 
@@ -698,8 +712,8 @@ Phase 3 (Client/Factory) ── Complete ──→ Phase 4 (Converters) ── C
             Phase 10 (Post-Audit Cleanup) ── In Progress
                     Tasks 1–3 done (#393, #394, #395)
                     Tasks 4–6 done (#396, #397, #398) — pending hardware verification
-                    Tasks 7–8 done (#400, #399) — pending hardware verification
-                    Task 9 remaining (#401) — sample-rate helper extraction
+                    Tasks 7–8 done (#400, #399) — pending hardware verification (Task 7)
+                    Task 9 done (#401) — sample-rate helper extraction
                     Independent of Phase 9 visual work; can run in parallel.
 ```
 

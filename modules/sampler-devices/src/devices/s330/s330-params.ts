@@ -40,6 +40,8 @@ export {
     parseLevelCurve,
     parseSampleRate,
     encodeSampleRate,
+    sampleRateLabelToHz,
+    toneSampleRateHz,
     parseName,
     encodeName,
     parse21BitAddress,

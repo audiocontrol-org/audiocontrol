@@ -31,6 +31,7 @@
 
 import { useCallback, useState, type MutableRefObject } from 'react';
 import type { SamplerClientInterface, SamplerTone } from '@/core/midi/SamplerClient';
+import { toneSampleRateHz } from '@/core/midi/SamplerClient';
 import type { UseWaveDataCacheResult } from '@/hooks/useWaveDataCache';
 import { exportSamplesAsWav } from '@/lib/wave-export';
 
@@ -126,7 +127,7 @@ export function useToneSampleExport({
         }
 
         // Sample rate comes from tone metadata (no wave-data response on cache hit).
-        const sampleRate = tone.sampleRate === '30kHz' ? 30000 : 15000;
+        const sampleRate = toneSampleRateHz(tone);
 
         exportSamplesAsWav(samples, sampleRate, tone.name);
 

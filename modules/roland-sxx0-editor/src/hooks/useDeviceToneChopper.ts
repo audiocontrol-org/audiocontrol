@@ -7,6 +7,7 @@ import { useCallback, useState, type RefObject } from 'react';
 import type { ChopperResult, ChopperSavePayload } from '@audiocontrol/sample-chopper/ui';
 import { saveSample, createWav, type SampleYaml } from '@audiocontrol/sampler-library/browser';
 import type { SamplerClientInterface, SamplerTone } from '@/core/midi/SamplerClient';
+import { toneSampleRateHz } from '@/core/midi/SamplerClient';
 import type { S330KitConfig } from '@/components/library/S330KitOutputConfig';
 import type { StorageDirectoryHandle } from '@/lib/library-service';
 import type { UseWaveDataCacheResult } from '@/hooks/useWaveDataCache';
@@ -66,7 +67,7 @@ export function useDeviceToneChopper({
             'wave data unavailable.'
         );
       }
-      const sampleRate = tone.sampleRate === '30kHz' ? 30000 : 15000;
+      const sampleRate = toneSampleRateHz(tone);
 
       setChopperSamples(samples);
       setChopperSampleRate(sampleRate);

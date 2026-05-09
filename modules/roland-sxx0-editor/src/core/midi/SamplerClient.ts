@@ -60,6 +60,8 @@ export {
     validateWaveDataFits,
     prepareWavForSSeries,
     resample,
+    sampleRateLabelToHz,
+    toneSampleRateHz,
 } from '@audiocontrol/sampler-devices/roland-s-series';
 
 export type {

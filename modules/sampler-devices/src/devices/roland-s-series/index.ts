@@ -61,6 +61,8 @@ export type {
     SSeriesToneOffsetMap,
 } from './s-series-types.js';
 
+export { sampleRateLabelToHz, toneSampleRateHz } from './s-series-types.js';
+
 // =============================================================================
 // Constants
 // =============================================================================

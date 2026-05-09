@@ -13,6 +13,8 @@ import {
     parseLevelCurve,
     parseSampleRate,
     encodeSampleRate,
+    sampleRateLabelToHz,
+    toneSampleRateHz,
     parseName,
     encodeName,
     parse21BitAddress,
@@ -275,6 +277,26 @@ describe('S-330 Sample Rate Conversion', () => {
         it('should round-trip both sample rates', () => {
             expect(parseSampleRate(encodeSampleRate('15kHz'))).toBe('15kHz');
             expect(parseSampleRate(encodeSampleRate('30kHz'))).toBe('30kHz');
+        });
+    });
+
+    describe('sampleRateLabelToHz', () => {
+        it("should resolve '30kHz' label to 30000 Hz", () => {
+            expect(sampleRateLabelToHz('30kHz')).toBe(30000);
+        });
+
+        it("should resolve '15kHz' label to 15000 Hz", () => {
+            expect(sampleRateLabelToHz('15kHz')).toBe(15000);
+        });
+    });
+
+    describe('toneSampleRateHz', () => {
+        it("should resolve a tone reporting '30kHz' to 30000 Hz", () => {
+            expect(toneSampleRateHz({ sampleRate: '30kHz' })).toBe(30000);
+        });
+
+        it("should resolve a tone reporting '15kHz' to 15000 Hz", () => {
+            expect(toneSampleRateHz({ sampleRate: '15kHz' })).toBe(15000);
         });
     });
 });
