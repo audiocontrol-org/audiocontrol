@@ -1680,6 +1680,112 @@
     cursor: not-allowed;
   }
 
+  /* ============================================================
+     TONE EDITOR TABS — Wave · Pitch · Filter · Amp · LFO
+     CSS-only via hidden radio inputs + :checked ~ siblings.
+     Filter groups TVF params + TVF envelope; Amp groups TVA params
+     + TVA envelope, since those interact strongly when dialing in
+     a sound.
+     ============================================================ */
+  .tones__tabs { position: relative; }
+  .tones__tabs > input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    width: 0; height: 0;
+  }
+  .tones__tab-strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+    margin: var(--ac-space-4) 0 var(--ac-space-5);
+    border-bottom: var(--ac-rule-medium) solid hsl(var(--ac-color-border));
+    position: relative;
+  }
+  .tones__tab {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.5rem;
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+    cursor: pointer;
+    user-select: none;
+    background: transparent;
+    border: var(--ac-rule-hairline) solid transparent;
+    border-bottom: 0;
+    margin-bottom: -2px;
+    padding: 0 var(--ac-space-2);
+    transition:
+      color var(--ac-duration-fast) var(--ac-easing-default),
+      background-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .tones__tab:hover {
+    color: hsl(var(--ac-color-fg));
+    background: hsl(var(--ac-color-surface) / 0.4);
+  }
+  .tones__tab::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 2px;
+    background: transparent;
+    transition: background-color var(--ac-duration-fast) var(--ac-easing-default), box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .tones__tab:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--ac-color-accent) / 0.5) inset;
+  }
+  /* Active-tab styles: checked radio illuminates its label + bottom rule. */
+  #tt-wave:checked   ~ .tones__tab-strip [for="tt-wave"],
+  #tt-pitch:checked  ~ .tones__tab-strip [for="tt-pitch"],
+  #tt-filter:checked ~ .tones__tab-strip [for="tt-filter"],
+  #tt-amp:checked    ~ .tones__tab-strip [for="tt-amp"],
+  #tt-lfo:checked    ~ .tones__tab-strip [for="tt-lfo"] {
+    color: hsl(var(--ac-color-accent));
+    background: hsl(var(--ac-color-accent) / 0.08);
+  }
+  #tt-wave:checked   ~ .tones__tab-strip [for="tt-wave"]::after,
+  #tt-pitch:checked  ~ .tones__tab-strip [for="tt-pitch"]::after,
+  #tt-filter:checked ~ .tones__tab-strip [for="tt-filter"]::after,
+  #tt-amp:checked    ~ .tones__tab-strip [for="tt-amp"]::after,
+  #tt-lfo:checked    ~ .tones__tab-strip [for="tt-lfo"]::after {
+    background: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.55);
+  }
+  /* Panels: hide all by default; reveal only the one matching the checked radio. */
+  .tones__panel { display: none; }
+  #tt-wave:checked   ~ .tones__panels > [data-tab="wave"],
+  #tt-pitch:checked  ~ .tones__panels > [data-tab="pitch"],
+  #tt-filter:checked ~ .tones__panels > [data-tab="filter"],
+  #tt-amp:checked    ~ .tones__panels > [data-tab="amp"],
+  #tt-lfo:checked    ~ .tones__panels > [data-tab="lfo"] {
+    display: block;
+    animation: tones-tab-fade-in 180ms var(--ac-easing-default);
+  }
+  @keyframes tones-tab-fade-in {
+    from { opacity: 0; transform: translateY(2px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #tt-wave:checked   ~ .tones__panels > [data-tab="wave"],
+    #tt-pitch:checked  ~ .tones__panels > [data-tab="pitch"],
+    #tt-filter:checked ~ .tones__panels > [data-tab="filter"],
+    #tt-amp:checked    ~ .tones__panels > [data-tab="amp"],
+    #tt-lfo:checked    ~ .tones__panels > [data-tab="lfo"] {
+      animation: none;
+    }
+  }
+  /* Inside a panel, sections sit a bit closer together than the original margins */
+  .tones__panel > .tones__section:first-child { margin-top: 0; }
+  .tones__panel > .tones__section:first-child .tones__section-title {
+    margin-top: 0;
+  }
+
   /* Sustain marker label that floats above the sustain point in the graph */
   .tones__envelope-sustain-label {
     position: absolute;
@@ -1989,6 +2095,25 @@
         <span class="ac-panel-label ac-panel-label--accent">§ Tone editor</span>
       </header>
 
+      <!-- TABS — Wave / Pitch / Filter / Amp / LFO. CSS-only, radio-driven. -->
+      <div class="tones__tabs">
+        <input type="radio" name="tones-tab" id="tt-wave"   checked>
+        <input type="radio" name="tones-tab" id="tt-pitch">
+        <input type="radio" name="tones-tab" id="tt-filter">
+        <input type="radio" name="tones-tab" id="tt-amp">
+        <input type="radio" name="tones-tab" id="tt-lfo">
+
+        <nav class="tones__tab-strip" role="tablist" aria-label="Tone editor sections">
+          <label for="tt-wave"   id="tt-wave-label"   class="tones__tab" role="tab" tabindex="0">Wave</label>
+          <label for="tt-pitch"  id="tt-pitch-label"  class="tones__tab" role="tab" tabindex="0">Pitch</label>
+          <label for="tt-filter" id="tt-filter-label" class="tones__tab" role="tab" tabindex="0">Filter</label>
+          <label for="tt-amp"    id="tt-amp-label"    class="tones__tab" role="tab" tabindex="0">Amp</label>
+          <label for="tt-lfo"    id="tt-lfo-label"    class="tones__tab" role="tab" tabindex="0">LFO</label>
+        </nav>
+
+        <div class="tones__panels">
+
+        <section class="tones__panel" data-tab="wave" role="tabpanel" aria-labelledby="tt-wave-label">
       <!-- WAVE -->
       <section class="tones__section">
         <header class="tones__section-head">
@@ -2097,6 +2222,9 @@
         </div>
       </section>
 
+        </section><!-- /panel:wave -->
+
+        <section class="tones__panel" data-tab="pitch" role="tabpanel" aria-labelledby="tt-pitch-label">
       <!-- PITCH -->
       <section class="tones__section">
         <header class="tones__section-head">
@@ -2150,6 +2278,9 @@
         </div>
       </section>
 
+        </section><!-- /panel:pitch -->
+
+        <section class="tones__panel" data-tab="filter" role="tabpanel" aria-labelledby="tt-filter-label">
       <!-- FILTER (TVF) -->
       <section class="tones__section">
         <header class="tones__section-head">
@@ -2222,60 +2353,6 @@
               </div>
             </div>
             <span class="tones__param-readout"><strong>LP-12</strong></span>
-          </div>
-
-        </div>
-      </section>
-
-      <!-- AMPLIFIER (TVA) -->
-      <section class="tones__section">
-        <header class="tones__section-head">
-          <h4 class="tones__section-title">Amplifier — TVA</h4>
-          <span class="tones__section-eyebrow">Level · §04</span>
-        </header>
-        <div class="tones__param-grid tones__param-grid--cols-4">
-
-          <div class="tones__param">
-            <span class="tones__param-label">Volume</span>
-            <div class="tones__param-bar" role="img" aria-label="Volume 112 of 127">
-              <span class="tones__param-tick tones__param-tick--start">0</span>
-              <span class="tones__param-tick tones__param-tick--end">127</span>
-              <div class="tones__param-fill" style="--tones-fill: 88%"></div>
-            </div>
-            <span class="tones__param-readout"><strong>112</strong></span>
-          </div>
-
-          <div class="tones__param tones__param--bipolar">
-            <span class="tones__param-label">Velocity</span>
-            <div class="tones__param-bar" role="img" aria-label="Velocity +44 of -63 to +63">
-              <span class="tones__param-tick tones__param-tick--start">-63</span>
-              <span class="tones__param-tick tones__param-tick--mid">0</span>
-              <span class="tones__param-tick tones__param-tick--end">+63</span>
-              <div class="tones__param-fill" style="--tones-bipolar-l: 50%; --tones-bipolar-w: 35%"></div>
-            </div>
-            <span class="tones__param-readout"><strong>+44</strong></span>
-          </div>
-
-          <div class="tones__param tones__param--bipolar">
-            <span class="tones__param-label">Key Follow</span>
-            <div class="tones__param-bar" role="img" aria-label="Key Follow -8 percent of -100 to +100">
-              <span class="tones__param-tick tones__param-tick--start">-100</span>
-              <span class="tones__param-tick tones__param-tick--mid">0</span>
-              <span class="tones__param-tick tones__param-tick--end">+100</span>
-              <div class="tones__param-fill" style="--tones-bipolar-l: 46%; --tones-bipolar-w: 4%"></div>
-            </div>
-            <span class="tones__param-readout"><strong>−8</strong> <span class="tones__param-readout-unit">%</span></span>
-          </div>
-
-          <div class="tones__param tones__param--bipolar">
-            <span class="tones__param-label">Pan</span>
-            <div class="tones__param-bar" role="img" aria-label="Pan L 12 of -63 to +63">
-              <span class="tones__param-tick tones__param-tick--start">L63</span>
-              <span class="tones__param-tick tones__param-tick--mid">C</span>
-              <span class="tones__param-tick tones__param-tick--end">R63</span>
-              <div class="tones__param-fill" style="--tones-bipolar-l: 40%; --tones-bipolar-w: 10%"></div>
-            </div>
-            <span class="tones__param-readout"><strong>L 12</strong></span>
           </div>
 
         </div>
@@ -2483,6 +2560,63 @@
         </div>
       </section>
 
+        </section><!-- /panel:filter -->
+
+        <section class="tones__panel" data-tab="amp" role="tabpanel" aria-labelledby="tt-amp-label">
+      <!-- AMPLIFIER (TVA) -->
+      <section class="tones__section">
+        <header class="tones__section-head">
+          <h4 class="tones__section-title">Amplifier — TVA</h4>
+          <span class="tones__section-eyebrow">Level · §04</span>
+        </header>
+        <div class="tones__param-grid tones__param-grid--cols-4">
+
+          <div class="tones__param">
+            <span class="tones__param-label">Volume</span>
+            <div class="tones__param-bar" role="img" aria-label="Volume 112 of 127">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">127</span>
+              <div class="tones__param-fill" style="--tones-fill: 88%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>112</strong></span>
+          </div>
+
+          <div class="tones__param tones__param--bipolar">
+            <span class="tones__param-label">Velocity</span>
+            <div class="tones__param-bar" role="img" aria-label="Velocity +44 of -63 to +63">
+              <span class="tones__param-tick tones__param-tick--start">-63</span>
+              <span class="tones__param-tick tones__param-tick--mid">0</span>
+              <span class="tones__param-tick tones__param-tick--end">+63</span>
+              <div class="tones__param-fill" style="--tones-bipolar-l: 50%; --tones-bipolar-w: 35%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>+44</strong></span>
+          </div>
+
+          <div class="tones__param tones__param--bipolar">
+            <span class="tones__param-label">Key Follow</span>
+            <div class="tones__param-bar" role="img" aria-label="Key Follow -8 percent of -100 to +100">
+              <span class="tones__param-tick tones__param-tick--start">-100</span>
+              <span class="tones__param-tick tones__param-tick--mid">0</span>
+              <span class="tones__param-tick tones__param-tick--end">+100</span>
+              <div class="tones__param-fill" style="--tones-bipolar-l: 46%; --tones-bipolar-w: 4%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>−8</strong> <span class="tones__param-readout-unit">%</span></span>
+          </div>
+
+          <div class="tones__param tones__param--bipolar">
+            <span class="tones__param-label">Pan</span>
+            <div class="tones__param-bar" role="img" aria-label="Pan L 12 of -63 to +63">
+              <span class="tones__param-tick tones__param-tick--start">L63</span>
+              <span class="tones__param-tick tones__param-tick--mid">C</span>
+              <span class="tones__param-tick tones__param-tick--end">R63</span>
+              <div class="tones__param-fill" style="--tones-bipolar-l: 40%; --tones-bipolar-w: 10%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>L 12</strong></span>
+          </div>
+
+        </div>
+      </section>
+
       <!-- TVA ENVELOPE — 8-segment variable -->
       <section class="tones__section">
         <header class="tones__section-head">
@@ -2677,6 +2811,9 @@
         </div>
       </section>
 
+        </section><!-- /panel:amp -->
+
+        <section class="tones__panel" data-tab="lfo" role="tabpanel" aria-labelledby="tt-lfo-label">
       <!-- LFO -->
       <section class="tones__section">
         <header class="tones__section-head">
@@ -2730,6 +2867,11 @@
 
         </div>
       </section>
+
+        </section><!-- /panel:lfo -->
+
+        </div><!-- /.tones__panels -->
+      </div><!-- /.tones__tabs -->
 
       <!-- LIVE STATUS — there is no save / cancel / undo. Edits stream to the device. -->
       <footer class="tones__detail-live" role="status" aria-live="polite">
