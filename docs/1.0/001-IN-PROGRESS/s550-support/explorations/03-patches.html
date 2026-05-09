@@ -234,6 +234,118 @@
   .ac-crt-monitor--compact .ac-crt-btn { height: 1.25rem; }
 
   /* ============================================================
+     VIRTUAL FRONT PANEL — the device's physical buttons, mirrored.
+     Sits beneath the CRT video-out so the operator can drive the
+     device's UI without reaching for the hardware. Matte instrument
+     face with tactile button caps; red LED on the active mode
+     (PLAY by default), red triangle glyphs for the ◀ ▼ ▶ ▲
+     data-entry cluster (matches the device's red LCD triangles).
+     ============================================================ */
+  .ac-front-panel {
+    margin-top: var(--ac-space-3);
+    padding: var(--ac-space-4);
+    background:
+      linear-gradient(180deg, hsl(220 18% 11%) 0%, hsl(220 22% 7%) 100%);
+    border: var(--ac-rule-hairline) solid hsl(220 14% 14%);
+    border-radius: 4px;
+    box-shadow:
+      inset 0 1px 0 hsl(220 14% 22% / 0.4),
+      0 8px 22px -10px hsl(220 30% 0% / 0.55);
+  }
+  .ac-front-panel__rows { display: grid; gap: var(--ac-space-2); }
+  .ac-front-panel__row {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .ac-front-panel__btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 1.85rem;
+    padding-inline: var(--ac-space-2);
+    border-radius: 2px;
+    background:
+      linear-gradient(180deg, hsl(220 8% 24%) 0%, hsl(220 10% 18%) 100%);
+    border: 1px solid hsl(220 14% 10%);
+    color: hsl(35 12% 90%);
+    font-family: var(--ac-font-display);
+    font-size: 0.55rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    user-select: none;
+    box-shadow:
+      inset 0 1px 0 hsl(220 14% 36% / 0.5),
+      inset 0 -1px 0 hsl(220 18% 6% / 0.7),
+      0 1px 0 hsl(220 22% 4%);
+    transition:
+      background var(--ac-duration-fast) var(--ac-easing-default),
+      transform var(--ac-duration-fast) var(--ac-easing-default),
+      box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .ac-front-panel__btn:hover {
+    background: linear-gradient(180deg, hsl(220 10% 28%) 0%, hsl(220 12% 22%) 100%);
+  }
+  .ac-front-panel__btn:active {
+    transform: translateY(1px);
+    box-shadow:
+      inset 0 2px 4px hsl(220 14% 0% / 0.55),
+      inset 0 -1px 0 hsl(220 14% 8%);
+  }
+  .ac-front-panel__btn:focus-visible {
+    outline: none;
+    box-shadow:
+      inset 0 0 0 2px hsl(var(--ac-color-accent) / 0.7),
+      inset 0 1px 0 hsl(220 14% 36% / 0.5);
+  }
+  .ac-front-panel__btn--active { color: hsl(35 14% 96%); }
+  .ac-front-panel__btn--active::before {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: hsl(var(--ac-color-rec));
+    box-shadow:
+      0 0 6px hsl(var(--ac-color-rec) / 0.85),
+      0 0 1px hsl(4 100% 80% / 1) inset;
+    animation: ac-front-panel-led 2.4s ease-in-out infinite;
+  }
+  @keyframes ac-front-panel-led {
+    0%, 100% { box-shadow: 0 0 6px hsl(var(--ac-color-rec) / 0.85), 0 0 1px hsl(4 100% 80% / 1) inset; }
+    50%      { box-shadow: 0 0 12px hsl(var(--ac-color-rec) / 1),    0 0 2px hsl(4 100% 80% / 1) inset; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ac-front-panel__btn--active::before { animation: none; }
+  }
+  .ac-front-panel__btn--arrow {
+    color: hsl(var(--ac-color-rec));
+    font-size: 0.75rem;
+    letter-spacing: 0;
+    text-shadow: 0 0 4px hsl(var(--ac-color-rec) / 0.4);
+  }
+  .ac-front-panel__caption {
+    margin-top: var(--ac-space-3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .ac-front-panel__caption-mode {
+    color: hsl(var(--ac-color-rec));
+    text-shadow: 0 0 6px hsl(var(--ac-color-rec) / 0.4);
+  }
+
+  /* ============================================================
      APP SHELL — page content + persistent CRT dock
      Below 1100px, the page scrolls naturally as a single column stack.
      ============================================================ */
@@ -2164,6 +2276,34 @@
       <span><span class="ac-signal-led ac-signal-led--rec" aria-hidden="true" style="margin-right: 6px; vertical-align: middle;"></span>Live</span>
     </div>
   </div>
+  <!-- Virtual front panel — mirrors the S-550's physical button layout -->
+  <div class="ac-front-panel" role="group" aria-label="Virtual front panel">
+    <div class="ac-front-panel__rows">
+      <div class="ac-front-panel__row">
+        <button class="ac-front-panel__btn ac-front-panel__btn--active" type="button" aria-pressed="true">Play</button>
+        <button class="ac-front-panel__btn" type="button">Edit</button>
+        <button class="ac-front-panel__btn" type="button">Disk</button>
+        <button class="ac-front-panel__btn" type="button">Menu</button>
+        <button class="ac-front-panel__btn ac-front-panel__btn--arrow" type="button" aria-label="Up">▲</button>
+        <button class="ac-front-panel__btn" type="button">Sub Menu</button>
+        <button class="ac-front-panel__btn" type="button">Command</button>
+      </div>
+      <div class="ac-front-panel__row">
+        <button class="ac-front-panel__btn" type="button">MIDI</button>
+        <button class="ac-front-panel__btn" type="button">Func</button>
+        <button class="ac-front-panel__btn" type="button">Utility</button>
+        <button class="ac-front-panel__btn ac-front-panel__btn--arrow" type="button" aria-label="Left">◀</button>
+        <button class="ac-front-panel__btn ac-front-panel__btn--arrow" type="button" aria-label="Down">▼</button>
+        <button class="ac-front-panel__btn ac-front-panel__btn--arrow" type="button" aria-label="Right">▶</button>
+        <button class="ac-front-panel__btn" type="button">Execute</button>
+      </div>
+    </div>
+    <div class="ac-front-panel__caption">
+      <span>S-550 · Front panel</span>
+      <span class="ac-front-panel__caption-mode">PLAY mode</span>
+    </div>
+  </div>
+
 </aside>
 
 </div><!-- /.app-shell -->
