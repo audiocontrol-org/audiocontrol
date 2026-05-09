@@ -159,7 +159,7 @@ export function PatchesPage() {
         source: 'device',
         type: 'patch',
         index: patchIndex,
-        name: patch.common.name || `Patch ${patchIndex + 1}`,
+        name: patch.common.name || `Patch ${config.memoryLayout.formatPatchSlot(patchIndex)}`,
       });
     }
   }, [library, patches, exportOps]);

@@ -6,6 +6,7 @@
  */
 
 import { useState, useCallback, type MutableRefObject } from 'react';
+import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import type { SamplerClientInterface, SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import type { DeviceDragData } from '@/components/library/DeviceMemoryPanel';
 import type { OperationProgress } from '@/types/import-operation';
@@ -93,6 +94,11 @@ export function useLibraryExport({
   setIndividualPatches,
   allowDownloadFallback = false,
 }: UseLibraryExportOptions): UseLibraryExportResult {
+  // Device-aware slot label formatter — used in user-facing progress / error text.
+  // Routing through MemoryLayout means S-550 patches >= block 2 render with the
+  // Roman-numeral block prefix (II11..II28 etc.) instead of P31..P48 arithmetic.
+  const { memoryLayout } = useDeviceConfig();
+
   // Export tone dialog state
   const [exportToneDialog, setExportToneDialog] = useState<ExportToneDialogState | null>(null);
   const [exportProgress, setExportProgress] = useState<OperationProgress | undefined>(undefined);
@@ -324,7 +330,7 @@ export function useLibraryExport({
         if (!originalSlotSet.has(sourceSlot)) {
           const sourceTone = tones[sourceSlot];
           if (!sourceTone) {
-            throw new Error(`Source tone T${sourceSlot + 1} for sub-tone T${slot + 1} not loaded from device. Try refreshing device data first.`);
+            throw new Error(`Source tone ${memoryLayout.formatToneSlot(sourceSlot)} for sub-tone ${memoryLayout.formatToneSlot(slot)} not loaded from device. Try refreshing device data first.`);
           }
           originalSlotSet.add(sourceSlot);
         }
@@ -339,7 +345,7 @@ export function useLibraryExport({
       setExportPatchProgress({
         currentStep: 1, totalSteps,
         stepLabel: originalSlots.length > 0
-          ? `Fetching tone T${originalSlots[0] + 1}`
+          ? `Fetching tone ${memoryLayout.formatToneSlot(originalSlots[0])}`
           : 'Writing files to library',
         bytesSent: 0, bytesTotal: 0,
         bytesSentAllSteps: 0, bytesTotalAllSteps: 0,
@@ -363,7 +369,7 @@ export function useLibraryExport({
             setExportPatchProgress({
               currentStep: i + 1,
               totalSteps,
-              stepLabel: `Fetching tone T${slot + 1}`,
+              stepLabel: `Fetching tone ${memoryLayout.formatToneSlot(slot)}`,
               bytesSent: received,
               bytesTotal: total,
               bytesSentAllSteps: completedWaveBytes,
