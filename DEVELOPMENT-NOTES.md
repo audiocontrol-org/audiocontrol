@@ -11,6 +11,82 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-05-09: s550-support — Phase 10 Tasks 4–9 + audit-gate sibling-instance discovery loop
+
+### Feature: s550-support
+
+### Worktree: audiocontrol-s550-support
+
+### Goal
+
+Drive Phase 10 follow-ups (#396, #397, #398) to completion via `/dw-lifecycle:implement` + the `superpowers:subagent-driven-development` discipline. After landing those, the operator chose A+B: scope the new follow-ups (#399, #400, #401) into the workplan as Tasks 7–9 and drive them to completion, then end the session with a journal entry. Net: six tasks shipped (4–9), three new sibling-instance follow-ups filed (#402, #403, plus #399/#400/#401 → seeds for #402/#403 from their own audits).
+
+### Accomplished
+
+- **Phase 10 Tasks 4–6 shipped** (filed by previous session's audit gate):
+  - **Task 4 (#396)** `ea6a519c` — `ImportLibraryPatchDialog` C/D bank options now layout-driven via `MemoryLayout.getWaveBanksForTone(targetSlot)`. Type-widening from `0 | 1 | 2 | 3` to `number` + target-slot onChange clamp (re-derives valid bank when slot changes across the S-550 32-tone block boundary). Mirrors the #393 / #396 pattern.
+  - **Task 5 (#397)** `30256d89` + `f2b29a05` — replaced `+ 11` slot-label arithmetic in `ToneZoneEditor.tsx:196` and `PlayPage.tsx:377` with `memoryLayout.formatToneSlot` / `formatPatchSlot`. 16 new pin tests in `memory-layout.test.ts` covering S-330 + S-550 × tone + patch at boundaries 0/8/15/16/31/32/63 with explicit references to the obsolete arithmetic value (`Arithmetic produced "T19"; correct is "T21"`). Sibling-instance finding: `lib/s330-format.ts:formatPatchSlot` is genuinely wrong on S-550 for patch index ≥ 16 → filed as #400.
+  - **Task 6 (#398)** `6940dbdd` + `6142e053` — extracted `useToneSampleExport` hook from `TonesPage.tsx` (511 → 470 lines). Mirrors `useDeviceToneChopper`'s DI-by-options shape; required (not optional) `waveCache` injection per #395 contract. Code-quality review caught three findings on the initial commit, all fixed in `6142e053`: (a) vestigial `tones` option (declared, immediately discarded; JSDoc symmetry justification was factually wrong since `useDeviceToneChopper` doesn't take `tones` either), (b) ambiguous throw-vs-`setError` JSDoc, (c) `tone?.name` / `tone?.sampleRate` optional-chain fallback was a silent fallback (project rule violation) — replaced with explicit throw on null tone after verifying `requestToneData` returns `Promise<S330Tone | null>`. New 8th test pins the null-tone path. Sample-rate-resolution duplication surfaced → filed as #401.
+
+- **Phase 10 Tasks 7–9 shipped** (the new sibling-instance follow-ups filed by Tasks 4–6 reviews):
+  - **Task 7 (#400)** `8379294c` + `9549f628` — migrated `lib/s330-format.ts` consumers (`ItemPreviewPanel.tsx` × 5 sites, `ToneList.tsx`, `ExportPatchDialog.tsx` × 3 sites, `useLibraryImportDialogs.ts:245` + opportunistic sibling at `:233`) to `useDeviceConfig().memoryLayout`. Deleted `lib/s330-format.ts`. Code-quality review caught two findings: (a) `ExportPatchDialog`'s default-name change dropped the `Patch_` prefix, producing on-disk directories named `II11/` instead of `Patch_II11/` → restored prefix, (b) out-of-#400-scope sibling defects (`useLibraryExport.ts:327, 342, 366` + `PatchesPage.tsx:162` user-facing wrong slot ids in error/progress text) flagged "to file at session-end" → filed inline as #402 per the operator's standing rule.
+  - **Task 8 (#399)** `7acae59c` — widened `ImportLibraryToneDialog` `waveBank` from `0 | 1 | 2 | 3` to `number` end-to-end (lines 52, 85, 322, 389) + parity-aligned `preferredBank` typing via the shared `WaveBankIndex` alias. Pure TypeScript discipline; no correctness bug because the option set was already layout-driven. Single combined review (small mechanical change). Audit gate surfaced a fourth Roland import dialog with the same anti-pattern → filed as #403.
+  - **Task 9 (#401)** `0c4423d8` + `39706ddf` — extracted `sampleRateLabelToHz(rate)` + `toneSampleRateHz(tone)` helpers at `s-series-types.ts` (co-located with `SSeriesBaseTone`). Return type `SSeriesWaveSampleRate` (literal union `15000 | 30000`) — stronger than `number` because `calculateWavSegmentsNeeded` / `prepareWavForS330` require it. Audit gate caught **2 sibling sites beyond the originally-scoped 3** (`ImportSampleDialog.tsx:104,165` for label-typed inputs, `tone-converter.ts:259` replacing local `mapSampleRateToHz`) — unified rather than deferred. Code-quality review caught the `15000` fallback at `TonesPage.tsx:143` as a silent fallback (`useLoopEditor` short-circuits all consumers on `!samples`, so the seed is never consulted) → replaced with `0` sentinel + inline comment naming the `!samples` guards as the reason it's never consulted.
+
+- **6 sibling-instance follow-up issues filed via the duplication-audit gate**:
+  - **#399** — `ImportLibraryToneDialog` literal-union (Task 4 review surfaced; Task 8 fixed)
+  - **#400** — `lib/s330-format.ts` consumers + raw `+ 1` arithmetic (Task 5 review surfaced; Task 7 fixed)
+  - **#401** — sample-rate resolution duplication (Task 6 review surfaced; Task 9 fixed)
+  - **#402** — `useLibraryExport` + `PatchesPage` user-facing wrong slot ids (Task 7 review surfaced; OPEN)
+  - **#403** — `ImportSamplesDialog` literal-union (Task 8 audit surfaced; OPEN)
+  - 4 of 5 of these were filed within minutes of the surfacing review; the gate is doing its job.
+
+- **12 commits this session** on `feature/s550-support`, all under Phase 10. **Tests green at every commit:** `pnpm --filter @audiocontrol/roland-sxx0-editor test` 36/36 passing (up from 11/11 at session start); `make` clean.
+
+### Didn't work
+
+- **Task 6 implementer kept a vestigial `tones` option in the hook spec.** The hook took `tones: (SamplerTone | undefined)[]` per the spec and immediately discarded it as `_tones`. The implementer's JSDoc rationalisation ("symmetry with sibling hooks") was factually wrong — `useDeviceToneChopper` doesn't take `tones` either. Code-quality reviewer caught it. Lesson: when the spec mandates a field, the implementer should still surface "this seems unused" to the controller rather than carrying a silent-no-op interface; the author of the spec might have been wrong.
+
+- **Task 6 silent-fallback regression in the cache-miss path.** Initial commit used `tone?.name || 'tone_${idx}'` and `tone?.sampleRate === '30kHz' ? 30000 : 15000` — exactly the silent-fallback pattern the project rules forbid. Code-quality reviewer caught it; fix commit replaced with explicit throw on null tone. The `requestToneData` return type (`Promise<S330Tone | null>`) was right there to read; the optional chains were defensive habit. Lesson: optional chains in production code that lead to implicit defaults are red flags — read the type signature first and decide whether `null` is impossible or actionable.
+
+- **Task 9 silent-fallback regression at the consumer site.** Helper extraction kept `selectedToneForLoop ? toneSampleRateHz(selectedToneForLoop) : 15000` "to preserve prior optional-chain default" — but the prior default was itself a defensive accident (`undefined !== '30kHz'` falling through), never consulted because every `useLoopEditor` consumer short-circuits on `!samples`. Code-quality reviewer read `useLoopEditor` and proved the value is never used in the null-tone state. Lesson: "preserves prior behaviour" is a documentation smell when the prior behaviour was a bug — verify whether the value is actually consulted before declaring the fallback necessary.
+
+- **Two of three Task 6 / Task 9 silent-fallback issues were caught only by reading the consumer code.** Spec and code-quality reviews against the diff alone missed them; what caught them was the reviewer reading `useLoopEditor`'s implementation to verify the contract claim. Lesson: when an implementer's justification cites consumer behaviour, the reviewer must read that consumer code, not take the implementer's word.
+
+### Course corrections
+
+- **[PROCESS]** "A then B." When the operator gave a multi-step direction at the Phase 10 Tasks 4–6 wrap point, I asked "what's next?" with four options. They picked A (scope the new follow-ups + drive them) then B (end the session). Did exactly that without further check-ins between A and B's tasks. **The orchestration discipline says "execute all tasks from the plan without stopping" between tasks; the operator's "A then B" affirmed this.** Saved several round-trips.
+
+- **[PROCESS] Inline 1–2-line fixes** for code-quality APPROVE WITH CHANGES findings, when the implementer is no longer in the loop and the change is obvious. Applied this for the Task 9 fallback fix (single Edit + workplan note + commit, no subagent dispatch). Memory entry `feedback_compound_commands.md` already covers this calibration.
+
+- **[PROCESS] No autonomous closure on hardware-pending issues.** Tasks 1–8 all left their issues OPEN with implementation summary comments — none closed. Operator's standing rule from `feedback_no_autonomous_close.md`. Hardware verification on orion-m4 is the operator's gate.
+
+### Quantitative
+
+- **12 commits** this session: 1 scope-in for Tasks 4–6, 6 task implementations + fix-followups for Tasks 4–6, 1 scope-in for Tasks 7–9, 5 task implementations + fix-followups for Tasks 7–9.
+- **6 issues addressed (pending hardware verification):** #396, #397, #398, #399, #400, #401. Comments posted on each summarizing implementation status.
+- **5 follow-up issues filed:** #399 (Task 4 audit), #400 (Task 5 audit), #401 (Task 6 audit), #402 (Task 7 audit), #403 (Task 8 audit).
+- **~14 sub-agents dispatched:** 6 implementers (one per task), 5 spec reviewers, 6 code-quality reviewers (Task 6 had a re-review after the fix), 3 fix subagents (Task 6 + Task 7 + Task 9 inline-handled by main agent). Two-stage review pattern was applied for Tasks 4, 5, 6, 7; combined review for Task 8 (small mechanical change) and Task 9 (refactor).
+- **~5 user messages** this session — the rest was autonomous execution.
+- **0 fabrications flagged** by the operator.
+- **0 process corrections** from the operator this session — the workplan + workflow-playbooks rules carried the load.
+
+### Insights
+
+- **The duplication-audit gate is the most valuable single discipline in this codebase.** 5 of the 6 follow-ups filed this session came from the post-task grep discipline. Without it: the `lib/s330-format.ts` S-550 patch-label bug (#400) would have shipped silently, the `ImportLibraryToneDialog` and `ImportSamplesDialog` literal-union drift would have accumulated, the `useLibraryExport` user-facing wrong slot ids would have been latent. Each one was a real defect or real drift that no scoped review would catch in isolation.
+
+- **Two-stage review (spec then code-quality) earns its cost — except for trivial changes.** Tasks 4, 5, 6, 7 all had at least one finding that one reviewer caught and the other missed. Tasks 8 and 9 are pure refactors where the spec is "make this consistent with sibling X" — a single combined review was sufficient. The judgment call is: if the spec is "do exactly this 4-line edit," combined review; if the spec leaves implementation latitude, two-stage. This session kept that ratio at ~2:1 in favour of two-stage.
+
+- **Code-quality reviewers should read the consumers, not just the diff.** Two of the three silent-fallback regressions this session were only caught by reviewers who read `useLoopEditor`'s implementation to verify the contract. Reading the diff alone is insufficient when the implementer's justification refers to consumer behaviour. Worth saving as a memory entry: "code-quality review must verify consumer-behaviour claims by reading the consumer code, not take the implementer's word."
+
+- **Audit-gate sibling discoveries should be acted on, not deferred.** Task 9's audit caught 2 sibling sites beyond the originally-scoped 3 (`ImportSampleDialog` label-typed sites + `tone-converter.ts:259` local helper). The implementer unified them in the same PR rather than filing as follow-ups — the right call because the change was identical in shape, the file was already open, and a follow-up issue would have been pure friction. Task 7's audit caught defects that WERE out of scope (different files entirely) — those got filed as #402. The split: same-shape duplicates in scope-adjacent files → fix inline; different-defect-class or substantially-different files → file as a follow-up.
+
+- **The workplan as scope-binding is a higher bar than GitHub issue tracking.** Each task that started with the operator's standing rule "scope into workplan first" had clear acceptance criteria, a duplication-audit gate template, and a place to record audit results. The two times this session the rule was relaxed (Task 8's `ImportSamplesDialog` finding, Task 9's `useLoopEditor` `number | null` follow-up), the issue was filed without workplan scoping — which is correct because those are out-of-feature concerns. The rule applies to in-feature follow-ups, not every adjacent observation.
+
+- **Hardware verification debt is now 6 issues deep.** All Phase 10 Tasks 1–8 ship pending hardware verification on orion-m4. The README + workplan both call this out, and the issue comments name the specific surfaces to verify. The next session should either (a) help the operator drive a hardware verification pass, or (b) treat hardware verification as a separate ongoing track and continue with Phase 9 visual polish or Phase 7 front panel.
+
+---
+
 ## 2026-05-09: s550-support — Phase 10 implementation (Tasks 1–3) via subagent-driven development
 
 ### Feature: s550-support
