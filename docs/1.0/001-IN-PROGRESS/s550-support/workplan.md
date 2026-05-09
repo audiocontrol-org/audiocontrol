@@ -37,7 +37,7 @@ deskwork:
 | Phase 7: S-550 Front Panel | Not Started | Virtual front panel layout |
 | Phase 8: Memory Map Visualization | Complete | Graphical memory map in import dialogs |
 | Phase 9: UX/UI Cleanup | In Progress (Tasks 1–3 done; 4–7 remaining) | Visual polish across all editor pages via `/frontend-design` |
-| Phase 10: Post-Audit Cleanup | In Progress (Tasks 1–2 done pending hardware verification; Task 3 remaining) | Functional + duplication fixes surfaced by 2026-05-08 audit and Phase 9 Task 3 review (#393, #394, #395). Follow-ups filed as #396, #397. |
+| Phase 10: Post-Audit Cleanup | In Progress (Tasks 1–3 done pending hardware verification; Tasks 4–6 added 2026-05-09 from #396/#397/#398) | Functional + duplication fixes surfaced by 2026-05-08 audit and Phase 9 Task 3 review (#393, #394, #395). Follow-up sibling instances now scoped as Tasks 4–6 (#396, #397, #398). |
 
 ---
 
@@ -473,7 +473,7 @@ See `.claude/rules/workflow-playbooks.md § Phase-completion duplication audit` 
 
 ---
 
-## Phase 10: Post-Audit Cleanup (Not Started)
+## Phase 10: Post-Audit Cleanup (In Progress — Tasks 1–3 done pending hardware verification; Tasks 4–6 added 2026-05-09)
 
 This phase exists because the 2026-05-08 code audit and the Phase 9 Task 3 review (`/dw-lifecycle:review` on commit `6df1ba6a`) surfaced concrete cleanup items that fall outside Phase 9's "UX/UI cleanup via `/frontend-design`" scope. They land here so they have explicit acceptance criteria and a duplication-audit gate, not just a GitHub issue link that will rot.
 
@@ -514,9 +514,86 @@ This phase exists because the 2026-05-08 code audit and the Phase 9 Task 3 revie
      - [x] No new wrapper hooks introduced — the only addition is `exportSamplesAsWav` in `lib/wave-export.ts`, justified because it cleanly extracts the samples-based export path while keeping the sanitization rule in one place; `exportWaveAsWav` continues to exist and now delegates.
    - **Follow-up [#398](https://github.com/audiocontrol-org/audiocontrol/issues/398):** the cache-routing growth pushed `TonesPage.tsx` from 497 → 511 lines (11 over the project's 500-line guideline). Code-quality reviewer flagged this as structural rather than cosmetic — a defensible micro-trim of 6 prose lines exists, but the right resolution is extracting a `useToneSampleExport` hook mirroring the existing `useDeviceToneChopper` pattern. Filed as #398 (severity LOW). Added inline JSDoc cleanup in `lib/wave-export.ts` to drop "S-330" specificity now that the helpers serve both devices.
 
+4. **`ImportLibraryPatchDialog`: support wave banks C and D ([#396](https://github.com/audiocontrol-org/audiocontrol/issues/396), severity MEDIUM). [Not Started]**
+
+   Sibling instance of #393 surfaced by the Phase 10 Task 1 duplication audit. The patch-import dialog's per-tone-mapping wave-bank `<select>` hard-codes `<option>Bank A</option>` / `<option>Bank B</option>` at `ImportLibraryPatchDialog.tsx:579-580` instead of routing through `MemoryLayout.getWaveBanksForTone(targetSlot)` like `ImportSampleDialog` and `ImportLibraryToneDialog` already do. The data model is correct (`ToneImportMapping.waveBank: 0 | 1 | 2 | 3`); only the rendered option set is wrong.
+
+   - Replace hard-coded `<option>Bank A</option>` / `<option>Bank B</option>` at `ImportLibraryPatchDialog.tsx:579-580` with options derived from `useDeviceConfig().memoryLayout.getWaveBanksForTone(mapping.targetSlot)` (mirror the pattern in `ImportSampleDialog`).
+   - Default per-mapping `waveBank` to the first valid bank for the tone's target slot. Verify the auto-allocation flow at lines 360–372 already uses `MemoryLayout` (or update it to).
+   - Remove the `as 0 | 1 | 2 | 3` cast on the `onChange` (line 570) since the option set is now layout-driven; widen `mapping.waveBank` to `number` end-to-end if needed (mirror #393's type-widening in `useLibraryImportDialogs.ts`).
+   - Verify on `/roland/s550/editor` that importing a patch with target-slot ≥ 32 shows C/D in the bank selector and that target-slot < 32 shows A/B; verify on `/roland/s330/editor` that A/B remain the only options.
+
+   ### Acceptance criteria
+
+   - [ ] Bank `<option>` set is layout-driven; no hard-coded `Bank A` / `Bank B` literals in `ImportLibraryPatchDialog.tsx`.
+   - [ ] Default `waveBank` per mapping is the first valid bank for the target slot.
+   - [ ] No regressions in existing tests (`pnpm --filter roland-sxx0-editor test` + `make`).
+
+   ### Duplication audit gate
+
+   - [ ] `grep -rn "Bank A\|Bank B" modules/roland-sxx0-editor/src/components/` returns zero hits after the fix (every bank label routes through `MemoryLayout`).
+   - [ ] If `ImportLibraryPatchDialog` already had logic computing valid banks for its tone-mappings, verify it routes through `MemoryLayout.getWaveBanksForTone` rather than re-implementing the bank-for-tone rule inline.
+   - [ ] Document the audit explicitly: "Bank label sources: <N> grepped, <M> already routed, <K> migrated."
+
+5. **Slot-label arithmetic: replace `+ 11` with `MemoryLayout` formatters ([#397](https://github.com/audiocontrol-org/audiocontrol/issues/397), severity MEDIUM). [Not Started]**
+
+   Two sibling instances of arithmetic-based slot label rendering bypass the `MemoryLayout.formatToneSlot` / `formatPatchSlot` formatter contract. They produce wrong labels for any S-330 tone past index 7 (banks 2–4) and any S-550 tone past index 7. Surfaced by Phase 10 Task 1 follow-up audit; the in-scope `ImportSampleDialog` title was fixed inline.
+
+   - Replace `T${toneIndex + 11}` in `ToneZoneEditor.tsx:196` with `memoryLayout.formatToneSlot(toneIndex)`. Inject `memoryLayout` via `useDeviceConfig()` (the component should already render under a `DeviceConfigProvider`).
+   - Replace `P${String(patchIndex + 11).padStart(2, '0')}` in `PlayPage.tsx:377` with `memoryLayout.formatPatchSlot(patchIndex)` (S-550 uses Roman-numeral block prefix per `memory-layout.ts:147-158`; the formatter handles this).
+   - Verify on `/roland/s330/editor` and `/roland/s550/editor` that the patch list / play UI / patch zone display renders correct labels across all banks.
+
+   ### Acceptance criteria
+
+   - [ ] No `+ 11` arithmetic in any tone- or patch-slot label rendering across `roland-sxx0-editor`.
+   - [ ] Both call sites use `memoryLayout.formatToneSlot` / `formatPatchSlot`; `memoryLayout` injected via `useDeviceConfig()`.
+   - [ ] No regressions in existing tests; ideally add a unit/UI test pinning the formatter behavior at index 8 / 32 / 63 boundaries.
+
+   ### Duplication audit gate
+
+   - [ ] `grep -rn "+ 11}" modules/roland-sxx0-editor/src/` returns zero hits after the fix.
+   - [ ] `grep -rn "toneIndex + 11\|patchIndex + 11" modules/roland-sxx0-editor/src/` returns zero hits.
+   - [ ] Confirm no helper function bypasses `MemoryLayout.formatToneSlot` / `formatPatchSlot` for any slot label rendering.
+
+6. **Extract `useToneSampleExport` hook to bring `TonesPage.tsx` under 500 lines ([#398](https://github.com/audiocontrol-org/audiocontrol/issues/398), severity LOW). [Not Started]**
+
+   `TonesPage.tsx` is at 511 lines (11 over the 300–500 line guideline) after Phase 10 Task 3's cache-routing growth. The right resolution is structural — extract a `useToneSampleExport` hook mirroring the existing `useDeviceToneChopper` pattern. Cosmetic line-trimming was rejected by the code-quality reviewer.
+
+   - Create `modules/roland-sxx0-editor/src/hooks/useToneSampleExport.ts` exposing:
+     ```ts
+     interface UseToneSampleExportOptions {
+       clientRef: MutableRefObject<SamplerClientInterface | null>;
+       waveCache: UseWaveDataCacheResult;
+       tones: (SamplerTone | undefined)[];
+       setTone: (index: number, tone: SamplerTone, totalTones: number) => void;
+       setError: (msg: string | null) => void;
+       totalTones: number;
+     }
+     interface UseToneSampleExportResult {
+       isExporting: boolean;
+       exportProgress: number | undefined;
+       handleExportSample: (selectedToneIndex: number) => Promise<void>;
+     }
+     ```
+   - Move the cache-hit fast path, `loadWaveData(idx, onProgress)` call, invariant guard, sample-rate resolution, and `exportSamplesAsWav` invocation into the hook.
+   - In `TonesPage.tsx`, replace the current `handleExportSample` definition with `const { isExporting, exportProgress, handleExportSample } = useToneSampleExport({ ... })`.
+   - Add a unit test (`test/unit/use-tone-sample-export.test.ts` or similar) covering: cache hit (no device read), cache miss (device read happens), invariant violation (post-load `getSamples` returns null → throws), and progress callback wiring.
+
+   ### Acceptance criteria
+
+   - [ ] `TonesPage.tsx` is back under 500 lines after the extraction.
+   - [ ] New hook composes generic primitives (cache + tones array + export helper) without device conditionals or S-series-specific business logic.
+   - [ ] Unit tests for the new hook cover the four cases above.
+   - [ ] All existing tests still pass (`pnpm --filter @audiocontrol/roland-sxx0-editor test` + `make`).
+
+   ### Duplication audit gate
+
+   - [ ] `grep -rn "exportSamplesAsWav\b" modules/roland-sxx0-editor/src/` returns only the import in the new hook + the helper definition in `wave-export.ts`. No other call site re-implements the cache-then-export sequence.
+   - [ ] Confirm the hook is composable with `useDeviceToneChopper` (both consume `useWaveDataCache`); document any deliberate divergence in shape.
+
 ### Acceptance Criteria
 
-- [ ] All three issues (#393, #394, #395) closed with their acceptance criteria met.
+- [ ] All six issues (#393, #394, #395, #396, #397, #398) closed with their acceptance criteria met.
 - [ ] No regressions in existing tests (`pnpm --filter roland-sxx0-editor test` + `make`).
 - [ ] **Phase-completion duplication audit passes** — each task's audit gate above is filled in with concrete grep results.
 - [ ] DEVELOPMENT-NOTES entry written for Phase 10 with what was unified, what was kept separate (and why), and any new follow-ups discovered.
@@ -542,9 +619,10 @@ Phase 3 (Client/Factory) ── Complete ──→ Phase 4 (Converters) ── C
             Phase 8 (Memory Map) ── Complete
             Phase 9 (UX/UI Cleanup) ── In Progress (Tasks 1–3 done)
                     ↓
-            Phase 10 (Post-Audit Cleanup) ── Not Started
-                    (#393, #394, #395 — independent of Phase 9 visual work,
-                     can run in parallel)
+            Phase 10 (Post-Audit Cleanup) ── In Progress
+                    Tasks 1–3 done (#393, #394, #395)
+                    Tasks 4–6 added (#396, #397, #398) — sibling instances
+                    Independent of Phase 9 visual work; can run in parallel.
 ```
 
 ---

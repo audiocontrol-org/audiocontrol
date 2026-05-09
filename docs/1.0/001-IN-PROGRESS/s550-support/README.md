@@ -1,6 +1,6 @@
 # Roland S-550 Editor Support
 
-**Status:** In Progress (Phases 1-6, 8 Complete; Phase 9 Tasks 1-3 Complete; Phase 10 Tasks 1-3 Complete pending hardware verification; Phase 7, Phase 9 Tasks 4-7 Remaining)
+**Status:** In Progress (Phases 1-6, 8 Complete; Phase 9 Tasks 1-3 Complete; Phase 10 Tasks 1-3 Complete pending hardware verification; Phase 10 Tasks 4-6 Added 2026-05-09; Phase 7, Phase 9 Tasks 4-7 Remaining)
 **Feature Branch:** `feature/s550-support`
 **GitHub Milestone:** [Week of Feb 24-28](https://github.com/audiocontrol-org/audiocontrol/milestone/4)
 
@@ -41,7 +41,7 @@ The S-550 shares model ID `0x1E` and SysEx protocol with the S-330 but has an in
 |-----------|-------------|------------|
 | S-550 virtual front panel | Rack-mount panel layout variant | Nothing (cosmetic) |
 | UX/UI cleanup Phase 9 — Tasks 4–7 | Per-page real-component refactor (absorbing audit findings 4 + 5), dialog polish, UI-layer test harness + screenshot verification (audit finding 3), design-system update | Operator review of v3 mockups |
-| Phase 10 — Post-audit cleanup | [#393](https://github.com/audiocontrol-org/audiocontrol/issues/393) S-550 wave banks C/D **(Task 1 done — pending hardware verification; siblings [#396](https://github.com/audiocontrol-org/audiocontrol/issues/396) + [#397](https://github.com/audiocontrol-org/audiocontrol/issues/397) filed)**, [#394](https://github.com/audiocontrol-org/audiocontrol/issues/394) empty-slot helpers **(Task 2 done — pending hardware verification)**, [#395](https://github.com/audiocontrol-org/audiocontrol/issues/395) wave-fetch consolidation **(Task 3 done — pending hardware verification)** | Independent — can run in parallel with Phase 9 |
+| Phase 10 — Post-audit cleanup | [#393](https://github.com/audiocontrol-org/audiocontrol/issues/393) S-550 wave banks C/D **(Task 1 done — pending hardware verification)**, [#394](https://github.com/audiocontrol-org/audiocontrol/issues/394) empty-slot helpers **(Task 2 done — pending hardware verification)**, [#395](https://github.com/audiocontrol-org/audiocontrol/issues/395) wave-fetch consolidation **(Task 3 done — pending hardware verification)**, [#396](https://github.com/audiocontrol-org/audiocontrol/issues/396) ImportLibraryPatchDialog C/D **(Task 4 — Not Started)**, [#397](https://github.com/audiocontrol-org/audiocontrol/issues/397) slot-label arithmetic **(Task 5 — Not Started)**, [#398](https://github.com/audiocontrol-org/audiocontrol/issues/398) useToneSampleExport hook **(Task 6 — Not Started)** | Independent — can run in parallel with Phase 9 |
 
 ### Phase 9 Task 2 deliverables (committed under `docs/1.0/001-IN-PROGRESS/s550-support/explorations/`)
 
