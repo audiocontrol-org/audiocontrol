@@ -201,7 +201,7 @@ interface UseImportSamplesReturn extends OperationState {
   closeImportSamplesDialog: () => void;
   handleImportSamples: (params: {
     startingToneSlot: number;
-    waveBank: 0 | 1 | 2 | 3;
+    waveBank: number;
     startingSegment: number;
     targetPatchSlot: number;
     singlePatch?: boolean;
@@ -336,7 +336,7 @@ export function useImportSamples({
 
   const handleImportSamples = useCallback(async (params: {
     startingToneSlot: number;
-    waveBank: 0 | 1 | 2 | 3;
+    waveBank: number;
     startingSegment: number;
     targetPatchSlot: number;
     singlePatch?: boolean;

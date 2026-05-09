@@ -36,7 +36,15 @@ export interface ImportSamplesDialogProps extends OperationState {
   devicePatches: (SamplerPatch | undefined)[];
   onImport: (params: {
     startingToneSlot: number;
-    waveBank: 0 | 1 | 2 | 3;
+    /**
+     * Wave bank index typed as `number` rather than `0 | 1 | 2 | 3` so the same
+     * dialog serves both S-330 (banks 0-1) and S-550 (banks 0-3). The rendered
+     * `<option>` set is layout-driven via `availableBanks.indices`; runtime
+     * validation lives at the device-client boundary
+     * (`s330-client.ts:1592,1632`, `s550-addresses.ts:168`).
+     * Mirrors the pattern established in #393 / #396 / #399.
+     */
+    waveBank: number;
     startingSegment: number;
     targetPatchSlot: number;
     singlePatch?: boolean;
@@ -66,7 +74,7 @@ export function ImportSamplesDialog({
   // User selections
   const [selectedTargetIndex, setSelectedTargetIndex] = useState(0);
   const [startingToneSlot, setStartingToneSlot] = useState(0);
-  const [waveBank, setWaveBank] = useState<0 | 1 | 2 | 3>(0);
+  const [waveBank, setWaveBank] = useState<number>(0);
   const [startingSegment, setStartingSegment] = useState(0);
   const [targetPatchSlot, setTargetPatchSlot] = useState(0);
   const [singlePatch, setSinglePatch] = useState(true);
@@ -142,7 +150,7 @@ export function ImportSamplesDialog({
     const newGroup = memoryLayout.toneGroups.find(
       g => g.firstIndex === importTargets[index].toneIndexOffset
     ) ?? memoryLayout.toneGroups[0];
-    setWaveBank(newGroup.waveBankIndices[0] as 0 | 1 | 2 | 3);
+    setWaveBank(newGroup.waveBankIndices[0]);
   }, [importTargets, memoryLayout.toneGroups]);
 
   const handleImport = useCallback(async () => {
@@ -326,7 +334,7 @@ export function ImportSamplesDialog({
                   <select
                     id="waveBank"
                     value={waveBank}
-                    onChange={(e) => setWaveBank(Number(e.target.value) as 0 | 1 | 2 | 3)}
+                    onChange={(e) => setWaveBank(Number(e.target.value))}
                     disabled={isOperating}
                     className={cn(
                       'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
