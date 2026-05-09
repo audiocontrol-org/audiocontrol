@@ -256,6 +256,65 @@
   }
 
   /* ============================================================
+     TONES-PAGE LAYOUT — sticky chrome / 3-column app shell
+     The site header (.homepage__appbar) and page title pin at top.
+     The tones list (left) and CRT (right) pin below the page title;
+     each gets its own internal scroll. Only the center detail column
+     scrolls with the document — every other surface stays in place.
+     ============================================================ */
+  :root {
+    --ac-tones-appbar:    4rem;
+    --ac-tones-title:     5rem;
+    --ac-tones-stack-top: calc(var(--ac-tones-appbar) + var(--ac-tones-title));
+  }
+  /* Site header (the brand · nav · connection-pill row) stays flush top. */
+  .homepage__appbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: hsl(var(--ac-color-bg) / 0.94);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  /* Page title row (Tones · X of Y · refresh) hoisted out of the shell. */
+  .tones__page-title {
+    position: sticky;
+    top: var(--ac-tones-appbar);
+    z-index: 40;
+    background: hsl(var(--ac-color-bg) / 0.94);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    margin-top: 0 !important;
+    padding-block: var(--ac-space-4) var(--ac-space-3);
+  }
+  /* Override .app-shell on the tones page: 3 columns (list, detail, CRT). */
+  @media (min-width: 1100px) {
+    .app-shell.tones__app-shell {
+      grid-template-columns: 18rem minmax(0, 1fr) 30rem;
+      gap: var(--ac-space-5);
+      padding-block: 0 var(--ac-space-6);
+      align-items: start;
+    }
+    /* Tones list pins below the title; its content scrolls inside. */
+    .app-shell.tones__app-shell .tones__list {
+      position: sticky;
+      top: var(--ac-tones-stack-top);
+      max-height: calc(100vh - var(--ac-tones-stack-top) - var(--ac-space-5));
+      overflow-y: auto;
+      align-self: start;
+    }
+    /* CRT dock pins below the title and stays flush with the other panes. */
+    .app-shell.tones__app-shell .app-shell__crt {
+      position: sticky;
+      top: var(--ac-tones-stack-top);
+      max-height: calc(100vh - var(--ac-tones-stack-top) - var(--ac-space-5));
+      overflow-y: auto;
+      align-self: start;
+    }
+  }
+  /* Detail column scrolls with the document — no extra rules needed. */
+
+  /* ============================================================
      RESETS
      ============================================================ */
   *, *::before, *::after { box-sizing: border-box; }
@@ -1848,11 +1907,8 @@
 </div>
 
 <main class="ac-container">
-<div class="app-shell">
-<div class="app-shell__page tones">
-
   <!-- ===== STATUS ROW HEADER ===== -->
-  <header class="ac-status-row" style="margin-top: var(--ac-space-6);">
+  <header class="ac-status-row tones__page-title" style="margin-top: var(--ac-space-6);">
     <div>
       <h2 id="tones-heading" class="ac-status-row__heading">Tones</h2>
       <div class="ac-status-row__heading-rule"></div>
@@ -1868,9 +1924,8 @@
       </button>
     </span>
   </header>
+<div class="app-shell tones__app-shell">
 
-  <!-- ===== LIST + DETAIL SPLIT ===== -->
-  <div class="tones__split" role="region" aria-labelledby="tones-heading">
 
     <!-- ====== TONES LIST (left pane) ====== -->
     <aside class="tones__list" aria-label="Tone selection — 64 slots">
@@ -2885,21 +2940,6 @@
       </footer>
 
     </section>
-  </div>
-
-  <!-- ===== EXPLORATION FOOTER ===== -->
-  <footer class="exploration-footer">
-    <p style="margin: 0;">
-      Phase 9 Task 2 · TonesPage Mockup v1 · 2026-05-08 · s550-support feature ·
-      Companion to <a href="02-homepage.html">02-homepage.html</a> ·
-      Audit reference: <a href="ux-audit.md">ux-audit.md § TonesPage</a>
-    </p>
-    <p style="margin: var(--ac-space-2) 0 0;">
-      Replaces hand-rolled selects (TonesPage.tsx:543-565), the inline progress bar (529-541), and the empty-state card (623-625) with: the parameter-row primitive, the shared list-detail split, and an auto-selected first row. No device conditionals — list length and bank labels come from <code>memoryLayout</code>.
-    </p>
-  </footer>
-
-</div><!-- /.app-shell__page -->
 
 <aside class="app-shell__crt" aria-label="Device video output">
   <div class="ac-crt-monitor ac-crt-monitor--compact">
@@ -2953,6 +2993,18 @@
 
 </div><!-- /.app-shell -->
 </main>
+
+  <!-- ===== EXPLORATION FOOTER ===== -->
+  <footer class="exploration-footer ac-container">
+    <p style="margin: 0;">
+      Phase 9 Task 2 · TonesPage Mockup v1 · 2026-05-08 · s550-support feature ·
+      Companion to <a href="02-homepage.html">02-homepage.html</a> ·
+      Audit reference: <a href="ux-audit.md">ux-audit.md § TonesPage</a>
+    </p>
+    <p style="margin: var(--ac-space-2) 0 0;">
+      Replaces hand-rolled selects (TonesPage.tsx:543-565), the inline progress bar (529-541), and the empty-state card (623-625) with: the parameter-row primitive, the shared list-detail split, and an auto-selected first row. No device conditionals — list length and bank labels come from <code>memoryLayout</code>.
+    </p>
+  </footer>
 
 <script>
   // tiny: respect reduced-motion at runtime so a user toggling system prefs
