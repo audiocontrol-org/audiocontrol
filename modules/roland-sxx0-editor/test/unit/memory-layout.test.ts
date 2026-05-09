@@ -31,6 +31,40 @@ describe('createS330MemoryLayout', () => {
       }
     });
   });
+
+  describe('formatToneSlot', () => {
+    // Pins the bank.slot rollover that the obsolete `T${toneIndex + 11}`
+    // arithmetic (removed by #397) silently broke for index >= 8.
+    it('formats the first slot as T11', () => {
+      expect(createS330MemoryLayout().formatToneSlot(0)).toBe('T11');
+    });
+
+    it('rolls over to T21 at the bank-2 boundary (index 8)', () => {
+      // Arithmetic `T${8 + 11}` = "T19" — wrong. Correct: T21 (bank 2 slot 1).
+      expect(createS330MemoryLayout().formatToneSlot(8)).toBe('T21');
+    });
+
+    it('formats T48 at the last slot (index 31)', () => {
+      // Arithmetic `T${31 + 11}` = "T42" — wrong. Correct: T48 (bank 4 slot 8).
+      expect(createS330MemoryLayout().formatToneSlot(31)).toBe('T48');
+    });
+  });
+
+  describe('formatPatchSlot', () => {
+    it('formats the first slot as P11', () => {
+      expect(createS330MemoryLayout().formatPatchSlot(0)).toBe('P11');
+    });
+
+    it('rolls over to P21 at the bank-2 boundary (index 8)', () => {
+      // Arithmetic `P${String(8 + 11).padStart(2,'0')}` = "P19" — wrong.
+      // Correct: P21 (bank 2 slot 1).
+      expect(createS330MemoryLayout().formatPatchSlot(8)).toBe('P21');
+    });
+
+    it('formats P28 at the last patch slot (index 15)', () => {
+      expect(createS330MemoryLayout().formatPatchSlot(15)).toBe('P28');
+    });
+  });
 });
 
 describe('createS550MemoryLayout', () => {
@@ -82,6 +116,60 @@ describe('createS550MemoryLayout', () => {
           expect(bankIndex).toBeLessThanOrEqual(3);
         }
       }
+    });
+  });
+
+  describe('formatToneSlot', () => {
+    // Pins the boundaries that the obsolete arithmetic (`T${toneIndex + 11}`,
+    // removed by #397) silently broke. The S-550 block-2 rollover at index 32
+    // is the most visible regression: arithmetic produced "T43" where the
+    // device labels read T51.
+    it('formats T11 at index 0 (block 1, bank 1, slot 1)', () => {
+      expect(createS550MemoryLayout().formatToneSlot(0)).toBe('T11');
+    });
+
+    it('formats T21 at index 8 (block 1, bank 2, slot 1)', () => {
+      // Arithmetic produced "T19"; correct is "T21".
+      expect(createS550MemoryLayout().formatToneSlot(8)).toBe('T21');
+    });
+
+    it('formats T48 at index 31 (last slot of block 1)', () => {
+      expect(createS550MemoryLayout().formatToneSlot(31)).toBe('T48');
+    });
+
+    it('formats T51 at index 32 (block 2, bank 5, slot 1)', () => {
+      // Arithmetic produced "T43"; correct is "T51". Highest-impact case
+      // because S-550 block 2 was visibly mislabeled.
+      expect(createS550MemoryLayout().formatToneSlot(32)).toBe('T51');
+    });
+
+    it('formats T88 at index 63 (last slot of block 2)', () => {
+      // Arithmetic produced "T74"; correct is "T88".
+      expect(createS550MemoryLayout().formatToneSlot(63)).toBe('T88');
+    });
+  });
+
+  describe('formatPatchSlot', () => {
+    // S-550 patch labels carry a Roman-numeral block prefix per
+    // memory-layout.ts:147-158. Pin the four boundaries.
+    it('formats I11 at index 0 (block I, bank 1, slot 1)', () => {
+      expect(createS550MemoryLayout().formatPatchSlot(0)).toBe('I11');
+    });
+
+    it('formats I21 at index 8 (block I, bank 2, slot 1)', () => {
+      expect(createS550MemoryLayout().formatPatchSlot(8)).toBe('I21');
+    });
+
+    it('formats I28 at index 15 (last slot of block I)', () => {
+      expect(createS550MemoryLayout().formatPatchSlot(15)).toBe('I28');
+    });
+
+    it('formats II11 at index 16 (first slot of block II)', () => {
+      expect(createS550MemoryLayout().formatPatchSlot(16)).toBe('II11');
+    });
+
+    it('formats II28 at index 31 (last patch slot)', () => {
+      expect(createS550MemoryLayout().formatPatchSlot(31)).toBe('II28');
     });
   });
 });

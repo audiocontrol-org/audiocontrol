@@ -37,7 +37,7 @@ deskwork:
 | Phase 7: S-550 Front Panel | Not Started | Virtual front panel layout |
 | Phase 8: Memory Map Visualization | Complete | Graphical memory map in import dialogs |
 | Phase 9: UX/UI Cleanup | In Progress (Tasks 1–3 done; 4–7 remaining) | Visual polish across all editor pages via `/frontend-design` |
-| Phase 10: Post-Audit Cleanup | In Progress (Tasks 1–3 done pending hardware verification; Tasks 4–6 added 2026-05-09 from #396/#397/#398) | Functional + duplication fixes surfaced by 2026-05-08 audit and Phase 9 Task 3 review (#393, #394, #395). Follow-up sibling instances now scoped as Tasks 4–6 (#396, #397, #398). |
+| Phase 10: Post-Audit Cleanup | In Progress (Tasks 1–5 done pending hardware verification; Task 6 remaining) | Functional + duplication fixes surfaced by 2026-05-08 audit and Phase 9 Task 3 review (#393, #394, #395). Follow-up sibling instances scoped as Tasks 4–6 (#396, #397, #398); Tasks 4 and 5 now complete pending hardware verification. |
 
 ---
 
@@ -473,7 +473,7 @@ See `.claude/rules/workflow-playbooks.md § Phase-completion duplication audit` 
 
 ---
 
-## Phase 10: Post-Audit Cleanup (In Progress — Tasks 1–3 done pending hardware verification; Tasks 4–6 added 2026-05-09)
+## Phase 10: Post-Audit Cleanup (In Progress — Tasks 1–5 done pending hardware verification; Task 6 remaining)
 
 This phase exists because the 2026-05-08 code audit and the Phase 9 Task 3 review (`/dw-lifecycle:review` on commit `6df1ba6a`) surfaced concrete cleanup items that fall outside Phase 9's "UX/UI cleanup via `/frontend-design`" scope. They land here so they have explicit acceptance criteria and a duplication-audit gate, not just a GitHub issue link that will rot.
 
@@ -535,25 +535,28 @@ This phase exists because the 2026-05-08 code audit and the Phase 9 Task 3 revie
    - [x] Wider scan `grep -rn "Bank A\|Bank B\|Bank C\|Bank D" modules/roland-sxx0-editor/src/` returns zero hits — every bank label is now derived from `MemoryLayout.getWaveBanksForTone` (`ImportSampleDialog`) or `targetGroup.waveBankLabels` (`ImportLibraryToneDialog`, sibling `MemoryLayout` API) or the new in-render derivation in `ImportLibraryPatchDialog`.
    - [x] Bank label sources audit: **3 grepped, 2 already routed (ImportSampleDialog via `getWaveBanksForTone`, ImportLibraryToneDialog via `targetGroup.waveBankLabels`), 1 migrated (`ImportLibraryPatchDialog` from hard-coded literals to `getWaveBanksForTone(mapping.targetSlot)`)**.
 
-5. **Slot-label arithmetic: replace `+ 11` with `MemoryLayout` formatters ([#397](https://github.com/audiocontrol-org/audiocontrol/issues/397), severity MEDIUM). [Not Started]**
+5. **Slot-label arithmetic: replace `+ 11` with `MemoryLayout` formatters ([#397](https://github.com/audiocontrol-org/audiocontrol/issues/397), severity MEDIUM). [Done — pending hardware verification]**
 
    Two sibling instances of arithmetic-based slot label rendering bypass the `MemoryLayout.formatToneSlot` / `formatPatchSlot` formatter contract. They produce wrong labels for any S-330 tone past index 7 (banks 2–4) and any S-550 tone past index 7. Surfaced by Phase 10 Task 1 follow-up audit; the in-scope `ImportSampleDialog` title was fixed inline.
 
-   - Replace `T${toneIndex + 11}` in `ToneZoneEditor.tsx:196` with `memoryLayout.formatToneSlot(toneIndex)`. Inject `memoryLayout` via `useDeviceConfig()` (the component should already render under a `DeviceConfigProvider`).
-   - Replace `P${String(patchIndex + 11).padStart(2, '0')}` in `PlayPage.tsx:377` with `memoryLayout.formatPatchSlot(patchIndex)` (S-550 uses Roman-numeral block prefix per `memory-layout.ts:147-158`; the formatter handles this).
-   - Verify on `/roland/s330/editor` and `/roland/s550/editor` that the patch list / play UI / patch zone display renders correct labels across all banks.
+   - [x] Replaced `T${toneIndex + 11}` in `ToneZoneEditor.tsx:196` with `memoryLayout.formatToneSlot(toneIndex)`. `memoryLayout` injected via `useDeviceConfig()` (component already renders under `DeviceConfigProvider` via `PatchEditor` → `PatchesPage`). Promoted `getDisplayNumber` to a `useCallback` keyed on `memoryLayout` so the consumers (`getToneName`, `getShortToneName`) re-derive when the device config changes. Comment updated from "(0-31) → (T11-T42)" to describe the device-aware formatter contract.
+   - [x] Replaced `P${String(patchIndex + 11).padStart(2, '0')}` in `PlayPage.tsx:377` with `memoryLayout.formatPatchSlot(patchIndex)`. The S-550 formatter (`memory-layout.ts:147-158`) handles the Roman-numeral block prefix; no UI conditional needed.
+   - [x] Extended `test/unit/memory-layout.test.ts` with formatter pin tests at index 8 / 32 / 63 boundaries: 12 new cases (S-330 + S-550 × tone + patch). Pins specifically the values the obsolete arithmetic produced ("T19" for index 8, "T43" for S-550 index 32) so a regression would fail loudly.
+   - Hardware verification (loading patches on `/roland/s330/editor` and `/roland/s550/editor`, confirming `T21..T48` and S-550 block-2 `T51..T88` / patch `II11..II28` labels render correctly across the patch dropdown and zone editor) deferred to operator hardware run.
 
    ### Acceptance criteria
 
-   - [ ] No `+ 11` arithmetic in any tone- or patch-slot label rendering across `roland-sxx0-editor`.
-   - [ ] Both call sites use `memoryLayout.formatToneSlot` / `formatPatchSlot`; `memoryLayout` injected via `useDeviceConfig()`.
-   - [ ] No regressions in existing tests; ideally add a unit/UI test pinning the formatter behavior at index 8 / 32 / 63 boundaries.
+   - [x] No `+ 11` arithmetic in any tone- or patch-slot label rendering across `roland-sxx0-editor` (audit greps below).
+   - [x] Both call sites use `memoryLayout.formatToneSlot` / `formatPatchSlot`; `memoryLayout` injected via `useDeviceConfig()`.
+   - [x] No regressions in existing tests (`pnpm --filter @audiocontrol/roland-sxx0-editor test`: 27/27 passing, up from 11/11 — 16 new formatter pin tests added).
+   - [x] `make` clean (full topological rebuild succeeds).
 
-   ### Duplication audit gate
+   ### Duplication audit gate (PASSED)
 
-   - [ ] `grep -rn "+ 11}" modules/roland-sxx0-editor/src/` returns zero hits after the fix.
-   - [ ] `grep -rn "toneIndex + 11\|patchIndex + 11" modules/roland-sxx0-editor/src/` returns zero hits.
-   - [ ] Confirm no helper function bypasses `MemoryLayout.formatToneSlot` / `formatPatchSlot` for any slot label rendering.
+   - [x] `grep -rn "+ 11}" modules/roland-sxx0-editor/src/` returns zero hits after the fix (was 2: `ToneZoneEditor.tsx:196`, `PlayPage.tsx:377`).
+   - [x] `grep -rn "toneIndex + 11\|patchIndex + 11" modules/roland-sxx0-editor/src/` returns zero hits.
+   - [x] Wider scan `grep -rn "formatToneSlot\|formatPatchSlot\|T\${.*toneIndex\|P\${.*patchIndex" modules/roland-sxx0-editor/src/` returns only `MemoryLayout`-routed call sites and the `lib/s330-format.ts` helpers (S-330-specific, used by `ToneList.tsx` / `ItemPreviewPanel.tsx`; the body uses the same `bankSlotLabel` rollover, no `+ 11` arithmetic — out of scope for #397's defect class). No remaining inline `T${...toneIndex...}` / `P${...patchIndex...}` template literals that bypass the formatter contract.
+   - [x] Slot-label rendering audit: **3 grepped, 1 already routed (`ImportSampleDialog` via 8030d8ca), 2 migrated (`ToneZoneEditor` + `PlayPage`)**.
 
 6. **Extract `useToneSampleExport` hook to bring `TonesPage.tsx` under 500 lines ([#398](https://github.com/audiocontrol-org/audiocontrol/issues/398), severity LOW). [Not Started]**
 
@@ -621,7 +624,8 @@ Phase 3 (Client/Factory) ── Complete ──→ Phase 4 (Converters) ── C
                     ↓
             Phase 10 (Post-Audit Cleanup) ── In Progress
                     Tasks 1–3 done (#393, #394, #395)
-                    Tasks 4–6 added (#396, #397, #398) — sibling instances
+                    Tasks 4–5 done (#396, #397) — pending hardware verification
+                    Task 6 (#398) remaining — extract useToneSampleExport hook
                     Independent of Phase 9 visual work; can run in parallel.
 ```
 

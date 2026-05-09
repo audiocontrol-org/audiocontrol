@@ -32,7 +32,7 @@ const PART_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
 export function PlayPage() {
   const config = useDeviceConfig();
-  const { totalPatches, totalTones, patchesPerBank, tonesPerBank } = config;
+  const { totalPatches, totalTones, patchesPerBank, tonesPerBank, memoryLayout } = config;
 
   const mockMode = isMockMidiMode();
   const { adapter, deviceId, status } = useMidiStore();
@@ -374,7 +374,7 @@ export function PlayPage() {
                   </option>
                   {patches.map((patch, patchIndex) => (
                     <option key={patchIndex} value={patchIndex}>
-                      P{String(patchIndex + 11).padStart(2, '0')}{' '}
+                      {memoryLayout.formatPatchSlot(patchIndex)}{' '}
                       {patch ? (isPatchEmpty(patch) ? '(empty)' : patch.common.name) : '(not loaded)'}
                     </option>
                   ))}

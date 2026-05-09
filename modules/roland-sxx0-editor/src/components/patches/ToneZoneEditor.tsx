@@ -16,6 +16,7 @@ import {
 } from '@audiocontrol/sampler-devices/s330';
 import { cn, midiNoteToName } from '@/lib/utils';
 import { useMidiLearn } from '@/hooks/useMidiLearn';
+import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { TONE_MAPPING_TOOLTIPS } from '@/constants/tone-mapping-tooltips';
 
@@ -150,6 +151,7 @@ function usesDualLayers(keyMode: SamplerKeyMode): boolean {
 // =============================================================================
 
 export function ToneZoneEditor({ layer, toneData, keyMode, tones, onUpdate }: ToneZoneEditorProps) {
+  const { memoryLayout } = useDeviceConfig();
   const [selectedZoneIndex, setSelectedZoneIndex] = useState<number | null>(null);
   const [editingZone, setEditingZone] = useState<ToneZone | null>(null);
 
@@ -191,10 +193,12 @@ export function ToneZoneEditor({ layer, toneData, keyMode, tones, onUpdate }: To
     return map;
   }, [tones]);
 
-  // Convert internal index (0-31) to display number (T11-T42)
-  const getDisplayNumber = (toneIndex: number): string => {
-    return `T${toneIndex + 11}`;
-  };
+  // Convert internal index to device-specific display label via the layout
+  // formatter (e.g., S-330: T11-T48; S-550 block 2: T51-T88).
+  const getDisplayNumber = useCallback(
+    (toneIndex: number): string => memoryLayout.formatToneSlot(toneIndex),
+    [memoryLayout]
+  );
 
   // Get display name for a tone
   const getToneName = useCallback((toneIndex: number): string => {
@@ -202,7 +206,7 @@ export function ToneZoneEditor({ layer, toneData, keyMode, tones, onUpdate }: To
     const name = toneNameMap.get(toneIndex);
     const displayNum = getDisplayNumber(toneIndex);
     return name ? `${displayNum}: ${name}` : displayNum;
-  }, [toneNameMap]);
+  }, [toneNameMap, getDisplayNumber]);
 
   // Get short display name for zone bars
   const getShortToneName = useCallback((toneIndex: number): string => {
@@ -213,7 +217,7 @@ export function ToneZoneEditor({ layer, toneData, keyMode, tones, onUpdate }: To
       return name.length > 8 ? name.substring(0, 7) + '…' : name;
     }
     return getDisplayNumber(toneIndex);
-  }, [toneNameMap]);
+  }, [toneNameMap, getDisplayNumber]);
 
   // Count active keys
   const activeKeyCount = useMemo(() => {
