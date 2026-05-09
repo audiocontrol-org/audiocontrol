@@ -20,6 +20,7 @@ deskwork:
 - [Wave-fetch duplication: consolidate useDeviceToneChopper + handleExportSample on useWaveDataCache (#395)](https://github.com/audiocontrol-org/audiocontrol/issues/395) — surfaced by Phase 9 Task 3 review
 - [ImportLibraryPatchDialog blocks wave banks C/D — sibling instance of #393 (#396)](https://github.com/audiocontrol-org/audiocontrol/issues/396) — surfaced by Phase 10 Task 1 duplication audit
 - [Slot label arithmetic bypasses MemoryLayout formatter (#397)](https://github.com/audiocontrol-org/audiocontrol/issues/397) — surfaced by Phase 10 Task 1 follow-up audit; ImportSampleDialog title fixed inline, ToneZoneEditor + PlayPage remaining
+- [TonesPage.tsx over 500-line guideline — extract useToneSampleExport hook (#398)](https://github.com/audiocontrol-org/audiocontrol/issues/398) — surfaced by Phase 10 Task 3 code review
 
 ---
 
@@ -511,6 +512,7 @@ This phase exists because the 2026-05-08 code audit and the Phase 9 Task 3 revie
      - [x] `grep -rn "requestWaveData" modules/roland-sxx0-editor/src/` returns only `useWaveDataCache.ts:98` (the canonical fetch), `useLibraryExport.ts:216,357` (the export-with-progress flow that owns its own fetch by design — documented asymmetry; consolidating it would entangle the cache with the multi-tone export progress sequence), and `useLibraryImportDialogs.ts:196` (a callback adapter passed into `saveDeviceToSetIncremental`, fundamentally different shape — not a wave-fetch site for this page's data).
      - [x] `grep -rn "unpack12BitTo16Bit" modules/roland-sxx0-editor/src/` returns only `useWaveDataCache.ts:108` (the canonical decode), `wave-export.ts:33,69,188` (the function definition + response-based wrappers), and `library-tones.ts:109` / `library-io.ts:87` / `library-sets.ts:149` (library save/import flows that operate on already-fetched response payloads, not the cache; out of this task's scope per the workplan note "only `useWaveDataCache` and `useLibraryExport`"). Zero new inline `unpack12BitTo16Bit` calls in editor pages or non-library hooks.
      - [x] No new wrapper hooks introduced — the only addition is `exportSamplesAsWav` in `lib/wave-export.ts`, justified because it cleanly extracts the samples-based export path while keeping the sanitization rule in one place; `exportWaveAsWav` continues to exist and now delegates.
+   - **Follow-up [#398](https://github.com/audiocontrol-org/audiocontrol/issues/398):** the cache-routing growth pushed `TonesPage.tsx` from 497 → 511 lines (11 over the project's 500-line guideline). Code-quality reviewer flagged this as structural rather than cosmetic — a defensible micro-trim of 6 prose lines exists, but the right resolution is extracting a `useToneSampleExport` hook mirroring the existing `useDeviceToneChopper` pattern. Filed as #398 (severity LOW). Added inline JSDoc cleanup in `lib/wave-export.ts` to drop "S-330" specificity now that the helpers serve both devices.
 
 ### Acceptance Criteria
 
