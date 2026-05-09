@@ -41,6 +41,12 @@
     --ac-crt-btn-fill: 30 5% 80%;
     --ac-crt-btn-text: 30 8% 12%;
 
+    /* --- REC-LED accent (sparingly) ----------------------------
+       A nod to the S-550 front panel's red PLAY LED + REC LEVEL knob.
+       Use ONLY as a rare "device-active / signal-on-air" indicator —
+       NOT for danger (that's --ac-color-danger), NOT for s330 identity. */
+    --ac-color-rec:    4 92% 58%;
+
     /* --- typography role tokens -------------------------------- */
     --ac-font-display: "Departure Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     --ac-font-body:    "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -328,6 +334,163 @@
     color: hsl(var(--ac-color-fg-muted));
   }
 
+  /* ---- Collapsible variant (used on the library page so the fixed-viewport
+          editor isn't pushed off-screen by the mockup metadata).
+          Default state: COLLAPSED (checkbox#banner-collapsed is `checked`).
+          Click the caret to toggle. CSS-only via :checked ~ siblings. */
+  .exploration-banner__state {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    width: 0; height: 0;
+  }
+  .exploration-banner--collapsible {
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-accent) / 0.4);
+    box-shadow: 0 1px 0 hsl(var(--ac-color-accent) / 0.18);
+    background:
+      linear-gradient(180deg,
+        hsl(var(--ac-color-bg)) 0%,
+        hsl(var(--ac-color-surface) / 0.5) 100%);
+  }
+  .exploration-banner__strip {
+    display: flex;
+    align-items: center;
+    gap: var(--ac-space-4);
+    padding-block: var(--ac-space-2);
+    min-height: 2.25rem;
+    flex-wrap: wrap;
+  }
+  .exploration-banner__strip-chip {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-accent));
+    text-shadow: 0 0 6px hsl(var(--ac-color-accent) / 0.4);
+  }
+  .exploration-banner__strip-title {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg));
+  }
+  .exploration-banner__strip-meta {
+    margin-left: auto;
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .exploration-banner__toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 2px;
+    color: hsl(var(--ac-color-fg-muted));
+    cursor: pointer;
+    transition: color var(--ac-duration-fast) var(--ac-easing-default),
+                background-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .exploration-banner__toggle:hover {
+    color: hsl(var(--ac-color-accent));
+    background: hsl(var(--ac-color-accent) / 0.1);
+  }
+  .exploration-banner__toggle:focus-visible {
+    outline: 2px solid hsl(var(--ac-color-accent) / 0.6);
+    outline-offset: 2px;
+  }
+  .exploration-banner__toggle-icon {
+    transition: transform 240ms var(--ac-easing-default);
+  }
+  .exploration-banner__expanded {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 260ms var(--ac-easing-default);
+  }
+  /* When checkbox is UNchecked, banner is expanded */
+  #banner-collapsed:not(:checked) ~ .exploration-banner--collapsible .exploration-banner__expanded {
+    max-height: 24rem;
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+  #banner-collapsed:not(:checked) ~ .exploration-banner--collapsible .exploration-banner__toggle-icon {
+    transform: rotate(180deg);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .exploration-banner__expanded,
+    .exploration-banner__toggle-icon { transition: none; }
+  }
+
+  /* ============================================================
+     LIBRARY-PAGE LAYOUT — fixed-viewport 3-column app shell
+     The page is exactly viewport-tall. The chrome bar, the page
+     title, and (in the mockup) the exploration banner above don't
+     scroll. The 3-col grid fills the remaining height, and each
+     column scrolls INSIDE its own region.
+
+     Why not sticky positioning? Sticky elements pin only as long
+     as their containing block extends past the sticky `top` line.
+     A fixed-viewport layout removes the failure mode entirely.
+     ============================================================ */
+  @media (min-width: 1100px) {
+    body {
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .exploration-banner,
+    .homepage__appbar { flex-shrink: 0; }
+    main.ac-container {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .library__intro {
+      flex-shrink: 0;
+      padding-block: var(--ac-space-4) var(--ac-space-3) !important;
+    }
+    .library__page-title {
+      flex-shrink: 0;
+      margin-top: 0 !important;
+      padding-block: var(--ac-space-4) var(--ac-space-3);
+      box-shadow: 0 1px 0 hsl(var(--ac-color-border) / 0.7);
+      background: hsl(var(--ac-color-bg));
+    }
+    .library__notice {
+      flex-shrink: 0;
+      margin-block: var(--ac-space-3) var(--ac-space-3) !important;
+    }
+    .app-shell.library__app-shell {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 22rem minmax(0, 1fr) 30rem;
+      gap: var(--ac-space-5);
+      padding-block: var(--ac-space-4) 0;
+      align-items: stretch;
+      margin-top: 0;
+    }
+    /* Each column scrolls INSIDE its grid cell. */
+    .app-shell.library__app-shell .library__tree,
+    .app-shell.library__app-shell .library__detail,
+    .app-shell.library__app-shell .app-shell__crt {
+      min-height: 0;
+      max-height: 100%;
+      overflow-y: auto;
+      align-self: stretch;
+    }
+    /* The exploration footer is mockup-only; on library page hide it
+       so the editor experience reads as a real fixed-viewport app. */
+    .exploration-footer { display: none; }
+  }
+  /* Below 1100px we fall back to the original scrolling layout —
+     no fixed-viewport tricks at narrow widths. */
+
   /* ============================================================
      SECTION SCAFFOLD + DIMENSION BRACKET
      ============================================================ */
@@ -493,6 +656,17 @@
     background: hsl(var(--ac-color-fg-subtle));
     box-shadow: 0 0 0 transparent;
     animation: none;
+  }
+  .ac-signal-led--rec {
+    background: hsl(var(--ac-color-rec));
+    box-shadow:
+      0 0 8px hsl(var(--ac-color-rec) / 0.7),
+      0 0 2px hsl(4 100% 78% / 0.9) inset;
+    animation: ac-signal-pulse-rec 2.4s ease-in-out infinite;
+  }
+  @keyframes ac-signal-pulse-rec {
+    0%, 100% { box-shadow: 0 0 8px hsl(var(--ac-color-rec) / 0.7), 0 0 2px hsl(4 100% 78% / 0.9) inset; opacity: 1; }
+    50%      { box-shadow: 0 0 16px hsl(var(--ac-color-rec) / 0.95), 0 0 3px hsl(4 100% 80% / 1) inset; opacity: 0.85; }
   }
   .ac-signal-led--danger {
     background: hsl(var(--ac-color-danger));
@@ -811,8 +985,8 @@
   .ac-status-row__heading-rule {
     width: 2.25rem;
     height: var(--ac-rule-medium);
-    background: hsl(var(--ac-color-accent));
-    box-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.45);
+    background: hsl(var(--ac-color-rec));
+    box-shadow: 0 0 8px hsl(var(--ac-color-rec) / 0.55);
     margin-top: var(--ac-space-2);
   }
   .ac-status-row__metric {
@@ -989,7 +1163,7 @@
 
   /* Status row with refresh + save + load affordances on the title row.
      CRUD-Affordances rule: no separate "Refresh Device" toolbar. */
-  .library .ac-status-row {
+  .ac-status-row.library__page-title {
     flex-wrap: wrap;
     gap: var(--ac-space-4);
   }
@@ -1571,21 +1745,34 @@
 </head>
 <body>
 
-<!-- ===== EXPLORATION BANNER ===== -->
-<header class="exploration-banner">
-  <div class="ac-container exploration-banner__inner">
-    <div>
-      <span class="ac-panel-label ac-panel-label--accent">PHASE 9 · TASK 4 · MOCKUP</span>
-      <h1 class="exploration-banner__title">LibraryPage Mockup v1</h1>
-      <p class="ac-fg-muted ac-mt-4" style="margin: 0;">
-        Hierarchical sets directory with detail pane and graphical Memory Map Panel. Demonstrates: tree-view typography, dialog launcher polish, memory-map slot grid + wave-segment bars. Replaces the yellow Experimental pill, the "Refresh Device" toolbar, and the magic <code class="ac-mono-tabular">h-[calc(100vh-12rem)]</code> offset flagged in the audit.
-      </p>
-    </div>
-    <div class="exploration-banner__meta">
-      <span class="exploration-banner__chip">v1</span>
-      <span class="exploration-banner__chip">s550-support</span>
-      <span class="exploration-banner__chip">07 / 07</span>
-      <span class="exploration-banner__notes">2026-05-08</span>
+<!-- ===== EXPLORATION BANNER (collapsible) ===== -->
+<input type="checkbox" id="banner-collapsed" class="exploration-banner__state" checked aria-hidden="true">
+<header class="exploration-banner exploration-banner--collapsible">
+  <div class="ac-container exploration-banner__strip">
+    <span class="exploration-banner__strip-chip">PHASE 9 · TASK 4 · MOCKUP</span>
+    <span class="exploration-banner__strip-title">LibraryPage v1</span>
+    <span class="exploration-banner__strip-meta">07 / 07 · 2026-05-08</span>
+    <label for="banner-collapsed" class="exploration-banner__toggle" aria-label="Toggle mockup metadata" tabindex="0">
+      <svg class="exploration-banner__toggle-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+        <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </label>
+  </div>
+  <div class="exploration-banner__expanded">
+    <div class="ac-container exploration-banner__inner">
+      <div>
+        <span class="ac-panel-label ac-panel-label--accent">PHASE 9 · TASK 4 · MOCKUP</span>
+        <h1 class="exploration-banner__title">LibraryPage Mockup v1</h1>
+        <p class="ac-fg-muted ac-mt-4" style="margin: 0;">
+          Hierarchical sets directory with detail pane and graphical Memory Map Panel. Demonstrates: tree-view typography, dialog launcher polish, memory-map slot grid + wave-segment bars. Replaces the yellow Experimental pill, the "Refresh Device" toolbar, and the magic <code class="ac-mono-tabular">h-[calc(100vh-12rem)]</code> offset flagged in the audit.
+        </p>
+      </div>
+      <div class="exploration-banner__meta">
+        <span class="exploration-banner__chip">v1</span>
+        <span class="exploration-banner__chip">s550-support</span>
+        <span class="exploration-banner__chip">07 / 07</span>
+        <span class="exploration-banner__notes">2026-05-08</span>
+      </div>
     </div>
   </div>
 </header>
@@ -1615,11 +1802,9 @@
 </div>
 
 <main class="ac-container">
-<div class="app-shell">
-<div class="app-shell__page library">
 
   <!-- ===== INTRO BAND ===== -->
-  <section class="library__intro" aria-labelledby="library-title">
+  <section class="library library__intro" aria-labelledby="library-title">
     <div class="library__intro-eyebrow">
       <span class="ac-panel-label">§ Library · v1.0.0</span>
       <span class="library__intro-sep">·</span>
@@ -1634,7 +1819,7 @@
   </section>
 
   <!-- ===== STATUS ROW + CRUD AFFORDANCES ON THE TITLE ROW ===== -->
-  <header class="ac-status-row">
+  <header class="ac-status-row library library__page-title">
     <div>
       <h2 id="library-heading" class="ac-status-row__heading">
         Library
@@ -1688,8 +1873,8 @@
     </p>
   </div>
 
-  <!-- ===== TREE + DETAIL SPLIT ===== -->
-  <div class="library__split">
+  <!-- ===== TREE + DETAIL + CRT 3-COL APP SHELL ===== -->
+  <div class="app-shell library library__app-shell">
 
     <!-- Tree pane -->
     <section class="library__tree" aria-labelledby="tree-heading">
@@ -2177,82 +2362,68 @@
         <button class="ac-btn ac-btn--ghost" type="button">Export…</button>
       </div>
 
+      <!-- ===== DIALOG LAUNCHERS — every dialog the page can summon =====
+           Lives inside the detail column so it scrolls with detail content
+           rather than sitting at the bottom of the page outside the grid. -->
+      <section class="ac-section" aria-labelledby="launchers-heading" style="padding-block: var(--ac-space-6); margin-top: var(--ac-space-2);">
+        <div class="ac-dimension-bracket">
+          <span class="ac-panel-label">§ 02 · Operations</span>
+          <h2 id="launchers-heading">Library operations</h2>
+          <p class="ac-fg-muted" style="max-width: var(--ac-measure-reading);">
+            Each launcher opens a SlideDrawer. No centred-modal dialogs; no toolbar above the tree. Object-level CRUD is colocated with the affected node — these launchers cover whole-library operations.
+          </p>
+        </div>
+
+        <div class="library__launchers">
+          <a class="library__launcher" href="#">
+            <span class="library__launcher-eyebrow">01 / 06 · Save</span>
+            <h3 class="library__launcher-title">Save current set…</h3>
+            <p class="library__launcher-desc">
+              Snapshot the working device state into a new set on disk. Names, descriptions, target folder.
+            </p>
+          </a>
+          <a class="library__launcher" href="#">
+            <span class="library__launcher-eyebrow">02 / 06 · Load</span>
+            <h3 class="library__launcher-title">Load selected set…</h3>
+            <p class="library__launcher-desc">
+              Restore the highlighted set into the device. Memory map preview, conflict detection, dry-run option.
+            </p>
+          </a>
+          <a class="library__launcher" href="#">
+            <span class="library__launcher-eyebrow">03 / 06 · Import</span>
+            <h3 class="library__launcher-title">Import patches / tones / samples…</h3>
+            <p class="library__launcher-desc">
+              Bring in individual objects from another set. Slot picker, allocation preview, segment auditing.
+            </p>
+          </a>
+          <a class="library__launcher" href="#">
+            <span class="library__launcher-eyebrow">04 / 06 · Export</span>
+            <h3 class="library__launcher-title">Export patch / tone / set…</h3>
+            <p class="library__launcher-desc">
+              Write a single patch, tone, or full set out. Optional WAV bundle for downstream tools.
+            </p>
+          </a>
+          <a class="library__launcher" href="#">
+            <span class="library__launcher-eyebrow">05 / 06 · Folder</span>
+            <h3 class="library__launcher-title">Create / rename folder…</h3>
+            <p class="library__launcher-desc">
+              Organise the directory. Folders contain other folders or sets; no depth limit beyond filesystem.
+            </p>
+          </a>
+          <a class="library__launcher" href="#">
+            <span class="library__launcher-eyebrow">06 / 06 · Delete</span>
+            <h3 class="library__launcher-title">Delete folder / set…</h3>
+            <p class="library__launcher-desc">
+              Confirm-and-purge. Uses the shared ConfirmDialog primitive — no hand-rolled centred modal.
+            </p>
+          </a>
+        </div>
+      </section>
+
     </section>
 
-  </div><!-- /.library__split -->
-
-  <!-- ===== DIALOG LAUNCHERS — every dialog the page can summon ===== -->
-  <section class="ac-section" aria-labelledby="launchers-heading">
-    <div class="ac-dimension-bracket">
-      <span class="ac-panel-label">§ 02 · Operations</span>
-      <h2 id="launchers-heading">Library operations</h2>
-      <p class="ac-fg-muted" style="max-width: var(--ac-measure-reading);">
-        Each launcher opens a SlideDrawer. No centred-modal dialogs; no toolbar above the tree. Object-level CRUD is colocated with the affected node — these launchers cover whole-library operations.
-      </p>
-    </div>
-
-    <div class="library__launchers">
-      <a class="library__launcher" href="#">
-        <span class="library__launcher-eyebrow">01 / 06 · Save</span>
-        <h3 class="library__launcher-title">Save current set…</h3>
-        <p class="library__launcher-desc">
-          Snapshot the working device state into a new set on disk. Names, descriptions, target folder.
-        </p>
-      </a>
-      <a class="library__launcher" href="#">
-        <span class="library__launcher-eyebrow">02 / 06 · Load</span>
-        <h3 class="library__launcher-title">Load selected set…</h3>
-        <p class="library__launcher-desc">
-          Restore the highlighted set into the device. Memory map preview, conflict detection, dry-run option.
-        </p>
-      </a>
-      <a class="library__launcher" href="#">
-        <span class="library__launcher-eyebrow">03 / 06 · Import</span>
-        <h3 class="library__launcher-title">Import patches / tones / samples…</h3>
-        <p class="library__launcher-desc">
-          Bring in individual objects from another set. Slot picker, allocation preview, segment auditing.
-        </p>
-      </a>
-      <a class="library__launcher" href="#">
-        <span class="library__launcher-eyebrow">04 / 06 · Export</span>
-        <h3 class="library__launcher-title">Export patch / tone / set…</h3>
-        <p class="library__launcher-desc">
-          Write a single patch, tone, or full set out. Optional WAV bundle for downstream tools.
-        </p>
-      </a>
-      <a class="library__launcher" href="#">
-        <span class="library__launcher-eyebrow">05 / 06 · Folder</span>
-        <h3 class="library__launcher-title">Create / rename folder…</h3>
-        <p class="library__launcher-desc">
-          Organise the directory. Folders contain other folders or sets; no depth limit beyond filesystem.
-        </p>
-      </a>
-      <a class="library__launcher" href="#">
-        <span class="library__launcher-eyebrow">06 / 06 · Delete</span>
-        <h3 class="library__launcher-title">Delete folder / set…</h3>
-        <p class="library__launcher-desc">
-          Confirm-and-purge. Uses the shared ConfirmDialog primitive — no hand-rolled centred modal.
-        </p>
-      </a>
-    </div>
-  </section>
-
-  <!-- ===== EXPLORATION FOOTER ===== -->
-  <footer class="exploration-footer">
-    <p style="margin: 0;">
-      Phase 9 Task 4 · LibraryPage Mockup v1 · 2026-05-08 · s550-support feature ·
-      <a href="https://github.com/audiocontrol-org/audiocontrol/issues/392">issue #392</a> ·
-      Language reference: <a href="01-design-language.html">01-design-language.html</a> ·
-      Page template: <a href="02-homepage.html">02-homepage.html</a>
-    </p>
-    <p style="margin: var(--ac-space-2) 0 0;">
-      Resolves audit flags: yellow Experimental pill (replaced with s330-blue notice), <code>h-[calc(100vh-12rem)]</code> magic offset (removed; flex/grid fills naturally), "Refresh Device" toolbar (relocated to the h2 title row as an icon-button), centred-modal dialog launchers (described as SlideDrawer triggers).
-    </p>
-  </footer>
-
-</div><!-- /.app-shell__page -->
-
-<aside class="app-shell__crt" aria-label="Device video output">
+    <!-- ====== CRT (right pane, persistent video-out dock) ====== -->
+    <aside class="app-shell__crt" aria-label="Device video output">
   <div class="ac-crt-monitor ac-crt-monitor--compact">
     <div class="ac-crt-monitor__bezel">
       <div class="ac-crt-monitor__screen">
@@ -2297,12 +2468,25 @@
     </div>
     <div class="ac-crt-monitor__caption">
       <span>S-550 · Video out · NTSC</span>
-      <span><span class="ac-signal-led" aria-hidden="true" style="margin-right: 6px; vertical-align: middle;"></span>Live</span>
+      <span><span class="ac-signal-led ac-signal-led--rec" aria-hidden="true" style="margin-right: 6px; vertical-align: middle;"></span>LIVE</span>
     </div>
   </div>
-</aside>
+    </aside>
 
-</div><!-- /.app-shell -->
+  </div><!-- /.app-shell.library__app-shell -->
+
+  <!-- ===== EXPLORATION FOOTER (mockup-only — hidden at >= 1100px) ===== -->
+  <footer class="exploration-footer">
+    <p style="margin: 0;">
+      Phase 9 Task 4 · LibraryPage Mockup v1 · 2026-05-08 · s550-support feature ·
+      <a href="https://github.com/audiocontrol-org/audiocontrol/issues/392">issue #392</a> ·
+      Language reference: <a href="01-design-language.html">01-design-language.html</a> ·
+      Page template: <a href="02-homepage.html">02-homepage.html</a>
+    </p>
+    <p style="margin: var(--ac-space-2) 0 0;">
+      Resolves audit flags: yellow Experimental pill (replaced with s330-blue notice), <code>h-[calc(100vh-12rem)]</code> magic offset (removed; flex/grid fills naturally), "Refresh Device" toolbar (relocated to the h2 title row as an icon-button), centred-modal dialog launchers (described as SlideDrawer triggers).
+    </p>
+  </footer>
 </main>
 
 <script>

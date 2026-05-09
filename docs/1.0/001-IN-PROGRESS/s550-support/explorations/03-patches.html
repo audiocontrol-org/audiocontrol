@@ -41,6 +41,12 @@
     --ac-crt-btn-fill: 30 5% 80%;
     --ac-crt-btn-text: 30 8% 12%;
 
+    /* --- REC-LED accent (sparingly) ----------------------------
+       A nod to the S-550 front panel's red PLAY LED + REC LEVEL knob.
+       Use ONLY as a rare "device-active / signal-on-air" indicator —
+       NOT for danger (that's --ac-color-danger), NOT for s330 identity. */
+    --ac-color-rec:    4 92% 58%;
+
     /* --- typography role tokens -------------------------------- */
     --ac-font-display: "Departure Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     --ac-font-body:    "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -229,6 +235,7 @@
 
   /* ============================================================
      APP SHELL — page content + persistent CRT dock
+     Below 1100px, the page scrolls naturally as a single column stack.
      ============================================================ */
   .app-shell {
     display: grid;
@@ -239,15 +246,64 @@
   .app-shell__crt {
     align-self: start;
   }
+
+  /* ============================================================
+     PATCHES-PAGE LAYOUT — fixed-viewport 3-column app shell
+     The page is exactly viewport-tall. The chrome bar, the page
+     title, and (in the mockup) the exploration banner above don't
+     scroll. The 3-col grid fills the remaining height, and each
+     column scrolls INSIDE its own region — only the center detail
+     column has overflowing content in the common case. The list
+     and CRT scroll internally if their content overflows.
+     ============================================================ */
   @media (min-width: 1100px) {
-    .app-shell {
-      grid-template-columns: minmax(0, 1fr) 30rem;
+    body {
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
-    .app-shell__crt {
-      position: sticky;
-      top: var(--ac-space-4);
+    .exploration-banner,
+    .homepage__appbar { flex-shrink: 0; }
+    main.ac-container {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
+    .patches__page-title {
+      flex-shrink: 0;
+      margin-top: 0 !important;
+      padding-block: var(--ac-space-5) var(--ac-space-4);
+      box-shadow: 0 1px 0 hsl(var(--ac-color-border) / 0.7);
+      background: hsl(var(--ac-color-bg));
+    }
+    .app-shell.patches__app-shell {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 18rem minmax(0, 1fr) 30rem;
+      gap: var(--ac-space-5);
+      padding-block: var(--ac-space-5) 0;
+      align-items: stretch;
+    }
+    /* Each column scrolls INSIDE its grid cell. */
+    .app-shell.patches__app-shell .patches__list,
+    .app-shell.patches__app-shell .patches__detail,
+    .app-shell.patches__app-shell .app-shell__crt {
+      min-height: 0;
+      max-height: 100%;
+      overflow-y: auto;
+      align-self: stretch;
+    }
+    /* The exploration footer is mockup-only; on patches page hide it
+       so the editor experience reads as a real fixed-viewport app. */
+    .exploration-footer { display: none; }
   }
+  /* Below 1100px we fall back to the original scrolling layout —
+     no fixed-viewport tricks at narrow widths. */
 
   /* ============================================================
      RESETS
@@ -325,6 +381,94 @@
     font-family: var(--ac-font-mono);
     font-size: var(--ac-text-tiny);
     color: hsl(var(--ac-color-fg-muted));
+  }
+
+  /* ---- Collapsible variant (used on the patches page so the fixed-viewport
+          editor isn't pushed off-screen by the mockup metadata).
+          Default state: COLLAPSED (checkbox#banner-collapsed is `checked`).
+          Click the caret to toggle. CSS-only via :checked ~ siblings. */
+  .exploration-banner__state {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    width: 0; height: 0;
+  }
+  .exploration-banner--collapsible {
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-accent) / 0.4);
+    box-shadow: 0 1px 0 hsl(var(--ac-color-accent) / 0.18);
+    background:
+      linear-gradient(180deg,
+        hsl(var(--ac-color-bg)) 0%,
+        hsl(var(--ac-color-surface) / 0.5) 100%);
+  }
+  .exploration-banner__strip {
+    display: flex;
+    align-items: center;
+    gap: var(--ac-space-4);
+    padding-block: var(--ac-space-2);
+    min-height: 2.25rem;
+    flex-wrap: wrap;
+  }
+  .exploration-banner__strip-chip {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-accent));
+    text-shadow: 0 0 6px hsl(var(--ac-color-accent) / 0.4);
+  }
+  .exploration-banner__strip-title {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg));
+  }
+  .exploration-banner__strip-meta {
+    margin-left: auto;
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .exploration-banner__toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 2px;
+    color: hsl(var(--ac-color-fg-muted));
+    cursor: pointer;
+    transition: color var(--ac-duration-fast) var(--ac-easing-default),
+                background-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .exploration-banner__toggle:hover {
+    color: hsl(var(--ac-color-accent));
+    background: hsl(var(--ac-color-accent) / 0.1);
+  }
+  .exploration-banner__toggle:focus-visible {
+    outline: 2px solid hsl(var(--ac-color-accent) / 0.6);
+    outline-offset: 2px;
+  }
+  .exploration-banner__toggle-icon {
+    transition: transform 240ms var(--ac-easing-default);
+  }
+  .exploration-banner__expanded {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 260ms var(--ac-easing-default);
+  }
+  /* When checkbox is UNchecked, banner is expanded */
+  #banner-collapsed:not(:checked) ~ .exploration-banner--collapsible .exploration-banner__expanded {
+    max-height: 24rem;
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+  #banner-collapsed:not(:checked) ~ .exploration-banner--collapsible .exploration-banner__toggle-icon {
+    transform: rotate(180deg);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .exploration-banner__expanded,
+    .exploration-banner__toggle-icon { transition: none; }
   }
 
   /* ============================================================
@@ -493,6 +637,17 @@
   .ac-signal-led--danger {
     background: hsl(var(--ac-color-danger));
     box-shadow: 0 0 8px hsl(var(--ac-color-danger) / 0.7);
+  }
+  .ac-signal-led--rec {
+    background: hsl(var(--ac-color-rec));
+    box-shadow:
+      0 0 8px hsl(var(--ac-color-rec) / 0.7),
+      0 0 2px hsl(4 100% 78% / 0.9) inset;
+    animation: ac-signal-pulse-rec 2.4s ease-in-out infinite;
+  }
+  @keyframes ac-signal-pulse-rec {
+    0%, 100% { box-shadow: 0 0 8px hsl(var(--ac-color-rec) / 0.7), 0 0 2px hsl(4 100% 78% / 0.9) inset; opacity: 1; }
+    50%      { box-shadow: 0 0 16px hsl(var(--ac-color-rec) / 0.95), 0 0 3px hsl(4 100% 80% / 1) inset; opacity: 0.85; }
   }
   @keyframes ac-signal-pulse {
     0%, 100% {
@@ -799,8 +954,8 @@
   .ac-status-row__heading-rule {
     width: 2.25rem;
     height: var(--ac-rule-medium);
-    background: hsl(var(--ac-color-accent));
-    box-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.45);
+    background: hsl(var(--ac-color-rec));
+    box-shadow: 0 0 8px hsl(var(--ac-color-rec) / 0.55);
     margin-top: var(--ac-space-2);
   }
   .ac-status-row__metric {
@@ -1394,49 +1549,49 @@
     border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.5);
   }
 
-  /* footer action row */
-  .patches__detail-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--ac-space-3);
-    padding: var(--ac-space-4) var(--ac-space-6);
+  /* Live status footer — replaces the save/cancel/restore pattern.
+     Edits are sent to the device in real time; there is no commit step. */
+  .patches__detail-live {
+    margin-top: var(--ac-space-6);
+    padding: var(--ac-space-3) var(--ac-space-4);
     border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
-    background: hsl(var(--ac-color-bg) / 0.4);
+    display: flex; align-items: center; gap: var(--ac-space-3);
+    font-family: var(--ac-font-mono); font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-muted)); font-variant-numeric: tabular-nums;
   }
-  .patches__detail-actions-status {
-    margin-right: auto;
-    align-self: center;
-    font-family: var(--ac-font-mono);
-    font-size: var(--ac-text-tiny);
-    color: hsl(var(--ac-color-fg-muted));
-    font-variant-numeric: tabular-nums;
-    display: inline-flex;
-    align-items: center;
-    gap: var(--ac-space-2);
-  }
-  .patches__detail-actions-status strong {
-    color: hsl(var(--ac-color-warning));
-    font-weight: var(--ac-fw-display);
-  }
+  .patches__detail-live-touch { color: hsl(var(--ac-color-fg)); }
 </style>
 </head>
 <body>
 
-<!-- ===== EXPLORATION BANNER ===== -->
-<header class="exploration-banner">
-  <div class="ac-container exploration-banner__inner">
-    <div>
-      <span class="ac-panel-label ac-panel-label--accent">PHASE 9 · TASK 4 · MOCKUP</span>
-      <h1 class="exploration-banner__title">PatchesPage Mockup v1</h1>
-      <p class="ac-fg-muted ac-mt-4" style="margin: 0;">
-        Per-page composition of the v1 design language. Replaces the per-bank reload toolbar with a list-title refresh affordance, surfaces the patch detail (parameters, two tone layers, key/velocity ranges) and grounds it in s330-blue. S-550 case shown — 32 patches across four banks.
-      </p>
-    </div>
-    <div class="exploration-banner__meta">
-      <span class="exploration-banner__chip">v1</span>
-      <span class="exploration-banner__chip">s550-support</span>
-      <span class="exploration-banner__chip">03 / 07</span>
-      <span class="exploration-banner__notes">2026-05-08</span>
+<!-- ===== EXPLORATION BANNER (collapsible) ===== -->
+<input type="checkbox" id="banner-collapsed" class="exploration-banner__state" checked aria-hidden="true">
+<header class="exploration-banner exploration-banner--collapsible">
+  <div class="ac-container exploration-banner__strip">
+    <span class="exploration-banner__strip-chip">PHASE 9 · TASK 4 · MOCKUP</span>
+    <span class="exploration-banner__strip-title">PatchesPage v1</span>
+    <span class="exploration-banner__strip-meta">03 / 07 · 2026-05-08</span>
+    <label for="banner-collapsed" class="exploration-banner__toggle" aria-label="Toggle mockup metadata" tabindex="0">
+      <svg class="exploration-banner__toggle-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+        <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </label>
+  </div>
+  <div class="exploration-banner__expanded">
+    <div class="ac-container exploration-banner__inner">
+      <div>
+        <span class="ac-panel-label ac-panel-label--accent">PHASE 9 · TASK 4 · MOCKUP</span>
+        <h1 class="exploration-banner__title">PatchesPage Mockup v1</h1>
+        <p class="ac-fg-muted ac-mt-4" style="margin: 0;">
+          Per-page composition of the v1 design language. Replaces the per-bank reload toolbar with a list-title refresh affordance, surfaces the patch detail (parameters, two tone layers, key/velocity ranges) and grounds it in s330-blue. S-550 case shown — 32 patches across four banks.
+        </p>
+      </div>
+      <div class="exploration-banner__meta">
+        <span class="exploration-banner__chip">v1</span>
+        <span class="exploration-banner__chip">s550-support</span>
+        <span class="exploration-banner__chip">03 / 07</span>
+        <span class="exploration-banner__notes">2026-05-08</span>
+      </div>
     </div>
   </div>
 </header>
@@ -1466,45 +1621,40 @@
 </div>
 
 <main class="ac-container">
-<div class="app-shell">
-<div class="app-shell__page">
 
-  <section class="patches" aria-labelledby="patches-heading">
-
-    <!-- ===== TITLE ROW (status row + refresh icon, no toolbar) ===== -->
-    <header class="patches__title-row">
-      <div class="patches__title-block">
-        <div class="patches__title-eyebrow-row">
-          <span class="ac-panel-label">§ 01 · Memory</span>
-          <span class="patches__detail-eyebrow-sep">·</span>
-          <span class="ac-panel-label ac-panel-label--accent">P11 → P48 · 4 banks</span>
-        </div>
-        <h2 id="patches-heading" class="ac-status-row__heading">Patches</h2>
-        <div class="patches__title-rule" aria-hidden="true"></div>
+  <!-- ===== STATUS ROW HEADER (hoisted: sibling of app-shell) ===== -->
+  <header class="ac-status-row patches__page-title" style="margin-top: var(--ac-space-6);">
+    <div>
+      <div class="patches__title-eyebrow-row" style="margin-bottom: var(--ac-space-2);">
+        <span class="ac-panel-label">§ 01 · Memory</span>
+        <span class="patches__detail-eyebrow-sep">·</span>
+        <span class="ac-panel-label ac-panel-label--accent">P11 → P48 · 4 banks</span>
       </div>
-      <div style="display: inline-flex; align-items: center; gap: var(--ac-space-3);">
-        <span class="patches__title-metric">
-          <span class="ac-signal-led" aria-hidden="true"></span>
-          <span><strong>32</strong> of <strong>32</strong> loaded</span>
-        </span>
-        <button
-          type="button"
-          class="patches__icon-btn"
-          aria-label="Refresh all patches from device"
-          title="Refresh all patches from device"
-        >
-          <svg viewBox="0 0 16 16" aria-hidden="true">
-            <path d="M3 8a5 5 0 0 1 9-3" />
-            <polyline points="12 2 12 5 9 5" />
-            <path d="M13 8a5 5 0 0 1-9 3" />
-            <polyline points="4 14 4 11 7 11" />
-          </svg>
-        </button>
-      </div>
-    </header>
+      <h2 id="patches-heading" class="ac-status-row__heading">Patches</h2>
+      <div class="ac-status-row__heading-rule"></div>
+    </div>
+    <div style="display: inline-flex; align-items: center; gap: var(--ac-space-3);">
+      <span class="patches__title-metric">
+        <span class="ac-signal-led" aria-hidden="true"></span>
+        <span><strong>32</strong> of <strong>32</strong> loaded</span>
+      </span>
+      <button
+        type="button"
+        class="patches__icon-btn"
+        aria-label="Refresh all patches from device"
+        title="Refresh all patches from device"
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M3 8a5 5 0 0 1 9-3" />
+          <polyline points="12 2 12 5 9 5" />
+          <path d="M13 8a5 5 0 0 1-9 3" />
+          <polyline points="4 14 4 11 7 11" />
+        </svg>
+      </button>
+    </div>
+  </header>
 
-    <!-- ===== LIST + DETAIL SPLIT ===== -->
-    <div class="patches__split">
+<div class="app-shell patches__app-shell" aria-labelledby="patches-heading">
 
       <!-- ===== PATCHES LIST ===== -->
       <aside class="patches__list" aria-label="Patch list">
@@ -1957,35 +2107,14 @@
 
         </div>
 
-        <!-- footer action row -->
-        <footer class="patches__detail-actions">
-          <span class="patches__detail-actions-status">
-            <span class="ac-signal-led" aria-hidden="true" style="background: hsl(var(--ac-color-warning)); box-shadow: 0 0 8px hsl(var(--ac-color-warning) / 0.7);"></span>
-            <strong>3 unsaved changes</strong> · last edit 14:18:04
-          </span>
-          <button type="button" class="ac-btn ac-btn--ghost">Restore</button>
-          <button type="button" class="ac-btn ac-btn--primary">Save changes</button>
+        <!-- LIVE STATUS — there is no save / cancel / undo. Edits stream to the device.
+             The pulsing rec-LED is the only chrome; "Last sent" carries the useful info. -->
+        <footer class="patches__detail-live" role="status" aria-live="polite">
+          <span class="ac-signal-led ac-signal-led--rec" aria-hidden="true"></span>
+          <span>Last sent <span class="patches__detail-live-touch">Bender Range</span> 14:01:36</span>
         </footer>
 
       </article>
-
-    </div><!-- /.patches__split -->
-
-  </section>
-
-  <!-- ===== EXPLORATION FOOTER ===== -->
-  <footer class="exploration-footer">
-    <p style="margin: 0;">
-      Phase 9 Task 4 · PatchesPage Mockup v1 · 2026-05-08 · s550-support feature ·
-      Language reference: <a href="01-design-language.html">01-design-language.html</a> ·
-      Companion mockups: <a href="02-homepage.html">02-homepage.html</a>
-    </p>
-    <p style="margin: var(--ac-space-2) 0 0;">
-      Eliminates the per-bank "(Re)load: P11-P18 …" toolbar. Refresh-from-device lives on the title row as a single icon-button (CRUD Affordances rule). Empty-state card removed — first patch (P11 "Strings A") is auto-selected. Detail pane composes parameters · two tone layers · key/velocity ranges · performance grid.
-    </p>
-  </footer>
-
-</div><!-- /.app-shell__page -->
 
 <aside class="app-shell__crt" aria-label="Device video output">
   <div class="ac-crt-monitor ac-crt-monitor--compact">
@@ -2032,13 +2161,25 @@
     </div>
     <div class="ac-crt-monitor__caption">
       <span>S-550 · Video out · NTSC</span>
-      <span><span class="ac-signal-led" aria-hidden="true" style="margin-right: 6px; vertical-align: middle;"></span>Live</span>
+      <span><span class="ac-signal-led ac-signal-led--rec" aria-hidden="true" style="margin-right: 6px; vertical-align: middle;"></span>Live</span>
     </div>
   </div>
 </aside>
 
 </div><!-- /.app-shell -->
 </main>
+
+  <!-- ===== EXPLORATION FOOTER ===== -->
+  <footer class="exploration-footer ac-container">
+    <p style="margin: 0;">
+      Phase 9 Task 4 · PatchesPage Mockup v1 · 2026-05-08 · s550-support feature ·
+      Language reference: <a href="01-design-language.html">01-design-language.html</a> ·
+      Companion mockups: <a href="02-homepage.html">02-homepage.html</a>
+    </p>
+    <p style="margin: var(--ac-space-2) 0 0;">
+      Eliminates the per-bank "(Re)load: P11-P18 …" toolbar. Refresh-from-device lives on the title row as a single icon-button (CRUD Affordances rule). Empty-state card removed — first patch (P11 "Strings A") is auto-selected. Detail pane composes parameters · two tone layers · key/velocity ranges · performance grid.
+    </p>
+  </footer>
 
 <script>
   // tiny: respect reduced-motion at runtime so a user toggling system prefs
