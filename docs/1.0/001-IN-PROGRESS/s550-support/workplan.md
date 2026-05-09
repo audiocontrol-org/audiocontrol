@@ -37,7 +37,7 @@ deskwork:
 | Phase 7: S-550 Front Panel | Not Started | Virtual front panel layout |
 | Phase 8: Memory Map Visualization | Complete | Graphical memory map in import dialogs |
 | Phase 9: UX/UI Cleanup | In Progress (Tasks 1–3 done; 4–7 remaining) | Visual polish across all editor pages via `/frontend-design` |
-| Phase 10: Post-Audit Cleanup | In Progress (Tasks 1–5 done pending hardware verification; Task 6 remaining) | Functional + duplication fixes surfaced by 2026-05-08 audit and Phase 9 Task 3 review (#393, #394, #395). Follow-up sibling instances scoped as Tasks 4–6 (#396, #397, #398); Tasks 4 and 5 now complete pending hardware verification. |
+| Phase 10: Post-Audit Cleanup | In Progress (Tasks 1–6 done pending hardware verification) | Functional + duplication fixes surfaced by 2026-05-08 audit and Phase 9 Task 3 review (#393, #394, #395). Follow-up sibling instances scoped as Tasks 4–6 (#396, #397, #398); Tasks 4–6 now complete pending hardware verification. |
 
 ---
 
@@ -473,7 +473,7 @@ See `.claude/rules/workflow-playbooks.md § Phase-completion duplication audit` 
 
 ---
 
-## Phase 10: Post-Audit Cleanup (In Progress — Tasks 1–5 done pending hardware verification; Task 6 remaining)
+## Phase 10: Post-Audit Cleanup (In Progress — Tasks 1–6 done pending hardware verification)
 
 This phase exists because the 2026-05-08 code audit and the Phase 9 Task 3 review (`/dw-lifecycle:review` on commit `6df1ba6a`) surfaced concrete cleanup items that fall outside Phase 9's "UX/UI cleanup via `/frontend-design`" scope. They land here so they have explicit acceptance criteria and a duplication-audit gate, not just a GitHub issue link that will rot.
 
@@ -559,41 +559,27 @@ This phase exists because the 2026-05-08 code audit and the Phase 9 Task 3 revie
    - [x] Slot-label rendering audit: **3 grepped, 1 already routed (`ImportSampleDialog` via 8030d8ca), 2 migrated (`ToneZoneEditor` + `PlayPage`)**.
    - **Sibling-instance follow-up filed as [#400](https://github.com/audiocontrol-org/audiocontrol/issues/400)**: the code-quality review surfaced that `lib/s330-format.ts:formatPatchSlot` returns wrong labels on S-550 for patch index ≥ 16 (renders `P31` instead of `II11`), affecting `ItemPreviewPanel.tsx:511`. Plus three more raw-arithmetic surfaces with `+ 1` (`ExportPatchDialog.tsx:46,58,109`, `useLibraryImportDialogs.ts:245`) that are wrong on S-550 for patch index ≥ 8. Out of #397's stated scope ("ToneZoneEditor + PlayPage remaining"), tracked as severity MEDIUM follow-up.
 
-6. **Extract `useToneSampleExport` hook to bring `TonesPage.tsx` under 500 lines ([#398](https://github.com/audiocontrol-org/audiocontrol/issues/398), severity LOW). [Not Started]**
+6. **Extract `useToneSampleExport` hook to bring `TonesPage.tsx` under 500 lines ([#398](https://github.com/audiocontrol-org/audiocontrol/issues/398), severity LOW). [Done]**
 
-   `TonesPage.tsx` is at 511 lines (11 over the 300–500 line guideline) after Phase 10 Task 3's cache-routing growth. The right resolution is structural — extract a `useToneSampleExport` hook mirroring the existing `useDeviceToneChopper` pattern. Cosmetic line-trimming was rejected by the code-quality reviewer.
+   `TonesPage.tsx` was at 511 lines (11 over the 300–500 line guideline) after Phase 10 Task 3's cache-routing growth. The right resolution is structural — extract a `useToneSampleExport` hook mirroring the existing `useDeviceToneChopper` pattern. Cosmetic line-trimming was rejected by the code-quality reviewer.
 
-   - Create `modules/roland-sxx0-editor/src/hooks/useToneSampleExport.ts` exposing:
-     ```ts
-     interface UseToneSampleExportOptions {
-       clientRef: MutableRefObject<SamplerClientInterface | null>;
-       waveCache: UseWaveDataCacheResult;
-       tones: (SamplerTone | undefined)[];
-       setTone: (index: number, tone: SamplerTone, totalTones: number) => void;
-       setError: (msg: string | null) => void;
-       totalTones: number;
-     }
-     interface UseToneSampleExportResult {
-       isExporting: boolean;
-       exportProgress: number | undefined;
-       handleExportSample: (selectedToneIndex: number) => Promise<void>;
-     }
-     ```
-   - Move the cache-hit fast path, `loadWaveData(idx, onProgress)` call, invariant guard, sample-rate resolution, and `exportSamplesAsWav` invocation into the hook.
-   - In `TonesPage.tsx`, replace the current `handleExportSample` definition with `const { isExporting, exportProgress, handleExportSample } = useToneSampleExport({ ... })`.
-   - Add a unit test (`test/unit/use-tone-sample-export.test.ts` or similar) covering: cache hit (no device read), cache miss (device read happens), invariant violation (post-load `getSamples` returns null → throws), and progress callback wiring.
+   - [x] Created `modules/roland-sxx0-editor/src/hooks/useToneSampleExport.ts` (148 lines) exposing the documented `UseToneSampleExportOptions` / `UseToneSampleExportResult` contract. DI-by-options surface mirrors `useDeviceToneChopper`; `waveCache: UseWaveDataCacheResult` is required (not optional) per the contract-enforcement rule from #395.
+   - [x] Moved the cache-hit fast path, `loadWaveData(idx, onProgress)` call, invariant guard, sample-rate resolution, and `exportSamplesAsWav` invocation from `TonesPage.tsx` into the hook. The page no longer imports `exportSamplesAsWav`.
+   - [x] In `TonesPage.tsx`, replaced the inline `handleExportSample` definition (~50 lines) with `const { isExporting, exportProgress, handleExportSample } = useToneSampleExport({ ... })`. Removed the local `useState` for `isExporting` / `exportProgress`. The `ToneEditor.onExportSample` prop adapts the page's `selectedToneIndex` to the hook's `(idx) => Promise<void>` signature inline, keeping the call-site shape symmetric with the chopper.
+   - [x] Added `test/unit/use-tone-sample-export.test.ts` (7 tests) covering: cache hit (no `loadWaveData` call), 30 kHz sample-rate selection, cache miss (load + re-read), invariant violation (`setError` called, no export), progress wiring (captured `onProgress` updates `exportProgress`), progress reset after operation, and the null-`clientRef.current` guard.
 
    ### Acceptance criteria
 
-   - [ ] `TonesPage.tsx` is back under 500 lines after the extraction.
-   - [ ] New hook composes generic primitives (cache + tones array + export helper) without device conditionals or S-series-specific business logic.
-   - [ ] Unit tests for the new hook cover the four cases above.
-   - [ ] All existing tests still pass (`pnpm --filter @audiocontrol/roland-sxx0-editor test` + `make`).
+   - [x] `TonesPage.tsx` is back under 500 lines after the extraction (471 lines via `wc -l`).
+   - [x] New hook composes generic primitives (cache + tones array + export helper) without device conditionals or S-series-specific business logic. No `S330` / `S550` references in `useToneSampleExport.ts`; types come from the device-agnostic `@/core/midi/SamplerClient` re-export module.
+   - [x] Unit tests for the new hook cover the four cases above (plus three guard / fast-path cases for completeness). 7/7 passing.
+   - [x] All existing tests still pass (`pnpm --filter @audiocontrol/roland-sxx0-editor test`: 34/34 passing, up from 27/27 — 7 new hook tests added). `make` clean (full topological rebuild succeeds).
 
-   ### Duplication audit gate
+   ### Duplication audit gate (PASSED)
 
-   - [ ] `grep -rn "exportSamplesAsWav\b" modules/roland-sxx0-editor/src/` returns only the import in the new hook + the helper definition in `wave-export.ts`. No other call site re-implements the cache-then-export sequence.
-   - [ ] Confirm the hook is composable with `useDeviceToneChopper` (both consume `useWaveDataCache`); document any deliberate divergence in shape.
+   - [x] `grep -rn "exportSamplesAsWav\b" modules/roland-sxx0-editor/src/` returns 6 hits across exactly 2 files: `useToneSampleExport.ts` (import + JSDoc + invocation = 3) and `wave-export.ts` (definition + JSDoc reference in `exportWaveAsWav` + intra-module delegation call = 3). No other call site re-implements the cache-then-export sequence; `TonesPage.tsx` no longer references the helper.
+   - [x] Hook is composable with `useDeviceToneChopper`: both consume `UseWaveDataCacheResult` via options-object DI, both use `waveCache.getSamples` + `waveCache.loadWaveData`, and `TonesPage` passes the same `useWaveDataCache(...)` instance to both. Deliberate shape divergence: the chopper's `openChopper(toneIndex, tone)` takes the tone object (it uses `tone.name` for the kit-config default), while `useToneSampleExport.handleExportSample(toneIndex)` re-fetches via `requestToneData` to get the live name + sample rate (filename must reflect the device's current state, not stale store data). Documented in the hook JSDoc.
+   - [x] Cross-hook surface: both hooks own their own progress state (`isLoadingWav` / `exportProgress`) instead of routing through `waveCache.progress` — same rationale documented in `useDeviceToneChopper` (the cache's shared progress is global across consumers; per-operation UI needs a local flag).
 
 ### Acceptance Criteria
 
@@ -625,8 +611,7 @@ Phase 3 (Client/Factory) ── Complete ──→ Phase 4 (Converters) ── C
                     ↓
             Phase 10 (Post-Audit Cleanup) ── In Progress
                     Tasks 1–3 done (#393, #394, #395)
-                    Tasks 4–5 done (#396, #397) — pending hardware verification
-                    Task 6 (#398) remaining — extract useToneSampleExport hook
+                    Tasks 4–6 done (#396, #397, #398) — pending hardware verification
                     Independent of Phase 9 visual work; can run in parallel.
 ```
 
