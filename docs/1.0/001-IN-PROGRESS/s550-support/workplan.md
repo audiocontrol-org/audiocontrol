@@ -21,6 +21,9 @@ deskwork:
 - [ImportLibraryPatchDialog blocks wave banks C/D — sibling instance of #393 (#396)](https://github.com/audiocontrol-org/audiocontrol/issues/396) — surfaced by Phase 10 Task 1 duplication audit
 - [Slot label arithmetic bypasses MemoryLayout formatter (#397)](https://github.com/audiocontrol-org/audiocontrol/issues/397) — surfaced by Phase 10 Task 1 follow-up audit; ImportSampleDialog title fixed inline, ToneZoneEditor + PlayPage remaining
 - [TonesPage.tsx over 500-line guideline — extract useToneSampleExport hook (#398)](https://github.com/audiocontrol-org/audiocontrol/issues/398) — surfaced by Phase 10 Task 3 code review
+- [ImportLibraryToneDialog retains 0|1|2|3 literal-union pattern after #393/#396 (#399)](https://github.com/audiocontrol-org/audiocontrol/issues/399) — surfaced by Phase 10 Task 4 code-quality review
+- [lib/s330-format.ts consumers + ExportPatchDialog produce wrong patch labels — sibling of #397 (#400)](https://github.com/audiocontrol-org/audiocontrol/issues/400) — surfaced by Phase 10 Task 5 code-quality review
+- [Sample-rate resolution duplicated across useToneSampleExport / useDeviceToneChopper / TonesPage (#401)](https://github.com/audiocontrol-org/audiocontrol/issues/401) — surfaced by Phase 10 Task 6 code-quality review
 
 ---
 
@@ -37,7 +40,7 @@ deskwork:
 | Phase 7: S-550 Front Panel | Not Started | Virtual front panel layout |
 | Phase 8: Memory Map Visualization | Complete | Graphical memory map in import dialogs |
 | Phase 9: UX/UI Cleanup | In Progress (Tasks 1–3 done; 4–7 remaining) | Visual polish across all editor pages via `/frontend-design` |
-| Phase 10: Post-Audit Cleanup | In Progress (Tasks 1–6 done pending hardware verification) | Functional + duplication fixes surfaced by 2026-05-08 audit and Phase 9 Task 3 review (#393, #394, #395). Follow-up sibling instances scoped as Tasks 4–6 (#396, #397, #398); Tasks 4–6 now complete pending hardware verification. |
+| Phase 10: Post-Audit Cleanup | In Progress (Tasks 1–6 done pending hardware verification; Tasks 7–9 added 2026-05-09 from #399/#400/#401) | Functional + duplication fixes surfaced by 2026-05-08 audit, Phase 9 Task 3 review, and Phase 10 Tasks 4–6 reviews. Tasks 1–6 done; Tasks 7–9 (sibling-instance follow-ups #399/#400/#401) added. |
 
 ---
 
@@ -586,9 +589,67 @@ This phase exists because the 2026-05-08 code audit and the Phase 9 Task 3 revie
      - **Minor — `tone?.name` / `tone?.sampleRate` nullability:** `requestToneData` is typed `Promise<SamplerTone | null>` (see `s-series-client.ts:195`). The optional-chain `||` fallback would have synthesised a filename and silently picked 15 kHz when the tone was missing — exactly the silent-fallback the project rules forbid. Replaced with an early `throw` + `setError` route immediately after `await requestToneData(...)`. New 8th test pins the behaviour: `setError` called with an actionable message naming the slot, `loadWaveData` not called, `setTone` not called, `exportSamplesAsWav` not called.
    - **Out-of-scope follow-up** filed as [#401](https://github.com/audiocontrol-org/audiocontrol/issues/401): the `tone.sampleRate === '30kHz' ? 30000 : 15000` resolution is duplicated across `useToneSampleExport.ts`, `useDeviceToneChopper.ts`, and `TonesPage.tsx` (`useLoopEditor` call site). Real duplication; severity LOW; tracked as a separate refactor.
 
+7. **`lib/s330-format.ts` consumers + raw `+ 1` arithmetic produce wrong S-550 patch labels ([#400](https://github.com/audiocontrol-org/audiocontrol/issues/400), severity MEDIUM). [Not Started]**
+
+   Sibling-instance finding from the Phase 10 Task 5 code-quality review. `lib/s330-format.ts:formatPatchSlot` returns `Math.floor(idx/8)+1`-prefixed labels (`P31..P48`) for S-550 patch index ≥ 16; correct labels are `II11..II28` per `MemoryLayout.formatPatchSlot`. Plus three more raw `+ 1` arithmetic surfaces wrong on S-550 for patch index ≥ 8.
+
+   - Migrate `ItemPreviewPanel.tsx` consumers (lines 263, 265, 280, 490, 511) and `ToneList.tsx:91` from `lib/s330-format.ts` to `useDeviceConfig().memoryLayout.formatToneSlot` / `formatPatchSlot`. For non-React consumers (e.g., sort callbacks), thread `memoryLayout` into the consuming context or wrap the consumer in a hook that returns memoized comparators.
+   - Replace `Patch_${patchIndex + 1}` and `P${String(patchIndex + 1).padStart(2, '0')}` in `ExportPatchDialog.tsx:46,58,109` with `memoryLayout.formatPatchSlot(patchIndex)`.
+   - Replace `P${String(slot + 1).padStart(2, '0')}` in `useLibraryImportDialogs.ts:245` with `memoryLayout.formatPatchSlot(slot)`.
+   - Delete `modules/roland-sxx0-editor/src/lib/s330-format.ts` once unused.
+
+   ### Acceptance criteria
+
+   - [ ] No consumer of `lib/s330-format.ts` remains; the file is deleted.
+   - [ ] All affected surfaces use `memoryLayout.formatToneSlot` / `formatPatchSlot` via `useDeviceConfig()`.
+   - [ ] No regressions in existing tests (`pnpm --filter @audiocontrol/roland-sxx0-editor test` + `make`).
+   - [ ] Add a unit/UI test pinning S-550 patch label rendering at index 8 / 16 / 24 boundaries (the existing `memory-layout.test.ts` already pins the formatter; this is regression coverage at the consumer level).
+
+   ### Duplication audit gate
+
+   - [ ] `grep -rn "from '@/lib/s330-format'" modules/roland-sxx0-editor/src/` returns zero hits.
+   - [ ] `grep -rn "patchIndex + 1\b\|slot + 1\b" modules/roland-sxx0-editor/src/` returns zero hits in slot-label rendering contexts (test fixtures excluded).
+   - [ ] `lib/s330-format.ts` is removed.
+
+8. **`ImportLibraryToneDialog` retains `0 | 1 | 2 | 3` literal-union pattern after #393 / #396 ([#399](https://github.com/audiocontrol-org/audiocontrol/issues/399), severity LOW). [Not Started]**
+
+   TypeScript discipline / consistency cleanup. `ImportLibraryToneDialog` is the third Roland import dialog; #393 and #396 widened `ImportSampleDialog` and `ImportLibraryPatchDialog` respectively. The rendered `<option>` set is already layout-driven (no correctness bug), but the literal-union `waveBank: 0 | 1 | 2 | 3` types and `as 0 | 1 | 2 | 3` casts at lines 52, 85, 322, 389 contradict the discipline established in those siblings.
+
+   - Widen `onImport.waveBank` (line 52), `useState<0 | 1 | 2 | 3>` (line 85), and the two `setWaveBank(... as 0 | 1 | 2 | 3)` casts (lines 322, 389) from `0 | 1 | 2 | 3` to `number`. Mirror the `ImportSampleDialog` pattern.
+   - Verify call-site continuity through `useLibraryImportDialogs.ts` (the `ImportToneParams` interface should already be `waveBank: number` after #393).
+   - No new behavior; pure type-discipline fix.
+
+   ### Acceptance criteria
+
+   - [ ] `grep -rn "0 | 1 | 2 | 3" modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx` returns zero hits in non-comment lines.
+   - [ ] All three Roland import dialogs (`ImportSampleDialog`, `ImportLibraryPatchDialog`, `ImportLibraryToneDialog`) use the same `waveBank: number` + layout-driven options pattern.
+   - [ ] No regressions in existing tests.
+
+   ### Duplication audit gate
+
+   - [ ] Confirm pattern parity across the three dialogs by reading each in turn.
+
+9. **Extract sample-rate label-to-Hz helper ([#401](https://github.com/audiocontrol-org/audiocontrol/issues/401), severity LOW). [Not Started]**
+
+   `tone.sampleRate === '30kHz' ? 30000 : 15000` is duplicated at three sites: `useToneSampleExport.ts:127`, `useDeviceToneChopper.ts` (sample-rate resolution path), and `TonesPage.tsx` (`useLoopEditor` call site). Surfaced by Phase 10 Task 6 code-quality re-review.
+
+   - Add a named helper, e.g., `toneSampleRateHz(tone: SamplerTone): number` co-located with the `SamplerTone` type (likely in `@audiocontrol/sampler-devices/roland-s-series` or `@/core/midi/SamplerClient`).
+   - Replace all three call sites with the helper. Keep the helper a one-liner (no new abstractions).
+   - A future third sample rate (e.g., a smaller device's `'7.5kHz'`) becomes a single edit site.
+
+   ### Acceptance criteria
+
+   - [ ] Helper added at the appropriate shared location, named clearly.
+   - [ ] All three call sites updated; `grep -rn "sampleRate === '30kHz'" modules/` returns zero hits in non-helper code.
+   - [ ] No regressions in existing tests.
+
+   ### Duplication audit gate
+
+   - [ ] Confirm no fourth call site exists (`grep -rn "30000\|15000" modules/roland-sxx0-editor/src/` should not surface any sample-rate-resolution literal outside the helper).
+
 ### Acceptance Criteria
 
-- [ ] All six issues (#393, #394, #395, #396, #397, #398) closed with their acceptance criteria met.
+- [ ] All nine issues (#393–#401) closed with their acceptance criteria met.
 - [ ] No regressions in existing tests (`pnpm --filter roland-sxx0-editor test` + `make`).
 - [ ] **Phase-completion duplication audit passes** — each task's audit gate above is filled in with concrete grep results.
 - [ ] DEVELOPMENT-NOTES entry written for Phase 10 with what was unified, what was kept separate (and why), and any new follow-ups discovered.
@@ -617,6 +678,7 @@ Phase 3 (Client/Factory) ── Complete ──→ Phase 4 (Converters) ── C
             Phase 10 (Post-Audit Cleanup) ── In Progress
                     Tasks 1–3 done (#393, #394, #395)
                     Tasks 4–6 done (#396, #397, #398) — pending hardware verification
+                    Tasks 7–9 added (#400, #399, #401) — sibling-instance follow-ups
                     Independent of Phase 9 visual work; can run in parallel.
 ```
 
