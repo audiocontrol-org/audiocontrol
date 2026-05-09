@@ -38,8 +38,12 @@ export interface DrumKitImportConfig {
   sampleRate: 15000 | 30000;
   /** Starting tone slot (0-31) */
   startingToneSlot: number;
-  /** Wave bank (0=A, 1=B) */
-  waveBank: 0 | 1;
+  /**
+   * Wave bank. S-330 accepts 0/1 (A/B); S-550 accepts 0..3 (A/B/C/D).
+   * Out-of-range values are rejected by the device-client boundary (e.g.
+   * `s330-client.ts` rejects bank > 1; `s550-addresses.ts` rejects bank > 3).
+   */
+  waveBank: number;
   /** Starting segment */
   startingSegment: number;
   /** Starting patch slot (0-15) */
@@ -112,7 +116,8 @@ const DEFAULT_ORIGINAL_KEY = 60;
  *
  * @param name - Tone name (max 8 characters)
  * @param sampleRate - Sample rate (15000 or 30000 Hz)
- * @param waveBank - Wave bank (0=A, 1=B)
+ * @param waveBank - Wave bank. S-330 accepts 0/1 (A/B); S-550 accepts 0..3
+ *   (A/B/C/D). Validated at the device-client boundary, not here.
  * @param segmentTop - Starting segment index
  * @param segmentLength - Number of segments
  * @param sampleCount - Number of samples
@@ -123,7 +128,7 @@ const DEFAULT_ORIGINAL_KEY = 60;
 export function createDrumTone(
   name: string,
   sampleRate: 15000 | 30000,
-  waveBank: 0 | 1,
+  waveBank: number,
   segmentTop: number,
   segmentLength: number,
   sampleCount: number,
@@ -438,8 +443,11 @@ export interface MonolithicDrumKitConfig {
   sampleRate: 15000 | 30000;
   /** Starting tone slot for primary tone (0-31) */
   startingToneSlot: number;
-  /** Wave bank (0=A, 1=B) */
-  waveBank: 0 | 1;
+  /**
+   * Wave bank. S-330 accepts 0/1 (A/B); S-550 accepts 0..3 (A/B/C/D).
+   * Out-of-range values are rejected at the device-client boundary.
+   */
+  waveBank: number;
   /** Starting segment */
   startingSegment: number;
   /** Patch slot for the drum kit patch */

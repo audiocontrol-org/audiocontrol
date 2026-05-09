@@ -32,11 +32,16 @@ import { useDeviceToneChopper } from '@/hooks/useDeviceToneChopper';
 // Local type for the import-sample handler — mirrors the `importTone` payload
 // expected by `SamplerClientInterface.importTone`. Hoisted out of the
 // component body to keep the JSX-heavy section readable.
+//
+// `waveBank` is `number` to match `S330ImportToneInput.waveBank` (the editor's
+// SamplerClientInterface erases the device distinction at the type level — see
+// `core/midi/SamplerClient.ts`). Each device client validates the bank against
+// its own range at runtime: S-330 = {0, 1}; S-550 = {0, 1, 2, 3}.
 interface ImportSampleParams {
   toneIndex: number;
   name: string;
   waveData: Uint8Array;
-  waveBank: 0 | 1;
+  waveBank: number;
   segmentTop: number;
   segmentLength: number;
   sampleRate: '15kHz' | '30kHz';

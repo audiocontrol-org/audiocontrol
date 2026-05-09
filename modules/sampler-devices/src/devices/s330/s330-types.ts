@@ -134,7 +134,15 @@ export interface S330DeviceState {
 
 /**
  * Input for sending wave data to the S-330.
- * S-330 has 2 wave banks (A, B).
+ *
+ * `waveBank` is typed as `number` rather than a literal union so that this
+ * shape doubles as the editor-side input type for S-series devices that share
+ * `SamplerClientInterface` (the editor erases the device distinction at the
+ * type level — see `core/midi/SamplerClient.ts`). The S-330 client validates
+ * `waveBank ∈ {0, 1}` at runtime in `s330-client.ts`; the S-550 client
+ * validates against its own bank range (A/B/C/D = 0..3). Both reject
+ * out-of-range values loudly — the wider type is honest about the contract,
+ * not a relaxation.
  */
 export interface S330WaveDataInput {
     /**
@@ -142,8 +150,12 @@ export interface S330WaveDataInput {
      */
     data: Uint8Array;
 
-    /** Target wave bank (0=A, 1=B) - S-330 only has 2 banks */
-    waveBank: 0 | 1;
+    /**
+     * Target wave bank. S-330 accepts 0 (A) or 1 (B); S-550 (which shares this
+     * input type via `SamplerClientInterface`) accepts 0..3 (A/B/C/D). Out-of-
+     * range values throw at the device-client boundary.
+     */
+    waveBank: number;
 
     /** Target segment index (0-17) */
     segmentTop: number;
@@ -153,7 +165,12 @@ export interface S330WaveDataInput {
 }
 
 /**
- * Input for importing a tone with wave data to the S-330.
+ * Input for importing a tone with wave data.
+ *
+ * Used as the editor-side input type for both S-330 and S-550 via
+ * `SamplerClientInterface` (the editor erases the device distinction at the
+ * type level). `waveBank` is `number`; each device client validates the bank
+ * against its own range at runtime. See `S330WaveDataInput` for details.
  */
 export interface S330ImportToneInput {
     /** Target tone index (0-31, maps to T11-T42) */
@@ -164,8 +181,11 @@ export interface S330ImportToneInput {
      */
     waveData: Uint8Array;
 
-    /** Target wave bank (0=A, 1=B) */
-    waveBank: 0 | 1;
+    /**
+     * Target wave bank. S-330 accepts 0 (A) or 1 (B); S-550 accepts 0..3
+     * (A/B/C/D). Out-of-range values throw at the device-client boundary.
+     */
+    waveBank: number;
 
     /** Target segment index (0-17) */
     segmentTop: number;

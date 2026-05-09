@@ -5,7 +5,7 @@
  * Handles WAV parsing, conversion to S-330 format, and upload to device.
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import type { OperationState } from '@/types/import-operation';
 import { isOperationComplete } from '@/types/import-operation';
@@ -23,6 +23,7 @@ import {
   OperationButtonContent,
   DialogCloseButton,
 } from '@/components/ui/ImportStatus';
+import { useDeviceConfig } from '@/context/DeviceConfigContext';
 
 export interface ImportSampleDialogProps extends OperationState {
   open: boolean;
@@ -33,7 +34,7 @@ export interface ImportSampleDialogProps extends OperationState {
     toneIndex: number;
     name: string;
     waveData: Uint8Array;
-    waveBank: 0 | 1;
+    waveBank: number;
     segmentTop: number;
     segmentLength: number;
     sampleRate: '15kHz' | '30kHz';
@@ -58,12 +59,25 @@ export function ImportSampleDialog({
   progress,
   error: operationError,
 }: ImportSampleDialogProps): JSX.Element {
+  const config = useDeviceConfig();
+  const { memoryLayout, maxWaveBankIndex } = config;
+
+  // Bank options for the current tone slot, sourced from the device's memory
+  // layout. S-330 always returns A/B; S-550 returns A/B for tones 0-31 and
+  // C/D for tones 32-63. The dialog renders whatever the layout provides —
+  // no device conditionals.
+  const { labels: bankLabels, indices: bankIndices } = useMemo(
+    () => memoryLayout.getWaveBanksForTone(toneIndex),
+    [memoryLayout, toneIndex],
+  );
+  const defaultBank = bankIndices[0] ?? 0;
+
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [wavFile, setWavFile] = useState<WavFileState | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [name, setName] = useState(toneName || '');
   const [targetSampleRate, setTargetSampleRate] = useState<'15kHz' | '30kHz'>('15kHz');
-  const [waveBank, setWaveBank] = useState<0 | 1>(0);
+  const [waveBank, setWaveBank] = useState<number>(defaultBank);
   const [targetSegment, setTargetSegment] = useState(0);
   const [loopMode, setLoopMode] = useState<'forward' | 'alternating' | 'one-shot' | 'reverse'>('one-shot');
   const [localError, setLocalError] = useState<string | null>(null);
@@ -77,12 +91,12 @@ export function ImportSampleDialog({
       setParseError(null);
       setName(toneName || '');
       setTargetSampleRate('30kHz');
-      setWaveBank(0);
+      setWaveBank(defaultBank);
       setTargetSegment(0);
       setLoopMode('one-shot');
       setLocalError(null);
     }
-  }, [open, toneName]);
+  }, [open, toneName, defaultBank]);
 
   // Calculate segments needed based on output sample count after resampling
   const segmentsNeeded = wavFile
@@ -118,6 +132,22 @@ export function ImportSampleDialog({
       return;
     }
 
+    // Defense-in-depth: refuse out-of-range banks loudly. The dialog only
+    // surfaces banks returned by `memoryLayout.getWaveBanksForTone(toneIndex)`,
+    // so a violation here means a programming bug (state drift, stale prop).
+    // Per project guidance: throw, don't silently fall back.
+    if (waveBank < 0 || waveBank > maxWaveBankIndex) {
+      throw new Error(
+        `Invalid wave bank ${waveBank} for ${config.deviceName} (max ${maxWaveBankIndex})`,
+      );
+    }
+    if (!bankIndices.includes(waveBank)) {
+      throw new Error(
+        `Wave bank ${waveBank} is not valid for tone ${toneIndex} on ${config.deviceName} ` +
+        `(allowed: ${bankIndices.join(', ')})`,
+      );
+    }
+
     setLocalError(null);
 
     try {
@@ -139,7 +169,10 @@ export function ImportSampleDialog({
     } catch (err) {
       // Error handled by parent
     }
-  }, [wavFile, name, targetSampleRate, targetSegment, loopMode, toneIndex, onImport, waveBank]);
+  }, [
+    wavFile, name, targetSampleRate, targetSegment, loopMode, toneIndex, onImport,
+    waveBank, maxWaveBankIndex, bankIndices, config.deviceName,
+  ]);
 
   const handleClose = useCallback(() => {
     if (!isOperating) {
@@ -283,7 +316,7 @@ export function ImportSampleDialog({
                   <select
                     id="waveBank"
                     value={waveBank}
-                    onChange={(e) => setWaveBank(Number(e.target.value) as 0 | 1)}
+                    onChange={(e) => setWaveBank(Number(e.target.value))}
                     disabled={isOperating}
                     data-testid="import-wave-bank"
                     className={cn(
@@ -292,8 +325,9 @@ export function ImportSampleDialog({
                       isOperating && 'opacity-50'
                     )}
                   >
-                    <option value={0}>Bank A</option>
-                    <option value={1}>Bank B</option>
+                    {bankIndices.map((bankIndex, i) => (
+                      <option key={bankIndex} value={bankIndex}>Bank {bankLabels[i]}</option>
+                    ))}
                   </select>
                 </div>
                 <div>

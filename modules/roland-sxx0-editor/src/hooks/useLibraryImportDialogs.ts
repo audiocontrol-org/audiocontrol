@@ -122,7 +122,7 @@ export function useLibraryImportDialogs({
         ...params.tone, wave: { ...params.tone.wave, bank: params.waveBank, segmentTop: params.segmentTop, segmentLength: params.segmentLength },
       };
       await clientRef.current.importTone(
-        { toneIndex: params.targetSlot, waveData: params.wavData, waveBank: params.waveBank as 0 | 1, segmentTop: params.segmentTop, segmentLength: params.segmentLength, tone: toneWithNewWave },
+        { toneIndex: params.targetSlot, waveData: params.wavData, waveBank: params.waveBank, segmentTop: params.segmentTop, segmentLength: params.segmentLength, tone: toneWithNewWave },
         (bytesSent, totalBytes) => {
           setOperationProgress({ currentStep: 1, totalSteps: 1, stepLabel: `Uploading ${params.tone.name}`, bytesSent, bytesTotal: totalBytes, bytesSentAllSteps: 0, bytesTotalAllSteps: totalBytes });
         }
@@ -149,7 +149,7 @@ export function useLibraryImportDialogs({
         const td = params.tones[i];
         const toneWithNewWave: SamplerTone = { ...td.tone, wave: { ...td.tone.wave, bank: td.waveBank, segmentTop: td.segmentTop, segmentLength: td.segmentLength } };
         await clientRef.current.importTone(
-          { toneIndex: td.targetSlot, waveData: td.wavData, waveBank: td.waveBank as 0 | 1, segmentTop: td.segmentTop, segmentLength: td.segmentLength, tone: toneWithNewWave },
+          { toneIndex: td.targetSlot, waveData: td.wavData, waveBank: td.waveBank, segmentTop: td.segmentTop, segmentLength: td.segmentLength, tone: toneWithNewWave },
           (bytesSent, totalBytes) => {
             setOperationProgress({ currentStep: completedSteps + 1, totalSteps, stepLabel: `Uploading tone ${td.tone.name} (${i + 1} of ${params.tones.length})`, bytesSent, bytesTotal: totalBytes, bytesSentAllSteps: patchBytesSentAll, bytesTotalAllSteps: patchBytesTotalAll });
           }
@@ -217,7 +217,9 @@ export function useLibraryImportDialogs({
 
       for (const [slot, data] of deviceState.tones) {
         const targetSlot = slot + toneOffset;
-        const targetBank = (data.tone.wave.bank + waveBankOffset) as 0 | 1;
+        // `targetBank` is `number` end-to-end (S-330: 0/1, S-550: 0..3).
+        // Out-of-range values throw at the device-client boundary.
+        const targetBank = data.tone.wave.bank + waveBankOffset;
         const toneName = data.tone.name || `T${Math.floor(targetSlot / 8) + 1}${(targetSlot % 8) + 1}`;
         await clientRef.current.importTone(
           { toneIndex: targetSlot, waveData: data.wavData, waveBank: targetBank, segmentTop: data.tone.wave.segmentTop, segmentLength: data.tone.wave.segmentLength, tone: data.tone },
