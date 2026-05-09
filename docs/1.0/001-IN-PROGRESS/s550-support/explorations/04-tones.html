@@ -256,63 +256,70 @@
   }
 
   /* ============================================================
-     TONES-PAGE LAYOUT — sticky chrome / 3-column app shell
-     The site header (.homepage__appbar) and page title pin at top.
-     The tones list (left) and CRT (right) pin below the page title;
-     each gets its own internal scroll. Only the center detail column
-     scrolls with the document — every other surface stays in place.
+     TONES-PAGE LAYOUT — fixed-viewport 3-column app shell
+     The page is exactly viewport-tall. The chrome bar, the page
+     title, and (in the mockup) the exploration banner above don't
+     scroll. The 3-col grid fills the remaining height, and each
+     column scrolls INSIDE its own region — only the center detail
+     column has overflowing content in the common case. The list
+     and CRT scroll internally if their content overflows.
+
+     Why not sticky positioning? Sticky elements pin only as long
+     as their containing block extends past the sticky `top` line.
+     With a long detail column AND content below the grid (the
+     mockup's exploration footer), the list's cell ended too early
+     and got pushed up off the top of the viewport. A fixed-viewport
+     layout removes the failure mode entirely.
      ============================================================ */
-  :root {
-    --ac-tones-appbar:    4rem;
-    --ac-tones-title:     5rem;
-    --ac-tones-stack-top: calc(var(--ac-tones-appbar) + var(--ac-tones-title));
-  }
-  /* Site header (the brand · nav · connection-pill row) stays flush top. */
-  .homepage__appbar {
-    position: sticky;
-    top: 0;
-    z-index: 50;
-    background: hsl(var(--ac-color-bg) / 0.94);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-  }
-  /* Page title row (Tones · X of Y · refresh) hoisted out of the shell. */
-  .tones__page-title {
-    position: sticky;
-    top: var(--ac-tones-appbar);
-    z-index: 40;
-    background: hsl(var(--ac-color-bg) / 0.94);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    margin-top: 0 !important;
-    padding-block: var(--ac-space-4) var(--ac-space-3);
-  }
-  /* Override .app-shell on the tones page: 3 columns (list, detail, CRT). */
   @media (min-width: 1100px) {
+    body {
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .exploration-banner,
+    .homepage__appbar { flex-shrink: 0; }
+    main.ac-container {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .tones__page-title {
+      flex-shrink: 0;
+      margin-top: 0 !important;
+      padding-block: var(--ac-space-5) var(--ac-space-4);
+      box-shadow: 0 1px 0 hsl(var(--ac-color-border) / 0.7);
+      background: hsl(var(--ac-color-bg));
+    }
     .app-shell.tones__app-shell {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      display: grid;
       grid-template-columns: 18rem minmax(0, 1fr) 30rem;
       gap: var(--ac-space-5);
-      padding-block: 0 var(--ac-space-6);
-      align-items: start;
+      padding-block: var(--ac-space-5) 0;
+      align-items: stretch;
     }
-    /* Tones list pins below the title; its content scrolls inside. */
-    .app-shell.tones__app-shell .tones__list {
-      position: sticky;
-      top: var(--ac-tones-stack-top);
-      max-height: calc(100vh - var(--ac-tones-stack-top) - var(--ac-space-5));
-      overflow-y: auto;
-      align-self: start;
-    }
-    /* CRT dock pins below the title and stays flush with the other panes. */
+    /* Each column scrolls INSIDE its grid cell. */
+    .app-shell.tones__app-shell .tones__list,
+    .app-shell.tones__app-shell .tones__detail,
     .app-shell.tones__app-shell .app-shell__crt {
-      position: sticky;
-      top: var(--ac-tones-stack-top);
-      max-height: calc(100vh - var(--ac-tones-stack-top) - var(--ac-space-5));
+      min-height: 0;
+      max-height: 100%;
       overflow-y: auto;
-      align-self: start;
+      align-self: stretch;
     }
+    /* The exploration footer is mockup-only; on tones page hide it
+       so the editor experience reads as a real fixed-viewport app.
+       (Other mockup pages keep their footer.) */
+    .exploration-footer { display: none; }
   }
-  /* Detail column scrolls with the document — no extra rules needed. */
+  /* Below 1100px we fall back to the original scrolling layout —
+     no fixed-viewport tricks at narrow widths. */
 
   /* ============================================================
      RESETS
