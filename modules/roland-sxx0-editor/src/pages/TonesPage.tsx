@@ -125,7 +125,6 @@ export function TonesPage() {
   const { isExporting, exportProgress, handleExportSample } = useToneSampleExport({
     clientRef,
     waveCache,
-    tones,
     setTone,
     setError,
     totalTones,

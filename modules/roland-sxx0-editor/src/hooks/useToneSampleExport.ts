@@ -10,7 +10,9 @@
  *   1. Fetch fresh tone data via `clientRef.current.requestToneData` —
  *      we want the live name + sample rate for the filename, not the
  *      stale store value. Tone metadata is a separate SysEx from wave
- *      bytes and is not cached.
+ *      bytes and is not cached. `requestToneData` resolves to
+ *      `SamplerTone | null`; null is a hard failure (we cannot derive
+ *      a filename or sample rate without it), surfaced via `setError`.
  *   2. Read decoded samples through `waveCache.getSamples`. On cache
  *      miss, call `loadWaveData(idx, onProgress)` to populate the
  *      cache, then re-read.
@@ -23,8 +25,8 @@
  *      store so subsequent reads see the latest values.
  *
  * The hook is device-agnostic: no S-330 / S-550 conditionals, no model
- * checks. It composes the generic primitives (cache, tones array,
- * export helper) the page already has in scope.
+ * checks. It composes the generic primitives (cache, export helper)
+ * the page already has in scope.
  */
 
 import { useCallback, useState, type MutableRefObject } from 'react';
@@ -40,14 +42,6 @@ interface UseToneSampleExportOptions {
    * decode in one place (see `useWaveDataCache` JSDoc and #395).
    */
   waveCache: UseWaveDataCacheResult;
-  /**
-   * Current tones from the editor's data store. Currently unused inside
-   * the hook (the export reads fresh tone data from the device for the
-   * filename), but kept on the options object so the call site stays
-   * symmetrical with the other tone-acting hooks. Removing it would
-   * make the call site asymmetric without buying anything.
-   */
-  tones: (SamplerTone | undefined)[];
   /**
    * Propagate the freshly-fetched tone back to the editor's data store.
    * Signature matches `useDeviceDataStore.setTone`.
@@ -82,8 +76,6 @@ export interface UseToneSampleExportResult {
 export function useToneSampleExport({
   clientRef,
   waveCache,
-  // `tones` is part of the symmetric options surface; see JSDoc above.
-  tones: _tones,
   setTone,
   setError,
   totalTones,
@@ -101,18 +93,28 @@ export function useToneSampleExport({
 
       try {
         // Fetch fresh tone data for the filename (don't use stale cached data).
+        // `requestToneData` may resolve to `null` on transport failure or when
+        // the slot is unreadable; we cannot derive a filename or sample rate
+        // without it, so refuse to fall back to a synthesised name + default
+        // rate (the wrong-rate fallback would be a silent bug).
         const tone = await clientRef.current.requestToneData(selectedToneIndex);
-        const toneName = tone?.name || `tone_${selectedToneIndex}`;
+        if (!tone) {
+          throw new Error(
+            `[useToneSampleExport] requestToneData(${selectedToneIndex}) returned null; ` +
+              'cannot determine sample rate or filename for export.',
+          );
+        }
 
         let samples = waveCache.getSamples(selectedToneIndex);
         if (samples === null) {
           await waveCache.loadWaveData(selectedToneIndex, (pct) => setExportProgress(pct));
           samples = waveCache.getSamples(selectedToneIndex);
           if (samples === null) {
-            // Invariant: cache must contain the entry once `loadWaveData`
-            // resolves on the success path. Null here means the load
-            // failed silently OR the cache was invalidated mid-flight.
-            // Refuse to silently fall back; throw with a clear message.
+            // Invariant violation: cache says it has no entry even though
+            // `loadWaveData` resolved on the success path. Throw internally
+            // so the catch block routes the error through `setError` with
+            // the same path as transport failures. Preserves the stack
+            // trace and surfaces a single error pathway to the consumer.
             throw new Error(
               `[useToneSampleExport] Cache miss after loadWaveData(${selectedToneIndex}); ` +
                 'wave data unavailable for export.',
@@ -124,14 +126,12 @@ export function useToneSampleExport({
         }
 
         // Sample rate comes from tone metadata (no wave-data response on cache hit).
-        const sampleRate = tone?.sampleRate === '30kHz' ? 30000 : 15000;
+        const sampleRate = tone.sampleRate === '30kHz' ? 30000 : 15000;
 
-        exportSamplesAsWav(samples, sampleRate, toneName);
+        exportSamplesAsWav(samples, sampleRate, tone.name);
 
         // Update cached tone data with fresh data.
-        if (tone) {
-          setTone(selectedToneIndex, tone, totalTones);
-        }
+        setTone(selectedToneIndex, tone, totalTones);
       } catch (err) {
         console.error('[useToneSampleExport] Failed to export sample:', err);
         setError(err instanceof Error ? err.message : 'Failed to export sample');

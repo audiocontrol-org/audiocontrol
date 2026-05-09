@@ -1,18 +1,20 @@
 /**
  * Unit tests for `useToneSampleExport`.
  *
- * Pins the four documented behaviours of the hook:
+ * Pins the documented behaviours of the hook:
  *
  *   1. Cache HIT: hook reads samples directly from the cache; never calls
  *      `loadWaveData` for the wave bytes (`requestToneData` still fires —
  *      that's a separate SysEx for the filename / sampleRate).
  *   2. Cache MISS: hook calls `loadWaveData(idx, onProgress)` and re-reads
  *      `getSamples` after the load resolves.
- *   3. Invariant violation: when `loadWaveData` resolves but the cache
- *      still has no entry for the slot, the hook surfaces the error via
- *      `setError` and bails — no silent fallback (no `exportSamplesAsWav`
+ *   3. Invariant violation (cache empty post-load): hook surfaces the error
+ *      via `setError` and bails — no silent fallback (no `exportSamplesAsWav`
  *      call, no setTone update).
- *   4. Progress wiring: the `onProgress` callback passed to `loadWaveData`
+ *   4. Null tone: when `requestToneData` resolves to `null` the hook
+ *      surfaces an actionable error via `setError` and bails — no silent
+ *      fallback to a synthesised filename + default sample rate.
+ *   5. Progress wiring: the `onProgress` callback passed to `loadWaveData`
  *      drives `result.current.exportProgress`.
  *
  * The hook is mounted via `renderHook`. Its `clientRef`, `waveCache`, and
@@ -109,7 +111,6 @@ describe('useToneSampleExport', () => {
         useToneSampleExport({
           clientRef: h.clientRef,
           waveCache: h.waveCache,
-          tones: [],
           setTone: h.setTone,
           setError: h.setError,
           totalTones: 32,
@@ -148,7 +149,6 @@ describe('useToneSampleExport', () => {
         useToneSampleExport({
           clientRef: h.clientRef,
           waveCache: h.waveCache,
-          tones: [],
           setTone: h.setTone,
           setError: h.setError,
           totalTones: 32,
@@ -179,7 +179,6 @@ describe('useToneSampleExport', () => {
         useToneSampleExport({
           clientRef: h.clientRef,
           waveCache: h.waveCache,
-          tones: [],
           setTone: h.setTone,
           setError: h.setError,
           totalTones: 32,
@@ -214,7 +213,6 @@ describe('useToneSampleExport', () => {
         useToneSampleExport({
           clientRef: h.clientRef,
           waveCache: h.waveCache,
-          tones: [],
           setTone: h.setTone,
           setError: h.setError,
           totalTones: 32,
@@ -233,6 +231,48 @@ describe('useToneSampleExport', () => {
       const message = errorCalls[0][0] as string;
       expect(message).toContain('2');
       expect(message.toLowerCase()).toContain('cache');
+      // Still resets isExporting in the finally block.
+      expect(result.current.isExporting).toBe(false);
+      expect(result.current.exportProgress).toBeUndefined();
+    });
+  });
+
+  describe('null tone', () => {
+    it('reports an error and skips export when requestToneData resolves to null', async () => {
+      const h = createHarness();
+      // Tone metadata fetch comes back null — the hook cannot derive a
+      // filename or sample rate, and we refuse to silently fall back.
+      h.client.requestToneData.mockResolvedValueOnce(null);
+      // Pre-populate the cache so the failure path is unambiguously the
+      // null tone, not a missing wave-bytes load.
+      h.cacheStore.set(7, new Int16Array([1, 2, 3]));
+
+      const { result } = renderHook(() =>
+        useToneSampleExport({
+          clientRef: h.clientRef,
+          waveCache: h.waveCache,
+          setTone: h.setTone,
+          setError: h.setError,
+          totalTones: 32,
+        }),
+      );
+
+      await act(async () => {
+        await result.current.handleExportSample(7);
+      });
+
+      // No export attempted on null tone.
+      expect(waveExport.exportSamplesAsWav).not.toHaveBeenCalled();
+      // Wave-bytes path must not run either — failure short-circuits.
+      expect(h.waveCache.loadWaveData).not.toHaveBeenCalled();
+      // No store update with a null tone.
+      expect(h.setTone).not.toHaveBeenCalled();
+      // Actionable error surfaced naming the slot and the operation.
+      const errorCalls = h.setError.mock.calls.filter(([msg]) => msg !== null);
+      expect(errorCalls).toHaveLength(1);
+      const message = errorCalls[0][0] as string;
+      expect(message).toContain('7');
+      expect(message.toLowerCase()).toContain('requesttonedata');
       // Still resets isExporting in the finally block.
       expect(result.current.isExporting).toBe(false);
       expect(result.current.exportProgress).toBeUndefined();
@@ -260,7 +300,6 @@ describe('useToneSampleExport', () => {
         useToneSampleExport({
           clientRef: h.clientRef,
           waveCache: h.waveCache,
-          tones: [],
           setTone: h.setTone,
           setError: h.setError,
           totalTones: 32,
@@ -297,7 +336,6 @@ describe('useToneSampleExport', () => {
         useToneSampleExport({
           clientRef: h.clientRef,
           waveCache: h.waveCache,
-          tones: [],
           setTone: h.setTone,
           setError: h.setError,
           totalTones: 32,
@@ -323,7 +361,6 @@ describe('useToneSampleExport', () => {
         useToneSampleExport({
           clientRef: h.clientRef,
           waveCache: h.waveCache,
-          tones: [],
           setTone: h.setTone,
           setError: h.setError,
           totalTones: 32,
