@@ -19,7 +19,7 @@ import {
   convertYamlToS330Patch,
   getPatchToneDependencies,
 } from '@/lib/library-service';
-import { formatToneSlot, formatPatchSlot } from '@/lib/s330-format';
+import { useDeviceConfig } from '@/context/DeviceConfigContext';
 
 interface ItemPreviewPanelProps {
   selection: RolandPageSelection | null;
@@ -251,18 +251,22 @@ function LibraryPatchPreview({
   manifest: SetYaml | null;
   onImport?: () => void;
 }): JSX.Element {
+  const { memoryLayout } = useDeviceConfig();
+
   // Use the canonical function for tone dependency analysis.
   // DO NOT duplicate this logic - see getPatchToneDependencies for important
   // details about toneLayer2 handling that are easy to get wrong.
   const sortedTones = getPatchToneDependencies(patch);
 
-  // Look up tone files in manifest
+  // Look up tone files in manifest. Slot labels are device-aware
+  // (S-330: T11..T48; S-550: T11..T88 across blocks I..IV) — route through
+  // the layout formatter, never raw `Math.floor(idx/8) + 1` arithmetic.
   const toneFiles = manifest
     ? sortedTones.map((slot) => {
         const entry = manifest.tones.find((t) => t.slot === slot);
-        return entry ? entry.file : formatToneSlot(slot);
+        return entry ? entry.file : memoryLayout.formatToneSlot(slot);
       })
-    : sortedTones.map((slot) => formatToneSlot(slot));
+    : sortedTones.map((slot) => memoryLayout.formatToneSlot(slot));
 
   return (
     <div className="space-y-4">
@@ -277,7 +281,7 @@ function LibraryPatchPreview({
           <div className="space-y-1">
             {sortedTones.map((slot, idx) => (
               <div key={slot} className="flex items-center gap-2 text-s330-text">
-                <span className="text-s330-muted">{formatToneSlot(slot)}:</span>
+                <span className="text-s330-muted">{memoryLayout.formatToneSlot(slot)}:</span>
                 <span className="truncate">{toneFiles[idx]}</span>
               </div>
             ))}
@@ -367,6 +371,8 @@ export function ItemPreviewPanel({
   onOpenInLoopEditor,
   onOpenInSampleEditor,
 }: ItemPreviewPanelProps): JSX.Element {
+  const { memoryLayout } = useDeviceConfig();
+
   // State for loaded library items
   const [loadingLibraryItem, setLoadingLibraryItem] = useState(false);
   const [libraryTone, setLibraryTone] = useState<SamplerTone | null>(null);
@@ -487,7 +493,7 @@ export function ItemPreviewPanel({
         </div>
         <div className="flex-1 overflow-y-auto p-4">
           {tone ? (
-            <TonePreview tone={tone} slotLabel={formatToneSlot(selection.index)} />
+            <TonePreview tone={tone} slotLabel={memoryLayout.formatToneSlot(selection.index)} />
           ) : (
             <div className="text-center text-s330-muted text-sm py-8">
               <p>Empty slot</p>
@@ -508,7 +514,7 @@ export function ItemPreviewPanel({
         </div>
         <div className="flex-1 overflow-y-auto p-4">
           {patch ? (
-            <PatchPreview patch={patch} slotLabel={formatPatchSlot(selection.index)} />
+            <PatchPreview patch={patch} slotLabel={memoryLayout.formatPatchSlot(selection.index)} />
           ) : (
             <div className="text-center text-s330-muted text-sm py-8">
               <p>Empty slot</p>

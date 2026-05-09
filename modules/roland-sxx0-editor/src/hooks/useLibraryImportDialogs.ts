@@ -12,6 +12,7 @@ import type { LibraryDragPayload } from '@/lib/library-drag-types';
 import { extractRolandDragMeta } from '@/lib/library-drag-types';
 import type { OperationProgress } from '@/types/import-operation';
 import { saveDeviceToSetIncremental, loadSetToDevice, type StorageDirectoryHandle } from '@/lib/library-service';
+import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import type { RolandPageSelection } from '@/pages/LibraryPage';
 
 
@@ -66,6 +67,7 @@ export function useLibraryImportDialogs({
   clientRef, libraryHandle, setTone, setPatch, totalTones, totalPatches,
   selection, handleRefreshLibrary,
 }: Options) {
+  const { memoryLayout } = useDeviceConfig();
   const [importToneDialog, setImportToneDialog] = useState<ImportToneDialogState | null>(null);
   const [importPatchDialog, setImportPatchDialog] = useState<ImportPatchDialogState | null>(null);
   const [isImporting, setIsImporting] = useState(false);
@@ -230,7 +232,7 @@ export function useLibraryImportDialogs({
         // `targetBank` is `number` end-to-end (S-330: 0/1, S-550: 0..3).
         // Out-of-range values throw at the device-client boundary.
         const targetBank = data.tone.wave.bank + waveBankOffset;
-        const toneName = data.tone.name || `T${Math.floor(targetSlot / 8) + 1}${(targetSlot % 8) + 1}`;
+        const toneName = data.tone.name || memoryLayout.formatToneSlot(targetSlot);
         await clientRef.current.importTone(
           { toneIndex: targetSlot, waveData: data.wavData, waveBank: targetBank, segmentTop: data.tone.wave.segmentTop, segmentLength: data.tone.wave.segmentLength, tone: data.tone },
           (bytesSent, totalBytes) => { setOperationProgress({ currentStep: uploadCount + 1, totalSteps: totalItems, stepLabel: `Uploading ${toneName}`, bytesSent, bytesTotal: totalBytes, bytesSentAllSteps, bytesTotalAllSteps }); }
@@ -242,7 +244,7 @@ export function useLibraryImportDialogs({
       }
 
       for (const [slot, patch] of deviceState.patches) {
-        const patchName = patch.common.name || `P${String(slot + 1).padStart(2, '0')}`;
+        const patchName = patch.common.name || memoryLayout.formatPatchSlot(slot);
         setOperationProgress({ currentStep: uploadCount + 1, totalSteps: totalItems, stepLabel: `Uploading patch ${patchName}`, bytesSent: 0, bytesTotal: 0, bytesSentAllSteps, bytesTotalAllSteps });
         await clientRef.current.sendPatchData(slot, patch.common);
         uploadCount++;
@@ -257,7 +259,7 @@ export function useLibraryImportDialogs({
       console.error('[LibraryPage] Failed to load set:', err);
       setOperationError(err instanceof Error ? err.message : 'Failed to load set');
     }
-  }, [libraryHandle, clientRef, selection, setTone, totalTones]);
+  }, [libraryHandle, clientRef, selection, setTone, totalTones, memoryLayout]);
 
   // Wrapped setters that reset success state
   const handleSetIsSaveDialogOpen = useCallback((open: boolean) => {

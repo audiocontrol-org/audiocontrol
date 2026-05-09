@@ -11,6 +11,7 @@ import type { S330Patch } from '@audiocontrol/sampler-devices/s330';
 import type { OperationState } from '@/types/import-operation';
 import { isOperationComplete } from '@/types/import-operation';
 import { getPatchToneDependencies } from '@/lib/library-service';
+import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { cn } from '@/lib/utils';
 import {
   OperationProgressBar,
@@ -43,7 +44,12 @@ export function ExportPatchDialog({
   progress,
   error: operationError,
 }: ExportPatchDialogProps): JSX.Element {
-  const [patchName, setPatchName] = useState(patch?.common.name || `Patch_${patchIndex + 1}`);
+  const { memoryLayout } = useDeviceConfig();
+  // Device-aware default name (S-330: P11..P28; S-550: I11..I28 / II11..II28
+  // / III11..III28 / IV11..IV28). Never `Patch_${idx + 1}` — that produces
+  // `Patch_17` for S-550 patch index 16, which has no analogue on the device.
+  const defaultPatchName = memoryLayout.formatPatchSlot(patchIndex);
+  const [patchName, setPatchName] = useState(patch?.common.name || defaultPatchName);
   const [localError, setLocalError] = useState<string | null>(null);
 
   // Calculate number of referenced tones
@@ -55,10 +61,10 @@ export function ExportPatchDialog({
   // Reset patch name when dialog opens or patch changes
   useEffect(() => {
     if (open) {
-      setPatchName(patch?.common.name || `Patch_${patchIndex + 1}`);
+      setPatchName(patch?.common.name || defaultPatchName);
       setLocalError(null);
     }
-  }, [open, patch?.common.name, patchIndex]);
+  }, [open, patch?.common.name, defaultPatchName]);
 
   const handleExport = useCallback(async () => {
     if (!patchName.trim()) {
@@ -106,7 +112,7 @@ export function ExportPatchDialog({
           ) : (
             <div className="space-y-4">
               <Dialog.Description className="text-sm text-s330-muted">
-                Export patch P{String(patchIndex + 1).padStart(2, '0')} with all its dependent tones to your sampler library.
+                Export patch {memoryLayout.formatPatchSlot(patchIndex)} with all its dependent tones to your sampler library.
               </Dialog.Description>
 
               {/* Patch Name Input */}

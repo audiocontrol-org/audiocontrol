@@ -1,6 +1,6 @@
 # Roland S-550 Editor Support
 
-**Status:** In Progress (Phases 1-6, 8 Complete; Phase 9 Tasks 1-3 Complete; Phase 10 Tasks 1-6 Complete pending hardware verification; Phase 10 Tasks 7-9 Added 2026-05-09; Phase 7, Phase 9 Tasks 4-7 Remaining)
+**Status:** In Progress (Phases 1-6, 8 Complete; Phase 9 Tasks 1-3 Complete; Phase 10 Tasks 1-7 Complete pending hardware verification; Phase 10 Tasks 8-9 Remaining; Phase 7, Phase 9 Tasks 4-7 Remaining)
 **Feature Branch:** `feature/s550-support`
 **GitHub Milestone:** [Week of Feb 24-28](https://github.com/audiocontrol-org/audiocontrol/milestone/4)
 
@@ -41,7 +41,7 @@ The S-550 shares model ID `0x1E` and SysEx protocol with the S-330 but has an in
 |-----------|-------------|------------|
 | S-550 virtual front panel | Rack-mount panel layout variant | Nothing (cosmetic) |
 | UX/UI cleanup Phase 9 — Tasks 4–7 | Per-page real-component refactor (absorbing audit findings 4 + 5), dialog polish, UI-layer test harness + screenshot verification (audit finding 3), design-system update | Operator review of v3 mockups |
-| Phase 10 — Post-audit cleanup | Tasks 1–6 done pending hardware verification ([#393](https://github.com/audiocontrol-org/audiocontrol/issues/393)–[#398](https://github.com/audiocontrol-org/audiocontrol/issues/398)). Tasks 7–9 added 2026-05-09: [#400](https://github.com/audiocontrol-org/audiocontrol/issues/400) s330-format consumers (Task 7, MEDIUM), [#399](https://github.com/audiocontrol-org/audiocontrol/issues/399) ImportLibraryToneDialog literal-union (Task 8, LOW), [#401](https://github.com/audiocontrol-org/audiocontrol/issues/401) sample-rate helper (Task 9, LOW) | Independent — can run in parallel with Phase 9 |
+| Phase 10 — Post-audit cleanup | Tasks 1–7 done pending hardware verification ([#393](https://github.com/audiocontrol-org/audiocontrol/issues/393)–[#398](https://github.com/audiocontrol-org/audiocontrol/issues/398), [#400](https://github.com/audiocontrol-org/audiocontrol/issues/400)). Tasks 8–9 remaining: [#399](https://github.com/audiocontrol-org/audiocontrol/issues/399) ImportLibraryToneDialog literal-union (Task 8, LOW), [#401](https://github.com/audiocontrol-org/audiocontrol/issues/401) sample-rate helper (Task 9, LOW) | Independent — can run in parallel with Phase 9 |
 
 ### Phase 9 Task 2 deliverables (committed under `docs/1.0/001-IN-PROGRESS/s550-support/explorations/`)
 

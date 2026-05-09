@@ -4,7 +4,7 @@
 
 import type { SamplerTone } from '@/core/midi/SamplerClient';
 import { cn } from '@/lib/utils';
-import { formatToneSlot } from '@/lib/s330-format';
+import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { isToneEmpty } from '@/lib/slot-allocation';
 
 interface ToneListProps {
@@ -27,6 +27,8 @@ interface ToneListProps {
 }
 
 export function ToneList({ tones, selectedIndex, onSelect, loadedBanks: _loadedBanks, tonesPerBank, loadingBank, onLoadBank, onExportTone, canExportToLibrary = false }: ToneListProps) {
+  const { memoryLayout } = useDeviceConfig();
+
   // Count loaded and non-empty tones
   const loadedTones = tones.filter((t): t is SamplerTone => t !== undefined);
   const nonEmptyCount = loadedTones.filter((t) => !isToneEmpty(t)).length;
@@ -88,7 +90,7 @@ export function ToneList({ tones, selectedIndex, onSelect, loadedBanks: _loadedB
                 className="flex-1 flex items-center text-left min-w-0"
               >
                 <span className="font-mono text-s330-muted shrink-0">
-                  {formatToneSlot(index)}
+                  {memoryLayout.formatToneSlot(index)}
                 </span>
                 <span
                   className={cn(

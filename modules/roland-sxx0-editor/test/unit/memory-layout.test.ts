@@ -165,7 +165,15 @@ describe('createS550MemoryLayout', () => {
     });
 
     it('formats II11 at index 16 (first slot of block II)', () => {
+      // Sibling-instance pin for #400. The deleted `lib/s330-format.ts`
+      // helper produced "P31" here (Math.floor(16/8)+1 = 3 with no Roman
+      // prefix). Correct: II11.
       expect(createS550MemoryLayout().formatPatchSlot(16)).toBe('II11');
+    });
+
+    it('formats II21 at index 24 (block II, bank 2, slot 1)', () => {
+      // The deleted `lib/s330-format.ts` produced "P41" here. Correct: II21.
+      expect(createS550MemoryLayout().formatPatchSlot(24)).toBe('II21');
     });
 
     it('formats II28 at index 31 (last patch slot)', () => {
