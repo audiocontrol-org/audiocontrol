@@ -12,9 +12,10 @@ import { useEditorStore } from '@/stores/editorStore';
 import { useDeviceDataStore } from '@/stores/deviceDataStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { useBankLoader } from '@/hooks/useBankLoader';
-import type { SamplerClientInterface, SamplerPatch } from '@/core/midi/SamplerClient';
+import type { SamplerClientInterface } from '@/core/midi/SamplerClient';
 import { cn } from '@/lib/utils';
 import { isMockMidiMode } from '@/mock/mockMode';
+import { isPatchEmpty } from '@/lib/slot-allocation';
 
 // MIDI Part configuration (A-H = channels 1-8)
 interface MidiPart {
@@ -234,13 +235,6 @@ export function PlayPage() {
         setError(err instanceof Error ? err.message : 'Failed to update level');
       });
     }
-  };
-
-  // Check if a patch is empty
-  const isPatchEmpty = (patch: SamplerPatch | undefined): boolean => {
-    if (!patch) return true;
-    const name = patch.common.name;
-    return name === '' || name === '            ' || name.trim() === '';
   };
 
   if (!isConnected) {

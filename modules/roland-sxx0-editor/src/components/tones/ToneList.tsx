@@ -5,6 +5,7 @@
 import type { SamplerTone } from '@/core/midi/SamplerClient';
 import { cn } from '@/lib/utils';
 import { formatToneSlot } from '@/lib/s330-format';
+import { isToneEmpty } from '@/lib/slot-allocation';
 
 interface ToneListProps {
   /** Sparse array of tones - undefined = not loaded */
@@ -25,14 +26,6 @@ interface ToneListProps {
   canExportToLibrary?: boolean;
 }
 
-/**
- * Check if a tone name indicates it's empty/unused
- */
-function isToneEmpty(tone: SamplerTone): boolean {
-  const name = tone.name;
-  return name === '' || name === '        ' || name.trim() === '';
-}
-
 export function ToneList({ tones, selectedIndex, onSelect, loadedBanks: _loadedBanks, tonesPerBank, loadingBank, onLoadBank, onExportTone, canExportToLibrary = false }: ToneListProps) {
   // Count loaded and non-empty tones
   const loadedTones = tones.filter((t): t is SamplerTone => t !== undefined);
@@ -42,7 +35,7 @@ export function ToneList({ tones, selectedIndex, onSelect, loadedBanks: _loadedB
     <div className="card p-2">
       <div className="flex items-center justify-between px-2 py-1 mb-2">
         <span className="text-sm font-medium text-s330-text">
-          Tones ({nonEmptyCount} of {loadedTones.length} with names)
+          Tones ({nonEmptyCount} of {loadedTones.length} allocated)
         </span>
       </div>
       <div className="ac-scroll-list space-y-1">

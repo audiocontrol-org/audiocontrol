@@ -6,6 +6,7 @@ import type { SamplerPatch } from '@/core/midi/SamplerClient';
 import { cn } from '@/lib/utils';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { PatchLabel } from '@/components/common/PatchLabel';
+import { isPatchEmpty } from '@/lib/slot-allocation';
 
 interface PatchListProps {
   /** Sparse array of patches - undefined = not loaded */
@@ -22,14 +23,6 @@ interface PatchListProps {
   onLoadBank?: (bankIndex: number) => void;
   /** Called when user clicks the export button on a patch */
   onExportPatch?: (index: number) => void;
-}
-
-/**
- * Check if a patch name indicates it's empty/unused
- */
-function isPatchEmpty(patch: SamplerPatch): boolean {
-  const name = patch.common.name;
-  return name === '' || name === '            ' || name.trim() === '';
 }
 
 export function PatchList({ patches, selectedIndex, onSelect, loadedBanks: _loadedBanks, patchesPerBank, loadingBank, onLoadBank, onExportPatch }: PatchListProps) {

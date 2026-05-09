@@ -36,7 +36,7 @@ deskwork:
 | Phase 7: S-550 Front Panel | Not Started | Virtual front panel layout |
 | Phase 8: Memory Map Visualization | Complete | Graphical memory map in import dialogs |
 | Phase 9: UX/UI Cleanup | In Progress (Tasks 1–3 done; 4–7 remaining) | Visual polish across all editor pages via `/frontend-design` |
-| Phase 10: Post-Audit Cleanup | In Progress (Task 1 done pending hardware verification; Tasks 2–3 remaining) | Functional + duplication fixes surfaced by 2026-05-08 audit and Phase 9 Task 3 review (#393, #394, #395). Sibling-bug follow-up filed as #396. |
+| Phase 10: Post-Audit Cleanup | In Progress (Tasks 1–2 done pending hardware verification; Task 3 remaining) | Functional + duplication fixes surfaced by 2026-05-08 audit and Phase 9 Task 3 review (#393, #394, #395). Follow-ups filed as #396, #397. |
 
 ---
 
@@ -493,13 +493,14 @@ This phase exists because the 2026-05-08 code audit and the Phase 9 Task 3 revie
      - [x] Confirmed bank labels come from a single source: `MemoryLayout.getWaveBanksForTone(toneIndex)` for `ImportSampleDialog`; `targetGroup.waveBankLabels` (same `MemoryLayout`) for `ImportLibraryToneDialog`. Both editors source from the layout — no duplicated string literals. Hardcoded `Bank A` / `Bank B` `<option>` text remains in `ImportLibraryPatchDialog.tsx:579-580` (sibling dialog with the same #393 pattern, out of this task's scope per workplan); filed as [#396](https://github.com/audiocontrol-org/audiocontrol/issues/396).
      - [x] Confirmed no second copy of the wave-bank validation rule was added: the runtime guard in `handleImport` reads `config.maxWaveBankIndex` and the layout's per-tone `bankIndices` — no new constants. The existing device-client validators (`s330-client.ts:1592,1632`, `s550-addresses.ts:168`) are unchanged and remain the authoritative runtime barrier.
 
-2. **Empty-slot helpers: replace name-only re-implementations with shared `slot-allocation.ts` (#394, audit finding 2, severity MEDIUM).**
-   - Delete `ToneList.isToneEmpty` (`components/tones/ToneList.tsx:31`), `PatchList.isPatchEmpty` (`components/patches/PatchList.tsx:30`), and the inline patch-empty check at `pages/PlayPage.tsx:239`.
-   - Import `isToneEmpty` / `isPatchEmpty` from `@/lib/slot-allocation`.
-   - Verify against a device with a known mix of empty / named-but-zero-segment / fully-occupied slots that the list labels match what allocation/import logic enforces (no slot can be "empty" in the list while "occupied" to import).
-   - **Duplication audit gate:**
-     - [ ] `grep -rn "isToneEmpty\|isPatchEmpty" modules/` returns only the shared helpers and their callers — zero local definitions.
-     - [ ] No new wrapper helpers introduced (the shared helpers are already simple enough).
+2. **Empty-slot helpers: replace name-only re-implementations with shared `slot-allocation.ts` (#394, audit finding 2, severity MEDIUM). [DONE]**
+   - Deleted `ToneList.isToneEmpty` (`components/tones/ToneList.tsx`), `PatchList.isPatchEmpty` (`components/patches/PatchList.tsx`), and the inline `isPatchEmpty` arrow at `pages/PlayPage.tsx`. All three sites now import `isToneEmpty` / `isPatchEmpty` from `@/lib/slot-allocation`.
+   - **Semantic shift absorbed:** the local helpers were name-based; the shared helpers check data presence (`wave.segmentLength === 0` for tones; blank name AND no `toneLayer1` assignments for patches). A tone with a name but no wave data now correctly shows "(empty)" because allocation treats that slot as available — no more list-vs-import inconsistency.
+   - **Side-effect cleanup:** `ToneList.tsx` count label updated from "X of Y with names" to "X of Y allocated" to match the new (correct) emptiness semantics. `SamplerPatch` import removed from `PlayPage.tsx` (no longer used after deleting the local arrow function).
+   - Hardware verification (mixed empty / named-but-zero-segment / fully-occupied slots) deferred to operator hardware run.
+   - **Duplication audit gate (PASSED):**
+     - [x] `grep -rn "isToneEmpty\|isPatchEmpty" modules/roland-sxx0-editor/src/` returns only the canonical defs in `slot-allocation.ts:58,84`, internal uses in `slot-allocation.ts` and `best-fit.ts`, and consuming imports in `ToneList.tsx`, `PatchList.tsx`, `PlayPage.tsx`, `ToneSlotMap.tsx`. **Zero local function definitions.**
+     - [x] No new wrapper helpers introduced — edits are pure deletions + named imports.
 
 3. **Wave-fetch consolidation: route `useDeviceToneChopper` and `handleExportSample` through `useWaveDataCache` (#395, audit follow-up, severity MEDIUM).**
    - `useDeviceToneChopper`: accept an injected cache (or its `getSamples` + `loadWaveData` pair) instead of owning its own `requestWaveData` call. Cache hits skip the device read.
