@@ -13,23 +13,36 @@ import { useEditorStore } from '@/stores/editorStore';
 import { useDeviceDataStore } from '@/stores/deviceDataStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { useBankLoader } from '@/hooks/useBankLoader';
+import { useLibraryExport } from '@/hooks/useLibraryExport';
+import { useWaveDataCache } from '@/hooks/useWaveDataCache';
+import { useLoopEditorSync } from '@/hooks/useLoopEditorSync';
 import type { SamplerClientInterface, SamplerTone } from '@/core/midi/SamplerClient';
 import { ToneList } from '@/components/tones/ToneList';
 import { ToneEditor } from '@/components/tones/ToneEditor';
 import { ExportToneDialog } from '@/components/library/ExportToneDialog';
 import { ImportSampleDialog } from '@/components/library/ImportSampleDialog';
 import { cn } from '@/lib/utils';
-import { exportWaveAsWav, unpack12BitTo16Bit } from '@/lib/wave-export';
-import {
-  exportToneToDirectory,
-  exportToneAsDownload,
-  type StorageDirectoryHandle,
-} from '@/lib/library-service';
+import { exportWaveAsWav } from '@/lib/wave-export';
 import { useLibraryConnection } from '@audiocontrol/editor-core';
 import { useLoopEditor } from '@audiocontrol/loop-editor/ui';
 import { SampleChopperDialog } from '@audiocontrol/sample-chopper/ui';
 import { S330KitOutputConfig } from '@/components/library/S330KitOutputConfig';
 import { useDeviceToneChopper } from '@/hooks/useDeviceToneChopper';
+
+// Local type for the import-sample handler — mirrors the `importTone` payload
+// expected by `SamplerClientInterface.importTone`. Hoisted out of the
+// component body to keep the JSX-heavy section readable.
+interface ImportSampleParams {
+  toneIndex: number;
+  name: string;
+  waveData: Uint8Array;
+  waveBank: 0 | 1;
+  segmentTop: number;
+  segmentLength: number;
+  sampleRate: '15kHz' | '30kHz';
+  loopMode: 'forward' | 'alternating' | 'one-shot' | 'reverse';
+  loopPoint: number;
+}
 
 export function TonesPage() {
   const config = useDeviceConfig();
@@ -53,6 +66,7 @@ export function TonesPage() {
   // Shared device data store
   const {
     tones,
+    patches,
     loadedToneBanks: loadedBanks,
     setPatch,
     setTone,
@@ -76,15 +90,19 @@ export function TonesPage() {
   // Bank loading state
   const [loadingBank, setLoadingBank] = useState<number | null>(null);
 
-  // Export to Library state
-  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
-  const [isExportingToLibrary, setIsExportingToLibrary] = useState(false);
-  const [libraryExportProgress, setLibraryExportProgress] = useState<OperationProgress | undefined>(undefined);
-  const [libraryExportError, setLibraryExportError] = useState<string | null>(null);
+  // Library connection — drives export-dialog gating and the chopper save path.
   const library = useLibraryConnection({ pickerId: 'sampler-library' });
-  const [libraryDirectoryHandle, setLibraryDirectoryHandle] = useState<StorageDirectoryHandle | null>(null);
-  // Track which tone is being exported (can be different from selected tone when exporting from list)
-  const [exportToneIndex, setExportToneIndex] = useState<number | null>(null);
+  const libraryHandle = library.isConnected ? library.root : null;
+
+  // Library export hook. `allowDownloadFallback: true` preserves legacy behavior
+  // where the dialog can open without a library connected and the user gets a
+  // YAML+WAV download instead of a library write.
+  const exportOps = useLibraryExport({
+    clientRef, libraryHandle, tones, patches,
+    setIndividualTones: () => {}, // TonesPage has no library-list UI to refresh
+    setIndividualPatches: () => {},
+    allowDownloadFallback: true,
+  });
 
   // Import Sample state
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -92,17 +110,16 @@ export function TonesPage() {
   const [importProgress, setImportProgress] = useState<OperationProgress | undefined>(undefined);
   const [importError, setImportError] = useState<string | null>(null);
 
-  // Loop editor wave data state (keyed by tone index)
-  const [loopEditorWaveData, setLoopEditorWaveData] = useState<Map<number, Int16Array>>(new Map());
-  const [isLoadingLoopWaveData, setIsLoadingLoopWaveData] = useState(false);
-  const [loopWaveDataProgress, setLoopWaveDataProgress] = useState<number | undefined>(undefined);
+  // Wave data cache — owns decoded Int16Array per tone (for the loop editor).
+  const waveCache = useWaveDataCache({ clientRef, setError });
 
   // Sample chopper hook — chop device tones into drum kits
-  const chopper = useDeviceToneChopper({ clientRef, libraryDirectoryHandle });
+  const chopper = useDeviceToneChopper({ clientRef, libraryDirectoryHandle: libraryHandle });
 
   // Loop editor hook — owns loop point state, detection, audio preview, and smoothing
   const selectedToneForLoop = selectedToneIndex !== null ? tones[selectedToneIndex] : null;
-  const loopEditorSamples = selectedToneIndex !== null ? loopEditorWaveData.get(selectedToneIndex) ?? null : null;
+  const loopEditorSamples =
+    selectedToneIndex !== null ? waveCache.getSamples(selectedToneIndex) : null;
   const loopEditor = useLoopEditor({
     samples: loopEditorSamples,
     sampleRate: selectedToneForLoop?.sampleRate === '30kHz' ? 30000 : 15000,
@@ -111,55 +128,12 @@ export function TonesPage() {
     rootKey: selectedToneForLoop?.originalKey,
   });
 
-  // Sync loop editor's state back to device tone when changed via the loop editor UI
-  const prevLoopPointRef = useRef(loopEditor.loopPoint);
-  const prevEndPointRef = useRef(loopEditor.endPoint);
-  useEffect(() => {
-    if (selectedToneIndex === null) return;
-    const currentTone = tones[selectedToneIndex];
-    if (!currentTone) return;
-
-    const loopChanged = loopEditor.loopPoint !== prevLoopPointRef.current;
-    const endChanged = loopEditor.endPoint !== prevEndPointRef.current;
-    prevLoopPointRef.current = loopEditor.loopPoint;
-    prevEndPointRef.current = loopEditor.endPoint;
-
-    if (!loopChanged && !endChanged) return;
-
-    // Only sync if the hook's values differ from the tone's values
-    if (
-      loopEditor.loopPoint !== currentTone.wave.loopPoint ||
-      loopEditor.endPoint !== currentTone.wave.endPoint
-    ) {
-      const updatedTone = {
-        ...currentTone,
-        wave: {
-          ...currentTone.wave,
-          loopPoint: loopEditor.loopPoint,
-          endPoint: loopEditor.endPoint,
-        },
-      };
-      setTone(selectedToneIndex, updatedTone, totalTones);
-    }
-  }, [loopEditor.loopPoint, loopEditor.endPoint, selectedToneIndex, tones, setTone, totalTones]);
-
-  // Reset loop editor when selected tone changes
-  useEffect(() => {
-    if (selectedToneIndex === null) return;
-    const tone = tones[selectedToneIndex];
-    if (tone) {
-      loopEditor.resetForNewSamples(tone.wave.loopPoint, tone.wave.endPoint);
-    }
-  }, [selectedToneIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Sync loop-editor state with the device tone store (both directions).
+  useLoopEditorSync({ loopEditor, selectedToneIndex, tones, setTone, totalTones });
 
   // Initialize client when adapter changes
   useEffect(() => {
-    if (!adapter) {
-      clientRef.current = null;
-      return;
-    }
-    const client = config.createClient(adapter, { deviceId });
-    clientRef.current = client;
+    clientRef.current = adapter ? config.createClient(adapter, { deviceId }) : null;
   }, [adapter, deviceId]);
 
   // Load a specific range of tones (updates UI progressively)
@@ -173,13 +147,7 @@ export function TonesPage() {
     config: { totalPatches, totalTones, patchesPerBank, tonesPerBank },
     onBeforeToneLoad: (startIndex, count, forceReload) => {
       if (forceReload) {
-        setLoopEditorWaveData((prev) => {
-          const newMap = new Map(prev);
-          for (let i = startIndex; i < startIndex + count; i++) {
-            newMap.delete(i);
-          }
-          return newMap;
-        });
+        waveCache.invalidateRange(startIndex, count);
       }
     },
   });
@@ -199,14 +167,11 @@ export function TonesPage() {
     await loadBankWithIndicator(0);
   }, [loadBankWithIndicator]);
 
-  // Load all tones
+  // Load all tones (S-330: 4 banks of 8, S-550: 8 banks of 8)
   const loadAll = useCallback(async () => {
     if (!clientRef.current) return;
-
     clientRef.current.invalidateToneCache();
     invalidateToneCache();
-
-    // Load all tone banks (S-330: 4 banks of 8, S-550: 8 banks of 8)
     const bankCount = Math.ceil(totalTones / tonesPerBank);
     for (let bank = 0; bank < bankCount; bank++) {
       await loadToneBank(bank, true);
@@ -275,102 +240,6 @@ export function TonesPage() {
     }
   }, [selectedToneIndex, setError, setTone, totalTones]);
 
-  // Open export to library dialog
-  // If toneIndex is provided, export that tone; otherwise export the selected tone
-  const handleOpenExportDialog = useCallback(async (toneIndex?: number) => {
-    const indexToExport = toneIndex ?? selectedToneIndex;
-    if (indexToExport === null) return;
-
-    setLibraryExportError(null);
-    setLibraryExportProgress(undefined);
-    setExportToneIndex(indexToExport);
-
-    // If already connected, set the directory handle
-    if (library.isConnected) {
-      setLibraryDirectoryHandle(library.root);
-    }
-
-    setIsExportDialogOpen(true);
-  }, [library, selectedToneIndex]);
-
-  // Export tone to library
-  // toneIndex is passed from the dialog to ensure we export the correct tone
-  const handleExportToLibrary = useCallback(async (toneName: string, toneIndex: number) => {
-    if (!clientRef.current) return;
-
-    setIsExportingToLibrary(true);
-    setLibraryExportError(null);
-
-    try {
-      // Use cached tone data if available (loaded via Refresh Device with forceReload),
-      // falling back to a fresh device read. Direct RQD can fail due to stale SysEx
-      // responses after import operations.
-      let tone = tones[toneIndex] ?? null;
-      if (!tone) {
-        tone = await clientRef.current.requestToneData(toneIndex);
-      }
-      if (!tone) {
-        throw new Error(`No tone data at slot ${toneIndex}`);
-      }
-
-      // Step 1: Fetch wave data from device
-      const waveData = await clientRef.current.requestWaveData(
-        toneIndex,
-        (bytesReceived, totalBytes) => {
-          setLibraryExportProgress({
-            currentStep: 1,
-            totalSteps: 2,
-            stepLabel: 'Fetching wave data',
-            bytesSent: bytesReceived,
-            bytesTotal: totalBytes,
-            bytesSentAllSteps: 0,
-            bytesTotalAllSteps: totalBytes,
-          });
-        }
-      );
-
-      const waveBytes = waveData.data.length;
-
-      // Step 2: Write to library
-      setLibraryExportProgress({
-        currentStep: 2,
-        totalSteps: 2,
-        stepLabel: 'Writing to library',
-        bytesSent: 0,
-        bytesTotal: 0,
-        bytesSentAllSteps: waveBytes,
-        bytesTotalAllSteps: waveBytes,
-      });
-
-      if (libraryDirectoryHandle) {
-        await exportToneToDirectory(libraryDirectoryHandle, tone, waveData, toneName, () => {});
-      } else {
-        await exportToneAsDownload(tone, waveData, toneName, () => {});
-      }
-
-      // Update cached tone data with fresh data
-      setTone(toneIndex, tone, totalTones);
-
-      // Final state: complete
-      setLibraryExportProgress({
-        currentStep: 2,
-        totalSteps: 2,
-        stepLabel: 'Export complete',
-        bytesSent: 0,
-        bytesTotal: 0,
-        bytesSentAllSteps: waveBytes,
-        bytesTotalAllSteps: waveBytes,
-      });
-    } catch (err) {
-      console.error('[TonesPage] Failed to export to library:', err);
-      const message = err instanceof Error ? err.message : 'Failed to export to library';
-      setLibraryExportError(message);
-      throw err;
-    } finally {
-      setIsExportingToLibrary(false);
-    }
-  }, [libraryDirectoryHandle, setTone, totalTones]);
-
   // Open import sample dialog
   const handleOpenImportDialog = useCallback(() => {
     setImportError(null);
@@ -378,92 +247,23 @@ export function TonesPage() {
     setIsImportDialogOpen(true);
   }, []);
 
-  // Load wave data for loop editor
-  const handleLoadLoopWaveData = useCallback(async () => {
-    if (selectedToneIndex === null || !clientRef.current) return;
-
-    // Check if already loaded
-    if (loopEditorWaveData.has(selectedToneIndex)) return;
-
-    setIsLoadingLoopWaveData(true);
-    setLoopWaveDataProgress(0);
-    setError(null);
-
-    try {
-      const waveResponse = await clientRef.current.requestWaveData(
-        selectedToneIndex,
-        (bytesReceived, totalBytes) => {
-          const progress = totalBytes > 0 ? (bytesReceived / totalBytes) * 100 : 0;
-          setLoopWaveDataProgress(progress);
-        }
-      );
-
-      // Convert from packed 12-bit samples to 16-bit for the loop editor
-      const samples = unpack12BitTo16Bit(waveResponse.data);
-
-      setLoopEditorWaveData((prev) => {
-        const newMap = new Map(prev);
-        newMap.set(selectedToneIndex, samples);
-        return newMap;
-      });
-
-    } catch (err) {
-      console.error('[TonesPage] Failed to load wave data for loop editor:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load wave data');
-    } finally {
-      setIsLoadingLoopWaveData(false);
-      setLoopWaveDataProgress(undefined);
-    }
-  }, [selectedToneIndex, loopEditorWaveData, setError]);
-
-
   // Import sample from local file to device
-  const handleImportSample = useCallback(async (params: {
-    toneIndex: number;
-    name: string;
-    waveData: Uint8Array;
-    waveBank: 0 | 1;
-    segmentTop: number;
-    segmentLength: number;
-    sampleRate: '15kHz' | '30kHz';
-    loopMode: 'forward' | 'alternating' | 'one-shot' | 'reverse';
-    loopPoint: number;
-  }) => {
+  const handleImportSample = useCallback(async (params: ImportSampleParams) => {
     if (!clientRef.current) return;
-
-    const { toneIndex, name, waveData, waveBank, segmentTop, segmentLength, sampleRate, loopMode, loopPoint } = params;
-
     setIsImporting(true);
     setImportProgress(undefined);
     setImportError(null);
-
     try {
-      await clientRef.current.importTone(
-        {
-          toneIndex,
-          name,
-          waveData,
-          waveBank,
-          segmentTop,
-          segmentLength,
-          sampleRate,
-          loopMode,
-          loopPoint,
-        },
-        (bytesSent, totalBytes) => {
-          setImportProgress({
-            currentStep: 1, totalSteps: 1,
-            stepLabel: `Uploading ${name}`,
-            bytesSent, bytesTotal: totalBytes,
-            bytesSentAllSteps: 0, bytesTotalAllSteps: totalBytes,
-          });
-        }
-      );
-
+      await clientRef.current.importTone(params, (bytesSent, totalBytes) => {
+        setImportProgress({
+          currentStep: 1, totalSteps: 1,
+          stepLabel: `Uploading ${params.name}`,
+          bytesSent, bytesTotal: totalBytes,
+          bytesSentAllSteps: 0, bytesTotalAllSteps: totalBytes,
+        });
+      });
       // Reload the tone bank to reflect changes
-      const bankIndex = Math.floor(toneIndex / tonesPerBank);
-      await loadToneBank(bankIndex, true);
-
+      await loadToneBank(Math.floor(params.toneIndex / tonesPerBank), true);
     } catch (err) {
       console.error('[TonesPage] Failed to import sample:', err);
       const message = err instanceof Error ? err.message : 'Failed to import sample';
@@ -472,7 +272,7 @@ export function TonesPage() {
     } finally {
       setIsImporting(false);
     }
-  }, [loadToneBank]);
+  }, [loadToneBank, tonesPerBank]);
 
   // Auto-load initial data when connected
   useEffect(() => {
@@ -588,7 +388,7 @@ export function TonesPage() {
                 tonesPerBank={tonesPerBank}
                 loadingBank={loadingBank}
                 onLoadBank={(bank) => loadBankWithIndicator(bank)}
-                onExportTone={handleOpenExportDialog}
+                onExportTone={exportOps.openExportToneDialog}
                 canExportToLibrary={library.isConnected}
               />
             </div>
@@ -603,8 +403,10 @@ export function TonesPage() {
                 onExportSample={handleExportSample}
                 isExporting={isExporting}
                 exportProgress={exportProgress}
-                onExportToLibrary={() => handleOpenExportDialog()}
-                isExportingToLibrary={isExportingToLibrary}
+                onExportToLibrary={() => {
+                  if (selectedToneIndex !== null) exportOps.openExportToneDialog(selectedToneIndex);
+                }}
+                isExportingToLibrary={exportOps.isExporting}
                 onImportSample={handleOpenImportDialog}
                 isImporting={isImporting}
                 onChopSample={() => {
@@ -614,9 +416,11 @@ export function TonesPage() {
                 }}
                 isLoadingChopWaveData={chopper.isLoadingWav}
                 waveData={loopEditorSamples}
-                isLoadingWaveData={isLoadingLoopWaveData}
-                waveDataLoadProgress={loopWaveDataProgress}
-                onLoadWaveData={handleLoadLoopWaveData}
+                isLoadingWaveData={waveCache.isLoading}
+                waveDataLoadProgress={waveCache.progress}
+                onLoadWaveData={() => {
+                  if (selectedToneIndex !== null) void waveCache.loadWaveData(selectedToneIndex);
+                }}
                 loopEditorProps={loopEditor.editorProps}
               />
             ) : (
@@ -639,19 +443,16 @@ export function TonesPage() {
       )}
 
       {/* Export to Library Dialog */}
-      {exportToneIndex !== null && tones[exportToneIndex] && (
+      {exportOps.exportToneDialog && (
         <ExportToneDialog
-          open={isExportDialogOpen}
-          onOpenChange={(open) => {
-            setIsExportDialogOpen(open);
-            if (!open) setExportToneIndex(null);
-          }}
-          tone={tones[exportToneIndex]!}
-          toneIndex={exportToneIndex}
-          onExport={handleExportToLibrary}
-          isOperating={isExportingToLibrary}
-          progress={libraryExportProgress}
-          error={libraryExportError}
+          open={!!exportOps.exportToneDialog}
+          onOpenChange={(open) => { if (!open) exportOps.closeExportToneDialog(); }}
+          tone={exportOps.exportToneDialog.tone}
+          toneIndex={exportOps.exportToneDialog.toneIndex}
+          onExport={exportOps.handleExportTone}
+          isOperating={exportOps.isExporting}
+          progress={exportOps.exportProgress}
+          error={exportOps.exportError}
         />
       )}
 
@@ -677,7 +478,7 @@ export function TonesPage() {
         sampleRate={chopper.chopperSampleRate}
         sourceName={selectedTone?.name ?? ''}
         onConfirm={chopper.handleConfirm}
-        onSave={libraryDirectoryHandle ? chopper.handleSave : undefined}
+        onSave={library.isConnected ? chopper.handleSave : undefined}
         renderOutputConfig={(state) => (
           <S330KitOutputConfig
             state={state}
