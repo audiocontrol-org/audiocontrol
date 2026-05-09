@@ -30,7 +30,7 @@ deskwork:
 | Phase 6: Hardware Validation | Complete | All tests passing against physical S-550 |
 | Phase 7: S-550 Front Panel | Not Started | Virtual front panel layout |
 | Phase 8: Memory Map Visualization | Complete | Graphical memory map in import dialogs |
-| Phase 9: UX/UI Cleanup | In Progress (Tasks 1–2 done; 3–7 remaining) | Visual polish across all editor pages via `/frontend-design` |
+| Phase 9: UX/UI Cleanup | In Progress (Tasks 1–3 done; 4–7 remaining) | Visual polish across all editor pages via `/frontend-design` |
 
 ---
 
@@ -393,14 +393,16 @@ See `.claude/rules/workflow-playbooks.md § Phase-completion duplication audit` 
    - User reviews and selects a direction; commit the chosen direction's notes back into the audit doc.
    - **Duplication audit gate:** Mockup-only task; explorations are static HTML and don't ship to production. Cross-page mockup consistency was audited separately (`/tmp/cross-page-audit.md`, 18 findings). Production refactor (Tasks 3–6) is where the duplication-audit gate carries weight.
 
-3. **Refactor `TonesPage.tsx` to fit under 500 lines.**
-   - `TonesPage.tsx` is 691 lines today. Split by responsibility (e.g., extract per-section editor groups into focused child components under `pages/tones/`) so the page composes them without growing.
-   - **Before extracting:** grep for existing hooks that already do what you're about to extract — `useLibraryExport`, `useImportSamples`, `useDeviceToneChopper`, etc. Reuse them; do NOT create page-local duplicates.
-   - Acceptance: `wc -l modules/roland-sxx0-editor/src/pages/TonesPage.tsx` reports < 500.
-   - **Duplication audit gate:**
-     - [ ] Listed every new file authored under `pages/tones/` and every modified file in `pages/`, `hooks/`, `components/`.
-     - [ ] Grepped for existing hook coverage of every handler being extracted (export, import, wave-data caching, etc.). Documented matches.
-     - [ ] Each new hook explicitly justifies its existence: "<hook>: not duplicated by <existing>, because <X is unique to TonesPage>." OR "<hook>: superseded by <existing-hook>; deleted."
+3. **Refactor `TonesPage.tsx` to fit under 500 lines.** ✓ Complete (commit `6df1ba6a`)
+   - `TonesPage.tsx`: 691 → 492 lines.
+   - Extended `useLibraryExport` with `openExportToneDialog` / `openExportPatchDialog` imperative openers + an `allowDownloadFallback` option for the tones-page download fallback.
+   - New shared hook `useWaveDataCache` (per-tone Int16Array cache + on-demand loader + invalidateRange).
+   - New shared hook `useLoopEditorSync` (encapsulates the seam between `useLoopEditor` and the device tone store).
+   - **Duplication audit gate (PASSED):**
+     - [x] Files touched listed: `TonesPage.tsx`, `useLibraryExport.ts`, `useWaveDataCache.ts` (new), `useLoopEditorSync.ts` (new).
+     - [x] Greps verified: `handleExportToLibrary` was a duplicate of `useLibraryExport.handleExportTone` — unified. `handleImportSample` is NOT a duplicate of `useImportSamples` (different operation: raw single-tone upload vs multi-tone bundle) — kept page-local with justification. `handleExportSample` (WAV download) is unique — kept page-local.
+     - [x] Each new hook justified: `useWaveDataCache` (stateful Map cache + range invalidation, reusable beyond loop editor); `useLoopEditorSync` (well-defined seam protocol with prev-ref tracking, would recur in any page embedding `useLoopEditor`).
+     - [x] Net duplication eliminated: ~150 lines of TonesPage-local re-implementation that mirrored `useLibraryExport`.
 
 4. **Apply visual polish to each page via `/frontend-design`.** One commit per page so regressions are bisectable. Each page's polish is produced through the plugin — no hand-edited JSX/CSS slipped in alongside.
    - HomePage — landing layout, calls to action, device identity affordance.
@@ -443,7 +445,7 @@ See `.claude/rules/workflow-playbooks.md § Phase-completion duplication audit` 
 - [x] `/frontend-design` exploration committed under `explorations/`; chosen direction noted in the audit. (Task 2 v3 — design language + 6 page mockups + tabbed tones detail + 8-segment VFD envelope + virtual front panel + cross-page consistency pass)
 - [ ] **Every UI change in this phase is traceable to a `/frontend-design` invocation** — no hand-rolled JSX/CSS edits. (Task 4+ — when production refactor begins)
 - [ ] Editors at `/roland/s330/editor` and `/roland/s550/editor` read as part of the audiocontrol.org universe (typography, layout rhythm, component vocabulary) while preserving the existing `s330-*` blue+white color palette. (Mockups demonstrate the alignment; production refactor pending)
-- [ ] `TonesPage.tsx` is under 500 lines. (Task 3 — decomposition still pending; mockup sketches the structure)
+- [x] `TonesPage.tsx` is under 500 lines. (Task 3 complete — 692 → 492 lines; commit `6df1ba6a`)
 - [ ] Every page in scope has been visually polished and screenshot-verified on both `/roland/s330/editor` and `/roland/s550/editor`. (Task 4–6 — pending real-component refactor)
 - [ ] No device conditionals introduced in any UI component.
 - [ ] No hardcoded pixel widths introduced.

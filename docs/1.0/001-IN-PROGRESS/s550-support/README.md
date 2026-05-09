@@ -1,6 +1,6 @@
 # Roland S-550 Editor Support
 
-**Status:** In Progress (Phases 1-6, 8 Complete; Phase 9 Tasks 1-2 Complete; Phase 7, Phase 9 Tasks 3-7 Remaining)
+**Status:** In Progress (Phases 1-6, 8 Complete; Phase 9 Tasks 1-3 Complete; Phase 7, Phase 9 Tasks 4-7 Remaining)
 **Feature Branch:** `feature/s550-support`
 **GitHub Milestone:** [Week of Feb 24-28](https://github.com/audiocontrol-org/audiocontrol/milestone/4)
 
