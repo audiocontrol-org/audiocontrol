@@ -1271,11 +1271,11 @@
   .patches__icon-btn:hover {
     border-color: hsl(var(--ac-color-accent) / 0.6);
     color: hsl(var(--ac-color-accent));
-    background: hsl(var(--ac-color-surface));
+    background: hsl(var(--ac-color-accent) / 0.08);
   }
   .patches__icon-btn:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px hsl(var(--ac-color-accent) / 0.4);
+    outline: var(--ac-rule-medium) solid hsl(var(--ac-color-accent) / 0.6);
+    outline-offset: 2px;
   }
   .patches__icon-btn svg {
     width: 1rem;
@@ -1350,7 +1350,7 @@
     align-items: center;
     padding: var(--ac-space-3) var(--ac-space-4);
     border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.5);
-    border-left: 2px solid transparent;
+    border-left: var(--ac-rule-medium) solid transparent;
     cursor: pointer;
     text-decoration: none;
     color: hsl(var(--ac-color-fg));
@@ -1360,16 +1360,16 @@
   .patches__list-row:hover {
     background: hsl(var(--ac-color-surface-hover));
     border-bottom-color: hsl(var(--ac-color-border) / 0.5);
+    border-left-color: hsl(var(--ac-color-accent) / 0.4);
   }
-  .patches__list-row[aria-current="true"] {
-    background: hsl(var(--ac-color-accent) / 0.08);
+  .patches__list-row[aria-selected="true"] {
+    background: hsl(var(--ac-color-accent) / 0.12);
     border-left-color: hsl(var(--ac-color-accent));
   }
-  .patches__list-row[aria-current="true"] .patches__list-slot {
+  .patches__list-row[aria-selected="true"] .patches__list-slot {
     color: hsl(var(--ac-color-accent));
-    text-shadow: var(--ac-glow-accent);
   }
-  .patches__list-row[aria-current="true"] .patches__list-name {
+  .patches__list-row[aria-selected="true"] .patches__list-name {
     color: hsl(var(--ac-color-fg));
   }
   .patches__list-row:focus-visible {
@@ -1443,7 +1443,7 @@
   .patches__detail-title {
     font-family: var(--ac-font-display);
     font-weight: var(--ac-fw-display);
-    font-size: 1.55rem;
+    font-size: var(--ac-text-h2);
     line-height: 1.18;
     letter-spacing: var(--ac-tracking-display);
     margin: 0;
@@ -1768,7 +1768,7 @@
           <span>Bank 1 · Internal</span>
           <strong>P11–P18</strong>
         </div>
-        <a class="patches__list-row" href="#" aria-current="true">
+        <a class="patches__list-row" href="#" aria-selected="true">
           <span class="patches__list-slot">P11</span>
           <span class="patches__list-info">
             <span class="patches__list-name">Strings A</span>

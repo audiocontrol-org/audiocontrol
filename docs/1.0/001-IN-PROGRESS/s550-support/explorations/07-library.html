@@ -561,20 +561,12 @@
       display: flex;
       flex-direction: column;
     }
-    .library__intro {
-      flex-shrink: 0;
-      padding-block: var(--ac-space-4) var(--ac-space-3) !important;
-    }
     .library__page-title {
       flex-shrink: 0;
       margin-top: 0 !important;
-      padding-block: var(--ac-space-4) var(--ac-space-3);
+      padding-block: var(--ac-space-5) var(--ac-space-4);
       box-shadow: 0 1px 0 hsl(var(--ac-color-border) / 0.7);
       background: hsl(var(--ac-color-bg));
-    }
-    .library__notice {
-      flex-shrink: 0;
-      margin-block: var(--ac-space-3) var(--ac-space-3) !important;
     }
     .app-shell.library__app-shell {
       flex: 1;
@@ -583,7 +575,7 @@
       display: grid;
       grid-template-columns: 22rem minmax(0, 1fr) 30rem;
       gap: var(--ac-space-5);
-      padding-block: var(--ac-space-4) 0;
+      padding-block: var(--ac-space-5) 0;
       align-items: stretch;
       margin-top: 0;
     }
@@ -1246,31 +1238,10 @@
      introduces new tokens; values reference --ac-* tokens.
      ============================================================ */
 
-  /* Page intro band — minimal, replaces homepage hero */
-  .library__intro {
-    padding-block: var(--ac-space-7) var(--ac-space-5);
-  }
-  .library__intro-eyebrow {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--ac-space-3);
-    flex-wrap: wrap;
-  }
+  /* Separator dot — used in the detail-eyebrow strip. Retained from
+     the deleted intro/notice block since it's still referenced. */
   .library__intro-sep {
     color: hsl(var(--ac-color-fg-subtle));
-  }
-  .library__intro-title {
-    font-family: var(--ac-font-display);
-    font-weight: var(--ac-fw-display);
-    font-size: var(--ac-text-h1);
-    line-height: 1.18;
-    letter-spacing: var(--ac-tracking-display);
-    margin: var(--ac-space-3) 0 var(--ac-space-3);
-  }
-  .library__intro-tagline {
-    color: hsl(var(--ac-color-fg-muted));
-    max-width: var(--ac-measure-reading);
-    margin: 0;
   }
 
   /* Status row with refresh + save + load affordances on the title row.
@@ -1314,49 +1285,6 @@
     stroke: currentColor;
     stroke-width: 1.5;
     fill: none;
-  }
-
-  /* Status notice — replaces yellow "Experimental" pill (audit flag).
-     Uses s330 blue instead of yellow. */
-  .library__notice {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--ac-space-3);
-    padding: var(--ac-space-3) var(--ac-space-4);
-    margin-block: var(--ac-space-5);
-    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-accent) / 0.4);
-    background: hsl(var(--ac-color-accent) / 0.08);
-    border-radius: 2px;
-  }
-  .library__notice-icon {
-    flex-shrink: 0;
-    width: 1rem;
-    height: 1rem;
-    color: hsl(var(--ac-color-accent));
-    margin-top: 0.15rem;
-  }
-  .library__notice-icon svg {
-    width: 100%;
-    height: 100%;
-    stroke: currentColor;
-    stroke-width: 1.5;
-    fill: none;
-  }
-  .library__notice-text {
-    margin: 0;
-    font-size: var(--ac-text-small);
-    color: hsl(var(--ac-color-fg));
-    line-height: 1.55;
-  }
-  .library__notice-eyebrow {
-    display: inline-block;
-    font-family: var(--ac-font-display);
-    font-size: var(--ac-text-eyebrow);
-    text-transform: uppercase;
-    letter-spacing: var(--ac-tracking-eyebrow);
-    color: hsl(var(--ac-color-accent));
-    text-shadow: var(--ac-glow-accent);
-    margin-right: var(--ac-space-2);
   }
 
   /* Tree + detail split */
@@ -1544,7 +1472,7 @@
   .library__detail-title {
     font-family: var(--ac-font-display);
     font-weight: var(--ac-fw-display);
-    font-size: 1.55rem;
+    font-size: var(--ac-text-h2);
     letter-spacing: var(--ac-tracking-display);
     color: hsl(var(--ac-color-fg));
     margin: 0;
