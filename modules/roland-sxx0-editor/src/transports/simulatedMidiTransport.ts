@@ -85,7 +85,10 @@ export function createSimulatedMidiTransport(
     onStateChange: () => {
       // Simulated transport has no port hot-plug events.
     },
-    connect: async (): Promise<MidiTransportConnection> => {
+    connect: async (
+      _inputId: string,
+      _outputId: string,
+    ): Promise<MidiTransportConnection> => {
       if (!cachedScenario) {
         throw new Error(
           '[SimulatedMidiTransport] connect() called before initialize(). ' +

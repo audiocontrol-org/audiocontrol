@@ -9,7 +9,7 @@
  * Phase 0 Task 7 — see `.tmp/phase-0-task-7-injection-design.md`.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   SimulatedAdapter,
   serializeFixture,
@@ -39,16 +39,9 @@ function buildTrivialScenarioText(): string {
 }
 
 describe('createSimulatedMidiTransport', () => {
-  let originalFetch: typeof globalThis.fetch | undefined;
-
-  beforeEach(() => {
-    originalFetch = globalThis.fetch;
-  });
-
   afterEach(() => {
-    if (originalFetch) {
-      globalThis.fetch = originalFetch;
-    }
+    // Restores any vi.spyOn(globalThis, 'fetch') installed by individual
+    // tests; vitest tracks the original implementation per spy.
     vi.restoreAllMocks();
   });
 
@@ -68,19 +61,20 @@ describe('createSimulatedMidiTransport', () => {
 
   it('initialize() fetches the fixture from /test-fixtures/<deviceType>/<scenario>.ndjson and resolves to one input + one output port', async () => {
     const fixtureText = buildTrivialScenarioText();
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      const url = typeof input === 'string' ? input : input.toString();
-      expect(url).toBe('/test-fixtures/s330/load-everything.ndjson');
-      return new Response(fixtureText, { status: 200 });
-    });
-    globalThis.fetch = fetchMock as typeof globalThis.fetch;
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input) => {
+        const url = typeof input === 'string' ? input : input.toString();
+        expect(url).toBe('/test-fixtures/s330/load-everything.ndjson');
+        return new Response(fixtureText, { status: 200 });
+      });
 
     const transport = createSimulatedMidiTransport({
       deviceType: 's330',
       scenario: 'load-everything',
     });
     const ports = await transport.initialize();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(ports.inputs).toHaveLength(1);
     expect(ports.outputs).toHaveLength(1);
     expect(ports.sysExEnabled).toBe(true);
@@ -89,8 +83,9 @@ describe('createSimulatedMidiTransport', () => {
   });
 
   it('initialize() rejects with a descriptive error when the fixture fetch returns 404', async () => {
-    const fetchMock = vi.fn(async () => new Response('not found', { status: 404, statusText: 'Not Found' }));
-    globalThis.fetch = fetchMock as typeof globalThis.fetch;
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('not found', { status: 404, statusText: 'Not Found' }),
+    );
 
     const transport = createSimulatedMidiTransport({
       deviceType: 's330',
@@ -110,7 +105,9 @@ describe('createSimulatedMidiTransport', () => {
 
   it('connect() after initialize() returns a connection whose adapter is a SimulatedAdapter', async () => {
     const fixtureText = buildTrivialScenarioText();
-    globalThis.fetch = vi.fn(async () => new Response(fixtureText, { status: 200 })) as typeof globalThis.fetch;
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(fixtureText, { status: 200 }),
+    );
 
     const transport = createSimulatedMidiTransport({
       deviceType: 's330',
@@ -126,7 +123,9 @@ describe('createSimulatedMidiTransport', () => {
 
   it('returns distinct adapter instances on consecutive connect() calls (cursor isolation)', async () => {
     const fixtureText = buildTrivialScenarioText();
-    globalThis.fetch = vi.fn(async () => new Response(fixtureText, { status: 200 })) as typeof globalThis.fetch;
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(fixtureText, { status: 200 }),
+    );
 
     const transport = createSimulatedMidiTransport({
       deviceType: 's330',
