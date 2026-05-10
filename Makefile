@@ -166,13 +166,13 @@ test-e2e-roland-ui: $(ROLAND_SXX0_EDITOR) ensure-playwright
 #   make record-fixtures-roland ARGS="--list-scenarios"
 #   make record-fixtures-roland ARGS="--list-ports"
 record-fixtures-roland: $(SAMPLER_DEVICES)
-	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/e2e-infra && tsx src/node/lib/record-fixtures-roland.ts $(ARGS)"
+	$(DEVENV) shell --quiet -- bash -c "tsx $(MODULES_DIR)/e2e-infra/src/node/lib/record-fixtures-roland.ts $(ARGS)"
 
 record-fixtures-roland-s550: $(SAMPLER_DEVICES)
-	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/e2e-infra && tsx src/node/lib/record-fixtures-roland.ts --device s550 $(ARGS)"
+	$(DEVENV) shell --quiet -- bash -c "tsx $(MODULES_DIR)/e2e-infra/src/node/lib/record-fixtures-roland.ts --device s550 $(ARGS)"
 
 record-fixtures-roland-s330: $(SAMPLER_DEVICES)
-	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/e2e-infra && tsx src/node/lib/record-fixtures-roland.ts --device s330 $(ARGS)"
+	$(DEVENV) shell --quiet -- bash -c "tsx $(MODULES_DIR)/e2e-infra/src/node/lib/record-fixtures-roland.ts --device s330 $(ARGS)"
 
 # ---------------------------------------------------------------------------
 # S3000XL E2E Tests
