@@ -18,3 +18,10 @@ export type {
     FixtureRecord,
     FixtureScenario,
 } from './fixture-schema.js';
+
+export { RecordingProxyAdapter } from './recording-proxy.js';
+
+export type {
+    ClockFn,
+    RecordingProxyAdapterOptions,
+} from './recording-proxy.js';
