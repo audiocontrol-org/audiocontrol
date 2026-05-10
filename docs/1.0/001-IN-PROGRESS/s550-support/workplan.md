@@ -30,6 +30,17 @@ deskwork:
 - [Capture targeted S-330 fixtures (patches-bank-0, tones-bank-0, play-init) (#404)](https://github.com/audiocontrol-org/audiocontrol/issues/404) — surfaced by Phase 0 Task 8: `tones.spec.ts` + `play.spec.ts` skipped because `load-everything.ndjson` mismatches each page's startup SysEx sequence
 - [PatchesPage.loadInitialData chains tone-bank load — split so each page loads only what it consumes (#405)](https://github.com/audiocontrol-org/audiocontrol/issues/405) — surfaced by Phase 0 Task 8 review; tone preload makes patches-only fixture impossible
 - [Pre-existing unit test failures excluded from CI (#406)](https://github.com/audiocontrol-org/audiocontrol/issues/406) — surfaced by Phase 0 Task 9: 9 failing tests across `s3000xl-client`, `akai-translation`, `PluginLibraryBrowser`, `MoveDialog` excluded via `--exclude` until fixed
+- [System Parameters page — D-SYS missing affordances (#407)](https://github.com/audiocontrol-org/audiocontrol/issues/407) — surfaced by Phase 0 Task 10 affordance inventory; 11 missing UI affordances + protocol research
+- [Tone Editor polish — 6 missing tone fields (#408)](https://github.com/audiocontrol-org/audiocontrol/issues/408) — surfaced by Phase 0 Task 10 affordance inventory; small UI placement task
+- [Copy/Derive operations — patches and tones (#409)](https://github.com/audiocontrol-org/audiocontrol/issues/409) — surfaced by Phase 0 Task 10 affordance inventory; protocol research + cross-cutting feature
+- [Sample Recording — protocol research (#410)](https://github.com/audiocontrol-org/audiocontrol/issues/410) — surfaced by Phase 0 Task 10 affordance inventory; recThreshold/recPreTrigger fields suggest protocol support; research first
+- [Phase 0 Task 10 Wave 2a — patch parameter write-coverage tests (#411)](https://github.com/audiocontrol-org/audiocontrol/issues/411) — surfaced by Phase 0 Task 10 wave 1 punch list; ~11 specs + fixtures
+- [Phase 0 Task 10 Wave 2b — multi-mode parameter write-coverage tests (#412)](https://github.com/audiocontrol-org/audiocontrol/issues/412) — sibling of #411
+- [Phase 0 Task 10 Wave 2c — tone parameter write-coverage tests (#413)](https://github.com/audiocontrol-org/audiocontrol/issues/413) — largest wave; ~40 specs covering wave/pitch/TVF/TVA/LFO/envelope sections
+- [Phase 0 Task 10 Wave 3 — display gap tests, no fixtures (#414)](https://github.com/audiocontrol-org/audiocontrol/issues/414) — ~30 specs extending existing capability suite; no fixture work
+- [Phase 0 Task 10 Wave 4 — library + dialog flow tests (#415)](https://github.com/audiocontrol-org/audiocontrol/issues/415) — multi-step dialog flows; needs library backend setup + per-dialog fixtures
+- [Phase 0 Task 10 Wave 5 — drag-drop tests (#416)](https://github.com/audiocontrol-org/audiocontrol/issues/416) — Playwright DnD; carved out of Wave 4 due to tooling friction
+- [Phase 0 Task 10 Wave 6 — cross-cutting tests (front panel, panic, progress) (#417)](https://github.com/audiocontrol-org/audiocontrol/issues/417) — VFP DT1 emits + panic + progress + live-edit guard
 
 ---
 
@@ -73,7 +84,15 @@ The editor's UI is tightly coupled to the SysEx backend, so every redesign itera
 7. ✅ Editor harness via URL-param dispatch — committed `8efa4c00` + `d78eecab`. `?midi=simulated&scenario=<name>` routes the editor to `SimulatedAdapter` via a new `SimulatedMidiTransport` shim wrapping the existing `MidiTransport` interface. Vite middleware serves fixtures from `modules/sampler-devices/test/fixtures/` at `/test-fixtures/<device>/<scenario>.ndjson` with a strict path-traversal guard. 6 unit tests. The harness URL IS the real editor URL — no separate `/test/harness` route. Both bypass paths (`useFrontPanel`, `useParameterListener`) covered automatically since the simulated adapter lands in `state.adapter`.
 8. ✅ First Playwright UI specs — committed `f05603c3` + `f7e2825e`. 9 tests passing across `home.spec.ts`, `patches.spec.ts`, `library.spec.ts`. `tones.spec.ts` + `play.spec.ts` skipped via `test.skip` (their startup SysEx mismatches `load-everything.ndjson` — see [#404](https://github.com/audiocontrol-org/audiocontrol/issues/404)). Source-fixed `PatchList` button-in-button HTML nesting. Runner script `scripts/run-test-harness-e2e.sh`. Mandatory pageerror surfacing in `beforeEach`.
 9. ✅ CI integration + drift detection — committed `2bcf0a79` + `8dc83219`. New `.github/workflows/test.yml` runs on push + PR: `pnpm install`, `make`, scoped unit tests for sampler-devices + roland-sxx0-editor + editor-core (with `--exclude` for [#406](https://github.com/audiocontrol-org/audiocontrol/issues/406)'s pre-existing failures), `make test-ui-roland`, `make test-ui-s3k`. Playwright artifacts uploaded on failure. New `Makefile` `DEVENV_RUN` variable lets CI bypass the `devenv shell` wrapper. Operator-run `scripts/check-fixture-drift.sh` (+ `make check-fixture-drift`) recaptures fixtures and diffs against committed; exits 2 on `--scenario` typo. New `TESTING-FIXTURES.md` documents the full chain.
-10. ⏳ Capability test suite + canonical capabilities doc — establish a layout-independent contract for what the editor UI MUST afford. Foundational doc [`ROLAND-S550-EDITOR-CAPABILITIES.md`](../../../../ROLAND-S550-EDITOR-CAPABILITIES.md) at repo root enumerates 51 capabilities (15 covered, 2 partial, 34 not yet covered). Each capability has a stable ID (`C-<AREA>-<NN>`), statement, user-need rationale, and a binding spec at `test/ui/capabilities/<area>.spec.ts`. Selectors prefer accessible queries (`getByRole`, `getByLabel`) and `data-capability="<id>"` attrs over layout-encoding `data-testid`s. Outbound-byte assertions use the SimulatedAdapter strict-match mechanism — capability action specs each have a recorded fixture for the expected SysEx. Closes the gap that pixel-snapshot regression cannot: visual presentation can change while capability contracts stay locked.
+10. ⏳ Capability test suite + canonical capabilities docs. **Wave 1 shipped 2026-05-10** (commit `4dbcf151`): 16 capability specs at `test/ui/capabilities/{connection,patches,tones,library,play}.spec.ts` covering display affordances; total UI test count 31 passed / 0 skipped. Foundational docs at repo root: [`ROLAND-S550-EDITOR-CAPABILITIES.md`](../../../../ROLAND-S550-EDITOR-CAPABILITIES.md) (51 high-level capabilities, `C-<AREA>-<NN>`) and [`ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md`](../../../../ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md) (183 itemized affordances, `D-<AREA>-<NN>`, with Origin axis: native / client-derived / editor-derived). Selectors prefer accessible queries + `data-capability="<id>"` over layout-encoding `data-testid`s. Outbound-byte assertions use SimulatedAdapter strict-match. Wave 2-6 follow-ups scoped as separate issues:
+   - **Wave 2a** ([#411](https://github.com/audiocontrol-org/audiocontrol/issues/411)) — patch parameter write tests (~11 specs)
+   - **Wave 2b** ([#412](https://github.com/audiocontrol-org/audiocontrol/issues/412)) — multi-mode parameter write tests (~4 specs)
+   - **Wave 2c** ([#413](https://github.com/audiocontrol-org/audiocontrol/issues/413)) — tone parameter write tests (~40 specs)
+   - **Wave 3** ([#414](https://github.com/audiocontrol-org/audiocontrol/issues/414)) — display gap tests (~30 specs, no fixtures)
+   - **Wave 4** ([#415](https://github.com/audiocontrol-org/audiocontrol/issues/415)) — library + dialog flow tests (~15 specs)
+   - **Wave 5** ([#416](https://github.com/audiocontrol-org/audiocontrol/issues/416)) — drag-drop tests (~6 specs)
+   - **Wave 6** ([#417](https://github.com/audiocontrol-org/audiocontrol/issues/417)) — cross-cutting tests (front panel + panic + progress, ~7 specs)
+   Plus 4 missing-affordance feature issues separately tracked: [#407](https://github.com/audiocontrol-org/audiocontrol/issues/407) System Parameters page, [#408](https://github.com/audiocontrol-org/audiocontrol/issues/408) Tone Editor polish, [#409](https://github.com/audiocontrol-org/audiocontrol/issues/409) Copy/Derive operations, [#410](https://github.com/audiocontrol-org/audiocontrol/issues/410) Sample Recording research. Closes the gap that pixel-snapshot regression cannot: visual presentation can change while capability contracts stay locked.
 
 ### Dependencies on existing infrastructure (NOT reinvented)
 
@@ -97,6 +116,27 @@ Filed during Phase 0 Tasks 7–9, all driven by code-review or fixture-replay di
 - **[#404](https://github.com/audiocontrol-org/audiocontrol/issues/404)** — Capture targeted S-330 fixtures (`patches-bank-0`, `tones-bank-0`, `play-init`). Surfaced by Task 8: `tones.spec.ts` + `play.spec.ts` skipped because each page's startup SysEx mismatches `load-everything.ndjson`'s patch-area opening. Requires hardware (orion-m4 + S-330 on `Volt 4`). Unblocks the two skipped specs.
 - **[#405](https://github.com/audiocontrol-org/audiocontrol/issues/405)** — Decouple `PatchesPage.loadInitialData` tone preload. Surfaced by Task 8 review. PatchesPage chains `loadPatchBank(0)` → `loadToneBank(0)` for the patch-editor's tone references; this makes a "patches-only" fixture impossible. Either (a) lazy-load tones from PatchEditor on demand, or (b) gate the preload behind a feature flag.
 - **[#406](https://github.com/audiocontrol-org/audiocontrol/issues/406)** — Pre-existing unit test failures excluded from CI. Surfaced by Task 9: 9 failing tests (`s3000xl-client.test.ts` + `akai-translation.test.ts` in sampler-devices, `PluginLibraryBrowser.test.tsx` + `MoveDialog.test.tsx` in editor-core) are excluded via `--exclude` flags in the new CI workflow. These failures pre-date Phase 0. When fixed, drop the `--exclude` flags and the corresponding note in `TESTING-FIXTURES.md`.
+
+#### Phase 0 Task 10 follow-ups (filed 2026-05-10 from the affordance inventory)
+
+The detailed inventory at [`ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md`](../../../../ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md) catalogs 183 affordances. 128 are implemented but untested; 24 are missing entirely. Filed as separate issues so each can land independently.
+
+**Missing-affordance features** (net-new product work; do not slot into Phase 0):
+
+- **[#407](https://github.com/audiocontrol-org/audiocontrol/issues/407)** — System Parameters page (D-SYS, 11 affordances). No `setSystemX` methods on `SSeriesClientInterface` today; protocol research first. Likely Phase 11+ scope.
+- **[#408](https://github.com/audiocontrol-org/audiocontrol/issues/408)** — Tone Editor polish (D-TONE-WAVE-09/10/11, D-TONE-TVA-06, D-TONE-ADV-05/06). Six missing fields, mostly UI placement. Small.
+- **[#409](https://github.com/audiocontrol-org/audiocontrol/issues/409)** — Copy/Derive operations (D-PATCH-13, D-TONE-ADV-01/02/07). Medium; protocol research + cross-cutting feature.
+- **[#410](https://github.com/audiocontrol-org/audiocontrol/issues/410)** — Sample Recording research (D-TONE-ADV-03/04). Resolves to a phase OR a strikethrough depending on whether the protocol supports SysEx-driven recording.
+
+**Test-coverage waves** (extending the capability suite):
+
+- **[#411](https://github.com/audiocontrol-org/audiocontrol/issues/411)** — Wave 2a, patch parameter writes (~11 specs + fixtures)
+- **[#412](https://github.com/audiocontrol-org/audiocontrol/issues/412)** — Wave 2b, multi-mode parameter writes (~4 specs + fixtures)
+- **[#413](https://github.com/audiocontrol-org/audiocontrol/issues/413)** — Wave 2c, tone parameter writes (~40 specs + fixtures)
+- **[#414](https://github.com/audiocontrol-org/audiocontrol/issues/414)** — Wave 3, display gaps (~30 specs, no new fixtures)
+- **[#415](https://github.com/audiocontrol-org/audiocontrol/issues/415)** — Wave 4, library + dialog flows (~15 specs + fixtures + library state setup)
+- **[#416](https://github.com/audiocontrol-org/audiocontrol/issues/416)** — Wave 5, drag-drop tests (~6 specs)
+- **[#417](https://github.com/audiocontrol-org/audiocontrol/issues/417)** — Wave 6, cross-cutting (~7 specs + front-panel fixture)
 
 ---
 

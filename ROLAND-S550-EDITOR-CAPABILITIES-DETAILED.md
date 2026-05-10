@@ -53,35 +53,41 @@ Why this matters for redesign: `native` capabilities are device-driven — their
 
 These affordances *should* exist — the protocol supports them and/or sibling
 affordances of the same shape are implemented — but no UI surface exists in
-the current editor. Each is a feature the editor needs.
+the current editor. Each is a feature the editor needs. Filed as four
+GitHub issues grouped by feature coherence.
 
-| ID | Affordance | Source of truth | Why it's missing |
-|----|-----------|-----------------|------------------|
-| D-PATCH-13 | Patch copy source | `SSeriesBasePatchCommon.copySource` | Field on patch type; never rendered. Patches lack a "copy from another patch" operation. |
-| D-TONE-WAVE-09 | Wave bank assignment (in tone editor) | `SSeriesWaveParams.bank` | Currently editable only inside ImportSamplesDialog, not via the tone editor. |
-| D-TONE-WAVE-10 | Segment top (in tone editor) | `SSeriesWaveParams.segmentTop` | Same as above. |
-| D-TONE-WAVE-11 | Segment length (in tone editor) | `SSeriesWaveParams.segmentLength` | Same as above. |
-| D-TONE-TVA-06 | Top-level tvaLfoDepth (distinct from tva.lfoDepth) | `SSeriesBaseTone.tvaLfoDepth` (s-series-types.ts:258) | Field exists alongside `tva.lfoDepth`; only the latter has a UI control. |
-| D-TONE-ADV-01 | Source tone reference | `SSeriesBaseTone.sourceTone` | Advanced field; not exposed. |
-| D-TONE-ADV-02 | Original sub-tone | `SSeriesBaseTone.origSubTone` | Same. |
-| D-TONE-ADV-03 | Recording threshold | `SSeriesBaseTone.recThreshold` | Suggests the device supports tone recording; no recording UI exists. |
-| D-TONE-ADV-04 | Recording pre-trigger | `SSeriesBaseTone.recPreTrigger` | Same — recording-related. |
-| D-TONE-ADV-05 | Loop tune | `SSeriesBaseTone.loopTune` | Loop-specific tuning offset; not exposed. |
-| D-TONE-ADV-06 | Envelope zoom | `SSeriesBaseTone.envZoom` | Per-tone envelope display preference; not exposed. |
-| D-TONE-ADV-07 | Tone copy source | `SSeriesBaseTone.copySource` | Tones lack a "copy from another tone" operation. |
-| D-SYS-01 | Master tune | `SSeriesBaseSystemParams.masterTune` | No system-parameter UI page exists at all. |
-| D-SYS-02 | Master level | `SSeriesBaseSystemParams.masterLevel` | Same. |
-| D-SYS-03 | System MIDI channel | `SSeriesBaseSystemParams.midiChannel` | Same. |
-| D-SYS-04 | System device ID | `SSeriesBaseSystemParams.deviceId` | Same. |
-| D-SYS-05 | Exclusive enable | `SSeriesBaseSystemParams.exclusiveEnabled` | Same. |
-| D-SYS-06 | Program change enable | `SSeriesBaseSystemParams.progChangeEnabled` | Same. |
-| D-SYS-07 | Control change enable | `SSeriesBaseSystemParams.ctrlChangeEnabled` | Same. |
-| D-SYS-08 | Bender enable (system-level) | `SSeriesBaseSystemParams.benderEnabled` | Same. |
-| D-SYS-09 | Mod wheel enable | `SSeriesBaseSystemParams.modWheelEnabled` | Same. |
-| D-SYS-10 | Aftertouch enable (system-level) | `SSeriesBaseSystemParams.aftertouchEnabled` | Same. |
-| D-SYS-11 | Hold pedal enable | `SSeriesBaseSystemParams.holdPedalEnabled` | Same. |
+| ID | Affordance | Source of truth | Tracked in |
+|----|-----------|-----------------|------------|
+| D-PATCH-13 | Patch copy source | `SSeriesBasePatchCommon.copySource` | [#409](https://github.com/audiocontrol-org/audiocontrol/issues/409) |
+| D-TONE-WAVE-09 | Wave bank assignment (in tone editor) | `SSeriesWaveParams.bank` | [#408](https://github.com/audiocontrol-org/audiocontrol/issues/408) |
+| D-TONE-WAVE-10 | Segment top (in tone editor) | `SSeriesWaveParams.segmentTop` | [#408](https://github.com/audiocontrol-org/audiocontrol/issues/408) |
+| D-TONE-WAVE-11 | Segment length (in tone editor) | `SSeriesWaveParams.segmentLength` | [#408](https://github.com/audiocontrol-org/audiocontrol/issues/408) |
+| D-TONE-TVA-06 | Top-level tvaLfoDepth (distinct from tva.lfoDepth) | `SSeriesBaseTone.tvaLfoDepth` (s-series-types.ts:258) | [#408](https://github.com/audiocontrol-org/audiocontrol/issues/408) |
+| D-TONE-ADV-01 | Source tone reference | `SSeriesBaseTone.sourceTone` | [#409](https://github.com/audiocontrol-org/audiocontrol/issues/409) |
+| D-TONE-ADV-02 | Original sub-tone | `SSeriesBaseTone.origSubTone` | [#409](https://github.com/audiocontrol-org/audiocontrol/issues/409) |
+| D-TONE-ADV-03 | Recording threshold | `SSeriesBaseTone.recThreshold` | [#410](https://github.com/audiocontrol-org/audiocontrol/issues/410) |
+| D-TONE-ADV-04 | Recording pre-trigger | `SSeriesBaseTone.recPreTrigger` | [#410](https://github.com/audiocontrol-org/audiocontrol/issues/410) |
+| D-TONE-ADV-05 | Loop tune | `SSeriesBaseTone.loopTune` | [#408](https://github.com/audiocontrol-org/audiocontrol/issues/408) |
+| D-TONE-ADV-06 | Envelope zoom | `SSeriesBaseTone.envZoom` | [#408](https://github.com/audiocontrol-org/audiocontrol/issues/408) |
+| D-TONE-ADV-07 | Tone copy source | `SSeriesBaseTone.copySource` | [#409](https://github.com/audiocontrol-org/audiocontrol/issues/409) |
+| D-SYS-01 | Master tune | `SSeriesBaseSystemParams.masterTune` | [#407](https://github.com/audiocontrol-org/audiocontrol/issues/407) |
+| D-SYS-02 | Master level | `SSeriesBaseSystemParams.masterLevel` | [#407](https://github.com/audiocontrol-org/audiocontrol/issues/407) |
+| D-SYS-03 | System MIDI channel | `SSeriesBaseSystemParams.midiChannel` | [#407](https://github.com/audiocontrol-org/audiocontrol/issues/407) |
+| D-SYS-04 | System device ID | `SSeriesBaseSystemParams.deviceId` | [#407](https://github.com/audiocontrol-org/audiocontrol/issues/407) |
+| D-SYS-05 | Exclusive enable | `SSeriesBaseSystemParams.exclusiveEnabled` | [#407](https://github.com/audiocontrol-org/audiocontrol/issues/407) |
+| D-SYS-06 | Program change enable | `SSeriesBaseSystemParams.progChangeEnabled` | [#407](https://github.com/audiocontrol-org/audiocontrol/issues/407) |
+| D-SYS-07 | Control change enable | `SSeriesBaseSystemParams.ctrlChangeEnabled` | [#407](https://github.com/audiocontrol-org/audiocontrol/issues/407) |
+| D-SYS-08 | Bender enable (system-level) | `SSeriesBaseSystemParams.benderEnabled` | [#407](https://github.com/audiocontrol-org/audiocontrol/issues/407) |
+| D-SYS-09 | Mod wheel enable | `SSeriesBaseSystemParams.modWheelEnabled` | [#407](https://github.com/audiocontrol-org/audiocontrol/issues/407) |
+| D-SYS-10 | Aftertouch enable (system-level) | `SSeriesBaseSystemParams.aftertouchEnabled` | [#407](https://github.com/audiocontrol-org/audiocontrol/issues/407) |
+| D-SYS-11 | Hold pedal enable | `SSeriesBaseSystemParams.holdPedalEnabled` | [#407](https://github.com/audiocontrol-org/audiocontrol/issues/407) |
 
-**Pattern:** Two clusters dominate the missing list — system parameters (D-SYS, 11 items) and advanced tone fields (D-TONE-ADV, 7 items). Both are shaped as fields-without-UI: the data model has them, the device protocol presumably accepts them, but the editor never built a surface for them. The remaining 6 missing affordances are scattered single-fields.
+**Issue grouping:**
+
+- **[#407](https://github.com/audiocontrol-org/audiocontrol/issues/407) — System Parameters page** (11 affordances). Whole D-SYS area. No client interface methods exist; protocol research required first.
+- **[#408](https://github.com/audiocontrol-org/audiocontrol/issues/408) — Tone Editor polish** (6 affordances). UI placement work for fields the data model already supports.
+- **[#409](https://github.com/audiocontrol-org/audiocontrol/issues/409) — Copy/Derive operations** (4 affordances). Patch + tone copy/derive features.
+- **[#410](https://github.com/audiocontrol-org/audiocontrol/issues/410) — Sample Recording research** (2 affordances). Resolves to a phase OR a strikethrough depending on protocol research outcome.
 
 ---
 
@@ -454,6 +460,23 @@ keep every currently-tested row passing. A redesign that wants to claim "no
 capability loss" must additionally either (a) keep every currently-implemented
 affordance present in the new UI, or (b) explicitly strike rows in this
 document with a PR explaining why the capability no longer applies.
+
+### Test-coverage backlog → wave issues
+
+The 128 untested rows are tracked across 7 test-wave issues, sequenced so each
+wave can land independently:
+
+| Wave | Issue | Scope | Hardware |
+|------|-------|-------|----------|
+| 2a | [#411](https://github.com/audiocontrol-org/audiocontrol/issues/411) | Patch parameter writes — D-PATCH-01..05, 07..12 | Yes (fixture capture) |
+| 2b | [#412](https://github.com/audiocontrol-org/audiocontrol/issues/412) | Multi-mode parameter writes — D-PLAY-04..07 | Yes |
+| 2c | [#413](https://github.com/audiocontrol-org/audiocontrol/issues/413) | Tone parameter writes (wave/pitch/TVF/TVA/LFO/envelope) | Yes |
+| 3 | [#414](https://github.com/audiocontrol-org/audiocontrol/issues/414) | Display-assertion gaps (port pickers, bank buttons, zone editor, loop editor visual) | No |
+| 4 | [#415](https://github.com/audiocontrol-org/audiocontrol/issues/415) | Library + dialog flows (save/load set, import/export, sample editor) | Yes |
+| 5 | [#416](https://github.com/audiocontrol-org/audiocontrol/issues/416) | Drag-drop tests | Yes |
+| 6 | [#417](https://github.com/audiocontrol-org/audiocontrol/issues/417) | Cross-cutting (front-panel DT1, panic, progress, live-edit guard) | Yes (front-panel fixture) |
+
+When a wave lands, the relevant `Test` cells in the detail tables flip from `—` to citations of the new specs.
 
 ---
 
