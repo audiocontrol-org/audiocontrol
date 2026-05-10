@@ -255,7 +255,7 @@ export function LibraryPage() {
 
       {error && (<div className="ac-alert ac-alert-error"><p className="ac-text-error text-sm">{error}</p></div>)}
 
-      <div className="h-[calc(100vh-12rem)]">
+      <div className="h-[calc(100vh-12rem)]" data-capability="C-LIB-01">
         <PluginLibraryBrowser
           plugin={plugin}
           libraryHandle={libraryHandle}

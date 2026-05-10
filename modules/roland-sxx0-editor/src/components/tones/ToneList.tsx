@@ -34,7 +34,7 @@ export function ToneList({ tones, selectedIndex, onSelect, loadedBanks: _loadedB
   const nonEmptyCount = loadedTones.filter((t) => !isToneEmpty(t)).length;
 
   return (
-    <div className="card p-2">
+    <div className="card p-2" data-capability="C-TONE-01">
       <div className="flex items-center justify-between px-2 py-1 mb-2">
         <span className="text-sm font-medium text-s330-text">
           Tones ({nonEmptyCount} of {loadedTones.length} allocated)

@@ -301,7 +301,10 @@ export function PlayPage() {
       </div>
 
       {/* Parts Grid */}
-      <div className="bg-s330-panel border border-s330-accent rounded-md overflow-hidden">
+      <div
+        className="bg-s330-panel border border-s330-accent rounded-md overflow-hidden"
+        data-capability="C-PLAY-01"
+      >
         {/* Parts Grid */}
         <div className="p-4 font-mono text-sm">
           {/* Header row */}
@@ -319,6 +322,8 @@ export function PlayPage() {
             <div
               key={part.id}
               className="grid grid-cols-12 gap-2 py-1.5 px-1 rounded transition-colors hover:bg-s330-accent/10"
+              data-capability="C-PLAY-01"
+              aria-label={`Part ${part.id}`}
             >
               {/* Part label */}
               <div className="col-span-1 text-s330-highlight font-bold">
@@ -334,6 +339,8 @@ export function PlayPage() {
               <div className="col-span-1 text-center">
                 <select
                   data-testid={`part-${index}-channel`}
+                  data-capability="C-PLAY-02"
+                  aria-label={`Part ${part.id} MIDI channel`}
                   value={part.channel}
                   onChange={(e) => handleChannelChange(index, Number(e.target.value))}
                   onClick={(e) => e.stopPropagation()}
@@ -356,6 +363,8 @@ export function PlayPage() {
               <div className="col-span-4">
                 <select
                   data-testid={`part-${index}-patch`}
+                  data-capability="C-PLAY-03"
+                  aria-label={`Part ${part.id} patch`}
                   value={part.patchIndex ?? -1}
                   onChange={(e) => {
                     const value = Number(e.target.value);

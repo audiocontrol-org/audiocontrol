@@ -32,7 +32,7 @@ export function PatchList({ patches, selectedIndex, onSelect, loadedBanks: _load
   const { memoryLayout } = config;
 
   return (
-    <div className="card p-2">
+    <div className="card p-2" data-capability="C-PATCH-01">
       <div className="px-2 py-1 mb-2">
         <span className="text-sm font-medium text-s330-text">Patches</span>
       </div>

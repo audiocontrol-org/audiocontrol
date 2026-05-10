@@ -52,7 +52,7 @@ URL parameters by hand.
 
 **Status:** covered
 
-**Test:** `test/ui/capabilities/connection.spec.ts` :: `"connects to the simulated transport on mount"` — asserts `selectedTransport === 'simulated'` lands the store in `status === 'connected'` after `initialize()` completes.
+**Test:** `test/ui/capabilities/connection.spec.ts` :: `"C-CONN-01: connects to the simulated transport on mount"` — asserts the simulated transport auto-connects on mount and the Disconnect affordance becomes reachable without user input.
 
 ### C-CONN-02 — User can see connection status
 
@@ -62,7 +62,7 @@ URL parameters by hand.
 
 **Status:** covered
 
-**Test:** `test/ui/capabilities/connection.spec.ts` :: `"connection status is surfaced in an accessible region"` — uses `getByRole` to find an element naming the state.
+**Test:** `test/ui/capabilities/connection.spec.ts` :: `"C-CONN-02: connection status is surfaced in an accessible region"` — finds the visible 'Connected' / 'Disconnected' label produced by `MidiStatusDisplay`.
 
 ### C-CONN-03 — User can disconnect from the device
 
@@ -72,7 +72,7 @@ URL parameters by hand.
 
 **Status:** covered
 
-**Test:** `test/ui/capabilities/connection.spec.ts` :: `"disconnect affordance reachable + leaves status disconnected"`.
+**Test:** `test/ui/capabilities/connection.spec.ts` :: `"C-CONN-03: disconnect affordance reachable + leaves status disconnected"`.
 
 ### C-CONN-04 — User can navigate to each editor section
 
@@ -82,7 +82,7 @@ URL parameters by hand.
 
 **Status:** covered (Patches/Tones/Library/Play); n/a (Workflows — not in scope)
 
-**Test:** `test/ui/capabilities/connection.spec.ts` :: `"navigation affordances reach each editor section"` — uses `getByRole('link', { name: <section> })` for each.
+**Test:** `test/ui/capabilities/connection.spec.ts` :: `"C-CONN-04: navigation affordances reach each editor section"` — uses `getByRole('link', { name: <section> })` for each.
 
 ---
 
@@ -96,7 +96,7 @@ URL parameters by hand.
 
 **Status:** covered
 
-**Test:** `test/ui/capabilities/patches.spec.ts` :: `"renders one entry per patch slot"`.
+**Test:** `test/ui/capabilities/patches.spec.ts` :: `"C-PATCH-01: renders one entry per patch slot"`.
 
 ### C-PATCH-02 — User can see each patch's name, slot identifier, and load state
 
@@ -106,7 +106,7 @@ URL parameters by hand.
 
 **Status:** covered
 
-**Test:** `test/ui/capabilities/patches.spec.ts` :: `"each patch entry exposes slot id, name, and load state"`.
+**Test:** `test/ui/capabilities/patches.spec.ts` :: `"C-PATCH-02: each patch entry exposes slot id, name, and load state"`.
 
 ### C-PATCH-03 — User can identify empty patch slots
 
@@ -116,7 +116,7 @@ URL parameters by hand.
 
 **Status:** covered
 
-**Test:** `test/ui/capabilities/patches.spec.ts` :: `"empty slots are distinguishable from loaded ones"`.
+**Test:** `test/ui/capabilities/patches.spec.ts` :: `"C-PATCH-03: empty slots are distinguishable from loaded ones"`.
 
 ### C-PATCH-04 — User can select a specific patch to view its details
 
@@ -126,7 +126,7 @@ URL parameters by hand.
 
 **Status:** covered
 
-**Test:** `test/ui/capabilities/patches.spec.ts` :: `"selecting a patch opens its editor surface"`.
+**Test:** `test/ui/capabilities/patches.spec.ts` :: `"C-PATCH-04: selecting a patch opens its editor surface"`.
 
 ### C-PATCH-05 — User can refresh patches from the device
 
@@ -210,7 +210,7 @@ URL parameters by hand.
 
 **Status:** covered
 
-**Test:** `test/ui/capabilities/tones.spec.ts` :: `"renders one entry per tone slot"`.
+**Test:** `test/ui/capabilities/tones.spec.ts` :: `"C-TONE-01: renders one entry per tone slot"`.
 
 ### C-TONE-02 — User can see each tone's name, slot id, and load state
 
@@ -220,7 +220,7 @@ URL parameters by hand.
 
 **Status:** covered
 
-**Test:** `test/ui/capabilities/tones.spec.ts` :: `"each tone entry exposes slot id, name, and load state"`.
+**Test:** `test/ui/capabilities/tones.spec.ts` :: `"C-TONE-02: each tone entry exposes slot id, name, and load state"`.
 
 ### C-TONE-03 — User can identify empty tone slots
 
@@ -228,7 +228,7 @@ URL parameters by hand.
 
 **Status:** covered
 
-**Test:** `test/ui/capabilities/tones.spec.ts` :: `"empty slots are distinguishable"`.
+**Test:** `test/ui/capabilities/tones.spec.ts` :: `"C-TONE-03: empty slots are distinguishable from loaded ones"`.
 
 ### C-TONE-04 — User can select a specific tone to view its details
 
@@ -236,7 +236,7 @@ URL parameters by hand.
 
 **Status:** covered
 
-**Test:** `test/ui/capabilities/tones.spec.ts` :: `"selecting a tone opens its editor surface"`.
+**Test:** `test/ui/capabilities/tones.spec.ts` :: `"C-TONE-04: selecting a tone opens its editor surface"`.
 
 ### C-TONE-05 — User can refresh tones from the device
 
@@ -326,7 +326,7 @@ The library implements the four-zone storage model: project library, device memo
 
 **Status:** partial — tree presence asserted; node enumeration not yet asserted
 
-**Test:** `test/ui/capabilities/library.spec.ts` :: `"library tree affordance is present"`.
+**Test:** `test/ui/capabilities/library.spec.ts` :: `"C-LIB-01: library tree affordance is present"`.
 
 ### C-LIB-02 — User can see what's in device memory from the library page
 
@@ -414,7 +414,7 @@ The library implements the four-zone storage model: project library, device memo
 
 **Status:** covered
 
-**Test:** `test/ui/capabilities/play.spec.ts` :: `"all 8 multi-mode parts are listed"`.
+**Test:** `test/ui/capabilities/play.spec.ts` :: `"C-PLAY-01: all 8 multi-mode parts are listed"`.
 
 ### C-PLAY-02 — User can see each part's MIDI channel
 
@@ -422,7 +422,7 @@ The library implements the four-zone storage model: project library, device memo
 
 **Status:** covered
 
-**Test:** `test/ui/capabilities/play.spec.ts` :: `"each part shows its MIDI channel"`.
+**Test:** `test/ui/capabilities/play.spec.ts` :: `"C-PLAY-02: each part shows its MIDI channel"`.
 
 ### C-PLAY-03 — User can see each part's assigned patch
 
@@ -430,7 +430,7 @@ The library implements the four-zone storage model: project library, device memo
 
 **Status:** covered
 
-**Test:** `test/ui/capabilities/play.spec.ts` :: `"each part shows its assigned patch"`.
+**Test:** `test/ui/capabilities/play.spec.ts` :: `"C-PLAY-03: each part shows its assigned patch"`.
 
 ### C-PLAY-04 — User can adjust a part's MIDI channel
 
@@ -533,6 +533,12 @@ The library implements the four-zone storage model: project library, device memo
 | Play | 7 | 3 | 0 | 4 | 0 |
 | Cross-cutting | 6 | 0 | 1 | 5 | 0 |
 | **Total** | **51** | **15** | **2** | **34** | **0** |
+
+The covered + partial rows above are the Phase 0 Task 10 wave 1 deliverable
+— 16 capability specs at `modules/roland-sxx0-editor/test/ui/capabilities/`,
+all read/display capabilities that don't need new fixtures. Wave 2 covers
+the action capabilities (parameter writes) and requires new fixture
+captures per the "not yet covered" rows.
 
 The "not yet covered" set is the open coverage gap — one fixture capture
 plus one spec per parameter-edit capability. Until the gap is closed,
