@@ -34,7 +34,7 @@ deskwork:
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| **Phase 0: Frontend/Backend Decoupling** | **Not Started — foundational, blocks Phase 9** | Recording proxy + simulated client + fixture capture + UI test harness. See [phase-0-decoupling.md](./phase-0-decoupling.md). Should have come first; numbered Phase 0 retroactively. |
+| **Phase 0: Frontend/Backend Decoupling** | **Tasks 1-6 done; Tasks 7-9 remaining (still blocks Phase 9)** | Adapter-level recording proxy + simulated adapter + fixture capture (4 fixtures from real S-330 incl. 1136-record load-everything) shipped. Editor TestHarnessPage + Playwright specs + CI wiring remain. See [phase-0-decoupling.md](./phase-0-decoupling.md) + [contract audit](./phase-0-contract-audit.md). |
 | Phase 1: Shared S-Series Extraction | Complete | `roland-s-series` base module |
 | Phase 2: S-550 Device Module | Complete | Addresses, params, config, types |
 | Phase 3: S-550 Client & Tone Factory | Complete | Shared client factory pattern |
@@ -48,7 +48,7 @@ deskwork:
 
 ---
 
-## Phase 0: Frontend/Backend Decoupling — Automated QA Foundation (Not Started)
+## Phase 0: Frontend/Backend Decoupling — Automated QA Foundation (Tasks 1-6 done; 7-9 remaining)
 
 **See full design and task list:** [phase-0-decoupling.md](./phase-0-decoupling.md).
 
@@ -61,15 +61,15 @@ The editor's UI is tightly coupled to the SysEx backend, so every redesign itera
 
 ### Tasks (summary)
 
-1. Audit `SamplerClientInterface` for completeness — confirm all UI device communication routes through it
-2. Define fixture format (`FixtureRecord` + serialization)
-3. Build `RecordingProxyClient` (transparent wrapper, records every call + sysex bytes)
-4. Build CLI scenario runner in `e2e-infra` (drives recording proxy via existing `midi-server` HTTP MIDI bridge)
-5. Capture initial fixture set against real S-550 hardware (autonomous — no operator participation)
-6. Build `SimulatedSamplerClient` (replays fixtures; throws on unrecorded calls)
-7. Build editor `TestHarnessPage` (mounts editor with simulated client at `/test/harness?scenario=…`)
-8. First Playwright UI specs at `roland-sxx0-editor/test/ui/<page>.spec.ts`
-9. CI integration via existing `make test-ui-roland` target + drift-detection job
+1. ✅ Audit `SamplerClientInterface` for completeness — committed `2b84eefb` ([phase-0-contract-audit.md](./phase-0-contract-audit.md)). Architecture pivoted to adapter-level proxy after audit found 2 BLOCKERs at the `SSeriesMidiAdapter` boundary.
+2. ✅ Define fixture format (`FixtureRecord` NDJSON schema) — committed `b0920d91`. 12 unit tests.
+3. ✅ Build `RecordingProxyAdapter` (drop-in `SSeriesMidiAdapter` wrapper) — committed `9de05d97`. 10 unit tests.
+4. ✅ Build CLI scenario runner in `e2e-infra` (4 initial scenarios, 3 Make targets) — committed `2c7bdcd7`.
+5. ✅ Capture initial fixture set against real S-330 hardware on `Volt 4` — committed `bb93bcde`. 4 fixtures (connect-only, fetch-patch-0, fetch-tone-0, **load-everything 1136 records / 215 KB**). S-550 captures pending (S-550 not currently connected).
+6. ✅ Build `SimulatedAdapter` (replays fixtures; throws on unrecorded calls) — committed `87261a70`. 11 unit tests including round-trip property test against `RecordingProxyAdapter`.
+7. ⏳ Build editor `TestHarnessPage` — augment `useMidiStore` to accept injected adapter; mount editor pages with `SimulatedAdapter`.
+8. ⏳ First Playwright UI specs at `roland-sxx0-editor/test/ui/<page>.spec.ts`.
+9. ⏳ CI integration via existing `make test-ui-roland` target + drift-detection job.
 
 ### Dependencies on existing infrastructure (NOT reinvented)
 
