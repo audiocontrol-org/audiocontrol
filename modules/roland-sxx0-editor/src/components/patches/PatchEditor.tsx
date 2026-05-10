@@ -231,7 +231,7 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
   const namedTonesCount = tones.filter(t => t !== undefined && t.name.trim()).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="patch-editor">
       {/* Header */}
       <div className="card">
         <div className="mb-4">

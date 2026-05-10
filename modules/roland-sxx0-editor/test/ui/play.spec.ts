@@ -17,15 +17,20 @@
  * `loadPatchRange(0, 64)` -- 64 patches, not 8), so any post-patch SysEx
  * the editor emits will fail loudly.
  *
- * To unblock this spec we need a `play-init.ndjson` fixture that captures
- * `loadPatchRange(0, 8)` followed by `requestFunctionParameters()` -- the
- * Phase 0 Task 4 CLI runner can record this once we have hardware time.
+ * Fixture inventory note: a `fetch-tone-0.ndjson` fixture exists, but it
+ * covers a single tone request -- the wrong shape for this page (which
+ * needs patches, not tones, before the function-parameter SysEx). A
+ * dedicated `play-init.ndjson` fixture that captures
+ * `loadPatchRange(0, 8)` followed by `requestFunctionParameters()` is
+ * required to un-skip this spec.
+ *
+ * Tracked: https://github.com/audiocontrol-org/audiocontrol/issues/404
  */
 import { test } from '@playwright/test';
 
 test.describe('S-330 Play -- simulated harness', () => {
   test.skip(
-    'pending play-init fixture',
+    'pending play-init fixture (issue #404)',
     () => {
       // No-op body. The describe-level skip keeps the spec discoverable so
       // the follow-up to capture `play-init.ndjson` lands here naturally.

@@ -2,6 +2,8 @@
  * Patch list component - displays patches with loading states
  */
 
+import type { KeyboardEvent } from 'react';
+
 import type { SamplerPatch } from '@/core/midi/SamplerClient';
 import { cn } from '@/lib/utils';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
@@ -51,14 +53,31 @@ export function PatchList({ patches, selectedIndex, onSelect, loadedBanks: _load
             }
           };
 
+          // Outer element is a div with role="button" rather than a real
+          // <button>, because we need to nest the per-row Export <button>
+          // inside it. <button> inside <button> trips React's
+          // validateDOMNesting warning (and is invalid HTML — browsers will
+          // hoist the inner button out unpredictably). Keyboard activation
+          // (Enter / Space) is wired explicitly to match native semantics.
+          const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+            if (isBankLoading) return;
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleClick();
+            }
+          };
           return (
-            <button
+            <div
               key={index}
               data-testid={`patch-item-${index}`}
-              onClick={handleClick}
-              disabled={isBankLoading}
+              role="button"
+              tabIndex={isBankLoading ? -1 : 0}
+              aria-disabled={isBankLoading}
+              onClick={isBankLoading ? undefined : handleClick}
+              onKeyDown={handleKeyDown}
               className={cn(
                 'w-full px-3 py-2 rounded text-left text-sm transition-colors',
+                'focus:outline-none focus:ring-1 focus:ring-s330-highlight',
                 isLoaded ? 'hover:bg-s330-accent/50' : 'hover:bg-s330-accent/20 cursor-pointer',
                 isBankLoading && 'cursor-wait',
                 isSelected
@@ -110,7 +129,7 @@ export function PatchList({ patches, selectedIndex, onSelect, loadedBanks: _load
                   </button>
                 )}
               </div>
-            </button>
+            </div>
           );
         })}
       </div>
