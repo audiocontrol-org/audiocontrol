@@ -23,44 +23,56 @@ The fix is to record how the device actually behaves once per scenario, then rep
 
 ## Architecture
 
+> **Architecture decision from Task 1 audit (see [phase-0-contract-audit.md](./phase-0-contract-audit.md)):** the proxy lives at the **`SSeriesMidiAdapter` layer**, not at `SamplerClientInterface`. The audit found two BLOCKERs that bypass the client interface:
+> 1. `useFrontPanel.ts` creates `FrontPanelController` from the raw adapter — DT1 messages bypass the interface.
+> 2. `useParameterListener.ts` subscribes to inbound device broadcasts via `adapter.onSysEx` — a path that doesn't exist on the interface at all.
+>
+> Both bypasses converge at `SSeriesMidiAdapter`. A single proxy wrapping the adapter (where `useMidiStore` instantiates it) covers the full surface — outbound `send()`, inbound `onSysEx` callbacks, and the front-panel DT1 path.
+
 ```
-┌──────────────────┐                    ┌──────────────────┐
-│   UI / Pages     │                    │   UI / Pages     │
-│   Hooks          │                    │   Hooks          │
-└────────┬─────────┘                    └────────┬─────────┘
-         │ SamplerClientInterface                │ SamplerClientInterface
-         │ (the contract — already exists)       │ (same contract)
-         ▼                                       ▼
-┌──────────────────┐                    ┌──────────────────┐
-│ RealSamplerClient│                    │ SimulatedSampler │
-│  (Web MIDI →     │                    │ Client           │
-│   device)        │                    │ (replay fixtures)│
-└────────┬─────────┘                    └────────▲─────────┘
-         │                                       │ reads
-         ▼ wraps with (CLI only)                 │
-┌──────────────────┐                    ┌──────────────────┐
-│ RecordingProxy   │ records every      │ Fixtures         │
-│ Client           ├───────────────────▶│ (NDJSON per      │
-│ (transparent)    │ request/response   │  scenario)       │
-└────────┬─────────┘                    └──────────────────┘
-         │
-         ▼
-   real S-550 hardware
-   (one capture session per scenario)
+                    UI Layer
+┌──────────────────────────────────────────────────────┐
+│  Pages / Hooks / FrontPanelController /              │
+│  useParameterListener / SamplerClientInterface       │
+└────────────┬─────────────────────────▲───────────────┘
+             │ adapter.send(...)       │ adapter.onSysEx(...)
+             ▼                         │
+┌──────────────────────────────────────────────────────┐
+│           SSeriesMidiAdapter (the contract)          │  ◀── proxy lives here
+└────────────┬─────────────────────────▲───────────────┘
+             │                         │
+       ┌─────┴────────┐         ┌──────┴───────┐
+       │              │         │              │
+       ▼              ▼         ▼              ▼
+┌───────────┐  ┌────────────┐  ┌──────────────────┐
+│  Real     │  │ Recording  │  │  Simulated       │
+│  adapter  │  │ Proxy      │  │  Adapter         │
+│ (Web MIDI │  │ (wraps     │  │  (replays        │
+│  / Node)  │  │  real)     │  │   fixture)       │
+└─────┬─────┘  └─────┬──────┘  └──────────▲───────┘
+      │              │ writes              │ reads
+      │              ▼                     │
+      │        ┌──────────────────────────┴──┐
+      ▼        │  Fixtures (NDJSON)          │
+   real        │  - outbound bytes + ts      │
+   S-550       │  - inbound bytes + ts       │
+   hardware    └─────────────────────────────┘
 ```
 
 ## Module Layout
 
 | Piece | Location | Status |
 |---|---|---|
-| `SamplerClientInterface` | `modules/sampler-devices/src/devices/roland-s-series/s-series-client.ts:172` | **Exists** — audit for completeness in Task 1 |
+| `SSeriesMidiAdapter` (the proxy contract) | `modules/sampler-devices/src/devices/roland-s-series/s-series-types.ts` | **Exists** |
+| `SamplerClientInterface` | `modules/sampler-devices/src/devices/roland-s-series/s-series-client.ts:172` | **Exists** — audit complete in [phase-0-contract-audit.md](./phase-0-contract-audit.md) |
 | Fixture schema (`FixtureRecord`) | `modules/sampler-devices/src/recording/fixture-schema.ts` | New |
-| `RecordingProxyClient` | `modules/sampler-devices/src/recording/recording-proxy.ts` | New |
-| `SimulatedSamplerClient` | `modules/sampler-devices/src/simulation/simulated-client.ts` | New |
+| `RecordingProxyAdapter` | `modules/sampler-devices/src/recording/recording-proxy.ts` | New |
+| `SimulatedAdapter` | `modules/sampler-devices/src/simulation/simulated-adapter.ts` | New |
 | Captured fixtures | `modules/sampler-devices/test/fixtures/s550/<scenario>.ndjson` | New (data) |
 | CLI scenario runner | `modules/e2e-infra/src/node/lib/record-fixtures-roland.ts` | New |
 | Make targets | `Makefile` | Augment |
 | Editor test harness page | `modules/roland-sxx0-editor/src/pages/TestHarnessPage.tsx` | New |
+| Adapter injection in MidiStore | `modules/roland-sxx0-editor/src/stores/useMidiStore.ts` | Augment (wrap real adapter with proxy when in record mode; replace with `SimulatedAdapter` when in test-harness mode) |
 | Playwright UI specs | `modules/roland-sxx0-editor/test/ui/<page>.spec.ts` | New |
 
 **Reuses existing infrastructure** (do not reinvent):
@@ -71,73 +83,83 @@ The fix is to record how the device actually behaves once per scenario, then rep
 
 ## Tasks
 
-### Task 1 — Audit `SamplerClientInterface` for contract completeness
+### Task 1 — Audit `SamplerClientInterface` for contract completeness ✅ COMPLETE
 
-Verify every operation the UI hooks call goes through the interface. Find any direct device access that bypasses the contract (no module should construct its own SysEx and write to a MIDI adapter — everything goes through the client interface).
+Verify every operation the UI hooks call goes through the interface; identify direct device access bypasses; recommend the proxy placement layer.
 
-**Files to audit:**
-- All hooks in `modules/roland-sxx0-editor/src/hooks/`
-- All pages in `modules/roland-sxx0-editor/src/pages/`
-- Any direct `midiAdapter.send(...)` in editor code
+**Deliverable:** [phase-0-contract-audit.md](./phase-0-contract-audit.md)
 
-**Acceptance criteria:**
-- [ ] All editor-side device communication goes through `SamplerClientInterface` (or its `S330ClientInterface` extension)
-- [ ] Any direct `midiAdapter.send` outside the client factory is documented (front panel controller is a known case — confirm it's the only one)
-- [ ] Audit document committed at `docs/1.0/001-IN-PROGRESS/s550-support/phase-0-contract-audit.md` listing every method consumed and which hook/component consumes it
-- [ ] **Duplication audit gate:** confirm no parallel client implementations exist; the front panel controller (`s330-front-panel.ts`) is the one known sibling — assess whether it should be folded into the main interface
+**Key findings:**
+- 35 methods on the interface; 27 with active UI consumers; 8 without (legitimate — `panic`, `setPatchOctaveShift`, etc.)
+- **2 BLOCKERs** for an interface-level proxy: `useFrontPanel.ts` and `useParameterListener.ts` both bypass the interface and operate on the raw `SSeriesMidiAdapter`
+- **Architecture decision: place the proxy at the adapter layer** — both BLOCKERs converge on `SSeriesMidiAdapter`, so wrapping it in `useMidiStore` covers the full device communication surface (outbound + inbound + front-panel DT1) with no interface modifications
+- 7 INFO findings (dev diagnostics, dead type casts, data-structure imports) — none block Phase 0
 
-### Task 2 — Define fixture format
+**Acceptance criteria — met:**
+- [x] All editor-side device communication paths catalogued
+- [x] BLOCKERs identified with file:line references and root-cause analysis
+- [x] Audit document committed at [phase-0-contract-audit.md](./phase-0-contract-audit.md)
+- [x] Proxy-placement decision made and justified (adapter level; see audit §4 + §6)
+- [x] **Duplication audit gate (PASSED):** front-panel controller (`s330-front-panel.ts`) confirmed as the only sibling device-communication path; correctly kept separate (audit §4 Option B); adapter-level proxy covers it without interface contamination
 
-Design the `FixtureRecord` schema for recorded scenarios. Each record captures one method call.
+### Task 2 — Define fixture format (adapter-level)
+
+Design the `FixtureRecord` schema for recorded scenarios. Each record captures one byte-level event at the adapter boundary — either an outbound `send()` call or an inbound `onSysEx` callback firing.
 
 **Schema** (preliminary):
 
 ```typescript
+type FixtureEventKind = 'outbound' | 'inbound';
+
 interface FixtureRecord {
-    sequence: number;          // ordinal within scenario
-    method: string;            // e.g., "requestPatchData"
-    args: unknown[];           // serialized args (JSON-safe)
-    sysexSent: number[][];     // raw bytes per outgoing message
-    sysexReceived: number[][]; // raw bytes per incoming message
-    result: unknown;           // serialized return value
-    timing: {
-        startMs: number;       // ms since scenario start
-        durationMs: number;    // wall time of the call
-    };
-    error?: { name: string; message: string }; // if call threw
+    sequence: number;          // ordinal within scenario, monotonic
+    kind: FixtureEventKind;    // 'outbound' = adapter.send(); 'inbound' = onSysEx fired
+    bytes: number[];           // raw SysEx bytes (0xF0 ... 0xF7)
+    timestampMs: number;       // ms since scenario start (recorded wall time)
+    annotation?: string;       // optional human-readable hint, e.g., "RQD patch 0" — for fixture readability
 }
 
 interface FixtureScenario {
-    name: string;
+    schemaVersion: 1;
+    name: string;              // e.g., "s550-load-empty"
     device: 's330' | 's550';
-    deviceId: number;
+    deviceId: number;          // SysEx device ID 0-15
     capturedAt: string;        // ISO timestamp
     bridgeVersion?: string;    // midi-server version if applicable
-    records: FixtureRecord[];
+    description?: string;      // free-text purpose
+    records: FixtureRecord[];  // ordered byte-level event log
 }
 ```
 
+**Why byte-level, not method-level:** the audit (Task 1) established the proxy lives at `SSeriesMidiAdapter`. Method-level recording would miss `FrontPanelController` DT1 sends and `useParameterListener` inbound broadcasts. Byte-level captures everything by definition.
+
+**Replay model:** `SimulatedAdapter` consumes the records in order. On `send(bytes)` it asserts the next outbound record matches; for inbound records it fires registered `onSysEx` callbacks at the recorded timing (or as fast as possible, depending on `latencyMode`). This preserves both the request/response shape AND the device's spontaneous broadcasts.
+
 **Acceptance criteria:**
-- [ ] `fixture-schema.ts` exports the types + JSON serialization helpers (`writeFixture(scenario)` and `readFixture(path)`)
-- [ ] Format chosen to support streaming (NDJSON per record) so long scenarios don't OOM
-- [ ] Schema versioned (`schemaVersion: 1` field) so future evolution doesn't break replay
-- [ ] Unit tests for the round-trip: record → serialize → deserialize → assert structural equality
+- [ ] `modules/sampler-devices/src/recording/fixture-schema.ts` exports types + JSON serialization helpers (`writeFixture(scenario, path)` and `readFixture(path)`)
+- [ ] NDJSON streaming format for `records` (one record per line) so long scenarios don't OOM during write or read
+- [ ] Schema versioned (`schemaVersion: 1`) so future evolution doesn't break replay
+- [ ] Unit tests for round-trip: build scenario in memory → serialize → deserialize → assert structural equality
+- [ ] **Duplication audit gate:** confirm no existing fixture format in `e2e-infra` or elsewhere; check `modules/e2e-infra/helpers/library-fixtures.ts` for naming collisions
 
-### Task 3 — Build `RecordingProxyClient`
+### Task 3 — Build `RecordingProxyAdapter`
 
-Generic wrapper that implements `SSeriesClientInterface<TPatch, TTone, TPatchCommon>` by delegating to a real client and recording every call. Persists records to a fixture file.
+Wraps a real `SSeriesMidiAdapter` and records every byte-level event (outbound + inbound) to a fixture writer.
 
 **Implementation strategy:**
-- Take a real `SSeriesClientInterface` instance + a fixture writer in the constructor
-- Use a Proxy or explicit per-method delegation (explicit preferred — TypeScript catches signature drift)
-- Each method: capture timestamp, call real, capture result/error, append `FixtureRecord`
-- Bytes-on-the-wire capture: wrap the underlying `midiAdapter` with a sniffer, OR have the real client emit byte events the proxy listens to
+- Implements the same `SSeriesMidiAdapter` interface (drop-in substitute)
+- Constructor takes the real adapter + a fixture writer
+- `send(bytes)`: appends `{ kind: 'outbound', bytes, timestampMs, ... }` then delegates to real adapter
+- `onSysEx(callback)`: registers the callback; when the real adapter fires its own `onSysEx` listeners, the proxy intercepts, appends `{ kind: 'inbound', bytes, timestampMs, ... }`, and forwards to all registered callbacks
+- All other adapter methods (e.g., `removeSysExListener`) delegate transparently
 
 **Acceptance criteria:**
-- [ ] `RecordingProxyClient` implements every method on the interface (TypeScript enforces — no `any` shortcuts)
-- [ ] Records include both call-level data (method, args, result) and byte-level data (raw sysex sent/received)
-- [ ] Unit tests using a mock real client that returns canned responses; verify recording matches input exactly
-- [ ] **Duplication audit gate:** confirm no existing recording/proxy infrastructure in `e2e-infra` or elsewhere
+- [ ] `RecordingProxyAdapter` implements every method on `SSeriesMidiAdapter` (TypeScript enforces — no `any` shortcuts)
+- [ ] Records include both outbound and inbound byte streams in interleaved order
+- [ ] Optional annotation API: `proxy.annotate("RQD patch 0")` injects a human hint into the next record (helps fixture readability)
+- [ ] `proxy.flush()` and `proxy.close()` for graceful fixture persistence
+- [ ] Unit tests: instantiate proxy with a mock adapter that emits canned outbound/inbound events; verify the fixture writer received the expected sequence
+- [ ] **Duplication audit gate:** `grep -rn "MidiAdapter\|midi-adapter" modules/` to confirm no parallel adapter wrapper exists; check `modules/midi-core/` for existing transport instrumentation
 
 ### Task 4 — Build CLI scenario runner
 
@@ -172,42 +194,46 @@ Run `make record-fixtures-roland-s550` against the connected device. Verify fixt
 - [ ] Fixture sizes are reasonable (load-all scenarios should be a few MB at most given 32 patches × 512 bytes + 64 tones × 256 bytes + minimal wave data)
 - [ ] Spot-check: pick one fixture, manually verify the first few records have plausible SysEx structure (model ID, address bytes, checksum)
 
-### Task 6 — Build `SimulatedSamplerClient`
+### Task 6 — Build `SimulatedAdapter`
 
-Implements `SSeriesClientInterface<TPatch, TTone, TPatchCommon>`; constructor takes a fixture (path or pre-loaded scenario). For each method call:
-1. Look up the next matching record (by method name + args match)
-2. Optionally simulate latency (configurable, defaults to recorded timing or zero)
-3. Return the recorded result, or throw the recorded error
-4. **Throw on unrecorded calls** (no silent fallback, per project rule "no fallbacks/mock data outside test code" — this IS test code, but the throw is intentional to surface scenario gaps)
+Implements `SSeriesMidiAdapter`; constructor takes a fixture (path or pre-loaded scenario). Replays the recorded byte stream:
+
+1. On `send(bytes)`: pull the next outbound record from the fixture; assert `bytes` matches; if mismatch, throw `SimulatedAdapterUnexpectedSendError` with diff context
+2. After the matching outbound, scan ahead for any consecutive inbound records (the device's response) and dispatch them to all registered `onSysEx` listeners — either immediately, at recorded relative timing, or at a fixed latency (configurable)
+3. **Throw on unrecorded sends** (no silent fallback; surfaces scenario gaps loudly)
 
 **Implementation strategy:**
-- Linear scan with sequence index — scenarios are ordered call sequences
-- Lenient args matching: structural equality with optional whitelist of fields to ignore (timestamps, etc.)
-- Configurable strict mode: in strict mode, calls must match the exact recorded sequence; in lenient mode, look ahead for matching method+args
+- Linear scan with read-cursor over the records array
+- Outbound matching: byte-for-byte equality against the next outbound record
+- Inbound dispatch: after each outbound match, drain consecutive inbound records into the listener callbacks
+- Configurable latency: `config.latencyMode: 'none' | 'recorded' | { fixedMs: number }` — `'none'` for fast tests, `'recorded'` for timing-sensitive tests
 
 **Acceptance criteria:**
-- [ ] Implements every method on the interface (TypeScript enforces)
-- [ ] Throws clearly on unrecorded calls: `SimulatedClientUnrecordedCallError: requestPatchData(99) not in fixture s550-load-empty (records exhausted)`
-- [ ] Optional latency simulation (`config.latencyMode: 'none' | 'recorded' | { fixedMs: number }`)
-- [ ] Unit tests: load fixture, call methods in order, assert returns match recorded results
-- [ ] Replay fidelity test: load a real fixture, replay every recorded call, assert byte-equality with the recording
+- [ ] Implements every method on `SSeriesMidiAdapter` (TypeScript enforces)
+- [ ] Throws clearly on unexpected sends: `SimulatedAdapterUnexpectedSendError: send([F0 41 ...]) at sequence 42 does not match recorded outbound [F0 41 ...] (first diff at byte 5)`
+- [ ] Throws clearly on records exhausted: `SimulatedAdapterRecordsExhausted: send([...]) but fixture has no more outbound records`
+- [ ] Latency simulation modes work: `'none'` fires inbound synchronously; `'recorded'` schedules at recorded delta; `{fixedMs}` schedules at fixed delay
+- [ ] Unit tests: load synthetic fixture, drive adapter through expected send sequence, assert listener callbacks fire with correct bytes
+- [ ] **Replay fidelity test:** load a real captured fixture, drive `S330Client` / `S550Client` against the simulated adapter through the same operations the recording captured, assert listener callbacks deliver the right responses (round-trip property test)
 
 ### Task 7 — Build editor `TestHarnessPage`
 
-Mounts the editor with `SimulatedSamplerClient` instead of the real one. Configurable via URL query param: `/test/harness?scenario=s550-load-populated&device=s550`.
+Mounts the editor with `SimulatedAdapter` swapped in at the MidiStore boundary instead of the real adapter. Configurable via URL query: `/test/harness?scenario=s550-load-populated&device=s550&page=patches`.
 
 **Implementation strategy:**
 - New page in `modules/roland-sxx0-editor/src/pages/TestHarnessPage.tsx`
-- Loads fixture file (fetched as static asset, served from public/test-fixtures/)
-- Constructs `SimulatedSamplerClient` from the fixture
-- Renders the rest of the editor with the simulated client injected via `DeviceConfigContext` (or a new test-only context provider)
+- Loads fixture file (fetched as static asset, served from `public/test-fixtures/`)
+- Constructs `SimulatedAdapter` from the fixture
+- Augments `useMidiStore` to accept an injected adapter for test mode (so the rest of the app — `FrontPanelController`, `useParameterListener`, `SamplerClientInterface` consumers — all transparently use the simulated adapter)
+- Renders the requested editor page (HomePage, PatchesPage, TonesPage, PlayPage, WorkflowsPage, LibraryPage) inside the harness shell
 - Routes `/test/harness/*` map to the harness page
 
 **Acceptance criteria:**
-- [ ] Harness page mounts each editor page (HomePage, PatchesPage, TonesPage, PlayPage, WorkflowsPage, LibraryPage) with the simulated client
-- [ ] Loading the harness with a scenario shows the editor populated with the recorded data — patches/tones display, dialogs open, parameters render
-- [ ] No production code path imports anything from the harness (test-only code stays in test-only files)
-- [ ] **Duplication audit gate:** confirm the harness reuses production page components — does NOT fork them
+- [ ] Harness page can mount each editor page with the simulated adapter
+- [ ] Loading the harness with a scenario shows the editor populated with the recorded data — patches/tones display, dialogs open, parameters render — all without browser MIDI permissions
+- [ ] No production code path imports anything from the harness (test-only code stays in test-only files / behind `import.meta.env.MODE !== 'production'` guards if needed)
+- [ ] `useMidiStore` adapter injection is type-safe and only available in non-production builds (or behind a feature flag for safety)
+- [ ] **Duplication audit gate:** confirm the harness reuses production page components — does NOT fork them; check that no editor-page logic is duplicated in the harness
 
 ### Task 8 — First Playwright UI specs
 
