@@ -77,7 +77,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland build-midi-macro-bridge
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550
 
 build: $(ALL_STAMPS)
 
@@ -151,6 +151,28 @@ test-e2e-roland-device-library: $(ROLAND_SXX0_EDITOR) check-midi-server ensure-p
 # Roland UI navigation tests (no device required)
 test-e2e-roland-ui: $(ROLAND_SXX0_EDITOR) ensure-playwright
 	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && pnpm test:e2e $(ARGS)"
+
+# ---------------------------------------------------------------------------
+# Phase 0 — Roland fixture recording (CLI, requires connected S-330/S-550)
+# ---------------------------------------------------------------------------
+# Drives a real device through scripted scenarios via easymidi, records every
+# byte at the SSeriesMidiAdapter boundary, writes a NDJSON fixture for replay
+# in UI tests. Captured fixtures live in
+# modules/sampler-devices/test/fixtures/<device>/<scenario>.ndjson.
+#
+# Usage:
+#   make record-fixtures-roland ARGS="--device s550 --scenario load-everything --output modules/sampler-devices/test/fixtures/s550/load-everything.ndjson"
+#   make record-fixtures-roland-s550 ARGS="--scenario fetch-tone-0 --output modules/sampler-devices/test/fixtures/s550/fetch-tone-0.ndjson"
+#   make record-fixtures-roland ARGS="--list-scenarios"
+#   make record-fixtures-roland ARGS="--list-ports"
+record-fixtures-roland: $(SAMPLER_DEVICES)
+	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/e2e-infra && tsx src/node/lib/record-fixtures-roland.ts $(ARGS)"
+
+record-fixtures-roland-s550: $(SAMPLER_DEVICES)
+	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/e2e-infra && tsx src/node/lib/record-fixtures-roland.ts --device s550 $(ARGS)"
+
+record-fixtures-roland-s330: $(SAMPLER_DEVICES)
+	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/e2e-infra && tsx src/node/lib/record-fixtures-roland.ts --device s330 $(ARGS)"
 
 # ---------------------------------------------------------------------------
 # S3000XL E2E Tests
