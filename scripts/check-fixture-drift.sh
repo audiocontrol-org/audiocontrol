@@ -16,7 +16,8 @@
 # Exit codes:
 #   0 — every recapture matched the committed fixture
 #   1 — at least one fixture drifted, missing, or recapture failed
-#   2 — usage error
+#   2 — usage error (bad flag, or --scenario <name> matched no fixtures —
+#       almost always a typo; available scenario names are printed)
 #
 # Notes:
 #   * Comparison ignores the `capturedAt` timestamp on the scenario header
@@ -145,6 +146,18 @@ list_scenarios_for_device() {
     fi
 }
 
+# Same as list_scenarios_for_device but ignores $SCENARIO and always lists every
+# committed *.ndjson under fixtures/<dev>/. Used for the "did you mean..."
+# helper when the operator passed a typo via --scenario.
+list_all_scenarios_for_device() {
+    local dev="$1"
+    local dir="$FIXTURES_ROOT/$dev"
+    if [ ! -d "$dir" ]; then
+        return 0
+    fi
+    ( cd "$dir" && ls -1 *.ndjson 2>/dev/null | sed 's/\.ndjson$//' || true )
+}
+
 # Strip the volatile fields from a fixture so two captures of the same
 # scenario can be compared verbatim.
 #   * Scenario header (line 1): drop `capturedAt` and the trailing scenario-level
@@ -208,6 +221,13 @@ CHANGED=()
 MISSING=()
 FAILED=()
 
+# Track total scenarios we actually processed across the whole run. If the
+# operator passed --scenario <name> (non-"all") and we never matched it for
+# any selected device, that is almost always a typo and we want to fail
+# loudly instead of exiting 0 with a misleading "all clear" summary.
+TOTAL_SCENARIOS_SEEN=0
+ALL_AVAILABLE_SCENARIOS=()
+
 echo "=== Roland fixture drift check ==="
 echo "Repo:       $REPO_ROOT"
 echo "Fixtures:   $FIXTURES_ROOT"
@@ -222,11 +242,19 @@ for dev in "${DEVICES[@]}"; do
         [ -n "$s" ] && SCENARIOS+=("$s")
     done < <(list_scenarios_for_device "$dev")
 
+    # Always remember the full set of available scenarios for this device so
+    # we can show the operator a useful list on a typo.
+    while IFS= read -r s; do
+        [ -n "$s" ] && ALL_AVAILABLE_SCENARIOS+=("$dev/$s")
+    done < <(list_all_scenarios_for_device "$dev")
+
     if [ "${#SCENARIOS[@]}" -eq 0 ]; then
         echo "[$dev] no committed scenarios found — skipping"
         echo ""
         continue
     fi
+
+    TOTAL_SCENARIOS_SEEN=$(( TOTAL_SCENARIOS_SEEN + ${#SCENARIOS[@]} ))
 
     echo "[$dev] scenarios: ${SCENARIOS[*]}"
     mkdir -p "$WORK_DIR/$dev"
@@ -274,6 +302,29 @@ for dev in "${DEVICES[@]}"; do
     done
     echo ""
 done
+
+# ---------------------------------------------------------------------------
+# Typo guard
+# ---------------------------------------------------------------------------
+#
+# If --scenario <name> (anything other than "all") matched zero fixtures across
+# every selected device, that's a usage error masquerading as success. Fail
+# loudly so the operator notices instead of trusting a misleading green light.
+# When --scenario is "all", an empty result is legitimate (e.g. a device dir
+# with no fixtures yet, like S-550 in early Phase 0).
+
+if [ "$SCENARIO" != "all" ] && [ "$TOTAL_SCENARIOS_SEEN" -eq 0 ]; then
+    echo "ERROR: --scenario '$SCENARIO' matched no committed fixtures for device='$DEVICE'." >&2
+    if [ "${#ALL_AVAILABLE_SCENARIOS[@]}" -gt 0 ]; then
+        echo "Available scenarios for the selected device set:" >&2
+        for s in "${ALL_AVAILABLE_SCENARIOS[@]}"; do
+            echo "  $s" >&2
+        done
+    else
+        echo "(No committed fixtures exist yet for device='$DEVICE'.)" >&2
+    fi
+    exit 2
+fi
 
 # ---------------------------------------------------------------------------
 # Summary

@@ -20,9 +20,10 @@ jobs:
       DEVENV_RUN: bash -c
       # Pin Playwright browsers cache path so we can hit the actions cache.
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.cache/ms-playwright
-      # Tell pnpm to skip postinstall scripts that need optional native bindings.
-      # easymidi (native ALSA bindings) is only needed for hardware fixture capture,
-      # not for the UI harness specs we run in CI.
+      # Set for downstream tools that detect CI (Playwright configs use it for
+      # `forbidOnly` / `retries`; vitest configs may use it for reporter
+      # selection). GitHub Actions sets this automatically too — declaring it
+      # here just makes the contract explicit.
       CI: '1'
 
     steps:
@@ -36,6 +37,11 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
+        with:
+          # Belt-and-braces with `packageManager` in root package.json: explicit
+          # pin in the workflow keeps this readable + survives any future
+          # packageManager-field churn.
+          version: 8
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -66,13 +72,26 @@ jobs:
       - name: Build all modules
         run: make
 
-      # Sampler-devices Phase 0 unit tests must pass — they cover the recording /
-      # replay surface that the harness specs depend on. Other modules currently
-      # have pre-existing unit failures (sampler-library chopper / sample-schema,
-      # sampler-devices s3000xl-client) tracked separately; once those are
-      # green this step should be widened to `pnpm test` across the workspace.
-      - name: Unit tests — sampler-devices recording / replay
-        run: pnpm --filter @audiocontrol/sampler-devices exec vitest run test/unit/recording
+      # Phase 0 unit tests for the modules whose surface we modified:
+      #   * sampler-devices  — recording / replay / simulation infra + S-330/S-550
+      #     SysEx, minus the s3000xl/ subtree which has 3 pre-existing failures
+      #     (s3000xl-client REPLY-error handling + akai-translation translation
+      #     drift) tracked separately in #406.
+      #   * roland-sxx0-editor — including the simulated-transport tests added
+      #     in Phase 0 Task 7.
+      #   * editor-core — minus PluginLibraryBrowser + MoveDialog tests (6
+      #     pre-existing failures predating Phase 0). Tracked in #406.
+      # Each step is split out so the exclude scope is local and obvious.
+      # Once #406 is resolved, drop the `--exclude` flags and eventually
+      # collapse back to a single `pnpm test` across the workspace.
+      - name: Unit tests — sampler-devices (excluding s3000xl pre-existing failures)
+        run: pnpm --filter @audiocontrol/sampler-devices exec vitest run --exclude '**/s3000xl/**'
+
+      - name: Unit tests — roland-sxx0-editor
+        run: pnpm --filter @audiocontrol/roland-sxx0-editor test
+
+      - name: Unit tests — editor-core (excluding PluginLibraryBrowser/MoveDialog pre-existing failures)
+        run: pnpm --filter @audiocontrol/editor-core exec vitest run --exclude '**/{PluginLibraryBrowser,MoveDialog}.test.tsx'
 
       - name: UI tests — Roland (Phase 0 simulated harness)
         run: make test-ui-roland
