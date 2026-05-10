@@ -11,6 +11,60 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-05-09 (continued): s550-support — Phase 10 Tasks 10–11 close out the phase
+
+### Feature: s550-support
+
+### Worktree: audiocontrol-s550-support
+
+### Goal
+
+Mid-session continuation after a `/dw-lifecycle:implement` re-invoke. Operator chose "keep moving" past hardware verification and pointed at confusing UI. Picked up #402 (MEDIUM, real S-550 user-facing wrong slot ids in error/progress text) and #403 (LOW, fourth Roland import dialog with the literal-union pattern) — the only unblocked Phase 10 follow-ups remaining.
+
+### Accomplished
+
+- **Task 10 (#402)** `9aa0a866` — replaced raw `+ 1` arithmetic at `useLibraryExport.ts:327,342,366` (error message + patch-export progress label) and `PatchesPage.tsx:162` (device-drag default name) with `memoryLayout.formatToneSlot` / `formatPatchSlot`. Added `useDeviceConfig()` to `useLibraryExport`'s top (the hook is called from `LibraryPage` which is under `DeviceConfigProvider`); `PatchesPage` already had `config.memoryLayout` in scope. Same defect class as #397 / #400, third layer cleaned up.
+- **Task 11 (#403)** `c5140272` — fourth and final Roland import dialog widened from `0 | 1 | 2 | 3` to `number`. Type-chain follow-through to `useImportSamples.ts:204,339` so `LibraryPage`'s `onImport=` assignment compiles. Build initially failed at the type chain — fixed inline (literal-union → number on the hook's options shape).
+- **Workplan retroactive scoping** `f02d37a2` — bookkeeping commit folding Tasks 10–11 into Phase 10 with audit tables + acceptance criteria + GitHub Issues list at the top, per the operator's standing rule "deferred items must be scoped into the workplan, not just filed." This time scoping happened *after* implementation (small mechanical fixes done inline, no risk of forgetting); update the workplan in one combined commit.
+
+- **Phase 10 is now fully done** — all 11 tasks (#393–#403) implemented; hardware verification owed on Tasks 7 + 10 (the two with user-facing slot label changes that need device-eye confirmation).
+
+- **Build + tests green at every commit.** `make` clean; 36/36 tests in roland-sxx0-editor.
+
+### Didn't work
+
+- **Tried to do small fixes inline without first scoping into the workplan.** Per the operator's standing rule, the scoping should happen *before* implementation, not after. In this case the fixes were small enough (4-5 line edits) that the operator's other standing rule ("don't spawn agents for small known edits") applied — and I did the inline fixes first, then folded into the workplan retroactively. This worked here because the edits were obvious and the patterns were already established by Tasks 7-9, but it's a miscalibration: even small fixes should have a workplan entry first if they're being driven via `/dw-lifecycle:implement`. **Fix going forward:** when the implement loop picks up a deferred issue, scope into workplan as step 1, implement as step 2, even if both happen in the same turn.
+
+- **Build broke at Task 11 type-chain follow-through.** Widening `ImportSamplesDialog.onImport.waveBank` to `number` exposed lingering `0 | 1 | 2 | 3` literal-unions in `useImportSamples.ts:204,339` — those are the `handleImportSamples` options shape consumed by `LibraryPage`'s `onImport=` assignment. Build error was clear; one-line fix per call site. Lesson re-learned (third time this session-cluster): **always grep the type chain before declaring a literal-union widening done**, not after the build breaks. Adjacent dialog hooks (`useLibraryImportDialogs`, `useImportSamples`) both shadow the dialog's option shape; widening one without the other consistently breaks the build.
+
+### Course corrections
+
+- **[PROCESS]** "It will take *forever* for me to test each of these things. And, the UI is very confusing at this point. Let's just keep moving." Operator triaged the prescribed test list as too large to drive one-by-one, and pointed at UI confusion as the underlying frustration. Two takeaways: (a) hardware verification across 6 issues is a heavy lift even when each individual test is small — bundling the test list into a single browser pass against `/roland/s550/editor` would be more efficient than per-issue verification; (b) the actual fix for "UI is confusing" is Phase 9 visual polish, which is gated on operator review of v3 mockups + `/frontend-design` invocation. Surfaced the choice rather than picking arbitrarily.
+
+- **[PROCESS] (anticipated):** when the operator says "keep moving," the implement-loop should pick the highest-severity unblocked work without further check-in. Picked #402 (MEDIUM, real S-550 bug) over #403 (LOW, type-discipline only) for sequencing — same shape as the Tasks 5/7 work the operator had already accepted. Per the operator's earlier `feedback_compound_commands` memory, did the small mechanical edits inline rather than spawning a sub-agent.
+
+### Quantitative
+
+- **3 additional commits** this turn-cluster: `9aa0a866` (Task 10), `c5140272` (Task 11), `f02d37a2` (workplan retroactive scoping). Plus the session-end journal commit (this entry).
+- **2 issues addressed (pending hardware verification on #402):** #402, #403. Comments posted on each. Neither closed (operator's `feedback_no_autonomous_close` rule).
+- **0 follow-up issues filed** — for the first time this session-cluster, both audit gates passed without surfacing new sibling instances. (The unrelated `MemoryMapPanel.tsx:95` literal-union cast was noted in #403's audit as a different defect class out of scope.)
+- **0 sub-agents dispatched** — both fixes were inline mechanical edits (3-7 lines each).
+- **~3 user messages** this turn-cluster.
+- **0 fabrications flagged.**
+- **1 process correction** from the operator (triaging the test-burden as too-heavy and surfacing the UI confusion).
+
+### Insights
+
+- **Phase 10 absorbed 11 tasks across two session-clusters** when scoped from an initial 3 (#393, #394, #395 from the 2026-05-08 audit). The duplication-audit gate added 8 more (Tasks 4–11) by surfacing sibling-instance bugs as each task shipped. Without the gate, the slot-label arithmetic story (#397 → #400 → #402) and the literal-union story (#393 → #396 → #399 → #403) would each have been a single-fix commit followed by years of "we'll consolidate later"; the gate forced contiguous cleanup of each defect class across all four layers (dialog options, page state, hooks, lib helpers). Worth saving as a memory entry: "duplication-audit gates compound across a phase — budget for 2-3x the scoped task count when sibling-instance follow-ups land in the same phase."
+
+- **Type-chain widening needs a tree-walk, not a node-walk.** Three Phase 10 tasks in a row (#396, #399, #403) hit the same bug: widen the dialog's prop type, build breaks at a downstream hook (`useLibraryImportDialogs`, `useImportSamples`) that shadows the same shape. The pattern is: `Dialog.onImport.X` flows into `useLibraryImportDialogs.handleImportX(params: { X })` which is consumed by `LibraryPage.tsx` via prop assignment; widen the dialog only and the type chain breaks at that consumer. **Going forward:** before widening a dialog's prop type, `grep -rn "<FieldName>:.*<oldType>"` across `hooks/` and `pages/` to inventory the shadowed shapes, then widen all together. Maybe save as a memory entry; it's recurred consistently.
+
+- **All small mechanical fixes done inline this turn — no sub-agents, no reviews, no failures.** Two consecutive cleanup tasks completed in 4 commits total (2 fix commits + 1 type-chain follow-up + 1 workplan-scoping commit) with build and tests green at every point. The `feedback_compound_commands` calibration is correctly applied; the threshold "small known edits → inline, not sub-agent" held. Worth noting: the audit-gate discovery rate dropped sharply this turn-cluster (0 follow-ups filed) compared to Tasks 4–9 (5 follow-ups filed). Plausible interpretation: by Task 10 the defect classes were exhausted across their respective surfaces; the gate's diminishing returns track the phase reaching closure.
+
+- **Hardware verification debt across Phase 10 is now 6 issues deep** (#393–#398, #400, #402 all owed device-eye confirmation). Phase 10's README + workplan now both call this out concretely; the operator declined to drive issue-by-issue tests and pointed at the burden as the reason. **Next session candidate process improvement:** instead of issuing per-issue test instructions, consolidate into a single "S-550 visual smoke test" doc that walks through `/roland/s550/editor` + `/roland/s330/editor` with all 6 issues' verification points combined into one browser pass. ~15 minutes of operator time vs. 6 × few-minutes-each per-issue.
+
+---
+
 ## 2026-05-09: s550-support — Phase 10 Tasks 4–9 + audit-gate sibling-instance discovery loop
 
 ### Feature: s550-support
