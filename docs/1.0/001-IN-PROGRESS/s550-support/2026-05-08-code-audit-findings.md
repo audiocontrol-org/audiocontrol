@@ -190,3 +190,77 @@ Impact: the project now has better boundary coverage for the underlying layout l
 1. Apply the same memory-layout-driven bank-option source to `ImportLibraryPatchDialog` so all import dialogs share one bank-selection rule. **Status:** filed as [#396](https://github.com/audiocontrol-org/audiocontrol/issues/396).
 2. Replace arithmetic tone-slot labels in `ImportSampleDialog` with `memoryLayout.formatToneSlot(toneIndex)`. **Status:** fixed inline as part of Phase 10 Task 1 follow-up (commit accompanying this audit-doc update). Sibling arithmetic-label bugs in `ToneZoneEditor.tsx:196` and `PlayPage.tsx:383` filed as [#397](https://github.com/audiocontrol-org/audiocontrol/issues/397) — same defect class, different surfaces, latent for S-330 banks 2-4 too.
 3. Add component or UI-harness coverage around the import dialogs, not just the layout helper. **Status:** absorbed into Phase 9 Task 6 (UI-test-harness prerequisite — see workplan).
+
+---
+
+## 2026-05-09 Second Follow-Up Audit
+
+Scope reviewed: latest implementation on `feature/s550-support` after the follow-up fixes through commit `f02d37a2`, focusing on the diff from `origin/feature/s550-support` to `HEAD`.
+
+### Status of Prior Follow-Up Findings
+
+- `ImportLibraryPatchDialog` now sources wave-bank options from `memoryLayout.getWaveBanksForTone(mapping.targetSlot)` and clamps the selected bank when the target slot crosses the S-550 block boundary:
+  - [modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx:531)
+- `ImportSampleDialog` now uses `memoryLayout.formatToneSlot(toneIndex)` for the dialog title:
+  - [modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:202)
+- `ImportLibraryToneDialog` and `ImportSamplesDialog` have both been widened to `waveBank: number` on their editor-side contracts:
+  - [modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:49)
+  - [modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:36)
+- Slot-label arithmetic cleanup was propagated into additional surfaces, including `PlayPage` patch labels and `useLibraryExport` progress/error copy:
+  - [modules/roland-sxx0-editor/src/pages/PlayPage.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/pages/PlayPage.tsx:377)
+  - [modules/roland-sxx0-editor/src/hooks/useLibraryExport.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/hooks/useLibraryExport.ts:333)
+
+### New Findings
+
+#### 1. Medium — `ImportSamplesDialog` still bypasses the authoritative empty-slot helpers and mislabels loaded-empty ranges as overwrites
+
+The dialog’s overwrite affordances still treat “slot object exists” as “occupied” instead of reusing `isToneSlotEmpty` / `isPatchSlotEmpty` from `slot-allocation.ts`.
+
+Tone-range labeling still uses raw `undefined` checks:
+
+- [modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:311)
+
+Patch-slot/range labeling still uses raw `undefined` checks:
+
+- [modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:442)
+- [modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:453)
+
+But the authoritative rules already exist here:
+
+- `isToneSlotEmpty`:
+  - [modules/roland-sxx0-editor/src/lib/slot-allocation.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/lib/slot-allocation.ts:101)
+- `isPatchSlotEmpty`:
+  - [modules/roland-sxx0-editor/src/lib/slot-allocation.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/lib/slot-allocation.ts:112)
+
+Impact: once device data is loaded, empty-but-allocated slots can still be shown as “will overwrite” in the sample-bundle import flow even though the shared allocation logic would consider them available. This is the same duplication/drift class already fixed in other surfaces.
+
+#### 2. Low — Patch export still reimplements dialog opening in `PatchesPage` instead of using the shared imperative opener
+
+`useLibraryExport` already exposes `openExportPatchDialog`, but `PatchesPage` still does its own connect + lookup + drag-payload shim through `handleDropDevicePatch`.
+
+Shared opener:
+
+- [modules/roland-sxx0-editor/src/hooks/useLibraryExport.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/hooks/useLibraryExport.ts:153)
+
+Page-level shim still in place:
+
+- [modules/roland-sxx0-editor/src/pages/PatchesPage.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/pages/PatchesPage.tsx:149)
+
+Impact: this is now mostly a reuse/maintenance issue rather than a correctness bug, but it remains one of the few surviving examples of page-level orchestration duplicating hook behavior instead of consuming the shared API directly.
+
+#### 3. Low — UI-harness coverage for the redesign still has not materialized
+
+The test-harness Playwright config still points at `./test/ui`, but the directory still contains only `.gitkeep`.
+
+- Harness config:
+  - [modules/roland-sxx0-editor/playwright.test-harness.config.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/playwright.test-harness.config.ts:21)
+- Current test-ui directory contents:
+  - `modules/roland-sxx0-editor/test/ui/.gitkeep`
+
+Impact: the recent functional fixes improved code-path correctness, but there is still no automated UI-level protection against redesign drift across the shared S-330/S-550 surfaces.
+
+### Updated Refactor Priorities
+
+1. Replace `ImportSamplesDialog`’s raw `undefined` occupancy checks with `isToneSlotEmpty` / `isPatchSlotEmpty`.
+2. Switch `PatchesPage` to `useLibraryExport.openExportPatchDialog` so patch export uses the same shared imperative surface as tone export.
+3. Add actual `test/ui` harness pages and Playwright specs for the redesign-critical shared dialogs and page chrome.
