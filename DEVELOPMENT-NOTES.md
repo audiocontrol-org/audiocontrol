@@ -11,6 +11,89 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-05-10: s550-support — Phase 0 (Frontend/Backend Decoupling) Tasks 1-6 shipped
+
+### Feature: s550-support
+
+### Worktree: audiocontrol-s550-support
+
+### Goal
+
+Operator pivoted at session start away from continuing Phase 7 (front panel) or starting Phase 9 visual polish. The reframing: *"It's hard for me to do QA while the UI is a mess. A better approach is to separate the frontend from the sysex backend. Declare a contract between the frontend and the sysex backend. Create a harness that exercises the sysex backend the frontend needs, record how the sysex backend behaves, then build a simulated backend that you can run the UI against in an automate way without browser midi."* Operator named this **Phase 0** — *"we should have started with it. We need a rock-solid automated qa foundation before we can safely implement a redesign."*
+
+Subsequently clarified: *"You don't need me to operate the device. All of the device-facing operations already work... You just need to execute that code in a cli context the way the UI does and record how the device behaves."* — confirmed I drive the hardware, no operator QA participation.
+
+### Accomplished
+
+- **Phase 0 scoped** as new foundational phase in workplan + dedicated [phase-0-decoupling.md](docs/1.0/001-IN-PROGRESS/s550-support/phase-0-decoupling.md). Inserted before existing phases rather than renumbering (preserves all GitHub issue / commit references). Phase 9 visual polish marked as **blocked on Phase 0**. Phase 10 hardware-verification debt (#393–#403) noted as closable via Phase 0 fixture replay.
+
+- **Task 1 — Contract audit** `2b84eefb`. Audited `SamplerClientInterface` (35 methods, 27 with active UI consumers) → [phase-0-contract-audit.md](docs/1.0/001-IN-PROGRESS/s550-support/phase-0-contract-audit.md). **Architecture-changing finding:** 2 BLOCKERs prevent an interface-level proxy — `useFrontPanel.ts` (DT1 sends bypass interface) and `useParameterListener.ts` (inbound `adapter.onSysEx` not on interface). Both converge at `SSeriesMidiAdapter` (3 methods: `send`, `onSysEx`, `removeSysExListener`). **Pivoted Phase 0 to adapter-level proxy** — single wrap point covers outbound + inbound + front-panel paths without modifying any interface. Updated phase-0-decoupling.md design accordingly.
+
+- **Task 2 — Fixture format** `b0920d91`. NDJSON byte-level event log at `modules/sampler-devices/src/recording/fixture-schema.ts`. Header line + records-per-line. Schema versioned (`schemaVersion: 1`). 12 unit tests covering round-trip, format invariants, parser rejection paths, defense-in-depth serializer validation. New package export `@audiocontrol/sampler-devices/recording`. Tsup entry added.
+
+- **Task 3 — RecordingProxyAdapter** `9de05d97`. Drop-in `SSeriesMidiAdapter` wrapper. Single multiplexed listener attached lazily to the real adapter (no pollution before `onSysEx`). Records every byte event (outbound + inbound) into `FixtureScenario`. Annotation API tags the next record for fixture readability. Detach API for clean session teardown. Clock injection (`ClockFn`) for deterministic timestamps in tests. 10 unit tests.
+
+- **Task 6 — SimulatedAdapter** `87261a70` (taken out of order — Task 5 hardware capture comes after). Drop-in `SSeriesMidiAdapter` that replays a captured `FixtureScenario`. Strict ordered byte-level replay: `send(bytes)` matches next outbound record byte-for-byte; throws diagnostically on mismatch / wrong-direction / records-exhausted. After matching outbound, drains consecutive inbound into listeners. Three latency modes: `none` (synchronous), `recorded` (use timestamp delta), `{fixedMs}` (fixed delay) — both timed modes use setTimeout, testable with vitest fake timers. Typed errors (`SimulatedAdapterUnexpectedSendError`, `SimulatedAdapterRecordsExhaustedError`). 11 unit tests including a round-trip property test wiring RecordingProxy → serialize → parse → SimulatedAdapter and asserting identical listener output.
+
+- **Task 4 — CLI scenario runner** `2c7bdcd7`. New module `modules/e2e-infra/src/node/lib/easymidi-s-series-adapter.ts` (mirrors d110-editor pattern over `SSeriesMidiAdapter`) + `record-fixtures-roland.ts` driver. Four initial scenarios (`connect-only`, `load-everything`, `fetch-patch-0`, `fetch-tone-0`) parameterized for both S-330 and S-550. Three Make targets: `record-fixtures-roland`, `record-fixtures-roland-s550`, `record-fixtures-roland-s330`. `--list-scenarios` and `--list-ports` modes work without hardware (smoke-tested live).
+
+- **Task 5 — Initial fixture capture** `bb93bcde`. **Connected device on `Volt 4` MIDI port reports as S-330 (not S-550)** via the existing `validate-device.ts` probe (model 0x1E, command 0x4F response signals S-330). Both devices share the protocol so S-330 fixtures are valid for the unified editor's UI test harness. Captured all 4 scenarios:
+  - `connect-only.ndjson` 192 B (0 records — `connect()` is a flag flip)
+  - `fetch-patch-0.ndjson` 4 KB (19 records: 10 outbound RQD/ACK + 9 inbound DAT/EOD)
+  - `fetch-tone-0.ndjson` 2 KB (11 records)
+  - **`load-everything.ndjson` 215 KB (1136 records, 64 patches + 32 tones, captured in 27 seconds)**
+  All 4 round-trip through `parseFixture()`; every record passes protocol invariants (F0/F7 framing, manufacturer 0x41, model 0x1E). Bug fix landed alongside: Make targets had `cd $(MODULES_DIR)/e2e-infra` which made `--output` resolve relative to the e2e-infra dir; removed the `cd` so paths resolve from repo root.
+
+- **All commits build clean.** 33/33 unit tests pass in the recording domain (12 schema + 10 proxy + 11 simulated). `make` (full monorepo build) passes. Tsup adds `recording.d.ts` + `recording.js` to dist for both ESM and CJS.
+
+### Didn't work
+
+- **`connect()` captures 0 records.** The S-series client's `connect()` is a pure flag flip — no IO. The `connect-only` scenario therefore produces an empty fixture. Not a bug; just a property of the abstraction that surprised me. Could rename to `handshake-only` and add an explicit RQD or remove the scenario; deferred since the empty fixture is actually a useful edge case for the simulator (can `parseFixture()` handle 0-record scenarios? Yes — verified during validation pass).
+
+- **Initial Make target had a CWD bug.** First fixture capture landed at `modules/e2e-infra/modules/sampler-devices/test/fixtures/...` because the Make target `cd`'d into e2e-infra before running tsx, so `--output modules/sampler-devices/...` resolved nested. Fixed by dropping the `cd` (Node's `imports` field resolves on script-file-locality, not CWD, so the `#node/*` alias still works). Captured fixture moved manually to the correct path before commit.
+
+- **Agent failed to write audit doc to disk.** The `feature-dev:code-explorer` agent dispatched for Task 1 produced thorough findings but failed to invoke the Write tool — exactly the failure mode the operator memory warns about. I had the content in the agent's text response and wrote the file myself. Going forward, agent prompts already say "use the Write tool — agents often forget" but reading-back-from-disk after dispatch is the reliable check.
+
+### Course corrections
+
+- **[PROCESS]** *"You should probably call this Phase 0, since we should have started with it."* Operator named the new work as Phase 0 retroactively rather than as Phase 11 of s550-support. The renaming reframes Phase 9 visual polish as **blocked on Phase 0** rather than parallel to it. Implication: the workplan's Implementation Status table now shows Phase 0 as foundational, not a tail-end addition. The dependency graph at the bottom of workplan.md was updated accordingly.
+
+- **[PROCESS]** *"Let's just keep moving."* + *"Execute autonomously, minimize interruptions."* — Pushed through 6 task commits in one session without check-ins, only stopping at this journal write. This is the right shape for the auto-mode + the audit-gate discipline; each commit is a clean acceptance-criteria-met increment.
+
+- **[PROCESS] (anticipated, didn't fire):** Almost dispatched a sub-agent for Task 2 (fixture format design) but reverted — the schema is straightforward and TDD with the schema test gives the same confidence with less round-trip overhead. `feedback_compound_commands` memory ("don't spawn agents for small known edits") applied.
+
+- **[PROCESS] Took Task 6 (SimulatedAdapter) before Task 5 (hardware capture).** The original task ordering said Task 5 unblocks Task 6, but Task 6 only needs the *fixture format* (Task 2) and synthetic fixtures suffice for testing. Wrote Task 6 against synthetic fixtures + a round-trip property test against RecordingProxyAdapter; ran Task 5 next to capture real fixtures. This kept hardware-touching work in one focused phase rather than interleaved.
+
+### Quantitative
+
+- **9 commits this session.** 8 Phase 0 commits (1 scope-in + 1 audit carry-over + 6 task commits) + this journal entry to come.
+- **6 of 9 Phase 0 tasks shipped:** 1, 2, 3, 4, 5, 6. Remaining: 7 (TestHarnessPage), 8 (Playwright UI specs), 9 (CI integration).
+- **33 unit tests added (all passing):** 12 fixture-schema + 10 recording-proxy + 11 simulated-adapter.
+- **4 hardware-captured fixtures committed** (215 KB total): connect-only, fetch-patch-0, fetch-tone-0, load-everything (the last is a 1136-record snapshot of the full S-330 memory state).
+- **3 sub-agents dispatched:** 1 code-explorer for Task 1 audit (failed to write to disk; recovered manually), 0 for Tasks 2-6 (all done inline per `feedback_compound_commands`), 0 for Task 5 (capture is mechanical CLI).
+- **~7 user messages** during the session, all early — operator went silent after `/dw-lifecycle:implement` was invoked and Phase 0 was scoped.
+- **0 fabrications flagged.**
+- **2 process course corrections** (Phase 0 naming; "keep moving" autonomy).
+- **1 architectural pivot mid-Task** — Task 1 audit changed Phase 0 from interface-level to adapter-level proxy. Phase 0 design doc was updated before Task 2 implementation began.
+
+### Insights
+
+- **The audit changing the architecture is the highest-leverage moment of Phase 0.** Without Task 1's grep across editor hooks, I would have built a `RecordingProxyClient` wrapping `SamplerClientInterface` and discovered the 2 BLOCKERs (front panel + parameter listener) only after fixture capture failed to round-trip cleanly. The audit caught it BEFORE any code shipped — the 1-hour cost of the audit prevented multi-hour rework. Strong endorsement for Task 1's "audit first" discipline as a non-negotiable Phase-0-style step in any future infrastructure work.
+
+- **TDD with synthetic fixtures unblocks Task 6 ahead of hardware.** Originally Task 6 (SimulatedAdapter) was scheduled after Task 5 (hardware capture) because "you can't test replay without something to replay." That's wrong — synthetic fixtures from `createScenario` + `appendRecord` exercise every replay code path the simulator supports, including the round-trip property test that wires RecordingProxy → serialize → parse → SimulatedAdapter and asserts identical listener output. Task 5 is the demonstration capture; Task 6 is the algorithm. Decoupling them shipped Task 6 in pure-software mode and let Task 5 land cleanly with the simulator already known-good.
+
+- **The connected device is S-330, not S-550.** The 215 KB load-everything.ndjson is captured against real S-330 hardware on `Volt 4` (orion-m4). Both devices share model ID 0x1E and the SysEx protocol; the byte-level fixture is structurally identical for any operation that's not S-550-specific (bank C/D, slot ranges 32-63, etc.). For Phase 9 visual polish, the S-330 fixture is sufficient to mount the editor against a populated device and iterate on visual surface. To validate S-550-specific UI surfaces (bank C/D dialogs, the 0-63 tone range, etc.), an S-550 needs to be on the line for fresh captures — `make record-fixtures-roland-s550` is wired and ready.
+
+- **Phase 0 unblocks Phase 9 in two places.** Task 7 (TestHarnessPage) is the remaining piece: when it lands, mounting `/test/harness?scenario=load-everything` will boot the editor with the simulated adapter and the captured 1136-record device state — no hardware needed for visual polish iteration. Task 8 (Playwright specs) adds the regression net so visual polish doesn't introduce hardcoded-pixel-width or cross-page inconsistency bugs (the Patches/Tones width-mismatch class). Together they convert the operator's pain point ("UI is a mess, hard to QA") from manual hardware QA into automated CI checks.
+
+- **Six commits in one session is the right size for Phase 0.** Each commit is a verifiable increment with build + tests green. The audit-gate discipline applied per task surfaced 0 follow-up issues this session — Phase 0's tasks have less duplication-magnet shape than Phase 10's bug-cleanup tasks did, so the gate's discoveries dropped to zero. Worth tracking: discovery rate per phase varies with phase shape (cleanup phases attract sibling-instance discoveries; greenfield infrastructure phases like Phase 0 don't).
+
+- **Hardware-capture-as-deliverable is genuinely autonomous.** Phase 0 Task 5 captured 4 fixtures against real hardware with zero operator participation — the user said "you don't need me to operate the device" and that proved true. The S-330 was on, the Volt 4 interface was wired, and the recorder script handled connection + capture + cleanup. This validates the operator's frustration: most of the prior "hardware QA" was actually hardware-driving that Claude can do unattended; the operator-required QA was visual eyeballing of the UI, which Phase 0 is specifically designed to displace.
+
+- **Open question for Tasks 7-9:** the editor's `useMidiStore` (Zustand) is the choke point for adapter injection. Task 7 needs to either (a) gate test-mode adapter swapping behind a build flag / URL param, OR (b) refactor the store to accept an adapter via a context provider. The first is faster but feels hacky; the second is cleaner but bigger. Decision deferred to next session start. The CLAUDE.md "no special test modes" rule applies to E2E tests (real hardware), not UI tests (harness + mocks) — so adapter swapping at the store boundary is allowed by the testing architecture.
+
+---
+
 ## 2026-05-09 (continued): s550-support — Phase 10 Tasks 10–11 close out the phase
 
 ### Feature: s550-support
