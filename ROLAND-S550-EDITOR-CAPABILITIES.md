@@ -25,6 +25,12 @@ Tests are decoupled from layout via two rules:
 Read [TESTING-FIXTURES.md](TESTING-FIXTURES.md) for the harness chain. Read
 [TESTING.md](TESTING.md) for the overall test architecture.
 
+For the **drill-down inventory** of every individual editor affordance —
+each `C-XX-NN` decomposed into specific itemized parameters, dialogs,
+lists, and actions, with each tagged `native` / `client-derived` /
+`editor-derived` — see
+[ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md](ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md).
+
 ---
 
 ## Adding or changing capabilities
