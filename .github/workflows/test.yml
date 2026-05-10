@@ -1,0 +1,94 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+
+# Cancel in-progress runs for the same branch when a new commit lands.
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build, unit, UI
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      # Skip devenv inside Make targets — CI runner already has Node/pnpm/system libs.
+      DEVENV_RUN: bash -c
+      # Pin Playwright browsers cache path so we can hit the actions cache.
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.cache/ms-playwright
+      # Tell pnpm to skip postinstall scripts that need optional native bindings.
+      # easymidi (native ALSA bindings) is only needed for hardware fixture capture,
+      # not for the UI harness specs we run in CI.
+      CI: '1'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm --filter @audiocontrol/e2e-infra exec playwright install --with-deps chromium
+
+      - name: Install Playwright system deps (cache hit path)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm --filter @audiocontrol/e2e-infra exec playwright install-deps chromium
+
+      - name: Build all modules
+        run: make
+
+      # Sampler-devices Phase 0 unit tests must pass — they cover the recording /
+      # replay surface that the harness specs depend on. Other modules currently
+      # have pre-existing unit failures (sampler-library chopper / sample-schema,
+      # sampler-devices s3000xl-client) tracked separately; once those are
+      # green this step should be widened to `pnpm test` across the workspace.
+      - name: Unit tests — sampler-devices recording / replay
+        run: pnpm --filter @audiocontrol/sampler-devices exec vitest run test/unit/recording
+
+      - name: UI tests — Roland (Phase 0 simulated harness)
+        run: make test-ui-roland
+
+      - name: UI tests — S3K (keygroup harness)
+        run: make test-ui-s3k
+
+      - name: Upload Playwright traces / screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            modules/roland-sxx0-editor/test-results/**
+            modules/roland-sxx0-editor/playwright-report/**
+            modules/akai-s3k-editor/test-results/**
+            modules/akai-s3k-editor/playwright-report/**
+          if-no-files-found: ignore
+          retention-days: 7
