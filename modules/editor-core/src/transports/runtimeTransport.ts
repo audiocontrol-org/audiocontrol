@@ -9,7 +9,7 @@ import { createHttpMidiTransport } from '@/transports/httpMidiTransport';
 import { createScsiMidiTransport } from '@/transports/scsiMidiTransport';
 import type { MidiTransport } from '@/transports/types';
 
-export type TransportMode = 'web' | 'mock' | 'http' | 'scsi';
+export type TransportMode = 'web' | 'mock' | 'http' | 'scsi' | 'simulated';
 
 export interface RuntimeMockMidiConfig extends MockMidiTransportOptions {
   enabled?: boolean;
@@ -64,6 +64,14 @@ export function isHttpMidiMode(): boolean {
 
 export function isScsiMidiMode(): boolean {
   return getQueryParam('midi') === 'scsi';
+}
+
+export function isSimulatedMidiMode(): boolean {
+  return getQueryParam('midi') === 'simulated';
+}
+
+export function getSimulatedScenario(): string | null {
+  return getQueryParam('scenario');
 }
 
 export function getHttpMidiServerUrl(): string | null {
@@ -123,7 +131,9 @@ export function clearTransportConfig(): void {
  * Priority: URL params > localStorage > default (web)
  */
 export function getActiveTransportMode(): TransportMode {
-  // URL params take precedence (for E2E testing)
+  // URL params take precedence (for E2E testing).
+  // Check simulated FIRST so the harness URL wins over any conflicting state.
+  if (isSimulatedMidiMode()) return 'simulated';
   if (isHttpMidiMode()) return 'http';
   if (isScsiMidiMode()) return 'scsi';
   if (isMockMidiMode()) return 'mock';
@@ -191,6 +201,19 @@ export function createRuntimeMidiTransport(
   config: RuntimeMidiTransportConfig
 ): RuntimeMidiTransportResult {
   const activeMode = getActiveTransportMode();
+
+  // Simulated mode is owned by the per-editor store (see e.g.
+  // roland-sxx0-editor's midiStore.createTransportForDevice). The runtime
+  // dispatcher has no way to construct a SimulatedAdapter without a fixture
+  // path, so failing loud beats falling through to web silently.
+  if (activeMode === 'simulated') {
+    throw new Error(
+      '?midi=simulated reached createRuntimeMidiTransport(). ' +
+      'Editors that support fixture replay must dispatch the simulated ' +
+      'transport themselves (see roland-sxx0-editor/src/stores/midiStore.ts). ' +
+      'This editor does not yet support ?midi=simulated.'
+    );
+  }
 
   // HTTP mode
   if (activeMode === 'http') {

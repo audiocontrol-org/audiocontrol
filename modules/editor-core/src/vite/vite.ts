@@ -73,16 +73,25 @@ export function createEditorConfig(options: EditorViteConfig): ReturnType<typeof
   const gitInfo = getGitInfo();
   const buildTime = new Date().toISOString();
 
+  const basePlugins = [
+    react(),
+    ...(useMkcert
+      ? [mkcert({
+          hosts: ['localhost', 'orion-m1', 'orion-m4'],
+        })]
+      : []),
+  ];
+
+  // Split overrides so plugins can be concatenated with our base plugins
+  // (instead of replaced) while everything else still spreads through.
+  // Using destructuring rest cleanly drops `plugins` from the spread object
+  // without leaving an `undefined` key that would clobber the merged array.
+  const { plugins: overridePlugins = [], ...overridesWithoutPlugins } =
+    overrides ?? {};
+
   return defineConfig({
     base: process.env.VITE_BASE_PATH || '/',
-    plugins: [
-      react(),
-      ...(useMkcert
-        ? [mkcert({
-            hosts: ['localhost', 'orion-m1', 'orion-m4'],
-          })]
-        : []),
-    ],
+    plugins: [...basePlugins, ...overridePlugins],
     resolve: {
       alias: {
         '@': path.resolve(dirname, './src'),
@@ -108,6 +117,6 @@ export function createEditorConfig(options: EditorViteConfig): ReturnType<typeof
       outDir: 'dist',
       sourcemap: true,
     },
-    ...overrides,
+    ...overridesWithoutPlugins,
   });
 }
