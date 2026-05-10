@@ -1,3 +1,7 @@
+---
+deskwork:
+  id: 6b7fc78b-5954-4b34-9d0c-6d5e6ef2596c
+---
 # Roland S-330/S-550 Editor — Canonical Capabilities
 
 **This document is the source of truth for what the editor UI MUST afford.**
