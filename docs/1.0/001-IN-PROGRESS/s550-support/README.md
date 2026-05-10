@@ -1,6 +1,6 @@
 # Roland S-550 Editor Support
 
-**Status:** In Progress (Phases 1-6, 8, 10 Complete; Phase 9 Tasks 1-3 Complete; Phase 10 Tasks 1-11 Complete pending hardware verification on Tasks 7 + 10; Phase 7, Phase 9 Tasks 4-7 Remaining)
+**Status:** In Progress (Phases 1-6, 8, 10 Complete; Phase 9 Tasks 1-3 Complete; Phase 10 Tasks 1-11 Complete pending hardware verification on Tasks 7 + 10; Phase 7, Phase 9 Tasks 4-7 Remaining; **Phase 0 (Frontend/Backend Decoupling) Not Started — foundational, blocks Phase 9**)
 **Feature Branch:** `feature/s550-support`
 **GitHub Milestone:** [Week of Feb 24-28](https://github.com/audiocontrol-org/audiocontrol/milestone/4)
 
@@ -14,6 +14,7 @@ The S-550 shares model ID `0x1E` and SysEx protocol with the S-330 but has an in
 
 - [PRD](./prd.md) - Product requirements, memory block comparison, architecture decisions
 - [Workplan](./workplan.md) - Implementation phases, status, and remaining work
+- **[Phase 0: Frontend/Backend Decoupling](./phase-0-decoupling.md)** - Recording proxy + simulated client + UI test harness; foundational QA infrastructure that blocks Phase 9
 - [2026-05-08 Code Audit Findings](./2026-05-08-code-audit-findings.md) - Review of redesign implementation with duplication/refactor and cross-device drift focus
 - [Implementation Summary](./implementation-summary.md) - Post-completion report
 
@@ -39,9 +40,10 @@ The S-550 shares model ID `0x1E` and SysEx protocol with the S-330 but has an in
 
 | Component | Description | Blocked By |
 |-----------|-------------|------------|
-| S-550 virtual front panel | Rack-mount panel layout variant | Nothing (cosmetic) |
-| UX/UI cleanup Phase 9 — Tasks 4–7 | Per-page real-component refactor (absorbing audit findings 4 + 5), dialog polish, UI-layer test harness + screenshot verification (audit finding 3), design-system update | Operator review of v3 mockups |
-| Phase 10 — Post-audit cleanup | All Tasks Done ([#393](https://github.com/audiocontrol-org/audiocontrol/issues/393)–[#403](https://github.com/audiocontrol-org/audiocontrol/issues/403)); Tasks 7 ([#400](https://github.com/audiocontrol-org/audiocontrol/issues/400)) + 10 ([#402](https://github.com/audiocontrol-org/audiocontrol/issues/402)) pending hardware verification | Independent — can run in parallel with Phase 9 |
+| **Phase 0: Frontend/Backend Decoupling** | Recording proxy + `SimulatedSamplerClient` + fixture capture against real S-550 + editor `TestHarnessPage` + Playwright UI specs. See [phase-0-decoupling.md](./phase-0-decoupling.md). | Nothing — autonomous (operator does no QA) |
+| Phase 9 Tasks 4–7 — UX/UI cleanup | Per-page real-component refactor (absorbing audit findings 4 + 5), dialog polish, UI-layer test harness + screenshot verification (audit finding 3), design-system update | **Phase 0** + operator review of v3 mockups |
+| S-550 virtual front panel (Phase 7) | Rack-mount panel layout variant | Phase 0 fixture replay closes the hardware-QA gap (button → device round-trip captured once) |
+| Phase 10 — Post-audit cleanup hardware verification | All Tasks Done ([#393](https://github.com/audiocontrol-org/audiocontrol/issues/393)–[#403](https://github.com/audiocontrol-org/audiocontrol/issues/403)); Tasks 7 ([#400](https://github.com/audiocontrol-org/audiocontrol/issues/400)) + 10 ([#402](https://github.com/audiocontrol-org/audiocontrol/issues/402)) pending hardware verification | Phase 0 replay closes verification debt for these tasks |
 
 ### Phase 9 Task 2 deliverables (committed under `docs/1.0/001-IN-PROGRESS/s550-support/explorations/`)
 

@@ -34,16 +34,57 @@ deskwork:
 
 | Phase | Status | Notes |
 |-------|--------|-------|
+| **Phase 0: Frontend/Backend Decoupling** | **Not Started — foundational, blocks Phase 9** | Recording proxy + simulated client + fixture capture + UI test harness. See [phase-0-decoupling.md](./phase-0-decoupling.md). Should have come first; numbered Phase 0 retroactively. |
 | Phase 1: Shared S-Series Extraction | Complete | `roland-s-series` base module |
 | Phase 2: S-550 Device Module | Complete | Addresses, params, config, types |
 | Phase 3: S-550 Client & Tone Factory | Complete | Shared client factory pattern |
 | Phase 4: S-550 Library Converters | Complete | Tone, patch, set converters + schemas |
 | Phase 5: Unified Sampler Editor | Complete | Device config registry, context, routing |
 | Phase 6: Hardware Validation | Complete | All tests passing against physical S-550 |
-| Phase 7: S-550 Front Panel | Not Started | Virtual front panel layout |
+| Phase 7: S-550 Front Panel | Not Started | Virtual front panel layout. Phase 0 captures fixture for front-panel SysEx; replay validates UI without further hardware QA. |
 | Phase 8: Memory Map Visualization | Complete | Graphical memory map in import dialogs |
-| Phase 9: UX/UI Cleanup | In Progress (Tasks 1–3 done; 4–7 remaining) | Visual polish across all editor pages via `/frontend-design` |
-| Phase 10: Post-Audit Cleanup | All Tasks Done (1–11 — pending hardware verification on Tasks 7 + 10) | Functional + duplication fixes surfaced by 2026-05-08 audit, Phase 9 Task 3 review, and Phase 10 reviews 4–8. All eleven tasks (#393–#403) complete; hardware verification deferred to operator. |
+| Phase 9: UX/UI Cleanup | **Blocked on Phase 0** (Tasks 1–3 done; 4–7 cannot ship safely until decoupling lands) | Visual polish across all editor pages via `/frontend-design`. Without Phase 0, every iteration requires manual hardware QA which the operator has flagged as untenable. |
+| Phase 10: Post-Audit Cleanup | All Tasks Done (1–11 — pending hardware verification on Tasks 7 + 10, which Phase 0 fixture replay will close) | Functional + duplication fixes surfaced by 2026-05-08 audit, Phase 9 Task 3 review, and Phase 10 reviews 4–8. All eleven tasks (#393–#403) complete; hardware verification can close once Phase 0's recorded fixtures cover those code paths. |
+
+---
+
+## Phase 0: Frontend/Backend Decoupling — Automated QA Foundation (Not Started)
+
+**See full design and task list:** [phase-0-decoupling.md](./phase-0-decoupling.md).
+
+The editor's UI is tightly coupled to the SysEx backend, so every redesign iteration requires real hardware + browser MIDI + manual QA. The operator has flagged this as untenable: *"It's hard for me to do QA while the UI is a mess."* Phase 0 lays a recording-and-replay foundation between the UI and the SysEx backend so:
+
+- Phase 9 visual polish (Tasks 4–7) can iterate without hardware
+- Phase 7 front panel can be verified once via fixture capture, not per-button hardware QA
+- Phase 10's deferred hardware verification (#393, #394, #395, #396, #398, #400, #402) closes via fixture replay
+- All future device editors (S-330, S-550, future Akai work) inherit a hardware-free CI test path
+
+### Tasks (summary)
+
+1. Audit `SamplerClientInterface` for completeness — confirm all UI device communication routes through it
+2. Define fixture format (`FixtureRecord` + serialization)
+3. Build `RecordingProxyClient` (transparent wrapper, records every call + sysex bytes)
+4. Build CLI scenario runner in `e2e-infra` (drives recording proxy via existing `midi-server` HTTP MIDI bridge)
+5. Capture initial fixture set against real S-550 hardware (autonomous — no operator participation)
+6. Build `SimulatedSamplerClient` (replays fixtures; throws on unrecorded calls)
+7. Build editor `TestHarnessPage` (mounts editor with simulated client at `/test/harness?scenario=…`)
+8. First Playwright UI specs at `roland-sxx0-editor/test/ui/<page>.spec.ts`
+9. CI integration via existing `make test-ui-roland` target + drift-detection job
+
+### Dependencies on existing infrastructure (NOT reinvented)
+
+- `modules/e2e-infra/` — shared test infra; CLI runner lives here
+- `midi-server` HTTP MIDI bridge — existing transport for Node-side hardware sessions
+- `playwright.test-harness.config.ts` — already wired to `test/ui/`
+- `make test-ui-roland` target — already exists; UI specs land into it
+- `SamplerClientInterface` — already defined at `modules/sampler-devices/src/devices/roland-s-series/s-series-client.ts:172`
+
+### Acceptance criteria (phase)
+
+- [ ] All 9 tasks done with per-task duplication-audit gates passed
+- [ ] Phase 9 visual polish can be verified end-to-end without hardware via fixture replay
+- [ ] Hardware verification debt from Phase 10 closes via replay
+- [ ] DEVELOPMENT-NOTES entry summarizing what shipped, what scenarios are captured, what's deferred
 
 ---
 
@@ -740,18 +781,22 @@ Phase 3 (Client/Factory) ── Complete ──→ Phase 4 (Converters) ── C
                     ↓
             Phase 6 (Hardware Validation) ── Complete
                     ↓
-            Phase 7 (Front Panel) ── Not Started
+            Phase 7 (Front Panel) ── Not Started ◀─── benefits from Phase 0 fixture replay
             Phase 8 (Memory Map) ── Complete
-            Phase 9 (UX/UI Cleanup) ── In Progress (Tasks 1–3 done)
+            Phase 0 (Decoupling) ── Not Started ─── BLOCKS Phase 9
+                    ↓
+            Phase 9 (UX/UI Cleanup) ── Tasks 1–3 done; 4–7 BLOCKED on Phase 0
                     ↓
             Phase 10 (Post-Audit Cleanup) ── All Tasks Done
                     Tasks 1–3 done (#393, #394, #395)
-                    Tasks 4–6 done (#396, #397, #398) — pending hardware verification
-                    Tasks 7–8 done (#400, #399) — pending hardware verification (Task 7)
+                    Tasks 4–6 done (#396, #397, #398) — pending hardware verification (closable via Phase 0 replay)
+                    Tasks 7–8 done (#400, #399) — pending hardware verification (Task 7, closable via Phase 0)
                     Task 9 done (#401) — sample-rate helper extraction
-                    Tasks 10–11 done (#402, #403) — pending hardware verification (Task 10)
+                    Tasks 10–11 done (#402, #403) — pending hardware verification (Task 10, closable via Phase 0)
                     Independent of Phase 9 visual work; can run in parallel.
 ```
+
+**Phase 0 ordering note:** Phase 0 is foundational and would have come first if its need had been recognized earlier. It is numbered Phase 0 retroactively rather than renumbering all existing phases (which would invalidate every existing GitHub issue / commit reference). Phase 0 must complete before Phase 9 Tasks 4–7 ship.
 
 ---
 
