@@ -32,7 +32,9 @@
 
 ## Published
 
-*No entries.*
+| UUID | Slug | Title | Description | Keywords | Source | Published | Issue |
+|------|------|------|------|------|------|------|------|
+| 6b7fc78b-5954-4b34-9d0c-6d5e6ef2596c | roland-s550-editor-capabilities | Roland S550 Editor Capabilities |  |  | manual | 2026-05-10 |  |
 
 ## Distribution
 
