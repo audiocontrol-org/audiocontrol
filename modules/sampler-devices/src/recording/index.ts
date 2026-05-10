@@ -25,3 +25,14 @@ export type {
     ClockFn,
     RecordingProxyAdapterOptions,
 } from './recording-proxy.js';
+
+export {
+    SimulatedAdapter,
+    SimulatedAdapterUnexpectedSendError,
+    SimulatedAdapterRecordsExhaustedError,
+} from '../simulation/simulated-adapter.js';
+
+export type {
+    LatencyMode,
+    SimulatedAdapterOptions,
+} from '../simulation/simulated-adapter.js';
