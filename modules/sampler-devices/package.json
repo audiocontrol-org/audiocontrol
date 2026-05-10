@@ -43,6 +43,11 @@
       "types": "./dist/roland-s-series.d.ts",
       "import": "./dist/roland-s-series.js",
       "require": "./dist/roland-s-series.cjs"
+    },
+    "./recording": {
+      "types": "./dist/recording.d.ts",
+      "import": "./dist/recording.js",
+      "require": "./dist/recording.cjs"
     }
   },
   "module": "./dist/index.mjs",
