@@ -126,6 +126,58 @@ const SCENARIOS: Record<string, Scenario> = {
             await c.requestToneData(0);
         },
     },
+
+    // Page-shaped scenarios — capture the SysEx sequence each editor page
+    // emits on mount, so the harness can replay it deterministically.
+    // See GitHub #404; both S-330 and S-550 use 8 patches/tones per bank.
+
+    'patches-bank-0': {
+        name: 'patches-bank-0',
+        description: 'PatchesPage.loadPatchBank(0) — connect() + loadPatchRange(0, 8)',
+        run: async ({ client, proxy }) => {
+            const c = client as {
+                connect: () => Promise<boolean>;
+                loadPatchRange: (start: number, count: number) => Promise<unknown[]>;
+            };
+            proxy.annotate('connect()');
+            await c.connect();
+            proxy.annotate('loadPatchRange(0, 8)');
+            await c.loadPatchRange(0, 8);
+        },
+    },
+
+    'tones-bank-0': {
+        name: 'tones-bank-0',
+        description: 'TonesPage.loadToneBank(0) — connect() + loadToneRange(0, 8)',
+        run: async ({ client, proxy }) => {
+            const c = client as {
+                connect: () => Promise<boolean>;
+                loadToneRange: (start: number, count: number) => Promise<unknown[]>;
+            };
+            proxy.annotate('connect()');
+            await c.connect();
+            proxy.annotate('loadToneRange(0, 8)');
+            await c.loadToneRange(0, 8);
+        },
+    },
+
+    'play-init': {
+        name: 'play-init',
+        description: 'PlayPage initial load — connect() + loadPatchRange(0, 8) + requestFunctionParameters()',
+        run: async ({ client, proxy }) => {
+            const c = client as {
+                connect: () => Promise<boolean>;
+                loadPatchRange: (start: number, count: number) => Promise<unknown[]>;
+                requestFunctionParameters: () => Promise<unknown[]>;
+            };
+            proxy.annotate('connect()');
+            await c.connect();
+            proxy.annotate('loadPatchRange(0, 8)');
+            await c.loadPatchRange(0, 8);
+            proxy.annotate('requestFunctionParameters()');
+            await c.requestFunctionParameters();
+        },
+    },
 };
 
 export function listScenarios(): string[] {
