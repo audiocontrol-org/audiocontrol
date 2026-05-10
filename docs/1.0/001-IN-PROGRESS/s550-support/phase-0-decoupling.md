@@ -5,7 +5,7 @@ parent: "Roland S-550 Editor Support"
 
 # Phase 0: Frontend/Backend Decoupling — Automated QA Foundation
 
-**Status:** All Tasks Done (1–9). Deferred follow-ups: [#404](https://github.com/audiocontrol-org/audiocontrol/issues/404), [#405](https://github.com/audiocontrol-org/audiocontrol/issues/405), [#406](https://github.com/audiocontrol-org/audiocontrol/issues/406).
+**Status:** Tasks 1–9 Done; Task 10 In Progress. #404 shipped 2026-05-10 (commit `3299d61c`). Deferred follow-ups: [#405](https://github.com/audiocontrol-org/audiocontrol/issues/405), [#406](https://github.com/audiocontrol-org/audiocontrol/issues/406).
 
 **Should have come first.** This phase is numbered Phase 0 retroactively — it is the foundation that would have been built before any redesign work if we had recognized the need earlier. Phase 9 visual polish is **blocked on this foundation**.
 
@@ -282,6 +282,31 @@ This satisfies the "always integrate into the real app" principle — the harnes
 - [x] Workflow documented in `TESTING-FIXTURES.md` + cross-link in `TESTING.md`
 
 **What's NOT in CI (and why):** The drift-detection job requires real hardware (S-330/S-550 on `Volt 4`). GitHub Actions runners cannot execute it. Documented as operator-run on orion-m4.
+
+### Task 10 — Capability test suite + canonical capabilities doc ⏳ IN PROGRESS
+
+**Why:** Pixel-snapshot regression cannot guard a redesign that changes visuals
+on purpose. What survives a redesign is **capability** — what the user can
+achieve. Task 10 enshrines those capabilities in a canonical document and
+binds each one to a layout-independent spec.
+
+**Foundational doc:** [`ROLAND-S550-EDITOR-CAPABILITIES.md`](../../../../ROLAND-S550-EDITOR-CAPABILITIES.md) at the repo root. 51 capabilities organized by area (Connection, Patches, Tones, Library, Play, Cross-cutting). Each has a stable ID (`C-<AREA>-<NN>`), statement, user-need rationale, and a bound spec name. Lives at the project level — not a feature artifact; future device editors get sibling docs.
+
+**Spec organization:** new `modules/roland-sxx0-editor/test/ui/capabilities/<area>.spec.ts` directory. Each spec maps capabilities in its area to Playwright tests. Selectors:
+
+1. **Accessible queries first** (`getByRole`, `getByLabel`, `getByText`) — survive any styling change.
+2. **`data-capability="<C-...>"` attrs second** — for elements with no semantic role; the attr keys to the capability ID, not a layout position.
+3. **No `data-testid="patch-list-item-3"`** — encodes layout, brittle under redesign.
+
+**Outbound-byte assertions:** action capabilities (parameter writes) use the SimulatedAdapter's strict-match mechanism with one fixture per capability. The CLI runner's `record-fixtures-roland.ts` gains scenarios for each parameter-edit capability — captured against real hardware once, then replayed to validate the UI emits the same SysEx.
+
+**Acceptance criteria:**
+- [ ] `ROLAND-S550-EDITOR-CAPABILITIES.md` enumerates every capability the editor must afford
+- [ ] Every capability has a binding spec name in the doc
+- [ ] At least the 17 capabilities currently marked "covered" or "partial" pass via specs in `test/ui/capabilities/`
+- [ ] CI runs the capability suite via the existing `make test-ui-roland` target
+- [ ] Action capabilities (parameter writes) have fixtures captured + spec assertions wired
+- [ ] Selectors are accessible queries or `data-capability="<id>"` — no layout-encoding `data-testid`s
 
 ## Acceptance Criteria (phase)
 

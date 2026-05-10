@@ -1,6 +1,6 @@
 # Roland S-550 Editor Support
 
-**Status:** In Progress (Phases 1-6, 8, 10 Complete; Phase 9 Tasks 1-3 Complete; Phase 10 Tasks 1-11 Complete pending hardware verification on Tasks 7 + 10; Phase 7, Phase 9 Tasks 4-7 Remaining; **Phase 0 (Frontend/Backend Decoupling) — All Tasks Done; deferred work tracked in [#404](https://github.com/audiocontrol-org/audiocontrol/issues/404), [#405](https://github.com/audiocontrol-org/audiocontrol/issues/405), [#406](https://github.com/audiocontrol-org/audiocontrol/issues/406)**)
+**Status:** In Progress (Phases 1-6, 8, 10 Complete; Phase 9 Tasks 1-3 Complete; Phase 10 Tasks 1-11 Complete pending hardware verification on Tasks 7 + 10; Phase 7, Phase 9 Tasks 4-7 Remaining; **Phase 0 (Frontend/Backend Decoupling) Tasks 1-9 Done + #404 shipped; Task 10 (Capability test suite) In Progress; deferred work tracked in [#405](https://github.com/audiocontrol-org/audiocontrol/issues/405), [#406](https://github.com/audiocontrol-org/audiocontrol/issues/406)**)
 **Feature Branch:** `feature/s550-support`
 **GitHub Milestone:** [Week of Feb 24-28](https://github.com/audiocontrol-org/audiocontrol/milestone/4)
 
