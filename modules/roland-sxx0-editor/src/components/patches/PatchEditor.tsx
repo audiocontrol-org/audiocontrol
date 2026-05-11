@@ -231,12 +231,19 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
   const namedTonesCount = tones.filter(t => t !== undefined && t.name.trim()).length;
 
   return (
-    <div className="space-y-6" data-testid="patch-editor" data-capability="C-PATCH-04">
-      {/* Header */}
-      <div className="card">
-        <div className="mb-4">
-          <span className="text-sm text-s330-muted">
-            Patch <PatchLabel index={index} memoryLayout={config.memoryLayout} />
+    <div data-testid="patch-editor" data-capability="C-PATCH-04">
+      {/* Detail head — eyebrow row + slot+name title (v3 mockup direction). */}
+      <header className="patches__detail-head">
+        <div className="patches__detail-eyebrow-row">
+          <span>Patch</span>
+          <span className="patches__detail-eyebrow-sep">·</span>
+          <span className="patches__detail-eyebrow-accent">Editing</span>
+          <span className="patches__detail-eyebrow-sep">·</span>
+          <span>Source · device</span>
+        </div>
+        <h3 id="patch-detail-title" className="patches__detail-title">
+          <span className="patches__detail-slot">
+            <PatchLabel index={index} memoryLayout={config.memoryLayout} />
           </span>
           {editingName ? (
             <input
@@ -256,24 +263,32 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
               maxLength={12}
               data-testid="patch-name-input"
               className={cn(
-                'text-xl font-bold font-mono w-full',
+                'patches__detail-name font-mono',
                 'bg-s330-panel border border-s330-highlight rounded px-2 py-1',
                 'text-s330-text focus:outline-none focus:ring-1 focus:ring-s330-highlight'
               )}
             />
           ) : (
-            <h3
+            <span
               className={cn(
-                'text-xl font-bold font-mono cursor-pointer hover:text-s330-highlight',
-                nameValue.trim() ? 'text-s330-text' : 'text-s330-muted/50 italic'
+                'patches__detail-name cursor-pointer hover:text-s330-highlight',
+                !nameValue.trim() && 'opacity-60 italic'
               )}
               onClick={() => setEditingName(true)}
               title="Click to edit patch name"
             >
               {nameValue.trim() || '(unnamed)'}
-            </h3>
+            </span>
           )}
-        </div>
+        </h3>
+      </header>
+
+      <div className="patches__detail-body space-y-6">
+        {/* Common Parameters card — keep card framing for the parameter
+            density we already have; further polish (param grid, range
+            bars, layer cards) is structural decomposition out of scope
+            for this commit. */}
+        <div className="card">
 
         {/* Common Parameters - matching hardware layout */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -502,6 +517,17 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
           />
         </div>
       </div>
+      </div>
+
+      {/* Live-status footer — replaces save / cancel / undo. Edits stream
+          to the device in real time per project memory
+          `feedback_live_editing_no_save`. */}
+      <footer className="patches__detail-live" role="status" aria-live="polite">
+        <span className="patches__detail-live-led" aria-hidden="true" />
+        <span>
+          Live edit · changes sent to device on commit
+        </span>
+      </footer>
     </div>
   );
 }

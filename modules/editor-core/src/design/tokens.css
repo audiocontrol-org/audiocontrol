@@ -58,6 +58,45 @@
   --ac-vfd-glow-color: var(--ac-highlight);
   --ac-vfd-glow-inner-radius: 2;
   --ac-vfd-glow-outer-radius: 4;
+
+  /* ------------------------------------------------------------------
+   * Phase 9 Task 4 polish tokens — added to support the v3 mockup
+   * direction (operator-approved 2026-05-08). These tokens express the
+   * editor's typographic and rule-weight vocabulary; consumed first by
+   * PatchesPage and intended for cross-page reuse as polish proceeds.
+   * Names follow the mockup's `--ac-*` namespace.
+   * ------------------------------------------------------------------ */
+
+  /* Display / heading font stack — Departure Mono is the design intent;
+     JetBrains Mono is the universal fallback. Inter is forbidden (banned
+     by the design language) — we don't list it. */
+  --ac-font-display: "Departure Mono", "JetBrains Mono", "IBM Plex Mono",
+    ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --ac-font-body: "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+
+  /* Eyebrow / display tracking — uppercase rows ("§ Patch parameters",
+     bank labels, status metrics) need wider tracking than body text. */
+  --ac-tracking-eyebrow: 0.14em;
+  --ac-tracking-display: 0.01em;
+
+  /* Eyebrow text size — used by panel labels, bank headers, page metric
+     captions. Falls between `--ac-text-xs` and `--ac-text-sm`. */
+  --ac-text-eyebrow: 0.78rem;
+
+  /* Rule weights — page-title underline + range-bar fills + layer accents
+     read at distinct visual weights; tokenize them so per-page polish
+     stays consistent. */
+  --ac-rule-hairline: 1px;
+  --ac-rule-medium: 2px;
+
+  /* REC-LED accent — a nod to the S-550 front panel's red PLAY LED + REC
+     LEVEL knob. Used ONLY as a rare device-active / signal-on-air
+     indicator (live-edit footer, page-title underline, virtual front-panel
+     mode LED). NOT for danger (that's --ac-color-danger), NOT for the
+     Roland blue identity (that's --ac-color-accent). */
+  --ac-color-rec: #f6533c;
+  --ac-color-rec-glow: rgba(246, 83, 60, 0.55);
 }
 
 :root[data-editor='s330'] {

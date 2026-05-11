@@ -288,6 +288,18 @@ All tokens use the `--ac-` prefix. Defined in `editor-core/src/design/tokens.css
 - **Typography:** `--ac-text-{xs-lg}`, `--ac-font-weight-*`
 - **Motion:** `--ac-duration-{fast-slow}`, `--ac-easing-default`
 
+#### Phase 9 polish tokens
+
+The v3 mockup direction (operator-approved 2026-05-08) introduces a small typographic vocabulary on top of the existing tokens. Use these instead of inlining font stacks or magic letter-spacing values.
+
+- **`--ac-font-display`** — Departure Mono first, JetBrains Mono fallback, then `ui-monospace`. Used for headings, panel-label eyebrows, slot labels, and any "instrument-face" copy. Inter is forbidden by the design language; do NOT list it in fallback chains.
+- **`--ac-font-body`** — IBM Plex Sans first, system-ui fallback. Used for prose, list item names, and buttons that aren't displaying instrument-face copy.
+- **`--ac-tracking-eyebrow`** — `0.14em`. Applied to uppercase rows: panel labels (§ Patch parameters), bank headers, status metrics.
+- **`--ac-tracking-display`** — `0.01em`. Applied to display headings.
+- **`--ac-text-eyebrow`** — `0.78rem`. The size for panel-label eyebrows; sits between `--ac-text-xs` and `--ac-text-sm`.
+- **`--ac-rule-hairline`** / **`--ac-rule-medium`** — `1px` / `2px`. Tokenized so per-page polish stays consistent (page-title underline, range-bar fills, layer accents).
+- **`--ac-color-rec`** / **`--ac-color-rec-glow`** — REC-LED accent. A nod to the S-550 front panel's red PLAY LED + REC LEVEL knob. Use ONLY as a rare device-active / signal-on-air indicator (live-edit footer, page-title underline). NOT for danger (use `--ac-status-danger`), NOT for the Roland-blue identity (use `--ac-color-accent`).
+
 ### Layout Rules
 
 | Do | Don't |

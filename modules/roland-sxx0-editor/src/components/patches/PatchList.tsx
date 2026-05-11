@@ -1,5 +1,20 @@
 /**
- * Patch list component - displays patches with loading states
+ * Patch list component — bank-headed slot list with hover-revealed
+ * Export action and per-row load state.
+ *
+ * Visual treatment is the operator-approved v3 mockup direction
+ * (Phase 9 Task 4). Functional contracts intentionally unchanged:
+ *   - data-testid="patch-item-N" / data-testid="patch-name" still set
+ *     on each row (legacy test/ui/patches.spec.ts depends on these).
+ *   - data-capability="C-PATCH-01" still set on the list root
+ *     (test/ui/capabilities/patches.spec.ts depends on this).
+ *   - Each row's accessible name still leads with the slot label
+ *     (P11..P28 / II11..II48) so getByRole('button', { name: /^P11/ })
+ *     queries continue to resolve.
+ *
+ * Per-row Export <button> is nested inside an outer role="button" div,
+ * not a real <button>, because <button> nested in <button> is invalid
+ * HTML — see comment further down for keyboard wiring.
  */
 
 import type { KeyboardEvent } from 'react';
@@ -27,112 +42,148 @@ interface PatchListProps {
   onExportPatch?: (index: number) => void;
 }
 
-export function PatchList({ patches, selectedIndex, onSelect, loadedBanks: _loadedBanks, patchesPerBank, loadingBank, onLoadBank, onExportPatch }: PatchListProps) {
+/**
+ * Render the slot at `index` with bank headers inserted before each
+ * bank boundary. The slot identity comes from the device config's
+ * MemoryLayout, so S-330 (P11..P28) and S-550 (II11..II48 / I11..I28)
+ * route through the same component without device conditionals.
+ */
+export function PatchList({
+  patches,
+  selectedIndex,
+  onSelect,
+  loadedBanks: _loadedBanks,
+  patchesPerBank,
+  loadingBank,
+  onLoadBank,
+  onExportPatch,
+}: PatchListProps) {
   const config = useDeviceConfig();
   const { memoryLayout } = config;
 
+  // Group rows by bank so we can emit a sticky bank header before each.
+  // Each bank-N section is a sequence: [header, ...rows-in-bank].
+  const totalBanks = Math.ceil(patches.length / patchesPerBank);
+
   return (
-    <div className="card p-2" data-capability="C-PATCH-01">
-      <div className="px-2 py-1 mb-2">
-        <span className="text-sm font-medium text-s330-text">Patches</span>
-      </div>
-      <div className="ac-scroll-list space-y-1">
-        {patches.map((patch, index) => {
-          const isLoaded = patch !== undefined;
-          const isEmpty = isLoaded && isPatchEmpty(patch);
-          const isSelected = index === selectedIndex;
-          const bankIndex = Math.floor(index / patchesPerBank);
+    <aside
+      className="patches__list"
+      data-capability="C-PATCH-01"
+      aria-label="Patch list"
+    >
+      <div className="patches__list-scroll ac-scroll-list">
+        {Array.from({ length: totalBanks }, (_, bankIndex) => {
+          const bankStart = bankIndex * patchesPerBank;
+          const bankEnd = Math.min(bankStart + patchesPerBank, patches.length);
+          const firstSlotLabel = memoryLayout.formatPatchSlot(bankStart);
+          const lastSlotLabel = memoryLayout.formatPatchSlot(bankEnd - 1);
 
-          const isBankLoading = loadingBank === bankIndex;
-
-          const handleClick = () => {
-            if (isLoaded) {
-              onSelect(isSelected ? null : index);
-            } else if (!isBankLoading && onLoadBank) {
-              onLoadBank(bankIndex);
-            }
-          };
-
-          // Outer element is a div with role="button" rather than a real
-          // <button>, because we need to nest the per-row Export <button>
-          // inside it. <button> inside <button> trips React's
-          // validateDOMNesting warning (and is invalid HTML — browsers will
-          // hoist the inner button out unpredictably). Keyboard activation
-          // (Enter / Space) is wired explicitly to match native semantics.
-          const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-            if (isBankLoading) return;
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              handleClick();
-            }
-          };
           return (
             <div
-              key={index}
-              data-testid={`patch-item-${index}`}
-              role="button"
-              tabIndex={isBankLoading ? -1 : 0}
-              aria-disabled={isBankLoading}
-              onClick={isBankLoading ? undefined : handleClick}
-              onKeyDown={handleKeyDown}
-              className={cn(
-                'w-full px-3 py-2 rounded text-left text-sm transition-colors',
-                'focus:outline-none focus:ring-1 focus:ring-s330-highlight',
-                isLoaded ? 'hover:bg-s330-accent/50' : 'hover:bg-s330-accent/20 cursor-pointer',
-                isBankLoading && 'cursor-wait',
-                isSelected
-                  ? 'bg-s330-highlight text-white'
-                  : !isLoaded
-                    ? 'text-s330-muted/30 bg-s330-panel/50'
-                    : isEmpty
-                      ? 'text-s330-muted/50'
-                      : 'text-s330-text'
-              )}
+              key={`bank-${bankIndex}`}
+              data-bank-index={bankIndex}
             >
-              <div className="flex items-center justify-between">
-                <PatchLabel index={index} memoryLayout={memoryLayout} />
-                <span
-                  className={cn(
-                    'flex-1 mx-3 truncate',
-                    (!isLoaded || isEmpty) && 'italic'
-                  )}
-                  data-testid="patch-name"
-                >
-                  {isBankLoading
-                    ? '(loading...)'
-                    : !isLoaded
-                      ? '(not loaded)'
-                      : isEmpty
-                        ? '(empty)'
-                        : patch.common.name}
-                </span>
-                {!isLoaded && !isBankLoading && (
-                  <span className="text-xs text-s330-muted/50">click to load</span>
-                )}
-                {isLoaded && !isEmpty && onExportPatch && (
-                  <button
-                    type="button"
-                    data-testid="export-patch-button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onExportPatch(index);
-                    }}
-                    className={cn(
-                      'ml-2 px-2 py-0.5 text-xs rounded transition-colors',
-                      isSelected
-                        ? 'bg-white/20 hover:bg-white/30 text-white'
-                        : 'bg-s330-accent/50 hover:bg-s330-accent text-s330-text'
-                    )}
-                    title="Export patch to library"
-                  >
-                    Export
-                  </button>
-                )}
+              <div className="patches__list-bank-header">
+                <span>Bank {bankIndex + 1}</span>
+                <strong>
+                  {firstSlotLabel}–{lastSlotLabel}
+                </strong>
               </div>
+
+              {patches.slice(bankStart, bankEnd).map((patch, offset) => {
+                const index = bankStart + offset;
+                const isLoaded = patch !== undefined;
+                const isEmpty = isLoaded && isPatchEmpty(patch);
+                const isSelected = index === selectedIndex;
+                const slotBank = Math.floor(index / patchesPerBank);
+                const isBankLoading = loadingBank === slotBank;
+
+                const handleClick = () => {
+                  if (isLoaded) {
+                    onSelect(isSelected ? null : index);
+                  } else if (!isBankLoading && onLoadBank) {
+                    onLoadBank(slotBank);
+                  }
+                };
+
+                // Outer element is a div with role="button" rather than a
+                // real <button>, because we need to nest the per-row
+                // Export <button> inside it. <button> inside <button>
+                // trips React's validateDOMNesting warning (and is
+                // invalid HTML — browsers will hoist the inner button
+                // out unpredictably). Keyboard activation (Enter / Space)
+                // is wired explicitly to match native semantics.
+                const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+                  if (isBankLoading) return;
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleClick();
+                  }
+                };
+
+                const displayName = isBankLoading
+                  ? '(loading...)'
+                  : !isLoaded
+                    ? '(not loaded)'
+                    : isEmpty
+                      ? '(empty)'
+                      : patch.common.name;
+
+                const nameClass = !isLoaded
+                  ? 'patches__list-name patches__list-name--placeholder'
+                  : isEmpty
+                    ? 'patches__list-name patches__list-name--empty'
+                    : 'patches__list-name';
+
+                return (
+                  <div
+                    key={index}
+                    data-testid={`patch-item-${index}`}
+                    role="button"
+                    tabIndex={isBankLoading ? -1 : 0}
+                    aria-disabled={isBankLoading}
+                    aria-selected={isSelected}
+                    onClick={isBankLoading ? undefined : handleClick}
+                    onKeyDown={handleKeyDown}
+                    className={cn('patches__list-row')}
+                  >
+                    <span className="patches__list-slot">
+                      <PatchLabel index={index} memoryLayout={memoryLayout} />
+                    </span>
+                    <span className="patches__list-info">
+                      <span
+                        className={nameClass}
+                        data-testid="patch-name"
+                      >
+                        {displayName}
+                      </span>
+                      {!isLoaded && !isBankLoading && (
+                        <span className="patches__list-eyebrow">
+                          click to load bank
+                        </span>
+                      )}
+                    </span>
+                    {isLoaded && !isEmpty && onExportPatch && (
+                      <button
+                        type="button"
+                        data-testid="export-patch-button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onExportPatch(index);
+                        }}
+                        className="patches__list-action"
+                        title="Export patch to library"
+                      >
+                        Export
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           );
         })}
       </div>
-    </div>
+    </aside>
   );
 }

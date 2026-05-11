@@ -8,6 +8,7 @@ import { getSupportedDevices } from '@/configs/registry';
 import { initLogCapture } from '@audiocontrol/editor-core';
 import '@audiocontrol/editor-core/styles.css';
 import '@/index.css';
+import '@/styles/patches.css';
 
 // Initialize log capture before anything else
 initLogCapture();

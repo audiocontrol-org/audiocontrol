@@ -1,0 +1,484 @@
+/**
+ * PatchesPage — page-scoped styles (Phase 9 Task 4 polish).
+ *
+ * Composed from --ac-* design tokens (no new tokens declared here).
+ * Tokens introduced for this work live in
+ * `editor-core/src/design/tokens.css` (see DESIGN-SYSTEM.md "Phase 9
+ * polish tokens").
+ *
+ * Scope: this file only contains styles whose semantics are
+ * page-specific. Anything that recurs across editor pages (range bars,
+ * eyebrow rows, live-status footers) should graduate to a shared
+ * `.ac-*` class during the Phase 9 cross-page polish — see the
+ * duplication-audit gate in workplan Task 4.
+ */
+
+/* ============================================================
+   PAGE TITLE — lean h2 + red rule + status metric + icon-button.
+   Replaces the old per-bank reload toolbar. Refresh-from-device is
+   now a single icon-button on the title row (CRUD Affordances rule).
+   ============================================================ */
+.patches__title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ac-space-4);
+  padding-bottom: var(--ac-space-3);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+}
+
+.patches__title-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-2);
+}
+
+.patches__title-heading {
+  margin: 0;
+  font-family: var(--ac-font-display);
+  font-weight: var(--ac-font-weight-normal);
+  font-size: 1.45rem;
+  line-height: 1.2;
+  letter-spacing: var(--ac-tracking-display);
+  color: var(--ac-color-text-primary);
+}
+
+/* Red rule beneath the heading — REC-LED accent (used sparingly). */
+.patches__title-rule {
+  width: 2.25rem;
+  height: var(--ac-rule-medium);
+  background: var(--ac-color-rec);
+  box-shadow: 0 0 8px var(--ac-color-rec-glow);
+}
+
+/* Status metric — "<n> of <N> loaded" + signal LED + refresh icon. */
+.patches__title-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-3);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  white-space: nowrap;
+}
+
+.patches__title-metric strong {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--ac-font-weight-normal);
+  color: var(--ac-color-accent);
+}
+
+.patches__title-led {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--ac-color-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 70%, transparent);
+}
+
+/* Icon-button (refresh / reload) sized to fit the title-row baseline. */
+.patches__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 60%, transparent);
+  color: var(--ac-color-text-muted);
+  border-radius: var(--ac-radius-sm);
+  cursor: pointer;
+  transition:
+    border-color var(--ac-duration-fast) var(--ac-easing-default),
+    color var(--ac-duration-fast) var(--ac-easing-default),
+    background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.patches__icon-btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  color: var(--ac-color-accent);
+  background: color-mix(in srgb, var(--ac-color-accent) 8%, transparent);
+}
+
+.patches__icon-btn:focus-visible {
+  outline: var(--ac-rule-medium) solid color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  outline-offset: 2px;
+}
+
+.patches__icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.patches__icon-btn svg {
+  width: 1rem;
+  height: 1rem;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.patches__icon-btn--spinning svg {
+  animation: patches-icon-spin 1.4s linear infinite;
+}
+
+@keyframes patches-icon-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .patches__icon-btn--spinning svg { animation: none; }
+}
+
+/* ============================================================
+   LIST PANE — banked patch list, sticky bank headers, list rows.
+   ============================================================ */
+.patches__list {
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: var(--ac-color-surface-panel);
+  border-radius: var(--ac-radius-sm);
+  overflow: hidden;
+}
+
+.patches__list-scroll {
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+/* Sticky bank header — lives ABOVE its rows; scrolls within the list. */
+.patches__list-bank-header {
+  position: sticky;
+  top: 0;
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 92%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: var(--ac-space-3) var(--ac-space-4);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  z-index: 1;
+}
+
+.patches__list-bank-header strong {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--ac-font-weight-normal);
+  color: var(--ac-color-text-muted);
+}
+
+/* List row — slot id, name, status. The row itself is interactive
+   (role="button"), the optional Export button nests inside on hover. */
+.patches__list-row {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr) auto;
+  gap: var(--ac-space-3);
+  align-items: center;
+  padding: var(--ac-space-3) var(--ac-space-4);
+  border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 50%, transparent);
+  border-left: var(--ac-rule-medium) solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--ac-color-text-primary);
+  background: transparent;
+  transition:
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    border-left-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.patches__list-row:hover:not([aria-disabled="true"]) {
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 60%, transparent);
+  border-left-color: color-mix(in srgb, var(--ac-color-accent) 40%, transparent);
+}
+
+.patches__list-row[aria-selected="true"] {
+  background: color-mix(in srgb, var(--ac-color-accent) 12%, transparent);
+  border-left-color: var(--ac-color-accent);
+}
+
+.patches__list-row[aria-selected="true"] .patches__list-slot {
+  color: var(--ac-color-accent);
+}
+
+.patches__list-row:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--ac-color-accent) 12%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
+}
+
+.patches__list-row[aria-disabled="true"] {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.patches__list-slot {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.patches__list-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.patches__list-name {
+  font-family: var(--ac-font-body);
+  font-size: var(--ac-text-sm);
+  font-weight: var(--ac-font-weight-medium);
+  color: var(--ac-color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.patches__list-name--placeholder {
+  font-style: italic;
+  color: var(--ac-color-text-muted);
+}
+
+.patches__list-name--empty {
+  color: color-mix(in srgb, var(--ac-color-text-muted) 70%, transparent);
+  font-style: italic;
+}
+
+.patches__list-eyebrow {
+  font-family: var(--ac-font-display);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: color-mix(in srgb, var(--ac-color-text-muted) 70%, transparent);
+}
+
+.patches__list-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 70%, transparent);
+  background: transparent;
+  color: var(--ac-color-text-muted);
+  font-family: var(--ac-font-display);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--ac-radius-sm);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity var(--ac-duration-fast) var(--ac-easing-default),
+    border-color var(--ac-duration-fast) var(--ac-easing-default),
+    color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.patches__list-row:hover .patches__list-action,
+.patches__list-row[aria-selected="true"] .patches__list-action,
+.patches__list-row:focus-within .patches__list-action {
+  opacity: 1;
+}
+
+.patches__list-action:hover {
+  border-color: var(--ac-color-accent);
+  color: var(--ac-color-accent);
+}
+
+.patches__list-action:focus-visible {
+  opacity: 1;
+  outline: var(--ac-rule-medium) solid color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  outline-offset: 1px;
+}
+
+.patches__list-load-hint {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+}
+
+/* ============================================================
+   DETAIL PANE — patch-editor surface chrome (header + live footer).
+   The interior of the editor (parameter grid, tone-zone editor) keeps
+   its current Tailwind composition; we only re-frame the surface.
+   ============================================================ */
+.patches__detail {
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: var(--ac-color-surface-panel);
+  border-radius: var(--ac-radius-sm);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.patches__detail-head {
+  padding: var(--ac-space-4) var(--ac-space-6) var(--ac-space-3);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: linear-gradient(
+    180deg,
+    var(--ac-color-surface-panel) 0%,
+    color-mix(in srgb, var(--ac-color-surface-canvas) 40%, transparent) 100%
+  );
+}
+
+.patches__detail-eyebrow-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  margin-bottom: var(--ac-space-2);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.patches__detail-eyebrow-sep {
+  color: color-mix(in srgb, var(--ac-color-text-muted) 50%, transparent);
+}
+
+.patches__detail-eyebrow-accent {
+  color: var(--ac-color-accent);
+}
+
+.patches__detail-title {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--ac-space-3);
+  flex-wrap: wrap;
+  font-family: var(--ac-font-display);
+  font-weight: var(--ac-font-weight-normal);
+  font-size: 1.25rem;
+  line-height: 1.18;
+  letter-spacing: var(--ac-tracking-display);
+}
+
+.patches__detail-slot {
+  font-family: var(--ac-font-mono);
+  color: var(--ac-color-accent);
+  letter-spacing: 0.02em;
+}
+
+.patches__detail-name {
+  color: var(--ac-color-text-primary);
+}
+
+.patches__detail-body {
+  flex: 1;
+  min-height: 0;
+  padding: var(--ac-space-6);
+  overflow-y: auto;
+}
+
+/* Live-status footer — replaces save / cancel / undo. Edits stream to
+   the device in real time; the only chrome is the pulsing rec-LED and
+   the "Last sent" copy. */
+.patches__detail-live {
+  padding: var(--ac-space-3) var(--ac-space-4);
+  border-top: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-3);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.patches__detail-live-led {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--ac-color-rec);
+  box-shadow: 0 0 8px var(--ac-color-rec-glow);
+  animation: patches-live-pulse 2.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.patches__detail-live-touch {
+  color: var(--ac-color-text-primary);
+}
+
+@keyframes patches-live-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px var(--ac-color-rec-glow);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 14px var(--ac-color-rec-glow);
+    opacity: 0.8;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .patches__detail-live-led { animation: none; }
+}
+
+.patches__detail-empty {
+  padding: var(--ac-space-8) var(--ac-space-6);
+  text-align: center;
+  color: var(--ac-color-text-muted);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+}
+
+/* ============================================================
+   APP SHELL — list (column 1) + detail (column 2).
+   The mockup also reserves a CRT/front-panel column on the right; that
+   is a cross-page concern (every editor page mounts the virtual front
+   panel beneath the CRT) and lands in a separate commit so this file
+   stays focused on the patches surface.
+   ============================================================ */
+.patches__app-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ac-space-6);
+  padding-block: var(--ac-space-5) 0;
+}
+
+@media (min-width: 1024px) {
+  .patches__app-shell {
+    grid-template-columns: 22rem minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+/* Loading progress bar — replaces the inline progress in the toolbar. */
+.patches__progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-1);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+}
+
+.patches__progress-track {
+  position: relative;
+  height: 0.25rem;
+  background: var(--ac-color-surface-canvas);
+  border-radius: var(--ac-radius-sm);
+  overflow: hidden;
+}
+
+.patches__progress-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--ac-color-accent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
+  transition: width var(--ac-duration-normal) var(--ac-easing-default);
+}

@@ -1,8 +1,22 @@
 /**
- * Patches page - View and edit patches
+ * Patches page — list-detail editor with the v3 mockup polish applied.
  *
  * Data is cached in deviceDataStore and persists across page navigation.
  * Loads first bank (8 patches) by default for faster startup.
+ *
+ * Visual treatment is the operator-approved v3 mockup direction
+ * (Phase 9 Task 4):
+ *   - Lean page header: h2 + red rule + status metric + icon-button.
+ *     The per-bank reload toolbar from earlier phases is gone — refresh
+ *     from device is a single icon-button on the title row, matching
+ *     DESIGN-SYSTEM.md "List-Level Actions" + "CRUD Affordances on List
+ *     Items" (per-row click-to-load remains for unloaded banks).
+ *   - 2-column app shell (list + detail). The mockup also reserves a
+ *     CRT/front-panel column on the right; that lands in a separate
+ *     cross-page commit so this file stays focused on the patches surface.
+ *   - Live-edit footer in the detail pane (no save/cancel/undo) — edits
+ *     stream to the device in real time per project memory
+ *     `feedback_live_editing_no_save`.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -12,18 +26,16 @@ import { useDeviceDataStore } from '@/stores/deviceDataStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { useBankLoader } from '@/hooks/useBankLoader';
 import { useLibraryExport } from '@/hooks/useLibraryExport';
-import { getPatchBankCount, getToneBankCount } from '@/configs/types';
 import type { SamplerClientInterface, SamplerPatch, SamplerTone } from '@/core/midi/SamplerClient';
 import { PatchList } from '@/components/patches/PatchList';
 import { PatchEditor } from '@/components/patches/PatchEditor';
-import { PatchBankLabel } from '@/components/common/PatchLabel';
 import { ExportPatchDialog } from '@/components/library/ExportPatchDialog';
 import { useLibraryConnection } from '@audiocontrol/editor-core';
 import { cn } from '@/lib/utils';
 
 export function PatchesPage() {
   const config = useDeviceConfig();
-  const { totalPatches, totalTones, patchesPerBank, tonesPerBank } = config;
+  const { totalPatches, totalTones, patchesPerBank, tonesPerBank, deviceName } = config;
 
   const { adapter, deviceId, status } = useMidiStore();
   const {
@@ -46,7 +58,6 @@ export function PatchesPage() {
     patches,
     tones,
     loadedPatchBanks,
-    loadedToneBanks,
     setPatch,
     setTone,
     markPatchBankLoaded,
@@ -57,7 +68,7 @@ export function PatchesPage() {
     invalidateToneCache,
   } = useDeviceDataStore();
 
-  // Keep a ref to the S330 client
+  // Keep a ref to the device client (S-330 / S-550 / etc.)
   const clientRef = useRef<SamplerClientInterface | null>(null);
 
   // Bank loading state
@@ -69,7 +80,12 @@ export function PatchesPage() {
   // Library connection for export
   const library = useLibraryConnection({ pickerId: 'sampler-library' });
 
-  // Library export hook - handles patch export with tone dependencies
+  // Library export hook — handles patch export with tone dependencies.
+  // Phase 9 Task 4 carry-over (audit finding 5): use the imperative
+  // `openExportPatchDialog` opener rather than synthesizing a fake
+  // DeviceDragData and routing through `handleDropDevicePatch`. The
+  // imperative API throws on cache miss / no library, which surfaces
+  // the failure mode loudly per CLAUDE.md "no silent fallbacks".
   const exportOps = useLibraryExport({
     clientRef,
     libraryHandle: library.root,
@@ -87,7 +103,7 @@ export function PatchesPage() {
     }
     const client = config.createClient(adapter, { deviceId });
     clientRef.current = client;
-  }, [adapter, deviceId]);
+  }, [adapter, deviceId, config]);
 
   // Load a specific range of patches (updates UI progressively)
   const { loadPatchBank, loadToneBank } = useBankLoader({
@@ -116,8 +132,11 @@ export function PatchesPage() {
     await loadToneBank(0);
   }, [loadPatchBankWithIndicator, loadToneBank]);
 
-  // Load all patches and tones
-  const loadAll = useCallback(async () => {
+  // Refresh-from-device — replaces the per-bank reload toolbar.
+  // Invalidates caches and reloads every bank. The icon-button on the
+  // title row binds to this; per-row click-to-load (in PatchList) still
+  // handles single-bank loads for the unloaded banks.
+  const refreshAll = useCallback(async () => {
     if (!clientRef.current) return;
 
     clientRef.current.invalidatePatchCache();
@@ -125,44 +144,47 @@ export function PatchesPage() {
     invalidatePatchCache();
     invalidateToneCache();
 
-    // Calculate number of banks from config
     const patchBankCount = Math.ceil(totalPatches / patchesPerBank);
     const toneBankCount = Math.ceil(totalTones / tonesPerBank);
 
-    // Load all patch banks
     for (let bank = 0; bank < patchBankCount; bank++) {
       await loadPatchBank(bank, true);
     }
 
-    // Load all tone banks
     for (let bank = 0; bank < toneBankCount; bank++) {
       await loadToneBank(bank, true);
     }
-  }, [loadPatchBank, loadToneBank, invalidatePatchCache, invalidateToneCache, totalPatches, patchesPerBank, totalTones, tonesPerBank]);
+  }, [
+    loadPatchBank,
+    loadToneBank,
+    invalidatePatchCache,
+    invalidateToneCache,
+    totalPatches,
+    patchesPerBank,
+    totalTones,
+    tonesPerBank,
+  ]);
 
   // Handle patch updates from the editor
   const handlePatchUpdate = useCallback((index: number, patch: SamplerPatch) => {
     setPatch(index, patch, totalPatches);
   }, [setPatch, totalPatches]);
 
-  // Open export to library dialog for a specific patch
+  // Open export-to-library dialog for a specific patch.
+  // Connects the library on demand, then delegates to
+  // useLibraryExport.openExportPatchDialog. Errors thrown by the opener
+  // surface as state via setError; we don't swallow them.
   const handleOpenExportDialog = useCallback(async (patchIndex: number) => {
-    // Connect to library if not already connected
-    if (!library.isConnected && library.hasLocalFS) {
-      await library.connect('local');
+    try {
+      if (!library.isConnected && library.hasLocalFS) {
+        await library.connect('local');
+      }
+      exportOps.openExportPatchDialog(patchIndex);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to open export dialog';
+      setError(message);
     }
-
-    // Get the patch and trigger export via the hook's drag handler
-    const patch = patches[patchIndex];
-    if (patch) {
-      exportOps.handleDropDevicePatch({
-        source: 'device',
-        type: 'patch',
-        index: patchIndex,
-        name: patch.common.name || `Patch ${config.memoryLayout.formatPatchSlot(patchIndex)}`,
-      });
-    }
-  }, [library, patches, exportOps]);
+  }, [library, exportOps, setError]);
 
   // Auto-load initial data when connected
   useEffect(() => {
@@ -180,10 +202,10 @@ export function PatchesPage() {
     }
   }, [isConnected, patches.length, isLoading, loadInitialData]);
 
-
-  // Filter to only show loaded patches
+  // Loaded counters for the title-row metric.
   const loadedPatches = patches.filter((p): p is SamplerPatch => p !== undefined);
   const loadedTonesArray = tones.filter((t): t is SamplerTone => t !== undefined);
+  const loadedPatchCount = loadedPatches.length;
 
   const selectedPatch = selectedPatchIndex !== null ? patches[selectedPatchIndex] : null;
 
@@ -193,7 +215,7 @@ export function PatchesPage() {
         <div className="card text-center py-12">
           <h2 className="text-xl font-bold text-s330-text mb-2">Not Connected</h2>
           <p className="text-s330-muted mb-4">
-            Connect to your S-330 to view and edit patches.
+            Connect to your {deviceName} to view and edit patches.
           </p>
           <a href="/" className="ac-btn ac-btn-primary inline-block">
             Go to Connection
@@ -205,84 +227,73 @@ export function PatchesPage() {
 
   return (
     <div className="ac-page ac-page-shell">
-      {/* Sticky Header */}
-      <div className="ac-page-sticky-header">
-        <div className="ac-page-header">
-          <h2 className="text-xl font-bold text-s330-text">Patches</h2>
-          <div className="flex items-center gap-4 flex-1 justify-end">
-            {/* Loading Progress (inline with buttons) */}
-            {isLoading && loadingProgress !== null && (
-              <div className="flex-1 max-w-xs">
-                <div className="h-2 bg-s330-panel rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-s330-highlight transition-all duration-150 ease-out"
-                    style={{ width: `${loadingProgress}%` }}
-                  />
-                </div>
-                <p className="text-s330-muted text-xs mt-0.5 truncate">{loadingMessage}</p>
-              </div>
-            )}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {/* Patch bank buttons */}
-              {Array.from({ length: getPatchBankCount(config) }, (_, i) => (
-                <button
-                  key={`patch-${i}`}
-                  onClick={() => loadPatchBank(i, true)}
-                  disabled={isLoading}
-                  className={cn('ac-btn ac-btn-sm', loadedPatchBanks.includes(i) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
-                >
-                  <PatchBankLabel bankIndex={i} patchesPerBank={patchesPerBank} memoryLayout={config.memoryLayout} />
-                </button>
-              ))}
-              {/* Tone bank buttons */}
-              {Array.from({ length: getToneBankCount(config) }, (_, i) => (
-                <button
-                  key={`tone-${i}`}
-                  onClick={() => loadToneBank(i, true)}
-                  disabled={isLoading}
-                  className={cn('ac-btn ac-btn-sm', loadedToneBanks.includes(i) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
-                >
-                  {config.memoryLayout.formatToneSlot(i * tonesPerBank)}-{config.memoryLayout.formatToneSlot(i * tonesPerBank + tonesPerBank - 1)}
-                </button>
-              ))}
-              <button
-                onClick={loadAll}
-                disabled={isLoading}
-                className={cn('ac-btn ac-btn-sm ac-btn-secondary', isLoading && 'opacity-50')}
-              >
-                All
-              </button>
-            </div>
-          </div>
+      {/* Lean page header — h2 + red rule + status + refresh icon. */}
+      <header className="patches__title-row">
+        <div className="patches__title-block">
+          <h2 id="patches-heading" className="patches__title-heading">Patches</h2>
+          <div className="patches__title-rule" aria-hidden="true" />
         </div>
-      </div>
+        <span className="patches__title-metric">
+          <span className="patches__title-led" aria-hidden="true" />
+          <span>
+            <strong>{loadedPatchCount}</strong> of <strong>{totalPatches}</strong> loaded
+          </span>
+          <button
+            type="button"
+            onClick={refreshAll}
+            disabled={isLoading}
+            className={cn(
+              'patches__icon-btn',
+              isLoading && 'patches__icon-btn--spinning',
+            )}
+            aria-label="Refresh all patches from device"
+            title="Refresh all patches from device"
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M3 8a5 5 0 0 1 9-3" />
+              <polyline points="12 2 12 5 9 5" />
+              <path d="M13 8a5 5 0 0 1-9 3" />
+              <polyline points="4 14 4 11 7 11" />
+            </svg>
+          </button>
+        </span>
+      </header>
 
-      {/* Error Display */}
+      {/* Inline loading progress — uses the same byte-percent shape we use
+          elsewhere, just reframed for the title-row context. */}
+      {isLoading && loadingProgress !== null && (
+        <div className="patches__progress" role="status" aria-live="polite">
+          <div className="patches__progress-track">
+            <div
+              className="patches__progress-fill"
+              style={{ width: `${loadingProgress}%` }}
+            />
+          </div>
+          {loadingMessage && <span>{loadingMessage}</span>}
+        </div>
+      )}
+
+      {/* Error display */}
       {error && (
         <div data-testid="error-message" className="ac-alert ac-alert-error">
           <p className="ac-text-error text-sm">{error}</p>
         </div>
       )}
 
-      {/* Content - show while loading for progressive updates */}
+      {/* List + detail — fills the remaining vertical space. */}
       {patches.length > 0 && (
-        <div className="ac-list-detail-grid">
-          {/* Sticky list column */}
-          <div>
-            <div className="ac-list-column-sticky">
-              <PatchList
-                patches={patches}
-                selectedIndex={selectedPatchIndex}
-                onSelect={selectPatch}
-                loadedBanks={loadedPatchBanks}
-                patchesPerBank={patchesPerBank}
-                loadingBank={loadingBank}
-                onLoadBank={(bank) => loadPatchBankWithIndicator(bank)}
-                onExportPatch={handleOpenExportDialog}
-              />
-            </div>
-          </div>
-          <div>
+        <div className="patches__app-shell" aria-labelledby="patches-heading">
+          <PatchList
+            patches={patches}
+            selectedIndex={selectedPatchIndex}
+            onSelect={selectPatch}
+            loadedBanks={loadedPatchBanks}
+            patchesPerBank={patchesPerBank}
+            loadingBank={loadingBank}
+            onLoadBank={(bank) => loadPatchBankWithIndicator(bank)}
+            onExportPatch={handleOpenExportDialog}
+          />
+          <article className="patches__detail" aria-labelledby="patch-detail-title">
             {selectedPatch ? (
               <PatchEditor
                 patch={selectedPatch}
@@ -291,15 +302,13 @@ export function PatchesPage() {
                 onUpdate={handlePatchUpdate}
               />
             ) : (
-              <div className="card text-center py-12 text-s330-muted">
-                Select a patch to edit
-              </div>
+              <div className="patches__detail-empty">Select a patch to edit</div>
             )}
-          </div>
+          </article>
         </div>
       )}
 
-      {/* Empty State - no patches loaded yet */}
+      {/* Empty state — only when nothing is loaded and no operation is in flight. */}
       {!isLoading && loadedPatches.length === 0 && !error && (
         <div className="card text-center py-12">
           <p className="text-s330-muted mb-4">No patches loaded</p>
@@ -309,7 +318,7 @@ export function PatchesPage() {
         </div>
       )}
 
-      {/* Export to Library Dialog */}
+      {/* Export to library dialog */}
       {exportOps.exportPatchDialog && (
         <ExportPatchDialog
           open={!!exportOps.exportPatchDialog}
