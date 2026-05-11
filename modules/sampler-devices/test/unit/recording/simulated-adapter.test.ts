@@ -191,6 +191,56 @@ describe('SimulatedAdapter', () => {
         });
     });
 
+    describe('cursor introspection', () => {
+        it('getCursor() returns 0 immediately after construction with a multi-record fixture', () => {
+            const s = buildScenario();
+            appendRecord(s, { kind: 'outbound', bytes: [0xf0, 0x11, 0xf7], timestampMs: 0 });
+            appendRecord(s, { kind: 'inbound', bytes: [0xf0, 0x12, 0xf7], timestampMs: 10 });
+            appendRecord(s, { kind: 'outbound', bytes: [0xf0, 0x52, 0xf7], timestampMs: 20 });
+
+            const sim = new SimulatedAdapter(s, { latencyMode: 'none' });
+            expect(sim.getCursor()).toBe(0);
+        });
+
+        it('getCursor() advances past consumed records after each matching send()', () => {
+            const s = buildScenario();
+            // Two independent outbound/inbound pairs. After the first send(),
+            // cursor consumes the outbound (idx 0) + the inbound that follows
+            // (idx 1) = 2. After the second send(), cursor reaches 4.
+            appendRecord(s, { kind: 'outbound', bytes: [0xf0, 0x11, 0xf7], timestampMs: 0 });
+            appendRecord(s, { kind: 'inbound', bytes: [0xf0, 0x12, 0xf7], timestampMs: 10 });
+            appendRecord(s, { kind: 'outbound', bytes: [0xf0, 0x52, 0xf7], timestampMs: 20 });
+            appendRecord(s, { kind: 'inbound', bytes: [0xf0, 0x53, 0xf7], timestampMs: 30 });
+
+            const sim = new SimulatedAdapter(s, { latencyMode: 'none' });
+            sim.onSysEx(() => {
+                // drain inbound so dispatchPendingInbound advances the cursor
+            });
+
+            sim.send([0xf0, 0x11, 0xf7]);
+            expect(sim.getCursor()).toBe(2);
+
+            sim.send([0xf0, 0x52, 0xf7]);
+            expect(sim.getCursor()).toBe(4);
+        });
+
+        it('getTotalRecords() returns the total record count of the scenario', () => {
+            const s = buildScenario();
+            const expectedCount = 5;
+            for (let i = 0; i < expectedCount; i++) {
+                appendRecord(s, {
+                    kind: i % 2 === 0 ? 'outbound' : 'inbound',
+                    bytes: [0xf0, i, 0xf7],
+                    timestampMs: i * 10,
+                });
+            }
+            expect(s.records).toHaveLength(expectedCount);
+
+            const sim = new SimulatedAdapter(s, { latencyMode: 'none' });
+            expect(sim.getTotalRecords()).toBe(expectedCount);
+        });
+    });
+
     describe('round-trip with RecordingProxyAdapter', () => {
         it('replay-of-recording produces identical listener output', () => {
             // Stage 1: record from a fake adapter

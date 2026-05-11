@@ -10,6 +10,25 @@
 import { expect, type Page, type Locator } from '@playwright/test';
 
 /**
+ * Structural shape for the `__simulatedAdapter` global exposed by the
+ * simulated MIDI transport (see `src/transports/simulatedMidiTransport.ts`).
+ * The test tree is compiled by Playwright as an independent unit and
+ * does not see the transport's `declare global`, so we re-declare a
+ * minimal structural subset here. Keep both sites in sync if the
+ * adapter's introspection surface grows.
+ */
+interface SimulatedAdapterIntrospection {
+  getCursor: () => number;
+  getTotalRecords: () => number;
+}
+
+declare global {
+  interface Window {
+    __simulatedAdapter?: SimulatedAdapterIntrospection;
+  }
+}
+
+/**
  * Read the simulated MIDI adapter's record cursor from the page. The
  * simulated transport exposes the active adapter on
  * `window.__simulatedAdapter`; the spec reads its cursor to assert the
@@ -24,7 +43,7 @@ export async function readSimulatedAdapterState(
   page: Page,
 ): Promise<{ cursor: number; total: number }> {
   const state = await page.evaluate(() => {
-    const adapter = (window as unknown as { __simulatedAdapter?: { getCursor: () => number; getTotalRecords: () => number } }).__simulatedAdapter;
+    const adapter = window.__simulatedAdapter;
     if (!adapter) {
       return null;
     }

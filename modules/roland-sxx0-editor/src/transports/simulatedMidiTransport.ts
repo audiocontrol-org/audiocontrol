@@ -30,6 +30,22 @@ import {
   type FixtureScenario,
 } from '@audiocontrol/sampler-devices/recording';
 
+/**
+ * Capability specs read the active `SimulatedAdapter`'s cursor through
+ * `window.__simulatedAdapter` to assert UI drivers actually emitted
+ * bytes (positive assertion). This file owns the property — the
+ * declaration lives here so all `src` consumers see the typed shape
+ * without an `as` cast. The matching declaration in the spec helper
+ * (`test/ui/capabilities/tone-writes-helpers.ts`) is independent
+ * because the test tree is compiled separately by Playwright; both
+ * sites must keep the shape in sync.
+ */
+declare global {
+  interface Window {
+    __simulatedAdapter?: SimulatedAdapter;
+  }
+}
+
 const SIMULATED_INPUT: MidiPortInfo = {
   id: 'sim-in',
   name: 'Simulated In',
@@ -108,7 +124,7 @@ export function createSimulatedMidiTransport(
         // missed click) would false-pass — no bytes emitted = no
         // SimulatedAdapter mismatch = no error.
         if (typeof window !== 'undefined') {
-          (window as unknown as { __simulatedAdapter?: SimulatedAdapter }).__simulatedAdapter = sharedAdapter;
+          window.__simulatedAdapter = sharedAdapter;
         }
       }
       return SIMULATED_PORTS;
