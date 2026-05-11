@@ -92,8 +92,14 @@ export function createSimulatedMidiTransport(
       // Only create the adapter once per transport lifetime. StrictMode's
       // double-mount calls initialize() twice; we want both calls to
       // resolve against the SAME adapter so the cursor advances
-      // monotonically. A genuine reset (e.g. operator clicks Reconnect)
-      // would create a new transport, which gets a fresh adapter.
+      // monotonically. A fresh adapter requires a fresh transport
+      // instance, which currently only happens on a full page reload
+      // (the transport is cached in `transportInstances` at module level
+      // in `midiStore.ts`). MidiStore.reconnect() — disconnect +
+      // initialize — reuses the same adapter under this contract. If a
+      // future feature needs Reconnect-to-reset semantics, the transport
+      // needs to expose a `resetCursor()` method or the cache
+      // invalidation has to happen at the store level.
       if (!sharedAdapter) {
         sharedAdapter = new SimulatedAdapter(cachedScenario, { latencyMode: 'none' });
       }
@@ -126,7 +132,10 @@ export function createSimulatedMidiTransport(
         disconnect: async () => {
           // No-op: the shared adapter survives disconnect so a subsequent
           // re-connect within the same transport keeps the cursor where
-          // it was. A full reset goes through initialize().
+          // it was. See `initialize()` above for the lifetime contract:
+          // a fresh adapter requires a fresh transport instance (full
+          // page reload), and MidiStore.reconnect()'s disconnect +
+          // initialize reuses this same adapter.
         },
       };
     },

@@ -183,6 +183,17 @@ const SCENARIOS: Record<string, Scenario> = {
     // call each. Driven from the UI in Wave 2b's capability spec to assert
     // each affordance emits the captured outbound byte sequence. See
     // ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md rows D-PLAY-04..07.
+    //
+    // Value-selection criteria: each value is chosen to be non-default
+    // and in-range so that driving the corresponding UI control actually
+    // emits a setter call. A no-op selectOption / fill / change that
+    // matches the current control value emits nothing, which would make
+    // the capability spec silently false-pass. Specific values:
+    //   channel = 5   — MIDI channel 6 (display); non-default vs part 0
+    //                   stock channel
+    //   patch   = 3   — patch slot 4 (display); non-default selection
+    //   output  = 4   — output 5 (display); non-default
+    //   level   = 80  — non-default vs device stock (100)
 
     'multi-part-0-channel': {
         name: 'multi-part-0-channel',

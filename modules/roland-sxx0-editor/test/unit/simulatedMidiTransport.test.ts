@@ -38,6 +38,36 @@ function buildTrivialScenarioText(): string {
   return serializeFixture(scenario);
 }
 
+/**
+ * Two-outbound fixture used by the cursor-continuity tests: lets a test
+ * advance the cursor by sending the first outbound, reconnect, then send
+ * the second outbound. If the reconnect created a new (cursor-0) adapter,
+ * the second send would fail because it'd be compared against the FIRST
+ * outbound bytes — which is exactly the bug Wave 2b's contract change
+ * fixed.
+ */
+const FIRST_OUTBOUND_BYTES = [0xf0, 0x41, 0x10, 0x1e, 0x11, 0x01, 0xf7];
+const SECOND_OUTBOUND_BYTES = [0xf0, 0x41, 0x10, 0x1e, 0x12, 0x02, 0xf7];
+
+function buildTwoOutboundScenarioText(): string {
+  const scenario = createScenario({
+    name: 'unit-test-two-outbound',
+    device: 's330',
+    deviceId: 0,
+  });
+  appendRecord(scenario, {
+    kind: 'outbound',
+    timestampMs: 0,
+    bytes: FIRST_OUTBOUND_BYTES,
+  });
+  appendRecord(scenario, {
+    kind: 'outbound',
+    timestampMs: 1,
+    bytes: SECOND_OUTBOUND_BYTES,
+  });
+  return serializeFixture(scenario);
+}
+
 describe('createSimulatedMidiTransport', () => {
   afterEach(() => {
     // Restores any vi.spyOn(globalThis, 'fetch') installed by individual
@@ -146,12 +176,14 @@ describe('createSimulatedMidiTransport', () => {
     await second.disconnect();
   });
 
-  it('returns the same adapter across StrictMode-style double initialize() (cursor preserved)', async () => {
-    // StrictMode dev double-mount calls initialize() twice on first mount.
-    // The simulated transport must NOT create a second adapter on the
-    // second call — that would reset the cursor and corrupt write tests
-    // whose setter call lands on cursor 0 of the just-replaced adapter.
-    const fixtureText = buildTrivialScenarioText();
+  it('preserves cursor across consecutive connect() calls (behavioral: second send advances past first)', async () => {
+    // Identity (above) logically implies cursor continuity given
+    // SimulatedAdapter's private-cursor model, but this test proves the
+    // behavior end-to-end: advance the cursor by sending the FIRST
+    // outbound, reconnect, then send the SECOND outbound. If the second
+    // connect returned a fresh cursor-0 adapter, this send would be
+    // compared against the FIRST outbound bytes and throw.
+    const fixtureText = buildTwoOutboundScenarioText();
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(fixtureText, { status: 200 }),
     );
@@ -162,8 +194,40 @@ describe('createSimulatedMidiTransport', () => {
     });
     await transport.initialize();
     const first = await transport.connect('sim-in', 'sim-out');
+    // Advance cursor past record 0.
+    first.adapter.send([...FIRST_OUTBOUND_BYTES]);
+
+    const second = await transport.connect('sim-in', 'sim-out');
+    expect(first.adapter).toBe(second.adapter);
+    // If cursor reset, this would throw (would be compared against
+    // FIRST_OUTBOUND_BYTES). It does not — cursor preserved.
+    expect(() => second.adapter.send([...SECOND_OUTBOUND_BYTES])).not.toThrow();
+  });
+
+  it('returns the same adapter across StrictMode-style double initialize() (cursor preserved)', async () => {
+    // StrictMode dev double-mount calls initialize() twice on first mount.
+    // The simulated transport must NOT create a second adapter on the
+    // second call — that would reset the cursor and corrupt write tests
+    // whose setter call lands on cursor 0 of the just-replaced adapter.
+    const fixtureText = buildTwoOutboundScenarioText();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(fixtureText, { status: 200 }),
+    );
+
+    const transport = createSimulatedMidiTransport({
+      deviceType: 's330',
+      scenario: 'test',
+    });
+    await transport.initialize();
+    const first = await transport.connect('sim-in', 'sim-out');
+    // Advance cursor past the first outbound record before the second
+    // initialize() — proves the second initialize() does NOT reset.
+    first.adapter.send([...FIRST_OUTBOUND_BYTES]);
     await transport.initialize();
     const second = await transport.connect('sim-in', 'sim-out');
     expect(first.adapter).toBe(second.adapter);
+    // Cursor still points at the second outbound record — would throw if
+    // initialize() had created a fresh cursor-0 adapter.
+    expect(() => second.adapter.send([...SECOND_OUTBOUND_BYTES])).not.toThrow();
   });
 });
