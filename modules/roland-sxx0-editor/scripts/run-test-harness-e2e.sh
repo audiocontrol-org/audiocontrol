@@ -27,13 +27,33 @@ echo ""
 echo "Step 1: Starting dev server..."
 VITE_LOG=$(mktemp)
 
+# Kill a process and all its descendants. macOS-portable; doesn't rely on
+# setsid (not native on macOS) or `kill -- -PGID` (which would kill our own
+# shell if vite inherited our process group).
+kill_tree() {
+  local pid=$1
+  local sig=${2:-TERM}
+  # Recurse children first (post-order) so leaves die before parents and we
+  # don't lose `pgrep -P` lookups partway through.
+  local child
+  for child in $(pgrep -P "$pid" 2>/dev/null || true); do
+    kill_tree "$child" "$sig"
+  done
+  kill -"$sig" "$pid" 2>/dev/null || true
+}
+
 cleanup() {
+  # `pnpm vite` spawns 2-3 intermediate node + nix-store + pnpm-tool layers
+  # between us and the actual `vite.js` server. Killing only $VITE_PID
+  # leaves the descendants as zombies that accumulate across runs.
   if [ -n "${VITE_PID:-}" ]; then
-    kill "$VITE_PID" 2>/dev/null || true
+    kill_tree "$VITE_PID" TERM
+    sleep 0.3
+    kill_tree "$VITE_PID" KILL
   fi
   rm -f "$VITE_LOG"
 }
-trap cleanup EXIT
+trap cleanup EXIT INT TERM
 
 pnpm vite --port 0 > "$VITE_LOG" 2>&1 &
 VITE_PID=$!
