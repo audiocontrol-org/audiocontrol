@@ -129,12 +129,12 @@ GitHub issues grouped by feature coherence.
 
 | Test status | Count | Definition |
 |-------------|-------|------------|
-| Tested | 112 | Affordance is implemented AND a capability spec asserts it. (Wave 3 added 37 bindings — 28 affordance display-tests + 9 gate-only tests that pin the disconnected / no-data / unmounted state pending Wave 4/6 captures or operator decisions.) |
-| Untested | 37 | Affordance is implemented (or partial) but no test asserts it. **These are the missing tests.** |
-| Pending UI | 24 | Affordance is missing — test depends on UI being built. **These are the missing capabilities.** |
+| Tested | 120 | Affordance is implemented AND a capability spec asserts it. Wave 3 (#414) added 37 bindings (28 affordance display-tests + 9 gate-only tests pinning the disconnected / no-data / unmounted state). Wave 4 (#415) added 8 more — 7 D-LIB rows now bind their library-connected half + 1 strict upgrade (D-LIB-03 from partial to strict). |
+| Untested | 30 | Affordance is implemented (or partial) but no test asserts it. **These are the missing tests.** |
+| Pending UI | 23 | Affordance is missing — test depends on UI being built. **These are the missing capabilities.** |
 | Hardware-only | 10 | Affordance can only be verified against real hardware (e.g., front-panel button → device LED change). Lives in `test/e2e/`, not the UI capability suite. |
 
-The 37 untested + 24 pending-UI rows are the remaining punch list. Each
+The 30 untested + 23 pending-UI rows are the remaining punch list. Each
 tested row is locked in against redesign; each untested row is at risk;
 each pending-UI row is a feature gap.
 
@@ -367,24 +367,24 @@ The library is the editor's primary editor-derived layer. The device has no conc
 |----|-----------|-----------------|--------|--------|--------|------|
 | D-LIB-01 | OPFS / local-FS library backend | `LibraryPage.tsx:19` → `useLibraryConnection` | C-LIB-01 | editor-derived | implemented | `capabilities/library.spec.ts :: C-LIB-01` (partial — only presence) |
 | D-LIB-02 | Google Drive backend | `LibraryPage.tsx` → conditional on `VITE_GOOGLE_CLIENT_ID` | C-LIB-01 | editor-derived | partial (only enabled when env var set) | — |
-| D-LIB-03 | Library tree display | `PluginLibraryBrowser` from `editor-core` | C-LIB-01 | editor-derived | partial (presence asserted; node enumeration deferred) | — |
-| D-LIB-04 | Sets section (expandable) | `LibraryPage.tsx:282` → `SetsSection` (gated on `libraryHandle`) | C-LIB-01 | editor-derived | implemented | `capabilities/library.spec.ts :: D-LIB-04` (gate only; library-connected half = Wave 4) |
-| D-LIB-05 | Device memory panel (tones + patches on device) | `LibraryPage.tsx` → `DeviceMemoryPanel` | C-LIB-02 | editor-derived | partial (drop-target coverage incomplete) | — |
+| D-LIB-03 | Library tree display | `PluginLibraryBrowser` from `editor-core` | C-LIB-01 | editor-derived | implemented | `capabilities/library-flows.spec.ts :: D-LIB-03 (strict)` (connected-library tree shows Tones / Patches / Samples / Programs category sections) |
+| D-LIB-04 | Sets section (expandable) | `LibraryPage.tsx:282` → `SetsSection` (gated on `libraryHandle`) | C-LIB-01 | editor-derived | implemented | `capabilities/library.spec.ts :: D-LIB-04` (disconnected gate) + `capabilities/library-flows.spec.ts :: D-LIB-04 (strict)` (connected) |
+| D-LIB-05 | Device memory panel (tones + patches on device) | `LibraryPage.tsx` → `DeviceMemoryPanel` | C-LIB-02 | editor-derived | partial (drop-target coverage incomplete) | `capabilities/library-flows.spec.ts :: D-LIB-05` (mount + group structure; per-slot populate + DnD drop-target lives in Wave 5) |
 | D-LIB-06 | Drag device tone → library (export) | `DeviceMemoryPanel.tsx:68` → `handleToneDragStart` | C-LIB-04 | editor-derived | implemented | — |
 | D-LIB-07 | Drag device patch → library (export) | `DeviceMemoryPanel.tsx` → `handlePatchDragStart` | C-LIB-04 | editor-derived | implemented | — |
 | D-LIB-08 | Drop library tone → device tone slot (import) | `DeviceMemoryPanel.tsx:44` → `onDropLibraryTone` | C-LIB-03 | editor-derived | implemented | — |
 | D-LIB-09 | Drop library patch → device patch slot (import) | `DeviceMemoryPanel.tsx:44` → `onDropLibraryPatch` | C-LIB-03 | editor-derived | implemented | — |
-| D-LIB-10 | Save Set dialog (full device state → named set) | `LibraryPage.tsx:26` → `SaveSetDialog` | C-LIB-05 | editor-derived | implemented | — |
-| D-LIB-11 | Load Set dialog (set → device, with MemoryMapPanel) | `LibraryPage.tsx:27` → `LoadSetDialog` | C-LIB-06 | editor-derived | implemented | — |
+| D-LIB-10 | Save Set dialog (full device state → named set) | `LibraryPage.tsx:26` → `SaveSetDialog` | C-LIB-05 | editor-derived | implemented | `capabilities/library-flows.spec.ts :: D-LIB-10` (mount + input + Save action; full save round-trip needs new device fixture) |
+| D-LIB-11 | Load Set dialog (set → device, with MemoryMapPanel) | `LibraryPage.tsx:27` → `LoadSetDialog` | C-LIB-06 | editor-derived | implemented | `capabilities/library-flows.spec.ts :: D-LIB-11 + D-LIB-20` (mount via seeded set + MemoryMapPanel header) |
 | D-LIB-12 | Import Library Tone dialog (slot + segment selection) | `LibraryPage.tsx:28` → `ImportLibraryToneDialog` | C-LIB-03 | editor-derived | implemented | — |
 | D-LIB-13 | Import Library Patch dialog | `LibraryPage.tsx:29` → `ImportLibraryPatchDialog` | C-LIB-03 | editor-derived | implemented | — |
 | D-LIB-14 | Import Samples dialog (sample bundle, MemoryMapPanel + BestFitPicker) | `LibraryPage.tsx:30` → `ImportSamplesDialog` | C-LIB-07 | editor-derived | implemented | — |
-| D-LIB-15 | Export Tone dialog | `LibraryPage.tsx:33` → `ExportToneDialog` | C-LIB-04 | editor-derived | implemented | — |
-| D-LIB-16 | Export Patch dialog | `LibraryPage.tsx:34` → `ExportPatchDialog` | C-LIB-04 | editor-derived | implemented | — |
+| D-LIB-15 | Export Tone dialog | `LibraryPage.tsx:33` → `ExportToneDialog` | C-LIB-04 | editor-derived | implemented | `capabilities/library-flows.spec.ts :: D-LIB-15` (per-row Export → dialog mount; connected-library half of D-TONE-LIST-07 gate) |
+| D-LIB-16 | Export Patch dialog | `LibraryPage.tsx:34` → `ExportPatchDialog` | C-LIB-04 | editor-derived | implemented | `capabilities/library-flows.spec.ts :: D-LIB-16` (per-row Export → dialog mount) |
 | D-LIB-17 | Loop Editor dialog (from library) | `LibraryPage.tsx:31` → `LoopEditorDialog` | C-LIB-07 | editor-derived | implemented | — |
 | D-LIB-18 | Sample Editor dialog | `LibraryPage.tsx:32` → `SampleEditorDialog` | C-LIB-07 | editor-derived | implemented | — |
 | D-LIB-19 | Sample Chopper dialog | `SampleChopperDialog` from `@audiocontrol/sample-chopper/ui` | n/a (unique to editor) | editor-derived | implemented | — |
-| D-LIB-20 | MemoryMapPanel — ToneSlotMap | `LoadSetDialog.tsx:17` → `ToneSlotMap` | C-LIB-10 | editor-derived | implemented | — |
+| D-LIB-20 | MemoryMapPanel — ToneSlotMap | `LoadSetDialog.tsx:17` → `ToneSlotMap` | C-LIB-10 | editor-derived | implemented | `capabilities/library-flows.spec.ts :: D-LIB-11 + D-LIB-20` (covered transitively — MemoryMapPanel header asserted inside LoadSetDialog) |
 | D-LIB-21 | MemoryMapPanel — WaveSegmentMap | `ImportSamplesDialog.tsx:18` → `WaveSegmentMap` | C-LIB-10 | editor-derived | implemented | — |
 | D-LIB-22 | Refresh device button | `LibraryPage.tsx:249` → `handleLoadDeviceData` | C-LIB-02 | client-derived | implemented | `capabilities/library.spec.ts :: D-LIB-22` |
 
@@ -521,7 +521,7 @@ document with a PR explaining why the capability no longer applies.
 
 ### Test-coverage backlog → wave issues
 
-The 113 untested rows are tracked across the remaining test-wave issues, sequenced so each
+The untested rows are tracked across the remaining test-wave issues, sequenced so each
 wave can land independently:
 
 | Wave | Issue | Scope | Hardware |
@@ -530,7 +530,7 @@ wave can land independently:
 | 2b | [#412](https://github.com/audiocontrol-org/audiocontrol/issues/412) | Multi-mode parameter writes — D-PLAY-04..07 | Yes |
 | 2c | [#413](https://github.com/audiocontrol-org/audiocontrol/issues/413) | Tone parameter writes (wave/pitch/TVF/TVA/LFO/envelope) | Yes |
 | 3 | [#414](https://github.com/audiocontrol-org/audiocontrol/issues/414) | Display-assertion gaps (port pickers, bank buttons, zone editor, loop editor visual) — **LANDED**: 37 bindings (see Wave 3 notes for the 5 D-XX rows that couldn't be bound until the VFP is mounted) | No |
-| 4 | [#415](https://github.com/audiocontrol-org/audiocontrol/issues/415) | Library + dialog flows (save/load set, import/export, sample editor) | Yes |
+| 4 | [#415](https://github.com/audiocontrol-org/audiocontrol/issues/415) | Library + dialog flows (save/load set, import/export, sample editor) — **PARTIAL LANDED**: 8 bindings for D-LIB-{03,04,05,10,11,15,16,20}. Remaining D-LIB-{12,13,14,17,18,19,21} require seeded library content infrastructure (yaml + WAV per tone/patch/sample bundle parseable by `convertYamlToS330Tone()` / sample loaders) OR DnD harness coverage (D-LIB-14, 21 only open via DnD — that belongs to Wave 5). | Yes |
 | 5 | [#416](https://github.com/audiocontrol-org/audiocontrol/issues/416) | Drag-drop tests | Yes |
 | 6 | [#417](https://github.com/audiocontrol-org/audiocontrol/issues/417) | Cross-cutting (front-panel DT1, panic, progress, live-edit guard) | Yes (front-panel fixture) |
 
