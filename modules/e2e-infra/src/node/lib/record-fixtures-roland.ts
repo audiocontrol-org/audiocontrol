@@ -19,6 +19,10 @@
  * Run via `make record-fixtures-roland-s550` for the standard scenario
  * matrix.
  *
+ * Scenario definitions live in `record-fixtures-roland-scenarios.ts`
+ * (sister file) so each side stays under the 300-500 line file cap as
+ * Wave 2a / Wave 2c add patch + tone setter scenarios.
+ *
  * @packageDocumentation
  */
 
@@ -36,250 +40,13 @@ import {
     createEasymidiSSeriesAdapter,
     findMidiPort,
 } from '#node/lib/easymidi-s-series-adapter.js';
+import {
+    SCENARIOS,
+    listScenarios,
+    type ScenarioContext,
+} from '#node/lib/record-fixtures-roland-scenarios.js';
 
-// ---------------------------------------------------------------------------
-// Scenario registry
-// ---------------------------------------------------------------------------
-
-interface ScenarioContext {
-    device: FixtureDevice;
-    deviceId: number;
-    proxy: RecordingProxyAdapter;
-    /**
-     * Either an `S550ClientInterface` or `S330ClientInterface`; both
-     * structurally implement the same operations the scenarios need. We
-     * keep the type as `unknown` here and let scenario implementations
-     * narrow with the device-specific client type.
-     */
-    client: unknown;
-}
-
-type ScenarioFn = (ctx: ScenarioContext) => Promise<void>;
-
-interface Scenario {
-    name: string;
-    description: string;
-    run: ScenarioFn;
-}
-
-/**
- * Subset of S330/S550 client surface used by the mount-then-setter
- * scenarios below. We name it so the helper can return a narrowed
- * value scenarios can extend with their device-specific setter signature.
- */
-interface MultiModeClient {
-    connect: () => Promise<boolean>;
-    loadPatchRange: (start: number, count: number) => Promise<unknown[]>;
-    requestFunctionParameters: () => Promise<unknown[]>;
-}
-
-/**
- * Run the shared PlayPage mount sequence (connect + loadPatchRange(0, 8) +
- * requestFunctionParameters) against the proxy, emitting annotations for
- * each step. The 4 multi-mode write scenarios all share this prelude;
- * Wave 2c's tone-setter scenarios will share the same shape. Returns the
- * narrowed client so callers can chain the setter call on the result.
- */
-async function runMultiModeMount(
-    client: unknown,
-    proxy: ScenarioContext['proxy'],
-): Promise<MultiModeClient> {
-    const c = client as MultiModeClient;
-    proxy.annotate('connect()');
-    await c.connect();
-    proxy.annotate('loadPatchRange(0, 8)');
-    await c.loadPatchRange(0, 8);
-    proxy.annotate('requestFunctionParameters()');
-    await c.requestFunctionParameters();
-    return c;
-}
-
-const SCENARIOS: Record<string, Scenario> = {
-    'connect-only': {
-        name: 'connect-only',
-        description: 'Open MIDI, request system params, disconnect — minimal fixture',
-        run: async ({ client, proxy }) => {
-            const c = client as { connect: () => Promise<boolean> };
-            proxy.annotate('connect()');
-            const ok = await c.connect();
-            if (!ok) throw new Error('connect-only: client.connect() returned false');
-        },
-    },
-
-    'load-everything': {
-        name: 'load-everything',
-        description: 'Connect + load all patches + load all tones (mirrors editor startup)',
-        run: async ({ client, device, proxy }) => {
-            const c = client as {
-                connect: () => Promise<boolean>;
-                loadPatchRange: (start: number, count: number) => Promise<unknown[]>;
-                loadToneRange: (start: number, count: number) => Promise<unknown[]>;
-            };
-            proxy.annotate('connect()');
-            await c.connect();
-
-            const patchCount = device === 's550' ? 32 : 64;
-            const toneCount = device === 's550' ? 64 : 32;
-
-            proxy.annotate(`loadPatchRange(0, ${patchCount})`);
-            await c.loadPatchRange(0, patchCount);
-
-            proxy.annotate(`loadToneRange(0, ${toneCount})`);
-            await c.loadToneRange(0, toneCount);
-        },
-    },
-
-    'fetch-patch-0': {
-        name: 'fetch-patch-0',
-        description: 'Read a single patch (for unit-scale fixture testing)',
-        run: async ({ client, proxy }) => {
-            const c = client as {
-                connect: () => Promise<boolean>;
-                requestPatchData: (idx: number) => Promise<unknown | null>;
-            };
-            proxy.annotate('connect()');
-            await c.connect();
-            proxy.annotate('requestPatchData(0)');
-            await c.requestPatchData(0);
-        },
-    },
-
-    'fetch-tone-0': {
-        name: 'fetch-tone-0',
-        description: 'Read a single tone',
-        run: async ({ client, proxy }) => {
-            const c = client as {
-                connect: () => Promise<boolean>;
-                requestToneData: (idx: number) => Promise<unknown | null>;
-            };
-            proxy.annotate('connect()');
-            await c.connect();
-            proxy.annotate('requestToneData(0)');
-            await c.requestToneData(0);
-        },
-    },
-
-    // Page-shaped scenarios — capture the SysEx sequence each editor page
-    // emits on mount, so the harness can replay it deterministically.
-    // See GitHub #404; both S-330 and S-550 use 8 patches/tones per bank.
-
-    'patches-bank-0': {
-        name: 'patches-bank-0',
-        description: 'PatchesPage.loadPatchBank(0) — connect() + loadPatchRange(0, 8)',
-        run: async ({ client, proxy }) => {
-            const c = client as {
-                connect: () => Promise<boolean>;
-                loadPatchRange: (start: number, count: number) => Promise<unknown[]>;
-            };
-            proxy.annotate('connect()');
-            await c.connect();
-            proxy.annotate('loadPatchRange(0, 8)');
-            await c.loadPatchRange(0, 8);
-        },
-    },
-
-    'tones-bank-0': {
-        name: 'tones-bank-0',
-        description: 'TonesPage.loadToneBank(0) — connect() + loadToneRange(0, 8)',
-        run: async ({ client, proxy }) => {
-            const c = client as {
-                connect: () => Promise<boolean>;
-                loadToneRange: (start: number, count: number) => Promise<unknown[]>;
-            };
-            proxy.annotate('connect()');
-            await c.connect();
-            proxy.annotate('loadToneRange(0, 8)');
-            await c.loadToneRange(0, 8);
-        },
-    },
-
-    'play-init': {
-        name: 'play-init',
-        description: 'PlayPage initial load — connect() + loadPatchRange(0, 8) + requestFunctionParameters()',
-        run: async ({ client, proxy }) => {
-            const c = client as {
-                connect: () => Promise<boolean>;
-                loadPatchRange: (start: number, count: number) => Promise<unknown[]>;
-                requestFunctionParameters: () => Promise<unknown[]>;
-            };
-            proxy.annotate('connect()');
-            await c.connect();
-            proxy.annotate('loadPatchRange(0, 8)');
-            await c.loadPatchRange(0, 8);
-            proxy.annotate('requestFunctionParameters()');
-            await c.requestFunctionParameters();
-        },
-    },
-
-    // Multi-mode write scenarios — PlayPage mount sequence plus one setter
-    // call each. Driven from the UI in Wave 2b's capability spec to assert
-    // each affordance emits the captured outbound byte sequence. See
-    // ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md rows D-PLAY-04..07.
-    //
-    // Value-selection criteria: each value is chosen to be non-default
-    // and in-range so that driving the corresponding UI control actually
-    // emits a setter call. A no-op selectOption / fill / change that
-    // matches the current control value emits nothing, which would make
-    // the capability spec silently false-pass. Specific values:
-    //   channel = 5   — MIDI channel 6 (display); non-default vs part 0
-    //                   stock channel
-    //   patch   = 3   — patch slot 4 (display); non-default selection
-    //   output  = 4   — output 5 (display); non-default
-    //   level   = 80  — non-default; emits setMultiLevel(0, 80) when the
-    //                   slider is committed at value 80
-
-    'multi-part-0-channel': {
-        name: 'multi-part-0-channel',
-        description: 'PlayPage init + setMultiChannel(0, 5) — D-PLAY-04',
-        run: async ({ client, proxy }) => {
-            const c = (await runMultiModeMount(client, proxy)) as MultiModeClient & {
-                setMultiChannel: (part: number, channel: number) => Promise<void>;
-            };
-            proxy.annotate('setMultiChannel(0, 5)');
-            await c.setMultiChannel(0, 5);
-        },
-    },
-
-    'multi-part-0-patch': {
-        name: 'multi-part-0-patch',
-        description: 'PlayPage init + setMultiPatch(0, 3) — D-PLAY-05',
-        run: async ({ client, proxy }) => {
-            const c = (await runMultiModeMount(client, proxy)) as MultiModeClient & {
-                setMultiPatch: (part: number, patchIndex: number | null) => Promise<void>;
-            };
-            proxy.annotate('setMultiPatch(0, 3)');
-            await c.setMultiPatch(0, 3);
-        },
-    },
-
-    'multi-part-0-output': {
-        name: 'multi-part-0-output',
-        description: 'PlayPage init + setMultiOutput(0, 4) — D-PLAY-06',
-        run: async ({ client, proxy }) => {
-            const c = (await runMultiModeMount(client, proxy)) as MultiModeClient & {
-                setMultiOutput: (part: number, output: number) => Promise<void>;
-            };
-            proxy.annotate('setMultiOutput(0, 4)');
-            await c.setMultiOutput(0, 4);
-        },
-    },
-
-    'multi-part-0-level': {
-        name: 'multi-part-0-level',
-        description: 'PlayPage init + setMultiLevel(0, 80) — D-PLAY-07',
-        run: async ({ client, proxy }) => {
-            const c = (await runMultiModeMount(client, proxy)) as MultiModeClient & {
-                setMultiLevel: (part: number, level: number) => Promise<void>;
-            };
-            proxy.annotate('setMultiLevel(0, 80)');
-            await c.setMultiLevel(0, 80);
-        },
-    },
-};
-
-export function listScenarios(): string[] {
-    return Object.keys(SCENARIOS);
-}
+export { listScenarios };
 
 // ---------------------------------------------------------------------------
 // CLI driver
@@ -371,7 +138,7 @@ Usage:
 
 Scenarios:
 ${Object.values(SCENARIOS)
-    .map((s) => `  ${s.name.padEnd(20)} ${s.description}`)
+    .map((s) => `  ${s.name.padEnd(24)} ${s.description}`)
     .join('\n')}
 
 Environment:

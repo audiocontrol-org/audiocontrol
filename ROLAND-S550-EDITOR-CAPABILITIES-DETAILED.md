@@ -29,7 +29,7 @@ Each table row is one affordance. The columns are:
 - **Status** — `implemented` / `partial` / `missing`. Determined by reading actual TSX, not by parent test coverage.
 - **Test** — the spec + test name that proves the affordance works, or `—` if no test exists yet. For affordances with `Status: missing`, the Test column shows `—` (a test can't exist until the UI does, but writing it should be part of the same PR that adds the affordance).
 
-A `Test` reference like `capabilities/patches.spec.ts :: C-PATCH-02` points at the test whose name starts with `C-PATCH-02:` in that spec file. Wave 1 of Task 10 covers display capabilities (read affordances); write affordances (parameter edits) need fixture-replay tests captured in Wave 2 — those rows currently show `—`.
+A `Test` reference like `capabilities/patches.spec.ts :: C-PATCH-02` points at the test whose name starts with `C-PATCH-02:` in that spec file. Wave 1 of Task 10 covers display capabilities (read affordances); write affordances (parameter edits) need fixture-replay tests captured across Wave 2's sub-waves (2a/2b/2c). Wave 2a (patch parameters) + Wave 2b (multi-mode parameters) have landed; the remaining `—` rows are tracked in the Punch list below.
 
 ## Origin axis — native vs. derived
 
@@ -129,12 +129,12 @@ GitHub issues grouped by feature coherence.
 
 | Test status | Count | Definition |
 |-------------|-------|------------|
-| Tested | 25 | Affordance is implemented AND a capability spec asserts it. |
-| Untested | 124 | Affordance is implemented (or partial) but no test asserts it. **These are the missing tests.** |
+| Tested | 36 | Affordance is implemented AND a capability spec asserts it. |
+| Untested | 113 | Affordance is implemented (or partial) but no test asserts it. **These are the missing tests.** |
 | Pending UI | 24 | Affordance is missing — test depends on UI being built. **These are the missing capabilities.** |
 | Hardware-only | 10 | Affordance can only be verified against real hardware (e.g., front-panel button → device LED change). Lives in `test/e2e/`, not the UI capability suite. |
 
-The 124 untested + 24 pending-UI rows are the punch list. Each tested row is
+The 113 untested + 24 pending-UI rows are the punch list. Each tested row is
 locked in against redesign; each untested row is at risk; each pending-UI row
 is a feature gap.
 
@@ -178,18 +178,18 @@ is a feature gap.
 
 | ID | Affordance | Source of truth | Parent | Origin | Status | Test |
 |----|-----------|-----------------|--------|--------|--------|------|
-| D-PATCH-01 | Name — inline edit (12-char max) | `s-series-client.ts:240` → `setPatchName` | C-PATCH-07 | native | implemented | — |
-| D-PATCH-02 | Key Mode — select | `s-series-client.ts:241` → `setPatchKeyMode` | C-PATCH-08 | native | implemented | — |
-| D-PATCH-03 | Key Assign — select | `s-series-client.ts:248` → `setPatchKeyAssign` | C-PATCH-08 | native | implemented | — |
-| D-PATCH-04 | Pitch Bender Range — select 0-12 | `s-series-client.ts:245` → `setPatchBenderRange` | C-PATCH-08 | native | implemented | — |
-| D-PATCH-05 | Aftertouch Assign — select | `s-series-client.ts:247` → `setPatchAftertouchAssign` | C-PATCH-08 | native | implemented | — |
+| D-PATCH-01 | Name — inline edit (12-char max) | `s-series-client.ts:240` → `setPatchName` | C-PATCH-07 | native | implemented | `capabilities/patch-writes.spec.ts :: D-PATCH-01` |
+| D-PATCH-02 | Key Mode — select | `s-series-client.ts:241` → `setPatchKeyMode` | C-PATCH-08 | native | implemented | `capabilities/patch-writes.spec.ts :: D-PATCH-02` |
+| D-PATCH-03 | Key Assign — select | `s-series-client.ts:248` → `setPatchKeyAssign` | C-PATCH-08 | native | implemented | `capabilities/patch-writes.spec.ts :: D-PATCH-03` |
+| D-PATCH-04 | Pitch Bender Range — select 0-12 | `s-series-client.ts:245` → `setPatchBenderRange` | C-PATCH-08 | native | implemented | `capabilities/patch-writes.spec.ts :: D-PATCH-04` |
+| D-PATCH-05 | Aftertouch Assign — select | `s-series-client.ts:247` → `setPatchAftertouchAssign` | C-PATCH-08 | native | implemented | `capabilities/patch-writes.spec.ts :: D-PATCH-05` |
 | D-PATCH-06 | Octave Shift — display only | `PatchEditor.tsx:373` → reads `common.octaveShift`, no write | C-PATCH-08 | native | partial (display only; editing blocked pending issue #10) | — |
-| D-PATCH-07 | Output Assign — select (1-8 + TONE) | `s-series-client.ts:249` → `setPatchOutput` | C-PATCH-08 | native | implemented | — |
-| D-PATCH-08 | Level — slider (0-127) | `s-series-client.ts:250` → `setPatchLevel` | C-PATCH-08 | native | implemented | — |
-| D-PATCH-09 | Aftertouch Sensitivity — slider | `s-series-client.ts:246` → `setPatchAftertouchSens` | C-PATCH-08 | native | implemented | — |
-| D-PATCH-10 | Unison Detune — slider (when keyMode=unison) | `s-series-client.ts:251` → `setPatchDetune` | C-PATCH-08 | native | implemented | — |
-| D-PATCH-11 | V-Sw Threshold — slider (when keyMode=v-sw) | `s-series-client.ts:252` → `setPatchVelocityThreshold` | C-PATCH-08 | native | implemented | — |
-| D-PATCH-12 | V-Mix Ratio — slider (when keyMode=v-mix) | `s-series-client.ts:253` → `setPatchVelocityMixRatio` | C-PATCH-08 | native | implemented | — |
+| D-PATCH-07 | Output Assign — select (1-8 + TONE) | `s-series-client.ts:249` → `setPatchOutput` | C-PATCH-08 | native | implemented | `capabilities/patch-writes.spec.ts :: D-PATCH-07` |
+| D-PATCH-08 | Level — slider (0-127) | `s-series-client.ts:250` → `setPatchLevel` | C-PATCH-08 | native | implemented | `capabilities/patch-writes.spec.ts :: D-PATCH-08` |
+| D-PATCH-09 | Aftertouch Sensitivity — slider | `s-series-client.ts:246` → `setPatchAftertouchSens` | C-PATCH-08 | native | implemented | `capabilities/patch-writes.spec.ts :: D-PATCH-09` |
+| D-PATCH-10 | Unison Detune — slider (when keyMode=unison) | `s-series-client.ts:251` → `setPatchDetune` | C-PATCH-08 | native | implemented | `capabilities/patch-writes.spec.ts :: D-PATCH-10` |
+| D-PATCH-11 | V-Sw Threshold — slider (when keyMode=v-sw) | `s-series-client.ts:252` → `setPatchVelocityThreshold` | C-PATCH-08 | native | implemented | `capabilities/patch-writes.spec.ts :: D-PATCH-11` |
+| D-PATCH-12 | V-Mix Ratio — slider (when keyMode=v-mix) | `s-series-client.ts:253` → `setPatchVelocityMixRatio` | C-PATCH-08 | native | implemented | `capabilities/patch-writes.spec.ts :: D-PATCH-12` |
 | D-PATCH-13 | Copy Source — not rendered | `SSeriesBasePatchCommon.copySource` | C-PATCH-08 | native | missing | — |
 
 ---
@@ -451,7 +451,7 @@ The library is the editor's primary editor-derived layer. The device has no conc
 
 ## Punch list
 
-The 124 untested rows above are the missing-test backlog. The 24 missing rows
+The 113 untested rows above are the missing-test backlog. The 24 missing rows
 are the missing-UI backlog. Both should drain over time; both should grow
 when new affordances are added (each new feature lands with its test).
 
@@ -463,7 +463,7 @@ document with a PR explaining why the capability no longer applies.
 
 ### Test-coverage backlog → wave issues
 
-The 124 untested rows are tracked across 7 test-wave issues, sequenced so each
+The 113 untested rows are tracked across the remaining test-wave issues, sequenced so each
 wave can land independently:
 
 | Wave | Issue | Scope | Hardware |
