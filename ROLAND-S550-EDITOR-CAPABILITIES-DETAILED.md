@@ -129,12 +129,12 @@ GitHub issues grouped by feature coherence.
 
 | Test status | Count | Definition |
 |-------------|-------|------------|
-| Tested | 36 | Affordance is implemented AND a capability spec asserts it. |
-| Untested | 113 | Affordance is implemented (or partial) but no test asserts it. **These are the missing tests.** |
+| Tested | 75 | Affordance is implemented AND a capability spec asserts it. |
+| Untested | 74 | Affordance is implemented (or partial) but no test asserts it. **These are the missing tests.** |
 | Pending UI | 24 | Affordance is missing — test depends on UI being built. **These are the missing capabilities.** |
 | Hardware-only | 10 | Affordance can only be verified against real hardware (e.g., front-panel button → device LED change). Lives in `test/e2e/`, not the UI capability suite. |
 
-The 113 untested + 24 pending-UI rows are the punch list. Each tested row is
+The 74 untested + 24 pending-UI rows are the punch list. Each tested row is
 locked in against redesign; each untested row is at risk; each pending-UI row
 is a feature gap.
 
@@ -229,14 +229,14 @@ Tones are written as a whole structure via `sendToneData(toneIndex, tone)`. Each
 
 | ID | Affordance | Source of truth | Parent | Origin | Status | Test |
 |----|-----------|-----------------|--------|--------|--------|------|
-| D-TONE-WAVE-01 | Name — text input (8-char max) | `ToneEditor.tsx:100` → `tone.name` | C-TONE-06 | native | implemented | — |
-| D-TONE-WAVE-02 | Original Key — number input + note name | `ToneEditor.tsx:228` → `tone.originalKey` | C-TONE-07 | native | implemented | — |
+| D-TONE-WAVE-01 | Name — text input (8-char max) | `ToneEditor.tsx:100` → `tone.name` | C-TONE-06 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-WAVE-01` |
+| D-TONE-WAVE-02 | Original Key — number input + note name | `ToneEditor.tsx:228` → `tone.originalKey` | C-TONE-07 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-WAVE-02` |
 | D-TONE-WAVE-03 | Sample Rate — display only | `ToneEditor.tsx:248` → `<div>{tone.sampleRate}</div>` | C-TONE-07 | native | partial (display only; no select control) | — |
-| D-TONE-WAVE-04 | Loop Mode — select | `ToneEditor.tsx:254` → `tone.loopMode` | C-TONE-07 | native | implemented | — |
-| D-TONE-WAVE-05 | Output Assign — select (Mix + Out 1-8) | `ToneEditor.tsx:274` → `tone.outputAssign` | C-TONE-07 | native | implemented | — |
-| D-TONE-WAVE-06 | Start Point — number (24-bit address) | `ToneEditor.tsx:301` → `tone.wave.startPoint` | C-TONE-13 | native | implemented | — |
-| D-TONE-WAVE-07 | Loop Point — number | `ToneEditor.tsx:319` → `tone.wave.loopPoint` | C-TONE-13 | native | implemented | — |
-| D-TONE-WAVE-08 | End Point — number | `ToneEditor.tsx:336` → `tone.wave.endPoint` | C-TONE-13 | native | implemented | — |
+| D-TONE-WAVE-04 | Loop Mode — select | `ToneEditor.tsx:254` → `tone.loopMode` | C-TONE-07 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-WAVE-04` |
+| D-TONE-WAVE-05 | Output Assign — select (Mix + Out 1-8) | `ToneEditor.tsx:274` → `tone.outputAssign` | C-TONE-07 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-WAVE-05` |
+| D-TONE-WAVE-06 | Start Point — number (24-bit address) | `ToneEditor.tsx:301` → `tone.wave.startPoint` | C-TONE-13 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-WAVE-06` |
+| D-TONE-WAVE-07 | Loop Point — number | `ToneEditor.tsx:319` → `tone.wave.loopPoint` | C-TONE-13 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-WAVE-07` |
+| D-TONE-WAVE-08 | End Point — number | `ToneEditor.tsx:336` → `tone.wave.endPoint` | C-TONE-13 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-WAVE-08` |
 | D-TONE-WAVE-09 | Wave Bank — not rendered in tone editor | `SSeriesWaveParams.bank` (only in ImportSamplesDialog) | C-TONE-07 | native | missing | — |
 | D-TONE-WAVE-10 | Segment Top — not rendered in tone editor | `SSeriesWaveParams.segmentTop` (only in ImportSamplesDialog) | C-TONE-07 | native | missing | — |
 | D-TONE-WAVE-11 | Segment Length — not rendered in tone editor | `SSeriesWaveParams.segmentLength` (only in ImportSamplesDialog) | C-TONE-07 | native | missing | — |
@@ -261,10 +261,10 @@ Tones are written as a whole structure via `sendToneData(toneIndex, tone)`. Each
 | ID | Affordance | Source of truth | Parent | Origin | Status | Test |
 |----|-----------|-----------------|--------|--------|--------|------|
 | D-TONE-PITCH-01 | Transpose — slider (disabled in current build) | `ToneEditor.tsx:611` → field exists; control disabled | C-TONE-08 | native | partial (slider visible, editing disabled) | — |
-| D-TONE-PITCH-02 | Fine Tune — slider (-64..+63 cents) | `ToneEditor.tsx:623` → `tone.fineTune` | C-TONE-08 | native | implemented | — |
-| D-TONE-PITCH-03 | Pitch Follow — checkbox | `ToneEditor.tsx:634` → `tone.pitchFollow` | C-TONE-08 | native | implemented | — |
-| D-TONE-PITCH-04 | Pitch Bender enable — checkbox | `ToneEditor.tsx:653` → `tone.benderEnabled` | C-TONE-08 | native | implemented | — |
-| D-TONE-PITCH-05 | Aftertouch enable — checkbox | `ToneEditor.tsx:670` → `tone.aftertouchEnabled` | C-TONE-08 | native | implemented | — |
+| D-TONE-PITCH-02 | Fine Tune — slider (-64..+63 cents) | `ToneEditor.tsx:623` → `tone.fineTune` | C-TONE-08 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-PITCH-02` |
+| D-TONE-PITCH-03 | Pitch Follow — checkbox | `ToneEditor.tsx:634` → `tone.pitchFollow` | C-TONE-08 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-PITCH-03` |
+| D-TONE-PITCH-04 | Pitch Bender enable — checkbox | `ToneEditor.tsx:653` → `tone.benderEnabled` | C-TONE-08 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-PITCH-04` |
+| D-TONE-PITCH-05 | Aftertouch enable — checkbox | `ToneEditor.tsx:670` → `tone.aftertouchEnabled` | C-TONE-08 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-PITCH-05` |
 
 ---
 
@@ -272,16 +272,16 @@ Tones are written as a whole structure via `sendToneData(toneIndex, tone)`. Each
 
 | ID | Affordance | Source of truth | Parent | Origin | Status | Test |
 |----|-----------|-----------------|--------|--------|--------|------|
-| D-TONE-TVF-01 | TVF Enable — checkbox | `ToneEditor.tsx:396` → `tone.tvf.enabled` | C-TONE-09 | native | implemented | — |
-| D-TONE-TVF-02 | Cutoff — slider | `ToneEditor.tsx:414` → `tone.tvf.cutoff` | C-TONE-09 | native | implemented | — |
-| D-TONE-TVF-03 | Resonance — slider | `ToneEditor.tsx:425` → `tone.tvf.resonance` | C-TONE-09 | native | implemented | — |
-| D-TONE-TVF-04 | Key Follow — slider | `ToneEditor.tsx:434` → `tone.tvf.keyFollow` | C-TONE-09 | native | implemented | — |
-| D-TONE-TVF-05 | LFO Depth — slider | `ToneEditor.tsx:443` → `tone.tvf.lfoDepth` | C-TONE-09 | native | implemented | — |
-| D-TONE-TVF-06 | EG Depth — slider | `ToneEditor.tsx:453` → `tone.tvf.egDepth` | C-TONE-09 | native | implemented | — |
-| D-TONE-TVF-07 | Key Rate Follow — slider | `ToneEditor.tsx:462` → `tone.tvf.keyRateFollow` | C-TONE-09 | native | implemented | — |
-| D-TONE-TVF-08 | Vel Rate Follow — slider | `ToneEditor.tsx:471` → `tone.tvf.velRateFollow` | C-TONE-09 | native | implemented | — |
-| D-TONE-TVF-09 | EG Polarity — select | `ToneEditor.tsx:482` → `tone.tvf.egPolarity` | C-TONE-09 | native | implemented | — |
-| D-TONE-TVF-10 | Level Curve — select (0-5) | `ToneEditor.tsx:501` → `tone.tvf.levelCurve` | C-TONE-09 | native | implemented | — |
+| D-TONE-TVF-01 | TVF Enable — checkbox | `ToneEditor.tsx:396` → `tone.tvf.enabled` | C-TONE-09 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-TVF-01` |
+| D-TONE-TVF-02 | Cutoff — slider | `ToneEditor.tsx:414` → `tone.tvf.cutoff` | C-TONE-09 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-TVF-02` |
+| D-TONE-TVF-03 | Resonance — slider | `ToneEditor.tsx:425` → `tone.tvf.resonance` | C-TONE-09 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-TVF-03` |
+| D-TONE-TVF-04 | Key Follow — slider | `ToneEditor.tsx:434` → `tone.tvf.keyFollow` | C-TONE-09 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-TVF-04` |
+| D-TONE-TVF-05 | LFO Depth — slider | `ToneEditor.tsx:443` → `tone.tvf.lfoDepth` | C-TONE-09 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-TVF-05` |
+| D-TONE-TVF-06 | EG Depth — slider | `ToneEditor.tsx:453` → `tone.tvf.egDepth` | C-TONE-09 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-TVF-06` |
+| D-TONE-TVF-07 | Key Rate Follow — slider | `ToneEditor.tsx:462` → `tone.tvf.keyRateFollow` | C-TONE-09 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-TVF-07` |
+| D-TONE-TVF-08 | Vel Rate Follow — slider | `ToneEditor.tsx:471` → `tone.tvf.velRateFollow` | C-TONE-09 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-TVF-08` |
+| D-TONE-TVF-09 | EG Polarity — select | `ToneEditor.tsx:482` → `tone.tvf.egPolarity` | C-TONE-09 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-TVF-09` |
+| D-TONE-TVF-10 | Level Curve — select (0-5) | `ToneEditor.tsx:501` → `tone.tvf.levelCurve` | C-TONE-09 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-TVF-10` |
 
 ---
 
@@ -289,11 +289,11 @@ Tones are written as a whole structure via `sendToneData(toneIndex, tone)`. Each
 
 | ID | Affordance | Source of truth | Parent | Origin | Status | Test |
 |----|-----------|-----------------|--------|--------|--------|------|
-| D-TONE-TVA-01 | Level — slider | `ToneEditor.tsx:697` → `tone.tva.level` | C-TONE-10 | native | implemented | — |
-| D-TONE-TVA-02 | LFO Depth (tva.lfoDepth) — slider | `ToneEditor.tsx:704` → `tone.tva.lfoDepth` | C-TONE-10 | native | implemented | — |
-| D-TONE-TVA-03 | Key Rate — slider | `ToneEditor.tsx:712` → `tone.tva.keyRate` | C-TONE-10 | native | implemented | — |
-| D-TONE-TVA-04 | Vel Rate — slider | `ToneEditor.tsx:720` → `tone.tva.velRate` | C-TONE-10 | native | implemented | — |
-| D-TONE-TVA-05 | Level Curve — select (0-5) | `ToneEditor.tsx:729` → `tone.tva.levelCurve` | C-TONE-10 | native | implemented | — |
+| D-TONE-TVA-01 | Level — slider | `ToneEditor.tsx:697` → `tone.tva.level` | C-TONE-10 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-TVA-01` |
+| D-TONE-TVA-02 | LFO Depth (tva.lfoDepth) — slider | `ToneEditor.tsx:704` → `tone.tva.lfoDepth` | C-TONE-10 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-TVA-02` |
+| D-TONE-TVA-03 | Key Rate — slider | `ToneEditor.tsx:712` → `tone.tva.keyRate` | C-TONE-10 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-TVA-03` |
+| D-TONE-TVA-04 | Vel Rate — slider | `ToneEditor.tsx:720` → `tone.tva.velRate` | C-TONE-10 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-TVA-04` |
+| D-TONE-TVA-05 | Level Curve — select (0-5) | `ToneEditor.tsx:729` → `tone.tva.levelCurve` | C-TONE-10 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-TVA-05` |
 | D-TONE-TVA-06 | Top-level tvaLfoDepth (distinct from tva.lfoDepth) | `SSeriesBaseTone.tvaLfoDepth` (s-series-types.ts:258) | C-TONE-10 | native | missing | — |
 
 ---
@@ -302,12 +302,12 @@ Tones are written as a whole structure via `sendToneData(toneIndex, tone)`. Each
 
 | ID | Affordance | Source of truth | Parent | Origin | Status | Test |
 |----|-----------|-----------------|--------|--------|--------|------|
-| D-TONE-LFO-01 | Rate — slider | `ToneEditor.tsx:535` → `tone.lfo.rate` | C-TONE-11 | native | implemented | — |
-| D-TONE-LFO-02 | Delay — slider | `ToneEditor.tsx:543` → `tone.lfo.delay` | C-TONE-11 | native | implemented | — |
-| D-TONE-LFO-03 | Offset — slider | `ToneEditor.tsx:551` → `tone.lfo.offset` | C-TONE-11 | native | implemented | — |
-| D-TONE-LFO-04 | Key Sync — checkbox | `ToneEditor.tsx:561` → `tone.lfo.sync` | C-TONE-11 | native | implemented | — |
+| D-TONE-LFO-01 | Rate — slider | `ToneEditor.tsx:535` → `tone.lfo.rate` | C-TONE-11 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-LFO-01` |
+| D-TONE-LFO-02 | Delay — slider | `ToneEditor.tsx:543` → `tone.lfo.delay` | C-TONE-11 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-LFO-02` |
+| D-TONE-LFO-03 | Offset — slider | `ToneEditor.tsx:551` → `tone.lfo.offset` | C-TONE-11 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-LFO-03` |
+| D-TONE-LFO-04 | Key Sync — checkbox | `ToneEditor.tsx:561` → `tone.lfo.sync` | C-TONE-11 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-LFO-04` |
 | D-TONE-LFO-05 | Mode — display only | `ToneEditor.tsx:580` → `<div>{tone.lfo.mode}</div>` | C-TONE-11 | native | partial (display only; no edit control) | — |
-| D-TONE-LFO-06 | Peak Hold (polarity) — checkbox | `ToneEditor.tsx:586` → `tone.lfo.polarity` | C-TONE-11 | native | implemented | — |
+| D-TONE-LFO-06 | Peak Hold (polarity) — checkbox | `ToneEditor.tsx:586` → `tone.lfo.polarity` | C-TONE-11 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-LFO-06` |
 
 ---
 
@@ -318,16 +318,16 @@ S-series envelopes are 8-segment (NOT ADSR). Each envelope has 8 levels + 8 rate
 | ID | Affordance | Source of truth | Parent | Origin | Status | Test |
 |----|-----------|-----------------|--------|--------|--------|------|
 | D-TONE-ENV-01 | TVF env — draggable SVG visualization | `EnvelopeEditor.tsx` → SVG drag handlers | C-TONE-12 | editor-derived | implemented | — |
-| D-TONE-ENV-02 | TVF env — 8 rate inputs (table) | `EnvelopeEditor.tsx` → rates inputs | C-TONE-12 | native | implemented | — |
-| D-TONE-ENV-03 | TVF env — 8 level inputs (table) | `EnvelopeEditor.tsx` → levels inputs | C-TONE-12 | native | implemented | — |
-| D-TONE-ENV-04 | TVF env — sustain point select (0-7) | `EnvelopeEditor.tsx` → sustainPoint | C-TONE-12 | native | implemented | — |
-| D-TONE-ENV-05 | TVF env — end point select (1-8) | `EnvelopeEditor.tsx` → endPoint | C-TONE-12 | native | implemented | — |
+| D-TONE-ENV-02 | TVF env — 8 rate inputs (table) | `EnvelopeEditor.tsx` → rates inputs | C-TONE-12 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-ENV-02` |
+| D-TONE-ENV-03 | TVF env — 8 level inputs (table) | `EnvelopeEditor.tsx` → levels inputs | C-TONE-12 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-ENV-03` |
+| D-TONE-ENV-04 | TVF env — sustain point select (0-7) | `EnvelopeEditor.tsx` → sustainPoint | C-TONE-12 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-ENV-04` |
+| D-TONE-ENV-05 | TVF env — end point select (1-8) | `EnvelopeEditor.tsx` → endPoint | C-TONE-12 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-ENV-05` |
 | D-TONE-ENV-06 | TVF env — fullscreen expand | `EnvelopeEditor.tsx` → overlay | C-TONE-12 | editor-derived | implemented | — |
 | D-TONE-ENV-07 | TVA env — draggable SVG visualization | `EnvelopeEditor.tsx` (reused) | C-TONE-12 | editor-derived | implemented | — |
-| D-TONE-ENV-08 | TVA env — 8 rate inputs | `EnvelopeEditor.tsx` | C-TONE-12 | native | implemented | — |
-| D-TONE-ENV-09 | TVA env — 8 level inputs | `EnvelopeEditor.tsx` | C-TONE-12 | native | implemented | — |
-| D-TONE-ENV-10 | TVA env — sustain point select | `EnvelopeEditor.tsx` | C-TONE-12 | native | implemented | — |
-| D-TONE-ENV-11 | TVA env — end point select | `EnvelopeEditor.tsx` | C-TONE-12 | native | implemented | — |
+| D-TONE-ENV-08 | TVA env — 8 rate inputs | `EnvelopeEditor.tsx` | C-TONE-12 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-ENV-08` |
+| D-TONE-ENV-09 | TVA env — 8 level inputs | `EnvelopeEditor.tsx` | C-TONE-12 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-ENV-09` |
+| D-TONE-ENV-10 | TVA env — sustain point select | `EnvelopeEditor.tsx` | C-TONE-12 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-ENV-10` |
+| D-TONE-ENV-11 | TVA env — end point select | `EnvelopeEditor.tsx` | C-TONE-12 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-ENV-11` |
 | D-TONE-ENV-12 | TVA env — fullscreen expand | `EnvelopeEditor.tsx` | C-TONE-12 | editor-derived | implemented | — |
 
 ---

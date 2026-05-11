@@ -102,6 +102,14 @@ export function createSimulatedMidiTransport(
       // invalidation has to happen at the store level.
       if (!sharedAdapter) {
         sharedAdapter = new SimulatedAdapter(cachedScenario, { latencyMode: 'none' });
+        // Expose the adapter on `window` so capability specs can read
+        // cursor state for positive assertions. Without this signal a
+        // test whose UI driver silently emits nothing (disabled control,
+        // missed click) would false-pass — no bytes emitted = no
+        // SimulatedAdapter mismatch = no error.
+        if (typeof window !== 'undefined') {
+          (window as unknown as { __simulatedAdapter?: SimulatedAdapter }).__simulatedAdapter = sharedAdapter;
+        }
       }
       return SIMULATED_PORTS;
     },

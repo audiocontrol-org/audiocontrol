@@ -91,6 +91,31 @@ export class SimulatedAdapter implements SSeriesMidiAdapter {
         this.dispatchPendingInbound(outboundTimestamp);
     }
 
+    /**
+     * Return the current cursor (number of records consumed so far —
+     * both `outbound` records that matched a `send()` call and the
+     * subsequent `inbound` records drained by `dispatchPendingInbound`).
+     *
+     * Capability specs use this to assert their UI driver actually
+     * emitted an outbound — without a positive assertion, a UI control
+     * that's silently disabled or a click that lands off-target would
+     * make the test false-pass (no outbound emitted = no byte mismatch
+     * = no error thrown by `send()`).
+     */
+    getCursor(): number {
+        return this.cursor;
+    }
+
+    /**
+     * Total record count in the underlying scenario. Paired with
+     * `getCursor()`; capability specs assert
+     * `cursorAfter === totalRecords` to prove every captured byte was
+     * replayed in full.
+     */
+    getTotalRecords(): number {
+        return this.scenario.records.length;
+    }
+
     onSysEx(callback: (data: number[]) => void): void {
         this.listeners.push(callback);
     }
