@@ -463,7 +463,7 @@ document with a PR explaining why the capability no longer applies.
 
 ### Test-coverage backlog → wave issues
 
-The 128 untested rows are tracked across 7 test-wave issues, sequenced so each
+The 124 untested rows are tracked across 7 test-wave issues, sequenced so each
 wave can land independently:
 
 | Wave | Issue | Scope | Hardware |

@@ -105,6 +105,10 @@ export function createSimulatedMidiTransport(
       }
       return SIMULATED_PORTS;
     },
+    // No-op: simulated ports are static; the adapter cache lives in
+    // initialize() and survives refresh() calls so the cursor advances
+    // monotonically across a refresh-driven reconnect within the same
+    // transport lifetime.
     refresh: async (): Promise<MidiTransportPorts> => SIMULATED_PORTS,
     onStateChange: () => {
       // Simulated transport has no port hot-plug events.

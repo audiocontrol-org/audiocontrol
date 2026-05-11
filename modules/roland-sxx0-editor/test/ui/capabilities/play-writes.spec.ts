@@ -44,7 +44,7 @@ async function waitForPlayPageMount(page: Page): Promise<void> {
   await expect
     .poll(
       async () =>
-        patchSelect.evaluate((el) => (el as HTMLSelectElement).options.length),
+        patchSelect.evaluate((el: HTMLSelectElement) => el.options.length),
       { timeout: 10_000, intervals: [50, 100, 200, 500] },
     )
     .toBeGreaterThanOrEqual(9);
@@ -129,8 +129,7 @@ test.describe('Play multi-mode write affordances (D-PLAY-04..07)', () => {
     // set the value via the native HTMLInputElement property + a manual
     // `input` event (to update React state), then dispatch a synthetic
     // `mouseup` so handleLevelCommit fires and emits setMultiLevel.
-    await slider.evaluate((el, level) => {
-      const input = el as HTMLInputElement;
+    await slider.evaluate((input: HTMLInputElement, level) => {
       const setter = Object.getOwnPropertyDescriptor(
         HTMLInputElement.prototype,
         'value',

@@ -62,6 +62,38 @@ interface Scenario {
     run: ScenarioFn;
 }
 
+/**
+ * Subset of S330/S550 client surface used by the mount-then-setter
+ * scenarios below. We name it so the helper can return a narrowed
+ * value scenarios can extend with their device-specific setter signature.
+ */
+interface MultiModeClient {
+    connect: () => Promise<boolean>;
+    loadPatchRange: (start: number, count: number) => Promise<unknown[]>;
+    requestFunctionParameters: () => Promise<unknown[]>;
+}
+
+/**
+ * Run the shared PlayPage mount sequence (connect + loadPatchRange(0, 8) +
+ * requestFunctionParameters) against the proxy, emitting annotations for
+ * each step. The 4 multi-mode write scenarios all share this prelude;
+ * Wave 2c's tone-setter scenarios will share the same shape. Returns the
+ * narrowed client so callers can chain the setter call on the result.
+ */
+async function runMultiModeMount(
+    client: unknown,
+    proxy: ScenarioContext['proxy'],
+): Promise<MultiModeClient> {
+    const c = client as MultiModeClient;
+    proxy.annotate('connect()');
+    await c.connect();
+    proxy.annotate('loadPatchRange(0, 8)');
+    await c.loadPatchRange(0, 8);
+    proxy.annotate('requestFunctionParameters()');
+    await c.requestFunctionParameters();
+    return c;
+}
+
 const SCENARIOS: Record<string, Scenario> = {
     'connect-only': {
         name: 'connect-only',
@@ -193,24 +225,16 @@ const SCENARIOS: Record<string, Scenario> = {
     //                   stock channel
     //   patch   = 3   — patch slot 4 (display); non-default selection
     //   output  = 4   — output 5 (display); non-default
-    //   level   = 80  — non-default vs device stock (100)
+    //   level   = 80  — non-default; emits setMultiLevel(0, 80) when the
+    //                   slider is committed at value 80
 
     'multi-part-0-channel': {
         name: 'multi-part-0-channel',
         description: 'PlayPage init + setMultiChannel(0, 5) — D-PLAY-04',
         run: async ({ client, proxy }) => {
-            const c = client as {
-                connect: () => Promise<boolean>;
-                loadPatchRange: (start: number, count: number) => Promise<unknown[]>;
-                requestFunctionParameters: () => Promise<unknown[]>;
+            const c = (await runMultiModeMount(client, proxy)) as MultiModeClient & {
                 setMultiChannel: (part: number, channel: number) => Promise<void>;
             };
-            proxy.annotate('connect()');
-            await c.connect();
-            proxy.annotate('loadPatchRange(0, 8)');
-            await c.loadPatchRange(0, 8);
-            proxy.annotate('requestFunctionParameters()');
-            await c.requestFunctionParameters();
             proxy.annotate('setMultiChannel(0, 5)');
             await c.setMultiChannel(0, 5);
         },
@@ -220,18 +244,9 @@ const SCENARIOS: Record<string, Scenario> = {
         name: 'multi-part-0-patch',
         description: 'PlayPage init + setMultiPatch(0, 3) — D-PLAY-05',
         run: async ({ client, proxy }) => {
-            const c = client as {
-                connect: () => Promise<boolean>;
-                loadPatchRange: (start: number, count: number) => Promise<unknown[]>;
-                requestFunctionParameters: () => Promise<unknown[]>;
+            const c = (await runMultiModeMount(client, proxy)) as MultiModeClient & {
                 setMultiPatch: (part: number, patchIndex: number | null) => Promise<void>;
             };
-            proxy.annotate('connect()');
-            await c.connect();
-            proxy.annotate('loadPatchRange(0, 8)');
-            await c.loadPatchRange(0, 8);
-            proxy.annotate('requestFunctionParameters()');
-            await c.requestFunctionParameters();
             proxy.annotate('setMultiPatch(0, 3)');
             await c.setMultiPatch(0, 3);
         },
@@ -241,18 +256,9 @@ const SCENARIOS: Record<string, Scenario> = {
         name: 'multi-part-0-output',
         description: 'PlayPage init + setMultiOutput(0, 4) — D-PLAY-06',
         run: async ({ client, proxy }) => {
-            const c = client as {
-                connect: () => Promise<boolean>;
-                loadPatchRange: (start: number, count: number) => Promise<unknown[]>;
-                requestFunctionParameters: () => Promise<unknown[]>;
+            const c = (await runMultiModeMount(client, proxy)) as MultiModeClient & {
                 setMultiOutput: (part: number, output: number) => Promise<void>;
             };
-            proxy.annotate('connect()');
-            await c.connect();
-            proxy.annotate('loadPatchRange(0, 8)');
-            await c.loadPatchRange(0, 8);
-            proxy.annotate('requestFunctionParameters()');
-            await c.requestFunctionParameters();
             proxy.annotate('setMultiOutput(0, 4)');
             await c.setMultiOutput(0, 4);
         },
@@ -262,18 +268,9 @@ const SCENARIOS: Record<string, Scenario> = {
         name: 'multi-part-0-level',
         description: 'PlayPage init + setMultiLevel(0, 80) — D-PLAY-07',
         run: async ({ client, proxy }) => {
-            const c = client as {
-                connect: () => Promise<boolean>;
-                loadPatchRange: (start: number, count: number) => Promise<unknown[]>;
-                requestFunctionParameters: () => Promise<unknown[]>;
+            const c = (await runMultiModeMount(client, proxy)) as MultiModeClient & {
                 setMultiLevel: (part: number, level: number) => Promise<void>;
             };
-            proxy.annotate('connect()');
-            await c.connect();
-            proxy.annotate('loadPatchRange(0, 8)');
-            await c.loadPatchRange(0, 8);
-            proxy.annotate('requestFunctionParameters()');
-            await c.requestFunctionParameters();
             proxy.annotate('setMultiLevel(0, 80)');
             await c.setMultiLevel(0, 80);
         },
