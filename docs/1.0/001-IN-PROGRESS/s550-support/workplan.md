@@ -44,11 +44,22 @@ deskwork:
 
 ---
 
+## Workplan discipline
+
+This workplan is written defensively per [`.claude/rules/agent-discipline.md`](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/.claude/rules/agent-discipline.md):
+
+- **Every task has a "Proven complete when" gate.** The gate names observable artifacts (specific tests, fixtures, commits, screenshots). "Tests pass" is not a gate; "the 11 specs `test/ui/capabilities/patch-writes.spec.ts :: D-PATCH-NN` pass under `make test-ui-roland`" is a gate.
+- **Cross-task dependencies are hard blocks.** If Phase B is blocked on Phase A, B does not start until A's gate is met. There is no "start B in parallel and circle back" loophole.
+- **"Defer to follow-up" is not a self-issuable disposition.** A controller cannot move work out of scope without explicit operator acceptance recorded in the workplan. Filing a GitHub issue is not acceptance.
+- **The redesign cannot start until the entire safety net is proven.** Phase 9 visual polish is blocked until every capability in [`ROLAND-S550-EDITOR-CAPABILITIES.md`](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/ROLAND-S550-EDITOR-CAPABILITIES.md) has a passing test. Not a representative sample; not "Wave 1 enough"; every capability.
+- **A redesigned page is not done until the WHOLE page is redesigned.** Shell-only polish (header, list spacing, eyebrow, live-edit footer) with vanilla browser controls inside is INCOMPLETE. The page is done when every atomic control on the page uses design-language primitives.
+- **Status reports name what's NOT done as loudly as what is.** Acceptance criteria with N of M boxes ticked is N/M done; it is not "mostly done."
+
 ## Implementation Status
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| **Phase 0: Frontend/Backend Decoupling** | **Tasks 1–9 Done; Task 10 In Progress. Phase 9 unblocked once Task 10 lands.** | Adapter-level recording proxy + simulated adapter + 7 captured fixtures (4 from earlier + patches-bank-0 + tones-bank-0 + play-init from #404) + `?midi=simulated` URL-param mode + Vite fixture middleware + 15 Playwright UI specs + CI workflow + drift-detection script. **Task 10:** capability test suite (`ROLAND-S550-EDITOR-CAPABILITIES.md` at repo root + `test/ui/capabilities/<area>.spec.ts`) — replaces pixel-snapshot regression with layout-independent capability assertions; required to make Phase 9 visual polish genuinely safe. Deferred follow-ups: [#405](https://github.com/audiocontrol-org/audiocontrol/issues/405) PatchesPage tone-preload decoupling, [#406](https://github.com/audiocontrol-org/audiocontrol/issues/406) pre-existing CI test failures. See [phase-0-decoupling.md](./phase-0-decoupling.md) + [contract audit](./phase-0-contract-audit.md). |
+| **Phase 0: Frontend/Backend Decoupling** | **Tasks 1–9 Done; Task 10 INCOMPLETE.** Phase 9 BLOCKED. | Adapter-level recording proxy + simulated adapter + 7 captured fixtures (4 from earlier + patches-bank-0 + tones-bank-0 + play-init from #404) + `?midi=simulated` URL-param mode + Vite fixture middleware + 15 Playwright UI specs + CI workflow + drift-detection script. **Task 10 status:** Wave 1 (16 display capability specs) DONE; Waves 2a/2b/2c/3/4/5/6 NOT done — these were filed as issues #411–#417 and treated as deferrable, which violates the workplan-integrity rule (see `.claude/rules/agent-discipline.md`). Task 10 is INCOMPLETE until **every capability in `ROLAND-S550-EDITOR-CAPABILITIES.md` has a passing test bound to it** (Test column populated; no `—` remaining for capabilities marked `covered` or `partial`). Issues #411–#417 are now in-scope work for Task 10, not deferred follow-ups. |
 | Phase 1: Shared S-Series Extraction | Complete | `roland-s-series` base module |
 | Phase 2: S-550 Device Module | Complete | Addresses, params, config, types |
 | Phase 3: S-550 Client & Tone Factory | Complete | Shared client factory pattern |
@@ -57,7 +68,7 @@ deskwork:
 | Phase 6: Hardware Validation | Complete | All tests passing against physical S-550 |
 | Phase 7: S-550 Front Panel | Not Started | Virtual front panel layout. Phase 0 captures fixture for front-panel SysEx; replay validates UI without further hardware QA. |
 | Phase 8: Memory Map Visualization | Complete | Graphical memory map in import dialogs |
-| Phase 9: UX/UI Cleanup | **Blocked on Phase 0** (Tasks 1–3 done; 4–7 cannot ship safely until decoupling lands) | Visual polish across all editor pages via `/frontend-design`. Without Phase 0, every iteration requires manual hardware QA which the operator has flagged as untenable. |
+| Phase 9: UX/UI Cleanup | **BLOCKED on Phase 0 Task 10 completion.** Tasks 1–3 done. Task 4 partially started but INCOMPLETE; the PatchesPage + TonesPage commits (`4bd11911`, `f633b95f`) shipped polished shells with vanilla browser controls inside — atomic controls (sliders, selects, checkboxes, range-bar primitive, VFD-glow envelope) were not ported. Those commits are NOT "Phase 9 Task 4 — page complete"; they are at most "Phase 9 Task 4 — shell partial." Tasks 4–7 cannot resume until Phase 0 Task 10 is fully complete AND a defensively-rewritten Phase 9 Task 4 definition is in place that prevents shell-only completion. | Visual polish across all editor pages via `/frontend-design`. Per the workplan-discipline rule, no per-page polish commit is "done" until the WHOLE PAGE — including every atomic control — uses design-language primitives. |
 | Phase 10: Post-Audit Cleanup | All Tasks Done (1–11 — pending hardware verification on Tasks 7 + 10, which Phase 0 fixture replay will close) | Functional + duplication fixes surfaced by 2026-05-08 audit, Phase 9 Task 3 review, and Phase 10 reviews 4–8. All eleven tasks (#393–#403) complete; hardware verification can close once Phase 0's recorded fixtures cover those code paths. |
 
 ---
@@ -84,15 +95,27 @@ The editor's UI is tightly coupled to the SysEx backend, so every redesign itera
 7. ✅ Editor harness via URL-param dispatch — committed `8efa4c00` + `d78eecab`. `?midi=simulated&scenario=<name>` routes the editor to `SimulatedAdapter` via a new `SimulatedMidiTransport` shim wrapping the existing `MidiTransport` interface. Vite middleware serves fixtures from `modules/sampler-devices/test/fixtures/` at `/test-fixtures/<device>/<scenario>.ndjson` with a strict path-traversal guard. 6 unit tests. The harness URL IS the real editor URL — no separate `/test/harness` route. Both bypass paths (`useFrontPanel`, `useParameterListener`) covered automatically since the simulated adapter lands in `state.adapter`.
 8. ✅ First Playwright UI specs — committed `f05603c3` + `f7e2825e`. 9 tests passing across `home.spec.ts`, `patches.spec.ts`, `library.spec.ts`. `tones.spec.ts` + `play.spec.ts` skipped via `test.skip` (their startup SysEx mismatches `load-everything.ndjson` — see [#404](https://github.com/audiocontrol-org/audiocontrol/issues/404)). Source-fixed `PatchList` button-in-button HTML nesting. Runner script `scripts/run-test-harness-e2e.sh`. Mandatory pageerror surfacing in `beforeEach`.
 9. ✅ CI integration + drift detection — committed `2bcf0a79` + `8dc83219`. New `.github/workflows/test.yml` runs on push + PR: `pnpm install`, `make`, scoped unit tests for sampler-devices + roland-sxx0-editor + editor-core (with `--exclude` for [#406](https://github.com/audiocontrol-org/audiocontrol/issues/406)'s pre-existing failures), `make test-ui-roland`, `make test-ui-s3k`. Playwright artifacts uploaded on failure. New `Makefile` `DEVENV_RUN` variable lets CI bypass the `devenv shell` wrapper. Operator-run `scripts/check-fixture-drift.sh` (+ `make check-fixture-drift`) recaptures fixtures and diffs against committed; exits 2 on `--scenario` typo. New `TESTING-FIXTURES.md` documents the full chain.
-10. ⏳ Capability test suite + canonical capabilities docs. **Wave 1 shipped 2026-05-10** (commit `4dbcf151`): 16 capability specs at `test/ui/capabilities/{connection,patches,tones,library,play}.spec.ts` covering display affordances; total UI test count 31 passed / 0 skipped. Foundational docs at repo root: [`ROLAND-S550-EDITOR-CAPABILITIES.md`](../../../../ROLAND-S550-EDITOR-CAPABILITIES.md) (51 high-level capabilities, `C-<AREA>-<NN>`) and [`ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md`](../../../../ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md) (183 itemized affordances, `D-<AREA>-<NN>`, with Origin axis: native / client-derived / editor-derived). Selectors prefer accessible queries + `data-capability="<id>"` over layout-encoding `data-testid`s. Outbound-byte assertions use SimulatedAdapter strict-match. Wave 2-6 follow-ups scoped as separate issues:
-   - **Wave 2a** ([#411](https://github.com/audiocontrol-org/audiocontrol/issues/411)) — patch parameter write tests (~11 specs)
-   - **Wave 2b** ([#412](https://github.com/audiocontrol-org/audiocontrol/issues/412)) — multi-mode parameter write tests (~4 specs)
-   - **Wave 2c** ([#413](https://github.com/audiocontrol-org/audiocontrol/issues/413)) — tone parameter write tests (~40 specs)
-   - **Wave 3** ([#414](https://github.com/audiocontrol-org/audiocontrol/issues/414)) — display gap tests (~30 specs, no fixtures)
-   - **Wave 4** ([#415](https://github.com/audiocontrol-org/audiocontrol/issues/415)) — library + dialog flow tests (~15 specs)
-   - **Wave 5** ([#416](https://github.com/audiocontrol-org/audiocontrol/issues/416)) — drag-drop tests (~6 specs)
-   - **Wave 6** ([#417](https://github.com/audiocontrol-org/audiocontrol/issues/417)) — cross-cutting tests (front panel + panic + progress, ~7 specs)
-   Plus 4 missing-affordance feature issues separately tracked: [#407](https://github.com/audiocontrol-org/audiocontrol/issues/407) System Parameters page, [#408](https://github.com/audiocontrol-org/audiocontrol/issues/408) Tone Editor polish, [#409](https://github.com/audiocontrol-org/audiocontrol/issues/409) Copy/Derive operations, [#410](https://github.com/audiocontrol-org/audiocontrol/issues/410) Sample Recording research. Closes the gap that pixel-snapshot regression cannot: visual presentation can change while capability contracts stay locked.
+10. ⏳ **INCOMPLETE.** Capability test suite — every capability in [`ROLAND-S550-EDITOR-CAPABILITIES.md`](../../../../ROLAND-S550-EDITOR-CAPABILITIES.md) must be bound to a passing test before Phase 9 can resume.
+
+   **Proven complete when:**
+   - The `Test` column in [`ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md`](../../../../ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md) has a spec citation (NOT `—`) for every `D-<AREA>-<NN>` row whose `Status` is `implemented` or `partial`. Grep audit: `grep '| —' ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md` returns zero hits for `Status: implemented` or `Status: partial` rows.
+   - Every passing test name in the suite starts with a `D-<AREA>-<NN>:` prefix (traceable to a specific affordance). Grep audit: `grep -rn "test('" modules/roland-sxx0-editor/test/ui/capabilities/` returns only lines whose test-name starts with `D-`.
+   - `make test-ui-roland` reports total = (sum of `Status: implemented` + `Status: partial` capability rows in the inventory). Total is currently 137 + 12 = 149 minimum; allow extra tests but never fewer.
+   - Issues #411, #412, #413, #414, #415, #416, #417 are CLOSED (with the capabilities they covered fully bound), not just "in progress." A filed issue is not progress; a closed issue with the work done is progress.
+   - Wave-1-only `data-testid="<layout-id>"` selectors removed from new specs in favor of `data-capability="C-<id>"` + accessible queries (legacy specs at the top of `test/ui/` may keep their `data-testid`s for legacy continuity).
+
+   **Sub-tasks (all required for completion; none deferrable):**
+   - ✅ **Wave 1** (commit `4dbcf151`) — 16 display capability specs.
+   - ⏳ **Wave 2b** — multi-mode parameter writes (4 specs covering D-PLAY-04..07). Tracked: [#412](https://github.com/audiocontrol-org/audiocontrol/issues/412). Smallest wave; in scope NOW.
+   - ⏳ **Wave 2a** — patch parameter writes (11 specs covering D-PATCH-01..05, 07..12). Tracked: [#411](https://github.com/audiocontrol-org/audiocontrol/issues/411). In scope NOW.
+   - ⏳ **Wave 2c** — tone parameter writes (~40 specs covering D-TONE-WAVE/PITCH/TVF/TVA/LFO/ENV). Tracked: [#413](https://github.com/audiocontrol-org/audiocontrol/issues/413). In scope NOW.
+   - ⏳ **Wave 3** — display assertion gaps (~30 specs, no fixtures). Tracked: [#414](https://github.com/audiocontrol-org/audiocontrol/issues/414). In scope NOW.
+   - ⏳ **Wave 4** — library + dialog flows (~15 specs + fixtures + library state setup). Tracked: [#415](https://github.com/audiocontrol-org/audiocontrol/issues/415). In scope NOW.
+   - ⏳ **Wave 5** — drag-drop tests (~6 specs). Tracked: [#416](https://github.com/audiocontrol-org/audiocontrol/issues/416). In scope NOW.
+   - ⏳ **Wave 6** — cross-cutting tests (front panel + panic + progress, ~7 specs). Tracked: [#417](https://github.com/audiocontrol-org/audiocontrol/issues/417). In scope NOW.
+   - ⏳ **Retroactive validation** — once waves are complete, run the suite against the existing PatchesPage + TonesPage redesign commits (`4bd11911`, `f633b95f`). Every newly-added spec that asserts a write path must pass. If any spec fails, the redesign commit introduced a regression and is amended before the suite is considered green.
+
+   **The 4 missing-affordance feature issues** ([#407](https://github.com/audiocontrol-org/audiocontrol/issues/407), [#408](https://github.com/audiocontrol-org/audiocontrol/issues/408), [#409](https://github.com/audiocontrol-org/audiocontrol/issues/409), [#410](https://github.com/audiocontrol-org/audiocontrol/issues/410)) cover capabilities that don't exist in the UI today. They are NOT part of Task 10 — Task 10 only requires that every `implemented` or `partial` capability is tested. `missing` capabilities are tracked separately and unblock when the corresponding feature lands. They are not loopholes.
 
 ### Dependencies on existing infrastructure (NOT reinvented)
 
@@ -517,7 +540,21 @@ See `.claude/rules/workflow-playbooks.md § Phase-completion duplication audit` 
      - [→] Outstanding duplication tracked in audit doc (`docs/1.0/001-IN-PROGRESS/s550-support/2026-05-08-code-audit-findings.md`): `PatchesPage` still shims patch export instead of using `openExportPatchDialog` (audit finding 5; absorbed into Task 4); `useDeviceToneChopper` and `handleExportSample` duplicate the wave-fetch pattern that `useWaveDataCache` now provides (deferred — note in DEVELOPMENT-NOTES, revisit during Task 4).
      - [→] **Reviewer 2 carry-over (intentionally not fixed):** original TonesPage flow called `setTone(toneIndex, tone, totalTones)` after `requestToneData` to refresh the device-data cache. The new contract requires the tone to be in cache *before* `openExportToneDialog`, so the post-export `setTone` becomes redundant — the cache already holds the source data. Documented here so future readers don't re-introduce the call.
 
-4. **Apply visual polish to each page via `/frontend-design`.** One commit per page so regressions are bisectable. Each page's polish is produced through the plugin — no hand-edited JSX/CSS slipped in alongside.
+4. **Apply visual polish to each page via `/frontend-design`.** **BLOCKED until Phase 0 Task 10 is fully complete.** Once unblocked, **each page commit is a single atomic completion event** — there is no "shell first / atomic controls next" sequencing. One commit per page; that commit polishes the ENTIRE page or it doesn't ship.
+
+   **A per-page polish commit is proven complete when:**
+   - The page header, list/grid, detail surface, action affordances, and live-edit footer all use design-language tokens / shared `.ac-*` primitives. Grep audit per page-scoped file: zero `<input type="range">` / `<input type="number">` / `<select>` / `<input type="checkbox">` without a corresponding `.ac-slider` / `.ac-number-input` / `.ac-select` / `.ac-checkbox` shared class applied.
+   - Every parameter editor on the page uses the v3 atomic control primitives: `.ac-slider` (range-bar pattern per `feedback_range_bar_pattern`), `.ac-select` (custom chevron + design-token border + focus ring), `.ac-checkbox`, `.ac-number-input` (display-font numeric).
+   - The 8-segment VFD-glow envelope editor primitive is in place anywhere the page renders an envelope (per `feedback_envelope_pattern`).
+   - Every capability spec for the page passes (`make test-ui-roland`), proving no functional regression in any of the page's read or write affordances.
+   - Visual smoke-test screenshots of every interaction state of the page captured against `/roland/s330/editor/<page>` AND `/roland/s550/editor/<page>` are attached to the PR. Both devices visually correct.
+   - The duplication-audit gate (below) is met.
+   - `git grep -E '(for now|TODO|FIXME|HACK|XXX|deferred|defer)' modules/roland-sxx0-editor/src/{pages,components}/<page-related-paths>` returns nothing introduced by the commit.
+
+   **The pre-existing PatchesPage + TonesPage commits (`4bd11911`, `f633b95f`) DO NOT meet this gate.** They are at most "shell partial" — atomic controls inside them are vanilla browser chrome. Resuming Phase 9 Task 4 means:
+   - Build the shared atomic control primitives FIRST in a dedicated dispatch (call it "Task 4.0 — atomic primitives").
+   - Then amend PatchesPage and TonesPage to consume the new primitives — these pages are NOT counted as Phase 9 Task 4 complete until the amendment lands.
+   - Then proceed page-by-page through the remaining pages (PlayPage, LibraryPage, WorkflowsPage, HomePage), each as a single atomic commit that polishes the WHOLE page.
    - HomePage — landing layout, calls to action, device identity affordance.
    - PatchesPage — header/list/detail spacing, action affordances, status indicators.
      - **Carry-over from Phase 9 Task 3 review:** migrate to `useLibraryExport.openExportPatchDialog` instead of the local connect-via-fake-DnD shim (matches audit doc finding 5).
