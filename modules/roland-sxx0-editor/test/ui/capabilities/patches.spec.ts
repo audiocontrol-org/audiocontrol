@@ -34,11 +34,17 @@ import { test, expect } from '@playwright/test';
 const HARNESS_URL =
   '/roland/s330/editor/patches?midi=simulated&scenario=patches-bank-0';
 
-// Same divergence filter as legacy patches.spec.ts. The byte-6 area-selector
-// diff (0x00 patch -> 0x03 tone) is the load-bearing signature; a real new
-// regression in the patches path won't match this regex.
+// Same divergence filter as capabilities/patch-writes.spec.ts. The
+// SimulatedAdapter's SimulatedAdapterUnexpectedSendError reports
+// "first diff at byte 6: expected 0x00, got 0x03" — byte 6 in the
+// S-series RQD/WSD frame is the area-selector (0x00 = patch area,
+// 0x03 = tone area). The PatchesPage's loadToneBank(0) preload emits
+// tone RQDs that don't appear in this patch-only fixture, producing
+// exactly this byte-6 area-selector mismatch. A real regression in the
+// patches path will not match this narrow signature and will fail the
+// test.
 const KNOWN_TONE_LOAD_DIVERGENCE =
-  /SimulatedAdapter[\s\S]*(at sequence \d+|exhausted)[\s\S]*/;
+  /SimulatedAdapter[\s\S]*first diff at byte 6:\s*expected 0x00,\s*got 0x03/;
 const S330_TONE_LOAD_ERROR = /\[S330Client\] Error loading tone \d+/;
 
 function isKnownTonePreloadDiagnostic(text: string): boolean {

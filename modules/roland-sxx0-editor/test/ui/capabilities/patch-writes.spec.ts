@@ -65,11 +65,22 @@ const PATCHES_URL = (scenario: string): string =>
   `/roland/s550/editor/patches?midi=simulated&scenario=${scenario}`;
 
 // Mirrors the filter in capabilities/patches.spec.ts. The PatchesPage's
-// mount sequence emits loadToneRange(0, 8) which the patch-write fixtures
+// mount sequence emits loadToneBank(0) which the patch-write fixtures
 // don't capture; the resulting 8 RQD-vs-WSD mismatches surface as console
 // errors that aren't load-bearing for the affordance under test.
+//
+// The signature is highly specific: the SimulatedAdapter's
+// SimulatedAdapterUnexpectedSendError reports "first diff at byte 4:
+// expected 0x40, got 0x41". Byte 4 in the Roland S-series exclusive frame
+// (F0 41 dev 1E [cmd] ...) is the Command ID — 0x40 is WSD (the captured
+// next outbound is a setter writing to patch memory) and 0x41 is RQD (the
+// UI is emitting an unrecorded tone RQD from PatchesPage's loadToneBank(0)
+// preload). Matching only this exact byte-4 WSD-vs-RQD mismatch keeps the
+// filter narrow: any other adapter mismatch — including a real setter
+// emitting wrong bytes (which would diff at byte 5+ on the address /
+// payload) — will NOT match and will fail the test.
 const KNOWN_TONE_LOAD_DIVERGENCE =
-  /SimulatedAdapter[\s\S]*(at sequence \d+|exhausted)[\s\S]*/;
+  /SimulatedAdapter[\s\S]*first diff at byte 4:\s*expected 0x40,\s*got 0x41/;
 const S_SERIES_TONE_LOAD_ERROR = /\[S(330|550)Client\] Error loading tone \d+/;
 
 function isKnownTonePreloadDiagnostic(text: string): boolean {

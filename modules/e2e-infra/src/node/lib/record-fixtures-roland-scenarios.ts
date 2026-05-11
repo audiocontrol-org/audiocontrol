@@ -33,7 +33,7 @@ export interface ScenarioContext {
      * Either an `S550ClientInterface` or `S330ClientInterface`; both
      * structurally implement the same operations the scenarios need. We
      * keep the type as `unknown` here and let scenario implementations
-     * narrow with the device-specific client type.
+     * narrow once via the `asClient<T>` helper below.
      */
     client: unknown;
 }
@@ -44,6 +44,30 @@ export interface Scenario {
     name: string;
     description: string;
     run: ScenarioFn;
+}
+
+/**
+ * Centralized unsafe-cast site for narrowing `ScenarioContext.client`
+ * (typed `unknown` because the registry stores heterogeneous scenarios
+ * with different client surface requirements) to the specific structural
+ * subset a scenario needs.
+ *
+ * This is the SINGLE place in the file where we bypass `as Type` strict
+ * mode. Every scenario MUST narrow its client via this helper rather
+ * than introducing inline `client as X` casts at call sites. Each scenario
+ * defines a local interface listing the client methods it actually uses
+ * (`ConnectOnlyClient`, `LoadEverythingClient`, etc.) and passes it as
+ * the type argument — so the cast happens once per scenario, against an
+ * explicit named contract, and the rest of the scenario body is fully
+ * type-checked against that contract.
+ *
+ * Rationale: parameterizing `ScenarioContext<TClient>` end-to-end would
+ * require Scenario.run to be existentially typed inside `Record<string,
+ * Scenario>`, which TypeScript cannot express cleanly. Concentrating the
+ * cast in this one helper makes the unsafe boundary auditable.
+ */
+function asClient<T>(client: unknown): T {
+    return client as T;
 }
 
 // ---------------------------------------------------------------------------
@@ -71,7 +95,7 @@ async function runMultiModeMount(
     client: unknown,
     proxy: ScenarioContext['proxy'],
 ): Promise<MultiModeClient> {
-    const c = client as MultiModeClient;
+    const c = asClient<MultiModeClient>(client);
     proxy.annotate('connect()');
     await c.connect();
     proxy.annotate('loadPatchRange(0, 8)');
@@ -101,7 +125,7 @@ async function runPatchPageMount(
     client: unknown,
     proxy: ScenarioContext['proxy'],
 ): Promise<PatchModeClient> {
-    const c = client as PatchModeClient;
+    const c = asClient<PatchModeClient>(client);
     proxy.annotate('connect()');
     await c.connect();
     proxy.annotate('loadPatchRange(0, 8)');
@@ -151,8 +175,10 @@ type PatchClient = PatchModeClient & {
  *   - For enums, the chosen value differs from a typical stock value
  *     (e.g., keyMode='x-fade' vs typical 'normal'; aftertouchAssign='filter'
  *     vs typical 'modulation' or 'bend+').
- *   - For numerics, pick mid-range values that nibble-encode cleanly
- *     (e.g., level=100, threshold=80, ratio=64) — avoid 0/127 edges
+ *   - For numerics, pick non-default mid-range values that are obviously
+ *     distinct from common stock values (e.g., level=100, threshold=80,
+ *     ratio=64 — verify against each scenario's captured outbound bytes
+ *     so the UI driver always sees a state change). Avoid 0/127 edges
  *     where the device's stock value is more likely to coincide.
  *   - For the 12-char name, pick "TESTNAME" — short, ASCII, unlikely to
  *     match any preset.
@@ -203,7 +229,12 @@ function buildPatchWriteScenario(spec: PatchWriteScenarioSpec): [string, Scenari
             name,
             description: `PatchesPage init + ${spec.label} — ${spec.detail}${preludeNote}`,
             run: async ({ client, proxy }) => {
-                const c = (await runPatchPageMount(client, proxy)) as PatchClient;
+                // Single narrowed cast for this scenario: PatchClient is a
+                // structural superset of the PatchModeClient runPatchPageMount
+                // returns. The mount helper does the same connect+load against
+                // whichever structural subset the caller asks for.
+                await runPatchPageMount(client, proxy);
+                const c = asClient<PatchClient>(client);
                 if (spec.keyModePrelude) {
                     proxy.annotate(`setPatchKeyMode(0, '${spec.keyModePrelude}')`);
                     await c.setPatchKeyMode(0, spec.keyModePrelude);
@@ -216,6 +247,57 @@ function buildPatchWriteScenario(spec: PatchWriteScenarioSpec): [string, Scenari
 }
 
 // ---------------------------------------------------------------------------
+// Per-scenario client interfaces — named structural subsets each scenario
+// requires. Used with `asClient<T>` to centralize the unsafe cast.
+// ---------------------------------------------------------------------------
+
+interface ConnectOnlyClient {
+    connect: () => Promise<boolean>;
+}
+
+interface LoadEverythingClient extends ConnectOnlyClient {
+    loadPatchRange: (start: number, count: number) => Promise<unknown[]>;
+    loadToneRange: (start: number, count: number) => Promise<unknown[]>;
+}
+
+interface FetchPatchClient extends ConnectOnlyClient {
+    requestPatchData: (idx: number) => Promise<unknown | null>;
+}
+
+interface FetchToneClient extends ConnectOnlyClient {
+    requestToneData: (idx: number) => Promise<unknown | null>;
+}
+
+interface PatchesBankClient extends ConnectOnlyClient {
+    loadPatchRange: (start: number, count: number) => Promise<unknown[]>;
+}
+
+interface TonesBankClient extends ConnectOnlyClient {
+    loadToneRange: (start: number, count: number) => Promise<unknown[]>;
+}
+
+interface PlayInitClient extends ConnectOnlyClient {
+    loadPatchRange: (start: number, count: number) => Promise<unknown[]>;
+    requestFunctionParameters: () => Promise<unknown[]>;
+}
+
+interface MultiChannelClient extends MultiModeClient {
+    setMultiChannel: (part: number, channel: number) => Promise<void>;
+}
+
+interface MultiPatchClient extends MultiModeClient {
+    setMultiPatch: (part: number, patchIndex: number | null) => Promise<void>;
+}
+
+interface MultiOutputClient extends MultiModeClient {
+    setMultiOutput: (part: number, output: number) => Promise<void>;
+}
+
+interface MultiLevelClient extends MultiModeClient {
+    setMultiLevel: (part: number, level: number) => Promise<void>;
+}
+
+// ---------------------------------------------------------------------------
 // SCENARIOS registry
 // ---------------------------------------------------------------------------
 
@@ -224,7 +306,7 @@ export const SCENARIOS: Record<string, Scenario> = {
         name: 'connect-only',
         description: 'Open MIDI, request system params, disconnect — minimal fixture',
         run: async ({ client, proxy }) => {
-            const c = client as { connect: () => Promise<boolean> };
+            const c = asClient<ConnectOnlyClient>(client);
             proxy.annotate('connect()');
             const ok = await c.connect();
             if (!ok) throw new Error('connect-only: client.connect() returned false');
@@ -235,11 +317,7 @@ export const SCENARIOS: Record<string, Scenario> = {
         name: 'load-everything',
         description: 'Connect + load all patches + load all tones (mirrors editor startup)',
         run: async ({ client, device, proxy }) => {
-            const c = client as {
-                connect: () => Promise<boolean>;
-                loadPatchRange: (start: number, count: number) => Promise<unknown[]>;
-                loadToneRange: (start: number, count: number) => Promise<unknown[]>;
-            };
+            const c = asClient<LoadEverythingClient>(client);
             proxy.annotate('connect()');
             await c.connect();
 
@@ -258,10 +336,7 @@ export const SCENARIOS: Record<string, Scenario> = {
         name: 'fetch-patch-0',
         description: 'Read a single patch (for unit-scale fixture testing)',
         run: async ({ client, proxy }) => {
-            const c = client as {
-                connect: () => Promise<boolean>;
-                requestPatchData: (idx: number) => Promise<unknown | null>;
-            };
+            const c = asClient<FetchPatchClient>(client);
             proxy.annotate('connect()');
             await c.connect();
             proxy.annotate('requestPatchData(0)');
@@ -273,10 +348,7 @@ export const SCENARIOS: Record<string, Scenario> = {
         name: 'fetch-tone-0',
         description: 'Read a single tone',
         run: async ({ client, proxy }) => {
-            const c = client as {
-                connect: () => Promise<boolean>;
-                requestToneData: (idx: number) => Promise<unknown | null>;
-            };
+            const c = asClient<FetchToneClient>(client);
             proxy.annotate('connect()');
             await c.connect();
             proxy.annotate('requestToneData(0)');
@@ -292,10 +364,7 @@ export const SCENARIOS: Record<string, Scenario> = {
         name: 'patches-bank-0',
         description: 'PatchesPage.loadPatchBank(0) — connect() + loadPatchRange(0, 8)',
         run: async ({ client, proxy }) => {
-            const c = client as {
-                connect: () => Promise<boolean>;
-                loadPatchRange: (start: number, count: number) => Promise<unknown[]>;
-            };
+            const c = asClient<PatchesBankClient>(client);
             proxy.annotate('connect()');
             await c.connect();
             proxy.annotate('loadPatchRange(0, 8)');
@@ -307,10 +376,7 @@ export const SCENARIOS: Record<string, Scenario> = {
         name: 'tones-bank-0',
         description: 'TonesPage.loadToneBank(0) — connect() + loadToneRange(0, 8)',
         run: async ({ client, proxy }) => {
-            const c = client as {
-                connect: () => Promise<boolean>;
-                loadToneRange: (start: number, count: number) => Promise<unknown[]>;
-            };
+            const c = asClient<TonesBankClient>(client);
             proxy.annotate('connect()');
             await c.connect();
             proxy.annotate('loadToneRange(0, 8)');
@@ -322,11 +388,7 @@ export const SCENARIOS: Record<string, Scenario> = {
         name: 'play-init',
         description: 'PlayPage initial load — connect() + loadPatchRange(0, 8) + requestFunctionParameters()',
         run: async ({ client, proxy }) => {
-            const c = client as {
-                connect: () => Promise<boolean>;
-                loadPatchRange: (start: number, count: number) => Promise<unknown[]>;
-                requestFunctionParameters: () => Promise<unknown[]>;
-            };
+            const c = asClient<PlayInitClient>(client);
             proxy.annotate('connect()');
             await c.connect();
             proxy.annotate('loadPatchRange(0, 8)');
@@ -357,9 +419,8 @@ export const SCENARIOS: Record<string, Scenario> = {
         name: 'multi-part-0-channel',
         description: 'PlayPage init + setMultiChannel(0, 5) — D-PLAY-04',
         run: async ({ client, proxy }) => {
-            const c = (await runMultiModeMount(client, proxy)) as MultiModeClient & {
-                setMultiChannel: (part: number, channel: number) => Promise<void>;
-            };
+            await runMultiModeMount(client, proxy);
+            const c = asClient<MultiChannelClient>(client);
             proxy.annotate('setMultiChannel(0, 5)');
             await c.setMultiChannel(0, 5);
         },
@@ -369,9 +430,8 @@ export const SCENARIOS: Record<string, Scenario> = {
         name: 'multi-part-0-patch',
         description: 'PlayPage init + setMultiPatch(0, 3) — D-PLAY-05',
         run: async ({ client, proxy }) => {
-            const c = (await runMultiModeMount(client, proxy)) as MultiModeClient & {
-                setMultiPatch: (part: number, patchIndex: number | null) => Promise<void>;
-            };
+            await runMultiModeMount(client, proxy);
+            const c = asClient<MultiPatchClient>(client);
             proxy.annotate('setMultiPatch(0, 3)');
             await c.setMultiPatch(0, 3);
         },
@@ -381,9 +441,8 @@ export const SCENARIOS: Record<string, Scenario> = {
         name: 'multi-part-0-output',
         description: 'PlayPage init + setMultiOutput(0, 4) — D-PLAY-06',
         run: async ({ client, proxy }) => {
-            const c = (await runMultiModeMount(client, proxy)) as MultiModeClient & {
-                setMultiOutput: (part: number, output: number) => Promise<void>;
-            };
+            await runMultiModeMount(client, proxy);
+            const c = asClient<MultiOutputClient>(client);
             proxy.annotate('setMultiOutput(0, 4)');
             await c.setMultiOutput(0, 4);
         },
@@ -393,9 +452,8 @@ export const SCENARIOS: Record<string, Scenario> = {
         name: 'multi-part-0-level',
         description: 'PlayPage init + setMultiLevel(0, 80) — D-PLAY-07',
         run: async ({ client, proxy }) => {
-            const c = (await runMultiModeMount(client, proxy)) as MultiModeClient & {
-                setMultiLevel: (part: number, level: number) => Promise<void>;
-            };
+            await runMultiModeMount(client, proxy);
+            const c = asClient<MultiLevelClient>(client);
             proxy.annotate('setMultiLevel(0, 80)');
             await c.setMultiLevel(0, 80);
         },
