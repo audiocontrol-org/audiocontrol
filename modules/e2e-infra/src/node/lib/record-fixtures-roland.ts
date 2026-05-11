@@ -178,6 +178,95 @@ const SCENARIOS: Record<string, Scenario> = {
             await c.requestFunctionParameters();
         },
     },
+
+    // Multi-mode write scenarios — PlayPage mount sequence plus one setter
+    // call each. Driven from the UI in Wave 2b's capability spec to assert
+    // each affordance emits the captured outbound byte sequence. See
+    // ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md rows D-PLAY-04..07.
+
+    'multi-part-0-channel': {
+        name: 'multi-part-0-channel',
+        description: 'PlayPage init + setMultiChannel(0, 5) — D-PLAY-04',
+        run: async ({ client, proxy }) => {
+            const c = client as {
+                connect: () => Promise<boolean>;
+                loadPatchRange: (start: number, count: number) => Promise<unknown[]>;
+                requestFunctionParameters: () => Promise<unknown[]>;
+                setMultiChannel: (part: number, channel: number) => Promise<void>;
+            };
+            proxy.annotate('connect()');
+            await c.connect();
+            proxy.annotate('loadPatchRange(0, 8)');
+            await c.loadPatchRange(0, 8);
+            proxy.annotate('requestFunctionParameters()');
+            await c.requestFunctionParameters();
+            proxy.annotate('setMultiChannel(0, 5)');
+            await c.setMultiChannel(0, 5);
+        },
+    },
+
+    'multi-part-0-patch': {
+        name: 'multi-part-0-patch',
+        description: 'PlayPage init + setMultiPatch(0, 3) — D-PLAY-05',
+        run: async ({ client, proxy }) => {
+            const c = client as {
+                connect: () => Promise<boolean>;
+                loadPatchRange: (start: number, count: number) => Promise<unknown[]>;
+                requestFunctionParameters: () => Promise<unknown[]>;
+                setMultiPatch: (part: number, patchIndex: number | null) => Promise<void>;
+            };
+            proxy.annotate('connect()');
+            await c.connect();
+            proxy.annotate('loadPatchRange(0, 8)');
+            await c.loadPatchRange(0, 8);
+            proxy.annotate('requestFunctionParameters()');
+            await c.requestFunctionParameters();
+            proxy.annotate('setMultiPatch(0, 3)');
+            await c.setMultiPatch(0, 3);
+        },
+    },
+
+    'multi-part-0-output': {
+        name: 'multi-part-0-output',
+        description: 'PlayPage init + setMultiOutput(0, 4) — D-PLAY-06',
+        run: async ({ client, proxy }) => {
+            const c = client as {
+                connect: () => Promise<boolean>;
+                loadPatchRange: (start: number, count: number) => Promise<unknown[]>;
+                requestFunctionParameters: () => Promise<unknown[]>;
+                setMultiOutput: (part: number, output: number) => Promise<void>;
+            };
+            proxy.annotate('connect()');
+            await c.connect();
+            proxy.annotate('loadPatchRange(0, 8)');
+            await c.loadPatchRange(0, 8);
+            proxy.annotate('requestFunctionParameters()');
+            await c.requestFunctionParameters();
+            proxy.annotate('setMultiOutput(0, 4)');
+            await c.setMultiOutput(0, 4);
+        },
+    },
+
+    'multi-part-0-level': {
+        name: 'multi-part-0-level',
+        description: 'PlayPage init + setMultiLevel(0, 80) — D-PLAY-07',
+        run: async ({ client, proxy }) => {
+            const c = client as {
+                connect: () => Promise<boolean>;
+                loadPatchRange: (start: number, count: number) => Promise<unknown[]>;
+                requestFunctionParameters: () => Promise<unknown[]>;
+                setMultiLevel: (part: number, level: number) => Promise<void>;
+            };
+            proxy.annotate('connect()');
+            await c.connect();
+            proxy.annotate('loadPatchRange(0, 8)');
+            await c.loadPatchRange(0, 8);
+            proxy.annotate('requestFunctionParameters()');
+            await c.requestFunctionParameters();
+            proxy.annotate('setMultiLevel(0, 80)');
+            await c.setMultiLevel(0, 80);
+        },
+    },
 };
 
 export function listScenarios(): string[] {

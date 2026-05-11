@@ -129,12 +129,12 @@ GitHub issues grouped by feature coherence.
 
 | Test status | Count | Definition |
 |-------------|-------|------------|
-| Tested | 21 | Affordance is implemented AND a capability spec asserts it. |
-| Untested | 128 | Affordance is implemented (or partial) but no test asserts it. **These are the missing tests.** |
+| Tested | 25 | Affordance is implemented AND a capability spec asserts it. |
+| Untested | 124 | Affordance is implemented (or partial) but no test asserts it. **These are the missing tests.** |
 | Pending UI | 24 | Affordance is missing — test depends on UI being built. **These are the missing capabilities.** |
 | Hardware-only | 10 | Affordance can only be verified against real hardware (e.g., front-panel button → device LED change). Lives in `test/e2e/`, not the UI capability suite. |
 
-The 128 untested + 24 pending-UI rows are the punch list. Each tested row is
+The 124 untested + 24 pending-UI rows are the punch list. Each tested row is
 locked in against redesign; each untested row is at risk; each pending-UI row
 is a feature gap.
 
@@ -397,10 +397,10 @@ The library is the editor's primary editor-derived layer. The device has no conc
 | D-PLAY-01 | 8-part (A-H) grid | `PlayPage.tsx:321` → `parts.map(...)` | C-PLAY-01 | editor-derived | implemented | `capabilities/play.spec.ts :: C-PLAY-01` |
 | D-PLAY-02 | Part label (A-H) | `PlayPage.tsx:329` → `part.id` | C-PLAY-01 | editor-derived | implemented | `capabilities/play.spec.ts :: C-PLAY-01` |
 | D-PLAY-03 | VAL / active indicator | `PlayPage.tsx:333` → `part.active ? '*' : ''` | C-PLAY-01 | native | partial (always renders `*`; `active` field never updated from device) | — |
-| D-PLAY-04 | MIDI channel — select (1-16) | `s-series-client.ts:231` → `setMultiChannel` | C-PLAY-04 | native | implemented | `capabilities/play.spec.ts :: C-PLAY-02` (read-only assertion; edit not tested) |
-| D-PLAY-05 | Patch — select | `s-series-client.ts:232` → `setMultiPatch` | C-PLAY-05 | native | implemented | `capabilities/play.spec.ts :: C-PLAY-03` (read-only assertion; edit not tested) |
-| D-PLAY-06 | Output — select (1-8) | `s-series-client.ts:233` → `setMultiOutput` | C-PLAY-06 | native | implemented | — |
-| D-PLAY-07 | Level — slider (0-127) | `s-series-client.ts:234` → `setMultiLevel` | C-PLAY-07 | native | implemented | — |
+| D-PLAY-04 | MIDI channel — select (1-16) | `s-series-client.ts:231` → `setMultiChannel` | C-PLAY-04 | native | implemented | `capabilities/play-writes.spec.ts :: D-PLAY-04` |
+| D-PLAY-05 | Patch — select | `s-series-client.ts:232` → `setMultiPatch` | C-PLAY-05 | native | implemented | `capabilities/play-writes.spec.ts :: D-PLAY-05` |
+| D-PLAY-06 | Output — select (1-8) | `s-series-client.ts:233` → `setMultiOutput` | C-PLAY-06 | native | implemented | `capabilities/play-writes.spec.ts :: D-PLAY-06` |
+| D-PLAY-07 | Level — slider (0-127) | `s-series-client.ts:234` → `setMultiLevel` | C-PLAY-07 | native | implemented | `capabilities/play-writes.spec.ts :: D-PLAY-07` |
 | D-PLAY-08 | Load function parameters on connect | `s-series-client.ts:230` → `requestFunctionParameters` (client-composed of multiple reads) | C-PLAY-03 | client-derived | implemented | — |
 | D-PLAY-09 | Patch name resolution from store | `PlayPage.tsx:163` → resolves `patches[part.patchIndex].common.name` | C-PLAY-03 | editor-derived | implemented | `capabilities/play.spec.ts :: C-PLAY-03` |
 | D-PLAY-10 | Bank reload — P11-P18 button | `PlayPage.tsx:276` → `loadPatchBank(0, true)` | C-PLAY-04 | client-derived | partial (S-330 only — buttons hardcoded; S-550 has 4 banks) | — |
@@ -451,7 +451,7 @@ The library is the editor's primary editor-derived layer. The device has no conc
 
 ## Punch list
 
-The 128 untested rows above are the missing-test backlog. The 24 missing rows
+The 124 untested rows above are the missing-test backlog. The 24 missing rows
 are the missing-UI backlog. Both should drain over time; both should grow
 when new affordances are added (each new feature lands with its test).
 

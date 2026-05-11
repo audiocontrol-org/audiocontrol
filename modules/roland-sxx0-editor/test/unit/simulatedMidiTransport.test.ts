@@ -121,7 +121,13 @@ describe('createSimulatedMidiTransport', () => {
     await connection.disconnect();
   });
 
-  it('returns distinct adapter instances on consecutive connect() calls (cursor isolation)', async () => {
+  it('returns the same adapter instance on consecutive connect() calls (cursor continuity)', async () => {
+    // Wave 2b (#412): connect() is idempotent within a transport lifetime
+    // so React StrictMode's double-mount does not hand the page a fresh
+    // cursor-0 adapter after the first one has already advanced through
+    // the mount sequence. Real hardware connect is similarly idempotent —
+    // the device IS the same regardless of how many times the client
+    // attaches. A genuine reset comes from creating a new transport.
     const fixtureText = buildTrivialScenarioText();
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(fixtureText, { status: 200 }),
@@ -134,10 +140,30 @@ describe('createSimulatedMidiTransport', () => {
     await transport.initialize();
     const first = await transport.connect('sim-in', 'sim-out');
     const second = await transport.connect('sim-in', 'sim-out');
-    expect(first.adapter).not.toBe(second.adapter);
+    expect(first.adapter).toBe(second.adapter);
     expect(first.adapter).toBeInstanceOf(SimulatedAdapter);
-    expect(second.adapter).toBeInstanceOf(SimulatedAdapter);
     await first.disconnect();
     await second.disconnect();
+  });
+
+  it('returns the same adapter across StrictMode-style double initialize() (cursor preserved)', async () => {
+    // StrictMode dev double-mount calls initialize() twice on first mount.
+    // The simulated transport must NOT create a second adapter on the
+    // second call — that would reset the cursor and corrupt write tests
+    // whose setter call lands on cursor 0 of the just-replaced adapter.
+    const fixtureText = buildTrivialScenarioText();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(fixtureText, { status: 200 }),
+    );
+
+    const transport = createSimulatedMidiTransport({
+      deviceType: 's330',
+      scenario: 'test',
+    });
+    await transport.initialize();
+    const first = await transport.connect('sim-in', 'sim-out');
+    await transport.initialize();
+    const second = await transport.connect('sim-in', 'sim-out');
+    expect(first.adapter).toBe(second.adapter);
   });
 });
