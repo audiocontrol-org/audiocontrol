@@ -19,7 +19,7 @@ The editor's UI talks to the SysEx backend through `SamplerClientInterface` (alr
 
 This makes redesign untenable. The operator has flagged this directly: *"It's hard for me to do QA while the UI is a mess."*
 
-The fix is to record how the device actually behaves once per scenario, then replay those recordings into the UI for hardware-free, deterministic, CI-runnable UI tests.
+The fix is to record how the device actually behaves once per scenario, then replay those recordings into the UI for hardware-free, deterministic, locally-runnable UI tests.
 
 ## Architecture
 
@@ -266,22 +266,21 @@ This satisfies the "always integrate into the real app" principle — the harnes
 - [x] Specs run via existing `make test-ui-roland` target without hardware
 - [x] Specs catch the kinds of bugs visual polish would introduce (one already caught: PatchList button-in-button)
 
-### Task 9 — CI integration + drift detection ✅ COMPLETE
+### Task 9 — Drift detection + test/fixture documentation ✅ COMPLETE (CI scope removed 2026-05-11)
 
-**What shipped (`2bcf0a79` + `8dc83219`):**
-- `.github/workflows/test.yml` — runs on push + PR. Steps: `pnpm install --frozen-lockfile` → `make` → 3 scoped `vitest run` steps (sampler-devices, roland-sxx0-editor, editor-core, with `--exclude` flags for [#406](https://github.com/audiocontrol-org/audiocontrol/issues/406)'s pre-existing failures) → `make test-ui-roland` → `make test-ui-s3k`. Playwright traces/screenshots uploaded on failure. Concurrency block cancels in-flight runs.
-- `Makefile` — new `DEVENV_RUN ?= devenv shell --quiet -- bash -c` variable. CI sets `DEVENV_RUN: 'bash -c'` to bypass the devenv shell wrapper. 18 `$(DEVENV) shell --quiet -- bash -c` sites refactored to `$(DEVENV_RUN)`. Local behavior unchanged.
+**Originally shipped as "CI integration + drift detection" (`2bcf0a79` + `8dc83219`)**. CI workflow REMOVED 2026-05-11 per operator decision ("we are not going to invest in CI test runners. That's a waste of time for a nascent project."). What survives:
+- `scripts/check-fixture-drift.sh` + `make check-fixture-drift` — operator-run drift detection. Recaptures fixtures via existing make targets, diffs against committed. Exit 2 on `--scenario` typo, exit 1 on drift, exit 0 on parity.
+- `Makefile` — `DEVENV_RUN ?= devenv shell --quiet -- bash -c` variable retained for any non-devenv invocation context. 18 `$(DEVENV) shell --quiet -- bash -c` call sites refactored to `$(DEVENV_RUN)`. Local behavior unchanged.
 - `scripts/check-fixture-drift.sh` (executable) — operator-run drift detection. Snapshots committed fixtures, runs `make record-fixtures-roland-<device>` to recapture, canonicalizes via Python, diffs. Optional `--device` and `--scenario` flags. Exit 0 on parity, 1 on drift, 2 on usage error (e.g., `--scenario` typo).
 - `make check-fixture-drift` target — thin wrapper threading `ARGS`.
 - `TESTING-FIXTURES.md` (new) — covers fixture format, capture, replay, harness chain, drift detection, current scenario inventory, and the deferred follow-ups. Cross-linked from `TESTING.md`.
 
 **Acceptance criteria — met:**
-- [x] CI runs the simulated-harness UI tests on every push and PR
-- [x] CI fails if specs fail
-- [x] Drift-detection mechanism shipped (operator-run; CI can't run it without hardware)
+- [x] Tests run locally via `make test-ui-roland` / `make test-ui-s3k` / `pnpm test`. (CI integration originally part of this task was removed per operator decision; out of scope.)
+- [x] Drift-detection mechanism shipped (operator-run; hardware required).
 - [x] Workflow documented in `TESTING-FIXTURES.md` + cross-link in `TESTING.md`
 
-**What's NOT in CI (and why):** The drift-detection job requires real hardware (S-330/S-550 on `Volt 4`). GitHub Actions runners cannot execute it. Documented as operator-run on orion-m4.
+**No CI:** the CI workflow originally part of Task 9 was removed per operator decision. Tests run locally; drift detection is operator-run when hardware is on the line.
 
 ### Task 10 — Capability test suite + canonical capabilities doc ⏳ IN PROGRESS
 
@@ -304,7 +303,7 @@ binds each one to a layout-independent spec.
 - [ ] `ROLAND-S550-EDITOR-CAPABILITIES.md` enumerates every capability the editor must afford
 - [ ] Every capability has a binding spec name in the doc
 - [ ] At least the 17 capabilities currently marked "covered" or "partial" pass via specs in `test/ui/capabilities/`
-- [ ] CI runs the capability suite via the existing `make test-ui-roland` target
+- [ ] The capability suite runs locally via `make test-ui-roland` and is required to pass before any redesign commit lands.
 - [ ] Action capabilities (parameter writes) have fixtures captured + spec assertions wired
 - [ ] Selectors are accessible queries or `data-capability="<id>"` — no layout-encoding `data-testid`s
 
@@ -323,7 +322,7 @@ Filed during Tasks 7–9, all driven by code-review or fixture-replay diagnostic
 
 - **[#404](https://github.com/audiocontrol-org/audiocontrol/issues/404)** — Capture targeted S-330 fixtures (`patches-bank-0`, `tones-bank-0`, `play-init`). Surfaced by Task 8 when `tones.spec.ts` + `play.spec.ts` both mismatched `load-everything.ndjson` at sequence 0 (byte 6 area selector). Requires hardware (orion-m4 + S-330 on `Volt 4`). Unblocks the two skipped specs.
 - **[#405](https://github.com/audiocontrol-org/audiocontrol/issues/405)** — Decouple `PatchesPage.loadInitialData` tone preload. Surfaced by Task 8 review. PatchesPage chains `loadPatchBank(0)` → `loadToneBank(0)`; the tone preload makes a "patches-only" fixture impossible. Either lazy-load tones from `PatchEditor` on demand or gate behind a feature flag.
-- **[#406](https://github.com/audiocontrol-org/audiocontrol/issues/406)** — Pre-existing unit test failures excluded from CI. Surfaced by Task 9: 9 failing tests across `s3000xl-client.test.ts` + `akai-translation.test.ts` (sampler-devices) and `PluginLibraryBrowser.test.tsx` + `MoveDialog.test.tsx` (editor-core) are excluded via `--exclude` flags in the new CI workflow. Pre-dates Phase 0. When fixed, drop the `--exclude` flags + the corresponding note in `TESTING-FIXTURES.md`.
+- **[#406](https://github.com/audiocontrol-org/audiocontrol/issues/406)** — Pre-existing unit test failures. 9 failing tests across `s3000xl-client.test.ts` + `akai-translation.test.ts` (sampler-devices) and `PluginLibraryBrowser.test.tsx` + `MoveDialog.test.tsx` (editor-core). Originally framed as "excluded from CI"; CI was removed 2026-05-11. The underlying failing tests are pre-existing defects that remain — separate cleanup work, not Phase 0 scope.
 
 ## Risks
 

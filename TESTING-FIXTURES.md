@@ -1,7 +1,7 @@
 # Fixture-Backed UI Testing
 
 This document covers Phase 0 of the s550-support feature: how the simulated
-MIDI harness lets editor UI run in CI against captured device byte streams,
+MIDI harness lets editor UI run locally against captured device byte streams,
 and how the operator detects drift between captured fixtures and real device
 behavior.
 
@@ -15,7 +15,7 @@ test-harness category that consumes these fixtures, see
 The Roland S-330 / S-550 editor previously needed a real device on a USB MIDI
 port to do anything past the home page. That made:
 
-- **CI useless** — UI tests couldn't run on a fresh runner without hardware.
+- **Repeatable tests impossible** — UI tests couldn't run without hardware on the line.
 - **Visual polish slow** — every layout iteration required reconnecting to a
   sampler and waiting for the editor to fetch the patch / tone catalog.
 - **Front-panel verification fragile** — small protocol drifts between
@@ -24,7 +24,7 @@ port to do anything past the home page. That made:
 Phase 0 captures real device traffic into newline-delimited JSON fixtures.
 The editor's `?midi=simulated&scenario=<name>` URL replays a fixture through a
 `SimulatedAdapter` so the UI talks to a fake "device" that sends back the
-exact byte sequence the real one did. Tests run in CI; visual iteration runs
+exact byte sequence the real one did. Tests run locally; visual iteration runs
 without hardware; protocol drift is detected by an operator script (see
 [Drift detection](#drift-detection)).
 
@@ -103,41 +103,31 @@ way and assert on the rendered DOM. The runner is
 [`modules/roland-sxx0-editor/scripts/run-test-harness-e2e.sh`](modules/roland-sxx0-editor/scripts/run-test-harness-e2e.sh),
 invoked via `make test-ui-roland`.
 
-## CI integration
+## Test execution
 
-`.github/workflows/test.yml` runs on every push and pull request:
+Tests run locally; there is no CI test runner. The operator decided not to
+invest in CI infrastructure for this project — the cost/benefit doesn't
+pay off at the current project size. Tests are still required (per
+[`.claude/rules/agent-discipline.md`](.claude/rules/agent-discipline.md) —
+every capability needs a passing test before redesign work can proceed),
+they're just run on the developer's machine before each commit.
 
-1. `pnpm install --frozen-lockfile`
-2. `make` (topological build of all modules)
-3. Unit tests for the modules whose surface Phase 0 modified, run as
-   separate `vitest run` steps so each exclude scope is local and obvious:
+Local test commands:
 
-   - `pnpm --filter @audiocontrol/sampler-devices exec vitest run --exclude '**/s3000xl/**'`
-   - `pnpm --filter @audiocontrol/roland-sxx0-editor test`
-   - `pnpm --filter @audiocontrol/editor-core exec vitest run --exclude '**/{PluginLibraryBrowser,MoveDialog}.test.tsx'`
+- `make test-ui-roland` — Phase 0 simulated harness specs (UI tests against
+  captured fixtures, no hardware required)
+- `make test-ui-s3k`    — keygroup-zone harness specs
+- `pnpm --filter @audiocontrol/roland-sxx0-editor test` — roland unit tests
+- `pnpm --filter @audiocontrol/sampler-devices test` — sampler-devices unit
+  tests (3 pre-existing failures in `test/unit/s3000xl/` are not part of
+  the Phase 0 surface and are not addressed here)
+- `pnpm --filter @audiocontrol/editor-core test` — editor-core unit tests
+  (6 pre-existing failures in `PluginLibraryBrowser` / `MoveDialog` are not
+  part of the Phase 0 surface and are not addressed here)
 
-   The `--exclude` patterns route around pre-existing failing tests that
-   pre-date Phase 0 (3 in `sampler-devices/test/unit/s3000xl/`, 6 in
-   `editor-core` PluginLibraryBrowser + MoveDialog). Tracked in
-   [#406](https://github.com/audiocontrol-org/audiocontrol/issues/406);
-   remove the excludes once that issue is resolved and collapse back
-   toward a workspace-wide `pnpm test`.
-4. `make test-ui-roland` — Phase 0 simulated harness specs
-5. `make test-ui-s3k`    — keygroup-zone harness specs
-
-CI sets `DEVENV_RUN='bash -c'` so the make targets run with the runner's
-plain bash + Node + pnpm instead of installing devenv. The `DEVENV_RUN`
-indirection lives in the Makefile's E2E section. Locally, the variable
-defaults to `devenv shell --quiet -- bash -c` and behavior is unchanged.
-
-CI also pins pnpm via `pnpm/action-setup@v4`'s `version` input (matches the
-`packageManager` field in the root `package.json`); both belt and braces
-keep the action reproducible across renovate-bumped configs.
-
-On failure, Playwright trace and screenshot artifacts are uploaded under the
-`playwright-artifacts` artifact name (7-day retention).
-
-CI does **not** capture fixtures. CI does **not** run hardware E2E tests.
+The `Makefile`'s `DEVENV_RUN` indirection (added during Phase 0 Task 9) is
+retained — defaults to `devenv shell --quiet -- bash -c` for local runs,
+overridable for any non-devenv invocation context.
 
 ## Drift detection
 
