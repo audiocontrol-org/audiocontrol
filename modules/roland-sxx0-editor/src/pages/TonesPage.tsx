@@ -1,9 +1,26 @@
 /**
- * Tones page - View and edit sampler tones
+ * Tones page — list-detail editor with the v3 mockup polish applied.
  *
  * Data is cached in deviceDataStore and persists across page navigation.
- * Loads first bank (8 tones) by default for faster startup.
- * The number of tone banks adapts to the device (S-330: 4 banks, S-550: 8 banks).
+ * Loads first bank (8 tones) by default for faster startup. The number
+ * of tone banks adapts to the device (S-330: 4 banks, S-550: 8 banks).
+ *
+ * Visual treatment is the operator-approved v3 mockup direction (Phase
+ * 9 Task 4, page 2 of 6):
+ *   - Lean page header: h2 + red rule + "<n> of <N> loaded" metric +
+ *     single refresh icon-button. Replaces the per-bank reload toolbar
+ *     (DESIGN-SYSTEM.md "List-Level Actions"); per-row click-to-load
+ *     remains for unloaded banks.
+ *   - 2-column app shell (list + detail). The mockup reserves a
+ *     CRT/front-panel column on the right; that's a cross-page concern
+ *     (every editor page mounts the virtual front panel per project
+ *     memory `feedback_virtual_front_panel`) and lands in a separate
+ *     commit so this file stays focused on the tones surface.
+ *   - Detail pane uses a radio-driven 5-tab shell (Wave · Pitch ·
+ *     Filter · Amp · LFO) per project memory `feedback_tabbed_detail_pane`.
+ *   - Live-edit footer in the detail pane (no save/cancel/undo) — edits
+ *     stream to the device in real time per project memory
+ *     `feedback_live_editing_no_save`.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -52,7 +69,7 @@ interface ImportSampleParams {
 
 export function TonesPage() {
   const config = useDeviceConfig();
-  const { totalPatches, totalTones, patchesPerBank, tonesPerBank } = config;
+  const { totalPatches, totalTones, patchesPerBank, tonesPerBank, deviceName } = config;
   const { adapter, deviceId, status } = useMidiStore();
   const {
     selectedToneIndex,
@@ -83,7 +100,7 @@ export function TonesPage() {
     invalidateToneCache,
   } = useDeviceDataStore();
 
-  // Keep a ref to the S330 client
+  // Keep a ref to the device client (S-330 / S-550 / etc.)
   const clientRef = useRef<SamplerClientInterface | null>(null);
 
   // Track if we've already initiated loading to prevent loops
@@ -116,8 +133,6 @@ export function TonesPage() {
   const waveCache = useWaveDataCache({ clientRef, setError });
 
   // Sample chopper hook — chop device tones into drum kits.
-  // Inject the wave cache so the chopper reuses already-fetched samples
-  // (no redundant device read when the loop editor already loaded them).
   const chopper = useDeviceToneChopper({ clientRef, libraryDirectoryHandle: libraryHandle, waveCache });
 
   // Sample-export hook — WAV download for a single tone slot. Routes
@@ -137,8 +152,7 @@ export function TonesPage() {
     selectedToneIndex !== null ? waveCache.getSamples(selectedToneIndex) : null;
   // When no tone is selected, `loopEditorSamples` is also null and every
   // consumer of `sampleRate` inside `useLoopEditor` short-circuits on
-  // `!samples` (smoothedSamples / discontinuity / handleAutoDetect /
-  // useSamplePlayer). The seed below is therefore inert in that state — `0`
+  // `!samples`. The seed below is therefore inert in that state — `0`
   // makes the never-consulted nature unmistakable rather than implying a
   // 15 kHz default.
   const loopEditor = useLoopEditor({
@@ -188,8 +202,11 @@ export function TonesPage() {
     await loadBankWithIndicator(0);
   }, [loadBankWithIndicator]);
 
-  // Load all tones (S-330: 4 banks of 8, S-550: 8 banks of 8)
-  const loadAll = useCallback(async () => {
+  // Refresh-from-device — replaces the per-bank reload toolbar.
+  // Invalidates caches and reloads every bank. The icon-button on the
+  // title row binds to this; per-row click-to-load (in ToneList) still
+  // handles single-bank loads for unloaded banks.
+  const refreshAll = useCallback(async () => {
     if (!clientRef.current) return;
     clientRef.current.invalidateToneCache();
     invalidateToneCache();
@@ -220,7 +237,7 @@ export function TonesPage() {
         setError(err instanceof Error ? err.message : 'Failed to send tone data');
       });
     },
-    [selectedToneIndex, setError]
+    [selectedToneIndex, setError],
   );
 
   // Open import sample dialog
@@ -273,12 +290,17 @@ export function TonesPage() {
     }
   }, [isConnected, tones.length, isLoading, loadInitialData]);
 
-
-  // Filter to only show loaded tones
+  // Loaded counters for the title-row metric.
   const loadedTones = tones.filter((t): t is SamplerTone => t !== undefined);
+  const loadedToneCount = loadedTones.length;
 
   const selectedTone =
     selectedToneIndex !== null ? tones[selectedToneIndex] : null;
+
+  // Acknowledge `loadedBanks` to keep the hook return shape used; the
+  // per-bank state is still threaded into ToneList for the per-bank
+  // click-to-load handler.
+  void loadedBanks;
 
   if (!isConnected) {
     return (
@@ -286,7 +308,7 @@ export function TonesPage() {
         <div className="card text-center py-12">
           <h2 className="text-xl font-bold text-s330-text mb-2">Not Connected</h2>
           <p className="text-s330-muted mb-4">
-            Connect to your S-330 to view and edit tones.
+            Connect to your {deviceName} to view and edit tones.
           </p>
           <a href="/" className="ac-btn ac-btn-primary inline-block">
             Go to Connection
@@ -298,122 +320,108 @@ export function TonesPage() {
 
   return (
     <div className="ac-page ac-page-shell">
-      {/* Sticky Header */}
-      <div className="ac-page-sticky-header">
-        <div className="ac-page-header">
-          <div className="flex items-center gap-4">
-            <h2 className="text-xl font-bold text-s330-text">Tones</h2>
-            <span className="text-sm text-s330-muted">
-              {loadedTones.length} of {totalTones} loaded
-            </span>
-          </div>
-          <div className="flex items-center gap-4 flex-1 justify-end">
-            {/* Loading Progress (inline with buttons) */}
-            {isLoading && loadingProgress !== null && (
-              <div className="flex-1 max-w-xs">
-                <div className="h-2 bg-s330-panel rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-s330-highlight transition-all duration-150 ease-out"
-                    style={{ width: `${loadingProgress}%` }}
-                  />
-                </div>
-                <p className="text-s330-muted text-xs mt-0.5 truncate">
-                  {loadingMessage}
-                </p>
-              </div>
-            )}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-s330-muted">(Re)load:</span>
-              {Array.from({ length: Math.ceil(totalTones / tonesPerBank) }, (_, bankIndex) => (
-                <button
-                  key={bankIndex}
-                  onClick={() => loadToneBank(bankIndex, true)}
-                  disabled={isLoading}
-                  className={cn(
-                    'ac-btn ac-btn-sm',
-                    loadedBanks.includes(bankIndex) ? 'ac-btn-secondary' : 'ac-btn-primary',
-                    isLoading && 'opacity-50'
-                  )}
-                >
-                  {config.memoryLayout.formatToneBankLabel(bankIndex, tonesPerBank)}
-                </button>
-              ))}
-              <button
-                onClick={loadAll}
-                disabled={isLoading}
-                className={cn('ac-btn ac-btn-sm ac-btn-secondary', isLoading && 'opacity-50')}
-              >
-                All
-              </button>
-            </div>
-          </div>
+      {/* Lean page header — h2 + red rule + status + refresh icon.
+          Composed from .ac-page-title-* shared primitives. */}
+      <header className="ac-page-title-row">
+        <div className="ac-page-title-block">
+          <h2 id="tones-heading" className="ac-page-title-heading">Tones</h2>
+          <div className="ac-page-title-rule" aria-hidden="true" />
         </div>
-      </div>
+        <span className="ac-page-title-metric">
+          <span className="ac-page-title-led" aria-hidden="true" />
+          <span>
+            <strong>{loadedToneCount}</strong> of <strong>{totalTones}</strong> loaded
+          </span>
+          <button
+            type="button"
+            onClick={refreshAll}
+            disabled={isLoading}
+            className={cn(
+              'ac-icon-btn',
+              isLoading && 'ac-icon-btn--spinning',
+            )}
+            aria-label="Refresh all tones from device"
+            title="Refresh all tones from device"
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M3 8a5 5 0 0 1 9-3" />
+              <polyline points="12 2 12 5 9 5" />
+              <path d="M13 8a5 5 0 0 1-9 3" />
+              <polyline points="4 14 4 11 7 11" />
+            </svg>
+          </button>
+        </span>
+      </header>
 
-      {/* Error Display */}
+      {/* Inline page-loading progress — same byte-percent shape used
+          elsewhere, reframed for the title-row context. */}
+      {isLoading && loadingProgress !== null && (
+        <div className="tones__progress" role="status" aria-live="polite">
+          <div className="tones__progress-track">
+            <div
+              className="tones__progress-fill"
+              style={{ width: `${loadingProgress}%` }}
+            />
+          </div>
+          {loadingMessage && <span>{loadingMessage}</span>}
+        </div>
+      )}
+
+      {/* Error display */}
       {error && (
         <div data-testid="error-message" className="ac-alert ac-alert-error">
           <p className="ac-text-error text-sm">{error}</p>
         </div>
       )}
 
-      {/* Content - show while loading for progressive updates */}
+      {/* List + detail */}
       {tones.length > 0 && (
-        <div className="ac-list-detail-grid">
-          {/* Sticky list column */}
-          <div>
-            <div className="ac-list-column-sticky">
-              <ToneList
-                tones={tones}
-                selectedIndex={selectedToneIndex}
-                onSelect={selectTone}
-                loadedBanks={loadedBanks}
-                tonesPerBank={tonesPerBank}
-                loadingBank={loadingBank}
-                onLoadBank={(bank) => loadBankWithIndicator(bank)}
-                onExportTone={exportOps.openExportToneDialog}
-                canExportToLibrary={library.isConnected}
-              />
-            </div>
-          </div>
-          <div>
-            {selectedTone ? (
-              <ToneEditor
-                tone={selectedTone}
-                index={selectedToneIndex!}
-                onUpdate={handleToneUpdate}
-                onCommit={handleToneCommit}
-                onExportSample={() => {
-                  if (selectedToneIndex !== null) void handleExportSample(selectedToneIndex);
-                }}
-                isExporting={isExporting}
-                exportProgress={exportProgress}
-                onExportToLibrary={() => {
-                  if (selectedToneIndex !== null) exportOps.openExportToneDialog(selectedToneIndex);
-                }}
-                isExportingToLibrary={exportOps.isExporting}
-                onImportSample={handleOpenImportDialog}
-                isImporting={isImporting}
-                onChopSample={() => {
-                  if (selectedToneIndex !== null && selectedTone) {
-                    chopper.openChopper(selectedToneIndex, selectedTone);
-                  }
-                }}
-                isLoadingChopWaveData={chopper.isLoadingWav}
-                waveData={loopEditorSamples}
-                isLoadingWaveData={waveCache.isLoading}
-                waveDataLoadProgress={waveCache.progress}
-                onLoadWaveData={() => {
-                  if (selectedToneIndex !== null) void waveCache.loadWaveData(selectedToneIndex);
-                }}
-                loopEditorProps={loopEditor.editorProps}
-              />
-            ) : (
-              <div className="card text-center py-12 text-s330-muted">
-                Select a tone to edit
-              </div>
-            )}
-          </div>
+        <div className="tones__app-shell" aria-labelledby="tones-heading">
+          <ToneList
+            tones={tones}
+            selectedIndex={selectedToneIndex}
+            onSelect={selectTone}
+            loadedBanks={loadedBanks}
+            tonesPerBank={tonesPerBank}
+            loadingBank={loadingBank}
+            onLoadBank={(bank) => loadBankWithIndicator(bank)}
+            onExportTone={exportOps.openExportToneDialog}
+            canExportToLibrary={library.isConnected}
+          />
+          {selectedTone ? (
+            <ToneEditor
+              tone={selectedTone}
+              index={selectedToneIndex!}
+              onUpdate={handleToneUpdate}
+              onCommit={handleToneCommit}
+              onExportSample={() => {
+                if (selectedToneIndex !== null) void handleExportSample(selectedToneIndex);
+              }}
+              isExporting={isExporting}
+              exportProgress={exportProgress}
+              onExportToLibrary={() => {
+                if (selectedToneIndex !== null) exportOps.openExportToneDialog(selectedToneIndex);
+              }}
+              isExportingToLibrary={exportOps.isExporting}
+              onImportSample={handleOpenImportDialog}
+              isImporting={isImporting}
+              onChopSample={() => {
+                if (selectedToneIndex !== null && selectedTone) {
+                  chopper.openChopper(selectedToneIndex, selectedTone);
+                }
+              }}
+              isLoadingChopWaveData={chopper.isLoadingWav}
+              waveData={loopEditorSamples}
+              isLoadingWaveData={waveCache.isLoading}
+              waveDataLoadProgress={waveCache.progress}
+              onLoadWaveData={() => {
+                if (selectedToneIndex !== null) void waveCache.loadWaveData(selectedToneIndex);
+              }}
+              loopEditorProps={loopEditor.editorProps}
+            />
+          ) : (
+            <div className="ac-detail-empty">Select a tone to edit</div>
+          )}
         </div>
       )}
 

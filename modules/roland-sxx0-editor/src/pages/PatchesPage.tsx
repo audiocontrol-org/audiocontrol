@@ -227,14 +227,16 @@ export function PatchesPage() {
 
   return (
     <div className="ac-page ac-page-shell">
-      {/* Lean page header — h2 + red rule + status + refresh icon. */}
-      <header className="patches__title-row">
-        <div className="patches__title-block">
-          <h2 id="patches-heading" className="patches__title-heading">Patches</h2>
-          <div className="patches__title-rule" aria-hidden="true" />
+      {/* Lean page header — h2 + red rule + status + refresh icon.
+          Composed from .ac-page-title-* shared primitives (see
+          modules/roland-sxx0-editor/src/styles/_shared.css). */}
+      <header className="ac-page-title-row">
+        <div className="ac-page-title-block">
+          <h2 id="patches-heading" className="ac-page-title-heading">Patches</h2>
+          <div className="ac-page-title-rule" aria-hidden="true" />
         </div>
-        <span className="patches__title-metric">
-          <span className="patches__title-led" aria-hidden="true" />
+        <span className="ac-page-title-metric">
+          <span className="ac-page-title-led" aria-hidden="true" />
           <span>
             <strong>{loadedPatchCount}</strong> of <strong>{totalPatches}</strong> loaded
           </span>
@@ -243,8 +245,8 @@ export function PatchesPage() {
             onClick={refreshAll}
             disabled={isLoading}
             className={cn(
-              'patches__icon-btn',
-              isLoading && 'patches__icon-btn--spinning',
+              'ac-icon-btn',
+              isLoading && 'ac-icon-btn--spinning',
             )}
             aria-label="Refresh all patches from device"
             title="Refresh all patches from device"
@@ -302,7 +304,7 @@ export function PatchesPage() {
                 onUpdate={handlePatchUpdate}
               />
             ) : (
-              <div className="patches__detail-empty">Select a patch to edit</div>
+              <div className="ac-detail-empty">Select a patch to edit</div>
             )}
           </article>
         </div>

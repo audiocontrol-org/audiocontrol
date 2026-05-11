@@ -1,6 +1,24 @@
 /**
- * Tone list component - displays tones with loading states
+ * Tone list component — bank-headed slot list with the v3 mockup
+ * polish applied (Phase 9 Task 4 page 2).
+ *
+ * Functional contracts intentionally unchanged:
+ *   - data-testid="tone-item-N" / data-testid="tone-name" still set
+ *     on each row (legacy test/ui/tones.spec.ts depends on these).
+ *   - data-capability="C-TONE-01" still set on the list root
+ *     (test/ui/capabilities/tones.spec.ts depends on this).
+ *   - data-testid="export-tone-button" still set on the per-row
+ *     export action (legacy spec depends on this).
+ *   - Each row's accessible name leads with the slot label
+ *     (T11..T48) so getByRole('button', { name: /^T11/ })
+ *     queries continue to resolve.
+ *
+ * Per-row Export <button> is nested inside an outer role="button"
+ * div, not a real <button>, because <button> nested in <button> is
+ * invalid HTML — same workaround documented in PatchList.tsx.
  */
+
+import type { KeyboardEvent } from 'react';
 
 import type { SamplerTone } from '@/core/midi/SamplerClient';
 import { cn } from '@/lib/utils';
@@ -26,110 +44,138 @@ interface ToneListProps {
   canExportToLibrary?: boolean;
 }
 
-export function ToneList({ tones, selectedIndex, onSelect, loadedBanks: _loadedBanks, tonesPerBank, loadingBank, onLoadBank, onExportTone, canExportToLibrary = false }: ToneListProps) {
+export function ToneList({
+  tones,
+  selectedIndex,
+  onSelect,
+  loadedBanks: _loadedBanks,
+  tonesPerBank,
+  loadingBank,
+  onLoadBank,
+  onExportTone,
+  canExportToLibrary = false,
+}: ToneListProps) {
   const { memoryLayout } = useDeviceConfig();
 
-  // Count loaded and non-empty tones
-  const loadedTones = tones.filter((t): t is SamplerTone => t !== undefined);
-  const nonEmptyCount = loadedTones.filter((t) => !isToneEmpty(t)).length;
+  // Group rows by bank so we can emit a sticky bank header before each.
+  const totalBanks = Math.ceil(tones.length / tonesPerBank);
 
   return (
-    <div className="card p-2" data-capability="C-TONE-01">
-      <div className="flex items-center justify-between px-2 py-1 mb-2">
-        <span className="text-sm font-medium text-s330-text">
-          Tones ({nonEmptyCount} of {loadedTones.length} allocated)
-        </span>
-      </div>
-      <div className="ac-scroll-list space-y-1">
-        {tones.map((tone, index) => {
-          const isLoaded = tone !== undefined;
-          const isEmpty = isLoaded && isToneEmpty(tone);
-          const isSelected = index === selectedIndex;
-          const bankIndex = Math.floor(index / tonesPerBank);
-
-          const isBankLoading = loadingBank === bankIndex;
-
-          const handleClick = () => {
-            if (isLoaded) {
-              onSelect(isSelected ? null : index);
-            } else if (!isBankLoading && onLoadBank) {
-              onLoadBank(bankIndex);
-            }
-          };
-
-          // Check if tone has sample data (for export button)
-          const hasSampleData = isLoaded && tone.wave.endPoint > tone.wave.startPoint;
-
-          const handleExportClick = (e: React.MouseEvent) => {
-            e.stopPropagation(); // Prevent tone selection
-            if (onExportTone && isLoaded && hasSampleData) {
-              onExportTone(index);
-            }
-          };
+    <aside
+      className="tones__list"
+      data-capability="C-TONE-01"
+      aria-label="Tone list"
+    >
+      <div className="tones__list-scroll ac-scroll-list">
+        {Array.from({ length: totalBanks }, (_, bankIndex) => {
+          const bankStart = bankIndex * tonesPerBank;
+          const bankEnd = Math.min(bankStart + tonesPerBank, tones.length);
+          const firstSlotLabel = memoryLayout.formatToneSlot(bankStart);
+          const lastSlotLabel = memoryLayout.formatToneSlot(bankEnd - 1);
 
           return (
-            <div
-              key={index}
-              data-testid={`tone-item-${index}`}
-              className={cn(
-                'w-full px-3 py-2 rounded text-left text-sm transition-colors flex items-center justify-between group',
-                isLoaded ? 'hover:bg-s330-accent/50' : 'hover:bg-s330-accent/20 cursor-pointer',
-                isBankLoading && 'cursor-wait',
-                isSelected
-                  ? 'bg-s330-highlight text-white'
+            <div key={`bank-${bankIndex}`} data-bank-index={bankIndex}>
+              <div className="tones__list-bank-header">
+                <span>Group {bankIndex + 1}</span>
+                <strong>{firstSlotLabel}–{lastSlotLabel}</strong>
+              </div>
+
+              {tones.slice(bankStart, bankEnd).map((tone, offset) => {
+                const index = bankStart + offset;
+                const isLoaded = tone !== undefined;
+                const isEmpty = isLoaded && isToneEmpty(tone);
+                const isSelected = index === selectedIndex;
+                const slotBank = Math.floor(index / tonesPerBank);
+                const isBankLoading = loadingBank === slotBank;
+
+                // Has sample data: end > start. Drives the Export action's
+                // visibility (we never offer Export on a wave-less tone).
+                const hasSampleData = isLoaded && tone.wave.endPoint > tone.wave.startPoint;
+
+                const handleClick = () => {
+                  if (isLoaded) {
+                    onSelect(isSelected ? null : index);
+                  } else if (!isBankLoading && onLoadBank) {
+                    onLoadBank(slotBank);
+                  }
+                };
+
+                // Outer element is a div with role="button" rather than a
+                // real <button>, because we need to nest the per-row
+                // Export <button> inside it. <button> inside <button>
+                // trips React's validateDOMNesting warning. Keyboard
+                // activation (Enter / Space) is wired explicitly.
+                const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+                  if (isBankLoading) return;
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleClick();
+                  }
+                };
+
+                const displayName = isBankLoading
+                  ? '(loading...)'
                   : !isLoaded
-                    ? 'text-s330-muted/30 bg-s330-panel/50'
+                    ? '(not loaded)'
                     : isEmpty
-                      ? 'text-s330-muted/50'
-                      : 'text-s330-text'
-              )}
-            >
-              <button
-                onClick={handleClick}
-                disabled={isBankLoading}
-                className="flex-1 flex items-center text-left min-w-0"
-              >
-                <span className="font-mono text-s330-muted shrink-0">
-                  {memoryLayout.formatToneSlot(index)}
-                </span>
-                <span
-                  className={cn(
-                    'flex-1 mx-3 truncate',
-                    (!isLoaded || isEmpty) && 'italic'
-                  )}
-                  data-testid="tone-name"
-                >
-                  {isBankLoading
-                    ? '(loading...)'
-                    : !isLoaded
-                      ? '(not loaded)'
-                      : isEmpty
-                        ? '(unnamed)'
-                        : tone.name}
-                </span>
-                {!isLoaded && !isBankLoading && (
-                  <span className="text-xs text-s330-muted/50 shrink-0">click to load</span>
-                )}
-              </button>
-              {/* Export button - visible on hover when tone has data */}
-              {canExportToLibrary && isLoaded && hasSampleData && (
-                <button
-                  onClick={handleExportClick}
-                  data-testid="export-tone-button"
-                  className={cn(
-                    'shrink-0 ml-2 px-2 py-1 text-xs rounded',
-                    'bg-s330-highlight/20 hover:bg-s330-highlight/40 text-s330-highlight',
-                    isSelected && 'bg-white/20 hover:bg-white/30 text-white'
-                  )}
-                  title="Export to library"
-                >
-                  Export
-                </button>
-              )}
+                      ? '(unnamed)'
+                      : tone.name;
+
+                const nameClass = !isLoaded
+                  ? 'tones__list-name tones__list-name--placeholder'
+                  : isEmpty
+                    ? 'tones__list-name tones__list-name--empty'
+                    : 'tones__list-name';
+
+                return (
+                  <div
+                    key={index}
+                    data-testid={`tone-item-${index}`}
+                    role="button"
+                    tabIndex={isBankLoading ? -1 : 0}
+                    aria-disabled={isBankLoading}
+                    aria-selected={isSelected}
+                    onClick={isBankLoading ? undefined : handleClick}
+                    onKeyDown={handleKeyDown}
+                    className={cn('tones__list-row')}
+                  >
+                    <span className="tones__list-slot">
+                      {memoryLayout.formatToneSlot(index)}
+                    </span>
+                    <span className="tones__list-info">
+                      <span
+                        className={nameClass}
+                        data-testid="tone-name"
+                      >
+                        {displayName}
+                      </span>
+                      {!isLoaded && !isBankLoading && (
+                        <span className="tones__list-eyebrow">
+                          click to load bank
+                        </span>
+                      )}
+                    </span>
+                    {canExportToLibrary && isLoaded && hasSampleData && onExportTone && (
+                      <button
+                        type="button"
+                        data-testid="export-tone-button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onExportTone(index);
+                        }}
+                        className="tones__list-action"
+                        title="Export tone to library"
+                      >
+                        Export
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           );
         })}
       </div>
-    </div>
+    </aside>
   );
 }

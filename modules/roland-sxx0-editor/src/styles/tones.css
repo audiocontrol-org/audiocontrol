@@ -1,0 +1,539 @@
+/**
+ * TonesPage — page-scoped styles (Phase 9 Task 4 polish, page 2 of 6).
+ *
+ * Composed from --ac-* design tokens (no new tokens declared here).
+ * Cross-page primitives (lean page-title row, icon-button, detail
+ * eyebrow row, detail empty state, live-edit footer) are imported
+ * from `_shared.css` (`.ac-*` namespace).
+ *
+ * Page-specific composition only:
+ *   - app shell layout (list + detail two-column, like patches; CRT
+ *     column is a cross-page concern landing in a separate commit).
+ *   - list-row grid (slot + name + action) — tones-specific because
+ *     the slot label width differs from patches.
+ *   - detail-head with tones-page typography + action-button cluster.
+ *   - detail-body padding for the parameter-tab content.
+ *   - radio-driven 5-tab strip (Wave / Pitch / Filter / Amp / LFO)
+ *     per project memory `feedback_tabbed_detail_pane`.
+ *   - section + section-head shells for the tab panels.
+ */
+
+/* ============================================================
+   LIST PANE — banked tone list, sticky bank headers, list rows.
+   ============================================================ */
+.tones__list {
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: var(--ac-color-surface-panel);
+  border-radius: var(--ac-radius-sm);
+  overflow: hidden;
+}
+
+.tones__list-scroll {
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+/* Sticky bank header — lives ABOVE its rows; scrolls within the list. */
+.tones__list-bank-header {
+  position: sticky;
+  top: 0;
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 92%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: var(--ac-space-3) var(--ac-space-4);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  z-index: 1;
+}
+
+.tones__list-bank-header strong {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--ac-font-weight-normal);
+  color: var(--ac-color-text-muted);
+}
+
+/* List row — slot id, name, optional Export action. Outer is a
+   role="button" div (see ToneList for the why). */
+.tones__list-row {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+  gap: var(--ac-space-3);
+  align-items: center;
+  padding: var(--ac-space-3) var(--ac-space-4);
+  border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 50%, transparent);
+  border-left: var(--ac-rule-medium) solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--ac-color-text-primary);
+  background: transparent;
+  transition:
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    border-left-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.tones__list-row:hover:not([aria-disabled="true"]) {
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 60%, transparent);
+  border-left-color: color-mix(in srgb, var(--ac-color-accent) 40%, transparent);
+}
+
+.tones__list-row[aria-selected="true"] {
+  background: color-mix(in srgb, var(--ac-color-accent) 12%, transparent);
+  border-left-color: var(--ac-color-accent);
+}
+
+.tones__list-row[aria-selected="true"] .tones__list-slot {
+  color: var(--ac-color-accent);
+}
+
+.tones__list-row:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--ac-color-accent) 12%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
+}
+
+.tones__list-row[aria-disabled="true"] {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.tones__list-slot {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.tones__list-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tones__list-name {
+  font-family: var(--ac-font-body);
+  font-size: var(--ac-text-sm);
+  font-weight: var(--ac-font-weight-medium);
+  color: var(--ac-color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tones__list-name--placeholder {
+  font-style: italic;
+  color: var(--ac-color-text-muted);
+}
+
+.tones__list-name--empty {
+  color: color-mix(in srgb, var(--ac-color-text-muted) 70%, transparent);
+  font-style: italic;
+}
+
+.tones__list-eyebrow {
+  font-family: var(--ac-font-display);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: color-mix(in srgb, var(--ac-color-text-muted) 70%, transparent);
+}
+
+.tones__list-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 70%, transparent);
+  background: transparent;
+  color: var(--ac-color-text-muted);
+  font-family: var(--ac-font-display);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--ac-radius-sm);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity var(--ac-duration-fast) var(--ac-easing-default),
+    border-color var(--ac-duration-fast) var(--ac-easing-default),
+    color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.tones__list-row:hover .tones__list-action,
+.tones__list-row[aria-selected="true"] .tones__list-action,
+.tones__list-row:focus-within .tones__list-action {
+  opacity: 1;
+}
+
+.tones__list-action:hover {
+  border-color: var(--ac-color-accent);
+  color: var(--ac-color-accent);
+}
+
+.tones__list-action:focus-visible {
+  opacity: 1;
+  outline: var(--ac-rule-medium) solid color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  outline-offset: 1px;
+}
+
+/* ============================================================
+   DETAIL PANE — tone editor surface (head + body chrome).
+   Inner panel content (parameter grids, EnvelopeEditor) keeps its
+   current composition; we only re-frame the surface and add the
+   tab shell.
+   ============================================================ */
+.tones__detail {
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: var(--ac-color-surface-panel);
+  border-radius: var(--ac-radius-sm);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.tones__detail-head {
+  padding: var(--ac-space-4) var(--ac-space-6) var(--ac-space-3);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: linear-gradient(
+    180deg,
+    var(--ac-color-surface-panel) 0%,
+    color-mix(in srgb, var(--ac-color-surface-canvas) 40%, transparent) 100%
+  );
+}
+
+/* Title row — slot mark + name input, with the action cluster on the
+   far right. Stays on one line when there's room, wraps below at
+   narrow detail widths. */
+.tones__detail-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ac-space-4);
+  flex-wrap: wrap;
+}
+
+.tones__detail-title {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--ac-space-3);
+  font-family: var(--ac-font-display);
+  font-weight: var(--ac-font-weight-normal);
+  font-size: 1.25rem;
+  line-height: 1.18;
+  letter-spacing: var(--ac-tracking-display);
+}
+
+.tones__detail-slot {
+  font-family: var(--ac-font-mono);
+  color: var(--ac-color-accent);
+  letter-spacing: 0.02em;
+}
+
+/* The tone name is a live-editing input. Styled to read as a title;
+   underline appears on focus, mirroring the patches eyebrow rule. */
+.tones__detail-name-input {
+  display: block;
+  background: transparent;
+  border: 0;
+  border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-accent) 40%, transparent);
+  padding: 0 0 var(--ac-space-1) 0;
+  font: inherit;
+  color: var(--ac-color-text-primary);
+  font-family: var(--ac-font-mono);
+  letter-spacing: 0.02em;
+  width: 12ch;
+  outline: none;
+  transition: border-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.tones__detail-name-input:focus {
+  border-bottom-color: var(--ac-color-accent);
+}
+
+.tones__detail-name-input::placeholder {
+  color: var(--ac-color-text-muted);
+  font-style: italic;
+}
+
+/* Action cluster — Export to Library / Export Sample / Import / Chop.
+   Lives on the right of the title row; wraps below at narrow widths.
+   Inline progress shows beneath the action row when an export is in
+   flight. */
+.tones__detail-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--ac-space-2);
+}
+
+.tones__detail-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--ac-space-2);
+}
+
+.tones__detail-actions-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.tones__detail-actions-progress-track {
+  width: 8rem;
+  height: 0.25rem;
+  background: var(--ac-color-surface-canvas);
+  border-radius: var(--ac-radius-sm);
+  overflow: hidden;
+}
+
+.tones__detail-actions-progress-fill {
+  height: 100%;
+  background: var(--ac-color-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
+  transition: width var(--ac-duration-normal) var(--ac-easing-default);
+}
+
+.tones__detail-body {
+  flex: 1;
+  min-height: 0;
+  padding: var(--ac-space-6);
+  overflow-y: auto;
+}
+
+/* Stack of sections within a single tab panel (e.g., Wave + Loop Editor). */
+.tones__panel-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-6);
+}
+
+/* ============================================================
+   SECTIONS — each tab-panel section is a block with a title row
+   and an eyebrow on the right (mockup §"Source · §01").
+   ============================================================ */
+.tones__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-4);
+}
+
+.tones__section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ac-space-4);
+}
+
+.tones__section-title {
+  margin: 0;
+  padding-bottom: var(--ac-space-2);
+  font-family: var(--ac-font-display);
+  font-weight: var(--ac-font-weight-normal);
+  font-size: 1rem;
+  line-height: 1.2;
+  letter-spacing: var(--ac-tracking-display);
+  color: var(--ac-color-text-primary);
+  position: relative;
+}
+
+.tones__section-title::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 1.5rem;
+  height: var(--ac-rule-medium);
+  background: color-mix(in srgb, var(--ac-color-accent) 70%, transparent);
+}
+
+.tones__section-eyebrow {
+  font-family: var(--ac-font-display);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: color-mix(in srgb, var(--ac-color-text-muted) 70%, transparent);
+}
+
+/* ============================================================
+   TAB STRIP — radio-driven, CSS-only activation. Five tabs:
+   Wave · Pitch · Filter · Amp · LFO. The active tab is illuminated
+   via the `id="tt-*":checked ~ .tones__tab-strip [for="tt-*"]`
+   rules below.
+   ============================================================ */
+.tones__tabs {
+  position: relative;
+}
+
+/* Visually hide the radio inputs — accessibility tooling can still
+   reach them via the label associations and tabindex. */
+.tones__tabs > input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+
+.tones__tab-strip {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0;
+  margin: 0 0 var(--ac-space-5);
+  border-bottom: var(--ac-rule-medium) solid var(--ac-color-border-subtle);
+  position: relative;
+}
+
+.tones__tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.5rem;
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  cursor: pointer;
+  user-select: none;
+  background: transparent;
+  border: var(--ac-rule-hairline) solid transparent;
+  border-bottom: 0;
+  margin-bottom: -2px;
+  padding: 0 var(--ac-space-2);
+  transition:
+    color var(--ac-duration-fast) var(--ac-easing-default),
+    background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.tones__tab:hover {
+  color: var(--ac-color-text-primary);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 40%, transparent);
+}
+
+.tones__tab::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: transparent;
+  transition:
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.tones__tab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 50%, transparent) inset;
+}
+
+/* Active-tab styles: the checked radio's id selects its sibling label. */
+#tt-wave:checked   ~ .tones__tab-strip [for="tt-wave"],
+#tt-pitch:checked  ~ .tones__tab-strip [for="tt-pitch"],
+#tt-filter:checked ~ .tones__tab-strip [for="tt-filter"],
+#tt-amp:checked    ~ .tones__tab-strip [for="tt-amp"],
+#tt-lfo:checked    ~ .tones__tab-strip [for="tt-lfo"] {
+  color: var(--ac-color-accent);
+  background: color-mix(in srgb, var(--ac-color-accent) 8%, transparent);
+}
+
+#tt-wave:checked   ~ .tones__tab-strip [for="tt-wave"]::after,
+#tt-pitch:checked  ~ .tones__tab-strip [for="tt-pitch"]::after,
+#tt-filter:checked ~ .tones__tab-strip [for="tt-filter"]::after,
+#tt-amp:checked    ~ .tones__tab-strip [for="tt-amp"]::after,
+#tt-lfo:checked    ~ .tones__tab-strip [for="tt-lfo"]::after {
+  background: var(--ac-color-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 55%, transparent);
+}
+
+/* Panels: hide all by default; reveal the one matching the checked radio. */
+.tones__panel {
+  display: none;
+}
+
+#tt-wave:checked   ~ .tones__panels > [data-tab="tt-wave"],
+#tt-pitch:checked  ~ .tones__panels > [data-tab="tt-pitch"],
+#tt-filter:checked ~ .tones__panels > [data-tab="tt-filter"],
+#tt-amp:checked    ~ .tones__panels > [data-tab="tt-amp"],
+#tt-lfo:checked    ~ .tones__panels > [data-tab="tt-lfo"] {
+  display: block;
+  animation: tones-tab-fade-in 180ms var(--ac-easing-default);
+}
+
+@keyframes tones-tab-fade-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #tt-wave:checked   ~ .tones__panels > [data-tab="tt-wave"],
+  #tt-pitch:checked  ~ .tones__panels > [data-tab="tt-pitch"],
+  #tt-filter:checked ~ .tones__panels > [data-tab="tt-filter"],
+  #tt-amp:checked    ~ .tones__panels > [data-tab="tt-amp"],
+  #tt-lfo:checked    ~ .tones__panels > [data-tab="tt-lfo"] {
+    animation: none;
+  }
+}
+
+/* ============================================================
+   APP SHELL — list (column 1) + detail (column 2).
+   Same shape as patches; the CRT/front-panel column on the right
+   is a cross-page concern (per project memory
+   `feedback_virtual_front_panel`) landing in a separate commit.
+   ============================================================ */
+.tones__app-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ac-space-6);
+  padding-block: var(--ac-space-5) 0;
+}
+
+@media (min-width: 1024px) {
+  .tones__app-shell {
+    grid-template-columns: 22rem minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+/* Inline page-loading progress bar — same shape as patches.css. */
+.tones__progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-1);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+}
+
+.tones__progress-track {
+  position: relative;
+  height: 0.25rem;
+  background: var(--ac-color-surface-canvas);
+  border-radius: var(--ac-radius-sm);
+  overflow: hidden;
+}
+
+.tones__progress-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--ac-color-accent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
+  transition: width var(--ac-duration-normal) var(--ac-easing-default);
+}

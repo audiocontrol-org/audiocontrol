@@ -1,0 +1,254 @@
+/**
+ * Shared editor-page primitives — Phase 9 polish recipe.
+ *
+ * Promoted from page-scoped classes when the duplication-audit gate
+ * fired during Phase 9 Task 4 (page 2: TonesPage). The classes here
+ * express the LEAN-HEADER + DETAIL-HEAD + LIVE-FOOTER recipe that
+ * every editor page in this module follows.
+ *
+ * Composed entirely from `--ac-*` design tokens (see
+ * `editor-core/src/design/tokens.css` "Phase 9 polish tokens").
+ *
+ * Naming: classes live under the `.ac-*` namespace because they are
+ * cross-page primitives. Anything that's truly page-specific (list-row
+ * grid templates, envelope chrome, parameter-row primitives) stays
+ * page-scoped in `<page>.css`.
+ *
+ * Promotion rationale, per DESIGN-SYSTEM.md "Component CSS" + the
+ * workplan's Duplication audit gate:
+ *
+ *   - `.ac-page-title-row` / `-block` / `-heading` / `-rule` /
+ *     `-metric` / `-led` — every editor page has the same lean
+ *     header rhythm (h2 + rec-LED rule + status metric + icon-btn).
+ *     PatchesPage and TonesPage both consumed this verbatim in
+ *     page-scoped form; the next four pages will too.
+ *
+ *   - `.ac-icon-btn` + `--spinning` — single refresh icon on the
+ *     title row of every list+detail editor page. Reuses
+ *     `ac-icon-spin` keyframes.
+ *
+ *   - `.ac-detail-eyebrow-row` / `-sep` / `-accent` — the small
+ *     "OBJECT · EDITING · SOURCE · DEVICE" eyebrow above the
+ *     selected-object title on every detail pane.
+ *
+ *   - `.ac-detail-empty` — the centered "Select an X to edit"
+ *     prompt shown when nothing is selected.
+ *
+ *   - `.ac-detail-live` / `-led` / `-touch` — the live-edit footer
+ *     pulsing rec-LED, used in every editor pane (no save/cancel/undo
+ *     per project memory `feedback_live_editing_no_save`).
+ */
+
+/* ============================================================
+   PAGE TITLE — lean h2 + red rule + status metric + icon-button.
+   Replaces per-bank reload toolbars; refresh-from-device is a
+   single icon-button on the title row (DESIGN-SYSTEM.md
+   "List-Level Actions" + "CRUD Affordances on List Items").
+   ============================================================ */
+.ac-page-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ac-space-4);
+  padding-bottom: var(--ac-space-3);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+}
+
+.ac-page-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-2);
+}
+
+.ac-page-title-heading {
+  margin: 0;
+  font-family: var(--ac-font-display);
+  font-weight: var(--ac-font-weight-normal);
+  font-size: 1.45rem;
+  line-height: 1.2;
+  letter-spacing: var(--ac-tracking-display);
+  color: var(--ac-color-text-primary);
+}
+
+/* Red rule beneath the heading — REC-LED accent (used sparingly). */
+.ac-page-title-rule {
+  width: 2.25rem;
+  height: var(--ac-rule-medium);
+  background: var(--ac-color-rec);
+  box-shadow: 0 0 8px var(--ac-color-rec-glow);
+}
+
+/* Status metric — "<n> of <N> loaded" + signal LED + refresh icon. */
+.ac-page-title-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-3);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  white-space: nowrap;
+}
+
+.ac-page-title-metric strong {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--ac-font-weight-normal);
+  color: var(--ac-color-accent);
+}
+
+.ac-page-title-led {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--ac-color-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 70%, transparent);
+}
+
+/* ============================================================
+   ICON BUTTON — square icon-only control sized to the title-row
+   baseline. Used for "refresh from device" and similar lone
+   actions. Spins via `--spinning` modifier while the operation
+   is in flight.
+   ============================================================ */
+.ac-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 60%, transparent);
+  color: var(--ac-color-text-muted);
+  border-radius: var(--ac-radius-sm);
+  cursor: pointer;
+  transition:
+    border-color var(--ac-duration-fast) var(--ac-easing-default),
+    color var(--ac-duration-fast) var(--ac-easing-default),
+    background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-icon-btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  color: var(--ac-color-accent);
+  background: color-mix(in srgb, var(--ac-color-accent) 8%, transparent);
+}
+
+.ac-icon-btn:focus-visible {
+  outline: var(--ac-rule-medium) solid color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  outline-offset: 2px;
+}
+
+.ac-icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ac-icon-btn svg {
+  width: 1rem;
+  height: 1rem;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ac-icon-btn--spinning svg {
+  animation: ac-icon-spin 1.4s linear infinite;
+}
+
+@keyframes ac-icon-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-icon-btn--spinning svg { animation: none; }
+}
+
+/* ============================================================
+   DETAIL PANE EYEBROW — small uppercase row above the selected
+   object's title ("PATCH · EDITING · SOURCE · DEVICE" or
+   "TONE · EDITING · SOURCE · DEVICE"). Lives in detail headers.
+   ============================================================ */
+.ac-detail-eyebrow-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  margin-bottom: var(--ac-space-2);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-detail-eyebrow-sep {
+  color: color-mix(in srgb, var(--ac-color-text-muted) 50%, transparent);
+}
+
+.ac-detail-eyebrow-accent {
+  color: var(--ac-color-accent);
+}
+
+/* ============================================================
+   DETAIL EMPTY — centered prompt rendered when no object is
+   selected ("Select a patch to edit" / "Select a tone to edit").
+   ============================================================ */
+.ac-detail-empty {
+  padding: var(--ac-space-8) var(--ac-space-6);
+  text-align: center;
+  color: var(--ac-color-text-muted);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+}
+
+/* ============================================================
+   LIVE-EDIT FOOTER — pulsing rec-LED + status copy. Replaces
+   save / cancel / undo per project memory
+   `feedback_live_editing_no_save` — edits stream to the device
+   in real time as the operator drags.
+   ============================================================ */
+.ac-detail-live {
+  padding: var(--ac-space-3) var(--ac-space-4);
+  border-top: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-3);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ac-detail-live-led {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--ac-color-rec);
+  box-shadow: 0 0 8px var(--ac-color-rec-glow);
+  animation: ac-detail-live-pulse 2.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.ac-detail-live-touch {
+  color: var(--ac-color-text-primary);
+}
+
+@keyframes ac-detail-live-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px var(--ac-color-rec-glow);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 14px var(--ac-color-rec-glow);
+    opacity: 0.8;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-detail-live-led { animation: none; }
+}

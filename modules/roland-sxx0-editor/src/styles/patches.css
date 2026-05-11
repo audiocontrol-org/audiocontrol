@@ -6,134 +6,13 @@
  * `editor-core/src/design/tokens.css` (see DESIGN-SYSTEM.md "Phase 9
  * polish tokens").
  *
- * Scope: this file only contains styles whose semantics are
- * page-specific. Anything that recurs across editor pages (range bars,
- * eyebrow rows, live-status footers) should graduate to a shared
- * `.ac-*` class during the Phase 9 cross-page polish — see the
- * duplication-audit gate in workplan Task 4.
+ * Cross-page primitives (lean page-title row, icon-button, detail
+ * eyebrow row, detail empty state, live-edit footer) were promoted
+ * to `_shared.css` (`.ac-*` namespace) during Phase 9 Task 4 page 2
+ * (the duplication-audit gate). This file now contains ONLY the
+ * page-specific composition — the list-row grid, the detail-head
+ * gradient, the patches app-shell layout, the progress bar.
  */
-
-/* ============================================================
-   PAGE TITLE — lean h2 + red rule + status metric + icon-button.
-   Replaces the old per-bank reload toolbar. Refresh-from-device is
-   now a single icon-button on the title row (CRUD Affordances rule).
-   ============================================================ */
-.patches__title-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--ac-space-4);
-  padding-bottom: var(--ac-space-3);
-  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
-}
-
-.patches__title-block {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ac-space-2);
-}
-
-.patches__title-heading {
-  margin: 0;
-  font-family: var(--ac-font-display);
-  font-weight: var(--ac-font-weight-normal);
-  font-size: 1.45rem;
-  line-height: 1.2;
-  letter-spacing: var(--ac-tracking-display);
-  color: var(--ac-color-text-primary);
-}
-
-/* Red rule beneath the heading — REC-LED accent (used sparingly). */
-.patches__title-rule {
-  width: 2.25rem;
-  height: var(--ac-rule-medium);
-  background: var(--ac-color-rec);
-  box-shadow: 0 0 8px var(--ac-color-rec-glow);
-}
-
-/* Status metric — "<n> of <N> loaded" + signal LED + refresh icon. */
-.patches__title-metric {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ac-space-3);
-  font-family: var(--ac-font-display);
-  font-size: var(--ac-text-eyebrow);
-  text-transform: uppercase;
-  letter-spacing: var(--ac-tracking-eyebrow);
-  color: var(--ac-color-text-muted);
-  white-space: nowrap;
-}
-
-.patches__title-metric strong {
-  font-family: var(--ac-font-mono);
-  font-variant-numeric: tabular-nums;
-  font-weight: var(--ac-font-weight-normal);
-  color: var(--ac-color-accent);
-}
-
-.patches__title-led {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: var(--ac-color-accent);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 70%, transparent);
-}
-
-/* Icon-button (refresh / reload) sized to fit the title-row baseline. */
-.patches__icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
-  background: color-mix(in srgb, var(--ac-color-surface-panel) 60%, transparent);
-  color: var(--ac-color-text-muted);
-  border-radius: var(--ac-radius-sm);
-  cursor: pointer;
-  transition:
-    border-color var(--ac-duration-fast) var(--ac-easing-default),
-    color var(--ac-duration-fast) var(--ac-easing-default),
-    background-color var(--ac-duration-fast) var(--ac-easing-default);
-}
-
-.patches__icon-btn:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
-  color: var(--ac-color-accent);
-  background: color-mix(in srgb, var(--ac-color-accent) 8%, transparent);
-}
-
-.patches__icon-btn:focus-visible {
-  outline: var(--ac-rule-medium) solid color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
-  outline-offset: 2px;
-}
-
-.patches__icon-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.patches__icon-btn svg {
-  width: 1rem;
-  height: 1rem;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.patches__icon-btn--spinning svg {
-  animation: patches-icon-spin 1.4s linear infinite;
-}
-
-@keyframes patches-icon-spin {
-  to { transform: rotate(360deg); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .patches__icon-btn--spinning svg { animation: none; }
-}
 
 /* ============================================================
    LIST PANE — banked patch list, sticky bank headers, list rows.
@@ -309,7 +188,7 @@
 }
 
 /* ============================================================
-   DETAIL PANE — patch-editor surface chrome (header + live footer).
+   DETAIL PANE — patch-editor surface chrome (header + body).
    The interior of the editor (parameter grid, tone-zone editor) keeps
    its current Tailwind composition; we only re-frame the surface.
    ============================================================ */
@@ -330,26 +209,6 @@
     var(--ac-color-surface-panel) 0%,
     color-mix(in srgb, var(--ac-color-surface-canvas) 40%, transparent) 100%
   );
-}
-
-.patches__detail-eyebrow-row {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ac-space-2);
-  margin-bottom: var(--ac-space-2);
-  font-family: var(--ac-font-display);
-  font-size: var(--ac-text-eyebrow);
-  text-transform: uppercase;
-  letter-spacing: var(--ac-tracking-eyebrow);
-  color: var(--ac-color-text-muted);
-}
-
-.patches__detail-eyebrow-sep {
-  color: color-mix(in srgb, var(--ac-color-text-muted) 50%, transparent);
-}
-
-.patches__detail-eyebrow-accent {
-  color: var(--ac-color-accent);
 }
 
 .patches__detail-title {
@@ -380,60 +239,6 @@
   min-height: 0;
   padding: var(--ac-space-6);
   overflow-y: auto;
-}
-
-/* Live-status footer — replaces save / cancel / undo. Edits stream to
-   the device in real time; the only chrome is the pulsing rec-LED and
-   the "Last sent" copy. */
-.patches__detail-live {
-  padding: var(--ac-space-3) var(--ac-space-4);
-  border-top: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
-  display: flex;
-  align-items: center;
-  gap: var(--ac-space-3);
-  font-family: var(--ac-font-mono);
-  font-size: var(--ac-text-xs);
-  color: var(--ac-color-text-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.patches__detail-live-led {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: var(--ac-color-rec);
-  box-shadow: 0 0 8px var(--ac-color-rec-glow);
-  animation: patches-live-pulse 2.4s ease-in-out infinite;
-  flex-shrink: 0;
-}
-
-.patches__detail-live-touch {
-  color: var(--ac-color-text-primary);
-}
-
-@keyframes patches-live-pulse {
-  0%, 100% {
-    box-shadow: 0 0 8px var(--ac-color-rec-glow);
-    opacity: 1;
-  }
-  50% {
-    box-shadow: 0 0 14px var(--ac-color-rec-glow);
-    opacity: 0.8;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .patches__detail-live-led { animation: none; }
-}
-
-.patches__detail-empty {
-  padding: var(--ac-space-8) var(--ac-space-6);
-  text-align: center;
-  color: var(--ac-color-text-muted);
-  font-family: var(--ac-font-display);
-  font-size: var(--ac-text-eyebrow);
-  text-transform: uppercase;
-  letter-spacing: var(--ac-tracking-eyebrow);
 }
 
 /* ============================================================

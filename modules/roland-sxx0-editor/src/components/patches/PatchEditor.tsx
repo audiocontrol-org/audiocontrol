@@ -232,13 +232,14 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
 
   return (
     <div data-testid="patch-editor" data-capability="C-PATCH-04">
-      {/* Detail head — eyebrow row + slot+name title (v3 mockup direction). */}
+      {/* Detail head — eyebrow row + slot+name title (v3 mockup direction).
+          Eyebrow uses .ac-detail-eyebrow-* shared primitives. */}
       <header className="patches__detail-head">
-        <div className="patches__detail-eyebrow-row">
+        <div className="ac-detail-eyebrow-row">
           <span>Patch</span>
-          <span className="patches__detail-eyebrow-sep">·</span>
-          <span className="patches__detail-eyebrow-accent">Editing</span>
-          <span className="patches__detail-eyebrow-sep">·</span>
+          <span className="ac-detail-eyebrow-sep">·</span>
+          <span className="ac-detail-eyebrow-accent">Editing</span>
+          <span className="ac-detail-eyebrow-sep">·</span>
           <span>Source · device</span>
         </div>
         <h3 id="patch-detail-title" className="patches__detail-title">
@@ -521,9 +522,10 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
 
       {/* Live-status footer — replaces save / cancel / undo. Edits stream
           to the device in real time per project memory
-          `feedback_live_editing_no_save`. */}
-      <footer className="patches__detail-live" role="status" aria-live="polite">
-        <span className="patches__detail-live-led" aria-hidden="true" />
+          `feedback_live_editing_no_save`. Uses .ac-detail-live-* shared
+          primitives so every editor page reads the same. */}
+      <footer className="ac-detail-live" role="status" aria-live="polite">
+        <span className="ac-detail-live-led" aria-hidden="true" />
         <span>
           Live edit · changes sent to device on commit
         </span>

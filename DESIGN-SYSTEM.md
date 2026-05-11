@@ -300,6 +300,16 @@ The v3 mockup direction (operator-approved 2026-05-08) introduces a small typogr
 - **`--ac-rule-hairline`** / **`--ac-rule-medium`** — `1px` / `2px`. Tokenized so per-page polish stays consistent (page-title underline, range-bar fills, layer accents).
 - **`--ac-color-rec`** / **`--ac-color-rec-glow`** — REC-LED accent. A nod to the S-550 front panel's red PLAY LED + REC LEVEL knob. Use ONLY as a rare device-active / signal-on-air indicator (live-edit footer, page-title underline). NOT for danger (use `--ac-status-danger`), NOT for the Roland-blue identity (use `--ac-color-accent`).
 
+#### Phase 9 shared page primitives
+
+Promoted from page-scoped `.patches__*` classes during Phase 9 Task 4 page 2 (the duplication-audit gate). The classes live in `modules/roland-sxx0-editor/src/styles/_shared.css` and express the LEAN-HEADER + DETAIL-HEAD + LIVE-FOOTER recipe that every editor page in this module follows. Truly page-specific composition (list-row grid templates, envelope chrome, parameter-row primitives) stays page-scoped.
+
+- **`.ac-page-title-row`** + **`.ac-page-title-block`** + **`.ac-page-title-heading`** + **`.ac-page-title-rule`** + **`.ac-page-title-metric`** + **`.ac-page-title-led`** — the lean page-title rhythm: h2 + rec-LED rule + "<n> of <N> loaded" metric. Every list-detail editor page uses this; the rule (red REC-LED accent) is used sparingly per the token guidance above.
+- **`.ac-icon-btn`** + **`.ac-icon-btn--spinning`** — square icon-only control sized to the title-row baseline; spins via the `--spinning` modifier. Used for "refresh from device" and similar lone actions. Reuses the `ac-icon-spin` keyframes.
+- **`.ac-detail-eyebrow-row`** + **`.ac-detail-eyebrow-sep`** + **`.ac-detail-eyebrow-accent`** — the small uppercase row above the selected-object title ("PATCH · EDITING · SOURCE · DEVICE" / "TONE · EDITING · SOURCE · DEVICE"). Lives in detail headers.
+- **`.ac-detail-empty`** — centered uppercase prompt rendered when no object is selected ("Select a patch to edit" / "Select a tone to edit").
+- **`.ac-detail-live`** + **`.ac-detail-live-led`** + **`.ac-detail-live-touch`** — the live-edit footer with pulsing rec-LED. Replaces save / cancel / undo per project memory `feedback_live_editing_no_save`; reuses `ac-detail-live-pulse` keyframes.
+
 ### Layout Rules
 
 | Do | Don't |
