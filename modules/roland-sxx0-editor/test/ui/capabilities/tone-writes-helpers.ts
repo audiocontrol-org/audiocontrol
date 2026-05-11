@@ -8,20 +8,18 @@
  * field it's driving rather than on plumbing.
  */
 import { expect, type Page, type Locator } from '@playwright/test';
+import type { SimulatedAdapterIntrospection } from '@audiocontrol/sampler-devices/recording';
 
 /**
- * Structural shape for the `__simulatedAdapter` global exposed by the
- * simulated MIDI transport (see `src/transports/simulatedMidiTransport.ts`).
- * The test tree is compiled by Playwright as an independent unit and
- * does not see the transport's `declare global`, so we re-declare a
- * minimal structural subset here. Keep both sites in sync if the
- * adapter's introspection surface grows.
+ * Re-declare `window.__simulatedAdapter` for the test tree. The shared
+ * `SimulatedAdapterIntrospection` interface comes from
+ * `@audiocontrol/sampler-devices/recording` and is the SAME type the
+ * transport (`src/transports/simulatedMidiTransport.ts`) uses for the
+ * matching slot. TypeScript merges the two `interface Window`
+ * declarations because they're structurally identical. Adding an
+ * introspection method to `SimulatedAdapter` forces a change to the
+ * shared interface, which compile-fails every consumer until updated.
  */
-interface SimulatedAdapterIntrospection {
-  getCursor: () => number;
-  getTotalRecords: () => number;
-}
-
 declare global {
   interface Window {
     __simulatedAdapter?: SimulatedAdapterIntrospection;

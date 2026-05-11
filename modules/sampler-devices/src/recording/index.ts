@@ -35,4 +35,5 @@ export {
 export type {
     LatencyMode,
     SimulatedAdapterOptions,
+    SimulatedAdapterIntrospection,
 } from '../simulation/simulated-adapter.js';

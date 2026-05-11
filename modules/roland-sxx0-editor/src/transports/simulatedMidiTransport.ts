@@ -28,21 +28,26 @@ import {
   SimulatedAdapter,
   parseFixture,
   type FixtureScenario,
+  type SimulatedAdapterIntrospection,
 } from '@audiocontrol/sampler-devices/recording';
 
 /**
  * Capability specs read the active `SimulatedAdapter`'s cursor through
  * `window.__simulatedAdapter` to assert UI drivers actually emitted
- * bytes (positive assertion). This file owns the property — the
- * declaration lives here so all `src` consumers see the typed shape
- * without an `as` cast. The matching declaration in the spec helper
- * (`test/ui/capabilities/tone-writes-helpers.ts`) is independent
- * because the test tree is compiled separately by Playwright; both
- * sites must keep the shape in sync.
+ * bytes (positive assertion). The slot is typed as
+ * `SimulatedAdapterIntrospection` — the public introspection contract
+ * exposed by `@audiocontrol/sampler-devices/recording`. The matching
+ * declaration in the spec helper
+ * (`test/ui/capabilities/tone-writes-helpers.ts`) imports the same
+ * interface and re-declares the SAME shape; TypeScript merges the two
+ * `interface Window` blocks because they're structurally identical.
+ * Adding an introspection method to `SimulatedAdapter` means adding it
+ * to `SimulatedAdapterIntrospection`, which forces every test consumer
+ * to compile-fail until updated. That's the contract.
  */
 declare global {
   interface Window {
-    __simulatedAdapter?: SimulatedAdapter;
+    __simulatedAdapter?: SimulatedAdapterIntrospection;
   }
 }
 

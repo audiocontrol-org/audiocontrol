@@ -50,7 +50,23 @@ export class SimulatedAdapterRecordsExhaustedError extends Error {
     }
 }
 
-export class SimulatedAdapter implements SSeriesMidiAdapter {
+/**
+ * Public introspection methods on SimulatedAdapter — used by test
+ * harnesses to assert that a fixture's outbound records were fully
+ * consumed (positive-assertion infrastructure, see
+ * tone-writes-helpers.expectFixtureFullyConsumed).
+ *
+ * SimulatedAdapter implements this interface; the type also serves as
+ * the contract for window.__simulatedAdapter so both the source-tree
+ * exposure and the test-tree read site compile against the same shape.
+ * Adding a method here forces every test consumer to update.
+ */
+export interface SimulatedAdapterIntrospection {
+    getCursor(): number;
+    getTotalRecords(): number;
+}
+
+export class SimulatedAdapter implements SSeriesMidiAdapter, SimulatedAdapterIntrospection {
     private readonly scenario: FixtureScenario;
     private readonly latencyMode: LatencyMode;
     private cursor = 0;
