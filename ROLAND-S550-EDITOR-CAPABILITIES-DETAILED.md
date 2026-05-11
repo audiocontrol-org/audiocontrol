@@ -114,8 +114,8 @@ GitHub issues grouped by feature coherence.
 | D-LIB | 22 | 19 | 3 | 0 |
 | D-PLAY | 13 | 9 | 4 | 0 |
 | D-SYS | 11 | 0 | 0 | 11 |
-| D-XX | 12 | 11 | 1 | 0 |
-| **Total** | **183** | **137** | **12** | **24** |
+| D-XX | 12 | 6 | 6 | 0 |
+| **Total** | **183** | **132** | **17** | **24** |
 
 ### By origin
 
@@ -129,14 +129,14 @@ GitHub issues grouped by feature coherence.
 
 | Test status | Count | Definition |
 |-------------|-------|------------|
-| Tested | 75 | Affordance is implemented AND a capability spec asserts it. |
-| Untested | 74 | Affordance is implemented (or partial) but no test asserts it. **These are the missing tests.** |
+| Tested | 112 | Affordance is implemented AND a capability spec asserts it. (Wave 3 added 37 bindings — 28 affordance display-tests + 9 gate-only tests that pin the disconnected / no-data / unmounted state pending Wave 4/6 captures or operator decisions.) |
+| Untested | 37 | Affordance is implemented (or partial) but no test asserts it. **These are the missing tests.** |
 | Pending UI | 24 | Affordance is missing — test depends on UI being built. **These are the missing capabilities.** |
 | Hardware-only | 10 | Affordance can only be verified against real hardware (e.g., front-panel button → device LED change). Lives in `test/e2e/`, not the UI capability suite. |
 
-The 74 untested + 24 pending-UI rows are the punch list. Each tested row is
-locked in against redesign; each untested row is at risk; each pending-UI row
-is a feature gap.
+The 37 untested + 24 pending-UI rows are the remaining punch list. Each
+tested row is locked in against redesign; each untested row is at risk;
+each pending-UI row is a feature gap.
 
 ---
 
@@ -144,12 +144,12 @@ is a feature gap.
 
 | ID | Affordance | Source of truth | Parent | Origin | Status | Test |
 |----|-----------|-----------------|--------|--------|--------|------|
-| D-CONN-01 | MIDI input port selector | `HomePage.tsx` → `MidiConnectionPage` (`editor-core`) | C-CONN-01 | editor-derived | implemented | — |
-| D-CONN-02 | MIDI output port selector | `HomePage.tsx` → `MidiConnectionPage` | C-CONN-01 | editor-derived | implemented | — |
-| D-CONN-03 | Device ID entry field | `HomePage.tsx` → `MidiConnectionPageConfig.deviceIdLabel` | C-CONN-01 | editor-derived | implemented | — |
+| D-CONN-01 | MIDI input port selector | `HomePage.tsx` → `MidiConnectionPage` (`editor-core`) | C-CONN-01 | editor-derived | implemented | needs web-MIDI harness mode (simulated transport hides port pickers) |
+| D-CONN-02 | MIDI output port selector | `HomePage.tsx` → `MidiConnectionPage` | C-CONN-01 | editor-derived | implemented | needs web-MIDI harness mode |
+| D-CONN-03 | Device ID entry field | `HomePage.tsx` → `MidiConnectionPageConfig.deviceIdLabel` | C-CONN-01 | editor-derived | implemented | `capabilities/connection.spec.ts :: D-CONN-03` |
 | D-CONN-04 | Connect / Continue action | `HomePage.tsx` → `MidiConnectionPageConfig.continueLabel` | C-CONN-01 | editor-derived | implemented | `capabilities/connection.spec.ts :: C-CONN-01` |
-| D-CONN-05 | Secure-context warning + help items | `HomePage.tsx` → `secureContextHelpItems` | C-CONN-01 | editor-derived | implemented | — |
-| D-CONN-06 | Device-setup help items | `HomePage.tsx` → `MidiConnectionPageConfig.helpItems` | C-CONN-01 | editor-derived | implemented | — |
+| D-CONN-05 | Secure-context warning + help items | `HomePage.tsx` → `secureContextHelpItems` | C-CONN-01 | editor-derived | implemented | needs secure-context-fail harness path |
+| D-CONN-06 | Device-setup help items | `HomePage.tsx` → `MidiConnectionPageConfig.helpItems` | C-CONN-01 | editor-derived | implemented | `capabilities/connection.spec.ts :: D-CONN-06` |
 | D-CONN-07 | Connection status display (header) | `Layout.tsx` → `MidiStatusDisplay` | C-CONN-02 | editor-derived | implemented | `capabilities/connection.spec.ts :: C-CONN-02` |
 | D-CONN-08 | Disconnect action | `Layout.tsx` → `MidiStatusDisplay` | C-CONN-03 | editor-derived | implemented | `capabilities/connection.spec.ts :: C-CONN-03` |
 | D-CONN-09 | Navigate to Play | `Layout.tsx` → nav item | C-CONN-04 | editor-derived | implemented | `capabilities/connection.spec.ts :: C-CONN-04` |
@@ -167,10 +167,10 @@ is a feature gap.
 | D-PATCH-LIST-02 | Slot ID display (formatted per MemoryLayout) | `PatchList.tsx` → `<PatchLabel ... />` | C-PATCH-02 | editor-derived | implemented | `capabilities/patches.spec.ts :: C-PATCH-02` |
 | D-PATCH-LIST-03 | Patch name display | `PatchList.tsx:100` → `patch.common.name` | C-PATCH-02 | native | implemented | `capabilities/patches.spec.ts :: C-PATCH-02` |
 | D-PATCH-LIST-04 | Load-state indicator (loaded / loading / empty / not-loaded) | `PatchList.tsx` → class-based states | C-PATCH-03 | editor-derived | implemented | `capabilities/patches.spec.ts :: C-PATCH-03` |
-| D-PATCH-LIST-05 | Click-to-load unloaded bank | `PatchList.tsx:51` → `onLoadBank(bankIndex)` | C-PATCH-04 | client-derived | implemented | — |
-| D-PATCH-LIST-06 | Per-bank force-reload buttons (dynamic count) | `PatchesPage.tsx:227` → `getPatchBankCount(config)` | C-PATCH-05 | client-derived | implemented | — |
-| D-PATCH-LIST-07 | Load All button | `PatchesPage.tsx:248` → `loadAll` | C-PATCH-05 | client-derived | implemented | — |
-| D-PATCH-LIST-08 | Export patch button (per row) | `PatchList.tsx:112` → `onExportPatch` | C-LIB-04 | editor-derived | implemented | — |
+| D-PATCH-LIST-05 | Click-to-load unloaded bank | `PatchList.tsx:101` → `onLoadBank(slotBank)` | C-PATCH-04 | client-derived | implemented | `capabilities/patches.spec.ts :: D-PATCH-LIST-05` |
+| D-PATCH-LIST-06 | Refresh-all icon-button (Phase 9 redesign consolidated per-bank reload toolbar) | `PatchesPage.tsx:243-261` → `refreshAll` | C-PATCH-05 | client-derived | implemented | `capabilities/patches.spec.ts :: D-PATCH-LIST-06` |
+| D-PATCH-LIST-07 | Refresh-all icon-button (Phase 9 redesign replaced the "Load All" button with the same icon-button) | `PatchesPage.tsx:243-261` → `refreshAll` | C-PATCH-05 | client-derived | implemented | `capabilities/patches.spec.ts :: D-PATCH-LIST-07` |
+| D-PATCH-LIST-08 | Export patch button (per row) | `PatchList.tsx:167` → `onExportPatch` | C-LIB-04 | editor-derived | implemented | `capabilities/patches.spec.ts :: D-PATCH-LIST-08` |
 
 ---
 
@@ -183,7 +183,7 @@ is a feature gap.
 | D-PATCH-03 | Key Assign — select | `s-series-client.ts:248` → `setPatchKeyAssign` | C-PATCH-08 | native | implemented | `capabilities/patch-writes.spec.ts :: D-PATCH-03` |
 | D-PATCH-04 | Pitch Bender Range — select 0-12 | `s-series-client.ts:245` → `setPatchBenderRange` | C-PATCH-08 | native | implemented | `capabilities/patch-writes.spec.ts :: D-PATCH-04` |
 | D-PATCH-05 | Aftertouch Assign — select | `s-series-client.ts:247` → `setPatchAftertouchAssign` | C-PATCH-08 | native | implemented | `capabilities/patch-writes.spec.ts :: D-PATCH-05` |
-| D-PATCH-06 | Octave Shift — display only | `PatchEditor.tsx:373` → reads `common.octaveShift`, no write | C-PATCH-08 | native | partial (display only; editing blocked pending issue #10) | — |
+| D-PATCH-06 | Octave Shift — display only | `PatchEditor.tsx:389-403` → reads `common.octaveShift`, no write | C-PATCH-08 | native | partial (display only; editing blocked pending issue #10) | `capabilities/patch-display.spec.ts :: D-PATCH-06` |
 | D-PATCH-07 | Output Assign — select (1-8 + TONE) | `s-series-client.ts:249` → `setPatchOutput` | C-PATCH-08 | native | implemented | `capabilities/patch-writes.spec.ts :: D-PATCH-07` |
 | D-PATCH-08 | Level — slider (0-127) | `s-series-client.ts:250` → `setPatchLevel` | C-PATCH-08 | native | implemented | `capabilities/patch-writes.spec.ts :: D-PATCH-08` |
 | D-PATCH-09 | Aftertouch Sensitivity — slider | `s-series-client.ts:246` → `setPatchAftertouchSens` | C-PATCH-08 | native | implemented | `capabilities/patch-writes.spec.ts :: D-PATCH-09` |
@@ -198,14 +198,14 @@ is a feature gap.
 
 | ID | Affordance | Source of truth | Parent | Origin | Status | Test |
 |----|-----------|-----------------|--------|--------|--------|------|
-| D-PATCH-ZONE-01 | Visual zone bar (horizontal key range) | `ToneZoneEditor.tsx` → flex-bar render | C-PATCH-09 | editor-derived | implemented | — |
-| D-PATCH-ZONE-02 | Add Zone | `ToneZoneEditor.tsx` → add-zone action | C-PATCH-09 | native | implemented | — |
-| D-PATCH-ZONE-03 | Delete Zone | `ToneZoneEditor.tsx` → delete-zone action | C-PATCH-09 | native | implemented | — |
-| D-PATCH-ZONE-04 | Tone reference — select | `ToneZoneEditor.tsx` → tone select per zone | C-PATCH-09 | native | implemented | — |
-| D-PATCH-ZONE-05 | Start key — select | `ToneZoneEditor.tsx` → startKey select | C-PATCH-10 | native | implemented | — |
-| D-PATCH-ZONE-06 | End key — select | `ToneZoneEditor.tsx` → endKey select | C-PATCH-10 | native | implemented | — |
-| D-PATCH-ZONE-07 | MIDI Learn for start key | `ToneZoneEditor.tsx` → `useMidiLearn` | C-PATCH-10 | editor-derived | implemented | — |
-| D-PATCH-ZONE-08 | MIDI Learn for end key | `ToneZoneEditor.tsx` → `useMidiLearn` | C-PATCH-10 | editor-derived | implemented | — |
+| D-PATCH-ZONE-01 | Visual zone bar (horizontal key range) | `ToneZoneEditor.tsx` → flex-bar render | C-PATCH-09 | editor-derived | implemented | `capabilities/patch-zones.spec.ts :: D-PATCH-ZONE-01` |
+| D-PATCH-ZONE-02 | Add Zone | `ToneZoneEditor.tsx` → add-zone action | C-PATCH-09 | native | implemented | `capabilities/patch-zones.spec.ts :: D-PATCH-ZONE-02` |
+| D-PATCH-ZONE-03 | Delete Zone | `ToneZoneEditor.tsx` → delete-zone action | C-PATCH-09 | native | implemented | `capabilities/patch-zones.spec.ts :: D-PATCH-ZONE-03` |
+| D-PATCH-ZONE-04 | Tone reference — select | `ToneZoneEditor.tsx` → tone select per zone | C-PATCH-09 | native | implemented | `capabilities/patch-zones.spec.ts :: D-PATCH-ZONE-04` |
+| D-PATCH-ZONE-05 | Start key — select | `ToneZoneEditor.tsx` → startKey select | C-PATCH-10 | native | implemented | `capabilities/patch-zones.spec.ts :: D-PATCH-ZONE-05` |
+| D-PATCH-ZONE-06 | End key — select | `ToneZoneEditor.tsx` → endKey select | C-PATCH-10 | native | implemented | `capabilities/patch-zones.spec.ts :: D-PATCH-ZONE-06` |
+| D-PATCH-ZONE-07 | MIDI Learn for start key | `ToneZoneEditor.tsx` → `useMidiLearn` | C-PATCH-10 | editor-derived | implemented | `capabilities/patch-zones.spec.ts :: D-PATCH-ZONE-07` |
+| D-PATCH-ZONE-08 | MIDI Learn for end key | `ToneZoneEditor.tsx` → `useMidiLearn` | C-PATCH-10 | editor-derived | implemented | `capabilities/patch-zones.spec.ts :: D-PATCH-ZONE-08` |
 
 ---
 
@@ -217,9 +217,9 @@ is a feature gap.
 | D-TONE-LIST-02 | Slot ID display (formatted) | `ToneList.tsx:93` → `memoryLayout.formatToneSlot` | C-TONE-02 | editor-derived | implemented | `capabilities/tones.spec.ts :: C-TONE-02` |
 | D-TONE-LIST-03 | Tone name display | `ToneList.tsx:100` → `tone.name` | C-TONE-02 | native | implemented | `capabilities/tones.spec.ts :: C-TONE-02` |
 | D-TONE-LIST-04 | Load-state indicator | `ToneList.tsx` → class-based states | C-TONE-03 | editor-derived | implemented | `capabilities/tones.spec.ts :: C-TONE-03` |
-| D-TONE-LIST-05 | Click-to-load unloaded bank | `ToneList.tsx:55` → `onLoadBank(bankIndex)` | C-TONE-04 | client-derived | implemented | — |
-| D-TONE-LIST-06 | Per-bank force-reload buttons | `TonesPage.tsx` → dynamic bank buttons | C-TONE-05 | client-derived | implemented | — |
-| D-TONE-LIST-07 | Export-to-library button (per row) | `ToneList.tsx:115` → `onExportTone` | C-LIB-04 | editor-derived | implemented | — |
+| D-TONE-LIST-05 | Click-to-load unloaded bank | `ToneList.tsx:95-100` → `onLoadBank(slotBank)` | C-TONE-04 | client-derived | implemented | `capabilities/tones.spec.ts :: D-TONE-LIST-05` |
+| D-TONE-LIST-06 | Refresh-all icon-button (Phase 9 redesign consolidated per-bank reload toolbar) | `TonesPage.tsx:335-352` → `refreshAll` | C-TONE-05 | client-derived | implemented | `capabilities/tones.spec.ts :: D-TONE-LIST-06` |
+| D-TONE-LIST-07 | Export-to-library button (per row) — gated on library connection | `ToneList.tsx:158-171` → `onExportTone` (gate: `canExportToLibrary && hasSampleData`) | C-LIB-04 | editor-derived | implemented | `capabilities/tones.spec.ts :: D-TONE-LIST-07` (gate only; library-connected half = Wave 4) |
 
 ---
 
@@ -231,7 +231,7 @@ Tones are written as a whole structure via `sendToneData(toneIndex, tone)`. Each
 |----|-----------|-----------------|--------|--------|--------|------|
 | D-TONE-WAVE-01 | Name — text input (8-char max) | `ToneEditor.tsx:100` → `tone.name` | C-TONE-06 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-WAVE-01` |
 | D-TONE-WAVE-02 | Original Key — number input + note name | `ToneEditor.tsx:228` → `tone.originalKey` | C-TONE-07 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-WAVE-02` |
-| D-TONE-WAVE-03 | Sample Rate — display only | `ToneEditor.tsx:248` → `<div>{tone.sampleRate}</div>` | C-TONE-07 | native | partial (display only; no select control) | — |
+| D-TONE-WAVE-03 | Sample Rate — display only | `ToneWavePanel.tsx:71-76` → `<div>{tone.sampleRate}</div>` | C-TONE-07 | native | partial (display only; no select control) | `capabilities/tone-display.spec.ts :: D-TONE-WAVE-03` |
 | D-TONE-WAVE-04 | Loop Mode — select | `ToneEditor.tsx:254` → `tone.loopMode` | C-TONE-07 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-WAVE-04` |
 | D-TONE-WAVE-05 | Output Assign — select (Mix + Out 1-8) | `ToneEditor.tsx:274` → `tone.outputAssign` | C-TONE-07 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-WAVE-05` |
 | D-TONE-WAVE-06 | Start Point — number (24-bit address) | `ToneEditor.tsx:301` → `tone.wave.startPoint` | C-TONE-13 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-WAVE-06` |
@@ -247,12 +247,12 @@ Tones are written as a whole structure via `sendToneData(toneIndex, tone)`. Each
 
 | ID | Affordance | Source of truth | Parent | Origin | Status | Test |
 |----|-----------|-----------------|--------|--------|--------|------|
-| D-TONE-LOOP-01 | Load Wave Data button (explicit fetch) | `ToneEditor.tsx:360` → `onLoadWaveData` | C-TONE-13 | client-derived | implemented | — |
-| D-TONE-LOOP-02 | Visual waveform display | `LoopEditor` from `@audiocontrol/loop-editor/ui` | C-TONE-13 | editor-derived | implemented | — |
-| D-TONE-LOOP-03 | Draggable loop start marker | `LoopEditor` (`@audiocontrol/loop-editor/ui`) | C-TONE-13 | editor-derived | implemented | — |
-| D-TONE-LOOP-04 | Draggable loop end marker | `LoopEditor` | C-TONE-13 | editor-derived | implemented | — |
-| D-TONE-LOOP-05 | Auto-detect loop points | `LoopEditor` | C-TONE-13 | editor-derived | implemented | — |
-| D-TONE-LOOP-06 | Audio preview / playback | `LoopEditor` | C-TONE-13 | editor-derived | implemented | — |
+| D-TONE-LOOP-01 | Load Wave Data button (explicit fetch) | `ToneWavePanel.tsx:186-198` → `onLoadWaveData` (gate: `hasSampleData && !waveData && !isLoadingWaveData`) | C-TONE-13 | client-derived | implemented | `capabilities/tone-loop.spec.ts :: D-TONE-LOOP-01` (gate only; post-load half = Wave 4) |
+| D-TONE-LOOP-02 | Visual waveform display | `LoopEditor` from `@audiocontrol/loop-editor/ui` | C-TONE-13 | editor-derived | implemented | `capabilities/tone-loop.spec.ts :: D-TONE-LOOP-02` (gate only) |
+| D-TONE-LOOP-03 | Draggable loop start marker | `LoopEditor` (`@audiocontrol/loop-editor/ui`) | C-TONE-13 | editor-derived | implemented | `capabilities/tone-loop.spec.ts :: D-TONE-LOOP-03` (gate only) |
+| D-TONE-LOOP-04 | Draggable loop end marker | `LoopEditor` | C-TONE-13 | editor-derived | implemented | `capabilities/tone-loop.spec.ts :: D-TONE-LOOP-04` (gate only) |
+| D-TONE-LOOP-05 | Auto-detect loop points | `LoopEditor` | C-TONE-13 | editor-derived | implemented | `capabilities/tone-loop.spec.ts :: D-TONE-LOOP-05` (gate only) |
+| D-TONE-LOOP-06 | Audio preview / playback | `LoopEditor` | C-TONE-13 | editor-derived | implemented | `capabilities/tone-loop.spec.ts :: D-TONE-LOOP-06` (gate only) |
 
 ---
 
@@ -260,7 +260,7 @@ Tones are written as a whole structure via `sendToneData(toneIndex, tone)`. Each
 
 | ID | Affordance | Source of truth | Parent | Origin | Status | Test |
 |----|-----------|-----------------|--------|--------|--------|------|
-| D-TONE-PITCH-01 | Transpose — slider (disabled in current build) | `ToneEditor.tsx:611` → field exists; control disabled | C-TONE-08 | native | partial (slider visible, editing disabled) | — |
+| D-TONE-PITCH-01 | Transpose — slider (disabled in current build) | `TonePitchPanel.tsx:29-39` → field exists; control disabled | C-TONE-08 | native | partial (slider visible, editing disabled) | `capabilities/tone-display.spec.ts :: D-TONE-PITCH-01` |
 | D-TONE-PITCH-02 | Fine Tune — slider (-64..+63 cents) | `ToneEditor.tsx:623` → `tone.fineTune` | C-TONE-08 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-PITCH-02` |
 | D-TONE-PITCH-03 | Pitch Follow — checkbox | `ToneEditor.tsx:634` → `tone.pitchFollow` | C-TONE-08 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-PITCH-03` |
 | D-TONE-PITCH-04 | Pitch Bender enable — checkbox | `ToneEditor.tsx:653` → `tone.benderEnabled` | C-TONE-08 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-PITCH-04` |
@@ -306,7 +306,7 @@ Tones are written as a whole structure via `sendToneData(toneIndex, tone)`. Each
 | D-TONE-LFO-02 | Delay — slider | `ToneEditor.tsx:543` → `tone.lfo.delay` | C-TONE-11 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-LFO-02` |
 | D-TONE-LFO-03 | Offset — slider | `ToneEditor.tsx:551` → `tone.lfo.offset` | C-TONE-11 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-LFO-03` |
 | D-TONE-LFO-04 | Key Sync — checkbox | `ToneEditor.tsx:561` → `tone.lfo.sync` | C-TONE-11 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-LFO-04` |
-| D-TONE-LFO-05 | Mode — display only | `ToneEditor.tsx:580` → `<div>{tone.lfo.mode}</div>` | C-TONE-11 | native | partial (display only; no edit control) | — |
+| D-TONE-LFO-05 | Mode — display only | `ToneLfoPanel.tsx:53-58` → `<div>{tone.lfo.mode}</div>` | C-TONE-11 | native | partial (display only; no edit control) | `capabilities/tone-display.spec.ts :: D-TONE-LFO-05` |
 | D-TONE-LFO-06 | Peak Hold (polarity) — checkbox | `ToneEditor.tsx:586` → `tone.lfo.polarity` | C-TONE-11 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-LFO-06` |
 
 ---
@@ -317,18 +317,18 @@ S-series envelopes are 8-segment (NOT ADSR). Each envelope has 8 levels + 8 rate
 
 | ID | Affordance | Source of truth | Parent | Origin | Status | Test |
 |----|-----------|-----------------|--------|--------|--------|------|
-| D-TONE-ENV-01 | TVF env — draggable SVG visualization | `EnvelopeEditor.tsx` → SVG drag handlers | C-TONE-12 | editor-derived | implemented | — |
+| D-TONE-ENV-01 | TVF env — draggable SVG visualization | `EnvelopeEditor.tsx` → SVG drag handlers | C-TONE-12 | editor-derived | implemented | `capabilities/tone-display.spec.ts :: D-TONE-ENV-01` |
 | D-TONE-ENV-02 | TVF env — 8 rate inputs (table) | `EnvelopeEditor.tsx` → rates inputs | C-TONE-12 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-ENV-02` |
 | D-TONE-ENV-03 | TVF env — 8 level inputs (table) | `EnvelopeEditor.tsx` → levels inputs | C-TONE-12 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-ENV-03` |
 | D-TONE-ENV-04 | TVF env — sustain point select (0-7) | `EnvelopeEditor.tsx` → sustainPoint | C-TONE-12 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-ENV-04` |
 | D-TONE-ENV-05 | TVF env — end point select (1-8) | `EnvelopeEditor.tsx` → endPoint | C-TONE-12 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-ENV-05` |
-| D-TONE-ENV-06 | TVF env — fullscreen expand | `EnvelopeEditor.tsx` → overlay | C-TONE-12 | editor-derived | implemented | — |
-| D-TONE-ENV-07 | TVA env — draggable SVG visualization | `EnvelopeEditor.tsx` (reused) | C-TONE-12 | editor-derived | implemented | — |
+| D-TONE-ENV-06 | TVF env — fullscreen expand | `EnvelopeEditor.tsx:94-99` → overlay | C-TONE-12 | editor-derived | implemented | `capabilities/tone-display.spec.ts :: D-TONE-ENV-06` |
+| D-TONE-ENV-07 | TVA env — draggable SVG visualization | `EnvelopeEditor.tsx` (reused) | C-TONE-12 | editor-derived | implemented | `capabilities/tone-display.spec.ts :: D-TONE-ENV-07` |
 | D-TONE-ENV-08 | TVA env — 8 rate inputs | `EnvelopeEditor.tsx` | C-TONE-12 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-ENV-08` |
 | D-TONE-ENV-09 | TVA env — 8 level inputs | `EnvelopeEditor.tsx` | C-TONE-12 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-ENV-09` |
 | D-TONE-ENV-10 | TVA env — sustain point select | `EnvelopeEditor.tsx` | C-TONE-12 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-ENV-10` |
 | D-TONE-ENV-11 | TVA env — end point select | `EnvelopeEditor.tsx` | C-TONE-12 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-ENV-11` |
-| D-TONE-ENV-12 | TVA env — fullscreen expand | `EnvelopeEditor.tsx` | C-TONE-12 | editor-derived | implemented | — |
+| D-TONE-ENV-12 | TVA env — fullscreen expand | `EnvelopeEditor.tsx:94-99` | C-TONE-12 | editor-derived | implemented | `capabilities/tone-display.spec.ts :: D-TONE-ENV-12` |
 
 ---
 
@@ -368,7 +368,7 @@ The library is the editor's primary editor-derived layer. The device has no conc
 | D-LIB-01 | OPFS / local-FS library backend | `LibraryPage.tsx:19` → `useLibraryConnection` | C-LIB-01 | editor-derived | implemented | `capabilities/library.spec.ts :: C-LIB-01` (partial — only presence) |
 | D-LIB-02 | Google Drive backend | `LibraryPage.tsx` → conditional on `VITE_GOOGLE_CLIENT_ID` | C-LIB-01 | editor-derived | partial (only enabled when env var set) | — |
 | D-LIB-03 | Library tree display | `PluginLibraryBrowser` from `editor-core` | C-LIB-01 | editor-derived | partial (presence asserted; node enumeration deferred) | — |
-| D-LIB-04 | Sets section (expandable) | `LibraryPage.tsx:24` → `SetsSection` | C-LIB-01 | editor-derived | implemented | — |
+| D-LIB-04 | Sets section (expandable) | `LibraryPage.tsx:282` → `SetsSection` (gated on `libraryHandle`) | C-LIB-01 | editor-derived | implemented | `capabilities/library.spec.ts :: D-LIB-04` (gate only; library-connected half = Wave 4) |
 | D-LIB-05 | Device memory panel (tones + patches on device) | `LibraryPage.tsx` → `DeviceMemoryPanel` | C-LIB-02 | editor-derived | partial (drop-target coverage incomplete) | — |
 | D-LIB-06 | Drag device tone → library (export) | `DeviceMemoryPanel.tsx:68` → `handleToneDragStart` | C-LIB-04 | editor-derived | implemented | — |
 | D-LIB-07 | Drag device patch → library (export) | `DeviceMemoryPanel.tsx` → `handlePatchDragStart` | C-LIB-04 | editor-derived | implemented | — |
@@ -386,7 +386,7 @@ The library is the editor's primary editor-derived layer. The device has no conc
 | D-LIB-19 | Sample Chopper dialog | `SampleChopperDialog` from `@audiocontrol/sample-chopper/ui` | n/a (unique to editor) | editor-derived | implemented | — |
 | D-LIB-20 | MemoryMapPanel — ToneSlotMap | `LoadSetDialog.tsx:17` → `ToneSlotMap` | C-LIB-10 | editor-derived | implemented | — |
 | D-LIB-21 | MemoryMapPanel — WaveSegmentMap | `ImportSamplesDialog.tsx:18` → `WaveSegmentMap` | C-LIB-10 | editor-derived | implemented | — |
-| D-LIB-22 | Refresh device button | `LibraryPage.tsx` → refresh callback | C-LIB-02 | client-derived | implemented | — |
+| D-LIB-22 | Refresh device button | `LibraryPage.tsx:249` → `handleLoadDeviceData` | C-LIB-02 | client-derived | implemented | `capabilities/library.spec.ts :: D-LIB-22` |
 
 ---
 
@@ -401,12 +401,12 @@ The library is the editor's primary editor-derived layer. The device has no conc
 | D-PLAY-05 | Patch — select | `s-series-client.ts:232` → `setMultiPatch` | C-PLAY-05 | native | implemented | `capabilities/play-writes.spec.ts :: D-PLAY-05` |
 | D-PLAY-06 | Output — select (1-8) | `s-series-client.ts:233` → `setMultiOutput` | C-PLAY-06 | native | implemented | `capabilities/play-writes.spec.ts :: D-PLAY-06` |
 | D-PLAY-07 | Level — slider (0-127) | `s-series-client.ts:234` → `setMultiLevel` | C-PLAY-07 | native | implemented | `capabilities/play-writes.spec.ts :: D-PLAY-07` |
-| D-PLAY-08 | Load function parameters on connect | `s-series-client.ts:230` → `requestFunctionParameters` (client-composed of multiple reads) | C-PLAY-03 | client-derived | implemented | — |
+| D-PLAY-08 | Load function parameters on connect | `s-series-client.ts:230` → `requestFunctionParameters` (client-composed of multiple reads) | C-PLAY-03 | client-derived | implemented | `capabilities/play.spec.ts :: D-PLAY-08` |
 | D-PLAY-09 | Patch name resolution from store | `PlayPage.tsx:163` → resolves `patches[part.patchIndex].common.name` | C-PLAY-03 | editor-derived | implemented | `capabilities/play.spec.ts :: C-PLAY-03` |
 | D-PLAY-10 | Bank reload — P11-P18 button | `PlayPage.tsx:276` → `loadPatchBank(0, true)` | C-PLAY-04 | client-derived | partial (S-330 only — buttons hardcoded; S-550 has 4 banks) | — |
 | D-PLAY-11 | Bank reload — P21-P28 button | `PlayPage.tsx:291` → `loadPatchBank(1, true)` | C-PLAY-04 | client-derived | partial (S-330 only) | — |
 | D-PLAY-12 | Loading progress bar (header) | `PlayPage.tsx:263` → `loadingProgress` + `loadingMessage` | C-XX-02 | editor-derived | partial (% bar only; no bytes/elapsed/ETA per design system) | — |
-| D-PLAY-13 | Error display region | `PlayPage.tsx:453` → `<div data-testid="error-message">` | C-XX-03 | editor-derived | implemented | — |
+| D-PLAY-13 | Error display region | `PlayPage.tsx:453-458` → `<div data-testid="error-message">` (gated on `error`) | C-XX-03 | editor-derived | implemented | `capabilities/play.spec.ts :: D-PLAY-13` (happy-path absence; error-path = Wave 6 fixture) |
 
 ---
 
@@ -434,24 +434,82 @@ The library is the editor's primary editor-derived layer. The device has no conc
 
 | ID | Affordance | Source of truth | Parent | Origin | Status | Test |
 |----|-----------|-----------------|--------|--------|--------|------|
-| D-XX-01 | Virtual Front Panel — floating draggable panel | `VirtualFrontPanel.tsx` | C-XX-04 | editor-derived | implemented | — |
-| D-XX-02 | VFP — Navigation buttons (DT1) | `VirtualFrontPanel.tsx` → `NavigationPad` → `useFrontPanel` | C-XX-04 | native | implemented | — |
-| D-XX-03 | VFP — Value buttons (DT1) | `VirtualFrontPanel.tsx` → `ValueButtons` | C-XX-04 | native | implemented | — |
-| D-XX-04 | VFP — Function buttons (MODE/MENU/SUB MENU/COM/Execute) | `VirtualFrontPanel.tsx` → `FunctionButtonRow` | C-XX-04 | native | implemented | — |
-| D-XX-05 | VFP — Keyboard shortcuts | `VirtualFrontPanel.tsx:7` → `keydown` listener | C-XX-04 | editor-derived | implemented | — |
-| D-XX-06 | VFP — Drag to reposition | `VirtualFrontPanel.tsx` → mouse drag + localStorage | C-XX-04 | editor-derived | implemented | — |
-| D-XX-07 | VFP — Collapse/expand | `VirtualFrontPanel.tsx` → `STORAGE_KEY_EXPANDED` | C-XX-04 | editor-derived | implemented | — |
-| D-XX-08 | VFP — Connection status indicator (green dot) | `VirtualFrontPanel.tsx` | C-XX-04 | editor-derived | implemented | — |
-| D-XX-09 | Video capture drawer (USB / webcam) | `Layout.tsx` → `VideoCapture` | n/a (unique to editor) | editor-derived | implemented | — |
-| D-XX-10 | Front-panel controls inside video drawer | `VideoCapture.tsx:15` → reuses VFP components | n/a (unique to editor) | editor-derived | implemented | — |
+| D-XX-01 | Virtual Front Panel — floating draggable panel | `VirtualFrontPanel.tsx` | C-XX-04 | editor-derived | partial (component exists but is NEVER mounted in the app; the controls are subsumed by D-XX-10) | needs operator decision — see "VFP unmounted" note in Wave 3 notes |
+| D-XX-02 | VFP — Navigation buttons (DT1) | `VirtualFrontPanel.tsx` → `NavigationPad` → `useFrontPanel` (also reused inside the video drawer) | C-XX-04 | native | implemented (inside the video drawer; the floating VFP isn't mounted) | Wave 6 (#417) — front-panel DT1 fixture |
+| D-XX-03 | VFP — Value buttons (DT1) | `VirtualFrontPanel.tsx` → `ValueButtons` (also reused inside the video drawer) | C-XX-04 | native | implemented (inside the video drawer) | Wave 6 (#417) — front-panel DT1 fixture |
+| D-XX-04 | VFP — Function buttons (MODE/MENU/SUB MENU/COM/Execute) | `VirtualFrontPanel.tsx` → `FunctionButtonRow` (also reused inside the video drawer) | C-XX-04 | native | implemented (inside the video drawer) | Wave 6 (#417) — front-panel DT1 fixture |
+| D-XX-05 | VFP — Keyboard shortcuts | `VirtualFrontPanel.tsx:7` + `VideoCapture.tsx:219-259` → keydown listener | C-XX-04 | editor-derived | partial (floating VFP unmounted; the drawer has its own keyboard handler) | needs operator decision — see "VFP unmounted" note |
+| D-XX-06 | VFP — Drag to reposition | `VirtualFrontPanel.tsx` → mouse drag + localStorage | C-XX-04 | editor-derived | partial (only meaningful when the floating VFP is mounted, which it isn't) | needs operator decision — see "VFP unmounted" note |
+| D-XX-07 | VFP — Collapse/expand | `VirtualFrontPanel.tsx` → `STORAGE_KEY_EXPANDED` | C-XX-04 | editor-derived | partial (only meaningful when the floating VFP is mounted) | needs operator decision — see "VFP unmounted" note |
+| D-XX-08 | VFP — Connection status indicator (green dot) | `VirtualFrontPanel.tsx` | C-XX-04 | editor-derived | partial (only meaningful when the floating VFP is mounted) | needs operator decision — see "VFP unmounted" note |
+| D-XX-09 | Video capture drawer (USB / webcam) | `Layout.tsx` → `VideoCapture` | n/a (unique to editor) | editor-derived | implemented | `capabilities/video-drawer.spec.ts :: D-XX-09` |
+| D-XX-10 | Front-panel controls inside video drawer | `VideoCapture.tsx:363-380` → reuses VFP components | n/a (unique to editor) | editor-derived | implemented | `capabilities/video-drawer.spec.ts :: D-XX-10` |
 | D-XX-11 | MIDI Panic button (CC 120 + 123 on all channels) | `Layout.tsx` → `PanicButton` (client `panic()`) | n/a | client-derived | implemented | — |
 | D-XX-12 | Progress indicators (cross-cutting) | Multiple pages → `loadingProgress` + `loadingMessage` | C-XX-02 | editor-derived | partial (% bar only; design system requires bytes/elapsed/ETA) | — |
 
 ---
 
+## Wave 3 notes (test-coverage gap pass)
+
+Wave 3 (issue [#414](https://github.com/audiocontrol-org/audiocontrol/issues/414))
+bound 42 display affordance tests across the existing spec suite + four new
+spec files (`patch-display.spec.ts`, `patch-zones.spec.ts`,
+`tone-display.spec.ts`, `tone-loop.spec.ts`, `video-drawer.spec.ts`).
+
+Two structural findings surfaced during the binding pass:
+
+### Phase 9 redesign — per-bank reload toolbar consolidated
+
+`D-PATCH-LIST-06`, `D-PATCH-LIST-07`, `D-TONE-LIST-06` originally cited a
+multi-button per-bank reload toolbar inside `PatchesPage` / `TonesPage`.
+Phase 9 Task 4 (the Patches + Tones redesign, see DEVELOPMENT-NOTES.md
+2026-05-11 entry) collapsed the toolbar into a single "Refresh all …
+from device" icon-button on the page-title row, per project memory
+`feedback_lean_page_header`. The inventory descriptions + source-of-truth
+citations have been updated to point at the icon button; the affordance
+the user needs ("force-reload from device") is still present and the test
+bindings pin the consolidated control.
+
+### VFP unmounted — D-XX-01, 05, 06, 07, 08 cannot be bound until integration
+
+The `VirtualFrontPanel` component (`modules/roland-sxx0-editor/src/
+components/front-panel/VirtualFrontPanel.tsx`) is exported from the
+module barrel but is **never instantiated** anywhere in the editor —
+verified by grep across the source tree. The floating draggable VFP
+the inventory describes does not appear on any editor page.
+
+The same VFP components (`FunctionButtonRow`, `NavigationPad`,
+`ValueButtons`) ARE mounted inside the video drawer (`VideoCapture.tsx:
+363-380`); that's the only place the user can interact with the front
+panel today. `D-XX-10` covers those drawer-mounted controls.
+
+This is a real integration gap, not just an inventory drift. Project
+memory `feedback_virtual_front_panel` says "every editor page with the
+CRT also mounts a virtual front panel mirroring the S-550's physical
+buttons; it's not optional." Current reality contradicts that.
+
+`D-XX-01, 05, 06, 07, 08` Status flipped from `implemented` to `partial`
+to surface the gap. Their Test cells read `needs operator decision —
+see "VFP unmounted" note`. **The disposition is operator-blocked**:
+
+- Option A: Mount the VFP in the layout (the integration the project
+  memory says is required). Then D-XX-01, 05, 06, 07, 08 become
+  testable as separate affordances. This is a UI-integration task
+  separate from the test-coverage backlog.
+- Option B: Strike D-XX-01, 05, 06, 07, 08 from the inventory and
+  declare the drawer-embedded panel (`D-XX-10`) the canonical surface.
+  Update `feedback_virtual_front_panel` to match.
+
+Wave 3 does NOT take either action — it surfaces the gap honestly so
+the operator can decide. The 5 rows are still listed under `Untested`
+in the coverage summary above, with their Status downgraded to `partial`
+to flag the integration gap.
+
+---
+
 ## Punch list
 
-The 113 untested rows above are the missing-test backlog. The 24 missing rows
+The 37 untested rows above are the missing-test backlog. The 24 missing rows
 are the missing-UI backlog. Both should drain over time; both should grow
 when new affordances are added (each new feature lands with its test).
 
@@ -471,7 +529,7 @@ wave can land independently:
 | 2a | [#411](https://github.com/audiocontrol-org/audiocontrol/issues/411) | Patch parameter writes — D-PATCH-01..05, 07..12 | Yes (fixture capture) |
 | 2b | [#412](https://github.com/audiocontrol-org/audiocontrol/issues/412) | Multi-mode parameter writes — D-PLAY-04..07 | Yes |
 | 2c | [#413](https://github.com/audiocontrol-org/audiocontrol/issues/413) | Tone parameter writes (wave/pitch/TVF/TVA/LFO/envelope) | Yes |
-| 3 | [#414](https://github.com/audiocontrol-org/audiocontrol/issues/414) | Display-assertion gaps (port pickers, bank buttons, zone editor, loop editor visual) | No |
+| 3 | [#414](https://github.com/audiocontrol-org/audiocontrol/issues/414) | Display-assertion gaps (port pickers, bank buttons, zone editor, loop editor visual) — **LANDED**: 37 bindings (see Wave 3 notes for the 5 D-XX rows that couldn't be bound until the VFP is mounted) | No |
 | 4 | [#415](https://github.com/audiocontrol-org/audiocontrol/issues/415) | Library + dialog flows (save/load set, import/export, sample editor) | Yes |
 | 5 | [#416](https://github.com/audiocontrol-org/audiocontrol/issues/416) | Drag-drop tests | Yes |
 | 6 | [#417](https://github.com/audiocontrol-org/audiocontrol/issues/417) | Cross-cutting (front-panel DT1, panic, progress, live-edit guard) | Yes (front-panel fixture) |

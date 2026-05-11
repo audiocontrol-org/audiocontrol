@@ -71,4 +71,42 @@ test.describe('Capabilities — Library (C-LIB)', () => {
       libRegion.getByText(/Connect to a library folder/),
     ).toBeVisible();
   });
+
+  test('D-LIB-04: Sets affordance gate — section is hidden without a library', async ({ page }) => {
+    // The PluginLibraryBrowser only mounts its `headerSections` slot
+    // (where LibraryPage feeds the SetsSection) when `libraryHandle`
+    // is truthy — see modules/editor-core/src/components/library/
+    // PluginLibraryBrowser.tsx:818-820. With no library connected,
+    // the empty-state pane replaces the sections. The test pins the
+    // GATE: in the disconnected-library harness, the SetsSection (and
+    // therefore the text 'Sets') MUST NOT appear inside the library
+    // region. The connected-library half of the contract (the
+    // SetsSection actually mounts when a handle is available) lives
+    // in the Wave 4 library-dialog suite (#415), which connects an
+    // OPFS backend in the harness.
+    const libRegion = page.locator('[data-capability="C-LIB-01"]');
+    await expect(libRegion).toBeVisible({ timeout: 5_000 });
+
+    // Disconnected state — the empty-state copy is what the user sees.
+    await expect(
+      libRegion.getByText(/Connect to a library folder/),
+    ).toBeVisible({ timeout: 5_000 });
+
+    // And the Sets section header is absent in this state.
+    await expect(libRegion.getByText(/^Sets$/)).toHaveCount(0);
+  });
+
+  test('D-LIB-22: Refresh Device button is reachable in the page header', async ({ page }) => {
+    // LibraryPage.tsx:249 renders a "Refresh Device" button in the
+    // sticky page header. It triggers handleLoadDeviceData, which
+    // re-reads every tone bank + every patch bank into the store. The
+    // affordance is independent of the library backend connection
+    // (it talks to the device, not the library), so the harness
+    // renders it whether or not the library is connected.
+    const refreshButton = page.getByRole('button', { name: 'Refresh Device' });
+    await expect(refreshButton).toBeVisible({ timeout: 5_000 });
+    // No assertion on enabled — the button's disabled state tracks
+    // isLoading, which oscillates as the harness's initial bank loads
+    // settle. Visibility is the affordance under test.
+  });
 });

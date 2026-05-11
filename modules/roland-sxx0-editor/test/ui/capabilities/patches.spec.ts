@@ -22,6 +22,14 @@
  *   - C-PATCH-03: User can identify empty patch slots
  *   - C-PATCH-04: User can select a specific patch to view its details
  *
+ * Detail affordances covered (Wave 3, #414):
+ *   - D-PATCH-LIST-05: Click-to-load eyebrow + clickable unloaded slot
+ *   - D-PATCH-LIST-06: Refresh-all icon-button on the title row (Phase 9
+ *     redesign collapsed per-bank reload toolbar into one button)
+ *   - D-PATCH-LIST-07: Same refresh-all icon-button covers the prior
+ *     "Load All" affordance after the same redesign
+ *   - D-PATCH-LIST-08: Per-row Export button on loaded non-empty slots
+ *
  * Fixture: `patches-bank-0` — captured for `connect() + loadPatchRange(0, 8)`.
  * The PatchesPage's mount sequence then tries `loadToneBank(0)` which is NOT
  * recorded in this fixture (intentionally narrowed). The SimulatedAdapter
@@ -168,5 +176,104 @@ test.describe('Capabilities — Patches (C-PATCH)', () => {
     await expect(
       page.locator('[data-capability="C-PATCH-04"]'),
     ).toBeVisible();
+  });
+
+  test('D-PATCH-LIST-05: unloaded slots surface a click-to-load affordance', async ({ page }) => {
+    const list = page.locator('[data-capability="C-PATCH-01"]');
+    await expect(list).toBeVisible({ timeout: 5_000 });
+
+    // The patches-bank-0 fixture loads bank 0 (P11..P18). Bank 1 (P21..P28)
+    // is not loaded, so each row in bank 1 surfaces the click-to-load
+    // eyebrow + remains a focusable role="button" with the slot label as
+    // its accessible-name prefix. Slot P28 is the last slot in S-330's
+    // 16-slot address space — same slot the C-PATCH-02 spec asserts is
+    // in the not-loaded state.
+    const unloadedSlot = list.getByRole('button', { name: /^P28\b/ });
+    await expect(unloadedSlot).toBeVisible();
+
+    // The row's text content surfaces the click-to-load hint. The hint
+    // is rendered as a sibling <span class="patches__list-eyebrow"> next
+    // to the placeholder name '(not loaded)'.
+    const text = await unloadedSlot.evaluate((el) => el.textContent ?? '');
+    expect(text).toMatch(/click to load bank/i);
+
+    // The slot is keyboard-reachable — tabIndex is 0 when the bank
+    // isn't actively loading. Asserting reachability via aria-disabled
+    // being absent (or false) is the same contract under both
+    // `aria-disabled="false"` and unset.
+    const ariaDisabled = await unloadedSlot.getAttribute('aria-disabled');
+    expect(ariaDisabled === null || ariaDisabled === 'false').toBe(true);
+  });
+
+  test('D-PATCH-LIST-06: refresh-all icon-button is reachable on the title row', async ({ page }) => {
+    // Phase 9 Task 4 consolidated the per-bank reload toolbar into a
+    // single icon button on the page-title row. The button's
+    // aria-label is the operational copy 'Refresh all patches from
+    // device' (PatchesPage.tsx:251). The inventory's older description
+    // ("Per-bank force-reload buttons (dynamic count)") drifted from
+    // reality with the redesign; the consolidated affordance still
+    // realizes the C-PATCH-05 capability.
+    const refreshButton = page.getByRole('button', {
+      name: 'Refresh all patches from device',
+    });
+    await expect(refreshButton).toBeVisible({ timeout: 5_000 });
+
+    // The button is operable while not in mid-load. The fixture's
+    // initial mount completes before this test runs (the beforeEach
+    // waitForLoadState('networkidle') gates on that), so enabled.
+    await expect(refreshButton).toBeEnabled();
+  });
+
+  test('D-PATCH-LIST-07: refresh-all icon-button covers the prior "Load All" affordance', async ({ page }) => {
+    // After Phase 9 Task 4 the dedicated "Load All" button no longer
+    // exists separately — the same title-row icon button refreshes the
+    // full address space (PatchesPage.tsx refreshAll, line 139). The
+    // affordance the user needs ("load every bank from device in one
+    // action") is still present and reachable. This test pins the
+    // consolidation so a future redesign that drops the icon button
+    // without restoring an equivalent fails loudly.
+    const refreshButton = page.getByRole('button', {
+      name: 'Refresh all patches from device',
+    });
+    await expect(refreshButton).toBeVisible({ timeout: 5_000 });
+
+    // Assert the button title attribute matches the aria-label so the
+    // tooltip + screen-reader name agree. PatchesPage.tsx:252 sets
+    // both to the same string.
+    await expect(refreshButton).toHaveAttribute(
+      'title',
+      'Refresh all patches from device',
+    );
+  });
+
+  test('D-PATCH-LIST-08: loaded non-empty patches surface a per-row Export button', async ({ page }) => {
+    const list = page.locator('[data-capability="C-PATCH-01"]');
+    await expect(list).toBeVisible({ timeout: 5_000 });
+
+    // Bank 0 is loaded; slot P11 is the first loaded slot. The Export
+    // button is gated on (isLoaded && !isEmpty && onExportPatch) per
+    // PatchList.tsx:166. The patches-bank-0 fixture surfaces a
+    // non-empty patch in P11 (its accessible name carries decoded text
+    // beyond 'P11', asserted in C-PATCH-02), so the Export button
+    // renders.
+    const firstSlot = list.getByRole('button', { name: /^P11\b/ });
+    await expect(firstSlot).toBeVisible();
+
+    // The per-row Export button is a real <button> nested in the
+    // role="button" row div (see PatchList.tsx:166 + the explanation
+    // comment at L18). Its data-testid is "export-patch-button".
+    const exportButton = firstSlot.locator(
+      'button[data-testid="export-patch-button"]',
+    );
+    await expect(exportButton).toBeVisible();
+    await expect(exportButton).toHaveText('Export');
+
+    // Unloaded slots MUST NOT carry the Export button — the gate
+    // requires `isLoaded`. P28 is unloaded under this fixture.
+    const unloadedSlot = list.getByRole('button', { name: /^P28\b/ });
+    const exportOnUnloaded = unloadedSlot.locator(
+      'button[data-testid="export-patch-button"]',
+    );
+    await expect(exportOnUnloaded).toHaveCount(0);
   });
 });
