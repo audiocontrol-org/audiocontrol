@@ -11,6 +11,93 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-05-12 (evening): s550-support — Phase 9 Tasks 4-5 complete (atomic primitives + 6 page amends + 11 dialog polish + regression fix)
+
+### Feature: s550-support
+
+### Worktree: audiocontrol-s550-support
+
+### Goal
+
+Drive Phase 9 forward from the unblocked state (Phase 0 Task 10 closed earlier today) through page-polish, dialog-polish, and design-system work. Session opened with Phase 0 Task 10's 5 issues closed by the operator (#404/#415/#416/#417/#421). User pressed /dwi Phase 9 Task 4 repeatedly to drive the implementation forward turn-by-turn.
+
+### Accomplished
+
+Phase 9 Tasks 1-5 went from "BLOCKED" or "PENDING" to fully complete in a single session. **13 commits on feature/s550-support** across the work:
+
+- **Task 4.0 atomic primitives** (commits `2c078954` + `fc3bac98`): Six v3 atomic primitives shipped to editor-core — `.ac-select`, `.ac-checkbox`, `.ac-slider`, `.ac-range-bar`, `.ac-number-input`, `.ac-envelope`. Includes a CSS file split (pre-existing 1124-line `primitives.css` fixed in scope by splitting into layout, overlay, feedback, control, and envelope primitive files, all under 500 lines). 40 new unit tests; DESIGN-SYSTEM.md updated with one section per primitive + 13 line-level mockup citations. Code-quality review caught 3 keyboard-accessibility gaps in AcEnvelope subcomponents; fix-up commit landed full WAI-ARIA radiogroup keyboard pattern + native button conversions.
+
+- **Task 4 amend PatchesPage** (commits `7299ca6a` + `33e7e6b8`): 10 vanilla form controls + 5 ParameterSlider migrated to `.ac-*` primitives via new `ParamSliderRow` helper. `patch-writes.spec.ts` `clickSliderAtValue` helper rewritten to `fillSliderInput` (page.fill on the AcNumberInput's `<input type="number">`). 11 `.ac-list-*` shared primitives promoted from page-scoped `patches__list-*` and `tones__list-*` (workplan §588 duplication-audit gate). Follow-up commit clamps AcNumberInput at the editor-core boundary (so out-of-range typed values clamp to min/max before reaching the device client) and dedupes the `labelToTestId` helper.
+
+- **Task 4 amend TonesPage** (commits `098b7a21` + `8eac821a` + `4952d643`): 16 ParameterSlider migrated; 13 vanilla controls migrated; both TVF + TVA envelopes migrated from legacy EnvelopeEditor/EnvelopeDisplay to new AcEnvelope (kept `@deprecated`, not deleted). New `ToneEnvelopeEditor` wrapper (145 lines) composes AcEnvelope with an inline per-segment rate/level edit grid. Helper rewrite for `tone-writes-helpers.ts`: `clickSliderAtValue` + `selectLabeled` became `fillSliderInput` + `selectEnvelopePip`. Code-quality review caught three Important issues: disabled envelope leaked keyboard interaction; AcCheckbox couldn't carry `data-testid` (split pattern was nucleation-site); envelope `onCommit` handlers discarded the updated tone. All fixed: `disabled` prop threaded through AcEnvelope family, AcCheckbox gained `dataTestId` prop + `forwardRef`. Third commit collapsed the three remaining div-wrapper-for-Tooltip workarounds by adding forwardRef to AcCheckbox at the source.
+
+- **Task 4 amend PlayPage** (commits `2e857bc6` + `bd49dc60`): 3 selects → `.ac-select.ac-select--compact` (new modifier added for inline-grid contexts); range-input level slider → AcRangeBar + AcNumberInput composition; "S-330" literal → `{deviceName}`. AcNumberInput gained `dataTestId` + `forwardRef` matching AcCheckbox pattern. `play-writes.spec.ts` D-PLAY-07 rewritten from native-setter + mouseup dispatch to `page.fill` + blur. Doc-fix commit added `--compact` modifier section to DESIGN-SYSTEM.md per the `feedback_design_system_first` memory.
+
+- **Task 4 amend LibraryPage** (commit `7827bbfc`): Single-line fix — "S-330" literal → `{config.deviceName}`. The page was otherwise already page-complete (zero vanilla form controls, all chrome using `.ac-*` primitives, color tokens from existing `s330-*` palette per workplan §508). WorkflowsPage + HomePage audit showed both already page-complete from prior work; no changes needed.
+
+- **Task 5 dialog polish** (commits `8e179806` + `418bac65`): 11 library dialogs migrated to `.ac-*` primitives. 27 vanilla form controls audited, 26 migrated to `.ac-input` / `.ac-select` / `.ac-checkbox` / `AcCheckbox` / `AcNumberInput`, 1 kept as hidden file-picker click-proxy. SaveSetDialog migrated from inline progress markup to `OperationProgressBar`; CreateDirectoryDialog + RenameDirectoryDialog header/body/footer rhythm unified to prevailing pattern. New `.ac-input--warning` + `.ac-select--warning` modifiers added for non-fatal warning state (overwrite alerts). Code-quality review caught one Important regression: SaveSetDialog now displayed fabricated byte counts because `saveDeviceToSetIncremental` emits percentages, not real bytes. Controller chose option (b) — fix at data source. Follow-up commit refactored `saveDeviceToSetIncremental` to emit real `OperationProgress` across a 3-step phase model (Scan / Tones / Patches), with `bytesTotalAllSteps` computed once post-scan and `bytesSentAllSteps` monotonic across all paths including failure. Extracted to `library-sets-save-incremental.ts` (341 lines, new) and `library-sets-types.ts` (24 lines, new) — also brought `library-sets.ts` from 466 → 312 lines as a co-resident cap-relief refactor.
+
+- **Discipline rule canonization** (commit `636b3d71`): Added a 4th rule to `.claude/rules/agent-discipline.md` — *"When CI is absent, the controller is the gate."* Codifies the test-re-run habit from the 2026-05-11 CI-removal session: implementer's reported test output is a claim, not evidence; controller independently re-runs the load-bearing test gate after every implementer dispatch, BEFORE dispatching reviewers. Composes with `superpowers:subagent-driven-development`'s two-stage review (spec then quality) so the trust gap CI used to occupy is closed at three layers (independent test re-run + spec-compliance review + code-quality review). The test-re-run caught no regressions this session — but with CI gone it's the only structural check; absence of caught regressions is evidence the gate works, not evidence it's unnecessary.
+
+### Suite status
+
+`make test-ui-roland`: **146 passed throughout** — every single one of the 13 implementation + fix-up commits in this session held the gate. `pnpm --filter @audiocontrol/editor-core test`: **285 passed** (was 268 at session start; +17 from new tests across primitive additions + dataTestId + disabled-envelope coverage). Six pre-existing #406 failures (MoveDialog, PluginLibraryBrowser) unchanged.
+
+### Didn't work
+
+- **Code-explorer subagent stuck in an infinite text-generation loop** when dispatched to inventory PatchesPage. The agent produced ~600 lines of self-narration trying to make a Write call but never completed one. Recovery: extracted the inventory data from the agent's response text (which DID contain the inventory inline) and used it directly. Future calls to `feature-dev:code-explorer` should expect this fragility — fallback to embedding the inventory in the text response when the Write attempt loops.
+
+- **AcSlider's display-only design surprised me mid-PatchesPage amend.** AcSlider is a layout primitive (label + bar + readout grid), NOT a focusable interactive control. The migration from Radix ParameterSlider required composing AcSlider with AcNumberInput editable in the readout slot. This contract emerged from reading the source after the brief was written. Brief for TonesPage and PlayPage was updated with the discovered pattern; the canonical reference is now `ParamSliderRow` (the helper component created in the PatchesPage amend).
+
+- **SaveSetDialog regression shipped to the polish commit before being caught at code-quality review.** The `OperationProgressBar` migration was correct in shape (replaced inline progress markup with the canonical primitive) but exposed a contract gap: the data source `saveDeviceToSetIncremental` had been emitting percentage-shaped progress for months. The dialog polish dispatch faithfully translated the percentage into a fake `OperationProgress` object, and only the code-quality reviewer caught that the bar now claimed bytes-per-second of fabricated data. The three-track verification pattern caught the regression at the right layer; the cost of the fix was bounded (one focused dispatch refactoring the data source).
+
+### Course corrections
+
+- **[QUALITY]** Code-quality review on Wave 6 (#417 commit `95e97e46`): three new front-panel scenarios inlined the mount prelude instead of calling `runPatchPageMount`, divergent from the sibling `panic-flow` scenario. Nucleation site — next scenario author would copy one of the three wrong templates. Fixed in commit `6acbaace`.
+
+- **[DOCUMENTATION]** Code-quality review on #421 (commit `e0981c37`): scenario docstring claimed the `connect()` annotation appeared in the captured fixture, but recording-proxy semantics overwrite `pendingAnnotation` on the next `annotate()` call — and `connect()` emits no bytes, so the annotation never lands. Commit-message record-count breakdown was also wrong (claimed 96 outbound RQDs; actual was 703). Fixed docstring in follow-up commit `b19ae698`; commit-message inaccuracy stays in git history.
+
+- **[QUALITY]** Code-quality review on Task 4.0 (commit `2c078954`): three keyboard-accessibility gaps in AcEnvelope subcomponents — pip radiogroup needed full WAI-ARIA keyboard pattern, point spans and table row clicks needed native button conversions. All fixed in commit `fc3bac98` with 16 new tests asserting the contract (no callback fires on disabled+keyboard, focus moves correctly with arrow keys, etc.).
+
+- **[QUALITY]** Code-quality review on TonesPage amend (commit `098b7a21`): three Important issues — disabled envelope leaked keyboard interaction (`pointer-events-none` blocks mouse but not keyboard); AcCheckbox couldn't carry `data-testid` forcing a split pattern (nucleation site); envelope `onCommit` handlers discarded the updated tone. All fixed in commit `8eac821a` + the AcCheckbox `forwardRef` refactor in `4952d643`.
+
+- **[QUALITY]** Code-quality review on Task 5 dialog polish (commit `8e179806`): SaveSetDialog now displayed fabricated byte counts because `saveDeviceToSetIncremental` emits percentages, not bytes. Controller (me) chose option (b) — fix at data source. Follow-up commit `418bac65` refactored the data source to emit real `OperationProgress` with 3-step phase model, byte-accurate progress during wave-data fetch, and graceful suppression during scan phase. Per project rule *"Never offer baseless projection statistics; false precision erodes trust."*
+
+- **[PROCESS]** Three-track verification pattern (independent test re-run + spec review + code-quality review) caught every quality regression this session: 3 Wave 6 a11y gaps + scenario inlining + doc inaccuracies + AcCheckbox split-pattern + disabled-envelope keyboard leak + SaveSetDialog byte-fabrication. Cost per dispatch: ~5-10 minutes of additional reviewer time. Cost prevented: each regression compounding through subsequent dispatches that would have copied the wrong pattern. The pattern worked; the test re-run by itself caught zero regressions but serves as a structural check — absence-of-evidence proves the discipline holds. Rule 4 canonization (controller-runs-the-gate) ensures the habit doesn't decay.
+
+### Quantitative
+
+- **13 commits on feature/s550-support** this session: `2c078954` + `fc3bac98` (Task 4.0), `7299ca6a` + `33e7e6b8` (PatchesPage), `098b7a21` + `8eac821a` + `4952d643` (TonesPage), `2e857bc6` + `bd49dc60` (PlayPage), `7827bbfc` (LibraryPage), `8e179806` + `418bac65` (Task 5 dialogs + SaveSet regression fix), `636b3d71` (rule canonization).
+- **5 Phase 9 sub-tasks complete**: Task 4.0 atomic primitives, Task 4 amends for all 6 pages, Task 5 dialog polish.
+- **6 pages page-complete**: PatchesPage, TonesPage, PlayPage, LibraryPage, WorkflowsPage (no-op), HomePage (no-op).
+- **11 dialogs polished.**
+- **27 vanilla form controls migrated** (26 to `.ac-*` primitives, 1 hidden file-picker kept as click-proxy with comment).
+- **21 ParameterSlider usages migrated** across 5 panels + the patch editor (PatchEditor 5; TonePitchPanel 2, ToneAmpPanel 4, ToneFilterPanel 7, ToneLfoPanel 3, ToneWavePanel 0 = 16 in tones).
+- **+17 editor-core unit tests** (268 → 285): AcEnvelope disabled (10), AcCheckbox `dataTestId` (2), AcNumberInput clamp (3), AcNumberInput `dataTestId` (2).
+- **146 UI tests held flat** through all 13 commits.
+- **8 sub-agent dispatches** for implementation work + 6 spec-review + 6 code-quality-review dispatches. Roughly one Critical-or-Important finding per code-quality review across the session; every finding addressed before the controller declared the next dispatch.
+- **0 fabrications shipped to main**: every issue surfaced at review; every issue addressed in fix-up commits before any subsequent dispatch.
+- **2 design-system gaps caught + fixed in-session**: the `--compact` modifier had to be added to DESIGN-SYSTEM.md after PlayPage shipped it; the AcCheckbox `forwardRef` refactor unified the 4 div-wrapper callsites.
+- **1 architectural rule canonized**: rule 4 of `.claude/rules/agent-discipline.md` — controller-runs-the-gate.
+
+### Insights
+
+- **The page-amend pattern is now mechanical.** PatchesPage (the first amend) required reading the codebase to understand the legacy ParameterSlider + vanilla-control shape and authoring the `ParamSliderRow` helper that bridges old API to new primitives. TonesPage, PlayPage, and LibraryPage followed the same pattern with diminishing exploration time. WorkflowsPage + HomePage needed zero changes — they were already polished from Phase 9 Task 2-era work. The investment in Task 4.0 atomic primitives paid off as expected: each page amend was scope-bounded and mechanical because the primitive surface was stable.
+
+- **Three-track verification (test re-run + spec review + code-quality review) catches qualitatively different regressions.** The test re-run catches the implementer reporting "146 passed" when the actual count is wrong. The spec review catches subtle scope drift — e.g., "implementer migrated 16 ParameterSliders but the brief expected 20; what happened to the other 4?" (answer: they were inside the legacy EnvelopeEditor that got replaced wholesale). The code-quality review catches contract violations the implementer didn't notice — fabricated bytes in OperationProgressBar; keyboard navigation on a "disabled" envelope; AcCheckbox unable to forward `data-testid`; `ParameterSlider`'s `labelToTestId` duplicated across two files. Each layer catches what the others miss. Worth treating as the default workflow rather than belt-and-suspenders.
+
+- **Nucleation-site catches in code-quality review save downstream cost.** The `forwardRef` pattern for AcCheckbox was a 3-line fix caught the same day it was introduced. If it had landed and four more callsites had copied the div-wrapper-for-Tooltip workaround before the catch, the cleanup would have touched 8+ files instead of 4. The agent-discipline rule's nucleation-site framing makes the cost-asymmetry visible: small fixes now beat large fixes later, AND code-quality reviewers should be encouraged to flag these patterns explicitly so the controller treats them as Important rather than Minor.
+
+- **The /dwi loop with three-track verification is sustainable.** Operator drove the session via `/dw-lifecycle:implement` invocations asking for forward motion. Each cycle ran roughly: brief authoring (3-5 min) → implementer dispatch (10-30 min) → independent gate re-run (~2:20 wall clock) → spec review (3-5 min) → code-quality review (3-5 min) → fix-up if needed → done. With wakeup scheduling during the gate re-runs, the controller's tool budget was used efficiently. Across 13 commits in one session, the workflow held without context exhaustion or scope creep.
+
+- **Phase 9 went from blocked to 5-of-7 tasks done in one session** because the Phase 0 Task 10 close-out this morning unblocked Tasks 4 onward, and the Task 4.0 atomic primitives created in this session were the precursor every page amend needed. Sequencing per Decision 6 Option A (primitives first → amend Patches+Tones → per-page polish) held cleanly: each page amend consumed the primitives, applied the standard pattern, and shipped. The discipline rule's "drive every effort to completion" pressure prevented mid-session scope drift; every fix-up commit closed the loop on its parent commit before moving forward.
+
+- **The PatchesPage + TonesPage shell-partial commits from 2026-05-11 (`4bd11911` + `f633b95f`) are now superseded.** Those commits were flagged in the workplan as "shell partial" pending Task 4.0 primitives. With this session's amends (`7299ca6a` + `33e7e6b8` for patches; `098b7a21` + `8eac821a` + `4952d643` for tones), the pages now use design-language atomic primitives end-to-end. The original shell-partial commits remain in the branch's history but are no longer "incomplete" — they're predecessor commits that the follow-up amends completed.
+
+- **Tasks 6 + 7 are smaller-shape than Tasks 4 + 5.** Task 6 needs screenshot capture on both `/roland/s330/editor` and `/roland/s550/editor` for visual regression confirmation; the UI test infrastructure built in Phase 0 Task 10 (146-spec harness) makes this scriptable rather than a from-scratch effort. Task 7 needs DESIGN-SYSTEM.md to be audited for completeness — every `.ac-*` primitive promoted in Tasks 4-5 needs a section. Both could realistically complete in a single half-session each, with Task 6 being the more time-consuming due to manual visual review.
+
+---
+
 ## 2026-05-12 (afternoon): s550-support — Phase 0 Task 10 fully closed (Wave 6 + #421 close-out + #404 verification)
 
 ### Feature: s550-support
