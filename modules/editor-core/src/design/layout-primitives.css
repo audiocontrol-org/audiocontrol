@@ -1,0 +1,381 @@
+/*
+ * Layout primitives — page shells, site chrome, list-detail grids, sticky
+ * columns, modals, drawers, tabs, status indicators, scrollbar, icons.
+ *
+ * Split from the original `primitives.css` during Phase 9 Task 4.0 so the
+ * per-file 500-line cap is observed. Atomic control primitives (input,
+ * select, button, checkbox, slider, range-bar, number input, envelope)
+ * live in `primitives.css` (pre-existing controls) and `control-primitives.css`
+ * (new v3 atomic primitives).
+ *
+ * Tokens defined here are layout-only; design tokens live in `tokens.css`.
+ */
+
+:root {
+  --ac-font-sans: Inter, "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --ac-font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+  --ac-text-xs: 0.75rem;
+  --ac-text-sm: 0.875rem;
+  --ac-text-md: 1rem;
+  --ac-text-lg: 1.5rem;
+  --ac-page-section-gap: var(--ac-space-6);
+  --ac-page-space: var(--ac-page-section-gap);
+  --ac-page-main-inline: var(--ac-space-6);
+  --ac-site-header-height: 3.75rem;
+  --ac-page-header-height: 3.5rem;
+  --ac-page-sticky-top: var(--ac-site-header-height);
+  --ac-page-content-top: calc(var(--ac-page-list-sticky-top) + var(--ac-page-section-gap));
+  --ac-page-header-padding-y: var(--ac-space-2);
+  --ac-page-main-vertical: 3rem;
+  --ac-page-list-sticky-top: calc(var(--ac-site-header-height) + var(--ac-page-header-height));
+  --ac-page-list-scroll-bottom: 2.25rem;
+  --ac-container-md: 42rem;
+
+  /* List item action icons — visible on both default and selected backgrounds */
+  --ac-action-color: rgba(255, 255, 255, 0.4);
+  --ac-action-hover: rgba(255, 255, 255, 0.85);
+  --ac-action-danger-hover: #f87171;
+  --ac-action-selected-color: rgba(255, 255, 255, 0.85);
+  --ac-action-selected-hover: #fff;
+  --ac-action-selected-danger-hover: #fca5a5;
+}
+
+.ac-page {
+  /* Page content handles its own internal spacing */
+}
+
+.ac-page-shell {
+  display: grid;
+  gap: var(--ac-page-section-gap);
+}
+
+.ac-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ac-space-4);
+  min-height: 2.25rem;
+}
+
+.ac-page-header-block {
+  padding-block: var(--ac-page-header-padding-y);
+}
+
+.ac-page-sticky-header {
+  display: flex;
+  align-items: center;
+  position: sticky;
+  top: var(--ac-page-sticky-top);
+  z-index: 30;
+  min-height: 3.5rem;
+  margin-top: calc(var(--ac-page-main-vertical) * -1);
+  margin-inline: calc(var(--ac-page-main-inline) * -1);
+  padding-inline: var(--ac-page-main-inline);
+  background: var(--ac-color-surface-canvas);
+  border-bottom: 1px solid color-mix(in srgb, var(--ac-color-border-subtle) 70%, transparent);
+}
+
+.ac-page-sticky-header > .ac-page-header {
+  flex: 1;
+}
+
+.ac-page-shell > :not(.ac-page-sticky-header) {
+  margin-inline-start: var(--ac-page-offset-inline, 0px);
+  transition: margin-inline-start 200ms;
+}
+
+.ac-list-detail-grid {
+  display: grid;
+  gap: var(--ac-space-6);
+}
+
+@media (min-width: 1024px) {
+  .ac-list-detail-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    align-items: start;
+  }
+
+  /* First grid cell must stretch to row height for sticky to work */
+  .ac-list-detail-grid > :first-child {
+    align-self: stretch;
+  }
+}
+
+.ac-list-column-sticky {
+  position: sticky;
+  top: var(--ac-page-list-sticky-top);
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - var(--ac-page-list-sticky-top) - var(--ac-page-list-scroll-bottom));
+}
+
+/* Cards inside sticky columns must constrain to parent bounds */
+.ac-list-column-sticky > .card {
+  max-height: inherit;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ac-scroll-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.ac-container-md {
+  width: min(100%, var(--ac-container-md));
+  margin-inline: auto;
+}
+
+.ac-stack {
+  display: grid;
+  gap: var(--ac-space-4);
+}
+
+.ac-stack-lg {
+  display: grid;
+  gap: var(--ac-page-section-gap);
+}
+
+/* Site Layout Primitives */
+
+.ac-site-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--ac-color-surface-canvas);
+}
+
+.ac-site-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--ac-color-surface-panel);
+  border-bottom: 1px solid var(--ac-color-border-subtle);
+}
+
+.ac-site-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: var(--ac-space-3);
+  padding-inline: var(--ac-page-main-inline);
+}
+
+.ac-site-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-8);
+}
+
+.ac-site-title {
+  margin: 0;
+  font-family: var(--ac-font-sans);
+  font-size: 1.25rem;
+  font-weight: var(--ac-font-weight-bold);
+  color: var(--ac-color-text-primary);
+  white-space: nowrap;
+}
+
+.ac-site-title-accent {
+  color: var(--ac-color-accent);
+}
+
+.ac-site-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-6);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ac-site-nav-link {
+  font-family: var(--ac-font-sans);
+  font-size: var(--ac-text-sm);
+  font-weight: var(--ac-font-weight-medium);
+  color: var(--ac-color-text-muted);
+  text-decoration: none;
+  transition: color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-site-nav-link:hover {
+  color: var(--ac-color-text-primary);
+}
+
+.ac-site-nav-link[data-active='true'] {
+  color: var(--ac-color-text-primary);
+}
+
+.ac-site-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-3);
+}
+
+/* Responsive visibility — header text collapses to icons */
+@media (max-width: 1400px) {
+  .ac-hide-narrow {
+    display: none;
+  }
+}
+
+.ac-site-main {
+  flex: 1;
+  width: 100%;
+  padding-inline: var(--ac-page-main-inline);
+  padding-block: var(--ac-page-main-vertical);
+}
+
+.ac-site-footer {
+  margin-top: auto;
+  padding-block: var(--ac-space-4);
+  border-top: 1px solid var(--ac-color-border-subtle);
+}
+
+.ac-site-footer-inner {
+  padding-inline: var(--ac-page-main-inline);
+  text-align: center;
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+}
+
+/* Status Indicator */
+
+.ac-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  font-size: var(--ac-text-sm);
+}
+
+.ac-status-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--ac-color-text-muted);
+}
+
+.ac-status-dot[data-status='connected'] {
+  background: var(--ac-status-connected);
+}
+
+.ac-status-dot[data-status='warning'] {
+  background: var(--ac-status-warning);
+}
+
+.ac-status-dot[data-status='danger'] {
+  background: var(--ac-status-danger);
+}
+
+.ac-status-label {
+  color: var(--ac-color-text-muted);
+}
+
+.ac-status-label[data-status='connected'] {
+  color: var(--ac-status-connected);
+}
+
+.ac-status-detail {
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 20rem;
+}
+
+@media (max-width: 1600px) {
+  .ac-status-detail {
+    max-width: 12rem;
+  }
+}
+
+@media (max-width: 1400px) {
+  .ac-status-detail {
+    display: none;
+  }
+}
+
+/* Tabs */
+
+.ac-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--ac-color-border-subtle);
+}
+
+.ac-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  padding: var(--ac-space-2) var(--ac-space-4);
+  font-size: var(--ac-text-sm);
+  font-weight: var(--ac-font-weight-medium);
+  color: var(--ac-color-text-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-tab:hover {
+  color: var(--ac-color-text-primary);
+}
+
+.ac-tab--active {
+  color: var(--ac-color-text-primary);
+  border-bottom-color: var(--ac-color-accent);
+}
+
+.ac-tab-badge {
+  font-size: var(--ac-text-xs);
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--ac-radius-sm);
+}
+
+.ac-tab-badge--error {
+  background: color-mix(in srgb, var(--ac-status-danger) 22%, transparent);
+  color: var(--ac-status-danger);
+}
+
+.ac-tab-badge--warning {
+  background: color-mix(in srgb, var(--ac-status-warning) 22%, transparent);
+  color: var(--ac-status-warning);
+}
+
+/* Icons */
+
+.ac-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+.ac-icon-lg {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+}
+
+/* Scrollbar styling for dark theme */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ac-color-surface-canvas);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ac-color-border-subtle);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--ac-color-border-subtle) 80%, var(--ac-color-text-muted));
+}

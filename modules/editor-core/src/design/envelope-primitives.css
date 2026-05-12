@@ -1,0 +1,424 @@
+/*
+ * 8-segment VFD-glow envelope primitive — landed in Phase 9 Task 4.0.
+ *
+ * Extracted from `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html`
+ * (lines 1570-1862, sample markup 2640-2840). Per project memory
+ * `feedback_envelope_pattern`: full-width VFD-glow graphic on top + per-segment
+ * numeric table below. The graphic uses inline SVG for the fill / line and
+ * absolute-positioned HTML markers for the points (keeps points circular at
+ * any aspect ratio).
+ *
+ * This file is paired with `control-primitives.css`; both are imported by
+ * `styles.css`. The `<AcEnvelope>` React component composes the markup.
+ */
+
+.ac-envelope {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-4);
+  margin-top: var(--ac-space-3);
+}
+
+/* Graphic (the "monitor") */
+.ac-envelope-graph {
+  position: relative;
+  height: 14.5rem;
+  background:
+    radial-gradient(ellipse at 50% 30%,
+      color-mix(in srgb, var(--ac-color-surface-canvas) 92%, #000) 0%,
+      color-mix(in srgb, var(--ac-color-surface-canvas) 60%, #000) 70%),
+    var(--ac-color-surface-canvas);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ac-envelope-graph::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    180deg,
+    transparent 0,
+    transparent 3px,
+    rgba(0, 0, 0, 0.18) 3px,
+    rgba(0, 0, 0, 0.18) 4px);
+  mix-blend-mode: multiply;
+}
+
+.ac-envelope-graph__label {
+  position: absolute;
+  top: 0.75rem;
+  left: 1rem;
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-accent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.ac-envelope-graph__expand {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--ac-color-text-muted);
+  cursor: pointer;
+  border-radius: 2px;
+  z-index: 2;
+  transition:
+    color var(--ac-duration-fast) var(--ac-easing-default),
+    background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-envelope-graph__expand:hover {
+  color: var(--ac-color-accent);
+  background: color-mix(in srgb, var(--ac-color-accent) 12%, transparent);
+}
+
+.ac-envelope-graph__expand:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
+}
+
+.ac-envelope-graph__help {
+  position: absolute;
+  bottom: 0.4rem;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: var(--ac-font-mono);
+  font-size: 0.65rem;
+  color: var(--ac-color-text-muted);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.ac-envelope-canvas {
+  position: absolute;
+  top: 2rem;
+  left: 1rem;
+  right: 1rem;
+  bottom: 2.6rem;
+  z-index: 1;
+}
+
+.ac-envelope-canvas svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+.ac-envelope-grid-line {
+  stroke: color-mix(in srgb, var(--ac-color-border-subtle) 60%, transparent);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.ac-envelope-grid-line--baseline {
+  stroke: var(--ac-color-border-subtle);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.ac-envelope-segment-divider {
+  stroke: color-mix(in srgb, var(--ac-color-border-subtle) 40%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 2, 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.ac-envelope-active-guide {
+  stroke: var(--ac-color-accent);
+  stroke-width: 1;
+  stroke-dasharray: 4, 3;
+  opacity: 0.7;
+  vector-effect: non-scaling-stroke;
+}
+
+.ac-envelope-fill {
+  fill: var(--ac-color-accent);
+  fill-opacity: 0.08;
+}
+
+.ac-envelope-line {
+  fill: none;
+  stroke: var(--ac-color-accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--ac-color-accent) 65%, transparent));
+  vector-effect: non-scaling-stroke;
+}
+
+.ac-envelope-points {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ac-envelope-point {
+  position: absolute;
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 50%;
+  background: var(--ac-color-surface-canvas);
+  border: 2px solid var(--ac-color-accent);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
+  pointer-events: auto;
+  cursor: grab;
+  transition: transform var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-envelope-point:hover {
+  transform: translate(-50%, -50%) scale(1.15);
+}
+
+.ac-envelope-point--active {
+  width: 1.125rem;
+  height: 1.125rem;
+  background: var(--ac-color-accent);
+  border-color: var(--ac-color-text-primary);
+  box-shadow:
+    0 0 12px color-mix(in srgb, var(--ac-color-accent) 85%, transparent),
+    0 0 4px color-mix(in srgb, var(--ac-color-accent) 90%, transparent) inset;
+}
+
+.ac-envelope-axis {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 1.4rem;
+  height: 0.875rem;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.ac-envelope-axis-tick {
+  position: absolute;
+  transform: translateX(-50%);
+  font-family: var(--ac-font-mono);
+  font-size: 0.625rem;
+  color: var(--ac-color-text-muted);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ac-envelope-axis-tick--active {
+  color: var(--ac-color-accent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
+  font-family: var(--ac-font-display);
+}
+
+.ac-envelope-y-axis {
+  position: absolute;
+  top: 2rem;
+  bottom: 2.6rem;
+  right: 0.4rem;
+  width: 1.6rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  z-index: 2;
+  pointer-events: none;
+  font-family: var(--ac-font-mono);
+  font-size: 0.55rem;
+  color: color-mix(in srgb, var(--ac-color-text-muted) 70%, transparent);
+}
+
+.ac-envelope-sustain-label {
+  position: absolute;
+  transform: translate(-50%, -120%);
+  font-family: var(--ac-font-display);
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-accent);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  pointer-events: none;
+  z-index: 2;
+  white-space: nowrap;
+}
+
+/* Per-segment numeric table */
+
+.ac-envelope-table {
+  border: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 50%, transparent);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.ac-envelope-table__row,
+.ac-envelope-table__header {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--ac-space-3);
+  align-items: center;
+  padding: 0.4rem var(--ac-space-3);
+  border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 30%, transparent);
+}
+
+.ac-envelope-table__row:last-child {
+  border-bottom: 0;
+}
+
+.ac-envelope-table__header {
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 70%, transparent);
+  border-bottom-color: var(--ac-color-border-subtle);
+}
+
+.ac-envelope-table__row[data-active="true"] {
+  background: color-mix(in srgb, var(--ac-color-accent) 7%, transparent);
+  box-shadow: inset 3px 0 0 var(--ac-color-accent);
+}
+
+.ac-envelope-table__row[data-sustain="true"] .ac-envelope-table__seg::after {
+  content: " \25B8";
+  color: var(--ac-color-accent);
+}
+
+.ac-envelope-table__head,
+.ac-envelope-table__seg {
+  font-family: var(--ac-font-display);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-envelope-table__row[data-active="true"] .ac-envelope-table__seg {
+  color: var(--ac-color-accent);
+}
+
+.ac-envelope-table__cell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2.75rem;
+  gap: var(--ac-space-2);
+  align-items: center;
+}
+
+/* Mini range-bar used inside the per-segment table cells */
+.ac-envelope-mini {
+  position: relative;
+  height: 0.875rem;
+  background: var(--ac-color-surface-canvas);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.ac-envelope-mini__fill {
+  position: absolute;
+  inset: 0;
+  width: var(--ac-envelope-mini-fill, 0%);
+  background:
+    linear-gradient(90deg,
+      color-mix(in srgb, var(--ac-color-accent) 18%, transparent) 0%,
+      color-mix(in srgb, var(--ac-color-accent) 36%, transparent) 100%);
+  border-right: var(--ac-rule-medium) solid var(--ac-color-accent);
+}
+
+.ac-envelope-table__row[data-active="true"] .ac-envelope-mini__fill {
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--ac-color-accent) 70%, transparent));
+}
+
+.ac-envelope-mini__readout {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--ac-color-text-primary);
+}
+
+.ac-envelope-table__row[data-active="true"] .ac-envelope-mini__readout {
+  color: var(--ac-color-accent);
+  font-family: var(--ac-font-display);
+}
+
+/* Envelope meta — sustain + end segment radio groups (8 pips each) */
+
+.ac-envelope-meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--ac-space-6);
+  padding: var(--ac-space-3);
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 40%, transparent);
+  border: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 50%, transparent);
+  border-radius: 2px;
+}
+
+.ac-envelope-meta__control {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--ac-space-3);
+}
+
+.ac-envelope-meta__label {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+}
+
+.ac-envelope-meta__pips {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.ac-envelope-meta__pip {
+  height: 1.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ac-color-surface-canvas);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: 1px;
+  color: var(--ac-color-text-muted);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    color var(--ac-duration-fast) var(--ac-easing-default),
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    border-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-envelope-meta__pip:hover {
+  color: var(--ac-color-text-primary);
+  border-color: color-mix(in srgb, var(--ac-color-border-subtle) 60%, var(--ac-color-text-muted));
+}
+
+.ac-envelope-meta__pip[data-active="true"] {
+  background: var(--ac-color-accent);
+  border-color: var(--ac-color-accent);
+  color: var(--ac-color-surface-canvas);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--ac-color-accent) 45%, transparent);
+}
+
+.ac-envelope-meta__pip[data-disabled="true"] {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

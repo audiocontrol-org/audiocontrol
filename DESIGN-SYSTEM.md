@@ -397,6 +397,205 @@ Shared `EnvelopeEditor` renders any polyline envelope. Device-specific wrappers 
 
 ---
 
+## v3 Atomic Control Primitives
+
+Landed in Phase 9 Task 4.0 from the validated `/frontend-design` mockups under `docs/1.0/001-IN-PROGRESS/s550-support/explorations/` (`01-design-language.html` and `04-tones.html`). These primitives express the design-language vocabulary that the per-page polish dispatches consume.
+
+Each primitive lives in a stylesheet under `modules/editor-core/src/design/` and (where composition demands) ships an `<Ac…>` React component under `modules/editor-core/src/components/`. The CSS classes can also be applied to raw HTML; the components compose them.
+
+### .ac-field-label
+
+Uppercase eyebrow label rendered above parameter rows, form fields, and section heads. Distinct from `.ac-label` (which uses sentence-case body type).
+
+**When to use:** any label that introduces a parameter, a select, an input, or a section. Pair with `--ac-text-eyebrow` / `--ac-tracking-eyebrow` already set by the class.
+
+**Example:**
+
+```html
+<label>
+  <span class="ac-field-label">Wave Bank</span>
+  <select class="ac-select">…</select>
+</label>
+```
+
+**Related tokens:** `--ac-font-display`, `--ac-text-eyebrow`, `--ac-tracking-eyebrow`, `--ac-color-text-muted`.
+
+**Accessibility:** purely visual; pair with `<label htmlFor>` or `aria-labelledby` when introducing an input.
+
+### .ac-select (enhanced)
+
+Pre-existing class, polished in Phase 9 Task 4.0 with the v3 mockup direction. Adds:
+- Custom chevron via inline SVG data URI (accent-stroked).
+- Hairline border using `--ac-rule-hairline`.
+- Accent focus ring (3px `color-mix` glow at 25% accent alpha).
+- Hover-row border emphasis using `color-mix` of border + muted text.
+
+**When to use:** any native `<select>` in the editor. The class can be applied directly to native `<select>` — no JSX wrapper required.
+
+**Example:**
+
+```html
+<select class="ac-select">
+  <option value="a">Bank A</option>
+  <option value="b">Bank B</option>
+</select>
+```
+
+**Related tokens:** `--ac-color-border-subtle`, `--ac-color-accent`, `--ac-color-surface-canvas`, `--ac-radius-md`.
+
+**Accessibility:** native `<select>` keyboard + screen-reader behaviour preserved. Focus state visible via `focus-visible` (no outline; box-shadow ring instead).
+
+### .ac-checkbox (v3)
+
+Two-element pattern shipped as `<AcCheckbox>`. The label wraps the checkbox input and a span label; the input is `appearance: none` so it can be styled to the design language (hairline-rule rounded square, accent fill when checked, accent focus glow).
+
+Distinct from the pre-existing single-class `.ac-checkbox-label` (used by `BuildInfo`'s logs filter). Both coexist; new code uses `<AcCheckbox>`.
+
+**When to use:** any boolean toggle in the editor (parameter on/off, dialog options, log filters that aren't yet on `<AcCheckbox>`).
+
+**JSX:**
+
+```tsx
+import { AcCheckbox } from '@audiocontrol/editor-core';
+
+<AcCheckbox checked={enabled} onChange={setEnabled}>
+  Restore wave data after upload
+</AcCheckbox>
+```
+
+**Raw HTML (when not in React):**
+
+```html
+<label class="ac-checkbox">
+  <input class="ac-checkbox__input" type="checkbox" checked />
+  <span class="ac-checkbox__label">Restore wave data</span>
+</label>
+```
+
+**Related tokens:** `--ac-color-accent`, `--ac-color-border-subtle`, `--ac-rule-hairline`, `--ac-rule-medium` (used for the check glyph stroke).
+
+**Accessibility:** native `<input type="checkbox">` semantics; `aria-label` prop is forwarded for icon-only contexts; disabled state dims label color via descendant selector.
+
+### .ac-slider + .ac-range-bar
+
+Two paired primitives that together implement the v3 range-bar parameter row (per project memory `feedback_range_bar_pattern`). `.ac-slider` is the FULL row (three-column grid: label | bar | mono readout); `.ac-range-bar` is the VISUALIZATION inside the bar column. The bar can be used standalone (e.g., inside the envelope table's mini cells).
+
+**Important:** these are NOT a replacement for `ParameterSlider` (the Radix-based drag-handle slider used by the Roland editor today). `ParameterSlider` stays in place; per-page polish dispatches decide their own consumer migration.
+
+**Variants of `.ac-range-bar` / `<AcRangeBar>`:**
+- **linear** (default) — single accent fill anchored at the left edge; width = `value` as a percentage of `[min, max]`.
+- **bipolar** — fill anchored at `center` (default 0), growing left or right. CSS variables `--ac-range-bar-l` and `--ac-range-bar-w` are emitted by the component.
+- **enum** — N-cell pip track, the cell at `activeIndex` lit accent. Use for discrete categorical params (loop mode, wave bank, etc.).
+
+**JSX:**
+
+```tsx
+import { AcSlider } from '@audiocontrol/editor-core';
+
+<AcSlider
+  label="Cutoff"
+  bar={{ variant: 'linear', value: tone.cutoff, min: 0, max: 127 }}
+  readout={tone.cutoff}
+/>
+
+<AcSlider
+  label="Fine Tune"
+  bar={{ variant: 'bipolar', value: tone.fineTune, min: -50, max: 50 }}
+  readout={tone.fineTune}
+/>
+
+<AcSlider
+  label="Loop Mode"
+  bar={{ variant: 'enum', count: 4, activeIndex: tone.loopMode }}
+  readout="Forward"
+/>
+```
+
+**Related tokens:** `--ac-color-accent`, `--ac-color-surface-canvas`, `--ac-color-border-subtle`, `--ac-color-text-muted`, `--ac-rule-hairline`, `--ac-rule-medium`, `--ac-font-display` (label), `--ac-font-mono` (readout + ticks), `--ac-tracking-eyebrow`.
+
+**Accessibility:** the bar carries `role="img"` and an `aria-label` describing the value-of-range. For read-write rows, place a focusable affordance (e.g., the readout becomes an `<AcNumberInput editable>` or a parent button) — the bar itself is a visualization, not a focus target.
+
+### .ac-number-input
+
+Display-font numeric readout. Two shapes:
+- **read-only** (default) — `<span class="ac-number-input">` with the value in display font and an optional dim unit.
+- **editable** (`editable={true}`) — `<input type="number">` with the same display styling and spin-buttons hidden.
+
+**JSX:**
+
+```tsx
+import { AcNumberInput } from '@audiocontrol/editor-core';
+
+<AcNumberInput value={32} unit="kHz" />
+
+<AcNumberInput
+  editable={true}
+  value={tone.cutoff}
+  onChange={(v) => setTone({ ...tone, cutoff: v })}
+  min={0}
+  max={127}
+/>
+```
+
+**Related tokens:** `--ac-color-accent`, `--ac-color-text-muted`, `--ac-font-display`, `--ac-font-mono`, `--ac-text-sm`, `--ac-text-xs`.
+
+**Accessibility:** native `<input type="number">` keyboard behaviour preserved in editable mode; spin buttons hidden visually but `min` / `max` / `step` are forwarded to the input. `aria-label` prop is forwarded.
+
+### .ac-envelope (8-segment VFD-glow editor)
+
+Per project memory `feedback_envelope_pattern`: stacks a full-width "monitor" graphic with phosphor scanlines on top of a per-segment numeric table, plus a meta strip with sustain-segment and end-segment radio rows.
+
+Shipped as `<AcEnvelope>`, composed from three sub-components also exported individually for advanced layouts:
+- `<AcEnvelopeGraph>` — the monitor (grid lines, accent fill, bright stroke line, point markers, axis ticks, y-axis level guides, sustain marker).
+- `<AcEnvelopeMeta>` — sustain + end segment pip rows.
+- `<AcEnvelopeTable>` — per-segment numeric table with mini range-bars.
+
+**Drag interaction is OUT of scope for the Task 4.0 dispatch.** Points are rendered visually with `cursor: grab`; drag handlers arrive with the page-amendment dispatch. The component exposes callbacks (`onPointSelect`, `onSustainChange`, `onEndChange`, `onExpand`) where the consuming page chooses to respond.
+
+**JSX:**
+
+```tsx
+import { AcEnvelope } from '@audiocontrol/editor-core';
+
+<AcEnvelope
+  label="TVF · 8-SEGMENT"
+  segments={[
+    { time: 15, level: 127 },
+    { time: 22, level: 96 },
+    /* …six more segments… */
+  ]}
+  sustainSegment={5}
+  endSegment={8}
+  activeSegment={2}
+  onPointSelect={(seg) => setActive(seg)}
+  onSustainChange={(seg) => writeToDevice({ sustain: seg })}
+  onEndChange={(seg) => writeToDevice({ end: seg })}
+  onExpand={openPrecisionEditor}
+  helpText="Drag points to adjust · Click expand for precision editing"
+/>
+```
+
+**Related tokens:** `--ac-color-accent`, `--ac-color-surface-canvas`, `--ac-color-border-subtle`, `--ac-color-text-primary`, `--ac-color-text-muted`, `--ac-rule-hairline`, `--ac-rule-medium`, `--ac-font-display`, `--ac-font-mono`, `--ac-tracking-eyebrow`. Component-internal: scanline overlay is a `repeating-linear-gradient` with hard-coded 0.18 alpha black (intentional — it's the printed-glass effect, not a colored surface).
+
+**Accessibility:** the graph carries `role="region"` with an `aria-label` describing segment count and active segment. Each draggable point is a `role="button"` with `tabIndex=0` and an `aria-label` like "Select segment 3". Sustain and end pip rows are `role="radiogroup"` / `role="radio"` with `aria-checked`. Disabled pips have `data-disabled="true"` and `tabIndex=-1`.
+
+### CSS file organization (Phase 9 Task 4.0)
+
+The original `primitives.css` exceeded 500 lines and was split during Task 4.0:
+
+- `tokens.css` — design tokens
+- `layout-primitives.css` — page shell, site chrome, list-detail grid, tabs, status indicator, scrollbar, icons
+- `overlay-primitives.css` — modal + slide-over drawer
+- `primitives.css` — buttons, inputs (with v3 polish), selects (with v3 chevron + focus glow), labels, fields, card, titles, text utilities, link, radio, list-action-btn, drawer-section
+- `feedback-primitives.css` — alerts, notifications, logs panel, operation progress, spinner, build-info, info-list
+- `control-primitives.css` — v3 atomic primitives (`ac-field-label`, `ac-checkbox`, `ac-slider`, `ac-range-bar`, `ac-number-input`)
+- `envelope-primitives.css` — v3 8-segment VFD-glow envelope primitive
+- `library.css` — library tree/dialog chrome (separate file due to size)
+
+`styles.css` imports all of them in dependency order. All `.ac-*` classes are usable directly from any editor that already imports the editor-core stylesheet.
+
+---
+
 ## Contract Enforcement Rules
 
 1. **Every shared interface change must break consumers at compile time.** If you add a required field and no editor breaks, the type isn't actually shared.

@@ -1,0 +1,173 @@
+/*
+ * Overlay primitives — modal dialogs and slide-over drawers.
+ *
+ * Split from the original `primitives.css` during Phase 9 Task 4.0 so the
+ * per-file 500-line cap is observed. These primitives stack above page
+ * content (z-index 100+) and share a fixed-position layout pattern.
+ */
+
+/* Modal Primitives */
+
+.ac-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.ac-modal {
+  background: var(--ac-color-surface-panel);
+  border: 1px solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-lg);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  width: 100%;
+  max-width: 42rem;
+  margin: 0 var(--ac-space-4);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.ac-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--ac-space-4);
+  border-bottom: 1px solid var(--ac-color-border-subtle);
+}
+
+.ac-modal-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: var(--ac-font-weight-bold);
+  color: var(--ac-color-text-primary);
+}
+
+.ac-modal-close {
+  padding: var(--ac-space-1);
+  color: var(--ac-color-text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: opacity var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-modal-close:hover {
+  opacity: 0.7;
+}
+
+.ac-modal-content {
+  flex: 1;
+  overflow: auto;
+  padding: var(--ac-space-4);
+}
+
+.ac-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--ac-space-4);
+  border-top: 1px solid var(--ac-color-border-subtle);
+}
+
+.ac-modal-footer-text {
+  margin: 0;
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-modal-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+}
+
+/* Slide-Over Drawer — slides in from the right edge */
+
+.ac-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.3);
+  transition: opacity var(--ac-duration-normal) var(--ac-easing-default);
+}
+
+.ac-drawer-overlay[data-state="closed"] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ac-drawer-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 101;
+  width: 24rem;
+  max-width: 90vw;
+  background: var(--ac-color-surface-panel);
+  border-left: 1px solid var(--ac-color-border-subtle);
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(0);
+  transition: transform var(--ac-duration-normal) var(--ac-easing-default);
+}
+
+.ac-drawer-panel[data-state="closed"] {
+  transform: translateX(100%);
+}
+
+.ac-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--ac-space-3) var(--ac-space-4);
+  border-bottom: 1px solid var(--ac-color-border-subtle);
+  flex-shrink: 0;
+}
+
+.ac-drawer-title {
+  font-size: 1rem;
+  font-weight: var(--ac-font-weight-semibold);
+  color: var(--ac-color-text-primary);
+}
+
+.ac-drawer-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  border-radius: var(--ac-radius-sm);
+  background: transparent;
+  color: var(--ac-color-text-muted);
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: color var(--ac-duration-fast), background-color var(--ac-duration-fast);
+}
+
+.ac-drawer-close:hover {
+  color: var(--ac-color-text-primary);
+  background: color-mix(in srgb, var(--ac-color-text-muted) 12%, transparent);
+}
+
+.ac-drawer-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--ac-space-4);
+}
+
+.ac-drawer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ac-space-2);
+  padding: var(--ac-space-3) var(--ac-space-4);
+  border-top: 1px solid var(--ac-color-border-subtle);
+  flex-shrink: 0;
+}

@@ -1,0 +1,315 @@
+/*
+ * Feedback primitives — alerts, notifications, operation progress,
+ * build-info trigger, info-list, logs panel, spinner.
+ *
+ * Split from the original `primitives.css` during Phase 9 Task 4.0 so the
+ * per-file 500-line cap is observed. These classes describe non-overlay
+ * surfaces that communicate state to the user (success, error, progress,
+ * runtime metadata).
+ */
+
+.ac-alert {
+  border: 1px solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-md);
+  padding: var(--ac-space-3);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 90%, transparent);
+}
+
+.ac-alert-error {
+  border-color: color-mix(in srgb, var(--ac-status-danger) 55%, var(--ac-color-border-subtle));
+  background: color-mix(in srgb, var(--ac-status-danger) 16%, transparent);
+}
+
+.ac-alert-inline {
+  border: 1px solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  padding: var(--ac-space-1) var(--ac-space-2);
+}
+
+.ac-alert-inline-error {
+  color: var(--ac-status-danger);
+  border-color: color-mix(in srgb, var(--ac-status-danger) 55%, var(--ac-color-border-subtle));
+  background: color-mix(in srgb, var(--ac-status-danger) 12%, transparent);
+}
+
+/* Notification Area */
+
+.ac-notification-area {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-2);
+}
+
+.ac-notification-area .ac-alert {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  font-size: var(--ac-text-sm);
+}
+
+.ac-notification-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.ac-notification-actions {
+  display: flex;
+  gap: var(--ac-space-1);
+  margin-left: var(--ac-space-3);
+  flex-shrink: 0;
+}
+
+.ac-notification-actions .ac-btn-sm {
+  padding: 0.125rem var(--ac-space-2);
+  font-size: var(--ac-text-xs);
+}
+
+/* Build Info */
+
+.ac-build-info-trigger {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  padding: var(--ac-space-1) var(--ac-space-2);
+  border-radius: var(--ac-radius-sm);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--ac-color-text-muted);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: opacity var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-build-info-trigger:hover {
+  opacity: 0.8;
+}
+
+.ac-build-info-trigger--error {
+  color: var(--ac-status-danger);
+  border-color: color-mix(in srgb, var(--ac-status-danger) 55%, transparent);
+}
+
+.ac-build-info-badge {
+  margin-left: var(--ac-space-1);
+  color: var(--ac-status-danger);
+}
+
+/* Info List */
+
+.ac-info-list {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-sm);
+}
+
+.ac-info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ac-space-4);
+  margin-bottom: var(--ac-space-3);
+}
+
+.ac-info-label {
+  color: var(--ac-color-text-muted);
+}
+
+.ac-info-value {
+  color: var(--ac-color-text-primary);
+  text-align: right;
+}
+
+/* Logs Panel */
+
+.ac-logs-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-3);
+}
+
+.ac-logs-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ac-space-2);
+  flex-wrap: wrap;
+}
+
+.ac-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-logs-actions {
+  display: flex;
+  gap: var(--ac-space-2);
+}
+
+.ac-logs-list {
+  background: var(--ac-color-surface-canvas);
+  border: 1px solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  max-height: 16rem;
+  overflow: auto;
+}
+
+.ac-logs-empty {
+  padding: var(--ac-space-4);
+  margin: 0;
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text-muted);
+  text-align: center;
+}
+
+.ac-log-entry {
+  padding: var(--ac-space-2);
+  border-bottom: 1px solid var(--ac-color-border-subtle);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+}
+
+.ac-log-entry:last-child {
+  border-bottom: none;
+}
+
+.ac-log-entry--error {
+  background: color-mix(in srgb, var(--ac-status-danger) 12%, transparent);
+  color: var(--ac-status-danger);
+}
+
+.ac-log-entry--warn {
+  background: color-mix(in srgb, var(--ac-status-warning) 12%, transparent);
+  color: var(--ac-status-warning);
+}
+
+.ac-log-entry--log {
+  color: var(--ac-color-text-muted);
+}
+
+.ac-log-meta {
+  display: flex;
+  gap: var(--ac-space-2);
+  opacity: 0.7;
+  margin-bottom: var(--ac-space-1);
+}
+
+.ac-log-level {
+  text-transform: uppercase;
+  font-weight: var(--ac-font-weight-bold);
+}
+
+.ac-log-level--error {
+  color: var(--ac-status-danger);
+}
+
+.ac-log-level--warn {
+  color: var(--ac-status-warning);
+}
+
+.ac-log-message {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* Operation Progress */
+
+.ac-operation-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-1);
+}
+
+.ac-operation-progress-header,
+.ac-operation-progress-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-operation-progress-pct {
+  color: var(--ac-color-text-primary);
+}
+
+.ac-operation-progress-track {
+  height: 0.5rem;
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 60%, transparent);
+  border-radius: var(--ac-radius-sm);
+  overflow: hidden;
+}
+
+.ac-operation-progress-fill {
+  height: 100%;
+  background: var(--ac-color-accent);
+  border-radius: var(--ac-radius-sm);
+  transition: width var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-operation-error {
+  font-size: var(--ac-text-sm);
+  color: var(--ac-status-danger);
+  background: color-mix(in srgb, var(--ac-status-danger) 12%, transparent);
+  border-radius: var(--ac-radius-md);
+  padding: var(--ac-space-2);
+}
+
+.ac-operation-success {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-4);
+}
+
+.ac-operation-success-message {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  color: var(--ac-status-connected);
+}
+
+.ac-operation-success-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+.ac-operation-success-detail {
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-operation-success-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ac-operation-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ac-space-2);
+  padding: var(--ac-space-8);
+  color: var(--ac-color-text-muted);
+}
+
+/* Spinner */
+
+.ac-spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: ac-spin 0.6s linear infinite;
+}
+
+.ac-spinner-sm {
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-right: var(--ac-space-2);
+}
+
+@keyframes ac-spin {
+  to { transform: rotate(360deg); }
+}

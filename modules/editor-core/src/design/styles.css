@@ -4,9 +4,28 @@
  * Single import that includes all design layers:
  *   @import '@audiocontrol/editor-core/styles.css';
  *
- * Replaces the need to import tokens, primitives, and library CSS separately.
+ * The primitives layer is split across several files (each under the
+ * per-file 500-line cap):
+ *   - tokens.css              — design tokens
+ *   - layout-primitives.css   — page shell, site chrome, list-detail, tabs
+ *   - overlay-primitives.css  — modal + slide-over drawer
+ *   - primitives.css          — buttons, inputs, selects, labels, fields,
+ *                               card/title/text utilities, link, radio,
+ *                               list-action-btn, drawer-section
+ *   - feedback-primitives.css — alerts, notifications, logs, operation
+ *                               progress, spinner, build-info, info-list
+ *   - control-primitives.css  — v3 atomic primitives (ac-field-label,
+ *                               ac-checkbox, ac-slider, ac-range-bar,
+ *                               ac-number-input)
+ *   - envelope-primitives.css — v3 8-segment VFD-glow envelope primitive
+ *   - library.css             — library tree/dialog chrome (large surface)
  */
 
 @import './tokens.css';
+@import './layout-primitives.css';
+@import './overlay-primitives.css';
 @import './primitives.css';
+@import './feedback-primitives.css';
+@import './control-primitives.css';
+@import './envelope-primitives.css';
 @import './library.css';

@@ -4,6 +4,39 @@ export {
   type ParameterSliderProps,
   type ParameterSliderTheme,
 } from './ParameterSlider';
+
+// v3 atomic control primitives (Phase 9 Task 4.0)
+export { AcCheckbox, type AcCheckboxProps } from './AcCheckbox';
+export {
+  AcRangeBar,
+  type AcRangeBarProps,
+  type AcRangeBarLinearProps,
+  type AcRangeBarBipolarProps,
+  type AcRangeBarEnumProps,
+} from './AcRangeBar';
+export { AcSlider, type AcSliderProps } from './AcSlider';
+export {
+  AcNumberInput,
+  type AcNumberInputProps,
+  type AcNumberInputReadProps,
+  type AcNumberInputEditProps,
+} from './AcNumberInput';
+export {
+  AcEnvelope,
+  type AcEnvelopeProps,
+  type AcEnvelopeSegment,
+} from './AcEnvelope';
+export {
+  AcEnvelopeGraph,
+  type AcEnvelopeGraphProps,
+  type AcEnvelopeGraphSegment,
+} from './AcEnvelopeGraph';
+export { AcEnvelopeMeta, type AcEnvelopeMetaProps } from './AcEnvelopeMeta';
+export {
+  AcEnvelopeTable,
+  type AcEnvelopeTableProps,
+  type AcEnvelopeTableSegment,
+} from './AcEnvelopeTable';
 export {
   CollapsibleSection,
   type CollapsibleSectionProps,
