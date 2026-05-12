@@ -107,4 +107,47 @@ Every workplan should be readable as a hostile contract: an outside reader who w
 
 - **Status reports name what's NOT done as loudly as what is.** A task whose acceptance criteria have 3 of 5 boxes ticked is not "mostly done" — it is at most "started." Reporting it as "done with caveats" trains the operator (and the agent itself) to treat 60% as success. It isn't.
 
+---
+
+## When CI is absent, the controller is the gate — re-run the load-bearing tests independently after every implementer dispatch
+
+**An implementer subagent's reported test output is a claim, not evidence.** Their `make test-ui-roland` invocation lives in a sandbox the controller never sees. Their `146 passed` line could be fabricated, stale, copy-pasted from an earlier run, or accurate-but-against-the-wrong-tree. Without CI, the controller is the only structural check between an implementer overclaiming a green suite and that overclaim shipping to main.
+
+**Why:** Recorded as a session insight in DEVELOPMENT-NOTES.md on 2026-05-11 after the operator decision to remove CI: *"every dispatch independently re-runs it (not just trusting the sub-agent's reported output) … if this becomes a habit it replaces the CI safety net adequately."* That session's discipline (running the gate twice per dispatch — once by sub-agent, once independently) held; this rule canonizes the habit so it doesn't decay.
+
+The two-stage review (`superpowers:subagent-driven-development`) catches spec-compliance and code-quality issues by reading code. It does NOT independently verify that the test suite actually passes after the implementer's commit. That gap is what this rule closes.
+
+**The class of failure modes this rule names:**
+
+| The pattern | What it actually means |
+|---|---|
+| *"Implementer reported 146 passed; moving to review"* | I have no evidence the suite ran; the report is a claim |
+| *"Tests pass per the implementer's summary"* | The summary describes intent; intent and reality are different signals |
+| *"I'll trust the sub-agent — re-running takes 2 minutes"* | 2 minutes is the cost of being wrong divided by zero priors |
+| *"The implementer said all green so we can amend"* | An amend on top of unverified green compounds the unverification |
+| *"CI would have caught a regression"* | CI was removed 2026-05-11; the controller IS the gate |
+
+**How to apply:**
+
+- **After every implementer dispatch that touches code, re-run the load-bearing test gate yourself before dispatching reviewers.** For roland-sxx0-editor work: `make test-ui-roland`. For other modules: the corresponding `make test-*` target named in the workplan's "Proven complete when" gate. Run from the project root in a fresh background bash.
+
+- **The independent re-run does NOT replace the two-stage review.** The order is:
+  1. Implementer reports DONE.
+  2. **Controller independently re-runs the test gate.** If red, the implementer is re-dispatched with the specific failure — no reviewers yet.
+  3. If green, dispatch spec-compliance reviewer.
+  4. If spec-compliant, dispatch code-quality reviewer.
+  5. After each fix-and-re-review loop, **re-run the test gate again.** Even doc-only changes get the gate re-run if any source files moved (the cost is low; the cost of an unverified green is high).
+
+- **The re-run is non-negotiable for hardware-touching work.** Fixture changes, scenario changes, and recording-script changes can produce green sub-agent reports against stale on-disk fixtures while a fresh capture would diverge. Re-running locks the gate against this failure mode.
+
+- **Don't trust your own test-rerun output without seeing the final line.** Pipe through `tail` if needed, but verify the `N passed` line landed. A test run that exits 0 with no `passed` line means a config or environment issue, not success.
+
+- **The re-run is cheap.** For roland-sxx0-editor: ~2:20 of wall-clock per run; cache-warm so subsequent runs after the same commit are even faster. Compare to the cost of shipping a regression that masquerades as green for hours of subsequent work — the re-run pays for itself the first time it catches something, and provides cheap insurance every other time.
+
+- **If a re-run reveals the implementer's reported count differs from yours, that is a finding to surface to the operator, not a number to silently reconcile.** A count drift between dispatched-claim and re-run-actual means either the implementer's environment diverges from the controller's, or the report is fabricated. Both are operator-level concerns.
+
+- **Pair this rule with reviewer-driven verification of fixture/file claims.** The reviewer prompts already say "do not trust the report" — that catches lying-about-the-code; the test re-run catches lying-about-test-results. Together they close the controller-side trust gap CI used to occupy.
+
+**The hard test:** before reporting a wave / phase / task as complete to the operator, ask — *"can I quote the exact `N passed` line from a test run I personally invoked after the latest commit?"* If no, the gate isn't proven; re-run before reporting. The implementer's number is a hypothesis until you've independently confirmed it.
+
 - **When the operator catches a deferral the controller missed, the response is not "I'll file an issue and continue."** The response is: revert or amend the deferring commit, complete the missed work in scope, and re-land. A missed deferral that has already shipped is a regression to be fixed, not a backlog item to be tracked.
