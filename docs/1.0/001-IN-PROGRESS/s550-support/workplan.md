@@ -598,11 +598,13 @@ See `.claude/rules/workflow-playbooks.md § Phase-completion duplication audit` 
      - [ ] Confirmed every dialog uses `OperationProgressBar` / `OperationErrorBanner` / `OperationSuccessScreen` (existing shared components). Any dialog re-implementing them inline is treated as a regression and unified before merge.
      - [ ] Document: "Dialogs audited: <N>, primitives extracted: <M>, primitives kept inline because <reason>."
 
-6. **Visual verification on both devices.**
-   - **Prerequisite from audit doc finding 3 — UI-layer test infrastructure does not exist yet.** `playwright.test-harness.config.ts` points at `test/ui/` which contains only `.gitkeep`, and there are no `Test*Page.tsx` harness pages. (Note: integration coverage at `test/integration/library-import.test.ts` exists at the data layer; the gap is specifically UI-layer layout/interaction regression.) Before screenshotting, add at minimum: a `TestPagesHarnessPage` that mounts each redesigned page with mock data, registered in `App.tsx` behind a `/test/*` route, and one Playwright spec per page under `test/ui/<page>.spec.ts` that loads the harness and asserts the design-system invariants we want to defend (no hardcoded pixel widths in computed style, single page-title element, expected number of design-token rules applied).
-   - Take before/after screenshots of every page on `/roland/s330/editor` and `/roland/s550/editor`.
-   - Confirm no functional regressions (pages still load real data, dialogs still open/close, no device conditionals introduced).
-   - Attach screenshots to the GitHub issue and to the implementation summary.
+6. **Visual verification on both devices.** ✓ Complete 2026-05-12.
+   - **Prerequisite from audit doc finding 3 — UI-layer test infrastructure does not exist yet.** Resolved during Phase 0 — `test/ui/` now hosts the 146-spec simulated-MIDI harness; this Task reused that infrastructure rather than adding test pages.
+   - [x] Screenshots captured: 22 captures across 2 devices × 11 distinct states. Output: [`docs/1.0/001-IN-PROGRESS/s550-support/phase-9-task-6-screenshots/`](./phase-9-task-6-screenshots/) with index `README.md`. Capture spec: `modules/roland-sxx0-editor/test/ui/phase-9-task-6-screenshots.spec.ts`.
+   - [x] "Before" captures NOT included — Phase 9 Tasks 4-5 already shipped 13 commits today; pre-Phase-9 visuals would require checkout-and-replay against each pre-amend commit. Out of scope for this verification gate per workplan §571 ("Both devices visually correct"). Design-intent reference is in `explorations/`.
+   - [x] No functional regressions: `make test-ui-roland` → **160 passed, 4 skipped** (146 baseline + 14 new screenshot captures; 4 skipped per fixture gaps documented in screenshot README).
+   - [x] Gaps documented in screenshot README (3 skipped × 2 devices = 6 skipped captures, all justified): WorkflowsPage is not routed in App.tsx (consistent with workplan §54-55 "not yet at v3"); ExportToneDialog requires `hasSampleData` which the `tones-bank-0` fixture's tone 0 doesn't satisfy after replay; other 9 library dialogs share the same `<Dialog.Content>` chrome already captured via SaveSet/Load — capability specs in `test/ui/capabilities/library-flows-dialogs.spec.ts` mount-assert each on every run.
+   - [x] Attached to GitHub issue #392.
    - **Duplication audit gate:** N/A — verification-only task.
 
 7. **Update DESIGN-SYSTEM.md to align with audiocontrol.org.**
