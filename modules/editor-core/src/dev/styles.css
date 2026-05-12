@@ -8,7 +8,7 @@
 body {
   background: var(--ac-color-surface-canvas);
   color: var(--ac-color-text-primary);
-  font-family: var(--ac-font-sans);
+  font-family: var(--ac-font-body);
   min-height: 100vh;
   margin: 0;
 }

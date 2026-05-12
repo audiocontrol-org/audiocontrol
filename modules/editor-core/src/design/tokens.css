@@ -75,6 +75,14 @@
   --ac-font-body: "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
 
+  /* Data / numeric font stack — JetBrains Mono first per the v3 typography
+     scale (audiocontrol.org-aligned). IBM Plex Mono falls in behind as the
+     universal fallback. Used by every numeric readout, slot identifier,
+     range-bar tick, log entry, build-info, envelope label. Inter is
+     forbidden by the design language; never list it. */
+  --ac-font-mono: "JetBrains Mono", "IBM Plex Mono", "SFMono-Regular",
+    Menlo, monospace;
+
   /* Eyebrow / display tracking — uppercase rows ("§ Patch parameters",
      bank labels, status metrics) need wider tracking than body text. */
   --ac-tracking-eyebrow: 0.14em;

@@ -12,8 +12,10 @@
  */
 
 :root {
-  --ac-font-sans: Inter, "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
-  --ac-font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+  /* --ac-font-sans / --ac-font-mono moved to tokens.css during Phase 9 Task 7.
+     Inter was removed from the body stack (forbidden by the v3 design
+     language); --ac-font-body is the canonical body face. JetBrains Mono is
+     now the primary mono face per the v3 typography scale. */
   --ac-text-xs: 0.75rem;
   --ac-text-sm: 0.875rem;
   --ac-text-md: 1rem;
@@ -172,7 +174,7 @@
 
 .ac-site-title {
   margin: 0;
-  font-family: var(--ac-font-sans);
+  font-family: var(--ac-font-body);
   font-size: 1.25rem;
   font-weight: var(--ac-font-weight-bold);
   color: var(--ac-color-text-primary);
@@ -193,7 +195,7 @@
 }
 
 .ac-site-nav-link {
-  font-family: var(--ac-font-sans);
+  font-family: var(--ac-font-body);
   font-size: var(--ac-text-sm);
   font-weight: var(--ac-font-weight-medium);
   color: var(--ac-color-text-muted);

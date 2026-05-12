@@ -28,7 +28,7 @@
 .ac-title-lg {
   margin: 0;
   color: var(--ac-text-primary);
-  font-family: var(--ac-font-sans);
+  font-family: var(--ac-font-body);
   font-size: var(--ac-text-lg);
   font-weight: var(--ac-font-weight-bold);
   line-height: var(--ac-leading-tight);
@@ -37,7 +37,7 @@
 .ac-title-md {
   margin: 0;
   color: var(--ac-text-primary);
-  font-family: var(--ac-font-sans);
+  font-family: var(--ac-font-body);
   font-size: 1.125rem;
   font-weight: var(--ac-font-weight-semibold);
   line-height: var(--ac-leading-tight);
@@ -286,7 +286,7 @@
 
 .ac-label {
   color: var(--ac-text-primary);
-  font-family: var(--ac-font-sans);
+  font-family: var(--ac-font-body);
   font-size: var(--ac-text-sm);
   font-weight: var(--ac-font-weight-semibold);
   line-height: var(--ac-leading-tight);
