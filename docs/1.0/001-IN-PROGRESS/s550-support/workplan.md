@@ -59,7 +59,7 @@ This workplan is written defensively per [`.claude/rules/agent-discipline.md`](/
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| **Phase 0: Frontend/Backend Decoupling** | **Tasks 1–9 Done; Task 10 INCOMPLETE.** Phase 9 BLOCKED. | Adapter-level recording proxy + simulated adapter + 7 captured fixtures (4 from earlier + patches-bank-0 + tones-bank-0 + play-init from #404) + `?midi=simulated` URL-param mode + Vite fixture middleware + 15 Playwright UI specs + drift-detection script. CI workflow removed 2026-05-11 (operator: "we are not going to invest in CI test runners. That's a waste of time for a nascent project."). Tests run locally via `make test-ui-roland` / `make test-ui-s3k` / `pnpm test`. **Task 10 status:** Wave 1 (16 display capability specs) DONE; Waves 2a/2b/2c/3/4/5/6 NOT done — these were filed as issues #411–#417 and treated as deferrable, which violates the workplan-integrity rule (see `.claude/rules/agent-discipline.md`). Task 10 is INCOMPLETE until **every capability in `ROLAND-S550-EDITOR-CAPABILITIES.md` has a passing test bound to it** (Test column populated; no `—` remaining for capabilities marked `covered` or `partial`). Issues #411–#417 are now in-scope work for Task 10, not deferred follow-ups. |
+| **Phase 0: Frontend/Backend Decoupling** | **Tasks 1–9 Done; Task 10 IN PROGRESS.** Phase 9 BLOCKED. | Adapter-level recording proxy + simulated adapter + 7 captured fixtures + `?midi=simulated` URL-param mode + Vite fixture middleware + Playwright UI specs + drift-detection script. CI workflow removed 2026-05-11 (operator: "we are not going to invest in CI test runners. That's a waste of time for a nascent project."). Tests run locally via `make test-ui-roland` / `make test-ui-s3k` / `pnpm test`. **Task 10 status:** Waves 1 / 2a / 2b / 2c / 3 complete (132 specs passing via `make test-ui-roland`, up from 31). Wave 4 partial — 15 specs landed, 7 remain pending Decision 3 confirmation (library-seeding approach). Wave 5 (DnD, ~6 specs) sequenced after Decision 3 per operator Decision 4 = Option A. Wave 6 partial — 3 of 7 specs (panic + progress + live-edit guard) landed; remaining 4 (D-XX-02/03/04 DT1 emits) blocked on S-550 front-panel fixture capture; D-XX-01/05/06/07/08 marked `removed` per operator Decision 1 (drawer-embedded VideoCapture IS canonical). See [decisions-2026-05-11.md](./decisions-2026-05-11.md) v2 for the gating items. |
 | Phase 1: Shared S-Series Extraction | Complete | `roland-s-series` base module |
 | Phase 2: S-550 Device Module | Complete | Addresses, params, config, types |
 | Phase 3: S-550 Client & Tone Factory | Complete | Shared client factory pattern |
@@ -106,14 +106,22 @@ The editor's UI is tightly coupled to the SysEx backend, so every redesign itera
 
    **Sub-tasks (all required for completion; none deferrable):**
    - ✅ **Wave 1** (commit `4dbcf151`) — 16 display capability specs.
-   - ⏳ **Wave 2b** — multi-mode parameter writes (4 specs covering D-PLAY-04..07). Tracked: [#412](https://github.com/audiocontrol-org/audiocontrol/issues/412). Smallest wave; in scope NOW.
-   - ⏳ **Wave 2a** — patch parameter writes (11 specs covering D-PATCH-01..05, 07..12). Tracked: [#411](https://github.com/audiocontrol-org/audiocontrol/issues/411). In scope NOW.
-   - ⏳ **Wave 2c** — tone parameter writes (~40 specs covering D-TONE-WAVE/PITCH/TVF/TVA/LFO/ENV). Tracked: [#413](https://github.com/audiocontrol-org/audiocontrol/issues/413). In scope NOW.
-   - ⏳ **Wave 3** — display assertion gaps (~30 specs, no fixtures). Tracked: [#414](https://github.com/audiocontrol-org/audiocontrol/issues/414). In scope NOW.
-   - ⏳ **Wave 4** — library + dialog flows (~15 specs + fixtures + library state setup). Tracked: [#415](https://github.com/audiocontrol-org/audiocontrol/issues/415). In scope NOW.
-   - ⏳ **Wave 5** — drag-drop tests (~6 specs). Tracked: [#416](https://github.com/audiocontrol-org/audiocontrol/issues/416). In scope NOW.
-   - ⏳ **Wave 6** — cross-cutting tests (front panel + panic + progress, ~7 specs). Tracked: [#417](https://github.com/audiocontrol-org/audiocontrol/issues/417). In scope NOW.
+   - ✅ **Wave 2b** (commit `fffde378` + `5634b35b` + `cae7c994`) — 4 specs at `test/ui/capabilities/play-writes.spec.ts` covering D-PLAY-04..07. [#412](https://github.com/audiocontrol-org/audiocontrol/issues/412).
+   - ✅ **Wave 2a** (commit `cb78d439` + `f490fa81`) — 11 specs at `test/ui/capabilities/patch-writes.spec.ts` covering D-PATCH-01..05, 07..12. `SimulatedAdapterIntrospection` exposed (`aea2acdf`) for positive-assertion cursor polling. [#411](https://github.com/audiocontrol-org/audiocontrol/issues/411).
+   - ✅ **Wave 2c** (commit `b4910e5c` + `8c15d2d5`) — ~40 specs at `test/ui/capabilities/tone-writes.spec.ts` across wave/pitch/TVF/TVA/LFO/envelope sections. [#413](https://github.com/audiocontrol-org/audiocontrol/issues/413).
+   - ✅ **Wave 3** (commit `dd3fe5a5`) — ~30 display-assertion specs at `test/ui/capabilities/display-gaps.spec.ts`. No new fixtures; uses existing `load-everything.ndjson`. [#414](https://github.com/audiocontrol-org/audiocontrol/issues/414).
+   - 🟡 **Wave 4 partial** (commit `e14fbe83`) — 15 specs landed at `test/ui/capabilities/library-flows.spec.ts`. **7 specs remain pending Decision 3** (library content seeding via fixture-copy approach awaiting operator confirmation in [decisions-2026-05-11.md](./decisions-2026-05-11.md) v2). Once Decision 3 lands, ~7 specs + seeding helpers (~100-150 lines) close the wave. [#415](https://github.com/audiocontrol-org/audiocontrol/issues/415).
+   - ⏳ **Wave 5** — drag-drop tests (~6 specs). Sequenced after Decision 3 lands per operator's Decision 4 = Option A. [#416](https://github.com/audiocontrol-org/audiocontrol/issues/416).
+   - 🟡 **Wave 6 partial** (commit `4435eae4`) — 3 of 7 cross-cutting specs landed at `test/ui/capabilities/cross-cutting.spec.ts` (panic + progress + live-edit guard). **4 specs remain pending front-panel fixture capture** against S-550 (D-XX-02/03/04 DT1-emit tests; D-XX-01/05/06/07/08 were resolved as `removed` per Decision 1 — the drawer-embedded VideoCapture mount IS canonical). [#417](https://github.com/audiocontrol-org/audiocontrol/issues/417).
    - ⏳ **Retroactive validation** — once waves are complete, run the suite against the existing PatchesPage + TonesPage redesign commits (`4bd11911`, `f633b95f`). Every newly-added spec that asserts a write path must pass. If any spec fails, the redesign commit introduced a regression and is amended before the suite is considered green.
+
+   **Decisions doc** [decisions-2026-05-11.md](./decisions-2026-05-11.md) — six items surfaced as needing operator decision before Task 10 fully closes. v2 snapshotted with 5 of 6 answers integrated:
+   - **Decision 1 — VFP rows** ✅ resolved (Option B + coupling constraint). D-XX-01/05/06/07/08 marked `removed`; D-XX-02/03/04 re-pointed to drawer mount.
+   - **Decision 2 — web-MIDI harness mode** ⏳ awaiting operator answer. Working assumption: Option B (accept the gap).
+   - **Decision 3 — library content seeding** 🟡 revised proposal awaiting confirmation (copy validated fixtures into OPFS rather than construct new YAML).
+   - **Decision 4 — Wave 5 timing** ✅ Option A (sequence after Decision 3).
+   - **Decision 5 — `setError(null)` contract bug** ✅ fixed inline (`editorStoreBase.ts:83-99`); regression test added (`editorStoreBase.test.ts:131-149`).
+   - **Decision 6 — Phase 9 atomic-primitives sequencing** ✅ Option A (primitives → amend Patches+Tones → per-page polish for remaining 4 pages).
 
    **The 4 missing-affordance feature issues** ([#407](https://github.com/audiocontrol-org/audiocontrol/issues/407), [#408](https://github.com/audiocontrol-org/audiocontrol/issues/408), [#409](https://github.com/audiocontrol-org/audiocontrol/issues/409), [#410](https://github.com/audiocontrol-org/audiocontrol/issues/410)) cover capabilities that don't exist in the UI today. They are NOT part of Task 10 — Task 10 only requires that every `implemented` or `partial` capability is tested. `missing` capabilities are tracked separately and unblock when the corresponding feature lands. They are not loopholes.
 
@@ -130,7 +138,7 @@ The editor's UI is tightly coupled to the SysEx backend, so every redesign itera
 - [x] All 9 tasks done with per-task duplication-audit gates passed
 - [~] Phase 9 visual polish can be verified end-to-end without hardware via fixture replay — **partial:** harness chain works for home/patches/library; tones+play deferred to [#404](https://github.com/audiocontrol-org/audiocontrol/issues/404) pending targeted fixtures
 - [~] Hardware verification debt from Phase 10 closes via replay — **partial:** the replay mechanism exists; closing per-issue verification still requires page-specific specs (Phase 9 work)
-- [ ] DEVELOPMENT-NOTES entry summarizing what shipped, what scenarios are captured, what's deferred — **session-end pending**
+- [x] DEVELOPMENT-NOTES entries summarizing what shipped, what scenarios are captured, what's deferred — 2026-05-10 (Phase 0 Tasks 1-9) + 2026-05-11 (Task 10 Waves 2a/2b/2c/3/4-partial/6-partial + decisions doc + setError contract fix)
 
 ### Discoveries (deferred follow-ups)
 
