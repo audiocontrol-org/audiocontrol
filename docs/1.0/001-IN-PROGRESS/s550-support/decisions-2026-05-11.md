@@ -4,10 +4,23 @@ deskwork:
 ---
 # Decisions needed — Phase 0 Task 10 closing + Phase 9 entry
 
-**Date:** 2026-05-11
+**Date:** 2026-05-11 (v1 initial) · 2026-05-12 (v2 — operator answers integrated)
 **Branch:** `feature/s550-support`
 **Author:** controller (Claude)
 **For:** operator decision
+
+## v2 changelog
+
+The operator answered 5 of the 6 decisions via studio marginalia on v1 (read from `.deskwork/review-journal/history/2026-05-12T02-*.json`). v2 integrates those answers:
+
+- **Decision 1** — *Option B with constraint*. Constraint verified (VideoCapture mounted on every page). 5 D-XX rows struck in inventory; memory rule `feedback_virtual_front_panel` updated; operator additionally clarified that CRT and front-panel controls are ONE bound concern (memory rule reflects). **Settled. Work applied.**
+- **Decision 2** — *no comment*. Holding the v1 recommendation (Option B, accept the gap) unless operator overrides. **Pending operator confirmation.**
+- **Decision 3** — operator pushback: *"Do you know what the objects you will seed are supposed to look like? You can't guess the shape of these things because if you do, then you will probably build nonsensical UI."* Pushback addressed below with concrete evidence (Zod schemas + existing e2e fixtures); revised proposal: REUSE existing validated fixtures rather than construct new YAML. **Pending operator confirmation of the revised proposal.**
+- **Decision 4** — *Option A* (wait + full DnD after Decision 3 lands). **Settled, blocked on Decision 3.**
+- **Decision 5** — *Option A* (fix the bug). **Settled. 5-line fix applied at `editorStoreBase.ts:83-90`** — `setError(null)` no longer resets `isLoading: false` when just clearing the error. D-XX-12 test can now be strengthened to assert the percent bar renders (deferred to the test-strengthening pass; not blocking).
+- **Decision 6** — *Option A* (atomic primitives first, then amend Patches/Tones, then per-page polish). **Settled. Phase 9 plan committed.**
+
+Net: 4 decisions fully settled (1, 4, 5, 6), 1 awaiting operator confirmation of revised proposal (3), 1 awaiting operator answer (2).
 
 ## Context
 
@@ -48,6 +61,16 @@ The decisions are largely independent — pick option per item.
 ---
 
 ## Decision 1 — Virtual Front Panel mounting
+
+> **✅ RESOLVED 2026-05-11 — Option B (with operator-added coupling constraint).**
+>
+> Operator answer via marginalia: *"I think The virtual front panel used to be separate from the video capture in early versions of the s330 editor and we have since moved the controls into the video capture component. That's acceptable as long as the video capture component is on every page."*
+>
+> Constraint verified by controller: `App.tsx:21` wraps every route in `<Layout>`; `Layout.tsx:153` unconditionally mounts `<VideoCapture />`. Every editor page receives the drawer + its embedded front-panel controls.
+>
+> Operator follow-up correction: *"The CRT video-out is NOT a separate concern from the front-panel controls. They should be bound together. The front panel controls don't make sense unless you can see the CRT display."* Memory rule `feedback_virtual_front_panel` updated to record this coupling constraint as non-negotiable for any future Phase 9 redesign.
+>
+> **Work applied in this v2 commit:** 5 D-XX rows (D-XX-01, 05, 06, 07, 08) marked `removed` in [`ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md`](../../../../ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md) with strikethrough text; D-XX-02..04 Source-of-Truth columns re-pointed to the actually-mounted `VideoCapture.tsx:363-380`; Wave 3 VFP notes section rewritten as resolution record; memory rule updated.
 
 ### Background
 
@@ -96,6 +119,10 @@ Plus Wave 6's remaining DT1-emit tests (D-XX-02, 03, 04, 05) need the VFP mounte
 
 ## Decision 2 — Web-MIDI harness mode
 
+> **⏸ PENDING — no operator marginalia found on v1.**
+>
+> Holding the v1 recommendation (Option B — accept the gap) as the working assumption. If you intended to answer this one and I missed the marginalia, please re-add it on v2 and I'll re-iterate.
+
 ### Background
 
 `MidiConnectionPage` (in `editor-core`) hides the MIDI input/output port selectors AND the secure-context warning when `transportMode !== 'web'`. The Phase 0 simulated harness uses `transportMode === 'simulated'`. Wave 3 tried to bind these affordances but couldn't — they're not rendered in the harness.
@@ -133,6 +160,30 @@ Plus Wave 6's remaining DT1-emit tests (D-XX-02, 03, 04, 05) need the VFP mounte
 ---
 
 ## Decision 3 — Library content seeding infrastructure
+
+> **⚠️ OPERATOR PUSHBACK — revised proposal below.**
+>
+> Operator pushback via marginalia: *"Do you know what the objects you will seed are supposed to look like? You can't guess the shape of these things because if you do, then you will probably build nonsensical UI."*
+>
+> **The pushback is correct in principle — and addressable.** Two concrete pieces of evidence:
+>
+> 1. **Zod schemas exist for every library object type.** The shapes are NOT my guesses — they're the same shapes the editor's import path validates against:
+>    - `modules/sampler-library/src/schemas/sample-schema.ts` (97 lines, `SampleYamlSchema`)
+>    - `modules/sampler-library/src/schemas/tone-schema.ts` (160 lines, `ToneYamlSchema`)
+>    - `modules/sampler-library/src/schemas/patch-schema.ts` (141 lines, `PatchYamlSchema`)
+>    - `modules/sampler-library/src/schemas/set-schema.ts` (130 lines, `SetYamlSchema`)
+>
+>    Any seeding helper writes through `SampleYamlSchema.parse(data)` (or sibling). If the data fails to parse, the helper throws — no silent shape-drift possible.
+>
+> 2. **Validated fixtures already exist in the repo.** `modules/roland-sxx0-editor/test/e2e/fixtures/tones/basic-sine.yaml` is a complete tone YAML — 53 lines, all fields populated, written by previous e2e test infrastructure work. Similarly `modules/roland-sxx0-editor/test/e2e/fixtures/sets/test-set/tones/T01.yaml`. These were authored as test fixtures; they ARE the canonical shape.
+>
+> **Revised proposal (replaces v1's Option A):** the seeding helper does NOT construct YAML from scratch. It **copies validated fixture files** from `modules/roland-sxx0-editor/test/e2e/fixtures/` into OPFS at test runtime. The test author picks which fixture to seed (e.g., `seedOPFSTone('basic-sine')`); the helper reads the existing YAML, parses through the schema (load-bearing validation), writes to OPFS. Any drift between fixture and schema fails the test loudly.
+>
+> If the existing fixtures don't cover the cases Wave 4 needs (e.g., no patch fixture exists yet — verify), the test author writes the missing fixture under `test/e2e/fixtures/` first, validates it interactively against the schema, and THEN the seeding helper consumes it. The fixture authoring step is small (one YAML per case) and is where the operator's concern about "knowing the shape" gets addressed — by a human writing the fixture against the schema, not by the controller guessing.
+>
+> **Estimated scope under the revised proposal:** ~100-150 lines of seeding helpers (down from 300-500 since no shape-construction code) + 7 specs + 7 device-side fixtures. The savings come from reusing existing test fixtures.
+>
+> **Pending operator confirmation of the revised proposal.** If you have residual concerns about the shape after seeing the schema references, please add a marginalia note on v2.
 
 ### Background
 
@@ -180,6 +231,12 @@ The Wave 4 implementer estimated ~300-500 lines of new seeding helpers (`seedOPF
 
 ## Decision 4 — Wave 5 (drag-drop) approach
 
+> **✅ RESOLVED — Option A (wait on Decision 3, then do Wave 5 fully).**
+>
+> Operator answer via marginalia: *"Do option A"*.
+>
+> Wave 5 is now sequenced after Decision 3's library seeding helpers land. All 4 DnD affordances (D-LIB-06, 07, 08, 09) ship together in one focused Wave 5 dispatch.
+
 ### Background
 
 Wave 5 covers 4 DnD affordances:
@@ -218,6 +275,16 @@ Playwright DnD is notoriously fiddly. Worth flagging:
 
 ## Decision 5 — Progress-bar state bug in editor-core
 
+> **✅ RESOLVED — Option A (fix the bug). Applied in this v2 commit.**
+>
+> Operator answer via marginalia: *"Fix the bug"*.
+>
+> **Fix applied at `modules/editor-core/src/stores/editorStoreBase.ts:83-90`** (7-line change). The new `setError` contract: clearing an error (`error === null`) does not touch loading state; only setting a non-null error resets `isLoading: false`. Inline comment cites this resolution.
+>
+> **Cross-impact:** the contract change applies to ALL editors using `editorStoreBase` (`roland-sxx0-editor` and `akai-s3k-editor`). Any callsite that relies on `setError(null)` to side-effect `isLoading: false` would now mis-behave — verified via grep that no such pattern exists in either editor.
+>
+> **D-XX-12 strengthening (deferred to a small follow-up):** the test currently pins per-row `(loading...)` placeholder + page-title counter. Now that the percent bar actually renders during loads, the test can be strengthened to also pin `<div role="status">` visibility during a load. Non-blocking — D-XX-12 stays `partial` until the strengthening lands.
+
 ### Background
 
 The Wave 6 implementer surfaced a pre-existing bug while investigating D-XX-12 (progress indicators):
@@ -255,6 +322,17 @@ If you prefer not to touch editor-core now (it has its own ownership / regressio
 ---
 
 ## Decision 6 — Phase 9 atomic-control primitives sequencing
+
+> **✅ RESOLVED — Option A (build atomic primitives first, then amend Patches/Tones, then per-page polish).**
+>
+> Operator answer via marginalia: *"Option A"*.
+>
+> Phase 9 sequence is now committed:
+> 1. (Prereq) Phase 0 Task 10 fully closes (pending Decision 2 + Decision 3 confirmation + Wave 6 close-out).
+> 2. Build atomic-control primitives: `.ac-slider` (range-bar pattern), `.ac-select` (custom chevron), `.ac-checkbox`, `.ac-input`, VFD-glow envelope. Land design tokens + DESIGN-SYSTEM.md updates first; then the primitives consume them.
+> 3. Amend PatchesPage + TonesPage (commits `4bd11911`, `f633b95f`) to consume the new primitives. These become "page complete" under the workplan-discipline gate.
+> 4. Per-page polish for the remaining 4 pages (PlayPage, LibraryPage, WorkflowsPage, HomePage), one atomic commit per page, each "page complete" before moving on.
+> 5. Plus the deferred sub-items: `data-capability` + `aria-label` promotion to PlayPage's output/level controls (couple with primitive build); networkidle test wait semantics (couple with primitive amendments).
 
 ### Background
 

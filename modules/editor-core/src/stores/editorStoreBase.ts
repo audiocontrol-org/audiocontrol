@@ -81,6 +81,17 @@ export function createEditorStoreSlice(
     },
 
     setError(error: string | null) {
+      // Clearing an error (error === null) must NOT touch loading state.
+      // Previous contract reset isLoading: false on every setError call, which
+      // made `setLoading(true); setError(null);` a self-cancelling pair — the
+      // PatchesPage / TonesPage percent-bar progress region was unreachable
+      // because useBankLoader fires that exact sequence at the start of every
+      // bank load. Fixed 2026-05-11 per decisions-2026-05-11 Decision 5.
+      if (error === null) {
+        set({ error: null });
+        return;
+      }
+      // Setting a non-null error implies failure — clear in-flight loading state.
       set({
         error,
         isLoading: false,

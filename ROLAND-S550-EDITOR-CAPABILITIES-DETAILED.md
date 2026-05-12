@@ -434,14 +434,14 @@ The library is the editor's primary editor-derived layer. The device has no conc
 
 | ID | Affordance | Source of truth | Parent | Origin | Status | Test |
 |----|-----------|-----------------|--------|--------|--------|------|
-| D-XX-01 | Virtual Front Panel — floating draggable panel | `VirtualFrontPanel.tsx` | C-XX-04 | editor-derived | partial (component exists but is NEVER mounted in the app; the controls are subsumed by D-XX-10) | needs operator decision — see "VFP unmounted" note in Wave 3 notes |
-| D-XX-02 | VFP — Navigation buttons (DT1) | `VirtualFrontPanel.tsx` → `NavigationPad` → `useFrontPanel` (also reused inside the video drawer) | C-XX-04 | native | implemented (inside the video drawer; the floating VFP isn't mounted) | Wave 6 (#417) — front-panel DT1 fixture |
-| D-XX-03 | VFP — Value buttons (DT1) | `VirtualFrontPanel.tsx` → `ValueButtons` (also reused inside the video drawer) | C-XX-04 | native | implemented (inside the video drawer) | Wave 6 (#417) — front-panel DT1 fixture |
-| D-XX-04 | VFP — Function buttons (MODE/MENU/SUB MENU/COM/Execute) | `VirtualFrontPanel.tsx` → `FunctionButtonRow` (also reused inside the video drawer) | C-XX-04 | native | implemented (inside the video drawer) | Wave 6 (#417) — front-panel DT1 fixture |
-| D-XX-05 | VFP — Keyboard shortcuts | `VirtualFrontPanel.tsx:7` + `VideoCapture.tsx:219-259` → keydown listener | C-XX-04 | editor-derived | partial (floating VFP unmounted; the drawer has its own keyboard handler) | needs operator decision — see "VFP unmounted" note |
-| D-XX-06 | VFP — Drag to reposition | `VirtualFrontPanel.tsx` → mouse drag + localStorage | C-XX-04 | editor-derived | partial (only meaningful when the floating VFP is mounted, which it isn't) | needs operator decision — see "VFP unmounted" note |
-| D-XX-07 | VFP — Collapse/expand | `VirtualFrontPanel.tsx` → `STORAGE_KEY_EXPANDED` | C-XX-04 | editor-derived | partial (only meaningful when the floating VFP is mounted) | needs operator decision — see "VFP unmounted" note |
-| D-XX-08 | VFP — Connection status indicator (green dot) | `VirtualFrontPanel.tsx` | C-XX-04 | editor-derived | partial (only meaningful when the floating VFP is mounted) | needs operator decision — see "VFP unmounted" note |
+| ~~D-XX-01~~ | ~~Virtual Front Panel — floating draggable panel~~ | `VirtualFrontPanel.tsx` (unmounted) | — | — | **removed** (decisions-2026-05-11 D-1: drawer-embedded controls D-XX-10 declared canonical; CRT + front-panel must remain co-located per `feedback_virtual_front_panel`) | n/a |
+| D-XX-02 | Front-panel navigation buttons (DT1) | `VideoCapture.tsx:363-380` → `NavigationPad` → `useFrontPanel` | C-XX-04 | native | implemented (inside the video drawer) | Wave 6 (#417) — front-panel DT1 fixture, pending |
+| D-XX-03 | Front-panel value buttons (DT1) | `VideoCapture.tsx:363-380` → `ValueButtons` | C-XX-04 | native | implemented (inside the video drawer) | Wave 6 (#417) — front-panel DT1 fixture, pending |
+| D-XX-04 | Front-panel function buttons (MODE/MENU/SUB MENU/COM/Execute) | `VideoCapture.tsx:363-380` → `FunctionButtonRow` | C-XX-04 | native | implemented (inside the video drawer) | Wave 6 (#417) — front-panel DT1 fixture, pending |
+| ~~D-XX-05~~ | ~~VFP keyboard shortcuts (floating-panel keydown listener)~~ | `VirtualFrontPanel.tsx:7` (unmounted) | — | — | **removed** (decisions-2026-05-11 D-1: drawer has its own keyboard handler — D-XX-10 covers it) | n/a |
+| ~~D-XX-06~~ | ~~VFP drag to reposition~~ | `VirtualFrontPanel.tsx` (unmounted) | — | — | **removed** (decisions-2026-05-11 D-1: drag-to-reposition only meaningful for a floating panel; superseded by drawer mount) | n/a |
+| ~~D-XX-07~~ | ~~VFP collapse/expand~~ | `VirtualFrontPanel.tsx` (unmounted) | — | — | **removed** (decisions-2026-05-11 D-1: drawer has its own open/close toggle — D-XX-09 covers it) | n/a |
+| ~~D-XX-08~~ | ~~VFP connection status indicator (floating-panel green dot)~~ | `VirtualFrontPanel.tsx` (unmounted) | — | — | **removed** (decisions-2026-05-11 D-1: status indicator lives in the Layout header — D-CONN-07 covers it) | n/a |
 | D-XX-09 | Video capture drawer (USB / webcam) | `Layout.tsx` → `VideoCapture` | n/a (unique to editor) | editor-derived | implemented | `capabilities/video-drawer.spec.ts :: D-XX-09` |
 | D-XX-10 | Front-panel controls inside video drawer | `VideoCapture.tsx:363-380` → reuses VFP components | n/a (unique to editor) | editor-derived | implemented | `capabilities/video-drawer.spec.ts :: D-XX-10` |
 | D-XX-11 | MIDI Panic button (CC 120 + 123 on all channels) | `Layout.tsx` → `PanicButton` (client `panic()`) | n/a | client-derived | implemented | `capabilities/cross-cutting.spec.ts :: D-XX-11` |
@@ -471,40 +471,37 @@ citations have been updated to point at the icon button; the affordance
 the user needs ("force-reload from device") is still present and the test
 bindings pin the consolidated control.
 
-### VFP unmounted — D-XX-01, 05, 06, 07, 08 cannot be bound until integration
+### VFP — RESOLVED 2026-05-11 (decisions-2026-05-11 Decision 1)
 
 The `VirtualFrontPanel` component (`modules/roland-sxx0-editor/src/
 components/front-panel/VirtualFrontPanel.tsx`) is exported from the
 module barrel but is **never instantiated** anywhere in the editor —
-verified by grep across the source tree. The floating draggable VFP
-the inventory describes does not appear on any editor page.
+verified by grep across the source tree.
 
 The same VFP components (`FunctionButtonRow`, `NavigationPad`,
 `ValueButtons`) ARE mounted inside the video drawer (`VideoCapture.tsx:
-363-380`); that's the only place the user can interact with the front
-panel today. `D-XX-10` covers those drawer-mounted controls.
+363-380`); that's the surface the user actually interacts with today.
+`D-XX-09` (drawer mount) and `D-XX-10` (front-panel controls inside drawer)
+cover the affordance.
 
-This is a real integration gap, not just an inventory drift. Project
-memory `feedback_virtual_front_panel` says "every editor page with the
-CRT also mounts a virtual front panel mirroring the S-550's physical
-buttons; it's not optional." Current reality contradicts that.
+**Operator decision (2026-05-11):** the drawer-embedded panel is canonical.
+Conditional on `VideoCapture` being mounted on every editor page — verified:
+`App.tsx:21` wraps every route in `<Layout>`, `Layout.tsx:153` mounts
+`<VideoCapture />` unconditionally. Constraint satisfied.
 
-`D-XX-01, 05, 06, 07, 08` Status flipped from `implemented` to `partial`
-to surface the gap. Their Test cells read `needs operator decision —
-see "VFP unmounted" note`. **The disposition is operator-blocked**:
+Coupling constraint (operator-clarified): the CRT video-out and front-panel
+controls are ONE bound concern — *"The front panel controls don't make sense
+unless you can see the CRT display."* Memory rule `feedback_virtual_front_panel`
+updated to record this; Phase 9 redesign MUST keep them co-located.
 
-- Option A: Mount the VFP in the layout (the integration the project
-  memory says is required). Then D-XX-01, 05, 06, 07, 08 become
-  testable as separate affordances. This is a UI-integration task
-  separate from the test-coverage backlog.
-- Option B: Strike D-XX-01, 05, 06, 07, 08 from the inventory and
-  declare the drawer-embedded panel (`D-XX-10`) the canonical surface.
-  Update `feedback_virtual_front_panel` to match.
+**Affordances struck:** D-XX-01, 05, 06, 07, 08 (5 rows) marked `removed` in
+the table above with strikethrough text. History preserved per the
+discipline rule's "do not delete history" provision.
 
-Wave 3 does NOT take either action — it surfaces the gap honestly so
-the operator can decide. The 5 rows are still listed under `Untested`
-in the coverage summary above, with their Status downgraded to `partial`
-to flag the integration gap.
+**Affordances renamed:** D-XX-02, 03, 04 had their Source-of-Truth columns
+re-pointed from the unmounted `VirtualFrontPanel.tsx` to the actually-mounted
+`VideoCapture.tsx:363-380`. Status flipped from `implemented (inside the
+video drawer)` to plain `implemented`.
 
 ---
 
