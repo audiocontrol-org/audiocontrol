@@ -42,6 +42,15 @@ describe('AcNumberInput read-only', () => {
     );
     expect(html).toContain('aria-label="Filter cutoff"');
   });
+
+  it('forwards dataTestId to the outer span', () => {
+    const html = renderToStaticMarkup(
+      <AcNumberInput value={9} dataTestId="readout-x" />,
+    );
+    // The outer span carries the testid; the inner __value span must not.
+    expect(html).toContain('data-testid="readout-x"');
+    expect(html).toMatch(/<span[^>]*class="ac-number-input"[^>]*data-testid="readout-x"/);
+  });
 });
 
 describe('AcNumberInput editable', () => {
@@ -135,5 +144,21 @@ describe('AcNumberInput editable', () => {
     fireEvent.change(input, { target: { value: '75' } });
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith(75);
+  });
+
+  it('forwards dataTestId to the <input> element (not the wrapper)', () => {
+    const html = renderToStaticMarkup(
+      <AcNumberInput
+        editable={true}
+        value={42}
+        onChange={() => {}}
+        dataTestId="part-0-level"
+      />,
+    );
+    // The input carries the testid so Playwright's getByTestId(...).fill()
+    // targets the editable affordance directly.
+    expect(html).toMatch(/<input[^>]*data-testid="part-0-level"/);
+    // The outer wrapping span must NOT carry the testid.
+    expect(html).not.toMatch(/<span[^>]*data-testid="part-0-level"/);
   });
 });

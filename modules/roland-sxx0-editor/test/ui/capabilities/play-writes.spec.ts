@@ -18,9 +18,10 @@
  *   - D-PLAY-06: setMultiOutput  — per-part output select
  *   - D-PLAY-07: setMultiLevel   — per-part level slider
  *
- * The level slider commits on `mouseup` / `touchend` (see PlayPage.tsx
- * lines 424-425); the test sets the value via `.fill()` and dispatches
- * a synthetic `mouseup` so the commit fires.
+ * After the Phase 9 Task 4 PlayPage amend, the level slider is now an
+ * AcRangeBar (display-only) + AcNumberInput (editable) composition. The
+ * editable readout streams per-keystroke writes (no separate mouseup
+ * commit), matching the patch-writes.spec.ts `fillSliderInput` pattern.
  */
 import { test, expect, type Page } from '@playwright/test';
 
@@ -122,25 +123,16 @@ test.describe('Play multi-mode write affordances (D-PLAY-04..07)', () => {
     );
     await waitForPlayPageMount(page);
 
+    // After the Phase 9 Task 4 amend the level affordance is an
+    // AcNumberInput (editable). `page.fill` clears and types the new
+    // value atomically — Playwright fires a single `input` event with
+    // the final value, the AcNumberInput's onChange parses + clamps,
+    // and the page-side handler invokes setMultiLevel(0, 80). Mirrors
+    // the patch-writes.spec.ts `fillSliderInput` pattern.
     const slider = page.getByTestId('part-0-level');
     await expect(slider).toBeVisible({ timeout: 5_000 });
-
-    // The slider commits on mouseup / touchend, not on input/change. We
-    // set the value via the native HTMLInputElement property + a manual
-    // `input` event (to update React state), then dispatch a synthetic
-    // `mouseup` so handleLevelCommit fires and emits setMultiLevel.
-    await slider.evaluate((input: HTMLInputElement, level) => {
-      const setter = Object.getOwnPropertyDescriptor(
-        HTMLInputElement.prototype,
-        'value',
-      )?.set;
-      if (!setter) {
-        throw new Error('HTMLInputElement.value setter not found');
-      }
-      setter.call(input, String(level));
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-      input.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
-    }, 80);
+    await slider.fill(String(80));
+    await slider.blur();
 
     await page.waitForLoadState('networkidle');
   });

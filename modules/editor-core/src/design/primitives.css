@@ -254,6 +254,21 @@
   padding-right: calc(var(--ac-space-3) * 2 + 12px);
 }
 
+/* Compact modifier — for tight grid rows (e.g. PlayPage's 12-col part rows
+   with `py-1.5 px-1`) where the default 0.625rem padding would dwarf the
+   row. Shrinks padding + font-size + chevron offset using design tokens;
+   preserves the chrome (border, focus ring, chevron) of the base class. */
+.ac-input--compact,
+.ac-select--compact {
+  padding: var(--ac-space-1) var(--ac-space-2);
+  font-size: var(--ac-text-sm);
+}
+
+.ac-select--compact {
+  background-position: right var(--ac-space-2) center;
+  padding-right: calc(var(--ac-space-2) * 2 + 12px);
+}
+
 .ac-label {
   color: var(--ac-text-primary);
   font-family: var(--ac-font-sans);

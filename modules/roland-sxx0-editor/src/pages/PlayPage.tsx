@@ -7,6 +7,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { AcRangeBar, AcNumberInput } from '@audiocontrol/editor-core';
 import { useMidiStore } from '@/stores/midiStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { useDeviceDataStore } from '@/stores/deviceDataStore';
@@ -32,7 +33,7 @@ const PART_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
 export function PlayPage() {
   const config = useDeviceConfig();
-  const { totalPatches, totalTones, patchesPerBank, tonesPerBank, memoryLayout } = config;
+  const { totalPatches, totalTones, patchesPerBank, tonesPerBank, memoryLayout, deviceName } = config;
 
   const mockMode = isMockMidiMode();
   const { adapter, deviceId, status } = useMidiStore();
@@ -222,12 +223,15 @@ export function PlayPage() {
     }
   };
 
-  // Update level in local state only (for responsive UI)
+  // Update level in local state (drives the AcRangeBar visualization).
   const handleLevelChange = (partIndex: number, level: number) => {
     updatePart(partIndex, { level });
   };
 
-  // Send level to device when user finishes adjusting
+  // Stream level to the device. Per project memory
+  // `feedback_live_editing_no_save`, the v3 amend (Phase 9 Task 4)
+  // collapsed the prior mouseup-only commit edge into per-keystroke
+  // streaming — AcNumberInput's onChange fires both helpers atomically.
   const handleLevelCommit = (partIndex: number, level: number) => {
     if (clientRef.current) {
       clientRef.current.setMultiLevel(partIndex, level).catch((err) => {
@@ -243,7 +247,7 @@ export function PlayPage() {
         <div className="card text-center py-12">
           <h2 className="text-xl font-bold text-s330-text mb-2">Not Connected</h2>
           <p className="text-s330-muted mb-4">
-            Connect to your S-330 to view the play screen.
+            Connect to your {deviceName} to view the play screen.
           </p>
           <Link to="/" className="ac-btn ac-btn-primary inline-block">
             Go to Connection
@@ -344,12 +348,7 @@ export function PlayPage() {
                   value={part.channel}
                   onChange={(e) => handleChannelChange(index, Number(e.target.value))}
                   onClick={(e) => e.stopPropagation()}
-                  className={cn(
-                    'w-full px-1 py-0.5 text-center text-xs font-mono',
-                    'bg-s330-panel border border-s330-accent rounded',
-                    'text-s330-text hover:bg-s330-accent/30',
-                    'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-                  )}
+                  className="ac-select ac-select--compact ac-input-center"
                 >
                   {Array.from({ length: 16 }, (_, i) => (
                     <option key={i} value={i}>
@@ -371,16 +370,9 @@ export function PlayPage() {
                     handlePatchChange(index, value === -1 ? null : value);
                   }}
                   onClick={(e) => e.stopPropagation()}
-                  className={cn(
-                    'w-full px-1 py-0.5 text-xs font-mono',
-                    'bg-s330-panel border border-s330-accent rounded',
-                    'text-s330-text hover:bg-s330-accent/30',
-                    'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-                  )}
+                  className="ac-select ac-select--compact"
                 >
-                  <option value={-1} className="text-s330-muted">
-                    ---
-                  </option>
+                  <option value={-1}>---</option>
                   {patches.map((patch, patchIndex) => (
                     <option key={patchIndex} value={patchIndex}>
                       {memoryLayout.formatPatchSlot(patchIndex)}{' '}
@@ -397,12 +389,7 @@ export function PlayPage() {
                   value={part.output}
                   onChange={(e) => handleOutputChange(index, Number(e.target.value))}
                   onClick={(e) => e.stopPropagation()}
-                  className={cn(
-                    'w-full px-1 py-0.5 text-center text-xs font-mono',
-                    'bg-s330-panel border border-s330-accent rounded',
-                    'text-s330-text hover:bg-s330-accent/30',
-                    'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-                  )}
+                  className="ac-select ac-select--compact ac-input-center"
                 >
                   {Array.from({ length: 8 }, (_, i) => (
                     <option key={i + 1} value={i + 1}>
@@ -412,38 +399,33 @@ export function PlayPage() {
                 </select>
               </div>
 
-              {/* Level - slider with value display */}
+              {/* Level - v3 atomic composition: AcRangeBar (display) + AcNumberInput (focusable).
+                  Per project memory feedback_live_editing_no_save and feedback_range_bar_pattern:
+                  the bar visualizes, the editable readout commits per-keystroke. The single
+                  onChange handler updates local state AND streams to the device — collapsing
+                  the prior mouseup-only commit edge into the same live-streaming model as the
+                  PatchEditor / Tones panels. */}
               <div className="col-span-4 flex items-center gap-2">
-                <input
-                  data-testid={`part-${index}-level`}
-                  type="range"
+                <AcRangeBar
+                  variant="linear"
+                  value={part.level}
                   min={0}
                   max={127}
-                  value={part.level}
-                  onChange={(e) => handleLevelChange(index, Number(e.target.value))}
-                  onMouseUp={(e) => handleLevelCommit(index, Number((e.target as HTMLInputElement).value))}
-                  onTouchEnd={(e) => handleLevelCommit(index, Number((e.target as HTMLInputElement).value))}
-                  onClick={(e) => e.stopPropagation()}
-                  className={cn(
-                    'flex-1 h-1.5 rounded-full appearance-none cursor-pointer',
-                    'bg-s330-accent/50',
-                    '[&::-webkit-slider-thumb]:appearance-none',
-                    '[&::-webkit-slider-thumb]:w-3',
-                    '[&::-webkit-slider-thumb]:h-3',
-                    '[&::-webkit-slider-thumb]:rounded-full',
-                    '[&::-webkit-slider-thumb]:bg-s330-highlight',
-                    '[&::-webkit-slider-thumb]:hover:bg-s330-text',
-                    '[&::-moz-range-thumb]:w-3',
-                    '[&::-moz-range-thumb]:h-3',
-                    '[&::-moz-range-thumb]:rounded-full',
-                    '[&::-moz-range-thumb]:bg-s330-highlight',
-                    '[&::-moz-range-thumb]:border-0',
-                    '[&::-moz-range-thumb]:hover:bg-s330-text'
-                  )}
+                  ariaLabel={`Part ${part.id} level`}
+                  className="flex-1"
                 />
-                <span className="w-8 text-right text-xs text-s330-text font-mono">
-                  {part.level}
-                </span>
+                <AcNumberInput
+                  editable
+                  value={part.level}
+                  onChange={(value) => {
+                    handleLevelChange(index, value);
+                    handleLevelCommit(index, value);
+                  }}
+                  min={0}
+                  max={127}
+                  dataTestId={`part-${index}-level`}
+                  ariaLabel={`Part ${part.id} level`}
+                />
               </div>
             </div>
           ))}
