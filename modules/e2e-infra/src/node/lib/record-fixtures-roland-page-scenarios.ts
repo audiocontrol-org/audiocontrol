@@ -241,9 +241,22 @@ export const PAGE_SCENARIOS: Record<string, Scenario> = {
      *
      * The `client.connect()` call at LibraryPage.tsx:238 emits no
      * SysEx (client-level connect just sets an internal `connected`
-     * flag — see `s-series-client.ts:754-757`), so the scenario records
-     * a single `connect()` annotation followed by the 96-RQD load
-     * sequence on S-550 (48-RQD on S-330).
+     * flag — see `s-series-client.ts:754-757`), so the `connect()`
+     * annotation issued at the top of the scenario never lands in the
+     * captured stream: the recorder's `pendingAnnotation` is overwritten
+     * by the first `loadToneRange` annotation before any record is
+     * written (recording-proxy.ts:113-115 — annotations attach to the
+     * next outbound record). The first recorded byte is the bank-1
+     * `loadToneRange` RQD; subsequent per-bank annotations attach to
+     * the first RQD of each bank load.
+     *
+     * Fixture totals captured against S-550 on Volt 4: 1310 records
+     * (703 outbound RQDs + 607 inbound DT1 fragments). The inbound
+     * count exceeds the outbound count because the S-550's tone-data
+     * response is sent as multiple DT1 fragments per request to
+     * accommodate the wave-segment metadata. 12 of the outbound
+     * records carry an `annotation` field (one per bank load); the
+     * other 691 are mid-load RQDs without annotations.
      */
     'library-page-load': {
         name: 'library-page-load',
