@@ -49,6 +49,7 @@ export function ValueButtons({ onPress, activeButton, disabled = false }: ValueB
             <FrontPanelButton
                 button="dec"
                 label=""
+                ariaLabel="Decrement"
                 icon={<MinusIcon />}
                 onClick={() => onPress('dec')}
                 isActive={activeButton === 'dec'}
@@ -59,6 +60,7 @@ export function ValueButtons({ onPress, activeButton, disabled = false }: ValueB
             <FrontPanelButton
                 button="inc"
                 label=""
+                ariaLabel="Increment"
                 icon={<PlusIcon />}
                 onClick={() => onPress('inc')}
                 isActive={activeButton === 'inc'}

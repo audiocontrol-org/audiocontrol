@@ -31,6 +31,7 @@ import {
     type Scenario,
     type ScenarioContext,
 } from '#node/lib/record-fixtures-roland-core-scenarios.js';
+import { createFrontPanelController } from '@audiocontrol/sampler-devices/s330';
 
 // ---------------------------------------------------------------------------
 // Shared mount-helper client interfaces — exported because the sibling
@@ -68,6 +69,19 @@ export interface PatchModeClient {
 export interface ToneModeClient {
     connect: () => Promise<boolean>;
     loadToneRange: (start: number, count: number) => Promise<unknown[]>;
+}
+
+/**
+ * Subset of S330/S550 client surface used by the front-panel emit
+ * scenarios. The drawer-embedded front panel is hosted on the
+ * PatchesPage (Layout is global, so any page works; PatchesPage is
+ * the cheapest mount because its prelude is just `loadPatchRange(0, 8)`).
+ * Mirrors `PatchModeClient` exactly — the scenarios reuse
+ * `runPatchPageMount` for the mount prelude.
+ */
+export interface FrontPanelClient {
+    connect: () => Promise<boolean>;
+    loadPatchRange: (start: number, count: number) => Promise<unknown[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -202,6 +216,111 @@ export const PAGE_SCENARIOS: Record<string, Scenario> = {
                 const status = 0xb0 + channel;
                 proxy.send([status, 120, 0]);
                 proxy.send([status, 123, 0]);
+            }
+        },
+    },
+
+    /**
+     * Wave 6 (#417) — captures the bytes emitted when the user clicks each
+     * of the five drawer-embedded function buttons in order: MODE, MENU,
+     * SUB, COM, EXEC (D-XX-04).
+     *
+     * The drawer-embedded front panel (mounted via VideoCapture.tsx:363-380)
+     * routes button clicks through `useFrontPanel` →
+     * `createFrontPanelController(adapter, { deviceId })`.
+     * `pressFunction(button)` emits a single category-01 DT1 message per
+     * call (FUNCTION_CODES in s330-front-panel.ts:131-135), so the recorded
+     * bytes are exactly 5 outbound DT1 messages after the mount prelude.
+     *
+     * We drive the production controller against the recording proxy so
+     * the captured bytes are byte-for-byte what the React tree will emit
+     * at replay time. This is the same recording shape used for the panic
+     * fixture — the controller wraps a real `SSeriesMidiAdapter`, and
+     * `proxy` implements that interface, so passing it in lets the
+     * controller's `midiAdapter.send()` calls flow straight into the
+     * fixture.
+     */
+    'front-panel-function-flow': {
+        name: 'front-panel-function-flow',
+        description:
+            'Drawer-embedded function buttons (D-XX-04) — connect() + loadPatchRange(0, 8) + 5 DT1 presses (MODE, MENU, SUB, COM, EXEC)',
+        run: async ({ client, proxy, deviceId }) => {
+            const c = asClient<FrontPanelClient>(client);
+            proxy.annotate('connect()');
+            await c.connect();
+            proxy.annotate('loadPatchRange(0, 8)');
+            await c.loadPatchRange(0, 8);
+
+            const controller = createFrontPanelController(proxy, { deviceId });
+            const buttons = ['mode', 'menu', 'sub-menu', 'com', 'execute'] as const;
+            for (const button of buttons) {
+                proxy.annotate(`pressFunction('${button}')`);
+                await controller.pressFunction(button);
+            }
+        },
+    },
+
+    /**
+     * Wave 6 (#417) — captures the bytes emitted when the user clicks the
+     * four drawer-embedded arrow buttons in 'menu' mode (D-XX-02). Order:
+     * Up, Down, Left, Right.
+     *
+     * 'menu' mode is the React state's default (useFrontPanel.ts:93). The
+     * drawer's "Arrow category" toggle (01 vs 09) controls which mode
+     * `pressNavigation` uses; the matching capability spec explicitly does
+     * NOT touch that toggle, so this fixture is captured against the
+     * default category-01 path. Each arrow press emits ONE DT1 message
+     * (ARROW_CODES_CAT01 in s330-front-panel.ts:97-102) — 4 outbound DT1
+     * records after the mount prelude.
+     */
+    'front-panel-nav-flow': {
+        name: 'front-panel-nav-flow',
+        description:
+            "Drawer-embedded arrow buttons (D-XX-02) — connect() + loadPatchRange(0, 8) + 4 DT1 presses (Up, Down, Left, Right) in 'menu' mode",
+        run: async ({ client, proxy, deviceId }) => {
+            const c = asClient<FrontPanelClient>(client);
+            proxy.annotate('connect()');
+            await c.connect();
+            proxy.annotate('loadPatchRange(0, 8)');
+            await c.loadPatchRange(0, 8);
+
+            const controller = createFrontPanelController(proxy, { deviceId });
+            const arrows = ['up', 'down', 'left', 'right'] as const;
+            for (const arrow of arrows) {
+                proxy.annotate(`pressNavigation('${arrow}', 'menu')`);
+                await controller.pressNavigation(arrow, 'menu');
+            }
+        },
+    },
+
+    /**
+     * Wave 6 (#417) — captures the bytes emitted when the user clicks the
+     * two drawer-embedded value buttons in order: Inc, Dec (D-XX-03).
+     *
+     * Inc/Dec always use category-09 press/release pairs (VALUE_CODES in
+     * s330-front-panel.ts:119-122). `pressNavigation('inc')` emits:
+     *   1. press DT1 [0x09, 0x04]
+     *   2. await delay(NAVIGATION_DELAY_MS = 50ms)
+     *   3. release DT1 [0x09, 0x0c]
+     * So each value-button click contributes TWO DT1 records. Two clicks
+     * (inc + dec) = 4 outbound DT1 records after the mount prelude.
+     */
+    'front-panel-value-flow': {
+        name: 'front-panel-value-flow',
+        description:
+            'Drawer-embedded value buttons (D-XX-03) — connect() + loadPatchRange(0, 8) + 4 DT1 records (inc press+release, dec press+release)',
+        run: async ({ client, proxy, deviceId }) => {
+            const c = asClient<FrontPanelClient>(client);
+            proxy.annotate('connect()');
+            await c.connect();
+            proxy.annotate('loadPatchRange(0, 8)');
+            await c.loadPatchRange(0, 8);
+
+            const controller = createFrontPanelController(proxy, { deviceId });
+            const values = ['inc', 'dec'] as const;
+            for (const value of values) {
+                proxy.annotate(`pressNavigation('${value}') — press + release`);
+                await controller.pressNavigation(value);
             }
         },
     },

@@ -25,6 +25,13 @@ export interface FrontPanelButtonProps {
     size?: 'sm' | 'md' | 'lg';
     /** Optional icon to display */
     icon?: React.ReactNode;
+    /**
+     * Accessible name override. Required when the button renders icon-only
+     * (no visible `label` text) so screen readers and capability specs
+     * have a deterministic accessible name to target. When unset, the
+     * visible label serves as the accessible name.
+     */
+    ariaLabel?: string;
 }
 
 /**
@@ -38,6 +45,7 @@ export function FrontPanelButton({
     className,
     size = 'md',
     icon,
+    ariaLabel,
 }: FrontPanelButtonProps) {
     const sizeClasses = {
         sm: 'px-2 py-1 text-xs',
@@ -49,6 +57,7 @@ export function FrontPanelButton({
         <button
             onClick={onClick}
             disabled={disabled}
+            aria-label={ariaLabel}
             className={cn(
                 // Base styles
                 'rounded font-medium transition-all',

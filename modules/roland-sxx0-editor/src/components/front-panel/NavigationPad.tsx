@@ -17,6 +17,18 @@ export interface NavigationPadProps {
 }
 
 /**
+ * Accessible labels for arrow buttons. The buttons render an icon only
+ * (no visible text), so an aria-label is required for screen readers
+ * and for capability specs that locate buttons by accessible name.
+ */
+const ARROW_ARIA_LABELS = {
+    up: 'Arrow up',
+    down: 'Arrow down',
+    left: 'Arrow left',
+    right: 'Arrow right',
+} as const;
+
+/**
  * Arrow icon pointing in specified direction
  */
 function ArrowIcon({ direction }: { direction: 'up' | 'down' | 'left' | 'right' }) {
@@ -62,6 +74,7 @@ export function NavigationPad({ onPress, activeButton, disabled = false }: Navig
             <FrontPanelButton
                 button="up"
                 label=""
+                ariaLabel={ARROW_ARIA_LABELS.up}
                 icon={<ArrowIcon direction="up" />}
                 onClick={() => onPress('up')}
                 isActive={activeButton === 'up'}
@@ -75,6 +88,7 @@ export function NavigationPad({ onPress, activeButton, disabled = false }: Navig
             <FrontPanelButton
                 button="left"
                 label=""
+                ariaLabel={ARROW_ARIA_LABELS.left}
                 icon={<ArrowIcon direction="left" />}
                 onClick={() => onPress('left')}
                 isActive={activeButton === 'left'}
@@ -86,6 +100,7 @@ export function NavigationPad({ onPress, activeButton, disabled = false }: Navig
             <FrontPanelButton
                 button="right"
                 label=""
+                ariaLabel={ARROW_ARIA_LABELS.right}
                 icon={<ArrowIcon direction="right" />}
                 onClick={() => onPress('right')}
                 isActive={activeButton === 'right'}
@@ -99,6 +114,7 @@ export function NavigationPad({ onPress, activeButton, disabled = false }: Navig
             <FrontPanelButton
                 button="down"
                 label=""
+                ariaLabel={ARROW_ARIA_LABELS.down}
                 icon={<ArrowIcon direction="down" />}
                 onClick={() => onPress('down')}
                 isActive={activeButton === 'down'}
