@@ -63,10 +63,10 @@ import {
   openTone0Editor,
   switchToToneTab,
   tonePanel,
-  clickSliderAtValue,
+  fillSliderInput,
   fillLabeledNumber,
   fillEnvelopeFirstCell,
-  selectLabeled,
+  selectEnvelopePip,
   expectFixtureFullyConsumed,
   type ToneTabName,
 } from './tone-writes-helpers';
@@ -259,12 +259,9 @@ test.describe('Tone parameter write affordances', () => {
       const editor = await openTone0Editor(page);
       await switchToToneTab(page, t.tab);
 
-      await clickSliderAtValue(
-        page,
+      await fillSliderInput(
         tonePanel(editor, t.tabId).getByTestId(t.testId),
         t.value,
-        0,
-        127,
       );
 
       await expectFixtureFullyConsumed(page);
@@ -429,10 +426,18 @@ test.describe('Tone parameter write affordances', () => {
           await fillEnvelopeFirstCell(scope, 'Level', t.action.value);
           break;
         case 'sustain':
-          await selectLabeled(scope, 'Sustain Point', t.action.value);
+          // The fixture captures `sustainPoint` in store-coordinates
+          // (0-based). The v3 pip radiogroup is 1-based by display.
+          // ToneEnvelopeEditor.handleSustainChange subtracts 1 before
+          // writing, so passing pipIndex = stored + 1 reproduces the
+          // captured byte sequence.
+          await selectEnvelopePip(scope, 'sustain', Number(t.action.value) + 1);
           break;
         case 'end':
-          await selectLabeled(scope, 'End Point', t.action.value);
+          // `endPoint` is already 1-based in the store, and the v3 pip
+          // radiogroup is 1-based by display, so the captured value
+          // maps directly to pipIndex.
+          await selectEnvelopePip(scope, 'end', Number(t.action.value));
           break;
       }
 

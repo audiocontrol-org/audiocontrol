@@ -79,7 +79,7 @@ export function ToneEditorHead({
             placeholder="(unnamed)"
             data-testid="tone-name-input"
             maxLength={8}
-            className="tones__detail-name-input"
+            className="ac-input tones__detail-name-input"
           />
         </h3>
 

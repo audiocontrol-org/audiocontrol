@@ -1,18 +1,25 @@
 /**
- * ToneEditor — Amplifier (TVA) tab panel (Phase 9 Task 4 polish).
+ * ToneEditor — Amplifier (TVA) tab panel (Phase 9 Task 4 TonesPage amend).
  *
  * Per project memory `feedback_tabbed_detail_pane`, the TVA parameters
  * and the TVA envelope live in the SAME tab because they interact
  * strongly when dialing in level dynamics.
  *
+ * v3 atomic primitives:
+ *   - ParameterSlider → ParamSliderRow (AcSlider + AcNumberInput editable;
+ *     streaming writes per `feedback_live_editing_no_save`).
+ *   - vanilla `<select>` → `.ac-select` with adjacent `.ac-field-label`.
+ *   - EnvelopeEditor → ToneEnvelopeEditor (composes AcEnvelope from
+ *     editor-core for graph+pip+readout, plus an inline edit grid for
+ *     per-segment rate/level).
+ *
  * data-testid preservation:
- *   - tone-tva-curve
+ *   - tone-tva-curve (Level Curve select)
  */
 
 import type { SamplerTone, SamplerEnvelope, SamplerLevelCurve } from '@/core/midi/SamplerClient';
-import { formatPercent } from '@audiocontrol/editor-core';
-import { ParameterSlider } from '@/components/ui/ParameterSlider';
-import { EnvelopeEditor } from '@/components/ui/EnvelopeEditor';
+import { ParamSliderRow } from '@/components/ui/ParamSliderRow';
+import { ToneEnvelopeEditor } from '@/components/ui/ToneEnvelopeEditor';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { TONE_TOOLTIPS } from '@/constants/tone-tooltips';
 
@@ -23,6 +30,30 @@ interface ToneAmpPanelProps {
 }
 
 export function ToneAmpPanel({ tone, onUpdate, onCommit }: ToneAmpPanelProps) {
+  // Streaming writes — collapse the legacy onChange-state + onCommit-device
+  // pair into a single async handler per parameter (mirrors PatchEditor
+  // post-amend pattern).
+  const handleLevelChange = (level: number) => {
+    const updatedTone = { ...tone, tva: { ...tone.tva, level } };
+    onUpdate?.(updatedTone);
+    onCommit?.(updatedTone);
+  };
+  const handleLfoDepthChange = (lfoDepth: number) => {
+    const updatedTone = { ...tone, tva: { ...tone.tva, lfoDepth } };
+    onUpdate?.(updatedTone);
+    onCommit?.(updatedTone);
+  };
+  const handleKeyRateChange = (keyRate: number) => {
+    const updatedTone = { ...tone, tva: { ...tone.tva, keyRate } };
+    onUpdate?.(updatedTone);
+    onCommit?.(updatedTone);
+  };
+  const handleVelRateChange = (velRate: number) => {
+    const updatedTone = { ...tone, tva: { ...tone.tva, velRate } };
+    onUpdate?.(updatedTone);
+    onCommit?.(updatedTone);
+  };
+
   const handleTvaEnvelopeChange = (envelope: SamplerEnvelope) => {
     onUpdate?.({ ...tone, tva: { ...tone.tva, envelope } });
   };
@@ -34,14 +65,14 @@ export function ToneAmpPanel({ tone, onUpdate, onCommit }: ToneAmpPanelProps) {
         <span className="tones__section-eyebrow">Level · §04</span>
       </header>
       <div className="grid gap-4 md:grid-cols-4 mb-4">
-        <ParameterSlider label="Level" value={tone.tva.level} onChange={(v) => onUpdate?.({ ...tone, tva: { ...tone.tva, level: v } })} onCommit={onCommit} formatValue={formatPercent} tooltip={TONE_TOOLTIPS.tvaLevel} />
-        <ParameterSlider label="LFO Depth" value={tone.tva.lfoDepth} onChange={(v) => onUpdate?.({ ...tone, tva: { ...tone.tva, lfoDepth: v } })} onCommit={onCommit} formatValue={formatPercent} tooltip={TONE_TOOLTIPS.tvaLfoDepth} />
-        <ParameterSlider label="Key Rate" value={tone.tva.keyRate} onChange={(v) => onUpdate?.({ ...tone, tva: { ...tone.tva, keyRate: v } })} onCommit={onCommit} formatValue={formatPercent} tooltip={TONE_TOOLTIPS.tvaKeyRate} />
-        <ParameterSlider label="Vel Rate" value={tone.tva.velRate} onChange={(v) => onUpdate?.({ ...tone, tva: { ...tone.tva, velRate: v } })} onCommit={onCommit} formatValue={formatPercent} tooltip={TONE_TOOLTIPS.tvaVelRate} />
+        <ParamSliderRow label="Level" value={tone.tva.level} onChange={handleLevelChange} tooltip={TONE_TOOLTIPS.tvaLevel} />
+        <ParamSliderRow label="LFO Depth" value={tone.tva.lfoDepth} onChange={handleLfoDepthChange} tooltip={TONE_TOOLTIPS.tvaLfoDepth} />
+        <ParamSliderRow label="Key Rate" value={tone.tva.keyRate} onChange={handleKeyRateChange} tooltip={TONE_TOOLTIPS.tvaKeyRate} />
+        <ParamSliderRow label="Vel Rate" value={tone.tva.velRate} onChange={handleVelRateChange} tooltip={TONE_TOOLTIPS.tvaVelRate} />
       </div>
       <Tooltip content={TONE_TOOLTIPS.tvaLevelCurve}>
         <div className="mb-4 max-w-[200px]">
-          <label className="text-xs text-s330-muted mb-1 block">Level Curve</label>
+          <label className="ac-field-label mb-1 block">Level Curve</label>
           <select
             value={tone.tva.levelCurve}
             onChange={(e) => {
@@ -50,16 +81,16 @@ export function ToneAmpPanel({ tone, onUpdate, onCommit }: ToneAmpPanelProps) {
               onCommit?.(updatedTone);
             }}
             data-testid="tone-tva-curve"
-            className="w-full text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
+            className="ac-select"
           >
             {[0, 1, 2, 3, 4, 5].map((i) => (<option key={i} value={i}>{i}</option>))}
           </select>
         </div>
       </Tooltip>
-      <EnvelopeEditor
+      <ToneEnvelopeEditor
         envelope={tone.tva.envelope}
         onChange={handleTvaEnvelopeChange}
-        onCommit={onCommit}
+        onCommit={() => onCommit?.()}
         label="TVA"
       />
     </section>

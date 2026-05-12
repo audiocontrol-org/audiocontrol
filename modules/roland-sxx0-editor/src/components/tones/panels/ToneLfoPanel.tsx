@@ -1,16 +1,26 @@
 /**
- * ToneEditor — LFO tab panel (Phase 9 Task 4 polish).
+ * ToneEditor — LFO tab panel (Phase 9 Task 4 TonesPage amend).
  *
  * Free-running LFO controls (rate / delay / offset) + key sync,
- * mode, peak-hold flags.
+ * mode (display-only), peak-hold flag.
+ *
+ * v3 atomic primitives:
+ *   - ParameterSlider → ParamSliderRow (AcSlider + AcNumberInput editable;
+ *     streaming writes per `feedback_live_editing_no_save`).
+ *   - vanilla `<input type="checkbox">` → AcCheckbox (the three-element
+ *     mockup pattern). data-testid preserved via wrapping div for the
+ *     LFO Sync checkbox; cssId preserved via AcCheckbox `id` prop for
+ *     the LFO Polarity (Peak Hold) checkbox.
+ *   - Mode display label → `.ac-field-label`.
  *
  * data-testid preservation:
- *   - tone-lfo-sync
+ *   - tone-lfo-sync (wrapping div)
+ *   - id="lfoPolarity" (via AcCheckbox `id`)
  */
 
 import type { SamplerTone } from '@/core/midi/SamplerClient';
-import { formatPercent } from '@audiocontrol/editor-core';
-import { ParameterSlider } from '@/components/ui/ParameterSlider';
+import { AcCheckbox } from '@audiocontrol/editor-core';
+import { ParamSliderRow } from '@/components/ui/ParamSliderRow';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { TONE_TOOLTIPS } from '@/constants/tone-tooltips';
 
@@ -21,6 +31,13 @@ interface ToneLfoPanelProps {
 }
 
 export function ToneLfoPanel({ tone, onUpdate, onCommit }: ToneLfoPanelProps) {
+  const lfo = tone.lfo;
+  const updateLfo = (next: Partial<typeof lfo>) => {
+    const updatedTone = { ...tone, lfo: { ...lfo, ...next } };
+    onUpdate?.(updatedTone);
+    onCommit?.(updatedTone);
+  };
+
   return (
     <section className="tones__section">
       <header className="tones__section-head">
@@ -28,48 +45,39 @@ export function ToneLfoPanel({ tone, onUpdate, onCommit }: ToneLfoPanelProps) {
         <span className="tones__section-eyebrow">Modulation · §05</span>
       </header>
       <div className="grid gap-4 md:grid-cols-3 mb-4">
-        <ParameterSlider label="Rate" value={tone.lfo.rate} onChange={(v) => onUpdate?.({ ...tone, lfo: { ...tone.lfo, rate: v } })} onCommit={onCommit} formatValue={formatPercent} tooltip={TONE_TOOLTIPS.lfoRate} />
-        <ParameterSlider label="Delay" value={tone.lfo.delay} onChange={(v) => onUpdate?.({ ...tone, lfo: { ...tone.lfo, delay: v } })} onCommit={onCommit} formatValue={formatPercent} tooltip={TONE_TOOLTIPS.lfoDelay} />
-        <ParameterSlider label="Offset" value={tone.lfo.offset} onChange={(v) => onUpdate?.({ ...tone, lfo: { ...tone.lfo, offset: v } })} onCommit={onCommit} formatValue={formatPercent} tooltip={TONE_TOOLTIPS.lfoOffset} />
+        <ParamSliderRow label="Rate" value={lfo.rate} onChange={(rate) => updateLfo({ rate })} tooltip={TONE_TOOLTIPS.lfoRate} />
+        <ParamSliderRow label="Delay" value={lfo.delay} onChange={(delay) => updateLfo({ delay })} tooltip={TONE_TOOLTIPS.lfoDelay} />
+        <ParamSliderRow label="Offset" value={lfo.offset} onChange={(offset) => updateLfo({ offset })} tooltip={TONE_TOOLTIPS.lfoOffset} />
       </div>
       <div className="grid gap-4 md:grid-cols-3">
         <Tooltip content={TONE_TOOLTIPS.lfoSync}>
-          <div className="flex items-center gap-2">
+          <label className="ac-checkbox">
             <input
               type="checkbox"
               id="lfoSync"
-              checked={tone.lfo.sync}
+              checked={lfo.sync}
               data-testid="tone-lfo-sync"
-              onChange={(e) => {
-                const updatedTone = { ...tone, lfo: { ...tone.lfo, sync: e.target.checked } };
-                onUpdate?.(updatedTone);
-                onCommit?.(updatedTone);
-              }}
-              className="rounded"
+              onChange={(e) => updateLfo({ sync: e.target.checked })}
+              className="ac-checkbox__input"
             />
-            <label htmlFor="lfoSync" className="text-sm text-s330-text">Key Sync</label>
-          </div>
+            <span className="ac-checkbox__label">Key Sync</span>
+          </label>
         </Tooltip>
         <Tooltip content={TONE_TOOLTIPS.lfoMode}>
           <div>
-            <label className="text-xs text-s330-muted">Mode</label>
-            <div className="text-sm text-s330-text capitalize">{tone.lfo.mode}</div>
+            <label className="ac-field-label">Mode</label>
+            <div className="text-sm text-s330-text capitalize">{lfo.mode}</div>
           </div>
         </Tooltip>
         <Tooltip content={TONE_TOOLTIPS.lfoPeakHold}>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
+          <div>
+            <AcCheckbox
               id="lfoPolarity"
-              checked={tone.lfo.polarity}
-              onChange={(e) => {
-                const updatedTone = { ...tone, lfo: { ...tone.lfo, polarity: e.target.checked } };
-                onUpdate?.(updatedTone);
-                onCommit?.(updatedTone);
-              }}
-              className="rounded"
-            />
-            <label htmlFor="lfoPolarity" className="text-sm text-s330-text">Peak Hold</label>
+              checked={lfo.polarity}
+              onChange={(checked) => updateLfo({ polarity: checked })}
+            >
+              Peak Hold
+            </AcCheckbox>
           </div>
         </Tooltip>
       </div>

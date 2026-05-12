@@ -85,26 +85,24 @@ test.describe('Capabilities — Tone display (D-TONE)', () => {
     // helper in tone-writes-helpers.ts clicks the label by role 'tab'.
     await page.getByRole('tab', { name: 'Pitch' }).click();
 
-    // TonePitchPanel.tsx:30-38 mounts a ParameterSlider with
-    // `disabled` set. ParameterSlider renders a Radix Slider.Root +
-    // a label. The "Transpose" label is what the user sees;
-    // assert the slider role itself is present + has the disabled
-    // attribute (data-disabled='' on Radix's root when disabled=true).
+    // Phase 9 Task 4 TonesPage amend: TonePitchPanel.tsx now renders
+    // the Transpose row via ParamSliderRow (AcSlider + AcNumberInput
+    // editable). The "Transpose" label is visible; the focusable
+    // affordance is the AcNumberInput's `<input type="number">`. The
+    // disabled-on-keyboard contract is enforced by the input's
+    // `disabled` attribute (HTML, not Radix). Assert the input under
+    // the param-transpose wrapper is disabled.
     await expect(
       page.getByText('Transpose', { exact: true }),
     ).toBeVisible({ timeout: 5_000 });
 
-    // ParameterSlider exposes a single slider role per field. The
-    // Transpose slider is the first slider inside the Pitch panel.
     const pitchPanel = page.locator('[data-tab="tt-pitch"]');
-    const transposeSlider = pitchPanel.getByRole('slider').first();
-    await expect(transposeSlider).toBeVisible();
-
-    // Radix Slider sets `aria-disabled="true"` (or data-disabled='')
-    // when disabled. The contract: the user cannot interact.
-    const ariaDisabled = await transposeSlider.getAttribute('aria-disabled');
-    const dataDisabled = await transposeSlider.getAttribute('data-disabled');
-    expect(ariaDisabled === 'true' || dataDisabled !== null).toBe(true);
+    const transposeWrapper = pitchPanel.getByTestId('param-transpose');
+    await expect(transposeWrapper).toBeVisible();
+    const transposeInput = transposeWrapper
+      .locator('input[type="number"]')
+      .first();
+    await expect(transposeInput).toBeDisabled();
   });
 
   test('D-TONE-LFO-05: LFO Mode renders as a read-only label/value pair', async ({ page }) => {
@@ -131,62 +129,59 @@ test.describe('Capabilities — Tone display (D-TONE)', () => {
     expect(text).toMatch(/Mode\s*\S+/i);
   });
 
-  test('D-TONE-ENV-01: TVF envelope SVG visualization renders inside the Filter tab', async ({ page }) => {
-    // EnvelopeEditor mounts a div with aria-label "${label} envelope"
-    // (EnvelopeEditor.tsx:478) wrapping the SVG. The Filter tab
-    // exposes the TVF envelope; the label is 'TVF' or similar
-    // depending on the panel's prop value. ToneFilterPanel mounts
-    // the envelope component for tvf.
+  test('D-TONE-ENV-01: TVF envelope graphic renders inside the Filter tab', async ({ page }) => {
+    // Phase 9 Task 4 TonesPage amend: ToneEnvelopeEditor composes the
+    // v3 `AcEnvelope` (editor-core), whose graph region carries
+    // role="region" + aria-label like "TVF · 8-SEGMENT — N segments,
+    // segment K active". The SVG-based VFD-glow path lives inside
+    // that region.
     await page.getByRole('tab', { name: 'Filter' }).click();
 
     const filterPanel = page.locator('[data-tab="tt-filter"]');
-    // Find the envelope wrapper by partial aria-label match —
-    // 'TVF' / 'Filter' / 'TVF Envelope' depending on caller.
-    // We assert at least one element with aria-label containing
-    // 'envelope' (case-insensitive) exists inside the panel.
     const tvfEnv = filterPanel
-      .locator('[aria-label$="envelope" i]')
+      .getByRole('region', { name: /TVF.*segments/i })
       .first();
     await expect(tvfEnv).toBeVisible({ timeout: 5_000 });
-
-    // The SVG itself is a child of the envelope wrapper.
+    // The VFD-glow SVG path is rendered inside the envelope graph.
     await expect(tvfEnv.locator('svg').first()).toBeVisible();
   });
 
-  test('D-TONE-ENV-06: TVF envelope fullscreen expand button is reachable', async ({ page }) => {
-    // EnvelopeEditor.tsx:94-99 renders an absolute-positioned button
-    // with title="Expand envelope editor" inside the envelope card.
+  test('D-TONE-ENV-06: TVF envelope segment table is reachable inside the Filter tab', async ({ page }) => {
+    // The legacy `Expand envelope editor` button belonged to the old
+    // EnvelopeEditor. The v3 AcEnvelope replaces it with an inline
+    // segment-selection table (the segment buttons live inside the
+    // envelope's table portion, role="table") plus the inline edit
+    // grid for per-segment rate/level. The display affordance asserted
+    // here is the segment table presence.
     await page.getByRole('tab', { name: 'Filter' }).click();
 
     const filterPanel = page.locator('[data-tab="tt-filter"]');
-    const expandButton = filterPanel
-      .getByRole('button', { name: 'Expand envelope editor' })
+    const segmentTable = filterPanel
+      .getByRole('table', { name: /Envelope segments/i })
       .first();
-    await expect(expandButton).toBeVisible({ timeout: 5_000 });
-    await expect(expandButton).toBeEnabled();
+    await expect(segmentTable).toBeVisible({ timeout: 5_000 });
   });
 
-  test('D-TONE-ENV-07: TVA envelope SVG visualization renders inside the Amp tab', async ({ page }) => {
-    // Same component (EnvelopeEditor) reused for the TVA envelope
-    // inside the Amp panel.
+  test('D-TONE-ENV-07: TVA envelope graphic renders inside the Amp tab', async ({ page }) => {
+    // Same AcEnvelope composition reused for the TVA envelope inside
+    // the Amp panel; label prefix is "TVA".
     await page.getByRole('tab', { name: 'Amp' }).click();
 
     const ampPanel = page.locator('[data-tab="tt-amp"]');
     const tvaEnv = ampPanel
-      .locator('[aria-label$="envelope" i]')
+      .getByRole('region', { name: /TVA.*segments/i })
       .first();
     await expect(tvaEnv).toBeVisible({ timeout: 5_000 });
     await expect(tvaEnv.locator('svg').first()).toBeVisible();
   });
 
-  test('D-TONE-ENV-12: TVA envelope fullscreen expand button is reachable', async ({ page }) => {
+  test('D-TONE-ENV-12: TVA envelope segment table is reachable inside the Amp tab', async ({ page }) => {
     await page.getByRole('tab', { name: 'Amp' }).click();
 
     const ampPanel = page.locator('[data-tab="tt-amp"]');
-    const expandButton = ampPanel
-      .getByRole('button', { name: 'Expand envelope editor' })
+    const segmentTable = ampPanel
+      .getByRole('table', { name: /Envelope segments/i })
       .first();
-    await expect(expandButton).toBeVisible({ timeout: 5_000 });
-    await expect(expandButton).toBeEnabled();
+    await expect(segmentTable).toBeVisible({ timeout: 5_000 });
   });
 });

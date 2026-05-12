@@ -1,12 +1,23 @@
 /**
- * ToneEditor — Wave tab panel (Phase 9 Task 4 polish).
+ * ToneEditor — Wave tab panel (Phase 9 Task 4 TonesPage amend).
  *
  * Wave-source params (Original Key / Sample Rate / Loop Mode / Output)
  * + sample wave-address controls (Start / Loop Point / End) + the
  * visual loop editor (when sample data is available).
  *
+ * v3 atomic primitives:
+ *   - vanilla `<input type="number">` → `.ac-input` (Original Key, Start,
+ *     Loop Point, End).
+ *   - vanilla `<select>` → `.ac-select` (Loop Mode, Output).
+ *   - all field labels → `.ac-field-label`.
+ *
  * data-testid preservation:
  *   - tone-original-key, tone-loop-mode, tone-output
+ *
+ * The Start / Loop Point / End inputs are targeted by spec helpers via
+ * adjacent `<label>` text (see `fillLabeledNumber` in tone-writes-
+ * helpers.ts); the .ac-field-label class doesn't change the `<label>+ <input>`
+ * adjacency the helper relies on.
  */
 
 import type { SamplerTone } from '@/core/midi/SamplerClient';
@@ -49,7 +60,7 @@ export function ToneWavePanel({
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Tooltip content={TONE_TOOLTIPS.originalKey}>
             <div>
-              <label className="text-xs text-s330-muted">Original Key</label>
+              <label className="ac-field-label">Original Key</label>
               <div className="flex items-center gap-2">
                 <input
                   type="number"
@@ -62,7 +73,7 @@ export function ToneWavePanel({
                     onCommit?.(updatedTone);
                   }}
                   data-testid="tone-original-key"
-                  className="w-16 text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
+                  className="ac-input w-16 font-mono"
                 />
                 <span className="text-sm text-s330-muted">{midiNoteToName(tone.originalKey)}</span>
               </div>
@@ -70,13 +81,13 @@ export function ToneWavePanel({
           </Tooltip>
           <Tooltip content={TONE_TOOLTIPS.sampleRate}>
             <div>
-              <label className="text-xs text-s330-muted">Sample Rate</label>
+              <label className="ac-field-label">Sample Rate</label>
               <div className="text-sm text-s330-text">{tone.sampleRate}</div>
             </div>
           </Tooltip>
           <Tooltip content={TONE_TOOLTIPS.loopMode}>
             <div>
-              <label className="text-xs text-s330-muted">Loop Mode</label>
+              <label className="ac-field-label">Loop Mode</label>
               <select
                 value={tone.loopMode}
                 onChange={(e) => {
@@ -85,7 +96,7 @@ export function ToneWavePanel({
                   onCommit?.(updatedTone);
                 }}
                 data-testid="tone-loop-mode"
-                className="w-full text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
+                className="ac-select"
               >
                 <option value="forward">Forward</option>
                 <option value="alternating">Alternating</option>
@@ -96,7 +107,7 @@ export function ToneWavePanel({
           </Tooltip>
           <Tooltip content={TONE_TOOLTIPS.outputAssign}>
             <div>
-              <label className="text-xs text-s330-muted">Output</label>
+              <label className="ac-field-label">Output</label>
               <select
                 value={tone.outputAssign}
                 onChange={(e) => {
@@ -105,7 +116,7 @@ export function ToneWavePanel({
                   onCommit?.(updatedTone);
                 }}
                 data-testid="tone-output"
-                className="w-full text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
+                className="ac-select"
               >
                 <option value={0}>Mix</option>
                 <option value={1}>Out 1</option>
@@ -123,8 +134,8 @@ export function ToneWavePanel({
 
         <div className="mt-4 grid gap-4 md:grid-cols-3 text-xs">
           <Tooltip content={TONE_TOOLTIPS.waveStart}>
-            <div className="bg-s330-bg p-2 rounded">
-              <label className="text-s330-muted block mb-1">Start</label>
+            <div>
+              <label className="ac-field-label">Start</label>
               <input
                 type="number"
                 min={0}
@@ -135,13 +146,13 @@ export function ToneWavePanel({
                   onUpdate?.(updatedTone);
                   onCommit?.(updatedTone);
                 }}
-                className="w-full font-mono bg-transparent border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
+                className="ac-input font-mono"
               />
             </div>
           </Tooltip>
           <Tooltip content={TONE_TOOLTIPS.waveLoop}>
-            <div className="bg-s330-bg p-2 rounded">
-              <label className="text-s330-muted block mb-1">Loop Point</label>
+            <div>
+              <label className="ac-field-label">Loop Point</label>
               <input
                 type="number"
                 min={0}
@@ -152,13 +163,13 @@ export function ToneWavePanel({
                   onUpdate?.(updatedTone);
                   onCommit?.(updatedTone);
                 }}
-                className="w-full font-mono bg-transparent border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
+                className="ac-input font-mono"
               />
             </div>
           </Tooltip>
           <Tooltip content={TONE_TOOLTIPS.waveEnd}>
-            <div className="bg-s330-bg p-2 rounded">
-              <label className="text-s330-muted block mb-1">End</label>
+            <div>
+              <label className="ac-field-label">End</label>
               <input
                 type="number"
                 min={4}
@@ -169,7 +180,7 @@ export function ToneWavePanel({
                   onUpdate?.(updatedTone);
                   onCommit?.(updatedTone);
                 }}
-                className="w-full font-mono bg-transparent border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
+                className="ac-input font-mono"
               />
             </div>
           </Tooltip>

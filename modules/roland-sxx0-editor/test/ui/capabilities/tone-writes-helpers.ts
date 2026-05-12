@@ -6,6 +6,15 @@
  * the capability suite); they encode the ToneEditor's mount + tab-routing
  * contract in one place so each of the 39 tests stays focused on the
  * field it's driving rather than on plumbing.
+ *
+ * Phase 9 Task 4 TonesPage amend rewrote the per-control helpers to
+ * drive the v3 atomic primitives:
+ *   - `clickSliderAtValue` (Radix-track-click) → `fillSliderInput`
+ *     (page.fill on the AcNumberInput's editable `<input type="number">`).
+ *   - Envelope rate/level row → driven via `[data-edit-row]` attribute
+ *     on the new ToneEnvelopeEditor's inline edit grid.
+ *   - Envelope sustain/end selects → pip clicks on the AcEnvelopeMeta
+ *     radiogroup rows (`role="radiogroup"` + `[role="radio"]`).
  */
 import { expect, type Page, type Locator } from '@playwright/test';
 import type { SimulatedAdapterIntrospection } from '@audiocontrol/sampler-devices/recording';
@@ -137,49 +146,39 @@ export function tonePanel(editor: Locator, tab: ToneTabId): Locator {
 }
 
 /**
- * Drive a Radix ParameterSlider to a target value with exactly one
- * onValueCommit. Same shape as patch-writes.spec.ts's helper.
+ * Drive a v3 AcSlider row (rendered via ParamSliderRow) to a target
+ * value with exactly one outbound write. The wrapper is the
+ * `<div data-testid="param-...">` that encloses the row; inside is the
+ * `<AcNumberInput editable>` `<input type="number">` (the focusable
+ * affordance — `AcSlider`'s bar is display-only per DESIGN-SYSTEM.md).
  *
- * The clickable root carries `data-orientation="horizontal"`; clicking
- * at an X position within it fires onSlideStart on pointerdown (setting
- * the value linearly from the X position) and onValueCommit on
- * pointerup. The mapping is
- *   `(targetValue - min) / (max - min) = (clickX - rect.left) / rect.width`
- * (see @radix-ui/react-slider getValueFromPointer in dist/index.js).
+ * Same shape as patch-writes.spec.ts's `fillSliderInput`. `page.fill`
+ * clears the existing value and types the new one in one atomic step —
+ * Playwright dispatches a single `input` event with the final value
+ * (verified in `Locator.fill` source). The onChange handler on
+ * `AcNumberInput` parses + clamps the value and the row's onChange
+ * streams it to the device.
  *
  * Pre-conditions:
- *   - The slider's wrapper MUST be scoped to the active tab panel (the
- *     spec calls `tonePanel(editor, '<tab>').getByTestId('param-...')`
- *     before passing it in).
- *   - The current slider value MUST differ from `targetValue`; if they
- *     match, Radix's onValueCommit only fires when value changed, and
- *     the test would silently emit nothing.
+ *   - The input must not be `disabled` (caller must enable conditional
+ *     sliders by toggling the matching enable-flag first).
+ *   - The current value should differ from `targetValue`; React's
+ *     controlled-input no-op skips an onChange dispatch if the new
+ *     value matches the prop. The tone-write fixtures all set values
+ *     that differ from the loaded tone's defaults, so this is
+ *     satisfied in practice.
  */
-export async function clickSliderAtValue(
-  page: Page,
+export async function fillSliderInput(
   wrapper: Locator,
   targetValue: number,
-  min: number,
-  max: number,
 ): Promise<void> {
-  const sliderRoot = wrapper
-    .locator('[data-orientation="horizontal"]')
-    .first();
-  await expect(sliderRoot).toBeVisible({ timeout: 5_000 });
-
-  const box = await sliderRoot.boundingBox();
-  if (!box) {
-    throw new Error('clickSliderAtValue: slider root has no bounding box');
-  }
-
-  const ratio = (targetValue - min) / (max - min);
-  // Inset from the edges by 1px to avoid landing exactly on the boundary
-  // where rounding could resolve to the wrong step value.
-  const insetX = Math.max(1, Math.min(box.width - 1, ratio * box.width));
-  const clickX = box.x + insetX;
-  const clickY = box.y + box.height / 2;
-
-  await page.mouse.click(clickX, clickY);
+  const input = wrapper.locator('input[type="number"]').first();
+  await expect(input).toBeVisible({ timeout: 5_000 });
+  await input.fill(String(targetValue));
+  // Blur to ensure React's controlled-input change cycle completes and
+  // any downstream effect handlers settle before the spec's
+  // expectFixtureFullyConsumed assertion runs.
+  await input.blur();
 }
 
 /**
@@ -204,38 +203,46 @@ export async function fillLabeledNumber(
 }
 
 /**
- * Drive an envelope rate/level input (8-cell row in the TVF/TVA env
- * table). Each row's first <input type="number"> commits on `onBlur`
- * — see EnvelopeEditor.tsx's rate/level <input> handlers. The captured
- * fixtures target rate[0] / level[0]; first() selects the index-0 cell.
+ * Drive an envelope rate/level input in the inline edit grid below the
+ * v3 AcEnvelope visualization. Each `<div data-edit-row="rate|level">`
+ * carries 8 `<input type="number">` children; the captured fixtures
+ * target index 0 (`.first()`). Commits on `onBlur`.
  */
 export async function fillEnvelopeFirstCell(
   panel: Locator,
   row: 'Rate' | 'Level',
   value: string,
 ): Promise<void> {
-  const rowAnchor = new RegExp(`^${row}`);
+  const editRow = row === 'Rate' ? 'rate' : 'level';
   const input = panel
-    .locator('table tbody tr')
-    .filter({ hasText: rowAnchor })
-    .locator('input[type="number"]')
+    .locator(`[data-edit-row="${editRow}"] input[type="number"]`)
     .first();
   await input.fill(value);
   await input.blur();
 }
 
 /**
- * Drive a `<label hasText> + <select>` select control to a value.
- * Used for the envelope's Sustain Point + End Point selects (which
- * commit on `onChange`).
+ * Drive the envelope's Sustain / End pip-radio group to a target
+ * 1-based segment index by clicking the `i`-th pip. AcEnvelopeMeta
+ * renders the rows as `<div role="radiogroup" aria-label="Sustain
+ * segment">` / `<aria-label="Envelope length">`; pips are
+ * `<span role="radio">` with the displayed number `i` as text content
+ * and a roving tabindex. Clicking the pip fires
+ * `onSustainChange(i)` / `onEndChange(i)`, which ToneEnvelopeEditor
+ * routes back to the SamplerEnvelope's 0-based `sustainPoint` (i-1)
+ * or 1-based `endPoint` (i).
+ *
+ * The radiogroup is scoped by its `aria-label` because the two rows
+ * coexist in the same envelope and use the same role for both.
  */
-export async function selectLabeled(
+export async function selectEnvelopePip(
   panel: Locator,
-  labelText: string,
-  value: string,
+  kind: 'sustain' | 'end',
+  uiIndex: number,
 ): Promise<void> {
-  await panel
-    .locator('label', { hasText: labelText })
-    .locator('+ select')
-    .selectOption({ value });
+  const groupLabel = kind === 'sustain' ? 'Sustain segment' : 'Envelope length';
+  const group = panel.locator(`[aria-label="${groupLabel}"]`).first();
+  await expect(group).toBeVisible({ timeout: 5_000 });
+  const pip = group.locator(`[role="radio"]`).nth(uiIndex - 1);
+  await pip.click();
 }

@@ -416,6 +416,37 @@
   }
 }
 
+/* ============================================================
+   ENVELOPE EDIT GRID — inline rate + level inputs beneath the
+   AcEnvelope visual surface. AcEnvelope's per-segment table is
+   display-only (mockup intent); this grid restores per-segment
+   numeric editing for the S-series 8-point envelope.
+   ============================================================ */
+.tones__envelope-edit-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-2);
+  padding-top: var(--ac-space-2);
+}
+
+.tones__envelope-edit-row {
+  display: grid;
+  grid-template-columns: 3rem repeat(8, minmax(0, 1fr));
+  gap: var(--ac-space-2);
+  align-items: center;
+}
+
+.tones__envelope-edit-row > .ac-field-label {
+  margin-bottom: 0;
+}
+
+.tones__envelope-edit-row > .ac-input {
+  padding-block: 0.25rem;
+  padding-inline: 0.375rem;
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+}
+
 /* Inline page-loading progress bar — same shape as patches.css. */
 .tones__progress {
   display: flex;

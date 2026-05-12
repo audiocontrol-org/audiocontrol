@@ -5,6 +5,12 @@
  * Each point has a level (0-127) and rate (1-127, how fast to reach it).
  * sustainPoint (0-7) marks where envelope holds during note-on.
  * endPoint (1-8) marks where envelope playback stops.
+ *
+ * @deprecated Phase 9 Task 4 TonesPage amend replaced this component
+ *   with `ToneEnvelopeEditor` (which composes the v3 `AcEnvelope` from
+ *   editor-core for the graph + pip + readout surface, and adds an
+ *   inline rate/level edit grid). This file is kept for the audit-and-
+ *   delete dispatch after the rest of Phase 9 Task 4 lands.
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';

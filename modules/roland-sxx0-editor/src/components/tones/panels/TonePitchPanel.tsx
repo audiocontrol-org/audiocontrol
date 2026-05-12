@@ -1,14 +1,23 @@
 /**
- * ToneEditor — Pitch tab panel (Phase 9 Task 4 polish).
+ * ToneEditor — Pitch tab panel (Phase 9 Task 4 TonesPage amend).
  *
  * Pitch tracking (Transpose / Fine Tune) + key/bender/aftertouch flags.
  *
+ * v3 atomic primitives:
+ *   - ParameterSlider → ParamSliderRow (AcSlider + AcNumberInput editable
+ *     readout, streaming writes per `feedback_live_editing_no_save`).
+ *   - vanilla `<input type="checkbox">` → AcCheckbox (the three-element
+ *     mockup pattern, styled by control-primitives.css). The wrapping
+ *     `<div data-testid="...">` preserves the legacy capability selectors.
+ *
  * data-testid preservation:
- *   - tone-pitch-follow
+ *   - tone-pitch-follow (wrapping div)
+ *   - id="benderEnabled" / id="aftertouchEnabled" (via AcCheckbox `id`)
  */
 
 import type { SamplerTone } from '@/core/midi/SamplerClient';
-import { ParameterSlider } from '@/components/ui/ParameterSlider';
+import { AcCheckbox } from '@audiocontrol/editor-core';
+import { ParamSliderRow } from '@/components/ui/ParamSliderRow';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { TONE_TOOLTIPS } from '@/constants/tone-tooltips';
 
@@ -19,6 +28,23 @@ interface TonePitchPanelProps {
 }
 
 export function TonePitchPanel({ tone, onUpdate, onCommit }: TonePitchPanelProps) {
+  // Streaming writes: AcNumberInput's onChange fires per keystroke, so each
+  // slider edit streams the value to the device. The single async handler
+  // does the local update AND the device write (mirrors PatchEditor's
+  // post-amend pattern).
+  const handleTransposeChange = (transpose: number) => {
+    const updatedTone = { ...tone, transpose };
+    onUpdate?.(updatedTone);
+    onCommit?.(updatedTone);
+  };
+
+  const handleFineTuneChange = (fineTunePlus64: number) => {
+    // Slider 0..127 ↔ stored -64..+63: stored = position - 64.
+    const updatedTone = { ...tone, fineTune: fineTunePlus64 - 64 };
+    onUpdate?.(updatedTone);
+    onCommit?.(updatedTone);
+  };
+
   return (
     <section className="tones__section">
       <header className="tones__section-head">
@@ -26,31 +52,25 @@ export function TonePitchPanel({ tone, onUpdate, onCommit }: TonePitchPanelProps
         <span className="tones__section-eyebrow">Tracking · §02</span>
       </header>
       <div className="grid gap-4 md:grid-cols-2">
-        <ParameterSlider
+        <ParamSliderRow
           label="Transpose"
           value={tone.transpose}
-          onChange={(v) => onUpdate?.({ ...tone, transpose: v })}
-          onCommit={onCommit}
+          onChange={handleTransposeChange}
+          tooltip={TONE_TOOLTIPS.transpose}
           min={-24}
           max={24}
-          formatValue={(v) => `${v} semitones`}
           disabled
-          tooltip={TONE_TOOLTIPS.transpose}
         />
-        <ParameterSlider
+        <ParamSliderRow
           label="Fine Tune"
           value={tone.fineTune + 64}
-          onChange={(v) => onUpdate?.({ ...tone, fineTune: v - 64 })}
-          onCommit={onCommit}
-          min={0}
-          max={127}
-          formatValue={(v) => `${v - 64} cents`}
+          onChange={handleFineTuneChange}
           tooltip={TONE_TOOLTIPS.fineTune}
         />
       </div>
       <div className="mt-4 grid gap-4 md:grid-cols-3">
         <Tooltip content={TONE_TOOLTIPS.pitchFollow}>
-          <div className="flex items-center gap-2">
+          <label className="ac-checkbox">
             <input
               type="checkbox"
               id="pitchFollow"
@@ -61,41 +81,39 @@ export function TonePitchPanel({ tone, onUpdate, onCommit }: TonePitchPanelProps
                 onUpdate?.(updatedTone);
                 onCommit?.(updatedTone);
               }}
-              className="rounded"
+              className="ac-checkbox__input"
             />
-            <label htmlFor="pitchFollow" className="text-sm text-s330-text">Pitch Follow</label>
-          </div>
+            <span className="ac-checkbox__label">Pitch Follow</span>
+          </label>
         </Tooltip>
         <Tooltip content={TONE_TOOLTIPS.benderEnabled}>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
+          <div>
+            <AcCheckbox
               id="benderEnabled"
               checked={tone.benderEnabled}
-              onChange={(e) => {
-                const updatedTone = { ...tone, benderEnabled: e.target.checked };
+              onChange={(checked) => {
+                const updatedTone = { ...tone, benderEnabled: checked };
                 onUpdate?.(updatedTone);
                 onCommit?.(updatedTone);
               }}
-              className="rounded"
-            />
-            <label htmlFor="benderEnabled" className="text-sm text-s330-text">Pitch Bender</label>
+            >
+              Pitch Bender
+            </AcCheckbox>
           </div>
         </Tooltip>
         <Tooltip content={TONE_TOOLTIPS.aftertouchEnabled}>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
+          <div>
+            <AcCheckbox
               id="aftertouchEnabled"
               checked={tone.aftertouchEnabled}
-              onChange={(e) => {
-                const updatedTone = { ...tone, aftertouchEnabled: e.target.checked };
+              onChange={(checked) => {
+                const updatedTone = { ...tone, aftertouchEnabled: checked };
                 onUpdate?.(updatedTone);
                 onCommit?.(updatedTone);
               }}
-              className="rounded"
-            />
-            <label htmlFor="aftertouchEnabled" className="text-sm text-s330-text">Aftertouch</label>
+            >
+              Aftertouch
+            </AcCheckbox>
           </div>
         </Tooltip>
       </div>

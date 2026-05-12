@@ -1,21 +1,33 @@
 /**
- * ToneEditor — Filter (TVF) tab panel (Phase 9 Task 4 polish).
+ * ToneEditor — Filter (TVF) tab panel (Phase 9 Task 4 TonesPage amend).
  *
  * Per project memory `feedback_tabbed_detail_pane`, the TVF parameters
  * and the TVF envelope live in the SAME tab because they interact
  * strongly when dialing in a sound.
  *
+ * v3 atomic primitives:
+ *   - ParameterSlider → ParamSliderRow (AcSlider + AcNumberInput editable;
+ *     streaming writes per `feedback_live_editing_no_save`).
+ *   - vanilla `<select>` → `.ac-select` with adjacent `.ac-field-label`.
+ *   - vanilla `<input type="checkbox">` (Enable Filter) → `.ac-checkbox`
+ *     class chain (label > input.ac-checkbox__input + span.ac-checkbox__label).
+ *     Same visual shape as `<AcCheckbox>` but keeps the `data-testid` on
+ *     the input element so the existing capability spec selector
+ *     (`tone-tvf-enabled`) hits the toggle target directly.
+ *   - EnvelopeEditor → ToneEnvelopeEditor (composes AcEnvelope for
+ *     graph+pip+readout plus an inline edit grid).
+ *
  * data-testid preservation:
- *   - tone-tvf-enabled, tone-tvf-polarity, tone-tvf-curve
+ *   - tone-tvf-enabled (wrapping div)
+ *   - tone-tvf-polarity, tone-tvf-curve (selects)
  */
 
 import type {
   SamplerTone, SamplerEnvelope, SamplerEgPolarity, SamplerLevelCurve,
 } from '@/core/midi/SamplerClient';
-import { formatPercent } from '@audiocontrol/editor-core';
 import { cn } from '@/lib/utils';
-import { ParameterSlider } from '@/components/ui/ParameterSlider';
-import { EnvelopeEditor } from '@/components/ui/EnvelopeEditor';
+import { ParamSliderRow } from '@/components/ui/ParamSliderRow';
+import { ToneEnvelopeEditor } from '@/components/ui/ToneEnvelopeEditor';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { TONE_TOOLTIPS } from '@/constants/tone-tooltips';
 
@@ -26,8 +38,24 @@ interface ToneFilterPanelProps {
 }
 
 export function ToneFilterPanel({ tone, onUpdate, onCommit }: ToneFilterPanelProps) {
+  // Streaming writes — single async handler per parameter (PatchEditor
+  // post-amend pattern; mirrors `feedback_live_editing_no_save`).
+  const tvf = tone.tvf;
+  const updateTvf = (next: Partial<typeof tvf>) => {
+    const updatedTone = { ...tone, tvf: { ...tvf, ...next } };
+    onUpdate?.(updatedTone);
+    onCommit?.(updatedTone);
+  };
+  const handleCutoffChange = (cutoff: number) => updateTvf({ cutoff });
+  const handleResonanceChange = (resonance: number) => updateTvf({ resonance });
+  const handleKeyFollowChange = (keyFollow: number) => updateTvf({ keyFollow });
+  const handleLfoDepthChange = (lfoDepth: number) => updateTvf({ lfoDepth });
+  const handleEgDepthChange = (egDepth: number) => updateTvf({ egDepth });
+  const handleKeyRateChange = (keyRateFollow: number) => updateTvf({ keyRateFollow });
+  const handleVelRateChange = (velRateFollow: number) => updateTvf({ velRateFollow });
+
   const handleTvfEnvelopeChange = (envelope: SamplerEnvelope) => {
-    onUpdate?.({ ...tone, tvf: { ...tone.tvf, envelope } });
+    onUpdate?.({ ...tone, tvf: { ...tvf, envelope } });
   };
 
   return (
@@ -37,55 +65,47 @@ export function ToneFilterPanel({ tone, onUpdate, onCommit }: ToneFilterPanelPro
           Filter — TVF
           <span className={cn(
             'ml-2 text-xs px-2 py-0.5 rounded',
-            tone.tvf.enabled ? 'bg-s330-highlight/20 text-s330-highlight' : 'bg-s330-muted/20 text-s330-muted',
+            tvf.enabled ? 'bg-s330-highlight/20 text-s330-highlight' : 'bg-s330-muted/20 text-s330-muted',
           )}>
-            {tone.tvf.enabled ? 'ON' : 'OFF'}
+            {tvf.enabled ? 'ON' : 'OFF'}
           </span>
         </h4>
         <span className="tones__section-eyebrow">Time-variant · §03</span>
       </header>
       <Tooltip content={TONE_TOOLTIPS.tvfEnabled}>
-        <div className="flex items-center gap-2 mb-4">
+        <label className="ac-checkbox mb-4">
           <input
             type="checkbox"
             id="tvfEnabled"
-            checked={tone.tvf.enabled}
+            checked={tvf.enabled}
             data-testid="tone-tvf-enabled"
-            onChange={(e) => {
-              const updatedTone = { ...tone, tvf: { ...tone.tvf, enabled: e.target.checked } };
-              onUpdate?.(updatedTone);
-              onCommit?.(updatedTone);
-            }}
-            className="rounded"
+            onChange={(e) => updateTvf({ enabled: e.target.checked })}
+            className="ac-checkbox__input"
           />
-          <label htmlFor="tvfEnabled" className="text-sm text-s330-text">Enable Filter</label>
-        </div>
+          <span className="ac-checkbox__label">Enable Filter</span>
+        </label>
       </Tooltip>
       <div className="grid gap-4 md:grid-cols-3 mb-4">
-        <ParameterSlider label="Cutoff" value={tone.tvf.cutoff} onChange={(v) => onUpdate?.({ ...tone, tvf: { ...tone.tvf, cutoff: v } })} onCommit={onCommit} formatValue={formatPercent} disabled={!tone.tvf.enabled} tooltip={TONE_TOOLTIPS.tvfCutoff} />
-        <ParameterSlider label="Resonance" value={tone.tvf.resonance} onChange={(v) => onUpdate?.({ ...tone, tvf: { ...tone.tvf, resonance: v } })} onCommit={onCommit} formatValue={formatPercent} disabled={!tone.tvf.enabled} tooltip={TONE_TOOLTIPS.tvfResonance} />
-        <ParameterSlider label="Key Follow" value={tone.tvf.keyFollow} onChange={(v) => onUpdate?.({ ...tone, tvf: { ...tone.tvf, keyFollow: v } })} onCommit={onCommit} formatValue={formatPercent} disabled={!tone.tvf.enabled} tooltip={TONE_TOOLTIPS.tvfKeyFollow} />
+        <ParamSliderRow label="Cutoff" value={tvf.cutoff} onChange={handleCutoffChange} tooltip={TONE_TOOLTIPS.tvfCutoff} disabled={!tvf.enabled} />
+        <ParamSliderRow label="Resonance" value={tvf.resonance} onChange={handleResonanceChange} tooltip={TONE_TOOLTIPS.tvfResonance} disabled={!tvf.enabled} />
+        <ParamSliderRow label="Key Follow" value={tvf.keyFollow} onChange={handleKeyFollowChange} tooltip={TONE_TOOLTIPS.tvfKeyFollow} disabled={!tvf.enabled} />
       </div>
       <div className="grid gap-4 md:grid-cols-4 mb-4">
-        <ParameterSlider label="LFO Depth" value={tone.tvf.lfoDepth} onChange={(v) => onUpdate?.({ ...tone, tvf: { ...tone.tvf, lfoDepth: v } })} onCommit={onCommit} formatValue={formatPercent} disabled={!tone.tvf.enabled} tooltip={TONE_TOOLTIPS.tvfLfoDepth} />
-        <ParameterSlider label="EG Depth" value={tone.tvf.egDepth} onChange={(v) => onUpdate?.({ ...tone, tvf: { ...tone.tvf, egDepth: v } })} onCommit={onCommit} formatValue={formatPercent} disabled={!tone.tvf.enabled} tooltip={TONE_TOOLTIPS.tvfEgDepth} />
-        <ParameterSlider label="Key Rate" value={tone.tvf.keyRateFollow} onChange={(v) => onUpdate?.({ ...tone, tvf: { ...tone.tvf, keyRateFollow: v } })} onCommit={onCommit} formatValue={formatPercent} disabled={!tone.tvf.enabled} tooltip={TONE_TOOLTIPS.tvfKeyRate} />
-        <ParameterSlider label="Vel Rate" value={tone.tvf.velRateFollow} onChange={(v) => onUpdate?.({ ...tone, tvf: { ...tone.tvf, velRateFollow: v } })} onCommit={onCommit} formatValue={formatPercent} disabled={!tone.tvf.enabled} tooltip={TONE_TOOLTIPS.tvfVelRate} />
+        <ParamSliderRow label="LFO Depth" value={tvf.lfoDepth} onChange={handleLfoDepthChange} tooltip={TONE_TOOLTIPS.tvfLfoDepth} disabled={!tvf.enabled} />
+        <ParamSliderRow label="EG Depth" value={tvf.egDepth} onChange={handleEgDepthChange} tooltip={TONE_TOOLTIPS.tvfEgDepth} disabled={!tvf.enabled} />
+        <ParamSliderRow label="Key Rate" value={tvf.keyRateFollow} onChange={handleKeyRateChange} tooltip={TONE_TOOLTIPS.tvfKeyRate} disabled={!tvf.enabled} />
+        <ParamSliderRow label="Vel Rate" value={tvf.velRateFollow} onChange={handleVelRateChange} tooltip={TONE_TOOLTIPS.tvfVelRate} disabled={!tvf.enabled} />
       </div>
       <div className="mb-4 grid gap-4 md:grid-cols-2">
         <Tooltip content={TONE_TOOLTIPS.tvfEgPolarity}>
           <div>
-            <label className="text-xs text-s330-muted mb-1 block">EG Polarity</label>
+            <label className="ac-field-label mb-1 block">EG Polarity</label>
             <select
-              value={tone.tvf.egPolarity}
-              onChange={(e) => {
-                const updatedTone = { ...tone, tvf: { ...tone.tvf, egPolarity: e.target.value as SamplerEgPolarity } };
-                onUpdate?.(updatedTone);
-                onCommit?.(updatedTone);
-              }}
-              disabled={!tone.tvf.enabled}
+              value={tvf.egPolarity}
+              onChange={(e) => updateTvf({ egPolarity: e.target.value as SamplerEgPolarity })}
+              disabled={!tvf.enabled}
               data-testid="tone-tvf-polarity"
-              className="w-full text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text disabled:opacity-50"
+              className="ac-select"
             >
               <option value="normal">Normal</option>
               <option value="reverse">Reverse</option>
@@ -94,29 +114,25 @@ export function ToneFilterPanel({ tone, onUpdate, onCommit }: ToneFilterPanelPro
         </Tooltip>
         <Tooltip content={TONE_TOOLTIPS.tvfLevelCurve}>
           <div>
-            <label className="text-xs text-s330-muted mb-1 block">Level Curve</label>
+            <label className="ac-field-label mb-1 block">Level Curve</label>
             <select
-              value={tone.tvf.levelCurve}
-              onChange={(e) => {
-                const updatedTone = { ...tone, tvf: { ...tone.tvf, levelCurve: Number(e.target.value) as SamplerLevelCurve } };
-                onUpdate?.(updatedTone);
-                onCommit?.(updatedTone);
-              }}
-              disabled={!tone.tvf.enabled}
+              value={tvf.levelCurve}
+              onChange={(e) => updateTvf({ levelCurve: Number(e.target.value) as SamplerLevelCurve })}
+              disabled={!tvf.enabled}
               data-testid="tone-tvf-curve"
-              className="w-full text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text disabled:opacity-50"
+              className="ac-select"
             >
               {[0, 1, 2, 3, 4, 5].map((i) => (<option key={i} value={i}>{i}</option>))}
             </select>
           </div>
         </Tooltip>
       </div>
-      <EnvelopeEditor
-        envelope={tone.tvf.envelope}
+      <ToneEnvelopeEditor
+        envelope={tvf.envelope}
         onChange={handleTvfEnvelopeChange}
-        onCommit={onCommit}
+        onCommit={() => onCommit?.()}
         label="TVF"
-        disabled={!tone.tvf.enabled}
+        disabled={!tvf.enabled}
       />
     </section>
   );

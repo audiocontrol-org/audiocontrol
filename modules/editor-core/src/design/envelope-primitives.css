@@ -450,6 +450,11 @@
   border-color: color-mix(in srgb, var(--ac-color-border-subtle) 60%, var(--ac-color-text-muted));
 }
 
+.ac-envelope-meta__pip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 45%, transparent);
+}
+
 .ac-envelope-meta__pip[data-active="true"] {
   background: var(--ac-color-accent);
   border-color: var(--ac-color-accent);
