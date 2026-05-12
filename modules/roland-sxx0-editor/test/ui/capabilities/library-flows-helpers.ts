@@ -48,6 +48,15 @@
  *   this file. Minimal new infrastructure, reuses production OPFS
  *   wiring, no mock-backend complexity.
  */
+import fs from 'node:fs';
+import path from 'node:path';
+import url from 'node:url';
+import { parse as parseYaml } from 'yaml';
+import {
+  SampleYamlSchema,
+  ToneYamlSchema,
+  PatchYamlSchema,
+} from '@audiocontrol/sampler-library';
 import { expect, type Page, type Locator } from '@playwright/test';
 
 /**
@@ -150,6 +159,215 @@ export async function seedOPFSSetManifest(
     await writable.write(manifest);
     await writable.close();
   }, { setName });
+}
+
+/**
+ * Resolve a fixture file relative to `modules/roland-sxx0-editor/test/e2e/fixtures/`.
+ *
+ * The Wave 4 close-out approach (Decision 3, commit 28992738) is to
+ * REUSE validated fixtures on disk rather than construct YAML in code.
+ * Every helper that seeds a library entry into OPFS routes through
+ * `readFixtureText` / `readFixtureBytes` so the bytes the spec writes
+ * are the same bytes any other consumer (e2e tests, library round-trip
+ * tooling) would see.
+ */
+const FIXTURES_ROOT = path.resolve(
+  path.dirname(url.fileURLToPath(import.meta.url)),
+  '../../e2e/fixtures',
+);
+
+function readFixtureText(relativePath: string): string {
+  return fs.readFileSync(path.join(FIXTURES_ROOT, relativePath), 'utf-8');
+}
+
+function readFixtureBytes(relativePath: string): Uint8Array {
+  return new Uint8Array(fs.readFileSync(path.join(FIXTURES_ROOT, relativePath)));
+}
+
+/**
+ * Convert a `Uint8Array` to a plain `number[]` so it survives
+ * structured-clone serialization across the Playwright bridge into
+ * `page.evaluate`. The browser side reconstructs a `Uint8Array` before
+ * writing into OPFS.
+ */
+function bytesToTransfer(buf: Uint8Array): number[] {
+  return Array.from(buf);
+}
+
+/**
+ * Seed a Roland S-330 individual library tone into OPFS by copying a
+ * validated fixture from `test/e2e/fixtures/tones/<fixtureName>.yaml`
+ * (and its companion `.wav`) into
+ * `library/s330/tones/<targetName>.yaml` + `<targetName>.wav`.
+ *
+ * The YAML is parsed through `ToneYamlSchema` before being written so
+ * any drift between the on-disk fixture and the published schema fails
+ * the test at seeding time (not at dialog-mount time), keeping the
+ * failure signal close to its cause.
+ *
+ * The seeded path matches `loadIndividualTone`'s expected layout
+ * (`modules/roland-sxx0-editor/src/lib/library-tones.ts:339`), which
+ * the s330 plugin's `tones` category surfaces as a single-node tree
+ * keyed by file name. Clicking the corresponding `library-tone-<id>`
+ * tree node routes through `useRolandSelectionMapping` to a
+ * `selection.type === 'individualTone'` state, which arms
+ * `ImportLibraryToneDialog` via the preview panel's "Import to Device"
+ * button.
+ */
+export async function seedOPFSTone(
+  page: Page,
+  options: { fixtureName?: string; targetName?: string } = {},
+): Promise<void> {
+  const fixtureName = options.fixtureName ?? 'basic-sine';
+  const targetName = options.targetName ?? fixtureName;
+
+  const yamlText = readFixtureText(`tones/${fixtureName}.yaml`);
+  const wavBytes = readFixtureBytes(`tones/${fixtureName}.wav`);
+
+  // Schema-validate before writing. A parse throw here means the
+  // fixture has drifted from the schema — fail loudly at the source.
+  ToneYamlSchema.parse(parseYaml(yamlText));
+
+  await page.evaluate(
+    async ({ yamlText, wavBytes, targetName }) => {
+      const root = await navigator.storage.getDirectory();
+      const library = await root.getDirectoryHandle('library', { create: true });
+      const s330 = await library.getDirectoryHandle('s330', { create: true });
+      const tones = await s330.getDirectoryHandle('tones', { create: true });
+
+      const yamlHandle = await tones.getFileHandle(`${targetName}.yaml`, { create: true });
+      const yamlWritable = await yamlHandle.createWritable();
+      await yamlWritable.write(yamlText);
+      await yamlWritable.close();
+
+      const wavHandle = await tones.getFileHandle(`${targetName}.wav`, { create: true });
+      const wavWritable = await wavHandle.createWritable();
+      await wavWritable.write(new Uint8Array(wavBytes));
+      await wavWritable.close();
+    },
+    { yamlText, wavBytes: bytesToTransfer(wavBytes), targetName },
+  );
+}
+
+/**
+ * Seed a Roland S-330 individual library patch bundle into OPFS by
+ * copying `test/e2e/fixtures/patches/<fixtureName>.yaml` into a
+ * `library/s330/patches/<targetName>/patch.yaml` directory bundle.
+ *
+ * `loadIndividualPatch`
+ * (`modules/roland-sxx0-editor/src/lib/library-patches.ts:294`)
+ * expects a directory containing `patch.yaml` and an optional `tones/`
+ * subdirectory; the patch-tree detector
+ * (`modules/sampler-library/src/library-fs.ts:282`) treats the
+ * containing directory's name as the tree node's `id` and pulls the
+ * `name` field from the YAML for the tree node's `node.name`.
+ *
+ * `targetName` defaults to the YAML's `name` field (parsed from the
+ * fixture). The Roland selection mapping
+ * (`useRolandSelectionMapping`) reads the selection's `name` from
+ * `node.meta.directoryName ?? node.name`; today's `useRolandLibraryData`
+ * delivers `LibraryTreeNode[]` without packing `directoryName` into
+ * `meta`, so the fallback is exercised: `node.name` is the YAML name
+ * field, which is then handed verbatim to `loadIndividualPatch` as
+ * the directory lookup. Aligning the OPFS directory name with the
+ * YAML's `name` field is what makes the round-trip consistent without
+ * touching production code from a test seam.
+ *
+ * The basic-patch fixture uses `keyGroups` only (no `s330.toneLayer1`),
+ * so `getPatchToneDependencies` returns an empty list and the dialog
+ * doesn't need any seeded tones-under-this-patch. That's sufficient
+ * for the D-LIB-13 mount-only assertion. If a later test needs the
+ * tones-mapping UI populated, it should seed the appropriate
+ * `tones/T<NN>.yaml` files explicitly — there is no shape-construction
+ * fallback in this helper.
+ */
+export async function seedOPFSPatch(
+  page: Page,
+  options: { fixtureName?: string; targetName?: string } = {},
+): Promise<{ patchDirName: string; patchDisplayName: string }> {
+  const fixtureName = options.fixtureName ?? 'basic-patch';
+
+  const yamlText = readFixtureText(`patches/${fixtureName}.yaml`);
+  const parsed = PatchYamlSchema.parse(parseYaml(yamlText));
+
+  // Default directory name to the YAML's `name` field so the
+  // selection-mapping fallback (node.name -> loadIndividualPatch dir
+  // lookup) resolves to a real directory on OPFS. The dispatcher can
+  // override via `targetName` if a future test needs a different shape.
+  const patchDirName = options.targetName ?? parsed.name;
+
+  await page.evaluate(
+    async ({ yamlText, targetName }) => {
+      const root = await navigator.storage.getDirectory();
+      const library = await root.getDirectoryHandle('library', { create: true });
+      const s330 = await library.getDirectoryHandle('s330', { create: true });
+      const patches = await s330.getDirectoryHandle('patches', { create: true });
+      const patchDir = await patches.getDirectoryHandle(targetName, { create: true });
+
+      const yamlHandle = await patchDir.getFileHandle('patch.yaml', { create: true });
+      const writable = await yamlHandle.createWritable();
+      await writable.write(yamlText);
+      await writable.close();
+    },
+    { yamlText, targetName: patchDirName },
+  );
+
+  return { patchDirName, patchDisplayName: parsed.name };
+}
+
+/**
+ * Seed a common-area library sample bundle into OPFS by copying
+ * `test/e2e/fixtures/samples/<fixtureName>/sample.yaml` + `sample.wav`
+ * into `library/common/samples/<targetName>/sample.yaml` + `sample.wav`.
+ *
+ * Common-area samples are device-agnostic (no `device` field) and the
+ * editor's sample dialogs (Loop Editor, Sample Editor, Sample Chopper)
+ * load them through `useEditorDialogsCore.loadWavData` which calls
+ * `loadSample` (`modules/sampler-library/src/common-area/samples.ts:238`)
+ * — that function reads `sample.yaml` + `sample.wav` from
+ * `library/common/samples/<path>/<name>/` and parses the YAML through
+ * `SampleYamlSchema`. The Wave 4 close-out reuses the same schema for
+ * pre-write validation so any drift fails the test before the dialog
+ * ever opens.
+ *
+ * The `targetName` becomes the tree-node `id` rendered by the s330
+ * plugin's `samples` category (via `listCommonSamplesTree` →
+ * `detectSample`); clicking the `library-sample-<id>` tree node maps
+ * to `selection.type === 'sample'`, which the preview panel surfaces
+ * with affordances that open the Loop Editor / Sample Editor /
+ * Chopper dialogs.
+ */
+export async function seedOPFSSample(
+  page: Page,
+  options: { fixtureName?: string; targetName?: string } = {},
+): Promise<void> {
+  const fixtureName = options.fixtureName ?? 'basic-sine';
+  const targetName = options.targetName ?? fixtureName;
+
+  const yamlText = readFixtureText(`samples/${fixtureName}/sample.yaml`);
+  const wavBytes = readFixtureBytes(`samples/${fixtureName}/sample.wav`);
+  SampleYamlSchema.parse(parseYaml(yamlText));
+
+  await page.evaluate(
+    async ({ yamlText, wavBytes, targetName }) => {
+      const root = await navigator.storage.getDirectory();
+      const library = await root.getDirectoryHandle('library', { create: true });
+      const common = await library.getDirectoryHandle('common', { create: true });
+      const samples = await common.getDirectoryHandle('samples', { create: true });
+      const sampleDir = await samples.getDirectoryHandle(targetName, { create: true });
+
+      const yamlHandle = await sampleDir.getFileHandle('sample.yaml', { create: true });
+      const yamlWritable = await yamlHandle.createWritable();
+      await yamlWritable.write(yamlText);
+      await yamlWritable.close();
+
+      const wavHandle = await sampleDir.getFileHandle('sample.wav', { create: true });
+      const wavWritable = await wavHandle.createWritable();
+      await wavWritable.write(new Uint8Array(wavBytes));
+      await wavWritable.close();
+    },
+    { yamlText, wavBytes: bytesToTransfer(wavBytes), targetName },
+  );
 }
 
 /**
