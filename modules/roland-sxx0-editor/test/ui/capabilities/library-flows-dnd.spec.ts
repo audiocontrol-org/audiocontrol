@@ -121,20 +121,62 @@ test.describe('Capabilities — Library DnD (Wave 5)', () => {
     // `onDropLibraryTone`, which routes to
     // `useLibraryImportDialogs.handleDropLibraryTone` → sets
     // `importToneDialog` → mounts the dialog.
+    //
+    // -----------------------------------------------------------------
+    // Wave 5 close-out (#421) — fixture-backed load path
+    // -----------------------------------------------------------------
+    // This spec is the canonical example that consumes the
+    // `library-page-load` fixture (captured against real S-550 hardware,
+    // stored under `s330/library-page-load.ndjson` per the directory
+    // convention `tones.spec.ts:11-15` documents). The other five Wave-5
+    // specs continue to use the `window.__deviceDataStore` injection
+    // because their affordances only need a single loaded slot, not the
+    // full per-bank load sequence — see `library-flows-dnd-helpers.ts`
+    // file header for the injection rationale.
+    //
+    // Mount URL differs from the rest of the suite:
+    //   - URL uses `/roland/s550/editor/library` (NOT `/roland/s330/...`)
+    //     because the fixture was captured by an S-550 client and so the
+    //     RQD byte patterns are S-550-specific (config drives both
+    //     `totalTones=64` for the per-bank loop and the S-550 client
+    //     factory).
+    //   - `useMidiStore` is still hardcoded to `getMidiStore('s330')` in
+    //     `midiStore.ts:137`, so the simulated transport STILL fetches
+    //     from `/test-fixtures/s330/`. The fixture file lives there
+    //     intentionally — see scenario header `"device":"s550"`.
+    // The rewrite proves the production load path (page → client →
+    // simulated adapter → fixture replay → state store → `DeviceMemoryPanel`
+    // surfaces loaded slots) works end-to-end; the Wave-5 D-LIB-08
+    // affordance assertion (drop mounts dialog) is preserved verbatim
+    // after the loaded slot becomes visible.
     const toneName = 'basic-sine';
-    await page.goto(LIBRARY_URL);
+    const url = '/roland/s550/editor/library?midi=simulated&scenario=library-page-load';
+    await page.goto(url);
     await cleanupOPFS(page);
     await seedOPFSTone(page, { fixtureName: toneName });
     await connectLibraryOPFS(page);
 
+    // Trigger the production load sequence — the same callback the user
+    // hits when clicking the header button at `LibraryPage.tsx:333`.
+    // The fixture (1310 records: 96 outbound RQDs + 96 inbound DT1s
+    // for tones, plus the patch sweep) replays through the simulated
+    // adapter as the per-bank loop runs.
+    await page.getByRole('button', { name: 'Refresh Device' }).click();
+
+    // Wait for at least one slot to render its tone name — proves the
+    // load reached `setTone(0, ...)` and the panel re-rendered. T11's
+    // accessible name is composed of slot label + tone name (see
+    // `DeviceMemoryPanel.tsx`); we anchor on the slot row's name
+    // attribute via the existing `deviceToneSlot` locator (which only
+    // requires the slot label to be present) and then assert the row
+    // surfaces as draggable, which only happens once `tone` is non-null
+    // (`DeviceMemoryPanel.tsx` `draggable={!!tone}` predicate).
+    const target = deviceToneSlot(page, 'T11');
+    await expect(target).toBeVisible({ timeout: 30_000 });
+    await expect(target).toHaveAttribute('draggable', 'true', { timeout: 30_000 });
+
     const sourceNode = page.getByTestId(`library-tone-${toneName}`);
     await expect(sourceNode).toBeVisible({ timeout: 5_000 });
-
-    // Drop on the first tone slot (T11) — unloaded slots accept drops
-    // identically to loaded ones; the dialog's slot select lets the
-    // user pick a different target.
-    const target = deviceToneSlot(page, 'T11');
-    await expect(target).toBeVisible({ timeout: 5_000 });
 
     await simulateDragAndDrop(page, sourceNode, target);
 

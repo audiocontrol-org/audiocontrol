@@ -196,18 +196,53 @@ the next change.
 
 ## Scenario inventory
 
-| Device | Scenario           | Description                                                          |
-|--------|--------------------|----------------------------------------------------------------------|
-| s330   | `connect-only`     | Open MIDI, request system params, disconnect — minimal fixture       |
-| s330   | `fetch-patch-0`    | Connect + fetch patch slot 0                                         |
-| s330   | `fetch-tone-0`     | Connect + fetch tone slot 0                                          |
-| s330   | `load-everything`  | Connect + load all patches + load all tones (mirrors editor startup) |
-| s550   | _(none yet)_       | S-550 fixtures pending — see issue #404                              |
+| Device | Scenario              | Description                                                          |
+|--------|-----------------------|----------------------------------------------------------------------|
+| s330   | `connect-only`        | Open MIDI, request system params, disconnect — minimal fixture       |
+| s330   | `fetch-patch-0`       | Connect + fetch patch slot 0                                         |
+| s330   | `fetch-tone-0`        | Connect + fetch tone slot 0                                          |
+| s330   | `load-everything`     | Connect + load all patches + load all tones (mirrors editor startup) |
+| s330   | `library-page-load`   | LibraryPage Refresh Device — per-bank tone load then per-bank patch load (S-550 bytes; see note below) |
+| s550   | _(none yet)_          | S-550 fixtures pending — see issue #404                              |
 
 The `tones` and `play` page UI specs are deferred (issues #404, #405) waiting
 on more targeted fixtures. Once captured, drop them under
 `modules/sampler-devices/test/fixtures/<device>/` with matching scenario
 names in `record-fixtures-roland.ts` and rerun `make check-fixture-drift`.
+
+### `library-page-load` (Wave 5 close-out, #421)
+
+Captures the byte stream `LibraryPage.handleLoadDeviceData` emits when the
+user clicks the "Refresh Device" button
+(`modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:232-255`). The
+callback walks tone banks first (`loadToneRange(bank * 8, 8)`) and then
+patch banks (`loadPatchRange(bank * 8, 8)`), with `forceReload=true` so
+cache hits don't suppress requests.
+
+The fixture was captured against the real S-550 (S-550 client → S-550 RQD
+patterns, 64 tones across 8 banks + 32 patches across 4 banks = 1310
+records), but its file lives under `s330/library-page-load.ndjson`
+because `useMidiStore = getMidiStore('s330')` (`midiStore.ts:137`) is
+hardcoded — the simulated transport always reads
+`/test-fixtures/s330/<scenario>.ndjson`. The scenario header records
+`"device":"s550"` so the directory placement is the only S-330-shaped
+trace; everything inside the records is genuine S-550 traffic.
+
+Consumed by the rewritten `D-LIB-08` spec in
+`modules/roland-sxx0-editor/test/ui/capabilities/library-flows-dnd.spec.ts`,
+which mounts `/roland/s550/editor/library?midi=simulated&scenario=library-page-load`
+(URL `s550` segment → S-550 device config → S-550 client at the page),
+clicks "Refresh Device" to consume the fixture, and waits for a loaded
+device-tone slot before driving the DnD assertion. The other five Wave-5
+specs continue to use the `window.__deviceDataStore` injection seam
+exposed by `deviceDataStore.ts:174-176` because their affordances only
+need a single loaded slot, not the full per-bank load sequence.
+
+Recapture:
+
+```bash
+make record-fixtures-roland-s550 ARGS="--scenario library-page-load --midi-name 'Volt 4' --output modules/sampler-devices/test/fixtures/s330/library-page-load.ndjson"
+```
 
 ## Related docs
 

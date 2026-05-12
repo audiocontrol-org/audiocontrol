@@ -71,6 +71,24 @@ export interface ToneModeClient {
     loadToneRange: (start: number, count: number) => Promise<unknown[]>;
 }
 
+/**
+ * Subset of S330/S550 client surface used by the LibraryPage's
+ * `handleLoadDeviceData` ("Refresh Device" button) sequence — see #421.
+ * The per-bank loop in LibraryPage.tsx:241-250 walks tones-first then
+ * patches-first, eight slots per bank, with `forceReload=true`. The
+ * recorded byte stream is byte-equivalent to one big `loadToneRange(0,
+ * totalTones)` + `loadPatchRange(0, totalPatches)` (the underlying
+ * `requestToneData` / `requestPatchData` calls are issued one slot at
+ * a time regardless of bank chunking) — but we recreate the page's
+ * per-bank loop verbatim so any future page-side change (different
+ * bank size, different ordering) forces a scenario edit + recapture.
+ */
+export interface LibraryPageClient {
+    connect: () => Promise<boolean>;
+    loadToneRange: (start: number, count: number) => Promise<unknown[]>;
+    loadPatchRange: (start: number, count: number) => Promise<unknown[]>;
+}
+
 // ---------------------------------------------------------------------------
 // Shared mount helpers — emit `connect + load…` against the proxy.
 // Each setter scenario calls one of these, then drives its setter on
@@ -139,6 +157,22 @@ export async function runTonePageMount(
     return c;
 }
 
+/**
+ * Per-device totals consumed by the `library-page-load` scenario.
+ * The values match `modules/roland-sxx0-editor/src/configs/s550.ts:27-30`
+ * and `modules/roland-sxx0-editor/src/configs/s330.ts:28-31` — keep these
+ * pinned to the editor configs (i.e. if the editor's totalPatches /
+ * totalTones / bank-size constants ever change, this map MUST update in
+ * lock-step or the fixture will diverge from the page on replay).
+ *
+ *   - S-550: 64 tones (8 banks × 8) + 32 patches (4 banks × 8) = 12 bank loads
+ *   - S-330: 32 tones (4 banks × 8) + 16 patches (2 banks × 8) =  6 bank loads
+ */
+const LIBRARY_PAGE_TOTALS = {
+    s550: { totalTones: 64, totalPatches: 32, tonesPerBank: 8, patchesPerBank: 8 },
+    s330: { totalTones: 32, totalPatches: 16, tonesPerBank: 8, patchesPerBank: 8 },
+} as const;
+
 // ---------------------------------------------------------------------------
 // Page-mount scenarios — the editor page mount sequence captured as its
 // own fixture so the matching capability spec can replay it deterministically.
@@ -167,6 +201,74 @@ export const PAGE_SCENARIOS: Record<string, Scenario> = {
         description: 'PlayPage initial load — connect() + loadPatchRange(0, 8) + requestFunctionParameters()',
         run: async ({ client, proxy }) => {
             await runMultiModeMount(client, proxy);
+        },
+    },
+
+    /**
+     * Wave 5 close-out (#421) — captures the byte stream LibraryPage's
+     * `handleLoadDeviceData` callback emits when the user clicks
+     * "Refresh Device" (`modules/roland-sxx0-editor/src/pages/
+     * LibraryPage.tsx:232-255`, button at :333).
+     *
+     * The page mounts the s330 simulated transport (because
+     * `useMidiStore = getMidiStore('s330')` is hardcoded in
+     * `midiStore.ts:137`), so the fixture lives under the `s330/`
+     * directory even when captured against S-550 hardware — the same
+     * convention `tones.spec.ts:11-15` documents for `tones-bank-0`.
+     *
+     * The page state (totalTones / totalPatches / bank sizes) comes from
+     * `useDeviceConfig()` keyed off the URL `:device` segment. When the
+     * spec mounts `/roland/s550/editor/library`, the S-550 config drives
+     * the bank-count loop AND `config.createClient` returns an S-550
+     * client whose `loadToneRange` / `loadPatchRange` emits S-550 RQDs.
+     * Capturing this scenario against the real S-550 (`make
+     * record-fixtures-roland-s550 ARGS="--scenario library-page-load"`)
+     * therefore produces the exact bytes the spec will see at replay
+     * time.
+     *
+     * Why not reuse `load-everything`: `load-everything` issues ONE
+     * `loadPatchRange(0, totalPatches)` followed by ONE
+     * `loadToneRange(0, totalTones)` — patch-first, tone-second, in a
+     * single call each. `handleLoadDeviceData` issues per-bank
+     * `loadToneRange` calls FIRST, then per-bank `loadPatchRange` calls.
+     * The underlying `requestToneData` / `requestPatchData` byte stream
+     * differs in (a) ordering (tones-first, not patches-first) and (b)
+     * scheduling (per-bank chunking — though each `requestXxxData` is
+     * still issued one slot at a time the per-bank loop interleaves
+     * `markXxxBankLoaded` calls between chunks, which has no MIDI
+     * effect today but locks the page's behaviour to a specific
+     * sequence the spec should replay verbatim).
+     *
+     * The `client.connect()` call at LibraryPage.tsx:238 emits no
+     * SysEx (client-level connect just sets an internal `connected`
+     * flag — see `s-series-client.ts:754-757`), so the scenario records
+     * a single `connect()` annotation followed by the 96-RQD load
+     * sequence on S-550 (48-RQD on S-330).
+     */
+    'library-page-load': {
+        name: 'library-page-load',
+        description:
+            'LibraryPage Refresh Device — connect() + per-bank loadToneRange + per-bank loadPatchRange',
+        run: async ({ client, device, proxy }) => {
+            const c = asClient<LibraryPageClient>(client);
+            const totals = LIBRARY_PAGE_TOTALS[device];
+            const toneBankCount = Math.ceil(totals.totalTones / totals.tonesPerBank);
+            const patchBankCount = Math.ceil(totals.totalPatches / totals.patchesPerBank);
+
+            proxy.annotate('connect()');
+            await c.connect();
+
+            for (let bank = 0; bank < toneBankCount; bank += 1) {
+                const start = bank * totals.tonesPerBank;
+                proxy.annotate(`loadToneRange(${start}, ${totals.tonesPerBank}) — bank ${bank + 1}/${toneBankCount}`);
+                await c.loadToneRange(start, totals.tonesPerBank);
+            }
+
+            for (let bank = 0; bank < patchBankCount; bank += 1) {
+                const start = bank * totals.patchesPerBank;
+                proxy.annotate(`loadPatchRange(${start}, ${totals.patchesPerBank}) — bank ${bank + 1}/${patchBankCount}`);
+                await c.loadPatchRange(start, totals.patchesPerBank);
+            }
         },
     },
 
