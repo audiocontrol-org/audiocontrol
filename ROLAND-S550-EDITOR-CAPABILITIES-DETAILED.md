@@ -114,8 +114,8 @@ GitHub issues grouped by feature coherence.
 | D-LIB | 22 | 19 | 3 | 0 |
 | D-PLAY | 13 | 9 | 4 | 0 |
 | D-SYS | 11 | 0 | 0 | 11 |
-| D-XX | 12 | 6 | 6 | 0 |
-| **Total** | **183** | **132** | **17** | **24** |
+| D-XX | 13 | 7 | 6 | 0 |
+| **Total** | **184** | **133** | **17** | **24** |
 
 ### By origin
 
@@ -129,12 +129,12 @@ GitHub issues grouped by feature coherence.
 
 | Test status | Count | Definition |
 |-------------|-------|------------|
-| Tested | 120 | Affordance is implemented AND a capability spec asserts it. Wave 3 (#414) added 37 bindings (28 affordance display-tests + 9 gate-only tests pinning the disconnected / no-data / unmounted state). Wave 4 (#415) added 8 more — 7 D-LIB rows now bind their library-connected half + 1 strict upgrade (D-LIB-03 from partial to strict). |
-| Untested | 30 | Affordance is implemented (or partial) but no test asserts it. **These are the missing tests.** |
+| Tested | 123 | Affordance is implemented AND a capability spec asserts it. Wave 3 (#414) added 37 bindings (28 affordance display-tests + 9 gate-only tests pinning the disconnected / no-data / unmounted state). Wave 4 (#415) added 8 more — 7 D-LIB rows now bind their library-connected half + 1 strict upgrade (D-LIB-03 from partial to strict). Wave 6 partial (#417 — non-VFP only) added 3 — D-XX-11 panic + D-XX-12 progress (partial; pins the shipped % bar shape) + D-XX-13 live-edit guard. |
+| Untested | 27 | Affordance is implemented (or partial) but no test asserts it. **These are the missing tests.** |
 | Pending UI | 23 | Affordance is missing — test depends on UI being built. **These are the missing capabilities.** |
 | Hardware-only | 10 | Affordance can only be verified against real hardware (e.g., front-panel button → device LED change). Lives in `test/e2e/`, not the UI capability suite. |
 
-The 30 untested + 23 pending-UI rows are the remaining punch list. Each
+The 27 untested + 23 pending-UI rows are the remaining punch list. Each
 tested row is locked in against redesign; each untested row is at risk;
 each pending-UI row is a feature gap.
 
@@ -444,8 +444,9 @@ The library is the editor's primary editor-derived layer. The device has no conc
 | D-XX-08 | VFP — Connection status indicator (green dot) | `VirtualFrontPanel.tsx` | C-XX-04 | editor-derived | partial (only meaningful when the floating VFP is mounted) | needs operator decision — see "VFP unmounted" note |
 | D-XX-09 | Video capture drawer (USB / webcam) | `Layout.tsx` → `VideoCapture` | n/a (unique to editor) | editor-derived | implemented | `capabilities/video-drawer.spec.ts :: D-XX-09` |
 | D-XX-10 | Front-panel controls inside video drawer | `VideoCapture.tsx:363-380` → reuses VFP components | n/a (unique to editor) | editor-derived | implemented | `capabilities/video-drawer.spec.ts :: D-XX-10` |
-| D-XX-11 | MIDI Panic button (CC 120 + 123 on all channels) | `Layout.tsx` → `PanicButton` (client `panic()`) | n/a | client-derived | implemented | — |
-| D-XX-12 | Progress indicators (cross-cutting) | Multiple pages → `loadingProgress` + `loadingMessage` | C-XX-02 | editor-derived | partial (% bar only; design system requires bytes/elapsed/ETA) | — |
+| D-XX-11 | MIDI Panic button (CC 120 + 123 on all channels) | `Layout.tsx` → `PanicButton` (client `panic()`) | n/a | client-derived | implemented | `capabilities/cross-cutting.spec.ts :: D-XX-11` |
+| D-XX-12 | Progress indicators (cross-cutting) | PatchList row placeholder + page-title counter (the percent-bar region in `PatchesPage.tsx:266` is wired but does not render during a real load — see partial-status note) | C-XX-02 | editor-derived | partial — shipped: per-row `(loading...)` placeholder + page-title `N of 16 loaded` counter advance mid-flight. Wired-but-suppressed: the percent-bar `<div role="status">` region (PatchesPage.tsx:266); during a real load, `useBankLoader.loadPatchBank` calls `setError(null)` right after `setLoading(true, msg)`, and `editorStoreBase.setError` is contracted to reset `isLoading: false` + `loadingProgress: null` regardless of whether `error` is null. The percent bar's render guard (`isLoading && loadingProgress !== null`) is therefore never satisfied during a real load. Verified via direct store inspection during Wave 6 (#417). Missing: design system requires bytes-transferred / elapsed / ETA — none of these are wired into any current progress affordance. | `capabilities/cross-cutting.spec.ts :: D-XX-12` (pins the per-row placeholder + counter; does NOT pin the percent bar — that region does not render during loads) |
+| D-XX-13 | Live-edit guard — no save/cancel/undo in parameter-edit panes | PatchEditor / ToneEditor / multi-mode panes — absence-of-affordance (per `feedback_live_editing_no_save`) | n/a | editor-derived | implemented (design contract — edits stream live to the device, so save/cancel/undo would lie about persistence) | `capabilities/cross-cutting.spec.ts :: D-XX-13` |
 
 ---
 
@@ -509,7 +510,7 @@ to flag the integration gap.
 
 ## Punch list
 
-The 37 untested rows above are the missing-test backlog. The 24 missing rows
+The 27 untested rows above are the missing-test backlog. The 24 missing rows
 are the missing-UI backlog. Both should drain over time; both should grow
 when new affordances are added (each new feature lands with its test).
 
@@ -532,7 +533,7 @@ wave can land independently:
 | 3 | [#414](https://github.com/audiocontrol-org/audiocontrol/issues/414) | Display-assertion gaps (port pickers, bank buttons, zone editor, loop editor visual) — **LANDED**: 37 bindings (see Wave 3 notes for the 5 D-XX rows that couldn't be bound until the VFP is mounted) | No |
 | 4 | [#415](https://github.com/audiocontrol-org/audiocontrol/issues/415) | Library + dialog flows (save/load set, import/export, sample editor) — **PARTIAL LANDED**: 8 bindings for D-LIB-{03,04,05,10,11,15,16,20}. Remaining D-LIB-{12,13,14,17,18,19,21} require seeded library content infrastructure (yaml + WAV per tone/patch/sample bundle parseable by `convertYamlToS330Tone()` / sample loaders) OR DnD harness coverage (D-LIB-14, 21 only open via DnD — that belongs to Wave 5). | Yes |
 | 5 | [#416](https://github.com/audiocontrol-org/audiocontrol/issues/416) | Drag-drop tests | Yes |
-| 6 | [#417](https://github.com/audiocontrol-org/audiocontrol/issues/417) | Cross-cutting (front-panel DT1, panic, progress, live-edit guard) | Yes (front-panel fixture) |
+| 6 | [#417](https://github.com/audiocontrol-org/audiocontrol/issues/417) | Cross-cutting (front-panel DT1, panic, progress, live-edit guard) — **PARTIAL LANDED**: 3 bindings for D-XX-{11, 12 (partial), 13 (new)} via `capabilities/cross-cutting.spec.ts`; panic-flow fixture captured against real S-550. VFP DT1-emit bindings (D-XX-02..05) remain blocked on operator decision about mounting the floating `VirtualFrontPanel` (see "VFP unmounted" note in Wave 3 notes). | Yes (panic-flow captured; VFP fixture blocked) |
 
 When a wave lands, the relevant `Test` cells in the detail tables flip from `—` to citations of the new specs.
 

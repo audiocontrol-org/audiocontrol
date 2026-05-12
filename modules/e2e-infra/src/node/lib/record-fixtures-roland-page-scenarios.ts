@@ -168,4 +168,41 @@ export const PAGE_SCENARIOS: Record<string, Scenario> = {
             await runMultiModeMount(client, proxy);
         },
     },
+
+    /**
+     * Wave 6 (#417) — captures the bytes emitted when the user clicks
+     * the MIDI Panic button in Layout's header (D-XX-11).
+     *
+     * The Panic button calls `useMidiStore.sendPanic()`
+     * (modules/editor-core/src/stores/createMidiStore.ts:273), which
+     * emits — per channel 0..15, in this order — CC 120 (All Sound
+     * Off) then CC 123 (All Notes Off): two 3-byte channel messages
+     * per channel for a total of 32 outbound records. Critically, the
+     * order is CC120-then-CC123 (NOT the client `panic()` method's
+     * CC123-then-CC120 order); the page wires through the store, not
+     * the client, so the fixture must match the store's ordering
+     * exactly. We emit via `proxy.send()` rather than `client.panic()`
+     * so the recorded bytes are byte-for-byte what the production
+     * page will emit at replay time.
+     *
+     * The prelude is `runPatchPageMount` (connect + loadPatchRange(0, 8))
+     * so the harness mounts the PatchesPage where Layout is hosted.
+     * The Panic button is enabled only once `status === 'connected'`,
+     * so the mount prelude is load-bearing for the spec, not just
+     * scenery.
+     */
+    'panic-flow': {
+        name: 'panic-flow',
+        description:
+            'Layout MIDI Panic — connect() + loadPatchRange(0, 8) + 32 outbound CCs (CC 120 + 123 across 16 channels)',
+        run: async ({ client, proxy }) => {
+            await runPatchPageMount(client, proxy);
+            proxy.annotate('sendPanic() — 32 outbound CCs across 16 channels');
+            for (let channel = 0; channel < 16; channel += 1) {
+                const status = 0xb0 + channel;
+                proxy.send([status, 120, 0]);
+                proxy.send([status, 123, 0]);
+            }
+        },
+    },
 };

@@ -28,6 +28,7 @@ import {
   SimulatedAdapter,
   parseFixture,
   type FixtureScenario,
+  type LatencyMode,
   type SimulatedAdapterIntrospection,
 } from '@audiocontrol/sampler-devices/recording';
 
@@ -78,6 +79,18 @@ export interface SimulatedMidiTransportOptions {
   scenario: string;
   /** Override the fixture base URL. Defaults to `/test-fixtures`. */
   fixtureBaseUrl?: string;
+  /**
+   * Override the SimulatedAdapter's latency model. Defaults to
+   * `'none'` (synchronous inbound dispatch — matches CI/typical UI
+   * specs where the fastest fixture replay is desired).
+   *
+   * Spec callers that need a long-running load (e.g. the progress-
+   * indicator spec, D-XX-12 in Wave 6 (#417)) pass `{ fixedMs: N }`
+   * via the URL param `?simLatency=N` so the load actually takes time
+   * and the progress affordance is visible mid-flight rather than
+   * collapsing instantly.
+   */
+  latencyMode?: LatencyMode;
 }
 
 export function createSimulatedMidiTransport(
@@ -122,7 +135,9 @@ export function createSimulatedMidiTransport(
       // needs to expose a `resetCursor()` method or the cache
       // invalidation has to happen at the store level.
       if (!sharedAdapter) {
-        sharedAdapter = new SimulatedAdapter(cachedScenario, { latencyMode: 'none' });
+        sharedAdapter = new SimulatedAdapter(cachedScenario, {
+          latencyMode: options.latencyMode ?? 'none',
+        });
         // Expose the adapter on `window` so capability specs can read
         // cursor state for positive assertions. Without this signal a
         // test whose UI driver silently emits nothing (disabled control,

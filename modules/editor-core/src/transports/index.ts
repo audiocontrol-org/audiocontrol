@@ -25,6 +25,7 @@ export {
   getHttpMidiServerUrl,
   getScsiBridgeUrl,
   getSimulatedScenario,
+  getSimulatedLatencyMs,
   isMockLibraryMode,
   getSavedTransportConfig,
   saveTransportConfig,

@@ -74,6 +74,24 @@ export function getSimulatedScenario(): string | null {
   return getQueryParam('scenario');
 }
 
+/**
+ * Parse the optional `?simLatency=<ms>` URL param. Returns a positive
+ * integer when present and valid, `null` otherwise. Callers that wire
+ * the SimulatedAdapter interpret a `null` as "default latency" (i.e.
+ * `'none'` — synchronous inbound dispatch).
+ *
+ * The progress-indicator capability spec (D-XX-12, Wave 6 #417) sets
+ * this to slow the simulated load so the inline progress affordance
+ * is observable mid-flight rather than collapsing instantly.
+ */
+export function getSimulatedLatencyMs(): number | null {
+  const raw = getQueryParam('simLatency');
+  if (raw === null) return null;
+  const ms = Number.parseInt(raw, 10);
+  if (!Number.isFinite(ms) || ms < 0) return null;
+  return ms;
+}
+
 export function getHttpMidiServerUrl(): string | null {
   const port = getQueryParam('midiServerPort');
   if (!port) return null;

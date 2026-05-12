@@ -10,6 +10,7 @@ import {
   createRuntimeMidiTransport,
   isSimulatedMidiMode,
   getSimulatedScenario,
+  getSimulatedLatencyMs,
   type MidiTransport,
   type RuntimeMidiTransportResult,
 } from '@audiocontrol/editor-core';
@@ -59,9 +60,17 @@ function createTransportForDevice(deviceType: string): TransportEntry {
           'Example: /roland/s330/editor/patches?midi=simulated&scenario=load-everything',
       );
     }
+    const latencyMs = getSimulatedLatencyMs();
     return {
       mode: 'simulated',
-      transport: createSimulatedMidiTransport({ deviceType, scenario }),
+      transport: createSimulatedMidiTransport({
+        deviceType,
+        scenario,
+        // The harness URL can opt into a fixed inbound-dispatch delay
+        // via `?simLatency=<ms>` so long-running flows (progress
+        // affordance spec D-XX-12) are observable mid-flight.
+        ...(latencyMs !== null && { latencyMode: { fixedMs: latencyMs } }),
+      }),
     };
   }
 
