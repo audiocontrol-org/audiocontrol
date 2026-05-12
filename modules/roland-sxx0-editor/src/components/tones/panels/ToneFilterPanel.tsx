@@ -9,16 +9,14 @@
  *   - ParameterSlider → ParamSliderRow (AcSlider + AcNumberInput editable;
  *     streaming writes per `feedback_live_editing_no_save`).
  *   - vanilla `<select>` → `.ac-select` with adjacent `.ac-field-label`.
- *   - vanilla `<input type="checkbox">` (Enable Filter) → `.ac-checkbox`
- *     class chain (label > input.ac-checkbox__input + span.ac-checkbox__label).
- *     Same visual shape as `<AcCheckbox>` but keeps the `data-testid` on
- *     the input element so the existing capability spec selector
- *     (`tone-tvf-enabled`) hits the toggle target directly.
+ *   - vanilla `<input type="checkbox">` (Enable Filter) → AcCheckbox with
+ *     `dataTestId` (lands the `data-testid` on the `<input>` so the spec
+ *     selector `tone-tvf-enabled` hits the toggle target directly).
  *   - EnvelopeEditor → ToneEnvelopeEditor (composes AcEnvelope for
  *     graph+pip+readout plus an inline edit grid).
  *
  * data-testid preservation:
- *   - tone-tvf-enabled (wrapping div)
+ *   - tone-tvf-enabled (on the AcCheckbox `<input>`)
  *   - tone-tvf-polarity, tone-tvf-curve (selects)
  */
 
@@ -26,6 +24,7 @@ import type {
   SamplerTone, SamplerEnvelope, SamplerEgPolarity, SamplerLevelCurve,
 } from '@/core/midi/SamplerClient';
 import { cn } from '@/lib/utils';
+import { AcCheckbox } from '@audiocontrol/editor-core';
 import { ParamSliderRow } from '@/components/ui/ParamSliderRow';
 import { ToneEnvelopeEditor } from '@/components/ui/ToneEnvelopeEditor';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -57,6 +56,10 @@ export function ToneFilterPanel({ tone, onUpdate, onCommit }: ToneFilterPanelPro
   const handleTvfEnvelopeChange = (envelope: SamplerEnvelope) => {
     onUpdate?.({ ...tone, tvf: { ...tvf, envelope } });
   };
+  const handleTvfEnvelopeCommit = (envelope: SamplerEnvelope) => {
+    const updatedTone = { ...tone, tvf: { ...tvf, envelope } };
+    onCommit?.(updatedTone);
+  };
 
   return (
     <section className="tones__section">
@@ -73,17 +76,21 @@ export function ToneFilterPanel({ tone, onUpdate, onCommit }: ToneFilterPanelPro
         <span className="tones__section-eyebrow">Time-variant · §03</span>
       </header>
       <Tooltip content={TONE_TOOLTIPS.tvfEnabled}>
-        <label className="ac-checkbox mb-4">
-          <input
-            type="checkbox"
+        {/* <div> wrapper supplies a DOM element for Radix Tooltip's ref
+            forwarding (AcCheckbox is a function component without
+            forwardRef). Without this wrapper, React emits a
+            "Function components cannot be given refs" warning that the
+            spec harness treats as a page error. */}
+        <div className="mb-4">
+          <AcCheckbox
             id="tvfEnabled"
+            dataTestId="tone-tvf-enabled"
             checked={tvf.enabled}
-            data-testid="tone-tvf-enabled"
-            onChange={(e) => updateTvf({ enabled: e.target.checked })}
-            className="ac-checkbox__input"
-          />
-          <span className="ac-checkbox__label">Enable Filter</span>
-        </label>
+            onChange={(checked) => updateTvf({ enabled: checked })}
+          >
+            Enable Filter
+          </AcCheckbox>
+        </div>
       </Tooltip>
       <div className="grid gap-4 md:grid-cols-3 mb-4">
         <ParamSliderRow label="Cutoff" value={tvf.cutoff} onChange={handleCutoffChange} tooltip={TONE_TOOLTIPS.tvfCutoff} disabled={!tvf.enabled} />
@@ -130,7 +137,7 @@ export function ToneFilterPanel({ tone, onUpdate, onCommit }: ToneFilterPanelPro
       <ToneEnvelopeEditor
         envelope={tvf.envelope}
         onChange={handleTvfEnvelopeChange}
-        onCommit={() => onCommit?.()}
+        onCommit={handleTvfEnvelopeCommit}
         label="TVF"
         disabled={!tvf.enabled}
       />

@@ -22,9 +22,19 @@ export interface AcEnvelopeMetaProps {
   endSegment: number;
   onSustainChange?: (index: number) => void;
   onEndChange?: (index: number) => void;
+  /**
+   * When true, the meta pip rows are fully inert: every pip carries
+   * `tabIndex={-1}` (no keyboard tab-stop), the radiogroup wrappers carry
+   * `aria-disabled="true"`, and neither click nor keyboard events fire the
+   * change callbacks. The visual `data-disabled-row` attribute lets CSS dim
+   * the row. Defensive: this does NOT rely on the caller setting
+   * `pointer-events: none`, because that style blocks mouse but not keyboard.
+   */
+  disabled?: boolean;
 }
 
 export function AcEnvelopeMeta(props: AcEnvelopeMetaProps): JSX.Element {
+  const disabled = props.disabled === true;
   return (
     <div className="ac-envelope-meta" role="group" aria-label="Envelope shape">
       <PipRow
@@ -34,6 +44,7 @@ export function AcEnvelopeMeta(props: AcEnvelopeMetaProps): JSX.Element {
         active={props.sustainSegment}
         maxEnabled={props.endSegment}
         onChange={props.onSustainChange}
+        disabled={disabled}
       />
       <PipRow
         rowLabel={'End ▣'}
@@ -42,6 +53,7 @@ export function AcEnvelopeMeta(props: AcEnvelopeMetaProps): JSX.Element {
         active={props.endSegment}
         maxEnabled={props.totalSegments}
         onChange={props.onEndChange}
+        disabled={disabled}
       />
     </div>
   );
@@ -54,10 +66,11 @@ interface PipRowProps {
   active: number;
   maxEnabled: number;
   onChange: ((index: number) => void) | undefined;
+  disabled: boolean;
 }
 
 function PipRow(props: PipRowProps): JSX.Element {
-  const { total, active, maxEnabled, onChange } = props;
+  const { total, active, maxEnabled, onChange, disabled: rowDisabled } = props;
   const pipRefs = useRef<Array<HTMLSpanElement | null>>([]);
 
   const firstEnabled = useCallback((): number => {
@@ -108,6 +121,9 @@ function PipRow(props: PipRowProps): JSX.Element {
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLSpanElement>, index: number): void => {
+      if (rowDisabled) {
+        return;
+      }
       if (onChange === undefined) {
         return;
       }
@@ -156,7 +172,7 @@ function PipRow(props: PipRowProps): JSX.Element {
           return;
       }
     },
-    [onChange, maxEnabled, nextEnabled, firstEnabled, lastEnabled, focusPip],
+    [rowDisabled, onChange, maxEnabled, nextEnabled, firstEnabled, lastEnabled, focusPip],
   );
 
   // Roving tabindex: exactly one enabled pip carries `tabIndex={0}` so
@@ -168,8 +184,8 @@ function PipRow(props: PipRowProps): JSX.Element {
   const pips: JSX.Element[] = [];
   for (let i = 1; i <= total; i += 1) {
     const isActive = i === active;
-    const disabled = i > maxEnabled;
-    const handleClick = onChange === undefined || disabled
+    const pipDisabled = rowDisabled || i > maxEnabled;
+    const handleClick = onChange === undefined || pipDisabled
       ? undefined
       : (): void => onChange(i);
     pips.push(
@@ -181,12 +197,12 @@ function PipRow(props: PipRowProps): JSX.Element {
         className="ac-envelope-meta__pip"
         role="radio"
         aria-checked={isActive}
-        aria-disabled={disabled ? true : undefined}
+        aria-disabled={pipDisabled ? true : undefined}
         data-active={isActive ? 'true' : undefined}
-        data-disabled={disabled ? 'true' : undefined}
+        data-disabled={pipDisabled ? 'true' : undefined}
         onClick={handleClick}
         onKeyDown={(event): void => handleKeyDown(event, i)}
-        tabIndex={i === tabStop && !disabled ? 0 : -1}
+        tabIndex={!rowDisabled && i === tabStop && i <= maxEnabled ? 0 : -1}
       >
         {i}
       </span>,
@@ -194,12 +210,13 @@ function PipRow(props: PipRowProps): JSX.Element {
   }
 
   return (
-    <div className="ac-envelope-meta__control">
+    <div className="ac-envelope-meta__control" data-disabled-row={rowDisabled ? 'true' : undefined}>
       <span className="ac-envelope-meta__label">{props.rowLabel}</span>
       <div
         className="ac-envelope-meta__pips"
         role="radiogroup"
         aria-label={props.ariaLabel}
+        aria-disabled={rowDisabled ? true : undefined}
       >
         {pips}
       </div>

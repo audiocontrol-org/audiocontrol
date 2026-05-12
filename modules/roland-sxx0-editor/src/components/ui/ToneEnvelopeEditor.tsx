@@ -33,7 +33,16 @@ import { cn } from '@/lib/utils';
 interface ToneEnvelopeEditorProps {
   envelope: SamplerEnvelope;
   onChange: (envelope: SamplerEnvelope) => void;
-  onCommit?: () => void;
+  /**
+   * Called after a value change should be committed to the device. The
+   * latest envelope value is passed explicitly so the panel-level handler
+   * can synthesize the full tone the device-write contract expects.
+   * Mirrors the sibling-handler pattern in TonePitchPanel / ToneAmpPanel
+   * etc. where each commit handler builds `updatedTone` and passes it
+   * through — avoids the implicit "commit reads from store" coupling that
+   * future async store updates could silently break.
+   */
+  onCommit?: (envelope: SamplerEnvelope) => void;
   label: string;
   disabled?: boolean;
 }
@@ -73,23 +82,30 @@ export function ToneEnvelopeEditor({
   // to be < endPoint and reclamp on endPoint change.
   const handleSustainChange = (uiIndex: number) => {
     const storedSustain = Math.max(0, Math.min(uiIndex - 1, endPoint - 1));
-    onChange({ ...envelope, sustainPoint: storedSustain });
-    onCommit?.();
+    const next = { ...envelope, sustainPoint: storedSustain };
+    onChange(next);
+    onCommit?.(next);
   };
 
   const handleEndChange = (uiEnd: number) => {
     const clampedEnd = Math.max(1, Math.min(8, uiEnd));
-    const reclamppedSustain = Math.min(sustainPoint, clampedEnd - 1);
-    onChange({
+    const reclampedSustain = Math.min(sustainPoint, clampedEnd - 1);
+    const next = {
       ...envelope,
       endPoint: clampedEnd,
-      sustainPoint: reclamppedSustain,
-    });
-    onCommit?.();
+      sustainPoint: reclampedSustain,
+    };
+    onChange(next);
+    onCommit?.(next);
   };
 
+  // The AcEnvelope `disabled` prop (added by the fix-up dispatch) is the
+  // canonical disabled gate: it removes pip tab stops and adds the native
+  // HTML `disabled` attribute to graph/table buttons. The wrapper keeps
+  // `opacity-50` for the visual dim cue only — no `pointer-events-none`,
+  // which would block mouse but leak keyboard interaction.
   return (
-    <div className={cn('space-y-3', disabled && 'opacity-50 pointer-events-none')}>
+    <div className={cn('space-y-3', disabled && 'opacity-50')}>
       <AcEnvelope
         label={`${label} · 8-SEGMENT`}
         segments={segments}
@@ -98,12 +114,15 @@ export function ToneEnvelopeEditor({
         activeSegment={sustainPoint + 1}
         onSustainChange={handleSustainChange}
         onEndChange={handleEndChange}
+        disabled={disabled}
       />
 
       {/* Inline edit grid — preserves the live numeric-editing affordance
           that AcEnvelope's display-only table cannot offer. Rate (1..127)
           and Level (0..127) per segment, in two rows of 8 inputs. The
-          `data-edit-row` attribute is the spec-helper anchor. */}
+          `data-edit-row` attribute is the spec-helper anchor. The current
+          `envelope` prop reflects the latest streaming value (the panel
+          calls `onUpdate` on every keystroke), so onBlur commits with it. */}
       <div className="tones__envelope-edit-grid">
         <div className="tones__envelope-edit-row" data-edit-row="rate">
           <span className="ac-field-label">Rate</span>
@@ -115,7 +134,7 @@ export function ToneEnvelopeEditor({
               max={127}
               value={rate}
               onChange={(e) => updateRate(i, Number(e.target.value))}
-              onBlur={() => onCommit?.()}
+              onBlur={() => onCommit?.(envelope)}
               className="ac-input ac-input-sm ac-input-center"
               disabled={disabled || i >= endPoint}
               aria-label={`${label} rate segment ${i + 1}`}
@@ -132,7 +151,7 @@ export function ToneEnvelopeEditor({
               max={127}
               value={level}
               onChange={(e) => updateLevel(i, Number(e.target.value))}
-              onBlur={() => onCommit?.()}
+              onBlur={() => onCommit?.(envelope)}
               className="ac-input ac-input-sm ac-input-center"
               disabled={disabled || i >= endPoint}
               aria-label={`${label} level segment ${i + 1}`}

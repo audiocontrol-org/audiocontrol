@@ -55,6 +55,19 @@ export interface AcEnvelopeProps {
   helpText?: string;
   /** Optional className appended to the envelope root. */
   className?: string;
+  /**
+   * When true, the entire envelope (graph point buttons, meta pip
+   * radiogroups, table segment-select buttons) is rendered inert. Pip
+   * elements drop out of the tab order and stop firing change callbacks
+   * on click or keyboard activation; native `<button>` elements carry the
+   * HTML `disabled` attribute so the browser blocks mouse and keyboard
+   * activation. The root acquires `data-disabled="true"` so CSS can dim.
+   *
+   * IMPORTANT: do NOT rely on the caller wrapping this component in
+   * `pointer-events: none` to enforce disabled — pointer-events blocks
+   * mouse but not keyboard. This prop is the canonical disabled gate.
+   */
+  disabled?: boolean;
 }
 
 export function AcEnvelope(props: AcEnvelopeProps): JSX.Element {
@@ -67,9 +80,10 @@ export function AcEnvelope(props: AcEnvelopeProps): JSX.Element {
   const segments = props.segments.slice(0, endSegment);
 
   const rootClass = props.className ? `ac-envelope ${props.className}` : 'ac-envelope';
+  const disabled = props.disabled === true;
 
   return (
-    <div className={rootClass}>
+    <div className={rootClass} data-disabled={disabled ? 'true' : undefined}>
       <AcEnvelopeGraph
         label={props.label}
         segments={segments}
@@ -79,6 +93,7 @@ export function AcEnvelope(props: AcEnvelopeProps): JSX.Element {
         helpText={props.helpText}
         onPointSelect={props.onPointSelect}
         onExpand={props.onExpand}
+        disabled={disabled}
       />
       <AcEnvelopeMeta
         totalSegments={totalSegments}
@@ -86,6 +101,7 @@ export function AcEnvelope(props: AcEnvelopeProps): JSX.Element {
         endSegment={endSegment}
         onSustainChange={props.onSustainChange}
         onEndChange={props.onEndChange}
+        disabled={disabled}
       />
       <AcEnvelopeTable
         segments={segments}
@@ -94,6 +110,7 @@ export function AcEnvelope(props: AcEnvelopeProps): JSX.Element {
         activeSegment={activeSegment}
         sustainSegment={sustainSegment}
         onPointSelect={props.onPointSelect}
+        disabled={disabled}
       />
     </div>
   );

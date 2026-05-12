@@ -57,6 +57,10 @@ export function ToneAmpPanel({ tone, onUpdate, onCommit }: ToneAmpPanelProps) {
   const handleTvaEnvelopeChange = (envelope: SamplerEnvelope) => {
     onUpdate?.({ ...tone, tva: { ...tone.tva, envelope } });
   };
+  const handleTvaEnvelopeCommit = (envelope: SamplerEnvelope) => {
+    const updatedTone = { ...tone, tva: { ...tone.tva, envelope } };
+    onCommit?.(updatedTone);
+  };
 
   return (
     <section className="tones__section">
@@ -90,7 +94,7 @@ export function ToneAmpPanel({ tone, onUpdate, onCommit }: ToneAmpPanelProps) {
       <ToneEnvelopeEditor
         envelope={tone.tva.envelope}
         onChange={handleTvaEnvelopeChange}
-        onCommit={() => onCommit?.()}
+        onCommit={handleTvaEnvelopeCommit}
         label="TVA"
       />
     </section>

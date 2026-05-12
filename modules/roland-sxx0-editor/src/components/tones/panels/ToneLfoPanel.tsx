@@ -7,14 +7,13 @@
  * v3 atomic primitives:
  *   - ParameterSlider → ParamSliderRow (AcSlider + AcNumberInput editable;
  *     streaming writes per `feedback_live_editing_no_save`).
- *   - vanilla `<input type="checkbox">` → AcCheckbox (the three-element
- *     mockup pattern). data-testid preserved via wrapping div for the
- *     LFO Sync checkbox; cssId preserved via AcCheckbox `id` prop for
- *     the LFO Polarity (Peak Hold) checkbox.
+ *   - vanilla `<input type="checkbox">` → AcCheckbox. The `dataTestId` /
+ *     `id` props land the capability-spec selectors on the `<input>`
+ *     element directly.
  *   - Mode display label → `.ac-field-label`.
  *
  * data-testid preservation:
- *   - tone-lfo-sync (wrapping div)
+ *   - tone-lfo-sync (on the AcCheckbox `<input>` via dataTestId)
  *   - id="lfoPolarity" (via AcCheckbox `id`)
  */
 
@@ -51,17 +50,19 @@ export function ToneLfoPanel({ tone, onUpdate, onCommit }: ToneLfoPanelProps) {
       </div>
       <div className="grid gap-4 md:grid-cols-3">
         <Tooltip content={TONE_TOOLTIPS.lfoSync}>
-          <label className="ac-checkbox">
-            <input
-              type="checkbox"
+          {/* Wrap in <div> so Radix Tooltip's ref forwarding lands on a DOM
+              element. AcCheckbox is a function component without
+              forwardRef; matches the sibling AcCheckbox below. */}
+          <div>
+            <AcCheckbox
               id="lfoSync"
+              dataTestId="tone-lfo-sync"
               checked={lfo.sync}
-              data-testid="tone-lfo-sync"
-              onChange={(e) => updateLfo({ sync: e.target.checked })}
-              className="ac-checkbox__input"
-            />
-            <span className="ac-checkbox__label">Key Sync</span>
-          </label>
+              onChange={(checked) => updateLfo({ sync: checked })}
+            >
+              Key Sync
+            </AcCheckbox>
+          </div>
         </Tooltip>
         <Tooltip content={TONE_TOOLTIPS.lfoMode}>
           <div>

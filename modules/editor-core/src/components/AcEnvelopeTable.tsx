@@ -30,6 +30,11 @@ export interface AcEnvelopeTableProps {
   activeSegment: number;
   sustainSegment: number;
   onPointSelect?: (index: number) => void;
+  /**
+   * When true, every per-segment selector `<button>` carries the native
+   * `disabled` attribute so the browser drops it from the tab order.
+   */
+  disabled?: boolean;
 }
 
 interface FillStyle extends CSSProperties {
@@ -66,11 +71,12 @@ function renderRow(
 ): JSX.Element {
   const active = index === props.activeSegment;
   const sustain = index === props.sustainSegment;
+  const disabled = props.disabled === true;
   const timePct = (seg.time / props.maxTime) * 100;
   const levelPct = (seg.level / props.maxLevel) * 100;
   const timeStyle: FillStyle = { '--ac-envelope-mini-fill': `${timePct}%` };
   const levelStyle: FillStyle = { '--ac-envelope-mini-fill': `${levelPct}%` };
-  const handleSelect = props.onPointSelect === undefined
+  const handleSelect = props.onPointSelect === undefined || disabled
     ? undefined
     : (): void => props.onPointSelect?.(index);
   return (

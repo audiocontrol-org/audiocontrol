@@ -417,4 +417,222 @@ describe('AcEnvelope', () => {
     // Index 3 in the NodeList is segment 4 (segment 0 anchor is not a button).
     expect(onPointSelect).toHaveBeenCalledWith(4);
   });
+
+  // ---------------------------------------------------------------------
+  // disabled prop — important for tone editor "Enable Filter = off" path.
+  // pointer-events-none blocks mouse but NOT keyboard, so the only safe
+  // disable gate is on the elements themselves (tabIndex=-1 on pip spans;
+  // native disabled attribute on graph + table buttons).
+  // ---------------------------------------------------------------------
+
+  it('disabled root carries data-disabled="true" so CSS can dim', () => {
+    const { container } = render(
+      <AcEnvelope
+        label="A"
+        segments={SEGMENTS}
+        sustainSegment={5}
+        endSegment={8}
+        activeSegment={1}
+        disabled
+      />,
+    );
+    const root = container.querySelector('.ac-envelope');
+    expect(root?.getAttribute('data-disabled')).toBe('true');
+  });
+
+  it('disabled meta pips all carry tabIndex=-1 (no keyboard tab stop)', () => {
+    const { container } = render(
+      <AcEnvelope
+        label="A"
+        segments={SEGMENTS}
+        sustainSegment={5}
+        endSegment={8}
+        activeSegment={1}
+        disabled
+      />,
+    );
+    const pips = container.querySelectorAll<HTMLSpanElement>('.ac-envelope-meta__pip');
+    expect(pips.length).toBe(16); // 8 sustain + 8 end
+    pips.forEach((pip) => {
+      expect(pip.getAttribute('tabindex')).toBe('-1');
+      expect(pip.getAttribute('aria-disabled')).toBe('true');
+    });
+  });
+
+  it('disabled meta radiogroup carries aria-disabled', () => {
+    const { container } = render(
+      <AcEnvelope
+        label="A"
+        segments={SEGMENTS}
+        sustainSegment={5}
+        endSegment={8}
+        activeSegment={1}
+        disabled
+      />,
+    );
+    const groups = container.querySelectorAll('.ac-envelope-meta__pips');
+    expect(groups.length).toBe(2);
+    groups.forEach((group) => {
+      expect(group.getAttribute('aria-disabled')).toBe('true');
+    });
+  });
+
+  it('disabled meta pip click does NOT fire onSustainChange', () => {
+    const onSustainChange = vi.fn();
+    const { pips } = renderWithSustainPipsDisabled(onSustainChange);
+    fireEvent.click(pips[2]!);
+    expect(onSustainChange).not.toHaveBeenCalled();
+  });
+
+  it('disabled meta pip keyboard activation does NOT fire onSustainChange', () => {
+    const onSustainChange = vi.fn();
+    const { pips } = renderWithSustainPipsDisabled(onSustainChange);
+    fireEvent.keyDown(pips[3]!, { key: ' ' });
+    fireEvent.keyDown(pips[3]!, { key: 'Enter' });
+    fireEvent.keyDown(pips[3]!, { key: 'ArrowRight' });
+    fireEvent.keyDown(pips[3]!, { key: 'Home' });
+    expect(onSustainChange).not.toHaveBeenCalled();
+  });
+
+  it('disabled meta pip keyboard activation does NOT fire onEndChange', () => {
+    const onEndChange = vi.fn();
+    const { container } = render(
+      <AcEnvelope
+        label="A"
+        segments={SEGMENTS}
+        sustainSegment={5}
+        endSegment={8}
+        activeSegment={1}
+        onEndChange={onEndChange}
+        disabled
+      />,
+    );
+    const pipGroups = container.querySelectorAll('.ac-envelope-meta__pips');
+    const endPips = pipGroups[1]?.querySelectorAll<HTMLSpanElement>(
+      '.ac-envelope-meta__pip',
+    );
+    if (endPips === undefined) {
+      throw new Error('AcEnvelope did not render end pips');
+    }
+    fireEvent.click(endPips[2]!);
+    fireEvent.keyDown(endPips[2]!, { key: ' ' });
+    fireEvent.keyDown(endPips[2]!, { key: 'ArrowRight' });
+    expect(onEndChange).not.toHaveBeenCalled();
+  });
+
+  it('disabled graph point buttons carry the HTML disabled attribute', () => {
+    const { container } = render(
+      <AcEnvelope
+        label="A"
+        segments={SEGMENTS}
+        sustainSegment={5}
+        endSegment={8}
+        activeSegment={1}
+        onPointSelect={vi.fn()}
+        disabled
+      />,
+    );
+    const pointButtons = container.querySelectorAll<HTMLButtonElement>(
+      '.ac-envelope-points button.ac-envelope-point',
+    );
+    expect(pointButtons.length).toBe(8);
+    pointButtons.forEach((btn) => {
+      expect(btn.disabled).toBe(true);
+    });
+  });
+
+  it('disabled graph point button clicks do NOT fire onPointSelect', () => {
+    const onPointSelect = vi.fn();
+    const { container } = render(
+      <AcEnvelope
+        label="A"
+        segments={SEGMENTS}
+        sustainSegment={5}
+        endSegment={8}
+        activeSegment={1}
+        onPointSelect={onPointSelect}
+        disabled
+      />,
+    );
+    const pointButton = container.querySelector<HTMLButtonElement>(
+      '.ac-envelope-points button.ac-envelope-point',
+    );
+    if (pointButton === null) {
+      throw new Error('AcEnvelope did not render point buttons');
+    }
+    fireEvent.click(pointButton);
+    expect(onPointSelect).not.toHaveBeenCalled();
+  });
+
+  it('disabled table seg buttons carry the HTML disabled attribute', () => {
+    const { container } = render(
+      <AcEnvelope
+        label="A"
+        segments={SEGMENTS}
+        sustainSegment={5}
+        endSegment={8}
+        activeSegment={1}
+        onPointSelect={vi.fn()}
+        disabled
+      />,
+    );
+    const segButtons = container.querySelectorAll<HTMLButtonElement>(
+      '.ac-envelope-table__row .ac-envelope-table__seg',
+    );
+    expect(segButtons.length).toBe(8);
+    segButtons.forEach((btn) => {
+      expect(btn.disabled).toBe(true);
+    });
+  });
+
+  it('disabled table seg button clicks do NOT fire onPointSelect', () => {
+    const onPointSelect = vi.fn();
+    const { container } = render(
+      <AcEnvelope
+        label="A"
+        segments={SEGMENTS}
+        sustainSegment={5}
+        endSegment={8}
+        activeSegment={1}
+        onPointSelect={onPointSelect}
+        disabled
+      />,
+    );
+    const segButton = container.querySelector<HTMLButtonElement>(
+      '.ac-envelope-table__row .ac-envelope-table__seg',
+    );
+    if (segButton === null) {
+      throw new Error('AcEnvelope did not render seg buttons');
+    }
+    fireEvent.click(segButton);
+    expect(onPointSelect).not.toHaveBeenCalled();
+  });
 });
+
+function renderWithSustainPipsDisabled(
+  sustainHandler: (index: number) => void,
+): { pips: NodeListOf<HTMLSpanElement> } {
+  const { container } = render(
+    <AcEnvelope
+      label="A"
+      segments={SEGMENTS}
+      sustainSegment={5}
+      endSegment={8}
+      activeSegment={1}
+      onSustainChange={sustainHandler}
+      disabled
+    />,
+  );
+  const pipGroups = container.querySelectorAll('.ac-envelope-meta__pips');
+  const sustainPips = pipGroups[0];
+  if (sustainPips === undefined) {
+    throw new Error('AcEnvelope did not render sustain pip row');
+  }
+  const pips = sustainPips.querySelectorAll<HTMLSpanElement>(
+    '.ac-envelope-meta__pip',
+  );
+  if (pips.length === 0) {
+    throw new Error('AcEnvelope did not render any sustain pips');
+  }
+  return { pips };
+}

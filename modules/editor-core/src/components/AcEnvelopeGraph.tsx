@@ -27,6 +27,12 @@ export interface AcEnvelopeGraphProps {
   helpText?: string;
   onPointSelect?: (index: number) => void;
   onExpand?: () => void;
+  /**
+   * When true, every selectable point `<button>` is rendered with the native
+   * `disabled` attribute so the browser drops it from the tab order and
+   * blocks both click and keyboard activation.
+   */
+  disabled?: boolean;
 }
 
 interface PointXY {
@@ -163,7 +169,8 @@ function renderPoint(
   }
   // Selectable segments render as native buttons so keyboard activation
   // (Space + Enter) and focus semantics come for free.
-  const handleClick = props.onPointSelect === undefined
+  const disabled = props.disabled === true;
+  const handleClick = props.onPointSelect === undefined || disabled
     ? undefined
     : (): void => props.onPointSelect?.(i);
   return (
@@ -175,6 +182,7 @@ function renderPoint(
       onClick={handleClick}
       aria-label={`Select segment ${i}`}
       aria-pressed={isActive}
+      disabled={disabled}
     />
   );
 }

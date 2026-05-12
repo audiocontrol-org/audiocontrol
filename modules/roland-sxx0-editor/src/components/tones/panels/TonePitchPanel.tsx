@@ -6,12 +6,12 @@
  * v3 atomic primitives:
  *   - ParameterSlider → ParamSliderRow (AcSlider + AcNumberInput editable
  *     readout, streaming writes per `feedback_live_editing_no_save`).
- *   - vanilla `<input type="checkbox">` → AcCheckbox (the three-element
- *     mockup pattern, styled by control-primitives.css). The wrapping
- *     `<div data-testid="...">` preserves the legacy capability selectors.
+ *   - vanilla `<input type="checkbox">` → AcCheckbox. The `dataTestId` /
+ *     `id` props land the capability-spec selectors on the `<input>`
+ *     element directly.
  *
  * data-testid preservation:
- *   - tone-pitch-follow (wrapping div)
+ *   - tone-pitch-follow (on the AcCheckbox `<input>` via dataTestId)
  *   - id="benderEnabled" / id="aftertouchEnabled" (via AcCheckbox `id`)
  */
 
@@ -70,21 +70,25 @@ export function TonePitchPanel({ tone, onUpdate, onCommit }: TonePitchPanelProps
       </div>
       <div className="mt-4 grid gap-4 md:grid-cols-3">
         <Tooltip content={TONE_TOOLTIPS.pitchFollow}>
-          <label className="ac-checkbox">
-            <input
-              type="checkbox"
+          {/* Wrap in <div> so Radix Tooltip's ref forwarding lands on a DOM
+              element. AcCheckbox is a function component without forwardRef;
+              passing the ref through directly emits a React warning that
+              the spec harness treats as a page error. Sibling AcCheckboxes
+              below use the same pattern. */}
+          <div>
+            <AcCheckbox
               id="pitchFollow"
+              dataTestId="tone-pitch-follow"
               checked={tone.pitchFollow}
-              data-testid="tone-pitch-follow"
-              onChange={(e) => {
-                const updatedTone = { ...tone, pitchFollow: e.target.checked };
+              onChange={(checked) => {
+                const updatedTone = { ...tone, pitchFollow: checked };
                 onUpdate?.(updatedTone);
                 onCommit?.(updatedTone);
               }}
-              className="ac-checkbox__input"
-            />
-            <span className="ac-checkbox__label">Pitch Follow</span>
-          </label>
+            >
+              Pitch Follow
+            </AcCheckbox>
+          </div>
         </Tooltip>
         <Tooltip content={TONE_TOOLTIPS.benderEnabled}>
           <div>

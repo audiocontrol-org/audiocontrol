@@ -30,6 +30,13 @@ export interface AcCheckboxProps {
   id?: string;
   /** Optional `name` for form submission. */
   name?: string;
+  /**
+   * Optional `data-testid` applied to the `<input>` element. Lands on the
+   * input (not the wrapping `<label>`) so Playwright's `getByTestId(...).click()`
+   * targets the actual toggle affordance — matching how raw native
+   * `<input type="checkbox" data-testid="...">` would behave.
+   */
+  dataTestId?: string;
 }
 
 export function AcCheckbox({
@@ -41,6 +48,7 @@ export function AcCheckbox({
   className,
   id,
   name,
+  dataTestId,
 }: AcCheckboxProps): JSX.Element {
   const labelClass = className ? `ac-checkbox ${className}` : 'ac-checkbox';
   const handleChange = (event: ChangeEvent<HTMLInputElement>): void => {
@@ -57,6 +65,7 @@ export function AcCheckbox({
         aria-label={ariaLabel}
         id={id}
         name={name}
+        data-testid={dataTestId}
       />
       <span className="ac-checkbox__label">{children}</span>
     </label>

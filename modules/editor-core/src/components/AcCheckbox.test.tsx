@@ -79,4 +79,35 @@ describe('AcCheckbox', () => {
     expect(html).toContain('id="cb-1"');
     expect(html).toContain('name="restore"');
   });
+
+  it('applies dataTestId to the <input> element (not the label)', () => {
+    const { container } = render(
+      <AcCheckbox checked={false} onChange={() => {}} dataTestId="tone-tvf-enabled">
+        Enable Filter
+      </AcCheckbox>,
+    );
+    const input = container.querySelector<HTMLInputElement>('input.ac-checkbox__input');
+    if (input === null) {
+      throw new Error('AcCheckbox did not render its input');
+    }
+    expect(input.getAttribute('data-testid')).toBe('tone-tvf-enabled');
+    // The outer <label> must NOT carry the testid — getByTestId would then
+    // hit the wrong element and `.click()` would only toggle the label, not
+    // the input.
+    const label = container.querySelector('label.ac-checkbox');
+    expect(label?.getAttribute('data-testid')).toBeNull();
+  });
+
+  it('omits the data-testid attribute when dataTestId is not provided', () => {
+    const { container } = render(
+      <AcCheckbox checked={false} onChange={() => {}}>
+        Plain
+      </AcCheckbox>,
+    );
+    const input = container.querySelector<HTMLInputElement>('input.ac-checkbox__input');
+    if (input === null) {
+      throw new Error('AcCheckbox did not render its input');
+    }
+    expect(input.hasAttribute('data-testid')).toBe(false);
+  });
 });
