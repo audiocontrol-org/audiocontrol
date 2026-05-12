@@ -11,6 +11,77 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-05-12 (afternoon): s550-support — Phase 0 Task 10 fully closed (Wave 6 + #421 close-out + #404 verification)
+
+### Feature: s550-support
+
+### Worktree: audiocontrol-s550-support
+
+### Goal
+
+Drive Phase 0 Task 10 to FULL completion in one hardware-gated session (S-550 connected on Volt 4). Open state at session start: 6 of 7 waves complete (143 specs); Wave 6 partial (3 specs landed; D-XX-02/03/04 front-panel DT1 emits blocked on S-550 front-panel fixture capture); #404 worked but issue still open; #421 (library-page-load fixture) still open.
+
+### Accomplished
+
+- **#404 closure-request posted.** Independent verification confirmed the work from commit `3299d61c` (S-550 fixtures captured + tones/play specs un-skipped) is complete: 143 baseline passing including the un-skipped tones/play specs. Closure-request comment with verification evidence posted.
+
+- **#417 Wave 6 close-out shipped.** Commit `95e97e46` (initial implementer) + `6acbaace` (code-quality review follow-up): 3 new capability specs at `test/ui/capabilities/front-panel-emit.spec.ts` binding D-XX-02 (arrows, cat-01 single DT1), D-XX-03 (inc/dec, cat-09 press+release pairs), D-XX-04 (function buttons MODE/MENU/SUB/COM/EXEC, cat-01 single DT1). 3 fixtures captured against S-550 on Volt 4 (`front-panel-{function,nav,value}-flow.ndjson`, filed under `s330/` per the existing convention). Production-code side effect: aria-labels added to `NavigationPad`/`ValueButtons` icon-only buttons (real a11y improvement; minimal scope; was the only way to give the specs `getByRole('button', { name })` locators). `ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md` Test column updated for D-XX-02/03/04. Closure-request posted.
+
+  Code-quality review caught one Important issue: the 3 new scenarios had inlined the mount prelude (`connect + loadPatchRange(0, 8)`) instead of calling `runPatchPageMount`, divergent from the sibling `panic-flow` scenario's pattern in the same file. Fixed in commit `6acbaace` — 3 inlined preludes collapsed to single `runPatchPageMount(client, proxy)` calls; `FrontPanelClient` interface deleted as unused. Byte stream unchanged; fixtures replay identically.
+
+- **#421 library-page-load fixture shipped.** Commit `e0981c37` (initial implementer) + `b19ae698` (doc-accuracy follow-up): new `library-page-load` scenario walks `LibraryPage.handleLoadDeviceData`'s per-bank sequence (8 tone banks + 4 patch banks for S-550 = 12 bank loads); 1310-record fixture captured. D-LIB-08 rewritten to mount `/roland/s550/editor/library?midi=simulated&scenario=library-page-load`, click "Refresh Device", and wait for `draggable="true"` on T11 before the DnD assertion — replaces the `window.__deviceDataStore` injection. Other 5 Wave-5 specs (D-LIB-06/07/09/14/21) intentionally stay on injection per the issue body's allowance. `LIBRARY_PAGE_TOTALS` map duplicates editor config totals to keep the scenario file dependency-free of the editor module. `TESTING-FIXTURES.md` updated. Closure-request posted.
+
+  Code-quality review caught one Important issue: the scenario's docstring claimed the `connect()` annotation appears in the captured fixture, but actuals show it's overwritten by the next `proxy.annotate()` call before any record is written (connect emits no bytes, so the pendingAnnotation never lands). The commit-message body also had an incorrect record-count breakdown (claimed "96 outbound RQDs + 1214 inbound DT1s"; actuals are 703 outbound + 607 inbound). Fixed the docstring in `b19ae698`; the commit-message inaccuracy stays in git history (cannot be amended per project rule).
+
+- **Suite status: 146 specs passing** under `make test-ui-roland` (up from 143 at session start; +3 from #417's work). Independently re-verified after each commit (3+ runs total).
+
+- **Phase 0 Task 10 COMPLETE.** All 7 waves done with bindings for every `implemented`/`partial` capability in the inventory. Closure-requests posted on #404, #415, #416, #417, #421 (all five Phase 0 Task 10 issues that were still open). Phase 9 Task 4 unblocks once #417 closes.
+
+- **Workplan + README synced.** Phase 0 Task 10 status changed from "IN PROGRESS" → "COMPLETE (pending operator closure)". Phase 9 status changed from "BLOCKED" → "UNBLOCKED 2026-05-12 (pending #417 operator closure)". Wave 6 sub-task entry + #417/#421 close-out follow-ups updated to reflect the new state.
+
+### Didn't work
+
+- **Quality-review feedback loop revealed two doc-accuracy failures across the session's two main commits.** Both were of the same shape: docstring or commit-message text asserting a behavior that doesn't match the actual fixture content. For #417's `95e97e46`, the inlined-prelude pattern was flagged as a nucleation site (other scenarios in the same file use `runPatchPageMount`). For #421's `e0981c37`, the `connect()` annotation comment was false. Both were caught at the review layer; both fixed via follow-up commits.
+
+  The pattern is consistent: when I dispatch an implementer with a brief that hand-waves the byte-stream specifics ("the scenario records a single connect() annotation followed by..."), the implementer often dutifully echoes the brief's framing into the docstring without verifying. Lesson: when the brief mentions concrete byte-stream behavior, the implementer should treat the brief's framing as a hypothesis to test, not a description to repeat. I should also frame the brief more cautiously ("verify whether..." instead of "the scenario records...").
+
+- **A near-miss workplan-update miss.** I almost considered the session done after posting closure-requests, but the discipline rule from yesterday (recorded as PROCESS correction in the prior journal entry) was: "every operator-authorized deferral has a two-part landing — (a) the GitHub issue with the technical scope, (b) the workplan's follow-ups section with the operator-acceptance trail." The closure-requests are (a)-equivalent; the workplan sync is the (b)-equivalent. I did the workplan sync before declaring the effort done.
+
+### Course corrections
+
+- **[QUALITY]** Code-quality review on #417 — "the three new scenarios inline the mount prelude instead of calling `runPatchPageMount`. The same file's `panic-flow` scenario correctly uses the helper. This is a nucleation site." The fix was a ~15-line mechanical diff, but the catch matters: the next agent author would copy one of the 3 wrong scenarios as a template (3-out-of-4 template ratio favoring the wrong pattern). Fixed in `6acbaace`. Lesson: when adding multiple sibling scenarios to a file that already has a shared mount helper, USE the helper from the first one — don't inline-then-refactor.
+
+- **[DOCUMENTATION]** Code-quality review on #421 — "the code comment about `connect()` annotation is inaccurate. The annotation is overwritten before any record is written, and the actual outbound count is 703 (not the 96 claimed in the commit body)." Fixed the in-source docstring in `b19ae698`; the commit-message inaccuracy stays in git history. Lesson: when a brief specifies byte-stream behavior speculatively ("emits the bytes…"), the implementer should verify against the captured fixture before repeating the claim. The commit-message tax is real and unfixable — push the verification step before committing the message.
+
+- **[PROCESS]** Spec-compliance reviewer + code-quality reviewer dispatched in parallel with the independent test re-verification for each implementer dispatch. This 3-track verification (test run + spec review + code review) is the discipline rule's "evidence before assertions" applied at the wave level. Three rounds of three-track verification this session = 9 confirmation passes. Caught both Important issues at their source.
+
+### Quantitative
+
+- **6 commits** on `feature/s550-support` this session: `95e97e46` (Wave 6 D-XX-02/03/04) → `6acbaace` (Wave 6 refactor) → `e0981c37` (#421 library-page-load) → `b19ae698` (#421 doc fix) → docs commit pending → README+workplan commit pending.
+- **3 closure-request comments** posted: #404, #417, #421.
+- **2 implementer dispatches**, 2 spec-compliance reviews, 2 code-quality reviews (one Important fix each).
+- **Test count**: 143 → 146 specs passing (+3 from #417; #421 rewrote 1 existing spec). Cumulative Task 10 progress: 31 (Wave 1 start) → 146 (+115 specs across 7 waves).
+- **Fixture captures**: 3 front-panel fixtures + 1 library-page-load fixture = **4 new NDJSON fixtures** captured against real S-550 on Volt 4.
+- **Production-code touches**: 3 components (FrontPanelButton, NavigationPad, ValueButtons) for aria-label additions — minimal a11y improvements driven by the spec selector strategy. No other production changes.
+- **0 self-issued deferrals**, **0 in-code TODOs**, **0 test.skip introduced**, **0 Co-Authored-By** across all 6 commits.
+- **0 fabrications shipped to main** — both doc-accuracy issues were caught at the review layer and fixed before declaring the wave complete. The original commit messages do carry the inaccurate record-count breakdown; that's documented in the journal but not amended (per project rule).
+
+### Insights
+
+- **The three-track verification pattern (independent test run + spec review + code-quality review) caught both quality regressions cheaply.** Each review took 5-7 minutes; each fix took 2-3 minutes. Compare to the alternative: shipping the inlined-prelude pattern would have caused the next 3-5 scenario authors to copy the wrong template, compounding into a major refactor. Shipping the inaccurate `connect()` comment would have misled future agents diagnosing fixture-replay issues. The review tax is small; the prevented-future-pain is large. Worth treating as the default workflow.
+
+- **Code-quality reviewer flagging "nucleation site" was load-bearing.** The Wave 6 inlined-prelude pattern wasn't a correctness bug — the bytes are identical, tests pass. The reviewer specifically called it out as a NUCLEATION SITE because the file's other scenarios use the helper, so the 3 new outliers would attract more outliers. The discipline doc's "nucleation site prevention" rule is the explicit framing for this kind of catch. When the reviewer surfaces something with that framing, the fix is non-negotiable even if the test suite is green.
+
+- **Documenting "no Co-Authored-By" + "no autonomous closure" rules in the brief is necessary but not sufficient.** Implementer #2 (Wave 5/#421) honored both. But the brief's framing of byte-stream behavior gets echoed into docstrings without verification. The defense is briefing-style: when stating a hypothesis the implementer should verify, frame it as a question ("does the connect annotation appear in the fixture? Verify before documenting.") not a claim.
+
+- **Phase 0 Task 10 took 3 sessions** to drive from 31 specs to 146 specs (5x growth). 2026-05-11: 31→132 (Waves 2a/2b/2c/3/4-partial/6-partial, +101 specs, 22 commits). 2026-05-12 morning: 132→143 (Wave 4/5 close-out + production wiring, 6 commits). 2026-05-12 afternoon: 143→146 (Wave 6 close-out + #421 fixture, 6 commits). The diminishing-marginal-progress curve flattened expected — Wave 6 was the smallest in spec count (3) but required hardware-gated fixture capture; #421 rewrote 1 existing spec but required the most novel fixture-recording work in the whole task. The discipline rule's "drive to completion" pressure paid off: every wave's deferred work got picked up rather than rotting.
+
+- **The `runPatchPageMount` helper is the right abstraction for the future PAGE_SCENARIOS in this file.** The Wave 6 refactor (forced by code-quality review) demonstrates the value: future scenarios authored after this point will start from the helper pattern by example. The `LIBRARY_PAGE_TOTALS` map at the top of `record-fixtures-roland-page-scenarios.ts` is the second-order pattern — when scenario logic depends on editor-config totals, encode them once at the top of the file with a header comment about the manual-sync requirement. If a third scenario also needs editor totals, the pattern promotes to a shared `device-totals.ts` module (flagged as a follow-up in the code-quality review but not in scope for this session).
+
+- **Phase 0 Task 10 completion unblocks Phase 9 Task 4 the moment #417 closes.** Per Decision 6 Option A (decisions-2026-05-11.md), the sequencing is: atomic primitives first → amend Patches+Tones → per-page polish for the remaining 4 pages. The PatchesPage + TonesPage "shell partial" commits (`4bd11911`, `f633b95f`) won't be amended in isolation; they get amended once the atomic primitives exist. Next-session candidate work.
+
+---
+
 ## 2026-05-12: s550-support — Phase 0 Task 10 Wave 4 close-out + Wave 5 (operator-authorized scope expansion) + 4 follow-up issues
 
 ### Feature: s550-support
