@@ -314,7 +314,7 @@ export function LibraryPage() {
       <div className="ac-page">
         <div className="card text-center py-12">
           <h2 className="text-xl font-bold text-s330-text mb-2">Not Connected</h2>
-          <p className="text-s330-muted mb-4">Connect to your S-330 to manage the library.</p>
+          <p className="text-s330-muted mb-4">Connect to your {config.deviceName} to manage the library.</p>
           <a href="/" className="ac-btn ac-btn-primary inline-block">Go to Connection</a>
         </div>
       </div>
