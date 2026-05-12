@@ -76,21 +76,15 @@ export function ToneFilterPanel({ tone, onUpdate, onCommit }: ToneFilterPanelPro
         <span className="tones__section-eyebrow">Time-variant · §03</span>
       </header>
       <Tooltip content={TONE_TOOLTIPS.tvfEnabled}>
-        {/* <div> wrapper supplies a DOM element for Radix Tooltip's ref
-            forwarding (AcCheckbox is a function component without
-            forwardRef). Without this wrapper, React emits a
-            "Function components cannot be given refs" warning that the
-            spec harness treats as a page error. */}
-        <div className="mb-4">
-          <AcCheckbox
-            id="tvfEnabled"
-            dataTestId="tone-tvf-enabled"
-            checked={tvf.enabled}
-            onChange={(checked) => updateTvf({ enabled: checked })}
-          >
-            Enable Filter
-          </AcCheckbox>
-        </div>
+        <AcCheckbox
+          id="tvfEnabled"
+          dataTestId="tone-tvf-enabled"
+          checked={tvf.enabled}
+          onChange={(checked) => updateTvf({ enabled: checked })}
+          className="mb-4"
+        >
+          Enable Filter
+        </AcCheckbox>
       </Tooltip>
       <div className="grid gap-4 md:grid-cols-3 mb-4">
         <ParamSliderRow label="Cutoff" value={tvf.cutoff} onChange={handleCutoffChange} tooltip={TONE_TOOLTIPS.tvfCutoff} disabled={!tvf.enabled} />

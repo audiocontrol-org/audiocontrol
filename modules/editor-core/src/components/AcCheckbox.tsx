@@ -1,4 +1,4 @@
-import type { ChangeEvent, ReactNode } from 'react';
+import { forwardRef, type ChangeEvent, type ReactNode } from 'react';
 
 /**
  * `<AcCheckbox>` — v3 design-language checkbox.
@@ -39,17 +39,26 @@ export interface AcCheckboxProps {
   dataTestId?: string;
 }
 
-export function AcCheckbox({
-  children,
-  checked,
-  onChange,
-  disabled = false,
-  ariaLabel,
-  className,
-  id,
-  name,
-  dataTestId,
-}: AcCheckboxProps): JSX.Element {
+/**
+ * Forwarded ref points at the underlying `<input>`. The component is
+ * `forwardRef`'d at the source so callers (e.g., Radix `<Tooltip>`)
+ * receive a real DOM ref via composition — without each callsite
+ * needing to wrap `<AcCheckbox>` in a `<div>`.
+ */
+export const AcCheckbox = forwardRef<HTMLInputElement, AcCheckboxProps>(function AcCheckbox(
+  {
+    children,
+    checked,
+    onChange,
+    disabled = false,
+    ariaLabel,
+    className,
+    id,
+    name,
+    dataTestId,
+  },
+  ref,
+): JSX.Element {
   const labelClass = className ? `ac-checkbox ${className}` : 'ac-checkbox';
   const handleChange = (event: ChangeEvent<HTMLInputElement>): void => {
     onChange(event.target.checked);
@@ -57,6 +66,7 @@ export function AcCheckbox({
   return (
     <label className={labelClass}>
       <input
+        ref={ref}
         className="ac-checkbox__input"
         type="checkbox"
         checked={checked}
@@ -70,4 +80,4 @@ export function AcCheckbox({
       <span className="ac-checkbox__label">{children}</span>
     </label>
   );
-}
+});

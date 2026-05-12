@@ -70,55 +70,44 @@ export function TonePitchPanel({ tone, onUpdate, onCommit }: TonePitchPanelProps
       </div>
       <div className="mt-4 grid gap-4 md:grid-cols-3">
         <Tooltip content={TONE_TOOLTIPS.pitchFollow}>
-          {/* Wrap in <div> so Radix Tooltip's ref forwarding lands on a DOM
-              element. AcCheckbox is a function component without forwardRef;
-              passing the ref through directly emits a React warning that
-              the spec harness treats as a page error. Sibling AcCheckboxes
-              below use the same pattern. */}
-          <div>
-            <AcCheckbox
-              id="pitchFollow"
-              dataTestId="tone-pitch-follow"
-              checked={tone.pitchFollow}
-              onChange={(checked) => {
-                const updatedTone = { ...tone, pitchFollow: checked };
-                onUpdate?.(updatedTone);
-                onCommit?.(updatedTone);
-              }}
-            >
-              Pitch Follow
-            </AcCheckbox>
-          </div>
+          <AcCheckbox
+            id="pitchFollow"
+            dataTestId="tone-pitch-follow"
+            checked={tone.pitchFollow}
+            onChange={(checked) => {
+              const updatedTone = { ...tone, pitchFollow: checked };
+              onUpdate?.(updatedTone);
+              onCommit?.(updatedTone);
+            }}
+          >
+            Pitch Follow
+          </AcCheckbox>
         </Tooltip>
         <Tooltip content={TONE_TOOLTIPS.benderEnabled}>
-          <div>
-            <AcCheckbox
-              id="benderEnabled"
-              checked={tone.benderEnabled}
-              onChange={(checked) => {
-                const updatedTone = { ...tone, benderEnabled: checked };
-                onUpdate?.(updatedTone);
-                onCommit?.(updatedTone);
-              }}
-            >
-              Pitch Bender
-            </AcCheckbox>
-          </div>
+          <AcCheckbox
+            id="benderEnabled"
+            checked={tone.benderEnabled}
+            onChange={(checked) => {
+              const updatedTone = { ...tone, benderEnabled: checked };
+              onUpdate?.(updatedTone);
+              onCommit?.(updatedTone);
+            }}
+          >
+            Pitch Bender
+          </AcCheckbox>
         </Tooltip>
         <Tooltip content={TONE_TOOLTIPS.aftertouchEnabled}>
-          <div>
-            <AcCheckbox
-              id="aftertouchEnabled"
-              checked={tone.aftertouchEnabled}
-              onChange={(checked) => {
-                const updatedTone = { ...tone, aftertouchEnabled: checked };
-                onUpdate?.(updatedTone);
-                onCommit?.(updatedTone);
-              }}
-            >
-              Aftertouch
-            </AcCheckbox>
-          </div>
+          <AcCheckbox
+            id="aftertouchEnabled"
+            checked={tone.aftertouchEnabled}
+            onChange={(checked) => {
+              const updatedTone = { ...tone, aftertouchEnabled: checked };
+              onUpdate?.(updatedTone);
+              onCommit?.(updatedTone);
+            }}
+          >
+            Aftertouch
+          </AcCheckbox>
         </Tooltip>
       </div>
     </section>

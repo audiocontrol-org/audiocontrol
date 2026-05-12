@@ -50,19 +50,14 @@ export function ToneLfoPanel({ tone, onUpdate, onCommit }: ToneLfoPanelProps) {
       </div>
       <div className="grid gap-4 md:grid-cols-3">
         <Tooltip content={TONE_TOOLTIPS.lfoSync}>
-          {/* Wrap in <div> so Radix Tooltip's ref forwarding lands on a DOM
-              element. AcCheckbox is a function component without
-              forwardRef; matches the sibling AcCheckbox below. */}
-          <div>
-            <AcCheckbox
-              id="lfoSync"
-              dataTestId="tone-lfo-sync"
-              checked={lfo.sync}
-              onChange={(checked) => updateLfo({ sync: checked })}
-            >
-              Key Sync
-            </AcCheckbox>
-          </div>
+          <AcCheckbox
+            id="lfoSync"
+            dataTestId="tone-lfo-sync"
+            checked={lfo.sync}
+            onChange={(checked) => updateLfo({ sync: checked })}
+          >
+            Key Sync
+          </AcCheckbox>
         </Tooltip>
         <Tooltip content={TONE_TOOLTIPS.lfoMode}>
           <div>
@@ -71,15 +66,13 @@ export function ToneLfoPanel({ tone, onUpdate, onCommit }: ToneLfoPanelProps) {
           </div>
         </Tooltip>
         <Tooltip content={TONE_TOOLTIPS.lfoPeakHold}>
-          <div>
-            <AcCheckbox
-              id="lfoPolarity"
-              checked={lfo.polarity}
-              onChange={(checked) => updateLfo({ polarity: checked })}
-            >
-              Peak Hold
-            </AcCheckbox>
-          </div>
+          <AcCheckbox
+            id="lfoPolarity"
+            checked={lfo.polarity}
+            onChange={(checked) => updateLfo({ polarity: checked })}
+          >
+            Peak Hold
+          </AcCheckbox>
         </Tooltip>
       </div>
     </section>
