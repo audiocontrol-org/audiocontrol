@@ -185,8 +185,13 @@ export function useLibraryImportDialogs({
 
   const handleSaveSet = useCallback(async (setName: string, description?: string) => {
     if (!libraryHandle || !clientRef.current) return;
-    const mkProgress = (p: Partial<OperationProgress>): OperationProgress => ({ currentStep: 1, totalSteps: 1, stepLabel: 'Saving...', bytesSent: 0, bytesTotal: 100, bytesSentAllSteps: 0, bytesTotalAllSteps: 100, ...p });
-    setOperationProgress(mkProgress({ currentStep: 0, stepLabel: 'Preparing...' }));
+    // Initial progress: scan phase, totals unknown. bytesTotal === 0 so
+    // OperationProgressBar suppresses byte/ETA display until real bytes
+    // are reported by saveDeviceToSetIncremental's tone-fetch callbacks.
+    setOperationProgress({
+      currentStep: 1, totalSteps: 3, stepLabel: 'Preparing...',
+      bytesSent: 0, bytesTotal: 0, bytesSentAllSteps: 0, bytesTotalAllSteps: 0,
+    });
     setOperationError(null);
     setSaveSuccess(false);
     const client = clientRef.current;
@@ -196,8 +201,7 @@ export function useLibraryImportDialogs({
         async (toneIndex) => await client.requestToneData(toneIndex),
         async (patchIndex) => await client.requestPatchData(patchIndex),
         async (toneIndex, onWaveProgress) => await client.requestWaveData(toneIndex, onWaveProgress ?? (() => {})),
-        (progress) => setOperationProgress((prev) => prev ? { ...prev, bytesSent: Math.floor(progress) } : mkProgress({ bytesSent: Math.floor(progress) })),
-        (status) => setOperationProgress((prev) => prev ? { ...prev, stepLabel: status } : mkProgress({ stepLabel: status }))
+        (progress) => setOperationProgress(progress),
       );
       setSaveSuccess(true);
       setOperationProgress(undefined); // Clear progress so dialog can close (isSaving=false)
