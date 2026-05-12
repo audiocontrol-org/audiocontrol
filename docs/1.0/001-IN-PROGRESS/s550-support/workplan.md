@@ -41,6 +41,10 @@ deskwork:
 - [Phase 0 Task 10 Wave 4 — library + dialog flow tests (#415)](https://github.com/audiocontrol-org/audiocontrol/issues/415) — multi-step dialog flows; needs library backend setup + per-dialog fixtures
 - [Phase 0 Task 10 Wave 5 — drag-drop tests (#416)](https://github.com/audiocontrol-org/audiocontrol/issues/416) — Playwright DnD; carved out of Wave 4 due to tooling friction
 - [Phase 0 Task 10 Wave 6 — cross-cutting tests (front panel, panic, progress) (#417)](https://github.com/audiocontrol-org/audiocontrol/issues/417) — VFP DT1 emits + panic + progress + live-edit guard
+- [LibraryTreeNode top-level fields don't reach PluginLibraryBrowser meta (#418)](https://github.com/audiocontrol-org/audiocontrol/issues/418) — surfaced by Wave 4 close-out (`0a87d409`); ~15-line fix to pack meta in `useRolandLibraryData`
+- [TreeSection emits duplicate data-testid when testId lacks '-tab' substring (#419)](https://github.com/audiocontrol-org/audiocontrol/issues/419) — surfaced by Wave 5 (`31f6fab6`); ~3-line fix + regression test in editor-core
+- [Delete orphaned LibraryTreePanel.tsx + 3 companion hooks (~600 lines dead code) (#420)](https://github.com/audiocontrol-org/audiocontrol/issues/420) — surfaced by Wave 5 (`31f6fab6`); 4 file deletes
+- [Capture library-page-load fixture matching LibraryPage.handleLoadDeviceData per-bank sequence (#421)](https://github.com/audiocontrol-org/audiocontrol/issues/421) — surfaced by Wave 5 (`31f6fab6`); ~1 hr gated on hardware on `Volt 4` (batch with [#404](https://github.com/audiocontrol-org/audiocontrol/issues/404) + [#417](https://github.com/audiocontrol-org/audiocontrol/issues/417))
 
 ---
 
@@ -161,13 +165,22 @@ The detailed inventory at [`ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md`](../../
 
 **Test-coverage waves** (extending the capability suite):
 
-- **[#411](https://github.com/audiocontrol-org/audiocontrol/issues/411)** — Wave 2a, patch parameter writes (~11 specs + fixtures)
-- **[#412](https://github.com/audiocontrol-org/audiocontrol/issues/412)** — Wave 2b, multi-mode parameter writes (~4 specs + fixtures)
-- **[#413](https://github.com/audiocontrol-org/audiocontrol/issues/413)** — Wave 2c, tone parameter writes (~40 specs + fixtures)
-- **[#414](https://github.com/audiocontrol-org/audiocontrol/issues/414)** — Wave 3, display gaps (~30 specs, no new fixtures)
-- **[#415](https://github.com/audiocontrol-org/audiocontrol/issues/415)** — Wave 4, library + dialog flows (~15 specs + fixtures + library state setup)
-- **[#416](https://github.com/audiocontrol-org/audiocontrol/issues/416)** — Wave 5, drag-drop tests (~6 specs)
-- **[#417](https://github.com/audiocontrol-org/audiocontrol/issues/417)** — Wave 6, cross-cutting (~7 specs + front-panel fixture)
+- **[#411](https://github.com/audiocontrol-org/audiocontrol/issues/411)** ✅ CLOSED 2026-05-12 — Wave 2a, patch parameter writes (11 specs)
+- **[#412](https://github.com/audiocontrol-org/audiocontrol/issues/412)** ✅ CLOSED 2026-05-12 — Wave 2b, multi-mode parameter writes (4 specs)
+- **[#413](https://github.com/audiocontrol-org/audiocontrol/issues/413)** ✅ CLOSED 2026-05-12 — Wave 2c, tone parameter writes (39 specs)
+- **[#414](https://github.com/audiocontrol-org/audiocontrol/issues/414)** ✅ CLOSED 2026-05-12 — Wave 3, display gaps (37 specs)
+- **[#415](https://github.com/audiocontrol-org/audiocontrol/issues/415)** ✅ CLOSED 2026-05-12 — Wave 4, library + dialog flows (15 specs)
+- **[#416](https://github.com/audiocontrol-org/audiocontrol/issues/416)** ✅ CLOSED 2026-05-12 — Wave 5, drag-drop tests + production wiring (6 specs)
+- **[#417](https://github.com/audiocontrol-org/audiocontrol/issues/417)** ⏳ — Wave 6, cross-cutting (3 of 6 done; 3 remain blocked on S-550 front-panel fixture capture)
+
+#### Phase 0 Task 10 close-out follow-ups (filed 2026-05-12 from operator-accepted Wave 4 + Wave 5 observations)
+
+Operator authorization recorded: 2026-05-12 chat — "file an issue for what the implementer found" (Wave 4 close-out) and "file issues and scope the fixes" (Wave 5 close-out). These are operator-accepted deferrals per the agent-discipline rule; the workaround applied at the test seam in each case is documented inline at the workaround site.
+
+- **[#418](https://github.com/audiocontrol-org/audiocontrol/issues/418)** — `LibraryTreeNode` top-level fields don't reach `PluginLibraryBrowser` meta. `useRolandLibraryData` returns `LibraryTreeNode[]` directly without packing `directoryName` / `fileName` into `node.meta`; `useRolandSelectionMapping` falls back to `node.name` (the YAML `name` field) for the patch directory lookup. Roland fixtures historically had matching names so the bug never surfaced. Workaround in `seedOPFSPatch` aligns OPFS dir name with YAML `name`. **Fix shape:** pack `{ directoryName, fileName, path }` into `node.meta` inside `useRolandLibraryData` (~15 lines). Surfaced by commit [`0a87d409`](https://github.com/audiocontrol-org/audiocontrol/commit/0a87d409). Priority: low.
+- **[#419](https://github.com/audiocontrol-org/audiocontrol/issues/419)** — `TreeSection` emits duplicate `data-testid` when `testId` lacks `-tab` substring. `TreeSection.tsx:133` uses `testId.replace('-tab', '-list')` which is a no-op when `-tab` is absent, so outer section and inner content div get the same testid. Affects every editor using `PluginLibraryBrowser`. Workaround in Wave 4 + Wave 5 specs: scope queries with `[data-category="..."]`. **Fix shape:** unconditional suffix (e.g., `${testId}-content`) at line 133 + regression test in `TreeSection.test.tsx`. ~3 lines + ~10 lines test. **~30 min including verification**. Surfaced by commit [`31f6fab6`](https://github.com/audiocontrol-org/audiocontrol/commit/31f6fab6). Priority: low.
+- **[#420](https://github.com/audiocontrol-org/audiocontrol/issues/420)** — Delete orphaned `LibraryTreePanel.tsx` + 3 companion hooks (`useLibraryTreeDragDrop`, `useLibraryTreeActions`, `useLibraryTreeCapabilities`) — ~600 lines of dead code. Replaced by `PluginLibraryBrowser` in commit [`68a2cd22`](https://github.com/audiocontrol-org/audiocontrol/commit/68a2cd22) but never deleted; grep confirms zero live consumers. Nucleation-site risk per `CLAUDE.md`. **Fix shape:** delete 4 files; pre-deletion grep audit; `make` + `make test-ui-roland` clean. **~10 min**. Surfaced by commit [`31f6fab6`](https://github.com/audiocontrol-org/audiocontrol/commit/31f6fab6). Priority: low.
+- **[#421](https://github.com/audiocontrol-org/audiocontrol/issues/421)** — Capture `library-page-load` fixture matching `LibraryPage.handleLoadDeviceData` per-bank sequence. The existing `load-everything.ndjson` covers the connection-flow load, not the per-bank load that LibraryPage triggers on "Load from Device". Wave 5 worked around via `window.__deviceDataStore` injection; production load path remains untestable via UI specs without a real fixture. **Fix shape:** new scenario in `record-fixtures-roland-page-scenarios.ts` (~30-50 lines) + hardware capture + rewrite at least one Wave-5 spec to consume fixture instead of injection. **~1 hr including hardware time**. Gates on operator-staffed hardware. Natural batch with [#404](https://github.com/audiocontrol-org/audiocontrol/issues/404) and [#417](https://github.com/audiocontrol-org/audiocontrol/issues/417) (same "device on Volt 4" gate). Priority: medium.
 
 ---
 
