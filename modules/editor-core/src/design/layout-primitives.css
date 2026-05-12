@@ -12,10 +12,11 @@
  */
 
 :root {
-  /* --ac-font-sans / --ac-font-mono moved to tokens.css during Phase 9 Task 7.
-     Inter was removed from the body stack (forbidden by the v3 design
-     language); --ac-font-body is the canonical body face. JetBrains Mono is
-     now the primary mono face per the v3 typography scale. */
+  /* --ac-font-mono moved to tokens.css during Phase 9 Task 7.
+     --ac-font-sans was deleted; consumers migrated to --ac-font-body,
+     whose fallback chain contains no Inter (forbidden by the v3 design
+     language). JetBrains Mono is the primary mono face per the v3
+     typography scale. See DESIGN-SYSTEM.md § Typography. */
   --ac-text-xs: 0.75rem;
   --ac-text-sm: 0.875rem;
   --ac-text-md: 1rem;

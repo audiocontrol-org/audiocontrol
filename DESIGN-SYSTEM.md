@@ -344,7 +344,7 @@ Three roles, three faces. Every token below is defined in `editor-core/src/desig
 
 | Role | Token | Intended face | Used by |
 |------|-------|---------------|---------|
-| Display / instrument-face | `--ac-font-display` | **Departure Mono** | Headings, panel-label eyebrows, slot labels, page titles, `.ac-field-label`, `.ac-checkbox__label` (no — uses body), envelope labels |
+| Display / instrument-face | `--ac-font-display` | **Departure Mono** | Headings, panel-label eyebrows, slot labels, page titles, `.ac-field-label`, envelope labels |
 | UI / body | `--ac-font-body` | **IBM Plex Sans** | Prose, list-item names (`.ac-list-name`), buttons, checkbox labels (`.ac-checkbox__label`), dialog body |
 | Data / numeric | `--ac-font-mono` | **JetBrains Mono** | Numeric readouts (`.ac-number-input`), ticks (`.ac-range-bar__tick`), slot identifiers, build-info, log entries |
 
@@ -391,21 +391,24 @@ Every list-detail editor page renders inside a fixed-viewport flex column with i
 - Hardcoded pixel widths on columns (e.g., `width: 320px`). Use flex ratios or grid fractions.
 - Omitting `width: 100%` on a flex `<main>` in a column-direction parent. Visual chrome appears to render until you switch pages and notice the cross-axis varies.
 
-**Example:**
+**Canonical class chain:** the outer `<main>` wears `.ac-page` + `.ac-page-shell` (shared across every page). The list+detail grid inside is page-scoped (`.<page>__app-shell`) because the column proportions differ per page — patches uses one list ratio, tones uses another. The page-scoped class is the only place hardcoding rem dimensions; the outer shell only sets the fixed-viewport flex column.
+
+**Example** (taken from `PatchesPage` — `.tones__app-shell`, `.library__app-shell` etc. follow the same shape):
 
 ```html
-<main class="page-shell">
+<main class="ac-page ac-page-shell">
   <header class="ac-page-title-row">…</header>
-  <div class="page-columns">
+  <div class="patches__app-shell" aria-labelledby="patches-heading">
     <aside class="ac-list ac-list-scroll">…</aside>
-    <section class="detail-pane">…</section>
+    <section class="patches__detail">…</section>
   </div>
   <footer class="ac-detail-live">…</footer>
 </main>
 ```
 
 ```css
-.page-shell {
+/* Shared shell: in editor-core/src/design/layout-primitives.css */
+.ac-page-shell {
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -413,13 +416,16 @@ Every list-detail editor page renders inside a fixed-viewport flex column with i
   overflow: hidden;
 }
 
-.page-columns {
+/* Page-scoped grid: in the page's own CSS file (e.g., PatchesPage.css) */
+.patches__app-shell {
   display: grid;
   grid-template-columns: 18rem 1fr;
   flex: 1;
   min-height: 0; /* allow children to overflow within the flex track */
 }
 ```
+
+Anti-pattern: inventing a new `.page-shell` / `.page-columns` / `.detail-pane` name when the canonical chain already covers the role. Promote a sibling class to `.ac-*` (per workplan §588 duplication-audit gate) if a primitive recurs across pages.
 
 ---
 
