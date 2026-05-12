@@ -453,6 +453,24 @@ Pre-existing class, polished in Phase 9 Task 4.0 with the v3 mockup direction. A
 
 **Accessibility:** native `<select>` keyboard + screen-reader behaviour preserved. Focus state visible via `focus-visible` (no outline; box-shadow ring instead).
 
+#### --compact modifier (Phase 9 Task 4 PlayPage amend)
+
+Both `.ac-select` and `.ac-input` accept a `--compact` modifier (`.ac-select.ac-select--compact`, `.ac-input.ac-input--compact`). Tightens the padding and font-size for inline-grid use cases — e.g., PlayPage's 12-column part-status grid where the channel/patch/output `<select>`s live inside narrow row cells alongside text columns.
+
+**When to use:** ONLY inside dense grid rows (PlayPage parts, future similar multi-row consoles). Default (non-compact) styling is the right choice for parameter editors, dialogs, and standalone form rows — the compact size reads as cramped outside its inline-grid context.
+
+**Tokens used:** `--ac-space-1` (vertical padding), `--ac-space-2` (horizontal padding), `--ac-text-sm` (font-size). No hardcoded pixel values.
+
+**Mockup citation:** N/A — this modifier was added during Phase 9 Task 4 PlayPage amend (commit `2e857bc6`) for the inline part-row grid; the v3 mockups did not anticipate this layout context.
+
+**Example:**
+
+```html
+<select class="ac-select ac-select--compact" data-testid="part-0-channel">
+  <option value="0">1</option>
+</select>
+```
+
 ### .ac-checkbox (v3)
 
 Two-element pattern shipped as `<AcCheckbox>`. The label wraps the checkbox input and a span label; the input is `appearance: none` so it can be styled to the design language (hairline-rule rounded square, accent fill when checked, accent focus glow).
