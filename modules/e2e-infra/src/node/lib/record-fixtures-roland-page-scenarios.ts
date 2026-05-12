@@ -71,19 +71,6 @@ export interface ToneModeClient {
     loadToneRange: (start: number, count: number) => Promise<unknown[]>;
 }
 
-/**
- * Subset of S330/S550 client surface used by the front-panel emit
- * scenarios. The drawer-embedded front panel is hosted on the
- * PatchesPage (Layout is global, so any page works; PatchesPage is
- * the cheapest mount because its prelude is just `loadPatchRange(0, 8)`).
- * Mirrors `PatchModeClient` exactly — the scenarios reuse
- * `runPatchPageMount` for the mount prelude.
- */
-export interface FrontPanelClient {
-    connect: () => Promise<boolean>;
-    loadPatchRange: (start: number, count: number) => Promise<unknown[]>;
-}
-
 // ---------------------------------------------------------------------------
 // Shared mount helpers — emit `connect + load…` against the proxy.
 // Each setter scenario calls one of these, then drives its setter on
@@ -245,12 +232,7 @@ export const PAGE_SCENARIOS: Record<string, Scenario> = {
         description:
             'Drawer-embedded function buttons (D-XX-04) — connect() + loadPatchRange(0, 8) + 5 DT1 presses (MODE, MENU, SUB, COM, EXEC)',
         run: async ({ client, proxy, deviceId }) => {
-            const c = asClient<FrontPanelClient>(client);
-            proxy.annotate('connect()');
-            await c.connect();
-            proxy.annotate('loadPatchRange(0, 8)');
-            await c.loadPatchRange(0, 8);
-
+            await runPatchPageMount(client, proxy);
             const controller = createFrontPanelController(proxy, { deviceId });
             const buttons = ['mode', 'menu', 'sub-menu', 'com', 'execute'] as const;
             for (const button of buttons) {
@@ -278,12 +260,7 @@ export const PAGE_SCENARIOS: Record<string, Scenario> = {
         description:
             "Drawer-embedded arrow buttons (D-XX-02) — connect() + loadPatchRange(0, 8) + 4 DT1 presses (Up, Down, Left, Right) in 'menu' mode",
         run: async ({ client, proxy, deviceId }) => {
-            const c = asClient<FrontPanelClient>(client);
-            proxy.annotate('connect()');
-            await c.connect();
-            proxy.annotate('loadPatchRange(0, 8)');
-            await c.loadPatchRange(0, 8);
-
+            await runPatchPageMount(client, proxy);
             const controller = createFrontPanelController(proxy, { deviceId });
             const arrows = ['up', 'down', 'left', 'right'] as const;
             for (const arrow of arrows) {
@@ -310,12 +287,7 @@ export const PAGE_SCENARIOS: Record<string, Scenario> = {
         description:
             'Drawer-embedded value buttons (D-XX-03) — connect() + loadPatchRange(0, 8) + 4 DT1 records (inc press+release, dec press+release)',
         run: async ({ client, proxy, deviceId }) => {
-            const c = asClient<FrontPanelClient>(client);
-            proxy.annotate('connect()');
-            await c.connect();
-            proxy.annotate('loadPatchRange(0, 8)');
-            await c.loadPatchRange(0, 8);
-
+            await runPatchPageMount(client, proxy);
             const controller = createFrontPanelController(proxy, { deviceId });
             const values = ['inc', 'dec'] as const;
             for (const value of values) {
