@@ -218,6 +218,21 @@
   color: var(--ac-color-text-muted);
 }
 
+/* Error-state modifier — used by dialogs that surface inline validation
+   errors on a field (e.g., ExportPatchDialog's required-name input).
+   Higher specificity than the base rule so it overrides the default
+   border color without needing !important. */
+.ac-input.ac-input--error,
+.ac-select.ac-input--error {
+  border-color: var(--ac-color-danger);
+}
+
+.ac-input.ac-input--error:focus-visible,
+.ac-select.ac-input--error:focus-visible {
+  border-color: var(--ac-color-danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ac-color-danger) 25%, transparent);
+}
+
 .ac-input {
   text-align: left;
 }

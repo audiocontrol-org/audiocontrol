@@ -130,11 +130,10 @@ export function ExportPatchDialog({
                   onChange={(e) => setPatchName(e.target.value)}
                   disabled={isOperating}
                   maxLength={32}
+                  data-error={error ? 'true' : undefined}
                   className={cn(
-                    'w-full bg-s330-bg border rounded px-3 py-2 text-s330-text',
-                    'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    error ? 'border-red-500' : 'border-s330-accent/50',
-                    isOperating && 'opacity-50'
+                    'ac-input',
+                    error && 'ac-input--error',
                   )}
                   placeholder="Enter patch name"
                 />

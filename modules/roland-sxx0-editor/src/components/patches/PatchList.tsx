@@ -67,11 +67,11 @@ export function PatchList({
 
   return (
     <aside
-      className="patches__list"
+      className="ac-list"
       data-capability="C-PATCH-01"
       aria-label="Patch list"
     >
-      <div className="patches__list-scroll ac-scroll-list">
+      <div className="ac-list-scroll ac-scroll-list">
         {Array.from({ length: totalBanks }, (_, bankIndex) => {
           const bankStart = bankIndex * patchesPerBank;
           const bankEnd = Math.min(bankStart + patchesPerBank, patches.length);
@@ -83,7 +83,7 @@ export function PatchList({
               key={`bank-${bankIndex}`}
               data-bank-index={bankIndex}
             >
-              <div className="patches__list-bank-header">
+              <div className="ac-list-bank-header">
                 <span>Bank {bankIndex + 1}</span>
                 <strong>
                   {firstSlotLabel}–{lastSlotLabel}
@@ -130,10 +130,10 @@ export function PatchList({
                       : patch.common.name;
 
                 const nameClass = !isLoaded
-                  ? 'patches__list-name patches__list-name--placeholder'
+                  ? 'ac-list-name ac-list-name--placeholder'
                   : isEmpty
-                    ? 'patches__list-name patches__list-name--empty'
-                    : 'patches__list-name';
+                    ? 'ac-list-name ac-list-name--empty'
+                    : 'ac-list-name';
 
                 return (
                   <div
@@ -147,10 +147,10 @@ export function PatchList({
                     onKeyDown={handleKeyDown}
                     className={cn('patches__list-row')}
                   >
-                    <span className="patches__list-slot">
+                    <span className="ac-list-slot">
                       <PatchLabel index={index} memoryLayout={memoryLayout} />
                     </span>
-                    <span className="patches__list-info">
+                    <span className="ac-list-info">
                       <span
                         className={nameClass}
                         data-testid="patch-name"
@@ -158,7 +158,7 @@ export function PatchList({
                         {displayName}
                       </span>
                       {!isLoaded && !isBankLoading && (
-                        <span className="patches__list-eyebrow">
+                        <span className="ac-list-eyebrow">
                           click to load bank
                         </span>
                       )}
@@ -171,7 +171,7 @@ export function PatchList({
                           e.stopPropagation();
                           onExportPatch(index);
                         }}
-                        className="patches__list-action"
+                        className="ac-list-action"
                         title="Export patch to library"
                       >
                         Export

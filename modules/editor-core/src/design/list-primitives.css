@@ -1,0 +1,146 @@
+/*
+ * Shared list-detail list-pane primitives — promoted from per-page
+ * `.patches__list-*` / `.tones__list-*` classes during Phase 9 Task 4
+ * (PatchesPage amend).
+ *
+ * The list-row layout (`grid-template-columns`) stays page-scoped
+ * because the slot-column width differs per device list (patches use
+ * 3rem, tones use 2.5rem). Every other list primitive is byte-identical
+ * across PatchList / ToneList and lives here under `.ac-list-*`.
+ *
+ * Mockup source: docs/1.0/001-IN-PROGRESS/s550-support/explorations/
+ *   03-patches.html (list pane chrome).
+ */
+
+/* ============================================================
+   LIST CONTAINER — outer chrome (border + panel surface + clip).
+   ============================================================ */
+.ac-list {
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: var(--ac-color-surface-panel);
+  border-radius: var(--ac-radius-sm);
+  overflow: hidden;
+}
+
+.ac-list-scroll {
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+/* ============================================================
+   BANK HEADER — sticky header that sits ABOVE its rows; scrolls
+   within the list. Reads as an uppercase eyebrow.
+   ============================================================ */
+.ac-list-bank-header {
+  position: sticky;
+  top: 0;
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 92%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: var(--ac-space-3) var(--ac-space-4);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  z-index: 1;
+}
+
+.ac-list-bank-header strong {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--ac-font-weight-normal);
+  color: var(--ac-color-text-muted);
+}
+
+/* ============================================================
+   ROW INTERIOR — slot label, info column, hover-revealed action.
+   The row grid itself (`.<page>__list-row`) stays page-scoped
+   because the slot-column width differs per device.
+   ============================================================ */
+.ac-list-slot {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.ac-list-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ac-list-name {
+  font-family: var(--ac-font-body);
+  font-size: var(--ac-text-sm);
+  font-weight: var(--ac-font-weight-medium);
+  color: var(--ac-color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ac-list-name--placeholder {
+  font-style: italic;
+  color: var(--ac-color-text-muted);
+}
+
+.ac-list-name--empty {
+  color: color-mix(in srgb, var(--ac-color-text-muted) 70%, transparent);
+  font-style: italic;
+}
+
+.ac-list-eyebrow {
+  font-family: var(--ac-font-display);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: color-mix(in srgb, var(--ac-color-text-muted) 70%, transparent);
+}
+
+/*
+ * Hover-revealed Export action — opacity transitions from 0 to 1 when
+ * the parent row (a `.<page>__list-row`) is hovered, selected, or has
+ * focus-within. The parent-class selector is page-scoped because we
+ * can't write a single shared selector that targets both row classes
+ * with high specificity. Each page-scoped row CSS owns the reveal rule
+ * (see patches.css / tones.css).
+ */
+.ac-list-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 70%, transparent);
+  background: transparent;
+  color: var(--ac-color-text-muted);
+  font-family: var(--ac-font-display);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--ac-radius-sm);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity var(--ac-duration-fast) var(--ac-easing-default),
+    border-color var(--ac-duration-fast) var(--ac-easing-default),
+    color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-list-action:hover {
+  border-color: var(--ac-color-accent);
+  color: var(--ac-color-accent);
+}
+
+.ac-list-action:focus-visible {
+  opacity: 1;
+  outline: var(--ac-rule-medium) solid color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  outline-offset: 1px;
+}

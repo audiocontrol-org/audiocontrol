@@ -18,6 +18,8 @@
  *                               ac-checkbox, ac-slider, ac-range-bar,
  *                               ac-number-input)
  *   - envelope-primitives.css — v3 8-segment VFD-glow envelope primitive
+ *   - list-primitives.css     — shared list-pane chrome (ac-list,
+ *                               ac-list-bank-header, ac-list-name, ...)
  *   - library.css             — library tree/dialog chrome (large surface)
  */
 
@@ -28,4 +30,5 @@
 @import './feedback-primitives.css';
 @import './control-primitives.css';
 @import './envelope-primitives.css';
+@import './list-primitives.css';
 @import './library.css';

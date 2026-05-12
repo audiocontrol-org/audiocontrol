@@ -46,18 +46,21 @@
  *   - D-PATCH-04: setPatchBenderRange     — Pitch Bender Range select
  *   - D-PATCH-05: setPatchAftertouchAssign — A.T Assign select
  *   - D-PATCH-07: setPatchOutput          — Output Assign select
- *   - D-PATCH-08: setPatchLevel           — Level slider (Radix)
- *   - D-PATCH-09: setPatchAftertouchSens  — A.T Sense slider (Radix)
+ *   - D-PATCH-08: setPatchLevel           — Level slider (v3 AcSlider)
+ *   - D-PATCH-09: setPatchAftertouchSens  — A.T Sense slider (v3 AcSlider)
  *   - D-PATCH-10: setPatchDetune          — Unison Detune slider, keyMode=unison
  *   - D-PATCH-11: setPatchVelocityThreshold — V-Sw Thresh slider, keyMode=v-sw
  *   - D-PATCH-12: setPatchVelocityMixRatio — V-Mix Ratio slider, keyMode=v-mix
  *
- * Slider note: the PatchEditor's sliders are Radix `Slider.Root` (not the
- * native input slider used on the PlayPage). To emit exactly ONE
- * onValueCommit, this spec clicks the slider's track at the X position
- * that maps linearly to the target value; Radix fires onSlideStart on
- * pointerdown and onValueCommit on pointerup, producing exactly one
- * setter call per click.
+ * Slider note: after the Phase 9 Task 4 PatchesPage amend, the slider
+ * rows are AcSlider (display-only range bar) + AcNumberInput(editable)
+ * (the focusable affordance) — see ParamSliderRow.tsx. The legacy
+ * `param-<label>` data-testid wrapper is preserved, but the inner
+ * affordance changed from a Radix Slider.Root (click-on-track) to an
+ * `<input type="number">` (page.fill). Each onChange streams the value
+ * straight to the device (no separate commit edge); page.fill clears
+ * and types atomically, so the spec's fillSliderInput helper emits
+ * exactly ONE outbound write at the final value.
  */
 import { test, expect, type Page, type Locator } from '@playwright/test';
 
@@ -115,50 +118,39 @@ async function openPatch0Editor(page: Page): Promise<Locator> {
 }
 
 /**
- * Drive a Radix ParameterSlider to a target value with exactly one
- * onValueCommit. The slider's clickable root has
- * `data-orientation="horizontal"`; clicking at an X position within it
- * fires onSlideStart on pointerdown (setting the value linearly from
- * the X position) and onValueCommit on pointerup. The mapping is
- * `(targetValue - min) / (max - min) = (clickX - rect.left) / rect.width`
- * (see @radix-ui/react-slider getValueFromPointer in dist/index.js).
+ * Drive a v3 AcSlider row to a target value with exactly one outbound
+ * write. The wrapper is the `<div data-testid="param-...">` that
+ * encloses the row (see PatchEditor's ParamSliderRow); inside is the
+ * `<AcNumberInput editable>` `<input type="number">` (the focusable
+ * affordance — `AcSlider`'s bar is display-only per DESIGN-SYSTEM.md).
+ *
+ * `page.fill` clears the existing value and types the new one in one
+ * atomic step — Playwright dispatches a single `input` event with the
+ * final value (verified in `Locator.fill` source: fires `input` after
+ * setting `.value`, no per-keystroke events). The onChange handler on
+ * `AcNumberInput` parses the value and the row's onChange streams it
+ * to the device.
  *
  * Pre-conditions:
- *   - The slider must not be `disabled` (caller must enable conditional
+ *   - The input must not be `disabled` (caller must enable conditional
  *     sliders by selecting the matching keyMode first).
- *   - The current slider value MUST differ from `targetValue`; if they
- *     match, Radix's onValueCommit only fires when value changed, and
- *     the test would silently emit nothing.
+ *   - The current value should differ from `targetValue`; React's
+ *     controlled-input no-op skips an onChange dispatch if the new
+ *     value matches the prop. The patch-write fixtures all set values
+ *     that differ from the loaded patch's defaults, so this is
+ *     satisfied in practice.
  */
-async function clickSliderAtValue(
-  page: Page,
+async function fillSliderInput(
   wrapper: Locator,
   targetValue: number,
-  min: number,
-  max: number,
 ): Promise<void> {
-  // The wrapper is the <div data-testid="param-..."> in ParameterSlider.tsx;
-  // inside is the Slider.Root, which carries data-orientation="horizontal".
-  // .first() resolves to the Root (not the nested Track which also has the
-  // same attribute) because Root appears first in document order.
-  const sliderRoot = wrapper
-    .locator('[data-orientation="horizontal"]')
-    .first();
-  await expect(sliderRoot).toBeVisible({ timeout: 5_000 });
-
-  const box = await sliderRoot.boundingBox();
-  if (!box) {
-    throw new Error('clickSliderAtValue: slider root has no bounding box');
-  }
-
-  const ratio = (targetValue - min) / (max - min);
-  // Inset from the edges by 1px to avoid landing exactly on the boundary
-  // where rounding could resolve to the wrong step value.
-  const insetX = Math.max(1, Math.min(box.width - 1, ratio * box.width));
-  const clickX = box.x + insetX;
-  const clickY = box.y + box.height / 2;
-
-  await page.mouse.click(clickX, clickY);
+  const input = wrapper.locator('input[type="number"]').first();
+  await expect(input).toBeVisible({ timeout: 5_000 });
+  await input.fill(String(targetValue));
+  // Blur to ensure React's controlled-input change cycle completes and
+  // any downstream effect handlers settle before the spec's
+  // page.waitForLoadState('networkidle') runs.
+  await input.blur();
 }
 
 test.describe('Patch parameter write affordances (D-PATCH-01..05, 07..12)', () => {
@@ -264,7 +256,7 @@ test.describe('Patch parameter write affordances (D-PATCH-01..05, 07..12)', () =
     const editor = await openPatch0Editor(page);
 
     // Captured fixture sets level=100 (slider min=0, max=127).
-    await clickSliderAtValue(page, editor.getByTestId('param-level'), 100, 0, 127);
+    await fillSliderInput(editor.getByTestId('param-level'), 100);
 
     await page.waitForLoadState('networkidle');
   });
@@ -274,9 +266,9 @@ test.describe('Patch parameter write affordances (D-PATCH-01..05, 07..12)', () =
     const editor = await openPatch0Editor(page);
 
     // Captured fixture sets aftertouchSens=75 (slider min=0, max=127).
-    // The ParameterSlider for 'A.T Sense' renders with data-testid
+    // The ParamSliderRow for 'A.T Sense' renders with data-testid
     // 'param-a-t-sense' (labelToTestId slugifies 'A.T Sense').
-    await clickSliderAtValue(page, editor.getByTestId('param-a-t-sense'), 75, 0, 127);
+    await fillSliderInput(editor.getByTestId('param-a-t-sense'), 75);
 
     await page.waitForLoadState('networkidle');
   });
@@ -291,9 +283,9 @@ test.describe('Patch parameter write affordances (D-PATCH-01..05, 07..12)', () =
     await page.getByTestId('patch-key-mode').selectOption({ value: 'unison' });
 
     // Captured fixture sets detune=20. The PatchEditor offsets the
-    // slider value by +64 (signed -> unsigned, see PatchEditor.tsx:457)
-    // so slider value 20+64=84 maps to detune=20 emitted to device.
-    await clickSliderAtValue(page, editor.getByTestId('param-unison-detune'), 84, 0, 127);
+    // slider value by +64 (signed -> unsigned) so the editable readout
+    // displays 84 to emit detune=20 to the device.
+    await fillSliderInput(editor.getByTestId('param-unison-detune'), 84);
 
     await page.waitForLoadState('networkidle');
   });
@@ -306,7 +298,7 @@ test.describe('Patch parameter write affordances (D-PATCH-01..05, 07..12)', () =
     await page.getByTestId('patch-key-mode').selectOption({ value: 'v-sw' });
 
     // Captured fixture sets velocityThreshold=80.
-    await clickSliderAtValue(page, editor.getByTestId('param-v-sw-thresh'), 80, 0, 127);
+    await fillSliderInput(editor.getByTestId('param-v-sw-thresh'), 80);
 
     await page.waitForLoadState('networkidle');
   });
@@ -319,7 +311,7 @@ test.describe('Patch parameter write affordances (D-PATCH-01..05, 07..12)', () =
     await page.getByTestId('patch-key-mode').selectOption({ value: 'v-mix' });
 
     // Captured fixture sets velocityMixRatio=64.
-    await clickSliderAtValue(page, editor.getByTestId('param-v-mix-ratio'), 64, 0, 127);
+    await fillSliderInput(editor.getByTestId('param-v-mix-ratio'), 64);
 
     await page.waitForLoadState('networkidle');
   });

@@ -62,11 +62,11 @@ export function ToneList({
 
   return (
     <aside
-      className="tones__list"
+      className="ac-list"
       data-capability="C-TONE-01"
       aria-label="Tone list"
     >
-      <div className="tones__list-scroll ac-scroll-list">
+      <div className="ac-list-scroll ac-scroll-list">
         {Array.from({ length: totalBanks }, (_, bankIndex) => {
           const bankStart = bankIndex * tonesPerBank;
           const bankEnd = Math.min(bankStart + tonesPerBank, tones.length);
@@ -75,7 +75,7 @@ export function ToneList({
 
           return (
             <div key={`bank-${bankIndex}`} data-bank-index={bankIndex}>
-              <div className="tones__list-bank-header">
+              <div className="ac-list-bank-header">
                 <span>Group {bankIndex + 1}</span>
                 <strong>{firstSlotLabel}–{lastSlotLabel}</strong>
               </div>
@@ -122,10 +122,10 @@ export function ToneList({
                       : tone.name;
 
                 const nameClass = !isLoaded
-                  ? 'tones__list-name tones__list-name--placeholder'
+                  ? 'ac-list-name ac-list-name--placeholder'
                   : isEmpty
-                    ? 'tones__list-name tones__list-name--empty'
-                    : 'tones__list-name';
+                    ? 'ac-list-name ac-list-name--empty'
+                    : 'ac-list-name';
 
                 return (
                   <div
@@ -139,10 +139,10 @@ export function ToneList({
                     onKeyDown={handleKeyDown}
                     className={cn('tones__list-row')}
                   >
-                    <span className="tones__list-slot">
+                    <span className="ac-list-slot">
                       {memoryLayout.formatToneSlot(index)}
                     </span>
-                    <span className="tones__list-info">
+                    <span className="ac-list-info">
                       <span
                         className={nameClass}
                         data-testid="tone-name"
@@ -150,7 +150,7 @@ export function ToneList({
                         {displayName}
                       </span>
                       {!isLoaded && !isBankLoading && (
-                        <span className="tones__list-eyebrow">
+                        <span className="ac-list-eyebrow">
                           click to load bank
                         </span>
                       )}
@@ -163,7 +163,7 @@ export function ToneList({
                           e.stopPropagation();
                           onExportTone(index);
                         }}
-                        className="tones__list-action"
+                        className="ac-list-action"
                         title="Export tone to library"
                       >
                         Export

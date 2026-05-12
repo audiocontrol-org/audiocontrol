@@ -449,16 +449,11 @@ export function ToneZoneEditor({ layer, toneData, keyMode, tones, onUpdate }: To
             {/* Tone selector */}
             <Tooltip content={TONE_MAPPING_TOOLTIPS.toneSelector}>
               <div>
-                <label className="text-xs text-s330-muted mb-1 block">Tone</label>
+                <label className="ac-field-label mb-1 block">Tone</label>
                 <select
                   value={editingZone.tone}
                   onChange={(e) => handleToneChange(Number(e.target.value))}
-                  className={cn(
-                    'w-full px-2 py-1.5 text-sm font-mono',
-                    'bg-s330-panel border border-s330-accent rounded',
-                    'text-s330-text hover:bg-s330-accent/30',
-                    'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-                  )}
+                  className="ac-select"
                 >
                   {layer === 1 && <option value={-1}>OFF</option>}
                   {Array.from({ length: 32 }, (_, i) => (
@@ -473,17 +468,12 @@ export function ToneZoneEditor({ layer, toneData, keyMode, tones, onUpdate }: To
             {/* Start key selector */}
             <Tooltip content={TONE_MAPPING_TOOLTIPS.startKey}>
               <div>
-                <label className="text-xs text-s330-muted mb-1 block">Start Key</label>
+                <label className="ac-field-label mb-1 block">Start Key</label>
                 <div className="flex gap-1">
                   <select
                     value={editingZone.startKey}
                     onChange={(e) => handleStartKeyChange(Number(e.target.value))}
-                    className={cn(
-                      'flex-1 min-w-0 px-2 py-1.5 text-sm font-mono',
-                      'bg-s330-panel border border-s330-accent rounded',
-                      'text-s330-text hover:bg-s330-accent/30',
-                      'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-                    )}
+                    className="ac-select flex-1 min-w-0"
                   >
                     {Array.from({ length: TOTAL_KEYS }, (_, i) => {
                       const key = MIN_KEY + i;
@@ -515,17 +505,12 @@ export function ToneZoneEditor({ layer, toneData, keyMode, tones, onUpdate }: To
             {/* End key selector */}
             <Tooltip content={TONE_MAPPING_TOOLTIPS.endKey}>
               <div>
-                <label className="text-xs text-s330-muted mb-1 block">End Key</label>
+                <label className="ac-field-label mb-1 block">End Key</label>
                 <div className="flex gap-1">
                   <select
                     value={editingZone.endKey}
                     onChange={(e) => handleEndKeyChange(Number(e.target.value))}
-                    className={cn(
-                      'flex-1 min-w-0 px-2 py-1.5 text-sm font-mono',
-                      'bg-s330-panel border border-s330-accent rounded',
-                      'text-s330-text hover:bg-s330-accent/30',
-                      'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-                    )}
+                    className="ac-select flex-1 min-w-0"
                   >
                     {Array.from({ length: TOTAL_KEYS }, (_, i) => {
                       const key = MIN_KEY + i;

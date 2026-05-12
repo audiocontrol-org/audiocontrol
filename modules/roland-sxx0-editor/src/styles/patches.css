@@ -9,52 +9,32 @@
  * Cross-page primitives (lean page-title row, icon-button, detail
  * eyebrow row, detail empty state, live-edit footer) were promoted
  * to `_shared.css` (`.ac-*` namespace) during Phase 9 Task 4 page 2
- * (the duplication-audit gate). This file now contains ONLY the
- * page-specific composition — the list-row grid, the detail-head
- * gradient, the patches app-shell layout, the progress bar.
+ * (the duplication-audit gate).
+ *
+ * Phase 9 Task 4 PatchesPage amend (this commit) further promoted the
+ * list-pane chrome that's byte-identical between PatchesPage and
+ * TonesPage to `.ac-list-*` in editor-core's `list-primitives.css`.
+ * What stays page-scoped here:
+ *   - `.patches__list-row` — slot-column width (3rem) differs from
+ *     `.tones__list-row` (2.5rem), so the grid template is per-page.
+ *   - `.patches__list-row` state styles (hover / selected / focus) —
+ *     these reference the page-scoped row class and its descendant
+ *     `.patches__list-slot`, so they can't be folded into the shared
+ *     `.ac-list-*` selectors without rewriting the hover-reveal rule.
+ *   - `.patches__list-action` hover-reveal rule — references the
+ *     page-scoped row class so the action only shows when its row is
+ *     interacted with.
+ *   - `.patches__detail-*` chrome — page-specific composition.
+ *   - `.patches__app-shell` — the list+detail grid for this page.
+ *   - `.patches__progress` — title-row progress bar.
  */
 
 /* ============================================================
-   LIST PANE — banked patch list, sticky bank headers, list rows.
+   LIST PANE — page-scoped grid and row-state styles.
+   See `.ac-list-*` (editor-core/src/design/list-primitives.css) for
+   the container chrome, bank header, slot, info column, name, and
+   eyebrow that were promoted from this file.
    ============================================================ */
-.patches__list {
-  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
-  background: var(--ac-color-surface-panel);
-  border-radius: var(--ac-radius-sm);
-  overflow: hidden;
-}
-
-.patches__list-scroll {
-  overflow-y: auto;
-  scrollbar-width: thin;
-}
-
-/* Sticky bank header — lives ABOVE its rows; scrolls within the list. */
-.patches__list-bank-header {
-  position: sticky;
-  top: 0;
-  background: color-mix(in srgb, var(--ac-color-surface-canvas) 92%, transparent);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  padding: var(--ac-space-3) var(--ac-space-4);
-  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
-  font-family: var(--ac-font-display);
-  font-size: var(--ac-text-xs);
-  text-transform: uppercase;
-  letter-spacing: var(--ac-tracking-eyebrow);
-  color: var(--ac-color-text-muted);
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  z-index: 1;
-}
-
-.patches__list-bank-header strong {
-  font-family: var(--ac-font-mono);
-  font-variant-numeric: tabular-nums;
-  font-weight: var(--ac-font-weight-normal);
-  color: var(--ac-color-text-muted);
-}
 
 /* List row — slot id, name, status. The row itself is interactive
    (role="button"), the optional Export button nests inside on hover. */
@@ -85,7 +65,7 @@
   border-left-color: var(--ac-color-accent);
 }
 
-.patches__list-row[aria-selected="true"] .patches__list-slot {
+.patches__list-row[aria-selected="true"] .ac-list-slot {
   color: var(--ac-color-accent);
 }
 
@@ -100,97 +80,17 @@
   opacity: 0.7;
 }
 
-.patches__list-slot {
-  font-family: var(--ac-font-mono);
-  font-size: var(--ac-text-xs);
-  color: var(--ac-color-text-muted);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.04em;
-}
-
-.patches__list-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.patches__list-name {
-  font-family: var(--ac-font-body);
-  font-size: var(--ac-text-sm);
-  font-weight: var(--ac-font-weight-medium);
-  color: var(--ac-color-text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.patches__list-name--placeholder {
-  font-style: italic;
-  color: var(--ac-color-text-muted);
-}
-
-.patches__list-name--empty {
-  color: color-mix(in srgb, var(--ac-color-text-muted) 70%, transparent);
-  font-style: italic;
-}
-
-.patches__list-eyebrow {
-  font-family: var(--ac-font-display);
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: var(--ac-tracking-eyebrow);
-  color: color-mix(in srgb, var(--ac-color-text-muted) 70%, transparent);
-}
-
-.patches__list-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 70%, transparent);
-  background: transparent;
-  color: var(--ac-color-text-muted);
-  font-family: var(--ac-font-display);
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: var(--ac-tracking-eyebrow);
-  padding: 0.25rem 0.55rem;
-  border-radius: var(--ac-radius-sm);
-  cursor: pointer;
-  opacity: 0;
-  transition:
-    opacity var(--ac-duration-fast) var(--ac-easing-default),
-    border-color var(--ac-duration-fast) var(--ac-easing-default),
-    color var(--ac-duration-fast) var(--ac-easing-default);
-}
-
-.patches__list-row:hover .patches__list-action,
-.patches__list-row[aria-selected="true"] .patches__list-action,
-.patches__list-row:focus-within .patches__list-action {
+/* Hover-reveal for the per-row Export action — the action itself is
+   `.ac-list-action` (shared), but the reveal selector references
+   `.patches__list-row` so it only shows when its parent row is hot. */
+.patches__list-row:hover .ac-list-action,
+.patches__list-row[aria-selected="true"] .ac-list-action,
+.patches__list-row:focus-within .ac-list-action {
   opacity: 1;
-}
-
-.patches__list-action:hover {
-  border-color: var(--ac-color-accent);
-  color: var(--ac-color-accent);
-}
-
-.patches__list-action:focus-visible {
-  opacity: 1;
-  outline: var(--ac-rule-medium) solid color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
-  outline-offset: 1px;
-}
-
-.patches__list-load-hint {
-  font-family: var(--ac-font-mono);
-  font-size: var(--ac-text-xs);
-  color: var(--ac-color-text-muted);
 }
 
 /* ============================================================
    DETAIL PANE — patch-editor surface chrome (header + body).
-   The interior of the editor (parameter grid, tone-zone editor) keeps
-   its current Tailwind composition; we only re-frame the surface.
    ============================================================ */
 .patches__detail {
   border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
