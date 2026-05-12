@@ -21,6 +21,7 @@
 | df280d9f-17eb-4193-987d-942dc40492c9 | midi-macro-bridge-packaging/workplan | Workplan |  |  | manual |
 | 42c2da8a-ac63-45df-87ab-f1fc648001e1 | s550-support/prd | Roland S-550 Editor Support — PRD |  |  | manual |
 | ef6b601c-7e04-4282-86a4-850029254759 | s550-support/workplan | Roland S-550 Editor Support — Workplan |  |  | manual |
+| e5cdc258-ae9f-463b-8b87-58de9dca8716 | decisions-2026-05-11 | Decisions 2026 05 11 |  |  | manual |
 
 ## Review
 

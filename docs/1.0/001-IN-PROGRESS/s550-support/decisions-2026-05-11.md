@@ -1,3 +1,7 @@
+---
+deskwork:
+  id: e5cdc258-ae9f-463b-8b87-58de9dca8716
+---
 # Decisions needed — Phase 0 Task 10 closing + Phase 9 entry
 
 **Date:** 2026-05-11
