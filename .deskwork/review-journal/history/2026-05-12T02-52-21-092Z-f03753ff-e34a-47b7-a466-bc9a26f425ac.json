@@ -1,0 +1,19 @@
+{
+  "kind": "entry-annotation",
+  "at": "2026-05-12T02:52:21.092Z",
+  "entryId": "e5cdc258-ae9f-463b-8b87-58de9dca8716",
+  "annotation": {
+    "type": "comment",
+    "workflowId": "e5cdc258-ae9f-463b-8b87-58de9dca8716",
+    "version": 1,
+    "range": {
+      "start": 12729,
+      "end": 12734
+    },
+    "text": "Fix the bug",
+    "category": "other",
+    "anchor": "Optio",
+    "id": "7fc50929-559d-4d2d-b3ea-54bd2c82eb2d",
+    "createdAt": "2026-05-12T02:52:21.092Z"
+  }
+}

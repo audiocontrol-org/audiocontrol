@@ -1,0 +1,19 @@
+{
+  "kind": "entry-annotation",
+  "at": "2026-05-12T02:41:29.323Z",
+  "entryId": "e5cdc258-ae9f-463b-8b87-58de9dca8716",
+  "annotation": {
+    "type": "comment",
+    "workflowId": "e5cdc258-ae9f-463b-8b87-58de9dca8716",
+    "version": 1,
+    "range": {
+      "start": 2940,
+      "end": 3052
+    },
+    "text": "I think The virtual front panel used to be separate from the video capture in early versions of the s330 editor and we have since moved the controls into the video capture component. That’s acceptable asnlong as the video capture component is on every page.",
+    "category": "other",
+    "anchor": "mounted inside VideoCapture (the camera drawer) — that's what currently provides the front-panel emit affordance",
+    "id": "4da7a12f-7ef3-4bc4-b22b-d6e34b790af2",
+    "createdAt": "2026-05-12T02:41:29.323Z"
+  }
+}

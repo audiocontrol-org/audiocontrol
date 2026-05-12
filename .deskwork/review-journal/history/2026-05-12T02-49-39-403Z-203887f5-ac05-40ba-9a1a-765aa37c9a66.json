@@ -1,0 +1,19 @@
+{
+  "kind": "entry-annotation",
+  "at": "2026-05-12T02:49:39.403Z",
+  "entryId": "e5cdc258-ae9f-463b-8b87-58de9dca8716",
+  "annotation": {
+    "type": "comment",
+    "workflowId": "e5cdc258-ae9f-463b-8b87-58de9dca8716",
+    "version": 1,
+    "range": {
+      "start": 8980,
+      "end": 8985
+    },
+    "text": "Do you know what the objects you will seed are supposed to look like? You can’t guess the shape of these things because if you do, then you will probably build nonsensical UI",
+    "category": "other",
+    "anchor": "Optio",
+    "id": "badca75c-b8fb-4bd0-bcc3-e06f0d7efb56",
+    "createdAt": "2026-05-12T02:49:39.403Z"
+  }
+}
