@@ -1,0 +1,15 @@
+{
+  "kind": "entry-annotation",
+  "at": "2026-05-12T03:13:31.582Z",
+  "entryId": "e5cdc258-ae9f-463b-8b87-58de9dca8716",
+  "annotation": {
+    "type": "address",
+    "workflowId": "e5cdc258-ae9f-463b-8b87-58de9dca8716",
+    "commentId": "3a9434f5-6557-4cdb-9027-dd175802b444",
+    "version": 2,
+    "disposition": "addressed",
+    "reason": "Decision 6 resolved as Option A. Phase 9 sequence committed: atomic primitives -> amend Patches+Tones -> per-page polish for the remaining 4 pages.",
+    "id": "b535a77e-6c20-4d83-b7cd-c2b7b0d26654",
+    "createdAt": "2026-05-12T03:13:31.582Z"
+  }
+}

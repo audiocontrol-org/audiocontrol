@@ -6,10 +6,10 @@
   "source": "manual",
   "currentStage": "Drafting",
   "iterationByStage": {
-    "Drafting": 1
+    "Drafting": 2
   },
+  "reviewState": "in-review",
   "artifactPath": "docs/1.0/001-IN-PROGRESS/s550-support/decisions-2026-05-11.md",
   "createdAt": "2026-05-12T00:09:41.222Z",
-  "updatedAt": "2026-05-12T02:59:56.457Z",
-  "reviewState": "in-review"
+  "updatedAt": "2026-05-12T03:13:31.572Z"
 }
