@@ -18,26 +18,29 @@
  * verification value.
  *
  * Dialog coverage rationale:
- *   - SaveSetDialog + LoadSetDialog: reachable via simple UI clicks on
- *     LibraryPage after seeding a set into OPFS via the existing
- *     `seedOPFSSetManifest` helper.
- *   - ExportToneDialog: reachable via the per-row export-tone-button on
- *     TonesPage (TonesPage configures `allowDownloadFallback: true`, so
- *     the dialog mounts without an OPFS library connection).
- *   - The remaining 8 library dialogs (Create/Rename/Delete Directory,
- *     Move Item, Import Sample, Import Samples, Import Tone, Import
- *     Patch, Import Library Tone, Import Library Patch, Export Patch)
- *     are exercised + mount-visible-asserted by the existing capability
- *     specs in `test/ui/capabilities/library-flows-dialogs.spec.ts` and
- *     siblings — their visual chrome is the SAME shared dialog
- *     primitives polished in Task 5 commit `8e179806`. Screenshotting
- *     each from scratch requires re-implementing the OPFS seeding for
- *     every dialog; the cost is high and the chrome is shared. The
- *     SaveSet/Load/ExportTone captures here prove the shared chrome,
- *     and the design-system primitives the rest reuse are validated
- *     via Task 4.0 atomic-primitive commits (`2c078954` + `fc3bac98`).
+ *   - SaveSetDialog + LoadSetDialog: captured here. Reachable via simple
+ *     UI clicks on LibraryPage after seeding a set into OPFS via the
+ *     existing `seedOPFSSetManifest` helper.
+ *   - ExportToneDialog: SKIPPED via `test.skip(...)` (line ~347).
+ *     Opening it requires `tone.wave.endPoint > tone.wave.startPoint`
+ *     (see `ToneEditorHead.tsx:59`); the `tones-bank-0` fixture's
+ *     tone 0 decodes to identical wave start/end after replay, so the
+ *     Export button never enables in the test environment.
+ *   - The remaining 10 library dialogs (CreateDirectoryDialog,
+ *     DeleteDirectoryDialog, ExportPatchDialog,
+ *     ImportLibraryPatchDialog, ImportLibraryToneDialog,
+ *     ImportSampleDialog, ImportSamplesDialog, ImportToneDialog,
+ *     MoveItemDialog, RenameDirectoryDialog) are mount-visible-asserted
+ *     by the existing capability specs in
+ *     `test/ui/capabilities/library-flows-dialogs.spec.ts` and siblings
+ *     — their visual chrome is the SAME shared `<Dialog.Content>` +
+ *     `.ac-input` / `.ac-select` / `.ac-checkbox` primitives polished
+ *     in Task 5 commit `8e179806`. Screenshotting each from scratch
+ *     requires re-implementing OPFS seeding for every dialog; the
+ *     cost is high and the chrome is shared. The SaveSet/Load captures
+ *     here prove the shared chrome.
  *
- * Output structure:
+ * Output structure (11 captures per device × 2 devices = 22 total):
  *   docs/1.0/001-IN-PROGRESS/s550-support/phase-9-task-6-screenshots/
  *     s330/
  *       home.png
@@ -48,12 +51,12 @@
  *       tones-amp.png
  *       tones-lfo.png
  *       play.png
- *       workflows.png
  *       library.png
  *       dialog-save-set.png
  *       dialog-load-set.png
- *       dialog-export-tone.png
- *     s550/ (same files)
+ *       (workflows.png — NOT produced; WorkflowsPage unrouted in App.tsx)
+ *       (dialog-export-tone.png — NOT produced; fixture gap, see above)
+ *     s550/ (same 11 files)
  */
 import path from 'node:path';
 import url from 'node:url';
