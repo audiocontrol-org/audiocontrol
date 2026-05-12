@@ -5,8 +5,11 @@ Captured screenshots of every in-scope editor page on both
 Tasks 4-5 (page polish + dialog polish) didn't regress anything
 visually on either device.
 
-**Capture commit:** `1f445e4f7703600e1688ab6881cd28d04f64f6d9` (HEAD of
-`feature/s550-support` at capture time).
+**Verified tree state:** `1f445e4f7703600e1688ab6881cd28d04f64f6d9`
+(Phase 9 Tasks 4-5 final commit; HEAD of `feature/s550-support`
+before the capture run).
+
+**Capture commit** (this spec + PNGs + this README): `b6a153d6`.
 
 **Capture date:** 2026-05-12.
 
@@ -122,11 +125,13 @@ The capability spec
 mounts and asserts `ImportLibraryToneDialog` (D-LIB-12), which uses
 the same primitives.
 
-### 3. Other 9 library dialogs — visual coverage by shared primitives
+### 3. Other 10 library dialogs — visual coverage by shared primitives
 
-The remaining 9 library dialogs (`CreateDirectory`, `RenameDirectory`,
-`DeleteDirectory`, `MoveItem`, `ImportSample`, `ImportSamples`,
-`ImportTone`, `ImportPatch`, `ExportPatch`) were not individually
+The remaining 10 library dialogs (`CreateDirectoryDialog`,
+`DeleteDirectoryDialog`, `ExportPatchDialog`,
+`ImportLibraryPatchDialog`, `ImportLibraryToneDialog`,
+`ImportSampleDialog`, `ImportSamplesDialog`, `ImportToneDialog`,
+`MoveItemDialog`, `RenameDirectoryDialog`) were not individually
 screenshotted in this spec because they all use the same
 `<Dialog.Content>` shell + `ac-input` / `ac-select` / `ac-checkbox`
 primitives that the SaveSetDialog and LoadSetDialog captures
@@ -136,6 +141,10 @@ capability specs in
 those specs pass under `make test-ui-roland`, which is the
 functional-regression gate for Task 6.
 
+(Dialog inventory: 13 files in `src/components/library/*Dialog.tsx`.
+2 captured here — SaveSet + LoadSet. 1 explicit skip — ExportTone.
+10 covered-by-shared-chrome listed above. Sum: 13.)
+
 Implementing per-dialog screenshot capture would require re-seeding
 OPFS fixtures (sample WAVs, directory bundles, etc.) for each dialog
 — high cost, shared chrome, low marginal verification value.
@@ -143,6 +152,31 @@ OPFS fixtures (sample WAVs, directory bundles, etc.) for each dialog
 **Severity:** low — dialog chrome is shared, polish was atomic in
 commit `8e179806`, and capability specs already mount each dialog
 without regression.
+
+---
+
+## Side-finding surfaced during capture
+
+**`listSets` hardcodes the `library/s330/sets/` path regardless of
+device.** Located at
+[`modules/roland-sxx0-editor/src/lib/library-sets.ts:58-60`](../../../../modules/roland-sxx0-editor/src/lib/library-sets.ts):
+
+```ts
+const libraryDir = await directoryHandle.getDirectoryHandle('library', { create: false });
+const s330Dir    = await libraryDir.getDirectoryHandle('s330', { create: false });
+const setsDir    = await s330Dir.getDirectoryHandle('sets', { create: false });
+```
+
+The S-550 library page scans the S-330 sets directory because the path
+ignores `config.deviceType`. This was discovered while seeding OPFS for
+the LoadSetDialog capture — both devices needed their seed under
+`library/s330/sets/` for the dialog to populate. The capture spec
+documents this at the seed helper's JSDoc; the workaround does not
+change the bug.
+
+**Scope of this task:** out of scope (Task 6 is visual verification, not
+data-path correctness). **Recommendation:** track as a separate issue
+for operator triage. Not silently fixed.
 
 ---
 
