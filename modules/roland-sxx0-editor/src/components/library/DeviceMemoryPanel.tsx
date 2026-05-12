@@ -45,6 +45,14 @@ interface DeviceMemoryPanelProps {
   onDropLibraryTone?: (data: LibraryDragPayload, targetSlot: number) => void;
   /** Callback when a library patch is dropped on a device patch slot */
   onDropLibraryPatch?: (data: LibraryDragPayload, targetSlot: number) => void;
+  /**
+   * Callback when a library sample bundle is dropped anywhere on the panel.
+   * Sample-bundle imports occupy a range of tone slots + a wave-bank
+   * segment region, so the drop is panel-level (not slot-level) — the
+   * dialog opened by this callback (`ImportSamplesDialog`) is where the
+   * user chooses the starting tone slot, wave bank, and segment.
+   */
+  onDropLibrarySample?: (data: LibraryDragPayload) => void;
 }
 
 export function DeviceMemoryPanel({
@@ -58,12 +66,14 @@ export function DeviceMemoryPanel({
   onSelectPatch,
   onDropLibraryTone,
   onDropLibraryPatch,
+  onDropLibrarySample,
 }: DeviceMemoryPanelProps): JSX.Element {
   const config = useDeviceConfig();
   const { memoryLayout } = config;
 
   const [dragOverToneSlot, setDragOverToneSlot] = useState<number | null>(null);
   const [dragOverPatchSlot, setDragOverPatchSlot] = useState<number | null>(null);
+  const [isSampleDragOver, setIsSampleDragOver] = useState(false);
 
   const handleToneDragStart = useCallback(
     (e: React.DragEvent, index: number, tone: SamplerTone) => {
@@ -167,6 +177,51 @@ export function DeviceMemoryPanel({
     }
   }, [onDropLibraryPatch]);
 
+  /**
+   * Panel-level drop handler for library samples. A sample bundle occupies
+   * a range of tone slots + a wave-bank segment region, so dropping on a
+   * single slot would be semantically misleading — the user picks the
+   * starting slot, wave bank, and segment inside `ImportSamplesDialog`
+   * after the bundle is loaded. We surface the panel-level affordance by
+   * checking the dragged item's typed MIME (`LIBRARY_ITEM_MIME` payload
+   * with `nodeType === 'sample'`) and lighting up the panel only for that
+   * exact case — sibling tone/patch slot drop handlers still own their
+   * own visuals via stopPropagation on drop and unique `nodeType` filters.
+   */
+  const handlePanelSampleDragOver = useCallback((e: React.DragEvent) => {
+    if (!onDropLibrarySample) return;
+    if (!e.dataTransfer.types.includes(LIBRARY_ITEM_MIME)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    setIsSampleDragOver(true);
+  }, [onDropLibrarySample]);
+
+  const handlePanelSampleDragLeave = useCallback((e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsSampleDragOver(false);
+    }
+  }, []);
+
+  const handlePanelSampleDrop = useCallback((e: React.DragEvent) => {
+    if (!onDropLibrarySample) return;
+    setIsSampleDragOver(false);
+    const jsonData = e.dataTransfer.getData(LIBRARY_ITEM_MIME);
+    if (!jsonData) return;
+    let data: LibraryDragPayload;
+    try {
+      data = JSON.parse(jsonData) as LibraryDragPayload;
+    } catch (err) {
+      console.error('[DeviceMemoryPanel] Failed to parse panel-level drop data:', err);
+      return;
+    }
+    // Only consume sample drops here; tone/patch drops are owned by the
+    // slot-level handlers above and reach the panel via event bubbling.
+    if (data.nodeType !== 'sample') return;
+    e.preventDefault();
+    e.stopPropagation();
+    onDropLibrarySample(data);
+  }, [onDropLibrarySample]);
+
   // Render a single tone slot row
   const renderToneSlot = (index: number) => {
     const tone = tones[index];
@@ -234,12 +289,25 @@ export function DeviceMemoryPanel({
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div
+      className={cn(
+        'h-full flex flex-col transition-colors',
+        isSampleDragOver && 'ring-2 ring-s330-highlight ring-inset bg-s330-highlight/10',
+      )}
+      role="region"
+      aria-label="Device memory panel — drop library samples to import"
+      data-capability="C-LIB-02"
+      onDragOver={handlePanelSampleDragOver}
+      onDragLeave={handlePanelSampleDragLeave}
+      onDrop={handlePanelSampleDrop}
+    >
       {/* Header */}
       <div className="p-3 border-b border-s330-accent">
         <h3 className="font-bold text-s330-text">Device Memory</h3>
         <p className="text-xs text-s330-muted mt-1">
-          {tones.filter(Boolean).length} tones, {patches.filter(Boolean).length} patches
+          {isSampleDragOver
+            ? 'Drop sample bundle to open Import Samples dialog'
+            : `${tones.filter(Boolean).length} tones, ${patches.filter(Boolean).length} patches`}
         </p>
       </div>
 
@@ -259,7 +327,8 @@ export function DeviceMemoryPanel({
           </div>
           <div className="flex-1 overflow-y-auto p-2">
             <div className="space-y-0.5">
-              {patches.map((patch, index) => {
+              {Array.from({ length: config.totalPatches }, (_, index) => {
+                const patch = patches[index];
                 const isSelected = selectedType === 'patch' && selectedIndex === index;
                 const bankIndex = Math.floor(index / config.patchesPerBank);
                 const isLoaded = loadedPatchBanks.includes(bankIndex);

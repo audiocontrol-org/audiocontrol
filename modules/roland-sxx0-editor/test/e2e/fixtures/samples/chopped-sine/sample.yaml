@@ -1,0 +1,22 @@
+format: sample
+version: 1
+name: chopped-sine
+file: sample.wav
+sampleRate: 30000
+description: Chopped sample fixture for Wave 5 DnD-to-device spec (D-LIB-14 / D-LIB-21). Two slices over the basic-sine WAV so the ImportSamplesDialog has a non-empty bundle.
+slices:
+  - label: HALF_A
+    startSample: 0
+    endSample: 500
+  - label: HALF_B
+    startSample: 500
+    endSample: 1023
+triggers:
+  - triggerId: midi:60
+    sliceIndex: 0
+  - triggerId: midi:61
+    sliceIndex: 1
+playback:
+  polyphony: poly
+  playbackMode: one-shot
+  muteGroups: [0, 0]

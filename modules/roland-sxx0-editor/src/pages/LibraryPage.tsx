@@ -32,12 +32,16 @@ import { SampleEditorDialog } from '@audiocontrol/sample-editor/ui';
 import { SampleChopperDialog } from '@audiocontrol/sample-chopper/ui';
 import { ExportToneDialog } from '@/components/library/ExportToneDialog';
 import { ExportPatchDialog } from '@/components/library/ExportPatchDialog';
+import { DEVICE_DRAG_MIME, type DeviceDragData } from '@/components/library/DeviceMemoryPanel';
 import {
   useImportSamples,
+  sampleManifestToImportBundle,
 } from '@/hooks/useImportSamples';
 import { useLibraryExport } from '@/hooks/useLibraryExport';
 import { useLibraryImportDialogs } from '@/hooks/useLibraryImportDialogs';
 import { useRolandLibraryStrategy } from '@/hooks/useRolandLibraryStrategy';
+import { loadChoppedSample } from '@audiocontrol/sampler-library/browser';
+import type { LibraryDragPayload } from '@/lib/library-drag-types';
 
 import { useRolandEditorDialogs } from '@/hooks/useRolandEditorDialogs';
 import { useRolandLibraryData } from '@/hooks/useRolandLibraryData';
@@ -110,6 +114,7 @@ export function LibraryPage() {
   const {
     importSamplesDialog, isOperating: isSamplesOperating,
     progress: samplesProgress, error: samplesError,
+    openImportSamplesDialog,
     closeImportSamplesDialog, handleImportSamples,
   } = useImportSamples({ clientRef, libraryHandle, setTone: setToneForHook, setPatch: setPatchForHook });
 
@@ -145,6 +150,84 @@ export function LibraryPage() {
     clientRef, libraryHandle, setTone, setPatch, totalTones, totalPatches,
     selection, handleRefreshLibrary,
   });
+
+  /**
+   * Sample bundles span multiple tone slots + a wave-bank segment region,
+   * so the device-side drop is panel-level (see `DeviceMemoryPanel`
+   * `handlePanelSampleDrop`). This callback loads the dropped sample's
+   * manifest from OPFS and opens the `ImportSamplesDialog` — that dialog
+   * is where the user picks the starting tone slot, wave bank, and
+   * segment range.
+   *
+   * Errors propagate via `setError` so the page-level alert banner
+   * surfaces them — per project convention there is no silent fallback;
+   * an unloadable sample fails loudly.
+   */
+  const handleDropLibrarySample = useCallback(async (data: LibraryDragPayload) => {
+    if (!libraryHandle) {
+      setError('Library not connected.');
+      return;
+    }
+    if (data.nodeType !== 'sample') return;
+    try {
+      // `data.nodeName` is the YAML's `name` field; `data.sourcePath` is the
+      // tree path. For root-level seeds these line up with `loadChoppedSample`'s
+      // (name, path) signature. We always target the device's native sample
+      // rate (the first allowed rate of the device — both S-330 and S-550
+      // accept 30000 Hz; the dialog re-resamples as needed at import time).
+      const { manifest } = await loadChoppedSample(libraryHandle, data.nodeName, data.sourcePath);
+      const bundle = sampleManifestToImportBundle(manifest, 30000, 60);
+      openImportSamplesDialog(data.nodeName, bundle, 'sample', data.sourcePath);
+    } catch (err) {
+      console.error('[LibraryPage] Failed to load sample for import:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load sample bundle');
+    }
+  }, [libraryHandle, openImportSamplesDialog, setError]);
+
+  /**
+   * External drops onto the library tree. Currently we only consume device
+   * memory items (DEVICE_DRAG_MIME) dragged out of `DeviceMemoryPanel` and
+   * route them to the export dialogs. Library items dropped within the
+   * library tree are handled inside `PluginLibraryBrowser` and don't reach
+   * this callback. This mirrors the Akai editor's `handleExternalDrop` in
+   * `akai-s3k-editor/src/pages/LibraryPage.tsx:151-167`.
+   */
+  const handleExternalDrop = useCallback((
+    categoryId: string,
+    dataTransfer: DataTransfer,
+    _targetPath: string[],
+  ): boolean => {
+    const raw = dataTransfer.getData(DEVICE_DRAG_MIME);
+    if (!raw) return false;
+    let data: DeviceDragData;
+    try {
+      data = JSON.parse(raw) as DeviceDragData;
+    } catch (err) {
+      console.error('[LibraryPage] Failed to parse device drag payload:', err);
+      return false;
+    }
+    // The category gates the direction: tones-section accepts tone drags,
+    // patches-section accepts patch drags. Mismatched drops fail loudly
+    // (no silent fallback) because the user's intent isn't ambiguous —
+    // dropping a tone on the patch section is most likely a mis-aim.
+    if (data.type === 'tone' && categoryId === 'tones') {
+      try {
+        exportOps.handleDropDeviceTone(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to start tone export');
+      }
+      return true;
+    }
+    if (data.type === 'patch' && categoryId === 'patches') {
+      try {
+        exportOps.handleDropDevicePatch(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to start patch export');
+      }
+      return true;
+    }
+    return false;
+  }, [exportOps, setError]);
 
   const handleLoadDeviceData = useCallback(async () => {
     if (!clientRef.current) return;
@@ -196,7 +279,8 @@ export function LibraryPage() {
     onSelectPatch: (index: number) => handleSelectDevice('patch', index),
     onDropLibraryTone: importDialogs.handleDropLibraryTone,
     onDropLibraryPatch: importDialogs.handleDropLibraryPatch,
-  }), [tones, patches, loadedToneBanks, loadedPatchBanks, selection, handleSelectDevice, importDialogs.handleDropLibraryTone, importDialogs.handleDropLibraryPatch]);
+    onDropLibrarySample: (data) => { void handleDropLibrarySample(data); },
+  }), [tones, patches, loadedToneBanks, loadedPatchBanks, selection, handleSelectDevice, importDialogs.handleDropLibraryTone, importDialogs.handleDropLibraryPatch, handleDropLibrarySample]);
 
   const previewState = useMemo<PreviewPanelCustomState>(() => ({
     pageSelection: selection,
@@ -273,6 +357,7 @@ export function LibraryPage() {
           onFileDrop={libraryOps.onFileDrop}
           onBatchDelete={libraryOps.onBatchDelete}
           onBatchMove={libraryOps.onBatchMove}
+          onExternalDrop={handleExternalDrop}
           deviceMemoryState={deviceMemoryState}
           previewState={previewState}
           loading={isLoading || exportOps.isExporting}

@@ -40,6 +40,14 @@ export interface DeviceMemoryCustomState {
   onDropLibraryTone?: (data: LibraryDragPayload, targetSlot: number) => void;
   /** Callback when a library patch is dropped on a device slot */
   onDropLibraryPatch?: (data: LibraryDragPayload, targetSlot: number) => void;
+  /**
+   * Callback when a library sample bundle is dropped on the device memory
+   * panel. Samples occupy multiple tone slots and a wave-bank segment range,
+   * so the drop target is the panel itself rather than a single slot — the
+   * dialog the callback opens (`ImportSamplesDialog`) is where the user
+   * picks the starting tone slot, wave bank, and segment.
+   */
+  onDropLibrarySample?: (data: LibraryDragPayload) => void;
 }
 
 // =========================================================================
