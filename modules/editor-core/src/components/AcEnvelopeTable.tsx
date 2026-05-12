@@ -7,7 +7,16 @@ import type { CSSProperties } from 'react';
  * readout, and a level mini-bar with readout. The active segment row is
  * highlighted; the sustain row shows a small ▸ marker on the seg number.
  *
- * Mockup source: 04-tones.html:1786-1862, 2737-2840.
+ * Row selection is exposed through the first column, which is a native
+ * `<button type="button">` that carries `aria-pressed`. The row itself
+ * stays non-interactive (`role="row"` is non-interactive per the ARIA
+ * contract) so screen-reader users see a single, predictable activation
+ * affordance per row instead of a row-wide click target with no keyboard
+ * equivalent.
+ *
+ * Mockup source:
+ *   docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:1786-1862 (CSS),
+ *   :2737-2832 (demo HTML for the per-segment table).
  */
 export interface AcEnvelopeTableSegment {
   time: number;
@@ -61,7 +70,7 @@ function renderRow(
   const levelPct = (seg.level / props.maxLevel) * 100;
   const timeStyle: FillStyle = { '--ac-envelope-mini-fill': `${timePct}%` };
   const levelStyle: FillStyle = { '--ac-envelope-mini-fill': `${levelPct}%` };
-  const handleClick = props.onPointSelect === undefined
+  const handleSelect = props.onPointSelect === undefined
     ? undefined
     : (): void => props.onPointSelect?.(index);
   return (
@@ -71,10 +80,18 @@ function renderRow(
       role="row"
       data-active={active ? 'true' : 'false'}
       data-sustain={sustain ? 'true' : undefined}
-      onClick={handleClick}
     >
-      <span className="ac-envelope-table__seg" role="cell">
-        {index}
+      <span role="cell">
+        <button
+          type="button"
+          className="ac-envelope-table__seg"
+          aria-label={`Select segment ${index}`}
+          aria-pressed={active}
+          onClick={handleSelect}
+          disabled={handleSelect === undefined}
+        >
+          {index}
+        </button>
       </span>
       <div className="ac-envelope-table__cell" role="cell">
         <div className="ac-envelope-mini" role="img" aria-label={`Time ${seg.time} of ${props.maxTime}`}>

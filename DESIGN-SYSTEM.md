@@ -409,6 +409,10 @@ Uppercase eyebrow label rendered above parameter rows, form fields, and section 
 
 **When to use:** any label that introduces a parameter, a select, an input, or a section. Pair with `--ac-text-eyebrow` / `--ac-tracking-eyebrow` already set by the class.
 
+**Mockup citation:**
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/01-design-language.html:497-503` (CSS — the prototype `.ac-field__label` block that this primitive descends from)
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/01-design-language.html:1408-1438` (HTML — `<label class="ac-field__label">` paired with `.ac-input` and `.ac-select` demos)
+
 **Example:**
 
 ```html
@@ -432,6 +436,10 @@ Pre-existing class, polished in Phase 9 Task 4.0 with the v3 mockup direction. A
 
 **When to use:** any native `<select>` in the editor. The class can be applied directly to native `<select>` — no JSX wrapper required.
 
+**Mockup citation:**
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/01-design-language.html:505-549` (CSS — base `.ac-input, .ac-select` styling + `.ac-select` chevron variant)
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/01-design-language.html:1422-1438` (HTML — `<select class="ac-select">` demo, including the disabled state)
+
 **Example:**
 
 ```html
@@ -452,6 +460,10 @@ Two-element pattern shipped as `<AcCheckbox>`. The label wraps the checkbox inpu
 Distinct from the pre-existing single-class `.ac-checkbox-label` (used by `BuildInfo`'s logs filter). Both coexist; new code uses `<AcCheckbox>`.
 
 **When to use:** any boolean toggle in the editor (parameter on/off, dialog options, log filters that aren't yet on `<AcCheckbox>`).
+
+**Mockup citation:**
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/01-design-language.html:551-603` (CSS — `.ac-checkbox`, `.ac-checkbox__input`, the `:checked::after` check glyph, and `.ac-checkbox__label`)
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/01-design-language.html:1440-1456` (HTML — three demo checkboxes: checked, unchecked, disabled)
 
 **JSX:**
 
@@ -515,6 +527,15 @@ import { AcSlider } from '@audiocontrol/editor-core';
 
 **Accessibility:** the bar carries `role="img"` and an `aria-label` describing the value-of-range. For read-write rows, place a focusable affordance (e.g., the readout becomes an `<AcNumberInput editable>` or a parent button) — the bar itself is a visualization, not a focus target.
 
+**Mockup citation (slider — full row primitive `.tones__param`):**
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:1465-1547` (CSS — `.tones__param` 3-column grid, `.tones__param-label`, `.tones__param-bar`, `.tones__param-fill`, ticks, and `.tones__param-readout`)
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:2398-2449` (HTML — linear + enum demos under the "Wave" section)
+
+**Mockup citation (range-bar variants — bar visualization):**
+- linear / ticks: `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:1486-1531` (CSS — bar shell, fill, start/mid/end ticks)
+- bipolar: `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:1508-1517` (CSS — `.tones__param--bipolar .tones__param-fill`)
+- enum: `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:1548-1568` (CSS — `.tones__param--enum .tones__param-enum-track` + pip variants)
+
 ### .ac-number-input
 
 Display-font numeric readout. Two shapes:
@@ -540,6 +561,10 @@ import { AcNumberInput } from '@audiocontrol/editor-core';
 **Related tokens:** `--ac-color-accent`, `--ac-color-text-muted`, `--ac-font-display`, `--ac-font-mono`, `--ac-text-sm`, `--ac-text-xs`.
 
 **Accessibility:** native `<input type="number">` keyboard behaviour preserved in editable mode; spin buttons hidden visually but `min` / `max` / `step` are forwarded to the input. `aria-label` prop is forwarded.
+
+**Mockup citation:**
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:1532-1547` (CSS — `.tones__param-readout`, `.tones__param-readout strong` accent emphasis, `.tones__param-readout-unit`)
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:2408-2448` (HTML — `<span class="tones__param-readout">` with and without unit, e.g. `<strong>30</strong> <span class="tones__param-readout-unit">kHz</span>`)
 
 ### .ac-envelope (8-segment VFD-glow editor)
 
@@ -577,7 +602,26 @@ import { AcEnvelope } from '@audiocontrol/editor-core';
 
 **Related tokens:** `--ac-color-accent`, `--ac-color-surface-canvas`, `--ac-color-border-subtle`, `--ac-color-text-primary`, `--ac-color-text-muted`, `--ac-rule-hairline`, `--ac-rule-medium`, `--ac-font-display`, `--ac-font-mono`, `--ac-tracking-eyebrow`. Component-internal: scanline overlay is a `repeating-linear-gradient` with hard-coded 0.18 alpha black (intentional — it's the printed-glass effect, not a colored surface).
 
-**Accessibility:** the graph carries `role="region"` with an `aria-label` describing segment count and active segment. Each draggable point is a `role="button"` with `tabIndex=0` and an `aria-label` like "Select segment 3". Sustain and end pip rows are `role="radiogroup"` / `role="radio"` with `aria-checked`. Disabled pips have `data-disabled="true"` and `tabIndex=-1`.
+**Accessibility:**
+- The graph carries `role="region"` with an `aria-label` describing segment count and active segment.
+- **Graph points** are native `<button type="button">` elements (selectable segments 1..n) so click + keyboard activation (Space / Enter) both fire `onPointSelect` via native semantics. Each button carries `aria-label="Select segment N"` and `aria-pressed` reflecting the active state. The segment-0 anchor renders as a non-interactive `<span aria-hidden="true">`.
+- **Sustain and end pip rows** are `role="radiogroup"` / `role="radio"` with `aria-checked`. Each row uses **roving tabindex** (exactly one pip per group is in the tab order — the active pip if it is enabled, otherwise the first enabled pip). Space / Enter activates the focused pip; ArrowRight / ArrowDown / ArrowLeft / ArrowUp navigate between enabled pips with wrap-around; Home / End jump to the first / last enabled pip. Disabled pips carry `aria-disabled="true"` and `data-disabled="true"` and are skipped during arrow navigation.
+- **Per-segment table** rows use `role="row"` (non-interactive per ARIA). The segment-number cell is a native `<button type="button">` carrying `aria-label="Select segment N"` and `aria-pressed`, so row activation has a single focus + keyboard target instead of a row-wide click handler with no keyboard equivalent.
+
+**Mockup citation (envelope graph — `<AcEnvelopeGraph>`):**
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:1576-1783` (CSS — `.tones__envelope`, `.tones__envelope-graph`, label, expand button, canvas, grid lines, segment dividers, active guide, fill / line, points, axis ticks, y-axis)
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:2640-2705` (HTML — graph demo with label, expand button, SVG fill / line, point markers, and axis ticks)
+
+**Mockup citation (envelope meta — `<AcEnvelopeMeta>`):**
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:1882-1945` (CSS — `.tones__envelope-meta`, `.tones__envelope-meta-control`, `.tones__envelope-meta-label`, `.tones__envelope-meta-pips`, `.tones__envelope-meta-pip`, active + disabled variants)
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:2707-2735` (HTML — sustain + end radio rows, with `role="radiogroup"` and `role="radio"` markup)
+
+**Mockup citation (envelope table — `<AcEnvelopeTable>`):**
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:1786-1862` (CSS — table shell, row + header grid, active + sustain row markers, head + seg typography, cell layout, mini range-bar + readout)
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:2737-2832` (HTML — 8-segment table demo with active row 2 and sustain row 5)
+
+**Mockup citation (sustain label):**
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:2054-2066` (CSS — `.tones__envelope-sustain-label` floating marker above the sustain point)
 
 ### CSS file organization (Phase 9 Task 4.0)
 

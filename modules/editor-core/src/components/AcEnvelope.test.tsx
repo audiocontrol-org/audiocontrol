@@ -18,6 +18,35 @@ const SEGMENTS: AcEnvelopeSegment[] = [
   { time: 42, level: 0 },
 ];
 
+/** Render the envelope and return the sustain-row pip elements for keyboard tests. */
+function renderWithSustainPips(
+  sustainHandler: ((index: number) => void) | undefined,
+  endSegment = 8,
+): { pips: NodeListOf<HTMLSpanElement> } {
+  const { container } = render(
+    <AcEnvelope
+      label="A"
+      segments={SEGMENTS}
+      sustainSegment={5}
+      endSegment={endSegment}
+      activeSegment={1}
+      onSustainChange={sustainHandler}
+    />,
+  );
+  const pipGroups = container.querySelectorAll('.ac-envelope-meta__pips');
+  const sustainPips = pipGroups[0];
+  if (sustainPips === undefined) {
+    throw new Error('AcEnvelope did not render sustain pip row');
+  }
+  const pips = sustainPips.querySelectorAll<HTMLSpanElement>(
+    '.ac-envelope-meta__pip',
+  );
+  if (pips.length === 0) {
+    throw new Error('AcEnvelope did not render any sustain pips');
+  }
+  return { pips };
+}
+
 describe('AcEnvelope', () => {
   it('renders graph, meta, and table sub-surfaces', () => {
     const html = renderToStaticMarkup(
@@ -47,7 +76,6 @@ describe('AcEnvelope', () => {
       />,
     );
     const rowCount = (html.match(/ac-envelope-table__row(?!_)/g) ?? []).length;
-    // 8 rows; header uses ac-envelope-table__header (not __row), so 8 not 9
     expect(rowCount).toBe(8);
   });
 
@@ -61,9 +89,7 @@ describe('AcEnvelope', () => {
         activeSegment={999}
       />,
     );
-    // Active row count: exactly 1 row marked active
     const activeCount = (html.match(/data-active="true"/g) ?? []).length;
-    // Includes axis tick + table row + pip; minimum 2 (table row + axis), at least 1 from table
     expect(activeCount).toBeGreaterThanOrEqual(2);
   });
 
@@ -120,7 +146,7 @@ describe('AcEnvelope', () => {
     expect(withoutExpand).not.toContain('ac-envelope-graph__expand');
   });
 
-  it('emits onPointSelect when a segment number is clicked', () => {
+  it('emits onPointSelect when the segment-number button is clicked', () => {
     const onPointSelect = vi.fn();
     const { container } = render(
       <AcEnvelope
@@ -132,18 +158,18 @@ describe('AcEnvelope', () => {
         onPointSelect={onPointSelect}
       />,
     );
-    const rows = container.querySelectorAll('.ac-envelope-table__row');
-    // First row is segment 1; click it
-    const row = rows[0];
-    if (row === undefined) {
-      throw new Error('AcEnvelope did not render any table rows');
+    const segButton = container.querySelector<HTMLButtonElement>(
+      '.ac-envelope-table__row .ac-envelope-table__seg',
+    );
+    if (segButton === null) {
+      throw new Error('AcEnvelope did not render the segment-select button');
     }
-    fireEvent.click(row);
+    fireEvent.click(segButton);
     expect(onPointSelect).toHaveBeenCalledWith(1);
   });
 
-  it('emits onSustainChange when a pip in the sustain row is clicked', () => {
-    const onSustainChange = vi.fn();
+  it('row-level clicks do NOT trigger onPointSelect (only the seg button does)', () => {
+    const onPointSelect = vi.fn();
     const { container } = render(
       <AcEnvelope
         label="A"
@@ -151,20 +177,184 @@ describe('AcEnvelope', () => {
         sustainSegment={5}
         endSegment={8}
         activeSegment={1}
-        onSustainChange={onSustainChange}
+        onPointSelect={onPointSelect}
       />,
     );
-    const pipGroups = container.querySelectorAll('.ac-envelope-meta__pips');
-    const sustainPips = pipGroups[0];
-    if (sustainPips === undefined) {
-      throw new Error('AcEnvelope did not render sustain pip row');
+    const row = container.querySelector('.ac-envelope-table__row');
+    if (row === null) {
+      throw new Error('AcEnvelope did not render any table rows');
     }
-    const pipThree = sustainPips.querySelectorAll('.ac-envelope-meta__pip')[2];
+    const cells = row.querySelectorAll('.ac-envelope-table__cell');
+    const firstCell = cells[0];
+    if (firstCell === undefined) {
+      throw new Error('AcEnvelope did not render expected cell layout');
+    }
+    fireEvent.click(firstCell);
+    expect(onPointSelect).not.toHaveBeenCalled();
+  });
+
+  it('clicking a segment-number button at index N invokes onPointSelect(N)', () => {
+    const onPointSelect = vi.fn();
+    const { container } = render(
+      <AcEnvelope
+        label="A"
+        segments={SEGMENTS}
+        sustainSegment={5}
+        endSegment={8}
+        activeSegment={1}
+        onPointSelect={onPointSelect}
+      />,
+    );
+    const segButtons = container.querySelectorAll<HTMLButtonElement>(
+      '.ac-envelope-table__row .ac-envelope-table__seg',
+    );
+    const target = segButtons[2];
+    if (target === undefined) {
+      throw new Error('AcEnvelope did not render expected seg buttons');
+    }
+    // Native <button> exposes click + Enter + Space via the browser; click()
+    // is the canonical activation path and exercises the same handler.
+    target.click();
+    expect(onPointSelect).toHaveBeenCalledWith(3);
+  });
+
+  it('seg button reflects active state via aria-pressed', () => {
+    const html = renderToStaticMarkup(
+      <AcEnvelope
+        label="A"
+        segments={SEGMENTS}
+        sustainSegment={5}
+        endSegment={8}
+        activeSegment={3}
+      />,
+    );
+    expect(html).toMatch(/aria-pressed="true"/);
+  });
+
+  it('emits onSustainChange when a pip in the sustain row is clicked', () => {
+    const onSustainChange = vi.fn();
+    const { pips } = renderWithSustainPips(onSustainChange);
+    const pipThree = pips[2];
     if (pipThree === undefined) {
       throw new Error('AcEnvelope did not render expected pip count');
     }
     fireEvent.click(pipThree);
     expect(onSustainChange).toHaveBeenCalledWith(3);
+  });
+
+  it('Space on a sustain pip activates onSustainChange', () => {
+    const onSustainChange = vi.fn();
+    const { pips } = renderWithSustainPips(onSustainChange);
+    fireEvent.keyDown(pips[3]!, { key: ' ' });
+    expect(onSustainChange).toHaveBeenCalledWith(4);
+  });
+
+  it('Enter on a sustain pip activates onSustainChange', () => {
+    const onSustainChange = vi.fn();
+    const { pips } = renderWithSustainPips(onSustainChange);
+    fireEvent.keyDown(pips[1]!, { key: 'Enter' });
+    expect(onSustainChange).toHaveBeenCalledWith(2);
+  });
+
+  it('ArrowRight on a sustain pip moves selection to the next enabled pip', () => {
+    const onSustainChange = vi.fn();
+    const { pips } = renderWithSustainPips(onSustainChange);
+    fireEvent.keyDown(pips[4]!, { key: 'ArrowRight' });
+    expect(onSustainChange).toHaveBeenCalledWith(6);
+  });
+
+  it('ArrowDown navigates like ArrowRight', () => {
+    const onSustainChange = vi.fn();
+    const { pips } = renderWithSustainPips(onSustainChange);
+    fireEvent.keyDown(pips[2]!, { key: 'ArrowDown' });
+    expect(onSustainChange).toHaveBeenCalledWith(4);
+  });
+
+  it('ArrowRight from the last pip wraps to the first enabled pip', () => {
+    const onEndChange = vi.fn();
+    const { container } = render(
+      <AcEnvelope
+        label="A"
+        segments={SEGMENTS}
+        sustainSegment={5}
+        endSegment={8}
+        activeSegment={1}
+        onEndChange={onEndChange}
+      />,
+    );
+    const pipGroups = container.querySelectorAll('.ac-envelope-meta__pips');
+    const endPips = pipGroups[1];
+    if (endPips === undefined) {
+      throw new Error('AcEnvelope did not render end pip row');
+    }
+    const pipEight = endPips.querySelectorAll('.ac-envelope-meta__pip')[7];
+    if (pipEight === undefined) {
+      throw new Error('AcEnvelope did not render expected pip count');
+    }
+    fireEvent.keyDown(pipEight, { key: 'ArrowRight' });
+    expect(onEndChange).toHaveBeenCalledWith(1);
+  });
+
+  it('ArrowLeft on the first sustain pip wraps to the last enabled pip', () => {
+    const onSustainChange = vi.fn();
+    const { pips } = renderWithSustainPips(onSustainChange, 6);
+    fireEvent.keyDown(pips[0]!, { key: 'ArrowLeft' });
+    // endSegment=6, so the last enabled sustain pip is 6.
+    expect(onSustainChange).toHaveBeenCalledWith(6);
+  });
+
+  it('ArrowUp navigates like ArrowLeft', () => {
+    const onSustainChange = vi.fn();
+    const { pips } = renderWithSustainPips(onSustainChange);
+    fireEvent.keyDown(pips[3]!, { key: 'ArrowUp' });
+    expect(onSustainChange).toHaveBeenCalledWith(3);
+  });
+
+  it('Home jumps to the first enabled pip', () => {
+    const onSustainChange = vi.fn();
+    const { pips } = renderWithSustainPips(onSustainChange);
+    fireEvent.keyDown(pips[4]!, { key: 'Home' });
+    expect(onSustainChange).toHaveBeenCalledWith(1);
+  });
+
+  it('End jumps to the last enabled pip', () => {
+    const onSustainChange = vi.fn();
+    const { pips } = renderWithSustainPips(onSustainChange, 6);
+    fireEvent.keyDown(pips[0]!, { key: 'End' });
+    // endSegment=6, so the last enabled pip is 6.
+    expect(onSustainChange).toHaveBeenCalledWith(6);
+  });
+
+  it('arrow navigation skips disabled pips', () => {
+    const onSustainChange = vi.fn();
+    const { pips } = renderWithSustainPips(onSustainChange, 4);
+    fireEvent.keyDown(pips[3]!, { key: 'ArrowRight' });
+    // From pip 4, ArrowRight should wrap to 1 (pips 5..8 disabled).
+    expect(onSustainChange).toHaveBeenCalledWith(1);
+  });
+
+  it('exactly one pip per row carries tabIndex=0 (roving tabindex)', () => {
+    const { container } = render(
+      <AcEnvelope
+        label="A"
+        segments={SEGMENTS}
+        sustainSegment={5}
+        endSegment={8}
+        activeSegment={1}
+      />,
+    );
+    const pipGroups = container.querySelectorAll('.ac-envelope-meta__pips');
+    expect(pipGroups.length).toBe(2);
+    pipGroups.forEach((group) => {
+      const pips = group.querySelectorAll('.ac-envelope-meta__pip');
+      const focusable: Element[] = [];
+      pips.forEach((p) => {
+        if (p.getAttribute('tabindex') === '0') {
+          focusable.push(p);
+        }
+      });
+      expect(focusable.length).toBe(1);
+    });
   });
 
   it('disables sustain pips beyond endSegment', () => {
@@ -177,10 +367,54 @@ describe('AcEnvelope', () => {
         activeSegment={2}
       />,
     );
-    // Disabled count: pips 5..8 in the sustain row = 4. End row: pips 5..8 also
-    // disabled because totalSegments=8 and endSegment=4? No: end row maxEnabled
-    // is totalSegments, so end row pips are ALL enabled. So 4 disabled total.
     const disabledCount = (html.match(/data-disabled="true"/g) ?? []).length;
     expect(disabledCount).toBe(4);
+  });
+
+  it('renders selectable graph points as native button with aria-pressed', () => {
+    const { container } = render(
+      <AcEnvelope
+        label="A"
+        segments={SEGMENTS}
+        sustainSegment={5}
+        endSegment={8}
+        activeSegment={3}
+      />,
+    );
+    const pointButtons = container.querySelectorAll<HTMLButtonElement>(
+      '.ac-envelope-points button.ac-envelope-point',
+    );
+    // The 8 segments map to 8 selectable point buttons; segment 0 is the
+    // anchor and renders as a non-interactive aria-hidden span.
+    expect(pointButtons.length).toBe(8);
+    const activeButton = container.querySelector<HTMLButtonElement>(
+      '.ac-envelope-points button.ac-envelope-point--active',
+    );
+    expect(activeButton).not.toBeNull();
+    expect(activeButton?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('clicking a graph point button triggers onPointSelect', () => {
+    const onPointSelect = vi.fn();
+    const { container } = render(
+      <AcEnvelope
+        label="A"
+        segments={SEGMENTS}
+        sustainSegment={5}
+        endSegment={8}
+        activeSegment={1}
+        onPointSelect={onPointSelect}
+      />,
+    );
+    const pointButtons = container.querySelectorAll<HTMLButtonElement>(
+      '.ac-envelope-points button.ac-envelope-point',
+    );
+    const target = pointButtons[3];
+    if (target === undefined) {
+      throw new Error('AcEnvelope did not render expected graph point buttons');
+    }
+    fireEvent.click(target);
+    // Index 3 in the NodeList is segment 4 (segment 0 anchor is not a button).
+    expect(onPointSelect).toHaveBeenCalledWith(4);
   });
 });

@@ -9,7 +9,9 @@
  * grabbable (cursor: grab); drag handlers arrive with the page-amendment
  * dispatch that consumes this primitive.
  *
- * Mockup source: 04-tones.html:1570-1862, 2640-2715.
+ * Mockup source:
+ *   docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:1570-1862 (CSS),
+ *   :2640-2715 (demo HTML for the graphic + envelope canvas).
  */
 export interface AcEnvelopeGraphSegment {
   time: number;
@@ -147,18 +149,32 @@ function renderPoint(
   const pointClass = isActive
     ? 'ac-envelope-point ac-envelope-point--active'
     : 'ac-envelope-point';
-  const handleClick = i === 0 || props.onPointSelect === undefined
+  // Point 0 is the implicit anchor at (0%, 100%); it is not a selectable
+  // segment and renders as a non-interactive marker.
+  if (i === 0) {
+    return (
+      <span
+        key={i}
+        className={pointClass}
+        style={{ left: `${p.x}%`, top: `${p.y}%` }}
+        aria-hidden="true"
+      />
+    );
+  }
+  // Selectable segments render as native buttons so keyboard activation
+  // (Space + Enter) and focus semantics come for free.
+  const handleClick = props.onPointSelect === undefined
     ? undefined
     : (): void => props.onPointSelect?.(i);
   return (
-    <span
+    <button
       key={i}
+      type="button"
       className={pointClass}
       style={{ left: `${p.x}%`, top: `${p.y}%` }}
       onClick={handleClick}
-      role={i === 0 ? undefined : 'button'}
-      tabIndex={i === 0 ? undefined : 0}
-      aria-label={i === 0 ? undefined : `Select segment ${i}`}
+      aria-label={`Select segment ${i}`}
+      aria-pressed={isActive}
     />
   );
 }

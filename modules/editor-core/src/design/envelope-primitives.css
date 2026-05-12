@@ -171,6 +171,14 @@
 }
 
 .ac-envelope-point {
+  /* Reset native <button> chrome so the rule below paints the marker
+     consistently whether the element is a <span> (anchor at segment 0)
+     or a <button> (selectable segments 1..n). */
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
   position: absolute;
   width: 0.875rem;
   height: 0.875rem;
@@ -186,6 +194,13 @@
 
 .ac-envelope-point:hover {
   transform: translate(-50%, -50%) scale(1.15);
+}
+
+.ac-envelope-point:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 6px color-mix(in srgb, var(--ac-color-accent) 50%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--ac-color-accent) 35%, transparent);
 }
 
 .ac-envelope-point--active {
@@ -299,6 +314,30 @@
   text-transform: uppercase;
   letter-spacing: var(--ac-tracking-eyebrow);
   color: var(--ac-color-text-muted);
+}
+
+/* The segment cell is now a native <button> (so keyboard activation works
+   without an explicit onKeyDown handler). Reset the native chrome so it
+   reads as the same display-font label the mockup specifies. */
+.ac-envelope-table__seg {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-envelope-table__seg:disabled {
+  cursor: default;
+}
+
+.ac-envelope-table__seg:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 45%, transparent);
 }
 
 .ac-envelope-table__row[data-active="true"] .ac-envelope-table__seg {
