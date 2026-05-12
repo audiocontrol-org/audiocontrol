@@ -19,13 +19,7 @@
 import { AcSlider, AcNumberInput } from '@audiocontrol/editor-core';
 import { Tooltip } from './Tooltip';
 
-/**
- * Convert a slider label to a data-testid (matches the legacy
- * ParameterSlider shape — `param-level`, `param-a-t-sense`, etc.).
- */
-export function labelToTestId(label: string): string {
-  return `param-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
-}
+import { labelToTestId } from '@/components/ui/labelToTestId';
 
 export interface ParamSliderRowProps {
   label: string;

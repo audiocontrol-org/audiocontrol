@@ -81,7 +81,19 @@ function renderEditable(p: AcNumberInputEditProps): JSX.Element {
     if (Number.isNaN(parsed)) {
       return;
     }
-    p.onChange(parsed);
+    // Clamp to min/max BEFORE invoking onChange. Browsers only enforce
+    // <input min max> on form submit, not on typed input — so without this
+    // clamp, typing "200" into a 0..127 slider would call onChange(200) and
+    // either throw at the device boundary (S-330 strict clamp) or produce
+    // a visible/device disagreement (S-550 silently clamps). Same for "-5"
+    // on a 0..127 control. The clamp guarantees the device sees what the
+    // user sees, regardless of typed input.
+    const lo = p.min;
+    const hi = p.max;
+    let clamped = parsed;
+    if (lo !== undefined && clamped < lo) clamped = lo;
+    if (hi !== undefined && clamped > hi) clamped = hi;
+    p.onChange(clamped);
   };
   return (
     <span className={className}>

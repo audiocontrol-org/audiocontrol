@@ -94,4 +94,46 @@ describe('AcNumberInput editable', () => {
     );
     expect(html).toContain('disabled');
   });
+
+  it('clamps typed input above max before invoking onChange', () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <AcNumberInput editable={true} value={50} onChange={onChange} min={0} max={127} />,
+    );
+    const input = container.querySelector('input');
+    if (!(input instanceof HTMLInputElement)) {
+      throw new Error('AcNumberInput editable did not render its input');
+    }
+    fireEvent.change(input, { target: { value: '200' } });
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith(127);
+  });
+
+  it('clamps typed input below min before invoking onChange', () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <AcNumberInput editable={true} value={50} onChange={onChange} min={0} max={127} />,
+    );
+    const input = container.querySelector('input');
+    if (!(input instanceof HTMLInputElement)) {
+      throw new Error('AcNumberInput editable did not render its input');
+    }
+    fireEvent.change(input, { target: { value: '-5' } });
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith(0);
+  });
+
+  it('passes in-range values through unchanged', () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <AcNumberInput editable={true} value={50} onChange={onChange} min={0} max={127} />,
+    );
+    const input = container.querySelector('input');
+    if (!(input instanceof HTMLInputElement)) {
+      throw new Error('AcNumberInput editable did not render its input');
+    }
+    fireEvent.change(input, { target: { value: '75' } });
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith(75);
+  });
 });
