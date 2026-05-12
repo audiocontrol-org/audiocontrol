@@ -4,10 +4,14 @@ deskwork:
 ---
 # Decisions needed — Phase 0 Task 10 closing + Phase 9 entry
 
-**Date:** 2026-05-11 (v1 initial) · 2026-05-12 (v2 — operator answers integrated)
+**Date:** 2026-05-11 (v1 initial) · 2026-05-12 (v2 — operator answers integrated) · 2026-05-12 (v3 — Decision 3 confirmed in chat)
 **Branch:** `feature/s550-support`
 **Author:** controller (Claude)
 **For:** operator decision
+
+## v3 changelog
+
+Decision 3 confirmed via in-chat operator response (*"yes, reuse fixtures"*). Implementation now unblocked under the revised proposal. Wave 4 close-out (5 specs not gated on DnD) becomes the next implement dispatch. Wave 5 follows per Decision 4 = Option A.
 
 ## v2 changelog
 
@@ -15,12 +19,12 @@ The operator answered 5 of the 6 decisions via studio marginalia on v1 (read fro
 
 - **Decision 1** — *Option B with constraint*. Constraint verified (VideoCapture mounted on every page). 5 D-XX rows struck in inventory; memory rule `feedback_virtual_front_panel` updated; operator additionally clarified that CRT and front-panel controls are ONE bound concern (memory rule reflects). **Settled. Work applied.**
 - **Decision 2** — *no comment*. Holding the v1 recommendation (Option B, accept the gap) unless operator overrides. **Pending operator confirmation.**
-- **Decision 3** — operator pushback: *"Do you know what the objects you will seed are supposed to look like? You can't guess the shape of these things because if you do, then you will probably build nonsensical UI."* Pushback addressed below with concrete evidence (Zod schemas + existing e2e fixtures); revised proposal: REUSE existing validated fixtures rather than construct new YAML. **Pending operator confirmation of the revised proposal.**
-- **Decision 4** — *Option A* (wait + full DnD after Decision 3 lands). **Settled, blocked on Decision 3.**
+- **Decision 3** — operator pushback: *"Do you know what the objects you will seed are supposed to look like? You can't guess the shape of these things because if you do, then you will probably build nonsensical UI."* Pushback addressed below with concrete evidence (Zod schemas + existing e2e fixtures); revised proposal: REUSE existing validated fixtures rather than construct new YAML. **Confirmed in v3 — implementation begins.**
+- **Decision 4** — *Option A* (wait + full DnD after Decision 3 lands). **Settled, unblocks now that Decision 3 confirmed.**
 - **Decision 5** — *Option A* (fix the bug). **Settled. 5-line fix applied at `editorStoreBase.ts:83-90`** — `setError(null)` no longer resets `isLoading: false` when just clearing the error. D-XX-12 test can now be strengthened to assert the percent bar renders (deferred to the test-strengthening pass; not blocking).
 - **Decision 6** — *Option A* (atomic primitives first, then amend Patches/Tones, then per-page polish). **Settled. Phase 9 plan committed.**
 
-Net: 4 decisions fully settled (1, 4, 5, 6), 1 awaiting operator confirmation of revised proposal (3), 1 awaiting operator answer (2).
+Net (as of v3): 5 decisions fully settled (1, 3, 4, 5, 6); 1 awaiting operator answer (2 — working assumption: Option B accept gap).
 
 ## Context
 
@@ -161,6 +165,16 @@ Plus Wave 6's remaining DT1-emit tests (D-XX-02, 03, 04, 05) need the VFP mounte
 
 ## Decision 3 — Library content seeding infrastructure
 
+> **✅ RESOLVED 2026-05-12 — revised proposal accepted (reuse validated fixtures).**
+>
+> Operator confirmation in chat (not deskwork marginalia): *"yes, reuse fixtures"*.
+>
+> Implementation will proceed under the revised proposal: seeding helper copies validated YAML fixtures from `modules/roland-sxx0-editor/test/e2e/fixtures/` into OPFS at test runtime; reads parse through the matching Zod schema (load-bearing — drift between fixture and schema fails the test loudly). If a case Wave 4 needs has no existing fixture, the author writes the missing fixture by hand against the schema once, and the helper consumes it from then on. No shape construction in code.
+>
+> Wave 4 close-out (D-LIB-12, 13, 17, 18, 19 = 5 specs) + the remaining Wave 4 specs (D-LIB-14, 21 = 2 specs, gated on Wave 5 DnD harness) unblocks. Wave 5 dispatch follows per Decision 4 = Option A.
+>
+> Historical context preserved below.
+>
 > **⚠️ OPERATOR PUSHBACK — revised proposal below.**
 >
 > Operator pushback via marginalia: *"Do you know what the objects you will seed are supposed to look like? You can't guess the shape of these things because if you do, then you will probably build nonsensical UI."*
