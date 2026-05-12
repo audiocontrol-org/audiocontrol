@@ -113,7 +113,7 @@ export function ImportToneDialog({
 
               {/* Target Slot Selection */}
               <div>
-                <label htmlFor="targetSlot" className="block text-sm text-s330-muted mb-1">
+                <label htmlFor="targetSlot" className="ac-field-label mb-1">
                   Target Slot
                 </label>
                 <select
@@ -121,11 +121,7 @@ export function ImportToneDialog({
                   value={targetSlot}
                   onChange={(e) => setTargetSlot(parseInt(e.target.value))}
                   disabled={isOperating}
-                  className={cn(
-                    'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
-                    'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    isOperating && 'opacity-50'
-                  )}
+                  className="ac-select"
                 >
                   {Array.from({ length: totalSlots }, (_, i) => (
                     <option key={i} value={i}>

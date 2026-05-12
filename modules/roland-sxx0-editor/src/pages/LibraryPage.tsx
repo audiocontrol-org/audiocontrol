@@ -46,7 +46,6 @@ import type { LibraryDragPayload } from '@/lib/library-drag-types';
 import { useRolandEditorDialogs } from '@/hooks/useRolandEditorDialogs';
 import { useRolandLibraryData } from '@/hooks/useRolandLibraryData';
 import { useRolandSelectionMapping } from '@/hooks/useRolandSelectionMapping';
-import { getOverallPercent } from '@/types/import-operation';
 import { cn } from '@/lib/utils';
 
 /** Selection state for items in either panel */
@@ -381,8 +380,8 @@ export function LibraryPage() {
       <SaveSetDialog
         open={importDialogs.isSaveDialogOpen} onOpenChange={importDialogs.setIsSaveDialogOpen}
         onSave={importDialogs.handleSaveSet} isSaving={importDialogs.operationProgress !== undefined}
-        progress={importDialogs.operationProgress ? getOverallPercent(importDialogs.operationProgress) : undefined}
-        error={importDialogs.operationError} statusMessage={importDialogs.operationProgress?.stepLabel ?? null}
+        progress={importDialogs.operationProgress}
+        error={importDialogs.operationError}
         success={importDialogs.saveSuccess}
       />
       <LoadSetDialog

@@ -321,7 +321,7 @@ export function ImportLibraryToneDialog({
 
               {/* Import Target */}
               <div>
-                <label htmlFor="importTarget" className="block text-sm text-s330-muted mb-1">
+                <label htmlFor="importTarget" className="ac-field-label mb-1">
                   Target
                 </label>
                 <select
@@ -337,11 +337,7 @@ export function ImportLibraryToneDialog({
                     setWaveBank(newGroup.waveBankIndices[0]);
                   }}
                   disabled={isOperating}
-                  className={cn(
-                    'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
-                    'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    isOperating && 'opacity-50'
-                  )}
+                  className="ac-select"
                 >
                   {importTargets.map((target, i) => (
                     <option key={i} value={i}>{target.label}</option>
@@ -351,7 +347,7 @@ export function ImportLibraryToneDialog({
 
               {/* Target Slot Selection (scoped to selected group) */}
               <div>
-                <label htmlFor="targetSlot" className="block text-sm text-s330-muted mb-1">
+                <label htmlFor="targetSlot" className="ac-field-label mb-1">
                   Target Tone Slot
                 </label>
                 <select
@@ -360,14 +356,7 @@ export function ImportLibraryToneDialog({
                   onChange={(e) => setTargetSlot(Number(e.target.value))}
                   disabled={isOperating}
                   data-testid="target-slot-select"
-                  className={cn(
-                    'w-full bg-s330-bg border rounded px-3 py-2 text-s330-text',
-                    'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    isOperating && 'opacity-50',
-                    willOverwriteTone
-                      ? 'border-yellow-500/50'
-                      : 'border-s330-accent/50'
-                  )}
+                  className={cn('ac-select', willOverwriteTone && 'ac-input--warning')}
                 >
                   {Array.from({ length: targetGroup.count }, (_, i) => {
                     const absIndex = targetGroup.firstIndex + i;
@@ -395,7 +384,7 @@ export function ImportLibraryToneDialog({
               {/* Wave Bank and Segment */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="waveBank" className="block text-sm text-s330-muted mb-1">
+                  <label htmlFor="waveBank" className="ac-field-label mb-1">
                     Wave Bank
                   </label>
                   <select
@@ -403,11 +392,7 @@ export function ImportLibraryToneDialog({
                     value={waveBank}
                     onChange={(e) => setWaveBank(Number(e.target.value))}
                     disabled={isOperating}
-                    className={cn(
-                      'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
-                      'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                      isOperating && 'opacity-50'
-                    )}
+                    className="ac-select"
                   >
                     {targetGroup.waveBankIndices.map((idx, i) => (
                       <option key={idx} value={idx}>Bank {targetGroup.waveBankLabels[i]}</option>
@@ -415,7 +400,7 @@ export function ImportLibraryToneDialog({
                   </select>
                 </div>
                 <div>
-                  <label htmlFor="segmentTop" className="block text-sm text-s330-muted mb-1">
+                  <label htmlFor="segmentTop" className="ac-field-label mb-1">
                     Segment (needs {segmentsNeeded})
                   </label>
                   <select
@@ -423,11 +408,7 @@ export function ImportLibraryToneDialog({
                     value={segmentTop}
                     onChange={(e) => setSegmentTop(Number(e.target.value))}
                     disabled={isOperating}
-                    className={cn(
-                      'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
-                      'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                      isOperating && 'opacity-50'
-                    )}
+                    className="ac-select"
                   >
                     {Array.from({ length: Math.max(1, 18 - segmentsNeeded + 1) }, (_, i) => (
                       <option key={i} value={i}>

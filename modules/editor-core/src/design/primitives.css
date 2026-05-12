@@ -233,6 +233,21 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--ac-color-danger) 25%, transparent);
 }
 
+/* Warning-state modifier — surfaces a non-fatal warning on a field (e.g.,
+   import dialogs flagging that a target slot will overwrite an existing
+   tone). Distinct from `ac-input--error` (which signals validation failure
+   that blocks submit). Uses --ac-color-warning, matching status-warning. */
+.ac-input.ac-input--warning,
+.ac-select.ac-input--warning {
+  border-color: var(--ac-color-warning);
+}
+
+.ac-input.ac-input--warning:focus-visible,
+.ac-select.ac-input--warning:focus-visible {
+  border-color: var(--ac-color-warning);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ac-color-warning) 25%, transparent);
+}
+
 .ac-input {
   text-align: left;
 }

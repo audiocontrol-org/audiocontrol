@@ -274,7 +274,7 @@ export function ImportSampleDialog({
 
               {/* Tone Name */}
               <div>
-                <label htmlFor="toneName" className="block text-sm text-s330-muted mb-1">
+                <label htmlFor="toneName" className="ac-field-label mb-1">
                   Tone Name
                 </label>
                 <input
@@ -285,19 +285,14 @@ export function ImportSampleDialog({
                   disabled={isOperating}
                   data-testid="import-tone-name"
                   maxLength={8}
-                  className={cn(
-                    'w-full bg-s330-bg border rounded px-3 py-2 text-s330-text font-mono',
-                    'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    'border-s330-accent/50',
-                    isOperating && 'opacity-50'
-                  )}
+                  className="ac-input font-mono"
                   placeholder="Enter tone name (max 8 chars)"
                 />
               </div>
 
               {/* Sample Rate Selection */}
               <div>
-                <label htmlFor="sampleRate" className="block text-sm text-s330-muted mb-1">
+                <label htmlFor="sampleRate" className="ac-field-label mb-1">
                   Target Sample Rate
                 </label>
                 <select
@@ -306,11 +301,7 @@ export function ImportSampleDialog({
                   onChange={(e) => setTargetSampleRate(e.target.value as '15kHz' | '30kHz')}
                   disabled={isOperating}
                   data-testid="import-sample-rate"
-                  className={cn(
-                    'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
-                    'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    isOperating && 'opacity-50'
-                  )}
+                  className="ac-select"
                 >
                   <option value="15kHz">15 kHz (default)</option>
                   <option value="30kHz">30 kHz (higher quality, uses more memory)</option>
@@ -320,7 +311,7 @@ export function ImportSampleDialog({
               {/* Wave Bank and Segment */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="waveBank" className="block text-sm text-s330-muted mb-1">
+                  <label htmlFor="waveBank" className="ac-field-label mb-1">
                     Wave Bank
                   </label>
                   <select
@@ -329,11 +320,7 @@ export function ImportSampleDialog({
                     onChange={(e) => setWaveBank(Number(e.target.value))}
                     disabled={isOperating}
                     data-testid="import-wave-bank"
-                    className={cn(
-                      'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
-                      'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                      isOperating && 'opacity-50'
-                    )}
+                    className="ac-select"
                   >
                     {bankIndices.map((bankIndex, i) => (
                       <option key={bankIndex} value={bankIndex}>Bank {bankLabels[i]}</option>
@@ -341,7 +328,7 @@ export function ImportSampleDialog({
                   </select>
                 </div>
                 <div>
-                  <label htmlFor="targetSegment" className="block text-sm text-s330-muted mb-1">
+                  <label htmlFor="targetSegment" className="ac-field-label mb-1">
                     Segment (needs {segmentsNeeded})
                   </label>
                   <select
@@ -350,11 +337,7 @@ export function ImportSampleDialog({
                     onChange={(e) => setTargetSegment(Number(e.target.value))}
                     disabled={isOperating}
                     data-testid="import-segment"
-                    className={cn(
-                      'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
-                      'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                      isOperating && 'opacity-50'
-                    )}
+                    className="ac-select"
                   >
                     {Array.from({ length: 18 - segmentsNeeded + 1 }, (_, i) => (
                       <option key={i} value={i}>
@@ -370,7 +353,7 @@ export function ImportSampleDialog({
 
               {/* Loop Mode */}
               <div>
-                <label htmlFor="loopMode" className="block text-sm text-s330-muted mb-1">
+                <label htmlFor="loopMode" className="ac-field-label mb-1">
                   Loop Mode
                 </label>
                 <select
@@ -379,11 +362,7 @@ export function ImportSampleDialog({
                   onChange={(e) => setLoopMode(e.target.value as typeof loopMode)}
                   disabled={isOperating}
                   data-testid="import-loop-mode"
-                  className={cn(
-                    'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
-                    'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    isOperating && 'opacity-50'
-                  )}
+                  className="ac-select"
                 >
                   <option value="one-shot">One-Shot (no loop)</option>
                   <option value="forward">Forward Loop</option>

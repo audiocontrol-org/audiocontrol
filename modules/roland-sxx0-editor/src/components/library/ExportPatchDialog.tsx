@@ -120,7 +120,7 @@ export function ExportPatchDialog({
 
               {/* Patch Name Input */}
               <div>
-                <label htmlFor="patchName" className="block text-sm text-s330-muted mb-1">
+                <label htmlFor="patchName" className="ac-field-label mb-1">
                   Patch Name
                 </label>
                 <input

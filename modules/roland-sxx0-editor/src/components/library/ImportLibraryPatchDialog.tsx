@@ -469,7 +469,7 @@ export function ImportLibraryPatchDialog({
 
               {/* Target Patch Slot */}
               <div>
-                <label htmlFor="targetPatchSlot" className="block text-sm text-s330-muted mb-1">
+                <label htmlFor="targetPatchSlot" className="ac-field-label mb-1">
                   Target Patch Slot
                 </label>
                 <select
@@ -478,14 +478,7 @@ export function ImportLibraryPatchDialog({
                   onChange={(e) => setTargetPatchSlot(Number(e.target.value))}
                   disabled={isOperating}
                   data-testid="target-slot-select"
-                  className={cn(
-                    'w-full bg-s330-bg border rounded px-3 py-2 text-s330-text',
-                    'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    isOperating && 'opacity-50',
-                    willOverwritePatch
-                      ? 'border-yellow-500/50'
-                      : 'border-s330-accent/50'
-                  )}
+                  className={cn('ac-select', willOverwritePatch && 'ac-input--warning')}
                 >
                   {Array.from({ length: config.totalPatches }, (_, i) => {
                     const existingPatch = devicePatches[i];
@@ -553,7 +546,7 @@ export function ImportLibraryPatchDialog({
 
                         <div className="grid grid-cols-3 gap-2">
                           <div>
-                            <label className="block text-xs text-s330-muted mb-1">
+                            <label className="ac-field-label mb-1">
                               Target Slot
                               {toneOverwrites[index]?.willOverwrite && (
                                 <span className="ml-1 text-yellow-400" title={`Will overwrite ${toneOverwrites[index]?.existingName}`}>⚠</span>
@@ -581,12 +574,8 @@ export function ImportLibraryPatchDialog({
                               }}
                               disabled={isOperating}
                               className={cn(
-                                'w-full bg-s330-panel border rounded px-2 py-1 text-s330-text text-xs',
-                                'focus:outline-none focus:ring-1 focus:ring-s330-highlight',
-                                isOperating && 'opacity-50',
-                                toneOverwrites[index]?.willOverwrite
-                                  ? 'border-yellow-500/50'
-                                  : 'border-s330-accent/50'
+                                'ac-select ac-select--compact',
+                                toneOverwrites[index]?.willOverwrite && 'ac-input--warning',
                               )}
                             >
                               {Array.from({ length: config.totalTones }, (_, i) => {
@@ -604,7 +593,7 @@ export function ImportLibraryPatchDialog({
                           </div>
 
                           <div>
-                            <label className="block text-xs text-s330-muted mb-1">
+                            <label className="ac-field-label mb-1">
                               Wave Bank
                             </label>
                             <select
@@ -613,11 +602,7 @@ export function ImportLibraryPatchDialog({
                                 updateToneMapping(index, { waveBank: Number(e.target.value) })
                               }
                               disabled={isOperating}
-                              className={cn(
-                                'w-full bg-s330-panel border border-s330-accent/50 rounded px-2 py-1 text-s330-text text-xs',
-                                'focus:outline-none focus:ring-1 focus:ring-s330-highlight',
-                                isOperating && 'opacity-50'
-                              )}
+                              className="ac-select ac-select--compact"
                             >
                               {bankIndices.map((bankIndex, i) => (
                                 <option key={bankIndex} value={bankIndex}>Bank {bankLabels[i]}</option>
@@ -626,7 +611,7 @@ export function ImportLibraryPatchDialog({
                           </div>
 
                           <div>
-                            <label className="block text-xs text-s330-muted mb-1">
+                            <label className="ac-field-label mb-1">
                               Segment ({mapping.segmentsNeeded} needed)
                             </label>
                             <select
@@ -635,11 +620,7 @@ export function ImportLibraryPatchDialog({
                                 updateToneMapping(index, { segmentTop: Number(e.target.value) })
                               }
                               disabled={isOperating}
-                              className={cn(
-                                'w-full bg-s330-panel border border-s330-accent/50 rounded px-2 py-1 text-s330-text text-xs',
-                                'focus:outline-none focus:ring-1 focus:ring-s330-highlight',
-                                isOperating && 'opacity-50'
-                              )}
+                              className="ac-select ac-select--compact"
                             >
                               {Array.from(
                                 { length: Math.max(1, 18 - mapping.segmentsNeeded + 1) },

@@ -106,7 +106,7 @@ export function LoadSetDialog({
 
             {/* Import Target */}
             <div>
-              <label htmlFor="importTarget" className="block text-sm text-s330-muted mb-1">
+              <label htmlFor="importTarget" className="ac-field-label mb-1">
                 Target
               </label>
               <select
@@ -114,11 +114,7 @@ export function LoadSetDialog({
                 value={selectedTargetIndex}
                 onChange={(e) => setSelectedTargetIndex(Number(e.target.value))}
                 disabled={isOperating}
-                className={cn(
-                  'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
-                  'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                  isOperating && 'opacity-50'
-                )}
+                className="ac-select"
               >
                 {importTargets.map((target, i) => (
                   <option key={i} value={i}>{target.label}</option>
