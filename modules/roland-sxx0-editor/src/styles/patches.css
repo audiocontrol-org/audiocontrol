@@ -153,13 +153,39 @@
   grid-template-columns: minmax(0, 1fr);
   gap: var(--ac-space-6);
   padding-block: var(--ac-space-5) 0;
+  /*
+   * Height-containment contract: when the parent .ac-page-shell carries
+   * --fixed-viewport, the parent is a flex column and this child claims
+   * `flex: 1; min-height: 0` to consume the remaining vertical space.
+   * `overflow: hidden` clips any column that fails its own min-height: 0
+   * instead of letting the shell grow past the bounded parent.
+   */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 @media (min-width: 1024px) {
   .patches__app-shell {
     grid-template-columns: 22rem minmax(0, 1fr);
-    align-items: start;
+    align-items: stretch;
   }
+}
+
+/*
+ * List + detail columns inside the fixed-viewport shell. The list pane
+ * is the `.ac-list` container (see ac-list-scroll inside it); the
+ * detail pane is `.patches__detail`. Both need min-height: 0 so they
+ * shrink to the grid track, and an overflow-y that lets their content
+ * scroll internally (`.ac-list-scroll` already declares overflow-y on
+ * the inner pane; the detail body already declares overflow-y too —
+ * the outer column just needs to clip its own children).
+ */
+.patches__app-shell > .ac-list,
+.patches__app-shell > .patches__detail {
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 /* Loading progress bar — replaces the inline progress in the toolbar. */

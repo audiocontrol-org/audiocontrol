@@ -407,13 +407,38 @@
   grid-template-columns: minmax(0, 1fr);
   gap: var(--ac-space-6);
   padding-block: var(--ac-space-5) 0;
+  /*
+   * Height-containment contract — same shape as `.patches__app-shell`.
+   * Parent .ac-page-shell--fixed-viewport is a flex column; `flex: 1`
+   * + `min-height: 0` lets this body row consume the remaining
+   * vertical space while letting its own columns shrink below their
+   * intrinsic height to scroll internally.
+   */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 @media (min-width: 1024px) {
   .tones__app-shell {
     grid-template-columns: 22rem minmax(0, 1fr);
-    align-items: start;
+    align-items: stretch;
   }
+}
+
+/*
+ * List + detail columns inside the fixed-viewport shell. The detail
+ * column on this page can be either `.tones__detail` (when a tone is
+ * selected) or `.ac-detail-empty` (placeholder) — both need the same
+ * height-claim so the list column doesn't grow taller than the grid
+ * track.
+ */
+.tones__app-shell > .ac-list,
+.tones__app-shell > .tones__detail,
+.tones__app-shell > .ac-detail-empty {
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 /* ============================================================

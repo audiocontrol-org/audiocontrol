@@ -20,9 +20,22 @@
   background: var(--ac-color-surface-panel);
   border-radius: var(--ac-radius-sm);
   overflow: hidden;
+  /*
+   * Flex column so `.ac-list-scroll` (the inner pane) can claim
+   * `flex: 1; min-height: 0` and scroll internally when the list
+   * container is height-bounded by its parent grid track. Outside a
+   * height-bounded parent (content-flow pages), the list still wears
+   * its natural intrinsic height because no descendant requests flex
+   * growth on its own.
+   */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .ac-list-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
 }

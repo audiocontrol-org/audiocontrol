@@ -391,15 +391,17 @@ Every list-detail editor page renders inside a fixed-viewport flex column with i
 - Hardcoded pixel widths on columns (e.g., `width: 320px`). Use flex ratios or grid fractions.
 - Omitting `width: 100%` on a flex `<main>` in a column-direction parent. Visual chrome appears to render until you switch pages and notice the cross-axis varies.
 
-**Canonical class chain:** the outer `<main>` wears `.ac-page` + `.ac-page-shell` (shared across every page). The list+detail grid inside is page-scoped (`.<page>__app-shell`) because the column proportions differ per page — patches uses one list ratio, tones uses another. The page-scoped class is the only place hardcoding rem dimensions; the outer shell only sets the fixed-viewport flex column.
+**Canonical class chain:** the outer `<main>` wears `.ac-page` + `.ac-page-shell` (shared across every page). List-detail pages add the `.ac-page-shell--fixed-viewport` modifier to opt into height-bounded chrome (see "Modifier" subsection below). The list+detail grid inside is page-scoped (`.<page>__app-shell`) because the column proportions differ per page — patches uses one list ratio, tones uses another. The page-scoped class is the only place hardcoding rem dimensions; the outer shell only sets the fixed-viewport flex column.
 
 **Example** (taken from `PatchesPage` — `.tones__app-shell`, `.library__app-shell` etc. follow the same shape):
 
 ```html
-<main class="ac-page ac-page-shell">
+<main class="ac-page ac-page-shell ac-page-shell--fixed-viewport">
   <header class="ac-page-title-row">…</header>
   <div class="patches__app-shell" aria-labelledby="patches-heading">
-    <aside class="ac-list ac-list-scroll">…</aside>
+    <aside class="ac-list">
+      <div class="ac-list-scroll">…</div>
+    </aside>
     <section class="patches__detail">…</section>
   </div>
   <footer class="ac-detail-live">…</footer>
@@ -409,23 +411,57 @@ Every list-detail editor page renders inside a fixed-viewport flex column with i
 ```css
 /* Shared shell: in editor-core/src/design/layout-primitives.css */
 .ac-page-shell {
+  display: grid;
+  gap: var(--ac-page-section-gap);
+}
+
+.ac-page-shell--fixed-viewport {
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100vh;
+  /* 100dvh minus site header minus <main> vertical padding (top+bottom). */
+  height: calc(100dvh - var(--ac-site-header-height) - (var(--ac-page-main-vertical) * 2));
   overflow: hidden;
 }
 
 /* Page-scoped grid: in the page's own CSS file (e.g., PatchesPage.css) */
 .patches__app-shell {
   display: grid;
-  grid-template-columns: 18rem 1fr;
+  grid-template-columns: 22rem minmax(0, 1fr);
   flex: 1;
   min-height: 0; /* allow children to overflow within the flex track */
+  overflow: hidden;
+}
+
+.patches__app-shell > .ac-list,
+.patches__app-shell > .patches__detail {
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 ```
 
 Anti-pattern: inventing a new `.page-shell` / `.page-columns` / `.detail-pane` name when the canonical chain already covers the role. Promote a sibling class to `.ac-*` (per workplan §588 duplication-audit gate) if a primitive recurs across pages.
+
+### Modifier: `--fixed-viewport`
+
+`.ac-page-shell` by itself is a content-flow grid: the document scrolls naturally and the shell grows to its content's height. That shape suits landing pages (HomePage, WorkflowsPage) where the content is a single column that needs natural scroll.
+
+List-detail pages (PatchesPage, TonesPage, LibraryPage, PlayPage) add the `--fixed-viewport` modifier so the shell becomes a height-bounded flex column. Each column inside scrolls independently and the page header never scrolls out of view.
+
+**When to apply:**
+
+- The page renders a list and a detail surface side-by-side, and either is long enough to overflow the viewport.
+- The page needs its header / progress / banner chrome to stay anchored while the list scrolls.
+
+**When NOT to apply:**
+
+- Content-flow pages (HomePage, WorkflowsPage) — the modifier would clip their content unless they grow their own internal scroll container.
+- Pages whose body is intrinsically smaller than the viewport — the modifier is harmless but the regression spec gives the same protection without it.
+
+**Contract for descendants:** the per-page `__app-shell` claims `flex: 1; min-height: 0; overflow: hidden`, and every column inside the shell carries `min-height: 0; height: 100%; overflow: hidden`. The actual scroll happens one level deeper (`.ac-list-scroll`, `.<page>__detail-body`) where `overflow-y: auto` is declared. Skipping any one of these `min-height: 0` rules breaks the cascade silently — height containment propagates only when every flex/grid descendant relaxes its intrinsic minimum.
+
+**Regression coverage:** `modules/roland-sxx0-editor/test/ui/page-viewport-containment.spec.ts` asserts that each list-detail page's document height fits within the viewport (1280x800 plus 4px slack). If a future change removes the modifier or drops a `min-height: 0`, this spec catches the regression at test time.
 
 ---
 

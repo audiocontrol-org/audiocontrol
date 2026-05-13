@@ -52,6 +52,38 @@
   gap: var(--ac-page-section-gap);
 }
 
+/*
+ * Fixed-viewport modifier — list-detail editor pages mount the shell
+ * inside a height-bounded box so each column scrolls internally and
+ * the document does NOT scroll as one tall page. See DESIGN-SYSTEM.md
+ * § "Page Shell Pattern (fixed viewport, 3 column)".
+ *
+ * Height math: `100dvh` minus the site header (`--ac-site-header-height`)
+ * minus the `<main class="ac-site-main">` vertical padding (top + bottom
+ * = `--ac-page-main-vertical * 2`). The shell fills the available space
+ * between the site chrome rows; switching to a flex column lets the
+ * page header / progress / error banners stay intrinsic while the
+ * list-detail body claims `flex: 1` of the remainder. Grid would only
+ * give us two auto-tracks (`auto 1fr`); pages can have an arbitrary
+ * number of intrinsic rows before the body (header, progress, error,
+ * fixture-mismatch banner), so flex is the more honest fit.
+ *
+ * Use `100dvh` so the layout adapts to mobile browser chrome (URL bar
+ * appearing / disappearing) without a hardcoded pixel height.
+ *
+ * The per-page list-detail body class (e.g. `.patches__app-shell`,
+ * `.tones__app-shell`) is responsible for declaring `flex: 1` and
+ * `min-height: 0` so it consumes the remaining vertical space and
+ * lets its own list / detail columns scroll internally.
+ */
+.ac-page-shell--fixed-viewport {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: calc(100dvh - var(--ac-site-header-height) - (var(--ac-page-main-vertical) * 2));
+  overflow: hidden;
+}
+
 .ac-page-header {
   display: flex;
   align-items: center;

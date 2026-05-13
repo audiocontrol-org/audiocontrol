@@ -226,10 +226,14 @@ export function PatchesPage() {
   }
 
   return (
-    <div className="ac-page ac-page-shell">
+    <div className="ac-page ac-page-shell ac-page-shell--fixed-viewport">
       {/* Lean page header — h2 + red rule + status + refresh icon.
           Composed from .ac-page-title-* shared primitives (see
-          modules/roland-sxx0-editor/src/styles/_shared.css). */}
+          modules/roland-sxx0-editor/src/styles/_shared.css). The
+          `--fixed-viewport` modifier opts this page into the height-
+          bounded shell so the list + detail columns scroll internally
+          and the document does not scroll as one tall page (see
+          DESIGN-SYSTEM.md § "Page Shell Pattern"). */}
       <header className="ac-page-title-row">
         <div className="ac-page-title-block">
           <h2 id="patches-heading" className="ac-page-title-heading">Patches</h2>
