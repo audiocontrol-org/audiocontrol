@@ -11,6 +11,76 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-05-13: s550-support — open-issue closeout pass (13 closed: 9 bookkeeping + 4 small fixes)
+
+### Feature: s550-support
+### Worktree: audiocontrol-s550-support
+
+### Goal
+
+Operator picked the wave-bank C/D bug cluster from the open-issues list as the session goal. After verifying that the underlying fixes had already landed (just the issues were never closed per the project's "don't close autonomously" rule), the operator authorized closing them. Cluster-pattern walks expanded to two more clusters with the same shape, then to four small refactor issues that had real code work pending (#420, #419, #418, #405).
+
+### Accomplished
+
+**13 issues closed** across 4 commits with code changes. Test gate held at **170 passed, 4 skipped** through every commit.
+
+**Bookkeeping closures (no code — fixes had previously landed):**
+- **Wave bank C/D cluster** (#393, #396, #399, #403) — `waveBank: 0|1|2|3` literal-union → `waveBank: number` with layout-driven `<option>` set across all four Roland import dialogs.
+- **Slot label arithmetic cluster** (#397, #400, #402) — Raw `+1` / `+11` arithmetic → `MemoryLayout.formatPatchSlot()` / `formatToneSlot()` everywhere.
+- **Sample-rate dup** (#401) — Inline `'30kHz' ? 30000 : 15000` ternary → `toneSampleRateHz()` helper.
+- **Phase 9 parent** (#392) — Tasks 1-7 all complete per 2026-05-12 commits; verified TonesPage 489 lines, DESIGN-SYSTEM.md 990 lines, all 7 task commits exist on branch.
+
+**Code-bearing fixes:**
+- **#420 — orphaned LibraryTreePanel deletion** (commit `9c3bba0e`). 4 files deleted, **1,293 LOC removed** (double the issue's ~600 estimate). Pre-deletion grep audit confirmed every reference self-contained.
+- **#419 — TreeSection duplicate `data-testid`** (commit `c2fb4bba`). Replaced silent-no-op `${testId.replace('-tab', '-list')}` with unconditional `${testId}-content` suffix. Added regression test pinning the contract. Updated workaround comment in `library-flows-dnd.spec.ts`.
+- **#418 — LibraryTreeNode meta packing** (commit `8e0fc70e`). New `packLibraryTreeMeta` helper in `useRolandLibraryData` walks the tree and packs `{ directoryName, fileName, path }` into each node's `meta`. Side fix: `extractRolandDragMeta` extended; `handleDropLibraryPatch` / `handleDropLibraryTone` now prefer `meta.directoryName` / `meta.fileName` over `data.nodeName` (YAML display name). 4 new unit specs in `use-roland-selection-mapping.test.ts`. Test seam updated: `seedOPFSPatch` default `targetName` changed from `parsed.name` (YAML) to `fixtureName` (kebab-case directory name) — deliberately exercises the new meta-packing path end-to-end. **`LibraryTreeNode` interface in sampler-library extended with optional `meta?: Record<string, unknown>` field** (purely additive; no consumer broken).
+- **#405 — PatchesPage tone-load decoupling** (commit `d948826b`). Removed eager `loadToneBank(0)` from `loadInitialData`; new `handleSelectPatch` wrapper around `selectPatch` triggers tone-load synchronously on click. `patches.spec.ts` mount tests migrated from `load-everything` to the targeted `patches-bank-0` fixture (which had existed since #404 close-out 2026-05-12 but was never consumed). Filter on the selection test stays — the lazy load against `load-everything` still triggers the byte-6 area-code divergence at click time.
+
+### Didn't work
+
+- **Initial #418 fix had a silent regression in DnD path.** The meta-packing was only used by `useRolandSelectionMapping` (click flow); `handleDropLibraryPatch` and `handleDropLibraryTone` (drag flow) still fell back to `data.nodeName` (YAML display name). Caught when D-LIB-09 spec failed against the deliberately-mismatched `seedOPFSPatch` default. Fixed in the same commit by extending `extractRolandDragMeta` to extract the new fields and updating both drop handlers.
+
+- **First swing at #405 broke 13 tests.** Used a `useEffect` keyed on `selectedPatchIndex` to fire the lazy tone-load. React's effect-fire timing raced with downstream user actions (typing into setter inputs); against the simulated harness this shifted tone-RQDs to fire AFTER setters consumed the cursor, producing end-of-fixture errors that bypassed the `patch-writes` spec's known-divergence filter. Initial diagnosis was wrong: I posted a finding comment on #405 claiming #404 was open and blocking. Quick check showed #404 had been closed 2026-05-12 and the fixtures existed; the missing piece was just that `patches.spec.ts` had never migrated. Reverted the broken attempt, switched to a synchronous trigger inside `handleSelectPatch` (not a useEffect) — keeps RQD sequencing deterministic, all 170 tests pass.
+
+- **`patches.spec.ts` selection test couldn't drop its filter** because `load-everything` doesn't have a clean patches-then-tones-bank-0 cursor sequence. A combined `patches-then-tones-bank-0.ndjson` fixture would let the click test assert plain "no harness errors" — out of scope for this fix; tracked inline in the spec's file header.
+
+### Course corrections
+
+- **[PROCESS]** First swing at #405 violated agent-discipline's "drive every effort to completion before starting the next" — landing a production change that broke 13 tests is half-assing. Reverted immediately on detection. Second swing was scoped properly (synchronous trigger + spec migration + filter retention for the residual click-test divergence) and held the test gate.
+- **[FABRICATION]** Posted an incorrect finding comment on #405 claiming #404 was open. Should have verified via `gh issue view 404` BEFORE writing the comment, not after. Posted a correction in the close comment.
+- **[PROCESS]** Tried to do `make test-ui-roland` retries via `pnpm playwright test` for single-test debugging — webServer port already bound by previous run. Should have used `make test-*` targets per `.claude/rules/testing.md` from the start; saved 60+ seconds of dead time.
+
+### Quantitative
+
+- **4 commits** with code changes on `feature/s550-support` (`9c3bba0e`, `c2fb4bba`, `8e0fc70e`, `d948826b`)
+- **9 issues closed without code changes** (verification + close comments only)
+- **4 issues closed with code changes**
+- **13 issues closed total** this session
+- **Test gate:** 170 passed, 4 skipped — held through every commit
+- **New unit specs:** 4 (`use-roland-selection-mapping.test.ts`)
+- **New regression specs:** 1 (`TreeSection.test.tsx` testid distinctness)
+- **Net LOC delta on branch:** -1,066 (1,293 removed via #420; +227 across other commits including new tests + JSDoc)
+- **Open S-550 issues remaining:** 4 enhancements (#407, #408, #409, #410) + 1 hardware QA (Phase 6 §4) + 3 out-of-scope (#176 stale e2e, #365 operator question, #406 pre-existing unit test failures)
+- **~5 hours total wall clock** (single session, no break)
+
+### Insights
+
+- **The "issue open but fix already landed" pattern is more common than I'd assumed.** Of the 13 closures this session, 9 were pure bookkeeping — the code work had been done in prior commits, the close-comments referenced the closing commits, but nobody had hit the close button. The "don't close issues autonomously" rule is correctly defensive but it accumulates open-issue debt that can be drained in batch when the operator authorizes. Worth offering to walk the open-issue list at the start of a session — if many turn out to be pre-fixed, the bookkeeping pass is high-leverage.
+
+- **Pre-deletion grep audits matter.** #420's 4 deletions could have broken something if a hidden consumer existed. The grep audit confirmed every reference was self-referential within the 4 files, so the deletion was safe. The audit took 10 seconds and removed all uncertainty from the 1,293-line delete.
+
+- **Side fixes during a refactor are not scope creep when they prevent immediate regression.** #418's main fix (meta-packing in `useRolandLibraryData`) would have introduced a silent DnD bug if I hadn't ALSO updated `handleDropLibraryPatch` / `handleDropLibraryTone`. The deliberately-mismatched `seedOPFSPatch` default exposed this immediately — without it, the bug would have been silent until a user actually drag-dropped a library patch. Defensive test-seam choices catch sibling bugs at the same moment as the primary bug.
+
+- **React useEffect timing is not safe for harness-deterministic actions.** The first swing at #405 used a useEffect on `selectedPatchIndex`. The effect fired AFTER React batched the click → re-render, which raced with the test's next action. Switching to a synchronous wrapper around the click handler made the SimulatedAdapter cursor sequence deterministic. Lesson: when production code interacts with a sequence-sensitive harness (or any external system that cares about ordering), prefer synchronous trigger paths to React-effect paths.
+
+- **The 'verify external claims' memory rule applies to my own prior comments.** I posted a finding comment on #405 saying "#404 is open and blocks this." Two minutes of `gh issue view 404` would have shown it was closed. The correction in the close comment is honest but the original was avoidable noise.
+
+- **`make test-ui-roland` is the controller-side gate. Use it.** I tried to debug a single failing test via `pnpm playwright test` and hit a webServer port collision. The make target manages port lifecycle correctly. Per `.claude/rules/testing.md`'s explicit guidance — and per the controller-as-gate rule canonized 2026-05-11 — re-running the full gate after each change is cheaper than I keep estimating. ~2:30 wall-clock per run, cache-warm subsequent runs faster. The cost of skipping it once = a regression that masquerades as green for hours.
+
+- **Sequencing the closures cluster-by-cluster (rather than one-by-one) kept context lean.** Each cluster (wave-bank, slot-labels, sample-rate, refactors) had a similar verification pattern — grep for the bug, find the closing commit, write the close comment. Batching let me reuse the verification template and stay focused on one defect class at a time. This is the "drive every effort to completion before starting the next" rule applied at cluster granularity.
+
+---
+
 ## 2026-05-13: s550-support — Phase 9 closed (Tasks 6-7) + Phase 7 done (Tasks 1-2) + viewport-containment regression caught and fixed
 
 ### Feature: s550-support
@@ -2544,3 +2614,5 @@ Audit the current Codex and Claude repo-local guidance, close unintentional pari
 1. Parity work needs a canonical maintenance note or future audits will keep rediscovering the same "missing" artifacts.
 2. The important distinction is "matched in substance" versus "identical file-for-file"; tool-driven differences should be documented, not flattened.
 3. Verifying against `origin/main` before auditing prevents false positives when the repo surface may have changed upstream.
+
+---
