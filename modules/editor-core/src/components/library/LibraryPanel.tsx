@@ -118,7 +118,7 @@ export function LibraryPanel({
       )}
 
       {/* Content area */}
-      <div className="ac-library-panel-content ac-scroll-list">
+      <div className="ac-library-panel-content ac-list-scroll">
         {loading && !children && (
           <div className="ac-library-panel-status">Loading...</div>
         )}

@@ -24,9 +24,14 @@
    * Flex column so `.ac-list-scroll` (the inner pane) can claim
    * `flex: 1; min-height: 0` and scroll internally when the list
    * container is height-bounded by its parent grid track. Outside a
-   * height-bounded parent (content-flow pages), the list still wears
-   * its natural intrinsic height because no descendant requests flex
-   * growth on its own.
+   * height-bounded parent (content-flow pages), `.ac-list-scroll` DOES
+   * still request `flex: 1 1 auto` — but because this `.ac-list`
+   * carries no intrinsic height of its own, the flex container has
+   * nothing for the child to grow into. The child collapses to its
+   * content's intrinsic height and `overflow-y: auto` never engages.
+   * The behavior is therefore visually indistinguishable from a plain
+   * block in content-flow contexts, while still cooperating with a
+   * height-bounded parent when one is present.
    */
   display: flex;
   flex-direction: column;

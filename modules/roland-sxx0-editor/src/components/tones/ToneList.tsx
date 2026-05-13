@@ -66,7 +66,7 @@ export function ToneList({
       data-capability="C-TONE-01"
       aria-label="Tone list"
     >
-      <div className="ac-list-scroll ac-scroll-list">
+      <div className="ac-list-scroll">
         {Array.from({ length: totalBanks }, (_, bankIndex) => {
           const bankStart = bankIndex * tonesPerBank;
           const bankEnd = Math.min(bankStart + tonesPerBank, tones.length);

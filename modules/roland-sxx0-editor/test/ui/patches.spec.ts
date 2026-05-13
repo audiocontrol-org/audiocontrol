@@ -106,7 +106,7 @@ test.describe('S-330 Patches -- simulated harness', () => {
     // modules/roland-sxx0-editor/src/configs/s330.ts). Bank-0 load
     // populates slots 0-7; slots 8-15 stay as not-loaded placeholders.
     // Assert presence in the DOM, not viewport visibility -- the list
-    // scrolls inside `ac-scroll-list` so off-screen slots are still real.
+    // scrolls inside `ac-list-scroll` so off-screen slots are still real.
     await expect(page.getByTestId('patch-item-0')).toBeVisible({ timeout: 5_000 });
     await expect(page.locator('[data-testid^="patch-item-"]')).toHaveCount(16);
 

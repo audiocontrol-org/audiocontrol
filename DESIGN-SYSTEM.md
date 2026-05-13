@@ -447,19 +447,24 @@ Anti-pattern: inventing a new `.page-shell` / `.page-columns` / `.detail-pane` n
 
 `.ac-page-shell` by itself is a content-flow grid: the document scrolls naturally and the shell grows to its content's height. That shape suits landing pages (HomePage, WorkflowsPage) where the content is a single column that needs natural scroll.
 
-List-detail pages (PatchesPage, TonesPage, LibraryPage, PlayPage) add the `--fixed-viewport` modifier so the shell becomes a height-bounded flex column. Each column inside scrolls independently and the page header never scrolls out of view.
+All four list-detail editor pages — PatchesPage, TonesPage, LibraryPage, PlayPage — add the `--fixed-viewport` modifier so the shell becomes a height-bounded flex column. Each column inside scrolls independently and the page header never scrolls out of view. Landing pages (HomePage, WorkflowsPage) are the exception: they stay in the default content-flow shape so they can scroll naturally.
 
 **When to apply:**
 
 - The page renders a list and a detail surface side-by-side, and either is long enough to overflow the viewport.
-- The page needs its header / progress / banner chrome to stay anchored while the list scrolls.
+- The page renders a fixed-size grid (e.g., the 8 multi-part strips on PlayPage) that should scroll internally at narrower viewports rather than push the page chrome off-screen.
+- The page needs its header / progress / banner chrome to stay anchored while the body scrolls.
 
 **When NOT to apply:**
 
-- Content-flow pages (HomePage, WorkflowsPage) — the modifier would clip their content unless they grow their own internal scroll container.
-- Pages whose body is intrinsically smaller than the viewport — the modifier is harmless but the regression spec gives the same protection without it.
+- Content-flow landing pages (HomePage, WorkflowsPage) — the modifier would clip their content unless they grow their own internal scroll container.
 
-**Contract for descendants:** the per-page `__app-shell` claims `flex: 1; min-height: 0; overflow: hidden`, and every column inside the shell carries `min-height: 0; height: 100%; overflow: hidden`. The actual scroll happens one level deeper (`.ac-list-scroll`, `.<page>__detail-body`) where `overflow-y: auto` is declared. Skipping any one of these `min-height: 0` rules breaks the cascade silently — height containment propagates only when every flex/grid descendant relaxes its intrinsic minimum.
+**Contract for descendants:** the body row inside the fixed-viewport shell claims `flex: 1; min-height: 0; overflow: hidden`. Two shapes satisfy this contract:
+
+1. **List+detail grid pages** (PatchesPage, TonesPage) — the per-page `__app-shell` class carries the contract directly, and every column inside the shell carries `min-height: 0; height: 100%; overflow: hidden`. The actual scroll happens one level deeper (`.ac-list-scroll`, `.<page>__detail-body`).
+2. **Single-widget pages** (LibraryPage, PlayPage) — wrap the body widget in the shared `.ac-page-shell-body` primitive (in `editor-core/src/design/layout-primitives.css`). It declares the flex contract once for both the wrapper and (via `.ac-page-shell-body > *`) its direct child so the widget inherits the bounded height.
+
+Skipping any one of these `min-height: 0` rules breaks the cascade silently — height containment propagates only when every flex/grid descendant relaxes its intrinsic minimum.
 
 **Regression coverage:** `modules/roland-sxx0-editor/test/ui/page-viewport-containment.spec.ts` asserts that each list-detail page's document height fits within the viewport (1280x800 plus 4px slack). If a future change removes the modifier or drops a `min-height: 0`, this spec catches the regression at test time.
 

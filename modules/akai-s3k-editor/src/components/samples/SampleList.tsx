@@ -114,7 +114,7 @@ export function SampleList({
             </button>
           )}
         </div>
-        <div className="ac-scroll-list flex items-center justify-center py-8">
+        <div className="ac-list-scroll flex items-center justify-center py-8">
           <span className="text-sm text-gray-500">Loading samples...</span>
         </div>
       </div>
@@ -137,7 +137,7 @@ export function SampleList({
             </button>
           )}
         </div>
-        <div className="ac-scroll-list flex items-center justify-center py-8">
+        <div className="ac-list-scroll flex items-center justify-center py-8">
           <span className="text-sm text-gray-500">No samples loaded</span>
         </div>
       </div>
@@ -161,7 +161,7 @@ export function SampleList({
           </button>
         )}
       </div>
-      <div className="ac-scroll-list space-y-1">
+      <div className="ac-list-scroll space-y-1">
         {sampleNames.map((name, index) => {
           const isSelected = index === selectedIndex;
           const isEmpty = name.trim() === '';

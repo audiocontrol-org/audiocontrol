@@ -84,6 +84,31 @@
   overflow: hidden;
 }
 
+/*
+ * Body row of a fixed-viewport shell whose body is a SINGLE full-height
+ * widget (PluginLibraryBrowser, multi-part grid, etc.) — i.e., pages
+ * that don't need their own list+detail grid track layout.
+ *
+ * Pages with a list+detail grid declare an equivalent contract inside
+ * their per-page `__app-shell` class (see `patches.css` /
+ * `tones.css` — `flex: 1; min-height: 0; overflow: hidden`); this
+ * primitive is the same shape lifted to the design system for pages
+ * that have nothing additional to express.
+ */
+.ac-page-shell-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ac-page-shell-body > * {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
 .ac-page-header {
   display: flex;
   align-items: center;
@@ -151,12 +176,6 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-}
-
-.ac-scroll-list {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
 }
 
 .ac-container-md {

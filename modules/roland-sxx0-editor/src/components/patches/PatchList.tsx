@@ -71,7 +71,7 @@ export function PatchList({
       data-capability="C-PATCH-01"
       aria-label="Patch list"
     >
-      <div className="ac-list-scroll ac-scroll-list">
+      <div className="ac-list-scroll">
         {Array.from({ length: totalBanks }, (_, bankIndex) => {
           const bankStart = bankIndex * patchesPerBank;
           const bankEnd = Math.min(bankStart + patchesPerBank, patches.length);

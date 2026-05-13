@@ -258,7 +258,7 @@ export function PlayPage() {
   }
 
   return (
-    <div className="ac-page ac-page-shell">
+    <div className="ac-page ac-page-shell ac-page-shell--fixed-viewport">
       <div className="ac-page-sticky-header">
         <div className="ac-page-header">
           <h2 className="text-xl font-bold text-s330-text">Play</h2>
@@ -304,13 +304,17 @@ export function PlayPage() {
         </div>
       </div>
 
-      {/* Parts Grid */}
-      <div
-        className="bg-s330-panel border border-s330-accent rounded-md overflow-hidden"
-        data-capability="C-PLAY-01"
-      >
-        {/* Parts Grid */}
-        <div className="p-4 font-mono text-sm">
+      {/* Parts Grid — fixed-viewport contract: the card claims the
+          remaining shell height via `.ac-page-shell-body > *`, the
+          inner padded div scrolls internally when narrower viewports
+          can't fit all 8 strips. */}
+      <div className="ac-page-shell-body">
+        <div
+          className="bg-s330-panel border border-s330-accent rounded-md overflow-hidden flex flex-col"
+          data-capability="C-PLAY-01"
+        >
+          {/* Parts Grid */}
+          <div className="p-4 font-mono text-sm flex-1 min-h-0 overflow-y-auto">
           {/* Header row */}
           <div className="grid grid-cols-12 gap-2 mb-2 text-s330-muted text-xs">
             <div className="col-span-1"></div>
@@ -429,6 +433,7 @@ export function PlayPage() {
               </div>
             </div>
           ))}
+          </div>
         </div>
       </div>
 

@@ -321,7 +321,7 @@ export function LibraryPage() {
   }
 
   return (
-    <div className="ac-page ac-page-shell">
+    <div className="ac-page ac-page-shell ac-page-shell--fixed-viewport">
       <div className="ac-page-sticky-header">
         <div className="ac-page-header">
           <div className="flex items-center gap-4">
@@ -338,7 +338,7 @@ export function LibraryPage() {
 
       {error && (<div className="ac-alert ac-alert-error"><p className="ac-text-error text-sm">{error}</p></div>)}
 
-      <div className="h-[calc(100vh-12rem)]" data-capability="C-LIB-01">
+      <div className="ac-page-shell-body" data-capability="C-LIB-01">
         <PluginLibraryBrowser
           plugin={plugin}
           libraryHandle={libraryHandle}

@@ -70,7 +70,7 @@ export function KeygroupList({
             </button>
           )}
         </div>
-        <div className="ac-scroll-list flex items-center justify-center py-8">
+        <div className="ac-list-scroll flex items-center justify-center py-8">
           <span className="text-sm text-gray-500">No keygroups available. Select a program first.</span>
         </div>
       </div>
@@ -105,7 +105,7 @@ export function KeygroupList({
           )}
         </div>
       </div>
-      <div className="ac-scroll-list space-y-1">
+      <div className="ac-list-scroll space-y-1">
         {Array.from({ length: keygroupCount }, (_, i) => {
           const kg = keygroups[i];
           const isSelected = selectedIndex === i;

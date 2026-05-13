@@ -17,8 +17,14 @@
  * hidden` so the inner `.ac-list-scroll` and `.<page>__detail-body`
  * scroll independently. See DESIGN-SYSTEM.md § "Page Shell Pattern".
  *
- * What this spec asserts: at viewport 1280x800, the document is no
- * taller than the viewport (plus a 4px slack for sub-pixel rounding).
+ * What this spec asserts: at both 1280x800 (mainstream laptop) and
+ * 1280x720 (narrower laptop / external 720p surfaces), the document is
+ * no taller than the viewport (plus a 4px slack for sub-pixel
+ * rounding). The two-viewport coverage catches pages that happen to
+ * fit at the taller height by coincidence but overflow at narrower
+ * heights — the original Phase 9 Task 4 polish commit only locked
+ * 1280x800 and a follow-up review flagged that LibraryPage / PlayPage
+ * were passing the gate via legacy mechanisms rather than the modifier.
  * If a future change re-introduces the regression — by removing the
  * modifier class, by dropping a `min-height: 0` rule, or by adding a
  * fixed-height descendant inside the bounded grid — this spec turns
@@ -48,7 +54,15 @@ interface Scenario {
   readonly suppressError?: (text: string) => boolean;
 }
 
-const VIEWPORT = { width: 1280, height: 800 } as const;
+interface ViewportSize {
+  readonly width: number;
+  readonly height: number;
+}
+
+const VIEWPORTS: ReadonlyArray<ViewportSize> = [
+  { width: 1280, height: 800 },
+  { width: 1280, height: 720 },
+] as const;
 
 // Sub-pixel rounding slack — descendants whose height is a fractional
 // rem can round up by 1px each, and a CSS layout that's exactly the
@@ -111,44 +125,46 @@ const SCENARIOS: ReadonlyArray<Scenario> = [
 
 test.describe('Page viewport containment — list-detail pages must not overflow the viewport', () => {
   for (const scenario of SCENARIOS) {
-    test(`${scenario.name} fits within the viewport at 1280x800`, async ({ page }) => {
-      const pageErrors: string[] = [];
-      page.on('pageerror', (err) => {
-        if (scenario.suppressError?.(err.message)) return;
-        pageErrors.push(err.message);
+    for (const viewport of VIEWPORTS) {
+      test(`${scenario.name} fits within the viewport at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+        const pageErrors: string[] = [];
+        page.on('pageerror', (err) => {
+          if (scenario.suppressError?.(err.message)) return;
+          pageErrors.push(err.message);
+        });
+        page.on('console', (msg) => {
+          if (msg.type() !== 'error') return;
+          const text = msg.text();
+          if (scenario.suppressError?.(text)) return;
+          pageErrors.push(text);
+        });
+
+        await page.addInitScript(() => {
+          window.localStorage.clear();
+        });
+        await page.setViewportSize(viewport);
+        await page.goto(scenario.url);
+        await page.waitForLoadState('networkidle');
+        await scenario.readyAssertion(page);
+
+        const overflow = await page.evaluate(() => ({
+          docHeight: document.documentElement.scrollHeight,
+          viewportHeight: window.innerHeight,
+        }));
+
+        expect(
+          overflow.docHeight,
+          `${scenario.url} document scrollHeight (${overflow.docHeight}px) should fit within viewport (${overflow.viewportHeight}px). ` +
+          `If this fails the page is back to scrolling as one tall document — see DEVELOPMENT-NOTES 2026-05-13.`,
+        ).toBeLessThanOrEqual(overflow.viewportHeight + HEIGHT_SLACK_PX);
+
+        // No harness or layout-side console errors leaked from this
+        // scenario (suppressing only the known PatchesPage divergence).
+        expect(
+          pageErrors,
+          `${scenario.url} should not produce unexpected page errors`,
+        ).toEqual([]);
       });
-      page.on('console', (msg) => {
-        if (msg.type() !== 'error') return;
-        const text = msg.text();
-        if (scenario.suppressError?.(text)) return;
-        pageErrors.push(text);
-      });
-
-      await page.addInitScript(() => {
-        window.localStorage.clear();
-      });
-      await page.setViewportSize(VIEWPORT);
-      await page.goto(scenario.url);
-      await page.waitForLoadState('networkidle');
-      await scenario.readyAssertion(page);
-
-      const overflow = await page.evaluate(() => ({
-        docHeight: document.documentElement.scrollHeight,
-        viewportHeight: window.innerHeight,
-      }));
-
-      expect(
-        overflow.docHeight,
-        `${scenario.url} document scrollHeight (${overflow.docHeight}px) should fit within viewport (${overflow.viewportHeight}px). ` +
-        `If this fails the page is back to scrolling as one tall document — see DEVELOPMENT-NOTES 2026-05-13.`,
-      ).toBeLessThanOrEqual(overflow.viewportHeight + HEIGHT_SLACK_PX);
-
-      // No harness or layout-side console errors leaked from this
-      // scenario (suppressing only the known PatchesPage divergence).
-      expect(
-        pageErrors,
-        `${scenario.url} should not produce unexpected page errors`,
-      ).toEqual([]);
-    });
+    }
   }
 });
