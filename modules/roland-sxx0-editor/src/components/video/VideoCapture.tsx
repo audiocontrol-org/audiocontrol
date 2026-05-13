@@ -13,9 +13,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores/uiStore';
 import { useFrontPanel, type NavigationButton, type FunctionButton } from '@/hooks/useFrontPanel';
-import { NavigationPad } from '@/components/front-panel/NavigationPad';
-import { ValueButtons } from '@/components/front-panel/ValueButtons';
-import { FunctionButtonRow } from '@/components/front-panel/FunctionButtonRow';
+import { VirtualFrontPanel } from '@/components/front-panel/VirtualFrontPanel';
 
 const STORAGE_KEY_DEVICE = 's330-video-device';
 
@@ -361,23 +359,11 @@ export function VideoCapture() {
 
       {/* Front Panel Controls */}
       <div className="ac-drawer-section border-s330-accent space-y-3">
-        <FunctionButtonRow
+        <VirtualFrontPanel
           onPress={pressButton}
           activeButton={activeButton}
           disabled={!isConnected || isPressing}
         />
-        <div className="flex items-center justify-between gap-2">
-          <NavigationPad
-            onPress={pressButton}
-            activeButton={activeButton}
-            disabled={!isConnected || isPressing}
-          />
-          <ValueButtons
-            onPress={pressButton}
-            activeButton={activeButton}
-            disabled={!isConnected || isPressing}
-          />
-        </div>
         <div className="flex items-center justify-center gap-2">
           <span className="text-xs text-s330-muted">Arrow category:</span>
           <button

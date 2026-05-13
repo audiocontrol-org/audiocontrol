@@ -70,7 +70,7 @@ This workplan is written defensively per [`.claude/rules/agent-discipline.md`](/
 | Phase 4: S-550 Library Converters | Complete | Tone, patch, set converters + schemas |
 | Phase 5: Unified Sampler Editor | Complete | Device config registry, context, routing |
 | Phase 6: Hardware Validation | Complete | All tests passing against physical S-550 |
-| Phase 7: S-550 Front Panel | Task 1 — Design APPROVED 2026-05-12 (v2 commit `ffd003d7`); Task 2 ready to implement | Virtual front panel layout — chunky-button control surface direction in [`explorations/08-front-panel-s550.html`](./explorations/08-front-panel-s550.html). 11-control inventory matches existing `VirtualFrontPanel` 1:1. Phase 0 Wave 6 fixtures replay against the new layout to validate. |
+| Phase 7: S-550 Front Panel | **COMPLETE 2026-05-12.** Task 1 — Design APPROVED 2026-05-12 (v2 commit `ffd003d7`); Task 2 — React implementation landed. | Virtual front panel layout — chunky-button control surface direction in [`explorations/08-front-panel-s550.html`](./explorations/08-front-panel-s550.html) promoted to real `VirtualFrontPanel` component. 11-control inventory matches existing `VirtualFrontPanel` 1:1. Phase 0 Wave 6 fixtures (D-XX-02/03/04) replay green against the new layout (`make test-ui-roland`: 160 passed, 4 skipped). |
 | Phase 8: Memory Map Visualization | Complete | Graphical memory map in import dialogs |
 | Phase 9: UX/UI Cleanup | **Tasks 1-7 COMPLETE 2026-05-12.** Task 4.0 atomic primitives (commits `2c078954` + `fc3bac98`). Task 4 per-page amends: PatchesPage (`7299ca6a` + `33e7e6b8`), TonesPage (`098b7a21` + `8eac821a` + `4952d643`), PlayPage (`2e857bc6` + `bd49dc60`), LibraryPage (`7827bbfc`), WorkflowsPage + HomePage (no-change — already polished). Task 5 dialog polish across 11 library dialogs (`8e179806` + `418bac65`). Task 6 visual screenshot verification (`b6a153d6` + `20d2a2e6` + `7d34e558`). Task 7 DESIGN-SYSTEM.md codification (commit `1d508020` — Phase 9 closure). Six v3 primitives shipped + the `.ac-input--warning` / `.ac-select--warning` / `.ac-select--compact` / `.ac-input--compact` modifiers. AcCheckbox + AcNumberInput refactored to `forwardRef`. SaveSetDialog regression caught at code-quality review and fixed at data source (commit `418bac65`). `make test-ui-roland`: 160 passed, 4 skipped (146 baseline + 14 new screenshot captures). | Visual polish across all editor pages, all via the canonical v3 atomic-primitive surface; conventions codified in DESIGN-SYSTEM.md (page shell, page header, live-status footer, tabbed detail, virtual front panel, rec-LED red sparingly, color palette preservation, `.ac-list-*` family). Per the workplan-discipline rule, every per-page polish commit is "done" only when every atomic control uses design-language primitives — gate met for all 6 pages + 11 dialogs + Task 7 codification. |
 | Phase 10: Post-Audit Cleanup | All Tasks Done (1–11 — pending hardware verification on Tasks 7 + 10, which Phase 0 fixture replay will close) | Functional + duplication fixes surfaced by 2026-05-08 audit, Phase 9 Task 3 review, and Phase 10 reviews 4–8. All eleven tasks (#393–#403) complete; hardware verification can close once Phase 0's recorded fixtures cover those code paths. |
@@ -424,7 +424,7 @@ Hardware testing revealed three bugs in the shared S-series client that were not
 
 ---
 
-## Phase 7: S-550 Virtual Front Panel (Task 1 — Design APPROVED 2026-05-12; Task 2 — Ready to Implement)
+## Phase 7: S-550 Virtual Front Panel (COMPLETE 2026-05-12)
 
 This phase adds an S-550-specific layout for the existing `VirtualFrontPanel` component. The S-330 panel is a 280×200 portrait floating widget; the S-550 variant uses the same 11 controls in a landscape grid that mirrors the real S-550 hardware's two-row chunky-button layout.
 
@@ -441,19 +441,20 @@ This phase adds an S-550-specific layout for the existing `VirtualFrontPanel` co
    - **Keyboard shortcuts identical to S-330:** `↑ ↓ ← →` nav, `+ −` value, `F1-F5` for `MODE/MENU/SUB/COM/EXEC`. Bindings live in `useFrontPanel.ts` and the S-550 layout inherits them unchanged.
    - **Duplication audit gate:** N/A — design-exploration task; no production code authored.
 
-2. **Implement S-550 front panel variant — READY 2026-05-12.**
-   - Add S-550 layout component at `modules/roland-sxx0-editor/src/components/front-panel/S550FrontPanel.tsx` (or as a layout-variant prop on `VirtualFrontPanel`); the v2 mockup's 7×2 grid + chunky-button CSS is the visual blueprint. Reuse `FrontPanelButton`, `NavigationPad`, `ValueButtons`, `FunctionButtonRow` unchanged — variant only restyles, never replaces.
-   - Device config (`SSeriesDeviceConfig` in `modules/sampler-editor/src/configs/`) selects the variant at mount time. No device conditionals in component bodies.
-   - Verify on `/roland/s550/editor` against the simulated harness — front-panel SysEx capture fixtures from Phase 0 Wave 6 (`front-panel-nav-flow`, `front-panel-value-flow`, `front-panel-function-flow`) replay against the new layout to confirm every button still routes through the existing `useFrontPanel.pressButton` chain.
-   - Existing capability specs at `test/ui/capabilities/front-panel-emit.spec.ts` (D-XX-02/03/04 from Phase 0 Wave 6) MUST keep passing unchanged — same buttons, same SysEx out, just a different rendered layout.
+2. **Implement S-550 front panel variant — COMPLETE 2026-05-12.**
+   - The v2 mockup's 7×2 grid + chunky-button CSS were promoted into a real React component: `modules/roland-sxx0-editor/src/components/front-panel/VirtualFrontPanel.tsx` (replacing the dead floating-draggable widget of the same name) + co-located `front-panel.css`. Reuses the `FrontPanelButton` primitive unchanged; the primitive gained an opt-in `variant="chunky"` mode so the panel CSS paints on a bare button without tailwind chrome clashing.
+   - Per the operator's directive ("we can use the work you did if you replace the ad-hoc buttons used in the video capture panel with the VirtualFrontPanel you've designed"), `VideoCapture.tsx` now mounts a single `<VirtualFrontPanel>` in place of the three ad-hoc clusters (`NavigationPad`, `ValueButtons`, `FunctionButtonRow`). The three orphaned sub-components were deleted; `front-panel/index.ts` re-exports only `FrontPanelButton` + `VirtualFrontPanel`.
+   - The new panel is device-agnostic — both `/roland/s330/editor` and `/roland/s550/editor` render the same chrome (per the multi-device architecture rule). New `--ac-fp-*` chassis/button/label tokens live in `editor-core/src/design/tokens.css` per the design-system-first rule.
+   - Phase 0 Wave 6 capability specs (`test/ui/capabilities/front-panel-emit.spec.ts` — D-XX-02 / D-XX-03 / D-XX-04) pass unchanged against the new layout — same aria-labels, same SysEx out. `make test-ui-roland`: 160 passed, 4 skipped.
+   - Visual verification screenshots saved at `explorations/09-front-panel-s330-real.png` + `explorations/09-front-panel-s550-real.png` (captured via `test/ui/phase-7-task-2-front-panel-screenshots.spec.ts`).
 
 ### Acceptance Criteria
 
 - [x] Design exploration HTML mockup committed under `explorations/` — Task 1 deliverable. (commit `9712bb45` + `ffd003d7`)
 - [x] Operator design review — direction APPROVED 2026-05-12 (after v2 revision; v1 rejected for invented chrome).
-- [ ] S-550 front panel renders with correct button layout against `/roland/s550/editor`.
-- [ ] Button functions emit correct SysEx (verified via existing Phase 0 Wave 6 capability specs — no new specs required since the control set is unchanged).
-- [ ] No device conditionals in panel components — variant selection via device-config injection, per multi-device architecture rule.
+- [x] S-550 front panel renders with correct button layout against `/roland/s550/editor` (verified by `09-front-panel-s550-real.png`).
+- [x] Button functions emit correct SysEx (verified via Phase 0 Wave 6 capability specs D-XX-02/03/04 — `make test-ui-roland`: 160 passed, 4 skipped).
+- [x] No device conditionals in panel components — the panel is shared by both `/roland/s330/editor` and `/roland/s550/editor` mounts (per multi-device architecture rule).
 
 ---
 

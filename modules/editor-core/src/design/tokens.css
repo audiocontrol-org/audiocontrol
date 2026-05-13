@@ -105,6 +105,48 @@
      Roland blue identity (that's --ac-color-accent). */
   --ac-color-rec: #f6533c;
   --ac-color-rec-glow: rgba(246, 83, 60, 0.55);
+
+  /* ------------------------------------------------------------------
+   * Phase 7 Task 2 virtual-front-panel tokens — chunky-button control
+   * surface chrome (operator-approved 2026-05-12 via
+   * explorations/08-front-panel-s550.html). The panel is a matte black
+   * chassis with rubberized button blocks; these tokens carry the
+   * chassis + button gradient stops + the silkscreen label colors so
+   * the panel reads identically to the S-550 hardware reference.
+   *
+   * Scope: ONLY the virtual front panel consumes these. The editor's
+   * general surface vocabulary (cards, drawers, list rows) keeps using
+   * `--ac-color-surface-*` and `--ac-color-border-*`; the front panel
+   * is a single hardware-homage exception, not the start of a parallel
+   * chrome system.
+   * ------------------------------------------------------------------ */
+
+  /* Chassis — matte black, no decoration. Slightly darker at the
+     bottom edge to read as a recessed control bay. */
+  --ac-fp-chassis-top: hsl(220 5% 7%);
+  --ac-fp-chassis-bot: hsl(220 6% 3%);
+  --ac-fp-chassis-edge: hsl(220 6% 3%);
+
+  /* Button — chunky molded plastic. Top is slightly lighter
+     (front-lit), bottom is near-black; vertical gradient gives the 3D
+     extrusion. The bezel value is the hairline gap between buttons. */
+  --ac-fp-btn-top: hsl(220 4% 14%);
+  --ac-fp-btn-mid: hsl(220 5% 9%);
+  --ac-fp-btn-bot: hsl(220 6% 5%);
+  --ac-fp-btn-bezel: hsl(220 8% 2%);
+
+  /* Pressed state — accent-tinted (blue ink, very subtle) gradient.
+     Mirrors the `--ac-color-accent` brand without literally using it,
+     so the press feedback reads as an extension of the editor's blue
+     identity. */
+  --ac-fp-btn-pressed-top: hsl(215 30% 18%);
+  --ac-fp-btn-pressed-mid: hsl(215 28% 11%);
+  --ac-fp-btn-pressed-bot: hsl(215 32% 6%);
+
+  /* Label silkscreen — white for function/value, red for the arrow
+     glyphs (matches the operator's S-550 hardware photo). */
+  --ac-fp-label-fn: hsl(210 12% 86%);
+  --ac-fp-label-pressed: hsl(210 96% 86%);
 }
 
 :root[data-editor='s330'] {

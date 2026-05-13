@@ -1,334 +1,225 @@
 /**
- * Virtual Front Panel Component
+ * Virtual Front Panel — chunky-button control surface
  *
- * A draggable, collapsible floating panel that mirrors the S-330's
- * physical front panel buttons for remote control via SysEx.
+ * The 11-control surface for remote Roland S-330 / S-550 operation,
+ * mounted inside the editor's `<VideoCapture>` drawer (Decision 1 in
+ * `decisions-2026-05-11.md`). Visual blueprint:
+ * `docs/1.0/001-IN-PROGRESS/s550-support/explorations/
+ * 08-front-panel-s550.html` (operator-approved 2026-05-12, commit
+ * `ffd003d7`).
  *
- * ## Keyboard Shortcuts (when panel is expanded)
+ * Layout — 7-column × 2-row grid mirroring the S-550 hardware photo:
  *
- * - Arrow keys: Navigation (Up/Down/Left/Right)
- * - +/- or =/- : Inc/Dec values
- * - Enter: Execute
- * - F1: MODE button
- * - F2: MENU button
- * - F3: SUB MENU button
- * - F4: COM button
- * - F5: Execute button
+ *   Row 1:  MODE | MENU | SUB-MENU | (blank) | ▲ | (blank) | COM
+ *   Row 2:  DEC  | INC  | (blank)  | ◀ | ▼ | ▶ | EXEC
+ *
+ * Device-agnostic: both the S-330 and the S-550 editors render the
+ * same panel. The visual aesthetic (matte chassis + chunky molded
+ * keys + red arrow silkscreen) is borrowed from the S-550 hardware
+ * reference because the S-330 was the visual outlier — a 1990s
+ * rackmount unit shares its design language with the S-550 anyway.
+ *
+ * Capability contract (load-bearing for
+ * `test/ui/capabilities/front-panel-emit.spec.ts`):
+ *   - Arrows expose accessible names `Arrow up` / `Arrow down` /
+ *     `Arrow left` / `Arrow right` (D-XX-02).
+ *   - Value buttons expose `Decrement` / `Increment` (D-XX-03).
+ *   - Function buttons expose visible labels `MODE` / `MENU` / `SUB` /
+ *     `COM` / `EXEC` (D-XX-04).
+ *
+ * Press flow: every button click ends in
+ * `useFrontPanel.pressButton(id)` via the `onPress` prop the host
+ * (currently `VideoCapture.tsx`) wires through.
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { cn } from '@/lib/utils';
-import { useFrontPanel, type NavigationButton, type FunctionButton } from '@/hooks/useFrontPanel';
-import { NavigationPad } from './NavigationPad';
-import { ValueButtons } from './ValueButtons';
-import { FunctionButtonRow } from './FunctionButtonRow';
+import { FrontPanelButton } from './FrontPanelButton';
+import type { FrontPanelButton as ButtonType } from '@/hooks/useFrontPanel';
+import './front-panel.css';
 
-// localStorage keys for panel state persistence
-const STORAGE_KEY_POSITION = 's330-front-panel-position';
-const STORAGE_KEY_EXPANDED = 's330-front-panel-expanded';
-
-// Panel dimensions
-const PANEL_WIDTH = 280;
-const PANEL_HEIGHT_EXPANDED = 200;
-const MIN_X = 0;
-const MIN_Y = 0;
-
-interface Position {
-    x: number;
-    y: number;
+export interface VirtualFrontPanelProps {
+    /** Press handler — fired with the canonical button id. */
+    onPress: (button: ButtonType) => void;
+    /** Currently active button (controlled by `useFrontPanel`). */
+    activeButton: ButtonType | null;
+    /** Disable the whole panel (e.g., MIDI not connected). */
+    disabled?: boolean;
 }
 
 /**
- * Load saved position from localStorage
+ * SUB MENU label — stacks "SUB" over "MENU" per the v2 mockup. The
+ * primitive's `icon` slot renders above the (empty) `label`, so we use
+ * `icon` to host the two-line node.
  */
-function loadPosition(): Position {
-    try {
-        const saved = localStorage.getItem(STORAGE_KEY_POSITION);
-        if (saved) {
-            return JSON.parse(saved);
-        }
-    } catch {
-        // Ignore parse errors
-    }
-    // Default position: bottom-left with some margin
-    return { x: 16, y: typeof window !== 'undefined' ? window.innerHeight - PANEL_HEIGHT_EXPANDED - 80 : 400 };
-}
-
-/**
- * Load expanded state from localStorage
- */
-function loadExpanded(): boolean {
-    try {
-        const saved = localStorage.getItem(STORAGE_KEY_EXPANDED);
-        if (saved !== null) {
-            return saved === 'true';
-        }
-    } catch {
-        // Ignore parse errors
-    }
-    return false;
-}
-
-/**
- * Virtual Front Panel - Floating draggable panel for S-330 remote control
- *
- * Provides buttons for:
- * - Navigation (Up/Down/Left/Right)
- * - Value adjustment (Inc/Dec)
- * - Functions (MODE, MENU, SUB MENU, COM, Execute)
- */
-export function VirtualFrontPanel() {
-    const [isExpanded, setIsExpanded] = useState(loadExpanded);
-    const [position, setPosition] = useState<Position>(loadPosition);
-
-    const panelRef = useRef<HTMLDivElement>(null);
-    const isDragging = useRef(false);
-    const dragOffset = useRef({ x: 0, y: 0 });
-
-    // Get front panel hook state
-    const { pressButton, isConnected, isPressing, activeButton, lastError } = useFrontPanel();
-
-    // Save expanded state to localStorage
-    useEffect(() => {
-        localStorage.setItem(STORAGE_KEY_EXPANDED, String(isExpanded));
-    }, [isExpanded]);
-
-    // Drag handlers
-    const handleDragStart = useCallback((e: React.MouseEvent) => {
-        // Don't start drag if clicking on interactive elements
-        if ((e.target as HTMLElement).closest('button')) return;
-
-        isDragging.current = true;
-        dragOffset.current = {
-            x: e.clientX - position.x,
-            y: e.clientY - position.y,
-        };
-        e.preventDefault();
-    }, [position]);
-
-    const handleDragMove = useCallback((e: MouseEvent) => {
-        if (!isDragging.current) return;
-
-        const maxX = window.innerWidth - PANEL_WIDTH;
-        const maxY = window.innerHeight - (isExpanded ? PANEL_HEIGHT_EXPANDED : 40);
-
-        const newX = Math.max(MIN_X, Math.min(maxX, e.clientX - dragOffset.current.x));
-        const newY = Math.max(MIN_Y, Math.min(maxY, e.clientY - dragOffset.current.y));
-
-        setPosition({ x: newX, y: newY });
-    }, [isExpanded]);
-
-    const handleDragEnd = useCallback(() => {
-        if (isDragging.current) {
-            isDragging.current = false;
-            localStorage.setItem(STORAGE_KEY_POSITION, JSON.stringify(position));
-        }
-    }, [position]);
-
-    // Global mouse event listeners for drag
-    useEffect(() => {
-        const handleMouseMove = (e: MouseEvent) => {
-            handleDragMove(e);
-        };
-        const handleMouseUp = () => {
-            handleDragEnd();
-        };
-
-        window.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('mouseup', handleMouseUp);
-        return () => {
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
-        };
-    }, [handleDragMove, handleDragEnd]);
-
-    // Keyboard shortcut handler
-    const handleKeyDown = useCallback((e: KeyboardEvent) => {
-        // Only handle shortcuts when panel is expanded and connected
-        if (!isExpanded || !isConnected || isPressing) return;
-
-        // Don't capture keys when typing in an input
-        const target = e.target as HTMLElement;
-        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
-            return;
-        }
-
-        // Don't capture keys when slice editor dialog is open (it uses +/- for zoom)
-        if (document.querySelector('[data-slice-editor-open="true"]')) {
-            return;
-        }
-
-        // Don't capture keys when loop editor has focus (it uses arrow keys and +/-)
-        const loopEditor = document.querySelector('[data-loop-editor]');
-        if (loopEditor?.contains(document.activeElement)) {
-            return;
-        }
-
-        // Map keys to navigation buttons
-        const navKeyMap: Record<string, NavigationButton> = {
-            'ArrowUp': 'up',
-            'ArrowDown': 'down',
-            'ArrowLeft': 'left',
-            'ArrowRight': 'right',
-            '+': 'inc',
-            '=': 'inc',  // = key (unshifted +)
-            '-': 'dec',
-            '_': 'dec',  // _ key (shifted -)
-        };
-
-        // Map F-keys and Enter to function buttons
-        const funcKeyMap: Record<string, FunctionButton> = {
-            'F1': 'mode',
-            'F2': 'menu',
-            'F3': 'sub-menu',
-            'F4': 'com',
-            'F5': 'execute',
-            'Enter': 'execute',
-        };
-
-        // Handle navigation keys
-        const navButton = navKeyMap[e.key];
-        if (navButton) {
-            e.preventDefault();
-            pressButton(navButton);
-            return;
-        }
-
-        // Handle function keys
-        const funcButton = funcKeyMap[e.key];
-        if (funcButton) {
-            e.preventDefault();
-            pressButton(funcButton);
-            return;
-        }
-    }, [isExpanded, isConnected, isPressing, pressButton]);
-
-    // Register keyboard event listener
-    useEffect(() => {
-        window.addEventListener('keydown', handleKeyDown);
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown);
-        };
-    }, [handleKeyDown]);
-
+function SubMenuLabel() {
     return (
-        <div className="fixed z-50" style={{ left: position.x, top: position.y }}>
-            {/* Collapsed button */}
-            {!isExpanded && (
-                <button
-                    onClick={() => setIsExpanded(true)}
-                    className={cn(
-                        'px-4 py-2 rounded-lg shadow-lg',
-                        'bg-s330-panel border border-s330-accent',
-                        'text-s330-text hover:bg-s330-accent/50',
-                        'transition-colors flex items-center gap-2',
-                        !isConnected && 'opacity-50'
-                    )}
-                    title={isConnected ? 'Open Virtual Front Panel' : 'Connect MIDI to enable'}
-                >
-                    {/* Grid icon for panel */}
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-                        />
-                    </svg>
-                    Panel
-                </button>
-            )}
+        <span className="flex flex-col items-center justify-center leading-tight">
+            <span>SUB</span>
+            <span>MENU</span>
+        </span>
+    );
+}
 
-            {/* Expanded panel */}
-            {isExpanded && (
-                <div
-                    ref={panelRef}
-                    style={{ width: PANEL_WIDTH }}
-                    className={cn(
-                        'bg-s330-panel border border-s330-accent rounded-lg shadow-xl',
-                        'overflow-hidden flex flex-col'
-                    )}
-                >
-                    {/* Header - draggable */}
-                    <div
-                        className="flex items-center justify-between px-3 py-2 border-b border-s330-accent cursor-move select-none"
-                        onMouseDown={handleDragStart}
-                    >
-                        <span className="text-sm font-medium text-s330-text">Front Panel</span>
-                        <div className="flex items-center gap-2">
-                            {/* Connection status indicator */}
-                            <span
-                                className={cn(
-                                    'w-2 h-2 rounded-full',
-                                    isConnected ? 'bg-green-400' : 'bg-s330-muted'
-                                )}
-                                title={isConnected ? 'MIDI connected' : 'MIDI disconnected'}
-                            />
-                            {/* Active indicator */}
-                            {isPressing && (
-                                <span className="text-xs text-s330-highlight animate-pulse">
-                                    Sending...
-                                </span>
-                            )}
-                            {/* Collapse button */}
-                            <button
-                                onClick={() => setIsExpanded(false)}
-                                className="p-1 text-s330-muted hover:text-s330-text"
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
+/**
+ * Arrow glyph — single Unicode triangle. The `--ac-color-rec` red is
+ * applied via the `.ac-fp__btn--arrow` modifier class.
+ */
+function ArrowGlyph({ direction }: { direction: 'up' | 'down' | 'left' | 'right' }) {
+    const glyph = direction === 'up' ? '▲'
+        : direction === 'down' ? '▼'
+        : direction === 'left' ? '◀'
+        : '▶';
+    return <span aria-hidden="true">{glyph}</span>;
+}
 
-                    {/* Panel content */}
-                    <div className="p-3 space-y-3">
-                        {/* Function buttons row */}
-                        <FunctionButtonRow
-                            onPress={pressButton}
-                            activeButton={activeButton}
-                            disabled={!isConnected || isPressing}
-                        />
+/**
+ * Plus / minus glyph for the value buttons.
+ */
+function ValueGlyph({ sign }: { sign: 'minus' | 'plus' }) {
+    return <span aria-hidden="true">{sign === 'minus' ? '－' : '＋'}</span>;
+}
 
-                        {/* Navigation and value controls */}
-                        <div className="flex items-center justify-between gap-2">
-                            {/* Navigation D-pad */}
-                            <NavigationPad
-                                onPress={pressButton}
-                                activeButton={activeButton}
-                                disabled={!isConnected || isPressing}
-                            />
+/**
+ * 7×2 chunky-button control surface.
+ *
+ * The grid order follows the v2 mockup exactly:
+ *   row 1 cells 1-7 → MODE, MENU, SUB-MENU, blank, ▲, blank, COM
+ *   row 2 cells 1-7 → DEC, INC, blank, ◀, ▼, ▶, EXEC
+ *
+ * Blank cells are non-interactive spacers preserving the cross-arrow
+ * cluster's visual identity from the real hardware.
+ */
+export function VirtualFrontPanel({ onPress, activeButton, disabled = false }: VirtualFrontPanelProps) {
+    return (
+        <div
+            role="group"
+            aria-label="Virtual front panel"
+            className="ac-fp"
+        >
+            <div className="ac-fp__grid">
+                {/* Row 1 */}
+                <FrontPanelButton
+                    button="mode"
+                    label="MODE"
+                    ariaLabel="MODE"
+                    onClick={() => onPress('mode')}
+                    isActive={activeButton === 'mode'}
+                    disabled={disabled}
+                    variant="chunky"
+                    className="ac-fp__btn"
+                />
+                <FrontPanelButton
+                    button="menu"
+                    label="MENU"
+                    ariaLabel="MENU"
+                    onClick={() => onPress('menu')}
+                    isActive={activeButton === 'menu'}
+                    disabled={disabled}
+                    variant="chunky"
+                    className="ac-fp__btn"
+                />
+                <FrontPanelButton
+                    button="sub-menu"
+                    label=""
+                    ariaLabel="SUB"
+                    icon={<SubMenuLabel />}
+                    onClick={() => onPress('sub-menu')}
+                    isActive={activeButton === 'sub-menu'}
+                    disabled={disabled}
+                    variant="chunky"
+                    className="ac-fp__btn ac-fp__btn--stack"
+                />
+                <span className="ac-fp__btn ac-fp__blank" aria-hidden="true" />
+                <FrontPanelButton
+                    button="up"
+                    label=""
+                    ariaLabel="Arrow up"
+                    icon={<ArrowGlyph direction="up" />}
+                    onClick={() => onPress('up')}
+                    isActive={activeButton === 'up'}
+                    disabled={disabled}
+                    variant="chunky"
+                    className="ac-fp__btn ac-fp__btn--arrow"
+                />
+                <span className="ac-fp__btn ac-fp__blank" aria-hidden="true" />
+                <FrontPanelButton
+                    button="com"
+                    label="COM"
+                    ariaLabel="COM"
+                    onClick={() => onPress('com')}
+                    isActive={activeButton === 'com'}
+                    disabled={disabled}
+                    variant="chunky"
+                    className="ac-fp__btn"
+                />
 
-                            {/* Inc/Dec buttons */}
-                            <ValueButtons
-                                onPress={pressButton}
-                                activeButton={activeButton}
-                                disabled={!isConnected || isPressing}
-                            />
-                        </div>
-
-                        {/* Shortcuts hint */}
-                        <div className="text-xs text-s330-muted text-center opacity-70">
-                            Keys: Arrows, +/-, Enter, F1-F5
-                        </div>
-
-                        {/* Error display */}
-                        {lastError && (
-                            <div className="ac-alert-inline ac-alert-inline-error text-xs">
-                                {lastError}
-                            </div>
-                        )}
-
-                        {/* Disconnected message */}
-                        {!isConnected && (
-                            <div className="text-xs text-s330-muted text-center">
-                                Connect MIDI to use
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
+                {/* Row 2 */}
+                <FrontPanelButton
+                    button="dec"
+                    label=""
+                    ariaLabel="Decrement"
+                    icon={<ValueGlyph sign="minus" />}
+                    onClick={() => onPress('dec')}
+                    isActive={activeButton === 'dec'}
+                    disabled={disabled}
+                    variant="chunky"
+                    className="ac-fp__btn ac-fp__btn--value"
+                />
+                <FrontPanelButton
+                    button="inc"
+                    label=""
+                    ariaLabel="Increment"
+                    icon={<ValueGlyph sign="plus" />}
+                    onClick={() => onPress('inc')}
+                    isActive={activeButton === 'inc'}
+                    disabled={disabled}
+                    variant="chunky"
+                    className="ac-fp__btn ac-fp__btn--value"
+                />
+                <span className="ac-fp__btn ac-fp__blank" aria-hidden="true" />
+                <FrontPanelButton
+                    button="left"
+                    label=""
+                    ariaLabel="Arrow left"
+                    icon={<ArrowGlyph direction="left" />}
+                    onClick={() => onPress('left')}
+                    isActive={activeButton === 'left'}
+                    disabled={disabled}
+                    variant="chunky"
+                    className="ac-fp__btn ac-fp__btn--arrow"
+                />
+                <FrontPanelButton
+                    button="down"
+                    label=""
+                    ariaLabel="Arrow down"
+                    icon={<ArrowGlyph direction="down" />}
+                    onClick={() => onPress('down')}
+                    isActive={activeButton === 'down'}
+                    disabled={disabled}
+                    variant="chunky"
+                    className="ac-fp__btn ac-fp__btn--arrow"
+                />
+                <FrontPanelButton
+                    button="right"
+                    label=""
+                    ariaLabel="Arrow right"
+                    icon={<ArrowGlyph direction="right" />}
+                    onClick={() => onPress('right')}
+                    isActive={activeButton === 'right'}
+                    disabled={disabled}
+                    variant="chunky"
+                    className="ac-fp__btn ac-fp__btn--arrow"
+                />
+                <FrontPanelButton
+                    button="execute"
+                    label="EXEC"
+                    ariaLabel="EXEC"
+                    onClick={() => onPress('execute')}
+                    isActive={activeButton === 'execute'}
+                    disabled={disabled}
+                    variant="chunky"
+                    className="ac-fp__btn"
+                />
+            </div>
         </div>
     );
 }
