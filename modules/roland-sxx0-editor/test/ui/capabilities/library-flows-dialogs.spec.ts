@@ -118,12 +118,12 @@ test.describe('Capabilities — Library import + sample-editing dialogs (Wave 4)
 
   test('D-LIB-13: clicking "Import to Device" on a seeded library patch mounts ImportLibraryPatchDialog', async ({ page }) => {
     // Seed the basic-patch fixture as an OPFS directory bundle. The
-    // helper aligns the OPFS directory name with the YAML's `name`
-    // field (see `seedOPFSPatch` JSDoc for why); the patch-tree
-    // detector reads the directory name as `node.id` and the YAML
-    // name field as `node.name`, and the selection-mapping fallback
-    // walks `node.name` straight back to `loadIndividualPatch`'s
-    // directory lookup.
+    // helper deliberately uses a kebab-case directory name distinct
+    // from the YAML's `name` field; the round-trip works because
+    // `useRolandLibraryData` packs `meta.directoryName` (#418) and
+    // `useRolandSelectionMapping` resolves the patch identity from
+    // that meta field, NOT from `node.name` (which is the YAML display
+    // name).
     //
     // The fixture uses `keyGroups` only (no `s330.toneLayer1`), so
     // `getPatchToneDependencies` returns an empty list and the dialog

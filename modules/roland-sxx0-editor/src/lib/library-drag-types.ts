@@ -26,6 +26,19 @@ export interface RolandDragMeta {
   toneFile?: string;
   /** For patches: the file name within the set */
   patchFile?: string;
+  /**
+   * On-disk directory name for individual patches and samples (packed
+   * by `useRolandLibraryData` per #418). Distinct from `nodeName` which
+   * is the YAML display name; the loader needs the directory name to
+   * resolve the bundle on disk.
+   */
+  directoryName?: string;
+  /**
+   * On-disk file name (without extension) for individual tones (packed
+   * by `useRolandLibraryData` per #418). Distinct from `nodeName` which
+   * is the YAML display name.
+   */
+  fileName?: string;
 }
 
 /**
@@ -40,6 +53,8 @@ export function extractRolandDragMeta(payload: LibraryDragPayload): RolandDragMe
     setName: typeof meta['setName'] === 'string' ? meta['setName'] : undefined,
     toneFile: typeof meta['toneFile'] === 'string' ? meta['toneFile'] : undefined,
     patchFile: typeof meta['patchFile'] === 'string' ? meta['patchFile'] : undefined,
+    directoryName: typeof meta['directoryName'] === 'string' ? meta['directoryName'] : undefined,
+    fileName: typeof meta['fileName'] === 'string' ? meta['fileName'] : undefined,
   };
 }
 

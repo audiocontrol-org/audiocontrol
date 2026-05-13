@@ -262,16 +262,16 @@ export async function seedOPFSTone(
  * containing directory's name as the tree node's `id` and pulls the
  * `name` field from the YAML for the tree node's `node.name`.
  *
- * `targetName` defaults to the YAML's `name` field (parsed from the
- * fixture). The Roland selection mapping
- * (`useRolandSelectionMapping`) reads the selection's `name` from
- * `node.meta.directoryName ?? node.name`; today's `useRolandLibraryData`
- * delivers `LibraryTreeNode[]` without packing `directoryName` into
- * `meta`, so the fallback is exercised: `node.name` is the YAML name
- * field, which is then handed verbatim to `loadIndividualPatch` as
- * the directory lookup. Aligning the OPFS directory name with the
- * YAML's `name` field is what makes the round-trip consistent without
- * touching production code from a test seam.
+ * `targetName` defaults to the `fixtureName` (kebab-case directory name),
+ * which is deliberately distinct from the fixture's YAML `name` field
+ * (e.g., `basic-patch` directory holds a YAML with `name: Basic Patch`).
+ * The mismatch exercises `useRolandLibraryData`'s meta-packing path
+ * (#418): the selection mapping resolves the patch's directory identity
+ * via `node.meta.directoryName`, NOT the YAML display name. Pre-#418 this
+ * would have failed because `useRolandLibraryData` shipped raw
+ * `LibraryTreeNode[]` with no `meta`, forcing the fallback through
+ * `node.name` (the YAML display name) — which then handed
+ * `loadIndividualPatch` the wrong directory.
  *
  * The basic-patch fixture uses `keyGroups` only (no `s330.toneLayer1`),
  * so `getPatchToneDependencies` returns an empty list and the dialog
@@ -290,11 +290,11 @@ export async function seedOPFSPatch(
   const yamlText = readFixtureText(`patches/${fixtureName}.yaml`);
   const parsed = PatchYamlSchema.parse(parseYaml(yamlText));
 
-  // Default directory name to the YAML's `name` field so the
-  // selection-mapping fallback (node.name -> loadIndividualPatch dir
-  // lookup) resolves to a real directory on OPFS. The dispatcher can
-  // override via `targetName` if a future test needs a different shape.
-  const patchDirName = options.targetName ?? parsed.name;
+  // Default directory name to the kebab-case `fixtureName` (NOT the YAML
+  // `name` field). This forces the round-trip to traverse the meta-packing
+  // path in `useRolandLibraryData` (#418); a mismatch between
+  // directory-name and YAML-name would have failed pre-#418.
+  const patchDirName = options.targetName ?? fixtureName;
 
   await page.evaluate(
     async ({ yamlText, targetName }) => {

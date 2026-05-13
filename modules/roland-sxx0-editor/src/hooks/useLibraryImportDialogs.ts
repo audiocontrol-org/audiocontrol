@@ -114,7 +114,9 @@ export function useLibraryImportDialogs({
     resetProgress();
     const meta = extractRolandDragMeta(data);
     if (meta.setName && meta.toneFile) setImportToneDialog({ setName: meta.setName, toneFile: meta.toneFile, initialTargetSlot: targetSlot });
-    else setImportToneDialog({ setName: '__individual__', toneFile: data.nodeName, initialTargetSlot: targetSlot });
+    // Individual tone: prefer the on-disk fileName (#418) — `nodeName` is
+    // the YAML display name and won't resolve when they differ.
+    else setImportToneDialog({ setName: '__individual__', toneFile: meta.fileName ?? data.nodeName, initialTargetSlot: targetSlot });
   }, [libraryHandle, clientRef, resetProgress]);
 
   const handleDropLibraryPatch = useCallback((data: LibraryDragPayload, targetSlot: number) => {
@@ -123,7 +125,9 @@ export function useLibraryImportDialogs({
     resetProgress();
     const meta = extractRolandDragMeta(data);
     if (meta.setName && meta.patchFile) setImportPatchDialog({ setName: meta.setName, patchFile: meta.patchFile, initialTargetSlot: targetSlot });
-    else setImportPatchDialog({ setName: '__individual__', patchFile: data.nodeName, patchPath: data.sourcePath, initialTargetSlot: targetSlot });
+    // Individual patch: prefer the on-disk directoryName (#418) — `nodeName`
+    // is the YAML display name and won't resolve when they differ.
+    else setImportPatchDialog({ setName: '__individual__', patchFile: meta.directoryName ?? data.nodeName, patchPath: data.sourcePath, initialTargetSlot: targetSlot });
   }, [libraryHandle, clientRef, resetProgress]);
 
   const handleImportLibraryTone = useCallback(async (params: ImportToneParams) => {
