@@ -934,3 +934,41 @@ Phase 3 (Client/Factory) ── Complete ──→ Phase 4 (Converters) ── C
 | Code duplication across devices | **Resolved** — Shared base extracted | `roland-s-series` module handles shared code |
 | Unified editor breaks S-330 | **Low risk** — S-330 config tested | Both configs exercised in same editor |
 | Shared client bugs affect both devices | **Resolved** — Three protocol bugs found and fixed | DAT address headers and EOD/RJC constants corrected; S-330 regression testing needed |
+
+---
+
+## Post-Mortem Follow-Ons (Not Yet Scoped — Capture Surface)
+
+These are items diagnosed during the feature's implementation but **not yet formally scoped**. They are recorded here so they don't get lost; each one needs an interview pass (`/feature-define` or equivalent) before it becomes real workplan scope.
+
+### PatchesPage UX redesign — bank loading + selection friction
+
+**Diagnosed:** 2026-05-13 during a walk-through of "select the bottom-most patch and edit its parameters." Bug-fix output of that diagnosis (the viewport-containment regression) was landed; the UX redesign itself remains unscoped.
+
+**Friction points observed (real, not speculative):**
+
+- **Two clicks to "select II28."** The first click on a row in an unloaded bank is a bank-load proxy (`PatchList.tsx:104-105` → `onLoadBank`). The user has to wait for the bank to load, then click the same row again to actually select the patch. The row's visual affordance (looks like a patch selector) doesn't match its behavior (acts as a bank loader). One-click load-and-select is the obvious unification.
+- **24 rows of identical "(not loaded) — click to load bank"** across the three unloaded banks. The CTA belongs at the bank-header level (a single button), not on each row.
+- **No "load all 32 patches" affordance.** The toolbar has only a refresh circle next to "8 of 32 loaded." A user who wants to browse the full catalog has to click into each unloaded bank one at a time.
+- **No search / filter.** Once 32 patches are loaded, finding a patch by name (`Mini Bas`) or slot ID (`II28`) is a scroll-and-eyeball task. A single `<input>` filtering across both axes would handle the keyboard-power-user and the casual user.
+- **Fixture-mismatch diagnostic banner visible on the patches page.** Currently renders as a top-edge red banner when the simulated harness's recorded SysEx doesn't match what the page emits. Useful to harness devs; alarming to editor users. Either gate behind `?debug=1` or move to a dev-tools panel.
+- **Empty slots (`I13`–`I18` shown as "(empty)")** are clickable in a loaded bank but have no distinct "create new patch" affordance. Mental model is muddy: are they real selectables or placeholders?
+
+**Sketched fixes (from the diagnosis chat, not yet committed as design exploration):**
+
+- Bank-header redesign: single `LOAD BANK ↻` button per unloaded bank header; quiet placeholder rows below showing what slots are coming; click any row loads the bank AND queues that row as the post-load selection target.
+- "LOAD ALL 32" button next to the `8 OF 32 LOADED` toolbar metric.
+- Filter `<input>` above the bank list, filtering across slot ID and name.
+- Gate the fixture-mismatch banner behind a `debug` flag.
+
+**Open questions for the interview:**
+
+- Is one-click load-and-select the right contract, or should the bank load happen automatically on scroll-into-view?
+- Does "LOAD ALL" load banks sequentially with progress feedback, or fire all four in parallel?
+- Does the filter input live in the page header or above the bank list?
+- Same UX patterns likely apply to TonesPage's tone-bank loading — should the redesign land for both pages together, or patches first?
+- How does the redesign interact with the live-editing footer (per `feedback_live_editing_no_save`)? The footer is for parameter writes streaming live to the device; bank loading is a different operation class.
+
+**Next step:** `/feature-define` interview to capture problem statement, scope (patches-only vs patches+tones), approach (single-button bank loading + filter), task decomposition, and acceptance criteria. Resulting `feature-definition.md` lands in a new feature dir under `docs/1.0/001-IN-PROGRESS/patches-ux-redesign/` (or similar slug).
+
+**Tracking:** no GitHub issue yet; one should be filed during the interview with explicit operator acceptance.
