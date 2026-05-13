@@ -507,6 +507,28 @@ Every editor page that mounts the CRT also mounts a virtual front panel mirrorin
 - Reinventing the front panel as page-scoped chrome. There is one virtual front panel; it lives in the drawer; it is shared across editors.
 - Inserting the front panel inline above the parameter grid. The drawer location IS the mount per Decision 1; the inline-above variant is the rejected option.
 
+### `--ac-fp-*` token vocabulary (Phase 7 Task 2)
+
+The chunky matte-black control surface (commit `81ea648b`) is painted by 16 scoped tokens defined in `editor-core/src/design/tokens.css`. They are the ONLY consumers anywhere — the panel CSS at `modules/roland-sxx0-editor/src/components/front-panel/front-panel.css` reads each token via `var(--ac-fp-*)`, and no other file in the codebase should consume them. This keeps the chassis vocabulary scoped; if a different chrome surface needs its own tokens, it adds its own namespace.
+
+| Token | Role |
+|-------|------|
+| `--ac-fp-chassis-top` / `-bot` / `-edge` | Matte-black chassis gradient + outer-edge inset |
+| `--ac-fp-btn-top` / `-mid` / `-bot` | Three-stop chunky button face gradient |
+| `--ac-fp-btn-bezel` | Hairline bezel between buttons (deepest near-black) |
+| `--ac-fp-btn-pressed-top` / `-mid` / `-bot` | Accent-tinted pressed-state gradient |
+| `--ac-fp-label-fn` / `-pressed` | Silkscreen label colors (white silkscreen, brighten on press) |
+| `--ac-fp-shadow-rim-light` | Chassis inset rim highlight (`box-shadow`) |
+| `--ac-fp-shadow-highlight` | Button top-edge front-lit highlight |
+| `--ac-fp-shadow-chassis-drop` | Chassis outer drop shadow |
+| `--ac-fp-shadow-btn-drop` | Individual button drop shadow |
+
+Existing tokens reused (NOT duplicated as `--ac-fp-*`):
+- `--ac-color-rec` + `--ac-color-rec-glow` for the red arrow silkscreen + pressed-state LED dot
+- `--ac-color-accent` (composed via `color-mix(in srgb, var(--ac-color-accent) 35-55%, transparent)`) for the focus ring + pressed-state outline
+
+**Anti-pattern:** introducing parallel `--ac-fp-red` or `--ac-fp-blue` tokens for the arrows / accents. The `--ac-color-rec` and `--ac-color-accent` tokens already cover those roles; the panel composes alpha over them via `color-mix` rather than parking a pre-composed copy in a new token. The 16 `--ac-fp-*` tokens above are the only ones the panel needs.
+
 ---
 
 ## Rec-LED Red Accent (sparingly)

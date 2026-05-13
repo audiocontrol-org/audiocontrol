@@ -147,6 +147,16 @@
      glyphs (matches the operator's S-550 hardware photo). */
   --ac-fp-label-fn: hsl(210 12% 86%);
   --ac-fp-label-pressed: hsl(210 96% 86%);
+
+  /* Shadow palette — the four box-shadow color stops used by
+     `front-panel.css` for the chassis rim hint, the button top-edge
+     highlight, the chassis outer drop, and the button drop. Tokenized
+     here so component CSS never inlines raw `hsl(...)` colors per the
+     design-system-first rule. */
+  --ac-fp-shadow-rim-light:   hsl(220 18% 22% / 0.4);
+  --ac-fp-shadow-highlight:   hsl(0 0% 100% / 0.05);
+  --ac-fp-shadow-chassis-drop: hsl(0 0% 0% / 0.5);
+  --ac-fp-shadow-btn-drop:    hsl(0 0% 0% / 0.45);
 }
 
 :root[data-editor='s330'] {

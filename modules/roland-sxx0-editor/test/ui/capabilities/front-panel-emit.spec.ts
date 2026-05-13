@@ -184,9 +184,9 @@ test.describe('Capabilities — Front-panel DT1-emit (D-XX)', () => {
 
     // Click each function button in the recorded order — MODE, MENU, SUB,
     // COM, EXEC. Each emits one category-01 DT1 message (FUNCTION_CODES
-    // in s330-front-panel.ts:131-135). The drawer's FunctionButtonRow
-    // renders the buttons with these exact labels (FunctionButtonRow.tsx
-    // FUNCTION_BUTTONS).
+    // in s330-front-panel.ts:131-135). The drawer's VirtualFrontPanel
+    // (Phase 7 Task 2, commit 81ea648b) renders the buttons with these
+    // exact aria-label values.
     await modeButton.click();
     await page.getByRole('button', { name: 'MENU', exact: true }).click();
     await page.getByRole('button', { name: 'SUB', exact: true }).click();

@@ -84,10 +84,11 @@ test.describe('Capabilities — Video Capture Drawer (D-XX)', () => {
   });
 
   test('D-XX-10: front-panel controls render inside the drawer', async ({ page }) => {
-    // VideoCapture.tsx:363-380 renders the FunctionButtonRow +
-    // NavigationPad + ValueButtons inside the drawer. With the drawer
-    // open at mount, every button is visible. MODE / MENU / SUB / COM
-    // / EXEC are the function-button labels.
+    // VideoCapture.tsx mounts the canonical VirtualFrontPanel inside the
+    // drawer (replaces the three ad-hoc clusters as of Phase 7 Task 2,
+    // commit 81ea648b). With the drawer open at mount, every button is
+    // visible. MODE / MENU / SUB / COM / EXEC are the function-button
+    // labels surfaced by VirtualFrontPanel.tsx.
     for (const label of ['MODE', 'MENU', 'SUB', 'COM', 'EXEC']) {
       await expect(
         page.getByRole('button', { name: label, exact: true }),

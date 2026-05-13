@@ -62,6 +62,7 @@ export interface FrontPanelButtonProps {
  * A single front panel button with press feedback
  */
 export function FrontPanelButton({
+    button,
     label,
     onClick,
     isActive = false,
@@ -85,6 +86,7 @@ export function FrontPanelButton({
             onClick={onClick}
             disabled={disabled}
             aria-label={ariaLabel}
+            data-button={button}
             data-pressed={isActive ? 'true' : undefined}
             className={cn(
                 'select-none whitespace-nowrap transition-all',

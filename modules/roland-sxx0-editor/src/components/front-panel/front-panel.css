@@ -32,9 +32,9 @@
   padding: 0.85rem;
   border-radius: 3px;
   box-shadow:
-    0 1px 0 hsl(220 18% 22% / 0.4) inset,
+    0 1px 0 var(--ac-fp-shadow-rim-light) inset,
     0 0 0 1px var(--ac-fp-chassis-edge) inset,
-    0 8px 24px hsl(0 0% 0% / 0.5);
+    0 8px 24px var(--ac-fp-shadow-chassis-drop);
   display: grid;
   gap: 0.85rem;
   width: 100%;
@@ -72,13 +72,13 @@
   border-radius: 3px;
   box-shadow:
     /* hairline highlight on top — front-lit edge */
-    0 1px 0 hsl(0 0% 100% / 0.05) inset,
+    0 1px 0 var(--ac-fp-shadow-highlight) inset,
     /* deep edge below — gives the molded-plastic feel */
     0 -1px 0 var(--ac-fp-btn-bezel) inset,
     /* outer bezel — separates buttons in the grid */
     0 0 0 1px var(--ac-fp-btn-bezel),
     /* drop shadow underneath the button */
-    0 2px 2px hsl(0 0% 0% / 0.45);
+    0 2px 2px var(--ac-fp-shadow-btn-drop);
 
   /* Label sits centered, all-caps silkscreen. */
   display: flex;
@@ -111,10 +111,10 @@
 .ac-fp__btn:focus-visible {
   outline: none;
   box-shadow:
-    0 0 0 2px hsl(from var(--ac-color-accent) h s l / 0.55),
-    0 1px 0 hsl(0 0% 100% / 0.05) inset,
+    0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 55%, transparent),
+    0 1px 0 var(--ac-fp-shadow-highlight) inset,
     0 -1px 0 var(--ac-fp-btn-bezel) inset,
-    0 2px 2px hsl(0 0% 0% / 0.45);
+    0 2px 2px var(--ac-fp-shadow-btn-drop);
 }
 
 /* Pressed — both mouse :active AND keyboard-driven [data-pressed].
@@ -132,7 +132,7 @@
   color: var(--ac-fp-label-pressed);
   box-shadow:
     0 1px 3px var(--ac-fp-btn-bezel) inset,
-    0 0 0 1px hsl(from var(--ac-color-accent) h s l / 0.35),
+    0 0 0 1px color-mix(in srgb, var(--ac-color-accent) 35%, transparent),
     0 0 0 1px var(--ac-fp-btn-bezel);
 }
 
