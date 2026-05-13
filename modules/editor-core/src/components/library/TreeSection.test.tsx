@@ -159,6 +159,27 @@ describe('TreeSection', () => {
     expect(html).toContain('data-category="my-category"');
   });
 
+  it('emits distinct outer-section and inner-content data-testid even when testId lacks "-tab"', () => {
+    // Regression: prior implementation derived the inner content testid via
+    // testId.replace('-tab', '-list'), which silently no-ops when '-tab' is
+    // absent — emitting two elements with the same data-testid (issue #419).
+    const html = renderToStaticMarkup(
+      <TreeSection
+        title="Tones"
+        nodes={sampleNodes}
+        category="tones"
+        expandedIds={new Set()}
+        onToggleExpand={() => {}}
+        selection={{ onSelect: () => {} }}
+        data-testid="library-tones-section"
+      />,
+    );
+    expect(html).toContain('data-testid="library-tones-section"');
+    expect(html).toContain('data-testid="library-tones-section-content"');
+    const sectionMatches = html.match(/data-testid="library-tones-section"/g) ?? [];
+    expect(sectionMatches).toHaveLength(1);
+  });
+
   it('passes enableInlineRename to TreeView via edit capability', () => {
     const onRename = vi.fn();
     render(

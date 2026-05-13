@@ -235,13 +235,12 @@ test.describe('Capabilities — Library DnD (Wave 5)', () => {
     const source = deviceToneSlot(page, 'T11');
     await expect(source).toHaveAttribute('draggable', 'true', { timeout: 5_000 });
 
-    // `library-tones-section` resolves to two elements in the live DOM —
-    // the outer `TreeSection` (with `data-category="tones"`) and its
-    // inner content-area `<div>` that re-emits the same testid via
-    // `testId.replace('-tab', '-list')` (no-op when `-tab` is absent;
-    // editor-core TreeSection.tsx:133). We target the outer one
-    // explicitly via `[data-category]` so the drop bubbles to the
-    // section's `onDrop` handler that PluginLibraryBrowser wired up.
+    // Target the outer `TreeSection` explicitly via `[data-category]` so the
+    // drop bubbles to the section's `onDrop` handler that
+    // `PluginLibraryBrowser` wired up. The inner content `<div>` carries a
+    // distinct `library-tones-section-content` testid (per #419 fix in
+    // editor-core TreeSection.tsx:133) but the section-level handler is what
+    // we exercise here.
     const target = page.locator('[data-category="tones"][data-testid="library-tones-section"]');
     await expect(target).toBeVisible({ timeout: 5_000 });
 
