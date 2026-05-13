@@ -2,7 +2,13 @@
  * Patches page — list-detail editor with the v3 mockup polish applied.
  *
  * Data is cached in deviceDataStore and persists across page navigation.
- * Loads first bank (8 patches) by default for faster startup.
+ * Loads first bank (8 patches) by default for faster startup. Tone-bank-0
+ * is loaded lazily on first patch selection (#405) — pre-fix this fired
+ * eagerly on mount, which a) made `patches-bank-0` an impossible fixture
+ * shape, and b) paid for 8 tone fetches before the user saw the detail
+ * pane. The PatchEditor's tone-name lookup degrades gracefully (missing
+ * tones render as `T<NN>` without the colon-suffix name) so the lazy
+ * load is invisible to users — names appear as the fetch resolves.
  *
  * Visual treatment is the operator-approved v3 mockup direction
  * (Phase 9 Task 4):
@@ -66,6 +72,7 @@ export function PatchesPage() {
     ensureToneArraySize,
     invalidatePatchCache,
     invalidateToneCache,
+    isToneBankLoaded,
   } = useDeviceDataStore();
 
   // Keep a ref to the device client (S-330 / S-550 / etc.)
@@ -126,11 +133,11 @@ export function PatchesPage() {
     }
   }, [loadPatchBank]);
 
-  // Load initial data (first bank of patches and tones)
+  // Load initial data (first bank of patches only — tones load lazily on
+  // first patch selection per #405).
   const loadInitialData = useCallback(async () => {
     await loadPatchBankWithIndicator(0);
-    await loadToneBank(0);
-  }, [loadPatchBankWithIndicator, loadToneBank]);
+  }, [loadPatchBankWithIndicator]);
 
   // Refresh-from-device — replaces the per-bank reload toolbar.
   // Invalidates caches and reloads every bank. The icon-button on the
@@ -201,6 +208,31 @@ export function PatchesPage() {
       loadInitialData();
     }
   }, [isConnected, patches.length, isLoading, loadInitialData]);
+
+  // Lazy tone-bank load on first patch selection (#405). Today this loads
+  // bank 0 only — same as the pre-#405 eager mount-time behavior, but
+  // deferred until the user actually opens the patch detail pane. Patches
+  // in higher banks may reference tones in higher banks; those still
+  // require navigating to TonesPage (or refresh-from-device) to load,
+  // matching pre-#405 behavior. Smart per-patch bank derivation is a
+  // future enhancement.
+  //
+  // Trigger synchronously inside `handleSelectPatch` rather than via a
+  // useEffect on `selectedPatchIndex` — useEffect-based triggers race
+  // with downstream user actions (e.g. typing into a parameter input
+  // immediately after click), which against the simulated harness can
+  // shift the tone-RQDs to fire AFTER a setter consumes the cursor,
+  // producing an end-of-fixture error that doesn't match the
+  // patch-writes spec's known-divergence filter. Synchronous trigger on
+  // click keeps the RQD sequencing deterministic.
+  const handleSelectPatch = useCallback((index: number | null) => {
+    selectPatch(index);
+    if (index === null) return;
+    if (!isConnected) return;
+    if (isToneBankLoaded(0)) return;
+    if (isLoading) return;
+    void loadToneBank(0);
+  }, [selectPatch, isConnected, isToneBankLoaded, isLoading, loadToneBank]);
 
   // Loaded counters for the title-row metric.
   const loadedPatches = patches.filter((p): p is SamplerPatch => p !== undefined);
@@ -292,7 +324,7 @@ export function PatchesPage() {
           <PatchList
             patches={patches}
             selectedIndex={selectedPatchIndex}
-            onSelect={selectPatch}
+            onSelect={handleSelectPatch}
             loadedBanks={loadedPatchBanks}
             patchesPerBank={patchesPerBank}
             loadingBank={loadingBank}
