@@ -1,0 +1,997 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Phase 7 — S-550 Virtual Front Panel — Rack Strip Exploration v1</title>
+
+<!--
+  Phase 7 Task 1 — S-550 Front Panel design exploration.
+
+  Aesthetic commitment: 2U rack-strip industrial. The S-550 is a 19"
+  rack-mount unit (the S-330 is a desktop module); the virtual panel
+  should read as the physical hardware it stands in for, NOT as a
+  portrait widget like the S-330's existing VirtualFrontPanel.
+
+  Design language continuity: the v3 token set codified in
+  DESIGN-SYSTEM.md is honored. Departure Mono for display surfaces,
+  IBM Plex Sans for body, JetBrains Mono for data/numerics. s330-*
+  blue identity preserved. REC red used as device-active LED
+  (per `feedback_rec_led_accent`).
+
+  Differentiation: rack-mount horizontal form factor + amber-backlit
+  graphic LCD (the S-550's defining hardware feature vs the S-330's
+  character LCD) + numeric keypad cluster + rack-ear screws as
+  visual punctuation.
+
+  Production mapping: the React component lives at
+  modules/roland-sxx0-editor/src/components/front-panel/, follows the
+  existing useFrontPanel hook contract. This mockup is the visual
+  blueprint; Task 2 wires it to the hook.
+-->
+
+<style>
+  /* ============================================================
+     v3 DESIGN TOKENS — mirrors editor-core/src/design/tokens.css
+     (HSL fragments enable hsl(var(--token) / alpha) composition)
+     ============================================================ */
+  :root {
+    color-scheme: dark;
+
+    /* core palette (s330 identity, dark surface) */
+    --ac-color-bg:           220 24% 7%;
+    --ac-color-surface:      220 18% 11%;
+    --ac-color-fg:           215 18% 92%;
+    --ac-color-fg-muted:     220 12% 60%;
+    --ac-color-fg-subtle:    220 10% 42%;
+    --ac-color-border:       220 18% 22%;
+    --ac-color-accent:       215 78% 58%;
+    --ac-color-highlight:    210 96% 72%;
+    --ac-color-rec:          358 72% 58%;
+    --ac-color-success:      152 55% 52%;
+    --ac-color-warning:      38 80% 58%;
+
+    /* S-550 rack-chassis tokens */
+    --ac-chassis-edge:       220 10% 4%;
+    --ac-chassis-face:       220 8% 10%;
+    --ac-chassis-face-hi:    220 6% 18%;
+    --ac-chassis-screw:      220 8% 22%;
+
+    /* S-550 LCD — amber phosphor backlit. Roland's signature
+       display color on the S-series sampler line. */
+    --ac-lcd-bezel:          30 8% 6%;
+    --ac-lcd-bg:             30 32% 14%;
+    --ac-lcd-bg-glow:        32 48% 26%;
+    --ac-lcd-fg:             36 92% 64%;
+    --ac-lcd-fg-bright:      38 96% 76%;
+    --ac-lcd-fg-dim:         32 60% 42%;
+
+    /* Button styling — hairline rounded square w/ tactile shadow */
+    --ac-btn-face:           220 8% 14%;
+    --ac-btn-face-active:    215 78% 32%;
+    --ac-btn-edge:           220 12% 6%;
+    --ac-btn-shadow-inset:   220 22% 4%;
+
+    /* typography */
+    --ac-font-display: "Departure Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --ac-font-body:    "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --ac-font-mono:    "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    --ac-tracking-eyebrow: 0.14em;
+    --ac-tracking-ticker:  0.12em;
+    --ac-text-eyebrow:     0.78rem;
+
+    --ac-space-1: 0.25rem;
+    --ac-space-2: 0.5rem;
+    --ac-space-3: 0.75rem;
+    --ac-space-4: 1rem;
+    --ac-space-6: 1.5rem;
+    --ac-space-8: 2rem;
+
+    --ac-rule-hairline: 1px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    background: hsl(var(--ac-color-bg));
+    color: hsl(var(--ac-color-fg));
+    font-family: var(--ac-font-body);
+    font-size: 16px;
+    line-height: 1.4;
+    min-height: 100vh;
+  }
+
+  /* ============================================================
+     Page chrome — mockup wrapper, NOT canonical app shell
+     ============================================================ */
+  .mockup-shell {
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: var(--ac-space-8) var(--ac-space-6);
+    display: grid;
+    gap: var(--ac-space-8);
+  }
+
+  .mockup-header h1 {
+    font-family: var(--ac-font-display);
+    font-size: 1.6rem;
+    margin: 0 0 var(--ac-space-2) 0;
+    letter-spacing: 0.01em;
+  }
+
+  .mockup-header .eyebrow {
+    font-family: var(--ac-font-display);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    font-size: var(--ac-text-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+
+  .mockup-header .red-rule {
+    height: 2px;
+    background: hsl(var(--ac-color-rec));
+    width: 4.5rem;
+    margin: var(--ac-space-3) 0;
+  }
+
+  .mockup-header p {
+    color: hsl(var(--ac-color-fg-muted));
+    font-size: 0.95rem;
+    margin: 0 0 0.4em 0;
+    max-width: 64ch;
+  }
+
+  /* ============================================================
+     S-550 RACK STRIP — the canonical mockup surface
+     ============================================================ */
+  .rack-strip {
+    position: relative;
+
+    /* 19" rack proportion: 482.6mm wide × 88.9mm tall (2U).
+       Aspect ratio ~5.43:1. Responsive — width follows container,
+       height = width / 5.43 via aspect-ratio CSS. */
+    aspect-ratio: 5.43 / 1;
+    width: 100%;
+
+    border-radius: 4px;
+    background:
+      /* subtle brushed-aluminum grain via repeating gradient */
+      repeating-linear-gradient(
+        180deg,
+        hsl(var(--ac-chassis-face) / 0.0) 0px,
+        hsl(var(--ac-chassis-face-hi) / 0.08) 1px,
+        hsl(var(--ac-chassis-face) / 0.0) 2px
+      ),
+      linear-gradient(
+        180deg,
+        hsl(var(--ac-chassis-face-hi)) 0%,
+        hsl(var(--ac-chassis-face)) 12%,
+        hsl(var(--ac-chassis-face)) 88%,
+        hsl(var(--ac-chassis-edge)) 100%
+      );
+    box-shadow:
+      0 1px 0 hsl(var(--ac-chassis-face-hi) / 0.4) inset,
+      0 -1px 0 hsl(var(--ac-chassis-edge)) inset,
+      0 14px 32px hsl(0 0% 0% / 0.5),
+      0 2px 6px hsl(0 0% 0% / 0.3);
+
+    /* Strip is divided into 3 horizontal bands stacked vertically
+       at the top of the rack-strip; the rest of the strip is the
+       main control surface with horizontal zones. */
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: 100%;
+    align-items: stretch;
+  }
+
+  /* rack ear — fixed-width screw-mount column at each end */
+  .rack-ear {
+    width: clamp(2.2rem, 4%, 3rem);
+    background:
+      linear-gradient(
+        180deg,
+        hsl(var(--ac-chassis-edge)) 0%,
+        hsl(var(--ac-chassis-face) / 0.6) 30%,
+        hsl(var(--ac-chassis-face) / 0.6) 70%,
+        hsl(var(--ac-chassis-edge)) 100%
+      );
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: clamp(0.4rem, 0.8%, 0.7rem) 0;
+    align-items: center;
+  }
+
+  .rack-ear--left { border-right: var(--ac-rule-hairline) solid hsl(var(--ac-chassis-edge)); }
+  .rack-ear--right { border-left: var(--ac-rule-hairline) solid hsl(var(--ac-chassis-edge)); }
+
+  .screw {
+    width: clamp(0.6rem, 1.2%, 0.9rem);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle at 35% 30%,
+      hsl(var(--ac-chassis-screw)) 0%,
+      hsl(var(--ac-chassis-edge)) 80%
+    );
+    box-shadow:
+      0 1px 0 hsl(var(--ac-chassis-face-hi) / 0.3),
+      0 0 2px hsl(0 0% 0% / 0.5) inset;
+    position: relative;
+  }
+  .screw::after {
+    /* cross-head slot */
+    content: '';
+    position: absolute;
+    inset: 22%;
+    background:
+      linear-gradient(90deg, transparent 47%, hsl(var(--ac-chassis-edge)) 47%, hsl(var(--ac-chassis-edge)) 53%, transparent 53%),
+      linear-gradient(0deg, transparent 47%, hsl(var(--ac-chassis-edge)) 47%, hsl(var(--ac-chassis-edge)) 53%, transparent 53%);
+  }
+
+  /* ============================================================
+     Main panel face — the control surface between the rack ears
+     ============================================================ */
+  .panel-face {
+    display: grid;
+    grid-template-columns: 1.3fr 2.4fr 1.3fr;
+    grid-template-rows: 1fr;
+    align-items: stretch;
+    padding: clamp(0.5rem, 1%, 1rem);
+    gap: clamp(0.6rem, 1.4%, 1.2rem);
+    position: relative;
+  }
+
+  /* zone divider hairline — a vertical rule between adjacent zones */
+  .zone {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.3rem, 0.6%, 0.5rem);
+    min-width: 0;
+  }
+
+  .zone--keypad   { padding-right: clamp(0.5rem, 1%, 1rem);  border-right: var(--ac-rule-hairline) solid hsl(var(--ac-chassis-edge) / 0.6); }
+  .zone--display  { padding: 0 clamp(0.4rem, 0.8%, 0.8rem); }
+  .zone--nav      { padding-left: clamp(0.5rem, 1%, 1rem);   border-left:  var(--ac-rule-hairline) solid hsl(var(--ac-chassis-edge) / 0.6); }
+
+  .zone__header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    height: clamp(0.85rem, 1.7%, 1.2rem);
+  }
+  .zone__label {
+    font-family: var(--ac-font-display);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    font-size: clamp(0.5rem, 0.9%, 0.65rem);
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .zone__rule {
+    flex: 1;
+    margin-left: 0.6em;
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.4);
+  }
+
+  /* ============================================================
+     KEYPAD — left zone — 4x3 grid: 0-9, . , ENTER
+     ============================================================ */
+  .keypad {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: clamp(0.18rem, 0.4%, 0.32rem);
+    flex: 1;
+  }
+  .keypad .key {
+    /* keypad keys are smaller, monospace-numeric */
+    font-family: var(--ac-font-mono);
+    font-size: clamp(0.7rem, 1.3%, 1rem);
+    font-weight: 500;
+  }
+
+  /* ============================================================
+     LCD — center zone — graphic LCD, amber-backlit S-series style
+     ============================================================ */
+  .lcd-frame {
+    flex: 1;
+    border-radius: 3px;
+    background: hsl(var(--ac-lcd-bezel));
+    padding: clamp(0.3rem, 0.5%, 0.5rem);
+    box-shadow:
+      0 1px 0 hsl(var(--ac-chassis-face-hi) / 0.2),
+      0 0 0 1px hsl(var(--ac-lcd-bezel)) inset,
+      0 0 0 2px hsl(var(--ac-chassis-edge)) inset,
+      inset 0 0 16px hsl(0 0% 0% / 0.6);
+  }
+  .lcd {
+    width: 100%;
+    height: 100%;
+    border-radius: 2px;
+    background:
+      radial-gradient(
+        ellipse at 50% 45%,
+        hsl(var(--ac-lcd-bg-glow)) 0%,
+        hsl(var(--ac-lcd-bg)) 70%,
+        hsl(var(--ac-lcd-bezel)) 100%
+      );
+    /* scanline overlay — readable, not aggressive */
+    background-blend-mode: normal;
+    position: relative;
+    padding: clamp(0.35rem, 0.7%, 0.6rem) clamp(0.5rem, 1.1%, 0.9rem);
+    color: hsl(var(--ac-lcd-fg));
+    font-family: var(--ac-font-display);
+    font-size: clamp(0.62rem, 1.2%, 0.95rem);
+    line-height: 1.3;
+    text-shadow:
+      0 0 4px hsl(var(--ac-lcd-fg) / 0.65),
+      0 0 1px hsl(var(--ac-lcd-fg-bright));
+    overflow: hidden;
+  }
+  .lcd::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 2px,
+      hsl(0 0% 0% / 0.06) 2px,
+      hsl(0 0% 0% / 0.06) 3px
+    );
+    pointer-events: none;
+  }
+  .lcd__row { display: block; }
+  .lcd__row--bright { color: hsl(var(--ac-lcd-fg-bright)); }
+  .lcd__row--dim    { color: hsl(var(--ac-lcd-fg-dim)); }
+  .lcd__caret { color: hsl(var(--ac-lcd-fg-bright)); animation: caret-blink 1.06s steps(2, end) infinite; }
+  @keyframes caret-blink { 50% { opacity: 0; } }
+
+  /* ============================================================
+     NAVIGATION — right zone — arrow diamond + INC/DEC pair + EXEC
+     ============================================================ */
+  .nav-zone {
+    display: grid;
+    /* top: function row spans both columns; below: arrows + value pair */
+    grid-template-columns: 1.6fr 1fr;
+    grid-template-rows: auto 1fr;
+    gap: clamp(0.18rem, 0.4%, 0.32rem);
+    flex: 1;
+  }
+  .nav-diamond {
+    grid-column: 1;
+    grid-row: 2;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: clamp(0.16rem, 0.35%, 0.28rem);
+    aspect-ratio: 1;
+    align-self: center;
+    justify-self: center;
+    width: 100%;
+    max-width: clamp(5rem, 11%, 9rem);
+  }
+  .nav-diamond .key {
+    font-family: var(--ac-font-display);
+  }
+  .nav-diamond .key--blank {
+    visibility: hidden;
+  }
+  .nav-diamond .key[data-pos="center"] {
+    background: linear-gradient(
+      180deg,
+      hsl(var(--ac-btn-face-active) / 0.55) 0%,
+      hsl(var(--ac-btn-face) / 0.9) 100%
+    );
+    color: hsl(var(--ac-color-highlight));
+  }
+
+  .value-stack {
+    grid-column: 2;
+    grid-row: 2;
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    gap: clamp(0.16rem, 0.35%, 0.28rem);
+  }
+
+  /* ============================================================
+     FUNCTION ROW — top of nav zone, spans both nav cols
+     ============================================================ */
+  .function-row {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: clamp(0.14rem, 0.3%, 0.24rem);
+  }
+  .function-row .key {
+    font-family: var(--ac-font-display);
+    font-size: clamp(0.42rem, 0.85%, 0.62rem);
+  }
+
+  /* ============================================================
+     KEY — universal button primitive shared across keypad, nav, fn
+     ============================================================ */
+  .key {
+    border: 0;
+    cursor: pointer;
+    border-radius: 3px;
+    background: linear-gradient(
+      180deg,
+      hsl(var(--ac-btn-face-hi, var(--ac-chassis-face-hi))) 0%,
+      hsl(var(--ac-btn-face)) 70%,
+      hsl(var(--ac-btn-edge)) 100%
+    );
+    color: hsl(var(--ac-color-fg-muted));
+    font-family: var(--ac-font-display);
+    font-size: clamp(0.5rem, 0.95%, 0.72rem);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: clamp(0.2rem, 0.4%, 0.35rem) clamp(0.25rem, 0.5%, 0.45rem);
+    line-height: 1;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow:
+      0 1px 0 hsl(var(--ac-chassis-face-hi) / 0.4) inset,
+      0 -1px 0 hsl(var(--ac-btn-edge)) inset,
+      0 1px 2px hsl(0 0% 0% / 0.4);
+    transition: transform 80ms ease, background 80ms ease, color 80ms ease;
+    min-height: 0;
+  }
+  .key:hover {
+    color: hsl(var(--ac-color-fg));
+  }
+  .key:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px hsl(var(--ac-color-accent) / 0.5),
+      0 1px 0 hsl(var(--ac-chassis-face-hi) / 0.4) inset,
+      0 -1px 0 hsl(var(--ac-btn-edge)) inset;
+  }
+  .key:active, .key[data-active="true"] {
+    transform: translateY(1px);
+    background: linear-gradient(
+      180deg,
+      hsl(var(--ac-btn-face-active) / 0.5) 0%,
+      hsl(var(--ac-btn-face-active) / 0.8) 100%
+    );
+    color: hsl(var(--ac-color-highlight));
+    box-shadow:
+      0 1px 2px hsl(var(--ac-btn-shadow-inset)) inset,
+      0 0 0 1px hsl(var(--ac-color-accent) / 0.3);
+  }
+
+  /* ============================================================
+     STATUS LEDS — right rack ear, vertical strip of indicators
+     ============================================================ */
+  .rack-ear--right { gap: clamp(0.25rem, 0.5%, 0.4rem); justify-content: flex-start; padding-top: clamp(0.5rem, 1%, 0.8rem); }
+  .rack-ear--right .screw { margin-bottom: clamp(0.3rem, 0.6%, 0.5rem); }
+
+  .led-strip {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.35rem, 0.75%, 0.55rem);
+    align-items: center;
+    margin: auto 0;
+    padding: clamp(0.3rem, 0.6%, 0.5rem) 0;
+  }
+  .led {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(0.1rem, 0.2%, 0.18rem);
+  }
+  .led__bulb {
+    width: clamp(0.4rem, 0.85%, 0.6rem);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: hsl(0 0% 8%);
+    box-shadow: 0 0 0 1px hsl(var(--ac-chassis-edge)) inset, 0 0 2px hsl(0 0% 0% / 0.5);
+  }
+  .led--power .led__bulb[data-on="true"] {
+    background: hsl(var(--ac-color-success));
+    box-shadow:
+      0 0 6px hsl(var(--ac-color-success) / 0.7),
+      0 0 2px hsl(var(--ac-color-success) / 0.9),
+      0 0 0 1px hsl(var(--ac-chassis-edge)) inset;
+  }
+  .led--midi .led__bulb[data-on="true"] {
+    background: hsl(var(--ac-color-warning));
+    box-shadow:
+      0 0 6px hsl(var(--ac-color-warning) / 0.7),
+      0 0 2px hsl(var(--ac-color-warning) / 0.9),
+      0 0 0 1px hsl(var(--ac-chassis-edge)) inset;
+  }
+  .led--rec .led__bulb[data-on="true"] {
+    background: hsl(var(--ac-color-rec));
+    box-shadow:
+      0 0 8px hsl(var(--ac-color-rec) / 0.8),
+      0 0 2px hsl(var(--ac-color-rec) / 0.9),
+      0 0 0 1px hsl(var(--ac-chassis-edge)) inset;
+  }
+  .led__label {
+    font-family: var(--ac-font-display);
+    font-size: clamp(0.35rem, 0.7%, 0.5rem);
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-subtle));
+    text-transform: uppercase;
+  }
+
+  /* ============================================================
+     LEFT BADGE — Roland-style brand mark on left rack ear
+     ============================================================ */
+  .badge {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-family: var(--ac-font-display);
+    font-size: clamp(0.45rem, 0.9%, 0.62rem);
+    letter-spacing: var(--ac-tracking-ticker);
+    color: hsl(var(--ac-color-fg-muted));
+    text-transform: uppercase;
+    margin: auto 0;
+  }
+  .badge__device { color: hsl(var(--ac-color-fg)); }
+
+  /* ============================================================
+     ANNOTATION CALLOUTS — design intent metadata below the strip
+     ============================================================ */
+  .annotations {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: var(--ac-space-4);
+  }
+  .annotation {
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: 4px;
+    padding: var(--ac-space-4);
+    background: hsl(var(--ac-color-surface) / 0.6);
+  }
+  .annotation h3 {
+    font-family: var(--ac-font-display);
+    font-size: 0.9rem;
+    margin: 0 0 var(--ac-space-2) 0;
+    color: hsl(var(--ac-color-accent));
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .annotation p {
+    font-size: 0.85rem;
+    color: hsl(var(--ac-color-fg-muted));
+    margin: 0 0 0.4em 0;
+  }
+  .annotation code {
+    font-family: var(--ac-font-mono);
+    font-size: 0.78rem;
+    color: hsl(var(--ac-color-fg));
+    background: hsl(var(--ac-color-bg));
+    padding: 0.05em 0.25em;
+    border-radius: 2px;
+  }
+
+  /* ============================================================
+     COMPARISON BANNER — what's different from S-330
+     ============================================================ */
+  .comparison {
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: 4px;
+    padding: var(--ac-space-4) var(--ac-space-6);
+    background: hsl(var(--ac-color-surface) / 0.4);
+  }
+  .comparison h2 {
+    font-family: var(--ac-font-display);
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 var(--ac-space-3) 0;
+    color: hsl(var(--ac-color-fg));
+  }
+  .comparison-grid {
+    display: grid;
+    grid-template-columns: 6em 1fr 1fr;
+    gap: var(--ac-space-2) var(--ac-space-4);
+    font-size: 0.88rem;
+  }
+  .comparison-grid > div:nth-child(3n+1) {
+    font-family: var(--ac-font-display);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    font-size: var(--ac-text-eyebrow);
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .comparison-grid > div:nth-child(3n+2),
+  .comparison-grid > div:nth-child(3n+3) {
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .comparison-grid .header {
+    color: hsl(var(--ac-color-accent)) !important;
+    font-family: var(--ac-font-display) !important;
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+  }
+
+  /* ============================================================
+     STATUS FOOTER — shows last interaction (replaces save/cancel)
+     ============================================================ */
+  .status-footer {
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    padding-top: var(--ac-space-3);
+    font-family: var(--ac-font-mono);
+    font-size: 0.78rem;
+    color: hsl(var(--ac-color-fg-muted));
+    display: flex;
+    gap: var(--ac-space-6);
+    align-items: baseline;
+    flex-wrap: wrap;
+  }
+  .status-footer .status-label {
+    color: hsl(var(--ac-color-fg-subtle));
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    font-size: var(--ac-text-eyebrow);
+    margin-right: 0.3em;
+  }
+  .status-footer .status-value { color: hsl(var(--ac-color-fg)); }
+  .status-footer .status-value--live { color: hsl(var(--ac-color-success)); }
+</style>
+</head>
+<body>
+
+<div class="mockup-shell">
+
+  <!-- ============================================================
+       HEADER — design exploration metadata
+       ============================================================ -->
+  <header class="mockup-header">
+    <div class="eyebrow">Phase 7 — Virtual Front Panel — Exploration v1</div>
+    <h1>S-550 — Rack-Strip Front Panel</h1>
+    <div class="red-rule" aria-hidden="true"></div>
+    <p>
+      The S-550 is a 2U rack-mount sampler (the S-330 is a desktop
+      module). This mockup renders the virtual front panel as the
+      hardware it stands in for — a 19" rack strip with brushed-aluminum
+      chassis, amber-backlit graphic LCD, numeric keypad, and an arrow
+      diamond with INC/DEC value keys. Distinct from the S-330's
+      portrait floating widget; same interaction contract via
+      <code>useFrontPanel.pressButton(...)</code>.
+    </p>
+    <p>
+      Honors v3 design language: Departure Mono for button labels,
+      JetBrains Mono for the LCD glyph grid, IBM Plex Sans for the
+      annotation prose. <code>s330-*</code> blue identity preserved.
+      Red used only for the REC LED, per <code>feedback_rec_led_accent</code>.
+    </p>
+  </header>
+
+  <!-- ============================================================
+       THE RACK STRIP — canonical mockup surface
+       ============================================================ -->
+  <section aria-label="S-550 virtual front panel mockup">
+
+    <div class="rack-strip" role="group" aria-label="S-550 front panel">
+
+      <!-- LEFT RACK EAR — screws + vertical brand mark -->
+      <div class="rack-ear rack-ear--left" aria-hidden="true">
+        <span class="screw"></span>
+        <span class="badge">
+          <span>S-Series</span>
+          <span class="badge__device">S-550</span>
+        </span>
+        <span class="screw"></span>
+      </div>
+
+      <!-- PANEL FACE — keypad | LCD | nav -->
+      <div class="panel-face">
+
+        <!-- KEYPAD ZONE — numeric input cluster -->
+        <div class="zone zone--keypad">
+          <div class="zone__header">
+            <span class="zone__label">Keypad</span>
+            <span class="zone__rule"></span>
+          </div>
+          <div class="keypad">
+            <button class="key" data-emit="num-7">7</button>
+            <button class="key" data-emit="num-8">8</button>
+            <button class="key" data-emit="num-9">9</button>
+            <button class="key" data-emit="exit">EXIT</button>
+            <button class="key" data-emit="num-4">4</button>
+            <button class="key" data-emit="num-5">5</button>
+            <button class="key" data-emit="num-6">6</button>
+            <button class="key" data-emit="cmd-cmd">CMD</button>
+            <button class="key" data-emit="num-1">1</button>
+            <button class="key" data-emit="num-2">2</button>
+            <button class="key" data-emit="num-3">3</button>
+            <button class="key" data-emit="enter">ENT</button>
+            <button class="key" data-emit="num-0">0</button>
+            <button class="key" data-emit="num-dot">.</button>
+            <button class="key" data-emit="sign">±</button>
+            <button class="key" data-emit="back">BS</button>
+          </div>
+        </div>
+
+        <!-- LCD DISPLAY ZONE — graphic LCD center -->
+        <div class="zone zone--display">
+          <div class="zone__header">
+            <span class="zone__label">Graphic LCD — 320 × 80</span>
+            <span class="zone__rule"></span>
+          </div>
+          <div class="lcd-frame">
+            <div class="lcd" id="lcd" aria-live="polite" aria-label="S-550 LCD content">
+              <span class="lcd__row lcd__row--bright">▶ TONE EDIT  T11 KICK 808</span>
+              <span class="lcd__row">  WAVE   A:01  ORIG-KEY C 4</span>
+              <span class="lcd__row lcd__row--dim">  PITCH  +0   FILTER 64/32</span>
+              <span class="lcd__row">  AMP    L:120 ENV  4-8-12-0<span class="lcd__caret">█</span></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- NAVIGATION ZONE — function row + arrow diamond + value pair -->
+        <div class="zone zone--nav">
+          <div class="zone__header">
+            <span class="zone__label">Navigation &amp; Value</span>
+            <span class="zone__rule"></span>
+          </div>
+          <div class="nav-zone">
+
+            <!-- FUNCTION ROW — MODE / MENU / SUB / COM / EDIT / EXEC -->
+            <div class="function-row">
+              <button class="key" data-emit="mode">MODE</button>
+              <button class="key" data-emit="menu">MENU</button>
+              <button class="key" data-emit="submenu">SUB</button>
+              <button class="key" data-emit="com">COM</button>
+              <button class="key" data-emit="edit">EDIT</button>
+              <button class="key" data-emit="exec">EXEC</button>
+            </div>
+
+            <!-- NAV DIAMOND — 9-cell grid w/ arrows at 4 cardinal cells -->
+            <div class="nav-diamond">
+              <span class="key key--blank" aria-hidden="true"></span>
+              <button class="key" data-emit="nav-up" data-pos="up" aria-label="Up">▲</button>
+              <span class="key key--blank" aria-hidden="true"></span>
+              <button class="key" data-emit="nav-left" data-pos="left" aria-label="Left">◀</button>
+              <button class="key" data-emit="exec" data-pos="center" aria-label="Execute">●</button>
+              <button class="key" data-emit="nav-right" data-pos="right" aria-label="Right">▶</button>
+              <span class="key key--blank" aria-hidden="true"></span>
+              <button class="key" data-emit="nav-down" data-pos="down" aria-label="Down">▼</button>
+              <span class="key key--blank" aria-hidden="true"></span>
+            </div>
+
+            <!-- VALUE STACK — INC and DEC stacked vertically -->
+            <div class="value-stack">
+              <button class="key" data-emit="value-inc">INC ＋</button>
+              <button class="key" data-emit="value-dec">DEC －</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT RACK EAR — screws + status LED strip -->
+      <div class="rack-ear rack-ear--right" aria-label="status indicators">
+        <span class="screw"></span>
+        <div class="led-strip">
+          <div class="led led--power">
+            <span class="led__bulb" data-on="true"></span>
+            <span class="led__label">POW</span>
+          </div>
+          <div class="led led--midi">
+            <span class="led__bulb" id="led-midi" data-on="true"></span>
+            <span class="led__label">MIDI</span>
+          </div>
+          <div class="led led--rec">
+            <span class="led__bulb" id="led-rec" data-on="false"></span>
+            <span class="led__label">REC</span>
+          </div>
+        </div>
+        <span class="screw"></span>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============================================================
+       STATUS FOOTER — replaces save/cancel/undo per live-edit rule
+       ============================================================ -->
+  <footer class="status-footer">
+    <span><span class="status-label">Transport</span><span class="status-value status-value--live">connected (simulated)</span></span>
+    <span><span class="status-label">Last press</span><span class="status-value" id="last-press">—</span></span>
+    <span><span class="status-label">SysEx</span><span class="status-value" id="last-sysex">F0 41 10 1E 12 …</span></span>
+  </footer>
+
+  <!-- ============================================================
+       ANNOTATIONS — what each region maps to in the React contract
+       ============================================================ -->
+  <section class="annotations" aria-label="Design intent annotations">
+
+    <div class="annotation">
+      <h3>Form Factor</h3>
+      <p>
+        2U rack strip — proportion <code>5.43 : 1</code> matches
+        Roland's 19" × 88.9 mm chassis spec. The S-330's existing
+        <code>VirtualFrontPanel.tsx</code> is a 280 px portrait widget;
+        the S-550 inherits a wider landscape footprint as the visual
+        differentiator. Same drag/expand/collapse behavior; different
+        layout.
+      </p>
+    </div>
+
+    <div class="annotation">
+      <h3>Keypad Cluster</h3>
+      <p>
+        Left zone — 4 × 3 grid: digits 0-9, decimal, plus
+        <code>EXIT</code> / <code>CMD</code> / <code>ENT</code> / <code>BS</code>
+        as cluster-corner functions. The S-550's numeric keypad is the
+        primary distinguisher from the S-330 (S-330 has no keypad);
+        every direct slot/value entry routes through here.
+      </p>
+    </div>
+
+    <div class="annotation">
+      <h3>Graphic LCD</h3>
+      <p>
+        Center zone — 320 × 80 amber-backlit graphic LCD with
+        scanline overlay and warm radial glow. Renders the S-550's
+        Edit/Mode/Menu screens; same surface that
+        <code>VideoCapture</code> shows for the real device, but
+        software-rendered for the virtual panel.
+      </p>
+    </div>
+
+    <div class="annotation">
+      <h3>Navigation Diamond</h3>
+      <p>
+        Right zone — arrows at cardinal positions + accent-filled
+        <code>EXEC</code> center. Mirrors the S-330 nav idiom
+        (existing <code>NavigationPad.tsx</code>) so the
+        <code>useFrontPanel.pressButton('nav-up'|…)</code> contract
+        applies unchanged. Stacked <code>INC</code>/<code>DEC</code>
+        to the right reuses <code>ValueButtons.tsx</code>.
+      </p>
+    </div>
+
+    <div class="annotation">
+      <h3>Function Row</h3>
+      <p>
+        Six function keys above the diamond — <code>MODE / MENU /
+        SUB / COM / EDIT / EXEC</code>. Same shape as the S-330's
+        <code>FunctionButtonRow.tsx</code>; <code>EDIT</code> is
+        S-550-specific (S-330 surfaces edit via MENU + arrows).
+        Keyboard shortcuts F1-F6 carry over.
+      </p>
+    </div>
+
+    <div class="annotation">
+      <h3>Status LEDs</h3>
+      <p>
+        Right rack ear — vertical strip: <code>POW</code> (green),
+        <code>MIDI</code> (amber, blink on rx/tx), <code>REC</code>
+        (red, device-active only per <code>feedback_rec_led_accent</code>).
+        The red dot is the homage; never used for danger or error
+        in the panel surface.
+      </p>
+    </div>
+
+    <div class="annotation">
+      <h3>Chassis Texture</h3>
+      <p>
+        Brushed-aluminum face via repeating-linear-gradient grain
+        + 12% → 88% lightness ramp. Hairline rules separate the
+        three zones. Rack-ear screws are SVG-less CSS radial
+        gradients with cross-head slots — pure CSS, no asset
+        dependency.
+      </p>
+    </div>
+
+    <div class="annotation">
+      <h3>Interaction Contract</h3>
+      <p>
+        Every <code>&lt;button class="key" data-emit="…"&gt;</code>
+        maps to a <code>FrontPanelButton</code> in the React
+        component. Click → <code>useFrontPanel.pressButton(emit)</code>
+        → simulated or real-device SysEx out. Visual <code>:active</code>
+        state mirrors hardware press; <code>data-active="true"</code>
+        is the controlled override for keyboard-driven presses.
+      </p>
+    </div>
+
+  </section>
+
+  <!-- ============================================================
+       COMPARISON — S-330 panel vs S-550 panel
+       ============================================================ -->
+  <section class="comparison">
+    <h2>S-330 vs S-550 — Front Panel Differences</h2>
+    <div class="comparison-grid">
+      <div class="header">Aspect</div>
+      <div class="header">S-330 (existing)</div>
+      <div class="header">S-550 (this mockup)</div>
+
+      <div>Form factor</div>
+      <div>Desktop module — 280 px portrait widget</div>
+      <div>2U rack strip — 5.43:1 landscape</div>
+
+      <div>Display</div>
+      <div>Character LCD — single-line readout</div>
+      <div>Graphic LCD — 320 × 80, multi-line scenes</div>
+
+      <div>Numeric input</div>
+      <div>None — INC/DEC only</div>
+      <div>4 × 3 keypad: 0-9 + EXIT/CMD/ENT/BS</div>
+
+      <div>Navigation</div>
+      <div>4-arrow diamond + DEC/INC pair</div>
+      <div>4-arrow diamond + filled EXEC center + DEC/INC stack</div>
+
+      <div>Function keys</div>
+      <div>5 keys: MODE/MENU/SUB/COM/EXEC</div>
+      <div>6 keys: MODE/MENU/SUB/COM/EDIT/EXEC</div>
+
+      <div>Status LEDs</div>
+      <div>None — connection state in CRT only</div>
+      <div>POW (green) + MIDI (amber) + REC (red)</div>
+
+      <div>Brand mark</div>
+      <div>None — header text only</div>
+      <div>Vertical S-Series / S-550 badge on left ear</div>
+
+      <div>Component reuse</div>
+      <div>—</div>
+      <div>
+        Hook (<code>useFrontPanel</code>), button primitive
+        (<code>FrontPanelButton</code>), nav cluster
+        (<code>NavigationPad</code>), value pair
+        (<code>ValueButtons</code>), function row
+        (<code>FunctionButtonRow</code>) all carry over;
+        layout shell is the only S-550-specific React work.
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  // Click feedback — flash the pressed key and update status footer.
+  // Production wiring routes to useFrontPanel.pressButton(emit); here
+  // we just exercise the visual state machine for the mockup.
+
+  const lastPress = document.getElementById('last-press');
+  const lastSysex = document.getElementById('last-sysex');
+  const ledMidi = document.getElementById('led-midi');
+  const ledRec = document.getElementById('led-rec');
+
+  document.querySelectorAll('button.key').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const emit = btn.dataset.emit || btn.textContent.trim();
+      btn.setAttribute('data-active', 'true');
+      // brief visual flash
+      setTimeout(() => btn.removeAttribute('data-active'), 140);
+
+      // update status footer
+      lastPress.textContent = emit;
+      const stub = `F0 41 10 1E 12 ${emit.padEnd(8, ' ').slice(0, 8).split('').map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join(' ')} F7`;
+      lastSysex.textContent = stub.toUpperCase();
+
+      // blink MIDI LED for 240ms to simulate sysex tx
+      ledMidi.setAttribute('data-on', 'false');
+      setTimeout(() => ledMidi.setAttribute('data-on', 'true'), 240);
+
+      // light REC LED when MODE switches to PLAY mode (mock)
+      if (emit === 'mode' || emit === 'exec') {
+        const recOn = ledRec.getAttribute('data-on') === 'true';
+        ledRec.setAttribute('data-on', recOn ? 'false' : 'true');
+      }
+    });
+  });
+
+  // Idle MIDI heartbeat — every ~3s, blink the amber LED briefly
+  setInterval(() => {
+    ledMidi.setAttribute('data-on', 'false');
+    setTimeout(() => ledMidi.setAttribute('data-on', 'true'), 220);
+  }, 3000);
+</script>
+
+</body>
+</html>
