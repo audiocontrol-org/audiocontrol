@@ -191,3 +191,13 @@ export {
   type VfdGlowDefsProps,
   type VfdGlowVariant,
 } from './svg';
+
+// Broken variant registry (Phase 9R-A test discipline reform)
+// See docs/1.0/001-IN-PROGRESS/s550-support/testing-and-inventory-reform-spec.md §5
+// for the credibility-check usage. NOT for production consumption.
+export {
+  BROKEN_PRIMITIVES,
+  BROKEN_CONTEXTS,
+  type BrokenPrimitives,
+  type BrokenContexts,
+} from './__broken__/registry';
