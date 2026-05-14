@@ -53,7 +53,12 @@ function calleePropertyName(
   return null;
 }
 
-function stringFromLiteralOrTemplate(
+// Extract the static string content of a string literal or the static
+// quasis of a template literal. `\0` is used as the joiner between quasi
+// pieces because the rule only matches `[data-testid` / `[data-test`
+// substrings that cannot straddle a quasi boundary (interpolation cannot
+// smuggle the opening `[`).
+function extractStringContent(
   node: TSESTree.Node,
 ): string | null {
   if (node.type === AST_NODE_TYPES.Literal && typeof node.value === 'string') {
@@ -148,13 +153,13 @@ export const noForbiddenUiPatterns = createRule<[], MessageIds>({
       },
 
       Literal(node: TSESTree.Literal): void {
-        const value = stringFromLiteralOrTemplate(node);
+        const value = extractStringContent(node);
         if (value === null) return;
         reportStringNode(node, value);
       },
 
       TemplateLiteral(node: TSESTree.TemplateLiteral): void {
-        const value = stringFromLiteralOrTemplate(node);
+        const value = extractStringContent(node);
         if (value === null) return;
         reportStringNode(node, value);
       },

@@ -34,9 +34,12 @@ Configured via the root `.eslintrc.cjs` `overrides` block, scoped to
 the canonical Tier 2/3 directories:
 
 ```
-modules/*/test/ui/contract/**
-modules/*/test/ui/in-context/**
+**/test/ui/contract/**
+**/test/ui/in-context/**
 ```
+
+In ESLint config: `plugins: ['@audiocontrol/test-discipline']` (the
+`eslint-plugin-` prefix is stripped per ESLint convention).
 
 **Not linted:**
 

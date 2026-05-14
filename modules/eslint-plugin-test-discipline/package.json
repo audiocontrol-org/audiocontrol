@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "ESLint rules enforcing Validity Claim A from testing-and-inventory-reform-spec.md (tests originate where the user originates).",
+  "type": "commonjs",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -23,13 +24,20 @@
     "clean": "rm -rf dist"
   },
   "peerDependencies": {
-    "eslint": ">=8"
+    "eslint": ">=8",
+    "@typescript-eslint/parser": ">=6"
+  },
+  "peerDependenciesMeta": {
+    "@typescript-eslint/parser": {
+      "optional": true
+    }
   },
   "dependencies": {
     "@typescript-eslint/utils": "^6.21.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "@typescript-eslint/parser": "^6.21.0",
     "eslint": "^8.57.0",
     "typescript": "^5.3.0",
     "vitest": "^1.6.1"

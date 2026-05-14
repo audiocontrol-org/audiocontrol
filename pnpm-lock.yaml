@@ -152,7 +152,7 @@ importers:
         version: 5.9.2
       vite:
         specifier: ^5.0.10
-        version: 5.4.20(@types/node@22.19.8)
+        version: 5.4.20(@types/node@20.19.17)
       vite-plugin-mkcert:
         specifier: ^1.17.9
         version: 1.17.9(vite@5.4.20)
@@ -363,7 +363,7 @@ importers:
         version: 5.9.2
       vite:
         specifier: ^5.0.10
-        version: 5.4.20(@types/node@22.19.8)
+        version: 5.4.20(@types/node@20.19.17)
       vitest:
         specifier: ^1.1.0
         version: 1.6.1(@vitest/browser@1.6.1)(jsdom@29.0.1)
@@ -493,6 +493,9 @@ importers:
       '@types/node':
         specifier: ^20.0.0
         version: 20.19.17
+      '@typescript-eslint/parser':
+        specifier: ^6.21.0
+        version: 6.21.0(eslint@8.57.1)(typescript@5.9.2)
       eslint:
         specifier: ^8.57.0
         version: 8.57.1
@@ -571,7 +574,7 @@ importers:
         version: 5.9.2
       vite:
         specifier: ^5.0.10
-        version: 5.4.20(@types/node@22.19.8)
+        version: 5.4.20(@types/node@20.19.17)
       vitest:
         specifier: ^1.1.0
         version: 1.6.1(@vitest/browser@1.6.1)(jsdom@29.0.1)
@@ -997,7 +1000,7 @@ importers:
         version: 5.9.2
       vite:
         specifier: ^5.0.10
-        version: 5.4.20(@types/node@22.19.8)
+        version: 5.4.20(@types/node@20.19.17)
       vite-plugin-mkcert:
         specifier: ^1.17.9
         version: 1.17.9(vite@5.4.20)
@@ -4557,7 +4560,7 @@ packages:
       '@rolldown/pluginutils': 1.0.0-beta.27
       '@types/babel__core': 7.20.5
       react-refresh: 0.17.0
-      vite: 5.4.20(@types/node@22.19.8)
+      vite: 5.4.20(@types/node@20.19.17)
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -9250,7 +9253,7 @@ packages:
       axios: 1.12.2(debug@4.4.3)
       debug: 4.4.3(supports-color@8.1.1)
       picocolors: 1.1.1
-      vite: 5.4.20(@types/node@22.19.8)
+      vite: 5.4.20(@types/node@20.19.17)
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -9559,8 +9562,8 @@ packages:
       strip-literal: 2.1.1
       tinybench: 2.9.0
       tinypool: 0.8.4
-      vite: 5.4.20(@types/node@22.19.8)
-      vite-node: 1.6.1(@types/node@22.19.8)
+      vite: 5.4.20(@types/node@20.19.17)
+      vite-node: 1.6.1(@types/node@20.19.17)
       why-is-node-running: 2.3.0
     transitivePeerDependencies:
       - less
@@ -9616,8 +9619,8 @@ packages:
       strip-literal: 2.1.1
       tinybench: 2.9.0
       tinypool: 0.8.4
-      vite: 5.4.20(@types/node@22.19.8)
-      vite-node: 1.6.1(@types/node@22.19.8)
+      vite: 5.4.20(@types/node@20.19.17)
+      vite-node: 1.6.1(@types/node@20.19.17)
       why-is-node-running: 2.3.0
     transitivePeerDependencies:
       - less

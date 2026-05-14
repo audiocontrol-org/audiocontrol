@@ -45,10 +45,15 @@ test.describe('AcEnvelopeTable segment-1 Time slider — operator pointer-drag c
     // page header introduces on PlayPage.
     const box = await slider.boundingBox();
     expect(box, 'slider must have a bounding box').not.toBeNull();
-    expect(box!.width, 'slider must have positive width').toBeGreaterThan(8);
-    expect(box!.height, 'slider must have positive height').toBeGreaterThan(8);
-    const centerX = box!.x + box!.width / 2;
-    const centerY = box!.y + box!.height / 2;
+    if (box === null) {
+      // The expect() above already failed the spec; this narrows for the
+      // type checker without resorting to a non-null assertion.
+      throw new Error('slider boundingBox returned null after expect().not.toBeNull()');
+    }
+    expect(box.width, 'slider must have positive width').toBeGreaterThan(8);
+    expect(box.height, 'slider must have positive height').toBeGreaterThan(8);
+    const centerX = box.x + box.width / 2;
+    const centerY = box.y + box.height / 2;
 
     const reachable = await page.evaluate(
       ({ x, y }) => {
@@ -76,8 +81,8 @@ test.describe('AcEnvelopeTable segment-1 Time slider — operator pointer-drag c
     // through. No synthetic events, no .fill, no value assignment.
     // The bar's current value (106) sits ~83% across the bar. Move the
     // pointer to that position first, press, drag left to ~10%, release.
-    const startX = box!.x + box!.width * 0.83;
-    const targetX = box!.x + box!.width * 0.10;
+    const startX = box.x + box.width * 0.83;
+    const targetX = box.x + box.width * 0.10;
     await page.mouse.move(startX, centerY);
     await page.mouse.down();
     await page.mouse.move(targetX, centerY, { steps: 12 });
