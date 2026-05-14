@@ -860,7 +860,6 @@ describe('S-330 Structure Encoding', () => {
                     polarity: false,
                     offset: 0,
                 },
-                tvaLfoDepth: 0,
                 transpose: 64,
                 fineTune: 0,
                 tvf: {
@@ -947,7 +946,6 @@ describe('S-330 Structure Encoding', () => {
                     polarity: true,
                     offset: 20,
                 },
-                tvaLfoDepth: 30,
                 transpose: 0, // Raw value: 0 = center
                 fineTune: 0,  // Raw value: 0 = center
                 tvf: {

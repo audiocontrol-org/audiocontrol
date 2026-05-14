@@ -243,7 +243,12 @@ export interface SSeriesBasePatchCommon {
 }
 
 /**
- * Base tone parameters shared by all S-series devices
+ * Base tone parameters shared by all S-series devices.
+ *
+ * The TVA LFO modulation depth lives at `tva.lfoDepth` (single source of
+ * truth for the byte at `TONE_OFFSETS.TVA_LFO_DEPTH` = offset 26). A prior
+ * top-level `tvaLfoDepth` field aliased the same byte and silently dropped
+ * UI edits at encode time; removed in #408 Phase A.
  */
 export interface SSeriesBaseTone {
     name: string;
@@ -255,7 +260,6 @@ export interface SSeriesBaseTone {
     wave: SSeriesWaveParams;
     loopMode: SSeriesLoopMode;
     lfo: SSeriesLfoParams;
-    tvaLfoDepth: number;
     transpose: number;
     fineTune: number;
     tvf: SSeriesTvfParams;

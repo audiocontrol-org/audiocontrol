@@ -225,7 +225,6 @@ function extensionToTone(ext: SeriesToneExtension, yaml: ToneYaml): SSeriesBaseT
         },
         loopMode: mapLoopModeFromYaml(yaml.wave.loopMode),
         lfo: ext.lfo ? lfoFromYaml(ext.lfo) : defaultLfo,
-        tvaLfoDepth: ext.tva?.lfoDepth ?? 0,
         transpose: ext.transpose ?? 0,
         fineTune: ext.fineTune ?? 0,
         tvf: ext.tvf ? tvfFromYaml(ext.tvf) : defaultTvf,

@@ -50,7 +50,9 @@
  *     (PITCH-01 transpose slider disabled per inventory)
  *   TVF (10): D-TONE-TVF-01..10
  *   TVA (5): D-TONE-TVA-01..05
- *     (TVA-06 top-level tvaLfoDepth missing UI per #408)
+ *     (Prior TVA-06 top-level tvaLfoDepth was an alias of tva.lfoDepth at
+ *      the same encoded offset; collapsed in #408 Phase A — TVA-02 now
+ *      covers the only TVA LFO depth affordance.)
  *   LFO (5): D-TONE-LFO-01..04, 06
  *     (LFO-05 mode display-only per inventory)
  *   Env (8): D-TONE-ENV-02..05, 08..11

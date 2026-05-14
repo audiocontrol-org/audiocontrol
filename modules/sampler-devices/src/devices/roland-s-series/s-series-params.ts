@@ -521,7 +521,12 @@ export function createEmptySeriesPatchCommon(): SSeriesBasePatchCommon {
 }
 
 /**
- * Parse tone parameters from de-nibblized SysEx data
+ * Parse tone parameters from de-nibblized SysEx data.
+ *
+ * The TVA LFO modulation depth at `TONE_OFFSETS.TVA_LFO_DEPTH` is parsed
+ * into `tva.lfoDepth` only. A prior top-level `tvaLfoDepth` aliased the
+ * same byte; removed in #408 Phase A so UI mutations to `tva.lfoDepth`
+ * actually round-trip through the encoder.
  */
 export function parseSeriesTone(data: number[], offsets: SSeriesToneOffsetMap): SSeriesBaseTone {
     const getByte = (offset: number, defaultVal: number = 0): number =>
@@ -593,7 +598,6 @@ export function parseSeriesTone(data: number[], offsets: SSeriesToneOffsetMap): 
         wave,
         loopMode: parseLoopMode(getByte(offsets.LOOP_MODE)),
         lfo,
-        tvaLfoDepth: getByte(offsets.TVA_LFO_DEPTH),
         transpose: (() => {
             const raw = getByte(offsets.TRANSPOSE, 0);
             return raw > 127 ? raw - 256 : raw;
@@ -618,6 +622,12 @@ export function parseSeriesTone(data: number[], offsets: SSeriesToneOffsetMap): 
 /**
  * Encode tone parameters to SysEx data.
  * The `limits` parameter controls device-specific bit masks.
+ *
+ * The byte at `TONE_OFFSETS.TVA_LFO_DEPTH` is sourced from `tone.tva.lfoDepth`
+ * — the single canonical field for TVA LFO depth after the #408 Phase A
+ * dedup. The prior top-level `tone.tvaLfoDepth` source dropped UI mutations
+ * to `tva.lfoDepth` on the floor because both UI panels mutated the nested
+ * field while the encoder read the (silently unsynced) top-level one.
  */
 export function encodeSeriesTone(
     tone: SSeriesBaseTone,
@@ -662,7 +672,7 @@ export function encodeSeriesTone(
     data[offsets.LOOP_MODE] = encodeLoopMode(tone.loopMode);
 
     // LFO parameters
-    data[offsets.TVA_LFO_DEPTH] = tone.tvaLfoDepth & 0x7F;
+    data[offsets.TVA_LFO_DEPTH] = tone.tva.lfoDepth & 0x7F;
     data[offsets.LFO_RATE] = tone.lfo.rate & 0x7F;
     data[offsets.LFO_SYNC] = tone.lfo.sync ? 1 : 0;
     data[offsets.LFO_DELAY] = tone.lfo.delay & 0x7F;

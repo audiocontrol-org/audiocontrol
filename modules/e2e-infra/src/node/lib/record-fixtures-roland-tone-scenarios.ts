@@ -82,7 +82,7 @@ function withEnvelopeLevel(env: SSeriesEnvelope, index: number, value: number): 
 // Tone-write scenario spec — one row per affordance
 // ---------------------------------------------------------------------------
 
-interface ToneWriteScenarioSpec {
+export interface ToneWriteScenarioSpec {
     /** Inventory ID (D-TONE-XXX-NN) — included in the description for traceability. */
     detail: string;
     /** Suffix appended to 'tone-0-' to form the scenario name. */
@@ -102,7 +102,7 @@ interface ToneWriteScenarioSpec {
 // AND non-zero so the UI's change handler always fires. See criteria in
 // the file header.
 
-const TONE_WRITE_SCENARIOS: ToneWriteScenarioSpec[] = [
+export const TONE_WRITE_SCENARIOS: ToneWriteScenarioSpec[] = [
     // -----------------------------------------------------------------
     // Wave section (D-TONE-WAVE-01, 02, 04..08) — 7 testable
     // (WAVE-03 sample rate is display-only; 09/10/11 missing UI per #408)
@@ -252,7 +252,9 @@ const TONE_WRITE_SCENARIOS: ToneWriteScenarioSpec[] = [
 
     // -----------------------------------------------------------------
     // TVA section (D-TONE-TVA-01..05) — 5 testable
-    // (TVA-06 top-level tvaLfoDepth missing UI per #408)
+    // (Prior D-TONE-TVA-06 referenced a top-level tvaLfoDepth field that
+    //  aliased tva.lfoDepth at the same offset; collapsed in #408 Phase A,
+    //  so TVA-02 now covers the only TVA LFO depth affordance.)
     // -----------------------------------------------------------------
     {
         detail: 'D-TONE-TVA-01',

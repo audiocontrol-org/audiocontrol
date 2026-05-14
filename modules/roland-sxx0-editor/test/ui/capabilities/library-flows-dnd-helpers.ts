@@ -59,7 +59,6 @@ const DUMMY_TONE_SCRIPT = `
       },
       loopMode: 'one-shot',
       lfo: { rate: 0, depth: 0, delay: 0, sync: 'off', waveform: 'triangle' },
-      tvaLfoDepth: 0,
       transpose: 0,
       fineTune: 0,
       tvf: { enabled: false, cutoff: 127, resonance: 0, keyFollow: 0,
