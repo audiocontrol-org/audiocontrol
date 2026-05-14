@@ -54,8 +54,11 @@
  *
  *   tsx scripts/synthesize-tone-fixture.ts \
  *     --scenario <suffix>       \   # e.g., 'tva-lfo-depth'
- *     --device   <s330|s550>    \   # used to pick limits; default: from fixture header
- *     --fixtures-dir <path>     \   # default: ./test/fixtures
+ *     --device   <s330|s550>    \   # subdirectory under <fixtures-dir> for path lookup;
+ *                                   #   default: s330. Device-specific limits are derived
+ *                                   #   from the fixture header regardless of this flag.
+ *     --fixtures-dir <path>     \   # required; root containing s330/ and s550/ scenario
+ *                                   #   subdirs (e.g. test/fixtures)
  *     [--check]                     # exit non-zero if regenerated != on-disk
  *
  * Exit codes:
@@ -85,6 +88,8 @@ import {
     encodeSeriesTone,
     TONE_OFFSETS,
     TONE_BLOCK_SIZE,
+    S330_DEVICE_LIMITS,
+    S550_DEVICE_LIMITS,
 } from '../src/devices/roland-s-series/index.js';
 import type {
     SSeriesBaseTone,
@@ -96,31 +101,14 @@ import {
 } from '../../e2e-infra/src/node/lib/record-fixtures-roland-tone-scenarios.js';
 
 // ---------------------------------------------------------------------------
-// Device limits — duplicated intentionally as the SSOT for limits per device
-// lives behind the device-specific exports (`s330/index.ts`, `s550/index.ts`)
-// which would pull the full client surface into this script. The 5 numeric
-// constants per device are unlikely to drift; if they do, both files fail
-// together (they're cross-checked in unit tests).
+// Device limits — imported from the canonical s-series-device-limits.ts so
+// this script cannot drift from the production encoders. If a limit changes,
+// every consumer (script + s330-params + s550-params + tone factories) picks
+// up the update in lockstep.
 // ---------------------------------------------------------------------------
 
-const S330_LIMITS: SSeriesDeviceLimits = {
-    sourcetoneMask: 0x1f,
-    waveBankMask: 0x01,
-    copySourceMask: 0x1f,
-    maxPatchNumber: 63,
-    maxToneNumber: 31,
-};
-
-const S550_LIMITS: SSeriesDeviceLimits = {
-    sourcetoneMask: 0x3f,
-    waveBankMask: 0x03,
-    copySourceMask: 0x3f,
-    maxPatchNumber: 31,
-    maxToneNumber: 63,
-};
-
 function limitsForDevice(device: 's330' | 's550'): SSeriesDeviceLimits {
-    return device === 's330' ? S330_LIMITS : S550_LIMITS;
+    return device === 's330' ? S330_DEVICE_LIMITS : S550_DEVICE_LIMITS;
 }
 
 // ---------------------------------------------------------------------------
@@ -454,6 +442,7 @@ function main(): number {
 try {
     process.exit(main());
 } catch (err) {
-    console.error(`synthesize-tone-fixture: ${(err as Error).message}`);
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`synthesize-tone-fixture: ${message}`);
     process.exit(1);
 }

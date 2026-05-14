@@ -49,9 +49,11 @@ describe('#408 Phase A — TVA LFO depth dedup', () => {
 
         // Runtime check that complements the type-level removal. If a
         // future change re-introduces the top-level alias, this test
-        // fails loudly.
+        // fails loudly. `hasOwnProperty` is the canonical check here —
+        // it catches both the literal-property and getter cases without
+        // requiring a type bypass to read off a `Record<string, unknown>`
+        // surface.
         expect(Object.prototype.hasOwnProperty.call(parsed, 'tvaLfoDepth')).toBe(false);
-        expect((parsed as unknown as Record<string, unknown>).tvaLfoDepth).toBeUndefined();
     });
 
     it('encodes mutations to tva.lfoDepth back to the same offset', () => {

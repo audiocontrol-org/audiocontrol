@@ -7,7 +7,6 @@
  */
 
 import type { S330SystemParams, S330PatchCommon, S330Tone } from './s330-types.js';
-import type { SSeriesDeviceLimits } from '../roland-s-series/index.js';
 import { TONE_OFFSETS, TONE_BLOCK_SIZE, PATCH_PARAMS } from './s330-addresses.js';
 
 import {
@@ -18,6 +17,7 @@ import {
     createEmptySeriesPatchCommon,
     parseSeriesTone,
     encodeSeriesTone,
+    S330_DEVICE_LIMITS,
 } from '../roland-s-series/index.js';
 
 // =============================================================================
@@ -59,18 +59,6 @@ export {
 } from '../roland-s-series/index.js';
 
 // =============================================================================
-// S-330 Device Limits
-// =============================================================================
-
-const S330_LIMITS: SSeriesDeviceLimits = {
-    sourcetoneMask: 0x1F,
-    waveBankMask: 0x01,
-    copySourceMask: 0x1F,
-    maxPatchNumber: 63,
-    maxToneNumber: 31,
-};
-
-// =============================================================================
 // S-330 Parse/Encode Wrappers
 // =============================================================================
 
@@ -93,10 +81,10 @@ export const parseTone = (data: number[]): S330Tone =>
     parseSeriesTone(data, TONE_OFFSETS) as S330Tone;
 
 export const encodeTone = (tone: S330Tone): number[] =>
-    encodeSeriesTone(tone, TONE_OFFSETS, TONE_BLOCK_SIZE, S330_LIMITS);
+    encodeSeriesTone(tone, TONE_OFFSETS, TONE_BLOCK_SIZE, S330_DEVICE_LIMITS);
 
 export const isValidPatchNumber = (num: number): boolean =>
-    num >= 0 && num <= S330_LIMITS.maxPatchNumber;
+    num >= 0 && num <= S330_DEVICE_LIMITS.maxPatchNumber;
 
 export const isValidToneNumber = (num: number): boolean =>
-    num >= 0 && num <= S330_LIMITS.maxToneNumber;
+    num >= 0 && num <= S330_DEVICE_LIMITS.maxToneNumber;
