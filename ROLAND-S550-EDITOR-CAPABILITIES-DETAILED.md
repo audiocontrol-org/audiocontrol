@@ -59,16 +59,16 @@ GitHub issues grouped by feature coherence.
 | ID | Affordance | Source of truth | Tracked in |
 |----|-----------|-----------------|------------|
 | D-PATCH-13 | Patch copy source | `SSeriesBasePatchCommon.copySource` | [#409](https://github.com/audiocontrol-org/audiocontrol/issues/409) |
-| D-TONE-WAVE-09 | Wave bank assignment (in tone editor) | `SSeriesWaveParams.bank` | [#408](https://github.com/audiocontrol-org/audiocontrol/issues/408) |
-| D-TONE-WAVE-10 | Segment top (in tone editor) | `SSeriesWaveParams.segmentTop` | [#408](https://github.com/audiocontrol-org/audiocontrol/issues/408) |
-| D-TONE-WAVE-11 | Segment length (in tone editor) | `SSeriesWaveParams.segmentLength` | [#408](https://github.com/audiocontrol-org/audiocontrol/issues/408) |
-| D-TONE-TVA-06 | Top-level tvaLfoDepth (distinct from tva.lfoDepth) | `SSeriesBaseTone.tvaLfoDepth` (s-series-types.ts:258) | [#408](https://github.com/audiocontrol-org/audiocontrol/issues/408) |
+| D-TONE-WAVE-09 | Wave bank assignment (in tone editor) | `SSeriesWaveParams.bank` | implemented in [#408](https://github.com/audiocontrol-org/audiocontrol/issues/408) Phase B |
+| D-TONE-WAVE-10 | Segment top (in tone editor) | `SSeriesWaveParams.segmentTop` | implemented in [#408](https://github.com/audiocontrol-org/audiocontrol/issues/408) Phase B |
+| D-TONE-WAVE-11 | Segment length (in tone editor) | `SSeriesWaveParams.segmentLength` | implemented in [#408](https://github.com/audiocontrol-org/audiocontrol/issues/408) Phase B |
+| D-TONE-TVA-06 | ~~Top-level tvaLfoDepth (distinct from tva.lfoDepth)~~ removed: data-model duplicate of TVA-02 | dedup commit 447a7dfd (#408 Phase A) | removed in [#408](https://github.com/audiocontrol-org/audiocontrol/issues/408) Phase A |
 | D-TONE-ADV-01 | Source tone reference | `SSeriesBaseTone.sourceTone` | [#409](https://github.com/audiocontrol-org/audiocontrol/issues/409) |
 | D-TONE-ADV-02 | Original sub-tone | `SSeriesBaseTone.origSubTone` | [#409](https://github.com/audiocontrol-org/audiocontrol/issues/409) |
 | D-TONE-ADV-03 | Recording threshold | `SSeriesBaseTone.recThreshold` | [#410](https://github.com/audiocontrol-org/audiocontrol/issues/410) |
 | D-TONE-ADV-04 | Recording pre-trigger | `SSeriesBaseTone.recPreTrigger` | [#410](https://github.com/audiocontrol-org/audiocontrol/issues/410) |
-| D-TONE-ADV-05 | Loop tune | `SSeriesBaseTone.loopTune` | [#408](https://github.com/audiocontrol-org/audiocontrol/issues/408) |
-| D-TONE-ADV-06 | Envelope zoom | `SSeriesBaseTone.envZoom` | [#408](https://github.com/audiocontrol-org/audiocontrol/issues/408) |
+| D-TONE-ADV-05 | Loop tune | `SSeriesBaseTone.loopTune` | implemented in [#408](https://github.com/audiocontrol-org/audiocontrol/issues/408) Phase B |
+| D-TONE-ADV-06 | Envelope zoom | `SSeriesBaseTone.envZoom` | implemented in [#408](https://github.com/audiocontrol-org/audiocontrol/issues/408) Phase B |
 | D-TONE-ADV-07 | Tone copy source | `SSeriesBaseTone.copySource` | [#409](https://github.com/audiocontrol-org/audiocontrol/issues/409) |
 | D-SYS-01 | Master tune | `SSeriesBaseSystemParams.masterTune` | [#407](https://github.com/audiocontrol-org/audiocontrol/issues/407) |
 | D-SYS-02 | Master level | `SSeriesBaseSystemParams.masterLevel` | [#407](https://github.com/audiocontrol-org/audiocontrol/issues/407) |
@@ -102,20 +102,20 @@ GitHub issues grouped by feature coherence.
 | D-PATCH | 13 | 11 | 1 | 1 |
 | D-PATCH-ZONE | 8 | 8 | 0 | 0 |
 | D-TONE-LIST | 7 | 7 | 0 | 0 |
-| D-TONE-WAVE | 11 | 6 | 1 | 4 |
+| D-TONE-WAVE | 11 | 9 | 1 | 1 |
 | D-TONE-LOOP | 6 | 6 | 0 | 0 |
 | D-TONE-PITCH | 5 | 4 | 1 | 0 |
 | D-TONE-TVF | 10 | 10 | 0 | 0 |
-| D-TONE-TVA | 6 | 5 | 0 | 1 |
+| D-TONE-TVA | 5 | 5 | 0 | 0 |
 | D-TONE-LFO | 6 | 5 | 1 | 0 |
 | D-TONE-ENV | 12 | 12 | 0 | 0 |
 | D-TONE-SAMPLE | 4 | 4 | 0 | 0 |
-| D-TONE-ADV | 7 | 0 | 0 | 7 |
+| D-TONE-ADV | 7 | 2 | 0 | 5 |
 | D-LIB | 22 | 19 | 3 | 0 |
 | D-PLAY | 13 | 9 | 4 | 0 |
 | D-SYS | 11 | 0 | 0 | 11 |
 | D-XX | 13 | 7 | 6 | 0 |
-| **Total** | **184** | **133** | **17** | **24** |
+| **Total** | **183** | **138** | **17** | **18** |
 
 ### By origin
 
@@ -237,9 +237,9 @@ Tones are written as a whole structure via `sendToneData(toneIndex, tone)`. Each
 | D-TONE-WAVE-06 | Start Point — number (24-bit address) | `ToneEditor.tsx:301` → `tone.wave.startPoint` | C-TONE-13 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-WAVE-06` |
 | D-TONE-WAVE-07 | Loop Point — number | `ToneEditor.tsx:319` → `tone.wave.loopPoint` | C-TONE-13 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-WAVE-07` |
 | D-TONE-WAVE-08 | End Point — number | `ToneEditor.tsx:336` → `tone.wave.endPoint` | C-TONE-13 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-WAVE-08` |
-| D-TONE-WAVE-09 | Wave Bank — not rendered in tone editor | `SSeriesWaveParams.bank` (only in ImportSamplesDialog) | C-TONE-07 | native | missing | — |
-| D-TONE-WAVE-10 | Segment Top — not rendered in tone editor | `SSeriesWaveParams.segmentTop` (only in ImportSamplesDialog) | C-TONE-07 | native | missing | — |
-| D-TONE-WAVE-11 | Segment Length — not rendered in tone editor | `SSeriesWaveParams.segmentLength` (only in ImportSamplesDialog) | C-TONE-07 | native | missing | — |
+| D-TONE-WAVE-09 | Wave Bank — select (A/B for S-330; A/B/C/D for S-550) | `ToneWavePanel.tsx` → `tone.wave.bank` | C-TONE-07 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-WAVE-09` |
+| D-TONE-WAVE-10 | Segment Top — slider (0-17) | `ToneWavePanel.tsx` → `tone.wave.segmentTop` | C-TONE-07 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-WAVE-10` |
+| D-TONE-WAVE-11 | Segment Length — slider (0-18) | `ToneWavePanel.tsx` → `tone.wave.segmentLength` | C-TONE-07 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-WAVE-11` |
 
 ---
 
@@ -294,7 +294,7 @@ Tones are written as a whole structure via `sendToneData(toneIndex, tone)`. Each
 | D-TONE-TVA-03 | Key Rate — slider | `ToneEditor.tsx:712` → `tone.tva.keyRate` | C-TONE-10 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-TVA-03` |
 | D-TONE-TVA-04 | Vel Rate — slider | `ToneEditor.tsx:720` → `tone.tva.velRate` | C-TONE-10 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-TVA-04` |
 | D-TONE-TVA-05 | Level Curve — select (0-5) | `ToneEditor.tsx:729` → `tone.tva.levelCurve` | C-TONE-10 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-TVA-05` |
-| D-TONE-TVA-06 | Top-level tvaLfoDepth (distinct from tva.lfoDepth) | `SSeriesBaseTone.tvaLfoDepth` (s-series-types.ts:258) | C-TONE-10 | native | missing | — |
+| D-TONE-TVA-06 | ~~Top-level tvaLfoDepth~~ removed: data-model duplicate of TVA-02 at the same encoded offset | dedup commit 447a7dfd (#408 Phase A) | C-TONE-10 | native | removed | n/a (TVA-02 covers the only TVA LFO depth affordance) |
 
 ---
 
@@ -353,8 +353,8 @@ S-series envelopes are 8-segment (NOT ADSR). Each envelope has 8 levels + 8 rate
 | D-TONE-ADV-02 | Orig Sub Tone | `SSeriesBaseTone.origSubTone` (s-series-types.ts:252) | C-TONE-07 | native | missing | — |
 | D-TONE-ADV-03 | Rec Threshold | `SSeriesBaseTone.recThreshold` (s-series-types.ts:266) | C-TONE-07 | native | missing | — |
 | D-TONE-ADV-04 | Rec Pre-Trigger | `SSeriesBaseTone.recPreTrigger` (s-series-types.ts:267) | C-TONE-07 | native | missing | — |
-| D-TONE-ADV-05 | Loop Tune | `SSeriesBaseTone.loopTune` (s-series-types.ts:268) | C-TONE-13 | native | missing | — |
-| D-TONE-ADV-06 | Env Zoom | `SSeriesBaseTone.envZoom` (s-series-types.ts:269) | C-TONE-12 | native | missing | — |
+| D-TONE-ADV-05 | Loop Tune — slider (-127..+127) | `ToneWavePanel.tsx` → `tone.loopTune` | C-TONE-13 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-ADV-05` |
+| D-TONE-ADV-06 | Env Zoom — slider (0-7) | `ToneAmpPanel.tsx` → `tone.envZoom` | C-TONE-12 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-ADV-06` |
 | D-TONE-ADV-07 | Copy Source (tone) | `SSeriesBaseTone.copySource` (s-series-types.ts:270) | C-TONE-07 | native | missing | — |
 
 ---

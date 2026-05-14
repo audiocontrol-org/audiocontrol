@@ -21,6 +21,17 @@ export const TONE_TOOLTIPS = {
     'Audio output routing for this tone. Mix sends to the main stereo output. ' +
     'Out 1-8 sends to individual outputs.',
 
+  // Wave Memory
+  waveBank:
+    'Which wave bank the sample lives in. S-330: A or B. S-550: A through D. ' +
+    'Changing this re-points the tone to a different memory region.',
+
+  waveSegmentTop:
+    'Index of the first wave-memory segment used by this tone. 0-17.',
+
+  waveSegmentLength:
+    'Number of consecutive wave-memory segments this tone occupies. 0-18.',
+
   // Wave Points
   waveStart:
     'Sample start point in memory. The sample plays from this address.',
@@ -30,6 +41,10 @@ export const TONE_TOOLTIPS = {
 
   waveEnd:
     'Sample end point. Playback stops or loops back when reaching this address.',
+
+  loopTune:
+    'Fine-tune offset applied to the loop region. ' +
+    'Signed value; negative pitches the loop down.',
 
   // TVF (Filter)
   tvfEnabled:
@@ -123,6 +138,10 @@ export const TONE_TOOLTIPS = {
 
   tvaLevelCurve:
     'Velocity response curve for amplitude. Affects how velocity maps to volume.',
+
+  envZoom:
+    'Envelope display zoom level on the device\'s CRT. ' +
+    '0 = fully zoomed out, 7 = maximum detail. Stored per-tone.',
 
   // Envelopes
   tvaEnvelope:

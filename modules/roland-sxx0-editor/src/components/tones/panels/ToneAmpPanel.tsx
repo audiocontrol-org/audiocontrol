@@ -13,8 +13,13 @@
  *     editor-core for graph+pip+readout, plus an inline edit grid for
  *     per-segment rate/level).
  *
+ * #408 Phase B adds the Env Zoom slider (D-TONE-ADV-06) directly above
+ * the envelope viewport it affects — `tone.envZoom` is stored per-tone
+ * and controls the device's CRT envelope-display zoom level (0..7).
+ *
  * data-testid preservation:
  *   - tone-tva-curve (Level Curve select)
+ *   - param-env-zoom (ParamSliderRow via labelToTestId('Env Zoom'))
  */
 
 import type { SamplerTone, SamplerEnvelope, SamplerLevelCurve } from '@/core/midi/SamplerClient';
@@ -50,6 +55,12 @@ export function ToneAmpPanel({ tone, onUpdate, onCommit }: ToneAmpPanelProps) {
   };
   const handleVelRateChange = (velRate: number) => {
     const updatedTone = { ...tone, tva: { ...tone.tva, velRate } };
+    onUpdate?.(updatedTone);
+    onCommit?.(updatedTone);
+  };
+
+  const handleEnvZoomChange = (envZoom: number) => {
+    const updatedTone = { ...tone, envZoom };
     onUpdate?.(updatedTone);
     onCommit?.(updatedTone);
   };
@@ -91,6 +102,16 @@ export function ToneAmpPanel({ tone, onUpdate, onCommit }: ToneAmpPanelProps) {
           </select>
         </div>
       </Tooltip>
+      <div className="mb-4 max-w-[260px]">
+        <ParamSliderRow
+          label="Env Zoom"
+          value={tone.envZoom}
+          min={0}
+          max={7}
+          onChange={handleEnvZoomChange}
+          tooltip={TONE_TOOLTIPS.envZoom}
+        />
+      </div>
       <ToneEnvelopeEditor
         envelope={tone.tva.envelope}
         onChange={handleTvaEnvelopeChange}

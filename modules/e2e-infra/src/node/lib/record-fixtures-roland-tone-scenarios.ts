@@ -104,8 +104,13 @@ export interface ToneWriteScenarioSpec {
 
 export const TONE_WRITE_SCENARIOS: ToneWriteScenarioSpec[] = [
     // -----------------------------------------------------------------
-    // Wave section (D-TONE-WAVE-01, 02, 04..08) — 7 testable
-    // (WAVE-03 sample rate is display-only; 09/10/11 missing UI per #408)
+    // Wave section (D-TONE-WAVE-01, 02, 04..11) — 10 testable
+    //
+    // WAVE-09/10/11 (bank, segmentTop, segmentLength) and the loop-tune
+    // sibling field (D-TONE-ADV-05, encoded into the wave-related region
+    // of the tone payload) were added in #408 Phase B alongside the UI
+    // controls in ToneWavePanel.tsx. WAVE-03 sample rate remains display-
+    // only (no edit control on the device).
     // -----------------------------------------------------------------
     {
         detail: 'D-TONE-WAVE-01',
@@ -148,6 +153,37 @@ export const TONE_WRITE_SCENARIOS: ToneWriteScenarioSpec[] = [
         suffix: 'wave-end-point',
         label: 'wave.endPoint = 4096',
         mutate: (t) => ({ ...t, wave: { ...t.wave, endPoint: 4096 } }),
+    },
+    {
+        // Value 1 is valid for BOTH S-330 (waveBankMask 0x01) and S-550
+        // (waveBankMask 0x03). Picking 2 would round-trip through the
+        // S-330 mask to 0 and defeat the test.
+        detail: 'D-TONE-WAVE-09',
+        suffix: 'wave-bank',
+        label: 'wave.bank = 1',
+        mutate: (t) => ({ ...t, wave: { ...t.wave, bank: 1 } }),
+    },
+    {
+        detail: 'D-TONE-WAVE-10',
+        suffix: 'wave-segment-top',
+        label: 'wave.segmentTop = 5',
+        mutate: (t) => ({ ...t, wave: { ...t.wave, segmentTop: 5 } }),
+    },
+    {
+        detail: 'D-TONE-WAVE-11',
+        suffix: 'wave-segment-length',
+        label: 'wave.segmentLength = 8',
+        mutate: (t) => ({ ...t, wave: { ...t.wave, segmentLength: 8 } }),
+    },
+    {
+        // Loop Tune is a wave-loop-related fine-tune field — encoded into
+        // the tone payload alongside the wave addresses (see s-series-
+        // params.ts:721). Surfaced in ToneWavePanel.tsx for adjacency with
+        // the start/loop/end inputs it modulates.
+        detail: 'D-TONE-ADV-05',
+        suffix: 'loop-tune',
+        label: 'loopTune = 23',
+        mutate: (t) => ({ ...t, loopTune: 23 }),
     },
 
     // -----------------------------------------------------------------
@@ -255,6 +291,11 @@ export const TONE_WRITE_SCENARIOS: ToneWriteScenarioSpec[] = [
     // (Prior D-TONE-TVA-06 referenced a top-level tvaLfoDepth field that
     //  aliased tva.lfoDepth at the same offset; collapsed in #408 Phase A,
     //  so TVA-02 now covers the only TVA LFO depth affordance.)
+    //
+    // D-TONE-ADV-06 envZoom is a per-tone display preference adjacent to
+    // the TVA envelope viewport in the UI (ToneAmpPanel.tsx); the env-zoom
+    // scenario lives at the end of the TVA group so the prior TVA captures
+    // see the device's stock envZoom rather than the captured value.
     // -----------------------------------------------------------------
     {
         detail: 'D-TONE-TVA-01',
@@ -285,6 +326,15 @@ export const TONE_WRITE_SCENARIOS: ToneWriteScenarioSpec[] = [
         suffix: 'tva-level-curve',
         label: 'tva.levelCurve = 4',
         mutate: (t) => ({ ...t, tva: { ...t.tva, levelCurve: 4 as SSeriesLevelCurve } }),
+    },
+    {
+        // envZoom is masked with 0x07 by the encoder (range 0-7); value 3
+        // sits comfortably in-range without touching the 0/7 edges where
+        // the device's stock value might coincide.
+        detail: 'D-TONE-ADV-06',
+        suffix: 'env-zoom',
+        label: 'envZoom = 3',
+        mutate: (t) => ({ ...t, envZoom: 3 }),
     },
 
     // -----------------------------------------------------------------

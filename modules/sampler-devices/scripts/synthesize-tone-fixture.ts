@@ -1,7 +1,7 @@
 /**
- * synthesize-tone-fixture — regenerate the outbound `sendToneData` byte
- * sequence for a tone-write fixture by replaying the on-disk prelude +
- * applying the canonical encoder.
+ * synthesize-tone-fixture — regenerate (or initialize) the outbound
+ * `sendToneData` byte sequence for a tone-write fixture by replaying an
+ * on-disk prelude + applying the canonical encoder.
  *
  * ## Why this script exists
  *
@@ -14,13 +14,30 @@
  * `tvaLfoDepth` / `tva.lfoDepth` — the prelude stays valid but the
  * writeback bytes drift, and a literal hardware re-record is overkill.
  *
- * This tool replays the prelude in-memory, applies the same scenario-
- * specific mutation that the original recording did, encodes via the
- * canonical S330/S550 `encodeTone`, and rewrites only the outbound
- * portions of the writeback block. The result is byte-identical to what
- * a fresh hardware recording would produce because:
+ * Two modes:
  *
- *   1. The prelude (loadToneRange responses) is preserved verbatim.
+ *   - **regen** (default): rewrite an EXISTING fixture's writeback in
+ *     place using the current encoder + scenario mutation. Prelude stays
+ *     verbatim. Used when a codec change drifts the writeback bytes.
+ *
+ *   - **init** (`--init --from-base <suffix>`): create a NEW fixture
+ *     under `<fixturesDir>/<device>/tone-0-<scenario>.ndjson` by copying
+ *     the prelude from the base fixture (`tone-0-<from-base>.ndjson` in
+ *     the same device subdir) and synthesizing the writeback from the
+ *     scenario's mutation. Used when adding a new scenario (e.g. #408
+ *     Phase B adding 5 new affordance fixtures) without re-recording
+ *     against hardware. The base fixture's prelude is reused because all
+ *     tone-write fixtures share the same TonesPage mount sequence — only
+ *     the writeback bytes differ per scenario.
+ *
+ * Both modes replay the prelude in-memory, apply the same scenario-
+ * specific mutation that a fresh hardware capture would have applied,
+ * encode via the canonical S330/S550 `encodeTone`, and write the
+ * outbound portions of the writeback block. The result is byte-identical
+ * to what a fresh hardware recording would produce because:
+ *
+ *   1. The prelude (loadToneRange responses) is preserved verbatim from
+ *      the base / target fixture.
  *   2. The mutation is shared (`TONE_WRITE_SCENARIOS` is imported, not
  *      duplicated).
  *   3. The encoder is the same `encodeTone` the production client calls.
@@ -30,8 +47,12 @@
  *
  * ## When synthesis is appropriate
  *
- *   - The prelude is already on disk in a captured fixture.
+ *   - The prelude is already on disk (either in the target fixture for
+ *     regen, or in a sibling base fixture for init).
  *   - The codec (or the `mutate` function) is the only thing that changed.
+ *   - The new scenario's mutation only changes tone-payload bytes (no
+ *     device-side state mutation that would alter subsequent prelude
+ *     responses on a fresh capture).
  *
  * ## When synthesis is NOT appropriate
  *
@@ -44,11 +65,12 @@
  *
  * ## Determinism contract
  *
- * Given an unchanged on-disk fixture prelude AND an unchanged
- * `TONE_WRITE_SCENARIOS` entry for the scenario AND an unchanged
- * `encodeTone`, this tool produces byte-identical output across runs.
- * If `--check` reports a diff after no source changes, that's a bug in
- * this script, the scenarios array, or the encoder.
+ * Given an unchanged on-disk prelude (either the target fixture's own or
+ * the base fixture in `--init` mode) AND an unchanged `TONE_WRITE_SCENARIOS`
+ * entry for the scenario AND an unchanged `encodeTone`, this tool produces
+ * byte-identical output across runs. If `--check` reports a diff after no
+ * source changes, that's a bug in this script, the scenarios array, or the
+ * encoder.
  *
  * ## CLI
  *
@@ -59,14 +81,22 @@
  *                                   #   from the fixture header regardless of this flag.
  *     --fixtures-dir <path>     \   # required; root containing s330/ and s550/ scenario
  *                                   #   subdirs (e.g. test/fixtures)
+ *     [--init --from-base <suffix>] # create a NEW fixture under <device>/tone-0-<scenario>
+ *                                   #   .ndjson by copying the prelude from <device>/
+ *                                   #   tone-0-<from-base>.ndjson. The new fixture's header
+ *                                   #   inherits device + deviceId from the base; only
+ *                                   #   `name`, `description`, and `capturedAt` are
+ *                                   #   updated. Required together with --init.
  *     [--check]                     # exit non-zero if regenerated != on-disk
+ *                                   #   (not compatible with --init — there is nothing on
+ *                                   #   disk to diff against on first creation)
  *
  * Exit codes:
  *   0  — success (file written, or --check found no diff)
  *   1  — diff detected in --check mode, or invocation/runtime error
  */
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve as resolvePath } from 'node:path';
 
 import {
@@ -120,6 +150,8 @@ interface CliOptions {
     device?: 's330' | 's550';
     fixturesDir: string;
     check: boolean;
+    init: boolean;
+    fromBase?: string;
 }
 
 function parseCliArgs(argv: string[]): CliOptions {
@@ -128,10 +160,16 @@ function parseCliArgs(argv: string[]): CliOptions {
     let device: 's330' | 's550' | undefined;
     let fixturesDir: string | undefined;
     let check = false;
+    let init = false;
+    let fromBase: string | undefined;
     for (let i = 0; i < args.length; i++) {
         const arg = args[i];
         if (arg === '--check') {
             check = true;
+            continue;
+        }
+        if (arg === '--init') {
+            init = true;
             continue;
         }
         if (arg === '--scenario') {
@@ -150,11 +188,24 @@ function parseCliArgs(argv: string[]): CliOptions {
             fixturesDir = args[++i];
             continue;
         }
+        if (arg === '--from-base') {
+            fromBase = args[++i];
+            continue;
+        }
         throw new Error(`unknown argument: ${arg}`);
     }
     if (!scenario) throw new Error('--scenario is required (e.g. --scenario tva-lfo-depth)');
     if (!fixturesDir) throw new Error('--fixtures-dir is required (e.g. --fixtures-dir test/fixtures)');
-    return { scenario, device, fixturesDir, check };
+    if (init && !fromBase) {
+        throw new Error('--init requires --from-base <suffix> (the existing fixture whose prelude is reused)');
+    }
+    if (init && check) {
+        throw new Error('--init and --check are mutually exclusive (--init creates the fixture; nothing on disk to diff against)');
+    }
+    if (fromBase && !init) {
+        throw new Error('--from-base only makes sense with --init');
+    }
+    return { scenario, device, fixturesDir, check, init, fromBase };
 }
 
 // ---------------------------------------------------------------------------
@@ -343,6 +394,42 @@ function regenerateWriteBlock(
 }
 
 // ---------------------------------------------------------------------------
+// Initialize a NEW fixture from a base fixture's prelude.
+//
+// The base fixture supplies the prelude (loadToneRange responses + their
+// outbound RQDs) AND a sample write-block whose timestamps + ACK records
+// give us the inbound side of the new write-block. Since the write-block
+// outbounds get rewritten by `regenerateWriteBlock` against the new
+// scenario's mutation, the base fixture's specific writeback bytes don't
+// matter — only the structural shape (1 WSD + 4 DAT + 1 EOD + their ACKs)
+// is reused. The scenario header (`name`, `description`, `capturedAt`) is
+// updated to reflect the new fixture's identity.
+// ---------------------------------------------------------------------------
+
+function initFromBase(
+    baseScenario: FixtureScenario,
+    spec: ToneWriteScenarioSpec,
+    limits: SSeriesDeviceLimits,
+): FixtureScenario {
+    const initialized: FixtureScenario = {
+        ...baseScenario,
+        name: `tone-0-${spec.suffix}`,
+        description: `TonesPage init + sendToneData(0, tone with ${spec.label}) — ${spec.detail}`,
+        capturedAt: new Date().toISOString(),
+        // Deep-clone records so the regenerate pass below doesn't mutate
+        // the base fixture's in-memory representation by accident.
+        records: baseScenario.records.map((r) => ({ ...r, bytes: [...r.bytes] })),
+    };
+    // The new fixture's write-block outbounds are immediately rewritten
+    // against the new scenario's mutation. The inbound ACK records (one
+    // per outbound) are preserved verbatim from the base fixture because
+    // they're identical across all sendToneData captures sharing the
+    // same prelude — the device ACK contents don't depend on the tone
+    // payload's value, only on the WSD/DAT/EOD framing being correct.
+    return regenerateWriteBlock(initialized, spec, limits);
+}
+
+// ---------------------------------------------------------------------------
 // Byte-level diff for --check mode
 // ---------------------------------------------------------------------------
 
@@ -411,6 +498,33 @@ function main(): number {
         deviceHint,
         `tone-0-${opts.scenario}.ndjson`,
     );
+
+    if (opts.init) {
+        if (opts.fromBase === undefined) {
+            // Defensive: parseCliArgs already enforced this pairing.
+            throw new Error('--init requires --from-base');
+        }
+        if (existsSync(fixturePath)) {
+            throw new Error(
+                `--init refusing to overwrite existing fixture ${fixturePath} — drop --init for regen mode, or delete the file first`,
+            );
+        }
+        const basePath = resolvePath(
+            process.cwd(),
+            opts.fixturesDir,
+            deviceHint,
+            `tone-0-${opts.fromBase}.ndjson`,
+        );
+        const baseSrc = readFileSync(basePath, 'utf8');
+        const baseScenario = parseFixture(baseSrc);
+        const limits = limitsForDevice(baseScenario.device);
+        const created = initFromBase(baseScenario, spec, limits);
+        writeFileSync(fixturePath, serializeFixture(created), 'utf8');
+        console.log(
+            `INIT: ${fixturePath} (${created.records.length} records; prelude copied from ${basePath})`,
+        );
+        return 0;
+    }
 
     const original = readFileSync(fixturePath, 'utf8');
     const scenario = parseFixture(original);

@@ -43,9 +43,10 @@
  * (`openTone0Editor`, `switchToToneTab`, `tonePanel`, `clickSliderAtValue`,
  * `fillLabeledNumber`, `fillEnvelopeFirstCell`, `selectLabeled`).
  *
- * Affordances covered (39 total):
- *   Wave (7): D-TONE-WAVE-01, 02, 04..08
- *     (WAVE-03 sample-rate is display-only; 09/10/11 missing UI per #408)
+ * Affordances covered (44 total):
+ *   Wave (10): D-TONE-WAVE-01, 02, 04..11
+ *     (WAVE-03 sample-rate is display-only; WAVE-09 bank + WAVE-10 segment
+ *      top + WAVE-11 segment length implemented in #408 Phase B.)
  *   Pitch (4): D-TONE-PITCH-02..05
  *     (PITCH-01 transpose slider disabled per inventory)
  *   TVF (10): D-TONE-TVF-01..10
@@ -58,6 +59,9 @@
  *   Env (8): D-TONE-ENV-02..05, 08..11
  *     (ENV-01/07 SVG drag and ENV-06/12 fullscreen are not write
  *      affordances)
+ *   Adv (2): D-TONE-ADV-05 (loop-tune), D-TONE-ADV-06 (env-zoom)
+ *     (Both implemented in #408 Phase B. ADV-01/02/03/04/07 remain
+ *      out-of-scope per #409/#410.)
  */
 import { test, expect } from '@playwright/test';
 import {
@@ -176,6 +180,19 @@ test.describe('Tone parameter write affordances', () => {
     await expectFixtureFullyConsumed(page);
   });
 
+  test('D-TONE-WAVE-09: editing wave bank writes sendToneData', async ({ page }) => {
+    await page.goto(tonesUrl('tone-0-wave-bank'));
+    const editor = await openTone0Editor(page);
+
+    // Bank value 1 ("B") is valid on both S-330 (mask 0x01) and S-550
+    // (mask 0x03). The select option `value` is the numeric bank index.
+    await tonePanel(editor, 'tt-wave')
+      .getByTestId('tone-wave-bank')
+      .selectOption({ value: '1' });
+
+    await expectFixtureFullyConsumed(page);
+  });
+
   // ---------------------------------------------------------------------
   // Slider-driven tests — table-driven across the TVF/TVA/LFO panels.
   //
@@ -199,6 +216,19 @@ test.describe('Tone parameter write affordances', () => {
   }
 
   const SLIDER_TESTS: SliderTest[] = [
+    // Wave (segment-top / segment-length / loop-tune live in the Wave panel
+    // alongside the address inputs; all three are ParamSliderRow primitives
+    // so they're exercised here rather than via fillLabeledNumber.)
+    { id: 'D-TONE-WAVE-10', title: 'editing segment top writes sendToneData',
+      scenario: 'tone-0-wave-segment-top', tab: 'Wave', tabId: 'tt-wave',
+      testId: 'param-segment-top', value: 5 },
+    { id: 'D-TONE-WAVE-11', title: 'editing segment length writes sendToneData',
+      scenario: 'tone-0-wave-segment-length', tab: 'Wave', tabId: 'tt-wave',
+      testId: 'param-segment-length', value: 8 },
+    { id: 'D-TONE-ADV-05', title: 'editing loop tune writes sendToneData',
+      scenario: 'tone-0-loop-tune', tab: 'Wave', tabId: 'tt-wave',
+      testId: 'param-loop-tune', value: 23 },
+
     // Pitch (fine tune is the only slider in Pitch; transpose is disabled)
     { id: 'D-TONE-PITCH-02', title: 'adjusting fine tune writes sendToneData',
       scenario: 'tone-0-pitch-fine-tune', tab: 'Pitch', tabId: 'tt-pitch',
@@ -242,6 +272,9 @@ test.describe('Tone parameter write affordances', () => {
     { id: 'D-TONE-TVA-04', title: 'adjusting amp vel rate writes sendToneData',
       scenario: 'tone-0-tva-vel-rate', tab: 'Amp', tabId: 'tt-amp',
       testId: 'param-vel-rate', value: 55 },
+    { id: 'D-TONE-ADV-06', title: 'editing env zoom writes sendToneData',
+      scenario: 'tone-0-env-zoom', tab: 'Amp', tabId: 'tt-amp',
+      testId: 'param-env-zoom', value: 3 },
 
     // LFO
     { id: 'D-TONE-LFO-01', title: 'adjusting LFO rate writes sendToneData',

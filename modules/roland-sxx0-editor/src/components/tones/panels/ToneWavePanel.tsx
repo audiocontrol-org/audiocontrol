@@ -1,18 +1,28 @@
 /**
  * ToneEditor — Wave tab panel (Phase 9 Task 4 TonesPage amend).
  *
- * Wave-source params (Original Key / Sample Rate / Loop Mode / Output)
- * + sample wave-address controls (Start / Loop Point / End) + the
- * visual loop editor (when sample data is available).
+ * Wave-source params (Original Key / Sample Rate / Loop Mode / Output / Bank)
+ * + wave-memory segment controls (Segment Top / Segment Length)
+ * + sample wave-address controls (Start / Loop Point / End / Loop Tune)
+ * + the visual loop editor (when sample data is available).
  *
  * v3 atomic primitives:
- *   - vanilla `<input type="number">` → `.ac-input` (Original Key, Start,
+ *   - vanilla `<input type="number">` -> `.ac-input` (Original Key, Start,
  *     Loop Point, End).
- *   - vanilla `<select>` → `.ac-select` (Loop Mode, Output).
- *   - all field labels → `.ac-field-label`.
+ *   - vanilla `<select>` -> `.ac-select` (Loop Mode, Output, Bank).
+ *   - ParamSliderRow for Segment Top / Segment Length / Loop Tune (#408
+ *     Phase B — D-TONE-WAVE-10/11, D-TONE-ADV-05).
+ *   - all field labels -> `.ac-field-label`.
+ *
+ * Bank options come from the device-config registry (`waveBankLabels` on the
+ * active tone group). S-330 yields A/B; S-550 yields A/B/C/D. The select
+ * never branches on device type — it iterates the registry-supplied labels.
  *
  * data-testid preservation:
  *   - tone-original-key, tone-loop-mode, tone-output
+ *   - tone-wave-bank (new; #408 Phase B — D-TONE-WAVE-09)
+ *   - ParamSliderRow rows expose data-testid via labelToTestId(label):
+ *     `param-segment-top`, `param-segment-length`, `param-loop-tune`.
  *
  * The Start / Loop Point / End inputs are targeted by spec helpers via
  * adjacent `<label>` text (see `fillLabeledNumber` in tone-writes-
@@ -23,12 +33,15 @@
 import type { SamplerTone } from '@/core/midi/SamplerClient';
 import { midiNoteToName } from '@/lib/utils';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { ParamSliderRow } from '@/components/ui/ParamSliderRow';
 import { TONE_TOOLTIPS } from '@/constants/tone-tooltips';
+import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { LoopEditor } from '@audiocontrol/loop-editor/ui';
 import type { LoopEditorProps } from '@audiocontrol/loop-editor/ui';
 
 interface ToneWavePanelProps {
   tone: SamplerTone;
+  toneIndex: number;
   onUpdate?: (tone: SamplerTone) => void;
   onCommit?: (updatedTone?: SamplerTone) => void;
   waveData?: Int16Array | null;
@@ -40,6 +53,7 @@ interface ToneWavePanelProps {
 
 export function ToneWavePanel({
   tone,
+  toneIndex,
   onUpdate,
   onCommit,
   waveData,
@@ -49,6 +63,42 @@ export function ToneWavePanel({
   loopEditorProps,
 }: ToneWavePanelProps) {
   const hasSampleData = tone.wave.endPoint > tone.wave.startPoint;
+  const { memoryLayout } = useDeviceConfig();
+  const { labels: waveBankLabels, indices: waveBankIndices } =
+    memoryLayout.getWaveBanksForTone(toneIndex);
+
+  const handleBankChange = (e: React.ChangeEvent<HTMLSelectElement>): void => {
+    const updatedTone: SamplerTone = {
+      ...tone,
+      wave: { ...tone.wave, bank: parseInt(e.target.value, 10) },
+    };
+    onUpdate?.(updatedTone);
+    onCommit?.(updatedTone);
+  };
+
+  const handleSegmentTopChange = (segmentTop: number): void => {
+    const updatedTone: SamplerTone = {
+      ...tone,
+      wave: { ...tone.wave, segmentTop },
+    };
+    onUpdate?.(updatedTone);
+    onCommit?.(updatedTone);
+  };
+
+  const handleSegmentLengthChange = (segmentLength: number): void => {
+    const updatedTone: SamplerTone = {
+      ...tone,
+      wave: { ...tone.wave, segmentLength },
+    };
+    onUpdate?.(updatedTone);
+    onCommit?.(updatedTone);
+  };
+
+  const handleLoopTuneChange = (loopTune: number): void => {
+    const updatedTone: SamplerTone = { ...tone, loopTune };
+    onUpdate?.(updatedTone);
+    onCommit?.(updatedTone);
+  };
 
   return (
     <div className="tones__panel-stack">
@@ -132,7 +182,43 @@ export function ToneWavePanel({
           </Tooltip>
         </div>
 
-        <div className="mt-4 grid gap-4 md:grid-cols-3 text-xs">
+        <div className="mt-4 grid gap-4 md:grid-cols-3 lg:grid-cols-3">
+          <Tooltip content={TONE_TOOLTIPS.waveBank}>
+            <div>
+              <label className="ac-field-label">Bank</label>
+              <select
+                value={tone.wave.bank}
+                onChange={handleBankChange}
+                data-testid="tone-wave-bank"
+                className="ac-select"
+              >
+                {waveBankIndices.map((bankIndex, i) => (
+                  <option key={bankIndex} value={bankIndex}>
+                    {waveBankLabels[i]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </Tooltip>
+          <ParamSliderRow
+            label="Segment Top"
+            value={tone.wave.segmentTop}
+            min={0}
+            max={17}
+            onChange={handleSegmentTopChange}
+            tooltip={TONE_TOOLTIPS.waveSegmentTop}
+          />
+          <ParamSliderRow
+            label="Segment Length"
+            value={tone.wave.segmentLength}
+            min={0}
+            max={18}
+            onChange={handleSegmentLengthChange}
+            tooltip={TONE_TOOLTIPS.waveSegmentLength}
+          />
+        </div>
+
+        <div className="mt-4 grid gap-4 md:grid-cols-4 text-xs">
           <Tooltip content={TONE_TOOLTIPS.waveStart}>
             <div>
               <label className="ac-field-label">Start</label>
@@ -184,6 +270,14 @@ export function ToneWavePanel({
               />
             </div>
           </Tooltip>
+          <ParamSliderRow
+            label="Loop Tune"
+            value={tone.loopTune}
+            min={-127}
+            max={127}
+            onChange={handleLoopTuneChange}
+            tooltip={TONE_TOOLTIPS.loopTune}
+          />
         </div>
       </section>
 

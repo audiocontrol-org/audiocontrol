@@ -117,6 +117,7 @@ export function ToneEditor({
             'tt-wave': (
               <ToneWavePanel
                 tone={tone}
+                toneIndex={index}
                 onUpdate={onUpdate}
                 onCommit={onCommit}
                 waveData={waveData}
