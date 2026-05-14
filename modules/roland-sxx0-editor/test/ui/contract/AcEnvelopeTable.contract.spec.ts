@@ -30,7 +30,7 @@ import { test, expect } from '@playwright/test';
 import { brokenHarnessUrl } from './_credibility-url';
 
 test.describe('AcEnvelopeTable segment-1 Time slider — operator pointer-drag contract', () => {
-  test('drags the bar with a real pointer and the consumer onChange fires with a new value', async ({ page }) => {
+  test('D-TONE-ENV-02: drags the bar with a real pointer and the consumer onChange fires with a new value', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 });
     await page.goto(brokenHarnessUrl('/roland/s330/editor/_harness/envelope-table'), {
       waitUntil: 'networkidle',
