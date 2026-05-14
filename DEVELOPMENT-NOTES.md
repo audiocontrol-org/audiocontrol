@@ -11,6 +11,80 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-05-13 (evening): s550-support — #408 Tone Editor polish (5 new controls + 1 data-model dedup + fixture synthesis tool)
+
+### Feature: s550-support
+### Worktree: audiocontrol-s550-support
+
+### Goal
+
+Operator picked #408 ("[s550] Tone Editor polish — surface 6 missing tone fields") off the open-issues list. The issue framed 6 affordances as "missing UI" — but orientation revealed one of them (D-TONE-TVA-06 `tvaLfoDepth`) was actually a data-model duplicate of an existing field, masking a real bug where the TVA LFO Depth slider silently dropped every user edit. Drove implementation to completion via `/dwi` using the subagent-driven-development pattern.
+
+### Accomplished
+
+**4 commits** on `feature/s550-support`. Test gate rose **170 → 175 passed, 4 skipped** (independently verified by controller at every dispatch boundary per the controller-as-gate rule).
+
+- **`447a7dfd` — Phase A dedup** (Dispatch 1). Collapsed `SSeriesBaseTone.tvaLfoDepth` (top-level alias) into `SSeriesTvaParams.lfoDepth` — both had been aliasing byte 26 of the tone block. Parser populated both fields; encoder only read from the top-level. UI slider mutated the nested copy. **Every TVA LFO Depth edit was silently dropped at encode time today.** The existing capability test passed coincidentally because the fixture was recorded with the same bug consistently applied.
+
+- **`2e64b6d0` — Phase A code-quality fix-up.** Replaced `(err as Error).message` with `err instanceof Error ? err.message : String(err)`. Deleted a redundant `as unknown as Record<string, unknown>` cast in the unit test. Fixed two docstring drifts on the synthesis tool's CLI block. **Bonus refactor:** 5 separate copies of the `*_DEVICE_LIMITS` literal (across `synthesize-tone-fixture.ts` + `s330-params.ts` + `s330-tone-factory.ts` + `s550-params.ts` + `s550-tone-factory.ts`) collapsed into a single `s-series-device-limits.ts` SSOT. Drift now compile-time-impossible.
+
+- **`e8a404db` — Phase B 5 missing fields** (Dispatch 2). Surfaced Wave Bank (`<select>` driven by device-config `memoryLayout.getWaveBanksForTone(toneIndex)`), Segment Top (ParamSliderRow 0-17), Segment Length (0-18), Loop Tune (-127..127 signed), Env Zoom (0-7). 5 new write scenarios + 5 deterministically-synthesized fixtures + 5 new capability specs. Capability inventory: D-TONE-WAVE-09/10/11 + D-TONE-ADV-05/06 → `implemented`; D-TONE-TVA-06 → `removed` (data-model duplicate; citation to `447a7dfd`).
+
+- **`3fa19358` — Phase B code-quality fix-up.** Stale roll-up heading count `(24)` → `(18)`. File-size cap drift resolved: `synthesize-tone-fixture.ts` (562 → 482 lines) via docstring extraction to sibling `synthesize-tone-fixture.md`; `record-fixtures-roland-tone-scenarios.ts` over-cap (534 lines) documented in-situ with rationale per the "deviations documented in situ" project rule. TOCTOU race on `--init` overwrite check replaced with atomic `writeFileSync(..., { flag: 'wx' })`.
+
+**Fixture synthesis tool — new infrastructure that didn't exist before this session.** `scripts/synthesize-tone-fixture.ts` regenerates fixture outbounds deterministically from captured preludes. Phase A added `--check` mode (diff-only validation). Phase B added `--init --from-base <suffix>` (create new fixture from base prelude). Reuses canonical SysEx framing helpers (`buildWSDMessage`/`buildDATMessage`/`buildEODMessage`/`nibblize`/`parseSeriesTone`/`encodeSeriesTone`) — no duplicated framing logic. Imports `TONE_WRITE_SCENARIOS` from the e2e-infra recording harness so the mutate functions stay shared. Eliminates the hardware dependency for codec-only changes; new fixtures for the 5 missing fields were synthesized rather than captured.
+
+**Side issue filed: [#422](https://github.com/audiocontrol-org/audiocontrol/issues/422)** — `TONE_OFFSETS.TVA_LFO_DEPTH_2` at offset 33 is a separate codec parameter that's named in the address map but neither parsed nor encoded. Surfaced by the dedup; out of #408 scope; needs hardware probe + spec lookup.
+
+### Didn't work
+
+- **Initial code-explorer agent dispatch got stuck in a generation loop** trying to emit the Write tool call. Wasted ~50 tool calls + a chunky context window before I caught it. Recovered by doing the orientation myself in ~5 minutes of targeted reads. Pattern lesson: when a sub-agent's output preview shows repeated "I'm about to write the tool call" prose, kill the dispatch and reassess. Don't wait for the agent to recover; their generation loop is unrecoverable.
+
+- **First sub-task assumption — that #408 was a straight "surface 6 fields" task — was wrong.** The issue's description framed `tvaLfoDepth` and `tva.lfoDepth` as "Distinct from `tva.lfoDepth`; the editor renders the latter but silently drops this field." Orientation revealed the OPPOSITE: the UI renders the nested field, and the encoder reads from the (unmutated) top-level alias — so the slider's edits never reach the device. The issue's framing was a partial diagnosis, not a complete one. If I'd taken the framing at face value and surfaced both fields in the UI, I'd have created two sliders fighting over the same byte. **Lesson:** when an issue uses "Distinct from X" without citing the spec, verify against the codec before designing the UI.
+
+### Course corrections
+
+None mid-implementation — the controller-driven dispatch pattern + per-dispatch two-stage review caught every issue early. The two MAJORs from Dispatch 1's code-quality review (`(err as Error)` cast + redundant test cast) and the 3 MINORs from Dispatch 2's review (heading-count drift + 2 over-cap files + TOCTOU race) all landed in fix-up commits before the final review.
+
+- **[PROCESS]** Initial code-explorer dispatch generation-looped. Recovered by orienting directly (faster). Sub-agent-driven-development is the default but graceful fallback to direct exploration is fine when a sub-agent fails.
+
+### Quantitative
+
+- **4 commits** on feature/s550-support (`447a7dfd`, `2e64b6d0`, `e8a404db`, `3fa19358`)
+- **Test gate:** 170 → 175 passed, 4 skipped (+5 capability specs)
+- **Suite re-runs:** 5 independent controller-side re-runs (one per dispatch + final); all green
+- **Synthesis tool `--check` runs:** 6 fixtures × multiple invocations = ~15 deterministic-regeneration verifications
+- **Sub-agent dispatches:** 1 orientation (failed) + 2 implementers + 2 fix-up implementers + 4 reviewers (2 spec + 2 code-quality) + 1 final review = 10 total
+- **5 new sliders + 1 new select** in the tone editor
+- **5 new synthesized fixtures** (no hardware required)
+- **1 new tool** (`synthesize-tone-fixture.ts` + sibling `.md`)
+- **1 new SSOT module** (`s-series-device-limits.ts`)
+- **6 capability inventory rows** updated (5 to `implemented`, 1 to `removed`)
+- **1 follow-up issue filed** ([#422](https://github.com/audiocontrol-org/audiocontrol/issues/422) for `TVA_LFO_DEPTH_2`)
+- **~3 hours total wall clock** (single session)
+
+### Insights
+
+- **The "Distinct from X" framing in an issue body is a smell, not a fact.** When two fields are described as distinct but the codec layer says they alias the same byte, trust the codec. The issue's framing was a partial-diagnosis hand-off; the implementation had to do the rest of the diagnosis. **Lesson for future issue triage:** verify the data-model claim against the codec/spec before designing the UI response. A "surface this missing field" issue can hide a "fix this data-model bug" issue.
+
+- **Fixture synthesis is a transformative tool for codec work.** Phase A's `synthesize-tone-fixture.ts` eliminates the hardware-capture step for any codec change. Before this session: a parser/encoder change required re-running `record-fixtures-roland-tone-scenarios.ts` on hardware to regenerate all affected fixtures. After this session: `--check` validates the fixture in-place; `--init --from-base` creates new fixtures from any base prelude. The tool's reusable beyond #408 — any future codec dedup, any new affordance added to the data model, can ship its tests deterministically without hardware. The Dispatch 1 brief specified the tool; the implementation generalized it.
+
+- **The "remove duplication entirely" path on MINOR-3 paid off.** Reviewer flagged `synthesize-tone-fixture.ts`'s "duplicated intentionally" comment as an IOU pattern. Implementer's three-path investigation found that NO existing limits export existed; created `s-series-device-limits.ts` as the SSOT; updated 5 sites to import. The bonus refactor was bigger than the original MINOR but compile-time eliminates a drift class the comment had been hand-waving about. Worth doing every time a sub-agent surfaces "duplicated intentionally" — there's almost always a typed export path that's cheaper than the comment.
+
+- **The synthesis tool's `--check` mode is the right shape for codec invariants.** It runs in <1 second per fixture, exits non-zero on divergence, integrates cleanly into pre-commit / CI / manual workflows. Each commit's fix-up cycle ran the check 5 times across 5 fixtures with negligible cost. The "controller is the gate" rule recommends re-running the FULL test gate every dispatch boundary — `--check` is the cheap supplemental gate that catches codec-side divergence without needing a 2:40 Playwright run.
+
+- **Sub-agent generation loops are a real failure mode.** First code-explorer dispatch wasted significant time + context. Pattern detection: if the agent's output preview shows repeated "I'm about to write" / "now writing" / "the tool call follows" prose, the agent has lost the plot. Better to abort + replan than to wait. The brief had been clear; the agent's generation got stuck transitioning from analysis to tool-call output.
+
+- **The two-stage review caught real defects every time.** Dispatch 1 code-quality found a second `as Error` cast the spec reviewer missed. Dispatch 2 code-quality found 3 MINORs including a real (theoretical) TOCTOU race. Neither would have been caught by tests; both required code-reading by someone outside the implementer's context. Per project memory `feedback_three_track_verification` (implicit in `feedback_actually_review.md`): screenshots + tests + code-review together catch what any one layer misses.
+
+### Open follow-ups
+
+- **#422** — research `TVA_LFO_DEPTH_2` at offset 33; hardware probe + spec lookup; needs Volt 4 connection
+- **Pre-existing fixture device-header artifact** — `s330/*.ndjson` fixtures have `device: "s550"` in their NDJSON header; recording artifact predating Phase 0. Tool handles correctly but a future cleanup pass could re-record with correct headers. Not blocking.
+- **Pre-existing roll-up table arithmetic gap** in `ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md` (Total row missing count vs. per-area sum) — predates #408; preserved by every implementer; out of scope for this session.
+
+---
+
 ## 2026-05-13: s550-support — open-issue closeout pass (13 closed: 9 bookkeeping + 4 small fixes)
 
 ### Feature: s550-support
