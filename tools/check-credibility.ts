@@ -19,8 +19,12 @@
  *
  * Exits 0 always — the manifest IS the output. Downstream tasks (T7 / T8)
  * decide how to gate releases on what this tool found.
+ *
+ * The `@credibleAgainst` header parser lives in
+ * `tools/check-credibility/parse-header.ts` so each file stays within the
+ * project's 500-line cap.
  */
-import { spawn, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import {
   readFileSync,
   readdirSync,
@@ -31,13 +35,15 @@ import {
 } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+// `.js` extension is required by NodeNext module resolution (the project's
+// tsconfig.base.json uses module/moduleResolution: NodeNext); tsx resolves
+// the corresponding .ts source at runtime.
+import {
+  parseCredibilityHeader,
+  type CredibilityEntry,
+} from './check-credibility/parse-header.js';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
-
-interface CredibilityEntry {
-  slot: string;
-  variants: ReadonlyArray<string>;
-}
 
 interface BrokenResult {
   slot: string;
@@ -46,6 +52,11 @@ interface BrokenResult {
   expectedFail: true;
   actuallyFailed: boolean;
   durationMs: number;
+  // Last ~1000 chars of stdout+stderr from the Playwright run, captured ONLY
+  // when the outcome was unexpected (i.e. `actuallyFailed === false` — a
+  // broken variant that did not fail). Expected outcomes carry no diagnostic
+  // payload so the manifest stays free of noise.
+  unexpectedOutput?: string;
 }
 
 interface SpecCredibility {
@@ -55,6 +66,11 @@ interface SpecCredibility {
   declarations: ReadonlyArray<CredibilityEntry>;
   unbrokenPasses: boolean;
   unbrokenDurationMs: number;
+  // Last ~1000 chars of stdout+stderr from the unbroken Playwright run,
+  // captured ONLY when the unbroken run unexpectedly failed
+  // (`unbrokenPasses === false`). The downstream task (T7 / T8) uses this to
+  // surface why the spec was deemed not credible without re-running the suite.
+  unbrokenError?: string;
   brokenResults: ReadonlyArray<BrokenResult>;
   credible: boolean;
   errors: ReadonlyArray<string>;
@@ -131,46 +147,17 @@ function discoverSpecs(): ReadonlyArray<DiscoveredSpec> {
   return out;
 }
 
-// ─── @credibleAgainst header parsing ───────────────────────────────────────
-
-/**
- * Parse one or more `@credibleAgainst <slot> <variant> [<variant> ...]`
- * lines from a spec's leading JSDoc block. Returns an empty array when no
- * declaration is present — the caller treats that as a hard failure.
- *
- * Slot tokens are restricted to identifier-shape to avoid runaway matches
- * on multi-line JSDoc bodies; variant tokens are whitespace-separated up to
- * the line end (the regex stops at `\n` and `*`).
- */
-function parseCredibilityHeader(source: string): ReadonlyArray<CredibilityEntry> {
-  const entries: CredibilityEntry[] = [];
-  const re = /@credibleAgainst\s+([A-Za-z][A-Za-z0-9_-]*)\s+([^\n*]+)/g;
-  let match: RegExpExecArray | null;
-  while ((match = re.exec(source)) !== null) {
-    // Two capture groups are present whenever the regex matches; the
-    // explicit narrowing guards against an empty alternation slipping in
-    // when this regex is extended later. The runtime check fails loudly
-    // rather than silently producing an empty slot/variant pair.
-    const slot = match[1];
-    const tail = match[2];
-    if (slot === undefined || tail === undefined) {
-      throw new Error(
-        `@credibleAgainst regex captured a match with no groups; raw match: ${match[0]}`,
-      );
-    }
-    const variants = tail.trim().split(/\s+/).filter((v) => v !== '');
-    if (variants.length === 0) continue;
-    entries.push({ slot, variants });
-  }
-  return entries;
-}
-
 // ─── Vite dev-server lifecycle (per module) ────────────────────────────────
 
 interface ViteHandle {
   port: number;
   kill: () => void;
 }
+
+// Bounded ring-buffer tail size for post-detection vite output. The tail is
+// kept (small) so an error-path message still has diagnostic context, but the
+// buffer cannot grow unbounded across a multi-spec session.
+const VITE_TAIL_MAX = 4_000;
 
 function startVite(moduleAbs: string): Promise<ViteHandle> {
   return new Promise((resolveStart, rejectStart) => {
@@ -179,25 +166,57 @@ function startVite(moduleAbs: string): Promise<ViteHandle> {
       env: process.env,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
-    let stdoutBuf = '';
+    // Pre-detection buffer: accumulates until the port-advertisement match.
+    // After detection, this is dropped and the post-detection tail takes
+    // over so memory does not grow unbounded with vite's HMR chatter.
+    let preBuf = '';
+    // Post-detection ring buffer: bounded tail used to surface vite output
+    // if the process later exits unexpectedly (the foreground loop kills
+    // vite normally, so this is purely diagnostic).
+    let postBuf = '';
     let resolved = false;
+    const appendPost = (s: string): void => {
+      postBuf = (postBuf + s).slice(-VITE_TAIL_MAX);
+    };
     const timer = setTimeout(() => {
       if (resolved) return;
       resolved = true;
       proc.kill('SIGKILL');
       rejectStart(
         new Error(
-          `vite did not advertise a port within 30s for ${moduleAbs}; output: ${stdoutBuf.slice(-2000)}`,
+          `vite did not advertise a port within 30s for ${moduleAbs}; output: ${preBuf.slice(-2000)}`,
         ),
       );
     }, 30_000);
-    const onChunk = (chunk: Buffer): void => {
-      stdoutBuf += chunk.toString('utf8');
-      const m = stdoutBuf.match(/https?:\/\/localhost:(\d+)/);
-      if (m !== null && !resolved) {
+    const onPreChunk = (chunk: Buffer): void => {
+      const s = chunk.toString('utf8');
+      if (resolved) {
+        // After resolution the pre-detection listeners are removed, but a
+        // chunk may still be in flight; route it to the bounded tail.
+        appendPost(s);
+        return;
+      }
+      preBuf += s;
+      const m = preBuf.match(/https?:\/\/localhost:(\d+)/);
+      if (m !== null) {
         resolved = true;
         clearTimeout(timer);
         const port = Number(m[1]);
+        // Stop appending to the unbounded pre-detection buffer. Detach the
+        // chunk listeners and re-attach a bounded tail collector so future
+        // output (HMR notices, warnings) cannot leak memory across a long
+        // multi-spec session.
+        proc.stdout.off('data', onPreChunk);
+        proc.stderr.off('data', onPreChunk);
+        const onPostChunk = (c: Buffer): void => {
+          appendPost(c.toString('utf8'));
+        };
+        proc.stdout.on('data', onPostChunk);
+        proc.stderr.on('data', onPostChunk);
+        // Release the pre-detection buffer once the relevant tail is in the
+        // bounded post-detection buffer.
+        appendPost(preBuf.slice(-VITE_TAIL_MAX));
+        preBuf = '';
         const kill = (): void => {
           // SIGTERM first, SIGKILL after a short grace period to match the
           // shell-script teardown's behavior.
@@ -207,18 +226,28 @@ function startVite(moduleAbs: string): Promise<ViteHandle> {
         resolveStart({ port, kill });
       }
     };
-    proc.stdout.on('data', onChunk);
-    proc.stderr.on('data', onChunk);
-    proc.on('exit', (code) => {
+    proc.stdout.on('data', onPreChunk);
+    proc.stderr.on('data', onPreChunk);
+    proc.on('exit', (code, signal) => {
       if (!resolved) {
         resolved = true;
         clearTimeout(timer);
         rejectStart(
           new Error(
-            `vite exited (code=${String(code)}) before advertising a port; output: ${stdoutBuf.slice(-2000)}`,
+            `vite exited (code=${String(code)}) before advertising a port; output: ${preBuf.slice(-2000)}`,
           ),
         );
+        return;
       }
+      // Post-detection exit. The normal teardown path sends SIGTERM (then
+      // SIGKILL) from kill() above, which produces signal !== null. Surface
+      // a diagnostic line ONLY when vite exited on its own — i.e. neither
+      // a clean code=0 shutdown nor a signalled teardown.
+      if (signal !== null) return;
+      if (code === 0) return;
+      process.stderr.write(
+        `[check-credibility] vite exited unexpectedly (code=${String(code)}); tail: ${postBuf.slice(-1000)}\n`,
+      );
     });
   });
 }
@@ -228,6 +257,20 @@ function startVite(moduleAbs: string): Promise<ViteHandle> {
 interface PlaywrightOutcome {
   passed: boolean;
   durationMs: number;
+  // Last ~1000 chars of stdout+stderr from the Playwright run. The caller
+  // decides whether to persist this — expected outcomes (unbroken passed,
+  // broken failed) drop it on the floor; unexpected outcomes propagate it
+  // into the manifest so a diagnostic trail survives the script's exit.
+  outputTail: string;
+}
+
+// Tail size for Playwright stdout/stderr captured per run. ~1000 chars is
+// enough to catch the spec-error block + the "X failed" line; larger sizes
+// would balloon the manifest without adding signal.
+const PLAYWRIGHT_TAIL_MAX = 1_000;
+
+function tailOf(s: string, max: number = PLAYWRIGHT_TAIL_MAX): string {
+  return s.length > max ? s.slice(-max) : s;
 }
 
 function runPlaywrightSpec(
@@ -255,7 +298,16 @@ function runPlaywrightSpec(
       encoding: 'utf8',
     },
   );
-  return { passed: result.status === 0, durationMs: Date.now() - start };
+  const stdout = typeof result.stdout === 'string' ? result.stdout : '';
+  const stderr = typeof result.stderr === 'string' ? result.stderr : '';
+  // Concatenate stderr after stdout so Playwright's failure summary (which
+  // it writes to stderr) lands at the end of the tail when truncated.
+  const combined = stdout + stderr;
+  return {
+    passed: result.status === 0,
+    durationMs: Date.now() - start,
+    outputTail: tailOf(combined),
+  };
 }
 
 // ─── Per-spec credibility check ────────────────────────────────────────────
@@ -272,8 +324,16 @@ function checkSpec(spec: DiscoveredSpec, port: number): SpecCredibility {
   const moduleName = relative(REPO_ROOT, spec.modulePath);
   const specRel = relative(REPO_ROOT, spec.absPath);
   const source = readFileSync(spec.absPath, 'utf8');
-  const declarations = parseCredibilityHeader(source);
+  const parsed = parseCredibilityHeader(source);
+  const declarations = parsed.entries;
   const errors: string[] = [];
+
+  // Surface any malformed `@credibleAgainst` lines into the manifest BEFORE
+  // the "no declaration" error so the operator sees the actual typo rather
+  // than just "missing declaration" when both shapes coexist.
+  for (const w of parsed.warnings) {
+    errors.push(w);
+  }
 
   if (declarations.length === 0) {
     errors.push(
@@ -282,8 +342,12 @@ function checkSpec(spec: DiscoveredSpec, port: number): SpecCredibility {
   }
 
   const unbroken = runPlaywrightSpec(spec.modulePath, spec.absPath, port, {});
+  // Only retain the captured tail when the outcome was UNEXPECTED. Expected
+  // outcomes are non-diagnostic and would just balloon the manifest.
+  let unbrokenError: string | undefined;
   if (!unbroken.passed) {
     errors.push('unbroken run failed — a credible spec must pass against the real harness');
+    unbrokenError = unbroken.outputTail;
   }
 
   const brokenResults: BrokenResult[] = [];
@@ -293,19 +357,24 @@ function checkSpec(spec: DiscoveredSpec, port: number): SpecCredibility {
       const outcome = runPlaywrightSpec(spec.modulePath, spec.absPath, port, {
         [envVar]: variant,
       });
-      brokenResults.push({
+      const entry: BrokenResult = {
         slot: decl.slot,
         variant,
         envVar,
         expectedFail: true,
         actuallyFailed: !outcome.passed,
         durationMs: outcome.durationMs,
-      });
+      };
       if (outcome.passed) {
+        // Broken variant unexpectedly passed; surface the Playwright tail so
+        // a debugger can see WHY the broken primitive did not produce the
+        // expected failure (e.g. broken impl no-ops, harness routed wrong).
+        entry.unexpectedOutput = outcome.outputTail;
         errors.push(
           `spec passed against broken variant ${decl.slot}/${variant} (${envVar}=${variant}) — credibility requires failure`,
         );
       }
+      brokenResults.push(entry);
     }
   }
 
@@ -315,7 +384,7 @@ function checkSpec(spec: DiscoveredSpec, port: number): SpecCredibility {
     brokenResults.length > 0 &&
     brokenResults.every((r) => r.actuallyFailed);
 
-  return {
+  const record: SpecCredibility = {
     specPath: specRel,
     module: moduleName,
     tier: spec.tier,
@@ -326,6 +395,10 @@ function checkSpec(spec: DiscoveredSpec, port: number): SpecCredibility {
     credible,
     errors,
   };
+  if (unbrokenError !== undefined) {
+    record.unbrokenError = unbrokenError;
+  }
+  return record;
 }
 
 // ─── Driver ────────────────────────────────────────────────────────────────
@@ -345,7 +418,27 @@ function groupByModule(specs: ReadonlyArray<DiscoveredSpec>): ReadonlyArray<Modu
   return Array.from(byModule, ([modulePath, list]) => ({ modulePath, specs: list }));
 }
 
+/**
+ * Verify that `pnpm` is on PATH before any spawn() / spawnSync() call relies
+ * on it. Both the Vite dev-server launch and the Playwright invocation depend
+ * on `pnpm exec`; missing binary used to produce an opaque ENOENT mid-run.
+ * Failing here gives the operator a single, descriptive line.
+ */
+function assertPnpmAvailable(): void {
+  try {
+    // `command -v pnpm` is a POSIX-portable existence check. We pipe via
+    // /bin/sh because `command` is a shell builtin, not a standalone binary.
+    execFileSync('/bin/sh', ['-c', 'command -v pnpm'], { stdio: 'ignore' });
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `check-credibility requires 'pnpm' on PATH (used for both 'pnpm vite' and 'pnpm exec playwright'). Install pnpm or activate the project's pnpm via corepack before re-running. Underlying error: ${detail}`,
+    );
+  }
+}
+
 async function main(): Promise<void> {
+  assertPnpmAvailable();
   const specs = discoverSpecs();
   const groups = groupByModule(specs);
   const results: SpecCredibility[] = [];
