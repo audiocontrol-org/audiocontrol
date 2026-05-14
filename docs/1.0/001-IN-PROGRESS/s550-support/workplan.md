@@ -72,7 +72,7 @@ This workplan is written defensively per [`.claude/rules/agent-discipline.md`](/
 | Phase 6: Hardware Validation | Complete | All tests passing against physical S-550 |
 | Phase 7: S-550 Front Panel | **COMPLETE 2026-05-12.** Task 1 — Design APPROVED 2026-05-12 (v2 commit `ffd003d7`); Task 2 — React implementation landed (commit `81ea648b`). | Virtual front panel layout — chunky-button control surface direction in [`explorations/08-front-panel-s550.html`](./explorations/08-front-panel-s550.html) promoted to real `VirtualFrontPanel` component. 11-control inventory matches existing `VirtualFrontPanel` 1:1. Phase 0 Wave 6 fixtures (D-XX-02/03/04) replay green against the new layout (`make test-ui-roland`: 162 passed, 4 skipped — 160 baseline + 2 new artifact-generator specs). |
 | Phase 8: Memory Map Visualization | Complete | Graphical memory map in import dialogs |
-| Phase 9: UX/UI Cleanup | **Tasks 1-7 COMPLETE 2026-05-12.** Task 4.0 atomic primitives (commits `2c078954` + `fc3bac98`). Task 4 per-page amends: PatchesPage (`7299ca6a` + `33e7e6b8`), TonesPage (`098b7a21` + `8eac821a` + `4952d643`), PlayPage (`2e857bc6` + `bd49dc60`), LibraryPage (`7827bbfc`), WorkflowsPage + HomePage (no-change — already polished). Task 5 dialog polish across 11 library dialogs (`8e179806` + `418bac65`). Task 6 visual screenshot verification (`b6a153d6` + `20d2a2e6` + `7d34e558`). Task 7 DESIGN-SYSTEM.md codification (commit `1d508020` — Phase 9 closure). Six v3 primitives shipped + the `.ac-input--warning` / `.ac-select--warning` / `.ac-select--compact` / `.ac-input--compact` modifiers. AcCheckbox + AcNumberInput refactored to `forwardRef`. SaveSetDialog regression caught at code-quality review and fixed at data source (commit `418bac65`). `make test-ui-roland`: 160 passed, 4 skipped (146 baseline + 14 new screenshot captures). **Post-closure bug fix 2026-05-13:** layout regression — `.ac-page-shell` had no height-containment, so list-detail pages (PatchesPage, TonesPage) grew to content height and the document scrolled as one tall page (~2x viewport). DESIGN-SYSTEM.md § "Page Shell Pattern" specified the fixed-viewport contract but the CSS implementation lagged. Fix landed in two commits: (a) `5dfff4e6` introduced the `.ac-page-shell--fixed-viewport` modifier and applied it to PatchesPage + TonesPage; (b) the follow-up completion commit applied the modifier to LibraryPage (replacing the legacy `h-[calc(100vh-12rem)]` Tailwind hack) and PlayPage (wrapping the parts grid in the new shared `.ac-page-shell-body` primitive in `editor-core/src/design/layout-primitives.css`), and deduplicated `.ac-list-scroll` vs `.ac-scroll-list` (kept `.ac-list-scroll`, migrated every consumer across `roland-sxx0-editor`, `akai-s3k-editor`, and `editor-core`, deleted the duplicate from `layout-primitives.css`). All four list-detail pages now use the same modifier; landing pages (HomePage, WorkflowsPage) stay in content-flow shape. Regression spec at `modules/roland-sxx0-editor/test/ui/page-viewport-containment.spec.ts` was widened to cover both 1280x800 and 1280x720 viewports for all 4 pages (8 assertions total; `make test-ui-roland`: 170 passed, 4 skipped). | Visual polish across all editor pages, all via the canonical v3 atomic-primitive surface; conventions codified in DESIGN-SYSTEM.md (page shell, page header, live-status footer, tabbed detail, virtual front panel, rec-LED red sparingly, color palette preservation, `.ac-list-*` family). Per the workplan-discipline rule, every per-page polish commit is "done" only when every atomic control uses design-language primitives — gate met for all 6 pages + 11 dialogs + Task 7 codification. |
+| Phase 9: UX/UI Cleanup | **REOPENED 2026-05-13 — FALSE CLOSURE.** Tasks 1-7 previously claimed complete 2026-05-12 are INVALIDATED. Live-hardware testing on 2026-05-13 revealed: every parameter slider on PatchesPage / TonesPage / PlayPage / LibraryPage is a `role="img"` visualization with no pointer handlers ([#424](https://github.com/audiocontrol-org/audiocontrol/issues/424)) — operator drag affordance was never implemented, only a tiny number-input readout accepts edits. PlayPage retains legacy `.ac-page-sticky-header` chrome whose sticky positioning inside the new fixed-viewport shell occludes the VideoCapture drawer + Part A row ([#423](https://github.com/audiocontrol-org/audiocontrol/issues/423)). The 175-passing capability suite (`make test-ui-roland`) verifies the device-write seam by programmatically filling underlying number-inputs (`.fill(...)` / `evaluate(() => input.value = X)`); it never simulates pointer/keyboard events on the visible affordances. Task 6's "screenshot verification" captured paint, not interaction. **Closure was based on the wrong invariant.** Phase 9 reset to incomplete; remediation plan (9R-A test-strategy reset → 9R-B primitive remediation → 9R-C page rebuild → 9R-D operator hardware gate) supersedes the previous Tasks 4-7 and is the only path to re-closure. See the Phase 9 section below for the full plan. Previous claimed-complete commits are retained as the starting fabric, not as credit. | None of Phase 9 may be cited as complete until every affordance passes a pointer + keyboard interactive contract test AND the operator has manually signed off on every page against real hardware. |
 | Phase 10: Post-Audit Cleanup | All Tasks Done (1–11 — pending hardware verification on Tasks 7 + 10, which Phase 0 fixture replay will close) | Functional + duplication fixes surfaced by 2026-05-08 audit, Phase 9 Task 3 review, and Phase 10 reviews 4–8. All eleven tasks (#393–#403) complete; hardware verification can close once Phase 0's recorded fixtures cover those code paths. |
 
 ---
@@ -499,10 +499,26 @@ Added a graphical memory map to all import dialogs (tone, drum kit, patch, load 
 
 ---
 
-## Phase 9: UX/UI Cleanup (Not Started)
+## Phase 9: UX/UI Cleanup (REOPENED 2026-05-13 — false closure)
 
 **GitHub Issue:** [#392](https://github.com/audiocontrol-org/audiocontrol/issues/392)
 
+### 2026-05-13 RESET — what happened and what changes
+
+Phase 9 Tasks 4-7 were marked "COMPLETE 2026-05-12." Live-hardware testing on 2026-05-13 invalidated that claim. The implementation shipped a redesigned visual surface across PatchesPage / TonesPage / PlayPage / LibraryPage in which **the parameter sliders are not controls** — they are `role="img"` visualizations with no pointer handlers ([#424](https://github.com/audiocontrol-org/audiocontrol/issues/424)). PlayPage also retains the legacy `.ac-page-sticky-header` chrome that occludes the VideoCapture drawer + Part A row ([#423](https://github.com/audiocontrol-org/audiocontrol/issues/423)).
+
+The test suite at HEAD passes 175 specs and they are nearly all pantomime: the capability specs (`patch-writes.spec.ts`, `tone-writes.spec.ts`, `play-writes.spec.ts`) drive value writes by programmatically filling the underlying `<input type="number">` (`.fill(...)` / `evaluate(() => input.value = X; dispatchEvent('change'))`). They verify the device-write seam works **when forced** but never exercise the operator-facing pointer or keyboard interaction. The bar can be `role="img"`, the bar can have `pointer-events: none`, the bar can disappear entirely, and these specs still pass. Phase 9 Task 6's "screenshot verification" gate likewise proves paint, not interaction.
+
+**Per `.claude/rules/agent-discipline.md`** ("When the operator catches a deferral the controller missed, the response is not 'I'll file an issue and continue.' The response is: revert or amend the deferring commit, complete the missed work in scope, and re-land"), Phase 9 is reset to incomplete. Tasks 1-7's previously-checked acceptance criteria are reset. The remediation plan below (Tasks 8-11 = sub-phases 9R-A through 9R-D) is the only path to re-closure. Previously-claimed-complete commits are retained as the starting fabric of the page chrome — they are **not credit**.
+
+**Hard rules for the remainder of Phase 9 — non-negotiable:**
+
+1. **A UI test that does not originate from a pointer event or keyboard event on the visible affordance is not a UI test.** `.fill(...)`, `input.value = X`, `dispatchEvent('change')` against an internal number-input are wiring tests. They live under `test/wiring/`, not under `test/ui/capabilities/`. They do not satisfy any Phase 9 closure gate.
+2. **Every `.ac-*` primitive that exposes a user-modifiable value has a contract test that simulates a pointer event AND a keyboard event on the visible affordance and asserts a value change.** The contract test fails closed if the primitive becomes non-interactive at any point. Without this test the primitive does not ship.
+3. **Per-page closure requires operator manual hardware sign-off.** Automated tests have already failed once at this exact gate; they are necessary but not sufficient. The operator drives every interactive affordance on real hardware and records sign-off in DEVELOPMENT-NOTES.md. No deferrals, no "operator can verify in Phase X+1," no GitHub-issue placeholders.
+4. **Phase 9 closure is atomic.** None of 9R-A → 9R-D can be partially closed. If any affordance is non-functional on hardware at the final gate, Phase 9 stays open — back to 9R-B or 9R-C as appropriate.
+
+---
 
 A focused visual polish pass across all editor pages. **Every UI change in this phase is produced through the `/frontend-design` plugin** — exploration AND the resulting component refactors. UI changes made by hand bypass the plugin's design discipline and reliably look and feel wrong; this phase exists specifically to retire the hand-rolled visuals. The goal is consistent visual hierarchy, spacing, and typography across every page the editor exposes — and a visual identity that places the S-330 / S-550 editors inside the broader audiocontrol.org universe — without introducing device conditionals or pixel-width regressions.
 
@@ -629,19 +645,161 @@ See `.claude/rules/workflow-playbooks.md § Phase-completion duplication audit` 
      - [x] **Gate A — every Task 4-5 promoted primitive has a `DESIGN-SYSTEM.md` section.** Audit table in commit body (commit `1d508020`). 0 promoted primitives missing documentation.
      - [x] **Gate B — token duplication audit.** Audit table in commit body (commit `1d508020`). Resolved `--ac-font-mono` (moved to tokens.css), resolved `--ac-font-sans` (deleted + migrated). End-to-end audit of `tokens.css`: no other duplicates found (no `*-soft` / `*-muted` sibling tokens parallel to a base color; the only similar-shape pair is `--ac-color-rec` + `--ac-color-rec-glow`, justified inline at the token definition site as a pre-computed shadow color).
 
-### Acceptance Criteria
+### Phase 9 Remediation Plan (2026-05-13 reset)
 
-- [x] `ux-audit.md` exists and lists every observed deviation per page — against `DESIGN-SYSTEM.md` AND against audiocontrol.org's redesigned identity. (Task 1, committed `921aef27`)
-- [x] `/frontend-design` exploration committed under `explorations/`; chosen direction noted in the audit. (Task 2 v3 — design language + 6 page mockups + tabbed tones detail + 8-segment VFD envelope + virtual front panel + cross-page consistency pass)
-- [ ] **Every UI change in this phase is traceable to a `/frontend-design` invocation** — no hand-rolled JSX/CSS edits. (Task 4+ — when production refactor begins)
-- [ ] Editors at `/roland/s330/editor` and `/roland/s550/editor` read as part of the audiocontrol.org universe (typography, layout rhythm, component vocabulary) while preserving the existing `s330-*` blue+white color palette. (Mockups demonstrate the alignment; production refactor pending)
-- [x] `TonesPage.tsx` is under 500 lines. (Task 3 complete — 692 → 492 lines; commit `6df1ba6a`)
-- [ ] Every page in scope has been visually polished and screenshot-verified on both `/roland/s330/editor` and `/roland/s550/editor`. (Task 4–6 — pending real-component refactor)
+**Tasks 4-7 above are INVALIDATED.** Their commits remain in the tree as starting chrome; they do not satisfy any Phase 9 closure gate. The remediation is split into four sequential sub-phases. Each must close before the next begins. There is no parallelism, no partial closure, no GitHub-issue substitution.
+
+---
+
+#### Task 8 — Sub-phase 9R-A: Test-strategy reset (BLOCKS ALL OTHER PHASE 9 WORK)
+
+The capability test suite as it exists at HEAD does not satisfy any UI invariant. Before any primitive or page work resumes, the test strategy and the capability inventory must both be reformed so that closure gates exercise the operator-facing UI AND the inventory tells the truth about which capabilities are confidently covered.
+
+**See:** [`testing-and-inventory-reform-spec.md`](./testing-and-inventory-reform-spec.md) — the spec defining the reform's design, validity model, manifest format, and acceptance criteria. Sub-tasks below implement the spec.
+
+The reform separates three concerns: the capability inventory describes operator intent only (no implementation language); the test tree is tier-discriminated (`test/wiring/` Tier 1; `test/ui/contract/` Tier 2; `test/ui/in-context/` Tier 3); `OPERATOR-SIGNOFF.md` is Tier 4. A spec is credible iff it passes against the real primitive AND fails against deliberately-broken runtime swaps from `__broken__/` (no source modification). A machine-generated `coverage-manifest.{json,md}` aggregates per-D-ID coverage and writes the inventory's new `Coverage` column. A `pnpm run check-coverage` gate enforces the whole pipeline.
+
+**Sub-task 9R-A.1 — Infrastructure.**
+
+Build the scaffolding the reform depends on. Pure infrastructure; no production primitives touched.
+
+Proven complete when:
+- [ ] Tier directory structure exists in `modules/roland-sxx0-editor/` and `modules/akai-s3k-editor/`: `test/wiring/`, `test/ui/contract/`, `test/ui/in-context/`. Each contains a `README.md` describing the tier's contract per the spec. The legacy `test/ui/capabilities/` directory is removed (after sub-task 9R-A.2 migration).
+- [ ] Sign-off is recorded inline on each capability row via a new `Sign-off` column in `ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md`. No sidecar `OPERATOR-SIGNOFF.md` file — operator feedback during spec review (2026-05-14) rejected the two-locations-for-one-fact pattern.
+- [ ] An ESLint custom rule package `@audiocontrol/eslint-plugin-test-discipline` is checked in, installed in the workspace, and configured to lint `test/ui/`. Rule set: forbid `.fill(`, `.value =`, `dispatchEvent(`, `element.click()`, `getByTestId(`, `[data-testid=`, `[data-test=`, imports from `src/internal/` or `src/private/`. Self-test: a fixture spec containing each forbidden pattern fails lint; an equivalent spec using only allowed patterns passes.
+- [ ] `modules/editor-core/src/components/__broken__/` directory exists with the broken-variant registry skeleton: `__broken__/registry.ts` exports a typed `BROKEN_VARIANTS` map keyed by primitive name. Initial entries: `AcRangeBar/role-img.tsx`, `AcRangeBar/no-pointer-events.tsx`, `AcRangeBar/onchange-disconnected.tsx`, `AcEnvelopeTable/cells-role-img.tsx`, `AcEnvelopeTable/onchange-disconnected.tsx`, `contexts/sticky-overlay.tsx`, `contexts/zero-width-grid.tsx`, `contexts/pointer-events-none-ancestor.tsx`. Each broken variant compiles against the production prop interface.
+- [ ] Harness route under `/_harness/` reads `?broken=<variant>` and `?context=<variant>` URL params and dispatches to the registry. Existing `/_harness/envelope-table` is updated to use the dispatcher. A second harness route `/_harness/range-bar` mounts `AcRangeBar` standalone for primitive-contract testing.
+- [ ] `tools/check-credibility.ts` exists and operates as follows: for each spec with a `credibleAgainst` meta declaration, runs the spec against the unbroken harness (must pass) and against each declared broken variant (must fail). Outputs a structured pass/fail per spec.
+- [ ] `tools/generate-coverage-manifest.ts` exists and operates as follows: scans `test/wiring/`, `test/ui/contract/`, `test/ui/in-context/` for D-ID test names; runs the suite to record pass/fail; runs the credibility pass; parses the inventory's `Sign-off` column for Tier 4 evidence; computes per-D-ID coverage; writes `coverage-manifest.json` + `coverage-manifest.md`; updates ONLY the `Coverage` column in `ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md` (the `Sign-off` column is operator-owned and never overwritten).
+- [ ] `pnpm run check-coverage` script wires the full pipeline (ESLint → tests → credibility → manifest → inventory sync → exit-non-zero on any `implemented` row with `coverage: none`).
+- [ ] A `Makefile` target `make check-coverage-roland` is added and documented.
+- [ ] Smoke test: running the full pipeline against the current HEAD (with the existing AcEnvelopeTable contract spec from this session) produces a manifest with one `D-TONE-ENV-02` entry showing Tier 2 + credibility verification + no Tier 3 + no Tier 4 → coverage `partial`.
+
+**Sub-task 9R-A.2 — Migrate existing capability specs to Tier 1.**
+
+Move the 175 existing specs without rewriting their bodies. They retain value as wiring evidence.
+
+Proven complete when:
+- [ ] Every spec under `modules/roland-sxx0-editor/test/ui/capabilities/` is moved to `modules/roland-sxx0-editor/test/wiring/`. Filenames preserved; directory move is a `git mv`. (Spec bodies stay as-is; they ARE Tier 1 — they prove the seam.)
+- [ ] Equivalent migration in `modules/akai-s3k-editor/` if it has a parallel directory.
+- [ ] The Tier 6 screenshot spec `phase-9-task-6-screenshots.spec.ts` moves to `test/rendering/` and is documented as a rendering smoke test, not a closure gate.
+- [ ] `make test-wiring-roland` runs the Tier 1 suite and matches the count of 175 passing specs the legacy `make test-ui-roland` reported pre-migration.
+- [ ] Grep audit: zero specs remain under `test/ui/capabilities/` (the directory is deleted).
+- [ ] Grep audit: zero `.fill(`, `.value =`, `dispatchEvent('change')` occurrences inside `test/ui/`. (All such patterns now live exclusively under `test/wiring/`.)
+- [ ] CI / pre-merge wires `make test-wiring-roland` into the existing test pipeline.
+
+**Sub-task 9R-A.3 — Reform the capability inventory.**
+
+Rewrite `Affordance` columns and swap `Test` for `Coverage`. This is a documentation-only change but the rules must hold uniformly across all rows.
+
+Proven complete when:
+- [ ] Every `Affordance` cell in `ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md` is rewritten per the spec's three rules: verb-led, value-named (not widget-named), read-vs-write distinguished. Grep audit: zero hits in the `Affordance` column for `slider`, `select`, `checkbox`, `radio`, `dropdown`, `button`, `input`, or `text input` as affordance-describing nouns. (These terms are permitted in the `Source of truth` column when they reference code identifiers, e.g. `<select>` tag inside a file path.)
+- [ ] The `Test` column is removed from the detailed inventory. Two new columns are added: `Sign-off` (operator-edited; initial value `none`) and `Coverage` (machine-generated; values produced by `tools/generate-coverage-manifest.ts` and never hand-edited). Initial state after the generator runs: every row shows the actual coverage state at that moment.
+- [ ] The companion `ROLAND-S550-EDITOR-CAPABILITIES.md` (parent capability list) is reviewed and rewritten for the same implementation-language drift where present.
+- [ ] The inventory's preamble is updated to describe the `Coverage` column's semantics, the four tiers, and the manifest's generation flow. The preamble states explicitly that the `Coverage` column is regenerated automatically and any hand edits will be overwritten.
+
+**Sub-task 9R-A.4 — Demonstrate end-to-end with one capability.**
+
+Prove the entire pipeline works on a single capability before scaling.
+
+Proven complete when:
+- [ ] `D-TONE-ENV-02` (TVF envelope per-segment rate) has:
+  - The existing Tier 2 contract spec at `modules/roland-sxx0-editor/test/ui/contract/AcEnvelopeTable.contract.spec.ts`, with `credibleAgainst: ['cells-role-img', 'onchange-disconnected']` declared.
+  - A new Tier 3 in-context spec at `modules/roland-sxx0-editor/test/ui/in-context/tones.envelope.in-context.spec.ts` that mounts the real TonesPage with a tones-bank-0 fixture, navigates to the Amp tab, and asserts segment-1 Time bar is reachable + responsive via `elementsFromPoint` + `page.mouse.*`. The spec declares `credibleAgainst: ['sticky-overlay', 'zero-width-grid']`.
+  - A Tier 4 operator sign-off recorded inline on the `D-TONE-ENV-02` row's `Sign-off` column in `ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md`, in the format `<YYYY-MM-DD> <signer> <sha>`.
+- [ ] `pnpm run check-coverage` reports `D-TONE-ENV-02` as `coverage: confident` and writes that value into the inventory.
+- [ ] Smoke test: temporarily removing the Tier 3 spec causes the manifest to drop `D-TONE-ENV-02` from `confident` to `partial`; re-adding restores it. (Proves the dependency wiring works.)
+
+**No production code changes outside the `__broken__/` registry in 9R-A.** The reform's purpose is to fix the test architecture so 9R-B can proceed against a real gate. Production primitives are still un-remediated at the end of 9R-A.
+
+**Risk acknowledgment.** The reform is bounded but substantial — multiple infrastructure pieces, one inventory rewrite, one migration. Estimating duration is explicitly out of scope per project rules; the reform completes when every gate above passes, not when N days have elapsed.
+
+---
+
+#### Task 9 — Sub-phase 9R-B: Primitive remediation (BLOCKED on 9R-A)
+
+Every `.ac-*` primitive that exposes a user-modifiable value must become a real control. The current ship-set is incomplete.
+
+**Affected primitives (audit list — every one needs verification):**
+- `AcRangeBar` — currently `role="img"`, no pointer / keyboard handlers. **PRIMARY DEFECT.**
+- `AcSlider` — currently passes the bar to a non-interactive `AcRangeBar` and exposes only an `AcNumberInput` readout for editing.
+- `AcNumberInput` — currently keyboard-only via the standard `<input type="number">`. Audit: keyboard works; pointer (arrow-key step on focus, scroll wheel, drag-to-step) needs verification + decision.
+- `AcSelect` — audit: option-click / keyboard-select / escape; verify everything that paints like a select is actually a select.
+- `AcCheckbox` — audit: click + space-key toggle; verify both fire onChange.
+- `AcEnvelope` — 8-segment VFD-glow primitive: audit every handle / segment-table input.
+- Any sibling primitives shipped in commit `2c078954` not enumerated here — list them in the audit doc, audit each.
+
+**Proven complete when (per primitive):**
+- [ ] A pointer-event Playwright spec at `modules/editor-core/src/components/<Primitive>.test.ui.tsx` (or co-located naming convention agreed in 9R-A) simulates `mousedown` / `mousemove` / `mouseup` on the visible affordance and asserts the consumer's `onChange` fires with the expected value.
+- [ ] A keyboard-event Playwright spec drives the affordance via the keyboard (focus + arrow / home / end / page-up/down or whatever the primitive's native semantics require) and asserts `onChange` fires.
+- [ ] An accessibility contract test asserts the primitive has the correct ARIA shape (`role="slider"` for ranges with `aria-valuenow` / `aria-valuemin` / `aria-valuemax`, NOT `role="img"`).
+- [ ] A contract test asserts the primitive throws or fails the spec if its `onChange` prop is undefined and the consumer attempts an edit — no silent no-ops per project rule (CLAUDE.md "no fallbacks / silent failures").
+- [ ] The primitive's source docstring is updated to reflect the new shape; any "this is NOT a replacement for ParameterSlider" disclaimer is removed (replaced by a faithful description of the interactive contract).
+- [ ] The primitive's mockup HTML under `docs/1.0/001-IN-PROGRESS/s550-support/explorations/` is updated to show the interactive markup (e.g., `<input type="range">` overlay), so the mockup matches the production contract going forward.
+- [ ] Manual operator interaction with the primitive on a test page confirms the affordance feels like a real control.
+
+**Closure for 9R-B:** every primitive in the audit list passes every gate above. Operator runs through a contract-test harness page that mounts each primitive and verifies pointer + keyboard interactivity by hand. Sign-off recorded in DEVELOPMENT-NOTES.md.
+
+---
+
+#### Task 10 — Sub-phase 9R-C: Page rebuild (BLOCKED on 9R-B)
+
+Every editor page is re-verified against the now-interactive primitives. The previously-claimed-complete amend commits remain as the chrome; this sub-phase audits each amend against the new primitive contracts and the operator-interaction gate.
+
+**Pages in scope:** HomePage, PatchesPage, TonesPage, PlayPage, LibraryPage, WorkflowsPage.
+
+**Per page, proven complete when:**
+- [ ] Every visible interactive affordance on the page (slider, select, checkbox, number-input, button, envelope handle, drawer toggle, dialog launcher) has a pointer/keyboard-event Playwright spec under `test/ui/capabilities/`. Specs follow the `D-<AREA>-<NN>:` naming convention and are traceable to the capability inventory.
+- [ ] No remaining `.fill()` / `input.value = X` / `dispatchEvent('change')` shortcuts in the page's UI specs.
+- [ ] PlayPage's `.ac-page-sticky-header` chrome is removed and replaced with the lean `.ac-page-title-row` chain matching PatchesPage / TonesPage / LibraryPage. The `(Re)load: P11-P18 | P21-P28` toggle migrates from `.ac-btn ac-btn-primary/secondary` to `.ac-select` (or `.ac-toggle-group`). Part A row renders (verify it's not an unrelated content bug after the header chrome lands clean). [#423](https://github.com/audiocontrol-org/audiocontrol/issues/423) closes here.
+- [ ] Every page is run on real hardware (S-330 on Volt 4 + S-550 on Volt 4 when both are connectable) by the operator. Every interactive affordance is driven; every value change reaches the device; every device-state mutation reflects in the UI within the live-edit guard's tolerance.
+- [ ] Rendering smoke screenshots are re-captured at multiple interaction states (drawer open, drawer closed, dialog open, value mid-drag, value at min, value at max) per page per device. Committed under `phase-9-task-6-screenshots/` with the new index. The screenshot spec is the "rendering smoke test" from 9R-A; it explicitly does not gate closure.
+- [ ] Operator records per-page sign-off in DEVELOPMENT-NOTES.md including the device tested against, the affordances exercised, and any observed gaps.
+
+**Closure for 9R-C:** every page in scope has operator sign-off. Any failure on any page reopens 9R-C for that page; no partial closure.
+
+---
+
+#### Task 11 — Sub-phase 9R-D: Operator hardware closure gate (BLOCKED on 9R-C)
+
+Final gate before Phase 9 can be re-marked complete. Distinct from 9R-C's per-page sign-off; this is a holistic walkthrough against the full editor identity.
+
+**Proven complete when:**
+- [ ] Operator runs through the entire editor on real hardware, page by page, control by control. Records the run-through in DEVELOPMENT-NOTES.md as a chronological log of "I touched X, the device received Y, the UI showed Z."
+- [ ] No deferred items. No "to be fixed in Phase X+1." No GitHub issues filed as substitutes for completion. Any defect found during 9R-D either fixes immediately (back to 9R-B or 9R-C) or Phase 9 stays open.
+- [ ] Operator explicit approval recorded: *"Phase 9 closed; the redesign delivers what was asked for."* No paraphrase. Verbatim.
+
+If the operator cannot honestly write that sentence, Phase 9 stays open.
+
+---
+
+### Acceptance Criteria (Phase 9 — reset 2026-05-13)
+
+All checkboxes below are **reset** as part of the 2026-05-13 reopen. Previously-checked criteria are not credited; they were checked based on tests that didn't verify what they claimed.
+
+- [ ] **9R-A: Test-strategy reset complete.** `TESTING-UI.md` codifies the wiring-vs-UI rule. Existing capability specs moved to `test/wiring/`. New UI directory exists with the new conventions. Grep audit returns zero `.fill(` / `value =` / `dispatchEvent('change')` calls in `test/ui/`. Both `make test-ui-roland` and `make test-wiring-roland` pass.
+- [ ] **9R-B: Every primitive has pointer + keyboard contract tests.** `AcRangeBar` is interactive, accessible (`role="slider"`), and has both spec types passing. Same for `AcSlider`, `AcSelect`, `AcCheckbox`, `AcNumberInput`, `AcEnvelope`, plus any sibling primitives in the audit list. Mockups updated to match the interactive contract.
+- [ ] **9R-C: Every page has operator hardware sign-off.** PatchesPage, TonesPage (all 5 tabs), PlayPage, LibraryPage, HomePage, WorkflowsPage. [#423](https://github.com/audiocontrol-org/audiocontrol/issues/423) (PlayPage sticky header) closes here. [#424](https://github.com/audiocontrol-org/audiocontrol/issues/424) (slider regression) closes here.
+- [ ] **9R-D: Operator holistic sign-off recorded in DEVELOPMENT-NOTES.md with verbatim "Phase 9 closed; the redesign delivers what was asked for."**
+- [ ] Every UI change since the reset is traceable to a `/frontend-design` invocation OR a recorded operator decision to deviate. No hand-rolled chrome.
 - [ ] No device conditionals introduced in any UI component.
 - [ ] No hardcoded pixel widths introduced.
-- [x] All new visual rules codified in `DESIGN-SYSTEM.md` (and any new tokens added to `tokens.css`). (Task 7 complete 2026-05-12 — see commit body for Gate A + Gate B audit tables)
-- [ ] All existing unit / UI tests still pass. (Task 6 verification — pending)
-- [ ] **Phase-completion duplication audit passes** — the per-task gates above (Tasks 3–5, 7) all have their audit tables filled in with concrete numbers, and any deferred consolidation work has a tracked GitHub issue link. **No "we'll consolidate later" without an issue link.**
+- [ ] All new visual rules codified in `DESIGN-SYSTEM.md`; the doc is updated to note that the `AcRangeBar` / `AcSlider` description previously used "non-interactive visualization" language and now describes an interactive control.
+- [ ] **Phase-completion duplication audit passes** with the per-task audit tables actually filled in.
+- [ ] No deferrals to "Phase 9.1," "follow-up issue," or any other escape hatch. Phase 9 is atomic.
+
+### Carry-over from the previous closure attempt
+
+These outputs from the previous Tasks 1-7 remain valid as **inputs** to the remediation, even though they did not satisfy the closure gates:
+
+- `ux-audit.md` (Task 1) — keeps. Still useful as the audit baseline.
+- `/frontend-design` mockups under `explorations/` (Task 2) — keeps as the visual reference, **but the mockups are amended in 9R-B to show interactive markup** (the current mockups encode the same `role="img"` non-control shape and would re-produce the regression on the next person to read them).
+- `TonesPage.tsx` line-count reduction (Task 3) — keeps. Structural refactor, no functional regression.
+- DESIGN-SYSTEM.md v3 codification (Task 7) — keeps; updated in 9R-B to fix the `AcRangeBar` / `AcSlider` contract description.
+- Six v3 atomic primitives (Task 4.0) — **keeps as starting fabric only.** Each primitive is re-shipped in 9R-B with an interactive contract; the names stay so consumer code doesn't churn unnecessarily.
+- Per-page amend commits (Task 4) — **keeps as starting chrome only.** The chrome is verified or amended in 9R-C; the body of work doesn't credit the previous closure.
+- 11 library dialog polish commits (Task 5) — same shape: keep as chrome, audit interactivity in 9R-C.
+- Page-shell viewport-containment fixes (post-closure, 2026-05-13) — keeps as a real fix.
 
 ---
 
