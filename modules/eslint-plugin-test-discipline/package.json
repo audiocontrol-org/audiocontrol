@@ -1,0 +1,42 @@
+{
+  "name": "@audiocontrol/eslint-plugin-test-discipline",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ESLint rules enforcing Validity Claim A from testing-and-inventory-reform-spec.md (tests originate where the user originates).",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "peerDependencies": {
+    "eslint": ">=8"
+  },
+  "dependencies": {
+    "@typescript-eslint/utils": "^6.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.6.1"
+  },
+  "keywords": [
+    "audiocontrol",
+    "eslint-plugin",
+    "test-discipline"
+  ]
+}
