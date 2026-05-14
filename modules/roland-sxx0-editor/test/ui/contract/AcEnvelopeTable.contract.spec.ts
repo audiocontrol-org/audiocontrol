@@ -1,4 +1,6 @@
 /**
+ * @credibleAgainst AcEnvelopeTable cells-role-img onchange-disconnected
+ *
  * Contract test for the AcEnvelopeTable per-segment Time slider — the exact
  * primitive used on the Tones page envelope editor.
  *
@@ -18,14 +20,19 @@
  *   4. The consumer's onChange spy was invoked with the new value.
  *
  * The harness at /_harness/envelope-table mounts the production
- * AcEnvelopeTable with stub data + a window-exposed spy.
+ * AcEnvelopeTable with stub data + a window-exposed spy. When
+ * `AC_BROKEN_VARIANT` or `AC_BROKEN_CONTEXT` is set in the environment,
+ * `brokenHarnessUrl()` appends the matching `?broken=` / `?context=`
+ * URL params so `tools/check-credibility.ts` can verify this spec
+ * actually fails against each declared broken variant.
  */
 import { test, expect } from '@playwright/test';
+import { brokenHarnessUrl } from './_credibility-url';
 
 test.describe('AcEnvelopeTable segment-1 Time slider — operator pointer-drag contract', () => {
   test('drags the bar with a real pointer and the consumer onChange fires with a new value', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 });
-    await page.goto('/roland/s330/editor/_harness/envelope-table', {
+    await page.goto(brokenHarnessUrl('/roland/s330/editor/_harness/envelope-table'), {
       waitUntil: 'networkidle',
     });
     await page.waitForSelector('.ac-envelope-table');

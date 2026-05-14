@@ -44,7 +44,8 @@
     "plugin:interrogate": "tsx tools/plugin-interrogator.ts",
     "plugin:interrogate:text": "tsx tools/plugin-interrogator.ts --text",
     "plugin:interrogate:all": "tsx tools/plugin-interrogator.ts --all",
-    "plugin:interrogate:all:text": "tsx tools/plugin-interrogator.ts --all --text"
+    "plugin:interrogate:all:text": "tsx tools/plugin-interrogator.ts --all --text",
+    "check-credibility": "tsx tools/check-credibility.ts"
   },
   "keywords": [
     "audio",
