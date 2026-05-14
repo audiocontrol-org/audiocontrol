@@ -28,8 +28,8 @@ Each table row is one affordance. The columns are:
 - **Origin** — `native` / `client-derived` / `editor-derived` (see below).
 - **Status** — `implemented` / `partial` / `missing`. Determined by reading actual TSX, not by parent test coverage.
 - **Test** — legacy column carried over from the pre-reform inventory. Cites the spec + test name proving the affordance, or `—` when no test exists yet. Superseded by the new four-tier model below and removed in a later reform task (9R-A.3); kept here so each row's existing evidence is not lost mid-migration.
-- **Sign-off** — **operator-owned** column. Records the most recent operator hardware sign-off for the capability. Format per [`docs/1.0/001-IN-PROGRESS/s550-support/testing-and-inventory-reform-spec.md`](docs/1.0/001-IN-PROGRESS/s550-support/testing-and-inventory-reform-spec.md) §7: `none` (default), `<YYYY-MM-DD> <signer> <sha>`, or `revoked <YYYY-MM-DD> <signer>`. The cell shows only the latest sign-off; history is recoverable via `git blame` and the coverage manifest's append-only iteration journal.
-- **Coverage** — **machine-generated** column populated by `tools/generate-coverage-manifest.ts`. Values: `none` / `partial` / `confident` per the rules in reform spec §6. Any hand edit to this column is overwritten on the next manifest regeneration; the initial `—` is a placeholder that the generator replaces.
+- **Sign-off** — **operator-owned** column. Records the most recent operator hardware sign-off for the capability. Format per [`docs/1.0/001-IN-PROGRESS/s550-support/testing-and-inventory-reform-spec.md`](docs/1.0/001-IN-PROGRESS/s550-support/testing-and-inventory-reform-spec.md) §7: `none` (default), `<YYYY-MM-DD> <signer> <sha>`, or `revoked <YYYY-MM-DD> <signer>`. The cell shows only the latest sign-off; history is recoverable via `git blame` and the coverage manifest's append-only iteration journal. Rows with status `removed` (or wrapped in `~~...~~` strikethrough) carry `n/a` for both Sign-off and Coverage — they describe capabilities that were removed and are not signable.
+- **Coverage** — **machine-generated** column populated by `tools/generate-coverage-manifest.ts`. Values: `none` / `partial` / `confident` per the rules in reform spec §6. Any hand edit to this column is overwritten on the next manifest regeneration; the initial `—` is a placeholder that the generator overwrites on every run, including with `none` when the row has no Tier 2/3/4 evidence.
 
 ### The four-tier coverage model
 
@@ -55,7 +55,7 @@ Tier 1 evidence is the existing 175 capability specs; reform Task A.2 moves them
 5. Computes `coverage` per D-ID: `confident` iff Tier 2 + Tier 3 specs both have `credibleVerified: true` AND a non-revoked sign-off exists; `partial` if some but not all of those hold; `none` if nothing or only Tier 1 evidence.
 6. Writes `coverage-manifest.{json,md}` and updates the `Coverage` column in this document.
 
-`Sign-off` is operator-owned and is **read-only to the generator** — the generator never overwrites it; it warns if a cell's format is unparseable. `Coverage` is generator-owned — any hand edit is overwritten on the next run. Both columns live inline on the capability's own row so there is exactly one location for each fact.
+`Sign-off` is operator-owned and is **read-only to the generator** — the generator never overwrites it; it warns if a cell's format is unparseable. `Coverage` is generator-owned — any hand edit is overwritten on the next run. Both columns live inline on the capability's own row so there is exactly one location for each fact. The generator parses each main D-row table by header name, not column position, so Sign-off and Coverage can be reordered without breaking the parser; only column-rename requires a generator update.
 
 A `Test` reference like `capabilities/patches.spec.ts :: C-PATCH-02` points at the test whose name starts with `C-PATCH-02:` in that spec file. The `Test` column is being phased out; later reform tasks fold its evidence into the tier-discriminated test directories and remove the column from this document.
 
@@ -322,7 +322,7 @@ Tones are written as a whole structure via `sendToneData(toneIndex, tone)`. Each
 | D-TONE-TVA-03 | Key Rate — slider | `ToneEditor.tsx:712` → `tone.tva.keyRate` | C-TONE-10 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-TVA-03` | none | — |
 | D-TONE-TVA-04 | Vel Rate — slider | `ToneEditor.tsx:720` → `tone.tva.velRate` | C-TONE-10 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-TVA-04` | none | — |
 | D-TONE-TVA-05 | Level Curve — select (0-5) | `ToneEditor.tsx:729` → `tone.tva.levelCurve` | C-TONE-10 | native | implemented | `capabilities/tone-writes.spec.ts :: D-TONE-TVA-05` | none | — |
-| D-TONE-TVA-06 | ~~Top-level tvaLfoDepth~~ removed: data-model duplicate of TVA-02 at the same encoded offset | dedup commit 447a7dfd (#408 Phase A) | C-TONE-10 | native | removed | n/a (TVA-02 covers the only TVA LFO depth affordance) | none | — |
+| D-TONE-TVA-06 | ~~Top-level tvaLfoDepth~~ removed: data-model duplicate of TVA-02 at the same encoded offset | dedup commit 447a7dfd (#408 Phase A) | C-TONE-10 | native | removed | n/a (TVA-02 covers the only TVA LFO depth affordance) | n/a | n/a |
 
 ---
 
@@ -462,14 +462,14 @@ The library is the editor's primary editor-derived layer. The device has no conc
 
 | ID | Affordance | Source of truth | Parent | Origin | Status | Test | Sign-off | Coverage |
 |----|-----------|-----------------|--------|--------|--------|------|----------|----------|
-| ~~D-XX-01~~ | ~~Virtual Front Panel — floating draggable panel~~ | `VirtualFrontPanel.tsx` (unmounted) | — | — | **removed** (decisions-2026-05-11 D-1: drawer-embedded controls D-XX-10 declared canonical; CRT + front-panel must remain co-located per `feedback_virtual_front_panel`) | n/a | none | — |
+| ~~D-XX-01~~ | ~~Virtual Front Panel — floating draggable panel~~ | `VirtualFrontPanel.tsx` (unmounted) | — | — | **removed** (decisions-2026-05-11 D-1: drawer-embedded controls D-XX-10 declared canonical; CRT + front-panel must remain co-located per `feedback_virtual_front_panel`) | n/a | n/a | n/a |
 | D-XX-02 | Front-panel navigation buttons (DT1) | `VideoCapture.tsx:363-380` → `NavigationPad` → `useFrontPanel` | C-XX-04 | native | implemented (inside the video drawer) | `capabilities/front-panel-emit.spec.ts :: D-XX-02` | none | — |
 | D-XX-03 | Front-panel value buttons (DT1) | `VideoCapture.tsx:363-380` → `ValueButtons` | C-XX-04 | native | implemented (inside the video drawer) | `capabilities/front-panel-emit.spec.ts :: D-XX-03` | none | — |
 | D-XX-04 | Front-panel function buttons (MODE/MENU/SUB MENU/COM/Execute) | `VideoCapture.tsx:363-380` → `FunctionButtonRow` | C-XX-04 | native | implemented (inside the video drawer) | `capabilities/front-panel-emit.spec.ts :: D-XX-04` | none | — |
-| ~~D-XX-05~~ | ~~VFP keyboard shortcuts (floating-panel keydown listener)~~ | `VirtualFrontPanel.tsx:7` (unmounted) | — | — | **removed** (decisions-2026-05-11 D-1: drawer has its own keyboard handler — D-XX-10 covers it) | n/a | none | — |
-| ~~D-XX-06~~ | ~~VFP drag to reposition~~ | `VirtualFrontPanel.tsx` (unmounted) | — | — | **removed** (decisions-2026-05-11 D-1: drag-to-reposition only meaningful for a floating panel; superseded by drawer mount) | n/a | none | — |
-| ~~D-XX-07~~ | ~~VFP collapse/expand~~ | `VirtualFrontPanel.tsx` (unmounted) | — | — | **removed** (decisions-2026-05-11 D-1: drawer has its own open/close toggle — D-XX-09 covers it) | n/a | none | — |
-| ~~D-XX-08~~ | ~~VFP connection status indicator (floating-panel green dot)~~ | `VirtualFrontPanel.tsx` (unmounted) | — | — | **removed** (decisions-2026-05-11 D-1: status indicator lives in the Layout header — D-CONN-07 covers it) | n/a | none | — |
+| ~~D-XX-05~~ | ~~VFP keyboard shortcuts (floating-panel keydown listener)~~ | `VirtualFrontPanel.tsx:7` (unmounted) | — | — | **removed** (decisions-2026-05-11 D-1: drawer has its own keyboard handler — D-XX-10 covers it) | n/a | n/a | n/a |
+| ~~D-XX-06~~ | ~~VFP drag to reposition~~ | `VirtualFrontPanel.tsx` (unmounted) | — | — | **removed** (decisions-2026-05-11 D-1: drag-to-reposition only meaningful for a floating panel; superseded by drawer mount) | n/a | n/a | n/a |
+| ~~D-XX-07~~ | ~~VFP collapse/expand~~ | `VirtualFrontPanel.tsx` (unmounted) | — | — | **removed** (decisions-2026-05-11 D-1: drawer has its own open/close toggle — D-XX-09 covers it) | n/a | n/a | n/a |
+| ~~D-XX-08~~ | ~~VFP connection status indicator (floating-panel green dot)~~ | `VirtualFrontPanel.tsx` (unmounted) | — | — | **removed** (decisions-2026-05-11 D-1: status indicator lives in the Layout header — D-CONN-07 covers it) | n/a | n/a | n/a |
 | D-XX-09 | Video capture drawer (USB / webcam) | `Layout.tsx` → `VideoCapture` | n/a (unique to editor) | editor-derived | implemented | `capabilities/video-drawer.spec.ts :: D-XX-09` | none | — |
 | D-XX-10 | Front-panel controls inside video drawer | `VideoCapture.tsx:363-380` → reuses VFP components | n/a (unique to editor) | editor-derived | implemented | `capabilities/video-drawer.spec.ts :: D-XX-10` | none | — |
 | D-XX-11 | MIDI Panic button (CC 120 + 123 on all channels) | `Layout.tsx` → `PanicButton` (client `panic()`) | n/a | client-derived | implemented | `capabilities/cross-cutting.spec.ts :: D-XX-11` | none | — |
