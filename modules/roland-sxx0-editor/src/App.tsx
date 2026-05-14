@@ -6,6 +6,7 @@ import { PlayPage } from '@/pages/PlayPage';
 import { PatchesPage } from '@/pages/PatchesPage';
 import { TonesPage } from '@/pages/TonesPage';
 import { LibraryPage } from '@/pages/LibraryPage';
+import { AcEnvelopeTableHarness } from '@/pages/_harness/AcEnvelopeTableHarness';
 export function App() {
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -25,6 +26,10 @@ export function App() {
         <Route path="patches" element={<PatchesPage />} />
         <Route path="tones" element={<TonesPage />} />
         <Route path="library" element={<LibraryPage />} />
+        {/* Dev-only test harness routes. Production routes never reach here. */}
+        {import.meta.env.DEV && (
+          <Route path="_harness/envelope-table" element={<AcEnvelopeTableHarness />} />
+        )}
         <Route path="*" element={<Navigate to="" replace />} />
       </Routes>
     </Layout>

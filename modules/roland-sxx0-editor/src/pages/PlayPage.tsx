@@ -415,6 +415,10 @@ export function PlayPage() {
                   value={part.level}
                   min={0}
                   max={127}
+                  onChange={(value) => {
+                    handleLevelChange(index, value);
+                    handleLevelCommit(index, value);
+                  }}
                   ariaLabel={`Part ${part.id} level`}
                   className="flex-1"
                 />

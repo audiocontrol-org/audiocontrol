@@ -114,6 +114,8 @@ export function ToneEnvelopeEditor({
         activeSegment={sustainPoint + 1}
         onSustainChange={handleSustainChange}
         onEndChange={handleEndChange}
+        onTimeChange={(segmentIndex, time) => updateRate(segmentIndex - 1, time)}
+        onLevelChange={(segmentIndex, level) => updateLevel(segmentIndex - 1, level)}
         disabled={disabled}
       />
 

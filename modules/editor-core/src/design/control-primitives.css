@@ -251,6 +251,61 @@
   box-shadow: 0 0 6px color-mix(in srgb, var(--ac-color-accent) 45%, transparent) inset;
 }
 
+/* Interactive enum pips render as <button>; reset native styling and add focus. */
+button.ac-range-bar__enum-pip {
+  appearance: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+button.ac-range-bar__enum-pip:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+button.ac-range-bar__enum-pip:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  outline-offset: 1px;
+}
+button.ac-range-bar__enum-pip:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ac-color-accent) 70%, transparent);
+}
+
+/* Transparent native <input type="range"> overlaid across the bar.
+   It is the real interactive control: pointer drag, click-to-set,
+   arrow keys, home/end, page-up/down. Visually invisible — the bar's
+   paint (fill + ticks) shows through. */
+.ac-range-bar__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  opacity: 0;
+  /* Keep the input above the fill so it captures pointer events. */
+  z-index: 1;
+  /* The accessible focus indicator paints on the bar wrapper via
+     :has() below; the input itself stays visually transparent. */
+}
+.ac-range-bar__input:disabled {
+  cursor: not-allowed;
+}
+
+/* Paint a focus ring on the bar when its inner input is keyboard-focused. */
+.ac-range-bar:has(.ac-range-bar__input:focus-visible) {
+  outline: 2px solid color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  outline-offset: 1px;
+}
+
+/* Subtle hover highlight on the bar when interactive, so users see it
+   responds to pointer. Apply only when the bar contains an enabled input. */
+.ac-range-bar:has(.ac-range-bar__input:not(:disabled):hover) {
+  border-color: color-mix(in srgb, var(--ac-color-accent) 70%, var(--ac-color-border-subtle));
+}
+
 /* =========================================================================
  * NUMBER INPUT — display-font numeric readout. Render-only by default
  * (`<AcNumberInput>` defaults to a `<span>`); supply an `editable` prop to

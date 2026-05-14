@@ -45,7 +45,15 @@ export function ParamSliderRow({
       <div data-testid={labelToTestId(label)}>
         <AcSlider
           label={label}
-          bar={{ variant: 'linear', value, min, max, ariaLabel: label }}
+          bar={{
+            variant: 'linear',
+            value,
+            min,
+            max,
+            onChange,
+            disabled,
+            ariaLabel: label,
+          }}
           readout={
             <AcNumberInput
               editable

@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ChangeEvent } from 'react';
 
 /**
  * `<AcEnvelopeTable>` — per-segment numeric table for `<AcEnvelope>`.
@@ -7,16 +7,11 @@ import type { CSSProperties } from 'react';
  * readout, and a level mini-bar with readout. The active segment row is
  * highlighted; the sustain row shows a small ▸ marker on the seg number.
  *
- * Row selection is exposed through the first column, which is a native
- * `<button type="button">` that carries `aria-pressed`. The row itself
- * stays non-interactive (`role="row"` is non-interactive per the ARIA
- * contract) so screen-reader users see a single, predictable activation
- * affordance per row instead of a row-wide click target with no keyboard
- * equivalent.
- *
- * Mockup source:
- *   docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:1786-1862 (CSS),
- *   :2737-2832 (demo HTML for the per-segment table).
+ * Row selection is exposed through the first column (a native button with
+ * `aria-pressed`). When `onTimeChange` / `onLevelChange` are passed, the
+ * per-segment time and level bars become real controls (transparent native
+ * `<input type="range">` overlays — pointer drag + full keyboard). The row
+ * itself stays non-interactive (`role="row"` per the ARIA contract).
  */
 export interface AcEnvelopeTableSegment {
   time: number;
@@ -30,9 +25,18 @@ export interface AcEnvelopeTableProps {
   activeSegment: number;
   sustainSegment: number;
   onPointSelect?: (index: number) => void;
+  /** Called with (segmentIndex 1-based, newTime) when the time bar is dragged or keyboarded. */
+  onTimeChange?: (index: number, time: number) => void;
+  /** Called with (segmentIndex 1-based, newLevel) when the level bar is dragged or keyboarded. */
+  onLevelChange?: (index: number, level: number) => void;
   /**
-   * When true, every per-segment selector `<button>` carries the native
-   * `disabled` attribute so the browser drops it from the tab order.
+   * Per-segment row disable. Pass an array of length `segments.length` to
+   * disable individual rows (e.g. segments beyond the end-point). Pass
+   * `true` to disable the whole table. Missing entries default to enabled.
+   */
+  rowDisabled?: ReadonlyArray<boolean>;
+  /**
+   * When true, every interactive control in the table carries `disabled`.
    */
   disabled?: boolean;
 }
@@ -71,14 +75,17 @@ function renderRow(
 ): JSX.Element {
   const active = index === props.activeSegment;
   const sustain = index === props.sustainSegment;
-  const disabled = props.disabled === true;
+  const globalDisabled = props.disabled === true;
+  const rowDisabled = globalDisabled || props.rowDisabled?.[index - 1] === true;
   const timePct = (seg.time / props.maxTime) * 100;
   const levelPct = (seg.level / props.maxLevel) * 100;
   const timeStyle: FillStyle = { '--ac-envelope-mini-fill': `${timePct}%` };
   const levelStyle: FillStyle = { '--ac-envelope-mini-fill': `${levelPct}%` };
-  const handleSelect = props.onPointSelect === undefined || disabled
+  const handleSelect = props.onPointSelect === undefined || globalDisabled
     ? undefined
     : (): void => props.onPointSelect?.(index);
+  const timeInteractive = props.onTimeChange !== undefined;
+  const levelInteractive = props.onLevelChange !== undefined;
   return (
     <div
       key={index}
@@ -100,14 +107,54 @@ function renderRow(
         </button>
       </span>
       <div className="ac-envelope-table__cell" role="cell">
-        <div className="ac-envelope-mini" role="img" aria-label={`Time ${seg.time} of ${props.maxTime}`}>
+        <div
+          className="ac-envelope-mini"
+          {...(timeInteractive
+            ? {}
+            : { role: 'img', 'aria-label': `Time ${seg.time} of ${props.maxTime}` })}
+        >
           <div className="ac-envelope-mini__fill" style={timeStyle} />
+          {timeInteractive ? (
+            <input
+              className="ac-envelope-mini__input"
+              type="range"
+              min={0}
+              max={props.maxTime}
+              step={1}
+              value={seg.time}
+              disabled={rowDisabled}
+              aria-label={`Segment ${index} time`}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                props.onTimeChange?.(index, Number(e.target.value))
+              }
+            />
+          ) : null}
         </div>
         <span className="ac-envelope-mini__readout">{seg.time}</span>
       </div>
       <div className="ac-envelope-table__cell" role="cell">
-        <div className="ac-envelope-mini" role="img" aria-label={`Level ${seg.level} of ${props.maxLevel}`}>
+        <div
+          className="ac-envelope-mini"
+          {...(levelInteractive
+            ? {}
+            : { role: 'img', 'aria-label': `Level ${seg.level} of ${props.maxLevel}` })}
+        >
           <div className="ac-envelope-mini__fill" style={levelStyle} />
+          {levelInteractive ? (
+            <input
+              className="ac-envelope-mini__input"
+              type="range"
+              min={0}
+              max={props.maxLevel}
+              step={1}
+              value={seg.level}
+              disabled={rowDisabled}
+              aria-label={`Segment ${index} level`}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                props.onLevelChange?.(index, Number(e.target.value))
+              }
+            />
+          ) : null}
         </div>
         <span className="ac-envelope-mini__readout">{seg.level}</span>
       </div>

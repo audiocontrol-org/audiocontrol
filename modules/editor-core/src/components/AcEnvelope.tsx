@@ -49,6 +49,10 @@ export interface AcEnvelopeProps {
   onSustainChange?: (segmentIndex: number) => void;
   /** Called when the user picks an end segment from the meta pips. */
   onEndChange?: (segmentIndex: number) => void;
+  /** Called with (1-based segment index, time) when a per-segment time bar in the table is dragged or keyboarded. */
+  onTimeChange?: (segmentIndex: number, time: number) => void;
+  /** Called with (1-based segment index, level) when a per-segment level bar in the table is dragged or keyboarded. */
+  onLevelChange?: (segmentIndex: number, level: number) => void;
   /** Called when the user clicks the expand button. */
   onExpand?: () => void;
   /** Help text shown along the bottom of the graphic. */
@@ -110,6 +114,8 @@ export function AcEnvelope(props: AcEnvelopeProps): JSX.Element {
         activeSegment={activeSegment}
         sustainSegment={sustainSegment}
         onPointSelect={props.onPointSelect}
+        onTimeChange={props.onTimeChange}
+        onLevelChange={props.onLevelChange}
         disabled={disabled}
       />
     </div>
