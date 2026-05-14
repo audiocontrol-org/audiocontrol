@@ -163,6 +163,7 @@ make clean                           # Remove all dist/ dirs and stamp files
 make clean && make                   # Full rebuild from scratch
 pnpm test                            # Run all tests
 pnpm --filter <module> test          # Test specific module
+make check-coverage-roland           # 9R-A.1 T8 — lint + test-ui-roland + credibility + manifest + coverage gate
 ```
 
 `pnpm -r build` still works but does **not** enforce build order — use `make` instead. Source change detection is automatic via `.build-stamp` files.

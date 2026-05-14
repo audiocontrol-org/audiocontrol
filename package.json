@@ -46,7 +46,8 @@
     "plugin:interrogate:all": "tsx tools/plugin-interrogator.ts --all",
     "plugin:interrogate:all:text": "tsx tools/plugin-interrogator.ts --all --text",
     "check-credibility": "tsx tools/check-credibility.ts",
-    "generate-coverage-manifest": "tsx tools/generate-coverage-manifest.ts"
+    "generate-coverage-manifest": "tsx tools/generate-coverage-manifest.ts",
+    "check-coverage": "tsx tools/check-coverage.ts"
   },
   "keywords": [
     "audio",
