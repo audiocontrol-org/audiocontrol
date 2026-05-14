@@ -7,6 +7,7 @@ import { PatchesPage } from '@/pages/PatchesPage';
 import { TonesPage } from '@/pages/TonesPage';
 import { LibraryPage } from '@/pages/LibraryPage';
 import { AcEnvelopeTableHarness } from '@/pages/_harness/AcEnvelopeTableHarness';
+import { AcRangeBarHarness } from '@/pages/_harness/AcRangeBarHarness';
 export function App() {
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -28,7 +29,10 @@ export function App() {
         <Route path="library" element={<LibraryPage />} />
         {/* Dev-only test harness routes. Production routes never reach here. */}
         {import.meta.env.DEV && (
-          <Route path="_harness/envelope-table" element={<AcEnvelopeTableHarness />} />
+          <>
+            <Route path="_harness/envelope-table" element={<AcEnvelopeTableHarness />} />
+            <Route path="_harness/range-bar" element={<AcRangeBarHarness />} />
+          </>
         )}
         <Route path="*" element={<Navigate to="" replace />} />
       </Routes>
