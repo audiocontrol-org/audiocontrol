@@ -12,8 +12,14 @@ Tier 3 catches layering bugs that Tier 2 cannot see by construction:
 occlusion by sticky overlays, parent-grid column collapse to zero width,
 `pointer-events: none` ancestors, and other context-introduced regressions.
 
-One spec per page: `patches`, `tones`, `play`, `library` (reform spec
-"Migration" section).
+One spec per page that exposes interactive affordances. The roland-sxx0-editor
+currently has six user-facing pages: `HomePage`, `WorkflowsPage`, `PatchesPage`,
+`TonesPage`, `PlayPage`, `LibraryPage`. `PatchesPage`, `TonesPage`, `PlayPage`,
+and `LibraryPage` carry the bulk of the Tier 3 surface area. `HomePage` and
+`WorkflowsPage` currently expose few or no interactive primitives, so their
+Tier 3 specs may be thin smoke tests — but they exist in this tier so the page
+set is not silently truncated. (The reform spec's "Migration" section listed
+only the four content pages; this enumeration supersedes it.)
 
 ## Patterns allowed
 

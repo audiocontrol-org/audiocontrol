@@ -42,9 +42,10 @@ sign-off)** are present. Tier 1 alone yields `coverage: none`.
 
 ## Migration note
 
-The 175 capability specs currently under `test/ui/capabilities/` migrate
-here as Task 9R-A.2. Their D-ID test names are preserved. This README
-exists in advance of the migration so the destination is explicit.
+The capability spec files currently under `test/ui/capabilities/` (~21 files,
+~175 D-ID test cases) migrate here as Task 9R-A.2. Their D-ID test names are
+preserved. This README exists in advance of the migration so the destination
+is explicit.
 
 ## See also
 

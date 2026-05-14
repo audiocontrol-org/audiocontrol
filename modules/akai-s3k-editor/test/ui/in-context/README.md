@@ -12,10 +12,12 @@ Tier 3 catches layering bugs that Tier 2 cannot see by construction:
 occlusion by sticky overlays, parent-grid column collapse to zero width,
 `pointer-events: none` ancestors, and other context-introduced regressions.
 
-One spec per page of the akai-s3k-editor. The akai-s3k-editor is not in
-the active Phase 9 scope but inherits the Tier 3 discipline from the
-shared `editor-core` primitives (reform spec §"Open questions and accepted
-trade-offs", "Two editors").
+One spec per page that exposes interactive affordances. The akai-s3k-editor
+currently has four user-facing pages: `KeygroupsPage`, `LibraryPage`,
+`ProgramsPage`, `SamplesPage`. (`TestKeygroupsPage` is a dev-only harness and
+is excluded.) The akai-s3k-editor is not in the active Phase 9 scope but
+inherits the Tier 3 discipline from the shared `editor-core` primitives
+(reform spec §"Open questions and accepted trade-offs", "Two editors").
 
 ## Patterns allowed
 
