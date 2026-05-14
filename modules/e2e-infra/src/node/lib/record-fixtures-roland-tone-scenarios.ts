@@ -34,6 +34,15 @@
  *
  * @packageDocumentation
  */
+// File-size deviation: this file intentionally exceeds the 300-500 line
+// project guideline. The content is a single declarative TONE_WRITE_SCENARIOS
+// array (one entry per tone-write affordance, ~40+ entries) that is the
+// single source of truth for both the recording-side capture order and the
+// synthesis-side mutation logic. Splitting across multiple files would
+// fragment the SSOT and create cross-file ordering risk (scenario order
+// matters at recording time because each scenario's mutate affects the
+// device's stock state for subsequent captures). Controller disposition:
+// accept the deviation; reconsider if the file ever exceeds ~750 lines.
 import type {
     SSeriesBaseTone,
     SSeriesEnvelope,

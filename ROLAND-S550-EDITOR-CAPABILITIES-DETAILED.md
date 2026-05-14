@@ -49,7 +49,7 @@ Why this matters for redesign: `native` capabilities are device-driven — their
 
 ---
 
-## Missing affordances roll-up (24)
+## Missing affordances roll-up (18)
 
 These affordances *should* exist — the protocol supports them and/or sibling
 affordances of the same shape are implemented — but no UI surface exists in
