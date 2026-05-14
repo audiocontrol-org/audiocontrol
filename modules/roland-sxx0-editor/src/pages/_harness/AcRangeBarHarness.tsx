@@ -4,13 +4,15 @@ import {
   BROKEN_PRIMITIVES,
   type AcRangeBarLinearProps,
   type AcRangeBarProps,
+  type AcRangeBarVariantKey,
 } from '@audiocontrol/editor-core';
 import { resolveBrokenPrimitive, resolveContext } from '@/pages/_harness/url-params';
+// `window.__acHarness` is declared globally in ./harness-globals.d.ts.
 
 /**
  * Dev-only test harness route that mounts the production `<AcRangeBar>`
  * (linear variant) with seed state and exposes onChange invocations via
- * `window.__acRangeBarHarness` so a Playwright spec can drive the bar with
+ * `window.__acHarness.rangeBar` so a Playwright spec can drive the bar with
  * real pointer / keyboard events and assert the contract.
  *
  * This is the "primitive contract" harness (Layer 1) — no MIDI, no fixtures,
@@ -23,35 +25,36 @@ import { resolveBrokenPrimitive, resolveContext } from '@/pages/_harness/url-par
  *   ?context=sticky-overlay|zero-width-grid|pointer-events-none-ancestor
  * Both may be set independently. Unknown values throw.
  *
- * The `window.__acRangeBarHarness` global mirrors React state for external
- * introspection. It collides by name with no other harness because each
- * harness mounts on its own route — but the per-harness global pattern is
- * documented here so future harnesses pick distinct names.
+ * All harnesses share the `window.__acHarness` namespace and write to
+ * distinct sub-keys (`envelopeTable`, `rangeBar`, …). Sibling harnesses
+ * do not clobber each other's state — each route reads-modifies-writes
+ * its own slot.
+ *
+ * This harness only exercises `variant: 'linear'`. The three
+ * `BROKEN_PRIMITIVES.AcRangeBar` variants all target linear (per the T3
+ * registry). Bipolar / enum interactive contract verification is out of
+ * scope here; a separate harness or `?variant=` parameter would be needed.
  *
  * NOT linked from the production nav. Reached only via `/_harness/range-bar`.
  */
-declare global {
-  interface Window {
-    __acRangeBarHarness?: {
-      changes: ReadonlyArray<number>;
-      value: number;
-    };
-  }
-}
-
 export function AcRangeBarHarness(): JSX.Element {
   const [value, setValue] = useState(50);
   const [changes, setChanges] = useState<ReadonlyArray<number>>([]);
 
   // Mirror state to window so Playwright can introspect from outside React.
-  window.__acRangeBarHarness = { changes, value };
+  // Read-modify-write our own sub-key so sibling harnesses' state survives
+  // if they ever mount alongside (they don't today — each harness has its
+  // own route — but the shape guards against the convention-canon trap).
+  window.__acHarness = {
+    ...(window.__acHarness ?? {}),
+    rangeBar: { changes, value },
+  };
 
-  const Comp = resolveBrokenPrimitive<AcRangeBarProps, keyof typeof BROKEN_PRIMITIVES.AcRangeBar>(
-    'broken',
-    BROKEN_PRIMITIVES.AcRangeBar,
-    AcRangeBar,
+  const Broken = resolveBrokenPrimitive<AcRangeBarProps, AcRangeBarVariantKey>(
     'AcRangeBar',
+    BROKEN_PRIMITIVES.AcRangeBar,
   );
+  const Comp = Broken ?? AcRangeBar;
   const Ctx = resolveContext();
 
   const linearProps: AcRangeBarLinearProps = {

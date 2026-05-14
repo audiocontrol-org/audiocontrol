@@ -24,46 +24,69 @@ export function getParam(name: string): string | undefined {
 }
 
 /**
- * Resolve a broken-primitive variant by key, or return the production primitive
- * when no `?broken=` param is set. Throws with a descriptive Error listing the
+ * Look up a value in a typed `Readonly<Record<K, V>>` by an untrusted string
+ * key. Returns `undefined` when the key is not in the record's
+ * statically-known union; consumers throw on undefined.
+ *
+ * The single `as Readonly<Record<string, V>>` cast below is the one
+ * acceptable cast in this file: it widens the record's key from the literal
+ * union to `string` so a runtime string lookup is well-typed without an
+ * unsafe `as KeyT` on the way out. The cast preserves the value type
+ * (`V | undefined`) faithfully — there is no information laundering.
+ */
+function lookup<K extends string, V>(
+  record: Readonly<Record<K, V>>,
+  key: string,
+): V | undefined {
+  return (record as Readonly<Record<string, V>>)[key];
+}
+
+/**
+ * Resolve a broken-primitive variant by key, or return `undefined` when no
+ * `?broken=` URL param is set. Throws with a descriptive Error listing the
  * known keys when the param is set but unknown — no silent fallback.
  *
- * The runtime `key in variants` narrowing proves `key` is a valid variant key,
- * but the TypeScript compiler narrows the value of `key` to `string` (not the
- * literal-union key type) inside the guarded branch. The single `as KeyT`
- * below is the documented runtime-checked cast described in the T4 task brief.
+ * The helper has one job: lookup-or-error. The caller picks the production
+ * primitive when this returns `undefined` (so the "use real primitive when
+ * unset" semantics live at the call site, not buried inside the helper).
  */
 export function resolveBrokenPrimitive<P, KeyT extends string>(
-  paramName: string,
+  primitiveName: string,
   variants: Readonly<Record<KeyT, ComponentType<P>>>,
-  production: ComponentType<P>,
-  primitiveLabel: string,
-): ComponentType<P> {
-  const key = getParam(paramName);
-  if (key === undefined) return production;
-  if (!(key in variants)) {
+): ComponentType<P> | undefined {
+  const key = getParam('broken');
+  if (key === undefined) return undefined;
+  const broken = lookup(variants, key);
+  if (broken === undefined) {
     throw new Error(
-      `Unknown ?${paramName} variant for ${primitiveLabel}: '${key}'. ` +
+      `Unknown ?broken variant for ${primitiveName}: '${key}'. ` +
         `Known: ${Object.keys(variants).join(', ')}`,
     );
   }
-  // Runtime-checked: the `key in variants` guard above proves membership.
-  return variants[key as KeyT];
+  return broken;
 }
 
 /**
  * Resolve a broken-context wrapper by key, or return `undefined` when no
  * `?context=` param is set. Throws on unknown key — no silent fallback.
+ *
+ * Returns `undefined` (not a passthrough wrapper) when no `?context=` is set.
+ * The caller composes the wrapping itself, so a missing context means
+ * literally no wrapper renders — there is no `<Fragment>` cost added.
  */
 export function resolveContext(): ComponentType<{ children: ReactNode }> | undefined {
   const key = getParam('context');
   if (key === undefined) return undefined;
-  if (!(key in BROKEN_CONTEXTS)) {
+  const ctx = lookup(BROKEN_CONTEXTS, key);
+  if (ctx === undefined) {
     throw new Error(
       `Unknown ?context variant: '${key}'. ` +
         `Known: ${Object.keys(BROKEN_CONTEXTS).join(', ')}`,
     );
   }
-  // Runtime-checked: the `key in BROKEN_CONTEXTS` guard above proves membership.
-  return BROKEN_CONTEXTS[key as BrokenContextKey];
+  return ctx;
 }
+
+// `BrokenContextKey` is re-exported here purely to keep call sites referencing
+// a single import path for harness types alongside the dispatch helpers.
+export type { BrokenContextKey };

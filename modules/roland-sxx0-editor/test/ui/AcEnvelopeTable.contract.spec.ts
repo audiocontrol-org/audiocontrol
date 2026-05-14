@@ -94,10 +94,11 @@ test.describe('AcEnvelopeTable segment-1 Time slider — operator pointer-drag c
     ).toBeLessThan(106);
 
     // CLAIM 4: the consumer's onChange spy was invoked with the new value.
-    // The harness mirrors the spy state onto window.__acHarness so the
-    // spec can observe what reached the consumer — not what the input
-    // says, but what the page's onChange handler actually received.
-    const spy = await page.evaluate(() => window.__acHarness);
+    // The harness mirrors the spy state onto window.__acHarness.envelopeTable
+    // (the shared harness namespace; see harness-globals.d.ts) so the spec
+    // can observe what reached the consumer — not what the input says, but
+    // what the page's onChange handler actually received.
+    const spy = await page.evaluate(() => window.__acHarness?.envelopeTable);
     expect(spy?.timeCalls.length ?? 0, 'consumer onChange must fire at least once').toBeGreaterThan(0);
     const lastCall = spy?.timeCalls[spy.timeCalls.length - 1];
     expect(lastCall?.index, 'onChange must report segment 1').toBe(1);

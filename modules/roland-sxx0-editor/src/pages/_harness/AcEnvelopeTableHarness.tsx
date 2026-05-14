@@ -3,14 +3,16 @@ import {
   AcEnvelopeTable,
   BROKEN_PRIMITIVES,
   type AcEnvelopeTableProps,
+  type AcEnvelopeTableVariantKey,
 } from '@audiocontrol/editor-core';
 import { resolveBrokenPrimitive, resolveContext } from '@/pages/_harness/url-params';
+// `window.__acHarness` is declared globally in ./harness-globals.d.ts.
 
 /**
  * Dev-only test harness route that mounts the production `<AcEnvelopeTable>`
  * primitive with seed data and exposes onChange invocations via
- * `window.__acHarness` so a Playwright spec can drive the slider with real
- * pointer events and assert the contract.
+ * `window.__acHarness.envelopeTable` so a Playwright spec can drive the
+ * slider with real pointer events and assert the contract.
  *
  * This is the "primitive contract" harness (Layer 1) — no MIDI, no fixtures,
  * no device wiring. The slider under test IS the production primitive used
@@ -22,22 +24,13 @@ import { resolveBrokenPrimitive, resolveContext } from '@/pages/_harness/url-par
  *   ?context=sticky-overlay|zero-width-grid|pointer-events-none-ancestor
  * Both may be set independently. Unknown values throw.
  *
- * The `window.__acHarness` global mirrors React state for external
- * introspection. It collides by name with no other harness because each
- * harness mounts on its own route.
+ * All harnesses share the `window.__acHarness` namespace and write to
+ * distinct sub-keys (`envelopeTable`, `rangeBar`, …). Sibling harnesses
+ * do not clobber each other's state — each route reads-modifies-writes
+ * its own slot.
  *
  * NOT linked from the production nav. Reached only via `/_harness/envelope-table`.
  */
-declare global {
-  interface Window {
-    __acHarness?: {
-      timeCalls: ReadonlyArray<{ index: number; value: number }>;
-      levelCalls: ReadonlyArray<{ index: number; value: number }>;
-      segments: ReadonlyArray<{ time: number; level: number }>;
-    };
-  }
-}
-
 export function AcEnvelopeTableHarness(): JSX.Element {
   const [segments, setSegments] = useState<ReadonlyArray<{ time: number; level: number }>>([
     { time: 106, level: 127 },
@@ -53,12 +46,19 @@ export function AcEnvelopeTableHarness(): JSX.Element {
   const [levelCalls, setLevelCalls] = useState<ReadonlyArray<{ index: number; value: number }>>([]);
 
   // Mirror state to window so Playwright can introspect from outside React.
-  window.__acHarness = { timeCalls, levelCalls, segments };
+  // Read-modify-write our own sub-key so sibling harnesses' state survives
+  // if they ever mount alongside (they don't today — each harness has its
+  // own route — but the shape guards against the convention-canon trap).
+  window.__acHarness = {
+    ...(window.__acHarness ?? {}),
+    envelopeTable: { timeCalls, levelCalls, segments },
+  };
 
-  const Comp = resolveBrokenPrimitive<
-    AcEnvelopeTableProps,
-    keyof typeof BROKEN_PRIMITIVES.AcEnvelopeTable
-  >('broken', BROKEN_PRIMITIVES.AcEnvelopeTable, AcEnvelopeTable, 'AcEnvelopeTable');
+  const Broken = resolveBrokenPrimitive<AcEnvelopeTableProps, AcEnvelopeTableVariantKey>(
+    'AcEnvelopeTable',
+    BROKEN_PRIMITIVES.AcEnvelopeTable,
+  );
+  const Comp = Broken ?? AcEnvelopeTable;
   const Ctx = resolveContext();
 
   const table = (

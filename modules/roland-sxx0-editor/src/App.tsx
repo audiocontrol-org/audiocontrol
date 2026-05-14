@@ -27,7 +27,11 @@ export function App() {
         <Route path="patches" element={<PatchesPage />} />
         <Route path="tones" element={<TonesPage />} />
         <Route path="library" element={<LibraryPage />} />
-        {/* Dev-only test harness routes. Production routes never reach here. */}
+        {/*
+         * Dev-only test harness routes. Production routes never reach here.
+         * When the harness count exceeds ~4, factor to a `harnessRoutes`
+         * array + `.map()` over the JSX block below.
+         */}
         {import.meta.env.DEV && (
           <>
             <Route path="_harness/envelope-table" element={<AcEnvelopeTableHarness />} />
