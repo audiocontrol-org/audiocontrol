@@ -29,26 +29,26 @@ export function AcRangeBarBrokenNoPointerEvents(props: AcRangeBarProps): JSX.Ele
   return renderLinearNoPointer(props);
 }
 
+/**
+ * Linear render path here MUST stay paint-equivalent to AcRangeBar.tsx's
+ * linear render path; only the input's `pointer-events: none` differs.
+ * If production's linear render changes, update this in lockstep.
+ *
+ * The helpers `rootAriaProps`, `renderTicks`, and `pct` are NOT exported
+ * from production AcRangeBar, so their logic is inlined below. Any
+ * change to those helpers in production must be mirrored here.
+ */
 function renderLinearNoPointer(p: AcRangeBarLinearProps): JSX.Element {
   const min = p.min ?? 0;
   const max = p.max ?? 127;
   const step = p.step ?? 1;
-  const clamped = Math.min(max, Math.max(min, p.value));
-  const fillPct = ((clamped - min) / (max - min)) * 100;
+  const fillPct = pct(p.value, min, max);
   const fillStyle: RangeBarFillStyle = { '--ac-range-fill': `${fillPct}%` };
   const className = p.className ? `ac-range-bar ${p.className}` : 'ac-range-bar';
   const interactive = p.onChange !== undefined;
   return (
-    <div className={className}>
-      {p.startTick !== undefined ? (
-        <span className="ac-range-bar__tick ac-range-bar__tick--start">{p.startTick}</span>
-      ) : null}
-      {p.midTick !== undefined ? (
-        <span className="ac-range-bar__tick ac-range-bar__tick--mid">{p.midTick}</span>
-      ) : null}
-      {p.endTick !== undefined ? (
-        <span className="ac-range-bar__tick ac-range-bar__tick--end">{p.endTick}</span>
-      ) : null}
+    <div className={className} {...rootAriaProps(p.ariaLabel, interactive)}>
+      {renderTicks(p.startTick, p.midTick, p.endTick)}
       <div className="ac-range-bar__fill" style={fillStyle} />
       {interactive ? (
         <input
@@ -68,4 +68,57 @@ function renderLinearNoPointer(p: AcRangeBarLinearProps): JSX.Element {
       ) : null}
     </div>
   );
+}
+
+// Mirror of AcRangeBar.tsx's `rootAriaProps` (kept in lockstep — see file JSDoc).
+function rootAriaProps(
+  ariaLabel: string | undefined,
+  interactive: boolean,
+): { role?: string; 'aria-label'?: string } {
+  if (interactive) {
+    return {};
+  }
+  return { role: 'img', 'aria-label': ariaLabel };
+}
+
+// Mirror of AcRangeBar.tsx's `renderTicks` (kept in lockstep — see file JSDoc).
+function renderTicks(
+  startTick: string | undefined,
+  midTick: string | undefined,
+  endTick: string | undefined,
+): JSX.Element[] {
+  const out: JSX.Element[] = [];
+  if (startTick !== undefined) {
+    out.push(
+      <span key="s" className="ac-range-bar__tick ac-range-bar__tick--start">
+        {startTick}
+      </span>,
+    );
+  }
+  if (midTick !== undefined) {
+    out.push(
+      <span key="m" className="ac-range-bar__tick ac-range-bar__tick--mid">
+        {midTick}
+      </span>,
+    );
+  }
+  if (endTick !== undefined) {
+    out.push(
+      <span key="e" className="ac-range-bar__tick ac-range-bar__tick--end">
+        {endTick}
+      </span>,
+    );
+  }
+  return out;
+}
+
+// Mirror of AcRangeBar.tsx's `pct` (kept in lockstep — see file JSDoc).
+function pct(value: number, min: number, max: number): number {
+  if (max <= min) {
+    throw new Error(
+      `AcRangeBar linear requires max > min (got min=${min}, max=${max})`,
+    );
+  }
+  const clamped = Math.min(max, Math.max(min, value));
+  return ((clamped - min) / (max - min)) * 100;
 }

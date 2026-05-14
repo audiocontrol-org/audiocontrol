@@ -25,7 +25,7 @@ const overlayStyle: CSSProperties = {
   background: 'transparent',
 };
 
-export function StickyOverlayContext({
+export function BrokenStickyOverlayContext({
   children,
 }: {
   children: ReactNode;

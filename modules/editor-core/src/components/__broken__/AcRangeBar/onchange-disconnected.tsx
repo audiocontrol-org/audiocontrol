@@ -6,12 +6,14 @@ import { AcRangeBar, type AcRangeBarProps } from '@/components/AcRangeBar';
  * Wraps the production `AcRangeBar` but substitutes a no-op for the
  * `onChange` prop when the operator supplied one. The production
  * component still renders its native `<input type="range">` overlay
- * (because `onChange` is defined — `interactive` is true), but events
- * never propagate back to the parent's state.
+ * (because `onChange` is defined — `interactive` is true).
  *
- * Mimics the failure mode where the bar looks fully editable, the
- * native input value updates locally on drag/keyboard, but no model
- * change is observed.
+ * The native input's `change` event fires but does not advance parent
+ * state. React's controlled-input model then snaps the input back to
+ * the un-advanced `value` on every render, so the bar visually does
+ * not move on drag. Credibility specs assert that the bar's
+ * `aria-valuenow` or rendered readout does NOT advance after a
+ * pointer drag.
  */
 export function AcRangeBarBrokenOnChangeDisconnected(
   props: AcRangeBarProps,
@@ -19,17 +21,7 @@ export function AcRangeBarBrokenOnChangeDisconnected(
   const noop = (): void => {
     /* deliberate: drop the call before it reaches the parent */
   };
-  if (props.variant === 'enum') {
-    return props.onChange === undefined
-      ? <AcRangeBar {...props} />
-      : <AcRangeBar {...props} onChange={noop} />;
-  }
-  if (props.variant === 'bipolar') {
-    return props.onChange === undefined
-      ? <AcRangeBar {...props} />
-      : <AcRangeBar {...props} onChange={noop} />;
-  }
-  return props.onChange === undefined
-    ? <AcRangeBar {...props} />
-    : <AcRangeBar {...props} onChange={noop} />;
+  if (props.onChange === undefined) return <AcRangeBar {...props} />;
+  const swapped: AcRangeBarProps = { ...props, onChange: noop };
+  return <AcRangeBar {...swapped} />;
 }

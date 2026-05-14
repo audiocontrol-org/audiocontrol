@@ -11,8 +11,9 @@
  *      §5 — Validity Claim B: credibility via runtime swap.
  *
  * The broken variants here are NEVER imported into production page code.
- * They are imported only by harness routes (T4) and this registry, and the
- * registry itself is consumed only by the harness layer + tools/.
+ * This registry will be imported by harness routes once 9R-A.1-T4 lands.
+ * Until then, only this file references the broken variants; nothing in
+ * production page code imports them.
  */
 import { type ComponentType, type ReactNode } from 'react';
 import { type AcRangeBarProps } from '@/components/AcRangeBar';
@@ -23,17 +24,31 @@ import { AcRangeBarBrokenNoPointerEvents } from './AcRangeBar/no-pointer-events'
 import { AcRangeBarBrokenOnChangeDisconnected } from './AcRangeBar/onchange-disconnected';
 import { AcEnvelopeTableBrokenCellsRoleImg } from './AcEnvelopeTable/cells-role-img';
 import { AcEnvelopeTableBrokenOnChangeDisconnected } from './AcEnvelopeTable/onchange-disconnected';
-import { StickyOverlayContext } from './contexts/sticky-overlay';
-import { ZeroWidthGridContext } from './contexts/zero-width-grid';
-import { PointerEventsNoneAncestorContext } from './contexts/pointer-events-none-ancestor';
+import { BrokenStickyOverlayContext } from './contexts/sticky-overlay';
+import { BrokenZeroWidthGridContext } from './contexts/zero-width-grid';
+import { BrokenPointerEventsNoneAncestorContext } from './contexts/pointer-events-none-ancestor';
+
+export type AcRangeBarVariantKey =
+  | 'role-img'
+  | 'no-pointer-events'
+  | 'onchange-disconnected';
+
+export type AcEnvelopeTableVariantKey =
+  | 'cells-role-img'
+  | 'onchange-disconnected';
+
+export type BrokenContextKey =
+  | 'sticky-overlay'
+  | 'zero-width-grid'
+  | 'pointer-events-none-ancestor';
 
 export interface BrokenPrimitives {
-  AcRangeBar: Readonly<Record<string, ComponentType<AcRangeBarProps>>>;
-  AcEnvelopeTable: Readonly<Record<string, ComponentType<AcEnvelopeTableProps>>>;
+  AcRangeBar: Readonly<Record<AcRangeBarVariantKey, ComponentType<AcRangeBarProps>>>;
+  AcEnvelopeTable: Readonly<Record<AcEnvelopeTableVariantKey, ComponentType<AcEnvelopeTableProps>>>;
 }
 
 export type BrokenContexts = Readonly<
-  Record<string, ComponentType<{ children: ReactNode }>>
+  Record<BrokenContextKey, ComponentType<{ children: ReactNode }>>
 >;
 
 export const BROKEN_PRIMITIVES: BrokenPrimitives = {
@@ -49,7 +64,7 @@ export const BROKEN_PRIMITIVES: BrokenPrimitives = {
 };
 
 export const BROKEN_CONTEXTS: BrokenContexts = {
-  'sticky-overlay': StickyOverlayContext,
-  'zero-width-grid': ZeroWidthGridContext,
-  'pointer-events-none-ancestor': PointerEventsNoneAncestorContext,
+  'sticky-overlay': BrokenStickyOverlayContext,
+  'zero-width-grid': BrokenZeroWidthGridContext,
+  'pointer-events-none-ancestor': BrokenPointerEventsNoneAncestorContext,
 };

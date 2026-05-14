@@ -11,12 +11,6 @@ import { AcRangeBar, type AcRangeBarProps } from '@/components/AcRangeBar';
  * or keyboard input.
  */
 export function AcRangeBarBrokenRoleImg(props: AcRangeBarProps): JSX.Element {
-  // Discriminated-union spread: strip onChange while preserving variant.
-  if (props.variant === 'enum') {
-    return <AcRangeBar {...props} onChange={undefined} />;
-  }
-  if (props.variant === 'bipolar') {
-    return <AcRangeBar {...props} onChange={undefined} />;
-  }
-  return <AcRangeBar {...props} onChange={undefined} />;
+  const stripped: AcRangeBarProps = { ...props, onChange: undefined };
+  return <AcRangeBar {...stripped} />;
 }

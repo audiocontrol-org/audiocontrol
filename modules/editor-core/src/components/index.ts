@@ -200,4 +200,7 @@ export {
   BROKEN_CONTEXTS,
   type BrokenPrimitives,
   type BrokenContexts,
+  type AcRangeBarVariantKey,
+  type AcEnvelopeTableVariantKey,
+  type BrokenContextKey,
 } from './__broken__/registry';

@@ -16,7 +16,7 @@ const wrapperStyle: CSSProperties = {
   pointerEvents: 'none',
 };
 
-export function PointerEventsNoneAncestorContext({
+export function BrokenPointerEventsNoneAncestorContext({
   children,
 }: {
   children: ReactNode;

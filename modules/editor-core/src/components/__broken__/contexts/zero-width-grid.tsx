@@ -18,7 +18,7 @@ const gridStyle: CSSProperties = {
   overflow: 'hidden',
 };
 
-export function ZeroWidthGridContext({
+export function BrokenZeroWidthGridContext({
   children,
 }: {
   children: ReactNode;
