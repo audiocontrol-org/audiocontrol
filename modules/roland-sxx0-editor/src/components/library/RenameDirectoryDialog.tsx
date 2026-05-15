@@ -6,6 +6,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { cn } from '@/lib/utils';
 
 interface RenameDirectoryDialogProps {
@@ -84,6 +85,11 @@ export function RenameDirectoryDialog({
           <Dialog.Title className="text-lg font-bold text-s330-text mb-4">
             Rename Folder
           </Dialog.Title>
+          <VisuallyHidden.Root>
+            <Dialog.Description>
+              Rename the selected folder in the library tree.
+            </Dialog.Description>
+          </VisuallyHidden.Root>
 
           <form onSubmit={handleSubmit}>
             <div className="mb-4">

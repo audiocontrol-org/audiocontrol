@@ -71,6 +71,9 @@ export function SaveSetDialog({
           <Dialog.Title className="text-lg font-bold text-s330-text mb-4">
             Save Device to Library
           </Dialog.Title>
+          <Dialog.Description className="text-sm text-s330-muted mb-3">
+            Capture the device's current memory state (patches, tones, and wave data) as a named set in the library so it can be restored later.
+          </Dialog.Description>
 
           <div className="space-y-4">
             {/* Set Name */}

@@ -6,6 +6,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { cn } from '@/lib/utils';
 
 // Inline validation banner reuses the same surface tokens as
@@ -80,6 +81,11 @@ export function CreateDirectoryDialog({
           <Dialog.Title className="text-lg font-bold text-s330-text mb-4">
             New Folder
           </Dialog.Title>
+          <VisuallyHidden.Root>
+            <Dialog.Description>
+              Create a new subdirectory inside the selected library location.
+            </Dialog.Description>
+          </VisuallyHidden.Root>
 
           <form onSubmit={handleSubmit}>
             <div className="mb-4">

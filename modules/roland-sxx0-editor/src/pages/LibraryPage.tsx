@@ -9,7 +9,7 @@
  * Uses the plugin architecture for device-agnostic library browsing.
  */
 
-import { useCallback, useEffect, useRef, useMemo } from 'react';
+import { useCallback, useEffect, useRef, useMemo, useState } from 'react';
 import { useMidiStore } from '@/stores/midiStore';
 import { useDeviceDataStore } from '@/stores/deviceDataStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
@@ -27,6 +27,8 @@ import { LoadSetDialog } from '@/components/library/LoadSetDialog';
 import { ImportLibraryToneDialog } from '@/components/library/ImportLibraryToneDialog';
 import { ImportLibraryPatchDialog } from '@/components/library/ImportLibraryPatchDialog';
 import { ImportSamplesDialog } from '@/components/library/ImportSamplesDialog';
+import { CreateDirectoryDialog } from '@/components/library/CreateDirectoryDialog';
+import { RenameDirectoryDialog } from '@/components/library/RenameDirectoryDialog';
 import { LoopEditorDialog } from '@audiocontrol/loop-editor/ui';
 import { SampleEditorDialog } from '@audiocontrol/sample-editor/ui';
 import { SampleChopperDialog } from '@audiocontrol/sample-chopper/ui';
@@ -184,6 +186,40 @@ export function LibraryPage() {
   }, [libraryHandle, openImportSamplesDialog, setError]);
 
   // ----------------------------------------------------------------------
+  // Dev-only mount state for the two orphan directory dialogs
+  // ----------------------------------------------------------------------
+  //
+  // `CreateDirectoryDialog` and `RenameDirectoryDialog` are defined in
+  // `src/components/library/` but currently have no production trigger —
+  // folder CRUD is owned by `editor-core`'s `LibraryBrowser` via its own
+  // `CreateFolderDialog`. The orphan dialogs received the same
+  // `Dialog.Description` fix as the production-wired Save/Load set
+  // dialogs (issue #429) to prevent the Radix a11y warning from re-
+  // surfacing if a future caller wires them up.
+  //
+  // The Tier 3 spec needs to prove the fix is durable on each affected
+  // dialog. Per the audit-finding brief, when a dialog's production
+  // open path is not currently available the spec opens the dialog via
+  // a dev-only window hook — same pattern as the existing
+  // `__libraryPageTestHooks.openImportSamplesDialog` (see below). The
+  // hook routes through this local mount state so the rendered dialog
+  // is the exact production component under test, not a copy.
+  //
+  // Production builds bypass this state entirely because (a) nothing
+  // outside the dev hook ever calls the setters, and (b) the
+  // `useEffect` that installs the hook is gated on `import.meta.env.DEV`
+  // — Vite tree-shakes the hook's body in production builds.
+  const [createDirDialogState, setCreateDirDialogState] = useState<{
+    parentPath: string[];
+    category: 'tones' | 'patches' | 'drum-kits';
+  } | null>(null);
+  const [renameDirDialogState, setRenameDirDialogState] = useState<{
+    currentName: string;
+    path: string[];
+    category: 'tones' | 'patches' | 'drum-kits';
+  } | null>(null);
+
+  // ----------------------------------------------------------------------
   // Dev-only test affordance: open ImportSamplesDialog from a stub bundle
   // ----------------------------------------------------------------------
   //
@@ -218,6 +254,19 @@ export function LibraryPage() {
       ) => {
         openImportSamplesDialog(name, bundle, 'sample', []);
       },
+      openCreateDirectoryDialog: (
+        category: 'tones' | 'patches' | 'drum-kits' = 'tones',
+        parentPath: string[] = [],
+      ) => {
+        setCreateDirDialogState({ category, parentPath });
+      },
+      openRenameDirectoryDialog: (
+        category: 'tones' | 'patches' | 'drum-kits' = 'tones',
+        path: string[] = ['my-folder'],
+      ) => {
+        const currentName = path[path.length - 1] ?? '';
+        setRenameDirDialogState({ category, path, currentName });
+      },
     };
     return () => {
       // Remove only our hook on unmount; preserve other entries that
@@ -227,6 +276,8 @@ export function LibraryPage() {
       // mount.
       if (window.__libraryPageTestHooks !== undefined) {
         delete window.__libraryPageTestHooks.openImportSamplesDialog;
+        delete window.__libraryPageTestHooks.openCreateDirectoryDialog;
+        delete window.__libraryPageTestHooks.openRenameDirectoryDialog;
       }
     };
   }, [openImportSamplesDialog]);
@@ -519,6 +570,38 @@ export function LibraryPage() {
           sampleRate={editorDialogs.sampleEditor.sampleRate}
           sampleName={editorDialogs.sampleEditor.sampleName}
           onSave={libraryHandle ? editorDialogs.handleSampleEditorSave : undefined}
+        />
+      )}
+      {/*
+        Dev-only mount of the orphan directory dialogs. State is only
+        ever populated by `window.__libraryPageTestHooks.openCreate/Rename
+        DirectoryDialog`, which is gated on `import.meta.env.DEV` in the
+        `useEffect` above. In production the state stays null and Vite
+        tree-shakes the hook installation entirely, so these blocks
+        never render. The dialogs themselves are the exact production
+        components (sharing the `Dialog.Description` fix from #429).
+        Closing the dialog dismisses the local state — there's no
+        backing operation because no production caller has wired one up
+        yet. See `src/components/library/CreateDirectoryDialog.tsx`
+        + `RenameDirectoryDialog.tsx`.
+      */}
+      {createDirDialogState && (
+        <CreateDirectoryDialog
+          open={true}
+          onOpenChange={(open) => { if (!open) setCreateDirDialogState(null); }}
+          onConfirm={() => { setCreateDirDialogState(null); return Promise.resolve(); }}
+          parentPath={createDirDialogState.parentPath}
+          category={createDirDialogState.category}
+        />
+      )}
+      {renameDirDialogState && (
+        <RenameDirectoryDialog
+          open={true}
+          onOpenChange={(open) => { if (!open) setRenameDirDialogState(null); }}
+          onConfirm={() => { setRenameDirDialogState(null); return Promise.resolve(); }}
+          currentName={renameDirDialogState.currentName}
+          path={renameDirDialogState.path}
+          category={renameDirDialogState.category}
         />
       )}
     </div>

@@ -94,6 +94,9 @@ export function LoadSetDialog({
           <Dialog.Title className="text-lg font-bold text-s330-text mb-4">
             Load Set to Device
           </Dialog.Title>
+          <Dialog.Description className="text-sm text-s330-muted mb-3">
+            Send the selected library set to the device. The target slots on the device will be overwritten by the set's patches, tones, and wave data.
+          </Dialog.Description>
 
           <div className="space-y-4">
             {/* Set Info */}
