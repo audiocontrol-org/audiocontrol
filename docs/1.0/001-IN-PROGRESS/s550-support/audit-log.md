@@ -1136,7 +1136,7 @@ Scope reviewed: live rerun of the bounded Patches capability slice from `modules
 #### LIVE-S550-PATCH-001
 
 Finding-ID: LIVE-S550-PATCH-001
-Status: open
+Status: acknowledged-#431; workplan §Phase-11-Task-6 (controller ACK 2026-05-15 evening; auditor's `Disposition (proposed): new issue` accepted. Filed as #431. **Same protocol-timing defect class as LIVE-S550-LIB-002 (#430).** Both findings cite the same s-series-client.ts:481 RQD timeout + s-series-client.ts:528-530 stale-RJC ignore pattern; manifestations differ (PATCH-001 → loadPatchBank; LIB-002 → saveDeviceToSetIncremental tone-wave fetch). A single fix in s-series-client.ts RQD handling likely closes both. Routed to the SAME Phase 11 §Task 6 (already filed for LIB-002) per the protocol's natural-fit-for-existing-in-flight-work rule. §Task 6 now tracks #430 + #431; closure requires BOTH live specs to pass on hardware. **Missed-ACK protocol applied:** caught this finding via end-of-dispatch `^Status: open` grep per the lesson recorded in the LIB-002 ACK section. See ACK section below.)
 Severity: high
 Surface: `/roland/s550/editor/patches`
 Disposition (proposed): new issue
@@ -1189,3 +1189,17 @@ Fix guidance:
 Closure gate:
 - `s550-D-PATCH-live-core.spec.ts` reaches the patch editor on live hardware and can execute both the existing `D-PATCH-02` assertion and the new bounded `D-PATCH-04` extension.
 - The live route load completes without the patch-bank `RQD response timeout` warning during the bounded conformance rerun.
+
+### Controller ACK — 2026-05-15 (evening, PATCH-001 + shared-root-cause routing)
+
+`LIVE-S550-PATCH-001` — `acknowledged-#431; workplan §Phase-11-Task-6`. Independently verified against current HEAD: the cited code paths (`s-series-client.ts:481` RQD timeout reject, `:528-530` stale-RJC ignore, `useBankLoader.ts:44` patch-bank load consumer, `PatchesPage.tsx:116` orchestration) all match the auditor's citations. Filed as [#431](https://github.com/audiocontrol-org/audiocontrol/issues/431).
+
+**Same protocol-timing defect class as LIVE-S550-LIB-002 (#430).** Both findings exhibit the identical failure mode — `[S-550] Ignoring stale RJC during RQD` followed by `RQD response timeout - no data received`. They cite the same s-series-client.ts lines. They differ only in orchestration surface: PATCH-001 fires during `loadPatchBank` (PatchesPage route load); LIB-002 fires during `saveDeviceToSetIncremental` (Save-Set tone-wave fetch).
+
+**Single Phase 11 §Task 6 covers both.** Per the protocol's natural-fit-for-existing-in-flight-work rule, the controller doesn't create a separate Phase 11 task — Task 6 already covers the s-series-client RQD/RJC handling defect class. §Task 6 now tracks #430 + #431; closure requires BOTH live specs (`s550-D-LIB-live-core.spec.ts` + `s550-D-PATCH-live-core.spec.ts`) to pass on hardware. A single code fix in `s-series-client.ts` likely closes both — the controller's hypothesis section in #430 still applies (1: stale RJC from prior op; 2: timeout too short; 3: quiescence gap before route load). PATCH-001's manifestation actually narrows hypothesis 3: the bug fires during page-mount-time `loadPatchBank`, which suggests a race between bank-load and prior-op tail activity (consistent with Hypothesis 3's "quiescence gap" framing).
+
+**Auditor commit `c5879e0a` also reviewed.** That commit added `s550-tones.design.spec.ts` + matrix/workplan updates but did NOT add any audit-log finding — it's a spec landing for the (still-broken-by-LIVE-S550-TONES-001) tones design surface, not a new defect report. No controller action required on that commit beyond noting it landed.
+
+**Missed-ACK protocol applied:** caught LIVE-S550-PATCH-001 via the end-of-dispatch `^Status: open` grep per the lesson recorded in the LIB-002 ACK section. The grep is now established as the load-bearing pre-completion check; without it, this finding would have sat un-ACK'd until the operator prompted another comprehensive review.
+
+**Workplan §Phase-11-Task-6 update:** the task body now references #431 + #430 + their shared root cause + the dual closure-gate requirement. See workplan for the updated Proven-complete-when checklist.

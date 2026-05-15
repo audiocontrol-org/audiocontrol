@@ -1222,31 +1222,36 @@ This task adds that layer without replacing 9R-C or 9R-D. It is a structured, re
 - This task is operator-disposition `new issue` per `LIVE-S550-LIB-001`'s `Disposition (proposed)`; the controller filed #429 and routes the remediation here per the audit protocol's `Phase 11 default landing` rule.
 - The family audit is intentionally bundled into Task 5 (not split into per-dialog tasks) because the defect pattern is uniform — solving one dialog teaches the fix for all of them, and the audit overhead is amortized.
 
-### Task 6 — Fix `D-LIB-10` save flow `RQD` timeout on live S-550 hardware
+### Task 6 — Fix S-series client `RQD` / stale-`RJC` interleaving on live S-550 hardware
 
-**GitHub Issue:** [#430](https://github.com/audiocontrol-org/audiocontrol/issues/430)
-**Finding-ID:** `LIVE-S550-LIB-002`
+**GitHub Issues:** [#430](https://github.com/audiocontrol-org/audiocontrol/issues/430) (save flow) + [#431](https://github.com/audiocontrol-org/audiocontrol/issues/431) (patch-bank load)
+**Finding-IDs:** `LIVE-S550-LIB-002` + `LIVE-S550-PATCH-001` (same protocol-timing defect class)
 
-**Surfaced:** independent live-hardware audit 2026-05-15.
+**Surfaced:** independent live-hardware audit 2026-05-15. Two findings on different surfaces, same root cause.
 
-`Save to Library...` on the live S-550 begins scanning tones, reaches the first wave fetch, and times out with `RQD response timeout - no data received` on tone 0. The browser logs a stale `RJC` arriving during the `RQD` wait window (`[S-550] Ignoring stale RJC during RQD`) immediately before the timeout. The named set never reaches a completed save state.
+**Manifestation #1 — Save flow (`LIVE-S550-LIB-002` / #430):** `Save to Library...` on the live S-550 begins scanning tones, reaches the first wave fetch (tone 0), and times out with `RQD response timeout - no data received`. The browser logs a stale `RJC` arriving during the `RQD` wait window (`[S-550] Ignoring stale RJC during RQD`) immediately before the timeout. Named set never reaches a completed save state.
 
-Code paths under investigation (per the auditor + controller-verified):
-- `modules/sampler-devices/src/devices/roland-s-series/s-series-client.ts:481` — the `RQD response timeout` reject site
-- `modules/sampler-devices/src/devices/roland-s-series/s-series-client.ts:528-530` — existing "ignore stale RJC" pattern
-- `modules/roland-sxx0-editor/src/lib/library-sets-save-incremental.ts:72` — `saveDeviceToSetIncremental` per-tone wave fetch
-- `modules/roland-sxx0-editor/src/hooks/useLibraryImportDialogs.ts:203` — save-flow orchestration
+**Manifestation #2 — Patch-bank load (`LIVE-S550-PATCH-001` / #431):** Live S-550 `loadPatchBank` (PatchesPage route load) fails before the patch editor opens. Logs identical to #430: `[S-550] Ignoring stale RJC during RQD` followed by `RQD response timeout - no data received`. Watchdog kills the run while waiting for the editor surface.
 
-Hypotheses (issue body has full detail):
+**Shared code paths under investigation (controller-verified):**
+- `modules/sampler-devices/src/devices/roland-s-series/s-series-client.ts:481` — the `RQD response timeout` reject site (shared)
+- `modules/sampler-devices/src/devices/roland-s-series/s-series-client.ts:528-531` — existing "ignore stale RJC" pattern (shared)
+- `modules/roland-sxx0-editor/src/lib/library-sets-save-incremental.ts:72` + `modules/roland-sxx0-editor/src/hooks/useLibraryImportDialogs.ts:203` — #430-only (save-flow orchestration)
+- `modules/roland-sxx0-editor/src/hooks/useBankLoader.ts:44` + `modules/roland-sxx0-editor/src/pages/PatchesPage.tsx:116` — #431-only (patch-bank-load orchestration)
+
+Hypotheses (#430's issue body has full detail; PATCH-001's manifestation reinforces hypothesis 3):
 1. **Stale RJC from prior op bleeding into current RQD wait window.** Request-identity tracking would distinguish "stale RJC from older op" vs "device rejected current op."
-2. **RQD timeout too short for first wave fetch.** Tone 0's wave may be large; default timeout may be insufficient if the device is busy from prior operations.
-3. **Save-flow quiescence gap.** `loadCurrentDevice()` doesn't fully quiesce prior protocol activity before kicking off per-tone RQD sequence.
+2. **RQD timeout too short for first wave/bank fetch.** Default timeout may be insufficient if the device is busy from prior operations.
+3. **Quiescence gap before per-op RQD sequence.** Neither `loadCurrentDevice()` (save flow) nor `loadPatchBank` (page-mount) fully quiesces prior protocol activity before kicking off new RQDs — PATCH-001 firing during page mount narrows toward this hypothesis since the only "prior op" at page mount is bank-1 load tail activity.
+
+A single fix in `s-series-client.ts` RQD/RJC handling likely closes both manifestations. The two findings are tracked separately because each has its own evidence + closure gate (each live spec re-runs independently), but the fix is shared.
 
 **Proven complete when:**
 - [ ] Root cause identified via code reading + (ideally) hardware reproduction. Fix narrowed to one of the three hypotheses above (or a fourth surfaced during investigation).
-- [ ] Code fix lands in `s-series-client.ts` and/or `library-sets-save-incremental.ts` per the identified root cause.
+- [ ] Code fix lands in `s-series-client.ts` (and/or per-consumer adjustments in `library-sets-save-incremental.ts` / `useBankLoader.ts` if required) per the identified root cause.
 - [ ] Operator runs the auditor's `s550-D-LIB-live-core.spec.ts` against live hardware and confirms the save flow completes without the tone-0 timeout — flips `LIVE-S550-LIB-002` Status to `verified-<date>`.
-- [ ] #430 closed with the fix commit hash + the auditor's verification evidence.
+- [ ] Operator runs the auditor's `s550-D-PATCH-live-core.spec.ts` against live hardware and confirms the patch-bank load reaches the editor — flips `LIVE-S550-PATCH-001` Status to `verified-<date>`.
+- [ ] BOTH #430 + #431 closed with the fix commit hash(es) + the auditor's verification evidence on both surfaces. Closure of #430 alone does NOT close §Task 6; both findings share the closure gate.
 
 **No controller-authored Tier 2 / Tier 3 UI spec is meaningful here per the protocol's test-tier ownership table.** The bug surface is protocol-timing (client-layer RQD/RJC interleaving), not UI interaction. The simulated-MIDI harness doesn't reproduce real-hardware RQD timing — a Tier 2/3 spec would pass under simulation but the bug only manifests on hardware. The auditor's live e2e spec is the canonical verification.
 
@@ -1261,7 +1266,7 @@ Hypotheses (issue body has full detail):
 - [ ] **Task 3 closed:** root `test/ui/*.spec.ts` test-discipline gap closed + ESLint lint-scope widened (or root specs removed) + #426 closed.
 - [ ] **Task 4 closed:** live S-550 conformance suite (auditor-owned) covers each high-value redesign page; controller-owned support infrastructure landed; all findings the suite surfaces have flowed through the protocol's acknowledged → fixed → verified loop.
 - [ ] **Task 5 closed:** SaveSetDialog + library-dialog family missing-description warnings fixed + Tier 3 spec + #429 closed.
-- [ ] **Task 6 closed:** `D-LIB-10` save flow RQD timeout fixed; auditor's live spec verifies on hardware; #430 closed.
+- [ ] **Task 6 closed:** S-series client RQD/stale-RJC defect class fixed; BOTH auditor live specs verify on hardware (`s550-D-LIB-live-core.spec.ts` + `s550-D-PATCH-live-core.spec.ts`); #430 + #431 both closed.
 - [ ] No new "audit found a bug we forgot to track" surprises before Phase 9 atomic closure (operator runs an independent audit at the end of 9R-D and confirms zero new findings).
 
 ### Why these are NOT in 9R-A or 9R-B/C/D directly
