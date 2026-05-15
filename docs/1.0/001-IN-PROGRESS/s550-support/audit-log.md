@@ -912,3 +912,44 @@ The protocol's `### Roles` section was extended with a `Test-tier ownership` tab
 - Controller does NOT author integration tests. When the auditor publishes a live-hardware finding from an e2e spec they authored, the controller's response is to (a) fix the underlying defect and (b) add Tier 2 / Tier 3 UI tests that prove the fix is durable.
 
 This codifies what was already operating de facto (the auditor authored `s550-play.design.spec.ts`, `s550-D-TONE-live-envelope-and-slider.spec.ts`, `s550-library.design.spec.ts` etc.; the controller authored the Tier 3 specs `import-samples-dialog.in-context.spec.ts` + `tones.envelope.in-context.spec.ts`). **Phase 11 §Task 4 in the workplan has been re-framed accordingly** — the live-conformance suite is auditor-owned; the controller's involvement is limited to (1) maintaining the `BrokenContextWrapper` production-page wiring the auditor's specs depend on and (2) remediating findings the auditor surfaces from running the suite.
+
+---
+
+## 2026-05-15 Live S-550 Patches Conformance Result
+
+Scope reviewed: first real-hardware execution of the bounded Patches design slice from `modules/roland-sxx0-editor/test/e2e/s550-patches.design.spec.ts` against the connected device on `Volt 4`.
+
+### Executive Queue
+
+- No new findings. The live Patches design slice passed on the connected S-550.
+
+### Coverage Snapshot
+
+| Surface | Design conformance | Capability conformance | Live status | Notes |
+|---|---|---|---|---|
+| Play | tested | not yet | fail | `LIVE-S550-PLAY-001` |
+| Tones | not yet | attempted | fail | `LIVE-S550-TONES-001` blocks the first bounded D-TONE battery before cutoff / sustain assertions can run |
+| Patches | tested | not yet | pass | fixed-shell route, title-row refresh chrome, and loaded-patch detail-open path passed on live hardware |
+| Library | tested | not yet | fail | `LIVE-S550-LIB-001`; shell and Save-dialog path are reachable, but the real dialog emits a missing-description warning |
+
+### Result Record
+
+- Live spec: [modules/roland-sxx0-editor/test/e2e/s550-patches.design.spec.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/test/e2e/s550-patches.design.spec.ts:1)
+- Route under test: `/roland/s550/editor/patches`
+- Verified on live hardware:
+  - fixed-viewport Patches shell renders
+  - title-row `Refresh all patches from device` affordance becomes enabled and pointer-reachable
+  - a real loaded patch row can be selected to open the detail editor
+
+Observed:
+- The first tightened rerun passed on live hardware after the spec stopped treating initial page-load disablement as a defect and instead waited for the route to settle before checking pointer actionability.
+- No new product defect was surfaced by this bounded Patches design slice.
+
+Evidence:
+- Live passing run via the HTTP-MIDI conformance path with `E2E_DEVICE_TYPE=s550`
+- Passing spec target:
+  [modules/roland-sxx0-editor/test/e2e/s550-patches.design.spec.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/test/e2e/s550-patches.design.spec.ts:126)
+
+Follow-on:
+- This closes the first Patches design slice in the live conformance matrix.
+- The next Patches expansion, if needed, should be a bounded live capability/readback battery rather than another shell-only pass.
