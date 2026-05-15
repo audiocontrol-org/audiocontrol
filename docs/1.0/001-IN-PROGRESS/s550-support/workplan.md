@@ -1220,6 +1220,38 @@ This task adds that layer without replacing 9R-C or 9R-D. It is a structured, re
 - This task is operator-disposition `new issue` per `LIVE-S550-LIB-001`'s `Disposition (proposed)`; the controller filed #429 and routes the remediation here per the audit protocol's `Phase 11 default landing` rule.
 - The family audit is intentionally bundled into Task 5 (not split into per-dialog tasks) because the defect pattern is uniform — solving one dialog teaches the fix for all of them, and the audit overhead is amortized.
 
+### Task 6 — Fix `D-LIB-10` save flow `RQD` timeout on live S-550 hardware
+
+**GitHub Issue:** [#430](https://github.com/audiocontrol-org/audiocontrol/issues/430)
+**Finding-ID:** `LIVE-S550-LIB-002`
+
+**Surfaced:** independent live-hardware audit 2026-05-15.
+
+`Save to Library...` on the live S-550 begins scanning tones, reaches the first wave fetch, and times out with `RQD response timeout - no data received` on tone 0. The browser logs a stale `RJC` arriving during the `RQD` wait window (`[S-550] Ignoring stale RJC during RQD`) immediately before the timeout. The named set never reaches a completed save state.
+
+Code paths under investigation (per the auditor + controller-verified):
+- `modules/sampler-devices/src/devices/roland-s-series/s-series-client.ts:481` — the `RQD response timeout` reject site
+- `modules/sampler-devices/src/devices/roland-s-series/s-series-client.ts:528-530` — existing "ignore stale RJC" pattern
+- `modules/roland-sxx0-editor/src/lib/library-sets-save-incremental.ts:72` — `saveDeviceToSetIncremental` per-tone wave fetch
+- `modules/roland-sxx0-editor/src/hooks/useLibraryImportDialogs.ts:203` — save-flow orchestration
+
+Hypotheses (issue body has full detail):
+1. **Stale RJC from prior op bleeding into current RQD wait window.** Request-identity tracking would distinguish "stale RJC from older op" vs "device rejected current op."
+2. **RQD timeout too short for first wave fetch.** Tone 0's wave may be large; default timeout may be insufficient if the device is busy from prior operations.
+3. **Save-flow quiescence gap.** `loadCurrentDevice()` doesn't fully quiesce prior protocol activity before kicking off per-tone RQD sequence.
+
+**Proven complete when:**
+- [ ] Root cause identified via code reading + (ideally) hardware reproduction. Fix narrowed to one of the three hypotheses above (or a fourth surfaced during investigation).
+- [ ] Code fix lands in `s-series-client.ts` and/or `library-sets-save-incremental.ts` per the identified root cause.
+- [ ] Operator runs the auditor's `s550-D-LIB-live-core.spec.ts` against live hardware and confirms the save flow completes without the tone-0 timeout — flips `LIVE-S550-LIB-002` Status to `verified-<date>`.
+- [ ] #430 closed with the fix commit hash + the auditor's verification evidence.
+
+**No controller-authored Tier 2 / Tier 3 UI spec is meaningful here per the protocol's test-tier ownership table.** The bug surface is protocol-timing (client-layer RQD/RJC interleaving), not UI interaction. The simulated-MIDI harness doesn't reproduce real-hardware RQD timing — a Tier 2/3 spec would pass under simulation but the bug only manifests on hardware. The auditor's live e2e spec is the canonical verification.
+
+**Notes:**
+- **Hardware verification gap:** the controller can hypothesize fixes from code reading, but the actual RJC/RQD interleaving timing only manifests on real hardware. Without hardware, controller fixes risk being wrong. The operator's auditor re-run is the closure-gate test; controller code fixes should ship with explicit "hypothesis verification needed" framing.
+- The wiring layer (Tier 1) is the natural home for a regression test against the stale-RJC interleaving pattern, but per the protocol's test-tier ownership table the wiring layer is auditor-owned. If the auditor wants such a regression test, that's their deliverable.
+
 ### Acceptance Criteria (Phase 11)
 
 - [ ] **Task 1 closed:** ImportSamplesDialog mislabel bug fixed + Tier 3 spec landed + operator sign-off + #425 closed.
@@ -1227,6 +1259,7 @@ This task adds that layer without replacing 9R-C or 9R-D. It is a structured, re
 - [ ] **Task 3 closed:** root `test/ui/*.spec.ts` test-discipline gap closed + ESLint lint-scope widened (or root specs removed) + #426 closed.
 - [ ] **Task 4 closed:** live S-550 conformance suite (auditor-owned) covers each high-value redesign page; controller-owned support infrastructure landed; all findings the suite surfaces have flowed through the protocol's acknowledged → fixed → verified loop.
 - [ ] **Task 5 closed:** SaveSetDialog + library-dialog family missing-description warnings fixed + Tier 3 spec + #429 closed.
+- [ ] **Task 6 closed:** `D-LIB-10` save flow RQD timeout fixed; auditor's live spec verifies on hardware; #430 closed.
 - [ ] No new "audit found a bug we forgot to track" surprises before Phase 9 atomic closure (operator runs an independent audit at the end of 9R-D and confirms zero new findings).
 
 ### Why these are NOT in 9R-A or 9R-B/C/D directly
@@ -1236,6 +1269,7 @@ This task adds that layer without replacing 9R-C or 9R-D. It is a structured, re
 - **Task 3** is the post-9R-A.2 cleanup the migration's grep audit missed. It's structurally adjacent to 9R-A.2/3 (same test-discipline reform) but lands as its own task because the disposition is operator-choice and the fix touches files outside the 9R-A.2 migration's stated scope.
 - **Task 4** exists because 9R-C/9R-D describe operator-driven closure, not a reusable live-hardware Playwright conformance layer. This is a new verification capability for the feature branch, not just a restatement of existing Phase 9 gates. **Re-scoped 2026-05-15:** auditor-owned per the protocol's Test-tier ownership table; controller responsibilities under this task are limited to infra (`BrokenContextWrapper`) + remediation of findings the auditor surfaces.
 - **Task 5** is a cross-cutting accessibility defect surfaced by Track A of the auditor's live conformance suite (Task 4). It doesn't fit 9R-* because dialog `Dialog.Description` wiring is not page-chrome rebuild work and is not test-tier reform — it's a sibling-family accessibility audit.
+- **Task 6** is a client/protocol-layer defect surfaced by Track B of the auditor's live conformance suite (Task 4). It doesn't fit 9R-* because the bug is in `s-series-client.ts` RQD/RJC interleaving, not page chrome or test-discipline. Distinct from Task 5 (dialog accessibility); separate fix path; separate verification gate.
 
 Adding Phase 11 also formalizes a pattern: "the workplan tracks every committed-to fix, including bugs found mid-flight." It is NOT a parking lot for capture-surface ideas — see "Post-Mortem Follow-Ons" below for that. An item enters Phase 11 only when (a) operator has accepted it, (b) it has a GitHub issue, and (c) it has acceptance criteria proven by observable artifacts.
 

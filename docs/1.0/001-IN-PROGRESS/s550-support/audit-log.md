@@ -1043,7 +1043,7 @@ Scope reviewed: first real-hardware execution of the bounded Library capability 
 #### LIVE-S550-LIB-002
 
 Finding-ID: LIVE-S550-LIB-002
-Status: open
+Status: acknowledged-#430; workplan §Phase-11-Task-6 (controller ACK 2026-05-15 evening; auditor's `Disposition (proposed): new issue` accepted. Filed as #430. Routed to new Phase 11 §Task 6 because this is client/protocol-layer work (s-series-client.ts RQD handling, save-flow quiescence), not page chrome or test-discipline — doesn't fit any in-flight 9R-* sub-phase. Distinct from LIB-001 / Phase 11 §Task 5 which is the dialog-accessibility gap. **Controller ACK delayed:** the auditor's commit `a015d2b6` landed after the prior ACK round-trip; the controller did not catch it until the operator prompted the comprehensive remediation-plan review. Protocol lesson: when an auditor commit lands AFTER a recent controller ACK, the controller should grep `^Status: open` before announcing "queue clear." See ACK section below.)
 Severity: high
 Surface: `/roland/s550/editor/library`
 Disposition (proposed): new issue
@@ -1097,3 +1097,15 @@ Fix guidance:
 Closure gate:
 - `s550-D-LIB-live-core.spec.ts` completes `D-LIB-10` on live hardware and verifies that the named set is created under the OPFS-backed Library route.
 - The live save path completes without the tone-0 `RQD response timeout` warning during the bounded conformance run.
+
+### Controller ACK — 2026-05-15 (evening, LIB-002 + missed-ACK note)
+
+`LIVE-S550-LIB-002` — `acknowledged-#430; workplan §Phase-11-Task-6`. Independently verified against current HEAD: the code paths at `s-series-client.ts:481` (RQD timeout reject) + `s-series-client.ts:528-530` (stale-RJC ignore) match the auditor's citations. Filed as [#430](https://github.com/audiocontrol-org/audiocontrol/issues/430). Routed to **new workplan Phase 11 §Task 6** because this is client/protocol-layer work (RQD/RJC interleaving on real hardware), not page chrome or test-discipline.
+
+**Distinct from LIB-001 / Phase 11 §Task 5** (which is the dialog accessibility / Radix missing-description pattern). The two Library findings have separate fix paths and separate tasks.
+
+**Missed-ACK acknowledgment:** auditor commit `a015d2b6` landed AFTER my prior ACK round-trip and I did not catch it until the operator prompted the comprehensive remediation-plan review. Per the protocol, the controller's response window is "within one working session" — I exceeded that for this finding. The protocol's invariant `grep -nE "^Status: open" audit-log.md` is the right defense against this drift: before announcing "queue clear," the controller MUST grep for `^Status: open` and verify zero hits. Adding this as an explicit step in my session-end checklist going forward.
+
+**Fix-path planning:** the bug is hardware-timing-bound; the controller's code-reading hypothesis (in [#430](https://github.com/audiocontrol-org/audiocontrol/issues/430) under "Hypothesis") narrows the likely root causes to (1) stale RJC from prior op bleeding into current RQD wait window, (2) RQD timeout too short for first wave fetch, (3) save-flow quiescence gap. Verification of any fix requires the auditor's live spec re-run; controller-only code inspection cannot close the loop.
+
+**No controller-authored Tier 2/3 UI spec is meaningful here** per the protocol's test-tier ownership table — this is protocol-timing, not UI interaction. The auditor's `s550-D-LIB-live-core.spec.ts` is the canonical verification.
