@@ -50,7 +50,7 @@ This suite is S-550-first. It does not widen scope into a new cross-device matri
 | Surface | Design conformance | Capability conformance | Live status | Finding / note |
 |---|---|---|---|---|
 | Play | `s550-play.design.spec.ts` landed and executed | not yet | fail | `LIVE-S550-PLAY-001` / sticky header intercepts Part A pointer events on live route |
-| Tones | not yet | `s550-D-TONE-live-envelope-and-slider.spec.ts` landed and executed | fail | `LIVE-S550-TONES-001` / loaded tone row selection is not reliably pointer-actionable on live route, blocking the bounded D-TONE battery before cutoff / sustain assertions |
+| Tones | `s550-tones.design.spec.ts` landed; first live run blocked pre-app by device validation miss | `s550-D-TONE-live-envelope-and-slider.spec.ts` landed and executed | fail | `LIVE-S550-TONES-001` / loaded tone row selection is not reliably pointer-actionable on live route, blocking the bounded D-TONE battery before cutoff / sustain assertions |
 | Patches | `s550-patches.design.spec.ts` landed and executed | `s550-D-PATCH-live-core.spec.ts` landed and executed | pass | fixed-shell route plus bounded D-PATCH-02 readback path passed on live hardware |
 | Library | `s550-library.design.spec.ts` landed and executed | `s550-D-LIB-live-core.spec.ts` landed and executed | fail | `LIVE-S550-LIB-001` / live Save dialog emits missing dialog-description warning; `LIVE-S550-LIB-002` / live D-LIB-10 save path times out during tone-wave fetch and does not complete |
 
@@ -103,6 +103,12 @@ Status vocabulary:
    - drive one visible envelope affordance
    - verify both through fresh device readback
    - status: landed as `modules/roland-sxx0-editor/test/e2e/s550-D-TONE-live-envelope-and-slider.spec.ts`; executed on 2026-05-15 against live hardware and currently blocked by `LIVE-S550-TONES-001` before the cutoff / sustain assertions can run
+
+2a. `s550-tones.design.spec.ts`
+   - verify fixed-shell Tones chrome on the live S-550 route
+   - assert the title-row metric and refresh affordance remain reachable
+   - assert the default list/detail composition renders before row selection
+   - status: landed as `modules/roland-sxx0-editor/test/e2e/s550-tones.design.spec.ts`; first execution attempt on 2026-05-15 was blocked before app startup because device validation did not find a Roland S-series device, so no product finding was filed from that run
 
 3. `s550-library.design.spec.ts`
    - verify real library-page structure against the approved mockup direction
