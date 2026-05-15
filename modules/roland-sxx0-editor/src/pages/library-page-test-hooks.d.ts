@@ -31,28 +31,6 @@ declare global {
        * mounted dialog is the exact production dialog under test.
        */
       openImportSamplesDialog?: (name: string, bundle: SampleImportBundle) => void;
-      /**
-       * Open the CreateDirectoryDialog. The dialog component is
-       * production code (under `src/components/library/`) but currently
-       * has no production trigger — folder CRUD is owned by
-       * editor-core's LibraryBrowser via its own CreateFolderDialog.
-       * The orphan dialog received the same `Dialog.Description` a11y
-       * fix as the production-wired Save/Load Set dialogs (#429); this
-       * hook lets the Tier 3 spec mount it against the production
-       * LibraryPage so the fix's durability can be verified.
-       */
-      openCreateDirectoryDialog?: (
-        category?: 'tones' | 'patches' | 'drum-kits',
-        parentPath?: string[],
-      ) => void;
-      /**
-       * Open the RenameDirectoryDialog. Same orphan-component
-       * rationale as `openCreateDirectoryDialog`.
-       */
-      openRenameDirectoryDialog?: (
-        category?: 'tones' | 'patches' | 'drum-kits',
-        path?: string[],
-      ) => void;
     };
   }
 }

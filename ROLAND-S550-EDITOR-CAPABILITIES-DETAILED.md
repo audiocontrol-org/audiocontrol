@@ -229,10 +229,10 @@ The summary counts above are status, not coverage. The `Coverage` column on ever
 
 | ID | Affordance | Source of truth | Parent | Origin | Status | Sign-off | Coverage |
 |----|-----------|-----------------|--------|--------|--------|----------|----------|
-| D-TONE-LIST-01 | Enumerate tone slots across the full address space | `ToneList.tsx:44` → `tones.map(...)` | C-TONE-01 | editor-derived | implemented | none | none |
+| D-TONE-LIST-01 | Enumerate tone slots across the full address space | `ToneList.tsx:44` → `tones.map(...)` | C-TONE-01 | editor-derived | implemented | none | partial |
 | D-TONE-LIST-02 | Read tone slot ID (formatted per MemoryLayout) | `ToneList.tsx:93` → `memoryLayout.formatToneSlot` | C-TONE-02 | editor-derived | implemented | none | none |
 | D-TONE-LIST-03 | Read tone name | `ToneList.tsx:100` → `tone.name` | C-TONE-02 | native | implemented | none | none |
-| D-TONE-LIST-04 | Read per-slot load state (loaded / loading / empty / not-loaded) | `ToneList.tsx` → class-based states | C-TONE-03 | editor-derived | implemented | none | none |
+| D-TONE-LIST-04 | Read per-slot load state (loaded / loading / empty / not-loaded) | `ToneList.tsx` → class-based states | C-TONE-03 | editor-derived | implemented | none | partial |
 | D-TONE-LIST-05 | Load an unloaded tone bank by clicking its row | `ToneList.tsx:95-100` → `onLoadBank(slotBank)` | C-TONE-04 | client-derived | implemented | none | none |
 | D-TONE-LIST-06 | Refresh all tone banks from the device (Phase 9 consolidated per-bank toolbar into one icon affordance) | `TonesPage.tsx:335-352` → `refreshAll` | C-TONE-05 | client-derived | implemented | none | none |
 | D-TONE-LIST-07 | Export a tone to the library (per row; gated on library connection) | `ToneList.tsx:158-171` → `onExportTone` (gate: `canExportToLibrary && hasSampleData`) | C-LIB-04 | editor-derived | implemented | none | none |

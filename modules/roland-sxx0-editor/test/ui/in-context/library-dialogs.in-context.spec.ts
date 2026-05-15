@@ -3,33 +3,30 @@
  *
  * Tier 3 in-context spec for `LIVE-S550-LIB-001` (issue #429) — the
  * library-dialog family `Dialog.Description` accessibility fix. Mounts
- * the production LibraryPage and verifies each of the four affected
- * Radix dialogs renders an accessible description that Radix wires
- * through `aria-describedby`, eliminating the runtime warning
- * `Warning: Missing 'Description' or 'aria-describedby={undefined}'
- * for {DialogContent}.`
+ * the production LibraryPage and verifies each of the two
+ * production-wired affected dialogs renders an accessible description
+ * that Radix wires through `aria-describedby`, eliminating the runtime
+ * warning `Warning: Missing 'Description' or 'aria-describedby=
+ * {undefined}' for {DialogContent}.`
  *
- * Family scope — four dialogs per the controller's audit:
+ * Family scope — two production-wired dialogs (the audit-finding's
+ * actual surface):
  *
- *   D-LIB-10 — SaveSetDialog          (visible description; production-wired)
- *   D-LIB-11 — LoadSetDialog          (visible description; production-wired)
- *   D-LIB-XX1 — CreateDirectoryDialog (VisuallyHidden description; orphan)
- *   D-LIB-XX2 — RenameDirectoryDialog (VisuallyHidden description; orphan)
+ *   D-LIB-10 — SaveSetDialog (visible description)
+ *   D-LIB-11 — LoadSetDialog (visible description)
  *
- * The S-550 capability inventory
- * (`ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md`) carries D-IDs for the
- * two production-wired dialogs (D-LIB-10 + D-LIB-11). The two
- * directory dialogs are orphan components — defined under
- * `src/components/library/` but never instantiated by production
- * pages (folder CRUD on LibraryPage routes through editor-core's
- * `LibraryBrowser` and its own `CreateFolderDialog`). They received
- * the same `Dialog.Description` fix as a preventive measure so a
- * future caller wiring them up does not re-introduce the a11y warning.
- * The test names use placeholder D-IDs (`D-LIB-XX1` / `D-LIB-XX2`)
- * because the inventory does not currently enumerate them; assigning a
- * stable D-ID is operator-owned inventory work and out of scope for
- * the #429 remediation. The spec name explicitly carries `#429` so
- * the test → issue trace is unambiguous regardless of D-ID drift.
+ * The controller's family audit also found `CreateDirectoryDialog` and
+ * `RenameDirectoryDialog` lacked `Dialog.Description`, but those are
+ * orphan components — defined under `src/components/library/` but
+ * never instantiated by the production LibraryPage (folder CRUD routes
+ * through editor-core's `LibraryBrowser` and its own
+ * `CreateFolderDialog`). The audit finding `LIVE-S550-LIB-001` is
+ * scoped to warnings that fire during real operator sessions; orphans
+ * that never mount cannot trigger the warning, so they fall outside
+ * the finding's actual surface. Their dead-code status is tracked as
+ * a separate concern in the commit message and should be resolved by
+ * deletion, not by accreting dev-only mount paths to test components
+ * no operator can reach.
  *
  * Per-test design (Design B from the implementer brief — separate
  * `test()` blocks rather than a single comprehensive walk):
@@ -70,20 +67,6 @@
  *     set is selected, so the spec first seeds a set into OPFS,
  *     connects the backend, then clicks the seeded set's row in the
  *     SetsSection before clicking the Load button.
- *
- *   - CreateDirectoryDialog + RenameDirectoryDialog open via the
- *     dev-only window hooks
- *     `window.__libraryPageTestHooks.openCreateDirectoryDialog()` /
- *     `openRenameDirectoryDialog()`. These hooks were added in the
- *     #429 remediation commit because the dialogs are orphan
- *     components with no production trigger; the hooks route through
- *     local mount state in LibraryPage so the rendered dialogs are the
- *     exact production components under test (sharing the same
- *     `Dialog.Description` fix). Production builds tree-shake the
- *     hook installation entirely because the `useEffect` is gated on
- *     `import.meta.env.DEV`. Mirrors the precedent set by
- *     `__libraryPageTestHooks.openImportSamplesDialog` (used by
- *     `import-samples-dialog.in-context.spec.ts`).
  *
  * Selector discipline — Tier 3 contract enforced by
  * `@audiocontrol/eslint-plugin-test-discipline`:
@@ -319,48 +302,14 @@ test.describe('Library-dialog family Dialog.Description — Tier 3 in-context (#
     await assertDialogHasAccessibleDescription(page, 'LoadSetDialog');
   });
 
-  test('D-LIB-XX1: CreateDirectoryDialog renders an accessible description', async ({ page }) => {
-    // The dialog is an orphan component (no production trigger). Open
-    // it via the dev-only window hook — the LibraryPage mounts the
-    // hook in `useEffect` gated on `import.meta.env.DEV`. Production
-    // builds tree-shake the hook entirely; this spec relies on the
-    // dev-mode harness picking up the hook for verification.
-    //
-    // Connect the library backend first so the page is in its fully
-    // populated state — same precondition the other in-context specs
-    // wait on. This also keeps the credibility gate intact: the
-    // backend-connect click is the pre-dialog production interaction
-    // that fails under a broken context.
-    await connectLibrary(page);
-
-    await page.evaluate(() => {
-      const hooks = window.__libraryPageTestHooks;
-      if (!hooks || !hooks.openCreateDirectoryDialog) {
-        throw new Error(
-          '__libraryPageTestHooks.openCreateDirectoryDialog missing — LibraryPage must have mounted in dev mode',
-        );
-      }
-      hooks.openCreateDirectoryDialog('tones', []);
-    });
-
-    await assertDialogHasAccessibleDescription(page, 'CreateDirectoryDialog');
-  });
-
-  test('D-LIB-XX2: RenameDirectoryDialog renders an accessible description', async ({ page }) => {
-    // Same dev-hook approach as CreateDirectoryDialog above (orphan
-    // component; no production trigger).
-    await connectLibrary(page);
-
-    await page.evaluate(() => {
-      const hooks = window.__libraryPageTestHooks;
-      if (!hooks || !hooks.openRenameDirectoryDialog) {
-        throw new Error(
-          '__libraryPageTestHooks.openRenameDirectoryDialog missing — LibraryPage must have mounted in dev mode',
-        );
-      }
-      hooks.openRenameDirectoryDialog('tones', ['my-folder']);
-    });
-
-    await assertDialogHasAccessibleDescription(page, 'RenameDirectoryDialog');
-  });
+  // NOTE: CreateDirectoryDialog and RenameDirectoryDialog are NOT covered
+  // by this spec. They are orphan components — defined in
+  // `src/components/library/` but never instantiated by the production
+  // LibraryPage (folder CRUD is owned by editor-core's LibraryBrowser +
+  // its own CreateFolderDialog). The audit finding `LIVE-S550-LIB-001`
+  // surfaces warnings that fire during real operator sessions; orphans
+  // that never mount cannot trigger the warning, so they fall outside
+  // the finding's actual surface. Their dead-code status is tracked
+  // separately and should be resolved by deletion, not by accreting
+  // dev-only mount paths to test components no operator can reach.
 });
