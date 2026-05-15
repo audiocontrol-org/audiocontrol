@@ -14,13 +14,14 @@ Each capability has:
 - **ID** — stable, never reused (`C-<AREA>-<NN>`).
 - **Statement** — the user-facing affordance, layout-independent.
 - **User need** — why the user wants this; the goal removed by regression.
-- **Test** — Playwright spec + test name that proves or disproves the capability exists in the current UI. The test asserts the *capability*, not the implementation.
-- **Status** — `covered` (passing test) / `partial` (test exists but doesn't cover the full statement) / `not yet covered` (test deferred) / `n/a` (the capability is hardware-only and tested in `test/e2e/`).
+- **Status** — `covered` (the capability's evidence in the detailed inventory's `Coverage` column is `confident` or `partial`) / `partial` (the capability has multiple D-rows and some are confident while others are `none`) / `not yet covered` (every D-row mapping to this capability is `coverage: none`) / `n/a` (the capability is hardware-only and lives in `test/e2e/`).
 
-Tests are decoupled from layout via two rules:
+Tests are decoupled from layout via the testing-and-inventory reform's tier discipline (see [reform spec §2](docs/1.0/001-IN-PROGRESS/s550-support/testing-and-inventory-reform-spec.md)):
 
-1. **Selectors prefer accessible queries** — `getByRole`, `getByLabel`, `getByText` named by user-visible content. Fall back to `data-capability="<id>"` attrs only when an element has no semantic role.
-2. **Outbound-byte assertions go through the SimulatedAdapter strict match** — the spec mounts a fixture that encodes the expected SysEx for the capability action, drives the UI, and the simulated transport's strict matcher passes iff the editor emits the same bytes. Layout changes are invisible; protocol contract is locked in.
+1. **Tier 1 — wiring** (`modules/<editor>/test/wiring/`) — outbound-byte assertions go through the SimulatedAdapter strict match. The spec mounts a fixture that encodes the expected SysEx for the capability action, drives the underlying input value programmatically, and the simulated transport's strict matcher passes iff the editor emits the same bytes. Protocol contract is locked in.
+2. **Tier 2 / Tier 3 — UI contract / in-context** (`modules/<editor>/test/ui/contract/` + `modules/<editor>/test/ui/in-context/`) — selectors prefer accessible queries (`getByRole`, `getByLabel`, `getByText`) named by user-visible content; events originate from the browser's pointer engine, not synthetic `dispatchEvent`. Layout changes are invisible; user-facing interaction is locked in.
+
+Read [`docs/1.0/001-IN-PROGRESS/s550-support/testing-and-inventory-reform-spec.md`](docs/1.0/001-IN-PROGRESS/s550-support/testing-and-inventory-reform-spec.md) for the four-tier model and the broken-variant credibility check.
 
 Read [TESTING-FIXTURES.md](TESTING-FIXTURES.md) for the harness chain. Read
 [TESTING.md](TESTING.md) for the overall test architecture.
@@ -62,8 +63,6 @@ URL parameters by hand.
 
 **Status:** covered
 
-**Test:** `test/ui/capabilities/connection.spec.ts` :: `"C-CONN-01: connects to the simulated transport on mount"` — asserts the simulated transport auto-connects on mount and the Disconnect affordance becomes reachable without user input.
-
 ### C-CONN-02 — User can see connection status
 
 **Statement:** The current connection state (disconnected / connecting / connected / error) is visible to the user at all times.
@@ -71,8 +70,6 @@ URL parameters by hand.
 **User need:** Users must know whether their actions will reach the device.
 
 **Status:** covered
-
-**Test:** `test/ui/capabilities/connection.spec.ts` :: `"C-CONN-02: connection status is surfaced in an accessible region"` — finds the visible 'Connected' / 'Disconnected' label produced by `MidiStatusDisplay`.
 
 ### C-CONN-03 — User can disconnect from the device
 
@@ -82,8 +79,6 @@ URL parameters by hand.
 
 **Status:** covered
 
-**Test:** `test/ui/capabilities/connection.spec.ts` :: `"C-CONN-03: disconnect affordance reachable + leaves status disconnected"`.
-
 ### C-CONN-04 — User can navigate to each editor section
 
 **Statement:** From the Home/landing state, the user can navigate to Patches, Tones, Library, Play, and (when implemented) Workflows.
@@ -91,8 +86,6 @@ URL parameters by hand.
 **User need:** Each section exposes a different set of capabilities; the user must reach them.
 
 **Status:** covered (Patches/Tones/Library/Play); n/a (Workflows — not in scope)
-
-**Test:** `test/ui/capabilities/connection.spec.ts` :: `"C-CONN-04: navigation affordances reach each editor section"` — uses `getByRole('link', { name: <section> })` for each.
 
 ---
 
@@ -106,8 +99,6 @@ URL parameters by hand.
 
 **Status:** covered
 
-**Test:** `test/ui/capabilities/patches.spec.ts` :: `"C-PATCH-01: renders one entry per patch slot"`.
-
 ### C-PATCH-02 — User can see each patch's name, slot identifier, and load state
 
 **Statement:** Each patch entry surfaces (a) the slot identifier (e.g., "P11"), (b) the patch name as decoded from the device, (c) whether the slot is loaded or empty.
@@ -115,8 +106,6 @@ URL parameters by hand.
 **User need:** Without these three pieces of info per slot, the user can't pick a patch to edit.
 
 **Status:** covered
-
-**Test:** `test/ui/capabilities/patches.spec.ts` :: `"C-PATCH-02: each patch entry exposes slot id, name, and load state"`.
 
 ### C-PATCH-03 — User can identify empty patch slots
 
@@ -126,17 +115,13 @@ URL parameters by hand.
 
 **Status:** covered
 
-**Test:** `test/ui/capabilities/patches.spec.ts` :: `"C-PATCH-03: empty slots are distinguishable from loaded ones"`.
-
 ### C-PATCH-04 — User can select a specific patch to view its details
 
-**Statement:** Clicking/activating a loaded patch opens that patch's editor surface.
+**Statement:** Activating a loaded patch opens that patch's editor surface.
 
 **User need:** Drill from the list into per-patch parameters.
 
 **Status:** covered
-
-**Test:** `test/ui/capabilities/patches.spec.ts` :: `"C-PATCH-04: selecting a patch opens its editor surface"`.
 
 ### C-PATCH-05 — User can refresh patches from the device
 
@@ -146,8 +131,6 @@ URL parameters by hand.
 
 **Status:** not yet covered
 
-**Test:** `test/ui/capabilities/patches.spec.ts` :: `"refresh affordance re-issues loadPatchRange"` — uses fixture `patches-bank-0-refresh` which records connect+load+load (a second forced reload).
-
 ### C-PATCH-06 — User can navigate between patch banks
 
 **Statement:** S-330 has 2 banks of 8, S-550 has 4 banks of 8. The user can switch which bank's slots are visible/loaded.
@@ -155,8 +138,6 @@ URL parameters by hand.
 **User need:** All patches are reachable, not just bank 0.
 
 **Status:** not yet covered
-
-**Test:** `test/ui/capabilities/patches.spec.ts` :: `"navigating to bank 1 issues loadPatchRange(8, 8)"` — uses fixture `patches-bank-1` (capture pending).
 
 ### C-PATCH-07 — User can edit a patch's name
 
@@ -166,8 +147,6 @@ URL parameters by hand.
 
 **Status:** not yet covered
 
-**Test:** `test/ui/capabilities/patches.spec.ts` :: `"rename writes the new name to the device"` — uses fixture `patch-0-rename` (capture pending; via `setPatchParameter` for the name field).
-
 ### C-PATCH-08 — User can adjust a patch-level parameter
 
 **Statement:** At least one patch-level numeric/enum parameter (e.g., octave shift, output assignment) is adjustable, and the adjustment is sent to the device.
@@ -175,8 +154,6 @@ URL parameters by hand.
 **User need:** Patches are containers for tones plus patch-level routing/transposition; that routing must be editable.
 
 **Status:** not yet covered
-
-**Test:** `test/ui/capabilities/patches.spec.ts` :: `"adjusting patch octave shift writes to the device"` — uses fixture `patch-0-octave-shift` (capture pending).
 
 ### C-PATCH-09 — User can see the tone references within a patch's zones
 
@@ -186,8 +163,6 @@ URL parameters by hand.
 
 **Status:** not yet covered
 
-**Test:** `test/ui/capabilities/patches.spec.ts` :: `"zone list surfaces tone references with key and velocity ranges"`.
-
 ### C-PATCH-10 — User can adjust a zone's key range
 
 **Statement:** A zone's key range (low/high MIDI note) is editable and writes to the device.
@@ -196,8 +171,6 @@ URL parameters by hand.
 
 **Status:** not yet covered
 
-**Test:** `test/ui/capabilities/patches.spec.ts` :: `"zone 0 key range edit writes to the device"` — uses fixture `patch-0-zone-0-keyrange` (capture pending).
-
 ### C-PATCH-11 — User can adjust a zone's velocity range
 
 **Statement:** A zone's velocity range (low/high) is editable and writes to the device.
@@ -205,8 +178,6 @@ URL parameters by hand.
 **User need:** Velocity-switched layers.
 
 **Status:** not yet covered
-
-**Test:** `test/ui/capabilities/patches.spec.ts` :: `"zone 0 velocity range edit writes to the device"` — uses fixture `patch-0-zone-0-velrange` (capture pending).
 
 ---
 
@@ -220,8 +191,6 @@ URL parameters by hand.
 
 **Status:** covered
 
-**Test:** `test/ui/capabilities/tones.spec.ts` :: `"C-TONE-01: renders one entry per tone slot"`.
-
 ### C-TONE-02 — User can see each tone's name, slot id, and load state
 
 **Statement:** Each tone entry surfaces slot identifier, decoded name, and load state.
@@ -230,15 +199,11 @@ URL parameters by hand.
 
 **Status:** covered
 
-**Test:** `test/ui/capabilities/tones.spec.ts` :: `"C-TONE-02: each tone entry exposes slot id, name, and load state"`.
-
 ### C-TONE-03 — User can identify empty tone slots
 
 **Statement:** Loaded vs not-loaded distinguishable.
 
 **Status:** covered
-
-**Test:** `test/ui/capabilities/tones.spec.ts` :: `"C-TONE-03: empty slots are distinguishable from loaded ones"`.
 
 ### C-TONE-04 — User can select a specific tone to view its details
 
@@ -246,23 +211,17 @@ URL parameters by hand.
 
 **Status:** covered
 
-**Test:** `test/ui/capabilities/tones.spec.ts` :: `"C-TONE-04: selecting a tone opens its editor surface"`.
-
 ### C-TONE-05 — User can refresh tones from the device
 
 **Statement:** Affordance to force-reload tones from the device.
 
 **Status:** not yet covered
 
-**Test:** `test/ui/capabilities/tones.spec.ts` :: `"refresh affordance re-issues loadToneRange"` — uses fixture `tones-bank-0-refresh` (capture pending).
-
 ### C-TONE-06 — User can edit a tone's name
 
 **Statement:** Rename affordance writes the new name to the device.
 
 **Status:** not yet covered
-
-**Test:** `test/ui/capabilities/tones.spec.ts` :: `"rename writes the new name to the device"` — uses fixture `tone-0-rename` (capture pending).
 
 ### C-TONE-07 — User can adjust a tone wave-section parameter
 
@@ -272,15 +231,11 @@ URL parameters by hand.
 
 **Status:** not yet covered
 
-**Test:** `test/ui/capabilities/tones.spec.ts` :: `"adjusting tone original key writes to the device"` — uses fixture `tone-0-original-key` (capture pending).
-
 ### C-TONE-08 — User can adjust a tone pitch parameter
 
 **Statement:** At least one pitch parameter (coarse, fine, key follow) is adjustable; writes to the device.
 
 **Status:** not yet covered
-
-**Test:** `test/ui/capabilities/tones.spec.ts` :: `"adjusting tone coarse pitch writes to the device"` — uses fixture `tone-0-coarse-pitch` (capture pending).
 
 ### C-TONE-09 — User can adjust a tone TVF (filter) parameter
 
@@ -288,23 +243,17 @@ URL parameters by hand.
 
 **Status:** not yet covered
 
-**Test:** `test/ui/capabilities/tones.spec.ts` :: `"adjusting tone filter cutoff writes to the device"` — uses fixture `tone-0-filter-cutoff` (capture pending).
-
 ### C-TONE-10 — User can adjust a tone TVA (amp) parameter
 
 **Statement:** At least one TVA parameter (level, velocity sensitivity) is adjustable; writes to the device.
 
 **Status:** not yet covered
 
-**Test:** `test/ui/capabilities/tones.spec.ts` :: `"adjusting tone amp level writes to the device"` — uses fixture `tone-0-amp-level` (capture pending).
-
 ### C-TONE-11 — User can adjust a tone LFO parameter
 
 **Statement:** At least one LFO parameter (rate, depth, waveform) is adjustable; writes to the device.
 
 **Status:** not yet covered
-
-**Test:** `test/ui/capabilities/tones.spec.ts` :: `"adjusting tone LFO rate writes to the device"` — uses fixture `tone-0-lfo-rate` (capture pending).
 
 ### C-TONE-12 — User can adjust an envelope segment
 
@@ -314,15 +263,11 @@ URL parameters by hand.
 
 **Status:** not yet covered
 
-**Test:** `test/ui/capabilities/tones.spec.ts` :: `"adjusting envelope segment level writes to the device"` — uses fixture `tone-0-env-segment-3-level` (capture pending).
-
 ### C-TONE-13 — User can see and modify tone loop settings
 
 **Statement:** Loop start, loop end, loop mode are visible and editable.
 
 **Status:** not yet covered
-
-**Test:** `test/ui/capabilities/tones.spec.ts` :: `"loop start edit writes to the device"` — uses fixture `tone-0-loop-start` (capture pending).
 
 ---
 
@@ -336,33 +281,25 @@ The library implements the four-zone storage model: project library, device memo
 
 **Status:** partial — tree presence asserted; node enumeration not yet asserted
 
-**Test:** `test/ui/capabilities/library.spec.ts` :: `"C-LIB-01: library tree affordance is present"`.
-
 ### C-LIB-02 — User can see what's in device memory from the library page
 
 **Statement:** Device memory contents (patches, tones, samples) are visible from the library page without leaving it.
 
 **Status:** not yet covered
 
-**Test:** `test/ui/capabilities/library.spec.ts` :: `"library shows device memory contents alongside project library"`.
-
 ### C-LIB-03 — User can move data from library → device
 
-**Statement:** Drag/drop or button affordance imports a library item into device memory; corresponding write SysEx is emitted.
+**Statement:** An affordance imports a library item into device memory; corresponding write SysEx is emitted.
 
 **User need:** Loading custom samples / patches onto the device is the primary library use case.
 
 **Status:** not yet covered
 
-**Test:** `test/ui/capabilities/library.spec.ts` :: `"import library tone to device writes the device payload"` — uses fixture `library-import-tone-0` (capture pending).
-
 ### C-LIB-04 — User can move data from device → library
 
-**Statement:** Drag/drop or button affordance exports device memory into the project library.
+**Statement:** An affordance exports device memory into the project library.
 
 **Status:** not yet covered
-
-**Test:** `test/ui/capabilities/library.spec.ts` :: `"export device tone to library captures the data"` — fixture covers the device read; library write is OPFS-side and tested separately.
 
 ### C-LIB-05 — User can save the device's full state as a "set"
 
@@ -370,15 +307,11 @@ The library implements the four-zone storage model: project library, device memo
 
 **Status:** not yet covered
 
-**Test:** `test/ui/capabilities/library.spec.ts` :: `"save set captures full device state"` — uses fixture `save-set` (the same shape as `load-everything` but read-only, then library-write).
-
 ### C-LIB-06 — User can load a saved set back to the device
 
 **Statement:** Affordance loads a previously saved set archive and writes it to the device.
 
 **Status:** not yet covered
-
-**Test:** `test/ui/capabilities/library.spec.ts` :: `"load set writes a full device state"` — uses fixture `load-set` (capture pending).
 
 ### C-LIB-07 — User can import samples into a tone
 
@@ -386,23 +319,17 @@ The library implements the four-zone storage model: project library, device memo
 
 **Status:** not yet covered
 
-**Test:** `test/ui/capabilities/library.spec.ts` :: `"import sample to tone slot writes wave data"` — uses fixture `import-sample-to-tone-0` (capture pending; SDS-style transfer is high-volume so this fixture will be larger).
-
 ### C-LIB-08 — User can export samples from a tone
 
 **Statement:** Affordance exports a tone's wave data to a WAV file.
 
 **Status:** not yet covered
 
-**Test:** `test/ui/capabilities/library.spec.ts` :: `"export sample from tone produces a WAV file"`.
-
 ### C-LIB-09 — User can rename library items
 
 **Statement:** Library items (samples, tones, patches, sets) can be renamed in place.
 
 **Status:** not yet covered
-
-**Test:** `test/ui/capabilities/library.spec.ts` :: `"rename library item updates the tree"`.
 
 ### C-LIB-10 — User can see the device's memory map
 
@@ -411,8 +338,6 @@ The library implements the four-zone storage model: project library, device memo
 **User need:** Sample memory is finite; users must see headroom before importing.
 
 **Status:** not yet covered
-
-**Test:** `test/ui/capabilities/library.spec.ts` :: `"memory map affordance shows used vs free"`.
 
 ---
 
@@ -424,15 +349,11 @@ The library implements the four-zone storage model: project library, device memo
 
 **Status:** covered
 
-**Test:** `test/ui/capabilities/play.spec.ts` :: `"C-PLAY-01: all 8 multi-mode parts are listed"`.
-
 ### C-PLAY-02 — User can see each part's MIDI channel
 
 **Statement:** Each part's assigned MIDI channel is visible.
 
 **Status:** covered
-
-**Test:** `test/ui/capabilities/play.spec.ts` :: `"C-PLAY-02: each part shows its MIDI channel"`.
 
 ### C-PLAY-03 — User can see each part's assigned patch
 
@@ -440,15 +361,11 @@ The library implements the four-zone storage model: project library, device memo
 
 **Status:** covered
 
-**Test:** `test/ui/capabilities/play.spec.ts` :: `"C-PLAY-03: each part shows its assigned patch"`.
-
 ### C-PLAY-04 — User can adjust a part's MIDI channel
 
 **Statement:** An affordance changes a part's MIDI channel; change writes to the device via `setMultiChannel`.
 
 **Status:** not yet covered
-
-**Test:** `test/ui/capabilities/play.spec.ts` :: `"adjusting part 0 MIDI channel writes setMultiChannel"` — uses fixture `multi-part-0-channel` (capture pending).
 
 ### C-PLAY-05 — User can adjust a part's assigned patch
 
@@ -456,23 +373,17 @@ The library implements the four-zone storage model: project library, device memo
 
 **Status:** not yet covered
 
-**Test:** `test/ui/capabilities/play.spec.ts` :: `"adjusting part 0 patch index writes setMultiPatch"` — uses fixture `multi-part-0-patch` (capture pending).
-
 ### C-PLAY-06 — User can adjust a part's output assignment
 
 **Statement:** Affordance changes a part's output (Mix/Direct A/B); writes via `setMultiOutput`.
 
 **Status:** not yet covered
 
-**Test:** `test/ui/capabilities/play.spec.ts` :: `"adjusting part 0 output writes setMultiOutput"` — uses fixture `multi-part-0-output` (capture pending).
-
 ### C-PLAY-07 — User can adjust a part's level
 
 **Statement:** Affordance changes a part's level; writes via `setMultiLevel`.
 
 **Status:** not yet covered
-
-**Test:** `test/ui/capabilities/play.spec.ts` :: `"adjusting part 0 level writes setMultiLevel"` — uses fixture `multi-part-0-level` (capture pending).
 
 ---
 
@@ -484,9 +395,7 @@ The library implements the four-zone storage model: project library, device memo
 
 **User need:** S-series workflow is "tweak and listen"; round-tripping through a save dialog defeats the purpose.
 
-**Status:** asserted indirectly by every parameter-edit capability test (each writes immediately, no separate save). Explicit guard:
-
-**Test:** `test/ui/capabilities/cross-cutting.spec.ts` :: `"no save/cancel/undo affordance is present"` — assert no element with name matching `/save|cancel|undo/i` exists in the parameter-edit panes.
+**Status:** asserted indirectly by every parameter-edit capability test (each writes immediately, no separate save).
 
 ### C-XX-02 — User sees progress feedback during long operations
 
@@ -494,15 +403,11 @@ The library implements the four-zone storage model: project library, device memo
 
 **Status:** partial — progress component exists; specs that exercise long operations and assert the indicator are deferred.
 
-**Test:** `test/ui/capabilities/cross-cutting.spec.ts` :: `"long operation surfaces progress indicator"` — uses fixture `load-everything` plus a deliberately-slowed simulated transport (`latencyMode: { fixedMs: 50 }`).
-
 ### C-XX-03 — User sees actionable error messages on operation failure
 
 **Statement:** Failed operations surface a user-readable error, not a raw stack trace. Per project rule `error messages are actionable`.
 
 **Status:** not yet covered
-
-**Test:** `test/ui/capabilities/cross-cutting.spec.ts` :: `"forced device error surfaces an actionable message"` — uses a fixture with a truncated response that triggers the SimulatedAdapter's records-exhausted error; spec asserts an error region is visible.
 
 ### C-XX-04 — User can use the virtual front panel
 
@@ -510,15 +415,11 @@ The library implements the four-zone storage model: project library, device memo
 
 **Status:** not yet covered (Phase 7 work)
 
-**Test:** `test/ui/capabilities/cross-cutting.spec.ts` :: `"virtual front panel button emits matching DT1"` — uses fixture `front-panel-button-press` (Phase 7 capture).
-
 ### C-XX-05 — Page navigation preserves connection state
 
 **Statement:** Switching between Patches/Tones/Library/Play does not disconnect the device.
 
 **Status:** not yet covered
-
-**Test:** `test/ui/capabilities/cross-cutting.spec.ts` :: `"navigation preserves connection"` — mount harness on Patches, navigate to Tones, assert `status === 'connected'` throughout.
 
 ### C-XX-06 — Page mount triggers no unexpected SysEx
 
@@ -526,9 +427,7 @@ The library implements the four-zone storage model: project library, device memo
 
 **User need:** Predictable startup sequencing is what makes fixture replay viable.
 
-**Status:** asserted by the strict-match SimulatedAdapter — any unexpected outbound throws. Explicit named gate:
-
-**Test:** `test/ui/capabilities/cross-cutting.spec.ts` :: `"each editor page emits only its documented mount SysEx"`.
+**Status:** asserted by the strict-match SimulatedAdapter — any unexpected outbound throws.
 
 ---
 
