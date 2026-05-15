@@ -7,11 +7,13 @@
  *
  * The strategy:
  *   1. Read the file line-by-line.
- *   2. Detect each operative table by its 8-column header
- *      (`| ID | Affordance | Source of truth | Parent | Origin | Status |
- *      Sign-off | Coverage |`). The legacy `Test` column was removed in
- *      9R-A.3; Tier 1 evidence now lives under `modules/<editor>/test/
- *      wiring/` and is discovered via `scan-specs.ts`.
+ *   2. Detect each operative table by the presence of its load-bearing
+ *      columns (`ID`, `Status`, `Sign-off`, `Coverage`). Tables lacking
+ *      `Sign-off` + `Coverage` are skipped — that's what excludes the
+ *      missing-affordances roll-up at the top of the doc. The legacy
+ *      `Test` column was removed in 9R-A.3; Tier 1 evidence now lives
+ *      under `modules/<editor>/test/wiring/` and is discovered via
+ *      `scan-specs.ts`.
  *   3. For each D-row in such a table, recompute ONLY the Coverage cell
  *      from the manifest. Every other cell is copied through verbatim,
  *      preserving whitespace + content.

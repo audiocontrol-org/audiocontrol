@@ -132,14 +132,11 @@ function isDRow(cells: ReadonlyArray<string>): boolean {
 /**
  * Iterate the file line-by-line. Each table header row is detected by the
  * `| ID |` shape; subsequent lines beginning with `|` belong to that table
- * until the first non-`|` line. Headers without an `ID` column are skipped
- * (this is what excludes the missing-affordances roll-up table at the top
- * of the doc, whose header is `| ID | Affordance | Source of truth |
- * Tracked in |`).
- *
- * IMPORTANT: the missing-affordances roll-up DOES have an `ID` column but
- * lacks the `Sign-off` + `Coverage` columns the operative tables require.
- * The required-columns check below skips it correctly.
+ * until the first non-`|` line. Tables without `Sign-off` + `Coverage`
+ * columns are skipped — that's what excludes the missing-affordances
+ * roll-up at the top of the doc (whose header is `| ID | Affordance |
+ * Source of truth | Tracked in |` — has `ID` but lacks the operative-table
+ * columns).
  */
 export interface InventoryParseResult {
   readonly rows: ReadonlyArray<InventoryRow>;
