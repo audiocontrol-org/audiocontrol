@@ -1098,16 +1098,42 @@ This task is the operational tracking entry for the 9R-B sweep on the **remainin
 - [ ] Operator records per-primitive hardware sign-off in `ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md`'s `Sign-off` column.
 - [ ] Issue #424 closed with the operator's verbatim sign-off comment.
 
+### Task 3 — Close the root `test/ui/*.spec.ts` test-discipline gap
+
+**GitHub Issue:** [#426](https://github.com/audiocontrol-org/audiocontrol/issues/426)
+
+**Surfaced:** independent audit 2026-05-14 (Third Follow-Up), immediately following 9R-A.2 + 9R-A.3 closure.
+
+The 9R-A.2 migration's grep audit only checked for `.fill(` / `.value =` / `dispatchEvent('change')` and so missed `getByTestId` / `element.click()`. Those patterns are equally forbidden by the Tier 2/3 contracts (per `test/ui/contract/README.md` + `test/ui/in-context/README.md`) but they survived in the 5 root smoke specs under `modules/roland-sxx0-editor/test/ui/*.spec.ts` (`home`, `library`, `patches`, `play`, `tones`). The test-discipline ESLint plugin only lints `test/ui/contract/**` + `test/ui/in-context/**`, so these root files were not gated and the patterns slipped through. See [#426](https://github.com/audiocontrol-org/audiocontrol/issues/426) for the full file:line citation set.
+
+**Disposition options (operator picks):**
+- **Option A — migrate to `test/ui/in-context/` with rewrites** (most thorough; produces Tier 3 evidence 9R-C needs anyway).
+- **Option B — demote to `test/rendering/`** (lowest-effort honest disposition; treats them as paint smoke).
+- **Option C — delete + replace** (smallest tree; trusts 9R-C in-context spec authoring to add genuine UI coverage where needed).
+
+**Proven complete when:**
+- [ ] Selected disposition applied to every cited file in #426.
+- [ ] `grep -rn "getByTestId\|\.click\(\)" modules/roland-sxx0-editor/test/ui/` returns zero functional hits (docstring / README references naming the patterns as forbidden are acceptable).
+- [ ] The test-discipline ESLint plugin's lint scope is widened to gate any root `test/ui/*.spec.ts` files that remain in place (Option A or B) — or those files are removed (Option C). This is the structural guarantee that the same drift cannot re-enter.
+- [ ] Total test suite count adjusts cleanly: pre-fix baseline 176 passed / 4 skipped (wiring=136 + ui=26 + rendering=14+4). Post-fix count is either the same (Option A/B with full re-write) or the same minus the deleted root-spec count (Option C with verified equivalent Tier 1 wiring coverage).
+- [ ] If Option A: each migrated spec carries an `@credibleAgainst` declaration and passes `pnpm run check-credibility`.
+- [ ] Issue #426 closed with the disposition decision + the fix commit hash + the grep audit output.
+
+**Notes:**
+- This task does NOT depend on Phase 11 §Task 1 / §Task 2 or on 9R-B/C/D. It can land in parallel; the cleanest landing surface is alongside 9R-A.4 because the Option A path benefits from the production-page context-swap wiring that 9R-A.4 also needs.
+
 ### Acceptance Criteria (Phase 11)
 
 - [ ] **Task 1 closed:** ImportSamplesDialog mislabel bug fixed + Tier 3 spec landed + operator sign-off + #425 closed.
 - [ ] **Task 2 closed:** primitive sweep complete + operator sign-off + #424 closed.
+- [ ] **Task 3 closed:** root `test/ui/*.spec.ts` test-discipline gap closed + ESLint lint-scope widened (or root specs removed) + #426 closed.
 - [ ] No new "audit found a bug we forgot to track" surprises before Phase 9 atomic closure (operator runs an independent audit at the end of 9R-D and confirms zero new findings).
 
 ### Why these are NOT in 9R-A or 9R-B/C/D directly
 
 - **Task 1** is a code-quality bug in a dialog that has nothing to do with the test-reform plumbing or the Phase 9 redesigned pages. Folding it into 9R-* would dilute the test-reform's atomic closure and create confusion about what 9R-A's gate actually catches. It deserves its own visibility.
 - **Task 2** is a tracking convenience: 9R-B already covers this work; Phase 11 surfaces it as a top-level workplan item so a session starting from "what's the smallest visible move toward Phase 9 closure?" sees it without spelunking through 9R-B's prose.
+- **Task 3** is the post-9R-A.2 cleanup the migration's grep audit missed. It's structurally adjacent to 9R-A.2/3 (same test-discipline reform) but lands as its own task because the disposition is operator-choice and the fix touches files outside the 9R-A.2 migration's stated scope.
 
 Adding Phase 11 also formalizes a pattern: "the workplan tracks every committed-to fix, including bugs found mid-flight." It is NOT a parking lot for capture-surface ideas — see "Post-Mortem Follow-Ons" below for that. An item enters Phase 11 only when (a) operator has accepted it, (b) it has a GitHub issue, and (c) it has acceptance criteria proven by observable artifacts.
 
