@@ -51,7 +51,7 @@ This suite is S-550-first. It does not widen scope into a new cross-device matri
 |---|---|---|---|---|
 | Play | `s550-play.design.spec.ts` landed and executed | not yet | fail | `LIVE-S550-PLAY-001` / sticky header intercepts Part A pointer events on live route |
 | Tones | `s550-tones.design.spec.ts` landed; first live run blocked pre-app by device validation miss | `s550-D-TONE-live-envelope-and-slider.spec.ts` landed and executed | fail | `LIVE-S550-TONES-001` / loaded tone row selection is not reliably pointer-actionable on live route, blocking the bounded D-TONE battery before cutoff / sustain assertions |
-| Patches | `s550-patches.design.spec.ts` landed and executed | `s550-D-PATCH-live-core.spec.ts` landed and executed | pass | fixed-shell route plus bounded D-PATCH-02 readback path passed on live hardware |
+| Patches | `s550-patches.design.spec.ts` landed and executed | `s550-D-PATCH-live-core.spec.ts` landed and executed | fail | prior `D-PATCH-02` readback pass still stands, but the latest rerun surfaced `LIVE-S550-PATCH-001` / patch-bank load times out with stale-RJC + `RQD response timeout` before the editor opens |
 | Library | `s550-library.design.spec.ts` landed and executed | `s550-D-LIB-live-core.spec.ts` landed and executed | fail | `LIVE-S550-LIB-001` / live Save dialog emits missing dialog-description warning; `LIVE-S550-LIB-002` / live D-LIB-10 save path times out during tone-wave fetch and does not complete |
 
 Status vocabulary:
@@ -93,9 +93,9 @@ Status vocabulary:
    - status: landed as `modules/roland-sxx0-editor/test/e2e/s550-patches.design.spec.ts`; executed on 2026-05-15 against live hardware and currently passes
 
 1b. `s550-D-PATCH-live-core.spec.ts`
-   - drive one visible patch affordance on `/roland/s550/editor/patches`
+   - drive bounded visible patch affordances on `/roland/s550/editor/patches`
    - verify by fresh device readback, then restore the original value
-   - status: landed as `modules/roland-sxx0-editor/test/e2e/s550-D-PATCH-live-core.spec.ts`; executed on 2026-05-15 against live hardware and currently passes for `D-PATCH-02` (Key Mode)
+   - status: landed as `modules/roland-sxx0-editor/test/e2e/s550-D-PATCH-live-core.spec.ts`; first execution on 2026-05-15 passed for `D-PATCH-02` (Key Mode), but the latest rerun — while extending the battery toward `D-PATCH-04` — currently fails as `LIVE-S550-PATCH-001` before the editor opens because patch-bank load hits stale-RJC + `RQD response timeout - no data received`
 
 2. `D-TONE-live-envelope-and-slider.spec.ts`
    - select a non-empty tone

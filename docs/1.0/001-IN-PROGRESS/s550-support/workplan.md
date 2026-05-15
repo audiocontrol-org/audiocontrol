@@ -1200,6 +1200,7 @@ This task adds that layer without replacing 9R-C or 9R-D. It is a structured, re
 - `s550-library.design.spec.ts` landed and exercised the real OPFS-backed Save-dialog open path on the live S-550 route; structural shell assertions passed, but the run surfaced the dialog accessibility warning tracked as `LIVE-S550-LIB-001`.
 - `s550-D-LIB-live-core.spec.ts` landed and exercised `D-LIB-10` on the live S-550 route; the save path entered device scanning but timed out during tone-wave fetch (`LIVE-S550-LIB-002`), so Library capability conformance is now a tested `fail`, not `unrun`.
 - `s550-tones.design.spec.ts` landed to cover the Tones fixed-shell/title-row composition on the live S-550 route; the first execution attempt was blocked before app startup because device validation could not find a Roland S-series device, so this slice is implemented but not yet product-verified.
+- `s550-D-PATCH-live-core.spec.ts` was extended toward `D-PATCH-04` (`P.Bend Range`), but the latest live rerun now fails earlier in the route load: patch-bank fetch hits stale-RJC + `RQD response timeout - no data received` before the editor opens (`LIVE-S550-PATCH-001`). Patches capability conformance therefore remains an active live finding despite the earlier `D-PATCH-02` pass.
 
 ### Task 5 — Fix `SaveSetDialog` (and library-dialog family) missing `Dialog.Description`
 

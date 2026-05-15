@@ -109,6 +109,12 @@ async function patchKeyModeSelect(page: Page) {
   return keyModeSelect;
 }
 
+async function patchBenderRangeSelect(page: Page) {
+  const benderRangeSelect = page.locator('[data-testid="patch-bender-range"]');
+  await expect(benderRangeSelect).toBeVisible({ timeout: UI_TIMEOUT_MS });
+  return benderRangeSelect;
+}
+
 test.describe('S-550 live patch capability conformance', () => {
   test.beforeAll(async () => {
     if (!MIDI_SERVER_PORT) {
@@ -157,6 +163,34 @@ test.describe('S-550 live patch capability conformance', () => {
       const restoredPatch = await readPatchFromDevice(page, patchIndex);
       expect(restoredPatch).not.toBeNull();
       expect(restoredPatch!.keyMode).toBe(originalValue);
+    }
+  });
+
+  test('D-PATCH-04: visible P.Bend Range select writes through to live hardware', async ({ page }) => {
+    const patchIndex = await openSelectedPatch(page);
+    const benderRangeSelect = await patchBenderRangeSelect(page);
+
+    const originalValue = await benderRangeSelect.inputValue();
+    const newValue = originalValue === '12' ? '11' : '12';
+
+    await benderRangeSelect.selectOption(newValue);
+    await page.waitForTimeout(WRITE_FLUSH_MS);
+
+    try {
+      const devicePatch = await readPatchFromDevice(page, patchIndex);
+      expect(devicePatch).not.toBeNull();
+      expect(devicePatch!.benderRange).toBe(Number(newValue));
+    } finally {
+      await navigateToPatchesPage(page);
+      await selectPatch(page, patchIndex);
+
+      const restoreSelect = await patchBenderRangeSelect(page);
+      await restoreSelect.selectOption(originalValue);
+      await page.waitForTimeout(WRITE_FLUSH_MS);
+
+      const restoredPatch = await readPatchFromDevice(page, patchIndex);
+      expect(restoredPatch).not.toBeNull();
+      expect(restoredPatch!.benderRange).toBe(Number(originalValue));
     }
   });
 });

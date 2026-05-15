@@ -1109,3 +1109,83 @@ Closure gate:
 **Fix-path planning:** the bug is hardware-timing-bound; the controller's code-reading hypothesis (in [#430](https://github.com/audiocontrol-org/audiocontrol/issues/430) under "Hypothesis") narrows the likely root causes to (1) stale RJC from prior op bleeding into current RQD wait window, (2) RQD timeout too short for first wave fetch, (3) save-flow quiescence gap. Verification of any fix requires the auditor's live spec re-run; controller-only code inspection cannot close the loop.
 
 **No controller-authored Tier 2/3 UI spec is meaningful here** per the protocol's test-tier ownership table — this is protocol-timing, not UI interaction. The auditor's `s550-D-LIB-live-core.spec.ts` is the canonical verification.
+
+---
+
+## 2026-05-15 Live S-550 Patches Capability Follow-Up Finding
+
+Scope reviewed: live rerun of the bounded Patches capability slice from `modules/roland-sxx0-editor/test/e2e/s550-D-PATCH-live-core.spec.ts` against the connected device on `Volt 4`, after extending the spec toward `D-PATCH-04` (`P.Bend Range`). The rerun failed earlier than the new assertion target: patch-bank load timed out before the patch editor opened.
+
+### Executive Queue
+
+- `LIVE-S550-PATCH-001` | `high` | `Patches` | capability conformance precondition, route load
+  Live S-550 Patches capability rerun now fails before the editor opens: patch-bank load logs stale-RJC handling and then `RQD response timeout - no data received`.
+  `Disposition`: new issue
+
+### Coverage Snapshot
+
+| Surface | Design conformance | Capability conformance | Live status | Notes |
+|---|---|---|---|---|
+| Play | tested | not yet | fail | `LIVE-S550-PLAY-001` |
+| Tones | not yet | attempted | fail | `LIVE-S550-TONES-001` blocks the first bounded D-TONE battery before cutoff / sustain assertions can run |
+| Patches | tested | attempted | fail | prior `D-PATCH-02` pass still stands, but the latest rerun is blocked by `LIVE-S550-PATCH-001` before the patch editor opens |
+| Library | tested | attempted | fail | `LIVE-S550-LIB-001` warns on dialog accessibility; `LIVE-S550-LIB-002` blocks the first bounded Library capability slice during the save flow |
+
+### Finding Record
+
+#### LIVE-S550-PATCH-001
+
+Finding-ID: LIVE-S550-PATCH-001
+Status: open
+Severity: high
+Surface: `/roland/s550/editor/patches`
+Disposition (proposed): new issue
+
+Category: capability conformance precondition failure
+
+Source of truth:
+- [ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md:198)
+- [ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md:200)
+- [modules/roland-sxx0-editor/src/pages/PatchesPage.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/pages/PatchesPage.tsx:116)
+- [modules/roland-sxx0-editor/src/hooks/useBankLoader.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/hooks/useBankLoader.ts:44)
+- [modules/sampler-devices/src/devices/roland-s-series/s-series-client.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/sampler-devices/src/devices/roland-s-series/s-series-client.ts:481)
+- [modules/sampler-devices/src/devices/roland-s-series/s-series-client.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/sampler-devices/src/devices/roland-s-series/s-series-client.ts:531)
+
+Observed:
+- On live hardware, the rerun of the bounded Patches capability suite no longer reaches the editor. During route load, patch-bank fetch logs stale-RJC handling and then `RQD response timeout - no data received`, leaving the patch detail pane unopened and blocking both the existing `D-PATCH-02` assertion and the new `D-PATCH-04` extension.
+
+Evidence:
+- Live spec: [modules/roland-sxx0-editor/test/e2e/s550-D-PATCH-live-core.spec.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/test/e2e/s550-D-PATCH-live-core.spec.ts:141)
+- Live browser logs:
+  - `[S-550] Ignoring stale RJC during RQD`
+  - `[useBankLoader] Error loading patches: Error: RQD response timeout - no data received`
+- Playwright failure:
+  - watchdog killed the run while waiting for `getByTestId('patch-editor')`
+- Failure artifacts:
+  - `modules/roland-sxx0-editor/test-results/s550-D-PATCH-live-core-S-550-*/test-failed-1.png`
+  - corresponding `error-context.md` under the same result directory
+
+Repro:
+1. Connect the live sampler on `Volt 4`.
+2. Run the bounded Patches conformance path with `E2E_DEVICE_TYPE=s550`.
+3. Open `/roland/s550/editor/patches`.
+4. Wait for the first loaded patch row and attempt to open the detail editor.
+
+Expected:
+- The Patches route loads at least one patch row and opens the detail editor so the bounded `D-PATCH-*` readback assertions can execute.
+
+Actual:
+- Patch-bank load hits stale-RJC handling followed by `RQD response timeout - no data received`, and the patch editor never opens.
+
+Likely ownership:
+- [modules/roland-sxx0-editor/src/hooks/useBankLoader.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/hooks/useBankLoader.ts:44)
+- [modules/roland-sxx0-editor/src/pages/PatchesPage.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/pages/PatchesPage.tsx:116)
+- [modules/sampler-devices/src/devices/roland-s-series/s-series-client.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/sampler-devices/src/devices/roland-s-series/s-series-client.ts:481)
+
+Fix guidance:
+- Investigate the live patch-bank load path on S-550 hardware, especially the stale-RJC / `RQD response timeout` sequence during `loadPatchBank`.
+- Re-run the same bounded Patches capability spec after the fix instead of closing from code inspection alone.
+
+Closure gate:
+- `s550-D-PATCH-live-core.spec.ts` reaches the patch editor on live hardware and can execute both the existing `D-PATCH-02` assertion and the new bounded `D-PATCH-04` extension.
+- The live route load completes without the patch-bank `RQD response timeout` warning during the bounded conformance rerun.
