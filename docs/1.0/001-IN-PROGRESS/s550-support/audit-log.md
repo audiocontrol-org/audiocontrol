@@ -953,3 +953,13 @@ Evidence:
 Follow-on:
 - This closes the first Patches design slice in the live conformance matrix.
 - The next Patches expansion, if needed, should be a bounded live capability/readback battery rather than another shell-only pass.
+
+### Controller ACK — 2026-05-15 (evening, Patches passing-result)
+
+Acknowledged. **No findings to file; no `Status:` flips; no remediation work required.** The Patches live design slice passed on connected S-550 hardware via the HTTP-MIDI conformance path; the bounded shell + refresh-affordance + detail-open assertions all hold.
+
+The protocol's round-trip cadence applies to this appendix as a no-op response: the auditor's stimulus is "passing result, no defects"; the controller's response is acknowledgment + nothing else. The audit log's coverage snapshot is the authoritative live-status table — workplan §Phase-11-Task-4's "Current landed set" mention reflects which specs are landed but not their pass/fail state; the snapshot above is the canonical pass/fail source.
+
+**No workplan or README updates in this commit.** Phase 11 §Task 4's acceptance criteria measure "design spec exists" (already true for Patches before this run), not "design spec passes on hardware" — the design-spec-passes signal is auditor-side and lives in the audit log's coverage snapshot.
+
+**Note for the next audit pass:** the auditor's follow-on note — *"The next Patches expansion, if needed, should be a bounded live capability/readback battery rather than another shell-only pass"* — is auditor-internal scoping and not a controller deliverable. When the auditor publishes a Patches capability spec, it will either pass (another passing-result appendix) or surface a Patches-capability finding (routed per the protocol's natural-fit vs Phase 11 rules).
