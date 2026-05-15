@@ -45,6 +45,7 @@ deskwork:
 - [TreeSection emits duplicate data-testid when testId lacks '-tab' substring (#419)](https://github.com/audiocontrol-org/audiocontrol/issues/419) — surfaced by Wave 5 (`31f6fab6`); ~3-line fix + regression test in editor-core
 - [Delete orphaned LibraryTreePanel.tsx + 3 companion hooks (~600 lines dead code) (#420)](https://github.com/audiocontrol-org/audiocontrol/issues/420) — surfaced by Wave 5 (`31f6fab6`); 4 file deletes
 - [Capture library-page-load fixture matching LibraryPage.handleLoadDeviceData per-bank sequence (#421)](https://github.com/audiocontrol-org/audiocontrol/issues/421) — surfaced by Wave 5 (`31f6fab6`); ~1 hr gated on hardware on `Volt 4` (batch with [#404](https://github.com/audiocontrol-org/audiocontrol/issues/404) + [#417](https://github.com/audiocontrol-org/audiocontrol/issues/417))
+- [Live S-550 conformance suite: design/mockup drift + capability-document conformance (#427)](https://github.com/audiocontrol-org/audiocontrol/issues/427) — surfaced by 2026-05-15 feature extension; live-device Playwright layer for `/roland/s550/editor` covering approved-mockup drift and capability-document gaps
 
 ---
 
@@ -811,7 +812,7 @@ These outputs from the previous Tasks 1-7 remain valid as **inputs** to the reme
 
 This phase exists because the 2026-05-08 code audit and the Phase 9 Task 3 review (`/dw-lifecycle:review` on commit `6df1ba6a`) surfaced concrete cleanup items that fall outside Phase 9's "UX/UI cleanup via `/frontend-design`" scope. They land here so they have explicit acceptance criteria and a duplication-audit gate, not just a GitHub issue link that will rot.
 
-**Reading order:** the audit doc (`docs/1.0/001-IN-PROGRESS/s550-support/2026-05-08-code-audit-findings.md`) is the source of truth for severity and rationale. This phase translates audit findings into actionable tasks.
+**Reading order:** the audit log (`docs/1.0/001-IN-PROGRESS/s550-support/audit-log.md` — renamed 2026-05-15 from the historical `2026-05-08-code-audit-findings.md` filename) is the source of truth for severity and rationale. This phase translates audit findings into actionable tasks.
 
 **Phase boundary with Phase 9:** Phase 9 owns visual polish (typography / spacing / layout / design-token alignment) and the structural refactors that make polish possible (TonesPage decomposition, shared hook extraction). Phase 10 owns *correctness* and *duplication-cleanup* fixes that don't change the visual surface. Findings 3, 4, and 5 from the audit are absorbed into Phase 9 Tasks 4 / 6 because they ARE visual surface work; everything else lands here.
 
@@ -1122,11 +1123,57 @@ The 9R-A.2 migration's grep audit only checked for `.fill(` / `.value =` / `disp
 **Notes:**
 - This task does NOT depend on Phase 11 §Task 1 / §Task 2 or on 9R-B/C/D. It can land in parallel; the cleanest landing surface is alongside 9R-A.4 because the Option A path benefits from the production-page context-swap wiring that 9R-A.4 also needs.
 
+### Task 4 — Build a live S-550 conformance suite
+
+**GitHub Issue:** [#427](https://github.com/audiocontrol-org/audiocontrol/issues/427)
+
+**Surfaced:** operator request 2026-05-15 following repeated audit passes and methodology review.
+
+The existing reform is sound for preventing false UI closure in simulated and harnessed environments, but it does not by itself guarantee that the live `/roland/s550/editor` session matches the approved mockups or that the built UI surface fully conforms to the capability inventory on real hardware. The repo already has live-device Playwright coverage under `modules/roland-sxx0-editor/test/e2e/`, but it is oriented around isolated readback correctness checks. It is not yet organized as a **conformance layer** that answers two explicit questions:
+
+1. Does the live S-550 editor as built diverge from the approved Phase 9 mockups / `ux-audit.md` / `DESIGN-SYSTEM.md`?
+2. Does the live S-550 editor as built fail any capability row marked `implemented` in `ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md`?
+
+This task adds that layer without replacing 9R-C or 9R-D. It is a structured, repeatable pre-sign-off battery that runs Playwright against a real connected S-550 and produces actionable deltas rather than free-form operator notes alone.
+
+**Design of the suite: two coordinated tracks**
+
+- **Track A — design/mockup conformance**
+  - Lives under `modules/roland-sxx0-editor/test/e2e/` (or a sibling `test/e2e-hardware/` directory if the existing tree becomes too crowded).
+  - Asserts page-shell structure, header composition, drawer/layout reachability, panel presence, and other machine-checkable design rules on the live S-550 route.
+  - Uses screenshot comparison only as supporting evidence, not as the sole assertion.
+  - Sources of truth: `docs/1.0/001-IN-PROGRESS/s550-support/explorations/03-patches.html`, `04-tones.html`, `05-play.html`, `07-library.html`, `ux-audit.md`, and `DESIGN-SYSTEM.md`.
+- **Track B — capability-document conformance**
+  - Uses the same live-device bootstrap path but maps specs to D-IDs from `ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md`.
+  - Drives the **visible** affordance on `/roland/s550/editor/...` and verifies by fresh device readback, not UI echo alone.
+  - Covers the subset of capability rows most likely to drift despite Tier 1/2/3 coverage: live-edit controls, editor-page write paths, and page-level interactive affordances whose failure would block 9R-D.
+
+**Proven complete when:**
+- [x] A new planning artifact exists at `docs/1.0/001-IN-PROGRESS/s550-support/live-s550-conformance-matrix.md` mapping:
+  - approved mockup states → live page/spec coverage
+  - D-IDs → live S-550 conformance specs
+  - any intentionally unautomated gaps → explicit operator-only checks
+- [ ] At least one live-device **design** spec exists for each high-value redesign page: `patches`, `tones`, `play`, `library`.
+- [ ] At least one live-device **capability** spec exists for each of the same pages, named with D-ID prefixes and verified by fresh device readback or an equivalent real-hardware truth source.
+- [x] The PlayPage spec explicitly checks the known `#423` failure mode: the live Part A row and drawer affordances are reachable by pointer and not occluded by page chrome.
+- [ ] The TonesPage spec explicitly checks at least one envelope/slider capability on the live S-550 using the visible affordance, aligning with the 9R-A.4 / 9R-B / 9R-C closure path.
+- [x] The suite has a documented runner entry point (Make target or npm script) distinct from the simulated tiers, and the doc states its prerequisites: live S-550 connected, midi-server running, hardware in a known baseline state.
+- [ ] The resulting failures, if any, are written back into:
+  - `ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md` (`Sign-off` / operator evidence where appropriate)
+  - `DEVELOPMENT-NOTES.md`
+  - GitHub issues for any newly-surfaced gaps
+
+**Notes:**
+- This task complements 9R-C/9R-D; it does **not** replace the operator's final holistic sign-off.
+- This task should reuse the existing hardware E2E helpers (`connection-helper`, `device-readback-helpers`, route builders) instead of creating a parallel browser/hardware stack.
+- This task is intentionally S-550-first. The goal is to catch live rack-device divergence on the route that motivated the feature and the reopen, not to widen scope into a new cross-device matrix yet.
+
 ### Acceptance Criteria (Phase 11)
 
 - [ ] **Task 1 closed:** ImportSamplesDialog mislabel bug fixed + Tier 3 spec landed + operator sign-off + #425 closed.
 - [ ] **Task 2 closed:** primitive sweep complete + operator sign-off + #424 closed.
 - [ ] **Task 3 closed:** root `test/ui/*.spec.ts` test-discipline gap closed + ESLint lint-scope widened (or root specs removed) + #426 closed.
+- [ ] **Task 4 closed:** live S-550 conformance suite exists, documented runner + matrix landed, and at least the first page/capability battery is operational against real hardware.
 - [ ] No new "audit found a bug we forgot to track" surprises before Phase 9 atomic closure (operator runs an independent audit at the end of 9R-D and confirms zero new findings).
 
 ### Why these are NOT in 9R-A or 9R-B/C/D directly
@@ -1134,6 +1181,7 @@ The 9R-A.2 migration's grep audit only checked for `.fill(` / `.value =` / `disp
 - **Task 1** is a code-quality bug in a dialog that has nothing to do with the test-reform plumbing or the Phase 9 redesigned pages. Folding it into 9R-* would dilute the test-reform's atomic closure and create confusion about what 9R-A's gate actually catches. It deserves its own visibility.
 - **Task 2** is a tracking convenience: 9R-B already covers this work; Phase 11 surfaces it as a top-level workplan item so a session starting from "what's the smallest visible move toward Phase 9 closure?" sees it without spelunking through 9R-B's prose.
 - **Task 3** is the post-9R-A.2 cleanup the migration's grep audit missed. It's structurally adjacent to 9R-A.2/3 (same test-discipline reform) but lands as its own task because the disposition is operator-choice and the fix touches files outside the 9R-A.2 migration's stated scope.
+- **Task 4** exists because 9R-C/9R-D describe operator-driven closure, not a reusable live-hardware Playwright conformance layer. This is a new verification capability for the feature branch, not just a restatement of existing Phase 9 gates.
 
 Adding Phase 11 also formalizes a pattern: "the workplan tracks every committed-to fix, including bugs found mid-flight." It is NOT a parking lot for capture-surface ideas — see "Post-Mortem Follow-Ons" below for that. An item enters Phase 11 only when (a) operator has accepted it, (b) it has a GitHub issue, and (c) it has acceptance criteria proven by observable artifacts.
 

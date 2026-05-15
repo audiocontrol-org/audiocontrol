@@ -162,3 +162,21 @@ modules/sampler-editor/       # Unified editor (was s330-editor)
 └── src/context/              # React context for device config
     └── DeviceConfigContext.tsx
 ```
+
+## 2026-05-15 Scope Extension — Live S-550 Conformance Suite
+
+The Phase 9 reopen established that passing simulated tests and rendering screenshots are not enough to prove the built editor matches the approved redesign or the capability inventory on real hardware. The feature scope is therefore extended to include a **live-device S-550 conformance suite** built on Playwright against a real `/roland/s550/editor` session.
+
+This extension adds two verification tracks:
+
+1. **Design and mockup conformance** — page-level checks for violations of `DESIGN-SYSTEM.md`, divergences from `ux-audit.md`, and drift from the approved mockups under `docs/1.0/001-IN-PROGRESS/s550-support/explorations/`.
+2. **Capability-document conformance** — hardware-backed checks that the built UI surface actually satisfies the operator affordances described in `ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md`, with verification by fresh device readback rather than UI echo alone.
+
+This suite does **not** replace the four-tier reform in Phase 9. It complements it:
+
+- Tier 1/2/3 coverage remains the architectural gate for preventing false-closure in simulated and harnessed environments.
+- The live S-550 conformance suite is a real-device integration layer that catches the two remaining drift classes the reform alone does not fully close:
+  - page-level divergence from approved visual design
+  - capability rows marked `implemented` whose real-hardware UX still fails
+
+Success for this extension means the repo has a repeatable, documented way to run targeted Playwright checks against a live S-550 and surface concrete design/capability gaps before final operator sign-off.
