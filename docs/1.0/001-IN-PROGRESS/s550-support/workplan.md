@@ -1077,14 +1077,15 @@ Findings surfaced by independent audit passes that are real work but don't fit c
 `ImportSamplesDialog.tsx` uses raw `!== undefined` checks at three sites (lines 305, 413, 424) for tone-range / single-patch / patch-range overwrite detection. After device data is loaded, `deviceTones[i]` and `devicePatches[i]` are NEVER undefined (the S-330 returns objects for all 32 tone slots and all 16 patch slots regardless of content), so every slot in the dropdown reports `(will overwrite)` — even truly empty ones. This defeats the dropdown's primary purpose. The canonical helpers `isToneSlotEmpty` / `isPatchSlotEmpty` exist in `modules/roland-sxx0-editor/src/lib/slot-allocation.ts` (lines 101 + 112) with a 30-line ALL-CAPS preamble warning naming exactly this anti-pattern; sibling dialogs already consume them.
 
 **Proven complete when:**
-- [ ] All three `!== undefined` sites in `ImportSamplesDialog.tsx` use `isToneSlotEmpty` / `isPatchSlotEmpty` (or a small wrapping helper for range checks added to `slot-allocation.ts`).
-- [ ] A Tier 3 in-context spec under `modules/roland-sxx0-editor/test/ui/in-context/import-samples-dialog.in-context.spec.ts` mounts the dialog with a fixture where slot 0 is occupied + slots 1-3 are empty, and asserts the dropdown labels `slot 0 → (will overwrite)`, `slot 1-3 → (empty)`. The spec carries `@credibleAgainst` declarations and is verified by `pnpm run check-credibility`.
-- [ ] Operator hardware sign-off recorded against the dialog on a real S-330 / S-550.
-- [ ] Issue #425 closed with the fix commit hash + the verification evidence.
+- [x] All three `!== undefined` sites in `ImportSamplesDialog.tsx` use `isToneSlotEmpty` / `isPatchSlotEmpty` (or a small wrapping helper for range checks added to `slot-allocation.ts`). (Closed by commit `12ef2c18`: 3 sites use `hasOccupiedToneRange` / `!isPatchSlotEmpty` / `hasOccupiedPatchRange`; range helpers added to `slot-allocation.ts`.)
+- [x] A Tier 3 in-context spec under `modules/roland-sxx0-editor/test/ui/in-context/import-samples-dialog.in-context.spec.ts` mounts the dialog with a fixture where slot 0 is occupied + slots 1-3 are empty, and asserts the dropdown labels `slot 0 → (will overwrite)`, `slot 1-3 → (empty)`. The spec carries `@credibleAgainst` declarations and is verified by `pnpm run check-credibility`. (Closed by commit `12ef2c18` + polish in `d39c6714`: spec declares `@credibleAgainst contexts sticky-overlay zero-width-grid pointer-events-none-ancestor`; `pnpm run check-credibility` reports 2/2 credible.)
+- [ ] Operator hardware sign-off recorded against the dialog on a real S-330 / S-550. (Operator-gate; not implementer scope.)
+- [ ] Issue #425 closed with the fix commit hash + the verification evidence. (Operator-gate; follows hardware sign-off.)
 
 **Notes:**
 - This task does NOT depend on 9R-A.2/3 or 9R-B/C. It can land in parallel.
-- The Tier 3 spec consumes the 9R-A.1 infrastructure (manifest, credibility runner, `__broken__` registry) — first non-D-TONE-ENV-02 demonstration of the new gate.
+- The Tier 3 spec consumes the 9R-A.1 infrastructure (manifest, credibility runner, `__broken__` registry). Task 1 also scope-expanded to add the production-page context-swap wiring (`BrokenContextWrapper` in editor-core, mounted in `App.tsx` under `import.meta.env.DEV`) — this was a missing piece 9R-A.1 didn't ship, and landing it here also unblocks 9R-A.4's Tier 3 spec on `D-TONE-ENV-02`.
+- First end-to-end demonstration of the audit-protocol → workplan → /dwi pipeline: `AUDIT-20260514-FU3-02` (`acknowledged-#425; workplan §Phase-11-Task-1`) → fix landed → audit-log `Status:` flipped to `fixed-12ef2c18; awaiting auditor re-run` → auditor's next pass verifies on hardware → closure.
 
 ### Task 2 — Complete the #424 primitive remediation sweep
 

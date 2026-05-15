@@ -583,7 +583,7 @@ Impact: the misleading bulk of the old UI evidence is gone, but `test/ui` is sti
 #### 2. Medium — `ImportSamplesDialog` still duplicates overwrite detection instead of using the shared slot-allocation rules
 
 Finding-ID: AUDIT-20260514-FU3-02
-Status: acknowledged-#425; workplan §Phase-11-Task-1 (controller-filed 2026-05-14)
+Status: fixed-12ef2c18; awaiting auditor re-run (fix landed 2026-05-15 in commit 12ef2c18 + polish in d39c6714. Three `!== undefined` sites in `ImportSamplesDialog.tsx` now route through `isToneSlotEmpty` / `isPatchSlotEmpty` / new `hasOccupiedToneRange` / `hasOccupiedPatchRange` helpers in `slot-allocation.ts`. Tier 3 spec `test/ui/in-context/import-samples-dialog.in-context.spec.ts` declares `@credibleAgainst contexts sticky-overlay zero-width-grid pointer-events-none-ancestor` and passes `pnpm run check-credibility` (2/2 credible). Production-page context-swap wiring landed alongside (`BrokenContextWrapper` in editor-core, mounted in App.tsx under `import.meta.env.DEV`) — also unblocks 9R-A.4's Tier 3 spec. D-LIB-14 inventory Coverage cell auto-updated `none` → `partial`. Operator hardware sign-off on a real S-330 / S-550 + #425 closure are out of implementer scope per the protocol — those happen when the auditor re-verifies the Tier 3 spec against live hardware.)
 
 This remained unchanged in the latest tranche. Tone and patch overwrite affordances still derive occupancy from raw `undefined` checks rather than the shared helpers.
 
