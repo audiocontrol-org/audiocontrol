@@ -134,18 +134,32 @@ async function cleanupOPFS(page: Page): Promise<void> {
       throw new Error('OPFS not available — test environment cannot satisfy library-dialog specs');
     }
     const root = await navigator.storage.getDirectory();
-    const rootWithValues = root as unknown as {
-      values(): AsyncIterable<{ name: string; kind: string }>;
-    };
+    // OPFS `FileSystemDirectoryHandle.values()` is an async iterable per
+    // the spec but `lib.dom.d.ts` (TS 5.x) does not yet declare it. We
+    // type-narrow via a runtime check instead of a static `as` cast —
+    // the narrowing predicate is bounded to this helper and fails
+    // loudly if the browser environment ever drops the iterator.
+    function hasValuesIterator(d: unknown): d is { values: () => AsyncIterable<{ name: string }> } {
+      if (typeof d !== 'object' || d === null) return false;
+      if (!('values' in d)) return false;
+      return typeof d.values === 'function';
+    }
+    if (!hasValuesIterator(root)) {
+      throw new Error('OPFS root handle does not expose values() iterator — test environment unsupported');
+    }
     const names: string[] = [];
-    for await (const entry of rootWithValues.values()) {
+    for await (const entry of root.values()) {
       names.push(entry.name);
     }
     for (const name of names) {
       try {
         await root.removeEntry(name, { recursive: true });
       } catch (err) {
-        if ((err as { name?: string } | null)?.name !== 'NotFoundError') throw err;
+        // Narrow `err` (typed `unknown` in catch clauses) via instanceof
+        // rather than an `as { name?: string }` cast. NotFoundError is
+        // expected when a concurrent test happens to clean up first;
+        // any other error rethrows.
+        if (!(err instanceof Error) || err.name !== 'NotFoundError') throw err;
       }
     }
   });
