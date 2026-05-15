@@ -50,9 +50,9 @@ This suite is S-550-first. It does not widen scope into a new cross-device matri
 | Surface | Design conformance | Capability conformance | Live status | Finding / note |
 |---|---|---|---|---|
 | Play | `s550-play.design.spec.ts` landed and executed | not yet | fail | `LIVE-S550-PLAY-001` / sticky header intercepts Part A pointer events on live route |
-| Tones | not yet | not yet | unrun | first bounded capability slice should be `D-TONE-live-envelope-and-slider.spec.ts` |
+| Tones | not yet | `s550-D-TONE-live-envelope-and-slider.spec.ts` landed and executed | fail | `LIVE-S550-TONES-001` / loaded tone row selection is not reliably pointer-actionable on live route, blocking the bounded D-TONE battery before cutoff / sustain assertions |
 | Patches | not yet | not yet | unrun | no live conformance spec landed yet |
-| Library | not yet | not yet | unrun | no live conformance spec landed yet |
+| Library | `s550-library.design.spec.ts` landed and executed | not yet | fail | `LIVE-S550-LIB-001` / live Save dialog emits missing dialog-description warning during real OPFS-backed open path |
 
 Status vocabulary:
 - `pass`: live hardware run completed and matched the current conformance expectation
@@ -91,10 +91,12 @@ Status vocabulary:
    - drive one visible slider affordance
    - drive one visible envelope affordance
    - verify both through fresh device readback
+   - status: landed as `modules/roland-sxx0-editor/test/e2e/s550-D-TONE-live-envelope-and-slider.spec.ts`; executed on 2026-05-15 against live hardware and currently blocked by `LIVE-S550-TONES-001` before the cutoff / sustain assertions can run
 
 3. `s550-library.design.spec.ts`
    - verify real library-page structure against the approved mockup direction
    - include at least one dialog-open state
+   - status: landed as `modules/roland-sxx0-editor/test/e2e/s550-library.design.spec.ts`; executed on 2026-05-15 against live hardware. Structural shell assertions passed, but the real Save-dialog path surfaced `LIVE-S550-LIB-001` (missing dialog description warning), so the Library surface remains a live `fail`
 
 ## Explicit Non-Goals
 

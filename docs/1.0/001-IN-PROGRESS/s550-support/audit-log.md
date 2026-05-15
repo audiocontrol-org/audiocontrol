@@ -18,7 +18,7 @@ The auditor's appendix is the **stimulus**; the controller's ACK section + flipp
 
 ### Per-finding required fields
 
-Every finding (auditor-authored) must carry these fields, in this order, immediately under the finding's heading:
+Every finding (auditor-authored) published after the 2026-05-15 protocol codification must carry these fields, in this order, immediately under the finding's heading. Historical findings earlier in this file were retrofitted only with `Finding-ID:` + `Status:` lines unless otherwise noted; they remain valid legacy records and are not required to satisfy the full post-codification field set.
 
 | Field | Format | Notes |
 |---|---|---|
@@ -732,3 +732,153 @@ This is the first audit appendix authored under the formal Audit Protocol (codif
 - The Audit Protocol section was added at the top of the doc.
 - `Finding-ID` + `Status` lines retrofitted onto every historical finding (2026-05-08 + the two 2026-05-09 follow-ups + the three 2026-05-14 follow-ups). The retrofit is the controller's responsibility per the rename's "doc renames preserve history" invariant.
 - README link + workplan reference updated to the new path.
+
+---
+
+## 2026-05-15 Live S-550 Tone Conformance Finding
+
+Scope reviewed: first real-hardware execution of the bounded Tones capability battery from `modules/roland-sxx0-editor/test/e2e/s550-D-TONE-live-envelope-and-slider.spec.ts` against the connected device on `Volt 4`. Intended coverage targets were `D-TONE-TVF-02` (visible TVF cutoff slider) and `D-TONE-ENV-10` (visible TVA sustain pip), both via fresh device readback.
+
+### Executive Queue
+
+- `LIVE-S550-TONES-001` | `blocking` | `Tones` | capability conformance, Tone list interaction
+  Live S-550 Tones page cannot reliably select the first loaded tone row; the row is initially disabled and then the bank header intercepts pointer events before the detail editor can open.
+  `Disposition`: new issue
+
+### Coverage Snapshot
+
+| Surface | Design conformance | Capability conformance | Live status | Notes |
+|---|---|---|---|---|
+| Play | tested | not yet | fail | `LIVE-S550-PLAY-001` |
+| Tones | not yet | attempted | fail | `LIVE-S550-TONES-001` blocks the first bounded D-TONE battery before cutoff / sustain assertions can run |
+| Patches | not yet | not yet | unrun | no live conformance spec yet |
+| Library | not yet | not yet | unrun | no live conformance spec yet |
+
+### Finding Record
+
+#### LIVE-S550-TONES-001
+
+Finding-ID: LIVE-S550-TONES-001
+Status: open
+Severity: blocking
+Surface: `/roland/s550/editor/tones`
+Disposition (proposed): new issue
+
+Category: capability conformance precondition failure
+
+Source of truth:
+- [ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md:236)
+- [ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md:292)
+- [ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md:345)
+- [docs/1.0/001-IN-PROGRESS/s550-support/workplan.md](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/docs/1.0/001-IN-PROGRESS/s550-support/workplan.md:1171)
+
+Observed:
+- On live hardware, clicking the first loaded tone row (`tone-item-0`, rendered as `T11 MINI OCT`) does not reliably open the detail editor, which blocks the bounded live Tones capability battery before any slider or envelope assertions can execute.
+
+Evidence:
+- Live spec: [modules/roland-sxx0-editor/test/e2e/s550-D-TONE-live-envelope-and-slider.spec.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/test/e2e/s550-D-TONE-live-envelope-and-slider.spec.ts:163)
+- Target list row contract: [modules/roland-sxx0-editor/src/components/tones/ToneList.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:130)
+- Playwright failure:
+  - `locator.click: Timeout 3000ms exceeded`
+  - row first resolves with `tabindex="-1" aria-disabled="true"`
+  - later retries report `.ac-list-bank-header` intercepting pointer events
+- Failure artifacts:
+  - `modules/roland-sxx0-editor/test-results/s550-D-TONE-live-envelope--0ba48-es-through-to-live-hardware-chromium/test-failed-1.png`
+  - `modules/roland-sxx0-editor/test-results/s550-D-TONE-live-envelope--0ba48-es-through-to-live-hardware-chromium/error-context.md`
+
+Repro:
+1. Connect the live sampler on `Volt 4`.
+2. Run the bounded Tones conformance path with `E2E_DEVICE_TYPE=s550`.
+3. Open `/roland/s550/editor/tones`.
+4. Attempt to select the first loaded tone row (`T11 MINI OCT`).
+
+Expected:
+- Clicking a loaded tone row opens the detail editor so the live cutoff / sustain capability checks can execute.
+
+Actual:
+- The row starts disabled, then becomes clickable late enough that the bank header can intercept pointer events during the same actionability window, so the detail editor never opens reliably.
+
+Likely ownership:
+- [modules/roland-sxx0-editor/src/components/tones/ToneList.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:130)
+- [modules/roland-sxx0-editor/src/pages/TonesPage.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/pages/TonesPage.tsx:1)
+
+Fix guidance:
+- Ensure loaded tone rows become actionably enabled before the click target is exposed for live interaction.
+- Eliminate bank-header hit-area overlap with the row pointer target.
+- Re-run the same bounded live Tones spec after the list interaction fix instead of closing from code inspection.
+
+Closure gate:
+- `s550-D-TONE-live-envelope-and-slider.spec.ts` can open a loaded tone row on live hardware and proceed into the real `D-TONE-TVF-02` / `D-TONE-ENV-10` assertions.
+- A subsequent live rerun either passes those assertions or produces a new finding tied to the actual tone controls rather than list selection.
+
+---
+
+## 2026-05-15 Live S-550 Library Conformance Finding
+
+Scope reviewed: first real-hardware execution of the bounded Library design slice from `modules/roland-sxx0-editor/test/e2e/s550-library.design.spec.ts` against the connected device on `Volt 4`. The live run covered the fixed-shell Library route plus a real OPFS-backed open of the Save dialog.
+
+### Executive Queue
+
+- `LIVE-S550-LIB-001` | `low` | `Library` | design/accessibility conformance, Save dialog
+  Live S-550 Library-page structural assertions passed, but the real Save-dialog open path emits a Radix accessibility warning because the dialog mounts without a description.
+  `Disposition`: new issue
+
+### Coverage Snapshot
+
+| Surface | Design conformance | Capability conformance | Live status | Notes |
+|---|---|---|---|---|
+| Play | tested | not yet | fail | `LIVE-S550-PLAY-001` |
+| Tones | not yet | attempted | fail | `LIVE-S550-TONES-001` blocks the first bounded D-TONE battery before cutoff / sustain assertions can run |
+| Patches | not yet | not yet | unrun | no live conformance spec yet |
+| Library | tested | not yet | fail | `LIVE-S550-LIB-001`; shell and Save-dialog path are reachable, but the real dialog emits a missing-description warning |
+
+### Finding Record
+
+#### LIVE-S550-LIB-001
+
+Finding-ID: LIVE-S550-LIB-001
+Status: open
+Severity: low
+Surface: `/roland/s550/editor/library`
+Disposition (proposed): new issue
+
+Category: design/accessibility conformance
+
+Source of truth:
+- [docs/1.0/001-IN-PROGRESS/s550-support/explorations/07-library.html](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/docs/1.0/001-IN-PROGRESS/s550-support/explorations/07-library.html:1)
+- [docs/1.0/001-IN-PROGRESS/s550-support/workplan.md](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/docs/1.0/001-IN-PROGRESS/s550-support/workplan.md:1151)
+- [modules/roland-sxx0-editor/src/components/library/SaveSetDialog.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/components/library/SaveSetDialog.tsx:54)
+
+Observed:
+- On live hardware, the Library page's Save-dialog open path is operator-reachable and the structural shell assertions pass, but opening `Save Device to Library` logs a Radix warning that the dialog content is missing a description / `aria-describedby`.
+
+Evidence:
+- Live spec: [modules/roland-sxx0-editor/test/e2e/s550-library.design.spec.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/test/e2e/s550-library.design.spec.ts:82)
+- Live browser warning:
+  - `Warning: Missing \`Description\` or \`aria-describedby={undefined}\` for {DialogContent}.`
+- Dialog implementation under test:
+  - [modules/roland-sxx0-editor/src/components/library/SaveSetDialog.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/components/library/SaveSetDialog.tsx:54)
+
+Repro:
+1. Connect the live sampler on `Volt 4`.
+2. Run the Library conformance path with `E2E_DEVICE_TYPE=s550`.
+3. Open `/roland/s550/editor/library`.
+4. Connect the OPFS library backend.
+5. Click `Save to Library...`.
+
+Expected:
+- The Save dialog opens without runtime accessibility warnings.
+
+Actual:
+- The dialog opens and is usable, but the browser logs a Radix warning that the dialog content has no description / `aria-describedby`.
+
+Likely ownership:
+- [modules/roland-sxx0-editor/src/components/library/SaveSetDialog.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/components/library/SaveSetDialog.tsx:54)
+
+Fix guidance:
+- Add a dialog description or explicit `aria-describedby` wiring to the Save dialog so the real operator path is warning-free.
+- Re-run the same live Library spec after the dialog change instead of closing from code inspection alone.
+
+Closure gate:
+- `s550-library.design.spec.ts` passes on live hardware with no dialog accessibility warning in the console.
+- The Save dialog still opens through the real OPFS-backed route after the accessibility fix.

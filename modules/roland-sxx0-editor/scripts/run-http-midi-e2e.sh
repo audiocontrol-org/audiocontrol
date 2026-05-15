@@ -25,6 +25,8 @@ cd "$PROJECT_DIR"
 echo "=== HTTP MIDI E2E Test Runner ==="
 echo ""
 
+PLAYWRIGHT_CONFIG="${PLAYWRIGHT_CONFIG:-playwright.http-midi.config.ts}"
+
 # Step 1: Validate device is connected
 echo "Step 1: Validating device connection..."
 
@@ -192,6 +194,7 @@ echo ""
 
 # Step 5: Run Playwright tests with watchdog
 echo "Step 5: Running HTTP MIDI e2e tests..."
+echo "   Playwright config: $PLAYWRIGHT_CONFIG"
 echo ""
 
 export E2E_VITE_PORT="$VITE_PORT"
@@ -205,7 +208,7 @@ HEARTBEAT_FILE="/tmp/e2e-heartbeat-$$.json"
 export E2E_HEARTBEAT_FILE="$HEARTBEAT_FILE"
 
 PLAYWRIGHT_LOG=$(mktemp)
-npx playwright test -c playwright.http-midi.config.ts "$@" > "$PLAYWRIGHT_LOG" 2>&1 &
+npx playwright test -c "$PLAYWRIGHT_CONFIG" "$@" > "$PLAYWRIGHT_LOG" 2>&1 &
 PLAYWRIGHT_PID=$!
 
 tsx scripts/watchdog.ts "$PLAYWRIGHT_PID" "$HEARTBEAT_FILE" &

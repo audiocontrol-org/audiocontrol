@@ -588,7 +588,7 @@ See `.claude/rules/workflow-playbooks.md § Phase-completion duplication audit` 
      - [x] Moderate — `[LibraryPage]` log prefix in the now-shared `useLibraryExport` retagged `[useLibraryExport]`.
      - [x] Moderate — `openExportToneDialog` / `openExportPatchDialog` previously silent-no-op'd on cache miss (CLAUDE.md "no fallbacks/silent failures" violation). Now throw with a clear error; library-disconnected invariant also enforced at dialog-open time, not just at execute time.
      - [x] Minor — `eslint-disable-next-line` in `useLoopEditorSync` now carries the CLAUDE.md-required deviation comment.
-     - [→] Outstanding duplication tracked in audit doc (`docs/1.0/001-IN-PROGRESS/s550-support/2026-05-08-code-audit-findings.md`): `PatchesPage` still shims patch export instead of using `openExportPatchDialog` (audit finding 5; absorbed into Task 4); `useDeviceToneChopper` and `handleExportSample` duplicate the wave-fetch pattern that `useWaveDataCache` now provides (deferred — note in DEVELOPMENT-NOTES, revisit during Task 4).
+     - [→] Outstanding duplication tracked in audit doc (`docs/1.0/001-IN-PROGRESS/s550-support/audit-log.md`): `PatchesPage` still shims patch export instead of using `openExportPatchDialog` (audit finding 5; absorbed into Task 4); `useDeviceToneChopper` and `handleExportSample` duplicate the wave-fetch pattern that `useWaveDataCache` now provides (deferred — note in DEVELOPMENT-NOTES, revisit during Task 4).
      - [→] **Reviewer 2 carry-over (intentionally not fixed):** original TonesPage flow called `setTone(toneIndex, tone, totalTones)` after `requestToneData` to refresh the device-data cache. The new contract requires the tone to be in cache *before* `openExportToneDialog`, so the post-export `setTone` becomes redundant — the cache already holds the source data. Documented here so future readers don't re-introduce the call.
 
 4. **Apply visual polish to each page via `/frontend-design`.** **BLOCKED until Phase 0 Task 10 is fully complete.** Once unblocked, **each page commit is a single atomic completion event** — there is no "shell first / atomic controls next" sequencing. One commit per page; that commit polishes the ENTIRE page or it doesn't ship.
@@ -1148,6 +1148,11 @@ The existing reform is sound for preventing false UI closure in simulated and ha
 
 This task adds that layer without replacing 9R-C or 9R-D. It is a structured, repeatable pre-sign-off battery that runs Playwright against a real connected S-550 and produces actionable deltas rather than free-form operator notes alone.
 
+**Current live status (2026-05-15):**
+- `s550-play.design.spec.ts` landed and has already reproduced the real `#423` occlusion bug (`LIVE-S550-PLAY-001`).
+- `s550-D-TONE-live-envelope-and-slider.spec.ts` landed and currently fails at live tone-row selection before the intended cutoff / sustain assertions (`LIVE-S550-TONES-001`).
+- `s550-library.design.spec.ts` landed and exercised the real OPFS-backed Save-dialog open path on the live S-550 route; structural shell assertions passed, but the run surfaced a new dialog accessibility warning (`LIVE-S550-LIB-001`) that is now tracked in the audit log.
+
 **Design of the suite: two coordinated tracks**
 
 - **Track A — design/mockup conformance**
@@ -1165,7 +1170,7 @@ This task adds that layer without replacing 9R-C or 9R-D. It is a structured, re
   - approved mockup states → live page/spec coverage
   - D-IDs → live S-550 conformance specs
   - any intentionally unautomated gaps → explicit operator-only checks
-- [ ] At least one live-device **design** spec exists for each high-value redesign page: `patches`, `tones`, `play`, `library`.
+- [ ] At least one live-device **design** spec exists for each high-value redesign page: `patches`, `tones`, `play`, `library`. Current landed set: `play`, `library`.
 - [ ] At least one live-device **capability** spec exists for each of the same pages, named with D-ID prefixes and verified by fresh device readback or an equivalent real-hardware truth source.
 - [x] The PlayPage spec explicitly checks the known `#423` failure mode: the live Part A row and drawer affordances are reachable by pointer and not occluded by page chrome.
 - [ ] The TonesPage spec explicitly checks at least one envelope/slider capability on the live S-550 using the visible affordance, aligning with the 9R-A.4 / 9R-B / 9R-C closure path.

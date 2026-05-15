@@ -16,6 +16,7 @@
     "test:device": "tsx scripts/validate-device.ts",
     "test:e2e:hardware": "./scripts/run-hardware-e2e.sh",
     "test:e2e:http-midi": "./scripts/run-http-midi-e2e.sh",
+    "test:e2e:s550-conformance": "E2E_DEVICE_TYPE=s550 PLAYWRIGHT_CONFIG=playwright.s550-conformance.config.ts ./scripts/run-http-midi-e2e.sh",
     "test:e2e:library": "./scripts/run-library-e2e.sh",
     "test:e2e:device-library": "./scripts/run-device-library-e2e.sh",
     "test:e2e:loop-editor": "./scripts/run-loop-editor-e2e.sh",
