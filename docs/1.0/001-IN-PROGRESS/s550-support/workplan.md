@@ -1049,6 +1049,66 @@ This phase exists because the 2026-05-08 code audit and the Phase 9 Task 3 revie
 
 ---
 
+## Phase 11: Cross-Cutting Quality Audit Items (Out-of-Scope Findings — Tracked, Not Deferred)
+
+Findings surfaced by independent audit passes that are real work but don't fit cleanly into Phase 9's test-reform sequencing. Recorded here so they don't rot per `.claude/rules/agent-discipline.md` ("filing a GitHub issue is not the same as doing the work — counting filed issues as a substitute for completion is the same failure mode as counting code comments as a substitute for tracking"). Each task has explicit operator acceptance and a closure path.
+
+### Task 1 — Fix `ImportSamplesDialog` slot-occupancy mislabeling
+
+**GitHub Issue:** [#425](https://github.com/audiocontrol-org/audiocontrol/issues/425)
+
+**Surfaced:** independent audit 2026-05-14, immediately following 9R-A.1 closure.
+
+`ImportSamplesDialog.tsx` uses raw `!== undefined` checks at three sites (lines 305, 413, 424) for tone-range / single-patch / patch-range overwrite detection. After device data is loaded, `deviceTones[i]` and `devicePatches[i]` are NEVER undefined (the S-330 returns objects for all 32 tone slots and all 16 patch slots regardless of content), so every slot in the dropdown reports `(will overwrite)` — even truly empty ones. This defeats the dropdown's primary purpose. The canonical helpers `isToneSlotEmpty` / `isPatchSlotEmpty` exist in `modules/roland-sxx0-editor/src/lib/slot-allocation.ts` (lines 101 + 112) with a 30-line ALL-CAPS preamble warning naming exactly this anti-pattern; sibling dialogs already consume them.
+
+**Proven complete when:**
+- [ ] All three `!== undefined` sites in `ImportSamplesDialog.tsx` use `isToneSlotEmpty` / `isPatchSlotEmpty` (or a small wrapping helper for range checks added to `slot-allocation.ts`).
+- [ ] A Tier 3 in-context spec under `modules/roland-sxx0-editor/test/ui/in-context/import-samples-dialog.in-context.spec.ts` mounts the dialog with a fixture where slot 0 is occupied + slots 1-3 are empty, and asserts the dropdown labels `slot 0 → (will overwrite)`, `slot 1-3 → (empty)`. The spec carries `@credibleAgainst` declarations and is verified by `pnpm run check-credibility`.
+- [ ] Operator hardware sign-off recorded against the dialog on a real S-330 / S-550.
+- [ ] Issue #425 closed with the fix commit hash + the verification evidence.
+
+**Notes:**
+- This task does NOT depend on 9R-A.2/3 or 9R-B/C. It can land in parallel.
+- The Tier 3 spec consumes the 9R-A.1 infrastructure (manifest, credibility runner, `__broken__` registry) — first non-D-TONE-ENV-02 demonstration of the new gate.
+
+### Task 2 — Complete the #424 primitive remediation sweep
+
+**GitHub Issue:** [#424](https://github.com/audiocontrol-org/audiocontrol/issues/424) (partial closure 2026-05-14 — see [comment](https://github.com/audiocontrol-org/audiocontrol/issues/424#issuecomment-4456792655))
+
+This task is the operational tracking entry for the 9R-B sweep on the **remaining** primitives. The `AcRangeBar` + `AcEnvelopeTable` interactivity fixes already landed in commit [`406dc1e7`](https://github.com/audiocontrol-org/audiocontrol/commit/406dc1e7); this entry exists because the next-session context-resumption needs to find the gap between "what's fixed" and "what's still open" without re-reading commit history.
+
+**Affected primitives still needing the contract-test sweep (per workplan §9R-B):**
+
+- `AcSelect` — option-click + keyboard select + escape; verify "everything that paints like a select is actually a select"
+- `AcCheckbox` — click + space-key toggle (both fire onChange)
+- `AcNumberInput` — pointer audit (arrow-key step on focus, scroll wheel, drag-to-step) — keyboard already verified
+- `AcSlider` (the wrapper consuming `AcRangeBar` + `AcNumberInput`) — full-affordance audit
+- `AcEnvelopeGraph` (graphical envelope handles, distinct from the table cells already fixed)
+- `AcEnvelopeMeta` (sustain / end / curve controls)
+- Any sibling primitives shipped in commit `2c078954` not enumerated here — list them in the audit doc, audit each.
+
+**Closure path:** consumed by 9R-B per the existing per-primitive acceptance criteria. This Phase 11 task IS that 9R-B work; it's listed here only so the cross-cutting Quality findings index has a single landing surface and so #424's remaining-scope is visible from the workplan top-level (not buried inside the long 9R-B section).
+
+**Proven complete when:**
+- [ ] 9R-B's per-primitive acceptance criteria all pass for the primitives enumerated above.
+- [ ] Operator records per-primitive hardware sign-off in `ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md`'s `Sign-off` column.
+- [ ] Issue #424 closed with the operator's verbatim sign-off comment.
+
+### Acceptance Criteria (Phase 11)
+
+- [ ] **Task 1 closed:** ImportSamplesDialog mislabel bug fixed + Tier 3 spec landed + operator sign-off + #425 closed.
+- [ ] **Task 2 closed:** primitive sweep complete + operator sign-off + #424 closed.
+- [ ] No new "audit found a bug we forgot to track" surprises before Phase 9 atomic closure (operator runs an independent audit at the end of 9R-D and confirms zero new findings).
+
+### Why these are NOT in 9R-A or 9R-B/C/D directly
+
+- **Task 1** is a code-quality bug in a dialog that has nothing to do with the test-reform plumbing or the Phase 9 redesigned pages. Folding it into 9R-* would dilute the test-reform's atomic closure and create confusion about what 9R-A's gate actually catches. It deserves its own visibility.
+- **Task 2** is a tracking convenience: 9R-B already covers this work; Phase 11 surfaces it as a top-level workplan item so a session starting from "what's the smallest visible move toward Phase 9 closure?" sees it without spelunking through 9R-B's prose.
+
+Adding Phase 11 also formalizes a pattern: "the workplan tracks every committed-to fix, including bugs found mid-flight." It is NOT a parking lot for capture-surface ideas — see "Post-Mortem Follow-Ons" below for that. An item enters Phase 11 only when (a) operator has accepted it, (b) it has a GitHub issue, and (c) it has acceptance criteria proven by observable artifacts.
+
+---
+
 ## Dependencies
 
 ```
