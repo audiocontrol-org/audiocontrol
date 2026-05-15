@@ -700,7 +700,7 @@ Proven complete when:
 - [x] The companion `ROLAND-S550-EDITOR-CAPABILITIES.md` (parent capability list) is reviewed and rewritten for the same implementation-language drift where present. (9R-A.3.B: 51 stale `**Test:** ...` paragraphs removed; preamble `Test` field bullet removed; preamble `Status` field reworded to reference the detailed inventory's `Coverage` column instead of "passing test" framing; the layout-decoupling two-rule subsection rewritten to point at the reform spec's tier discipline — Tier 1 wiring + Tier 2/3 UI contract / in-context; trailing connector phrases ("Explicit guard:" / "Explicit named gate:") attached to deleted Test paragraphs cleaned up; two `**Statement:**` rewrites trimmed widget-noun drift ("Drag/drop or button affordance" → "An affordance" in C-LIB-03 and C-LIB-04). Per-capability `**Status:**` values intentionally NOT resynced with the live manifest — that's 9R-A.4 / per-area-sign-off scope. File shrank 601 → 500 lines.)
 - [x] The inventory's preamble is updated to describe the `Coverage` column's semantics, the four tiers, and the manifest's generation flow. The preamble states explicitly that the `Coverage` column is regenerated automatically and any hand edits will be overwritten. (9R-A.3.A removed the now-stale `Test` column bullet + the legacy `Test reference` paragraph; the surviving four-tier + manifest-flow text reads cleanly post-column-removal.)
 
-Completed 2026-05-14 via commits `97ebe2b3` + `3a6381ad` (9R-A.3.A) + the 9R-A.3.B commit (parent inventory rewrite). 9R-A.3 fully closed.
+Completed 2026-05-14 via commits `97ebe2b3` + `3a6381ad` (9R-A.3.A) + `97bcf5b3` (9R-A.3.B parent inventory rewrite). 9R-A.3 fully closed.
 
 **Sub-task 9R-A.4 — Demonstrate end-to-end with one capability.**
 
