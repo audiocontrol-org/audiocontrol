@@ -49,8 +49,8 @@
  *          top of the list intercepts every click — CLAIMS 2+3 fail
  *          because T11 is reachable via DOM but not via pointer.
  *        - `zero-width-grid`: the list column collapses to 0 px, so
- *          T11's bounding box degenerates and `clickByPointer` throws
- *          on the degenerate-box guard — CLAIM 2 fails on width.
+ *          T11's bounding box degenerates and CLAIM 2's explicit
+ *          `expect(rowBox.width).toBeGreaterThan(8)` assertion fails.
  *        - `pointer-events-none-ancestor`: the wrapping div sets
  *          `pointer-events: none` so the row exists but refuses
  *          pointer events — CLAIM 3 fails because the editor never
@@ -233,14 +233,25 @@ test.describe('TonesPage tone-list row activation — Tier 3 in-context (D-TONE-
 
     const headerCenterX = headerBox.x + headerBox.width / 2;
     const headerCenterY = headerBox.y + headerBox.height / 2;
-    const headerHit = await inspectHitStack(page, headerCenterX, headerCenterY);
-    const headerTopClass = headerHit.topClass ?? '';
-    const headerIsBlocking =
-      headerTopClass.includes('ac-list-bank-header') ||
-      headerHit.stack[0]?.cls.includes('ac-list-bank-header') === true;
+    // Use `closest('.ac-list-bank-header')` to walk up from the hit-test
+    // top element. The previous substring-match-on-className idiom would
+    // miss a regression where the top element is the inner unclassed
+    // `<span>Group 1</span>`. `closest` walks ancestors and returns the
+    // bank-header `<div>` if it sits anywhere in the top element's
+    // ancestor chain — exactly the "header is intercepting" condition we
+    // want to flag. Mirrors CLAIM 2's `closest('.tones__list-row')`
+    // idiom below.
+    const headerStack = await inspectHitStack(page, headerCenterX, headerCenterY);
+    const headerIsBlocking = await page.evaluate(
+      ({ x, y }) => {
+        const top = document.elementFromPoint(x, y);
+        return top !== null && top.closest('.ac-list-bank-header') !== null;
+      },
+      { x: headerCenterX, y: headerCenterY },
+    );
     expect(
       headerIsBlocking,
-      `bank header must NOT be the top hit-test element at its own center (pointer-events: none) — actually got ${JSON.stringify(headerHit.stack)}`,
+      `bank header must NOT be the top hit-test element at its own center (pointer-events: none) — actually got ${JSON.stringify(headerStack.stack)}`,
     ).toBe(false);
 
     // ── CLAIM 2: the T11 row IS reachable to pointer events. ──────────
