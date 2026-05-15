@@ -1065,6 +1065,7 @@ Findings surfaced by independent audit passes that are real work but don't fit c
 
 **Phase 11 cross-references to natural-fit phases:**
 - `AUDIT-20260514-FU3-03` / `LIVE-S550-PLAY-001` (PlayPage sticky-header — [#423](https://github.com/audiocontrol-org/audiocontrol/issues/423)) → workplan §9R-C per-page acceptance criteria explicitly names this defect.
+- `LIVE-S550-TONES-001` (TonesPage tone-row click unreliable on live hardware — bank-header pointer-event interception + `isBankLoading` actionability gate — [#428](https://github.com/audiocontrol-org/audiocontrol/issues/428)) → workplan §9R-C TonesPage rebuild owns the fix; same routing precedent as LIVE-S550-PLAY-001 → 9R-C.
 
 ### Task 1 — Fix `ImportSamplesDialog` slot-occupancy mislabeling
 
@@ -1134,9 +1135,17 @@ The 9R-A.2 migration's grep audit only checked for `.fill(` / `.value =` / `disp
 **Notes:**
 - This task does NOT depend on Phase 11 §Task 1 / §Task 2 or on 9R-B/C/D. It can land in parallel; the cleanest landing surface is alongside 9R-A.4 because the Option A path benefits from the production-page context-swap wiring that 9R-A.4 also needs.
 
-### Task 4 — Build a live S-550 conformance suite
+### Task 4 — Live S-550 conformance suite (AUDITOR-OWNED — controller responsibilities limited to infra + remediation)
 
 **GitHub Issue:** [#427](https://github.com/audiocontrol-org/audiocontrol/issues/427)
+
+**Ownership (clarified 2026-05-15):** The live S-550 conformance suite is **auditor-authored and auditor-run**. The `test/e2e/` directory and its specs (`s550-play.design.spec.ts`, `s550-D-TONE-live-envelope-and-slider.spec.ts`, `s550-library.design.spec.ts`, `s550-patches.design.spec.ts`, etc.) are auditor deliverables per the [Audit Protocol](./audit-log.md) `### Roles` table. **The controller does NOT author live-hardware e2e specs**; the controller's responsibilities under this task are:
+
+1. **Maintain the production-page infrastructure the auditor's specs depend on.** Specifically the `BrokenContextWrapper` in `modules/editor-core/src/components/__broken__/BrokenContextWrapper.tsx`, mounted at the Roland editor root under `import.meta.env.DEV`. This is in scope for `/dwi` (`/dw-lifecycle:implement`) if the auditor surfaces findings that require infra changes.
+2. **Remediate audit findings the auditor publishes** from running the suite. Each finding flows through the protocol's normal acknowledged → fixed → verified loop. The remediation may live in `9R-C` (page-level interaction defects, natural-fit) or in a Phase 11 task (cross-cutting / out-of-flight-phase concerns).
+3. **Add Tier 2 / Tier 3 UI tests** that prove the remediation is durable under the controller's tier discipline. The auditor's live spec stays as the integration-level verification; the controller's UI tests stay as the unit-of-interaction-level verification.
+
+This task remains in Phase 11 as an **index** of the auditor-owned suite + the controller's responsibilities against it, not as a list of controller deliverables.
 
 **Surfaced:** operator request 2026-05-15 following repeated audit passes and methodology review.
 
@@ -1165,32 +1174,56 @@ This task adds that layer without replacing 9R-C or 9R-D. It is a structured, re
   - Drives the **visible** affordance on `/roland/s550/editor/...` and verifies by fresh device readback, not UI echo alone.
   - Covers the subset of capability rows most likely to drift despite Tier 1/2/3 coverage: live-edit controls, editor-page write paths, and page-level interactive affordances whose failure would block 9R-D.
 
-**Proven complete when:**
-- [x] A new planning artifact exists at `docs/1.0/001-IN-PROGRESS/s550-support/live-s550-conformance-matrix.md` mapping:
-  - approved mockup states → live page/spec coverage
-  - D-IDs → live S-550 conformance specs
-  - any intentionally unautomated gaps → explicit operator-only checks
-- [ ] At least one live-device **design** spec exists for each high-value redesign page: `patches`, `tones`, `play`, `library`. Current landed set: `play`, `patches`, `library`.
-- [ ] At least one live-device **capability** spec exists for each of the same pages, named with D-ID prefixes and verified by fresh device readback or an equivalent real-hardware truth source.
-- [x] The PlayPage spec explicitly checks the known `#423` failure mode: the live Part A row and drawer affordances are reachable by pointer and not occluded by page chrome.
-- [ ] The TonesPage spec explicitly checks at least one envelope/slider capability on the live S-550 using the visible affordance, aligning with the 9R-A.4 / 9R-B / 9R-C closure path.
-- [x] The suite has a documented runner entry point (Make target or npm script) distinct from the simulated tiers, and the doc states its prerequisites: live S-550 connected, midi-server running, hardware in a known baseline state.
-- [ ] The resulting failures, if any, are written back into:
-  - `ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md` (`Sign-off` / operator evidence where appropriate)
-  - `DEVELOPMENT-NOTES.md`
-  - GitHub issues for any newly-surfaced gaps
+**Auditor-owned acceptance** (these criteria measure auditor deliverables; the controller does NOT pick them up via `/dwi`):
+
+- [x] Planning artifact at `docs/1.0/001-IN-PROGRESS/s550-support/live-s550-conformance-matrix.md` mapping mockup states + D-IDs + operator-only gaps.
+- [ ] Live-device **design** spec exists for each high-value redesign page (`patches`, `tones`, `play`, `library`). Current landed set: `play`, `patches`, `library`.
+- [ ] Live-device **capability** spec exists for each of the same pages, named with D-ID prefixes and verified by fresh device readback.
+- [x] PlayPage spec explicitly checks `#423` Part A + drawer reachability — produced `LIVE-S550-PLAY-001`.
+- [ ] TonesPage spec exercises at least one envelope/slider capability on live hardware — partially landed via `s550-D-TONE-live-envelope-and-slider.spec.ts`; currently blocked by `LIVE-S550-TONES-001` at the tone-row selection step.
+- [x] Documented runner entry point: `make test-e2e-roland-device-conformance`.
+
+**Controller-owned support criteria** (these are in scope for `/dwi`):
+
+- [x] `BrokenContextWrapper` infrastructure in editor-core, mounted in Roland App.tsx under `import.meta.env.DEV` (landed via 9R-A.4 Task 1 dispatch as commit `12ef2c18`).
+- [ ] Remediations for audit findings the suite surfaces flow through the normal acknowledged → fixed → verified loop:
+  - `LIVE-S550-PLAY-001` → #423 → workplan §9R-C (page rebuild).
+  - `LIVE-S550-TONES-001` → #428 → workplan §9R-C (page rebuild).
+  - `LIVE-S550-LIB-001` → #429 → workplan §Phase-11-Task-5 (dialog accessibility).
+  - Future findings: routed per the protocol's `natural-fit` vs `Phase 11 default` rules.
 
 **Notes:**
 - This task complements 9R-C/9R-D; it does **not** replace the operator's final holistic sign-off.
-- This task should reuse the existing hardware E2E helpers (`connection-helper`, `device-readback-helpers`, route builders) instead of creating a parallel browser/hardware stack.
-- This task is intentionally S-550-first. The goal is to catch live rack-device divergence on the route that motivated the feature and the reopen, not to widen scope into a new cross-device matrix yet.
+- The auditor reuses existing hardware E2E helpers (`connection-helper`, `device-readback-helpers`, route builders).
+- This task is intentionally S-550-first.
+
+### Task 5 — Fix `SaveSetDialog` (and library-dialog family) missing `Dialog.Description`
+
+**GitHub Issue:** [#429](https://github.com/audiocontrol-org/audiocontrol/issues/429)
+**Finding-ID:** `LIVE-S550-LIB-001`
+
+**Surfaced:** independent live-hardware audit 2026-05-15.
+
+`SaveSetDialog` opens `Radix Dialog.Content` without a `Dialog.Description` child or `aria-describedby` attribute. Radix v1+ logs a runtime accessibility warning on every dialog open. The same pattern likely exists across the sibling library dialogs (`LoadSetDialog`, `ImportLibraryToneDialog`, `ImportLibraryPatchDialog`, `ImportSamplesDialog`, `ExportToneDialog`, `ExportPatchDialog`, etc.) — fixing one without auditing the family leaves the same defect on sibling surfaces.
+
+**Proven complete when:**
+- [ ] `SaveSetDialog.tsx` opens with a `Dialog.Description` child (or explicit `aria-describedby` wiring); the Radix warning no longer fires.
+- [ ] Sibling library dialogs (the family enumerated above) are audited for the same pattern; each missing `Dialog.Description` is added with a meaningful operator-facing description (or wrapped in `@radix-ui/react-visually-hidden` if a visible description is undesirable for the dialog).
+- [ ] A Tier 3 in-context spec at `modules/roland-sxx0-editor/test/ui/in-context/library-dialogs.in-context.spec.ts` (or per-dialog files if scope grows) opens each affected dialog from the production LibraryPage and asserts the dialog content's accessible description is non-empty. The spec declares `@credibleAgainst` against at least one broken-context variant. Verified by `pnpm run check-credibility`.
+- [ ] Operator runs the auditor's `s550-library.design.spec.ts` against live hardware and confirms the dialog accessibility warning is gone — flips `LIVE-S550-LIB-001` Status to `verified-<date>`.
+- [ ] #429 closed with the fix commit hash + the auditor's verification evidence.
+
+**Notes:**
+- This task is operator-disposition `new issue` per `LIVE-S550-LIB-001`'s `Disposition (proposed)`; the controller filed #429 and routes the remediation here per the audit protocol's `Phase 11 default landing` rule.
+- The family audit is intentionally bundled into Task 5 (not split into per-dialog tasks) because the defect pattern is uniform — solving one dialog teaches the fix for all of them, and the audit overhead is amortized.
 
 ### Acceptance Criteria (Phase 11)
 
 - [ ] **Task 1 closed:** ImportSamplesDialog mislabel bug fixed + Tier 3 spec landed + operator sign-off + #425 closed.
 - [ ] **Task 2 closed:** primitive sweep complete + operator sign-off + #424 closed.
 - [ ] **Task 3 closed:** root `test/ui/*.spec.ts` test-discipline gap closed + ESLint lint-scope widened (or root specs removed) + #426 closed.
-- [ ] **Task 4 closed:** live S-550 conformance suite exists, documented runner + matrix landed, and at least the first page/capability battery is operational against real hardware.
+- [ ] **Task 4 closed:** live S-550 conformance suite (auditor-owned) covers each high-value redesign page; controller-owned support infrastructure landed; all findings the suite surfaces have flowed through the protocol's acknowledged → fixed → verified loop.
+- [ ] **Task 5 closed:** SaveSetDialog + library-dialog family missing-description warnings fixed + Tier 3 spec + #429 closed.
 - [ ] No new "audit found a bug we forgot to track" surprises before Phase 9 atomic closure (operator runs an independent audit at the end of 9R-D and confirms zero new findings).
 
 ### Why these are NOT in 9R-A or 9R-B/C/D directly
@@ -1198,7 +1231,8 @@ This task adds that layer without replacing 9R-C or 9R-D. It is a structured, re
 - **Task 1** is a code-quality bug in a dialog that has nothing to do with the test-reform plumbing or the Phase 9 redesigned pages. Folding it into 9R-* would dilute the test-reform's atomic closure and create confusion about what 9R-A's gate actually catches. It deserves its own visibility.
 - **Task 2** is a tracking convenience: 9R-B already covers this work; Phase 11 surfaces it as a top-level workplan item so a session starting from "what's the smallest visible move toward Phase 9 closure?" sees it without spelunking through 9R-B's prose.
 - **Task 3** is the post-9R-A.2 cleanup the migration's grep audit missed. It's structurally adjacent to 9R-A.2/3 (same test-discipline reform) but lands as its own task because the disposition is operator-choice and the fix touches files outside the 9R-A.2 migration's stated scope.
-- **Task 4** exists because 9R-C/9R-D describe operator-driven closure, not a reusable live-hardware Playwright conformance layer. This is a new verification capability for the feature branch, not just a restatement of existing Phase 9 gates.
+- **Task 4** exists because 9R-C/9R-D describe operator-driven closure, not a reusable live-hardware Playwright conformance layer. This is a new verification capability for the feature branch, not just a restatement of existing Phase 9 gates. **Re-scoped 2026-05-15:** auditor-owned per the protocol's Test-tier ownership table; controller responsibilities under this task are limited to infra (`BrokenContextWrapper`) + remediation of findings the auditor surfaces.
+- **Task 5** is a cross-cutting accessibility defect surfaced by Track A of the auditor's live conformance suite (Task 4). It doesn't fit 9R-* because dialog `Dialog.Description` wiring is not page-chrome rebuild work and is not test-tier reform — it's a sibling-family accessibility audit.
 
 Adding Phase 11 also formalizes a pattern: "the workplan tracks every committed-to fix, including bugs found mid-flight." It is NOT a parking lot for capture-surface ideas — see "Post-Mortem Follow-Ons" below for that. An item enters Phase 11 only when (a) operator has accepted it, (b) it has a GitHub issue, and (c) it has acceptance criteria proven by observable artifacts.
 

@@ -10,11 +10,24 @@ Formerly `2026-05-08-code-audit-findings.md` — renamed 2026-05-15 to reflect i
 
 ### Roles
 
-- **Auditor** (testing/auditor team) — Runs tests / inspections against the branch, reports findings as appendices to this doc, proposes the disposition for each finding (`new issue` / `maps to #N` / `informational`) but does **NOT** file GitHub issues directly.
-- **Controller** (implementation team) — Reads each new appendix, independently verifies every finding against current HEAD, **files any GitHub issues the auditor proposed**, scopes operator-accepted ongoing work into the workplan, and appends a `## Controller ACK — YYYY-MM-DD` section per appendix that flips each finding's `Status:` line.
+- **Auditor** (testing/auditor team) — Authors **integration tests** (`test/wiring/` Tier 1, `test/e2e/` live-hardware) and **runs them** against the branch, reports findings as appendices to this doc, proposes the disposition for each finding (`new issue` / `maps to #N` / `informational`) but does **NOT** file GitHub issues directly.
+- **Controller** (implementation team) — **Remediates** the audit findings (fixes the underlying code defects) and **reforms the UI tests** (`test/ui/contract/` Tier 2 + `test/ui/in-context/` Tier 3 specs). Reads each new audit appendix, independently verifies every finding against current HEAD, **files any GitHub issues the auditor proposed**, scopes operator-accepted ongoing work into the workplan, and appends a `## Controller ACK — YYYY-MM-DD` section per appendix that flips each finding's `Status:` line.
 - **Operator** — Accepts or rejects scope additions when the controller asks. Drives any hardware sign-off required for closure.
 
-The auditor's appendix is the **stimulus**; the controller's ACK section + flipped `Status:` lines are the **response**. The round-trip lives in this file.
+The auditor's appendix is the **stimulus**; the controller's ACK section + flipped `Status:` lines + fix commits are the **response**. The round-trip lives in this file.
+
+#### Test-tier ownership (codified 2026-05-15)
+
+| Tier | Location | Authored by |
+|---|---|---|
+| 1 — Wiring | `modules/<editor>/test/wiring/` | **Auditor** |
+| 2 — UI Contract | `modules/<editor>/test/ui/contract/` | **Controller** |
+| 3 — UI In-Context | `modules/<editor>/test/ui/in-context/` | **Controller** |
+| 4 — Operator hardware sign-off | Inventory `Sign-off` column | **Operator** |
+| Live-hardware e2e | `modules/<editor>/test/e2e/` | **Auditor** |
+| Rendering smoke | `modules/<editor>/test/rendering/` | **Either** (paint-only; not a closure gate) |
+
+The controller does NOT author integration tests (Tier 1 wiring or live-hardware e2e) — those are the auditor's deliverables. When the auditor publishes a new live-hardware finding from a spec they authored, the controller's response is to (a) remediate the underlying defect and (b) add a Tier 2 / Tier 3 UI test that proves the fix is durable under the controller's tier discipline. The auditor's spec stays as the integration-level verification; the controller's UI tests stay as the unit-of-interaction-level verification.
 
 ### Per-finding required fields
 
@@ -759,7 +772,7 @@ Scope reviewed: first real-hardware execution of the bounded Tones capability ba
 #### LIVE-S550-TONES-001
 
 Finding-ID: LIVE-S550-TONES-001
-Status: open
+Status: acknowledged-#428; workplan §9R-C (controller ACK 2026-05-15; auditor's `Disposition (proposed): new issue` accepted. Filed as #428. Routed to 9R-C natural-fit because the defect is page-level interaction on a redesigned page — same shape as LIVE-S550-PLAY-001 → #423 → 9R-C precedent. The fix is part of TonesPage's 9R-C rebuild; no separate Phase 11 task. Phase 11 cross-reference list updated. See ACK section below.)
 Severity: blocking
 Surface: `/roland/s550/editor/tones`
 Disposition (proposed): new issue
@@ -837,7 +850,7 @@ Scope reviewed: first real-hardware execution of the bounded Library design slic
 #### LIVE-S550-LIB-001
 
 Finding-ID: LIVE-S550-LIB-001
-Status: open
+Status: acknowledged-#429; workplan §Phase-11-Task-5 (controller ACK 2026-05-15; auditor's `Disposition (proposed): new issue` accepted. Filed as #429. Phase 11 §Task 5 added with scope: SaveSetDialog + sibling library-dialog family audit for the same Radix-Dialog-missing-description pattern. See ACK section below.)
 Severity: low
 Surface: `/roland/s550/editor/library`
 Disposition (proposed): new issue
@@ -882,3 +895,20 @@ Fix guidance:
 Closure gate:
 - `s550-library.design.spec.ts` passes on live hardware with no dialog accessibility warning in the console.
 - The Save dialog still opens through the real OPFS-backed route after the accessibility fix.
+
+### Controller ACK — 2026-05-15 (afternoon)
+
+Two new live-hardware findings (`LIVE-S550-TONES-001`, `LIVE-S550-LIB-001`) acknowledged and routed.
+
+**LIVE-S550-TONES-001** — `acknowledged-#428; workplan §9R-C`. Independently verified against current HEAD: `modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:135-138` confirms `tabIndex={isBankLoading ? -1 : 0}` + `aria-disabled={isBankLoading}` + `onClick={isBankLoading ? undefined : handleClick}`, and the `.ac-list-bank-header` overlap with the row pointer target is the secondary defect. Filed as [#428](https://github.com/audiocontrol-org/audiocontrol/issues/428). Routed to **workplan §9R-C natural-fit** because TonesPage's per-page rebuild already owns operator-driven interaction discipline — same routing as LIVE-S550-PLAY-001 → #423 → 9R-C. No new Phase 11 task is created per the protocol invariant "live-hardware findings that map to existing in-flight work do NOT generate a new Phase 11 task." Phase 11 cross-reference list updated to name this finding.
+
+**LIVE-S550-LIB-001** — `acknowledged-#429; workplan §Phase-11-Task-5`. Independently verified: `modules/roland-sxx0-editor/src/components/library/SaveSetDialog.tsx:64` opens `Dialog.Content` without a `Dialog.Description` child or `aria-describedby` attribute. Filed as [#429](https://github.com/audiocontrol-org/audiocontrol/issues/429). Routed to **new workplan Phase 11 §Task 5** because the dialog accessibility defect doesn't fit any in-flight 9R-* sub-phase cleanly. Task 5's scope explicitly includes the sibling library-dialog family audit (LoadSetDialog, ImportLibraryToneDialog, ImportLibraryPatchDialog, ImportSamplesDialog, ExportToneDialog, ExportPatchDialog, etc.) since the Radix-Dialog-missing-description pattern is uniform across the family — fixing one without the others leaves the same defect on sibling surfaces.
+
+**Protocol clarification landing in the same commit (per operator instruction 2026-05-15):**
+
+The protocol's `### Roles` section was extended with a `Test-tier ownership` table making the role boundary explicit:
+- **Auditor** authors integration tests (Tier 1 wiring + live-hardware e2e).
+- **Controller** authors UI tests (Tier 2 contract + Tier 3 in-context) AND remediates audit findings.
+- Controller does NOT author integration tests. When the auditor publishes a live-hardware finding from an e2e spec they authored, the controller's response is to (a) fix the underlying defect and (b) add Tier 2 / Tier 3 UI tests that prove the fix is durable.
+
+This codifies what was already operating de facto (the auditor authored `s550-play.design.spec.ts`, `s550-D-TONE-live-envelope-and-slider.spec.ts`, `s550-library.design.spec.ts` etc.; the controller authored the Tier 3 specs `import-samples-dialog.in-context.spec.ts` + `tones.envelope.in-context.spec.ts`). **Phase 11 §Task 4 in the workplan has been re-framed accordingly** — the live-conformance suite is auditor-owned; the controller's involvement is limited to (1) maintaining the `BrokenContextWrapper` production-page wiring the auditor's specs depend on and (2) remediating findings the auditor surfaces from running the suite.
