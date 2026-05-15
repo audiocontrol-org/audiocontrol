@@ -37,10 +37,11 @@ module.exports = {
       // §4 (Validity Claim A): Tier 2/3 specs must originate user input
       // from accessible role+name queries and real pointer / keyboard
       // events. The rule is scoped to the canonical Tier 2/3 directories
-      // ONLY; Tier 1 wiring specs (under test/wiring/) and the legacy
-      // capability specs (under test/ui/capabilities/ — migrating to
-      // test/wiring/ in 9R-A.2) are explicitly NOT linted because their
-      // wiring-test shortcuts are part of Tier 1's contract.
+      // ONLY; Tier 1 wiring specs (under test/wiring/) are explicitly
+      // NOT linted because their wiring-test shortcuts are part of
+      // Tier 1's contract. (Prior to 9R-A.2 the same exclusion covered a
+      // legacy test/ui/capabilities/ directory, which has since been
+      // migrated wholesale into test/wiring/ and deleted.)
       files: [
         '**/test/ui/contract/**/*.{ts,tsx}',
         '**/test/ui/in-context/**/*.{ts,tsx}',

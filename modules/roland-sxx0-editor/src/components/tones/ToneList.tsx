@@ -6,7 +6,7 @@
  *   - data-testid="tone-item-N" / data-testid="tone-name" still set
  *     on each row (legacy test/ui/tones.spec.ts depends on these).
  *   - data-capability="C-TONE-01" still set on the list root
- *     (test/ui/capabilities/tones.spec.ts depends on this).
+ *     (test/wiring/tones.spec.ts depends on this).
  *   - data-testid="export-tone-button" still set on the per-row
  *     export action (legacy spec depends on this).
  *   - Each row's accessible name leads with the slot label

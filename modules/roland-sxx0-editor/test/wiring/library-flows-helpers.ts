@@ -173,7 +173,7 @@ export async function seedOPFSSetManifest(
  */
 const FIXTURES_ROOT = path.resolve(
   path.dirname(url.fileURLToPath(import.meta.url)),
-  '../../e2e/fixtures',
+  '../e2e/fixtures',
 );
 
 function readFixtureText(relativePath: string): string {

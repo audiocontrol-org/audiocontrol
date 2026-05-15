@@ -7,7 +7,7 @@
  *   - data-testid="patch-item-N" / data-testid="patch-name" still set
  *     on each row (legacy test/ui/patches.spec.ts depends on these).
  *   - data-capability="C-PATCH-01" still set on the list root
- *     (test/ui/capabilities/patches.spec.ts depends on this).
+ *     (test/wiring/patches.spec.ts depends on this).
  *   - Each row's accessible name still leads with the slot label
  *     (P11..P28 / II11..II48) so getByRole('button', { name: /^P11/ })
  *     queries continue to resolve.

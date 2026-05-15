@@ -14,9 +14,11 @@
  *   test/ui/contract/**
  *   test/ui/in-context/**
  *
- * Tier 1 specs under `test/wiring/` and the legacy `test/ui/capabilities/`
- * directory are NOT linted by this plugin — wiring-test shortcuts are
- * part of Tier 1's contract.
+ * Tier 1 specs under `test/wiring/` are NOT linted by this plugin —
+ * wiring-test shortcuts are part of Tier 1's contract. (Prior to
+ * 9R-A.2 the same exclusion covered a legacy `test/ui/capabilities/`
+ * directory, which has since been migrated wholesale into
+ * `test/wiring/` and deleted.)
  */
 import type { TSESLint } from '@typescript-eslint/utils';
 import { noForbiddenUiPatterns } from './rules/no-forbidden-ui-patterns';

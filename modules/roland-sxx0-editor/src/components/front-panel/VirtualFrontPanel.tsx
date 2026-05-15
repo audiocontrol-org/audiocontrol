@@ -20,7 +20,7 @@
  * rackmount unit shares its design language with the S-550 anyway.
  *
  * Capability contract (load-bearing for
- * `test/ui/capabilities/front-panel-emit.spec.ts`):
+ * `test/wiring/front-panel-emit.spec.ts`):
  *   - Arrows expose accessible names `Arrow up` / `Arrow down` /
  *     `Arrow left` / `Arrow right` (D-XX-02).
  *   - Value buttons expose `Decrement` / `Increment` (D-XX-03).

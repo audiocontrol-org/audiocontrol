@@ -13,7 +13,10 @@ before the capture run).
 
 **Capture date:** 2026-05-12.
 
-**Capture tool:** `modules/roland-sxx0-editor/test/ui/phase-9-task-6-screenshots.spec.ts`
+**Capture tool:** `modules/roland-sxx0-editor/test/rendering/phase-9-task-6-screenshots.spec.ts`
+(moved from `test/ui/` to `test/rendering/` in 9R-A.2 to separate
+rendering smokes from the closure-gating Tier 2/3 UI suite -- see
+`modules/roland-sxx0-editor/test/rendering/README.md`)
 (Playwright + simulated MIDI harness; replays NDJSON fixtures captured
 against real S-550 hardware on Volt 4 — see
 `test/ui/tones.spec.ts:11-15` for the per-fixture provenance).
@@ -183,8 +186,14 @@ for operator triage. Not silently fixed.
 ## How to re-run
 
 ```bash
+make test-rendering-roland
+```
+
+Or directly:
+
+```bash
 cd modules/roland-sxx0-editor
-./scripts/run-test-harness-e2e.sh phase-9-task-6-screenshots.spec.ts
+./scripts/run-test-harness-e2e.sh playwright.rendering.config.ts phase-9-task-6-screenshots.spec.ts
 ```
 
 Output overwrites this directory's PNGs in place. The spec is

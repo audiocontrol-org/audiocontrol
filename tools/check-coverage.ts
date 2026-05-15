@@ -134,22 +134,27 @@ function main(): void {
     ...LINT_PATHS,
   ]);
 
-  // 2. Tests via the canonical make wrapper (test-ui-roland covers the
+  // 2. Tier 1 wiring suite — runs the device-write-seam specs migrated
+  //    from test/ui/capabilities/ to test/wiring/ in 9R-A.2. Placed
+  //    before the slower UI suite so wiring regressions fail fast.
+  runStep('test-wiring-roland', 'make', ['test-wiring-roland']);
+
+  // 3. Tests via the canonical make wrapper (test-ui-roland covers the
   //    harness-driven contract + in-context paths).
   runStep('test-ui-roland', 'make', ['test-ui-roland']);
 
-  // 3. Credibility check (T6) — verifies each spec's claims against
+  // 4. Credibility check (T6) — verifies each spec's claims against
   //    its credibility-url and operator-signoff state.
   runStep('check-credibility', 'pnpm', ['run', 'check-credibility']);
 
-  // 4. Manifest generation (T7) — materializes the per-D-ID coverage
+  // 5. Manifest generation (T7) — materializes the per-D-ID coverage
   //    state into coverage-manifest/{json,md}.
   runStep('generate-coverage-manifest', 'pnpm', [
     'run',
     'generate-coverage-manifest',
   ]);
 
-  // 5. Gate: any implemented row with coverage: none fails the build.
+  // 6. Gate: any implemented row with coverage: none fails the build.
   const manifest = readManifest();
   applyGate(manifest);
 }

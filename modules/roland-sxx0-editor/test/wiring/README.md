@@ -42,10 +42,14 @@ sign-off)** are present. Tier 1 alone yields `coverage: none`.
 
 ## Migration note
 
-The capability spec files currently under `test/ui/capabilities/` (~21 files,
-~175 D-ID test cases) migrate here as Task 9R-A.2. Their D-ID test names are
-preserved. This README exists in advance of the migration so the destination
-is explicit.
+The capability spec files formerly under `test/ui/capabilities/` (21 files,
+~175 D-ID test cases) were migrated here wholesale as Task 9R-A.2. The
+`git mv` preserved filenames and spec bodies; the legacy `capabilities/`
+directory has been deleted. Spec bodies remain untouched -- their
+`.fill()` / `input.value = X` / `dispatchEvent('change')` patterns are
+appropriate at Tier 1 (they prove the write seam, not the user-facing
+interaction model) and were never the cause of the closure regression
+that drove the reform.
 
 ## See also
 

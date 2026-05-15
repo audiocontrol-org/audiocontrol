@@ -32,7 +32,7 @@
  *     ImportSampleDialog, ImportSamplesDialog, ImportToneDialog,
  *     MoveItemDialog, RenameDirectoryDialog) are mount-visible-asserted
  *     by the existing capability specs in
- *     `test/ui/capabilities/library-flows-dialogs.spec.ts` and siblings
+ *     `test/wiring/library-flows-dialogs.spec.ts` and siblings
  *     — their visual chrome is the SAME shared `<Dialog.Content>` +
  *     `.ac-input` / `.ac-select` / `.ac-checkbox` primitives polished
  *     in Task 5 commit `8e179806`. Screenshotting each from scratch
@@ -64,7 +64,7 @@ import { test, expect, type Page } from '@playwright/test';
 import {
   cleanupOPFS,
   connectLibraryOPFS,
-} from './capabilities/library-flows-helpers';
+} from '../wiring/library-flows-helpers';
 
 /**
  * Seed a minimal valid set.yaml so SetsSection lists a clickable row.
@@ -344,7 +344,7 @@ test.describe('Phase 9 Task 6 — visual screenshots', () => {
     // verification of the export dialog specifically is documented as
     // a fixture gap in the screenshot README and proven separately
     // by the import-tone dialog mounted in
-    // `test/ui/capabilities/library-flows-dialogs.spec.ts`
+    // `test/wiring/library-flows-dialogs.spec.ts`
     // (D-LIB-12: ImportLibraryToneDialog) which shares the same
     // primitives.
     test.skip(`${device}: ExportToneDialog (SKIPPED — see README)`, async () => {

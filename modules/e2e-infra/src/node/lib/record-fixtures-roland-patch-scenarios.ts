@@ -8,7 +8,7 @@
  * loadPatchRange(0, 8)) — see `runPatchPageMount` in
  * `record-fixtures-roland-page-scenarios.ts` — then calls exactly one
  * setter to capture its outbound SysEx bytes. The corresponding UI
- * capability spec (`test/ui/capabilities/patch-writes.spec.ts`) drives
+ * capability spec (`test/wiring/patch-writes.spec.ts`) drives
  * the matching UI affordance and asserts the bytes match.
  *
  * Sibling files — see `record-fixtures-roland-core-scenarios.ts` header.

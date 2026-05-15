@@ -14,7 +14,7 @@
  * data-testid and data-capability contracts are preserved verbatim
  * from the pre-polish revision so legacy specs
  * (test/ui/tones.spec.ts) and capability specs
- * (test/ui/capabilities/tones.spec.ts) keep working unchanged:
+ * (test/wiring/tones.spec.ts) keep working unchanged:
  *
  *   - data-testid="tone-detail"
  *   - data-capability="C-TONE-04"

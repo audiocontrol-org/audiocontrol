@@ -27,7 +27,7 @@
  *   - Avoid 0/127 edges where the device's stock value might coincide.
  *
  * The corresponding UI capability spec
- * (`test/ui/capabilities/tone-writes.spec.ts`) drives the matching UI
+ * (`test/wiring/tone-writes.spec.ts`) drives the matching UI
  * affordance and asserts the bytes match.
  *
  * Sibling files — see `record-fixtures-roland-core-scenarios.ts` header.

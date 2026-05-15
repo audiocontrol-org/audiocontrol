@@ -8,7 +8,7 @@
  * `runMultiModeMount` in `record-fixtures-roland-page-scenarios.ts` —
  * then calls exactly one multi-mode setter to capture its outbound
  * SysEx bytes. The corresponding UI capability spec
- * (`test/ui/capabilities/play-writes.spec.ts`) drives the matching UI
+ * (`test/wiring/play-writes.spec.ts`) drives the matching UI
  * control and asserts the bytes match.
  *
  * Value-selection criteria: each value is chosen to be non-default

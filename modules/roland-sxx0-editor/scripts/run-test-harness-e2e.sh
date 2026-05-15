@@ -10,7 +10,17 @@
 # modules/sampler-devices/test/fixtures/.
 #
 # Usage:
-#   ./scripts/run-test-harness-e2e.sh [playwright args...]
+#   ./scripts/run-test-harness-e2e.sh [playwright-config-file] [playwright args...]
+#
+# The first positional argument, if it is a Playwright config file
+# (matches `playwright.*.config.ts`), selects which suite to run. If
+# omitted, the default `playwright.test-harness.config.ts` is used so
+# legacy callers (e.g. `make test-ui-roland ARGS=...`) keep working
+# unchanged.
+#
+# Tier 1 wiring suite:  ./scripts/run-test-harness-e2e.sh playwright.wiring.config.ts
+# Rendering smokes:     ./scripts/run-test-harness-e2e.sh playwright.rendering.config.ts
+# Default (test/ui):    ./scripts/run-test-harness-e2e.sh
 #
 
 set -euo pipefail
@@ -20,7 +30,25 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_DIR"
 
+# Pick the Playwright config: explicit first arg if it matches the
+# config-file naming pattern, otherwise fall back to the legacy default.
+PLAYWRIGHT_CONFIG="playwright.test-harness.config.ts"
+if [ "$#" -gt 0 ]; then
+  case "$1" in
+    playwright.*.config.ts)
+      PLAYWRIGHT_CONFIG="$1"
+      shift
+      ;;
+  esac
+fi
+
+if [ ! -f "$PROJECT_DIR/$PLAYWRIGHT_CONFIG" ]; then
+  echo "ERROR: Playwright config not found at $PROJECT_DIR/$PLAYWRIGHT_CONFIG"
+  exit 1
+fi
+
 echo "=== Roland S-series UI Test Harness Runner ==="
+echo "   Config: $PLAYWRIGHT_CONFIG"
 echo ""
 
 # Step 1: Start dev server on dynamic port
@@ -88,4 +116,4 @@ echo ""
 # Step 2: Run Playwright tests (no watchdog needed for fast UI tests)
 echo "Step 2: Running UI test harness specs..."
 export E2E_PORT="$PORT"
-npx playwright test -c playwright.test-harness.config.ts "$@"
+npx playwright test -c "$PLAYWRIGHT_CONFIG" "$@"

@@ -10,7 +10,7 @@
  * 08-front-panel-s550.html`).
  *
  * Out of scope: functional assertions. The capability specs at
- * `test/ui/capabilities/front-panel-emit.spec.ts` (D-XX-02 / D-XX-03 /
+ * `test/wiring/front-panel-emit.spec.ts` (D-XX-02 / D-XX-03 /
  * D-XX-04) are the wiring gate. This spec only captures pixels.
  *
  * Output (under `docs/1.0/001-IN-PROGRESS/s550-support/explorations/`):

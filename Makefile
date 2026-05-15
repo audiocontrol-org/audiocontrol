@@ -77,7 +77,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland
 
 build: $(ALL_STAMPS)
 
@@ -229,9 +229,22 @@ test-ui-s3k: $(AKAI_S3K_EDITOR) ensure-playwright
 test-ui-roland: $(ROLAND_SXX0_EDITOR) ensure-playwright
 	$(DEVENV_RUN) "cd $(MODULES_DIR)/roland-sxx0-editor && ./scripts/run-test-harness-e2e.sh $(ARGS)"
 
-# Coverage gate: lint -> test-ui-roland -> credibility -> manifest -> gate.
+# Roland Tier 1 wiring suite (no device required). Verifies the
+# device-write seam via programmatic value injection; allowed patterns:
+# .fill() / input.value = X / dispatchEvent('change'). See
+# modules/roland-sxx0-editor/test/wiring/README.md for the tier contract.
+test-wiring-roland: $(ROLAND_SXX0_EDITOR) ensure-playwright
+	$(DEVENV_RUN) "cd $(MODULES_DIR)/roland-sxx0-editor && ./scripts/run-test-harness-e2e.sh playwright.wiring.config.ts $(ARGS)"
+
+# Roland rendering smoke captures (no device required). Produces PNGs
+# for design review; NOT a closure gate. See
+# modules/roland-sxx0-editor/test/rendering/README.md for the contract.
+test-rendering-roland: $(ROLAND_SXX0_EDITOR) ensure-playwright
+	$(DEVENV_RUN) "cd $(MODULES_DIR)/roland-sxx0-editor && ./scripts/run-test-harness-e2e.sh playwright.rendering.config.ts $(ARGS)"
+
+# Coverage gate: lint -> wiring -> test-ui-roland -> credibility -> manifest -> gate.
 # Exits non-zero if any 'implemented' D-row has 'coverage: none' in the
-# generated manifest. Workplan 9R-A.1 T8; reform spec §6.
+# generated manifest. Workplan 9R-A.1 T8 + 9R-A.2; reform spec §6.
 check-coverage-roland: $(ROLAND_SXX0_EDITOR) ensure-playwright
 	$(DEVENV_RUN) "pnpm run check-coverage"
 

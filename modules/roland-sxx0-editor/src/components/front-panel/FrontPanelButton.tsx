@@ -3,8 +3,8 @@
  *
  * Base button primitive used by the virtual front panel. Holds the
  * accessible-name contract (load-bearing for the D-XX-02 / D-XX-03 /
- * D-XX-04 capability specs in `test/ui/capabilities/front-panel-emit.
- * spec.ts`) and emits a `data-pressed="true"` attribute when the
+ * D-XX-04 capability specs in `test/wiring/front-panel-emit.spec.ts`)
+ * and emits a `data-pressed="true"` attribute when the
  * controlled `isActive` flag is set so external CSS (e.g.,
  * `front-panel.css`'s chunky-button variant) can paint a pressed state
  * for keyboard-driven presses where the mouse `:active` pseudo never

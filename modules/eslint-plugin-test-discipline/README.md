@@ -45,10 +45,10 @@ In ESLint config: `plugins: ['@audiocontrol/test-discipline']` (the
 
 - `test/wiring/**` — Tier 1. Wiring-test shortcuts (`.fill()`,
   `value =`, `dispatchEvent`) are part of Tier 1's contract; the rule
-  spec explicitly permits them there.
-- `test/ui/capabilities/**` — legacy capability specs that migrate to
-  `test/wiring/` in 9R-A.2. Linting them now would block CI on specs
-  whose home directory will change.
+  spec explicitly permits them there. (Prior to 9R-A.2 the same
+  exclusion covered a legacy `test/ui/capabilities/**` directory,
+  which has since been migrated wholesale into `test/wiring/` and
+  deleted.)
 
 ## Development
 

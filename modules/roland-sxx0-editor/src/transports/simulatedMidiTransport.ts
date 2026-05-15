@@ -39,7 +39,7 @@ import {
  * `SimulatedAdapterIntrospection` — the public introspection contract
  * exposed by `@audiocontrol/sampler-devices/recording`. The matching
  * declaration in the spec helper
- * (`test/ui/capabilities/tone-writes-helpers.ts`) imports the same
+ * (`test/wiring/tone-writes-helpers.ts`) imports the same
  * interface and re-declares the SAME shape; TypeScript merges the two
  * `interface Window` blocks because they're structurally identical.
  * Adding an introspection method to `SimulatedAdapter` means adding it
