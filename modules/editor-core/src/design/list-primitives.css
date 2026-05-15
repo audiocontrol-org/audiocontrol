@@ -48,6 +48,19 @@
 /* ============================================================
    BANK HEADER — sticky header that sits ABOVE its rows; scrolls
    within the list. Reads as an uppercase eyebrow.
+
+   `pointer-events: none` lets clicks pass through the header to
+   the row underneath when the header overlaps that row at the
+   sticky scroll position. Without this, Playwright (and real
+   users) targeting the first row of a bank can have their click
+   intercepted by the header — the bug surface for
+   `LIVE-S550-TONES-001` (#428): on live S-550 hardware the bank
+   load completes mid-click-retry and the header is parked
+   directly above tone slot T11 when the click finally fires.
+   The header has no interactive children (just two text spans
+   for the bank name + slot range) so `pointer-events: none` is
+   safe; visual rendering is unchanged. Applies to both ToneList
+   and PatchList (shared `.ac-list-bank-header` class).
    ============================================================ */
 .ac-list-bank-header {
   position: sticky;
@@ -66,6 +79,7 @@
   justify-content: space-between;
   align-items: baseline;
   z-index: 1;
+  pointer-events: none;
 }
 
 .ac-list-bank-header strong {
