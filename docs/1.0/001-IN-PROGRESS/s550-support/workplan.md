@@ -1058,9 +1058,19 @@ This phase exists because the 2026-05-08 code audit and the Phase 9 Task 3 revie
 
 Findings surfaced by independent audit passes that are real work but don't fit cleanly into Phase 9's test-reform sequencing. Recorded here so they don't rot per `.claude/rules/agent-discipline.md` ("filing a GitHub issue is not the same as doing the work — counting filed issues as a substitute for completion is the same failure mode as counting code comments as a substitute for tracking"). Each task has explicit operator acceptance and a closure path.
 
+**Phase 11 is the default landing surface for audit-acknowledged remediations** per the [Audit Protocol](./audit-log.md) step 3: when the controller flips a finding's `Status:` to `acknowledged-#N`, the same commit adds a Phase 11 task here citing the Finding-ID + GitHub issue, with "Proven complete when" criteria translating the finding's acceptance into testable observables. `/dwi` (`/dw-lifecycle:implement`) walks the workplan top-to-bottom and picks up Phase 11 tasks as first-class items.
+
+**Natural-fit phase override:** if a finding is obviously scope of an in-flight phase (e.g., the 9R-C page-rebuild already owns the PlayPage sticky-header fix), the remediation lives in that phase's task list and the audit-log `Status:` line points there (`workplan §9R-C`). Phase 11 gets a one-line cross-reference in the Tasks list below so this index stays complete.
+
+**Live-hardware findings** that map to existing in-flight work do NOT generate a new Phase 11 task — they are verification signals on already-tracked work. Example: `LIVE-S550-PLAY-001` maps to `#423` / workplan §9R-C; the auditor's spec re-runs after the fix lands and flips the finding to `verified-<date>` or files a new finding-ID rejecting the fix.
+
+**Phase 11 cross-references to natural-fit phases:**
+- `AUDIT-20260514-FU3-03` / `LIVE-S550-PLAY-001` (PlayPage sticky-header — [#423](https://github.com/audiocontrol-org/audiocontrol/issues/423)) → workplan §9R-C per-page acceptance criteria explicitly names this defect.
+
 ### Task 1 — Fix `ImportSamplesDialog` slot-occupancy mislabeling
 
 **GitHub Issue:** [#425](https://github.com/audiocontrol-org/audiocontrol/issues/425)
+**Finding-ID:** `AUDIT-20260514-FU3-02` (canonical) — also see `AUDIT-20260508-02` (verified-fixed in part, ImportSamplesDialog portion superseded by this) and `AUDIT-20260509-FU2-01` / `AUDIT-20260514-FU-02` / `AUDIT-20260514-FU2-02` (earlier restatements, all `superseded-by` this canonical finding).
 
 **Surfaced:** independent audit 2026-05-14, immediately following 9R-A.1 closure.
 
@@ -1102,6 +1112,7 @@ This task is the operational tracking entry for the 9R-B sweep on the **remainin
 ### Task 3 — Close the root `test/ui/*.spec.ts` test-discipline gap
 
 **GitHub Issue:** [#426](https://github.com/audiocontrol-org/audiocontrol/issues/426)
+**Finding-ID:** `AUDIT-20260514-FU3-01`
 
 **Surfaced:** independent audit 2026-05-14 (Third Follow-Up), immediately following 9R-A.2 + 9R-A.3 closure.
 

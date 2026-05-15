@@ -53,8 +53,13 @@ Below those, the auditor provides prose evidence: observation, file:line citatio
    - For `new issue` proposals: file the issue, then flip the finding's `Status:` line to `acknowledged-#N`.
    - For `maps to #N` proposals: verify the mapping is correct, then flip to `acknowledged-#N`.
    - For `informational` findings: acknowledge in prose; `Status:` stays `informational` or moves to `withdrawn-<date>` if the controller disagrees with the observation.
-3. **Controller flips status when a fix lands.** Every commit that closes a finding cites `Refs <Finding-ID>` in its message. The same commit (or a follow-up doc commit) flips `Status:` to `fixed-<sha>; awaiting auditor re-run`. The actual fix code/diff lives in the issue's commit history; this doc just carries the status flip.
-4. **Auditor re-runs and verifies.** The next audit pass picks up `Status: fixed-<sha>` items first; the auditor either flips them to `verified-<date>` (closing the loop in this doc) or files a new finding-ID rejecting the fix.
+3. **Controller scopes the remediation into the workplan and extends the Status line with a workplan pointer.** When a finding is flipped to `acknowledged-#N`, the controller decides where the remediation lives in the workplan:
+   - **Default landing surface: Phase 11.** Add a new `### Task N — <title>` entry under Phase 11 with a GitHub-issue link, the Finding-ID, and "Proven complete when" criteria translating the finding's acceptance into testable observables. Extend the Phase 11 acceptance criteria with a `Task N closed` line. This is the route `/dwi` (`/dw-lifecycle:implement`) walks — Phase 11 tasks become first-class workplan items the implement skill picks up automatically.
+   - **Natural-fit phase override:** if the finding is obviously scope of an in-flight phase (e.g., a 9R-C page-rebuild defect surfaced mid-flight, or a 9R-B primitive remediation), the remediation may land in that phase's existing task list. Phase 11 still gets a one-line cross-reference so the cross-cutting index stays complete.
+   - **Live-hardware findings that map to existing in-flight work do NOT generate a new Phase 11 task.** They are verification signals on already-tracked work; the Phase 11 entry exists already (or the natural-fit phase owns it). Example: `LIVE-S550-PLAY-001` maps to `#423` / workplan §9R-C; no Phase 11 task is created because the fix is 9R-C work.
+   - **Extend the Status line with the workplan pointer.** Flip from `acknowledged-#N` to `acknowledged-#N; workplan §<location>` — e.g., `acknowledged-#425; workplan §Phase-11-Task-1` or `acknowledged-#423; workplan §9R-C`. This makes the audit-log → workplan mapping grep-able in both directions.
+4. **Controller flips status when a fix lands.** Every commit that closes a finding cites `Refs <Finding-ID>` in its message. The same commit (or a follow-up doc commit) flips `Status:` to `fixed-<sha>; awaiting auditor re-run`. The actual fix code/diff lives in the issue's commit history; this doc just carries the status flip.
+5. **Auditor re-runs and verifies.** The next audit pass picks up `Status: fixed-<sha>` items first; the auditor either flips them to `verified-<date>` (closing the loop in this doc) or files a new finding-ID rejecting the fix.
 
 ### What lives where
 
@@ -557,7 +562,7 @@ These changes close the earlier finding that the repo was still carrying the old
 #### 1. Medium — `test/ui/` still contains root-level specs that violate the in-context test contract
 
 Finding-ID: AUDIT-20260514-FU3-01
-Status: acknowledged-#426 (controller-filed 2026-05-14 evening; scoped as workplan Phase 11 §Task 3)
+Status: acknowledged-#426; workplan §Phase-11-Task-3 (controller-filed 2026-05-14 evening)
 
 The migration moved the old capability suite, but the remaining root `test/ui` specs still use `getByTestId(...)` and direct `.click()` flows even though the in-context tier doc forbids those patterns.
 
@@ -578,7 +583,7 @@ Impact: the misleading bulk of the old UI evidence is gone, but `test/ui` is sti
 #### 2. Medium — `ImportSamplesDialog` still duplicates overwrite detection instead of using the shared slot-allocation rules
 
 Finding-ID: AUDIT-20260514-FU3-02
-Status: acknowledged-#425 (controller-filed 2026-05-14; scoped as workplan Phase 11 §Task 1)
+Status: acknowledged-#425; workplan §Phase-11-Task-1 (controller-filed 2026-05-14)
 
 This remained unchanged in the latest tranche. Tone and patch overwrite affordances still derive occupancy from raw `undefined` checks rather than the shared helpers.
 
@@ -596,7 +601,7 @@ Impact: this is still a genuine shared-business-logic drift risk in one of the l
 #### 3. Medium — The known PlayPage sticky-header layering defect is still present in the production structure
 
 Finding-ID: AUDIT-20260514-FU3-03
-Status: acknowledged-#423 (operator-filed prior to this audit; workplan §9R-C names it as a blocking defect for PlayPage closure)
+Status: acknowledged-#423; workplan §9R-C (operator-filed prior to this audit; natural-fit phase override — workplan §9R-C names this exact defect as a blocking gate for PlayPage closure, so no separate Phase 11 task is created. Cross-referenced from Phase 11 prose.)
 
 This also remained unchanged in the latest tranche. The page still renders the legacy sticky-header structure inside the fixed-viewport shell.
 
@@ -653,7 +658,7 @@ Scope reviewed: first real-hardware execution of the new S-550 conformance layer
 #### LIVE-S550-PLAY-001
 
 Finding-ID: LIVE-S550-PLAY-001
-Status: acknowledged-#423 (controller ACK 2026-05-15; the auditor's own `Disposition` mapped this to #423; controller independently verified the mapping. See ACK section below.)
+Status: acknowledged-#423; workplan §9R-C (controller ACK 2026-05-15; auditor's `Disposition` mapped this to #423; controller independently verified. Live-hardware finding mapping to existing in-flight work — per protocol step 3, no new Phase 11 task is created; this finding becomes a verification signal on the 9R-C remediation. See ACK section below.)
 
 Severity: blocking
 
