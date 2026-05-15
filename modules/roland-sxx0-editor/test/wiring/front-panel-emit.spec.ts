@@ -19,7 +19,7 @@
  *     EXEC) emit a single category-01 DT1 each.
  *
  * D-XX-09 (drawer mount) and D-XX-10 (in-drawer button rendering) are
- * covered separately by `capabilities/video-drawer.spec.ts`. This spec
+ * covered separately by `wiring/video-drawer.spec.ts`. This spec
  * covers the DT1-emit side only — the bytes that flow when the user
  * actually clicks each button.
  *

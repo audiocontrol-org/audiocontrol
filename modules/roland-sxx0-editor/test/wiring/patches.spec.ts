@@ -42,7 +42,7 @@ import { test, expect } from '@playwright/test';
 const HARNESS_URL =
   '/roland/s330/editor/patches?midi=simulated&scenario=patches-bank-0';
 
-// Same divergence filter as capabilities/patch-writes.spec.ts. The
+// Same divergence filter as wiring/patch-writes.spec.ts. The
 // SimulatedAdapter's SimulatedAdapterUnexpectedSendError reports
 // "first diff at byte 6: expected 0x00, got 0x03" — byte 6 in the
 // S-series RQD/WSD frame is the area-selector (0x00 = patch area,

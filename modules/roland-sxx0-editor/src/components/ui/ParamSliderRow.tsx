@@ -4,7 +4,7 @@
  * Composes the editor-core atomic primitives (AcSlider + AcNumberInput
  * with `editable`) into a single read-write parameter row, with:
  *   - the legacy `param-<label>` data-testid wrapper so existing UI
- *     specs (capabilities/patch-writes.spec.ts) keep targeting it after
+ *     specs (wiring/patch-writes.spec.ts) keep targeting it after
  *     the Phase 9 Task 4 ParameterSlider→AcSlider migration.
  *   - a Tooltip wrapper for the parameter help text.
  *   - the focusable affordance on the readout (per DESIGN-SYSTEM.md:

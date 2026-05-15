@@ -46,7 +46,7 @@
  * scenario for the simulated harness. The wave-data fixture is Wave 4
  * scope.
  *
- * Fixture: `tones-bank-0` — the same fixture capabilities/tones.spec.ts
+ * Fixture: `tones-bank-0` — the same fixture wiring/tones.spec.ts
  * uses; captures `connect() + loadToneRange(0, 8)`. The TonesPage's
  * mount sequence consumes the fixture in full, populating tone slot 0.
  * The ToneWavePanel renders the loop section if T0's wave has a

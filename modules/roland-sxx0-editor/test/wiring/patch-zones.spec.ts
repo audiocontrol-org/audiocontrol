@@ -26,7 +26,7 @@
  *   - D-PATCH-ZONE-08: MIDI Learn affordance for end-key
  *
  * Fixture: `patches-bank-0` — same fixture the patches spec uses. The
- * `loadToneBank(0)` divergence filter mirrors capabilities/patches.spec.ts
+ * `loadToneBank(0)` divergence filter mirrors wiring/patches.spec.ts
  * (the PatchesPage emits an unrecorded tone preload that surfaces as a
  * console error; the filter narrows to the same byte-6 area-selector
  * mismatch the patches spec already documents — issue #405).

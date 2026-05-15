@@ -75,7 +75,7 @@ import {
 // outbound records are exhausted — surface as
 // SimulatedAdapterRecordsExhaustedError with the S330Client error
 // message "Error loading tone N". Same filter shape as
-// `capabilities/patches.spec.ts` (issue #405); the spec under test
+// `wiring/patches.spec.ts` (issue #405); the spec under test
 // asserts the affordance under test, not the legacy preload
 // divergence.
 const KNOWN_TONE_PRELOAD_DIVERGENCE =
@@ -261,7 +261,7 @@ test.describe('Capabilities — Library flows (Wave 4)', () => {
   });
 
   test('D-LIB-15: connected library exposes the per-row Export button and opens ExportToneDialog', async ({ page }) => {
-    // Wave 3 (capabilities/tones.spec.ts :: D-TONE-LIST-07) pinned the
+    // Wave 3 (wiring/tones.spec.ts :: D-TONE-LIST-07) pinned the
     // disconnected gate — the per-row Export button MUST NOT render
     // without a connected library. This is the connected-library half:
     // with OPFS wired, at least one loaded sample-bearing tone surfaces

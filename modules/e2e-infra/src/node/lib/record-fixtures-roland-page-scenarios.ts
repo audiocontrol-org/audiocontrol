@@ -5,7 +5,7 @@
  *
  *   - The three "page mount" baseline scenarios — `patches-bank-0`,
  *     `tones-bank-0`, `play-init` — used by the page-level capability
- *     specs (capabilities/patches.spec.ts, tones.spec.ts, etc.).
+ *     specs (wiring/patches.spec.ts, tones.spec.ts, etc.).
  *   - The three shared mount helpers — `runPatchPageMount`,
  *     `runTonePageMount`, `runMultiModeMount` — and their named
  *     structural client interfaces (`PatchModeClient`, `ToneModeClient`,

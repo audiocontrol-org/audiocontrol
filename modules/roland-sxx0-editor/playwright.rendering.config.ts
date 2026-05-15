@@ -11,40 +11,15 @@
  * Kept as a separate Playwright project so make test-rendering-roland
  * can drive only this directory without pulling in Tier 1 wiring or
  * Tier 2/3 UI suites.
+ *
+ * 30s timeout — full-page screenshot specs exceed the 15s default used
+ * by the contract/in-context suites (test-harness + wiring).
  */
 
-import { defineConfig, devices } from '@playwright/test';
+import { defineHarnessConfig } from './playwright.harness.shared';
 
-const port = process.env.E2E_PORT;
-
-if (!port) {
-  throw new Error(
-    'E2E_PORT must be set. Run via: ./scripts/run-test-harness-e2e.sh playwright.rendering.config.ts'
-  );
-}
-
-export default defineConfig({
+export default defineHarnessConfig({
   testDir: './test/rendering',
-  testMatch: '*.spec.ts',
-  fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: 0,
-  workers: 1,
-  reporter: [['line']],
-  timeout: 30_000,
-  use: {
-    baseURL: `https://localhost:${port}`,
-    ignoreHTTPSErrors: true,
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
-  },
-  projects: [
-    {
-      name: 'chromium',
-      use: {
-        ...devices['Desktop Chrome'],
-        viewport: { width: 1280, height: 720 },
-      },
-    },
-  ],
+  timeoutMs: 30_000,
+  configName: 'playwright.rendering.config.ts',
 });

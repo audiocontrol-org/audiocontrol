@@ -34,7 +34,7 @@
  * file — they remain blocked on the operator decision about mounting
  * the floating VirtualFrontPanel (see "VFP unmounted" note in the
  * inventory). The drawer-embedded panel is covered by
- * capabilities/video-drawer.spec.ts.
+ * wiring/video-drawer.spec.ts.
  *
  * Fixtures:
  *   - `panic-flow` — connect() + loadPatchRange(0, 8) + 32 CC outbound
@@ -69,7 +69,7 @@ const PANIC_HARNESS_URL =
 const PROGRESS_HARNESS_URL =
   '/roland/s330/editor/patches?midi=simulated&scenario=patches-bank-0&simLatency=200';
 
-// The Patches divergence filter inherited from capabilities/patches.spec.ts
+// The Patches divergence filter inherited from wiring/patches.spec.ts
 // — the PatchesPage's mount also triggers a loadToneBank(0) preload that
 // hits the patch-only fixture's byte-6 area-selector mismatch. The filter
 // matches that narrow signature and only that signature; a real regression

@@ -34,7 +34,7 @@
  * so when the user-driven setter eventually fires it matches at the
  * still-pristine cursor. The 8 tone-load failures surface as console
  * errors that this spec filters via `isKnownTonePreloadDiagnostic` —
- * the same filter `capabilities/patches.spec.ts` uses (issue #405).
+ * the same filter `wiring/patches.spec.ts` uses (issue #405).
  *
  * D-PATCH-06 (Oct.Shift) is display-only pending issue #10 and is not
  * tested here.
@@ -67,7 +67,7 @@ import { test, expect, type Page, type Locator } from '@playwright/test';
 const PATCHES_URL = (scenario: string): string =>
   `/roland/s550/editor/patches?midi=simulated&scenario=${scenario}`;
 
-// Mirrors the filter in capabilities/patches.spec.ts. The PatchesPage's
+// Mirrors the filter in wiring/patches.spec.ts. The PatchesPage's
 // mount sequence emits loadToneBank(0) which the patch-write fixtures
 // don't capture; the resulting 8 RQD-vs-WSD mismatches surface as console
 // errors that aren't load-bearing for the affordance under test.

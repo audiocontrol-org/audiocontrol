@@ -19,7 +19,7 @@
  *     (presence + aria-label).
  *   - D-TONE-ENV-12: TVA envelope fullscreen expand button.
  *
- * Fixture: `tones-bank-0` — the same fixture capabilities/tones.spec.ts
+ * Fixture: `tones-bank-0` — the same fixture wiring/tones.spec.ts
  * uses. TonesPage's mount sequence consumes it cleanly; no divergence
  * filter required.
  */
