@@ -1016,3 +1016,84 @@ Acknowledged. **No findings to file; no `Status:` flips; no remediation work req
 **Auditor-internal helper fix acknowledged:** the auditor's commit also corrected a query-param bug in `modules/roland-sxx0-editor/test/e2e/helpers/device-readback-helpers.ts:94` so Library navigation now targets the `library-nav-link` contract used by sibling helpers. This is auditor-owned infrastructure per the role-boundary clarification; no controller action required, but the fix is noted here because it's adjacent to the protocol's "audit-log carries the truth of who said what when" invariant — the helper-level fix is part of the same audit-log story the live result lives in.
 
 The audit log's coverage snapshot now shows Patches with both `design tested` AND `capability tested`, both `pass`. Per the prior ACK's framing, this snapshot is the authoritative live-status source — no workplan / README update is necessary because Phase 11 §Task 4's acceptance criteria measure "spec exists" (already true for Patches before this run), not "spec passes on hardware."
+
+---
+
+## 2026-05-15 Live S-550 Library Capability Finding
+
+Scope reviewed: first real-hardware execution of the bounded Library capability slice from `modules/roland-sxx0-editor/test/e2e/s550-D-LIB-live-core.spec.ts` against the connected device on `Volt 4`. Intended coverage target was `D-LIB-10` (Save full device state to a named library set) through the real OPFS-backed Library route.
+
+### Executive Queue
+
+- `LIVE-S550-LIB-002` | `high` | `Library` | capability conformance, `D-LIB-10`
+  Live S-550 `Save to Library...` enters device scanning but fails to complete the named-set save after a real tone-wave fetch timeout on the first tone.
+  `Disposition`: new issue
+
+### Coverage Snapshot
+
+| Surface | Design conformance | Capability conformance | Live status | Notes |
+|---|---|---|---|---|
+| Play | tested | not yet | fail | `LIVE-S550-PLAY-001` |
+| Tones | not yet | attempted | fail | `LIVE-S550-TONES-001` blocks the first bounded D-TONE battery before cutoff / sustain assertions can run |
+| Patches | tested | tested | pass | `s550-patches.design.spec.ts` plus `s550-D-PATCH-live-core.spec.ts` both passed on live hardware |
+| Library | tested | attempted | fail | `LIVE-S550-LIB-001` warns on dialog accessibility; `LIVE-S550-LIB-002` blocks the first bounded Library capability slice during the save flow |
+
+### Finding Record
+
+#### LIVE-S550-LIB-002
+
+Finding-ID: LIVE-S550-LIB-002
+Status: open
+Severity: high
+Surface: `/roland/s550/editor/library`
+Disposition (proposed): new issue
+
+Category: capability conformance
+
+Source of truth:
+- [ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md:393)
+- [modules/roland-sxx0-editor/src/hooks/useLibraryImportDialogs.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/hooks/useLibraryImportDialogs.ts:203)
+- [modules/roland-sxx0-editor/src/lib/library-sets-save-incremental.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/lib/library-sets-save-incremental.ts:72)
+- [modules/roland-sxx0-editor/src/lib/library-sets-save-incremental.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/lib/library-sets-save-incremental.ts:137)
+- [modules/sampler-devices/src/devices/roland-s-series/s-series-client.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/sampler-devices/src/devices/roland-s-series/s-series-client.ts:481)
+
+Observed:
+- On live hardware, `Save to Library...` opens and begins scanning the device, but the bounded `D-LIB-10` save path does not complete. During the first tone-wave fetch, the browser logs an `RQD response timeout - no data received` for tone `0`, and the named set never reaches a completed save state within the bounded capability run.
+
+Evidence:
+- Live spec: [modules/roland-sxx0-editor/test/e2e/s550-D-LIB-live-core.spec.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/test/e2e/s550-D-LIB-live-core.spec.ts:146)
+- Live browser logs:
+  - `[S-550] Ignoring stale RJC during RQD`
+  - `[saveDeviceToSetIncremental] Failed to fetch tone 0: Error: RQD response timeout - no data received`
+- Progress observed during the failing run:
+  - `Scanning tones (47 of 48)...`
+  - `Fetching wave data for MINI OCT...`
+- Failure artifacts:
+  - `modules/roland-sxx0-editor/test-results/s550-D-LIB-live-core-S-550-aaa72-PFS-on-the-live-S-550-route-chromium/test-failed-1.png`
+  - `modules/roland-sxx0-editor/test-results/s550-D-LIB-live-core-S-550-aaa72-PFS-on-the-live-S-550-route-chromium/error-context.md`
+
+Repro:
+1. Connect the live sampler on `Volt 4`.
+2. Run the bounded Library conformance path with `E2E_DEVICE_TYPE=s550`.
+3. Open `/roland/s550/editor/library`.
+4. Connect the OPFS library backend.
+5. Click `Save to Library...`, enter a unique set name, and confirm the save.
+
+Expected:
+- `D-LIB-10` completes on the live S-550 route and creates the named library set in OPFS.
+
+Actual:
+- The save flow starts, scans tones, and begins wave fetch, but tone `0` hits an `RQD` response timeout and the set save does not complete within the live bounded run.
+
+Likely ownership:
+- [modules/roland-sxx0-editor/src/hooks/useLibraryImportDialogs.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/hooks/useLibraryImportDialogs.ts:203)
+- [modules/roland-sxx0-editor/src/lib/library-sets-save-incremental.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/lib/library-sets-save-incremental.ts:72)
+- [modules/sampler-devices/src/devices/roland-s-series/s-series-client.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/sampler-devices/src/devices/roland-s-series/s-series-client.ts:481)
+
+Fix guidance:
+- Investigate the live save path's first tone-wave fetch on S-550 hardware, including the stale-`RJC` / `RQD response timeout` sequence during `saveDeviceToSetIncremental`.
+- Re-run the same bounded live Library capability spec after the fix instead of closing from code inspection alone.
+
+Closure gate:
+- `s550-D-LIB-live-core.spec.ts` completes `D-LIB-10` on live hardware and verifies that the named set is created under the OPFS-backed Library route.
+- The live save path completes without the tone-0 `RQD response timeout` warning during the bounded conformance run.

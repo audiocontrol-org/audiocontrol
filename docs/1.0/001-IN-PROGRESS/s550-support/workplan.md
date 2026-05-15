@@ -1179,7 +1179,7 @@ This task adds that layer without replacing 9R-C or 9R-D. It is a structured, re
 
 - [x] Planning artifact at `docs/1.0/001-IN-PROGRESS/s550-support/live-s550-conformance-matrix.md` mapping mockup states + D-IDs + operator-only gaps.
 - [ ] Live-device **design** spec exists for each high-value redesign page (`patches`, `tones`, `play`, `library`). Current landed set: `play`, `patches`, `library`.
-- [ ] Live-device **capability** spec exists for each of the same pages, named with D-ID prefixes and verified by fresh device readback. Current landed set: `patches`, `tones`.
+- [ ] Live-device **capability** spec exists for each of the same pages, named with D-ID prefixes and verified by fresh device readback. Current landed set: `patches`, `tones`, `library`.
 - [x] PlayPage spec explicitly checks `#423` Part A + drawer reachability — produced `LIVE-S550-PLAY-001`.
 - [ ] TonesPage spec exercises at least one envelope/slider capability on live hardware — partially landed via `s550-D-TONE-live-envelope-and-slider.spec.ts`; currently blocked by `LIVE-S550-TONES-001` at the tone-row selection step.
 - [x] Documented runner entry point: `make test-e2e-roland-device-conformance`.
@@ -1197,6 +1197,8 @@ This task adds that layer without replacing 9R-C or 9R-D. It is a structured, re
 - This task complements 9R-C/9R-D; it does **not** replace the operator's final holistic sign-off.
 - The auditor reuses existing hardware E2E helpers (`connection-helper`, `device-readback-helpers`, route builders).
 - This task is intentionally S-550-first.
+- `s550-library.design.spec.ts` landed and exercised the real OPFS-backed Save-dialog open path on the live S-550 route; structural shell assertions passed, but the run surfaced the dialog accessibility warning tracked as `LIVE-S550-LIB-001`.
+- `s550-D-LIB-live-core.spec.ts` landed and exercised `D-LIB-10` on the live S-550 route; the save path entered device scanning but timed out during tone-wave fetch (`LIVE-S550-LIB-002`), so Library capability conformance is now a tested `fail`, not `unrun`.
 
 ### Task 5 — Fix `SaveSetDialog` (and library-dialog family) missing `Dialog.Description`
 

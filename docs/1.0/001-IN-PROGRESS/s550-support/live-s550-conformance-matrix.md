@@ -52,7 +52,7 @@ This suite is S-550-first. It does not widen scope into a new cross-device matri
 | Play | `s550-play.design.spec.ts` landed and executed | not yet | fail | `LIVE-S550-PLAY-001` / sticky header intercepts Part A pointer events on live route |
 | Tones | not yet | `s550-D-TONE-live-envelope-and-slider.spec.ts` landed and executed | fail | `LIVE-S550-TONES-001` / loaded tone row selection is not reliably pointer-actionable on live route, blocking the bounded D-TONE battery before cutoff / sustain assertions |
 | Patches | `s550-patches.design.spec.ts` landed and executed | `s550-D-PATCH-live-core.spec.ts` landed and executed | pass | fixed-shell route plus bounded D-PATCH-02 readback path passed on live hardware |
-| Library | `s550-library.design.spec.ts` landed and executed | not yet | fail | `LIVE-S550-LIB-001` / live Save dialog emits missing dialog-description warning during real OPFS-backed open path |
+| Library | `s550-library.design.spec.ts` landed and executed | `s550-D-LIB-live-core.spec.ts` landed and executed | fail | `LIVE-S550-LIB-001` / live Save dialog emits missing dialog-description warning; `LIVE-S550-LIB-002` / live D-LIB-10 save path times out during tone-wave fetch and does not complete |
 
 Status vocabulary:
 - `pass`: live hardware run completed and matched the current conformance expectation
@@ -108,6 +108,11 @@ Status vocabulary:
    - verify real library-page structure against the approved mockup direction
    - include at least one dialog-open state
    - status: landed as `modules/roland-sxx0-editor/test/e2e/s550-library.design.spec.ts`; executed on 2026-05-15 against live hardware. Structural shell assertions passed, but the real Save-dialog path surfaced `LIVE-S550-LIB-001` (missing dialog description warning), so the Library surface remains a live `fail`
+
+4. `s550-D-LIB-live-core.spec.ts`
+   - drive `Save to Library...` on `/roland/s550/editor/library`
+   - verify the named set through the real OPFS-backed library path
+   - status: landed as `modules/roland-sxx0-editor/test/e2e/s550-D-LIB-live-core.spec.ts`; executed on 2026-05-15 against live hardware and currently fails as `LIVE-S550-LIB-002` after the save flow enters device scanning but times out during tone-wave fetch (`RQD response timeout - no data received`)
 
 ## Explicit Non-Goals
 
