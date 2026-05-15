@@ -2,9 +2,11 @@
  * tools/generate-coverage-manifest/parse-inventory.ts
  *
  * Parses `ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md` to extract:
- *   - Each `D-<AREA>-<NN>` row from the per-area D-tables (the 9-column
+ *   - Each `D-<AREA>-<NN>` row from the per-area D-tables (the 8-column
  *     `| ID | Affordance | Source of truth | Parent | Origin | Status |
- *     Test | Sign-off | Coverage |` shape).
+ *     Sign-off | Coverage |` shape). The legacy `Test` column was removed
+ *     in 9R-A.3; its evidence migrated to Tier 1 wiring specs under
+ *     `modules/<editor>/test/wiring/` per the reform spec.
  *   - The roll-up table at the top of the doc (4-column shape) is SKIPPED;
  *     it is a summary, not the operative inventory.
  *   - The `Sign-off` cell is parsed into a structured `OperatorSignoff`
@@ -175,7 +177,6 @@ export function parseInventory(inventoryPath: string): InventoryParseResult {
         'Parent',
         'Origin',
         'Status',
-        'Test',
         'Sign-off',
         'Coverage',
       ];
@@ -214,7 +215,6 @@ export function parseInventory(inventoryPath: string): InventoryParseResult {
       parent: access.get('Parent') ?? '',
       origin: access.get('Origin') ?? '',
       status: access.get('Status') ?? '',
-      test: access.get('Test') ?? '',
       signoff,
       coverage: access.get('Coverage') ?? '',
     });

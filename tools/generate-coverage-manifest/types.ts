@@ -95,7 +95,12 @@ export type OperatorSignoff =
       readonly warning: string;
     };
 
-/** One row from the inventory's D-tables, fully parsed. */
+/**
+ * One row from the inventory's D-tables, fully parsed. The legacy `test`
+ * column was removed in 9R-A.3; Tier 1 evidence now lives in
+ * `modules/<editor>/test/wiring/` and is discovered via `scan-specs.ts`
+ * rather than carried on the inventory row.
+ */
 export interface InventoryRow {
   readonly dId: string;
   readonly affordance: string;
@@ -103,7 +108,6 @@ export interface InventoryRow {
   readonly parent: string;
   readonly origin: string;
   readonly status: string;
-  readonly test: string;
   readonly signoff: OperatorSignoff;
   readonly coverage: string;
 }

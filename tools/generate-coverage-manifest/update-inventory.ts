@@ -7,9 +7,11 @@
  *
  * The strategy:
  *   1. Read the file line-by-line.
- *   2. Detect each operative table by its 9-column header
+ *   2. Detect each operative table by its 8-column header
  *      (`| ID | Affordance | Source of truth | Parent | Origin | Status |
- *      Test | Sign-off | Coverage |`).
+ *      Sign-off | Coverage |`). The legacy `Test` column was removed in
+ *      9R-A.3; Tier 1 evidence now lives under `modules/<editor>/test/
+ *      wiring/` and is discovered via `scan-specs.ts`.
  *   3. For each D-row in such a table, recompute ONLY the Coverage cell
  *      from the manifest. Every other cell is copied through verbatim,
  *      preserving whitespace + content.
