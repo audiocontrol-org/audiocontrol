@@ -168,25 +168,20 @@ test.describe('TonesPage TVF envelope segment-1 Time — Tier 3 in-context (D-TO
     // AcEnvelopeTable renders each segment row's time bar as an
     // `<input type="range">` with `aria-label="Segment N time"`. We
     // narrow to segment 1 (the bug-targeted segment per D-TONE-ENV-02).
-    // The Filter panel hosts the TVF envelope; the Amp panel hosts TVA
-    // — using `aria-label="Segment 1 time"` alone would match BOTH if
-    // the Amp panel's slider were also visible. The Filter tab switch
-    // above plus CSS-only tab visibility (only the active panel is
-    // `display: block`) keeps the match unambiguous; we add an extra
-    // expect(visible) check as a guardrail so a CSS regression that
-    // showed both panels simultaneously fails the spec rather than
-    // matching the wrong slider silently.
-    // Both the Filter (TVF) and Amp (TVA) panels host an envelope with a
-    // "Segment 1 time" slider; the inactive panel is `display: none` (see
-    // src/styles/tones.css: `.tones__panel { display: none }` with the
-    // `:checked ~` cascade re-enabling only the active panel). Elements
-    // under `display: none` are excluded from the accessibility tree, so
-    // `getByRole` already returns the Filter-panel slider unambiguously
-    // after the tab click. The visibility guardrail below is a belt-and-
-    // braces check: if the active-panel mechanism ever changes (e.g. to
-    // `visibility: hidden`, which DOES keep the element in the AX tree),
-    // the assertion fails loudly here rather than the spec quietly
-    // matching the wrong slider.
+    //
+    // Disambiguation: both the Filter (TVF) and Amp (TVA) panels host
+    // an envelope with a "Segment 1 time" slider. The inactive panel
+    // is `display: none` (see `src/styles/tones.css`: the `.tones__panel
+    // { display: none }` rule with the `:checked ~` cascade re-enabling
+    // only the active panel). Elements under `display: none` are
+    // excluded from the accessibility tree, so `getByRole` already
+    // returns the Filter-panel slider unambiguously after the tab click.
+    //
+    // The `toHaveCount(1)` + `toBeVisible` assertions below are belt-
+    // and-braces: if the active-panel mechanism ever changes (e.g. to
+    // `visibility: hidden`, which DOES keep the element in the AX
+    // tree), the spec fails loudly here rather than quietly matching
+    // the wrong slider.
     const slider = page.getByRole('slider', { name: 'Segment 1 time' });
     await expect(slider).toHaveCount(1, { timeout: 5_000 });
     await expect(slider).toBeVisible({ timeout: 5_000 });
@@ -270,7 +265,12 @@ test.describe('TonesPage TVF envelope segment-1 Time — Tier 3 in-context (D-TO
     // we read `.value` directly because it's the canonical source for
     // a native range input. Both `.value` and `aria-valuenow` (when
     // present) are user-observable, not internal React state.
-    const initialValueRaw = await slider.evaluate((el) => (el as HTMLInputElement).value);
+    const initialValueRaw = await slider.evaluate((el) => {
+      if (!(el instanceof HTMLInputElement)) {
+        throw new Error(`slider is not an HTMLInputElement: ${el.tagName}`);
+      }
+      return el.value;
+    });
     const initialValue = Number(initialValueRaw);
     expect(
       Number.isFinite(initialValue),
@@ -279,7 +279,12 @@ test.describe('TonesPage TVF envelope segment-1 Time — Tier 3 in-context (D-TO
 
     // Read the slider's max so the spec doesn't hardcode a value that
     // would drift if the AcEnvelopeTable's maxTime prop changed.
-    const maxValueRaw = await slider.evaluate((el) => (el as HTMLInputElement).max);
+    const maxValueRaw = await slider.evaluate((el) => {
+      if (!(el instanceof HTMLInputElement)) {
+        throw new Error(`slider is not an HTMLInputElement: ${el.tagName}`);
+      }
+      return el.max;
+    });
     const maxValue = Number(maxValueRaw);
     expect(
       Number.isFinite(maxValue) && maxValue > 0,
@@ -301,43 +306,73 @@ test.describe('TonesPage TVF envelope segment-1 Time — Tier 3 in-context (D-TO
     const startX = box.x + Math.max(2, Math.min(box.width - 2, box.width * fracStart));
     const targetX = dragRight ? box.x + box.width - 2 : box.x + 2;
 
+    // Phase A: mousedown lands at the current-value position. Native
+    // <input type="range"> updates `.value` on mousedown to the x-mapped
+    // position; we capture the post-mousedown value as the *drag-baseline*
+    // so the subsequent move-induced change is what the spec asserts —
+    // NOT the mousedown's own quantization jump. This guards against a
+    // subtle credibility gap where the directional check (`fracStart <
+    // 0.5`) could be satisfied by mousedown rounding alone, never
+    // actually exercising the drag motion.
     await page.mouse.move(startX, centerY);
     await page.mouse.down();
-    await page.mouse.move(targetX, centerY, { steps: 12 });
-    await page.mouse.up();
+    const afterMousedownRaw = await slider.evaluate((el) => {
+      if (!(el instanceof HTMLInputElement)) {
+        throw new Error(`slider is not an HTMLInputElement: ${el.tagName}`);
+      }
+      return el.value;
+    });
+    const afterMousedownValue = Number(afterMousedownRaw);
 
-    // Read the slider's value after the drag. The slider commits each
+    // Phase B: drag to the target, then release. The slider commits each
     // mousemove via React's onChange handler (AcEnvelopeTable.tsx:127),
     // which routes through ToneEnvelopeEditor.updateRate(0, newValue)
     // and back into the SamplerEnvelope's rates[0]. The rendered slider
     // reflects the updated value because it's a controlled input on the
     // store's tone.tvf.envelope.rates[0].
-    const finalValueRaw = await slider.evaluate((el) => (el as HTMLInputElement).value);
+    await page.mouse.move(targetX, centerY, { steps: 12 });
+    await page.mouse.up();
+
+    const finalValueRaw = await slider.evaluate((el) => {
+      if (!(el instanceof HTMLInputElement)) {
+        throw new Error(`slider is not an HTMLInputElement: ${el.tagName}`);
+      }
+      return el.value;
+    });
     const finalValue = Number(finalValueRaw);
     expect(
       Number.isFinite(finalValue),
       `slider .value after drag must parse as a finite number — got '${finalValueRaw}'`,
     ).toBe(true);
+
+    // The drag MOTION (mousemove sequence, not the mousedown jump) must
+    // change the value. Asserting `finalValue !== afterMousedownValue`
+    // fails closed if a broken context disables pointer-events on the
+    // input's ancestor — mousedown might still register because Playwright
+    // dispatches at engine level, but the move sequence won't fire
+    // onChange, so the value stays at the mousedown-jumped position.
     expect(
       finalValue,
-      `slider value must change after a real pointer drag (initial=${String(initialValue)}, final=${String(finalValue)}, direction=${dragRight ? 'right' : 'left'})`,
-    ).not.toBe(initialValue);
+      `the drag motion must change the slider value (initialValue=${String(initialValue)}, afterMousedown=${String(afterMousedownValue)}, final=${String(finalValue)}, direction=${dragRight ? 'right' : 'left'})`,
+    ).not.toBe(afterMousedownValue);
 
     // Sanity: the drag direction should be reflected in the value
-    // movement. Drag-right increases the value; drag-left decreases.
-    // This catches a subtle failure mode where the drag fires onChange
-    // but with an unrelated value (e.g. a Radix bug where the slider
-    // resets to step-min on `mousedown` regardless of cursor position).
+    // movement. Drag-right increases the value relative to the baseline;
+    // drag-left decreases. This catches a subtle failure mode where the
+    // drag fires onChange but with an unrelated value (e.g. a Radix bug
+    // where the slider resets to step-min on `mousedown` regardless of
+    // cursor position). We compare against the drag-baseline so the
+    // direction signal is the DRAG, not the mousedown's quantization.
     if (dragRight) {
       expect(
         finalValue,
-        `drag-right must increase the value (initial=${String(initialValue)}, final=${String(finalValue)})`,
-      ).toBeGreaterThan(initialValue);
+        `drag-right must increase the value (afterMousedown=${String(afterMousedownValue)}, final=${String(finalValue)})`,
+      ).toBeGreaterThan(afterMousedownValue);
     } else {
       expect(
         finalValue,
-        `drag-left must decrease the value (initial=${String(initialValue)}, final=${String(finalValue)})`,
-      ).toBeLessThan(initialValue);
+        `drag-left must decrease the value (afterMousedown=${String(afterMousedownValue)}, final=${String(finalValue)})`,
+      ).toBeLessThan(afterMousedownValue);
     }
   });
 });

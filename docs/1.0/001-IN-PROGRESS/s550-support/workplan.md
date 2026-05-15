@@ -708,12 +708,11 @@ Completed 2026-05-14 via commits `97ebe2b3` + `3a6381ad` (9R-A.3.A) + `97bcf5b3`
 Prove the entire pipeline works on a single capability before scaling.
 
 Proven complete when:
-- [ ] `D-TONE-ENV-02` (TVF envelope per-segment rate) has:
-  - The existing Tier 2 contract spec at `modules/roland-sxx0-editor/test/ui/contract/AcEnvelopeTable.contract.spec.ts`, with `credibleAgainst: ['cells-role-img', 'onchange-disconnected']` declared.
-  - A new Tier 3 in-context spec at `modules/roland-sxx0-editor/test/ui/in-context/tones.envelope.in-context.spec.ts` that mounts the real TonesPage with a tones-bank-0 fixture, navigates to the Amp tab, and asserts segment-1 Time bar is reachable + responsive via `elementsFromPoint` + `page.mouse.*`. The spec declares `credibleAgainst: ['sticky-overlay', 'zero-width-grid']`.
-  - A Tier 4 operator sign-off recorded inline on the `D-TONE-ENV-02` row's `Sign-off` column in `ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md`, in the format `<YYYY-MM-DD> <signer> <sha>`.
-- [ ] `pnpm run check-coverage` reports `D-TONE-ENV-02` as `coverage: confident` and writes that value into the inventory.
-- [ ] Smoke test: temporarily removing the Tier 3 spec causes the manifest to drop `D-TONE-ENV-02` from `confident` to `partial`; re-adding restores it. (Proves the dependency wiring works.)
+- [x] **Tier 2** — Contract spec at `modules/roland-sxx0-editor/test/ui/contract/AcEnvelopeTable.contract.spec.ts`, with `credibleAgainst: ['cells-role-img', 'onchange-disconnected']` declared. Landed via 9R-A.1 T3-T6; 2/2 credible per `pnpm run check-credibility` baseline.
+- [x] **Tier 3** — In-context spec at `modules/roland-sxx0-editor/test/ui/in-context/tones.envelope.in-context.spec.ts` mounts the real TonesPage with a `tones-bank-0` fixture, navigates to the Filter tab (corrected 2026-05-15 from "Amp tab" — D-TONE-ENV-02 is the TVF/Filter envelope per the capability inventory at `ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md:337` + the wiring spec at `test/wiring/tone-writes.spec.ts:424`; D-TONE-ENV-08 is the TVA/Amp sibling and remains uncovered by Tier 3 — to be addressed by a separate task), and asserts segment-1 Time bar is reachable + responsive via `elementsFromPoint` + `page.mouse.*`. The spec declares `credibleAgainst: ['sticky-overlay', 'zero-width-grid', 'pointer-events-none-ancestor']` (Tier 3 in-context credibility against all three of the existing `BROKEN_CONTEXTS` registry entries). Landed via commits `1b0972f6` + polish in the same dispatch. 3/3 credible per `pnpm run check-credibility`.
+- [ ] **Tier 4** — Operator sign-off recorded inline on the `D-TONE-ENV-02` row's `Sign-off` column in `ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md`, in the format `<YYYY-MM-DD> <signer> <sha>`. **Operator-gate; not implementer scope.**
+- [ ] `pnpm run check-coverage` reports `D-TONE-ENV-02` as `coverage: confident` and writes that value into the inventory. (Depends on Tier 4; currently `partial` since Tier 2 + Tier 3 are both credible.)
+- [ ] Smoke test: temporarily removing the Tier 3 spec causes the manifest to drop `D-TONE-ENV-02` from `confident` to `partial`; re-adding restores it. (Proves the dependency wiring works. Depends on Tier 4 first; operator-gated.)
 
 **No production code changes outside the `__broken__/` registry in 9R-A.** The reform's purpose is to fix the test architecture so 9R-B can proceed against a real gate. Production primitives are still un-remediated at the end of 9R-A.
 
