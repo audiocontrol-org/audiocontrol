@@ -229,7 +229,7 @@ hardcoded — the simulated transport always reads
 trace; everything inside the records is genuine S-550 traffic.
 
 Consumed by the rewritten `D-LIB-08` spec in
-`modules/roland-sxx0-editor/test/ui/capabilities/library-flows-dnd.spec.ts`,
+`modules/roland-sxx0-editor/test/wiring/library-flows-dnd.spec.ts`,
 which mounts `/roland/s550/editor/library?midi=simulated&scenario=library-page-load`
 (URL `s550` segment → S-550 device config → S-550 client at the page),
 clicks "Refresh Device" to consume the fixture, and waits for a loaded

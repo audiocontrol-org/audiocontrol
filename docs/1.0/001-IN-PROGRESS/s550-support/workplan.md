@@ -52,7 +52,7 @@ deskwork:
 
 This workplan is written defensively per [`.claude/rules/agent-discipline.md`](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/.claude/rules/agent-discipline.md):
 
-- **Every task has a "Proven complete when" gate.** The gate names observable artifacts (specific tests, fixtures, commits, screenshots). "Tests pass" is not a gate; "the 11 specs `test/ui/capabilities/patch-writes.spec.ts :: D-PATCH-NN` pass under `make test-ui-roland`" is a gate.
+- **Every task has a "Proven complete when" gate.** The gate names observable artifacts (specific tests, fixtures, commits, screenshots). "Tests pass" is not a gate; "the 11 specs `test/wiring/patch-writes.spec.ts :: D-PATCH-NN` pass under `make test-wiring-roland`" is a gate.
 - **Cross-task dependencies are hard blocks.** If Phase B is blocked on Phase A, B does not start until A's gate is met. There is no "start B in parallel and circle back" loophole.
 - **"Defer to follow-up" is not a self-issuable disposition.** A controller cannot move work out of scope without explicit operator acceptance recorded in the workplan. Filing a GitHub issue is not acceptance.
 - **The redesign cannot start until the entire safety net is proven.** Phase 9 visual polish is blocked until every capability in [`ROLAND-S550-EDITOR-CAPABILITIES.md`](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/ROLAND-S550-EDITOR-CAPABILITIES.md) has a passing test. Not a representative sample; not "Wave 1 enough"; every capability.
@@ -751,7 +751,7 @@ Every editor page is re-verified against the now-interactive primitives. The pre
 **Pages in scope:** HomePage, PatchesPage, TonesPage, PlayPage, LibraryPage, WorkflowsPage.
 
 **Per page, proven complete when:**
-- [ ] Every visible interactive affordance on the page (slider, select, checkbox, number-input, button, envelope handle, drawer toggle, dialog launcher) has a pointer/keyboard-event Playwright spec under `test/ui/capabilities/`. Specs follow the `D-<AREA>-<NN>:` naming convention and are traceable to the capability inventory.
+- [ ] Every visible interactive affordance on the page (slider, select, checkbox, number-input, button, envelope handle, drawer toggle, dialog launcher) has a pointer/keyboard-event Playwright spec under `test/ui/in-context/` (Tier 3 per the reform spec). Specs follow the `D-<AREA>-<NN>:` naming convention and are traceable to the capability inventory.
 - [ ] No remaining `.fill()` / `input.value = X` / `dispatchEvent('change')` shortcuts in the page's UI specs.
 - [ ] PlayPage's `.ac-page-sticky-header` chrome is removed and replaced with the lean `.ac-page-title-row` chain matching PatchesPage / TonesPage / LibraryPage. The `(Re)load: P11-P18 | P21-P28` toggle migrates from `.ac-btn ac-btn-primary/secondary` to `.ac-select` (or `.ac-toggle-group`). Part A row renders (verify it's not an unrelated content bug after the header chrome lands clean). [#423](https://github.com/audiocontrol-org/audiocontrol/issues/423) closes here.
 - [ ] Every page is run on real hardware (S-330 on Volt 4 + S-550 on Volt 4 when both are connectable) by the operator. Every interactive affordance is driven; every value change reaches the device; every device-state mutation reflects in the UI within the live-edit guard's tolerance.

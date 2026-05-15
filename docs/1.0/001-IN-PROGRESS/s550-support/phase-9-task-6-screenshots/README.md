@@ -124,7 +124,7 @@ dialog polish commit (`8e179806`) migrated all 11 library dialogs to
 the same primitives in lockstep; visual correctness of one is
 visual correctness of all (the shared chrome IS what got polished).
 The capability spec
-[`test/ui/capabilities/library-flows-dialogs.spec.ts:80`](../../../../modules/roland-sxx0-editor/test/ui/capabilities/library-flows-dialogs.spec.ts)
+[`test/wiring/library-flows-dialogs.spec.ts:80`](../../../../modules/roland-sxx0-editor/test/wiring/library-flows-dialogs.spec.ts)
 mounts and asserts `ImportLibraryToneDialog` (D-LIB-12), which uses
 the same primitives.
 
@@ -140,8 +140,8 @@ screenshotted in this spec because they all use the same
 primitives that the SaveSetDialog and LoadSetDialog captures
 demonstrate. Each is mount-visibility-asserted by the existing
 capability specs in
-`test/ui/capabilities/library-flows-dialogs.spec.ts` and siblings —
-those specs pass under `make test-ui-roland`, which is the
+`test/wiring/library-flows-dialogs.spec.ts` and siblings —
+those specs pass under `make test-wiring-roland`, which is the
 functional-regression gate for Task 6.
 
 (Dialog inventory: 13 files in `src/components/library/*Dialog.tsx`.
