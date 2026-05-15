@@ -2786,3 +2786,75 @@ Live-hardware testing of the s550 editor on Volt 4. Surface and fix any UI regre
 - **Pre-session uncommitted clutter** — ~80 stray PNGs + 16 screenshot mods + 3 untracked docs. Separate hygiene pass.
 
 ---
+## 2026-05-14: s550-support — Phase 9R-A.1 (Test-Discipline Infrastructure) complete + Phase 11 scoping
+
+### Feature: s550-support
+### Worktree: audiocontrol-s550-support
+
+### Goal
+
+Build the entire 9R-A.1 infrastructure deliverable from the testing/inventory reform spec written last session — tier directories, ESLint plugin, broken-variant registry, harness URL-param dispatch, credibility runner, manifest generator, pipeline orchestrator + Makefile target — and prove the gate end-to-end on D-TONE-ENV-02. Per the workplan, 9R-A.1 is the explicit blocker for all remaining Phase 9 work.
+
+### Accomplished
+
+**9R-A.1 — Infrastructure — COMPLETE.** 9 sub-tasks across 14 commits + 1 follow-up docs commit (#392):
+
+- **T1** (`d8148929` + `9dbd6a95`) — tier directory scaffolding + READMEs across roland-sxx0-editor + akai-s3k-editor.
+- **T2** (`fdaa0c2f` + `c107b6ec`) — `Sign-off` + `Coverage` columns added to every D-row in `ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md`; preamble describes the 4-tier model + manifest flow; removed/struck rows correctly carry `n/a` (review fixup).
+- **T3** (`2d8e09bf` + `981053da`) — `modules/editor-core/src/components/__broken__/` registry with 8 broken variants (3× AcRangeBar, 2× AcEnvelopeTable, 3× contexts); template-literal-typed keys; surgical defects via prop-spread wrappers (review fixup tightened types + collapsed switch arms).
+- **T4** (`46452e4b` + `39977e0a`) — `/_harness/range-bar` route + URL-param dispatch on both harnesses; shared `url-params.ts`; collapsed `window.__acHarness` to a single namespace via `harness-globals.d.ts` (review fixup).
+- **T5** (`98adf2d1` + `4590e4ef`) — `@audiocontrol/eslint-plugin-test-discipline` workspace package with `no-forbidden-ui-patterns` + `no-internal-imports` rules; scoped to `**/test/ui/contract/**` + `**/test/ui/in-context/**`; `git mv` of `AcEnvelopeTable.contract.spec.ts` into the canonical `test/ui/contract/` location (review fixup pinned policy via test cases).
+- **T6** (`9e9be3c1` + `f97211cf`) — `tools/check-credibility.ts` parses `@credibleAgainst` JSDoc headers, runs Playwright per spec unbroken + per declared variant via env vars, writes `coverage-manifest/credibility.json`; captures stderr on UNEXPECTED outcomes (review fixup added bounded buffers + malformed-declaration warnings + pnpm presence check).
+- **T7** (`3bc60163`) — `tools/generate-coverage-manifest.ts` (8 files, decomposed into 7 submodules under 300 lines each): scans tier dirs for D-IDs, runs the suite, invokes credibility, parses `Sign-off` cells, computes per-D-ID coverage, writes `coverage-manifest.{json,md}`, updates ONLY the inventory's `Coverage` column (Sign-off byte-identical post-run, verified via diff).
+- **T8** (`42d6afaf`) — `pnpm run check-coverage` orchestrator + `make check-coverage-roland` Makefile target; gate exits non-zero on any `implemented` row with `coverage: none`.
+- **T9** (verification, no commit) — smoke test PASSED: D-TONE-ENV-02 → `tiersMet: [2]` + `coverage: partial`; inventory's Coverage cell updated `—` → `partial`; Sign-off preserved.
+
+`make test-ui-roland` baseline held at **176 passed / 4 skipped** through every commit. Independently re-ran the gate after each implementer dispatch per `.claude/rules/agent-discipline.md` ("the controller is the gate — re-run the load-bearing tests independently after every implementer dispatch").
+
+**Phase 11 added to workplan (`029247f3`)** in response to operator-requested scoping of an independent-audit pass:
+
+- **[#425](https://github.com/audiocontrol-org/audiocontrol/issues/425) filed** — `ImportSamplesDialog` mislabels every slot as "(will overwrite)" after device load because it uses raw `!== undefined` checks (3 sites: lines 305, 413, 424) instead of the canonical `isToneSlotEmpty` / `isPatchSlotEmpty` helpers in `slot-allocation.ts`. The slot-allocation file has a 30-line ALL-CAPS preamble warning naming this exact anti-pattern. Bug, not duplication.
+- **[#424 scope-clarification comment](https://github.com/audiocontrol-org/audiocontrol/issues/424#issuecomment-4456792655) posted** — distinguishes what `406dc1e7` already fixed (AcRangeBar / AcEnvelopeTable / ParamSliderRow) from the remaining 9R-B sweep (AcSelect / AcCheckbox / AcNumberInput / AcSlider / AcEnvelopeGraph / AcEnvelopeMeta).
+- **Workplan §Phase 11 (Cross-Cutting Quality Audit Items)** lists both findings with explicit operator acceptance + acceptance criteria + closure paths. README.md "What's Remaining" surfaces Phase 11 alongside Phase 9R / Phase 10 so a fresh session-start sees both.
+
+### Didn't work
+
+- **First brief for the T6 fixup mis-stated the file count target.** I told the implementer to expect "1 file changed" and they correctly chose to extract a parser into a sibling module (2 files) to keep the main file under the 500-line cap. Their judgment was right; my brief should have left the file count open.
+- **The `keyof typeof BROKEN_PRIMITIVES.X` widening at the T4 call sites** initially bypassed the named template-literal-typed key exports the T3 registry introduced for exactly that contract. The reviewer caught it; the fixup imported the named types. Lesson: when one task introduces a typed export, the next task's reviewer should confirm the new types are consumed at the boundary they were designed for.
+- **The audit pass after 9R-A.1 closed flagged what looked like "no closure progress."** The framing was wrong — 9R-A.1 was the explicit blocker for the remediation, not the remediation itself — but the auditor's specific findings (test/wiring/ migration not done; ImportSamplesDialog bug; PlayPage sticky header) were all accurate. Two findings (#425 + the #424 scope) were operator-accepted into the workplan as Phase 11 rather than left as filed-and-forgotten issues.
+
+### Course corrections
+
+- **[PROCESS]** Operator's intervention on the auditor findings: *"file the issues, but scope them into the workplan. If we don't scope them, we will forget about them."* This is the operationalization of the agent-discipline rule "filing a GitHub issue is not the same as doing the work." Phase 11 is now the formal landing surface for any audit finding the operator accepts as separate-priority work; bare GitHub issues without workplan scoping are treated as deferrals that will rot.
+- **[FABRICATION]** Avoided this session — the per-task two-stage review discipline (spec compliance THEN code quality, with re-review on every fixup) caught issues at every dispatch boundary instead of letting them ship. Independent test re-runs after each implementer dispatch held the 176/4 baseline as a continuous signal.
+- **[COMPLEXITY]** T3's `no-pointer-events.tsx` reimplements production's linear render path because the `pointer-events: none` defect can only be injected on the `<input>` directly. The file inflated to 124 lines after the reviewer's three drift fixes; the implementer correctly chose to inline production helpers rather than widen the production API surface for a dev-only concern. The lockstep JSDoc on the file flags the drift risk explicitly.
+
+### Quantitative
+
+- **15 commits** on `feature/s550-support` (commit range `233573b4..HEAD`):
+  - 8 `feat`/`docs` commits — one per 9R-A.1 sub-task
+  - 6 `fix(...)` commits — code-quality reviewer fixups
+  - 1 `docs(workplan)` — Phase 11 scoping + README update
+- **1 new GitHub issue filed**: [#425](https://github.com/audiocontrol-org/audiocontrol/issues/425) (ImportSamplesDialog slot-occupancy mislabel)
+- **1 issue scope-clarified**: [#424](https://github.com/audiocontrol-org/audiocontrol/issues/424) (partial closure post-`406dc1e7`)
+- **Sub-agent dispatches**: ~24 implementer dispatches + ~18 reviewer dispatches (spec-compliance + code-quality, with re-reviews on every fixup)
+- **New tooling**: 2 Node scripts (`check-credibility.ts`, `check-coverage.ts`) + 1 multi-file generator (`generate-coverage-manifest/`, 7 submodules) + 1 ESLint plugin package + harness URL-param dispatcher + 8 broken-variant components + 6 tier-directory READMEs
+- **Test baseline**: 176 passed / 4 skipped throughout (independently re-verified after each task's implementation commit + each fixup commit)
+
+### Insights
+
+- **The two-stage subagent review discipline (spec → quality) at every task boundary worked.** Six of nine 9R-A.1 sub-tasks needed reviewer-driven fixups; without the discipline they'd have shipped with the gaps the reviewers caught (e.g., T2's removed-row mislabeling, T3's three-arm switch repetition + tick-key drift, T4's name-typed registry contract bypass, T5's missing test pins for the broad `.value =` policy + the `.click()` arity heuristic, T6's silent-stderr-swallow). The cost was real (~18 reviewer dispatches) but consistently caught nucleation sites at the moment the cost to fix them was lowest.
+- **The convention-canon trap is the implicit theme of this whole session.** T4's per-harness window globals would have triggered "future harnesses pick distinct names" → 4-globals-by-N=4 if not collapsed at N=2. T5's commented-only policy semantics for `.value =` would have triggered "the rule was relaxed to fix a false positive" → silent regression of Validity Claim A if not pinned by tests. The reform spec itself was written specifically to mechanically prevent the green-tests-against-non-functional-UI failure mode that triggered the Phase 9 reset; the in-session reviews extended that defensive posture to the reform's own implementation.
+- **Independent audits land best when the audit framing accepts the workplan's sub-phase structure.** This session's audit asserted "no closure progress on the reopen items" — accurate at the reopen-defect level, but inaccurate at the prerequisite-infrastructure level. The operator's scoping intervention (Phase 11) was the right course correction; without it, both findings would have been filed-and-forgotten.
+- **For 9R-A.2 next session**: the migration is mechanical (`git mv` ~21 specs from `test/ui/capabilities/` to `test/wiring/`); no spec body rewrites. After it lands, the auditor's loudest finding (forbidden patterns in `test/ui/`) closes, and 9R-A.3 (inventory rewrite — also mostly mechanical) can begin against a clean baseline. 9R-A.4 (`D-TONE-ENV-02` → `confident`) needs a Tier 3 in-context spec on TonesPage + operator hardware sign-off — this is the first session that benefits from running the editor against real hardware.
+
+### Open follow-ups
+
+- **9R-A.2** — `git mv` of ~21 capability specs to `test/wiring/`; delete `test/ui/capabilities/`. Add `make test-wiring-roland` target. Pure plumbing, no spec edits.
+- **9R-A.3** — Rewrite `Affordance` cells in inventory per verb-led / value-named / read-vs-write rules; remove `Test` column. Documentation-only, mostly mechanical.
+- **9R-A.4** — Tier 3 in-context spec for D-TONE-ENV-02 on TonesPage + operator hardware sign-off → coverage `confident`. End-to-end demo of the gate.
+- **Phase 11 §Task 1** ([#425](https://github.com/audiocontrol-org/audiocontrol/issues/425)) — fix `ImportSamplesDialog` to use canonical helpers + Tier 3 in-context spec + operator sign-off. Independent of 9R-A.2/3 — can land in parallel; would be the first non-D-TONE-ENV-02 demo of the new gate.
+- **Phase 11 §Task 2** ([#424](https://github.com/audiocontrol-org/audiocontrol/issues/424)) — 9R-B primitive sweep on the 6 remaining primitives. Blocked on 9R-A's full closure.
+- **Pre-existing uncommitted clutter** (~80 stray PNGs at worktree root + 16 modified screenshots from prior sessions) still NOT staged. Separate hygiene pass — out of scope this session per the same rule applied last session.
+
+---
