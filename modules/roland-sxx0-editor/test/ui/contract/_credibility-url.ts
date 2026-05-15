@@ -39,6 +39,11 @@ export function brokenHarnessUrl(baseRoute: string): string {
   }
   const search = params.toString();
   if (search === '') return baseRoute;
+  if (baseRoute.includes('#')) {
+    throw new Error(
+      `brokenHarnessUrl: baseRoute must not contain '#' (fragments unsupported — appending query params after a fragment breaks routing). Got: ${baseRoute}`,
+    );
+  }
   const joiner = baseRoute.includes('?') ? '&' : '?';
   return `${baseRoute}${joiner}${search}`;
 }

@@ -62,8 +62,14 @@ export function BrokenContextWrapper({
   const [searchParams] = useSearchParams();
   const raw = searchParams.get('context');
 
-  if (raw === null || raw === '') {
+  if (raw === null) {
     // No broken-context override requested — production code path.
+    // An empty-string param (`?context=`) falls through to the
+    // unknown-key throw below: that's the loud-failure path the
+    // contract-enforcement rule prescribes, and it mirrors how
+    // `_credibility-url.ts` treats `AC_BROKEN_CONTEXT=''` as
+    // un-set on the env-var side (the un-set env var never
+    // produces `?context=` in the URL).
     return <>{children}</>;
   }
 

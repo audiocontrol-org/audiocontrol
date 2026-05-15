@@ -131,10 +131,12 @@ async function connectLibrary(page: Page): Promise<void> {
  *   - patch slot 0 has a non-blank name + layer-1 tone assignments
  *   - patch slots 1-3 are loaded-but-empty (blank names, no assignments)
  *
- * The store is exposed on `window` by production code at
- * `src/stores/deviceDataStore.ts:174-176` "for E2E testing" — using it
- * here is the documented contract (mirrors the wiring-test pattern in
- * `library-flows-dnd-helpers.ts`).
+ * The store is exposed on `window` by production code (see
+ * `src/stores/deviceDataStore.ts` — the `Window.__deviceDataStore`
+ * augmentation declaration and its assignment inside the
+ * `if (typeof window !== 'undefined')` guard) "for E2E testing" —
+ * using it here is the documented contract (mirrors the wiring-test
+ * pattern in `library-flows-dnd-helpers.ts`).
  *
  * The values inside the seeded tone/patch objects are minimum-viable —
  * the dropdown labeling only inspects `wave.segmentLength` (via
@@ -146,7 +148,7 @@ async function seedDeviceData(page: Page): Promise<void> {
     const store = window.__deviceDataStore;
     if (!store) {
       throw new Error(
-        '__deviceDataStore missing — production exposes it on window for E2E (see deviceDataStore.ts:174)',
+        '__deviceDataStore missing — production exposes it on window for E2E (see the Window.__deviceDataStore augmentation in src/stores/deviceDataStore.ts)',
       );
     }
     const baseTone = (segmentLength: number, name: string): Record<string, unknown> => ({

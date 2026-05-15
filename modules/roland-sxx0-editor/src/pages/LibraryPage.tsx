@@ -219,6 +219,16 @@ export function LibraryPage() {
         openImportSamplesDialog(name, bundle, 'sample', []);
       },
     };
+    return () => {
+      // Remove only our hook on unmount; preserve other entries that
+      // sibling modules may have installed alongside this one. Without
+      // this cleanup, route-switching back-and-forth in dev would leave
+      // a closure over a stale openImportSamplesDialog from a prior
+      // mount.
+      if (window.__libraryPageTestHooks !== undefined) {
+        delete window.__libraryPageTestHooks.openImportSamplesDialog;
+      }
+    };
   }, [openImportSamplesDialog]);
 
   /**
