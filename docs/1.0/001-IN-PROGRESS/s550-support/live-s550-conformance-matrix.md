@@ -51,7 +51,7 @@ This suite is S-550-first. It does not widen scope into a new cross-device matri
 |---|---|---|---|---|
 | Play | `s550-play.design.spec.ts` landed and executed | not yet | fail | `LIVE-S550-PLAY-001` / sticky header intercepts Part A pointer events on live route |
 | Tones | not yet | `s550-D-TONE-live-envelope-and-slider.spec.ts` landed and executed | fail | `LIVE-S550-TONES-001` / loaded tone row selection is not reliably pointer-actionable on live route, blocking the bounded D-TONE battery before cutoff / sustain assertions |
-| Patches | not yet | not yet | unrun | no live conformance spec landed yet |
+| Patches | `s550-patches.design.spec.ts` landed and executed | not yet | pass | fixed-shell route and loaded-patch detail-open path passed on live hardware |
 | Library | `s550-library.design.spec.ts` landed and executed | not yet | fail | `LIVE-S550-LIB-001` / live Save dialog emits missing dialog-description warning during real OPFS-backed open path |
 
 Status vocabulary:
@@ -85,6 +85,12 @@ Status vocabulary:
    - assert Part A controls are reachable by pointer
    - assert drawer open/close states do not cover operator-facing controls
    - status: landed at `modules/roland-sxx0-editor/test/e2e/s550-play.design.spec.ts`; executed on 2026-05-15 against live hardware and currently fails as `LIVE-S550-PLAY-001`
+
+1a. `s550-patches.design.spec.ts`
+   - prove the fixed Patches shell renders on the live S-550 route
+   - assert title-row refresh chrome is pointer-reachable
+   - assert a real loaded patch row can open the detail editor
+   - status: landed as `modules/roland-sxx0-editor/test/e2e/s550-patches.design.spec.ts`; executed on 2026-05-15 against live hardware and currently passes
 
 2. `D-TONE-live-envelope-and-slider.spec.ts`
    - select a non-empty tone

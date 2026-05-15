@@ -1149,6 +1149,7 @@ This task adds that layer without replacing 9R-C or 9R-D. It is a structured, re
 
 **Current live status (2026-05-15):**
 - `s550-play.design.spec.ts` landed and has already reproduced the real `#423` occlusion bug (`LIVE-S550-PLAY-001`).
+- `s550-patches.design.spec.ts` landed and passes on live hardware; the fixed-shell route, refresh chrome, and loaded-patch detail-open path are now covered on `/roland/s550/editor/patches`.
 - `s550-D-TONE-live-envelope-and-slider.spec.ts` landed and currently fails at live tone-row selection before the intended cutoff / sustain assertions (`LIVE-S550-TONES-001`).
 - `s550-library.design.spec.ts` landed and exercised the real OPFS-backed Save-dialog open path on the live S-550 route; structural shell assertions passed, but the run surfaced a new dialog accessibility warning (`LIVE-S550-LIB-001`) that is now tracked in the audit log.
 
@@ -1169,7 +1170,7 @@ This task adds that layer without replacing 9R-C or 9R-D. It is a structured, re
   - approved mockup states → live page/spec coverage
   - D-IDs → live S-550 conformance specs
   - any intentionally unautomated gaps → explicit operator-only checks
-- [ ] At least one live-device **design** spec exists for each high-value redesign page: `patches`, `tones`, `play`, `library`. Current landed set: `play`, `library`.
+- [ ] At least one live-device **design** spec exists for each high-value redesign page: `patches`, `tones`, `play`, `library`. Current landed set: `play`, `patches`, `library`.
 - [ ] At least one live-device **capability** spec exists for each of the same pages, named with D-ID prefixes and verified by fresh device readback or an equivalent real-hardware truth source.
 - [x] The PlayPage spec explicitly checks the known `#423` failure mode: the live Part A row and drawer affordances are reachable by pointer and not occluded by page chrome.
 - [ ] The TonesPage spec explicitly checks at least one envelope/slider capability on the live S-550 using the visible affordance, aligning with the 9R-A.4 / 9R-B / 9R-C closure path.
