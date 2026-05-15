@@ -954,6 +954,49 @@ Follow-on:
 - This closes the first Patches design slice in the live conformance matrix.
 - The next Patches expansion, if needed, should be a bounded live capability/readback battery rather than another shell-only pass.
 
+---
+
+## 2026-05-15 Live S-550 Patches Capability Result
+
+Scope reviewed: first real-hardware execution of the bounded Patches capability slice from `modules/roland-sxx0-editor/test/e2e/s550-D-PATCH-live-core.spec.ts` against the connected device on `Volt 4`.
+
+### Executive Queue
+
+- No new findings. The first bounded live Patches capability slice passed on the connected S-550.
+
+### Coverage Snapshot
+
+| Surface | Design conformance | Capability conformance | Live status | Notes |
+|---|---|---|---|---|
+| Play | tested | not yet | fail | `LIVE-S550-PLAY-001` |
+| Tones | not yet | attempted | fail | `LIVE-S550-TONES-001` blocks the first bounded D-TONE battery before cutoff / sustain assertions can run |
+| Patches | tested | tested | pass | `s550-patches.design.spec.ts` plus `s550-D-PATCH-live-core.spec.ts` both passed on live hardware |
+| Library | tested | not yet | fail | `LIVE-S550-LIB-001`; shell and Save-dialog path are reachable, but the real dialog emits a missing-description warning |
+
+### Result Record
+
+- Live spec: [modules/roland-sxx0-editor/test/e2e/s550-D-PATCH-live-core.spec.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/test/e2e/s550-D-PATCH-live-core.spec.ts:1)
+- Coverage target: `D-PATCH-02`
+- Verified on live hardware:
+  - visible `Key Mode` affordance on `/roland/s550/editor/patches`
+  - fresh patch readback via Library-page refresh
+  - restoration of the original patch value after the assertion
+
+Observed:
+- The live S-550 route successfully wrote the temporary `Key Mode` change through to hardware and the readback path confirmed the new value.
+- The helper-level query-param bug in `device-readback-helpers.ts` was corrected as part of this integration work: Library navigation now targets the same `library-nav-link` contract the other E2E helpers already use, instead of assuming a bare `/library` href suffix that breaks under `?midi=http&midiServerPort=...`.
+- No new product defect was surfaced by this bounded Patches capability slice.
+
+Evidence:
+- Passing spec target:
+  [modules/roland-sxx0-editor/test/e2e/s550-D-PATCH-live-core.spec.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/test/e2e/s550-D-PATCH-live-core.spec.ts:135)
+- Supporting helper fix:
+  [modules/roland-sxx0-editor/test/e2e/helpers/device-readback-helpers.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/test/e2e/helpers/device-readback-helpers.ts:94)
+
+Follow-on:
+- This closes the first Patches capability slice in the live conformance matrix.
+- The next Patches expansion, if needed, should add another bounded `D-PATCH-*` or `D-PATCH-ZONE-*` readback path rather than broadening into a many-assertion battery immediately.
+
 ### Controller ACK — 2026-05-15 (evening, Patches passing-result)
 
 Acknowledged. **No findings to file; no `Status:` flips; no remediation work required.** The Patches live design slice passed on connected S-550 hardware via the HTTP-MIDI conformance path; the bounded shell + refresh-affordance + detail-open assertions all hold.

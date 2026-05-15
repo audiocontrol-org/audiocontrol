@@ -1159,6 +1159,7 @@ This task adds that layer without replacing 9R-C or 9R-D. It is a structured, re
 **Current live status (2026-05-15):**
 - `s550-play.design.spec.ts` landed and has already reproduced the real `#423` occlusion bug (`LIVE-S550-PLAY-001`).
 - `s550-patches.design.spec.ts` landed and passes on live hardware; the fixed-shell route, refresh chrome, and loaded-patch detail-open path are now covered on `/roland/s550/editor/patches`.
+- `s550-D-PATCH-live-core.spec.ts` landed and passes on live hardware for `D-PATCH-02` (Key Mode), including fresh device readback and restoration of the original patch value.
 - `s550-D-TONE-live-envelope-and-slider.spec.ts` landed and currently fails at live tone-row selection before the intended cutoff / sustain assertions (`LIVE-S550-TONES-001`).
 - `s550-library.design.spec.ts` landed and exercised the real OPFS-backed Save-dialog open path on the live S-550 route; structural shell assertions passed, but the run surfaced a new dialog accessibility warning (`LIVE-S550-LIB-001`) that is now tracked in the audit log.
 
@@ -1178,7 +1179,7 @@ This task adds that layer without replacing 9R-C or 9R-D. It is a structured, re
 
 - [x] Planning artifact at `docs/1.0/001-IN-PROGRESS/s550-support/live-s550-conformance-matrix.md` mapping mockup states + D-IDs + operator-only gaps.
 - [ ] Live-device **design** spec exists for each high-value redesign page (`patches`, `tones`, `play`, `library`). Current landed set: `play`, `patches`, `library`.
-- [ ] Live-device **capability** spec exists for each of the same pages, named with D-ID prefixes and verified by fresh device readback.
+- [ ] Live-device **capability** spec exists for each of the same pages, named with D-ID prefixes and verified by fresh device readback. Current landed set: `patches`, `tones`.
 - [x] PlayPage spec explicitly checks `#423` Part A + drawer reachability — produced `LIVE-S550-PLAY-001`.
 - [ ] TonesPage spec exercises at least one envelope/slider capability on live hardware — partially landed via `s550-D-TONE-live-envelope-and-slider.spec.ts`; currently blocked by `LIVE-S550-TONES-001` at the tone-row selection step.
 - [x] Documented runner entry point: `make test-e2e-roland-device-conformance`.
