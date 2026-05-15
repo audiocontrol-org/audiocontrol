@@ -183,6 +183,44 @@ export function LibraryPage() {
     }
   }, [libraryHandle, openImportSamplesDialog, setError]);
 
+  // ----------------------------------------------------------------------
+  // Dev-only test affordance: open ImportSamplesDialog from a stub bundle
+  // ----------------------------------------------------------------------
+  //
+  // The Tier 3 in-context spec for ImportSamplesDialog
+  // (`test/ui/in-context/import-samples-dialog.in-context.spec.ts`) needs
+  // the dialog mounted against the production LibraryPage so the
+  // BrokenContextWrapper (mounted at App-level) can occlude the page when
+  // `?context=<variant>` is set — that's what makes the spec credible
+  // against context-level defects.
+  //
+  // Tier 3's contract (test/ui/in-context/README.md) forbids the
+  // `dispatchEvent` ceremony the Tier 1 wiring DnD helper uses, and
+  // Playwright's native `page.dragAndDrop` is flaky against HTML5 DnD
+  // (documented in `library-flows-dnd.spec.ts:44-48`). Approaches (a)
+  // and (b) from the implementer brief are therefore not viable; this
+  // is approach (c): expose `window.__libraryPageTestHooks.openImportSamplesDialog`
+  // in dev mode only, so the spec can mount the dialog via
+  // `page.evaluate(...)` without running the full DnD round-trip.
+  //
+  // The hook is a thin pass-through to `openImportSamplesDialog` — the
+  // exact same production callback the DnD path eventually invokes
+  // (see `handleDropLibrarySample` above). Production builds bypass
+  // this `useEffect` entirely because `import.meta.env.DEV` evaluates
+  // to a literal `false` at build time and Vite tree-shakes the body.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    window.__libraryPageTestHooks = {
+      ...(window.__libraryPageTestHooks ?? {}),
+      openImportSamplesDialog: (
+        name: string,
+        bundle: Parameters<typeof openImportSamplesDialog>[1],
+      ) => {
+        openImportSamplesDialog(name, bundle, 'sample', []);
+      },
+    };
+  }, [openImportSamplesDialog]);
+
   /**
    * External drops onto the library tree. Currently we only consume device
    * memory items (DEVICE_DRAG_MIME) dragged out of `DeviceMemoryPanel` and

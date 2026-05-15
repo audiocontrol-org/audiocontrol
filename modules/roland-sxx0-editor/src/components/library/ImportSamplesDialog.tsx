@@ -28,6 +28,11 @@ import {
 import type { AllocationProposal } from '@/components/ui/memory-map-types';
 import { findContiguousBestFits } from '@/lib/best-fit';
 import type { FitOption, ContiguousFitValues } from '@/lib/best-fit';
+import {
+  isPatchSlotEmpty,
+  hasOccupiedToneRange,
+  hasOccupiedPatchRange,
+} from '@/lib/slot-allocation';
 
 export interface ImportSamplesDialogProps extends OperationState {
   open: boolean;
@@ -301,8 +306,7 @@ export function ImportSamplesDialog({
                   {Array.from({ length: maxStartingTone + 1 }, (_, i) => {
                     const absStart = i + selectedTarget.toneIndexOffset;
                     const absEnd = absStart + toneSlotsNeeded - 1;
-                    const hasOccupied = Array.from({ length: toneSlotsNeeded }, (_, j) => deviceTones[absStart + j])
-                      .some((t) => t !== undefined);
+                    const hasOccupied = hasOccupiedToneRange(deviceTones, absStart, toneSlotsNeeded);
                     return (
                       <option key={i} value={i}>
                         {memoryLayout.formatToneSlot(absStart)} - {memoryLayout.formatToneSlot(absEnd)}
@@ -410,7 +414,7 @@ export function ImportSamplesDialog({
                 >
                   {singlePatch ? (
                     Array.from({ length: config.totalPatches }, (_, i) => {
-                      const hasOccupied = devicePatches[i] !== undefined;
+                      const hasOccupied = !isPatchSlotEmpty(devicePatches, i);
                       return (
                         <option key={i} value={i}>
                           {memoryLayout.formatPatchSlot(i)}
@@ -421,8 +425,7 @@ export function ImportSamplesDialog({
                   ) : (
                     Array.from({ length: maxStartingPatch + 1 }, (_, i) => {
                       const endSlot = i + totalSamples - 1;
-                      const hasOccupied = Array.from({ length: totalSamples }, (_, j) => devicePatches[i + j])
-                        .some((p) => p !== undefined);
+                      const hasOccupied = hasOccupiedPatchRange(devicePatches, i, totalSamples);
                       return (
                         <option key={i} value={i}>
                           {memoryLayout.formatPatchSlot(i)} - {memoryLayout.formatPatchSlot(endSlot)}

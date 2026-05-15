@@ -204,3 +204,11 @@ export {
   type AcEnvelopeTableVariantKey,
   type BrokenContextKey,
 } from './__broken__/registry';
+
+// Dev-only wrapper for the Tier 3 production-route credibility dispatcher.
+// Reads `?context=<variant>` and wraps children in the matching broken
+// context. Production builds must gate the mount on `import.meta.env.DEV`.
+export {
+  BrokenContextWrapper,
+  type BrokenContextWrapperProps,
+} from './__broken__/BrokenContextWrapper';
