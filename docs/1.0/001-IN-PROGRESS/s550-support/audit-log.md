@@ -1203,3 +1203,26 @@ Closure gate:
 **Missed-ACK protocol applied:** caught LIVE-S550-PATCH-001 via the end-of-dispatch `^Status: open` grep per the lesson recorded in the LIB-002 ACK section. The grep is now established as the load-bearing pre-completion check; without it, this finding would have sat un-ACK'd until the operator prompted another comprehensive review.
 
 **Workplan §Phase-11-Task-6 update:** the task body now references #431 + #430 + their shared root cause + the dual closure-gate requirement. See workplan for the updated Proven-complete-when checklist.
+
+---
+
+### Controller Branch-B Disposition — 2026-05-15 (Task 6, diagnostic-only instrumentation)
+
+`LIVE-S550-LIB-002` (#430) and `LIVE-S550-PATCH-001` (#431) — **Status unchanged: both remain `acknowledged`**. Commit `9d1166a0` landed diagnostic-only instrumentation at the RQD/stale-RJC ignore path in `s-series-client.ts`. This is **not** a fix; the underlying defect class is still under investigation pending hardware evidence.
+
+**Branch decision: B (diagnostic-only).** Branch A (address-based RJC disambiguation) was rejected after code-level verification that the Roland S-series RJC message has **no address payload** — `buildRJCMessage` in `s-series-messages.ts:316-333` confirms the format is exactly `F0 41 [dev] 1E 4F F7` (6 bytes, no echoed address), and `s-series-constants.ts:45-46` defines `RJC = 0x4F` with no associated size/payload structure. Implementing Branch A would have required fabricating a byte offset that does not exist in the device protocol — a violation of "No fabricated facts about device behavior."
+
+**What the commit adds:** the existing `console.warn('[S-550] Ignoring stale RJC during RQD')` is replaced with a structured log line carrying three diagnostic fields:
+- `addr=[hh hh hh hh]` — the address of the inflight RQD (the `address` argument the listener is bound to)
+- `time-since-send=Nms` — elapsed milliseconds since `midiAdapter.send(message)` returned
+- `rjc-bytes=[hh hh hh hh hh hh]` — the full RJC payload as hex
+
+**What stays the same:** the listener still calls `resetTimeout()` and `return`s. Behavior is byte-for-byte identical to pre-commit. Wiring tests pass at 136/136 unchanged (simulated adapter never emits RJC; this path is not exercised in simulation — verified by controller independent re-run).
+
+**Closure gate (unchanged):** both `s550-D-LIB-live-core.spec.ts` and `s550-D-PATCH-live-core.spec.ts` must pass on live S-550 hardware. The auditor's next live re-run captures the `time-since-send` field and informs the actual fix:
+- If `time-since-send` < ~100ms (RJC arrives close to send): likely a current-op device rejection. Fix must escalate to fail-fast — investigate why the device rejects the RQD (probably a quiescence-gap issue, with the device still draining a prior op when the next RQD lands).
+- If `time-since-send` > ~500ms (RJC arrives long after send): plausibly a stale response from a prior timed-out operation. Different quiescence or retry strategy required at the orchestration layer.
+
+**Why this isn't a "for now" deferral:** Per `.claude/rules/agent-discipline.md`, "Just for now" patterns are forbidden — diagnostic-only commits typically smell like that pattern. This one is different in three ways: (1) the disposition is explicitly logged here in the audit-log, not buried in a code comment; (2) the closure gate is unchanged and hardware-bound — there is no way to false-close this finding from controller-side inspection; (3) the next action (auditor's live re-run with the new diagnostic field captured) is concrete and is **the next thing that happens** for this finding-class, not a hypothetical future task. The commit body documents the same.
+
+**Parallel pattern observation (filed for completeness, not a fix):** `s-series-client.ts:382-428` contains a similar stale-RJC ignore in the `sendAndReceive` WSD/DAT/EOD handshake path. Neither finding cites it; it was not modified by this commit. If the auditor surfaces a future WSD-interleaving finding, the same diagnostic treatment may need to be applied there. Noted here so it doesn't get lost.
