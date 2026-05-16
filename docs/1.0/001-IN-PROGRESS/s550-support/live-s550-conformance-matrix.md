@@ -52,7 +52,7 @@ This suite is S-550-first. It does not widen scope into a new cross-device matri
 | Play | `s550-play.design.spec.ts` landed and executed | not yet | fail | `LIVE-S550-PLAY-001` / sticky header intercepts Part A pointer events on live route |
 | Tones | `s550-tones.design.spec.ts` landed; first live run blocked pre-app by device validation miss | `s550-D-TONE-live-envelope-and-slider.spec.ts` landed and executed | fail | `LIVE-S550-TONES-001` / loaded tone row selection is not reliably pointer-actionable on live route, blocking the bounded D-TONE battery before cutoff / sustain assertions |
 | Patches | `s550-patches.design.spec.ts` landed and executed | `s550-D-PATCH-live-core.spec.ts` landed and executed | fail | prior `D-PATCH-02` readback pass still stands, but the latest rerun surfaced `LIVE-S550-PATCH-001` / patch-bank load times out with stale-RJC + `RQD response timeout` before the editor opens |
-| Library | `s550-library.design.spec.ts` landed and executed | `s550-D-LIB-live-core.spec.ts` landed and executed | fail | `LIVE-S550-LIB-001` / live Save dialog emits missing dialog-description warning; `LIVE-S550-LIB-002` / live D-LIB-10 save path times out during tone-wave fetch and does not complete |
+| Library | `s550-library.design.spec.ts` landed and now passes on live hardware | `s550-D-LIB-live-core.spec.ts` landed and executed | fail | `LIVE-S550-LIB-001` verified on 2026-05-15; remaining live failure is `LIVE-S550-LIB-002` / D-LIB-10 save path times out during tone-wave fetch and does not complete |
 
 Status vocabulary:
 - `pass`: live hardware run completed and matched the current conformance expectation
@@ -113,7 +113,7 @@ Status vocabulary:
 3. `s550-library.design.spec.ts`
    - verify real library-page structure against the approved mockup direction
    - include at least one dialog-open state
-   - status: landed as `modules/roland-sxx0-editor/test/e2e/s550-library.design.spec.ts`; executed on 2026-05-15 against live hardware. Structural shell assertions passed, but the real Save-dialog path surfaced `LIVE-S550-LIB-001` (missing dialog description warning), so the Library surface remains a live `fail`
+   - status: landed as `modules/roland-sxx0-editor/test/e2e/s550-library.design.spec.ts`; re-ran on 2026-05-15 against live hardware after the `#429` remediation, with the spec tightened to fail on the Radix missing-description warning. The live Save-dialog path now passes and verifies `LIVE-S550-LIB-001`; the Library surface still remains overall `fail` because capability slice `LIVE-S550-LIB-002` is unresolved
 
 4. `s550-D-LIB-live-core.spec.ts`
    - drive `Save to Library...` on `/roland/s550/editor/library`

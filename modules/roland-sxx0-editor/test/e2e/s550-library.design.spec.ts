@@ -53,6 +53,13 @@ function attachConsoleDebugListener(page: Page): void {
   });
 }
 
+function libraryDialogWarnings(page: Page): string[] {
+  const warnings = (page as Page & {
+    __libraryWarningLog?: string[];
+  }).__libraryWarningLog;
+  return warnings ?? [];
+}
+
 test.describe('S-550 live Library-page design conformance', () => {
   test.beforeAll(async () => {
     if (!MIDI_SERVER_PORT) {
@@ -68,7 +75,14 @@ test.describe('S-550 live Library-page design conformance', () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    (page as Page & { __libraryWarningLog?: string[] }).__libraryWarningLog = [];
     attachConsoleDebugListener(page);
+    page.on('console', (msg) => {
+      const text = msg.text();
+      if (text.includes('Missing `Description` or `aria-describedby={undefined}`')) {
+        libraryDialogWarnings(page).push(text);
+      }
+    });
 
     await page.goto(buildUrl(), { timeout: UI_TIMEOUT_MS });
     await waitForAppReady(page);
@@ -113,5 +127,6 @@ test.describe('S-550 live Library-page design conformance', () => {
     await expect(page.getByLabel('Set Name')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Save Set' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible();
+    expect(libraryDialogWarnings(page)).toEqual([]);
   });
 });
