@@ -1,3 +1,7 @@
+---
+deskwork:
+  id: fed7e6aa-b6b6-4145-88c0-8c9d67d7387e
+---
 ## Operator Review Runbook — 2026-05-15
 
 **Branch:** `feature/s550-support` at `f59b7ea9` or later.
