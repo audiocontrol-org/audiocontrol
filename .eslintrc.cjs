@@ -36,15 +36,17 @@ module.exports = {
       // docs/1.0/001-IN-PROGRESS/s550-support/testing-and-inventory-reform-spec.md
       // §4 (Validity Claim A): Tier 2/3 specs must originate user input
       // from accessible role+name queries and real pointer / keyboard
-      // events. The rule is scoped to the canonical Tier 2/3 directories
-      // ONLY; Tier 1 wiring specs (under test/wiring/) are explicitly
-      // NOT linted because their wiring-test shortcuts are part of
-      // Tier 1's contract. (Prior to 9R-A.2 the same exclusion covered a
-      // legacy test/ui/capabilities/ directory, which has since been
-      // migrated wholesale into test/wiring/ and deleted.)
+      // events. The rule is scoped to the ENTIRE test/ui/ tree (Tier 2 +
+      // Tier 3 + any future spec that lands at the root) so the drift
+      // that #426 caught (5 root specs at modules/.../test/ui/*.spec.ts
+      // using getByTestId + .click() — ungated by the prior
+      // contract/in-context-only scope) cannot re-enter. Tier 1 wiring
+      // specs (under test/wiring/) and rendering smokes (under
+      // test/rendering/) are NOT linted because their semantics are
+      // explicitly paint-only or seam-only and the discipline does not
+      // apply at those tiers.
       files: [
-        '**/test/ui/contract/**/*.{ts,tsx}',
-        '**/test/ui/in-context/**/*.{ts,tsx}',
+        '**/test/ui/**/*.{ts,tsx}',
       ],
       // These specs live outside the per-module tsconfig `include`, so
       // type-aware linting is disabled here. The discipline rules below

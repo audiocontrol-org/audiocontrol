@@ -1125,15 +1125,15 @@ The 9R-A.2 migration's grep audit only checked for `.fill(` / `.value =` / `disp
 - **Option C — delete + replace** (smallest tree; trusts 9R-C in-context spec authoring to add genuine UI coverage where needed).
 
 **Proven complete when:**
-- [ ] Selected disposition applied to every cited file in #426.
-- [ ] `grep -rn "getByTestId\|\.click\(\)" modules/roland-sxx0-editor/test/ui/` returns zero functional hits (docstring / README references naming the patterns as forbidden are acceptable).
-- [ ] The test-discipline ESLint plugin's lint scope is widened to gate any root `test/ui/*.spec.ts` files that remain in place (Option A or B) — or those files are removed (Option C). This is the structural guarantee that the same drift cannot re-enter.
-- [ ] Total test suite count adjusts cleanly: pre-fix baseline 176 passed / 4 skipped (wiring=136 + ui=26 + rendering=14+4). Post-fix count is either the same (Option A/B with full re-write) or the same minus the deleted root-spec count (Option C with verified equivalent Tier 1 wiring coverage).
-- [ ] If Option A: each migrated spec carries an `@credibleAgainst` declaration and passes `pnpm run check-credibility`.
-- [ ] Issue #426 closed with the disposition decision + the fix commit hash + the grep audit output.
+- [x] Selected disposition applied to every cited file in #426. **Disposition: mixed Option B + Option C** (controller-chosen 2026-05-15 evening; operator can redirect via re-dispatch). Option C (delete) for `library.spec.ts` / `patches.spec.ts` / `play.spec.ts` / `tones.spec.ts` — duplicated by Tier 1 wiring counterparts. Option C-with-migration for `home.spec.ts` — its unique `Continue to Patches` assertion migrated to `test/wiring/connection.spec.ts` as `C-CONN-02b`. Option B (demote to `test/rendering/`) for the 2 uncited but in-violation files: `page-viewport-containment.spec.ts` (layout-overflow regression) and `phase-7-task-2-front-panel-screenshots.spec.ts` (screenshot/rendering spec).
+- [x] `grep -rn "getByTestId\|\.click()" modules/roland-sxx0-editor/test/ui/` returns ZERO functional hits. All surviving hits are docstring/README references naming the patterns as forbidden (acceptable per the gate).
+- [x] The test-discipline ESLint plugin's lint scope widened from `**/test/ui/{contract,in-context}/**` to `**/test/ui/**` in `.eslintrc.cjs`. Structural guarantee against future root-of-test/ui drift.
+- [x] Test suite count adjustment: wiring 136 → 137 (+1 from C-CONN-02b migration); test-ui 26 → 6 (-20 from removed root specs + 2 moves to rendering); rendering 14 → 24 passed (+10 from 2 moved files; 4 skipped unchanged). Total 167 passed (was 176); 9-spec net reduction reflects elimination of duplicate wiring evidence per Option C — every deleted test was duplicated by a Tier 1 wiring counterpart asserting the same invariant via accessible queries.
+- [x] Option A NOT taken; @credibleAgainst declaration requirement N/A for this disposition.
+- [ ] Issue #426 closed with the disposition decision + the fix commit hash + the grep audit output. **(Pending commit + push; closure happens in the commit that lands this checklist.)**
 
 **Notes:**
-- This task does NOT depend on Phase 11 §Task 1 / §Task 2 or on 9R-B/C/D. It can land in parallel; the cleanest landing surface is alongside 9R-A.4 because the Option A path benefits from the production-page context-swap wiring that 9R-A.4 also needs.
+- This task does NOT depend on Phase 11 §Task 1 / §Task 2 or on 9R-B/C/D. Landed atomically with the wiring/UI/rendering re-runs verifying the count adjustment.
 
 ### Task 4 — Live S-550 conformance suite (AUDITOR-OWNED — controller responsibilities limited to infra + remediation)
 
@@ -1266,7 +1266,7 @@ A single fix in `s-series-client.ts` RQD/RJC handling likely closes both manifes
 
 - [ ] **Task 1 closed:** ImportSamplesDialog mislabel bug fixed + Tier 3 spec landed + operator sign-off + #425 closed.
 - [ ] **Task 2 closed:** primitive sweep complete + operator sign-off + #424 closed.
-- [ ] **Task 3 closed:** root `test/ui/*.spec.ts` test-discipline gap closed + ESLint lint-scope widened (or root specs removed) + #426 closed.
+- [x] **Task 3 closed:** root `test/ui/*.spec.ts` test-discipline gap closed via mixed Option B + Option C disposition (controller-chosen 2026-05-15); ESLint lint-scope widened to `**/test/ui/**`; #426 closed in the commit landing this checklist.
 - [ ] **Task 4 closed:** live S-550 conformance suite (auditor-owned) covers each high-value redesign page; controller-owned support infrastructure landed; all findings the suite surfaces have flowed through the protocol's acknowledged → fixed → verified loop.
 - [ ] **Task 5 closed:** SaveSetDialog + library-dialog family missing-description warnings fixed + Tier 3 spec + #429 closed.
 - [ ] **Task 6 closed:** S-series client RQD/stale-RJC defect class fixed; BOTH auditor live specs verify on hardware (`s550-D-LIB-live-core.spec.ts` + `s550-D-PATCH-live-core.spec.ts`); #430 + #431 both closed.

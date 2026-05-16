@@ -97,6 +97,19 @@ test.describe('Capabilities — Connection (C-CONN)', () => {
     await expect(page.getByText(/Transport: simulated/)).toBeVisible();
   });
 
+  test('C-CONN-02b: continue-to-next-section affordance appears once connected', async ({ page }) => {
+    // The device config's `continueLabel` is rendered as a button only
+    // after auto-connect completes. For S-330 that label is
+    // 'Continue to Patches' (see modules/roland-sxx0-editor/src/devices/s330.ts).
+    // This assertion previously lived in test/ui/home.spec.ts and was
+    // migrated here as part of #426's Option C disposition — the wiring
+    // tier already proves auto-connect, so the continue affordance is
+    // the same auto-connect contract surfaced one frame later.
+    await expect(
+      page.getByRole('button', { name: 'Continue to Patches' }),
+    ).toBeVisible({ timeout: 5_000 });
+  });
+
   test('C-CONN-03: disconnect affordance reachable + leaves status disconnected', async ({ page }) => {
     const disconnectButton = page.getByRole('button', { name: 'Disconnect' });
     await expect(disconnectButton).toBeVisible({ timeout: 5_000 });
