@@ -4,6 +4,12 @@ This is the human-facing runbook for the current `feature/s550-support` branch s
 
 Use this document for the actual UI review and sign-off pass. You should not need to read the manifest, integration test code, or raw machine output to know what to do next.
 
+For the live S-550 reruns below, use the runbook dispatcher instead of remembering individual spec names:
+
+```bash
+pnpm --filter @audiocontrol/roland-sxx0-editor test:runbook:live -- --list
+```
+
 ## Outcome
 
 At the end of this pass, record one of two outcomes:
@@ -111,7 +117,7 @@ If blocked:
 What to run:
 
 ```bash
-make test-e2e-roland-device-conformance ARGS="--grep 's550-D-TONE-live-envelope-and-slider'"
+pnpm --filter @audiocontrol/roland-sxx0-editor test:runbook:live -- 2.3
 ```
 
 What to look for:
@@ -134,7 +140,7 @@ If blocked:
 What to run:
 
 ```bash
-make test-e2e-roland-device-conformance ARGS="--grep 's550-D-LIB-live-core'"
+pnpm --filter @audiocontrol/roland-sxx0-editor test:runbook:live -- 2.4-library
 ```
 
 What to look for:
@@ -157,7 +163,7 @@ If blocked:
 What to run:
 
 ```bash
-make test-e2e-roland-device-conformance ARGS="--grep 's550-D-PATCH-live-core'"
+pnpm --filter @audiocontrol/roland-sxx0-editor test:runbook:live -- 2.4-patches
 ```
 
 What to look for:

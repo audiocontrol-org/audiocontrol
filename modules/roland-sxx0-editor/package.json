@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "test:integration": "vitest run test/integration",
     "test:runbook:tier3-drop-smoke": "tsx scripts/runbook-tier3-drop-smoke.ts",
+    "test:runbook:live": "tsx scripts/runbook-live.ts",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test:device": "tsx scripts/validate-device.ts",
