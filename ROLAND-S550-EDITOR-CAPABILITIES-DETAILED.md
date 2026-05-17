@@ -17,6 +17,25 @@ This doc is a working punch list for two kinds of gaps:
 1. **Missing UI coverage** — affordances marked `implemented` with `Coverage: none` or `Coverage: partial` in the machine-generated column. The UI works but the four-tier evidence model (see below) is not yet complete against future redesign.
 2. **Missing UI** — affordances marked `missing`. The protocol or storage layer supports the affordance but no editor surface exposes it. Each one represents a feature the editor *should* have.
 
+## Operator shortcut
+
+If you are reviewing the UI for sign-off, you do not need to understand the full coverage machinery before using this document.
+
+Read it this way:
+
+- **Affordance** = what the UI is supposed to let the operator do.
+- **Status** = whether that affordance exists in the current UI.
+- **Sign-off** = the operator-facing decision state for that affordance:
+  - `none` = not yet signed off
+  - `<YYYY-MM-DD> <signer> <sha>` = signed off on hardware
+  - `revoked <YYYY-MM-DD> <signer>` = previously signed off, later revoked
+- **Coverage** = engineering-only evidence state. Useful to the auditor and implementation team, but not the primary thing the operator is being asked to judge.
+
+For the shortest operator view, start with:
+
+- [docs/1.0/001-IN-PROGRESS/s550-support/operator-signoff-summary.md](docs/1.0/001-IN-PROGRESS/s550-support/operator-signoff-summary.md)
+- [docs/1.0/001-IN-PROGRESS/s550-support/operator-review-runbook-current.md](docs/1.0/001-IN-PROGRESS/s550-support/operator-review-runbook-current.md)
+
 ## How to read this document
 
 Each table row is one affordance. The Affordance cell is verb-led, names the value (with range / units where applicable), and distinguishes read-only from operator-driven. The widget noun (slider / dropdown / checkbox / button / number-input / text-input) is suppressed — it belongs to the implementation, not the affordance. Range notation: en-dash for unsigned (`0–127`); double-dot for signed (`-64..+63`). The columns are:
@@ -27,7 +46,7 @@ Each table row is one affordance. The Affordance cell is verb-led, names the val
 - **Parent** — the matching `C-<AREA>-<NN>` from the parent doc, or `n/a` for sub-affordances the parent doesn't enumerate.
 - **Origin** — `native` / `client-derived` / `editor-derived` (see below).
 - **Status** — `implemented` / `partial` / `missing`. Determined by reading actual TSX, not by parent test coverage.
-- **Sign-off** — **operator-owned** column. Records the most recent operator hardware sign-off for the capability. Format per [`docs/1.0/001-IN-PROGRESS/s550-support/testing-and-inventory-reform-spec.md`](docs/1.0/001-IN-PROGRESS/s550-support/testing-and-inventory-reform-spec.md) §7: `none` (default), `<YYYY-MM-DD> <signer> <sha>`, or `revoked <YYYY-MM-DD> <signer>`. The cell shows only the latest sign-off; history is recoverable via `git blame` and the coverage manifest's append-only iteration journal. Rows with status `removed` (or wrapped in `~~...~~` strikethrough) carry `n/a` for both Sign-off and Coverage — they describe capabilities that were removed and are not signable.
+- **Sign-off** — **operator-owned** column. Records the most recent operator hardware sign-off for the capability. For operator review, read this as a simple decision state: `none` means not yet signed off; `<YYYY-MM-DD> <signer> <sha>` means signed off on hardware; `revoked <YYYY-MM-DD> <signer>` means a prior sign-off was withdrawn. Format per [`docs/1.0/001-IN-PROGRESS/s550-support/testing-and-inventory-reform-spec.md`](docs/1.0/001-IN-PROGRESS/s550-support/testing-and-inventory-reform-spec.md) §7. The cell shows only the latest sign-off; history is recoverable via `git blame` and the coverage manifest's append-only iteration journal. Rows with status `removed` (or wrapped in `~~...~~` strikethrough) carry `n/a` for both Sign-off and Coverage — they describe capabilities that were removed and are not signable.
 - **Coverage** — **machine-generated** column populated by `tools/generate-coverage-manifest.ts`. Values: `none` / `partial` / `confident` per the rules in reform spec §6. Any hand edit to this column is overwritten on the next manifest regeneration.
 
 ### The four-tier coverage model
