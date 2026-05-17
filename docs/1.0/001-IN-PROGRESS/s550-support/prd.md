@@ -180,3 +180,35 @@ This suite does **not** replace the four-tier reform in Phase 9. It complements 
   - capability rows marked `implemented` whose real-hardware UX still fails
 
 Success for this extension means the repo has a repeatable, documented way to run targeted Playwright checks against a live S-550 and surface concrete design/capability gaps before final operator sign-off.
+
+## 2026-05-16 Scope Extension — Operator Runbook Execution Layer
+
+The new operator review runbook adds a useful closure workflow, but in its current markdown-only form it is a dated human snapshot, not an executable verification system. The branch now also needs a **runbook execution layer** that can tell the difference between:
+
+- steps that are still applicable at current HEAD
+- steps that were correct for the snapshot SHA but are now obsolete
+- steps that can be executed automatically without mutating the shared worktree
+- steps that remain operator-owned and must stay manual
+
+This extension exists to prevent the runbook from rotting into prose while the live conformance suite continues to evolve. It complements the 2026-05-15 live-device conformance extension rather than replacing it.
+
+The runbook execution layer has three parts:
+
+1. **State validation** — parse the runbook's tracked findings and current branch state (`audit-log.md`, `workplan.md`, capability inventory) and report whether each runbook step is applicable, already satisfied, stale, or blocked.
+2. **Safe structural execution** — automate the non-browser, non-mutating checks from the runbook as integration tests, asserting stable invariants instead of brittle literal snapshot counts.
+3. **Live run dispatch** — map runbook sections onto the already-landed live S-550 Playwright specs so the operator can execute runbook-defined verification without maintaining a second parallel battery.
+
+This layer must produce **two shapes of output**:
+
+- a **machine-facing** manifest / classifier / dispatcher used by integration tests and scripts
+- a **human-facing** operator runbook that presents only the steps a reviewer needs to perform, in review order, with plain-language expected results and explicit sign-off / blocked outcomes
+
+This layer must not step on concurrent remediation work. Any automated proof that temporarily removes or alters repo evidence (for example the Tier 3 dependency-wiring smoke check) must run in a temporary copy or throwaway worktree rather than the shared working tree.
+
+Success for this extension means the repo has a repeatable command path that:
+
+- reports which runbook steps are still relevant at HEAD
+- reuses the existing live S-550 conformance suite rather than duplicating it
+- avoids mutating the shared worktree during automated verification
+- surfaces implementation gaps as audit-log findings rather than silently baking assumptions into test code
+- emits an easy-to-follow human operator runbook for the final UI review and sign-off pass rather than requiring the reviewer to interpret machine-oriented manifests or test output

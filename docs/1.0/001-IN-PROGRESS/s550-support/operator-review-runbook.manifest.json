@@ -1,0 +1,204 @@
+[
+  {
+    "id": "RUNBOOK-1.1-D-TONE-ENV-02-BASELINE",
+    "section": "1.1",
+    "title": "Verify D-TONE-ENV-02 credibility baseline",
+    "snapshot_sha": "f59b7ea9",
+    "requires_hardware": false,
+    "mutates_repo": false,
+    "signal_type": "command",
+    "finding_or_issue": "D-TONE-ENV-02",
+    "state_probe": {
+      "type": "inventory-row",
+      "id": "D-TONE-ENV-02"
+    },
+    "expected_snapshot_state": {
+      "sign_off": "none",
+      "coverage": "partial"
+    },
+    "head_applicability_rule": "Applicable while D-TONE-ENV-02 is still unsigned and coverage remains partial. Obsolete once Tier 4 sign-off lands and coverage moves to confident.",
+    "current_head_classification": "applicable",
+    "closure_artifact": "Current D-TONE-ENV-02 row plus check-coverage output"
+  },
+  {
+    "id": "RUNBOOK-1.2-D-TONE-ENV-02-SIGNOFF",
+    "section": "1.2",
+    "title": "Record D-TONE-ENV-02 operator sign-off",
+    "snapshot_sha": "f59b7ea9",
+    "requires_hardware": true,
+    "mutates_repo": true,
+    "signal_type": "manual",
+    "finding_or_issue": "D-TONE-ENV-02",
+    "state_probe": {
+      "type": "inventory-row",
+      "id": "D-TONE-ENV-02"
+    },
+    "expected_snapshot_state": {
+      "sign_off": "none"
+    },
+    "head_applicability_rule": "Manual-only while the capability remains unsigned. Already satisfied once a valid operator sign-off is present.",
+    "current_head_classification": "manual-only",
+    "closure_artifact": "Updated Sign-off cell in ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md"
+  },
+  {
+    "id": "RUNBOOK-1.3-D-TONE-ENV-02-CONFIDENCE",
+    "section": "1.3",
+    "title": "Verify D-TONE-ENV-02 confidence flip",
+    "snapshot_sha": "f59b7ea9",
+    "requires_hardware": false,
+    "mutates_repo": false,
+    "signal_type": "command",
+    "finding_or_issue": "D-TONE-ENV-02",
+    "state_probe": {
+      "type": "inventory-row",
+      "id": "D-TONE-ENV-02"
+    },
+    "expected_snapshot_state": {
+      "coverage": "confident"
+    },
+    "head_applicability_rule": "Blocked until operator sign-off lands. Already satisfied once the row is signed and coverage is confident.",
+    "current_head_classification": "blocked",
+    "closure_artifact": "Coverage report showing D-TONE-ENV-02 = confident"
+  },
+  {
+    "id": "RUNBOOK-1.4-D-TONE-ENV-02-TIER3-SMOKE",
+    "section": "1.4",
+    "title": "Smoke test Tier 3 dependency wiring for D-TONE-ENV-02",
+    "snapshot_sha": "f59b7ea9",
+    "requires_hardware": false,
+    "mutates_repo": true,
+    "signal_type": "command",
+    "finding_or_issue": "D-TONE-ENV-02",
+    "state_probe": {
+      "type": "inventory-row",
+      "id": "D-TONE-ENV-02"
+    },
+    "expected_snapshot_state": {
+      "coverage_drop_to": "partial",
+      "coverage_restore_to": "confident"
+    },
+    "head_applicability_rule": "Blocked until D-TONE-ENV-02 reaches confident. Must run only in a temp copy or throwaway worktree because it temporarily removes Tier 3 evidence.",
+    "current_head_classification": "blocked",
+    "closure_artifact": "Temp-worktree smoke output showing coverage drops and restores"
+  },
+  {
+    "id": "RUNBOOK-1.5-SIGNOFF-COMMIT",
+    "section": "1.5",
+    "title": "Commit and push sign-off artifacts",
+    "snapshot_sha": "f59b7ea9",
+    "requires_hardware": false,
+    "mutates_repo": true,
+    "signal_type": "git/github",
+    "finding_or_issue": "D-TONE-ENV-02",
+    "state_probe": {
+      "type": "inventory-row",
+      "id": "D-TONE-ENV-02"
+    },
+    "expected_snapshot_state": {
+      "sign_off": "present"
+    },
+    "head_applicability_rule": "Manual-only repository-closure step after operator sign-off and coverage verification succeed.",
+    "current_head_classification": "manual-only",
+    "closure_artifact": "Commit and push carrying sign-off artifacts"
+  },
+  {
+    "id": "RUNBOOK-2.1-AUDIT-20260514-FU3-01",
+    "section": "2.1",
+    "title": "Re-run structural gate for #426",
+    "snapshot_sha": "f59b7ea9",
+    "requires_hardware": false,
+    "mutates_repo": false,
+    "signal_type": "command",
+    "finding_or_issue": "AUDIT-20260514-FU3-01",
+    "state_probe": {
+      "type": "finding-status",
+      "id": "AUDIT-20260514-FU3-01"
+    },
+    "expected_snapshot_state": {
+      "status_prefix": "fixed-215308b5"
+    },
+    "head_applicability_rule": "Applicable while the finding is fixed-awaiting-auditor-rerun. Already satisfied once it flips to verified.",
+    "current_head_classification": "applicable",
+    "closure_artifact": "Grep clean, structural test reruns, ESLint scope confirmation"
+  },
+  {
+    "id": "RUNBOOK-2.2-AUDIT-20260514-FU3-02",
+    "section": "2.2",
+    "title": "Re-run ImportSamplesDialog live verification for #425",
+    "snapshot_sha": "f59b7ea9",
+    "requires_hardware": true,
+    "mutates_repo": false,
+    "signal_type": "playwright-live",
+    "finding_or_issue": "AUDIT-20260514-FU3-02",
+    "state_probe": {
+      "type": "finding-status",
+      "id": "AUDIT-20260514-FU3-02"
+    },
+    "expected_snapshot_state": {
+      "status_prefix": "fixed-12ef2c18"
+    },
+    "head_applicability_rule": "Applicable while the finding is fixed-awaiting-auditor-rerun. Already satisfied once it flips to verified.",
+    "current_head_classification": "applicable",
+    "closure_artifact": "Tier 3 pass plus live dialog review on S-550 hardware"
+  },
+  {
+    "id": "RUNBOOK-2.3-LIVE-S550-TONES-001",
+    "section": "2.3",
+    "title": "Re-run live Tones conformance for #428",
+    "snapshot_sha": "f59b7ea9",
+    "requires_hardware": true,
+    "mutates_repo": false,
+    "signal_type": "playwright-live",
+    "finding_or_issue": "LIVE-S550-TONES-001",
+    "state_probe": {
+      "type": "finding-status",
+      "id": "LIVE-S550-TONES-001"
+    },
+    "expected_snapshot_state": {
+      "status_prefix": "fixed-84810484"
+    },
+    "head_applicability_rule": "Applicable while the finding is fixed-awaiting-auditor-rerun. Already satisfied once it flips to verified.",
+    "current_head_classification": "applicable",
+    "closure_artifact": "Live rerun of s550-D-TONE-live-envelope-and-slider.spec.ts"
+  },
+  {
+    "id": "RUNBOOK-2.4-LIVE-S550-LIB-002",
+    "section": "2.4-library",
+    "title": "Capture live diagnostic evidence for #430",
+    "snapshot_sha": "f59b7ea9",
+    "requires_hardware": true,
+    "mutates_repo": false,
+    "signal_type": "playwright-live",
+    "finding_or_issue": "LIVE-S550-LIB-002",
+    "state_probe": {
+      "type": "finding-status",
+      "id": "LIVE-S550-LIB-002"
+    },
+    "expected_snapshot_state": {
+      "status_prefix": "acknowledged-#430"
+    },
+    "head_applicability_rule": "Applicable while the finding remains acknowledged and diagnostic evidence is still needed. Already satisfied only after a verified live pass or an explicit out-of-scope decision.",
+    "current_head_classification": "applicable",
+    "closure_artifact": "Live rerun log with stale-RJC timing evidence or clean pass evidence"
+  },
+  {
+    "id": "RUNBOOK-2.4-LIVE-S550-PATCH-001",
+    "section": "2.4-patches",
+    "title": "Capture live diagnostic evidence for #431",
+    "snapshot_sha": "f59b7ea9",
+    "requires_hardware": true,
+    "mutates_repo": false,
+    "signal_type": "playwright-live",
+    "finding_or_issue": "LIVE-S550-PATCH-001",
+    "state_probe": {
+      "type": "finding-status",
+      "id": "LIVE-S550-PATCH-001"
+    },
+    "expected_snapshot_state": {
+      "status_prefix": "acknowledged-#431"
+    },
+    "head_applicability_rule": "Applicable while the finding remains acknowledged and diagnostic evidence is still needed. Already satisfied only after a verified live pass or an explicit out-of-scope decision.",
+    "current_head_classification": "applicable",
+    "closure_artifact": "Live rerun log with stale-RJC timing evidence or clean pass evidence"
+  }
+]
