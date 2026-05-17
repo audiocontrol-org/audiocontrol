@@ -3007,3 +3007,53 @@ Session also absorbed an auditor closure pass (commits `ceca1786` through `a5194
 - **9R-A.4 Tier 4 operator sign-off remains the single chokepoint for the whole Phase 9 chain.** All five §Task 6's `Proven complete when` boxes operator-gated; 9R-B blocked on 9R-A.4; 9R-C blocked on 9R-B; 9R-D blocked on 9R-C. The operator review runbook §1 is therefore the single most valuable session-end artifact — completing it unblocks ~6 weeks of controller-actionable work. Worth flagging proactively in next-session start.
 - **The new `LIVE-S550-TONES-002` cutoff readback delta of 38** is large enough to suggest a parameter scaling / range issue rather than a rounding error or affordance bug. 9R-C's investigation should start by checking whether the slider's onChange emits the displayed value, the displayed value / 2 (S-550 nibble vs raw byte split?), or some other transform. The auditor's live spec is the canonical artifact for this investigation.
 - **The studio-binding issue around deskwork ingest** would benefit from a deskwork-studio "list available project roots" or "switch project" runtime feature — currently each studio is locked to one `--project-root` at launch. Workaround (parallel instance on a new port) works but feels heavy. Out of audiocontrol scope but worth recording.
+
+---
+
+## 2026-05-17: s550-support — verification simplification promoted to project standard
+
+### Feature: s550-support
+### Worktree: audiocontrol-s550-support
+
+### Goal
+
+Finish the operator-facing simplification work, then move the resulting UI-contract and sign-off model out of feature-local docs and into a top-level project standard.
+
+### Accomplished
+
+- **Operator-facing simplification landed in feature docs and was pushed in small slices.**
+  - `23897ec0` added `operator-signoff-summary.md` and made it the short operator entry point.
+  - `2acd4273` rewrote `operator-review-runbook-current.md` into review cards.
+  - `f01b7766` clarified the operator interpretation of `Sign-off` in `ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md`.
+  - `423e3610` ingested `operator-signoff-summary.md` into Deskwork and created the operator-first review URL.
+  - `f553453b` trimmed the runbook preamble so it behaves like a checklist rather than a mixed context dump.
+- **Top-level project standard landed.**
+  - `0290e9de` added `UI-CONTRACT-AND-VERIFICATION-STANDARD.md` at the repo root.
+  - `AGENTS.md` and `.claude/CLAUDE.md` now point to that file as the canonical policy source.
+  - `docs/1.0/001-IN-PROGRESS/s550-support/verification-process-simplification.md` now explicitly says it is a feature-local worked example, not the policy source.
+- **Feature docs now point back to the project standard.**
+  - `README.md` and `workplan.md` now record that the simplification escaped the feature boundary and became repo-level guidance.
+
+### Didn't Work
+
+- **Parallel `git add` + `git commit` calls are not safe in this worktree.** They raced repeatedly, producing "no changes added to commit" or transient `index.lock` failures. Sequential staging/commit was reliable and should remain the default in this repo.
+- **Deskwork ingest has some residue behavior in this worktree.** The expected new entry for `operator-signoff-summary.md` landed cleanly, but an older untracked sidecar (`fed7e6aa-...`) remained in `.deskwork/entries/`. I left that file alone because it was not part of the requested simplification slice.
+
+### Course Corrections
+
+- **[PROCESS] Project-wide process docs belong at the repo top level.** Once the user made that boundary explicit, I stopped treating the S-550 feature docs as the right long-term home for policy and promoted the model into a root standard instead.
+- **[DOCUMENTATION] Operator-facing docs should be layered by cognitive cost.** The right stack is now: summary first, checklist second, audit log only on demand. That ordering is more important than any one wording tweak inside the docs.
+- **[PROCESS] Feature docs can be examples without being the policy source.** Adding the top-level standard and then relabeling the S-550 simplification doc as a worked example is the pattern to reuse for future process reforms.
+
+### Quantitative
+
+- Commits: 7 (`23897ec0`, `2acd4273`, `f01b7766`, `423e3610`, `f553453b`, `0290e9de`, plus the pending session-end commit)
+- New top-level standards docs: 1
+- New operator-facing docs: 1 (`operator-signoff-summary.md`)
+- Deskwork entries added: 1 (`s550-support/operator-signoff-summary`)
+
+### Insights
+
+- **The simplest durable operator flow is now visible.** The operator no longer needs to start in the audit log, the conformance matrix, or a mixed runbook. They can start at one short summary page and only drill deeper if needed.
+- **The important structural reform was not just simplifying wording; it was separating audiences.** The same evidence still exists, but it is now distributed by role instead of dumped into one blended workflow.
+- **Top-level standards reduce future feature-local drift.** Without `UI-CONTRACT-AND-VERIFICATION-STANDARD.md`, the next UI-heavy feature would likely have copied the S-550 branch’s local artifacts without a clear statement of which parts were policy and which parts were just this feature’s history.

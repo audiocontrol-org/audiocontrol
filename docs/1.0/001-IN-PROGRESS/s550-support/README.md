@@ -23,6 +23,7 @@ The S-550 shares model ID `0x1E` and SysEx protocol with the S-330 but has an in
 - [Live S-550 Conformance Matrix](./live-s550-conformance-matrix.md) - Planned live-device Playwright battery for design/mockup and capability-document conformance
 - [Verification Process Simplification Proposal](./verification-process-simplification.md) - Explains why the current verification/sign-off system became hard to understand and proposes a simpler operator-facing model
 - [Operator Sign-off Summary](./operator-signoff-summary.md) - Short operator-facing view of what is already verified, what is still open, and whether sign-off is currently grantable
+- [Project UI Contract Standard](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/UI-CONTRACT-AND-VERIFICATION-STANDARD.md) - Top-level project policy for UI contracts, audit logging, engineering evidence, and operator sign-off
 - [Implementation Summary](./implementation-summary.md) - Post-completion report
 
 ## Verification Docs By Audience
