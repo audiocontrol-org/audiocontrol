@@ -1160,7 +1160,7 @@ This task adds that layer without replacing 9R-C or 9R-D. It is a structured, re
 - `s550-play.design.spec.ts` landed and has already reproduced the real `#423` occlusion bug (`LIVE-S550-PLAY-001`).
 - `s550-patches.design.spec.ts` landed and passes on live hardware; the fixed-shell route, refresh chrome, and loaded-patch detail-open path are now covered on `/roland/s550/editor/patches`.
 - `s550-D-PATCH-live-core.spec.ts` landed and passes on live hardware for `D-PATCH-02` (Key Mode), including fresh device readback and restoration of the original patch value.
-- `s550-D-TONE-live-envelope-and-slider.spec.ts` landed and currently fails at live tone-row selection before the intended cutoff / sustain assertions (`LIVE-S550-TONES-001`).
+- `s550-D-TONE-live-envelope-and-slider.spec.ts` landed and, on the 2026-05-16 live rerun, verified the old row-selection blocker fixed; the bounded battery now fails deeper in the editor (`LIVE-S550-TONES-002`) on cutoff readback mismatch and a stalled TVA sustain interaction.
 - `s550-library.design.spec.ts` landed and exercised the real OPFS-backed Save-dialog open path on the live S-550 route; structural shell assertions passed, but the run surfaced a new dialog accessibility warning (`LIVE-S550-LIB-001`) that is now tracked in the audit log.
 
 **Design of the suite: two coordinated tracks**
@@ -1181,7 +1181,7 @@ This task adds that layer without replacing 9R-C or 9R-D. It is a structured, re
 - [ ] Live-device **design** spec exists for each high-value redesign page (`patches`, `tones`, `play`, `library`). Current landed set: `play`, `patches`, `library`, `tones`.
 - [ ] Live-device **capability** spec exists for each of the same pages, named with D-ID prefixes and verified by fresh device readback. Current landed set: `patches`, `tones`, `library`.
 - [x] PlayPage spec explicitly checks `#423` Part A + drawer reachability — produced `LIVE-S550-PLAY-001`.
-- [ ] TonesPage spec exercises at least one envelope/slider capability on live hardware — partially landed via `s550-D-TONE-live-envelope-and-slider.spec.ts`; currently blocked by `LIVE-S550-TONES-001` at the tone-row selection step.
+- [ ] TonesPage spec exercises at least one envelope/slider capability on live hardware — partially landed via `s550-D-TONE-live-envelope-and-slider.spec.ts`; 2026-05-16 live rerun now reaches the bounded assertions, but the battery still fails as `LIVE-S550-TONES-002` inside the editor controls.
 - [x] Documented runner entry point: `make test-e2e-roland-device-conformance`.
 
 **Controller-owned support criteria** (these are in scope for `/dwi`):
@@ -1201,7 +1201,7 @@ This task adds that layer without replacing 9R-C or 9R-D. It is a structured, re
 - Auditor re-ran `s550-library.design.spec.ts` on live S-550 hardware after the `#429` remediation and verified `LIVE-S550-LIB-001`: the Save dialog now opens through the real OPFS-backed route without the Radix missing-description warning.
 - `s550-D-LIB-live-core.spec.ts` landed and exercised `D-LIB-10` on the live S-550 route; the save path entered device scanning but timed out during tone-wave fetch (`LIVE-S550-LIB-002`), so Library capability conformance is now a tested `fail`, not `unrun`.
 - `s550-tones.design.spec.ts` landed to cover the Tones fixed-shell/title-row composition on the live S-550 route; the first execution attempt was blocked before app startup because device validation could not find a Roland S-series device, so this slice is implemented but not yet product-verified.
-- `s550-D-PATCH-live-core.spec.ts` was extended toward `D-PATCH-04` (`P.Bend Range`), but the latest live rerun now fails earlier in the route load: patch-bank fetch hits stale-RJC + `RQD response timeout - no data received` before the editor opens (`LIVE-S550-PATCH-001`). Patches capability conformance therefore remains an active live finding despite the earlier `D-PATCH-02` pass.
+- `s550-D-PATCH-live-core.spec.ts` now passes on live hardware for both `D-PATCH-02` (`Key Mode`) and `D-PATCH-04` (`P.Bend Range`), including fresh device readback and restoration on the connected S-550.
 
 ### Task 5 — Fix `SaveSetDialog` (and library-dialog family) missing `Dialog.Description`
 
@@ -1225,14 +1225,14 @@ This task adds that layer without replacing 9R-C or 9R-D. It is a structured, re
 
 ### Task 6 — Fix S-series client `RQD` / stale-`RJC` interleaving on live S-550 hardware
 
-**GitHub Issues:** [#430](https://github.com/audiocontrol-org/audiocontrol/issues/430) (save flow) + [#431](https://github.com/audiocontrol-org/audiocontrol/issues/431) (patch-bank load)
-**Finding-IDs:** `LIVE-S550-LIB-002` + `LIVE-S550-PATCH-001` (same protocol-timing defect class)
+**GitHub Issues:** [#430](https://github.com/audiocontrol-org/audiocontrol/issues/430) (save flow) + [#431](https://github.com/audiocontrol-org/audiocontrol/issues/431) (historical patch-bank-load manifestation; auditor rerun on 2026-05-16 now passes)
+**Finding-IDs:** `LIVE-S550-LIB-002` + `LIVE-S550-PATCH-001` (the original shared-root-cause hypothesis is now weakened because `LIVE-S550-PATCH-001` verified on rerun)
 
 **Surfaced:** independent live-hardware audit 2026-05-15. Two findings on different surfaces, same root cause.
 
 **Manifestation #1 — Save flow (`LIVE-S550-LIB-002` / #430):** `Save to Library...` on the live S-550 begins scanning tones, reaches the first wave fetch (tone 0), and times out with `RQD response timeout - no data received`. The browser logs a stale `RJC` arriving during the `RQD` wait window (`[S-550] Ignoring stale RJC during RQD`) immediately before the timeout. Named set never reaches a completed save state.
 
-**Manifestation #2 — Patch-bank load (`LIVE-S550-PATCH-001` / #431):** Live S-550 `loadPatchBank` (PatchesPage route load) fails before the patch editor opens. Logs identical to #430: `[S-550] Ignoring stale RJC during RQD` followed by `RQD response timeout - no data received`. Watchdog kills the run while waiting for the editor surface.
+**Manifestation #2 — Patch-bank load (`LIVE-S550-PATCH-001` / #431, historical):** the 2026-05-15 auditor rerun failed before the patch editor opened and produced the original shared-root-cause hypothesis. However, the 2026-05-16 auditor rerun passed for both `D-PATCH-02` and `D-PATCH-04`, so this manifestation is no longer an active blocker.
 
 **Shared code paths under investigation (controller-verified):**
 - `modules/sampler-devices/src/devices/roland-s-series/s-series-client.ts:481` — the `RQD response timeout` reject site (shared)
@@ -1245,14 +1245,14 @@ Hypotheses (#430's issue body has full detail; PATCH-001's manifestation reinfor
 2. **RQD timeout too short for first wave/bank fetch.** Default timeout may be insufficient if the device is busy from prior operations.
 3. **Quiescence gap before per-op RQD sequence.** Neither `loadCurrentDevice()` (save flow) nor `loadPatchBank` (page-mount) fully quiesces prior protocol activity before kicking off new RQDs — PATCH-001 firing during page mount narrows toward this hypothesis since the only "prior op" at page mount is bank-1 load tail activity.
 
-A single fix in `s-series-client.ts` RQD/RJC handling likely closes both manifestations. The two findings are tracked separately because each has its own evidence + closure gate (each live spec re-runs independently), but the fix is shared.
+The original hypothesis was that a single fix in `s-series-client.ts` RQD/RJC handling would close both manifestations. After the 2026-05-16 auditor rerun, that is no longer established fact: `LIVE-S550-LIB-002` still reproduces, but `LIVE-S550-PATCH-001` now passes. Keep the prior shared-root-cause notes as historical context, not as a current certainty.
 
 **Proven complete when:**
 - [ ] Root cause identified via code reading + (ideally) hardware reproduction. Fix narrowed to one of the three hypotheses above (or a fourth surfaced during investigation).
 - [ ] Code fix lands in `s-series-client.ts` (and/or per-consumer adjustments in `library-sets-save-incremental.ts` / `useBankLoader.ts` if required) per the identified root cause.
 - [ ] Operator runs the auditor's `s550-D-LIB-live-core.spec.ts` against live hardware and confirms the save flow completes without the tone-0 timeout — flips `LIVE-S550-LIB-002` Status to `verified-<date>`.
-- [ ] Operator runs the auditor's `s550-D-PATCH-live-core.spec.ts` against live hardware and confirms the patch-bank load reaches the editor — flips `LIVE-S550-PATCH-001` Status to `verified-<date>`.
-- [ ] BOTH #430 + #431 closed with the fix commit hash(es) + the auditor's verification evidence on both surfaces. Closure of #430 alone does NOT close §Task 6; both findings share the closure gate.
+- [x] Auditor reran `s550-D-PATCH-live-core.spec.ts` against live hardware on 2026-05-16 and verified `LIVE-S550-PATCH-001`.
+- [ ] #430 is closed with the fix commit hash(es) + the auditor's verification evidence on the live Library save path. `#431` is now historical follow-up/issue-hygiene work rather than an active closure gate for this task.
 
 **Status (2026-05-15 evening — Branch B diagnostic-only instrumentation):** Commit `9d1166a0` landed **diagnostic-only** instrumentation at the RQD/stale-RJC ignore path in `s-series-client.ts`. **Task NOT closed.** Both findings remain at `acknowledged`. Branch A (address-based RJC disambiguation) was rejected after code-level verification that Roland S-series RJC has no address payload (`s-series-messages.ts:316-333` + `s-series-constants.ts:45-46`). The new log format adds `addr=[hh hh hh hh] time-since-send=Nms rjc-bytes=[...]` so the auditor's next live re-run captures the timing data needed to choose between (a) fail-fast escalation if RJC fires near send-time (current-op rejection) or (b) a quiescence/retry strategy if RJC fires long after send (stale tail). See audit-log "Controller Branch-B Disposition — 2026-05-15" for the full disposition note. Risk: none — wiring tier still 136/136 (controller-verified independent re-run; simulated adapter never emits RJC, so this path is not exercised in simulation).
 

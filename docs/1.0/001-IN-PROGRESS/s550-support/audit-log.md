@@ -575,7 +575,7 @@ These changes close the earlier finding that the repo was still carrying the old
 #### 1. Medium — `test/ui/` still contains root-level specs that violate the in-context test contract
 
 Finding-ID: AUDIT-20260514-FU3-01
-Status: fixed-215308b5; awaiting auditor re-run (fix landed 2026-05-15 evening in commit 215308b5 via mixed Option B + Option C disposition. **Option C (delete)** applied to 4 of the 5 cited files: `library.spec.ts`, `patches.spec.ts`, `play.spec.ts`, `tones.spec.ts` — duplicated by the wiring suite at `test/wiring/{library,patches,play,tones}.spec.ts` which assert the same page-mount + bytes-out invariants via accessible queries. **Option C with migration** applied to `home.spec.ts`: its unique signal (`Continue to Patches` button visibility) migrated to `test/wiring/connection.spec.ts` as a new `C-CONN-02b` assertion using `getByRole('button', { name: 'Continue to Patches' })`; remaining assertions duplicated existing C-CONN-01/02 coverage. **Option B (demote to `test/rendering/`)** applied to the 2 uncited but in-violation files: `page-viewport-containment.spec.ts` (layout-overflow regression — paint-state smoke) and `phase-7-task-2-front-panel-screenshots.spec.ts` (already a screenshot/rendering spec). **ESLint scope widened** in `.eslintrc.cjs` from `**/test/ui/{contract,in-context}/**` to `**/test/ui/**` — structural guarantee that any future root-of-`test/ui/` spec is gated. Grep audit: `grep -rn "getByTestId\|\.click()" modules/roland-sxx0-editor/test/ui/` returns ZERO functional hits; all surviving hits are docstring/README references naming the patterns as forbidden, which is acceptable per the Proven-complete-when criterion. Test count adjustment: wiring +1 (136 → 137 from new C-CONN-02b); test-ui -20 (26 → 6: 5 root smokes + 2 moved files no longer in test/ui/); rendering +10 (14 → 24: gain from 2 moved files; skipped count unchanged at 4). Total: 167 passed (was 176); net 9-spec reduction reflects elimination of duplicate wiring evidence per Option C. Auditor re-runs verify on next pass.)
+Status: verified-2026-05-16 (auditor rerun complete. Grep on `test/ui/` produced only comment/README references naming forbidden patterns, not functional test usage. `make test-wiring-roland` passed `137/137`; `make test-ui-roland` passed `6/6`; `make test-rendering-roland` passed `24/24` with `4` intentional skips. `pnpm exec eslint --print-config modules/roland-sxx0-editor/test/ui/hypothetical.spec.ts` still shows `@audiocontrol/test-discipline/no-forbidden-ui-patterns` enabled across `test/ui/**`.)
 
 The migration moved the old capability suite, but the remaining root `test/ui` specs still use `getByTestId(...)` and direct `.click()` flows even though the in-context tier doc forbids those patterns.
 
@@ -772,7 +772,7 @@ Scope reviewed: first real-hardware execution of the bounded Tones capability ba
 #### LIVE-S550-TONES-001
 
 Finding-ID: LIVE-S550-TONES-001
-Status: fixed-84810484; awaiting auditor re-run (fix landed 2026-05-15 in commit `84810484` + polish in the same dispatch. CSS root cause: `.ac-list-bank-header` was sticky-positioned with default `pointer-events: auto`, so it intercepted clicks on the row directly below it. One-line CSS fix added `pointer-events: none` to the shared `.ac-list-bank-header` class — applies to both `ToneList` and `PatchList`. The `isBankLoading` actionability gate at `ToneList.tsx:135-138` was NOT touched — it's correct behavior; the auditor's compound finding was the bank-header interception happening DURING the load→loaded transition. New Tier 3 spec at `test/ui/in-context/tones-list.in-context.spec.ts` declares `@credibleAgainst contexts sticky-overlay zero-width-grid pointer-events-none-ancestor` and is `credible: true` via `pnpm run check-credibility`. D-TONE-LIST-04 + D-TONE-LIST-01 Coverage cells auto-flipped `none → partial`. Auditor's `s550-D-TONE-live-envelope-and-slider.spec.ts` was NOT touched per the protocol's test-tier ownership table; the auditor's next live-hardware re-run flips this Status to `verified-<date>` or files a new finding-ID rejecting the fix.)
+Status: verified-2026-05-16; superseded-by-LIVE-S550-TONES-002 for deeper control-level failures (the live rerun no longer failed at tone-row actionability. `s550-D-TONE-live-envelope-and-slider.spec.ts` reached both bounded assertions on the real `/roland/s550/editor/tones` route. The original row-selection blocker is therefore closed; the remaining Tones failures now live under a new finding because the battery is failing inside the editor controls themselves rather than at list activation.)
 Severity: blocking
 Surface: `/roland/s550/editor/tones`
 Disposition (proposed): new issue
@@ -1136,7 +1136,7 @@ Scope reviewed: live rerun of the bounded Patches capability slice from `modules
 #### LIVE-S550-PATCH-001
 
 Finding-ID: LIVE-S550-PATCH-001
-Status: acknowledged-#431; workplan §Phase-11-Task-6 (controller ACK 2026-05-15 evening; auditor's `Disposition (proposed): new issue` accepted. Filed as #431. **Same protocol-timing defect class as LIVE-S550-LIB-002 (#430).** Both findings cite the same s-series-client.ts:481 RQD timeout + s-series-client.ts:528-530 stale-RJC ignore pattern; manifestations differ (PATCH-001 → loadPatchBank; LIB-002 → saveDeviceToSetIncremental tone-wave fetch). A single fix in s-series-client.ts RQD handling likely closes both. Routed to the SAME Phase 11 §Task 6 (already filed for LIB-002) per the protocol's natural-fit-for-existing-in-flight-work rule. §Task 6 now tracks #430 + #431; closure requires BOTH live specs to pass on hardware. **Missed-ACK protocol applied:** caught this finding via end-of-dispatch `^Status: open` grep per the lesson recorded in the LIB-002 ACK section. See ACK section below.)
+Status: verified-2026-05-16 (auditor rerun complete. `s550-D-PATCH-live-core.spec.ts` passed both bounded live assertions on hardware: `D-PATCH-02` Key Mode and the extended `D-PATCH-04` P.Bend Range. Stale-RJC / stale-0x42 log noise still appeared in the browser console during route load and readback, but it did not prevent the patch editor from opening or either assertion from reading back correctly from the live device.)
 Severity: high
 Surface: `/roland/s550/editor/patches`
 Disposition (proposed): new issue
@@ -1226,3 +1226,119 @@ Closure gate:
 **Why this isn't a "for now" deferral:** Per `.claude/rules/agent-discipline.md`, "Just for now" patterns are forbidden — diagnostic-only commits typically smell like that pattern. This one is different in three ways: (1) the disposition is explicitly logged here in the audit-log, not buried in a code comment; (2) the closure gate is unchanged and hardware-bound — there is no way to false-close this finding from controller-side inspection; (3) the next action (auditor's live re-run with the new diagnostic field captured) is concrete and is **the next thing that happens** for this finding-class, not a hypothetical future task. The commit body documents the same.
 
 **Parallel pattern observation (filed for completeness, not a fix):** `s-series-client.ts:382-428` contains a similar stale-RJC ignore in the `sendAndReceive` WSD/DAT/EOD handshake path. Neither finding cites it; it was not modified by this commit. If the auditor surfaces a future WSD-interleaving finding, the same diagnostic treatment may need to be applied there. Noted here so it doesn't get lost.
+
+---
+
+## 2026-05-16 Auditor Closure Pass — Structural + Live Reruns
+
+Scope reviewed: the auditor-owned queue from `operator-review-runbook-current.md`, executed on current `feature/s550-support` HEAD. This pass covered the structural rerun for `AUDIT-20260514-FU3-01`, a targeted in-context rerun for `AUDIT-20260514-FU3-02`, and fresh live S-550 reruns for the bounded Tones, Library, and Patches capability slices.
+
+### Executive Queue
+
+- `LIVE-S550-TONES-002` | `high` | `Tones` | capability conformance, bounded `D-TONE-TVF-02` / `D-TONE-ENV-10`
+  Live Tones rerun now reaches the editor, but the bounded capability battery fails inside the controls themselves: TVF cutoff does not read back to the requested value, and the TVA sustain interaction stalls under the watchdog.
+  `Disposition`: new issue
+
+- `LIVE-S550-LIB-002` | `high` | `Library` | capability conformance, `D-LIB-10`
+  Live Library rerun still fails on the real save path, now with updated evidence showing a tone-0 `Wave data request rejected` failure after patch scanning completes.
+  `Disposition`: existing issue remains open
+
+### Coverage Snapshot
+
+| Surface | Design conformance | Capability conformance | Live status | Notes |
+|---|---|---|---|---|
+| Play | tested | not yet | fail | `LIVE-S550-PLAY-001` remains open |
+| Tones | tested | attempted | fail | `LIVE-S550-TONES-001` is verified fixed at the row-selection layer; new control-level failure is `LIVE-S550-TONES-002` |
+| Patches | tested | tested | pass | `s550-patches.design.spec.ts` plus `s550-D-PATCH-live-core.spec.ts` both now pass on live hardware |
+| Library | tested | attempted | fail | `LIVE-S550-LIB-001` remains verified; `LIVE-S550-LIB-002` still blocks `D-LIB-10` |
+
+### Structural Rerun Result
+
+Auditor rerun for `AUDIT-20260514-FU3-01` is complete and clean:
+
+- `grep -rn "getByTestId\\|\\.click()" modules/roland-sxx0-editor/test/ui/` returned only comment and README references naming forbidden patterns, not executable uses.
+- `make test-wiring-roland` passed `137/137`.
+- `make test-ui-roland` passed `6/6`.
+- `make test-rendering-roland` passed `24/24` with `4` intentional skips.
+- `pnpm exec eslint --print-config modules/roland-sxx0-editor/test/ui/hypothetical.spec.ts` still shows `@audiocontrol/test-discipline/no-forbidden-ui-patterns` enabled.
+
+### Targeted ImportSamplesDialog Rerun
+
+`AUDIT-20260514-FU3-02` has new positive evidence but is not fully closed in this pass:
+
+- `make test-ui-roland ARGS="--grep import-samples"` passed the targeted Tier 3 spec:
+  - `test/ui/in-context/import-samples-dialog.in-context.spec.ts`
+- This confirms the regression guard is still healthy.
+- The remaining open part is the live-route spot-check on the real `/roland/s550/editor/library` path, which this pass did not independently automate.
+
+### Finding Record
+
+#### LIVE-S550-TONES-002
+
+Finding-ID: LIVE-S550-TONES-002
+Status: open
+Severity: high
+Surface: `/roland/s550/editor/tones`
+Disposition (proposed): new issue
+
+Category: capability conformance
+
+Source of truth:
+- [ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md:279)
+- [ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md:345)
+- [modules/roland-sxx0-editor/test/e2e/s550-D-TONE-live-envelope-and-slider.spec.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/test/e2e/s550-D-TONE-live-envelope-and-slider.spec.ts:163)
+
+Observed:
+- The live Tones battery now opens the editor successfully, so the former row-selection failure is gone.
+- The first bounded assertion, `D-TONE-TVF-02`, fails because the visible TVF cutoff slider does not read back to the requested value on hardware.
+- The second bounded assertion, `D-TONE-ENV-10`, never completes because the visible TVA sustain interaction stalls long enough for the watchdog to kill the run.
+
+Evidence:
+- Live spec: [modules/roland-sxx0-editor/test/e2e/s550-D-TONE-live-envelope-and-slider.spec.ts](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/test/e2e/s550-D-TONE-live-envelope-and-slider.spec.ts:163)
+- `D-TONE-TVF-02` failure:
+  - expected hardware cutoff readback within `<= 1` of the requested value
+  - actual readback delta was `38`
+- `D-TONE-ENV-10` watchdog detail:
+  - last event: `stepBegin`
+  - stalled action: click on `tabpanel[name="Amp"]` sustain-segment radio affordance
+- Failure artifacts:
+  - `modules/roland-sxx0-editor/test-results/s550-D-TONE-live-envelope--0ba48-es-through-to-live-hardware-chromium/test-failed-1.png`
+  - matching `error-context.md` in the same result directory
+
+Repro:
+1. Connect the live sampler on `Volt 4`.
+2. Run the bounded Tones conformance path with `E2E_DEVICE_TYPE=s550`.
+3. Open `/roland/s550/editor/tones`.
+4. Select a loaded tone row and execute the bounded `D-TONE-TVF-02` / `D-TONE-ENV-10` battery.
+
+Expected:
+- The visible cutoff control writes through to live hardware within the bounded readback tolerance.
+- The visible TVA sustain affordance is pointer-actionable enough for the live readback assertion to complete.
+
+Actual:
+- The cutoff slider's requested value and hardware readback diverge materially.
+- The sustain interaction hangs during the live click path before the bounded readback assertion can complete.
+
+Likely ownership:
+- [modules/roland-sxx0-editor/src/pages/TonesPage.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/pages/TonesPage.tsx:1)
+- [modules/roland-sxx0-editor/src/components/tone-editor/EnvelopeEditor.tsx](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/components/tone-editor/EnvelopeEditor.tsx:1)
+- [modules/roland-sxx0-editor/src/components/tone-editor](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/modules/roland-sxx0-editor/src/components/tone-editor)
+
+Fix guidance:
+- Investigate why the visible cutoff control produces a hardware readback mismatch on the live route.
+- Investigate the pointer/actionability path for the visible TVA sustain affordance under the live bounded test.
+- Re-run the same bounded live Tones spec after the fix instead of closing from code inspection.
+
+Closure gate:
+- `s550-D-TONE-live-envelope-and-slider.spec.ts` passes `D-TONE-TVF-02` and `D-TONE-ENV-10` on live hardware.
+- The rerun no longer depends on the superseded row-selection finding `LIVE-S550-TONES-001`.
+
+### Library Follow-Up Note
+
+`LIVE-S550-LIB-002` remains open. The 2026-05-16 rerun reproduced the same save-path failure class with updated evidence:
+
+- the save flow progressed through tone and patch scanning
+- the first actual save-time failure was `Failed to save tone 0: Error: Wave data request rejected`
+- the OPFS snapshot still showed `setDirectoryExists = false`
+
+The stale-RJC timing evidence remains present throughout the rerun, so this finding still belongs to the same protocol-layer defect class tracked under #430.

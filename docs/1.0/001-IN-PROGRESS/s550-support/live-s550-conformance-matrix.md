@@ -50,9 +50,9 @@ This suite is S-550-first. It does not widen scope into a new cross-device matri
 | Surface | Design conformance | Capability conformance | Live status | Finding / note |
 |---|---|---|---|---|
 | Play | `s550-play.design.spec.ts` landed and executed | not yet | fail | `LIVE-S550-PLAY-001` / sticky header intercepts Part A pointer events on live route |
-| Tones | `s550-tones.design.spec.ts` landed; first live run blocked pre-app by device validation miss | `s550-D-TONE-live-envelope-and-slider.spec.ts` landed and executed | fail | `LIVE-S550-TONES-001` / loaded tone row selection is not reliably pointer-actionable on live route, blocking the bounded D-TONE battery before cutoff / sustain assertions |
-| Patches | `s550-patches.design.spec.ts` landed and executed | `s550-D-PATCH-live-core.spec.ts` landed and executed | fail | prior `D-PATCH-02` readback pass still stands, but the latest rerun surfaced `LIVE-S550-PATCH-001` / patch-bank load times out with stale-RJC + `RQD response timeout` before the editor opens |
-| Library | `s550-library.design.spec.ts` landed and now passes on live hardware | `s550-D-LIB-live-core.spec.ts` landed and executed | fail | `LIVE-S550-LIB-001` verified on 2026-05-15; remaining live failure is `LIVE-S550-LIB-002` / D-LIB-10 save path times out during tone-wave fetch and does not complete |
+| Tones | `s550-tones.design.spec.ts` landed; first live run blocked pre-app by device validation miss | `s550-D-TONE-live-envelope-and-slider.spec.ts` landed and executed | fail | `LIVE-S550-TONES-001` is verified fixed at the row-selection layer; the current live failure is `LIVE-S550-TONES-002` / cutoff readback mismatch plus stalled TVA sustain interaction inside the editor |
+| Patches | `s550-patches.design.spec.ts` landed and executed | `s550-D-PATCH-live-core.spec.ts` landed and executed | pass | bounded live patch battery now passes for both `D-PATCH-02` and `D-PATCH-04` on hardware |
+| Library | `s550-library.design.spec.ts` landed and now passes on live hardware | `s550-D-LIB-live-core.spec.ts` landed and executed | fail | `LIVE-S550-LIB-001` verified on 2026-05-15; remaining live failure is `LIVE-S550-LIB-002` / `D-LIB-10` still fails during save with tone-0 `Wave data request rejected` after stale-RJC evidence |
 
 Status vocabulary:
 - `pass`: live hardware run completed and matched the current conformance expectation
@@ -95,14 +95,14 @@ Status vocabulary:
 1b. `s550-D-PATCH-live-core.spec.ts`
    - drive bounded visible patch affordances on `/roland/s550/editor/patches`
    - verify by fresh device readback, then restore the original value
-   - status: landed as `modules/roland-sxx0-editor/test/e2e/s550-D-PATCH-live-core.spec.ts`; first execution on 2026-05-15 passed for `D-PATCH-02` (Key Mode), but the latest rerun — while extending the battery toward `D-PATCH-04` — currently fails as `LIVE-S550-PATCH-001` before the editor opens because patch-bank load hits stale-RJC + `RQD response timeout - no data received`
+   - status: landed as `modules/roland-sxx0-editor/test/e2e/s550-D-PATCH-live-core.spec.ts`; 2026-05-16 live rerun passed for both `D-PATCH-02` (Key Mode) and `D-PATCH-04` (P.Bend Range), including fresh device readback and restoration
 
 2. `D-TONE-live-envelope-and-slider.spec.ts`
    - select a non-empty tone
    - drive one visible slider affordance
    - drive one visible envelope affordance
    - verify both through fresh device readback
-   - status: landed as `modules/roland-sxx0-editor/test/e2e/s550-D-TONE-live-envelope-and-slider.spec.ts`; executed on 2026-05-15 against live hardware and currently blocked by `LIVE-S550-TONES-001` before the cutoff / sustain assertions can run
+   - status: landed as `modules/roland-sxx0-editor/test/e2e/s550-D-TONE-live-envelope-and-slider.spec.ts`; 2026-05-16 live rerun reached the real bounded assertions, verifying `LIVE-S550-TONES-001` fixed, but now fails inside the editor as `LIVE-S550-TONES-002` (`D-TONE-TVF-02` cutoff readback mismatch; `D-TONE-ENV-10` sustain interaction stalls under watchdog)
 
 2a. `s550-tones.design.spec.ts`
    - verify fixed-shell Tones chrome on the live S-550 route
@@ -118,7 +118,7 @@ Status vocabulary:
 4. `s550-D-LIB-live-core.spec.ts`
    - drive `Save to Library...` on `/roland/s550/editor/library`
    - verify the named set through the real OPFS-backed library path
-   - status: landed as `modules/roland-sxx0-editor/test/e2e/s550-D-LIB-live-core.spec.ts`; executed on 2026-05-15 against live hardware and currently fails as `LIVE-S550-LIB-002` after the save flow enters device scanning but times out during tone-wave fetch (`RQD response timeout - no data received`)
+   - status: landed as `modules/roland-sxx0-editor/test/e2e/s550-D-LIB-live-core.spec.ts`; 2026-05-16 live rerun still fails as `LIVE-S550-LIB-002`, now with updated evidence: the save path reaches tone/pattern scanning but fails at tone `0` with `Wave data request rejected`, and OPFS never gets the set directory
 
 ## Explicit Non-Goals
 
