@@ -1,3 +1,7 @@
+---
+deskwork:
+  id: f0d8f091-df9b-4311-acb1-d500fd1c9e33
+---
 # Operator Sign-off Summary
 
 This is the shortest operator-facing view of the current S-550 redesign sign-off state.

@@ -25,6 +25,7 @@
 | afbe2d03-af5f-4d1b-99f1-af087537afe4 | s550-support/testing-and-inventory-reform-spec | Testing and capability-inventory reform |  |  | manual |
 | fed7e6aa-b6b6-4145-88c0-8c9d67d7387e | s550-support/operator-review-runbook | Operator Review Runbook |  |  | manual |
 | f5d44e33-5cb5-4e3e-b8f3-e796673b8f32 | s550-support/operator-review-runbook-current | Operator Review Runbook Current |  |  | manual |
+| f0d8f091-df9b-4311-acb1-d500fd1c9e33 | s550-support/operator-signoff-summary | Operator Signoff Summary |  |  | manual |
 
 ## Review
 
