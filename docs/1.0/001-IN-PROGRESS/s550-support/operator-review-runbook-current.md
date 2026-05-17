@@ -13,27 +13,11 @@ This runbook contains only actions the operator is uniquely able to perform: liv
 - `Operator sign-off granted for the requested scope`
 - `Operator sign-off not yet granted; blocking findings: ...`
 
-## Auditor-prepared evidence
+## Before You Start
 
-You do not need to rerun the auditor-owned checks below unless you want to spot-check them yourself:
-
-- `AUDIT-20260514-FU3-01` is already verified on 2026-05-16.
-  - wiring: `137/137` passed
-  - ui: `6/6` passed
-  - rendering: `24/24` passed, `4` intentional skips
-- `LIVE-S550-LIB-001` is already verified.
-- `LIVE-S550-PATCH-001` is already verified on live hardware.
-- `LIVE-S550-TONES-001` is already verified fixed at the tone-row-selection layer.
-- `AUDIT-20260514-FU3-02` has passing Tier 3 evidence:
-  - `make test-ui-roland ARGS="--grep import-samples"` passed on 2026-05-16
-
-What remains for the operator is the human judgment layer:
-
-1. `D-TONE-ENV-02` Tier 4 sign-off
-2. live manual spot-check for `AUDIT-20260514-FU3-02`
-3. disposition on the still-open live findings:
-   - `LIVE-S550-TONES-002`
-   - `LIVE-S550-LIB-002`
+- use [operator-signoff-summary.md](./operator-signoff-summary.md) for the short current-state view
+- use [audit-log.md](./audit-log.md) only if you want deeper evidence or history
+- otherwise, continue directly into the cards below
 
 ## Review Cards
 
