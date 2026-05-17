@@ -21,6 +21,7 @@ The S-550 shares model ID `0x1E` and SysEx protocol with the S-330 but has an in
 - **[Phase 0: Frontend/Backend Decoupling](./phase-0-decoupling.md)** - Recording proxy + simulated client + UI test harness; foundational QA infrastructure that blocks Phase 9
 - [Audit Log](./audit-log.md) - Bidirectional audit log (formerly `2026-05-08-code-audit-findings.md`; renamed 2026-05-15 to reflect its multi-audit, multi-type role). Codifies the auditor/controller protocol; tracks every finding with a stable `Finding-ID` + `Status` line.
 - [Live S-550 Conformance Matrix](./live-s550-conformance-matrix.md) - Planned live-device Playwright battery for design/mockup and capability-document conformance
+- [Verification Process Simplification Proposal](./verification-process-simplification.md) - Explains why the current verification/sign-off system became hard to understand and proposes a simpler operator-facing model
 - [Implementation Summary](./implementation-summary.md) - Post-completion report
 
 ## GitHub Tracking
