@@ -1,3 +1,7 @@
+---
+deskwork:
+  id: f5d44e33-5cb5-4e3e-b8f3-e796673b8f32
+---
 # Operator Review Runbook — Current HEAD
 
 This is the human-facing runbook for the current `feature/s550-support` branch state. It is the reviewer-facing counterpart to `operator-review-runbook.manifest.json`.

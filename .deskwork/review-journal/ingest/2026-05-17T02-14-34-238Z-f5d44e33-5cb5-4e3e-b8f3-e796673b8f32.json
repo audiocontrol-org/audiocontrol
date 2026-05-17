@@ -1,0 +1,16 @@
+{
+  "id": "f5d44e33-5cb5-4e3e-b8f3-e796673b8f32",
+  "timestamp": "2026-05-17T02:14:34.238Z",
+  "event": "ingest",
+  "slug": "s550-support/operator-review-runbook-current",
+  "entryId": "f5d44e33-5cb5-4e3e-b8f3-e796673b8f32",
+  "site": "engineering-design-specs",
+  "stage": "Drafting",
+  "sourceFile": "docs/1.0/001-IN-PROGRESS/s550-support/operator-review-runbook-current.md",
+  "frontmatterSnapshot": {},
+  "derivation": {
+    "slug": "path",
+    "state": "default",
+    "date": "mtime"
+  }
+}
