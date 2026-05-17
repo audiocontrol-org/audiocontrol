@@ -4,15 +4,7 @@ deskwork:
 ---
 # Operator Review Runbook — Current HEAD
 
-This is the human-facing runbook for the current `feature/s550-support` branch state. It is the reviewer-facing counterpart to `operator-review-runbook.manifest.json`.
-
-Use this document for the actual UI review and sign-off pass. You should not need to read the manifest, integration test code, or raw machine output to know what to do next.
-
-For the live S-550 reruns below, use the runbook dispatcher instead of remembering individual spec names:
-
-```bash
-pnpm --filter @audiocontrol/roland-sxx0-editor test:runbook:live -- --list
-```
+This runbook contains only actions the operator is uniquely able to perform: live UI review, hardware judgment, sign-off decisions, and final recording. Auditor-owned reruns and machine checks have already been executed and are summarized here as input evidence.
 
 ## Outcome
 
@@ -21,129 +13,120 @@ At the end of this pass, record one of two outcomes:
 - `Operator sign-off granted for the requested scope`
 - `Operator sign-off not yet granted; blocking findings: ...`
 
-## Current review queue
+## Auditor-prepared evidence
 
-Already satisfied at current HEAD:
+You do not need to rerun the auditor-owned checks below unless you want to spot-check them yourself:
 
-- `LIVE-S550-LIB-001` is already verified. Do not re-review it unless a later change reopens the dialog-accessibility path.
-- `AUDIT-20260514-FU3-01` structural rerun completed cleanly on 2026-05-16.
-- `LIVE-S550-PATCH-001` is now verified on live hardware.
-- `LIVE-S550-TONES-001` is now verified fixed at the row-selection layer; the remaining Tones blocker has moved deeper into the editor and is tracked separately as `LIVE-S550-TONES-002`.
+- `AUDIT-20260514-FU3-01` is already verified on 2026-05-16.
+  - wiring: `137/137` passed
+  - ui: `6/6` passed
+  - rendering: `24/24` passed, `4` intentional skips
+- `LIVE-S550-LIB-001` is already verified.
+- `LIVE-S550-PATCH-001` is already verified on live hardware.
+- `LIVE-S550-TONES-001` is already verified fixed at the tone-row-selection layer.
+- `AUDIT-20260514-FU3-02` has passing Tier 3 evidence:
+  - `make test-ui-roland ARGS="--grep import-samples"` passed on 2026-05-16
 
-Still active at current HEAD:
+What remains for the operator is the human judgment layer:
 
-1. `D-TONE-ENV-02` Tier 4 sign-off is still missing.
-2. `AUDIT-20260514-FU3-02` still needs its live ImportSamplesDialog spot-check on the real S-550 route. The targeted Tier 3 rerun already passed on 2026-05-16.
-3. `LIVE-S550-TONES-002` still needs remediation and a fresh live Tones rerun.
-4. `LIVE-S550-LIB-002` still needs live diagnostic evidence or a clean verified pass.
+1. `D-TONE-ENV-02` Tier 4 sign-off
+2. live manual spot-check for `AUDIT-20260514-FU3-02`
+3. disposition on the still-open live findings:
+   - `LIVE-S550-TONES-002`
+   - `LIVE-S550-LIB-002`
 
-## Step 1 — D-TONE-ENV-02 sign-off readiness
+## Step 1 — Decide `D-TONE-ENV-02` Tier 4 sign-off
 
-What to run:
+Open the real S-550 editor and review the `D-TONE-ENV-02` affordance on hardware:
 
-```bash
-pnpm run check-credibility
-make check-coverage-roland
-```
+- route: `/roland/s550/editor/tones`
+- area: `Filter` tab
+- affordance: TVF envelope per-segment rate editing
 
 What to look for:
 
-- `D-TONE-ENV-02` is still unsigned in `ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md`.
-- `D-TONE-ENV-02` still shows `Coverage = partial`.
-- credibility checks are clean enough that you are reviewing the right affordance, not a broken test path.
+- the visible control is understandable and behaves like the intended capability
+- the edited segment/rate feels like the correct hardware-facing affordance
+- nothing about the interaction suggests the Tier 2 / Tier 3 evidence is validating the wrong thing
 
-What counts as sign-off:
+Sign off if:
 
-- You review the real `D-TONE-ENV-02` affordance on hardware and conclude the implemented behavior matches the intended capability.
-- You then record the sign-off in the inventory row using canonical format.
+- you judge that the live affordance matches the intended `D-TONE-ENV-02` behavior
 
 If blocked:
 
-- Do not fabricate the sign-off.
-- Record the blocking finding ID or missing evidence path.
+- do not sign it off
+- record the blocking finding ID or a short plain-language reason
 
-## Step 2 — Live ImportSamplesDialog spot-check for `AUDIT-20260514-FU3-02` / `#425`
+If signed off:
 
-What to run:
+- update the `Sign-off` cell for `D-TONE-ENV-02` in [ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md:337)
+- use canonical format: `<YYYY-MM-DD> <signer> <sha>`
 
-```bash
-make test-ui-roland ARGS="--grep import-samples"
-```
+## Step 2 — Manual live spot-check for `AUDIT-20260514-FU3-02` / `#425`
 
-Then review on live `/roland/s550/editor/library`.
+Review the real ImportSamplesDialog on the live S-550 route:
+
+- route: `/roland/s550/editor/library`
+- dialog: `ImportSamplesDialog`
+- supporting auditor evidence: Tier 3 spec already passed on 2026-05-16
 
 What to look for:
 
 - slot labels derive from the real memory layout
-- overwrite indicators appear only on occupied slots
-- both single-slot and range cases behave correctly
+- overwrite indicators appear only on genuinely occupied slots
+- both single-slot and range cases make sense visually and behaviorally
 
 Sign off if:
 
-- the Tier 3 spec passes
-- the live dialog behavior is correct on real hardware
+- the live dialog behavior matches the now-passing Tier 3 evidence
 
 If blocked:
 
 - leave `AUDIT-20260514-FU3-02` unverified
-- note whether the failure is test-only, UI-only, or both
+- note whether the problem is the live UI itself or a mismatch between the live UI and the Tier 3 evidence
 
-## Step 3 — Live Tones re-run for `LIVE-S550-TONES-002`
+## Step 3 — Review current open live findings
 
-What to run:
+These two findings are still open after the latest auditor pass. You are not being asked to debug them here; you are being asked to decide whether they block operator sign-off for the requested scope.
 
-```bash
-pnpm --filter @audiocontrol/roland-sxx0-editor test:runbook:live -- 2.3
-```
+### `LIVE-S550-TONES-002`
 
-What to look for:
+Current auditor evidence:
 
-- the live run still reaches the actual cutoff / sustain assertions
-- `D-TONE-TVF-02` reads back the requested cutoff value within tolerance
-- `D-TONE-ENV-10` completes without the watchdog killing the sustain interaction
+- the old row-selection blocker is gone
+- the live battery now reaches the real editor controls
+- `D-TONE-TVF-02` cutoff readback mismatched by `38`
+- `D-TONE-ENV-10` stalled during the visible TVA sustain interaction and hit the watchdog
 
-Sign off if:
+Your decision:
 
-- the spec reaches the editor and passes the bounded capability assertions
+- if this blocks sign-off for the requested scope, keep it in the blocking list
+- if it is out of scope for the sign-off you are granting, say that explicitly
 
-If blocked:
+### `LIVE-S550-LIB-002`
 
-- leave `LIVE-S550-TONES-002` unverified
-- record whether the failure is the cutoff readback mismatch, the sustain interaction stall, or both
+Current auditor evidence:
 
-## Step 4 — Live diagnostic pass for `LIVE-S550-LIB-002` / `#430`
+- the live save path still fails
+- updated failure shape: tone `0` save fails with `Wave data request rejected`
+- OPFS set directory is never created
 
-What to run:
+Your decision:
 
-```bash
-pnpm --filter @audiocontrol/roland-sxx0-editor test:runbook:live -- 2.4-library
-```
-
-What to look for:
-
-- whether the save flow completes cleanly
-- whether stale-`RJC` timing evidence appears in the browser logs
-- whether `D-LIB-10` reaches a true completed save state
-
-Sign off if:
-
-- the live save path completes cleanly and the closure gate for `LIVE-S550-LIB-002` is satisfied
-
-If blocked:
-
-- record the exact `time-since-send` evidence or timeout shape
-- keep `LIVE-S550-LIB-002` blocked
+- if this blocks sign-off for the requested scope, keep it in the blocking list
+- if it is out of scope for the sign-off you are granting, say that explicitly
 
 ## Final recording
 
 If every required step above signs off:
 
 - update the relevant `Sign-off` cells
-- flip verified findings in `audit-log.md`
-- record the closure pass in `DEVELOPMENT-NOTES.md`
+- flip any findings you are explicitly verifying in [audit-log.md](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/docs/1.0/001-IN-PROGRESS/s550-support/audit-log.md)
+- record the closure outcome in `DEVELOPMENT-NOTES.md`
 - state clearly: `Operator sign-off granted for the requested scope`
 
-If any step remains blocked:
+If anything remains blocked:
 
 - do not grant sign-off
 - list the blocking finding IDs explicitly
