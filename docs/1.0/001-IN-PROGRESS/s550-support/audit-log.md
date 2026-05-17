@@ -1276,7 +1276,7 @@ Auditor rerun for `AUDIT-20260514-FU3-01` is complete and clean:
 #### LIVE-S550-TONES-002
 
 Finding-ID: LIVE-S550-TONES-002
-Status: open
+Status: acknowledged-#432; workplan §9R-C (controller ACK 2026-05-17 — natural-fit override applied. The two manifestations (`D-TONE-TVF-02` cutoff write-readback mismatch with delta 38 + `D-TONE-ENV-10` TVA sustain pointer stall) both fall within 9R-C TonesPage rebuild + operator hardware sign-off scope. Filed as [#432](https://github.com/audiocontrol-org/audiocontrol/issues/432) for tracking; no new Phase 11 task created. Same routing pattern as `LIVE-S550-PLAY-001` → #423: live-hardware finding mapped to already-in-flight 9R-* work becomes a verification signal on that work, not a new task. See Controller ACK section at end of finding.)
 Severity: high
 Surface: `/roland/s550/editor/tones`
 Disposition (proposed): new issue
@@ -1342,3 +1342,28 @@ Closure gate:
 - the OPFS snapshot still showed `setDirectoryExists = false`
 
 The stale-RJC timing evidence remains present throughout the rerun, so this finding still belongs to the same protocol-layer defect class tracked under #430.
+
+---
+
+### Controller ACK — 2026-05-17 (closure-pass acknowledgement + TONES-002 routing)
+
+Acknowledging the auditor's 2026-05-16 closure pass + the new `LIVE-S550-TONES-002` finding. End-of-session ACK ahead of `/dwse`.
+
+**`AUDIT-20260514-FU3-01` / #426** — `verified-2026-05-16`. Independently re-verified the auditor's evidence: grep clean, counts match exactly (137 / 6 / 24+4 — identical to the controller's post-fix re-run on 2026-05-15), ESLint scope confirmed. The structural fix is durable. Coverage: full.
+
+**`LIVE-S550-TONES-001` / #428** — `verified-2026-05-16; superseded-by-LIVE-S550-TONES-002`. The bank-header `pointer-events: none` fix worked at the row-selection layer; the live spec now reaches the editor surface. The auditor correctly distinguished: row-selection is closed (the original defect), control-level failures inside the editor become a new finding (TONES-002).
+
+**`LIVE-S550-PATCH-001` / #431** — `verified-2026-05-16`. Both bounded live assertions (`D-PATCH-02` Key Mode + extended `D-PATCH-04` P.Bend Range) passed on hardware. The stale-RJC / stale-0x42 log noise still appears during route load but does not block patch-editor open or readback. **§Task 6 closure status:** #431 closed; #430 still open — §Task 6 is NOT fully closed because both findings share the closure gate per workplan §Phase-11-Task-6's Proven-complete-when checklist ("BOTH #430 + #431 closed").
+
+**`LIVE-S550-LIB-002` / #430** — Status unchanged at `acknowledged`. New evidence narrows the manifestation: the failure pattern shifted from "RQD response timeout" to "Wave data request rejected" on tone-0 save. Both manifestations are still the same protocol-layer defect class (stale-RJC interleaving in `s-series-client.ts`). The diagnostic instrumentation from commit `9d1166a0` should be capturing `time-since-send` evidence in the 2026-05-16 rerun's browser logs; that evidence drives the next §Task 6 fix decision (fail-fast vs quiescence/retry).
+
+**`LIVE-S550-TONES-002` (NEW)** — `acknowledged-#432; workplan §9R-C` (natural-fit override). The two manifestations both fall within 9R-C TonesPage rebuild + operator hardware sign-off scope. Filed as [#432](https://github.com/audiocontrol-org/audiocontrol/issues/432). The cutoff readback delta of 38 is large enough to suggest parameter scaling / range issue beyond pure UI affordance — 9R-C's "every value change reaches the device within the live-edit guard's tolerance" closure gate (workplan line 759) explicitly owns this investigation.
+
+**Audit-log Status queue after this ACK:** zero `^Status: open` hits. End-of-session protocol satisfied.
+
+**Auditor infrastructure landed during this pass** (no controller action required, noted for completeness):
+- `operator-review-runbook-current.md` — HEAD-aware live runbook, replacing the dated `2026-05-15-operator-review-runbook.md` model. Per the auditor's "narrow runbook to manual actions" commit (`480c3fe8`), the auditor now owns the runbook lifecycle and the controller's responsibility is to land remediations the runbook surfaces.
+- Verification simplification proposal at `verification-process-simplification.md` (commit `a5194e9f`) — the auditor's recommendation on protocol streamlining; out of session-end scope to evaluate.
+- Test/runbook utilities (commits `ceca1786`, `64709b19`, `76da0a9e`, `f1a05037`) — auditor-side tooling; no controller dependency.
+
+**Workplan §Phase-11-Task-6 status:** ticked one of two closure boxes (`#431 closed` ✓; `#430 still open`). §Task 6 remains incomplete until #430 verifies on hardware.

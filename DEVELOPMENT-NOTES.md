@@ -2947,3 +2947,63 @@ Build the entire 9R-A.1 infrastructure deliverable from the testing/inventory re
 - **Pre-existing uncommitted clutter** (~80 stray PNGs at worktree root + 16 modified screenshots from prior sessions) still NOT staged. Separate hygiene pass — out of scope this session per the same rule applied last session.
 
 ---
+
+## 2026-05-17: s550-support — §Task 6 Branch B + §Task 3 closure + operator runbook + LIVE-S550-TONES-002 ACK
+
+### Feature: s550-support
+### Worktree: audiocontrol-s550-support
+
+### Goal
+
+Two `/dwi` dispatches walked the Phase 11 actionable queue:
+
+1. **§Task 6 (#430 + #431 RQD/stale-RJC defect class)** — investigate Roland S-series RJC payload format, decide between Branch A (address-based disambiguation) and Branch B (diagnostic-only instrumentation).
+2. **§Task 3 (#426 root `test/ui/*.spec.ts` test-discipline gap)** — close the post-9R-A.2 cleanup the migration grep audit missed.
+
+Then a user request: write an operator review runbook for what they need to verify and sign off on, ingest into deskwork-studio for review.
+
+Session also absorbed an auditor closure pass (commits `ceca1786` through `a5194e9f`) that landed mid-session — verified #426 + #428 + #431, filed a new finding (`LIVE-S550-TONES-002`), and rewrote the runbook into a HEAD-aware form.
+
+### Accomplished
+
+- **§Task 6 Branch B diagnostic instrumentation** (`9d1166a0`). Branch A rejected after code-level verification that Roland S-series RJC has no address payload (`s-series-messages.ts:316-333` + `s-series-constants.ts:45-46` confirm the format is `F0 41 [dev] 1E 4F F7` — 6 bytes, no echoed address). Branch B replaced the existing `console.warn` with a structured log carrying `addr=[hh hh hh hh] time-since-send=Nms rjc-bytes=[...]` — captures the data needed to choose between fail-fast escalation vs quiescence/retry. Behavior unchanged; wiring tier still 137/137. Audit-log Branch-B disposition recorded in `cc423529`.
+- **§Task 3 (#426) closed** (`215308b5` + SHA fix-up `f59b7ea9`). Mixed Option B + Option C disposition: Option C delete for 4 of 5 cited specs (`library/patches/play/tones.spec.ts` — duplicated by Tier 1 wiring counterparts); Option C with migration for `home.spec.ts` (one unique assertion — "Continue to Patches" button visibility — migrated to `test/wiring/connection.spec.ts` as `C-CONN-02b`); Option B move-to-rendering for 2 uncited but in-violation files (`page-viewport-containment` + `phase-7-task-2-front-panel-screenshots`). ESLint scope widened from `**/test/ui/{contract,in-context}/**` to `**/test/ui/**` — structural guarantee against re-drift. Counts: wiring 136→137, ui 26→6, rendering 14→24. Auditor verified `verified-2026-05-16`.
+- **Operator review runbook** (`1a3e3fb1` + deskwork ingest `96941358`). Dated snapshot at HEAD `f59b7ea9` covering: §1 D-TONE-ENV-02 Tier 4 sign-off (the 9R chain unblocker), §2 four auditor live re-runs (#426 structural, #425 live, #428 live, #430+#431 evidence capture), §3 unblock map, §4 out-of-scope, §5 end-of-session checklist, §6 rejection protocol. Ingested into deskwork-studio (slug `s550-support/operator-review-runbook`, ID `fed7e6aa-b6b6-4145-88c0-8c9d67d7387e`).
+- **Auditor closure pass acknowledged** (this session-end commit). Audit-log Status flips confirmed: `#426` `verified-2026-05-16`, `#428` `verified-2026-05-16; superseded-by-LIVE-S550-TONES-002`, `#431` `verified-2026-05-16`. GitHub issue #431 closed with verification comment.
+- **New finding `LIVE-S550-TONES-002` filed as #432**. Routed to workplan §9R-C natural-fit (NOT new Phase 11 task) — both manifestations (TVF cutoff write-readback mismatch delta 38, TVA sustain pointer stall) fall within 9R-C TonesPage rebuild + operator hardware sign-off scope. Audit-log Status: `acknowledged-#432; workplan §9R-C`.
+- **Workplan §Phase-11-Task-6 partial closure** — #431 box ticked; #430 still open with new "Wave data request rejected" evidence narrowing the manifestation.
+- **Studio fix mid-session** — operator hit "entry not found" on the original `:47321` studio URL because that instance was bound to a different worktree (`/Users/orion/work/deskwork-work/command-shortcuts`). Launched parallel studio on `:47340` bound to this worktree; runbook now resolves at `http://orion-m4.tail8254f4.ts.net:47340/dev/editorial-review/fed7e6aa-...`.
+
+### Didn't Work
+
+- **Initial test-run parallelism caused empty output.** Running `make test-wiring-roland`, `make test-ui-roland`, and `make test-rendering-roland` in parallel via three background bashes caused the wiring run's stdout to land in an empty file for several minutes (the test-harness e2e launcher likely contends for the same port/HTTP server resource). Eventually completed correctly (137 passed). Lesson: serialize the three `make test-*-roland` targets unless verified that they don't share a launcher port.
+- **First disposition draft for §Task 3 was wrong.** Initial plan was Option B-for-all (demote all to rendering with selector rewrites). Reconsidered after finding `test/wiring/connection.spec.ts` already covers home-page Disconnect button via accessible queries — only "Continue to Patches" was unique signal. Better disposition: Option C delete with one-assertion migration. Lesson: before picking a disposition, always check whether the to-be-removed coverage is already duplicated at the next tier down.
+
+### Course Corrections
+
+- **[PROCESS] Auditor commits landed mid-session must be re-checked before session-end.** The auditor filed `LIVE-S550-TONES-002` as `Status: open` between my last commit (`96941358`) and the user's `/dwse` invocation. I caught it via the canonical `grep ^Status: open` end-of-dispatch check that I'd codified after the prior missed-ACK incident. The protocol works: zero `^Status: open` hits is the gate that prevented this from sliding into next session unacknowledged.
+- **[PROCESS] Disposition decisions documented in workplan + audit-log + GitHub issue + commit body.** For §Task 3 mixed B+C, the rationale appears in four places so the operator can redirect from any surface. This redundancy is intentional — the operator confirmed it earlier when they said "make the reasonable call and continue; they'll redirect if needed" — visibility into the call's reasoning enables redirection. No re-do requested.
+- **[PROCESS] Studio binding is per-worktree.** The original review URL 404'd because deskwork-studio was launched with `--project-root /Users/orion/work/deskwork-work/command-shortcuts` — it could only serve sidecars from THAT worktree. Solution: launch a second studio instance on a different port bound to the active worktree. Lesson: when ingesting into deskwork from a non-deskwork project, verify the studio is bound to the project root before sharing URLs.
+- **[FABRICATION] Avoided one fabrication risk** — Branch A for §Task 6 would have required guessing at a byte offset in the RJC payload that does not exist (the protocol's RJC has no address echo). Project rule "No fabricated facts about device behavior" pointed unambiguously to Branch B. Documented the decision in commit body + audit-log so future agents see the reasoning and don't re-attempt Branch A.
+
+### Quantitative
+
+- User messages: ~14 (two `/dwi` invocations + runbook request + URL print requests + `/dwse`)
+- Commits authored by controller: 7 (`9d1166a0`, `cc423529`, `215308b5`, `f59b7ea9`, `1a3e3fb1`, `96941358`, plus the pending session-end commit)
+- Auditor commits absorbed: 8 (`ceca1786` through `a5194e9f`)
+- User corrections: 0 (the user redirected my disposition framing once mid-§Task 3 by accepting my mixed B+C reasoning without re-do; counts as confirmation, not correction)
+- GitHub issues filed: 1 (#432)
+- GitHub issues closed: 2 (#426, #431)
+- Audit-log findings ACKed: 1 (`LIVE-S550-TONES-002`)
+- Audit-log findings verified (by auditor, controller confirmed): 3 (`#426`, `#428` row-selection layer, `#431`)
+- Deskwork entries ingested: 1 (operator review runbook)
+- Test count delta on `feature/s550-support`: net -8 (wiring +1 from C-CONN-02b migration; ui -20 from §Task 3 deletes/moves; rendering +10 from moved files)
+
+### Insights
+
+- **The `grep ^Status: open` end-of-dispatch protocol is the single most load-bearing discipline this session.** Without it, `LIVE-S550-TONES-002` would have sat unacknowledged until next session — a missed-ACK identical to the LIB-002 incident the protocol was created to prevent. The grep ran at `/dwse` invocation and surfaced the open finding immediately. This is the right place for it.
+- **Branch B + audit-log disposition note + commit body documenting the Branch-A-vs-B decision** is a robust pattern for "diagnostic-only commits that look like 'for now' deferrals but aren't." The discipline rule against `for now` requires the disposition logged outside code comments AND the closure gate to be hardware-bound AND the next action to be the next thing that happens (not hypothetical). Branch B met all three. Pattern is reusable for any future diagnostic-only commit.
+- **Mixed dispositions are sometimes the right answer for audit findings cited as single units.** §Task 3 had 5 cited files but the disposition that minimized deleted-coverage-without-replacement was different per file (1 home: migrate one assertion + delete; 4 others: pure delete because wiring duplicates). The audit-log + workplan + commit body all document which disposition applied to which file — operator can redirect any subset without re-doing the others.
+- **9R-A.4 Tier 4 operator sign-off remains the single chokepoint for the whole Phase 9 chain.** All five §Task 6's `Proven complete when` boxes operator-gated; 9R-B blocked on 9R-A.4; 9R-C blocked on 9R-B; 9R-D blocked on 9R-C. The operator review runbook §1 is therefore the single most valuable session-end artifact — completing it unblocks ~6 weeks of controller-actionable work. Worth flagging proactively in next-session start.
+- **The new `LIVE-S550-TONES-002` cutoff readback delta of 38** is large enough to suggest a parameter scaling / range issue rather than a rounding error or affordance bug. 9R-C's investigation should start by checking whether the slider's onChange emits the displayed value, the displayed value / 2 (S-550 nibble vs raw byte split?), or some other transform. The auditor's live spec is the canonical artifact for this investigation.
+- **The studio-binding issue around deskwork ingest** would benefit from a deskwork-studio "list available project roots" or "switch project" runtime feature — currently each studio is locked to one `--project-root` at launch. Workaround (parallel instance on a new port) works but feels heavy. Out of audiocontrol scope but worth recording.
