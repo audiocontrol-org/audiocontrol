@@ -1295,6 +1295,10 @@ This task adds a thin execution layer that decomposes the runbook rather than re
   - presents only the current HEAD-relevant review steps in reviewer order
   - uses plain-language instructions, expected outcomes, and explicit "sign off / blocked" decision points
   - intentionally hides machine-only metadata unless needed as a supporting reference
+- `docs/1.0/001-IN-PROGRESS/s550-support/operator-signoff-summary.md`
+  - one-page operator-facing summary
+  - states what is already verified, what remains open, and whether sign-off is currently grantable
+  - exists so the operator does not need to infer review state from the audit log, conformance matrix, or machine-facing manifest
 - `modules/roland-sxx0-editor/test/integration/runbook-state.integration.test.ts`
   - validates current HEAD against the manifest
   - classifies each step as `applicable`, `already-satisfied`, `obsolete-at-head`, `blocked`, or `manual-only`
@@ -1333,6 +1337,7 @@ This task adds a thin execution layer that decomposes the runbook rather than re
 - [x] The Tier 3 dependency-wiring smoke proof from runbook §1.4 runs only in a temp copy / throwaway worktree and never mutates the shared active worktree. (Landed via `scripts/runbook-tier3-drop-smoke.ts` plus `runbook-tier3-drop-smoke.integration.test.ts`; current HEAD correctly classifies actual execution as `blocked` until `D-TONE-ENV-02` reaches `coverage=confident`, but the only permitted execution path is now the temp-worktree helper.)
 - [x] A thin live dispatcher exists that maps runbook sections onto the already-landed S-550 live conformance specs instead of duplicating them. (Landed via `scripts/runbook-live.ts`, `test/integration/runbook-live.integration.test.ts`, and the module script `pnpm --filter @audiocontrol/roland-sxx0-editor test:runbook:live -- <section>`; current mappings cover runbook `2.3`, `2.4-library`, `2.4-patches`, and aggregate `2.4`.)
 - [x] A human-shaped runbook exists at `operator-review-runbook-current.md` and is easy for a reviewer to follow without consulting the manifest or raw test code. (Initial current-HEAD version landed in the first Task 7 implementation slice.)
+- [x] A one-page operator summary exists that tells the reviewer what is already verified, what remains open, and whether sign-off is currently grantable before they open the detailed runbook. (Landed via `operator-signoff-summary.md` as part of the verification-process simplification follow-through.)
 - [x] The human-shaped runbook contains, for each remaining review step: the route or command to run, what to look for, what counts as sign-off, and what to do if blocked. (Current sections cover `D-TONE-ENV-02`, `#426`, `#425`, `#428`, `#430`, and `#431`.)
 - [x] The automated layer explicitly excludes repo-mutating operator-closure steps (`Sign-off` edits, `git commit`, `git push`, `gh issue close`) and marks them `manual-only`. (Encoded in `operator-review-runbook.manifest.json` + verified by `runbook-state.integration.test.ts` classifications for the sign-off and closure steps.)
 - [x] Any broken assumption surfaced while implementing the layer is logged as a new `Finding-ID` in `audit-log.md` rather than silently absorbed into the executor. (No new broken assumption surfaced during Task 7 implementation; structural false positives encountered during detector authoring were investigated and rejected rather than encoded as fabricated findings.)

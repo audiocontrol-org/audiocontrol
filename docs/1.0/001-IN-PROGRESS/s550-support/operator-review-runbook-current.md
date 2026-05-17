@@ -4,6 +4,8 @@ deskwork:
 ---
 # Operator Review Runbook — Current HEAD
 
+Start with [operator-signoff-summary.md](./operator-signoff-summary.md) if you want the shortest explanation of the current decision state. Return here when you are ready to perform the remaining manual review steps.
+
 This runbook contains only actions the operator is uniquely able to perform: live UI review, hardware judgment, sign-off decisions, and final recording. Auditor-owned reruns and machine checks have already been executed and are summarized here as input evidence.
 
 ## Outcome

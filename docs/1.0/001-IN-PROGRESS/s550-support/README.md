@@ -22,7 +22,15 @@ The S-550 shares model ID `0x1E` and SysEx protocol with the S-330 but has an in
 - [Audit Log](./audit-log.md) - Bidirectional audit log (formerly `2026-05-08-code-audit-findings.md`; renamed 2026-05-15 to reflect its multi-audit, multi-type role). Codifies the auditor/controller protocol; tracks every finding with a stable `Finding-ID` + `Status` line.
 - [Live S-550 Conformance Matrix](./live-s550-conformance-matrix.md) - Planned live-device Playwright battery for design/mockup and capability-document conformance
 - [Verification Process Simplification Proposal](./verification-process-simplification.md) - Explains why the current verification/sign-off system became hard to understand and proposes a simpler operator-facing model
+- [Operator Sign-off Summary](./operator-signoff-summary.md) - Short operator-facing view of what is already verified, what is still open, and whether sign-off is currently grantable
 - [Implementation Summary](./implementation-summary.md) - Post-completion report
+
+## Verification Docs By Audience
+
+- Operator: start with [Operator Sign-off Summary](./operator-signoff-summary.md), then use [operator-review-runbook-current.md](./operator-review-runbook-current.md) for the actual manual review steps.
+- Auditor / implementation team: use [Audit Log](./audit-log.md) for failures and evidence history.
+- Auditor / implementation team: use [Live S-550 Conformance Matrix](./live-s550-conformance-matrix.md) for live-suite execution and coverage state.
+- Everyone: use `ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md` as the product contract for what the UI is supposed to do.
 
 ## GitHub Tracking
 
