@@ -1,5 +1,7 @@
 # Audit Log — feature/s550-support
 
+This document is a feature-local worked example of the project-wide protocol in [AUDITOR-IMPLEMENTER-PROTOCOL.md](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/AUDITOR-IMPLEMENTER-PROTOCOL.md).
+
 This document is the **durable bidirectional log between the testing/auditor team and the implementation team**. Audits appear as dated appendices; findings carry stable IDs and `Status:` lines; commit messages that close findings cite the IDs. The audit doc IS the source of truth for "who said what when" — GitHub issues are the per-fix work tracker, not the audit log itself.
 
 Formerly `2026-05-08-code-audit-findings.md` — renamed 2026-05-15 to reflect its role as a multi-audit, multi-type (code / design / live-hardware) log rather than a single-session findings document.

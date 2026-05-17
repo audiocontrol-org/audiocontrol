@@ -202,3 +202,5 @@ Editors are served at `https://audiocontrol.org/<manufacturer>/<device>/editor`.
 Project-wide policy for UI contracts, UI verification, audit logging, and operator sign-off lives in [UI-CONTRACT-AND-VERIFICATION-STANDARD.md](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/UI-CONTRACT-AND-VERIFICATION-STANDARD.md).
 
 Feature docs may apply that standard, but they are not the canonical source for it.
+
+The project-wide auditor/implementer handoff, finding-status, and re-verification protocol lives in [AUDITOR-IMPLEMENTER-PROTOCOL.md](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/AUDITOR-IMPLEMENTER-PROTOCOL.md).

@@ -13,6 +13,8 @@ It exists to prevent a specific failure mode: a UI can look complete, and even h
 
 This file is the canonical policy. Feature-local docs may apply it, extend it for a specific feature, or serve as worked examples, but they are not the primary source of truth for the process.
 
+The project-wide handoff rules between auditing and implementation live separately in [AUDITOR-IMPLEMENTER-PROTOCOL.md](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/AUDITOR-IMPLEMENTER-PROTOCOL.md).
+
 ## Core Principles
 
 1. The UI contract must describe operator-visible behavior, not implementation details.
@@ -167,6 +169,8 @@ Operator sign-off is still required when the question is inherently about live b
 - final hardware judgment on the visible UI
 - sign-off decisions
 - blocked vs granted decision for requested scope
+
+For the auditor-to-implementer round trip on findings, issue filing, status flips, and re-verification, see [AUDITOR-IMPLEMENTER-PROTOCOL.md](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/AUDITOR-IMPLEMENTER-PROTOCOL.md).
 
 ## Audience Guide
 
