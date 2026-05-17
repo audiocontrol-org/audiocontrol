@@ -196,3 +196,9 @@ Editors are served at `https://audiocontrol.org/<manufacturer>/<device>/editor`.
 - Do not express project-management goals in temporal promises when milestone or phase language is more accurate.
 - Do not invent projection statistics.
 - Use GitHub links, not local file paths, in GitHub issue descriptions.
+
+## UI Contract Standard
+
+Project-wide policy for UI contracts, UI verification, audit logging, and operator sign-off lives in [UI-CONTRACT-AND-VERIFICATION-STANDARD.md](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/UI-CONTRACT-AND-VERIFICATION-STANDARD.md).
+
+Feature docs may apply that standard, but they are not the canonical source for it.

@@ -1,5 +1,7 @@
 # Verification Process Simplification Proposal
 
+This document is a feature-local rationale and worked example for the Roland S-550 redesign. The project-wide policy now lives at [UI-CONTRACT-AND-VERIFICATION-STANDARD.md](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/UI-CONTRACT-AND-VERIFICATION-STANDARD.md).
+
 ## Purpose
 
 This document explains why the current verification and sign-off system for the S-550 redesign has become hard to understand, and proposes a simpler model that preserves the useful parts while removing operator-facing complexity.

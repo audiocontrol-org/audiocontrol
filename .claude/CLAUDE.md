@@ -210,3 +210,9 @@ Be honest about mistakes. The value is in pattern recognition, not looking good.
 - Never specify project management goals in temporal terms — use milestone, sprint, phase
 - Never offer baseless projection statistics
 - Use GitHub links (not file paths) in issue descriptions
+
+## UI Contract Standard
+
+Project-wide policy for UI contracts, UI verification, audit logging, and operator sign-off lives in [UI-CONTRACT-AND-VERIFICATION-STANDARD.md](/UI-CONTRACT-AND-VERIFICATION-STANDARD.md).
+
+Feature docs may apply that standard, but they are not the canonical source for it.
