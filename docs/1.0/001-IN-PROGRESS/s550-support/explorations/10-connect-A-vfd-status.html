@@ -169,7 +169,43 @@
     border-bottom-color: hsl(var(--ac-crt-fg-active));
   }
 
-  /* --- TRANSPORT DISCLOSURE -----------------------------------
+  /* --- TRANSPORT (INLINE inside Connection details) ----------
+     The transport selector lives at the top of the Connection
+     details disclosure body, not as a peer disclosure. By the
+     time the operator opens Connection details they've opted
+     into manual mode, so the transport choice is visible inline
+     rather than tucked behind another disclosure layer. */
+  .transport-inline {
+    padding: 1rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .transport-inline-row {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+  }
+  .transport-inline-label {
+    font-family: var(--ac-font-display);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .transport-inline-hint {
+    margin: 0;
+    font-family: var(--ac-font-mono);
+    font-size: 0.78rem;
+    color: hsl(var(--ac-color-fg-subtle));
+    max-width: 40rem;
+    line-height: 1.5;
+  }
+
+  /* --- TRANSPORT DISCLOSURE (deprecated — left as the
+     `.transport` ruleset for now, no DOM consumer in this mockup
+     after the Transport selector moved inside Connection details) --
      Collapsed by default; expanded by clicking either the VFD
      `change` link or the disclosure summary row itself. Uses the
      established .ac-toggle segmented-control chrome for the
@@ -596,17 +632,37 @@
         <div class="vfd-status-line">
           <span class="vfd-led" aria-hidden="true"></span>
           <span class="vfd-label">Status</span>
-          <span class="vfd-value">Awaiting handshake…</span>
+          <span class="vfd-value" data-vfd-status>Ready to scan</span>
         </div>
         <div class="vfd-detail">
           <div class="vfd-detail-row">
             <span class="k">Transport</span>
             <span>
               Web MIDI API
-              <a class="vfd-action" href="#" aria-controls="transport-panel" aria-expanded="true">change</a>
+              <a class="vfd-action" href="#" aria-controls="connection-details">change</a>
             </span>
           </div>
-          <div class="vfd-detail-row"><span class="k">Device</span><span>{{deviceName}}</span></div>
+          <div class="vfd-detail-row">
+            <span class="k">Device</span>
+            <span>{{deviceName}}</span>
+          </div>
+          <!--
+            "Detected" row is HIDDEN until the operator expressly
+            triggers the SCAN FOR DEVICE action below. Auto-probing
+            on page load would send SysEx Identity Requests to every
+            visible MIDI port — that's an invasive operation that
+            can have side effects on connected hardware, so it must
+            be operator-initiated, not automatic.
+
+            States for this row (rendered only after first scan):
+              Probing    "Probing MIDI ports…" (pulsing)
+              Found      "Volt 4 (Universal Audio) · ID 1 · re-scan · override"
+              Not found  "No {{deviceName}} detected · scan again · override"
+          -->
+          <div class="vfd-detail-row" data-vfd-detected hidden>
+            <span class="k">Detected</span>
+            <span data-detected-value>—</span>
+          </div>
           <!--
             "SysEx · Allowed" removed from steady-state readout. For
             ~99% of sessions the value is "Allowed" and the line is
@@ -641,20 +697,67 @@
     </section>
 
     <!--
-      TRANSPORT CONFIGURATION PANEL — three variants, one visible
-      at a time. Each variant is a numbered checklist (same chrome)
-      but the contents differ by transport:
+      PRIMARY ACTION — single button whose label + behavior tracks
+      the "next thing to do":
 
-        Web MIDI API   →  Input + Output dropdowns + Device ID
-        HTTP MIDI      →  Server URL + Live reachability + Device ID
-        Mock           →  Scenario picker + Device ID
+        pre-probe        → "Scan for device"      (run probe)
+        probing          → "Scanning…"            (disabled)
+        probed / found   → "Connect"              (open MIDI handshake)
+        probed / nothing → "Scan again"           (re-run probe)
+        configured by hand → "Connect"            (skip probe path)
+        connecting       → "Connecting…"          (disabled)
+        connected        → "Disconnect"
+        error            → "Retry"
 
-      The active panel is driven by `data-active-panel` on the
-      section root + a tiny script at the bottom of the page that
-      hides inactive children. The .ac-toggle below the CONNECT
-      button is what swaps them.
+      The button never disappears — it's always the operator's
+      next action. Probe is operator-initiated, not automatic.
     -->
-    <section class="panel" id="connection-config" aria-label="Connection parameters" data-active-panel="web-midi">
+    <div class="cta-row">
+      <button class="cta-connect" data-cta data-state="scan">Scan for device</button>
+    </div>
+
+    <!--
+      CONNECTION DETAILS — collapsed by default. The auto-probe
+      readout in the VFD above is the default path; this
+      disclosure is where power users (or operators whose device
+      didn't auto-detect) drop down to set the ports + Device ID
+      manually. Same three transport variants as before, swapped
+      by the transport toggle further down the page.
+
+      For the mockup we render this `open` so reviewers see the
+      chrome. Live default: closed.
+    -->
+    <section class="learn-more" aria-label="Connection details">
+      <details id="connection-details">
+        <summary>
+          <span class="marker" aria-hidden="true">▸</span>
+          <span>Connection details · set by hand</span>
+          <span class="count"><span data-summary-value>Web MIDI API</span> · 3 fields</span>
+        </summary>
+
+        <!--
+          TRANSPORT TOGGLE — moved INSIDE the Connection details
+          disclosure. The disclosure itself is the "in the weeds"
+          surface (operator has opted into manual mode by opening
+          it), so the transport selector is shown inline at the top
+          rather than tucked behind another nested disclosure. The
+          toggle swaps the visible configuration panel below.
+        -->
+        <div class="transport-inline">
+          <div class="transport-inline-row">
+            <span class="transport-inline-label">Transport</span>
+            <div class="ac-toggle" role="radiogroup" aria-label="Choose transport" id="transport-toggle">
+              <button type="button" class="ac-toggle-option" data-active="true" data-transport="web-midi" data-transport-label="Web MIDI API">Web MIDI</button>
+              <button type="button" class="ac-toggle-option" data-transport="http" data-transport-label="HTTP MIDI Server">HTTP</button>
+              <button type="button" class="ac-toggle-option" data-transport="mock" data-transport-label="Mock">Mock</button>
+            </div>
+          </div>
+          <p class="transport-inline-hint">
+            Leave on <strong>Web MIDI API</strong> unless you're running a specific test rig (HTTP for the SCSI-bridge / Pi, Mock for the simulated harness).
+          </p>
+        </div>
+
+        <section class="panel" id="connection-config" aria-label="Connection parameters" data-active-panel="web-midi" style="margin-top: 0; border: 0; border-radius: 0; border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.5);">
 
       <!-- ============ WEB MIDI ============ -->
       <div data-panel="web-midi">
@@ -789,50 +892,19 @@
         </div>
       </div>
 
+        </section>
+      </details>
     </section>
 
-    <!-- PRIMARY ACTION — label flips with state:
-         disconnected  → "Connect"
-         connecting    → "Connecting…" (disabled)
-         connected     → "Disconnect"
-         error         → "Retry"
-    -->
-    <div class="cta-row">
-      <button class="cta-connect">Connect</button>
-    </div>
-
     <!--
-      TRANSPORT DISCLOSURE — moved below the CONNECT button. The
-      transport choice is set-and-forget for almost every operator
-      (Web MIDI is the default and the right answer 99% of the
-      time), so it lives at the bottom of the action stack rather
-      than competing for attention with the configuration above.
-      Uses the established `.ac-toggle` segmented-control chrome
-      (same as Tones page BANK / LOOP MODE / OUTPUT). Switching the
-      toggle swaps the visible configuration panel above + the VFD
-      Transport readout. Rendered `open` here so reviewers can see
-      the chrome; the live default is collapsed.
+      Transport selector previously lived here as its own
+      disclosure. Moved INTO the Connection details body above
+      because Connection details is the "in the weeds" surface
+      where transport-switching belongs. The page now has exactly
+      one in-the-weeds disclosure for connection configuration,
+      plus the Setup Guide + Troubleshooting reference disclosures
+      below.
     -->
-    <details class="transport" id="transport-panel" open>
-      <summary>
-        <span class="marker" aria-hidden="true">▸</span>
-        <span>Transport</span>
-        <span class="summary-value" data-summary-value>Web MIDI API</span>
-      </summary>
-      <div class="transport-body">
-        <p class="transport-body-hint">
-          Almost everyone should leave this on <strong>Web MIDI API</strong> — it uses your browser's MIDI stack and works with whatever interface is plugged in. The other transports exist for specific test rigs.
-        </p>
-        <div>
-          <div class="transport-field-label">Transport</div>
-          <div class="ac-toggle" role="radiogroup" aria-label="Choose transport" id="transport-toggle">
-            <button type="button" class="ac-toggle-option" data-active="true" data-transport="web-midi" data-transport-label="Web MIDI API">Web MIDI</button>
-            <button type="button" class="ac-toggle-option" data-transport="http" data-transport-label="HTTP MIDI Server">HTTP</button>
-            <button type="button" class="ac-toggle-option" data-transport="mock" data-transport-label="Mock">Mock</button>
-          </div>
-        </div>
-      </div>
-    </details>
 
     <!-- LEARN-MORE — two disclosures, both collapsed by default.
          Setup guide sits above Troubleshooting because operators are
@@ -916,7 +988,36 @@
 
       <p><strong>Trade-offs:</strong> the VFD chrome is heavier than the rest of the editor and may compete for attention with the CRT on other pages. Animation / glow accents have a small maintenance cost (color tokens to keep in sync if the palette evolves).</p>
 
-      <p><strong>Three transport variants, one configuration panel:</strong> the form between the VFD and the CONNECT button swaps content based on the active transport.</p>
+      <p><strong>Default page = VFD + one primary CTA.</strong> Probe is operator-initiated, not automatic — sending SysEx Identity Requests to every visible MIDI port is invasive and can have side effects on connected hardware, so it must never run without express consent. The single primary button at the top of the page <em>is</em> that affordance: it reads <code>Scan for device</code> until a probe completes (or the operator fills in Connection details by hand), at which point it flips to <code>Connect</code>.</p>
+
+      <p><strong>Primary-button state machine:</strong></p>
+      <ul>
+        <li><code>pre-probe</code> → <em>Scan for device</em> (run probe)</li>
+        <li><code>scanning</code> → <em>Scanning…</em> (disabled)</li>
+        <li><code>probed + found</code> OR <code>manually configured</code> → <em>Connect</em></li>
+        <li><code>probed + nothing found</code> → <em>Scan again</em> (retry probe)</li>
+        <li><code>connecting</code> → <em>Connecting…</em> (disabled)</li>
+        <li><code>connected</code> → <em>Disconnect</em></li>
+        <li><code>error</code> → <em>Retry</em></li>
+      </ul>
+      <p>The button never disappears — it's always the operator's next action. Try it in the mockup: load page (status reads <em>Ready to scan</em>, no Detected row), click <em>Scan for device</em>, watch the LED switch from rec-red to accent, the Detected row reveals itself with the result, and the button flips to <em>Connect</em>.</p>
+
+      <p><strong>One in-the-weeds disclosure.</strong> The Transport selector used to be a peer disclosure next to Connection details. They've been merged: opening <em>Connection details</em> reveals the Transport toggle at the top of the panel, then the transport-specific configuration form below it. The page now has exactly three collapsed disclosures at the bottom of the action stack:</p>
+      <ol>
+        <li><em>Connection details</em> — transport choice + manual config (the "expert mode" surface).</li>
+        <li><em>Setup guide</em> — first-run walkthrough with embedded video tutorial.</li>
+        <li><em>Troubleshooting</em> — common fixes when the editor can't reach the device.</li>
+      </ol>
+
+      <p><strong>VFD inline links — what each one does:</strong></p>
+      <ul>
+        <li><code>change</code> (next to the Transport value) → opens <em>Connection details</em>, where the Transport toggle sits at the top of the panel. Brief accent-flash on the disclosure border so the operator sees where they were taken.</li>
+        <li><code>re-scan</code> (appears next to the Detected value AFTER a probe completes) → re-runs the probe in place. The Detected row swaps to "Probing MIDI ports…" briefly, then returns to the result.</li>
+        <li><code>override</code> (also post-probe) → opens <em>Connection details</em> for hand-setting ports / Device ID. Same target as <code>change</code>; both lead to the single manual-config surface.</li>
+      </ul>
+      <p>All inline links are styled identically (dashed-underline phosphor) so they read as "interactive readout" within the VFD aesthetic. Clicking each gives unmistakable feedback — there's no "did anything happen?" ambiguity.</p>
+
+      <p><strong>Three transport variants, one configuration panel:</strong> inside the Connection details disclosure, the form swaps content based on the active transport.</p>
       <ul>
         <li><strong>Web MIDI API</strong> (default) — MIDI Input + MIDI Output dropdowns + Device ID.</li>
         <li><strong>HTTP MIDI Server</strong> — Server URL (with a Test mini-button) + live reachability readout (green LED + latency) + Device ID. Used for the SCSI-bridge / Pi rig.</li>
@@ -942,37 +1043,153 @@
   -->
   <script>
     (function () {
+      // ---- TRANSPORT TOGGLE — swaps the visible config panel,
+      //      VFD Transport readout, and disclosure summary value.
       const toggle = document.getElementById('transport-toggle');
       const panel = document.getElementById('connection-config');
-      const vfdValue = document.querySelector('.vfd-detail-row span:nth-child(2)');
+      const transportRow = document.querySelector('.vfd-detail-row:first-of-type span:nth-child(2)');
       const summaryValue = document.querySelector('[data-summary-value]');
-      if (!toggle || !panel) return;
 
-      toggle.addEventListener('click', (e) => {
-        const btn = e.target.closest('.ac-toggle-option');
-        if (!btn) return;
-        const transport = btn.dataset.transport;
-        const label = btn.dataset.transportLabel;
+      if (toggle && panel) {
+        toggle.addEventListener('click', (e) => {
+          const btn = e.target.closest('.ac-toggle-option');
+          if (!btn) return;
+          const transport = btn.dataset.transport;
+          const label = btn.dataset.transportLabel;
 
-        // Update toggle state
-        toggle.querySelectorAll('.ac-toggle-option').forEach((b) => {
-          b.dataset.active = b === btn ? 'true' : 'false';
+          toggle.querySelectorAll('.ac-toggle-option').forEach((b) => {
+            b.dataset.active = b === btn ? 'true' : 'false';
+          });
+
+          panel.dataset.activePanel = transport;
+          panel.querySelectorAll('[data-panel]').forEach((p) => {
+            p.hidden = p.dataset.panel !== transport;
+          });
+
+          if (transportRow) {
+            const change = transportRow.querySelector('.vfd-action');
+            transportRow.firstChild.textContent = label + ' ';
+            if (change) transportRow.appendChild(change);
+          }
+          if (summaryValue) summaryValue.textContent = label;
         });
+      }
 
-        // Swap visible panel
-        panel.dataset.activePanel = transport;
-        panel.querySelectorAll('[data-panel]').forEach((p) => {
-          p.hidden = p.dataset.panel !== transport;
+      // ---- VFD INLINE LINKS — wire each `change` / `re-scan` /
+      //      `override` link so the operator sees something happen
+      //      when they click. Each link targets a disclosure via
+      //      its `aria-controls` id and we open + scroll + flash.
+      function openAndFlash(id) {
+        const target = document.getElementById(id);
+        if (!target) return;
+        target.open = true;
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // brief accent-flash so it's obvious what just opened
+        target.style.transition = 'box-shadow 240ms ease, border-color 240ms ease';
+        target.style.boxShadow = '0 0 0 2px hsl(var(--ac-color-accent) / 0.7)';
+        setTimeout(() => { target.style.boxShadow = ''; }, 700);
+      }
+
+      document.querySelectorAll('.vfd-action[aria-controls]').forEach((a) => {
+        a.addEventListener('click', (e) => {
+          e.preventDefault();
+          const id = a.getAttribute('aria-controls');
+          // `re-scan` is the one VFD link that's an ACTION, not a
+          // disclosure-opener. It runs the probe routine.
+          if (a.textContent.trim().toLowerCase() === 're-scan') {
+            runProbe();
+            return;
+          }
+          openAndFlash(id);
         });
-
-        // Update VFD readout and disclosure summary
-        if (vfdValue) {
-          const change = vfdValue.querySelector('.vfd-action');
-          vfdValue.firstChild.textContent = label + ' ';
-          if (change) vfdValue.appendChild(change);
-        }
-        if (summaryValue) summaryValue.textContent = label;
       });
+
+      // ---- SCAN / CONNECT STATE MACHINE — single primary button
+      //      tracks the "next thing to do". Probe is express-
+      //      triggered, never automatic.
+      const cta = document.querySelector('[data-cta]');
+      const vfdStatus = document.querySelector('[data-vfd-status]');
+      const detectedRow = document.querySelector('[data-vfd-detected]');
+      const detectedValue = document.querySelector('[data-detected-value]');
+      const vfdLed = document.querySelector('.vfd-led');
+
+      function setStatus(text) { if (vfdStatus) vfdStatus.textContent = text; }
+      function setCtaState(state, label) {
+        if (!cta) return;
+        cta.dataset.state = state;
+        cta.textContent = label;
+        cta.disabled = state === 'scanning' || state === 'connecting';
+      }
+      function ledColor(color) {
+        if (!vfdLed) return;
+        vfdLed.style.background = `hsl(var(--ac-color-${color}))`;
+        vfdLed.style.boxShadow =
+          `0 0 8px hsl(var(--ac-color-${color})), 0 0 14px hsl(var(--ac-color-${color}) / 0.4)`;
+        vfdLed.style.animation = color === 'success'
+          ? 'none'
+          : 'blink 1.4s ease-in-out infinite';
+      }
+
+      function runProbe() {
+        // ENTER: scanning
+        setCtaState('scanning', 'Scanning…');
+        setStatus('Scanning MIDI ports…');
+        ledColor('accent');
+        if (detectedRow) {
+          detectedRow.hidden = false;
+          detectedValue.innerHTML = 'Probing MIDI ports…';
+          detectedValue.style.opacity = '0.6';
+        }
+
+        // EXIT (mockup): simulate ~1.2s probe, then "found"
+        setTimeout(() => {
+          setStatus('Ready to connect');
+          ledColor('success');
+          if (detectedValue) {
+            detectedValue.style.opacity = '';
+            detectedValue.innerHTML =
+              'Volt 4 (Universal Audio) · ID 1 ' +
+              '<a class="vfd-action" href="#" aria-controls="connection-details" data-action="re-scan">re-scan</a> ' +
+              '<a class="vfd-action" href="#" aria-controls="connection-details">override</a>';
+
+            // Re-wire the freshly-injected links
+            detectedValue.querySelectorAll('.vfd-action').forEach((a) => {
+              a.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (a.dataset.action === 're-scan') { runProbe(); return; }
+                openAndFlash(a.getAttribute('aria-controls'));
+              });
+            });
+          }
+          setCtaState('connect', 'Connect');
+        }, 1200);
+      }
+
+      function runConnect() {
+        setCtaState('connecting', 'Connecting…');
+        setStatus('Connecting…');
+        ledColor('accent');
+        setTimeout(() => {
+          setStatus('Connected');
+          ledColor('success');
+          setCtaState('disconnect', 'Disconnect');
+        }, 900);
+      }
+
+      function runDisconnect() {
+        setStatus('Ready to connect');
+        ledColor('accent');
+        setCtaState('connect', 'Connect');
+      }
+
+      if (cta) {
+        cta.addEventListener('click', () => {
+          const state = cta.dataset.state;
+          if (state === 'scan') return runProbe();
+          if (state === 'connect') return runConnect();
+          if (state === 'disconnect') return runDisconnect();
+        });
+      }
     })();
   </script>
 </body>
