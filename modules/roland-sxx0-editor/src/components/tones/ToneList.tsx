@@ -151,7 +151,9 @@ export function ToneList({
                 </span>
               </div>
 
-              {!isCollapsed && tones.slice(bankStart, bankEnd).map((tone, offset) => {
+              <div className="ac-collapse" data-expanded={!isCollapsed}>
+                <div>
+              {tones.slice(bankStart, bankEnd).map((tone, offset) => {
                 const index = bankStart + offset;
                 const isLoaded = tone !== undefined;
                 const isEmpty = isLoaded && isToneEmpty(tone);
@@ -263,6 +265,8 @@ export function ToneList({
                   </div>
                 );
               })}
+                </div>
+              </div>
             </div>
           );
         })}

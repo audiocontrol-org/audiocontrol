@@ -64,7 +64,7 @@ export function EditorLayout({
             </h1>
             <nav>
               <ul className="ac-site-nav">
-                {navItems.map((item) => {
+                {navItems.map((item, idx) => {
                   // Generate test ID from label: "Library" -> "library-nav-link"
                   // For device-specific pages (Tones, Patches), prefix with "device-"
                   // to distinguish from library pages (library-tones, library-patches)
@@ -73,10 +73,19 @@ export function EditorLayout({
                   const testId = isDevicePage
                     ? `device-${labelSlug}-nav-link`
                     : `${labelSlug}-nav-link`;
+                  // The Connect link points at the basePath root (e.g. `/`).
+                  // Without `end`, react-router-dom matches it against ANY
+                  // sub-path, so Connect lights up as active even on
+                  // /tones, /patches, /library. Force exact matching for
+                  // the root nav item only — sub-paths still want prefix
+                  // matching so deep links under e.g. /library still
+                  // highlight Library as active.
+                  const isRootLink = idx === 0;
                   return (
                     <li key={item.to}>
                       <NavLink
                         to={`${item.to}${location.search}`}
+                        end={isRootLink}
                         className="ac-site-nav-link"
                         data-active={undefined}
                         data-testid={testId}

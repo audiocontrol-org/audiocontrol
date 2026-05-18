@@ -154,7 +154,7 @@ export function MidiConnectionPage({
                     clearTransportConfig();
                     window.location.reload();
                   }}
-                  className="ac-btn ac-btn-sm"
+                  className="ac-toolbar-btn"
                 >
                   Reset Transport
                 </button>
@@ -193,12 +193,16 @@ export function MidiConnectionPage({
               <button
                 type="button"
                 onClick={() => void store.disconnect()}
-                className="ac-btn"
+                className="ac-toolbar-btn"
                 data-testid="disconnect-button"
               >
                 Disconnect
               </button>
-              <button type="button" onClick={onContinue} className="ac-btn">
+              <button
+                type="button"
+                onClick={onContinue}
+                className="ac-toolbar-btn ac-toolbar-btn--primary"
+              >
                 {config.continueLabel}
               </button>
             </>
@@ -209,12 +213,16 @@ export function MidiConnectionPage({
                   type="button"
                   onClick={() => void store.connect()}
                   disabled={!canConnect || store.status === 'connecting'}
-                  className="ac-btn"
+                  className="ac-toolbar-btn ac-toolbar-btn--primary"
                   data-testid="connect-button"
                 >
-                  {store.status === 'connecting' ? 'Connecting...' : 'Connect'}
+                  {store.status === 'connecting' ? 'Connecting…' : 'Connect'}
                 </button>
-                <button type="button" onClick={() => void store.refresh()} className="ac-btn">
+                <button
+                  type="button"
+                  onClick={() => void store.refresh()}
+                  className="ac-toolbar-btn"
+                >
                   Refresh Ports
                 </button>
               </>
@@ -222,7 +230,7 @@ export function MidiConnectionPage({
               <button
                 type="button"
                 onClick={() => void store.reconnect()}
-                className="ac-btn"
+                className="ac-toolbar-btn ac-toolbar-btn--primary"
               >
                 Reconnect
               </button>

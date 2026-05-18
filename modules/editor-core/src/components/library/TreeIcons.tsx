@@ -33,20 +33,13 @@ export function FolderIcon({ isOpen }: { isOpen: boolean }): JSX.Element {
 }
 
 export function ChevronIcon({ isExpanded }: { isExpanded: boolean }): JSX.Element {
+  // Unicode glyph swap (▾ / ▸) — same chevron vocabulary as
+  // `.ac-list-bank-chevron` and `.ac-device-memory-section-eyebrow-chevron`
+  // so the tree control reads as part of the same family.
   return (
-    <svg
-      className={`ac-tree-chevron ${isExpanded ? 'ac-tree-chevron--expanded' : ''}`}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M9 5l7 7-7 7"
-      />
-    </svg>
+    <span className="ac-tree-chevron" aria-hidden="true">
+      {isExpanded ? '▾' : '▸'}
+    </span>
   );
 }
 

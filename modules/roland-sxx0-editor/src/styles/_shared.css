@@ -48,7 +48,15 @@
 .ac-page-title-row {
   position: relative;
   display: flex;
-  align-items: baseline;
+  /* `align-items: center` instead of baseline. `baseline` produces
+     pixel-accurate alignment ONLY when both sides expose a text
+     baseline. When the right-side container is a plain <div>
+     (Library page: actions div with buttons) it gets a synthetic
+     baseline at the bottom of the box, which shifts the left block
+     down a few pixels — measured at 2.5px between Tones and Library
+     before this fix. Center-alignment normalizes height regardless
+     of right-side chrome (text + LED + icon, or plain buttons). */
+  align-items: center;
   justify-content: space-between;
   gap: var(--ac-space-4);
   padding-bottom: var(--ac-space-3);
@@ -253,6 +261,112 @@
 }
 
 /* ============================================================
+   VIDEO CAPTURE FRAME — fixed 16:9 surface that hosts either the
+   live <video> stream OR the paused-state skeleton. Both render
+   in the same frame so toggling Stop/Start doesn't resize the
+   drawer or shift the front-panel below.
+
+   The skeleton placeholder uses subtle CRT-evoking texture
+   (horizontal scanline lines via repeating gradient) + a muted
+   camera glyph + "PAUSED" eyebrow + a small "click START" hint.
+   ============================================================ */
+.ac-video-frame {
+  position: relative;
+  width: 100%;
+  /* 4:3 — the S-330 / S-550 CRT is a 4:3 display. 16:9 left thick
+     letterbox bars on both sides because the captured frame is
+     actually 4:3 inside the 16:9 capture-device output. */
+  aspect-ratio: 4 / 3;
+  background: var(--ac-color-surface-canvas);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.ac-video-frame > video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+.ac-video-frame > video[hidden] {
+  display: none;
+}
+
+/* Paused-state skeleton — full-bleed surface, faint CRT scanlines,
+   centered glyph + label + hint. Hidden when video is streaming. */
+.ac-video-frame-skeleton {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ac-space-2);
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--ac-color-surface-panel) 30%, transparent) 0 1px,
+      transparent 1px 4px
+    ),
+    radial-gradient(
+      ellipse at center,
+      color-mix(in srgb, var(--ac-color-surface-panel) 50%, transparent) 0%,
+      var(--ac-color-surface-canvas) 80%
+    );
+  box-shadow: inset 0 0 60px color-mix(in srgb, #000 60%, transparent);
+}
+
+.ac-video-frame-skeleton svg {
+  width: 2rem;
+  height: 2rem;
+  color: color-mix(in srgb, var(--ac-color-text-muted) 60%, transparent);
+}
+
+.ac-video-frame-skeleton-label {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-video-frame-skeleton-hint {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: color-mix(in srgb, var(--ac-color-text-muted) 60%, transparent);
+}
+
+/* Overlay states (no secure context, no permission, no devices,
+   errors) — sit on top of either the video OR the skeleton. */
+.ac-video-frame-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ac-space-2);
+  padding: var(--ac-space-3);
+  text-align: center;
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 90%, transparent);
+}
+
+.ac-video-frame-error {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: var(--ac-space-1) var(--ac-space-3);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: #fff;
+  background: color-mix(in srgb, var(--ac-color-rec) 80%, transparent);
+}
+
+/* ============================================================
    DEVICE MEMORY LIST — rows inside the Library page's left column
    (DeviceMemoryPanel). Same lean .ac-list-* chrome as ToneList /
    PatchList rows but tighter (the column is narrow), and with
@@ -328,6 +442,109 @@
 .ac-device-memory-panel[data-sample-drag-over="true"] {
   background: color-mix(in srgb, var(--ac-color-accent) 6%, transparent);
   box-shadow: inset 0 0 0 var(--ac-rule-medium) color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+}
+
+/* Top-level section wrapper inside the device-memory panel body.
+ *
+ * Two siblings: tones + patches. Each section's height share is
+ * driven entirely by the `data-expanded` attribute — both expanded =
+ * 50/50; one collapsed = the other gets the full remaining space.
+ * That way the patches header never moves as banks inside the tones
+ * section expand/collapse — bank-level toggles only ever change
+ * scroll height inside their own section.
+ *
+ *   data-expanded="true"  → flex: 1 1 0  (share the remainder)
+ *   data-expanded="false" → flex: 0 0 auto (only the eyebrow shows)
+ *
+ * `min-height: 0` on the expanded variant lets `.ac-list-scroll`
+ * inside actually engage `overflow-y` instead of growing past the
+ * column track.
+ */
+.ac-device-memory-section {
+  display: flex;
+  flex-direction: column;
+  /* Floor at the eyebrow's intrinsic height so the section never
+     collapses past its header even when flex-grow goes to zero. */
+  min-height: 2.5rem;
+  flex-shrink: 1;
+  flex-basis: 0;
+  overflow: hidden;
+  border-top: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  /* Tween flex-grow so the section's height share animates rather
+     than snapping when the operator toggles a section. .ac-list
+     inside is `flex: 1 1 0; overflow: hidden` so its content
+     visually collapses in lockstep with the shrinking section. */
+  transition: flex-grow var(--ac-duration-normal) var(--ac-easing-default);
+}
+
+.ac-device-memory-section:first-of-type {
+  border-top: none;
+}
+
+.ac-device-memory-section[data-expanded="true"] {
+  flex-grow: 1;
+}
+
+.ac-device-memory-section[data-expanded="false"] {
+  flex-grow: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-device-memory-section { transition: none; }
+}
+
+/* Section eyebrow ("TONES (32 slots)" / "PATCHES (16 slots)") that
+   also acts as the section's expand/collapse toggle button.
+   Bank-header eyebrows below use `.ac-list-bank-header`; this is the
+   section-level overhead label.
+   Rendered as a real <button> so the chevron + label are a single
+   keyboard-reachable activation target. */
+.ac-device-memory-section-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  width: 100%;
+  /* Keep the header intact when the section flex-shrinks past it. */
+  flex-shrink: 0;
+  padding: var(--ac-space-2) var(--ac-space-4);
+  border: 0;
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 92%, transparent);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-accent);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-device-memory-section-eyebrow:hover {
+  background: color-mix(in srgb, var(--ac-color-accent) 6%, transparent);
+}
+
+.ac-device-memory-section-eyebrow:focus-visible {
+  outline: var(--ac-rule-medium) solid color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  outline-offset: -2px;
+}
+
+/* Chevron glyph for the section eyebrow. Glyph swaps explicitly
+   (▾ ↔ ▸) rather than CSS-rotating a single glyph — the display
+   font (Departure Mono) doesn't carry a clean ▸ that survives a
+   rotation, and the swap matches the per-bank chevron in
+   `.ac-list-bank-chevron`. */
+.ac-device-memory-section-eyebrow-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--ac-color-accent);
 }
 
 /* ============================================================
@@ -465,6 +682,139 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Inline tag chips (e.g., sample-bundle tags). Hairline-bordered
+   uppercase eyebrow pills, consistent with .ac-page-title-tag. */
+.ac-preview-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ac-space-1);
+}
+
+.ac-preview-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem var(--ac-space-2);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  line-height: 1.4;
+  border-radius: var(--ac-radius-sm);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 60%, transparent);
+  color: var(--ac-color-text-muted);
+}
+
+/* Optional description paragraph rendered below the .ac-preview-name. */
+.ac-preview-description {
+  margin: 0;
+  font-family: var(--ac-font-body);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text-muted);
+  line-height: var(--ac-leading-normal);
+}
+
+/* Subsection eyebrow inside the body (e.g. "Promote to Tone",
+   "Zones"). Single uppercase line; pairs naturally with field grids
+   or row lists rendered immediately after it. */
+.ac-preview-subsection-eyebrow {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  margin-bottom: var(--ac-space-1);
+}
+
+/* Inline form rendered inside a preview body — a labeled control row
+   that pairs an .ac-input with a unit/hint label to its right. */
+.ac-preview-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-1);
+}
+
+.ac-preview-form-row-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+}
+
+.ac-preview-form-row-controls .ac-input {
+  max-width: 5rem;
+  padding-block: var(--ac-space-1);
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.ac-preview-form-row-hint {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+}
+
+/* Result banner inside the preview body — success or error. */
+.ac-preview-result {
+  padding: var(--ac-space-2) var(--ac-space-3);
+  border-radius: var(--ac-radius-sm);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+}
+
+.ac-preview-result--ok {
+  border: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-status-connected) 60%, transparent);
+  background: color-mix(in srgb, var(--ac-status-connected) 12%, transparent);
+  color: color-mix(in srgb, var(--ac-status-connected) 90%, var(--ac-color-text-primary));
+}
+
+.ac-preview-result--err {
+  border: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-rec) 60%, transparent);
+  background: color-mix(in srgb, var(--ac-color-rec) 12%, transparent);
+  color: color-mix(in srgb, var(--ac-color-rec) 90%, var(--ac-color-text-primary));
+}
+
+/* Zones list inside a program preview — single row per zone. */
+.ac-preview-zone-row {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  gap: var(--ac-space-2);
+  padding-block: var(--ac-space-1);
+  border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 40%, transparent);
+}
+
+.ac-preview-zone-row:last-of-type {
+  border-bottom: none;
+}
+
+.ac-preview-zone-row-index {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+  text-align: right;
+}
+
+.ac-preview-zone-row-name {
+  font-family: var(--ac-font-body);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ac-preview-zone-row-meta {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ac-space-2);
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
 }
 
 /* Dependent-tone list inside a patch preview — single-column variant

@@ -33,11 +33,12 @@ export function HomePage(): JSX.Element {
 
   return (
     <div className="ac-page ac-page-shell">
-      <div className="ac-page-sticky-header">
-        <div className="ac-page-header">
-          <h2 className="text-xl font-bold text-s330-text">Connect</h2>
+      <header className="ac-page-title-row">
+        <div className="ac-page-title-block">
+          <h2 id="connect-heading" className="ac-page-title-heading">Connect</h2>
+          <div className="ac-page-title-rule" aria-hidden="true" />
         </div>
-      </div>
+      </header>
       <MidiConnectionPage
         config={config}
         store={pageStore}

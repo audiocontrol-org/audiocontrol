@@ -1,9 +1,14 @@
 /**
  * Common Sample Preview Panel
  *
- * Right panel for previewing common-area samples and programs
- * with promote-to-device actions. Samples can be promoted to
- * device-specific tones (S-330, S-550) by providing an originalKey.
+ * Right column of the Library page when a sample or program in the
+ * common (cross-device) area is selected. Renders the lean v3 chrome
+ * (.ac-preview-pane + .ac-preview-fields + .ac-pane-action) shared
+ * with ItemPreviewPanel via preview-chrome.tsx.
+ *
+ * Sample-side body: identity + tags + sample metadata fields + open-in
+ * actions + Promote-to-Tone form.
+ * Program-side body: identity + tags + program metadata + zone list.
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -12,6 +17,16 @@ import { s330SamplePromotion, midiNoteToName, getNestedDirectory } from '@audioc
 import { OperationProgressBar, type OperationProgress } from '@audiocontrol/editor-core';
 import { loadCommonSample, loadCommonProgram } from '@/lib/library-service';
 import { stringify as stringifyYaml } from 'yaml';
+import {
+  PreviewPane,
+  PreviewIdentity,
+  FieldGrid,
+  PaneAction,
+  LoadingState,
+  ErrorState,
+  EmptySlotMessage,
+  type FieldDef,
+} from '@/components/library/preview-chrome';
 
 interface CommonSamplePreviewPanelProps {
   selection: { type: 'sample' | 'program'; name: string; path?: string[] } | null;
@@ -25,78 +40,103 @@ interface CommonSamplePreviewPanelProps {
 /** All S-series devices share a single library section under s330. */
 const LIBRARY_DEVICE = 's330' as const;
 
-function LoadingState(): JSX.Element {
-  return (
-    <div className="flex items-center justify-center py-8">
-      <div className="flex items-center gap-2 text-s330-muted">
-        <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-        <span>Loading...</span>
-      </div>
-    </div>
-  );
-}
+// ---------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------
 
-function ErrorState({ message }: { message: string }): JSX.Element {
+function Tags({ tags }: { tags: string[] }): JSX.Element {
   return (
-    <div className="text-center text-red-400 text-sm py-8">
-      <p>Failed to load: {message}</p>
-    </div>
-  );
-}
-
-function TagBadges({ tags }: { tags: string[] }): JSX.Element {
-  return (
-    <div className="flex flex-wrap gap-1">
+    <div className="ac-preview-tags">
       {tags.map((tag) => (
-        <span key={tag} className="px-2 py-0.5 text-xs rounded bg-s330-accent/30 text-s330-text">
-          {tag}
-        </span>
+        <span key={tag} className="ac-preview-tag">{tag}</span>
       ))}
     </div>
   );
 }
 
-/** Inline form for promoting a sample to a device tone. */
+function sampleFields(sample: SampleYaml): FieldDef[] {
+  return [
+    { label: 'Sample Rate', value: `${sample.sampleRate} Hz` },
+    {
+      label: 'Root Key',
+      value: sample.rootKey !== undefined ? midiNoteToName(Number(sample.rootKey)) : '—',
+    },
+    { label: 'Loop Mode', value: sample.loopMode ?? 'oneShot' },
+    { label: 'File', value: sample.file },
+  ];
+}
+
+function sampleLoopFields(sample: SampleYaml): FieldDef[] | null {
+  if (sample.loopStart === undefined && sample.loopEnd === undefined) return null;
+  const fields: FieldDef[] = [];
+  if (sample.loopStart !== undefined) fields.push({ label: 'Loop Start', value: sample.loopStart });
+  if (sample.loopEnd !== undefined) fields.push({ label: 'Loop End', value: sample.loopEnd });
+  return fields;
+}
+
+function programFields(program: ProgramYaml): FieldDef[] {
+  return [
+    { label: 'Zones', value: program.zones.length },
+    { label: 'Polyphony', value: program.polyphony ?? 'poly' },
+    { label: 'Playback', value: program.playbackMode ?? 'gate' },
+  ];
+}
+
+// ---------------------------------------------------------------
+// Promote-to-tone subsection
+// ---------------------------------------------------------------
+
+interface PromoteFormProps {
+  onPromote: (originalKey: number) => void;
+  isPromoting: boolean;
+  promotionProgress?: OperationProgress;
+  promotionResult: { success: boolean; message: string } | null;
+}
+
 function PromoteForm({
   onPromote,
   isPromoting,
   promotionProgress,
   promotionResult,
-}: {
-  onPromote: (originalKey: number) => void;
-  isPromoting: boolean;
-  promotionProgress?: OperationProgress;
-  promotionResult: { success: boolean; message: string } | null;
-}): JSX.Element {
+}: PromoteFormProps): JSX.Element {
   const [originalKey, setOriginalKey] = useState(60);
 
   return (
-    <div className="space-y-3">
-      <div className="bg-s330-bg rounded p-3 space-y-3">
-        <div className="text-xs text-s330-muted uppercase tracking-wide">
-          Promote to Tone
-        </div>
-        <div>
-          <label className="text-xs text-s330-muted block mb-1">Original Key (MIDI 11-108)</label>
-          <div className="flex items-center gap-2">
+    <>
+      <div>
+        <div className="ac-preview-subsection-eyebrow">Promote to Tone</div>
+        <div className="ac-preview-form-row">
+          <label className="ac-field-label" htmlFor="promote-original-key">
+            Original Key (MIDI 11–108)
+          </label>
+          <div className="ac-preview-form-row-controls">
             <input
+              id="promote-original-key"
               type="number"
               min={11}
               max={108}
               value={originalKey}
-              onChange={(e) => setOriginalKey(Math.min(108, Math.max(11, parseInt(e.target.value, 10) || 60)))}
-              className="w-20 px-2 py-1 text-sm bg-s330-bg border border-s330-accent rounded text-s330-text"
+              onChange={(e) =>
+                setOriginalKey(
+                  Math.min(108, Math.max(11, parseInt(e.target.value, 10) || 60)),
+                )
+              }
+              className="ac-input"
             />
-            <span className="text-xs text-s330-muted">{midiNoteToName(originalKey)}</span>
+            <span className="ac-preview-form-row-hint">{midiNoteToName(originalKey)}</span>
           </div>
         </div>
-        <button
+      </div>
+
+      <div className="ac-pane-actions">
+        <PaneAction
+          label="Promote"
+          variant="primary"
           onClick={() => onPromote(originalKey)}
           disabled={isPromoting}
-          className="w-full ac-btn ac-btn-primary ac-btn-sm"
-        >
-          {isPromoting ? 'Promoting...' : 'Promote'}
-        </button>
+          busy={isPromoting}
+          busyLabel="Promoting…"
+        />
       </div>
 
       {isPromoting && promotionProgress && (
@@ -104,136 +144,24 @@ function PromoteForm({
       )}
 
       {promotionResult && (
-        <div className={`text-sm p-3 rounded ${promotionResult.success ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+        <div
+          className={
+            promotionResult.success
+              ? 'ac-preview-result ac-preview-result--ok'
+              : 'ac-preview-result ac-preview-result--err'
+          }
+          role={promotionResult.success ? 'status' : 'alert'}
+        >
           {promotionResult.message}
         </div>
       )}
-    </div>
+    </>
   );
 }
 
-/** Display a SampleYaml's properties in an info grid. */
-function SampleDetails({ sample }: { sample: SampleYaml }): JSX.Element {
-  return (
-    <div className="space-y-4">
-      <div>
-        <h4 className="text-lg font-bold text-s330-text">{sample.name}</h4>
-        {sample.description && (
-          <p className="text-sm text-s330-muted mt-1">{sample.description}</p>
-        )}
-      </div>
-
-      {sample.tags && sample.tags.length > 0 && <TagBadges tags={sample.tags} />}
-
-      <div className="bg-s330-bg rounded p-3 text-sm space-y-3">
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <span className="text-s330-muted text-xs">Sample Rate</span>
-            <div className="text-s330-text">{sample.sampleRate} Hz</div>
-          </div>
-          <div>
-            <span className="text-s330-muted text-xs">Root Key</span>
-            <div className="text-s330-text">
-              {sample.rootKey !== undefined ? midiNoteToName(Number(sample.rootKey)) : '--'}
-            </div>
-          </div>
-          <div>
-            <span className="text-s330-muted text-xs">Loop Mode</span>
-            <div className="text-s330-text capitalize">{sample.loopMode ?? 'oneShot'}</div>
-          </div>
-          <div>
-            <span className="text-s330-muted text-xs">File</span>
-            <div className="text-s330-text truncate">{sample.file}</div>
-          </div>
-        </div>
-
-        {(sample.loopStart !== undefined || sample.loopEnd !== undefined) && (
-          <>
-            <hr className="border-s330-accent/30" />
-            <div className="grid grid-cols-2 gap-2">
-              {sample.loopStart !== undefined && (
-                <div>
-                  <span className="text-s330-muted text-xs">Loop Start</span>
-                  <div className="text-s330-text">{sample.loopStart}</div>
-                </div>
-              )}
-              {sample.loopEnd !== undefined && (
-                <div>
-                  <span className="text-s330-muted text-xs">Loop End</span>
-                  <div className="text-s330-text">{sample.loopEnd}</div>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {sample.sourceDevice && (
-          <>
-            <hr className="border-s330-accent/30" />
-            <div>
-              <span className="text-s330-muted text-xs">Source Device</span>
-              <div className="text-s330-text">{sample.sourceDevice}</div>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/** Display a ProgramYaml's properties and zones. */
-function ProgramDetails({ program }: { program: ProgramYaml }): JSX.Element {
-  return (
-    <div className="space-y-4">
-      <div>
-        <h4 className="text-lg font-bold text-s330-text">{program.name}</h4>
-        {program.description && (
-          <p className="text-sm text-s330-muted mt-1">{program.description}</p>
-        )}
-      </div>
-
-      {program.tags && program.tags.length > 0 && <TagBadges tags={program.tags} />}
-
-      <div className="bg-s330-bg rounded p-3 text-sm">
-        <div className="grid grid-cols-3 gap-2">
-          <div>
-            <span className="text-s330-muted text-xs">Zones</span>
-            <div className="text-s330-text">{program.zones.length}</div>
-          </div>
-          <div>
-            <span className="text-s330-muted text-xs">Polyphony</span>
-            <div className="text-s330-text capitalize">{program.polyphony ?? 'poly'}</div>
-          </div>
-          <div>
-            <span className="text-s330-muted text-xs">Playback</span>
-            <div className="text-s330-text capitalize">{program.playbackMode ?? 'gate'}</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <div className="text-xs text-s330-muted uppercase tracking-wide">Zones ({program.zones.length})</div>
-        {program.zones.map((zone, i) => (
-          <div key={i} className="bg-s330-bg rounded p-2 text-xs space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="w-5 text-s330-muted text-right">{i}</span>
-              <span className="flex-1 text-s330-text font-medium truncate">{zone.label ?? zone.sample}</span>
-            </div>
-            <div className="flex items-center gap-3 ml-7 text-s330-muted">
-              <span>sample: {zone.sample}</span>
-              {zone.keyRange && (
-                <span>keys: {midiNoteToName(zone.keyRange[0])}-{midiNoteToName(zone.keyRange[1])}</span>
-              )}
-              {zone.velocityRange && (
-                <span>vel: {zone.velocityRange[0]}-{zone.velocityRange[1]}</span>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+// ---------------------------------------------------------------
+// Promotion logic (unchanged)
+// ---------------------------------------------------------------
 
 async function promoteSampleToDevice(
   libraryHandle: StorageDirectoryHandle,
@@ -244,25 +172,21 @@ async function promoteSampleToDevice(
   onProgress?: (progress: OperationProgress) => void,
 ): Promise<void> {
   const tone: ToneYaml = s330SamplePromotion.promote(sample, { originalKey });
-
   const toneName = sample.name.replace(/[^a-zA-Z0-9_-]/g, '_');
   const wavFileName = `${toneName}.wav`;
-
-  // Fix the WAV filename in the tone YAML to match the output file
   tone.wave.file = wavFileName;
 
   onProgress?.({
     currentStep: 1, totalSteps: 3,
-    stepLabel: 'Creating tones directory...',
+    stepLabel: 'Creating tones directory…',
     bytesSent: 0, bytesTotal: 0, bytesSentAllSteps: 0, bytesTotalAllSteps: 0,
   });
 
   const tonesDir = await getNestedDirectory(libraryHandle, ['library', LIBRARY_DEVICE, 'tones']);
 
-  // Write tone YAML
   onProgress?.({
     currentStep: 1, totalSteps: 3,
-    stepLabel: `Writing ${toneName}.yaml...`,
+    stepLabel: `Writing ${toneName}.yaml…`,
     bytesSent: 0, bytesTotal: 0, bytesSentAllSteps: 0, bytesTotalAllSteps: 0,
   });
 
@@ -272,23 +196,25 @@ async function promoteSampleToDevice(
   await yamlWritable.write(yamlContent);
   await yamlWritable.close();
 
-  // Copy WAV from common area sample bundle to device tones
   onProgress?.({
     currentStep: 2, totalSteps: 3,
-    stepLabel: 'Loading source audio...',
+    stepLabel: 'Loading source audio…',
     bytesSent: 0, bytesTotal: 0, bytesSentAllSteps: 0, bytesTotalAllSteps: 0,
   });
 
-  const sampleBundleDir = await getNestedDirectory(libraryHandle, ['library', 'common', 'samples', ...samplePath, sampleDirName]);
+  const sampleBundleDir = await getNestedDirectory(
+    libraryHandle,
+    ['library', 'common', 'samples', ...samplePath, sampleDirName],
+  );
   const sourceWavHandle = await sampleBundleDir.getFileHandle('sample.wav');
   const sourceFile = await sourceWavHandle.getFile();
   const wavData = await sourceFile.arrayBuffer();
 
-  // Write WAV to device tones
   onProgress?.({
     currentStep: 3, totalSteps: 3,
-    stepLabel: `Writing ${wavFileName}...`,
-    bytesSent: 0, bytesTotal: wavData.byteLength, bytesSentAllSteps: 0, bytesTotalAllSteps: wavData.byteLength,
+    stepLabel: `Writing ${wavFileName}…`,
+    bytesSent: 0, bytesTotal: wavData.byteLength,
+    bytesSentAllSteps: 0, bytesTotalAllSteps: wavData.byteLength,
   });
 
   const destWavHandle = await tonesDir.getFileHandle(wavFileName, { create: true });
@@ -304,6 +230,10 @@ async function promoteSampleToDevice(
   });
 }
 
+// ---------------------------------------------------------------
+// Main panel
+// ---------------------------------------------------------------
+
 export function CommonSamplePreviewPanel({
   selection,
   libraryHandle,
@@ -317,10 +247,9 @@ export function CommonSamplePreviewPanel({
   const [sample, setSample] = useState<SampleYaml | null>(null);
   const [program, setProgram] = useState<ProgramYaml | null>(null);
   const [isPromoting, setIsPromoting] = useState(false);
-  const [promotionProgress, setPromotionProgress] = useState<OperationProgress | undefined>(undefined);
+  const [promotionProgress, setPromotionProgress] = useState<OperationProgress | undefined>();
   const [promotionResult, setPromotionResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  // Load data when selection changes
   useEffect(() => {
     setSample(null);
     setProgram(null);
@@ -333,11 +262,9 @@ export function CommonSamplePreviewPanel({
       setLoading(true);
       try {
         if (selection.type === 'sample') {
-          const loaded = await loadCommonSample(libraryHandle, selection.name, selection.path);
-          setSample(loaded);
+          setSample(await loadCommonSample(libraryHandle, selection.name, selection.path));
         } else {
-          const loaded = await loadCommonProgram(libraryHandle, selection.name, selection.path);
-          setProgram(loaded);
+          setProgram(await loadCommonProgram(libraryHandle, selection.name, selection.path));
         }
       } catch (err) {
         console.error('[CommonSamplePreviewPanel] Failed to load:', err);
@@ -349,111 +276,141 @@ export function CommonSamplePreviewPanel({
     load();
   }, [selection, libraryHandle]);
 
-  const handlePromote = useCallback(async (originalKey: number) => {
-    if (!libraryHandle || !sample || !selection) return;
-
-    setIsPromoting(true);
-    setPromotionResult(null);
-    setPromotionProgress(undefined);
-    try {
-      await promoteSampleToDevice(
-        libraryHandle, sample, selection.path ?? [], selection.name, originalKey,
-        setPromotionProgress,
-      );
-      setPromotionResult({ success: true, message: 'Promoted to tones library' });
-      onPromoteToDevice?.(LIBRARY_DEVICE);
-    } catch (err) {
-      console.error('[CommonSamplePreviewPanel] Promotion failed:', err);
-      setPromotionResult({ success: false, message: err instanceof Error ? err.message : 'Promotion failed' });
-    } finally {
-      setIsPromoting(false);
+  const handlePromote = useCallback(
+    async (originalKey: number) => {
+      if (!libraryHandle || !sample || !selection) return;
+      setIsPromoting(true);
+      setPromotionResult(null);
       setPromotionProgress(undefined);
-    }
-  }, [libraryHandle, sample, selection, onPromoteToDevice]);
+      try {
+        await promoteSampleToDevice(
+          libraryHandle,
+          sample,
+          selection.path ?? [],
+          selection.name,
+          originalKey,
+          setPromotionProgress,
+        );
+        setPromotionResult({ success: true, message: 'Promoted to tones library' });
+        onPromoteToDevice?.(LIBRARY_DEVICE);
+      } catch (err) {
+        console.error('[CommonSamplePreviewPanel] Promotion failed:', err);
+        setPromotionResult({
+          success: false,
+          message: err instanceof Error ? err.message : 'Promotion failed',
+        });
+      } finally {
+        setIsPromoting(false);
+        setPromotionProgress(undefined);
+      }
+    },
+    [libraryHandle, sample, selection, onPromoteToDevice],
+  );
 
-  // Empty state
+  // ---- Empty state ----------------------------------------------
   if (!selection) {
     return (
-      <div className="h-full flex flex-col">
-        <div className="p-3 border-b border-s330-accent">
-          <h3 className="font-bold text-s330-text">Preview</h3>
-        </div>
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="text-center text-s330-muted text-sm">
-            <p>Select an item to preview</p>
-          </div>
-        </div>
-      </div>
+      <PreviewPane title="Preview">
+        <EmptySlotMessage message="Select an item to view details" />
+      </PreviewPane>
     );
   }
 
   const headerTitle = selection.type === 'sample' ? 'Common Sample' : 'Common Program';
 
-  return (
-    <div className="h-full flex flex-col">
-      <div className="p-3 border-b border-s330-accent">
-        <h3 className="font-bold text-s330-text">{headerTitle}</h3>
-        <p className="text-xs text-s330-muted mt-0.5">{selection.name}</p>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-4">
-        {loading ? (
-          <LoadingState />
-        ) : error ? (
-          <ErrorState message={error} />
-        ) : sample ? (
-          <div className="space-y-4">
-            <SampleDetails sample={sample} />
-            {(onOpenInLoopEditor || onOpenInChopper || onOpenInSampleEditor) && (
-              <div className="flex flex-col gap-2">
-                {onOpenInLoopEditor && selection && (
-                  <button
-                    onClick={() => onOpenInLoopEditor(selection.name, selection.path)}
-                    className="w-full ac-btn ac-btn-ghost"
-                  >
-                    Open in Loop Editor
-                  </button>
-                )}
-                {onOpenInChopper && selection && (
-                  <button
-                    onClick={() => onOpenInChopper(selection.name, selection.path)}
-                    className="w-full ac-btn ac-btn-ghost"
-                  >
-                    Open in Chopper
-                  </button>
-                )}
-                {onOpenInSampleEditor && selection && (
-                  <button
-                    onClick={() => onOpenInSampleEditor(selection.name, selection.path)}
-                    className="w-full ac-btn ac-btn-ghost"
-                  >
-                    Open in Editor
-                  </button>
-                )}
-              </div>
+  // ---- Pane body --------------------------------------------------
+  let body: JSX.Element;
+  if (loading) {
+    body = <LoadingState />;
+  } else if (error) {
+    body = <ErrorState message={error} />;
+  } else if (sample) {
+    const loopFields = sampleLoopFields(sample);
+    body = (
+      <>
+        <PreviewIdentity kind="Common Sample" slot={selection.name} name={sample.name} />
+        {sample.description && (
+          <p className="ac-preview-description">{sample.description}</p>
+        )}
+        {sample.tags && sample.tags.length > 0 && <Tags tags={sample.tags} />}
+        <FieldGrid fields={sampleFields(sample)} />
+        {loopFields && <FieldGrid fields={loopFields} />}
+        {sample.sourceDevice && (
+          <FieldGrid fields={[{ label: 'Source Device', value: sample.sourceDevice }]} />
+        )}
+        {(onOpenInLoopEditor || onOpenInChopper || onOpenInSampleEditor) && (
+          <div className="ac-pane-actions">
+            {onOpenInLoopEditor && (
+              <PaneAction
+                label="Open in Loop Editor"
+                onClick={() => onOpenInLoopEditor(selection.name, selection.path)}
+              />
             )}
-            <hr className="border-s330-accent/30" />
-            <PromoteForm
-              onPromote={handlePromote}
-              isPromoting={isPromoting}
-              promotionProgress={promotionProgress}
-              promotionResult={promotionResult}
-            />
-          </div>
-        ) : program ? (
-          <div className="space-y-4">
-            <ProgramDetails program={program} />
-            <hr className="border-s330-accent/30" />
-            <div className="bg-s330-bg rounded p-3 text-sm text-s330-muted">
-              Program promotion to device patches is not yet supported.
-            </div>
-          </div>
-        ) : (
-          <div className="text-center text-s330-muted text-sm py-8">
-            <p>Could not load data</p>
+            {onOpenInChopper && (
+              <PaneAction
+                label="Open in Chopper"
+                onClick={() => onOpenInChopper(selection.name, selection.path)}
+              />
+            )}
+            {onOpenInSampleEditor && (
+              <PaneAction
+                label="Open in Editor"
+                onClick={() => onOpenInSampleEditor(selection.name, selection.path)}
+              />
+            )}
           </div>
         )}
-      </div>
-    </div>
+        <PromoteForm
+          onPromote={handlePromote}
+          isPromoting={isPromoting}
+          promotionProgress={promotionProgress}
+          promotionResult={promotionResult}
+        />
+      </>
+    );
+  } else if (program) {
+    body = (
+      <>
+        <PreviewIdentity kind="Common Program" slot={selection.name} name={program.name} />
+        {program.description && (
+          <p className="ac-preview-description">{program.description}</p>
+        )}
+        {program.tags && program.tags.length > 0 && <Tags tags={program.tags} />}
+        <FieldGrid fields={programFields(program)} />
+        <div>
+          <div className="ac-preview-subsection-eyebrow">Zones ({program.zones.length})</div>
+          <div className="ac-preview-tone-list" style={{ borderTop: 'none', paddingTop: 0 }}>
+            {program.zones.map((zone, i) => (
+              <div key={i} className="ac-preview-zone-row">
+                <span className="ac-preview-zone-row-index">{i}</span>
+                <span className="ac-preview-zone-row-name">{zone.label ?? zone.sample}</span>
+                <div className="ac-preview-zone-row-meta">
+                  <span>sample: {zone.sample}</span>
+                  {zone.keyRange && (
+                    <span>
+                      keys: {midiNoteToName(zone.keyRange[0])}–{midiNoteToName(zone.keyRange[1])}
+                    </span>
+                  )}
+                  {zone.velocityRange && (
+                    <span>vel: {zone.velocityRange[0]}–{zone.velocityRange[1]}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="ac-preview-result ac-preview-result--err" style={{ borderColor: 'var(--ac-color-border-subtle)', background: 'transparent', color: 'var(--ac-color-text-muted)' }}>
+          Program promotion to device patches is not yet supported.
+        </div>
+      </>
+    );
+  } else {
+    body = <EmptySlotMessage message="Could not load data" />;
+  }
+
+  return (
+    <PreviewPane title={headerTitle} subtitle={selection.name}>
+      {body}
+    </PreviewPane>
   );
 }

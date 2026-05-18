@@ -17,30 +17,41 @@
  * .ac-number-input, .ac-envelope) live in `control-primitives.css`.
  */
 
+/*
+ * Card surface — bordered panel container used for content-flow pages
+ * (Connect page sections, "Not Connected" placeholders, etc.).
+ * Uses --ac-radius-sm to match every other panel surface in the editor
+ * (.ac-list, .ac-plugin-library-browser-* columns). Previously used
+ * --ac-radius-lg which was a visible inconsistency.
+ */
 .ac-card {
   background: color-mix(in srgb, var(--ac-color-surface-panel) 88%, transparent);
-  border: 1px solid var(--ac-color-border-subtle);
-  border-radius: var(--ac-radius-lg);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
   padding: var(--ac-space-4);
   color: var(--ac-color-text-primary);
 }
 
+/* Card section title — lean display-font heading sized for a section
+   inside a content-flow page. Pairs with .ac-card. */
 .ac-title-lg {
   margin: 0;
-  color: var(--ac-text-primary);
-  font-family: var(--ac-font-body);
-  font-size: var(--ac-text-lg);
-  font-weight: var(--ac-font-weight-bold);
-  line-height: var(--ac-leading-tight);
+  color: var(--ac-color-text-primary);
+  font-family: var(--ac-font-display);
+  font-size: 1.25rem;
+  font-weight: var(--ac-font-weight-normal);
+  letter-spacing: var(--ac-tracking-display);
+  line-height: 1.25;
 }
 
 .ac-title-md {
   margin: 0;
-  color: var(--ac-text-primary);
-  font-family: var(--ac-font-body);
-  font-size: 1.125rem;
-  font-weight: var(--ac-font-weight-semibold);
-  line-height: var(--ac-leading-tight);
+  color: var(--ac-color-text-primary);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-md);
+  font-weight: var(--ac-font-weight-normal);
+  letter-spacing: var(--ac-tracking-display);
+  line-height: 1.25;
 }
 
 .ac-text-muted {
@@ -233,6 +244,18 @@
   color: var(--ac-color-text-primary);
   background: color-mix(in srgb, var(--ac-color-rec) 16%, transparent);
   border-color: color-mix(in srgb, var(--ac-color-rec) 70%, transparent);
+}
+
+/* Primary variant — accent-tinted fill, used for the prominent
+   header-action like "Save to Library" on the title row. */
+.ac-toolbar-btn--primary {
+  color: var(--ac-color-text-primary);
+  border-color: color-mix(in srgb, var(--ac-color-accent) 70%, transparent);
+  background: color-mix(in srgb, var(--ac-color-accent) 22%, transparent);
+}
+
+.ac-toolbar-btn--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ac-color-accent) 32%, transparent);
 }
 
 /*

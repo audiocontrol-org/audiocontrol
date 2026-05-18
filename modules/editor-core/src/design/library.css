@@ -12,26 +12,45 @@
 .ac-tree-view {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 0;
 }
 
+/*
+ * Tree node — list-row-grade chrome: hairline bottom rule, left-border
+ * accent for selection (same pattern as .tones__list-row / .patches__list-row),
+ * no rounded corners, leaner row height. Reads as part of the same
+ * vocabulary as the .ac-list-* list rows.
+ */
+/* Tree node — same row chrome as `.tones__list-row` /
+   `.patches__list-row` / `.ac-device-memory-row`: hairline
+   bottom rule, left-border accent on selection, body-sm
+   medium weight, 8px / 12px padding, line-height that doesn't
+   inflate row height. Comes from the same typographic vocabulary
+   so the operator perceives the library tree as a sibling of the
+   list panes, not a separate idiom. */
 .ac-tree-node {
   display: flex;
   align-items: center;
   gap: var(--ac-space-2);
-  padding-block: 0.375rem;
-  padding-right: var(--ac-space-2);
-  border-radius: var(--ac-radius-sm);
+  padding: var(--ac-space-2) var(--ac-space-3);
+  border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 50%, transparent);
+  border-left: var(--ac-rule-medium) solid transparent;
+  font-family: var(--ac-font-body);
   font-size: var(--ac-text-sm);
   font-weight: var(--ac-font-weight-medium);
+  line-height: var(--ac-leading-tight, 1.25);
   color: var(--ac-color-text-primary);
   cursor: pointer;
-  transition: background-color var(--ac-duration-fast) var(--ac-easing-default);
+  transition:
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    border-left-color var(--ac-duration-fast) var(--ac-easing-default),
+    color var(--ac-duration-fast) var(--ac-easing-default);
   user-select: none;
 }
 
 .ac-tree-node:hover {
-  background: color-mix(in srgb, var(--ac-color-accent) 12%, transparent);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 60%, transparent);
+  border-left-color: color-mix(in srgb, var(--ac-color-accent) 40%, transparent);
 }
 
 .ac-tree-node--draggable {
@@ -43,18 +62,24 @@
 }
 
 .ac-tree-node:focus-visible {
-  outline: 2px solid var(--ac-color-accent);
-  outline-offset: -2px;
+  outline: none;
+  background: color-mix(in srgb, var(--ac-color-accent) 12%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
 }
 
 .ac-tree-node--selected {
-  background: color-mix(in srgb, var(--ac-color-accent) 20%, transparent);
+  background: color-mix(in srgb, var(--ac-color-accent) 12%, transparent);
+  border-left-color: var(--ac-color-accent);
+  color: var(--ac-color-accent);
+}
+
+.ac-tree-node--selected .ac-tree-icon {
   color: var(--ac-color-accent);
 }
 
 .ac-tree-node--drag-over {
-  background: color-mix(in srgb, var(--ac-color-accent) 30%, transparent);
-  box-shadow: inset 0 0 0 2px var(--ac-color-accent);
+  background: color-mix(in srgb, var(--ac-color-accent) 22%, transparent);
+  box-shadow: inset 0 0 0 var(--ac-rule-medium) var(--ac-color-accent);
 }
 
 .ac-tree-node-name {
@@ -65,31 +90,49 @@
   white-space: nowrap;
 }
 
+/* Trailing metadata next to a tree-node name (e.g. "8 tones" on a
+   patch). Mono + tabular-nums + muted, matches the list-meta pattern. */
+.ac-tree-node-meta {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+  flex-shrink: 0;
+}
+
 .ac-tree-chevron-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 2px;
+  width: 1.1rem;
+  height: 1.1rem;
+  padding: 0;
   margin-left: -2px;
+  background: transparent;
+  border: 0;
   cursor: pointer;
   flex-shrink: 0;
+  color: var(--ac-color-accent);
 }
 
+/* Unicode glyph chevron (▾ / ▸) sized to match .ac-list-bank-chevron
+   so the tree, the list-bank header, and the device-memory section
+   eyebrow all read as one chevron vocabulary. */
 .ac-tree-chevron {
-  width: 0.75rem;
-  height: 0.75rem;
-  color: var(--ac-color-text-muted);
-  transition: transform var(--ac-duration-fast) var(--ac-easing-default);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--ac-color-accent);
   flex-shrink: 0;
-}
-
-.ac-tree-chevron--expanded {
-  transform: rotate(90deg);
 }
 
 .ac-tree-icon {
-  width: 1.125rem;
-  height: 1.125rem;
+  width: 0.9rem;
+  height: 0.9rem;
   color: var(--ac-color-text-muted);
   flex-shrink: 0;
 }
@@ -104,9 +147,12 @@
   color: var(--ac-color-accent);
 }
 
+/* Children rail — subtle hairline guide for nesting depth, no
+   filled fill. Matches the lean hairline language used elsewhere. */
 .ac-tree-children {
-  border-left: 1px solid color-mix(in srgb, var(--ac-color-border-subtle) 70%, transparent);
-  margin-left: 1rem;
+  border-left: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 50%, transparent);
+  margin-left: 0.85rem;
+  padding-left: var(--ac-space-1);
 }
 
 .ac-tree-delete-btn {
@@ -152,10 +198,23 @@
 }
 
 .ac-tree-empty {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: color-mix(in srgb, var(--ac-color-text-muted) 70%, transparent);
+  padding-block: var(--ac-space-2);
+  padding-inline: var(--ac-space-2);
+}
+
+/* Inline description / metadata note attached to a tree node or
+   section (e.g. set notes). Mono small text, no italic. */
+.ac-tree-description {
+  font-family: var(--ac-font-mono);
   font-size: var(--ac-text-xs);
   color: var(--ac-color-text-muted);
-  font-style: italic;
-  padding-block: var(--ac-space-2);
+  padding-block: var(--ac-space-1);
+  padding-inline: var(--ac-space-2);
 }
 
 /* Inline rename input */
@@ -223,8 +282,8 @@
    ========================================================================= */
 
 .ac-tree-section {
-  padding: var(--ac-space-2);
-  border-top: 1px solid var(--ac-color-border-subtle);
+  padding-block: 0;
+  border-top: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
   transition: background-color var(--ac-duration-fast) var(--ac-easing-default);
 }
 
@@ -234,41 +293,55 @@
 
 .ac-tree-section--drag-over {
   background: color-mix(in srgb, var(--ac-color-accent) 10%, transparent);
-  border-color: var(--ac-color-accent);
 }
 
+/* Sticky section header — same shape as .ac-list-bank-header: blurred
+   eyebrow strip with backdrop-filter, accent-color cues. */
 .ac-tree-section-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: var(--ac-space-2);
-  padding: var(--ac-space-1) var(--ac-space-2);
+  padding: var(--ac-space-2) var(--ac-space-3);
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 92%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
 }
 
 .ac-tree-section-title {
-  font-size: var(--ac-text-xs);
-  font-weight: var(--ac-font-weight-medium);
-  color: var(--ac-color-text-muted);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  font-weight: var(--ac-font-weight-normal);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
 }
 
 .ac-tree-section-drop-hint {
-  font-size: var(--ac-text-xs);
-  font-weight: var(--ac-font-weight-normal);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
   color: var(--ac-color-accent);
-  text-transform: none;
-  letter-spacing: normal;
 }
 
 .ac-tree-section-actions {
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-1);
 }
 
 .ac-tree-section-empty {
-  padding: var(--ac-space-4) var(--ac-space-2);
+  padding: var(--ac-space-4) var(--ac-space-3);
   text-align: center;
-  font-size: var(--ac-text-sm);
-  font-style: italic;
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
   color: color-mix(in srgb, var(--ac-color-text-muted) 70%, transparent);
 }
 
@@ -797,32 +870,42 @@
   /* Device | Library | Preview */
 }
 
-.ac-plugin-library-browser-device-left {
-  flex: 2 1 0;
+/*
+ * Shared panel chrome for all three library columns. Previously each
+ * column declared its own background + border + radius — and the four
+ * classes used `--ac-radius-lg` (12px) which visibly mismatched the
+ * rest of the editor (`.ac-list`, `.ac-icon-btn`, etc. all use
+ * `--ac-radius-sm` = 4px). Pulled into one selector list so they
+ * cannot drift again, and routed through `--ac-radius-sm` so the
+ * Library page corner radii match the Patches / Tones page panels.
+ */
+.ac-plugin-library-browser-device-left,
+.ac-plugin-library-browser-device,
+.ac-plugin-library-browser-library,
+.ac-plugin-library-browser-preview {
   min-width: 0;
-  overflow-y: auto;
   background: color-mix(in srgb, var(--ac-color-surface-panel) 88%, transparent);
-  border: 1px solid var(--ac-color-border-subtle);
-  border-radius: var(--ac-radius-lg);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
 }
 
+.ac-plugin-library-browser-device-left,
 .ac-plugin-library-browser-device {
   flex: 2 1 0;
-  min-width: 0;
   overflow-y: auto;
-  background: color-mix(in srgb, var(--ac-color-surface-panel) 88%, transparent);
-  border: 1px solid var(--ac-color-border-subtle);
-  border-radius: var(--ac-radius-lg);
+  /* Thin scrollbar matches the `.ac-list-scroll` chrome used in
+     PatchList / ToneList / DeviceMemoryPanel — same visual width
+     so the column doesn't visibly resize when content overflows. */
+  scrollbar-width: thin;
+  /* Reserve scrollbar gutter so the content doesn't shift left when
+     the scrollbar appears. */
+  scrollbar-gutter: stable;
 }
 
 .ac-plugin-library-browser-library {
   flex: 3 1 0;
-  min-width: 0;
   display: flex;
   flex-direction: column;
-  background: color-mix(in srgb, var(--ac-color-surface-panel) 88%, transparent);
-  border: 1px solid var(--ac-color-border-subtle);
-  border-radius: var(--ac-radius-lg);
   overflow: hidden;
 }
 
@@ -835,6 +918,8 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
 }
 
 .ac-plugin-library-browser-toolbar {
@@ -1109,13 +1194,14 @@
   color: var(--ac-color-text-muted);
 }
 
+/* Background/border/radius for the preview column are declared in
+   the shared selector list above (.ac-plugin-library-browser-*),
+   so it stays consistent with the device + library columns. */
 .ac-plugin-library-browser-preview {
   flex: 2 1 0;
-  min-width: 0;
   overflow-y: auto;
-  background: color-mix(in srgb, var(--ac-color-surface-panel) 88%, transparent);
-  border: 1px solid var(--ac-color-border-subtle);
-  border-radius: var(--ac-radius-lg);
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
 }
 
 /* =========================================================================

@@ -84,16 +84,14 @@ export function SetsSection({
   }, [expandedSets, libraryHandle, manifests, loadingManifests]);
 
   return (
-    <div className="p-2">
-      <div className="text-xs font-medium text-s330-muted uppercase tracking-wide px-2 py-1">
-        Sets
+    <div className="ac-tree-section">
+      <div className="ac-tree-section-header">
+        <span className="ac-tree-section-title">Sets</span>
       </div>
       {sets.length === 0 ? (
-        <div className="text-sm text-s330-muted/70 px-2 py-4 text-center italic">
-          No sets in library
-        </div>
+        <div className="ac-tree-section-empty">No sets in library</div>
       ) : (
-        <div className="space-y-0.5">
+        <div>
           {sets.map((setInfo) => (
             <SetItem
               key={setInfo.name}

@@ -219,6 +219,43 @@
 }
 
 /* ============================================================
+   COLLAPSE WRAPPER — wraps any collapsible content (per-bank
+   slot rows in PatchList / ToneList / DeviceMemoryPanel, tree
+   children in TreeView / SetItem) so the expand/collapse
+   animates instead of snapping.
+
+   Uses the `grid-template-rows: 1fr ↔ 0fr` trick — the wrapper
+   is a single-track grid whose row size transitions smoothly,
+   and the inner grid item carries `overflow: hidden` so its
+   content gets clipped as the row collapses.
+
+   The collapsible content MUST always be mounted inside this
+   wrapper — `{!isCollapsed && rows}` inside `.ac-collapse` would
+   unmount the rows and cancel the transition. Conditional
+   rendering BELOW the wrapper (i.e., not rendering `.ac-collapse`
+   at all) is fine for content the operator never sees during
+   the collapse.
+   ============================================================ */
+.ac-collapse {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows var(--ac-duration-normal) var(--ac-easing-default);
+}
+
+.ac-collapse[data-expanded="false"] {
+  grid-template-rows: 0fr;
+}
+
+.ac-collapse > * {
+  overflow: hidden;
+  min-height: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-collapse { transition: none; }
+}
+
+/* ============================================================
    ROW INTERIOR — slot label, info column, hover-revealed action.
    The row grid itself (`.<page>__list-row`) stays page-scoped
    because the slot-column width differs per device.

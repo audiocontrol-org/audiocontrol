@@ -153,7 +153,9 @@ export function PatchList({
                 </span>
               </div>
 
-              {!isCollapsed && patches.slice(bankStart, bankEnd).map((patch, offset) => {
+              <div className="ac-collapse" data-expanded={!isCollapsed}>
+                <div>
+              {patches.slice(bankStart, bankEnd).map((patch, offset) => {
                 const index = bankStart + offset;
                 const isLoaded = patch !== undefined;
                 const isEmpty = isLoaded && isPatchEmpty(patch);
@@ -251,6 +253,8 @@ export function PatchList({
                   </div>
                 );
               })}
+                </div>
+              </div>
             </div>
           );
         })}

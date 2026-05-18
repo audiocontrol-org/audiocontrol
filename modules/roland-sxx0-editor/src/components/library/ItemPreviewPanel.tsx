@@ -10,7 +10,6 @@
  */
 
 import { useState, useEffect, type ReactNode } from 'react';
-import { cn } from '@/lib/utils';
 import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import type { SetYaml, StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
 import type { RolandPageSelection } from '@/pages/LibraryPage';
@@ -25,6 +24,16 @@ import {
   getPatchToneDependencies,
 } from '@/lib/library-service';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
+import {
+  PreviewPane,
+  PreviewIdentity,
+  FieldGrid,
+  PaneAction,
+  LoadingState,
+  ErrorState,
+  EmptySlotMessage,
+  type FieldDef,
+} from '@/components/library/preview-chrome';
 
 interface ItemPreviewPanelProps {
   selection: RolandPageSelection | null;
@@ -38,130 +47,6 @@ interface ItemPreviewPanelProps {
   onLoadSet?: () => void;
   onOpenInLoopEditor?: (name: string, nodeType: string, path?: string[]) => void;
   onOpenInSampleEditor?: (name: string, nodeType: string, path?: string[]) => void;
-}
-
-// ---------------------------------------------------------------
-// Shared pane chrome
-// ---------------------------------------------------------------
-
-interface PreviewPaneProps {
-  title: string;
-  subtitle?: string;
-  children: ReactNode;
-}
-
-function PreviewPane({ title, subtitle, children }: PreviewPaneProps): JSX.Element {
-  return (
-    <div className="ac-preview-pane">
-      <header className="ac-preview-pane-head">
-        <h3 className="ac-preview-pane-head-title">{title}</h3>
-        {subtitle && <span className="ac-preview-pane-head-sub">{subtitle}</span>}
-      </header>
-      <div className="ac-preview-pane-body">{children}</div>
-    </div>
-  );
-}
-
-interface FieldDef {
-  label: string;
-  value: ReactNode;
-}
-
-function FieldGrid({ fields }: { fields: FieldDef[] }): JSX.Element {
-  return (
-    <div className="ac-preview-fields">
-      {fields.map(({ label, value }) => (
-        <div key={label} className="ac-preview-field">
-          <span className="ac-preview-field-label">{label}</span>
-          <span className="ac-preview-field-value">{value ?? '—'}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function PreviewIdentity({
-  kind,
-  slot,
-  name,
-}: {
-  kind: string;
-  slot?: string;
-  name: string;
-}): JSX.Element {
-  return (
-    <div>
-      <div className="ac-preview-eyebrow-row">
-        <span>{kind}</span>
-        {slot && (
-          <>
-            <span className="ac-preview-eyebrow-sep" aria-hidden="true">·</span>
-            <span className="ac-preview-eyebrow-slot">{slot}</span>
-          </>
-        )}
-      </div>
-      <h4 className="ac-preview-name">{name}</h4>
-    </div>
-  );
-}
-
-interface PaneActionProps {
-  label: string;
-  onClick: () => void;
-  variant?: 'default' | 'primary';
-  disabled?: boolean;
-  busy?: boolean;
-  testId?: string;
-}
-
-function PaneAction({
-  label,
-  onClick,
-  variant = 'default',
-  disabled = false,
-  busy = false,
-  testId,
-}: PaneActionProps): JSX.Element {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled || busy}
-      data-testid={testId}
-      className={cn(
-        'ac-pane-action',
-        variant === 'primary' && 'ac-pane-action--primary',
-      )}
-    >
-      {busy && <span className="ac-pane-action-spinner" aria-hidden="true" />}
-      <span>{busy ? 'Loading…' : label}</span>
-    </button>
-  );
-}
-
-function LoadingState(): JSX.Element {
-  return (
-    <div className="ac-preview-eyebrow-row" style={{ justifyContent: 'center' }}>
-      <span className="ac-pane-action-spinner" aria-hidden="true" />
-      <span>Loading</span>
-    </div>
-  );
-}
-
-function ErrorState({ message }: { message: string }): JSX.Element {
-  return (
-    <div className="ac-preview-eyebrow-row" style={{ color: 'var(--ac-color-rec)' }}>
-      Failed to load: {message}
-    </div>
-  );
-}
-
-function EmptySlotMessage({ message }: { message: string }): JSX.Element {
-  return (
-    <div className="ac-preview-eyebrow-row" style={{ justifyContent: 'center' }}>
-      {message}
-    </div>
-  );
 }
 
 // ---------------------------------------------------------------

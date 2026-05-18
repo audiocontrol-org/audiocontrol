@@ -9,7 +9,7 @@
  * Uses the plugin architecture for device-agnostic library browsing.
  */
 
-import { useCallback, useEffect, useRef, useMemo } from 'react';
+import { useCallback, useEffect, useRef, useMemo, useState } from 'react';
 import { useMidiStore } from '@/stores/midiStore';
 import { useDeviceDataStore } from '@/stores/deviceDataStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
@@ -73,7 +73,13 @@ export function LibraryPage() {
     tones, patches, loadedToneBanks, loadedPatchBanks,
     setTone, setPatch, ensureToneArraySize, ensurePatchArraySize,
     markToneBankLoaded, markPatchBankLoaded,
+    invalidateToneCache, invalidatePatchCache,
   } = useDeviceDataStore();
+
+  // Per-bank loading indicator for the device-memory chevron + reload
+  // icon (matching ToneList / PatchList affordances).
+  const [loadingToneBank, setLoadingToneBank] = useState<number | null>(null);
+  const [loadingPatchBank, setLoadingPatchBank] = useState<number | null>(null);
 
   const {
     sets, isLoading, setLoading, setError, error,
@@ -276,6 +282,54 @@ export function LibraryPage() {
     return false;
   }, [exportOps, setError]);
 
+  // Single-bank loaders bound to a bank index. forceReload=true
+  // invalidates the cache for that bank before requesting it again
+  // (the reload icon in the bank header uses this; click-to-load on
+  // an unloaded row uses forceReload=false).
+  const loadToneBank = useCallback(async (bankIndex: number, forceReload = false) => {
+    if (!clientRef.current) return;
+    setLoadingToneBank(bankIndex);
+    try {
+      ensureToneArraySize(totalTones);
+      if (forceReload) invalidateToneCache();
+      await clientRef.current.loadToneRange(
+        bankIndex * tonesPerBank,
+        tonesPerBank,
+        () => {},
+        (index: number, tone: SamplerTone) => setTone(index, tone, totalTones),
+        forceReload,
+      );
+      markToneBankLoaded(bankIndex);
+    } catch (err) {
+      console.error('[LibraryPage] Failed to load tone bank:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load tone bank');
+    } finally {
+      setLoadingToneBank(null);
+    }
+  }, [setTone, ensureToneArraySize, invalidateToneCache, markToneBankLoaded, totalTones, tonesPerBank, setError]);
+
+  const loadPatchBank = useCallback(async (bankIndex: number, forceReload = false) => {
+    if (!clientRef.current) return;
+    setLoadingPatchBank(bankIndex);
+    try {
+      ensurePatchArraySize(totalPatches);
+      if (forceReload) invalidatePatchCache();
+      await clientRef.current.loadPatchRange(
+        bankIndex * patchesPerBank,
+        patchesPerBank,
+        () => {},
+        (index: number, patch: SamplerPatch) => setPatch(index, patch, totalPatches),
+        forceReload,
+      );
+      markPatchBankLoaded(bankIndex);
+    } catch (err) {
+      console.error('[LibraryPage] Failed to load patch bank:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load patch bank');
+    } finally {
+      setLoadingPatchBank(null);
+    }
+  }, [setPatch, ensurePatchArraySize, invalidatePatchCache, markPatchBankLoaded, totalPatches, patchesPerBank, setError]);
+
   const handleLoadDeviceData = useCallback(async () => {
     if (!clientRef.current) return;
     const toneBankCount = Math.ceil(totalTones / tonesPerBank);
@@ -327,7 +381,17 @@ export function LibraryPage() {
     onDropLibraryTone: importDialogs.handleDropLibraryTone,
     onDropLibraryPatch: importDialogs.handleDropLibraryPatch,
     onDropLibrarySample: (data) => { void handleDropLibrarySample(data); },
-  }), [tones, patches, loadedToneBanks, loadedPatchBanks, selection, handleSelectDevice, importDialogs.handleDropLibraryTone, importDialogs.handleDropLibraryPatch, handleDropLibrarySample]);
+    loadingToneBank, loadingPatchBank,
+    onLoadToneBank: (bank: number) => { void loadToneBank(bank); },
+    onLoadPatchBank: (bank: number) => { void loadPatchBank(bank); },
+    onReloadToneBank: (bank: number) => { void loadToneBank(bank, true); },
+    onReloadPatchBank: (bank: number) => { void loadPatchBank(bank, true); },
+  }), [
+    tones, patches, loadedToneBanks, loadedPatchBanks, selection,
+    handleSelectDevice, importDialogs.handleDropLibraryTone,
+    importDialogs.handleDropLibraryPatch, handleDropLibrarySample,
+    loadingToneBank, loadingPatchBank, loadToneBank, loadPatchBank,
+  ]);
 
   const previewState = useMemo<PreviewPanelCustomState>(() => ({
     pageSelection: selection,
@@ -378,15 +442,23 @@ export function LibraryPage() {
           column headers. */}
       <header className="ac-page-title-row">
         <div className="ac-page-title-block">
-          <div className="ac-page-title-heading-row">
-            <h2 id="library-heading" className="ac-page-title-heading">Library</h2>
+          {/* Render the Experimental tag INSIDE the <h2> as inline
+              content so the heading's intrinsic line-height is the
+              row's height — identical to TonesPage / PatchesPage
+              where the <h2> is a direct child of .ac-page-title-block
+              with no wrapper. Using a flex wrapper around the h2
+              shifts vertical baselines by 1–2px on macOS Safari,
+              which the operator perceives as a header inconsistency. */}
+          <h2 id="library-heading" className="ac-page-title-heading">
+            Library
             <span
               className="ac-page-title-tag ac-page-title-tag--warn"
               title="This feature is still being designed and not all the wrinkles have been smoothed out yet."
+              style={{ marginLeft: 'var(--ac-space-3)', verticalAlign: 'middle' }}
             >
               Experimental
             </span>
-          </div>
+          </h2>
           <div className="ac-page-title-rule" aria-hidden="true" />
         </div>
         <div className="ac-page-title-actions">
@@ -405,24 +477,12 @@ export function LibraryPage() {
               <polyline points="4 14 4 11 7 11" />
             </svg>
           </button>
-          <button
-            type="button"
-            onClick={importDialogs.handleOpenSaveDialog}
-            disabled={!libraryHandle || isLoading}
-            data-testid="save-set-button"
-            className="ac-pane-action ac-pane-action--primary"
-          >
-            Save to Library…
-          </button>
-          <button
-            type="button"
-            onClick={importDialogs.handleOpenLoadDialog}
-            disabled={!libraryHandle || !selection || selection.type !== 'set'}
-            data-testid="load-set-button"
-            className="ac-pane-action"
-          >
-            Load Selected Set
-          </button>
+          {/* Save to Library / Load Selected Set were removed — the
+              library now offers per-object load + save affordances
+              attached to the relevant object (set / tone / patch /
+              sample) where the operator expects them. Handlers
+              still live on `importDialogs` and are wired through the
+              per-object UI. */}
         </div>
       </header>
 
