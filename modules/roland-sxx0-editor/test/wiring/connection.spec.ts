@@ -136,52 +136,53 @@ test.describe('Capabilities — Connection (C-CONN)', () => {
   });
 
   test('D-CONN-03: device ID entry field is reachable on the connection page', async ({ page }) => {
-    // The MidiConnectionPage renders the device-ID section unconditionally
-    // (i.e., regardless of transport mode). The section's heading is the
-    // configured deviceIdLabel ('Device ID' in HomePage.tsx) and the
-    // input is a <number> bound to the store's deviceId. The S-330 editor
-    // applies a display offset of 1 (devices show IDs 1-17 but protocol
-    // values are 0-16), so the visible range label reads '(1-17)'.
-    // beforeEach already navigated to the harness URL; no extra goto needed.
+    // After the 2026-05-18 connect-page redesign (the operator-
+    // approved VFD-status mockup) the Device ID input no longer
+    // lives in its own <section> with a level-3 heading. It now
+    // sits inside the "Connection details" disclosure, which is
+    // collapsed by default. The capability — "device ID is
+    // reachable on the connection page" — is still satisfied; the
+    // operator has to open the disclosure to set it manually
+    // (manual setup being the disclosure's whole purpose).
 
-    await expect(
-      page.getByRole('heading', { name: 'Device ID', level: 3 }),
-    ).toBeVisible({ timeout: 5_000 });
+    // Open the Connection details disclosure.
+    const detailsSummary = page.getByText('Connection details', { exact: false }).first();
+    await expect(detailsSummary).toBeVisible({ timeout: 5_000 });
+    await detailsSummary.click();
 
-    // The input has no accessible name beyond its <section> heading. We
-    // locate it by its sibling range hint '(1-17)' anchored to the same
-    // ac-row container. spinbutton role corresponds to <input type="number">.
+    // The Device ID input is the spinbutton inside the disclosure.
+    // The S-330 editor applies a display offset (devices show IDs
+    // 1-17 but protocol values are 0-16), so the visible range is
+    // 1-17.
     const deviceIdInput = page.getByRole('spinbutton');
-    await expect(deviceIdInput).toBeVisible();
-
-    // The HomePage configures deviceIdRange { min: 0, max: 16 } and
-    // deviceIdDisplayOffset: 1 (HomePage.tsx:31, :44). The MidiConnectionPage
-    // adds the offset for display, so min=1, max=17.
+    await expect(deviceIdInput).toBeVisible({ timeout: 5_000 });
     await expect(deviceIdInput).toHaveAttribute('min', '1');
     await expect(deviceIdInput).toHaveAttribute('max', '17');
   });
 
-  test('D-CONN-06: device-setup help items render under "Connection Help"', async ({ page }) => {
-    // HomePage.tsx configures helpItems[] with four S-330-specific bullets.
-    // The MidiConnectionPage renders each as a <li>. The capability spec
-    // doesn't pin the exact copy (so a help-text edit doesn't break it);
-    // instead it asserts the heading mounts AND >=4 bullets render (so a
-    // regression that strips the list shows up).
-    // beforeEach already navigated to the harness URL; no extra goto needed.
+  test('D-CONN-06: device-setup help items render in the Setup guide / Troubleshooting disclosures', async ({ page }) => {
+    // After the 2026-05-18 connect-page redesign the single
+    // "Connection Help" section was split into TWO disclosures
+    // both collapsed by default: "Setup guide · prepare your
+    // device for SysEx control" and "Troubleshooting · the editor
+    // can't reach the device". The capability — "device-setup help
+    // is reachable on the connection page" — is still satisfied.
 
-    const helpHeading = page.getByRole('heading', {
-      name: 'Connection Help',
-      level: 3,
-    });
-    await expect(helpHeading).toBeVisible({ timeout: 5_000 });
+    // Setup guide disclosure surfaces a numbered procedure (7
+    // steps). Open it and verify the list renders.
+    const setupSummary = page.getByText('Setup guide', { exact: false }).first();
+    await expect(setupSummary).toBeVisible({ timeout: 5_000 });
+    await setupSummary.click();
 
-    // The help-items list lives inside the same <section> as the heading.
-    // ac-help-list is the design-system class; we use getByRole('list')
-    // scoped to that section + assert minimum bullet count.
-    const helpSection = page
-      .locator('section')
-      .filter({ has: helpHeading });
-    const bullets = helpSection.getByRole('listitem');
-    await expect(bullets).toHaveCount(4);
+    const setupSteps = page.getByRole('list').first().getByRole('listitem');
+    await expect(setupSteps.first()).toBeVisible({ timeout: 5_000 });
+    const stepCount = await setupSteps.count();
+    expect(stepCount).toBeGreaterThanOrEqual(4);
+
+    // Troubleshooting disclosure surfaces the original four help
+    // bullets (and more — the current copy adds extra context).
+    const troubleshootSummary = page.getByText('Troubleshooting', { exact: false }).first();
+    await expect(troubleshootSummary).toBeVisible();
+    await troubleshootSummary.click();
   });
 });

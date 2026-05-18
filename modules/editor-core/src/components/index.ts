@@ -54,6 +54,7 @@ export {
   type MidiConnectionPageStore,
   type MidiConnectionPageProps,
 } from './MidiConnectionPage';
+export { TransportSelector, type TransportSelectorProps } from './TransportSelector';
 
 // Layout components
 export {

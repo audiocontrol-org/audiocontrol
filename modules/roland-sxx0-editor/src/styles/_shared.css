@@ -261,6 +261,246 @@
 }
 
 /* ============================================================
+   VFD STATUS DISPLAY — Connect page anchor surface.
+   Phosphor-blue CRT-evoking readout. Status LED, status line,
+   key/value detail rows, inline dashed-underline action links.
+   Ported from explorations/ACCEPTED/2026-05-18-connect-vfd-status.
+
+   Color anchor: uses --ac-color-accent so the page reads in the
+   same chrome family as the envelope graph, page-title LED dot,
+   and active-nav indicator.
+   ============================================================ */
+.ac-vfd {
+  margin-top: var(--ac-space-4);
+  background: color-mix(in srgb, #000 88%, var(--ac-color-surface-canvas));
+  border-radius: var(--ac-radius-sm);
+  padding: 0.5rem;
+  box-shadow:
+    inset 0 0 0 var(--ac-rule-hairline) var(--ac-color-border-subtle),
+    0 4px 20px hsl(0 0% 0% / 0.3);
+}
+.ac-vfd-screen {
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 92%, #000);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 2px,
+    color-mix(in srgb, var(--ac-color-accent) 18%, transparent) 2px 3px
+  );
+  border-radius: 2px;
+  padding: var(--ac-space-5) var(--ac-space-6);
+  font-family: var(--ac-font-display);
+  color: var(--ac-color-accent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 55%, transparent);
+  line-height: 1.6;
+}
+.ac-vfd-status-line {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-4);
+  font-size: 1.15rem;
+}
+.ac-vfd-led {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--ac-color-rec);
+  box-shadow:
+    0 0 8px var(--ac-color-rec),
+    0 0 14px color-mix(in srgb, var(--ac-color-rec) 40%, transparent);
+  animation: ac-vfd-led-blink 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.ac-vfd-led--scanning {
+  background: var(--ac-color-accent);
+  box-shadow:
+    0 0 8px var(--ac-color-accent),
+    0 0 14px color-mix(in srgb, var(--ac-color-accent) 40%, transparent);
+}
+.ac-vfd-led--success {
+  background: var(--ac-status-connected);
+  box-shadow:
+    0 0 8px var(--ac-status-connected),
+    0 0 14px color-mix(in srgb, var(--ac-status-connected) 40%, transparent);
+  animation: none;
+}
+@keyframes ac-vfd-led-blink { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) {
+  .ac-vfd-led { animation: none; }
+}
+.ac-vfd-status-label {
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  font-size: var(--ac-text-eyebrow);
+  opacity: 0.6;
+}
+.ac-vfd-status-value { font-size: 1.15rem; }
+.ac-vfd-detail {
+  margin-top: var(--ac-space-3);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-sm);
+  color: color-mix(in srgb, var(--ac-color-accent) 70%, var(--ac-color-text-primary));
+}
+.ac-vfd-detail-row {
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  gap: var(--ac-space-2);
+}
+.ac-vfd-detail-row > :first-child { opacity: 0.55; }
+
+/* Inline action inside a VFD detail row — dashed underline that
+   reads as interactive without breaking the phosphor look. */
+.ac-vfd-action {
+  color: inherit;
+  text-decoration: none;
+  border: 0;
+  border-bottom: var(--ac-rule-hairline) dashed color-mix(in srgb, var(--ac-color-accent) 40%, transparent);
+  background: transparent;
+  margin-left: var(--ac-space-2);
+  padding: 0 0 1px 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--ac-text-sm);
+  opacity: 0.7;
+  transition: opacity var(--ac-duration-fast) var(--ac-easing-default), border-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+.ac-vfd-action:hover {
+  opacity: 1;
+  border-bottom-color: var(--ac-color-accent);
+}
+.ac-vfd-action:focus-visible {
+  outline: var(--ac-rule-medium) solid color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   CONNECT CTA — single primary button whose label tracks state.
+   Sits between the VFD and the Connection details disclosure.
+   Wide, accent-tinted, glow on hover. State-driven via data-state.
+   ============================================================ */
+.ac-connect-cta-row {
+  display: flex;
+  gap: var(--ac-space-2);
+  margin-top: var(--ac-space-4);
+}
+.ac-connect-cta {
+  flex: 1;
+  padding: var(--ac-space-4) var(--ac-space-6);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ac-color-accent) 40%, transparent),
+    color-mix(in srgb, var(--ac-color-accent) 22%, transparent)
+  );
+  border: var(--ac-rule-medium) solid var(--ac-color-accent);
+  border-radius: var(--ac-radius-sm);
+  font-family: var(--ac-font-display);
+  font-size: 1.05rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--ac-color-text-primary);
+  cursor: pointer;
+  box-shadow: 0 0 24px color-mix(in srgb, var(--ac-color-accent) 30%, transparent);
+  transition: background var(--ac-duration-fast) var(--ac-easing-default), box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+}
+.ac-connect-cta:hover:not(:disabled) {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ac-color-accent) 55%, transparent),
+    color-mix(in srgb, var(--ac-color-accent) 35%, transparent)
+  );
+  box-shadow: 0 0 32px color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
+}
+.ac-connect-cta:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.ac-connect-cta--secondary {
+  flex: 0 0 auto;
+  background: transparent;
+  border-color: var(--ac-color-border-subtle);
+  color: var(--ac-color-text-muted);
+  font-size: var(--ac-text-eyebrow);
+  letter-spacing: var(--ac-tracking-eyebrow);
+  padding: var(--ac-space-2) var(--ac-space-4);
+  box-shadow: none;
+}
+.ac-connect-cta--secondary:hover:not(:disabled) {
+  color: var(--ac-color-text-primary);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 50%, transparent);
+  box-shadow: none;
+}
+
+/* ============================================================
+   CONNECT-PAGE TRANSPORT TOGGLE (inline inside Connection details).
+   See exploration mockup for rationale: by the time the operator
+   opens the disclosure they've opted into manual mode, so the
+   transport toggle is visible inline rather than nested behind
+   another disclosure. Uses the .ac-toggle segmented chrome already
+   established for BANK / LOOP MODE / OUTPUT.
+   ============================================================ */
+.ac-connect-transport-row {
+  padding: var(--ac-space-4) var(--ac-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-2);
+  border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 50%, transparent);
+}
+.ac-connect-transport-row-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-4);
+  flex-wrap: wrap;
+}
+.ac-connect-transport-hint {
+  margin: 0;
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+  max-width: 40rem;
+  line-height: 1.5;
+}
+
+/* ============================================================
+   CONNECT-PAGE CHECKLIST — numbered rows used by all three
+   transport variants (Web MIDI / HTTP / Mock) inside the
+   Connection details disclosure. Fixed min-height so swapping
+   transports doesn't reflow the page.
+   ============================================================ */
+.ac-connect-checklist {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--ac-space-4);
+  padding: var(--ac-space-4) var(--ac-space-5);
+  min-height: 5.5rem;
+  border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 50%, transparent);
+}
+.ac-connect-checklist:last-of-type { border-bottom: 0; }
+.ac-connect-checklist-num {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text-muted);
+  text-align: center;
+}
+.ac-connect-checklist-label {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  margin-bottom: var(--ac-space-1);
+}
+.ac-connect-checklist-control {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-3);
+}
+.ac-connect-checklist-hint {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: color-mix(in srgb, var(--ac-color-text-muted) 70%, transparent);
+}
+
+/* ============================================================
    VIDEO CAPTURE FRAME — fixed 16:9 surface that hosts either the
    live <video> stream OR the paused-state skeleton. Both render
    in the same frame so toggling Stop/Start doesn't resize the
