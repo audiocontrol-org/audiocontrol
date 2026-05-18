@@ -1,0 +1,979 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Connect — Direction A: VFD status display</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --ac-color-bg:               220 24% 7%;
+    --ac-color-surface:          220 18% 11%;
+    --ac-color-surface-hover:    220 18% 14%;
+    --ac-color-fg:               215 18% 92%;
+    --ac-color-fg-muted:         220 12% 60%;
+    --ac-color-fg-subtle:        220 10% 42%;
+    --ac-color-border:           220 18% 22%;
+    --ac-color-accent:           215 78% 58%;
+    --ac-color-rec:              358 72% 58%;
+    --ac-color-success:          152 55% 52%;
+    --ac-crt-bezel:              30 6% 6%;
+    --ac-crt-bg:                 220 14% 9%;
+    /* VFD phosphor color matches the editor's accent blue (the
+       same hue used by the 8-segment envelope graph, status-LED
+       dot, and active nav-link indicator). Keeps the connect page
+       inside the same chrome family as the rest of the editor. */
+    --ac-crt-fg-active:          215 78% 68%;
+    --ac-font-display: "Departure Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --ac-font-body:    "IBM Plex Sans", system-ui, sans-serif;
+    --ac-font-mono:    "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --ac-tracking-eyebrow: 0.14em;
+    --ac-tracking-display: 0.01em;
+    --ac-radius-sm: 0.25rem;
+    --ac-rule-hairline: 1px;
+    --ac-rule-medium: 2px;
+  }
+
+  body {
+    margin: 0;
+    padding: 2.5rem 2rem;
+    font-family: var(--ac-font-body);
+    color: hsl(var(--ac-color-fg));
+    background: hsl(var(--ac-color-bg));
+    background-image:
+      radial-gradient(ellipse at top left, hsl(var(--ac-color-accent) / 0.05), transparent 60%),
+      radial-gradient(ellipse at bottom right, hsl(var(--ac-color-rec) / 0.04), transparent 60%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+  }
+
+  .shell {
+    width: 100%;
+    max-width: 56rem;
+  }
+
+  /* --- page title row (matches editor) --- */
+  .title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 0.75rem;
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+  .title-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  h2 {
+    margin: 0;
+    font-family: var(--ac-font-display);
+    font-weight: 400;
+    font-size: 1.45rem;
+    letter-spacing: var(--ac-tracking-display);
+    color: hsl(var(--ac-color-fg));
+  }
+  .rule {
+    width: 2.25rem;
+    height: var(--ac-rule-medium);
+    background: hsl(var(--ac-color-rec));
+    box-shadow: 0 0 8px hsl(var(--ac-color-rec) / 0.4);
+  }
+  .eyebrow {
+    font-family: var(--ac-font-display);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+
+  /* --- VFD STATUS DISPLAY --- */
+  .vfd {
+    margin-top: 2rem;
+    background: hsl(var(--ac-crt-bezel));
+    border-radius: var(--ac-radius-sm);
+    padding: 0.5rem;
+    box-shadow:
+      inset 0 0 0 var(--ac-rule-hairline) hsl(var(--ac-color-border)),
+      0 4px 20px hsl(0 0% 0% / 0.3);
+  }
+  .vfd-screen {
+    background: hsl(var(--ac-crt-bg));
+    /* Faint cyan-tinted scanline pattern — matches the phosphor
+       color above so the glow reads as a single coherent VFD. */
+    background-image:
+      repeating-linear-gradient(
+        to bottom,
+        transparent 0 2px,
+        hsl(var(--ac-crt-fg-active) / 0.04) 2px 3px
+      );
+    border-radius: 2px;
+    padding: 1.5rem 1.75rem;
+    font-family: var(--ac-font-display);
+    color: hsl(var(--ac-crt-fg-active));
+    text-shadow: 0 0 8px hsl(var(--ac-crt-fg-active) / 0.55);
+    line-height: 1.6;
+  }
+  .vfd-status-line {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 1.15rem;
+  }
+  .vfd-led {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    background: hsl(var(--ac-color-rec));
+    box-shadow: 0 0 8px hsl(var(--ac-color-rec)), 0 0 14px hsl(var(--ac-color-rec) / 0.4);
+    animation: blink 1.4s ease-in-out infinite;
+  }
+  @keyframes blink { 50% { opacity: 0.35; } }
+  .vfd-label {
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    font-size: 0.78rem;
+    opacity: 0.6;
+  }
+  .vfd-value { font-size: 1.15rem; }
+  .vfd-detail {
+    margin-top: 0.75rem;
+    font-family: var(--ac-font-mono);
+    font-size: 0.85rem;
+    color: hsl(var(--ac-crt-fg-active) / 0.7);
+  }
+  .vfd-detail-row {
+    display: grid;
+    grid-template-columns: 9rem 1fr;
+    gap: 0.5rem;
+  }
+  .vfd-detail-row .k { opacity: 0.55; }
+
+  /* Inline action inside a VFD detail row — used for the
+     transport-change affordance. Subtle underline-on-hover so
+     it reads as interactive without breaking the phosphor look. */
+  .vfd-action {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px dashed hsl(var(--ac-crt-fg-active) / 0.4);
+    margin-left: 0.6rem;
+    padding-bottom: 1px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    opacity: 0.7;
+    transition: opacity 120ms ease, border-color 120ms ease;
+  }
+  .vfd-action:hover {
+    opacity: 1;
+    border-bottom-color: hsl(var(--ac-crt-fg-active));
+  }
+
+  /* --- TRANSPORT DISCLOSURE -----------------------------------
+     Collapsed by default; expanded by clicking either the VFD
+     `change` link or the disclosure summary row itself. Uses the
+     established .ac-toggle segmented-control chrome for the
+     option group so the page shares language with BANK / LOOP
+     MODE / OUTPUT on the Tones editor.
+     ------------------------------------------------------------ */
+  details.transport {
+    margin-top: 1rem;
+    background: hsl(var(--ac-color-surface) / 0.6);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: var(--ac-radius-sm);
+  }
+  details.transport > summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.85rem 1rem;
+    font-family: var(--ac-font-display);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  details.transport > summary:hover { color: hsl(var(--ac-color-fg)); }
+  details.transport > summary::-webkit-details-marker { display: none; }
+  details.transport > summary .marker {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.1rem;
+    height: 1.1rem;
+    color: hsl(var(--ac-color-accent));
+    font-size: 1rem;
+    line-height: 1;
+    transition: transform 150ms ease;
+  }
+  details.transport[open] > summary .marker { transform: rotate(90deg); }
+  details.transport > summary .summary-value {
+    margin-left: auto;
+    font-family: var(--ac-font-mono);
+    font-size: 0.78rem;
+    text-transform: none;
+    letter-spacing: 0;
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .transport-body {
+    padding: 0.5rem 1rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.6);
+  }
+  .transport-body-hint {
+    font-family: var(--ac-font-body);
+    font-size: 0.85rem;
+    color: hsl(var(--ac-color-fg-muted));
+    line-height: 1.5;
+    max-width: 40rem;
+    margin: 0;
+  }
+  .transport-field-label {
+    font-family: var(--ac-font-display);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+    margin-bottom: 0.4rem;
+  }
+
+  /* AcToggle segmented control — matches Tones page BANK / LOOP
+     MODE / OUTPUT chrome. Equal-width buttons sharing a border;
+     active option carries an accent underline glow. */
+  .ac-toggle {
+    display: inline-flex;
+    background: hsl(var(--ac-color-bg));
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: var(--ac-radius-sm);
+    overflow: hidden;
+  }
+  .ac-toggle-option {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    min-width: 4.5rem;
+    background: transparent;
+    border: 0;
+    border-right: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    font-family: var(--ac-font-display);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+    cursor: pointer;
+    transition: color 120ms ease, background-color 120ms ease;
+  }
+  .ac-toggle-option:last-child { border-right: 0; }
+  .ac-toggle-option:hover { color: hsl(var(--ac-color-fg)); }
+  .ac-toggle-option[data-active="true"] {
+    color: hsl(var(--ac-color-accent));
+  }
+  .ac-toggle-option[data-active="true"]::after {
+    content: '';
+    position: absolute;
+    left: 0.65rem;
+    right: 0.65rem;
+    bottom: 0;
+    height: 2px;
+    background: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.7);
+  }
+
+  /* --- INPUT FIELD GROUP --- */
+  .panel {
+    margin-top: 1.5rem;
+    background: hsl(var(--ac-color-surface) / 0.88);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: var(--ac-radius-sm);
+    /* Section min-height = 3 × row height + footnote space.
+       Pins the panel size so swapping transports doesn't reflow
+       the CONNECT button or the disclosures below. */
+    min-height: calc(5.5rem * 3 + 1px);
+  }
+  .checklist {
+    display: grid;
+    grid-template-columns: 2rem 1fr auto;
+    align-items: center;
+    column-gap: 1rem;
+    padding: 1.25rem 1.5rem;
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.5);
+    /* Pin a uniform row height so panels with read-only rows
+       (HTTP server status, Mock scenario hint) don't render
+       shorter than panels whose rows are all form controls. */
+    min-height: 5.5rem;
+  }
+  .checklist:last-of-type { border-bottom: 0; }
+
+  /* Read-only display field — mimics .ac-select / .ac-input chrome
+     but is non-interactive. Used when a row reports state instead
+     of asking for input (e.g., HTTP server reachability). Same
+     padding + border as a form control so the row height stays
+     uniform across transports. */
+  .field-display {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.55rem 0.75rem;
+    background: hsl(var(--ac-color-bg) / 0.5);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: var(--ac-radius-sm);
+    font-family: var(--ac-font-mono);
+    font-size: 0.85rem;
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .field-display .led {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: hsl(var(--ac-color-success));
+    box-shadow: 0 0 8px hsl(var(--ac-color-success) / 0.7);
+    flex-shrink: 0;
+  }
+  .field-display .state { color: hsl(var(--ac-color-success)); }
+  .field-display .meta { color: hsl(var(--ac-color-fg-subtle)); }
+  .checklist-num {
+    font-family: var(--ac-font-mono);
+    font-size: 0.85rem;
+    color: hsl(var(--ac-color-fg-subtle));
+    text-align: center;
+  }
+  .checklist-label {
+    font-family: var(--ac-font-display);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+    margin-bottom: 0.25rem;
+  }
+  .checklist-control {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .checklist-status {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: hsl(var(--ac-color-rec) / 0.6);
+    box-shadow: 0 0 6px hsl(var(--ac-color-rec) / 0.4);
+  }
+  .checklist-status[data-state="ok"] {
+    background: hsl(var(--ac-color-success));
+    box-shadow: 0 0 6px hsl(var(--ac-color-success) / 0.6);
+  }
+  select, input[type="number"] {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: hsl(var(--ac-color-bg) / 0.6);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: var(--ac-radius-sm);
+    color: hsl(var(--ac-color-fg));
+    font-family: var(--ac-font-mono);
+    font-size: 0.9rem;
+  }
+  input[type="number"] { max-width: 5rem; }
+  .checklist-hint {
+    font-family: var(--ac-font-mono);
+    font-size: 0.78rem;
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+
+  /* --- PRIMARY ACTION (the dominant CTA) --- */
+  .cta-row {
+    display: flex;
+    justify-content: center;
+    margin-top: 1.5rem;
+  }
+  .cta-connect {
+    flex: 1;
+    padding: 1.25rem 2rem;
+    background: linear-gradient(
+      180deg,
+      hsl(var(--ac-color-accent) / 0.4),
+      hsl(var(--ac-color-accent) / 0.25)
+    );
+    border: var(--ac-rule-medium) solid hsl(var(--ac-color-accent));
+    border-radius: var(--ac-radius-sm);
+    font-family: var(--ac-font-display);
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: hsl(var(--ac-color-fg));
+    cursor: pointer;
+    box-shadow: 0 0 24px hsl(var(--ac-color-accent) / 0.3);
+    transition: all 200ms ease;
+  }
+  .cta-connect:hover {
+    background: linear-gradient(180deg, hsl(var(--ac-color-accent) / 0.55), hsl(var(--ac-color-accent) / 0.35));
+    box-shadow: 0 0 32px hsl(var(--ac-color-accent) / 0.5);
+  }
+
+  /* --- LEARN-MORE DISCLOSURES (setup-guide + troubleshooting) ---
+     Both collapsed by default so the page's focus stays on the
+     primary CONNECT action. Each surfaces its content inline when
+     the operator clicks the summary row. */
+  .learn-more {
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: hsl(var(--ac-color-border) / 0.4);
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.6);
+  }
+  .learn-more details {
+    background: hsl(var(--ac-color-bg));
+  }
+  .learn-more details > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: var(--ac-font-display);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+    transition: color 120ms ease;
+  }
+  .learn-more details > summary:hover {
+    color: hsl(var(--ac-color-fg));
+  }
+  .learn-more details > summary::-webkit-details-marker { display: none; }
+  .learn-more details > summary .marker {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.1rem;
+    height: 1.1rem;
+    color: hsl(var(--ac-color-accent));
+    font-size: 1rem;
+    line-height: 1;
+    transition: transform 150ms ease;
+  }
+  .learn-more details[open] > summary .marker {
+    transform: rotate(90deg);
+  }
+  .learn-more details > summary .icon {
+    width: 1rem;
+    height: 1rem;
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .learn-more details > summary .count {
+    margin-left: auto;
+    font-family: var(--ac-font-mono);
+    font-size: 0.72rem;
+    text-transform: none;
+    letter-spacing: 0;
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .learn-more-body {
+    padding: 0.25rem 1.25rem 1.25rem;
+    color: hsl(var(--ac-color-fg-muted));
+    font-family: var(--ac-font-body);
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+  .learn-more-body ol,
+  .learn-more-body ul {
+    margin: 0.5rem 0 1rem 0;
+    padding-left: 1.5rem;
+    font-family: var(--ac-font-mono);
+    font-size: 0.85rem;
+    line-height: 1.7;
+  }
+  .learn-more-body ol li,
+  .learn-more-body ul li { margin-bottom: 0.3rem; }
+  .learn-more-body p { margin: 0.5rem 0; }
+  .learn-more-body .step-key {
+    display: inline-block;
+    margin-right: 0.4rem;
+    padding: 0.05rem 0.4rem;
+    background: hsl(var(--ac-color-bg));
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: 2px;
+    font-family: var(--ac-font-mono);
+    font-size: 0.72rem;
+    color: hsl(var(--ac-color-fg));
+  }
+
+  /* Embedded-video slot inside the setup guide. Renders as a
+     16:9 placeholder when no video is attached. */
+  .video-slot {
+    margin: 0.75rem 0 0;
+    aspect-ratio: 16 / 9;
+    background:
+      repeating-linear-gradient(
+        to bottom,
+        transparent 0 2px,
+        hsl(var(--ac-color-fg) / 0.025) 2px 3px
+      ),
+      hsl(var(--ac-color-surface));
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: var(--ac-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 0.5rem;
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .video-slot .play {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    border: var(--ac-rule-medium) solid hsl(var(--ac-color-accent) / 0.6);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: hsl(var(--ac-color-accent));
+    font-size: 1rem;
+  }
+  .video-slot .play::before {
+    content: '';
+    width: 0;
+    height: 0;
+    border-left: 0.7rem solid hsl(var(--ac-color-accent));
+    border-top: 0.45rem solid transparent;
+    border-bottom: 0.45rem solid transparent;
+    margin-left: 0.15rem;
+  }
+  .video-slot .caption {
+    font-family: var(--ac-font-display);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+  }
+  .annotations {
+    margin-top: 2.5rem;
+    padding: 1.25rem 1.5rem;
+    background: hsl(var(--ac-color-surface) / 0.5);
+    border-left: var(--ac-rule-medium) solid hsl(var(--ac-color-accent));
+    font-family: var(--ac-font-mono);
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .annotations h3 {
+    margin: 0 0 0.75rem 0;
+    font-family: var(--ac-font-display);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg));
+  }
+  .annotations ul { margin: 0.5rem 0 0 0; padding-left: 1.5rem; }
+</style>
+</head>
+<body>
+  <main class="shell">
+
+    <!--
+      Device name appears in three places below — eyebrow, VFD detail,
+      troubleshooting / setup copy. All are render-time props bound to
+      `{{deviceName}}` (e.g. "Roland S-330" or "Roland S-550"). The
+      mockup shows a typical render with "Roland S-330".
+    -->
+    <header class="title-row">
+      <div class="title-block">
+        <h2>Connect</h2>
+        <div class="rule"></div>
+      </div>
+      <span class="eyebrow">{{deviceName}} · MIDI Handshake</span>
+    </header>
+
+    <!-- VFD STATUS DISPLAY -->
+    <section class="vfd" aria-label="Connection status">
+      <div class="vfd-screen">
+        <div class="vfd-status-line">
+          <span class="vfd-led" aria-hidden="true"></span>
+          <span class="vfd-label">Status</span>
+          <span class="vfd-value">Awaiting handshake…</span>
+        </div>
+        <div class="vfd-detail">
+          <div class="vfd-detail-row">
+            <span class="k">Transport</span>
+            <span>
+              Web MIDI API
+              <a class="vfd-action" href="#" aria-controls="transport-panel" aria-expanded="true">change</a>
+            </span>
+          </div>
+          <div class="vfd-detail-row"><span class="k">Device</span><span>{{deviceName}}</span></div>
+          <!--
+            "SysEx · Allowed" removed from steady-state readout. For
+            ~99% of sessions the value is "Allowed" and the line is
+            noise. When SysEx is actually denied / pending, surface
+            it with a dedicated warning chrome (see .vfd-warning
+            example below) — the editor cannot read patches or write
+            parameters without it, so a low-key readout buried in
+            the detail rows underplays the severity.
+          -->
+        </div>
+
+        <!--
+          EXAMPLE — conditional warning chrome shown only when the
+          BROWSER's Web MIDI permission is denied or pending. The
+          copy below avoids the bare word "SysEx" because that term
+          collides with the device's own EXC ON / OFF front-panel
+          setting (covered in the Setup Guide below). Render in JSX
+          when `!sysExEnabled`.
+
+          <div class="vfd-warning" role="alert">
+            <span class="vfd-warning-icon" aria-hidden="true">!</span>
+            <div class="vfd-warning-body">
+              <strong>Browser permission required.</strong>
+              The editor needs Web MIDI access to read patches and
+              write parameters to {{deviceName}}. Reload this page
+              and click <em>Allow</em> when the browser asks.
+              <button class="vfd-warning-action">Reload &amp; grant</button>
+            </div>
+          </div>
+        -->
+      </div>
+    </section>
+
+    <!--
+      TRANSPORT CONFIGURATION PANEL — three variants, one visible
+      at a time. Each variant is a numbered checklist (same chrome)
+      but the contents differ by transport:
+
+        Web MIDI API   →  Input + Output dropdowns + Device ID
+        HTTP MIDI      →  Server URL + Live reachability + Device ID
+        Mock           →  Scenario picker + Device ID
+
+      The active panel is driven by `data-active-panel` on the
+      section root + a tiny script at the bottom of the page that
+      hides inactive children. The .ac-toggle below the CONNECT
+      button is what swaps them.
+    -->
+    <section class="panel" id="connection-config" aria-label="Connection parameters" data-active-panel="web-midi">
+
+      <!-- ============ WEB MIDI ============ -->
+      <div data-panel="web-midi">
+        <div class="checklist">
+          <div class="checklist-num">01</div>
+          <div>
+            <div class="checklist-label">MIDI Input · From device</div>
+            <select>
+              <option>Volt 4 (Universal Audio)</option>
+              <option>S-330 OUT (USB MIDI)</option>
+            </select>
+          </div>
+          <div class="checklist-control">
+            <span class="checklist-status" data-state="ok" aria-label="Set"></span>
+          </div>
+        </div>
+        <div class="checklist">
+          <div class="checklist-num">02</div>
+          <div>
+            <div class="checklist-label">MIDI Output · To device</div>
+            <select>
+              <option>Volt 4 (Universal Audio)</option>
+              <option>S-330 IN (USB MIDI)</option>
+            </select>
+          </div>
+          <div class="checklist-control">
+            <span class="checklist-status" data-state="ok" aria-label="Set"></span>
+          </div>
+        </div>
+        <div class="checklist">
+          <div class="checklist-num">03</div>
+          <div>
+            <div class="checklist-label">Device ID · Front panel MIDI menu</div>
+            <div style="display:flex; align-items:center; gap:0.75rem;">
+              <input type="number" min="1" max="17" value="1" />
+              <span class="checklist-hint">(1–17 · most operators leave at 1)</span>
+            </div>
+          </div>
+          <div class="checklist-control">
+            <span class="checklist-status" data-state="ok" aria-label="Set"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ HTTP MIDI SERVER ============ -->
+      <div data-panel="http" hidden>
+        <div class="checklist">
+          <div class="checklist-num">01</div>
+          <div>
+            <div class="checklist-label">Server URL · HTTP MIDI bridge</div>
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <input type="text" value="http://s3k.local:7033" style="width:100%; max-width:24rem;" />
+              <button type="button" class="vfd-action" style="border-bottom-style:solid; opacity:1; padding:0.4rem 0.7rem; border:1px solid hsl(var(--ac-color-border)); border-radius:var(--ac-radius-sm); background:transparent; color:hsl(var(--ac-color-fg-muted)); font-family:var(--ac-font-display); font-size:0.7rem; text-transform:uppercase; letter-spacing:var(--ac-tracking-eyebrow); cursor:pointer;">Test</button>
+            </div>
+          </div>
+          <div class="checklist-control">
+            <span class="checklist-status" data-state="ok" aria-label="Reachable"></span>
+          </div>
+        </div>
+        <div class="checklist">
+          <div class="checklist-num">02</div>
+          <div>
+            <div class="checklist-label">Server Status · Live check</div>
+            <div class="field-display" role="status">
+              <span class="led" aria-hidden="true"></span>
+              <span class="state">Reachable</span>
+              <span class="meta">· 12 ms · scsi-midi-bridge v0.4.2</span>
+            </div>
+          </div>
+          <div class="checklist-control">
+            <span class="checklist-status" data-state="ok" aria-label="OK"></span>
+          </div>
+        </div>
+        <div class="checklist">
+          <div class="checklist-num">03</div>
+          <div>
+            <div class="checklist-label">Device ID · Front panel MIDI menu</div>
+            <div style="display:flex; align-items:center; gap:0.75rem;">
+              <input type="number" min="1" max="17" value="1" />
+              <span class="checklist-hint">(1–17 · matches device front-panel display)</span>
+            </div>
+          </div>
+          <div class="checklist-control">
+            <span class="checklist-status" data-state="ok" aria-label="Set"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ MOCK ============ -->
+      <div data-panel="mock" hidden>
+        <div class="checklist">
+          <div class="checklist-num">01</div>
+          <div>
+            <div class="checklist-label">Scenario · Pre-recorded device state</div>
+            <select style="max-width:24rem;">
+              <option>tones-bank-0 · Eight tones loaded, T11–T18</option>
+              <option>patches-bank-0 · Eight patches loaded, P11–P18</option>
+              <option>full-snapshot · All four banks · large fixture</option>
+              <option>empty · Blank device · no preloaded slots</option>
+            </select>
+          </div>
+          <div class="checklist-control">
+            <span class="checklist-status" data-state="ok" aria-label="Set"></span>
+          </div>
+        </div>
+        <div class="checklist">
+          <div class="checklist-num">02</div>
+          <div>
+            <div class="checklist-label">Fixture state · Read-only</div>
+            <div class="field-display" role="status">
+              <span class="led" aria-hidden="true"></span>
+              <span class="state">Loaded</span>
+              <span class="meta">· 8 tones · 0 patches · device-id 1</span>
+            </div>
+          </div>
+          <div class="checklist-control">
+            <span class="checklist-status" data-state="ok" aria-label="OK"></span>
+          </div>
+        </div>
+        <div class="checklist">
+          <div class="checklist-num">03</div>
+          <div>
+            <div class="checklist-label">Device ID · Convention is 1 for fixtures</div>
+            <div style="display:flex; align-items:center; gap:0.75rem;">
+              <input type="number" min="1" max="17" value="1" />
+              <span class="checklist-hint">(fixtures bind to ID 1)</span>
+            </div>
+          </div>
+          <div class="checklist-control">
+            <span class="checklist-status" data-state="ok" aria-label="Set"></span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- PRIMARY ACTION — label flips with state:
+         disconnected  → "Connect"
+         connecting    → "Connecting…" (disabled)
+         connected     → "Disconnect"
+         error         → "Retry"
+    -->
+    <div class="cta-row">
+      <button class="cta-connect">Connect</button>
+    </div>
+
+    <!--
+      TRANSPORT DISCLOSURE — moved below the CONNECT button. The
+      transport choice is set-and-forget for almost every operator
+      (Web MIDI is the default and the right answer 99% of the
+      time), so it lives at the bottom of the action stack rather
+      than competing for attention with the configuration above.
+      Uses the established `.ac-toggle` segmented-control chrome
+      (same as Tones page BANK / LOOP MODE / OUTPUT). Switching the
+      toggle swaps the visible configuration panel above + the VFD
+      Transport readout. Rendered `open` here so reviewers can see
+      the chrome; the live default is collapsed.
+    -->
+    <details class="transport" id="transport-panel" open>
+      <summary>
+        <span class="marker" aria-hidden="true">▸</span>
+        <span>Transport</span>
+        <span class="summary-value" data-summary-value>Web MIDI API</span>
+      </summary>
+      <div class="transport-body">
+        <p class="transport-body-hint">
+          Almost everyone should leave this on <strong>Web MIDI API</strong> — it uses your browser's MIDI stack and works with whatever interface is plugged in. The other transports exist for specific test rigs.
+        </p>
+        <div>
+          <div class="transport-field-label">Transport</div>
+          <div class="ac-toggle" role="radiogroup" aria-label="Choose transport" id="transport-toggle">
+            <button type="button" class="ac-toggle-option" data-active="true" data-transport="web-midi" data-transport-label="Web MIDI API">Web MIDI</button>
+            <button type="button" class="ac-toggle-option" data-transport="http" data-transport-label="HTTP MIDI Server">HTTP</button>
+            <button type="button" class="ac-toggle-option" data-transport="mock" data-transport-label="Mock">Mock</button>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <!-- LEARN-MORE — two disclosures, both collapsed by default.
+         Setup guide sits above Troubleshooting because operators are
+         more likely to need it on first connect. -->
+    <section class="learn-more" aria-label="Additional information">
+
+      <details>
+        <summary>
+          <span class="marker" aria-hidden="true">▸</span>
+          <span>Setup guide · prepare your device for SysEx control</span>
+          <span class="count">7 steps · 2 min video</span>
+        </summary>
+        <div class="learn-more-body">
+          <p>Before the editor can read or write to your {{deviceName}}, the device itself needs to be put into a mode where it accepts SysEx. The steps differ slightly between the S-330 and S-550, but the procedure is the same shape.</p>
+
+          <!-- VIDEO TUTORIAL SLOT -->
+          <div class="video-slot" role="img" aria-label="Video tutorial: Setting up the {{deviceName}} for SysEx">
+            <div class="play" aria-hidden="true"></div>
+            <span class="caption">Tutorial · {{videoDurationLabel}}</span>
+          </div>
+
+          <p style="margin-top:1rem;">Step by step:</p>
+          <ol>
+            <li><span class="step-key">1</span> Power on the {{deviceName}} and wait for the home screen.</li>
+            <li><span class="step-key">2</span> Press <span class="step-key">MIDI</span> on the front panel.</li>
+            <li><span class="step-key">3</span> Confirm <span class="step-key">EXC ON</span> is set (Exclusive accepted).</li>
+            <li><span class="step-key">4</span> Note the Device ID shown on the screen — enter the same value in the editor's <em>Device ID</em> field (1–17, defaults to 1).</li>
+            <li><span class="step-key">5</span> Connect the {{deviceName}}'s MIDI OUT to your interface's MIDI IN.</li>
+            <li><span class="step-key">6</span> Connect your interface's MIDI OUT to the {{deviceName}}'s MIDI IN.</li>
+            <li><span class="step-key">7</span> Press <strong>Connect</strong> in the editor. The status LED above will turn green and the connection state will read <em>Connected</em>.</li>
+          </ol>
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          <span class="marker" aria-hidden="true">▸</span>
+          <span>Troubleshooting · the editor can't reach the device</span>
+          <span class="count">common fixes</span>
+        </summary>
+        <div class="learn-more-body">
+          <ul>
+            <li>Confirm the MIDI interface appears in BOTH the Input and Output dropdowns. For most operators it should be the same interface in both.</li>
+            <li>If your browser prompted for Web MIDI access on first load, click <em>Allow</em>. Without that permission the editor can read MIDI events but cannot write changes to {{deviceName}}.</li>
+            <li>On the device itself, the MIDI menu's <em>EXC</em> setting must be <em>ON</em> for the editor to read or write patches and tones. (Setup Guide → step 3.)</li>
+            <li>The {{deviceName}} displays IDs 1–17 on the front panel but the underlying MIDI protocol value is 0–16. The form here uses the front-panel value, so match what your device shows.</li>
+            <li>Some MIDI interfaces require their own utility to be running. Make sure the interface is recognized by macOS / your OS before reloading the editor.</li>
+            <li>If a previous connection left the device in an odd state, power-cycle the {{deviceName}} and reload the page.</li>
+          </ul>
+        </div>
+      </details>
+
+    </section>
+
+    <!-- DESIGNER NOTES -->
+    <aside class="annotations">
+      <h3>Direction A · VFD status display</h3>
+      <p>The device's VFD display is the visual anchor. The connection state is the primary content: glowing LED + uppercase status line + parameter readout. The form below renders as a sequenced checklist (01 / 02 / 03) so the operator has a clear procedural sense of "what do I need to fill in".</p>
+
+      <p><strong>Runtime-templated values:</strong></p>
+      <ul>
+        <li><code>{{deviceName}}</code> — both editors share this screen; binds to <code>useDeviceConfig().deviceName</code> (e.g. <em>Roland S-330</em>, <em>Roland S-550</em>). Appears in the eyebrow, the VFD detail row, and the setup-guide / troubleshooting copy. No string is hardcoded to a specific device.</li>
+        <li><code>{{videoDurationLabel}}</code> — caption under the tutorial play target; rendered when video metadata is loaded.</li>
+      </ul>
+
+      <p><strong>Action button label flips with state:</strong></p>
+      <ul>
+        <li>Disconnected → <em>Connect</em></li>
+        <li>Connecting → <em>Connecting…</em> (disabled)</li>
+        <li>Connected → <em>Disconnect</em></li>
+        <li>Error → <em>Retry</em></li>
+      </ul>
+
+      <p><strong>Learn-more disclosures (collapsed by default):</strong></p>
+      <ul>
+        <li><em>Setup guide</em> — first-run procedural walkthrough with an embedded 2-minute tutorial video and a 7-step checklist for putting the device into SysEx-accepting mode. Sits above troubleshooting because operators are more likely to need it on first connect.</li>
+        <li><em>Troubleshooting</em> — common fixes when the editor can't reach the device. Same content as today's static help block, restyled and demoted from peer-of-the-form to hidden-by-default.</li>
+      </ul>
+
+      <p><strong>Strengths:</strong> direct visual mapping to the device. State of the connection is unmissable. The procedural checklist tells the operator "you've set everything; click CONNECT". Learn-more material is one click away but never competes with the primary action.</p>
+
+      <p><strong>Trade-offs:</strong> the VFD chrome is heavier than the rest of the editor and may compete for attention with the CRT on other pages. Animation / glow accents have a small maintenance cost (color tokens to keep in sync if the palette evolves).</p>
+
+      <p><strong>Three transport variants, one configuration panel:</strong> the form between the VFD and the CONNECT button swaps content based on the active transport.</p>
+      <ul>
+        <li><strong>Web MIDI API</strong> (default) — MIDI Input + MIDI Output dropdowns + Device ID.</li>
+        <li><strong>HTTP MIDI Server</strong> — Server URL (with a Test mini-button) + live reachability readout (green LED + latency) + Device ID. Used for the SCSI-bridge / Pi rig.</li>
+        <li><strong>Mock</strong> — Scenario picker (tones-bank-0, patches-bank-0, full-snapshot, empty) + Device ID + a small "for testing only" note. Drives the fixture-based simulated MIDI harness.</li>
+      </ul>
+      <p>The checklist chrome (numbered rows, status dots, label-over-control) is identical across all three so the operator's perception of "where things go" doesn't shift when they switch transports — only the per-row content does.</p>
+
+      <p><strong>Transport selector position:</strong> the <code>.ac-toggle</code> segmented control (WEB MIDI · HTTP · MOCK) lives <em>below</em> the CONNECT button — it's the least-important control on the page (set-and-forget for 99% of operators) and shouldn't compete for attention with the configuration above. The toggle still updates the VFD readout + the disclosure summary + the visible config panel synchronously when switched. The inline <code>change</code> link in the VFD Transport row scrolls to + opens the disclosure as an alternative trigger.</p>
+
+      <p><strong>Choice-selector language:</strong> the toggle uses the established <code>.ac-toggle</code> chrome — same byte-for-byte family as BANK A|B, LOOP MODE FWD|ALT|ONE|REV, and OUTPUT MIX|1-8 on the Tones editor.</p>
+    </aside>
+
+  </main>
+
+  <!--
+    MOCKUP INTERACTIVITY — wires the .ac-toggle to swap the visible
+    configuration panel above + update the VFD readout + the
+    disclosure summary value. In the real implementation, the
+    transport choice would flow through Zustand / a context provider
+    and the JSX would conditionally render the matching panel; this
+    inline script is just enough to make the mockup interactive for
+    review.
+  -->
+  <script>
+    (function () {
+      const toggle = document.getElementById('transport-toggle');
+      const panel = document.getElementById('connection-config');
+      const vfdValue = document.querySelector('.vfd-detail-row span:nth-child(2)');
+      const summaryValue = document.querySelector('[data-summary-value]');
+      if (!toggle || !panel) return;
+
+      toggle.addEventListener('click', (e) => {
+        const btn = e.target.closest('.ac-toggle-option');
+        if (!btn) return;
+        const transport = btn.dataset.transport;
+        const label = btn.dataset.transportLabel;
+
+        // Update toggle state
+        toggle.querySelectorAll('.ac-toggle-option').forEach((b) => {
+          b.dataset.active = b === btn ? 'true' : 'false';
+        });
+
+        // Swap visible panel
+        panel.dataset.activePanel = transport;
+        panel.querySelectorAll('[data-panel]').forEach((p) => {
+          p.hidden = p.dataset.panel !== transport;
+        });
+
+        // Update VFD readout and disclosure summary
+        if (vfdValue) {
+          const change = vfdValue.querySelector('.vfd-action');
+          vfdValue.firstChild.textContent = label + ' ';
+          if (change) vfdValue.appendChild(change);
+        }
+        if (summaryValue) summaryValue.textContent = label;
+      });
+    })();
+  </script>
+</body>
+</html>
