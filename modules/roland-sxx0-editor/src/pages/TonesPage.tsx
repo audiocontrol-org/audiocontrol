@@ -216,6 +216,16 @@ export function TonesPage() {
     }
   }, [loadToneBank, invalidateToneCache, totalTones, tonesPerBank]);
 
+  // Auto-select the first loaded tone so the editor mounts immediately
+  // without a "SELECT A TONE TO EDIT" placeholder. See PatchesPage for
+  // the same pattern.
+  useEffect(() => {
+    if (selectedToneIndex !== null) return;
+    const firstLoaded = tones.findIndex((t) => t !== undefined);
+    if (firstLoaded === -1) return;
+    selectTone(firstLoaded);
+  }, [tones, selectedToneIndex, selectTone]);
+
   // Handle tone updates from the editor
   const handleToneUpdate = useCallback((tone: SamplerTone) => {
     if (selectedToneIndex === null) return;
@@ -333,9 +343,19 @@ export function TonesPage() {
         </div>
         <span className="ac-page-title-metric">
           <span className="ac-page-title-led" aria-hidden="true" />
-          <span>
-            <strong>{loadedToneCount}</strong> of <strong>{totalTones}</strong> loaded
-          </span>
+          {isLoading && loadingMessage ? (
+            <span
+              className="ac-page-title-metric-status"
+              role="status"
+              aria-live="polite"
+            >
+              {loadingMessage}
+            </span>
+          ) : (
+            <span>
+              <strong>{loadedToneCount}</strong> of <strong>{totalTones}</strong> loaded
+            </span>
+          )}
           <button
             type="button"
             onClick={refreshAll}
@@ -355,21 +375,21 @@ export function TonesPage() {
             </svg>
           </button>
         </span>
-      </header>
-
-      {/* Inline page-loading progress — same byte-percent shape used
-          elsewhere, reframed for the title-row context. */}
-      {isLoading && loadingProgress !== null && (
-        <div className="tones__progress" role="status" aria-live="polite">
-          <div className="tones__progress-track">
-            <div
-              className="tones__progress-fill"
+        {/* Load strip — overlays the title-row's bottom hairline so
+            it never displaces neighbors. Mounted only while loading
+            so the underlying hairline shows when idle. */}
+        {isLoading && loadingProgress !== null && (
+          <div
+            className="ac-page-title-progress"
+            aria-hidden="true"
+          >
+            <span
+              className="ac-page-title-progress-fill"
               style={{ width: `${loadingProgress}%` }}
             />
           </div>
-          {loadingMessage && <span>{loadingMessage}</span>}
-        </div>
-      )}
+        )}
+      </header>
 
       {/* Error display */}
       {error && (
@@ -380,7 +400,7 @@ export function TonesPage() {
 
       {/* List + detail */}
       {tones.length > 0 && (
-        <div className="tones__app-shell" aria-labelledby="tones-heading">
+        <div className="ac-app-shell" aria-labelledby="tones-heading">
           <ToneList
             tones={tones}
             selectedIndex={selectedToneIndex}
@@ -389,6 +409,7 @@ export function TonesPage() {
             tonesPerBank={tonesPerBank}
             loadingBank={loadingBank}
             onLoadBank={(bank) => loadBankWithIndicator(bank)}
+            onReloadBank={(bank) => loadBankWithIndicator(bank, true)}
             onExportTone={exportOps.openExportToneDialog}
             canExportToLibrary={library.isConnected}
           />

@@ -169,6 +169,73 @@
 }
 
 /*
+ * Toolbar button — lean labeled-icon control used on the site header
+ * (Panic / All Notes Off) and similar chrome positions. Same visual
+ * weight as the per-page .ac-icon-btn but accommodates a label next
+ * to the icon. Hairline border + uppercase eyebrow text + accent
+ * hover, no filled chunky chrome.
+ */
+.ac-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  height: 2rem;
+  padding-inline: var(--ac-space-3);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 50%, transparent);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  cursor: pointer;
+  transition:
+    color var(--ac-duration-fast) var(--ac-easing-default),
+    border-color var(--ac-duration-fast) var(--ac-easing-default),
+    background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-toolbar-btn:hover:not(:disabled) {
+  color: var(--ac-color-accent);
+  border-color: color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  background: color-mix(in srgb, var(--ac-color-accent) 8%, transparent);
+}
+
+.ac-toolbar-btn:focus-visible {
+  outline: var(--ac-rule-medium) solid color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  outline-offset: 2px;
+}
+
+.ac-toolbar-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ac-toolbar-btn svg {
+  width: 1rem;
+  height: 1rem;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Danger variant — rec-LED red accent, used for Panic and any other
+   destructive header action. */
+.ac-toolbar-btn--danger {
+  color: color-mix(in srgb, var(--ac-color-rec) 90%, var(--ac-color-text-primary));
+  border-color: color-mix(in srgb, var(--ac-color-rec) 50%, transparent);
+}
+
+.ac-toolbar-btn--danger:hover:not(:disabled) {
+  color: var(--ac-color-text-primary);
+  background: color-mix(in srgb, var(--ac-color-rec) 16%, transparent);
+  border-color: color-mix(in srgb, var(--ac-color-rec) 70%, transparent);
+}
+
+/*
  * Native input + select primitives. Phase 9 Task 4.0 added the v3 mockup
  * polish — custom chevron for select, hairline-token border, accent focus
  * ring with alpha-composed glow. Class names and semantics preserved so
@@ -335,6 +402,10 @@
 
 .ac-drawer-section:first-of-type {
   border-top: none;
+  /* First section flush with the drawer's top so its content (the
+     VideoCapture CRT in the Roland editor) aligns with where the
+     page body content starts on the right. */
+  padding-top: 0;
 }
 
 /* List item action buttons — uses --ac-action-* variables for selected/unselected states */

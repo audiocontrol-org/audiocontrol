@@ -17,7 +17,7 @@
  * HTML — see comment further down for keyboard wiring.
  */
 
-import type { KeyboardEvent } from 'react';
+import { useState, type KeyboardEvent } from 'react';
 
 import type { SamplerPatch } from '@/core/midi/SamplerClient';
 import { cn } from '@/lib/utils';
@@ -38,6 +38,9 @@ interface PatchListProps {
   loadingBank?: number | null;
   /** Called when user clicks an unloaded patch to load its bank */
   onLoadBank?: (bankIndex: number) => void;
+  /** Called when user clicks the per-bank reload button. Re-fetches
+   *  the bank from the device, invalidating the cache. */
+  onReloadBank?: (bankIndex: number) => void;
   /** Called when user clicks the export button on a patch */
   onExportPatch?: (index: number) => void;
 }
@@ -56,6 +59,7 @@ export function PatchList({
   patchesPerBank,
   loadingBank,
   onLoadBank,
+  onReloadBank,
   onExportPatch,
 }: PatchListProps) {
   const config = useDeviceConfig();
@@ -64,6 +68,17 @@ export function PatchList({
   // Group rows by bank so we can emit a sticky bank header before each.
   // Each bank-N section is a sequence: [header, ...rows-in-bank].
   const totalBanks = Math.ceil(patches.length / patchesPerBank);
+
+  // Per-bank collapse state — see ToneList for the same pattern.
+  const [collapsedBanks, setCollapsedBanks] = useState<Set<number>>(() => new Set());
+  const toggleBank = (i: number): void => {
+    setCollapsedBanks((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  };
 
   return (
     <aside
@@ -77,6 +92,11 @@ export function PatchList({
           const bankEnd = Math.min(bankStart + patchesPerBank, patches.length);
           const firstSlotLabel = memoryLayout.formatPatchSlot(bankStart);
           const lastSlotLabel = memoryLayout.formatPatchSlot(bankEnd - 1);
+          const isCollapsed = collapsedBanks.has(bankIndex);
+          const isBankLoaded = patches
+            .slice(bankStart, bankEnd)
+            .some((p) => p !== undefined);
+          const isThisBankLoading = loadingBank === bankIndex;
 
           return (
             <div
@@ -84,13 +104,56 @@ export function PatchList({
               data-bank-index={bankIndex}
             >
               <div className="ac-list-bank-header">
-                <span>Bank {bankIndex + 1}</span>
-                <strong>
-                  {firstSlotLabel}–{lastSlotLabel}
-                </strong>
+                <button
+                  type="button"
+                  className="ac-list-bank-toggle"
+                  onClick={() => toggleBank(bankIndex)}
+                  aria-expanded={!isCollapsed}
+                  aria-label={`Toggle bank ${bankIndex + 1}`}
+                  data-testid={`patch-bank-toggle-${bankIndex}`}
+                >
+                  <span className="ac-list-bank-chevron" aria-hidden="true">
+                    {isCollapsed ? '▸' : '▾'}
+                  </span>
+                  <span>Bank {bankIndex + 1}</span>
+                </button>
+                <span className="ac-list-bank-meta">
+                  <strong>
+                    {firstSlotLabel}–{lastSlotLabel}
+                  </strong>
+                  {onReloadBank && (
+                    <button
+                      type="button"
+                      className={cn(
+                        'ac-list-bank-reload',
+                        isThisBankLoading && 'ac-list-bank-reload--spinning',
+                      )}
+                      onClick={() => onReloadBank(bankIndex)}
+                      disabled={isThisBankLoading}
+                      aria-label={
+                        isBankLoaded
+                          ? `Reload bank ${bankIndex + 1}`
+                          : `Load bank ${bankIndex + 1}`
+                      }
+                      title={
+                        isBankLoaded
+                          ? `Reload bank ${bankIndex + 1}`
+                          : `Load bank ${bankIndex + 1}`
+                      }
+                      data-testid={`patch-bank-reload-${bankIndex}`}
+                    >
+                      <svg viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="M3 8a5 5 0 0 1 9-3" />
+                        <polyline points="12 2 12 5 9 5" />
+                        <path d="M13 8a5 5 0 0 1-9 3" />
+                        <polyline points="4 14 4 11 7 11" />
+                      </svg>
+                    </button>
+                  )}
+                </span>
               </div>
 
-              {patches.slice(bankStart, bankEnd).map((patch, offset) => {
+              {!isCollapsed && patches.slice(bankStart, bankEnd).map((patch, offset) => {
                 const index = bankStart + offset;
                 const isLoaded = patch !== undefined;
                 const isEmpty = isLoaded && isPatchEmpty(patch);
@@ -100,7 +163,8 @@ export function PatchList({
 
                 const handleClick = () => {
                   if (isLoaded) {
-                    onSelect(isSelected ? null : index);
+                    // Select-only: see ToneList for rationale.
+                    onSelect(index);
                   } else if (!isBankLoading && onLoadBank) {
                     onLoadBank(slotBank);
                   }
@@ -121,13 +185,20 @@ export function PatchList({
                   }
                 };
 
+                // Display rules:
+                //   - bank loading:  '(loading...)'
+                //   - not loaded:    '' (eyebrow below renders the
+                //                       "click to load bank" hint, so
+                //                       no duplicate placeholder)
+                //   - loaded named:  patch.common.name
+                //   - loaded empty:  '' (silence reads as empty;
+                //                       --empty styling still conveys
+                //                       the empty-slot state visually).
                 const displayName = isBankLoading
                   ? '(loading...)'
-                  : !isLoaded
-                    ? '(not loaded)'
-                    : isEmpty
-                      ? '(empty)'
-                      : patch.common.name;
+                  : isLoaded && !isEmpty
+                    ? patch.common.name
+                    : '';
 
                 const nameClass = !isLoaded
                   ? 'ac-list-name ac-list-name--placeholder'
@@ -159,7 +230,7 @@ export function PatchList({
                       </span>
                       {!isLoaded && !isBankLoading && (
                         <span className="ac-list-eyebrow">
-                          click to load bank
+                          click to load
                         </span>
                       )}
                     </span>

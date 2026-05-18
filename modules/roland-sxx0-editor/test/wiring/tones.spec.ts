@@ -138,7 +138,7 @@ test.describe('Capabilities — Tones (C-TONE)', () => {
     await expect(unloadedSlot).toBeVisible();
 
     const text = await unloadedSlot.evaluate((el) => el.textContent ?? '');
-    expect(text).toMatch(/click to load bank/i);
+    expect(text).toMatch(/click to load/i);
 
     // tabIndex / aria-disabled wiring: not actively loading → reachable.
     const ariaDisabled = await unloadedSlot.getAttribute('aria-disabled');

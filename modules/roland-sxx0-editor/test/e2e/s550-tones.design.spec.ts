@@ -108,7 +108,7 @@ test.describe('S-550 live Tones-page design conformance', () => {
   }) => {
     const pageShell = page.locator('.ac-page-shell--fixed-viewport');
     const titleRow = page.locator('.ac-page-title-row');
-    const appShell = page.locator('.tones__app-shell');
+    const appShell = page.locator('.ac-app-shell');
     const refreshButton = page.getByRole('button', { name: 'Refresh all tones from device' });
     const toneItems = page.locator('[data-testid^="tone-item-"]');
 

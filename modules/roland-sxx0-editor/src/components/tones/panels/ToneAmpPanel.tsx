@@ -25,7 +25,6 @@
 import type { SamplerTone, SamplerEnvelope, SamplerLevelCurve } from '@/core/midi/SamplerClient';
 import { ParamSliderRow } from '@/components/ui/ParamSliderRow';
 import { ToneEnvelopeEditor } from '@/components/ui/ToneEnvelopeEditor';
-import { Tooltip } from '@/components/ui/Tooltip';
 import { TONE_TOOLTIPS } from '@/constants/tone-tooltips';
 
 interface ToneAmpPanelProps {
@@ -73,44 +72,22 @@ export function ToneAmpPanel({ tone, onUpdate, onCommit }: ToneAmpPanelProps) {
     onCommit?.(updatedTone);
   };
 
+  const handleLevelCurveChange = (levelCurve: number) => {
+    const updatedTone = { ...tone, tva: { ...tone.tva, levelCurve: levelCurve as SamplerLevelCurve } };
+    onUpdate?.(updatedTone);
+    onCommit?.(updatedTone);
+  };
+
   return (
     <section className="tones__section">
-      <header className="tones__section-head">
-        <h4 className="tones__section-title">Amplifier — TVA</h4>
-        <span className="tones__section-eyebrow">Level · §04</span>
-      </header>
-      <div className="grid gap-4 md:grid-cols-4 mb-4">
+      {/* No section header — duplicates the active AMP tab. */}
+      <div className="tones__param-rows">
         <ParamSliderRow label="Level" value={tone.tva.level} onChange={handleLevelChange} tooltip={TONE_TOOLTIPS.tvaLevel} />
         <ParamSliderRow label="LFO Depth" value={tone.tva.lfoDepth} onChange={handleLfoDepthChange} tooltip={TONE_TOOLTIPS.tvaLfoDepth} />
         <ParamSliderRow label="Key Rate" value={tone.tva.keyRate} onChange={handleKeyRateChange} tooltip={TONE_TOOLTIPS.tvaKeyRate} />
         <ParamSliderRow label="Vel Rate" value={tone.tva.velRate} onChange={handleVelRateChange} tooltip={TONE_TOOLTIPS.tvaVelRate} />
-      </div>
-      <Tooltip content={TONE_TOOLTIPS.tvaLevelCurve}>
-        <div className="mb-4 max-w-[200px]">
-          <label className="ac-field-label mb-1 block">Level Curve</label>
-          <select
-            value={tone.tva.levelCurve}
-            onChange={(e) => {
-              const updatedTone = { ...tone, tva: { ...tone.tva, levelCurve: Number(e.target.value) as SamplerLevelCurve } };
-              onUpdate?.(updatedTone);
-              onCommit?.(updatedTone);
-            }}
-            data-testid="tone-tva-curve"
-            className="ac-select"
-          >
-            {[0, 1, 2, 3, 4, 5].map((i) => (<option key={i} value={i}>{i}</option>))}
-          </select>
-        </div>
-      </Tooltip>
-      <div className="mb-4 max-w-[260px]">
-        <ParamSliderRow
-          label="Env Zoom"
-          value={tone.envZoom}
-          min={0}
-          max={7}
-          onChange={handleEnvZoomChange}
-          tooltip={TONE_TOOLTIPS.envZoom}
-        />
+        <ParamSliderRow label="Level Curve" value={tone.tva.levelCurve} min={0} max={5} onChange={handleLevelCurveChange} tooltip={TONE_TOOLTIPS.tvaLevelCurve} />
+        <ParamSliderRow label="Env Zoom" value={tone.envZoom} min={0} max={7} onChange={handleEnvZoomChange} tooltip={TONE_TOOLTIPS.envZoom} />
       </div>
       <ToneEnvelopeEditor
         envelope={tone.tva.envelope}

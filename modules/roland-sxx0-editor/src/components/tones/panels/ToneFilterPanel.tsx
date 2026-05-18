@@ -23,12 +23,21 @@
 import type {
   SamplerTone, SamplerEnvelope, SamplerEgPolarity, SamplerLevelCurve,
 } from '@/core/midi/SamplerClient';
-import { cn } from '@/lib/utils';
-import { AcCheckbox } from '@audiocontrol/editor-core';
+import { AcToggle } from '@audiocontrol/editor-core';
 import { ParamSliderRow } from '@/components/ui/ParamSliderRow';
 import { ToneEnvelopeEditor } from '@/components/ui/ToneEnvelopeEditor';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { TONE_TOOLTIPS } from '@/constants/tone-tooltips';
+
+const FILTER_ENABLED_OPTIONS = [
+  { value: 'on' as const,  label: 'On',  dataTestId: 'tone-tvf-enabled-on' },
+  { value: 'off' as const, label: 'Off', dataTestId: 'tone-tvf-enabled-off' },
+] as const;
+
+const EG_POLARITY_OPTIONS = [
+  { value: 'normal' as const, label: 'Normal', dataTestId: 'tone-tvf-polarity-normal' },
+  { value: 'reverse' as const, label: 'Reverse', dataTestId: 'tone-tvf-polarity-reverse' },
+] as const;
 
 interface ToneFilterPanelProps {
   tone: SamplerTone;
@@ -63,71 +72,57 @@ export function ToneFilterPanel({ tone, onUpdate, onCommit }: ToneFilterPanelPro
 
   return (
     <section className="tones__section">
-      <header className="tones__section-head">
-        <h4 className="tones__section-title">
-          Filter — TVF
-          <span className={cn(
-            'ml-2 text-xs px-2 py-0.5 rounded',
-            tvf.enabled ? 'bg-s330-highlight/20 text-s330-highlight' : 'bg-s330-muted/20 text-s330-muted',
-          )}>
-            {tvf.enabled ? 'ON' : 'OFF'}
-          </span>
-        </h4>
-        <span className="tones__section-eyebrow">Time-variant · §03</span>
-      </header>
-      <Tooltip content={TONE_TOOLTIPS.tvfEnabled}>
-        <AcCheckbox
-          id="tvfEnabled"
-          dataTestId="tone-tvf-enabled"
-          checked={tvf.enabled}
-          onChange={(checked) => updateTvf({ enabled: checked })}
-          className="mb-4"
-        >
-          Enable Filter
-        </AcCheckbox>
-      </Tooltip>
-      <div className="grid gap-4 md:grid-cols-3 mb-4">
+      {/* No section header — duplicates the active FILTER tab. */}
+
+      {/* Slider grid first. Filter Enable + EG Polarity share a single
+          compact-grid row below, since both are binary/few-position
+          enums that read better as segmented controls than as a
+          checkbox + dropdown. */}
+      <div className="tones__param-rows">
         <ParamSliderRow label="Cutoff" value={tvf.cutoff} onChange={handleCutoffChange} tooltip={TONE_TOOLTIPS.tvfCutoff} disabled={!tvf.enabled} />
         <ParamSliderRow label="Resonance" value={tvf.resonance} onChange={handleResonanceChange} tooltip={TONE_TOOLTIPS.tvfResonance} disabled={!tvf.enabled} />
         <ParamSliderRow label="Key Follow" value={tvf.keyFollow} onChange={handleKeyFollowChange} tooltip={TONE_TOOLTIPS.tvfKeyFollow} disabled={!tvf.enabled} />
-      </div>
-      <div className="grid gap-4 md:grid-cols-4 mb-4">
         <ParamSliderRow label="LFO Depth" value={tvf.lfoDepth} onChange={handleLfoDepthChange} tooltip={TONE_TOOLTIPS.tvfLfoDepth} disabled={!tvf.enabled} />
         <ParamSliderRow label="EG Depth" value={tvf.egDepth} onChange={handleEgDepthChange} tooltip={TONE_TOOLTIPS.tvfEgDepth} disabled={!tvf.enabled} />
         <ParamSliderRow label="Key Rate" value={tvf.keyRateFollow} onChange={handleKeyRateChange} tooltip={TONE_TOOLTIPS.tvfKeyRate} disabled={!tvf.enabled} />
         <ParamSliderRow label="Vel Rate" value={tvf.velRateFollow} onChange={handleVelRateChange} tooltip={TONE_TOOLTIPS.tvfVelRate} disabled={!tvf.enabled} />
+        <ParamSliderRow label="Level Curve" value={tvf.levelCurve} min={0} max={5} onChange={(v: number) => updateTvf({ levelCurve: v as SamplerLevelCurve })} tooltip={TONE_TOOLTIPS.tvfLevelCurve} disabled={!tvf.enabled} />
       </div>
-      <div className="mb-4 grid gap-4 md:grid-cols-2">
+
+      {/* Enable Filter + EG Polarity on one row — both are AcToggle
+          segmented controls with label-above-control bundles inside
+          the shared compact-grid layout. Saves a row vs the previous
+          full-width Enable Filter checkbox above the sliders, and
+          matches the visual rhythm of the toggles in the Wave panel
+          (BANK / LOOP MODE / OUTPUT). */}
+      <div className="tones__compact-grid">
+        <Tooltip content={TONE_TOOLTIPS.tvfEnabled}>
+          <div className="tones__compact-field">
+            <span className="ac-field-label">Filter</span>
+            <AcToggle
+              value={tvf.enabled ? 'on' : 'off'}
+              options={FILTER_ENABLED_OPTIONS}
+              onChange={(v) => updateTvf({ enabled: v === 'on' })}
+              ariaLabel="Enable Filter"
+              name="tvf-enabled"
+            />
+          </div>
+        </Tooltip>
         <Tooltip content={TONE_TOOLTIPS.tvfEgPolarity}>
-          <div>
-            <label className="ac-field-label mb-1 block">EG Polarity</label>
-            <select
+          <div className="tones__compact-field">
+            <span className="ac-field-label">EG Polarity</span>
+            <AcToggle
               value={tvf.egPolarity}
-              onChange={(e) => updateTvf({ egPolarity: e.target.value as SamplerEgPolarity })}
+              options={EG_POLARITY_OPTIONS}
+              onChange={(v) => updateTvf({ egPolarity: v as SamplerEgPolarity })}
               disabled={!tvf.enabled}
-              data-testid="tone-tvf-polarity"
-              className="ac-select"
-            >
-              <option value="normal">Normal</option>
-              <option value="reverse">Reverse</option>
-            </select>
-          </div>
-        </Tooltip>
-        <Tooltip content={TONE_TOOLTIPS.tvfLevelCurve}>
-          <div>
-            <label className="ac-field-label mb-1 block">Level Curve</label>
-            <select
-              value={tvf.levelCurve}
-              onChange={(e) => updateTvf({ levelCurve: Number(e.target.value) as SamplerLevelCurve })}
-              disabled={!tvf.enabled}
-              data-testid="tone-tvf-curve"
-              className="ac-select"
-            >
-              {[0, 1, 2, 3, 4, 5].map((i) => (<option key={i} value={i}>{i}</option>))}
-            </select>
+              ariaLabel="EG Polarity"
+              name="tvf-polarity"
+            />
           </div>
         </Tooltip>
       </div>
+
       <ToneEnvelopeEditor
         envelope={tvf.envelope}
         onChange={handleTvfEnvelopeChange}

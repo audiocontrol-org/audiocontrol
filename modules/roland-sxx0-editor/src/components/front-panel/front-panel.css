@@ -41,10 +41,15 @@
 }
 
 /* 7-column × 2-row grid. Three cells are blank — they preserve the
-   cross-arrow cluster's visual identity per the v2 mockup layout. */
+   cross-arrow cluster's visual identity per the v2 mockup layout.
+   `minmax(0, 1fr)` lets columns shrink below their min-content width;
+   without it the buttons' `whitespace-nowrap` text would push the
+   grid past its container at narrow drawer widths (the VideoCapture
+   drawer can be quite narrow). Combined with `overflow: hidden` on
+   the buttons, narrow widths still render cleanly. */
 .ac-fp__grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   grid-template-rows: repeat(2, 1fr);
   gap: 0.5rem;
   aspect-ratio: 5 / 1.5;
@@ -62,6 +67,13 @@
   padding: 0;
   cursor: pointer;
   color: var(--ac-fp-label-fn);
+
+  /* Allow the button to shrink below its content's intrinsic width so
+     the grid's minmax(0, 1fr) tracks can compress at narrow drawer
+     widths. Combined with overflow: hidden, the label gets clipped
+     rather than pushing the button past its track. */
+  min-width: 0;
+  overflow: hidden;
 
   background: linear-gradient(
     180deg,

@@ -77,7 +77,12 @@
   color: var(--ac-color-text-muted);
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  /* The toggle button uses --ac-font-display and the <strong> slot-
+     range uses --ac-font-mono — the two fonts have different baseline
+     metrics, so `align-items: baseline` made "BANK N" sit visibly
+     higher than "T11–T18". Center-aligning the flex children matches
+     them by their visual middle instead. */
+  align-items: center;
   z-index: 1;
   pointer-events: none;
 }
@@ -87,6 +92,130 @@
   font-variant-numeric: tabular-nums;
   font-weight: var(--ac-font-weight-normal);
   color: var(--ac-color-text-muted);
+}
+
+/* Chevron-toggle button — the single interactive target inside the
+   otherwise click-through bank header. Carries pointer-events: auto so
+   it intercepts its own clicks; the rest of the header (and especially
+   the area that overlaps the first row at scroll-top 0) stays
+   click-through so the LIVE-S550-TONES-001 (#428) fix invariant
+   continues to hold for everything except this opt-in target. */
+.ac-list-bank-toggle {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  background: transparent;
+  border: 0;
+  /* Negative margin offsets the padding so the visible eyebrow text
+     keeps its original baseline alignment in the header, while the
+     button itself still has a 24x24+ hit area for accessibility. */
+  margin: calc(-1 * var(--ac-space-2)) 0;
+  padding: var(--ac-space-2) var(--ac-space-2) var(--ac-space-2) 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: pointer;
+  border-radius: var(--ac-radius-sm);
+  transition:
+    color var(--ac-duration-fast) var(--ac-easing-default),
+    background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-list-bank-toggle:hover {
+  color: var(--ac-color-text-primary);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 50%, transparent);
+}
+
+.ac-list-bank-toggle:focus-visible {
+  outline: var(--ac-rule-medium) solid color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
+  outline-offset: 2px;
+}
+
+/* Chevron — sized so the affordance is obvious at the header's
+   eyebrow-scale font. 1.1rem gives ~17.6px which clears AA target-size
+   floors when combined with the button's padding (total hit area
+   ≈28x28px). */
+.ac-list-bank-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--ac-color-accent);
+  transition: transform var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+/* Right-side group inside the bank header: slot-range readout plus the
+   per-bank reload icon-button. Wrapped in a flex container so the
+   reload button sits flush against the slot range rather than being
+   pushed to the far edge by the header's space-between layout. */
+.ac-list-bank-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+}
+
+/* Per-bank reload icon-button. Sits inside an otherwise click-through
+   header (pointer-events: none on .ac-list-bank-header), so the button
+   restores pointer-events: auto for its own hit area only. Visually a
+   square 1.5rem icon button with a circular-arrow glyph; spins via the
+   --spinning modifier while the bank is loading. */
+.ac-list-bank-reload {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 50%, transparent);
+  border-radius: var(--ac-radius-sm);
+  color: var(--ac-color-text-muted);
+  cursor: pointer;
+  transition:
+    color var(--ac-duration-fast) var(--ac-easing-default),
+    border-color var(--ac-duration-fast) var(--ac-easing-default),
+    background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-list-bank-reload:hover:not(:disabled) {
+  color: var(--ac-color-accent);
+  border-color: color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  background: color-mix(in srgb, var(--ac-color-accent) 8%, transparent);
+}
+
+.ac-list-bank-reload:focus-visible {
+  outline: var(--ac-rule-medium) solid color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
+  outline-offset: 2px;
+}
+
+.ac-list-bank-reload:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.ac-list-bank-reload svg {
+  width: 0.85rem;
+  height: 0.85rem;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ac-list-bank-reload--spinning svg {
+  animation: ac-icon-spin 1.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-list-bank-reload--spinning svg { animation: none; }
 }
 
 /* ============================================================

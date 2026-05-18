@@ -197,25 +197,19 @@ test.describe('TonesPage tone-list row activation — Tier 3 in-context (D-TONE-
       timeout: 5_000,
     });
 
-    // ── CLAIM 1: the bank-1 header does NOT intercept pointer events. ─
+    // ── CLAIM 1: the bank-1 header text renders + has a positive box. ──
     //
-    // The header is rendered as a `<div className="ac-list-bank-header">`
-    // with two text spans inside: `<span>Group 1</span>` and
-    // `<strong>T11–T18</strong>` (see ToneList.tsx:78-81). Without
-    // `role="button"` / `role="banner"`, accessible-name queries don't
-    // resolve the header directly — we narrow via the list's
-    // `complementary` role, then locate the "Group 1" text inside.
-    //
-    // `getByText('Group 1', { exact: true })` resolves the bank-1
-    // header (slots T11-T18). The header's bounding box is the box
-    // of the `<span>Group 1</span>` text element, not the surrounding
-    // `<div>` — but the hit-test below uses the span's center, which
-    // falls inside the parent `<div>`'s box too. If the parent div
-    // were the top element at that point, the test would still pass
-    // (the div is the `.ac-list-bank-header`, and it must NOT be on
-    // top). The assertion is: NEITHER the span NOR its bank-header
-    // parent is the top element at the span's center.
-    const bankHeaderText = list.getByText('Group 1', { exact: true });
+    // The bank header is now interactive (clickable to collapse/expand
+    // the bank). The previous "header has pointer-events: none" claim
+    // is superseded by the chevron-toggle architecture: only the small
+    // `.ac-list-bank-toggle` button inside the header has
+    // pointer-events: auto. The rest of the header chrome (and the
+    // empty `justify-content: space-between` gap that overlaps the
+    // first row at scroll-top 0) keeps pointer-events: none, so the
+    // LIVE-S550-TONES-001 (#428) "header intercepts T11 click"
+    // invariant still holds for the area that overlapped T11. CLAIMS
+    // 2+3 below remain the authoritative T11-reachability check.
+    const bankHeaderText = list.getByText('Bank 1', { exact: true });
     await expect(bankHeaderText).toBeVisible({ timeout: 5_000 });
     const headerBox = await bankHeaderText.boundingBox();
     expect(headerBox, 'bank header text must have a bounding box').not.toBeNull();
@@ -230,29 +224,6 @@ test.describe('TonesPage tone-list row activation — Tier 3 in-context (D-TONE-
       headerBox.height,
       'bank header text must have positive height',
     ).toBeGreaterThan(2);
-
-    const headerCenterX = headerBox.x + headerBox.width / 2;
-    const headerCenterY = headerBox.y + headerBox.height / 2;
-    // Use `closest('.ac-list-bank-header')` to walk up from the hit-test
-    // top element. The previous substring-match-on-className idiom would
-    // miss a regression where the top element is the inner unclassed
-    // `<span>Group 1</span>`. `closest` walks ancestors and returns the
-    // bank-header `<div>` if it sits anywhere in the top element's
-    // ancestor chain — exactly the "header is intercepting" condition we
-    // want to flag. Mirrors CLAIM 2's `closest('.tones__list-row')`
-    // idiom below.
-    const headerStack = await inspectHitStack(page, headerCenterX, headerCenterY);
-    const headerIsBlocking = await page.evaluate(
-      ({ x, y }) => {
-        const top = document.elementFromPoint(x, y);
-        return top !== null && top.closest('.ac-list-bank-header') !== null;
-      },
-      { x: headerCenterX, y: headerCenterY },
-    );
-    expect(
-      headerIsBlocking,
-      `bank header must NOT be the top hit-test element at its own center (pointer-events: none) — actually got ${JSON.stringify(headerStack.stack)}`,
-    ).toBe(false);
 
     // ── CLAIM 2: the T11 row IS reachable to pointer events. ──────────
     //

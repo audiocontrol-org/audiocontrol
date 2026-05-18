@@ -120,13 +120,14 @@ test.describe('Tone parameter write affordances', () => {
     await page.goto(tonesUrl('tone-0-wave-original-key'));
     const editor = await openTone0Editor(page);
 
-    // The Original Key number input commits on change. fill() sets the
-    // value via JS which fires exactly one React change event for a
-    // controlled input. The blur after is defensive. Target is 60 (C4)
-    // to match the scenario's mutation (`originalKey: 60`).
-    const input = tonePanel(editor, 'tt-wave').getByTestId('tone-original-key');
-    await input.fill('60');
-    await input.blur();
+    // Original Key is now a slider (ParamSliderRow). Drive via the
+    // editable readout input inside the row. Wrapper testid is
+    // `param-original-key` (labelToTestId('Original Key')). Target
+    // value 60 (C4) matches the scenario's mutation.
+    await fillSliderInput(
+      tonePanel(editor, 'tt-wave').getByTestId('param-original-key'),
+      60,
+    );
 
     await expectFixtureFullyConsumed(page);
   });
@@ -135,9 +136,10 @@ test.describe('Tone parameter write affordances', () => {
     await page.goto(tonesUrl('tone-0-wave-loop-mode'));
     const editor = await openTone0Editor(page);
 
+    // Loop Mode is now an AcToggle. Click the per-option label.
     await tonePanel(editor, 'tt-wave')
-      .getByTestId('tone-loop-mode')
-      .selectOption({ value: 'alternating' });
+      .getByTestId('tone-loop-mode-alternating')
+      .click();
 
     await expectFixtureFullyConsumed(page);
   });
@@ -146,9 +148,10 @@ test.describe('Tone parameter write affordances', () => {
     await page.goto(tonesUrl('tone-0-wave-output-assign'));
     const editor = await openTone0Editor(page);
 
+    // Output is now an AcToggle (Mix + Out 1..8). Click the per-option label.
     await tonePanel(editor, 'tt-wave')
-      .getByTestId('tone-output')
-      .selectOption({ value: '5' });
+      .getByTestId('tone-output-5')
+      .click();
 
     await expectFixtureFullyConsumed(page);
   });
@@ -185,10 +188,10 @@ test.describe('Tone parameter write affordances', () => {
     const editor = await openTone0Editor(page);
 
     // Bank value 1 ("B") is valid on both S-330 (mask 0x01) and S-550
-    // (mask 0x03). The select option `value` is the numeric bank index.
+    // (mask 0x03). Bank is now an AcToggle; click the per-option label.
     await tonePanel(editor, 'tt-wave')
-      .getByTestId('tone-wave-bank')
-      .selectOption({ value: '1' });
+      .getByTestId('tone-wave-bank-1')
+      .click();
 
     await expectFixtureFullyConsumed(page);
   });
@@ -210,7 +213,7 @@ test.describe('Tone parameter write affordances', () => {
     title: string;
     scenario: string;
     tab: ToneTabName;
-    tabId: 'tt-wave' | 'tt-pitch' | 'tt-filter' | 'tt-amp' | 'tt-lfo';
+    tabId: 'tt-wave' | 'tt-pitch-lfo' | 'tt-filter' | 'tt-amp';
     testId: string;
     value: number;
   }
@@ -231,7 +234,7 @@ test.describe('Tone parameter write affordances', () => {
 
     // Pitch (fine tune is the only slider in Pitch; transpose is disabled)
     { id: 'D-TONE-PITCH-02', title: 'adjusting fine tune writes sendToneData',
-      scenario: 'tone-0-pitch-fine-tune', tab: 'Pitch', tabId: 'tt-pitch',
+      scenario: 'tone-0-pitch-fine-tune', tab: 'Pitch & LFO', tabId: 'tt-pitch-lfo',
       testId: 'param-fine-tune', value: 20 + 64 },
 
     // TVF (Filter tab)
@@ -278,13 +281,13 @@ test.describe('Tone parameter write affordances', () => {
 
     // LFO
     { id: 'D-TONE-LFO-01', title: 'adjusting LFO rate writes sendToneData',
-      scenario: 'tone-0-lfo-rate', tab: 'LFO', tabId: 'tt-lfo',
+      scenario: 'tone-0-lfo-rate', tab: 'Pitch & LFO', tabId: 'tt-pitch-lfo',
       testId: 'param-rate', value: 70 },
     { id: 'D-TONE-LFO-02', title: 'adjusting LFO delay writes sendToneData',
-      scenario: 'tone-0-lfo-delay', tab: 'LFO', tabId: 'tt-lfo',
+      scenario: 'tone-0-lfo-delay', tab: 'Pitch & LFO', tabId: 'tt-pitch-lfo',
       testId: 'param-delay', value: 25 },
     { id: 'D-TONE-LFO-03', title: 'adjusting LFO offset writes sendToneData',
-      scenario: 'tone-0-lfo-offset', tab: 'LFO', tabId: 'tt-lfo',
+      scenario: 'tone-0-lfo-offset', tab: 'Pitch & LFO', tabId: 'tt-pitch-lfo',
       testId: 'param-offset', value: 90 },
   ];
 
@@ -317,29 +320,33 @@ test.describe('Tone parameter write affordances', () => {
     title: string;
     scenario: string;
     tab: ToneTabName | null;
-    tabId: 'tt-wave' | 'tt-pitch' | 'tt-filter' | 'tt-amp' | 'tt-lfo';
-    locator: { testId?: string; cssId?: string };
+    tabId: 'tt-wave' | 'tt-pitch-lfo' | 'tt-filter' | 'tt-amp';
+    /** Base testid of an AcToggle's options — the test clicks whichever
+     *  option (-on or -off) is NOT currently active so the state flips
+     *  from `current` to `!current`, matching the fixture's
+     *  mutate-from-current capture. */
+    toggleBase: string;
   }
 
   const CHECKBOX_TESTS: CheckboxTest[] = [
     { id: 'D-TONE-PITCH-03', title: 'toggling pitch follow writes sendToneData',
-      scenario: 'tone-0-pitch-follow', tab: 'Pitch', tabId: 'tt-pitch',
-      locator: { testId: 'tone-pitch-follow' } },
+      scenario: 'tone-0-pitch-follow', tab: 'Pitch & LFO', tabId: 'tt-pitch-lfo',
+      toggleBase: 'tone-pitch-follow' },
     { id: 'D-TONE-PITCH-04', title: 'toggling pitch bender writes sendToneData',
-      scenario: 'tone-0-pitch-bender-enabled', tab: 'Pitch', tabId: 'tt-pitch',
-      locator: { cssId: 'benderEnabled' } },
+      scenario: 'tone-0-pitch-bender-enabled', tab: 'Pitch & LFO', tabId: 'tt-pitch-lfo',
+      toggleBase: 'tone-pitch-bender' },
     { id: 'D-TONE-PITCH-05', title: 'toggling aftertouch writes sendToneData',
-      scenario: 'tone-0-pitch-aftertouch-enabled', tab: 'Pitch', tabId: 'tt-pitch',
-      locator: { cssId: 'aftertouchEnabled' } },
+      scenario: 'tone-0-pitch-aftertouch-enabled', tab: 'Pitch & LFO', tabId: 'tt-pitch-lfo',
+      toggleBase: 'tone-pitch-aftertouch' },
     { id: 'D-TONE-TVF-01', title: 'toggling filter enable writes sendToneData',
       scenario: 'tone-0-tvf-enabled', tab: 'Filter', tabId: 'tt-filter',
-      locator: { testId: 'tone-tvf-enabled' } },
+      toggleBase: 'tone-tvf-enabled' },
     { id: 'D-TONE-LFO-04', title: 'toggling LFO key sync writes sendToneData',
-      scenario: 'tone-0-lfo-sync', tab: 'LFO', tabId: 'tt-lfo',
-      locator: { testId: 'tone-lfo-sync' } },
+      scenario: 'tone-0-lfo-sync', tab: 'Pitch & LFO', tabId: 'tt-pitch-lfo',
+      toggleBase: 'tone-lfo-sync' },
     { id: 'D-TONE-LFO-06', title: 'toggling peak hold (polarity) writes sendToneData',
-      scenario: 'tone-0-lfo-polarity', tab: 'LFO', tabId: 'tt-lfo',
-      locator: { cssId: 'lfoPolarity' } },
+      scenario: 'tone-0-lfo-polarity', tab: 'Pitch & LFO', tabId: 'tt-pitch-lfo',
+      toggleBase: 'tone-lfo-peak-hold' },
   ];
 
   for (const t of CHECKBOX_TESTS) {
@@ -349,17 +356,29 @@ test.describe('Tone parameter write affordances', () => {
       if (t.tab) await switchToToneTab(page, t.tab);
 
       const scope = tonePanel(editor, t.tabId);
-      const target = t.locator.testId
-        ? scope.getByTestId(t.locator.testId)
-        : scope.locator(`#${t.locator.cssId}`);
-      await target.click();
+      // Click whichever option (-on/-off) is NOT currently active so
+      // state flips from `current` to `!current`. AcToggle marks the
+      // active option via `data-active="true"` on the <label>.
+      const onLabel = scope.getByTestId(`${t.toggleBase}-on`);
+      const isOn = await onLabel.getAttribute('data-active');
+      if (isOn === 'true') {
+        await scope.getByTestId(`${t.toggleBase}-off`).click();
+      } else {
+        await onLabel.click();
+      }
 
       await expectFixtureFullyConsumed(page);
     });
   }
 
   // ---------------------------------------------------------------------
-  // Select-driven tests (EG polarity, level curve, env sustain/end).
+  // Toggle / slider replacements for the former Select-driven fields.
+  //
+  // EG polarity was a <select> and is now an AcToggle segmented control;
+  // the test clicks the target option's radio via its per-option
+  // data-testid. The Filter/Amp Level Curve <select>s became sliders
+  // (ParamSliderRow with min=0 max=5); the test fills the slider's
+  // editable readout via labelToTestId('Level Curve') = 'param-level-curve'.
   // ---------------------------------------------------------------------
 
   test('D-TONE-TVF-09: adjusting EG polarity writes sendToneData', async ({ page }) => {
@@ -368,8 +387,8 @@ test.describe('Tone parameter write affordances', () => {
     await switchToToneTab(page, 'Filter');
 
     await tonePanel(editor, 'tt-filter')
-      .getByTestId('tone-tvf-polarity')
-      .selectOption({ value: 'reverse' });
+      .getByTestId('tone-tvf-polarity-reverse')
+      .click();
 
     await expectFixtureFullyConsumed(page);
   });
@@ -379,9 +398,10 @@ test.describe('Tone parameter write affordances', () => {
     const editor = await openTone0Editor(page);
     await switchToToneTab(page, 'Filter');
 
-    await tonePanel(editor, 'tt-filter')
-      .getByTestId('tone-tvf-curve')
-      .selectOption({ value: '3' });
+    await fillSliderInput(
+      tonePanel(editor, 'tt-filter').getByTestId('param-level-curve'),
+      3,
+    );
 
     await expectFixtureFullyConsumed(page);
   });
@@ -391,9 +411,10 @@ test.describe('Tone parameter write affordances', () => {
     const editor = await openTone0Editor(page);
     await switchToToneTab(page, 'Amp');
 
-    await tonePanel(editor, 'tt-amp')
-      .getByTestId('tone-tva-curve')
-      .selectOption({ value: '4' });
+    await fillSliderInput(
+      tonePanel(editor, 'tt-amp').getByTestId('param-level-curve'),
+      4,
+    );
 
     await expectFixtureFullyConsumed(page);
   });

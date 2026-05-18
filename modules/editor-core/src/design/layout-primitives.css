@@ -21,15 +21,49 @@
   --ac-text-sm: 0.875rem;
   --ac-text-md: 1rem;
   --ac-text-lg: 1.5rem;
-  --ac-page-section-gap: var(--ac-space-6);
+  --ac-page-section-gap: var(--ac-space-4);
   --ac-page-space: var(--ac-page-section-gap);
   --ac-page-main-inline: var(--ac-space-6);
   --ac-site-header-height: 3.75rem;
-  --ac-page-header-height: 3.5rem;
+  /* Actual page-title-row height (h2 + red rule + bottom padding +
+     hairline border). Measured empirically against the rendered
+     .ac-page-title-row at viewport widths ≥ 1024px. Was 3.5rem (56px)
+     before the page-shell density pass; the row actually rendered at
+     ~51px, which left fixed-position siblings (the VideoCapture
+     drawer) misaligned by 5px below the body. */
+  --ac-page-header-height: 3.2rem;
   --ac-page-sticky-top: var(--ac-site-header-height);
-  --ac-page-content-top: calc(var(--ac-page-list-sticky-top) + var(--ac-page-section-gap));
+  /* Y coordinate of the top of a page's body content (the list/detail
+     row that follows the page-title row). Includes the site-main's
+     padding-top so fixed-position siblings (e.g., the VideoCapture
+     drawer) can use this to align with where the body actually starts.
+     Without --ac-page-main-vertical the formula was 16px short of the
+     real body-content top after the page-shell density pass. */
+  --ac-page-content-top: calc(
+    var(--ac-page-list-sticky-top)
+    + var(--ac-page-main-vertical)
+    + var(--ac-page-section-gap)
+  );
+  /*
+   * Y coordinate of the top of the `.ac-page-title-row` (the page's
+   * lean header — h2 + red rule + status metric + icon-button). Below
+   * `--ac-site-header-height` by exactly the site-main's top padding,
+   * since `.ac-site-main` declares `padding-block: --ac-page-main-vertical`
+   * and `.ac-page` is its first child.
+   *
+   * Use this for fixed-position siblings (e.g. the VideoCapture drawer
+   * and its collapse-tab affordance) that need to align with the page
+   * header rather than the page body row.
+   */
+  --ac-page-title-top: calc(
+    var(--ac-site-header-height) + var(--ac-page-main-vertical)
+  );
   --ac-page-header-padding-y: var(--ac-space-2);
-  --ac-page-main-vertical: 3rem;
+  /* Vertical padding around the page main content area (site-main).
+     Was 3rem each side (96px combined) which created two huge empty
+     bands above the page title and below the page body. 1rem keeps
+     enough breathing room without dominating the viewport. */
+  --ac-page-main-vertical: 1rem;
   --ac-page-list-sticky-top: calc(var(--ac-site-header-height) + var(--ac-page-header-height));
   --ac-page-list-scroll-bottom: 2.25rem;
   --ac-container-md: 42rem;
@@ -144,6 +178,49 @@
   transition: margin-inline-start 200ms;
 }
 
+/*
+ * App shell — list + detail two-column grid for fixed-viewport editor
+ * pages (PatchesPage, TonesPage, …). Single canonical layout: identical
+ * gap, breakpoint, alignment, height-claim contract. Previously every
+ * page declared its own `.<page>__app-shell` with subtly different
+ * `grid-template-columns` values (patches: 22rem, tones: 14rem) — that
+ * drift produced a visible list-pane width inconsistency between pages
+ * that the operator caught on visual review. The list column width is
+ * exposed via `--ac-app-shell-list-col` so a page may override it for a
+ * device-specific reason (none exist today).
+ *
+ * Height-containment contract: parent .ac-page-shell--fixed-viewport is
+ * a flex column; this body claims `flex: 1` + `min-height: 0` to consume
+ * the remaining vertical space. Every direct child (the list pane, the
+ * detail pane, the empty-state placeholder) gets the same height-claim
+ * via `.ac-app-shell > *` — they all need to shrink to the grid track
+ * and clip overflow so their inner panes (`.ac-list-scroll`, the
+ * detail body) scroll internally.
+ */
+.ac-app-shell {
+  --ac-app-shell-list-col: 14rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ac-space-6);
+  padding-block: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+  .ac-app-shell {
+    grid-template-columns: var(--ac-app-shell-list-col) minmax(0, 1fr);
+    align-items: stretch;
+  }
+}
+
+.ac-app-shell > * {
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
 .ac-list-detail-grid {
   display: grid;
   gap: var(--ac-space-6);
@@ -226,9 +303,10 @@
 
 .ac-site-title {
   margin: 0;
-  font-family: var(--ac-font-body);
+  font-family: var(--ac-font-display);
   font-size: 1.25rem;
-  font-weight: var(--ac-font-weight-bold);
+  font-weight: var(--ac-font-weight-normal);
+  letter-spacing: var(--ac-tracking-display);
   color: var(--ac-color-text-primary);
   white-space: nowrap;
 }
@@ -240,18 +318,29 @@
 .ac-site-nav {
   display: flex;
   align-items: center;
-  gap: var(--ac-space-6);
+  gap: var(--ac-space-5);
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
+/* Nav links — lean display font, uppercase eyebrow with extra tracking
+   to read as chrome rather than body. Hover surfaces text-primary,
+   active surfaces the accent + a subtle hairline indicator beneath
+   the label (matches the .ac-page-title-rule red-LED idiom but with
+   the cyan accent, since nav is the page-scope chrome). */
 .ac-site-nav-link {
-  font-family: var(--ac-font-body);
-  font-size: var(--ac-text-sm);
-  font-weight: var(--ac-font-weight-medium);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  font-weight: var(--ac-font-weight-normal);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
   color: var(--ac-color-text-muted);
   text-decoration: none;
+  padding-block: var(--ac-space-2);
   transition: color var(--ac-duration-fast) var(--ac-easing-default);
 }
 
@@ -259,7 +348,18 @@
   color: var(--ac-color-text-primary);
 }
 
-.ac-site-nav-link[data-active='true'] {
+.ac-site-nav-link > [data-active='true']::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--ac-rule-medium);
+  background: var(--ac-color-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+}
+
+.ac-site-nav-link > [data-active='true'] {
   color: var(--ac-color-text-primary);
 }
 

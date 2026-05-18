@@ -125,7 +125,7 @@ test.describe('S-550 live Patches-page design conformance', () => {
 
   test('fixed patch shell exposes refresh chrome and a loaded patch row can open detail', async ({ page }) => {
     const pageShell = page.locator('.ac-page-shell--fixed-viewport');
-    const appShell = page.locator('.patches__app-shell');
+    const appShell = page.locator('.ac-app-shell');
     const detailPane = page.locator('.patches__detail');
     const refreshButton = page.getByRole('button', { name: 'Refresh all patches from device' });
 

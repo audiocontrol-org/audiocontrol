@@ -652,6 +652,10 @@ See `.claude/rules/workflow-playbooks.md § Phase-completion duplication audit` 
 
 ---
 
+> **⚠ MOTHBALLED 2026-05-17.** The Phase 9 Remediation Plan below (Tasks 8 / 9 / 10 / 11 → sub-phases 9R-A / 9R-B / 9R-C / 9R-D) and its reset Acceptance Criteria are paused. The four-tier coverage / capability-inventory / sign-off process this plan depended on is also paused (see [`ROLAND-S550-EDITOR-CAPABILITIES.md`](/ROLAND-S550-EDITOR-CAPABILITIES.md) + [`ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md`](/ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md), both mothballed 2026-05-17). Operator decision: post-redesign regressions will be fixed directly, in real time, without routing through this structured remediation. The completed sub-tasks (9R-A.1 / 9R-A.2 / 9R-A.3 — infrastructure, spec migration, inventory rewrite) and the partially-landed 9R-A.4 (Tier 2 + Tier 3 specs for D-TONE-ENV-02) stay in the tree; they are not credit toward any current goal. Subsequent regression-fix work supersedes everything below. Do not start, resume, or extend any sub-task in this section.
+
+---
+
 #### Task 8 — Sub-phase 9R-A: Test-strategy reset (BLOCKS ALL OTHER PHASE 9 WORK)
 
 The capability test suite as it exists at HEAD does not satisfy any UI invariant. Before any primitive or page work resumes, the test strategy and the capability inventory must both be reformed so that closure gates exercise the operator-facing UI AND the inventory tells the truth about which capabilities are confidently covered.

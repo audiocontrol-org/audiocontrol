@@ -52,6 +52,7 @@ export function PlayPage() {
     markToneBankLoaded,
     ensurePatchArraySize,
     ensureToneArraySize,
+    invalidatePatchCache,
   } = useDeviceDataStore();
 
   // Keep a ref to the S330 client for sending parameter updates
@@ -223,6 +224,29 @@ export function PlayPage() {
     }
   };
 
+  // Refresh-from-device — re-pulls multi-mode function parameters and
+  // reloads every patch bank that's currently in the store. Mirrors
+  // PatchesPage.refreshAll so the page-title icon-button behaves
+  // identically across the editor.
+  const refreshAll = useCallback(async () => {
+    if (!clientRef.current) return;
+
+    clientRef.current.invalidatePatchCache();
+    invalidatePatchCache();
+
+    const patchBankCount = Math.ceil(totalPatches / patchesPerBank);
+    for (let bank = 0; bank < patchBankCount; bank++) {
+      await loadPatchBank(bank, true);
+    }
+    await loadFunctionParams();
+  }, [
+    loadPatchBank,
+    loadFunctionParams,
+    invalidatePatchCache,
+    totalPatches,
+    patchesPerBank,
+  ]);
+
   // Update level in local state (drives the AcRangeBar visualization).
   const handleLevelChange = (partIndex: number, level: number) => {
     updatePart(partIndex, { level });
@@ -257,52 +281,59 @@ export function PlayPage() {
     );
   }
 
+  const totalBanks = Math.ceil(totalPatches / patchesPerBank);
+
   return (
     <div className="ac-page ac-page-shell ac-page-shell--fixed-viewport">
-      <div className="ac-page-sticky-header">
-        <div className="ac-page-header">
-          <h2 className="text-xl font-bold text-s330-text">Play</h2>
-          <div className="flex items-center gap-4 flex-1 justify-end">
-            {/* Loading Progress */}
-            {isLoading && loadingProgress !== null && (
-              <div className="flex-1 max-w-xs">
-                <div className="h-2 bg-s330-bg rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-s330-highlight transition-all duration-150 ease-out"
-                    style={{ width: `${loadingProgress}%` }}
-                  />
-                </div>
-                <p className="text-s330-muted text-xs mt-0.5 truncate">{loadingMessage}</p>
-              </div>
-            )}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-s330-muted">(Re)load:</span>
-              <button
-                onClick={() => loadPatchBank(0, true)}
-                disabled={isLoading}
-                className={cn(
-                  'ac-btn ac-btn-sm',
-                  loadedBanks.includes(0) ? 'ac-btn-secondary' : 'ac-btn-primary',
-                  isLoading && 'opacity-50'
-                )}
-              >
-                P11-P18
-              </button>
-              <button
-                onClick={() => loadPatchBank(1, true)}
-                disabled={isLoading}
-                className={cn(
-                  'ac-btn ac-btn-sm',
-                  loadedBanks.includes(1) ? 'ac-btn-secondary' : 'ac-btn-primary',
-                  isLoading && 'opacity-50'
-                )}
-              >
-                P21-P28
-              </button>
-            </div>
-          </div>
+      {/* Lean page header — h2 + red rule + status metric + refresh icon.
+          Same .ac-page-title-row primitive PatchesPage / TonesPage use.
+          Replaces the legacy .ac-page-sticky-header chrome which had
+          negative inline margins that occluded the VideoCapture drawer
+          and the parts-grid column headers (#423). */}
+      <header className="ac-page-title-row">
+        <div className="ac-page-title-block">
+          <h2 id="play-heading" className="ac-page-title-heading">Play</h2>
+          <div className="ac-page-title-rule" aria-hidden="true" />
         </div>
-      </div>
+        <span className="ac-page-title-metric">
+          <span className="ac-page-title-led" aria-hidden="true" />
+          <span>
+            <strong>{loadedBanks.length}</strong> of <strong>{totalBanks}</strong> banks loaded
+          </span>
+          <button
+            type="button"
+            onClick={refreshAll}
+            disabled={isLoading}
+            className={cn(
+              'ac-icon-btn',
+              isLoading && 'ac-icon-btn--spinning',
+            )}
+            aria-label="Refresh multi-mode configuration and patches from device"
+            title="Refresh from device"
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M3 8a5 5 0 0 1 9-3" />
+              <polyline points="12 2 12 5 9 5" />
+              <path d="M13 8a5 5 0 0 1-9 3" />
+              <polyline points="4 14 4 11 7 11" />
+            </svg>
+          </button>
+        </span>
+      </header>
+
+      {/* Inline loading progress — sits directly below the title row
+          using the shared .ac-page-progress strip. */}
+      {isLoading && loadingProgress !== null && (
+        <div className="ac-page-progress" role="status" aria-live="polite">
+          <div className="ac-page-progress-track">
+            <div
+              className="ac-page-progress-fill"
+              style={{ width: `${loadingProgress}%` }}
+            />
+          </div>
+          {loadingMessage && <span>{loadingMessage}</span>}
+        </div>
+      )}
 
       {/* Parts Grid — fixed-viewport contract: the card claims the
           remaining shell height via `.ac-page-shell-body > *`, the

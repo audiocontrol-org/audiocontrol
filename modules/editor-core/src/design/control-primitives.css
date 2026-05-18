@@ -364,3 +364,83 @@ button.ac-range-bar__enum-pip:hover:not(:disabled) {
   border-color: var(--ac-color-accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 25%, transparent);
 }
+
+/* =========================================================================
+ * TOGGLE — segmented control for small enumerated parameters.
+ *
+ * Two or more positions in a single horizontal pill, with the active
+ * option lit in the accent color. Native <input type="radio"> remain
+ * the keyboard/a11y target; the visible labels are <span> shells
+ * wrapped by per-option <label>.
+ *
+ * Use this instead of a <select> when a parameter has 2-4 discrete
+ * options (polarity, mode, etc.) — the click cost of a dropdown plus
+ * a menu is overkill, and a slider is semantically wrong for an enum.
+ * ========================================================================= */
+
+.ac-toggle {
+  display: inline-flex;
+  align-items: stretch;
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 70%, transparent);
+}
+
+.ac-toggle__option {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ac-space-2) var(--ac-space-4);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-toggle__option + .ac-toggle__option {
+  border-left: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+}
+
+.ac-toggle__option:hover:not([data-active]):not(:has(input:disabled)) {
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 60%, transparent);
+  color: var(--ac-color-text-primary);
+}
+
+.ac-toggle__option[data-active] {
+  background: color-mix(in srgb, var(--ac-color-accent) 14%, transparent);
+  color: var(--ac-color-accent);
+  box-shadow: inset 0 -2px 0 0 var(--ac-color-accent);
+}
+
+.ac-toggle__option:focus-within {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 40%, transparent);
+}
+
+.ac-toggle[data-disabled] .ac-toggle__option {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.ac-toggle__input {
+  /* Visually hidden but reachable by keyboard / screen readers. */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+

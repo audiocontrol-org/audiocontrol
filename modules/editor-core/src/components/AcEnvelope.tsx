@@ -49,10 +49,12 @@ export interface AcEnvelopeProps {
   onSustainChange?: (segmentIndex: number) => void;
   /** Called when the user picks an end segment from the meta pips. */
   onEndChange?: (segmentIndex: number) => void;
-  /** Called with (1-based segment index, time) when a per-segment time bar in the table is dragged or keyboarded. */
+  /** Called with (1-based segment index, time) when a per-segment time bar in the table is dragged or keyboarded, OR when an envelope-graph point is dragged horizontally. */
   onTimeChange?: (segmentIndex: number, time: number) => void;
-  /** Called with (1-based segment index, level) when a per-segment level bar in the table is dragged or keyboarded. */
+  /** Called with (1-based segment index, level) when a per-segment level bar in the table is dragged or keyboarded, OR when an envelope-graph point is dragged vertically. */
   onLevelChange?: (segmentIndex: number, level: number) => void;
+  /** Fired at the end of an envelope-graph drag (pointerup / cancel). Used by the consumer to perform the device write at drag-end instead of per move. */
+  onCommit?: () => void;
   /** Called when the user clicks the expand button. */
   onExpand?: () => void;
   /** Help text shown along the bottom of the graphic. */
@@ -91,11 +93,15 @@ export function AcEnvelope(props: AcEnvelopeProps): JSX.Element {
       <AcEnvelopeGraph
         label={props.label}
         segments={segments}
+        maxTime={maxTime}
         maxLevel={maxLevel}
         sustainSegment={sustainSegment}
         activeSegment={activeSegment}
         helpText={props.helpText}
         onPointSelect={props.onPointSelect}
+        onTimeChange={props.onTimeChange}
+        onLevelChange={props.onLevelChange}
+        onCommit={props.onCommit}
         onExpand={props.onExpand}
         disabled={disabled}
       />

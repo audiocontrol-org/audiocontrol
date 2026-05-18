@@ -1,13 +1,21 @@
 /**
  * Device Memory Panel
  *
- * Left panel showing tones and patches currently loaded on the device.
- * Tone slots are grouped according to the device's MemoryLayout
- * (e.g., one flat list for S-330, two blocks for S-550).
+ * Left column of the Library page — shows the tones and patches
+ * currently held in device RAM, grouped per the device's MemoryLayout.
  *
- * Supports drag and drop:
- * - Drag device items TO library to export
- * - Drop library items ON device slots to import
+ * Supports drag-and-drop in both directions:
+ *   - Drag a device tone / patch OUT to the library middle column to
+ *     export.
+ *   - Drop a library tone / patch ON a device slot to import to that
+ *     slot.
+ *   - Drop a library sample bundle ANYWHERE on the panel to open the
+ *     import-samples dialog.
+ *
+ * Uses the lean .ac-preview-pane chrome + .ac-list-* row primitives
+ * so the column visually matches PatchList / ToneList / the preview
+ * pane. Drag-state lives in `data-drag-over` on the row (and on the
+ * panel for the sample-bundle case).
  */
 
 import { useState, useCallback } from 'react';
@@ -19,9 +27,7 @@ import { PatchLabel } from '@/components/common/PatchLabel';
 import type { LibraryDragPayload } from '@/lib/library-drag-types';
 import { LIBRARY_ITEM_MIME } from '@/lib/library-drag-types';
 
-/**
- * Data transfer format for dragged device items.
- */
+/** Data transfer payload for items dragged out of the device. */
 export interface DeviceDragData {
   source: 'device';
   type: 'tone' | 'patch';
@@ -29,7 +35,7 @@ export interface DeviceDragData {
   name: string;
 }
 
-/** MIME type for device drag data */
+/** MIME type for device drag data. */
 export const DEVICE_DRAG_MIME = 'application/x-s330-device-item';
 
 interface DeviceMemoryPanelProps {
@@ -41,17 +47,8 @@ interface DeviceMemoryPanelProps {
   selectedType?: 'tone' | 'patch';
   onSelectTone: (index: number) => void;
   onSelectPatch: (index: number) => void;
-  /** Callback when a library tone is dropped on a device tone slot */
   onDropLibraryTone?: (data: LibraryDragPayload, targetSlot: number) => void;
-  /** Callback when a library patch is dropped on a device patch slot */
   onDropLibraryPatch?: (data: LibraryDragPayload, targetSlot: number) => void;
-  /**
-   * Callback when a library sample bundle is dropped anywhere on the panel.
-   * Sample-bundle imports occupy a range of tone slots + a wave-bank
-   * segment region, so the drop is panel-level (not slot-level) — the
-   * dialog opened by this callback (`ImportSamplesDialog`) is where the
-   * user chooses the starting tone slot, wave bank, and segment.
-   */
   onDropLibrarySample?: (data: LibraryDragPayload) => void;
 }
 
@@ -75,6 +72,7 @@ export function DeviceMemoryPanel({
   const [dragOverPatchSlot, setDragOverPatchSlot] = useState<number | null>(null);
   const [isSampleDragOver, setIsSampleDragOver] = useState(false);
 
+  // ---- Tone drag handlers ----------------------------------------
   const handleToneDragStart = useCallback(
     (e: React.DragEvent, index: number, tone: SamplerTone) => {
       const dragData: DeviceDragData = {
@@ -86,21 +84,7 @@ export function DeviceMemoryPanel({
       e.dataTransfer.setData(DEVICE_DRAG_MIME, JSON.stringify(dragData));
       e.dataTransfer.effectAllowed = 'copy';
     },
-    []
-  );
-
-  const handlePatchDragStart = useCallback(
-    (e: React.DragEvent, index: number, patch: SamplerPatch) => {
-      const dragData: DeviceDragData = {
-        source: 'device',
-        type: 'patch',
-        index,
-        name: patch.common.name || `Patch ${index + 1}`,
-      };
-      e.dataTransfer.setData(DEVICE_DRAG_MIME, JSON.stringify(dragData));
-      e.dataTransfer.effectAllowed = 'copy';
-    },
-    []
+    [],
   );
 
   const handleToneSlotDragOver = useCallback((e: React.DragEvent) => {
@@ -126,19 +110,30 @@ export function DeviceMemoryPanel({
   const handleToneSlotDrop = useCallback((e: React.DragEvent, index: number) => {
     e.preventDefault();
     setDragOverToneSlot(null);
-
     const jsonData = e.dataTransfer.getData(LIBRARY_ITEM_MIME);
     if (!jsonData) return;
-
     try {
       const data = JSON.parse(jsonData) as LibraryDragPayload;
-      if (data.nodeType === 'tone') {
-        onDropLibraryTone?.(data, index);
-      }
+      if (data.nodeType === 'tone') onDropLibraryTone?.(data, index);
     } catch (err) {
-      console.error('[DeviceMemoryPanel] Failed to parse drop data:', err);
+      console.error('[DeviceMemoryPanel] Failed to parse tone drop:', err);
     }
   }, [onDropLibraryTone]);
+
+  // ---- Patch drag handlers ---------------------------------------
+  const handlePatchDragStart = useCallback(
+    (e: React.DragEvent, index: number, patch: SamplerPatch) => {
+      const dragData: DeviceDragData = {
+        source: 'device',
+        type: 'patch',
+        index,
+        name: patch.common.name || `Patch ${index + 1}`,
+      };
+      e.dataTransfer.setData(DEVICE_DRAG_MIME, JSON.stringify(dragData));
+      e.dataTransfer.effectAllowed = 'copy';
+    },
+    [],
+  );
 
   const handlePatchSlotDragOver = useCallback((e: React.DragEvent) => {
     if (e.dataTransfer.types.includes(LIBRARY_ITEM_MIME)) {
@@ -163,31 +158,23 @@ export function DeviceMemoryPanel({
   const handlePatchSlotDrop = useCallback((e: React.DragEvent, index: number) => {
     e.preventDefault();
     setDragOverPatchSlot(null);
-
     const jsonData = e.dataTransfer.getData(LIBRARY_ITEM_MIME);
     if (!jsonData) return;
-
     try {
       const data = JSON.parse(jsonData) as LibraryDragPayload;
       if (data.nodeType === 'patch' || data.nodeType === 'drumKit') {
         onDropLibraryPatch?.(data, index);
       }
     } catch (err) {
-      console.error('[DeviceMemoryPanel] Failed to parse drop data:', err);
+      console.error('[DeviceMemoryPanel] Failed to parse patch drop:', err);
     }
   }, [onDropLibraryPatch]);
 
-  /**
-   * Panel-level drop handler for library samples. A sample bundle occupies
-   * a range of tone slots + a wave-bank segment region, so dropping on a
-   * single slot would be semantically misleading — the user picks the
-   * starting slot, wave bank, and segment inside `ImportSamplesDialog`
-   * after the bundle is loaded. We surface the panel-level affordance by
-   * checking the dragged item's typed MIME (`LIBRARY_ITEM_MIME` payload
-   * with `nodeType === 'sample'`) and lighting up the panel only for that
-   * exact case — sibling tone/patch slot drop handlers still own their
-   * own visuals via stopPropagation on drop and unique `nodeType` filters.
-   */
+  // ---- Panel-level sample-bundle drop ----------------------------
+  // A sample bundle occupies a range of tone slots + a wave-bank
+  // segment region; dropping on a single slot would be semantically
+  // misleading. The user picks the starting tone slot, wave bank, and
+  // segment inside `ImportSamplesDialog` after the bundle is loaded.
   const handlePanelSampleDragOver = useCallback((e: React.DragEvent) => {
     if (!onDropLibrarySample) return;
     if (!e.dataTransfer.types.includes(LIBRARY_ITEM_MIME)) return;
@@ -211,19 +198,21 @@ export function DeviceMemoryPanel({
     try {
       data = JSON.parse(jsonData) as LibraryDragPayload;
     } catch (err) {
-      console.error('[DeviceMemoryPanel] Failed to parse panel-level drop data:', err);
+      console.error('[DeviceMemoryPanel] Failed to parse panel-level drop:', err);
       return;
     }
-    // Only consume sample drops here; tone/patch drops are owned by the
-    // slot-level handlers above and reach the panel via event bubbling.
+    // Only consume sample drops here; tone/patch drops reach the
+    // panel via bubbling but the slot-level handlers already consumed
+    // them. Filter on nodeType to be explicit.
     if (data.nodeType !== 'sample') return;
     e.preventDefault();
     e.stopPropagation();
     onDropLibrarySample(data);
   }, [onDropLibrarySample]);
 
-  // Render a single tone slot row
-  const renderToneSlot = (index: number) => {
+  // ---- Renderers --------------------------------------------------
+
+  const renderToneSlot = (index: number): JSX.Element => {
     const tone = tones[index];
     const isSelected = selectedType === 'tone' && selectedIndex === index;
     const bankIndex = Math.floor(index / config.tonesPerBank);
@@ -233,143 +222,159 @@ export function DeviceMemoryPanel({
     return (
       <div
         key={index}
+        role="button"
+        tabIndex={0}
+        aria-selected={isSelected}
+        data-drag-over={isDragOver ? 'true' : undefined}
         onClick={() => onSelectTone(index)}
+        onKeyDown={(e) => e.key === 'Enter' && onSelectTone(index)}
         draggable={!!tone}
         onDragStart={tone ? (e) => handleToneDragStart(e, index, tone) : undefined}
         onDragOver={handleToneSlotDragOver}
         onDragEnter={(e) => handleToneSlotDragEnter(e, index)}
         onDragLeave={handleToneSlotDragLeave}
         onDrop={(e) => handleToneSlotDrop(e, index)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => e.key === 'Enter' && onSelectTone(index)}
         className={cn(
-          'w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
-          'flex items-center gap-2',
-          isDragOver
-            ? 'bg-s330-highlight/30 ring-2 ring-s330-highlight ring-inset'
-            : isSelected
-              ? 'bg-s330-highlight/20 text-s330-highlight'
-              : tone
-                ? 'text-s330-text hover:bg-s330-accent/30 cursor-grab active:cursor-grabbing'
-                : 'text-s330-muted/50 hover:bg-s330-accent/20'
+          'ac-device-memory-row',
+          tone && 'ac-device-memory-row--draggable',
         )}
       >
-        <span className="w-8 text-xs font-mono text-s330-muted">
-          {memoryLayout.formatToneSlot(index)}
-        </span>
-        <span className={cn('flex-1 truncate', !tone && 'italic')}>
-          {isDragOver ? 'Drop to import here' : tone?.name || (isLoaded ? '(empty)' : '(not loaded)')}
+        <span className="ac-list-slot">{memoryLayout.formatToneSlot(index)}</span>
+        <span className="ac-list-info">
+          <span
+            className={cn(
+              'ac-list-name',
+              !tone && !isLoaded && 'ac-list-name--placeholder',
+              !tone && isLoaded && 'ac-list-name--empty',
+            )}
+          >
+            {isDragOver
+              ? 'Drop to import'
+              : tone?.name || (isLoaded ? '' : '')}
+          </span>
+          {!tone && !isLoaded && !isDragOver && (
+            <span className="ac-list-eyebrow">click to load</span>
+          )}
         </span>
         {tone && !isDragOver && (
-          <span className="text-xs text-s330-muted">
-            {tone.sampleRate}
-          </span>
+          <span className="ac-list-meta">{tone.sampleRate}</span>
         )}
       </div>
     );
   };
 
-  // Render a tone group (one section with header + slots)
-  const renderToneGroup = (group: ToneSlotGroup, groupIndex: number) => {
+  const renderToneGroup = (group: ToneSlotGroup, groupIndex: number): JSX.Element => {
     const indices = Array.from({ length: group.count }, (_, i) => group.firstIndex + i);
-
     return (
-      <div key={groupIndex} className={cn(groupIndex > 0 && 'border-t border-s330-accent/30')}>
-        <div className="text-xs font-medium text-s330-muted uppercase tracking-wide px-4 py-2 border-b border-s330-accent/30">
-          {group.label}
+      <div key={groupIndex}>
+        <div className="ac-list-bank-header">
+          <span>{group.label}</span>
         </div>
-        <div className="p-2">
-          <div className="space-y-0.5">
-            {indices.map(renderToneSlot)}
-          </div>
-        </div>
+        {indices.map(renderToneSlot)}
       </div>
     );
   };
+
+  const renderPatchSlot = (index: number): JSX.Element => {
+    const patch = patches[index];
+    const isSelected = selectedType === 'patch' && selectedIndex === index;
+    const bankIndex = Math.floor(index / config.patchesPerBank);
+    const isLoaded = loadedPatchBanks.includes(bankIndex);
+    const isDragOver = dragOverPatchSlot === index;
+
+    return (
+      <div
+        key={index}
+        role="button"
+        tabIndex={0}
+        aria-selected={isSelected}
+        data-drag-over={isDragOver ? 'true' : undefined}
+        onClick={() => onSelectPatch(index)}
+        onKeyDown={(e) => e.key === 'Enter' && onSelectPatch(index)}
+        draggable={!!patch}
+        onDragStart={patch ? (e) => handlePatchDragStart(e, index, patch) : undefined}
+        onDragOver={handlePatchSlotDragOver}
+        onDragEnter={(e) => handlePatchSlotDragEnter(e, index)}
+        onDragLeave={handlePatchSlotDragLeave}
+        onDrop={(e) => handlePatchSlotDrop(e, index)}
+        className={cn(
+          'ac-device-memory-row',
+          'ac-device-memory-row--patch',
+          patch && 'ac-device-memory-row--draggable',
+        )}
+      >
+        <PatchLabel
+          index={index}
+          memoryLayout={memoryLayout}
+          className="ac-list-slot"
+        />
+        <span className="ac-list-info">
+          <span
+            className={cn(
+              'ac-list-name',
+              !patch && !isLoaded && 'ac-list-name--placeholder',
+              !patch && isLoaded && 'ac-list-name--empty',
+            )}
+          >
+            {isDragOver
+              ? 'Drop to import'
+              : patch?.common.name || (isLoaded ? '' : '')}
+          </span>
+          {!patch && !isLoaded && !isDragOver && (
+            <span className="ac-list-eyebrow">click to load</span>
+          )}
+        </span>
+      </div>
+    );
+  };
+
+  const loadedToneCount = tones.filter(Boolean).length;
+  const loadedPatchCount = patches.filter(Boolean).length;
 
   return (
     <div
-      className={cn(
-        'h-full flex flex-col transition-colors',
-        isSampleDragOver && 'ring-2 ring-s330-highlight ring-inset bg-s330-highlight/10',
-      )}
+      className={cn('ac-preview-pane', 'ac-device-memory-panel')}
       role="region"
       aria-label="Device memory panel — drop library samples to import"
       data-capability="C-LIB-02"
+      data-sample-drag-over={isSampleDragOver ? 'true' : undefined}
       onDragOver={handlePanelSampleDragOver}
       onDragLeave={handlePanelSampleDragLeave}
       onDrop={handlePanelSampleDrop}
     >
-      {/* Header */}
-      <div className="p-3 border-b border-s330-accent">
-        <h3 className="font-bold text-s330-text">Device Memory</h3>
-        <p className="text-xs text-s330-muted mt-1">
+      <header className="ac-preview-pane-head">
+        <h3 className="ac-preview-pane-head-title">Device Memory</h3>
+        <span className="ac-preview-pane-head-sub">
           {isSampleDragOver
-            ? 'Drop sample bundle to open Import Samples dialog'
-            : `${tones.filter(Boolean).length} tones, ${patches.filter(Boolean).length} patches`}
-        </p>
-      </div>
+            ? 'Drop sample bundle to import…'
+            : `${loadedToneCount} tones, ${loadedPatchCount} patches`}
+        </span>
+      </header>
 
-      {/* Tones + Patches in independent scroll panes */}
-      <div className="flex-1 flex flex-col min-h-0">
-        {/* Tones Section */}
-        <div className="flex-1 min-h-0 flex flex-col">
-          <div className="flex-1 overflow-y-auto">
+      <div className="ac-preview-pane-body" style={{ padding: 0, gap: 0 }}>
+        {/* Tones — one or more groups (S-330: 1 group, S-550: multiple). */}
+        <div className="ac-list" style={{ borderRadius: 0, border: 'none', flex: '1 1 auto' }}>
+          <div className="ac-list-scroll">
             {memoryLayout.toneGroups.map(renderToneGroup)}
           </div>
         </div>
 
-        {/* Patches Section */}
-        <div className="flex-1 min-h-0 flex flex-col border-t border-s330-accent">
-          <div className="text-xs font-medium text-s330-muted uppercase tracking-wide px-4 py-2 border-b border-s330-accent/30">
-            {memoryLayout.patchSectionLabel}
-          </div>
-          <div className="flex-1 overflow-y-auto p-2">
-            <div className="space-y-0.5">
-              {Array.from({ length: config.totalPatches }, (_, index) => {
-                const patch = patches[index];
-                const isSelected = selectedType === 'patch' && selectedIndex === index;
-                const bankIndex = Math.floor(index / config.patchesPerBank);
-                const isLoaded = loadedPatchBanks.includes(bankIndex);
-                const isDragOver = dragOverPatchSlot === index;
-
-                return (
-                  <div
-                    key={index}
-                    onClick={() => onSelectPatch(index)}
-                    draggable={!!patch}
-                    onDragStart={patch ? (e) => handlePatchDragStart(e, index, patch) : undefined}
-                    onDragOver={handlePatchSlotDragOver}
-                    onDragEnter={(e) => handlePatchSlotDragEnter(e, index)}
-                    onDragLeave={handlePatchSlotDragLeave}
-                    onDrop={(e) => handlePatchSlotDrop(e, index)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && onSelectPatch(index)}
-                    className={cn(
-                      'w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
-                      'flex items-center gap-2',
-                      isDragOver
-                        ? 'bg-s330-highlight/30 ring-2 ring-s330-highlight ring-inset'
-                        : isSelected
-                          ? 'bg-s330-highlight/20 text-s330-highlight'
-                          : patch
-                            ? 'text-s330-text hover:bg-s330-accent/30 cursor-grab active:cursor-grabbing'
-                            : 'text-s330-muted/50 hover:bg-s330-accent/20'
-                    )}
-                  >
-                    <PatchLabel
-                      index={index}
-                      memoryLayout={memoryLayout}
-                      className="w-8 text-xs text-s330-muted"
-                    />
-                    <span className={cn('flex-1 truncate', !patch && 'italic')}>
-                      {isDragOver ? 'Drop to import here' : patch?.common.name || (isLoaded ? '(empty)' : '(not loaded)')}
-                    </span>
-                  </div>
-                );
-              })}
+        {/* Patches — single section. */}
+        <div
+          className="ac-list"
+          style={{
+            borderRadius: 0,
+            border: 'none',
+            borderTop: 'var(--ac-rule-hairline) solid var(--ac-color-border-subtle)',
+            flex: '1 1 auto',
+          }}
+        >
+          <div className="ac-list-scroll">
+            <div>
+              <div className="ac-list-bank-header">
+                <span>{memoryLayout.patchSectionLabel}</span>
+              </div>
+              {Array.from({ length: config.totalPatches }, (_, i) => renderPatchSlot(i))}
             </div>
           </div>
         </div>

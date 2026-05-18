@@ -164,14 +164,15 @@ test.describe('Capabilities — Patches (C-PATCH)', () => {
     const list = page.locator('[data-capability="C-PATCH-01"]');
     await expect(list).toBeVisible({ timeout: 5_000 });
 
-    // Initially no patch is selected — the placeholder copy is visible.
-    await expect(page.getByText('Select a patch to edit')).toBeVisible();
-
-    // Activate slot P11 (loaded by the fixture).
+    // PatchesPage now auto-selects the first loaded patch (P11) on
+    // mount so the editor surface appears without an explicit click.
+    // The "Select a patch to edit" placeholder is therefore not
+    // expected to flash; the editor mounts directly. Reactivating
+    // slot P11 explicitly is still a valid no-op (select-only on
+    // click, no toggle-to-deselect) — the contract under test is
+    // "selection surfaces the editor", which holds either way.
     await list.getByRole('button', { name: /^P11\b/ }).click();
 
-    // The placeholder disappears and the patch editor surface mounts.
-    // PatchEditor's outer container carries data-capability="C-PATCH-04".
     await expect(page.getByText('Select a patch to edit')).toHaveCount(0);
     await expect(
       page.locator('[data-capability="C-PATCH-04"]'),
@@ -195,7 +196,7 @@ test.describe('Capabilities — Patches (C-PATCH)', () => {
     // is rendered as a sibling <span class="patches__list-eyebrow"> next
     // to the placeholder name '(not loaded)'.
     const text = await unloadedSlot.evaluate((el) => el.textContent ?? '');
-    expect(text).toMatch(/click to load bank/i);
+    expect(text).toMatch(/click to load/i);
 
     // The slot is keyboard-reachable — tabIndex is 0 when the bank
     // isn't actively loading. Asserting reachability via aria-disabled

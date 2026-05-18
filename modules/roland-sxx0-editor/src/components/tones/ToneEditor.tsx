@@ -33,10 +33,9 @@ import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { ToneEditorHead } from './ToneEditorHead';
 import { ToneEditorTabs } from './ToneEditorTabs';
 import { ToneWavePanel } from './panels/ToneWavePanel';
-import { TonePitchPanel } from './panels/TonePitchPanel';
+import { TonePitchLfoPanel } from './panels/TonePitchLfoPanel';
 import { ToneFilterPanel } from './panels/ToneFilterPanel';
 import { ToneAmpPanel } from './panels/ToneAmpPanel';
-import { ToneLfoPanel } from './panels/ToneLfoPanel';
 
 interface ToneEditorProps {
   tone: SamplerTone;
@@ -127,17 +126,14 @@ export function ToneEditor({
                 loopEditorProps={loopEditorProps}
               />
             ),
-            'tt-pitch': (
-              <TonePitchPanel tone={tone} onUpdate={onUpdate} onCommit={onCommit} />
+            'tt-pitch-lfo': (
+              <TonePitchLfoPanel tone={tone} onUpdate={onUpdate} onCommit={onCommit} />
             ),
             'tt-filter': (
               <ToneFilterPanel tone={tone} onUpdate={onUpdate} onCommit={onCommit} />
             ),
             'tt-amp': (
               <ToneAmpPanel tone={tone} onUpdate={onUpdate} onCommit={onCommit} />
-            ),
-            'tt-lfo': (
-              <ToneLfoPanel tone={tone} onUpdate={onUpdate} onCommit={onCommit} />
             ),
           }}
         />

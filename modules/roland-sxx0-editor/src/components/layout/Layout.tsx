@@ -95,7 +95,7 @@ function DrawerToggle({ isOpen, drawerWidth, topPx, deviceName, onToggle }: Draw
         'transition-[left] duration-200 ease-in-out'
       )}
       style={{
-        top: topPx !== null ? `${Math.round(topPx)}px` : 'var(--ac-page-content-top)',
+        top: topPx !== null ? `${Math.round(topPx)}px` : 'var(--ac-page-title-top)',
         left: isOpen ? `${drawerWidth - 1}px` : '0px',
       }}
       title={isOpen ? `Close ${deviceName} display` : `Open ${deviceName} display`}
@@ -133,7 +133,11 @@ interface DrawerProps {
 }
 
 function Drawer({ isOpen, width, isResizing, onResizeStart }: DrawerProps): JSX.Element {
-  const drawerTop = 'calc(var(--ac-page-content-top) - var(--ac-page-space))';
+  // Drawer's interior aligns with the page-title row's top edge so the
+  // CRT image, the collapse-tab, and the h2 page header all share a
+  // baseline. --ac-page-title-top encodes that anchor (site header
+  // height + site-main's top padding).
+  const drawerTop = 'var(--ac-page-title-top)';
 
   return (
     <aside
@@ -222,7 +226,13 @@ export function Layout({ children }: LayoutProps): JSX.Element {
     if (!root) return;
 
     const updateToggleTop = () => {
-      const target = root.querySelector<HTMLElement>('.ac-list-detail-grid .card, .card');
+      // Prefer the lean page-title row as the alignment anchor so the
+      // collapse-tab tracks the h2 page header exactly. Falls back to
+      // legacy `.card` placeholders (e.g. the "not connected" empty
+      // state) for pages that haven't adopted the title-row chrome.
+      const target = root.querySelector<HTMLElement>(
+        '.ac-page-title-row, .ac-list-detail-grid .card, .card',
+      );
       if (!target) return;
 
       setDrawerToggleTopPx(target.getBoundingClientRect().top);

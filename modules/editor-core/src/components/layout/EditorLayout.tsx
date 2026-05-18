@@ -135,11 +135,11 @@ export function PanicButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="ac-btn ac-btn-sm"
+      className="ac-toolbar-btn ac-toolbar-btn--danger"
       title={disabled ? 'Connect to MIDI to enable' : title}
     >
-      <svg className="ac-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
       </svg>
       <span className="ac-hide-narrow">All Notes Off</span>
     </button>

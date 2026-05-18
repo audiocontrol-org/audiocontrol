@@ -1,7 +1,13 @@
 ---
 deskwork:
   id: 6b7fc78b-5954-4b34-9d0c-6d5e6ef2596c
+mothballed: 2026-05-17
 ---
+
+> **⚠ MOTHBALLED 2026-05-17.** This document and its companion [`ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md`](ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md) are no longer the working source of truth for editor capabilities. The capability-inventory / four-tier coverage / sign-off process built around them is paused. Operator decision: post-redesign regressions will be fixed directly, in real time, without routing through this inventory or its coverage manifest. The content below is preserved for reference only; do not treat any row, ID, or status here as binding on current work. The Phase 9 Remediation Plan (9R-A / 9R-B / 9R-C / 9R-D) in [`docs/1.0/001-IN-PROGRESS/s550-support/workplan.md`](docs/1.0/001-IN-PROGRESS/s550-support/workplan.md) is mothballed in the same decision.
+
+---
+
 # Roland S-330/S-550 Editor — Canonical Capabilities
 
 **This document is the source of truth for what the editor UI MUST afford.**

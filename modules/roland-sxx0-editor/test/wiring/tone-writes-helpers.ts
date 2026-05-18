@@ -93,10 +93,10 @@ export async function expectFixtureFullyConsumed(page: Page): Promise<void> {
 }
 
 /** Tab IDs used by the CSS-only radio-tab shell in ToneEditorTabs.tsx. */
-export type ToneTabId = 'tt-wave' | 'tt-pitch' | 'tt-filter' | 'tt-amp' | 'tt-lfo';
+export type ToneTabId = 'tt-wave' | 'tt-pitch-lfo' | 'tt-filter' | 'tt-amp';
 
 /** Tab display names — used to click the matching label via `role="tab"`. */
-export type ToneTabName = 'Wave' | 'Pitch' | 'Filter' | 'Amp' | 'LFO';
+export type ToneTabName = 'Wave' | 'Pitch & LFO' | 'Filter' | 'Amp';
 
 /** Build the test URL for a tone-write capability scenario. */
 export function tonesUrl(scenario: string): string {
@@ -121,15 +121,23 @@ export async function openTone0Editor(page: Page): Promise<Locator> {
 /**
  * Switch the tone editor's tab strip to a named tab. The tab labels
  * carry role="tab"; clicking a label flips the matching hidden radio
- * input which reveals the panel via CSS. Wave is the default; Pitch /
- * Filter / Amp / LFO need an explicit switch.
+ * input which reveals the panel via CSS. Wave is the default; the
+ * other three tabs ("Pitch & LFO" / Filter / Amp) need an explicit
+ * switch.
  */
+const TAB_ID_BY_NAME: Record<ToneTabName, ToneTabId> = {
+  'Wave': 'tt-wave',
+  'Pitch & LFO': 'tt-pitch-lfo',
+  'Filter': 'tt-filter',
+  'Amp': 'tt-amp',
+};
+
 export async function switchToToneTab(
   page: Page,
   name: ToneTabName,
 ): Promise<void> {
   await page.getByRole('tab', { name }).click();
-  const tabId: ToneTabId = `tt-${name.toLowerCase()}` as ToneTabId;
+  const tabId = TAB_ID_BY_NAME[name];
   await expect(page.locator(`[data-tab="${tabId}"]`)).toBeVisible({ timeout: 2_000 });
 }
 

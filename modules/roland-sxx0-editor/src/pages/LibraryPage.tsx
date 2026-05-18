@@ -370,19 +370,61 @@ export function LibraryPage() {
 
   return (
     <div className="ac-page ac-page-shell ac-page-shell--fixed-viewport">
-      <div className="ac-page-sticky-header">
-        <div className="ac-page-header">
-          <div className="flex items-center gap-4">
-            <h2 className="text-xl font-bold text-s330-text">Library</h2>
-            <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 cursor-help" title="This feature is still being designed and not all the wrinkles have been smoothed out yet.">Experimental</span>
+      {/* Lean page header — h2 + experimental badge + red rule, with
+          page-level actions on the right. Same .ac-page-title-row
+          primitive PatchesPage / TonesPage / PlayPage use. Replaces the
+          legacy .ac-page-sticky-header chrome whose negative inline
+          margins overlap the VideoCapture drawer + the library browser
+          column headers. */}
+      <header className="ac-page-title-row">
+        <div className="ac-page-title-block">
+          <div className="ac-page-title-heading-row">
+            <h2 id="library-heading" className="ac-page-title-heading">Library</h2>
+            <span
+              className="ac-page-title-tag ac-page-title-tag--warn"
+              title="This feature is still being designed and not all the wrinkles have been smoothed out yet."
+            >
+              Experimental
+            </span>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={handleLoadDeviceData} disabled={isLoading} className={cn('ac-btn ac-btn-sm ac-btn-secondary', isLoading && 'opacity-50')}>Refresh Device</button>
-            <button onClick={importDialogs.handleOpenSaveDialog} disabled={!libraryHandle || isLoading} data-testid="save-set-button" className={cn('ac-btn ac-btn-sm ac-btn-primary', (!libraryHandle || isLoading) && 'opacity-50')}>Save to Library...</button>
-            <button onClick={importDialogs.handleOpenLoadDialog} disabled={!libraryHandle || !selection || selection.type !== 'set'} data-testid="load-set-button" className={cn('ac-btn ac-btn-sm ac-btn-secondary', (!libraryHandle || !selection || selection.type !== 'set') && 'opacity-50')}>Load Selected Set</button>
-          </div>
+          <div className="ac-page-title-rule" aria-hidden="true" />
         </div>
-      </div>
+        <div className="ac-page-title-actions">
+          <button
+            type="button"
+            onClick={handleLoadDeviceData}
+            disabled={isLoading}
+            className={cn('ac-icon-btn', isLoading && 'ac-icon-btn--spinning')}
+            aria-label="Refresh device data"
+            title="Refresh device data"
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M3 8a5 5 0 0 1 9-3" />
+              <polyline points="12 2 12 5 9 5" />
+              <path d="M13 8a5 5 0 0 1-9 3" />
+              <polyline points="4 14 4 11 7 11" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            onClick={importDialogs.handleOpenSaveDialog}
+            disabled={!libraryHandle || isLoading}
+            data-testid="save-set-button"
+            className="ac-pane-action ac-pane-action--primary"
+          >
+            Save to Library…
+          </button>
+          <button
+            type="button"
+            onClick={importDialogs.handleOpenLoadDialog}
+            disabled={!libraryHandle || !selection || selection.type !== 'set'}
+            data-testid="load-set-button"
+            className="ac-pane-action"
+          >
+            Load Selected Set
+          </button>
+        </div>
+      </header>
 
       {error && (<div className="ac-alert ac-alert-error"><p className="ac-text-error text-sm">{error}</p></div>)}
 

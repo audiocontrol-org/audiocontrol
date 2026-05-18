@@ -16,6 +16,11 @@ export {
 } from './AcRangeBar';
 export { AcSlider, type AcSliderProps } from './AcSlider';
 export {
+  AcToggle,
+  type AcToggleProps,
+  type AcToggleOption,
+} from './AcToggle';
+export {
   AcNumberInput,
   type AcNumberInputProps,
   type AcNumberInputReadProps,

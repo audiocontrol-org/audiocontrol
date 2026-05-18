@@ -18,7 +18,7 @@
  * invalid HTML — same workaround documented in PatchList.tsx.
  */
 
-import type { KeyboardEvent } from 'react';
+import { useState, type KeyboardEvent } from 'react';
 
 import type { SamplerTone } from '@/core/midi/SamplerClient';
 import { cn } from '@/lib/utils';
@@ -38,6 +38,9 @@ interface ToneListProps {
   loadingBank?: number | null;
   /** Called when user clicks an unloaded tone to load its bank */
   onLoadBank?: (bankIndex: number) => void;
+  /** Called when user clicks the per-bank reload button. Re-fetches
+   *  the entire bank from the device, invalidating the cache. */
+  onReloadBank?: (bankIndex: number) => void;
   /** Called when user clicks export on a tone */
   onExportTone?: (index: number) => void;
   /** Whether library export is available (library connected) */
@@ -52,6 +55,7 @@ export function ToneList({
   tonesPerBank,
   loadingBank,
   onLoadBank,
+  onReloadBank,
   onExportTone,
   canExportToLibrary = false,
 }: ToneListProps) {
@@ -59,6 +63,20 @@ export function ToneList({
 
   // Group rows by bank so we can emit a sticky bank header before each.
   const totalBanks = Math.ceil(tones.length / tonesPerBank);
+
+  // Per-bank collapse state. Default: every bank expanded. Operator
+  // clicks the bank header chevron-button to toggle. State is
+  // component-local (not persisted across navigations) — kept simple
+  // until we hear the operator wants persistence.
+  const [collapsedBanks, setCollapsedBanks] = useState<Set<number>>(() => new Set());
+  const toggleBank = (i: number): void => {
+    setCollapsedBanks((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  };
 
   return (
     <aside
@@ -72,15 +90,68 @@ export function ToneList({
           const bankEnd = Math.min(bankStart + tonesPerBank, tones.length);
           const firstSlotLabel = memoryLayout.formatToneSlot(bankStart);
           const lastSlotLabel = memoryLayout.formatToneSlot(bankEnd - 1);
+          const isCollapsed = collapsedBanks.has(bankIndex);
+          // A bank counts as "loaded" if at least one slot in its range
+          // has data. The reload-icon affordance renders for every
+          // bank regardless of state — for unloaded banks it acts as
+          // "load this bank", for loaded banks it re-fetches.
+          // forceReload=true in the handler works in both cases.
+          const isBankLoaded = tones
+            .slice(bankStart, bankEnd)
+            .some((t) => t !== undefined);
+          const isThisBankLoading = loadingBank === bankIndex;
 
           return (
             <div key={`bank-${bankIndex}`} data-bank-index={bankIndex}>
               <div className="ac-list-bank-header">
-                <span>Group {bankIndex + 1}</span>
-                <strong>{firstSlotLabel}–{lastSlotLabel}</strong>
+                <button
+                  type="button"
+                  className="ac-list-bank-toggle"
+                  onClick={() => toggleBank(bankIndex)}
+                  aria-expanded={!isCollapsed}
+                  aria-label={`Toggle bank ${bankIndex + 1}`}
+                  data-testid={`tone-bank-toggle-${bankIndex}`}
+                >
+                  <span className="ac-list-bank-chevron" aria-hidden="true">
+                    {isCollapsed ? '▸' : '▾'}
+                  </span>
+                  <span>Bank {bankIndex + 1}</span>
+                </button>
+                <span className="ac-list-bank-meta">
+                  <strong>{firstSlotLabel}–{lastSlotLabel}</strong>
+                  {onReloadBank && (
+                    <button
+                      type="button"
+                      className={cn(
+                        'ac-list-bank-reload',
+                        isThisBankLoading && 'ac-list-bank-reload--spinning',
+                      )}
+                      onClick={() => onReloadBank(bankIndex)}
+                      disabled={isThisBankLoading}
+                      aria-label={
+                        isBankLoaded
+                          ? `Reload bank ${bankIndex + 1}`
+                          : `Load bank ${bankIndex + 1}`
+                      }
+                      title={
+                        isBankLoaded
+                          ? `Reload bank ${bankIndex + 1}`
+                          : `Load bank ${bankIndex + 1}`
+                      }
+                      data-testid={`tone-bank-reload-${bankIndex}`}
+                    >
+                      <svg viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="M3 8a5 5 0 0 1 9-3" />
+                        <polyline points="12 2 12 5 9 5" />
+                        <path d="M13 8a5 5 0 0 1-9 3" />
+                        <polyline points="4 14 4 11 7 11" />
+                      </svg>
+                    </button>
+                  )}
+                </span>
               </div>
 
-              {tones.slice(bankStart, bankEnd).map((tone, offset) => {
+              {!isCollapsed && tones.slice(bankStart, bankEnd).map((tone, offset) => {
                 const index = bankStart + offset;
                 const isLoaded = tone !== undefined;
                 const isEmpty = isLoaded && isToneEmpty(tone);
@@ -94,7 +165,12 @@ export function ToneList({
 
                 const handleClick = () => {
                   if (isLoaded) {
-                    onSelect(isSelected ? null : index);
+                    // Select-only: clicking an already-selected row is a
+                    // no-op (no toggle-to-deselect). The operator should
+                    // always have a tone selected so the editor stays
+                    // mounted; null selection happens only when the page
+                    // first mounts before any data is loaded.
+                    onSelect(index);
                   } else if (!isBankLoading && onLoadBank) {
                     onLoadBank(slotBank);
                   }
@@ -113,13 +189,28 @@ export function ToneList({
                   }
                 };
 
+                // Display rules:
+                //   - bank loading:  '(loading...)'
+                //   - not loaded:    '' (the eyebrow below renders
+                //                       "click to load bank" — the
+                //                       row already communicates the
+                //                       state without a duplicate
+                //                       placeholder string)
+                //   - loaded named:  the actual name
+                //   - loaded blank:  '' (no parenthesized placeholder;
+                //                       the silence reads as "no
+                //                       content here", and the
+                //                       `--empty` styling on the row
+                //                       still conveys the "no wave"
+                //                       state visually).
+                // Name and wave-data state are independent — a slot
+                // can hold a name with no wave (operator typed a name
+                // before importing a sample) or vice versa.
                 const displayName = isBankLoading
                   ? '(loading...)'
-                  : !isLoaded
-                    ? '(not loaded)'
-                    : isEmpty
-                      ? '(unnamed)'
-                      : tone.name;
+                  : isLoaded
+                    ? tone.name
+                    : '';
 
                 const nameClass = !isLoaded
                   ? 'ac-list-name ac-list-name--placeholder'
@@ -151,7 +242,7 @@ export function ToneList({
                       </span>
                       {!isLoaded && !isBankLoading && (
                         <span className="ac-list-eyebrow">
-                          click to load bank
+                          click to load
                         </span>
                       )}
                     </span>

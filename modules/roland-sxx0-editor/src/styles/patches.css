@@ -141,75 +141,11 @@
   overflow-y: auto;
 }
 
-/* ============================================================
-   APP SHELL — list (column 1) + detail (column 2).
-   The mockup also reserves a CRT/front-panel column on the right; that
-   is a cross-page concern (every editor page mounts the virtual front
-   panel beneath the CRT) and lands in a separate commit so this file
-   stays focused on the patches surface.
-   ============================================================ */
-.patches__app-shell {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--ac-space-6);
-  padding-block: var(--ac-space-5) 0;
-  /*
-   * Height-containment contract: when the parent .ac-page-shell carries
-   * --fixed-viewport, the parent is a flex column and this child claims
-   * `flex: 1; min-height: 0` to consume the remaining vertical space.
-   * `overflow: hidden` clips any column that fails its own min-height: 0
-   * instead of letting the shell grow past the bounded parent.
-   */
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
-}
-
-@media (min-width: 1024px) {
-  .patches__app-shell {
-    grid-template-columns: 22rem minmax(0, 1fr);
-    align-items: stretch;
-  }
-}
-
-/*
- * List + detail columns inside the fixed-viewport shell. The list pane
- * is the `.ac-list` container (see ac-list-scroll inside it); the
- * detail pane is `.patches__detail`. Both need min-height: 0 so they
- * shrink to the grid track, and an overflow-y that lets their content
- * scroll internally (`.ac-list-scroll` already declares overflow-y on
- * the inner pane; the detail body already declares overflow-y too —
- * the outer column just needs to clip its own children).
+/* App shell + loading progress moved to shared primitives:
+ *   - .ac-app-shell (editor-core/src/design/layout-primitives.css)
+ *   - .ac-page-progress (roland-sxx0-editor/src/styles/_shared.css)
+ * Previously this page had its own `.patches__app-shell` with a 22rem
+ * list column while TonesPage had `.tones__app-shell` with a 14rem
+ * list column; the drift produced a visible width mismatch between
+ * the two pages.
  */
-.patches__app-shell > .ac-list,
-.patches__app-shell > .patches__detail {
-  min-height: 0;
-  height: 100%;
-  overflow: hidden;
-}
-
-/* Loading progress bar — replaces the inline progress in the toolbar. */
-.patches__progress {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ac-space-1);
-  font-family: var(--ac-font-mono);
-  font-size: var(--ac-text-xs);
-  color: var(--ac-color-text-muted);
-}
-
-.patches__progress-track {
-  position: relative;
-  height: 0.25rem;
-  background: var(--ac-color-surface-canvas);
-  border-radius: var(--ac-radius-sm);
-  overflow: hidden;
-}
-
-.patches__progress-fill {
-  position: absolute;
-  inset: 0;
-  background: var(--ac-color-accent);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
-  transition: width var(--ac-duration-normal) var(--ac-easing-default);
-}

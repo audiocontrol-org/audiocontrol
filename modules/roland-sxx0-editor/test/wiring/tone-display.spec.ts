@@ -80,24 +80,19 @@ test.describe('Capabilities — Tone display (D-TONE)', () => {
   });
 
   test('D-TONE-PITCH-01: Transpose slider is visible but disabled', async ({ page }) => {
-    // The Pitch tab is not active by default — switch to it. The
-    // ToneEditorTabs use CSS-only radio tabs (TonesEditor.tsx); the
-    // helper in tone-writes-helpers.ts clicks the label by role 'tab'.
-    await page.getByRole('tab', { name: 'Pitch' }).click();
+    // Pitch + LFO are now merged into the "Pitch & LFO" tab. The
+    // Transpose row still renders via ParamSliderRow inside that tab
+    // and remains disabled until the device-side transpose contract is
+    // wired (the `disabled` prop on the row passes through to the
+    // editable AcNumberInput).
+    await page.getByRole('tab', { name: 'Pitch & LFO' }).click();
 
-    // Phase 9 Task 4 TonesPage amend: TonePitchPanel.tsx now renders
-    // the Transpose row via ParamSliderRow (AcSlider + AcNumberInput
-    // editable). The "Transpose" label is visible; the focusable
-    // affordance is the AcNumberInput's `<input type="number">`. The
-    // disabled-on-keyboard contract is enforced by the input's
-    // `disabled` attribute (HTML, not Radix). Assert the input under
-    // the param-transpose wrapper is disabled.
     await expect(
       page.getByText('Transpose', { exact: true }),
     ).toBeVisible({ timeout: 5_000 });
 
-    const pitchPanel = page.locator('[data-tab="tt-pitch"]');
-    const transposeWrapper = pitchPanel.getByTestId('param-transpose');
+    const panel = page.locator('[data-tab="tt-pitch-lfo"]');
+    const transposeWrapper = panel.getByTestId('param-transpose');
     await expect(transposeWrapper).toBeVisible();
     const transposeInput = transposeWrapper
       .locator('input[type="number"]')
@@ -105,28 +100,29 @@ test.describe('Capabilities — Tone display (D-TONE)', () => {
     await expect(transposeInput).toBeDisabled();
   });
 
-  test('D-TONE-LFO-05: LFO Mode renders as a read-only label/value pair', async ({ page }) => {
-    // Switch to the LFO tab — ToneLfoPanel.tsx:53-58 renders the
-    // field as a <label> + <div>{tone.lfo.mode}</div>. No edit control.
-    await page.getByRole('tab', { name: 'LFO' }).click();
+  test('D-TONE-LFO-05: LFO Mode is an interactive Normal/One-Shot toggle', async ({ page }) => {
+    // LFO Mode is now an AcToggle with two options (normal / one-shot).
+    // The previous display-only label/value was tagged "remediate to a
+    // real control or remove"; this spec asserts the remediation. The
+    // tab is now combined "Pitch & LFO".
+    await page.getByRole('tab', { name: 'Pitch & LFO' }).click();
 
-    const lfoPanel = page.locator('[data-tab="tt-lfo"]');
-    await expect(lfoPanel.getByText('Mode', { exact: true })).toBeVisible({
+    const panel = page.locator('[data-tab="tt-pitch-lfo"]');
+    // Both option labels are reachable inside the panel.
+    await expect(panel.getByTestId('tone-lfo-mode-normal')).toBeVisible({
       timeout: 5_000,
     });
+    await expect(panel.getByTestId('tone-lfo-mode-one-shot')).toBeVisible();
 
-    const modeBlock = lfoPanel
-      .getByText('Mode', { exact: true })
-      .locator('xpath=ancestor::div[1]');
-    // No select / input inside the block — read-only.
-    await expect(modeBlock.locator('select')).toHaveCount(0);
-    await expect(modeBlock.locator('input')).toHaveCount(0);
-
-    // The mode is one of the SamplerTone['lfo']['mode'] values.
-    // The captured tone surfaces the device's actual value; the
-    // assertion is that some non-empty string follows 'Mode'.
-    const text = await modeBlock.textContent();
-    expect(text).toMatch(/Mode\s*\S+/i);
+    // Exactly one option is marked active at any time.
+    const normalActive = await panel
+      .getByTestId('tone-lfo-mode-normal')
+      .getAttribute('data-active');
+    const oneShotActive = await panel
+      .getByTestId('tone-lfo-mode-one-shot')
+      .getAttribute('data-active');
+    const total = (normalActive === 'true' ? 1 : 0) + (oneShotActive === 'true' ? 1 : 0);
+    expect(total).toBe(1);
   });
 
   test('D-TONE-ENV-01: TVF envelope graphic renders inside the Filter tab', async ({ page }) => {

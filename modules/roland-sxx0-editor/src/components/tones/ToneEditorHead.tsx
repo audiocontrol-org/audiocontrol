@@ -83,95 +83,100 @@ export function ToneEditorHead({
           />
         </h3>
 
+        {/* Action cluster — compact icon-button row aligned with the
+            title. The previous four-button column-flex chrome ate
+            ~120px of vertical space and pushed parameter content below
+            the fold; the mockup detail-head has no action cluster at
+            all (04-tones.html line 2359). Keeping the actions
+            available but rendered as icon-buttons reclaims that space
+            while preserving data-testids for existing specs. */}
         <div className="tones__detail-actions">
           <div className="tones__detail-actions-row">
             {onExportToLibrary && (
               <Tooltip content={hasSampleData ? 'Export tone and sample to library' : 'No sample data to export'}>
                 <button
+                  type="button"
                   onClick={onExportToLibrary}
                   disabled={isExportingToLibrary || isExporting || !hasSampleData}
                   data-testid="export-tone-button"
+                  aria-label="Export tone to library"
                   className={cn(
-                    'ac-btn ac-btn-sm',
-                    hasSampleData ? 'ac-btn-primary' : 'ac-btn-ghost opacity-50',
-                    (isExportingToLibrary || isExporting) && 'opacity-50 cursor-wait',
+                    'ac-icon-btn',
+                    isExportingToLibrary && 'ac-icon-btn--spinning',
                   )}
                 >
-                  {isExportingToLibrary ? (
-                    <>
-                      <span className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                      Exporting...
-                    </>
-                  ) : (
-                    'Export to Library'
-                  )}
+                  {/* outbound-to-library: arrow exiting a folder */}
+                  <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M2 4h4l1 1h6v7H2z" />
+                    <path d="M8 11v-5" />
+                    <polyline points="5.5 8.5 8 6 10.5 8.5" />
+                  </svg>
                 </button>
               </Tooltip>
             )}
             {onExportSample && (
               <Tooltip content={hasSampleData ? 'Download this sample as a WAV file' : 'No sample data to export'}>
                 <button
+                  type="button"
                   onClick={onExportSample}
                   disabled={isExporting || isExportingToLibrary || !hasSampleData}
                   data-testid="export-sample-button"
+                  aria-label="Download sample as WAV"
                   className={cn(
-                    'ac-btn ac-btn-sm',
-                    hasSampleData ? 'ac-btn-secondary' : 'ac-btn-ghost opacity-50',
-                    (isExporting || isExportingToLibrary) && 'opacity-50 cursor-wait',
+                    'ac-icon-btn',
+                    isExporting && 'ac-icon-btn--spinning',
                   )}
                 >
-                  {isExporting ? (
-                    <>
-                      <span className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                      Exporting...
-                    </>
-                  ) : (
-                    'Export Sample'
-                  )}
+                  {/* download: arrow pointing down into a tray */}
+                  <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M8 2v8" />
+                    <polyline points="5 7 8 10 11 7" />
+                    <path d="M2.5 12v1.5h11V12" />
+                  </svg>
                 </button>
               </Tooltip>
             )}
             {onImportSample && (
               <Tooltip content="Import a WAV file from disk to this tone slot">
                 <button
+                  type="button"
                   onClick={onImportSample}
                   disabled={isImporting || isExporting || isExportingToLibrary}
+                  aria-label="Import WAV file to this tone slot"
                   className={cn(
-                    'ac-btn ac-btn-sm ac-btn-ghost',
-                    (isImporting || isExporting || isExportingToLibrary) && 'opacity-50 cursor-wait',
+                    'ac-icon-btn',
+                    isImporting && 'ac-icon-btn--spinning',
                   )}
                 >
-                  {isImporting ? (
-                    <>
-                      <span className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                      Importing...
-                    </>
-                  ) : (
-                    'Import Sample'
-                  )}
+                  {/* upload: arrow pointing up out of a tray */}
+                  <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M8 14V6" />
+                    <polyline points="5 9 8 6 11 9" />
+                    <path d="M2.5 4v-1.5h11V4" />
+                  </svg>
                 </button>
               </Tooltip>
             )}
             {onChopSample && (
               <Tooltip content={hasSampleData ? 'Slice this sample into a drum kit' : 'No sample data to chop'}>
                 <button
+                  type="button"
                   onClick={onChopSample}
                   disabled={isLoadingChopWaveData || !hasSampleData}
                   data-testid="chop-tone-button"
+                  aria-label="Chop sample into drum kit"
                   className={cn(
-                    'ac-btn ac-btn-sm ac-btn-ghost',
-                    !hasSampleData && 'opacity-50',
-                    isLoadingChopWaveData && 'opacity-50 cursor-wait',
+                    'ac-icon-btn',
+                    isLoadingChopWaveData && 'ac-icon-btn--spinning',
                   )}
                 >
-                  {isLoadingChopWaveData ? (
-                    <>
-                      <span className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                      Loading...
-                    </>
-                  ) : (
-                    'Chop into Drum Kit'
-                  )}
+                  {/* chop: scissors-like fork */}
+                  <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <circle cx="4" cy="4" r="2" />
+                    <circle cx="4" cy="12" r="2" />
+                    <path d="M5.5 5.2L14 13" />
+                    <path d="M5.5 10.8L14 3" />
+                  </svg>
                 </button>
               </Tooltip>
             )}

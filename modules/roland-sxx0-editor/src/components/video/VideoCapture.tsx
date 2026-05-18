@@ -215,6 +215,12 @@ export function VideoCapture() {
 
   // Keyboard shortcut handler for front panel
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    // Ignore OS key-autorepeat. Without this guard a single physical key
+    // press dispatches 3–4 SysEx messages to the device because the
+    // `isPressing` closure below is captured at render time and stays
+    // stale until React re-renders. Other keyboard handlers in this
+    // monorepo (synth-core, sample-chopper) follow the same pattern.
+    if (e.repeat) return;
     if (!isDrawerOpen || !isConnected || isPressing) return;
 
     const target = e.target as HTMLElement;

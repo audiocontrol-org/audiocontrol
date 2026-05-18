@@ -1,19 +1,19 @@
 /**
- * ToneEditor — radio-driven tab strip (Phase 9 Task 4 polish).
+ * ToneEditor — radio-driven tab strip.
  *
- * The mockup's 5-tab pattern (Wave · Pitch · Filter · Amp · LFO)
- * uses CSS-only radio inputs + `:checked ~ siblings` so no React
- * state is needed for tab activation. This component renders the
- * radio inputs + the tab labels; the panels live in `ToneEditor`
- * and are revealed by the `:checked` rule in `tones.css`.
+ * Tabs (post merge): Wave · Pitch & LFO · Filter · Amp. The original
+ * mockup's 5-tab layout (Wave · Pitch · Filter · Amp · LFO) was
+ * collapsed to 4 by merging Pitch + LFO into one tab — the LFO
+ * controls are pitch-modulation territory and live more naturally
+ * alongside the pitch tracking flags than as a standalone tab.
  *
  * Per project memory `feedback_tabbed_detail_pane`: parameter
  * editors with 4+ logical sections must use this radio-driven tab
  * shell, and strongly-interacting controls (filter + filter-env;
- * amp + amp-env) are grouped in the SAME tab.
+ * amp + amp-env; pitch + LFO) are grouped in the SAME tab.
  *
  * Tab ids must match the `id` selectors in `tones.css`:
- *   tt-wave / tt-pitch / tt-filter / tt-amp / tt-lfo
+ *   tt-wave / tt-pitch-lfo / tt-filter / tt-amp
  *
  * The radio inputs are visually hidden but keyboard-reachable.
  * Labels carry `role="tab"` for accessibility tooling.
@@ -28,10 +28,9 @@ interface TabDef {
 
 const TABS: readonly TabDef[] = [
   { id: 'tt-wave', label: 'Wave' },
-  { id: 'tt-pitch', label: 'Pitch' },
+  { id: 'tt-pitch-lfo', label: 'Pitch & LFO' },
   { id: 'tt-filter', label: 'Filter' },
   { id: 'tt-amp', label: 'Amp' },
-  { id: 'tt-lfo', label: 'LFO' },
 ] as const;
 
 interface ToneEditorTabsProps {

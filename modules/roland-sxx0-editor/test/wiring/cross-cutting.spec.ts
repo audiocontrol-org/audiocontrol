@@ -252,15 +252,11 @@ test.describe('Capabilities — Cross-cutting (D-XX)', () => {
     await page.goto('/roland/s330/editor/patches?midi=simulated&scenario=patches-bank-0');
     await page.waitForLoadState('networkidle');
 
-    // Select a patch to mount the PatchEditor. The first row in the
-    // patch list is `role="button"`; clicking it switches the detail
-    // pane into edit mode.
-    const firstPatch = page
-      .locator('[data-capability="C-PATCH-01"]')
-      .getByRole('button')
-      .first();
-    await firstPatch.click();
-
+    // PatchesPage now auto-selects the first loaded patch on mount, so
+    // the PatchEditor surfaces without an explicit click. (The page
+    // also now renders a bank-toggle <button> at the top of the list,
+    // which would resolve first via .getByRole('button').first() if we
+    // tried to click — target the patch row explicitly instead.)
     const patchEditor = page.locator('[data-capability="C-PATCH-04"]');
     await expect(patchEditor).toBeVisible({ timeout: 5_000 });
 

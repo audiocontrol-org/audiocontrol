@@ -26,6 +26,7 @@
  * The capability spec helper `fillEnvelopeFirstCell` targets these.
  */
 
+import { useRef } from 'react';
 import type { SamplerEnvelope } from '@/core/midi/SamplerClient';
 import { AcEnvelope, type AcEnvelopeSegment } from '@audiocontrol/editor-core';
 import { cn } from '@/lib/utils';
@@ -56,6 +57,15 @@ export function ToneEnvelopeEditor({
 }: ToneEnvelopeEditorProps) {
   const { levels, rates, sustainPoint, endPoint } = envelope;
 
+  // Latest-envelope ref. The graph-drag handler in AcEnvelopeGraph fires
+  // BOTH onTimeChange AND onLevelChange in a single pointermove (one
+  // axis each). If both updaters read `envelope` from closure, the
+  // second call wipes the first call's mutation — they both spread the
+  // same pre-drag envelope. Routing through a ref lets the second call
+  // see the first call's update, so both axes survive.
+  const latestEnvelopeRef = useRef(envelope);
+  latestEnvelopeRef.current = envelope;
+
   // Build the segments array AcEnvelope expects from the S-series store
   // shape. Slice to endSegment is handled internally by AcEnvelope.
   const segments: AcEnvelopeSegment[] = rates.map((rate, i) => ({
@@ -65,16 +75,22 @@ export function ToneEnvelopeEditor({
 
   const updateRate = (index: number, raw: number) => {
     const next = Math.max(1, Math.min(127, raw));
-    const newRates = [...rates] as SamplerEnvelope['rates'];
+    const current = latestEnvelopeRef.current;
+    const newRates = [...current.rates] as SamplerEnvelope['rates'];
     newRates[index] = next;
-    onChange({ ...envelope, rates: newRates });
+    const updated: SamplerEnvelope = { ...current, rates: newRates };
+    latestEnvelopeRef.current = updated;
+    onChange(updated);
   };
 
   const updateLevel = (index: number, raw: number) => {
     const next = Math.max(0, Math.min(127, raw));
-    const newLevels = [...levels] as SamplerEnvelope['levels'];
+    const current = latestEnvelopeRef.current;
+    const newLevels = [...current.levels] as SamplerEnvelope['levels'];
     newLevels[index] = next;
-    onChange({ ...envelope, levels: newLevels });
+    const updated: SamplerEnvelope = { ...current, levels: newLevels };
+    latestEnvelopeRef.current = updated;
+    onChange(updated);
   };
 
   // Sustain + End come from pip clicks. The UI is 1-based; the store is
@@ -116,6 +132,13 @@ export function ToneEnvelopeEditor({
         onEndChange={handleEndChange}
         onTimeChange={(segmentIndex, time) => updateRate(segmentIndex - 1, time)}
         onLevelChange={(segmentIndex, level) => updateLevel(segmentIndex - 1, level)}
+        // Drag-end commit. updateRate / updateLevel above stream state on
+        // every move; this fires once at pointerup so the device write
+        // happens at the natural human gesture boundary instead of per
+        // pixel. Matches the legacy EnvelopeEditor.onDragEnd pattern.
+        // Use the ref so we commit the latest post-drag envelope rather
+        // than the pre-drag closure value.
+        onCommit={() => onCommit?.(latestEnvelopeRef.current)}
         disabled={disabled}
       />
 

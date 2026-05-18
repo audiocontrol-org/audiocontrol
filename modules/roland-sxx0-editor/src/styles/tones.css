@@ -37,13 +37,16 @@
    ============================================================ */
 
 /* List row — slot id, name, optional Export action. Outer is a
-   role="button" div (see ToneList for the why). */
+   role="button" div (see ToneList for the why).
+   Padding is tight on the block axis because the slot label and
+   8-char name need ~32px of row, not the ~50px the larger ac-space-3
+   pad produced (made the list feel sparse vs the editor pane). */
 .tones__list-row {
   display: grid;
-  grid-template-columns: 2.5rem minmax(0, 1fr) auto;
-  gap: var(--ac-space-3);
+  grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+  gap: var(--ac-space-2);
   align-items: center;
-  padding: var(--ac-space-3) var(--ac-space-4);
+  padding: var(--ac-space-2) var(--ac-space-3);
   border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 50%, transparent);
   border-left: var(--ac-rule-medium) solid transparent;
   cursor: pointer;
@@ -105,7 +108,7 @@
 }
 
 .tones__detail-head {
-  padding: var(--ac-space-4) var(--ac-space-6) var(--ac-space-3);
+  padding: var(--ac-space-3) var(--ac-space-4) var(--ac-space-2);
   border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
   background: linear-gradient(
     180deg,
@@ -143,14 +146,21 @@
   letter-spacing: 0.02em;
 }
 
-/* The tone name is a live-editing input. Styled to read as a title;
-   underline appears on focus, mirroring the patches eyebrow rule. */
+/* The tone name is a live-editing input styled to read as a title:
+   a single hairline underline beneath the value, brightening on focus
+   to the accent color. Resets are aggressive because the underlying
+   .ac-input primitive adds a rounded all-sides border plus a 3px
+   shadow-ring on focus; without these resets the underline appears
+   as a curved arc (clipped by the inherited border-radius) and the
+   focus state renders as a rounded-rect outline. */
 .tones__detail-name-input {
   display: block;
   background: transparent;
   border: 0;
-  border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-accent) 40%, transparent);
-  padding: 0 0 var(--ac-space-1) 0;
+  border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-text-muted) 50%, transparent);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0 var(--ac-space-1) var(--ac-space-1);
   font: inherit;
   color: var(--ac-color-text-primary);
   font-family: var(--ac-font-mono);
@@ -160,8 +170,19 @@
   transition: border-color var(--ac-duration-fast) var(--ac-easing-default);
 }
 
-.tones__detail-name-input:focus {
+.tones__detail-name-input:hover:not(:focus) {
+  border-bottom-color: color-mix(in srgb, var(--ac-color-text-muted) 80%, transparent);
+}
+
+.tones__detail-name-input:focus,
+.tones__detail-name-input:focus-visible {
+  /* Override .ac-input's focus shadow + background; keep only a
+     two-line accent underline so the input reads as an underline,
+     not a framed text box. */
+  border-bottom-width: 2px;
   border-bottom-color: var(--ac-color-accent);
+  box-shadow: none;
+  background: transparent;
 }
 
 .tones__detail-name-input::placeholder {
@@ -169,10 +190,10 @@
   font-style: italic;
 }
 
-/* Action cluster — Export to Library / Export Sample / Import / Chop.
-   Lives on the right of the title row; wraps below at narrow widths.
-   Inline progress shows beneath the action row when an export is in
-   flight. */
+/* Action cluster — Export to Library / Export Sample / Import / Chop,
+   rendered as ac-icon-btn now (see ToneEditorHead). Lives on the right
+   of the title row as a single non-wrapping horizontal row. Inline
+   progress strip shows beneath when an export is in flight. */
 .tones__detail-actions {
   display: flex;
   flex-direction: column;
@@ -182,9 +203,9 @@
 
 .tones__detail-actions-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
-  gap: var(--ac-space-2);
+  gap: var(--ac-space-1);
 }
 
 .tones__detail-actions-progress {
@@ -215,15 +236,307 @@
 .tones__detail-body {
   flex: 1;
   min-height: 0;
-  padding: var(--ac-space-6);
+  min-width: 0;
+  padding: var(--ac-space-4);
   overflow-y: auto;
+  /* Horizontal overflow is never legitimate inside the detail body —
+     any content that thinks it needs to scroll horizontally is missing
+     a `min-width: 0` somewhere in its ancestry. Clip it so a missing
+     constraint shows as a clipped element (loud) rather than an inner
+     horizontal scrollbar (silently terrible UX). */
+  overflow-x: hidden;
 }
 
 /* Stack of sections within a single tab panel (e.g., Wave + Loop Editor). */
 .tones__panel-stack {
   display: flex;
   flex-direction: column;
-  gap: var(--ac-space-6);
+  gap: var(--ac-space-4);
+  min-width: 0;
+}
+
+/* Container-aware atomic-field grid. Cells stay at least 11rem wide and
+   the column count drops automatically when the detail pane narrows,
+   replacing the viewport-based tailwind grid (md:grid-cols-2
+   lg:grid-cols-4) that crashed inside the constrained detail pane and
+   wrapped labels mid-word. */
+.tones__field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--ac-space-4) var(--ac-space-5);
+  align-items: end;
+}
+
+.tones__field {
+  min-width: 0;
+}
+
+.tones__field > .ac-field-label {
+  white-space: nowrap;
+}
+
+/* ============================================================
+   SUB-SECTION — small headed group inside a tab body. Used by
+   the Wave panel to separate "Source", "Wave Region", and
+   "Segment" without each group claiming a full section header
+   that would compete with the page-title / tab strip above.
+   ============================================================ */
+.tones__subsection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-2);
+  min-width: 0;
+}
+
+.tones__subsection + .tones__subsection {
+  margin-top: var(--ac-space-3);
+  padding-top: var(--ac-space-3);
+  border-top: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 50%, transparent);
+}
+
+.tones__subsection-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-3);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.tones__subsection-head::after {
+  content: "";
+  flex: 1;
+  height: var(--ac-rule-hairline);
+  background: color-mix(in srgb, var(--ac-color-border-subtle) 70%, transparent);
+}
+
+/* Horizontal label+control row used by the Source sub-section for
+   toggle / display-only rows. The label is fixed-width on the left
+   (aligns vertically with the section's other rows); the control
+   stretches to fill the remaining width. This rhythm matches
+   AcSlider's internal label-width so the slider rows above and the
+   toggle rows below line up across the gap. */
+.tones__field-row {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, 7rem) minmax(0, 1fr);
+  gap: var(--ac-space-3);
+  align-items: center;
+  padding-block: var(--ac-space-2);
+  border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 40%, transparent);
+  min-width: 0;
+}
+
+.tones__field-row:last-child {
+  border-bottom: 0;
+}
+
+.tones__field-row > .ac-field-label {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  white-space: nowrap;
+}
+
+/* Readout cell — used by the Sample Rate display-only field and by
+   the Original Key note-name annotation. Tabular numerics, accent
+   color, anchored right. */
+.tones__field-readout {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--ac-color-text-primary);
+}
+
+.tones__field-readout strong {
+  font-family: var(--ac-font-display);
+  font-weight: var(--ac-font-weight-normal);
+  color: var(--ac-color-accent);
+}
+
+/* Wave-region address inputs (Start / Loop Point / End) — a 3-column
+   grid that aligns the inputs uniformly. Each cell stacks its label
+   above the input so a long address value (24-bit) doesn't compete
+   with the label for width. */
+.tones__addresses {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--ac-space-4);
+  padding-block: var(--ac-space-1);
+  min-width: 0;
+}
+
+.tones__addresses .ac-field-label {
+  display: block;
+  margin-bottom: var(--ac-space-1);
+}
+
+.tones__addresses input.ac-input {
+  width: 100%;
+}
+
+/* Compact-field grid for narrow controls that should NOT stretch to
+   full row width (toggles, small displays). Each child is a tiny
+   column with label-on-top + control-below; the whole row flex-wraps
+   to pack multiple controls per row. Used by the Wave panel's SOURCE
+   section so the Bank/Loop Mode/Output toggles sit naturally without
+   eating the whole row each. */
+.tones__compact-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ac-space-4) var(--ac-space-6);
+  align-items: flex-end;
+  padding-block: var(--ac-space-2);
+}
+
+.tones__compact-field {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--ac-space-2);
+  min-width: 0;
+}
+
+.tones__compact-field > .ac-field-label {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  white-space: nowrap;
+}
+
+.tones__compact-field--readout {
+  /* Sample Rate-style display: small value below the label. */
+  gap: var(--ac-space-1);
+}
+
+.tones__compact-field--readout > .tones__field-readout {
+  padding: var(--ac-space-1) var(--ac-space-3);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 70%, transparent);
+  font-size: var(--ac-text-base);
+}
+
+/* ============================================================
+   WAVE-SEGMENT RANGE STRIP — visual representation of which
+   segments of the wave bank this tone occupies. 18 cells stacked
+   horizontally; the cells in [segmentTop, segmentTop + segmentLength)
+   are lit in the accent color.
+   ============================================================ */
+.tones__segment-strip {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, 7rem) minmax(0, 1fr) minmax(4rem, 6rem);
+  gap: var(--ac-space-3);
+  align-items: center;
+  padding-block: var(--ac-space-2);
+}
+
+.tones__segment-strip-cells {
+  display: grid;
+  grid-template-columns: repeat(18, 1fr);
+  gap: 2px;
+  min-width: 0;
+}
+
+.tones__segment-strip-cell {
+  position: relative;
+  height: 1.25rem;
+  background: var(--ac-color-surface-canvas);
+  border: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 60%, transparent);
+  border-radius: 1px;
+}
+
+.tones__segment-strip-cell[data-state="in-range"] {
+  background:
+    linear-gradient(90deg,
+      color-mix(in srgb, var(--ac-color-accent) 22%, transparent) 0%,
+      color-mix(in srgb, var(--ac-color-accent) 38%, transparent) 50%,
+      color-mix(in srgb, var(--ac-color-accent) 22%, transparent) 100%);
+  border-color: color-mix(in srgb, var(--ac-color-accent) 70%, transparent);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--ac-color-accent) 35%, transparent) inset;
+}
+
+.tones__segment-strip-cell[data-state="boundary"] {
+  /* Edge cell of the range gets a brighter border to mark the limit. */
+  border-color: var(--ac-color-accent);
+  box-shadow:
+    0 0 6px color-mix(in srgb, var(--ac-color-accent) 35%, transparent) inset,
+    0 0 4px color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+}
+
+.tones__segment-strip-readout {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--ac-color-text-primary);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tones__segment-strip-readout strong {
+  font-family: var(--ac-font-display);
+  font-weight: var(--ac-font-weight-normal);
+  color: var(--ac-color-accent);
+}
+
+.tones__segment-strip-readout .tones__segment-strip-sep {
+  color: var(--ac-color-text-muted);
+  margin-inline: var(--ac-space-1);
+}
+
+/* Full-width slider rows. Each row is already a 3-col grid
+   (label | bar | readout) inside ParamSliderRow → AcSlider, so stacking
+   them top-to-bottom is the only layout that gives the bar room to
+   render. Mockup 04-tones.html § "Parameter grid" makes this explicit
+   ("cols-3 and cols-4 are aliased to 2-col here — the previous 3/4-up
+   layout was too cramped now that param rows are horizontal range
+   bars"). */
+.tones__slider-stack {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--ac-space-3);
+}
+
+/* Parameter-row grid for tabs whose body is a stack of slider rows
+   (Filter, Amp). Container-aware: each cell holds a self-contained
+   `.ac-slider` (label | bar | readout) and stays at least 28rem wide
+   so the bar has usable resolution; the column count drops
+   automatically as the detail pane narrows. On wide screens this
+   yields 2-3 sliders per row instead of a single sparse stack. */
+.tones__param-rows {
+  display: grid;
+  /* 22rem minimum lets 3 sliders fit per row at typical wide-viewport
+     detail widths (~1240px usable) while still dropping cleanly to 2
+     then 1 columns as the pane narrows. The AcSlider's internal grid
+     (label ~7rem | bar 1fr | readout ~5rem) needs roughly 16rem to be
+     ergonomic; 22rem leaves the bar ~10rem of resolution. */
+  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+  column-gap: var(--ac-space-6);
+  min-width: 0;
+}
+
+/* Inline label + control affordance for non-slider parameters
+   (toggles, small selects). Label sits to the left, control to the
+   right of it on one line so the row reads at the same density as
+   the slider rows. */
+.tones__inline-field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-3);
+  padding-block: var(--ac-space-2);
+}
+
+.tones__inline-field > .ac-field-label {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  min-width: 5.5rem;
 }
 
 /* ============================================================
@@ -234,6 +547,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--ac-space-4);
+  min-width: 0;
 }
 
 .tones__section-head {
@@ -295,11 +609,24 @@
 
 .tones__tab-strip {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 0;
-  margin: 0 0 var(--ac-space-5);
+  /* Sticky-pin to the top of the scrolling body so the tabs stay
+     reachable when the operator scrolls down into the panel content.
+     Negative inline margin + matching padding extends the background
+     across the body's horizontal padding so panel content can't peek
+     past the strip's edge as it scrolls under. Negative top lifts the
+     pin position by the body's padding-top so the strip sits flush
+     with the body's viewport edge when stuck (rather than hovering
+     below it). Values match .tones__detail-body's padding so the
+     trick stays consistent if the body padding scales later. */
+  position: sticky;
+  top: calc(-1 * var(--ac-space-4));
+  z-index: 5;
+  margin: calc(-1 * var(--ac-space-4)) calc(-1 * var(--ac-space-4)) var(--ac-space-3);
+  padding: var(--ac-space-4) var(--ac-space-4) 0;
+  background: var(--ac-color-surface-panel);
   border-bottom: var(--ac-rule-medium) solid var(--ac-color-border-subtle);
-  position: relative;
 }
 
 .tones__tab {
@@ -307,7 +634,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 2.5rem;
+  height: 2rem;
   font-family: var(--ac-font-display);
   font-size: var(--ac-text-eyebrow);
   text-transform: uppercase;
@@ -349,20 +676,18 @@
 }
 
 /* Active-tab styles: the checked radio's id selects its sibling label. */
-#tt-wave:checked   ~ .tones__tab-strip [for="tt-wave"],
-#tt-pitch:checked  ~ .tones__tab-strip [for="tt-pitch"],
-#tt-filter:checked ~ .tones__tab-strip [for="tt-filter"],
-#tt-amp:checked    ~ .tones__tab-strip [for="tt-amp"],
-#tt-lfo:checked    ~ .tones__tab-strip [for="tt-lfo"] {
+#tt-wave:checked      ~ .tones__tab-strip [for="tt-wave"],
+#tt-pitch-lfo:checked ~ .tones__tab-strip [for="tt-pitch-lfo"],
+#tt-filter:checked    ~ .tones__tab-strip [for="tt-filter"],
+#tt-amp:checked       ~ .tones__tab-strip [for="tt-amp"] {
   color: var(--ac-color-accent);
   background: color-mix(in srgb, var(--ac-color-accent) 8%, transparent);
 }
 
-#tt-wave:checked   ~ .tones__tab-strip [for="tt-wave"]::after,
-#tt-pitch:checked  ~ .tones__tab-strip [for="tt-pitch"]::after,
-#tt-filter:checked ~ .tones__tab-strip [for="tt-filter"]::after,
-#tt-amp:checked    ~ .tones__tab-strip [for="tt-amp"]::after,
-#tt-lfo:checked    ~ .tones__tab-strip [for="tt-lfo"]::after {
+#tt-wave:checked      ~ .tones__tab-strip [for="tt-wave"]::after,
+#tt-pitch-lfo:checked ~ .tones__tab-strip [for="tt-pitch-lfo"]::after,
+#tt-filter:checked    ~ .tones__tab-strip [for="tt-filter"]::after,
+#tt-amp:checked       ~ .tones__tab-strip [for="tt-amp"]::after {
   background: var(--ac-color-accent);
   box-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 55%, transparent);
 }
@@ -372,11 +697,10 @@
   display: none;
 }
 
-#tt-wave:checked   ~ .tones__panels > [data-tab="tt-wave"],
-#tt-pitch:checked  ~ .tones__panels > [data-tab="tt-pitch"],
-#tt-filter:checked ~ .tones__panels > [data-tab="tt-filter"],
-#tt-amp:checked    ~ .tones__panels > [data-tab="tt-amp"],
-#tt-lfo:checked    ~ .tones__panels > [data-tab="tt-lfo"] {
+#tt-wave:checked      ~ .tones__panels > [data-tab="tt-wave"],
+#tt-pitch-lfo:checked ~ .tones__panels > [data-tab="tt-pitch-lfo"],
+#tt-filter:checked    ~ .tones__panels > [data-tab="tt-filter"],
+#tt-amp:checked       ~ .tones__panels > [data-tab="tt-amp"] {
   display: block;
   animation: tones-tab-fade-in 180ms var(--ac-easing-default);
 }
@@ -387,11 +711,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #tt-wave:checked   ~ .tones__panels > [data-tab="tt-wave"],
-  #tt-pitch:checked  ~ .tones__panels > [data-tab="tt-pitch"],
-  #tt-filter:checked ~ .tones__panels > [data-tab="tt-filter"],
-  #tt-amp:checked    ~ .tones__panels > [data-tab="tt-amp"],
-  #tt-lfo:checked    ~ .tones__panels > [data-tab="tt-lfo"] {
+  #tt-wave:checked      ~ .tones__panels > [data-tab="tt-wave"],
+  #tt-pitch-lfo:checked ~ .tones__panels > [data-tab="tt-pitch-lfo"],
+  #tt-filter:checked    ~ .tones__panels > [data-tab="tt-filter"],
+  #tt-amp:checked       ~ .tones__panels > [data-tab="tt-amp"] {
     animation: none;
   }
 }
@@ -402,44 +725,8 @@
    is a cross-page concern (per project memory
    `feedback_virtual_front_panel`) landing in a separate commit.
    ============================================================ */
-.tones__app-shell {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--ac-space-6);
-  padding-block: var(--ac-space-5) 0;
-  /*
-   * Height-containment contract — same shape as `.patches__app-shell`.
-   * Parent .ac-page-shell--fixed-viewport is a flex column; `flex: 1`
-   * + `min-height: 0` lets this body row consume the remaining
-   * vertical space while letting its own columns shrink below their
-   * intrinsic height to scroll internally.
-   */
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
-}
-
-@media (min-width: 1024px) {
-  .tones__app-shell {
-    grid-template-columns: 22rem minmax(0, 1fr);
-    align-items: stretch;
-  }
-}
-
-/*
- * List + detail columns inside the fixed-viewport shell. The detail
- * column on this page can be either `.tones__detail` (when a tone is
- * selected) or `.ac-detail-empty` (placeholder) — both need the same
- * height-claim so the list column doesn't grow taller than the grid
- * track.
- */
-.tones__app-shell > .ac-list,
-.tones__app-shell > .tones__detail,
-.tones__app-shell > .ac-detail-empty {
-  min-height: 0;
-  height: 100%;
-  overflow: hidden;
-}
+/* App shell moved to shared `.ac-app-shell`
+   (editor-core/src/design/layout-primitives.css). */
 
 /* ============================================================
    ENVELOPE EDIT GRID — inline rate + level inputs beneath the
@@ -472,28 +759,5 @@
   font-size: var(--ac-text-xs);
 }
 
-/* Inline page-loading progress bar — same shape as patches.css. */
-.tones__progress {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ac-space-1);
-  font-family: var(--ac-font-mono);
-  font-size: var(--ac-text-xs);
-  color: var(--ac-color-text-muted);
-}
-
-.tones__progress-track {
-  position: relative;
-  height: 0.25rem;
-  background: var(--ac-color-surface-canvas);
-  border-radius: var(--ac-radius-sm);
-  overflow: hidden;
-}
-
-.tones__progress-fill {
-  position: absolute;
-  inset: 0;
-  background: var(--ac-color-accent);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
-  transition: width var(--ac-duration-normal) var(--ac-easing-default);
-}
+/* Page-loading progress moved to shared `.ac-page-progress`
+   (roland-sxx0-editor/src/styles/_shared.css). */

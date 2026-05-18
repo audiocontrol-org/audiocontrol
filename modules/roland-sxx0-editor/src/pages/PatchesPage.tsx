@@ -209,6 +209,18 @@ export function PatchesPage() {
     }
   }, [isConnected, patches.length, isLoading, loadInitialData]);
 
+  // Auto-select the first loaded patch so the editor mounts immediately
+  // and the operator isn't prompted with a "SELECT A PATCH TO EDIT"
+  // placeholder for the common case. Only fires when no patch is yet
+  // selected — explicit operator deselection isn't undone, and
+  // navigating back to the page preserves the prior selection.
+  useEffect(() => {
+    if (selectedPatchIndex !== null) return;
+    const firstLoaded = patches.findIndex((p) => p !== undefined);
+    if (firstLoaded === -1) return;
+    selectPatch(firstLoaded);
+  }, [patches, selectedPatchIndex, selectPatch]);
+
   // Lazy tone-bank load on first patch selection (#405). Today this loads
   // bank 0 only — same as the pre-#405 eager mount-time behavior, but
   // deferred until the user actually opens the patch detail pane. Patches
@@ -273,9 +285,19 @@ export function PatchesPage() {
         </div>
         <span className="ac-page-title-metric">
           <span className="ac-page-title-led" aria-hidden="true" />
-          <span>
-            <strong>{loadedPatchCount}</strong> of <strong>{totalPatches}</strong> loaded
-          </span>
+          {isLoading && loadingMessage ? (
+            <span
+              className="ac-page-title-metric-status"
+              role="status"
+              aria-live="polite"
+            >
+              {loadingMessage}
+            </span>
+          ) : (
+            <span>
+              <strong>{loadedPatchCount}</strong> of <strong>{totalPatches}</strong> loaded
+            </span>
+          )}
           <button
             type="button"
             onClick={refreshAll}
@@ -295,21 +317,21 @@ export function PatchesPage() {
             </svg>
           </button>
         </span>
-      </header>
-
-      {/* Inline loading progress — uses the same byte-percent shape we use
-          elsewhere, just reframed for the title-row context. */}
-      {isLoading && loadingProgress !== null && (
-        <div className="patches__progress" role="status" aria-live="polite">
-          <div className="patches__progress-track">
-            <div
-              className="patches__progress-fill"
+        {/* Load strip — overlays the title-row's bottom hairline so
+            it never displaces neighbors. Mounted only while loading
+            so the underlying hairline shows when idle. */}
+        {isLoading && loadingProgress !== null && (
+          <div
+            className="ac-page-title-progress"
+            aria-hidden="true"
+          >
+            <span
+              className="ac-page-title-progress-fill"
               style={{ width: `${loadingProgress}%` }}
             />
           </div>
-          {loadingMessage && <span>{loadingMessage}</span>}
-        </div>
-      )}
+        )}
+      </header>
 
       {/* Error display */}
       {error && (
@@ -320,7 +342,7 @@ export function PatchesPage() {
 
       {/* List + detail — fills the remaining vertical space. */}
       {patches.length > 0 && (
-        <div className="patches__app-shell" aria-labelledby="patches-heading">
+        <div className="ac-app-shell" aria-labelledby="patches-heading">
           <PatchList
             patches={patches}
             selectedIndex={selectedPatchIndex}
@@ -329,6 +351,7 @@ export function PatchesPage() {
             patchesPerBank={patchesPerBank}
             loadingBank={loadingBank}
             onLoadBank={(bank) => loadPatchBankWithIndicator(bank)}
+            onReloadBank={(bank) => loadPatchBankWithIndicator(bank, true)}
             onExportPatch={handleOpenExportDialog}
           />
           <article className="patches__detail" aria-labelledby="patch-detail-title">

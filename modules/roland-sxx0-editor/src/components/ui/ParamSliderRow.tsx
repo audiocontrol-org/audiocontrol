@@ -29,6 +29,9 @@ export interface ParamSliderRowProps {
   min?: number;
   max?: number;
   disabled?: boolean;
+  /** Optional unit suffix rendered subtly after the readout
+   *  (e.g. the note name "D-1" for an Original Key slider). */
+  unit?: string;
 }
 
 export function ParamSliderRow({
@@ -39,6 +42,7 @@ export function ParamSliderRow({
   min = 0,
   max = 127,
   disabled,
+  unit,
 }: ParamSliderRowProps): JSX.Element {
   return (
     <Tooltip content={tooltip}>
@@ -65,6 +69,7 @@ export function ParamSliderRow({
               ariaLabel={`${label} value`}
             />
           }
+          unit={unit}
         />
       </div>
     </Tooltip>
