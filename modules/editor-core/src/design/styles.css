@@ -20,6 +20,8 @@
  *   - envelope-primitives.css — v3 8-segment VFD-glow envelope primitive
  *   - list-primitives.css     — shared list-pane chrome (ac-list,
  *                               ac-list-bank-header, ac-list-name, ...)
+ *   - loop-editor-primitives.css — loop-editor surface chrome (toolbar,
+ *                               canvases, nudges, candidates)
  *   - library.css             — library tree/dialog chrome (large surface)
  */
 
@@ -31,4 +33,5 @@
 @import './control-primitives.css';
 @import './envelope-primitives.css';
 @import './list-primitives.css';
+@import './loop-editor-primitives.css';
 @import './library.css';
