@@ -8,7 +8,18 @@ last-updated: 2026-05-18
 
 This document describes how design decisions are recorded in the audiocontrol repo. It exists because design decisions kept being relitigated. **If a direction has been ACCEPTED or REJECTED, the record below is the durable evidence.** Future sessions read the archive before drafting new mockups so we don't re-propose directions that have already had their fair hearing.
 
-Ported from `deskwork/DESIGN-STANDARDS.md` § Proposal archive. The deskwork project carries an additional `DESIGN-STANDARDS.md` for *settled vocabulary* (tokens, typography, retired patterns); the audiocontrol equivalent isn't consolidated yet and isn't in scope for this document.
+Ported from `deskwork/DESIGN-STANDARDS.md` § Proposal archive + `deskwork/docs/studio-design/README.md`.
+
+## Companion document
+
+**[`DESIGN-SYSTEM.md`](./DESIGN-SYSTEM.md)** is the settled-decisions counterpart. The two docs are complementary:
+
+| Doc | Records | When to read |
+|---|---|---|
+| **DESIGN-SYSTEM.md** | What is settled — tokens, vocabulary, retired patterns, load-bearing contracts | Before any UI design or implementation work |
+| **DESIGN-DECISIONS-PROTOCOL.md** (this doc) | What was *explored* — the archive layout + brief format for ACCEPTED / REJECTED entries | When picking or rejecting a direction; when wondering "was this already considered?" |
+
+Neither document subsumes the other. Mockup briefs cite the standards they comply with (or amend); standards cite the entries that established them.
 
 ## Archive layout
 

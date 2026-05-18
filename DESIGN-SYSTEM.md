@@ -1,6 +1,35 @@
 # Design System
 
-Living documentation of the audiocontrol design system. Updated as contracts and patterns are established. This is the single source of truth -- CLAUDE.md directs agents here.
+> **Status:** load-bearing · **Last updated:** 2026-05-18
+
+Living documentation of the audiocontrol design system. Updated as contracts and patterns are established. This is the single source of truth — CLAUDE.md directs agents here.
+
+**If a global design choice is documented here, it is settled. Don't re-propose it. Don't show it as an option in mockups. Update this document if a settled choice is to be revisited; don't drift away from it silently.**
+
+## Process
+
+- **Before any UI design or implementation work**: read this document.
+- **When a design decision has global impact** — changes vocabulary, alters how a class of element looks or behaves, applies across multiple pages, or differs between desktop and mobile — update this document **in the same commit** as the implementation change. The update is part of the work, not a follow-up.
+- **File an archive entry** under `docs/<version>/<status>/<feature>/explorations/ACCEPTED/<YYYY-MM-DD>-<slug>/` (or `REJECTED/<…>/`) whenever a design direction is picked OR rejected. The archive is the durable record of *what was considered* alongside this document's record of *what was settled*. See [`DESIGN-DECISIONS-PROTOCOL.md`](./DESIGN-DECISIONS-PROTOCOL.md) for the layout, the `brief.md` contract, and when to file.
+
+If a design decision feels like it might have global impact and you're unsure: it does. Document it.
+
+### When to update which doc
+
+| The decision is… | Update DESIGN-SYSTEM.md | File an archive entry |
+|---|---|---|
+| Settling a token, vocabulary, or component shape (load-bearing) | ✓ in same commit | ✓ ACCEPTED with rationale |
+| Picking one mockup direction over alternatives | (only if the pick alters a global pattern) | ✓ one ACCEPTED + one REJECTED per discarded alternative |
+| Retiring a previous pattern | ✓ note the retirement + cite the replacement | ✓ REJECTED with retirement rationale |
+| Per-page polish without global impact | (no) | (no — keep the iteration in feature commits) |
+
+The archive is for design *decisions* — the why. Implementation commits are tracked in git history. The standards above are *what's settled*. They are complementary; the line between them is whether the next session would learn from reading the entry.
+
+## Companion documents
+
+- **[DESIGN-DECISIONS-PROTOCOL.md](./DESIGN-DECISIONS-PROTOCOL.md)** — archive contract for ACCEPTED / REJECTED design decisions. Per-feature layout, `brief.md` frontmatter spec, visual-reference rules.
+
+---
 
 ### 8. Restore user context across navigation
 
@@ -988,3 +1017,11 @@ The original `primitives.css` exceeded 500 lines and was split during Task 4.0:
 4. **Loud failure over silent no-ops.** An action that silently does nothing is a bug. Either the action should not appear, or it should throw.
 
 5. **Build all editors before committing.** `make` verifies that shared contract changes compile everywhere.
+
+---
+
+## Change log
+
+Append a one-line entry every time this document's *Process* or settled-vocabulary surface is updated. Routine additions of new tokens / new component patterns can be inlined without a change-log line (the section history is the document's body). Use the log for surface-shape changes: when a pattern is retired, when the process changes, when a load-bearing contract is amended.
+
+- 2026-05-18 — Added Process section + cross-link to [`DESIGN-DECISIONS-PROTOCOL.md`](./DESIGN-DECISIONS-PROTOCOL.md). Establishes the load-bearing status framing and the rule that global-impact decisions update this doc in the same commit. Triggered by the s550-support connect-page redesign needing a place to record one ACCEPTED + two REJECTED design directions. Ported the rationale from `deskwork/DESIGN-STANDARDS.md` § Process so audiocontrol gets the same don't-relitigate discipline.
