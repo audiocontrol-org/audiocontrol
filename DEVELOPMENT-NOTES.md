@@ -3057,3 +3057,75 @@ Finish the operator-facing simplification work, then move the resulting UI-contr
 - **The simplest durable operator flow is now visible.** The operator no longer needs to start in the audit log, the conformance matrix, or a mixed runbook. They can start at one short summary page and only drill deeper if needed.
 - **The important structural reform was not just simplifying wording; it was separating audiences.** The same evidence still exists, but it is now distributed by role instead of dumped into one blended workflow.
 - **Top-level standards reduce future feature-local drift.** Without `UI-CONTRACT-AND-VERIFICATION-STANDARD.md`, the next UI-heavy feature would likely have copied the S-550 branch’s local artifacts without a clear statement of which parts were policy and which parts were just this feature’s history.
+
+## 2026-05-18: s550-support — Roland editor v3 redesign sprint (library + connect + video)
+
+### Feature: s550-support
+### Worktree: audiocontrol-s550-support
+
+### Goal
+
+Operator drove a brute-force, walk-me-through-real-time session against the visible UI of the Roland editor. The session opened with the capability-inventory + 9R remediation plan mothballed; the working brief was "fix everything that doesn't comport with the new design language, don't escalate scope questions." Across the session the operator surfaced ~25 discrete inconsistencies on the Library page (preview pane, device-memory chrome, tree control, scrollbar, header) plus the Connect page, the site header, the video-capture chrome, the navigation active-state, and pixel-level header parity across pages.
+
+### Accomplished
+
+Two commits on `feature/s550-support` (`1d75e0a1`, `04ad85c9`).
+
+`04ad85c9` — library / connect / video redesign continuation (25 files, +1676 / -941):
+
+- **Library page**:
+  - DeviceMemoryPanel rewritten — section-level Tones/Patches expand toggles with animated flex-grow; per-bank chevron-collapse + reload-icon + click-to-load eyebrow matching ToneList/PatchList; typography aligned via `isToneEmpty()` / `isPatchEmpty()`; bank rows wrapped in `.ac-collapse` for grid-template-rows animation.
+  - ItemPreviewPanel + CommonSamplePreviewPanel both consume new shared `preview-chrome.tsx` (`PreviewPane`, `PreviewIdentity`, `FieldGrid`, `PaneAction`, status helpers). 681→484 lines.
+  - SetItem + SetsSection rewritten against `.ac-tree-*` primitives.
+  - Header Save/Load buttons removed (vestigial — per-object affordances handle these). 2 a11y specs `test.skip` with notes pointing at the dialog handlers.
+  - Library column chrome consolidated — four classes that hardcoded `--ac-radius-lg` (12px) collapsed into one selector list using `--ac-radius-sm` (4px) so corners match the rest of the editor.
+  - Scroll containers use `scrollbar-width: thin` + `scrollbar-gutter: stable` so the layout doesn't shift left when the scrollbar appears.
+
+- **Library tree** (editor-core):
+  - `.ac-tree-node` aligned with `.tones__list-row` / `.ac-device-memory-row` — hairline bottom rule, accent left border on selection, body-sm medium weight, identical 8/12 padding.
+  - Chevron switched from SVG path to Unicode glyph swap (down / right) so the editor has ONE chevron vocabulary.
+  - `.ac-tree-icon` shrunk to 0.9rem; `.ac-tree-empty` switched to uppercase display eyebrow; new `.ac-tree-description` for mono small metadata.
+  - Tree children always mounted inside `.ac-collapse` so expand/collapse animates.
+
+- **Connect / Home page**:
+  - HomePage header on `.ac-page-title-row`. `.ac-card` switched to `--ac-radius-sm`; `.ac-title-lg` / `.ac-title-md` switched to display font normal-weight; MidiConnectionPage buttons swapped to `.ac-toolbar-btn` family with `--primary` variant added.
+  - NavLink for `basePath` root now passes `end={isRootLink}` so the Connect link doesn't show active on sub-paths.
+
+- **Video capture**:
+  - Aspect ratio 16:9 to 4:3 (S-330 / S-550 CRT actual aspect). No more letterboxing.
+  - `.ac-video-frame-skeleton` paused-state placeholder: repeating-scanline CRT texture + muted camera glyph + PAUSED eyebrow + mono hint. Frame dimensions stable whether streaming or paused.
+  - Auto-start effect gated by `userStopped` flag — explicit Stop is sticky until operator clicks Start or switches device. Previously the Stop button "didn't work" because the auto-start re-fired on the next render.
+  - Vestigial "Arrow category 01 / 09" toggle removed.
+  - Select + Start / Stop swapped to `.ac-select` / `.ac-toolbar-btn` chrome.
+
+- **Title-row pixel parity**: `.ac-page-title-row` switched from `align-items: baseline` to `align-items: center`. Library's right-side `<div>` (no text baseline) was triggering a synthetic-bottom-of-box baseline, shifting the heading block down 2.5px. Verified via Playwright DOM measurements before / after: heading top, row height, rule top all match Tones to the pixel.
+
+`1d75e0a1` was the prior session-end commit covering the broader v3 redesign (Patches / Tones / Play page chrome, atomic AcToggle / AcEnvelope controls, drawer alignment, arrow-key autorepeat fix, etc.).
+
+### Didn't Work
+
+- **Deducing instead of looking.** Operator caught me trying to reason about a header pixel-divergence from screenshots without actually running the page in a browser. Switched to Playwright DOM measurement — `getBoundingClientRect` on `.ac-page-title-row` / `-block` / `-heading` / `-rule` for both Tones and Library, immediately surfaced the 2.5px block-top offset, identified `align-items: baseline` + synthetic-bottom-baseline as the cause, fixed it.
+- **Stop button that didn't actually stop.** The VideoCapture auto-start `useEffect` had no notion of operator intent — clicking Stop set `isStreaming=false`, the effect saw `shouldStream && !isStreaming` and immediately restarted. Same shape of bug as the front-panel autorepeat — effect-driven side effects need to gate on explicit intent, not derived state.
+- **Two parallel button classes.** `.ac-pane-action` (designed for in-pane action stacks) and `.ac-toolbar-btn` (header chrome) had nearly identical visuals. Used the wrong one on the Library title row and it grew the row's vertical metrics.
+
+### Course Corrections
+
+- **[PROCESS]** Use browser measurement before claiming pixel parity. `getBoundingClientRect` + `getComputedStyle` cuts speculation cycles.
+- **[COMPLEXITY]** Use one button class per role, not two with overlapping semantics.
+- **[UX]** Effect-driven state needs an explicit-intent flag when reacting to operator actions.
+- **[UX]** Vestigial UI is technical debt; delete on replacement, not "after some grace period".
+
+### Quantitative
+
+- User messages: ~50 (high frequency of `/frontend-design:frontend-design` invocations)
+- Commits: 2 (`1d75e0a1`, `04ad85c9`)
+- Tasks resolved: 13 (#56 to #68 plus #69, #70)
+- Skipped specs: 2 (D-LIB-10, D-LIB-11 — awaiting per-object SaveSet / LoadSet trigger)
+
+### Insights
+
+- The new design language is now broadly applied across all five pages of the Roland editor. Remaining gaps are likely visual rather than structural — typography, spacing, animation polish.
+- The Playwright DOM-measurement workflow is fast and decisive for pixel-accuracy questions; should be the FIRST step on "this doesn't look right" feedback, not the last.
+- `.ac-collapse` (grid-template-rows 1fr to 0fr) is reused enough across bank rows + tree children that it earned its promotion to editor-core / list-primitives.css. Same shape is generic enough for any other collapsible content.
+- `align-items: baseline` is fragile when row children have heterogeneous chrome (text vs. button-only div). `center` is the safer default for editor page title rows.
+- The s330LibraryPlugin / s550LibraryPlugin adapters thread bank-loading state via `DeviceMemoryCustomState` — the per-plugin duplication is a smell worth consolidating once Akai gets its redesign pass.
