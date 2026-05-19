@@ -89,42 +89,43 @@ test.describe('Capabilities — Tone Loop Editor (D-TONE-LOOP)', () => {
   });
 
   test('D-TONE-LOOP-01: Load Wave Data button is gated on hasSampleData', async ({ page }) => {
-    // ToneWavePanel.tsx:179-209 wraps the Loop Editor section in
+    // ToneWavePanel.tsx wraps the Loop Editor section in
     //   {hasSampleData && (<section>...)}
-    // where hasSampleData = tone.wave.endPoint > tone.wave.startPoint
-    // (ToneWavePanel.tsx:40). The captured tones-bank-0 fixture
-    // returns endPoint=0, startPoint=0 for T0 — a real device state
-    // where the tone has no sample data assigned. Under this state
-    // the entire Loop Editor section is absent, including the
-    // "Load Wave Data" button. The affordance under test is the GATE:
-    // when hasSampleData=false, the button MUST NOT render. The
-    // complementary half ("button appears when hasSampleData=true and
-    // waveData unloaded") requires a fixture whose captured tone has
-    // a non-zero start/end range — that fixture is part of Wave 4
-    // (#415) capture work, not in scope here.
+    // where `hasSampleData = toneHasWaveData(tone)` and the
+    // authoritative predicate is `tone.wave.segmentLength > 0`
+    // (s-series-tone-predicates.ts). T11 in the load-everything
+    // fixture has populated wave segments — a real tone with audible
+    // sample data, even if its in-segment start/end range is unwritten.
+    //
+    // Under the corrected predicate the Loop Editor section IS
+    // mounted, and because waveData hasn't been loaded yet the
+    // "Load Wave Data" button is visible. This pins the "tone with
+    // wave data + waveData unloaded -> button visible" half of the
+    // gate. The complementary half ("tone has no wave segments ->
+    // section absent") would need a fixture pointed at a truly empty
+    // tone slot — different scope.
     const loadButton = page.getByRole('button', { name: 'Load Wave Data' });
-    await expect(loadButton).toHaveCount(0);
+    await expect(loadButton).toBeVisible({ timeout: 5_000 });
 
-    // Belt-and-braces: the Loop Editor heading is also absent — pins
-    // the gate at the section level. A redesign that unconditionally
-    // mounts the section (with the button gated separately) trips
-    // either this assertion or D-TONE-LOOP-02.
+    // Belt-and-braces: the section heading is mounted alongside the
+    // button. ToneWavePanel renders the wrapper heading at level 4;
+    // the redesigned LoopEditor inside has its own toolbar title at
+    // level 3 once wave data is loaded.
     await expect(
       page.getByRole('heading', { name: 'Loop Editor', level: 4 }),
-    ).toHaveCount(0);
+    ).toBeVisible();
   });
 
-  test('D-TONE-LOOP-02: visual waveform region is gated on hasSampleData', async ({ page }) => {
-    // The Loop Editor section (which would mount the LoopEditor's
-    // [data-loop-editor] root once wave data is decoded) is gated on
-    // hasSampleData. The tones-bank-0 fixture's T0 has startPoint=0,
-    // endPoint=0, so the entire section is absent — the visual
-    // waveform region cannot exist without the section. The contract
-    // under test pins both gates: the Loop Editor heading is absent
-    // AND the loop-editor data root is absent.
+  test('D-TONE-LOOP-02: visual waveform region is gated on decoded samples', async ({ page }) => {
+    // The LoopEditor's [data-loop-editor] root mounts only after the
+    // wave data is decoded (loopEditorProps becomes available). T11
+    // in the load-everything fixture has populated segments — the
+    // section header + "Load Wave Data" button render — but the
+    // visual waveform region itself is still absent until the
+    // operator triggers a wave-data fetch.
     await expect(
       page.getByRole('heading', { name: 'Loop Editor', level: 4 }),
-    ).toHaveCount(0);
+    ).toBeVisible({ timeout: 5_000 });
     await expect(page.locator('[data-loop-editor]')).toHaveCount(0);
   });
 

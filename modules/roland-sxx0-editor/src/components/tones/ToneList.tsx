@@ -20,7 +20,7 @@
 
 import { useState, type KeyboardEvent } from 'react';
 
-import type { SamplerTone } from '@/core/midi/SamplerClient';
+import { type SamplerTone, toneHasWaveData } from '@/core/midi/SamplerClient';
 import { cn } from '@/lib/utils';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { isToneEmpty } from '@/lib/slot-allocation';
@@ -161,9 +161,11 @@ export function ToneList({
                 const slotBank = Math.floor(index / tonesPerBank);
                 const isBankLoading = loadingBank === slotBank;
 
-                // Has sample data: end > start. Drives the Export action's
-                // visibility (we never offer Export on a wave-less tone).
-                const hasSampleData = isLoaded && tone.wave.endPoint > tone.wave.startPoint;
+                // Drives the Export action's visibility — we never offer
+                // Export on a wave-less tone. `toneHasWaveData` is the
+                // authoritative predicate (segmentLength > 0); see
+                // s-series-tone-predicates.ts for the reasoning.
+                const hasSampleData = toneHasWaveData(tone);
 
                 const handleClick = () => {
                   if (isLoaded) {

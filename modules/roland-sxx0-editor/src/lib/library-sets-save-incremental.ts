@@ -10,6 +10,7 @@
  */
 
 import type { S330Tone, S330Patch } from '@/core/midi/S330Client';
+import { toneHasWaveData } from '@/core/midi/SamplerClient';
 import {
   type StorageDirectoryHandle,
   type SetYaml,
@@ -130,7 +131,7 @@ export async function saveDeviceToSetIncremental(
   for (let i = 0; i < MAX_TONES; i++) {
     try {
       const tone = await fetchToneData(i);
-      if (tone && tone.wave.segmentLength > 0) {
+      if (toneHasWaveData(tone)) {
         validTones.push({ index: i, tone });
       }
     } catch (err) {

@@ -62,6 +62,7 @@ export {
     resample,
     sampleRateLabelToHz,
     toneSampleRateHz,
+    toneHasWaveData,
 } from '@audiocontrol/sampler-devices/roland-s-series';
 
 export type {

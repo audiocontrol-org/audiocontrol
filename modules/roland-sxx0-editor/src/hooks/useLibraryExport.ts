@@ -7,7 +7,7 @@
 
 import { useState, useCallback, type MutableRefObject } from 'react';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
-import type { SamplerClientInterface, SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
+import { type SamplerClientInterface, type SamplerTone, type SamplerPatch, toneHasWaveData } from '@/core/midi/SamplerClient';
 import type { DeviceDragData } from '@/components/library/DeviceMemoryPanel';
 import type { OperationProgress } from '@/types/import-operation';
 import {
@@ -315,7 +315,7 @@ export function useLibraryExport({
         if (!tone) {
           throw new Error(`Tone at slot ${slot} not loaded from device. Try refreshing device data first.`);
         }
-        if (tone.wave.segmentLength > 0) {
+        if (toneHasWaveData(tone)) {
           originalSlotSet.add(slot);
         } else {
           subToneSlots.push(slot);

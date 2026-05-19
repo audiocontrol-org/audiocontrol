@@ -19,7 +19,7 @@
  * working.
  */
 
-import type { SamplerTone } from '@/core/midi/SamplerClient';
+import { type SamplerTone, toneHasWaveData } from '@/core/midi/SamplerClient';
 import { formatS330Number, cn } from '@/lib/utils';
 import { Tooltip } from '@/components/ui/Tooltip';
 
@@ -56,7 +56,7 @@ export function ToneEditorHead({
   onChopSample,
   isLoadingChopWaveData = false,
 }: ToneEditorHeadProps) {
-  const hasSampleData = tone.wave.endPoint > tone.wave.startPoint;
+  const hasSampleData = toneHasWaveData(tone);
 
   return (
     <header className="tones__detail-head">

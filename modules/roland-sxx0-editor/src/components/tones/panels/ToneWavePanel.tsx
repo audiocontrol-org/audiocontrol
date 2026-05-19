@@ -18,7 +18,7 @@
  * a specific value via `tone-<field>-<value>` instead of selectOption().
  */
 
-import type { SamplerTone } from '@/core/midi/SamplerClient';
+import { type SamplerTone, toneHasWaveData } from '@/core/midi/SamplerClient';
 
 type SamplerLoopMode = SamplerTone['loopMode'];
 import { midiNoteToName } from '@/lib/utils';
@@ -134,7 +134,7 @@ export function ToneWavePanel({
   onLoadWaveData,
   loopEditorProps,
 }: ToneWavePanelProps) {
-  const hasSampleData = tone.wave.endPoint > tone.wave.startPoint;
+  const hasSampleData = toneHasWaveData(tone);
   const { memoryLayout } = useDeviceConfig();
   const { labels: waveBankLabels, indices: waveBankIndices } =
     memoryLayout.getWaveBanksForTone(toneIndex);
