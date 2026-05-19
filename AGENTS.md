@@ -197,6 +197,6 @@ Editors are served at `https://audiocontrol.org/<manufacturer>/<device>/editor`.
 - Do not invent projection statistics.
 - Use GitHub links, not local file paths, in GitHub issue descriptions.
 
-## Auditor / Implementer Protocol
+## Audit Log Protocol
 
-The project-wide auditor/implementer handoff, finding-status, and re-verification protocol lives in [AUDITOR-IMPLEMENTER-PROTOCOL.md](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/AUDITOR-IMPLEMENTER-PROTOCOL.md).
+How findings get recorded, tracked, and closed in the audit log — finding format, status vocabulary, lifecycle, when GitHub issues are needed — lives in [AUDITOR-IMPLEMENTER-PROTOCOL.md](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/AUDITOR-IMPLEMENTER-PROTOCOL.md).
