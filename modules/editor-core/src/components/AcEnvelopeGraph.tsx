@@ -3,30 +3,35 @@ import { useRef, type PointerEvent as ReactPointerEvent } from 'react';
 /**
  * `<AcEnvelopeGraph>` — the VFD-glow "monitor" portion of `<AcEnvelope>`.
  *
- * Renders the full-width phosphor-scanline graphic with grid lines, an
- * accent fill polygon, the bright stroke line, draggable point markers,
- * x-axis ticks, the y-axis level guides, and the sustain marker label.
+ * Renders the full-width phosphor-scanline graphic with an accent fill
+ * polygon, the bright stroke line, draggable point markers, x-axis
+ * ticks, the y-axis level guides, and the sustain marker label.
  *
- * Horizontal scaling (the non-obvious part):
+ * Horizontal scaling — the cumulative-advance model:
  *
- *   Each segment owns a *fixed-width slot* of `100 / n` percent of the
- *   canvas. Segment i's point sits at
+ *   Each segment owns a per-segment slot of width `100 / n` percent of
+ *   the canvas, but the slot's left edge sits at the PREVIOUS point's
+ *   X position (the anchor at x=0 for segment 1). Each segment "spends"
+ *   somewhere between 0% and slot-width of horizontal space based on
+ *   its time value:
  *
- *       x_i = (i - 1) / n + slotFill_i / n
+ *       x_i = x_{i-1} + slotFill_i * (100 / n)
+ *       slotFill_i = ((maxTime + 1) - seg.time) / (maxTime + 1)
  *
- *   where `slotFill_i = ((maxTime + 1) - seg.time) / (maxTime + 1)`,
- *   so a slow rate (small `time` value) fills the slot toward its right
- *   edge while a fast rate (large `time` value) keeps the point near the
- *   slot's left edge. Crucially the X of segment i depends ONLY on
- *   segment i's own time — dragging any single point cannot move any
- *   other point horizontally.
+ *   where `x_0 = 0` is the anchor. So a fast segment (`time` near
+ *   `maxTime`) advances the cursor by a tiny amount and renders right
+ *   next to the previous point; a slow segment (`time = 1`) advances by
+ *   nearly the full slot width. A "zero decay" segment looks zero
+ *   width — the user-visible invariant this graph honors.
  *
- *   This intentionally rejects the cumulative-time model used by the
- *   pre-v3 `EnvelopeEditor` (and by the naïve `cumulativeTime /
- *   totalTime` reading). The cumulative model preserves prior segments
- *   but still shifts SUBSEQUENT segments when you drag one — operators
- *   don't want that. Each segment having its own visual slot is the
- *   only model that makes dragging feel right.
+ *   Trade-off: dragging segment i moves segments j > i along with it
+ *   horizontally, because their slots start at i's new position. This
+ *   is the natural reading of "segment time = horizontal distance from
+ *   the previous point." A prior slot-anchored model (slots fixed at
+ *   `i/n` regardless of prior points) avoided that side-effect but
+ *   gave segments 2..n a non-zero minimum visible length, which read
+ *   as "even instant decays take time" — misleading. Operator
+ *   confirmed the cumulative model is correct.
  *
  * Drag interaction:
  *
@@ -34,6 +39,9 @@ import { useRef, type PointerEvent as ReactPointerEvent } from 'react';
  *   streams `onTimeChange(segmentIndex, time)` + `onLevelChange(...)`
  *   per move. `onCommit` fires once on release so the consuming page
  *   can perform the device write at drag-end instead of per pixel.
+ *   The slot anchor for segment i is the CURRENT x of segment i-1 (or
+ *   the canvas left edge for i=1), which stays stable during the drag
+ *   because we only mutate the dragged segment's own time.
  *
  * Mockup source:
  *   docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:1570-1862 (CSS),
@@ -90,17 +98,22 @@ export function AcEnvelopeGraph(props: AcEnvelopeGraphProps): JSX.Element {
   // Slot width in % of canvas width. Each segment owns 100/n percent.
   const slotWidthPct = n > 0 ? 100 / n : 100;
 
-  // Per-segment X positioning. Slot i (0-based) is the range
-  // [i * slotWidthPct, (i+1) * slotWidthPct]; segment i+1's point sits at
-  // slot_start + slotFill * slotWidth, where slotFill ∈ (0, 1].
-  // Result: each point's X depends ONLY on its own time value.
-  const pointsXY: PointXY[] = props.segments.map((seg, i) => {
+  // Per-segment X positioning. Each segment advances the cursor by
+  //   slotFill_i * slotWidthPct
+  // where slotFill_i ∈ (0, 1] is determined by segment i's time alone.
+  // A fast segment (time near maxTime) advances by ~0 and lands next
+  // to the previous point; a slow segment (time = 1) advances by the
+  // full slot width. Cursor starts at the anchor (x = 0).
+  const pointsXY: PointXY[] = [];
+  let cursorX = 0;
+  for (const seg of props.segments) {
     const slotFill = (slotSize - seg.time) / slotSize;
-    return {
-      x: i * slotWidthPct + slotFill * slotWidthPct,
+    cursorX += slotFill * slotWidthPct;
+    pointsXY.push({
+      x: cursorX,
       y: 100 - (seg.level / props.maxLevel) * 100,
-    };
-  });
+    });
+  }
   const allPoints: PointXY[] = [{ x: 0, y: 100 }, ...pointsXY];
 
   const linePath = allPoints
@@ -109,10 +122,10 @@ export function AcEnvelopeGraph(props: AcEnvelopeGraphProps): JSX.Element {
   const fillPath = `${linePath} L 100 100 L 0 100 Z`;
 
   // Drag state lives in a ref so per-move updates don't trigger a render
-  // cycle inside the drag loop. The drag handlers read cumulativeSlots
-  // *only* at drag start (captured via prevCumSlots) so the math is
-  // stable even as the parent re-renders mid-drag with new segment
-  // values from our streaming callbacks.
+  // cycle inside the drag loop. The slot anchor for the dragged segment
+  // is the previous point's x (computed fresh on every pointermove from
+  // the up-to-date `pointsXY`), which is stable because we only mutate
+  // the dragged segment's time — predecessor positions don't change.
   const dragStateRef = useRef<DragState | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
 
@@ -156,14 +169,16 @@ export function AcEnvelopeGraph(props: AcEnvelopeGraphProps): JSX.Element {
     const pointerXPct = ((e.clientX - rect.left) / rect.width) * 100;
     const pointerYPct = ((e.clientY - rect.top) / rect.height) * 100;
 
-    // X → slot fraction → rate. The dragged segment owns the slot
-    // [(idx-1) * slotWidthPct, idx * slotWidthPct]. The fraction
-    // `slotFill` is how far the point is filled within its own slot;
-    // it clamps automatically when the pointer leaves the slot left or
-    // right. Subsequent segments do NOT see this — their X positions
-    // are computed from THEIR own time values only.
-    const slotStartPct = (state.segmentIdx - 1) * slotWidthPct;
-    const rawSlotFill = (pointerXPct - slotStartPct) / slotWidthPct;
+    // X → slot fraction → rate. The dragged segment's slot starts at
+    // the PREVIOUS point's x and is `slotWidthPct` wide. slotFill is
+    // how far into the slot the pointer is; it clamps when the pointer
+    // leaves either edge. The previous point's x doesn't move during
+    // the drag (we only mutate the dragged segment's time), so the
+    // slot anchor stays stable per pointermove. Segments j > i shift
+    // along with the new cursor position — that's the cumulative
+    // model's natural side effect.
+    const prevPointX = state.segmentIdx === 1 ? 0 : pointsXY[state.segmentIdx - 2].x;
+    const rawSlotFill = (pointerXPct - prevPointX) / slotWidthPct;
     const clampedSlotFill = Math.max(
       1 / slotSize, // floor so rate stays ≤ maxTime
       Math.min(1, rawSlotFill), // ceiling so rate stays ≥ 1
@@ -284,12 +299,12 @@ export function AcEnvelopeGraph(props: AcEnvelopeGraphProps): JSX.Element {
 }
 
 function renderDividers(n: number): JSX.Element[] {
-  // Dividers sit at fixed slot boundaries — every i/n share of the
-  // canvas, for i in 1..n-1. They give the operator a stable visual
-  // anchor for which slot each point lives in regardless of the point's
-  // current slotFill. Drawing them at point positions instead would
-  // make the dividers wobble as the points move, breaking the "fixed
-  // slot" mental model.
+  // Faint vertical guides at every `i/n * 100` share of the canvas.
+  // In the cumulative-advance model these mark the maximum possible x
+  // for segment i's point — i.e. the cursor's furthest-right position
+  // after i segments at full slot width each. They give the operator
+  // a reference grid for "how much horizontal room each segment can
+  // occupy" without claiming the point sits there exactly.
   const out: JSX.Element[] = [];
   for (let i = 1; i < n; i += 1) {
     const x = (i / n) * 100;
