@@ -42,7 +42,12 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  /* Modern Chrome / Firefox use the CSS `scrollbar-*` properties and
+     ignore the legacy `::-webkit-scrollbar` block. Pin the thumb +
+     track to the same design tokens the webkit fallback uses so the
+     visible scrollbar matches the dark theme in both engines. */
   scrollbar-width: thin;
+  scrollbar-color: var(--ac-color-border-subtle) var(--ac-color-surface-canvas);
 }
 
 /* ============================================================

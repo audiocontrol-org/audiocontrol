@@ -430,6 +430,121 @@
 }
 
 /* ============================================================
+   .learn-more — stacked <details> disclosures on the Connect page.
+   Each <details> renders as a hairline-bordered row whose <summary>
+   is a clickable strip with three regions: marker (▸ that rotates
+   when open), title, and a muted right-aligned count. Body content
+   is padded inset under .learn-more-body. No default browser
+   ▶ marker — hidden via ::-webkit-details-marker + list-style.
+   ============================================================ */
+.learn-more {
+  display: flex;
+  flex-direction: column;
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 30%, transparent);
+}
+
+.learn-more details {
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+}
+
+.learn-more details:last-child {
+  border-bottom: none;
+}
+
+.learn-more details > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-3);
+  padding: var(--ac-space-3) var(--ac-space-4);
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  letter-spacing: var(--ac-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--ac-color-text-primary);
+  user-select: none;
+  transition:
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.learn-more details > summary::-webkit-details-marker {
+  display: none;
+}
+.learn-more details > summary::marker {
+  display: none;
+  content: '';
+}
+
+.learn-more details > summary:hover {
+  background: color-mix(in srgb, var(--ac-color-accent) 6%, transparent);
+  color: var(--ac-color-accent);
+}
+
+.learn-more details > summary:focus-visible {
+  outline: var(--ac-rule-medium) solid color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  outline-offset: -2px;
+}
+
+.learn-more details > summary .marker {
+  display: inline-block;
+  width: 0.75rem;
+  flex-shrink: 0;
+  color: var(--ac-color-accent);
+  transition: transform var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.learn-more details[open] > summary .marker {
+  transform: rotate(90deg);
+}
+
+.learn-more details > summary > span:nth-of-type(2) {
+  /* The title span sits between .marker and .count; let it claim
+     the available horizontal space so .count right-aligns. */
+  flex: 1 1 auto;
+  letter-spacing: var(--ac-tracking-display);
+  text-transform: none;
+  font-size: var(--ac-text-md);
+  color: var(--ac-color-text-primary);
+}
+
+.learn-more details > summary .count {
+  flex-shrink: 0;
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-eyebrow);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ac-color-text-muted);
+}
+
+.learn-more-body {
+  padding: var(--ac-space-3) var(--ac-space-4) var(--ac-space-4);
+  font-size: var(--ac-text-md);
+  line-height: var(--ac-leading-normal);
+  color: var(--ac-color-text-primary);
+}
+
+.learn-more-body p {
+  margin: 0 0 var(--ac-space-3);
+}
+
+.learn-more-body ol,
+.learn-more-body ul {
+  margin: 0;
+  padding-left: var(--ac-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-2);
+}
+
+.learn-more-body li::marker {
+  color: var(--ac-color-text-muted);
+}
+
+/* ============================================================
    CONNECT-PAGE TRANSPORT TOGGLE (inline inside Connection details).
    See exploration mockup for rationale: by the time the operator
    opens the disclosure they've opted into manual mode, so the
