@@ -1280,117 +1280,32 @@ The operator review runbook at `docs/1.0/001-IN-PROGRESS/s550-support/2026-05-15
 2. **Live browser and hardware checks** that are already naturally expressed by the auditor's `test/e2e/` S-550 conformance specs.
 3. **Intentional repo mutation / operator closure actions** (editing sign-off cells, temporarily removing Tier 3 evidence, `git commit`, `git push`, `gh issue close`).
 
-This task adds a thin execution layer that decomposes the runbook rather than replaying it verbatim. The goal is to make the runbook operational without creating a second overlapping live suite or mutating the remediation team's shared worktree.
+_Rolled back 2026-05-18._ This experiment added a parallel runbook-execution and sign-off layer on top of the existing audit log, workplan, and live conformance specs. It was removed after it proved to be process overhead rather than useful product verification.
 
-**Design constraints:**
-
-- Auditor-owned. This is integration-testing infrastructure and live-verification orchestration, not product remediation.
-- Reuse the existing live S-550 conformance specs from Phase 11 Task 4; do NOT fork duplicate Playwright batteries.
-- Automated checks must be **non-mutating by default** in the active worktree.
-- Any proof that temporarily removes evidence (for example §1.4's Tier 3 dependency-wiring smoke check) must run in a temp copy or throwaway worktree.
-- Repo-mutating operator steps remain manual: sign-off edits, `git commit`, `git push`, and `gh issue close` are out of scope for the automated layer.
-- The outcome must include a **human-shaped operator runbook** for final UI review and sign-off. The operator must not be expected to read the manifest, integration test source, or raw machine output to know what to do next.
-
-**Planned deliverables (file-by-file):**
-
-- `docs/1.0/001-IN-PROGRESS/s550-support/operator-review-runbook.manifest.json`
-  - machine-readable decomposition of the dated runbook
-  - one record per step with fields for `id`, `section`, `snapshot_sha`, `requires_hardware`, `mutates_repo`, `signal_type`, `finding_or_issue`, `expected_snapshot_state`, `head_applicability_rule`, and `closure_artifact`
-- `docs/1.0/001-IN-PROGRESS/s550-support/operator-review-runbook-current.md`
-  - human-facing runbook generated or maintained from the execution layer
-  - presents only the current HEAD-relevant review steps in reviewer order
-  - uses plain-language instructions, expected outcomes, and explicit "sign off / blocked" decision points
-  - intentionally hides machine-only metadata unless needed as a supporting reference
-- `docs/1.0/001-IN-PROGRESS/s550-support/operator-signoff-summary.md`
-  - one-page operator-facing summary
-  - states what is already verified, what remains open, and whether sign-off is currently grantable
-  - exists so the operator does not need to infer review state from the audit log, conformance matrix, or machine-facing manifest
-- `modules/roland-sxx0-editor/test/integration/runbook-state.integration.test.ts`
-  - validates current HEAD against the manifest
-  - classifies each step as `applicable`, `already-satisfied`, `obsolete-at-head`, `blocked`, or `manual-only`
-  - checks current status for `D-TONE-ENV-02`, `AUDIT-20260514-FU3-01`, `AUDIT-20260514-FU3-02`, `LIVE-S550-TONES-001`, `LIVE-S550-LIB-002`, and `LIVE-S550-PATCH-001`
-- `modules/roland-sxx0-editor/test/integration/runbook-structural.integration.test.ts`
-  - encodes the hardware-free structural checks from runbook §1.1 + §2.1
-  - asserts invariants rather than brittle literal snapshot counts
-  - examples: no functional `getByTestId` / `.click()` drift under `test/ui/`; ESLint discipline scope covers `test/ui/**`; `D-TONE-ENV-02` sign-off and coverage state are parseable and internally consistent
-- `modules/roland-sxx0-editor/scripts/runbook-tier3-drop-smoke.ts`
-  - safe helper for the runbook §1.4 dependency-wiring proof
-  - runs in a temp copy or throwaway worktree, not the active worktree
-  - proves that removing the Tier 3 spec drops `D-TONE-ENV-02` from `confident`/`partial` as expected, then restores cleanly by discarding the temp environment
-- `modules/roland-sxx0-editor/scripts/runbook-live.ts`
-  - thin dispatcher from runbook sections to already-landed live S-550 specs
-  - initial mappings:
-    - runbook §2.3 → `test/e2e/s550-D-TONE-live-envelope-and-slider.spec.ts`
-    - runbook §2.4 library path → `test/e2e/s550-D-LIB-live-core.spec.ts`
-    - runbook §2.4 patches path → `test/e2e/s550-D-PATCH-live-core.spec.ts`
-    - future sections may map to `s550-play.design.spec.ts`, `s550-library.design.spec.ts`, `s550-patches.design.spec.ts`, `s550-tones.design.spec.ts`
-
-**Execution modes:**
-
-- `snapshot` mode
-  - validates the runbook against its pinned SHA assumptions
-  - useful for proving that the original runbook itself was coherent
-- `head` mode
-  - validates whether each runbook step is still relevant at current HEAD
-  - must report stale or already-satisfied steps cleanly instead of failing as though the branch regressed
-  - is the source of truth for the human-facing `operator-review-runbook-current.md`
+Deleted artifacts:
+  - `docs/1.0/001-IN-PROGRESS/s550-support/operator-review-runbook.manifest.json`
+  - `docs/1.0/001-IN-PROGRESS/s550-support/operator-review-runbook-current.md`
+  - `docs/1.0/001-IN-PROGRESS/s550-support/operator-signoff-summary.md`
+  - `modules/roland-sxx0-editor/test/integration/runbook-state.integration.test.ts`
+  - `modules/roland-sxx0-editor/test/integration/runbook-structural.integration.test.ts`
+  - `modules/roland-sxx0-editor/scripts/runbook-tier3-drop-smoke.ts`
+  - `modules/roland-sxx0-editor/scripts/runbook-live.ts`
 
 **Proven complete when:**
 
-- [x] The dated runbook is decomposed into a manifest file with one machine-readable record per executable step. (Landed via `operator-review-runbook.manifest.json` in the first Task 7 implementation slice.)
-- [x] A non-mutating integration test can classify each runbook step at current HEAD as `applicable`, `already-satisfied`, `obsolete-at-head`, `blocked`, or `manual-only`. (Landed via `test/integration/runbook-state.integration.test.ts`; initial HEAD queue encoded for `D-TONE-ENV-02`, `AUDIT-20260514-FU3-01`, `AUDIT-20260514-FU3-02`, `LIVE-S550-TONES-001`, `LIVE-S550-LIB-002`, and `LIVE-S550-PATCH-001`.)
-- [x] The structural runbook checks from §1.1 and §2.1 run as integration tests and assert invariants rather than literal snapshot-era counts. (Landed via `test/integration/runbook-structural.integration.test.ts`; current checks cover root-of-`test/ui/` drift, in-context-tier ESLint discipline enforcement, full `test/ui/**` print-config scope, and parseable `D-TONE-ENV-02` sign-off / coverage state.)
-- [x] The Tier 3 dependency-wiring smoke proof from runbook §1.4 runs only in a temp copy / throwaway worktree and never mutates the shared active worktree. (Landed via `scripts/runbook-tier3-drop-smoke.ts` plus `runbook-tier3-drop-smoke.integration.test.ts`; current HEAD correctly classifies actual execution as `blocked` until `D-TONE-ENV-02` reaches `coverage=confident`, but the only permitted execution path is now the temp-worktree helper.)
-- [x] A thin live dispatcher exists that maps runbook sections onto the already-landed S-550 live conformance specs instead of duplicating them. (Landed via `scripts/runbook-live.ts`, `test/integration/runbook-live.integration.test.ts`, and the module script `pnpm --filter @audiocontrol/roland-sxx0-editor test:runbook:live -- <section>`; current mappings cover runbook `2.3`, `2.4-library`, `2.4-patches`, and aggregate `2.4`.)
-- [x] A human-shaped runbook exists at `operator-review-runbook-current.md` and is easy for a reviewer to follow without consulting the manifest or raw test code. (Initial current-HEAD version landed in the first Task 7 implementation slice.)
-- [x] A one-page operator summary exists that tells the reviewer what is already verified, what remains open, and whether sign-off is currently grantable before they open the detailed runbook. (Landed via `operator-signoff-summary.md` as part of the verification-process simplification follow-through.)
-- [x] The human-shaped runbook contains, for each remaining review step: the route or command to run, what to look for, what counts as sign-off, and what to do if blocked. (Current sections cover `D-TONE-ENV-02`, `#426`, `#425`, `#428`, `#430`, and `#431`.)
-- [x] The automated layer explicitly excludes repo-mutating operator-closure steps (`Sign-off` edits, `git commit`, `git push`, `gh issue close`) and marks them `manual-only`. (Encoded in `operator-review-runbook.manifest.json` + verified by `runbook-state.integration.test.ts` classifications for the sign-off and closure steps.)
+- [~] _Rolled back 2026-05-18._ The Task 7 runbook execution layer landed, but was later removed after it created a parallel verification process that did not improve product-level review or release confidence.
 - [x] Any broken assumption surfaced while implementing the layer is logged as a new `Finding-ID` in `audit-log.md` rather than silently absorbed into the executor. (No new broken assumption surfaced during Task 7 implementation; structural false positives encountered during detector authoring were investigated and rejected rather than encoded as fabricated findings.)
-- [~] _Reverted._ Promotion to a top-level standard via `UI-CONTRACT-AND-VERIFICATION-STANDARD.md` was tried and rolled back. The standard plus its feature-local simplification proposal produced more process overhead than verification value and were deleted; pointers in `AGENTS.md` and `.claude/CLAUDE.md` were removed. The runbook layer below remains the source of truth.
+- [~] _Reverted._ Promotion to a top-level standard via `UI-CONTRACT-AND-VERIFICATION-STANDARD.md` was tried and rolled back. The standard plus its feature-local simplification proposal produced more process overhead than verification value and were deleted; pointers in `AGENTS.md` and `.claude/CLAUDE.md` were removed.
 
-**Important scope boundary:** completing Task 7 does **not** itself constitute operator sign-off. It unblocks sign-off by making the runbook executable and current at HEAD, but the final human hardware judgment and sign-off artifacts remain a separate closure step.
+**Important scope boundary:** this entire Task 7 experiment was later rolled back. The branch no longer treats runbook execution as a canonical verification layer.
 
-### Task 8 — Operator sign-off closure pass (MANUAL-ONLY — unblocks implementation-team waiting state)
+### Task 8 — Operator sign-off closure pass
 
 **GitHub Issue:** TBD
 
 **Surfaced:** operator clarification 2026-05-16 that the implementation team is waiting specifically on operator sign-off, not merely on better verification orchestration.
 
-Task 7 provides the execution layer needed to make the runbook reliable at HEAD. Task 8 is the actual closure pass that consumes that layer and records the operator-owned sign-off artifacts wherever the branch still requires them. This task exists so the workplan states unambiguously that "runbook executor landed" and "operator sign-off granted" are different things.
-
-**This task is intentionally manual-only.** It is the point where the operator uses the Task 7 executor plus live hardware judgment to decide whether the implementation team's requested sign-off can be granted.
-
-**Consumes from Task 7:**
-
-- current `snapshot` / `head` applicability report
-- non-mutating structural pass/fail state for the hardware-free runbook gates
-- live dispatcher over the landed S-550 conformance specs
-- explicit `manual-only` list of the remaining operator closure actions
-- the human-facing `operator-review-runbook-current.md` that a reviewer can follow step-by-step during the closure pass
-
-**Produces:**
-
-- updated `Sign-off` cells in `ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md` where operator hardware sign-off is still required
-- audit-log `Status:` flips from `fixed-<sha>` / `acknowledged-#N` to `verified-<date>` wherever the live reruns and operator review satisfy the closure gates
-- issue closures or operator comments carrying the hardware verification evidence
-- a final branch-local record in `DEVELOPMENT-NOTES.md` of what was and was not signed off
-
-**Proven complete when:**
-
-- [ ] Task 7 is complete and the operator has a current HEAD applicability report for the runbook.
-- [ ] Every remaining operator-required sign-off gate is explicitly classified as one of:
-  - signed off
-  - blocked by an open finding
-  - out of scope for the current closure pass
-- [ ] Required `Sign-off` cells are populated in `ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md` with actual hardware-reviewed entries in canonical format.
-- [ ] Every finding the implementation team is waiting on for sign-off has either:
-  - been flipped to `verified-<date>`, or
-  - been explicitly recorded as still blocked with the reason
-- [ ] The implementation team's waiting state is resolved with an unambiguous outcome:
-  - either "operator sign-off granted for the requested scope"
-  - or "operator sign-off not yet granted; blocking findings listed by ID"
-- [ ] `DEVELOPMENT-NOTES.md` records the closure pass outcome and cites the exact findings / sign-off rows involved.
+_Rolled back 2026-05-18._ This task depended on the same runbook/sign-off machinery as Task 7 and is no longer part of the active branch workflow. Current work is direct regression fixing plus ordinary audit findings, not operator-runbook closure.
 
 ### Acceptance Criteria (Phase 11)
 
@@ -1400,8 +1315,8 @@ Task 7 provides the execution layer needed to make the runbook reliable at HEAD.
 - [ ] **Task 4 closed:** live S-550 conformance suite (auditor-owned) covers each high-value redesign page; controller-owned support infrastructure landed; all findings the suite surfaces have flowed through the protocol's acknowledged → fixed → verified loop.
 - [ ] **Task 5 closed:** SaveSetDialog + library-dialog family missing-description warnings fixed + Tier 3 spec + #429 closed.
 - [ ] **Task 6 closed:** S-series client RQD/stale-RJC defect class fixed; BOTH auditor live specs verify on hardware (`s550-D-LIB-live-core.spec.ts` + `s550-D-PATCH-live-core.spec.ts`); #430 + #431 both closed.
-- [ ] **Task 7 closed:** operator runbook execution layer lands as a non-mutating integration path over the dated runbook, reusing the live S-550 conformance suite and classifying snapshot-vs-HEAD applicability without stepping on the remediation team's shared worktree.
-- [ ] **Task 8 closed:** operator sign-off closure pass consumes Task 7, records the remaining hardware-reviewed sign-off artifacts, and resolves the implementation team's waiting state with either granted sign-off or an explicit blocked-by-findings list.
+- [~] **Task 7 rolled back:** the operator runbook execution layer landed, but was later removed after it created a parallel verification process that did not improve product-level review or release confidence.
+- [~] **Task 8 rolled back:** the operator sign-off closure pass depended on the same removed runbook/sign-off machinery and is no longer part of the active branch workflow.
 - [ ] No new "audit found a bug we forgot to track" surprises before Phase 9 atomic closure (operator runs an independent audit at the end of 9R-D and confirms zero new findings).
 
 ### Why these are NOT in 9R-A or 9R-B/C/D directly
@@ -1412,8 +1327,8 @@ Task 7 provides the execution layer needed to make the runbook reliable at HEAD.
 - **Task 4** exists because 9R-C/9R-D describe operator-driven closure, not a reusable live-hardware Playwright conformance layer. This is a new verification capability for the feature branch, not just a restatement of existing Phase 9 gates. **Re-scoped 2026-05-15:** auditor-owned per the protocol's Test-tier ownership table; controller responsibilities under this task are limited to infra (`BrokenContextWrapper`) + remediation of findings the auditor surfaces.
 - **Task 5** is a cross-cutting accessibility defect surfaced by Track A of the auditor's live conformance suite (Task 4). It doesn't fit 9R-* because dialog `Dialog.Description` wiring is not page-chrome rebuild work and is not test-tier reform — it's a sibling-family accessibility audit.
 - **Task 6** is a client/protocol-layer defect surfaced by Track B of the auditor's live conformance suite (Task 4). It doesn't fit 9R-* because the bug is in `s-series-client.ts` RQD/RJC interleaving, not page chrome or test-discipline. Distinct from Task 5 (dialog accessibility); separate fix path; separate verification gate.
-- **Task 7** is verification-orchestration infrastructure. It doesn't fit 9R-* because it is neither product remediation nor page rebuild work; it exists to operationalize the dated operator runbook without mutating the shared worktree or duplicating the live conformance suite from Task 4.
-- **Task 8** is the explicit operator closure pass that turns verification readiness into actual sign-off artifacts. It doesn't fit 9R-* because it is not remediation work; it is the manual acceptance step the implementation team is currently waiting on.
+- **Task 7** was verification-orchestration infrastructure. It did not fit 9R-* because it was neither product remediation nor page rebuild work; it was later rolled back.
+- **Task 8** was the explicit operator closure pass that turned verification readiness into sign-off artifacts. It was later rolled back with Task 7.
 
 Adding Phase 11 also formalizes a pattern: "the workplan tracks every committed-to fix, including bugs found mid-flight." It is NOT a parking lot for capture-surface ideas — see "Post-Mortem Follow-Ons" below for that. An item enters Phase 11 only when (a) operator has accepted it, (b) it has a GitHub issue, and (c) it has acceptance criteria proven by observable artifacts.
 

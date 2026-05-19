@@ -1233,7 +1233,7 @@ Closure gate:
 
 ## 2026-05-16 Auditor Closure Pass — Structural + Live Reruns
 
-Scope reviewed: the auditor-owned queue from `operator-review-runbook-current.md`, executed on current `feature/s550-support` HEAD. This pass covered the structural rerun for `AUDIT-20260514-FU3-01`, a targeted in-context rerun for `AUDIT-20260514-FU3-02`, and fresh live S-550 reruns for the bounded Tones, Library, and Patches capability slices.
+Scope reviewed: the auditor-owned queue as it existed on current `feature/s550-support` HEAD at the time. This pass covered the structural rerun for `AUDIT-20260514-FU3-01`, a targeted in-context rerun for `AUDIT-20260514-FU3-02`, and fresh live S-550 reruns for the bounded Tones, Library, and Patches capability slices.
 
 ### Executive Queue
 
@@ -1364,7 +1364,7 @@ Acknowledging the auditor's 2026-05-16 closure pass + the new `LIVE-S550-TONES-0
 **Audit-log Status queue after this ACK:** zero `^Status: open` hits. End-of-session protocol satisfied.
 
 **Auditor infrastructure landed during this pass** (no controller action required, noted for completeness):
-- `operator-review-runbook-current.md` — HEAD-aware live runbook, replacing the dated `2026-05-15-operator-review-runbook.md` model. Per the auditor's "narrow runbook to manual actions" commit (`480c3fe8`), the auditor now owns the runbook lifecycle and the controller's responsibility is to land remediations the runbook surfaces.
+- `operator-review-runbook-current.md` — retired. This branch briefly used a HEAD-aware live runbook, replacing the dated `2026-05-15-operator-review-runbook.md` model. That layer was later removed after it added process overhead without improving product verification.
 - Verification simplification proposal at `verification-process-simplification.md` (commit `a5194e9f`) — the auditor's recommendation on protocol streamlining. _Later evaluated and rolled back_: the proposal was promoted to `UI-CONTRACT-AND-VERIFICATION-STANDARD.md`, ran in production for a short window, and was then deleted along with this proposal after producing more process overhead than verification value.
 - Test/runbook utilities (commits `ceca1786`, `64709b19`, `76da0a9e`, `f1a05037`) — auditor-side tooling; no controller dependency.
 
