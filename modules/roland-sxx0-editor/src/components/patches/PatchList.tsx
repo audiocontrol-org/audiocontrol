@@ -17,7 +17,7 @@
  * HTML — see comment further down for keyboard wiring.
  */
 
-import { useState, type KeyboardEvent } from 'react';
+import { useState, type CSSProperties, type KeyboardEvent } from 'react';
 
 import type { SamplerPatch } from '@/core/midi/SamplerClient';
 import { cn } from '@/lib/utils';
@@ -41,8 +41,6 @@ interface PatchListProps {
   /** Called when user clicks the per-bank reload button. Re-fetches
    *  the bank from the device, invalidating the cache. */
   onReloadBank?: (bankIndex: number) => void;
-  /** Called when user clicks the export button on a patch */
-  onExportPatch?: (index: number) => void;
 }
 
 /**
@@ -60,7 +58,6 @@ export function PatchList({
   loadingBank,
   onLoadBank,
   onReloadBank,
-  onExportPatch,
 }: PatchListProps) {
   const config = useDeviceConfig();
   const { memoryLayout } = config;
@@ -83,6 +80,11 @@ export function PatchList({
   return (
     <aside
       className="ac-list"
+      // S-550 patches use 4-char slot labels ("II11"…"II48"); the
+      // shared `.ac-list-row` default of 2.25rem (sized for the
+      // tones page's 3-char labels) clips them. Override the slot
+      // column for this list only.
+      style={{ '--ac-list-row-slot-width': '3rem' } as CSSProperties}
       data-capability="C-PATCH-01"
       aria-label="Patch list"
     >
@@ -218,7 +220,7 @@ export function PatchList({
                     aria-selected={isSelected}
                     onClick={isBankLoading ? undefined : handleClick}
                     onKeyDown={handleKeyDown}
-                    className={cn('patches__list-row')}
+                    className="ac-list-row"
                   >
                     <span className="ac-list-slot">
                       <PatchLabel index={index} memoryLayout={memoryLayout} />
@@ -236,20 +238,6 @@ export function PatchList({
                         </span>
                       )}
                     </span>
-                    {isLoaded && !isEmpty && onExportPatch && (
-                      <button
-                        type="button"
-                        data-testid="export-patch-button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onExportPatch(index);
-                        }}
-                        className="ac-list-action"
-                        title="Export patch to library"
-                      >
-                        Export
-                      </button>
-                    )}
                   </div>
                 );
               })}

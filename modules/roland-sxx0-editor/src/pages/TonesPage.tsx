@@ -410,8 +410,6 @@ export function TonesPage() {
             loadingBank={loadingBank}
             onLoadBank={(bank) => loadBankWithIndicator(bank)}
             onReloadBank={(bank) => loadBankWithIndicator(bank, true)}
-            onExportTone={exportOps.openExportToneDialog}
-            canExportToLibrary={library.isConnected}
           />
           {selectedTone ? (
             <ToneEditor

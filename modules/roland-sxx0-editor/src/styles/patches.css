@@ -36,109 +36,16 @@
    eyebrow that were promoted from this file.
    ============================================================ */
 
-/* List row — slot id, name, status. The row itself is interactive
-   (role="button"), the optional Export button nests inside on hover. */
-.patches__list-row {
-  display: grid;
-  grid-template-columns: 3rem minmax(0, 1fr) auto;
-  gap: var(--ac-space-3);
-  align-items: center;
-  padding: var(--ac-space-3) var(--ac-space-4);
-  border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 50%, transparent);
-  border-left: var(--ac-rule-medium) solid transparent;
-  cursor: pointer;
-  text-decoration: none;
-  color: var(--ac-color-text-primary);
-  background: transparent;
-  transition:
-    background-color var(--ac-duration-fast) var(--ac-easing-default),
-    border-left-color var(--ac-duration-fast) var(--ac-easing-default);
-}
-
-.patches__list-row:hover:not([aria-disabled="true"]) {
-  background: color-mix(in srgb, var(--ac-color-surface-panel) 60%, transparent);
-  border-left-color: color-mix(in srgb, var(--ac-color-accent) 40%, transparent);
-}
-
-.patches__list-row[aria-selected="true"] {
-  background: color-mix(in srgb, var(--ac-color-accent) 12%, transparent);
-  border-left-color: var(--ac-color-accent);
-}
-
-.patches__list-row[aria-selected="true"] .ac-list-slot {
-  color: var(--ac-color-accent);
-}
-
-.patches__list-row:focus-visible {
-  outline: none;
-  background: color-mix(in srgb, var(--ac-color-accent) 12%, transparent);
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
-}
-
-.patches__list-row[aria-disabled="true"] {
-  cursor: wait;
-  opacity: 0.7;
-}
-
-/* Hover-reveal for the per-row Export action — the action itself is
-   `.ac-list-action` (shared), but the reveal selector references
-   `.patches__list-row` so it only shows when its parent row is hot. */
-.patches__list-row:hover .ac-list-action,
-.patches__list-row[aria-selected="true"] .ac-list-action,
-.patches__list-row:focus-within .ac-list-action {
-  opacity: 1;
-}
-
-/* ============================================================
-   DETAIL PANE — patch-editor surface chrome (header + body).
-   ============================================================ */
-.patches__detail {
-  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
-  background: var(--ac-color-surface-panel);
-  border-radius: var(--ac-radius-sm);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.patches__detail-head {
-  padding: var(--ac-space-4) var(--ac-space-6) var(--ac-space-3);
-  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
-  background: linear-gradient(
-    180deg,
-    var(--ac-color-surface-panel) 0%,
-    color-mix(in srgb, var(--ac-color-surface-canvas) 40%, transparent) 100%
-  );
-}
-
-.patches__detail-title {
-  margin: 0;
-  display: flex;
-  align-items: baseline;
-  gap: var(--ac-space-3);
-  flex-wrap: wrap;
-  font-family: var(--ac-font-display);
-  font-weight: var(--ac-font-weight-normal);
-  font-size: 1.25rem;
-  line-height: 1.18;
-  letter-spacing: var(--ac-tracking-display);
-}
-
-.patches__detail-slot {
-  font-family: var(--ac-font-mono);
-  color: var(--ac-color-accent);
-  letter-spacing: 0.02em;
-}
+/* Row chrome + detail-pane chrome promoted to `.ac-list-row*` and
+   `.ac-detail-*` shared primitives in `_shared.css` (2026-05-19).
+   Patches override `--ac-list-row-slot-width` to 3rem because the
+   S-550 II-prefix slot labels ("II11"–"II48") need wider room than
+   the 2.25rem default that fits the tones page's three-char labels.
+   The override happens in `PatchList.tsx` as an inline style on the
+   list root. */
 
 .patches__detail-name {
   color: var(--ac-color-text-primary);
-}
-
-.patches__detail-body {
-  flex: 1;
-  min-height: 0;
-  padding: var(--ac-space-6);
-  overflow-y: auto;
 }
 
 /* App shell + loading progress moved to shared primitives:

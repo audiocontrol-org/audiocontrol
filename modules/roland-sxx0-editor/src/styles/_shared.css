@@ -1342,6 +1342,133 @@
 }
 
 /* ============================================================
+   DETAIL PANE — shared chrome for list-detail editor pages.
+   Promoted 2026-05-19 from `tones__detail*` / `patches__detail*`
+   duplicates. Each page-specific decoration (action cluster on
+   tones, mapping head on patches) stays in the page's own file;
+   the shell + head + body + title + slot live here.
+   ============================================================ */
+
+.ac-detail-pane {
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: var(--ac-color-surface-panel);
+  border-radius: var(--ac-radius-sm);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ac-detail-head {
+  padding: var(--ac-space-3) var(--ac-space-4) var(--ac-space-2);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: linear-gradient(
+    180deg,
+    var(--ac-color-surface-panel) 0%,
+    color-mix(in srgb, var(--ac-color-surface-canvas) 40%, transparent) 100%
+  );
+}
+
+.ac-detail-title {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--ac-space-3);
+  flex-wrap: wrap;
+  font-family: var(--ac-font-display);
+  font-weight: var(--ac-font-weight-normal);
+  font-size: 1.25rem;
+  line-height: 1.18;
+  letter-spacing: var(--ac-tracking-display);
+}
+
+.ac-detail-slot {
+  font-family: var(--ac-font-mono);
+  color: var(--ac-color-accent);
+  letter-spacing: 0.02em;
+}
+
+.ac-detail-body {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  padding: var(--ac-space-4);
+  overflow-y: auto;
+  /* Horizontal overflow inside the detail body is always a
+     missing `min-width: 0` somewhere in its ancestry — clip
+     it loudly rather than expose a silent horizontal
+     scrollbar. */
+  overflow-x: hidden;
+}
+
+/* ============================================================
+   LIST ROW — slot + name + action chrome, shared across the
+   tones list and the patches list. The grid template's slot
+   column is exposed via the `--ac-list-row-slot-width` custom
+   property so each page can size it independently:
+     ToneList renders with the default (2.25rem — fits "T11"
+     through "T48", three chars).
+     PatchList overrides via inline style to 3rem — S-550
+     patches use four-char slot labels ("II11"–"II48").
+   The non-slot chrome (gap, padding, hover, selected, focus,
+   disabled, action-reveal) is identical across both pages and
+   lives in one rule per state.
+   ============================================================ */
+
+.ac-list-row {
+  --ac-list-row-slot-width: 2.25rem;
+  display: grid;
+  grid-template-columns: var(--ac-list-row-slot-width) minmax(0, 1fr) auto;
+  gap: var(--ac-space-2);
+  align-items: center;
+  padding: var(--ac-space-2) var(--ac-space-3);
+  border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 50%, transparent);
+  border-left: var(--ac-rule-medium) solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--ac-color-text-primary);
+  background: transparent;
+  transition:
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    border-left-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-list-row:hover:not([aria-disabled="true"]) {
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 60%, transparent);
+  border-left-color: color-mix(in srgb, var(--ac-color-accent) 40%, transparent);
+}
+
+.ac-list-row[aria-selected="true"] {
+  background: color-mix(in srgb, var(--ac-color-accent) 12%, transparent);
+  border-left-color: var(--ac-color-accent);
+}
+
+.ac-list-row[aria-selected="true"] .ac-list-slot {
+  color: var(--ac-color-accent);
+}
+
+.ac-list-row:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--ac-color-accent) 12%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
+}
+
+.ac-list-row[aria-disabled="true"] {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+/* Hover-reveal for inline row actions. Currently no per-row
+   action button on either list (the Export affordance was
+   retired 2026-05-19), but the selector is left in place so
+   future per-row actions get the same fade-on-hover treatment
+   without re-deriving the rule. */
+.ac-list-row:hover .ac-list-action,
+.ac-list-row[aria-selected="true"] .ac-list-action,
+.ac-list-row:focus-within .ac-list-action {
+  opacity: 1;
+}
+
+/* ============================================================
    LIVE-EDIT FOOTER — pulsing rec-LED + status copy. Replaces
    save / cancel / undo per project memory
    `feedback_live_editing_no_save` — edits stream to the device

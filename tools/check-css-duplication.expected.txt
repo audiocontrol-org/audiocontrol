@@ -1,0 +1,18 @@
+# Ground truth — every cross-page CSS rule pair the duplication
+# checker MUST surface when run on the current branch state.
+#
+# Format: one violation per line, alphabetized by stem so diff is
+# stable. Comments / blank lines ignored by the validation harness.
+#
+# Pruned 2026-05-19 — the 12 stems that previously lived here
+# (`detail`, `detail-slot`, `list-row` + its 5 state variants,
+# `detail-body`, `detail-head`, `detail-title`, `list-row` base)
+# were unified into `.ac-detail-*` / `.ac-list-row*` shared
+# primitives in `_shared.css`. The slot-column width parameter
+# is exposed as `--ac-list-row-slot-width` so each page can
+# size it independently without forking the rule.
+#
+# Baseline is currently empty: any new cross-page duplicate
+# blocks the pre-commit hook. Add a stem here only if an
+# intentional-but-blocked duplicate needs to be temporarily
+# deferred — and only with a note documenting the deferral.

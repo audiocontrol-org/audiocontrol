@@ -286,8 +286,10 @@ test.describe('Device Library Round Trip', () => {
     await expect(deviceTone).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await deviceTone.click(); // triggers bank load if not yet loaded
 
-    // Wait for tone data to load from device via MIDI
-    const exportButton = deviceTone.locator(
+    // The per-row Export button was removed 2026-05-19; tone export
+    // now lives on the tone editor's title row, surfaced once the
+    // row is selected and the tone has finished loading from MIDI.
+    const exportButton = page.locator(
       '[data-testid="export-tone-button"]'
     );
     await expect(exportButton).toBeVisible({ timeout: MIDI_TRANSFER_TIMEOUT_MS });
@@ -409,9 +411,18 @@ test.describe('Device Library Round Trip', () => {
   // Patch Round Trip
   // -------------------------------------------------------------------------
 
-  test('patch round trip: import from library, export from device, compare', async ({
+  test.skip('patch round trip: import from library, export from device, compare', async ({
     page,
   }) => {
+    // SKIPPED 2026-05-19. The per-row patch Export button was
+    // removed (vestige from before the library page existed) and
+    // patches have no replacement UI export affordance. This test
+    // exercises an import → export round-trip via that button; with
+    // no surface to click, the export half of the trip has no UI
+    // path. Re-enable when a patch-export UI lands somewhere
+    // (patch editor title row, library context menu, etc.) or
+    // convert this test to drive `useLibraryExport.openExportPatchDialog`
+    // directly.
     attachConsoleDebugListener(page);
 
     // -- Fixture data -------------------------------------------------------

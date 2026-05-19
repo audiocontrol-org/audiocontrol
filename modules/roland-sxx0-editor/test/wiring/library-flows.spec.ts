@@ -260,24 +260,21 @@ test.describe('Capabilities — Library flows (Wave 4)', () => {
     await expect(page.getByText('Memory Map')).toBeVisible();
   });
 
-  test('D-LIB-15: connected library exposes the per-row Export button and opens ExportToneDialog', async ({ page }) => {
-    // Wave 3 (wiring/tones.spec.ts :: D-TONE-LIST-07) pinned the
-    // disconnected gate — the per-row Export button MUST NOT render
-    // without a connected library. This is the connected-library half:
-    // with OPFS wired, at least one loaded sample-bearing tone surfaces
-    // the button, and clicking it mounts ExportToneDialog.
+  test('D-LIB-15: connected library exposes the title-row Export button and opens ExportToneDialog', async ({ page }) => {
+    // The per-row Export button was removed 2026-05-19. Tone export
+    // now lives on the tone editor's title row (ToneEditorHead),
+    // surfaced once a tone is selected. This test verifies the
+    // connected-library half of that flow: with OPFS wired, selecting
+    // a loaded sample-bearing tone surfaces the title-row Export
+    // button, and clicking it mounts ExportToneDialog.
     //
-    // Library connection bootstrap path: TonesPage doesn't include the
+    // Library connection bootstrap: TonesPage doesn't include the
     // LibraryConnectionUI (only LibraryPage does), so we connect OPFS
     // on the library route first, then navigate to the tones route.
-    // The library-backend preference persists in localStorage, and
-    // `useLibraryConnection`'s mount effect auto-reconnects from the
-    // saved 'opfs' value (modules/editor-core/src/hooks/
-    // useLibraryConnection.ts:128-138). The per-test `addInitScript`
-    // clears localStorage before EVERY navigation, so we cannot rely
-    // on a normal page.goto carrying the pref over — instead we
-    // re-seed the pref in a follow-up init script before the second
-    // navigation.
+    // localStorage carries the 'opfs' backend preference; useLibrary-
+    // Connection auto-reconnects from it on mount. The per-test
+    // addInitScript clears localStorage before each navigation, so we
+    // re-seed the preference in a follow-up init script.
     await page.goto(LIBRARY_URL);
     await page.waitForLoadState('networkidle');
     await cleanupOPFS(page);
@@ -288,19 +285,16 @@ test.describe('Capabilities — Library flows (Wave 4)', () => {
     });
     await page.goto(TONES_URL);
     await page.waitForLoadState('networkidle');
-    // Wait for the tone list to populate from the fixture before
-    // looking for export buttons (the gate also requires `isLoaded`).
-    const list = page.locator('[data-capability="C-TONE-01"]');
-    await expect(list).toBeVisible({ timeout: 5_000 });
 
-    const exportButtons = list.locator('button[data-testid="export-tone-button"]');
-    // At least one loaded sample-bearing tone must surface the button.
-    await expect.poll(async () => exportButtons.count(), {
-      timeout: 10_000,
-      message: 'connected-library Tones page should expose at least one per-row export button',
-    }).toBeGreaterThan(0);
+    // Select the first loaded tone to mount the editor + title row.
+    const firstSlot = page.getByTestId('tone-item-0');
+    await expect(firstSlot).toBeVisible({ timeout: 5_000 });
+    await firstSlot.click();
 
-    await exportButtons.first().click();
+    const exportButton = page.getByTestId('export-tone-button');
+    await expect(exportButton).toBeVisible({ timeout: 10_000 });
+    await exportButton.click();
+
     await expect(
       page.getByRole('heading', { name: 'Export Tone to Library' }),
     ).toBeVisible({ timeout: 5_000 });
@@ -308,40 +302,9 @@ test.describe('Capabilities — Library flows (Wave 4)', () => {
     await expect(page.getByTestId('export-confirm')).toBeVisible();
   });
 
-  test('D-LIB-16: connected library exposes the per-row Export button and opens ExportPatchDialog', async ({ page }) => {
-    // Same shape as D-LIB-15 but on the Patches page. PatchList.tsx:166
-    // gates the Export button on `isLoaded && !isEmpty && onExportPatch`;
-    // `onExportPatch` is the handle we wire via
-    // PatchesPage.tsx:182 -> `exportOps.openExportPatchDialog`, and
-    // exportOps' opener throws if `libraryHandle` is null. Without OPFS
-    // PatchesPage doesn't pass an `onExportPatch` prop (it would
-    // crash the row), so the button doesn't render. With OPFS the
-    // prop is wired and the button surfaces.
-    //
-    // Library bootstrap mirrors D-LIB-15 above; see its comment for
-    // the localStorage-pref handoff rationale.
-    await page.goto(LIBRARY_URL);
-    await page.waitForLoadState('networkidle');
-    await cleanupOPFS(page);
-    await connectLibraryOPFS(page);
-
-    await page.addInitScript(() => {
-      window.localStorage.setItem('audiocontrol-library-backend', 'opfs');
-    });
-    await page.goto(PATCHES_URL);
-    await page.waitForLoadState('networkidle');
-    const list = page.locator('[data-capability="C-PATCH-01"]');
-    await expect(list).toBeVisible({ timeout: 5_000 });
-
-    const exportButtons = list.locator('button[data-testid="export-patch-button"]');
-    await expect.poll(async () => exportButtons.count(), {
-      timeout: 10_000,
-      message: 'connected-library Patches page should expose at least one per-row export button',
-    }).toBeGreaterThan(0);
-
-    await exportButtons.first().click();
-    await expect(
-      page.getByRole('heading', { name: 'Export Patch to Library' }),
-    ).toBeVisible({ timeout: 5_000 });
-  });
+  // D-LIB-16 retired 2026-05-19. The per-row patch Export button was
+  // removed (vestige from before the library page existed) and patches
+  // have no title-row equivalent — there's no UI affordance left to
+  // test. The export pipeline (`useLibraryExport.openExportPatchDialog`)
+  // remains for any future call site that wants to surface it.
 });

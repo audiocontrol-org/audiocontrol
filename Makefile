@@ -254,6 +254,34 @@ test-rendering-roland: $(ROLAND_SXX0_EDITOR) ensure-playwright
 check-coverage-roland: $(ROLAND_SXX0_EDITOR) ensure-playwright
 	$(DEVENV_RUN) "pnpm run check-coverage"
 
+# Cross-page CSS duplication gate. Fails when a NEW `.pageA__X` /
+# `.pageB__X` rule pair appears whose body overlaps with the other —
+# i.e. somebody copy-pasted page chrome instead of extracting it to a
+# shared `.ac-*` primitive. Pre-existing pairs catalogued in
+# `tools/check-css-duplication.expected.txt` are not blocking; they're
+# tracked as backlog. New duplication beyond that set blocks the commit.
+# See `tools/check-css-duplication.ts` for full rationale.
+check-css-duplication:
+	tsx tools/check-css-duplication.ts \
+		--baseline tools/check-css-duplication.expected.txt
+
+# Validate that `check-css-duplication` actually catches the
+# known-existing duplications. Compares checker output against the
+# hand-curated ground-truth list. Fails if any expected stem is
+# missing from the checker's output — i.e. the checker is broken.
+# Run this whenever the checker or its ground-truth file changes.
+check-css-duplication-validate:
+	tsx tools/check-css-duplication.validate.ts
+
+# Activate the in-repo pre-commit hooks. Idempotent. Run once per
+# clone; the config setting lives in `.git/config` (not tracked),
+# so each clone needs its own install step. The hook scripts
+# themselves are in `.githooks/` and ARE tracked, so they travel.
+install-hooks:
+	git config core.hooksPath .githooks
+	@echo "hooks installed: core.hooksPath = .githooks"
+	@echo "  pre-commit: blocks NEW cross-page CSS duplication"
+
 # ---------------------------------------------------------------------------
 # Common-Area Library Tests (shared specs, parameterized by env)
 # ---------------------------------------------------------------------------

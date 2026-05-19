@@ -247,34 +247,18 @@ test.describe('Capabilities — Patches (C-PATCH)', () => {
     );
   });
 
-  test('D-PATCH-LIST-08: loaded non-empty patches surface a per-row Export button', async ({ page }) => {
+  test('D-PATCH-LIST-08: per-row export-patch-button is permanently absent', async ({ page }) => {
+    // The per-row Export affordance was removed 2026-05-19 — same
+    // disposition as the tones-page version, retired as a vestige
+    // from before the library page existed. This test pins the
+    // absence so a regression that reintroduces an inline Export
+    // button on the list rows fails CI.
     const list = page.locator('[data-capability="C-PATCH-01"]');
     await expect(list).toBeVisible({ timeout: 5_000 });
 
-    // Bank 0 is loaded; slot P11 is the first loaded slot. The Export
-    // button is gated on (isLoaded && !isEmpty && onExportPatch) per
-    // PatchList.tsx:166. The patches-bank-0 fixture surfaces a
-    // non-empty patch in P11 (its accessible name carries decoded text
-    // beyond 'P11', asserted in C-PATCH-02), so the Export button
-    // renders.
-    const firstSlot = list.getByRole('button', { name: /^P11\b/ });
-    await expect(firstSlot).toBeVisible();
-
-    // The per-row Export button is a real <button> nested in the
-    // role="button" row div (see PatchList.tsx:166 + the explanation
-    // comment at L18). Its data-testid is "export-patch-button".
-    const exportButton = firstSlot.locator(
+    const anyExportButton = list.locator(
       'button[data-testid="export-patch-button"]',
     );
-    await expect(exportButton).toBeVisible();
-    await expect(exportButton).toHaveText('Export');
-
-    // Unloaded slots MUST NOT carry the Export button — the gate
-    // requires `isLoaded`. P28 is unloaded under this fixture.
-    const unloadedSlot = list.getByRole('button', { name: /^P28\b/ });
-    const exportOnUnloaded = unloadedSlot.locator(
-      'button[data-testid="export-patch-button"]',
-    );
-    await expect(exportOnUnloaded).toHaveCount(0);
+    await expect(anyExportButton).toHaveCount(0);
   });
 });

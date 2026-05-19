@@ -228,7 +228,7 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
     <div data-testid="patch-editor" data-capability="C-PATCH-04">
       {/* Detail head — eyebrow row + slot+name title (v3 mockup direction).
           Eyebrow uses .ac-detail-eyebrow-* shared primitives. */}
-      <header className="patches__detail-head">
+      <header className="ac-detail-head">
         <div className="ac-detail-eyebrow-row">
           <span>Patch</span>
           <span className="ac-detail-eyebrow-sep">·</span>
@@ -236,8 +236,8 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
           <span className="ac-detail-eyebrow-sep">·</span>
           <span>Source · device</span>
         </div>
-        <h3 id="patch-detail-title" className="patches__detail-title">
-          <span className="patches__detail-slot">
+        <h3 id="patch-detail-title" className="ac-detail-title">
+          <span className="ac-detail-slot">
             <PatchLabel index={index} memoryLayout={config.memoryLayout} />
           </span>
           {editingName ? (
@@ -277,7 +277,7 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
         </h3>
       </header>
 
-      <div className="patches__detail-body space-y-6">
+      <div className="ac-detail-body space-y-6">
         {/* Common Parameters card — keep card framing for the parameter
             density we already have; further polish (param grid, range
             bars, layer cards) is structural decomposition out of scope

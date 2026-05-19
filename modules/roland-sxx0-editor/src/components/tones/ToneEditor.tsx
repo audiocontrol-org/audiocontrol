@@ -88,7 +88,7 @@ export function ToneEditor({
 
   return (
     <article
-      className="tones__detail"
+      className="ac-detail-pane"
       data-testid="tone-detail"
       data-capability="C-TONE-04"
     >
@@ -109,7 +109,7 @@ export function ToneEditor({
         isLoadingChopWaveData={isLoadingChopWaveData}
       />
 
-      <div className="tones__detail-body">
+      <div className="ac-detail-body">
         <ToneEditorTabs
           groupName={tabGroupName}
           panels={{

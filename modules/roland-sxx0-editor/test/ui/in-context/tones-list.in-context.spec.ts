@@ -231,7 +231,7 @@ test.describe('TonesPage tone-list row activation — Tier 3 in-context (D-TONE-
     // that point is the row itself or a descendant — i.e. the user-
     // facing target is not occluded by anything (including the bank
     // header, which is the bug's primary surface). The row carries
-    // `className="tones__list-row"` (per ToneList.tsx:140), so the
+    // `className="ac-list-row"` (per ToneList.tsx:140), so the
     // hit-test top element must be an element with that class OR a
     // descendant.
     const rowBox = await toneRow.boundingBox();
@@ -255,7 +255,7 @@ test.describe('TonesPage tone-list row activation — Tier 3 in-context (D-TONE-
       ({ x, y }) => {
         const top = document.elementFromPoint(x, y);
         if (top === null) return false;
-        // The row is `<div class="tones__list-row" role="button">`,
+        // The row is `<div class="ac-list-row" role="button">`,
         // and its descendants are `<span>` elements (slot label,
         // tone name). Acceptable top elements: the row itself, any
         // of its span descendants, OR an Export button INSIDE the
@@ -263,8 +263,8 @@ test.describe('TonesPage tone-list row activation — Tier 3 in-context (D-TONE-
         // ToneList.tsx:163 — but still reachable to pointer events,
         // which is all CLAIM 2 asserts).
         return (
-          top.classList.contains('tones__list-row') ||
-          top.closest('.tones__list-row') !== null
+          top.classList.contains('ac-list-row') ||
+          top.closest('.ac-list-row') !== null
         );
       },
       { x: rowCenterX, y: rowCenterY },

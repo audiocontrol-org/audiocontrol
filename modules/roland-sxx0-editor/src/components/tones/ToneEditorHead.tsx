@@ -59,7 +59,7 @@ export function ToneEditorHead({
   const hasSampleData = toneHasWaveData(tone);
 
   return (
-    <header className="tones__detail-head">
+    <header className="ac-detail-head">
       <div className="ac-detail-eyebrow-row">
         <span>Tone</span>
         <span className="ac-detail-eyebrow-sep">·</span>
@@ -69,8 +69,8 @@ export function ToneEditorHead({
       </div>
 
       <div className="tones__detail-title-row">
-        <h3 className="tones__detail-title">
-          <span className="tones__detail-slot">T{formatS330Number(index)}</span>
+        <h3 className="ac-detail-title">
+          <span className="ac-detail-slot">T{formatS330Number(index)}</span>
           <input
             type="text"
             value={tone.name}

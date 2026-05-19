@@ -7,20 +7,18 @@
  *     on each row (legacy test/ui/tones.spec.ts depends on these).
  *   - data-capability="C-TONE-01" still set on the list root
  *     (test/wiring/tones.spec.ts depends on this).
- *   - data-testid="export-tone-button" still set on the per-row
- *     export action (legacy spec depends on this).
  *   - Each row's accessible name leads with the slot label
  *     (T11..T48) so getByRole('button', { name: /^T11/ })
  *     queries continue to resolve.
  *
- * Per-row Export <button> is nested inside an outer role="button"
- * div, not a real <button>, because <button> nested in <button> is
- * invalid HTML — same workaround documented in PatchList.tsx.
+ * The per-row Export affordance was removed 2026-05-19 — it was a
+ * vestige from before the library page existed. Export still lives
+ * on the tone editor's title row (ToneEditorHead).
  */
 
 import { useState, type KeyboardEvent } from 'react';
 
-import { type SamplerTone, toneHasWaveData } from '@/core/midi/SamplerClient';
+import type { SamplerTone } from '@/core/midi/SamplerClient';
 import { cn } from '@/lib/utils';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { isToneEmpty } from '@/lib/slot-allocation';
@@ -41,10 +39,6 @@ interface ToneListProps {
   /** Called when user clicks the per-bank reload button. Re-fetches
    *  the entire bank from the device, invalidating the cache. */
   onReloadBank?: (bankIndex: number) => void;
-  /** Called when user clicks export on a tone */
-  onExportTone?: (index: number) => void;
-  /** Whether library export is available (library connected) */
-  canExportToLibrary?: boolean;
 }
 
 export function ToneList({
@@ -56,8 +50,6 @@ export function ToneList({
   loadingBank,
   onLoadBank,
   onReloadBank,
-  onExportTone,
-  canExportToLibrary = false,
 }: ToneListProps) {
   const { memoryLayout } = useDeviceConfig();
 
@@ -161,12 +153,6 @@ export function ToneList({
                 const slotBank = Math.floor(index / tonesPerBank);
                 const isBankLoading = loadingBank === slotBank;
 
-                // Drives the Export action's visibility — we never offer
-                // Export on a wave-less tone. `toneHasWaveData` is the
-                // authoritative predicate (segmentLength > 0); see
-                // s-series-tone-predicates.ts for the reasoning.
-                const hasSampleData = toneHasWaveData(tone);
-
                 const handleClick = () => {
                   if (isLoaded) {
                     // Select-only: clicking an already-selected row is a
@@ -181,10 +167,11 @@ export function ToneList({
                 };
 
                 // Outer element is a div with role="button" rather than a
-                // real <button>, because we need to nest the per-row
-                // Export <button> inside it. <button> inside <button>
-                // trips React's validateDOMNesting warning. Keyboard
-                // activation (Enter / Space) is wired explicitly.
+                // real <button> because the row historically nested an
+                // inline action button (Export). That button has been
+                // removed but the role="button" structure is retained
+                // since it doesn't hurt — switching to a real <button>
+                // is a separate cleanup.
                 const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
                   if (isBankLoading) return;
                   if (e.key === 'Enter' || e.key === ' ') {
@@ -232,7 +219,7 @@ export function ToneList({
                     aria-selected={isSelected}
                     onClick={isBankLoading ? undefined : handleClick}
                     onKeyDown={handleKeyDown}
-                    className={cn('tones__list-row')}
+                    className="ac-list-row"
                   >
                     <span className="ac-list-slot">
                       {memoryLayout.formatToneSlot(index)}
@@ -250,20 +237,6 @@ export function ToneList({
                         </span>
                       )}
                     </span>
-                    {canExportToLibrary && isLoaded && hasSampleData && onExportTone && (
-                      <button
-                        type="button"
-                        data-testid="export-tone-button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onExportTone(index);
-                        }}
-                        className="ac-list-action"
-                        title="Export tone to library"
-                      >
-                        Export
-                      </button>
-                    )}
                   </div>
                 );
               })}

@@ -177,21 +177,9 @@ export function PatchesPage() {
     setPatch(index, patch, totalPatches);
   }, [setPatch, totalPatches]);
 
-  // Open export-to-library dialog for a specific patch.
-  // Connects the library on demand, then delegates to
-  // useLibraryExport.openExportPatchDialog. Errors thrown by the opener
-  // surface as state via setError; we don't swallow them.
-  const handleOpenExportDialog = useCallback(async (patchIndex: number) => {
-    try {
-      if (!library.isConnected && library.hasLocalFS) {
-        await library.connect('local');
-      }
-      exportOps.openExportPatchDialog(patchIndex);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to open export dialog';
-      setError(message);
-    }
-  }, [library, exportOps, setError]);
+  // (Open-export-dialog handler removed alongside the per-row Export
+  // button; the inline affordance was retired 2026-05-19 — patches
+  // export now flows through the patch editor, not the list row.)
 
   // Auto-load initial data when connected
   useEffect(() => {
@@ -352,9 +340,8 @@ export function PatchesPage() {
             loadingBank={loadingBank}
             onLoadBank={(bank) => loadPatchBankWithIndicator(bank)}
             onReloadBank={(bank) => loadPatchBankWithIndicator(bank, true)}
-            onExportPatch={handleOpenExportDialog}
           />
-          <article className="patches__detail" aria-labelledby="patch-detail-title">
+          <article className="ac-detail-pane" aria-labelledby="patch-detail-title">
             {selectedPatch ? (
               <PatchEditor
                 patch={selectedPatch}

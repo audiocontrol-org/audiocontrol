@@ -26,14 +26,10 @@
  *   - D-TONE-LIST-05: Click-to-load eyebrow + clickable unloaded slot
  *   - D-TONE-LIST-06: Refresh-all icon-button on the title row (Phase 9
  *     redesign consolidated per-bank reload toolbar into one button)
- *   - D-TONE-LIST-07: Verifies the export-tone-button gate — the button
- *     appears only when the library is connected AND the tone has
- *     sample data AND a handler is wired. The harness mounts with the
- *     library disconnected, so the AFFORDANCE under test is the gate
- *     itself: clicking a sample-bearing tone slot with no library
- *     connected MUST NOT surface the Export button. The
- *     "library-connected, button-present" half of the contract lives
- *     in the Wave 4 library suite (#415).
+ *   - D-TONE-LIST-07: Pins the absence of the per-row Export
+ *     button. The inline affordance was removed 2026-05-19 because
+ *     tone export lives on the tone editor's title row, not on every
+ *     list row.
  *
  * Fixture: `tones-bank-0` — captured for `connect() + loadToneRange(0, 8)`.
  * The TonesPage's mount sequence matches the fixture exactly (no patch
@@ -165,29 +161,15 @@ test.describe('Capabilities — Tones (C-TONE)', () => {
     );
   });
 
-  test('D-TONE-LIST-07: export-tone-button is gated on library connection', async ({ page }) => {
-    // ToneList.tsx:158 gates the per-row Export button on
-    //   canExportToLibrary && isLoaded && hasSampleData && onExportTone
-    // The TonesPage harness mounts without a connected library (no
-    // OPFS / local-FS handle in this URL), so canExportToLibrary=false
-    // and the button MUST NOT render even on a loaded sample-bearing
-    // tone. This pins the gate contract — a redesign that removes the
-    // gate (showing the button unconditionally) trips an export attempt
-    // with no destination and fails this test.
+  test('D-TONE-LIST-07: per-row export-tone-button is permanently absent', async ({ page }) => {
+    // The per-row Export affordance was removed 2026-05-19 — it was a
+    // vestige from before the library page existed. Tone export now
+    // lives only on the tone editor's title row (ToneEditorHead).
+    // This test pins the absence: a regression that reintroduces an
+    // inline per-row Export button trips this assertion.
     const list = page.locator('[data-capability="C-TONE-01"]');
     await expect(list).toBeVisible({ timeout: 5_000 });
 
-    const firstSlot = list.getByRole('button', { name: /^T11\b/ });
-    await expect(firstSlot).toBeVisible();
-
-    const exportButtonOnT11 = firstSlot.locator(
-      'button[data-testid="export-tone-button"]',
-    );
-    await expect(exportButtonOnT11).toHaveCount(0);
-
-    // The same MUST hold for every slot — the gate is per-row but the
-    // canExportToLibrary signal is page-wide. We assert NO row in the
-    // list surfaces the button under the disconnected-library harness.
     const anyExportButton = list.locator(
       'button[data-testid="export-tone-button"]',
     );
