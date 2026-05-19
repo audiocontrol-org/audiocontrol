@@ -49,7 +49,7 @@ export function ToneEditorTabs({
   groupName,
 }: ToneEditorTabsProps) {
   return (
-    <div className="tones__tabs">
+    <div className="ac-tabs">
       {TABS.map((tab) => (
         <input
           key={tab.id}
@@ -60,13 +60,13 @@ export function ToneEditorTabs({
         />
       ))}
 
-      <nav className="tones__tab-strip" role="tablist" aria-label="Tone editor sections">
+      <nav className="ac-tab-strip" role="tablist" aria-label="Tone editor sections">
         {TABS.map((tab) => (
           <label
             key={tab.id}
             htmlFor={tab.id}
             id={`${tab.id}-label`}
-            className="tones__tab"
+            className="ac-tab"
             role="tab"
             tabIndex={0}
           >
@@ -75,11 +75,11 @@ export function ToneEditorTabs({
         ))}
       </nav>
 
-      <div className="tones__panels">
+      <div className="ac-panels">
         {TABS.map((tab) => (
           <section
             key={tab.id}
-            className="tones__panel"
+            className="ac-panel"
             data-tab={tab.id}
             role="tabpanel"
             aria-labelledby={`${tab.id}-label`}

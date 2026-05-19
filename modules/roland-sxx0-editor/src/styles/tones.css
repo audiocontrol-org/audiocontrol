@@ -158,13 +158,7 @@
 
 /* `.tones__detail-body` was promoted to `.ac-detail-body`. */
 
-/* Stack of sections within a single tab panel (e.g., Wave + Loop Editor). */
-.tones__panel-stack {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ac-space-4);
-  min-width: 0;
-}
+/* `.tones__panel-stack` was promoted to `.ac-panel-stack`. */
 
 /* Container-aware atomic-field grid. Cells stay at least 11rem wide and
    the column count drops automatically when the detail pane narrows,
@@ -252,21 +246,9 @@
   white-space: nowrap;
 }
 
-/* Readout cell — used by the Sample Rate display-only field and by
-   the Original Key note-name annotation. Tabular numerics, accent
-   color, anchored right. */
-.tones__field-readout {
-  font-family: var(--ac-font-mono);
-  font-size: var(--ac-text-sm);
-  font-variant-numeric: tabular-nums;
-  color: var(--ac-color-text-primary);
-}
-
-.tones__field-readout strong {
-  font-family: var(--ac-font-display);
-  font-weight: var(--ac-font-weight-normal);
-  color: var(--ac-color-accent);
-}
+/* `.tones__field-readout` promoted to `.ac-field-readout` in
+   `_shared.css` — same primitive is consumed by the patches
+   common panel's P.Bend / Oct.Shift readouts. */
 
 /* Wave-region address inputs (Start / Loop Point / End) — a 3-column
    grid that aligns the inputs uniformly. Each cell stacks its label
@@ -289,48 +271,9 @@
   width: 100%;
 }
 
-/* Compact-field grid for narrow controls that should NOT stretch to
-   full row width (toggles, small displays). Each child is a tiny
-   column with label-on-top + control-below; the whole row flex-wraps
-   to pack multiple controls per row. Used by the Wave panel's SOURCE
-   section so the Bank/Loop Mode/Output toggles sit naturally without
-   eating the whole row each. */
-.tones__compact-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--ac-space-4) var(--ac-space-6);
-  align-items: flex-end;
-  padding-block: var(--ac-space-2);
-}
-
-.tones__compact-field {
-  display: inline-flex;
-  flex-direction: column;
-  gap: var(--ac-space-2);
-  min-width: 0;
-}
-
-.tones__compact-field > .ac-field-label {
-  font-family: var(--ac-font-display);
-  font-size: var(--ac-text-eyebrow);
-  text-transform: uppercase;
-  letter-spacing: var(--ac-tracking-eyebrow);
-  color: var(--ac-color-text-muted);
-  white-space: nowrap;
-}
-
-.tones__compact-field--readout {
-  /* Sample Rate-style display: small value below the label. */
-  gap: var(--ac-space-1);
-}
-
-.tones__compact-field--readout > .tones__field-readout {
-  padding: var(--ac-space-1) var(--ac-space-3);
-  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
-  border-radius: var(--ac-radius-sm);
-  background: color-mix(in srgb, var(--ac-color-surface-canvas) 70%, transparent);
-  font-size: var(--ac-text-base);
-}
+/* `.tones__compact-grid` + `.tones__compact-field*` promoted to
+   `.ac-compact-*` in `_shared.css` — same primitives consumed by
+   the patches common panel's toggles + readouts. */
 
 /* ============================================================
    WAVE-SEGMENT RANGE STRIP — visual representation of which
@@ -504,131 +447,10 @@
    via the `id="tt-*":checked ~ .tones__tab-strip [for="tt-*"]`
    rules below.
    ============================================================ */
-.tones__tabs {
-  position: relative;
-}
-
-/* Visually hide the radio inputs — accessibility tooling can still
-   reach them via the label associations and tabindex. */
-.tones__tabs > input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-  width: 0;
-  height: 0;
-}
-
-.tones__tab-strip {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0;
-  /* Sticky-pin to the top of the scrolling body so the tabs stay
-     reachable when the operator scrolls down into the panel content.
-     Negative inline margin + matching padding extends the background
-     across the body's horizontal padding so panel content can't peek
-     past the strip's edge as it scrolls under. Negative top lifts the
-     pin position by the body's padding-top so the strip sits flush
-     with the body's viewport edge when stuck (rather than hovering
-     below it). Values match .tones__detail-body's padding so the
-     trick stays consistent if the body padding scales later. */
-  position: sticky;
-  top: calc(-1 * var(--ac-space-4));
-  z-index: 5;
-  margin: calc(-1 * var(--ac-space-4)) calc(-1 * var(--ac-space-4)) var(--ac-space-3);
-  padding: var(--ac-space-4) var(--ac-space-4) 0;
-  background: var(--ac-color-surface-panel);
-  border-bottom: var(--ac-rule-medium) solid var(--ac-color-border-subtle);
-}
-
-.tones__tab {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 2rem;
-  font-family: var(--ac-font-display);
-  font-size: var(--ac-text-eyebrow);
-  text-transform: uppercase;
-  letter-spacing: var(--ac-tracking-eyebrow);
-  color: var(--ac-color-text-muted);
-  cursor: pointer;
-  user-select: none;
-  background: transparent;
-  border: var(--ac-rule-hairline) solid transparent;
-  border-bottom: 0;
-  margin-bottom: -2px;
-  padding: 0 var(--ac-space-2);
-  transition:
-    color var(--ac-duration-fast) var(--ac-easing-default),
-    background-color var(--ac-duration-fast) var(--ac-easing-default);
-}
-
-.tones__tab:hover {
-  color: var(--ac-color-text-primary);
-  background: color-mix(in srgb, var(--ac-color-surface-panel) 40%, transparent);
-}
-
-.tones__tab::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 2px;
-  background: transparent;
-  transition:
-    background-color var(--ac-duration-fast) var(--ac-easing-default),
-    box-shadow var(--ac-duration-fast) var(--ac-easing-default);
-}
-
-.tones__tab:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 50%, transparent) inset;
-}
-
-/* Active-tab styles: the checked radio's id selects its sibling label. */
-#tt-wave:checked      ~ .tones__tab-strip [for="tt-wave"],
-#tt-pitch-lfo:checked ~ .tones__tab-strip [for="tt-pitch-lfo"],
-#tt-filter:checked    ~ .tones__tab-strip [for="tt-filter"],
-#tt-amp:checked       ~ .tones__tab-strip [for="tt-amp"] {
-  color: var(--ac-color-accent);
-  background: color-mix(in srgb, var(--ac-color-accent) 8%, transparent);
-}
-
-#tt-wave:checked      ~ .tones__tab-strip [for="tt-wave"]::after,
-#tt-pitch-lfo:checked ~ .tones__tab-strip [for="tt-pitch-lfo"]::after,
-#tt-filter:checked    ~ .tones__tab-strip [for="tt-filter"]::after,
-#tt-amp:checked       ~ .tones__tab-strip [for="tt-amp"]::after {
-  background: var(--ac-color-accent);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 55%, transparent);
-}
-
-/* Panels: hide all by default; reveal the one matching the checked radio. */
-.tones__panel {
-  display: none;
-}
-
-#tt-wave:checked      ~ .tones__panels > [data-tab="tt-wave"],
-#tt-pitch-lfo:checked ~ .tones__panels > [data-tab="tt-pitch-lfo"],
-#tt-filter:checked    ~ .tones__panels > [data-tab="tt-filter"],
-#tt-amp:checked       ~ .tones__panels > [data-tab="tt-amp"] {
-  display: block;
-  animation: tones-tab-fade-in 180ms var(--ac-easing-default);
-}
-
-@keyframes tones-tab-fade-in {
-  from { opacity: 0; transform: translateY(2px); }
-  to   { opacity: 1; transform: none; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  #tt-wave:checked      ~ .tones__panels > [data-tab="tt-wave"],
-  #tt-pitch-lfo:checked ~ .tones__panels > [data-tab="tt-pitch-lfo"],
-  #tt-filter:checked    ~ .tones__panels > [data-tab="tt-filter"],
-  #tt-amp:checked       ~ .tones__panels > [data-tab="tt-amp"] {
-    animation: none;
-  }
-}
+/* Tab chrome AND radio-id active-state rules live in
+   `_shared.css` (single source of truth). The enumerated rule
+   list there names every tab group's IDs (tones: tt-*; patches:
+   pt-*). To add a new tab group, add its IDs to that list. */
 
 /* ============================================================
    APP SHELL — list (column 1) + detail (column 2).

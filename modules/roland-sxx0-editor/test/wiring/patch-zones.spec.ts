@@ -75,6 +75,11 @@ test.describe('Capabilities — Patch Zones (D-PATCH-ZONE)', () => {
     await expect(
       page.locator('[data-capability="C-PATCH-04"]'),
     ).toBeVisible({ timeout: 5_000 });
+
+    // The Patch editor renders as a tabbed shell (Common · Mapping); the
+    // Tone Mapping zone editor lives in the Mapping panel, which is not
+    // the default-active tab. Switch to it before any Zone-pane probe.
+    await page.locator('label[for="pt-mapping"]').click();
   });
 
   test.afterEach(() => {

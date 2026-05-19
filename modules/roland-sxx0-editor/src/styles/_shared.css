@@ -1469,6 +1469,236 @@
 }
 
 /* ============================================================
+   TAB SHELL — radio-driven, CSS-only activation. Used by every
+   editor detail pane with tabbed content (tone editor: Wave /
+   Pitch & LFO / Filter / Amp; patch editor: Common / Mapping).
+   The chrome (`.ac-tabs`, `.ac-tab-strip`, `.ac-tab`,
+   `.ac-panels`, `.ac-panel`, `.ac-panel-stack`) lives here. The
+   per-page active-state selectors necessarily live in each
+   page's CSS file (they enumerate radio IDs the page owns).
+   ============================================================ */
+
+.ac-tabs {
+  position: relative;
+  /* Force block flow — editor-core's layout-primitives.css declares
+     `.ac-tabs { display: flex }` for a different tab pattern. Without
+     this override, the radio-driven shell stacks the tab strip and
+     panels side-by-side instead of strip-above-panels, clipping the
+     panel contents. */
+  display: block;
+  /* Reset the editor-core border-bottom — the active-state ::after on
+     `.ac-tab` provides the lit underline for this pattern. */
+  border-bottom: 0;
+}
+
+/* Visually hide the radio inputs — accessibility tooling can still
+   reach them via the label associations and tabindex. */
+.ac-tabs > input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+
+.ac-tab-strip {
+  display: grid;
+  /* Auto-distribute tabs across the available width regardless of
+     count. Consumers don't need to declare grid-template-columns
+     per tab count. */
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 0;
+  /* Sticky-pin to the top of the scrolling body. Negative margins
+     extend the background across the body's horizontal padding so
+     panel content can't peek past the strip's edge as it scrolls
+     under. Values match `.ac-detail-body`'s padding so the trick
+     stays consistent if the body padding scales later. */
+  position: sticky;
+  top: calc(-1 * var(--ac-space-4));
+  z-index: 5;
+  margin: calc(-1 * var(--ac-space-4)) calc(-1 * var(--ac-space-4)) var(--ac-space-3);
+  padding: var(--ac-space-4) var(--ac-space-4) 0;
+  background: var(--ac-color-surface-panel);
+  border-bottom: var(--ac-rule-medium) solid var(--ac-color-border-subtle);
+}
+
+.ac-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2rem;
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  cursor: pointer;
+  user-select: none;
+  background: transparent;
+  border: var(--ac-rule-hairline) solid transparent;
+  border-bottom: 0;
+  margin-bottom: -2px;
+  padding: 0 var(--ac-space-2);
+  transition:
+    color var(--ac-duration-fast) var(--ac-easing-default),
+    background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-tab:hover {
+  color: var(--ac-color-text-primary);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 40%, transparent);
+}
+
+.ac-tab::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: transparent;
+  transition:
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-tab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 50%, transparent) inset;
+}
+
+.ac-panel {
+  display: none;
+}
+
+.ac-panel-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-4);
+  min-width: 0;
+}
+
+@keyframes ac-tab-fade-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ------------------------------------------------------------
+   Tab active-state — radio-driven, CSS-only.
+
+   The chrome above is generic; the rules below are the single
+   source of truth for *which* tab IDs the editor recognizes.
+   Every new tab group adds its `id="<group>-<tab>"` to all four
+   selector lists (lit-tab fill, tab underline, panel show, and
+   reduced-motion). Co-locating them here is the DRY choice:
+   one list to keep in sync, not one per page.
+
+   Current consumers:
+     · tones page  — tt-wave, tt-pitch-lfo, tt-filter, tt-amp
+     · patches page — pt-common, pt-mapping
+   ------------------------------------------------------------ */
+
+#tt-wave:checked       ~ .ac-tab-strip [for="tt-wave"],
+#tt-pitch-lfo:checked  ~ .ac-tab-strip [for="tt-pitch-lfo"],
+#tt-filter:checked     ~ .ac-tab-strip [for="tt-filter"],
+#tt-amp:checked        ~ .ac-tab-strip [for="tt-amp"],
+#pt-common:checked     ~ .ac-tab-strip [for="pt-common"],
+#pt-mapping:checked    ~ .ac-tab-strip [for="pt-mapping"] {
+  color: var(--ac-color-accent);
+  background: color-mix(in srgb, var(--ac-color-accent) 8%, transparent);
+}
+
+#tt-wave:checked       ~ .ac-tab-strip [for="tt-wave"]::after,
+#tt-pitch-lfo:checked  ~ .ac-tab-strip [for="tt-pitch-lfo"]::after,
+#tt-filter:checked     ~ .ac-tab-strip [for="tt-filter"]::after,
+#tt-amp:checked        ~ .ac-tab-strip [for="tt-amp"]::after,
+#pt-common:checked     ~ .ac-tab-strip [for="pt-common"]::after,
+#pt-mapping:checked    ~ .ac-tab-strip [for="pt-mapping"]::after {
+  background: var(--ac-color-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 55%, transparent);
+}
+
+#tt-wave:checked       ~ .ac-panels > [data-tab="tt-wave"],
+#tt-pitch-lfo:checked  ~ .ac-panels > [data-tab="tt-pitch-lfo"],
+#tt-filter:checked     ~ .ac-panels > [data-tab="tt-filter"],
+#tt-amp:checked        ~ .ac-panels > [data-tab="tt-amp"],
+#pt-common:checked     ~ .ac-panels > [data-tab="pt-common"],
+#pt-mapping:checked    ~ .ac-panels > [data-tab="pt-mapping"] {
+  display: block;
+  animation: ac-tab-fade-in 180ms var(--ac-easing-default);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #tt-wave:checked       ~ .ac-panels > [data-tab="tt-wave"],
+  #tt-pitch-lfo:checked  ~ .ac-panels > [data-tab="tt-pitch-lfo"],
+  #tt-filter:checked     ~ .ac-panels > [data-tab="tt-filter"],
+  #tt-amp:checked        ~ .ac-panels > [data-tab="tt-amp"],
+  #pt-common:checked     ~ .ac-panels > [data-tab="pt-common"],
+  #pt-mapping:checked    ~ .ac-panels > [data-tab="pt-mapping"] {
+    animation: none;
+  }
+}
+
+/* ============================================================
+   COMPACT FIELD GRID — flex-wrap container for stacks of small
+   labeled toggles / readouts. Shared by the tones-page wave
+   panel (Bank / Loop Mode / Output toggles) and the patches-
+   page common panel (Key Mode / Key Assign / A.T Assign /
+   Output / P.Bend Range / Oct.Shift).
+   ============================================================ */
+
+.ac-compact-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ac-space-4) var(--ac-space-6);
+  align-items: flex-end;
+  padding-block: var(--ac-space-2);
+}
+
+.ac-compact-field {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--ac-space-2);
+  min-width: 0;
+}
+
+.ac-compact-field > .ac-field-label {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  white-space: nowrap;
+}
+
+.ac-compact-field--readout {
+  gap: var(--ac-space-1);
+}
+
+.ac-compact-field--readout > .ac-field-readout {
+  padding: var(--ac-space-1) var(--ac-space-3);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 70%, transparent);
+  font-size: var(--ac-text-base);
+}
+
+.ac-field-readout {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--ac-color-text-primary);
+}
+
+.ac-field-readout strong {
+  font-family: var(--ac-font-display);
+  font-weight: var(--ac-font-weight-normal);
+  color: var(--ac-color-accent);
+}
+
+/* ============================================================
    LIVE-EDIT FOOTER — pulsing rec-LED + status copy. Replaces
    save / cancel / undo per project memory
    `feedback_live_editing_no_save` — edits stream to the device

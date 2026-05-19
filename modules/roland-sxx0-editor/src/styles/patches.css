@@ -48,6 +48,41 @@
   color: var(--ac-color-text-primary);
 }
 
+/* ============================================================
+   MAPPING PANEL — Tone Mapping section header + Layer 1/2 stack.
+   The tab chrome (.ac-tabs / .ac-tab-strip / .ac-tab / .ac-panels /
+   .ac-panel / .ac-panel-stack) is shared in `_shared.css`. What
+   stays here is the page-specific section heading + meta caption
+   above the two ToneZoneEditor rows.
+   ============================================================ */
+
+.patches__mapping-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ac-space-3);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-font-size-sm);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ac-color-text-primary);
+}
+
+.patches__mapping-meta {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-font-size-xs);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ac-color-text-secondary);
+}
+
+.patches__mapping-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-6);
+}
+
 /* App shell + loading progress moved to shared primitives:
  *   - .ac-app-shell (editor-core/src/design/layout-primitives.css)
  *   - .ac-page-progress (roland-sxx0-editor/src/styles/_shared.css)

@@ -201,10 +201,10 @@ test.describe('Patch parameter write affordances (D-PATCH-01..05, 07..12)', () =
     await page.goto(PATCHES_URL('patch-0-key-mode'));
     await openPatch0Editor(page);
 
-    // Captured fixture sets keyMode='x-fade' (option value 'x-fade').
-    // selectOption fires change, which invokes handleKeyModeChange ->
-    // setPatchKeyMode(0, 'x-fade').
-    await page.getByTestId('patch-key-mode').selectOption({ value: 'x-fade' });
+    // Captured fixture sets keyMode='x-fade'. AcToggle renders one
+    // labeled radio per option with per-option dataTestId; clicking
+    // the label invokes handleKeyModeChange -> setPatchKeyMode(0, 'x-fade').
+    await page.getByTestId('patch-key-mode-x-fade').click();
 
     await page.waitForLoadState('networkidle');
   });
@@ -214,7 +214,7 @@ test.describe('Patch parameter write affordances (D-PATCH-01..05, 07..12)', () =
     await openPatch0Editor(page);
 
     // Captured fixture sets keyAssign='fix' (vs typical default 'rotary').
-    await page.getByTestId('patch-key-assign').selectOption({ value: 'fix' });
+    await page.getByTestId('patch-key-assign-fix').click();
 
     await page.waitForLoadState('networkidle');
   });
@@ -234,7 +234,7 @@ test.describe('Patch parameter write affordances (D-PATCH-01..05, 07..12)', () =
     await openPatch0Editor(page);
 
     // Captured fixture sets aftertouchAssign='filter'.
-    await page.getByTestId('patch-at-assign').selectOption({ value: 'filter' });
+    await page.getByTestId('patch-at-assign-filter').click();
 
     await page.waitForLoadState('networkidle');
   });
@@ -243,10 +243,10 @@ test.describe('Patch parameter write affordances (D-PATCH-01..05, 07..12)', () =
     await page.goto(PATCHES_URL('patch-0-output'));
     await openPatch0Editor(page);
 
-    // Captured fixture sets output=4 (Out 5; the select's values are 0..7
-    // for Out 1..8 plus 8 for TONE). selectOption drives
-    // handleOutputChange(4) -> setPatchOutput(0, 4).
-    await page.getByTestId('patch-output').selectOption({ value: '4' });
+    // Captured fixture sets output=4 (Out 5; the toggle values are 0..7
+    // for Out 1..8 plus 8 for TONE). Clicking the per-option label
+    // drives handleOutputChange(4) -> setPatchOutput(0, 4).
+    await page.getByTestId('patch-output-4').click();
 
     await page.waitForLoadState('networkidle');
   });
@@ -280,7 +280,7 @@ test.describe('Patch parameter write affordances (D-PATCH-01..05, 07..12)', () =
     // Conditional slider — must enable by switching keyMode to 'unison'
     // first. This emits setPatchKeyMode(0, 'unison'), which the fixture
     // captured as the prelude.
-    await page.getByTestId('patch-key-mode').selectOption({ value: 'unison' });
+    await page.getByTestId('patch-key-mode-unison').click();
 
     // Captured fixture sets detune=20. The PatchEditor offsets the
     // slider value by +64 (signed -> unsigned) so the editable readout
@@ -295,7 +295,7 @@ test.describe('Patch parameter write affordances (D-PATCH-01..05, 07..12)', () =
     const editor = await openPatch0Editor(page);
 
     // Conditional slider — keyMode='v-sw' prelude.
-    await page.getByTestId('patch-key-mode').selectOption({ value: 'v-sw' });
+    await page.getByTestId('patch-key-mode-v-sw').click();
 
     // Captured fixture sets velocityThreshold=80.
     await fillSliderInput(editor.getByTestId('param-v-sw-thresh'), 80);
@@ -308,7 +308,7 @@ test.describe('Patch parameter write affordances (D-PATCH-01..05, 07..12)', () =
     const editor = await openPatch0Editor(page);
 
     // Conditional slider — keyMode='v-mix' prelude.
-    await page.getByTestId('patch-key-mode').selectOption({ value: 'v-mix' });
+    await page.getByTestId('patch-key-mode-v-mix').click();
 
     // Captured fixture sets velocityMixRatio=64.
     await fillSliderInput(editor.getByTestId('param-v-mix-ratio'), 64);

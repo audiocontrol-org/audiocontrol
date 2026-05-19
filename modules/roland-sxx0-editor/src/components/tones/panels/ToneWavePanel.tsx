@@ -191,7 +191,7 @@ export function ToneWavePanel({
   };
 
   return (
-    <div className="tones__panel-stack">
+    <div className="ac-panel-stack">
       {/* ============ SOURCE ============ */}
       <section className="tones__subsection">
         <header className="tones__subsection-head">
@@ -212,18 +212,18 @@ export function ToneWavePanel({
 
         {/* Compact toggles + readout flow horizontally with their
             labels on top. Sized to natural width, wrap when narrow. */}
-        <div className="tones__compact-grid">
+        <div className="ac-compact-grid">
           <Tooltip content={TONE_TOOLTIPS.sampleRate}>
-            <div className="tones__compact-field tones__compact-field--readout">
+            <div className="ac-compact-field ac-compact-field--readout">
               <span className="ac-field-label">Sample Rate</span>
-              <span className="tones__field-readout">
+              <span className="ac-field-readout">
                 <strong>{tone.sampleRate}</strong>
               </span>
             </div>
           </Tooltip>
 
           <Tooltip content={TONE_TOOLTIPS.waveBank}>
-            <div className="tones__compact-field">
+            <div className="ac-compact-field">
               <span className="ac-field-label">Bank</span>
               <AcToggle
                 value={String(tone.wave.bank)}
@@ -236,7 +236,7 @@ export function ToneWavePanel({
           </Tooltip>
 
           <Tooltip content={TONE_TOOLTIPS.loopMode}>
-            <div className="tones__compact-field">
+            <div className="ac-compact-field">
               <span className="ac-field-label">Loop Mode</span>
               <AcToggle
                 value={tone.loopMode}
@@ -249,7 +249,7 @@ export function ToneWavePanel({
           </Tooltip>
 
           <Tooltip content={TONE_TOOLTIPS.outputAssign}>
-            <div className="tones__compact-field">
+            <div className="ac-compact-field">
               <span className="ac-field-label">Output</span>
               <AcToggle
                 value={String(tone.outputAssign)}
