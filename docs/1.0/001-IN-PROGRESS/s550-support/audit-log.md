@@ -602,7 +602,8 @@ Impact: the misleading bulk of the old UI evidence is gone, but `test/ui` is sti
 #### 2. Medium — `ImportSamplesDialog` still duplicates overwrite detection instead of using the shared slot-allocation rules
 
 Finding-ID: AUDIT-20260514-FU3-02
-Status: fixed-12ef2c18; awaiting auditor re-run (fix landed 2026-05-15 in commit 12ef2c18 + polish in d39c6714. Three `!== undefined` sites in `ImportSamplesDialog.tsx` now route through `isToneSlotEmpty` / `isPatchSlotEmpty` / new `hasOccupiedToneRange` / `hasOccupiedPatchRange` helpers in `slot-allocation.ts`. Tier 3 spec `test/ui/in-context/import-samples-dialog.in-context.spec.ts` declares `@credibleAgainst contexts sticky-overlay zero-width-grid pointer-events-none-ancestor` and passes `pnpm run check-credibility` (2/2 credible). Production-page context-swap wiring landed alongside (`BrokenContextWrapper` in editor-core, mounted in App.tsx under `import.meta.env.DEV`) — also unblocks 9R-A.4's Tier 3 spec. D-LIB-14 inventory Coverage cell auto-updated `none` → `partial`. Operator hardware sign-off on a real S-330 / S-550 + #425 closure are out of implementer scope per the protocol — those happen when the auditor re-verifies the Tier 3 spec against live hardware.)
+Status: withdrawn-2026-05-19 (the fix has nonetheless landed in commits `12ef2c18` + `d39c6714`; what is being withdrawn is the audit-time verification ceremony, not the code change. Issue #425 closed as will-not-fix. The audit-time machinery that would have re-verified this finding via Tier 3 in-context spec re-runs is retired; operator declined to pursue further formal closure for audit-era findings.)
+Previous-Status: fixed-12ef2c18; awaiting auditor re-run (fix landed 2026-05-15 in commit 12ef2c18 + polish in d39c6714. Three `!== undefined` sites in `ImportSamplesDialog.tsx` now route through `isToneSlotEmpty` / `isPatchSlotEmpty` / new `hasOccupiedToneRange` / `hasOccupiedPatchRange` helpers in `slot-allocation.ts`. Tier 3 spec `test/ui/in-context/import-samples-dialog.in-context.spec.ts` declares `@credibleAgainst contexts sticky-overlay zero-width-grid pointer-events-none-ancestor` and passes `pnpm run check-credibility` (2/2 credible). Production-page context-swap wiring landed alongside (`BrokenContextWrapper` in editor-core, mounted in App.tsx under `import.meta.env.DEV`) — also unblocks 9R-A.4's Tier 3 spec. D-LIB-14 inventory Coverage cell auto-updated `none` → `partial`. Operator hardware sign-off on a real S-330 / S-550 + #425 closure are out of implementer scope per the protocol — those happen when the auditor re-verifies the Tier 3 spec against live hardware.)
 
 This remained unchanged in the latest tranche. Tone and patch overwrite affordances still derive occupancy from raw `undefined` checks rather than the shared helpers.
 
@@ -620,7 +621,8 @@ Impact: this is still a genuine shared-business-logic drift risk in one of the l
 #### 3. Medium — The known PlayPage sticky-header layering defect is still present in the production structure
 
 Finding-ID: AUDIT-20260514-FU3-03
-Status: acknowledged-#423; workplan §9R-C (operator-filed prior to this audit; natural-fit phase override — workplan §9R-C names this exact defect as a blocking gate for PlayPage closure, so no separate Phase 11 task is created. Cross-referenced from Phase 11 prose.)
+Status: withdrawn-2026-05-19 (PlayPage's legacy `.ac-page-sticky-header` chrome was already replaced with the lean `.ac-page-title-row` chain during the post-redesign work — grep on current HEAD finds it only in two comment strings explaining the migration. Issue #423 closed as will-not-fix because the audit-time verification ceremony is retired, not because the underlying defect remains. Operator declined to pursue further formal closure for audit-era findings.)
+Previous-Status: acknowledged-#423; workplan §9R-C (operator-filed prior to this audit; natural-fit phase override — workplan §9R-C names this exact defect as a blocking gate for PlayPage closure, so no separate Phase 11 task is created. Cross-referenced from Phase 11 prose.)
 
 This also remained unchanged in the latest tranche. The page still renders the legacy sticky-header structure inside the fixed-viewport shell.
 
@@ -677,7 +679,8 @@ Scope reviewed: first real-hardware execution of the new S-550 conformance layer
 #### LIVE-S550-PLAY-001
 
 Finding-ID: LIVE-S550-PLAY-001
-Status: acknowledged-#423; workplan §9R-C (controller ACK 2026-05-15; auditor's `Disposition` mapped this to #423; controller independently verified. Live-hardware finding mapping to existing in-flight work — per protocol step 3, no new Phase 11 task is created; this finding becomes a verification signal on the 9R-C remediation. See ACK section below.)
+Status: withdrawn-2026-05-19 (same disposition as the parent `AUDIT-20260514-FU3-03` finding this duplicated under #423: the chrome migration has landed and the audit-time verification ceremony is retired. Issue #423 closed as will-not-fix. Operator declined to pursue further formal closure for audit-era findings.)
+Previous-Status: acknowledged-#423; workplan §9R-C (controller ACK 2026-05-15; auditor's `Disposition` mapped this to #423; controller independently verified. Live-hardware finding mapping to existing in-flight work — per protocol step 3, no new Phase 11 task is created; this finding becomes a verification signal on the 9R-C remediation. See ACK section below.)
 
 Severity: blocking
 
