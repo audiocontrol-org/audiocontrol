@@ -1365,7 +1365,7 @@ Acknowledging the auditor's 2026-05-16 closure pass + the new `LIVE-S550-TONES-0
 
 **Auditor infrastructure landed during this pass** (no controller action required, noted for completeness):
 - `operator-review-runbook-current.md` — HEAD-aware live runbook, replacing the dated `2026-05-15-operator-review-runbook.md` model. Per the auditor's "narrow runbook to manual actions" commit (`480c3fe8`), the auditor now owns the runbook lifecycle and the controller's responsibility is to land remediations the runbook surfaces.
-- Verification simplification proposal at `verification-process-simplification.md` (commit `a5194e9f`) — the auditor's recommendation on protocol streamlining; out of session-end scope to evaluate.
+- Verification simplification proposal at `verification-process-simplification.md` (commit `a5194e9f`) — the auditor's recommendation on protocol streamlining. _Later evaluated and rolled back_: the proposal was promoted to `UI-CONTRACT-AND-VERIFICATION-STANDARD.md`, ran in production for a short window, and was then deleted along with this proposal after producing more process overhead than verification value.
 - Test/runbook utilities (commits `ceca1786`, `64709b19`, `76da0a9e`, `f1a05037`) — auditor-side tooling; no controller dependency.
 
 **Workplan §Phase-11-Task-6 status:** ticked one of two closure boxes (`#431 closed` ✓; `#430 still open`). §Task 6 remains incomplete until #430 verifies on hardware.

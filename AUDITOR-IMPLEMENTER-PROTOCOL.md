@@ -182,10 +182,9 @@ Example shape:
 4. Implementers do not self-verify final closure of auditor findings.
 5. Feature-local examples may extend this protocol, but they should not contradict it.
 
-## Relationship to Other Standards
+## Scope
 
-- [UI-CONTRACT-AND-VERIFICATION-STANDARD.md](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/UI-CONTRACT-AND-VERIFICATION-STANDARD.md) defines the broader UI contract, evidence, and operator-sign-off model.
-- This document defines the team-to-team handoff and closure protocol around findings discovered during that verification work.
+This document defines the team-to-team handoff and closure protocol around findings discovered during audit and verification work. It does not prescribe a separate UI-verification standard; a prior attempt at that lived in `UI-CONTRACT-AND-VERIFICATION-STANDARD.md` and was retired after it produced more process overhead than verification value.
 
 ## Worked Example
 

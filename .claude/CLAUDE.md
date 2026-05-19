@@ -211,10 +211,6 @@ Be honest about mistakes. The value is in pattern recognition, not looking good.
 - Never offer baseless projection statistics
 - Use GitHub links (not file paths) in issue descriptions
 
-## UI Contract Standard
-
-Project-wide policy for UI contracts, UI verification, audit logging, and operator sign-off lives in [UI-CONTRACT-AND-VERIFICATION-STANDARD.md](/UI-CONTRACT-AND-VERIFICATION-STANDARD.md).
-
-Feature docs may apply that standard, but they are not the canonical source for it.
+## Auditor / Implementer Protocol
 
 The project-wide auditor/implementer handoff, finding-status, and re-verification protocol lives in [AUDITOR-IMPLEMENTER-PROTOCOL.md](/AUDITOR-IMPLEMENTER-PROTOCOL.md).
