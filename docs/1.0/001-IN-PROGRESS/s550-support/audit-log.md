@@ -1,3 +1,7 @@
+---
+deskwork:
+  id: 095a6890-3c58-45bc-b898-4cec312ef790
+---
 # Audit Log — feature/s550-support
 
 This document is a feature-local worked example of the project-wide protocol in [AUDITOR-IMPLEMENTER-PROTOCOL.md](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/AUDITOR-IMPLEMENTER-PROTOCOL.md).
@@ -1045,7 +1049,8 @@ Scope reviewed: first real-hardware execution of the bounded Library capability 
 #### LIVE-S550-LIB-002
 
 Finding-ID: LIVE-S550-LIB-002
-Status: acknowledged-#430; workplan §Phase-11-Task-6 (controller ACK 2026-05-15 evening; auditor's `Disposition (proposed): new issue` accepted. Filed as #430. Routed to new Phase 11 §Task 6 because this is client/protocol-layer work (s-series-client.ts RQD handling, save-flow quiescence), not page chrome or test-discipline — doesn't fit any in-flight 9R-* sub-phase. Distinct from LIB-001 / Phase 11 §Task 5 which is the dialog-accessibility gap. **Controller ACK delayed:** the auditor's commit `a015d2b6` landed after the prior ACK round-trip; the controller did not catch it until the operator prompted the comprehensive remediation-plan review. Protocol lesson: when an auditor commit lands AFTER a recent controller ACK, the controller should grep `^Status: open` before announcing "queue clear." See ACK section below.)
+Status: withdrawn-2026-05-19 (operator hand-tested Save-to-Library on the live S-550 and did not reproduce the alleged tone-0 RQD timeout / stale-RJC interleaving. The audit-time live-conformance battery that produced this report relied on the capability-conformance + runbook scaffolding mothballed 2026-05-17 / rolled back 2026-05-18, so its provenance is no longer trustworthy. Issue #430 closed as cannot-reproduce. Prior controller ACK preserved below for history.)
+Previous-Status: acknowledged-#430; workplan §Phase-11-Task-6 (controller ACK 2026-05-15 evening; auditor's `Disposition (proposed): new issue` accepted. Filed as #430. Routed to new Phase 11 §Task 6 because this is client/protocol-layer work (s-series-client.ts RQD handling, save-flow quiescence), not page chrome or test-discipline — doesn't fit any in-flight 9R-* sub-phase. Distinct from LIB-001 / Phase 11 §Task 5 which is the dialog-accessibility gap. **Controller ACK delayed:** the auditor's commit `a015d2b6` landed after the prior ACK round-trip; the controller did not catch it until the operator prompted the comprehensive remediation-plan review. Protocol lesson: when an auditor commit lands AFTER a recent controller ACK, the controller should grep `^Status: open` before announcing "queue clear." See ACK section below.)
 Severity: high
 Surface: `/roland/s550/editor/library`
 Disposition (proposed): new issue
@@ -1278,7 +1283,8 @@ Auditor rerun for `AUDIT-20260514-FU3-01` is complete and clean:
 #### LIVE-S550-TONES-002
 
 Finding-ID: LIVE-S550-TONES-002
-Status: acknowledged-#432; workplan §9R-C (controller ACK 2026-05-17 — natural-fit override applied. The two manifestations (`D-TONE-TVF-02` cutoff write-readback mismatch with delta 38 + `D-TONE-ENV-10` TVA sustain pointer stall) both fall within 9R-C TonesPage rebuild + operator hardware sign-off scope. Filed as [#432](https://github.com/audiocontrol-org/audiocontrol/issues/432) for tracking; no new Phase 11 task created. Same routing pattern as `LIVE-S550-PLAY-001` → #423: live-hardware finding mapped to already-in-flight 9R-* work becomes a verification signal on that work, not a new task. See Controller ACK section at end of finding.)
+Status: withdrawn-2026-05-19 (operator hand-tested the Filter and Amp tabs on the live S-550 and did not reproduce either alleged manifestation — neither the `D-TONE-TVF-02` cutoff write-readback mismatch nor the `D-TONE-ENV-10` TVA sustain pointer stall. The audit-time live-conformance battery that produced this report relied on the capability-conformance + runbook scaffolding mothballed 2026-05-17 / rolled back 2026-05-18, so its provenance is no longer trustworthy. Issue #432 closed as cannot-reproduce. Prior controller ACK preserved below for history.)
+Previous-Status: acknowledged-#432; workplan §9R-C (controller ACK 2026-05-17 — natural-fit override applied. The two manifestations (`D-TONE-TVF-02` cutoff write-readback mismatch with delta 38 + `D-TONE-ENV-10` TVA sustain pointer stall) both fall within 9R-C TonesPage rebuild + operator hardware sign-off scope. Filed as [#432](https://github.com/audiocontrol-org/audiocontrol/issues/432) for tracking; no new Phase 11 task created. Same routing pattern as `LIVE-S550-PLAY-001` → #423: live-hardware finding mapped to already-in-flight 9R-* work becomes a verification signal on that work, not a new task. See Controller ACK section at end of finding.)
 Severity: high
 Surface: `/roland/s550/editor/tones`
 Disposition (proposed): new issue
