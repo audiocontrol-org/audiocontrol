@@ -1,0 +1,446 @@
+/*
+ * v3 atomic control primitives — landed in Phase 9 Task 4.0.
+ *
+ * Extracted from validated mockups:
+ *   - `docs/1.0/001-IN-PROGRESS/s550-support/explorations/01-design-language.html`
+ *     (ac-field-label eyebrow, ac-checkbox two-element pattern)
+ *   - `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html`
+ *     (ac-slider / ac-range-bar, ac-number-input)
+ *
+ * The mockup-side classes used HSL-fragment tokens (`hsl(var(--ac-color-X) / a)`);
+ * production tokens (`tokens.css`) are solid colors with `color-mix` for alpha.
+ * Composition is one-to-one with the mockup — only the token plumbing changes.
+ *
+ * These primitives are NEW. The existing `.ac-input` / `.ac-select` (with v3
+ * polish merged in) live in `primitives.css`. The Radix-based `ParameterSlider`
+ * React component is unchanged; the new `.ac-slider` is the v3 range-bar
+ * surface, NOT a replacement for ParameterSlider.
+ *
+ * The 8-segment VFD-glow envelope primitive lives in `envelope-primitives.css`
+ * — split out because the envelope family alone is ~330 lines.
+ */
+
+/* =========================================================================
+ * FIELD LABEL — uppercase eyebrow used above parameter rows and form fields.
+ * Distinct from `.ac-label` (sentence-case, body font).
+ * Mockup source: 01-design-language.html:497-503.
+ * ========================================================================= */
+
+.ac-field-label {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+/* =========================================================================
+ * CHECKBOX (v3) — two-element pattern. The wrapper is a `<label>` containing
+ * a `<input class="ac-checkbox__input" type="checkbox">` and a
+ * `<span class="ac-checkbox__label">`. The shipped React `<AcCheckbox>`
+ * component composes this; raw HTML also works.
+ *
+ * Distinct from the pre-existing `.ac-checkbox-label` (single class, used by
+ * BuildInfo logs filter). Both coexist.
+ *
+ * Mockup source: 01-design-language.html:552-603.
+ * ========================================================================= */
+
+.ac-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-3);
+  cursor: pointer;
+  user-select: none;
+}
+
+.ac-checkbox__input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1rem;
+  height: 1rem;
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: var(--ac-color-surface-canvas);
+  border-radius: 2px;
+  position: relative;
+  transition:
+    border-color var(--ac-duration-fast) var(--ac-easing-default),
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+  flex-shrink: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.ac-checkbox__input:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ac-color-border-subtle) 60%, var(--ac-color-text-muted));
+}
+
+.ac-checkbox__input:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ac-color-accent) 25%, transparent);
+  border-color: var(--ac-color-accent);
+}
+
+.ac-checkbox__input:checked {
+  border-color: var(--ac-color-accent);
+  background: var(--ac-color-accent);
+}
+
+.ac-checkbox__input:checked::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 4px;
+  width: 5px;
+  height: 9px;
+  border: solid var(--ac-color-surface-canvas);
+  border-width: 0 var(--ac-rule-medium) var(--ac-rule-medium) 0;
+  transform: rotate(45deg);
+}
+
+.ac-checkbox__input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ac-checkbox__label {
+  font-family: var(--ac-font-body);
+  font-size: var(--ac-text-md);
+  color: var(--ac-color-text-primary);
+}
+
+.ac-checkbox__input:disabled ~ .ac-checkbox__label {
+  color: var(--ac-color-text-muted);
+}
+
+/* =========================================================================
+ * SLIDER — the v3 parameter-row surface. Three-column grid:
+ *   LABEL | range-bar | mono readout.
+ *
+ * The slider is the full row; `.ac-range-bar` is the visualization that
+ * inhabits the middle column. Bar can be standalone (e.g., inside the
+ * envelope table). Mockup source: 04-tones.html:1465-1546.
+ *
+ * This is NOT the Radix-based `ParameterSlider` React component. That
+ * component remains unchanged; this is the v3 range-bar surface for
+ * read-write parameter rows on the new pages.
+ * ========================================================================= */
+
+.ac-slider {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, 7rem) minmax(0, 1fr) minmax(4rem, 6rem);
+  gap: var(--ac-space-3);
+  align-items: center;
+  padding-block: var(--ac-space-2);
+  border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 40%, transparent);
+}
+
+.ac-slider:last-child {
+  border-bottom: 0;
+}
+
+.ac-slider__label {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-slider__readout {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text-primary);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.ac-slider__readout strong {
+  color: var(--ac-color-accent);
+  font-weight: var(--ac-font-weight-normal);
+  font-family: var(--ac-font-display);
+}
+
+.ac-slider__readout-unit {
+  color: var(--ac-color-text-muted);
+  margin-left: 2px;
+  font-size: var(--ac-text-xs);
+}
+
+/* =========================================================================
+ * RANGE BAR — the bounded visualization with start/end ticks INSIDE and an
+ * accent-filled width driven by --ac-range-fill. Variants:
+ *
+ *   .ac-range-bar--bipolar — anchored from center; --ac-range-bar-l and
+ *                            --ac-range-bar-w control the band.
+ *   .ac-range-bar--enum    — N-cell pip track for discrete enum values.
+ *
+ * Per project memory `feedback_range_bar_pattern`. Mockup source:
+ * 04-tones.html:1486-1568.
+ * ========================================================================= */
+
+.ac-range-bar {
+  position: relative;
+  height: 1.25rem;
+  background: var(--ac-color-surface-canvas);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.ac-range-bar__fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--ac-range-fill, 0%);
+  background:
+    linear-gradient(90deg,
+      color-mix(in srgb, var(--ac-color-accent) 18%, transparent) 0%,
+      color-mix(in srgb, var(--ac-color-accent) 34%, transparent) 50%,
+      color-mix(in srgb, var(--ac-color-accent) 18%, transparent) 100%);
+  border-right: var(--ac-rule-medium) solid var(--ac-color-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 40%, transparent) inset;
+}
+
+.ac-range-bar--bipolar .ac-range-bar__fill {
+  left: var(--ac-range-bar-l, 50%);
+  width: var(--ac-range-bar-w, 0%);
+  border-left: var(--ac-rule-medium) solid var(--ac-color-accent);
+  border-right: var(--ac-rule-medium) solid var(--ac-color-accent);
+}
+
+.ac-range-bar__tick {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--ac-font-mono);
+  font-size: 0.625rem;
+  color: var(--ac-color-text-muted);
+  line-height: 1;
+  padding-inline: 4px;
+  pointer-events: none;
+}
+
+.ac-range-bar__tick--start { left: 4px; }
+.ac-range-bar__tick--mid {
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.ac-range-bar__tick--end { right: 4px; }
+
+.ac-range-bar__enum-track {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  gap: 1px;
+  padding: 2px;
+}
+
+.ac-range-bar__enum-pip {
+  flex: 1;
+  background: var(--ac-color-surface-canvas);
+  border: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 60%, transparent);
+  border-radius: 1px;
+}
+
+.ac-range-bar__enum-pip[data-active="true"] {
+  background: color-mix(in srgb, var(--ac-color-accent) 34%, transparent);
+  border-color: var(--ac-color-accent);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--ac-color-accent) 45%, transparent) inset;
+}
+
+/* Interactive enum pips render as <button>; reset native styling and add focus. */
+button.ac-range-bar__enum-pip {
+  appearance: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+button.ac-range-bar__enum-pip:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+button.ac-range-bar__enum-pip:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  outline-offset: 1px;
+}
+button.ac-range-bar__enum-pip:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ac-color-accent) 70%, transparent);
+}
+
+/* Transparent native <input type="range"> overlaid across the bar.
+   It is the real interactive control: pointer drag, click-to-set,
+   arrow keys, home/end, page-up/down. Visually invisible — the bar's
+   paint (fill + ticks) shows through. */
+.ac-range-bar__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  opacity: 0;
+  /* Keep the input above the fill so it captures pointer events. */
+  z-index: 1;
+  /* The accessible focus indicator paints on the bar wrapper via
+     :has() below; the input itself stays visually transparent. */
+}
+.ac-range-bar__input:disabled {
+  cursor: not-allowed;
+}
+
+/* Paint a focus ring on the bar when its inner input is keyboard-focused. */
+.ac-range-bar:has(.ac-range-bar__input:focus-visible) {
+  outline: 2px solid color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  outline-offset: 1px;
+}
+
+/* Subtle hover highlight on the bar when interactive, so users see it
+   responds to pointer. Apply only when the bar contains an enabled input. */
+.ac-range-bar:has(.ac-range-bar__input:not(:disabled):hover) {
+  border-color: color-mix(in srgb, var(--ac-color-accent) 70%, var(--ac-color-border-subtle));
+}
+
+/* =========================================================================
+ * NUMBER INPUT — display-font numeric readout. Render-only by default
+ * (`<AcNumberInput>` defaults to a `<span>`); supply an `editable` prop to
+ * upgrade to an `<input type="number">` that retains the display styling.
+ * Mockup source: 04-tones.html `.tones__param-value` / readout treatments.
+ * ========================================================================= */
+
+.ac-number-input {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text-primary);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.ac-number-input__value {
+  color: var(--ac-color-accent);
+  font-family: var(--ac-font-display);
+}
+
+.ac-number-input__unit {
+  color: var(--ac-color-text-muted);
+  font-size: var(--ac-text-xs);
+}
+
+.ac-number-input--editable input.ac-number-input__value {
+  width: 4rem;
+  background: transparent;
+  border: var(--ac-rule-hairline) solid transparent;
+  border-radius: 2px;
+  padding: 0 var(--ac-space-1);
+  color: var(--ac-color-accent);
+  font-family: var(--ac-font-display);
+  font-size: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.ac-number-input--editable input.ac-number-input__value::-webkit-outer-spin-button,
+.ac-number-input--editable input.ac-number-input__value::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.ac-number-input--editable input.ac-number-input__value:hover {
+  border-color: color-mix(in srgb, var(--ac-color-border-subtle) 60%, var(--ac-color-text-muted));
+}
+
+.ac-number-input--editable input.ac-number-input__value:focus-visible {
+  outline: none;
+  border-color: var(--ac-color-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 25%, transparent);
+}
+
+/* =========================================================================
+ * TOGGLE — segmented control for small enumerated parameters.
+ *
+ * Two or more positions in a single horizontal pill, with the active
+ * option lit in the accent color. Native <input type="radio"> remain
+ * the keyboard/a11y target; the visible labels are <span> shells
+ * wrapped by per-option <label>.
+ *
+ * Use this instead of a <select> when a parameter has 2-4 discrete
+ * options (polarity, mode, etc.) — the click cost of a dropdown plus
+ * a menu is overkill, and a slider is semantically wrong for an enum.
+ * ========================================================================= */
+
+.ac-toggle {
+  display: inline-flex;
+  align-items: stretch;
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 70%, transparent);
+}
+
+.ac-toggle__option {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ac-space-2) var(--ac-space-4);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-toggle__option + .ac-toggle__option {
+  border-left: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+}
+
+.ac-toggle__option:hover:not([data-active]):not(:has(input:disabled)) {
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 60%, transparent);
+  color: var(--ac-color-text-primary);
+}
+
+.ac-toggle__option[data-active] {
+  background: color-mix(in srgb, var(--ac-color-accent) 14%, transparent);
+  color: var(--ac-color-accent);
+  box-shadow: inset 0 -2px 0 0 var(--ac-color-accent);
+}
+
+.ac-toggle__option:focus-within {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 40%, transparent);
+}
+
+.ac-toggle[data-disabled] .ac-toggle__option {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.ac-toggle__input {
+  /* Visually hidden but reachable by keyboard / screen readers. */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+

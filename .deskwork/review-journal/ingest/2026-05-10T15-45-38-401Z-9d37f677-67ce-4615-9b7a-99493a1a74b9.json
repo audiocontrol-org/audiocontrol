@@ -1,0 +1,18 @@
+{
+  "id": "9d37f677-67ce-4615-9b7a-99493a1a74b9",
+  "timestamp": "2026-05-10T15:45:38.401Z",
+  "event": "ingest",
+  "slug": "roland-s550-editor-capabilities-detailed",
+  "entryId": "9d37f677-67ce-4615-9b7a-99493a1a74b9",
+  "site": "engineering-design-specs",
+  "stage": "Published",
+  "sourceFile": "ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md",
+  "frontmatterSnapshot": {
+    "companion-to": "ROLAND-S550-EDITOR-CAPABILITIES.md"
+  },
+  "derivation": {
+    "slug": "explicit",
+    "state": "explicit",
+    "date": "explicit"
+  }
+}

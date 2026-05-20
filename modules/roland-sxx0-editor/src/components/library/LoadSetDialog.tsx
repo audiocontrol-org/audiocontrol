@@ -94,6 +94,9 @@ export function LoadSetDialog({
           <Dialog.Title className="text-lg font-bold text-s330-text mb-4">
             Load Set to Device
           </Dialog.Title>
+          <Dialog.Description className="text-sm text-s330-muted mb-3">
+            Send the selected library set to the device. The target slots on the device will be overwritten by the set's patches, tones, and wave data.
+          </Dialog.Description>
 
           <div className="space-y-4">
             {/* Set Info */}
@@ -106,7 +109,7 @@ export function LoadSetDialog({
 
             {/* Import Target */}
             <div>
-              <label htmlFor="importTarget" className="block text-sm text-s330-muted mb-1">
+              <label htmlFor="importTarget" className="ac-field-label mb-1">
                 Target
               </label>
               <select
@@ -114,11 +117,7 @@ export function LoadSetDialog({
                 value={selectedTargetIndex}
                 onChange={(e) => setSelectedTargetIndex(Number(e.target.value))}
                 disabled={isOperating}
-                className={cn(
-                  'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
-                  'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                  isOperating && 'opacity-50'
-                )}
+                className="ac-select"
               >
                 {importTargets.map((target, i) => (
                   <option key={i} value={i}>{target.label}</option>

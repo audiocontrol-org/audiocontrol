@@ -128,16 +128,22 @@ test.describe('Loop Editor — production path feature parity', () => {
   });
 
   test('playback mode toggle works', async ({ page }) => {
+    // After the v3 chrome refactor the playback mode is an `<AcToggle>`
+    // segmented control rather than three discrete buttons. AcToggle
+    // sets `data-active` on the active `<label>` (the same element that
+    // carries the testid) — assert via that attribute instead of the
+    // legacy `ac-btn-primary` class.
+
     // Default is loop
-    await expect(page.getByTestId('playback-mode-loop')).toHaveClass(/ac-btn-primary/);
+    await expect(page.getByTestId('playback-mode-loop')).toHaveAttribute('data-active', 'true');
 
     // Switch to smoothed
     await page.getByTestId('playback-mode-smoothed-loop').click();
-    await expect(page.getByTestId('playback-mode-smoothed-loop')).toHaveClass(/ac-btn-primary/);
+    await expect(page.getByTestId('playback-mode-smoothed-loop')).toHaveAttribute('data-active', 'true');
 
     // Switch to no-loop
     await page.getByTestId('playback-mode-no-loop').click();
-    await expect(page.getByTestId('playback-mode-no-loop')).toHaveClass(/ac-btn-primary/);
+    await expect(page.getByTestId('playback-mode-no-loop')).toHaveAttribute('data-active', 'true');
   });
 });
 

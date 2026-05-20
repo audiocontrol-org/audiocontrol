@@ -5,12 +5,32 @@
  * the current device configuration.
  */
 
-import { createMidiStore, createRuntimeMidiTransport } from '@audiocontrol/editor-core';
+import {
+  createMidiStore,
+  createRuntimeMidiTransport,
+  isSimulatedMidiMode,
+  getSimulatedScenario,
+  getSimulatedLatencyMs,
+  type MidiTransport,
+  type RuntimeMidiTransportResult,
+} from '@audiocontrol/editor-core';
 import type { SamplerDeviceType } from '@/configs/types';
+import { createSimulatedMidiTransport } from '@/transports/simulatedMidiTransport';
+
+/**
+ * Unified shape covering both real-runtime transport entries (which carry a
+ * `mode` and an optional mock `controls`) and the simulated entry. Mock-only
+ * `controls` stays optional and never present on simulated entries — there's
+ * nothing externally controllable about a fixture replay; the fixture IS the
+ * script.
+ */
+type TransportEntry =
+  | RuntimeMidiTransportResult
+  | { mode: 'simulated'; transport: MidiTransport };
 
 // Store instances keyed by device type
 const storeInstances = new Map<string, ReturnType<typeof createMidiStore<null>>>();
-const transportInstances = new Map<string, ReturnType<typeof createRuntimeMidiTransport>>();
+const transportInstances = new Map<string, TransportEntry>();
 
 /**
  * Get mock MIDI port IDs for a device.
@@ -24,8 +44,36 @@ function getMockPortIds(deviceType: string) {
 
 /**
  * Create a runtime MIDI transport for a device.
+ *
+ * Dispatch order:
+ *   1. `?midi=simulated&scenario=<name>`  → SimulatedAdapter fixture replay
+ *   2. anything else                      → editor-core's runtime dispatcher
+ *      (web | mock | http | scsi based on URL params and config)
  */
-function createTransportForDevice(deviceType: string) {
+function createTransportForDevice(deviceType: string): TransportEntry {
+  // Simulated mode wins outright — the harness URL is the source of truth.
+  if (isSimulatedMidiMode()) {
+    const scenario = getSimulatedScenario();
+    if (!scenario) {
+      throw new Error(
+        '[midiStore] ?midi=simulated requires ?scenario=<scenario-name>. ' +
+          'Example: /roland/s330/editor/patches?midi=simulated&scenario=load-everything',
+      );
+    }
+    const latencyMs = getSimulatedLatencyMs();
+    return {
+      mode: 'simulated',
+      transport: createSimulatedMidiTransport({
+        deviceType,
+        scenario,
+        // The harness URL can opt into a fixed inbound-dispatch delay
+        // via `?simLatency=<ms>` so long-running flows (progress
+        // affordance spec D-XX-12) are observable mid-flight.
+        ...(latencyMs !== null && { latencyMode: { fixedMs: latencyMs } }),
+      }),
+    };
+  }
+
   const { inputId, outputId } = getMockPortIds(deviceType);
   const deviceName = deviceType.toUpperCase();
 

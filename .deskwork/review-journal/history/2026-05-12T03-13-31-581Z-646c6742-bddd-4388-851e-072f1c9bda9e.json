@@ -1,0 +1,15 @@
+{
+  "kind": "entry-annotation",
+  "at": "2026-05-12T03:13:31.581Z",
+  "entryId": "e5cdc258-ae9f-463b-8b87-58de9dca8716",
+  "annotation": {
+    "type": "address",
+    "workflowId": "e5cdc258-ae9f-463b-8b87-58de9dca8716",
+    "commentId": "badca75c-b8fb-4bd0-bcc3-e06f0d7efb56",
+    "version": 2,
+    "disposition": "addressed",
+    "reason": "Decision 3 pushback addressed. Concrete evidence supplied: Zod schemas at modules/sampler-library/src/schemas/{sample,tone,patch,set}-schema.ts define the canonical shape; existing fixtures basic-sine.yaml + T01.yaml provide validated examples. Revised proposal: seeding helper COPIES existing validated fixtures into OPFS rather than constructing new YAML — no shape-guessing. Awaiting operator confirmation of the revised proposal in v3.",
+    "id": "4ff1932b-97cb-455f-bd42-5f32ead61046",
+    "createdAt": "2026-05-12T03:13:31.581Z"
+  }
+}

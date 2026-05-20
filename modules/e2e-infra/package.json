@@ -18,6 +18,7 @@
     "scsi-write-test": "tsx src/node/scsi-write-test.ts"
   },
   "dependencies": {
+    "@audiocontrol/editor-core": "workspace:*",
     "@audiocontrol/midi-core": "workspace:*",
     "@audiocontrol/sampler-devices": "workspace:*",
     "@audiocontrol/sampler-library": "workspace:^",

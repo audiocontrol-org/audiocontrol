@@ -5,7 +5,7 @@
  * Handles WAV parsing, conversion to S-330 format, and upload to device.
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import type { OperationState } from '@/types/import-operation';
 import { isOperationComplete } from '@/types/import-operation';
@@ -23,6 +23,8 @@ import {
   OperationButtonContent,
   DialogCloseButton,
 } from '@/components/ui/ImportStatus';
+import { useDeviceConfig } from '@/context/DeviceConfigContext';
+import { sampleRateLabelToHz } from '@/core/midi/SamplerClient';
 
 export interface ImportSampleDialogProps extends OperationState {
   open: boolean;
@@ -33,7 +35,7 @@ export interface ImportSampleDialogProps extends OperationState {
     toneIndex: number;
     name: string;
     waveData: Uint8Array;
-    waveBank: 0 | 1;
+    waveBank: number;
     segmentTop: number;
     segmentLength: number;
     sampleRate: '15kHz' | '30kHz';
@@ -58,12 +60,25 @@ export function ImportSampleDialog({
   progress,
   error: operationError,
 }: ImportSampleDialogProps): JSX.Element {
+  const config = useDeviceConfig();
+  const { memoryLayout, maxWaveBankIndex } = config;
+
+  // Bank options for the current tone slot, sourced from the device's memory
+  // layout. S-330 always returns A/B; S-550 returns A/B for tones 0-31 and
+  // C/D for tones 32-63. The dialog renders whatever the layout provides —
+  // no device conditionals.
+  const { labels: bankLabels, indices: bankIndices } = useMemo(
+    () => memoryLayout.getWaveBanksForTone(toneIndex),
+    [memoryLayout, toneIndex],
+  );
+  const defaultBank = bankIndices[0] ?? 0;
+
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [wavFile, setWavFile] = useState<WavFileState | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [name, setName] = useState(toneName || '');
   const [targetSampleRate, setTargetSampleRate] = useState<'15kHz' | '30kHz'>('15kHz');
-  const [waveBank, setWaveBank] = useState<0 | 1>(0);
+  const [waveBank, setWaveBank] = useState<number>(defaultBank);
   const [targetSegment, setTargetSegment] = useState(0);
   const [loopMode, setLoopMode] = useState<'forward' | 'alternating' | 'one-shot' | 'reverse'>('one-shot');
   const [localError, setLocalError] = useState<string | null>(null);
@@ -77,16 +92,16 @@ export function ImportSampleDialog({
       setParseError(null);
       setName(toneName || '');
       setTargetSampleRate('30kHz');
-      setWaveBank(0);
+      setWaveBank(defaultBank);
       setTargetSegment(0);
       setLoopMode('one-shot');
       setLocalError(null);
     }
-  }, [open, toneName]);
+  }, [open, toneName, defaultBank]);
 
   // Calculate segments needed based on output sample count after resampling
   const segmentsNeeded = wavFile
-    ? calculateWavSegmentsNeeded(wavFile.bytes, targetSampleRate === '30kHz' ? 30000 : 15000)
+    ? calculateWavSegmentsNeeded(wavFile.bytes, sampleRateLabelToHz(targetSampleRate))
     : 1;
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,11 +133,36 @@ export function ImportSampleDialog({
       return;
     }
 
+    // Defense-in-depth: refuse out-of-range banks. The dialog only surfaces
+    // banks returned by `memoryLayout.getWaveBanksForTone(toneIndex)`, so a
+    // violation here means a programming bug (state drift, stale prop).
+    //
+    // Surface the error via `setLocalError + return` (matching the
+    // file/name guard above) so the message renders through
+    // `OperationErrorBanner`. Throwing from this async submit handler would
+    // escape the try/catch below and land as an unhandled promise rejection
+    // — the dialog would stay open with no visible feedback. The error
+    // message still names the offending value AND the valid range so the
+    // operator can see what went wrong.
+    if (waveBank < 0 || waveBank > maxWaveBankIndex) {
+      setLocalError(
+        `Invalid wave bank ${waveBank} for ${config.deviceName} (max ${maxWaveBankIndex})`,
+      );
+      return;
+    }
+    if (!bankIndices.includes(waveBank)) {
+      setLocalError(
+        `Wave bank ${waveBank} is not valid for tone ${toneIndex} on ${config.deviceName} ` +
+        `(allowed: ${bankIndices.join(', ')})`,
+      );
+      return;
+    }
+
     setLocalError(null);
 
     try {
       // Convert to S-330 format using the single code path
-      const targetRate = targetSampleRate === '30kHz' ? 30000 : 15000;
+      const targetRate = sampleRateLabelToHz(targetSampleRate);
       const prepared = prepareWavForS330(wavFile.bytes, targetRate);
 
       await onImport({
@@ -139,7 +179,10 @@ export function ImportSampleDialog({
     } catch (err) {
       // Error handled by parent
     }
-  }, [wavFile, name, targetSampleRate, targetSegment, loopMode, toneIndex, onImport, waveBank]);
+  }, [
+    wavFile, name, targetSampleRate, targetSegment, loopMode, toneIndex, onImport,
+    waveBank, maxWaveBankIndex, bankIndices, config.deviceName,
+  ]);
 
   const handleClose = useCallback(() => {
     if (!isOperating) {
@@ -156,7 +199,7 @@ export function ImportSampleDialog({
         <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
         <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-s330-panel border border-s330-accent rounded-lg shadow-xl w-full max-w-md p-6">
           <Dialog.Title className="text-lg font-bold text-s330-text mb-4">
-            Import Sample to T{toneIndex + 11}
+            Import Sample to {memoryLayout.formatToneSlot(toneIndex)}
           </Dialog.Title>
 
           {isComplete ? (
@@ -231,7 +274,7 @@ export function ImportSampleDialog({
 
               {/* Tone Name */}
               <div>
-                <label htmlFor="toneName" className="block text-sm text-s330-muted mb-1">
+                <label htmlFor="toneName" className="ac-field-label mb-1">
                   Tone Name
                 </label>
                 <input
@@ -242,19 +285,14 @@ export function ImportSampleDialog({
                   disabled={isOperating}
                   data-testid="import-tone-name"
                   maxLength={8}
-                  className={cn(
-                    'w-full bg-s330-bg border rounded px-3 py-2 text-s330-text font-mono',
-                    'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    'border-s330-accent/50',
-                    isOperating && 'opacity-50'
-                  )}
+                  className="ac-input font-mono"
                   placeholder="Enter tone name (max 8 chars)"
                 />
               </div>
 
               {/* Sample Rate Selection */}
               <div>
-                <label htmlFor="sampleRate" className="block text-sm text-s330-muted mb-1">
+                <label htmlFor="sampleRate" className="ac-field-label mb-1">
                   Target Sample Rate
                 </label>
                 <select
@@ -263,11 +301,7 @@ export function ImportSampleDialog({
                   onChange={(e) => setTargetSampleRate(e.target.value as '15kHz' | '30kHz')}
                   disabled={isOperating}
                   data-testid="import-sample-rate"
-                  className={cn(
-                    'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
-                    'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    isOperating && 'opacity-50'
-                  )}
+                  className="ac-select"
                 >
                   <option value="15kHz">15 kHz (default)</option>
                   <option value="30kHz">30 kHz (higher quality, uses more memory)</option>
@@ -277,27 +311,24 @@ export function ImportSampleDialog({
               {/* Wave Bank and Segment */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="waveBank" className="block text-sm text-s330-muted mb-1">
+                  <label htmlFor="waveBank" className="ac-field-label mb-1">
                     Wave Bank
                   </label>
                   <select
                     id="waveBank"
                     value={waveBank}
-                    onChange={(e) => setWaveBank(Number(e.target.value) as 0 | 1)}
+                    onChange={(e) => setWaveBank(Number(e.target.value))}
                     disabled={isOperating}
                     data-testid="import-wave-bank"
-                    className={cn(
-                      'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
-                      'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                      isOperating && 'opacity-50'
-                    )}
+                    className="ac-select"
                   >
-                    <option value={0}>Bank A</option>
-                    <option value={1}>Bank B</option>
+                    {bankIndices.map((bankIndex, i) => (
+                      <option key={bankIndex} value={bankIndex}>Bank {bankLabels[i]}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
-                  <label htmlFor="targetSegment" className="block text-sm text-s330-muted mb-1">
+                  <label htmlFor="targetSegment" className="ac-field-label mb-1">
                     Segment (needs {segmentsNeeded})
                   </label>
                   <select
@@ -306,11 +337,7 @@ export function ImportSampleDialog({
                     onChange={(e) => setTargetSegment(Number(e.target.value))}
                     disabled={isOperating}
                     data-testid="import-segment"
-                    className={cn(
-                      'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
-                      'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                      isOperating && 'opacity-50'
-                    )}
+                    className="ac-select"
                   >
                     {Array.from({ length: 18 - segmentsNeeded + 1 }, (_, i) => (
                       <option key={i} value={i}>
@@ -326,7 +353,7 @@ export function ImportSampleDialog({
 
               {/* Loop Mode */}
               <div>
-                <label htmlFor="loopMode" className="block text-sm text-s330-muted mb-1">
+                <label htmlFor="loopMode" className="ac-field-label mb-1">
                   Loop Mode
                 </label>
                 <select
@@ -335,11 +362,7 @@ export function ImportSampleDialog({
                   onChange={(e) => setLoopMode(e.target.value as typeof loopMode)}
                   disabled={isOperating}
                   data-testid="import-loop-mode"
-                  className={cn(
-                    'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
-                    'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    isOperating && 'opacity-50'
-                  )}
+                  className="ac-select"
                 >
                   <option value="one-shot">One-Shot (no loop)</option>
                   <option value="forward">Forward Loop</option>

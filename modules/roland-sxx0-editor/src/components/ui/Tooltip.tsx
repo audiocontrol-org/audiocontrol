@@ -1,9 +1,19 @@
 /**
- * Tooltip component using Radix UI
+ * Tooltip — currently a no-op pass-through.
+ *
+ * Operator request 2026-05-18: the previous Radix-driven hover tooltips
+ * were perceived as more disruptive than informative on this editor —
+ * they covered the controls they were describing and fired during
+ * routine parameter editing. This component now renders its children
+ * unchanged so every existing `<Tooltip content={...}>...</Tooltip>`
+ * call site keeps working without any per-site edits.
+ *
+ * The `content`, `side`, and `delayDuration` props are accepted but
+ * intentionally ignored. To restore the Radix behavior, revert this
+ * file to its prior implementation (uses
+ * `@radix-ui/react-tooltip`'s Provider/Root/Trigger/Portal/Content/
+ * Arrow primitives) — the dependency is still in the workspace.
  */
-
-import * as TooltipPrimitive from '@radix-ui/react-tooltip';
-import { cn } from '@/lib/utils';
 
 interface TooltipProps {
   content: string;
@@ -12,35 +22,6 @@ interface TooltipProps {
   delayDuration?: number;
 }
 
-export function Tooltip({
-  content,
-  children,
-  side = 'top',
-  delayDuration = 300,
-}: TooltipProps) {
-  return (
-    <TooltipPrimitive.Provider delayDuration={delayDuration}>
-      <TooltipPrimitive.Root>
-        <TooltipPrimitive.Trigger asChild>
-          {children}
-        </TooltipPrimitive.Trigger>
-        <TooltipPrimitive.Portal>
-          <TooltipPrimitive.Content
-            side={side}
-            sideOffset={5}
-            className={cn(
-              'z-50 max-w-xs px-3 py-2 text-sm',
-              'bg-s330-panel border border-s330-accent rounded shadow-lg',
-              'text-s330-text',
-              'animate-in fade-in-0 zoom-in-95',
-              'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95'
-            )}
-          >
-            {content}
-            <TooltipPrimitive.Arrow className="fill-s330-accent" />
-          </TooltipPrimitive.Content>
-        </TooltipPrimitive.Portal>
-      </TooltipPrimitive.Root>
-    </TooltipPrimitive.Provider>
-  );
+export function Tooltip({ children }: TooltipProps): JSX.Element {
+  return <>{children}</>;
 }

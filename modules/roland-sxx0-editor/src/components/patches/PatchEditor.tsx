@@ -6,12 +6,9 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import type { SamplerPatch, SamplerKeyMode, SamplerTone, SamplerClientInterface } from '@/core/midi/SamplerClient';
 import { useMidiStore } from '@/stores/midiStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
-import { formatPercent } from '@audiocontrol/editor-core';
-import { cn } from '@/lib/utils';
-import { ParameterSlider } from '@/components/ui/ParameterSlider';
-import { Tooltip } from '@/components/ui/Tooltip';
-import { ToneZoneEditor } from './ToneZoneEditor';
-import { PATCH_TOOLTIPS } from '@/constants/patch-tooltips';
+import { PatchEditorTabs } from './PatchEditorTabs';
+import { PatchCommonPanel } from './PatchCommonPanel';
+import { PatchMappingPanel } from './PatchMappingPanel';
 import { PatchLabel } from '@/components/common/PatchLabel';
 
 interface PatchEditorProps {
@@ -34,7 +31,6 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
   }, [index, onUpdate]);
 
   const clientRef = useRef<SamplerClientInterface | null>(null);
-  const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(common.name);
   const [toneLayer1, setToneLayer1] = useState(common.toneLayer1);
   const [toneLayer2, setToneLayer2] = useState(common.toneLayer2);
@@ -51,18 +47,19 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
     clientRef.current = config.createClient(adapter, { deviceId });
   }
 
-  // Patch name handler
-  const handleNameChange = async (newName: string) => {
-    updatePatch({ ...common, name: newName });
-    setNameValue(newName);
+  // Patch name handler — commits on blur (same pattern as the tone
+  // editor's always-editable name input). Keystrokes only update local
+  // state; the device write happens on blur.
+  const commitName = async () => {
+    if (nameValue === common.name) return;
+    updatePatch({ ...common, name: nameValue });
     if (clientRef.current) {
       try {
-        await clientRef.current.setPatchName(index, newName);
+        await clientRef.current.setPatchName(index, nameValue);
       } catch (err) {
         console.error('[PatchEditor] Failed to update patch name:', err);
       }
     }
-    setEditingName(false);
   };
 
   // Parameter update handlers - update store first, then send to device
@@ -99,70 +96,65 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
     }
   };
 
-  const handleLevelChange = (level: number) => {
-    updatePatch({ ...common, level });
-  };
+  // Numeric parameter handlers — AcNumberInput emits onChange per
+  // keystroke, so each handler streams the value to the device on
+  // change rather than batching to a drag-end commit (per project
+  // memory `feedback_live_editing_no_save`: parameter edits stream
+  // live; no save/cancel/undo). Pre-migration, the Radix
+  // ParameterSlider split this into a state-only onChange + a
+  // device-write onCommit fired on pointerup — the new editable
+  // number readout has no pointer-up edge, so the streaming write IS
+  // the model.
 
-  const handleLevelCommit = async () => {
+  const handleLevelChange = async (level: number) => {
+    updatePatch({ ...common, level });
     if (clientRef.current) {
       try {
-        await clientRef.current.setPatchLevel(index, common.level);
+        await clientRef.current.setPatchLevel(index, level);
       } catch (err) {
         console.error('[PatchEditor] Failed to update level:', err);
       }
     }
   };
 
-  const handleAftertouchSensChange = (sens: number) => {
+  const handleAftertouchSensChange = async (sens: number) => {
     updatePatch({ ...common, aftertouchSens: sens });
-  };
-
-  const handleAftertouchSensCommit = async () => {
     if (clientRef.current) {
       try {
-        await clientRef.current.setPatchAftertouchSens(index, common.aftertouchSens);
+        await clientRef.current.setPatchAftertouchSens(index, sens);
       } catch (err) {
         console.error('[PatchEditor] Failed to update aftertouch sensitivity:', err);
       }
     }
   };
 
-  const handleDetuneChange = (detune: number) => {
+  const handleDetuneChange = async (detune: number) => {
     updatePatch({ ...common, detune });
-  };
-
-  const handleDetuneCommit = async () => {
     if (clientRef.current) {
       try {
-        await clientRef.current.setPatchDetune(index, common.detune);
+        await clientRef.current.setPatchDetune(index, detune);
       } catch (err) {
         console.error('[PatchEditor] Failed to update detune:', err);
       }
     }
   };
 
-  const handleVelocityThresholdChange = (threshold: number) => {
+  const handleVelocityThresholdChange = async (threshold: number) => {
     updatePatch({ ...common, velocityThreshold: threshold });
-  };
-
-  const handleVelocityThresholdCommit = async () => {
     if (clientRef.current) {
       try {
-        await clientRef.current.setPatchVelocityThreshold(index, common.velocityThreshold);
+        await clientRef.current.setPatchVelocityThreshold(index, threshold);
       } catch (err) {
         console.error('[PatchEditor] Failed to update velocity threshold:', err);
       }
     }
   };
 
-  const handleVelocityMixRatioChange = (ratio: number) => {
+  const handleVelocityMixRatioChange = async (ratio: number) => {
     updatePatch({ ...common, velocityMixRatio: ratio });
-  };
-
-  const handleVelocityMixRatioCommit = async () => {
     if (clientRef.current) {
       try {
-        await clientRef.current.setPatchVelocityMixRatio(index, common.velocityMixRatio);
+        await clientRef.current.setPatchVelocityMixRatio(index, ratio);
       } catch (err) {
         console.error('[PatchEditor] Failed to update velocity mix ratio:', err);
       }
@@ -226,281 +218,68 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
     }
   }, [common, toneLayer1, index]);
 
-  // Count loaded tones with names
-  const loadedTonesCount = tones.filter(t => t !== undefined).length;
-  const namedTonesCount = tones.filter(t => t !== undefined && t.name.trim()).length;
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="card">
-        <div className="mb-4">
-          <span className="text-sm text-s330-muted">
-            Patch <PatchLabel index={index} memoryLayout={config.memoryLayout} />
+    <div data-testid="patch-editor" data-capability="C-PATCH-04">
+      {/* Detail head — same shape as ToneEditorHead (eyebrow row +
+          slot + always-editable name input). Both pages render
+          pixel-identical chrome via the .ac-detail-* primitives in
+          _shared.css. */}
+      <header className="ac-detail-head">
+        <div className="ac-detail-eyebrow-row">
+          <span>Patch</span>
+          <span className="ac-detail-eyebrow-sep">·</span>
+          <span className="ac-detail-eyebrow-accent">Editing</span>
+          <span className="ac-detail-eyebrow-sep">·</span>
+          <span>Source · {config.deviceName}</span>
+        </div>
+        <h3 id="patch-detail-title" className="ac-detail-title">
+          <span className="ac-detail-slot">
+            <PatchLabel index={index} memoryLayout={config.memoryLayout} />
           </span>
-          {editingName ? (
-            <input
-              type="text"
-              value={nameValue}
-              onChange={(e) => setNameValue(e.target.value.slice(0, 12))}
-              onBlur={() => handleNameChange(nameValue)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleNameChange(nameValue);
-                } else if (e.key === 'Escape') {
-                  setNameValue(common.name);
-                  setEditingName(false);
-                }
-              }}
-              autoFocus
-              maxLength={12}
-              data-testid="patch-name-input"
-              className={cn(
-                'text-xl font-bold font-mono w-full',
-                'bg-s330-panel border border-s330-highlight rounded px-2 py-1',
-                'text-s330-text focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-              )}
-            />
-          ) : (
-            <h3
-              className={cn(
-                'text-xl font-bold font-mono cursor-pointer hover:text-s330-highlight',
-                nameValue.trim() ? 'text-s330-text' : 'text-s330-muted/50 italic'
-              )}
-              onClick={() => setEditingName(true)}
-              title="Click to edit patch name"
-            >
-              {nameValue.trim() || '(unnamed)'}
-            </h3>
-          )}
-        </div>
-
-        {/* Common Parameters - matching hardware layout */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {/* Key Mode */}
-          <Tooltip content={PATCH_TOOLTIPS.keyMode}>
-            <div>
-              <label className="text-xs text-s330-muted mb-1 block">Key Mode</label>
-              <select
-                value={common.keyMode}
-                onChange={(e) => handleKeyModeChange(e.target.value as 'normal' | 'v-sw' | 'x-fade' | 'v-mix' | 'unison')}
-                data-testid="patch-key-mode"
-                className={cn(
-                  'w-full px-2 py-1.5 text-sm font-mono',
-                  'bg-s330-panel border border-s330-accent rounded',
-                  'text-s330-text hover:bg-s330-accent/30',
-                  'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-                )}
-              >
-                <option value="normal">Normal</option>
-                <option value="v-sw">V-Sw</option>
-                <option value="x-fade">X-Fade</option>
-                <option value="v-mix">V-Mix</option>
-                <option value="unison">Unison</option>
-              </select>
-            </div>
-          </Tooltip>
-
-          {/* Key Assign */}
-          <Tooltip content={PATCH_TOOLTIPS.keyAssign}>
-            <div>
-              <label className="text-xs text-s330-muted mb-1 block">Key Assign</label>
-              <select
-                value={common.keyAssign}
-                onChange={(e) => handleKeyAssignChange(e.target.value as 'rotary' | 'fix')}
-                data-testid="patch-key-assign"
-                className={cn(
-                  'w-full px-2 py-1.5 text-sm font-mono',
-                  'bg-s330-panel border border-s330-accent rounded',
-                  'text-s330-text hover:bg-s330-accent/30',
-                  'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-                )}
-              >
-                <option value="rotary">Rotary</option>
-                <option value="fix">Fix</option>
-              </select>
-            </div>
-          </Tooltip>
-
-          {/* P.Bend Range */}
-          <Tooltip content={PATCH_TOOLTIPS.benderRange}>
-            <div>
-              <label className="text-xs text-s330-muted mb-1 block">P.Bend Range</label>
-              <select
-                value={common.benderRange}
-                onChange={(e) => handleBenderRangeChange(Number(e.target.value))}
-                data-testid="patch-bender-range"
-                className={cn(
-                  'w-full px-2 py-1.5 text-sm font-mono',
-                  'bg-s330-panel border border-s330-accent rounded',
-                  'text-s330-text hover:bg-s330-accent/30',
-                  'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-                )}
-              >
-                {Array.from({ length: 13 }, (_, i) => (
-                  <option key={i} value={i}>
-                    {i} semitones
-                  </option>
-                ))}
-              </select>
-            </div>
-          </Tooltip>
-
-          {/* A.T Assign */}
-          <Tooltip content={PATCH_TOOLTIPS.aftertouchAssign}>
-            <div>
-              <label className="text-xs text-s330-muted mb-1 block">A.T Assign</label>
-              <select
-                value={common.aftertouchAssign}
-                onChange={(e) => handleAftertouchAssignChange(e.target.value as 'modulation' | 'volume' | 'bend+' | 'bend-' | 'filter')}
-                data-testid="patch-at-assign"
-                className={cn(
-                  'w-full px-2 py-1.5 text-sm font-mono',
-                  'bg-s330-panel border border-s330-accent rounded',
-                  'text-s330-text hover:bg-s330-accent/30',
-                  'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-                )}
-              >
-                <option value="modulation">Modulation</option>
-                <option value="volume">Volume</option>
-                <option value="bend+">Bend+</option>
-                <option value="bend-">Bend-</option>
-                <option value="filter">Filter</option>
-              </select>
-            </div>
-          </Tooltip>
-
-          {/* Oct.Shift - disabled due to parsing bug, see issue #10 */}
-          <Tooltip content={PATCH_TOOLTIPS.octaveShift + ' (Currently disabled - see issue #10)'}>
-            <div className="opacity-50">
-              <label className="text-xs text-s330-muted mb-1 block">Oct.Shift</label>
-              <div
-                className={cn(
-                  'w-full px-2 py-1.5 text-sm font-mono',
-                  'bg-s330-panel border border-s330-accent/50 rounded',
-                  'text-s330-muted cursor-not-allowed'
-                )}
-              >
-                {common.octaveShift > 0 ? '+' : ''}{common.octaveShift}
-              </div>
-            </div>
-          </Tooltip>
-
-          {/* Output Assign */}
-          <Tooltip content={PATCH_TOOLTIPS.outputAssign}>
-            <div>
-              <label className="text-xs text-s330-muted mb-1 block">Output Assign</label>
-              <select
-                value={common.outputAssign}
-                onChange={(e) => handleOutputChange(Number(e.target.value))}
-                data-testid="patch-output"
-                className={cn(
-                  'w-full px-2 py-1.5 text-sm font-mono',
-                  'bg-s330-panel border border-s330-accent rounded',
-                  'text-s330-text hover:bg-s330-accent/30',
-                  'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-                )}
-              >
-                {Array.from({ length: 8 }, (_, i) => (
-                  <option key={i} value={i}>
-                    Out {i + 1}
-                  </option>
-                ))}
-                <option value={8}>TONE</option>
-              </select>
-            </div>
-          </Tooltip>
-        </div>
-
-        {/* Sliders for Level and A.T Sense */}
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <ParameterSlider
-            label="Level"
-            value={common.level}
-            onChange={handleLevelChange}
-            onCommit={handleLevelCommit}
-            formatValue={formatPercent}
-            tooltip={PATCH_TOOLTIPS.level}
+          <input
+            type="text"
+            value={nameValue}
+            onChange={(e) => setNameValue(e.target.value.slice(0, 12))}
+            onBlur={() => { void commitName(); }}
+            placeholder="(unnamed)"
+            data-testid="patch-name-input"
+            maxLength={12}
+            className="ac-input ac-detail-name-input"
           />
-          <ParameterSlider
-            label="A.T Sense"
-            value={common.aftertouchSens}
-            onChange={handleAftertouchSensChange}
-            onCommit={handleAftertouchSensCommit}
-            formatValue={formatPercent}
-            tooltip={PATCH_TOOLTIPS.aftertouchSens}
-          />
-        </div>
+        </h3>
+      </header>
 
-        {/* Mode-specific parameters */}
-        <div className="mt-4 grid gap-4 md:grid-cols-3">
-          {/* Unison Detune - always visible, only active in Unison mode */}
-          <div className={cn(common.keyMode !== 'unison' && 'opacity-50')}>
-            <ParameterSlider
-              label="Unison Detune"
-              value={common.detune + 64}
-              onChange={(val) => handleDetuneChange(val - 64)}
-              onCommit={handleDetuneCommit}
-              disabled={common.keyMode !== 'unison'}
-              tooltip={PATCH_TOOLTIPS.detune}
-            />
-          </div>
-
-          {/* V-Sw Thresh - always visible, only active in V-Sw mode */}
-          <div className={cn(common.keyMode !== 'v-sw' && 'opacity-50')}>
-            <ParameterSlider
-              label="V-Sw Thresh."
-              value={common.velocityThreshold}
-              onChange={handleVelocityThresholdChange}
-              onCommit={handleVelocityThresholdCommit}
-              disabled={common.keyMode !== 'v-sw'}
-              tooltip={PATCH_TOOLTIPS.velocityThreshold}
-            />
-          </div>
-
-          {/* V-Mix Ratio - always visible, only active in V-Mix mode */}
-          <div className={cn(common.keyMode !== 'v-mix' && 'opacity-50')}>
-            <ParameterSlider
-              label="V-Mix Ratio"
-              value={common.velocityMixRatio}
-              onChange={handleVelocityMixRatioChange}
-              onCommit={handleVelocityMixRatioCommit}
-              formatValue={formatPercent}
-              disabled={common.keyMode !== 'v-mix'}
-              tooltip={PATCH_TOOLTIPS.velocityMixRatio}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Tone Mapping Editor */}
-      <div className="card">
-        <h4 className="font-medium text-s330-text mb-4">
-          Tone Mapping
-          <span className="ml-2 text-xs text-s330-muted">
-            ({loadedTonesCount} tones loaded, {namedTonesCount} with names)
-          </span>
-        </h4>
-
-        <div className="space-y-6">
-          {/* Layer 1 Zone Editor */}
-          <ToneZoneEditor
-            layer={1}
-            toneData={toneLayer1}
-            keyMode={common.keyMode as SamplerKeyMode}
-            tones={tones}
-            onUpdate={handleToneLayer1Update}
-          />
-
-          {/* Layer 2 Zone Editor (shown for dual-layer modes) */}
-          <ToneZoneEditor
-            layer={2}
-            toneData={toneLayer2}
-            keyMode={common.keyMode as SamplerKeyMode}
-            tones={tones}
-            onUpdate={handleToneLayer2Update}
-          />
-        </div>
+      <div className="ac-detail-body">
+        <PatchEditorTabs
+          groupName={`patch-tabs-${index}`}
+          panels={{
+            'pt-common': (
+              <PatchCommonPanel
+                common={common}
+                onKeyModeChange={handleKeyModeChange}
+                onKeyAssignChange={handleKeyAssignChange}
+                onBenderRangeChange={handleBenderRangeChange}
+                onAftertouchAssignChange={handleAftertouchAssignChange}
+                onOutputChange={handleOutputChange}
+                onLevelChange={handleLevelChange}
+                onAftertouchSensChange={handleAftertouchSensChange}
+                onDetuneChange={handleDetuneChange}
+                onVelocityThresholdChange={handleVelocityThresholdChange}
+                onVelocityMixRatioChange={handleVelocityMixRatioChange}
+              />
+            ),
+            'pt-mapping': (
+              <PatchMappingPanel
+                keyMode={common.keyMode as SamplerKeyMode}
+                toneLayer1={toneLayer1}
+                toneLayer2={toneLayer2}
+                tones={tones}
+                onLayer1Update={handleToneLayer1Update}
+                onLayer2Update={handleToneLayer2Update}
+              />
+            ),
+          }}
+        />
       </div>
     </div>
   );

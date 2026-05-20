@@ -12,6 +12,7 @@ import type { LibraryDragPayload } from '@/lib/library-drag-types';
 import { extractRolandDragMeta } from '@/lib/library-drag-types';
 import type { OperationProgress } from '@/types/import-operation';
 import { saveDeviceToSetIncremental, loadSetToDevice, type StorageDirectoryHandle } from '@/lib/library-service';
+import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import type { RolandPageSelection } from '@/pages/LibraryPage';
 
 
@@ -28,16 +29,26 @@ export interface ImportPatchDialogState {
   initialTargetSlot?: number;
 }
 
+/**
+ * `waveBank: number` because runtime validation against
+ * `DeviceConfig.maxWaveBankIndex` enforces the device-specific range; the
+ * editor cannot encode S-330's `0 | 1` and S-550's `0 | 1 | 2 | 3`
+ * simultaneously in a static literal union. Out-of-range values throw at the
+ * device-client boundary.
+ */
 export interface ImportToneParams {
   setName: string; toneFile: string; tone: SamplerTone; wavData: Uint8Array;
-  targetSlot: number; waveBank: 0 | 1 | 2 | 3; segmentTop: number; segmentLength: number;
+  targetSlot: number; waveBank: number; segmentTop: number; segmentLength: number;
 }
 
+/**
+ * `waveBank: number` for each tone — see `ImportToneParams` JSDoc above.
+ */
 export interface ImportPatchParams {
   setName: string; patchFile: string; patch: SamplerPatch; targetPatchSlot: number;
   tones: Array<{
     tone: SamplerTone; wavData: Uint8Array; targetSlot: number;
-    waveBank: 0 | 1 | 2 | 3; segmentTop: number; segmentLength: number;
+    waveBank: number; segmentTop: number; segmentLength: number;
   }>;
 }
 
@@ -56,6 +67,7 @@ export function useLibraryImportDialogs({
   clientRef, libraryHandle, setTone, setPatch, totalTones, totalPatches,
   selection, handleRefreshLibrary,
 }: Options) {
+  const { memoryLayout } = useDeviceConfig();
   const [importToneDialog, setImportToneDialog] = useState<ImportToneDialogState | null>(null);
   const [importPatchDialog, setImportPatchDialog] = useState<ImportPatchDialogState | null>(null);
   const [isImporting, setIsImporting] = useState(false);
@@ -102,7 +114,9 @@ export function useLibraryImportDialogs({
     resetProgress();
     const meta = extractRolandDragMeta(data);
     if (meta.setName && meta.toneFile) setImportToneDialog({ setName: meta.setName, toneFile: meta.toneFile, initialTargetSlot: targetSlot });
-    else setImportToneDialog({ setName: '__individual__', toneFile: data.nodeName, initialTargetSlot: targetSlot });
+    // Individual tone: prefer the on-disk fileName (#418) — `nodeName` is
+    // the YAML display name and won't resolve when they differ.
+    else setImportToneDialog({ setName: '__individual__', toneFile: meta.fileName ?? data.nodeName, initialTargetSlot: targetSlot });
   }, [libraryHandle, clientRef, resetProgress]);
 
   const handleDropLibraryPatch = useCallback((data: LibraryDragPayload, targetSlot: number) => {
@@ -111,7 +125,9 @@ export function useLibraryImportDialogs({
     resetProgress();
     const meta = extractRolandDragMeta(data);
     if (meta.setName && meta.patchFile) setImportPatchDialog({ setName: meta.setName, patchFile: meta.patchFile, initialTargetSlot: targetSlot });
-    else setImportPatchDialog({ setName: '__individual__', patchFile: data.nodeName, patchPath: data.sourcePath, initialTargetSlot: targetSlot });
+    // Individual patch: prefer the on-disk directoryName (#418) — `nodeName`
+    // is the YAML display name and won't resolve when they differ.
+    else setImportPatchDialog({ setName: '__individual__', patchFile: meta.directoryName ?? data.nodeName, patchPath: data.sourcePath, initialTargetSlot: targetSlot });
   }, [libraryHandle, clientRef, resetProgress]);
 
   const handleImportLibraryTone = useCallback(async (params: ImportToneParams) => {
@@ -122,7 +138,7 @@ export function useLibraryImportDialogs({
         ...params.tone, wave: { ...params.tone.wave, bank: params.waveBank, segmentTop: params.segmentTop, segmentLength: params.segmentLength },
       };
       await clientRef.current.importTone(
-        { toneIndex: params.targetSlot, waveData: params.wavData, waveBank: params.waveBank as 0 | 1, segmentTop: params.segmentTop, segmentLength: params.segmentLength, tone: toneWithNewWave },
+        { toneIndex: params.targetSlot, waveData: params.wavData, waveBank: params.waveBank, segmentTop: params.segmentTop, segmentLength: params.segmentLength, tone: toneWithNewWave },
         (bytesSent, totalBytes) => {
           setOperationProgress({ currentStep: 1, totalSteps: 1, stepLabel: `Uploading ${params.tone.name}`, bytesSent, bytesTotal: totalBytes, bytesSentAllSteps: 0, bytesTotalAllSteps: totalBytes });
         }
@@ -149,7 +165,7 @@ export function useLibraryImportDialogs({
         const td = params.tones[i];
         const toneWithNewWave: SamplerTone = { ...td.tone, wave: { ...td.tone.wave, bank: td.waveBank, segmentTop: td.segmentTop, segmentLength: td.segmentLength } };
         await clientRef.current.importTone(
-          { toneIndex: td.targetSlot, waveData: td.wavData, waveBank: td.waveBank as 0 | 1, segmentTop: td.segmentTop, segmentLength: td.segmentLength, tone: toneWithNewWave },
+          { toneIndex: td.targetSlot, waveData: td.wavData, waveBank: td.waveBank, segmentTop: td.segmentTop, segmentLength: td.segmentLength, tone: toneWithNewWave },
           (bytesSent, totalBytes) => {
             setOperationProgress({ currentStep: completedSteps + 1, totalSteps, stepLabel: `Uploading tone ${td.tone.name} (${i + 1} of ${params.tones.length})`, bytesSent, bytesTotal: totalBytes, bytesSentAllSteps: patchBytesSentAll, bytesTotalAllSteps: patchBytesTotalAll });
           }
@@ -173,8 +189,13 @@ export function useLibraryImportDialogs({
 
   const handleSaveSet = useCallback(async (setName: string, description?: string) => {
     if (!libraryHandle || !clientRef.current) return;
-    const mkProgress = (p: Partial<OperationProgress>): OperationProgress => ({ currentStep: 1, totalSteps: 1, stepLabel: 'Saving...', bytesSent: 0, bytesTotal: 100, bytesSentAllSteps: 0, bytesTotalAllSteps: 100, ...p });
-    setOperationProgress(mkProgress({ currentStep: 0, stepLabel: 'Preparing...' }));
+    // Initial progress: scan phase, totals unknown. bytesTotal === 0 so
+    // OperationProgressBar suppresses byte/ETA display until real bytes
+    // are reported by saveDeviceToSetIncremental's tone-fetch callbacks.
+    setOperationProgress({
+      currentStep: 1, totalSteps: 3, stepLabel: 'Preparing...',
+      bytesSent: 0, bytesTotal: 0, bytesSentAllSteps: 0, bytesTotalAllSteps: 0,
+    });
     setOperationError(null);
     setSaveSuccess(false);
     const client = clientRef.current;
@@ -184,8 +205,7 @@ export function useLibraryImportDialogs({
         async (toneIndex) => await client.requestToneData(toneIndex),
         async (patchIndex) => await client.requestPatchData(patchIndex),
         async (toneIndex, onWaveProgress) => await client.requestWaveData(toneIndex, onWaveProgress ?? (() => {})),
-        (progress) => setOperationProgress((prev) => prev ? { ...prev, bytesSent: Math.floor(progress) } : mkProgress({ bytesSent: Math.floor(progress) })),
-        (status) => setOperationProgress((prev) => prev ? { ...prev, stepLabel: status } : mkProgress({ stepLabel: status }))
+        (progress) => setOperationProgress(progress),
       );
       setSaveSuccess(true);
       setOperationProgress(undefined); // Clear progress so dialog can close (isSaving=false)
@@ -217,8 +237,10 @@ export function useLibraryImportDialogs({
 
       for (const [slot, data] of deviceState.tones) {
         const targetSlot = slot + toneOffset;
-        const targetBank = (data.tone.wave.bank + waveBankOffset) as 0 | 1;
-        const toneName = data.tone.name || `T${Math.floor(targetSlot / 8) + 1}${(targetSlot % 8) + 1}`;
+        // `targetBank` is `number` end-to-end (S-330: 0/1, S-550: 0..3).
+        // Out-of-range values throw at the device-client boundary.
+        const targetBank = data.tone.wave.bank + waveBankOffset;
+        const toneName = data.tone.name || memoryLayout.formatToneSlot(targetSlot);
         await clientRef.current.importTone(
           { toneIndex: targetSlot, waveData: data.wavData, waveBank: targetBank, segmentTop: data.tone.wave.segmentTop, segmentLength: data.tone.wave.segmentLength, tone: data.tone },
           (bytesSent, totalBytes) => { setOperationProgress({ currentStep: uploadCount + 1, totalSteps: totalItems, stepLabel: `Uploading ${toneName}`, bytesSent, bytesTotal: totalBytes, bytesSentAllSteps, bytesTotalAllSteps }); }
@@ -230,7 +252,7 @@ export function useLibraryImportDialogs({
       }
 
       for (const [slot, patch] of deviceState.patches) {
-        const patchName = patch.common.name || `P${String(slot + 1).padStart(2, '0')}`;
+        const patchName = patch.common.name || memoryLayout.formatPatchSlot(slot);
         setOperationProgress({ currentStep: uploadCount + 1, totalSteps: totalItems, stepLabel: `Uploading patch ${patchName}`, bytesSent: 0, bytesTotal: 0, bytesSentAllSteps, bytesTotalAllSteps });
         await clientRef.current.sendPatchData(slot, patch.common);
         uploadCount++;
@@ -245,7 +267,7 @@ export function useLibraryImportDialogs({
       console.error('[LibraryPage] Failed to load set:', err);
       setOperationError(err instanceof Error ? err.message : 'Failed to load set');
     }
-  }, [libraryHandle, clientRef, selection, setTone, totalTones]);
+  }, [libraryHandle, clientRef, selection, setTone, totalTones, memoryLayout]);
 
   // Wrapped setters that reset success state
   const handleSetIsSaveDialogOpen = useCallback((open: boolean) => {

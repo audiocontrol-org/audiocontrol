@@ -1,0 +1,3264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Phase 9 Task 2 — TonesPage Mockup v1</title>
+<style>
+  /* ============================================================
+     DESIGN TOKENS — `--ac-*` namespace
+     Direction:
+       Dark-only, blue ink (NOT amber-cast). s330 blue is dominant
+       where audiocontrol.org would have used phosphor amber.
+       HSL fragments enable `hsl(var(--ac-color-*) / alpha)` composition.
+     ============================================================ */
+  :root {
+    color-scheme: dark;
+
+    /* --- color tokens (HSL fragments, no hsl() wrapper) --------- */
+    --ac-color-bg:               220 24% 7%;     /* warm-cool near-black, faint blue cast */
+    --ac-color-surface:          220 18% 11%;    /* card surface */
+    --ac-color-surface-hover:    220 18% 14%;    /* card hover */
+    --ac-color-fg:               215 18% 92%;    /* off-white, slight blue cast */
+    --ac-color-fg-muted:         220 12% 60%;    /* secondary text */
+    --ac-color-fg-subtle:        220 10% 42%;    /* tertiary text / placeholders */
+    --ac-color-border:           220 18% 22%;    /* hairline default */
+    --ac-color-border-hover:     220 18% 32%;    /* hairline emphasis */
+    --ac-color-accent:           215 78% 58%;    /* s330 BLUE — the identity */
+    --ac-color-accent-soft:      215 78% 68%;    /* hover lift */
+    --ac-color-highlight:        210 96% 72%;    /* keyline highlight */
+    --ac-color-danger:           358 72% 58%;    /* destructive */
+    --ac-color-warning:          38  80% 58%;    /* caution (used sparingly) */
+    --ac-color-success:          152 55% 52%;    /* available / done */
+
+    /* --- CRT monitor tokens ------------------------------------ */
+    --ac-crt-bezel:    30 6% 6%;
+    --ac-crt-frame:    30 5% 12%;
+    --ac-crt-bg:       30 4% 22%;
+    --ac-crt-fg-dim:   35 6% 68%;
+    --ac-crt-fg:       35 8% 88%;
+    --ac-crt-fg-active: 35 12% 96%;
+    --ac-crt-btn-fill: 30 5% 80%;
+    --ac-crt-btn-text: 30 8% 12%;
+
+    /* --- REC-LED accent (sparingly) ----------------------------
+       A nod to the S-550 front panel's red PLAY LED + REC LEVEL knob.
+       Use ONLY as a rare "device-active / signal-on-air" indicator —
+       NOT for danger (that's --ac-color-danger), NOT for s330 identity. */
+    --ac-color-rec:    4 92% 58%;
+
+    /* --- typography role tokens -------------------------------- */
+    --ac-font-display: "Departure Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --ac-font-body:    "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --ac-font-mono:    "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --ac-font-heading: var(--ac-font-display);
+
+    /* --- type scale -------------------------------------------- */
+    --ac-text-h1: clamp(1.75rem, 3.4vw, 2.35rem);
+    --ac-text-h2: 1.45rem;
+    --ac-text-h3: 1.15rem;
+    --ac-text-h4: 1rem;
+    --ac-text-eyebrow: 0.78rem;
+    --ac-text-body: 1rem;
+    --ac-text-small: 0.875rem;
+    --ac-text-tiny: 0.75rem;
+
+    /* --- weight tokens ----------------------------------------- */
+    --ac-fw-display: 400;
+    --ac-fw-body:    400;
+    --ac-fw-medium:  500;
+    --ac-fw-semibold:600;
+    --ac-fw-bold:    700;
+
+    /* --- letter-spacing ---------------------------------------- */
+    --ac-tracking-display: 0.01em;
+    --ac-tracking-eyebrow: 0.14em;
+    --ac-tracking-ticker:  0.12em;
+
+    /* --- spacing scale ----------------------------------------- */
+    --ac-space-1: 0.25rem;
+    --ac-space-2: 0.5rem;
+    --ac-space-3: 0.75rem;
+    --ac-space-4: 1rem;
+    --ac-space-5: 1.25rem;
+    --ac-space-6: 1.5rem;
+    --ac-space-7: 2rem;
+    --ac-space-8: 2.75rem;
+
+    /* --- layout tokens ----------------------------------------- */
+    --ac-container-max-width: 1400px;
+    --ac-container-padding:   2rem;
+    --ac-measure-reading:     36rem;
+    --ac-measure-narrow:      28rem;
+
+    /* --- rule weights ------------------------------------------ */
+    --ac-rule-hairline: 1px;
+    --ac-rule-medium:   2px;
+    --ac-rule-heavy:    3px;
+
+    /* --- shadow tokens ----------------------------------------- */
+    --ac-shadow-card: 0 0 0 1px hsl(var(--ac-color-border)),
+                      0 10px 36px -12px hsl(220 40% 0% / 0.65);
+    --ac-shadow-card-hover:
+      0 0 0 1px hsl(var(--ac-color-accent) / 0.5),
+      0 14px 40px -10px hsl(var(--ac-color-accent) / 0.18),
+      0 4px 18px -6px hsl(220 40% 0% / 0.55);
+
+    --ac-glow-accent: 0 0 14px hsl(var(--ac-color-accent) / 0.45),
+                      0 0 2px  hsl(var(--ac-color-accent) / 0.65);
+
+    /* --- motion tokens ----------------------------------------- */
+    --ac-duration-fast:    120ms;
+    --ac-duration-default: 220ms;
+    --ac-duration-slow:    420ms;
+    --ac-easing-default:   cubic-bezier(0.2, 0.6, 0.2, 1);
+
+    /* --- selection -------------------------------------------- */
+  }
+
+  ::selection {
+    background-color: hsl(var(--ac-color-accent) / 0.35);
+    color: hsl(var(--ac-color-fg));
+  }
+
+  /* ============================================================
+     CRT MONITOR — see 01-design-language.html § 08
+     ============================================================ */
+  .ac-crt-monitor {
+    background: hsl(var(--ac-crt-bezel));
+    padding: var(--ac-space-3);
+    border-radius: 6px;
+    box-shadow:
+      0 0 0 1px hsl(var(--ac-color-border)),
+      0 14px 40px -10px hsl(220 40% 0% / 0.6),
+      inset 0 1px 0 hsl(35 8% 30% / 0.4);
+  }
+  .ac-crt-monitor__bezel {
+    background: hsl(var(--ac-crt-frame));
+    padding: var(--ac-space-3);
+    border-radius: 4px;
+    box-shadow: inset 0 0 0 1px hsl(30 4% 4%);
+  }
+  .ac-crt-monitor__screen {
+    position: relative;
+    background: hsl(var(--ac-crt-bg));
+    color: hsl(var(--ac-crt-fg-dim));
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    line-height: 1.35;
+    padding: var(--ac-space-4) var(--ac-space-5) var(--ac-space-5);
+    border-radius: 2px;
+    overflow: hidden;
+    background-image:
+      linear-gradient(180deg, transparent 0, hsl(220 14% 5% / 0.18) 50%, transparent 100%),
+      repeating-linear-gradient(180deg, transparent 0, transparent 2px, hsl(30 4% 0% / 0.08) 2px, hsl(30 4% 0% / 0.08) 3px);
+  }
+  .ac-crt-monitor__chrome {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: var(--ac-space-2);
+    margin-bottom: var(--ac-space-2);
+  }
+  .ac-crt-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 1.5rem;
+    border: 1px solid hsl(var(--ac-crt-fg-dim) / 0.4);
+    background: transparent;
+    color: hsl(var(--ac-crt-fg));
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    letter-spacing: 0.04em;
+    padding-inline: var(--ac-space-2);
+  }
+  .ac-crt-btn--filled { background: hsl(var(--ac-crt-btn-fill)); color: hsl(var(--ac-crt-btn-text)); border-color: hsl(var(--ac-crt-btn-fill)); }
+  .ac-crt-btn--blank { border-color: hsl(var(--ac-crt-fg-dim) / 0.25); background: hsl(var(--ac-crt-fg-dim) / 0.12); }
+  .ac-crt-monitor__sub-row {
+    display: flex; justify-content: space-between;
+    color: hsl(var(--ac-crt-fg));
+    margin-bottom: var(--ac-space-3);
+    padding-bottom: var(--ac-space-2);
+  }
+  .ac-crt-table {
+    width: 100%; border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--ac-crt-fg-dim));
+  }
+  .ac-crt-table thead th { text-align: left; color: hsl(var(--ac-crt-fg)); font-weight: 400; padding-block: 1px; }
+  .ac-crt-table thead th:nth-child(2),
+  .ac-crt-table thead th:nth-child(3),
+  .ac-crt-table thead th:nth-child(6),
+  .ac-crt-table thead th:nth-child(7) { text-align: right; }
+  .ac-crt-table tbody td { padding-block: 1px; color: hsl(var(--ac-crt-fg-dim)); }
+  .ac-crt-table tbody td:nth-child(2),
+  .ac-crt-table tbody td:nth-child(3),
+  .ac-crt-table tbody td:nth-child(6),
+  .ac-crt-table tbody td:nth-child(7) { text-align: right; }
+  .ac-crt-table tbody tr:first-child td { color: hsl(var(--ac-crt-fg)); }
+  .ac-crt-cell--selected {
+    background: hsl(var(--ac-crt-fg-dim));
+    color: hsl(var(--ac-crt-bg));
+    padding-inline: 4px; margin-inline: -4px; display: inline-block;
+  }
+  .ac-crt-monitor__display {
+    margin-top: var(--ac-space-4);
+    color: hsl(var(--ac-crt-fg));
+    display: flex; gap: var(--ac-space-5);
+  }
+  .ac-crt-cursor {
+    display: inline-block; width: 0.6em;
+    background: hsl(var(--ac-crt-fg)); color: hsl(var(--ac-crt-bg));
+    animation: ac-crt-blink 1s steps(1) infinite;
+  }
+  @keyframes ac-crt-blink { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .ac-crt-cursor { animation: none; } }
+  .ac-crt-monitor__lookup {
+    margin-top: var(--ac-space-3);
+    display: grid; grid-template-columns: 1fr 1fr;
+    column-gap: var(--ac-space-7); row-gap: 1px;
+    color: hsl(var(--ac-crt-fg-dim));
+    padding-left: var(--ac-space-4);
+  }
+  .ac-crt-monitor__caption {
+    margin-top: var(--ac-space-3);
+    display: flex; justify-content: space-between;
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .ac-crt-monitor--compact .ac-crt-monitor__screen {
+    font-size: var(--ac-text-tiny);
+    padding: var(--ac-space-3) var(--ac-space-4) var(--ac-space-4);
+  }
+  .ac-crt-monitor--compact .ac-crt-btn { height: 1.25rem; }
+
+  /* ============================================================
+     VIRTUAL FRONT PANEL — the device's physical buttons, mirrored.
+     Sits beneath the CRT video-out so the operator can drive the
+     device's UI without reaching for the hardware. Matte instrument
+     face with tactile button caps; red LED on the active mode
+     (PLAY by default), red triangle glyphs for the ◀ ▼ ▶ ▲
+     data-entry cluster (matches the device's red LCD triangles).
+     ============================================================ */
+  .ac-front-panel {
+    margin-top: var(--ac-space-3);
+    padding: var(--ac-space-4);
+    background:
+      linear-gradient(180deg, hsl(220 18% 11%) 0%, hsl(220 22% 7%) 100%);
+    border: var(--ac-rule-hairline) solid hsl(220 14% 14%);
+    border-radius: 4px;
+    box-shadow:
+      inset 0 1px 0 hsl(220 14% 22% / 0.4),
+      0 8px 22px -10px hsl(220 30% 0% / 0.55);
+  }
+  .ac-front-panel__rows {
+    display: grid;
+    gap: var(--ac-space-2);
+  }
+  .ac-front-panel__row {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .ac-front-panel__btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 1.85rem;
+    padding-inline: var(--ac-space-2);
+    border-radius: 2px;
+    background:
+      linear-gradient(180deg, hsl(220 8% 24%) 0%, hsl(220 10% 18%) 100%);
+    border: 1px solid hsl(220 14% 10%);
+    color: hsl(35 12% 90%);
+    font-family: var(--ac-font-display);
+    font-size: 0.55rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    user-select: none;
+    box-shadow:
+      inset 0 1px 0 hsl(220 14% 36% / 0.5),
+      inset 0 -1px 0 hsl(220 18% 6% / 0.7),
+      0 1px 0 hsl(220 22% 4%);
+    transition:
+      background var(--ac-duration-fast) var(--ac-easing-default),
+      transform var(--ac-duration-fast) var(--ac-easing-default),
+      box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .ac-front-panel__btn:hover {
+    background:
+      linear-gradient(180deg, hsl(220 10% 28%) 0%, hsl(220 12% 22%) 100%);
+  }
+  .ac-front-panel__btn:active {
+    transform: translateY(1px);
+    box-shadow:
+      inset 0 2px 4px hsl(220 14% 0% / 0.55),
+      inset 0 -1px 0 hsl(220 14% 8%);
+  }
+  .ac-front-panel__btn:focus-visible {
+    outline: none;
+    box-shadow:
+      inset 0 0 0 2px hsl(var(--ac-color-accent) / 0.7),
+      inset 0 1px 0 hsl(220 14% 36% / 0.5);
+  }
+  /* Active-mode button — red LED dot on the left edge of the cap. */
+  .ac-front-panel__btn--active { color: hsl(35 14% 96%); }
+  .ac-front-panel__btn--active::before {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: hsl(var(--ac-color-rec));
+    box-shadow:
+      0 0 6px hsl(var(--ac-color-rec) / 0.85),
+      0 0 1px hsl(4 100% 80% / 1) inset;
+    animation: ac-front-panel-led 2.4s ease-in-out infinite;
+  }
+  @keyframes ac-front-panel-led {
+    0%, 100% { box-shadow: 0 0 6px hsl(var(--ac-color-rec) / 0.85), 0 0 1px hsl(4 100% 80% / 1) inset; }
+    50%      { box-shadow: 0 0 12px hsl(var(--ac-color-rec) / 1),    0 0 2px hsl(4 100% 80% / 1) inset; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ac-front-panel__btn--active::before { animation: none; }
+  }
+  /* Arrow data-entry cluster — red triangle glyphs like the device. */
+  .ac-front-panel__btn--arrow {
+    color: hsl(var(--ac-color-rec));
+    font-size: 0.75rem;
+    letter-spacing: 0;
+    text-shadow: 0 0 4px hsl(var(--ac-color-rec) / 0.4);
+  }
+  .ac-front-panel__caption {
+    margin-top: var(--ac-space-3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .ac-front-panel__caption-mode {
+    color: hsl(var(--ac-color-rec));
+    text-shadow: 0 0 6px hsl(var(--ac-color-rec) / 0.4);
+  }
+
+  /* ============================================================
+     APP SHELL — page content + persistent CRT dock
+     ============================================================ */
+  .app-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--ac-space-7);
+    padding-block: var(--ac-space-6) var(--ac-space-8);
+  }
+  .app-shell__crt {
+    align-self: start;
+  }
+  @media (min-width: 1100px) {
+    .app-shell {
+      grid-template-columns: minmax(0, 1fr) 30rem;
+    }
+    .app-shell__crt {
+      position: sticky;
+      top: var(--ac-space-4);
+    }
+  }
+
+  /* ============================================================
+     TONES-PAGE LAYOUT — fixed-viewport 3-column app shell
+     The page is exactly viewport-tall. The chrome bar, the page
+     title, and (in the mockup) the exploration banner above don't
+     scroll. The 3-col grid fills the remaining height, and each
+     column scrolls INSIDE its own region — only the center detail
+     column has overflowing content in the common case. The list
+     and CRT scroll internally if their content overflows.
+
+     Why not sticky positioning? Sticky elements pin only as long
+     as their containing block extends past the sticky `top` line.
+     With a long detail column AND content below the grid (the
+     mockup's exploration footer), the list's cell ended too early
+     and got pushed up off the top of the viewport. A fixed-viewport
+     layout removes the failure mode entirely.
+     ============================================================ */
+  @media (min-width: 1100px) {
+    body {
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .exploration-banner,
+    .homepage__appbar { flex-shrink: 0; }
+    main.ac-container {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+    }
+    .tones__page-title {
+      flex-shrink: 0;
+      margin-top: 0 !important;
+      padding-block: var(--ac-space-5) var(--ac-space-4);
+      box-shadow: 0 1px 0 hsl(var(--ac-color-border) / 0.7);
+      background: hsl(var(--ac-color-bg));
+    }
+    .app-shell.tones__app-shell {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 18rem minmax(0, 1fr) 30rem;
+      gap: var(--ac-space-5);
+      padding-block: var(--ac-space-5) 0;
+      align-items: stretch;
+    }
+    /* Each column scrolls INSIDE its grid cell. */
+    .app-shell.tones__app-shell .tones__list,
+    .app-shell.tones__app-shell .tones__detail,
+    .app-shell.tones__app-shell .app-shell__crt {
+      min-height: 0;
+      max-height: 100%;
+      overflow-y: auto;
+      align-self: stretch;
+    }
+    /* The exploration footer is mockup-only; on tones page hide it
+       so the editor experience reads as a real fixed-viewport app.
+       (Other mockup pages keep their footer.) */
+    .exploration-footer { display: none; }
+  }
+  /* Below 1100px we fall back to the original scrolling layout —
+     no fixed-viewport tricks at narrow widths. */
+
+  /* ============================================================
+     RESETS
+     ============================================================ */
+  *, *::before, *::after { box-sizing: border-box; }
+  html { font-size: 16px; }
+  body {
+    margin: 0;
+    background: hsl(var(--ac-color-bg));
+    color: hsl(var(--ac-color-fg));
+    font-family: var(--ac-font-body);
+    font-size: var(--ac-text-body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* faint instrument-grid background — extremely subtle, not a real grid */
+    background-image:
+      linear-gradient(hsl(var(--ac-color-border) / 0.20) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--ac-color-border) / 0.20) 1px, transparent 1px);
+    background-size: 40px 40px, 40px 40px;
+    background-position: -1px -1px;
+    background-attachment: fixed;
+  }
+
+  /* ============================================================
+     CONTAINER
+     ============================================================ */
+  .ac-container {
+    max-width: var(--ac-container-max-width);
+    margin: 0 auto;
+    padding: 0 var(--ac-container-padding);
+  }
+
+  /* ============================================================
+     PAGE BANNER — self-identifying header for this exploration
+     ============================================================ */
+  .exploration-banner {
+    border-bottom: var(--ac-rule-medium) solid hsl(var(--ac-color-accent));
+    background:
+      linear-gradient(180deg,
+        hsl(var(--ac-color-bg)) 0%,
+        hsl(var(--ac-color-surface) / 0.7) 100%);
+    box-shadow: 0 1px 0 hsl(var(--ac-color-accent) / 0.25);
+  }
+  .exploration-banner__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--ac-space-4);
+    padding-block: var(--ac-space-6);
+  }
+  .exploration-banner__title {
+    font-family: var(--ac-font-display);
+    font-weight: var(--ac-fw-display);
+    font-size: var(--ac-text-h2);
+    letter-spacing: var(--ac-tracking-display);
+    margin: 0;
+  }
+  .exploration-banner__meta {
+    display: flex;
+    gap: var(--ac-space-4);
+    align-items: center;
+  }
+  .exploration-banner__chip {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-accent));
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-accent) / 0.6);
+    padding: var(--ac-space-1) var(--ac-space-3);
+    border-radius: 2px;
+  }
+  .exploration-banner__notes {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+
+  /* ---- Collapsible variant (used on the tones page so the fixed-viewport
+          editor isn't pushed off-screen by the mockup metadata).
+          Default state: COLLAPSED (checkbox#banner-collapsed is `checked`).
+          Click the caret to toggle. CSS-only via :checked ~ siblings. */
+  .exploration-banner__state {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    width: 0; height: 0;
+  }
+  .exploration-banner--collapsible {
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-accent) / 0.4);
+    box-shadow: 0 1px 0 hsl(var(--ac-color-accent) / 0.18);
+    background:
+      linear-gradient(180deg,
+        hsl(var(--ac-color-bg)) 0%,
+        hsl(var(--ac-color-surface) / 0.5) 100%);
+  }
+  .exploration-banner__strip {
+    display: flex;
+    align-items: center;
+    gap: var(--ac-space-4);
+    padding-block: var(--ac-space-2);
+    min-height: 2.25rem;
+    flex-wrap: wrap;
+  }
+  .exploration-banner__strip-chip {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-accent));
+    text-shadow: 0 0 6px hsl(var(--ac-color-accent) / 0.4);
+  }
+  .exploration-banner__strip-title {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg));
+  }
+  .exploration-banner__strip-meta {
+    margin-left: auto;
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .exploration-banner__toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 2px;
+    color: hsl(var(--ac-color-fg-muted));
+    cursor: pointer;
+    transition: color var(--ac-duration-fast) var(--ac-easing-default),
+                background-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .exploration-banner__toggle:hover {
+    color: hsl(var(--ac-color-accent));
+    background: hsl(var(--ac-color-accent) / 0.1);
+  }
+  .exploration-banner__toggle:focus-visible {
+    outline: 2px solid hsl(var(--ac-color-accent) / 0.6);
+    outline-offset: 2px;
+  }
+  .exploration-banner__toggle-icon {
+    transition: transform 240ms var(--ac-easing-default);
+  }
+  .exploration-banner__expanded {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 260ms var(--ac-easing-default);
+  }
+  /* When checkbox is UNchecked, banner is expanded */
+  #banner-collapsed:not(:checked) ~ .exploration-banner--collapsible .exploration-banner__expanded {
+    max-height: 24rem;
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+  #banner-collapsed:not(:checked) ~ .exploration-banner--collapsible .exploration-banner__toggle-icon {
+    transform: rotate(180deg);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .exploration-banner__expanded,
+    .exploration-banner__toggle-icon { transition: none; }
+  }
+
+  /* ============================================================
+     SECTION SCAFFOLD + DIMENSION BRACKET
+     ============================================================ */
+  .ac-section {
+    padding-block: var(--ac-space-8);
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+
+  /* eyebrow / panel-label */
+  .ac-panel-label {
+    display: inline-block;
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .ac-panel-label--accent {
+    color: hsl(var(--ac-color-accent));
+    text-shadow: var(--ac-glow-accent);
+  }
+
+  /* dimension-bracket — corner L hairlines, 18×18px, 2px stroke */
+  .ac-dimension-bracket {
+    position: relative;
+    padding-top: var(--ac-space-5);
+    padding-inline: var(--ac-space-4);
+  }
+  .ac-dimension-bracket::before,
+  .ac-dimension-bracket::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    width: 18px;
+    height: 18px;
+    border-color: hsl(var(--ac-color-accent) / 0.6);
+    border-style: solid;
+    border-width: 0;
+  }
+  .ac-dimension-bracket::before {
+    left: 0;
+    border-top-width: var(--ac-rule-medium);
+    border-left-width: var(--ac-rule-medium);
+  }
+  .ac-dimension-bracket::after {
+    right: 0;
+    border-top-width: var(--ac-rule-medium);
+    border-right-width: var(--ac-rule-medium);
+  }
+
+  /* ============================================================
+     HEADINGS
+     ============================================================ */
+  h1, .ac-h1 {
+    font-family: var(--ac-font-display);
+    font-weight: var(--ac-fw-display);
+    font-size: var(--ac-text-h1);
+    line-height: 1.18;
+    letter-spacing: var(--ac-tracking-display);
+    margin: var(--ac-space-2) 0 var(--ac-space-5);
+  }
+  h2, .ac-h2 {
+    position: relative;
+    font-family: var(--ac-font-display);
+    font-weight: var(--ac-fw-display);
+    font-size: var(--ac-text-h2);
+    line-height: 1.2;
+    letter-spacing: var(--ac-tracking-display);
+    margin: var(--ac-space-7) 0 var(--ac-space-3);
+    padding-bottom: var(--ac-space-3);
+  }
+  h2::after, .ac-h2::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 2.25rem;
+    height: var(--ac-rule-medium);
+    background: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.45);
+  }
+  h3, .ac-h3 {
+    font-family: var(--ac-font-body);
+    font-weight: var(--ac-fw-semibold);
+    font-size: var(--ac-text-h3);
+    margin: var(--ac-space-6) 0 var(--ac-space-2);
+  }
+  h4, .ac-h4 {
+    font-family: var(--ac-font-body);
+    font-weight: var(--ac-fw-semibold);
+    font-size: var(--ac-text-h4);
+    margin: var(--ac-space-5) 0 var(--ac-space-2);
+  }
+  p, .ac-body { margin: 0 0 var(--ac-space-4); }
+
+  /* mono tabular spec for numeric readouts */
+  .ac-mono-tabular {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+  }
+  .ac-fg-muted { color: hsl(var(--ac-color-fg-muted)); }
+  .ac-fg-subtle { color: hsl(var(--ac-color-fg-subtle)); }
+
+  /* ============================================================
+     LINKS
+     ============================================================ */
+  a, .ac-link {
+    color: hsl(var(--ac-color-accent));
+    text-decoration: none;
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-accent) / 0.35);
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default),
+                color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  a:hover, .ac-link:hover {
+    color: hsl(var(--ac-color-accent-soft));
+    border-bottom-color: hsl(var(--ac-color-accent));
+  }
+  a:focus-visible, .ac-link:focus-visible {
+    outline: var(--ac-rule-medium) solid hsl(var(--ac-color-accent) / 0.6);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* ============================================================
+     CARD-GLOW
+     ============================================================ */
+  .ac-card {
+    padding: var(--ac-space-5);
+    background: hsl(var(--ac-color-surface));
+    box-shadow: var(--ac-shadow-card);
+    transition: box-shadow var(--ac-duration-default) var(--ac-easing-default),
+                background-color var(--ac-duration-default) var(--ac-easing-default);
+    border-radius: 2px;
+  }
+  .ac-card--interactive { cursor: pointer; }
+  .ac-card--interactive:hover {
+    background: hsl(var(--ac-color-surface-hover));
+    box-shadow: var(--ac-shadow-card-hover);
+  }
+  .ac-card--interactive:focus-visible {
+    outline: var(--ac-rule-medium) solid hsl(var(--ac-color-accent) / 0.6);
+    outline-offset: 2px;
+  }
+
+  /* ============================================================
+     SIGNAL LED
+     ============================================================ */
+  .ac-signal-led {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: hsl(var(--ac-color-accent));
+    box-shadow:
+      0 0 8px hsl(var(--ac-color-accent) / 0.7),
+      0 0 2px hsl(var(--ac-color-highlight) / 0.9) inset;
+    animation: ac-signal-pulse 2.4s ease-in-out infinite;
+    vertical-align: middle;
+  }
+  .ac-signal-led--idle {
+    background: hsl(var(--ac-color-fg-subtle));
+    box-shadow: 0 0 0 transparent;
+    animation: none;
+  }
+  .ac-signal-led--rec {
+    background: hsl(var(--ac-color-rec));
+    box-shadow:
+      0 0 8px hsl(var(--ac-color-rec) / 0.7),
+      0 0 2px hsl(4 100% 78% / 0.9) inset;
+    animation: ac-signal-pulse-rec 2.4s ease-in-out infinite;
+  }
+  @keyframes ac-signal-pulse-rec {
+    0%, 100% { box-shadow: 0 0 8px hsl(var(--ac-color-rec) / 0.7), 0 0 2px hsl(4 100% 78% / 0.9) inset; opacity: 1; }
+    50%      { box-shadow: 0 0 16px hsl(var(--ac-color-rec) / 0.95), 0 0 3px hsl(4 100% 80% / 1) inset; opacity: 0.85; }
+  }
+  .ac-signal-led--danger {
+    background: hsl(var(--ac-color-danger));
+    box-shadow: 0 0 8px hsl(var(--ac-color-danger) / 0.7);
+  }
+  @keyframes ac-signal-pulse {
+    0%, 100% {
+      box-shadow:
+        0 0 8px hsl(var(--ac-color-accent) / 0.65),
+        0 0 2px hsl(var(--ac-color-highlight) / 0.9) inset;
+      opacity: 1;
+    }
+    50% {
+      box-shadow:
+        0 0 16px hsl(var(--ac-color-accent) / 0.95),
+        0 0 3px hsl(var(--ac-color-highlight) / 1) inset;
+      opacity: 0.85;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ac-signal-led { animation: none; }
+  }
+
+  /* ============================================================
+     FORMS — ac-input / ac-select / ac-checkbox / ac-button
+     ============================================================ */
+  .ac-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-2);
+    margin-block: var(--ac-space-3);
+  }
+  .ac-field__label {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+
+  .ac-input,
+  .ac-select {
+    width: 100%;
+    background: hsl(var(--ac-color-bg));
+    color: hsl(var(--ac-color-fg));
+    font-family: var(--ac-font-body);
+    font-size: var(--ac-text-body);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    padding: var(--ac-space-2) var(--ac-space-3);
+    border-radius: 2px;
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default),
+                box-shadow var(--ac-duration-fast) var(--ac-easing-default),
+                background-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .ac-input::placeholder { color: hsl(var(--ac-color-fg-subtle)); }
+  .ac-input:hover,
+  .ac-select:hover {
+    border-color: hsl(var(--ac-color-border-hover));
+  }
+  .ac-input:focus-visible,
+  .ac-select:focus-visible {
+    outline: none;
+    border-color: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 0 3px hsl(var(--ac-color-accent) / 0.25);
+    background: hsl(var(--ac-color-surface) / 0.5);
+  }
+  .ac-input:disabled,
+  .ac-select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    border-color: hsl(var(--ac-color-border) / 0.5);
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .ac-input--mono { font-family: var(--ac-font-mono); }
+
+  /* select chevron */
+  .ac-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%237ea0d6' stroke-width='1.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right var(--ac-space-3) center;
+    background-size: 12px 8px;
+    padding-right: calc(var(--ac-space-3) * 2 + 12px);
+  }
+
+  /* checkbox */
+  .ac-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-3);
+    cursor: pointer;
+    user-select: none;
+  }
+  .ac-checkbox__input {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1rem;
+    height: 1rem;
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-bg));
+    border-radius: 2px;
+    position: relative;
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default),
+                background-color var(--ac-duration-fast) var(--ac-easing-default),
+                box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+    flex-shrink: 0;
+  }
+  .ac-checkbox__input:hover {
+    border-color: hsl(var(--ac-color-border-hover));
+  }
+  .ac-checkbox__input:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px hsl(var(--ac-color-accent) / 0.25);
+    border-color: hsl(var(--ac-color-accent));
+  }
+  .ac-checkbox__input:checked {
+    border-color: hsl(var(--ac-color-accent));
+    background: hsl(var(--ac-color-accent));
+  }
+  .ac-checkbox__input:checked::after {
+    content: "";
+    position: absolute;
+    top: 1px;
+    left: 4px;
+    width: 5px;
+    height: 9px;
+    border: solid hsl(var(--ac-color-bg));
+    border-width: 0 var(--ac-rule-medium) var(--ac-rule-medium) 0;
+    transform: rotate(45deg);
+  }
+  .ac-checkbox__input:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .ac-checkbox__label {
+    font-family: var(--ac-font-body);
+    font-size: var(--ac-text-body);
+  }
+
+  /* buttons */
+  .ac-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ac-space-2);
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    line-height: 1;
+    padding: var(--ac-space-3) var(--ac-space-5);
+    border-radius: 2px;
+    border: var(--ac-rule-hairline) solid transparent;
+    cursor: pointer;
+    background: transparent;
+    color: hsl(var(--ac-color-fg));
+    transition: background-color var(--ac-duration-fast) var(--ac-easing-default),
+                border-color var(--ac-duration-fast) var(--ac-easing-default),
+                color var(--ac-duration-fast) var(--ac-easing-default),
+                box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .ac-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px hsl(var(--ac-color-accent) / 0.4);
+  }
+  .ac-btn:disabled,
+  .ac-btn[aria-disabled="true"] {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  /* primary */
+  .ac-btn--primary {
+    background: hsl(var(--ac-color-accent));
+    color: hsl(var(--ac-color-bg));
+    border-color: hsl(var(--ac-color-accent));
+  }
+  .ac-btn--primary:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: hsl(var(--ac-color-accent-soft));
+    border-color: hsl(var(--ac-color-accent-soft));
+    box-shadow: 0 0 18px hsl(var(--ac-color-accent) / 0.3);
+  }
+
+  /* secondary */
+  .ac-btn--secondary {
+    background: transparent;
+    color: hsl(var(--ac-color-fg));
+    border-color: hsl(var(--ac-color-border-hover));
+  }
+  .ac-btn--secondary:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: hsl(var(--ac-color-surface-hover));
+    border-color: hsl(var(--ac-color-accent));
+    color: hsl(var(--ac-color-accent));
+  }
+
+  /* ghost */
+  .ac-btn--ghost {
+    background: transparent;
+    color: hsl(var(--ac-color-fg-muted));
+    border-color: transparent;
+  }
+  .ac-btn--ghost:hover:not(:disabled):not([aria-disabled="true"]) {
+    color: hsl(var(--ac-color-fg));
+    background: hsl(var(--ac-color-surface) / 0.5);
+  }
+
+  /* danger */
+  .ac-btn--danger {
+    background: transparent;
+    color: hsl(var(--ac-color-danger));
+    border-color: hsl(var(--ac-color-danger) / 0.6);
+  }
+  .ac-btn--danger:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: hsl(var(--ac-color-danger) / 0.12);
+    border-color: hsl(var(--ac-color-danger));
+  }
+
+  .ac-btn--sm {
+    padding: var(--ac-space-2) var(--ac-space-4);
+    font-size: var(--ac-text-tiny);
+  }
+
+  /* ============================================================
+     PROGRESS + SPINNER
+     ============================================================ */
+  .ac-progress {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-2);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-surface) / 0.6);
+    padding: var(--ac-space-4);
+    border-radius: 2px;
+  }
+  .ac-progress__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--ac-space-3);
+  }
+  .ac-progress__label {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .ac-progress__pct {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--ac-color-accent));
+  }
+  .ac-progress__bar {
+    position: relative;
+    height: 4px;
+    background: hsl(var(--ac-color-bg));
+    overflow: hidden;
+    border-radius: 1px;
+  }
+  .ac-progress__fill {
+    position: absolute;
+    inset: 0;
+    width: var(--ac-progress, 0%);
+    background: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 12px hsl(var(--ac-color-accent) / 0.5);
+    transition: width var(--ac-duration-default) var(--ac-easing-default);
+  }
+  .ac-progress__meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--ac-space-3);
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    font-variant-numeric: tabular-nums;
+  }
+  .ac-progress__meta-item { display: flex; flex-direction: column; gap: 2px; }
+  .ac-progress__meta-label {
+    font-family: var(--ac-font-display);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .ac-progress__meta-value { color: hsl(var(--ac-color-fg)); }
+
+  /* spinner */
+  .ac-spinner {
+    display: inline-block;
+    width: 1.25rem;
+    height: 1.25rem;
+    border: var(--ac-rule-medium) solid hsl(var(--ac-color-border));
+    border-top-color: hsl(var(--ac-color-accent));
+    border-radius: 50%;
+    animation: ac-spin 0.9s linear infinite;
+  }
+  .ac-spinner--sm { width: 1rem; height: 1rem; }
+  @keyframes ac-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    .ac-spinner { animation-duration: 4s; }
+  }
+
+  /* ============================================================
+     EYEBROW STATUS-ROW (h2 + metric)
+     ============================================================ */
+  .ac-status-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--ac-space-5);
+    padding-bottom: var(--ac-space-3);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+  .ac-status-row__heading { margin: 0; padding: 0; }
+  .ac-status-row__heading::after { display: none; }
+  .ac-status-row__heading-rule {
+    width: 2.25rem;
+    height: var(--ac-rule-medium);
+    background: hsl(var(--ac-color-rec));
+    box-shadow: 0 0 8px hsl(var(--ac-color-rec) / 0.55);
+    margin-top: var(--ac-space-2);
+  }
+  .ac-status-row__metric {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-2);
+    white-space: nowrap;
+  }
+  .ac-status-row__metric strong {
+    color: hsl(var(--ac-color-accent));
+    font-weight: var(--ac-fw-display);
+    font-family: var(--ac-font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ============================================================
+     UTILITIES
+     ============================================================ */
+  .ac-stack { display: flex; flex-direction: column; gap: var(--ac-space-4); }
+  .ac-row   { display: flex; flex-wrap: wrap; gap: var(--ac-space-4); align-items: center; }
+  .ac-pad-block { padding-block: var(--ac-space-5); }
+  .ac-mt-2 { margin-top: var(--ac-space-2); }
+  .ac-mt-3 { margin-top: var(--ac-space-3); }
+  .ac-mt-4 { margin-top: var(--ac-space-4); }
+  .ac-mt-5 { margin-top: var(--ac-space-5); }
+  .ac-mt-6 { margin-top: var(--ac-space-6); }
+  .ac-mt-7 { margin-top: var(--ac-space-7); }
+  .ac-mb-4 { margin-bottom: var(--ac-space-4); }
+
+  /* ============================================================
+     FOOTER
+     ============================================================ */
+  .exploration-footer {
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    padding-block: var(--ac-space-7);
+    margin-top: var(--ac-space-8);
+    color: hsl(var(--ac-color-fg-muted));
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+  }
+
+  /* ============================================================
+     ===== HOMEPAGE-SCOPED STYLES — preserved from 02-homepage.html
+     Required so the app-chrome bar (`.homepage__appbar`, `.homepage__brand`,
+     `.homepage__nav`, `.homepage__appbar-status`) renders identically here.
+     Page-content classes from homepage are unused on this page but kept for parity.
+     ============================================================ */
+  .homepage__appbar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: hsl(var(--ac-color-bg) / 0.85);
+    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+  .homepage__appbar-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ac-space-5);
+    padding-block: var(--ac-space-4);
+  }
+  .homepage__brand {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--ac-space-3);
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg));
+  }
+  .homepage__brand-mark {
+    color: hsl(var(--ac-color-accent));
+    text-shadow: var(--ac-glow-accent);
+  }
+  .homepage__brand-divider {
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .homepage__brand-device {
+    font-family: var(--ac-font-mono);
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--ac-color-fg-muted));
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .homepage__nav {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-1);
+  }
+  .homepage__nav-link {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+    padding: var(--ac-space-2) var(--ac-space-3);
+    border-bottom: 0;
+    border-radius: 2px;
+  }
+  .homepage__nav-link:hover {
+    color: hsl(var(--ac-color-fg));
+    background: hsl(var(--ac-color-surface) / 0.5);
+    border-bottom: 0;
+  }
+  .homepage__nav-link[aria-current="page"] {
+    color: hsl(var(--ac-color-accent));
+    background: hsl(var(--ac-color-accent) / 0.1);
+    border-bottom: 0;
+  }
+  .homepage__appbar-status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-3);
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-muted));
+    padding: var(--ac-space-2) var(--ac-space-3);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: 2px;
+    background: hsl(var(--ac-color-surface) / 0.5);
+    cursor: pointer;
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .homepage__appbar-status:hover {
+    border-color: hsl(var(--ac-color-border-hover));
+  }
+  .homepage__appbar-status--connected {
+    border-color: hsl(var(--ac-color-accent) / 0.4);
+  }
+
+  /* ============================================================
+     ===== TONESPAGE-SCOPED STYLES =====
+     Namespaced under `.tones` so nothing leaks into homepage chrome.
+     All values reference --ac-* tokens. The principal pattern here
+     is the parameter-row primitive (.tones__param) which replaces
+     the audit-flagged hand-rolled selects with eyebrow + visual bar
+     + JetBrains Mono numeric value.
+     ============================================================ */
+
+  /* Status row icon-button (refresh) — replaces "(Re)load:" toolbar */
+  .tones__refresh-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    margin-left: var(--ac-space-3);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-surface) / 0.5);
+    color: hsl(var(--ac-color-fg-muted));
+    border-radius: 2px;
+    cursor: pointer;
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default),
+                color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .tones__refresh-btn:hover {
+    border-color: hsl(var(--ac-color-accent));
+    color: hsl(var(--ac-color-accent));
+  }
+  .tones__refresh-btn:focus-visible {
+    outline: var(--ac-rule-medium) solid hsl(var(--ac-color-accent) / 0.6);
+    outline-offset: 2px;
+  }
+  .tones__refresh-icon {
+    width: 0.875rem;
+    height: 0.875rem;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.5;
+  }
+
+  /* List + detail split column */
+  .tones__split {
+    display: grid;
+    grid-template-columns: minmax(0, 18rem) minmax(0, 1fr);
+    gap: var(--ac-space-5);
+    margin-top: var(--ac-space-6);
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .tones__split { grid-template-columns: 1fr; }
+  }
+
+  /* Tones list (left pane) */
+  .tones__list {
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-surface));
+    box-shadow: var(--ac-shadow-card);
+    border-radius: 2px;
+    max-height: 70vh;
+    overflow: auto;
+  }
+  .tones__list-group-label {
+    display: block;
+    padding: var(--ac-space-3) var(--ac-space-4);
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-subtle));
+    background: hsl(var(--ac-color-bg) / 0.92);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.6);
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.6);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  .tones__list-group-label:first-child { border-top: 0; }
+  .tones__list-row {
+    display: grid;
+    grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+    gap: var(--ac-space-3);
+    align-items: baseline;
+    padding: var(--ac-space-3) var(--ac-space-4);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.4);
+    cursor: pointer;
+    text-decoration: none;
+    color: hsl(var(--ac-color-fg));
+    transition: background-color var(--ac-duration-fast) var(--ac-easing-default);
+    border-left: var(--ac-rule-medium) solid transparent;
+  }
+  .tones__list-row:hover {
+    background: hsl(var(--ac-color-surface-hover));
+    border-left-color: hsl(var(--ac-color-accent) / 0.4);
+  }
+  .tones__list-row[aria-selected="true"] {
+    background: hsl(var(--ac-color-accent) / 0.12);
+    border-left-color: hsl(var(--ac-color-accent));
+  }
+  .tones__list-row[aria-selected="true"] .tones__list-slot {
+    color: hsl(var(--ac-color-accent));
+  }
+  .tones__list-slot {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .tones__list-name {
+    font-family: var(--ac-font-body);
+    font-size: var(--ac-text-small);
+    line-height: 1.2;
+  }
+  .tones__list-eyebrow {
+    display: block;
+    margin-top: 2px;
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .tones__list-led {
+    align-self: center;
+  }
+
+  /* Detail (right pane) — the parameter editor */
+  .tones__detail {
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-surface));
+    box-shadow: var(--ac-shadow-card);
+    border-radius: 2px;
+    padding: var(--ac-space-6);
+  }
+  .tones__detail-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--ac-space-4);
+    padding-bottom: var(--ac-space-4);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+  .tones__detail-name {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-h2);
+    letter-spacing: var(--ac-tracking-display);
+    margin: 0;
+  }
+  .tones__detail-name-mark {
+    color: hsl(var(--ac-color-accent));
+  }
+  .tones__detail-meta {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-muted));
+    font-variant-numeric: tabular-nums;
+  }
+  .tones__detail-meta strong {
+    color: hsl(var(--ac-color-fg));
+    font-weight: var(--ac-fw-display);
+  }
+
+  /* Parameter section block */
+  .tones__section {
+    margin-top: var(--ac-space-6);
+    padding-top: var(--ac-space-4);
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.6);
+  }
+  .tones__section:first-of-type {
+    border-top: 0;
+    margin-top: var(--ac-space-4);
+    padding-top: 0;
+  }
+  .tones__section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--ac-space-4);
+  }
+  .tones__section-title {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-h4);
+    letter-spacing: var(--ac-tracking-display);
+    color: hsl(var(--ac-color-fg));
+    margin: 0 0 var(--ac-space-3);
+    padding-bottom: var(--ac-space-2);
+    position: relative;
+  }
+  .tones__section-title::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 1.5rem;
+    height: var(--ac-rule-medium);
+    background: hsl(var(--ac-color-accent) / 0.7);
+  }
+  .tones__section-eyebrow {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+
+  /* Parameter grid — multi-column dense layout.
+     Each row is now a 3-col grid (label | bar | readout), so the outer grid
+     holds at most 2 rows side-by-side at typical detail-pane widths. cols-3
+     and cols-4 are aliased to 2-col here — the previous 3/4-up layout was
+     too cramped now that param rows are horizontal range bars. */
+  .tones__param-grid,
+  .tones__param-grid--cols-3,
+  .tones__param-grid--cols-4 {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    margin-top: var(--ac-space-3);
+  }
+
+  /* PARAMETER ROW — validated range-bar primitive
+     Ported from PatchesPage .patches__range-* (03-patches.html). Each row is
+     a 3-col grid: LABEL | bar with start/end ticks INSIDE | mono readout.
+     Replaces the prior vertical (label-row above, 4px bar below) layout
+     which wrapped awkwardly and didn't match the validated visual. */
+  .tones__param {
+    display: grid;
+    grid-template-columns: minmax(5.5rem, 7rem) minmax(0, 1fr) minmax(4rem, 6rem);
+    gap: var(--ac-space-3);
+    align-items: center;
+    padding-block: var(--ac-space-2);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.4);
+  }
+  .tones__param:last-child { border-bottom: 0; }
+  .tones__param-label {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .tones__param-bar {
+    position: relative;
+    height: 1.25rem;
+    background: hsl(var(--ac-color-bg));
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: 1px;
+    overflow: hidden;
+  }
+  .tones__param-fill {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: var(--tones-fill, 0%);
+    background:
+      linear-gradient(90deg,
+        hsl(var(--ac-color-accent) / 0.18) 0%,
+        hsl(var(--ac-color-accent) / 0.34) 50%,
+        hsl(var(--ac-color-accent) / 0.18) 100%);
+    border-right: var(--ac-rule-medium) solid hsl(var(--ac-color-accent));
+    box-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.4) inset;
+  }
+  /* Bipolar: fill is anchored from center, growing left or right.
+     --tones-bipolar-l = left edge %, --tones-bipolar-w = width %.
+     Both edges get the accent border (it represents a value position
+     either side of the midpoint). */
+  .tones__param--bipolar .tones__param-fill {
+    left: var(--tones-bipolar-l, 50%);
+    width: var(--tones-bipolar-w, 0%);
+    border-left: var(--ac-rule-medium) solid hsl(var(--ac-color-accent));
+    border-right: var(--ac-rule-medium) solid hsl(var(--ac-color-accent));
+  }
+  .tones__param-tick {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--ac-font-mono);
+    font-size: 0.625rem;
+    color: hsl(var(--ac-color-fg-subtle));
+    line-height: 1;
+    padding-inline: 4px;
+    pointer-events: none;
+  }
+  .tones__param-tick--start { left: 4px; }
+  .tones__param-tick--mid { left: 50%; transform: translate(-50%, -50%); }
+  .tones__param-tick--end { right: 4px; }
+  .tones__param-readout {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    color: hsl(var(--ac-color-fg));
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  .tones__param-readout strong {
+    color: hsl(var(--ac-color-accent));
+    font-weight: var(--ac-fw-display);
+  }
+  .tones__param-readout-unit {
+    color: hsl(var(--ac-color-fg-subtle));
+    margin-left: 2px;
+    font-size: var(--ac-text-tiny);
+  }
+  /* Enum params: the bar slot holds a pip-track of N equal cells
+     spanning the bar width; the active cell is filled accent. The
+     readout shows the named enum value (e.g. "Forward"). */
+  .tones__param--enum .tones__param-enum-track {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    gap: 1px;
+    padding: 2px;
+  }
+  .tones__param-enum-pip {
+    flex: 1;
+    background: hsl(var(--ac-color-bg));
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.6);
+    border-radius: 1px;
+  }
+  .tones__param-enum-pip[data-active="true"] {
+    background: hsl(var(--ac-color-accent) / 0.34);
+    border-color: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 6px hsl(var(--ac-color-accent) / 0.45) inset;
+  }
+
+  /* ============================================================
+     ENVELOPE — 8-segment variable-segment editor
+     Stacks: full-width VFD-style graphic on top, per-segment
+     numeric table below. Phosphor-glow aesthetic nods to the
+     S-550's actual cyan VFD text display on the front panel.
+     ============================================================ */
+  .tones__envelope {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-4);
+    margin-top: var(--ac-space-3);
+  }
+
+  /* The graphic (full-width "monitor" with phosphor glow) */
+  .tones__envelope-graph {
+    position: relative;
+    height: 14.5rem;
+    background:
+      radial-gradient(ellipse at 50% 30%, hsl(220 22% 8%) 0%, hsl(220 30% 4%) 70%),
+      hsl(220 30% 4%);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .tones__envelope-graph::after {
+    /* faint scanlines, a quiet VFD echo */
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      180deg,
+      transparent 0,
+      transparent 3px,
+      hsl(220 14% 0% / 0.18) 3px,
+      hsl(220 14% 0% / 0.18) 4px);
+    mix-blend-mode: multiply;
+  }
+  .tones__envelope-graph-label {
+    position: absolute;
+    top: 0.75rem;
+    left: 1rem;
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-accent));
+    text-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.6);
+    z-index: 2;
+    pointer-events: none;
+  }
+  .tones__envelope-graph-expand {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    background: transparent;
+    color: hsl(var(--ac-color-fg-muted));
+    cursor: pointer;
+    border-radius: 2px;
+    z-index: 2;
+    transition: color var(--ac-duration-fast) var(--ac-easing-default), background-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .tones__envelope-graph-expand:hover {
+    color: hsl(var(--ac-color-accent));
+    background: hsl(var(--ac-color-accent) / 0.12);
+  }
+  .tones__envelope-graph-expand:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--ac-color-accent) / 0.5);
+  }
+  .tones__envelope-graph-help {
+    position: absolute;
+    bottom: 0.4rem;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: var(--ac-font-mono);
+    font-size: 0.65rem;
+    color: hsl(var(--ac-color-fg-subtle));
+    pointer-events: none;
+    z-index: 2;
+  }
+  /* Canvas area — pads the inside so edge points & labels have breathing room */
+  .tones__envelope-canvas {
+    position: absolute;
+    top: 2rem;
+    left: 1rem;
+    right: 1rem;
+    bottom: 2.6rem;
+    z-index: 1;
+  }
+  .tones__envelope-canvas svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    overflow: visible;
+  }
+  /* SVG element styles */
+  .tones__envelope-grid-line {
+    stroke: hsl(220 16% 18%);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+  .tones__envelope-grid-line--baseline {
+    stroke: hsl(220 16% 28%);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+  .tones__envelope-segment-divider {
+    stroke: hsl(220 16% 14%);
+    stroke-width: 1;
+    stroke-dasharray: 2,3;
+    vector-effect: non-scaling-stroke;
+  }
+  .tones__envelope-active-guide {
+    stroke: hsl(var(--ac-color-accent));
+    stroke-width: 1;
+    stroke-dasharray: 4,3;
+    opacity: 0.7;
+    vector-effect: non-scaling-stroke;
+  }
+  .tones__envelope-fill {
+    fill: hsl(var(--ac-color-accent));
+    fill-opacity: 0.08;
+  }
+  .tones__envelope-line {
+    fill: none;
+    stroke: hsl(var(--ac-color-highlight));
+    stroke-width: 2;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 5px hsl(var(--ac-color-accent) / 0.65));
+    vector-effect: non-scaling-stroke;
+  }
+  /* HTML-positioned point markers (kept circular regardless of svg stretch) */
+  .tones__envelope-points {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .tones__envelope-point {
+    position: absolute;
+    width: 0.875rem;
+    height: 0.875rem;
+    border-radius: 50%;
+    background: hsl(220 30% 4%);
+    border: 2px solid hsl(var(--ac-color-highlight));
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 6px hsl(var(--ac-color-accent) / 0.5);
+    pointer-events: auto;
+    cursor: grab;
+    transition: transform var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .tones__envelope-point:hover {
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+  .tones__envelope-point--active {
+    width: 1.125rem;
+    height: 1.125rem;
+    background: hsl(var(--ac-color-highlight));
+    border-color: hsl(var(--ac-color-fg));
+    box-shadow:
+      0 0 12px hsl(var(--ac-color-accent) / 0.85),
+      0 0 4px hsl(var(--ac-color-highlight) / 0.9) inset;
+  }
+  /* X-axis labels (HTML, positioned by left percentage) */
+  .tones__envelope-axis {
+    position: absolute;
+    left: 1rem;
+    right: 1rem;
+    bottom: 1.4rem;
+    height: 0.875rem;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .tones__envelope-axis-tick {
+    position: absolute;
+    transform: translateX(-50%);
+    font-family: var(--ac-font-mono);
+    font-size: 0.625rem;
+    color: hsl(var(--ac-color-fg-subtle));
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .tones__envelope-axis-tick--active {
+    color: hsl(var(--ac-color-accent));
+    text-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.5);
+    font-weight: var(--ac-fw-display);
+  }
+  /* Horizontal level guides - drawn just inside the SVG; bigger labels here */
+  .tones__envelope-y-axis {
+    position: absolute;
+    top: 2rem;
+    bottom: 2.6rem;
+    right: 0.4rem;
+    width: 1.6rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-end;
+    z-index: 2;
+    pointer-events: none;
+    font-family: var(--ac-font-mono);
+    font-size: 0.55rem;
+    color: hsl(var(--ac-color-fg-subtle) / 0.7);
+  }
+
+  /* Per-segment numeric table (below the graph) */
+  .tones__envelope-table {
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.5);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .tones__envelope-table-row,
+  .tones__envelope-table-header {
+    display: grid;
+    grid-template-columns: 3rem minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--ac-space-3);
+    align-items: center;
+    padding: 0.4rem var(--ac-space-3);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.3);
+  }
+  .tones__envelope-table-row:last-child { border-bottom: 0; }
+  .tones__envelope-table-header {
+    background: hsl(var(--ac-color-surface) / 0.7);
+    border-bottom-color: hsl(var(--ac-color-border));
+  }
+  .tones__envelope-table-row[data-active="true"] {
+    background: hsl(var(--ac-color-accent) / 0.07);
+    box-shadow: inset 3px 0 0 hsl(var(--ac-color-accent));
+  }
+  .tones__envelope-table-row[data-sustain="true"] .tones__envelope-table-seg::after {
+    content: " ▸";
+    color: hsl(var(--ac-color-accent));
+  }
+  .tones__envelope-table-head,
+  .tones__envelope-table-seg {
+    font-family: var(--ac-font-display);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .tones__envelope-table-seg { color: hsl(var(--ac-color-fg-muted)); }
+  .tones__envelope-table-row[data-active="true"] .tones__envelope-table-seg {
+    color: hsl(var(--ac-color-accent));
+  }
+  .tones__envelope-table-cell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 2.75rem;
+    gap: var(--ac-space-2);
+    align-items: center;
+  }
+  .tones__envelope-mini {
+    position: relative;
+    height: 0.875rem;
+    background: hsl(var(--ac-color-bg));
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: 1px;
+    overflow: hidden;
+  }
+  .tones__envelope-mini-fill {
+    position: absolute;
+    inset: 0;
+    width: var(--mini-fill, 0%);
+    background:
+      linear-gradient(90deg,
+        hsl(var(--ac-color-accent) / 0.18) 0%,
+        hsl(var(--ac-color-accent) / 0.36) 100%);
+    border-right: var(--ac-rule-medium) solid hsl(var(--ac-color-accent));
+  }
+  .tones__envelope-table-row[data-active="true"] .tones__envelope-mini-fill {
+    filter: drop-shadow(0 0 4px hsl(var(--ac-color-accent) / 0.7));
+  }
+  .tones__envelope-mini-readout {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    color: hsl(var(--ac-color-fg));
+  }
+  .tones__envelope-table-row[data-active="true"] .tones__envelope-mini-readout {
+    color: hsl(var(--ac-color-accent));
+    font-weight: var(--ac-fw-display);
+  }
+
+  /* Live status footer — replaces the save/cancel/restore pattern.
+     Edits are sent to the device in real time; there is no commit step. */
+  .tones__detail-live {
+    margin-top: var(--ac-space-6);
+    padding: var(--ac-space-3) var(--ac-space-4);
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    display: flex;
+    align-items: center;
+    gap: var(--ac-space-3);
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-muted));
+    font-variant-numeric: tabular-nums;
+  }
+  .tones__detail-live-touch {
+    color: hsl(var(--ac-color-fg));
+  }
+
+  /* Envelope shape-meta controls — sustain point + end point */
+  .tones__envelope-meta {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--ac-space-5);
+    padding: var(--ac-space-3) var(--ac-space-3);
+    background: hsl(var(--ac-color-bg) / 0.4);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.5);
+    border-radius: 2px;
+  }
+  .tones__envelope-meta-control {
+    display: grid;
+    grid-template-columns: 5.5rem minmax(0, 1fr);
+    align-items: center;
+    gap: var(--ac-space-3);
+  }
+  .tones__envelope-meta-label {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-2);
+  }
+  .tones__envelope-meta-pips {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: 2px;
+  }
+  .tones__envelope-meta-pip {
+    height: 1.4rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: hsl(var(--ac-color-bg));
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: 1px;
+    color: hsl(var(--ac-color-fg-subtle));
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    user-select: none;
+    transition: color var(--ac-duration-fast) var(--ac-easing-default),
+                background-color var(--ac-duration-fast) var(--ac-easing-default),
+                border-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .tones__envelope-meta-pip:hover {
+    color: hsl(var(--ac-color-fg));
+    border-color: hsl(var(--ac-color-border-hover));
+  }
+  .tones__envelope-meta-pip[data-active="true"] {
+    background: hsl(var(--ac-color-accent));
+    border-color: hsl(var(--ac-color-accent));
+    color: hsl(var(--ac-color-bg));
+    box-shadow: 0 0 6px hsl(var(--ac-color-accent) / 0.45);
+  }
+  /* Pips beyond the end point are visually disabled */
+  .tones__envelope-meta-pip[data-disabled="true"] {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  /* ============================================================
+     TONE EDITOR TABS — Wave · Pitch · Filter · Amp · LFO
+     CSS-only via hidden radio inputs + :checked ~ siblings.
+     Filter groups TVF params + TVF envelope; Amp groups TVA params
+     + TVA envelope, since those interact strongly when dialing in
+     a sound.
+     ============================================================ */
+  .tones__tabs { position: relative; }
+  .tones__tabs > input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    width: 0; height: 0;
+  }
+  .tones__tab-strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+    margin: var(--ac-space-4) 0 var(--ac-space-5);
+    border-bottom: var(--ac-rule-medium) solid hsl(var(--ac-color-border));
+    position: relative;
+  }
+  .tones__tab {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.5rem;
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+    cursor: pointer;
+    user-select: none;
+    background: transparent;
+    border: var(--ac-rule-hairline) solid transparent;
+    border-bottom: 0;
+    margin-bottom: -2px;
+    padding: 0 var(--ac-space-2);
+    transition:
+      color var(--ac-duration-fast) var(--ac-easing-default),
+      background-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .tones__tab:hover {
+    color: hsl(var(--ac-color-fg));
+    background: hsl(var(--ac-color-surface) / 0.4);
+  }
+  .tones__tab::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 2px;
+    background: transparent;
+    transition: background-color var(--ac-duration-fast) var(--ac-easing-default), box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .tones__tab:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--ac-color-accent) / 0.5) inset;
+  }
+  /* Active-tab styles: checked radio illuminates its label + bottom rule. */
+  #tt-wave:checked   ~ .tones__tab-strip [for="tt-wave"],
+  #tt-pitch:checked  ~ .tones__tab-strip [for="tt-pitch"],
+  #tt-filter:checked ~ .tones__tab-strip [for="tt-filter"],
+  #tt-amp:checked    ~ .tones__tab-strip [for="tt-amp"],
+  #tt-lfo:checked    ~ .tones__tab-strip [for="tt-lfo"] {
+    color: hsl(var(--ac-color-accent));
+    background: hsl(var(--ac-color-accent) / 0.08);
+  }
+  #tt-wave:checked   ~ .tones__tab-strip [for="tt-wave"]::after,
+  #tt-pitch:checked  ~ .tones__tab-strip [for="tt-pitch"]::after,
+  #tt-filter:checked ~ .tones__tab-strip [for="tt-filter"]::after,
+  #tt-amp:checked    ~ .tones__tab-strip [for="tt-amp"]::after,
+  #tt-lfo:checked    ~ .tones__tab-strip [for="tt-lfo"]::after {
+    background: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.55);
+  }
+  /* Panels: hide all by default; reveal only the one matching the checked radio. */
+  .tones__panel { display: none; }
+  #tt-wave:checked   ~ .tones__panels > [data-tab="wave"],
+  #tt-pitch:checked  ~ .tones__panels > [data-tab="pitch"],
+  #tt-filter:checked ~ .tones__panels > [data-tab="filter"],
+  #tt-amp:checked    ~ .tones__panels > [data-tab="amp"],
+  #tt-lfo:checked    ~ .tones__panels > [data-tab="lfo"] {
+    display: block;
+    animation: tones-tab-fade-in 180ms var(--ac-easing-default);
+  }
+  @keyframes tones-tab-fade-in {
+    from { opacity: 0; transform: translateY(2px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #tt-wave:checked   ~ .tones__panels > [data-tab="wave"],
+    #tt-pitch:checked  ~ .tones__panels > [data-tab="pitch"],
+    #tt-filter:checked ~ .tones__panels > [data-tab="filter"],
+    #tt-amp:checked    ~ .tones__panels > [data-tab="amp"],
+    #tt-lfo:checked    ~ .tones__panels > [data-tab="lfo"] {
+      animation: none;
+    }
+  }
+  /* Inside a panel, sections sit a bit closer together than the original margins */
+  .tones__panel > .tones__section:first-child { margin-top: 0; }
+  .tones__panel > .tones__section:first-child .tones__section-title {
+    margin-top: 0;
+  }
+
+  /* Sustain marker label that floats above the sustain point in the graph */
+  .tones__envelope-sustain-label {
+    position: absolute;
+    transform: translate(-50%, -120%);
+    font-family: var(--ac-font-display);
+    font-size: 0.55rem;
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-accent));
+    text-shadow: 0 0 6px hsl(var(--ac-color-accent) / 0.5);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 3;
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== EXPLORATION BANNER (collapsible) ===== -->
+<input type="checkbox" id="banner-collapsed" class="exploration-banner__state" checked aria-hidden="true">
+<header class="exploration-banner exploration-banner--collapsible">
+  <div class="ac-container exploration-banner__strip">
+    <span class="exploration-banner__strip-chip">PHASE 9 · TASK 2 · MOCKUP</span>
+    <span class="exploration-banner__strip-title">TonesPage v1</span>
+    <span class="exploration-banner__strip-meta">04 / 07 · 2026-05-08</span>
+    <label for="banner-collapsed" class="exploration-banner__toggle" aria-label="Toggle mockup metadata" tabindex="0">
+      <svg class="exploration-banner__toggle-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+        <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </label>
+  </div>
+  <div class="exploration-banner__expanded">
+    <div class="ac-container exploration-banner__inner">
+      <div>
+        <span class="ac-panel-label ac-panel-label--accent">PHASE 9 · TASK 2 · MOCKUP</span>
+        <h1 class="exploration-banner__title">TonesPage Mockup v1</h1>
+        <p class="ac-fg-muted ac-mt-4" style="margin: 0;">
+          Per-page composition of the v1 design language. Demonstrates: list-detail split, the parameter-row primitive (eyebrow label + visual bar + JetBrains Mono numeric value), section pairing, dense multi-column grids, and dual ADSR previews. Replaces the audit-flagged hand-rolled selects on TonesPage.tsx (691 lines). S-550 case shown — 64 tones, four wave banks A-D.
+        </p>
+      </div>
+      <div class="exploration-banner__meta">
+        <span class="exploration-banner__chip">v1</span>
+        <span class="exploration-banner__chip">s550-support</span>
+        <span class="exploration-banner__chip">04 / 07</span>
+        <span class="exploration-banner__notes">2026-05-08</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ===== APP CHROME (sticky bar with connection drawer trigger) ===== -->
+<div class="homepage__appbar">
+  <div class="ac-container homepage__appbar-inner">
+    <div class="homepage__brand">
+      <span class="homepage__brand-mark">audiocontrol</span>
+      <span class="homepage__brand-divider">·</span>
+      <span class="homepage__brand-device">roland / s550 / editor</span>
+    </div>
+    <nav class="homepage__nav" aria-label="Primary">
+      <a class="homepage__nav-link" href="#">Home</a>
+      <a class="homepage__nav-link" href="#">Patches</a>
+      <a class="homepage__nav-link" href="#" aria-current="page">Tones</a>
+      <a class="homepage__nav-link" href="#">Play</a>
+      <a class="homepage__nav-link" href="#">Workflows</a>
+      <a class="homepage__nav-link" href="#">Library</a>
+    </nav>
+    <button class="homepage__appbar-status homepage__appbar-status--connected" aria-haspopup="dialog" aria-expanded="false">
+      <span class="ac-signal-led" aria-hidden="true"></span>
+      <span>Connected · MOTU 828mk3 · Port 1</span>
+      <span class="ac-fg-subtle" aria-hidden="true">⌥C</span>
+    </button>
+  </div>
+</div>
+
+<main class="ac-container">
+  <!-- ===== STATUS ROW HEADER ===== -->
+  <header class="ac-status-row tones__page-title" style="margin-top: var(--ac-space-6);">
+    <div>
+      <h2 id="tones-heading" class="ac-status-row__heading">Tones</h2>
+      <div class="ac-status-row__heading-rule"></div>
+    </div>
+    <span class="ac-status-row__metric">
+      <span class="ac-signal-led" aria-hidden="true"></span>
+      <span><strong>48</strong> of <strong>64</strong> loaded</span>
+      <button class="tones__refresh-btn" type="button" title="Reload tones from device" aria-label="Reload tones from device">
+        <svg class="tones__refresh-icon" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M14 8a6 6 0 1 1-1.76-4.24"/>
+          <path d="M14 2v3.5h-3.5"/>
+        </svg>
+      </button>
+    </span>
+  </header>
+<div class="app-shell tones__app-shell">
+
+
+    <!-- ====== TONES LIST (left pane) ====== -->
+    <aside class="tones__list" aria-label="Tone selection — 64 slots">
+      <span class="tones__list-group-label">Group 1 · T11–T18</span>
+      <a class="tones__list-row" href="#" aria-selected="true">
+        <span class="tones__list-slot">T11</span>
+        <span class="tones__list-name">STR-A1
+          <span class="tones__list-eyebrow">Wave A · seg 0–3</span>
+        </span>
+        <span class="tones__list-led"><span class="ac-signal-led" aria-hidden="true"></span></span>
+      </a>
+      <a class="tones__list-row" href="#">
+        <span class="tones__list-slot">T12</span>
+        <span class="tones__list-name">STR-A2
+          <span class="tones__list-eyebrow">Wave A · seg 4–6</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+      <a class="tones__list-row" href="#">
+        <span class="tones__list-slot">T13</span>
+        <span class="tones__list-name">FLUTE-1
+          <span class="tones__list-eyebrow">Wave A · seg 7–9</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+      <a class="tones__list-row" href="#">
+        <span class="tones__list-slot">T14</span>
+        <span class="tones__list-name">FLUTE-2
+          <span class="tones__list-eyebrow">Wave A · seg 10–12</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+      <a class="tones__list-row" href="#">
+        <span class="tones__list-slot">T15</span>
+        <span class="tones__list-name">CHOIR-AH
+          <span class="tones__list-eyebrow">Wave A · seg 13–17</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+      <a class="tones__list-row" href="#">
+        <span class="tones__list-slot">T16</span>
+        <span class="tones__list-name">CHOIR-OO
+          <span class="tones__list-eyebrow">Wave B · seg 0–4</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+      <a class="tones__list-row" href="#">
+        <span class="tones__list-slot">T17</span>
+        <span class="tones__list-name">VIBES-1
+          <span class="tones__list-eyebrow">Wave B · seg 5–7</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+      <a class="tones__list-row" href="#">
+        <span class="tones__list-slot">T18</span>
+        <span class="tones__list-name">MARIMBA
+          <span class="tones__list-eyebrow">Wave B · seg 8–10</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+
+      <span class="tones__list-group-label">Group 2 · T21–T28</span>
+      <a class="tones__list-row" href="#">
+        <span class="tones__list-slot">T21</span>
+        <span class="tones__list-name">SYN-BRS-1
+          <span class="tones__list-eyebrow">Wave B · seg 11–13</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+      <a class="tones__list-row" href="#">
+        <span class="tones__list-slot">T22</span>
+        <span class="tones__list-name">SYN-BRS-2
+          <span class="tones__list-eyebrow">Wave B · seg 14–16</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+      <a class="tones__list-row" href="#">
+        <span class="tones__list-slot">T23</span>
+        <span class="tones__list-name">PIANO-1
+          <span class="tones__list-eyebrow">Wave C · seg 0–4</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+      <a class="tones__list-row" href="#">
+        <span class="tones__list-slot">T24</span>
+        <span class="tones__list-name">EP-WURLY
+          <span class="tones__list-eyebrow">Wave C · seg 5–8</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+      <a class="tones__list-row" href="#">
+        <span class="tones__list-slot">T25</span>
+        <span class="tones__list-name">CLAV-1
+          <span class="tones__list-eyebrow">Wave C · seg 9–11</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+      <a class="tones__list-row" href="#">
+        <span class="tones__list-slot">T26</span>
+        <span class="tones__list-name">ORG-DRWBR
+          <span class="tones__list-eyebrow">Wave C · seg 12–14</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+      <a class="tones__list-row" href="#" aria-disabled="true" style="opacity: 0.5;">
+        <span class="tones__list-slot">T27</span>
+        <span class="tones__list-name ac-fg-subtle">— empty —
+          <span class="tones__list-eyebrow">slot unloaded</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+      <a class="tones__list-row" href="#" aria-disabled="true" style="opacity: 0.5;">
+        <span class="tones__list-slot">T28</span>
+        <span class="tones__list-name ac-fg-subtle">— empty —
+          <span class="tones__list-eyebrow">slot unloaded</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+
+      <span class="tones__list-group-label">Group 3 · T31–T38</span>
+      <a class="tones__list-row" href="#">
+        <span class="tones__list-slot">T31</span>
+        <span class="tones__list-name">BASS-FNGR
+          <span class="tones__list-eyebrow">Wave C · seg 15–17</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+      <a class="tones__list-row" href="#">
+        <span class="tones__list-slot">T32</span>
+        <span class="tones__list-name">BASS-SLAP
+          <span class="tones__list-eyebrow">Wave D · seg 0–2</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+      <a class="tones__list-row" href="#">
+        <span class="tones__list-slot">T33</span>
+        <span class="tones__list-name">PAD-WARM
+          <span class="tones__list-eyebrow">Wave D · seg 3–5</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+      <a class="tones__list-row" href="#">
+        <span class="tones__list-slot">T34</span>
+        <span class="tones__list-name">PAD-AIR
+          <span class="tones__list-eyebrow">Wave D · seg 6–8</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+      <a class="tones__list-row" href="#">
+        <span class="tones__list-slot">T35</span>
+        <span class="tones__list-name">SHAKUHACHI
+          <span class="tones__list-eyebrow">Wave D · seg 9–11</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+      <a class="tones__list-row" href="#">
+        <span class="tones__list-slot">T36</span>
+        <span class="tones__list-name">KOTO
+          <span class="tones__list-eyebrow">Wave D · seg 12–14</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+      <a class="tones__list-row" href="#">
+        <span class="tones__list-slot">T37</span>
+        <span class="tones__list-name">SITAR
+          <span class="tones__list-eyebrow">Wave D · seg 15–17</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+      <a class="tones__list-row" href="#">
+        <span class="tones__list-slot">T38</span>
+        <span class="tones__list-name">TABLA-HIT
+          <span class="tones__list-eyebrow">Wave A · seg 0 (shared)</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+
+      <span class="tones__list-group-label">Group 4 · T41–T48 · 8 more loaded</span>
+      <a class="tones__list-row" href="#">
+        <span class="tones__list-slot">T41</span>
+        <span class="tones__list-name">DR-KICK-A
+          <span class="tones__list-eyebrow">Wave A · seg 1</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+      <a class="tones__list-row" href="#">
+        <span class="tones__list-slot">T42</span>
+        <span class="tones__list-name">DR-SNARE-A
+          <span class="tones__list-eyebrow">Wave A · seg 2</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+      <a class="tones__list-row" href="#">
+        <span class="tones__list-slot">T43</span>
+        <span class="tones__list-name">DR-HAT-CL
+          <span class="tones__list-eyebrow">Wave A · seg 3</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+
+      <span class="tones__list-group-label">Group 5–8 · T51–T88 · 32 more slots</span>
+      <a class="tones__list-row" href="#" aria-disabled="true" style="opacity: 0.55;">
+        <span class="tones__list-slot">T51</span>
+        <span class="tones__list-name ac-fg-muted">…remaining slots collapsed
+          <span class="tones__list-eyebrow">expand to view</span>
+        </span>
+        <span class="tones__list-led"></span>
+      </a>
+    </aside>
+
+    <!-- ====== DETAIL (right pane) — parameter editor ====== -->
+    <section class="tones__detail" aria-labelledby="tone-name">
+      <header class="tones__detail-head">
+        <div>
+          <h3 id="tone-name" class="tones__detail-name">
+            <span class="tones__detail-name-mark">T11</span> · STR-A1
+          </h3>
+          <p class="tones__detail-meta" style="margin: var(--ac-space-1) 0 0;">
+            Wave Bank <strong>A</strong> · Source Tone <strong>0</strong> · Group 1 · loaded · last edit <strong>14:01:36</strong>
+          </p>
+        </div>
+        <span class="ac-panel-label ac-panel-label--accent">§ Tone editor</span>
+      </header>
+
+      <!-- TABS — Wave / Pitch / Filter / Amp / LFO. CSS-only, radio-driven. -->
+      <div class="tones__tabs">
+        <input type="radio" name="tones-tab" id="tt-wave"   checked>
+        <input type="radio" name="tones-tab" id="tt-pitch">
+        <input type="radio" name="tones-tab" id="tt-filter">
+        <input type="radio" name="tones-tab" id="tt-amp">
+        <input type="radio" name="tones-tab" id="tt-lfo">
+
+        <nav class="tones__tab-strip" role="tablist" aria-label="Tone editor sections">
+          <label for="tt-wave"   id="tt-wave-label"   class="tones__tab" role="tab" tabindex="0">Wave</label>
+          <label for="tt-pitch"  id="tt-pitch-label"  class="tones__tab" role="tab" tabindex="0">Pitch</label>
+          <label for="tt-filter" id="tt-filter-label" class="tones__tab" role="tab" tabindex="0">Filter</label>
+          <label for="tt-amp"    id="tt-amp-label"    class="tones__tab" role="tab" tabindex="0">Amp</label>
+          <label for="tt-lfo"    id="tt-lfo-label"    class="tones__tab" role="tab" tabindex="0">LFO</label>
+        </nav>
+
+        <div class="tones__panels">
+
+        <section class="tones__panel" data-tab="wave" role="tabpanel" aria-labelledby="tt-wave-label">
+      <!-- WAVE -->
+      <section class="tones__section">
+        <header class="tones__section-head">
+          <h4 class="tones__section-title">Wave</h4>
+          <span class="tones__section-eyebrow">Source · §01</span>
+        </header>
+        <div class="tones__param-grid tones__param-grid--cols-3">
+
+          <div class="tones__param">
+            <span class="tones__param-label">Wave Bank</span>
+            <div class="tones__param-bar tones__param--enum" role="img" aria-label="Wave Bank A of A through D">
+              <div class="tones__param-enum-track" aria-hidden="true">
+                <span class="tones__param-enum-pip" data-active="true" title="A"></span>
+                <span class="tones__param-enum-pip" title="B"></span>
+                <span class="tones__param-enum-pip" title="C"></span>
+                <span class="tones__param-enum-pip" title="D"></span>
+              </div>
+            </div>
+            <span class="tones__param-readout"><strong>A</strong></span>
+          </div>
+
+          <div class="tones__param">
+            <span class="tones__param-label">Source Tone</span>
+            <div class="tones__param-bar" role="img" aria-label="Source Tone 0 of 63">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">63</span>
+              <div class="tones__param-fill" style="--tones-fill: 0%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>0</strong></span>
+          </div>
+
+          <div class="tones__param">
+            <span class="tones__param-label">Sample Rate</span>
+            <div class="tones__param-bar" role="img" aria-label="Sample Rate 30 kHz of 30">
+              <span class="tones__param-tick tones__param-tick--start">15</span>
+              <span class="tones__param-tick tones__param-tick--end">30</span>
+              <div class="tones__param-fill" style="--tones-fill: 100%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>30</strong> <span class="tones__param-readout-unit">kHz</span></span>
+          </div>
+
+          <div class="tones__param">
+            <span class="tones__param-label">Start Point</span>
+            <div class="tones__param-bar" role="img" aria-label="Start Point 0 of 39240 samples">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">39240</span>
+              <div class="tones__param-fill" style="--tones-fill: 0%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>0</strong> <span class="tones__param-readout-unit">smp</span></span>
+          </div>
+
+          <div class="tones__param">
+            <span class="tones__param-label">Loop Point</span>
+            <div class="tones__param-bar" role="img" aria-label="Loop Point 14902 of 39240 samples">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">39240</span>
+              <div class="tones__param-fill" style="--tones-fill: 38%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>14902</strong> <span class="tones__param-readout-unit">smp</span></span>
+          </div>
+
+          <div class="tones__param">
+            <span class="tones__param-label">End Point</span>
+            <div class="tones__param-bar" role="img" aria-label="End Point 39240 of 39240 samples">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">39240</span>
+              <div class="tones__param-fill" style="--tones-fill: 100%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>39240</strong> <span class="tones__param-readout-unit">smp</span></span>
+          </div>
+
+          <div class="tones__param">
+            <span class="tones__param-label">Loop Mode</span>
+            <div class="tones__param-bar tones__param--enum" role="img" aria-label="Loop Mode Forward">
+              <div class="tones__param-enum-track" aria-hidden="true">
+                <span class="tones__param-enum-pip" data-active="true" title="Forward"></span>
+                <span class="tones__param-enum-pip" title="Alternate"></span>
+                <span class="tones__param-enum-pip" title="One-shot"></span>
+                <span class="tones__param-enum-pip" title="None"></span>
+              </div>
+            </div>
+            <span class="tones__param-readout"><strong>Forward</strong></span>
+          </div>
+
+          <div class="tones__param">
+            <span class="tones__param-label">Original Key</span>
+            <div class="tones__param-bar" role="img" aria-label="Original Key A4 (MIDI 69) of 0 to 127">
+              <span class="tones__param-tick tones__param-tick--start">C-1</span>
+              <span class="tones__param-tick tones__param-tick--mid">C3</span>
+              <span class="tones__param-tick tones__param-tick--end">G9</span>
+              <div class="tones__param-fill" style="--tones-fill: 54%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>A4</strong></span>
+          </div>
+
+          <div class="tones__param">
+            <span class="tones__param-label">Wave Length</span>
+            <div class="tones__param-bar" role="img" aria-label="Wave Length 39240 samples">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">50000</span>
+              <div class="tones__param-fill" style="--tones-fill: 78%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>39240</strong> <span class="tones__param-readout-unit">smp</span></span>
+          </div>
+
+        </div>
+      </section>
+
+        </section><!-- /panel:wave -->
+
+        <section class="tones__panel" data-tab="pitch" role="tabpanel" aria-labelledby="tt-pitch-label">
+      <!-- PITCH -->
+      <section class="tones__section">
+        <header class="tones__section-head">
+          <h4 class="tones__section-title">Pitch</h4>
+          <span class="tones__section-eyebrow">Tracking · §02</span>
+        </header>
+        <div class="tones__param-grid tones__param-grid--cols-4">
+
+          <div class="tones__param tones__param--bipolar">
+            <span class="tones__param-label">Coarse</span>
+            <div class="tones__param-bar" role="img" aria-label="Coarse 0 semitones of -24 to +24">
+              <span class="tones__param-tick tones__param-tick--start">-24</span>
+              <span class="tones__param-tick tones__param-tick--mid">0</span>
+              <span class="tones__param-tick tones__param-tick--end">+24</span>
+              <div class="tones__param-fill" style="--tones-bipolar-l: 50%; --tones-bipolar-w: 0%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>+0</strong> <span class="tones__param-readout-unit">st</span></span>
+          </div>
+
+          <div class="tones__param tones__param--bipolar">
+            <span class="tones__param-label">Fine Tune</span>
+            <div class="tones__param-bar" role="img" aria-label="Fine Tune +12 cents of -50 to +50">
+              <span class="tones__param-tick tones__param-tick--start">-50</span>
+              <span class="tones__param-tick tones__param-tick--mid">0</span>
+              <span class="tones__param-tick tones__param-tick--end">+50</span>
+              <div class="tones__param-fill" style="--tones-bipolar-l: 50%; --tones-bipolar-w: 12%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>+12</strong> <span class="tones__param-readout-unit">cents</span></span>
+          </div>
+
+          <div class="tones__param">
+            <span class="tones__param-label">Key Follow</span>
+            <div class="tones__param-bar" role="img" aria-label="Key Follow 100 percent of 0 to 100">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">100</span>
+              <div class="tones__param-fill" style="--tones-fill: 100%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>100</strong> <span class="tones__param-readout-unit">%</span></span>
+          </div>
+
+          <div class="tones__param">
+            <span class="tones__param-label">LFO Pitch</span>
+            <div class="tones__param-bar" role="img" aria-label="LFO Pitch 8 of 127">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">127</span>
+              <div class="tones__param-fill" style="--tones-fill: 6%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>8</strong></span>
+          </div>
+
+        </div>
+      </section>
+
+        </section><!-- /panel:pitch -->
+
+        <section class="tones__panel" data-tab="filter" role="tabpanel" aria-labelledby="tt-filter-label">
+      <!-- FILTER (TVF) -->
+      <section class="tones__section">
+        <header class="tones__section-head">
+          <h4 class="tones__section-title">Filter — TVF</h4>
+          <span class="tones__section-eyebrow">Time-variant · §03</span>
+        </header>
+        <div class="tones__param-grid tones__param-grid--cols-3">
+
+          <div class="tones__param">
+            <span class="tones__param-label">Cutoff</span>
+            <div class="tones__param-bar" role="img" aria-label="Cutoff 96 of 127">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">127</span>
+              <div class="tones__param-fill" style="--tones-fill: 75%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>96</strong></span>
+          </div>
+
+          <div class="tones__param">
+            <span class="tones__param-label">Resonance</span>
+            <div class="tones__param-bar" role="img" aria-label="Resonance 42 of 127">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">127</span>
+              <div class="tones__param-fill" style="--tones-fill: 33%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>42</strong></span>
+          </div>
+
+          <div class="tones__param tones__param--bipolar">
+            <span class="tones__param-label">Key Follow</span>
+            <div class="tones__param-bar" role="img" aria-label="Key Follow +24 percent of -100 to +100">
+              <span class="tones__param-tick tones__param-tick--start">-100</span>
+              <span class="tones__param-tick tones__param-tick--mid">0</span>
+              <span class="tones__param-tick tones__param-tick--end">+100</span>
+              <div class="tones__param-fill" style="--tones-bipolar-l: 50%; --tones-bipolar-w: 12%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>+24</strong> <span class="tones__param-readout-unit">%</span></span>
+          </div>
+
+          <div class="tones__param tones__param--bipolar">
+            <span class="tones__param-label">Velocity</span>
+            <div class="tones__param-bar" role="img" aria-label="Velocity +58 of -63 to +63">
+              <span class="tones__param-tick tones__param-tick--start">-63</span>
+              <span class="tones__param-tick tones__param-tick--mid">0</span>
+              <span class="tones__param-tick tones__param-tick--end">+63</span>
+              <div class="tones__param-fill" style="--tones-bipolar-l: 50%; --tones-bipolar-w: 46%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>+58</strong></span>
+          </div>
+
+          <div class="tones__param tones__param--bipolar">
+            <span class="tones__param-label">Env Depth</span>
+            <div class="tones__param-bar" role="img" aria-label="Env Depth +38 of -63 to +63">
+              <span class="tones__param-tick tones__param-tick--start">-63</span>
+              <span class="tones__param-tick tones__param-tick--mid">0</span>
+              <span class="tones__param-tick tones__param-tick--end">+63</span>
+              <div class="tones__param-fill" style="--tones-bipolar-l: 50%; --tones-bipolar-w: 30%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>+38</strong></span>
+          </div>
+
+          <div class="tones__param">
+            <span class="tones__param-label">Filter Type</span>
+            <div class="tones__param-bar tones__param--enum" role="img" aria-label="Filter Type LP-12">
+              <div class="tones__param-enum-track" aria-hidden="true">
+                <span class="tones__param-enum-pip" title="Bypass"></span>
+                <span class="tones__param-enum-pip" data-active="true" title="LP-12"></span>
+                <span class="tones__param-enum-pip" title="LP-24"></span>
+                <span class="tones__param-enum-pip" title="HP"></span>
+              </div>
+            </div>
+            <span class="tones__param-readout"><strong>LP-12</strong></span>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TVF ENVELOPE — 8-segment variable -->
+      <section class="tones__section">
+        <header class="tones__section-head">
+          <h4 class="tones__section-title">Envelope — TVF</h4>
+          <span class="tones__section-eyebrow">Filter envelope · 8 segments · §05</span>
+        </header>
+        <div class="tones__envelope">
+          <!-- VFD-style graphical envelope -->
+          <div class="tones__envelope-graph" role="region" aria-label="TVF envelope, 8 segments, segment 2 active">
+            <span class="tones__envelope-graph-label">TVF · 8-SEGMENT</span>
+            <button class="tones__envelope-graph-expand" type="button" aria-label="Expand for precision editing">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <path d="M2 5V2H5M9 2H12V5M12 9V12H9M5 12H2V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </button>
+            <div class="tones__envelope-y-axis" aria-hidden="true">
+              <span>127</span><span>96</span><span>64</span><span>32</span><span>0</span>
+            </div>
+            <div class="tones__envelope-canvas">
+              <svg viewBox="0 0 800 200" preserveAspectRatio="none" aria-hidden="true">
+                <!-- horizontal gridlines (level: 0 / 32 / 64 / 96 / 127) -->
+                <line x1="0" y1="0"   x2="800" y2="0"   class="tones__envelope-grid-line" />
+                <line x1="0" y1="50"  x2="800" y2="50"  class="tones__envelope-grid-line" />
+                <line x1="0" y1="100" x2="800" y2="100" class="tones__envelope-grid-line tones__envelope-grid-line--baseline" />
+                <line x1="0" y1="150" x2="800" y2="150" class="tones__envelope-grid-line" />
+                <line x1="0" y1="200" x2="800" y2="200" class="tones__envelope-grid-line tones__envelope-grid-line--baseline" />
+                <!-- segment column dividers (8 columns starting after start vertex) -->
+                <line x1="100" y1="0" x2="100" y2="200" class="tones__envelope-segment-divider" />
+                <line x1="200" y1="0" x2="200" y2="200" class="tones__envelope-segment-divider" />
+                <line x1="300" y1="0" x2="300" y2="200" class="tones__envelope-segment-divider" />
+                <line x1="400" y1="0" x2="400" y2="200" class="tones__envelope-segment-divider" />
+                <line x1="500" y1="0" x2="500" y2="200" class="tones__envelope-segment-divider" />
+                <line x1="600" y1="0" x2="600" y2="200" class="tones__envelope-segment-divider" />
+                <line x1="700" y1="0" x2="700" y2="200" class="tones__envelope-segment-divider" />
+                <!-- active segment guide (segment 2) -->
+                <line x1="200" y1="0" x2="200" y2="200" class="tones__envelope-active-guide" />
+                <!-- envelope fill area beneath the line -->
+                <path d="M 0,200 L 100,0 L 200,49 L 300,69 L 400,90 L 500,69 L 600,93 L 700,109 L 800,200 Z"
+                      class="tones__envelope-fill" />
+                <!-- envelope line (the phosphor stroke) -->
+                <polyline points="0,200 100,0 200,49 300,69 400,90 500,69 600,93 700,109 800,200"
+                          class="tones__envelope-line" />
+              </svg>
+              <!-- HTML-positioned points (kept circular regardless of svg stretch) -->
+              <div class="tones__envelope-points" aria-hidden="true">
+                <span class="tones__envelope-point" style="left: 0%;     top: 100%;"></span>
+                <span class="tones__envelope-point" style="left: 12.5%;  top: 0%;"></span>
+                <span class="tones__envelope-point tones__envelope-point--active" style="left: 25%; top: 24.4%;"></span>
+                <span class="tones__envelope-point" style="left: 37.5%;  top: 34.6%;"></span>
+                <span class="tones__envelope-point" style="left: 50%;    top: 44.9%;"></span>
+                <span class="tones__envelope-point" style="left: 62.5%;  top: 34.6%;"></span>
+                <span class="tones__envelope-point" style="left: 75%;    top: 46.5%;"></span>
+                <span class="tones__envelope-point" style="left: 87.5%;  top: 54.3%;"></span>
+                <span class="tones__envelope-point" style="left: 100%;   top: 100%;"></span>
+              </div>
+              <!-- Sustain marker (floats above sustain segment 5) -->
+              <span class="tones__envelope-sustain-label" style="left: 62.5%; top: 34.6%;">▸ SUS</span>
+            </div>
+            <!-- X-axis labels -->
+            <div class="tones__envelope-axis" aria-hidden="true">
+              <span class="tones__envelope-axis-tick" style="left: 0%;">Start</span>
+              <span class="tones__envelope-axis-tick" style="left: 12.5%;">1</span>
+              <span class="tones__envelope-axis-tick tones__envelope-axis-tick--active" style="left: 25%;">2</span>
+              <span class="tones__envelope-axis-tick" style="left: 37.5%;">3</span>
+              <span class="tones__envelope-axis-tick" style="left: 50%;">4</span>
+              <span class="tones__envelope-axis-tick" style="left: 62.5%;">5</span>
+              <span class="tones__envelope-axis-tick" style="left: 75%;">6</span>
+              <span class="tones__envelope-axis-tick" style="left: 87.5%;">7</span>
+              <span class="tones__envelope-axis-tick" style="left: 100%;">8</span>
+            </div>
+            <span class="tones__envelope-graph-help">Drag points to adjust · Click expand for precision editing</span>
+          </div>
+
+          <!-- Sustain + End shape controls -->
+          <div class="tones__envelope-meta" role="group" aria-label="TVF envelope shape">
+            <div class="tones__envelope-meta-control">
+              <span class="tones__envelope-meta-label">Sustain ▸</span>
+              <div class="tones__envelope-meta-pips" role="radiogroup" aria-label="Sustain segment">
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">1</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">2</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">3</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">4</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="true" data-active="true">5</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">6</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">7</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">8</span>
+              </div>
+            </div>
+            <div class="tones__envelope-meta-control">
+              <span class="tones__envelope-meta-label">End ▣</span>
+              <div class="tones__envelope-meta-pips" role="radiogroup" aria-label="Envelope length">
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">1</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">2</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">3</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">4</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">5</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">6</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">7</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="true" data-active="true">8</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Per-segment numeric controls -->
+          <div class="tones__envelope-table" role="table" aria-label="TVF envelope segments — 8 segments, sustain at segment 5">
+            <div class="tones__envelope-table-header" role="row">
+              <span class="tones__envelope-table-head" role="columnheader">Seg</span>
+              <span class="tones__envelope-table-head" role="columnheader">Time · 0–127</span>
+              <span class="tones__envelope-table-head" role="columnheader">Level · 0–127</span>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">1</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 15 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 12%"></div></div>
+                <span class="tones__envelope-mini-readout">15</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 127 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 100%"></div></div>
+                <span class="tones__envelope-mini-readout">127</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="true">
+              <span class="tones__envelope-table-seg" role="cell">2</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 22 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 17%"></div></div>
+                <span class="tones__envelope-mini-readout">22</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 96 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 75%"></div></div>
+                <span class="tones__envelope-mini-readout">96</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">3</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 18 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 14%"></div></div>
+                <span class="tones__envelope-mini-readout">18</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 82 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 65%"></div></div>
+                <span class="tones__envelope-mini-readout">82</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">4</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 30 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 24%"></div></div>
+                <span class="tones__envelope-mini-readout">30</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 70 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 55%"></div></div>
+                <span class="tones__envelope-mini-readout">70</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false" data-sustain="true">
+              <span class="tones__envelope-table-seg" role="cell">5</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 22 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 17%"></div></div>
+                <span class="tones__envelope-mini-readout">22</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 82 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 65%"></div></div>
+                <span class="tones__envelope-mini-readout">82</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">6</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 18 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 14%"></div></div>
+                <span class="tones__envelope-mini-readout">18</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 68 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 54%"></div></div>
+                <span class="tones__envelope-mini-readout">68</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">7</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 20 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 16%"></div></div>
+                <span class="tones__envelope-mini-readout">20</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 58 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 46%"></div></div>
+                <span class="tones__envelope-mini-readout">58</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">8</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 42 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 33%"></div></div>
+                <span class="tones__envelope-mini-readout">42</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 0 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 0%"></div></div>
+                <span class="tones__envelope-mini-readout">0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+        </section><!-- /panel:filter -->
+
+        <section class="tones__panel" data-tab="amp" role="tabpanel" aria-labelledby="tt-amp-label">
+      <!-- AMPLIFIER (TVA) -->
+      <section class="tones__section">
+        <header class="tones__section-head">
+          <h4 class="tones__section-title">Amplifier — TVA</h4>
+          <span class="tones__section-eyebrow">Level · §04</span>
+        </header>
+        <div class="tones__param-grid tones__param-grid--cols-4">
+
+          <div class="tones__param">
+            <span class="tones__param-label">Volume</span>
+            <div class="tones__param-bar" role="img" aria-label="Volume 112 of 127">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">127</span>
+              <div class="tones__param-fill" style="--tones-fill: 88%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>112</strong></span>
+          </div>
+
+          <div class="tones__param tones__param--bipolar">
+            <span class="tones__param-label">Velocity</span>
+            <div class="tones__param-bar" role="img" aria-label="Velocity +44 of -63 to +63">
+              <span class="tones__param-tick tones__param-tick--start">-63</span>
+              <span class="tones__param-tick tones__param-tick--mid">0</span>
+              <span class="tones__param-tick tones__param-tick--end">+63</span>
+              <div class="tones__param-fill" style="--tones-bipolar-l: 50%; --tones-bipolar-w: 35%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>+44</strong></span>
+          </div>
+
+          <div class="tones__param tones__param--bipolar">
+            <span class="tones__param-label">Key Follow</span>
+            <div class="tones__param-bar" role="img" aria-label="Key Follow -8 percent of -100 to +100">
+              <span class="tones__param-tick tones__param-tick--start">-100</span>
+              <span class="tones__param-tick tones__param-tick--mid">0</span>
+              <span class="tones__param-tick tones__param-tick--end">+100</span>
+              <div class="tones__param-fill" style="--tones-bipolar-l: 46%; --tones-bipolar-w: 4%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>−8</strong> <span class="tones__param-readout-unit">%</span></span>
+          </div>
+
+          <div class="tones__param tones__param--bipolar">
+            <span class="tones__param-label">Pan</span>
+            <div class="tones__param-bar" role="img" aria-label="Pan L 12 of -63 to +63">
+              <span class="tones__param-tick tones__param-tick--start">L63</span>
+              <span class="tones__param-tick tones__param-tick--mid">C</span>
+              <span class="tones__param-tick tones__param-tick--end">R63</span>
+              <div class="tones__param-fill" style="--tones-bipolar-l: 40%; --tones-bipolar-w: 10%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>L 12</strong></span>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TVA ENVELOPE — 8-segment variable -->
+      <section class="tones__section">
+        <header class="tones__section-head">
+          <h4 class="tones__section-title">Envelope — TVA</h4>
+          <span class="tones__section-eyebrow">Amplifier envelope · 8 segments · §06</span>
+        </header>
+        <div class="tones__envelope">
+          <div class="tones__envelope-graph" role="region" aria-label="TVA envelope, 8 segments, segment 4 active (sustain)">
+            <span class="tones__envelope-graph-label">TVA · 8-SEGMENT</span>
+            <button class="tones__envelope-graph-expand" type="button" aria-label="Expand for precision editing">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <path d="M2 5V2H5M9 2H12V5M12 9V12H9M5 12H2V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </button>
+            <div class="tones__envelope-y-axis" aria-hidden="true">
+              <span>127</span><span>96</span><span>64</span><span>32</span><span>0</span>
+            </div>
+            <div class="tones__envelope-canvas">
+              <svg viewBox="0 0 800 200" preserveAspectRatio="none" aria-hidden="true">
+                <line x1="0" y1="0"   x2="800" y2="0"   class="tones__envelope-grid-line" />
+                <line x1="0" y1="50"  x2="800" y2="50"  class="tones__envelope-grid-line" />
+                <line x1="0" y1="100" x2="800" y2="100" class="tones__envelope-grid-line tones__envelope-grid-line--baseline" />
+                <line x1="0" y1="150" x2="800" y2="150" class="tones__envelope-grid-line" />
+                <line x1="0" y1="200" x2="800" y2="200" class="tones__envelope-grid-line tones__envelope-grid-line--baseline" />
+                <line x1="100" y1="0" x2="100" y2="200" class="tones__envelope-segment-divider" />
+                <line x1="200" y1="0" x2="200" y2="200" class="tones__envelope-segment-divider" />
+                <line x1="300" y1="0" x2="300" y2="200" class="tones__envelope-segment-divider" />
+                <line x1="400" y1="0" x2="400" y2="200" class="tones__envelope-segment-divider" />
+                <line x1="500" y1="0" x2="500" y2="200" class="tones__envelope-segment-divider" />
+                <line x1="600" y1="0" x2="600" y2="200" class="tones__envelope-segment-divider" />
+                <line x1="700" y1="0" x2="700" y2="200" class="tones__envelope-segment-divider" />
+                <!-- active segment guide (segment 4 — sustain hold) -->
+                <line x1="400" y1="0" x2="400" y2="200" class="tones__envelope-active-guide" />
+                <path d="M 0,200 L 100,0 L 200,27 L 300,61 L 400,61 L 500,96 L 600,131 L 700,165 L 800,200 Z"
+                      class="tones__envelope-fill" />
+                <polyline points="0,200 100,0 200,27 300,61 400,61 500,96 600,131 700,165 800,200"
+                          class="tones__envelope-line" />
+              </svg>
+              <div class="tones__envelope-points" aria-hidden="true">
+                <span class="tones__envelope-point" style="left: 0%;     top: 100%;"></span>
+                <span class="tones__envelope-point" style="left: 12.5%;  top: 0%;"></span>
+                <span class="tones__envelope-point" style="left: 25%;    top: 13.4%;"></span>
+                <span class="tones__envelope-point" style="left: 37.5%;  top: 30.7%;"></span>
+                <span class="tones__envelope-point tones__envelope-point--active" style="left: 50%; top: 30.7%;"></span>
+                <span class="tones__envelope-point" style="left: 62.5%;  top: 48.0%;"></span>
+                <span class="tones__envelope-point" style="left: 75%;    top: 65.4%;"></span>
+                <span class="tones__envelope-point" style="left: 87.5%;  top: 82.7%;"></span>
+                <span class="tones__envelope-point" style="left: 100%;   top: 100%;"></span>
+              </div>
+              <!-- Sustain marker (floats above sustain segment 4 — same as active here) -->
+              <span class="tones__envelope-sustain-label" style="left: 50%; top: 30.7%;">▸ SUS</span>
+            </div>
+            <div class="tones__envelope-axis" aria-hidden="true">
+              <span class="tones__envelope-axis-tick" style="left: 0%;">Start</span>
+              <span class="tones__envelope-axis-tick" style="left: 12.5%;">1</span>
+              <span class="tones__envelope-axis-tick" style="left: 25%;">2</span>
+              <span class="tones__envelope-axis-tick" style="left: 37.5%;">3</span>
+              <span class="tones__envelope-axis-tick tones__envelope-axis-tick--active" style="left: 50%;">4</span>
+              <span class="tones__envelope-axis-tick" style="left: 62.5%;">5</span>
+              <span class="tones__envelope-axis-tick" style="left: 75%;">6</span>
+              <span class="tones__envelope-axis-tick" style="left: 87.5%;">7</span>
+              <span class="tones__envelope-axis-tick" style="left: 100%;">8</span>
+            </div>
+            <span class="tones__envelope-graph-help">Drag points to adjust · Click expand for precision editing</span>
+          </div>
+
+          <!-- Sustain + End shape controls -->
+          <div class="tones__envelope-meta" role="group" aria-label="TVA envelope shape">
+            <div class="tones__envelope-meta-control">
+              <span class="tones__envelope-meta-label">Sustain ▸</span>
+              <div class="tones__envelope-meta-pips" role="radiogroup" aria-label="Sustain segment">
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">1</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">2</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">3</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="true" data-active="true">4</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">5</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">6</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">7</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">8</span>
+              </div>
+            </div>
+            <div class="tones__envelope-meta-control">
+              <span class="tones__envelope-meta-label">End ▣</span>
+              <div class="tones__envelope-meta-pips" role="radiogroup" aria-label="Envelope length">
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">1</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">2</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">3</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">4</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">5</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">6</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="false">7</span>
+                <span class="tones__envelope-meta-pip" role="radio" aria-checked="true" data-active="true">8</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="tones__envelope-table" role="table" aria-label="TVA envelope segments — 8 segments, sustain at segment 4">
+            <div class="tones__envelope-table-header" role="row">
+              <span class="tones__envelope-table-head" role="columnheader">Seg</span>
+              <span class="tones__envelope-table-head" role="columnheader">Time · 0–127</span>
+              <span class="tones__envelope-table-head" role="columnheader">Level · 0–127</span>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">1</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 8 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 6%"></div></div>
+                <span class="tones__envelope-mini-readout">8</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 127 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 100%"></div></div>
+                <span class="tones__envelope-mini-readout">127</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">2</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 14 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 11%"></div></div>
+                <span class="tones__envelope-mini-readout">14</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 110 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 87%"></div></div>
+                <span class="tones__envelope-mini-readout">110</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">3</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 20 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 16%"></div></div>
+                <span class="tones__envelope-mini-readout">20</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 88 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 69%"></div></div>
+                <span class="tones__envelope-mini-readout">88</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="true" data-sustain="true">
+              <span class="tones__envelope-table-seg" role="cell">4</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 26 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 20%"></div></div>
+                <span class="tones__envelope-mini-readout">26</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 88 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 69%"></div></div>
+                <span class="tones__envelope-mini-readout">88</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">5</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 22 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 17%"></div></div>
+                <span class="tones__envelope-mini-readout">22</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 66 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 52%"></div></div>
+                <span class="tones__envelope-mini-readout">66</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">6</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 18 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 14%"></div></div>
+                <span class="tones__envelope-mini-readout">18</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 44 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 35%"></div></div>
+                <span class="tones__envelope-mini-readout">44</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">7</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 24 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 19%"></div></div>
+                <span class="tones__envelope-mini-readout">24</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 22 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 17%"></div></div>
+                <span class="tones__envelope-mini-readout">22</span>
+              </div>
+            </div>
+            <div class="tones__envelope-table-row" role="row" data-active="false">
+              <span class="tones__envelope-table-seg" role="cell">8</span>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Time 36 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 28%"></div></div>
+                <span class="tones__envelope-mini-readout">36</span>
+              </div>
+              <div class="tones__envelope-table-cell" role="cell">
+                <div class="tones__envelope-mini" role="img" aria-label="Level 0 of 127"><div class="tones__envelope-mini-fill" style="--mini-fill: 0%"></div></div>
+                <span class="tones__envelope-mini-readout">0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+        </section><!-- /panel:amp -->
+
+        <section class="tones__panel" data-tab="lfo" role="tabpanel" aria-labelledby="tt-lfo-label">
+      <!-- LFO -->
+      <section class="tones__section">
+        <header class="tones__section-head">
+          <h4 class="tones__section-title">LFO</h4>
+          <span class="tones__section-eyebrow">Modulator · §07</span>
+        </header>
+        <div class="tones__param-grid tones__param-grid--cols-4">
+
+          <div class="tones__param">
+            <span class="tones__param-label">Rate</span>
+            <div class="tones__param-bar" role="img" aria-label="Rate 52 of 127">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">127</span>
+              <div class="tones__param-fill" style="--tones-fill: 41%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>52</strong></span>
+          </div>
+
+          <div class="tones__param">
+            <span class="tones__param-label">Depth</span>
+            <div class="tones__param-bar" role="img" aria-label="Depth 18 of 127">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">127</span>
+              <div class="tones__param-fill" style="--tones-fill: 14%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>18</strong></span>
+          </div>
+
+          <div class="tones__param">
+            <span class="tones__param-label">Delay</span>
+            <div class="tones__param-bar" role="img" aria-label="Delay 24 of 127">
+              <span class="tones__param-tick tones__param-tick--start">0</span>
+              <span class="tones__param-tick tones__param-tick--end">127</span>
+              <div class="tones__param-fill" style="--tones-fill: 19%"></div>
+            </div>
+            <span class="tones__param-readout"><strong>24</strong></span>
+          </div>
+
+          <div class="tones__param">
+            <span class="tones__param-label">Mode</span>
+            <div class="tones__param-bar tones__param--enum" role="img" aria-label="LFO Mode Sine">
+              <div class="tones__param-enum-track" aria-hidden="true">
+                <span class="tones__param-enum-pip" data-active="true" title="Sine"></span>
+                <span class="tones__param-enum-pip" title="Triangle"></span>
+                <span class="tones__param-enum-pip" title="Square"></span>
+                <span class="tones__param-enum-pip" title="S&H"></span>
+              </div>
+            </div>
+            <span class="tones__param-readout"><strong>Sine</strong></span>
+          </div>
+
+        </div>
+      </section>
+
+        </section><!-- /panel:lfo -->
+
+        </div><!-- /.tones__panels -->
+      </div><!-- /.tones__tabs -->
+
+      <!-- LIVE STATUS — there is no save / cancel / undo. Edits stream to the device.
+           The pulsing rec-LED is the only chrome; "Last sent" carries the useful info. -->
+      <footer class="tones__detail-live" role="status" aria-live="polite">
+        <span class="ac-signal-led ac-signal-led--rec" aria-hidden="true"></span>
+        <span>Last sent <span class="tones__detail-live-touch">TVF Cutoff</span> 14:01:36</span>
+      </footer>
+
+    </section>
+
+<aside class="app-shell__crt" aria-label="Device video output">
+  <div class="ac-crt-monitor ac-crt-monitor--compact">
+    <div class="ac-crt-monitor__bezel">
+      <div class="ac-crt-monitor__screen">
+        <div class="ac-crt-monitor__chrome">
+          <span class="ac-crt-btn ac-crt-btn--filled">MODE</span>
+          <span class="ac-crt-btn ac-crt-btn--filled">MENU</span>
+          <span class="ac-crt-btn ac-crt-btn--blank"></span>
+          <span class="ac-crt-btn ac-crt-btn--blank"></span>
+          <span class="ac-crt-btn ac-crt-btn--filled">Dec</span>
+          <span class="ac-crt-btn ac-crt-btn--filled">Inc</span>
+        </div>
+        <div class="ac-crt-monitor__sub-row">
+          <span>Last Note Priority</span>
+          <span>PLAY-Standard</span>
+        </div>
+        <table class="ac-crt-table">
+          <thead>
+            <tr><th></th><th>VAL</th><th>CH</th><th>Patch</th><th></th><th>Out</th><th>Level</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>A</td><td>*</td><td>1</td><td><span class="ac-crt-cell--selected">I11</span></td><td>MINI</td><td>1</td><td>127</td></tr>
+            <tr><td>B</td><td>*</td><td>2</td><td>I12</td><td></td><td>1</td><td>127</td></tr>
+            <tr><td>C</td><td>*</td><td>3</td><td>I13</td><td></td><td>1</td><td>127</td></tr>
+            <tr><td>D</td><td>*</td><td>4</td><td>I14</td><td></td><td>1</td><td>127</td></tr>
+            <tr><td>E</td><td>*</td><td>5</td><td>I15</td><td></td><td>1</td><td>127</td></tr>
+            <tr><td>F</td><td>*</td><td>6</td><td>I16</td><td></td><td>1</td><td>127</td></tr>
+            <tr><td>G</td><td>*</td><td>7</td><td>I17</td><td></td><td>1</td><td>127</td></tr>
+            <tr><td>H</td><td>*</td><td>8</td><td>I18</td><td></td><td>1</td><td>127</td></tr>
+          </tbody>
+        </table>
+        <div class="ac-crt-monitor__display">
+          <span>Display</span>
+          <span>I1<span class="ac-crt-cursor">_</span></span>
+        </div>
+        <div class="ac-crt-monitor__lookup">
+          <div>I11 MINI</div><div>I15</div>
+          <div>I12</div><div>I16</div>
+          <div>I13</div><div>I17</div>
+          <div>I14</div><div>I18</div>
+        </div>
+      </div>
+    </div>
+    <div class="ac-crt-monitor__caption">
+      <span>S-550 · Video out · NTSC</span>
+      <span><span class="ac-signal-led ac-signal-led--rec" aria-hidden="true" style="margin-right: 6px; vertical-align: middle;"></span>Live</span>
+    </div>
+  </div>
+
+  <!-- Virtual front panel — mirrors the S-550's physical button layout -->
+  <div class="ac-front-panel" role="group" aria-label="Virtual front panel">
+    <div class="ac-front-panel__rows">
+      <div class="ac-front-panel__row">
+        <button class="ac-front-panel__btn ac-front-panel__btn--active" type="button" aria-pressed="true">Play</button>
+        <button class="ac-front-panel__btn" type="button">Edit</button>
+        <button class="ac-front-panel__btn" type="button">Disk</button>
+        <button class="ac-front-panel__btn" type="button">Menu</button>
+        <button class="ac-front-panel__btn ac-front-panel__btn--arrow" type="button" aria-label="Up">▲</button>
+        <button class="ac-front-panel__btn" type="button">Sub Menu</button>
+        <button class="ac-front-panel__btn" type="button">Command</button>
+      </div>
+      <div class="ac-front-panel__row">
+        <button class="ac-front-panel__btn" type="button">MIDI</button>
+        <button class="ac-front-panel__btn" type="button">Func</button>
+        <button class="ac-front-panel__btn" type="button">Utility</button>
+        <button class="ac-front-panel__btn ac-front-panel__btn--arrow" type="button" aria-label="Left">◀</button>
+        <button class="ac-front-panel__btn ac-front-panel__btn--arrow" type="button" aria-label="Down">▼</button>
+        <button class="ac-front-panel__btn ac-front-panel__btn--arrow" type="button" aria-label="Right">▶</button>
+        <button class="ac-front-panel__btn" type="button">Execute</button>
+      </div>
+    </div>
+    <div class="ac-front-panel__caption">
+      <span>S-550 · Front panel</span>
+      <span class="ac-front-panel__caption-mode">PLAY mode</span>
+    </div>
+  </div>
+</aside>
+
+</div><!-- /.app-shell -->
+</main>
+
+  <!-- ===== EXPLORATION FOOTER ===== -->
+  <footer class="exploration-footer ac-container">
+    <p style="margin: 0;">
+      Phase 9 Task 2 · TonesPage Mockup v1 · 2026-05-08 · s550-support feature ·
+      Companion to <a href="02-homepage.html">02-homepage.html</a> ·
+      Audit reference: <a href="ux-audit.md">ux-audit.md § TonesPage</a>
+    </p>
+    <p style="margin: var(--ac-space-2) 0 0;">
+      Replaces hand-rolled selects (TonesPage.tsx:543-565), the inline progress bar (529-541), and the empty-state card (623-625) with: the parameter-row primitive, the shared list-detail split, and an auto-selected first row. No device conditionals — list length and bank labels come from <code>memoryLayout</code>.
+    </p>
+  </footer>
+
+<script>
+  // tiny: respect reduced-motion at runtime so a user toggling system prefs
+  // mid-page doesn't get stuck with stale animation state
+  (function () {
+    var mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    function apply() {
+      document.documentElement.style.setProperty('--ac-motion', mq.matches ? '0' : '1');
+    }
+    apply();
+    if (mq.addEventListener) mq.addEventListener('change', apply);
+  })();
+</script>
+</body>
+</html>

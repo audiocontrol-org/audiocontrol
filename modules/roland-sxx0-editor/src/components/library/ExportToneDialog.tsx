@@ -104,7 +104,7 @@ export function ExportToneDialog({
 
               {/* Tone Name Input */}
               <div>
-                <label htmlFor="toneName" className="block text-sm text-s330-muted mb-1">
+                <label htmlFor="toneName" className="ac-field-label mb-1">
                   Tone Name
                 </label>
                 <input
@@ -114,12 +114,7 @@ export function ExportToneDialog({
                   onChange={(e) => setToneName(e.target.value)}
                   disabled={isOperating}
                   maxLength={32}
-                  className={cn(
-                    'w-full bg-s330-bg border rounded px-3 py-2 text-s330-text',
-                    'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    error ? 'border-red-500' : 'border-s330-accent/50',
-                    isOperating && 'opacity-50'
-                  )}
+                  className={cn('ac-input', error && 'ac-input--error')}
                   placeholder="Enter tone name"
                 />
               </div>

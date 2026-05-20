@@ -1,0 +1,14 @@
+{
+  "uuid": "ef6b601c-7e04-4282-86a4-850029254759",
+  "slug": "s550-support/workplan",
+  "title": "Roland S-550 Editor Support — Workplan",
+  "keywords": [],
+  "source": "manual",
+  "currentStage": "Final",
+  "iterationByStage": {
+    "Drafting": 3
+  },
+  "artifactPath": "docs/1.0/001-IN-PROGRESS/s550-support/workplan.md",
+  "createdAt": "2026-05-08T18:29:25.871Z",
+  "updatedAt": "2026-05-08T20:03:12.963Z"
+}

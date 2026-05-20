@@ -39,7 +39,6 @@ function createTestTone(overrides: Partial<S330Tone> = {}): S330Tone {
       polarity: false,
       offset: 0,
     },
-    tvaLfoDepth: 0,
     transpose: 0,
     fineTune: 0,
     tvf: {

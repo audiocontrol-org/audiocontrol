@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { MemoryMapPanel } from '@/components/ui/MemoryMapPanel';
 import { BestFitPicker } from '@/components/ui/BestFitPicker';
+import { AcCheckbox } from '@audiocontrol/editor-core';
 import {
   OperationProgressBar,
   OperationErrorBanner,
@@ -27,6 +28,11 @@ import {
 import type { AllocationProposal } from '@/components/ui/memory-map-types';
 import { findContiguousBestFits } from '@/lib/best-fit';
 import type { FitOption, ContiguousFitValues } from '@/lib/best-fit';
+import {
+  isPatchSlotEmpty,
+  hasOccupiedToneRange,
+  hasOccupiedPatchRange,
+} from '@/lib/slot-allocation';
 
 export interface ImportSamplesDialogProps extends OperationState {
   open: boolean;
@@ -36,7 +42,15 @@ export interface ImportSamplesDialogProps extends OperationState {
   devicePatches: (SamplerPatch | undefined)[];
   onImport: (params: {
     startingToneSlot: number;
-    waveBank: 0 | 1 | 2 | 3;
+    /**
+     * Wave bank index typed as `number` rather than `0 | 1 | 2 | 3` so the same
+     * dialog serves both S-330 (banks 0-1) and S-550 (banks 0-3). The rendered
+     * `<option>` set is layout-driven via `availableBanks.indices`; runtime
+     * validation lives at the device-client boundary
+     * (`s330-client.ts:1592,1632`, `s550-addresses.ts:168`).
+     * Mirrors the pattern established in #393 / #396 / #399.
+     */
+    waveBank: number;
     startingSegment: number;
     targetPatchSlot: number;
     singlePatch?: boolean;
@@ -66,7 +80,7 @@ export function ImportSamplesDialog({
   // User selections
   const [selectedTargetIndex, setSelectedTargetIndex] = useState(0);
   const [startingToneSlot, setStartingToneSlot] = useState(0);
-  const [waveBank, setWaveBank] = useState<0 | 1 | 2 | 3>(0);
+  const [waveBank, setWaveBank] = useState<number>(0);
   const [startingSegment, setStartingSegment] = useState(0);
   const [targetPatchSlot, setTargetPatchSlot] = useState(0);
   const [singlePatch, setSinglePatch] = useState(true);
@@ -142,7 +156,7 @@ export function ImportSamplesDialog({
     const newGroup = memoryLayout.toneGroups.find(
       g => g.firstIndex === importTargets[index].toneIndexOffset
     ) ?? memoryLayout.toneGroups[0];
-    setWaveBank(newGroup.waveBankIndices[0] as 0 | 1 | 2 | 3);
+    setWaveBank(newGroup.waveBankIndices[0]);
   }, [importTargets, memoryLayout.toneGroups]);
 
   const handleImport = useCallback(async () => {
@@ -260,7 +274,7 @@ export function ImportSamplesDialog({
 
               {/* Import Target */}
               <div>
-                <label htmlFor="importTarget" className="block text-sm text-s330-muted mb-1">
+                <label htmlFor="importTarget" className="ac-field-label mb-1">
                   Target
                 </label>
                 <select
@@ -268,11 +282,7 @@ export function ImportSamplesDialog({
                   value={selectedTargetIndex}
                   onChange={(e) => handleTargetChange(Number(e.target.value))}
                   disabled={isOperating}
-                  className={cn(
-                    'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
-                    'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    isOperating && 'opacity-50'
-                  )}
+                  className="ac-select"
                 >
                   {importTargets.map((target, i) => (
                     <option key={i} value={i}>{target.label}</option>
@@ -282,7 +292,7 @@ export function ImportSamplesDialog({
 
               {/* Starting Tone Slot */}
               <div>
-                <label htmlFor="startingToneSlot" className="block text-sm text-s330-muted mb-1">
+                <label htmlFor="startingToneSlot" className="ac-field-label mb-1">
                   Starting Tone Slot (needs {toneSlotsNeeded} consecutive slot{toneSlotsNeeded !== 1 ? 's' : ''})
                   {useMonolithicMode && <span className="text-yellow-500 ml-1">(+1 for wave holder)</span>}
                 </label>
@@ -291,17 +301,12 @@ export function ImportSamplesDialog({
                   value={startingToneSlot}
                   onChange={(e) => setStartingToneSlot(Number(e.target.value))}
                   disabled={isOperating}
-                  className={cn(
-                    'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
-                    'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    isOperating && 'opacity-50'
-                  )}
+                  className="ac-select"
                 >
                   {Array.from({ length: maxStartingTone + 1 }, (_, i) => {
                     const absStart = i + selectedTarget.toneIndexOffset;
                     const absEnd = absStart + toneSlotsNeeded - 1;
-                    const hasOccupied = Array.from({ length: toneSlotsNeeded }, (_, j) => deviceTones[absStart + j])
-                      .some((t) => t !== undefined);
+                    const hasOccupied = hasOccupiedToneRange(deviceTones, absStart, toneSlotsNeeded);
                     return (
                       <option key={i} value={i}>
                         {memoryLayout.formatToneSlot(absStart)} - {memoryLayout.formatToneSlot(absEnd)}
@@ -320,19 +325,15 @@ export function ImportSamplesDialog({
               {/* Wave Bank and Segment */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="waveBank" className="block text-sm text-s330-muted mb-1">
+                  <label htmlFor="waveBank" className="ac-field-label mb-1">
                     Wave Bank
                   </label>
                   <select
                     id="waveBank"
                     value={waveBank}
-                    onChange={(e) => setWaveBank(Number(e.target.value) as 0 | 1 | 2 | 3)}
+                    onChange={(e) => setWaveBank(Number(e.target.value))}
                     disabled={isOperating}
-                    className={cn(
-                      'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
-                      'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                      isOperating && 'opacity-50'
-                    )}
+                    className="ac-select"
                   >
                     {availableBanks.indices.map((idx, i) => (
                       <option key={idx} value={idx}>Bank {availableBanks.labels[i]}</option>
@@ -340,7 +341,7 @@ export function ImportSamplesDialog({
                   </select>
                 </div>
                 <div>
-                  <label htmlFor="startingSegment" className="block text-sm text-s330-muted mb-1">
+                  <label htmlFor="startingSegment" className="ac-field-label mb-1">
                     Starting Segment
                   </label>
                   <select
@@ -348,11 +349,7 @@ export function ImportSamplesDialog({
                     value={startingSegment}
                     onChange={(e) => setStartingSegment(Number(e.target.value))}
                     disabled={isOperating}
-                    className={cn(
-                      'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
-                      'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                      isOperating && 'opacity-50'
-                    )}
+                    className="ac-select"
                   >
                     {Array.from({ length: 18 }, (_, i) => (
                       <option key={i} value={i}>
@@ -372,37 +369,27 @@ export function ImportSamplesDialog({
               )}
 
               {/* Patch Mode Toggle */}
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="singlePatch"
-                  checked={singlePatch}
-                  onChange={(e) => setSinglePatch(e.target.checked)}
-                  disabled={isOperating}
-                  className="w-4 h-4 rounded bg-s330-bg border-s330-accent/50 text-s330-highlight focus:ring-s330-highlight"
-                />
-                <label htmlFor="singlePatch" className="text-sm text-s330-text">
-                  Create single patch with all samples mapped
-                </label>
-              </div>
+              <AcCheckbox
+                checked={singlePatch}
+                onChange={setSinglePatch}
+                disabled={isOperating}
+                id="singlePatch"
+              >
+                Create single patch with all samples mapped
+              </AcCheckbox>
 
               {/* Monolithic Mode Toggle — only for source-based bundles */}
               {hasSource && (
                 <div className="border border-s330-accent/30 rounded p-3 bg-s330-bg/50">
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      id="monolithicMode"
-                      checked={useMonolithicMode}
-                      onChange={(e) => setUseMonolithicMode(e.target.checked)}
-                      disabled={isOperating}
-                      className="w-4 h-4 rounded bg-s330-bg border-s330-accent/50 text-s330-highlight focus:ring-s330-highlight"
-                    />
-                    <label htmlFor="monolithicMode" className="text-sm text-s330-text">
-                      Use monolithic mode with sub-tones
-                      <span className="ml-2 text-xs text-s330-muted">(recommended)</span>
-                    </label>
-                  </div>
+                  <AcCheckbox
+                    checked={useMonolithicMode}
+                    onChange={setUseMonolithicMode}
+                    disabled={isOperating}
+                    id="monolithicMode"
+                  >
+                    Use monolithic mode with sub-tones
+                    <span className="ml-2 text-xs text-s330-muted">(recommended)</span>
+                  </AcCheckbox>
                   {useMonolithicMode && (
                     <p className="text-xs text-s330-muted mt-2">
                       Uploads all slices as one contiguous wave segment. Creates a "holder" primary tone
@@ -415,7 +402,7 @@ export function ImportSamplesDialog({
 
               {/* Patch Slot */}
               <div>
-                <label htmlFor="targetPatchSlot" className="block text-sm text-s330-muted mb-1">
+                <label htmlFor="targetPatchSlot" className="ac-field-label mb-1">
                   {singlePatch ? 'Patch Slot' : `Starting Patch Slot (needs ${totalSamples} consecutive slots)`}
                 </label>
                 <select
@@ -423,15 +410,11 @@ export function ImportSamplesDialog({
                   value={targetPatchSlot}
                   onChange={(e) => setTargetPatchSlot(Number(e.target.value))}
                   disabled={isOperating}
-                  className={cn(
-                    'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
-                    'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    isOperating && 'opacity-50'
-                  )}
+                  className="ac-select"
                 >
                   {singlePatch ? (
                     Array.from({ length: config.totalPatches }, (_, i) => {
-                      const hasOccupied = devicePatches[i] !== undefined;
+                      const hasOccupied = !isPatchSlotEmpty(devicePatches, i);
                       return (
                         <option key={i} value={i}>
                           {memoryLayout.formatPatchSlot(i)}
@@ -442,8 +425,7 @@ export function ImportSamplesDialog({
                   ) : (
                     Array.from({ length: maxStartingPatch + 1 }, (_, i) => {
                       const endSlot = i + totalSamples - 1;
-                      const hasOccupied = Array.from({ length: totalSamples }, (_, j) => devicePatches[i + j])
-                        .some((p) => p !== undefined);
+                      const hasOccupied = hasOccupiedPatchRange(devicePatches, i, totalSamples);
                       return (
                         <option key={i} value={i}>
                           {memoryLayout.formatPatchSlot(i)} - {memoryLayout.formatPatchSlot(endSlot)}

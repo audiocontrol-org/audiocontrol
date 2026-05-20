@@ -364,7 +364,10 @@ ${DEVICE_TYPE}:
     await expect(deviceTone).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await deviceTone.click();
 
-    const exportButton = deviceTone.locator(
+    // The per-row Export button was removed 2026-05-19. Tone export
+    // now lives on the tone editor's title row (ToneEditorHead),
+    // surfaced once a tone is selected. Same testid; different parent.
+    const exportButton = page.locator(
       '[data-testid="export-tone-button"]'
     );
     await expect(exportButton).toBeVisible({
@@ -415,9 +418,17 @@ ${DEVICE_TYPE}:
   // Patch Auto-Fit Round Trip
   // -------------------------------------------------------------------------
 
-  test('patch auto-fit round trip: best-fit import, export, compare', async ({
+  test.skip('patch auto-fit round trip: best-fit import, export, compare', async ({
     page,
   }) => {
+    // SKIPPED 2026-05-19. The per-row patch Export button was
+    // removed; patches have no replacement UI export affordance.
+    // This round-trip exercised the import → export → compare path
+    // through that button, which no longer exists. Either the test
+    // gets repointed at a future patch-export UI when one lands, or
+    // it's converted to drive the export pipeline directly via the
+    // `useLibraryExport.openExportPatchDialog` API (a different
+    // shape than the click-driven flow this test currently models).
     attachConsoleDebugListener(page);
 
     // Step 1: Load all device data

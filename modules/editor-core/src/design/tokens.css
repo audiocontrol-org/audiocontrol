@@ -31,7 +31,9 @@
   --ac-space-2: 0.5rem;
   --ac-space-3: 0.75rem;
   --ac-space-4: 1rem;
+  --ac-space-5: 1.25rem;
   --ac-space-6: 1.5rem;
+  --ac-space-7: 1.75rem;
   --ac-space-8: 2rem;
 
   --ac-radius-sm: 0.25rem;
@@ -58,6 +60,105 @@
   --ac-vfd-glow-color: var(--ac-highlight);
   --ac-vfd-glow-inner-radius: 2;
   --ac-vfd-glow-outer-radius: 4;
+
+  /* ------------------------------------------------------------------
+   * Phase 9 Task 4 polish tokens — added to support the v3 mockup
+   * direction (operator-approved 2026-05-08). These tokens express the
+   * editor's typographic and rule-weight vocabulary; consumed first by
+   * PatchesPage and intended for cross-page reuse as polish proceeds.
+   * Names follow the mockup's `--ac-*` namespace.
+   * ------------------------------------------------------------------ */
+
+  /* Display / heading font stack — Departure Mono is the design intent;
+     JetBrains Mono is the universal fallback. Inter is forbidden (banned
+     by the design language) — we don't list it. */
+  --ac-font-display: "Departure Mono", "JetBrains Mono", "IBM Plex Mono",
+    ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --ac-font-body: "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+
+  /* Data / numeric font stack — JetBrains Mono first per the v3 typography
+     scale (audiocontrol.org-aligned). IBM Plex Mono falls in behind as the
+     universal fallback. Used by every numeric readout, slot identifier,
+     range-bar tick, log entry, build-info, envelope label. Inter is
+     forbidden by the design language; never list it. */
+  --ac-font-mono: "JetBrains Mono", "IBM Plex Mono", "SFMono-Regular",
+    Menlo, monospace;
+
+  /* Eyebrow / display tracking — uppercase rows ("§ Patch parameters",
+     bank labels, status metrics) need wider tracking than body text. */
+  --ac-tracking-eyebrow: 0.14em;
+  --ac-tracking-display: 0.01em;
+
+  /* Eyebrow text size — used by panel labels, bank headers, page metric
+     captions. Falls between `--ac-text-xs` and `--ac-text-sm`. */
+  --ac-text-eyebrow: 0.78rem;
+
+  /* Rule weights — page-title underline + range-bar fills + layer accents
+     read at distinct visual weights; tokenize them so per-page polish
+     stays consistent. */
+  --ac-rule-hairline: 1px;
+  --ac-rule-medium: 2px;
+
+  /* REC-LED accent — a nod to the S-550 front panel's red PLAY LED + REC
+     LEVEL knob. Used ONLY as a rare device-active / signal-on-air
+     indicator (live-edit footer, page-title underline, virtual front-panel
+     mode LED). NOT for danger (that's --ac-color-danger), NOT for the
+     Roland blue identity (that's --ac-color-accent). */
+  --ac-color-rec: #f6533c;
+  --ac-color-rec-glow: rgba(246, 83, 60, 0.55);
+
+  /* ------------------------------------------------------------------
+   * Phase 7 Task 2 virtual-front-panel tokens — chunky-button control
+   * surface chrome (operator-approved 2026-05-12 via
+   * explorations/08-front-panel-s550.html). The panel is a matte black
+   * chassis with rubberized button blocks; these tokens carry the
+   * chassis + button gradient stops + the silkscreen label colors so
+   * the panel reads identically to the S-550 hardware reference.
+   *
+   * Scope: ONLY the virtual front panel consumes these. The editor's
+   * general surface vocabulary (cards, drawers, list rows) keeps using
+   * `--ac-color-surface-*` and `--ac-color-border-*`; the front panel
+   * is a single hardware-homage exception, not the start of a parallel
+   * chrome system.
+   * ------------------------------------------------------------------ */
+
+  /* Chassis — matte black, no decoration. Slightly darker at the
+     bottom edge to read as a recessed control bay. */
+  --ac-fp-chassis-top: hsl(220 5% 7%);
+  --ac-fp-chassis-bot: hsl(220 6% 3%);
+  --ac-fp-chassis-edge: hsl(220 6% 3%);
+
+  /* Button — chunky molded plastic. Top is slightly lighter
+     (front-lit), bottom is near-black; vertical gradient gives the 3D
+     extrusion. The bezel value is the hairline gap between buttons. */
+  --ac-fp-btn-top: hsl(220 4% 14%);
+  --ac-fp-btn-mid: hsl(220 5% 9%);
+  --ac-fp-btn-bot: hsl(220 6% 5%);
+  --ac-fp-btn-bezel: hsl(220 8% 2%);
+
+  /* Pressed state — accent-tinted (blue ink, very subtle) gradient.
+     Mirrors the `--ac-color-accent` brand without literally using it,
+     so the press feedback reads as an extension of the editor's blue
+     identity. */
+  --ac-fp-btn-pressed-top: hsl(215 30% 18%);
+  --ac-fp-btn-pressed-mid: hsl(215 28% 11%);
+  --ac-fp-btn-pressed-bot: hsl(215 32% 6%);
+
+  /* Label silkscreen — white for function/value, red for the arrow
+     glyphs (matches the operator's S-550 hardware photo). */
+  --ac-fp-label-fn: hsl(210 12% 86%);
+  --ac-fp-label-pressed: hsl(210 96% 86%);
+
+  /* Shadow palette — the four box-shadow color stops used by
+     `front-panel.css` for the chassis rim hint, the button top-edge
+     highlight, the chassis outer drop, and the button drop. Tokenized
+     here so component CSS never inlines raw `hsl(...)` colors per the
+     design-system-first rule. */
+  --ac-fp-shadow-rim-light:   hsl(220 18% 22% / 0.4);
+  --ac-fp-shadow-highlight:   hsl(0 0% 100% / 0.05);
+  --ac-fp-shadow-chassis-drop: hsl(0 0% 0% / 0.5);
+  --ac-fp-shadow-btn-drop:    hsl(0 0% 0% / 0.45);
 }
 
 :root[data-editor='s330'] {

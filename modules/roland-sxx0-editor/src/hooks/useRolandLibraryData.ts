@@ -20,13 +20,40 @@ import { useLibraryStore } from '@/stores/libraryStore';
 // Data loading
 // =========================================================================
 
+/**
+ * Pack `{ directoryName, fileName, path }` into each node's `meta` so
+ * `PluginLibraryBrowser` can forward it to the selection-mapping layer.
+ * Without this, `useRolandSelectionMapping` falls back to `node.name`
+ * (the YAML display name) and any caller that needs the on-disk
+ * directory name (e.g., `loadIndividualPatch`) gets the wrong identity
+ * whenever the YAML `name` differs from the directory name. See #418.
+ */
+function packLibraryTreeMeta(nodes: LibraryTreeNode[]): LibraryTreeNode[] {
+  return nodes.map((node) => ({
+    ...node,
+    meta: {
+      directoryName: node.directoryName,
+      fileName: node.fileName,
+      path: node.path,
+    },
+    children: node.children ? packLibraryTreeMeta(node.children) : undefined,
+  }));
+}
+
 async function loadAllLibraryData(handle: StorageDirectoryHandle) {
   const [setList, toneList, patchList, tonesTreeData, patchesTreeData, commonSamplesTreeData] = await Promise.all([
     listSets(handle), listIndividualTones(handle), listIndividualPatches(handle),
     listIndividualTonesTree(handle), listIndividualPatchesTree(handle),
     listCommonSamplesTree(handle),
   ]);
-  return { setList, toneList, patchList, tonesTreeData, patchesTreeData, commonSamplesTreeData };
+  return {
+    setList,
+    toneList,
+    patchList,
+    tonesTreeData: packLibraryTreeMeta(tonesTreeData),
+    patchesTreeData: packLibraryTreeMeta(patchesTreeData),
+    commonSamplesTreeData: packLibraryTreeMeta(commonSamplesTreeData),
+  };
 }
 
 // =========================================================================

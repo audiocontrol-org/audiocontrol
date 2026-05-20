@@ -1,0 +1,656 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Phase 7 — S-550 Virtual Front Panel — v2 (Control Surface)</title>
+
+<!--
+  Phase 7 Task 1 — S-550 Virtual Front Panel design exploration v2.
+
+  v1 BUILT PRETTY CHROME AROUND A CONTROL SURFACE. It invented an LCD,
+  a numeric keypad, status LEDs, rack ears with badges and screws —
+  none of which exist in the canonical S-330 VirtualFrontPanel
+  component. That mockup failed the brief.
+
+  v2 IS THE CONTROL SURFACE.
+
+  Canonical control set (modules/roland-sxx0-editor/src/components/
+  front-panel/): EXACTLY 11 buttons, no more, no less.
+
+    Navigation (NavigationPad.tsx):    up, down, left, right
+    Value     (ValueButtons.tsx):       dec, inc
+    Function  (FunctionButtonRow.tsx):  MODE, MENU, SUB, COM, EXEC
+
+  Visual aesthetic — taken from the real S-550 hardware photo the
+  operator supplied:
+
+    - Matte black chassis. No chrome, no brushed aluminum, no badges,
+      no screws-as-decoration. The buttons ARE the design.
+    - Chunky black rubberized button blocks with rounded corners,
+      slight 3D extrusion, hairline grooves between buttons.
+    - White silkscreen labels for function/value buttons.
+    - RED silkscreen arrows for navigation (not white) — matches the
+      photo exactly; the S-550 calls out the nav cluster as visually
+      distinct from the function buttons.
+    - One acknowledged LED capability — a small red dot inset on a
+      button surface when actively pressed (homage to the PLAY LED in
+      the photo, repurposed as keyboard-press feedback).
+
+  Production mapping: the React component lives at
+  modules/roland-sxx0-editor/src/components/front-panel/.  Each
+  <button data-fp="…"> below maps to a FrontPanelButton call in the
+  existing component tree. No new button types, no new hook surface.
+-->
+
+<style>
+  :root {
+    color-scheme: dark;
+
+    /* v3 design tokens (mirrors editor-core/src/design/tokens.css) */
+    --ac-color-bg:           220 24% 7%;
+    --ac-color-surface:      220 18% 11%;
+    --ac-color-fg:           215 18% 92%;
+    --ac-color-fg-muted:     220 12% 60%;
+    --ac-color-fg-subtle:    220 10% 42%;
+    --ac-color-border:       220 18% 22%;
+    --ac-color-accent:       215 78% 58%;
+    --ac-color-rec:          358 72% 58%;
+    --ac-color-success:      152 55% 52%;
+
+    /* S-550 hardware chassis — matte black, no decoration */
+    --fp-chassis:        220 5% 7%;
+    --fp-chassis-edge:   220 6% 3%;
+
+    /* S-550 hardware button — chunky rubberized black plastic.
+       Top of button is slightly lighter (front-lit), bottom is
+       deepest black. Hairline gap between buttons reads as the
+       physical bezel between molded plastic keys. */
+    --fp-btn-top:        220 4% 14%;
+    --fp-btn-mid:        220 5% 9%;
+    --fp-btn-bot:        220 6% 5%;
+    --fp-btn-bezel:      220 8% 2%;
+
+    /* Pressed state — slightly accent-shifted (blue ink, very subtle),
+       deeper inset shadow, label gains highlight. */
+    --fp-btn-pressed-top: 215 30% 18%;
+    --fp-btn-pressed-mid: 215 28% 11%;
+    --fp-btn-pressed-bot: 215 32% 6%;
+
+    /* Label silkscreen — white for function/value, red for arrows */
+    --fp-label-fn:       210 12% 86%;
+    --fp-label-arrow:    358 78% 58%;
+    --fp-label-pressed:  210 96% 86%;
+
+    /* LED inset — small red dot on actively-pressed key */
+    --fp-led:            358 86% 62%;
+
+    /* typography */
+    --ac-font-display: "Departure Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --ac-font-body:    "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --ac-font-mono:    "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    /* The silkscreen label face — clean sans, all-caps, slightly
+       tightened tracking. Matches the photo's font (which looks like
+       a 1980s Helvetica condensed). IBM Plex Sans is the closest
+       modern equivalent already in the design system. */
+    --fp-label-face:     "IBM Plex Sans", "Helvetica Neue", system-ui, sans-serif;
+
+    --ac-tracking-eyebrow: 0.14em;
+    --ac-text-eyebrow:     0.78rem;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    background: hsl(var(--ac-color-bg));
+    color: hsl(var(--ac-color-fg));
+    font-family: var(--ac-font-body);
+    font-size: 16px;
+    line-height: 1.4;
+    min-height: 100vh;
+  }
+
+  /* ============================================================
+     Page wrapper — minimal scaffolding for the mockup itself
+     ============================================================ */
+  .page {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem;
+    display: grid;
+    gap: 2rem;
+  }
+
+  .page-header h1 {
+    font-family: var(--ac-font-display);
+    font-size: 1.55rem;
+    margin: 0 0 0.4rem 0;
+    letter-spacing: 0.01em;
+  }
+  .page-header .eyebrow {
+    font-family: var(--ac-font-display);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    font-size: var(--ac-text-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+    margin: 0 0 0.5rem 0;
+  }
+  .page-header .red-rule {
+    height: 2px;
+    background: hsl(var(--ac-color-rec));
+    width: 4rem;
+    margin: 0.75rem 0;
+  }
+  .page-header p {
+    color: hsl(var(--ac-color-fg-muted));
+    font-size: 0.95rem;
+    margin: 0 0 0.4em 0;
+    max-width: 64ch;
+  }
+  .page-header code {
+    font-family: var(--ac-font-mono);
+    font-size: 0.85em;
+    color: hsl(var(--ac-color-fg));
+    background: hsl(var(--ac-color-surface));
+    padding: 0.05em 0.3em;
+    border-radius: 2px;
+  }
+
+  /* ============================================================
+     THE CONTROL SURFACE — only what's here is what's real
+     ============================================================ */
+  .fp {
+    /* Chassis: just a black panel. Slight inset shadow at the
+       outer edge so it reads as a recessed control bay rather than
+       a floating chip — same way a hardware panel sits within a
+       rack-bezel frame. */
+    background:
+      linear-gradient(
+        180deg,
+        hsl(var(--fp-chassis)) 0%,
+        hsl(var(--fp-chassis-edge)) 100%
+      );
+    padding: 0.85rem;
+    border-radius: 3px;
+    box-shadow:
+      0 1px 0 hsl(var(--ac-color-border) / 0.4) inset,
+      0 0 0 1px hsl(var(--fp-chassis-edge)) inset,
+      0 8px 24px hsl(0 0% 0% / 0.5);
+    display: grid;
+    gap: 0.85rem;
+    /* Sized to read at a glance — landscape strip. Real S-330
+       VirtualFrontPanel widget is 280×200 portrait; the S-550
+       variant takes the same 11 controls into a wider landscape
+       shape that mirrors the hardware. The mockup is shown at
+       ~720 px wide here; production component flexes to its
+       container. */
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  /* 7-column × 2-row button grid. Mirrors the S-550 hardware's
+     physical button layout (per the operator's reference photo).
+     Three cells are blank — they're the hairline gaps between
+     button clusters on the hardware, preserved here so the cross
+     arrow layout reads at a glance. */
+  .fp__grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 0.5rem;
+    aspect-ratio: 5 / 1.5;
+  }
+
+  /* ============================================================
+     BUTTON — the only meaningful visual element
+     ============================================================ */
+  .fp__btn {
+    /* Reset button defaults */
+    appearance: none;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    cursor: pointer;
+    color: hsl(var(--fp-label-fn));
+
+    /* Chunky 3D-extruded matte black plastic — three-stop
+       gradient gives a subtle vertical shading from a faintly-lit
+       top edge to a near-black bottom. */
+    background:
+      linear-gradient(
+        180deg,
+        hsl(var(--fp-btn-top)) 0%,
+        hsl(var(--fp-btn-mid)) 55%,
+        hsl(var(--fp-btn-bot)) 100%
+      );
+    border-radius: 3px;
+    box-shadow:
+      /* hairline highlight on top — front-lit edge */
+      0 1px 0 hsl(var(--ac-color-fg) / 0.05) inset,
+      /* deep edge below — gives the molded-plastic feel */
+      0 -1px 0 hsl(var(--fp-btn-bezel)) inset,
+      /* outer bezel — separates buttons in the grid */
+      0 0 0 1px hsl(var(--fp-btn-bezel)),
+      /* drop shadow underneath the button */
+      0 2px 2px hsl(0 0% 0% / 0.45);
+
+    /* Label sits centered, all-caps silkscreen */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-family: var(--fp-label-face);
+    font-size: clamp(0.6rem, 1.2vw, 0.78rem);
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    line-height: 1.05;
+    user-select: none;
+    -webkit-user-select: none;
+
+    /* The pressed transition. Real hardware buttons have ~80ms
+       of mechanical travel; mirroring that gives the click a
+       tactile feel even without haptics. */
+    transition:
+      background 80ms ease,
+      box-shadow 80ms ease,
+      transform 80ms ease,
+      color 80ms ease;
+
+    position: relative;
+  }
+
+  .fp__btn:hover { color: hsl(var(--fp-label-pressed)); }
+  .fp__btn:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px hsl(var(--ac-color-accent) / 0.55),
+      0 1px 0 hsl(var(--ac-color-fg) / 0.05) inset,
+      0 -1px 0 hsl(var(--fp-btn-bezel)) inset,
+      0 2px 2px hsl(0 0% 0% / 0.45);
+  }
+
+  /* Pressed state — both mouse :active and keyboard-driven
+     data-pressed override. Background shifts to the accent-tinted
+     pressed gradient, label brightens, shadow inverts. */
+  .fp__btn:active,
+  .fp__btn[data-pressed="true"] {
+    transform: translateY(1px);
+    background:
+      linear-gradient(
+        180deg,
+        hsl(var(--fp-btn-pressed-top)) 0%,
+        hsl(var(--fp-btn-pressed-mid)) 55%,
+        hsl(var(--fp-btn-pressed-bot)) 100%
+      );
+    color: hsl(var(--fp-label-pressed));
+    box-shadow:
+      0 1px 3px hsl(var(--fp-btn-bezel)) inset,
+      0 0 0 1px hsl(var(--ac-color-accent) / 0.35),
+      0 0 0 1px hsl(var(--fp-btn-bezel));
+  }
+
+  /* The active-LED — a small red dot rendered on the button's
+     top-left corner when the button is currently pressed. Visual
+     homage to the PLAY LED in the operator's reference photo;
+     functionally, it gives a clear "yes, this fired" indicator
+     for keyboard-driven presses (where the mouse-:active is
+     never visible). */
+  .fp__btn[data-pressed="true"]::before {
+    content: '';
+    position: absolute;
+    top: clamp(0.2rem, 0.6vw, 0.32rem);
+    left: clamp(0.2rem, 0.6vw, 0.32rem);
+    width: clamp(0.28rem, 0.8vw, 0.42rem);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: hsl(var(--fp-led));
+    box-shadow:
+      0 0 5px hsl(var(--fp-led) / 0.7),
+      0 0 1.5px hsl(var(--fp-led));
+  }
+
+  /* Arrow buttons override the silkscreen color to red and use a
+     larger glyph (the photo's arrows are bigger than the function
+     labels). Otherwise inherit everything from .fp__btn. */
+  .fp__btn--arrow {
+    color: hsl(var(--fp-label-arrow));
+    font-family: var(--ac-font-display);
+    font-size: clamp(0.85rem, 1.7vw, 1.15rem);
+    line-height: 1;
+  }
+  .fp__btn--arrow:hover,
+  .fp__btn--arrow:active,
+  .fp__btn--arrow[data-pressed="true"] {
+    color: hsl(var(--fp-led));
+    text-shadow: 0 0 4px hsl(var(--fp-led) / 0.55);
+  }
+
+  /* Value buttons (DEC/INC) — same chunky look, larger sign glyph */
+  .fp__btn--value {
+    font-family: var(--ac-font-display);
+    font-size: clamp(0.85rem, 1.7vw, 1.15rem);
+  }
+
+  /* Stacked label for SUB MENU (the photo wraps SUB / MENU onto
+     two lines). Apply via .fp__btn--stack — keeps the markup
+     simple while honoring the hardware's typography. */
+  .fp__btn--stack {
+    font-size: clamp(0.5rem, 1vw, 0.66rem);
+    letter-spacing: 0.05em;
+    line-height: 1.05;
+    flex-direction: column;
+    gap: 0.05rem;
+  }
+
+  /* Blank cells in the grid — non-interactive spacers preserving
+     the hairline-gap rhythm between button clusters. Visually
+     identical to the chassis. */
+  .fp__blank {
+    background: transparent;
+    pointer-events: none;
+  }
+
+  /* ============================================================
+     STATUS — a single line below the panel showing the last
+     control fired. The mockup is a CONTROL surface; this line
+     is the only non-button element, and its only job is to
+     prove the interaction landed.
+     ============================================================ */
+  .fp-status {
+    font-family: var(--ac-font-mono);
+    font-size: 0.78rem;
+    color: hsl(var(--ac-color-fg-muted));
+    display: flex;
+    gap: 1.4rem;
+    align-items: baseline;
+    flex-wrap: wrap;
+    padding-top: 0.5rem;
+    border-top: 1px solid hsl(var(--ac-color-border));
+  }
+  .fp-status .lbl {
+    color: hsl(var(--ac-color-fg-subtle));
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    font-size: var(--ac-text-eyebrow);
+    margin-right: 0.4em;
+  }
+  .fp-status .val { color: hsl(var(--ac-color-fg)); }
+  .fp-status .val--live { color: hsl(var(--ac-color-success)); }
+
+  /* ============================================================
+     ANNOTATIONS — design intent + production-contract map
+     ============================================================ */
+  .meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .meta__card {
+    border: 1px solid hsl(var(--ac-color-border));
+    border-radius: 3px;
+    padding: 1rem;
+    background: hsl(var(--ac-color-surface) / 0.5);
+  }
+  .meta__card h3 {
+    font-family: var(--ac-font-display);
+    font-size: 0.82rem;
+    margin: 0 0 0.4rem 0;
+    color: hsl(var(--ac-color-accent));
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .meta__card p {
+    font-size: 0.85rem;
+    color: hsl(var(--ac-color-fg-muted));
+    margin: 0 0 0.4em 0;
+  }
+  .meta__card code {
+    font-family: var(--ac-font-mono);
+    font-size: 0.78rem;
+    color: hsl(var(--ac-color-fg));
+    background: hsl(var(--ac-color-bg));
+    padding: 0.05em 0.25em;
+    border-radius: 2px;
+  }
+
+  /* Roster — the 11 controls listed flat for cross-check. */
+  .roster {
+    display: grid;
+    grid-template-columns: 6em 1fr;
+    gap: 0.4rem 1rem;
+    font-size: 0.86rem;
+  }
+  .roster .lbl {
+    color: hsl(var(--ac-color-fg-subtle));
+    font-family: var(--ac-font-display);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    font-size: var(--ac-text-eyebrow);
+  }
+  .roster .val { color: hsl(var(--ac-color-fg-muted)); font-family: var(--ac-font-mono); font-size: 0.82rem; }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <header class="page-header">
+    <p class="eyebrow">Phase 7 — Virtual Front Panel — Exploration v2</p>
+    <h1>S-550 — Control Surface</h1>
+    <div class="red-rule" aria-hidden="true"></div>
+    <p>
+      <strong>v1 built pretty chrome around a control surface. v2 IS
+      the control surface.</strong> Stripped: LCD, numeric keypad,
+      status-LED strip, rack ears, badges, screws. None of those are
+      controls. The S-550 hardware photo proves the design language is
+      a matte black chassis with chunky rubberized buttons — no
+      decoration. The buttons ARE the design.
+    </p>
+    <p>
+      Controls match the existing S-330 <code>VirtualFrontPanel</code>
+      component exactly: 4 navigation arrows, 2 value buttons, 5
+      function buttons. Visual aesthetic taken from the operator's
+      reference photo: chunky black plastic, white silkscreen labels,
+      red arrow glyphs. Press a button → it lands as
+      <code>useFrontPanel.pressButton(<em>id</em>)</code> just like on
+      the S-330.
+    </p>
+  </header>
+
+  <!-- ============================================================
+       THE CONTROL SURFACE — 11 buttons, nothing else
+       ============================================================ -->
+  <section aria-label="S-550 virtual front panel — control surface mockup">
+
+    <div class="fp" role="group" aria-label="S-550 front panel — 11 controls">
+
+      <div class="fp__grid">
+
+        <!-- ROW 1: MODE | MENU | SUB | (blank) | ▲ | (blank) | COM -->
+        <button class="fp__btn"                 data-fp="mode"     aria-label="Mode">MODE</button>
+        <button class="fp__btn"                 data-fp="menu"     aria-label="Menu">MENU</button>
+        <button class="fp__btn fp__btn--stack"  data-fp="sub-menu" aria-label="Sub menu">
+          <span>SUB</span>
+          <span>MENU</span>
+        </button>
+        <span class="fp__btn fp__blank"  aria-hidden="true"></span>
+        <button class="fp__btn fp__btn--arrow"  data-fp="up"       aria-label="Arrow up">▲</button>
+        <span class="fp__btn fp__blank"  aria-hidden="true"></span>
+        <button class="fp__btn"                 data-fp="com"      aria-label="Command">COM</button>
+
+        <!-- ROW 2: DEC | INC | (blank) | ◀ | ▼ | ▶ | EXEC -->
+        <button class="fp__btn fp__btn--value"  data-fp="dec"      aria-label="Decrement">－</button>
+        <button class="fp__btn fp__btn--value"  data-fp="inc"      aria-label="Increment">＋</button>
+        <span class="fp__btn fp__blank"  aria-hidden="true"></span>
+        <button class="fp__btn fp__btn--arrow"  data-fp="left"     aria-label="Arrow left">◀</button>
+        <button class="fp__btn fp__btn--arrow"  data-fp="down"     aria-label="Arrow down">▼</button>
+        <button class="fp__btn fp__btn--arrow"  data-fp="right"    aria-label="Arrow right">▶</button>
+        <button class="fp__btn"                 data-fp="execute"  aria-label="Execute">EXEC</button>
+
+      </div>
+    </div>
+
+    <p class="fp-status">
+      <span><span class="lbl">Transport</span><span class="val val--live">connected (simulated)</span></span>
+      <span><span class="lbl">Last press</span><span class="val" id="last-press">—</span></span>
+      <span><span class="lbl">Tip</span><span class="val">Arrow keys · +/− · F1-F5</span></span>
+    </p>
+  </section>
+
+  <!-- ============================================================
+       ROSTER — flat listing of the 11 controls for cross-check
+       ============================================================ -->
+  <section class="meta__card">
+    <h3>Control roster — 11 controls, no more, no less</h3>
+    <p>
+      Cross-check against the React component:
+      <code>NavigationPad.tsx</code> + <code>ValueButtons.tsx</code>
+      + <code>FunctionButtonRow.tsx</code>. Any control here that is
+      not on that list is invented and must be removed; any control
+      there that is not here is missing and must be added.
+    </p>
+    <div class="roster">
+      <span class="lbl">Navigation</span><span class="val">up · down · left · right</span>
+      <span class="lbl">Value</span><span class="val">dec · inc</span>
+      <span class="lbl">Function</span><span class="val">mode · menu · sub-menu · com · execute</span>
+      <span class="lbl">Total</span><span class="val">11</span>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       PRODUCTION CONTRACT — how this maps to the React component
+       ============================================================ -->
+  <section class="meta">
+
+    <div class="meta__card">
+      <h3>Production mapping</h3>
+      <p>
+        Every <code>&lt;button data-fp="X"&gt;</code> in this mockup
+        maps to a <code>FrontPanelButton</code> render in the existing
+        React component. Click → <code>useFrontPanel.pressButton(X)</code>.
+        No new button identifiers, no new hook surface. The S-550
+        variant is a layout + styling change ONLY — same controls,
+        same behavior, same SysEx out.
+      </p>
+    </div>
+
+    <div class="meta__card">
+      <h3>Aesthetic — taken from hardware</h3>
+      <p>
+        Matte black chassis. Chunky molded-plastic button surfaces with
+        a faint top-edge highlight (front-lit on the real hardware) and
+        a near-black bottom. Hairline bezel grooves between buttons.
+        White silkscreen for function/value labels; red silkscreen for
+        the four arrow glyphs — same color contrast the photo shows.
+        No decorative chrome anywhere.
+      </p>
+    </div>
+
+    <div class="meta__card">
+      <h3>Pressed-state LED</h3>
+      <p>
+        A small red LED dot appears on the top-left of a button when
+        it's actively pressed — homage to the PLAY LED on the real
+        hardware, repurposed as keyboard-press feedback. The mouse
+        <code>:active</code> alone isn't visible during keyboard-driven
+        presses; the LED makes the input land. Functional, not
+        decorative.
+      </p>
+    </div>
+
+    <div class="meta__card">
+      <h3>Keyboard shortcuts</h3>
+      <p>
+        Same as the S-330 component: <code>↑ ↓ ← →</code> for
+        navigation, <code>+ −</code> for value, <code>F1 F2 F3 F4 F5</code>
+        for <code>MODE / MENU / SUB / COM / EXEC</code>. Bindings live
+        in <code>useFrontPanel.ts</code>; the S-550 layout inherits them
+        unchanged.
+      </p>
+    </div>
+
+    <div class="meta__card">
+      <h3>Layout — mirrors the hardware photo</h3>
+      <p>
+        7-column × 2-row grid, three cells blank to preserve the cross
+        arrow cluster's visual identity. Row 1: function group left
+        (MODE/MENU/SUB), arrow UP centered, COM right. Row 2: value
+        group left (DEC/INC), arrow LEFT/DOWN/RIGHT centered, EXEC
+        right. Same physical rhythm a user trained on the hardware
+        would expect.
+      </p>
+    </div>
+
+    <div class="meta__card">
+      <h3>What v2 deliberately does NOT have</h3>
+      <p>
+        No LCD, no numeric keypad, no status-LED strip, no rack ears,
+        no badges, no screws. v1 had all of those — every one was
+        invented decoration that drowned the actual interface. None of
+        them are controls; the panel exists to fire controls; therefore
+        none of them belong here.
+      </p>
+    </div>
+
+  </section>
+
+</div>
+
+<script>
+  // The mockup is a CONTROL surface — these handlers prove the
+  // interactions land. In production each pressed() call routes
+  // through useFrontPanel.pressButton(id); here we just visualize.
+
+  const lastPress = document.getElementById('last-press');
+
+  const FP_BY_KEY = {
+    ArrowUp:    'up',
+    ArrowDown:  'down',
+    ArrowLeft:  'left',
+    ArrowRight: 'right',
+    '+':        'inc',
+    '=':        'inc',
+    '-':        'dec',
+    '_':        'dec',
+    F1:         'mode',
+    F2:         'menu',
+    F3:         'sub-menu',
+    F4:         'com',
+    F5:         'execute',
+    Enter:      'execute',
+  };
+
+  function pressed(id) {
+    const btn = document.querySelector(`.fp__btn[data-fp="${id}"]`);
+    if (!btn) return;
+    btn.setAttribute('data-pressed', 'true');
+    setTimeout(() => btn.removeAttribute('data-pressed'), 180);
+    lastPress.textContent = id;
+  }
+
+  // Click handlers on every real button
+  document.querySelectorAll('button.fp__btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.fp;
+      if (id) pressed(id);
+    });
+  });
+
+  // Keyboard shortcuts — same set as the S-330 component (per
+  // VirtualFrontPanel.tsx header comment).
+  window.addEventListener('keydown', (e) => {
+    const id = FP_BY_KEY[e.key];
+    if (!id) return;
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+    e.preventDefault();
+    pressed(id);
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,10 @@
+format: sample
+version: 1
+name: basic-sine
+file: sample.wav
+sampleRate: 30000
+loopMode: forward
+loopStart: 0
+loopEnd: 1000
+rootKey: 60
+description: Common-area sample fixture for Wave 4 library-flow capability tests.

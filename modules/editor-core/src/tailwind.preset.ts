@@ -31,7 +31,7 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['var(--ac-font-sans)'],
+        sans: ['var(--ac-font-body)'],
         mono: ['var(--ac-font-mono)'],
       },
       spacing: {

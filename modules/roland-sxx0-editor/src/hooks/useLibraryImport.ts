@@ -36,14 +36,18 @@ interface UseLibraryImportReturn extends OperationState {
   closeImportToneDialog: () => void;
   closeImportPatchDialog: () => void;
 
-  // Import handlers
+  // Import handlers.
+  //
+  // `waveBank: number` is the editor-side contract for S-series devices: S-330
+  // accepts 0/1, S-550 accepts 0..3. The device client validates the bank
+  // against its own range at runtime — see `S330ImportToneInput`.
   handleImportTone: (params: {
     setName: string;
     toneFile: string;
     tone: SamplerTone;
     wavData: Uint8Array;
     targetSlot: number;
-    waveBank: 0 | 1;
+    waveBank: number;
     segmentTop: number;
   }) => Promise<void>;
 
@@ -56,7 +60,7 @@ interface UseLibraryImportReturn extends OperationState {
       tone: SamplerTone;
       wavData: Uint8Array;
       targetSlot: number;
-      waveBank: 0 | 1;
+      waveBank: number;
       segmentTop: number;
     }>;
   }) => Promise<void>;
@@ -104,7 +108,7 @@ export function useLibraryImport({
     tone: SamplerTone;
     wavData: Uint8Array;
     targetSlot: number;
-    waveBank: 0 | 1;
+    waveBank: number;
     segmentTop: number;
   }) => {
     if (!clientRef.current) return;
@@ -167,7 +171,7 @@ export function useLibraryImport({
       tone: SamplerTone;
       wavData: Uint8Array;
       targetSlot: number;
-      waveBank: 0 | 1;
+      waveBank: number;
       segmentTop: number;
     }>;
   }) => {

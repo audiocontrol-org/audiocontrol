@@ -6,11 +6,13 @@
  */
 
 import { useState, useCallback, type MutableRefObject } from 'react';
-import type { SamplerClientInterface, SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
+import { useDeviceConfig } from '@/context/DeviceConfigContext';
+import { type SamplerClientInterface, type SamplerTone, type SamplerPatch, toneHasWaveData } from '@/core/midi/SamplerClient';
 import type { DeviceDragData } from '@/components/library/DeviceMemoryPanel';
 import type { OperationProgress } from '@/types/import-operation';
 import {
   exportToneToDirectory,
+  exportToneAsDownload,
   exportPatchToDirectory,
   getPatchToneDependencies,
   listIndividualTones,
@@ -38,6 +40,18 @@ interface UseLibraryExportOptions {
   patches: (SamplerPatch | undefined)[];
   setIndividualTones: (tones: LibraryToneInfo[]) => void;
   setIndividualPatches: (patches: LibraryPatchInfo[]) => void;
+  /**
+   * When true and `libraryHandle` is null, `handleExportTone` falls back to
+   * downloading the tone YAML + WAV via `exportToneAsDownload`. When false
+   * (default) and `libraryHandle` is null, `handleExportTone` throws.
+   *
+   * This preserves the legacy TonesPage behavior, where the export dialog
+   * is allowed to open even when no library is connected (the user gets a
+   * file download instead). PatchesPage does NOT need this — it gates the
+   * dialog on a connected library — and there is no patch-download fallback
+   * in `library-service` to call.
+   */
+  allowDownloadFallback?: boolean;
 }
 
 interface UseLibraryExportResult {
@@ -60,6 +74,12 @@ interface UseLibraryExportResult {
   handleExportTone: (toneName: string, toneIndex: number) => Promise<void>;
   handleExportPatch: (patchName: string, patchIndex: number) => Promise<void>;
 
+  // Imperative dialog openers (for non-DnD entry points: list-row buttons,
+  // editor toolbar buttons, etc.). Open the same dialog the drag-and-drop
+  // handlers use, but addressable by index.
+  openExportToneDialog: (toneIndex: number) => void;
+  openExportPatchDialog: (patchIndex: number) => void;
+
   // Dialog closers (for onOpenChange)
   closeExportToneDialog: () => void;
   closeExportPatchDialog: () => void;
@@ -72,7 +92,13 @@ export function useLibraryExport({
   patches,
   setIndividualTones,
   setIndividualPatches,
+  allowDownloadFallback = false,
 }: UseLibraryExportOptions): UseLibraryExportResult {
+  // Device-aware slot label formatter — used in user-facing progress / error text.
+  // Routing through MemoryLayout means S-550 patches >= block 2 render with the
+  // Roman-numeral block prefix (II11..II28 etc.) instead of P31..P48 arithmetic.
+  const { memoryLayout } = useDeviceConfig();
+
   // Export tone dialog state
   const [exportToneDialog, setExportToneDialog] = useState<ExportToneDialogState | null>(null);
   const [exportProgress, setExportProgress] = useState<OperationProgress | undefined>(undefined);
@@ -104,6 +130,39 @@ export function useLibraryExport({
     }
   }, [isExporting]);
 
+  // Imperatively open the export-tone dialog by tone index.
+  // Mirrors `handleDropDeviceTone` for callers that don't go through DnD
+  // (e.g. a list-row "Export" button, a toolbar action). Same effects:
+  // sets the dialog state, clears progress and error. Throws if the tone
+  // isn't loaded — the caller is responsible for ensuring the tone is
+  // present in the device-data store before invoking export.
+  const openExportToneDialog = useCallback((toneIndex: number) => {
+    if (!libraryHandle && !allowDownloadFallback) {
+      throw new Error('Library not connected. Connect a library before exporting.');
+    }
+    const tone = tones[toneIndex];
+    if (!tone) {
+      throw new Error('Tone not loaded from device. Try refreshing device data first.');
+    }
+    setExportProgress(undefined);
+    setExportError(null);
+    setExportToneDialog({ tone, toneIndex });
+  }, [tones, libraryHandle, allowDownloadFallback]);
+
+  // Imperatively open the export-patch dialog by patch index.
+  const openExportPatchDialog = useCallback((patchIndex: number) => {
+    if (!libraryHandle) {
+      throw new Error('Library not connected. Connect a library before exporting.');
+    }
+    const patch = patches[patchIndex];
+    if (!patch) {
+      throw new Error('Patch not loaded from device. Try refreshing device data first.');
+    }
+    setExportPatchProgress(undefined);
+    setExportPatchError(null);
+    setExportPatchDialog({ patch, patchIndex });
+  }, [patches, libraryHandle]);
+
   // Handle drop from device memory to library (export tone) - opens dialog
   const handleDropDeviceTone = useCallback((data: DeviceDragData) => {
     if (data.type !== 'tone') {
@@ -113,7 +172,6 @@ export function useLibraryExport({
     const tone = tones[data.index];
     if (!tone) {
       throw new Error('Tone not loaded from device. Try refreshing device data first.');
-      return;
     }
 
     // Open the export dialog
@@ -131,7 +189,6 @@ export function useLibraryExport({
     const patch = patches[data.index];
     if (!patch) {
       throw new Error('Patch not loaded from device. Try refreshing device data first.');
-      return;
     }
 
     // Open the export dialog
@@ -142,8 +199,11 @@ export function useLibraryExport({
 
   // Handle export tone from dialog
   const handleExportTone = useCallback(async (toneName: string, toneIndex: number) => {
-    if (!libraryHandle || !clientRef.current || !exportToneDialog) {
-      throw new Error('Library or device not connected');
+    if (!clientRef.current || !exportToneDialog) {
+      throw new Error('Device not connected');
+    }
+    if (!libraryHandle && !allowDownloadFallback) {
+      throw new Error('Library not connected');
     }
 
     const tone = exportToneDialog.tone;
@@ -176,26 +236,34 @@ export function useLibraryExport({
 
       const waveBytes = waveData.data.length;
 
-      // Step 2: Write to library
+      // Step 2: Write to library (or download as files if no library connected
+      // and fallback is enabled — preserves the legacy TonesPage behavior).
+      const writingToLibrary = libraryHandle !== null;
       setExportProgress({
         currentStep: 2,
         totalSteps: 2,
-        stepLabel: 'Writing to library',
+        stepLabel: writingToLibrary ? 'Writing to library' : 'Downloading files',
         bytesSent: 0,
         bytesTotal: 0,
         bytesSentAllSteps: waveBytes,
         bytesTotalAllSteps: waveBytes,
       });
 
-      await exportToneToDirectory(
-        libraryHandle,
-        { ...tone, name: toneName },
-        waveData,
-        toneName,
-        () => {
-          // Writing is fast — just keep the progress at step 2
-        }
-      );
+      if (libraryHandle) {
+        await exportToneToDirectory(
+          libraryHandle,
+          { ...tone, name: toneName },
+          waveData,
+          toneName,
+          () => {
+            // Writing is fast — just keep the progress at step 2
+          }
+        );
+      } else {
+        // allowDownloadFallback path: download YAML + WAV instead of writing
+        // to a library directory.
+        await exportToneAsDownload({ ...tone, name: toneName }, waveData, toneName, () => {});
+      }
 
       // Final state: complete
       setExportProgress({
@@ -208,18 +276,20 @@ export function useLibraryExport({
         bytesTotalAllSteps: waveBytes,
       });
 
-      // Refresh individual tones list
-      const updatedTones = await listIndividualTones(libraryHandle);
-      setIndividualTones(updatedTones);
+      // Refresh individual tones list (only meaningful when written to library)
+      if (libraryHandle) {
+        const updatedTones = await listIndividualTones(libraryHandle);
+        setIndividualTones(updatedTones);
+      }
     } catch (err) {
-      console.error('[LibraryPage] Failed to export tone:', err);
+      console.error('[useLibraryExport] Failed to export tone:', err);
       const message = err instanceof Error ? err.message : 'Failed to export tone';
       setExportError(message);
       throw err;
     } finally {
       setIsExporting(false);
     }
-  }, [libraryHandle, clientRef, exportToneDialog, setIndividualTones]);
+  }, [libraryHandle, clientRef, exportToneDialog, setIndividualTones, allowDownloadFallback]);
 
   // Handle export patch from dialog
   const handleExportPatch = useCallback(async (patchName: string, _patchIndex: number) => {
@@ -245,7 +315,7 @@ export function useLibraryExport({
         if (!tone) {
           throw new Error(`Tone at slot ${slot} not loaded from device. Try refreshing device data first.`);
         }
-        if (tone.wave.segmentLength > 0) {
+        if (toneHasWaveData(tone)) {
           originalSlotSet.add(slot);
         } else {
           subToneSlots.push(slot);
@@ -260,7 +330,7 @@ export function useLibraryExport({
         if (!originalSlotSet.has(sourceSlot)) {
           const sourceTone = tones[sourceSlot];
           if (!sourceTone) {
-            throw new Error(`Source tone T${sourceSlot + 1} for sub-tone T${slot + 1} not loaded from device. Try refreshing device data first.`);
+            throw new Error(`Source tone ${memoryLayout.formatToneSlot(sourceSlot)} for sub-tone ${memoryLayout.formatToneSlot(slot)} not loaded from device. Try refreshing device data first.`);
           }
           originalSlotSet.add(sourceSlot);
         }
@@ -275,7 +345,7 @@ export function useLibraryExport({
       setExportPatchProgress({
         currentStep: 1, totalSteps,
         stepLabel: originalSlots.length > 0
-          ? `Fetching tone T${originalSlots[0] + 1}`
+          ? `Fetching tone ${memoryLayout.formatToneSlot(originalSlots[0])}`
           : 'Writing files to library',
         bytesSent: 0, bytesTotal: 0,
         bytesSentAllSteps: 0, bytesTotalAllSteps: 0,
@@ -299,7 +369,7 @@ export function useLibraryExport({
             setExportPatchProgress({
               currentStep: i + 1,
               totalSteps,
-              stepLabel: `Fetching tone T${slot + 1}`,
+              stepLabel: `Fetching tone ${memoryLayout.formatToneSlot(slot)}`,
               bytesSent: received,
               bytesTotal: total,
               bytesSentAllSteps: completedWaveBytes,
@@ -354,7 +424,7 @@ export function useLibraryExport({
       const updatedPatches = await listIndividualPatches(libraryHandle);
       setIndividualPatches(updatedPatches);
     } catch (err) {
-      console.error('[LibraryPage] Failed to export patch:', err);
+      console.error('[useLibraryExport] Failed to export patch:', err);
       const message = err instanceof Error ? err.message : 'Failed to export patch';
       setExportPatchError(message);
       throw err;
@@ -375,6 +445,8 @@ export function useLibraryExport({
     handleDropDevicePatch,
     handleExportTone,
     handleExportPatch,
+    openExportToneDialog,
+    openExportPatchDialog,
     closeExportToneDialog,
     closeExportPatchDialog,
   };

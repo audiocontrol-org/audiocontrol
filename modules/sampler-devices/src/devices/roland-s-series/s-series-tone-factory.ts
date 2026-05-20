@@ -80,7 +80,6 @@ function buildDefaultToneBody(
             polarity: false,
             offset: 64,
         },
-        tvaLfoDepth: 0,
         transpose,
         fineTune: 0,
         tvf: {

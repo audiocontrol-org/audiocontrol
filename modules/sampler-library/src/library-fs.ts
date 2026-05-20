@@ -55,6 +55,15 @@ export interface LibraryTreeNode {
   fileName?: string;
   /** Directory name for patches/drum-kits */
   directoryName?: string;
+  /**
+   * Bag of metadata forwarded to plugin-aware library browsers
+   * (`PluginLibraryBrowser` reads `node.meta`). Editor data-hooks should
+   * pack `{ directoryName, fileName, path }` here so the
+   * selection-mapping layer can resolve identities without falling back
+   * to `node.name` (which is the YAML display name, not the on-disk
+   * directory name).
+   */
+  meta?: Record<string, unknown>;
   /** Additional metadata for patches */
   toneCount?: number;
   /** Additional metadata for programs */

@@ -21,7 +21,7 @@ import {
   getPatchToneDependencies,
   remapPatchToneLayers,
 } from '@/lib/library-service';
-import { suggestPatchAllocation, isToneSlotEmpty, isPatchSlotEmpty } from '@/lib/slot-allocation';
+import { suggestPatchAllocation, isToneSlotEmpty, isPatchSlotEmpty, type WaveBankIndex } from '@/lib/slot-allocation';
 import { cn } from '@/lib/utils';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { MemoryMapPanel } from '@/components/ui/MemoryMapPanel';
@@ -45,8 +45,18 @@ interface ToneImportMapping {
   fileName: string;
   /** Target slot on device */
   targetSlot: number;
-  /** Target wave bank (0-3 for S-550, 0-1 for S-330) */
-  waveBank: 0 | 1 | 2 | 3;
+  /**
+   * Target wave bank.
+   *
+   * `number` (rather than `0 | 1 | 2 | 3`) because the bank `<option>` set is
+   * layout-driven via `MemoryLayout.getWaveBanksForTone(targetSlot)` — S-330
+   * yields `{0, 1}`, S-550 yields `{0, 1}` for tones 0-31 and `{2, 3}` for
+   * tones 32-63. The static literal union cannot encode the per-slot
+   * narrowing, and the device-client boundary already validates against
+   * `DeviceConfig.maxWaveBankIndex`. Mirrors the widening on
+   * `useLibraryImportDialogs.ImportPatchParams` (commit 10a21a6d / #393).
+   */
+  waveBank: number;
   /** Target segment start */
   segmentTop: number;
   /** Segments needed (from original tone) */
@@ -72,7 +82,8 @@ export interface ImportLibraryPatchDialogProps extends OperationState {
       tone: SamplerTone;
       wavData: Uint8Array;
       targetSlot: number;
-      waveBank: 0 | 1 | 2 | 3;
+      /** See `ToneImportMapping.waveBank` JSDoc — `number` for S-330/S-550 parity. */
+      waveBank: number;
       segmentTop: number;
       segmentLength: number;
     }>;
@@ -131,7 +142,12 @@ export function ImportLibraryPatchDialog({
         // Check if this is an individual patch bundle (not from a set)
         const isIndividual = setName === '__individual__';
         let convertedPatch: SamplerPatch;
-        let dependentTones: Array<{ originalSlot: number; segmentsNeeded: number; fileName: string; preferredBank: 0 | 1 | 2 | 3 }> = [];
+        // `preferredBank` stays a `WaveBankIndex` (`0 | 1 | 2 | 3`) because it
+        // feeds `suggestPatchAllocation`, whose signature requires that
+        // literal-union. The user-visible `ToneImportMapping.waveBank` is
+        // widened to `number` separately because the rendered `<option>` set
+        // is layout-driven via `getWaveBanksForTone`.
+        let dependentTones: Array<{ originalSlot: number; segmentsNeeded: number; fileName: string; preferredBank: WaveBankIndex }> = [];
 
         if (isIndividual) {
           // Load individual patch bundle directly from library
@@ -152,7 +168,10 @@ export function ImportLibraryPatchDialog({
                 originalSlot: slot,
                 segmentsNeeded: toneData.segmentsNeeded,
                 fileName: `T${String(slot + 1).padStart(2, '0')}`,
-                preferredBank: convertedTone.wave.bank as 0 | 1 | 2 | 3,
+                // Cast retained: `SSeriesWaveParams.bank` is `number` upstream,
+                // but `suggestPatchAllocation`'s `preferredBank` parameter
+                // requires `WaveBankIndex`. Pre-existing — not in scope for #396.
+                preferredBank: convertedTone.wave.bank as WaveBankIndex,
               });
             } else {
               // Track tones referenced by patch but not found in bundle
@@ -254,7 +273,8 @@ export function ImportLibraryPatchDialog({
         tone: SamplerTone;
         wavData: Uint8Array;
         targetSlot: number;
-        waveBank: 0 | 1 | 2 | 3;
+        /** See `ToneImportMapping.waveBank` JSDoc — `number` for S-330/S-550 parity. */
+        waveBank: number;
         segmentTop: number;
         segmentLength: number;
       }> = [];
@@ -449,7 +469,7 @@ export function ImportLibraryPatchDialog({
 
               {/* Target Patch Slot */}
               <div>
-                <label htmlFor="targetPatchSlot" className="block text-sm text-s330-muted mb-1">
+                <label htmlFor="targetPatchSlot" className="ac-field-label mb-1">
                   Target Patch Slot
                 </label>
                 <select
@@ -458,14 +478,7 @@ export function ImportLibraryPatchDialog({
                   onChange={(e) => setTargetPatchSlot(Number(e.target.value))}
                   disabled={isOperating}
                   data-testid="target-slot-select"
-                  className={cn(
-                    'w-full bg-s330-bg border rounded px-3 py-2 text-s330-text',
-                    'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    isOperating && 'opacity-50',
-                    willOverwritePatch
-                      ? 'border-yellow-500/50'
-                      : 'border-s330-accent/50'
-                  )}
+                  className={cn('ac-select', willOverwritePatch && 'ac-input--warning')}
                 >
                   {Array.from({ length: config.totalPatches }, (_, i) => {
                     const existingPatch = devicePatches[i];
@@ -511,7 +524,15 @@ export function ImportLibraryPatchDialog({
                     Required Tones ({toneMappings.length})
                   </div>
                   <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-                    {toneMappings.map((mapping, index) => (
+                    {toneMappings.map((mapping, index) => {
+                      // Bank options are layout-driven per the mapping's
+                      // target slot. S-330 always returns A/B; S-550 returns
+                      // A/B for tones 0-31 and C/D for tones 32-63. Mirrors
+                      // the pattern in ImportSampleDialog — no device
+                      // conditionals here.
+                      const { labels: bankLabels, indices: bankIndices } =
+                        memoryLayout.getWaveBanksForTone(mapping.targetSlot);
+                      return (
                       <div
                         key={mapping.originalSlot}
                         className="bg-s330-bg rounded p-3 text-sm space-y-2"
@@ -525,7 +546,7 @@ export function ImportLibraryPatchDialog({
 
                         <div className="grid grid-cols-3 gap-2">
                           <div>
-                            <label className="block text-xs text-s330-muted mb-1">
+                            <label className="ac-field-label mb-1">
                               Target Slot
                               {toneOverwrites[index]?.willOverwrite && (
                                 <span className="ml-1 text-yellow-400" title={`Will overwrite ${toneOverwrites[index]?.existingName}`}>⚠</span>
@@ -533,17 +554,28 @@ export function ImportLibraryPatchDialog({
                             </label>
                             <select
                               value={mapping.targetSlot}
-                              onChange={(e) =>
-                                updateToneMapping(index, { targetSlot: Number(e.target.value) })
-                              }
+                              onChange={(e) => {
+                                const newTargetSlot = Number(e.target.value);
+                                // Clamp wave bank to a valid one for the new
+                                // target slot — on S-550, moving across the
+                                // 32-tone block boundary changes the valid
+                                // bank set ({0,1} ↔ {2,3}). If the current
+                                // bank is still valid, keep it; otherwise
+                                // pick the first valid bank for the new slot.
+                                const validBanks =
+                                  memoryLayout.getWaveBanksForTone(newTargetSlot).indices;
+                                const newWaveBank = validBanks.includes(mapping.waveBank)
+                                  ? mapping.waveBank
+                                  : (validBanks[0] ?? mapping.waveBank);
+                                updateToneMapping(index, {
+                                  targetSlot: newTargetSlot,
+                                  waveBank: newWaveBank,
+                                });
+                              }}
                               disabled={isOperating}
                               className={cn(
-                                'w-full bg-s330-panel border rounded px-2 py-1 text-s330-text text-xs',
-                                'focus:outline-none focus:ring-1 focus:ring-s330-highlight',
-                                isOperating && 'opacity-50',
-                                toneOverwrites[index]?.willOverwrite
-                                  ? 'border-yellow-500/50'
-                                  : 'border-s330-accent/50'
+                                'ac-select ac-select--compact',
+                                toneOverwrites[index]?.willOverwrite && 'ac-input--warning',
                               )}
                             >
                               {Array.from({ length: config.totalTones }, (_, i) => {
@@ -561,28 +593,25 @@ export function ImportLibraryPatchDialog({
                           </div>
 
                           <div>
-                            <label className="block text-xs text-s330-muted mb-1">
+                            <label className="ac-field-label mb-1">
                               Wave Bank
                             </label>
                             <select
                               value={mapping.waveBank}
                               onChange={(e) =>
-                                updateToneMapping(index, { waveBank: Number(e.target.value) as 0 | 1 | 2 | 3 })
+                                updateToneMapping(index, { waveBank: Number(e.target.value) })
                               }
                               disabled={isOperating}
-                              className={cn(
-                                'w-full bg-s330-panel border border-s330-accent/50 rounded px-2 py-1 text-s330-text text-xs',
-                                'focus:outline-none focus:ring-1 focus:ring-s330-highlight',
-                                isOperating && 'opacity-50'
-                              )}
+                              className="ac-select ac-select--compact"
                             >
-                              <option value={0}>Bank A</option>
-                              <option value={1}>Bank B</option>
+                              {bankIndices.map((bankIndex, i) => (
+                                <option key={bankIndex} value={bankIndex}>Bank {bankLabels[i]}</option>
+                              ))}
                             </select>
                           </div>
 
                           <div>
-                            <label className="block text-xs text-s330-muted mb-1">
+                            <label className="ac-field-label mb-1">
                               Segment ({mapping.segmentsNeeded} needed)
                             </label>
                             <select
@@ -591,11 +620,7 @@ export function ImportLibraryPatchDialog({
                                 updateToneMapping(index, { segmentTop: Number(e.target.value) })
                               }
                               disabled={isOperating}
-                              className={cn(
-                                'w-full bg-s330-panel border border-s330-accent/50 rounded px-2 py-1 text-s330-text text-xs',
-                                'focus:outline-none focus:ring-1 focus:ring-s330-highlight',
-                                isOperating && 'opacity-50'
-                              )}
+                              className="ac-select ac-select--compact"
                             >
                               {Array.from(
                                 { length: Math.max(1, 18 - mapping.segmentsNeeded + 1) },
@@ -609,7 +634,8 @@ export function ImportLibraryPatchDialog({
                           </div>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

@@ -11,6 +11,7 @@ import type { S330Patch } from '@audiocontrol/sampler-devices/s330';
 import type { OperationState } from '@/types/import-operation';
 import { isOperationComplete } from '@/types/import-operation';
 import { getPatchToneDependencies } from '@/lib/library-service';
+import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { cn } from '@/lib/utils';
 import {
   OperationProgressBar,
@@ -43,7 +44,15 @@ export function ExportPatchDialog({
   progress,
   error: operationError,
 }: ExportPatchDialogProps): JSX.Element {
-  const [patchName, setPatchName] = useState(patch?.common.name || `Patch_${patchIndex + 1}`);
+  const { memoryLayout } = useDeviceConfig();
+  // Device-aware default name (S-330: Patch_P11..Patch_P28; S-550:
+  // Patch_I11..Patch_IV28). Never `Patch_${idx + 1}` — that produces
+  // `Patch_17` for S-550 patch index 16, which has no analogue on the
+  // device. The `Patch_` prefix preserves the "this is a name, not a slot
+  // id" affordance — the default is written to disk as the patch directory
+  // name, and a bare `II11/` directory is uncomfortable as a filename.
+  const defaultPatchName = `Patch_${memoryLayout.formatPatchSlot(patchIndex)}`;
+  const [patchName, setPatchName] = useState(patch?.common.name || defaultPatchName);
   const [localError, setLocalError] = useState<string | null>(null);
 
   // Calculate number of referenced tones
@@ -55,10 +64,10 @@ export function ExportPatchDialog({
   // Reset patch name when dialog opens or patch changes
   useEffect(() => {
     if (open) {
-      setPatchName(patch?.common.name || `Patch_${patchIndex + 1}`);
+      setPatchName(patch?.common.name || defaultPatchName);
       setLocalError(null);
     }
-  }, [open, patch?.common.name, patchIndex]);
+  }, [open, patch?.common.name, defaultPatchName]);
 
   const handleExport = useCallback(async () => {
     if (!patchName.trim()) {
@@ -106,12 +115,12 @@ export function ExportPatchDialog({
           ) : (
             <div className="space-y-4">
               <Dialog.Description className="text-sm text-s330-muted">
-                Export patch P{String(patchIndex + 1).padStart(2, '0')} with all its dependent tones to your sampler library.
+                Export patch {memoryLayout.formatPatchSlot(patchIndex)} with all its dependent tones to your sampler library.
               </Dialog.Description>
 
               {/* Patch Name Input */}
               <div>
-                <label htmlFor="patchName" className="block text-sm text-s330-muted mb-1">
+                <label htmlFor="patchName" className="ac-field-label mb-1">
                   Patch Name
                 </label>
                 <input
@@ -121,11 +130,10 @@ export function ExportPatchDialog({
                   onChange={(e) => setPatchName(e.target.value)}
                   disabled={isOperating}
                   maxLength={32}
+                  data-error={error ? 'true' : undefined}
                   className={cn(
-                    'w-full bg-s330-bg border rounded px-3 py-2 text-s330-text',
-                    'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    error ? 'border-red-500' : 'border-s330-accent/50',
-                    isOperating && 'opacity-50'
+                    'ac-input',
+                    error && 'ac-input--error',
                   )}
                   placeholder="Enter patch name"
                 />

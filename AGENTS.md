@@ -196,3 +196,7 @@ Editors are served at `https://audiocontrol.org/<manufacturer>/<device>/editor`.
 - Do not express project-management goals in temporal promises when milestone or phase language is more accurate.
 - Do not invent projection statistics.
 - Use GitHub links, not local file paths, in GitHub issue descriptions.
+
+## Audit Log Protocol
+
+How findings get recorded, tracked, and closed in the audit log — finding format, status vocabulary, lifecycle, when GitHub issues are needed — lives in [AUDITOR-IMPLEMENTER-PROTOCOL.md](/Users/orion/work/audiocontrol-work/audiocontrol-s550-support/AUDITOR-IMPLEMENTER-PROTOCOL.md).

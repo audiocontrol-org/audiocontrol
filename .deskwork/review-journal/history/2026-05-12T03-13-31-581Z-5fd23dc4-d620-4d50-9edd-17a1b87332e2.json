@@ -1,0 +1,15 @@
+{
+  "kind": "entry-annotation",
+  "at": "2026-05-12T03:13:31.581Z",
+  "entryId": "e5cdc258-ae9f-463b-8b87-58de9dca8716",
+  "annotation": {
+    "type": "address",
+    "workflowId": "e5cdc258-ae9f-463b-8b87-58de9dca8716",
+    "commentId": "4da7a12f-7ef3-4bc4-b22b-d6e34b790af2",
+    "version": 2,
+    "disposition": "addressed",
+    "reason": "Decision 1 resolved as Option B with operator's coupling constraint. Constraint verified (Layout wraps every route + mounts VideoCapture). Inventory rows D-XX-01/05/06/07/08 marked removed; D-XX-02..04 re-pointed to drawer mount; memory rule feedback_virtual_front_panel rewritten with CRT-front-panel coupling clause.",
+    "id": "9839ca51-2e6e-4819-a326-cc2d08b4fd1c",
+    "createdAt": "2026-05-12T03:13:31.581Z"
+  }
+}

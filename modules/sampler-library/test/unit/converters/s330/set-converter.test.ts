@@ -35,7 +35,6 @@ function createSampleTone(name: string): S330Tone {
       polarity: false,
       offset: 0,
     },
-    tvaLfoDepth: 0,
     transpose: 64,
     fineTune: 0,
     tvf: {

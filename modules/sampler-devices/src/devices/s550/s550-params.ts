@@ -7,7 +7,6 @@
  */
 
 import type { S550SystemParams, S550PatchCommon, S550Tone } from './s550-types.js';
-import type { SSeriesDeviceLimits } from '../roland-s-series/index.js';
 import { TONE_OFFSETS, TONE_BLOCK_SIZE, PATCH_PARAMS } from './s550-addresses.js';
 
 import {
@@ -18,6 +17,7 @@ import {
     createEmptySeriesPatchCommon,
     parseSeriesTone,
     encodeSeriesTone,
+    S550_DEVICE_LIMITS,
 } from '../roland-s-series/index.js';
 
 // =============================================================================
@@ -57,18 +57,6 @@ export {
 } from '../roland-s-series/index.js';
 
 // =============================================================================
-// S-550 Device Limits
-// =============================================================================
-
-const S550_LIMITS: SSeriesDeviceLimits = {
-    sourcetoneMask: 0x3F,
-    waveBankMask: 0x03,
-    copySourceMask: 0x3F,
-    maxPatchNumber: 31,
-    maxToneNumber: 63,
-};
-
-// =============================================================================
 // S-550 Parse/Encode Wrappers
 // =============================================================================
 
@@ -91,10 +79,10 @@ export const parseTone = (data: number[]): S550Tone =>
     parseSeriesTone(data, TONE_OFFSETS) as S550Tone;
 
 export const encodeTone = (tone: S550Tone): number[] =>
-    encodeSeriesTone(tone, TONE_OFFSETS, TONE_BLOCK_SIZE, S550_LIMITS);
+    encodeSeriesTone(tone, TONE_OFFSETS, TONE_BLOCK_SIZE, S550_DEVICE_LIMITS);
 
 export const isValidPatchNumber = (num: number): boolean =>
-    num >= 0 && num <= S550_LIMITS.maxPatchNumber;
+    num >= 0 && num <= S550_DEVICE_LIMITS.maxPatchNumber;
 
 export const isValidToneNumber = (num: number): boolean =>
-    num >= 0 && num <= S550_LIMITS.maxToneNumber;
+    num >= 0 && num <= S550_DEVICE_LIMITS.maxToneNumber;

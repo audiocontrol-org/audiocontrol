@@ -10,12 +10,9 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores/uiStore';
 import { useFrontPanel, type NavigationButton, type FunctionButton } from '@/hooks/useFrontPanel';
-import { NavigationPad } from '@/components/front-panel/NavigationPad';
-import { ValueButtons } from '@/components/front-panel/ValueButtons';
-import { FunctionButtonRow } from '@/components/front-panel/FunctionButtonRow';
+import { VirtualFrontPanel } from '@/components/front-panel/VirtualFrontPanel';
 
 const STORAGE_KEY_DEVICE = 's330-video-device';
 
@@ -36,9 +33,15 @@ export function VideoCapture() {
   const [error, setError] = useState<string | null>(null);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isSecureContext, setIsSecureContext] = useState<boolean | null>(null);
+  // Track explicit operator intent. The auto-start effect respects
+  // this flag — once the operator clicks Stop, the stream stays
+  // stopped until the operator clicks Start (or picks a new device).
+  // Without this, the auto-start would re-fire as soon as the
+  // isStreaming dependency settled, instantly undoing the Stop.
+  const [userStopped, setUserStopped] = useState(false);
 
   // Front panel hook
-  const { pressButton, isConnected, isPressing, activeButton, navigationMode, setNavigationMode } = useFrontPanel();
+  const { pressButton, isConnected, isPressing, activeButton } = useFrontPanel();
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -155,6 +158,10 @@ export function VideoCapture() {
   const handleDeviceChange = useCallback(async (deviceId: string) => {
     const wasStreaming = isStreaming;
     setSelectedDeviceId(deviceId);
+    // Clear the explicit-stop flag so the auto-start effect will
+    // pick up the new device. Without this, switching devices after
+    // the operator has clicked Stop wouldn't bring the stream back.
+    setUserStopped(false);
 
     if (wasStreaming) {
       stopStream();
@@ -162,6 +169,18 @@ export function VideoCapture() {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
   }, [isStreaming, stopStream]);
+
+  // Explicit Start / Stop click handlers — separate from auto-start
+  // logic so the explicit-stop intent can be tracked.
+  const handleStartClick = useCallback(() => {
+    setUserStopped(false);
+    void startStream();
+  }, [startStream]);
+
+  const handleStopClick = useCallback(() => {
+    setUserStopped(true);
+    stopStream();
+  }, [stopStream]);
 
   // Check for permission on mount
   useEffect(() => {
@@ -205,18 +224,26 @@ export function VideoCapture() {
     };
   }, []);
 
-  // Auto-start stream when drawer opens
+  // Auto-start stream when drawer opens — gated by `userStopped`
+  // so the operator's explicit Stop is sticky until they click Start
+  // again or switch devices.
   useEffect(() => {
-    const shouldStream = isDrawerOpen && selectedDeviceId && hasPermission;
+    const shouldStream = isDrawerOpen && selectedDeviceId && hasPermission && !userStopped;
     if (shouldStream && !isStreaming) {
       startStream();
     } else if (!isDrawerOpen && isStreaming) {
       stopStream();
     }
-  }, [isDrawerOpen, selectedDeviceId, hasPermission, isStreaming, startStream, stopStream]);
+  }, [isDrawerOpen, selectedDeviceId, hasPermission, isStreaming, userStopped, startStream, stopStream]);
 
   // Keyboard shortcut handler for front panel
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    // Ignore OS key-autorepeat. Without this guard a single physical key
+    // press dispatches 3–4 SysEx messages to the device because the
+    // `isPressing` closure below is captured at render time and stays
+    // stale until React re-renders. Other keyboard handlers in this
+    // monorepo (synth-core, sample-chopper) follow the same pattern.
+    if (e.repeat) return;
     if (!isDrawerOpen || !isConnected || isPressing) return;
 
     const target = e.target as HTMLElement;
@@ -267,23 +294,37 @@ export function VideoCapture() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Video area */}
-      <div className="aspect-video bg-black relative">
-        <video ref={videoRef} className="w-full h-full object-contain" playsInline muted />
+      {/* Fixed 16:9 frame — video element is always mounted but
+          hidden when paused so the frame's aspect ratio stays stable
+          regardless of capture state. Skeleton placeholder shows the
+          paused state with a CRT-evoking scanline pattern + camera
+          glyph + status text. */}
+      <div className="ac-video-frame">
+        <video ref={videoRef} playsInline muted hidden={!isStreaming} />
+
+        {!isStreaming && hasPermission && devices.length > 0 && !error && (
+          <div className="ac-video-frame-skeleton" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            <span className="ac-video-frame-skeleton-label">Paused</span>
+            <span className="ac-video-frame-skeleton-hint">Press START to begin capture</span>
+          </div>
+        )}
 
         {isSecureContext === false && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-s330-bg/90 p-4">
-            <p className="text-s330-muted text-sm text-center">
-              Video capture requires HTTPS or localhost
-            </p>
+          <div className="ac-video-frame-overlay">
+            <span className="ac-video-frame-skeleton-label">Secure context required</span>
+            <span className="ac-video-frame-skeleton-hint">Video capture needs HTTPS or localhost</span>
           </div>
         )}
 
         {isSecureContext && hasPermission === null && (
-          <div className="absolute inset-0 flex items-center justify-center bg-s330-bg/90">
+          <div className="ac-video-frame-overlay">
             <button
+              type="button"
               onClick={requestPermission}
-              className="px-4 py-2 bg-s330-highlight text-white rounded hover:bg-s330-highlight/80"
+              className="ac-toolbar-btn ac-toolbar-btn--primary"
             >
               Enable Camera Access
             </button>
@@ -291,11 +332,12 @@ export function VideoCapture() {
         )}
 
         {hasPermission === false && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-s330-bg/90 p-4">
-            <p className="text-s330-muted text-sm text-center mb-2">Camera access denied</p>
+          <div className="ac-video-frame-overlay">
+            <span className="ac-video-frame-skeleton-label">Camera access denied</span>
             <button
+              type="button"
               onClick={requestPermission}
-              className="px-3 py-1 text-sm bg-s330-accent text-s330-text rounded hover:bg-s330-accent/80"
+              className="ac-toolbar-btn"
             >
               Try Again
             </button>
@@ -303,32 +345,26 @@ export function VideoCapture() {
         )}
 
         {hasPermission && devices.length === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center bg-s330-bg/90">
-            <p className="text-s330-muted text-sm">No video devices found</p>
+          <div className="ac-video-frame-overlay">
+            <span className="ac-video-frame-skeleton-label">No video devices found</span>
           </div>
         )}
 
         {error && (
-          <div
-            className="absolute bottom-0 left-0 right-0 px-2 py-1"
-            style={{ background: 'color-mix(in srgb, var(--ac-status-danger) 80%, transparent)' }}
-          >
-            <p className="text-white text-xs">{error}</p>
-          </div>
+          <div className="ac-video-frame-error">{error}</div>
         )}
       </div>
 
-      {/* Video Controls */}
+      {/* Video Controls — lean v3 chrome: .ac-select for the device
+          picker, .ac-toolbar-btn for Start/Stop so they share the
+          same chrome family as Panic + the page-title icon buttons. */}
       {hasPermission && devices.length > 0 && (
-        <div className="ac-drawer-section border-s330-accent flex gap-2 items-center">
+        <div className="ac-drawer-section flex gap-2 items-center">
           <select
             value={selectedDeviceId ?? ''}
             onChange={(e) => handleDeviceChange(e.target.value)}
-            className={cn(
-              'flex-1 min-w-0 px-2 py-1 text-xs font-mono',
-              'bg-s330-bg border border-s330-accent rounded',
-              'text-s330-text focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-            )}
+            className="ac-select"
+            style={{ flex: '1 1 0', minWidth: 0, fontFamily: 'var(--ac-font-mono)', fontSize: 'var(--ac-text-xs)', padding: '0.375rem 0.5rem' }}
           >
             {devices.map((device) => (
               <option key={device.deviceId} value={device.deviceId}>
@@ -338,20 +374,18 @@ export function VideoCapture() {
           </select>
           {!isStreaming ? (
             <button
-              onClick={startStream}
+              type="button"
+              onClick={handleStartClick}
               disabled={!selectedDeviceId}
-              className={cn(
-                'shrink-0 px-3 py-1 text-xs rounded',
-                'bg-s330-highlight text-white hover:bg-s330-highlight/80',
-                'disabled:opacity-50 disabled:cursor-not-allowed'
-              )}
+              className="ac-toolbar-btn ac-toolbar-btn--primary"
             >
               Start
             </button>
           ) : (
             <button
-              onClick={stopStream}
-              className="ac-btn ac-btn-danger shrink-0 px-3 py-1 text-xs"
+              type="button"
+              onClick={handleStopClick}
+              className="ac-toolbar-btn ac-toolbar-btn--danger"
             >
               Stop
             </button>
@@ -360,41 +394,12 @@ export function VideoCapture() {
       )}
 
       {/* Front Panel Controls */}
-      <div className="ac-drawer-section border-s330-accent space-y-3">
-        <FunctionButtonRow
+      <div className="ac-drawer-section space-y-3">
+        <VirtualFrontPanel
           onPress={pressButton}
           activeButton={activeButton}
           disabled={!isConnected || isPressing}
         />
-        <div className="flex items-center justify-between gap-2">
-          <NavigationPad
-            onPress={pressButton}
-            activeButton={activeButton}
-            disabled={!isConnected || isPressing}
-          />
-          <ValueButtons
-            onPress={pressButton}
-            activeButton={activeButton}
-            disabled={!isConnected || isPressing}
-          />
-        </div>
-        <div className="flex items-center justify-center gap-2">
-          <span className="text-xs text-s330-muted">Arrow category:</span>
-          <button
-            onClick={() => setNavigationMode(navigationMode === 'menu' ? 'sampling' : 'menu')}
-            className={cn(
-              'px-2 py-0.5 text-xs font-mono rounded border transition-colors',
-              navigationMode === 'menu'
-                ? 'bg-s330-accent border-s330-accent text-s330-text'
-                : 'bg-s330-highlight border-s330-highlight text-white'
-            )}
-            title={navigationMode === 'menu'
-              ? 'Category 01: works in menus and parameter screens'
-              : 'Category 09: works on sampling screen'}
-          >
-            {navigationMode === 'menu' ? '01' : '09'}
-          </button>
-        </div>
         <div className="text-xs text-s330-muted text-center opacity-70">
           Keys: Arrows, +/-, Enter, F1-F5
         </div>

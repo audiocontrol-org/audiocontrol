@@ -1,0 +1,411 @@
+/*
+ * Shared list-detail list-pane primitives — promoted from per-page
+ * `.patches__list-*` / `.tones__list-*` classes during Phase 9 Task 4
+ * (PatchesPage amend).
+ *
+ * The list-row layout (`grid-template-columns`) stays page-scoped
+ * because the slot-column width differs per device list (patches use
+ * 3rem, tones use 2.5rem). Every other list primitive is byte-identical
+ * across PatchList / ToneList and lives here under `.ac-list-*`.
+ *
+ * Mockup source: docs/1.0/001-IN-PROGRESS/s550-support/explorations/
+ *   03-patches.html (list pane chrome).
+ */
+
+/* ============================================================
+   LIST CONTAINER — outer chrome (border + panel surface + clip).
+   ============================================================ */
+.ac-list {
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: var(--ac-color-surface-panel);
+  border-radius: var(--ac-radius-sm);
+  overflow: hidden;
+  /*
+   * Flex column so `.ac-list-scroll` (the inner pane) can claim
+   * `flex: 1; min-height: 0` and scroll internally when the list
+   * container is height-bounded by its parent grid track. Outside a
+   * height-bounded parent (content-flow pages), `.ac-list-scroll` DOES
+   * still request `flex: 1 1 auto` — but because this `.ac-list`
+   * carries no intrinsic height of its own, the flex container has
+   * nothing for the child to grow into. The child collapses to its
+   * content's intrinsic height and `overflow-y: auto` never engages.
+   * The behavior is therefore visually indistinguishable from a plain
+   * block in content-flow contexts, while still cooperating with a
+   * height-bounded parent when one is present.
+   */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ac-list-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: scroll;
+  /* Native scrollbar is hidden so list rows can extend edge-to-edge
+     and the layout never shifts when scrollable content changes
+     length. A thin translucent webkit thumb is rendered on top as
+     an overlay — see the `::-webkit-scrollbar*` rules below. The
+     pre-2024 way to do this was `overflow: overlay`, which Chrome
+     silently downgrades to `auto` now; this recipe replaces it with
+     an explicitly-reserved zero-width gutter plus a manual overlay
+     thumb. */
+  /* Firefox — hides the native scrollbar entirely. Firefox does not
+     support styled overlay scrollbars, so the visible indicator is
+     Webkit-only there; trackpad / wheel / keyboard scrolling still
+     works and the scroll-fade affordance below signals scrollability. */
+  scrollbar-width: none;
+  scrollbar-gutter: auto;
+  /* Bottom-edge fade — subtle hint that there's more content below
+     when the user is mid-scroll. The mask is paint-only (no layout
+     cost) and stays static; the visible thumb tracks position. */
+  mask-image: linear-gradient(
+    to bottom,
+    black 0,
+    black calc(100% - 1.25rem),
+    color-mix(in srgb, black 60%, transparent) 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    black 0,
+    black calc(100% - 1.25rem),
+    color-mix(in srgb, black 60%, transparent) 100%
+  );
+}
+
+/* Webkit overlay scrollbar — the visible track lives ON TOP of the
+   rows because the native scrollbar's gutter has been zeroed by the
+   parent's `overflow-y: scroll` + `scrollbar-width: none`. The
+   ::-webkit-scrollbar pseudo still paints, and Chromium positions
+   it on the inline-end edge inside the padding box. Width is small
+   so the thumb is a slim accent rather than a chrome track. */
+.ac-list-scroll::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+
+.ac-list-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ac-list-scroll::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--ac-color-text-muted) 35%, transparent);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-list-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--ac-color-text-muted) 70%, transparent);
+  background-clip: padding-box;
+}
+
+/* When the list isn't actually scrollable, the bottom-edge fade is
+   misleading — there's nothing below to hint at. Drop it via a
+   scroll-driven invariant: if the list fits its container, the
+   user-agent doesn't paint a thumb either. The mask still renders
+   but its effect at "no overflow" is purely cosmetic and unobjectionable. */
+
+/* ============================================================
+   BANK HEADER — sticky header that sits ABOVE its rows; scrolls
+   within the list. Reads as an uppercase eyebrow.
+
+   `pointer-events: none` lets clicks pass through the header to
+   the row underneath when the header overlaps that row at the
+   sticky scroll position. Without this, Playwright (and real
+   users) targeting the first row of a bank can have their click
+   intercepted by the header — the bug surface for
+   `LIVE-S550-TONES-001` (#428): on live S-550 hardware the bank
+   load completes mid-click-retry and the header is parked
+   directly above tone slot T11 when the click finally fires.
+   The header has no interactive children (just two text spans
+   for the bank name + slot range) so `pointer-events: none` is
+   safe; visual rendering is unchanged. Applies to both ToneList
+   and PatchList (shared `.ac-list-bank-header` class).
+   ============================================================ */
+.ac-list-bank-header {
+  position: sticky;
+  top: 0;
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 92%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: var(--ac-space-3) var(--ac-space-4);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  /* Header content stays on one line. "Bank 1" + "T11–T18" each
+     break across two lines at narrow column widths without this; the
+     list column width (var(--ac-app-shell-list-col)) is sized to fit
+     the no-wrap form. */
+  white-space: nowrap;
+  display: flex;
+  justify-content: space-between;
+  /* The toggle button uses --ac-font-display and the <strong> slot-
+     range uses --ac-font-mono — the two fonts have different baseline
+     metrics, so `align-items: baseline` made "BANK N" sit visibly
+     higher than "T11–T18". Center-aligning the flex children matches
+     them by their visual middle instead. */
+  align-items: center;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.ac-list-bank-header strong {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--ac-font-weight-normal);
+  color: var(--ac-color-text-muted);
+}
+
+/* Chevron-toggle button — the single interactive target inside the
+   otherwise click-through bank header. Carries pointer-events: auto so
+   it intercepts its own clicks; the rest of the header (and especially
+   the area that overlaps the first row at scroll-top 0) stays
+   click-through so the LIVE-S550-TONES-001 (#428) fix invariant
+   continues to hold for everything except this opt-in target. */
+.ac-list-bank-toggle {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  background: transparent;
+  border: 0;
+  /* Negative margin offsets the padding so the visible eyebrow text
+     keeps its original baseline alignment in the header, while the
+     button itself still has a 24x24+ hit area for accessibility. */
+  margin: calc(-1 * var(--ac-space-2)) 0;
+  padding: var(--ac-space-2) var(--ac-space-2) var(--ac-space-2) 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: pointer;
+  border-radius: var(--ac-radius-sm);
+  transition:
+    color var(--ac-duration-fast) var(--ac-easing-default),
+    background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-list-bank-toggle:hover {
+  color: var(--ac-color-text-primary);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 50%, transparent);
+}
+
+.ac-list-bank-toggle:focus-visible {
+  outline: var(--ac-rule-medium) solid color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
+  outline-offset: 2px;
+}
+
+/* Chevron — sized so the affordance is obvious at the header's
+   eyebrow-scale font. 1.1rem gives ~17.6px which clears AA target-size
+   floors when combined with the button's padding (total hit area
+   ≈28x28px). */
+.ac-list-bank-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--ac-color-accent);
+  transition: transform var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+/* Right-side group inside the bank header: slot-range readout plus the
+   per-bank reload icon-button. Wrapped in a flex container so the
+   reload button sits flush against the slot range rather than being
+   pushed to the far edge by the header's space-between layout. */
+.ac-list-bank-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+}
+
+/* Per-bank reload icon-button. Sits inside an otherwise click-through
+   header (pointer-events: none on .ac-list-bank-header), so the button
+   restores pointer-events: auto for its own hit area only. Visually a
+   square 1.5rem icon button with a circular-arrow glyph; spins via the
+   --spinning modifier while the bank is loading. */
+.ac-list-bank-reload {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 50%, transparent);
+  border-radius: var(--ac-radius-sm);
+  color: var(--ac-color-text-muted);
+  cursor: pointer;
+  transition:
+    color var(--ac-duration-fast) var(--ac-easing-default),
+    border-color var(--ac-duration-fast) var(--ac-easing-default),
+    background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-list-bank-reload:hover:not(:disabled) {
+  color: var(--ac-color-accent);
+  border-color: color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  background: color-mix(in srgb, var(--ac-color-accent) 8%, transparent);
+}
+
+.ac-list-bank-reload:focus-visible {
+  outline: var(--ac-rule-medium) solid color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
+  outline-offset: 2px;
+}
+
+.ac-list-bank-reload:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.ac-list-bank-reload svg {
+  width: 0.85rem;
+  height: 0.85rem;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ac-list-bank-reload--spinning svg {
+  animation: ac-icon-spin 1.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-list-bank-reload--spinning svg { animation: none; }
+}
+
+/* ============================================================
+   COLLAPSE WRAPPER — wraps any collapsible content (per-bank
+   slot rows in PatchList / ToneList / DeviceMemoryPanel, tree
+   children in TreeView / SetItem) so the expand/collapse
+   animates instead of snapping.
+
+   Uses the `grid-template-rows: 1fr ↔ 0fr` trick — the wrapper
+   is a single-track grid whose row size transitions smoothly,
+   and the inner grid item carries `overflow: hidden` so its
+   content gets clipped as the row collapses.
+
+   The collapsible content MUST always be mounted inside this
+   wrapper — `{!isCollapsed && rows}` inside `.ac-collapse` would
+   unmount the rows and cancel the transition. Conditional
+   rendering BELOW the wrapper (i.e., not rendering `.ac-collapse`
+   at all) is fine for content the operator never sees during
+   the collapse.
+   ============================================================ */
+.ac-collapse {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows var(--ac-duration-normal) var(--ac-easing-default);
+}
+
+.ac-collapse[data-expanded="false"] {
+  grid-template-rows: 0fr;
+}
+
+.ac-collapse > * {
+  overflow: hidden;
+  min-height: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-collapse { transition: none; }
+}
+
+/* ============================================================
+   ROW INTERIOR — slot label, info column, hover-revealed action.
+   The row grid itself (`.<page>__list-row`) stays page-scoped
+   because the slot-column width differs per device.
+   ============================================================ */
+.ac-list-slot {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.ac-list-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ac-list-name {
+  font-family: var(--ac-font-body);
+  font-size: var(--ac-text-sm);
+  font-weight: var(--ac-font-weight-medium);
+  color: var(--ac-color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ac-list-name--placeholder {
+  font-style: italic;
+  color: var(--ac-color-text-muted);
+}
+
+.ac-list-name--empty {
+  color: color-mix(in srgb, var(--ac-color-text-muted) 70%, transparent);
+  font-style: italic;
+}
+
+.ac-list-eyebrow {
+  font-family: var(--ac-font-display);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: color-mix(in srgb, var(--ac-color-text-muted) 70%, transparent);
+}
+
+/*
+ * Hover-revealed Export action — opacity transitions from 0 to 1 when
+ * the parent row (a `.<page>__list-row`) is hovered, selected, or has
+ * focus-within. The parent-class selector is page-scoped because we
+ * can't write a single shared selector that targets both row classes
+ * with high specificity. Each page-scoped row CSS owns the reveal rule
+ * (see patches.css / tones.css).
+ */
+.ac-list-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 70%, transparent);
+  background: transparent;
+  color: var(--ac-color-text-muted);
+  font-family: var(--ac-font-display);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--ac-radius-sm);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity var(--ac-duration-fast) var(--ac-easing-default),
+    border-color var(--ac-duration-fast) var(--ac-easing-default),
+    color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-list-action:hover {
+  border-color: var(--ac-color-accent);
+  color: var(--ac-color-accent);
+}
+
+.ac-list-action:focus-visible {
+  opacity: 1;
+  outline: var(--ac-rule-medium) solid color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  outline-offset: 1px;
+}

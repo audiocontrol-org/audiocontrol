@@ -3,6 +3,11 @@
  *
  * Displays an S-330 8-point envelope with levels, rates, sustain and end points.
  * For editable version, use EnvelopeEditor.
+ *
+ * @deprecated Phase 9 Task 4 TonesPage amend introduced `AcEnvelope`
+ *   (editor-core) as the canonical envelope surface — see
+ *   `ToneEnvelopeEditor`. This file is kept for the audit-and-delete
+ *   dispatch after the rest of Phase 9 Task 4 lands.
  */
 
 import type { SamplerEnvelope } from '@/core/midi/SamplerClient';

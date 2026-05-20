@@ -8,7 +8,6 @@
  */
 
 import type { S550Tone, SSeriesLoopMode } from './s550-types.js';
-import type { SSeriesDeviceLimits } from '../roland-s-series/index.js';
 import {
     createSeriesTone,
     createSeriesSubTone,
@@ -16,14 +15,7 @@ import {
     type SSeriesCreateToneConfig,
     type SSeriesCreateSubToneConfig,
 } from '../roland-s-series/s-series-tone-factory.js';
-
-const S550_LIMITS: SSeriesDeviceLimits = {
-    sourcetoneMask: 0x3F,
-    waveBankMask: 0x03,
-    copySourceMask: 0x3F,
-    maxPatchNumber: 31,
-    maxToneNumber: 63,
-};
+import { S550_DEVICE_LIMITS } from '../roland-s-series/index.js';
 
 export interface CreateToneConfig extends Omit<SSeriesCreateToneConfig, 'waveBank'> {
     /** Wave bank (0=A, 1=B, 2=C, 3=D for S-550) */
@@ -40,7 +32,7 @@ export function createTone(config: CreateToneConfig): S550Tone {
 }
 
 export function createSubTone(config: CreateSubToneConfig): S550Tone {
-    return createSeriesSubTone(config, S550_LIMITS) as S550Tone;
+    return createSeriesSubTone(config, S550_DEVICE_LIMITS) as S550Tone;
 }
 
 export function createMonolithicPrimaryTone(

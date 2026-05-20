@@ -64,7 +64,7 @@ export function EditorLayout({
             </h1>
             <nav>
               <ul className="ac-site-nav">
-                {navItems.map((item) => {
+                {navItems.map((item, idx) => {
                   // Generate test ID from label: "Library" -> "library-nav-link"
                   // For device-specific pages (Tones, Patches), prefix with "device-"
                   // to distinguish from library pages (library-tones, library-patches)
@@ -73,10 +73,19 @@ export function EditorLayout({
                   const testId = isDevicePage
                     ? `device-${labelSlug}-nav-link`
                     : `${labelSlug}-nav-link`;
+                  // The Connect link points at the basePath root (e.g. `/`).
+                  // Without `end`, react-router-dom matches it against ANY
+                  // sub-path, so Connect lights up as active even on
+                  // /tones, /patches, /library. Force exact matching for
+                  // the root nav item only — sub-paths still want prefix
+                  // matching so deep links under e.g. /library still
+                  // highlight Library as active.
+                  const isRootLink = idx === 0;
                   return (
                     <li key={item.to}>
                       <NavLink
                         to={`${item.to}${location.search}`}
+                        end={isRootLink}
                         className="ac-site-nav-link"
                         data-active={undefined}
                         data-testid={testId}
@@ -135,11 +144,11 @@ export function PanicButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="ac-btn ac-btn-sm"
+      className="ac-toolbar-btn ac-toolbar-btn--danger"
       title={disabled ? 'Connect to MIDI to enable' : title}
     >
-      <svg className="ac-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
       </svg>
       <span className="ac-hide-narrow">All Notes Off</span>
     </button>

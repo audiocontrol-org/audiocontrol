@@ -1,0 +1,19 @@
+{
+  "kind": "entry-annotation",
+  "at": "2026-05-12T02:53:03.592Z",
+  "entryId": "e5cdc258-ae9f-463b-8b87-58de9dca8716",
+  "annotation": {
+    "type": "comment",
+    "workflowId": "e5cdc258-ae9f-463b-8b87-58de9dca8716",
+    "version": 1,
+    "range": {
+      "start": 15193,
+      "end": 15198
+    },
+    "text": "Option A",
+    "category": "other",
+    "anchor": "Optio",
+    "id": "3a9434f5-6557-4cdb-9027-dd175802b444",
+    "createdAt": "2026-05-12T02:53:03.592Z"
+  }
+}

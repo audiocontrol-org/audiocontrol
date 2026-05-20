@@ -8,7 +8,6 @@
  */
 
 import type { S330Tone, SSeriesLoopMode } from './s330-types.js';
-import type { SSeriesDeviceLimits } from '../roland-s-series/index.js';
 import {
     createSeriesTone,
     createSeriesSubTone,
@@ -16,18 +15,15 @@ import {
     type SSeriesCreateToneConfig,
     type SSeriesCreateSubToneConfig,
 } from '../roland-s-series/s-series-tone-factory.js';
-
-const S330_LIMITS: SSeriesDeviceLimits = {
-    sourcetoneMask: 0x1F,
-    waveBankMask: 0x01,
-    copySourceMask: 0x1F,
-    maxPatchNumber: 63,
-    maxToneNumber: 31,
-};
+import { S330_DEVICE_LIMITS } from '../roland-s-series/index.js';
 
 export interface CreateToneConfig extends Omit<SSeriesCreateToneConfig, 'waveBank'> {
-    /** Wave bank (0=A, 1=B) */
-    waveBank: 0 | 1;
+    /**
+     * Wave bank. S-330 accepts 0/1 (A/B); the unified editor uses this factory
+     * for S-550 as well, which accepts 0..3 (A/B/C/D). Out-of-range values
+     * are rejected at the device-client boundary, not here.
+     */
+    waveBank: number;
 }
 
 export interface CreateSubToneConfig extends SSeriesCreateSubToneConfig {
@@ -40,7 +36,7 @@ export function createTone(config: CreateToneConfig): S330Tone {
 }
 
 export function createSubTone(config: CreateSubToneConfig): S330Tone {
-    return createSeriesSubTone(config, S330_LIMITS) as S330Tone;
+    return createSeriesSubTone(config, S330_DEVICE_LIMITS) as S330Tone;
 }
 
 export function createMonolithicPrimaryTone(

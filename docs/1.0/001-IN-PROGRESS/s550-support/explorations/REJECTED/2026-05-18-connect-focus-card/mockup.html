@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Connect — Direction C: Single focus card</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --ac-color-bg:               220 24% 7%;
+    --ac-color-surface:          220 18% 11%;
+    --ac-color-fg:               215 18% 92%;
+    --ac-color-fg-muted:         220 12% 60%;
+    --ac-color-fg-subtle:        220 10% 42%;
+    --ac-color-border:           220 18% 22%;
+    --ac-color-accent:           215 78% 58%;
+    --ac-color-rec:              358 72% 58%;
+    --ac-color-success:          152 55% 52%;
+    --ac-font-display: "Departure Mono", "JetBrains Mono", ui-monospace, monospace;
+    --ac-font-body:    "IBM Plex Sans", system-ui, sans-serif;
+    --ac-font-mono:    "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
+    --ac-tracking-eyebrow: 0.14em;
+    --ac-tracking-display: 0.01em;
+    --ac-radius-sm: 0.25rem;
+    --ac-rule-hairline: 1px;
+    --ac-rule-medium: 2px;
+  }
+  body {
+    margin: 0;
+    padding: 4rem 2rem;
+    font-family: var(--ac-font-body);
+    color: hsl(var(--ac-color-fg));
+    background: hsl(var(--ac-color-bg));
+    background-image:
+      radial-gradient(ellipse at center top, hsl(var(--ac-color-accent) / 0.06), transparent 50%),
+      repeating-linear-gradient(
+        0deg,
+        transparent 0 24px,
+        hsl(var(--ac-color-fg) / 0.012) 24px 25px
+      );
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+  }
+  .shell { width: 100%; max-width: 56rem; }
+
+  /* --- title row --- */
+  .title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 0.75rem;
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+  .title-block { display: flex; flex-direction: column; gap: 0.5rem; }
+  h2 {
+    margin: 0;
+    font-family: var(--ac-font-display);
+    font-weight: 400;
+    font-size: 1.45rem;
+    letter-spacing: var(--ac-tracking-display);
+  }
+  .rule {
+    width: 2.25rem;
+    height: var(--ac-rule-medium);
+    background: hsl(var(--ac-color-rec));
+    box-shadow: 0 0 8px hsl(var(--ac-color-rec) / 0.4);
+  }
+  .eyebrow {
+    font-family: var(--ac-font-display);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+
+  /* --- THE FOCUS CARD --- */
+  .focus-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: 4rem;
+  }
+  .focus-card {
+    width: 100%;
+    max-width: 32rem;
+    background: hsl(var(--ac-color-surface) / 0.92);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: var(--ac-radius-sm);
+    padding: 2rem 2rem 1.75rem;
+    box-shadow: 0 8px 40px hsl(0 0% 0% / 0.4);
+    position: relative;
+  }
+  /* A single thick accent stripe along the top — visual anchor */
+  .focus-card::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, hsl(var(--ac-color-accent)), hsl(var(--ac-color-accent) / 0.4));
+    box-shadow: 0 0 14px hsl(var(--ac-color-accent) / 0.5);
+    border-radius: var(--ac-radius-sm) var(--ac-radius-sm) 0 0;
+  }
+
+  .focus-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.25rem;
+  }
+  .focus-led {
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 50%;
+    background: hsl(var(--ac-color-rec));
+    box-shadow: 0 0 10px hsl(var(--ac-color-rec));
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    50% { opacity: 0.4; box-shadow: 0 0 4px hsl(var(--ac-color-rec)); }
+  }
+  .focus-state {
+    font-family: var(--ac-font-display);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-rec));
+  }
+  .focus-state .sep { margin: 0 0.5rem; color: hsl(var(--ac-color-fg-subtle)); }
+  .focus-state .device { color: hsl(var(--ac-color-fg-muted)); }
+
+  .focus-title {
+    font-family: var(--ac-font-display);
+    font-size: 1.4rem;
+    font-weight: 400;
+    letter-spacing: var(--ac-tracking-display);
+    margin: 0 0 0.5rem 0;
+  }
+  .focus-blurb {
+    font-family: var(--ac-font-body);
+    font-size: 0.9rem;
+    color: hsl(var(--ac-color-fg-muted));
+    line-height: 1.55;
+    margin: 0 0 1.75rem 0;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-bottom: 1rem;
+  }
+  .field-label {
+    font-family: var(--ac-font-display);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .field-label .opt {
+    color: hsl(var(--ac-color-fg-subtle));
+    text-transform: none;
+    letter-spacing: 0;
+    font-family: var(--ac-font-mono);
+    font-size: 0.72rem;
+    margin-left: 0.5rem;
+  }
+  select, input[type="number"] {
+    padding: 0.625rem 0.75rem;
+    background: hsl(var(--ac-color-bg));
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: var(--ac-radius-sm);
+    color: hsl(var(--ac-color-fg));
+    font-family: var(--ac-font-mono);
+    font-size: 0.92rem;
+  }
+
+  .field--id {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    align-items: center;
+    column-gap: 0.75rem;
+  }
+  .field--id .field-label { grid-column: 1 / -1; }
+  .field--id input { max-width: 4.5rem; text-align: center; }
+  .field--id .hint {
+    font-family: var(--ac-font-mono);
+    font-size: 0.78rem;
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+
+  /* The PRIMARY CTA — large, accent-tinted, clearly the next step. */
+  .focus-cta {
+    width: 100%;
+    margin-top: 0.75rem;
+    padding: 0.95rem;
+    background: hsl(var(--ac-color-accent) / 0.25);
+    border: var(--ac-rule-medium) solid hsl(var(--ac-color-accent));
+    border-radius: var(--ac-radius-sm);
+    font-family: var(--ac-font-display);
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: hsl(var(--ac-color-fg));
+    cursor: pointer;
+    box-shadow: 0 0 22px hsl(var(--ac-color-accent) / 0.25);
+    transition: all 150ms ease;
+  }
+  .focus-cta:hover {
+    background: hsl(var(--ac-color-accent) / 0.4);
+    box-shadow: 0 0 28px hsl(var(--ac-color-accent) / 0.4);
+  }
+
+  /* --- FOOTER LINKS (everything secondary lives here) --- */
+  .footer-links {
+    margin-top: 1.25rem;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    font-family: var(--ac-font-display);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+  }
+  .footer-links a {
+    color: hsl(var(--ac-color-fg-subtle));
+    text-decoration: none;
+    border-bottom: var(--ac-rule-hairline) solid transparent;
+    padding-bottom: 2px;
+    cursor: pointer;
+  }
+  .footer-links a:hover {
+    color: hsl(var(--ac-color-accent));
+    border-bottom-color: hsl(var(--ac-color-accent) / 0.5);
+  }
+
+  /* When a popover/disclosure expands, render hidden details inline */
+  .help-disclosure {
+    margin-top: 1.5rem;
+    max-width: 32rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .help-disclosure summary {
+    list-style: none;
+    font-family: var(--ac-font-display);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-subtle));
+    text-align: center;
+    cursor: pointer;
+  }
+  .help-disclosure summary:hover { color: hsl(var(--ac-color-accent)); }
+  .help-disclosure ul {
+    margin: 0.85rem 0 0 0;
+    padding-left: 1.5rem;
+    font-family: var(--ac-font-mono);
+    font-size: 0.82rem;
+    color: hsl(var(--ac-color-fg-muted));
+    line-height: 1.7;
+  }
+
+  .annotations {
+    margin: 3rem auto 0;
+    max-width: 44rem;
+    padding: 1.25rem 1.5rem;
+    background: hsl(var(--ac-color-surface) / 0.5);
+    border-left: var(--ac-rule-medium) solid hsl(var(--ac-color-accent));
+    font-family: var(--ac-font-mono);
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .annotations h3 {
+    margin: 0 0 0.75rem 0;
+    font-family: var(--ac-font-display);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg));
+  }
+</style>
+</head>
+<body>
+  <main class="shell">
+
+    <header class="title-row">
+      <div class="title-block">
+        <h2>Connect</h2>
+        <div class="rule"></div>
+      </div>
+      <span class="eyebrow">S-330 · MIDI Handshake</span>
+    </header>
+
+    <!-- THE FOCUS CARD — single visual anchor -->
+    <div class="focus-wrap">
+      <section class="focus-card" aria-label="Connect to device">
+        <header class="focus-header">
+          <span class="focus-led" aria-hidden="true"></span>
+          <span class="focus-state">
+            Disconnected
+            <span class="sep">·</span>
+            <span class="device">Roland S-330</span>
+          </span>
+        </header>
+
+        <h2 class="focus-title">Pair the editor with your device.</h2>
+        <p class="focus-blurb">
+          Pick the MIDI port your S-330 is on. The same interface should appear in both Input and Output. Device ID matches the value shown on the S-330's MIDI menu.
+        </p>
+
+        <div class="field">
+          <span class="field-label">MIDI Input · From device</span>
+          <select>
+            <option>Volt 4 (Universal Audio)</option>
+            <option>S-330 OUT (USB MIDI)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <span class="field-label">MIDI Output · To device</span>
+          <select>
+            <option>Volt 4 (Universal Audio)</option>
+            <option>S-330 IN (USB MIDI)</option>
+          </select>
+        </div>
+
+        <div class="field field--id">
+          <span class="field-label">Device ID <span class="opt">most operators leave at 1</span></span>
+          <input type="number" min="1" max="17" value="1" />
+          <span class="hint">range 1–17</span>
+        </div>
+
+        <button class="focus-cta">Connect</button>
+      </section>
+    </div>
+
+    <!-- FOOTER LINKS — secondary actions live here, not in the focus area -->
+    <nav class="footer-links" aria-label="More options">
+      <a href="#">Refresh ports</a>
+      <a href="#">Advanced transport</a>
+      <a href="#">Troubleshooting</a>
+    </nav>
+
+    <!-- INLINE TROUBLESHOOTING (disclosure) -->
+    <details class="help-disclosure">
+      <summary>If you're having trouble connecting…</summary>
+      <ul>
+        <li>Make sure the S-330 is powered on and connected via your MIDI interface.</li>
+        <li>Input and Output should be the SAME interface in most setups.</li>
+        <li>If the browser asks for SysEx permission, allow it — required for full device control.</li>
+        <li>The S-330's front panel shows IDs as 1–17 but the protocol value is 0–16. The form here uses the front-panel value.</li>
+      </ul>
+    </details>
+
+    <aside class="annotations">
+      <h3>Direction C · Single focus card</h3>
+      <p>Brutally minimal. One card, one task, one button. Everything else — transport selector, refresh ports, help — is demoted to small footer links or a disclosure. The page surface around the card is quiet so the operator's gaze lands on exactly what they need to do next.</p>
+      <p><strong>Strengths:</strong> impossible to miss the next action. Renders well at any viewport (the card just centers and the footer links wrap). Easy to extend with a connecting/error state on the same surface (red border → accent fill on Connect, state badge in the header swaps).</p>
+      <p><strong>Trade-offs:</strong> no spatial / device metaphor — the operator just sees a form. The "transport selector" disclosure is hidden enough that someone running a non-Web-MIDI transport (HTTP server, etc.) may not find it without a hint.</p>
+    </aside>
+
+  </main>
+</body>
+</html>

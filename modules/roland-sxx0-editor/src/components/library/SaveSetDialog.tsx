@@ -7,15 +7,25 @@
 import { useState, useCallback } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { cn } from '@/lib/utils';
+import type { OperationProgress } from '@/types/import-operation';
+import {
+  OperationProgressBar,
+  OperationErrorBanner,
+} from '@/components/ui/ImportStatus';
 
 interface SaveSetDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (setName: string, description?: string) => Promise<void>;
   isSaving: boolean;
-  progress?: number;
+  /**
+   * Structured save progress. Migrated from a bare `number` (0-100) to the
+   * shared `OperationProgress` shape so the dialog can render the canonical
+   * `OperationProgressBar` (bytes/elapsed/ETA) instead of a thin custom
+   * bar — matching every other long-running dialog in this directory.
+   */
+  progress?: OperationProgress;
   error: string | null;
-  statusMessage?: string | null;
   success?: boolean;
 }
 
@@ -26,7 +36,6 @@ export function SaveSetDialog({
   isSaving,
   progress,
   error,
-  statusMessage,
   success,
 }: SaveSetDialogProps): JSX.Element {
   const [setName, setSetName] = useState('');
@@ -62,14 +71,14 @@ export function SaveSetDialog({
           <Dialog.Title className="text-lg font-bold text-s330-text mb-4">
             Save Device to Library
           </Dialog.Title>
+          <Dialog.Description className="text-sm text-s330-muted mb-3">
+            Capture the device's current memory state (patches, tones, and wave data) as a named set in the library so it can be restored later.
+          </Dialog.Description>
 
           <div className="space-y-4">
             {/* Set Name */}
             <div>
-              <label
-                htmlFor="setName"
-                className="block text-sm font-medium text-s330-text mb-1"
-              >
+              <label htmlFor="setName" className="ac-field-label mb-1">
                 Set Name
               </label>
               <input
@@ -80,13 +89,7 @@ export function SaveSetDialog({
                 disabled={isSaving}
                 placeholder="e.g., My_Drum_Kit"
                 data-testid="set-name-input"
-                className={cn(
-                  'w-full px-3 py-2 rounded',
-                  'bg-s330-bg border border-s330-accent',
-                  'text-s330-text placeholder:text-s330-muted',
-                  'focus:outline-none focus:border-s330-highlight',
-                  'disabled:opacity-50'
-                )}
+                className="ac-input"
                 autoFocus
               />
               <p className="text-xs text-s330-muted mt-1">
@@ -96,10 +99,7 @@ export function SaveSetDialog({
 
             {/* Description */}
             <div>
-              <label
-                htmlFor="description"
-                className="block text-sm font-medium text-s330-text mb-1"
-              >
+              <label htmlFor="description" className="ac-field-label mb-1">
                 Description (optional)
               </label>
               <textarea
@@ -109,28 +109,14 @@ export function SaveSetDialog({
                 disabled={isSaving}
                 placeholder="Brief description of this set..."
                 rows={3}
-                className={cn(
-                  'w-full px-3 py-2 rounded resize-none',
-                  'bg-s330-bg border border-s330-accent',
-                  'text-s330-text placeholder:text-s330-muted',
-                  'focus:outline-none focus:border-s330-highlight',
-                  'disabled:opacity-50'
-                )}
+                className="ac-input resize-none"
               />
             </div>
 
             {/* Progress Bar */}
-            {isSaving && progress !== undefined && (
+            {isSaving && progress && (
               <div data-testid="save-progress">
-                <div className="h-2 bg-s330-bg rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-s330-highlight transition-all duration-150"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-                <p className="text-xs text-s330-muted mt-1">
-                  {statusMessage || (progress < 50 ? 'Reading wave data...' : 'Saving to library...')}
-                </p>
+                <OperationProgressBar progress={progress} />
               </div>
             )}
 
@@ -145,15 +131,11 @@ export function SaveSetDialog({
             )}
 
             {/* Error */}
-            {error && (
-              <div className="p-3 bg-red-500/10 border border-red-500/30 rounded">
-                <p className="text-sm text-red-400">{error}</p>
-              </div>
-            )}
+            {error && <OperationErrorBanner error={error} />}
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 mt-6">
+          <div className="flex justify-end gap-2 mt-6">
             {success ? (
               <Dialog.Close asChild>
                 <button className="ac-btn ac-btn-primary">

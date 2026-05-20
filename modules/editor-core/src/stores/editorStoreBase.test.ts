@@ -127,6 +127,26 @@ describe('createEditorStoreSlice', () => {
       store.getState().setError(null);
       expect(store.getState().error).toBeNull();
     });
+
+    it('does NOT reset loading state when clearing an error (setError(null) preserves isLoading)', () => {
+      // Regression test for decisions-2026-05-11 Decision 5: the previous
+      // contract reset isLoading/loadingMessage/loadingProgress to null/false
+      // on every setError call, including setError(null). That made
+      // `setLoading(true, msg); setError(null);` a self-cancelling pair —
+      // useBankLoader fires that exact sequence at every bank load, which
+      // hid the PatchesPage/TonesPage percent-bar progress region.
+      const store = createTestStore();
+      store.getState().setLoading(true, 'Loading patches 1-8...');
+      store.getState().setProgress(25, 100);
+
+      store.getState().setError(null);
+
+      const state = store.getState();
+      expect(state.error).toBeNull();
+      expect(state.isLoading).toBe(true);
+      expect(state.loadingMessage).toBe('Loading patches 1-8...');
+      expect(state.loadingProgress).toBe(25);
+    });
   });
 
   describe('composition with device-specific state', () => {

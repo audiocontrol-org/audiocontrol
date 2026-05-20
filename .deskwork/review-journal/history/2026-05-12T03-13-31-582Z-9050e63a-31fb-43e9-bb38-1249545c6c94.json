@@ -1,0 +1,15 @@
+{
+  "kind": "entry-annotation",
+  "at": "2026-05-12T03:13:31.582Z",
+  "entryId": "e5cdc258-ae9f-463b-8b87-58de9dca8716",
+  "annotation": {
+    "type": "address",
+    "workflowId": "e5cdc258-ae9f-463b-8b87-58de9dca8716",
+    "commentId": "7fc50929-559d-4d2d-b3ea-54bd2c82eb2d",
+    "version": 2,
+    "disposition": "addressed",
+    "reason": "Decision 5 resolved as Option A. 7-line fix applied at modules/editor-core/src/stores/editorStoreBase.ts:83-90 — setError(null) no longer resets isLoading: false when only clearing the error. D-XX-12 test-strengthening (asserting percent bar render) deferred to a small follow-up; non-blocking.",
+    "id": "5de34c1d-7e1b-49e1-89aa-e1c6e20bd91e",
+    "createdAt": "2026-05-12T03:13:31.582Z"
+  }
+}

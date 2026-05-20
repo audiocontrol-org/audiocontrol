@@ -86,6 +86,13 @@ function S550MemoryPanelAdapter(props: DeviceMemoryRenderProps): JSX.Element {
       onSelectPatch={state.onSelectPatch}
       onDropLibraryTone={state.onDropLibraryTone}
       onDropLibraryPatch={state.onDropLibraryPatch}
+      onDropLibrarySample={state.onDropLibrarySample}
+      loadingToneBank={state.loadingToneBank}
+      loadingPatchBank={state.loadingPatchBank}
+      onLoadToneBank={state.onLoadToneBank}
+      onLoadPatchBank={state.onLoadPatchBank}
+      onReloadToneBank={state.onReloadToneBank}
+      onReloadPatchBank={state.onReloadPatchBank}
     />
   );
 }

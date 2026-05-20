@@ -1,0 +1,1655 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Phase 9 Task 2 — HomePage Mockup v1</title>
+<style>
+  /* ============================================================
+     DESIGN TOKENS — `--ac-*` namespace
+     Direction:
+       Dark-only, blue ink (NOT amber-cast). s330 blue is dominant
+       where audiocontrol.org would have used phosphor amber.
+       HSL fragments enable `hsl(var(--ac-color-*) / alpha)` composition.
+     ============================================================ */
+  :root {
+    color-scheme: dark;
+
+    /* --- color tokens (HSL fragments, no hsl() wrapper) --------- */
+    --ac-color-bg:               220 24% 7%;     /* warm-cool near-black, faint blue cast */
+    --ac-color-surface:          220 18% 11%;    /* card surface */
+    --ac-color-surface-hover:    220 18% 14%;    /* card hover */
+    --ac-color-fg:               215 18% 92%;    /* off-white, slight blue cast */
+    --ac-color-fg-muted:         220 12% 60%;    /* secondary text */
+    --ac-color-fg-subtle:        220 10% 42%;    /* tertiary text / placeholders */
+    --ac-color-border:           220 18% 22%;    /* hairline default */
+    --ac-color-border-hover:     220 18% 32%;    /* hairline emphasis */
+    --ac-color-accent:           215 78% 58%;    /* s330 BLUE — the identity */
+    --ac-color-accent-soft:      215 78% 68%;    /* hover lift */
+    --ac-color-highlight:        210 96% 72%;    /* keyline highlight */
+    --ac-color-danger:           358 72% 58%;    /* destructive */
+    --ac-color-warning:          38  80% 58%;    /* caution (used sparingly) */
+    --ac-color-success:          152 55% 52%;    /* available / done */
+
+    /* --- CRT monitor tokens ------------------------------------ */
+    --ac-crt-bezel:    30 6% 6%;
+    --ac-crt-frame:    30 5% 12%;
+    --ac-crt-bg:       30 4% 22%;
+    --ac-crt-fg-dim:   35 6% 68%;
+    --ac-crt-fg:       35 8% 88%;
+    --ac-crt-fg-active: 35 12% 96%;
+    --ac-crt-btn-fill: 30 5% 80%;
+    --ac-crt-btn-text: 30 8% 12%;
+
+    /* --- typography role tokens -------------------------------- */
+    --ac-font-display: "Departure Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --ac-font-body:    "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --ac-font-mono:    "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --ac-font-heading: var(--ac-font-display);
+
+    /* --- type scale -------------------------------------------- */
+    --ac-text-h1: clamp(1.75rem, 3.4vw, 2.35rem);
+    --ac-text-h2: 1.45rem;
+    --ac-text-h3: 1.15rem;
+    --ac-text-h4: 1rem;
+    --ac-text-eyebrow: 0.78rem;
+    --ac-text-body: 1rem;
+    --ac-text-small: 0.875rem;
+    --ac-text-tiny: 0.75rem;
+
+    /* --- weight tokens ----------------------------------------- */
+    --ac-fw-display: 400;
+    --ac-fw-body:    400;
+    --ac-fw-medium:  500;
+    --ac-fw-semibold:600;
+    --ac-fw-bold:    700;
+
+    /* --- letter-spacing ---------------------------------------- */
+    --ac-tracking-display: 0.01em;
+    --ac-tracking-eyebrow: 0.14em;
+    --ac-tracking-ticker:  0.12em;
+
+    /* --- spacing scale ----------------------------------------- */
+    --ac-space-1: 0.25rem;
+    --ac-space-2: 0.5rem;
+    --ac-space-3: 0.75rem;
+    --ac-space-4: 1rem;
+    --ac-space-5: 1.25rem;
+    --ac-space-6: 1.5rem;
+    --ac-space-7: 2rem;
+    --ac-space-8: 2.75rem;
+
+    /* --- layout tokens ----------------------------------------- */
+    --ac-container-max-width: 1400px;
+    --ac-container-padding:   2rem;
+    --ac-measure-reading:     36rem;
+    --ac-measure-narrow:      28rem;
+
+    /* --- rule weights ------------------------------------------ */
+    --ac-rule-hairline: 1px;
+    --ac-rule-medium:   2px;
+    --ac-rule-heavy:    3px;
+
+    /* --- shadow tokens ----------------------------------------- */
+    --ac-shadow-card: 0 0 0 1px hsl(var(--ac-color-border)),
+                      0 10px 36px -12px hsl(220 40% 0% / 0.65);
+    --ac-shadow-card-hover:
+      0 0 0 1px hsl(var(--ac-color-accent) / 0.5),
+      0 14px 40px -10px hsl(var(--ac-color-accent) / 0.18),
+      0 4px 18px -6px hsl(220 40% 0% / 0.55);
+
+    --ac-glow-accent: 0 0 14px hsl(var(--ac-color-accent) / 0.45),
+                      0 0 2px  hsl(var(--ac-color-accent) / 0.65);
+
+    /* --- motion tokens ----------------------------------------- */
+    --ac-duration-fast:    120ms;
+    --ac-duration-default: 220ms;
+    --ac-duration-slow:    420ms;
+    --ac-easing-default:   cubic-bezier(0.2, 0.6, 0.2, 1);
+
+    /* --- selection -------------------------------------------- */
+  }
+
+  ::selection {
+    background-color: hsl(var(--ac-color-accent) / 0.35);
+    color: hsl(var(--ac-color-fg));
+  }
+
+  /* ============================================================
+     CRT MONITOR — see 01-design-language.html § 08
+     ============================================================ */
+  .ac-crt-monitor {
+    background: hsl(var(--ac-crt-bezel));
+    padding: var(--ac-space-3);
+    border-radius: 6px;
+    box-shadow:
+      0 0 0 1px hsl(var(--ac-color-border)),
+      0 14px 40px -10px hsl(220 40% 0% / 0.6),
+      inset 0 1px 0 hsl(35 8% 30% / 0.4);
+  }
+  .ac-crt-monitor__bezel {
+    background: hsl(var(--ac-crt-frame));
+    padding: var(--ac-space-3);
+    border-radius: 4px;
+    box-shadow: inset 0 0 0 1px hsl(30 4% 4%);
+  }
+  .ac-crt-monitor__screen {
+    position: relative;
+    background: hsl(var(--ac-crt-bg));
+    color: hsl(var(--ac-crt-fg-dim));
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    line-height: 1.35;
+    padding: var(--ac-space-4) var(--ac-space-5) var(--ac-space-5);
+    border-radius: 2px;
+    overflow: hidden;
+    background-image:
+      linear-gradient(180deg, transparent 0, hsl(220 14% 5% / 0.18) 50%, transparent 100%),
+      repeating-linear-gradient(180deg, transparent 0, transparent 2px, hsl(30 4% 0% / 0.08) 2px, hsl(30 4% 0% / 0.08) 3px);
+  }
+  .ac-crt-monitor__chrome {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: var(--ac-space-2);
+    margin-bottom: var(--ac-space-2);
+  }
+  .ac-crt-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 1.5rem;
+    border: 1px solid hsl(var(--ac-crt-fg-dim) / 0.4);
+    background: transparent;
+    color: hsl(var(--ac-crt-fg));
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    letter-spacing: 0.04em;
+    padding-inline: var(--ac-space-2);
+  }
+  .ac-crt-btn--filled { background: hsl(var(--ac-crt-btn-fill)); color: hsl(var(--ac-crt-btn-text)); border-color: hsl(var(--ac-crt-btn-fill)); }
+  .ac-crt-btn--blank { border-color: hsl(var(--ac-crt-fg-dim) / 0.25); background: hsl(var(--ac-crt-fg-dim) / 0.12); }
+  .ac-crt-monitor__sub-row {
+    display: flex; justify-content: space-between;
+    color: hsl(var(--ac-crt-fg));
+    margin-bottom: var(--ac-space-3);
+    padding-bottom: var(--ac-space-2);
+  }
+  .ac-crt-table {
+    width: 100%; border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--ac-crt-fg-dim));
+  }
+  .ac-crt-table thead th { text-align: left; color: hsl(var(--ac-crt-fg)); font-weight: 400; padding-block: 1px; }
+  .ac-crt-table thead th:nth-child(2),
+  .ac-crt-table thead th:nth-child(3),
+  .ac-crt-table thead th:nth-child(6),
+  .ac-crt-table thead th:nth-child(7) { text-align: right; }
+  .ac-crt-table tbody td { padding-block: 1px; color: hsl(var(--ac-crt-fg-dim)); }
+  .ac-crt-table tbody td:nth-child(2),
+  .ac-crt-table tbody td:nth-child(3),
+  .ac-crt-table tbody td:nth-child(6),
+  .ac-crt-table tbody td:nth-child(7) { text-align: right; }
+  .ac-crt-table tbody tr:first-child td { color: hsl(var(--ac-crt-fg)); }
+  .ac-crt-cell--selected {
+    background: hsl(var(--ac-crt-fg-dim));
+    color: hsl(var(--ac-crt-bg));
+    padding-inline: 4px; margin-inline: -4px; display: inline-block;
+  }
+  .ac-crt-monitor__display {
+    margin-top: var(--ac-space-4);
+    color: hsl(var(--ac-crt-fg));
+    display: flex; gap: var(--ac-space-5);
+  }
+  .ac-crt-cursor {
+    display: inline-block; width: 0.6em;
+    background: hsl(var(--ac-crt-fg)); color: hsl(var(--ac-crt-bg));
+    animation: ac-crt-blink 1s steps(1) infinite;
+  }
+  @keyframes ac-crt-blink { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .ac-crt-cursor { animation: none; } }
+  .ac-crt-monitor__lookup {
+    margin-top: var(--ac-space-3);
+    display: grid; grid-template-columns: 1fr 1fr;
+    column-gap: var(--ac-space-7); row-gap: 1px;
+    color: hsl(var(--ac-crt-fg-dim));
+    padding-left: var(--ac-space-4);
+  }
+  .ac-crt-monitor__caption {
+    margin-top: var(--ac-space-3);
+    display: flex; justify-content: space-between;
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .ac-crt-monitor--compact .ac-crt-monitor__screen {
+    font-size: var(--ac-text-tiny);
+    padding: var(--ac-space-3) var(--ac-space-4) var(--ac-space-4);
+  }
+  .ac-crt-monitor--compact .ac-crt-btn { height: 1.25rem; }
+
+  /* ============================================================
+     APP SHELL — page content + persistent CRT dock
+     ============================================================ */
+  .app-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--ac-space-7);
+    padding-block: var(--ac-space-6) var(--ac-space-8);
+  }
+  .app-shell__crt {
+    align-self: start;
+  }
+  @media (min-width: 1100px) {
+    .app-shell {
+      grid-template-columns: minmax(0, 1fr) 30rem;
+    }
+    .app-shell__crt {
+      position: sticky;
+      top: var(--ac-space-4);
+    }
+  }
+
+  /* ============================================================
+     RESETS
+     ============================================================ */
+  *, *::before, *::after { box-sizing: border-box; }
+  html { font-size: 16px; }
+  body {
+    margin: 0;
+    background: hsl(var(--ac-color-bg));
+    color: hsl(var(--ac-color-fg));
+    font-family: var(--ac-font-body);
+    font-size: var(--ac-text-body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* faint instrument-grid background — extremely subtle, not a real grid */
+    background-image:
+      linear-gradient(hsl(var(--ac-color-border) / 0.20) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--ac-color-border) / 0.20) 1px, transparent 1px);
+    background-size: 40px 40px, 40px 40px;
+    background-position: -1px -1px;
+    background-attachment: fixed;
+  }
+
+  /* ============================================================
+     CONTAINER
+     ============================================================ */
+  .ac-container {
+    max-width: var(--ac-container-max-width);
+    margin: 0 auto;
+    padding: 0 var(--ac-container-padding);
+  }
+
+  /* ============================================================
+     PAGE BANNER — self-identifying header for this exploration
+     ============================================================ */
+  .exploration-banner {
+    border-bottom: var(--ac-rule-medium) solid hsl(var(--ac-color-accent));
+    background:
+      linear-gradient(180deg,
+        hsl(var(--ac-color-bg)) 0%,
+        hsl(var(--ac-color-surface) / 0.7) 100%);
+    box-shadow: 0 1px 0 hsl(var(--ac-color-accent) / 0.25);
+  }
+  .exploration-banner__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--ac-space-4);
+    padding-block: var(--ac-space-6);
+  }
+  .exploration-banner__title {
+    font-family: var(--ac-font-display);
+    font-weight: var(--ac-fw-display);
+    font-size: var(--ac-text-h2);
+    letter-spacing: var(--ac-tracking-display);
+    margin: 0;
+  }
+  .exploration-banner__meta {
+    display: flex;
+    gap: var(--ac-space-4);
+    align-items: center;
+  }
+  .exploration-banner__chip {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-accent));
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-accent) / 0.6);
+    padding: var(--ac-space-1) var(--ac-space-3);
+    border-radius: 2px;
+  }
+  .exploration-banner__notes {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+
+  /* ============================================================
+     SECTION SCAFFOLD + DIMENSION BRACKET
+     ============================================================ */
+  .ac-section {
+    padding-block: var(--ac-space-8);
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+
+  /* eyebrow / panel-label */
+  .ac-panel-label {
+    display: inline-block;
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .ac-panel-label--accent {
+    color: hsl(var(--ac-color-accent));
+    text-shadow: var(--ac-glow-accent);
+  }
+
+  /* dimension-bracket — corner L hairlines, 18×18px, 2px stroke */
+  .ac-dimension-bracket {
+    position: relative;
+    padding-top: var(--ac-space-5);
+    padding-inline: var(--ac-space-4);
+  }
+  .ac-dimension-bracket::before,
+  .ac-dimension-bracket::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    width: 18px;
+    height: 18px;
+    border-color: hsl(var(--ac-color-accent) / 0.6);
+    border-style: solid;
+    border-width: 0;
+  }
+  .ac-dimension-bracket::before {
+    left: 0;
+    border-top-width: var(--ac-rule-medium);
+    border-left-width: var(--ac-rule-medium);
+  }
+  .ac-dimension-bracket::after {
+    right: 0;
+    border-top-width: var(--ac-rule-medium);
+    border-right-width: var(--ac-rule-medium);
+  }
+
+  /* ============================================================
+     HEADINGS
+     ============================================================ */
+  h1, .ac-h1 {
+    font-family: var(--ac-font-display);
+    font-weight: var(--ac-fw-display);
+    font-size: var(--ac-text-h1);
+    line-height: 1.18;
+    letter-spacing: var(--ac-tracking-display);
+    margin: var(--ac-space-2) 0 var(--ac-space-5);
+  }
+  h2, .ac-h2 {
+    position: relative;
+    font-family: var(--ac-font-display);
+    font-weight: var(--ac-fw-display);
+    font-size: var(--ac-text-h2);
+    line-height: 1.2;
+    letter-spacing: var(--ac-tracking-display);
+    margin: var(--ac-space-7) 0 var(--ac-space-3);
+    padding-bottom: var(--ac-space-3);
+  }
+  h2::after, .ac-h2::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 2.25rem;
+    height: var(--ac-rule-medium);
+    background: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.45);
+  }
+  h3, .ac-h3 {
+    font-family: var(--ac-font-body);
+    font-weight: var(--ac-fw-semibold);
+    font-size: var(--ac-text-h3);
+    margin: var(--ac-space-6) 0 var(--ac-space-2);
+  }
+  h4, .ac-h4 {
+    font-family: var(--ac-font-body);
+    font-weight: var(--ac-fw-semibold);
+    font-size: var(--ac-text-h4);
+    margin: var(--ac-space-5) 0 var(--ac-space-2);
+  }
+  p, .ac-body { margin: 0 0 var(--ac-space-4); }
+
+  /* mono tabular spec for numeric readouts */
+  .ac-mono-tabular {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+  }
+  .ac-fg-muted { color: hsl(var(--ac-color-fg-muted)); }
+  .ac-fg-subtle { color: hsl(var(--ac-color-fg-subtle)); }
+
+  /* ============================================================
+     LINKS
+     ============================================================ */
+  a, .ac-link {
+    color: hsl(var(--ac-color-accent));
+    text-decoration: none;
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-accent) / 0.35);
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default),
+                color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  a:hover, .ac-link:hover {
+    color: hsl(var(--ac-color-accent-soft));
+    border-bottom-color: hsl(var(--ac-color-accent));
+  }
+  a:focus-visible, .ac-link:focus-visible {
+    outline: var(--ac-rule-medium) solid hsl(var(--ac-color-accent) / 0.6);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* ============================================================
+     CARD-GLOW
+     ============================================================ */
+  .ac-card {
+    padding: var(--ac-space-5);
+    background: hsl(var(--ac-color-surface));
+    box-shadow: var(--ac-shadow-card);
+    transition: box-shadow var(--ac-duration-default) var(--ac-easing-default),
+                background-color var(--ac-duration-default) var(--ac-easing-default);
+    border-radius: 2px;
+  }
+  .ac-card--interactive { cursor: pointer; }
+  .ac-card--interactive:hover {
+    background: hsl(var(--ac-color-surface-hover));
+    box-shadow: var(--ac-shadow-card-hover);
+  }
+  .ac-card--interactive:focus-visible {
+    outline: var(--ac-rule-medium) solid hsl(var(--ac-color-accent) / 0.6);
+    outline-offset: 2px;
+  }
+
+  /* ============================================================
+     SIGNAL LED
+     ============================================================ */
+  .ac-signal-led {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: hsl(var(--ac-color-accent));
+    box-shadow:
+      0 0 8px hsl(var(--ac-color-accent) / 0.7),
+      0 0 2px hsl(var(--ac-color-highlight) / 0.9) inset;
+    animation: ac-signal-pulse 2.4s ease-in-out infinite;
+    vertical-align: middle;
+  }
+  .ac-signal-led--idle {
+    background: hsl(var(--ac-color-fg-subtle));
+    box-shadow: 0 0 0 transparent;
+    animation: none;
+  }
+  .ac-signal-led--danger {
+    background: hsl(var(--ac-color-danger));
+    box-shadow: 0 0 8px hsl(var(--ac-color-danger) / 0.7);
+  }
+  @keyframes ac-signal-pulse {
+    0%, 100% {
+      box-shadow:
+        0 0 8px hsl(var(--ac-color-accent) / 0.65),
+        0 0 2px hsl(var(--ac-color-highlight) / 0.9) inset;
+      opacity: 1;
+    }
+    50% {
+      box-shadow:
+        0 0 16px hsl(var(--ac-color-accent) / 0.95),
+        0 0 3px hsl(var(--ac-color-highlight) / 1) inset;
+      opacity: 0.85;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ac-signal-led { animation: none; }
+  }
+
+  /* ============================================================
+     FORMS — ac-input / ac-select / ac-checkbox / ac-button
+     ============================================================ */
+  .ac-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-2);
+    margin-block: var(--ac-space-3);
+  }
+  .ac-field__label {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+
+  .ac-input,
+  .ac-select {
+    width: 100%;
+    background: hsl(var(--ac-color-bg));
+    color: hsl(var(--ac-color-fg));
+    font-family: var(--ac-font-body);
+    font-size: var(--ac-text-body);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    padding: var(--ac-space-2) var(--ac-space-3);
+    border-radius: 2px;
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default),
+                box-shadow var(--ac-duration-fast) var(--ac-easing-default),
+                background-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .ac-input::placeholder { color: hsl(var(--ac-color-fg-subtle)); }
+  .ac-input:hover,
+  .ac-select:hover {
+    border-color: hsl(var(--ac-color-border-hover));
+  }
+  .ac-input:focus-visible,
+  .ac-select:focus-visible {
+    outline: none;
+    border-color: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 0 3px hsl(var(--ac-color-accent) / 0.25);
+    background: hsl(var(--ac-color-surface) / 0.5);
+  }
+  .ac-input:disabled,
+  .ac-select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    border-color: hsl(var(--ac-color-border) / 0.5);
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .ac-input--mono { font-family: var(--ac-font-mono); }
+
+  /* select chevron */
+  .ac-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%237ea0d6' stroke-width='1.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right var(--ac-space-3) center;
+    background-size: 12px 8px;
+    padding-right: calc(var(--ac-space-3) * 2 + 12px);
+  }
+
+  /* checkbox */
+  .ac-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-3);
+    cursor: pointer;
+    user-select: none;
+  }
+  .ac-checkbox__input {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1rem;
+    height: 1rem;
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-bg));
+    border-radius: 2px;
+    position: relative;
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default),
+                background-color var(--ac-duration-fast) var(--ac-easing-default),
+                box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+    flex-shrink: 0;
+  }
+  .ac-checkbox__input:hover {
+    border-color: hsl(var(--ac-color-border-hover));
+  }
+  .ac-checkbox__input:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px hsl(var(--ac-color-accent) / 0.25);
+    border-color: hsl(var(--ac-color-accent));
+  }
+  .ac-checkbox__input:checked {
+    border-color: hsl(var(--ac-color-accent));
+    background: hsl(var(--ac-color-accent));
+  }
+  .ac-checkbox__input:checked::after {
+    content: "";
+    position: absolute;
+    top: 1px;
+    left: 4px;
+    width: 5px;
+    height: 9px;
+    border: solid hsl(var(--ac-color-bg));
+    border-width: 0 var(--ac-rule-medium) var(--ac-rule-medium) 0;
+    transform: rotate(45deg);
+  }
+  .ac-checkbox__input:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .ac-checkbox__label {
+    font-family: var(--ac-font-body);
+    font-size: var(--ac-text-body);
+  }
+
+  /* buttons */
+  .ac-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ac-space-2);
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    line-height: 1;
+    padding: var(--ac-space-3) var(--ac-space-5);
+    border-radius: 2px;
+    border: var(--ac-rule-hairline) solid transparent;
+    cursor: pointer;
+    background: transparent;
+    color: hsl(var(--ac-color-fg));
+    transition: background-color var(--ac-duration-fast) var(--ac-easing-default),
+                border-color var(--ac-duration-fast) var(--ac-easing-default),
+                color var(--ac-duration-fast) var(--ac-easing-default),
+                box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .ac-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px hsl(var(--ac-color-accent) / 0.4);
+  }
+  .ac-btn:disabled,
+  .ac-btn[aria-disabled="true"] {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  /* primary */
+  .ac-btn--primary {
+    background: hsl(var(--ac-color-accent));
+    color: hsl(var(--ac-color-bg));
+    border-color: hsl(var(--ac-color-accent));
+  }
+  .ac-btn--primary:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: hsl(var(--ac-color-accent-soft));
+    border-color: hsl(var(--ac-color-accent-soft));
+    box-shadow: 0 0 18px hsl(var(--ac-color-accent) / 0.3);
+  }
+
+  /* secondary */
+  .ac-btn--secondary {
+    background: transparent;
+    color: hsl(var(--ac-color-fg));
+    border-color: hsl(var(--ac-color-border-hover));
+  }
+  .ac-btn--secondary:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: hsl(var(--ac-color-surface-hover));
+    border-color: hsl(var(--ac-color-accent));
+    color: hsl(var(--ac-color-accent));
+  }
+
+  /* ghost */
+  .ac-btn--ghost {
+    background: transparent;
+    color: hsl(var(--ac-color-fg-muted));
+    border-color: transparent;
+  }
+  .ac-btn--ghost:hover:not(:disabled):not([aria-disabled="true"]) {
+    color: hsl(var(--ac-color-fg));
+    background: hsl(var(--ac-color-surface) / 0.5);
+  }
+
+  /* danger */
+  .ac-btn--danger {
+    background: transparent;
+    color: hsl(var(--ac-color-danger));
+    border-color: hsl(var(--ac-color-danger) / 0.6);
+  }
+  .ac-btn--danger:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: hsl(var(--ac-color-danger) / 0.12);
+    border-color: hsl(var(--ac-color-danger));
+  }
+
+  .ac-btn--sm {
+    padding: var(--ac-space-2) var(--ac-space-4);
+    font-size: var(--ac-text-tiny);
+  }
+
+  /* ============================================================
+     PROGRESS + SPINNER
+     ============================================================ */
+  .ac-progress {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-2);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-surface) / 0.6);
+    padding: var(--ac-space-4);
+    border-radius: 2px;
+  }
+  .ac-progress__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--ac-space-3);
+  }
+  .ac-progress__label {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .ac-progress__pct {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--ac-color-accent));
+  }
+  .ac-progress__bar {
+    position: relative;
+    height: 4px;
+    background: hsl(var(--ac-color-bg));
+    overflow: hidden;
+    border-radius: 1px;
+  }
+  .ac-progress__fill {
+    position: absolute;
+    inset: 0;
+    width: var(--ac-progress, 0%);
+    background: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 12px hsl(var(--ac-color-accent) / 0.5);
+    transition: width var(--ac-duration-default) var(--ac-easing-default);
+  }
+  .ac-progress__meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--ac-space-3);
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    font-variant-numeric: tabular-nums;
+  }
+  .ac-progress__meta-item { display: flex; flex-direction: column; gap: 2px; }
+  .ac-progress__meta-label {
+    font-family: var(--ac-font-display);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .ac-progress__meta-value { color: hsl(var(--ac-color-fg)); }
+
+  /* spinner */
+  .ac-spinner {
+    display: inline-block;
+    width: 1.25rem;
+    height: 1.25rem;
+    border: var(--ac-rule-medium) solid hsl(var(--ac-color-border));
+    border-top-color: hsl(var(--ac-color-accent));
+    border-radius: 50%;
+    animation: ac-spin 0.9s linear infinite;
+  }
+  .ac-spinner--sm { width: 1rem; height: 1rem; }
+  @keyframes ac-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    .ac-spinner { animation-duration: 4s; }
+  }
+
+  /* ============================================================
+     EYEBROW STATUS-ROW (h2 + metric)
+     ============================================================ */
+  .ac-status-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--ac-space-5);
+    padding-bottom: var(--ac-space-3);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+  .ac-status-row__heading { margin: 0; padding: 0; }
+  .ac-status-row__heading::after { display: none; }
+  .ac-status-row__heading-rule {
+    width: 2.25rem;
+    height: var(--ac-rule-medium);
+    background: hsl(var(--ac-color-accent));
+    box-shadow: 0 0 8px hsl(var(--ac-color-accent) / 0.45);
+    margin-top: var(--ac-space-2);
+  }
+  .ac-status-row__metric {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-2);
+    white-space: nowrap;
+  }
+  .ac-status-row__metric strong {
+    color: hsl(var(--ac-color-accent));
+    font-weight: var(--ac-fw-display);
+    font-family: var(--ac-font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ============================================================
+     UTILITIES
+     ============================================================ */
+  .ac-stack { display: flex; flex-direction: column; gap: var(--ac-space-4); }
+  .ac-row   { display: flex; flex-wrap: wrap; gap: var(--ac-space-4); align-items: center; }
+  .ac-pad-block { padding-block: var(--ac-space-5); }
+  .ac-mt-2 { margin-top: var(--ac-space-2); }
+  .ac-mt-3 { margin-top: var(--ac-space-3); }
+  .ac-mt-4 { margin-top: var(--ac-space-4); }
+  .ac-mt-5 { margin-top: var(--ac-space-5); }
+  .ac-mt-6 { margin-top: var(--ac-space-6); }
+  .ac-mt-7 { margin-top: var(--ac-space-7); }
+  .ac-mb-4 { margin-bottom: var(--ac-space-4); }
+
+  /* ============================================================
+     FOOTER
+     ============================================================ */
+  .exploration-footer {
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    padding-block: var(--ac-space-7);
+    margin-top: var(--ac-space-8);
+    color: hsl(var(--ac-color-fg-muted));
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+  }
+
+  /* ============================================================
+     ===== HOMEPAGE-SCOPED STYLES =====
+     Page-specific composition; nothing here introduces new tokens.
+     All values reference --ac-* tokens or layered classes above.
+     ============================================================ */
+
+  /* App chrome — sticky page header at top of editor (drawer trigger lives here) */
+  .homepage__appbar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: hsl(var(--ac-color-bg) / 0.85);
+    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+  .homepage__appbar-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ac-space-5);
+    padding-block: var(--ac-space-4);
+  }
+  .homepage__brand {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--ac-space-3);
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg));
+  }
+  .homepage__brand-mark {
+    color: hsl(var(--ac-color-accent));
+    text-shadow: var(--ac-glow-accent);
+  }
+  .homepage__brand-divider {
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+  .homepage__brand-device {
+    font-family: var(--ac-font-mono);
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--ac-color-fg-muted));
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .homepage__nav {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-1);
+  }
+  .homepage__nav-link {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+    padding: var(--ac-space-2) var(--ac-space-3);
+    border-bottom: 0;
+    border-radius: 2px;
+  }
+  .homepage__nav-link:hover {
+    color: hsl(var(--ac-color-fg));
+    background: hsl(var(--ac-color-surface) / 0.5);
+    border-bottom: 0;
+  }
+  .homepage__nav-link[aria-current="page"] {
+    color: hsl(var(--ac-color-accent));
+    background: hsl(var(--ac-color-accent) / 0.1);
+    border-bottom: 0;
+  }
+
+  .homepage__appbar-status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-3);
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-muted));
+    padding: var(--ac-space-2) var(--ac-space-3);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    border-radius: 2px;
+    background: hsl(var(--ac-color-surface) / 0.5);
+    cursor: pointer;
+    transition: border-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .homepage__appbar-status:hover {
+    border-color: hsl(var(--ac-color-border-hover));
+  }
+  .homepage__appbar-status--connected {
+    border-color: hsl(var(--ac-color-accent) / 0.4);
+  }
+
+  /* HERO — device identity */
+  .homepage__hero {
+    padding-block: var(--ac-space-8) var(--ac-space-7);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+  }
+  .homepage__hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+    gap: var(--ac-space-7);
+    align-items: start;
+  }
+  @media (max-width: 960px) {
+    .homepage__hero-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .homepage__eyebrow-row {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-3);
+    flex-wrap: wrap;
+  }
+  .homepage__eyebrow-sep {
+    color: hsl(var(--ac-color-fg-subtle));
+  }
+
+  .homepage__hero-title {
+    font-family: var(--ac-font-display);
+    font-weight: var(--ac-fw-display);
+    font-size: var(--ac-text-h1);
+    line-height: 1.18;
+    letter-spacing: var(--ac-tracking-display);
+    margin: var(--ac-space-3) 0 var(--ac-space-3);
+  }
+  .homepage__hero-title-mark {
+    color: hsl(var(--ac-color-accent));
+  }
+
+  .homepage__hero-tagline {
+    color: hsl(var(--ac-color-fg-muted));
+    max-width: var(--ac-measure-reading);
+    margin: 0 0 var(--ac-space-6);
+  }
+
+  .homepage__hero-actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: var(--ac-space-3);
+    margin-top: var(--ac-space-5);
+  }
+
+  /* device identity card on the right */
+  .homepage__id-card {
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background:
+      linear-gradient(180deg,
+        hsl(var(--ac-color-surface)) 0%,
+        hsl(var(--ac-color-bg)) 100%);
+    padding: var(--ac-space-5);
+    box-shadow: var(--ac-shadow-card);
+    border-radius: 2px;
+  }
+  .homepage__id-card-row {
+    display: grid;
+    grid-template-columns: 9rem 1fr;
+    gap: var(--ac-space-3);
+    align-items: baseline;
+    padding-block: var(--ac-space-2);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.6);
+  }
+  .homepage__id-card-row:last-child { border-bottom: 0; }
+  .homepage__id-card-key {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .homepage__id-card-val {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--ac-color-fg));
+  }
+
+  /* connection status panel */
+  .homepage__conn {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    gap: var(--ac-space-6);
+    padding: var(--ac-space-6);
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-surface));
+    box-shadow: var(--ac-shadow-card);
+    border-radius: 2px;
+  }
+  @media (max-width: 720px) {
+    .homepage__conn { grid-template-columns: 1fr; }
+  }
+  .homepage__conn-led {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-3);
+  }
+  .homepage__conn-headline {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-h3);
+    color: hsl(var(--ac-color-fg));
+    margin: 0;
+  }
+  .homepage__conn-detail {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-small);
+    color: hsl(var(--ac-color-fg-muted));
+    font-variant-numeric: tabular-nums;
+  }
+  .homepage__conn-detail strong {
+    color: hsl(var(--ac-color-accent));
+    font-weight: var(--ac-fw-display);
+  }
+  .homepage__conn-actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: var(--ac-space-3);
+    align-items: center;
+    justify-content: flex-end;
+  }
+  @media (max-width: 720px) {
+    .homepage__conn-actions { justify-content: flex-start; }
+  }
+
+  /* memory stats grid (the device-summary panel) */
+  .homepage__stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: var(--ac-space-4);
+  }
+  .homepage__stat {
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-surface) / 0.7);
+    padding: var(--ac-space-4) var(--ac-space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-2);
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+  }
+  .homepage__stat::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--ac-rule-medium);
+    background: hsl(var(--ac-color-accent) / 0.6);
+  }
+  .homepage__stat-label {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: hsl(var(--ac-color-fg-muted));
+  }
+  .homepage__stat-value {
+    font-family: var(--ac-font-mono);
+    font-size: 1.75rem;
+    line-height: 1;
+    color: hsl(var(--ac-color-fg));
+    font-variant-numeric: tabular-nums;
+  }
+  .homepage__stat-value strong {
+    color: hsl(var(--ac-color-accent));
+    font-weight: var(--ac-fw-display);
+  }
+  .homepage__stat-meta {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-subtle));
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* quick-link card grid */
+  .homepage__links {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: var(--ac-space-5);
+  }
+  .homepage__link-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ac-space-3);
+    padding: var(--ac-space-5);
+    text-decoration: none;
+    border-bottom: 0;
+    color: hsl(var(--ac-color-fg));
+    background: hsl(var(--ac-color-surface));
+    box-shadow: var(--ac-shadow-card);
+    border-radius: 2px;
+    transition: box-shadow var(--ac-duration-default) var(--ac-easing-default),
+                background-color var(--ac-duration-default) var(--ac-easing-default),
+                transform var(--ac-duration-default) var(--ac-easing-default);
+  }
+  .homepage__link-card:hover {
+    background: hsl(var(--ac-color-surface-hover));
+    box-shadow: var(--ac-shadow-card-hover);
+    border-bottom: 0;
+    color: hsl(var(--ac-color-fg));
+    transform: translateY(-1px);
+  }
+  .homepage__link-card:focus-visible {
+    outline: var(--ac-rule-medium) solid hsl(var(--ac-color-accent) / 0.6);
+    outline-offset: 2px;
+  }
+  .homepage__link-card-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--ac-space-3);
+  }
+  .homepage__link-card-num {
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-subtle));
+    letter-spacing: var(--ac-tracking-eyebrow);
+  }
+  .homepage__link-card-title {
+    font-family: var(--ac-font-display);
+    font-weight: var(--ac-fw-display);
+    font-size: 1.25rem;
+    letter-spacing: var(--ac-tracking-display);
+    color: hsl(var(--ac-color-fg));
+    margin: 0;
+  }
+  .homepage__link-card:hover .homepage__link-card-title {
+    color: hsl(var(--ac-color-accent));
+  }
+  .homepage__link-card-desc {
+    color: hsl(var(--ac-color-fg-muted));
+    font-size: var(--ac-text-small);
+    line-height: 1.55;
+    margin: 0;
+  }
+  .homepage__link-card-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-2);
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-subtle));
+    font-variant-numeric: tabular-nums;
+    margin-top: auto;
+    padding-top: var(--ac-space-3);
+    border-top: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.6);
+  }
+  .homepage__link-card-arrow {
+    font-family: var(--ac-font-display);
+    color: hsl(var(--ac-color-accent));
+    transition: transform var(--ac-duration-fast) var(--ac-easing-default);
+  }
+  .homepage__link-card:hover .homepage__link-card-arrow {
+    transform: translateX(4px);
+  }
+
+  /* recent-activity list */
+  .homepage__activity {
+    border: var(--ac-rule-hairline) solid hsl(var(--ac-color-border));
+    background: hsl(var(--ac-color-surface));
+    box-shadow: var(--ac-shadow-card);
+    border-radius: 2px;
+  }
+  .homepage__activity-row {
+    display: grid;
+    grid-template-columns: 7rem minmax(0, 1fr) auto;
+    gap: var(--ac-space-4);
+    align-items: baseline;
+    padding: var(--ac-space-4) var(--ac-space-5);
+    border-bottom: var(--ac-rule-hairline) solid hsl(var(--ac-color-border) / 0.5);
+  }
+  .homepage__activity-row:last-child { border-bottom: 0; }
+  .homepage__activity-time {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-subtle));
+    font-variant-numeric: tabular-nums;
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+  }
+  .homepage__activity-text {
+    color: hsl(var(--ac-color-fg));
+    font-size: var(--ac-text-small);
+  }
+  .homepage__activity-text strong {
+    color: hsl(var(--ac-color-fg));
+    font-family: var(--ac-font-mono);
+    font-weight: var(--ac-fw-display);
+  }
+  .homepage__activity-bytes {
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-tiny);
+    color: hsl(var(--ac-color-fg-muted));
+    font-variant-numeric: tabular-nums;
+  }
+  @media (max-width: 720px) {
+    .homepage__activity-row {
+      grid-template-columns: 1fr;
+      gap: var(--ac-space-1);
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== EXPLORATION BANNER ===== -->
+<header class="exploration-banner">
+  <div class="ac-container exploration-banner__inner">
+    <div>
+      <span class="ac-panel-label ac-panel-label--accent">PHASE 9 · TASK 2 · MOCKUP</span>
+      <h1 class="exploration-banner__title">HomePage Mockup v1</h1>
+      <p class="ac-fg-muted ac-mt-4" style="margin: 0;">
+        Per-page composition of the v1 design language. Demonstrates: eyebrow status-row, dimension-bracket section opener, signal LED pulse, card-glow hover, three-font role split. S-550 case shown — connected, port "MOTU 828mk3 · Port 1".
+      </p>
+    </div>
+    <div class="exploration-banner__meta">
+      <span class="exploration-banner__chip">v1</span>
+      <span class="exploration-banner__chip">s550-support</span>
+      <span class="exploration-banner__chip">02 / 07</span>
+      <span class="exploration-banner__notes">2026-05-08</span>
+    </div>
+  </div>
+</header>
+
+<!-- ===== APP CHROME (sticky bar with connection drawer trigger) ===== -->
+<div class="homepage__appbar">
+  <div class="ac-container homepage__appbar-inner">
+    <div class="homepage__brand">
+      <span class="homepage__brand-mark">audiocontrol</span>
+      <span class="homepage__brand-divider">·</span>
+      <span class="homepage__brand-device">roland / s550 / editor</span>
+    </div>
+    <nav class="homepage__nav" aria-label="Primary">
+      <a class="homepage__nav-link" href="#" aria-current="page">Home</a>
+      <a class="homepage__nav-link" href="#">Patches</a>
+      <a class="homepage__nav-link" href="#">Tones</a>
+      <a class="homepage__nav-link" href="#">Play</a>
+      <a class="homepage__nav-link" href="#">Workflows</a>
+      <a class="homepage__nav-link" href="#">Library</a>
+    </nav>
+    <button class="homepage__appbar-status homepage__appbar-status--connected" aria-haspopup="dialog" aria-expanded="false">
+      <span class="ac-signal-led" aria-hidden="true"></span>
+      <span>Connected · MOTU 828mk3 · Port 1</span>
+      <span class="ac-fg-subtle" aria-hidden="true">⌥C</span>
+    </button>
+  </div>
+</div>
+
+<main class="ac-container">
+<div class="app-shell">
+<div class="app-shell__page">
+
+  <!-- ===== HERO — device identity ===== -->
+  <section class="homepage__hero" aria-labelledby="hero-title">
+    <div class="homepage__hero-grid">
+      <!-- left: identity -->
+      <div>
+        <div class="homepage__eyebrow-row">
+          <span class="ac-panel-label">§ Editor · v1.0.0</span>
+          <span class="homepage__eyebrow-sep">·</span>
+          <span class="ac-panel-label ac-panel-label--accent">Connected · device id 17</span>
+          <span class="homepage__eyebrow-sep">·</span>
+          <span class="ac-panel-label">Last sync 14:02</span>
+        </div>
+
+        <h1 id="hero-title" class="homepage__hero-title">
+          Roland <span class="homepage__hero-title-mark">S-550</span> · Sample Player
+        </h1>
+
+        <p class="homepage__hero-tagline">
+          Web editor for the S-550 / S-330 family. Read patches and tones from the device, audition them on Play, and load complete sets from the Library. Connection lives in the drawer at the top — every page can reach it.
+        </p>
+
+        <div class="homepage__hero-actions">
+          <a class="ac-btn ac-btn--primary" href="#">Open Patches</a>
+          <a class="ac-btn ac-btn--secondary" href="#">View Memory Map</a>
+          <a class="ac-btn ac-btn--ghost" href="#">Read the manual</a>
+        </div>
+      </div>
+
+      <!-- right: device identity card -->
+      <aside class="homepage__id-card" aria-label="Device identification">
+        <div class="homepage__id-card-row">
+          <span class="homepage__id-card-key">Make</span>
+          <span class="homepage__id-card-val">Roland</span>
+        </div>
+        <div class="homepage__id-card-row">
+          <span class="homepage__id-card-key">Model</span>
+          <span class="homepage__id-card-val">S-550 · 12-bit · 1989</span>
+        </div>
+        <div class="homepage__id-card-row">
+          <span class="homepage__id-card-key">SysEx ID</span>
+          <span class="homepage__id-card-val">0x10 · device 17</span>
+        </div>
+        <div class="homepage__id-card-row">
+          <span class="homepage__id-card-key">OS · ROM</span>
+          <span class="homepage__id-card-val">v1.00 · 2.0M</span>
+        </div>
+        <div class="homepage__id-card-row">
+          <span class="homepage__id-card-key">Endpoint</span>
+          <span class="homepage__id-card-val">/roland/s550/editor</span>
+        </div>
+        <div class="homepage__id-card-row">
+          <span class="homepage__id-card-key">Companion</span>
+          <span class="homepage__id-card-val"><a href="#">S-330 editor →</a></span>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ===== CONNECTION STATUS ===== -->
+  <section class="ac-section" aria-labelledby="conn-heading">
+    <div class="ac-dimension-bracket">
+      <span class="ac-panel-label">§ 01 · Link</span>
+      <h2 id="conn-heading">Connection</h2>
+    </div>
+
+    <div class="ac-mt-6 homepage__conn">
+      <div class="ac-stack">
+        <div class="homepage__conn-led">
+          <span class="ac-signal-led" aria-hidden="true"></span>
+          <h3 class="homepage__conn-headline">Linked · MOTU 828mk3 · Port 1</h3>
+        </div>
+        <p class="homepage__conn-detail" style="margin: 0;">
+          Round-trip · <strong>3.2 ms</strong> &nbsp;·&nbsp;
+          SysEx ID · <strong>0x10</strong> &nbsp;·&nbsp;
+          Sample rate · <strong>30 kHz</strong> &nbsp;·&nbsp;
+          Last handshake · <strong>14:02:08</strong>
+        </p>
+        <p class="ac-fg-muted" style="margin: 0; max-width: var(--ac-measure-reading); font-size: var(--ac-text-small);">
+          The editor will keep this port open until you swap interfaces or reload. To change ports, open the connection drawer (⌥C) — connection isn't a separate page, it's a drawer reachable from any header.
+        </p>
+      </div>
+      <div class="homepage__conn-actions">
+        <button class="ac-btn ac-btn--secondary">Open Drawer</button>
+        <button class="ac-btn ac-btn--ghost ac-btn--sm">Re-handshake</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== DEVICE SUMMARY (memory stats) ===== -->
+  <section class="ac-section" aria-labelledby="summary-heading">
+    <header class="ac-status-row">
+      <div>
+        <h2 id="summary-heading" class="ac-status-row__heading">Device summary</h2>
+        <div class="ac-status-row__heading-rule"></div>
+      </div>
+      <span class="ac-status-row__metric">
+        <span class="ac-signal-led" aria-hidden="true"></span>
+        <span><strong>22</strong> of <strong>32</strong> patches loaded</span>
+      </span>
+    </header>
+
+    <p class="ac-fg-muted ac-mt-4" style="max-width: var(--ac-measure-reading);">
+      Layout from <code class="ac-mono-tabular">memoryLayout</code> — values come from the active device factory, never branched in JSX. The S-550 doubles the S-330's tone count from 32 to 64 and the wave bank count from 2 to 4.
+    </p>
+
+    <div class="homepage__stats ac-mt-6">
+      <article class="homepage__stat">
+        <span class="homepage__stat-label">Patches</span>
+        <span class="homepage__stat-value"><strong>32</strong></span>
+        <span class="homepage__stat-meta">P11 → P38 · 22 loaded</span>
+      </article>
+      <article class="homepage__stat">
+        <span class="homepage__stat-label">Tones</span>
+        <span class="homepage__stat-value"><strong>64</strong></span>
+        <span class="homepage__stat-meta">8 groups × 8 slots · 41 loaded</span>
+      </article>
+      <article class="homepage__stat">
+        <span class="homepage__stat-label">Wave banks</span>
+        <span class="homepage__stat-value"><strong>4</strong></span>
+        <span class="homepage__stat-meta">A · B · C · D · 18 segs each</span>
+      </article>
+      <article class="homepage__stat">
+        <span class="homepage__stat-label">Wave RAM</span>
+        <span class="homepage__stat-value"><strong>1.5</strong> M</span>
+        <span class="homepage__stat-meta">786 KB used · 51%</span>
+      </article>
+      <article class="homepage__stat">
+        <span class="homepage__stat-label">MIDI parts</span>
+        <span class="homepage__stat-value"><strong>16</strong></span>
+        <span class="homepage__stat-meta">Multi-timbral · 16 ch</span>
+      </article>
+      <article class="homepage__stat">
+        <span class="homepage__stat-label">Outputs</span>
+        <span class="homepage__stat-value"><strong>6</strong></span>
+        <span class="homepage__stat-meta">M/L/R · Indiv 1–4</span>
+      </article>
+    </div>
+  </section>
+
+  <!-- ===== QUICK LINKS ===== -->
+  <section class="ac-section" aria-labelledby="links-heading">
+    <div class="ac-dimension-bracket">
+      <span class="ac-panel-label">§ 02 · Routes</span>
+      <h2 id="links-heading">Where to next</h2>
+      <p class="ac-fg-muted" style="max-width: var(--ac-measure-reading);">
+        Five surfaces compose the editor. Pick one — every card hovers to the s330-blue glow, the destination page wears the same design language.
+      </p>
+    </div>
+
+    <div class="homepage__links ac-mt-6">
+      <a class="homepage__link-card" href="#">
+        <div class="homepage__link-card-head">
+          <span class="homepage__link-card-num">01 / 05</span>
+          <span class="homepage__link-card-arrow" aria-hidden="true">→</span>
+        </div>
+        <h3 class="homepage__link-card-title">Patches</h3>
+        <p class="homepage__link-card-desc">
+          Edit the 32 patches across banks A–D. Per-patch volume, key range, two-tone stacking, MIDI channel, and output assignment.
+        </p>
+        <span class="homepage__link-card-meta">22 / 32 loaded · last edit P14 "FlutePad"</span>
+      </a>
+
+      <a class="homepage__link-card" href="#">
+        <div class="homepage__link-card-head">
+          <span class="homepage__link-card-num">02 / 05</span>
+          <span class="homepage__link-card-arrow" aria-hidden="true">→</span>
+        </div>
+        <h3 class="homepage__link-card-title">Tones</h3>
+        <p class="homepage__link-card-desc">
+          Build tones from wave segments. Envelope, LFO, TVF/TVA, key-follow, velocity curve, loop point editing per slot.
+        </p>
+        <span class="homepage__link-card-meta">41 / 64 loaded · last edit T17 "Strings A"</span>
+      </a>
+
+      <a class="homepage__link-card" href="#">
+        <div class="homepage__link-card-head">
+          <span class="homepage__link-card-num">03 / 05</span>
+          <span class="homepage__link-card-arrow" aria-hidden="true">→</span>
+        </div>
+        <h3 class="homepage__link-card-title">Play</h3>
+        <p class="homepage__link-card-desc">
+          Multi-timbral performance view. 16 MIDI parts, level meters, output routing, panic / all-notes-off — the live face of the device.
+        </p>
+        <span class="homepage__link-card-meta">16 parts · 0 panicking · idle</span>
+      </a>
+
+      <a class="homepage__link-card" href="#">
+        <div class="homepage__link-card-head">
+          <span class="homepage__link-card-num">04 / 05</span>
+          <span class="homepage__link-card-arrow" aria-hidden="true">→</span>
+        </div>
+        <h3 class="homepage__link-card-title">Workflows</h3>
+        <p class="homepage__link-card-desc">
+          Multi-step operations: import samples, chop loops, batch-export tones. Long-running jobs render the shared progress primitive.
+        </p>
+        <span class="homepage__link-card-meta">3 workflows · sample chopper · loop editor · batch export</span>
+      </a>
+
+      <a class="homepage__link-card" href="#">
+        <div class="homepage__link-card-head">
+          <span class="homepage__link-card-num">05 / 05</span>
+          <span class="homepage__link-card-arrow" aria-hidden="true">→</span>
+        </div>
+        <h3 class="homepage__link-card-title">Library</h3>
+        <p class="homepage__link-card-desc">
+          Saved sets and bundles. Snapshot the entire device state to disk; restore complete sets back to the S-550 in one shot.
+        </p>
+        <span class="homepage__link-card-meta">8 sets · 2 directories · 14.2 MB</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- ===== RECENT ACTIVITY ===== -->
+  <section class="ac-section" aria-labelledby="activity-heading">
+    <header class="ac-status-row">
+      <div>
+        <h2 id="activity-heading" class="ac-status-row__heading">Recent activity</h2>
+        <div class="ac-status-row__heading-rule"></div>
+      </div>
+      <span class="ac-status-row__metric">
+        <span><strong>5</strong> events · session 00:42:11</span>
+      </span>
+    </header>
+
+    <div class="homepage__activity ac-mt-5">
+      <div class="homepage__activity-row">
+        <span class="homepage__activity-time">14:02:08</span>
+        <span class="homepage__activity-text">Loaded patch bank · <strong>P11 → P18</strong> from device</span>
+        <span class="homepage__activity-bytes">8 KB · 1.4 s</span>
+      </div>
+      <div class="homepage__activity-row">
+        <span class="homepage__activity-time">14:01:36</span>
+        <span class="homepage__activity-text">Loaded tone group · <strong>T17 → T18 "Strings A"</strong></span>
+        <span class="homepage__activity-bytes">96 KB · 6.2 s</span>
+      </div>
+      <div class="homepage__activity-row">
+        <span class="homepage__activity-time">13:58:14</span>
+        <span class="homepage__activity-text">Restored set · <strong>"Pad Selection — 2026-05-07"</strong> from library</span>
+        <span class="homepage__activity-bytes">512 KB · 47.4 s</span>
+      </div>
+      <div class="homepage__activity-row">
+        <span class="homepage__activity-time">13:51:02</span>
+        <span class="homepage__activity-text">Connection established · MOTU 828mk3 · Port 1</span>
+        <span class="homepage__activity-bytes">handshake 12 ms</span>
+      </div>
+      <div class="homepage__activity-row">
+        <span class="homepage__activity-time">13:50:55</span>
+        <span class="homepage__activity-text">Editor session opened · <strong>/roland/s550/editor</strong></span>
+        <span class="homepage__activity-bytes"></span>
+      </div>
+    </div>
+
+    <p class="ac-fg-muted ac-mt-4" style="margin: 0; font-size: var(--ac-text-small);">
+      Activity is in-memory for the session. Persistent history lives in the <a href="#">Library journal</a>.
+    </p>
+  </section>
+
+  <!-- ===== EXPLORATION FOOTER ===== -->
+  <footer class="exploration-footer">
+    <p style="margin: 0;">
+      Phase 9 Task 2 · HomePage Mockup v1 · 2026-05-08 · s550-support feature ·
+      <a href="https://github.com/audiocontrol-org/audiocontrol/issues/392">issue #392</a> ·
+      Language reference: <a href="01-design-language.html">01-design-language.html</a>
+    </p>
+    <p style="margin: var(--ac-space-2) 0 0;">
+      Next per-page mockups: 03 Patches · 04 Tones · 05 Play · 06 Workflows · 07 Library. All reuse the same <code>&lt;style&gt;</code> block and the CRT dock; HomePage is the landing composition.
+    </p>
+  </footer>
+
+</div><!-- /.app-shell__page -->
+
+<aside class="app-shell__crt" aria-label="Device video output">
+  <div class="ac-crt-monitor ac-crt-monitor--compact">
+    <div class="ac-crt-monitor__bezel">
+      <div class="ac-crt-monitor__screen">
+        <div class="ac-crt-monitor__chrome">
+          <span class="ac-crt-btn ac-crt-btn--filled">MODE</span>
+          <span class="ac-crt-btn ac-crt-btn--filled">MENU</span>
+          <span class="ac-crt-btn ac-crt-btn--blank"></span>
+          <span class="ac-crt-btn ac-crt-btn--blank"></span>
+          <span class="ac-crt-btn ac-crt-btn--filled">Dec</span>
+          <span class="ac-crt-btn ac-crt-btn--filled">Inc</span>
+        </div>
+        <div class="ac-crt-monitor__sub-row">
+          <span>Last Note Priority</span>
+          <span>PLAY-Standard</span>
+        </div>
+        <table class="ac-crt-table">
+          <thead>
+            <tr><th></th><th>VAL</th><th>CH</th><th>Patch</th><th></th><th>Out</th><th>Level</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>A</td><td>*</td><td>1</td><td><span class="ac-crt-cell--selected">I11</span></td><td>MINI</td><td>1</td><td>127</td></tr>
+            <tr><td>B</td><td>*</td><td>2</td><td>I12</td><td></td><td>1</td><td>127</td></tr>
+            <tr><td>C</td><td>*</td><td>3</td><td>I13</td><td></td><td>1</td><td>127</td></tr>
+            <tr><td>D</td><td>*</td><td>4</td><td>I14</td><td></td><td>1</td><td>127</td></tr>
+            <tr><td>E</td><td>*</td><td>5</td><td>I15</td><td></td><td>1</td><td>127</td></tr>
+            <tr><td>F</td><td>*</td><td>6</td><td>I16</td><td></td><td>1</td><td>127</td></tr>
+            <tr><td>G</td><td>*</td><td>7</td><td>I17</td><td></td><td>1</td><td>127</td></tr>
+            <tr><td>H</td><td>*</td><td>8</td><td>I18</td><td></td><td>1</td><td>127</td></tr>
+          </tbody>
+        </table>
+        <div class="ac-crt-monitor__display">
+          <span>Display</span>
+          <span>I1<span class="ac-crt-cursor">_</span></span>
+        </div>
+        <div class="ac-crt-monitor__lookup">
+          <div>I11 MINI</div><div>I15</div>
+          <div>I12</div><div>I16</div>
+          <div>I13</div><div>I17</div>
+          <div>I14</div><div>I18</div>
+        </div>
+      </div>
+    </div>
+    <div class="ac-crt-monitor__caption">
+      <span>S-550 · Video out · NTSC</span>
+      <span><span class="ac-signal-led" aria-hidden="true" style="margin-right: 6px; vertical-align: middle;"></span>Live</span>
+    </div>
+  </div>
+</aside>
+
+</div><!-- /.app-shell -->
+</main>
+
+<script>
+  // tiny: respect reduced-motion at runtime so a user toggling system prefs
+  // mid-page doesn't get stuck with stale animation state
+  (function () {
+    var mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    function apply() {
+      document.documentElement.style.setProperty('--ac-motion', mq.matches ? '0' : '1');
+    }
+    apply();
+    if (mq.addEventListener) mq.addEventListener('change', apply);
+  })();
+</script>
+</body>
+</html>

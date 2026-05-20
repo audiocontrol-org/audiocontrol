@@ -10,9 +10,18 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./transports": {
+      "types": "./dist/transports/index.d.ts",
+      "import": "./dist/transports/index.js"
+    },
     "./styles.css": "./src/design/styles.css",
     "./tokens.css": "./src/design/tokens.css",
+    "./layout-primitives.css": "./src/design/layout-primitives.css",
+    "./overlay-primitives.css": "./src/design/overlay-primitives.css",
     "./primitives.css": "./src/design/primitives.css",
+    "./feedback-primitives.css": "./src/design/feedback-primitives.css",
+    "./control-primitives.css": "./src/design/control-primitives.css",
+    "./envelope-primitives.css": "./src/design/envelope-primitives.css",
     "./library.css": "./src/design/library.css",
     "./vite": "./src/vite/vite.ts",
     "./tailwind-preset": "./src/tailwind.preset.ts",

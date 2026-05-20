@@ -40,6 +40,32 @@ export interface DeviceMemoryCustomState {
   onDropLibraryTone?: (data: LibraryDragPayload, targetSlot: number) => void;
   /** Callback when a library patch is dropped on a device slot */
   onDropLibraryPatch?: (data: LibraryDragPayload, targetSlot: number) => void;
+  /**
+   * Callback when a library sample bundle is dropped on the device memory
+   * panel. Samples occupy multiple tone slots and a wave-bank segment range,
+   * so the drop target is the panel itself rather than a single slot — the
+   * dialog the callback opens (`ImportSamplesDialog`) is where the user
+   * picks the starting tone slot, wave bank, and segment.
+   */
+  onDropLibrarySample?: (data: LibraryDragPayload) => void;
+  /**
+   * Bank index currently being loaded (tones), null if none. The panel
+   * surfaces the spinning reload icon on this bank's header.
+   */
+  loadingToneBank?: number | null;
+  /** Bank index currently being loaded (patches), null if none. */
+  loadingPatchBank?: number | null;
+  /** Called when the user clicks an unloaded tone-bank's row to load. */
+  onLoadToneBank?: (bankIndex: number) => void;
+  /** Called when the user clicks an unloaded patch-bank's row to load. */
+  onLoadPatchBank?: (bankIndex: number) => void;
+  /**
+   * Called when the user clicks a tone-bank's reload icon. Re-fetches
+   * the bank from the device, invalidating the cache for the range.
+   */
+  onReloadToneBank?: (bankIndex: number) => void;
+  /** Same as onReloadToneBank but for the patch banks. */
+  onReloadPatchBank?: (bankIndex: number) => void;
 }
 
 // =========================================================================

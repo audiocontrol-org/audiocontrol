@@ -1,0 +1,328 @@
+/*
+ * Loop-editor chrome — v3 design language scoped to the LoopEditor surface.
+ *
+ * The loop-editor is shared editor infrastructure (Roland, Akai, dev
+ * harness all mount it), so its chrome primitives live alongside the
+ * other shared primitives rather than duplicated per-editor.
+ *
+ * Pairs with modules/loop-editor/src/ui/LoopEditorToolbar.tsx. The
+ * `.ac-toolbar-btn`, `.ac-icon-btn`, `.ac-field-label`, and `.ac-toggle*`
+ * classes used by the toolbar component come from primitives.css /
+ * control-primitives.css; what lives here is just the surface-specific
+ * layout (rows, eyebrow tag, xfade strip, voice readout, candidate row).
+ */
+
+.ac-loop-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-3);
+  margin-bottom: var(--ac-space-3);
+  padding-bottom: var(--ac-space-3);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+}
+
+.ac-loop-toolbar__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ac-space-4);
+  flex-wrap: wrap;
+}
+
+.ac-loop-toolbar__row--secondary {
+  justify-content: flex-start;
+  gap: var(--ac-space-5);
+}
+
+.ac-loop-toolbar__title-block {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--ac-space-3);
+  min-height: 2rem;
+}
+
+.ac-loop-toolbar__title {
+  margin: 0;
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-md);
+  font-weight: var(--ac-font-weight-normal);
+  letter-spacing: var(--ac-tracking-display);
+  color: var(--ac-color-text-primary);
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.ac-loop-toolbar__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  height: 1.25rem;
+  padding-inline: var(--ac-space-2);
+  border: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-rec) 55%, transparent);
+  border-radius: var(--ac-radius-sm);
+  background: color-mix(in srgb, var(--ac-color-rec) 10%, transparent);
+  color: color-mix(in srgb, var(--ac-color-rec) 90%, var(--ac-color-text-primary));
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  letter-spacing: var(--ac-tracking-eyebrow);
+  text-transform: uppercase;
+  cursor: help;
+}
+
+.ac-loop-toolbar__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  flex-wrap: wrap;
+}
+
+.ac-loop-toolbar__field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+}
+
+.ac-loop-toolbar__field .ac-field-label {
+  margin-right: var(--ac-space-1);
+}
+
+.ac-loop-toolbar__field--xfade {
+  flex: 1 1 auto;
+  min-width: 12rem;
+  max-width: 22rem;
+}
+
+.ac-loop-toolbar__discontinuity {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-1);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-eyebrow);
+  letter-spacing: var(--ac-tracking-eyebrow);
+}
+
+.ac-loop-toolbar__discontinuity--warn {
+  color: var(--ac-status-warning);
+}
+
+.ac-loop-toolbar__discontinuity--ok {
+  color: var(--ac-status-connected);
+}
+
+.ac-loop-toolbar__xfade-range {
+  flex: 1 1 auto;
+  height: var(--ac-rule-medium);
+  accent-color: var(--ac-color-accent);
+  background: transparent;
+  cursor: pointer;
+}
+
+.ac-loop-toolbar__xfade-value {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-eyebrow);
+  color: var(--ac-color-text-muted);
+  min-width: 3rem;
+  text-align: right;
+}
+
+.ac-loop-toolbar__voices {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-loop-toolbar__zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  margin-left: auto;
+}
+
+.ac-loop-toolbar__zoom-reset {
+  min-width: 3rem;
+  font-family: var(--ac-font-mono);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* =========================================================================
+ * Loop-editor body — wraps the canvases and supporting readouts. The
+ * outer container is the consumer's `.ac-card`; what's here positions
+ * everything inside it.
+ * ========================================================================= */
+
+.ac-loop-progress {
+  margin-bottom: var(--ac-space-3);
+}
+
+.ac-loop-progress__head {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-eyebrow);
+  color: var(--ac-color-text-muted);
+  margin-bottom: var(--ac-space-1);
+}
+
+.ac-loop-progress__bar {
+  height: var(--ac-rule-medium);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 60%, transparent);
+  border-radius: var(--ac-radius-sm);
+  overflow: hidden;
+}
+
+.ac-loop-progress__fill {
+  height: 100%;
+  background: var(--ac-color-accent);
+  transition: width var(--ac-duration-normal) var(--ac-easing-default);
+}
+
+.ac-loop-info-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--ac-space-2);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-loop-pane-labels {
+  display: flex;
+  margin-bottom: var(--ac-space-1);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  letter-spacing: var(--ac-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--ac-color-text-muted);
+}
+
+.ac-loop-pane-labels > * {
+  flex: 1;
+  text-align: center;
+}
+
+.ac-loop-canvas-row {
+  display: flex;
+  width: 100%;
+  gap: var(--ac-rule-hairline);
+}
+
+.ac-loop-canvas {
+  width: 50%;
+  cursor: ew-resize;
+  border-radius: var(--ac-radius-sm);
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 92%, transparent);
+}
+
+.ac-loop-canvas--dragging {
+  outline: var(--ac-rule-medium) solid color-mix(in srgb, var(--ac-color-accent) 70%, transparent);
+  outline-offset: -2px;
+}
+
+/* =========================================================================
+ * Nudge controls — End / Loop Point inputs flanked by «‹›» icon buttons.
+ * ========================================================================= */
+
+.ac-loop-nudges {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--ac-space-4);
+  margin-top: var(--ac-space-3);
+}
+
+.ac-loop-nudge-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-1);
+}
+
+.ac-loop-nudge-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-1);
+}
+
+.ac-loop-nudge-row .ac-input {
+  flex: 1 1 auto;
+  text-align: center;
+  font-family: var(--ac-font-mono);
+}
+
+/* =========================================================================
+ * Candidates list — auto-detect output. Lean rows that mirror the
+ * .ac-list slot vocabulary without depending on the list-pane chrome.
+ * ========================================================================= */
+
+.ac-loop-candidates {
+  margin-top: var(--ac-space-4);
+}
+
+.ac-loop-candidates__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--ac-space-2);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-loop-candidates__list {
+  display: grid;
+  gap: var(--ac-space-1);
+  max-height: 11rem;
+  overflow-y: auto;
+  padding-right: var(--ac-space-1);
+}
+
+.ac-loop-candidate {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--ac-space-2) var(--ac-space-3);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 85%, transparent);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-eyebrow);
+  color: var(--ac-color-text-primary);
+  cursor: pointer;
+  transition:
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    border-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-loop-candidate:hover {
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 70%, transparent);
+  border-color: color-mix(in srgb, var(--ac-color-accent) 40%, transparent);
+}
+
+.ac-loop-candidate[data-selected='true'] {
+  background: color-mix(in srgb, var(--ac-color-accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--ac-color-accent) 70%, transparent);
+  color: var(--ac-color-text-primary);
+}
+
+.ac-loop-candidate__id {
+  display: inline-block;
+  min-width: 1.5rem;
+  text-align: center;
+  color: var(--ac-color-text-muted);
+}
+
+.ac-loop-candidate__bounds {
+  display: inline-flex;
+  gap: var(--ac-space-2);
+}
+
+.ac-loop-candidate__bounds-length {
+  color: var(--ac-color-text-muted);
+}
+
+.ac-loop-candidate__scores {
+  color: var(--ac-color-text-muted);
+}
+
+.ac-loop-toolbar__midi-toggle {
+  margin-right: var(--ac-space-2);
+}

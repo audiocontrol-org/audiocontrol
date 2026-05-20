@@ -1,0 +1,437 @@
+/**
+ * PatchesPage — page-scoped styles (Phase 9 Task 4 polish).
+ *
+ * Composed from --ac-* design tokens (no new tokens declared here).
+ * Tokens introduced for this work live in
+ * `editor-core/src/design/tokens.css` (see DESIGN-SYSTEM.md "Phase 9
+ * polish tokens").
+ *
+ * Cross-page primitives (lean page-title row, icon-button, detail
+ * eyebrow row, detail empty state, live-edit footer) were promoted
+ * to `_shared.css` (`.ac-*` namespace) during Phase 9 Task 4 page 2
+ * (the duplication-audit gate).
+ *
+ * Phase 9 Task 4 PatchesPage amend (this commit) further promoted the
+ * list-pane chrome that's byte-identical between PatchesPage and
+ * TonesPage to `.ac-list-*` in editor-core's `list-primitives.css`.
+ * What stays page-scoped here:
+ *   - `.patches__list-row` — slot-column width (3rem) differs from
+ *     `.tones__list-row` (2.5rem), so the grid template is per-page.
+ *   - `.patches__list-row` state styles (hover / selected / focus) —
+ *     these reference the page-scoped row class and its descendant
+ *     `.patches__list-slot`, so they can't be folded into the shared
+ *     `.ac-list-*` selectors without rewriting the hover-reveal rule.
+ *   - `.patches__list-action` hover-reveal rule — references the
+ *     page-scoped row class so the action only shows when its row is
+ *     interacted with.
+ *   - `.patches__detail-*` chrome — page-specific composition.
+ *   - `.patches__app-shell` — the list+detail grid for this page.
+ *   - `.patches__progress` — title-row progress bar.
+ */
+
+/* ============================================================
+   LIST PANE — page-scoped grid and row-state styles.
+   See `.ac-list-*` (editor-core/src/design/list-primitives.css) for
+   the container chrome, bank header, slot, info column, name, and
+   eyebrow that were promoted from this file.
+   ============================================================ */
+
+/* Row chrome + detail-pane chrome promoted to `.ac-list-row*` and
+   `.ac-detail-*` shared primitives in `_shared.css` (2026-05-19).
+   Patches override `--ac-list-row-slot-width` to 3rem because the
+   S-550 II-prefix slot labels ("II11"–"II48") need wider room than
+   the 2.25rem default that fits the tones page's three-char labels.
+   The override happens in `PatchList.tsx` as an inline style on the
+   list root. */
+
+/* `.patches__detail-name` was retired 2026-05-20 alongside the
+   click-to-edit toggle. The patch-name input now uses the shared
+   `.ac-detail-name-input` primitive in `_shared.css`, the same
+   primitive ToneEditorHead uses — both pages render the chrome
+   pixel-identically. */
+
+/* ============================================================
+   MAPPING PANEL — Tone Mapping section header + Layer 1/2 stack.
+   The tab chrome (.ac-tabs / .ac-tab-strip / .ac-tab / .ac-panels /
+   .ac-panel / .ac-panel-stack) is shared in `_shared.css`. What
+   stays here is the page-specific section heading + meta caption
+   above the two ToneZoneEditor rows.
+   ============================================================ */
+
+.patches__mapping-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ac-space-3);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-font-size-sm);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ac-color-text-primary);
+}
+
+.patches__mapping-meta {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-font-size-xs);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ac-color-text-secondary);
+}
+
+.patches__mapping-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-6);
+}
+
+/* ============================================================
+   TONE ZONE EDITOR — the per-layer zone-strip + key-range form
+   that lives inside the Mapping tab.
+
+   Visual model:
+     - .ac-zone-section            : one Layer (1 or 2)
+       - .ac-zone-section-head     : eyebrow row (LAYER N · M of 109 keys active)
+       - .ac-zone-bar              : the horizontal strip of zone segments
+         - .ac-zone-segment        : individual zone, colored by tone index
+       - .ac-zone-axis             : C0 / midpoint / C9 labels under the bar
+       - .ac-zone-form             : editing sub-panel (when a zone is selected)
+
+   The 8-color palette is derived per segment via `--ac-zone-hue`
+   (set inline by the JSX as `style={{'--ac-zone-hue': toneIndex * 31}}`).
+   This keeps the color rule out of a hard-coded class list and stays
+   matched to the design language's accent saturation/lightness
+   profile.
+   ============================================================ */
+
+.ac-zone-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-3);
+}
+
+.ac-zone-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ac-space-3);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-zone-section-head strong {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--ac-font-weight-normal);
+  color: var(--ac-color-text-secondary);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.ac-zone-bar {
+  position: relative;
+  height: 2.5rem;
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  background: linear-gradient(
+    180deg,
+    var(--ac-color-surface-panel) 0%,
+    color-mix(in srgb, var(--ac-color-surface-canvas) 40%, transparent) 100%
+  );
+  overflow: hidden;
+}
+
+.ac-zone-bar-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-zone-segment {
+  /* The base hue derives from the tone index via --ac-zone-hue (set
+     inline by JSX as `style={{'--ac-zone-hue': N}}`); the segment's
+     fill + 1px outline pick up two lightness stops of the same hue
+     so every zone reads as a self-contained tinted card against the
+     darker bar gradient, regardless of selection state. */
+  --ac-zone-fill: hsl(calc(var(--ac-zone-hue, 0) * 1deg + 200deg) 52% 42%);
+  --ac-zone-stroke: hsl(calc(var(--ac-zone-hue, 0) * 1deg + 200deg) 60% 56%);
+  position: absolute;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  background: var(--ac-zone-fill);
+  color: var(--ac-color-text-primary);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  letter-spacing: 0.02em;
+  border: var(--ac-rule-hairline) solid var(--ac-zone-stroke);
+  border-radius: calc(var(--ac-radius-sm) - 1px);
+  transition:
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    border-color var(--ac-duration-fast) var(--ac-easing-default),
+    box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+  overflow: hidden;
+}
+
+.ac-zone-segment:hover {
+  background: hsl(calc(var(--ac-zone-hue, 0) * 1deg + 200deg) 58% 50%);
+  border-color: hsl(calc(var(--ac-zone-hue, 0) * 1deg + 200deg) 65% 64%);
+}
+
+.ac-zone-segment[aria-pressed="true"],
+.ac-zone-segment--editing {
+  /* Inset outline + inset glow so the selected ring lives entirely
+     inside the segment — when a zone touches the left or right edge
+     of the bar, the ring would otherwise be clipped by the bar's
+     `overflow: hidden` (the previous outer box-shadow recipe). */
+  outline: var(--ac-rule-medium) solid var(--ac-color-accent);
+  outline-offset: calc(-1 * var(--ac-rule-medium));
+  box-shadow: inset 0 0 0 4px color-mix(in srgb, var(--ac-color-accent) 22%, transparent);
+}
+
+.ac-zone-segment--off {
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 70%, var(--ac-color-text-muted));
+  border-color: color-mix(in srgb, var(--ac-color-text-muted) 50%, transparent);
+  color: var(--ac-color-text-muted);
+}
+
+/* Drag handles — two thin strips at the start + end of every zone.
+   They share the segment's stroke color so they read as part of
+   the zone chrome, then brighten on hover to invite a pointer
+   drag. The ::after pseudo paints a tiny grip glyph for the visual
+   affordance; the outer rect carries the cursor + hit area. */
+.ac-zone-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0.5rem;
+  cursor: ew-resize;
+  touch-action: none;
+  background: color-mix(in srgb, var(--ac-zone-stroke, var(--ac-color-text-muted)) 70%, transparent);
+  transition: background-color var(--ac-duration-fast) var(--ac-easing-default);
+  z-index: 1;
+}
+
+.ac-zone-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.125rem;
+  height: 0.875rem;
+  background: var(--ac-color-text-primary);
+  transform: translate(-50%, -50%);
+  border-radius: 1px;
+  opacity: 0.5;
+}
+
+.ac-zone-handle--start {
+  left: 0;
+  border-top-left-radius: calc(var(--ac-radius-sm) - 1px);
+  border-bottom-left-radius: calc(var(--ac-radius-sm) - 1px);
+}
+
+.ac-zone-handle--end {
+  right: 0;
+  border-top-right-radius: calc(var(--ac-radius-sm) - 1px);
+  border-bottom-right-radius: calc(var(--ac-radius-sm) - 1px);
+}
+
+.ac-zone-handle:hover,
+.ac-zone-handle--dragging {
+  background: var(--ac-color-accent);
+}
+
+.ac-zone-handle:hover::after,
+.ac-zone-handle--dragging::after {
+  opacity: 1;
+  background: var(--ac-color-surface-canvas);
+}
+
+/* The center click-to-select target. Sized to fill the segment
+   between the two edge handles so the handles' hit areas never
+   compete with selection. */
+.ac-zone-segment-body {
+  position: absolute;
+  inset: 0 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  padding: 0 var(--ac-space-1);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* When a drag is in flight the body's click handler is suppressed
+   in JSX (pointerdown handler stops propagation); still hide the
+   pointer cursor so the affordance reads as ongoing-drag, not
+   click-pending. */
+.ac-zone-segment--dragging .ac-zone-segment-body {
+  cursor: ew-resize;
+}
+
+.ac-zone-axis {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+  padding: 0 var(--ac-space-1);
+}
+
+.ac-zone-form {
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  background: linear-gradient(
+    180deg,
+    var(--ac-color-surface-panel) 0%,
+    color-mix(in srgb, var(--ac-color-surface-canvas) 40%, transparent) 100%
+  );
+  padding: var(--ac-space-3) var(--ac-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-3);
+}
+
+.ac-zone-form-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ac-space-3);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-zone-form-head strong {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--ac-font-weight-normal);
+  color: var(--ac-color-accent);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.ac-zone-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--ac-space-3) var(--ac-space-4);
+}
+
+.ac-zone-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-1);
+}
+
+.ac-zone-form-field-label {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-zone-form-field-row {
+  display: flex;
+  gap: var(--ac-space-1);
+}
+
+.ac-zone-form-field-row .ac-select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ac-zone-form-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ac-space-3);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+}
+
+/* Tonal accent button — used for "Learn" + "Add Zone" + "Delete" in
+   the zone editor. Quieter than the loud red/green buttons that were
+   here pre-v3. Variants tint via --ac-tonal-hue (default = accent
+   hue). */
+.ac-tonal-btn {
+  --ac-tonal-hue: var(--ac-color-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ac-space-1);
+  padding: var(--ac-space-1) var(--ac-space-2);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-primary);
+  background: color-mix(in srgb, var(--ac-tonal-hue) 18%, transparent);
+  border: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-tonal-hue) 50%, transparent);
+  border-radius: var(--ac-radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    border-color var(--ac-duration-fast) var(--ac-easing-default),
+    color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-tonal-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ac-tonal-hue) 32%, transparent);
+  border-color: var(--ac-tonal-hue);
+}
+
+.ac-tonal-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ac-tonal-btn--danger {
+  --ac-tonal-hue: var(--ac-color-rec);
+}
+
+.ac-tonal-btn--listening {
+  background: color-mix(in srgb, var(--ac-color-rec) 28%, transparent);
+  border-color: var(--ac-color-rec);
+  color: var(--ac-color-rec);
+  animation: ac-tonal-listening 1.4s ease-in-out infinite;
+}
+
+@keyframes ac-tonal-listening {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ac-color-rec) 35%, transparent); }
+  50%      { box-shadow: 0 0 0 4px color-mix(in srgb, var(--ac-color-rec) 0%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-tonal-btn--listening { animation: none; }
+}
+
+/* App shell + loading progress moved to shared primitives:
+ *   - .ac-app-shell (editor-core/src/design/layout-primitives.css)
+ *   - .ac-page-progress (roland-sxx0-editor/src/styles/_shared.css)
+ * Previously this page had its own `.patches__app-shell` with a 22rem
+ * list column while TonesPage had `.tones__app-shell` with a 14rem
+ * list column; the drift produced a visible width mismatch between
+ * the two pages.
+ */

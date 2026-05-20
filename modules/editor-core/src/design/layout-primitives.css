@@ -1,0 +1,541 @@
+/*
+ * Layout primitives — page shells, site chrome, list-detail grids, sticky
+ * columns, modals, drawers, tabs, status indicators, scrollbar, icons.
+ *
+ * Split from the original `primitives.css` during Phase 9 Task 4.0 so the
+ * per-file 500-line cap is observed. Atomic control primitives (input,
+ * select, button, checkbox, slider, range-bar, number input, envelope)
+ * live in `primitives.css` (pre-existing controls) and `control-primitives.css`
+ * (new v3 atomic primitives).
+ *
+ * Tokens defined here are layout-only; design tokens live in `tokens.css`.
+ */
+
+:root {
+  /* --ac-font-mono moved to tokens.css during Phase 9 Task 7.
+     --ac-font-sans was deleted; consumers migrated to --ac-font-body,
+     whose fallback chain contains no Inter (forbidden by the v3 design
+     language). JetBrains Mono is the primary mono face per the v3
+     typography scale. See DESIGN-SYSTEM.md § Typography. */
+  --ac-text-xs: 0.75rem;
+  --ac-text-sm: 0.875rem;
+  --ac-text-md: 1rem;
+  --ac-text-lg: 1.5rem;
+  --ac-page-section-gap: var(--ac-space-4);
+  --ac-page-space: var(--ac-page-section-gap);
+  --ac-page-main-inline: var(--ac-space-6);
+  --ac-site-header-height: 3.75rem;
+  /* Actual page-title-row height (h2 + red rule + bottom padding +
+     hairline border). Measured empirically against the rendered
+     .ac-page-title-row at viewport widths ≥ 1024px. Was 3.5rem (56px)
+     before the page-shell density pass; the row actually rendered at
+     ~51px, which left fixed-position siblings (the VideoCapture
+     drawer) misaligned by 5px below the body. */
+  --ac-page-header-height: 3.2rem;
+  --ac-page-sticky-top: var(--ac-site-header-height);
+  /* Y coordinate of the top of a page's body content (the list/detail
+     row that follows the page-title row). Includes the site-main's
+     padding-top so fixed-position siblings (e.g., the VideoCapture
+     drawer) can use this to align with where the body actually starts.
+     Without --ac-page-main-vertical the formula was 16px short of the
+     real body-content top after the page-shell density pass. */
+  --ac-page-content-top: calc(
+    var(--ac-page-list-sticky-top)
+    + var(--ac-page-main-vertical)
+    + var(--ac-page-section-gap)
+  );
+  /*
+   * Y coordinate of the top of the `.ac-page-title-row` (the page's
+   * lean header — h2 + red rule + status metric + icon-button). Below
+   * `--ac-site-header-height` by exactly the site-main's top padding,
+   * since `.ac-site-main` declares `padding-block: --ac-page-main-vertical`
+   * and `.ac-page` is its first child.
+   *
+   * Use this for fixed-position siblings (e.g. the VideoCapture drawer
+   * and its collapse-tab affordance) that need to align with the page
+   * header rather than the page body row.
+   */
+  --ac-page-title-top: calc(
+    var(--ac-site-header-height) + var(--ac-page-main-vertical)
+  );
+  --ac-page-header-padding-y: var(--ac-space-2);
+  /* Vertical padding around the page main content area (site-main).
+     Was 3rem each side (96px combined) which created two huge empty
+     bands above the page title and below the page body. 1rem keeps
+     enough breathing room without dominating the viewport. */
+  --ac-page-main-vertical: 1rem;
+  --ac-page-list-sticky-top: calc(var(--ac-site-header-height) + var(--ac-page-header-height));
+  --ac-page-list-scroll-bottom: 2.25rem;
+  --ac-container-md: 42rem;
+
+  /* List item action icons — visible on both default and selected backgrounds */
+  --ac-action-color: rgba(255, 255, 255, 0.4);
+  --ac-action-hover: rgba(255, 255, 255, 0.85);
+  --ac-action-danger-hover: #f87171;
+  --ac-action-selected-color: rgba(255, 255, 255, 0.85);
+  --ac-action-selected-hover: #fff;
+  --ac-action-selected-danger-hover: #fca5a5;
+}
+
+.ac-page {
+  /* Page content handles its own internal spacing */
+}
+
+.ac-page-shell {
+  display: grid;
+  gap: var(--ac-page-section-gap);
+}
+
+/*
+ * Fixed-viewport modifier — list-detail editor pages mount the shell
+ * inside a height-bounded box so each column scrolls internally and
+ * the document does NOT scroll as one tall page. See DESIGN-SYSTEM.md
+ * § "Page Shell Pattern (fixed viewport, 3 column)".
+ *
+ * Height math: `100dvh` minus the site header (`--ac-site-header-height`)
+ * minus the `<main class="ac-site-main">` vertical padding (top + bottom
+ * = `--ac-page-main-vertical * 2`). The shell fills the available space
+ * between the site chrome rows; switching to a flex column lets the
+ * page header / progress / error banners stay intrinsic while the
+ * list-detail body claims `flex: 1` of the remainder. Grid would only
+ * give us two auto-tracks (`auto 1fr`); pages can have an arbitrary
+ * number of intrinsic rows before the body (header, progress, error,
+ * fixture-mismatch banner), so flex is the more honest fit.
+ *
+ * Use `100dvh` so the layout adapts to mobile browser chrome (URL bar
+ * appearing / disappearing) without a hardcoded pixel height.
+ *
+ * The per-page list-detail body class (e.g. `.patches__app-shell`,
+ * `.tones__app-shell`) is responsible for declaring `flex: 1` and
+ * `min-height: 0` so it consumes the remaining vertical space and
+ * lets its own list / detail columns scroll internally.
+ */
+.ac-page-shell--fixed-viewport {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: calc(100dvh - var(--ac-site-header-height) - (var(--ac-page-main-vertical) * 2));
+  overflow: hidden;
+}
+
+/*
+ * Body row of a fixed-viewport shell whose body is a SINGLE full-height
+ * widget (PluginLibraryBrowser, multi-part grid, etc.) — i.e., pages
+ * that don't need their own list+detail grid track layout.
+ *
+ * Pages with a list+detail grid declare an equivalent contract inside
+ * their per-page `__app-shell` class (see `patches.css` /
+ * `tones.css` — `flex: 1; min-height: 0; overflow: hidden`); this
+ * primitive is the same shape lifted to the design system for pages
+ * that have nothing additional to express.
+ */
+.ac-page-shell-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ac-page-shell-body > * {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.ac-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ac-space-4);
+  min-height: 2.25rem;
+}
+
+.ac-page-header-block {
+  padding-block: var(--ac-page-header-padding-y);
+}
+
+.ac-page-sticky-header {
+  display: flex;
+  align-items: center;
+  position: sticky;
+  top: var(--ac-page-sticky-top);
+  z-index: 30;
+  min-height: 3.5rem;
+  margin-top: calc(var(--ac-page-main-vertical) * -1);
+  margin-inline: calc(var(--ac-page-main-inline) * -1);
+  padding-inline: var(--ac-page-main-inline);
+  background: var(--ac-color-surface-canvas);
+  border-bottom: 1px solid color-mix(in srgb, var(--ac-color-border-subtle) 70%, transparent);
+}
+
+.ac-page-sticky-header > .ac-page-header {
+  flex: 1;
+}
+
+.ac-page-shell > :not(.ac-page-sticky-header) {
+  margin-inline-start: var(--ac-page-offset-inline, 0px);
+  transition: margin-inline-start 200ms;
+}
+
+/*
+ * App shell — list + detail two-column grid for fixed-viewport editor
+ * pages (PatchesPage, TonesPage, …). Single canonical layout: identical
+ * gap, breakpoint, alignment, height-claim contract. Previously every
+ * page declared its own `.<page>__app-shell` with subtly different
+ * `grid-template-columns` values (patches: 22rem, tones: 14rem) — that
+ * drift produced a visible list-pane width inconsistency between pages
+ * that the operator caught on visual review. The list column width is
+ * exposed via `--ac-app-shell-list-col` so a page may override it for a
+ * device-specific reason (none exist today).
+ *
+ * Height-containment contract: parent .ac-page-shell--fixed-viewport is
+ * a flex column; this body claims `flex: 1` + `min-height: 0` to consume
+ * the remaining vertical space. Every direct child (the list pane, the
+ * detail pane, the empty-state placeholder) gets the same height-claim
+ * via `.ac-app-shell > *` — they all need to shrink to the grid track
+ * and clip overflow so their inner panes (`.ac-list-scroll`, the
+ * detail body) scroll internally.
+ */
+.ac-app-shell {
+  /* List column width — sized so the sticky bank header
+     (".ac-list-bank-header" via list-primitives.css) fits its widest
+     no-wrap content: "Bank N" toggle + 9-char slot range ("II11–II18"
+     on S-550 patches banks 3–4) + reload icon, all on one line. 14rem
+     was the previous value; it forced "Bank 1" to break and clipped
+     "II11–II18" by ~4px in S-550 patches. */
+  --ac-app-shell-list-col: 16rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ac-space-6);
+  padding-block: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+  .ac-app-shell {
+    grid-template-columns: var(--ac-app-shell-list-col) minmax(0, 1fr);
+    align-items: stretch;
+  }
+}
+
+.ac-app-shell > * {
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.ac-list-detail-grid {
+  display: grid;
+  gap: var(--ac-space-6);
+}
+
+@media (min-width: 1024px) {
+  .ac-list-detail-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    align-items: start;
+  }
+
+  /* First grid cell must stretch to row height for sticky to work */
+  .ac-list-detail-grid > :first-child {
+    align-self: stretch;
+  }
+}
+
+.ac-list-column-sticky {
+  position: sticky;
+  top: var(--ac-page-list-sticky-top);
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - var(--ac-page-list-sticky-top) - var(--ac-page-list-scroll-bottom));
+}
+
+/* Cards inside sticky columns must constrain to parent bounds */
+.ac-list-column-sticky > .card {
+  max-height: inherit;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ac-container-md {
+  width: min(100%, var(--ac-container-md));
+  margin-inline: auto;
+}
+
+.ac-stack {
+  display: grid;
+  gap: var(--ac-space-4);
+}
+
+.ac-stack-lg {
+  display: grid;
+  gap: var(--ac-page-section-gap);
+}
+
+/* Site Layout Primitives */
+
+.ac-site-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--ac-color-surface-canvas);
+}
+
+.ac-site-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--ac-color-surface-panel);
+  border-bottom: 1px solid var(--ac-color-border-subtle);
+}
+
+.ac-site-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: var(--ac-space-3);
+  padding-inline: var(--ac-page-main-inline);
+}
+
+.ac-site-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-8);
+}
+
+.ac-site-title {
+  margin: 0;
+  font-family: var(--ac-font-display);
+  font-size: 1.25rem;
+  font-weight: var(--ac-font-weight-normal);
+  letter-spacing: var(--ac-tracking-display);
+  color: var(--ac-color-text-primary);
+  white-space: nowrap;
+}
+
+.ac-site-title-accent {
+  color: var(--ac-color-accent);
+}
+
+.ac-site-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-5);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Nav links — lean display font, uppercase eyebrow with extra tracking
+   to read as chrome rather than body. Hover surfaces text-primary,
+   active surfaces the accent + a subtle hairline indicator beneath
+   the label (matches the .ac-page-title-rule red-LED idiom but with
+   the cyan accent, since nav is the page-scope chrome). */
+.ac-site-nav-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  font-weight: var(--ac-font-weight-normal);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  text-decoration: none;
+  padding-block: var(--ac-space-2);
+  transition: color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-site-nav-link:hover {
+  color: var(--ac-color-text-primary);
+}
+
+.ac-site-nav-link > [data-active='true']::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--ac-rule-medium);
+  background: var(--ac-color-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+}
+
+.ac-site-nav-link > [data-active='true'] {
+  color: var(--ac-color-text-primary);
+}
+
+.ac-site-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-3);
+}
+
+/* Responsive visibility — header text collapses to icons */
+@media (max-width: 1400px) {
+  .ac-hide-narrow {
+    display: none;
+  }
+}
+
+.ac-site-main {
+  flex: 1;
+  width: 100%;
+  padding-inline: var(--ac-page-main-inline);
+  padding-block: var(--ac-page-main-vertical);
+}
+
+.ac-site-footer {
+  margin-top: auto;
+  padding-block: var(--ac-space-4);
+  border-top: 1px solid var(--ac-color-border-subtle);
+}
+
+.ac-site-footer-inner {
+  padding-inline: var(--ac-page-main-inline);
+  text-align: center;
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+}
+
+/* Status Indicator */
+
+.ac-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  font-size: var(--ac-text-sm);
+}
+
+.ac-status-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--ac-color-text-muted);
+}
+
+.ac-status-dot[data-status='connected'] {
+  background: var(--ac-status-connected);
+}
+
+.ac-status-dot[data-status='warning'] {
+  background: var(--ac-status-warning);
+}
+
+.ac-status-dot[data-status='danger'] {
+  background: var(--ac-status-danger);
+}
+
+.ac-status-label {
+  color: var(--ac-color-text-muted);
+}
+
+.ac-status-label[data-status='connected'] {
+  color: var(--ac-status-connected);
+}
+
+.ac-status-detail {
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 20rem;
+}
+
+@media (max-width: 1600px) {
+  .ac-status-detail {
+    max-width: 12rem;
+  }
+}
+
+@media (max-width: 1400px) {
+  .ac-status-detail {
+    display: none;
+  }
+}
+
+/* Tabs */
+
+.ac-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--ac-color-border-subtle);
+}
+
+.ac-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  padding: var(--ac-space-2) var(--ac-space-4);
+  font-size: var(--ac-text-sm);
+  font-weight: var(--ac-font-weight-medium);
+  color: var(--ac-color-text-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-tab:hover {
+  color: var(--ac-color-text-primary);
+}
+
+.ac-tab--active {
+  color: var(--ac-color-text-primary);
+  border-bottom-color: var(--ac-color-accent);
+}
+
+.ac-tab-badge {
+  font-size: var(--ac-text-xs);
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--ac-radius-sm);
+}
+
+.ac-tab-badge--error {
+  background: color-mix(in srgb, var(--ac-status-danger) 22%, transparent);
+  color: var(--ac-status-danger);
+}
+
+.ac-tab-badge--warning {
+  background: color-mix(in srgb, var(--ac-status-warning) 22%, transparent);
+  color: var(--ac-status-warning);
+}
+
+/* Icons */
+
+.ac-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+.ac-icon-lg {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+}
+
+/* Scrollbar styling for dark theme */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ac-color-surface-canvas);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ac-color-border-subtle);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--ac-color-border-subtle) 80%, var(--ac-color-text-muted));
+}

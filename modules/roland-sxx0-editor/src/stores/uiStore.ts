@@ -7,8 +7,15 @@ import { create } from 'zustand';
 const STORAGE_KEY_DRAWER = 's330-drawer-open';
 const STORAGE_KEY_SIDEBAR_WIDTH = 's330-sidebar-width';
 
-const DEFAULT_SIDEBAR_WIDTH = 320;
-const MIN_SIDEBAR_WIDTH = 280;
+const DEFAULT_SIDEBAR_WIDTH = 400;
+// 400px lets the 7-cell front-panel grid render its labels without
+// clipping. The chunky-button font clamps to 12.5px (0.78rem) at wide
+// viewports; "MODE"/"MENU"/"COM"/"EXEC" each need ~40px of cell width,
+// and the grid spends 75px on chassis padding + inter-cell gaps, so
+// the drawer must be at least 7×44 + 75 ≈ 383px wide to render the
+// labels cleanly. 400px adds a couple of pixels of breathing room.
+// Was 280 (cropped to "MOD"/"MEN") then 340 (still tight).
+const MIN_SIDEBAR_WIDTH = 400;
 const MAX_SIDEBAR_WIDTH = 600;
 const DEFAULT_DRAWER_OPEN = true;
 

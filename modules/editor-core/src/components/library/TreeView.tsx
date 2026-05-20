@@ -329,29 +329,36 @@ function TreeNodeRow({
         )}
       </div>
 
-      {/* Children for expanded nodes */}
-      {(isDirectory || hasChildren) && isExpanded && node.children && node.children.length > 0 && (
-        <div className="ac-tree-children">
-          {node.children.map((child) => (
-            <TreeNodeRow
-              key={child.id}
-              node={child}
-              depth={depth + 1}
-              isExpanded={expandedIds.has(child.id)}
-              isSelected={selectedIds ? selectedIds.has(child.id) : selectedId === child.id}
-              onToggleExpand={onToggleExpand}
-              selection={selection}
-              edit={edit}
-              contextMenu={contextMenu}
-              drag={drag}
-              render={render}
-              indentPx={indentPx}
-              emptyDirectoryMessage={emptyDirectoryMessage}
-              expandedIds={expandedIds}
-              selectedId={selectedId}
-              selectedIds={selectedIds}
-            />
-          ))}
+      {/* Children — always mounted so the .ac-collapse wrapper can
+          animate the grid-template-rows transition. The
+          `data-expanded` attribute drives the row size; .ac-tree-children
+          carries the indent + rail styling for the children. */}
+      {(isDirectory || hasChildren) && node.children && node.children.length > 0 && (
+        <div className="ac-collapse" data-expanded={isExpanded}>
+          <div>
+            <div className="ac-tree-children">
+              {node.children.map((child) => (
+                <TreeNodeRow
+                  key={child.id}
+                  node={child}
+                  depth={depth + 1}
+                  isExpanded={expandedIds.has(child.id)}
+                  isSelected={selectedIds ? selectedIds.has(child.id) : selectedId === child.id}
+                  onToggleExpand={onToggleExpand}
+                  selection={selection}
+                  edit={edit}
+                  contextMenu={contextMenu}
+                  drag={drag}
+                  render={render}
+                  indentPx={indentPx}
+                  emptyDirectoryMessage={emptyDirectoryMessage}
+                  expandedIds={expandedIds}
+                  selectedId={selectedId}
+                  selectedIds={selectedIds}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       )}
 

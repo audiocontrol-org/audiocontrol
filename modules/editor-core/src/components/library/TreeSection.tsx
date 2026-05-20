@@ -130,7 +130,7 @@ export function TreeSection({
       {nodes.length === 0 && !isDragOver ? (
         <div className="ac-tree-section-empty">{emptyMessage}</div>
       ) : (
-        <div data-testid={testId ? `${testId.replace('-tab', '-list')}` : undefined}>
+        <div data-testid={testId ? `${testId}-content` : undefined}>
           <TreeView
             nodes={nodes}
             expandedIds={expandedIds}

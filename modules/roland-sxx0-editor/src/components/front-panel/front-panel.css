@@ -1,0 +1,208 @@
+/**
+ * Virtual Front Panel — chunky-button control surface
+ *
+ * Visual blueprint: docs/1.0/001-IN-PROGRESS/s550-support/explorations/
+ * 08-front-panel-s550.html (operator-approved 2026-05-12 as v2 commit
+ * `ffd003d7`). The mockup IS the control surface — no LCD, no numeric
+ * keypad, no rack ears, no badges. Only the 11 buttons.
+ *
+ * Token dependencies (declared in
+ * `editor-core/src/design/tokens.css` under "Phase 7 Task 2"):
+ *   --ac-fp-chassis-top / -bot / -edge     matte black chassis gradient
+ *   --ac-fp-btn-top / -mid / -bot          chunky molded button gradient
+ *   --ac-fp-btn-bezel                       hairline gap between keys
+ *   --ac-fp-btn-pressed-top / -mid / -bot   accent-tinted pressed gradient
+ *   --ac-fp-label-fn / -pressed             silkscreen label colors
+ *   --ac-color-rec / --ac-color-rec-glow    red arrow + LED inset
+ *   --ac-color-accent                       focus ring + pressed bezel
+ *   --ac-color-fg / -muted                  contrast aliases
+ *
+ * Specificity: the underlying `FrontPanelButton` primitive renders with
+ * `variant="chunky"`, which suppresses its tailwind chrome — so these
+ * rules paint on a bare `<button>` (no tailwind utility-class clash).
+ */
+
+/* Chassis — the matte-black frame holding the 7×2 button grid. */
+.ac-fp {
+  background: linear-gradient(
+    180deg,
+    var(--ac-fp-chassis-top) 0%,
+    var(--ac-fp-chassis-bot) 100%
+  );
+  padding: 0.85rem;
+  border-radius: 3px;
+  box-shadow:
+    0 1px 0 var(--ac-fp-shadow-rim-light) inset,
+    0 0 0 1px var(--ac-fp-chassis-edge) inset,
+    0 8px 24px var(--ac-fp-shadow-chassis-drop);
+  display: grid;
+  gap: 0.85rem;
+  width: 100%;
+}
+
+/* 7-column × 2-row grid. Three cells are blank — they preserve the
+   cross-arrow cluster's visual identity per the v2 mockup layout.
+   `minmax(0, 1fr)` lets columns shrink below their min-content width;
+   without it the buttons' `whitespace-nowrap` text would push the
+   grid past its container at narrow drawer widths (the VideoCapture
+   drawer can be quite narrow). Combined with `overflow: hidden` on
+   the buttons, narrow widths still render cleanly. */
+.ac-fp__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: repeat(2, 1fr);
+  gap: 0.5rem;
+  aspect-ratio: 5 / 1.5;
+}
+
+/* Chunky 3D-extruded matte-black plastic button. Three-stop vertical
+   gradient + hairline highlight on top + deep bezel below + outer
+   bezel + drop shadow gives the molded-plastic feel. */
+.ac-fp__btn {
+  /* base button reset — `FrontPanelButton` already removes most, but
+     we restate to override any cascade from the global tailwind base */
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+  color: var(--ac-fp-label-fn);
+
+  /* Allow the button to shrink below its content's intrinsic width so
+     the grid's minmax(0, 1fr) tracks can compress at narrow drawer
+     widths. Combined with overflow: hidden, the label gets clipped
+     rather than pushing the button past its track. */
+  min-width: 0;
+  overflow: hidden;
+
+  background: linear-gradient(
+    180deg,
+    var(--ac-fp-btn-top) 0%,
+    var(--ac-fp-btn-mid) 55%,
+    var(--ac-fp-btn-bot) 100%
+  );
+  border-radius: 3px;
+  box-shadow:
+    /* hairline highlight on top — front-lit edge */
+    0 1px 0 var(--ac-fp-shadow-highlight) inset,
+    /* deep edge below — gives the molded-plastic feel */
+    0 -1px 0 var(--ac-fp-btn-bezel) inset,
+    /* outer bezel — separates buttons in the grid */
+    0 0 0 1px var(--ac-fp-btn-bezel),
+    /* drop shadow underneath the button */
+    0 2px 2px var(--ac-fp-shadow-btn-drop);
+
+  /* Label sits centered, all-caps silkscreen. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: var(--ac-font-body);
+  font-size: clamp(0.6rem, 1.2vw, 0.78rem);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.05;
+  user-select: none;
+  -webkit-user-select: none;
+
+  /* ~80 ms transition mirrors real-hardware mechanical travel. */
+  transition:
+    background 80ms ease,
+    box-shadow 80ms ease,
+    transform 80ms ease,
+    color 80ms ease;
+
+  position: relative;
+}
+
+.ac-fp__btn:hover:not(:disabled) {
+  color: var(--ac-fp-label-pressed);
+}
+
+.ac-fp__btn:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 55%, transparent),
+    0 1px 0 var(--ac-fp-shadow-highlight) inset,
+    0 -1px 0 var(--ac-fp-btn-bezel) inset,
+    0 2px 2px var(--ac-fp-shadow-btn-drop);
+}
+
+/* Pressed — both mouse :active AND keyboard-driven [data-pressed].
+   Background shifts to accent-tinted gradient, label brightens,
+   shadow inverts (recessed into the chassis). */
+.ac-fp__btn:active:not(:disabled),
+.ac-fp__btn[data-pressed='true'] {
+  transform: translateY(1px);
+  background: linear-gradient(
+    180deg,
+    var(--ac-fp-btn-pressed-top) 0%,
+    var(--ac-fp-btn-pressed-mid) 55%,
+    var(--ac-fp-btn-pressed-bot) 100%
+  );
+  color: var(--ac-fp-label-pressed);
+  box-shadow:
+    0 1px 3px var(--ac-fp-btn-bezel) inset,
+    0 0 0 1px color-mix(in srgb, var(--ac-color-accent) 35%, transparent),
+    0 0 0 1px var(--ac-fp-btn-bezel);
+}
+
+/* The pressed-state LED dot — homage to the PLAY LED in the S-550
+   reference photo. Renders only on [data-pressed], so keyboard-driven
+   presses have a visible "yes, this fired" indicator. */
+.ac-fp__btn[data-pressed='true']::before {
+  content: '';
+  position: absolute;
+  top: clamp(0.2rem, 0.6vw, 0.32rem);
+  left: clamp(0.2rem, 0.6vw, 0.32rem);
+  width: clamp(0.28rem, 0.8vw, 0.42rem);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--ac-color-rec);
+  box-shadow:
+    0 0 5px var(--ac-color-rec-glow),
+    0 0 1.5px var(--ac-color-rec);
+}
+
+/* Arrow buttons — red silkscreen, bigger glyph (matches the photo). */
+.ac-fp__btn--arrow {
+  color: var(--ac-color-rec);
+  font-family: var(--ac-font-display);
+  font-size: clamp(0.85rem, 1.7vw, 1.15rem);
+  line-height: 1;
+}
+
+.ac-fp__btn--arrow:hover:not(:disabled),
+.ac-fp__btn--arrow:active:not(:disabled),
+.ac-fp__btn--arrow[data-pressed='true'] {
+  color: var(--ac-color-rec);
+  text-shadow: 0 0 4px var(--ac-color-rec-glow);
+}
+
+/* Value buttons (DEC / INC) — same chunky look, larger sign glyph. */
+.ac-fp__btn--value {
+  font-family: var(--ac-font-display);
+  font-size: clamp(0.85rem, 1.7vw, 1.15rem);
+}
+
+/* Stacked label for SUB MENU (photo wraps SUB / MENU onto two lines). */
+.ac-fp__btn--stack {
+  font-size: clamp(0.5rem, 1vw, 0.66rem);
+  letter-spacing: 0.05em;
+  line-height: 1.05;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+/* Blank cells — non-interactive spacers preserving the hairline-gap
+   rhythm between button clusters. Visually identical to the chassis. */
+.ac-fp__blank {
+  background: transparent;
+  pointer-events: none;
+}
+
+.ac-fp__btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

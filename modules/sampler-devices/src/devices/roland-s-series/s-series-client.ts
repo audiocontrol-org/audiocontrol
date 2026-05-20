@@ -470,6 +470,7 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
         return new Promise((resolve, reject) => {
             const allNibbles: number[] = [];
             let timeoutId: ReturnType<typeof setTimeout>;
+            let sendTime = 0;
 
             function resetTimeout() {
                 if (timeoutId) clearTimeout(timeoutId);
@@ -526,9 +527,34 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
 
                         resolve(denibblize(allNibbles));
                     } else if (command === S_SERIES_COMMANDS.RJC) {
-                        // Ignore stale RJC — likely from a previous timed-out operation.
-                        // If the device truly rejected our RQD, we'll time out.
-                        console.warn(`[${config.deviceName}] Ignoring stale RJC during RQD`);
+                        // Diagnostic instrumentation for LIVE-S550-LIB-002 (#430) /
+                        // LIVE-S550-PATCH-001 (#431). Branch B is required here because
+                        // the Roland S-series RJC message has no address payload —
+                        // format is exactly F0 41 [dev] 1E 4F F7 (6 bytes, per
+                        // buildRJCMessage in s-series-messages.ts). Address-based
+                        // disambiguation (Branch A) is impossible.
+                        //
+                        // Semantics are unchanged: the RJC is still treated as stale
+                        // (from a prior operation that already timed out) and the
+                        // listener continues waiting. The additional log output gives
+                        // the auditor's next live re-run the timing and raw bytes
+                        // needed to determine whether the RJC is truly stale or is a
+                        // device rejection of the current RQD.
+                        //
+                        // Hardware verification required: the auditor's live spec re-runs
+                        // (s550-D-LIB-live-core.spec.ts + s550-D-PATCH-live-core.spec.ts)
+                        // are the closure gate. If the log shows the RJC arriving
+                        // <100ms after send, it is likely a current-op rejection and
+                        // the fix must escalate to fail-fast (requiring the device to
+                        // add address echo to RJC, or a different disambiguation strategy).
+                        const sinceSend = Date.now() - sendTime;
+                        const rjcHex = response.map(b => b.toString(16).padStart(2, '0')).join(' ');
+                        const addrHex = address.map(b => b.toString(16).padStart(2, '0')).join(' ');
+                        console.warn(
+                            `[${config.deviceName}] Ignoring stale RJC during RQD: ` +
+                            `addr=[${addrHex}] time-since-send=${sinceSend}ms ` +
+                            `rjc-bytes=[${rjcHex}]`
+                        );
                         resetTimeout();
                         return;
                     } else if (command === S_SERIES_COMMANDS.ERR) {
@@ -542,6 +568,7 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
             resetTimeout();
             midiAdapter.onSysEx(listener);
             midiAdapter.send(message);
+            sendTime = Date.now();
         });
     }
 

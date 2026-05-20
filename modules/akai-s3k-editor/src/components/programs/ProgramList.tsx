@@ -108,7 +108,7 @@ export function ProgramList({
             </button>
           )}
         </div>
-        <div className="ac-scroll-list flex items-center justify-center py-8">
+        <div className="ac-list-scroll flex items-center justify-center py-8">
           <span className="text-sm text-gray-500">Loading programs...</span>
         </div>
       </div>
@@ -131,7 +131,7 @@ export function ProgramList({
             </button>
           )}
         </div>
-        <div className="ac-scroll-list flex items-center justify-center py-8">
+        <div className="ac-list-scroll flex items-center justify-center py-8">
           <span className="text-sm text-gray-500">No programs loaded</span>
         </div>
       </div>
@@ -155,7 +155,7 @@ export function ProgramList({
           </button>
         )}
       </div>
-      <div className="ac-scroll-list space-y-1">
+      <div className="ac-list-scroll space-y-1">
         {programNames.map((name, index) => {
           const isSelected = index === selectedIndex;
           const isEmpty = name.trim() === '';

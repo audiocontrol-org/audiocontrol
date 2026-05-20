@@ -1,155 +1,57 @@
-:root {
-  --ac-font-sans: Inter, "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
-  --ac-font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
-  --ac-text-xs: 0.75rem;
-  --ac-text-sm: 0.875rem;
-  --ac-text-md: 1rem;
-  --ac-text-lg: 1.5rem;
-  --ac-page-section-gap: var(--ac-space-6);
-  --ac-page-space: var(--ac-page-section-gap);
-  --ac-page-main-inline: var(--ac-space-6);
-  --ac-site-header-height: 3.75rem;
-  --ac-page-header-height: 3.5rem;
-  --ac-page-sticky-top: var(--ac-site-header-height);
-  --ac-page-content-top: calc(var(--ac-page-list-sticky-top) + var(--ac-page-section-gap));
-  --ac-page-header-padding-y: var(--ac-space-2);
-  --ac-page-main-vertical: 3rem;
-  --ac-page-list-sticky-top: calc(var(--ac-site-header-height) + var(--ac-page-header-height));
-  --ac-page-list-scroll-bottom: 2.25rem;
-  --ac-container-md: 42rem;
+/*
+ * Core control primitives — buttons, inputs, selects, labels, fields,
+ * card, titles, text utilities, link, radio, list-action-btn,
+ * drawer-section, grid utilities.
+ *
+ * Phase 9 Task 4.0 polished `.ac-input` and `.ac-select` with the v3 mockup
+ * direction (custom chevron, design-token focus ring, hairline border) while
+ * preserving all existing consumers (TransportSelector, MidiConnectionPage,
+ * d110-editor PartConfigEditor, dialogs, etc.). Mockup source:
+ * explorations/01-design-language.html:505-549.
+ *
+ * Layout primitives live in `layout-primitives.css`; overlay surfaces
+ * (modals + drawers) live in `overlay-primitives.css`; feedback surfaces
+ * (alerts, notifications, logs, operation progress, spinner, build-info,
+ * info-list) live in `feedback-primitives.css`; new v3 atomic primitives
+ * (.ac-field-label, .ac-checkbox, .ac-slider, .ac-range-bar,
+ * .ac-number-input, .ac-envelope) live in `control-primitives.css`.
+ */
 
-  /* List item action icons — must be visible on both default and selected backgrounds */
-  --ac-action-color: rgba(255, 255, 255, 0.4);
-  --ac-action-hover: rgba(255, 255, 255, 0.85);
-  --ac-action-danger-hover: #f87171;
-  --ac-action-selected-color: rgba(255, 255, 255, 0.85);
-  --ac-action-selected-hover: #fff;
-  --ac-action-selected-danger-hover: #fca5a5;
-}
-
-.ac-page {
-  /* Page content handles its own internal spacing */
-}
-
-.ac-page-shell {
-  display: grid;
-  gap: var(--ac-page-section-gap);
-}
-
-.ac-page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--ac-space-4);
-  min-height: 2.25rem;
-}
-
-.ac-page-header-block {
-  padding-block: var(--ac-page-header-padding-y);
-}
-
-.ac-page-sticky-header {
-  display: flex;
-  align-items: center;
-  position: sticky;
-  top: var(--ac-page-sticky-top);
-  z-index: 30;
-  min-height: 3.5rem;
-  margin-top: calc(var(--ac-page-main-vertical) * -1);
-  margin-inline: calc(var(--ac-page-main-inline) * -1);
-  padding-inline: var(--ac-page-main-inline);
-  background: var(--ac-color-surface-canvas);
-  border-bottom: 1px solid color-mix(in srgb, var(--ac-color-border-subtle) 70%, transparent);
-}
-
-.ac-page-sticky-header > .ac-page-header {
-  flex: 1;
-}
-
-.ac-page-shell > :not(.ac-page-sticky-header) {
-  margin-inline-start: var(--ac-page-offset-inline, 0px);
-  transition: margin-inline-start 200ms;
-}
-
-.ac-list-detail-grid {
-  display: grid;
-  gap: var(--ac-space-6);
-}
-
-@media (min-width: 1024px) {
-  .ac-list-detail-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
-    align-items: start;
-  }
-
-  /* First grid cell must stretch to row height for sticky to work */
-  .ac-list-detail-grid > :first-child {
-    align-self: stretch;
-  }
-}
-
-.ac-list-column-sticky {
-  position: sticky;
-  top: var(--ac-page-list-sticky-top);
-  align-self: start;
-  display: flex;
-  flex-direction: column;
-  max-height: calc(100vh - var(--ac-page-list-sticky-top) - var(--ac-page-list-scroll-bottom));
-}
-
-/* Cards inside sticky columns must constrain to parent bounds */
-.ac-list-column-sticky > .card {
-  max-height: inherit;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.ac-scroll-list {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-.ac-container-md {
-  width: min(100%, var(--ac-container-md));
-  margin-inline: auto;
-}
-
-.ac-stack {
-  display: grid;
-  gap: var(--ac-space-4);
-}
-
-.ac-stack-lg {
-  display: grid;
-  gap: var(--ac-page-section-gap);
-}
-
+/*
+ * Card surface — bordered panel container used for content-flow pages
+ * (Connect page sections, "Not Connected" placeholders, etc.).
+ * Uses --ac-radius-sm to match every other panel surface in the editor
+ * (.ac-list, .ac-plugin-library-browser-* columns). Previously used
+ * --ac-radius-lg which was a visible inconsistency.
+ */
 .ac-card {
   background: color-mix(in srgb, var(--ac-color-surface-panel) 88%, transparent);
-  border: 1px solid var(--ac-color-border-subtle);
-  border-radius: var(--ac-radius-lg);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
   padding: var(--ac-space-4);
   color: var(--ac-color-text-primary);
 }
 
+/* Card section title — lean display-font heading sized for a section
+   inside a content-flow page. Pairs with .ac-card. */
 .ac-title-lg {
   margin: 0;
-  color: var(--ac-text-primary);
-  font-family: var(--ac-font-sans);
-  font-size: var(--ac-text-lg);
-  font-weight: var(--ac-font-weight-bold);
-  line-height: var(--ac-leading-tight);
+  color: var(--ac-color-text-primary);
+  font-family: var(--ac-font-display);
+  font-size: 1.25rem;
+  font-weight: var(--ac-font-weight-normal);
+  letter-spacing: var(--ac-tracking-display);
+  line-height: 1.25;
 }
 
 .ac-title-md {
   margin: 0;
-  color: var(--ac-text-primary);
-  font-family: var(--ac-font-sans);
-  font-size: 1.125rem;
-  font-weight: var(--ac-font-weight-semibold);
-  line-height: var(--ac-leading-tight);
+  color: var(--ac-color-text-primary);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-md);
+  font-weight: var(--ac-font-weight-normal);
+  letter-spacing: var(--ac-tracking-display);
+  line-height: 1.25;
 }
 
 .ac-text-muted {
@@ -271,16 +173,169 @@
   font-size: var(--ac-text-sm);
 }
 
+.ac-btn-success {
+  background: var(--ac-status-connected);
+  border-color: var(--ac-status-connected);
+  color: #fff;
+}
+
+/*
+ * Toolbar button — lean labeled-icon control used on the site header
+ * (Panic / All Notes Off) and similar chrome positions. Same visual
+ * weight as the per-page .ac-icon-btn but accommodates a label next
+ * to the icon. Hairline border + uppercase eyebrow text + accent
+ * hover, no filled chunky chrome.
+ */
+.ac-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  height: 2rem;
+  padding-inline: var(--ac-space-3);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 50%, transparent);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  cursor: pointer;
+  transition:
+    color var(--ac-duration-fast) var(--ac-easing-default),
+    border-color var(--ac-duration-fast) var(--ac-easing-default),
+    background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-toolbar-btn:hover:not(:disabled) {
+  color: var(--ac-color-accent);
+  border-color: color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  background: color-mix(in srgb, var(--ac-color-accent) 8%, transparent);
+}
+
+.ac-toolbar-btn:focus-visible {
+  outline: var(--ac-rule-medium) solid color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  outline-offset: 2px;
+}
+
+.ac-toolbar-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ac-toolbar-btn svg {
+  width: 1rem;
+  height: 1rem;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Danger variant — rec-LED red accent, used for Panic and any other
+   destructive header action. */
+.ac-toolbar-btn--danger {
+  color: color-mix(in srgb, var(--ac-color-rec) 90%, var(--ac-color-text-primary));
+  border-color: color-mix(in srgb, var(--ac-color-rec) 50%, transparent);
+}
+
+.ac-toolbar-btn--danger:hover:not(:disabled) {
+  color: var(--ac-color-text-primary);
+  background: color-mix(in srgb, var(--ac-color-rec) 16%, transparent);
+  border-color: color-mix(in srgb, var(--ac-color-rec) 70%, transparent);
+}
+
+/* Primary variant — accent-tinted fill, used for the prominent
+   header-action like "Save to Library" on the title row. */
+.ac-toolbar-btn--primary {
+  color: var(--ac-color-text-primary);
+  border-color: color-mix(in srgb, var(--ac-color-accent) 70%, transparent);
+  background: color-mix(in srgb, var(--ac-color-accent) 22%, transparent);
+}
+
+.ac-toolbar-btn--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ac-color-accent) 32%, transparent);
+}
+
+/*
+ * Native input + select primitives. Phase 9 Task 4.0 added the v3 mockup
+ * polish — custom chevron for select, hairline-token border, accent focus
+ * ring with alpha-composed glow. Class names and semantics preserved so
+ * existing consumers (TransportSelector, MidiConnectionPage, PartConfigEditor,
+ * dialogs) inherit the polish without code changes.
+ */
+
 .ac-input,
 .ac-select {
   width: 100%;
   border-radius: var(--ac-radius-md);
-  border: 1px solid var(--ac-color-border-subtle);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
   background: color-mix(in srgb, var(--ac-color-surface-canvas) 88%, transparent);
   color: var(--ac-color-text-primary);
   padding: 0.625rem 0.75rem;
   font-size: var(--ac-text-md);
   line-height: var(--ac-leading-normal);
+  transition:
+    border-color var(--ac-duration-fast) var(--ac-easing-default),
+    box-shadow var(--ac-duration-fast) var(--ac-easing-default),
+    background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-input::placeholder {
+  color: var(--ac-color-text-muted);
+  opacity: 0.7;
+}
+
+.ac-input:hover:not(:disabled),
+.ac-select:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ac-color-border-subtle) 60%, var(--ac-color-text-muted));
+}
+
+.ac-input:focus-visible,
+.ac-select:focus-visible {
+  outline: none;
+  border-color: var(--ac-color-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ac-color-accent) 25%, transparent);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 50%, transparent);
+}
+
+.ac-input:disabled,
+.ac-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: color-mix(in srgb, var(--ac-color-border-subtle) 50%, transparent);
+  color: var(--ac-color-text-muted);
+}
+
+/* Error-state modifier — used by dialogs that surface inline validation
+   errors on a field (e.g., ExportPatchDialog's required-name input).
+   Higher specificity than the base rule so it overrides the default
+   border color without needing !important. */
+.ac-input.ac-input--error,
+.ac-select.ac-input--error {
+  border-color: var(--ac-color-danger);
+}
+
+.ac-input.ac-input--error:focus-visible,
+.ac-select.ac-input--error:focus-visible {
+  border-color: var(--ac-color-danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ac-color-danger) 25%, transparent);
+}
+
+/* Warning-state modifier — surfaces a non-fatal warning on a field (e.g.,
+   import dialogs flagging that a target slot will overwrite an existing
+   tone). Distinct from `ac-input--error` (which signals validation failure
+   that blocks submit). Uses --ac-color-warning, matching status-warning. */
+.ac-input.ac-input--warning,
+.ac-select.ac-input--warning {
+  border-color: var(--ac-color-warning);
+}
+
+.ac-input.ac-input--warning:focus-visible,
+.ac-select.ac-input--warning:focus-visible {
+  border-color: var(--ac-color-warning);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ac-color-warning) 25%, transparent);
 }
 
 .ac-input {
@@ -291,9 +346,37 @@
   text-align: center;
 }
 
+/* Custom chevron — the accent stroke color is inlined in the SVG data URI so
+   it renders even when CSS custom-properties cannot interpolate inside
+   `url()` (browser support varies). */
+.ac-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%237ea0d6' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--ac-space-3) center;
+  background-size: 12px 8px;
+  padding-right: calc(var(--ac-space-3) * 2 + 12px);
+}
+
+/* Compact modifier — for tight grid rows (e.g. PlayPage's 12-col part rows
+   with `py-1.5 px-1`) where the default 0.625rem padding would dwarf the
+   row. Shrinks padding + font-size + chevron offset using design tokens;
+   preserves the chrome (border, focus ring, chevron) of the base class. */
+.ac-input--compact,
+.ac-select--compact {
+  padding: var(--ac-space-1) var(--ac-space-2);
+  font-size: var(--ac-text-sm);
+}
+
+.ac-select--compact {
+  background-position: right var(--ac-space-2) center;
+  padding-right: calc(var(--ac-space-2) * 2 + 12px);
+}
+
 .ac-label {
   color: var(--ac-text-primary);
-  font-family: var(--ac-font-sans);
+  font-family: var(--ac-font-body);
   font-size: var(--ac-text-sm);
   font-weight: var(--ac-font-weight-semibold);
   line-height: var(--ac-leading-tight);
@@ -323,94 +406,15 @@
   min-width: 13.75rem;
 }
 
-.ac-mt-2 {
-  margin-top: var(--ac-space-2);
-}
-
-.ac-mt-3 {
-  margin-top: var(--ac-space-3);
-}
-
-.ac-mt-4 {
-  margin-top: var(--ac-space-4);
-}
-
-.ac-ml-2 {
-  margin-left: var(--ac-space-2);
-}
-
-.ac-ml-4 {
-  margin-left: var(--ac-space-4);
-}
+.ac-mt-2 { margin-top: var(--ac-space-2); }
+.ac-mt-3 { margin-top: var(--ac-space-3); }
+.ac-mt-4 { margin-top: var(--ac-space-4); }
+.ac-ml-2 { margin-left: var(--ac-space-2); }
+.ac-ml-4 { margin-left: var(--ac-space-4); }
 
 .ac-input-sm {
   flex: 0 0 auto;
   width: 5.625rem;
-}
-
-.ac-alert {
-  border: 1px solid var(--ac-color-border-subtle);
-  border-radius: var(--ac-radius-md);
-  padding: var(--ac-space-3);
-  background: color-mix(in srgb, var(--ac-color-surface-panel) 90%, transparent);
-}
-
-.ac-alert-error {
-  border-color: color-mix(in srgb, var(--ac-status-danger) 55%, var(--ac-color-border-subtle));
-  background: color-mix(in srgb, var(--ac-status-danger) 16%, transparent);
-}
-
-/* Notification Area */
-
-.ac-notification-area {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ac-space-2);
-}
-
-.ac-notification-area .ac-alert {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  font-size: var(--ac-text-sm);
-}
-
-.ac-notification-text {
-  flex: 1;
-  min-width: 0;
-}
-
-.ac-notification-actions {
-  display: flex;
-  gap: var(--ac-space-1);
-  margin-left: var(--ac-space-3);
-  flex-shrink: 0;
-}
-
-.ac-notification-actions .ac-btn-sm {
-  padding: 0.125rem var(--ac-space-2);
-  font-size: var(--ac-text-xs);
-}
-
-.ac-alert-inline {
-  border: 1px solid var(--ac-color-border-subtle);
-  border-radius: var(--ac-radius-sm);
-  padding: var(--ac-space-1) var(--ac-space-2);
-}
-
-.ac-alert-inline-error {
-  color: var(--ac-status-danger);
-  border-color: color-mix(in srgb, var(--ac-status-danger) 55%, var(--ac-color-border-subtle));
-  background: color-mix(in srgb, var(--ac-status-danger) 12%, transparent);
-}
-
-.ac-drawer-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-inline: var(--ac-drawer-inline);
-  padding-block: var(--ac-space-3);
-  border-bottom: 1px solid var(--ac-color-border-subtle);
 }
 
 .ac-drawer-section {
@@ -421,82 +425,10 @@
 
 .ac-drawer-section:first-of-type {
   border-top: none;
-}
-
-/* Site Layout Primitives */
-
-.ac-site-shell {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  background: var(--ac-color-surface-canvas);
-}
-
-.ac-site-header {
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  background: var(--ac-color-surface-panel);
-  border-bottom: 1px solid var(--ac-color-border-subtle);
-}
-
-.ac-site-header-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-block: var(--ac-space-3);
-  padding-inline: var(--ac-page-main-inline);
-}
-
-.ac-site-logo {
-  display: flex;
-  align-items: center;
-  gap: var(--ac-space-8);
-}
-
-.ac-site-title {
-  margin: 0;
-  font-family: var(--ac-font-sans);
-  font-size: 1.25rem;
-  font-weight: var(--ac-font-weight-bold);
-  color: var(--ac-color-text-primary);
-  white-space: nowrap;
-}
-
-.ac-site-title-accent {
-  color: var(--ac-color-accent);
-}
-
-.ac-site-nav {
-  display: flex;
-  align-items: center;
-  gap: var(--ac-space-6);
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.ac-site-nav-link {
-  font-family: var(--ac-font-sans);
-  font-size: var(--ac-text-sm);
-  font-weight: var(--ac-font-weight-medium);
-  color: var(--ac-color-text-muted);
-  text-decoration: none;
-  transition: color var(--ac-duration-fast) var(--ac-easing-default);
-}
-
-.ac-site-nav-link:hover {
-  color: var(--ac-color-text-primary);
-}
-
-.ac-site-nav-link[data-active='true'] {
-  color: var(--ac-color-text-primary);
-}
-
-.ac-site-header-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--ac-space-3);
+  /* First section flush with the drawer's top so its content (the
+     VideoCapture CRT in the Roland editor) aligns with where the
+     page body content starts on the right. */
+  padding-top: 0;
 }
 
 /* List item action buttons — uses --ac-action-* variables for selected/unselected states */
@@ -530,595 +462,4 @@
 
 .ac-list-action-btn--selected.ac-list-action-btn--danger:hover {
   color: var(--ac-action-selected-danger-hover);
-}
-
-/* Responsive visibility — header text collapses to icons */
-@media (max-width: 1400px) {
-  .ac-hide-narrow {
-    display: none;
-  }
-}
-
-.ac-site-main {
-  flex: 1;
-  width: 100%;
-  padding-inline: var(--ac-page-main-inline);
-  padding-block: var(--ac-page-main-vertical);
-}
-
-.ac-site-footer {
-  margin-top: auto;
-  padding-block: var(--ac-space-4);
-  border-top: 1px solid var(--ac-color-border-subtle);
-}
-
-.ac-site-footer-inner {
-  padding-inline: var(--ac-page-main-inline);
-  text-align: center;
-  font-size: var(--ac-text-xs);
-  color: var(--ac-color-text-muted);
-}
-
-/* Status Indicator */
-
-.ac-status-indicator {
-  display: flex;
-  align-items: center;
-  gap: var(--ac-space-2);
-  font-size: var(--ac-text-sm);
-}
-
-.ac-status-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: var(--ac-color-text-muted);
-}
-
-.ac-status-dot[data-status='connected'] {
-  background: var(--ac-status-connected);
-}
-
-.ac-status-dot[data-status='warning'] {
-  background: var(--ac-status-warning);
-}
-
-.ac-status-dot[data-status='danger'] {
-  background: var(--ac-status-danger);
-}
-
-.ac-status-label {
-  color: var(--ac-color-text-muted);
-}
-
-.ac-status-label[data-status='connected'] {
-  color: var(--ac-status-connected);
-}
-
-.ac-status-detail {
-  font-size: var(--ac-text-xs);
-  color: var(--ac-color-text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 20rem;
-}
-
-@media (max-width: 1600px) {
-  .ac-status-detail {
-    max-width: 12rem;
-  }
-}
-
-@media (max-width: 1400px) {
-  .ac-status-detail {
-    display: none;
-  }
-}
-
-/* Modal Primitives */
-
-.ac-modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.5);
-}
-
-.ac-modal {
-  background: var(--ac-color-surface-panel);
-  border: 1px solid var(--ac-color-border-subtle);
-  border-radius: var(--ac-radius-lg);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  width: 100%;
-  max-width: 42rem;
-  margin: 0 var(--ac-space-4);
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.ac-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--ac-space-4);
-  border-bottom: 1px solid var(--ac-color-border-subtle);
-}
-
-.ac-modal-title {
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: var(--ac-font-weight-bold);
-  color: var(--ac-color-text-primary);
-}
-
-.ac-modal-close {
-  padding: var(--ac-space-1);
-  color: var(--ac-color-text-muted);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  transition: opacity var(--ac-duration-fast) var(--ac-easing-default);
-}
-
-.ac-modal-close:hover {
-  opacity: 0.7;
-}
-
-.ac-modal-content {
-  flex: 1;
-  overflow: auto;
-  padding: var(--ac-space-4);
-}
-
-.ac-modal-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--ac-space-4);
-  border-top: 1px solid var(--ac-color-border-subtle);
-}
-
-.ac-modal-footer-text {
-  margin: 0;
-  font-size: var(--ac-text-xs);
-  color: var(--ac-color-text-muted);
-}
-
-.ac-modal-footer-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--ac-space-2);
-}
-
-/* Slide-Over Drawer — slides in from the right edge */
-
-.ac-drawer-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  background: rgba(0, 0, 0, 0.3);
-  transition: opacity var(--ac-duration-normal) var(--ac-easing-default);
-}
-
-.ac-drawer-overlay[data-state="closed"] {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.ac-drawer-panel {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 101;
-  width: 24rem;
-  max-width: 90vw;
-  background: var(--ac-color-surface-panel);
-  border-left: 1px solid var(--ac-color-border-subtle);
-  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.3);
-  display: flex;
-  flex-direction: column;
-  transform: translateX(0);
-  transition: transform var(--ac-duration-normal) var(--ac-easing-default);
-}
-
-.ac-drawer-panel[data-state="closed"] {
-  transform: translateX(100%);
-}
-
-.ac-drawer-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--ac-space-3) var(--ac-space-4);
-  border-bottom: 1px solid var(--ac-color-border-subtle);
-  flex-shrink: 0;
-}
-
-.ac-drawer-title {
-  font-size: 1rem;
-  font-weight: var(--ac-font-weight-semibold);
-  color: var(--ac-color-text-primary);
-}
-
-.ac-drawer-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border: none;
-  border-radius: var(--ac-radius-sm);
-  background: transparent;
-  color: var(--ac-color-text-muted);
-  font-size: 1.25rem;
-  cursor: pointer;
-  transition: color var(--ac-duration-fast), background-color var(--ac-duration-fast);
-}
-
-.ac-drawer-close:hover {
-  color: var(--ac-color-text-primary);
-  background: color-mix(in srgb, var(--ac-color-text-muted) 12%, transparent);
-}
-
-.ac-drawer-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--ac-space-4);
-}
-
-.ac-drawer-footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--ac-space-2);
-  padding: var(--ac-space-3) var(--ac-space-4);
-  border-top: 1px solid var(--ac-color-border-subtle);
-  flex-shrink: 0;
-}
-
-/* Tabs */
-
-.ac-tabs {
-  display: flex;
-  border-bottom: 1px solid var(--ac-color-border-subtle);
-}
-
-.ac-tab {
-  display: flex;
-  align-items: center;
-  gap: var(--ac-space-2);
-  padding: var(--ac-space-2) var(--ac-space-4);
-  font-size: var(--ac-text-sm);
-  font-weight: var(--ac-font-weight-medium);
-  color: var(--ac-color-text-muted);
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  transition: color var(--ac-duration-fast) var(--ac-easing-default);
-}
-
-.ac-tab:hover {
-  color: var(--ac-color-text-primary);
-}
-
-.ac-tab--active {
-  color: var(--ac-color-text-primary);
-  border-bottom-color: var(--ac-color-accent);
-}
-
-.ac-tab-badge {
-  font-size: var(--ac-text-xs);
-  padding: 0.125rem 0.375rem;
-  border-radius: var(--ac-radius-sm);
-}
-
-.ac-tab-badge--error {
-  background: color-mix(in srgb, var(--ac-status-danger) 22%, transparent);
-  color: var(--ac-status-danger);
-}
-
-.ac-tab-badge--warning {
-  background: color-mix(in srgb, var(--ac-status-warning) 22%, transparent);
-  color: var(--ac-status-warning);
-}
-
-/* Build Info */
-
-.ac-build-info-trigger {
-  font-family: var(--ac-font-mono);
-  font-size: var(--ac-text-xs);
-  padding: var(--ac-space-1) var(--ac-space-2);
-  border-radius: var(--ac-radius-sm);
-  background: rgba(0, 0, 0, 0.3);
-  color: var(--ac-color-text-muted);
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: opacity var(--ac-duration-fast) var(--ac-easing-default);
-}
-
-.ac-build-info-trigger:hover {
-  opacity: 0.8;
-}
-
-.ac-build-info-trigger--error {
-  color: var(--ac-status-danger);
-  border-color: color-mix(in srgb, var(--ac-status-danger) 55%, transparent);
-}
-
-.ac-build-info-badge {
-  margin-left: var(--ac-space-1);
-  color: var(--ac-status-danger);
-}
-
-/* Info List */
-
-.ac-info-list {
-  font-family: var(--ac-font-mono);
-  font-size: var(--ac-text-sm);
-}
-
-.ac-info-row {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--ac-space-4);
-  margin-bottom: var(--ac-space-3);
-}
-
-.ac-info-label {
-  color: var(--ac-color-text-muted);
-}
-
-.ac-info-value {
-  color: var(--ac-color-text-primary);
-  text-align: right;
-}
-
-/* Logs Panel */
-
-.ac-logs-panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ac-space-3);
-}
-
-.ac-logs-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--ac-space-2);
-  flex-wrap: wrap;
-}
-
-.ac-checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: var(--ac-space-2);
-  font-size: var(--ac-text-sm);
-  color: var(--ac-color-text-muted);
-}
-
-.ac-logs-actions {
-  display: flex;
-  gap: var(--ac-space-2);
-}
-
-.ac-logs-list {
-  background: var(--ac-color-surface-canvas);
-  border: 1px solid var(--ac-color-border-subtle);
-  border-radius: var(--ac-radius-sm);
-  max-height: 16rem;
-  overflow: auto;
-}
-
-.ac-logs-empty {
-  padding: var(--ac-space-4);
-  margin: 0;
-  font-size: var(--ac-text-sm);
-  color: var(--ac-color-text-muted);
-  text-align: center;
-}
-
-.ac-log-entry {
-  padding: var(--ac-space-2);
-  border-bottom: 1px solid var(--ac-color-border-subtle);
-  font-family: var(--ac-font-mono);
-  font-size: var(--ac-text-xs);
-}
-
-.ac-log-entry:last-child {
-  border-bottom: none;
-}
-
-.ac-log-entry--error {
-  background: color-mix(in srgb, var(--ac-status-danger) 12%, transparent);
-  color: var(--ac-status-danger);
-}
-
-.ac-log-entry--warn {
-  background: color-mix(in srgb, var(--ac-status-warning) 12%, transparent);
-  color: var(--ac-status-warning);
-}
-
-.ac-log-entry--log {
-  color: var(--ac-color-text-muted);
-}
-
-.ac-log-meta {
-  display: flex;
-  gap: var(--ac-space-2);
-  opacity: 0.7;
-  margin-bottom: var(--ac-space-1);
-}
-
-.ac-log-level {
-  text-transform: uppercase;
-  font-weight: var(--ac-font-weight-bold);
-}
-
-.ac-log-level--error {
-  color: var(--ac-status-danger);
-}
-
-.ac-log-level--warn {
-  color: var(--ac-status-warning);
-}
-
-.ac-log-message {
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
-/* Button modifiers */
-
-.ac-btn-success {
-  background: var(--ac-status-connected);
-  border-color: var(--ac-status-connected);
-  color: #fff;
-}
-
-/* Icon */
-
-.ac-icon {
-  width: 1.25rem;
-  height: 1.25rem;
-  flex-shrink: 0;
-}
-
-.ac-icon-lg {
-  width: 1.5rem;
-  height: 1.5rem;
-  flex-shrink: 0;
-}
-
-/* Scrollbar styling for dark theme */
-
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--ac-color-surface-canvas);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--ac-color-border-subtle);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--ac-color-border-subtle) 80%, var(--ac-color-text-muted));
-}
-
-/* =========================================================================
-   Operation Progress
-   ========================================================================= */
-
-.ac-operation-progress {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ac-space-1);
-}
-
-.ac-operation-progress-header,
-.ac-operation-progress-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: var(--ac-text-xs);
-  color: var(--ac-color-text-muted);
-}
-
-.ac-operation-progress-pct {
-  color: var(--ac-color-text-primary);
-}
-
-.ac-operation-progress-track {
-  height: 0.5rem;
-  background: color-mix(in srgb, var(--ac-color-surface-canvas) 60%, transparent);
-  border-radius: var(--ac-radius-sm);
-  overflow: hidden;
-}
-
-.ac-operation-progress-fill {
-  height: 100%;
-  background: var(--ac-color-accent);
-  border-radius: var(--ac-radius-sm);
-  transition: width var(--ac-duration-fast) var(--ac-easing-default);
-}
-
-.ac-operation-error {
-  font-size: var(--ac-text-sm);
-  color: var(--ac-status-danger);
-  background: color-mix(in srgb, var(--ac-status-danger) 12%, transparent);
-  border-radius: var(--ac-radius-md);
-  padding: var(--ac-space-2);
-}
-
-.ac-operation-success {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ac-space-4);
-}
-
-.ac-operation-success-message {
-  display: flex;
-  align-items: center;
-  gap: var(--ac-space-2);
-  color: var(--ac-status-connected);
-}
-
-.ac-operation-success-icon {
-  width: 1.25rem;
-  height: 1.25rem;
-  flex-shrink: 0;
-}
-
-.ac-operation-success-detail {
-  font-size: var(--ac-text-sm);
-  color: var(--ac-color-text-muted);
-}
-
-.ac-operation-success-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.ac-operation-spinner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--ac-space-2);
-  padding: var(--ac-space-8);
-  color: var(--ac-color-text-muted);
-}
-
-/* Spinner */
-
-.ac-spinner {
-  display: inline-block;
-  width: 1rem;
-  height: 1rem;
-  border: 2px solid currentColor;
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: ac-spin 0.6s linear infinite;
-}
-
-.ac-spinner-sm {
-  width: 0.875rem;
-  height: 0.875rem;
-  margin-right: var(--ac-space-2);
-}
-
-@keyframes ac-spin {
-  to { transform: rotate(360deg); }
 }

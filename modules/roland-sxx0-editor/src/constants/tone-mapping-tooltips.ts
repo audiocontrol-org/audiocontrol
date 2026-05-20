@@ -34,10 +34,4 @@ export const TONE_MAPPING_TOOLTIPS = {
 
   deleteZone:
     'Remove this zone. The keys will become unassigned (OFF for Layer 1, or tone 0 for Layer 2).',
-
-  applyChanges:
-    'Save changes to this zone and send to the S-330.',
-
-  cancelChanges:
-    'Discard changes and restore the original zone settings.',
 } as const;

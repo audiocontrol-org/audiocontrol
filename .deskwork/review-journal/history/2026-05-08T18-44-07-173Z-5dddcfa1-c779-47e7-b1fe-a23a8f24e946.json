@@ -1,0 +1,19 @@
+{
+  "kind": "entry-annotation",
+  "at": "2026-05-08T18:44:07.173Z",
+  "entryId": "ef6b601c-7e04-4282-86a4-850029254759",
+  "annotation": {
+    "type": "comment",
+    "workflowId": "ef6b601c-7e04-4282-86a4-850029254759",
+    "version": 1,
+    "range": {
+      "start": 12829,
+      "end": 12852
+    },
+    "text": "We need to update the design system to comport with the redesigned audiocontrol.org website (see audiocontrol.org public website and oletizi/audiocontrol.org github repo). I want to KEEP the Roland S330/550 color scheme which is the current blue and white, but we I want the S330 and S550 editors to look like they are part of the same audiocontrol.org universe.",
+    "category": "other",
+    "anchor": "Existing design system:",
+    "id": "3196d8f1-0e27-4e29-858b-b7dbe85f5b45",
+    "createdAt": "2026-05-08T18:44:07.173Z"
+  }
+}

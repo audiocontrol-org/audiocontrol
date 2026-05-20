@@ -99,7 +99,7 @@ export const patchItemType: ItemTypePlugin<PatchMeta> = {
   renderTrailing: (meta) => {
     if (!meta || meta.toneCount === undefined) return null;
     return (
-      <span className="text-xs text-s330-muted">
+      <span className="ac-tree-node-meta">
         {meta.toneCount} tone{meta.toneCount !== 1 ? 's' : ''}
       </span>
     );

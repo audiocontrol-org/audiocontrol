@@ -7,14 +7,16 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { AcRangeBar, AcNumberInput } from '@audiocontrol/editor-core';
 import { useMidiStore } from '@/stores/midiStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { useDeviceDataStore } from '@/stores/deviceDataStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { useBankLoader } from '@/hooks/useBankLoader';
-import type { SamplerClientInterface, SamplerPatch } from '@/core/midi/SamplerClient';
+import type { SamplerClientInterface } from '@/core/midi/SamplerClient';
 import { cn } from '@/lib/utils';
 import { isMockMidiMode } from '@/mock/mockMode';
+import { isPatchEmpty } from '@/lib/slot-allocation';
 
 // MIDI Part configuration (A-H = channels 1-8)
 interface MidiPart {
@@ -31,7 +33,7 @@ const PART_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
 export function PlayPage() {
   const config = useDeviceConfig();
-  const { totalPatches, totalTones, patchesPerBank, tonesPerBank } = config;
+  const { totalPatches, totalTones, patchesPerBank, tonesPerBank, memoryLayout, deviceName } = config;
 
   const mockMode = isMockMidiMode();
   const { adapter, deviceId, status } = useMidiStore();
@@ -50,6 +52,7 @@ export function PlayPage() {
     markToneBankLoaded,
     ensurePatchArraySize,
     ensureToneArraySize,
+    invalidatePatchCache,
   } = useDeviceDataStore();
 
   // Keep a ref to the S330 client for sending parameter updates
@@ -221,12 +224,38 @@ export function PlayPage() {
     }
   };
 
-  // Update level in local state only (for responsive UI)
+  // Refresh-from-device — re-pulls multi-mode function parameters and
+  // reloads every patch bank that's currently in the store. Mirrors
+  // PatchesPage.refreshAll so the page-title icon-button behaves
+  // identically across the editor.
+  const refreshAll = useCallback(async () => {
+    if (!clientRef.current) return;
+
+    clientRef.current.invalidatePatchCache();
+    invalidatePatchCache();
+
+    const patchBankCount = Math.ceil(totalPatches / patchesPerBank);
+    for (let bank = 0; bank < patchBankCount; bank++) {
+      await loadPatchBank(bank, true);
+    }
+    await loadFunctionParams();
+  }, [
+    loadPatchBank,
+    loadFunctionParams,
+    invalidatePatchCache,
+    totalPatches,
+    patchesPerBank,
+  ]);
+
+  // Update level in local state (drives the AcRangeBar visualization).
   const handleLevelChange = (partIndex: number, level: number) => {
     updatePart(partIndex, { level });
   };
 
-  // Send level to device when user finishes adjusting
+  // Stream level to the device. Per project memory
+  // `feedback_live_editing_no_save`, the v3 amend (Phase 9 Task 4)
+  // collapsed the prior mouseup-only commit edge into per-keystroke
+  // streaming — AcNumberInput's onChange fires both helpers atomically.
   const handleLevelCommit = (partIndex: number, level: number) => {
     if (clientRef.current) {
       clientRef.current.setMultiLevel(partIndex, level).catch((err) => {
@@ -236,20 +265,13 @@ export function PlayPage() {
     }
   };
 
-  // Check if a patch is empty
-  const isPatchEmpty = (patch: SamplerPatch | undefined): boolean => {
-    if (!patch) return true;
-    const name = patch.common.name;
-    return name === '' || name === '            ' || name.trim() === '';
-  };
-
   if (!isConnected) {
     return (
       <div className="ac-page">
         <div className="card text-center py-12">
           <h2 className="text-xl font-bold text-s330-text mb-2">Not Connected</h2>
           <p className="text-s330-muted mb-4">
-            Connect to your S-330 to view the play screen.
+            Connect to your {deviceName} to view the play screen.
           </p>
           <Link to="/" className="ac-btn ac-btn-primary inline-block">
             Go to Connection
@@ -259,57 +281,71 @@ export function PlayPage() {
     );
   }
 
-  return (
-    <div className="ac-page ac-page-shell">
-      <div className="ac-page-sticky-header">
-        <div className="ac-page-header">
-          <h2 className="text-xl font-bold text-s330-text">Play</h2>
-          <div className="flex items-center gap-4 flex-1 justify-end">
-            {/* Loading Progress */}
-            {isLoading && loadingProgress !== null && (
-              <div className="flex-1 max-w-xs">
-                <div className="h-2 bg-s330-bg rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-s330-highlight transition-all duration-150 ease-out"
-                    style={{ width: `${loadingProgress}%` }}
-                  />
-                </div>
-                <p className="text-s330-muted text-xs mt-0.5 truncate">{loadingMessage}</p>
-              </div>
-            )}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-s330-muted">(Re)load:</span>
-              <button
-                onClick={() => loadPatchBank(0, true)}
-                disabled={isLoading}
-                className={cn(
-                  'ac-btn ac-btn-sm',
-                  loadedBanks.includes(0) ? 'ac-btn-secondary' : 'ac-btn-primary',
-                  isLoading && 'opacity-50'
-                )}
-              >
-                P11-P18
-              </button>
-              <button
-                onClick={() => loadPatchBank(1, true)}
-                disabled={isLoading}
-                className={cn(
-                  'ac-btn ac-btn-sm',
-                  loadedBanks.includes(1) ? 'ac-btn-secondary' : 'ac-btn-primary',
-                  isLoading && 'opacity-50'
-                )}
-              >
-                P21-P28
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+  const totalBanks = Math.ceil(totalPatches / patchesPerBank);
 
-      {/* Parts Grid */}
-      <div className="bg-s330-panel border border-s330-accent rounded-md overflow-hidden">
-        {/* Parts Grid */}
-        <div className="p-4 font-mono text-sm">
+  return (
+    <div className="ac-page ac-page-shell ac-page-shell--fixed-viewport">
+      {/* Lean page header — h2 + red rule + status metric + refresh icon.
+          Same .ac-page-title-row primitive PatchesPage / TonesPage use.
+          Replaces the legacy .ac-page-sticky-header chrome which had
+          negative inline margins that occluded the VideoCapture drawer
+          and the parts-grid column headers (#423). */}
+      <header className="ac-page-title-row">
+        <div className="ac-page-title-block">
+          <h2 id="play-heading" className="ac-page-title-heading">Play</h2>
+          <div className="ac-page-title-rule" aria-hidden="true" />
+        </div>
+        <span className="ac-page-title-metric">
+          <span className="ac-page-title-led" aria-hidden="true" />
+          <span>
+            <strong>{loadedBanks.length}</strong> of <strong>{totalBanks}</strong> banks loaded
+          </span>
+          <button
+            type="button"
+            onClick={refreshAll}
+            disabled={isLoading}
+            className={cn(
+              'ac-icon-btn',
+              isLoading && 'ac-icon-btn--spinning',
+            )}
+            aria-label="Refresh multi-mode configuration and patches from device"
+            title="Refresh from device"
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M3 8a5 5 0 0 1 9-3" />
+              <polyline points="12 2 12 5 9 5" />
+              <path d="M13 8a5 5 0 0 1-9 3" />
+              <polyline points="4 14 4 11 7 11" />
+            </svg>
+          </button>
+        </span>
+      </header>
+
+      {/* Inline loading progress — sits directly below the title row
+          using the shared .ac-page-progress strip. */}
+      {isLoading && loadingProgress !== null && (
+        <div className="ac-page-progress" role="status" aria-live="polite">
+          <div className="ac-page-progress-track">
+            <div
+              className="ac-page-progress-fill"
+              style={{ width: `${loadingProgress}%` }}
+            />
+          </div>
+          {loadingMessage && <span>{loadingMessage}</span>}
+        </div>
+      )}
+
+      {/* Parts Grid — fixed-viewport contract: the card claims the
+          remaining shell height via `.ac-page-shell-body > *`, the
+          inner padded div scrolls internally when narrower viewports
+          can't fit all 8 strips. */}
+      <div className="ac-page-shell-body">
+        <div
+          className="bg-s330-panel border border-s330-accent rounded-md overflow-hidden flex flex-col"
+          data-capability="C-PLAY-01"
+        >
+          {/* Parts Grid */}
+          <div className="p-4 font-mono text-sm flex-1 min-h-0 overflow-y-auto">
           {/* Header row */}
           <div className="grid grid-cols-12 gap-2 mb-2 text-s330-muted text-xs">
             <div className="col-span-1"></div>
@@ -325,6 +361,8 @@ export function PlayPage() {
             <div
               key={part.id}
               className="grid grid-cols-12 gap-2 py-1.5 px-1 rounded transition-colors hover:bg-s330-accent/10"
+              data-capability="C-PLAY-01"
+              aria-label={`Part ${part.id}`}
             >
               {/* Part label */}
               <div className="col-span-1 text-s330-highlight font-bold">
@@ -340,15 +378,12 @@ export function PlayPage() {
               <div className="col-span-1 text-center">
                 <select
                   data-testid={`part-${index}-channel`}
+                  data-capability="C-PLAY-02"
+                  aria-label={`Part ${part.id} MIDI channel`}
                   value={part.channel}
                   onChange={(e) => handleChannelChange(index, Number(e.target.value))}
                   onClick={(e) => e.stopPropagation()}
-                  className={cn(
-                    'w-full px-1 py-0.5 text-center text-xs font-mono',
-                    'bg-s330-panel border border-s330-accent rounded',
-                    'text-s330-text hover:bg-s330-accent/30',
-                    'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-                  )}
+                  className="ac-select ac-select--compact ac-input-center"
                 >
                   {Array.from({ length: 16 }, (_, i) => (
                     <option key={i} value={i}>
@@ -362,25 +397,20 @@ export function PlayPage() {
               <div className="col-span-4">
                 <select
                   data-testid={`part-${index}-patch`}
+                  data-capability="C-PLAY-03"
+                  aria-label={`Part ${part.id} patch`}
                   value={part.patchIndex ?? -1}
                   onChange={(e) => {
                     const value = Number(e.target.value);
                     handlePatchChange(index, value === -1 ? null : value);
                   }}
                   onClick={(e) => e.stopPropagation()}
-                  className={cn(
-                    'w-full px-1 py-0.5 text-xs font-mono',
-                    'bg-s330-panel border border-s330-accent rounded',
-                    'text-s330-text hover:bg-s330-accent/30',
-                    'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-                  )}
+                  className="ac-select ac-select--compact"
                 >
-                  <option value={-1} className="text-s330-muted">
-                    ---
-                  </option>
+                  <option value={-1}>---</option>
                   {patches.map((patch, patchIndex) => (
                     <option key={patchIndex} value={patchIndex}>
-                      P{String(patchIndex + 11).padStart(2, '0')}{' '}
+                      {memoryLayout.formatPatchSlot(patchIndex)}{' '}
                       {patch ? (isPatchEmpty(patch) ? '(empty)' : patch.common.name) : '(not loaded)'}
                     </option>
                   ))}
@@ -394,12 +424,7 @@ export function PlayPage() {
                   value={part.output}
                   onChange={(e) => handleOutputChange(index, Number(e.target.value))}
                   onClick={(e) => e.stopPropagation()}
-                  className={cn(
-                    'w-full px-1 py-0.5 text-center text-xs font-mono',
-                    'bg-s330-panel border border-s330-accent rounded',
-                    'text-s330-text hover:bg-s330-accent/30',
-                    'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-                  )}
+                  className="ac-select ac-select--compact ac-input-center"
                 >
                   {Array.from({ length: 8 }, (_, i) => (
                     <option key={i + 1} value={i + 1}>
@@ -409,41 +434,41 @@ export function PlayPage() {
                 </select>
               </div>
 
-              {/* Level - slider with value display */}
+              {/* Level - v3 atomic composition: AcRangeBar (display) + AcNumberInput (focusable).
+                  Per project memory feedback_live_editing_no_save and feedback_range_bar_pattern:
+                  the bar visualizes, the editable readout commits per-keystroke. The single
+                  onChange handler updates local state AND streams to the device — collapsing
+                  the prior mouseup-only commit edge into the same live-streaming model as the
+                  PatchEditor / Tones panels. */}
               <div className="col-span-4 flex items-center gap-2">
-                <input
-                  data-testid={`part-${index}-level`}
-                  type="range"
+                <AcRangeBar
+                  variant="linear"
+                  value={part.level}
                   min={0}
                   max={127}
-                  value={part.level}
-                  onChange={(e) => handleLevelChange(index, Number(e.target.value))}
-                  onMouseUp={(e) => handleLevelCommit(index, Number((e.target as HTMLInputElement).value))}
-                  onTouchEnd={(e) => handleLevelCommit(index, Number((e.target as HTMLInputElement).value))}
-                  onClick={(e) => e.stopPropagation()}
-                  className={cn(
-                    'flex-1 h-1.5 rounded-full appearance-none cursor-pointer',
-                    'bg-s330-accent/50',
-                    '[&::-webkit-slider-thumb]:appearance-none',
-                    '[&::-webkit-slider-thumb]:w-3',
-                    '[&::-webkit-slider-thumb]:h-3',
-                    '[&::-webkit-slider-thumb]:rounded-full',
-                    '[&::-webkit-slider-thumb]:bg-s330-highlight',
-                    '[&::-webkit-slider-thumb]:hover:bg-s330-text',
-                    '[&::-moz-range-thumb]:w-3',
-                    '[&::-moz-range-thumb]:h-3',
-                    '[&::-moz-range-thumb]:rounded-full',
-                    '[&::-moz-range-thumb]:bg-s330-highlight',
-                    '[&::-moz-range-thumb]:border-0',
-                    '[&::-moz-range-thumb]:hover:bg-s330-text'
-                  )}
+                  onChange={(value) => {
+                    handleLevelChange(index, value);
+                    handleLevelCommit(index, value);
+                  }}
+                  ariaLabel={`Part ${part.id} level`}
+                  className="flex-1"
                 />
-                <span className="w-8 text-right text-xs text-s330-text font-mono">
-                  {part.level}
-                </span>
+                <AcNumberInput
+                  editable
+                  value={part.level}
+                  onChange={(value) => {
+                    handleLevelChange(index, value);
+                    handleLevelCommit(index, value);
+                  }}
+                  min={0}
+                  max={127}
+                  dataTestId={`part-${index}-level`}
+                  ariaLabel={`Part ${part.id} level`}
+                />
               </div>
             </div>
           ))}
+          </div>
         </div>
       </div>
 

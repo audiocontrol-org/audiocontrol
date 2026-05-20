@@ -1,0 +1,19 @@
+{
+  "kind": "entry-annotation",
+  "at": "2026-05-08T18:41:48.169Z",
+  "entryId": "ef6b601c-7e04-4282-86a4-850029254759",
+  "annotation": {
+    "type": "comment",
+    "workflowId": "ef6b601c-7e04-4282-86a4-850029254759",
+    "version": 1,
+    "range": {
+      "start": 12610,
+      "end": 12648
+    },
+    "text": "All changes that touch UI code MUST use the /frontend-design plugin; UI updates NOT made by the frontend design plugin always look and feel like ass.",
+    "category": "other",
+    "anchor": "targeted refactors of real components.",
+    "id": "bfd0fd11-1f48-469e-a5b7-47121c1e1ee5",
+    "createdAt": "2026-05-08T18:41:48.169Z"
+  }
+}

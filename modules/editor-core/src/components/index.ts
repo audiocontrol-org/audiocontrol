@@ -4,6 +4,44 @@ export {
   type ParameterSliderProps,
   type ParameterSliderTheme,
 } from './ParameterSlider';
+
+// v3 atomic control primitives (Phase 9 Task 4.0)
+export { AcCheckbox, type AcCheckboxProps } from './AcCheckbox';
+export {
+  AcRangeBar,
+  type AcRangeBarProps,
+  type AcRangeBarLinearProps,
+  type AcRangeBarBipolarProps,
+  type AcRangeBarEnumProps,
+} from './AcRangeBar';
+export { AcSlider, type AcSliderProps } from './AcSlider';
+export {
+  AcToggle,
+  type AcToggleProps,
+  type AcToggleOption,
+} from './AcToggle';
+export {
+  AcNumberInput,
+  type AcNumberInputProps,
+  type AcNumberInputReadProps,
+  type AcNumberInputEditProps,
+} from './AcNumberInput';
+export {
+  AcEnvelope,
+  type AcEnvelopeProps,
+  type AcEnvelopeSegment,
+} from './AcEnvelope';
+export {
+  AcEnvelopeGraph,
+  type AcEnvelopeGraphProps,
+  type AcEnvelopeGraphSegment,
+} from './AcEnvelopeGraph';
+export { AcEnvelopeMeta, type AcEnvelopeMetaProps } from './AcEnvelopeMeta';
+export {
+  AcEnvelopeTable,
+  type AcEnvelopeTableProps,
+  type AcEnvelopeTableSegment,
+} from './AcEnvelopeTable';
 export {
   CollapsibleSection,
   type CollapsibleSectionProps,
@@ -16,6 +54,7 @@ export {
   type MidiConnectionPageStore,
   type MidiConnectionPageProps,
 } from './MidiConnectionPage';
+export { TransportSelector, type TransportSelectorProps } from './TransportSelector';
 
 // Layout components
 export {
@@ -158,3 +197,24 @@ export {
   type VfdGlowDefsProps,
   type VfdGlowVariant,
 } from './svg';
+
+// Broken variant registry (Phase 9R-A test discipline reform)
+// See docs/1.0/001-IN-PROGRESS/s550-support/testing-and-inventory-reform-spec.md §5
+// for the credibility-check usage. NOT for production consumption.
+export {
+  BROKEN_PRIMITIVES,
+  BROKEN_CONTEXTS,
+  type BrokenPrimitives,
+  type BrokenContexts,
+  type AcRangeBarVariantKey,
+  type AcEnvelopeTableVariantKey,
+  type BrokenContextKey,
+} from './__broken__/registry';
+
+// Dev-only wrapper for the Tier 3 production-route credibility dispatcher.
+// Reads `?context=<variant>` and wraps children in the matching broken
+// context. Production builds must gate the mount on `import.meta.env.DEV`.
+export {
+  BrokenContextWrapper,
+  type BrokenContextWrapperProps,
+} from './__broken__/BrokenContextWrapper';

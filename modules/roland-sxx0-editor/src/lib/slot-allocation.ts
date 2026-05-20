@@ -116,6 +116,78 @@ export function isPatchSlotEmpty(
   return isPatchEmpty(devicePatches[slot]);
 }
 
+/**
+ * Check whether any tone slot in the contiguous range
+ * `[start, start + length)` is occupied (i.e. NOT empty).
+ *
+ * Returns `true` if at least one slot in the range has wave data
+ * allocated, meaning importing across that range would overwrite
+ * existing data. Returns `false` only when every slot in the range
+ * is empty.
+ *
+ * @warning Do NOT replace this with `deviceTones[i] !== undefined` —
+ * the S-330 returns objects for ALL 32 tone slots after device load,
+ * so a raw `!== undefined` check is ALWAYS true and labels every
+ * range as "(will overwrite)" regardless of actual occupancy. This
+ * helper routes through `isToneSlotEmpty`, the authoritative
+ * empty-slot check (see the file preamble at line 8-26).
+ *
+ * @example
+ * // CORRECT — range overwrite detection in import dialogs
+ * const willOverwrite = hasOccupiedToneRange(deviceTones, start, count);
+ *
+ * // WRONG — always true after device load
+ * const willOverwrite = Array.from({ length: count }, (_, j) =>
+ *   deviceTones[start + j]
+ * ).some((t) => t !== undefined);
+ */
+export function hasOccupiedToneRange(
+  deviceTones: (SamplerTone | undefined)[],
+  start: number,
+  length: number
+): boolean {
+  return Array.from(
+    { length },
+    (_, j) => !isToneSlotEmpty(deviceTones, start + j)
+  ).some(Boolean);
+}
+
+/**
+ * Check whether any patch slot in the contiguous range
+ * `[start, start + length)` is occupied (i.e. NOT empty).
+ *
+ * Returns `true` if at least one slot in the range has a meaningful
+ * patch (non-blank name or assigned tones), meaning importing across
+ * that range would overwrite existing data. Returns `false` only when
+ * every slot in the range is empty.
+ *
+ * @warning Do NOT replace this with `devicePatches[i] !== undefined` —
+ * the S-330 returns objects for ALL 16 patch slots after device load,
+ * so a raw `!== undefined` check is ALWAYS true and labels every
+ * range as "(will overwrite)" regardless of actual occupancy. This
+ * helper routes through `isPatchSlotEmpty`, the authoritative
+ * empty-slot check (see the file preamble at line 8-26).
+ *
+ * @example
+ * // CORRECT — range overwrite detection in import dialogs
+ * const willOverwrite = hasOccupiedPatchRange(devicePatches, start, count);
+ *
+ * // WRONG — always true after device load
+ * const willOverwrite = Array.from({ length: count }, (_, j) =>
+ *   devicePatches[start + j]
+ * ).some((p) => p !== undefined);
+ */
+export function hasOccupiedPatchRange(
+  devicePatches: (SamplerPatch | undefined)[],
+  start: number,
+  length: number
+): boolean {
+  return Array.from(
+    { length },
+    (_, j) => !isPatchSlotEmpty(devicePatches, start + j)
+  ).some(Boolean);
+}
+
 // ============================================================================
 // SLOT FINDING FUNCTIONS
 // ============================================================================

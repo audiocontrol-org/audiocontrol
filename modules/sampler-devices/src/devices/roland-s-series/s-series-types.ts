@@ -243,7 +243,12 @@ export interface SSeriesBasePatchCommon {
 }
 
 /**
- * Base tone parameters shared by all S-series devices
+ * Base tone parameters shared by all S-series devices.
+ *
+ * The TVA LFO modulation depth lives at `tva.lfoDepth` (single source of
+ * truth for the byte at `TONE_OFFSETS.TVA_LFO_DEPTH` = offset 26). A prior
+ * top-level `tvaLfoDepth` field aliased the same byte and silently dropped
+ * UI edits at encode time; removed in #408 Phase A.
  */
 export interface SSeriesBaseTone {
     name: string;
@@ -255,7 +260,6 @@ export interface SSeriesBaseTone {
     wave: SSeriesWaveParams;
     loopMode: SSeriesLoopMode;
     lfo: SSeriesLfoParams;
-    tvaLfoDepth: number;
     transpose: number;
     fineTune: number;
     tvf: SSeriesTvfParams;
@@ -268,6 +272,31 @@ export interface SSeriesBaseTone {
     loopTune: number;
     envZoom: number;
     copySource: number;
+}
+
+/**
+ * Resolve an `SSeriesSampleRate` label to its sample-rate in Hz. Single edit
+ * site for the `'30kHz' | '15kHz'` → `30000 | 15000` mapping; a future third
+ * sample rate (e.g. a smaller device's `'7.5kHz'`) lands here. Returns the
+ * literal union `SSeriesWaveSampleRate` so downstream APIs that demand the
+ * literal type (e.g. `calculateWavSegmentsNeeded`, `wavToSeries`) accept it
+ * without a cast.
+ *
+ * Note: runtime helpers in an otherwise types-only file are co-located with
+ * `SSeriesSampleRate` so the contract — "this is how the label maps to Hz" —
+ * is unmistakable from the type.
+ */
+export function sampleRateLabelToHz(rate: SSeriesSampleRate): SSeriesWaveSampleRate {
+    return rate === '30kHz' ? 30000 : 15000;
+}
+
+/**
+ * Convenience wrapper: read the sample rate off a tone. Equivalent to
+ * `sampleRateLabelToHz(tone.sampleRate)`; lives next to `SSeriesBaseTone` so
+ * call sites that already hold a tone object don't have to thread the label.
+ */
+export function toneSampleRateHz(tone: Pick<SSeriesBaseTone, 'sampleRate'>): SSeriesWaveSampleRate {
+    return sampleRateLabelToHz(tone.sampleRate);
 }
 
 /**

@@ -61,6 +61,14 @@ export type {
     SSeriesToneOffsetMap,
 } from './s-series-types.js';
 
+export { sampleRateLabelToHz, toneSampleRateHz } from './s-series-types.js';
+
+// =============================================================================
+// Predicates
+// =============================================================================
+
+export { toneHasWaveData } from './s-series-tone-predicates.js';
+
 // =============================================================================
 // Constants
 // =============================================================================
@@ -75,6 +83,15 @@ export {
     VALUE_RANGES,
     BULK_DUMP_TYPES,
 } from './s-series-constants.js';
+
+// =============================================================================
+// Device Limits (canonical per-device constants)
+// =============================================================================
+
+export {
+    S330_DEVICE_LIMITS,
+    S550_DEVICE_LIMITS,
+} from './s-series-device-limits.js';
 
 // =============================================================================
 // Shared Address Constants

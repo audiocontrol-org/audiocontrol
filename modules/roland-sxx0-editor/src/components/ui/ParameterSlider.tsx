@@ -14,12 +14,7 @@ interface ParameterSliderProps {
   tooltip?: string;
 }
 
-/**
- * Convert label to a valid test ID (lowercase, replace spaces/special chars with hyphens)
- */
-function labelToTestId(label: string): string {
-  return `param-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
-}
+import { labelToTestId } from '@/components/ui/labelToTestId';
 
 export function ParameterSlider({
   label,

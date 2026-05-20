@@ -77,7 +77,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland build-midi-macro-bridge
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland
 
 build: $(ALL_STAMPS)
 
@@ -95,9 +95,27 @@ build: $(ALL_STAMPS)
 # devenv binary location (falls back to nix-profile path)
 DEVENV := $(shell command -v devenv 2>/dev/null || echo $(HOME)/.nix-profile/bin/devenv)
 
+# DEVENV_RUN — wrapper used by every shell-out target.
+# By default, runs the command inside `devenv shell`. CI overrides this to
+# `bash -c` so the targets execute with whatever Node + pnpm + system libs
+# the runner already provides (no devenv install in CI).
+#
+# Usage in targets:
+#   $(DEVENV_RUN) "cd modules/foo && pnpm test"
+#
+# Override from CI / scripts:
+#   make test-ui-roland DEVENV_RUN='bash -c'
+ifndef DEVENV_RUN
+DEVENV_RUN := $(DEVENV) shell --quiet -- bash -c
+endif
+
 .PHONY: ensure-devenv
 ensure-devenv:
+ifeq ($(strip $(DEVENV_RUN)),bash -c)
+	@echo "DEVENV_RUN overridden — skipping devenv check"
+else
 	@(command -v devenv >/dev/null 2>&1 || test -x "$(HOME)/.nix-profile/bin/devenv") || { echo "ERROR: devenv not installed. See https://devenv.sh/getting-started/"; exit 1; }
+endif
 
 # midi-server: auto-provisioned for hardware E2E tests
 MIDI_SERVER_DEPS_DIR := $(CURDIR)/.deps/midi-server
@@ -122,7 +140,7 @@ check-midi-server: ensure-devenv $(MIDI_SERVER_STAMP)
 # Ensure Playwright browsers are installed (once, in e2e-infra)
 .PHONY: ensure-playwright
 ensure-playwright: ensure-devenv
-	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/e2e-infra && npx playwright install chromium"
+	$(DEVENV_RUN) "cd $(MODULES_DIR)/e2e-infra && npx playwright install chromium"
 
 # Extra arguments passed to e2e test runners (e.g., Playwright --grep).
 # Usage: make test-e2e-roland-device ARGS="--grep 'Tone Editor'"
@@ -134,23 +152,88 @@ ARGS ?=
 
 # All Roland e2e tests (UI + library, no device required)
 test-e2e-roland: $(ROLAND_SXX0_EDITOR) ensure-playwright
-	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && pnpm test:e2e $(ARGS)"
+	$(DEVENV_RUN) "cd $(MODULES_DIR)/roland-sxx0-editor && pnpm test:e2e $(ARGS)"
 
 # Roland device tests (requires connected S-330/S-550 + midi-server)
 test-e2e-roland-device: $(ROLAND_SXX0_EDITOR) check-midi-server ensure-playwright
-	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && MIDI_SERVER_BIN='$(MIDI_SERVER_BIN)' ./scripts/run-http-midi-e2e.sh $(ARGS)"
+	$(DEVENV_RUN) "cd $(MODULES_DIR)/roland-sxx0-editor && MIDI_SERVER_BIN='$(MIDI_SERVER_BIN)' ./scripts/run-http-midi-e2e.sh $(ARGS)"
+
+# Roland S-550 live conformance tests (requires connected S-550 + midi-server).
+# This runner is distinct from the simulated tiers and reserved for the
+# redesign/design-capability conformance battery tracked in Phase 11 Task 4.
+test-e2e-roland-device-conformance: $(ROLAND_SXX0_EDITOR) check-midi-server ensure-playwright
+	$(DEVENV_RUN) "cd $(MODULES_DIR)/roland-sxx0-editor && MIDI_SERVER_BIN='$(MIDI_SERVER_BIN)' E2E_DEVICE_TYPE=s550 PLAYWRIGHT_CONFIG=playwright.s550-conformance.config.ts ./scripts/run-http-midi-e2e.sh $(ARGS)"
 
 # Roland library tests (OPFS, no device required)
 test-e2e-roland-library: $(ROLAND_SXX0_EDITOR) ensure-playwright
-	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && ./scripts/run-library-e2e.sh $(ARGS)"
+	$(DEVENV_RUN) "cd $(MODULES_DIR)/roland-sxx0-editor && ./scripts/run-library-e2e.sh $(ARGS)"
 
 # Roland device+library tests (requires connected S-330/S-550 + midi-server + OPFS)
 test-e2e-roland-device-library: $(ROLAND_SXX0_EDITOR) check-midi-server ensure-playwright
-	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && MIDI_SERVER_BIN='$(MIDI_SERVER_BIN)' ./scripts/run-device-library-e2e.sh $(ARGS)"
+	$(DEVENV_RUN) "cd $(MODULES_DIR)/roland-sxx0-editor && MIDI_SERVER_BIN='$(MIDI_SERVER_BIN)' ./scripts/run-device-library-e2e.sh $(ARGS)"
 
 # Roland UI navigation tests (no device required)
 test-e2e-roland-ui: $(ROLAND_SXX0_EDITOR) ensure-playwright
-	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && pnpm test:e2e $(ARGS)"
+	$(DEVENV_RUN) "cd $(MODULES_DIR)/roland-sxx0-editor && pnpm test:e2e $(ARGS)"
+
+# Roland device probe (Node CLI — easymidi, no browser).
+# Sends a Universal Identity Request to every visible MIDI port,
+# matches a Roland (mfg 0x41) Identity Reply, and prints the
+# detected port pair. Requires a Roland S-330 / S-550 reachable
+# via the host's MIDI interface. No mocking — real easymidi, real
+# device. See modules/e2e-infra/src/node/test-roland-probe.ts.
+test-probe-roland: $(EDITOR_CORE)
+	$(DEVENV_RUN) "cd $(MODULES_DIR)/e2e-infra && tsx src/node/test-roland-probe.ts $(ARGS)"
+
+# Roland handshake diagnostic. Sends a battery of candidate probe
+# messages to a chosen MIDI port pair (or auto-picked first non-
+# loopback) and logs every SysEx the device sends back. Use this
+# to verify empirically which handshake message a real S-330 /
+# S-550 actually responds to, before fixing the probe logic.
+# Usage:
+#   make probe-roland-diag
+#   make probe-roland-diag ARGS='--in "Volt 4" --out "Volt 4"'
+probe-roland-diag:
+	$(DEVENV_RUN) "cd $(MODULES_DIR)/e2e-infra && tsx src/node/roland-handshake-diag.ts $(ARGS)"
+
+# ---------------------------------------------------------------------------
+# Phase 0 — Roland fixture recording (CLI, requires connected S-330/S-550)
+# ---------------------------------------------------------------------------
+# Drives a real device through scripted scenarios via easymidi, records every
+# byte at the SSeriesMidiAdapter boundary, writes a NDJSON fixture for replay
+# in UI tests. Captured fixtures live in
+# modules/sampler-devices/test/fixtures/<device>/<scenario>.ndjson.
+#
+# Usage:
+#   make record-fixtures-roland ARGS="--device s550 --scenario load-everything --output modules/sampler-devices/test/fixtures/s550/load-everything.ndjson"
+#   make record-fixtures-roland-s550 ARGS="--scenario fetch-tone-0 --output modules/sampler-devices/test/fixtures/s550/fetch-tone-0.ndjson"
+#   make record-fixtures-roland ARGS="--list-scenarios"
+#   make record-fixtures-roland ARGS="--list-ports"
+record-fixtures-roland: $(SAMPLER_DEVICES)
+	$(DEVENV_RUN) "tsx $(MODULES_DIR)/e2e-infra/src/node/lib/record-fixtures-roland.ts $(ARGS)"
+
+record-fixtures-roland-s550: $(SAMPLER_DEVICES)
+	$(DEVENV_RUN) "tsx $(MODULES_DIR)/e2e-infra/src/node/lib/record-fixtures-roland.ts --device s550 $(ARGS)"
+
+record-fixtures-roland-s330: $(SAMPLER_DEVICES)
+	$(DEVENV_RUN) "tsx $(MODULES_DIR)/e2e-infra/src/node/lib/record-fixtures-roland.ts --device s330 $(ARGS)"
+
+# ---------------------------------------------------------------------------
+# Phase 0 — Fixture drift detection (operator-run, requires hardware)
+# ---------------------------------------------------------------------------
+# Re-captures every committed fixture from the connected device and diffs
+# against the version on disk. Use to verify captured fixtures still match
+# real device behavior after a protocol or scenario change.
+#
+# Hardware: requires Roland S-330 / S-550 reachable via MIDI (typically Volt 4
+# on orion-m4). Not run in CI.
+#
+# Usage:
+#   make check-fixture-drift
+#   make check-fixture-drift ARGS="--device s330"
+#   make check-fixture-drift ARGS="--device s330 --scenario fetch-tone-0"
+check-fixture-drift: $(SAMPLER_DEVICES)
+	./scripts/check-fixture-drift.sh $(ARGS)
 
 # ---------------------------------------------------------------------------
 # S3000XL E2E Tests
@@ -158,19 +241,66 @@ test-e2e-roland-ui: $(ROLAND_SXX0_EDITOR) ensure-playwright
 
 # S3000XL device tests (requires connected S3000XL + midi-server)
 test-e2e-s3k-device: $(AKAI_S3K_EDITOR) check-midi-server ensure-playwright
-	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/akai-s3k-editor && MIDI_SERVER_BIN='$(MIDI_SERVER_BIN)' ./scripts/run-http-midi-e2e.sh $(ARGS)"
+	$(DEVENV_RUN) "cd $(MODULES_DIR)/akai-s3k-editor && MIDI_SERVER_BIN='$(MIDI_SERVER_BIN)' ./scripts/run-http-midi-e2e.sh $(ARGS)"
 
 # S3K library tests (OPFS, no device required)
 test-e2e-s3k-library: $(AKAI_S3K_EDITOR) ensure-playwright
-	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/akai-s3k-editor && ./scripts/run-library-e2e.sh $(ARGS)"
+	$(DEVENV_RUN) "cd $(MODULES_DIR)/akai-s3k-editor && ./scripts/run-library-e2e.sh $(ARGS)"
 
 # S3K UI test harness (keygroup zone components, no device required)
 test-ui-s3k: $(AKAI_S3K_EDITOR) ensure-playwright
-	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/akai-s3k-editor && ./scripts/run-test-harness-e2e.sh $(ARGS)"
+	$(DEVENV_RUN) "cd $(MODULES_DIR)/akai-s3k-editor && ./scripts/run-test-harness-e2e.sh $(ARGS)"
 
 # Roland UI test harness (no device required)
 test-ui-roland: $(ROLAND_SXX0_EDITOR) ensure-playwright
-	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && ./scripts/run-test-harness-e2e.sh $(ARGS)"
+	$(DEVENV_RUN) "cd $(MODULES_DIR)/roland-sxx0-editor && ./scripts/run-test-harness-e2e.sh $(ARGS)"
+
+# Roland Tier 1 wiring suite (no device required). Verifies the
+# device-write seam via programmatic value injection; allowed patterns:
+# .fill() / input.value = X / dispatchEvent('change'). See
+# modules/roland-sxx0-editor/test/wiring/README.md for the tier contract.
+test-wiring-roland: $(ROLAND_SXX0_EDITOR) ensure-playwright
+	$(DEVENV_RUN) "cd $(MODULES_DIR)/roland-sxx0-editor && ./scripts/run-test-harness-e2e.sh playwright.wiring.config.ts $(ARGS)"
+
+# Roland rendering smoke captures (no device required). Produces PNGs
+# for design review; NOT a closure gate. See
+# modules/roland-sxx0-editor/test/rendering/README.md for the contract.
+test-rendering-roland: $(ROLAND_SXX0_EDITOR) ensure-playwright
+	$(DEVENV_RUN) "cd $(MODULES_DIR)/roland-sxx0-editor && ./scripts/run-test-harness-e2e.sh playwright.rendering.config.ts $(ARGS)"
+
+# Coverage gate: lint -> wiring -> test-ui-roland -> credibility -> manifest -> gate.
+# Exits non-zero if any 'implemented' D-row has 'coverage: none' in the
+# generated manifest. Workplan 9R-A.1 T8 + 9R-A.2; reform spec §6.
+check-coverage-roland: $(ROLAND_SXX0_EDITOR) ensure-playwright
+	$(DEVENV_RUN) "pnpm run check-coverage"
+
+# Cross-page CSS duplication gate. Fails when a NEW `.pageA__X` /
+# `.pageB__X` rule pair appears whose body overlaps with the other —
+# i.e. somebody copy-pasted page chrome instead of extracting it to a
+# shared `.ac-*` primitive. Pre-existing pairs catalogued in
+# `tools/check-css-duplication.expected.txt` are not blocking; they're
+# tracked as backlog. New duplication beyond that set blocks the commit.
+# See `tools/check-css-duplication.ts` for full rationale.
+check-css-duplication:
+	tsx tools/check-css-duplication.ts \
+		--baseline tools/check-css-duplication.expected.txt
+
+# Validate that `check-css-duplication` actually catches the
+# known-existing duplications. Compares checker output against the
+# hand-curated ground-truth list. Fails if any expected stem is
+# missing from the checker's output — i.e. the checker is broken.
+# Run this whenever the checker or its ground-truth file changes.
+check-css-duplication-validate:
+	tsx tools/check-css-duplication.validate.ts
+
+# Activate the in-repo pre-commit hooks. Idempotent. Run once per
+# clone; the config setting lives in `.git/config` (not tracked),
+# so each clone needs its own install step. The hook scripts
+# themselves are in `.githooks/` and ARE tracked, so they travel.
+install-hooks:
+	git config core.hooksPath .githooks
+	@echo "hooks installed: core.hooksPath = .githooks"
+	@echo "  pre-commit: blocks NEW cross-page CSS duplication"
 
 # ---------------------------------------------------------------------------
 # Common-Area Library Tests (shared specs, parameterized by env)
@@ -178,7 +308,7 @@ test-ui-roland: $(ROLAND_SXX0_EDITOR) ensure-playwright
 
 # Common-area library tests against S3K editor
 test-e2e-common-library-s3k: $(AKAI_S3K_EDITOR) ensure-playwright
-	$(DEVENV) shell --quiet -- bash -c "\
+	$(DEVENV_RUN) "\
 		E2E_EDITOR_DIR=$(MODULES_DIR)/akai-s3k-editor \
 		E2E_LIBRARY_URL='/akai/s3000xl/editor/library' \
 		E2E_BASE_URL='/akai/s3000xl/editor' \
@@ -188,7 +318,7 @@ test-e2e-common-library-s3k: $(AKAI_S3K_EDITOR) ensure-playwright
 
 # Common-area library tests against Roland editor
 test-e2e-common-library-roland: $(ROLAND_SXX0_EDITOR) ensure-playwright
-	$(DEVENV) shell --quiet -- bash -c "\
+	$(DEVENV_RUN) "\
 		E2E_EDITOR_DIR=$(MODULES_DIR)/roland-sxx0-editor \
 		E2E_LIBRARY_URL='/roland/s330/editor/library' \
 		E2E_BASE_URL='/roland/s330/editor' \
@@ -311,7 +441,7 @@ test-scsi-disk-write: $(SAMPLER_DEVICES) $(MIDI_CORE) check-scsi-bridge
 
 # S3000XL SCSI tests (requires Pi with S3000XL connected via SCSI)
 test-e2e-s3k-scsi: $(AKAI_S3K_EDITOR) check-scsi-bridge ensure-playwright
-	$(DEVENV) shell --quiet -- bash -c "\
+	$(DEVENV_RUN) "\
 		cd $(MODULES_DIR)/akai-s3k-editor && \
 		SCSI_PI_HOST='$(SCSI_PI_HOST)' \
 		SCSI_PI_USER='$(SCSI_PI_USER)' \
@@ -324,7 +454,7 @@ test-e2e-s3k-scsi: $(AKAI_S3K_EDITOR) check-scsi-bridge ensure-playwright
 # Usage: make test-e2e-s3k-device-library
 # Usage: make test-e2e-s3k-device-library ARGS="--grep 'round trip'"
 test-e2e-s3k-device-library: $(AKAI_S3K_EDITOR) check-scsi-bridge ensure-playwright
-	$(DEVENV) shell --quiet -- bash -c "\
+	$(DEVENV_RUN) "\
 		cd $(MODULES_DIR)/akai-s3k-editor && \
 		SCSI_PI_HOST='$(SCSI_PI_HOST)' \
 		SCSI_PI_USER='$(SCSI_PI_USER)' \

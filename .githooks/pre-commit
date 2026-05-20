@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Pre-commit hook — tracked in-repo so it travels across clones,
+# worktrees, and dev environments. Per-clone activation:
+#
+#     make install-hooks
+#
+# which runs `git config core.hooksPath .githooks` once for that
+# clone (the config setting itself isn't tracked; it lives in
+# `.git/config`).
+#
+# Gate added 2026-05-19 after a CSS-duplication refactor blew up
+# the UI: I built the entire editor with cross-page chrome
+# duplicated and nobody caught it until visual review. This hook
+# blocks NEW duplication at commit time. Pre-existing pairs are
+# catalogued in `tools/check-css-duplication.expected.txt` and
+# don't block; they're tracked as backlog work.
+
+set -euo pipefail
+
+# Only re-run the CSS check when staged files actually touch CSS.
+# Without this, every commit pays the parse cost. The pattern
+# matches the stylesheet directories the checker walks.
+if git diff --cached --name-only --diff-filter=ACM | grep -qE '\.(css|scss)$'; then
+  echo "pre-commit: checking for new cross-page CSS duplication…"
+  make --no-print-directory check-css-duplication
+fi

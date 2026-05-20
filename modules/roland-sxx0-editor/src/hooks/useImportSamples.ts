@@ -201,7 +201,7 @@ interface UseImportSamplesReturn extends OperationState {
   closeImportSamplesDialog: () => void;
   handleImportSamples: (params: {
     startingToneSlot: number;
-    waveBank: 0 | 1 | 2 | 3;
+    waveBank: number;
     startingSegment: number;
     targetPatchSlot: number;
     singlePatch?: boolean;
@@ -336,7 +336,7 @@ export function useImportSamples({
 
   const handleImportSamples = useCallback(async (params: {
     startingToneSlot: number;
-    waveBank: 0 | 1 | 2 | 3;
+    waveBank: number;
     startingSegment: number;
     targetPatchSlot: number;
     singlePatch?: boolean;
@@ -349,7 +349,9 @@ export function useImportSamples({
 
     const { bundle, name, path, sourceLocation } = importSamplesDialog;
     const { startingToneSlot, startingSegment, targetPatchSlot } = params;
-    const waveBank = params.waveBank as 0 | 1;
+    // waveBank is `number` end-to-end: S-330 accepts 0/1, S-550 accepts 0..3.
+    // Each device client validates its own range at runtime.
+    const waveBank = params.waveBank;
     const useSinglePatch = params.singlePatch ?? true;
     const patchName = params.patchName || name;
     const useMonolithicMode = params.useMonolithicMode ?? false;

@@ -1,6 +1,35 @@
 # Design System
 
-Living documentation of the audiocontrol design system. Updated as contracts and patterns are established. This is the single source of truth -- CLAUDE.md directs agents here.
+> **Status:** load-bearing · **Last updated:** 2026-05-18
+
+Living documentation of the audiocontrol design system. Updated as contracts and patterns are established. This is the single source of truth — CLAUDE.md directs agents here.
+
+**If a global design choice is documented here, it is settled. Don't re-propose it. Don't show it as an option in mockups. Update this document if a settled choice is to be revisited; don't drift away from it silently.**
+
+## Process
+
+- **Before any UI design or implementation work**: read this document.
+- **When a design decision has global impact** — changes vocabulary, alters how a class of element looks or behaves, applies across multiple pages, or differs between desktop and mobile — update this document **in the same commit** as the implementation change. The update is part of the work, not a follow-up.
+- **File an archive entry** under `docs/<version>/<status>/<feature>/explorations/ACCEPTED/<YYYY-MM-DD>-<slug>/` (or `REJECTED/<…>/`) whenever a design direction is picked OR rejected. The archive is the durable record of *what was considered* alongside this document's record of *what was settled*. See [`DESIGN-DECISIONS-PROTOCOL.md`](./DESIGN-DECISIONS-PROTOCOL.md) for the layout, the `brief.md` contract, and when to file.
+
+If a design decision feels like it might have global impact and you're unsure: it does. Document it.
+
+### When to update which doc
+
+| The decision is… | Update DESIGN-SYSTEM.md | File an archive entry |
+|---|---|---|
+| Settling a token, vocabulary, or component shape (load-bearing) | ✓ in same commit | ✓ ACCEPTED with rationale |
+| Picking one mockup direction over alternatives | (only if the pick alters a global pattern) | ✓ one ACCEPTED + one REJECTED per discarded alternative |
+| Retiring a previous pattern | ✓ note the retirement + cite the replacement | ✓ REJECTED with retirement rationale |
+| Per-page polish without global impact | (no) | (no — keep the iteration in feature commits) |
+
+The archive is for design *decisions* — the why. Implementation commits are tracked in git history. The standards above are *what's settled*. They are complementary; the line between them is whether the next session would learn from reading the entry.
+
+## Companion documents
+
+- **[DESIGN-DECISIONS-PROTOCOL.md](./DESIGN-DECISIONS-PROTOCOL.md)** — archive contract for ACCEPTED / REJECTED design decisions. Per-feature layout, `brief.md` frontmatter spec, visual-reference rules.
+
+---
 
 ### 8. Restore user context across navigation
 
@@ -288,6 +317,28 @@ All tokens use the `--ac-` prefix. Defined in `editor-core/src/design/tokens.css
 - **Typography:** `--ac-text-{xs-lg}`, `--ac-font-weight-*`
 - **Motion:** `--ac-duration-{fast-slow}`, `--ac-easing-default`
 
+#### Phase 9 polish tokens
+
+The v3 mockup direction (operator-approved 2026-05-08) introduces a small typographic vocabulary on top of the existing tokens. Use these instead of inlining font stacks or magic letter-spacing values.
+
+- **`--ac-font-display`** — Departure Mono first, JetBrains Mono fallback, then `ui-monospace`. Used for headings, panel-label eyebrows, slot labels, and any "instrument-face" copy. Inter is forbidden by the design language; do NOT list it in fallback chains.
+- **`--ac-font-body`** — IBM Plex Sans first, system-ui fallback. Used for prose, list item names, and buttons that aren't displaying instrument-face copy.
+- **`--ac-tracking-eyebrow`** — `0.14em`. Applied to uppercase rows: panel labels (§ Patch parameters), bank headers, status metrics.
+- **`--ac-tracking-display`** — `0.01em`. Applied to display headings.
+- **`--ac-text-eyebrow`** — `0.78rem`. The size for panel-label eyebrows; sits between `--ac-text-xs` and `--ac-text-sm`.
+- **`--ac-rule-hairline`** / **`--ac-rule-medium`** — `1px` / `2px`. Tokenized so per-page polish stays consistent (page-title underline, range-bar fills, layer accents).
+- **`--ac-color-rec`** / **`--ac-color-rec-glow`** — REC-LED accent. A nod to the S-550 front panel's red PLAY LED + REC LEVEL knob. Use ONLY as a rare device-active / signal-on-air indicator (live-edit footer, page-title underline). NOT for danger (use `--ac-status-danger`), NOT for the Roland-blue identity (use `--ac-color-accent`).
+
+#### Phase 9 shared page primitives
+
+Promoted from page-scoped `.patches__*` classes during Phase 9 Task 4 page 2 (the duplication-audit gate). The classes live in `modules/roland-sxx0-editor/src/styles/_shared.css` and express the LEAN-HEADER + DETAIL-HEAD + LIVE-FOOTER recipe that every editor page in this module follows. Truly page-specific composition (list-row grid templates, envelope chrome, parameter-row primitives) stays page-scoped.
+
+- **`.ac-page-title-row`** + **`.ac-page-title-block`** + **`.ac-page-title-heading`** + **`.ac-page-title-rule`** + **`.ac-page-title-metric`** + **`.ac-page-title-led`** — the lean page-title rhythm: h2 + rec-LED rule + "<n> of <N> loaded" metric. Every list-detail editor page uses this; the rule (red REC-LED accent) is used sparingly per the token guidance above.
+- **`.ac-icon-btn`** + **`.ac-icon-btn--spinning`** — square icon-only control sized to the title-row baseline; spins via the `--spinning` modifier. Used for "refresh from device" and similar lone actions. Reuses the `ac-icon-spin` keyframes.
+- **`.ac-detail-eyebrow-row`** + **`.ac-detail-eyebrow-sep`** + **`.ac-detail-eyebrow-accent`** — the small uppercase row above the selected-object title ("PATCH · EDITING · SOURCE · DEVICE" / "TONE · EDITING · SOURCE · DEVICE"). Lives in detail headers.
+- **`.ac-detail-empty`** — centered uppercase prompt rendered when no object is selected ("Select a patch to edit" / "Select a tone to edit").
+- **`.ac-detail-live`** + **`.ac-detail-live-led`** + **`.ac-detail-live-touch`** — the live-edit footer with pulsing rec-LED. Replaces save / cancel / undo per project memory `feedback_live_editing_no_save`; reuses `ac-detail-live-pulse` keyframes.
+
 ### Layout Rules
 
 | Do | Don't |
@@ -313,6 +364,257 @@ All components use `.ac-` prefixed class names. Defined in `editor-core/src/desi
 - `text-gray-400` for labels
 - `text-gray-500` for secondary/muted
 - `text-lg font-semibold text-gray-200` for detail panel titles (consistent across all panels)
+
+#### Audiocontrol.org-aligned font stack (v3)
+
+The editor reads as part of the public audiocontrol.org universe via type, spacing, and component shape — NOT via color (the `s330-*` blue+white palette is preserved; see "Color Palette Preservation" below).
+
+Three roles, three faces. Every token below is defined in `editor-core/src/design/tokens.css`; never inline a font stack in component CSS.
+
+| Role | Token | Intended face | Used by |
+|------|-------|---------------|---------|
+| Display / instrument-face | `--ac-font-display` | **Departure Mono** | Headings, panel-label eyebrows, slot labels, page titles, `.ac-field-label`, envelope labels |
+| UI / body | `--ac-font-body` | **IBM Plex Sans** | Prose, list-item names (`.ac-list-name`), buttons, checkbox labels (`.ac-checkbox__label`), dialog body |
+| Data / numeric | `--ac-font-mono` | **JetBrains Mono** | Numeric readouts (`.ac-number-input`), ticks (`.ac-range-bar__tick`), slot identifiers, build-info, log entries |
+
+**Fonts not yet bundled.** As of Phase 9, the editor does NOT ship Departure Mono / IBM Plex Sans / JetBrains Mono as web fonts. The CSS custom properties list each face FIRST with system-fallback chains behind them, so the editor renders correctly with system fonts until the bundled webfonts land. Do NOT inline alternate fallbacks per-component; if a face is missing on a user's system, the token's fallback chain handles it.
+
+**Inter is forbidden by the design language.** Do NOT list `Inter` in any new fallback chain.
+
+#### Tracking + sizing tokens (v3)
+
+- `--ac-tracking-eyebrow` (`0.14em`) — uppercase rows: panel labels, bank headers, status metrics.
+- `--ac-tracking-display` (`0.01em`) — display headings.
+- `--ac-text-eyebrow` (`0.78rem`) — the size for panel-label eyebrows; sits between `--ac-text-xs` and `--ac-text-sm`.
+
+Anti-pattern: hardcoding letter-spacing (e.g., `letter-spacing: 0.1em`) inside a page-scoped CSS class. Every uppercase eyebrow uses `--ac-tracking-eyebrow`.
+
+#### Color Palette Preservation
+
+The editor's `s330-*` blue+white identity (Roland heritage) is canonical and **not** subject to alignment with audiocontrol.org. Cross-product visual alignment with the public site happens through **type, spacing, and component shape** — not recoloring.
+
+- The accent token `--ac-color-accent` (resolved to `--ac-roland-primary`, `#6bc3ea`) stays. Do not introduce a parallel "audiocontrol-blue" or rename the existing token.
+- Per-device `:root[data-editor='...']` overrides in `tokens.css` (s330 / d110 / s3000xl / jv1080) keep each editor's surface palette. Add new editors by extending this block, not by branching component CSS.
+- New visual conventions inherited from the public site (Departure Mono headings, IBM Plex Sans body, range-bar parameter row, 8-segment VFD-glow envelope) are realized via the existing color tokens. If a redesign appears to need a new color, default to alpha-composing an existing token via `color-mix(...)` before introducing a new one (e.g., the focus glow uses `color-mix(in srgb, var(--ac-color-accent) 25%, transparent)` rather than a separate `--ac-color-accent-glow` token).
+
+Anti-pattern: introducing `--ac-color-warning-soft` / `--ac-color-accent-tint` / `--ac-color-rec-bg` parallel to the existing color tokens. Use `color-mix(...)` with an alpha against the base color instead. The one acknowledged exception is `--ac-color-rec-glow`, a pre-computed `rgba(...)` because it is consumed inside multiple `box-shadow` chains where re-doing the `color-mix` per call site would obscure intent — single derived value, documented at the token's definition site.
+
+---
+
+## Page Shell Pattern (fixed viewport, 3 column)
+
+Every list-detail editor page renders inside a fixed-viewport flex column with internal column scrolls. The page itself does not scroll; the list pane, the detail pane, and (where present) the live-status footer each scroll independently. Source: project memory `feedback_sticky_app_shell` + `feedback_flex_main_width_gotcha`.
+
+**When to use:** any editor page with a list + detail layout (PatchesPage, TonesPage, PlayPage, LibraryPage). Single-detail pages (HomePage, WorkflowsPage) use the standard `.ac-page-shell` grid instead.
+
+**Recipe:**
+
+1. The outermost editor `<main>` is `display: flex; flex-direction: column;` with a fixed-viewport height. Set `width: 100%` explicitly — without it, the cross-axis sizes to descendants' `max-content`, which varies silently per page.
+2. Use a 3-column grid (`grid-template-columns: <list> 1fr <detail>`) or a flex row inside the fixed viewport; each column carries `overflow: auto` for internal scrolling.
+3. Do NOT use `position: sticky` on the page header or column headers. Sticky positioning fails silently inside `overflow: hidden` ancestors and is fragile under the column-direction flex chrome.
+4. Page chrome lives outside the scrolling columns: the lean page header sits above the columns, the live-status footer sits below.
+
+**Anti-patterns:**
+
+- Sticky positioning on page chrome — produces a working layout on one page and a broken layout on another, with no compile-time signal.
+- Hardcoded pixel widths on columns (e.g., `width: 320px`). Use flex ratios or grid fractions.
+- Omitting `width: 100%` on a flex `<main>` in a column-direction parent. Visual chrome appears to render until you switch pages and notice the cross-axis varies.
+
+**Canonical class chain:** the outer `<main>` wears `.ac-page` + `.ac-page-shell` (shared across every page). List-detail pages add the `.ac-page-shell--fixed-viewport` modifier to opt into height-bounded chrome (see "Modifier" subsection below). The list+detail grid inside is page-scoped (`.<page>__app-shell`) because the column proportions differ per page — patches uses one list ratio, tones uses another. The page-scoped class is the only place hardcoding rem dimensions; the outer shell only sets the fixed-viewport flex column.
+
+**Example** (taken from `PatchesPage` — `.tones__app-shell`, `.library__app-shell` etc. follow the same shape):
+
+```html
+<main class="ac-page ac-page-shell ac-page-shell--fixed-viewport">
+  <header class="ac-page-title-row">…</header>
+  <div class="patches__app-shell" aria-labelledby="patches-heading">
+    <aside class="ac-list">
+      <div class="ac-list-scroll">…</div>
+    </aside>
+    <section class="patches__detail">…</section>
+  </div>
+  <footer class="ac-detail-live">…</footer>
+</main>
+```
+
+```css
+/* Shared shell: in editor-core/src/design/layout-primitives.css */
+.ac-page-shell {
+  display: grid;
+  gap: var(--ac-page-section-gap);
+}
+
+.ac-page-shell--fixed-viewport {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  /* 100dvh minus site header minus <main> vertical padding (top+bottom). */
+  height: calc(100dvh - var(--ac-site-header-height) - (var(--ac-page-main-vertical) * 2));
+  overflow: hidden;
+}
+
+/* Page-scoped grid: in the page's own CSS file (e.g., PatchesPage.css) */
+.patches__app-shell {
+  display: grid;
+  grid-template-columns: 22rem minmax(0, 1fr);
+  flex: 1;
+  min-height: 0; /* allow children to overflow within the flex track */
+  overflow: hidden;
+}
+
+.patches__app-shell > .ac-list,
+.patches__app-shell > .patches__detail {
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+```
+
+Anti-pattern: inventing a new `.page-shell` / `.page-columns` / `.detail-pane` name when the canonical chain already covers the role. Promote a sibling class to `.ac-*` (per workplan §588 duplication-audit gate) if a primitive recurs across pages.
+
+### Modifier: `--fixed-viewport`
+
+`.ac-page-shell` by itself is a content-flow grid: the document scrolls naturally and the shell grows to its content's height. That shape suits landing pages (HomePage, WorkflowsPage) where the content is a single column that needs natural scroll.
+
+All four list-detail editor pages — PatchesPage, TonesPage, LibraryPage, PlayPage — add the `--fixed-viewport` modifier so the shell becomes a height-bounded flex column. Each column inside scrolls independently and the page header never scrolls out of view. Landing pages (HomePage, WorkflowsPage) are the exception: they stay in the default content-flow shape so they can scroll naturally.
+
+**When to apply:**
+
+- The page renders a list and a detail surface side-by-side, and either is long enough to overflow the viewport.
+- The page renders a fixed-size grid (e.g., the 8 multi-part strips on PlayPage) that should scroll internally at narrower viewports rather than push the page chrome off-screen.
+- The page needs its header / progress / banner chrome to stay anchored while the body scrolls.
+
+**When NOT to apply:**
+
+- Content-flow landing pages (HomePage, WorkflowsPage) — the modifier would clip their content unless they grow their own internal scroll container.
+
+**Contract for descendants:** the body row inside the fixed-viewport shell claims `flex: 1; min-height: 0; overflow: hidden`. Two shapes satisfy this contract:
+
+1. **List+detail grid pages** (PatchesPage, TonesPage) — the per-page `__app-shell` class carries the contract directly, and every column inside the shell carries `min-height: 0; height: 100%; overflow: hidden`. The actual scroll happens one level deeper (`.ac-list-scroll`, `.<page>__detail-body`).
+2. **Single-widget pages** (LibraryPage, PlayPage) — wrap the body widget in the shared `.ac-page-shell-body` primitive (in `editor-core/src/design/layout-primitives.css`). It declares the flex contract once for both the wrapper and (via `.ac-page-shell-body > *`) its direct child so the widget inherits the bounded height.
+
+Skipping any one of these `min-height: 0` rules breaks the cascade silently — height containment propagates only when every flex/grid descendant relaxes its intrinsic minimum.
+
+**Regression coverage:** `modules/roland-sxx0-editor/test/ui/page-viewport-containment.spec.ts` asserts that each list-detail page's document height fits within the viewport (1280x800 plus 4px slack). If a future change removes the modifier or drops a `min-height: 0`, this spec catches the regression at test time.
+
+---
+
+## Page Header Pattern (lean, one row)
+
+Editor page headers are one row: `h2` heading + red REC-LED rule + status metric + icon-only action buttons. No eyebrow row above the heading. No preamble paragraph below it. No announcement banner. Source: project memory `feedback_lean_page_header`.
+
+**When to use:** every editor page header. The lean rhythm is canonical; deviations (per-page hero cards, banner callouts) erode cross-page trust.
+
+**Composition:** the `.ac-page-title-*` shared primitives in `modules/roland-sxx0-editor/src/styles/_shared.css` express this rhythm:
+- `.ac-page-title-row` — outer flex container.
+- `.ac-page-title-block` — the h2 + rule + metric block.
+- `.ac-page-title-heading` — display-font h2.
+- `.ac-page-title-rule` — short red underline (uses `--ac-color-rec`; see "Rec-LED Red Accent" below).
+- `.ac-page-title-metric` — uppercase mono captions, e.g. "8 of 32 loaded".
+- `.ac-page-title-led` — small pulsing dot when the page is connected.
+
+Icon-only actions (refresh, panic) use `.ac-icon-btn` (also in `_shared.css`).
+
+**Anti-patterns:**
+
+- Eyebrow row above the h2 (e.g., `<span>EDITOR · PATCHES</span>` rendered above the heading). The h2 itself communicates the page.
+- Preamble paragraph immediately under the h2 ("This page lets you…"). Each page is recognizable from its layout; an instructional paragraph is not part of the design language.
+- Announcement banner ("New! Save sets to library"). Use the notification system for ephemeral messages; the page header is not a marketing surface.
+- Wrapping the title row over two visual rows. The lean header is one row at every viewport; narrow viewports hide non-essential icons, not stack rows.
+
+---
+
+## Live-Status Footer Pattern
+
+S-330 and S-550 parameter edits stream live to the device — there is no save / cancel / undo. The detail pane's footer is a live-status strip with a pulsing LED indicating that the device is the source of truth and that recent edits are landed. Source: project memory `feedback_live_editing_no_save`.
+
+**When to use:** every editor page whose parameter edits write to the device on change (PatchesPage, TonesPage, PlayPage). The library pages (LibraryPage) ARE save-oriented — they edit local OPFS state and explicitly commit on a button press; they don't use this pattern.
+
+**Composition (in `_shared.css`):**
+- `.ac-detail-live` — fixed-height bottom strip.
+- `.ac-detail-live-led` — pulsing rec-LED dot (uses `--ac-color-rec` and the `ac-detail-live-pulse` keyframes).
+- `.ac-detail-live-touch` — uppercase mono caption like "LIVE EDIT · DEVICE WRITES ENABLED".
+
+**Anti-patterns:**
+
+- Save / Cancel / Undo buttons under a parameter editor. The device is the source of truth and writes are streaming; presenting save/cancel implies queueing semantics that don't exist.
+- Toasts on every parameter write. The live-status footer is the persistent acknowledgement; per-edit toasts would never stop firing.
+- "Discard changes" prompts on page leave. There are no pending changes to discard.
+
+---
+
+## Tabbed Detail Pane
+
+Parameter editors with four or more logical sections use radio-driven tabs inside the detail pane. Strongly-interacting controls (filter parameters next to the filter envelope, amp parameters next to the amp envelope) live in the same tab. Source: project memory `feedback_tabbed_detail_pane`.
+
+**When to use:** any detail pane whose parameter count exceeds what fits comfortably in a single viewport (Tones has 5 tabs: Wave / Pitch / Filter / Amp / LFO).
+
+**Recipe:**
+- Tabs are rendered as a single horizontal row inside the detail pane, above the parameter grid.
+- Use `<input type="radio">` + matching labels for the tab control (no scripted button-list). The tab name carries display font + `--ac-tracking-eyebrow` styling.
+- Strongly-interacting controls **stay together** in the same tab. Splitting `filter cutoff` from `filter envelope` across tabs would force the user to context-switch to hear a single change — the wrong default.
+- An "active" indicator (accent underline or accent fill) marks the current tab; cursor is `pointer`.
+
+**Anti-patterns:**
+
+- Three-tab modules made tabbed for the sake of tabs. Below the four-section threshold, dense grid sections (see "Parameter Editors § Dense Grid Layout") read more clearly.
+- Separating an envelope from its parameters across tabs. The envelope graph is the visualization of those parameters; place them together.
+- Tab labels that aren't recognizable instrument-section names ("Tab 1 / Tab 2"). Names are domain terms: Wave, Pitch, Filter, Amp, LFO.
+
+---
+
+## Virtual Front Panel Under the CRT
+
+Every editor page that mounts the CRT also mounts a virtual front panel mirroring the physical S-330 / S-550 buttons. The canonical mount is the drawer-embedded `<VideoCapture>` slot per `decisions-2026-05-11.md` Decision 1. Source: project memory `feedback_virtual_front_panel`.
+
+**When to use:** every CRT-bearing editor page. It is not optional and is not a per-page decision; the front panel is part of the editor's identity surface.
+
+**Composition:** the front panel mounts inside the `<VideoCapture>` slide-over drawer along with the CRT itself. Front-panel button presses become DT1 SysEx emits via the `useFrontPanel` capability (D-XX-02 / D-XX-03 / D-XX-04 in the capability inventory).
+
+**Anti-patterns:**
+
+- Per-page conditional mounting ("PatchesPage doesn't need it"). Every CRT page mounts it; consistency is critical for trust.
+- Reinventing the front panel as page-scoped chrome. There is one virtual front panel; it lives in the drawer; it is shared across editors.
+- Inserting the front panel inline above the parameter grid. The drawer location IS the mount per Decision 1; the inline-above variant is the rejected option.
+
+### `--ac-fp-*` token vocabulary (Phase 7 Task 2)
+
+The chunky matte-black control surface (commit `81ea648b`) is painted by 16 scoped tokens defined in `editor-core/src/design/tokens.css`. They are the ONLY consumers anywhere — the panel CSS at `modules/roland-sxx0-editor/src/components/front-panel/front-panel.css` reads each token via `var(--ac-fp-*)`, and no other file in the codebase should consume them. This keeps the chassis vocabulary scoped; if a different chrome surface needs its own tokens, it adds its own namespace.
+
+| Token | Role |
+|-------|------|
+| `--ac-fp-chassis-top` / `-bot` / `-edge` | Matte-black chassis gradient + outer-edge inset |
+| `--ac-fp-btn-top` / `-mid` / `-bot` | Three-stop chunky button face gradient |
+| `--ac-fp-btn-bezel` | Hairline bezel between buttons (deepest near-black) |
+| `--ac-fp-btn-pressed-top` / `-mid` / `-bot` | Accent-tinted pressed-state gradient |
+| `--ac-fp-label-fn` / `-pressed` | Silkscreen label colors (white silkscreen, brighten on press) |
+| `--ac-fp-shadow-rim-light` | Chassis inset rim highlight (`box-shadow`) |
+| `--ac-fp-shadow-highlight` | Button top-edge front-lit highlight |
+| `--ac-fp-shadow-chassis-drop` | Chassis outer drop shadow |
+| `--ac-fp-shadow-btn-drop` | Individual button drop shadow |
+
+Existing tokens reused (NOT duplicated as `--ac-fp-*`):
+- `--ac-color-rec` + `--ac-color-rec-glow` for the red arrow silkscreen + pressed-state LED dot
+- `--ac-color-accent` (composed via `color-mix(in srgb, var(--ac-color-accent) 35-55%, transparent)`) for the focus ring + pressed-state outline
+
+**Anti-pattern:** introducing parallel `--ac-fp-red` or `--ac-fp-blue` tokens for the arrows / accents. The `--ac-color-rec` and `--ac-color-accent` tokens already cover those roles; the panel composes alpha over them via `color-mix` rather than parking a pre-composed copy in a new token. The 16 `--ac-fp-*` tokens above are the only ones the panel needs.
+
+---
+
+## Rec-LED Red Accent (sparingly)
+
+The red `--ac-color-rec` (`#f6533c`) is a homage to the S-550 front panel's PLAY LED + REC LEVEL knob. It is the editor's ONLY use of red, and it signals **device-active / signal-on-air** — never danger. Source: project memory `feedback_rec_led_accent`.
+
+**When to use:**
+- `.ac-page-title-rule` — the short red underline beneath the page h2. Communicates "this page is live; the device is connected and writes are streaming."
+- `.ac-detail-live-led` — the pulsing dot in the live-status footer.
+- Front-panel mode LED on the virtual front panel.
+
+**Anti-patterns:**
+
+- Using `--ac-color-rec` for an error state. Use `--ac-color-danger` (`#fca5a5`, the soft-pink danger token). Conflating the rec-LED red with error red breaks the "red means device active" affordance.
+- Using `--ac-color-rec` for any "primary" identity (call-to-action button, brand mark). The Roland blue (`--ac-color-accent`) is the brand; the rec-LED is the front-panel homage.
+- Painting large surfaces with `--ac-color-rec`. The rule, dot, and LED uses are intentionally small. A red panel background would read as a sustained error.
 
 ---
 
@@ -375,6 +677,335 @@ Shared `EnvelopeEditor` renders any polyline envelope. Device-specific wrappers 
 
 ---
 
+## v3 Atomic Control Primitives
+
+Landed in Phase 9 Task 4.0 from the validated `/frontend-design` mockups under `docs/1.0/001-IN-PROGRESS/s550-support/explorations/` (`01-design-language.html` and `04-tones.html`). These primitives express the design-language vocabulary that the per-page polish dispatches consume.
+
+Each primitive lives in a stylesheet under `modules/editor-core/src/design/` and (where composition demands) ships an `<Ac…>` React component under `modules/editor-core/src/components/`. The CSS classes can also be applied to raw HTML; the components compose them.
+
+### .ac-field-label
+
+Uppercase eyebrow label rendered above parameter rows, form fields, and section heads. Distinct from `.ac-label` (which uses sentence-case body type).
+
+**When to use:** any label that introduces a parameter, a select, an input, or a section. Pair with `--ac-text-eyebrow` / `--ac-tracking-eyebrow` already set by the class.
+
+**Mockup citation:**
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/01-design-language.html:497-503` (CSS — the prototype `.ac-field__label` block that this primitive descends from)
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/01-design-language.html:1408-1438` (HTML — `<label class="ac-field__label">` paired with `.ac-input` and `.ac-select` demos)
+
+**Example:**
+
+```html
+<label>
+  <span class="ac-field-label">Wave Bank</span>
+  <select class="ac-select">…</select>
+</label>
+```
+
+**Related tokens:** `--ac-font-display`, `--ac-text-eyebrow`, `--ac-tracking-eyebrow`, `--ac-color-text-muted`.
+
+**Accessibility:** purely visual; pair with `<label htmlFor>` or `aria-labelledby` when introducing an input.
+
+### .ac-select (enhanced)
+
+Pre-existing class, polished in Phase 9 Task 4.0 with the v3 mockup direction. Adds:
+- Custom chevron via inline SVG data URI (accent-stroked).
+- Hairline border using `--ac-rule-hairline`.
+- Accent focus ring (3px `color-mix` glow at 25% accent alpha).
+- Hover-row border emphasis using `color-mix` of border + muted text.
+
+**When to use:** any native `<select>` in the editor. The class can be applied directly to native `<select>` — no JSX wrapper required.
+
+**Mockup citation:**
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/01-design-language.html:505-549` (CSS — base `.ac-input, .ac-select` styling + `.ac-select` chevron variant)
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/01-design-language.html:1422-1438` (HTML — `<select class="ac-select">` demo, including the disabled state)
+
+**Example:**
+
+```html
+<select class="ac-select">
+  <option value="a">Bank A</option>
+  <option value="b">Bank B</option>
+</select>
+```
+
+**Related tokens:** `--ac-color-border-subtle`, `--ac-color-accent`, `--ac-color-surface-canvas`, `--ac-radius-md`.
+
+**Accessibility:** native `<select>` keyboard + screen-reader behaviour preserved. Focus state visible via `focus-visible` (no outline; box-shadow ring instead).
+
+#### --compact modifier (Phase 9 Task 4 PlayPage amend)
+
+Both `.ac-select` and `.ac-input` accept a `--compact` modifier (`.ac-select.ac-select--compact`, `.ac-input.ac-input--compact`). Tightens the padding and font-size for inline-grid use cases — e.g., PlayPage's 12-column part-status grid where the channel/patch/output `<select>`s live inside narrow row cells alongside text columns.
+
+**When to use:** ONLY inside dense grid rows (PlayPage parts, future similar multi-row consoles). Default (non-compact) styling is the right choice for parameter editors, dialogs, and standalone form rows — the compact size reads as cramped outside its inline-grid context.
+
+**Tokens used:** `--ac-space-1` (vertical padding), `--ac-space-2` (horizontal padding), `--ac-text-sm` (font-size). No hardcoded pixel values.
+
+**Mockup citation:** N/A — this modifier was added during Phase 9 Task 4 PlayPage amend (commit `2e857bc6`) for the inline part-row grid; the v3 mockups did not anticipate this layout context.
+
+**Example:**
+
+```html
+<select class="ac-select ac-select--compact" data-testid="part-0-channel">
+  <option value="0">1</option>
+</select>
+```
+
+#### --warning modifier (Phase 9 Task 5 dialog polish)
+
+Both `.ac-select` and `.ac-input` accept a `--warning` modifier (`.ac-select.ac-input--warning`, `.ac-input.ac-input--warning` — note: the warning class uses `ac-input--warning` for BOTH inputs and selects, matching the pre-existing `ac-input--error` precedent on the shared selector). Renders the field with a `--ac-color-warning` border and matching focus ring.
+
+**When to use:** non-fatal warnings on a field — distinct from `--error`, which signals a validation failure that blocks submit. Canonical use: import dialogs flagging that a target slot will overwrite an existing tone / patch (operator can still proceed).
+
+**Anti-pattern:** using `--error` for an overwrite alert. `--error` means "you cannot submit"; `--warning` means "you can submit but here's something to know."
+
+**Mockup citation:** N/A — added during Phase 9 Task 5 dialog polish (commit `8e179806`) for ImportSampleDialog / ImportLibraryToneDialog / ImportLibraryPatchDialog overwrite alerts.
+
+**Example:**
+
+```html
+<select class="ac-select ac-input--warning" data-testid="target-tone">
+  <option value="0">T01 (will overwrite)</option>
+</select>
+```
+
+### .ac-checkbox (v3)
+
+Two-element pattern shipped as `<AcCheckbox>`. The label wraps the checkbox input and a span label; the input is `appearance: none` so it can be styled to the design language (hairline-rule rounded square, accent fill when checked, accent focus glow).
+
+Distinct from the pre-existing single-class `.ac-checkbox-label` (used by `BuildInfo`'s logs filter). Both coexist; new code uses `<AcCheckbox>`.
+
+**When to use:** any boolean toggle in the editor (parameter on/off, dialog options, log filters that aren't yet on `<AcCheckbox>`).
+
+**Mockup citation:**
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/01-design-language.html:551-603` (CSS — `.ac-checkbox`, `.ac-checkbox__input`, the `:checked::after` check glyph, and `.ac-checkbox__label`)
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/01-design-language.html:1440-1456` (HTML — three demo checkboxes: checked, unchecked, disabled)
+
+**JSX:**
+
+```tsx
+import { AcCheckbox } from '@audiocontrol/editor-core';
+
+<AcCheckbox checked={enabled} onChange={setEnabled}>
+  Restore wave data after upload
+</AcCheckbox>
+```
+
+**Raw HTML (when not in React):**
+
+```html
+<label class="ac-checkbox">
+  <input class="ac-checkbox__input" type="checkbox" checked />
+  <span class="ac-checkbox__label">Restore wave data</span>
+</label>
+```
+
+**Related tokens:** `--ac-color-accent`, `--ac-color-border-subtle`, `--ac-rule-hairline`, `--ac-rule-medium` (used for the check glyph stroke).
+
+**Accessibility:** native `<input type="checkbox">` semantics; `aria-label` prop is forwarded for icon-only contexts; disabled state dims label color via descendant selector.
+
+### .ac-slider + .ac-range-bar
+
+Two paired primitives that together implement the v3 range-bar parameter row (per project memory `feedback_range_bar_pattern`). `.ac-slider` is the FULL row (three-column grid: label | bar | mono readout); `.ac-range-bar` is the VISUALIZATION inside the bar column. The bar can be used standalone (e.g., inside the envelope table's mini cells).
+
+**Important:** these are NOT a replacement for `ParameterSlider` (the Radix-based drag-handle slider used by the Roland editor today). `ParameterSlider` stays in place; per-page polish dispatches decide their own consumer migration.
+
+**Variants of `.ac-range-bar` / `<AcRangeBar>`:**
+- **linear** (default) — single accent fill anchored at the left edge; width = `value` as a percentage of `[min, max]`.
+- **bipolar** — fill anchored at `center` (default 0), growing left or right. CSS variables `--ac-range-bar-l` and `--ac-range-bar-w` are emitted by the component.
+- **enum** — N-cell pip track, the cell at `activeIndex` lit accent. Use for discrete categorical params (loop mode, wave bank, etc.).
+
+**JSX:**
+
+```tsx
+import { AcSlider } from '@audiocontrol/editor-core';
+
+<AcSlider
+  label="Cutoff"
+  bar={{ variant: 'linear', value: tone.cutoff, min: 0, max: 127 }}
+  readout={tone.cutoff}
+/>
+
+<AcSlider
+  label="Fine Tune"
+  bar={{ variant: 'bipolar', value: tone.fineTune, min: -50, max: 50 }}
+  readout={tone.fineTune}
+/>
+
+<AcSlider
+  label="Loop Mode"
+  bar={{ variant: 'enum', count: 4, activeIndex: tone.loopMode }}
+  readout="Forward"
+/>
+```
+
+**Related tokens:** `--ac-color-accent`, `--ac-color-surface-canvas`, `--ac-color-border-subtle`, `--ac-color-text-muted`, `--ac-rule-hairline`, `--ac-rule-medium`, `--ac-font-display` (label), `--ac-font-mono` (readout + ticks), `--ac-tracking-eyebrow`.
+
+**Accessibility:** the bar carries `role="img"` and an `aria-label` describing the value-of-range. For read-write rows, place a focusable affordance (e.g., the readout becomes an `<AcNumberInput editable>` or a parent button) — the bar itself is a visualization, not a focus target.
+
+**Mockup citation (slider — full row primitive `.tones__param`):**
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:1465-1547` (CSS — `.tones__param` 3-column grid, `.tones__param-label`, `.tones__param-bar`, `.tones__param-fill`, ticks, and `.tones__param-readout`)
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:2398-2449` (HTML — linear + enum demos under the "Wave" section)
+
+**Mockup citation (range-bar variants — bar visualization):**
+- linear / ticks: `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:1486-1531` (CSS — bar shell, fill, start/mid/end ticks)
+- bipolar: `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:1508-1517` (CSS — `.tones__param--bipolar .tones__param-fill`)
+- enum: `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:1548-1568` (CSS — `.tones__param--enum .tones__param-enum-track` + pip variants)
+
+### .ac-number-input
+
+Display-font numeric readout. Two shapes:
+- **read-only** (default) — `<span class="ac-number-input">` with the value in display font and an optional dim unit.
+- **editable** (`editable={true}`) — `<input type="number">` with the same display styling and spin-buttons hidden.
+
+**JSX:**
+
+```tsx
+import { AcNumberInput } from '@audiocontrol/editor-core';
+
+<AcNumberInput value={32} unit="kHz" />
+
+<AcNumberInput
+  editable={true}
+  value={tone.cutoff}
+  onChange={(v) => setTone({ ...tone, cutoff: v })}
+  min={0}
+  max={127}
+/>
+```
+
+**Related tokens:** `--ac-color-accent`, `--ac-color-text-muted`, `--ac-font-display`, `--ac-font-mono`, `--ac-text-sm`, `--ac-text-xs`.
+
+**Accessibility:** native `<input type="number">` keyboard behaviour preserved in editable mode; spin buttons hidden visually but `min` / `max` / `step` are forwarded to the input. `aria-label` prop is forwarded.
+
+**Mockup citation:**
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:1532-1547` (CSS — `.tones__param-readout`, `.tones__param-readout strong` accent emphasis, `.tones__param-readout-unit`)
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:2408-2448` (HTML — `<span class="tones__param-readout">` with and without unit, e.g. `<strong>30</strong> <span class="tones__param-readout-unit">kHz</span>`)
+
+### .ac-envelope (8-segment VFD-glow editor)
+
+Per project memory `feedback_envelope_pattern`: stacks a full-width "monitor" graphic with phosphor scanlines on top of a per-segment numeric table, plus a meta strip with sustain-segment and end-segment radio rows.
+
+Shipped as `<AcEnvelope>`, composed from three sub-components also exported individually for advanced layouts:
+- `<AcEnvelopeGraph>` — the monitor (grid lines, accent fill, bright stroke line, point markers, axis ticks, y-axis level guides, sustain marker).
+- `<AcEnvelopeMeta>` — sustain + end segment pip rows.
+- `<AcEnvelopeTable>` — per-segment numeric table with mini range-bars.
+
+**Drag interaction is OUT of scope for the Task 4.0 dispatch.** Points are rendered visually with `cursor: grab`; drag handlers arrive with the page-amendment dispatch. The component exposes callbacks (`onPointSelect`, `onSustainChange`, `onEndChange`, `onExpand`) where the consuming page chooses to respond.
+
+**JSX:**
+
+```tsx
+import { AcEnvelope } from '@audiocontrol/editor-core';
+
+<AcEnvelope
+  label="TVF · 8-SEGMENT"
+  segments={[
+    { time: 15, level: 127 },
+    { time: 22, level: 96 },
+    /* …six more segments… */
+  ]}
+  sustainSegment={5}
+  endSegment={8}
+  activeSegment={2}
+  onPointSelect={(seg) => setActive(seg)}
+  onSustainChange={(seg) => writeToDevice({ sustain: seg })}
+  onEndChange={(seg) => writeToDevice({ end: seg })}
+  onExpand={openPrecisionEditor}
+  helpText="Drag points to adjust · Click expand for precision editing"
+/>
+```
+
+**Related tokens:** `--ac-color-accent`, `--ac-color-surface-canvas`, `--ac-color-border-subtle`, `--ac-color-text-primary`, `--ac-color-text-muted`, `--ac-rule-hairline`, `--ac-rule-medium`, `--ac-font-display`, `--ac-font-mono`, `--ac-tracking-eyebrow`. Component-internal: scanline overlay is a `repeating-linear-gradient` with hard-coded 0.18 alpha black (intentional — it's the printed-glass effect, not a colored surface).
+
+**Accessibility:**
+- The graph carries `role="region"` with an `aria-label` describing segment count and active segment.
+- **Graph points** are native `<button type="button">` elements (selectable segments 1..n) so click + keyboard activation (Space / Enter) both fire `onPointSelect` via native semantics. Each button carries `aria-label="Select segment N"` and `aria-pressed` reflecting the active state. The segment-0 anchor renders as a non-interactive `<span aria-hidden="true">`.
+- **Sustain and end pip rows** are `role="radiogroup"` / `role="radio"` with `aria-checked`. Each row uses **roving tabindex** (exactly one pip per group is in the tab order — the active pip if it is enabled, otherwise the first enabled pip). Space / Enter activates the focused pip; ArrowRight / ArrowDown / ArrowLeft / ArrowUp navigate between enabled pips with wrap-around; Home / End jump to the first / last enabled pip. Disabled pips carry `aria-disabled="true"` and `data-disabled="true"` and are skipped during arrow navigation.
+- **Per-segment table** rows use `role="row"` (non-interactive per ARIA). The segment-number cell is a native `<button type="button">` carrying `aria-label="Select segment N"` and `aria-pressed`, so row activation has a single focus + keyboard target instead of a row-wide click handler with no keyboard equivalent.
+
+**Mockup citation (envelope graph — `<AcEnvelopeGraph>`):**
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:1576-1783` (CSS — `.tones__envelope`, `.tones__envelope-graph`, label, expand button, canvas, grid lines, segment dividers, active guide, fill / line, points, axis ticks, y-axis)
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:2640-2705` (HTML — graph demo with label, expand button, SVG fill / line, point markers, and axis ticks)
+
+**Mockup citation (envelope meta — `<AcEnvelopeMeta>`):**
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:1882-1945` (CSS — `.tones__envelope-meta`, `.tones__envelope-meta-control`, `.tones__envelope-meta-label`, `.tones__envelope-meta-pips`, `.tones__envelope-meta-pip`, active + disabled variants)
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:2707-2735` (HTML — sustain + end radio rows, with `role="radiogroup"` and `role="radio"` markup)
+
+**Mockup citation (envelope table — `<AcEnvelopeTable>`):**
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:1786-1862` (CSS — table shell, row + header grid, active + sustain row markers, head + seg typography, cell layout, mini range-bar + readout)
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:2737-2832` (HTML — 8-segment table demo with active row 2 and sustain row 5)
+
+**Mockup citation (sustain label):**
+- `docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:2054-2066` (CSS — `.tones__envelope-sustain-label` floating marker above the sustain point)
+
+### .ac-list-* family (list pane primitives)
+
+Promoted from `.patches__list-*` / `.tones__list-*` during Phase 9 Task 4 PatchesPage amend (commits `7299ca6a` + `33e7e6b8`). The list-row outer grid (`grid-template-columns`) stays page-scoped because the slot-column width differs per device list (patches use `3rem`, tones use `2.5rem`); every other list primitive is byte-identical across `PatchList` / `ToneList` and lives in `modules/editor-core/src/design/list-primitives.css`.
+
+**When to use:** any list pane in a list-detail editor page (PatchesPage, TonesPage, the in-development library lists). The list-pane chrome is shared across both Roland editors — when you find yourself duplicating it for a new device list, extend this family rather than copying.
+
+**Family inventory:**
+
+| Class | Role |
+|-------|------|
+| `.ac-list` | Outer container: hairline border + panel surface + `overflow: hidden`. |
+| `.ac-list-scroll` | Inner scroll region: `overflow-y: auto` with thin scrollbar. |
+| `.ac-list-bank-header` | Sticky uppercase bank/category header that scrolls with the list. Display font + `--ac-tracking-eyebrow`. |
+| `.ac-list-slot` | Mono slot identifier in the row's slot column (`P01`, `T17`). |
+| `.ac-list-info` | Vertical stack of name + eyebrow inside a row. |
+| `.ac-list-name` | The list item's primary name. Body font, weight-medium, truncating ellipsis. |
+| `.ac-list-name--placeholder` | Italic muted variant for empty slot names. |
+| `.ac-list-name--empty` | Italic + heavier muted variant for "unallocated" slots (per `slot-allocation.ts` semantics). |
+| `.ac-list-eyebrow` | Tiny uppercase eyebrow inside a row (e.g., voice count, source bank). |
+| `.ac-list-action` | Hover-revealed action button on a row (e.g., "Export"). Opacity 0 by default; transitions to 1 on parent `:hover` / `:focus-within` / `[data-selected="true"]`. |
+
+**Naming convention:** The family follows BEM-ish dashes for hierarchy and `--` for modifiers — `.ac-list` (block) + `.ac-list-bank-header` / `.ac-list-name` (elements) + `.ac-list-name--placeholder` / `.ac-list-name--empty` (modifiers). The page-scoped row grid wires these primitives together via its own `.<page>__list-row` selector that defines `grid-template-columns` and the reveal rule for `.ac-list-action`.
+
+**Example:**
+
+```html
+<aside class="ac-list">
+  <div class="ac-list-scroll">
+    <header class="ac-list-bank-header">
+      <span>Bank A</span><strong>8 of 32</strong>
+    </header>
+    <button class="patches__list-row" data-selected="true">
+      <span class="ac-list-slot">P01</span>
+      <div class="ac-list-info">
+        <span class="ac-list-name">Strings Pad</span>
+        <span class="ac-list-eyebrow">4 layers</span>
+      </div>
+      <span class="ac-list-action">Export</span>
+    </button>
+  </div>
+</aside>
+```
+
+**Anti-patterns:**
+
+- Copying `.ac-list-name` / `.ac-list-slot` into a new page-scoped class (`.workflows__list-name`). The family is shared; new device lists extend it.
+- Re-deriving the sticky bank header per page. The sticky positioning + backdrop blur lives in `.ac-list-bank-header`; reuse it.
+- Setting `grid-template-columns` inside `.ac-list-bank-header` to match a per-page slot width. The bank header is a flex row with `justify-content: space-between`; the row's slot column is the page-scoped responsibility.
+
+### CSS file organization (Phase 9 Task 4.0)
+
+The original `primitives.css` exceeded 500 lines and was split during Task 4.0:
+
+- `tokens.css` — design tokens
+- `layout-primitives.css` — page shell, site chrome, list-detail grid, tabs, status indicator, scrollbar, icons
+- `overlay-primitives.css` — modal + slide-over drawer
+- `primitives.css` — buttons, inputs (with v3 polish), selects (with v3 chevron + focus glow), labels, fields, card, titles, text utilities, link, radio, list-action-btn, drawer-section
+- `feedback-primitives.css` — alerts, notifications, logs panel, operation progress, spinner, build-info, info-list
+- `control-primitives.css` — v3 atomic primitives (`ac-field-label`, `ac-checkbox`, `ac-slider`, `ac-range-bar`, `ac-number-input`)
+- `envelope-primitives.css` — v3 8-segment VFD-glow envelope primitive
+- `list-primitives.css` — v3 list-pane chrome (`.ac-list`, `.ac-list-bank-header`, `.ac-list-slot`, `.ac-list-name`, `.ac-list-action`, etc.) promoted during Phase 9 Task 4 PatchesPage amend
+- `library.css` — library tree/dialog chrome (separate file due to size)
+
+`styles.css` imports all of them in dependency order. All `.ac-*` classes are usable directly from any editor that already imports the editor-core stylesheet.
+
+---
+
 ## Contract Enforcement Rules
 
 1. **Every shared interface change must break consumers at compile time.** If you add a required field and no editor breaks, the type isn't actually shared.
@@ -386,3 +1017,11 @@ Shared `EnvelopeEditor` renders any polyline envelope. Device-specific wrappers 
 4. **Loud failure over silent no-ops.** An action that silently does nothing is a bug. Either the action should not appear, or it should throw.
 
 5. **Build all editors before committing.** `make` verifies that shared contract changes compile everywhere.
+
+---
+
+## Change log
+
+Append a one-line entry every time this document's *Process* or settled-vocabulary surface is updated. Routine additions of new tokens / new component patterns can be inlined without a change-log line (the section history is the document's body). Use the log for surface-shape changes: when a pattern is retired, when the process changes, when a load-bearing contract is amended.
+
+- 2026-05-18 — Added Process section + cross-link to [`DESIGN-DECISIONS-PROTOCOL.md`](./DESIGN-DECISIONS-PROTOCOL.md). Establishes the load-bearing status framing and the rule that global-impact decisions update this doc in the same commit. Triggered by the s550-support connect-page redesign needing a place to record one ACCEPTED + two REJECTED design directions. Ported the rationale from `deskwork/DESIGN-STANDARDS.md` § Process so audiocontrol gets the same don't-relitigate discipline.

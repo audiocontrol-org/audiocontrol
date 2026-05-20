@@ -1,3 +1,8 @@
+---
+title: "Roland S-550 Editor Support — PRD"
+deskwork:
+  id: 42c2da8a-ac63-45df-87ab-f1fc648001e1
+---
 # Roland S-550 Editor Support - Product Requirements Document
 
 **Created:** 2026-02-20
@@ -157,3 +162,53 @@ modules/sampler-editor/       # Unified editor (was s330-editor)
 └── src/context/              # React context for device config
     └── DeviceConfigContext.tsx
 ```
+
+## 2026-05-15 Scope Extension — Live S-550 Conformance Suite
+
+The Phase 9 reopen established that passing simulated tests and rendering screenshots are not enough to prove the built editor matches the approved redesign or the capability inventory on real hardware. The feature scope is therefore extended to include a **live-device S-550 conformance suite** built on Playwright against a real `/roland/s550/editor` session.
+
+This extension adds two verification tracks:
+
+1. **Design and mockup conformance** — page-level checks for violations of `DESIGN-SYSTEM.md`, divergences from `ux-audit.md`, and drift from the approved mockups under `docs/1.0/001-IN-PROGRESS/s550-support/explorations/`.
+2. **Capability-document conformance** — hardware-backed checks that the built UI surface actually satisfies the operator affordances described in `ROLAND-S550-EDITOR-CAPABILITIES-DETAILED.md`, with verification by fresh device readback rather than UI echo alone.
+
+This suite does **not** replace the four-tier reform in Phase 9. It complements it:
+
+- Tier 1/2/3 coverage remains the architectural gate for preventing false-closure in simulated and harnessed environments.
+- The live S-550 conformance suite is a real-device integration layer that catches the two remaining drift classes the reform alone does not fully close:
+  - page-level divergence from approved visual design
+  - capability rows marked `implemented` whose real-hardware UX still fails
+
+Success for this extension means the repo has a repeatable, documented way to run targeted Playwright checks against a live S-550 and surface concrete design/capability gaps before final operator sign-off.
+
+## 2026-05-16 Scope Extension — Operator Runbook Execution Layer
+
+The new operator review runbook adds a useful closure workflow, but in its current markdown-only form it is a dated human snapshot, not an executable verification system. The branch now also needs a **runbook execution layer** that can tell the difference between:
+
+- steps that are still applicable at current HEAD
+- steps that were correct for the snapshot SHA but are now obsolete
+- steps that can be executed automatically without mutating the shared worktree
+- steps that remain operator-owned and must stay manual
+
+This extension exists to prevent the runbook from rotting into prose while the live conformance suite continues to evolve. It complements the 2026-05-15 live-device conformance extension rather than replacing it.
+
+The runbook execution layer has three parts:
+
+1. **State validation** — parse the runbook's tracked findings and current branch state (`audit-log.md`, `workplan.md`, capability inventory) and report whether each runbook step is applicable, already satisfied, stale, or blocked.
+2. **Safe structural execution** — automate the non-browser, non-mutating checks from the runbook as integration tests, asserting stable invariants instead of brittle literal snapshot counts.
+3. **Live run dispatch** — map runbook sections onto the already-landed live S-550 Playwright specs so the operator can execute runbook-defined verification without maintaining a second parallel battery.
+
+This layer must produce **two shapes of output**:
+
+- a **machine-facing** manifest / classifier / dispatcher used by integration tests and scripts
+- a **human-facing** operator runbook that presents only the steps a reviewer needs to perform, in review order, with plain-language expected results and explicit sign-off / blocked outcomes
+
+This layer must not step on concurrent remediation work. Any automated proof that temporarily removes or alters repo evidence (for example the Tier 3 dependency-wiring smoke check) must run in a temporary copy or throwaway worktree rather than the shared working tree.
+
+Success for this extension means the repo has a repeatable command path that:
+
+- reports which runbook steps are still relevant at HEAD
+- reuses the existing live S-550 conformance suite rather than duplicating it
+- avoids mutating the shared worktree during automated verification
+- surfaces implementation gaps as audit-log findings rather than silently baking assumptions into test code
+- emits an easy-to-follow human operator runbook for the final UI review and sign-off pass rather than requiring the reviewer to interpret machine-oriented manifests or test output

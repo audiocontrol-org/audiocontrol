@@ -1,12 +1,14 @@
 /**
  * Wave Export Utilities
  *
- * Converts S-330 wave data to standard audio formats.
+ * Converts Roland S-series (S-330 / S-550) wave data to standard audio
+ * formats. Both devices share model ID 0x1E and the same 12-bit linear PCM
+ * sample encoding; these helpers are device-agnostic.
  *
- * ## S-330 Wave Data Format
+ * ## S-Series Wave Data Format
  *
- * The S-330 stores 12-bit linear PCM samples at 15kHz or 30kHz.
- * When transmitted via SysEx, each 12-bit sample is encoded as 2 MIDI-safe bytes:
+ * S-330 / S-550 store 12-bit linear PCM samples at 15kHz or 30kHz. When
+ * transmitted via SysEx, each 12-bit sample is encoded as 2 MIDI-safe bytes:
  *
  * - Byte 0: `0aaa aaaa` - upper 7 bits of the 12-bit sample
  * - Byte 1: `0bbb bb00` - lower 5 bits, left-shifted by 2
@@ -14,15 +16,16 @@
  * The combined 12 bits form a 2's complement signed value (-2048 to +2047).
  *
  * This encoding is different from parameter data which uses nibblization.
- * See docs/1.0/s330-sysex-protocol.md for full protocol details.
+ * See docs/1.0/s330-sysex-protocol.md for full protocol details (S-550
+ * uses the same wave-data encoding).
  */
 
 import type { SamplerWaveDataResponse } from '@/core/midi/SamplerClient';
 
 /**
- * Decode 12-bit samples from S-330 SysEx transmission format to 16-bit array
+ * Decode 12-bit samples from S-series SysEx transmission format to 16-bit array.
  *
- * S-330 transmits 12-bit samples as 2 MIDI-safe bytes per sample:
+ * S-330 / S-550 transmit 12-bit samples as 2 MIDI-safe bytes per sample:
  * - Byte 0: 0aaa aaaa (upper 7 bits of 12-bit sample)
  * - Byte 1: 0bbb bb00 (lower 5 bits of 12-bit sample, left-shifted by 2)
  *
@@ -60,9 +63,9 @@ export function unpack12BitTo16Bit(transmittedData: Uint8Array): Int16Array {
 }
 
 /**
- * Create a WAV file blob from S-330 wave data
+ * Create a WAV file blob from S-series wave data.
  *
- * @param waveData - S-330 wave data response with packed 12-bit samples
+ * @param waveData - S-330 / S-550 wave data response with packed 12-bit samples
  * @returns Blob containing a valid WAV file
  */
 export function createWavBlob(waveData: SamplerWaveDataResponse): Blob {
@@ -149,19 +152,44 @@ export function downloadBlob(blob: Blob, filename: string): void {
 }
 
 /**
- * Export S-330 wave data as a WAV file download
+ * Export already-decoded 16-bit samples as a WAV file download.
  *
- * @param waveData - S-330 wave data response
+ * Use this when the caller already has decoded samples (e.g., from
+ * `useWaveDataCache`) and just needs the WAV-build + sanitized-filename
+ * + download steps. Keeps the filename sanitization rule in ONE place.
+ *
+ * @param samples - Decoded 16-bit signed samples
+ * @param sampleRate - Sample rate in Hz (e.g., 15000 or 30000)
  * @param toneName - Name of the tone (used for filename)
  */
-export function exportWaveAsWav(waveData: SamplerWaveDataResponse, toneName: string): void {
-    const blob = createWavBlob(waveData);
+export function exportSamplesAsWav(
+    samples: Int16Array,
+    sampleRate: number,
+    toneName: string
+): void {
+    const blob = createWavBlobFromSamples(samples, sampleRate);
 
     // Sanitize filename - remove invalid characters
     const sanitizedName = toneName.trim().replace(/[<>:"/\\|?*]/g, '_') || 'sample';
     const filename = `${sanitizedName}.wav`;
 
     downloadBlob(blob, filename);
+}
+
+/**
+ * Export S-series wave data as a WAV file download.
+ *
+ * Convenience wrapper for callers that hold a `SamplerWaveDataResponse`
+ * (i.e., they did the device fetch themselves and haven't decoded yet).
+ * Delegates to `exportSamplesAsWav` after unpacking — the sanitization +
+ * download path lives in one place.
+ *
+ * @param waveData - S-330 / S-550 wave data response
+ * @param toneName - Name of the tone (used for filename)
+ */
+export function exportWaveAsWav(waveData: SamplerWaveDataResponse, toneName: string): void {
+    const samples = unpack12BitTo16Bit(waveData.data);
+    exportSamplesAsWav(samples, waveData.sampleRate, toneName);
 }
 
 /**

@@ -1,10 +1,27 @@
 /**
- * Tone list component - displays tones with loading states
+ * Tone list component — bank-headed slot list with the v3 mockup
+ * polish applied (Phase 9 Task 4 page 2).
+ *
+ * Functional contracts intentionally unchanged:
+ *   - data-testid="tone-item-N" / data-testid="tone-name" still set
+ *     on each row (legacy test/ui/tones.spec.ts depends on these).
+ *   - data-capability="C-TONE-01" still set on the list root
+ *     (test/wiring/tones.spec.ts depends on this).
+ *   - Each row's accessible name leads with the slot label
+ *     (T11..T48) so getByRole('button', { name: /^T11/ })
+ *     queries continue to resolve.
+ *
+ * The per-row Export affordance was removed 2026-05-19 — it was a
+ * vestige from before the library page existed. Export still lives
+ * on the tone editor's title row (ToneEditorHead).
  */
+
+import { useState, type KeyboardEvent } from 'react';
 
 import type { SamplerTone } from '@/core/midi/SamplerClient';
 import { cn } from '@/lib/utils';
-import { formatToneSlot } from '@/lib/s330-format';
+import { useDeviceConfig } from '@/context/DeviceConfigContext';
+import { isToneEmpty } from '@/lib/slot-allocation';
 
 interface ToneListProps {
   /** Sparse array of tones - undefined = not loaded */
@@ -19,122 +36,216 @@ interface ToneListProps {
   loadingBank?: number | null;
   /** Called when user clicks an unloaded tone to load its bank */
   onLoadBank?: (bankIndex: number) => void;
-  /** Called when user clicks export on a tone */
-  onExportTone?: (index: number) => void;
-  /** Whether library export is available (library connected) */
-  canExportToLibrary?: boolean;
+  /** Called when user clicks the per-bank reload button. Re-fetches
+   *  the entire bank from the device, invalidating the cache. */
+  onReloadBank?: (bankIndex: number) => void;
 }
 
-/**
- * Check if a tone name indicates it's empty/unused
- */
-function isToneEmpty(tone: SamplerTone): boolean {
-  const name = tone.name;
-  return name === '' || name === '        ' || name.trim() === '';
-}
+export function ToneList({
+  tones,
+  selectedIndex,
+  onSelect,
+  loadedBanks: _loadedBanks,
+  tonesPerBank,
+  loadingBank,
+  onLoadBank,
+  onReloadBank,
+}: ToneListProps) {
+  const { memoryLayout } = useDeviceConfig();
 
-export function ToneList({ tones, selectedIndex, onSelect, loadedBanks: _loadedBanks, tonesPerBank, loadingBank, onLoadBank, onExportTone, canExportToLibrary = false }: ToneListProps) {
-  // Count loaded and non-empty tones
-  const loadedTones = tones.filter((t): t is SamplerTone => t !== undefined);
-  const nonEmptyCount = loadedTones.filter((t) => !isToneEmpty(t)).length;
+  // Group rows by bank so we can emit a sticky bank header before each.
+  const totalBanks = Math.ceil(tones.length / tonesPerBank);
+
+  // Per-bank collapse state. Default: every bank expanded. Operator
+  // clicks the bank header chevron-button to toggle. State is
+  // component-local (not persisted across navigations) — kept simple
+  // until we hear the operator wants persistence.
+  const [collapsedBanks, setCollapsedBanks] = useState<Set<number>>(() => new Set());
+  const toggleBank = (i: number): void => {
+    setCollapsedBanks((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  };
 
   return (
-    <div className="card p-2">
-      <div className="flex items-center justify-between px-2 py-1 mb-2">
-        <span className="text-sm font-medium text-s330-text">
-          Tones ({nonEmptyCount} of {loadedTones.length} with names)
-        </span>
-      </div>
-      <div className="ac-scroll-list space-y-1">
-        {tones.map((tone, index) => {
-          const isLoaded = tone !== undefined;
-          const isEmpty = isLoaded && isToneEmpty(tone);
-          const isSelected = index === selectedIndex;
-          const bankIndex = Math.floor(index / tonesPerBank);
-
-          const isBankLoading = loadingBank === bankIndex;
-
-          const handleClick = () => {
-            if (isLoaded) {
-              onSelect(isSelected ? null : index);
-            } else if (!isBankLoading && onLoadBank) {
-              onLoadBank(bankIndex);
-            }
-          };
-
-          // Check if tone has sample data (for export button)
-          const hasSampleData = isLoaded && tone.wave.endPoint > tone.wave.startPoint;
-
-          const handleExportClick = (e: React.MouseEvent) => {
-            e.stopPropagation(); // Prevent tone selection
-            if (onExportTone && isLoaded && hasSampleData) {
-              onExportTone(index);
-            }
-          };
+    <aside
+      className="ac-list"
+      data-capability="C-TONE-01"
+      aria-label="Tone list"
+    >
+      <div className="ac-list-scroll">
+        {Array.from({ length: totalBanks }, (_, bankIndex) => {
+          const bankStart = bankIndex * tonesPerBank;
+          const bankEnd = Math.min(bankStart + tonesPerBank, tones.length);
+          const firstSlotLabel = memoryLayout.formatToneSlot(bankStart);
+          const lastSlotLabel = memoryLayout.formatToneSlot(bankEnd - 1);
+          const isCollapsed = collapsedBanks.has(bankIndex);
+          // A bank counts as "loaded" if at least one slot in its range
+          // has data. The reload-icon affordance renders for every
+          // bank regardless of state — for unloaded banks it acts as
+          // "load this bank", for loaded banks it re-fetches.
+          // forceReload=true in the handler works in both cases.
+          const isBankLoaded = tones
+            .slice(bankStart, bankEnd)
+            .some((t) => t !== undefined);
+          const isThisBankLoading = loadingBank === bankIndex;
 
           return (
-            <div
-              key={index}
-              data-testid={`tone-item-${index}`}
-              className={cn(
-                'w-full px-3 py-2 rounded text-left text-sm transition-colors flex items-center justify-between group',
-                isLoaded ? 'hover:bg-s330-accent/50' : 'hover:bg-s330-accent/20 cursor-pointer',
-                isBankLoading && 'cursor-wait',
-                isSelected
-                  ? 'bg-s330-highlight text-white'
-                  : !isLoaded
-                    ? 'text-s330-muted/30 bg-s330-panel/50'
-                    : isEmpty
-                      ? 'text-s330-muted/50'
-                      : 'text-s330-text'
-              )}
-            >
-              <button
-                onClick={handleClick}
-                disabled={isBankLoading}
-                className="flex-1 flex items-center text-left min-w-0"
-              >
-                <span className="font-mono text-s330-muted shrink-0">
-                  {formatToneSlot(index)}
-                </span>
-                <span
-                  className={cn(
-                    'flex-1 mx-3 truncate',
-                    (!isLoaded || isEmpty) && 'italic'
-                  )}
-                  data-testid="tone-name"
-                >
-                  {isBankLoading
-                    ? '(loading...)'
-                    : !isLoaded
-                      ? '(not loaded)'
-                      : isEmpty
-                        ? '(unnamed)'
-                        : tone.name}
-                </span>
-                {!isLoaded && !isBankLoading && (
-                  <span className="text-xs text-s330-muted/50 shrink-0">click to load</span>
-                )}
-              </button>
-              {/* Export button - visible on hover when tone has data */}
-              {canExportToLibrary && isLoaded && hasSampleData && (
+            <div key={`bank-${bankIndex}`} data-bank-index={bankIndex}>
+              <div className="ac-list-bank-header">
                 <button
-                  onClick={handleExportClick}
-                  data-testid="export-tone-button"
-                  className={cn(
-                    'shrink-0 ml-2 px-2 py-1 text-xs rounded',
-                    'bg-s330-highlight/20 hover:bg-s330-highlight/40 text-s330-highlight',
-                    isSelected && 'bg-white/20 hover:bg-white/30 text-white'
-                  )}
-                  title="Export to library"
+                  type="button"
+                  className="ac-list-bank-toggle"
+                  onClick={() => toggleBank(bankIndex)}
+                  aria-expanded={!isCollapsed}
+                  aria-label={`Toggle bank ${bankIndex + 1}`}
+                  data-testid={`tone-bank-toggle-${bankIndex}`}
                 >
-                  Export
+                  <span className="ac-list-bank-chevron" aria-hidden="true">
+                    {isCollapsed ? '▸' : '▾'}
+                  </span>
+                  <span>Bank {bankIndex + 1}</span>
                 </button>
-              )}
+                <span className="ac-list-bank-meta">
+                  <strong>{firstSlotLabel}–{lastSlotLabel}</strong>
+                  {onReloadBank && (
+                    <button
+                      type="button"
+                      className={cn(
+                        'ac-list-bank-reload',
+                        isThisBankLoading && 'ac-list-bank-reload--spinning',
+                      )}
+                      onClick={() => onReloadBank(bankIndex)}
+                      disabled={isThisBankLoading}
+                      aria-label={
+                        isBankLoaded
+                          ? `Reload bank ${bankIndex + 1}`
+                          : `Load bank ${bankIndex + 1}`
+                      }
+                      title={
+                        isBankLoaded
+                          ? `Reload bank ${bankIndex + 1}`
+                          : `Load bank ${bankIndex + 1}`
+                      }
+                      data-testid={`tone-bank-reload-${bankIndex}`}
+                    >
+                      <svg viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="M3 8a5 5 0 0 1 9-3" />
+                        <polyline points="12 2 12 5 9 5" />
+                        <path d="M13 8a5 5 0 0 1-9 3" />
+                        <polyline points="4 14 4 11 7 11" />
+                      </svg>
+                    </button>
+                  )}
+                </span>
+              </div>
+
+              <div className="ac-collapse" data-expanded={!isCollapsed}>
+                <div>
+              {tones.slice(bankStart, bankEnd).map((tone, offset) => {
+                const index = bankStart + offset;
+                const isLoaded = tone !== undefined;
+                const isEmpty = isLoaded && isToneEmpty(tone);
+                const isSelected = index === selectedIndex;
+                const slotBank = Math.floor(index / tonesPerBank);
+                const isBankLoading = loadingBank === slotBank;
+
+                const handleClick = () => {
+                  if (isLoaded) {
+                    // Select-only: clicking an already-selected row is a
+                    // no-op (no toggle-to-deselect). The operator should
+                    // always have a tone selected so the editor stays
+                    // mounted; null selection happens only when the page
+                    // first mounts before any data is loaded.
+                    onSelect(index);
+                  } else if (!isBankLoading && onLoadBank) {
+                    onLoadBank(slotBank);
+                  }
+                };
+
+                // Outer element is a div with role="button" rather than a
+                // real <button> because the row historically nested an
+                // inline action button (Export). That button has been
+                // removed but the role="button" structure is retained
+                // since it doesn't hurt — switching to a real <button>
+                // is a separate cleanup.
+                const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+                  if (isBankLoading) return;
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleClick();
+                  }
+                };
+
+                // Display rules:
+                //   - bank loading:  '(loading...)'
+                //   - not loaded:    '' (the eyebrow below renders
+                //                       "click to load bank" — the
+                //                       row already communicates the
+                //                       state without a duplicate
+                //                       placeholder string)
+                //   - loaded named:  the actual name
+                //   - loaded blank:  '' (no parenthesized placeholder;
+                //                       the silence reads as "no
+                //                       content here", and the
+                //                       `--empty` styling on the row
+                //                       still conveys the "no wave"
+                //                       state visually).
+                // Name and wave-data state are independent — a slot
+                // can hold a name with no wave (operator typed a name
+                // before importing a sample) or vice versa.
+                const displayName = isBankLoading
+                  ? '(loading...)'
+                  : isLoaded
+                    ? tone.name
+                    : '';
+
+                const nameClass = !isLoaded
+                  ? 'ac-list-name ac-list-name--placeholder'
+                  : isEmpty
+                    ? 'ac-list-name ac-list-name--empty'
+                    : 'ac-list-name';
+
+                return (
+                  <div
+                    key={index}
+                    data-testid={`tone-item-${index}`}
+                    role="button"
+                    tabIndex={isBankLoading ? -1 : 0}
+                    aria-disabled={isBankLoading}
+                    aria-selected={isSelected}
+                    onClick={isBankLoading ? undefined : handleClick}
+                    onKeyDown={handleKeyDown}
+                    className="ac-list-row"
+                  >
+                    <span className="ac-list-slot">
+                      {memoryLayout.formatToneSlot(index)}
+                    </span>
+                    <span className="ac-list-info">
+                      <span
+                        className={nameClass}
+                        data-testid="tone-name"
+                      >
+                        {displayName}
+                      </span>
+                      {!isLoaded && !isBankLoading && (
+                        <span className="ac-list-eyebrow">
+                          click to load
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                );
+              })}
+                </div>
+              </div>
             </div>
           );
         })}
       </div>
-    </div>
+    </aside>
   );
 }

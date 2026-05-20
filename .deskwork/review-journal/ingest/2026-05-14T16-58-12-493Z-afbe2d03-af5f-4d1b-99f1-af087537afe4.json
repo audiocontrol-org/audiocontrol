@@ -1,0 +1,24 @@
+{
+  "id": "afbe2d03-af5f-4d1b-99f1-af087537afe4",
+  "timestamp": "2026-05-14T16:58:12.493Z",
+  "event": "ingest",
+  "slug": "s550-support/testing-and-inventory-reform-spec",
+  "entryId": "afbe2d03-af5f-4d1b-99f1-af087537afe4",
+  "site": "engineering-design-specs",
+  "stage": "Drafting",
+  "sourceFile": "docs/1.0/001-IN-PROGRESS/s550-support/testing-and-inventory-reform-spec.md",
+  "frontmatterSnapshot": {
+    "title": "Testing and capability-inventory reform",
+    "status": "draft",
+    "date": "2026-05-14",
+    "related-issues": [
+      "https://github.com/audiocontrol-org/audiocontrol/issues/423",
+      "https://github.com/audiocontrol-org/audiocontrol/issues/424"
+    ]
+  },
+  "derivation": {
+    "slug": "path",
+    "state": "frontmatter",
+    "date": "frontmatter"
+  }
+}

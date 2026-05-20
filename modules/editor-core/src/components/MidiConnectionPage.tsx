@@ -35,6 +35,10 @@ export interface MidiConnectionPageStore {
   reconnect: () => Promise<void>;
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
+  /** Auto-detect via SysEx Identity Request. Returns the matching
+   *  input/output pair, or null if no device replied (probably
+   *  because EXC SysEx isn't enabled on the device). */
+  probe?: (options?: { onProbe?: (portName: string) => void }) => Promise<{ inputId: string; outputId: string; inputName: string; outputName: string } | null>;
 }
 
 export interface MidiConnectionPageProps {
@@ -154,7 +158,7 @@ export function MidiConnectionPage({
                     clearTransportConfig();
                     window.location.reload();
                   }}
-                  className="ac-btn ac-btn-sm"
+                  className="ac-toolbar-btn"
                 >
                   Reset Transport
                 </button>
@@ -193,12 +197,16 @@ export function MidiConnectionPage({
               <button
                 type="button"
                 onClick={() => void store.disconnect()}
-                className="ac-btn"
+                className="ac-toolbar-btn"
                 data-testid="disconnect-button"
               >
                 Disconnect
               </button>
-              <button type="button" onClick={onContinue} className="ac-btn">
+              <button
+                type="button"
+                onClick={onContinue}
+                className="ac-toolbar-btn ac-toolbar-btn--primary"
+              >
                 {config.continueLabel}
               </button>
             </>
@@ -209,12 +217,16 @@ export function MidiConnectionPage({
                   type="button"
                   onClick={() => void store.connect()}
                   disabled={!canConnect || store.status === 'connecting'}
-                  className="ac-btn"
+                  className="ac-toolbar-btn ac-toolbar-btn--primary"
                   data-testid="connect-button"
                 >
-                  {store.status === 'connecting' ? 'Connecting...' : 'Connect'}
+                  {store.status === 'connecting' ? 'Connecting…' : 'Connect'}
                 </button>
-                <button type="button" onClick={() => void store.refresh()} className="ac-btn">
+                <button
+                  type="button"
+                  onClick={() => void store.refresh()}
+                  className="ac-toolbar-btn"
+                >
                   Refresh Ports
                 </button>
               </>
@@ -222,7 +234,7 @@ export function MidiConnectionPage({
               <button
                 type="button"
                 onClick={() => void store.reconnect()}
-                className="ac-btn"
+                className="ac-toolbar-btn ac-toolbar-btn--primary"
               >
                 Reconnect
               </button>

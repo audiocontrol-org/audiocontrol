@@ -7,6 +7,7 @@ import {
 } from '@audiocontrol/midi-core';
 import { createWebMidiTransport } from '../transports/webMidiTransport';
 import type { MidiTransport, MidiTransportConnection, MidiTransportPorts } from '../transports/types';
+import { probeForRolandDevice, type ProbeMatch, type ProbeOptions } from '../transports/probe-roland';
 
 export interface MidiStoreConfig<TClient> {
   deviceName: string;
@@ -43,6 +44,12 @@ export interface MidiStoreActions {
   reconnect: () => Promise<void>;
   connect: (inputId: string, outputId: string) => Promise<void>;
   disconnect: () => Promise<void>;
+  /** Auto-detect a Roland device on the available MIDI ports by
+   *  sending a Universal Identity Request and listening for a reply
+   *  with Roland mfg id 0x41. Returns the matching pair or null.
+   *  The store remains disconnected — caller is responsible for
+   *  calling connect() with the returned ids. */
+  probe: (options?: ProbeOptions) => Promise<ProbeMatch | null>;
   setDeviceId: (id: number) => void;
   sendPanic: () => void;
 }
@@ -251,6 +258,17 @@ export function createMidiStore<TClient>(config: MidiStoreConfig<TClient>) {
         const message = error instanceof Error ? error.message : 'Failed to disconnect';
         set({ error: message });
       }
+    },
+
+    probe: async (options?: ProbeOptions): Promise<ProbeMatch | null> => {
+      // Ensure no active connection holds the ports; the probe
+      // needs to open/close them itself.
+      if (get().status === 'connected') {
+        await get().disconnect();
+      }
+      await get().refresh();
+      const { inputs, outputs } = get();
+      return probeForRolandDevice(transport, inputs, outputs, options);
     },
 
     setDeviceId: (id: number) => {

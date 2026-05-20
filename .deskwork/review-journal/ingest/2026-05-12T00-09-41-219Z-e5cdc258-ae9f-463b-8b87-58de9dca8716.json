@@ -1,0 +1,16 @@
+{
+  "id": "e5cdc258-ae9f-463b-8b87-58de9dca8716",
+  "timestamp": "2026-05-12T00:09:41.219Z",
+  "event": "ingest",
+  "slug": "decisions-2026-05-11",
+  "entryId": "e5cdc258-ae9f-463b-8b87-58de9dca8716",
+  "site": "engineering-design-specs",
+  "stage": "Drafting",
+  "sourceFile": "docs/1.0/001-IN-PROGRESS/s550-support/decisions-2026-05-11.md",
+  "frontmatterSnapshot": {},
+  "derivation": {
+    "slug": "explicit",
+    "state": "explicit",
+    "date": "explicit"
+  }
+}

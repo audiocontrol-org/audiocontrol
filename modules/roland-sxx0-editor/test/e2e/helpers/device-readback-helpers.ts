@@ -91,8 +91,10 @@ async function navigateToLibraryAndRefresh(page: Page): Promise<void> {
   // Invalidate store cache before navigating
   await invalidateAllCacheInStore(page);
 
-  // Navigate to Library
-  const libraryLink = page.locator('a[href$="/library"]');
+  // Navigate to Library. The live HTTP-MIDI routes append query params,
+  // so exact href-suffix matching (`/library`) is not stable here.
+  // Reuse the same nav affordance contract as connection-helper.
+  const libraryLink = page.locator('[data-testid="library-nav-link"]');
   await expect(libraryLink).toBeVisible({ timeout: UI_TIMEOUT_MS });
   await libraryLink.click();
   await page.waitForURL('**/library**');

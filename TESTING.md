@@ -22,6 +22,13 @@ Playwright tests against **test harness pages** -- standalone routes that render
 
 See [TESTING-UI.md](TESTING-UI.md) for methodology.
 
+The Roland S-330 / S-550 editor extends the UI category with **fixture-backed
+harness specs**: editor pages mounted via `?midi=simulated&scenario=<name>`
+talk to a `SimulatedAdapter` replaying a captured device byte stream, so real
+UI flows (patch list, library, tones) can be exercised without hardware. See
+[TESTING-FIXTURES.md](TESTING-FIXTURES.md) for the fixture format, capture
+workflow, and operator-run drift detection.
+
 ### E2E Tests
 
 Playwright tests against the **real application** with **real hardware** (Roland S-330/S-550 via MIDI, Akai S3000XL via SCSI). Tests verify complete workflows including device communication, data transfer, and round-trip integrity.

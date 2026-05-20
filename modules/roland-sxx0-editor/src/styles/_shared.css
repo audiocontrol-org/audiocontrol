@@ -1,0 +1,1889 @@
+/**
+ * Shared editor-page primitives — Phase 9 polish recipe.
+ *
+ * Promoted from page-scoped classes when the duplication-audit gate
+ * fired during Phase 9 Task 4 (page 2: TonesPage). The classes here
+ * express the LEAN-HEADER + DETAIL-HEAD + LIVE-FOOTER recipe that
+ * every editor page in this module follows.
+ *
+ * Composed entirely from `--ac-*` design tokens (see
+ * `editor-core/src/design/tokens.css` "Phase 9 polish tokens").
+ *
+ * Naming: classes live under the `.ac-*` namespace because they are
+ * cross-page primitives. Anything that's truly page-specific (list-row
+ * grid templates, envelope chrome, parameter-row primitives) stays
+ * page-scoped in `<page>.css`.
+ *
+ * Promotion rationale, per DESIGN-SYSTEM.md "Component CSS" + the
+ * workplan's Duplication audit gate:
+ *
+ *   - `.ac-page-title-row` / `-block` / `-heading` / `-rule` /
+ *     `-metric` / `-led` — every editor page has the same lean
+ *     header rhythm (h2 + rec-LED rule + status metric + icon-btn).
+ *     PatchesPage and TonesPage both consumed this verbatim in
+ *     page-scoped form; the next four pages will too.
+ *
+ *   - `.ac-icon-btn` + `--spinning` — single refresh icon on the
+ *     title row of every list+detail editor page. Reuses
+ *     `ac-icon-spin` keyframes.
+ *
+ *   - `.ac-detail-eyebrow-row` / `-sep` / `-accent` — the small
+ *     "OBJECT · EDITING · SOURCE · DEVICE" eyebrow above the
+ *     selected-object title on every detail pane.
+ *
+ *   - `.ac-detail-empty` — the centered "Select an X to edit"
+ *     prompt shown when nothing is selected.
+ *
+ *   - `.ac-detail-live` / `-led` / `-touch` — the live-edit footer
+ *     pulsing rec-LED, used in every editor pane (no save/cancel/undo
+ *     per project memory `feedback_live_editing_no_save`).
+ */
+
+/* ============================================================
+   PAGE TITLE — lean h2 + red rule + status metric + icon-button.
+   Replaces per-bank reload toolbars; refresh-from-device is a
+   single icon-button on the title row (DESIGN-SYSTEM.md
+   "List-Level Actions" + "CRUD Affordances on List Items").
+   ============================================================ */
+.ac-page-title-row {
+  position: relative;
+  display: flex;
+  /* `align-items: center` instead of baseline. `baseline` produces
+     pixel-accurate alignment ONLY when both sides expose a text
+     baseline. When the right-side container is a plain <div>
+     (Library page: actions div with buttons) it gets a synthetic
+     baseline at the bottom of the box, which shifts the left block
+     down a few pixels — measured at 2.5px between Tones and Library
+     before this fix. Center-alignment normalizes height regardless
+     of right-side chrome (text + LED + icon, or plain buttons). */
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ac-space-4);
+  padding-bottom: var(--ac-space-3);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+}
+
+.ac-page-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-2);
+}
+
+/* Heading + inline tag(s). Used when a page needs a status pill next
+   to the title (e.g. Library's "Experimental" tag). */
+.ac-page-title-heading-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-3);
+}
+
+.ac-page-title-heading {
+  margin: 0;
+  font-family: var(--ac-font-display);
+  font-weight: var(--ac-font-weight-normal);
+  font-size: 1.45rem;
+  line-height: 1.2;
+  letter-spacing: var(--ac-tracking-display);
+  color: var(--ac-color-text-primary);
+}
+
+/* Status tag rendered next to the title. Default is muted; tonal
+   variants below. Used for things like "Experimental" or "Beta". */
+.ac-page-title-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem var(--ac-space-2);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  line-height: 1.4;
+  border-radius: var(--ac-radius-sm);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 60%, transparent);
+  color: var(--ac-color-text-muted);
+  cursor: help;
+}
+
+.ac-page-title-tag--warn {
+  border-color: color-mix(in srgb, var(--ac-color-rec) 60%, transparent);
+  background: color-mix(in srgb, var(--ac-color-rec) 12%, transparent);
+  color: color-mix(in srgb, var(--ac-color-rec) 85%, var(--ac-color-text-primary));
+}
+
+/* Red rule beneath the heading — REC-LED accent (used sparingly). */
+.ac-page-title-rule {
+  width: 2.25rem;
+  height: var(--ac-rule-medium);
+  background: var(--ac-color-rec);
+  box-shadow: 0 0 8px var(--ac-color-rec-glow);
+}
+
+/* Status metric — "<n> of <N> loaded" + signal LED + refresh icon. */
+.ac-page-title-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-3);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  white-space: nowrap;
+}
+
+.ac-page-title-metric strong {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--ac-font-weight-normal);
+  color: var(--ac-color-accent);
+}
+
+.ac-page-title-led {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--ac-color-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 70%, transparent);
+}
+
+/* Right-side action cluster — used when a page needs multiple labeled
+   buttons on the title row instead of (or in addition to) a status
+   metric. Library uses this for refresh + save + load. */
+.ac-page-title-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+}
+
+/* ============================================================
+   PAGE PROGRESS — bottom-edge load strip overlaid on the title
+   row's hairline border. Out of flow: when loading starts/stops,
+   nothing below the title row shifts. Reads as a tiny VU strip
+   beneath the heading, in keeping with the page's vintage-hardware
+   visual language (Roland S-series VFD + LED accents).
+   ============================================================ */
+.ac-page-title-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* Sit ON the title-row's bottom hairline so the loading state
+     visually consumes the border without nudging neighbors. */
+  bottom: calc(-1 * var(--ac-rule-medium) / 2);
+  height: var(--ac-rule-medium);
+  pointer-events: none;
+  /* No background — the existing hairline reads as the track. The
+     fill below paints over it. */
+}
+
+.ac-page-title-progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--ac-color-rec);
+  box-shadow: 0 0 10px var(--ac-color-rec-glow);
+  transition: width var(--ac-duration-normal) var(--ac-easing-default);
+}
+
+/* Inline load-status text inside .ac-page-title-metric while a load
+   is in flight. Swaps in place of "<n> of <N> loaded" so the metric
+   row keeps its size and the layout never reflows. */
+.ac-page-title-metric-status {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ac-color-text-primary);
+  max-width: 22rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   ICON BUTTON — square icon-only control sized to the title-row
+   baseline. Used for "refresh from device" and similar lone
+   actions. Spins via `--spinning` modifier while the operation
+   is in flight.
+   ============================================================ */
+.ac-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 60%, transparent);
+  color: var(--ac-color-text-muted);
+  border-radius: var(--ac-radius-sm);
+  cursor: pointer;
+  transition:
+    border-color var(--ac-duration-fast) var(--ac-easing-default),
+    color var(--ac-duration-fast) var(--ac-easing-default),
+    background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-icon-btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  color: var(--ac-color-accent);
+  background: color-mix(in srgb, var(--ac-color-accent) 8%, transparent);
+}
+
+.ac-icon-btn:focus-visible {
+  outline: var(--ac-rule-medium) solid color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  outline-offset: 2px;
+}
+
+.ac-icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ac-icon-btn svg {
+  width: 1rem;
+  height: 1rem;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ac-icon-btn--spinning svg {
+  animation: ac-icon-spin 1.4s linear infinite;
+}
+
+@keyframes ac-icon-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-icon-btn--spinning svg { animation: none; }
+}
+
+/* ============================================================
+   VFD STATUS DISPLAY — Connect page anchor surface.
+   Phosphor-blue CRT-evoking readout. Status LED, status line,
+   key/value detail rows, inline dashed-underline action links.
+   Ported from explorations/ACCEPTED/2026-05-18-connect-vfd-status.
+
+   Color anchor: uses --ac-color-accent so the page reads in the
+   same chrome family as the envelope graph, page-title LED dot,
+   and active-nav indicator.
+   ============================================================ */
+.ac-vfd {
+  background: color-mix(in srgb, #000 88%, var(--ac-color-surface-canvas));
+  border-radius: var(--ac-radius-sm);
+  padding: 0.5rem;
+  box-shadow:
+    inset 0 0 0 var(--ac-rule-hairline) var(--ac-color-border-subtle),
+    0 4px 20px hsl(0 0% 0% / 0.3);
+}
+.ac-vfd-screen {
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 92%, #000);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 2px,
+    color-mix(in srgb, var(--ac-color-accent) 18%, transparent) 2px 3px
+  );
+  border-radius: 2px;
+  padding: var(--ac-space-5) var(--ac-space-6);
+  font-family: var(--ac-font-display);
+  color: var(--ac-color-accent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 55%, transparent);
+  line-height: 1.6;
+}
+.ac-vfd-status-line {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-4);
+  font-size: 1.15rem;
+}
+.ac-vfd-led {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--ac-color-rec);
+  box-shadow:
+    0 0 8px var(--ac-color-rec),
+    0 0 14px color-mix(in srgb, var(--ac-color-rec) 40%, transparent);
+  animation: ac-vfd-led-blink 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.ac-vfd-led--scanning {
+  background: var(--ac-color-accent);
+  box-shadow:
+    0 0 8px var(--ac-color-accent),
+    0 0 14px color-mix(in srgb, var(--ac-color-accent) 40%, transparent);
+}
+.ac-vfd-led--success {
+  background: var(--ac-status-connected);
+  box-shadow:
+    0 0 8px var(--ac-status-connected),
+    0 0 14px color-mix(in srgb, var(--ac-status-connected) 40%, transparent);
+  animation: none;
+}
+@keyframes ac-vfd-led-blink { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) {
+  .ac-vfd-led { animation: none; }
+}
+.ac-vfd-status-label {
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  font-size: var(--ac-text-eyebrow);
+  opacity: 0.6;
+}
+.ac-vfd-status-value { font-size: 1.15rem; }
+.ac-vfd-detail {
+  margin-top: var(--ac-space-3);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-sm);
+  color: color-mix(in srgb, var(--ac-color-accent) 70%, var(--ac-color-text-primary));
+}
+.ac-vfd-detail-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ac-space-2);
+  flex-wrap: wrap;
+}
+.ac-vfd-detail-row > :first-child {
+  opacity: 0.55;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Inline action inside a VFD detail row — dashed underline that
+   reads as interactive without breaking the phosphor look. */
+.ac-vfd-action {
+  color: inherit;
+  text-decoration: none;
+  border: 0;
+  border-bottom: var(--ac-rule-hairline) dashed color-mix(in srgb, var(--ac-color-accent) 40%, transparent);
+  background: transparent;
+  margin-left: var(--ac-space-2);
+  padding: 0 0 1px 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--ac-text-sm);
+  opacity: 0.7;
+  transition: opacity var(--ac-duration-fast) var(--ac-easing-default), border-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+.ac-vfd-action:hover {
+  opacity: 1;
+  border-bottom-color: var(--ac-color-accent);
+}
+.ac-vfd-action:focus-visible {
+  outline: var(--ac-rule-medium) solid color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   CONNECT LAYOUT — two-column shell on wide viewports so the
+   primary VFD + CTA stay prominent on the left while the
+   collapsible reference material (Connection details / Setup
+   guide / Troubleshooting) lives in a parallel right column.
+   Stacks back to one column under 1024px so narrow-viewport
+   reading order stays VFD → CTA → disclosures.
+   ============================================================ */
+.ac-connect-layout {
+  display: grid;
+  gap: var(--ac-space-6);
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: var(--ac-space-4);
+}
+
+@media (min-width: 1024px) {
+  .ac-connect-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(22rem, 28rem);
+    align-items: start;
+  }
+}
+
+.ac-connect-layout-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-4);
+  min-width: 0;
+}
+
+.ac-connect-layout-side {
+  min-width: 0;
+}
+
+/* ============================================================
+   CONNECT CTA — single primary button whose label tracks state.
+   Sits between the VFD and the Connection details disclosure.
+   Wide, accent-tinted, glow on hover. State-driven via data-state.
+   ============================================================ */
+.ac-connect-cta-row {
+  display: flex;
+  gap: var(--ac-space-2);
+}
+.ac-connect-cta {
+  flex: 1;
+  padding: var(--ac-space-4) var(--ac-space-6);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ac-color-accent) 40%, transparent),
+    color-mix(in srgb, var(--ac-color-accent) 22%, transparent)
+  );
+  border: var(--ac-rule-medium) solid var(--ac-color-accent);
+  border-radius: var(--ac-radius-sm);
+  font-family: var(--ac-font-display);
+  font-size: 1.05rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--ac-color-text-primary);
+  cursor: pointer;
+  box-shadow: 0 0 24px color-mix(in srgb, var(--ac-color-accent) 30%, transparent);
+  transition: background var(--ac-duration-fast) var(--ac-easing-default), box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+}
+.ac-connect-cta:hover:not(:disabled) {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ac-color-accent) 55%, transparent),
+    color-mix(in srgb, var(--ac-color-accent) 35%, transparent)
+  );
+  box-shadow: 0 0 32px color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
+}
+.ac-connect-cta:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.ac-connect-cta--secondary {
+  flex: 0 0 auto;
+  background: transparent;
+  border-color: var(--ac-color-border-subtle);
+  color: var(--ac-color-text-muted);
+  font-size: var(--ac-text-eyebrow);
+  letter-spacing: var(--ac-tracking-eyebrow);
+  padding: var(--ac-space-2) var(--ac-space-4);
+  box-shadow: none;
+}
+.ac-connect-cta--secondary:hover:not(:disabled) {
+  color: var(--ac-color-text-primary);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 50%, transparent);
+  box-shadow: none;
+}
+
+/* ============================================================
+   .learn-more — stacked <details> disclosures on the Connect page.
+   Each <details> renders as a hairline-bordered row whose <summary>
+   is a clickable strip with three regions: marker (▸ that rotates
+   when open), title, and a muted right-aligned count. Body content
+   is padded inset under .learn-more-body. No default browser
+   ▶ marker — hidden via ::-webkit-details-marker + list-style.
+   ============================================================ */
+.learn-more {
+  display: flex;
+  flex-direction: column;
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 30%, transparent);
+}
+
+/* Section header inside .learn-more — same shape as
+   `.ac-detail-head` (eyebrow row above a display-typed title,
+   hairline separator below) so the side-column panel reads as
+   "labeled bordered section" matching the patch/tone editor
+   pattern operators see on the rest of the editor. */
+.learn-more-head {
+  padding: var(--ac-space-3) var(--ac-space-4);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: linear-gradient(
+    180deg,
+    var(--ac-color-surface-panel) 0%,
+    color-mix(in srgb, var(--ac-color-surface-canvas) 40%, transparent) 100%
+  );
+}
+
+.learn-more-head-eyebrow {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  margin-bottom: var(--ac-space-2);
+}
+
+.learn-more-head-title {
+  margin: 0;
+  font-family: var(--ac-font-display);
+  font-size: 1.25rem;
+  line-height: 1.18;
+  font-weight: var(--ac-font-weight-normal);
+  letter-spacing: var(--ac-tracking-display);
+  color: var(--ac-color-text-primary);
+}
+
+.learn-more details {
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+}
+
+.learn-more details:last-child {
+  border-bottom: none;
+}
+
+.learn-more details > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-3);
+  padding: var(--ac-space-3) var(--ac-space-4);
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  letter-spacing: var(--ac-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--ac-color-text-primary);
+  user-select: none;
+  transition:
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.learn-more details > summary::-webkit-details-marker {
+  display: none;
+}
+.learn-more details > summary::marker {
+  display: none;
+  content: '';
+}
+
+.learn-more details > summary:hover {
+  background: color-mix(in srgb, var(--ac-color-accent) 6%, transparent);
+  color: var(--ac-color-accent);
+}
+
+.learn-more details > summary:focus-visible {
+  outline: var(--ac-rule-medium) solid color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  outline-offset: -2px;
+}
+
+/* Disclosure marker — matches `.ac-list-bank-chevron` (the
+   collapsible-group chevron used in PatchList / ToneList bank
+   headers) so the two affordances read as the same UI element.
+   Both: 1.1rem square inline-flex glyph in accent color. */
+.learn-more details > summary .marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  font-size: 1.1rem;
+  line-height: 1;
+  flex-shrink: 0;
+  color: var(--ac-color-accent);
+  transition: transform var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.learn-more details[open] > summary .marker {
+  transform: rotate(90deg);
+}
+
+.learn-more details > summary > span:nth-of-type(2) {
+  /* The title span sits between .marker and .count; let it claim
+     the available horizontal space so .count right-aligns. */
+  flex: 1 1 auto;
+  letter-spacing: var(--ac-tracking-display);
+  text-transform: none;
+  font-size: var(--ac-text-md);
+  color: var(--ac-color-text-primary);
+}
+
+.learn-more details > summary .count {
+  flex-shrink: 0;
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-eyebrow);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ac-color-text-muted);
+}
+
+.learn-more-body {
+  padding: var(--ac-space-3) var(--ac-space-4) var(--ac-space-4);
+  font-size: var(--ac-text-md);
+  line-height: var(--ac-leading-normal);
+  color: var(--ac-color-text-primary);
+}
+
+.learn-more-body p {
+  margin: 0 0 var(--ac-space-3);
+}
+
+/* Lead-paragraph subtitle inside a learn-more body. Used to host
+   the descriptive subtitle that previously lived in the summary
+   (where it forced the summary text to wrap in narrow columns). */
+.learn-more-body .learn-more-lead {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  margin-bottom: var(--ac-space-3);
+}
+
+.learn-more-body ol,
+.learn-more-body ul {
+  margin: 0;
+  padding-left: var(--ac-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-2);
+}
+
+.learn-more-body li::marker {
+  color: var(--ac-color-text-muted);
+}
+
+/* ============================================================
+   CONNECT-PAGE TRANSPORT TOGGLE (inline inside Connection details).
+   See exploration mockup for rationale: by the time the operator
+   opens the disclosure they've opted into manual mode, so the
+   transport toggle is visible inline rather than nested behind
+   another disclosure. Uses the .ac-toggle segmented chrome already
+   established for BANK / LOOP MODE / OUTPUT.
+   ============================================================ */
+.ac-connect-transport-row {
+  padding: var(--ac-space-4) var(--ac-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-2);
+  border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 50%, transparent);
+}
+.ac-connect-transport-row-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-4);
+  flex-wrap: wrap;
+}
+.ac-connect-transport-hint {
+  margin: 0;
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+  max-width: 40rem;
+  line-height: 1.5;
+}
+
+/* ============================================================
+   CONNECT-PAGE CHECKLIST — numbered rows used by all three
+   transport variants (Web MIDI / HTTP / Mock) inside the
+   Connection details disclosure. Fixed min-height so swapping
+   transports doesn't reflow the page.
+   ============================================================ */
+.ac-connect-checklist {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--ac-space-4);
+  padding: var(--ac-space-4) var(--ac-space-5);
+  min-height: 5.5rem;
+  border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 50%, transparent);
+}
+.ac-connect-checklist:last-of-type { border-bottom: 0; }
+.ac-connect-checklist-num {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text-muted);
+  text-align: center;
+}
+.ac-connect-checklist-label {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  margin-bottom: var(--ac-space-1);
+}
+.ac-connect-checklist-control {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-3);
+}
+.ac-connect-checklist-hint {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: color-mix(in srgb, var(--ac-color-text-muted) 70%, transparent);
+}
+
+/* ============================================================
+   VIDEO CAPTURE FRAME — fixed 16:9 surface that hosts either the
+   live <video> stream OR the paused-state skeleton. Both render
+   in the same frame so toggling Stop/Start doesn't resize the
+   drawer or shift the front-panel below.
+
+   The skeleton placeholder uses subtle CRT-evoking texture
+   (horizontal scanline lines via repeating gradient) + a muted
+   camera glyph + "PAUSED" eyebrow + a small "click START" hint.
+   ============================================================ */
+.ac-video-frame {
+  position: relative;
+  width: 100%;
+  /* 4:3 — the S-330 / S-550 CRT is a 4:3 display. 16:9 left thick
+     letterbox bars on both sides because the captured frame is
+     actually 4:3 inside the 16:9 capture-device output. */
+  aspect-ratio: 4 / 3;
+  background: var(--ac-color-surface-canvas);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.ac-video-frame > video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+.ac-video-frame > video[hidden] {
+  display: none;
+}
+
+/* Paused-state skeleton — full-bleed surface, faint CRT scanlines,
+   centered glyph + label + hint. Hidden when video is streaming. */
+.ac-video-frame-skeleton {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ac-space-2);
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--ac-color-surface-panel) 30%, transparent) 0 1px,
+      transparent 1px 4px
+    ),
+    radial-gradient(
+      ellipse at center,
+      color-mix(in srgb, var(--ac-color-surface-panel) 50%, transparent) 0%,
+      var(--ac-color-surface-canvas) 80%
+    );
+  box-shadow: inset 0 0 60px color-mix(in srgb, #000 60%, transparent);
+}
+
+.ac-video-frame-skeleton svg {
+  width: 2rem;
+  height: 2rem;
+  color: color-mix(in srgb, var(--ac-color-text-muted) 60%, transparent);
+}
+
+.ac-video-frame-skeleton-label {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-video-frame-skeleton-hint {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: color-mix(in srgb, var(--ac-color-text-muted) 60%, transparent);
+}
+
+/* Overlay states (no secure context, no permission, no devices,
+   errors) — sit on top of either the video OR the skeleton. */
+.ac-video-frame-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ac-space-2);
+  padding: var(--ac-space-3);
+  text-align: center;
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 90%, transparent);
+}
+
+.ac-video-frame-error {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: var(--ac-space-1) var(--ac-space-3);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: #fff;
+  background: color-mix(in srgb, var(--ac-color-rec) 80%, transparent);
+}
+
+/* ============================================================
+   DEVICE MEMORY LIST — rows inside the Library page's left column
+   (DeviceMemoryPanel). Same lean .ac-list-* chrome as ToneList /
+   PatchList rows but tighter (the column is narrow), and with
+   drag-and-drop state styling. Tone slot column = 2.25rem; patch
+   slot column = 3rem (S-550 II48-style labels need the extra
+   width).
+   ============================================================ */
+.ac-device-memory-row {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+  gap: var(--ac-space-2);
+  align-items: center;
+  padding: var(--ac-space-2) var(--ac-space-3);
+  border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 50%, transparent);
+  border-left: var(--ac-rule-medium) solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--ac-color-text-primary);
+  background: transparent;
+  transition:
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    border-left-color var(--ac-duration-fast) var(--ac-easing-default),
+    box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-device-memory-row--patch {
+  grid-template-columns: 3rem minmax(0, 1fr) auto;
+}
+
+.ac-device-memory-row:hover:not([aria-disabled="true"]) {
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 60%, transparent);
+  border-left-color: color-mix(in srgb, var(--ac-color-accent) 40%, transparent);
+}
+
+.ac-device-memory-row[aria-selected="true"] {
+  background: color-mix(in srgb, var(--ac-color-accent) 12%, transparent);
+  border-left-color: var(--ac-color-accent);
+}
+
+.ac-device-memory-row[aria-selected="true"] .ac-list-slot {
+  color: var(--ac-color-accent);
+}
+
+.ac-device-memory-row:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--ac-color-accent) 12%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
+}
+
+.ac-device-memory-row[data-drag-over="true"] {
+  background: color-mix(in srgb, var(--ac-color-accent) 22%, transparent);
+  box-shadow: inset 0 0 0 2px var(--ac-color-accent);
+}
+
+.ac-device-memory-row--draggable {
+  cursor: grab;
+}
+
+.ac-device-memory-row--draggable:active {
+  cursor: grabbing;
+}
+
+.ac-device-memory-row .ac-list-meta {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+}
+
+/* Panel-level sample-drop highlight — rendered as an inset ring on
+   the .ac-preview-pane container when a library sample bundle is
+   being dragged over. */
+.ac-device-memory-panel[data-sample-drag-over="true"] {
+  background: color-mix(in srgb, var(--ac-color-accent) 6%, transparent);
+  box-shadow: inset 0 0 0 var(--ac-rule-medium) color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+}
+
+/* Top-level section wrapper inside the device-memory panel body.
+ *
+ * Two siblings: tones + patches. Each section's height share is
+ * driven entirely by the `data-expanded` attribute — both expanded =
+ * 50/50; one collapsed = the other gets the full remaining space.
+ * That way the patches header never moves as banks inside the tones
+ * section expand/collapse — bank-level toggles only ever change
+ * scroll height inside their own section.
+ *
+ *   data-expanded="true"  → flex: 1 1 0  (share the remainder)
+ *   data-expanded="false" → flex: 0 0 auto (only the eyebrow shows)
+ *
+ * `min-height: 0` on the expanded variant lets `.ac-list-scroll`
+ * inside actually engage `overflow-y` instead of growing past the
+ * column track.
+ */
+.ac-device-memory-section {
+  display: flex;
+  flex-direction: column;
+  /* Floor at the eyebrow's intrinsic height so the section never
+     collapses past its header even when flex-grow goes to zero. */
+  min-height: 2.5rem;
+  flex-shrink: 1;
+  flex-basis: 0;
+  overflow: hidden;
+  border-top: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  /* Tween flex-grow so the section's height share animates rather
+     than snapping when the operator toggles a section. .ac-list
+     inside is `flex: 1 1 0; overflow: hidden` so its content
+     visually collapses in lockstep with the shrinking section. */
+  transition: flex-grow var(--ac-duration-normal) var(--ac-easing-default);
+}
+
+.ac-device-memory-section:first-of-type {
+  border-top: none;
+}
+
+.ac-device-memory-section[data-expanded="true"] {
+  flex-grow: 1;
+}
+
+.ac-device-memory-section[data-expanded="false"] {
+  flex-grow: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-device-memory-section { transition: none; }
+}
+
+/* Section eyebrow ("TONES (32 slots)" / "PATCHES (16 slots)") that
+   also acts as the section's expand/collapse toggle button.
+   Bank-header eyebrows below use `.ac-list-bank-header`; this is the
+   section-level overhead label.
+   Rendered as a real <button> so the chevron + label are a single
+   keyboard-reachable activation target. */
+.ac-device-memory-section-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  width: 100%;
+  /* Keep the header intact when the section flex-shrinks past it. */
+  flex-shrink: 0;
+  padding: var(--ac-space-2) var(--ac-space-4);
+  border: 0;
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 92%, transparent);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-accent);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-device-memory-section-eyebrow:hover {
+  background: color-mix(in srgb, var(--ac-color-accent) 6%, transparent);
+}
+
+.ac-device-memory-section-eyebrow:focus-visible {
+  outline: var(--ac-rule-medium) solid color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  outline-offset: -2px;
+}
+
+/* Chevron glyph for the section eyebrow. Glyph swaps explicitly
+   (▾ ↔ ▸) rather than CSS-rotating a single glyph — the display
+   font (Departure Mono) doesn't carry a clean ▸ that survives a
+   rotation, and the swap matches the per-bank chevron in
+   `.ac-list-bank-chevron`. */
+.ac-device-memory-section-eyebrow-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--ac-color-accent);
+}
+
+/* ============================================================
+   PREVIEW PANE — column-pane chrome used by the Library page's
+   third column (ItemPreviewPanel) and any future per-page preview
+   surface that needs the same lean head + body shape.
+
+   Structure:
+     .ac-preview-pane               flex column, fills the grid track
+       .ac-preview-pane-head        small bordered head (eyebrow + sub)
+         .ac-preview-pane-head-title  display font, h-tag heading
+         .ac-preview-pane-head-sub    muted subtitle ("from <set>")
+       .ac-preview-pane-body        scrollable body, stacks children
+         .ac-preview-eyebrow-row    item identity eyebrow
+         .ac-preview-name           item display name
+         .ac-preview-fields         2-col param grid (label/value)
+         .ac-pane-actions           bottom-anchored action stack
+   ============================================================ */
+.ac-preview-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.ac-preview-pane-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-1);
+  padding: var(--ac-space-3) var(--ac-space-4);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+}
+
+.ac-preview-pane-head-title {
+  margin: 0;
+  font-family: var(--ac-font-display);
+  font-weight: var(--ac-font-weight-normal);
+  font-size: var(--ac-text-md);
+  letter-spacing: var(--ac-tracking-display);
+  line-height: 1.2;
+  color: var(--ac-color-text-primary);
+}
+
+.ac-preview-pane-head-sub {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ac-preview-pane-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--ac-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-4);
+}
+
+/* Eyebrow above the preview item name — single uppercase eyebrow
+   line ("LIBRARY TONE · T01 MNI BS"). Lives at the top of the
+   preview body, before .ac-preview-name. */
+.ac-preview-eyebrow-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ac-space-2);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-preview-eyebrow-sep {
+  color: color-mix(in srgb, var(--ac-color-text-muted) 50%, transparent);
+}
+
+.ac-preview-eyebrow-slot {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ac-color-accent);
+}
+
+.ac-preview-name {
+  margin: 0;
+  font-family: var(--ac-font-display);
+  font-weight: var(--ac-font-weight-normal);
+  font-size: 1.1rem;
+  letter-spacing: var(--ac-tracking-display);
+  line-height: 1.25;
+  color: var(--ac-color-text-primary);
+}
+
+/* Two-column field grid for parameter readouts. No enclosing card —
+   the grid itself is bracketed by hairline rules so multiple field
+   blocks can stack with shared separators. */
+.ac-preview-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--ac-space-3) var(--ac-space-4);
+  padding-block: var(--ac-space-3);
+  border-top: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+}
+
+/* Stacked grids share their adjacent rule rather than doubling it. */
+.ac-preview-fields + .ac-preview-fields {
+  margin-top: calc(-1 * var(--ac-rule-hairline));
+}
+
+.ac-preview-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ac-preview-field-label {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-preview-field-value {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Inline tag chips (e.g., sample-bundle tags). Hairline-bordered
+   uppercase eyebrow pills, consistent with .ac-page-title-tag. */
+.ac-preview-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ac-space-1);
+}
+
+.ac-preview-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem var(--ac-space-2);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  line-height: 1.4;
+  border-radius: var(--ac-radius-sm);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 60%, transparent);
+  color: var(--ac-color-text-muted);
+}
+
+/* Optional description paragraph rendered below the .ac-preview-name. */
+.ac-preview-description {
+  margin: 0;
+  font-family: var(--ac-font-body);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text-muted);
+  line-height: var(--ac-leading-normal);
+}
+
+/* Subsection eyebrow inside the body (e.g. "Promote to Tone",
+   "Zones"). Single uppercase line; pairs naturally with field grids
+   or row lists rendered immediately after it. */
+.ac-preview-subsection-eyebrow {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  margin-bottom: var(--ac-space-1);
+}
+
+/* Inline form rendered inside a preview body — a labeled control row
+   that pairs an .ac-input with a unit/hint label to its right. */
+.ac-preview-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-1);
+}
+
+.ac-preview-form-row-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+}
+
+.ac-preview-form-row-controls .ac-input {
+  max-width: 5rem;
+  padding-block: var(--ac-space-1);
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.ac-preview-form-row-hint {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+}
+
+/* Result banner inside the preview body — success or error. */
+.ac-preview-result {
+  padding: var(--ac-space-2) var(--ac-space-3);
+  border-radius: var(--ac-radius-sm);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+}
+
+.ac-preview-result--ok {
+  border: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-status-connected) 60%, transparent);
+  background: color-mix(in srgb, var(--ac-status-connected) 12%, transparent);
+  color: color-mix(in srgb, var(--ac-status-connected) 90%, var(--ac-color-text-primary));
+}
+
+.ac-preview-result--err {
+  border: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-rec) 60%, transparent);
+  background: color-mix(in srgb, var(--ac-color-rec) 12%, transparent);
+  color: color-mix(in srgb, var(--ac-color-rec) 90%, var(--ac-color-text-primary));
+}
+
+/* Zones list inside a program preview — single row per zone. */
+.ac-preview-zone-row {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  gap: var(--ac-space-2);
+  padding-block: var(--ac-space-1);
+  border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 40%, transparent);
+}
+
+.ac-preview-zone-row:last-of-type {
+  border-bottom: none;
+}
+
+.ac-preview-zone-row-index {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+  text-align: right;
+}
+
+.ac-preview-zone-row-name {
+  font-family: var(--ac-font-body);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ac-preview-zone-row-meta {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ac-space-2);
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+}
+
+/* Dependent-tone list inside a patch preview — single-column variant
+   of the field grid that lays out paired slot/name rows. */
+.ac-preview-tone-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-block: var(--ac-space-3);
+  border-top: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+}
+
+.ac-preview-tone-list-eyebrow {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  margin-bottom: var(--ac-space-1);
+}
+
+.ac-preview-tone-list-row {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  gap: var(--ac-space-2);
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-primary);
+}
+
+.ac-preview-tone-list-slot {
+  color: var(--ac-color-text-muted);
+}
+
+.ac-preview-tone-list-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   PANE ACTION BUTTONS — vertical stack of lean uppercase action
+   buttons typically rendered at the bottom of a preview pane
+   (.ac-preview-pane-body uses gap to separate the stack from the
+   field grids above it). Each button is hairline-bordered; the
+   --primary variant uses an accent-tinted fill, --danger uses the
+   rec red.
+
+   Naming: .ac-pane-action* (not .ac-preview-action*) so the same
+   primitive can host header-level action chrome in the future.
+   ============================================================ */
+.ac-pane-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-2);
+  margin-top: auto;
+}
+
+.ac-pane-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ac-space-2);
+  padding: var(--ac-space-2) var(--ac-space-3);
+  background: transparent;
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  cursor: pointer;
+  transition:
+    color var(--ac-duration-fast) var(--ac-easing-default),
+    border-color var(--ac-duration-fast) var(--ac-easing-default),
+    background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-pane-action:hover:not(:disabled) {
+  color: var(--ac-color-accent);
+  border-color: color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  background: color-mix(in srgb, var(--ac-color-accent) 8%, transparent);
+}
+
+.ac-pane-action:focus-visible {
+  outline: var(--ac-rule-medium) solid color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  outline-offset: 2px;
+}
+
+.ac-pane-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ac-pane-action--primary {
+  color: var(--ac-color-text-primary);
+  border-color: color-mix(in srgb, var(--ac-color-accent) 70%, transparent);
+  background: color-mix(in srgb, var(--ac-color-accent) 22%, transparent);
+}
+
+.ac-pane-action--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ac-color-accent) 32%, transparent);
+}
+
+.ac-pane-action--danger {
+  color: color-mix(in srgb, var(--ac-color-rec) 90%, var(--ac-color-text-primary));
+  border-color: color-mix(in srgb, var(--ac-color-rec) 50%, transparent);
+}
+
+.ac-pane-action--danger:hover:not(:disabled) {
+  color: var(--ac-color-text-primary);
+  background: color-mix(in srgb, var(--ac-color-rec) 16%, transparent);
+  border-color: color-mix(in srgb, var(--ac-color-rec) 70%, transparent);
+}
+
+.ac-pane-action-spinner {
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: ac-icon-spin 1s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-pane-action-spinner { animation: none; }
+}
+
+/* ============================================================
+   DETAIL PANE EYEBROW — small uppercase row above the selected
+   object's title ("PATCH · EDITING · SOURCE · DEVICE" or
+   "TONE · EDITING · SOURCE · DEVICE"). Lives in detail headers.
+   ============================================================ */
+.ac-detail-eyebrow-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  margin-bottom: var(--ac-space-2);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-detail-eyebrow-sep {
+  color: color-mix(in srgb, var(--ac-color-text-muted) 50%, transparent);
+}
+
+.ac-detail-eyebrow-accent {
+  color: var(--ac-color-accent);
+}
+
+/* ============================================================
+   DETAIL EMPTY — centered prompt rendered when no object is
+   selected ("Select a patch to edit" / "Select a tone to edit").
+   ============================================================ */
+.ac-detail-empty {
+  padding: var(--ac-space-8) var(--ac-space-6);
+  text-align: center;
+  color: var(--ac-color-text-muted);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+}
+
+/* ============================================================
+   DETAIL PANE — shared chrome for list-detail editor pages.
+   Promoted 2026-05-19 from `tones__detail*` / `patches__detail*`
+   duplicates. Each page-specific decoration (action cluster on
+   tones, mapping head on patches) stays in the page's own file;
+   the shell + head + body + title + slot live here.
+   ============================================================ */
+
+.ac-detail-pane {
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: var(--ac-color-surface-panel);
+  border-radius: var(--ac-radius-sm);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ac-detail-head {
+  padding: var(--ac-space-3) var(--ac-space-4) var(--ac-space-2);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: linear-gradient(
+    180deg,
+    var(--ac-color-surface-panel) 0%,
+    color-mix(in srgb, var(--ac-color-surface-canvas) 40%, transparent) 100%
+  );
+}
+
+.ac-detail-title {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--ac-space-3);
+  flex-wrap: wrap;
+  font-family: var(--ac-font-display);
+  font-weight: var(--ac-font-weight-normal);
+  font-size: 1.25rem;
+  line-height: 1.18;
+  letter-spacing: var(--ac-tracking-display);
+}
+
+.ac-detail-slot {
+  font-family: var(--ac-font-mono);
+  color: var(--ac-color-accent);
+  letter-spacing: 0.02em;
+}
+
+/* The slot+name title's editable name affordance — always-live (no
+   click-to-edit toggle); commits on blur. Styled to read as a title
+   continuation: hairline underline beneath the value, brightening on
+   focus to the accent color. Resets are aggressive because the
+   underlying .ac-input primitive adds a rounded all-sides border plus
+   a 3px shadow-ring on focus; without these resets the underline would
+   render as a curved arc and the focus state as a framed rounded-rect.
+   Width is a CSS variable so each editor can size to its device's
+   name-length cap (S-330/S-550 patches: 12; tones: 8). */
+.ac-detail-name-input {
+  display: block;
+  background: transparent;
+  border: 0;
+  border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-text-muted) 50%, transparent);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0 var(--ac-space-1) var(--ac-space-1);
+  font: inherit;
+  color: var(--ac-color-text-primary);
+  font-family: var(--ac-font-mono);
+  letter-spacing: 0.02em;
+  width: var(--ac-detail-name-width, 12ch);
+  outline: none;
+  transition: border-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-detail-name-input:hover:not(:focus) {
+  border-bottom-color: color-mix(in srgb, var(--ac-color-text-muted) 80%, transparent);
+}
+
+.ac-detail-name-input:focus,
+.ac-detail-name-input:focus-visible {
+  border-bottom-width: 2px;
+  border-bottom-color: var(--ac-color-accent);
+  box-shadow: none;
+  background: transparent;
+}
+
+.ac-detail-name-input::placeholder {
+  color: var(--ac-color-text-muted);
+  font-style: italic;
+}
+
+.ac-detail-body {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  padding: var(--ac-space-4);
+  overflow-y: auto;
+  /* Horizontal overflow inside the detail body is always a
+     missing `min-width: 0` somewhere in its ancestry — clip
+     it loudly rather than expose a silent horizontal
+     scrollbar. */
+  overflow-x: hidden;
+}
+
+/* ============================================================
+   LIST ROW — slot + name + action chrome, shared across the
+   tones list and the patches list. The grid template's slot
+   column is exposed via the `--ac-list-row-slot-width` custom
+   property so each page can size it independently:
+     ToneList renders with the default (2.25rem — fits "T11"
+     through "T48", three chars).
+     PatchList overrides via inline style to 3rem — S-550
+     patches use four-char slot labels ("II11"–"II48").
+   The non-slot chrome (gap, padding, hover, selected, focus,
+   disabled, action-reveal) is identical across both pages and
+   lives in one rule per state.
+   ============================================================ */
+
+.ac-list-row {
+  --ac-list-row-slot-width: 2.25rem;
+  display: grid;
+  grid-template-columns: var(--ac-list-row-slot-width) minmax(0, 1fr) auto;
+  gap: var(--ac-space-2);
+  align-items: center;
+  /* Pin a uniform row height regardless of name-cell content. Without
+     this, named rows render at the body line-height (~21px content,
+     38px total), empty rows collapse to the slot-label height
+     (35px), and "Click to load" rows split the difference (~35.8px).
+     The visible 3px row-to-row variance was the recurring chrome bug
+     between patches + tones (and between filled + empty rows on the
+     same page). 2.5rem = 40px, which is the named-row height rounded
+     up by 2px so the line-box has breathing room. */
+  min-height: 2.5rem;
+  padding: var(--ac-space-2) var(--ac-space-3);
+  border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 50%, transparent);
+  border-left: var(--ac-rule-medium) solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--ac-color-text-primary);
+  background: transparent;
+  transition:
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    border-left-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-list-row:hover:not([aria-disabled="true"]) {
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 60%, transparent);
+  border-left-color: color-mix(in srgb, var(--ac-color-accent) 40%, transparent);
+}
+
+.ac-list-row[aria-selected="true"] {
+  background: color-mix(in srgb, var(--ac-color-accent) 12%, transparent);
+  border-left-color: var(--ac-color-accent);
+}
+
+.ac-list-row[aria-selected="true"] .ac-list-slot {
+  color: var(--ac-color-accent);
+}
+
+.ac-list-row:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--ac-color-accent) 12%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
+}
+
+.ac-list-row[aria-disabled="true"] {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+/* Hover-reveal for inline row actions. Currently no per-row
+   action button on either list (the Export affordance was
+   retired 2026-05-19), but the selector is left in place so
+   future per-row actions get the same fade-on-hover treatment
+   without re-deriving the rule. */
+.ac-list-row:hover .ac-list-action,
+.ac-list-row[aria-selected="true"] .ac-list-action,
+.ac-list-row:focus-within .ac-list-action {
+  opacity: 1;
+}
+
+/* ============================================================
+   TAB SHELL — radio-driven, CSS-only activation. Used by every
+   editor detail pane with tabbed content (tone editor: Wave /
+   Pitch & LFO / Filter / Amp; patch editor: Common / Mapping).
+   The chrome (`.ac-tabs`, `.ac-tab-strip`, `.ac-tab`,
+   `.ac-panels`, `.ac-panel`, `.ac-panel-stack`) lives here. The
+   per-page active-state selectors necessarily live in each
+   page's CSS file (they enumerate radio IDs the page owns).
+   ============================================================ */
+
+.ac-tabs {
+  position: relative;
+  /* Force block flow — editor-core's layout-primitives.css declares
+     `.ac-tabs { display: flex }` for a different tab pattern. Without
+     this override, the radio-driven shell stacks the tab strip and
+     panels side-by-side instead of strip-above-panels, clipping the
+     panel contents. */
+  display: block;
+  /* Reset the editor-core border-bottom — the active-state ::after on
+     `.ac-tab` provides the lit underline for this pattern. */
+  border-bottom: 0;
+}
+
+/* Visually hide the radio inputs — accessibility tooling can still
+   reach them via the label associations and tabindex. */
+.ac-tabs > input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+
+.ac-tab-strip {
+  display: grid;
+  /* Auto-distribute tabs across the available width regardless of
+     count. Consumers don't need to declare grid-template-columns
+     per tab count. */
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 0;
+  /* Sticky-pin to the top of the scrolling body. Negative margins
+     extend the background across the body's horizontal padding so
+     panel content can't peek past the strip's edge as it scrolls
+     under. Values match `.ac-detail-body`'s padding so the trick
+     stays consistent if the body padding scales later. */
+  position: sticky;
+  top: calc(-1 * var(--ac-space-4));
+  z-index: 5;
+  margin: calc(-1 * var(--ac-space-4)) calc(-1 * var(--ac-space-4)) var(--ac-space-3);
+  padding: var(--ac-space-4) var(--ac-space-4) 0;
+  background: var(--ac-color-surface-panel);
+  border-bottom: var(--ac-rule-medium) solid var(--ac-color-border-subtle);
+}
+
+.ac-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2rem;
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  cursor: pointer;
+  user-select: none;
+  background: transparent;
+  border: var(--ac-rule-hairline) solid transparent;
+  border-bottom: 0;
+  margin-bottom: -2px;
+  padding: 0 var(--ac-space-2);
+  transition:
+    color var(--ac-duration-fast) var(--ac-easing-default),
+    background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-tab:hover {
+  color: var(--ac-color-text-primary);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 40%, transparent);
+}
+
+.ac-tab::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: transparent;
+  transition:
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-tab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 50%, transparent) inset;
+}
+
+.ac-panel {
+  display: none;
+}
+
+.ac-panel-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-4);
+  min-width: 0;
+}
+
+@keyframes ac-tab-fade-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ------------------------------------------------------------
+   Tab active-state — radio-driven, CSS-only.
+
+   The chrome above is generic; the rules below are the single
+   source of truth for *which* tab IDs the editor recognizes.
+   Every new tab group adds its `id="<group>-<tab>"` to all four
+   selector lists (lit-tab fill, tab underline, panel show, and
+   reduced-motion). Co-locating them here is the DRY choice:
+   one list to keep in sync, not one per page.
+
+   Current consumers:
+     · tones page  — tt-wave, tt-pitch-lfo, tt-filter, tt-amp
+     · patches page — pt-common, pt-mapping
+   ------------------------------------------------------------ */
+
+#tt-wave:checked       ~ .ac-tab-strip [for="tt-wave"],
+#tt-pitch-lfo:checked  ~ .ac-tab-strip [for="tt-pitch-lfo"],
+#tt-filter:checked     ~ .ac-tab-strip [for="tt-filter"],
+#tt-amp:checked        ~ .ac-tab-strip [for="tt-amp"],
+#pt-common:checked     ~ .ac-tab-strip [for="pt-common"],
+#pt-mapping:checked    ~ .ac-tab-strip [for="pt-mapping"] {
+  color: var(--ac-color-accent);
+  background: color-mix(in srgb, var(--ac-color-accent) 8%, transparent);
+}
+
+#tt-wave:checked       ~ .ac-tab-strip [for="tt-wave"]::after,
+#tt-pitch-lfo:checked  ~ .ac-tab-strip [for="tt-pitch-lfo"]::after,
+#tt-filter:checked     ~ .ac-tab-strip [for="tt-filter"]::after,
+#tt-amp:checked        ~ .ac-tab-strip [for="tt-amp"]::after,
+#pt-common:checked     ~ .ac-tab-strip [for="pt-common"]::after,
+#pt-mapping:checked    ~ .ac-tab-strip [for="pt-mapping"]::after {
+  background: var(--ac-color-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 55%, transparent);
+}
+
+#tt-wave:checked       ~ .ac-panels > [data-tab="tt-wave"],
+#tt-pitch-lfo:checked  ~ .ac-panels > [data-tab="tt-pitch-lfo"],
+#tt-filter:checked     ~ .ac-panels > [data-tab="tt-filter"],
+#tt-amp:checked        ~ .ac-panels > [data-tab="tt-amp"],
+#pt-common:checked     ~ .ac-panels > [data-tab="pt-common"],
+#pt-mapping:checked    ~ .ac-panels > [data-tab="pt-mapping"] {
+  display: block;
+  animation: ac-tab-fade-in 180ms var(--ac-easing-default);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #tt-wave:checked       ~ .ac-panels > [data-tab="tt-wave"],
+  #tt-pitch-lfo:checked  ~ .ac-panels > [data-tab="tt-pitch-lfo"],
+  #tt-filter:checked     ~ .ac-panels > [data-tab="tt-filter"],
+  #tt-amp:checked        ~ .ac-panels > [data-tab="tt-amp"],
+  #pt-common:checked     ~ .ac-panels > [data-tab="pt-common"],
+  #pt-mapping:checked    ~ .ac-panels > [data-tab="pt-mapping"] {
+    animation: none;
+  }
+}
+
+/* ============================================================
+   COMPACT FIELD GRID — flex-wrap container for stacks of small
+   labeled toggles / readouts. Shared by the tones-page wave
+   panel (Bank / Loop Mode / Output toggles) and the patches-
+   page common panel (Key Mode / Key Assign / A.T Assign /
+   Output / P.Bend Range / Oct.Shift).
+   ============================================================ */
+
+.ac-compact-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ac-space-4) var(--ac-space-6);
+  align-items: flex-end;
+  padding-block: var(--ac-space-2);
+}
+
+.ac-compact-field {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--ac-space-2);
+  min-width: 0;
+}
+
+.ac-compact-field > .ac-field-label {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  white-space: nowrap;
+}
+
+.ac-compact-field--readout {
+  gap: var(--ac-space-1);
+}
+
+.ac-compact-field--readout > .ac-field-readout {
+  padding: var(--ac-space-1) var(--ac-space-3);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 70%, transparent);
+  font-size: var(--ac-text-base);
+}
+
+.ac-field-readout {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--ac-color-text-primary);
+}
+
+.ac-field-readout strong {
+  font-family: var(--ac-font-display);
+  font-weight: var(--ac-font-weight-normal);
+  color: var(--ac-color-accent);
+}
+
+/* ============================================================
+   LIVE-EDIT FOOTER — pulsing rec-LED + status copy. Replaces
+   save / cancel / undo per project memory
+   `feedback_live_editing_no_save` — edits stream to the device
+   in real time as the operator drags.
+   ============================================================ */
+.ac-detail-live {
+  padding: var(--ac-space-3) var(--ac-space-4);
+  border-top: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-3);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ac-detail-live-led {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--ac-color-rec);
+  box-shadow: 0 0 8px var(--ac-color-rec-glow);
+  animation: ac-detail-live-pulse 2.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.ac-detail-live-touch {
+  color: var(--ac-color-text-primary);
+}
+
+@keyframes ac-detail-live-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px var(--ac-color-rec-glow);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 14px var(--ac-color-rec-glow);
+    opacity: 0.8;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-detail-live-led { animation: none; }
+}
