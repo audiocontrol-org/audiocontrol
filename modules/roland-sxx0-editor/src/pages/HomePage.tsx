@@ -462,10 +462,11 @@ export function HomePage(): JSX.Element {
         <details>
           <summary>
             <span className="marker" aria-hidden="true">▸</span>
-            <span>Setup guide · prepare your device for SysEx control</span>
+            <span>Setup guide</span>
             <span className="count">7 steps</span>
           </summary>
           <div className="learn-more-body">
+            <p className="learn-more-lead">Prepare your device for SysEx control.</p>
             <p>
               Before the editor can read or write to your {deviceName}, the device itself
               needs to be put into a mode where it accepts SysEx. Step-by-step:
@@ -485,10 +486,11 @@ export function HomePage(): JSX.Element {
         <details>
           <summary>
             <span className="marker" aria-hidden="true">▸</span>
-            <span>Troubleshooting · the editor can't reach the device</span>
+            <span>Troubleshooting</span>
             <span className="count">common fixes</span>
           </summary>
           <div className="learn-more-body">
+            <p className="learn-more-lead">The editor can&apos;t reach the device.</p>
             <ul>
               <li>Confirm the MIDI interface appears in BOTH the Input and Output dropdowns. For most operators it should be the same interface in both.</li>
               <li>If your browser prompted for Web MIDI access on first load, click <em>Allow</em>. Without that permission the editor can read MIDI events but cannot write changes to {deviceName}.</li>

@@ -341,11 +341,16 @@
   color: color-mix(in srgb, var(--ac-color-accent) 70%, var(--ac-color-text-primary));
 }
 .ac-vfd-detail-row {
-  display: grid;
-  grid-template-columns: 9rem 1fr;
+  display: flex;
+  align-items: baseline;
   gap: var(--ac-space-2);
+  flex-wrap: wrap;
 }
-.ac-vfd-detail-row > :first-child { opacity: 0.55; }
+.ac-vfd-detail-row > :first-child {
+  opacity: 0.55;
+  flex: 1 1 auto;
+  min-width: 0;
+}
 
 /* Inline action inside a VFD detail row — dashed underline that
    reads as interactive without breaking the phosphor look. */
@@ -527,9 +532,18 @@
   outline-offset: -2px;
 }
 
+/* Disclosure marker — matches `.ac-list-bank-chevron` (the
+   collapsible-group chevron used in PatchList / ToneList bank
+   headers) so the two affordances read as the same UI element.
+   Both: 1.1rem square inline-flex glyph in accent color. */
 .learn-more details > summary .marker {
-  display: inline-block;
-  width: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  font-size: 1.1rem;
+  line-height: 1;
   flex-shrink: 0;
   color: var(--ac-color-accent);
   transition: transform var(--ac-duration-fast) var(--ac-easing-default);
@@ -567,6 +581,18 @@
 
 .learn-more-body p {
   margin: 0 0 var(--ac-space-3);
+}
+
+/* Lead-paragraph subtitle inside a learn-more body. Used to host
+   the descriptive subtitle that previously lived in the summary
+   (where it forced the summary text to wrap in narrow columns). */
+.learn-more-body .learn-more-lead {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  margin-bottom: var(--ac-space-3);
 }
 
 .learn-more-body ol,
