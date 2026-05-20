@@ -53,3 +53,5 @@ export type {
 export {
   createMockMidiTransport,
 } from './mockMidiTransport';
+export type { ProbeMatch, ProbeOptions } from './probe-roland';
+export { probeForRolandDevice } from './probe-roland';

@@ -35,6 +35,10 @@ export interface MidiConnectionPageStore {
   reconnect: () => Promise<void>;
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
+  /** Auto-detect via SysEx Identity Request. Returns the matching
+   *  input/output pair, or null if no device replied (probably
+   *  because EXC SysEx isn't enabled on the device). */
+  probe?: (options?: { onProbe?: (portName: string) => void }) => Promise<{ inputId: string; outputId: string; inputName: string; outputName: string } | null>;
 }
 
 export interface MidiConnectionPageProps {

@@ -18,6 +18,7 @@ export interface HomePageMidiStore {
   reconnect: () => Promise<void>;
   connect: (inputId: string, outputId: string) => Promise<void>;
   disconnect: () => Promise<void>;
+  probe?: (options?: { onProbe?: (portName: string) => void }) => Promise<{ inputId: string; outputId: string; inputName: string; outputName: string } | null>;
 }
 
 export function useHomePageStore(
@@ -72,5 +73,15 @@ export function useHomePageStore(
       setSelectedInputId(null);
       setSelectedOutputId(null);
     },
+    probe: midi.probe
+      ? async (options) => {
+          const match = await midi.probe!(options);
+          if (match) {
+            setSelectedInputId(match.inputId);
+            setSelectedOutputId(match.outputId);
+          }
+          return match;
+        }
+      : undefined,
   };
 }

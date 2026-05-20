@@ -56,6 +56,9 @@ export function HomePage(): JSX.Element {
   const store = useHomePageStore(deviceType, midi);
 
   const [probeState, setProbeState] = useState<ProbeState>('idle');
+  // Tracks which port the probe is currently pinging — surfaces as
+  // "Probing <portName>…" in the VFD detail row mid-scan.
+  const [probingPortName, setProbingPortName] = useState<string | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const transportMode = getActiveTransportMode();
@@ -100,7 +103,7 @@ export function HomePage(): JSX.Element {
   } else if (probeState === 'found' || portsReady) {
     statusLabel = 'Ready to connect';
   } else if (probeState === 'not-found') {
-    statusLabel = 'No MIDI interface detected';
+    statusLabel = 'No device replied — check EXC SysEx';
   } else {
     statusLabel = 'Ready to scan';
   }
@@ -139,7 +142,9 @@ export function HomePage(): JSX.Element {
   const selectedInput = store.inputs.find((p) => p.id === store.selectedInputId);
   const selectedOutput = store.outputs.find((p) => p.id === store.selectedOutputId);
   const detectedReadout = useMemo(() => {
-    if (probeState === 'scanning') return 'Probing MIDI ports…';
+    if (probeState === 'scanning') {
+      return probingPortName ? `Probing ${probingPortName}…` : 'Probing MIDI ports…';
+    }
     if (probeState === 'not-found') return null;
     if (selectedInput && selectedOutput) {
       // Operators usually see one cable on a single interface; show the
@@ -151,25 +156,44 @@ export function HomePage(): JSX.Element {
       return `${portName} · ID ${store.deviceId + 1}`;
     }
     return null;
-  }, [probeState, selectedInput, selectedOutput, store.deviceId]);
+  }, [probeState, probingPortName, selectedInput, selectedOutput, store.deviceId]);
 
   // ---- ACTIONS -----------------------------------------------
   const onScan = useCallback(async () => {
     setProbeState('scanning');
-    await store.refresh();
-    // Heuristic candidate selection: prefer ports whose label mentions
-    // the device name, otherwise fall back to first available.
-    const lower = deviceName.toLowerCase();
-    const pickInput = store.inputs.find((p) => p.name.toLowerCase().includes(lower)) ?? store.inputs[0];
-    const pickOutput = store.outputs.find((p) => p.name.toLowerCase().includes(lower)) ?? store.outputs[0];
-    if (!pickInput || !pickOutput) {
-      setProbeState('not-found');
+    setProbingPortName(null);
+    if (!store.probe) {
+      // Transport doesn't implement the SysEx handshake (mock /
+      // simulated paths). Fall back to refresh + first-port
+      // selection so the page is still usable in those modes.
+      await store.refresh();
+      const pickInput = store.inputs[0];
+      const pickOutput = store.outputs[0];
+      if (!pickInput || !pickOutput) {
+        setProbeState('not-found');
+        return;
+      }
+      store.setSelectedInputId(pickInput.id);
+      store.setSelectedOutputId(pickOutput.id);
+      setProbeState('found');
       return;
     }
-    store.setSelectedInputId(pickInput.id);
-    store.setSelectedOutputId(pickOutput.id);
-    setProbeState('found');
-  }, [deviceName, store]);
+    // Real handshake: send Identity Request on each candidate port
+    // pair until one replies with Roland mfg id 0x41.
+    try {
+      const match = await store.probe({ onProbe: setProbingPortName });
+      setProbingPortName(null);
+      if (match) {
+        setProbeState('found');
+      } else {
+        setProbeState('not-found');
+      }
+    } catch (err) {
+      console.error('[HomePage] Probe failed:', err);
+      setProbingPortName(null);
+      setProbeState('not-found');
+    }
+  }, [store]);
 
   const onConnect = useCallback(async () => {
     await store.connect();
@@ -280,6 +304,21 @@ export function HomePage(): JSX.Element {
                     </button>
                   </>
                 )}
+              </div>
+            )}
+            {probeState === 'not-found' && (
+              <div className="ac-vfd-detail-row">
+                <span>
+                  Hint: confirm EXC ON on the {deviceName}'s MIDI menu and pick ports manually
+                </span>
+                <button
+                  type="button"
+                  className="ac-vfd-action"
+                  onClick={openConnectionDetails}
+                  aria-controls="connection-details"
+                >
+                  configure
+                </button>
               </div>
             )}
           </div>
