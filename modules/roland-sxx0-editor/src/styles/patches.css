@@ -85,6 +85,259 @@
   gap: var(--ac-space-6);
 }
 
+/* ============================================================
+   TONE ZONE EDITOR — the per-layer zone-strip + key-range form
+   that lives inside the Mapping tab.
+
+   Visual model:
+     - .ac-zone-section            : one Layer (1 or 2)
+       - .ac-zone-section-head     : eyebrow row (LAYER N · M of 109 keys active)
+       - .ac-zone-bar              : the horizontal strip of zone segments
+         - .ac-zone-segment        : individual zone, colored by tone index
+       - .ac-zone-axis             : C0 / midpoint / C9 labels under the bar
+       - .ac-zone-form             : editing sub-panel (when a zone is selected)
+
+   The 8-color palette is derived per segment via `--ac-zone-hue`
+   (set inline by the JSX as `style={{'--ac-zone-hue': toneIndex * 31}}`).
+   This keeps the color rule out of a hard-coded class list and stays
+   matched to the design language's accent saturation/lightness
+   profile.
+   ============================================================ */
+
+.ac-zone-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-3);
+}
+
+.ac-zone-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ac-space-3);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-zone-section-head strong {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--ac-font-weight-normal);
+  color: var(--ac-color-text-secondary);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.ac-zone-bar {
+  position: relative;
+  height: 2.5rem;
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  background: linear-gradient(
+    180deg,
+    var(--ac-color-surface-panel) 0%,
+    color-mix(in srgb, var(--ac-color-surface-canvas) 40%, transparent) 100%
+  );
+  overflow: hidden;
+}
+
+.ac-zone-bar-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-zone-segment {
+  position: absolute;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: hsl(calc(var(--ac-zone-hue, 0) * 1deg + 200) 38% 38%);
+  color: var(--ac-color-text-primary);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  letter-spacing: 0.02em;
+  border: 0;
+  border-radius: calc(var(--ac-radius-sm) - 1px);
+  padding: 0 var(--ac-space-2);
+  cursor: pointer;
+  transition:
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ac-zone-segment:hover {
+  background: hsl(calc(var(--ac-zone-hue, 0) * 1deg + 200) 45% 46%);
+}
+
+.ac-zone-segment[aria-pressed="true"],
+.ac-zone-segment--editing {
+  box-shadow:
+    0 0 0 1px var(--ac-color-accent),
+    0 0 0 3px color-mix(in srgb, var(--ac-color-accent) 25%, transparent);
+}
+
+.ac-zone-segment--off {
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 70%, var(--ac-color-text-muted));
+  color: var(--ac-color-text-muted);
+}
+
+.ac-zone-axis {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+  padding: 0 var(--ac-space-1);
+}
+
+.ac-zone-form {
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  background: linear-gradient(
+    180deg,
+    var(--ac-color-surface-panel) 0%,
+    color-mix(in srgb, var(--ac-color-surface-canvas) 40%, transparent) 100%
+  );
+  padding: var(--ac-space-3) var(--ac-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-3);
+}
+
+.ac-zone-form-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ac-space-3);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-zone-form-head strong {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--ac-font-weight-normal);
+  color: var(--ac-color-accent);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.ac-zone-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--ac-space-3) var(--ac-space-4);
+}
+
+.ac-zone-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-1);
+}
+
+.ac-zone-form-field-label {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-zone-form-field-row {
+  display: flex;
+  gap: var(--ac-space-1);
+}
+
+.ac-zone-form-field-row .ac-select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ac-zone-form-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ac-space-3);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+}
+
+/* Tonal accent button — used for "Learn" + "Add Zone" + "Delete" in
+   the zone editor. Quieter than the loud red/green buttons that were
+   here pre-v3. Variants tint via --ac-tonal-hue (default = accent
+   hue). */
+.ac-tonal-btn {
+  --ac-tonal-hue: var(--ac-color-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ac-space-1);
+  padding: var(--ac-space-1) var(--ac-space-2);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-primary);
+  background: color-mix(in srgb, var(--ac-tonal-hue) 18%, transparent);
+  border: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-tonal-hue) 50%, transparent);
+  border-radius: var(--ac-radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    border-color var(--ac-duration-fast) var(--ac-easing-default),
+    color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-tonal-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ac-tonal-hue) 32%, transparent);
+  border-color: var(--ac-tonal-hue);
+}
+
+.ac-tonal-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ac-tonal-btn--danger {
+  --ac-tonal-hue: var(--ac-color-rec);
+}
+
+.ac-tonal-btn--listening {
+  background: color-mix(in srgb, var(--ac-color-rec) 28%, transparent);
+  border-color: var(--ac-color-rec);
+  color: var(--ac-color-rec);
+  animation: ac-tonal-listening 1.4s ease-in-out infinite;
+}
+
+@keyframes ac-tonal-listening {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ac-color-rec) 35%, transparent); }
+  50%      { box-shadow: 0 0 0 4px color-mix(in srgb, var(--ac-color-rec) 0%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-tonal-btn--listening { animation: none; }
+}
+
 /* App shell + loading progress moved to shared primitives:
  *   - .ac-app-shell (editor-core/src/design/layout-primitives.css)
  *   - .ac-page-progress (roland-sxx0-editor/src/styles/_shared.css)
