@@ -187,9 +187,13 @@
 
 .ac-zone-segment[aria-pressed="true"],
 .ac-zone-segment--editing {
-  box-shadow:
-    0 0 0 1px var(--ac-color-accent),
-    0 0 0 3px color-mix(in srgb, var(--ac-color-accent) 25%, transparent);
+  /* Inset outline + inset glow so the selected ring lives entirely
+     inside the segment — when a zone touches the left or right edge
+     of the bar, the ring would otherwise be clipped by the bar's
+     `overflow: hidden` (the previous outer box-shadow recipe). */
+  outline: var(--ac-rule-medium) solid var(--ac-color-accent);
+  outline-offset: calc(-1 * var(--ac-rule-medium));
+  box-shadow: inset 0 0 0 4px color-mix(in srgb, var(--ac-color-accent) 22%, transparent);
 }
 
 .ac-zone-segment--off {
