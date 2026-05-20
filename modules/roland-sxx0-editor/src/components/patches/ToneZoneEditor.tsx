@@ -70,12 +70,38 @@ export function ToneZoneEditor({
     [onUpdate, layer],
   );
 
-  // Drag-resize for zone edges. The hook holds a draft zones array
-  // during an active drag and fires onCommit once on pointer-up.
-  const drag = useZoneDrag({ zones, barRef, onCommit: commitZones });
+  // Drag-resize for zone edges. The hook holds a resolved draft
+  // (other zones already clipped / removed against the dragged
+  // zone) and fires onCommit once on pointer-up with the final
+  // shape + the dragged zone's snapshot.
+  const drag = useZoneDrag({
+    zones,
+    barRef,
+    onCommit: ({ zones: finalZones, draggedZone }) => {
+      // Round-trip through the array form to know what the
+      // renderer will read after the parent updates state. The
+      // dragged zone may shift index when contiguous same-tone
+      // zones merge during normalization.
+      const nextData = zonesToArray(finalZones, layer);
+      const postCommit = arrayToZones(nextData, layer);
+      const newIdx = postCommit.findIndex(
+        (z) => z.tone === draggedZone.tone
+          && z.startKey <= draggedZone.endKey
+          && z.endKey >= draggedZone.startKey,
+      );
+      onUpdate(nextData);
+      if (newIdx >= 0) setSelectedZoneIndex(newIdx);
+    },
+  });
   const renderedZones = drag.draftZones ?? zones;
+  // During a drag the editing form tracks the dragged zone by the
+  // hook's index override (other zones may have been removed by
+  // the overlap resolver, shifting the dragged zone earlier in
+  // the list). When no drag is in flight the form uses the
+  // editor's explicit selection.
+  const formZoneIndex = drag.draftDraggedIndex ?? selectedZoneIndex;
   const selectedZone =
-    selectedZoneIndex !== null ? renderedZones[selectedZoneIndex] ?? null : null;
+    formZoneIndex !== null ? renderedZones[formZoneIndex] ?? null : null;
 
   const updateSelected = useCallback(
     (mutator: (z: ToneZone) => ToneZone) => {
@@ -294,10 +320,10 @@ export function ToneZoneEditor({
         <span>{midiNoteToName(MAX_KEY)}</span>
       </div>
 
-      {selectedZone !== null && selectedZoneIndex !== null && (
+      {selectedZone !== null && formZoneIndex !== null && (
         <div className="ac-zone-form">
           <header className="ac-zone-form-head">
-            <span>Editing Zone <strong>{selectedZoneIndex + 1}</strong></span>
+            <span>Editing Zone <strong>{formZoneIndex + 1}</strong></span>
             <Tooltip content={TONE_MAPPING_TOOLTIPS.deleteZone}>
               <button
                 type="button"
