@@ -168,9 +168,6 @@
   position: absolute;
   top: 0.25rem;
   bottom: 0.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   background: var(--ac-zone-fill);
   color: var(--ac-color-text-primary);
   font-family: var(--ac-font-mono);
@@ -178,15 +175,11 @@
   letter-spacing: 0.02em;
   border: var(--ac-rule-hairline) solid var(--ac-zone-stroke);
   border-radius: calc(var(--ac-radius-sm) - 1px);
-  padding: 0 var(--ac-space-2);
-  cursor: pointer;
   transition:
     background-color var(--ac-duration-fast) var(--ac-easing-default),
     border-color var(--ac-duration-fast) var(--ac-easing-default),
     box-shadow var(--ac-duration-fast) var(--ac-easing-default);
-  white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .ac-zone-segment:hover {
@@ -209,6 +202,88 @@
   background: color-mix(in srgb, var(--ac-color-surface-canvas) 70%, var(--ac-color-text-muted));
   border-color: color-mix(in srgb, var(--ac-color-text-muted) 50%, transparent);
   color: var(--ac-color-text-muted);
+}
+
+/* Drag handles — two thin strips at the start + end of every zone.
+   They share the segment's stroke color so they read as part of
+   the zone chrome, then brighten on hover to invite a pointer
+   drag. The ::after pseudo paints a tiny grip glyph for the visual
+   affordance; the outer rect carries the cursor + hit area. */
+.ac-zone-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0.5rem;
+  cursor: ew-resize;
+  touch-action: none;
+  background: color-mix(in srgb, var(--ac-zone-stroke, var(--ac-color-text-muted)) 70%, transparent);
+  transition: background-color var(--ac-duration-fast) var(--ac-easing-default);
+  z-index: 1;
+}
+
+.ac-zone-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.125rem;
+  height: 0.875rem;
+  background: var(--ac-color-text-primary);
+  transform: translate(-50%, -50%);
+  border-radius: 1px;
+  opacity: 0.5;
+}
+
+.ac-zone-handle--start {
+  left: 0;
+  border-top-left-radius: calc(var(--ac-radius-sm) - 1px);
+  border-bottom-left-radius: calc(var(--ac-radius-sm) - 1px);
+}
+
+.ac-zone-handle--end {
+  right: 0;
+  border-top-right-radius: calc(var(--ac-radius-sm) - 1px);
+  border-bottom-right-radius: calc(var(--ac-radius-sm) - 1px);
+}
+
+.ac-zone-handle:hover,
+.ac-zone-handle--dragging {
+  background: var(--ac-color-accent);
+}
+
+.ac-zone-handle:hover::after,
+.ac-zone-handle--dragging::after {
+  opacity: 1;
+  background: var(--ac-color-surface-canvas);
+}
+
+/* The center click-to-select target. Sized to fill the segment
+   between the two edge handles so the handles' hit areas never
+   compete with selection. */
+.ac-zone-segment-body {
+  position: absolute;
+  inset: 0 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  padding: 0 var(--ac-space-1);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* When a drag is in flight the body's click handler is suppressed
+   in JSX (pointerdown handler stops propagation); still hide the
+   pointer cursor so the affordance reads as ongoing-drag, not
+   click-pending. */
+.ac-zone-segment--dragging .ac-zone-segment-body {
+  cursor: ew-resize;
 }
 
 .ac-zone-axis {

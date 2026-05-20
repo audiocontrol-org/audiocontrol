@@ -14,7 +14,7 @@
  * tone-index without a hard-coded class palette.
  */
 
-import { type CSSProperties, useCallback, useMemo, useState } from 'react';
+import { type CSSProperties, useCallback, useMemo, useRef, useState } from 'react';
 import type { SamplerKeyMode, SamplerTone } from '@/core/midi/SamplerClient';
 import { cn, midiNoteToName } from '@/lib/utils';
 import { useMidiLearn } from '@/hooks/useMidiLearn';
@@ -33,6 +33,7 @@ import {
   zoneHueOffset,
   zonesToArray,
 } from './tone-zone-utils';
+import { useZoneDrag } from './use-zone-drag';
 
 // Re-export for legacy consumers (specs import `ToneZone` /
 // `arrayToZones` / `zonesToArray` from this module).
@@ -56,10 +57,9 @@ export function ToneZoneEditor({
 }: ToneZoneEditorProps) {
   const { memoryLayout } = useDeviceConfig();
   const [selectedZoneIndex, setSelectedZoneIndex] = useState<number | null>(null);
+  const barRef = useRef<HTMLDivElement>(null);
 
   const zones = useMemo(() => arrayToZones(toneData, layer), [toneData, layer]);
-  const selectedZone =
-    selectedZoneIndex !== null ? zones[selectedZoneIndex] ?? null : null;
 
   // Push a single zone-list mutation through to the device. All field
   // edits go through this helper so the live-edit invariant is
@@ -68,6 +68,13 @@ export function ToneZoneEditor({
     (next: ToneZone[]) => onUpdate(zonesToArray(next, layer)),
     [onUpdate, layer],
   );
+
+  // Drag-resize for zone edges. The hook holds a draft zones array
+  // during an active drag and fires onCommit once on pointer-up.
+  const drag = useZoneDrag({ zones, barRef, onCommit: commitZones });
+  const renderedZones = drag.draftZones ?? zones;
+  const selectedZone =
+    selectedZoneIndex !== null ? renderedZones[selectedZoneIndex] ?? null : null;
 
   const updateSelected = useCallback(
     (mutator: (z: ToneZone) => ToneZone) => {
@@ -196,13 +203,13 @@ export function ToneZoneEditor({
         </Tooltip>
       </header>
 
-      <div className="ac-zone-bar">
-        {zones.length === 0 ? (
+      <div ref={barRef} className="ac-zone-bar">
+        {renderedZones.length === 0 ? (
           <div className="ac-zone-bar-empty">
             No zones · click + Add Zone to create one
           </div>
         ) : (
-          zones.map((zone, index) => {
+          renderedZones.map((zone, index) => {
             const startPercent = ((zone.startKey - MIN_KEY) / TOTAL_KEYS) * 100;
             const widthPercent = Math.max(
               ((zone.endKey - zone.startKey + 1) / TOTAL_KEYS) * 100,
@@ -210,28 +217,57 @@ export function ToneZoneEditor({
             );
             const isSelected = selectedZoneIndex === index;
             const isOff = zone.tone < 0;
+            const isDragging = drag.dragging?.zoneIndex === index;
             const style: CSSProperties = {
               left: `${startPercent}%`,
               width: `${widthPercent}%`,
               ['--ac-zone-hue' as string]: zoneHueOffset(zone.tone),
             };
             return (
-              <Tooltip key={`${index}-${zone.startKey}-${zone.endKey}-${zone.tone}`} content={TONE_MAPPING_TOOLTIPS.zone}>
-                <button
-                  type="button"
-                  onClick={() => handleZoneClick(index)}
-                  aria-pressed={isSelected}
+              <div
+                key={`${index}-${zone.tone}`}
+                aria-pressed={isSelected}
+                role="group"
+                aria-label={`${getToneName(zone.tone)}: ${midiNoteToName(zone.startKey)} – ${midiNoteToName(zone.endKey)}`}
+                className={cn(
+                  'ac-zone-segment',
+                  isOff && 'ac-zone-segment--off',
+                  isSelected && 'ac-zone-segment--editing',
+                  isDragging && 'ac-zone-segment--dragging',
+                )}
+                style={style}
+                title={`${getToneName(zone.tone)}: ${midiNoteToName(zone.startKey)} – ${midiNoteToName(zone.endKey)}`}
+              >
+                <div
                   className={cn(
-                    'ac-zone-segment',
-                    isOff && 'ac-zone-segment--off',
-                    isSelected && 'ac-zone-segment--editing',
+                    'ac-zone-handle',
+                    'ac-zone-handle--start',
+                    drag.dragging?.zoneIndex === index && drag.dragging.handle === 'start' && 'ac-zone-handle--dragging',
                   )}
-                  style={style}
-                  title={`${getToneName(zone.tone)}: ${midiNoteToName(zone.startKey)} – ${midiNoteToName(zone.endKey)}`}
-                >
-                  {widthPercent > 8 ? getShortToneName(zone.tone) : ''}
-                </button>
-              </Tooltip>
+                  onPointerDown={(e) => drag.startDrag(e, index, 'start')}
+                  aria-label="Drag to set start key"
+                  role="separator"
+                />
+                <Tooltip content={TONE_MAPPING_TOOLTIPS.zone}>
+                  <button
+                    type="button"
+                    onClick={() => handleZoneClick(index)}
+                    className="ac-zone-segment-body"
+                  >
+                    {widthPercent > 8 ? getShortToneName(zone.tone) : ''}
+                  </button>
+                </Tooltip>
+                <div
+                  className={cn(
+                    'ac-zone-handle',
+                    'ac-zone-handle--end',
+                    drag.dragging?.zoneIndex === index && drag.dragging.handle === 'end' && 'ac-zone-handle--dragging',
+                  )}
+                  onPointerDown={(e) => drag.startDrag(e, index, 'end')}
+                  aria-label="Drag to set end key"
+                  role="separator"
+                />
+              </div>
             );
           })
         )}
