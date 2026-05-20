@@ -1463,6 +1463,15 @@
   grid-template-columns: var(--ac-list-row-slot-width) minmax(0, 1fr) auto;
   gap: var(--ac-space-2);
   align-items: center;
+  /* Pin a uniform row height regardless of name-cell content. Without
+     this, named rows render at the body line-height (~21px content,
+     38px total), empty rows collapse to the slot-label height
+     (35px), and "Click to load" rows split the difference (~35.8px).
+     The visible 3px row-to-row variance was the recurring chrome bug
+     between patches + tones (and between filled + empty rows on the
+     same page). 2.5rem = 40px, which is the named-row height rounded
+     up by 2px so the line-box has breathing room. */
+  min-height: 2.5rem;
   padding: var(--ac-space-2) var(--ac-space-3);
   border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 50%, transparent);
   border-left: var(--ac-rule-medium) solid transparent;
