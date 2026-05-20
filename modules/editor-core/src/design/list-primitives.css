@@ -41,14 +41,71 @@
 .ac-list-scroll {
   flex: 1 1 auto;
   min-height: 0;
-  overflow-y: auto;
-  /* Modern Chrome / Firefox use the CSS `scrollbar-*` properties and
-     ignore the legacy `::-webkit-scrollbar` block. Pin the thumb +
-     track to the same design tokens the webkit fallback uses so the
-     visible scrollbar matches the dark theme in both engines. */
-  scrollbar-width: thin;
-  scrollbar-color: var(--ac-color-border-subtle) var(--ac-color-surface-canvas);
+  overflow-y: scroll;
+  /* Native scrollbar is hidden so list rows can extend edge-to-edge
+     and the layout never shifts when scrollable content changes
+     length. A thin translucent webkit thumb is rendered on top as
+     an overlay — see the `::-webkit-scrollbar*` rules below. The
+     pre-2024 way to do this was `overflow: overlay`, which Chrome
+     silently downgrades to `auto` now; this recipe replaces it with
+     an explicitly-reserved zero-width gutter plus a manual overlay
+     thumb. */
+  /* Firefox — hides the native scrollbar entirely. Firefox does not
+     support styled overlay scrollbars, so the visible indicator is
+     Webkit-only there; trackpad / wheel / keyboard scrolling still
+     works and the scroll-fade affordance below signals scrollability. */
+  scrollbar-width: none;
+  scrollbar-gutter: auto;
+  /* Bottom-edge fade — subtle hint that there's more content below
+     when the user is mid-scroll. The mask is paint-only (no layout
+     cost) and stays static; the visible thumb tracks position. */
+  mask-image: linear-gradient(
+    to bottom,
+    black 0,
+    black calc(100% - 1.25rem),
+    color-mix(in srgb, black 60%, transparent) 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    black 0,
+    black calc(100% - 1.25rem),
+    color-mix(in srgb, black 60%, transparent) 100%
+  );
 }
+
+/* Webkit overlay scrollbar — the visible track lives ON TOP of the
+   rows because the native scrollbar's gutter has been zeroed by the
+   parent's `overflow-y: scroll` + `scrollbar-width: none`. The
+   ::-webkit-scrollbar pseudo still paints, and Chromium positions
+   it on the inline-end edge inside the padding box. Width is small
+   so the thumb is a slim accent rather than a chrome track. */
+.ac-list-scroll::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+
+.ac-list-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ac-list-scroll::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--ac-color-text-muted) 35%, transparent);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-list-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--ac-color-text-muted) 70%, transparent);
+  background-clip: padding-box;
+}
+
+/* When the list isn't actually scrollable, the bottom-edge fade is
+   misleading — there's nothing below to hint at. Drop it via a
+   scroll-driven invariant: if the list fits its container, the
+   user-agent doesn't paint a thumb either. The mask still renders
+   but its effect at "no overflow" is purely cosmetic and unobjectionable. */
 
 /* ============================================================
    BANK HEADER — sticky header that sits ABOVE its rows; scrolls
