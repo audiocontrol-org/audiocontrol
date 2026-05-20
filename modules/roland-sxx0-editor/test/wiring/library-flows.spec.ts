@@ -59,8 +59,6 @@
 import { test, expect } from '@playwright/test';
 import {
   LIBRARY_URL,
-  TONES_URL,
-  PATCHES_URL,
   cleanupOPFS,
   connectLibraryOPFS,
   seedOPFSSetManifest,
@@ -260,47 +258,13 @@ test.describe('Capabilities — Library flows (Wave 4)', () => {
     await expect(page.getByText('Memory Map')).toBeVisible();
   });
 
-  test('D-LIB-15: connected library exposes the title-row Export button and opens ExportToneDialog', async ({ page }) => {
-    // The per-row Export button was removed 2026-05-19. Tone export
-    // now lives on the tone editor's title row (ToneEditorHead),
-    // surfaced once a tone is selected. This test verifies the
-    // connected-library half of that flow: with OPFS wired, selecting
-    // a loaded sample-bearing tone surfaces the title-row Export
-    // button, and clicking it mounts ExportToneDialog.
-    //
-    // Library connection bootstrap: TonesPage doesn't include the
-    // LibraryConnectionUI (only LibraryPage does), so we connect OPFS
-    // on the library route first, then navigate to the tones route.
-    // localStorage carries the 'opfs' backend preference; useLibrary-
-    // Connection auto-reconnects from it on mount. The per-test
-    // addInitScript clears localStorage before each navigation, so we
-    // re-seed the preference in a follow-up init script.
-    await page.goto(LIBRARY_URL);
-    await page.waitForLoadState('networkidle');
-    await cleanupOPFS(page);
-    await connectLibraryOPFS(page);
-
-    await page.addInitScript(() => {
-      window.localStorage.setItem('audiocontrol-library-backend', 'opfs');
-    });
-    await page.goto(TONES_URL);
-    await page.waitForLoadState('networkidle');
-
-    // Select the first loaded tone to mount the editor + title row.
-    const firstSlot = page.getByTestId('tone-item-0');
-    await expect(firstSlot).toBeVisible({ timeout: 5_000 });
-    await firstSlot.click();
-
-    const exportButton = page.getByTestId('export-tone-button');
-    await expect(exportButton).toBeVisible({ timeout: 10_000 });
-    await exportButton.click();
-
-    await expect(
-      page.getByRole('heading', { name: 'Export Tone to Library' }),
-    ).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByTestId('export-dialog')).toBeVisible();
-    await expect(page.getByTestId('export-confirm')).toBeVisible();
-  });
+  // D-LIB-15 retired 2026-05-20. The title-row Export-to-Library
+  // affordance on the tone editor was removed alongside the
+  // Download-Sample / Import-Sample / Chop-Sample buttons because
+  // tone export now lives entirely in the library page (mirror of
+  // D-LIB-16 retirement for patches). The export pipeline
+  // (`useLibraryExport.openExportToneDialog`) remains for any future
+  // call site that wants to surface it from the library.
 
   // D-LIB-16 retired 2026-05-19. The per-row patch Export button was
   // removed (vestige from before the library page existed) and patches

@@ -182,17 +182,15 @@ test.describe('Patch parameter write affordances (D-PATCH-01..05, 07..12)', () =
 
   test('D-PATCH-01: editing patch name writes setPatchName', async ({ page }) => {
     await page.goto(PATCHES_URL('patch-0-name'));
-    const editor = await openPatch0Editor(page);
+    await openPatch0Editor(page);
 
-    // The patch name on the detail header is a clickable <span> that
-    // swaps into an <input data-testid="patch-name-input"> when clicked.
-    // Click the displayed name to enter edit mode, then fill + Enter to
-    // commit (handleNameChange calls setPatchName(0, 'TESTNAME')).
-    await editor.locator('.patches__detail-name').click();
+    // The patch name on the detail header is an always-editable input
+    // (matching the ToneEditor pattern); fill + blur commits the value
+    // (commitName -> setPatchName(0, 'TESTNAME')).
     const nameInput = page.getByTestId('patch-name-input');
     await expect(nameInput).toBeVisible({ timeout: 2_000 });
     await nameInput.fill('TESTNAME');
-    await nameInput.press('Enter');
+    await nameInput.blur();
 
     await page.waitForLoadState('networkidle');
   });

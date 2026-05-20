@@ -44,9 +44,11 @@
    The override happens in `PatchList.tsx` as an inline style on the
    list root. */
 
-.patches__detail-name {
-  color: var(--ac-color-text-primary);
-}
+/* `.patches__detail-name` was retired 2026-05-20 alongside the
+   click-to-edit toggle. The patch-name input now uses the shared
+   `.ac-detail-name-input` primitive in `_shared.css`, the same
+   primitive ToneEditorHead uses — both pages render the chrome
+   pixel-identically. */
 
 /* ============================================================
    MAPPING PANEL — Tone Mapping section header + Layer 1/2 stack.

@@ -52,111 +52,14 @@
    current composition; we only re-frame the surface and add the
    tab shell.
    ============================================================ */
-/* `.tones__detail`, `.tones__detail-head`, `.tones__detail-title`,
-   `.tones__detail-slot`, and `.tones__detail-body` were promoted to
-   `.ac-detail-pane` / `.ac-detail-head` / `.ac-detail-title` /
-   `.ac-detail-slot` / `.ac-detail-body` in `_shared.css` (2026-05-19).
-   What stays here is the page-only scaffold around them. */
-
-/* Title row — slot mark + name input, with the action cluster on the
-   far right. Stays on one line when there's room, wraps below at
-   narrow detail widths. */
-.tones__detail-title-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--ac-space-4);
-  flex-wrap: wrap;
-}
-
-/* The tone name is a live-editing input styled to read as a title:
-   a single hairline underline beneath the value, brightening on focus
-   to the accent color. Resets are aggressive because the underlying
-   .ac-input primitive adds a rounded all-sides border plus a 3px
-   shadow-ring on focus; without these resets the underline appears
-   as a curved arc (clipped by the inherited border-radius) and the
-   focus state renders as a rounded-rect outline. */
-.tones__detail-name-input {
-  display: block;
-  background: transparent;
-  border: 0;
-  border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-text-muted) 50%, transparent);
-  border-radius: 0;
-  box-shadow: none;
-  padding: 0 var(--ac-space-1) var(--ac-space-1);
-  font: inherit;
-  color: var(--ac-color-text-primary);
-  font-family: var(--ac-font-mono);
-  letter-spacing: 0.02em;
-  width: 12ch;
-  outline: none;
-  transition: border-color var(--ac-duration-fast) var(--ac-easing-default);
-}
-
-.tones__detail-name-input:hover:not(:focus) {
-  border-bottom-color: color-mix(in srgb, var(--ac-color-text-muted) 80%, transparent);
-}
-
-.tones__detail-name-input:focus,
-.tones__detail-name-input:focus-visible {
-  /* Override .ac-input's focus shadow + background; keep only a
-     two-line accent underline so the input reads as an underline,
-     not a framed text box. */
-  border-bottom-width: 2px;
-  border-bottom-color: var(--ac-color-accent);
-  box-shadow: none;
-  background: transparent;
-}
-
-.tones__detail-name-input::placeholder {
-  color: var(--ac-color-text-muted);
-  font-style: italic;
-}
-
-/* Action cluster — Export to Library / Export Sample / Import / Chop,
-   rendered as ac-icon-btn now (see ToneEditorHead). Lives on the right
-   of the title row as a single non-wrapping horizontal row. Inline
-   progress strip shows beneath when an export is in flight. */
-.tones__detail-actions {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--ac-space-2);
-}
-
-.tones__detail-actions-row {
-  display: flex;
-  flex-wrap: nowrap;
-  justify-content: flex-end;
-  gap: var(--ac-space-1);
-}
-
-.tones__detail-actions-progress {
-  display: flex;
-  align-items: center;
-  gap: var(--ac-space-2);
-  font-family: var(--ac-font-mono);
-  font-size: var(--ac-text-xs);
-  color: var(--ac-color-text-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.tones__detail-actions-progress-track {
-  width: 8rem;
-  height: 0.25rem;
-  background: var(--ac-color-surface-canvas);
-  border-radius: var(--ac-radius-sm);
-  overflow: hidden;
-}
-
-.tones__detail-actions-progress-fill {
-  height: 100%;
-  background: var(--ac-color-accent);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
-  transition: width var(--ac-duration-normal) var(--ac-easing-default);
-}
-
-/* `.tones__detail-body` was promoted to `.ac-detail-body`. */
+/* The detail-pane chrome — pane / head / title / slot / body —
+   plus the always-editable name input were promoted to `.ac-detail-*`
+   primitives in `_shared.css` so PatchEditor and ToneEditor render
+   pixel-identical headers. The vestigial title-row action cluster
+   (Export to Library / Download Sample / Import Sample / Chop into
+   Drum Kit) was deleted 2026-05-20; those flows are owned by the
+   library page now. Nothing detail-head-shaped is page-scoped here
+   anymore. */
 
 /* `.tones__panel-stack` was promoted to `.ac-panel-stack`. */
 

@@ -6,7 +6,6 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import type { SamplerPatch, SamplerKeyMode, SamplerTone, SamplerClientInterface } from '@/core/midi/SamplerClient';
 import { useMidiStore } from '@/stores/midiStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
-import { cn } from '@/lib/utils';
 import { PatchEditorTabs } from './PatchEditorTabs';
 import { PatchCommonPanel } from './PatchCommonPanel';
 import { PatchMappingPanel } from './PatchMappingPanel';
@@ -32,7 +31,6 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
   }, [index, onUpdate]);
 
   const clientRef = useRef<SamplerClientInterface | null>(null);
-  const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(common.name);
   const [toneLayer1, setToneLayer1] = useState(common.toneLayer1);
   const [toneLayer2, setToneLayer2] = useState(common.toneLayer2);
@@ -49,18 +47,19 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
     clientRef.current = config.createClient(adapter, { deviceId });
   }
 
-  // Patch name handler
-  const handleNameChange = async (newName: string) => {
-    updatePatch({ ...common, name: newName });
-    setNameValue(newName);
+  // Patch name handler — commits on blur (same pattern as the tone
+  // editor's always-editable name input). Keystrokes only update local
+  // state; the device write happens on blur.
+  const commitName = async () => {
+    if (nameValue === common.name) return;
+    updatePatch({ ...common, name: nameValue });
     if (clientRef.current) {
       try {
-        await clientRef.current.setPatchName(index, newName);
+        await clientRef.current.setPatchName(index, nameValue);
       } catch (err) {
         console.error('[PatchEditor] Failed to update patch name:', err);
       }
     }
-    setEditingName(false);
   };
 
   // Parameter update handlers - update store first, then send to device
@@ -221,54 +220,32 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
 
   return (
     <div data-testid="patch-editor" data-capability="C-PATCH-04">
-      {/* Detail head — eyebrow row + slot+name title (v3 mockup direction).
-          Eyebrow uses .ac-detail-eyebrow-* shared primitives. */}
+      {/* Detail head — same shape as ToneEditorHead (eyebrow row +
+          slot + always-editable name input). Both pages render
+          pixel-identical chrome via the .ac-detail-* primitives in
+          _shared.css. */}
       <header className="ac-detail-head">
         <div className="ac-detail-eyebrow-row">
           <span>Patch</span>
           <span className="ac-detail-eyebrow-sep">·</span>
           <span className="ac-detail-eyebrow-accent">Editing</span>
           <span className="ac-detail-eyebrow-sep">·</span>
-          <span>Source · device</span>
+          <span>Source · {config.deviceName}</span>
         </div>
         <h3 id="patch-detail-title" className="ac-detail-title">
           <span className="ac-detail-slot">
             <PatchLabel index={index} memoryLayout={config.memoryLayout} />
           </span>
-          {editingName ? (
-            <input
-              type="text"
-              value={nameValue}
-              onChange={(e) => setNameValue(e.target.value.slice(0, 12))}
-              onBlur={() => handleNameChange(nameValue)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleNameChange(nameValue);
-                } else if (e.key === 'Escape') {
-                  setNameValue(common.name);
-                  setEditingName(false);
-                }
-              }}
-              autoFocus
-              maxLength={12}
-              data-testid="patch-name-input"
-              className={cn(
-                'ac-input',
-                'patches__detail-name font-mono',
-              )}
-            />
-          ) : (
-            <span
-              className={cn(
-                'patches__detail-name cursor-pointer hover:text-s330-highlight',
-                !nameValue.trim() && 'opacity-60 italic'
-              )}
-              onClick={() => setEditingName(true)}
-              title="Click to edit patch name"
-            >
-              {nameValue.trim() || '(unnamed)'}
-            </span>
-          )}
+          <input
+            type="text"
+            value={nameValue}
+            onChange={(e) => setNameValue(e.target.value.slice(0, 12))}
+            onBlur={() => { void commitName(); }}
+            placeholder="(unnamed)"
+            data-testid="patch-name-input"
+            maxLength={12}
+            className="ac-input ac-detail-name-input"
+          />
         </h3>
       </header>
 

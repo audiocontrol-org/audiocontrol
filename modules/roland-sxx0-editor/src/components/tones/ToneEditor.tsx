@@ -24,7 +24,6 @@
  *   - data-testid="tone-lfo-sync"
  *   - data-testid="tone-pitch-follow"
  *   - data-testid="tone-tva-curve"
- *   - data-testid="export-tone-button" / "export-sample-button" / "chop-tone-button"
  */
 
 import type { SamplerTone } from '@/core/midi/SamplerClient';
@@ -42,15 +41,6 @@ interface ToneEditorProps {
   index: number;
   onUpdate?: (tone: SamplerTone) => void;
   onCommit?: (updatedTone?: SamplerTone) => void;
-  onExportSample?: () => void;
-  isExporting?: boolean;
-  exportProgress?: number;
-  onExportToLibrary?: () => void;
-  isExportingToLibrary?: boolean;
-  onImportSample?: () => void;
-  isImporting?: boolean;
-  onChopSample?: () => void;
-  isLoadingChopWaveData?: boolean;
   waveData?: Int16Array | null;
   isLoadingWaveData?: boolean;
   waveDataLoadProgress?: number;
@@ -63,15 +53,6 @@ export function ToneEditor({
   index,
   onUpdate,
   onCommit,
-  onExportSample,
-  isExporting = false,
-  exportProgress,
-  onExportToLibrary,
-  isExportingToLibrary = false,
-  onImportSample,
-  isImporting = false,
-  onChopSample,
-  isLoadingChopWaveData = false,
   waveData,
   isLoadingWaveData = false,
   waveDataLoadProgress,
@@ -98,15 +79,6 @@ export function ToneEditor({
         deviceName={deviceName}
         onUpdate={onUpdate}
         onCommit={onCommit}
-        onExportSample={onExportSample}
-        isExporting={isExporting}
-        exportProgress={exportProgress}
-        onExportToLibrary={onExportToLibrary}
-        isExportingToLibrary={isExportingToLibrary}
-        onImportSample={onImportSample}
-        isImporting={isImporting}
-        onChopSample={onChopSample}
-        isLoadingChopWaveData={isLoadingChopWaveData}
       />
 
       <div className="ac-detail-body">
