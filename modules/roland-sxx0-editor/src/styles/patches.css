@@ -158,23 +158,31 @@
 }
 
 .ac-zone-segment {
+  /* The base hue derives from the tone index via --ac-zone-hue (set
+     inline by JSX as `style={{'--ac-zone-hue': N}}`); the segment's
+     fill + 1px outline pick up two lightness stops of the same hue
+     so every zone reads as a self-contained tinted card against the
+     darker bar gradient, regardless of selection state. */
+  --ac-zone-fill: hsl(calc(var(--ac-zone-hue, 0) * 1deg + 200deg) 52% 42%);
+  --ac-zone-stroke: hsl(calc(var(--ac-zone-hue, 0) * 1deg + 200deg) 60% 56%);
   position: absolute;
   top: 0.25rem;
   bottom: 0.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: hsl(calc(var(--ac-zone-hue, 0) * 1deg + 200) 38% 38%);
+  background: var(--ac-zone-fill);
   color: var(--ac-color-text-primary);
   font-family: var(--ac-font-mono);
   font-size: var(--ac-text-xs);
   letter-spacing: 0.02em;
-  border: 0;
+  border: var(--ac-rule-hairline) solid var(--ac-zone-stroke);
   border-radius: calc(var(--ac-radius-sm) - 1px);
   padding: 0 var(--ac-space-2);
   cursor: pointer;
   transition:
     background-color var(--ac-duration-fast) var(--ac-easing-default),
+    border-color var(--ac-duration-fast) var(--ac-easing-default),
     box-shadow var(--ac-duration-fast) var(--ac-easing-default);
   white-space: nowrap;
   overflow: hidden;
@@ -182,7 +190,8 @@
 }
 
 .ac-zone-segment:hover {
-  background: hsl(calc(var(--ac-zone-hue, 0) * 1deg + 200) 45% 46%);
+  background: hsl(calc(var(--ac-zone-hue, 0) * 1deg + 200deg) 58% 50%);
+  border-color: hsl(calc(var(--ac-zone-hue, 0) * 1deg + 200deg) 65% 64%);
 }
 
 .ac-zone-segment[aria-pressed="true"],
@@ -198,6 +207,7 @@
 
 .ac-zone-segment--off {
   background: color-mix(in srgb, var(--ac-color-surface-canvas) 70%, var(--ac-color-text-muted));
+  border-color: color-mix(in srgb, var(--ac-color-text-muted) 50%, transparent);
   color: var(--ac-color-text-muted);
 }
 
