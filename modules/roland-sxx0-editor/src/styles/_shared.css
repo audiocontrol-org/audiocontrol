@@ -373,6 +373,45 @@
 }
 
 /* ============================================================
+   CONNECT LAYOUT — two-column shell on wide viewports so the
+   primary VFD + CTA stay prominent on the left while the
+   collapsible reference material (Connection details / Setup
+   guide / Troubleshooting) lives in a parallel right column.
+   Stacks back to one column under 1024px so narrow-viewport
+   reading order stays VFD → CTA → disclosures.
+   ============================================================ */
+.ac-connect-layout {
+  display: grid;
+  gap: var(--ac-space-6);
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: var(--ac-space-4);
+}
+
+@media (min-width: 1024px) {
+  .ac-connect-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(22rem, 28rem);
+    align-items: start;
+  }
+}
+
+.ac-connect-layout-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-4);
+  min-width: 0;
+}
+
+.ac-connect-layout-side {
+  min-width: 0;
+}
+
+/* The side column's learn-more disclosures already self-stack;
+   reset the top margin the rule below applies when learn-more
+   was a full-width block so it doesn't double up with the grid
+   gap. */
+.ac-connect-layout-side > .learn-more { margin-top: 0; }
+
+/* ============================================================
    CONNECT CTA — single primary button whose label tracks state.
    Sits between the VFD and the Connection details disclosure.
    Wide, accent-tinted, glow on hover. State-driven via data-state.
@@ -380,7 +419,6 @@
 .ac-connect-cta-row {
   display: flex;
   gap: var(--ac-space-2);
-  margin-top: var(--ac-space-4);
 }
 .ac-connect-cta {
   flex: 1;

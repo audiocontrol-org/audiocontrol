@@ -252,6 +252,8 @@ export function HomePage(): JSX.Element {
         </span>
       </header>
 
+      <div className="ac-connect-layout">
+       <div className="ac-connect-layout-main">
       {/* VFD STATUS DISPLAY -------------------------------------- */}
       <section className="ac-vfd" aria-label="Connection status">
         <div className="ac-vfd-screen">
@@ -355,9 +357,11 @@ export function HomePage(): JSX.Element {
           <p className="ac-text-error">{store.error}</p>
         </div>
       )}
+       </div>
 
+       <aside className="ac-connect-layout-side">
       {/* DISCLOSURES — Connection details + Setup + Troubleshooting */}
-      <section className="learn-more" aria-label="More options" style={{ marginTop: 'var(--ac-space-4)' }}>
+      <section className="learn-more" aria-label="More options">
         <details
           id="connection-details"
           open={advancedOpen}
@@ -496,6 +500,8 @@ export function HomePage(): JSX.Element {
           </div>
         </details>
       </section>
+       </aside>
+      </div>
     </div>
   );
 }
