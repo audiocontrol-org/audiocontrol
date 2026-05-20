@@ -198,7 +198,13 @@
  * detail body) scroll internally.
  */
 .ac-app-shell {
-  --ac-app-shell-list-col: 14rem;
+  /* List column width — sized so the sticky bank header
+     (".ac-list-bank-header" via list-primitives.css) fits its widest
+     no-wrap content: "Bank N" toggle + 9-char slot range ("II11–II18"
+     on S-550 patches banks 3–4) + reload icon, all on one line. 14rem
+     was the previous value; it forced "Bank 1" to break and clipped
+     "II11–II18" by ~4px in S-550 patches. */
+  --ac-app-shell-list-col: 16rem;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--ac-space-6);

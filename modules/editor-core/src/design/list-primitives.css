@@ -80,6 +80,11 @@
   text-transform: uppercase;
   letter-spacing: var(--ac-tracking-eyebrow);
   color: var(--ac-color-text-muted);
+  /* Header content stays on one line. "Bank 1" + "T11–T18" each
+     break across two lines at narrow column widths without this; the
+     list column width (var(--ac-app-shell-list-col)) is sized to fit
+     the no-wrap form. */
+  white-space: nowrap;
   display: flex;
   justify-content: space-between;
   /* The toggle button uses --ac-font-display and the <strong> slot-
