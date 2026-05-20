@@ -370,6 +370,9 @@ importers:
 
   modules/e2e-infra:
     dependencies:
+      '@audiocontrol/editor-core':
+        specifier: workspace:*
+        version: link:../editor-core
       '@audiocontrol/midi-core':
         specifier: workspace:*
         version: link:../midi-core

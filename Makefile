@@ -77,7 +77,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland
 
 build: $(ALL_STAMPS)
 
@@ -175,6 +175,26 @@ test-e2e-roland-device-library: $(ROLAND_SXX0_EDITOR) check-midi-server ensure-p
 # Roland UI navigation tests (no device required)
 test-e2e-roland-ui: $(ROLAND_SXX0_EDITOR) ensure-playwright
 	$(DEVENV_RUN) "cd $(MODULES_DIR)/roland-sxx0-editor && pnpm test:e2e $(ARGS)"
+
+# Roland device probe (Node CLI — easymidi, no browser).
+# Sends a Universal Identity Request to every visible MIDI port,
+# matches a Roland (mfg 0x41) Identity Reply, and prints the
+# detected port pair. Requires a Roland S-330 / S-550 reachable
+# via the host's MIDI interface. No mocking — real easymidi, real
+# device. See modules/e2e-infra/src/node/test-roland-probe.ts.
+test-probe-roland: $(EDITOR_CORE)
+	$(DEVENV_RUN) "cd $(MODULES_DIR)/e2e-infra && tsx src/node/test-roland-probe.ts $(ARGS)"
+
+# Roland handshake diagnostic. Sends a battery of candidate probe
+# messages to a chosen MIDI port pair (or auto-picked first non-
+# loopback) and logs every SysEx the device sends back. Use this
+# to verify empirically which handshake message a real S-330 /
+# S-550 actually responds to, before fixing the probe logic.
+# Usage:
+#   make probe-roland-diag
+#   make probe-roland-diag ARGS='--in "Volt 4" --out "Volt 4"'
+probe-roland-diag:
+	$(DEVENV_RUN) "cd $(MODULES_DIR)/e2e-infra && tsx src/node/roland-handshake-diag.ts $(ARGS)"
 
 # ---------------------------------------------------------------------------
 # Phase 0 — Roland fixture recording (CLI, requires connected S-330/S-550)

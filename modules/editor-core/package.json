@@ -10,6 +10,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./transports": {
+      "types": "./dist/transports/index.d.ts",
+      "import": "./dist/transports/index.js"
+    },
     "./styles.css": "./src/design/styles.css",
     "./tokens.css": "./src/design/tokens.css",
     "./layout-primitives.css": "./src/design/layout-primitives.css",
