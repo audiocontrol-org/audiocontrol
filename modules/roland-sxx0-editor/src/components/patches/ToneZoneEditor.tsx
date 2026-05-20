@@ -29,6 +29,7 @@ import {
   arrayToZones,
   findInsertionRange,
   offValueForLayer,
+  pickNewZoneTone,
   usesDualLayers,
   zoneHueOffset,
   zonesToArray,
@@ -179,12 +180,26 @@ export function ToneZoneEditor({
   }, [selectedZoneIndex, zones, commitZones]);
 
   const handleAddZone = useCallback(() => {
-    const { startKey, endKey } = findInsertionRange(toneData, layer);
-    const newZone: ToneZone = { startKey, endKey, tone: 0 };
-    const next = [...zones, newZone];
-    commitZones(next);
-    setSelectedZoneIndex(next.length - 1);
-  }, [zones, toneData, layer, commitZones]);
+    const range = findInsertionRange(toneData, layer);
+    const tone = pickNewZoneTone(zones, range);
+    const newZone: ToneZone = { ...range, tone };
+    const nextList = [...zones, newZone];
+    const nextData = zonesToArray(nextList, layer);
+    // The committed array gets re-normalized via arrayToZones on
+    // the next render. Compute the post-commit list here so the
+    // selection points at the new zone's actual index in the list
+    // the renderer will produce (not `nextList.length - 1`, which
+    // can drift when contiguous same-tone zones merge during the
+    // round-trip).
+    const postCommit = arrayToZones(nextData, layer);
+    const newIndex = postCommit.findIndex(
+      (z) => z.startKey === newZone.startKey
+        && z.endKey === newZone.endKey
+        && z.tone === newZone.tone,
+    );
+    onUpdate(nextData);
+    setSelectedZoneIndex(newIndex >= 0 ? newIndex : null);
+  }, [zones, toneData, layer, onUpdate]);
 
   if (layer === 2 && !usesDualLayers(keyMode)) return null;
 

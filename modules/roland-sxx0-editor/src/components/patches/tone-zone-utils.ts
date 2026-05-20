@@ -90,8 +90,43 @@ export function findInsertionRange(
     }
     return { startKey, endKey };
   }
-  // No gap found — place at the top of the keybed.
+  // No gap found — claim the top octave. The caller is responsible
+  // for picking a tone (via `pickNewZoneTone`) that differs from
+  // the adjacent zone; otherwise zonesToArray + arrayToZones round-
+  // trip the two zones into one merged segment because contiguous
+  // entries with the same tone-index collapse during normalization.
   return { startKey: MAX_KEY - 11, endKey: MAX_KEY };
+}
+
+/**
+ * Pick a tone index for a new zone such that it doesn't visually
+ * merge with any zone touching the candidate range. Two zones with
+ * the same tone in contiguous key positions are indistinguishable
+ * after the array round-trip (`arrayToZones` merges them); picking
+ * an unused tone keeps the new zone visible.
+ *
+ * Strategy: collect tones used by any zone that touches the new
+ * range (overlapping OR keys-adjacent), then return the lowest
+ * tone index not in that set.
+ */
+export function pickNewZoneTone(
+  existing: ToneZone[],
+  range: { startKey: number; endKey: number },
+  maxTone = 32,
+): number {
+  const blocked = new Set<number>();
+  for (const z of existing) {
+    if (z.endKey >= range.startKey - 1 && z.startKey <= range.endKey + 1) {
+      blocked.add(z.tone);
+    }
+  }
+  for (let t = 0; t < maxTone; t++) {
+    if (!blocked.has(t)) return t;
+  }
+  // Every tone in [0, maxTone) is adjacent — extremely unlikely
+  // for a 32-tone bank, but defensive fallback returns 0 so the
+  // call site never throws.
+  return 0;
 }
 
 /** Per-zone hue offset for the `--ac-zone-hue` custom property. */
