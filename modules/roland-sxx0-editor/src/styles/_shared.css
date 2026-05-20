@@ -271,7 +271,6 @@
    and active-nav indicator.
    ============================================================ */
 .ac-vfd {
-  margin-top: var(--ac-space-4);
   background: color-mix(in srgb, #000 88%, var(--ac-color-surface-canvas));
   border-radius: var(--ac-radius-sm);
   padding: 0.5rem;
@@ -408,13 +407,39 @@
 
 .ac-connect-layout-side {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-3);
 }
 
-/* The side column's learn-more disclosures already self-stack;
-   reset the top margin the rule below applies when learn-more
-   was a full-width block so it doesn't double up with the grid
-   gap. */
-.ac-connect-layout-side > .learn-more { margin-top: 0; }
+/* Side-column header — visually parallels the VFD's STATUS row
+   on the left so both columns read as having a labeled section
+   at the top. Eyebrow-styled to stay quiet under the page
+   title; the disclosure list it labels carries the bulk of
+   the visual weight. */
+.ac-connect-side-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ac-space-3);
+  padding: 0 var(--ac-space-1);
+}
+
+.ac-connect-side-heading {
+  margin: 0;
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-md);
+  font-weight: var(--ac-font-weight-normal);
+  letter-spacing: var(--ac-tracking-display);
+  color: var(--ac-color-text-primary);
+}
+
+.ac-connect-side-meta {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-eyebrow);
+  letter-spacing: 0;
+  color: var(--ac-color-text-muted);
+}
 
 /* ============================================================
    CONNECT CTA — single primary button whose label tracks state.

@@ -359,9 +359,13 @@ export function HomePage(): JSX.Element {
       )}
        </div>
 
-       <aside className="ac-connect-layout-side">
+       <aside className="ac-connect-layout-side" aria-labelledby="connect-more-heading">
+      <header className="ac-connect-side-head">
+        <h3 id="connect-more-heading" className="ac-connect-side-heading">More options</h3>
+        <span className="ac-connect-side-meta">reference · help · setup</span>
+      </header>
       {/* DISCLOSURES — Connection details + Setup + Troubleshooting */}
-      <section className="learn-more" aria-label="More options">
+      <section className="learn-more">
         <details
           id="connection-details"
           open={advancedOpen}
