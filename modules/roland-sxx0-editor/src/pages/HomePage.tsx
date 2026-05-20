@@ -66,6 +66,12 @@ export function HomePage(): JSX.Element {
   const isConnecting = store.status === 'connecting';
   const isError = store.status === 'error';
 
+  // Operator has chosen both ports — manually via the Connection
+  // Details dropdowns OR carried over from localStorage. Treated
+  // equivalently to a completed `Scan` for the CTA derivation: a
+  // ready-to-connect state, no probe required.
+  const portsReady = !!store.selectedInputId && !!store.selectedOutputId;
+
   // When the connection succeeds (e.g., via URL auto-connect or
   // after the operator clicked Connect), normalize probe state so
   // the UI doesn't read as "needs to scan first".
@@ -91,7 +97,7 @@ export function HomePage(): JSX.Element {
   } else if (probeState === 'scanning') {
     statusLabel = 'Scanning MIDI ports…';
     ledModifier = 'ac-vfd-led--scanning';
-  } else if (probeState === 'found') {
+  } else if (probeState === 'found' || portsReady) {
     statusLabel = 'Ready to connect';
   } else if (probeState === 'not-found') {
     statusLabel = 'No MIDI interface detected';
@@ -116,7 +122,7 @@ export function HomePage(): JSX.Element {
     ctaLabel = 'Scanning…';
     ctaState = 'scan';
     ctaDisabled = true;
-  } else if (probeState === 'found') {
+  } else if (probeState === 'found' || portsReady) {
     ctaLabel = isError ? 'Retry' : 'Connect';
     ctaState = isError ? 'retry' : 'connect';
     ctaTestId = 'connect-button';
@@ -133,8 +139,8 @@ export function HomePage(): JSX.Element {
   const selectedInput = store.inputs.find((p) => p.id === store.selectedInputId);
   const selectedOutput = store.outputs.find((p) => p.id === store.selectedOutputId);
   const detectedReadout = useMemo(() => {
-    if (probeState === 'idle' || probeState === 'not-found') return null;
     if (probeState === 'scanning') return 'Probing MIDI ports…';
+    if (probeState === 'not-found') return null;
     if (selectedInput && selectedOutput) {
       // Operators usually see one cable on a single interface; show the
       // input label as the primary readout. If input ≠ output we surface
@@ -255,7 +261,7 @@ export function HomePage(): JSX.Element {
             {detectedReadout && (
               <div className="ac-vfd-detail-row">
                 <span>Detected: {detectedReadout}</span>
-                {probeState === 'found' && (
+                {(probeState === 'found' || portsReady) && !isConnected && (
                   <>
                     <button
                       type="button"
