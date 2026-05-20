@@ -29,7 +29,6 @@ No blockers, can be worked independently.
 |---------|--------|--------|-------|
 | jv1080-editor | 85% | #4 | Needs hardware validation |
 | roland-d110 | Partial | #13 | Docs update + hardware validation |
-| s550-support | Phase 7 | #53 | Front panel cosmetics |
 | sample-editor | ~80% | #99 | Complete remaining phases |
 | synth-core | ~90% | — | Loop editor integration |
 | trigger-chopping | Partial | #100 | Verify implementation |
@@ -76,20 +75,19 @@ Must be completed in order:
 
 Features organized by state. See `docs/1.0/<state>/<slug>/` for details.
 
-### 001-IN-PROGRESS (7)
+### 001-IN-PROGRESS (6)
 
 | Feature | Phase | GitHub | Status |
 |---------|-------|--------|--------|
 | edit-workflow-architecture | 1 | #61 | ~95% |
 | jv1080-editor | — | #4 | 85% |
 | roland-d110 | — | #13 | Partial |
-| s550-support | — | #53 | Phase 7 |
 | sample-editor | — | #99 | ~80% |
 | synth-core | — | — | ~90% |
 | trigger-chopping | — | #100 | Partial |
 | chopper-testing-infra | — | #98 | Partial |
 
-### 003-COMPLETE (17)
+### 003-COMPLETE (18)
 
 | Feature | Phase | Summary |
 |---------|-------|---------|
@@ -110,6 +108,7 @@ Features organized by state. See `docs/1.0/<state>/<slug>/` for details.
 | trigger-architecture-simplification | — | Trigger hook decomposition |
 | library-sets | — | Library set management |
 | continuous-improvement | 9 | Session lifecycle, analytics, agents/skills, CLAUDE.md refactoring |
+| s550-support | — | #53 — S-550 editor parity with S-330 + shared `roland-s-series` base, v3 design language across every editor surface, capability-driven testing reform, real SysEx device probe (PR #433, merged 2026-05-20) |
 
 ### 002-BLOCKED (1)
 
