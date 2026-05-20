@@ -407,38 +407,6 @@
 
 .ac-connect-layout-side {
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--ac-space-3);
-}
-
-/* Side-column header — visually parallels the VFD's STATUS row
-   on the left so both columns read as having a labeled section
-   at the top. Eyebrow-styled to stay quiet under the page
-   title; the disclosure list it labels carries the bulk of
-   the visual weight. */
-.ac-connect-side-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--ac-space-3);
-  padding: 0 var(--ac-space-1);
-}
-
-.ac-connect-side-heading {
-  margin: 0;
-  font-family: var(--ac-font-display);
-  font-size: var(--ac-text-md);
-  font-weight: var(--ac-font-weight-normal);
-  letter-spacing: var(--ac-tracking-display);
-  color: var(--ac-color-text-primary);
-}
-
-.ac-connect-side-meta {
-  font-family: var(--ac-font-mono);
-  font-size: var(--ac-text-eyebrow);
-  letter-spacing: 0;
-  color: var(--ac-color-text-muted);
 }
 
 /* ============================================================
@@ -511,6 +479,40 @@
   border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
   border-radius: var(--ac-radius-sm);
   background: color-mix(in srgb, var(--ac-color-surface-panel) 30%, transparent);
+}
+
+/* Section header inside .learn-more — same shape as
+   `.ac-detail-head` (eyebrow row above a display-typed title,
+   hairline separator below) so the side-column panel reads as
+   "labeled bordered section" matching the patch/tone editor
+   pattern operators see on the rest of the editor. */
+.learn-more-head {
+  padding: var(--ac-space-3) var(--ac-space-4);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: linear-gradient(
+    180deg,
+    var(--ac-color-surface-panel) 0%,
+    color-mix(in srgb, var(--ac-color-surface-canvas) 40%, transparent) 100%
+  );
+}
+
+.learn-more-head-eyebrow {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  margin-bottom: var(--ac-space-2);
+}
+
+.learn-more-head-title {
+  margin: 0;
+  font-family: var(--ac-font-display);
+  font-size: 1.25rem;
+  line-height: 1.18;
+  font-weight: var(--ac-font-weight-normal);
+  letter-spacing: var(--ac-tracking-display);
+  color: var(--ac-color-text-primary);
 }
 
 .learn-more details {

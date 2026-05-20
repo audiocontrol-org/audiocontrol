@@ -360,12 +360,15 @@ export function HomePage(): JSX.Element {
        </div>
 
        <aside className="ac-connect-layout-side" aria-labelledby="connect-more-heading">
-      <header className="ac-connect-side-head">
-        <h3 id="connect-more-heading" className="ac-connect-side-heading">More options</h3>
-        <span className="ac-connect-side-meta">reference · help · setup</span>
-      </header>
-      {/* DISCLOSURES — Connection details + Setup + Troubleshooting */}
-      <section className="learn-more">
+      {/* DISCLOSURES — Connection details + Setup + Troubleshooting.
+          The section's own header sits INSIDE the bordered panel
+          as the first row with a hairline below (same shape as
+          .ac-detail-head on the patch/tone editors). */}
+      <section className="learn-more" aria-labelledby="connect-more-heading">
+        <header className="learn-more-head">
+          <div className="learn-more-head-eyebrow">Reference · Help · Setup</div>
+          <h3 id="connect-more-heading" className="learn-more-head-title">Details</h3>
+        </header>
         <details
           id="connection-details"
           open={advancedOpen}
