@@ -29,6 +29,7 @@ import Ajv2020 from 'ajv/dist/2020.js';
 import type { ValidateFunction } from 'ajv';
 import addFormats from 'ajv-formats';
 import { parse as parseYaml } from 'yaml';
+import { isPlainObject, errorMessage, isEnoent } from '../util/typeguards.js';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const SCHEMA_PATH = resolve(SCRIPT_DIR, 'scope-manifest.schema.json');
@@ -39,16 +40,6 @@ interface ValidationOutcome {
   readonly file: string;
   readonly passed: boolean;
   readonly errors: string[];
-}
-
-/** Type-guard: narrows `unknown` to `Record<string, unknown>` without an `as Type` cast. */
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-/** Extract a string message from an `unknown` thrown value without an `as Error` cast. */
-function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
 }
 
 async function loadSchema(): Promise<Record<string, unknown>> {
@@ -80,14 +71,6 @@ async function listPositiveExamples(): Promise<string[]> {
     );
   }
   return yamlFiles;
-}
-
-/** Detect Node's ENOENT error code; `'code' in err` is a real TS narrowing operator. */
-function isEnoent(err: unknown): boolean {
-  if (!(err instanceof Error) || !('code' in err)) {
-    return false;
-  }
-  return err.code === 'ENOENT';
 }
 
 async function listNegativeExamples(): Promise<string[]> {
