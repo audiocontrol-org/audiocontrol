@@ -1,0 +1,19 @@
+{
+  "kind": "entry-annotation",
+  "at": "2026-05-21T20:37:00.776Z",
+  "entryId": "b5d7c26c-9668-4a60-a1b7-bdd28fbe7ee7",
+  "annotation": {
+    "type": "comment",
+    "workflowId": "b5d7c26c-9668-4a60-a1b7-bdd28fbe7ee7",
+    "version": 1,
+    "range": {
+      "start": 5249,
+      "end": 5375
+    },
+    "text": "Why isn’t the scope config a canonical part of the feature documentation? Hiding it seems like an invitation to lose work and to have drift between scope inventory and feature documentation",
+    "category": "other",
+    "anchor": "feature .scope-inventory/<feature-slug>/ directories (worktree-local, gitignored except when feature closes) hold the manifest",
+    "id": "7533b8da-3172-4872-ae02-fdf0e2a355c5",
+    "createdAt": "2026-05-21T20:37:00.776Z"
+  }
+}

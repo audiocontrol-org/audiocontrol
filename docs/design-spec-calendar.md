@@ -24,6 +24,7 @@
 | e5cdc258-ae9f-463b-8b87-58de9dca8716 | decisions-2026-05-11 | Decisions 2026 05 11 |  |  | manual |
 | afbe2d03-af5f-4d1b-99f1-af087537afe4 | s550-support/testing-and-inventory-reform-spec | Testing and capability-inventory reform |  |  | manual |
 | 095a6890-3c58-45bc-b898-4cec312ef790 | s550-support/audit-log | Audit Log |  |  | manual |
+| b5d7c26c-9668-4a60-a1b7-bdd28fbe7ee7 | scope-discovery-protocol/prd | Prd |  |  | manual |
 
 ## Review
 

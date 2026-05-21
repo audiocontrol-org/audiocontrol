@@ -1,3 +1,7 @@
+---
+deskwork:
+  id: b5d7c26c-9668-4a60-a1b7-bdd28fbe7ee7
+---
 # scope-discovery-protocol — Product Requirements Document
 
 **Status:** Draft
@@ -36,22 +40,25 @@ The counterfactual the analysis estimates: an upfront 10–15 minute inventory p
 
 A future system-wide change — UI or architectural — that hits the agent with the same shape as the s550 redesign produces:
 
-1. **Upfront inventory pass at session start.** When the active feature has declared itself as a system-wide change (via an explicit per-feature manifest file), the agent's first work in the session is to enumerate every in-scope surface (routes, modules, files matching a pattern), capture observable state (screenshots for UI; AST/grep matches for code), and present the inventory to the operator BEFORE the first edit lands. Operator confirms / prunes the inventory; the inventory then drives the work.
-2. **Complaint-widening default.** When the operator surfaces a single instance of an inconsistency mid-session, the agent's default response is: classify the complaint → grep the codebase for analogous cases → audit every match → propose a fix that covers all of them (or justify each excluded case). A one-instance fix is acceptable only if the search produces exactly one match.
-3. **Sub-agent dispatch reports siblings.** `ui-engineer` / `frontend-design` / `code-simplifier` / similar sub-agents must, before proposing a fix, report which other surfaces share the same primitive/class/pattern. The orchestrator rejects single-instance recommendations.
-4. **Inventory artifact on disk.** Per-feature inventory survives across sessions and machines as `.scope-inventory/<feature-slug>/` (worktree-local, gitignored except when feature closes), so multi-machine handoffs (orion-m4 ↔ orion-m1) don't lose context.
-5. **Validation gate.** The protocol is dry-run-validated against the s550 redesign timeline (does it surface all 32 documented surfaces in one upfront pass?) and live-validated against one fresh system-wide change.
+1. **Upfront inventory pass at feature start.** When a feature is declared system-wide at `dwd` (feature-define) time, the `/scope-inventory` skill fans out multi-agent discovery (UI-route enumerator, AST/grep matrix builder, clone-detector output reader, feature-shape-specific pattern hunters seeded from the PRD's stated theme) and synthesizes the findings into a strawman `scope-manifest.yaml`. The operator reviews and prunes the strawman; the confirmed manifest drives all subsequent work. The operator never authors the manifest from scratch — they don't have the codebase-level pattern knowledge to do so honestly.
+2. **Mid-implementation course-correction via `/scope-widen`.** When an operator complaint surfaces an inconsistency the upfront pass missed (or that emerged during implementation), the `/scope-widen` skill runs targeted discovery agents focused on the specific complaint, audits every analogous case, and proposes a widening fix. The skill is invokable by operator or orchestrator — invocation IS the enforcement, not a directive.
+3. **Sub-agent dispatch wrapper enforces sibling enumeration programmatically.** Every code-writing sub-agent dispatch (`ui-engineer`, `frontend-design`, `code-simplifier`, `backend-typescript-architect`, others) goes through a wrapper that requires the return to include a structured `Searched: / Included: / Excluded: <reason>` block. The wrapper rejects returns missing the block or with `Included: 1` while `Searched: count > 1` and no `Excluded:` reasons. The wrapper is code, not a directive — its rejection is mechanical and adversarially validated.
+4. **General code-clone detector as the universal duplication gate.** A `jscpd`-style detector (or AST-equivalent) runs in pre-commit AND at sub-agent dispatch-accept time. Fails commits that introduce new clone groups or grow existing groups. Replaces the CSS-class-specific point solution with a pattern-shape-agnostic gate that catches component duplication, logic duplication, hardcoded-list duplication, type duplication, and the CSS-consumer drift case as a side-effect.
+5. **Inventory artifacts on disk.** Per-feature `.scope-inventory/<feature-slug>/` directories (worktree-local, gitignored except when feature closes) hold the manifest, discovery-agent findings, screenshots, and DOM-token snapshots. The repo-level `.scope-inventory/clones.yaml` enumerates every detected clone group at adoption time, tagged with operator disposition (`refactor | keep-with-reason | ignore-with-justification`).
+6. **Validation by drain.** The audiocontrol repo's existing duplication backlog IS the validation case. The feature is not done until `.scope-inventory/clones.yaml` has zero un-dispositioned entries and every `refactor`-marked entry has a merged PR.
 
-The protocol is "done" when an operator can credibly say: *"I haven't had to point at the same class of inconsistency twice on this feature."*
+The protocol is "done" when an operator can credibly say: *"I haven't had to point at the same class of inconsistency twice on this feature, and the duplication backlog is dispositioned to zero."*
 
 ## Acceptance Criteria
 
-- [ ] An operator-authored `scope-manifest.yaml` for a sample feature drives a `make scope-inventory FEATURE=<slug>` run that produces a `.scope-inventory/<slug>/` directory containing per-surface artifacts (screenshots + DOM tokens for UI; AST/grep match lists for code) and an `inventory.md` divergence matrix.
-- [ ] The complaint-widening rule loads at session start (verified by inspecting a fresh session's CLAUDE.md-derived context) and is referenced from `.claude/CLAUDE.md`.
-- [ ] Dispatching `ui-engineer` against a cross-cutting class (e.g., `.ac-page-title-row`) for a single page returns a recommendation that names every sibling route consuming the class, not just the requested page.
-- [ ] Paper-test report against the s550 redesign timeline identifies which of the ~32 documented surfaces the protocol catches via upfront inventory, which via complaint-widening, and which would still require operator iteration. Target: ≥85% combined coverage.
-- [ ] Live-test against a fresh system-wide change produces a measurably lower operator-turn count for the equivalent scope vs. the s550 baseline; gaps surfaced by the live-test are filed as follow-up issues, not deferred silently.
-- [ ] `.scope-inventory/` is gitignored by default and survives a multi-machine handoff (verified by running inventory on one machine, fetching on another, reading without regeneration).
+- [ ] `/scope-inventory` skill at `.claude/skills/scope-inventory/SKILL.md` exists, fans out multi-agent discovery in parallel, synthesizes findings into a strawman `scope-manifest.yaml`, and writes per-surface artifacts to `.scope-inventory/<feature-slug>/`.
+- [ ] `/scope-widen` skill at `.claude/skills/scope-widen/SKILL.md` exists, runs targeted discovery agents for a surfaced complaint, and produces a widening proposal.
+- [ ] Sub-agent dispatch wrapper at `tools/scope-discovery/dispatch-wrapper.ts` parses returns for the required grammar (`Searched: / Included: / Excluded: <reason>`) and rejects malformed returns. Adversarial validator harness at `tools/scope-discovery/dispatch-wrapper.validate.ts` plants known-bad and known-good returns and asserts correct rejection/acceptance behavior. If the wrapper's logic is gutted, the harness fails CI.
+- [ ] General clone detector wired into `.githooks/pre-commit` and the dispatch wrapper. Adversarial validator harness plants a known clone (introduced beyond the dispositioned baseline) and asserts the gate fails the commit. If the gate's logic is gutted, the validator fails CI.
+- [ ] `dwd` skill extended to detect system-wide features and invoke `/scope-inventory` automatically; produces a working strawman manifest, not a placeholder.
+- [ ] Paper-test report against the s550 redesign timeline identifies which of the ~32 documented surfaces the protocol catches via the upfront pass, which via `/scope-widen`, and which would still require operator iteration. Target: ≥85% combined coverage.
+- [ ] **Validation by drain:** the tooling has been run against `modules/*/src/` in the audiocontrol repo; `.scope-inventory/clones.yaml` exists with every detected clone group dispositioned as `refactor | keep-with-reason | ignore-with-justification`. Zero un-dispositioned entries remain. Every `refactor`-marked entry has a merged PR. Every `keep-with-reason` and `ignore-with-justification` entry has a one-line justification committed alongside.
+- [ ] `.scope-inventory/` is gitignored by default; survives a multi-machine handoff (verified by running inventory on one machine, fetching on another, reading without regeneration).
 
 ## Out of Scope
 
@@ -61,24 +68,52 @@ The protocol is "done" when an operator can credibly say: *"I haven't had to poi
 - **Generalizing beyond audiocontrol.** Other projects may inherit the skill via plugin export later, but that is not a deliverable here.
 - **Replacing existing skills** (`dwss`, `frontend-design`, `code-simplifier`). Additive only — the new skills compose with the existing ones, they do not displace them.
 
-## Open Questions
+## Resolved Questions
 
-These are unresolved in the feature definition and must be answered during Phase 1 (Refinement). Each answer must land in the workplan and be reflected in this PRD before Phase 2 starts.
+Phase 1's Refinement work resolved each question to a definitive answer. The resolutions below are load-bearing — they shape Phases 2/3/4 and the acceptance criteria.
 
-1. **One skill or two?** Should the upfront inventory and the mid-session widening response live in one skill or two? The upfront pass is heavy (Playwright + screenshots); the mid-session widening is light (grep + read). Initial hypothesis: two distinct skills. Decision to be made in Phase 1.
-2. **UI-only or universal?** The s550 evidence is all UI. The operator's framing explicitly includes *"architectural redesign/update."* How does the protocol handle non-UI system-wide changes (e.g., *"convert all `as Type` casts to typed guards across modules"*)? Phase 1 must propose a unified manifest schema with `kind: ui | code | hybrid` and define what *"inventory capture"* means for each kind.
-3. **Manifest authorship.** Who writes the per-feature `scope-manifest.yaml`? Probable answer: the operator at feature-define time, with a strawman generated from the feature's `prd.md` and `workplan.md`. The `dwd` (feature-define) skill should be extended to ask *"is this a system-wide change? If yes, declare scope manifest now."* Phase 1 confirms.
-4. **Plugin vs. project-local placement.** Should the skill live in `.claude/skills/` (audiocontrol-only) or in a plugin (deskwork-style, reusable)? Default for v1: project-local; promote to plugin after a second project adopts it. Same calibration as `dwss`. Phase 1 confirms.
-5. **What "the agent considered widening and decided against it" looks like as a recoverable signal.** Some changes legitimately are single-instance. The widening rule cannot be absolute. Phase 3 needs an escape valve: when the agent's search returns >1 match but the agent judges the additional matches are out-of-scope, it must say so in chat *before* fixing the one, not after the operator catches it. Phase 1 drafts the exact wording.
+1. **Two skills, not one.** `/scope-inventory` runs the upfront discovery pass once per system-wide feature. `/scope-widen` handles mid-implementation course-correction when an operator complaint surfaces. Segregating the two purposes prevents conflating the heavyweight upfront walk with the lighter focused widening audit and gives the operator (or orchestrator) two distinct invocation points for two distinct moments in a feature's lifecycle. A separate programmatic dispatch wrapper sits underneath both and enforces structured sibling-enumeration on every code-writing sub-agent return — see resolution 5.
+
+2. **Universal: `kind: ui | code | hybrid`, all three implemented in v1.** Each kind has a working capture mode:
+   - `ui`: Playwright route walk + DOM-token snapshot per (route, device, scenario) tuple.
+   - `code`: AST + clone-detector matrix across module file globs.
+   - `hybrid`: union of both, deduplicated by file-path key.
+
+   The s550 paper-test validates `ui`. The `code` validation uses the audiocontrol repo itself per resolution 6; the validator harness asserts that the May 17–20 patches/tones JSX drift and the duplicated S-330/S-550 wave-addressing logic surface in the detector's output.
+
+3. **Multi-agent discovery generates the strawman manifest.** The operator does not author the manifest from scratch — they don't have the codebase-level pattern knowledge to do that honestly. `/scope-inventory`'s first phase fans out N discovery agents in parallel:
+   - UI-route enumerator (walks the dev server, captures route map).
+   - AST/grep matrix builder (cross-module pattern usage).
+   - Clone-detector output reader (consumes the general clone-detector's findings).
+   - PRD-themed targeted-pattern hunters (seeded from the PRD's stated theme — e.g., for a redesign feature, hunt for `.ac-*` class consumers; for a typing-cleanup feature, hunt for `as Type` casts).
+
+   Their findings are synthesized into a strawman `scope-manifest.yaml`. The operator's role is curation: review the strawman, prune false positives, confirm scope. `/scope-widen` follows the same model on a smaller surface: targeted discovery agents focused on the surfaced complaint, results synthesized into a widening proposal.
+
+4. **Project-local first.** `.claude/skills/scope-inventory/` and `.claude/skills/scope-widen/` in this repo. Promote to `dw-lifecycle` plugin only after we've found out what works and what doesn't in audiocontrol. The plugin promotion has its own scope-discovery cost; deferring it is honest because we don't yet know which parts of the skill are audiocontrol-specific (Playwright config, dev-server port detection, `make scope-inventory` integration) vs. genuinely general (the multi-agent discovery pattern, the manifest schema, the dispatch wrapper, the clone detector). Refine first, promote second.
+
+5. **Dispatch wrapper enforces a structured return grammar.** Every code-writing sub-agent dispatch goes through `tools/scope-discovery/dispatch-wrapper.ts`. The wrapper requires the sub-agent's return to include this block:
+
+   ```
+   Searched: <pattern> — <N matches>
+   Included: <file:line>, <file:line>, ...
+   Excluded: <file:line> — <one-line reason that is not a deferral>
+              [, <file:line> — <reason>, ...]
+   ```
+
+   The wrapper rejects returns missing the block OR returns with `Included: 1` while `Searched: count > 1` and no `Excluded:` reasons. The block is the recoverable signal — grep-able in session transcripts and PR diffs, so the operator (or a code-reviewer) can verify after the fact that the audit happened. The "for later" / "TODO" / "we'll get to it" phrasings are explicitly forbidden in `Excluded:` reasons per [`agent-discipline.md`](../../../.claude/rules/agent-discipline.md)'s *"Just for now is bullshit"* rule. An adversarial validator harness asserts that rejection fires on known-bad returns and acceptance fires on known-good returns; if the wrapper's logic is gutted, the harness fails CI.
+
+6. **The existing audiocontrol duplication backlog IS the validation case.** This feature ships the tooling AND runs it against `modules/*/src/` AND drains the resulting `.scope-inventory/clones.yaml` to zero un-dispositioned entries. Every clone group is dispositioned as `refactor | keep-with-reason | ignore-with-justification`. The `refactor`-marked entries become PRs in this feature's branch (or a series of dependent PRs queued by this feature). The feature is not done until clones.yaml has zero un-dispositioned entries. **No separate follow-up feature; no "we'll get to the cleanup later" deferral.** Validation by drain is the load-bearing acceptance criterion; the s550 paper-test is the secondary signal.
 
 ## Risks
 
-- **Operator rejects the upfront pass as paperwork.** The May 17 mothballing decision (*"I don't want to hear any bullshit about things being out of scope"*) is load-bearing context. The skill must be a single 10–15 minute upfront cost with no ongoing process tax, not a recurring procedural overhead. If Phase 2's first dry-run feels heavy, the manifest schema is wrong — iterate.
-- **The protocol fires too rarely.** A skill that requires explicit `scope-manifest.yaml` authorship before it activates is safe (it never fires when not declared) but also easy to skip. The `dwd` hook in Phase 3 mitigates this by surfacing the question at feature-define time.
-- **The complaint-widening rule produces false-positive sweeps.** Some cross-class matches are intentional (e.g., two pages legitimately use different chevron sizes). The escape-valve wording (Open Question 5) is the safety net; if it ships ambiguous, the rule will train the agent to over-sweep and the operator will reject it.
-- **Sub-agent prompt updates depend on canonical-source location.** The Modules Affected list includes `~/.claude/agents/` *or* `.claude/agents/` *(TBD which surface)*. Phase 3 must confirm which file the sub-agents actually read at dispatch time and update *that* surface — not the wrong one.
-- **Dry-run against s550 may overstate coverage.** The paper-test is performed against a known historical transcript where the surfaces are already enumerated in the analysis report. A green paper-test does not guarantee the protocol generalizes; the live-test in Phase 4 is the load-bearing validation.
-- **Inventory artifact growth.** Per-feature `.scope-inventory/` directories accumulate screenshots that can be megabytes. Gitignoring by default keeps the repo clean, but multi-machine handoffs require either a deterministic re-generation step or an explicit sync mechanism. Phase 2 must decide which.
+- **Operator rejects the upfront pass as paperwork.** The May 17 mothballing decision (*"I don't want to hear any bullshit about things being out of scope"*) is load-bearing context. The multi-agent discovery in `/scope-inventory` must complete in a single upfront 10–15 minute cost with no ongoing process tax. If Phase 3's first dry-run feels heavy, the discovery-agent fan-out is wrong — iterate.
+- **The protocol fires too rarely.** A skill that requires an explicit `scope-manifest.yaml` before it activates is safe (it never fires when not declared) but also easy to skip. The `dwd` hook (resolution 3's automatic strawman generation) is the mitigation — every feature-define produces a candidate manifest by default; opting out requires explicit operator action.
+- **Multi-agent discovery produces noisy or conflicting findings.** N parallel agents may report overlapping surfaces, miss patterns, or hallucinate. Mitigation: a synthesis pass deduplicates and ranks; the operator's curation step prunes; the manifest schema's `kind` typing constrains what each agent can contribute. Adversarial fixtures in Phase 3 (a known feature with a known surface set) validate the synthesis.
+- **The general clone detector produces false-positives on legitimate near-duplicates.** Mitigation: `ignore-with-justification` disposition per group; the validator harness includes a known-legitimate-near-duplicate fixture to assert the ignore list is honored.
+- **Dispatch wrapper itself is code the agent might pathology-introduce into.** Mitigation: adversarial validator harness; pre-commit hook validates the wrapper's own logic against planted bad/good fixtures; if the validator is gutted, CI fails.
+- **Existing-duplication backlog drain is open-ended in size.** Until the detector runs, we don't know how many clone groups exist. Mitigation: dispositioning a group as `keep-with-reason` or `ignore-with-justification` is a valid completion (it doesn't require refactor PRs); only `refactor`-marked entries become PR work. The operator's curation determines how much refactor work this feature carries — but the curation itself is unavoidable.
+- **Dry-run against s550 may overstate coverage.** The paper-test is performed against a known historical transcript where the surfaces are already enumerated in the analysis report. A green paper-test does not guarantee the protocol generalizes; the backlog drain (resolution 6) is the load-bearing validation.
+- **Inventory artifact growth.** Per-feature `.scope-inventory/` directories accumulate screenshots that can be megabytes. Gitignoring by default keeps the repo clean, but multi-machine handoffs require either a deterministic re-generation step or an explicit sync mechanism. Phase 2 decides which.
 
 ## Appendix — Source Documents
 

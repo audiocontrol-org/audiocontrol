@@ -4,16 +4,30 @@
 **Feature Branch:** `feature/scope-discovery-protocol`
 **Worktree:** `~/work/audiocontrol-work/audiocontrol-scope-discovery-protocol/`
 
-A protocol that makes the agent's first move on a system-wide change an *upfront inventory pass* rather than a *reactive single-fix loop*. Forces complaint-widening as the default response to mid-session inconsistency reports. Motivated by the Roland S-330/S-550 editor v3 redesign, which spent ~230 operator turns over 60 hours doing brute-force discovery the agent should have done in 10–15 minutes at session start.
+A protocol that makes the agent's first move on a system-wide change an *upfront inventory pass* rather than a *reactive single-fix loop*, and that enforces sibling-enumeration on every code-writing sub-agent dispatch via a programmatic wrapper. Motivated by the Roland S-330/S-550 editor v3 redesign, which spent ~230 operator turns over 60 hours doing brute-force discovery the agent should have done in 10–15 minutes at session start.
+
+The design treats agent-side enforcement as code, not directives — passive rules in CLAUDE.md and agent prompts are systematically ignored for persistent pathologies. Two skills (`/scope-inventory`, `/scope-widen`) handle discovery; a dispatch wrapper and a general clone detector handle enforcement; the existing audiocontrol duplication backlog IS the validation case.
 
 ## Phase Status Table
 
 | Phase | Status | GitHub Issue | Notes |
 |-------|--------|--------------|-------|
-| Phase 1 — Refinement | In Progress | TBD | Answer the five Open Questions in the PRD; sequence the six countermeasures from the analysis report; file GitHub issues. |
-| Phase 2 — Core Skill + Manifest Schema | Planning | TBD | Build `tools/scope-discovery/` (manifest schema, inventory.ts, diff.ts), the upfront-inventory skill, and `make scope-inventory`. Dry-run against the historical s550-support feature. |
-| Phase 3 — Rules + Sub-Agent Prompt Updates | Planning | TBD | Land the complaint-widening rule, point at it from `.claude/CLAUDE.md`, update `ui-engineer` / `frontend-design` / `code-simplifier` prompts, extend `dwd` to seed a strawman manifest. |
-| Phase 4 — Validation | Planning | TBD | Paper-test against the s550 redesign timeline (≥85% coverage target); live-test against one fresh system-wide change; measure operator-turn delta vs. baseline. |
+| Phase 1 — Refinement | In Progress | TBD | Open Questions resolved (T1.1–T1.6 complete); T1.7 (`/feature-issues`) outstanding. |
+| Phase 2 — Foundation Tooling | Planning | TBD | Build `tools/scope-discovery/`: manifest schema, clone detector + pre-commit gate, dispatch wrapper + return-grammar parser, adversarial validator harnesses for both gates. |
+| Phase 3 — Skills + `dwd` Extension | Planning | TBD | Build `/scope-inventory` and `/scope-widen` skills implementing the multi-agent discovery model; extend `dwd` to auto-invoke `/scope-inventory` for system-wide features. Smoke-test against complete s550-support feature. |
+| Phase 4 — Validation by Drain | Planning | TBD | Run the tooling against `modules/*/src/`; disposition every clone group; refactor every `refactor`-marked entry; paper-test against s550 redesign timeline (≥85% coverage). Feature is not done until `clones.yaml` has zero un-dispositioned entries. |
+
+## Resolved Questions
+
+The five Open Questions from the feature definition are now answered. Full text in [`prd.md`](prd.md) §"Resolved Questions"; one-line summaries:
+
+1. **Two skills** — `/scope-inventory` for upfront discovery, `/scope-widen` for mid-implementation course-correction. Dispatch wrapper underneath both enforces sibling-enumeration programmatically.
+2. **Universal** — `kind: ui | code | hybrid` all implemented in v1.
+3. **Multi-agent discovery generates the strawman manifest** — operator curates, doesn't author from scratch.
+4. **Project-local first** (`.claude/skills/`); promote to `dw-lifecycle` plugin after audiocontrol adoption surfaces what works.
+5. **Wrapper-enforced return grammar** — sub-agent returns must include `Searched: / Included: / Excluded: <reason>` block; wrapper rejects malformed returns; adversarial validator harness fails CI if wrapper logic is gutted.
+
+Plus the meta-resolution: **the existing audiocontrol duplication backlog IS the validation case** — this feature ships the tooling AND drains the backlog to zero un-dispositioned entries. No separate follow-up feature.
 
 ## Links
 
@@ -24,7 +38,8 @@ A protocol that makes the agent's first move on a system-wide change an *upfront
 
 ## How to Pick This Up Mid-Session
 
-1. Read the PRD's Open Questions section — if any are still open, Phase 1 is in flight.
-2. Check `gh issue list --label process,scope-discovery-protocol` for the current owning issue.
-3. Read the latest `DEVELOPMENT-NOTES.md` entry tagged `[scope-discovery-protocol]` for context the workplan does not capture.
-4. The workplan's `Proven complete when:` gates are the contract — a task is not done until its named artifact (file path, screenshot, test output line) is on disk.
+1. Read the PRD's "Resolved Questions" section — all five questions are answered with binding resolutions.
+2. Read the workplan's Phase 1 task list — T1.1–T1.6 are checked; T1.7 (`/feature-issues`) is the only Phase 1 task outstanding.
+3. Check `gh issue list --label process,scope-discovery-protocol` for the current owning issue once T1.7 has run.
+4. Read the latest `DEVELOPMENT-NOTES.md` entry tagged `[scope-discovery-protocol]` for context the workplan does not capture.
+5. The workplan's `Proven complete when:` gates are the contract — a task is not done until its named artifact (file path, screenshot, test output line, committed disposition) is on disk.
