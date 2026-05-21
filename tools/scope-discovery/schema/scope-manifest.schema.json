@@ -73,6 +73,7 @@
       "type": "string"
     }
   },
+  "$comment": "ajv strict mode warns about 'required' inside conditional branches without sibling 'properties' declarations. The runtime semantics are correct (verified by the example fixtures exercised in validate.ts); only the lint complains. Validators wishing to use strict mode should set strictRequired: false.",
   "allOf": [
     {
       "if": { "properties": { "kind": { "const": "ui" } }, "required": ["kind"] },
@@ -217,21 +218,26 @@
           "minItems": 1,
           "items": { "$ref": "#/$defs/pattern" }
         },
-        "exclude_globs": {
-          "description": "File globs explicitly excluded from this module's audit. Each exclude must carry a reason via the parallel exclude_reasons list (same index).",
+        "excludes": {
+          "description": "Globs intentionally excluded from this module's audit, each paired with a specific non-deferral reason. Pairing glob+reason in a single object lets the schema enforce that every exclusion carries a justification (the previous parallel-array shape could not).",
           "type": "array",
           "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "exclude_reasons": {
-          "description": "Parallel array to exclude_globs. Reasons must be specific and non-deferral.",
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 4,
-            "maxLength": 300
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["glob", "reason"],
+            "properties": {
+              "glob": {
+                "description": "File glob (relative to repo root) excluded from this module's audit.",
+                "type": "string",
+                "minLength": 1
+              },
+              "reason": {
+                "description": "Why this glob is excluded. Reasons must be specific and non-deferral (no 'TODO', 'for now', 'later' phrasings).",
+                "type": "string",
+                "minLength": 4,
+                "maxLength": 300
+              }
+            }
           }
         }
       }

@@ -24,12 +24,9 @@ scenarios:
     description: Pattern-shape match via ts-morph or equivalent; no runtime.
 
 reference_docs:
-  - path: /Users/orion/work/work-meta-work/work-meta/TYPESCRIPT-ARCHITECTURE.md
-    role: design-language
-    summary: The "never bypass typing" doctrine — no `any`, no `as Type`, no `@ts-ignore`.
   - path: .claude/CLAUDE.md
     role: rule
-    summary: Workspace-level pointer to the typing rule.
+    summary: The "never bypass typing" doctrine — no `any`, no `as Type`, no `@ts-ignore`. Workspace-level rule the typing-cleanup pass enforces.
   - path: docs/analysis/typing-debt-inventory.md
     role: analysis-report
     summary: (Hypothetical) prior survey of typing-debt hotspots — used to seed the targeted-pattern hunters.
@@ -56,12 +53,11 @@ modules:
         kind: grep
         description: "@ts-ignore and @ts-expect-error pragmas. Flag every occurrence; the rule requires explicit justification comments and we audit for compliance."
         query: "@ts-(ignore|expect-error)"
-    exclude_globs:
-      - "modules/editor-core/src/**/*.test.{ts,tsx}"
-      - "modules/editor-core/src/**/__fixtures__/**"
-    exclude_reasons:
-      - Test files exercise type-narrowing assertions intentionally; auditing them produces noise.
-      - Fixture data is hand-shaped to mirror device payloads; type casts are documented at the fixture's source.
+    excludes:
+      - glob: "modules/editor-core/src/**/*.test.{ts,tsx}"
+        reason: Test files exercise type-narrowing assertions intentionally; auditing them produces noise.
+      - glob: "modules/editor-core/src/**/__fixtures__/**"
+        reason: Fixture data is hand-shaped to mirror device payloads; type casts are documented at the fixture's source.
 
   - glob: "modules/roland-sxx0-editor/src/**/*.{ts,tsx}"
     label: roland-sxx0-editor (S-330 / S-550 editor)

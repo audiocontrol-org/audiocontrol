@@ -15,21 +15,25 @@
  *   tsx tools/scope-discovery/schema/validate.ts
  *
  * Exit codes:
- *   0   all example manifests validate
- *   1   one or more failed validation
+ *   0   all positive example manifests validate AND all negative-test
+ *       manifests fail validation as expected
+ *   1   one or more positive examples failed, or one or more negative
+ *       examples unexpectedly passed
  *   2   process / filesystem / parse error (schema not loadable etc.)
  */
 
 import { readFile, readdir } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Ajv2020 from 'ajv/dist/2020.js';
+import type { ValidateFunction } from 'ajv';
 import addFormats from 'ajv-formats';
 import { parse as parseYaml } from 'yaml';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const SCHEMA_PATH = resolve(SCRIPT_DIR, 'scope-manifest.schema.json');
 const EXAMPLES_DIR = resolve(SCRIPT_DIR, 'examples');
+const NEGATIVE_DIR = resolve(EXAMPLES_DIR, '_negative-tests');
 
 interface ValidationOutcome {
   readonly file: string;
@@ -37,24 +41,38 @@ interface ValidationOutcome {
   readonly errors: string[];
 }
 
+/** Type-guard: narrows `unknown` to `Record<string, unknown>` without an `as Type` cast. */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Extract a string message from an `unknown` thrown value without an `as Error` cast. */
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 async function loadSchema(): Promise<Record<string, unknown>> {
   const raw = await readFile(SCHEMA_PATH, 'utf8');
   const parsed: unknown = JSON.parse(raw);
-  if (typeof parsed !== 'object' || parsed === null) {
+  if (!isPlainObject(parsed)) {
     throw new Error(
       `scope-manifest.schema.json did not parse to an object — got ${typeof parsed}. ` +
         `The schema file at ${SCHEMA_PATH} is malformed.`,
     );
   }
-  return parsed as Record<string, unknown>;
+  return parsed;
 }
 
-async function listExampleFiles(): Promise<string[]> {
-  const entries = await readdir(EXAMPLES_DIR, { withFileTypes: true });
-  const yamlFiles = entries
+async function listYamlFilesIn(dir: string): Promise<string[]> {
+  const entries = await readdir(dir, { withFileTypes: true });
+  return entries
     .filter((e) => e.isFile() && /\.(ya?ml)$/i.test(e.name))
-    .map((e) => join(EXAMPLES_DIR, e.name))
+    .map((e) => join(dir, e.name))
     .sort();
+}
+
+async function listPositiveExamples(): Promise<string[]> {
+  const yamlFiles = await listYamlFilesIn(EXAMPLES_DIR);
   if (yamlFiles.length === 0) {
     throw new Error(
       `No example manifests found under ${EXAMPLES_DIR}. ` +
@@ -62,6 +80,26 @@ async function listExampleFiles(): Promise<string[]> {
     );
   }
   return yamlFiles;
+}
+
+/** Detect Node's ENOENT error code; `'code' in err` is a real TS narrowing operator. */
+function isEnoent(err: unknown): boolean {
+  if (!(err instanceof Error) || !('code' in err)) {
+    return false;
+  }
+  return err.code === 'ENOENT';
+}
+
+async function listNegativeExamples(): Promise<string[]> {
+  try {
+    return await listYamlFilesIn(NEGATIVE_DIR);
+  } catch (err) {
+    // Negative-test directory is optional; absence is not an error.
+    if (isEnoent(err)) {
+      return [];
+    }
+    throw err;
+  }
 }
 
 async function loadYamlManifest(path: string): Promise<unknown> {
@@ -73,23 +111,116 @@ function formatAjvErrors(errors: unknown): string[] {
   if (!Array.isArray(errors)) {
     return [];
   }
-  return errors.map((err) => {
-    if (typeof err !== 'object' || err === null) {
+  return errors.map((err: unknown) => {
+    if (!isPlainObject(err)) {
       return String(err);
     }
-    const e = err as {
-      instancePath?: unknown;
-      schemaPath?: unknown;
-      message?: unknown;
-      params?: unknown;
-    };
-    const path = typeof e.instancePath === 'string' && e.instancePath.length > 0
-      ? e.instancePath
+    const instancePath = err['instancePath'];
+    const message = err['message'];
+    const params = err['params'];
+    const path = typeof instancePath === 'string' && instancePath.length > 0
+      ? instancePath
       : '<root>';
-    const msg = typeof e.message === 'string' ? e.message : 'unknown error';
-    const params = e.params !== undefined ? ` (${JSON.stringify(e.params)})` : '';
-    return `${path}: ${msg}${params}`;
+    const msg = typeof message === 'string' ? message : 'unknown error';
+    const paramsStr = params !== undefined ? ` (${JSON.stringify(params)})` : '';
+    return `${path}: ${msg}${paramsStr}`;
   });
+}
+
+/**
+ * Imperative referential-integrity check: every id referenced in
+ * route.scenarios[] must appear in the top-level scenarios[].id list.
+ * JSON Schema lacks the cross-property primitives to express this, so
+ * we check it here. Applies to kind: ui and kind: hybrid only.
+ */
+function validateScenarioReferences(manifest: unknown): string[] {
+  if (!isPlainObject(manifest)) {
+    return [];
+  }
+  const kind = manifest['kind'];
+  if (kind !== 'ui' && kind !== 'hybrid') {
+    return [];
+  }
+  const scenarios = manifest['scenarios'];
+  if (!Array.isArray(scenarios)) {
+    return [];
+  }
+  const knownIds = new Set<string>();
+  for (const s of scenarios) {
+    if (isPlainObject(s) && typeof s['id'] === 'string') {
+      knownIds.add(s['id']);
+    }
+  }
+  const routes = manifest['routes'];
+  if (!Array.isArray(routes)) {
+    return [];
+  }
+  const errors: string[] = [];
+  routes.forEach((route: unknown, routeIndex: number) => {
+    if (!isPlainObject(route)) {
+      return;
+    }
+    const routeScenarios = route['scenarios'];
+    const routePath = typeof route['path'] === 'string' ? route['path'] : `<route #${routeIndex}>`;
+    if (!Array.isArray(routeScenarios)) {
+      return;
+    }
+    for (const id of routeScenarios) {
+      if (typeof id !== 'string') {
+        continue;
+      }
+      if (!knownIds.has(id)) {
+        errors.push(
+          `/routes/${routeIndex}/scenarios: route '${routePath}' references ` +
+            `scenario id '${id}' that is not declared at the top-level scenarios[].id list`,
+        );
+      }
+    }
+  });
+  return errors;
+}
+
+async function runOneValidation(
+  file: string,
+  validate: ValidateFunction,
+): Promise<ValidationOutcome> {
+  let manifest: unknown;
+  try {
+    manifest = await loadYamlManifest(file);
+  } catch (err) {
+    return {
+      file,
+      passed: false,
+      errors: [`YAML parse failure: ${errorMessage(err)}`],
+    };
+  }
+  const schemaOk = validate(manifest);
+  const schemaErrors = schemaOk === true ? [] : formatAjvErrors(validate.errors);
+  const refErrors = validateScenarioReferences(manifest);
+  const errors = [...schemaErrors, ...refErrors];
+  return {
+    file,
+    passed: errors.length === 0,
+    errors,
+  };
+}
+
+function reportOutcome(o: ValidationOutcome, expectedPass: boolean): boolean {
+  const actualPass = o.passed;
+  const ok = actualPass === expectedPass;
+  const relPath = relative(process.cwd(), o.file);
+  const label = ok ? 'PASS' : 'FAIL';
+  const expectation = expectedPass ? '' : ' (expected to fail)';
+  console.log(`${label}  ${relPath}${expectation}`);
+  if (!ok) {
+    if (!expectedPass && actualPass) {
+      console.log(`        - negative-test manifest unexpectedly validated`);
+    }
+    for (const e of o.errors) {
+      console.log(`        - ${e}`);
+    }
+  }
+  return ok;
 }
 
 async function main(): Promise<number> {
@@ -97,68 +228,51 @@ async function main(): Promise<number> {
   try {
     schema = await loadSchema();
   } catch (err) {
-    console.error(`schema load failed: ${(err as Error).message}`);
+    console.error(`schema load failed: ${errorMessage(err)}`);
     return 2;
   }
 
-  // strictRequired disabled: the manifest schema's per-kind required
-  // fields (routes / modules) are conditionally required via allOf/if/then.
-  // Ajv's strict mode wants every `required` token to be paired with a
-  // sibling `properties` declaration at the same level — fine for flat
-  // schemas, but the property declarations for `routes` and `modules`
-  // live at the root, not inside each conditional branch. The runtime
-  // semantics are correct; only the lint is unhappy. Keep the rest of
-  // strict mode on.
+  // strictRequired disabled: see $comment in scope-manifest.schema.json
+  // adjacent to the allOf block — the manifest's conditionally-required
+  // routes/modules fields are declared at the root and referenced inside
+  // allOf/if/then branches; strict mode mis-lints this even though the
+  // runtime semantics are correct.
   const ajv = new Ajv2020({ allErrors: true, strict: true, strictRequired: false });
   addFormats(ajv);
 
-  let validate;
+  let validate: ValidateFunction;
   try {
     validate = ajv.compile(schema);
   } catch (err) {
-    console.error(`schema compile failed: ${(err as Error).message}`);
+    console.error(`schema compile failed: ${errorMessage(err)}`);
     return 2;
   }
 
-  let files: string[];
+  let positiveFiles: string[];
+  let negativeFiles: string[];
   try {
-    files = await listExampleFiles();
+    positiveFiles = await listPositiveExamples();
+    negativeFiles = await listNegativeExamples();
   } catch (err) {
-    console.error((err as Error).message);
+    console.error(errorMessage(err));
     return 2;
-  }
-
-  const outcomes: ValidationOutcome[] = [];
-  for (const file of files) {
-    let manifest: unknown;
-    try {
-      manifest = await loadYamlManifest(file);
-    } catch (err) {
-      outcomes.push({
-        file,
-        passed: false,
-        errors: [`YAML parse failure: ${(err as Error).message}`],
-      });
-      continue;
-    }
-    const ok = validate(manifest);
-    outcomes.push({
-      file,
-      passed: ok === true,
-      errors: ok === true ? [] : formatAjvErrors(validate.errors),
-    });
   }
 
   let anyFailed = false;
-  for (const o of outcomes) {
-    const label = o.passed ? 'PASS' : 'FAIL';
-    const rel = o.file.replace(`${process.cwd()}/`, '');
-    console.log(`${label}  ${rel}`);
-    if (!o.passed) {
+
+  for (const file of positiveFiles) {
+    const outcome = await runOneValidation(file, validate);
+    const ok = reportOutcome(outcome, true);
+    if (!ok) {
       anyFailed = true;
-      for (const e of o.errors) {
-        console.log(`        - ${e}`);
-      }
+    }
+  }
+
+  for (const file of negativeFiles) {
+    const outcome = await runOneValidation(file, validate);
+    const ok = reportOutcome(outcome, false);
+    if (!ok) {
+      anyFailed = true;
     }
   }
 
@@ -170,7 +284,7 @@ main().then(
     process.exit(code);
   },
   (err) => {
-    console.error(`unexpected failure: ${(err as Error).message}`);
+    console.error(`unexpected failure: ${errorMessage(err)}`);
     process.exit(2);
   },
 );

@@ -1,0 +1,40 @@
+# Negative-test fixture: route.scenarios[] references an id that does
+# not appear at the top-level scenarios[].id list. The ajv schema
+# validator alone cannot detect this (JSON Schema lacks cross-property
+# referential-integrity primitives short of unevaluatedProperties +
+# dynamicRef gymnastics that won't survive round-trip generation), so
+# validate.ts adds an imperative check.
+#
+# This file MUST fail validation when run through
+# tools/scope-discovery/schema/validate.ts. validate.ts treats any
+# manifest under _negative-tests/ as "expected to fail" — a manifest
+# here that unexpectedly validates is a test-suite failure.
+#
+# The orphan reference below: route '/roland/s330/editor/play' lists
+# scenario 'tones-bank-99', which is not declared in scenarios[].
+
+kind: ui
+feature_slug: negative-orphan-scenario
+version: "1.0"
+generated_by: hand-authored
+generated_at: "2026-05-21T09:00:00Z"
+
+scenarios:
+  - id: tones-bank-0
+    label: Tones, bank 0 loaded
+    description: Default bank — the only declared scenario.
+    query: "midi=simulated&scenario=tones-bank-0"
+
+reference_docs:
+  - path: docs/analysis/s550-redesign-scope-discovery.md
+    role: analysis-report
+    summary: Stand-in reference doc so the positive parts of the manifest type-check.
+
+discovery_themes:
+  - referential-integrity orphan test
+
+routes:
+  - path: /roland/s330/editor/play
+    devices: [s330]
+    scenarios: [tones-bank-0, tones-bank-99]
+    primitives: [page-header]
