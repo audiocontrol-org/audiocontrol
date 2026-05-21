@@ -1,0 +1,19 @@
+{
+  "kind": "entry-annotation",
+  "at": "2026-05-21T20:54:39.299Z",
+  "entryId": "b5d7c26c-9668-4a60-a1b7-bdd28fbe7ee7",
+  "annotation": {
+    "type": "comment",
+    "workflowId": "b5d7c26c-9668-4a60-a1b7-bdd28fbe7ee7",
+    "version": 1,
+    "range": {
+      "start": 7036,
+      "end": 7122
+    },
+    "text": "Why are you treating the discovery artifacts as ephemeral? They are literally part of the planning process and MUST be retained—in an ordered format, preferably with a traceable journal—so we can reconstruct scope findings and correlate them with design and implementation decisions",
+    "category": "other",
+    "anchor": "and writes ephemeral per-surface capture artifacts to .scope-inventory/<feature-slug>/",
+    "id": "8873465b-dcf2-4588-a466-5a7b6c086153",
+    "createdAt": "2026-05-21T20:54:39.299Z"
+  }
+}

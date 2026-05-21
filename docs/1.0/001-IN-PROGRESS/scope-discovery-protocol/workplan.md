@@ -26,10 +26,12 @@ The `.claude/rules/agent-discipline.md` rule applies in full: every task has an 
   - `discovery-agents/` (UI-route enumerator, AST/grep matrix builder, clone-detector reader, PRD-themed pattern hunters)
   - `synthesis.ts` (combines discovery-agent findings into strawman manifest)
 - `.githooks/pre-commit` — clone-detector gate
-- `.scope-inventory/` — gitignored artifact directory (per-feature subdirs + repo-level `clones.yaml`)
+- `.scope-inventory/` — gitignored ephemeral-capture directory (per-feature subdirs: screenshots, DOM-token JSON, discovery-agent raw output; regenerable from the committed manifest)
+- `docs/scope-discovery/clones.yaml` — **committed** repo-level clone-detector output (operator dispositions tracked here)
+- `docs/<version>/<status>/<feature-slug>/scope-manifest.yaml` — **committed** per-feature manifest (alongside `prd.md`, `workplan.md`); review-visible and persistent
 - `Makefile` — `make scope-inventory FEATURE=<slug>` target + `make refresh-clones-baseline`
-- `.gitignore` — `.scope-inventory/` exclusion (with explicit exception for `clones.yaml`)
-- `dwd` skill (in `dw-lifecycle` plugin) — extended to detect system-wide features and invoke `/scope-inventory` automatically
+- `.gitignore` — `.scope-inventory/` exclusion (captures only; manifests and `clones.yaml` are committed outside this path)
+- `.dw-lifecycle/config.json` — `session.start.preamble` field updated with a one-line reminder to invoke `/scope-inventory` for system-wide features. Project-local config only; **no modifications to the installed `dw-lifecycle` plugin directory** (verified via `git status` against the plugin path). Upstream contribution to `dw-lifecycle:define` for first-class system-wide-question handling is deferred to a future feature, conditional on Option 1 surfacing what the contribution should look like.
 - `docs/1.0/001-IN-PROGRESS/scope-discovery-protocol/` — this feature's docs; promotes to `003-COMPLETE/` at close
 
 Explicitly **NOT** modified (these were in earlier drafts but the design pivoted away):
@@ -119,8 +121,8 @@ Four sequential phases. Each phase produces a load-bearing artifact that gates t
   - **Proven complete when:** the skill exists; invoking it against the s550-support feature (already complete; serves as the fixture) fans out the discovery-agent fleet in parallel, writes findings to `.scope-inventory/s550-support/`, runs the synthesis pass, presents the strawman manifest in chat, and asks the operator to confirm/prune.
 - [ ] **T3.4** — Write `/scope-widen` skill at `.claude/skills/scope-widen/SKILL.md`.
   - **Proven complete when:** the skill exists; invoking it with a complaint payload (e.g., *"the Patches header is misaligned"*) runs targeted discovery agents focused on the specific complaint, produces a widening proposal naming all sibling surfaces, and presents the proposal in chat in the dispatch-wrapper-grammar format (`Searched: / Included: / Excluded:`).
-- [ ] **T3.5** — Extend `dwd` (in `dw-lifecycle` plugin) to detect system-wide features and auto-invoke `/scope-inventory`.
-  - **Proven complete when:** `dwd` asks *"is this a system-wide change?"* during feature definition; when the answer is yes, `dwd` invokes `/scope-inventory` against the just-defined feature stub and writes the resulting strawman manifest into the feature directory; the operator can opt out by answering no.
+- [ ] **T3.5** — `/scope-inventory` works **standalone** (no `dw-lifecycle` plugin modification); `session.start.preamble` nudges its use for system-wide features.
+  - **Proven complete when:** running `/scope-inventory <slug>` immediately after `/dw-lifecycle:define <slug>` + `/dw-lifecycle:setup <slug>` produces a strawman manifest from the feature stub — no `dwd` modification required; `git status` against the installed `dw-lifecycle` plugin directory shows no modifications; `.dw-lifecycle/config.json`'s `session.start.preamble` field contains the one-line reminder *"If this is a system-wide feature, run `/scope-inventory <slug>` before the first edit."* (verified by reading the file after the change lands).
 - [ ] **T3.6** — Smoke-test the skill against s550-support.
   - **Proven complete when:** `.scope-inventory/s550-support/scope-manifest.yaml` exists; cross-referenced against the 32 documented surfaces in [`../../../analysis/s550-redesign-scope-discovery.md`](../../../analysis/s550-redesign-scope-discovery.md) §2, the strawman covers ≥80% before operator curation; a smoke-test report at `docs/1.0/001-IN-PROGRESS/scope-discovery-protocol/smoke-test-s550.md` enumerates which surfaces matched, which were missed, and why each miss occurred.
 
