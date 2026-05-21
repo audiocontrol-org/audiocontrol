@@ -47,6 +47,14 @@ interface ItemPreviewPanelProps {
   onLoadSet?: () => void;
   onOpenInLoopEditor?: (name: string, nodeType: string, path?: string[]) => void;
   onOpenInSampleEditor?: (name: string, nodeType: string, path?: string[]) => void;
+  /** Open the v3 export drawer for a device-resident tone. */
+  onExportDeviceTone?: (toneIndex: number) => void;
+  /** Open the v3 export drawer for a device-resident patch. */
+  onExportDevicePatch?: (patchIndex: number) => void;
+  /** Pre-select the slot in the editor store and route to /tones. */
+  onEditDeviceTone?: (toneIndex: number) => void;
+  /** Pre-select the slot in the editor store and route to /patches. */
+  onEditDevicePatch?: (patchIndex: number) => void;
 }
 
 // ---------------------------------------------------------------
@@ -173,6 +181,10 @@ export function ItemPreviewPanel({
   onImportPatch,
   onImportIndividualTone,
   onImportIndividualPatch,
+  onExportDeviceTone,
+  onExportDevicePatch,
+  onEditDeviceTone,
+  onEditDevicePatch,
   onLoadSet,
   onOpenInLoopEditor,
   onOpenInSampleEditor,
@@ -268,13 +280,35 @@ export function ItemPreviewPanel({
   // ---- Device tone -------------------------------------------------
   if (selection.source === 'device' && selection.type === 'tone' && selection.index !== undefined) {
     const tone = deviceTones[selection.index];
+    const toneIndex = selection.index;
     return (
       <PreviewPane title="Device Tone">
         {tone ? (
           <TonePreviewBody
             tone={tone}
             kind="Device Tone"
-            slot={memoryLayout.formatToneSlot(selection.index)}
+            slot={memoryLayout.formatToneSlot(toneIndex)}
+            actions={
+              (onExportDeviceTone || onEditDeviceTone) ? (
+                <div className="ac-pane-actions">
+                  {onExportDeviceTone && (
+                    <PaneAction
+                      label="Export to Library"
+                      variant="primary"
+                      onClick={() => onExportDeviceTone(toneIndex)}
+                      testId="export-device-tone-button"
+                    />
+                  )}
+                  {onEditDeviceTone && (
+                    <PaneAction
+                      label="Edit in Tone Editor"
+                      onClick={() => onEditDeviceTone(toneIndex)}
+                      testId="edit-device-tone-button"
+                    />
+                  )}
+                </div>
+              ) : undefined
+            }
           />
         ) : (
           <EmptySlotMessage message="Empty slot" />
@@ -286,13 +320,35 @@ export function ItemPreviewPanel({
   // ---- Device patch ------------------------------------------------
   if (selection.source === 'device' && selection.type === 'patch' && selection.index !== undefined) {
     const patch = devicePatches[selection.index];
+    const patchIndex = selection.index;
     return (
       <PreviewPane title="Device Patch">
         {patch ? (
           <PatchPreviewBody
             patch={patch}
             kind="Device Patch"
-            slot={memoryLayout.formatPatchSlot(selection.index)}
+            slot={memoryLayout.formatPatchSlot(patchIndex)}
+            actions={
+              (onExportDevicePatch || onEditDevicePatch) ? (
+                <div className="ac-pane-actions">
+                  {onExportDevicePatch && (
+                    <PaneAction
+                      label="Export to Library"
+                      variant="primary"
+                      onClick={() => onExportDevicePatch(patchIndex)}
+                      testId="export-device-patch-button"
+                    />
+                  )}
+                  {onEditDevicePatch && (
+                    <PaneAction
+                      label="Edit in Patch Editor"
+                      onClick={() => onEditDevicePatch(patchIndex)}
+                      testId="edit-device-patch-button"
+                    />
+                  )}
+                </div>
+              ) : undefined
+            }
           />
         ) : (
           <EmptySlotMessage message="Empty slot" />

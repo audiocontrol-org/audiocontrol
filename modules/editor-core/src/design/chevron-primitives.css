@@ -1,0 +1,38 @@
+/**
+ * Chevron primitive — the ONLY chevron declaration anywhere in the
+ * editor's CSS. Owns size, color, line-height, transition.
+ *
+ * Consumers MUST render the chevron via the AcChevron React component
+ * (editor-core/src/components/AcChevron.tsx), which emits
+ * `<span class="ac-chevron" data-expanded="…">`. The pre-commit gate
+ * (`tools/check-chevron-sizing.sh`) fails the build if any other CSS
+ * file declares a class containing the substring "chevron", so the
+ * design surface is structurally one-class-only.
+ *
+ * Background: the prior architecture had four hand-coded chevron CSS
+ * classes (`.ac-list-bank-chevron`, `.ac-tree-chevron`,
+ * `.ac-tree-chevron-btn`, `.ac-device-memory-section-eyebrow-chevron`)
+ * that "agreed" by convention until one drifted to 1rem in May 2026.
+ * The drift was invisible to the prior allow-list gate (which gated
+ * by class name, not by value), so the divergence shipped. Replacing
+ * the four classes with this single primitive + a React component +
+ * a no-chevron-elsewhere gate makes drift structurally impossible
+ * without consciously editing this file.
+ *
+ * Target-size baseline: 1.1rem ≈ 17.6px glyph in a 1.1rem square,
+ * which combined with the wrapping toggle's padding clears WCAG AA
+ * target-size floors. Don't shrink this.
+ */
+
+.ac-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--ac-color-accent);
+  flex-shrink: 0;
+  transition: transform var(--ac-duration-fast) var(--ac-easing-default);
+}

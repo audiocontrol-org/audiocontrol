@@ -94,6 +94,7 @@ export function createCommonSamplesCategory(
   return {
     categoryId,
     title: 'Samples',
+    scope: 'common',
     itemTypes: {
       sample: createCommonSampleItemType(supportedActions),
     },
@@ -127,6 +128,7 @@ export function createCommonProgramsCategory(
   return {
     categoryId,
     title: 'Programs',
+    scope: 'common',
     itemTypes: {
       program: createCommonProgramItemType(supportedActions),
     },

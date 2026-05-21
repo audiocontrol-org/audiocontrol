@@ -122,7 +122,7 @@ export function SetItem({
         tabIndex={isEditing ? -1 : 0}
         onKeyDown={(e) => !isEditing && e.key === 'Enter' && onSelect()}
       >
-        <span className="expand-toggle ac-tree-chevron-btn">
+        <span className="expand-toggle ac-tree-disclosure-btn">
           <ChevronIcon isExpanded={isExpanded} />
         </span>
         <FolderIcon isOpen={isExpanded} />

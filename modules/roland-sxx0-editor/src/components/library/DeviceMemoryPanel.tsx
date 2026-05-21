@@ -16,7 +16,7 @@
  * structural parity with the rest of the editor.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
@@ -24,13 +24,20 @@ import { PatchLabel } from '@/components/common/PatchLabel';
 import { isToneEmpty, isPatchEmpty } from '@/lib/slot-allocation';
 import type { LibraryDragPayload } from '@/lib/library-drag-types';
 import { LIBRARY_ITEM_MIME } from '@/lib/library-drag-types';
+import { AcChevron } from '@audiocontrol/editor-core';
 
-/** Data transfer payload for items dragged out of the device. */
+/** Data transfer payload for items dragged out of the device.
+ *  When the operator multi-selects (Ctrl/Shift-click) on the device
+ *  memory panel and drags any selected slot, `indices` is populated
+ *  with the full selection and the consuming side opens a batch
+ *  export drawer instead of the single-item dialog. For single-item
+ *  drags `indices` is absent and `index` is the only slot. */
 export interface DeviceDragData {
   source: 'device';
   type: 'tone' | 'patch';
   index: number;
   name: string;
+  indices?: number[];
 }
 
 /** MIME type for device drag data. */
@@ -94,6 +101,15 @@ export function DeviceMemoryPanel({
   const [isSampleDragOver, setIsSampleDragOver] = useState(false);
   const [collapsedToneBanks, setCollapsedToneBanks] = useState<Set<number>>(() => new Set());
   const [collapsedPatchBanks, setCollapsedPatchBanks] = useState<Set<number>>(() => new Set());
+  // Multi-select sets for batch drag-export. Populated by the click
+  // dispatchers below (ctrl/meta-click toggles membership, shift-click
+  // extends from the anchor, plain click clears). The dragstart
+  // handlers below consult these and emit a batch payload (DeviceDragData
+  // with `indices`) when the dragged slot is part of a >1 selection.
+  const [multiTones, setMultiTones] = useState<Set<number>>(() => new Set());
+  const [multiPatches, setMultiPatches] = useState<Set<number>>(() => new Set());
+  const lastToneAnchorRef = useRef<number | null>(null);
+  const lastPatchAnchorRef = useRef<number | null>(null);
   // Section-level expand/collapse — independent of per-bank collapse.
   // Default: both sections expanded so the layout is 50/50. Toggling a
   // section to collapsed gives the other section the full remaining
@@ -118,27 +134,116 @@ export function DeviceMemoryPanel({
     });
   };
 
+  // ---- Multi-select click dispatchers ---------------------------
+  // Plain click  = page-level select (drives the preview pane) AND
+  //                clear the multi-set.
+  // Ctrl/Meta    = toggle THIS slot in the multi-set; keep the page-
+  //                level anchor where it was; the prior anchor is
+  //                seeded into the set on the first ctrl-toggle so it
+  //                stays highlighted alongside the new selection.
+  // Shift-click  = range select from the last anchor to this slot.
+  // Empty slots never enter the set and never become an anchor.
+  const handleToneClick = useCallback((index: number, e: React.MouseEvent) => {
+    if (!tones[index]) return;
+    if (e.shiftKey && lastToneAnchorRef.current !== null) {
+      const a = Math.min(lastToneAnchorRef.current, index);
+      const b = Math.max(lastToneAnchorRef.current, index);
+      const next = new Set<number>();
+      for (let i = a; i <= b; i += 1) if (tones[i]) next.add(i);
+      setMultiTones(next);
+      return;
+    }
+    if (e.ctrlKey || e.metaKey) {
+      // Capture the prior anchor BEFORE the setMultiTones updater runs.
+      // React batches state updates and runs the updater asynchronously,
+      // so `lastToneAnchorRef.current = index` below would clobber the
+      // ref before the updater reads it — the seed would never fire.
+      const priorAnchor = lastToneAnchorRef.current;
+      setMultiTones((prev) => {
+        const next = new Set(prev);
+        if (next.size === 0 && priorAnchor !== null && priorAnchor !== index) {
+          next.add(priorAnchor);
+        }
+        if (next.has(index)) next.delete(index); else next.add(index);
+        return next;
+      });
+      lastToneAnchorRef.current = index;
+      return;
+    }
+    setMultiTones(new Set());
+    lastToneAnchorRef.current = index;
+    onSelectTone(index);
+  }, [tones, onSelectTone]);
+
+  const handlePatchClick = useCallback((index: number, e: React.MouseEvent) => {
+    if (!patches[index]) return;
+    if (e.shiftKey && lastPatchAnchorRef.current !== null) {
+      const a = Math.min(lastPatchAnchorRef.current, index);
+      const b = Math.max(lastPatchAnchorRef.current, index);
+      const next = new Set<number>();
+      for (let i = a; i <= b; i += 1) if (patches[i]) next.add(i);
+      setMultiPatches(next);
+      return;
+    }
+    if (e.ctrlKey || e.metaKey) {
+      // See handleToneClick — capture the prior anchor before the
+      // setMultiPatches updater runs so the seed sees the *prior*
+      // anchor, not the one being assigned below.
+      const priorAnchor = lastPatchAnchorRef.current;
+      setMultiPatches((prev) => {
+        const next = new Set(prev);
+        if (next.size === 0 && priorAnchor !== null && priorAnchor !== index) {
+          next.add(priorAnchor);
+        }
+        if (next.has(index)) next.delete(index); else next.add(index);
+        return next;
+      });
+      lastPatchAnchorRef.current = index;
+      return;
+    }
+    setMultiPatches(new Set());
+    lastPatchAnchorRef.current = index;
+    onSelectPatch(index);
+  }, [patches, onSelectPatch]);
+
   // ---- Drag handlers --------------------------------------------
   const handleToneDragStart = useCallback(
     (e: React.DragEvent, index: number, tone: SamplerTone) => {
+      // If the dragged slot is part of a multi-select, send the
+      // whole set as a batch; otherwise single-item drag (unchanged).
+      const batch = multiTones.has(index) && multiTones.size > 1
+        ? Array.from(multiTones).sort((a, b) => a - b)
+        : undefined;
       const dragData: DeviceDragData = {
         source: 'device', type: 'tone', index,
         name: tone.name || `Tone ${index + 1}`,
+        ...(batch ? { indices: batch } : {}),
       };
       e.dataTransfer.setData(DEVICE_DRAG_MIME, JSON.stringify(dragData));
+      // Shadow MIME used by section dragover handlers to discriminate
+      // tone vs patch drags WITHOUT having to parse the JSON payload
+      // (which most browsers withhold during dragover for security).
+      // Mirrors the LIBRARY_ITEM_MIME pattern in PluginLibraryBrowser.
+      e.dataTransfer.setData(`${DEVICE_DRAG_MIME}/tone`, '');
       e.dataTransfer.effectAllowed = 'copy';
-    }, [],
+    }, [multiTones],
   );
 
   const handlePatchDragStart = useCallback(
     (e: React.DragEvent, index: number, patch: SamplerPatch) => {
+      const batch = multiPatches.has(index) && multiPatches.size > 1
+        ? Array.from(multiPatches).sort((a, b) => a - b)
+        : undefined;
       const dragData: DeviceDragData = {
         source: 'device', type: 'patch', index,
         name: patch.common.name || `Patch ${index + 1}`,
+        ...(batch ? { indices: batch } : {}),
       };
       e.dataTransfer.setData(DEVICE_DRAG_MIME, JSON.stringify(dragData));
+      // Shadow MIME — see tone-side comment above.
+      e.dataTransfer.setData(`${DEVICE_DRAG_MIME}/patch`, '');
       e.dataTransfer.effectAllowed = 'copy';
-    }, [],
+    }, [multiPatches],
   );
 
   const handleSlotDragOver = useCallback((e: React.DragEvent) => {
@@ -257,9 +362,7 @@ export function DeviceMemoryPanel({
           aria-label={`Toggle bank ${bankIndex + 1}`}
           data-testid={`device-${kind}-bank-toggle-${bankIndex}`}
         >
-          <span className="ac-list-bank-chevron" aria-hidden="true">
-            {isCollapsed ? '▸' : '▾'}
-          </span>
+          <AcChevron expanded={!isCollapsed} />
           <span>Bank {bankIndex + 1}</span>
         </button>
         <span className="ac-list-bank-meta">
@@ -288,6 +391,7 @@ export function DeviceMemoryPanel({
   function renderToneSlot(index: number, bankIndex: number, isBankLoading: boolean): JSX.Element {
     const tone = tones[index];
     const isSelected = selectedType === 'tone' && selectedIndex === index;
+    const isMultiSelected = multiTones.has(index);
     const isLoaded = loadedToneBanks.includes(bankIndex);
     const isDragOver = dragOverToneSlot === index;
     // Mirror ToneList's name-class logic exactly so the typography
@@ -300,9 +404,12 @@ export function DeviceMemoryPanel({
       ? '(loading...)'
       : tone?.name || '';
 
-    const handleClick = (): void => {
+    // Dispatch click through the multi-select handler when a tone is
+    // present (plain/ctrl/shift each have distinct semantics). For
+    // empty rows fall through to the bank loader as before.
+    const handleClick = (e: React.MouseEvent): void => {
       if (tone) {
-        onSelectTone(index);
+        handleToneClick(index, e);
       } else if (!isBankLoading && !isLoaded && onLoadToneBank) {
         onLoadToneBank(bankIndex);
       }
@@ -313,16 +420,22 @@ export function DeviceMemoryPanel({
         key={index}
         role="button"
         tabIndex={isBankLoading ? -1 : 0}
-        aria-selected={isSelected}
+        aria-selected={isSelected || isMultiSelected}
         aria-disabled={isBankLoading}
         data-drag-over={isDragOver ? 'true' : undefined}
+        data-multi-selected={isMultiSelected ? 'true' : undefined}
         data-testid={`device-tone-slot-${index}`}
         onClick={isBankLoading ? undefined : handleClick}
         onKeyDown={(e) => {
           if (isBankLoading) return;
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            handleClick();
+            // Keyboard activation = plain-click semantics (no modifier
+            // key handling on Enter/Space). Bypass the multi dispatcher
+            // and do a direct page-level select so keyboard users get
+            // the same single-select behavior as a plain mouse click.
+            if (tone) onSelectTone(index);
+            else if (!isLoaded && onLoadToneBank) onLoadToneBank(bankIndex);
           }
         }}
         draggable={!!tone}
@@ -334,6 +447,7 @@ export function DeviceMemoryPanel({
         className={cn(
           'ac-device-memory-row',
           tone && 'ac-device-memory-row--draggable',
+          isMultiSelected && 'ac-device-memory-row--multi-selected',
         )}
       >
         <span className="ac-list-slot">{memoryLayout.formatToneSlot(index)}</span>
@@ -361,6 +475,7 @@ export function DeviceMemoryPanel({
   function renderPatchSlot(index: number, bankIndex: number, isBankLoading: boolean): JSX.Element {
     const patch = patches[index];
     const isSelected = selectedType === 'patch' && selectedIndex === index;
+    const isMultiSelected = multiPatches.has(index);
     const isLoaded = loadedPatchBanks.includes(bankIndex);
     const isDragOver = dragOverPatchSlot === index;
     const isEmpty = patch !== undefined && isPatchEmpty(patch);
@@ -369,9 +484,9 @@ export function DeviceMemoryPanel({
       ? '(loading...)'
       : patch?.common.name || '';
 
-    const handleClick = (): void => {
+    const handleClick = (e: React.MouseEvent): void => {
       if (patch) {
-        onSelectPatch(index);
+        handlePatchClick(index, e);
       } else if (!isBankLoading && !isLoaded && onLoadPatchBank) {
         onLoadPatchBank(bankIndex);
       }
@@ -382,16 +497,18 @@ export function DeviceMemoryPanel({
         key={index}
         role="button"
         tabIndex={isBankLoading ? -1 : 0}
-        aria-selected={isSelected}
+        aria-selected={isSelected || isMultiSelected}
         aria-disabled={isBankLoading}
         data-drag-over={isDragOver ? 'true' : undefined}
+        data-multi-selected={isMultiSelected ? 'true' : undefined}
         data-testid={`device-patch-slot-${index}`}
         onClick={isBankLoading ? undefined : handleClick}
         onKeyDown={(e) => {
           if (isBankLoading) return;
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            handleClick();
+            if (patch) onSelectPatch(index);
+            else if (!isLoaded && onLoadPatchBank) onLoadPatchBank(bankIndex);
           }
         }}
         draggable={!!patch}
@@ -404,6 +521,7 @@ export function DeviceMemoryPanel({
           'ac-device-memory-row',
           'ac-device-memory-row--patch',
           patch && 'ac-device-memory-row--draggable',
+          isMultiSelected && 'ac-device-memory-row--multi-selected',
         )}
       >
         <PatchLabel index={index} memoryLayout={memoryLayout} className="ac-list-slot" />
@@ -470,9 +588,7 @@ export function DeviceMemoryPanel({
             aria-controls="device-memory-tones-list"
             data-testid="device-memory-section-toggle-tones"
           >
-            <span className="ac-device-memory-section-eyebrow-chevron" aria-hidden="true">
-              {isTonesExpanded ? '▾' : '▸'}
-            </span>
+            <AcChevron expanded={isTonesExpanded} />
             <span>Tones ({totalTones} slots)</span>
           </button>
           <div className="ac-list" id="device-memory-tones-list" style={{ borderRadius: 0, border: 'none', flex: '1 1 0', minHeight: 0 }}>
@@ -521,9 +637,7 @@ export function DeviceMemoryPanel({
             aria-controls="device-memory-patches-list"
             data-testid="device-memory-section-toggle-patches"
           >
-            <span className="ac-device-memory-section-eyebrow-chevron" aria-hidden="true">
-              {isPatchesExpanded ? '▾' : '▸'}
-            </span>
+            <AcChevron expanded={isPatchesExpanded} />
             <span>Patches ({totalPatches} slots)</span>
           </button>
           <div className="ac-list" id="device-memory-patches-list" style={{ borderRadius: 0, border: 'none', flex: '1 1 0', minHeight: 0 }}>

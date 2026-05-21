@@ -95,6 +95,8 @@ export { LoadingBar } from './LoadingBar';
 export { SlideDrawer, type SlideDrawerProps } from './SlideDrawer';
 export {
   SteppedProgressDrawer,
+  StepRow,
+  StepIcon,
   type SteppedProgressDrawerProps,
   type ProgressStep,
   type StepStatus,

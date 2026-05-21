@@ -559,10 +559,13 @@
   outline-offset: -2px;
 }
 
-/* Disclosure marker — matches `.ac-list-bank-chevron` (the
-   collapsible-group chevron used in PatchList / ToneList bank
-   headers) so the two affordances read as the same UI element.
-   Both: 1.1rem square inline-flex glyph in accent color. */
+/* Disclosure marker for native <details> on the home page's
+   learn-more sections. Visually mirrors the .ac-chevron primitive
+   but stays a separate name + rule because <details>/<summary> can't
+   straightforwardly mount a React component as its marker without
+   converting the disclosure to a controlled component. This is the
+   one accepted exception; do not pattern off it for editor surfaces —
+   editor surfaces render AcChevron. */
 .learn-more details > summary .marker {
   display: inline-flex;
   align-items: center;
@@ -867,6 +870,18 @@
   box-shadow: inset 0 0 0 2px var(--ac-color-accent);
 }
 
+/* Multi-select membership — a slot in the ctrl/shift-click multi-set
+   reads as "in the selection group" without overriding the page-level
+   anchor's stronger aria-selected highlight. Lighter accent tint +
+   dotted left-edge to differentiate from the solid-edge anchor. The
+   anchor itself ALSO joins the multi-set on the first ctrl-toggle, so
+   when both fire the anchor styling wins by selector specificity. */
+.ac-device-memory-row[data-multi-selected="true"] {
+  background: color-mix(in srgb, var(--ac-color-accent) 7%, transparent);
+  border-left-style: dotted;
+  border-left-color: color-mix(in srgb, var(--ac-color-accent) 70%, transparent);
+}
+
 .ac-device-memory-row--draggable {
   cursor: grab;
 }
@@ -977,21 +992,9 @@
   outline-offset: -2px;
 }
 
-/* Chevron glyph for the section eyebrow. Glyph swaps explicitly
-   (▾ ↔ ▸) rather than CSS-rotating a single glyph — the display
-   font (Departure Mono) doesn't carry a clean ▸ that survives a
-   rotation, and the swap matches the per-bank chevron in
-   `.ac-list-bank-chevron`. */
-.ac-device-memory-section-eyebrow-chevron {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1rem;
-  height: 1rem;
-  font-size: 1rem;
-  line-height: 1;
-  color: var(--ac-color-accent);
-}
+/* (Section-eyebrow disclosure glyph is rendered via the AcChevron
+   component — no per-context class is declared. See
+   editor-core/src/design/chevron-primitives.css.) */
 
 /* ============================================================
    PREVIEW PANE — column-pane chrome used by the Library page's
@@ -1886,4 +1889,117 @@
 
 @media (prefers-reduced-motion: reduce) {
   .ac-detail-live-led { animation: none; }
+}
+
+/* =========================================================================
+   Export-dialog form chrome (v3 SlideDrawer body)
+   -------------------------------------------------------------------------
+   Module-scoped primitives for ExportToneDialog + ExportPatchDialog
+   bodies. The drawer chrome itself lives in editor-core's
+   overlay-primitives; these classes carry the form + detail-summary
+   composition inside it. Promote to editor-core once a second editor
+   adopts the same export-form pattern (per the Phase 9 promotion
+   gate documented in DESIGN-SYSTEM §"Phase 9 shared page primitives").
+   ========================================================================= */
+
+.ac-export-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-4);
+}
+
+.ac-export-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-2);
+}
+
+.ac-export-form-error {
+  margin: 0;
+  font-family: var(--ac-font-body);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-danger);
+}
+
+/* Read-only detail summary rendered as a dl. Each row is a single
+   dt+dd pair, aligned with the eyebrow rhythm above. The list itself
+   sits inside a subdued panel to telegraph "this is context, not an
+   input" — matches the .ac-preview-pane convention. */
+.ac-export-summary {
+  margin: 0;
+  padding: var(--ac-space-3) var(--ac-space-4);
+  border: 1px solid color-mix(in srgb, var(--ac-color-accent) 22%, transparent);
+  border-radius: var(--ac-radius-sm, 4px);
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 60%, transparent);
+  display: grid;
+  gap: var(--ac-space-2);
+}
+
+.ac-export-summary-row {
+  display: grid;
+  grid-template-columns: minmax(7rem, max-content) 1fr;
+  align-items: baseline;
+  gap: var(--ac-space-3);
+  margin: 0;
+}
+
+.ac-export-summary-row > dt {
+  margin: 0;
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  letter-spacing: var(--ac-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--ac-color-text-muted);
+}
+
+.ac-export-summary-row > dd {
+  margin: 0;
+  font-family: var(--ac-font-body);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text);
+}
+
+.ac-export-summary-row > dd.ac-capitalize {
+  text-transform: capitalize;
+}
+
+/* Batch-export item list — used by BatchExportDrawer to enumerate the
+   N items the operator is about to ship. Same subdued panel as
+   .ac-export-summary so the list reads as context (not editable). */
+.ac-batch-export-list {
+  margin: 0;
+  padding: var(--ac-space-3) var(--ac-space-4);
+  list-style: none;
+  border: 1px solid color-mix(in srgb, var(--ac-color-accent) 22%, transparent);
+  border-radius: var(--ac-radius-sm, 4px);
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 60%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-1);
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.ac-batch-export-row {
+  display: grid;
+  grid-template-columns: minmax(3.5rem, max-content) 1fr;
+  align-items: baseline;
+  gap: var(--ac-space-3);
+  padding: var(--ac-space-1) 0;
+}
+
+.ac-batch-export-slot {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.ac-batch-export-name {
+  font-family: var(--ac-font-body);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

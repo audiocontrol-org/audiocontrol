@@ -125,9 +125,9 @@ export function TonePitchLfoPanel({ tone, onUpdate, onCommit }: Props): JSX.Elem
         />
       </div>
 
-      <div className="tones__compact-grid">
+      <div className="ac-compact-grid">
         <Tooltip content={TONE_TOOLTIPS.pitchFollow}>
-          <div className="tones__compact-field">
+          <div className="ac-compact-field">
             <span className="ac-field-label">Pitch Follow</span>
             <AcToggle
               value={tone.pitchFollow ? 'on' : 'off'}
@@ -139,7 +139,7 @@ export function TonePitchLfoPanel({ tone, onUpdate, onCommit }: Props): JSX.Elem
           </div>
         </Tooltip>
         <Tooltip content={TONE_TOOLTIPS.benderEnabled}>
-          <div className="tones__compact-field">
+          <div className="ac-compact-field">
             <span className="ac-field-label">Pitch Bender</span>
             <AcToggle
               value={tone.benderEnabled ? 'on' : 'off'}
@@ -151,7 +151,7 @@ export function TonePitchLfoPanel({ tone, onUpdate, onCommit }: Props): JSX.Elem
           </div>
         </Tooltip>
         <Tooltip content={TONE_TOOLTIPS.aftertouchEnabled}>
-          <div className="tones__compact-field">
+          <div className="ac-compact-field">
             <span className="ac-field-label">Aftertouch</span>
             <AcToggle
               value={tone.aftertouchEnabled ? 'on' : 'off'}
@@ -179,9 +179,9 @@ export function TonePitchLfoPanel({ tone, onUpdate, onCommit }: Props): JSX.Elem
         <ParamSliderRow label="Offset" value={lfo.offset} onChange={handleOffsetChange} tooltip={TONE_TOOLTIPS.lfoOffset} />
       </div>
 
-      <div className="tones__compact-grid">
+      <div className="ac-compact-grid">
         <Tooltip content={TONE_TOOLTIPS.lfoSync}>
-          <div className="tones__compact-field">
+          <div className="ac-compact-field">
             <span className="ac-field-label">Key Sync</span>
             <AcToggle
               value={lfo.sync ? 'on' : 'off'}
@@ -193,7 +193,7 @@ export function TonePitchLfoPanel({ tone, onUpdate, onCommit }: Props): JSX.Elem
           </div>
         </Tooltip>
         <Tooltip content={TONE_TOOLTIPS.lfoMode}>
-          <div className="tones__compact-field">
+          <div className="ac-compact-field">
             <span className="ac-field-label">Mode</span>
             <AcToggle
               value={lfo.mode}
@@ -205,7 +205,7 @@ export function TonePitchLfoPanel({ tone, onUpdate, onCommit }: Props): JSX.Elem
           </div>
         </Tooltip>
         <Tooltip content={TONE_TOOLTIPS.lfoPeakHold}>
-          <div className="tones__compact-field">
+          <div className="ac-compact-field">
             <span className="ac-field-label">Peak Hold</span>
             <AcToggle
               value={lfo.polarity ? 'on' : 'off'}

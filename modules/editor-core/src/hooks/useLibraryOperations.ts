@@ -174,6 +174,17 @@ export interface LibraryOperationsStrategy {
   deleteItem(categoryId: string, node: TreeNode): Promise<StrategyResult>;
   /** Rename a device-specific item. Return handled:true if handled, handled:false to use common-area rename. */
   renameItem(categoryId: string, node: TreeNode, newName: string): Promise<StrategyResult>;
+  /**
+   * Move a device-specific item to a new target path within the same
+   * category. Return handled:true if handled, handled:false to fall back
+   * to the common-area `moveItem` (which only knows the samples root).
+   * Optional — strategies that don't implement it get the common-area
+   * fallback, but device-specific categories whose files don't live in
+   * `library/common/samples/` MUST provide this to avoid "file or
+   * directory not found" errors when the common-area fallback resolves
+   * against the wrong root.
+   */
+  moveItem?(categoryId: string, node: TreeNode, targetPath: string[]): Promise<StrategyResult>;
   /** Handle a context menu action. Required -- every editor must route actions. */
   handleContextMenuAction(categoryId: string, actionId: string, node: TreeNode): StrategyResult;
 }
@@ -325,6 +336,18 @@ export function useLibraryOperations(
       const name = getNodeName(node);
       const sourcePath = getNodePath(node);
       try {
+        // Strategy first: device-specific categories (Roland's
+        // library/<device>/<category>/, Akai's program tree) own the
+        // path layout and must handle the move themselves. The
+        // common-area `moveItem` only knows `library/common/samples/`
+        // and will throw "not found" against any other root.
+        if (strategy?.moveItem) {
+          const result = await strategy.moveItem(categoryId, node, targetPath);
+          if (result.handled) {
+            onRefresh();
+            return;
+          }
+        }
         if (PROGRAM_CATEGORIES.has(categoryId)) {
           const srcParent = await getCategoryDir(libraryRoot, categoryId, sourcePath);
           const destParent = await getCategoryDir(libraryRoot, categoryId, targetPath);
@@ -337,7 +360,7 @@ export function useLibraryOperations(
         onError(`Failed to move "${name}": ${err instanceof Error ? err.message : String(err)}`);
       }
     },
-    [libraryRoot, onRefresh, onError],
+    [libraryRoot, strategy, onRefresh, onError],
   );
 
   const onRename = useCallback(
@@ -486,6 +509,15 @@ export function useLibraryOperations(
       const errors: string[] = [];
       for (const node of nodes) {
         try {
+          // Same strategy-first routing as the single-item `onMove`.
+          // Without this, device-specific categories whose files don't
+          // live in `library/common/samples/` fall through to the
+          // common-area `moveItem` per-item and emit one
+          // "file or directory not found" per node.
+          if (strategy?.moveItem) {
+            const result = await strategy.moveItem(categoryId, node, targetPath);
+            if (result.handled) continue;
+          }
           const name = getNodeName(node);
           const sourcePath = getNodePath(node);
           if (PROGRAM_CATEGORIES.has(categoryId)) {
@@ -504,7 +536,7 @@ export function useLibraryOperations(
         onError(`Failed to move ${errors.length} item(s):\n${errors.join('\n')}`);
       }
     },
-    [libraryRoot, onRefresh, onError],
+    [libraryRoot, strategy, onRefresh, onError],
   );
 
   return {

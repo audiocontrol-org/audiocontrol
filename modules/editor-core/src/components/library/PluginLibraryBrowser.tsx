@@ -359,8 +359,17 @@ export function PluginLibraryBrowser({
           setMultiSelectedIds(new Set([...multiSelectedIds, ...rangeIds]));
         }
       } else {
-        // Toggle select (Ctrl/Cmd)
+        // Toggle select (Ctrl/Cmd) — first Ctrl-click after a plain
+        // click needs to seed the prior single-selection (the anchor)
+        // into the set, otherwise TreeView's `isSelected` check
+        // (`selectedIds.has(id)`) ignores the anchor's `selectedId`
+        // entirely and the anchor row reads as unselected. The user
+        // sees their original click "vanish" the moment they
+        // Ctrl-click a sibling.
         const next = new Set(multiSelectedIds);
+        if (next.size === 0 && lastSelectedIdRef.current && lastSelectedIdRef.current !== node.id) {
+          next.add(lastSelectedIdRef.current);
+        }
         if (next.has(node.id)) {
           next.delete(node.id);
         } else {
@@ -638,15 +647,30 @@ export function PluginLibraryBrowser({
         setDropIsMove(true);
         return;
       }
-      // External drops: OS files or custom MIME types (e.g., device memory items)
-      if (onExternalDrop && e.dataTransfer.types.length > 0) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'copy';
-        setDropTargetCategory(categoryId);
-        setDropIsMove(false);
+      // External drops: only highlight if the category declares it
+      // accepts at least one of the MIME types in this drag. Without
+      // this check both sections highlight for any device-item drag
+      // even though only the matching section actually accepts the
+      // drop — operator sees two glowing targets and only one works.
+      // Categories that don't declare `acceptedDropMimeTypes` fall
+      // back to the legacy "accept anything" behavior so non-Roland
+      // editors (akai-s3k, etc.) aren't broken by this guard.
+      if (!onExternalDrop) return;
+      const category = plugin.categories.find((c) => c.categoryId === categoryId);
+      const accepted = category?.acceptedDropMimeTypes;
+      if (accepted && accepted.length > 0) {
+        const types = e.dataTransfer.types;
+        const matched = accepted.some((mime) => types.includes(mime));
+        if (!matched) return;
+      } else if (e.dataTransfer.types.length === 0) {
+        return;
       }
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      setDropTargetCategory(categoryId);
+      setDropIsMove(false);
     },
-    [onExternalDrop],
+    [onExternalDrop, plugin.categories],
   );
 
   const handleSectionDragLeave = useCallback(
@@ -685,7 +709,13 @@ export function PluginLibraryBrowser({
               name: payload.nodeName,
               type: payload.nodeType,
               children: [],
-              meta: { path: payload.sourcePath },
+              // Preserve the original node's meta (carries `fileName` /
+              // `directoryName` for `getNodeName`) so move handlers
+              // resolve the on-disk slug rather than the display name.
+              // Without the spread, any item whose YAML `name` differs
+              // from its directory slug fails with "file or directory
+              // could not be found." Re-discovered by D-LIB-22.
+              meta: { ...payload.meta, path: payload.sourcePath },
             }, []);
           }
         }
@@ -815,10 +845,21 @@ export function PluginLibraryBrowser({
           </div>
         )}
 
-        {!loading && libraryHandle && (
-          <div className="ac-plugin-library-browser-sections">
-            {headerSections}
-            {plugin.categories.map((category) => (
+        {!loading && libraryHandle && (() => {
+          // Scope-grouping: render two visually-distinct bands so the
+          // operator immediately sees which categories travel with
+          // the connected device (`library/<device>/<category>/`) vs
+          // which survive an editor switch (`library/common/<category>/`).
+          // Categories opt in via `scope: 'device' | 'common'`; default
+          // is 'device' so existing factories without the field stay
+          // under the device band.
+          const deviceCategories = plugin.categories.filter(
+            (c) => (c.scope ?? 'device') === 'device',
+          );
+          const commonCategories = plugin.categories.filter(
+            (c) => c.scope === 'common',
+          );
+          const renderCategorySection = (category: typeof plugin.categories[number]) => (
               <TreeSection
                 key={category.categoryId}
                 data-testid={`library-${category.categoryId}-section`}
@@ -888,13 +929,26 @@ export function PluginLibraryBrowser({
                       e.dataTransfer.dropEffect = 'move';
                       return true;
                     }
-                    // Accept external drops (disk items, OS files)
-                    if (onExternalDrop && e.dataTransfer.types.length > 0) {
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = 'copy';
-                      return true;
+                    // External drops (disk items, device-memory items):
+                    // only accept the hover if the category declares it
+                    // can take this MIME. Without the check, hovering a
+                    // tone drag over a folder INSIDE the patches section
+                    // still glows the folder even though the actual drop
+                    // gets rejected by `handleExternalDrop`'s category
+                    // gate — operator sees a valid-looking drop target
+                    // that silently does nothing. Same shape as the
+                    // section-level gate in `handleSectionDragOver`.
+                    if (!onExternalDrop) return false;
+                    const accepted = category.acceptedDropMimeTypes;
+                    if (accepted && accepted.length > 0) {
+                      const matched = accepted.some((mime) => e.dataTransfer.types.includes(mime));
+                      if (!matched) return false;
+                    } else if (e.dataTransfer.types.length === 0) {
+                      return false;
                     }
-                    return false;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'copy';
+                    return true;
                   },
                   onTreeDrop: (node, e) => {
                     setDropTargetCategory(null);
@@ -922,7 +976,9 @@ export function PluginLibraryBrowser({
                             name: payload.nodeName,
                             type: payload.nodeType,
                             children: [],
-                            meta: { path: payload.sourcePath },
+                            // See the root-target equivalent above for
+                            // why payload.meta must be spread here.
+                            meta: { ...payload.meta, path: payload.sourcePath },
                           }, targetPath);
                         }
                       }
@@ -949,9 +1005,29 @@ export function PluginLibraryBrowser({
                   createCategoryCallbacks(category.categoryId),
                 )}
               />
-            ))}
-          </div>
-        )}
+          );
+          return (
+            <div className="ac-plugin-library-browser-sections">
+              {(deviceCategories.length > 0 || headerSections) && (
+                <div className="ac-plib-group-head" data-scope="device">
+                  <span className="ac-plib-group-eyebrow">
+                    Device <span className="ac-plib-group-eyebrow-sep">·</span> {plugin.deviceName}
+                  </span>
+                  <span className="ac-plib-group-rule" aria-hidden="true" />
+                </div>
+              )}
+              {headerSections}
+              {deviceCategories.map(renderCategorySection)}
+              {commonCategories.length > 0 && (
+                <div className="ac-plib-group-head" data-scope="common">
+                  <span className="ac-plib-group-eyebrow">Common Library</span>
+                  <span className="ac-plib-group-rule" aria-hidden="true" />
+                </div>
+              )}
+              {commonCategories.map(renderCategorySection)}
+            </div>
+          );
+        })()}
 
         {operationProgress && (
           <div className="ac-plugin-library-browser-progress">

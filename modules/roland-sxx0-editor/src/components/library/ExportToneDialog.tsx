@@ -1,34 +1,45 @@
 /**
- * Export Tone to Library Dialog
+ * Export Tone to Library Dialog (v3)
  *
- * Dialog for exporting a tone (parameters + wave data) to the sampler library.
- * Shows export progress and allows customizing the tone name.
+ * Right-edge SlideDrawer per the v3 design language: the library
+ * tree and device memory stay visible while the drawer is open so
+ * the operator keeps source-slot + destination context in view.
+ *
+ * Two body modes drawn into a single SlideDrawer (so the drawer
+ * panel never remounts mid-operation):
+ *   - Idle:  tone-name + tone-detail readout + Export action
+ *   - Run/Done/Fail: shared step-log (`ac-step-*`) growing in
+ *     place as `OperationProgress` ticks
+ *
+ * Replaces the legacy centered Radix.Dialog. The empty `catch {}`
+ * silent-failure shape from BUG-001 disappears here: any thrown
+ * error from `onExport` is captured into `localError`, coalesced
+ * with `operationError`, and feeds the step log's failed-state row.
  */
 
-import { useState, useCallback, useEffect } from 'react';
-import * as Dialog from '@radix-ui/react-dialog';
-import type { S330Tone } from '@audiocontrol/sampler-devices/s330';
-import type { OperationState } from '@/types/import-operation';
-import { isOperationComplete } from '@/types/import-operation';
-import { cn } from '@/lib/utils';
+import { useState, useCallback, useEffect, type ReactNode } from 'react';
 import {
-  OperationProgressBar,
-  OperationErrorBanner,
-  OperationSuccessScreen,
-  OperationButtonContent,
-  DialogCloseButton,
-} from '@/components/ui/ImportStatus';
+  SlideDrawer,
+  StepRow,
+  type ProgressStep,
+} from '@audiocontrol/editor-core';
+import { useDeviceConfig } from '@/context/DeviceConfigContext';
+import type { S330Tone } from '@audiocontrol/sampler-devices/s330';
+import {
+  type OperationState,
+  isOperationComplete,
+} from '@/types/import-operation';
+import { useStepHistory } from '@/hooks/useStepHistory';
 
 export interface ExportToneDialogProps extends OperationState {
-  /** Whether the dialog is open */
   open: boolean;
-  /** Callback when dialog should close */
   onOpenChange: (open: boolean) => void;
-  /** The tone to export (null if not loaded) */
   tone: S330Tone | null;
-  /** Tone index (for display) */
   toneIndex: number;
-  /** Callback to perform the export - receives tone name and index */
+  /** Library subfolder the export will land in (e.g. ['DRUMS']). When
+   *  non-empty, the eyebrow row surfaces it so the operator sees the
+   *  destination before clicking Export. Defaults to []. */
+  targetPath?: string[];
   onExport: (toneName: string, toneIndex: number) => Promise<void>;
 }
 
@@ -37,154 +48,324 @@ export function ExportToneDialog({
   onOpenChange,
   tone,
   toneIndex,
+  targetPath,
   onExport,
   isOperating,
   progress,
   error: operationError,
-}: ExportToneDialogProps): JSX.Element {
-  const [toneName, setToneName] = useState(tone?.name || `Tone_${toneIndex + 1}`);
-  const [localError, setLocalError] = useState<string | null>(null);
+}: ExportToneDialogProps): JSX.Element | null {
+  const { memoryLayout } = useDeviceConfig();
+  const slotLabel = memoryLayout.formatToneSlot(toneIndex);
 
-  // Reset tone name when dialog opens or tone changes
+  const [toneName, setToneName] = useState(tone?.name || `Tone_${slotLabel}`);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [hasStarted, setHasStarted] = useState(false);
+
+  // Reset on (re)open.
   useEffect(() => {
     if (open) {
-      setToneName(tone?.name || `Tone_${toneIndex + 1}`);
+      setToneName(tone?.name || `Tone_${slotLabel}`);
       setLocalError(null);
+      setHasStarted(false);
     }
-  }, [open, tone?.name, toneIndex]);
+  }, [open, tone?.name, slotLabel]);
+
+  const isComplete = isOperationComplete({
+    isOperating,
+    progress,
+    error: operationError,
+  });
+  const effectiveError = localError ?? operationError;
+  const steps = useStepHistory({ progress, isComplete, error: effectiveError });
 
   const handleExport = useCallback(async () => {
-    if (!toneName.trim()) {
+    const trimmed = toneName.trim();
+    if (!trimmed) {
       setLocalError('Tone name is required');
       return;
     }
-
     setLocalError(null);
+    setHasStarted(true);
     try {
-      await onExport(toneName.trim(), toneIndex);
+      await onExport(trimmed, toneIndex);
     } catch (err) {
-      // Error should be handled by parent via operationError prop
+      // Coalesces with `operationError` via `effectiveError`. Without
+      // this, the synchronous precondition throws in the parent hook
+      // (e.g. `!libraryHandle`) would vanish — that is BUG-001.
+      setLocalError(err instanceof Error ? err.message : 'Export failed');
     }
   }, [toneName, toneIndex, onExport]);
 
   const handleClose = useCallback(() => {
-    if (!isOperating) {
-      setLocalError(null);
-      onOpenChange(false);
-    }
+    if (isOperating) return;
+    setLocalError(null);
+    onOpenChange(false);
   }, [isOperating, onOpenChange]);
 
-  const error = localError || operationError;
-  const isComplete = isOperationComplete({ isOperating, progress, error: operationError });
+  if (!open) return null;
+
+  const footer = renderFooter({
+    hasStarted,
+    isComplete,
+    hasError: !!effectiveError,
+    isOperating,
+    canExport: !!toneName.trim() && !!tone,
+    onCancel: handleClose,
+    onExport: handleExport,
+    onClose: handleClose,
+  });
 
   return (
-    <Dialog.Root open={open} onOpenChange={handleClose}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-        <Dialog.Content data-testid="export-dialog" className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-s330-panel border border-s330-accent rounded-lg shadow-xl w-full max-w-md p-6">
-          <Dialog.Title className="text-lg font-bold text-s330-text mb-4">
-            Export Tone to Library
-          </Dialog.Title>
+    <SlideDrawer
+      open={open}
+      title="Export tone to library"
+      onClose={handleClose}
+      footer={footer}
+    >
+      {hasStarted ? (
+        <StepLogBody
+          steps={steps}
+          isComplete={isComplete}
+          hasError={!!effectiveError}
+          successMessage={
+            <>
+              Tone exported successfully — saved as{' '}
+              <span style={{ fontFamily: 'var(--ac-font-mono)' }}>
+                {toneName.trim()}.yaml
+              </span>
+            </>
+          }
+        />
+      ) : (
+        <ToneFormBody
+          tone={tone}
+          slotLabel={slotLabel}
+          toneName={toneName}
+          setToneName={setToneName}
+          targetPath={targetPath ?? []}
+          error={localError}
+        />
+      )}
+    </SlideDrawer>
+  );
+}
 
-          {isComplete ? (
-            <OperationSuccessScreen
-              message="Tone exported successfully!"
-              detail={
-                <p>
-                  Saved as <span className="font-mono text-s330-text">{toneName}.yaml</span>
-                </p>
-              }
-              onDone={handleClose}
-            />
-          ) : (
-            <div className="space-y-4">
-              <Dialog.Description className="text-sm text-s330-muted">
-                Export tone T{toneIndex + 1} parameters and wave data to your sampler library.
-              </Dialog.Description>
+// ---------------------------------------------------------------------------
+// Body — idle form
+// ---------------------------------------------------------------------------
 
-              {/* Tone Name Input */}
-              <div>
-                <label htmlFor="toneName" className="ac-field-label mb-1">
-                  Tone Name
-                </label>
-                <input
-                  id="toneName"
-                  type="text"
-                  value={toneName}
-                  onChange={(e) => setToneName(e.target.value)}
-                  disabled={isOperating}
-                  maxLength={32}
-                  className={cn('ac-input', error && 'ac-input--error')}
-                  placeholder="Enter tone name"
-                />
-              </div>
+interface ToneFormBodyProps {
+  tone: S330Tone | null;
+  slotLabel: string;
+  toneName: string;
+  setToneName: (name: string) => void;
+  targetPath: string[];
+  error: string | null;
+}
 
-              {/* Tone Info */}
-              {tone && (
-                <div className="bg-s330-bg rounded p-3 text-sm">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <span className="text-s330-muted">Sample Rate:</span>
-                      <span className="ml-2 text-s330-text">{tone.sampleRate}</span>
-                    </div>
-                    <div>
-                      <span className="text-s330-muted">Loop Mode:</span>
-                      <span className="ml-2 text-s330-text capitalize">{tone.loopMode}</span>
-                    </div>
-                    <div>
-                      <span className="text-s330-muted">Original Key:</span>
-                      <span className="ml-2 text-s330-text">{tone.originalKey}</span>
-                    </div>
-                    <div>
-                      <span className="text-s330-muted">TVF:</span>
-                      <span className="ml-2 text-s330-text">{tone.tvf.enabled ? 'ON' : 'OFF'}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
+function ToneFormBody({
+  tone,
+  slotLabel,
+  toneName,
+  setToneName,
+  targetPath,
+  error,
+}: ToneFormBodyProps): JSX.Element {
+  return (
+    <div className="ac-export-form">
+      <div className="ac-detail-eyebrow-row" data-testid="export-tone-destination">
+        <span className="ac-detail-eyebrow-accent">TONE</span>
+        <span className="ac-detail-eyebrow-sep">·</span>
+        <span>{slotLabel}</span>
+        <span className="ac-detail-eyebrow-sep">·</span>
+        <span>LIBRARY</span>
+        <span className="ac-detail-eyebrow-sep">·</span>
+        <span>S330</span>
+        {targetPath.length > 0 && (
+          // Surface the drop-target subfolder so the operator confirms
+          // the export will land where they intended. Drops on a folder
+          // row populate this from `handleExternalDrop`; drops on the
+          // category root leave it empty and we hide the segment.
+          <>
+            <span className="ac-detail-eyebrow-sep">·</span>
+            <span data-testid="export-tone-target-path">{targetPath.join(' / ')}</span>
+          </>
+        )}
+      </div>
+      <div className="ac-page-title-rule" aria-hidden="true" />
 
-              {/* Progress Bar */}
-              {isOperating && progress && (
-                <OperationProgressBar progress={progress} />
-              )}
+      <div className="ac-export-form-field">
+        <label htmlFor="export-tone-name" className="ac-field-label">
+          Tone name
+        </label>
+        <input
+          id="export-tone-name"
+          type="text"
+          value={toneName}
+          onChange={(e) => setToneName(e.target.value)}
+          maxLength={32}
+          autoFocus
+          className={`ac-input ${error ? 'ac-input--error' : ''}`}
+          placeholder="Enter tone name"
+          data-testid="export-tone-name-input"
+        />
+        {error && (
+          <p className="ac-export-form-error" role="alert">
+            {error}
+          </p>
+        )}
+      </div>
 
-              {/* Error Display */}
-              {error && <OperationErrorBanner error={error} />}
+      {tone && (
+        <dl className="ac-export-summary">
+          <ExportSummaryRow label="Sample rate" value={tone.sampleRate} />
+          <ExportSummaryRow
+            label="Loop mode"
+            value={tone.loopMode}
+            valueStyle="capitalize"
+          />
+          <ExportSummaryRow label="Original key" value={String(tone.originalKey)} />
+          <ExportSummaryRow label="TVF" value={tone.tvf.enabled ? 'ON' : 'OFF'} />
+        </dl>
+      )}
+    </div>
+  );
+}
 
-              {/* Actions */}
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={handleClose}
-                  disabled={isOperating}
-                  data-testid="export-cancel"
-                  className={cn(
-                    'ac-btn ac-btn-ghost',
-                    isOperating && 'opacity-50 cursor-not-allowed'
-                  )}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleExport}
-                  disabled={isOperating || !toneName.trim() || !tone}
-                  data-testid="export-confirm"
-                  className={cn(
-                    'ac-btn ac-btn-primary',
-                    (isOperating || !toneName.trim() || !tone) && 'opacity-50 cursor-not-allowed'
-                  )}
-                >
-                  <OperationButtonContent isOperating={isOperating} label="Export" operatingLabel="Exporting..." />
-                </button>
-              </div>
-            </div>
-          )}
+// ---------------------------------------------------------------------------
+// Body — running / complete / failed step log
+// ---------------------------------------------------------------------------
 
-          {/* Close button */}
-          <Dialog.Close asChild>
-            <DialogCloseButton disabled={isOperating} />
-          </Dialog.Close>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+interface StepLogBodyProps {
+  steps: ProgressStep[];
+  isComplete: boolean;
+  hasError: boolean;
+  successMessage: ReactNode;
+}
+
+export function StepLogBody({
+  steps,
+  isComplete,
+  hasError,
+  successMessage,
+}: StepLogBodyProps): JSX.Element {
+  return (
+    <div className="ac-stepped-progress">
+      {steps.map((step) => (
+        <StepRow key={step.id} step={step} />
+      ))}
+      {isComplete && !hasError && (
+        <div className="ac-step-summary">{successMessage}</div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Shared bits
+// ---------------------------------------------------------------------------
+
+interface ExportSummaryRowProps {
+  label: string;
+  value: string;
+  valueStyle?: 'capitalize';
+}
+
+export function ExportSummaryRow({
+  label,
+  value,
+  valueStyle,
+}: ExportSummaryRowProps): JSX.Element {
+  return (
+    <div className="ac-export-summary-row">
+      <dt>{label}</dt>
+      <dd className={valueStyle === 'capitalize' ? 'ac-capitalize' : undefined}>
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+interface FooterParams {
+  hasStarted: boolean;
+  isComplete: boolean;
+  hasError: boolean;
+  isOperating: boolean;
+  canExport: boolean;
+  onCancel: () => void;
+  onExport: () => void;
+  onClose: () => void;
+}
+
+export function renderFooter({
+  hasStarted,
+  isComplete,
+  hasError,
+  isOperating,
+  canExport,
+  onCancel,
+  onExport,
+  onClose,
+}: FooterParams): JSX.Element {
+  if (!hasStarted) {
+    return (
+      <>
+        <button
+          type="button"
+          className="ac-btn ac-btn-sm"
+          onClick={onCancel}
+          data-testid="export-cancel"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          className="ac-btn ac-btn-sm ac-btn-primary"
+          onClick={onExport}
+          disabled={!canExport}
+          data-testid="export-confirm"
+        >
+          Export
+        </button>
+      </>
+    );
+  }
+  if (isComplete && !hasError) {
+    return (
+      <button
+        type="button"
+        className="ac-btn ac-btn-sm ac-btn-primary"
+        onClick={onClose}
+        data-testid="export-cancel"
+      >
+        Done
+      </button>
+    );
+  }
+  if (hasError) {
+    return (
+      <button
+        type="button"
+        className="ac-btn ac-btn-sm"
+        onClick={onClose}
+        data-testid="export-cancel"
+      >
+        Close
+      </button>
+    );
+  }
+  // Running: cancel is unavailable today (the export hook has no abort
+  // signal). Show the button as disabled so the affordance is visible
+  // and the test selector remains stable.
+  return (
+    <button
+      type="button"
+      className="ac-btn ac-btn-sm"
+      disabled
+      data-testid="export-cancel"
+      title={isOperating ? 'Export in progress' : ''}
+    >
+      Cancel
+    </button>
   );
 }

@@ -96,4 +96,14 @@ export interface PreviewPanelCustomState {
   onOpenInLoopEditor?: (name: string, path?: string[]) => void;
   onOpenInChopper?: (name: string, path?: string[]) => void;
   onOpenInSampleEditor?: (name: string, path?: string[]) => void;
+
+  // Device-memory action callbacks. Sibling actions to the library
+  // preview's IMPORT-TO-DEVICE / OPEN-IN-EDITOR row — they let the
+  // operator export a device-resident tone/patch to the library OR
+  // jump straight to the parameter editor for that slot, both
+  // triggered from the right-column preview pane.
+  onExportDeviceTone?: (toneIndex: number) => void;
+  onExportDevicePatch?: (patchIndex: number) => void;
+  onEditDeviceTone?: (toneIndex: number) => void;
+  onEditDevicePatch?: (patchIndex: number) => void;
 }
