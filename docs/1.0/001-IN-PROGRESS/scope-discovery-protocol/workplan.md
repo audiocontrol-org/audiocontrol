@@ -90,8 +90,8 @@ Four sequential phases. Each phase produces a load-bearing artifact that gates t
 
 **Tasks:**
 
-- [ ] **T2.1** — Commit `tools/scope-discovery/schema/scope-manifest.schema.json` covering `kind: ui | code | hybrid`.
-  - **Proven complete when:** the schema file exists; a hand-authored sample manifest for each kind validates via `ajv validate`; required fields include at minimum `kind`, `routes` (for `ui`), `modules` (for `code`), `scenarios`, `reference_docs`, and `discovery_themes`; file under 300 lines.
+- [x] **T2.1** — Commit `tools/scope-discovery/schema/scope-manifest.schema.json` covering `kind: ui | code | hybrid`.
+  - **Proven complete when:** the schema file exists; a hand-authored sample manifest for each kind validates via `ajv validate`; required fields include at minimum `kind`, `routes` (for `ui`), `modules` (for `code`), `scenarios`, `reference_docs`, and `discovery_themes`; file under 300 lines. *Met by commits `69f2b212` (initial schema), `f69a3140` (code-review fixes including removal of all `as Type` casts, refactor of parallel `exclude_globs/exclude_reasons` arrays into `excludes: [{glob, reason}]` objects, and addition of referential-integrity check for `route.scenarios[]` → top-level `scenarios[].id`), and `4c70362f` (stale `exclude_globs` prose nit). Three positive examples + one negative-test fixture all validate with `EXIT=0`.*
 - [ ] **T2.2** — Choose and integrate the clone-detection engine.
   - **Proven complete when:** `tools/scope-discovery/clone-detector.ts` exists; running it against a fixture directory containing two known-clone TSX components produces a `clones.yaml` listing the clone group; running against a fixture containing no clones produces an empty list; the choice of engine (`jscpd` vs. AST custom) is documented inline with rationale; file under 300 lines.
 - [ ] **T2.3** — Wire the clone detector into `.githooks/pre-commit`.
