@@ -140,7 +140,64 @@ function parseResponse(raw: string): Record<string, unknown> {
     text = "{" + text;
   }
 
-  return JSON.parse(text);
+  // Try direct parse first
+  try {
+    return JSON.parse(text);
+  } catch {
+    // continue to recovery
+  }
+
+  // Recovery strategy 1: fix common LLM JSON issues
+  let fixed = text
+    .replace(/,\s*([}\]])/g, "$1")
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x1f]/g, (ch) =>
+      ch === "\n" ? "\\n" : ch === "\t" ? "\\t" : ch === "\r" ? "\\r" : ""
+    );
+
+  // Close unclosed braces/brackets
+  let braces = 0;
+  let brackets = 0;
+  let inString = false;
+  for (let i = 0; i < fixed.length; i++) {
+    const ch = fixed[i];
+    if (ch === '"' && (i === 0 || fixed[i - 1] !== "\\")) inString = !inString;
+    if (inString) continue;
+    if (ch === "{") braces++;
+    else if (ch === "}") braces--;
+    else if (ch === "[") brackets++;
+    else if (ch === "]") brackets--;
+  }
+  for (let i = 0; i < brackets; i++) fixed += "]";
+  for (let i = 0; i < braces; i++) fixed += "}";
+
+  try {
+    return JSON.parse(fixed);
+  } catch {
+    // continue to next strategy
+  }
+
+  // Recovery strategy 2: extract first balanced JSON object from the text
+  // Handles cases where model returns valid JSON followed by extra content
+  const start = text.indexOf("{");
+  if (start >= 0) {
+    let depth = 0;
+    let inStr = false;
+    for (let i = start; i < text.length; i++) {
+      const ch = text[i];
+      if (ch === '"' && (i === 0 || text[i - 1] !== "\\")) inStr = !inStr;
+      if (inStr) continue;
+      if (ch === "{") depth++;
+      else if (ch === "}") {
+        depth--;
+        if (depth === 0) {
+          return JSON.parse(text.slice(start, i + 1));
+        }
+      }
+    }
+  }
+
+  throw new Error(`Could not parse LLM response: ${text.slice(0, 200)}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -285,21 +342,21 @@ async function main(): Promise<void> {
         await new Promise((r) => setTimeout(r, 60_000));
         tokensThisMinute = 0;
         minuteStart = Date.now();
-        // Retry once
-        try {
-          const result = await callHaiku(plaintext);
-          tokensThisMinute += result.inputTokens;
-          const analysis = parseResponse(result.response);
-          const output = { session: sessionKey, model: MODEL, input_tokens: result.inputTokens, output_tokens: result.outputTokens, analysis };
-          const outPath = join(analysisDir, `${sessionKey}.json.age`);
-          encryptAndWrite(JSON.stringify(output, null, 2), outPath, publicKey);
-          const corrections = (analysis.correction_count as number) ?? 0;
-          console.log(`    ${analysis.arc_type}, ${corrections} corrections (retry)`);
-        } catch (retryErr) {
-          console.error(`    Retry failed: ${retryErr}`);
-        }
       } else {
-        console.error(`    Error: ${err}`);
+        console.log(`    Error: ${msg.slice(0, 120)} — retrying...`);
+      }
+      // Retry once for any error (rate limit, parse failure, network)
+      try {
+        const result = await callHaiku(plaintext);
+        tokensThisMinute += result.inputTokens;
+        const analysis = parseResponse(result.response);
+        const output = { session: sessionKey, model: MODEL, input_tokens: result.inputTokens, output_tokens: result.outputTokens, analysis };
+        const outPath = join(analysisDir, `${sessionKey}.json.age`);
+        encryptAndWrite(JSON.stringify(output, null, 2), outPath, publicKey);
+        const corrections = (analysis.correction_count as number) ?? 0;
+        console.log(`    ${analysis.arc_type}, ${corrections} corrections (retry)`);
+      } catch (retryErr) {
+        console.error(`    Retry failed: ${retryErr}`);
       }
     }
   }
