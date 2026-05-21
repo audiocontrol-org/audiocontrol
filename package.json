@@ -67,12 +67,15 @@
     "@changesets/cli": "^2.29.7",
     "@typescript-eslint/eslint-plugin": "^6.19.0",
     "@typescript-eslint/parser": "^6.19.0",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
     "easymidi": "^3.1.0",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
     "jscpd": "^4.0.8",
     "prettier": "^3.2.4",
     "tsx": "^4.7.0",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "yaml": "^2.8.0"
   }
 }
