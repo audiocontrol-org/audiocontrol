@@ -17,6 +17,13 @@
 
 set -euo pipefail
 
+# Gates fail-fast in declaration order: CSS first, then TS/TSX clone.
+# A commit touching both will surface CSS failures before the TS check
+# runs; the developer fixes CSS, commits again, then sees any TS clone
+# issues on the second cycle. Acceptable because each gate is fast and
+# the two-cycle case is rare in practice; tighten to collect-and-report
+# both failures together if that pattern starts costing time.
+
 # Only re-run the CSS check when staged files actually touch CSS.
 # Without this, every commit pays the parse cost. The pattern
 # matches the stylesheet directories the checker walks.
