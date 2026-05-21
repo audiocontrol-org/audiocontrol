@@ -92,7 +92,6 @@ export const FORBIDDEN_DEFERRAL_PHRASES: ReadonlyArray<string> = [
   'will fix',
   'will address',
   'address in',
-  'later',
   'eventually',
   'todo',
   'fixme',
@@ -105,22 +104,35 @@ export const FORBIDDEN_DEFERRAL_PHRASES: ReadonlyArray<string> = [
   'defer',
   'deferred',
   'next pass',
-  'follow-up',
-  'follow up',
   'next time',
 ];
 
 /**
  * Patterns that need a real regex (not a substring) — case-insensitive.
- * "until F" / "until v" must require an identifier-tail so "until Friday"
- * is rejected but "until file end" isn't a false positive. We use
- * `\buntil F[A-Z0-9_]` / `\buntil v\d` so they only fire on the
- * version/phase shape `until F5`, `until v0.2`, etc.
+ *
+ * Deferral collocations:
+ *   "until F<digit>" — phase identifier like "until F5", "until F1"; NOT
+ *     "until Friday", "until file end", "until format change" (require
+ *     digit after F).
+ *   "until v<digit>" — version like "until v0.2"; NOT "until view".
+ *   "until phase <digit>" — like "until phase 4"; NOT "until phase end".
+ *     Operator can refine later if the non-digit shape needs catching.
+ *
+ * "later" / "follow up" / "follow-up" are matched as collocations rather
+ * than bare substrings so legitimate reasons like "uses a later-revision
+ * API" or "we follow up with the user" pass; deferral usages like
+ * "fix it later" or "handle in a follow-up" still reject.
  */
 export const FORBIDDEN_DEFERRAL_REGEXES: ReadonlyArray<RegExp> = [
-  /\buntil\s+F[A-Za-z0-9_]/i,
+  /\buntil\s+F\d/i,
   /\buntil\s+v\d/i,
-  /\buntil\s+phase\s+\w/i,
+  /\buntil\s+phase\s+\d/i,
+  // "later" only in collocations that indicate deferral
+  /\b(?:fix|address|handle|do|come\s+back|circle\s+back|revisit|tackle|do\s+it)\s+(?:it\s+)?later\b/i,
+  /\blater\s+(?:pass|version|phase|sprint|milestone|iteration|cycle|round)\b/i,
+  // "follow up" / "follow-up" only when used as a deferral noun
+  /\b(?:as|in)\s+(?:a\s+)?follow[-\s]up\b/i,
+  /\bfollow[-\s]up\s+(?:issue|ticket|task|pr|commit|change)\b/i,
 ];
 
 interface ForbiddenMatch {
@@ -219,18 +231,15 @@ function parseFileLine(token: string, rawText: string): FileLine {
   return { file, line };
 }
 
-function parseIncludedLine(line: string, rawText: string): ReadonlyArray<FileLine> {
-  const body = line.replace(/^\s*Included:\s*/, '').trim();
-  if (body.length === 0) {
-    throw new DispatchRejected('Included: block is empty', [], rawText);
-  }
-  return body.split(',').map((tok) => parseFileLine(tok, rawText));
-}
-
-function collectExcludedBody(text: string, startOffset: number): string {
-  // Excluded may span multiple lines. Take from the Excluded line
-  // forward; stop at a blank line, end of text, or a fresh top-level
-  // label (e.g. `Notes:`) at column 0.
+/**
+ * Walk forward from `startOffset` collecting the labeled block body across
+ * continuation lines. Stop at a blank line, end of text, or a fresh
+ * top-level label (e.g. `Notes:`, `Excluded:`) at column 0. Joined with
+ * single spaces so callers can split on commas as if the block were a
+ * single line. Shared by both Included and Excluded so multi-line bodies
+ * parse identically.
+ */
+function collectBlockBody(text: string, startOffset: number): string {
   const tail = text.slice(startOffset);
   const lines = tail.split(/\r?\n/);
   const out: string[] = [];
@@ -241,10 +250,23 @@ function collectExcludedBody(text: string, startOffset: number): string {
       continue;
     }
     if (line.trim().length === 0) break;
-    if (/^[A-Za-z][A-Za-z0-9_-]*:\s/.test(line)) break;
+    if (/^[A-Za-z][A-Za-z0-9_-]*:(\s|$)/.test(line)) break;
     out.push(line);
   }
   return out.join(' ');
+}
+
+function parseIncludedBlock(
+  text: string,
+  startOffset: number,
+  rawText: string,
+): ReadonlyArray<FileLine> {
+  const joined = collectBlockBody(text, startOffset);
+  const body = joined.replace(/^\s*Included:\s*/, '').trim();
+  if (body.length === 0) {
+    throw new DispatchRejected('Included: block is empty', [], rawText);
+  }
+  return body.split(',').map((tok) => parseFileLine(tok, rawText));
 }
 
 function parseExcludedBlock(
@@ -252,7 +274,7 @@ function parseExcludedBlock(
   startOffset: number,
   rawText: string,
 ): ReadonlyArray<ExcludedEntry> {
-  const joined = collectExcludedBody(text, startOffset);
+  const joined = collectBlockBody(text, startOffset);
   const body = joined.replace(/^\s*Excluded:\s*/, '').trim();
   if (body.length === 0) return [];
   // Entries are separated by commas that are NOT inside a reason. A
@@ -310,14 +332,9 @@ export function parseReturn(text: string): ParsedDispatchReturn {
     searchedStart,
     searchedLineEnd === -1 ? text.length : searchedLineEnd,
   );
-  const includedLineEnd = text.indexOf('\n', includedStart);
-  const includedLine = text.slice(
-    includedStart,
-    includedLineEnd === -1 ? text.length : includedLineEnd,
-  );
 
   const searched = parseSearchedLine(searchedLine, text);
-  const included = parseIncludedLine(includedLine, text);
+  const included = parseIncludedBlock(text, includedStart, text);
   const excluded = parseExcludedBlock(text, excludedStart, text);
 
   return { searched, included, excluded, rawText: text };

@@ -2,44 +2,39 @@
  * tools/scope-discovery/dispatch-wrapper.ts
  *
  * Sub-agent dispatch wrapper for the scope-discovery protocol (T2.4).
+ * Implements PRD Resolved Question 5 + agent-discipline.md: passive
+ * directives ("write a Searched/Included/Excluded block in your return")
+ * get systematically ignored, so the wrapper replaces the directive with
+ * code. The sub-agent's response is parsed for the required grammar and
+ * structurally rejected when the audit was skipped or the exclusion
+ * reasons contain a deferral phrase from
+ * `.claude/rules/agent-discipline.md`.
  *
- * Why this exists — PRD Resolved Question 5 + agent-discipline.md:
- *   Passive directives ("write a Searched/Included/Excluded block in
- *   your return") get systematically ignored in this repo for the
- *   persistent pathologies (deferral language, single-instance fixes
- *   that skip the same-class audit). The dispatch wrapper replaces the
- *   directive with code: the sub-agent's response is parsed for the
- *   required grammar and structurally rejected when the audit was
- *   skipped or the exclusion reasons contain a deferral phrase from
- *   `.claude/rules/agent-discipline.md`.
- *
- *   Required return grammar (verbatim from prd.md §"Resolved Question 5"):
+ * Required return grammar (verbatim from prd.md §"Resolved Question 5"):
  *
  *     Searched: <pattern> — <N matches>
  *     Included: <file:line>, <file:line>, ...
  *     Excluded: <file:line> — <one-line reason that is not a deferral>
  *                [, <file:line> — <reason>, ...]
  *
- * Architecture: Claude Code's Agent tool is a runtime primitive only
- * the orchestrating Claude session can invoke. This module cannot
- * directly call the Agent tool from tsx. Callers pass a `dispatchFn`
- * callback — the orchestrator supplies a real dispatcher; the T2.6
- * adversarial validator passes a synthetic dispatcher returning canned
- * responses.
+ * Architecture: Claude Code's Agent tool is a runtime primitive only the
+ * orchestrating Claude session can invoke. Callers pass a `dispatchFn`
+ * callback — the orchestrator supplies a real dispatcher; T2.6's
+ * adversarial harness passes synthetic responses.
  *
- * The parser + validator + forbidden-phrase list live in the sibling
- * `dispatch-grammar.ts` module so this file stays under the 300-line
- * cap mandated by `~/work/CLAUDE.md`.
+ * Parser + validator + forbidden-phrase list live in
+ * `dispatch-grammar.ts` so this file stays under the 300-line cap.
  *
- * Library + CLI: importable as a library; also runnable as
+ * Library + CLI: importable as a library; runnable as
  *   `tsx tools/scope-discovery/dispatch-wrapper.ts --self-test`
- * to exercise four fixture cases (one happy path + three failure paths)
- * as a smoke test. Comprehensive adversarial coverage lands in T2.6.
+ * for smoke-test fixtures (T2.6 adds adversarial coverage).
  */
 
 import { fileURLToPath } from 'node:url';
 import {
   DispatchRejected,
+  FORBIDDEN_DEFERRAL_PHRASES,
+  FORBIDDEN_DEFERRAL_REGEXES,
   parseReturn,
   validateParsed,
   type ParsedDispatchReturn,
@@ -79,11 +74,21 @@ export interface WrapOptions {
 // Grammar instruction appended to every dispatched prompt
 // ---------------------------------------------------------------------------
 
+/** Render a regex source as a human-readable shape for the prompt. */
+function regexToPromptShape(re: RegExp): string {
+  return re.source.replace(/\\b/g, '').replace(/\\s\+/g, ' ')
+    .replace(/\\s/g, ' ').replace(/\\d/g, '<digit>').replace(/\\w/g, '<word>');
+}
+
+const FORBIDDEN_PHRASES_FOR_PROMPT = FORBIDDEN_DEFERRAL_PHRASES
+  .map((p) => `"${p}"`).join(', ');
+const FORBIDDEN_REGEXES_FOR_PROMPT = FORBIDDEN_DEFERRAL_REGEXES
+  .map((re) => `/${regexToPromptShape(re)}/`).join(', ');
+
 /**
- * The text appended to every dispatched prompt. Names the required
- * grammar verbatim and lists the forbidden deferral phrases so the
- * sub-agent has the same list the wrapper uses. Phrases here MUST stay
- * in sync with FORBIDDEN_DEFERRAL_PHRASES in dispatch-grammar.ts.
+ * Text appended to every dispatched prompt. Phrase + regex lists are
+ * interpolated from FORBIDDEN_DEFERRAL_PHRASES + _REGEXES at module load
+ * so editing those arrays automatically updates what the sub-agent sees.
  */
 export const GRAMMAR_INSTRUCTION = `
 
@@ -98,39 +103,34 @@ Conclude your response with a block in this exact shape:
     Excluded: <file:line> — <one-line reason that is not a deferral>
               [, <file:line> — <reason>, ...]
 
-Field meanings:
-
-  - **Searched:** the grep / search pattern you ran to enumerate every
-    instance of the class of thing you're fixing, followed by the total
-    match count. Example:
-        Searched: ac-list-bank-chevron — 7 matches
-  - **Included:** the file:line pairs your proposed fix actually covers.
-    Comma-separated. Example:
-        Included: src/foo.tsx:42, src/bar.tsx:117, src/baz.tsx:9
-  - **Excluded:** the file:line pairs you intentionally did NOT cover,
-    each with a one-line reason explaining why (not a deferral — see
-    below). Example:
-        Excluded: src/legacy.tsx:88 — different primitive (CodeMirror
-        editor, not a standard input)
+  - **Searched:** the grep/search pattern that enumerates every instance
+    of the class of thing you're fixing + total match count.
+    Example: \`Searched: ac-list-bank-chevron — 7 matches\`
+  - **Included:** file:line pairs your fix covers (comma-separated).
+    Example: \`Included: src/foo.tsx:42, src/bar.tsx:117\`
+  - **Excluded:** file:line pairs you intentionally did NOT cover, each
+    with a one-line non-deferral reason.
+    Example: \`Excluded: src/legacy.tsx:88 — different primitive (CodeMirror)\`
 
 The wrapper rejects your return if:
-  1. Any of the three blocks is missing.
-  2. Searched reports count > 1, Included covers exactly 1 match, and
-     Excluded is empty. (You skipped the same-class audit.)
+  1. Any block is missing.
+  2. Searched count > 1, Included covers exactly 1 match, Excluded empty
+     (skipped same-class audit).
   3. Any Excluded reason contains a deferral phrase.
 
-**FORBIDDEN deferral phrases in Excluded reasons** (case-insensitive):
-"for now", "just for now", "we'll fix", "we'll get", "we'll come back",
-"will fix", "will address", "address in", "later", "eventually", "TODO",
-"FIXME", "HACK", "XXX", "temporary", "stub", "placeholder", "pending",
-"until F<n>", "until v<n>", "until phase <n>", "defer", "deferred",
-"next pass", "follow-up", "follow up", "next time".
+**FORBIDDEN deferral substrings in Excluded reasons** (case-insensitive):
+${FORBIDDEN_PHRASES_FOR_PROMPT}.
 
-If you find yourself wanting to write "for now" or "TODO" as an
-Excluded reason: STOP. Either include the file:line in your fix, or
-write a real reason explaining why the exclusion is permanent (the
-match is a different primitive, the match is intentionally scoped
-differently, the match is in a deprecated path being deleted, etc.).
+**FORBIDDEN deferral regex shapes** (case-insensitive):
+${FORBIDDEN_REGEXES_FOR_PROMPT}.
+
+"later" / "follow up" / "follow-up" as a deferral noun ("fix later",
+"as a follow-up") are rejected; descriptive use ("later v2 of the API",
+"a later-revision header") passes.
+
+If you want to write "for now" or "TODO": STOP. Either include the
+file:line in your fix, or write a permanent-exclusion reason (different
+primitive, deprecated path being deleted, scoped differently, etc.).
 `;
 
 // ---------------------------------------------------------------------------
@@ -209,6 +209,20 @@ const SELF_TEST_FIXTURES: ReadonlyArray<SelfTestFixture> = [
       'Searched: ac-detail-head — 2 matches',
       'Included: src/pages/Patches.tsx:42',
       'Excluded: src/pages/Tones.tsx:88 — TODO: address in a later pass',
+    ].join('\n'),
+  },
+  {
+    name: 'multi-line Included block parses across continuation lines',
+    expect: 'pass',
+    response: [
+      'Fixed three files; one excluded.',
+      '',
+      'Searched: ac-list-bank-chevron — 4 matches',
+      'Included: src/a.tsx:1,',
+      '          src/b.tsx:2,',
+      '          src/c.tsx:3',
+      'Excluded: src/legacy/d.tsx:4 — different primitive (CodeMirror editor, not a standard input)',
+      '',
     ].join('\n'),
   },
 ];
