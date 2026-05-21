@@ -293,6 +293,17 @@ check-css-duplication:
 check-css-duplication-validate:
 	tsx tools/check-css-duplication.validate.ts
 
+# General TS/TSX clone-detection gate. Wraps jscpd via
+# `tools/scope-discovery/clone-detector.ts`; scope + thresholds +
+# ignores live in `.jscpd.json`; pre-existing groups are dispositioned
+# in `docs/scope-discovery/clones.yaml`. Exits non-zero only when a
+# commit introduces a NEW clone group beyond the dispositioned
+# baseline. Runs in non-quiet mode so that on failure the developer
+# sees the file:line pairs of each NEW group (workplan T2.3 gate).
+# See the detector's header comment for the full rationale.
+check-clone-duplication:
+	tsx tools/scope-discovery/clone-detector.ts
+
 # Activate the in-repo pre-commit hooks. Idempotent. Run once per
 # clone; the config setting lives in `.git/config` (not tracked),
 # so each clone needs its own install step. The hook scripts
@@ -301,6 +312,7 @@ install-hooks:
 	git config core.hooksPath .githooks
 	@echo "hooks installed: core.hooksPath = .githooks"
 	@echo "  pre-commit: blocks NEW cross-page CSS duplication"
+	@echo "  pre-commit: blocks NEW TS/TSX clone groups (scope-discovery)"
 
 # ---------------------------------------------------------------------------
 # Common-Area Library Tests (shared specs, parameterized by env)

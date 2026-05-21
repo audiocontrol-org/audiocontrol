@@ -24,3 +24,12 @@ if git diff --cached --name-only --diff-filter=ACM | grep -qE '\.(css|scss)$'; t
   echo "pre-commit: checking for new cross-page CSS duplication…"
   make --no-print-directory check-css-duplication
 fi
+
+# Only re-run the general TS/TSX clone check when staged files
+# actually touch TypeScript. Without this, every commit pays the
+# jscpd parse cost. The pattern matches the file extensions
+# `.jscpd.json` scans (`typescript` -> `ts`, `tsx`).
+if git diff --cached --name-only --diff-filter=ACM | grep -qE '\.tsx?$'; then
+  echo "pre-commit: checking for new TS/TSX clone groups…"
+  make --no-print-directory check-clone-duplication
+fi
