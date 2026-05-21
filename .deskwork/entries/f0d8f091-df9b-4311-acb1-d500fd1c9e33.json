@@ -4,9 +4,10 @@
   "title": "Operator Signoff Summary",
   "keywords": [],
   "source": "manual",
-  "currentStage": "Drafting",
+  "currentStage": "Cancelled",
   "iterationByStage": {},
   "artifactPath": "docs/1.0/001-IN-PROGRESS/s550-support/operator-signoff-summary.md",
   "createdAt": "2026-05-17T17:18:18.027Z",
-  "updatedAt": "2026-05-17T17:18:18.027Z"
+  "updatedAt": "2026-05-21T21:38:31.457Z",
+  "priorStage": "Drafting"
 }
