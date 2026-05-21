@@ -12,10 +12,10 @@ The design treats agent-side enforcement as code, not directives — passive rul
 
 | Phase | Status | GitHub Issue | Notes |
 |-------|--------|--------------|-------|
-| Phase 1 — Refinement | In Progress | TBD | Open Questions resolved (T1.1–T1.6 complete); T1.7 (`/feature-issues`) outstanding. |
-| Phase 2 — Foundation Tooling | Planning | TBD | Build `tools/scope-discovery/`: manifest schema, clone detector + pre-commit gate, dispatch wrapper + return-grammar parser, adversarial validator harnesses for both gates. |
-| Phase 3 — Skills + session-start preamble | Planning | TBD | Build `/scope-inventory` and `/scope-widen` skills implementing the multi-agent discovery model; update `.dw-lifecycle/config.json` session.start.preamble to remind the operator to invoke `/scope-inventory` for system-wide features (no `dw-lifecycle` plugin modification). Smoke-test against complete s550-support feature. |
-| Phase 4 — Validation by Drain | Planning | TBD | Run the tooling against `modules/*/src/`; disposition every clone group; refactor every `refactor`-marked entry; paper-test against s550 redesign timeline (≥85% coverage). Feature is not done until `clones.yaml` has zero un-dispositioned entries. |
+| Phase 1 — Refinement | In Progress | [#436](https://github.com/audiocontrol-org/audiocontrol/issues/436) | Open Questions resolved (T1.1–T1.6 complete); T1.7 complete (issues created — this row reflects them). |
+| Phase 2 — Foundation Tooling | Planning | [#437](https://github.com/audiocontrol-org/audiocontrol/issues/437) | Build `tools/scope-discovery/`: manifest schema, clone detector + pre-commit gate, dispatch wrapper + return-grammar parser, adversarial validator harnesses for both gates. |
+| Phase 3 — Skills + session-start preamble | Planning | [#438](https://github.com/audiocontrol-org/audiocontrol/issues/438) | Build `/scope-inventory` and `/scope-widen` skills implementing the multi-agent discovery model; update `.dw-lifecycle/config.json` session.start.preamble to remind the operator to invoke `/scope-inventory` for system-wide features (no `dw-lifecycle` plugin modification). Smoke-test against complete s550-support feature. |
+| Phase 4 — Validation by Drain | Planning | [#439](https://github.com/audiocontrol-org/audiocontrol/issues/439) | Run the tooling against `modules/*/src/`; disposition every clone group; refactor every `refactor`-marked entry; paper-test against s550 redesign timeline (≥85% coverage). Feature is not done until `clones.yaml` has zero un-dispositioned entries. |
 
 ## Resolved Questions
 
@@ -39,7 +39,7 @@ Plus the meta-resolution: **the existing audiocontrol duplication backlog IS the
 ## How to Pick This Up Mid-Session
 
 1. Read the PRD's "Resolved Questions" section — all five questions are answered with binding resolutions.
-2. Read the workplan's Phase 1 task list — T1.1–T1.6 are checked; T1.7 (`/feature-issues`) is the only Phase 1 task outstanding.
+2. Read the workplan's Phase 1 task list — all of T1.1–T1.7 are checked; Phase 1 is complete. Next phase is Phase 2 (foundation tooling).
 3. Check `gh issue list --label process,scope-discovery-protocol` for the current owning issue once T1.7 has run.
 4. Read the latest `DEVELOPMENT-NOTES.md` entry tagged `[scope-discovery-protocol]` for context the workplan does not capture.
 5. The workplan's `Proven complete when:` gates are the contract — a task is not done until its named artifact (file path, screenshot, test output line, committed disposition) is on disk.

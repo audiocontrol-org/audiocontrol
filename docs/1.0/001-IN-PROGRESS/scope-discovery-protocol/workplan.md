@@ -57,9 +57,9 @@ Four sequential phases. Each phase produces a load-bearing artifact that gates t
 - **No external services.** Discovery artifacts (plaintext JSON + screenshots) are committed under `docs/<version>/<status>/<feature-slug>/scope-inventory/`; repo-level `clones.yaml` is committed at `docs/scope-discovery/clones.yaml`. Nothing in this protocol is gitignored.
 - **No new package dependencies expected** beyond the clone-detection engine. Confirm in Phase 2 T2.2.
 
-## Implementation Phases
+## Phase 1: Refinement [in progress; mostly resolved]
 
-### Phase 1: Refinement [in progress; mostly resolved]
+**GitHub Issue:** [#436](https://github.com/audiocontrol-org/audiocontrol/issues/436) (parent [#435](https://github.com/audiocontrol-org/audiocontrol/issues/435))
 
 **Deliverable:** PRD's Open Questions resolved into binding answers; analysis report §5 countermeasures mapped to phases; GitHub issues filed.
 
@@ -77,12 +77,14 @@ Four sequential phases. Each phase produces a load-bearing artifact that gates t
   - **Proven complete when:** PRD's Resolved Question 5 specifies the verbatim `Searched: / Included: / Excluded: <reason>` grammar and the wrapper's rejection rules. *Met.*
 - [x] **T1.6** — Map analysis report §5 countermeasures (5.1–5.6) to Phase 2/3/4 tasks, replacements, or Out of Scope.
   - **Proven complete when:** the workplan's appendix below contains the mapping table; each of 5.1–5.6 is cited and accounted for; 5.4 (visual-regression gate) remains Out of Scope; 5.2 (CLAUDE.md complaint-widening rule) and 5.5 (sub-agent prompt update) are explicitly marked as *replaced* by the dispatch wrapper, with rationale. *Met by the Countermeasure Mapping appendix below.*
-- [ ] **T1.7** — Create GitHub feature issue + per-phase issues via `/feature-issues`.
-  - **Proven complete when:** the GitHub Tracking table below is populated with issue numbers; all phase issues reference the parent feature issue; the workplan's Phase 2/3/4 task lists each cite their owning GitHub issue; `gh issue list` shows the issues attached to the active milestone.
+- [x] **T1.7** — Create GitHub feature issue + per-phase issues via `/feature-issues` (now `/dw-lifecycle:issues`).
+  - **Proven complete when:** the GitHub Tracking table below is populated with issue numbers; all phase issues reference the parent feature issue; the workplan's Phase 2/3/4 task lists each cite their owning GitHub issue; `gh issue list` shows the issues attached to the active milestone. *Met: parent [#435](https://github.com/audiocontrol-org/audiocontrol/issues/435); phase issues [#436](https://github.com/audiocontrol-org/audiocontrol/issues/436)–[#439](https://github.com/audiocontrol-org/audiocontrol/issues/439); each phase header in this workplan now carries its owning issue.*
 
-**Phase 1 acceptance gate:** All resolutions land in the PRD (met); countermeasure mapping table exists (T1.6 outstanding); GitHub issues exist (T1.7 outstanding).
+**Phase 1 acceptance gate:** All resolutions land in the PRD (met); countermeasure mapping table exists (T1.6 met); GitHub issues exist (T1.7 met — see GitHub Tracking table below). Phase 1 is complete.
 
-### Phase 2: Foundation Tooling
+## Phase 2: Foundation Tooling
+
+**GitHub Issue:** [#437](https://github.com/audiocontrol-org/audiocontrol/issues/437) (parent [#435](https://github.com/audiocontrol-org/audiocontrol/issues/435))
 
 **Deliverable:** the general clone detector AND the dispatch wrapper exist with adversarial validator harnesses; both are wired into pre-commit and dispatch-accept pipelines; manifest schema is committed; discovery-evidence layout conventions are committed.
 
@@ -107,7 +109,9 @@ Four sequential phases. Each phase produces a load-bearing artifact that gates t
 
 **Phase 2 acceptance gate:** All Phase 2 tasks complete; both validator harnesses pass on the foundation code; a deliberate gut-the-logic test of either gate causes its validator to fail; `docs/scope-discovery/clones.yaml` exists (empty or with adoption-baseline entries from a first detector run, dispositioned).
 
-### Phase 3: Skills + `dwd` Extension
+## Phase 3: Skills + session-start preamble
+
+**GitHub Issue:** [#438](https://github.com/audiocontrol-org/audiocontrol/issues/438) (parent [#435](https://github.com/audiocontrol-org/audiocontrol/issues/435))
 
 **Deliverable:** `/scope-inventory`, `/scope-widen`, the discovery-agent fleet, the synthesis pass, and the `.dw-lifecycle/config.json` session.start.preamble update are committed; smoke-test against the (complete) s550-support feature produces a strawman manifest that matches the analysis report's enumeration ≥80%.
 
@@ -128,7 +132,9 @@ Four sequential phases. Each phase produces a load-bearing artifact that gates t
 
 **Phase 3 acceptance gate:** Both skills exist and invoke successfully against s550-support; `dwd` produces a working strawman on a synthetic test feature; smoke-test coverage ≥80% before curation.
 
-### Phase 4: Validation by Drain
+## Phase 4: Validation by Drain
+
+**GitHub Issue:** [#439](https://github.com/audiocontrol-org/audiocontrol/issues/439) (parent [#435](https://github.com/audiocontrol-org/audiocontrol/issues/435))
 
 **Deliverable:** the tooling has been run against the audiocontrol repo; `docs/scope-discovery/clones.yaml` has zero un-dispositioned entries; every `refactor`-marked entry has a merged PR; paper-test against the s550 redesign timeline is committed with ≥85% coverage.
 
@@ -155,11 +161,11 @@ To be filled by `/feature-issues` after Phase 1 completes (T1.7).
 
 | Issue | Title | Phase | Status |
 |-------|-------|-------|--------|
-| #TBD  | [process] scope-discovery-protocol (parent) | All | Planning |
-| #TBD  | Phase 1: Refinement | 1 | In Progress |
-| #TBD  | Phase 2: Foundation tooling | 2 | Planning |
-| #TBD  | Phase 3: Skills + session-start preamble | 3 | Planning |
-| #TBD  | Phase 4: Validation by drain | 4 | Planning |
+| [#435](https://github.com/audiocontrol-org/audiocontrol/issues/435) | [process] scope-discovery-protocol (parent) | All | Planning |
+| [#436](https://github.com/audiocontrol-org/audiocontrol/issues/436) | Phase 1: Refinement | 1 | In Progress |
+| [#437](https://github.com/audiocontrol-org/audiocontrol/issues/437) | Phase 2: Foundation tooling | 2 | Planning |
+| [#438](https://github.com/audiocontrol-org/audiocontrol/issues/438) | Phase 3: Skills + session-start preamble | 3 | Planning |
+| [#439](https://github.com/audiocontrol-org/audiocontrol/issues/439) | Phase 4: Validation by drain | 4 | Planning |
 
 Labels: `process`, `tooling`, `priority:high`, `infra`.
 
