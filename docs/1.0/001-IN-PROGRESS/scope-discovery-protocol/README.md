@@ -14,7 +14,7 @@ The design treats agent-side enforcement as code, not directives — passive rul
 |-------|--------|--------------|-------|
 | Phase 1 — Refinement | In Progress | TBD | Open Questions resolved (T1.1–T1.6 complete); T1.7 (`/feature-issues`) outstanding. |
 | Phase 2 — Foundation Tooling | Planning | TBD | Build `tools/scope-discovery/`: manifest schema, clone detector + pre-commit gate, dispatch wrapper + return-grammar parser, adversarial validator harnesses for both gates. |
-| Phase 3 — Skills + `dwd` Extension | Planning | TBD | Build `/scope-inventory` and `/scope-widen` skills implementing the multi-agent discovery model; extend `dwd` to auto-invoke `/scope-inventory` for system-wide features. Smoke-test against complete s550-support feature. |
+| Phase 3 — Skills + session-start preamble | Planning | TBD | Build `/scope-inventory` and `/scope-widen` skills implementing the multi-agent discovery model; update `.dw-lifecycle/config.json` session.start.preamble to remind the operator to invoke `/scope-inventory` for system-wide features (no `dw-lifecycle` plugin modification). Smoke-test against complete s550-support feature. |
 | Phase 4 — Validation by Drain | Planning | TBD | Run the tooling against `modules/*/src/`; disposition every clone group; refactor every `refactor`-marked entry; paper-test against s550 redesign timeline (≥85% coverage). Feature is not done until `clones.yaml` has zero un-dispositioned entries. |
 
 ## Resolved Questions

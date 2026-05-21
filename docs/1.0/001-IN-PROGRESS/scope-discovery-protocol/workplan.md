@@ -7,7 +7,7 @@
 
 ## Overview
 
-Four-phase implementation that produces (1) a refined PRD with all Open Questions resolved into binding answers, (2) the foundation tooling — a general code-clone detector and a programmatic sub-agent dispatch wrapper, both with adversarial validator harnesses, (3) the two skills (`/scope-inventory` and `/scope-widen`) implementing the multi-agent discovery model plus a `dwd` extension that auto-invokes `/scope-inventory` for system-wide features, (4) validation by draining the existing audiocontrol duplication backlog to zero un-dispositioned entries plus a paper-test against the s550 redesign timeline.
+Four-phase implementation that produces (1) a refined PRD with all Open Questions resolved into binding answers, (2) the foundation tooling — a general code-clone detector and a programmatic sub-agent dispatch wrapper, both with adversarial validator harnesses, (3) the two skills (`/scope-inventory` and `/scope-widen`) implementing the multi-agent discovery model plus a `.dw-lifecycle/config.json` session.start.preamble nudge for system-wide features (no `dw-lifecycle` plugin modification), (4) validation by draining the existing audiocontrol duplication backlog to zero un-dispositioned entries plus a paper-test against the s550 redesign timeline.
 
 The `.claude/rules/agent-discipline.md` rule applies in full: every task has an observable completion gate; *"tests pass"* / *"make clean"* are not gates — the gate names the specific artifact (file path, screenshot, fixture, test output line, committed disposition) that proves the task achieved its purpose. **Scope reduction by deferral is forbidden.** Resolutions in the PRD are binding; tasks below implement them in full, not in narrowed v1 shape.
 
@@ -21,16 +21,16 @@ The `.claude/rules/agent-discipline.md` rule applies in full: every task has an 
   - `schema/scope-manifest.schema.json` (manifest JSON Schema covering `kind: ui | code | hybrid`)
   - `dispatch-wrapper.ts` (parses sub-agent return grammar, rejects malformed returns)
   - `dispatch-wrapper.validate.ts` (adversarial validator harness)
-  - `clone-detector.ts` (wraps `jscpd` or AST-equivalent; reads/writes `.scope-inventory/clones.yaml`)
+  - `clone-detector.ts` (wraps `jscpd` or AST-equivalent; reads/writes `docs/scope-discovery/clones.yaml` — committed, not gitignored)
   - `clone-detector.validate.ts` (adversarial validator harness)
   - `discovery-agents/` (UI-route enumerator, AST/grep matrix builder, clone-detector reader, PRD-themed pattern hunters)
   - `synthesis.ts` (combines discovery-agent findings into strawman manifest)
 - `.githooks/pre-commit` — clone-detector gate
-- `.scope-inventory/` — gitignored ephemeral-capture directory (per-feature subdirs: screenshots, DOM-token JSON, discovery-agent raw output; regenerable from the committed manifest)
-- `docs/scope-discovery/clones.yaml` — **committed** repo-level clone-detector output (operator dispositions tracked here)
 - `docs/<version>/<status>/<feature-slug>/scope-manifest.yaml` — **committed** per-feature manifest (alongside `prd.md`, `workplan.md`); review-visible and persistent
+- `docs/<version>/<status>/<feature-slug>/scope-inventory/` — **committed** per-feature discovery evidence: `journal.md` index + `runs/<ISO-stamp>-<runId>/` per-invocation subdirectories holding `meta.json`, per-agent `findings/` JSON, `captures/` (screenshots + DOM-token JSON), and `synthesis.md`. The evidence trail is part of the planning record, NOT ephemeral.
+- `docs/scope-discovery/clones.yaml` — **committed** repo-level clone-detector output (operator dispositions tracked here)
 - `Makefile` — `make scope-inventory FEATURE=<slug>` target + `make refresh-clones-baseline`
-- `.gitignore` — `.scope-inventory/` exclusion (captures only; manifests and `clones.yaml` are committed outside this path)
+- (No `.gitignore` changes for discovery artifacts — all artifacts are committed under `docs/`.)
 - `.dw-lifecycle/config.json` — `session.start.preamble` field updated with a one-line reminder to invoke `/scope-inventory` for system-wide features. Project-local config only; **no modifications to the installed `dw-lifecycle` plugin directory** (verified via `git status` against the plugin path). Upstream contribution to `dw-lifecycle:define` for first-class system-wide-question handling is deferred to a future feature, conditional on Option 1 surfacing what the contribution should look like.
 - `docs/1.0/001-IN-PROGRESS/scope-discovery-protocol/` — this feature's docs; promotes to `003-COMPLETE/` at close
 
@@ -46,15 +46,15 @@ Four sequential phases. Each phase produces a load-bearing artifact that gates t
 
 1. **Refinement** answers Open Questions and produces the binding contract Phase 2 builds against. Resolutions live in PRD §"Resolved Questions."
 2. **Foundation tooling** ships the dispatch wrapper, the general clone detector, and both adversarial validator harnesses. These are the *gates* — code that mechanically enforces the protocol regardless of any agent's good behavior. Foundation must work end-to-end before any skill ships.
-3. **Skills + `dwd` extension** ships `/scope-inventory`, `/scope-widen`, the discovery agents, the synthesis pass, and the `dwd` integration. The skills sit *on top of* the gates from Phase 2.
-4. **Validation by drain** runs the tooling against the audiocontrol repo, dispositions every detected clone group, refactors the `refactor`-marked groups, and paper-tests against the s550 redesign timeline. The feature is not done until `.scope-inventory/clones.yaml` has zero un-dispositioned entries.
+3. **Skills + session.start.preamble nudge** ships `/scope-inventory`, `/scope-widen`, the discovery agents, the synthesis pass, and the `.dw-lifecycle/config.json` session-start reminder. The skills sit *on top of* the gates from Phase 2; no `dw-lifecycle` plugin modification.
+4. **Validation by drain** runs the tooling against the audiocontrol repo, dispositions every detected clone group, refactors the `refactor`-marked groups, and paper-tests against the s550 redesign timeline. The feature is not done until `docs/scope-discovery/clones.yaml` has zero un-dispositioned entries.
 
 ### Dependencies
 
 - **Playwright** — already in use for UI testing. The UI-route discovery agent reuses the existing setup.
 - **Clone-detection engine** — `jscpd` is the leading candidate; AST-based alternatives (`ts-prune`, custom AST traversal) considered in Phase 2 T2.2. Decision criterion: detects component-level clones across `.tsx` files, not just CSS class duplication.
 - **Dev server in headless inventory mode** — the UI-route discovery agent boots a temp dev server on a OS-assigned port (per memory `feedback_test_ports.md`).
-- **No external services.** `.scope-inventory/` is plaintext + screenshots, gitignored except `clones.yaml`.
+- **No external services.** Discovery artifacts (plaintext JSON + screenshots) are committed under `docs/<version>/<status>/<feature-slug>/scope-inventory/`; repo-level `clones.yaml` is committed at `docs/scope-discovery/clones.yaml`. Nothing in this protocol is gitignored.
 - **No new package dependencies expected** beyond the clone-detection engine. Confirm in Phase 2 T2.2.
 
 ## Implementation Phases
@@ -84,7 +84,7 @@ Four sequential phases. Each phase produces a load-bearing artifact that gates t
 
 ### Phase 2: Foundation Tooling
 
-**Deliverable:** the general clone detector AND the dispatch wrapper exist with adversarial validator harnesses; both are wired into pre-commit and dispatch-accept pipelines; manifest schema is committed; `.scope-inventory/` conventions are committed.
+**Deliverable:** the general clone detector AND the dispatch wrapper exist with adversarial validator harnesses; both are wired into pre-commit and dispatch-accept pipelines; manifest schema is committed; discovery-evidence layout conventions are committed.
 
 **Tasks:**
 
@@ -100,16 +100,16 @@ Four sequential phases. Each phase produces a load-bearing artifact that gates t
   - **Proven complete when:** the harness plants a known clone group beyond the baseline and asserts the detector flags it; plants a refactor that removes a baseline group and asserts the detector accepts the change; plants a known-legitimate near-duplicate covered by `ignore-with-justification` and asserts the detector honors the ignore; running the harness with the detector's logic intentionally gutted (e.g., always-pass) fails the harness.
 - [ ] **T2.6** — Adversarial validator harness for the dispatch wrapper at `tools/scope-discovery/dispatch-wrapper.validate.ts`.
   - **Proven complete when:** the harness plants a sub-agent return missing the `Included:` block and asserts rejection; plants a return with `Included: 1` and `Searched: count > 1` and no `Excluded:` block, asserts rejection; plants a return with the full grammar and asserts acceptance; plants a return with `Excluded: file:line — TODO later`, asserts rejection (the *"just for now"* phrase ban); running the harness with the wrapper's parser stubbed to always-pass fails the harness.
-- [ ] **T2.7** — `.scope-inventory/` conventions + `.gitignore` exclusion + `Makefile` targets.
-  - **Proven complete when:** `.gitignore` excludes `.scope-inventory/` with explicit exception for `.scope-inventory/clones.yaml` (committed for review-visibility); `make scope-inventory FEATURE=<slug>` and `make refresh-clones-baseline` targets exist; running `make scope-inventory FEATURE=non-existent` exits non-zero with a clear error; `git check-ignore -v .scope-inventory/foo` returns the gitignore line.
+- [ ] **T2.7** — Discovery-evidence layout conventions + `Makefile` targets.
+  - **Proven complete when:** the workplan and the `/scope-inventory` skill's SKILL.md document the layout: `docs/<version>/<status>/<feature-slug>/scope-inventory/` with `journal.md` + `runs/<ISO-stamp>-<runId>/` per-invocation subdirectories holding `meta.json`, per-agent `findings/` JSON, `captures/`, and `synthesis.md`; `make scope-inventory FEATURE=<slug>` and `make refresh-clones-baseline` targets exist; running `make scope-inventory FEATURE=non-existent` exits non-zero with a clear error. **Nothing under `docs/` is gitignored** — verified by `git check-ignore -v` returning non-zero (not ignored) for any `docs/.../scope-inventory/` path.
 - [ ] **T2.8** — Pre-commit hook wires both gates (clone detector AND dispatch wrapper) into a single hook entry point.
   - **Proven complete when:** `.githooks/pre-commit` invokes the clone detector check; the dispatch wrapper's adversarial validator runs as a separate `npm run test:scope-discovery` command that CI enforces (the wrapper itself fires at dispatch time, not commit time, so its validator is the CI gate not the pre-commit gate); both validators run in under 30s combined.
 
-**Phase 2 acceptance gate:** All Phase 2 tasks complete; both validator harnesses pass on the foundation code; a deliberate gut-the-logic test of either gate causes its validator to fail; `.scope-inventory/clones.yaml` exists (empty or with adoption-baseline entries from a first detector run, dispositioned).
+**Phase 2 acceptance gate:** All Phase 2 tasks complete; both validator harnesses pass on the foundation code; a deliberate gut-the-logic test of either gate causes its validator to fail; `docs/scope-discovery/clones.yaml` exists (empty or with adoption-baseline entries from a first detector run, dispositioned).
 
 ### Phase 3: Skills + `dwd` Extension
 
-**Deliverable:** `/scope-inventory`, `/scope-widen`, the discovery-agent fleet, the synthesis pass, and the `dwd` extension are committed; smoke-test against the (complete) s550-support feature produces a strawman manifest that matches the analysis report's enumeration ≥80%.
+**Deliverable:** `/scope-inventory`, `/scope-widen`, the discovery-agent fleet, the synthesis pass, and the `.dw-lifecycle/config.json` session.start.preamble update are committed; smoke-test against the (complete) s550-support feature produces a strawman manifest that matches the analysis report's enumeration ≥80%.
 
 **Tasks:**
 
@@ -118,26 +118,26 @@ Four sequential phases. Each phase produces a load-bearing artifact that gates t
 - [ ] **T3.2** — Build the synthesis pass at `tools/scope-discovery/synthesis.ts`.
   - **Proven complete when:** the synthesis pass consumes N discovery-agent findings JSON files, deduplicates overlapping findings, ranks by surface-coverage and clone-severity, and emits a strawman `scope-manifest.yaml` valid against the schema from T2.1; file under 300 lines.
 - [ ] **T3.3** — Write `/scope-inventory` skill at `.claude/skills/scope-inventory/SKILL.md`.
-  - **Proven complete when:** the skill exists; invoking it against the s550-support feature (already complete; serves as the fixture) fans out the discovery-agent fleet in parallel, writes findings to `.scope-inventory/s550-support/`, runs the synthesis pass, presents the strawman manifest in chat, and asks the operator to confirm/prune.
+  - **Proven complete when:** the skill exists; invoking it against the s550-support feature (already complete; serves as the fixture) creates a new timestamped run directory at `docs/1.0/003-COMPLETE/s550-support/scope-inventory/runs/<ISO-stamp>-<runId>/`, fans out the discovery-agent fleet in parallel writing per-agent findings JSON + captures + `synthesis.md` to the run directory, appends a journal entry to `docs/1.0/003-COMPLETE/s550-support/scope-inventory/journal.md`, writes the strawman manifest to `docs/1.0/003-COMPLETE/s550-support/scope-manifest.yaml`, and presents the manifest in chat with a reference to the journal entry so the operator can audit the evidence trail. Re-invocations create new run directories; do NOT overwrite prior runs.
 - [ ] **T3.4** — Write `/scope-widen` skill at `.claude/skills/scope-widen/SKILL.md`.
   - **Proven complete when:** the skill exists; invoking it with a complaint payload (e.g., *"the Patches header is misaligned"*) runs targeted discovery agents focused on the specific complaint, produces a widening proposal naming all sibling surfaces, and presents the proposal in chat in the dispatch-wrapper-grammar format (`Searched: / Included: / Excluded:`).
 - [ ] **T3.5** — `/scope-inventory` works **standalone** (no `dw-lifecycle` plugin modification); `session.start.preamble` nudges its use for system-wide features.
   - **Proven complete when:** running `/scope-inventory <slug>` immediately after `/dw-lifecycle:define <slug>` + `/dw-lifecycle:setup <slug>` produces a strawman manifest from the feature stub — no `dwd` modification required; `git status` against the installed `dw-lifecycle` plugin directory shows no modifications; `.dw-lifecycle/config.json`'s `session.start.preamble` field contains the one-line reminder *"If this is a system-wide feature, run `/scope-inventory <slug>` before the first edit."* (verified by reading the file after the change lands).
 - [ ] **T3.6** — Smoke-test the skill against s550-support.
-  - **Proven complete when:** `.scope-inventory/s550-support/scope-manifest.yaml` exists; cross-referenced against the 32 documented surfaces in [`../../../analysis/s550-redesign-scope-discovery.md`](../../../analysis/s550-redesign-scope-discovery.md) §2, the strawman covers ≥80% before operator curation; a smoke-test report at `docs/1.0/001-IN-PROGRESS/scope-discovery-protocol/smoke-test-s550.md` enumerates which surfaces matched, which were missed, and why each miss occurred.
+  - **Proven complete when:** the s550-support feature directory contains a `scope-manifest.yaml` plus a `scope-inventory/` subdirectory with at least one populated run directory and a `journal.md` index; cross-referenced against the 32 documented surfaces in [`../../../analysis/s550-redesign-scope-discovery.md`](../../../analysis/s550-redesign-scope-discovery.md) §2, the strawman covers ≥80% before operator curation; a smoke-test report at `docs/1.0/001-IN-PROGRESS/scope-discovery-protocol/smoke-test-s550.md` enumerates which surfaces matched, which were missed, and why each miss occurred.
 
 **Phase 3 acceptance gate:** Both skills exist and invoke successfully against s550-support; `dwd` produces a working strawman on a synthetic test feature; smoke-test coverage ≥80% before curation.
 
 ### Phase 4: Validation by Drain
 
-**Deliverable:** the tooling has been run against the audiocontrol repo; `.scope-inventory/clones.yaml` has zero un-dispositioned entries; every `refactor`-marked entry has a merged PR; paper-test against the s550 redesign timeline is committed with ≥85% coverage.
+**Deliverable:** the tooling has been run against the audiocontrol repo; `docs/scope-discovery/clones.yaml` has zero un-dispositioned entries; every `refactor`-marked entry has a merged PR; paper-test against the s550 redesign timeline is committed with ≥85% coverage.
 
 **Tasks:**
 
-- [ ] **T4.1** — Run the clone detector against `modules/*/src/`; commit the initial `.scope-inventory/clones.yaml`.
+- [ ] **T4.1** — Run the clone detector against `modules/*/src/`; commit the initial `docs/scope-discovery/clones.yaml`.
   - **Proven complete when:** the file exists; every entry has fields `id`, `members: [file:line]`, `disposition: pending`, `reason: null`; entries are sorted by member count descending (largest clone groups first).
 - [ ] **T4.2** — Operator review pass: disposition every clone group.
-  - **Proven complete when:** zero entries in `.scope-inventory/clones.yaml` have `disposition: pending`; every entry has `disposition` ∈ {`refactor`, `keep-with-reason`, `ignore-with-justification`}; every `keep-with-reason` and `ignore-with-justification` entry has a `reason` field with a non-empty one-line justification; the operator reviews and approves the dispositioned file.
+  - **Proven complete when:** zero entries in `docs/scope-discovery/clones.yaml` have `disposition: pending`; every entry has `disposition` ∈ {`refactor`, `keep-with-reason`, `ignore-with-justification`}; every `keep-with-reason` and `ignore-with-justification` entry has a `reason` field with a non-empty one-line justification; the operator reviews and approves the dispositioned file.
 - [ ] **T4.3** — Refactor PRs for every `refactor`-marked entry.
   - **Proven complete when:** every clone group with `disposition: refactor` has a merged PR (or a series of dependent merged PRs) that removes the clone; re-running the clone detector after merges shows zero `refactor`-marked entries with surviving clone members; `clones.yaml` is updated to reflect the post-refactor state.
 - [ ] **T4.4** — Paper-test against the s550 redesign timeline.
@@ -147,7 +147,7 @@ Four sequential phases. Each phase produces a load-bearing artifact that gates t
 - [ ] **T4.6** — Move feature docs to `003-COMPLETE/`; update ROADMAP.
   - **Proven complete when:** `docs/1.0/003-COMPLETE/scope-discovery-protocol/` exists and contains all the feature docs; `docs/1.0/001-IN-PROGRESS/scope-discovery-protocol/` is removed; `docs/1.0/ROADMAP.md` shows the feature as complete; `implementation-summary.md` is filled in (no `TO BE FILLED AT COMPLETION` placeholders remain).
 
-**Phase 4 acceptance gate:** `.scope-inventory/clones.yaml` has zero un-dispositioned entries; every `refactor` entry has a merged PR; paper-test coverage ≥85% with gaps named; feature docs moved to `003-COMPLETE/`.
+**Phase 4 acceptance gate:** `docs/scope-discovery/clones.yaml` has zero un-dispositioned entries; every `refactor` entry has a merged PR; paper-test coverage ≥85% with gaps named; feature docs moved to `003-COMPLETE/`.
 
 ## GitHub Tracking
 
@@ -158,7 +158,7 @@ To be filled by `/feature-issues` after Phase 1 completes (T1.7).
 | #TBD  | [process] scope-discovery-protocol (parent) | All | Planning |
 | #TBD  | Phase 1: Refinement | 1 | In Progress |
 | #TBD  | Phase 2: Foundation tooling | 2 | Planning |
-| #TBD  | Phase 3: Skills + `dwd` extension | 3 | Planning |
+| #TBD  | Phase 3: Skills + session-start preamble | 3 | Planning |
 | #TBD  | Phase 4: Validation by drain | 4 | Planning |
 
 Labels: `process`, `tooling`, `priority:high`, `infra`.
@@ -171,10 +171,10 @@ The analysis report's §5 enumerates six countermeasures. Each is accounted for 
 |---|----------------|-------------|
 | 5.1 | New skill: `/redesign-scope` (upfront inventory) | **Implemented** as `/scope-inventory` in Phase 3 T3.3. Renamed because the skill is universal (`kind: ui | code | hybrid`), not redesign-specific. |
 | 5.2 | CLAUDE.md addition: complaint-widening default | **Replaced.** Passive rules in CLAUDE.md are systematically ignored for persistent pathologies (operator evidence: DRY screaming prelude, chevron-size directives). The dispatch wrapper (T2.4) + `/scope-widen` skill (T3.4) replace this with code-shaped enforcement that doesn't depend on the agent reading and obeying directive text. |
-| 5.3 | Workplan template: "Surfaces in scope" table for UX/UI phases | **Implemented** in Phase 3 T3.5 (`dwd` extension auto-generates the table from the strawman manifest). |
+| 5.3 | Workplan template: "Surfaces in scope" table for UX/UI phases | **Implemented** as the per-feature `scope-manifest.yaml` committed alongside `prd.md` and `workplan.md` (Phase 3 T3.3) — the manifest IS the surfaces-in-scope table. No `dwd` template hack; the operator-invoked `/scope-inventory` writes it directly. |
 | 5.4 | Pre-commit gate: visual regression across route inventory | **Out of scope** per PRD's Out-of-Scope list. The operator has rejected visual-regression gates in spirit (*"Gates are workarounds for not reading docs"*) and the analysis report itself rates 5.4 the weakest of the six. The general clone detector (T2.2) covers the structural-regression case (component duplication, drifted consumers) without the perceptual-hash flakiness. |
 | 5.5 | Sub-agent prompt update: orchestrator's dispatch templates | **Replaced.** Updating agent prompts to ask for sibling enumeration would be another passive directive — the same failure mode as 5.2. The dispatch wrapper (T2.4) enforces the same behavior programmatically by parsing the return and rejecting malformed responses. Wrapper applies to all code-writing sub-agents in the registry regardless of their individual prompt contents. |
-| 5.6 | Inventory artifact in the worktree: `.redesign-inventory/` | **Implemented** as `.scope-inventory/` in Phase 2 T2.7. Renamed for the same reason as 5.1. |
+| 5.6 | Inventory artifact in the worktree: `.redesign-inventory/` | **Implemented** as `docs/<version>/<status>/<feature-slug>/scope-inventory/` (committed, NOT gitignored) per Phase 2 T2.7 / Phase 3 T3.3. Renamed for the same reason as 5.1; relocated under `docs/` because the discovery evidence is part of the planning record, not ephemeral. |
 
 ## Appendix — Links
 
