@@ -12,7 +12,6 @@
  *   clones:
  *     - id: <12-char hex from sha1(sorted-members joined with \n)>
  *       lines: <int>
- *       tokens: <int>
  *       members:
  *         - <path>:<startLine>:<endLine>          # sorted ascending
  *         - <path>:<startLine>:<endLine>
@@ -38,7 +37,6 @@ export type Disposition =
 export interface CloneGroup {
   readonly id: string;
   readonly lines: number;
-  readonly tokens: number;
   readonly members: string[]; // "<path>:<startLine>:<endLine>", sorted
   readonly disposition: Disposition;
   readonly reason: string | null;
@@ -88,13 +86,16 @@ export function compareCloneGroups(a: CloneGroup, b: CloneGroup): number {
  * Construct a CloneGroup from raw inputs. The members array is sorted
  * here so callers don't have to remember; the id is derived from the
  * sorted form so equivalent groups always hash the same.
+ *
+ * All callers must supply both disposition and reason explicitly.
+ * Avoids exactOptionalPropertyTypes pitfalls and forces deliberate
+ * defaults at each callsite.
  */
 export function makeCloneGroup(args: {
   members: readonly string[];
   lines: number;
-  tokens: number;
-  disposition?: Disposition;
-  reason?: string | null;
+  disposition: Disposition;
+  reason: string | null;
 }): CloneGroup {
   if (args.members.length < 2) {
     throw new Error(
@@ -106,10 +107,9 @@ export function makeCloneGroup(args: {
   return {
     id: deriveCloneId(sorted),
     lines: args.lines,
-    tokens: args.tokens,
     members: sorted,
-    disposition: args.disposition ?? 'pending',
-    reason: args.reason ?? null,
+    disposition: args.disposition,
+    reason: args.reason,
   };
 }
 
@@ -139,13 +139,15 @@ function entryToGroup(entry: unknown): CloneGroup | null {
   if (!isPlainObject(entry)) return null;
   const id = entry['id'];
   const lines = entry['lines'];
-  const tokens = entry['tokens'];
   const members = entry['members'];
   const disposition = entry['disposition'];
   const reason = entry['reason'];
+  // Legacy `tokens` field (pre-fix) is silently ignored if present.
+  // jscpd's per-pair JSON did not surface token counts, so historical
+  // entries had `tokens: 0` — a fabricated default. The field was
+  // removed; we tolerate it on read for back-compat with old baselines.
   if (typeof id !== 'string') return null;
   if (typeof lines !== 'number') return null;
-  if (typeof tokens !== 'number') return null;
   if (!Array.isArray(members)) return null;
   const memberStrs: string[] = [];
   for (const m of members) {
@@ -165,7 +167,6 @@ function entryToGroup(entry: unknown): CloneGroup | null {
   return {
     id,
     lines,
-    tokens,
     members: memberStrs,
     disposition,
     reason: reasonValue,
@@ -184,7 +185,6 @@ export function serializeClonesYaml(doc: ClonesYaml): string {
       clones: sorted.map((g) => ({
         id: g.id,
         lines: g.lines,
-        tokens: g.tokens,
         members: g.members,
         disposition: g.disposition,
         reason: g.reason,
@@ -200,12 +200,14 @@ export function serializeClonesYaml(doc: ClonesYaml): string {
  * to fail the commit.
  *
  * NEW:     in newClones but not in baseline (by id)
- * GROWN:   in both, but new group has more members
  * DROPPED: in baseline but not in newClones (refactor success)
+ *
+ * Note: id derives from sorted-members + line-ranges; any membership or
+ * boundary change yields a fresh id (NEW + DROPPED), so a stable-id
+ * growth ("GROWN") is impossible by construction. No GROWN bucket.
  */
 export interface CloneDiff {
   readonly newGroups: CloneGroup[];
-  readonly grownGroups: CloneGroup[];
   readonly droppedGroups: CloneGroup[];
 }
 
@@ -221,23 +223,17 @@ export function diffClones(
   for (const g of newClones) newById.set(g.id, g);
 
   const newGroups: CloneGroup[] = [];
-  const grownGroups: CloneGroup[] = [];
   const droppedGroups: CloneGroup[] = [];
 
   for (const g of newClones) {
-    const existing = baselineById.get(g.id);
-    if (existing === undefined) {
-      newGroups.push(g);
-    } else if (g.members.length > existing.members.length) {
-      grownGroups.push(g);
-    }
+    if (!baselineById.has(g.id)) newGroups.push(g);
   }
   if (baseline !== null) {
     for (const g of baseline.clones) {
       if (!newById.has(g.id)) droppedGroups.push(g);
     }
   }
-  return { newGroups, grownGroups, droppedGroups };
+  return { newGroups, droppedGroups };
 }
 
 /**

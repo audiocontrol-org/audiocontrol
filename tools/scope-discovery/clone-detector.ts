@@ -40,8 +40,8 @@
  *                             forward operator-authored dispositions
  *
  * Exit code:
- *   0   no NEW and no GROWN clone groups (or first-run baseline written)
- *   1   one or more NEW or GROWN groups since the baseline
+ *   0   no NEW clone groups (or first-run baseline written)
+ *   1   one or more NEW groups since the baseline
  *   2   I/O, parse, or jscpd-crash error
  */
 
@@ -128,7 +128,7 @@ function reportHuman(opts: ReportOpts): void {
   if (quiet) {
     process.stdout.write(
       `${groups.length} groups; ${diff.newGroups.length} NEW; ` +
-        `${diff.grownGroups.length} GROWN; ${diff.droppedGroups.length} DROPPED\n`,
+        `${diff.droppedGroups.length} DROPPED\n`,
     );
     return;
   }
@@ -143,16 +143,10 @@ function reportHuman(opts: ReportOpts): void {
   if (!baselineExisted) return;
   process.stdout.write(
     `Baseline diff: ${diff.newGroups.length} NEW, ` +
-      `${diff.grownGroups.length} GROWN, ${diff.droppedGroups.length} DROPPED.\n`,
+      `${diff.droppedGroups.length} DROPPED.\n`,
   );
   for (const g of diff.newGroups) {
     process.stdout.write(`  NEW    ${g.id} (${g.lines} lines)\n`);
-    for (const m of g.members) process.stdout.write(`           ${m}\n`);
-  }
-  for (const g of diff.grownGroups) {
-    process.stdout.write(
-      `  GROWN  ${g.id} (${g.lines} lines, now ${g.members.length} members)\n`,
-    );
     for (const m of g.members) process.stdout.write(`           ${m}\n`);
   }
 }
@@ -189,7 +183,7 @@ async function main(): Promise<number> {
   //   - --refresh-baseline: rewrite preserving non-pending dispositions.
   //     Exit 0.
   // Compare mode (normal):
-  //   - Don't touch the file. Exit 1 if NEW or GROWN, else 0.
+  //   - Don't touch the file. Exit 1 if NEW, else 0.
   const shouldWrite = !baselineExisted || cli.refreshBaseline;
   if (shouldWrite) {
     const merged = mergeDispositions(detectedGroups, baseline);
@@ -217,7 +211,7 @@ async function main(): Promise<number> {
   } else {
     reportHuman({ groups: detectedGroups, diff, quiet: cli.quiet, baselineExisted });
   }
-  const failing = diff.newGroups.length + diff.grownGroups.length;
+  const failing = diff.newGroups.length;
   return failing > 0 ? 1 : 0;
 }
 

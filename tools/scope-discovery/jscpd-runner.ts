@@ -97,7 +97,6 @@ export async function runJscpd(opts: {
 interface RawPair {
   readonly members: string[];
   readonly lines: number;
-  readonly tokens: number;
 }
 
 /**
@@ -117,18 +116,21 @@ export function parseJscpdReport(reportText: string): CloneGroup[] {
   for (const dup of duplicates) {
     if (!isPlainObject(dup)) continue;
     const lines = dup['lines'];
-    const tokens = dup['tokens'];
     const a = memberFromFile(dup['firstFile']);
     const b = memberFromFile(dup['secondFile']);
     if (a === null || b === null) continue;
     pairs.push({
       members: [a, b].sort(),
       lines: typeof lines === 'number' ? lines : 0,
-      tokens: typeof tokens === 'number' ? tokens : 0,
     });
   }
   return collapsePairsIntoGroups(pairs).map((p) =>
-    makeCloneGroup({ members: p.members, lines: p.lines, tokens: p.tokens }),
+    makeCloneGroup({
+      members: p.members,
+      lines: p.lines,
+      disposition: 'pending',
+      reason: null,
+    }),
   );
 }
 
@@ -151,7 +153,7 @@ function memberFromFile(file: unknown): string | null {
 function collapsePairsIntoGroups(
   pairs: readonly RawPair[],
 ): RawPair[] {
-  const groups: { members: Set<string>; lines: number; tokens: number }[] = [];
+  const groups: { members: Set<string>; lines: number }[] = [];
   for (const pair of pairs) {
     const candidate = groups.find(
       (g) => g.lines === pair.lines && pair.members.some((m) => g.members.has(m)),
@@ -160,16 +162,13 @@ function collapsePairsIntoGroups(
       groups.push({
         members: new Set(pair.members),
         lines: pair.lines,
-        tokens: pair.tokens,
       });
     } else {
       for (const m of pair.members) candidate.members.add(m);
-      candidate.tokens = Math.max(candidate.tokens, pair.tokens);
     }
   }
   return groups.map((g) => ({
     members: [...g.members].sort(),
     lines: g.lines,
-    tokens: g.tokens,
   }));
 }
