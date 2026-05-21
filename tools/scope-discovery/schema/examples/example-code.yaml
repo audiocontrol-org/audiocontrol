@@ -47,7 +47,7 @@ modules:
         query: "/\\bas\\s+[A-Z][A-Za-z0-9_]*/"
       - id: any-escape
         kind: grep
-        description: "`: any` parameter/property/return annotations. Test fixtures excluded via exclude_globs."
+        description: "`: any` parameter/property/return annotations. Test fixtures listed in the module's `excludes` are skipped."
         query: ": any\\b"
       - id: ts-ignore
         kind: grep
