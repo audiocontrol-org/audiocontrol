@@ -77,7 +77,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-clone-id-stability-validate check-clone-summary-validate clone-summary migrate-clone-ids migrate-clone-ids-dry check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions check-refactor-preconditions-validate check-anti-patterns check-anti-patterns-validate check-adopters check-adopters-validate check-editor-symmetry check-editor-symmetry-write check-editor-symmetry-validate check-deprecations check-deprecations-write check-deprecations-validate check-regime-holdout-validate test-scope-discovery scope-inventory check-scope-discovery-deps check-deps-validate refresh-clones-baseline check-chevron-sizing
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-clone-id-stability-validate check-clone-summary-validate clone-summary batch-dispose check-batch-dispose-validate migrate-clone-ids migrate-clone-ids-dry check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions check-refactor-preconditions-validate check-anti-patterns check-anti-patterns-validate check-adopters check-adopters-validate check-editor-symmetry check-editor-symmetry-write check-editor-symmetry-validate check-deprecations check-deprecations-write check-deprecations-validate check-regime-holdout-validate test-scope-discovery scope-inventory check-scope-discovery-deps check-deps-validate refresh-clones-baseline check-chevron-sizing
 
 build: $(ALL_STAMPS)
 
@@ -386,6 +386,38 @@ endif
 check-clone-summary-validate:
 	tsx tools/scope-discovery/summary.validate.ts
 
+# T7.4 — batch-apply (disposition, reason) to N clone-group ids. Wraps
+# `tsx tools/scope-discovery/batch-dispose.ts --ids <ids> --disposition
+# <kind> --reason <text>`. IDS, DISPOSITION, and REASON are required;
+# pass EXTRA_FLAGS=--show-existing or EXTRA_FLAGS=--dry-run to drill in.
+# The script verifies-after-write: re-reads clones.yaml + confirms each
+# applied row landed before reporting success.
+batch-dispose:
+ifndef IDS
+	$(error IDS=<id1,id2,...> is required)
+endif
+ifndef DISPOSITION
+	$(error DISPOSITION=<kind> is required; one of: pending, keep-with-reason, ignore-with-justification (refactor requires manual editing))
+endif
+ifndef REASON
+	$(error REASON="<text>" is required)
+endif
+	tsx tools/scope-discovery/batch-dispose.ts --ids "$(IDS)" --disposition "$(DISPOSITION)" --reason "$(REASON)" $(EXTRA_FLAGS)
+
+# Adversarial validator for T7.4 batch-dispose: 13 scenarios covering
+# apply-to-3-pending happy path, already-disposed skipped (default +
+# --show-existing variants), unknown-id-fails-hard, empty --ids,
+# invalid disposition, refactor disposition rejected with redirect to
+# manual editing, verify-after-write detects a forged write (writer
+# flips one reason between write and re-read), --dry-run leaves file
+# unchanged, 5-of-10 partial batch, member-ordering preserved across
+# writes, gutted-stub self-check (no-op writer detected), and CLI
+# subprocess smoke. Wired into test-scope-discovery + pnpm
+# test:scope-discovery so changes to batch-dispose.ts re-run the
+# contract against the pinned expectations.
+check-batch-dispose-validate:
+	tsx tools/scope-discovery/batch-dispose.validate.ts
+
 # Validate that the sub-agent dispatch wrapper actually rejects
 # malformed/forbidden returns and accepts well-formed ones. Plants
 # synthetic dispatchFn responses (no real sub-agent call) covering both
@@ -582,7 +614,7 @@ check-regime-holdout-validate:
 # Combined runtime is under 30s; if that ever changes, the workplan T2.8
 # gate is broken and the slowdown must be surfaced.
 # T2.8 gate (+ T5.2 + T5.3 + T6.1 + T6.2 + T6.3 + T6.4 + T6.5 additions).
-test-scope-discovery: check-clone-duplication-validate check-clone-id-stability-validate check-clone-summary-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions-validate check-anti-patterns-validate check-adopters-validate check-editor-symmetry-validate check-deprecations-validate check-regime-holdout-validate check-deps-validate
+test-scope-discovery: check-clone-duplication-validate check-clone-id-stability-validate check-clone-summary-validate check-batch-dispose-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions-validate check-anti-patterns-validate check-adopters-validate check-editor-symmetry-validate check-deprecations-validate check-regime-holdout-validate check-deps-validate
 
 # T7.2 — pre-flight dep guard for `make scope-inventory`. Runs
 # `tsx tools/scope-discovery/check-deps.ts` which probes the top-level
