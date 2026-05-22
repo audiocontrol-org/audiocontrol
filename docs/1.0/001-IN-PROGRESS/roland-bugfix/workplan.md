@@ -130,7 +130,8 @@ Populated as groups are dispositioned. One row per group resolved.
 
 | Date | Group ID | Members | Disposition | Reason / Commit |
 |------|----------|---------|-------------|------------------|
-| 2026-05-22 | `80299d9fda8d` (21 lines) | `PatchList.tsx:231–251` ↔ `ToneList.tsx:230–250` | refactor | Extracted to `modules/roland-sxx0-editor/src/components/common/SlotInfo.tsx`. Protected by `D-PATCH-LIST-09` + `D-TONE-LIST-08`. Commit: TBD (lands with this row). Detector confirmed group dropped + 6 sibling groups got re-numbered due to line-shift (no disposition info lost; all were `pending` pre-refactor). |
+| 2026-05-22 | `80299d9fda8d` (21 lines) | `PatchList.tsx:231–251` ↔ `ToneList.tsx:230–250` | refactor | Extracted to `modules/roland-sxx0-editor/src/components/common/SlotInfo.tsx`. Protected by `D-PATCH-LIST-09` + `D-TONE-LIST-08`. Commit `30e7346e`. Detector confirmed group dropped + 6 sibling groups got re-numbered due to line-shift (no disposition info lost; all were `pending` pre-refactor). |
+| 2026-05-22 | `c4067caecfdd` (6 lines) | `probe-wave-aliasing.ts:85–90` ↔ `probe-wave-memory.ts:131–137` | keep-with-reason | Probe scripts are intentionally self-contained one-off hardware-exploration tools; sharing a helper would defeat their drop-in-standalone-run-against-hardware property. The 3-line SysEx-EOD sequence repetition is acceptable. Sets the precedent for the remaining 5+ probe-script clones, which will be batch-dispositioned with the same rationale. |
 
 ## Phase 3: Roland-surface refactor PRs (clone-group cleanup)
 
