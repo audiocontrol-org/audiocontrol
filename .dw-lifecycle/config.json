@@ -34,7 +34,7 @@
   },
   "session": {
     "start": {
-      "preamble": ""
+      "preamble": "If this is a system-wide feature (UI redesign, architectural refactor, cross-cutting pattern enforcement), run `/scope-inventory <slug>` before the first edit to produce a strawman scope-manifest.yaml. See docs/scope-discovery/LAYOUT.md for the on-disk contract."
     },
     "end": {
       "preamble": ""

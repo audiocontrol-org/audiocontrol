@@ -1,0 +1,97 @@
+# Example scope-manifest.yaml for a hybrid-kind feature.
+#
+# Hypothetical "akai-ux-parity" feature: bring the Akai S3000XL editor
+# up to parity with the Roland S-330/S-550 editor's v3 design language,
+# AND audit the editor-core shared infrastructure for primitives that
+# need to be promoted (or whose Akai consumers drifted from the Roland
+# consumers). This is a hybrid because the work straddles UI route
+# walks (does every Akai page mount the virtual front panel?) and code
+# audits (which editor-core primitives have drifted consumers?).
+#
+# This file validates against
+# tools/scope-discovery/schema/scope-manifest.schema.json.
+
+kind: hybrid
+feature_slug: akai-ux-parity
+version: "1.0"
+generated_by: strawman
+generated_at: "2026-05-21T09:05:00Z"
+
+scenarios:
+  - id: program-bank-0
+    label: Akai program bank 0 loaded
+    description: Default S3000XL program; exercises range-bar parameters and the (currently missing) VFD envelope graphic.
+    query: "midi=simulated&scenario=program-bank-0"
+  - id: sample-bank-0
+    label: Akai sample bank 0 loaded
+    description: Default sample list; exercises the list-bank chevron and the sample-detail tabbed pane.
+    query: "midi=simulated&scenario=sample-bank-0"
+  - id: ast-walk
+    label: Source AST walk
+    description: ts-morph traversal across editor-core and akai-s3k-editor; pattern shapes match drifted consumers.
+
+reference_docs:
+  - path: docs/1.0/003-COMPLETE/s550-support/explorations/02-homepage.html
+    role: mockup
+    summary: The Roland v3 design-language reference the Akai editor is being aligned to.
+  - path: docs/analysis/s550-redesign-scope-discovery.md
+    role: analysis-report
+    summary: The redesign-scope retrospective; the cross-page primitive list informs the patterns audited here.
+  - path: SAMPLER-LIBRARY.md
+    role: design-language
+    summary: The four-zone storage model the Akai editor must continue to honor while adopting the v3 chrome.
+
+discovery_themes:
+  - cross-editor primitive consumer parity (.ac-list-bank-chevron, .ac-detail-head, .ac-range-bar)
+  - virtual front panel mounted on every Akai editor page
+  - tabbed detail pane with 4+ logical sections groups strongly-interacting controls
+  - editor-core primitives consumed identically by Roland and Akai
+
+routes:
+  - path: /akai/s3000xl/editor/connect
+    devices: [s3000xl]
+    scenarios: [program-bank-0]
+    primitives: [page-header, ac-status-rail, ac-vfd-frame]
+  - path: /akai/s3000xl/editor/programs
+    devices: [s3000xl]
+    scenarios: [program-bank-0]
+    primitives: [page-header, ac-list-bank, ac-list-bank-chevron, ac-detail-head, ac-range-bar, virtual-front-panel]
+  - path: /akai/s3000xl/editor/samples
+    devices: [s3000xl]
+    scenarios: [sample-bank-0]
+    primitives: [page-header, ac-list-bank, ac-list-bank-chevron, ac-detail-head, virtual-front-panel]
+  - path: /akai/s3000xl/editor/library
+    devices: [s3000xl]
+    scenarios: [program-bank-0, sample-bank-0]
+    primitives: [page-header, ac-list-bank, ac-detail-head, virtual-front-panel]
+
+modules:
+  - glob: "modules/akai-s3k-editor/src/**/*.{ts,tsx}"
+    label: akai-s3k-editor (S3000XL editor)
+    patterns:
+      - id: ac-primitive-import
+        kind: import
+        description: Imports of .ac-* primitives from editor-core. Surfaces drifted consumers — places that fork a primitive instead of consuming it.
+        query: "from ['\"]@/editor-core/primitives"
+      - id: hardcoded-pixel-width
+        kind: grep
+        description: "Hardcoded px widths in styles — the operator's no-pixel-widths memory bans these. Flag for refactor to flex ratios."
+        query: "width:\\s*\\d+px"
+      - id: virtual-front-panel-mount
+        kind: ast-jsx
+        description: VirtualFrontPanel component mount; every editor page should mount it. Pages that don't are flagged.
+        query: "<VirtualFrontPanel"
+  - glob: "modules/editor-core/src/primitives/**/*.{ts,tsx}"
+    label: editor-core shared primitives
+    patterns:
+      - id: primitive-consumer-drift
+        kind: clone-group
+        description: Clone-detector groups whose members span Roland and Akai editors — drifted consumers of nominally shared primitives.
+        query: "jscpd-group:editor-primitive-drift"
+
+notes: |
+  Hybrid example: the UI side walks the four Akai editor routes; the
+  code side audits the Akai editor's consumption of editor-core
+  primitives. The synthesis pass deduplicates by file-path key so a
+  finding that surfaces under both a route capture and an AST audit
+  appears once in the strawman.

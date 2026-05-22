@@ -1,0 +1,14 @@
+{
+  "uuid": "b5d7c26c-9668-4a60-a1b7-bdd28fbe7ee7",
+  "slug": "scope-discovery-protocol/prd",
+  "title": "Prd",
+  "keywords": [],
+  "source": "manual",
+  "currentStage": "Final",
+  "iterationByStage": {
+    "Drafting": 3
+  },
+  "artifactPath": "docs/1.0/001-IN-PROGRESS/scope-discovery-protocol/prd.md",
+  "createdAt": "2026-05-21T20:23:24.702Z",
+  "updatedAt": "2026-05-21T21:09:07.336Z"
+}

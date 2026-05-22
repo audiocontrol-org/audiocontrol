@@ -1,0 +1,8 @@
+{
+  "kind": "stage-transition",
+  "at": "2026-05-21T21:38:31.571Z",
+  "entryId": "f5d44e33-5cb5-4e3e-b8f3-e796673b8f32",
+  "from": "Drafting",
+  "to": "Cancelled",
+  "reason": "superseded by docs/1.0/003-COMPLETE/s550-support/2026-05-15-operator-review-runbook.md (re-authored standalone, different uuid)"
+}

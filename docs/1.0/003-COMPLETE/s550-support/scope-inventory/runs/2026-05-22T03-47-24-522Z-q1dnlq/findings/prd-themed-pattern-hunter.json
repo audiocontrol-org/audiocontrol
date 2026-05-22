@@ -1,0 +1,2285 @@
+{
+  "agent": "prd-themed-pattern-hunter",
+  "featureSlug": "s550-support",
+  "themes": [
+    {
+      "term": "s-550",
+      "occurrences": [
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/PatchLabel.tsx",
+          "line": 4,
+          "snippet": "* For S-550, Roman numerals (I, II) are rendered in serif font while"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/PatchLabel.tsx",
+          "line": 43,
+          "snippet": "// S-550 style: split into Roman prefix and Arabic suffix"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/PatchLabel.tsx",
+          "line": 81,
+          "snippet": "// S-550 style: split at the dash and style each part"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/front-panel/VirtualFrontPanel.tsx",
+          "line": 4,
+          "snippet": "* The 11-control surface for remote Roland S-330 / S-550 operation,"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/front-panel/VirtualFrontPanel.tsx",
+          "line": 11,
+          "snippet": "* Layout — 7-column × 2-row grid mirroring the S-550 hardware photo:"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/front-panel/VirtualFrontPanel.tsx",
+          "line": 16,
+          "snippet": "* Device-agnostic: both the S-330 and the S-550 editors render the"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/front-panel/VirtualFrontPanel.tsx",
+          "line": 18,
+          "snippet": "* keys + red arrow silkscreen) is borrowed from the S-550 hardware"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/front-panel/VirtualFrontPanel.tsx",
+          "line": 20,
+          "snippet": "* rackmount unit shares its design language with the S-550 anyway."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/front-panel/index.ts",
+          "line": 4,
+          "snippet": "* Virtual front panel for remote Roland S-330 / S-550 control. The"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx",
+          "line": 48,
+          "snippet": "// Device-aware default name (S-330: Patch_P11..Patch_P28; S-550:"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx",
+          "line": 50,
+          "snippet": "// `Patch_17` for S-550 patch index 16, which has no analogue on the"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx",
+          "line": 53,
+          "snippet": "* yields `{0, 1}`, S-550 yields `{0, 1}` for tones 0-31 and `{2, 3}` for"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx",
+          "line": 85,
+          "snippet": "/** See `ToneImportMapping.waveBank` JSDoc — `number` for S-330/S-550 parity. */"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx",
+          "line": 276,
+          "snippet": "/** See `ToneImportMapping.waveBank` JSDoc — `number` for S-330/S-550 parity. */"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx",
+          "line": 529,
+          "snippet": "// target slot. S-330 always returns A/B; S-550 returns"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx",
+          "line": 560,
+          "snippet": "// target slot — on S-550, moving across the"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx",
+          "line": 57,
+          "snippet": "* tone group on S-550 (tones 32-63 use banks C/D, not A/B), and"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx",
+          "line": 67,
+          "snippet": "// layout. S-330 always returns A/B; S-550 returns A/B for tones 0-31 and"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx",
+          "line": 47,
+          "snippet": "* dialog serves both S-330 (banks 0-1) and S-550 (banks 0-3). The rendered"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx",
+          "line": 2,
+          "snippet": "* S-330/S-550 Kit Output Configuration"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/patches/PatchList.tsx",
+          "line": 49,
+          "snippet": "* MemoryLayout, so S-330 (P11..P28) and S-550 (II11..II48 / I11..I28)"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/patches/PatchList.tsx",
+          "line": 83,
+          "snippet": "// S-550 patches use 4-char slot labels (\"II11\"…\"II48\"); the"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/memory-layout.ts",
+          "line": 90,
+          "snippet": "// S-550 Memory Layout"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/memory-layout.ts",
+          "line": 94,
+          "snippet": "* S-550 memory layout."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/memory-layout.ts",
+          "line": 152,
+          "snippet": "// S-550 has two blocks of 16 patches each (I and II)"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/memory-layout.ts",
+          "line": 161,
+          "snippet": "// S-550 has 4 patch banks: I11-I18, I21-I28, II11-II18, II21-II28"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/s550.ts",
+          "line": 2,
+          "snippet": "* S-550 device configuration."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/s550.ts",
+          "line": 14,
+          "snippet": "* Roland S-550 sampler configuration."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/s550.ts",
+          "line": 16,
+          "snippet": "* The S-550 has:"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/s550.ts",
+          "line": 23,
+          "snippet": "deviceName: 'S-550',"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/types.ts",
+          "line": 34,
+          "snippet": "* For S-550: two groups (Block 1: tones 0-31, Block 2: tones 32-63)."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/types.ts",
+          "line": 52,
+          "snippet": "* For S-550: two options (Block 1 or Block 2)."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/types.ts",
+          "line": 99,
+          "snippet": "* or \"I11-I18\" for S-550 block I)."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/types.ts",
+          "line": 110,
+          "snippet": "* S-550 uses Roman numerals for blocks, S-330 uses P prefix."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/types.ts",
+          "line": 148,
+          "snippet": "/** Number of wave banks (A, B for S-330; A, B, C, D for S-550) */"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/constants/tone-tooltips.ts",
+          "line": 26,
+          "snippet": "'Which wave bank the sample lives in. S-330: A or B. S-550: A through D. ' +"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/core/midi/SamplerClient.ts",
+          "line": 5,
+          "snippet": "* Both S-330 and S-550 tones/patches are structurally identical — only"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/core/midi/SamplerClient.ts",
+          "line": 13,
+          "snippet": "// (S-550 types are structurally identical — same fields, same shapes)."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/core/midi/SamplerClient.ts",
+          "line": 15,
+          "snippet": "// throughout the editor and are type-compatible with S-550."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useImportSamples.ts",
+          "line": 352,
+          "snippet": "// waveBank is `number` end-to-end: S-330 accepts 0/1, S-550 accepts 0..3."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useLibraryExport.ts",
+          "line": 98,
+          "snippet": "// Routing through MemoryLayout means S-550 patches >= block 2 render with the"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useLibraryImport.ts",
+          "line": 42,
+          "snippet": "// accepts 0/1, S-550 accepts 0..3. The device client validates the bank"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useLibraryImportDialogs.ts",
+          "line": 35,
+          "snippet": "* editor cannot encode S-330's `0 | 1` and S-550's `0 | 1 | 2 | 3`"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useLibraryImportDialogs.ts",
+          "line": 240,
+          "snippet": "// `targetBank` is `number` end-to-end (S-330: 0/1, S-550: 0..3)."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useToneSampleExport.ts",
+          "line": 27,
+          "snippet": "* The hook is device-agnostic: no S-330 / S-550 conditionals, no model"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/library-sets-save-incremental.ts",
+          "line": 243,
+          "snippet": "// (S-330: 0/1, S-550: 0..3). The set-manifest schema for the"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/slot-allocation.ts",
+          "line": 277,
+          "snippet": "/** Wave bank index (0-3 for S-550, 0-1 for S-330) */"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/slot-allocation.ts",
+          "line": 294,
+          "snippet": "* Initializes all 4 banks (S-550 uses 0-3, S-330 uses 0-1)."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/wave-export.ts",
+          "line": 4,
+          "snippet": "* Converts Roland S-series (S-330 / S-550) wave data to standard audio"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/wave-export.ts",
+          "line": 10,
+          "snippet": "* S-330 / S-550 store 12-bit linear PCM samples at 15kHz or 30kHz. When"
+        }
+      ]
+    },
+    {
+      "term": "editor",
+      "occurrences": [
+        {
+          "file": "modules/akai-s3k-editor/src/App.tsx",
+          "line": 13,
+          "snippet": "<Route path=\"/akai/s3000xl/editor\" element={<Navigate to=\"/akai/s3000xl/editor/programs\" replace />} />"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/App.tsx",
+          "line": 14,
+          "snippet": "<Route path=\"/akai/s3000xl/editor/programs\" element={<ProgramsPage />} />"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/App.tsx",
+          "line": 15,
+          "snippet": "<Route path=\"/akai/s3000xl/editor/keygroups\" element={<KeygroupsPage />} />"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/App.tsx",
+          "line": 16,
+          "snippet": "<Route path=\"/akai/s3000xl/editor/samples\" element={<SamplesPage />} />"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/App.tsx",
+          "line": 17,
+          "snippet": "<Route path=\"/akai/s3000xl/editor/library\" element={<LibraryPage />} />"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/App.tsx",
+          "line": 18,
+          "snippet": "<Route path=\"/akai/s3000xl/editor/test/keygroups\" element={<TestKeygroupsPage />} />"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/App.tsx",
+          "line": 19,
+          "snippet": "<Route path=\"*\" element={<Navigate to=\"/akai/s3000xl/editor/programs\" replace />} />"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/keygroups/AdsrDisplay.tsx",
+          "line": 2,
+          "snippet": "* Interactive envelope editors for S3K keygroup editor."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/keygroups/AdsrDisplay.tsx",
+          "line": 63,
+          "snippet": "// ADSR Editor (Amp Envelope)"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/keygroups/KeygroupList.tsx",
+          "line": 2,
+          "snippet": "import { DeleteIcon, RefreshIcon, CloneIcon } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/keygroups/VelocityZoneEditor.tsx",
+          "line": 102,
+          "snippet": "<div className=\"s3k-zone-editor\">"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/layout/ConnectionDrawer.tsx",
+          "line": 2,
+          "snippet": "import { SlideDrawer, MidiConnectionPage, useHomePageStore, type MidiConnectionPageConfig } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/layout/ConnectionDrawer.tsx",
+          "line": 29,
+          "snippet": "'Or deploy this editor using HTTPS.',"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/layout/Layout.tsx",
+          "line": 7,
+          "snippet": "} from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/layout/Layout.tsx",
+          "line": 12,
+          "snippet": "const BASE_PATH = '/akai/s3000xl/editor';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/layout/Layout.tsx",
+          "line": 25,
+          "snippet": "editorName: 'S3000XL Editor',"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/layout/Layout.tsx",
+          "line": 28,
+          "snippet": "issueTitlePrefix: '[S3000XL Editor]',"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 13,
+          "snippet": "import { LIBRARY_ITEM_MIME, LoadingBar, ContextMenu, ConfirmDialog, DeleteIcon, CloneIcon, type LibraryDragPayload, type ContextMenuAction } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx",
+          "line": 21,
+          "snippet": "import { ContextMenu, ChevronIcon, LoadingBar, SampleIcon, ProgramIcon, type ContextMenuAction } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx",
+          "line": 29,
+          "snippet": "import { SteppedProgressDrawer, type ProgressStep, type OperationProgress, formatBytes } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 2,
+          "snippet": "* Standalone Drum Kit Editor Dialog"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ExportProgramDialog.tsx",
+          "line": 14,
+          "snippet": "import { SteppedProgressDrawer, type ProgressStep, formatBytes } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ImportDrumKitDialog.tsx",
+          "line": 15,
+          "snippet": "import { SteppedProgressDrawer, type ProgressStep } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ImportInstrumentDialog.tsx",
+          "line": 23,
+          "snippet": "import { SteppedProgressDrawer, type ProgressStep, formatBytes } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ImportProgramDialog.tsx",
+          "line": 17,
+          "snippet": "import { SteppedProgressDrawer, type ProgressStep } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/LibraryDetailPanel.tsx",
+          "line": 15,
+          "snippet": "import type { TreeNode } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/LibraryIcons.tsx",
+          "line": 2,
+          "snippet": "* Library tree icon components for the S3000XL editor."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/LibraryIcons.tsx",
+          "line": 5,
+          "snippet": "* as the Roland editor's LibraryTreeIcons but using ac-tree-icon"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ReceiveSampleDialog.tsx",
+          "line": 16,
+          "snippet": "import { SteppedProgressDrawer, type ProgressStep, formatBytes } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/S3kItemPreviewPanel.tsx",
+          "line": 15,
+          "snippet": "* - \"Open in Loop Editor\" -- opens loop point editor for samples"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/S3kItemPreviewPanel.tsx",
+          "line": 16,
+          "snippet": "* - \"Open in Editor\" -- opens sample editor for destructive editing"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/S3kItemPreviewPanel.tsx",
+          "line": 18,
+          "snippet": "* - \"Edit Kit\" -- opens standalone drum kit editor for metadata/pad editing"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/S3kItemPreviewPanel.tsx",
+          "line": 21,
+          "snippet": "import type { ItemSelection, PreviewContext } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/S3kItemPreviewPanel.tsx",
+          "line": 53,
+          "snippet": "/** Callback for \"Open in Loop Editor\" action (sample) */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/S3kItemPreviewPanel.tsx",
+          "line": 55,
+          "snippet": "/** Callback for \"Open in Editor\" action (sample) */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/S3kItemPreviewPanel.tsx",
+          "line": 134,
+          "snippet": "/** Secondary action button (e.g., editor tools). Supports disabled state with spinner. */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/S3kItemPreviewPanel.tsx",
+          "line": 191,
+          "snippet": "label=\"Loop Editor\""
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/S3kItemPreviewPanel.tsx",
+          "line": 193,
+          "snippet": "testId=\"preview-open-loop-editor\""
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/S3kItemPreviewPanel.tsx",
+          "line": 200,
+          "snippet": "testId=\"preview-open-sample-editor\""
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/S3kKitOutputConfig.tsx",
+          "line": 10,
+          "snippet": "import type { BaseKitConfig, KitOutputConfigProps } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/SendSampleDialog.tsx",
+          "line": 13,
+          "snippet": "import { SteppedProgressDrawer, type ProgressStep, formatBytes } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/programs/KeygroupSummary.tsx",
+          "line": 2,
+          "snippet": "import { DeleteIcon } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/programs/ProgramList.tsx",
+          "line": 2,
+          "snippet": "import { DeleteIcon, CloneIcon, RefreshIcon } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/samples/SampleList.tsx",
+          "line": 2,
+          "snippet": "import { DeleteIcon, RefreshIcon, CloneIcon } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/samples/SaveTargetDialog.tsx",
+          "line": 9,
+          "snippet": "* Shown when a device-origin sample is saved from the sample editor or chopper."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/samples/SaveTargetDialog.tsx",
+          "line": 10,
+          "snippet": "* Loop editor saves always go to device header (fast, no dialog needed)."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/ui/Dialog.tsx",
+          "line": 2,
+          "snippet": "* Re-export the shared Dialog primitive from editor-core."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/ui/Dialog.tsx",
+          "line": 5,
+          "snippet": "* prevention) is implemented in the editor-core Dialog. S3K consumers"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/ui/Dialog.tsx",
+          "line": 15,
+          "snippet": "} from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/ui/SdsTransferProgress.tsx",
+          "line": 11,
+          "snippet": "import { formatBytes } from '@audiocontrol/editor-core';"
+        }
+      ]
+    },
+    {
+      "term": "0x00",
+      "occurrences": [
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 22,
+          "snippet": "// Example: address [0x04, 0x00, 0x00] + data [0x50]"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 23,
+          "snippet": "// Sum = 0x04 + 0x00 + 0x00 + 0x50 = 0x54"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 26,
+          "snippet": "expect(calculateChecksum([0x04, 0x00, 0x00, 0x50])).toBe(0x2c);"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 32,
+          "snippet": "expect(calculateChecksum([0x00])).toBe(0);"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 51,
+          "snippet": "const address = { aa: 0x04, bb: 0x00, cc: 0x00 };"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 61,
+          "snippet": "expect(message[6]).toBe(0x00); // Address BB"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 62,
+          "snippet": "expect(message[7]).toBe(0x00); // Address CC"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 69,
+          "snippet": "const address = { aa: 0x04, bb: 0x00, cc: 0x00 };"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 76,
+          "snippet": "const address = { aa: 0x10, bb: 0x00, cc: 0x00 };"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 89,
+          "snippet": "const address = { aa: 0x04, bb: 0x00, cc: 0x00 };"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 99,
+          "snippet": "expect(message[6]).toBe(0x00); // Address BB"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 100,
+          "snippet": "expect(message[7]).toBe(0x00); // Address CC"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 101,
+          "snippet": "expect(message[8]).toBe(0x00); // Size padding"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 109,
+          "snippet": "const address = { aa: 0x03, bb: 0x00, cc: 0x00 };"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 113,
+          "snippet": "expect(message[9]).toBe(0x00); // Size MSB"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 121,
+          "snippet": "const address = { aa: 0x04, bb: 0x00, cc: 0x00 };"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 142,
+          "snippet": "const parsed = parseSysExMessage([0x00, 0x41, 0x10, 0x16, 0x12, 0x04, 0x00, 0x00, 0x50, 0x2c, 0xf7]);"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 149,
+          "snippet": "const parsed = parseSysExMessage([0xf0, 0x42, 0x10, 0x16, 0x12, 0x04, 0x00, 0x00, 0x50, 0x2c, 0xf7]);"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 156,
+          "snippet": "const parsed = parseSysExMessage([0xf0, 0x41, 0x10, 0x17, 0x12, 0x04, 0x00, 0x00, 0x50, 0x2c, 0xf7]);"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 163,
+          "snippet": "const message = [0xf0, 0x41, 0x10, 0x16, 0x12, 0x04, 0x00, 0x00, 0x50, 0xff, 0xf7]; // Wrong checksum"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 174,
+          "snippet": "const message = [0xf0, 0x41, 0x10, 0x16, 0x12, 0x04, 0x00, 0x00, 0x50, 0x2c, 0xf7];"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 190,
+          "snippet": "expect(address.bb).toBe(0x00);"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 191,
+          "snippet": "expect(address.cc).toBe(0x00);"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 214,
+          "snippet": "expect(address.bb).toBe(0x00);"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 215,
+          "snippet": "expect(address.cc).toBe(0x00);"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 222,
+          "snippet": "expect(address.cc).toBe(0x00);"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 235,
+          "snippet": "expect(address.bb).toBe(0x00);"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 236,
+          "snippet": "expect(address.cc).toBe(0x00);"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 243,
+          "snippet": "expect(address.cc).toBe(0x00);"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 250,
+          "snippet": "expect(address.cc).toBe(0x00);"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 263,
+          "snippet": "expect(address.bb).toBe(0x00);"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 264,
+          "snippet": "expect(address.cc).toBe(0x00);"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 272,
+          "snippet": "expect(address.bb).toBe(0x00);"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 273,
+          "snippet": "expect(address.cc).toBe(0x00);"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 280,
+          "snippet": "expect(address.cc).toBe(0x00);"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.ts",
+          "line": 106,
+          "snippet": "const addressAndSize = [address.aa, address.bb, address.cc, 0x00, sizeMsb, sizeLsb];"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.ts",
+          "line": 118,
+          "snippet": "0x00,"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.ts",
+          "line": 277,
+          "snippet": "cc: 0x00,"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.ts",
+          "line": 295,
+          "snippet": "cc: 0x00,"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.ts",
+          "line": 307,
+          "snippet": "bb: 0x00,"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.ts",
+          "line": 308,
+          "snippet": "cc: 0x00,"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.ts",
+          "line": 326,
+          "snippet": "cc: 0x00,"
+        },
+        {
+          "file": "modules/launch-control-xl3-editor/src/client.ts",
+          "line": 260,
+          "snippet": "0x00, // Reserved"
+        },
+        {
+          "file": "modules/launch-control-xl3-editor/src/midimunge.ts",
+          "line": 145,
+          "snippet": "channel, // MIDI channel (0x00-0x0F)"
+        },
+        {
+          "file": "modules/launch-control-xl3-editor/src/midimunge.ts",
+          "line": 148,
+          "snippet": "0x00, // Reserved"
+        },
+        {
+          "file": "modules/launch-control-xl3-editor/src/midimunge.ts",
+          "line": 151,
+          "snippet": "minValue, // Min value (usually 0x00)"
+        },
+        {
+          "file": "modules/launch-control-xl3-editor/src/midimunge.ts",
+          "line": 174,
+          "snippet": "0x00, 0x20, 0x29, // Manufacturer ID"
+        },
+        {
+          "file": "modules/launch-control-xl3-editor/src/midimunge.ts",
+          "line": 178,
+          "snippet": "0x00, // Reserved"
+        },
+        {
+          "file": "modules/launch-control-xl3-editor/src/midimunge.ts",
+          "line": 203,
+          "snippet": "if (data[1] !== 0x00 || data[2] !== 0x20 || data[3] !== 0x29) {"
+        },
+        {
+          "file": "modules/launch-control-xl3-editor/src/types.ts",
+          "line": 7,
+          "snippet": "export const MANUFACTURER_ID = [0x00, 0x20, 0x29] as const; // Focusrite/Novation"
+        }
+      ]
+    },
+    {
+      "term": "tone",
+      "occurrences": [
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PartConfigEditor.tsx",
+          "line": 5,
+          "snippet": "* - Tone group and number"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PartConfigEditor.tsx",
+          "line": 45,
+          "snippet": "const tone = useD110Store((state) => state.tones.get(partIndex));"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PartConfigEditor.tsx",
+          "line": 50,
+          "snippet": "const toneName = tone?.common.name.trim() || null;"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PartConfigEditor.tsx",
+          "line": 92,
+          "snippet": "// Tone Group"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PartConfigEditor.tsx",
+          "line": 101,
+          "snippet": "// Tone Number (0-63)"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PartConfigEditor.tsx",
+          "line": 286,
+          "snippet": "{/* Tone Selection */}"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PartConfigEditor.tsx",
+          "line": 289,
+          "snippet": "<label className=\"ac-label ac-label-block\">Tone Group</label>"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PartConfigEditor.tsx",
+          "line": 303,
+          "snippet": "<label className=\"ac-label ac-label-block\">Tone</label>"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PatchEditor.tsx",
+          "line": 49,
+          "snippet": "// Also fetch tone data for all 8 parts to get tone names"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PatchEditor.tsx",
+          "line": 51,
+          "snippet": "setLoading(true, `Fetching tone ${i + 1} of 8...`);"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PatchEditor.tsx",
+          "line": 56,
+          "snippet": "console.log('[PatchEditor] Fetched all tone data');"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/PartSelector.tsx",
+          "line": 4,
+          "snippet": "* The D-110 has 8 parts, each with its own tone assignment."
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/PartialEditor.tsx",
+          "line": 31,
+          "snippet": "const tone = useD110Store(selectCurrentTone);"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/PartialEditor.tsx",
+          "line": 43,
+          "snippet": "const partial = tone?.[partialKey] as PartialParams | undefined;"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/PartialEditor.tsx",
+          "line": 122,
+          "snippet": "if (!tone) {"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/PartialEditor.tsx",
+          "line": 126,
+          "snippet": "<p>No tone data loaded</p>"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/PartialEditor.tsx",
+          "line": 129,
+          "snippet": "? 'Fetch tone data to edit partials'"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/PartialEditor.tsx",
+          "line": 166,
+          "snippet": "structure12={tone.common.structure12}"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/PartialEditor.tsx",
+          "line": 167,
+          "snippet": "structure34={tone.common.structure34}"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/PartialEditor.tsx",
+          "line": 193,
+          "snippet": "structure12={tone.common.structure12}"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/PartialEditor.tsx",
+          "line": 194,
+          "snippet": "structure34={tone.common.structure34}"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/PartialEditor.tsx",
+          "line": 208,
+          "snippet": "structure12={tone.common.structure12}"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/PartialEditor.tsx",
+          "line": 209,
+          "snippet": "structure34={tone.common.structure34}"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/PartialSelector.tsx",
+          "line": 5,
+          "snippet": "* Shows mute state from tone common parameters."
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/PartialSelector.tsx",
+          "line": 14,
+          "snippet": "const tone = useD110Store(selectCurrentTone);"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/PartialSelector.tsx",
+          "line": 16,
+          "snippet": "const partialMutes = tone?.common.partialMutes ?? {"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/ToneCommonEditor.tsx",
+          "line": 2,
+          "snippet": "* Tone Common Parameters Editor"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/ToneCommonEditor.tsx",
+          "line": 4,
+          "snippet": "* Edits tone-level settings that affect all partials:"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/ToneCommonEditor.tsx",
+          "line": 5,
+          "snippet": "* - Tone name (10 characters)"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/ToneCommonEditor.tsx",
+          "line": 67,
+          "snippet": "const tone = useD110Store(selectCurrentTone);"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/ToneCommonEditor.tsx",
+          "line": 73,
+          "snippet": "const common = tone?.common;"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/ToneCommonEditor.tsx",
+          "line": 80,
+          "snippet": "// Tone common parameters start at offset 0 in the temp tone area"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/ToneCommonEditor.tsx",
+          "line": 162,
+          "snippet": "if (!tone || !common) {"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/ToneCommonEditor.tsx",
+          "line": 166,
+          "snippet": "<p>No tone data loaded</p>"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/ToneCommonEditor.tsx",
+          "line": 169,
+          "snippet": "? 'Click \"Fetch Tone\" to load data from the D-110'"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/ToneCommonEditor.tsx",
+          "line": 180,
+          "snippet": "Tone Common Parameters"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/ToneCommonEditor.tsx",
+          "line": 183,
+          "snippet": "{/* Tone Name */}"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/ToneCommonEditor.tsx",
+          "line": 185,
+          "snippet": "<label className=\"ac-label ac-label-block\">Tone Name</label>"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/ToneCommonEditor.tsx",
+          "line": 192,
+          "snippet": "placeholder=\"Tone name...\""
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/ToneEditor.tsx",
+          "line": 2,
+          "snippet": "* Main Tone Editor Component"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/ToneEditor.tsx",
+          "line": 4,
+          "snippet": "* Container for tone editing UI including:"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/ToneEditor.tsx",
+          "line": 6,
+          "snippet": "* - Tone common parameters editor"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/ToneEditor.tsx",
+          "line": 23,
+          "snippet": "const tone = useD110Store(selectCurrentTone);"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/ToneEditor.tsx",
+          "line": 35,
+          "snippet": "// Fetch tone data for selected part"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/ToneEditor.tsx",
+          "line": 40,
+          "snippet": "setLoading(true, `Fetching Part ${selectedPart + 1} tone...`);"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/ToneEditor.tsx",
+          "line": 50,
+          "snippet": "// Fetch tone data"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/ToneEditor.tsx",
+          "line": 55,
+          "snippet": "console.log(`[ToneEditor] Fetched tone for Part ${selectedPart + 1}:`, toneData.common.name);"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/ToneEditor.tsx",
+          "line": 57,
+          "snippet": "const message = err instanceof Error ? err.message : 'Failed to fetch tone';"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/ToneEditor.tsx",
+          "line": 102,
+          "snippet": "<h2 className=\"text-lg font-semibold\">Tone Editor</h2>"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/ToneEditor.tsx",
+          "line": 109,
+          "snippet": "{isFetching ? 'Fetching...' : 'Fetch Tone'}"
+        }
+      ]
+    },
+    {
+      "term": "runbook",
+      "occurrences": []
+    },
+    {
+      "term": "device",
+      "occurrences": [
+        {
+          "file": "modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx",
+          "line": 15,
+          "snippet": "/** Optimistic-only update during drag (no device write) */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx",
+          "line": 17,
+          "snippet": "/** Write current header to device (called on drag end) */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/keygroups/KeygroupList.tsx",
+          "line": 67,
+          "snippet": "title=\"Reload keygroups from device\""
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/keygroups/KeygroupList.tsx",
+          "line": 101,
+          "snippet": "title=\"Reload keygroups from device\""
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/keygroups/use-zone-drag.ts",
+          "line": 48,
+          "snippet": "/** Called once on mouseup. Write to device here. */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/keygroups/use-zone-drag.ts",
+          "line": 70,
+          "snippet": "* - onCommit callbacks for device writes on mouseup"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/layout/ConnectionDrawer.tsx",
+          "line": 18,
+          "snippet": "deviceIdLabel: 'Device ID',"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 2,
+          "snippet": "* DeviceMemoryPanel — displays programs and samples resident in device memory."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 17,
+          "snippet": "/** MIME type for device memory items dragged from the DeviceMemoryPanel. */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 18,
+          "snippet": "export const DEVICE_MEMORY_MIME = 'application/x-s3k-device-item';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 20,
+          "snippet": "/** Drag payload for device memory items. */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 22,
+          "snippet": "source: 'device-memory';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 38,
+          "snippet": "/** Called when a disk browser item is dropped on the device memory panel. */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 40,
+          "snippet": "/** Save a device sample to the common library area. */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 42,
+          "snippet": "/** Save a device sample to the Akai device-specific library area. */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 44,
+          "snippet": "/** Save a device program to the common library area. */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 46,
+          "snippet": "/** Save a device program to the Akai device-specific library area. */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 48,
+          "snippet": "/** Rename a device sample. */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 50,
+          "snippet": "/** Rename a device program. */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 52,
+          "snippet": "/** Delete a sample from device memory. */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 54,
+          "snippet": "/** Delete a program from device memory. */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 56,
+          "snippet": "/** Clone a program on the device. */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 58,
+          "snippet": "/** Clone a sample on the device. */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 64,
+          "snippet": "/** Inline text input for renaming device memory items. */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 166,
+          "snippet": "data-testid={`device-${type}-${index}`}"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 177,
+          "snippet": "source: 'device-memory',"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 241,
+          "snippet": "title=\"Delete from device\""
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 283,
+          "snippet": "actions.push({ label: 'Delete from Device', onClick: () => setConfirmDeleteIndex(contextMenu.index), danger: true });"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 301,
+          "snippet": ": `Delete '${confirmDeleteName ?? ''}' from device? This cannot be undone.`}"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 354,
+          "snippet": "<span className=\"ac-panel-header-title\">Device Memory</span>"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 368,
+          "snippet": "<span className=\"ac-panel-header-title\">Device Memory</span>"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 374,
+          "snippet": "title=\"Refresh device memory\""
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 437,
+          "snippet": "Drop to send to device"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 497,
+          "snippet": "Drop to send to device"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx",
+          "line": 103,
+          "snippet": "/** Called when the user wants to send a file directly to the device. */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx",
+          "line": 576,
+          "snippet": "actions.push({ label: 'Send to Device', onClick: () => { onSendToDevice(); } });"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 103,
+          "snippet": "// Programs don't have device-specific drumKit settings -- use defaults"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ExportProgramDialog.tsx",
+          "line": 2,
+          "snippet": "* Export Program Dialog — saves a complete program from the device to the library."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ExportProgramDialog.tsx",
+          "line": 5,
+          "snippet": "* 1. Read program header from device"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ExportProgramDialog.tsx",
+          "line": 192,
+          "snippet": "? `Saved to ${target}. ${missing.length} referenced sample${missing.length !== 1 ? 's' : ''} not found on device.`"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ImportDrumKitDialog.tsx",
+          "line": 3,
+          "snippet": "* to the device as an S3000XL program with one keygroup per slice."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ImportDrumKitDialog.tsx",
+          "line": 8,
+          "snippet": "* 3. Create program + keygroups on device"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ImportDrumKitDialog.tsx",
+          "line": 119,
+          "snippet": "// Refresh device after each sample"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ImportInstrumentDialog.tsx",
+          "line": 9,
+          "snippet": "* 2. Send each missing sample to device (if available)"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ImportInstrumentDialog.tsx",
+          "line": 10,
+          "snippet": "* 3. Create program + keygroups on device"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ImportInstrumentDialog.tsx",
+          "line": 100,
+          "snippet": "detail: `${meta.zones.length} zones, ${resolved.size} samples on device`,"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ImportInstrumentDialog.tsx",
+          "line": 113,
+          "snippet": "detail: `${meta.zones.length} zones, ${resolved.size} on device, ${missingSamples.length} missing (will skip)`,"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ImportInstrumentDialog.tsx",
+          "line": 168,
+          "snippet": "// Refresh device memory view so the new sample appears immediately"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ImportInstrumentDialog.tsx",
+          "line": 184,
+          "snippet": "// Step 3: Create program on device"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ImportInstrumentDialog.tsx",
+          "line": 238,
+          "snippet": "title={`Import \"${programDirName.trim()}\" to Device`}"
+        }
+      ]
+    },
+    {
+      "term": "shared",
+      "occurrences": [
+        {
+          "file": "modules/akai-s3k-editor/src/components/keygroups/note-coordinate-utils.ts",
+          "line": 2,
+          "snippet": "* Shared note-to-pixel coordinate mapping utilities."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/keygroups/note-coordinate-utils.ts",
+          "line": 71,
+          "snippet": "* This is THE shared mapping that both ZoneOverview and KeyRangeEditor use"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/ui/Dialog.tsx",
+          "line": 2,
+          "snippet": "* Re-export the shared Dialog primitive from editor-core."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/ui/SdsTransferProgress.tsx",
+          "line": 4,
+          "snippet": "* Shared between SendSampleDialog and ReceiveSampleDialog. Meets project"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/hooks/useEditorDialogs.ts",
+          "line": 2,
+          "snippet": "* S3K editor dialog hook — wraps the shared useEditorDialogsCore"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/hooks/useEditorDialogs.ts",
+          "line": 30,
+          "snippet": "// Re-export types from shared hook for backward compatibility"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/hooks/useEditorDialogs.ts",
+          "line": 364,
+          "snippet": "// Library origin — delegate to shared handler"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/hooks/useS3kLibraryStrategy.ts",
+          "line": 6,
+          "snippet": "* - Shared transfer action handler from editor-core"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/pages/LibraryPage.tsx",
+          "line": 273,
+          "snippet": "// Shared library operations -- must be after transfer callbacks"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/pages/LibraryPage.tsx",
+          "line": 379,
+          "snippet": "// Shared library operations (create, delete, move, rename, drop, expand)"
+        },
+        {
+          "file": "modules/d110-editor/src/components/layout/Layout.tsx",
+          "line": 4,
+          "snippet": "* Uses shared EditorLayout from @audiocontrol/editor-core"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/WebMidiAdapter.ts",
+          "line": 4,
+          "snippet": "* Re-exports shared Web MIDI utilities from @audiocontrol/midi-core"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/types.ts",
+          "line": 4,
+          "snippet": "* Re-exports shared MIDI types and defines D-110 specific types."
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/types.ts",
+          "line": 7,
+          "snippet": "// Re-export shared types"
+        },
+        {
+          "file": "modules/d110-editor/src/stores/midiStore.ts",
+          "line": 2,
+          "snippet": "* D-110 MIDI store built on shared editor-core factory."
+        },
+        {
+          "file": "modules/jv1080-editor/src/components/layout/Layout.tsx",
+          "line": 4,
+          "snippet": "* Uses shared EditorLayout from @audiocontrol/editor-core"
+        },
+        {
+          "file": "modules/loop-editor/src/types.ts",
+          "line": 2,
+          "snippet": "* Shared types for the loop editor module."
+        },
+        {
+          "file": "modules/loop-editor/src/ui/LoopEditorDialog.tsx",
+          "line": 6,
+          "snippet": "* the shared useLoopEditor hook. Keyboard input is built into the hook;"
+        },
+        {
+          "file": "modules/loop-editor/src/ui/hooks/use-loop-editor.ts",
+          "line": 192,
+          "snippet": "// Shared note event dispatch — all input sources (keyboard, MIDI, external)"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/layout/Layout.tsx",
+          "line": 4,
+          "snippet": "* Uses shared EditorLayout from @audiocontrol/editor-core"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/CommonSamplePreviewPanel.tsx",
+          "line": 6,
+          "snippet": "* (.ac-preview-pane + .ac-preview-fields + .ac-pane-action) shared"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/DeleteDirectoryDialog.tsx",
+          "line": 5,
+          "snippet": "* Thin wrapper around the shared ConfirmDialog from editor-core."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 15,
+          "snippet": "* Uses .ac-preview-pane chrome + shared .ac-list-* primitives for"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/LibraryTreeIcons.tsx",
+          "line": 33,
+          "snippet": "*  DeviceMemoryPanel. Single shared vocabulary across all three. */"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/MoveItemDialog.tsx",
+          "line": 4,
+          "snippet": "* Thin wrapper around the shared MoveDialog from editor-core."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/MoveItemDialog.tsx",
+          "line": 72,
+          "snippet": "void _category; // Preserved in props contract for LibraryPage; not used by the shared MoveDialog"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/SaveSetDialog.tsx",
+          "line": 23,
+          "snippet": "* shared `OperationProgress` shape so the dialog can render the canonical"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/SetItem.tsx",
+          "line": 5,
+          "snippet": "* expanded patches/tones list under it all use the shared .ac-tree-*"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/preview-chrome.tsx",
+          "line": 2,
+          "snippet": "* Library preview chrome — shared React primitives that render the"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/preview-chrome.tsx",
+          "line": 11,
+          "snippet": "* same JSX. Per the project's DRY discipline: shared structure stays"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/patches/PatchCommonPanel.tsx",
+          "line": 100,
+          "snippet": "{/* Routing / mode toggles laid out in the shared wrap container"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/patches/PatchList.tsx",
+          "line": 84,
+          "snippet": "// shared `.ac-list-row` default of 2.25rem (sized for the"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/tones/ToneEditorHead.tsx",
+          "line": 9,
+          "snippet": "* the same shape as PatchEditor's by design (shared `.ac-detail-*`"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/tones/panels/ToneFilterPanel.tsx",
+          "line": 94,
+          "snippet": "the shared compact-grid layout. Saves a row vs the previous"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/memory-layout.ts",
+          "line": 14,
+          "snippet": "// Shared Helpers"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/memory-layout.ts",
+          "line": 100,
+          "snippet": "* 32 patches across 4 banks (P11-P48), shared across both blocks."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/types.ts",
+          "line": 5,
+          "snippet": "* must implement to work with the shared editor components."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/core/midi/S330Client.ts",
+          "line": 39,
+          "snippet": "// Re-export shared SSeries types with backward-compatible aliases"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/core/midi/SamplerClient.ts",
+          "line": 12,
+          "snippet": "// The shared S-series client interface, parameterized with S-330 types"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/core/midi/SamplerClient.ts",
+          "line": 37,
+          "snippet": "// Re-export shared types used across pages"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/core/midi/types.ts",
+          "line": 4,
+          "snippet": "* Re-exports shared MIDI types and defines S-330 specific type alias."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/core/midi/types.ts",
+          "line": 7,
+          "snippet": "// Re-export shared types"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useBankLoader.ts",
+          "line": 2,
+          "snippet": "* Shared hook for loading patch and tone banks from the device."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useDeviceToneChopper.ts",
+          "line": 45,
+          "snippet": "// not the cache's shared `isLoading` (which is global across consumers)."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useLibraryExport.ts",
+          "line": 68,
+          "snippet": "// Shared"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useLibraryExport.ts",
+          "line": 112,
+          "snippet": "// Shared"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useRolandEditorDialogs.ts",
+          "line": 2,
+          "snippet": "* Roland editor dialog hook — wraps the shared useEditorDialogsCore"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useRolandEditorDialogs.ts",
+          "line": 5,
+          "snippet": "* The shared hook provides the full complement of common-area editing"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useRolandEditorDialogs.ts",
+          "line": 27,
+          "snippet": "// Re-export types from shared hook for backward compatibility"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useRolandLibraryStrategy.ts",
+          "line": 4,
+          "snippet": "* Provides device-specific delete and rename behavior for the shared"
+        }
+      ]
+    },
+    {
+      "term": "wave",
+      "occurrences": [
+        {
+          "file": "modules/akai-s3k-editor/src/components/programs/ProgramEditor.tsx",
+          "line": 124,
+          "snippet": "<ParamSelect label=\"Wave\" value={header.LFO1WAVE} options={LFO_WAVEFORM_OPTIONS} onChange={num('LFO1WAVE')} />"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/programs/ProgramEditor.tsx",
+          "line": 135,
+          "snippet": "<ParamSelect label=\"Wave\" value={header.LFO2WAVE} options={LFO_WAVEFORM_OPTIONS} onChange={num('LFO2WAVE')} />"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/wav-reader.ts",
+          "line": 26,
+          "snippet": "if (waveTag !== 'WAVE') {"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/wav-reader.ts",
+          "line": 27,
+          "snippet": "throw new Error(`Invalid WAV file: expected \"WAVE\" format, got \"${waveTag}\"`);"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/wav-writer.ts",
+          "line": 4,
+          "snippet": "* Produces a standard RIFF/WAVE file with a 44-byte header followed by raw"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/wav-writer.ts",
+          "line": 33,
+          "snippet": "offset = writeString(view, offset, 'WAVE');"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/partials/PitchSection.tsx",
+          "line": 6,
+          "snippet": "* - PCM wave number (when PCM mode)"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/partials/PitchSection.tsx",
+          "line": 11,
+          "snippet": "* - Pulse width (for square wave)"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/partials/PitchSection.tsx",
+          "line": 40,
+          "snippet": "// For PCM partials: bit 1 is high bit of PCM wave number (Bank A=0, Bank B=1)"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/partials/PitchSection.tsx",
+          "line": 88,
+          "snippet": "square: synthDisabledReason ?? 'Square wave - A synthesized waveform with adjustable pulse width',"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/partials/PitchSection.tsx",
+          "line": 89,
+          "snippet": "sawtooth: synthDisabledReason ?? 'Sawtooth wave - A synthesized waveform rich in harmonics',"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/partials/PitchSection.tsx",
+          "line": 204,
+          "snippet": "{/* PCM Wave Number (only shown for PCM partials) */}"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/partials/PitchSection.tsx",
+          "line": 207,
+          "snippet": "<label className=\"ac-label ac-label-block mb-2\">PCM Wave</label>"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/partials/PitchSection.tsx",
+          "line": 211,
+          "snippet": "// Ensure waveform value matches the displayed bank when selecting a wave"
+        },
+        {
+          "file": "modules/d110-editor/src/components/ToneEditor/partials/PitchSection.tsx",
+          "line": 232,
+          "snippet": "{/* Pulse Width (only shown for Square wave on Synth partials) */}"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/constants.ts",
+          "line": 164,
+          "snippet": "*   Bit 1: High bit (bit 7) of PCM wave number, allowing 256 waves (0-255)"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/constants.ts",
+          "line": 168,
+          "snippet": "* This means waveform value 0 can mean EITHER \"Square wave\" OR \"PCM Bank A\""
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/constants.ts",
+          "line": 186,
+          "snippet": "* The bank is encoded in bit 1 of the waveform byte, while the wave number"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/constants.ts",
+          "line": 246,
+          "snippet": "* - For PCM partials: bit 1 is the high bit of the 8-bit PCM wave number (0-255)"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/constants.ts",
+          "line": 414,
+          "snippet": "* PCM wave names for Bank A (0-127)"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/constants.ts",
+          "line": 453,
+          "snippet": "* PCM wave names for Bank B (0-127)"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/constants.ts",
+          "line": 492,
+          "snippet": "* Get PCM wave name by bank and number"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/constants.ts",
+          "line": 495,
+          "snippet": "if (waveNumber < 0 || waveNumber > 127) return `Wave ${waveNumber + 1}`;"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/constants.ts",
+          "line": 496,
+          "snippet": "if (bank === 0) return PCM_WAVE_NAMES_A[waveNumber] ?? `Wave A${waveNumber + 1}`;"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/constants.ts",
+          "line": 497,
+          "snippet": "if (bank === 1) return PCM_WAVE_NAMES_B[waveNumber] ?? `Wave B${waveNumber + 1}`;"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/constants.ts",
+          "line": 498,
+          "snippet": "return `Wave ${waveNumber + 1}`;"
+        },
+        {
+          "file": "modules/loop-editor/src/ui/LoopEditor.tsx",
+          "line": 48,
+          "snippet": "/** Whether the editor is loading wave data */"
+        },
+        {
+          "file": "modules/loop-editor/src/ui/LoopEditor.tsx",
+          "line": 374,
+          "snippet": "<span>Loading wave data…</span>"
+        },
+        {
+          "file": "modules/loop-editor/src/ui/LoopEditor.tsx",
+          "line": 391,
+          "snippet": "No wave data available. Export or import a sample first."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/CommonSamplePreviewPanel.tsx",
+          "line": 177,
+          "snippet": "tone.wave.file = wavFileName;"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx",
+          "line": 4,
+          "snippet": "* Dialog for exporting a tone (parameters + wave data) to the sampler library."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx",
+          "line": 102,
+          "snippet": "Export tone T{toneIndex + 1} parameters and wave data to your sampler library."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx",
+          "line": 49,
+          "snippet": "* Target wave bank."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx",
+          "line": 174,
+          "snippet": "preferredBank: convertedTone.wave.bank as WaveBankIndex,"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx",
+          "line": 271,
+          "snippet": "// Load all required tones with wave data"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx",
+          "line": 559,
+          "snippet": "// Clamp wave bank to a valid one for the new"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx",
+          "line": 597,
+          "snippet": "Wave Bank"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx",
+          "line": 5,
+          "snippet": "* Allows user to select target slot and wave memory allocation."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx",
+          "line": 53,
+          "snippet": "* Wave bank index, typed as `number` (rather than `0 | 1 | 2 | 3`)"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx",
+          "line": 136,
+          "snippet": "preferredBank = convertedTone.wave.bank as WaveBankIndex;"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx",
+          "line": 146,
+          "snippet": "// Load tone and wave data"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx",
+          "line": 155,
+          "snippet": "// Calculate segments needed from actual wave data"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx",
+          "line": 177,
+          "snippet": "// Set wave memory allocation - prefer available memory"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx",
+          "line": 384,
+          "snippet": "{/* Wave Bank and Segment */}"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx",
+          "line": 388,
+          "snippet": "Wave Bank"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx",
+          "line": 422,
+          "snippet": "Warning: This will overwrite existing wave data in the target segment(s)."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx",
+          "line": 149,
+          "snippet": "`Invalid wave bank ${waveBank} for ${config.deviceName} (max ${maxWaveBankIndex})`,"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx",
+          "line": 155,
+          "snippet": "`Wave bank ${waveBank} is not valid for tone ${toneIndex} on ${config.deviceName} ` +"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx",
+          "line": 311,
+          "snippet": "{/* Wave Bank and Segment */}"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx",
+          "line": 315,
+          "snippet": "Wave Bank"
+        }
+      ]
+    },
+    {
+      "term": "identical",
+      "occurrences": [
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/S3kKitOutputConfig.tsx",
+          "line": 17,
+          "snippet": "* S3kKitConfig is identical to BaseKitConfig — the S3000XL does not"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/plugins/item-types.tsx",
+          "line": 7,
+          "snippet": "/** S3K sample metadata is identical to common-area sample metadata. */"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 294,
+          "snippet": "// is identical between the editor pages and the device-memory"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/patches/PatchEditor.tsx",
+          "line": 225,
+          "snippet": "pixel-identical chrome via the .ac-detail-* primitives in"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/core/midi/SamplerClient.ts",
+          "line": 5,
+          "snippet": "* Both S-330 and S-550 tones/patches are structurally identical — only"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/core/midi/SamplerClient.ts",
+          "line": 13,
+          "snippet": "// (S-550 types are structurally identical — same fields, same shapes)."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/core/midi/SamplerClient.ts",
+          "line": 27,
+          "snippet": "// S330Tone and S550Tone are structurally identical interfaces —"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/LibraryPage.tsx",
+          "line": 447,
+          "snippet": "row's height — identical to TonesPage / PatchesPage"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/transports/simulatedMidiTransport.ts",
+          "line": 44,
+          "snippet": "* `interface Window` blocks because they're structurally identical."
+        }
+      ]
+    },
+    {
+      "term": "base",
+      "occurrences": [
+        {
+          "file": "modules/akai-s3k-editor/src/components/keygroups/VelocityZoneEditor.tsx",
+          "line": 23,
+          "snippet": "function zoneField(base: string, zone: ZoneIndex): string {"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/keygroups/VelocityZoneEditor.tsx",
+          "line": 24,
+          "snippet": "return `${base}${zone}`;"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/keygroups/VelocityZoneEditor.tsx",
+          "line": 30,
+          "snippet": "function getZoneValue(header: KeygroupHeader, base: string, zone: ZoneIndex): number {"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/keygroups/VelocityZoneEditor.tsx",
+          "line": 31,
+          "snippet": "return (header as unknown as Record<string, unknown>)[zoneField(base, zone)] as number;"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/keygroups/VelocityZoneEditor.tsx",
+          "line": 34,
+          "snippet": "function getZoneString(header: KeygroupHeader, base: string, zone: ZoneIndex): string {"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/keygroups/VelocityZoneEditor.tsx",
+          "line": 35,
+          "snippet": "return (header as unknown as Record<string, unknown>)[zoneField(base, zone)] as string;"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/keygroups/VelocityZoneEditor.tsx",
+          "line": 96,
+          "snippet": "const num = (base: string) => (v: number) =>"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/keygroups/VelocityZoneEditor.tsx",
+          "line": 97,
+          "snippet": "onParameterChange(zoneField(base, zone), v);"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 281,
+          "snippet": "Base MIDI Note"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ImportDrumKitDialog.tsx",
+          "line": 6,
+          "snippet": "* 1. Load sample metadata (slice count, base note)"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/S3kKitOutputConfig.tsx",
+          "line": 5,
+          "snippet": "* Manages kit name, base note, transpose, and velocity sensitivity."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/S3kKitOutputConfig.tsx",
+          "line": 77,
+          "snippet": "Base MIDI Note"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/S3kKitOutputConfig.tsx",
+          "line": 108,
+          "snippet": "Base MIDI Note"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/drumkit-import.ts",
+          "line": 131,
+          "snippet": "* Get the base MIDI note from a chopped sample manifest."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/drumkit-import.ts",
+          "line": 139,
+          "snippet": "// Default base note for generic chopped samples"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/front-panel/FrontPanelButton.tsx",
+          "line": 4,
+          "snippet": "* Base button primitive used by the virtual front panel. Holds the"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/front-panel/FrontPanelButton.tsx",
+          "line": 79,
+          "snippet": "lg: 'px-4 py-3 text-base',"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx",
+          "line": 5,
+          "snippet": "* Manages kit name, sample rate (15/30kHz), base note, labels,"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx",
+          "line": 66,
+          "snippet": "Base MIDI Note"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/SampleBundlePreviewPanel.tsx",
+          "line": 374,
+          "snippet": "<span className=\"text-s330-muted\">Base Note:</span>{' '}"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/patches/use-zone-drag.ts",
+          "line": 156,
+          "snippet": "// Initial draft = base zones, no resolution yet."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/types.ts",
+          "line": 162,
+          "snippet": "/** Base path for the editor (e.g., /roland/s330/editor) */"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/transports/simulatedMidiTransport.ts",
+          "line": 80,
+          "snippet": "/** Override the fixture base URL. Defaults to `/test-fixtures`. */"
+        },
+        {
+          "file": "modules/sample-editor/src/ui/hooks/useSampleEditor.ts",
+          "line": 91,
+          "snippet": "const base = prev.entries.slice(0, prev.currentIndex + 1);"
+        },
+        {
+          "file": "modules/sample-editor/src/ui/hooks/useSampleEditor.ts",
+          "line": 92,
+          "snippet": "const entries = [...base, newEntry];"
+        },
+        {
+          "file": "modules/sample-editor/src/ui/hooks/useSampleEditor.ts",
+          "line": 129,
+          "snippet": "const base = prev.entries.slice(0, prev.currentIndex + 1);"
+        },
+        {
+          "file": "modules/sample-editor/src/ui/hooks/useSampleEditor.ts",
+          "line": 130,
+          "snippet": "const entries = [...base, { label, samples: committed }];"
+        }
+      ]
+    },
+    {
+      "term": "patch",
+      "occurrences": [
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PartConfigEditor.tsx",
+          "line": 4,
+          "snippet": "* Edits per-part settings in a D-110 patch:"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PatchEditor.tsx",
+          "line": 2,
+          "snippet": "* Main Patch Editor Component"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PatchEditor.tsx",
+          "line": 4,
+          "snippet": "* Container for multi/patch editing UI including:"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PatchEditor.tsx",
+          "line": 5,
+          "snippet": "* - Patch name editor"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PatchEditor.tsx",
+          "line": 22,
+          "snippet": "const patch = useD110Store((state) => state.patch);"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PatchEditor.tsx",
+          "line": 30,
+          "snippet": "const [patchName, setPatchName] = useState(patch?.name ?? '');"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PatchEditor.tsx",
+          "line": 33,
+          "snippet": "// Fetch full patch data from D-110"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PatchEditor.tsx",
+          "line": 38,
+          "snippet": "setLoading(true, 'Fetching patch data...');"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PatchEditor.tsx",
+          "line": 42,
+          "snippet": "// Fetch patch (system params + part configs)"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PatchEditor.tsx",
+          "line": 47,
+          "snippet": "console.log('[PatchEditor] Fetched patch:', patchData.name);"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PatchEditor.tsx",
+          "line": 58,
+          "snippet": "const message = err instanceof Error ? err.message : 'Failed to fetch patch';"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PatchEditor.tsx",
+          "line": 67,
+          "snippet": "// Handle patch name change"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PatchEditor.tsx",
+          "line": 85,
+          "snippet": "console.error('[PatchEditor] Failed to send patch name:', err);"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PatchEditor.tsx",
+          "line": 125,
+          "snippet": "<h2 className=\"text-lg font-semibold\">Patch Editor</h2>"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PatchEditor.tsx",
+          "line": 131,
+          "snippet": "{isFetching ? 'Fetching...' : 'Fetch Patch'}"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PatchEditor.tsx",
+          "line": 135,
+          "snippet": "{/* Patch Name */}"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PatchEditor.tsx",
+          "line": 136,
+          "snippet": "{patch && ("
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PatchEditor.tsx",
+          "line": 138,
+          "snippet": "<label className=\"ac-label ac-label-block\">Patch Name</label>"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PatchEditor.tsx",
+          "line": 145,
+          "snippet": "placeholder=\"Patch name...\""
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PatchEditor.tsx",
+          "line": 153,
+          "snippet": "{!patch && ("
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PatchEditor.tsx",
+          "line": 155,
+          "snippet": "<p>No patch data loaded</p>"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PatchEditor.tsx",
+          "line": 157,
+          "snippet": "Click \"Fetch Patch\" to load the current patch from the D-110"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/SystemEditor.tsx",
+          "line": 102,
+          "snippet": "Click \"Fetch Patch\" to load data from the D-110"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/D110Client.ts",
+          "line": 373,
+          "snippet": "// Extract patch name from system data (last 10 bytes)"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/constants.ts",
+          "line": 46,
+          "snippet": "/** Patch memory (64 patches) */"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/constants.ts",
+          "line": 47,
+          "snippet": "PATCH: 0x06,"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/constants.ts",
+          "line": 70,
+          "snippet": "* Patch data size in bytes"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/constants.ts",
+          "line": 105,
+          "snippet": "* Patch name length"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/constants.ts",
+          "line": 549,
+          "snippet": "// Patch name (10 bytes)"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 269,
+          "snippet": "it('should calculate correct address for patch 0', () => {"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 276,
+          "snippet": "it('should calculate correct address for patch 63', () => {"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 283,
+          "snippet": "it('should throw for invalid patch index', () => {"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.ts",
+          "line": 313,
+          "snippet": "* Calculate address for patch memory"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.ts",
+          "line": 315,
+          "snippet": "* @param patchIndex - Patch index (0-63)"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.ts",
+          "line": 320,
+          "snippet": "throw new Error(`Invalid patch index: ${patchIndex}`);"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/types.ts",
+          "line": 214,
+          "snippet": "* Part configuration in a multi/patch"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/types.ts",
+          "line": 242,
+          "snippet": "* Complete multi/patch data"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/types.ts",
+          "line": 266,
+          "snippet": "// Patch operations"
+        },
+        {
+          "file": "modules/d110-editor/src/pages/PatchesPage.tsx",
+          "line": 4,
+          "snippet": "* A D-110 patch combines up to 8 tones with part configurations."
+        },
+        {
+          "file": "modules/d110-editor/src/stores/d110Store.ts",
+          "line": 4,
+          "snippet": "* Manages tone and patch data state with hardware synchronization."
+        },
+        {
+          "file": "modules/d110-editor/src/stores/d110Store.ts",
+          "line": 31,
+          "snippet": "// Full patch data"
+        },
+        {
+          "file": "modules/d110-editor/src/stores/d110Store.ts",
+          "line": 32,
+          "snippet": "patch: D110Patch | null;"
+        },
+        {
+          "file": "modules/d110-editor/src/stores/d110Store.ts",
+          "line": 90,
+          "snippet": "// Patch operations"
+        },
+        {
+          "file": "modules/d110-editor/src/stores/d110Store.ts",
+          "line": 91,
+          "snippet": "setPatch: (patch: D110Patch) => void;"
+        },
+        {
+          "file": "modules/d110-editor/src/stores/d110Store.ts",
+          "line": 117,
+          "snippet": "patch: null,"
+        },
+        {
+          "file": "modules/d110-editor/src/stores/d110Store.ts",
+          "line": 355,
+          "snippet": "setPatch: (patch) =>"
+        },
+        {
+          "file": "modules/d110-editor/src/stores/d110Store.ts",
+          "line": 357,
+          "snippet": "patch,"
+        },
+        {
+          "file": "modules/d110-editor/src/stores/d110Store.ts",
+          "line": 358,
+          "snippet": "systemParams: patch.system,"
+        },
+        {
+          "file": "modules/d110-editor/src/stores/d110Store.ts",
+          "line": 359,
+          "snippet": "partConfigs: patch.parts,"
+        },
+        {
+          "file": "modules/d110-editor/src/stores/d110Store.ts",
+          "line": 400,
+          "snippet": "patch: null,"
+        }
+      ]
+    },
+    {
+      "term": "protocol",
+      "occurrences": [
+        {
+          "file": "modules/akai-s3k-editor/src/hooks/useS3000xlClient.ts",
+          "line": 42,
+          "snippet": "// writeFlushDelayMs: 0 — The S3000XL protocol sends the entire header on"
+        },
+        {
+          "file": "modules/launch-control-xl3-editor/src/client.ts",
+          "line": 286,
+          "snippet": "// Note: LED protocol needs to be discovered"
+        },
+        {
+          "file": "modules/launch-control-xl3-editor/src/index.ts",
+          "line": 7,
+          "snippet": "* Based on reverse-engineered SysEx protocol from the official web editor."
+        },
+        {
+          "file": "modules/launch-control-xl3-editor/src/midimunge.ts",
+          "line": 130,
+          "snippet": "* Based on captured protocol: 49 [ID] 02 [TYPE] [CHANNEL] ... 48 00 [CC] 7F 00"
+        },
+        {
+          "file": "modules/launch-control-xl3-editor/src/types.ts",
+          "line": 2,
+          "snippet": "* TypeScript interfaces for Novation Launch Control XL 3 MIDI protocol"
+        },
+        {
+          "file": "modules/launch-control-xl3-editor/src/types.ts",
+          "line": 38,
+          "snippet": "* MIDI Channel type (1-16, encoded as 0-15 in protocol)"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/wave-export.ts",
+          "line": 19,
+          "snippet": "* See docs/1.0/s330-sysex-protocol.md for full protocol details (S-550"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/HomePage.tsx",
+          "line": 505,
+          "snippet": "<li>The {deviceName} displays IDs 1–17 on the front panel but the underlying MIDI protocol value is 0–16. The form here uses the front-panel value, so match what your device shows.</li>"
+        }
+      ]
+    }
+  ]
+}

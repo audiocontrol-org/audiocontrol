@@ -20,6 +20,12 @@ importers:
       '@typescript-eslint/parser':
         specifier: ^6.19.0
         version: 6.21.0(eslint@8.57.1)(typescript@5.9.2)
+      ajv:
+        specifier: ^8.17.1
+        version: 8.20.0
+      ajv-formats:
+        specifier: ^3.0.1
+        version: 3.0.1(ajv@8.20.0)
       easymidi:
         specifier: ^3.1.0
         version: 3.1.0
@@ -41,6 +47,9 @@ importers:
       typescript:
         specifier: ^5.9.2
         version: 5.9.2
+      yaml:
+        specifier: ^2.8.0
+        version: 2.8.3
 
   modules/akai-s3k-editor:
     dependencies:
@@ -357,7 +366,7 @@ importers:
         version: 8.5.6
       tailwindcss:
         specifier: ^3.4.0
-        version: 3.4.19(tsx@4.20.5)(yaml@2.8.2)
+        version: 3.4.19(tsx@4.20.5)(yaml@2.8.3)
       typescript:
         specifier: ^5.3.0
         version: 5.9.2
@@ -571,7 +580,7 @@ importers:
         version: 8.5.6
       tailwindcss:
         specifier: ^3.4.0
-        version: 3.4.19(tsx@4.20.5)(yaml@2.8.2)
+        version: 3.4.19(tsx@4.20.5)(yaml@2.8.3)
       typescript:
         specifier: ^5.3.0
         version: 5.9.2
@@ -730,7 +739,7 @@ importers:
         version: 7.1.4(mocha@11.7.5)
       tsup:
         specifier: ^8.3.6
-        version: 8.5.1(postcss@8.5.6)(tsx@4.20.5)(typescript@5.9.2)(yaml@2.8.2)
+        version: 8.5.1(postcss@8.5.6)(tsx@4.20.5)(typescript@5.9.2)(yaml@2.8.3)
       tsx:
         specifier: ^4.19.2
         version: 4.20.5
@@ -858,7 +867,7 @@ importers:
     devDependencies:
       tsup:
         specifier: ^8.3.6
-        version: 8.5.1(postcss@8.5.6)(tsx@4.20.5)(typescript@5.9.2)(yaml@2.8.2)
+        version: 8.5.1(postcss@8.5.6)(tsx@4.20.5)(typescript@5.9.2)(yaml@2.8.3)
       typescript:
         specifier: ^5.3.0
         version: 5.9.2
@@ -1329,7 +1338,7 @@ importers:
         version: 7.1.4(mocha@11.7.5)
       tsup:
         specifier: ^8.3.6
-        version: 8.5.1(postcss@8.5.6)(tsx@4.20.5)(typescript@5.9.2)(yaml@2.8.2)
+        version: 8.5.1(postcss@8.5.6)(tsx@4.20.5)(typescript@5.9.2)(yaml@2.8.3)
       tsx:
         specifier: ^4.19.2
         version: 4.20.5
@@ -1369,7 +1378,7 @@ importers:
         version: 3.2.4(vitest@3.2.4)
       tsup:
         specifier: ^8.3.6
-        version: 8.5.1(postcss@8.5.6)(tsx@4.20.5)(typescript@5.9.2)(yaml@2.8.2)
+        version: 8.5.1(postcss@8.5.6)(tsx@4.20.5)(typescript@5.9.2)(yaml@2.8.3)
       tsx:
         specifier: ^4.19.2
         version: 4.20.5
@@ -1378,7 +1387,7 @@ importers:
         version: 5.9.2
       vite:
         specifier: ^6.0.0
-        version: 6.4.1(@types/node@22.19.8)(tsx@4.20.5)
+        version: 6.4.1(@types/node@22.19.8)(tsx@4.20.5)(yaml@2.8.3)
       vitest:
         specifier: ^3.0.0
         version: 3.2.4(@types/node@22.19.8)
@@ -1476,7 +1485,7 @@ importers:
         version: 1.6.1(vitest@1.6.1)
       tsup:
         specifier: ^8.3.6
-        version: 8.5.1(postcss@8.5.6)(tsx@4.20.5)(typescript@5.9.2)(yaml@2.8.2)
+        version: 8.5.1(postcss@8.5.6)(tsx@4.20.5)(typescript@5.9.2)(yaml@2.8.3)
       tsx:
         specifier: ^4.19.2
         version: 4.20.5
@@ -4703,7 +4712,7 @@ packages:
       '@vitest/spy': 4.1.2
       estree-walker: 3.0.3
       magic-string: 0.30.21
-      vite: 6.4.1(@types/node@22.19.8)(tsx@4.20.5)
+      vite: 6.4.1(@types/node@22.19.8)(tsx@4.20.5)(yaml@2.8.3)
     dev: true
 
   /@vitest/pretty-format@3.2.4:
@@ -4919,6 +4928,17 @@ packages:
       ajv: 8.13.0
     dev: true
 
+  /ajv-formats@3.0.1(ajv@8.20.0):
+    resolution: {integrity: sha512-8iUql50EUR+uUcdRQ3HDqa6EVyo3docL8g5WJ3FNcWmu62IbkGUue/pEyLBW8VGKKucTPgqeks4fIU1DA4yowQ==}
+    peerDependencies:
+      ajv: ^8.0.0
+    peerDependenciesMeta:
+      ajv:
+        optional: true
+    dependencies:
+      ajv: 8.20.0
+    dev: true
+
   /ajv@6.12.6:
     resolution: {integrity: sha512-j3fVLgvTo527anyYyJOGTYJbG+vnnQYvE0m5mmkc1TK+nxAppkCLMIL0aZ4dblVCNoGShhm+kzE4ZUykBoMg4g==}
     dependencies:
@@ -4943,6 +4963,15 @@ packages:
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
       uri-js: 4.4.1
+    dev: true
+
+  /ajv@8.20.0:
+    resolution: {integrity: sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA==}
+    dependencies:
+      fast-deep-equal: 3.1.3
+      fast-uri: 3.1.2
+      json-schema-traverse: 1.0.0
+      require-from-string: 2.0.2
     dev: true
 
   /alien-signals@0.4.14:
@@ -6109,6 +6138,10 @@ packages:
 
   /fast-levenshtein@2.0.6:
     resolution: {integrity: sha512-DCXu6Ifhqcks7TZKY3Hxp3y6qphY5SJZmrWMDrKcERSOXWQdMhU9Ig/PYrzyw/ul9jOIyh0N4M0tbC5hodg8dw==}
+
+  /fast-uri@3.1.2:
+    resolution: {integrity: sha512-rVjf7ArG3LTk+FS6Yw81V1DLuZl1bRbNrev6Tmd/9RaroeeRRJhAt7jg/6YFxbvAQXUCavSoZhPPj6oOx+5KjQ==}
+    dev: true
 
   /fastq@1.19.1:
     resolution: {integrity: sha512-GwLTyxkCXjXbxqIhTsMI2Nui8huMPtnxg7krajPJAjnEG/iiOS7i+zCtWGZR9G0NBKbXKh6X9m9UIsYX/N6vvQ==}
@@ -9356,7 +9389,7 @@ packages:
       fsevents: 2.3.3
     dev: true
 
-  /vite@6.4.1(@types/node@22.19.8)(tsx@4.20.5):
+  /vite@6.4.1(@types/node@22.19.8)(tsx@4.20.5)(yaml@2.8.3):
     resolution: {integrity: sha512-+Oxm7q9hDoLMyJOYfUYBuHQo+dkAloi33apOPP56pzj+vsdJDzr+j1NISE5pyaAuKL4A3UD34qd0lx5+kfKp2g==}
     engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
     hasBin: true
@@ -9404,6 +9437,7 @@ packages:
       rollup: 4.52.2
       tinyglobby: 0.2.15
       tsx: 4.20.5
+      yaml: 2.8.3
     optionalDependencies:
       fsevents: 2.3.3
     dev: true
@@ -9756,7 +9790,7 @@ packages:
       tinyexec: 1.0.4
       tinyglobby: 0.2.15
       tinyrainbow: 3.1.0
-      vite: 6.4.1(@types/node@22.19.8)(tsx@4.20.5)
+      vite: 6.4.1(@types/node@22.19.8)(tsx@4.20.5)(yaml@2.8.3)
       why-is-node-running: 2.3.0
     transitivePeerDependencies:
       - msw

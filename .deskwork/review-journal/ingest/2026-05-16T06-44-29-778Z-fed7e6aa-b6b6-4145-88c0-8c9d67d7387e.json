@@ -1,13 +1,17 @@
 {
   "id": "fed7e6aa-b6b6-4145-88c0-8c9d67d7387e",
-  "timestamp": "2026-05-16T06:44:29.778Z",
+  "timestamp": "2026-05-21T21:38:17.770Z",
   "event": "ingest",
   "slug": "s550-support/operator-review-runbook",
   "entryId": "fed7e6aa-b6b6-4145-88c0-8c9d67d7387e",
   "site": "engineering-design-specs",
   "stage": "Drafting",
-  "sourceFile": "docs/1.0/001-IN-PROGRESS/s550-support/2026-05-15-operator-review-runbook.md",
-  "frontmatterSnapshot": {},
+  "sourceFile": "docs/1.0/003-COMPLETE/s550-support/2026-05-15-operator-review-runbook.md",
+  "frontmatterSnapshot": {
+    "deskwork": {
+      "id": "fed7e6aa-b6b6-4145-88c0-8c9d67d7387e"
+    }
+  },
   "derivation": {
     "slug": "path",
     "state": "default",

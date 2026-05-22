@@ -17,6 +17,13 @@
 
 set -euo pipefail
 
+# Gates fail-fast in declaration order: CSS first, then TS/TSX clone.
+# A commit touching both will surface CSS failures before the TS check
+# runs; the developer fixes CSS, commits again, then sees any TS clone
+# issues on the second cycle. Acceptable because each gate is fast and
+# the two-cycle case is rare in practice; tighten to collect-and-report
+# both failures together if that pattern starts costing time.
+
 # Only re-run the CSS check when staged files actually touch CSS.
 # Without this, every commit pays the parse cost. The pattern
 # matches the stylesheet directories the checker walks.
@@ -25,4 +32,13 @@ if git diff --cached --name-only --diff-filter=ACM | grep -qE '\.(css|scss)$'; t
   make --no-print-directory check-css-duplication
   echo "pre-commit: checking for chevron-named classes outside the canonical primitive…"
   make --no-print-directory check-chevron-sizing
+fi
+
+# Only re-run the general TS/TSX clone check when staged files
+# actually touch TypeScript. Without this, every commit pays the
+# jscpd parse cost. The pattern matches the file extensions
+# `.jscpd.json` scans (`typescript` -> `ts`, `tsx`).
+if git diff --cached --name-only --diff-filter=ACM | grep -qE '\.tsx?$'; then
+  echo "pre-commit: checking for new TS/TSX clone groups…"
+  make --no-print-directory check-clone-duplication
 fi

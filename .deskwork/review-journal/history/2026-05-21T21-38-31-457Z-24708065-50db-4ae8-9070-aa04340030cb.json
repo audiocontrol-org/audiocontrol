@@ -1,0 +1,8 @@
+{
+  "kind": "stage-transition",
+  "at": "2026-05-21T21:38:31.457Z",
+  "entryId": "f0d8f091-df9b-4311-acb1-d500fd1c9e33",
+  "from": "Drafting",
+  "to": "Cancelled",
+  "reason": "file never materialized; abandoned during s550-support cleanup"
+}
