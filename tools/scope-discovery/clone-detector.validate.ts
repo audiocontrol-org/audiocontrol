@@ -15,7 +15,18 @@
  *     2 on infrastructure error (fixture I/O, missing tool).
  *
  * Each scenario uses its own short-lived fixture directory under
- * `.tmp/clone-validator-<runid>/` so concurrent runs don't collide.
+ * `.tmp/clone-validator-<runid>/`, and scenarios within ONE harness
+ * invocation run sequentially — so per-scenario fixtures and
+ * baselines stay isolated within a single run.
+ *
+ * NOTE on parallel invocations: the underlying detector (via
+ * `tools/scope-discovery/jscpd-runner.ts`) writes and reads a single
+ * shared report path at `reports/duplication/jscpd-report.json`. Two
+ * harness instances running concurrently can interleave writes to
+ * that file, so do NOT invoke this harness in parallel with itself
+ * (or with `tools/scope-discovery/clone-detector.ts`). Sequential
+ * invocations are safe.
+ *
  * Fixtures are torn down at the end (success OR failure) by a single
  * top-level finally; do NOT touch the production baseline at
  * docs/scope-discovery/clones.yaml.
@@ -132,6 +143,23 @@ async function makeFixture(label: string): Promise<Fixture> {
   return { dir, baseline: join(dir, 'baseline.yaml') };
 }
 
+/**
+ * Single source of truth for the detector CLI arg shape every scenario
+ * uses. Default is the quiet form that matches the pre-commit hook;
+ * scenario 1 needs the non-quiet form once to assert on per-group
+ * stdout. Avoids 7 repetitions of the same args array.
+ */
+function detectorArgs(
+  fixture: Fixture,
+  options: { readonly quiet?: boolean } = {},
+): readonly string[] {
+  const args = ['--root', fixture.dir, '--baseline', fixture.baseline];
+  if (options.quiet !== false) {
+    args.push('--quiet');
+  }
+  return args;
+}
+
 async function writeFixtureFile(dir: string, name: string, body: string): Promise<void> {
   await writeFile(join(dir, name), body, 'utf8');
 }
@@ -168,22 +196,24 @@ async function assertNewCloneDetected(
   await writeFixtureFile(fixture.dir, 'b.ts', CLONE_BODY_A);
   // Baseline-capture always uses the real detector — the gut applies
   // to the compare-mode run, which is the gate's actual decision step.
-  const first = await runDetector(['--root', fixture.dir, '--baseline', fixture.baseline, '--quiet']);
+  const first = await runDetector(detectorArgs(fixture));
   if (first.code !== 0) {
     return fail('NEW clone detection', `baseline-capture run exited ${first.code}; stderr:\n${first.stderr}`);
   }
   await writeFixtureFile(fixture.dir, 'c.ts', CLONE_BODY_B);
   await writeFixtureFile(fixture.dir, 'd.ts', CLONE_BODY_B);
-  const second = await detector(['--root', fixture.dir, '--baseline', fixture.baseline]);
+  const second = await detector(detectorArgs(fixture, { quiet: false }));
   if (second.code !== 1) {
     return fail(
       'NEW clone detection',
       `expected exit 1 with NEW group reported; got exit ${second.code}\nstdout:\n${second.stdout}\nstderr:\n${second.stderr}`,
     );
   }
-  if (!second.stdout.includes('NEW')) {
-    return fail('NEW clone detection', `exit was 1 but stdout did not mention NEW:\n${second.stdout}`);
-  }
+  // Fix 2: the previous `second.stdout.includes('NEW')` assertion was
+  // dead — the detector's non-quiet output always emits the literal
+  // `Baseline diff: N NEW, M DROPPED.` line whenever a baseline exists,
+  // regardless of NEW count, so the substring is always present. The
+  // c.ts/d.ts membership check below is what catches a gutted detector.
   if (!second.stdout.includes('c.ts') || !second.stdout.includes('d.ts')) {
     return fail(
       'NEW clone detection',
@@ -210,13 +240,13 @@ async function scenarioDroppedClone(): Promise<ScenarioResult> {
   const fixture = await makeFixture('dropped');
   await writeFixtureFile(fixture.dir, 'a.ts', CLONE_BODY_A);
   await writeFixtureFile(fixture.dir, 'b.ts', CLONE_BODY_A);
-  const first = await runDetector(['--root', fixture.dir, '--baseline', fixture.baseline, '--quiet']);
+  const first = await runDetector(detectorArgs(fixture));
   if (first.code !== 0) {
     return fail('DROPPED clone acceptance', `baseline-capture run exited ${first.code}; stderr:\n${first.stderr}`);
   }
   // Refactor: remove one of the cloned files.
   await rm(join(fixture.dir, 'b.ts'));
-  const second = await runDetector(['--root', fixture.dir, '--baseline', fixture.baseline, '--quiet']);
+  const second = await runDetector(detectorArgs(fixture));
   if (second.code !== 0) {
     return fail(
       'DROPPED clone acceptance',
@@ -247,7 +277,7 @@ async function scenarioIgnoreWithJustification(): Promise<ScenarioResult> {
   const fixture = await makeFixture('ignore');
   await writeFixtureFile(fixture.dir, 'a.ts', CLONE_BODY_A);
   await writeFixtureFile(fixture.dir, 'b.ts', CLONE_BODY_A);
-  const first = await runDetector(['--root', fixture.dir, '--baseline', fixture.baseline, '--quiet']);
+  const first = await runDetector(detectorArgs(fixture));
   if (first.code !== 0) {
     return fail(
       'ignore-with-justification honor',
@@ -271,7 +301,7 @@ async function scenarioIgnoreWithJustification(): Promise<ScenarioResult> {
     })),
   };
   await writeFile(fixture.baseline, serializeClonesYaml(mutated), 'utf8');
-  const second = await runDetector(['--root', fixture.dir, '--baseline', fixture.baseline, '--quiet']);
+  const second = await runDetector(detectorArgs(fixture));
   if (second.code !== 0) {
     return fail(
       'ignore-with-justification honor',
@@ -330,7 +360,7 @@ async function scenarioGuttedLogicSelfCheck(): Promise<ScenarioResult> {
   //     "hallucinated clones".
   await writeFixtureFile(fixture.dir, 'lonely-a.ts', CLONE_BODY_A);
   await writeFixtureFile(fixture.dir, 'lonely-b.ts', NONCLONE_BODY);
-  const empty = await runDetector(['--root', fixture.dir, '--baseline', fixture.baseline, '--quiet']);
+  const empty = await runDetector(detectorArgs(fixture));
   if (empty.code !== 0) {
     return fail(
       'gutted-logic self-check',
