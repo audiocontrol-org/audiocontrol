@@ -130,7 +130,7 @@ Populated as groups are dispositioned. One row per group resolved.
 
 | Date | Group ID | Members | Disposition | Reason / Commit |
 |------|----------|---------|-------------|------------------|
-| (running tally) | | | | |
+| 2026-05-22 | `80299d9fda8d` (21 lines) | `PatchList.tsx:231–251` ↔ `ToneList.tsx:230–250` | refactor | Extracted to `modules/roland-sxx0-editor/src/components/common/SlotInfo.tsx`. Protected by `D-PATCH-LIST-09` + `D-TONE-LIST-08`. Commit: TBD (lands with this row). Detector confirmed group dropped + 6 sibling groups got re-numbered due to line-shift (no disposition info lost; all were `pending` pre-refactor). |
 
 ## Phase 3: Roland-surface refactor PRs (clone-group cleanup)
 

@@ -1,0 +1,58 @@
+/**
+ * SlotInfo
+ *
+ * Shared slot-info column rendered by PatchList and ToneList. Wraps
+ * the slot-name span + the optional "click to load" eyebrow inside
+ * an `.ac-list-info` container.
+ *
+ * Extracted 2026-05-22 from PatchList.tsx (lines 227-240) and
+ * ToneList.tsx (lines 226-239) per clones.yaml group 80299d9fda8d
+ * disposition. Pre-extraction the two files held byte-identical
+ * markup that differed only by the `data-testid` value
+ * (`patch-name` vs `tone-name`). Wrapper class `.ac-list-info`,
+ * eyebrow class `.ac-list-eyebrow`, and the "click to load" copy
+ * are preserved verbatim — the contract is protected by
+ * `D-PATCH-LIST-09` (patches.spec.ts) and `D-TONE-LIST-08`
+ * (tones.spec.ts) wiring assertions added before the extraction.
+ */
+
+export interface SlotInfoProps {
+  /** Computed class for the inner name span. Callers compute this
+   *  per-slot (`ac-list-name` / `--placeholder` / `--empty`) based on
+   *  load state + emptiness. Routed in rather than computed here so
+   *  each caller owns its own emptiness heuristic. */
+  nameClass: string;
+  /** The text rendered in the name span. Empty string is a valid value
+   *  (intentional silence when an unloaded slot's eyebrow is the
+   *  state-conveyance affordance). */
+  displayName: string;
+  /** Whether the underlying bank reports the slot as loaded. */
+  isLoaded: boolean;
+  /** Whether the underlying bank is mid-load. Suppresses the
+   *  "click to load" eyebrow during in-flight loads (the row
+   *  already shows `(loading...)` upstream). */
+  isBankLoading: boolean;
+  /** `data-testid` for the inner name span. The two original call
+   *  sites set this to `patch-name` / `tone-name`; the e2e suite
+   *  relies on those exact values via `.locator('[data-testid="..."]')`. */
+  testId: string;
+}
+
+export function SlotInfo({
+  nameClass,
+  displayName,
+  isLoaded,
+  isBankLoading,
+  testId,
+}: SlotInfoProps): JSX.Element {
+  return (
+    <span className="ac-list-info">
+      <span className={nameClass} data-testid={testId}>
+        {displayName}
+      </span>
+      {!isLoaded && !isBankLoading && (
+        <span className="ac-list-eyebrow">click to load</span>
+      )}
+    </span>
+  );
+}

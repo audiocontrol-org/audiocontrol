@@ -70,7 +70,7 @@ This is cross-device UI drift in a shared Roland surface. It likely escaped beca
 ### The branch is still described as a narrow bug-fix catchment, but the extended PRD/workplan repurpose it into a broad clone-disposition and refactor program
 
 Finding-ID: AUDIT-20260521-03
-Status:     fixed-awaiting-verification
+Status:     fixed-a93f8384
 Severity:   medium
 Surface:    `docs/1.0/001-IN-PROGRESS/roland-bugfix/prd.md`, `workplan.md`, `README.md`
 
@@ -93,7 +93,7 @@ This is not a code bug, but it is a planning/documentation defect that invites s
 ### Phase 2's closure target is too large for a sidecar validation effort and is likely to sprawl while Phase 1 bug intake remains open
 
 Finding-ID: AUDIT-20260521-04
-Status:     acknowledged-2026-05-22
+Status:     acknowledged-operator-deferred
 Severity:   medium
 Surface:    `docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md`
 
@@ -120,7 +120,7 @@ Risk: execution sprawl, priority thrash between incoming bug fixes and large ref
 ### The scope-manifest exists but is still a strawman, not a curated Phase 2 scope artifact
 
 Finding-ID: AUDIT-20260521-05
-Status:     fixed-awaiting-verification
+Status:     fixed-dfb8baed
 Severity:   medium
 Surface:    `docs/1.0/001-IN-PROGRESS/roland-bugfix/scope-manifest.yaml`, `scope-inventory/journal.md`, `scope-inventory/runs/2026-05-22T05-35-58-088Z-6oi63i/synthesis.md`
 
@@ -143,7 +143,7 @@ This is not a tooling failure; it is a documentation/state-of-completion gap. Th
 ### `tooling-feedback.md` still marks `/scope-inventory` as pending even though the feature has already exercised it
 
 Finding-ID: AUDIT-20260521-06
-Status:     fixed-awaiting-verification
+Status:     fixed-a93f8384
 Severity:   low
 Surface:    `docs/1.0/001-IN-PROGRESS/roland-bugfix/tooling-feedback.md`
 

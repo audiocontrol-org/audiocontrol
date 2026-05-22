@@ -15,7 +15,13 @@ When a section has nothing observed yet, the bullet list is left empty.
 
 ## `make check-clone-duplication`
 
-- (Not yet exercised end-to-end on this branch — the gate at HEAD currently has nothing to fail against because the merged baseline matches HEAD exactly. Will report findings the first time the gate fires on a new clone we accidentally introduce or the first time we refresh the baseline.)
+Exercised 2026-05-22 in pre-commit during the test-first commit `c1dd0208` (D-PATCH-LIST-09 + D-TONE-LIST-08) and in the refactor commit for clones.yaml group `80299d9fda8d` (SlotInfo extraction).
+
+- ✅ **Pre-commit invocation is fast** (~2-3s including the jscpd parse). Acceptable for every TS/TSX commit.
+- ✅ **Baseline diff output is clear.** `Detected N clone group(s) (>= 6 lines).` followed by `Baseline diff: X NEW, Y DROPPED.` is the right shape — operator can tell at a glance whether the commit moved the needle.
+- ✅ **The test commit (no source change) reported `0 NEW, 0 DROPPED`.** Correctly tracked that we didn't introduce or remove clones.
+- ❌ **Group IDs are hashed from LINE NUMBERS, not content.** The SlotInfo refactor reduced the inline span block from ~14 lines to ~7 lines, shifting subsequent code up by ~7 lines. Result: the actual target clone group `80299d9fda8d` correctly dropped (no replacement) — but 6 OTHER PatchList/ToneList sibling groups in the same files got new ids (e.g. `e2f41456da80` → `fee451a9eea8`, `93118bb09088` → `588be1297b2e`) because their line ranges shifted by 1. In this case all 6 were `pending` so no disposition info was lost, but in a future refactor a `keep-with-reason` or `ignore-with-justification` disposition on a sibling group would be silently orphaned (the old ID disappears, the new ID lacks the reason). **Recommendation:** hash group IDs from member-file-paths + jscpd-token-stream content, not from line numbers. Then dispositions survive line-shift churn from neighboring refactors. **Severity: medium.** Workaround for now is to re-disposition every renumbered sibling after each refactor — labor-intensive at scale (we'll touch ~93 intra-roland groups in Phase 2/3 alone).
+- 🤔 **No `--diff` flag to see ONLY the changed groups.** The refresh-baseline output prints every NEW + DROPPED group inline, but for a per-commit verification "did THIS refactor drop the ID I claimed it would?" I had to grep the file directly. A `make check-clone-duplication ARGS='--target <id>'` mode that succeeds iff the named group is absent would tighten the dispositioning loop. Low-priority — `grep -c <id> docs/scope-discovery/clones.yaml` works fine.
 
 ## `make check-css-duplication` (pre-existing; runs alongside the new gate)
 
@@ -40,7 +46,12 @@ Exercised 2026-05-22 via `/scope-inventory roland-bugfix`. Two runs total — th
 
 ## `make refresh-clones-baseline`
 
-- (Pending — first exercise comes after the first refactor PR merges and we re-snapshot.)
+Exercised 2026-05-22 after the SlotInfo extraction (clones.yaml group `80299d9fda8d` refactor).
+
+- ✅ **Did the right thing.** Re-ran jscpd, rewrote `docs/scope-discovery/clones.yaml`, listed NEW + DROPPED groups in console. Total count went 495 → 494 (net -1 for the dropped target group).
+- ✅ **Honest about what changed.** Console output enumerated 6 NEW + 7 DROPPED groups; the asymmetry was instructive (the line-shift id-churn issue noted under `check-clone-duplication` above).
+- 🤔 **No summary line at the bottom of the output.** After listing ~13 groups changed it just exits; a final line like `summary: 7 dropped, 6 new (net -1)` would be a useful TL;DR. Low-priority.
+- 🤔 **Doesn't preserve disposition annotations across renumbered groups.** Same root cause as the id-churn finding under `check-clone-duplication`. Would be nice if `refresh-clones-baseline` could detect "same members, new line range" pairs and carry forward the prior disposition + reason. Tricky to implement perfectly (a refactor might genuinely re-shape a group, not just shift it), but a "best-effort with confidence score" heuristic would still help.
 
 ## `docs/scope-discovery/clones.yaml` shape
 

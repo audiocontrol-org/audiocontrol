@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { isToneEmpty } from '@/lib/slot-allocation';
 import { AcChevron } from '@audiocontrol/editor-core';
+import { SlotInfo } from '@/components/common/SlotInfo';
 
 interface ToneListProps {
   /** Sparse array of tones - undefined = not loaded */
@@ -223,19 +224,13 @@ export function ToneList({
                     <span className="ac-list-slot">
                       {memoryLayout.formatToneSlot(index)}
                     </span>
-                    <span className="ac-list-info">
-                      <span
-                        className={nameClass}
-                        data-testid="tone-name"
-                      >
-                        {displayName}
-                      </span>
-                      {!isLoaded && !isBankLoading && (
-                        <span className="ac-list-eyebrow">
-                          click to load
-                        </span>
-                      )}
-                    </span>
+                    <SlotInfo
+                      nameClass={nameClass}
+                      displayName={displayName}
+                      isLoaded={isLoaded}
+                      isBankLoading={isBankLoading}
+                      testId="tone-name"
+                    />
                   </div>
                 );
               })}

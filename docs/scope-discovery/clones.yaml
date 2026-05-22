@@ -1,4 +1,4 @@
-generated_at: 2026-05-22T04:31:56.663Z
+generated_at: 2026-05-22T06:19:56.653Z
 clones:
   - id: c7068172edae
     lines: 15
@@ -2407,11 +2407,11 @@ clones:
       - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:198:208
     disposition: pending
     reason: null
-  - id: af59f9a4d226
+  - id: de68b59d906e
     lines: 8
     members:
       - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:367:374
-      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:106:113
+      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:107:114
     disposition: pending
     reason: null
   - id: 78866787ffba
@@ -2593,46 +2593,39 @@ clones:
       - modules/roland-sxx0-editor/src/components/tones/ToneEditorTabs.tsx:63:93
     disposition: pending
     reason: null
-  - id: e2f41456da80
+  - id: fee451a9eea8
     lines: 16
     members:
-      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:101:116
-      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:94:106
+      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:102:117
+      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:95:107
     disposition: pending
     reason: null
-  - id: 536ec5699e5a
+  - id: fc08c274d295
     lines: 29
     members:
-      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:116:144
-      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:106:132
+      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:117:145
+      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:107:133
     disposition: pending
     reason: null
-  - id: 93118bb09088
+  - id: 588be1297b2e
     lines: 16
     members:
-      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:144:159
-      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:132:147
+      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:145:160
+      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:133:148
     disposition: pending
     reason: null
-  - id: 8d26f23c5d5b
+  - id: 4991822d3339
     lines: 11
     members:
-      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:215:225
-      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:214:224
+      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:216:226
+      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:215:225
     disposition: pending
     reason: null
-  - id: 80299d9fda8d
-    lines: 21
-    members:
-      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:231:251
-      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:230:250
-    disposition: pending
-    reason: null
-  - id: 3785f9b1220a
+  - id: 0557ba4137ff
     lines: 14
     members:
-      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:71:84
-      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:64:77
+      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:72:85
+      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:65:78
     disposition: pending
     reason: null
   - id: f5b154b0b218

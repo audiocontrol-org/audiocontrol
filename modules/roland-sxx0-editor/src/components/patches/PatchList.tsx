@@ -23,6 +23,7 @@ import type { SamplerPatch } from '@/core/midi/SamplerClient';
 import { cn } from '@/lib/utils';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { PatchLabel } from '@/components/common/PatchLabel';
+import { SlotInfo } from '@/components/common/SlotInfo';
 import { isPatchEmpty } from '@/lib/slot-allocation';
 import { AcChevron } from '@audiocontrol/editor-core';
 
@@ -224,19 +225,13 @@ export function PatchList({
                     <span className="ac-list-slot">
                       <PatchLabel index={index} memoryLayout={memoryLayout} />
                     </span>
-                    <span className="ac-list-info">
-                      <span
-                        className={nameClass}
-                        data-testid="patch-name"
-                      >
-                        {displayName}
-                      </span>
-                      {!isLoaded && !isBankLoading && (
-                        <span className="ac-list-eyebrow">
-                          click to load
-                        </span>
-                      )}
-                    </span>
+                    <SlotInfo
+                      nameClass={nameClass}
+                      displayName={displayName}
+                      isLoaded={isLoaded}
+                      isBankLoading={isBankLoading}
+                      testId="patch-name"
+                    />
                   </div>
                 );
               })}
