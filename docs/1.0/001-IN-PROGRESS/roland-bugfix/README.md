@@ -7,6 +7,8 @@ Open-ended catchment branch for post-merge bug fixes against the just-merged Rol
 | Phase | Status | Notes |
 |-------|--------|-------|
 | Phase 1: Rolling Bug-Fix Pass | In Progress | Open-ended; operator-declared completion |
+| Phase 2: Scope-Discovery Audit + Duplication Findings | Pending | Adds upfront route inventory + duplication audit per `docs/analysis/s550-redesign-scope-discovery.md`; inventory feeds Phase 3 |
+| Phase 3: Remediation Pass | Blocked on Phase 2 | One commit per Accept-marked finding; task breakdown via `superpowers:writing-plans` |
 
 ## Documentation
 
@@ -17,6 +19,7 @@ Open-ended catchment branch for post-merge bug fixes against the just-merged Rol
 ## GitHub Tracking
 
 - **Parent issue:** TBD
+- **Phase 2:** [#442](https://github.com/audiocontrol-org/audiocontrol/issues/442) — Scope-Discovery Audit + Duplication Findings
 
 ## Worktree
 
