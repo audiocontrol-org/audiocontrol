@@ -77,7 +77,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions check-refactor-preconditions-validate test-scope-discovery scope-inventory refresh-clones-baseline check-chevron-sizing
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions check-refactor-preconditions-validate check-anti-patterns check-anti-patterns-validate test-scope-discovery scope-inventory refresh-clones-baseline check-chevron-sizing
 
 build: $(ALL_STAMPS)
 
@@ -383,6 +383,26 @@ endif
 check-refactor-preconditions-validate:
 	tsx tools/scope-discovery/refactor-preconditions.validate.ts
 
+# T6.1 — Anti-pattern registry gate. Walks
+# `docs/scope-discovery/anti-patterns.yaml` and scans the source tree for
+# any code matching a registered legacy shape. Each refactor commit that
+# extracts a primitive SHOULD append an entry here naming the shape the
+# primitive replaces; future drift gets caught structurally even without a
+# token-level clone. Pure-regex engine (single-pattern OR multi-pattern
+# fingerprint with `min_distance`). See the script header for full
+# rationale on engine choice (pure-regex vs ast-grep).
+check-anti-patterns:
+	tsx tools/scope-discovery/check-anti-patterns.ts
+
+# Adversarial validator for the T6.1 gate. Plants 6 synthetic scenarios
+# (empty registry → exit 0; single-pattern match detected; populated
+# registry, no match → exit 0; multi-pattern fingerprint within
+# min_distance; malformed registry → exit 2; gutted-stub self-check)
+# under per-scenario temp directories. Run whenever the scanner, the
+# registry schema, or this validator's scenarios change. T6.1 gate.
+check-anti-patterns-validate:
+	tsx tools/scope-discovery/anti-patterns.validate.ts
+
 # Run the full scope-discovery validator suite: both adversarial
 # harnesses + the Phase 5 refactor-preconditions smoke-test in
 # sequence. The clone-detector validator runs first (plants fixtures,
@@ -392,12 +412,14 @@ check-refactor-preconditions-validate:
 # smoke-test runs third (synthetic refactor entries, gutted-reviewer
 # self-check); on success the T5.3 adversarial validator runs fourth
 # (commit-message marker grammar + runtime preconditions, gutted-stub
-# self-check). Equivalent to `pnpm test:scope-discovery` — both
-# invocations exist so operators and the orchestrator can use
-# whichever fits their flow. Combined runtime is under 30s; if that
-# ever changes, the workplan T2.8 gate is broken and the slowdown
-# must be surfaced. T2.8 gate (+ T5.2 + T5.3 additions).
-test-scope-discovery: check-clone-duplication-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions-validate
+# self-check); on success the T6.1 anti-pattern validator runs fifth
+# (registry scanner + multi-pattern fingerprint + gutted-stub self-
+# check). Equivalent to `pnpm test:scope-discovery` — both invocations
+# exist so operators and the orchestrator can use whichever fits their
+# flow. Combined runtime is under 30s; if that ever changes, the
+# workplan T2.8 gate is broken and the slowdown must be surfaced.
+# T2.8 gate (+ T5.2 + T5.3 + T6.1 additions).
+test-scope-discovery: check-clone-duplication-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions-validate check-anti-patterns-validate
 
 # Operator ergonomics target for the `/scope-inventory` skill (T3.3).
 # Validates that a feature directory exists under one of the

@@ -41,4 +41,11 @@ fi
 if git diff --cached --name-only --diff-filter=ACM | grep -qE '\.tsx?$'; then
   echo "pre-commit: checking for new TS/TSX clone groups…"
   make --no-print-directory check-clone-duplication
+  # T6.1 anti-pattern registry gate. Catches regime drift the clone
+  # detector misses: code matching a registered legacy SHAPE rather than
+  # a token-level clone. Registry is empty until refactors append shapes
+  # the extracted primitive replaces. When empty (the common case until
+  # entries accrue), the scanner short-circuits and exits 0 cheaply.
+  echo "pre-commit: checking for anti-pattern matches…"
+  make --no-print-directory check-anti-patterns
 fi

@@ -1,0 +1,55 @@
+# Anti-pattern registry — Phase 6 T6.1
+#
+# Each refactor commit that EXTRACTS a primitive SHOULD append an entry here
+# naming the structural shape the primitive replaces. Future commits introducing
+# code that matches the shape will be flagged with the suggested replacement.
+#
+# This closes the gap the clone detector misses: regime drift that doesn't
+# match a token-level clone signature. The clone detector catches copy-paste;
+# this registry catches "agent reimplemented the same shape from scratch."
+#
+# ──────────────────────────────────────────────────────────────────────────
+# Schema
+# ──────────────────────────────────────────────────────────────────────────
+#
+#   - id: <kebab-case-id; unique across the registry>
+#     added_in: <commit-sha; 7-40 lowercase hex>
+#     primitive: <component or hook name; e.g., useExportDialogLifecycle>
+#     from: <import path of the primitive; e.g., '@/hooks/useExportDialogLifecycle'>
+#     shape_regex: <single regex string OR list of regex strings>
+#       # When a list, ALL patterns must match the same file within
+#       # `min_distance` source lines of each other. Use a list to fingerprint
+#       # multi-line shapes (e.g. "useState for `open` + closeOnEsc effect +
+#       # backdrop click handler" — three patterns that together identify the
+#       # SlideDrawer legacy shape, without false-positiving on the individual
+#       # patterns).
+#     min_distance: <integer; max line gap between match positions when
+#       shape_regex is a list. Defaults to 50. Ignored when shape_regex is
+#       a single regex string.>
+#     message: <multi-line replacement instruction; what an agent should do
+#       when this shape is found>
+#
+# Regex notes:
+# - Patterns are compiled with `gm` flags (global + multi-line; ^/$ match
+#   per-line). Use `\\b`-anchored token boundaries for identifiers to avoid
+#   substring false positives.
+# - Patterns are matched against the file contents as a single UTF-8 string.
+# - Pattern strings travel through YAML; escape backslashes per YAML rules
+#   (prefer single-quoted YAML strings to avoid double-escaping).
+# - The `shape_regex` is a fingerprint, NOT a full AST. If a pattern is
+#   prone to false positives, add a sibling pattern via the list form so the
+#   gate requires both shapes co-occurring within `min_distance` lines.
+#
+# Engine choice (documented inline for future agents):
+#   Pure-regex over `ast-grep`. The repo doesn't carry an ast-grep binary or
+#   wrapper; adding one for v1 widens the dep surface for marginal benefit.
+#   When `shape_regex` is a list with `min_distance`, multi-line fingerprints
+#   are precise enough to match what the feedback's ast-grep example would
+#   catch. If a future entry truly needs full AST matching, that's the moment
+#   to add the dep — not before.
+#
+# Pre-commit hook (`make check-anti-patterns`) walks this registry on every
+# .ts/.tsx change and flags any matching shape in the staged tree. See
+# `tools/scope-discovery/check-anti-patterns.ts` for the gate.
+
+anti_patterns: []
