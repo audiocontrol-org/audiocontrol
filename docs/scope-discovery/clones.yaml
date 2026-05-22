@@ -2250,8 +2250,8 @@ clones:
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-aliasing.ts:85:90
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:131:137
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts are intentionally self-contained one-off hardware-exploration tools; sharing a helper would defeat their drop-in-standalone-run-against-hardware property. The 3-line SysEx-EOD sequence repetition is acceptable.
   - id: e0b43789fbde
     lines: 10
     members:
