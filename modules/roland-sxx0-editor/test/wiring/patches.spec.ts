@@ -261,4 +261,28 @@ test.describe('Capabilities — Patches (C-PATCH)', () => {
     );
     await expect(anyExportButton).toHaveCount(0);
   });
+
+  test('D-PATCH-LIST-09: each row wraps the patch-name testid in an .ac-list-info span (clones.yaml 80299d9fda8d refactor contract)', async ({ page }) => {
+    // Test-before-extract contract for clones.yaml group 80299d9fda8d
+    // (PatchList.tsx:227-240 ↔ ToneList.tsx:226-239 ac-list-info
+    // span block). The clone-disposition refactor extracts the shared
+    // block to a new common/SlotInfo.tsx component; both files render
+    // <SlotInfo testId="patch-name|tone-name" .../> in place of the
+    // inline span. Without this assertion the refactor could silently
+    // drop the .ac-list-info wrapper class — no other test asserts it.
+    //
+    // Added 2026-05-22 BEFORE the SlotInfo extraction lands, per the
+    // 'Refactoring protocol: test before extract' rule in workplan.md.
+    // Must pass against the pre-refactor code AND stay green after the
+    // refactor. Sibling assertion: D-TONE-LIST-08 in tones.spec.ts.
+    const list = page.locator('[data-capability="C-PATCH-01"]');
+    await expect(list).toBeVisible({ timeout: 5_000 });
+
+    const loadedRow = list.getByRole('button', { name: /^P11\b/ });
+    await expect(loadedRow).toBeVisible();
+
+    const wrapper = loadedRow.locator('.ac-list-info');
+    await expect(wrapper).toBeVisible();
+    await expect(wrapper.getByTestId('patch-name')).toBeVisible();
+  });
 });
