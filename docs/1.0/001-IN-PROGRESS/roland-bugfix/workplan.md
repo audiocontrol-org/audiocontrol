@@ -187,6 +187,16 @@ What this protocol does NOT require:
 
 Why this exists: Phase 2/3 will touch ~93 intra-roland clone groups + the cross-module ones. Without the test-before-extract rule, the deduplication pass just compresses bytes and leaves the same regression surface. With it, every disposition leaves a durable assertion that future agents (and future Claude) can't silently regress through. The added test density is the dividend.
 
+### Commit-message trace convention
+
+Every disposition commit message MUST include a one-line `Test-first applied:` trace so the auditor + future-bisect can see at a glance whether the protocol was honored:
+
+- `Test-first applied: yes (D-XXX-NN, D-YYY-MM)` — refactor disposition, with the new test IDs cited.
+- `Test-first applied: exempt (keep-with-reason)` — no code change; protocol explicitly does not apply.
+- `Test-first applied: exempt (ignore-with-justification)` — no code change; protocol explicitly does not apply.
+
+Audit findings against missing or incorrect traces get filed as low-severity bookkeeping defects, same shape as AUDIT-20260521-07/08.
+
 **Task breakdown:** Generated per-PR via `superpowers:writing-plans` only when a clone group's refactor is non-trivial (>50 LOC change, touches a public type, or crosses module boundaries). Trivial refactors (helper-extraction-and-call-site-update inside one module) skip the writing-plans ceremony and land as direct commits.
 
 ## Pre-commit Discipline

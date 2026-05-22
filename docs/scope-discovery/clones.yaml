@@ -5,36 +5,36 @@ clones:
     members:
       - modules/akai-s3k-editor/playwright.device-library.config.ts:45:59
       - modules/akai-s3k-editor/playwright.scsi-midi.config.ts:45:59
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Per-suite Playwright configs are intentionally per-suite — each must work independently with its own E2E_PORT, reporter wiring, and webServer hooks. The existing modules/roland-sxx0-editor/playwright.harness.shared.ts factory already extracts the shared shape for harness-driven suites (test-harness, wiring, rendering); the remaining cross-suite (device-library / http-midi / hardware / loop-editor / sample-chopper / sample-editor / visual / library / scsi-midi) and cross-editor (akai / roland / d110 / jv1080) duplication is the irreducible cost of suite-independence. Further extraction would require a cross-editor factory in modules/e2e-infra/ and couple every editor module to a single shared config surface; the current judgment is that the coupling cost outweighs the per-suite-config dedup payoff. Flip to refactor if a future operator builds out an e2e-infra-wide defineE2EConfig() factory.
   - id: 516a0782d38c
     lines: 27
     members:
       - modules/akai-s3k-editor/playwright.http-midi.config.ts:17:43
       - modules/roland-sxx0-editor/playwright.http-midi.config.ts:18:44
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Per-suite Playwright configs are intentionally per-suite — each must work independently with its own E2E_PORT, reporter wiring, and webServer hooks. The existing modules/roland-sxx0-editor/playwright.harness.shared.ts factory already extracts the shared shape for harness-driven suites (test-harness, wiring, rendering); the remaining cross-suite (device-library / http-midi / hardware / loop-editor / sample-chopper / sample-editor / visual / library / scsi-midi) and cross-editor (akai / roland / d110 / jv1080) duplication is the irreducible cost of suite-independence. Further extraction would require a cross-editor factory in modules/e2e-infra/ and couple every editor module to a single shared config surface; the current judgment is that the coupling cost outweighs the per-suite-config dedup payoff. Flip to refactor if a future operator builds out an e2e-infra-wide defineE2EConfig() factory.
   - id: 0293e0b8848b
     lines: 19
     members:
       - modules/akai-s3k-editor/playwright.http-midi.config.ts:43:61
       - modules/roland-sxx0-editor/playwright.http-midi.config.ts:44:62
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Per-suite Playwright configs are intentionally per-suite — each must work independently with its own E2E_PORT, reporter wiring, and webServer hooks. The existing modules/roland-sxx0-editor/playwright.harness.shared.ts factory already extracts the shared shape for harness-driven suites (test-harness, wiring, rendering); the remaining cross-suite (device-library / http-midi / hardware / loop-editor / sample-chopper / sample-editor / visual / library / scsi-midi) and cross-editor (akai / roland / d110 / jv1080) duplication is the irreducible cost of suite-independence. Further extraction would require a cross-editor factory in modules/e2e-infra/ and couple every editor module to a single shared config surface; the current judgment is that the coupling cost outweighs the per-suite-config dedup payoff. Flip to refactor if a future operator builds out an e2e-infra-wide defineE2EConfig() factory.
   - id: b5c2c25e595f
     lines: 32
     members:
       - modules/akai-s3k-editor/playwright.library.config.ts:1:32
       - modules/roland-sxx0-editor/playwright.library.config.ts:1:32
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Per-suite Playwright configs are intentionally per-suite — each must work independently with its own E2E_PORT, reporter wiring, and webServer hooks. The existing modules/roland-sxx0-editor/playwright.harness.shared.ts factory already extracts the shared shape for harness-driven suites (test-harness, wiring, rendering); the remaining cross-suite (device-library / http-midi / hardware / loop-editor / sample-chopper / sample-editor / visual / library / scsi-midi) and cross-editor (akai / roland / d110 / jv1080) duplication is the irreducible cost of suite-independence. Further extraction would require a cross-editor factory in modules/e2e-infra/ and couple every editor module to a single shared config surface; the current judgment is that the coupling cost outweighs the per-suite-config dedup payoff. Flip to refactor if a future operator builds out an e2e-infra-wide defineE2EConfig() factory.
   - id: 0e76b0ea32a9
     lines: 19
     members:
       - modules/akai-s3k-editor/playwright.library.config.ts:32:50
       - modules/roland-sxx0-editor/playwright.library.config.ts:32:50
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Per-suite Playwright configs are intentionally per-suite — each must work independently with its own E2E_PORT, reporter wiring, and webServer hooks. The existing modules/roland-sxx0-editor/playwright.harness.shared.ts factory already extracts the shared shape for harness-driven suites (test-harness, wiring, rendering); the remaining cross-suite (device-library / http-midi / hardware / loop-editor / sample-chopper / sample-editor / visual / library / scsi-midi) and cross-editor (akai / roland / d110 / jv1080) duplication is the irreducible cost of suite-independence. Further extraction would require a cross-editor factory in modules/e2e-infra/ and couple every editor module to a single shared config surface; the current judgment is that the coupling cost outweighs the per-suite-config dedup payoff. Flip to refactor if a future operator builds out an e2e-infra-wide defineE2EConfig() factory.
   - id: 4f4233ce57a4
     lines: 17
     members:
@@ -745,8 +745,8 @@ clones:
     members:
       - modules/d110-editor/playwright.visual.config.ts:3:32
       - modules/jv1080-editor/playwright.visual.config.ts:3:32
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Per-suite Playwright configs are intentionally per-suite — each must work independently with its own E2E_PORT, reporter wiring, and webServer hooks. The existing modules/roland-sxx0-editor/playwright.harness.shared.ts factory already extracts the shared shape for harness-driven suites (test-harness, wiring, rendering); the remaining cross-suite (device-library / http-midi / hardware / loop-editor / sample-chopper / sample-editor / visual / library / scsi-midi) and cross-editor (akai / roland / d110 / jv1080) duplication is the irreducible cost of suite-independence. Further extraction would require a cross-editor factory in modules/e2e-infra/ and couple every editor module to a single shared config surface; the current judgment is that the coupling cost outweighs the per-suite-config dedup payoff. Flip to refactor if a future operator builds out an e2e-infra-wide defineE2EConfig() factory.
   - id: 04c8997ef1d2
     lines: 9
     members:
@@ -1958,8 +1958,8 @@ clones:
     members:
       - modules/jv1080-editor/playwright.visual.config.ts:4:27
       - modules/roland-sxx0-editor/playwright.visual.config.ts:5:28
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Per-suite Playwright configs are intentionally per-suite — each must work independently with its own E2E_PORT, reporter wiring, and webServer hooks. The existing modules/roland-sxx0-editor/playwright.harness.shared.ts factory already extracts the shared shape for harness-driven suites (test-harness, wiring, rendering); the remaining cross-suite (device-library / http-midi / hardware / loop-editor / sample-chopper / sample-editor / visual / library / scsi-midi) and cross-editor (akai / roland / d110 / jv1080) duplication is the irreducible cost of suite-independence. Further extraction would require a cross-editor factory in modules/e2e-infra/ and couple every editor module to a single shared config surface; the current judgment is that the coupling cost outweighs the per-suite-config dedup payoff. Flip to refactor if a future operator builds out an e2e-infra-wide defineE2EConfig() factory.
   - id: 1aa1a217527f
     lines: 9
     members:
@@ -2179,23 +2179,23 @@ clones:
     members:
       - modules/roland-sxx0-editor/playwright.device-library.config.ts:48:63
       - modules/roland-sxx0-editor/playwright.http-midi.config.ts:47:62
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Per-suite Playwright configs are intentionally per-suite — each must work independently with its own E2E_PORT, reporter wiring, and webServer hooks. The existing modules/roland-sxx0-editor/playwright.harness.shared.ts factory already extracts the shared shape for harness-driven suites (test-harness, wiring, rendering); the remaining cross-suite (device-library / http-midi / hardware / loop-editor / sample-chopper / sample-editor / visual / library / scsi-midi) and cross-editor (akai / roland / d110 / jv1080) duplication is the irreducible cost of suite-independence. Further extraction would require a cross-editor factory in modules/e2e-infra/ and couple every editor module to a single shared config surface; the current judgment is that the coupling cost outweighs the per-suite-config dedup payoff. Flip to refactor if a future operator builds out an e2e-infra-wide defineE2EConfig() factory.
   - id: 32af5bdccc0e
     lines: 17
     members:
       - modules/roland-sxx0-editor/playwright.hardware.config.ts:21:37
       - modules/roland-sxx0-editor/playwright.http-midi.config.ts:32:48
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Per-suite Playwright configs are intentionally per-suite — each must work independently with its own E2E_PORT, reporter wiring, and webServer hooks. The existing modules/roland-sxx0-editor/playwright.harness.shared.ts factory already extracts the shared shape for harness-driven suites (test-harness, wiring, rendering); the remaining cross-suite (device-library / http-midi / hardware / loop-editor / sample-chopper / sample-editor / visual / library / scsi-midi) and cross-editor (akai / roland / d110 / jv1080) duplication is the irreducible cost of suite-independence. Further extraction would require a cross-editor factory in modules/e2e-infra/ and couple every editor module to a single shared config surface; the current judgment is that the coupling cost outweighs the per-suite-config dedup payoff. Flip to refactor if a future operator builds out an e2e-infra-wide defineE2EConfig() factory.
   - id: ae9365f90235
     lines: 26
     members:
       - modules/roland-sxx0-editor/playwright.loop-editor.config.ts:25:50
       - modules/roland-sxx0-editor/playwright.sample-chopper.config.ts:25:50
       - modules/roland-sxx0-editor/playwright.sample-editor.config.ts:25:50
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Per-suite Playwright configs are intentionally per-suite — each must work independently with its own E2E_PORT, reporter wiring, and webServer hooks. The existing modules/roland-sxx0-editor/playwright.harness.shared.ts factory already extracts the shared shape for harness-driven suites (test-harness, wiring, rendering); the remaining cross-suite (device-library / http-midi / hardware / loop-editor / sample-chopper / sample-editor / visual / library / scsi-midi) and cross-editor (akai / roland / d110 / jv1080) duplication is the irreducible cost of suite-independence. Further extraction would require a cross-editor factory in modules/e2e-infra/ and couple every editor module to a single shared config surface; the current judgment is that the coupling cost outweighs the per-suite-config dedup payoff. Flip to refactor if a future operator builds out an e2e-infra-wide defineE2EConfig() factory.
   - id: 9a4f7220adce
     lines: 10
     members:
