@@ -96,8 +96,8 @@ clones:
     members:
       - modules/akai-s3k-editor/src/components/keygroups/FilterDisplay.tsx:167:177
       - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:462:472
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 73230cb078b2
     lines: 7
     members:
@@ -139,8 +139,8 @@ clones:
     members:
       - modules/akai-s3k-editor/src/components/layout/Layout.tsx:33:38
       - modules/roland-sxx0-editor/src/components/layout/Layout.tsx:50:56
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 8577f6818ccc
     lines: 11
     members:
@@ -224,8 +224,8 @@ clones:
     members:
       - modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx:149:158
       - modules/editor-core/src/hooks/useEditorDialogsCore.ts:298:305
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: b2169dd3e938
     lines: 7
     members:
@@ -294,15 +294,15 @@ clones:
     members:
       - modules/akai-s3k-editor/src/components/library/LibraryIcons.tsx:32:48
       - modules/editor-core/src/plugins/common-area/icons.tsx:72:91
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 86ae0b5a1a48
     lines: 6
     members:
       - modules/akai-s3k-editor/src/components/library/LibraryIcons.tsx:51:56
       - modules/editor-core/src/plugins/common-area/icons.tsx:100:108
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 3e8bbbfa4af2
     lines: 7
     members:
@@ -343,22 +343,22 @@ clones:
     members:
       - modules/akai-s3k-editor/src/components/library/S3kKitOutputConfig.tsx:125:136
       - modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:92:103
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 0eef549f62a5
     lines: 12
     members:
       - modules/akai-s3k-editor/src/components/library/S3kKitOutputConfig.tsx:153:164
       - modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:122:131
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 5ed27614fc4e
     lines: 10
     members:
       - modules/akai-s3k-editor/src/components/library/S3kKitOutputConfig.tsx:63:72
       - modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:37:46
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 163ff43ab520
     lines: 18
     members:
@@ -511,8 +511,8 @@ clones:
     members:
       - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:709:733
       - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:650:674
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 94fe2aee9608
     lines: 18
     members:
@@ -539,15 +539,15 @@ clones:
     members:
       - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:315:342
       - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:648:674
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 8803390240c0
     lines: 11
     members:
       - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:349:359
       - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:674:684
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 26c7ab47cadd
     lines: 11
     members:
@@ -837,8 +837,8 @@ clones:
     members:
       - modules/d110-editor/src/components/layout/Layout.tsx:34:51
       - modules/roland-sxx0-editor/src/components/layout/Layout.tsx:47:64
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: bf343f424900
     lines: 28
     members:
@@ -851,22 +851,22 @@ clones:
     members:
       - modules/d110-editor/src/components/ui/D110EnvelopeEditor.tsx:362:373
       - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:461:472
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 93b9830bf2b2
     lines: 45
     members:
       - modules/d110-editor/src/components/ui/D110EnvelopeEditor.tsx:385:429
       - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:484:529
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 59f7a26481c5
     lines: 12
     members:
       - modules/d110-editor/src/components/ui/ParameterSlider.tsx:10:21
       - modules/editor-core/src/components/ParameterSlider.tsx:15:26
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 0219a07073c4
     lines: 9
     members:
@@ -1944,8 +1944,8 @@ clones:
     members:
       - modules/editor-core/src/transports/httpMidiTransport.ts:40:49
       - modules/midi-core/src/transports/scsi-disk-client.ts:71:80
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 12d666961089
     lines: 14
     members:
@@ -2165,8 +2165,8 @@ clones:
     members:
       - modules/loop-editor/src/ui/hooks/use-loop-editor.ts:169:177
       - modules/roland-sxx0-editor/src/pages/WorkflowsPage.tsx:85:93
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 941d97fd2478
     lines: 15
     members:
@@ -2703,30 +2703,30 @@ clones:
     members:
       - modules/roland-sxx0-editor/src/hooks/useDeviceToneChopper.ts:96:112
       - modules/sample-chopper/dev/main.tsx:162:177
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 4d263afcb4e9
     lines: 12
     members:
       - modules/roland-sxx0-editor/src/hooks/useImportSamples.ts:225:236
       - modules/sampler-library/src/testing/seed-mock-library.ts:34:44
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 715843c86da4
     lines: 7
     members:
       - modules/roland-sxx0-editor/src/hooks/useImportSamples.ts:240:246
       - modules/sampler-devices/src/devices/roland-s-series/s-series-wave-format.ts:207:213
       - modules/sampler-devices/src/devices/s3000xl/akai-wav-convert.ts:37:43
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 9d95e639fba3
     lines: 17
     members:
       - modules/roland-sxx0-editor/src/hooks/useImportSamples.ts:271:287
       - modules/sampler-devices/src/devices/s330/drum-kit-import-service.ts:165:181
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: f6fc1c6b4456
     lines: 6
     members:
@@ -2788,8 +2788,8 @@ clones:
     members:
       - modules/roland-sxx0-editor/src/lib/library-sets-save-incremental.ts:318:328
       - modules/sampler-library/src/converters/s-series/set-converter.ts:128:138
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: a5919ceb45dc
     lines: 7
     members:
@@ -2802,15 +2802,15 @@ clones:
     members:
       - modules/roland-sxx0-editor/src/lib/library-sets.ts:60:70
       - modules/sampler-library/src/library-fs.ts:590:600
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: aa1084835749
     lines: 15
     members:
       - modules/roland-sxx0-editor/src/lib/library-sets.ts:70:84
       - modules/sampler-library/src/storage/set-storage.ts:266:280
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 649d1bf0c1df
     lines: 13
     members:
@@ -2823,22 +2823,22 @@ clones:
     members:
       - modules/roland-sxx0-editor/src/lib/wave-export.ts:109:116
       - modules/sampler-devices/src/devices/s3000xl/akai-wav-convert.ts:37:44
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 5fd5fd17a6e5
     lines: 12
     members:
       - modules/roland-sxx0-editor/src/lib/wave-export.ts:131:142
       - modules/sampler-library/src/storage/set-storage.ts:93:104
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 69c35601da78
     lines: 12
     members:
       - modules/roland-sxx0-editor/src/lib/wave-export.ts:89:100
       - modules/sampler-devices/src/devices/roland-s-series/s-series-wave-format.ts:178:189
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: c3ee44db4131
     lines: 16
     members:
