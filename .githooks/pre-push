@@ -23,7 +23,8 @@
 
 set -euo pipefail
 
-SENTINEL_FILE="$(git rev-parse --git-path hooks)/.pre-commit-passed"
+# See post-commit for the rationale on --git-common-dir vs --git-path.
+SENTINEL_FILE="$(git rev-parse --git-common-dir)/hooks-sentinels/.pre-commit-passed"
 ZERO="0000000000000000000000000000000000000000"
 
 # Collect all commit SHAs being pushed (one per line). For new

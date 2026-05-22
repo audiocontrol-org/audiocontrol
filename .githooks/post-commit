@@ -15,7 +15,13 @@
 
 set -euo pipefail
 
-SENTINEL_DIR="$(git rev-parse --git-path hooks)"
+# Use --git-common-dir (worktree-aware: resolves to .git/ on the main
+# checkout, .git/worktrees/<name>/ inside a worktree) instead of
+# --git-path hooks, which returns the configured `core.hooksPath`
+# (.githooks) when set — that would put the sentinel inside the
+# tracked hooks dir. The sentinel must live OUTSIDE the tree so it
+# stays clone-local.
+SENTINEL_DIR="$(git rev-parse --git-common-dir)/hooks-sentinels"
 SENTINEL_FILE="$SENTINEL_DIR/.pre-commit-passed"
 mkdir -p "$SENTINEL_DIR"
 
