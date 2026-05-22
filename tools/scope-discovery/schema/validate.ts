@@ -1,57 +1,52 @@
 /**
  * tools/scope-discovery/schema/validate.ts
  *
- * Loads tools/scope-discovery/schema/scope-manifest.schema.json with
- * ajv (draft 2020-12) and validates every example manifest under
- * tools/scope-discovery/schema/examples/ against it. Prints one line
- * per example with PASS / FAIL; exits non-zero if any fail.
+ * CLI surface for the scope-manifest schema validator. Loads
+ * tools/scope-discovery/schema/scope-manifest.schema.json (via the
+ * shared manifest-validator module) and validates either:
  *
- * This is the "validates via ajv validate" proof for T2.1's
- * acceptance gate. It also runs as part of the foundation-tooling
- * sanity sweep — any change to the schema or to an example manifest
- * must re-pass this script.
+ *   - every example manifest under tools/scope-discovery/schema/examples/
+ *     (default mode — the T2.1 acceptance gate)
+ *   - a single manifest file passed via `--manifest <path>` (used by
+ *     the synthesis pass T3.2 smoke-test and by ad-hoc operator runs
+ *     against a curated/strawman manifest in a feature directory)
+ *
+ * Prints one line per file with PASS / FAIL; exits non-zero if any
+ * fail.
  *
  * Run via:
  *   tsx tools/scope-discovery/schema/validate.ts
+ *   tsx tools/scope-discovery/schema/validate.ts --manifest <path>
  *
  * Exit codes:
  *   0   all positive example manifests validate AND all negative-test
- *       manifests fail validation as expected
+ *       manifests fail validation as expected (default mode)
+ *       OR the single supplied --manifest validates (single-file mode)
  *   1   one or more positive examples failed, or one or more negative
- *       examples unexpectedly passed
+ *       examples unexpectedly passed, or the supplied --manifest failed
  *   2   process / filesystem / parse error (schema not loadable etc.)
  */
 
 import { readFile, readdir } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import Ajv2020 from 'ajv/dist/2020.js';
 import type { ValidateFunction } from 'ajv';
-import addFormats from 'ajv-formats';
 import { parse as parseYaml } from 'yaml';
-import { isPlainObject, errorMessage, isEnoent } from '../util/typeguards.js';
+import { errorMessage, isEnoent } from '../util/typeguards.js';
+import {
+  compileManifestValidator,
+  validateManifest,
+  type ManifestValidationResult,
+} from './manifest-validator.js';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
-const SCHEMA_PATH = resolve(SCRIPT_DIR, 'scope-manifest.schema.json');
 const EXAMPLES_DIR = resolve(SCRIPT_DIR, 'examples');
 const NEGATIVE_DIR = resolve(EXAMPLES_DIR, '_negative-tests');
 
 interface ValidationOutcome {
   readonly file: string;
   readonly passed: boolean;
-  readonly errors: string[];
-}
-
-async function loadSchema(): Promise<Record<string, unknown>> {
-  const raw = await readFile(SCHEMA_PATH, 'utf8');
-  const parsed: unknown = JSON.parse(raw);
-  if (!isPlainObject(parsed)) {
-    throw new Error(
-      `scope-manifest.schema.json did not parse to an object — got ${typeof parsed}. ` +
-        `The schema file at ${SCHEMA_PATH} is malformed.`,
-    );
-  }
-  return parsed;
+  readonly errors: ReadonlyArray<string>;
 }
 
 async function listYamlFilesIn(dir: string): Promise<string[]> {
@@ -90,79 +85,6 @@ async function loadYamlManifest(path: string): Promise<unknown> {
   return parseYaml(raw);
 }
 
-function formatAjvErrors(errors: unknown): string[] {
-  if (!Array.isArray(errors)) {
-    return [];
-  }
-  return errors.map((err: unknown) => {
-    if (!isPlainObject(err)) {
-      return String(err);
-    }
-    const instancePath = err['instancePath'];
-    const message = err['message'];
-    const params = err['params'];
-    const path = typeof instancePath === 'string' && instancePath.length > 0
-      ? instancePath
-      : '<root>';
-    const msg = typeof message === 'string' ? message : 'unknown error';
-    const paramsStr = params !== undefined ? ` (${JSON.stringify(params)})` : '';
-    return `${path}: ${msg}${paramsStr}`;
-  });
-}
-
-/**
- * Imperative referential-integrity check: every id referenced in
- * route.scenarios[] must appear in the top-level scenarios[].id list.
- * JSON Schema lacks the cross-property primitives to express this, so
- * we check it here. Applies to kind: ui and kind: hybrid only.
- */
-function validateScenarioReferences(manifest: unknown): string[] {
-  if (!isPlainObject(manifest)) {
-    return [];
-  }
-  const kind = manifest['kind'];
-  if (kind !== 'ui' && kind !== 'hybrid') {
-    return [];
-  }
-  const scenarios = manifest['scenarios'];
-  if (!Array.isArray(scenarios)) {
-    return [];
-  }
-  const knownIds = new Set<string>();
-  for (const s of scenarios) {
-    if (isPlainObject(s) && typeof s['id'] === 'string') {
-      knownIds.add(s['id']);
-    }
-  }
-  const routes = manifest['routes'];
-  if (!Array.isArray(routes)) {
-    return [];
-  }
-  const errors: string[] = [];
-  routes.forEach((route: unknown, routeIndex: number) => {
-    if (!isPlainObject(route)) {
-      return;
-    }
-    const routeScenarios = route['scenarios'];
-    const routePath = typeof route['path'] === 'string' ? route['path'] : `<route #${routeIndex}>`;
-    if (!Array.isArray(routeScenarios)) {
-      return;
-    }
-    for (const id of routeScenarios) {
-      if (typeof id !== 'string') {
-        continue;
-      }
-      if (!knownIds.has(id)) {
-        errors.push(
-          `/routes/${routeIndex}/scenarios: route '${routePath}' references ` +
-            `scenario id '${id}' that is not declared at the top-level scenarios[].id list`,
-        );
-      }
-    }
-  });
-  return errors;
-}
-
 async function runOneValidation(
   file: string,
   validate: ValidateFunction,
@@ -177,15 +99,8 @@ async function runOneValidation(
       errors: [`YAML parse failure: ${errorMessage(err)}`],
     };
   }
-  const schemaOk = validate(manifest);
-  const schemaErrors = schemaOk === true ? [] : formatAjvErrors(validate.errors);
-  const refErrors = validateScenarioReferences(manifest);
-  const errors = [...schemaErrors, ...refErrors];
-  return {
-    file,
-    passed: errors.length === 0,
-    errors,
-  };
+  const result: ManifestValidationResult = validateManifest(manifest, validate);
+  return { file, passed: result.ok, errors: result.errors };
 }
 
 function reportOutcome(o: ValidationOutcome, expectedPass: boolean): boolean {
@@ -206,31 +121,50 @@ function reportOutcome(o: ValidationOutcome, expectedPass: boolean): boolean {
   return ok;
 }
 
-async function main(): Promise<number> {
-  let schema: Record<string, unknown>;
-  try {
-    schema = await loadSchema();
-  } catch (err) {
-    console.error(`schema load failed: ${errorMessage(err)}`);
-    return 2;
+interface CliOptions {
+  readonly manifestPath: string | null;
+}
+
+function parseCli(argv: ReadonlyArray<string>): CliOptions {
+  let manifestPath: string | null = null;
+  for (let i = 0; i < argv.length; i += 1) {
+    const a = argv[i];
+    if (a === '--manifest') {
+      const next = argv[i + 1];
+      if (next === undefined) throw new Error('--manifest requires a value');
+      manifestPath = next;
+      i += 1;
+    } else if (a === '--help' || a === '-h') {
+      throw new Error('HELP');
+    } else {
+      throw new Error(`unknown arg: ${a}`);
+    }
   }
+  return { manifestPath };
+}
 
-  // strictRequired disabled: see $comment in scope-manifest.schema.json
-  // adjacent to the allOf block — the manifest's conditionally-required
-  // routes/modules fields are declared at the root and referenced inside
-  // allOf/if/then branches; strict mode mis-lints this even though the
-  // runtime semantics are correct.
-  const ajv = new Ajv2020({ allErrors: true, strict: true, strictRequired: false });
-  addFormats(ajv);
+function printUsage(): void {
+  process.stderr.write(
+    [
+      'Usage:',
+      '  tsx tools/scope-discovery/schema/validate.ts                  # validate all examples',
+      '  tsx tools/scope-discovery/schema/validate.ts --manifest <path> # validate a single manifest',
+      '',
+    ].join('\n'),
+  );
+}
 
-  let validate: ValidateFunction;
-  try {
-    validate = ajv.compile(schema);
-  } catch (err) {
-    console.error(`schema compile failed: ${errorMessage(err)}`);
-    return 2;
-  }
+async function runSingleFile(
+  manifestPath: string,
+  validate: ValidateFunction,
+): Promise<number> {
+  const abs = resolve(process.cwd(), manifestPath);
+  const outcome = await runOneValidation(abs, validate);
+  const ok = reportOutcome(outcome, true);
+  return ok ? 0 : 1;
+}
 
+async function runExamplesSuite(validate: ValidateFunction): Promise<number> {
   let positiveFiles: string[];
   let negativeFiles: string[];
   try {
@@ -240,26 +174,44 @@ async function main(): Promise<number> {
     console.error(errorMessage(err));
     return 2;
   }
-
   let anyFailed = false;
-
   for (const file of positiveFiles) {
     const outcome = await runOneValidation(file, validate);
-    const ok = reportOutcome(outcome, true);
-    if (!ok) {
-      anyFailed = true;
-    }
+    if (!reportOutcome(outcome, true)) anyFailed = true;
   }
-
   for (const file of negativeFiles) {
     const outcome = await runOneValidation(file, validate);
-    const ok = reportOutcome(outcome, false);
-    if (!ok) {
-      anyFailed = true;
+    if (!reportOutcome(outcome, false)) anyFailed = true;
+  }
+  return anyFailed ? 1 : 0;
+}
+
+async function main(): Promise<number> {
+  let opts: CliOptions;
+  try {
+    opts = parseCli(process.argv.slice(2));
+  } catch (err) {
+    const msg = errorMessage(err);
+    if (msg === 'HELP') {
+      printUsage();
+      return 0;
     }
+    process.stderr.write(`${msg}\n`);
+    printUsage();
+    return 2;
   }
 
-  return anyFailed ? 1 : 0;
+  let validate: ValidateFunction;
+  try {
+    validate = await compileManifestValidator();
+  } catch (err) {
+    console.error(`schema load/compile failed: ${errorMessage(err)}`);
+    return 2;
+  }
+
+  return opts.manifestPath !== null
+    ? runSingleFile(opts.manifestPath, validate)
+    : runExamplesSuite(validate);
 }
 
 main().then(

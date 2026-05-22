@@ -1,0 +1,118 @@
+/**
+ * tools/scope-discovery/synthesis-types.ts
+ *
+ * Output-side types for the synthesis pass (T3.2). Mirrors the shape
+ * declared by tools/scope-discovery/schema/scope-manifest.schema.json
+ * (T2.1). Lives in its own module so synthesis.ts and
+ * synthesis-derive.ts share a single source of truth for the in-memory
+ * manifest shape without circular imports.
+ *
+ * These types are STRUCTURAL counterparts to the JSON Schema; the
+ * schema remains authoritative. Every synthesized manifest is run
+ * through `validateManifest()` before write, so a drift between the
+ * schema and these types surfaces at runtime as a schema-validation
+ * failure rather than silent emission of malformed output.
+ */
+
+import type { DiscoveryAgentFinding } from './discovery-agents/types.js';
+
+export type ManifestKind = 'ui' | 'code' | 'hybrid';
+
+export type ReferenceDocRole =
+  | 'prd'
+  | 'workplan'
+  | 'mockup'
+  | 'design-language'
+  | 'analysis-report'
+  | 'rule'
+  | 'other';
+
+export interface ManifestScenario {
+  readonly id: string;
+  readonly label?: string;
+  readonly description?: string;
+  readonly query?: string;
+}
+
+export interface ManifestReferenceDoc {
+  readonly path: string;
+  readonly role?: ReferenceDocRole;
+  readonly summary?: string;
+}
+
+export interface ManifestRoute {
+  readonly path: string;
+  readonly devices: ReadonlyArray<string>;
+  readonly scenarios: ReadonlyArray<string>;
+  readonly primitives?: ReadonlyArray<string>;
+  readonly skip_reason?: string;
+}
+
+export type PatternKind =
+  | 'ast-call'
+  | 'ast-jsx'
+  | 'type-cast'
+  | 'grep'
+  | 'clone-group'
+  | 'import'
+  | 'other';
+
+export interface ManifestModulePattern {
+  readonly id: string;
+  readonly kind: PatternKind;
+  readonly description?: string;
+  readonly query?: string;
+}
+
+export interface ManifestModuleExclude {
+  readonly glob: string;
+  readonly reason: string;
+}
+
+export interface ManifestModule {
+  readonly glob: string;
+  readonly label?: string;
+  readonly patterns: ReadonlyArray<ManifestModulePattern>;
+  readonly excludes?: ReadonlyArray<ManifestModuleExclude>;
+}
+
+/**
+ * In-memory manifest shape. JSON-serializable; `yaml.stringify()`
+ * produces the canonical scope-manifest.yaml output. snake_case field
+ * names mirror the schema verbatim so the YAML output stays readable
+ * for the operator without a post-write rename pass.
+ */
+export interface ScopeManifest {
+  readonly kind: ManifestKind;
+  readonly feature_slug: string;
+  readonly version?: string;
+  readonly generated_by: 'strawman' | 'curated' | 'hand-authored';
+  readonly generated_at: string;
+  readonly scenarios: ReadonlyArray<ManifestScenario>;
+  readonly reference_docs: ReadonlyArray<ManifestReferenceDoc>;
+  readonly discovery_themes: ReadonlyArray<string>;
+  readonly routes?: ReadonlyArray<ManifestRoute>;
+  readonly modules?: ReadonlyArray<ManifestModule>;
+  readonly notes?: string;
+}
+
+/** Input contract for the synthesis pass. */
+export interface SynthesisInput {
+  readonly featureSlug: string;
+  readonly findings: ReadonlyArray<DiscoveryAgentFinding>;
+  /** Repo-relative or absolute path to the PRD; used for both reading and reference_docs derivation. */
+  readonly prdPath: string;
+  /** Repo-relative form of prdPath for emission into reference_docs[]. */
+  readonly prdRelPath: string;
+}
+
+/** Output of the synthesis pass. */
+export interface SynthesisOutput {
+  readonly manifest: ScopeManifest;
+  readonly metadata: {
+    readonly generatedAt: string;
+    readonly agentsConsumed: ReadonlyArray<string>;
+    readonly dedupCount: number;
+    readonly findingsCount: number;
+  };
+}
