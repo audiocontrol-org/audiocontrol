@@ -21,6 +21,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { SlideDrawer } from '@audiocontrol/editor-core';
 import { StepLogBody, renderFooter } from './ExportToneDialog';
 import { useStepHistory } from '@/hooks/useStepHistory';
+import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import {
   type OperationState,
   isOperationComplete,
@@ -70,6 +71,7 @@ export function BatchExportDrawer({
   progress,
   error: operationError,
 }: BatchExportDrawerProps): JSX.Element | null {
+  const { deviceName } = useDeviceConfig();
   const [localError, setLocalError] = useState<string | null>(null);
   const [hasStarted, setHasStarted] = useState(false);
 
@@ -156,6 +158,7 @@ export function BatchExportDrawer({
           kind={kind}
           items={items}
           targetPath={targetPath}
+          deviceName={deviceName}
           error={localError}
         />
       )}
@@ -167,10 +170,14 @@ interface BatchFormBodyProps {
   kind: 'tone' | 'patch';
   items: BatchExportItem[];
   targetPath: string[];
+  /** Active device name from useDeviceConfig — routed in instead of
+   *  hardcoded so the eyebrow shows S-330 / S-550 correctly per
+   *  active surface. AUDIT-20260521-02. */
+  deviceName: string;
   error: string | null;
 }
 
-function BatchFormBody({ kind, items, targetPath, error }: BatchFormBodyProps): JSX.Element {
+function BatchFormBody({ kind, items, targetPath, deviceName, error }: BatchFormBodyProps): JSX.Element {
   const eyebrowKindLabel = kind === 'tone' ? 'TONES' : 'PATCHES';
   return (
     <div className="ac-export-form">
@@ -181,7 +188,7 @@ function BatchFormBody({ kind, items, targetPath, error }: BatchFormBodyProps): 
         <span className="ac-detail-eyebrow-sep">·</span>
         <span>LIBRARY</span>
         <span className="ac-detail-eyebrow-sep">·</span>
-        <span>S330</span>
+        <span data-testid="batch-export-device-name">{deviceName.toUpperCase()}</span>
         {targetPath.length > 0 && (
           <>
             <span className="ac-detail-eyebrow-sep">·</span>

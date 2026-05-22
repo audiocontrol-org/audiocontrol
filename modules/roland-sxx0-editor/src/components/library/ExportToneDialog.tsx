@@ -54,7 +54,7 @@ export function ExportToneDialog({
   progress,
   error: operationError,
 }: ExportToneDialogProps): JSX.Element | null {
-  const { memoryLayout } = useDeviceConfig();
+  const { memoryLayout, deviceName } = useDeviceConfig();
   const slotLabel = memoryLayout.formatToneSlot(toneIndex);
 
   const [toneName, setToneName] = useState(tone?.name || `Tone_${slotLabel}`);
@@ -140,6 +140,7 @@ export function ExportToneDialog({
         <ToneFormBody
           tone={tone}
           slotLabel={slotLabel}
+          deviceName={deviceName}
           toneName={toneName}
           setToneName={setToneName}
           targetPath={targetPath ?? []}
@@ -157,6 +158,10 @@ export function ExportToneDialog({
 interface ToneFormBodyProps {
   tone: S330Tone | null;
   slotLabel: string;
+  /** Active device name from useDeviceConfig (e.g. "S-330", "S-550") —
+   *  routed in instead of hardcoded so the eyebrow correctly reflects
+   *  whichever Roland surface the editor is mounted under. AUDIT-20260521-02. */
+  deviceName: string;
   toneName: string;
   setToneName: (name: string) => void;
   targetPath: string[];
@@ -166,6 +171,7 @@ interface ToneFormBodyProps {
 function ToneFormBody({
   tone,
   slotLabel,
+  deviceName,
   toneName,
   setToneName,
   targetPath,
@@ -180,7 +186,7 @@ function ToneFormBody({
         <span className="ac-detail-eyebrow-sep">·</span>
         <span>LIBRARY</span>
         <span className="ac-detail-eyebrow-sep">·</span>
-        <span>S330</span>
+        <span data-testid="export-tone-device-name">{deviceName.toUpperCase()}</span>
         {targetPath.length > 0 && (
           // Surface the drop-target subfolder so the operator confirms
           // the export will land where they intended. Drops on a folder

@@ -52,7 +52,7 @@ export function ExportPatchDialog({
   progress,
   error: operationError,
 }: ExportPatchDialogProps): JSX.Element | null {
-  const { memoryLayout } = useDeviceConfig();
+  const { memoryLayout, deviceName } = useDeviceConfig();
   const slotLabel = memoryLayout.formatPatchSlot(patchIndex);
   // Device-aware default name (S-330: Patch_P11..Patch_P28; S-550:
   // Patch_I11..Patch_IV28). The `Patch_` prefix preserves the
@@ -149,6 +149,7 @@ export function ExportPatchDialog({
         <PatchFormBody
           patch={patch}
           slotLabel={slotLabel}
+          deviceName={deviceName}
           patchName={patchName}
           setPatchName={setPatchName}
           referencedToneCount={referencedToneCount}
@@ -167,6 +168,10 @@ export function ExportPatchDialog({
 interface PatchFormBodyProps {
   patch: S330Patch | null;
   slotLabel: string;
+  /** Active device name from useDeviceConfig — routed in instead of
+   *  hardcoded so the eyebrow shows S-330 / S-550 correctly per
+   *  active surface. AUDIT-20260521-02. */
+  deviceName: string;
   patchName: string;
   setPatchName: (name: string) => void;
   referencedToneCount: number;
@@ -177,6 +182,7 @@ interface PatchFormBodyProps {
 function PatchFormBody({
   patch,
   slotLabel,
+  deviceName,
   patchName,
   setPatchName,
   referencedToneCount,
@@ -192,7 +198,7 @@ function PatchFormBody({
         <span className="ac-detail-eyebrow-sep">·</span>
         <span>LIBRARY</span>
         <span className="ac-detail-eyebrow-sep">·</span>
-        <span>S330</span>
+        <span data-testid="export-patch-device-name">{deviceName.toUpperCase()}</span>
         {targetPath.length > 0 && (
           // Surface the drop-target subfolder so the operator sees where
           // the bundle will land. See ExportToneDialog for context.

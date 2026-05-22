@@ -798,6 +798,95 @@ test.describe('Capabilities — Library DnD (Wave 5)', () => {
 
   });
 
+  test('D-LIB-32: ctrl-click does not move the anchor, so a subsequent shift-click ranges from the original plain-click anchor', async ({ page }) => {
+    // Regression coverage for AUDIT-20260521-01. The dispatcher used
+    // to overwrite `lastToneAnchorRef.current` inside the ctrl/meta
+    // branch, so a subsequent shift-click would range from the most-
+    // recently ctrl-clicked slot instead of the original plain-click
+    // anchor. Matches the OS-standard file-manager idiom (the anchor
+    // moves on plain click or shift click; ctrl/meta toggles
+    // membership without moving the anchor).
+    //
+    // Sequence:
+    //   1. Plain-click T11 — anchor = T11.
+    //   2. Cmd/Ctrl-click T13 — multi-set = {T11, T13}; anchor STAYS T11.
+    //   3. Shift-click T15 — range from T11 → {T11, T12, T13, T14, T15}.
+    await page.goto(LIBRARY_URL);
+    await cleanupOPFS(page);
+    await connectLibraryOPFS(page);
+    await seedDeviceTone(page, { slot: 0, name: 'TestToneA' });
+    await seedDeviceTone(page, { slot: 1, name: 'TestToneB' });
+    await seedDeviceTone(page, { slot: 2, name: 'TestToneC' });
+    await seedDeviceTone(page, { slot: 3, name: 'TestToneD' });
+    await seedDeviceTone(page, { slot: 4, name: 'TestToneE' });
+
+    const slot0 = deviceToneSlot(page, 'T11');
+    const slot1 = deviceToneSlot(page, 'T12');
+    const slot2 = deviceToneSlot(page, 'T13');
+    const slot3 = deviceToneSlot(page, 'T14');
+    const slot4 = deviceToneSlot(page, 'T15');
+    for (const s of [slot0, slot1, slot2, slot3, slot4]) {
+      await expect(s).toHaveAttribute('draggable', 'true', { timeout: 5_000 });
+    }
+
+    // Step 1: plain click sets anchor + clears multi-set.
+    await slot0.click();
+    // Step 2: ctrl-click adds T13 — anchor stays at T11.
+    await slot2.click({ modifiers: ['ControlOrMeta'] });
+    // Step 3: shift-click T15 — range from anchor T11 (NOT T13).
+    await slot4.click({ modifiers: ['Shift'] });
+
+    // Post-condition: T11-T15 all selected (range from anchor).
+    for (const s of [slot0, slot1, slot2, slot3, slot4]) {
+      await expect(s).toHaveAttribute('data-multi-selected', 'true', { timeout: 2_000 });
+    }
+
+    // The drag payload should carry all 5 indices.
+    const target = page.locator('[data-category="tones"][data-testid="library-tones-section"]');
+    await expect(target).toBeVisible({ timeout: 5_000 });
+    await simulateDragAndDrop(page, slot0, target);
+
+    await expect(
+      page.getByRole('heading', { name: /Export 5 tones to library/i }),
+    ).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByTestId('batch-export-item-0')).toBeVisible();
+    await expect(page.getByTestId('batch-export-item-1')).toBeVisible();
+    await expect(page.getByTestId('batch-export-item-2')).toBeVisible();
+    await expect(page.getByTestId('batch-export-item-3')).toBeVisible();
+    await expect(page.getByTestId('batch-export-item-4')).toBeVisible();
+  });
+
+  test('D-LIB-33: export drawer eyebrow reflects the active device name (S-550), not a hardcoded S-330 label', async ({ page }) => {
+    // Regression coverage for AUDIT-20260521-02. All three export
+    // drawers used to hardcode "S330" in the eyebrow row instead of
+    // deriving from useDeviceConfig(). The bug only surfaced on the
+    // s550 surface because every prior wiring test ran via LIBRARY_URL
+    // (the s330 URL). This spec exercises the s550 mount + asserts
+    // the eyebrow reads "S-550".
+    //
+    // Single-item ExportToneDialog is the canonical surface; the
+    // patch + batch drawers share the same shape (verified by
+    // tone/patch/batch all using deviceName from useDeviceConfig).
+    const S550_LIBRARY_URL =
+      '/roland/s550/editor/library?midi=simulated&scenario=load-everything';
+    await page.goto(S550_LIBRARY_URL);
+    await cleanupOPFS(page);
+    await connectLibraryOPFS(page);
+    await seedDeviceTone(page, { slot: 0, name: 'TestTone1' });
+
+    const source = deviceToneSlot(page, 'T11');
+    await expect(source).toHaveAttribute('draggable', 'true', { timeout: 5_000 });
+
+    const target = page.locator('[data-category="tones"][data-testid="library-tones-section"]');
+    await expect(target).toBeVisible({ timeout: 5_000 });
+    await simulateDragAndDrop(page, source, target);
+
+    await expect(
+      page.getByRole('heading', { name: /Export tone to library/i }),
+    ).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByTestId('export-tone-device-name')).toHaveText('S-550');
+  });
+
   test('D-LIB-29: device-memory multi-select on patches + drag of any member opens the BatchExportDrawer with kind="patch"', async ({ page }) => {
     // Symmetric to D-LIB-28 but exercises the patch side of the
     // dispatcher (handlePatchClick) and the patch branch of

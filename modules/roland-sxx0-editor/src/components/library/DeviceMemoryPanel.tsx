@@ -154,10 +154,14 @@ export function DeviceMemoryPanel({
       return;
     }
     if (e.ctrlKey || e.metaKey) {
-      // Capture the prior anchor BEFORE the setMultiTones updater runs.
-      // React batches state updates and runs the updater asynchronously,
-      // so `lastToneAnchorRef.current = index` below would clobber the
-      // ref before the updater reads it — the seed would never fire.
+      // Ctrl/meta-click toggles membership in the multi-set but MUST
+      // NOT move the anchor — otherwise a subsequent shift-click would
+      // range from the most recent ctrl-click slot instead of the
+      // original anchor, contradicting the documented behavior + the
+      // OS-standard file-manager idiom (caught by AUDIT-20260521-01).
+      // The "seed prior anchor on first toggle" logic still applies so
+      // the anchor stays highlighted in the multi-set alongside the
+      // new toggles.
       const priorAnchor = lastToneAnchorRef.current;
       setMultiTones((prev) => {
         const next = new Set(prev);
@@ -167,7 +171,6 @@ export function DeviceMemoryPanel({
         if (next.has(index)) next.delete(index); else next.add(index);
         return next;
       });
-      lastToneAnchorRef.current = index;
       return;
     }
     setMultiTones(new Set());
@@ -186,9 +189,11 @@ export function DeviceMemoryPanel({
       return;
     }
     if (e.ctrlKey || e.metaKey) {
-      // See handleToneClick — capture the prior anchor before the
-      // setMultiPatches updater runs so the seed sees the *prior*
-      // anchor, not the one being assigned below.
+      // See handleToneClick — ctrl/meta does NOT move the anchor; the
+      // anchor stays where the last plain or shift click set it so the
+      // next shift-click ranges from there. The seed logic uses the
+      // CURRENT anchor (not the clicked slot) to keep it highlighted
+      // in the multi-set.
       const priorAnchor = lastPatchAnchorRef.current;
       setMultiPatches((prev) => {
         const next = new Set(prev);
@@ -198,7 +203,6 @@ export function DeviceMemoryPanel({
         if (next.has(index)) next.delete(index); else next.add(index);
         return next;
       });
-      lastPatchAnchorRef.current = index;
       return;
     }
     setMultiPatches(new Set());
