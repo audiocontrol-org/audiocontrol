@@ -2612,22 +2612,22 @@ clones:
     members:
       - modules/roland-sxx0-editor/src/components/ui/EnvelopeDisplay.tsx:51:58
       - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:395:402
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: 'EnvelopeDisplay.tsx is marked @deprecated by its own header ("Phase 9 Task 4 TonesPage amend introduced AcEnvelope (editor-core) as the canonical envelope surface — see ToneEnvelopeEditor. This file is kept for the audit-and-delete dispatch after the rest of Phase 9 Task 4 lands."). Source-tree grep confirms zero consumers (only the re-export from ui/index.ts). The duplication with EnvelopeEditor is therefore a transient artifact of a not-yet-completed deletion. Extracting a shared helper from a file scheduled for deletion would be churn. Disposition: kept until the audit-and-delete dispatch lands. Follow-up tracked: ROLAND-BUGFIX-DEL-001 — delete modules/roland-sxx0-editor/src/components/ui/EnvelopeDisplay.tsx + remove its export from ui/index.ts. Operator approval required for the source-file deletion (auto-mode permission classifier blocked the inline attempt).'
   - id: 62705162bc69
     lines: 24
     members:
       - modules/roland-sxx0-editor/src/components/ui/EnvelopeDisplay.tsx:65:88
       - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:492:515
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: 'EnvelopeDisplay.tsx is marked @deprecated by its own header ("Phase 9 Task 4 TonesPage amend introduced AcEnvelope (editor-core) as the canonical envelope surface — see ToneEnvelopeEditor. This file is kept for the audit-and-delete dispatch after the rest of Phase 9 Task 4 lands."). Source-tree grep confirms zero consumers (only the re-export from ui/index.ts). The duplication with EnvelopeEditor is therefore a transient artifact of a not-yet-completed deletion. Extracting a shared helper from a file scheduled for deletion would be churn. Disposition: kept until the audit-and-delete dispatch lands. Follow-up tracked: ROLAND-BUGFIX-DEL-001 — delete modules/roland-sxx0-editor/src/components/ui/EnvelopeDisplay.tsx + remove its export from ui/index.ts. Operator approval required for the source-file deletion (auto-mode permission classifier blocked the inline attempt).'
   - id: 96898287ce31
     lines: 21
     members:
       - modules/roland-sxx0-editor/src/components/ui/EnvelopeDisplay.tsx:88:108
       - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:543:563
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: 'EnvelopeDisplay.tsx is marked @deprecated by its own header ("Phase 9 Task 4 TonesPage amend introduced AcEnvelope (editor-core) as the canonical envelope surface — see ToneEnvelopeEditor. This file is kept for the audit-and-delete dispatch after the rest of Phase 9 Task 4 lands."). Source-tree grep confirms zero consumers (only the re-export from ui/index.ts). The duplication with EnvelopeEditor is therefore a transient artifact of a not-yet-completed deletion. Extracting a shared helper from a file scheduled for deletion would be churn. Disposition: kept until the audit-and-delete dispatch lands. Follow-up tracked: ROLAND-BUGFIX-DEL-001 — delete modules/roland-sxx0-editor/src/components/ui/EnvelopeDisplay.tsx + remove its export from ui/index.ts. Operator approval required for the source-file deletion (auto-mode permission classifier blocked the inline attempt).'
   - id: 69cc807e1b8f
     lines: 17
     members:
