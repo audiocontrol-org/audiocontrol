@@ -49,6 +49,12 @@ import {
   parseClonesYaml,
   serializeClonesYaml,
 } from './clones-yaml.js';
+import {
+  scenarioCanonicalSideAll,
+  scenarioCanonicalSideFilePath,
+  scenarioCanonicalSideNew,
+  scenarioMissingTestsField,
+} from './clone-detector.refactor-scenarios.js';
 import { errorMessage } from './util/typeguards.js';
 
 const DETECTOR_ENTRY = 'tools/scope-discovery/clone-detector.ts';
@@ -407,13 +413,30 @@ async function cleanupTmp(): Promise<void> {
   }
 }
 
+/**
+ * The refactor-precondition scenarios (T5.1) test `parseClonesYaml`
+ * directly against hand-crafted YAML — they exercise the parse-time
+ * enforcement layer without running jscpd. We wrap each sync function
+ * in an async adapter so the existing scheduler treats them uniformly
+ * with the subprocess-driven scenarios above.
+ */
+type Scenario = () => Promise<ScenarioResult>;
+
+function adapt(syncScenario: () => ScenarioResult): Scenario {
+  return async () => syncScenario();
+}
+
 async function main(): Promise<number> {
   await mkdir(TMP_ROOT, { recursive: true });
-  const scenarios = [
+  const scenarios: Scenario[] = [
     scenarioNewClone,
     scenarioDroppedClone,
     scenarioIgnoreWithJustification,
     scenarioGuttedLogicSelfCheck,
+    adapt(scenarioCanonicalSideFilePath),
+    adapt(scenarioCanonicalSideAll),
+    adapt(scenarioCanonicalSideNew),
+    adapt(scenarioMissingTestsField),
   ];
   const results: ScenarioResult[] = [];
   try {
