@@ -42,7 +42,6 @@
  */
 
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import {
   type CloneGroup,
@@ -59,45 +58,28 @@ import {
   scenarioMissingCanonicalReason,
   scenarioMissingTestsField,
 } from './clone-detector.refactor-scenarios.js';
+import { runScannerSubprocess, type ScannerRun } from './util/run-scanner.js';
 import { errorMessage } from './util/typeguards.js';
 
 const DETECTOR_ENTRY = 'tools/scope-discovery/clone-detector.ts';
 const TMP_ROOT = '.tmp';
 
-interface DetectorRun {
-  readonly code: number;
-  readonly stdout: string;
-  readonly stderr: string;
-}
-
 /**
- * Run the detector as a subprocess against a fixture directory. We
- * spawn `tsx` directly — same shape as the pre-commit hook + the
- * `make check-clone-duplication` target — so the gate we're validating
+ * Thin wrapper over the shared `runScannerSubprocess` helper that pins
+ * the default `entry` to this validator's scanner-under-test
+ * (clone-detector.ts). The signature mirrors the shape used by the
+ * other migrated validators (anti-patterns, adopter-manifests,
+ * editor-symmetry) so call sites stay uniform across the suite. Same
+ * `spawn('tsx', ...)` shape as the pre-commit hook + the
+ * `make check-clone-duplication` target — the gate we're validating
  * is the same gate developers run.
+ *
+ * Migrated onto util/run-scanner in continuation of ba030239; semantically
+ * equivalent to the prior local helper (same stdio config, same accumulation,
+ * same null-code rejection, same resolve shape).
  */
-function runDetector(args: readonly string[]): Promise<DetectorRun> {
-  return new Promise((resolvePromise, rejectPromise) => {
-    const proc = spawn('tsx', [DETECTOR_ENTRY, ...args], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    let stdout = '';
-    let stderr = '';
-    proc.stdout.on('data', (chunk: Buffer) => {
-      stdout += chunk.toString('utf8');
-    });
-    proc.stderr.on('data', (chunk: Buffer) => {
-      stderr += chunk.toString('utf8');
-    });
-    proc.on('error', rejectPromise);
-    proc.on('close', (code) => {
-      if (code === null) {
-        rejectPromise(new Error(`detector terminated by signal; stderr:\n${stderr}`));
-        return;
-      }
-      resolvePromise({ code, stdout, stderr });
-    });
-  });
+function runDetector(args: readonly string[], entry = DETECTOR_ENTRY): Promise<ScannerRun> {
+  return runScannerSubprocess(entry, args);
 }
 
 /**
@@ -188,7 +170,7 @@ function fail(name: string, detail: string): ScenarioResult {
   return { name, passed: false, detail };
 }
 
-type RunDetectorFn = (args: readonly string[]) => Promise<DetectorRun>;
+type RunDetectorFn = (args: readonly string[]) => Promise<ScannerRun>;
 
 /**
  * Core assertion for scenario 1: given a detector function (real or
