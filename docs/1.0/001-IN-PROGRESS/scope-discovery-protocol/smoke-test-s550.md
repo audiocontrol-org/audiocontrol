@@ -1,3 +1,7 @@
+---
+deskwork:
+  id: 687d1b19-aeed-43b3-8263-6e1cb232a107
+---
 # /scope-inventory smoke test against s550-support — 2026-05-22
 
 ## Run summary

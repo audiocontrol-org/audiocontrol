@@ -1,0 +1,16 @@
+{
+  "id": "687d1b19-aeed-43b3-8263-6e1cb232a107",
+  "timestamp": "2026-05-22T03:59:27.246Z",
+  "event": "ingest",
+  "slug": "scope-discovery-protocol/smoke-test-s550",
+  "entryId": "687d1b19-aeed-43b3-8263-6e1cb232a107",
+  "site": "engineering-design-specs",
+  "stage": "Drafting",
+  "sourceFile": "docs/1.0/001-IN-PROGRESS/scope-discovery-protocol/smoke-test-s550.md",
+  "frontmatterSnapshot": {},
+  "derivation": {
+    "slug": "path",
+    "state": "default",
+    "date": "mtime"
+  }
+}
