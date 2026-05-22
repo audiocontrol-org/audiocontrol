@@ -19,3 +19,17 @@ Failed run, preserved per SKILL.md error-handling. The `clone-detector-reader` a
 - **Evidence:** [`runs/2026-05-22T05-35-58-088Z-6oi63i/`](runs/2026-05-22T05-35-58-088Z-6oi63i/)
 
 Successful run after the pnpm install resolved the missing-dep failure. Strawman manifest written; kind=hybrid because the synthesizer drew from all four agents (UI + AST + clone + PRD-themed). Routes capture six of the seven canonical Roland surfaces — `/connect` is missing and should be added during curation. Modules over-enumerate (10 listed, ~6 out of scope per the PRD); curation should prune to `roland-sxx0-editor` + `editor-core` plus the conditional `sampler-devices` / `sampler-midi` / `e2e-infra` per the PRD's Scope section. Themes include URL-noise tokens (`https`, `audiocontrol-org`) and zero-count futures (`branch`, `disposition`) that should be filtered. The strawman is informational for Phase 2 — the binding scope artifact for the clone-disposition pass is `docs/scope-discovery/clones.yaml`, not this manifest. Operator review of the manifest is the next step.
+
+## 2026-05-22 curation pass (AUDIT-20260521-05 remediation)
+
+Curation applied to `scope-manifest.yaml` per the synthesis.md hints + the AUDIT-05 finding. Five mutations:
+
+1. `generated_by: strawman` → `generated_by: curated`.
+2. Modules pruned 10 → 4: kept `roland-sxx0-editor`, `editor-core`, `sampler-devices`, `e2e-infra` (the four in-scope per PRD); dropped `akai-s3k-editor`, `d110-editor`, `jv1080-editor`, `loop-editor`, `sample-chopper`, `sampler-library`.
+3. `/connect` route added (was missing from the strawman's enumerator output).
+4. Device matrix set on the five canonical Roland routes: `devices: [s330, s550]` on `/connect`, `/play`, `/patches`, `/tones`, `/library`. The `/_harness/*` test-surface routes and the bare `/` redirect kept `devices: [none]`.
+5. Noise themes dropped: `https`, `audiocontrol-org`, `branch`, `disposition`. Top 6 themes retained.
+
+PRD also gained a `## References` section listing the documents downstream phase work should treat as authoritative (the synthesizer warned at run time that this section was missing; warning lived in stderr only — captured as a `tooling-feedback.md` finding).
+
+Manifest validates against `tools/scope-discovery/schema/scope-manifest.schema.json` post-curation. Curation was applied via `.tmp/curate-manifest.ts` (scratch script, not committed). No re-run of `/scope-inventory` triggered — per LAYOUT.md the canonical manifest is overwritten by re-runs, so curation lives in git history rather than in a new run directory.

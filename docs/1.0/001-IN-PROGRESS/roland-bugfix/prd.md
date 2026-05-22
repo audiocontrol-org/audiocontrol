@@ -68,6 +68,18 @@ None. s550-support is merged; the Roland editor surface is stable.
 
 None at definition time. Bugs come in via operator triage and are recorded in [`workplan.md`](./workplan.md)'s bug triage table as they are surfaced.
 
+## References
+
+Documents the discovery agents + downstream phase work should treat as authoritative:
+
+- [`workplan.md`](./workplan.md) — task breakdown, phase acceptance gates, dual-purpose discipline.
+- [`docs/scope-discovery/LAYOUT.md`](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/scope-discovery/LAYOUT.md) — on-disk contract for scope-inventory artifacts.
+- [`docs/scope-discovery/clones.yaml`](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/scope-discovery/clones.yaml) — binding scope for the clone-disposition pass (172 of 495 groups touch our surface).
+- [`docs/analysis/s550-redesign-scope-discovery.md`](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/analysis/s550-redesign-scope-discovery.md) — motivation for the Phase 2 + 3 scope-discovery validation work.
+- [`DESIGN-SYSTEM.md`](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/DESIGN-SYSTEM.md) — typed capability contracts, dialog primitives, tree primitives the Roland editors consume.
+- [`s550-support/explorations/*.html`](../../003-COMPLETE/s550-support/explorations/) — approved v3 design-language mockups for the five Roland routes.
+- [`AUDITOR-IMPLEMENTER-PROTOCOL.md`](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/AUDITOR-IMPLEMENTER-PROTOCOL.md) — audit-log finding lifecycle + disposition vocabulary.
+
 ## Appendix
 
 ### Predecessor Feature

@@ -120,9 +120,11 @@ Risk: execution sprawl, priority thrash between incoming bug fixes and large ref
 ### The scope-manifest exists but is still a strawman, not a curated Phase 2 scope artifact
 
 Finding-ID: AUDIT-20260521-05
-Status:     open
+Status:     fixed-awaiting-verification
 Severity:   medium
 Surface:    `docs/1.0/001-IN-PROGRESS/roland-bugfix/scope-manifest.yaml`, `scope-inventory/journal.md`, `scope-inventory/runs/2026-05-22T05-35-58-088Z-6oi63i/synthesis.md`
+
+Fix: curated `scope-manifest.yaml` per the synthesis.md hints. `generated_by: strawman` → `curated`; modules pruned 10 → 4 (kept `roland-sxx0-editor`, `editor-core`, `sampler-devices`, `e2e-infra` per PRD; dropped 6 out-of-scope); `/connect` route added; `devices: [s330, s550]` set on the five canonical Roland routes (`/_harness/*` + bare `/` kept device-agnostic); noise themes dropped (`https`, `audiocontrol-org`, `branch`, `disposition`); notes field updated with curation provenance. PRD gained a `## References` section (synthesizer warning addressed). Manifest validates against `tools/scope-discovery/schema/scope-manifest.schema.json` post-curation. Journal entry appended to `scope-inventory/journal.md` recording the curation mutations.
 
 The feature now has scope-inventory artifacts, but the manifest does not yet satisfy the workplan's "curated manifest" acceptance bar. It is still explicitly documented as a strawman with known gaps.
 
@@ -141,9 +143,11 @@ This is not a tooling failure; it is a documentation/state-of-completion gap. Th
 ### `tooling-feedback.md` still marks `/scope-inventory` as pending even though the feature has already exercised it
 
 Finding-ID: AUDIT-20260521-06
-Status:     open
+Status:     fixed-awaiting-verification
 Severity:   low
 Surface:    `docs/1.0/001-IN-PROGRESS/roland-bugfix/tooling-feedback.md`
+
+Stale evidence noted, but the fix already landed in commit `a93f8384` (the AUDIT-03/04 commit) — that commit updated `tooling-feedback.md` lines 24–32 with the real `/scope-inventory` experience (failed-then-successful run, ~30s timing, missing-`pnpm install` finding flagged as ❌ medium-severity, strawman over-enumeration noted, missing-`/connect` route noted, URL-noise themes noted, synthesizer warning lands-in-stderr-only noted). The audit-log evidence cite (`tooling-feedback.md:24`) is the section header, which is unchanged — but the body underneath was overwritten. The audit reviewed state at `07f6e2ae` (after the re-scope commit, before the AUDIT-03 commit landed). No further action required.
 
 The feature has already exercised `/scope-inventory` and recorded both a failed run and a successful run, but the corresponding section in `tooling-feedback.md` is still a placeholder.
 

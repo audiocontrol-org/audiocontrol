@@ -1,6 +1,6 @@
 kind: hybrid
 feature_slug: roland-bugfix
-generated_by: strawman
+generated_by: curated
 generated_at: 2026-05-22T05:36:28.681Z
 scenarios:
   - id: default
@@ -19,11 +19,7 @@ discovery_themes:
   - surface (26 occurrences)
   - modules (6 occurrences)
   - s550-support (3 occurrences)
-  - audiocontrol-org (1 occurrence)
   - bugs (1 occurrence)
-  - https (1 occurrence)
-  - branch (0 occurrences)
-  - disposition (0 occurrences)
 routes:
   - path: /
     devices:
@@ -40,24 +36,34 @@ routes:
       - none
     scenarios:
       - default
+  - path: /connect
+    devices:
+      - s330
+      - s550
+    scenarios:
+      - default
   - path: /library
     devices:
-      - none
+      - s330
+      - s550
     scenarios:
       - default
   - path: /patches
     devices:
-      - none
+      - s330
+      - s550
     scenarios:
       - default
   - path: /play
     devices:
-      - none
+      - s330
+      - s550
     scenarios:
       - default
   - path: /tones
     devices:
-      - none
+      - s330
+      - s550
     scenarios:
       - default
 modules:
@@ -66,8 +72,7 @@ modules:
     patterns:
       - id: ac-class-consumer
         kind: grep
-        description: Consumer of an .ac-* CSS class (className string literal or
-          template containing "ac-")
+        description: Consumer of an .ac-* CSS class (className string literal or template containing "ac-")
         query: className\s*=\s*[{"`'][^"`'}\n]*\bac-[a-z][a-z0-9-]*
       - id: any-annotation
         kind: grep
@@ -583,79 +588,8 @@ modules:
         query: jscpd-group:fc9e30e6e921
       - id: magic-number
         kind: grep
-        description: Inline numeric literal >= 2 not bound to a const/named identifier
-          (heuristic — synthesis layer + operator curate)
+        description: Inline numeric literal >= 2 not bound to a const/named identifier (heuristic — synthesis layer + operator curate)
         query: (?<![A-Za-z0-9_.=])\d{2,}\b
-  - glob: modules/akai-s3k-editor/src/**/*.{ts,tsx}
-    label: akai-s3k-editor
-    patterns:
-      - id: clone-group-0293e0b8848b
-        kind: clone-group
-        description: "jscpd clone group 0293e0b8848b (19 lines, disposition: pending)"
-        query: jscpd-group:0293e0b8848b
-      - id: clone-group-0e76b0ea32a9
-        kind: clone-group
-        description: "jscpd clone group 0e76b0ea32a9 (19 lines, disposition: pending)"
-        query: jscpd-group:0e76b0ea32a9
-      - id: clone-group-0eef549f62a5
-        kind: clone-group
-        description: "jscpd clone group 0eef549f62a5 (12 lines, disposition: pending)"
-        query: jscpd-group:0eef549f62a5
-      - id: clone-group-4f4233ce57a4
-        kind: clone-group
-        description: "jscpd clone group 4f4233ce57a4 (17 lines, disposition: pending)"
-        query: jscpd-group:4f4233ce57a4
-      - id: clone-group-516a0782d38c
-        kind: clone-group
-        description: "jscpd clone group 516a0782d38c (27 lines, disposition: pending)"
-        query: jscpd-group:516a0782d38c
-      - id: clone-group-5ed27614fc4e
-        kind: clone-group
-        description: "jscpd clone group 5ed27614fc4e (10 lines, disposition: pending)"
-        query: jscpd-group:5ed27614fc4e
-      - id: clone-group-61eb63a0099a
-        kind: clone-group
-        description: "jscpd clone group 61eb63a0099a (12 lines, disposition: pending)"
-        query: jscpd-group:61eb63a0099a
-      - id: clone-group-8803390240c0
-        kind: clone-group
-        description: "jscpd clone group 8803390240c0 (11 lines, disposition: pending)"
-        query: jscpd-group:8803390240c0
-      - id: clone-group-947a8989d323
-        kind: clone-group
-        description: "jscpd clone group 947a8989d323 (25 lines, disposition: pending)"
-        query: jscpd-group:947a8989d323
-      - id: clone-group-b5c2c25e595f
-        kind: clone-group
-        description: "jscpd clone group b5c2c25e595f (32 lines, disposition: pending)"
-        query: jscpd-group:b5c2c25e595f
-      - id: clone-group-b89b02867a9f
-        kind: clone-group
-        description: "jscpd clone group b89b02867a9f (11 lines, disposition: pending)"
-        query: jscpd-group:b89b02867a9f
-      - id: clone-group-c86fd9f305ac
-        kind: clone-group
-        description: "jscpd clone group c86fd9f305ac (6 lines, disposition: pending)"
-        query: jscpd-group:c86fd9f305ac
-      - id: clone-group-cd3ae27bbe6f
-        kind: clone-group
-        description: "jscpd clone group cd3ae27bbe6f (28 lines, disposition: pending)"
-        query: jscpd-group:cd3ae27bbe6f
-  - glob: modules/d110-editor/src/**/*.{ts,tsx}
-    label: d110-editor
-    patterns:
-      - id: clone-group-4e19f76d879a
-        kind: clone-group
-        description: "jscpd clone group 4e19f76d879a (18 lines, disposition: pending)"
-        query: jscpd-group:4e19f76d879a
-      - id: clone-group-7ba263eb83ae
-        kind: clone-group
-        description: "jscpd clone group 7ba263eb83ae (12 lines, disposition: pending)"
-        query: jscpd-group:7ba263eb83ae
-      - id: clone-group-93b9830bf2b2
-        kind: clone-group
-        description: "jscpd clone group 93b9830bf2b2 (45 lines, disposition: pending)"
-        query: jscpd-group:93b9830bf2b2
   - glob: modules/e2e-infra/src/**/*.{ts,tsx}
     label: e2e-infra
     patterns:
@@ -682,27 +616,6 @@ modules:
         kind: clone-group
         description: "jscpd clone group 71d0ea89080c (14 lines, disposition: pending)"
         query: jscpd-group:71d0ea89080c
-  - glob: modules/jv1080-editor/src/**/*.{ts,tsx}
-    label: jv1080-editor
-    patterns:
-      - id: clone-group-a83997e1d17e
-        kind: clone-group
-        description: "jscpd clone group a83997e1d17e (24 lines, disposition: pending)"
-        query: jscpd-group:a83997e1d17e
-  - glob: modules/loop-editor/src/**/*.{ts,tsx}
-    label: loop-editor
-    patterns:
-      - id: clone-group-000ef48c127e
-        kind: clone-group
-        description: "jscpd clone group 000ef48c127e (9 lines, disposition: pending)"
-        query: jscpd-group:000ef48c127e
-  - glob: modules/sample-chopper/src/**/*.{ts,tsx}
-    label: sample-chopper
-    patterns:
-      - id: clone-group-9b328c3826be
-        kind: clone-group
-        description: "jscpd clone group 9b328c3826be (16 lines, disposition: pending)"
-        query: jscpd-group:9b328c3826be
   - glob: modules/sampler-devices/src/**/*.{ts,tsx}
     label: sampler-devices
     patterns:
@@ -722,29 +635,4 @@ modules:
         kind: clone-group
         description: "jscpd clone group 9d95e639fba3 (17 lines, disposition: pending)"
         query: jscpd-group:9d95e639fba3
-  - glob: modules/sampler-library/src/**/*.{ts,tsx}
-    label: sampler-library
-    patterns:
-      - id: clone-group-3631b7143ad9
-        kind: clone-group
-        description: "jscpd clone group 3631b7143ad9 (11 lines, disposition: pending)"
-        query: jscpd-group:3631b7143ad9
-      - id: clone-group-4d263afcb4e9
-        kind: clone-group
-        description: "jscpd clone group 4d263afcb4e9 (12 lines, disposition: pending)"
-        query: jscpd-group:4d263afcb4e9
-      - id: clone-group-5fd5fd17a6e5
-        kind: clone-group
-        description: "jscpd clone group 5fd5fd17a6e5 (12 lines, disposition: pending)"
-        query: jscpd-group:5fd5fd17a6e5
-      - id: clone-group-aa1084835749
-        kind: clone-group
-        description: "jscpd clone group aa1084835749 (15 lines, disposition: pending)"
-        query: jscpd-group:aa1084835749
-      - id: clone-group-f7518eecae8a
-        kind: clone-group
-        description: "jscpd clone group f7518eecae8a (11 lines, disposition: pending)"
-        query: jscpd-group:f7518eecae8a
-notes: Strawman synthesized from 4 discovery agent(s) (ast-grep-matrix,
-  clone-detector-reader, prd-themed-pattern-hunter, ui-route-enumerator).
-  Operator curates devices/scenarios/primitives.
+notes: 'Curated 2026-05-22 from the strawman generated at 2026-05-22T05:36:28.681Z. Modules pruned to in-scope set per PRD (roland-sxx0-editor, editor-core, sampler-devices, e2e-infra). /connect added; device matrices set on canonical Roland routes. Noise themes dropped. Original strawman notes: "Strawman synthesized from 4 discovery agent(s) (ast-grep-matrix, clone-detector-reader, prd-themed-pattern-hunter, ui-route-enumerator). Operator curates devices/scenarios/primitives."'
