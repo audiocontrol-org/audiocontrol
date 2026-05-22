@@ -4,9 +4,10 @@
   "title": "Operator Review Runbook Current",
   "keywords": [],
   "source": "manual",
-  "currentStage": "Drafting",
+  "currentStage": "Cancelled",
   "iterationByStage": {},
   "artifactPath": "docs/1.0/001-IN-PROGRESS/s550-support/operator-review-runbook-current.md",
   "createdAt": "2026-05-17T02:14:34.242Z",
-  "updatedAt": "2026-05-17T02:14:34.242Z"
+  "updatedAt": "2026-05-21T21:38:31.571Z",
+  "priorStage": "Drafting"
 }

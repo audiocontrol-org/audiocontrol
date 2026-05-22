@@ -1,0 +1,79 @@
+# Example scope-manifest.yaml for a ui-kind feature.
+#
+# Modeled on the s550-support redesign (already complete; used as the
+# paper-test fixture in Phase 4 T4.4). Five Roland routes x two devices
+# x two-ish scenarios per route = the cross-product the upfront
+# inventory pass would have walked at 2026-05-17 20:45 instead of
+# discovering surface-by-screenshot over the next 60 hours.
+#
+# This file validates against
+# tools/scope-discovery/schema/scope-manifest.schema.json.
+
+kind: ui
+feature_slug: s550-support
+version: "1.0"
+generated_by: strawman
+generated_at: "2026-05-17T20:45:00Z"
+
+scenarios:
+  - id: tones-bank-0
+    label: Tones, bank 0 loaded
+    description: Default S-330/S-550 bank with the factory tones; exercises list-bank chevron, panel headers, and the VFD envelope on row 0.
+    query: "midi=simulated&scenario=tones-bank-0"
+  - id: patches-bank-0
+    label: Patches, bank 0 loaded
+    description: Default patches bank; exercises range-bar primitives and the tabbed detail pane.
+    query: "midi=simulated&scenario=patches-bank-0"
+  - id: empty-device
+    label: Connected but empty
+    description: Connect succeeds, no banks loaded; exercises empty-state chrome.
+    query: "midi=simulated&scenario=empty"
+
+reference_docs:
+  - path: docs/1.0/003-COMPLETE/s550-support/prd.md
+    role: prd
+    summary: Feature PRD; defines the v3 redesign goal and the per-device parity contract.
+  - path: docs/1.0/003-COMPLETE/s550-support/workplan.md
+    role: workplan
+    summary: Phase-by-phase workplan; Phase 9 is the redesign tail this manifest scopes.
+  - path: docs/1.0/003-COMPLETE/s550-support/explorations/02-homepage.html
+    role: mockup
+    summary: Connect-page mockup; defines the two-column layout and VFD top-alignment.
+  - path: docs/analysis/s550-redesign-scope-discovery.md
+    role: analysis-report
+    summary: Retrospective enumeration of the 32 surfaces that entered scope brute-force; the paper-test ground truth.
+
+discovery_themes:
+  - cross-page chrome consistency (header alignment, eyebrow placement, hairline rule)
+  - list-bank chevron sizing and rotation (canonical .ac-list-bank-chevron)
+  - panel header lives inside the panel border (.ac-detail-head shape)
+  - range-bar primitive parity across patches and tones
+  - VFD envelope graphic + per-segment table on every tone
+  - virtual front panel mirrors S-550 physical buttons on every editor page
+
+routes:
+  - path: /roland/s330/editor/connect
+    devices: [s330, s550]
+    scenarios: [empty-device]
+    primitives: [page-header, ac-status-rail, ac-vfd-frame]
+  - path: /roland/s330/editor/play
+    devices: [s330, s550]
+    scenarios: [tones-bank-0, patches-bank-0]
+    primitives: [page-header, ac-list-bank, ac-list-bank-chevron, ac-detail-head, virtual-front-panel]
+  - path: /roland/s330/editor/patches
+    devices: [s330, s550]
+    scenarios: [patches-bank-0]
+    primitives: [page-header, ac-list-bank, ac-list-bank-chevron, ac-detail-head, ac-range-bar, virtual-front-panel]
+  - path: /roland/s330/editor/tones
+    devices: [s330, s550]
+    scenarios: [tones-bank-0]
+    primitives: [page-header, ac-list-bank, ac-list-bank-chevron, ac-detail-head, ac-range-bar, ac-vfd-envelope, virtual-front-panel]
+  - path: /roland/s330/editor/library
+    devices: [s330, s550]
+    scenarios: [tones-bank-0]
+    primitives: [page-header, ac-list-bank, ac-list-bank-chevron, ac-detail-head, virtual-front-panel]
+
+notes: |
+  Strawman generated from the analysis report's headline route list. The
+  operator's curation step prunes false positives and confirms the
+  device x scenario matrix is realistic.

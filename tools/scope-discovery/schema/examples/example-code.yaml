@@ -1,0 +1,89 @@
+# Example scope-manifest.yaml for a code-kind feature.
+#
+# Hypothetical "typing-cleanup" feature: sweep every `as Type` cast and
+# every `any` escape across the editor-core and roland-sxx0-editor
+# modules, then audit the duplicated S-330 / S-550 wave-addressing
+# logic identified in the v1.0 lockfile's project_s550_wave_addressing
+# memory.
+#
+# This file validates against
+# tools/scope-discovery/schema/scope-manifest.schema.json.
+
+kind: code
+feature_slug: typing-cleanup-pass
+version: "1.0"
+generated_by: strawman
+generated_at: "2026-05-21T09:00:00Z"
+
+scenarios:
+  - id: ts-strict
+    label: TypeScript strict-mode compile
+    description: tsc --noEmit on each module under strict; any escape introduces a new violation.
+  - id: ast-walk
+    label: AST walk of source tree
+    description: Pattern-shape match via ts-morph or equivalent; no runtime.
+
+reference_docs:
+  - path: .claude/CLAUDE.md
+    role: rule
+    summary: The "never bypass typing" doctrine — no `any`, no `as Type`, no `@ts-ignore`. Workspace-level rule the typing-cleanup pass enforces.
+  - path: docs/analysis/typing-debt-inventory.md
+    role: analysis-report
+    summary: (Hypothetical) prior survey of typing-debt hotspots — used to seed the targeted-pattern hunters.
+
+discovery_themes:
+  - '"as Type" assertion casts (excluding test fixtures)'
+  - '"any" type escapes in non-test source'
+  - '"@ts-ignore" and "@ts-expect-error" directives without justification comment'
+  - duplicated wave-addressing logic between S-330 and S-550 sampler-devices code (cross-module clone)
+
+modules:
+  - glob: "modules/editor-core/src/**/*.{ts,tsx}"
+    label: editor-core (shared editor infrastructure)
+    patterns:
+      - id: as-type-cast
+        kind: type-cast
+        description: "`as SomeType` and `<SomeType>` assertion casts. Flag every occurrence — discovery agents classify each as safe-narrowing vs. type-laundering."
+        query: "/\\bas\\s+[A-Z][A-Za-z0-9_]*/"
+      - id: any-escape
+        kind: grep
+        description: "`: any` parameter/property/return annotations. Test fixtures listed in the module's `excludes` are skipped."
+        query: ": any\\b"
+      - id: ts-ignore
+        kind: grep
+        description: "@ts-ignore and @ts-expect-error pragmas. Flag every occurrence; the rule requires explicit justification comments and we audit for compliance."
+        query: "@ts-(ignore|expect-error)"
+    excludes:
+      - glob: "modules/editor-core/src/**/*.test.{ts,tsx}"
+        reason: Test files exercise type-narrowing assertions intentionally; auditing them produces noise.
+      - glob: "modules/editor-core/src/**/__fixtures__/**"
+        reason: Fixture data is hand-shaped to mirror device payloads; type casts are documented at the fixture's source.
+
+  - glob: "modules/roland-sxx0-editor/src/**/*.{ts,tsx}"
+    label: roland-sxx0-editor (S-330 / S-550 editor)
+    patterns:
+      - id: as-type-cast
+        kind: type-cast
+        description: Same pattern as editor-core; reused id for cross-module aggregation in the synthesis pass.
+        query: "/\\bas\\s+[A-Z][A-Za-z0-9_]*/"
+      - id: any-escape
+        kind: grep
+        description: "`: any` annotations in editor source."
+        query: ": any\\b"
+
+  - glob: "modules/sampler-devices/src/**/*.ts"
+    label: sampler-devices (device communication)
+    patterns:
+      - id: wave-addr-clone
+        kind: clone-group
+        description: "Suspected clone group between S-330 and S-550 wave-addressing routines. Memory project_s550_wave_addressing notes the formulas diverge; verify whether the S-550 code shipped a forked copy or shares an abstraction."
+        query: "jscpd-group:wave-addressing"
+      - id: scsi-cdb-builder
+        kind: ast-call
+        description: SCSI CDB builder calls; pattern hunters surface drift in how each editor encodes the same CDB shape.
+        query: "buildCdb6Or10Read"
+
+notes: |
+  This is a hypothetical typing-cleanup feature used to exercise the
+  code-kind branch of the manifest schema. The wave-addressing clone
+  candidate is real; the typing inventory is illustrative.

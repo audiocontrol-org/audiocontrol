@@ -1,0 +1,19 @@
+{
+  "kind": "entry-annotation",
+  "at": "2026-05-21T20:39:28.888Z",
+  "entryId": "b5d7c26c-9668-4a60-a1b7-bdd28fbe7ee7",
+  "annotation": {
+    "type": "comment",
+    "workflowId": "b5d7c26c-9668-4a60-a1b7-bdd28fbe7ee7",
+    "version": 1,
+    "range": {
+      "start": 7190,
+      "end": 7208
+    },
+    "text": "How are we going to extend this skill without implicitly causing a fork with the deskwork plugin?",
+    "category": "other",
+    "anchor": "dwd skill extended",
+    "id": "79847474-f32d-4395-b6d3-9018dc57fdac",
+    "createdAt": "2026-05-21T20:39:28.888Z"
+  }
+}
