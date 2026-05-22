@@ -130,6 +130,37 @@ The gate is enforced mechanically by the T5.3 pre-commit hook (`make check-refac
 
 The canonical fragment used by sub-agent prompts and the dispatched-prompt string constant is [`refactor-preconditions-checklist.md`](refactor-preconditions-checklist.md); changes to Step 0a / Step 0b semantics + per-branch verification language must be mirrored to that file and to the four mirror locations its header enumerates.
 
+## Regime-holdout discovery
+
+The clone detector catches duplication as a *shadow* of regime gaps — a holdout often duplicates the canonical's shape, so finding the duplication finds the holdout transitively. Several gap classes do NOT show up as clones: missing-primitive adoption that hasn't yet generated duplication; semantic anti-patterns that aren't token-identical; single-instance holdouts; deprecation queues; cross-editor symmetry gaps. Phase 6 adds four scan types that detect regime drift DIRECTLY, without requiring duplication to exist first.
+
+### The four scan types
+
+| Scan | Artifact | Detects | Pre-commit gate |
+|---|---|---|---|
+| **Anti-pattern** (T6.1) | [`anti-patterns.yaml`](anti-patterns.yaml) | Legacy structural fingerprint match — files that match a shape registered as "replaced by primitive X" | **blocks** new shape matches |
+| **Adopter manifest** (T6.2) | [`adopter-manifests.yaml`](adopter-manifests.yaml) | Files matching a per-primitive adopter glob that don't import the canonical `from` path | **blocks** new holdouts |
+| **Cross-editor symmetry** (T6.3) | [`editor-symmetry.md`](editor-symmetry.md) | Fleet-matrix view across `modules/*-editor/`; surfaces editors that didn't follow a convention adopted by peers | runs read-only (presentation of the adopter data above) |
+| **Deprecation** (T6.4) | [`deprecation-queue.md`](deprecation-queue.md) | Files carrying `@deprecated` / `// DEPRECATED:` markers, counted by remaining importers; splits into "blocked" vs "safe to delete" | informational; operator-driven |
+
+The first three fire on every `.ts` / `.tsx` commit via [`.githooks/pre-commit`](../../.githooks/pre-commit). The fourth is operator-invoked (`make check-deprecations-write` regenerates the queue artifact).
+
+### Composition into `/scope-inventory`
+
+`/scope-inventory` fans out a five-agent fleet (T6.5). The fifth agent — [`regime-holdout-detector`](../../tools/scope-discovery/discovery-agents/regime-holdout-detector.ts) — consumes the four scanners IN-PROCESS and emits a `RegimeHoldoutFindings` payload covering all four sources under one discriminated `source` field (`'anti-pattern' | 'adopter-manifest' | 'editor-symmetry' | 'deprecation'`). The synthesis pass folds the findings into the manifest's top-level `regime_holdouts:` section plus a `regime_holdouts.meta` summary (`total` + `by_source.{anti_pattern,adopter_manifest,editor_symmetry,deprecation}`). Schema enforced by [`scope-manifest.schema.json`](../../tools/scope-discovery/schema/scope-manifest.schema.json).
+
+The `synthesis.md` written by `/scope-inventory` carries a §"Regime holdouts" section reporting the four bucket counts plus sample findings; the operator drives Phase 6 burndown work from that section.
+
+### For future features extracting a primitive
+
+When a phase extracts or promotes a primitive, the refactor commit SHOULD:
+
+1. Append an `anti_patterns:` entry naming the legacy shape the primitive replaces (so future code that reimplements the shape from scratch is flagged).
+2. Append an `adopter_manifests:` entry naming the expected adopter glob (so files in scope that don't migrate surface as holdouts).
+3. Regenerate `editor-symmetry.md` (`make check-editor-symmetry-write`) when the manifest targets an `*-editor/` module so the fleet matrix reflects the new convention.
+
+The on-disk schema headers are documented in each artifact's top docblock; see [`LAYOUT.md`](LAYOUT.md) §"Phase 6 regime-holdout artifacts" for the per-artifact contract.
+
 ## Day-to-day workflow
 
 A typical system-wide feature lifecycle with the protocol active:

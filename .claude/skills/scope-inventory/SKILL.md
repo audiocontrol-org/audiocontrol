@@ -8,7 +8,7 @@ user_invocable: true
 
 Produce a strawman `scope-manifest.yaml` for a system-wide feature by running the multi-agent discovery fleet against the current audiocontrol repo state, write the per-run evidence trail to the feature's docs directory under `scope-inventory/runs/<ISO-stamp>-<runId>/`, append a journal entry, and present the manifest in chat for operator curation.
 
-The skill is the operator-facing entry point that ties together the foundation built in Phase 2 (manifest schema, dispatch wrapper, clone detector) and the discovery code in Phase 3 (T3.1 agents, T3.2 synthesis). The on-disk layout is defined by [`docs/scope-discovery/LAYOUT.md`](../../../docs/scope-discovery/LAYOUT.md); this skill writes that layout.
+The skill is the operator-facing entry point that ties together the foundation built in Phase 2 (manifest schema, dispatch wrapper, clone detector) and the discovery code in Phase 3 (T3.1 agents, T3.2 synthesis), plus the regime-holdout fleet member added in Phase 6 (T6.5). The on-disk layout is defined by [`docs/scope-discovery/LAYOUT.md`](../../../docs/scope-discovery/LAYOUT.md); this skill writes that layout. The conceptual model for step 5's fifth agent (anti-patterns, adopter manifests, editor symmetry, deprecations) is in [`docs/scope-discovery/README.md`](../../../docs/scope-discovery/README.md) §"Regime-holdout discovery".
 
 ## When to use
 
