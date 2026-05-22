@@ -26,7 +26,26 @@ import { errorMessage } from './util/typeguards.js';
 
 const DEFAULT_SCENARIO_ID = 'default';
 const MAX_THEMES = 10;
-const MODULE_PATH_RE = /^modules\/([a-z0-9][a-z0-9-]*)\//;
+/**
+ * Single source of truth for the `modules/<slug>/...` shape used by
+ * both file-path inputs (e.g., `modules/foo/src/x.ts`) and glob inputs
+ * (e.g., `modules/foo/src/**\/*.{ts,tsx}`). The slug charset matches
+ * the schema's slug pattern; the trailing `/` separates the slug from
+ * whatever follows (a sub-path or glob continuation).
+ */
+const MODULE_SLUG_REGEX = /^modules\/([a-z0-9][a-z0-9-]*)\//;
+
+/**
+ * Extract the `<slug>` from a `modules/<slug>/...` path OR glob.
+ * Accepts either a repo-relative file path (`modules/foo/src/x.ts`) or
+ * a glob expression that starts with the same prefix
+ * (`modules/foo/src/**\/*.{ts,tsx}`). Returns null when the input
+ * does not begin with `modules/<slug>/`.
+ */
+function extractModuleSlug(pathOrGlob: string): string | null {
+  const m = pathOrGlob.match(MODULE_SLUG_REGEX);
+  return m === null ? null : (m[1] ?? null);
+}
 
 /** Schema requires `^/.*$` — prepend `/` for relative React-Router paths. */
 function absolutizeRoutePath(rawPath: string): string {
@@ -63,12 +82,6 @@ export function deriveRoutes(
   );
 }
 
-/** Extract `<slug>` from a `modules/<slug>/...` path. Returns null otherwise. */
-function moduleFromFilePath(file: string): string | null {
-  const m = file.match(MODULE_PATH_RE);
-  return m === null ? null : (m[1] ?? null);
-}
-
 interface ModuleAccumulator {
   readonly slug: string;
   patternsById: Map<string, ManifestModulePattern>;
@@ -102,14 +115,14 @@ export function deriveModules(args: {
     for (const pattern of ast.patterns) {
       const modulesTouchedByPattern = new Set<string>();
       for (const hit of pattern.hits) {
-        const slug = moduleFromFilePath(hit.file);
+        const slug = extractModuleSlug(hit.file);
         if (slug === null) continue;
         modulesTouchedByPattern.add(slug);
       }
       for (const slug of modulesTouchedByPattern) {
         const acc = ensureModuleEntry(bySlug, slug);
         acc.fileCount += pattern.hits.filter(
-          (h) => moduleFromFilePath(h.file) === slug,
+          (h) => extractModuleSlug(h.file) === slug,
         ).length;
         if (!acc.patternsById.has(pattern.id)) {
           acc.patternsById.set(pattern.id, {
@@ -129,7 +142,7 @@ export function deriveModules(args: {
       for (const member of group.members) {
         const colon = member.indexOf(':');
         const path = colon === -1 ? member : member.slice(0, colon);
-        const slug = moduleFromFilePath(path);
+        const slug = extractModuleSlug(path);
         if (slug !== null) slugs.add(slug);
       }
       for (const slug of slugs) {
@@ -159,17 +172,12 @@ export function deriveModules(args: {
   }
   // Sort by member-count desc, then alphabetically (clone-only modules tie at 0).
   modules.sort((a, b) => {
-    const aCount = bySlug.get(modulesSlugFromGlob(a.glob))?.fileCount ?? 0;
-    const bCount = bySlug.get(modulesSlugFromGlob(b.glob))?.fileCount ?? 0;
+    const aCount = bySlug.get(extractModuleSlug(a.glob) ?? '')?.fileCount ?? 0;
+    const bCount = bySlug.get(extractModuleSlug(b.glob) ?? '')?.fileCount ?? 0;
     if (aCount !== bCount) return bCount - aCount;
     return a.glob < b.glob ? -1 : a.glob > b.glob ? 1 : 0;
   });
   return modules;
-}
-
-function modulesSlugFromGlob(glob: string): string {
-  const m = glob.match(/^modules\/([^/]+)\//);
-  return m === null ? '' : (m[1] ?? '');
 }
 
 /** v1: single placeholder scenario (schema requires minItems:1); operator curates. */

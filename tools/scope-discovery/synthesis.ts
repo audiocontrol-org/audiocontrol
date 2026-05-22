@@ -46,6 +46,16 @@ import {
 } from './schema/manifest-validator.js';
 import { errorMessage } from './util/typeguards.js';
 
+/**
+ * Schema-aligned slug shape, kept literally in sync with the regex on
+ * `feature_slug` (and other slug-shaped ids) in
+ * tools/scope-discovery/schema/scope-manifest.schema.json. Validating
+ * here, at CLI parse time, surfaces a clear "bad input" error instead
+ * of letting the failure leak out as a downstream ajv message that
+ * sounds like the synthesizer misbehaved.
+ */
+const FEATURE_SLUG_REGEX = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/;
+
 interface PartitionedFindings {
   readonly ui: ReadonlyArray<UiRouteFindings>;
   readonly ast: ReadonlyArray<AstGrepMatrixFindings>;
@@ -63,6 +73,11 @@ function partition(
   const clones: CloneDetectorFindings[] = [];
   const themes: PrdThemedFindings[] = [];
   const seenAgents = new Set<DiscoveryAgentName>();
+  // rawCount counts the *signal* the agents handed us — individual
+  // hits, clone members, route entries, theme matches — NOT just the
+  // top-level pattern/clone-group counts. This way `dedupCount` =
+  // rawCount - emittedUnique is a meaningful "input → output reduction"
+  // number rather than something that needs to be clamped to non-negative.
   let rawCount = 0;
   for (const f of findings) {
     seenAgents.add(f.agent);
@@ -73,15 +88,21 @@ function partition(
         break;
       case 'ast-grep-matrix':
         ast.push(f);
-        rawCount += f.patterns.length;
+        for (const pattern of f.patterns) {
+          rawCount += pattern.hits.length;
+        }
         break;
       case 'clone-detector-reader':
         clones.push(f);
-        rawCount += f.clones.length;
+        for (const group of f.clones) {
+          rawCount += group.members.length;
+        }
         break;
       case 'prd-themed-pattern-hunter':
         themes.push(f);
-        rawCount += f.themes.length;
+        for (const theme of f.themes) {
+          rawCount += theme.occurrences.length;
+        }
         break;
     }
   }
@@ -120,14 +141,42 @@ export async function synthesize(input: SynthesisInput): Promise<SynthesisOutput
       ? deriveModules({ astFindings: partitioned.ast, cloneFindings: partitioned.clones })
       : undefined;
   const themesList = deriveThemes(partitioned.themes);
+  // Empty themes is a real "no signal" outcome — either no PrdThemedFindings
+  // was passed in, or the prd-themed-pattern-hunter agent ran but matched
+  // nothing. Both cases warrant operator investigation (agent broke, PRD
+  // has nothing themable, or tokenizer is wrong). Emitting a literal
+  // "placeholder" string is the deferral-shape the project's
+  // agent-discipline rules forbid; fail loudly instead.
+  if (themesList.length === 0) {
+    throw new Error(
+      'synthesis: PRD-themed agent contributed no themes; cannot produce a ' +
+        'manifest. Either no prd-themed-pattern-hunter findings were passed ' +
+        'in (re-run with --findings including that agent\'s output) or the ' +
+        'agent ran and matched zero terms (investigate the PRD content or ' +
+        'the agent\'s tokenizer).',
+    );
+  }
   const referenceDocs = await deriveReferenceDocs({
     prdPath: input.prdPath,
     prdRelPath: input.prdRelPath,
   });
 
   const generatedAt = new Date().toISOString();
+  // rawCount sums *all* signal entries (hits, clone members, routes,
+  // theme occurrences). finalCount is the count of unique emitted
+  // manifest entries. dedupCount is the reduction — should always be
+  // non-negative under the new counting because finalCount can never
+  // exceed the source signal it was derived from. (If it does, the
+  // assertion below catches it; no silent clamp.)
   const finalCount = (routes?.length ?? 0) + (modules?.length ?? 0) + themesList.length;
-  const dedupCount = Math.max(0, partitioned.rawCount - finalCount);
+  const dedupCount = partitioned.rawCount - finalCount;
+  if (dedupCount < 0) {
+    throw new Error(
+      `synthesis: dedupCount went negative (raw=${partitioned.rawCount}, ` +
+        `final=${finalCount}); raw-count metric is miscounting signal vs ` +
+        'emitted entries. This is a bug in partition() or the derive helpers.',
+    );
+  }
 
   const manifest: ScopeManifest = {
     kind,
@@ -136,10 +185,8 @@ export async function synthesize(input: SynthesisInput): Promise<SynthesisOutput
     generated_at: generatedAt,
     scenarios,
     reference_docs: referenceDocs,
-    discovery_themes:
-      themesList.length > 0
-        ? themesList
-        : ['scope-discovery (strawman placeholder; operator curates)'],
+    // themesList.length > 0 is guaranteed by the early throw above.
+    discovery_themes: themesList,
     ...(routes !== undefined ? { routes } : {}),
     ...(modules !== undefined ? { modules } : {}),
     notes:
@@ -204,6 +251,13 @@ function parseCli(argv: ReadonlyArray<string>): CliOptions {
   const featureSlug = scalars.get('--feature');
   const prdPath = scalars.get('--prd-path');
   if (featureSlug === undefined) throw new Error('--feature is required');
+  if (!FEATURE_SLUG_REGEX.test(featureSlug)) {
+    throw new Error(
+      `--feature '${featureSlug}' is not a valid feature slug ` +
+        '(must match ^[a-z0-9][a-z0-9-]*[a-z0-9]$ — lowercase alphanumeric ' +
+        '+ dashes, no leading/trailing dash, min 2 chars)',
+    );
+  }
   if (prdPath === undefined) throw new Error('--prd-path is required');
   if (findingsPaths.length === 0) throw new Error('--findings requires at least one path');
   const root = resolve(scalars.get('--repo-root') ?? process.cwd());
