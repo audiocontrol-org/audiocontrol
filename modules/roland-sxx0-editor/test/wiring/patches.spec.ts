@@ -262,6 +262,38 @@ test.describe('Capabilities — Patches (C-PATCH)', () => {
     await expect(anyExportButton).toHaveCount(0);
   });
 
+  test('D-PATCH-LIST-10: each bank renders a header with bank-toggle button + bank-reload button + slot-range readout (clones.yaml fc08c274d295 refactor contract)', async ({ page }) => {
+    // Test-before-extract contract for the BankHeader refactor
+    // (clones.yaml fc08c274d295 + sibling clones spanning the bank-
+    // header block in PatchList.tsx ↔ ToneList.tsx). The extraction
+    // moves the per-bank header (bank-toggle button + bank-meta with
+    // slot-range readout + optional reload button) into a shared
+    // <BankHeader> component used by both PatchList and ToneList.
+    //
+    // Contract pinned here: bank 0 of the patches surface renders
+    // (a) a `patch-bank-toggle-0` testid with the chevron + "Bank 1"
+    // label, (b) a `patch-bank-reload-0` testid with the spinning-
+    // reload icon button, (c) the firstSlotLabel-lastSlotLabel
+    // readout inside `.ac-list-bank-meta strong`. D-TONE-LIST-09 is
+    // the sibling assertion for tones.
+    //
+    // Added 2026-05-22 BEFORE the BankHeader extraction lands, per
+    // workplan 'Refactoring protocol: test before extract'.
+    const list = page.locator('[data-capability="C-PATCH-01"]');
+    await expect(list).toBeVisible({ timeout: 5_000 });
+
+    const toggle = page.getByTestId('patch-bank-toggle-0');
+    const reload = page.getByTestId('patch-bank-reload-0');
+    await expect(toggle).toBeVisible();
+    await expect(reload).toBeVisible();
+    await expect(toggle).toContainText('Bank 1');
+
+    // The slot-range readout (firstSlotLabel–lastSlotLabel) sits in
+    // the bank-meta strong tag right beside the toggle.
+    const bankHeader = toggle.locator('..');
+    await expect(bankHeader.locator('.ac-list-bank-meta strong')).toContainText(/P11.*P\d/);
+  });
+
   test('D-PATCH-LIST-09: each row wraps the patch-name testid in an .ac-list-info span (clones.yaml 80299d9fda8d refactor contract)', async ({ page }) => {
     // Test-before-extract contract for clones.yaml group 80299d9fda8d
     // (PatchList.tsx:227-240 ↔ ToneList.tsx:226-239 ac-list-info

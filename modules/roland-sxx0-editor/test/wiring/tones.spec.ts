@@ -176,6 +176,22 @@ test.describe('Capabilities — Tones (C-TONE)', () => {
     await expect(anyExportButton).toHaveCount(0);
   });
 
+  test('D-TONE-LIST-09: each bank renders a header with bank-toggle button + bank-reload button + slot-range readout (clones.yaml fc08c274d295 refactor contract)', async ({ page }) => {
+    // Sibling assertion to D-PATCH-LIST-10; covers the tones surface.
+    // See D-PATCH-LIST-10 for full rationale.
+    const list = page.locator('[data-capability="C-TONE-01"]');
+    await expect(list).toBeVisible({ timeout: 5_000 });
+
+    const toggle = page.getByTestId('tone-bank-toggle-0');
+    const reload = page.getByTestId('tone-bank-reload-0');
+    await expect(toggle).toBeVisible();
+    await expect(reload).toBeVisible();
+    await expect(toggle).toContainText('Bank 1');
+
+    const bankHeader = toggle.locator('..');
+    await expect(bankHeader.locator('.ac-list-bank-meta strong')).toContainText(/T11.*T\d/);
+  });
+
   test('D-TONE-LIST-08: each row wraps the tone-name testid in an .ac-list-info span (clones.yaml 80299d9fda8d refactor contract)', async ({ page }) => {
     // Test-before-extract contract for clones.yaml group 80299d9fda8d
     // (PatchList.tsx:227-240 ↔ ToneList.tsx:226-239 ac-list-info
