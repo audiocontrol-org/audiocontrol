@@ -1725,22 +1725,22 @@ clones:
     members:
       - modules/editor-core/src/components/AcRangeBar.tsx:122:127
       - modules/editor-core/src/components/__broken__/AcRangeBar/no-pointer-events.tsx:41:46
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Broken-variant registry intentionally mirrors the canonical primitive. modules/editor-core/src/components/__broken__/AcRangeBar/* exists explicitly to deliberately break the canonical AcRangeBar (no-pointer-events, etc.) for the Tier 3 credibility-check dispatcher (BrokenContextWrapper). Each broken variant MUST mirror canonical exactly except for the one targeted break — sharing code would defeat the credibility-check premise.
   - id: 148d86a72a33
     lines: 7
     members:
       - modules/editor-core/src/components/AcRangeBar.tsx:127:133
       - modules/editor-core/src/components/__broken__/AcRangeBar/no-pointer-events.tsx:46:52
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Broken-variant registry intentionally mirrors the canonical primitive. modules/editor-core/src/components/__broken__/AcRangeBar/* exists explicitly to deliberately break the canonical AcRangeBar (no-pointer-events, etc.) for the Tier 3 credibility-check dispatcher (BrokenContextWrapper). Each broken variant MUST mirror canonical exactly except for the one targeted break — sharing code would defeat the credibility-check premise.
   - id: 4fb8173db972
     lines: 12
     members:
       - modules/editor-core/src/components/AcRangeBar.tsx:133:144
       - modules/editor-core/src/components/__broken__/AcRangeBar/no-pointer-events.tsx:52:63
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Broken-variant registry intentionally mirrors the canonical primitive. modules/editor-core/src/components/__broken__/AcRangeBar/* exists explicitly to deliberately break the canonical AcRangeBar (no-pointer-events, etc.) for the Tier 3 credibility-check dispatcher (BrokenContextWrapper). Each broken variant MUST mirror canonical exactly except for the one targeted break — sharing code would defeat the credibility-check premise.
   - id: bc9ab6ece81d
     lines: 15
     members:
@@ -1753,22 +1753,22 @@ clones:
     members:
       - modules/editor-core/src/components/AcRangeBar.tsx:171:181
       - modules/editor-core/src/components/__broken__/AcRangeBar/no-pointer-events.tsx:47:138
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Broken-variant registry intentionally mirrors the canonical primitive. modules/editor-core/src/components/__broken__/AcRangeBar/* exists explicitly to deliberately break the canonical AcRangeBar (no-pointer-events, etc.) for the Tier 3 credibility-check dispatcher (BrokenContextWrapper). Each broken variant MUST mirror canonical exactly except for the one targeted break — sharing code would defeat the credibility-check premise.
   - id: 29b28bb35ef1
     lines: 31
     members:
       - modules/editor-core/src/components/AcRangeBar.tsx:257:287
       - modules/editor-core/src/components/__broken__/AcRangeBar/no-pointer-events.tsx:85:115
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Broken-variant registry intentionally mirrors the canonical primitive. modules/editor-core/src/components/__broken__/AcRangeBar/* exists explicitly to deliberately break the canonical AcRangeBar (no-pointer-events, etc.) for the Tier 3 credibility-check dispatcher (BrokenContextWrapper). Each broken variant MUST mirror canonical exactly except for the one targeted break — sharing code would defeat the credibility-check premise.
   - id: e100dab7b1aa
     lines: 9
     members:
       - modules/editor-core/src/components/AcRangeBar.tsx:287:295
       - modules/editor-core/src/components/__broken__/AcRangeBar/no-pointer-events.tsx:116:124
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Broken-variant registry intentionally mirrors the canonical primitive. modules/editor-core/src/components/__broken__/AcRangeBar/* exists explicitly to deliberately break the canonical AcRangeBar (no-pointer-events, etc.) for the Tier 3 credibility-check dispatcher (BrokenContextWrapper). Each broken variant MUST mirror canonical exactly except for the one targeted break — sharing code would defeat the credibility-check premise.
   - id: 2edc49a26a51
     lines: 12
     members:
@@ -1832,8 +1832,8 @@ clones:
     members:
       - modules/editor-core/src/components/library/TreeSection.test.tsx:7:20
       - modules/editor-core/src/components/library/TreeView.test.tsx:8:21
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Cross-test-file clone of the sampleNodes test fixture between TreeSection.test.tsx and TreeView.test.tsx. Same rationale as the intra-test-file batch: shared test fixtures trade dedup for indirection that hurts test debuggability — each test file owns its own fixture so a reader can understand the test data without chasing imports across files."
   - id: 94555b7e1118
     lines: 13
     members:
