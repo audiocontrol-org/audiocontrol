@@ -96,6 +96,52 @@ test.describe('Capabilities — Library (C-LIB)', () => {
     await expect(libRegion.getByText(/^Sets$/)).toHaveCount(0);
   });
 
+  test('D-LIB-23: DeviceMemoryPanel mounts on both s330 and s550 library pages (clones.yaml 47120235fd38 + 290604cd13fe MemoryPanelAdapter refactor contract)', async ({ page }) => {
+    // Test-before-extract contract for the MemoryPanelAdapter half of
+    // the s330/s550 library-plugin pair (clone groups 47120235fd38 +
+    // 290604cd13fe). Both adapters bridge plugin -> DeviceMemoryPanel
+    // identically (props pass-through) but live in two separate files.
+    // The refactor promotes the bridging to a shared adapter component
+    // that both plugins consume. Without this assertion the refactor
+    // could silently mount the panel only for one device.
+    //
+    // Asserts: the LibraryPage's device-memory column mounts a
+    // DeviceMemoryPanel (which carries data-capability="C-LIB-02") on
+    // BOTH device URLs. Added 2026-05-22 BEFORE the adapter extraction
+    // lands. Must pass against pre-refactor code AND stay green after.
+    const s330Panel = page.locator('[data-capability="C-LIB-02"]');
+    await expect(s330Panel).toBeVisible({ timeout: 5_000 });
+
+    await page.goto('/roland/s550/editor/library?midi=simulated&scenario=load-everything');
+    await page.waitForLoadState('networkidle');
+    const s550Panel = page.locator('[data-capability="C-LIB-02"]');
+    await expect(s550Panel).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('D-LIB-37: empty-state preview panel renders canonical "Preview" header on both s330 and s550 (clones.yaml 47120235fd38 PreviewPanelAdapter refactor contract)', async ({ page }) => {
+    // Test-before-extract contract for the PreviewPanelAdapter half of
+    // clone group 47120235fd38 (92-line shared body between
+    // S330PreviewPanelAdapter and S550PreviewPanelAdapter). Both
+    // adapters route to ItemPreviewPanel / CommonSamplePreviewPanel /
+    // the empty-state header based on customState.pageSelection
+    // identically. The refactor extracts that body to a single shared
+    // adapter consumed by both plugins.
+    //
+    // Asserts: with no pageSelection, BOTH devices render the canonical
+    // .ac-panel-header chrome with the "Preview" title. Added 2026-05-22
+    // BEFORE the adapter extraction. Must pass pre-refactor + stay
+    // green post-refactor.
+    const s330PreviewTitle = page
+      .locator('.ac-panel-header-title', { hasText: 'Preview' });
+    await expect(s330PreviewTitle).toBeVisible({ timeout: 5_000 });
+
+    await page.goto('/roland/s550/editor/library?midi=simulated&scenario=load-everything');
+    await page.waitForLoadState('networkidle');
+    const s550PreviewTitle = page
+      .locator('.ac-panel-header-title', { hasText: 'Preview' });
+    await expect(s550PreviewTitle).toBeVisible({ timeout: 5_000 });
+  });
+
   test('D-LIB-22: Refresh Device button is reachable in the page header', async ({ page }) => {
     // LibraryPage.tsx:249 renders a "Refresh Device" button in the
     // sticky page header. It triggers handleLoadDeviceData, which
