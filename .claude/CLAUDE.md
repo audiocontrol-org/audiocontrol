@@ -191,6 +191,8 @@ Never use conditionals in UI components to switch behavior based on device confi
 ### Nucleation Site Prevention
 Bad code attracts more bad code. Eliminate on sight: duplicate code, dead code, backward compatibility shims, and poorly structured code that agents would copy. If an agent reading the code would be confused or tempted to duplicate it, fix the code. Before implementing anything new, check if the same concept already exists in the codebase.
 
+Two pre-commit gates enforce this mechanically — the CSS-class duplication checker (`make check-css-duplication`, runs on `.css`/`.scss` changes) and the general TS/TSX clone detector (`make check-clone-duplication`, runs on `.ts`/`.tsx` changes, backed by `jscpd` + the dispositioned baseline at `docs/scope-discovery/clones.yaml`). New duplicate code blocks the commit; existing groups must be dispositioned in `clones.yaml` as `refactor` / `keep-with-reason` / `ignore-with-justification`. For an upfront scope sweep on a system-wide feature, run `/scope-inventory <slug>`; for mid-implementation widening of a specific complaint, run `/scope-widen <complaint>`. See [`docs/scope-discovery/README.md`](/docs/scope-discovery/README.md) for the full protocol.
+
 ### Contract Enforcement
 The compiler must catch contract violations. No optional bags of callbacks, no duplicated types, no silent no-ops. When a shared interface changes, every consumer must fail to compile until updated. When changing shared code in editor-core, build all editors before committing (`make`).
 
