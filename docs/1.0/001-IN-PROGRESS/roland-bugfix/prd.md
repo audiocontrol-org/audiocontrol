@@ -1,12 +1,21 @@
-# Roland Bug-Fix Catchment - Product Requirements Document
+# Roland Bug-Fix Catchment + Scope-Discovery Validation — Product Requirements Document
 
 **Created:** 2026-05-20
-**Status:** Draft
+**Extended:** 2026-05-22 (scope-discovery validation added; see Problem Statement § 2)
+**Status:** Draft (dual-purpose; see Problem Statement)
 **Owner:** operator
 
 ## Problem Statement
 
-The s550-support feature shipped a large redesign of the Roland S-330 / S-550 editors (PRs [#433](https://github.com/audiocontrol-org/audiocontrol/pull/433) + [#434](https://github.com/audiocontrol-org/audiocontrol/pull/434), merged 2026-05-20). Operator-driven use will surface regressions, layout drift, and small bugs that warrant fixes against the just-merged surface. This branch is the catchment for that work.
+This branch serves **two intentionally co-located purposes**:
+
+**1. Post-merge bug-fix catchment for the Roland S-330 / S-550 editors.** The s550-support feature shipped a large redesign of those editors (PRs [#433](https://github.com/audiocontrol-org/audiocontrol/pull/433) + [#434](https://github.com/audiocontrol-org/audiocontrol/pull/434), merged 2026-05-20). Operator-driven use surfaces regressions, layout drift, and small bugs that warrant fixes against the just-merged surface. This branch is the catchment for that work. See Phase 1 in [`workplan.md`](./workplan.md).
+
+**2. Validation test subject for `feature/scope-discovery-protocol` Phase 4.** When PR [#441](https://github.com/audiocontrol-org/audiocontrol/pull/441) merged 2026-05-22, this branch took on the role of dispositioning the Roland-surface clone groups in `docs/scope-discovery/clones.yaml` (172 of 495 pending touch our surface) and capturing tooling feedback. Each disposition + each refactor PR is evidence the scope-discovery tooling lands real value; we get a dispositioned baseline + a pre-commit gate that prevents future regression. See Phase 2 + Phase 3 in [`workplan.md`](./workplan.md).
+
+The two purposes are intentionally co-located because they target the same code surface (`modules/roland-sxx0-editor` + `modules/editor-core`) and benefit from operating against the same dev-server / hardware setup. Phase 1 captures operator-surfaced bugs; Phase 2 + 3 capture agent-discoverable clone-duplication findings via the new tooling. **All three phases run concurrently**, not sequentially.
+
+Implementers working on this branch must read the workplan's Phase headers to know which discipline applies — Phase 1's "no sweep refactors / no while-I-was-in-here" rule is incompatible with Phase 3's refactor-PR shape, so the two streams stay in separate commits and separate PRs even though they share the branch.
 
 ## User Stories
 

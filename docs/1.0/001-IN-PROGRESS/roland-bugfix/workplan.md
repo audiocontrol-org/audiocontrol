@@ -1,7 +1,19 @@
-# Roland Bug-Fix Catchment - Workplan
+# Roland Bug-Fix Catchment + Scope-Discovery Validation — Workplan
 
 **Branch:** `feature/roland-bugfix`
 **Worktree:** `~/work/audiocontrol-work/audiocontrol-roland-bugfix`
+
+## Dual-purpose mandate (post-2026-05-22)
+
+This workplan covers two intentionally co-located streams running concurrently on one branch:
+
+- **Phase 1 — Rolling Bug-Fix Pass** (operator-surfaced, open-ended). Each fix is one commit; no sweep refactors slipped in. Discipline: "no while-I-was-in-here."
+- **Phase 2 — Disposition Roland-surface clones** (scope-discovery validation, sized at 172 groups; see Phase 2 closure notes). Each disposition is a one-line change to `clones.yaml` + (for `refactor` dispositions) a Phase 3 PR.
+- **Phase 3 — Roland-surface refactor PRs** (concurrent with Phase 2). One PR per `refactor`-marked group or batched sibling set.
+
+The two streams share the branch but **stay in separate commits and PRs** — Phase 1's discipline forbids the sweep shape that Phase 3 PRs need. Implementers reading this workplan must check the Phase header of any task before applying its discipline.
+
+See [`prd.md` § Problem Statement](./prd.md) for the operator-level framing.
 
 ## Technical Approach
 
