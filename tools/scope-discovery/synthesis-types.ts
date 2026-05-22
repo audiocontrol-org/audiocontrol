@@ -156,5 +156,17 @@ export interface SynthesisOutput {
     readonly agentsConsumed: ReadonlyArray<string>;
     readonly dedupCount: number;
     readonly findingsCount: number;
+    /**
+     * Non-fatal synthesizer notes (T7.5 polish): things the operator
+     * should know about how the manifest was derived. Includes:
+     *   - missing PRD References/Appendix (defaulted to PRD+LAYOUT.md)
+     *   - empty regime-holdout findings (no detector ran)
+     *   - kind=ui but only one route detected (likely an under-walked
+     *     UI surface)
+     * Empty array when synthesis produced no notes. The scope-inventory
+     * skill renders these under a `## Synthesizer notes` section in
+     * `<run-dir>/synthesis.md`.
+     */
+    readonly warnings: ReadonlyArray<string>;
   };
 }

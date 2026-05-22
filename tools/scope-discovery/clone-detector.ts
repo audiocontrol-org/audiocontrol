@@ -38,6 +38,10 @@
  *   --baseline <path>         override default docs/scope-discovery/clones.yaml
  *   --refresh-baseline        rewrite the baseline from this run, carrying
  *                             forward operator-authored dispositions
+ *   --diff                    print only NEW + DROPPED groups (subset of
+ *                             default output); useful for CI-style diffing.
+ *                             Implies --quiet for the headline; full per-group
+ *                             listing is replaced by NEW/DROPPED sections only.
  *
  * Exit code:
  *   0   no NEW clone groups (or first-run baseline written)
@@ -68,6 +72,7 @@ interface Cli {
   readonly json: boolean;
   readonly baselinePath: string;
   readonly refreshBaseline: boolean;
+  readonly diff: boolean;
 }
 
 function parseCli(argv: readonly string[]): Cli {
@@ -76,6 +81,7 @@ function parseCli(argv: readonly string[]): Cli {
   let json = false;
   let baselinePath = DEFAULT_BASELINE;
   let refreshBaseline = false;
+  let diff = false;
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === '--root') {
@@ -84,6 +90,7 @@ function parseCli(argv: readonly string[]): Cli {
       root = next;
     } else if (a === '--quiet') quiet = true;
     else if (a === '--json') json = true;
+    else if (a === '--diff') diff = true;
     else if (a === '--baseline') {
       const next = argv[++i];
       if (next === undefined) throw new Error('--baseline requires a path');
@@ -91,7 +98,7 @@ function parseCli(argv: readonly string[]): Cli {
     } else if (a === '--refresh-baseline') refreshBaseline = true;
     else throw new Error(`unknown arg: ${a}`);
   }
-  return { root, quiet, json, baselinePath, refreshBaseline };
+  return { root, quiet, json, baselinePath, refreshBaseline, diff };
 }
 
 async function readBaseline(path: string): Promise<ClonesYaml | null> {
@@ -121,6 +128,36 @@ interface ReportOpts {
   readonly diff: CloneDiff;
   readonly quiet: boolean;
   readonly baselineExisted: boolean;
+}
+
+/**
+ * Single-line summary shared by --refresh-baseline and --diff modes.
+ * Shape: `summary: N dropped, M new (net X)` where net = new - dropped.
+ * Distinct from the headline `K groups; N NEW; M DROPPED` so the two
+ * lines can be grep-distinguished by downstream tooling.
+ */
+function summaryLine(diff: CloneDiff): string {
+  const newCount = diff.newGroups.length;
+  const droppedCount = diff.droppedGroups.length;
+  const net = newCount - droppedCount;
+  const netStr = net >= 0 ? `+${net}` : `${net}`;
+  return `summary: ${droppedCount} dropped, ${newCount} new (net ${netStr})`;
+}
+
+/**
+ * Emit only NEW + DROPPED group sections plus the summary line. Subset
+ * of the default-mode output; the full per-group listing is omitted.
+ */
+function reportDiff(diff: CloneDiff): void {
+  for (const g of diff.newGroups) {
+    process.stdout.write(`NEW    ${g.id} (${g.lines} lines)\n`);
+    for (const m of g.members) process.stdout.write(`         ${m}\n`);
+  }
+  for (const g of diff.droppedGroups) {
+    process.stdout.write(`DROPPED ${g.id} (${g.lines} lines)\n`);
+    for (const m of g.members) process.stdout.write(`         ${m}\n`);
+  }
+  process.stdout.write(`${summaryLine(diff)}\n`);
 }
 
 function reportHuman(opts: ReportOpts): void {
@@ -202,12 +239,20 @@ async function main(): Promise<number> {
         );
       }
       reportHuman({ groups: merged, diff, quiet: cli.quiet, baselineExisted });
+      // Polish T7.5: --refresh-baseline always trails with a single-line
+      // summary in the `summary: N dropped, M new (net X)` shape, distinct
+      // from the headline above. Survives --quiet for grep-friendliness.
+      if (cli.refreshBaseline) {
+        process.stdout.write(`${summaryLine(diff)}\n`);
+      }
     }
     return 0;
   }
 
   if (cli.json) {
     reportJson(detectedGroups, diff);
+  } else if (cli.diff) {
+    reportDiff(diff);
   } else {
     reportHuman({ groups: detectedGroups, diff, quiet: cli.quiet, baselineExisted });
   }

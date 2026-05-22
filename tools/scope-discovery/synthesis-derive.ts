@@ -224,13 +224,26 @@ const REFS_HEADING_RE = /^#+\s*(References|Appendix(?:\s+—\s+Source Documents)
 const MARKDOWN_LINK_RE = /\[([^\]]+)\]\(([^)]+)\)/g;
 
 /**
+ * Result of `deriveReferenceDocs` — the refs themselves plus any
+ * non-fatal warnings the derivation surfaced (e.g., missing PRD
+ * References section). Warnings are routed by the synthesis caller
+ * into the `## Synthesizer notes` section of `synthesis.md` (T7.5
+ * polish) rather than living only on stderr.
+ */
+export interface DeriveReferenceDocsResult {
+  readonly refs: ReadonlyArray<ManifestReferenceDoc>;
+  readonly warnings: ReadonlyArray<string>;
+}
+
+/**
  * Derive `reference_docs[]` from PRD References/Appendix; defaults to
- * PRD + LAYOUT.md (logged to stderr) when no section found.
+ * PRD + LAYOUT.md when no section found (and surfaces a warning so the
+ * operator notices the fallback).
  */
 export async function deriveReferenceDocs(args: {
   readonly prdPath: string;
   readonly prdRelPath: string;
-}): Promise<ReadonlyArray<ManifestReferenceDoc>> {
+}): Promise<DeriveReferenceDocsResult> {
   let prdText: string;
   try {
     prdText = await readFile(args.prdPath, 'utf8');
@@ -239,22 +252,27 @@ export async function deriveReferenceDocs(args: {
   }
   const refs = extractAppendixLinks(prdText, args.prdRelPath);
   if (refs.length > 0) {
-    return [
-      { path: args.prdRelPath, role: 'prd', summary: 'Feature PRD — synthesis anchor.' },
-      ...refs,
-    ];
+    return {
+      refs: [
+        { path: args.prdRelPath, role: 'prd', summary: 'Feature PRD — synthesis anchor.' },
+        ...refs,
+      ],
+      warnings: [],
+    };
   }
-  process.stderr.write(
-    'synthesis: PRD has no References/Appendix section; using PRD + LAYOUT.md defaults.\n',
-  );
-  return [
-    { path: args.prdRelPath, role: 'prd', summary: 'Feature PRD — synthesis anchor.' },
-    {
-      path: 'docs/scope-discovery/LAYOUT.md',
-      role: 'other',
-      summary: 'On-disk layout contract for scope-discovery artifacts.',
-    },
-  ];
+  return {
+    refs: [
+      { path: args.prdRelPath, role: 'prd', summary: 'Feature PRD — synthesis anchor.' },
+      {
+        path: 'docs/scope-discovery/LAYOUT.md',
+        role: 'other',
+        summary: 'On-disk layout contract for scope-discovery artifacts.',
+      },
+    ],
+    warnings: [
+      'PRD has no References/Appendix section; reference_docs[] defaulted to PRD + LAYOUT.md.',
+    ],
+  };
 }
 
 function extractAppendixLinks(

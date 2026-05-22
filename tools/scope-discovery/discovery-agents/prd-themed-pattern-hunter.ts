@@ -87,21 +87,41 @@ const STOPWORDS: ReadonlySet<string> = new Set([
   'would',
 ]);
 
-interface TermRank {
+export interface TermRank {
   readonly term: string;
   readonly freq: number;
 }
 
 /**
+ * Match an `https?://...` URL (and bare `<host>.com/...` style hosts) so
+ * the tokenizer can strip them BEFORE splitting on non-word. Without
+ * this, the components of a URL (e.g., `github`, `com`, `https`,
+ * `example`) leak into the theme bag-of-words and pollute the top-N
+ * ranking — a PRD with a handful of `github.com` reference links can
+ * promote `github` over the actual domain terms.
+ *
+ * Strips:
+ *   - http:// or https:// URLs up to next whitespace
+ *   - Bare hosts like `github.com/...` or `example.org/...`
+ * Replaces matched span with a single space so word boundaries are
+ * preserved across the stripped region.
+ */
+const URL_RE = /\bhttps?:\/\/\S+/gi;
+const BARE_HOST_RE = /\b[A-Za-z0-9-]+\.(com|org|net|io|dev|md|sh|gov|edu)(?:\/\S*)?/gi;
+
+/**
  * Tokenize PRD text into bag-of-words counts. Lowercases, splits on
  * non-word, drops stopwords + numeric-only tokens + sub-MIN_TERM_LEN
- * tokens.
+ * tokens. URL components and bare hostnames are stripped upstream of
+ * the tokenizer so they never enter the bag (T7.5 polish item).
  */
-function tokenizePrd(text: string): ReadonlyArray<TermRank> {
+export function tokenizePrd(text: string): ReadonlyArray<TermRank> {
   const counts = new Map<string, number>();
   // Strip code-fence blocks so we don't seed themes from embedded
   // shell-snippets or yaml fragments.
-  const stripped = text.replace(/```[\s\S]*?```/g, ' ');
+  const noFences = text.replace(/```[\s\S]*?```/g, ' ');
+  // Strip URL/host components (see URL_RE / BARE_HOST_RE for rationale).
+  const stripped = noFences.replace(URL_RE, ' ').replace(BARE_HOST_RE, ' ');
   for (const rawTok of stripped.split(/[^A-Za-z0-9-]+/g)) {
     const tok = rawTok.toLowerCase();
     if (tok.length < MIN_TERM_LEN) continue;

@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# Pre-push hook — warns on stderr (does NOT block) when any commit
+# being pushed lacks a post-commit sentinel entry. A missing sentinel
+# is evidence the commit was made with `git commit --no-verify`,
+# bypassing the pre-commit gates.
+#
+# This catches discipline violations AFTER the fact — the only point
+# in the commit lifecycle where the bypass leaves a detectable trace.
+# Pre-commit itself cannot warn on its own bypass (it doesn't run on
+# `--no-verify`); pre-push fires next and can scan history.
+#
+# Tracked in-repo so it travels; per-clone activation via
+# `make install-hooks`. Warning-only by design — operators with
+# explicit approval to bypass need a path through. Blocking would
+# either require a flag dance or force `--no-verify` on the push
+# itself, which defeats the warning's pedagogical purpose.
+#
+# Stdin shape (per git docs): one line per ref being pushed, in the
+#     <local-ref> <local-sha> <remote-ref> <remote-sha>
+# format. We accumulate the unique local SHAs whose range
+# (remote-sha..local-sha) covers a non-zero set of incoming commits,
+# then check each against the sentinel file.
+
+set -euo pipefail
+
+SENTINEL_FILE="$(git rev-parse --git-path hooks)/.pre-commit-passed"
+ZERO="0000000000000000000000000000000000000000"
+
+# Collect all commit SHAs being pushed (one per line). For new
+# branches (remote sha is the zero-id), we cap the lookback at 50
+# commits — anything older was likely either pre-hook era or pushed
+# from another clone, both of which are noise. For updates we list
+# the explicit remote..local range.
+to_check=""
+while read -r local_ref local_sha remote_ref remote_sha; do
+  # Deleted refs (local_sha == ZERO) have no commits to check.
+  if [ "$local_sha" = "$ZERO" ]; then continue; fi
+  if [ "$remote_sha" = "$ZERO" ]; then
+    range_commits="$(git rev-list -n 50 "$local_sha" 2>/dev/null || true)"
+  else
+    range_commits="$(git rev-list "$remote_sha..$local_sha" 2>/dev/null || true)"
+  fi
+  to_check="$to_check$range_commits"$'\n'
+done
+
+# Skip out cheaply when the loop saw nothing (e.g., delete-only push).
+to_check="$(echo "$to_check" | grep -v '^$' | sort -u || true)"
+if [ -z "$to_check" ]; then exit 0; fi
+
+# If the sentinel file doesn't exist yet, every commit looks bypassed —
+# which is misleading on a fresh clone. In that case, exit silently;
+# the post-commit hook will accumulate entries from this point forward.
+if [ ! -f "$SENTINEL_FILE" ]; then exit 0; fi
+
+missing=""
+while read -r sha; do
+  if [ -z "$sha" ]; then continue; fi
+  if ! grep -qx "$sha" "$SENTINEL_FILE"; then
+    missing="$missing$sha"$'\n'
+  fi
+done <<< "$to_check"
+
+missing="$(echo "$missing" | grep -v '^$' || true)"
+if [ -n "$missing" ]; then
+  echo "pre-push: WARNING — the following commit(s) lack a post-commit sentinel," >&2
+  echo "pre-push: suggesting they were created with 'git commit --no-verify'" >&2
+  echo "pre-push: (which bypasses CSS / clone / anti-pattern / adopter / symmetry gates):" >&2
+  while read -r sha; do
+    [ -z "$sha" ] && continue
+    short="$(git rev-parse --short "$sha")"
+    subject="$(git log -1 --format=%s "$sha")"
+    echo "pre-push:   $short  $subject" >&2
+  done <<< "$missing"
+  echo "pre-push: push proceeding (warning-only). Re-run the missing gates locally if uncertain." >&2
+fi
+
+exit 0

@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Post-commit hook — records the HEAD commit SHA in a local sentinel
+# file so a later pre-push gate can detect commits that bypassed the
+# pre-commit hook via `--no-verify`. Tracked in-repo so it travels
+# across clones; per-clone activation is via `make install-hooks`.
+#
+# T7.5 polish: when the pre-commit hook fires, this post-commit hook
+# fires immediately after (git invokes them sequentially in the same
+# commit's lifecycle). When `git commit --no-verify` is used, BOTH
+# pre-commit and post-commit are skipped — so a commit's absence from
+# the sentinel file is evidence that `--no-verify` was used.
+#
+# The sentinel lives under `.git/hooks/` (not tracked) so it stays
+# clone-local. Pre-push consumes it; nothing else should depend on it.
+
+set -euo pipefail
+
+SENTINEL_DIR="$(git rev-parse --git-path hooks)"
+SENTINEL_FILE="$SENTINEL_DIR/.pre-commit-passed"
+mkdir -p "$SENTINEL_DIR"
+
+HEAD_SHA="$(git rev-parse HEAD)"
+# Append one SHA per line. Idempotent against duplicate post-commit
+# invocations (e.g., `git commit --amend` re-triggers post-commit with
+# the new SHA — both old and new will appear, which is fine for the
+# pre-push consumer that grep-checks for membership).
+echo "$HEAD_SHA" >> "$SENTINEL_FILE"

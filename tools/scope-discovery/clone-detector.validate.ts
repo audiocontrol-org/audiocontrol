@@ -58,6 +58,11 @@ import {
   scenarioMissingCanonicalReason,
   scenarioMissingTestsField,
 } from './clone-detector.refactor-scenarios.js';
+import {
+  cleanupPolishFixtures,
+  scenarioDiffFlagSubsetOnly,
+  scenarioRefreshBaselineSummaryLine,
+} from './clone-detector.polish-scenarios.js';
 import { runScannerSubprocess, type ScannerRun } from './util/run-scanner.js';
 import { errorMessage } from './util/typeguards.js';
 
@@ -408,6 +413,9 @@ async function cleanupTmp(): Promise<void> {
     // .tmp/ may not exist on a fresh checkout; that's fine.
     void err;
   }
+  // The polish-scenarios file uses its own prefix; delegate cleanup so
+  // the symmetric concern stays co-located with the scenarios.
+  await cleanupPolishFixtures();
 }
 
 /**
@@ -437,6 +445,8 @@ async function main(): Promise<number> {
     adapt(scenarioMalformedTestsElement),
     adapt(scenarioBadTestsProofSha),
     adapt(scenarioMissingCanonicalReason),
+    scenarioDiffFlagSubsetOnly,
+    scenarioRefreshBaselineSummaryLine,
   ];
   const results: ScenarioResult[] = [];
   try {

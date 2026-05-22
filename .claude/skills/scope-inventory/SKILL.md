@@ -110,8 +110,11 @@ tsx tools/scope-discovery/synthesis.ts \
              "$RUN_DIR/findings/clone-detector-reader.json" \
              "$RUN_DIR/findings/prd-themed-pattern-hunter.json" \
              "$RUN_DIR/findings/regime-holdout-detector.json" \
-  --out "<FEATURE_DIR>/scope-manifest.yaml"
+  --out "<FEATURE_DIR>/scope-manifest.yaml" \
+  --notes-out "$RUN_DIR/synthesis-notes.md"
 ```
+
+`--notes-out` writes a markdown fragment containing the `## Synthesizer notes` section. Splice the contents verbatim into `synthesis.md` (step 8) so the operator sees synthesizer warnings in the run-dir reading-surface, not just stderr.
 
 The synthesizer validates the produced manifest against `tools/scope-discovery/schema/scope-manifest.schema.json` before writing. If validation fails, the synthesizer exits non-zero with the ajv error; surface that error and refuse. Do not edit the manifest by hand to make validation pass — fix the upstream cause (agent output shape, theme bag, etc.).
 
@@ -168,6 +171,7 @@ Write a short narrative summary of the run to `$RUN_DIR/synthesis.md`. Use the W
 - **Themes detected** — count + the top ten themes by occurrence.
 - **Regime holdouts** — read the manifest's `regime_holdouts.meta` section. Report `total` plus the four `by_source` counts (`anti_pattern`, `adopter_manifest`, `editor_symmetry`, `deprecation`). For non-zero buckets, list up to five sample finding ids with their `file` field. For an all-zero result, write *"clean — no regime holdouts in the current source tree"*. This section IS the burndown summary the operator drives Phase 6 work from; do not abbreviate.
 - **Reference docs** — count + list (PRD path always included; agent-derived doc references appended).
+- **Synthesizer notes** — splice the contents of `$RUN_DIR/synthesis-notes.md` (produced by `synthesis.ts --notes-out` in step 6) verbatim. The heading `## Synthesizer notes` and body are already shaped; do not paraphrase. Surfaces non-fatal warnings the synthesizer collected (e.g., missing PRD References section; under-walked UI; absent regime-holdout findings).
 - **Operator curation hints** — concrete pointers (e.g., *"26 modules listed across `modules/*`; prune to those genuinely in scope before downstream phase work treats the manifest as binding"*). At minimum mention manifest size, any obvious noise (modules touched by clone-detector-reader but not name-checked by the PRD-themed hunter, etc.), and the next operator action.
 
 Keep it under 100 lines; this file is a reading-surface, not a dump.
