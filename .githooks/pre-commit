@@ -30,6 +30,8 @@ set -euo pipefail
 if git diff --cached --name-only --diff-filter=ACM | grep -qE '\.(css|scss)$'; then
   echo "pre-commit: checking for new cross-page CSS duplication…"
   make --no-print-directory check-css-duplication
+  echo "pre-commit: checking for chevron-named classes outside the canonical primitive…"
+  make --no-print-directory check-chevron-sizing
 fi
 
 # Only re-run the general TS/TSX clone check when staged files

@@ -124,18 +124,29 @@
   accent-color: var(--ac-color-accent);
 }
 
+/*
+ * v3 button vocabulary: Departure Mono uppercase + eyebrow tracking,
+ * matching the page-title / detail-eyebrow / drawer-title rhythm. The
+ * slightly smaller `--ac-text-sm` text-size and the bumped horizontal
+ * padding compensate for the wider monospace glyphs so labels stay
+ * proportionate to the controls they sit beside.
+ */
 .ac-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
+  justify-content: center;
+  gap: 0.5rem;
   white-space: nowrap;
   border-radius: var(--ac-radius-md);
   border: 1px solid var(--ac-color-border-subtle);
   background: color-mix(in srgb, var(--ac-color-surface-panel) 94%, transparent);
   color: var(--ac-color-text-primary);
-  padding: 0.625rem 0.75rem;
-  font-size: var(--ac-text-md);
-  font-weight: var(--ac-font-weight-semibold);
+  padding: 0.5rem 0.95rem;
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-sm);
+  font-weight: 400;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  text-transform: uppercase;
   cursor: pointer;
   transition:
     filter var(--ac-duration-fast) var(--ac-easing-default),
@@ -170,7 +181,7 @@
 
 .ac-btn-sm {
   padding: 0.375rem 0.75rem;
-  font-size: var(--ac-text-sm);
+  font-size: var(--ac-text-eyebrow);
 }
 
 .ac-btn-success {

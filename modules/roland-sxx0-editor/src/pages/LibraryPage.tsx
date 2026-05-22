@@ -10,10 +10,12 @@
  */
 
 import { useCallback, useEffect, useRef, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMidiStore } from '@/stores/midiStore';
 import { useDeviceDataStore } from '@/stores/deviceDataStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { useLibraryStore } from '@/stores/libraryStore';
+import { useEditorStore } from '@/stores/editorStore';
 import type { SamplerClientInterface, SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import {
   useLibraryConnection, useErrorReporter, useLibraryOperations, LibraryConnectionUI, PluginLibraryBrowser,
@@ -32,6 +34,7 @@ import { SampleEditorDialog } from '@audiocontrol/sample-editor/ui';
 import { SampleChopperDialog } from '@audiocontrol/sample-chopper/ui';
 import { ExportToneDialog } from '@/components/library/ExportToneDialog';
 import { ExportPatchDialog } from '@/components/library/ExportPatchDialog';
+import { BatchExportDrawer } from '@/components/library/BatchExportDrawer';
 import { DEVICE_DRAG_MIME, type DeviceDragData } from '@/components/library/DeviceMemoryPanel';
 import {
   useImportSamples,
@@ -109,8 +112,24 @@ export function LibraryPage() {
   } = useRolandSelectionMapping(libraryHandle);
 
   useEffect(() => {
-    if (!adapter) { clientRef.current = null; return; }
+    if (!adapter) {
+      clientRef.current = null;
+      if (import.meta.env.DEV) {
+        (window as unknown as { __samplerClient?: SamplerClientInterface | null }).__samplerClient = null;
+      }
+      return;
+    }
     clientRef.current = config.createClient(adapter, { deviceId });
+    // Dev-only test seam — wiring tests monkeypatch `requestWaveData`
+    // here to selectively succeed or throw per slot index so the
+    // batch-export continue-on-error path (D-LIB-31) can be exercised
+    // without a fixture that selectively fails. Mirrors the existing
+    // `__deviceDataStore` seam used by `seedDeviceTone`. Production
+    // builds skip the assignment via the import.meta.env.DEV gate so
+    // the surface is never present in shipped bundles.
+    if (import.meta.env.DEV) {
+      (window as unknown as { __samplerClient?: SamplerClientInterface | null }).__samplerClient = clientRef.current;
+    }
   }, [adapter, deviceId]);
 
   const setToneForHook = useCallback((index: number, tone: SamplerTone) => setTone(index, tone, totalTones), [setTone, totalTones]);
@@ -149,6 +168,7 @@ export function LibraryPage() {
 
   const exportOps = useLibraryExport({
     clientRef, libraryHandle, tones, patches, setIndividualTones, setIndividualPatches,
+    handleRefreshLibrary,
   });
 
   const importDialogs = useLibraryImportDialogs({
@@ -248,7 +268,7 @@ export function LibraryPage() {
   const handleExternalDrop = useCallback((
     categoryId: string,
     dataTransfer: DataTransfer,
-    _targetPath: string[],
+    targetPath: string[],
   ): boolean => {
     const raw = dataTransfer.getData(DEVICE_DRAG_MIME);
     if (!raw) return false;
@@ -263,9 +283,11 @@ export function LibraryPage() {
     // patches-section accepts patch drags. Mismatched drops fail loudly
     // (no silent fallback) because the user's intent isn't ambiguous —
     // dropping a tone on the patch section is most likely a mis-aim.
+    // targetPath threads through to the export dialog so a drop on a
+    // folder row writes into that folder instead of the section root.
     if (data.type === 'tone' && categoryId === 'tones') {
       try {
-        exportOps.handleDropDeviceTone(data);
+        exportOps.handleDropDeviceTone(data, targetPath);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to start tone export');
       }
@@ -273,7 +295,7 @@ export function LibraryPage() {
     }
     if (data.type === 'patch' && categoryId === 'patches') {
       try {
-        exportOps.handleDropDevicePatch(data);
+        exportOps.handleDropDevicePatch(data, targetPath);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to start patch export');
       }
@@ -393,6 +415,23 @@ export function LibraryPage() {
     loadingToneBank, loadingPatchBank, loadToneBank, loadPatchBank,
   ]);
 
+  const navigate = useNavigate();
+  // Device-memory preview affordances: Export-to-Library reuses the
+  // imperative `openExport*Dialog` so the same v3 SteppedProgressDrawer
+  // the drag-drop path opens is what the operator sees here. Edit-in-Editor
+  // pre-selects the slot in `editorStore` (so TonesPage / PatchesPage
+  // open on that slot) and routes via React Router under the active
+  // device segment (`/roland/<device>/editor/<page>`).
+  const editorBase = `/roland/${config.deviceType}/editor`;
+  const handleEditDeviceTone = useCallback((toneIndex: number) => {
+    useEditorStore.getState().selectTone(toneIndex);
+    navigate(`${editorBase}/tones`);
+  }, [editorBase, navigate]);
+  const handleEditDevicePatch = useCallback((patchIndex: number) => {
+    useEditorStore.getState().selectPatch(patchIndex);
+    navigate(`${editorBase}/patches`);
+  }, [editorBase, navigate]);
+
   const previewState = useMemo<PreviewPanelCustomState>(() => ({
     pageSelection: selection,
     deviceTones: tones,
@@ -406,7 +445,15 @@ export function LibraryPage() {
     onOpenInLoopEditor: (name: string, path?: string[]) => editorDialogs.handleOpenInLoopEditor(name, 'sample', path),
     onOpenInChopper: (name: string, path?: string[]) => editorDialogs.handleOpenInChopper(name, 'sample', path),
     onOpenInSampleEditor: (name: string, path?: string[]) => editorDialogs.handleOpenInSampleEditor(name, 'sample', path),
-  }), [selection, tones, patches, libraryHandle, importDialogs, editorDialogs]);
+    onExportDeviceTone: exportOps.openExportToneDialog,
+    onExportDevicePatch: exportOps.openExportPatchDialog,
+    onEditDeviceTone: handleEditDeviceTone,
+    onEditDevicePatch: handleEditDevicePatch,
+  }), [
+    selection, tones, patches, libraryHandle, importDialogs, editorDialogs,
+    exportOps.openExportToneDialog, exportOps.openExportPatchDialog,
+    handleEditDeviceTone, handleEditDevicePatch,
+  ]);
 
   const connectionSlot = (
     <LibraryConnectionUI
@@ -577,14 +624,28 @@ export function LibraryPage() {
       <ExportToneDialog
         open={!!exportOps.exportToneDialog} onOpenChange={(open) => { if (!open) exportOps.closeExportToneDialog(); }}
         tone={exportOps.exportToneDialog?.tone ?? null} toneIndex={exportOps.exportToneDialog?.toneIndex ?? 0}
+        targetPath={exportOps.exportToneDialog?.targetPath}
         onExport={exportOps.handleExportTone} isOperating={exportOps.isExporting}
         progress={exportOps.exportProgress} error={exportOps.exportError}
       />
       <ExportPatchDialog
         open={!!exportOps.exportPatchDialog} onOpenChange={(open) => { if (!open) exportOps.closeExportPatchDialog(); }}
         patch={exportOps.exportPatchDialog?.patch ?? null} patchIndex={exportOps.exportPatchDialog?.patchIndex ?? 0}
+        targetPath={exportOps.exportPatchDialog?.targetPath}
         onExport={exportOps.handleExportPatch} isOperating={exportOps.isExporting}
         progress={exportOps.exportPatchProgress} error={exportOps.exportPatchError}
+      />
+      <BatchExportDrawer
+        open={!!exportOps.batchExportDialog}
+        onOpenChange={(open) => { if (!open) exportOps.closeBatchExportDialog(); }}
+        kind={exportOps.batchExportDialog?.kind ?? 'tone'}
+        items={exportOps.batchExportDialog?.items ?? []}
+        targetPath={exportOps.batchExportDialog?.targetPath ?? []}
+        failures={exportOps.batchExportFailures}
+        onExport={exportOps.handleBatchExport}
+        isOperating={exportOps.isExporting}
+        progress={exportOps.batchExportProgress}
+        error={exportOps.batchExportError}
       />
       {editorDialogs.loopEditor && (
         <LoopEditorDialog

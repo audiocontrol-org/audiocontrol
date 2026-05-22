@@ -77,7 +77,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-dispatch-wrapper-validate test-scope-discovery scope-inventory refresh-clones-baseline
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-dispatch-wrapper-validate test-scope-discovery scope-inventory refresh-clones-baseline check-chevron-sizing
 
 build: $(ALL_STAMPS)
 
@@ -273,6 +273,23 @@ test-rendering-roland: $(ROLAND_SXX0_EDITOR) ensure-playwright
 # generated manifest. Workplan 9R-A.1 T8 + 9R-A.2; reform spec §6.
 check-coverage-roland: $(ROLAND_SXX0_EDITOR) ensure-playwright
 	$(DEVENV_RUN) "pnpm run check-coverage"
+
+# Chevron-sizing gate. Fails when a NEW chevron-named CSS class (one
+# not on the allow-list in `tools/check-chevron-sizing.sh`) declares
+# its own font-size / width / height. Every disclosure / collapse
+# chevron in the editor must reuse the canonical .ac-list-bank-chevron
+# class (1.1rem font + 1.1rem box + accent) so the affordance is
+# obvious at glance and the combined hit area clears WCAG AA target
+# floors. The rule predates this gate as memory + design-system
+# guidance but kept getting violated; the gate turns the rule into
+# a build-time block independent of any agent's discipline.
+# See `.claude/rules/chevron-sizing.md` for the operator-facing rule.
+# (Rewritten 2026-05-21: the gate now forbids the substring "chevron"
+# in any CSS class outside the canonical primitive, rather than allow-
+# listing per-context chevron classes by name. Closes the drift loophole
+# where an allow-listed class could silently change its sizing.)
+check-chevron-sizing:
+	./tools/check-chevron-sizing.sh
 
 # Cross-page CSS duplication gate. Fails when a NEW `.pageA__X` /
 # `.pageB__X` rule pair appears whose body overlaps with the other —

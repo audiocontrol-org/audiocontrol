@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { AcChevron } from '../AcChevron';
 
 export function FolderIcon({ isOpen }: { isOpen: boolean }): JSX.Element {
   return (
@@ -32,15 +33,15 @@ export function FolderIcon({ isOpen }: { isOpen: boolean }): JSX.Element {
   );
 }
 
+/**
+ * Legacy alias for the AcChevron primitive. New code should import
+ * AcChevron from '@/components' directly; this re-export exists so the
+ * old `ChevronIcon` callsites continue to compile without code churn.
+ * All chevron sizing/color is owned by the AcChevron component — this
+ * wrapper does not add or override any prop.
+ */
 export function ChevronIcon({ isExpanded }: { isExpanded: boolean }): JSX.Element {
-  // Unicode glyph swap (▾ / ▸) — same chevron vocabulary as
-  // `.ac-list-bank-chevron` and `.ac-device-memory-section-eyebrow-chevron`
-  // so the tree control reads as part of the same family.
-  return (
-    <span className="ac-tree-chevron" aria-hidden="true">
-      {isExpanded ? '▾' : '▸'}
-    </span>
-  );
+  return <AcChevron expanded={isExpanded} />;
 }
 
 export function AudioFileIcon(): JSX.Element {

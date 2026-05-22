@@ -107,7 +107,9 @@ function S550MemoryPanelAdapter(props: DeviceMemoryRenderProps): JSX.Element {
  * CommonSamplePreviewPanel based on selection type.
  */
 function S550PreviewPanelAdapter({
-  selection,
+  // Tree-level selection is intentionally unused — see the
+  // pageSelection routing comment below.
+  selection: _selection,
   context,
 }: {
   selection: ItemSelection | null;
@@ -133,12 +135,21 @@ function S550PreviewPanelAdapter({
     );
   }
 
-  // No selection or no custom state - show empty state
-  if (!selection || !state) {
+  // The plugin-tree `selection` prop is only set by library-tree
+  // clicks (via `PluginLibraryBrowser.onSelectionChange`); clicks in
+  // `DeviceMemoryPanel` go through the page's `handleSelectDevice`
+  // which sets `state.pageSelection.source === 'device'` but leaves
+  // the tree-level `selection` null. Routing off `pageSelection`
+  // (page-level source of truth) rather than the tree-level `selection`
+  // prop covers both device-memory and library-tree clicks uniformly.
+  const pageSelection = state?.pageSelection;
+  if (!state || !pageSelection) {
+    // Use the canonical column-header chrome so the empty-state
+    // Preview title matches Device Memory / Library in typography.
     return (
       <div className="h-full flex flex-col">
-        <div className="p-3 border-b border-s330-accent">
-          <h3 className="font-bold text-s330-text">Preview</h3>
+        <div className="ac-panel-header">
+          <h3 className="ac-panel-header-title">Preview</h3>
         </div>
         <div className="flex-1 flex items-center justify-center p-4">
           <div className="text-center text-s330-muted text-sm">
@@ -148,8 +159,6 @@ function S550PreviewPanelAdapter({
       </div>
     );
   }
-
-  const pageSelection = state.pageSelection;
 
   // Route to appropriate preview panel based on selection type
   if (pageSelection?.type === 'sample' || pageSelection?.type === 'program') {
@@ -179,6 +188,10 @@ function S550PreviewPanelAdapter({
       onLoadSet={state.onLoadSet}
       onOpenInLoopEditor={state.onOpenInLoopEditor ? (name, _nodeType, path) => state.onOpenInLoopEditor!(name, path) : undefined}
       onOpenInSampleEditor={state.onOpenInSampleEditor ? (name, _nodeType, path) => state.onOpenInSampleEditor!(name, path) : undefined}
+      onExportDeviceTone={state.onExportDeviceTone}
+      onExportDevicePatch={state.onExportDevicePatch}
+      onEditDeviceTone={state.onEditDeviceTone}
+      onEditDevicePatch={state.onEditDevicePatch}
     />
   );
 }

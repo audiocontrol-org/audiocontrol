@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { PatchLabel } from '@/components/common/PatchLabel';
 import { isPatchEmpty } from '@/lib/slot-allocation';
+import { AcChevron } from '@audiocontrol/editor-core';
 
 interface PatchListProps {
   /** Sparse array of patches - undefined = not loaded */
@@ -114,9 +115,7 @@ export function PatchList({
                   aria-label={`Toggle bank ${bankIndex + 1}`}
                   data-testid={`patch-bank-toggle-${bankIndex}`}
                 >
-                  <span className="ac-list-bank-chevron" aria-hidden="true">
-                    {isCollapsed ? '▸' : '▾'}
-                  </span>
+                  <AcChevron expanded={!isCollapsed} />
                   <span>Bank {bankIndex + 1}</span>
                 </button>
                 <span className="ac-list-bank-meta">

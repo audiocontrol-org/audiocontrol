@@ -88,6 +88,44 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-family: var(--ac-font-body);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text);
+}
+
+/* v3 folder rows: Departure Mono UPPERCASE so the hierarchy ladder
+   reads SECTION (eyebrow) → FOLDER (display caps) → ITEM (body sans)
+   without indentation. Pairs with the .ac-tree-item-tag rule below
+   which gives non-folder rows a small mono lead-in tag instead of
+   a per-kind SVG icon (operator-approved 2026-05-21). */
+.ac-tree-node[data-kind="folder"] .ac-tree-node-name {
+  font-family: var(--ac-font-display);
+  font-weight: var(--ac-font-weight-normal);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ac-color-text);
+}
+
+/* Single-letter mono lead-in tag rendered by item-type plugins in
+   place of an SVG icon. Same width as the folder icon column so
+   folder + item rows align vertically. */
+.ac-tree-item-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  font-weight: var(--ac-font-weight-normal);
+  letter-spacing: var(--ac-tracking-eyebrow);
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ac-color-text-muted) 80%, transparent);
+  flex-shrink: 0;
+}
+
+.ac-tree-node--selected .ac-tree-item-tag {
+  color: var(--ac-color-accent);
 }
 
 /* Trailing metadata next to a tree-node name (e.g. "8 tones" on a
@@ -100,12 +138,17 @@
   flex-shrink: 0;
 }
 
-.ac-tree-chevron-btn {
+/* Disclosure-toggle button — wraps the AcChevron glyph in a tree row.
+   The button has no own size: the AcChevron child (declared in
+   chevron-primitives.css) is the sole authority on the chevron's box.
+   Renamed from `.ac-tree-chevron-btn` 2026-05-21 when the chevron
+   pathology was closed; the word "chevron" cannot appear in any class
+   name outside chevron-primitives.css, so this wrapper is named after
+   its role (a disclosure-toggle button), not after its child glyph. */
+.ac-tree-disclosure-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.1rem;
-  height: 1.1rem;
   padding: 0;
   margin-left: -2px;
   background: transparent;
@@ -113,21 +156,6 @@
   cursor: pointer;
   flex-shrink: 0;
   color: var(--ac-color-accent);
-}
-
-/* Unicode glyph chevron (▾ / ▸) sized to match .ac-list-bank-chevron
-   so the tree, the list-bank header, and the device-memory section
-   eyebrow all read as one chevron vocabulary. */
-.ac-tree-chevron {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.1rem;
-  height: 1.1rem;
-  font-size: 1.1rem;
-  line-height: 1;
-  color: var(--ac-color-accent);
-  flex-shrink: 0;
 }
 
 .ac-tree-icon {
@@ -295,8 +323,11 @@
   background: color-mix(in srgb, var(--ac-color-accent) 10%, transparent);
 }
 
-/* Sticky section header — same shape as .ac-list-bank-header: blurred
-   eyebrow strip with backdrop-filter, accent-color cues. */
+/* v3 inset section band — section headers sit inside a hairline-bordered
+   strip with a subtle bg darken so each library section reads as its own
+   sub-panel without indentation. Matches the typography-only hierarchy
+   spec (operator-approved 2026-05-21). Still sticky so the section title
+   stays visible as the body scrolls. */
 .ac-tree-section-header {
   position: sticky;
   top: 0;
@@ -305,9 +336,10 @@
   align-items: center;
   gap: var(--ac-space-2);
   padding: var(--ac-space-2) var(--ac-space-3);
-  background: color-mix(in srgb, var(--ac-color-surface-canvas) 92%, transparent);
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 60%, transparent);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  border-top: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
   border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
 }
 
@@ -318,6 +350,44 @@
   text-transform: uppercase;
   letter-spacing: var(--ac-tracking-eyebrow);
   color: var(--ac-color-text-muted);
+}
+
+/* Section header collapse toggle — chevron + title in a single
+   click target. Style mirrors `.ac-list-bank-toggle` so a library
+   section reads as a peer of a device-memory bank row. */
+.ac-tree-section-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.ac-tree-section-toggle:hover .ac-tree-section-title {
+  color: var(--ac-color-text-primary);
+}
+
+.ac-tree-section-toggle:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ac-color-accent) 55%, transparent);
+  outline-offset: 2px;
+  border-radius: var(--ac-radius-sm);
+}
+
+/* NOTE: the disclosure glyph is rendered via the AcChevron component
+   (editor-core/src/components/AcChevron.tsx). Its sole CSS rule lives
+   in chevron-primitives.css. Do not declare a chevron-named class
+   anywhere else — the pre-commit gate (tools/check-chevron-sizing.sh)
+   fails the build if you do. See .claude/rules/chevron-sizing.md. */
+
+/* Collapsed-state border: drop the bottom hairline so a stack of
+   collapsed sections reads as a single condensed list rather than
+   a thick separator pile. */
+.ac-tree-section--collapsed > .ac-tree-section-header {
+  border-bottom-color: transparent;
 }
 
 .ac-tree-section-drop-hint {
@@ -914,12 +984,115 @@
   border-bottom: 1px solid var(--ac-color-border-subtle);
 }
 
+/* Library tree scroll container — adopts the same overlay-scrollbar
+   recipe as `.ac-list-scroll` (list-primitives.css) so the library
+   tree matches the patches / tones list chrome: hidden native
+   scrollbar (no layout-shifting gutter), thin webkit overlay thumb,
+   subtle bottom-edge fade. The recipe is duplicated here rather
+   than re-using `.ac-list-scroll` as a sibling class because this
+   container has its own additional layout (flex: 1 + min-height: 0)
+   that the list shell doesn't need. Promote both to a shared
+   `.ac-overlay-scroll` primitive once a third container needs it. */
 .ac-plugin-library-browser-sections {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-gutter: stable;
+  overflow-y: scroll;
+  scrollbar-width: none;
+  scrollbar-gutter: auto;
+  mask-image: linear-gradient(
+    to bottom,
+    black 0,
+    black calc(100% - 1.25rem),
+    color-mix(in srgb, black 60%, transparent) 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    black 0,
+    black calc(100% - 1.25rem),
+    color-mix(in srgb, black 60%, transparent) 100%
+  );
+}
+
+.ac-plugin-library-browser-sections::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+
+.ac-plugin-library-browser-sections::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ac-plugin-library-browser-sections::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--ac-color-text-muted) 35%, transparent);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-plugin-library-browser-sections::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--ac-color-text-muted) 70%, transparent);
+  background-clip: padding-box;
+}
+
+/* =========================================================================
+   Scope group bands — device vs common library
+   -------------------------------------------------------------------------
+   The library tree groups categories by storage scope:
+     device  → library/<device>/<category>/  (Sets, Tones, Patches)
+     common  → library/common/<category>/    (Samples, Programs)
+   Two visually-distinct bands above each group make the split
+   obvious so the operator immediately sees what an editor switch
+   keeps vs replaces.
+
+   The bands use v3 typography (Departure Mono + ac-tracking-eyebrow
+   + ac-color-accent rule), matching the .ac-page-title-row rhythm
+   used elsewhere — these read as peer headers, not as small chrome.
+   ========================================================================= */
+.ac-plib-group-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-3);
+  padding: var(--ac-space-3) var(--ac-space-1) var(--ac-space-2);
+  /* First group sits flush to the top of the sections column; later
+     groups bump above by a single space for breathing room. */
+}
+
+.ac-plib-group-head + .ac-plib-group-head,
+.ac-tree-section + .ac-plib-group-head {
+  margin-top: var(--ac-space-4);
+}
+
+.ac-plib-group-eyebrow {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  font-weight: var(--ac-font-weight-medium, 500);
+  letter-spacing: var(--ac-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--ac-color-text);
+  white-space: nowrap;
+}
+
+.ac-plib-group-eyebrow-sep {
+  color: var(--ac-color-text-muted);
+  margin-inline: 0.15em;
+}
+
+.ac-plib-group-rule {
+  flex: 1 1 auto;
+  height: var(--ac-rule-hairline, 1px);
+  background: color-mix(in srgb, var(--ac-color-accent) 55%, transparent);
+}
+
+/* Common-area group: differentiate the rule color so the operator
+   can tell the two bands apart at a glance even when "Device" /
+   "Common" labels read identically in width. */
+.ac-plib-group-head[data-scope="common"] .ac-plib-group-eyebrow {
+  color: var(--ac-color-text-muted);
+}
+
+.ac-plib-group-head[data-scope="common"] .ac-plib-group-rule {
+  background: color-mix(in srgb, var(--ac-color-text-muted) 35%, transparent);
 }
 
 .ac-plugin-library-browser-toolbar {
@@ -1068,9 +1241,18 @@
   flex-shrink: 0;
 }
 
+/* v3 column-header title — mirrors `.ac-preview-pane-head-title`
+   (Device Memory header) so every library-column header reads in
+   the same Departure Mono display vocabulary. Previously this used
+   body-font semibold which made the Library and Preview column
+   titles look like buttons next to Device Memory's display heading. */
 .ac-panel-header-title {
-  font-size: var(--ac-text-sm);
-  font-weight: var(--ac-font-weight-semibold);
+  margin: 0;
+  font-family: var(--ac-font-display);
+  font-weight: var(--ac-font-weight-normal);
+  font-size: var(--ac-text-md);
+  letter-spacing: var(--ac-tracking-display);
+  line-height: 1.2;
   color: var(--ac-color-text-primary);
 }
 

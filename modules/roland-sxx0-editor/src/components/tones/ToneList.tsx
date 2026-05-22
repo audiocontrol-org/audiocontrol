@@ -22,6 +22,7 @@ import type { SamplerTone } from '@/core/midi/SamplerClient';
 import { cn } from '@/lib/utils';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { isToneEmpty } from '@/lib/slot-allocation';
+import { AcChevron } from '@audiocontrol/editor-core';
 
 interface ToneListProps {
   /** Sparse array of tones - undefined = not loaded */
@@ -104,9 +105,7 @@ export function ToneList({
                   aria-label={`Toggle bank ${bankIndex + 1}`}
                   data-testid={`tone-bank-toggle-${bankIndex}`}
                 >
-                  <span className="ac-list-bank-chevron" aria-hidden="true">
-                    {isCollapsed ? '▸' : '▾'}
-                  </span>
+                  <AcChevron expanded={!isCollapsed} />
                   <span>Bank {bankIndex + 1}</span>
                 </button>
                 <span className="ac-list-bank-meta">

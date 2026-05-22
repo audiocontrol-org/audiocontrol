@@ -8,7 +8,17 @@
 
 import type { ItemTypePlugin } from '@audiocontrol/editor-core';
 import type { CommonSampleMeta, CommonProgramMeta } from '@audiocontrol/editor-core';
-import { WaveIcon, PatchIcon } from '@/components/library/LibraryTreeIcons';
+
+/**
+ * Single-letter mono lead-in tag used in place of a per-kind icon.
+ * Keeps the tree row vocabulary in the v3 typographic register
+ * (Departure Mono + accent muted) instead of fragmenting it into N
+ * distinct SVG glyphs. Folder rows still get the folder icon —
+ * folders are universal, items are typographic.
+ */
+function KindTag({ children }: { children: string }): JSX.Element {
+  return <span className="ac-tree-item-tag" aria-hidden="true">{children}</span>;
+}
 
 export type { CommonSampleMeta, CommonProgramMeta };
 
@@ -35,7 +45,7 @@ export const toneItemType: ItemTypePlugin<ToneMeta> = {
   typeId: 'tone',
   displayName: 'Tone',
 
-  renderIcon: () => <WaveIcon />,
+  renderIcon: () => <KindTag>T</KindTag>,
 
   renderTrailing: () => null,
 
@@ -94,7 +104,7 @@ export const patchItemType: ItemTypePlugin<PatchMeta> = {
   typeId: 'patch',
   displayName: 'Patch',
 
-  renderIcon: () => <PatchIcon />,
+  renderIcon: () => <KindTag>P</KindTag>,
 
   renderTrailing: (meta) => {
     if (!meta || meta.toneCount === undefined) return null;

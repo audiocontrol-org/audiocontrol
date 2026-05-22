@@ -34,9 +34,15 @@ export function createTonesCategory(): CategoryPlugin {
     emptyMessage: 'No tones in library',
     dropMessage: 'Drop to save tone',
     acceptsExternalDrop: true,
+    // Shadow MIMEs published by DeviceMemoryPanel's tone dragstart
+    // (`application/x-s330-device-item/tone`) and by tree-internal
+    // library item drags of node type tone. Listed here so the
+    // PluginLibraryBrowser section dragover handler can discriminate
+    // tone-vs-patch drags during dragover without having to parse the
+    // dataTransfer JSON (which most browsers block during dragover).
     acceptedDropMimeTypes: [
-      'application/x-s330-device-drag',
-      'application/x-s330-library-drag',
+      'application/x-s330-device-item/tone',
+      'application/x-library-item/tone',
     ],
 
     canAcceptDrop: (dragData: unknown) => {
@@ -64,9 +70,12 @@ export function createPatchesCategory(): CategoryPlugin {
     emptyMessage: 'No patches in library',
     dropMessage: 'Drop to save patch',
     acceptsExternalDrop: true,
+    // Per-type shadow MIMEs (see tones category). Tones-only drags
+    // carry `*/tone` and patch-only drags carry `*/patch`; the
+    // section dragover handler picks the right section to highlight.
     acceptedDropMimeTypes: [
-      'application/x-s330-device-drag',
-      'application/x-s330-library-drag',
+      'application/x-s330-device-item/patch',
+      'application/x-library-item/patch',
     ],
 
     canAcceptDrop: (dragData: unknown) => {

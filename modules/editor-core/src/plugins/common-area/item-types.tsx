@@ -9,7 +9,15 @@
 
 import type { ItemTypePlugin, PluginContextMenuAction } from '@/components/library/plugins/types';
 import type { TransferActionId } from '@/hooks/useLibraryOperations';
-import { SampleIcon, ProgramIcon } from '@/plugins/common-area/icons';
+
+/**
+ * Single-letter mono lead-in tag used in place of a per-kind icon —
+ * see roland-sxx0-editor/src/plugins/shared/item-types.tsx for the
+ * canonical comment. Items here are common-area (S = sample, K = program-kit).
+ */
+function KindTag({ children }: { children: string }): JSX.Element {
+  return <span className="ac-tree-item-tag" aria-hidden="true">{children}</span>;
+}
 
 // =========================================================================
 // Metadata types
@@ -52,7 +60,7 @@ export function createCommonSampleItemType(
     typeId: 'sample',
     displayName: 'Sample',
 
-    renderIcon: () => <SampleIcon />,
+    renderIcon: () => <KindTag>S</KindTag>,
 
     renderTrailing: (meta) => {
       if (!meta.sliceCount || meta.sliceCount <= 0) return null;
@@ -117,7 +125,7 @@ export function createCommonProgramItemType(
     typeId: 'program',
     displayName: 'Program',
 
-    renderIcon: () => <ProgramIcon />,
+    renderIcon: () => <KindTag>K</KindTag>,
 
     renderTrailing: (meta) => {
       if (!meta.kitCount || meta.kitCount <= 0) return null;

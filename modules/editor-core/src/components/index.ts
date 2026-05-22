@@ -7,6 +7,7 @@ export {
 
 // v3 atomic control primitives (Phase 9 Task 4.0)
 export { AcCheckbox, type AcCheckboxProps } from './AcCheckbox';
+export { AcChevron, type AcChevronProps } from './AcChevron';
 export {
   AcRangeBar,
   type AcRangeBarProps,
@@ -96,6 +97,8 @@ export {
   LoadingBar,
   SlideDrawer,
   SteppedProgressDrawer,
+  StepRow,
+  StepIcon,
   type SteppedProgressDrawerProps,
   type ProgressStep,
   type StepStatus,

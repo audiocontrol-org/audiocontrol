@@ -1,4 +1,4 @@
-generated_at: 2026-05-21T23:10:38.926Z
+generated_at: 2026-05-22T04:31:56.663Z
 clones:
   - id: c7068172edae
     lines: 15
@@ -506,18 +506,18 @@ clones:
       - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:491:502
     disposition: pending
     reason: null
-  - id: 8254f27a5b05
+  - id: 947a8989d323
     lines: 25
     members:
       - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:709:733
-      - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:589:613
+      - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:650:674
     disposition: pending
     reason: null
-  - id: f3a44d9d4699
+  - id: 94fe2aee9608
     lines: 18
     members:
       - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:733:750
-      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:342:623
+      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:342:684
     disposition: pending
     reason: null
   - id: e0d94a2bf8fc
@@ -534,18 +534,18 @@ clones:
       - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:43:50
     disposition: pending
     reason: null
-  - id: 414e248151b3
+  - id: cd3ae27bbe6f
     lines: 28
     members:
       - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:315:342
-      - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:587:613
+      - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:648:674
     disposition: pending
     reason: null
-  - id: d508615a62a7
+  - id: 8803390240c0
     lines: 11
     members:
       - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:349:359
-      - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:613:623
+      - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:674:684
     disposition: pending
     reason: null
   - id: 26c7ab47cadd
@@ -1834,53 +1834,53 @@ clones:
       - modules/editor-core/src/components/library/TreeView.test.tsx:8:21
     disposition: pending
     reason: null
-  - id: 02fa42b34708
+  - id: 94555b7e1118
     lines: 13
     members:
-      - modules/editor-core/src/components/library/TreeView.test.tsx:168:180
-      - modules/editor-core/src/components/library/TreeView.test.tsx:293:305
+      - modules/editor-core/src/components/library/TreeView.test.tsx:177:189
+      - modules/editor-core/src/components/library/TreeView.test.tsx:302:314
     disposition: pending
     reason: null
-  - id: 58da1842938f
+  - id: 19262e5aa4e4
     lines: 14
     members:
-      - modules/editor-core/src/components/library/TreeView.test.tsx:168:181
-      - modules/editor-core/src/components/library/TreeView.test.tsx:185:198
+      - modules/editor-core/src/components/library/TreeView.test.tsx:177:190
+      - modules/editor-core/src/components/library/TreeView.test.tsx:194:207
     disposition: pending
     reason: null
-  - id: 4ba2d9e21518
+  - id: 83628bd30664
     lines: 14
     members:
-      - modules/editor-core/src/components/library/TreeView.test.tsx:168:198
-      - modules/editor-core/src/components/library/TreeView.test.tsx:228:241
+      - modules/editor-core/src/components/library/TreeView.test.tsx:177:207
+      - modules/editor-core/src/components/library/TreeView.test.tsx:237:250
     disposition: pending
     reason: null
-  - id: 448a74344969
+  - id: c44ce4edc1a0
     lines: 15
     members:
-      - modules/editor-core/src/components/library/TreeView.test.tsx:168:218
-      - modules/editor-core/src/components/library/TreeView.test.tsx:246:260
+      - modules/editor-core/src/components/library/TreeView.test.tsx:177:227
+      - modules/editor-core/src/components/library/TreeView.test.tsx:255:269
     disposition: pending
     reason: null
-  - id: 80ee29d4a098
+  - id: d54b0262cbb7
     lines: 13
     members:
-      - modules/editor-core/src/components/library/TreeView.test.tsx:169:198
-      - modules/editor-core/src/components/library/TreeView.test.tsx:205:217
+      - modules/editor-core/src/components/library/TreeView.test.tsx:178:207
+      - modules/editor-core/src/components/library/TreeView.test.tsx:214:226
     disposition: pending
     reason: null
-  - id: 042b0391da61
+  - id: 45f1c76897a9
     lines: 18
     members:
-      - modules/editor-core/src/components/library/TreeView.test.tsx:169:221
-      - modules/editor-core/src/components/library/TreeView.test.tsx:267:284
+      - modules/editor-core/src/components/library/TreeView.test.tsx:178:230
+      - modules/editor-core/src/components/library/TreeView.test.tsx:276:293
     disposition: pending
     reason: null
-  - id: 4dd0dc5e0b8a
+  - id: 04a5bcbd733c
     lines: 10
     members:
-      - modules/editor-core/src/components/library/TreeView.test.tsx:56:62
-      - modules/editor-core/src/components/library/TreeView.test.tsx:67:76
+      - modules/editor-core/src/components/library/TreeView.test.tsx:61:67
+      - modules/editor-core/src/components/library/TreeView.test.tsx:72:81
     disposition: pending
     reason: null
   - id: 71d0ea89080c
@@ -1890,32 +1890,32 @@ clones:
       - modules/roland-sxx0-editor/src/components/library/SetItem.tsx:91:104
     disposition: pending
     reason: null
-  - id: 3621ec4ecb38
+  - id: b5c1ea1f8655
     lines: 16
     members:
-      - modules/editor-core/src/components/library/TreeView.tsx:346:361
-      - modules/editor-core/src/components/library/TreeView.tsx:424:439
+      - modules/editor-core/src/components/library/TreeView.tsx:356:371
+      - modules/editor-core/src/components/library/TreeView.tsx:434:449
     disposition: pending
     reason: null
-  - id: b4d7dcfd6e41
+  - id: e76ff0c2fdfe
     lines: 9
     members:
-      - modules/editor-core/src/hooks/useLibraryOperations.ts:303:311
-      - modules/editor-core/src/hooks/useLibraryOperations.ts:460:468
+      - modules/editor-core/src/hooks/useLibraryOperations.ts:314:322
+      - modules/editor-core/src/hooks/useLibraryOperations.ts:483:491
     disposition: pending
     reason: null
-  - id: 60a84acb2c9a
+  - id: e852443c388a
     lines: 8
     members:
-      - modules/editor-core/src/hooks/useLibraryOperations.ts:328:335
-      - modules/editor-core/src/hooks/useLibraryOperations.ts:491:498
+      - modules/editor-core/src/hooks/useLibraryOperations.ts:351:358
+      - modules/editor-core/src/hooks/useLibraryOperations.ts:523:530
     disposition: pending
     reason: null
-  - id: 53bc74d427b7
+  - id: 0c6a90d843da
     lines: 9
     members:
-      - modules/editor-core/src/hooks/useLibraryOperations.ts:466:474
-      - modules/editor-core/src/hooks/useLibraryOperations.ts:496:504
+      - modules/editor-core/src/hooks/useLibraryOperations.ts:489:497
+      - modules/editor-core/src/hooks/useLibraryOperations.ts:528:536
     disposition: pending
     reason: null
   - id: 1da4479b8dc0
@@ -1925,11 +1925,11 @@ clones:
       - modules/editor-core/src/plugins/common-area/icons.tsx:38:54
     disposition: pending
     reason: null
-  - id: 84fec062b20c
+  - id: a2cdf85decae
     lines: 10
     members:
-      - modules/editor-core/src/plugins/common-area/item-types.tsx:150:159
-      - modules/editor-core/src/plugins/common-area/item-types.tsx:92:101
+      - modules/editor-core/src/plugins/common-area/item-types.tsx:100:109
+      - modules/editor-core/src/plugins/common-area/item-types.tsx:158:167
     disposition: pending
     reason: null
   - id: 3cc9f8fee7ff
@@ -2378,6 +2378,14 @@ clones:
       - modules/roland-sxx0-editor/scripts/validate-device.ts:95:109
     disposition: pending
     reason: null
+  - id: fc9e30e6e921
+    lines: 16
+    members:
+      - modules/roland-sxx0-editor/src/components/library/BatchExportDrawer.tsx:106:121
+      - modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx:104:119
+      - modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx:97:112
+    disposition: pending
+    reason: null
   - id: 325d993bda15
     lines: 12
     members:
@@ -2392,67 +2400,39 @@ clones:
       - modules/roland-sxx0-editor/src/components/library/RenameDirectoryDialog.tsx:90:107
     disposition: pending
     reason: null
-  - id: 3addea473025
-    lines: 10
-    members:
-      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:258:267
-      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:105:114
-    disposition: pending
-    reason: null
-  - id: cd7e53611992
-    lines: 13
-    members:
-      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:307:319
-      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:376:388
-    disposition: pending
-    reason: null
-  - id: 6051b9e150bb
-    lines: 10
-    members:
-      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:319:328
-      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:388:397
-    disposition: pending
-    reason: null
-  - id: 6ef728c29a92
-    lines: 10
-    members:
-      - modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx:145:154
-      - modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx:437:446
-    disposition: pending
-    reason: null
-  - id: ac11d860632f
-    lines: 29
-    members:
-      - modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx:169:197
-      - modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx:141:169
-    disposition: pending
-    reason: null
-  - id: 0d8e7502d000
-    lines: 18
-    members:
-      - modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx:201:218
-      - modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx:173:190
-    disposition: pending
-    reason: null
-  - id: 2e11dba1c473
-    lines: 19
-    members:
-      - modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx:84:102
-      - modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx:68:86
-    disposition: pending
-    reason: null
-  - id: fe3a018ad283
+  - id: 80946c86b2d9
     lines: 11
     members:
-      - modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx:125:135
-      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:285:295
+      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:166:176
+      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:198:208
     disposition: pending
     reason: null
-  - id: 1c1cc84c22a2
+  - id: af59f9a4d226
     lines: 8
     members:
-      - modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx:77:84
-      - modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:193:200
+      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:367:374
+      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:106:113
+    disposition: pending
+    reason: null
+  - id: 78866787ffba
+    lines: 14
+    members:
+      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:418:431
+      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:495:508
+    disposition: pending
+    reason: null
+  - id: 38c8236d8a7b
+    lines: 7
+    members:
+      - modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx:195:201
+      - modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx:183:189
+    disposition: pending
+    reason: null
+  - id: d4c7b8219186
+    lines: 12
+    members:
+      - modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx:81:92
+      - modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx:71:82
     disposition: pending
     reason: null
   - id: 3d41d904a462
@@ -2564,18 +2544,18 @@ clones:
       - modules/roland-sxx0-editor/src/components/library/ImportToneDialog.tsx:134:157
     disposition: pending
     reason: null
-  - id: e353b145801b
+  - id: 35c226931fbc
     lines: 13
     members:
-      - modules/roland-sxx0-editor/src/components/library/ItemPreviewPanel.tsx:326:338
-      - modules/roland-sxx0-editor/src/components/library/ItemPreviewPanel.tsx:409:421
+      - modules/roland-sxx0-editor/src/components/library/ItemPreviewPanel.tsx:382:394
+      - modules/roland-sxx0-editor/src/components/library/ItemPreviewPanel.tsx:465:477
     disposition: pending
     reason: null
-  - id: daf60d5989dc
+  - id: 3eec052ebf3d
     lines: 27
     members:
-      - modules/roland-sxx0-editor/src/components/library/ItemPreviewPanel.tsx:342:368
-      - modules/roland-sxx0-editor/src/components/library/ItemPreviewPanel.tsx:425:451
+      - modules/roland-sxx0-editor/src/components/library/ItemPreviewPanel.tsx:398:424
+      - modules/roland-sxx0-editor/src/components/library/ItemPreviewPanel.tsx:481:507
     disposition: pending
     reason: null
   - id: 791f64b2325e
@@ -2599,13 +2579,6 @@ clones:
       - modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:91:119
     disposition: pending
     reason: null
-  - id: a9865e0f6bf5
-    lines: 9
-    members:
-      - modules/roland-sxx0-editor/src/components/library/SampleBundlePreviewPanel.tsx:255:263
-      - modules/roland-sxx0-editor/src/plugins/s550-library-plugin.tsx:137:145
-    disposition: pending
-    reason: null
   - id: 5578c63410e2
     lines: 14
     members:
@@ -2620,46 +2593,46 @@ clones:
       - modules/roland-sxx0-editor/src/components/tones/ToneEditorTabs.tsx:63:93
     disposition: pending
     reason: null
-  - id: 0b1f1e18a4f6
+  - id: e2f41456da80
     lines: 16
     members:
-      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:100:115
-      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:93:105
+      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:101:116
+      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:94:106
     disposition: pending
     reason: null
-  - id: e59e72b96539
-    lines: 31
+  - id: 536ec5699e5a
+    lines: 29
     members:
-      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:115:145
-      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:105:133
+      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:116:144
+      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:106:132
     disposition: pending
     reason: null
-  - id: 588be1297b2e
+  - id: 93118bb09088
     lines: 16
     members:
-      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:145:160
-      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:133:148
+      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:144:159
+      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:132:147
     disposition: pending
     reason: null
-  - id: 4991822d3339
+  - id: 8d26f23c5d5b
     lines: 11
     members:
-      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:216:226
-      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:215:225
+      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:215:225
+      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:214:224
     disposition: pending
     reason: null
-  - id: a36eef4faae2
+  - id: 80299d9fda8d
     lines: 21
     members:
-      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:232:252
-      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:231:251
+      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:231:251
+      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:230:250
     disposition: pending
     reason: null
-  - id: ab5d4423bc40
+  - id: 3785f9b1220a
     lines: 14
     members:
-      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:70:83
-      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:63:76
+      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:71:84
+      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:64:77
     disposition: pending
     reason: null
   - id: f5b154b0b218
@@ -2775,6 +2748,13 @@ clones:
       - modules/roland-sxx0-editor/src/hooks/useLibraryImport.ts:76:81
     disposition: pending
     reason: null
+  - id: 745cec296a63
+    lines: 11
+    members:
+      - modules/roland-sxx0-editor/src/hooks/useLibraryExport.ts:454:464
+      - modules/roland-sxx0-editor/src/hooks/useLibraryExport.ts:700:710
+    disposition: pending
+    reason: null
   - id: ec92684ea87f
     lines: 13
     members:
@@ -2873,10 +2853,10 @@ clones:
       - modules/sampler-devices/src/devices/roland-s-series/s-series-wave-format.ts:178:189
     disposition: pending
     reason: null
-  - id: b896773cce2c
+  - id: c3ee44db4131
     lines: 16
     members:
-      - modules/roland-sxx0-editor/src/pages/PatchesPage.tsx:271:286
+      - modules/roland-sxx0-editor/src/pages/PatchesPage.tsx:275:290
       - modules/roland-sxx0-editor/src/pages/TonesPage.tsx:243:258
     disposition: pending
     reason: null
@@ -2887,10 +2867,10 @@ clones:
       - modules/roland-sxx0-editor/src/pages/TonesPage.tsx:26:32
     disposition: pending
     reason: null
-  - id: b4345011f7fb
+  - id: c53786bfb969
     lines: 33
     members:
-      - modules/roland-sxx0-editor/src/pages/PatchesPage.tsx:299:331
+      - modules/roland-sxx0-editor/src/pages/PatchesPage.tsx:303:335
       - modules/roland-sxx0-editor/src/pages/TonesPage.tsx:271:303
     disposition: pending
     reason: null
@@ -2908,18 +2888,18 @@ clones:
       - modules/roland-sxx0-editor/src/plugins/s550-library-plugin.tsx:77:101
     disposition: pending
     reason: null
-  - id: dad862699df3
-    lines: 79
+  - id: 47120235fd38
+    lines: 92
     members:
-      - modules/roland-sxx0-editor/src/plugins/s330-library-plugin.tsx:87:165
-      - modules/roland-sxx0-editor/src/plugins/s550-library-plugin.tsx:109:187
+      - modules/roland-sxx0-editor/src/plugins/s330-library-plugin.tsx:87:178
+      - modules/roland-sxx0-editor/src/plugins/s550-library-plugin.tsx:109:200
     disposition: pending
     reason: null
-  - id: a5acbcde5773
+  - id: ad7deae8d330
     lines: 16
     members:
-      - modules/roland-sxx0-editor/src/plugins/shared/item-types.tsx:112:127
-      - modules/roland-sxx0-editor/src/plugins/shared/item-types.tsx:46:61
+      - modules/roland-sxx0-editor/src/plugins/shared/item-types.tsx:122:137
+      - modules/roland-sxx0-editor/src/plugins/shared/item-types.tsx:56:71
     disposition: pending
     reason: null
   - id: d92cf446413c

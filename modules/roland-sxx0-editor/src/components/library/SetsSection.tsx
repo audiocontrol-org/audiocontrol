@@ -10,6 +10,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { SetInfo, SetYaml, StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
 import type { ItemSelection } from '@audiocontrol/editor-core';
+import { AcChevron } from '@audiocontrol/editor-core';
 import { loadSetManifest } from '@/lib/library-sets';
 import { SetItem } from '@/components/library/SetItem';
 
@@ -83,36 +84,60 @@ export function SetsSection({
     }
   }, [expandedSets, libraryHandle, manifests, loadingManifests]);
 
+  // Mirrors the editor-core TreeSection's collapse pattern so Sets
+  // reads as a peer of Tones/Patches/Samples/Programs in the v3
+  // library tree (chevron + click-to-toggle, body hidden when
+  // collapsed). Default expanded.
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const expanded = !isCollapsed;
+
   return (
-    <div className="ac-tree-section">
-      <div className="ac-tree-section-header">
-        <span className="ac-tree-section-title">Sets</span>
+    <div
+      className={`ac-tree-section${expanded ? '' : ' ac-tree-section--collapsed'}`}
+      data-category="sets"
+      data-testid="library-sets-section"
+      data-expanded={expanded}
+    >
+      <div className="ac-tree-section-header" data-testid="library-sets-section-header">
+        <button
+          type="button"
+          className="ac-tree-section-toggle"
+          onClick={() => setIsCollapsed((prev) => !prev)}
+          aria-expanded={expanded}
+          aria-controls="library-sets-section-content"
+          data-testid="library-sets-section-toggle"
+        >
+          <AcChevron expanded={expanded} />
+          <span className="ac-tree-section-title">Sets</span>
+        </button>
       </div>
-      {sets.length === 0 ? (
-        <div className="ac-tree-section-empty">No sets in library</div>
-      ) : (
-        <div>
-          {sets.map((setInfo) => (
-            <SetItem
-              key={setInfo.name}
-              setInfo={setInfo}
-              manifest={manifests.get(setInfo.name) ?? null}
-              isSelected={selection?.categoryId === 'sets' && selection?.node.name === setInfo.name}
-              isExpanded={expandedSets.has(setInfo.name)}
-              selectedItemName={undefined}
-              selectedItemType={undefined}
-              onToggle={() => toggleSet(setInfo.name)}
-              onSelect={() => onSelectSet(setInfo.name)}
-              onSelectTone={(toneFile) => onSelectTone(toneFile, setInfo.name)}
-              onSelectPatch={(patchFile) => onSelectPatch(patchFile, setInfo.name)}
-              onToneDragStart={() => {}}
-              onPatchDragStart={() => {}}
-              isLoadingManifest={loadingManifests.has(setInfo.name)}
-              onDelete={onDeleteSet ? () => onDeleteSet(setInfo.name) : undefined}
-              onRename={onRenameSet ? (newName) => onRenameSet(setInfo.name, newName) : undefined}
-            />
-          ))}
-        </div>
+      {expanded && (
+        sets.length === 0 ? (
+          <div className="ac-tree-section-empty">No sets in library</div>
+        ) : (
+          <div id="library-sets-section-content" data-testid="library-sets-section-content">
+            {sets.map((setInfo) => (
+              <SetItem
+                key={setInfo.name}
+                setInfo={setInfo}
+                manifest={manifests.get(setInfo.name) ?? null}
+                isSelected={selection?.categoryId === 'sets' && selection?.node.name === setInfo.name}
+                isExpanded={expandedSets.has(setInfo.name)}
+                selectedItemName={undefined}
+                selectedItemType={undefined}
+                onToggle={() => toggleSet(setInfo.name)}
+                onSelect={() => onSelectSet(setInfo.name)}
+                onSelectTone={(toneFile) => onSelectTone(toneFile, setInfo.name)}
+                onSelectPatch={(patchFile) => onSelectPatch(patchFile, setInfo.name)}
+                onToneDragStart={() => {}}
+                onPatchDragStart={() => {}}
+                isLoadingManifest={loadingManifests.has(setInfo.name)}
+                onDelete={onDeleteSet ? () => onDeleteSet(setInfo.name) : undefined}
+                onRename={onRenameSet ? (newName) => onRenameSet(setInfo.name, newName) : undefined}
+              />
+            ))}
+          </div>
+        )
       )}
     </div>
   );

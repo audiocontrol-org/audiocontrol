@@ -20,6 +20,7 @@ import {
   renameDirectory,
   deleteSet,
   renameSet,
+  moveItem as moveLibraryItem,
 } from '@/lib/library-service';
 import type { RolandPageSelection } from '@/pages/LibraryPage';
 
@@ -106,6 +107,43 @@ export function useRolandLibraryStrategy({
         return { handled: true };
       }
       return { handled: false };
+    },
+
+    async moveItem(categoryId: string, node: TreeNode, targetPath: string[]): Promise<StrategyResult> {
+      if (!libraryHandle) return { handled: false };
+      // Common-area categories live under library/common/samples — the
+      // shared hook's common-area moveItem is correct for those.
+      if (categoryId === 'samples' || categoryId === 'programs') {
+        return { handled: false };
+      }
+      const sourcePath = getNodePath(node);
+      const itemName = getNodeName(node);
+      await moveLibraryItem(
+        libraryHandle,
+        toLibraryCategory(categoryId),
+        sourcePath,
+        itemName,
+        targetPath,
+      );
+      // If the moved item was the page-level selection, clear it.
+      // The selection's `path` field still points to the OLD parent
+      // (e.g. ['DRUMS']) after the move; the preview pane's load
+      // useEffect would then re-attempt `loadIndividualPatch(handle,
+      // name, oldPath)` and the file-system-access call would throw
+      // "file or directory could not be found" — visible to the
+      // operator as a "FAILED TO LOAD" body even though the move
+      // itself succeeded. Mirrors the same clear-on-mutation guard
+      // that `deleteItem` above uses for the delete case.
+      const samePath = (a: string[] | undefined, b: string[]) =>
+        (a ?? []).length === b.length && (a ?? []).every((seg, i) => seg === b[i]);
+      if (
+        selection &&
+        ((selection.type === 'individualTone' && node.type === 'tone' && selection.name === itemName && samePath(selection.path, sourcePath)) ||
+          (selection.type === 'individualPatch' && node.type === 'patch' && selection.name === itemName && samePath(selection.path, sourcePath)))
+      ) {
+        setSelection(null);
+      }
+      return { handled: true };
     },
 
     async renameItem(categoryId: string, node: TreeNode, newName: string): Promise<StrategyResult> {
