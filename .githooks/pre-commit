@@ -56,4 +56,16 @@ if git diff --cached --name-only --diff-filter=ACM | grep -qE '\.tsx?$'; then
   # accrue), the scanner short-circuits and exits 0 cheaply.
   echo "pre-commit: checking for adopter-manifest holdouts…"
   make --no-print-directory check-adopters
+  # T6.3 cross-editor symmetry gate. Reuses the T6.2 registry to
+  # build a fleet matrix (rows = conventions, columns = editor
+  # modules under `modules/*-editor/`). Read-only check — surfaces
+  # ⚠ / ✗ cells when one editor lags the others. The committed
+  # operator-readable artifact at
+  # `docs/scope-discovery/editor-symmetry.md` is refreshed via
+  # `make check-editor-symmetry-write`, NOT by this hook. When the
+  # registry is empty (the common case until refactors append
+  # entries), the matrix has no rows and the scanner short-circuits
+  # to exit 0 cheaply.
+  echo "pre-commit: checking cross-editor symmetry…"
+  make --no-print-directory check-editor-symmetry > /dev/null
 fi

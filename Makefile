@@ -77,7 +77,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions check-refactor-preconditions-validate check-anti-patterns check-anti-patterns-validate check-adopters check-adopters-validate test-scope-discovery scope-inventory refresh-clones-baseline check-chevron-sizing
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions check-refactor-preconditions-validate check-anti-patterns check-anti-patterns-validate check-adopters check-adopters-validate check-editor-symmetry check-editor-symmetry-write check-editor-symmetry-validate test-scope-discovery scope-inventory refresh-clones-baseline check-chevron-sizing
 
 build: $(ALL_STAMPS)
 
@@ -424,6 +424,38 @@ check-adopters:
 check-adopters-validate:
 	tsx tools/scope-discovery/adopter-manifests.validate.ts
 
+# T6.3 — Cross-editor symmetry gate. Reuses the T6.2 adopter-manifest
+# registry (no parallel "conventions" registry; the matrix derives
+# from the same per-primitive entries) and produces a fleet matrix:
+# rows are adoption conventions, columns are editor modules
+# auto-discovered under `modules/*-editor/`. Each cell shows the
+# adoption status of the editor for the convention (✓ N/N | ⚠
+# A/E (H holdouts) | ✗ missing | — n/a). Output goes to stdout
+# (always) and to `docs/scope-discovery/editor-symmetry.md` when
+# `--write` is passed. DRY: reuses util/registry-yaml.ts + util/glob.ts
+# (from T6.1/T6.2 extraction) + the import-regex builder from
+# check-adopters.ts. Exits 1 when any ⚠ or ✗ cell is present; exits
+# 0 on empty registry or all-✓ matrix.
+check-editor-symmetry:
+	tsx tools/scope-discovery/check-editor-symmetry.ts
+
+# Operator-driven refresh of the committed artifact at
+# `docs/scope-discovery/editor-symmetry.md`. Run this after the
+# adopter-manifest registry changes; the rendered markdown is the
+# operator-readable single-page view of the fleet matrix.
+check-editor-symmetry-write:
+	tsx tools/scope-discovery/check-editor-symmetry.ts --write --quiet
+
+# Adversarial validator for the T6.3 gate. Plants 11 synthetic
+# scenarios (empty registry; single-editor adopt; single-editor
+# partial; multi-editor all-adopt; multi-editor N-1 adopt; multi-
+# editor missing-with-no-files surfaces as ✗; editor-not-targeted
+# is n/a; exception counts toward expected; matrix is valid
+# markdown; --write produces artifact; gutted-stub self-check)
+# under per-scenario temp directories. T6.3 gate.
+check-editor-symmetry-validate:
+	tsx tools/scope-discovery/editor-symmetry.validate.ts
+
 # Run the full scope-discovery validator suite: both adversarial
 # harnesses + the Phase 5 refactor-preconditions smoke-test in
 # sequence. The clone-detector validator runs first (plants fixtures,
@@ -437,13 +469,16 @@ check-adopters-validate:
 # (registry scanner + multi-pattern fingerprint + gutted-stub self-
 # check); on success the T6.2 adopter-manifests validator runs sixth
 # (registry scanner + glob engine + import detection + exception path
-# validation + gutted-stub self-check). Equivalent to
+# validation + gutted-stub self-check); on success the T6.3 editor-
+# symmetry validator runs seventh (matrix computation + per-editor
+# bucketing + markdown structure + --write artifact + gutted-stub
+# self-check). Equivalent to
 # `pnpm test:scope-discovery` — both invocations exist so operators
 # and the orchestrator can use whichever fits their flow. Combined
 # runtime is under 30s; if that ever changes, the workplan T2.8 gate
 # is broken and the slowdown must be surfaced.
-# T2.8 gate (+ T5.2 + T5.3 + T6.1 + T6.2 additions).
-test-scope-discovery: check-clone-duplication-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions-validate check-anti-patterns-validate check-adopters-validate
+# T2.8 gate (+ T5.2 + T5.3 + T6.1 + T6.2 + T6.3 additions).
+test-scope-discovery: check-clone-duplication-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions-validate check-anti-patterns-validate check-adopters-validate check-editor-symmetry-validate
 
 # Operator ergonomics target for the `/scope-inventory` skill (T3.3).
 # Validates that a feature directory exists under one of the
