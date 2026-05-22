@@ -159,6 +159,15 @@ Narrative output of the synthesis pass (T3.2). Combines per-agent findings into 
 - `.githooks/pre-commit` — wires the clone detector into the commit gate. Lives under `.githooks/` per the project's existing hook convention.
 - `.jscpd.json` — jscpd configuration (scope, thresholds, ignores). Lives at the repo root per jscpd's convention.
 
+## Pre-commit gate vs. validator suite
+
+The scope-discovery tooling has two distinct verification surfaces and the boundary between them is load-bearing:
+
+- **Pre-commit hook** (`.githooks/pre-commit`) runs ONLY the clone detector (`make check-clone-duplication`) on commits that touch TS/TSX. It's the fast, deterministic gate that blocks NEW clone groups at commit time. The dispatch wrapper is NOT invoked here — the wrapper fires at sub-agent dispatch time inside an orchestrator session, not at commit time, so a commit-time wrapper check would have nothing to validate.
+- **Validator suite** (`pnpm test:scope-discovery` or `make test-scope-discovery`) runs BOTH adversarial validator harnesses in sequence: `check-clone-duplication-validate` (proves the clone detector has teeth — gutted-logic self-check plants adversarial fixtures and asserts the detector catches them) followed by `check-dispatch-wrapper-validate` (proves the wrapper rejects malformed sub-agent returns — synthetic dispatchFn responses + gutted-wrapper self-check). Combined runtime is under 30s.
+
+The validator suite is **controller-invokable and operator-invokable**, not pre-commit-invoked. The project removed external CI gates 2026-05-11; the controller (orchestrator session) is now the gate per `.claude/rules/agent-discipline.md` §"When CI is absent, the controller is the gate". The orchestrator runs `pnpm test:scope-discovery` after every Phase 2 task dispatch to independently verify the gates still have teeth; operators run it ad-hoc when they change detector/wrapper logic or want to confirm a touched validator scenario.
+
 ## Git-ignore policy
 
 **Nothing under `docs/` is gitignored.** This is a load-bearing invariant — the entire point of treating discovery evidence as planning artifacts is that it travels with the feature in git, is review-visible, and is reconstructible by any future session reading the repo.

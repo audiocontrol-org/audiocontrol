@@ -47,7 +47,8 @@
     "plugin:interrogate:all:text": "tsx tools/plugin-interrogator.ts --all --text",
     "check-credibility": "tsx tools/check-credibility.ts",
     "generate-coverage-manifest": "tsx tools/generate-coverage-manifest.ts",
-    "check-coverage": "tsx tools/check-coverage.ts"
+    "check-coverage": "tsx tools/check-coverage.ts",
+    "test:scope-discovery": "make check-clone-duplication-validate && make check-dispatch-wrapper-validate"
   },
   "keywords": [
     "audio",
