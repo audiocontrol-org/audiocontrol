@@ -142,6 +142,32 @@ test.describe('Capabilities — Library (C-LIB)', () => {
     await expect(s550PreviewTitle).toBeVisible({ timeout: 5_000 });
   });
 
+  test('D-LIB-38: DeviceMemoryPanel bank headers expose device-{tone,patch}-bank-{toggle,reload}-N testids (clones.yaml 03544a6f535a + b9f7e847ff94 BankHeader-reuse refactor contract)', async ({ page }) => {
+    // Test-before-extract contract for replacing DeviceMemoryPanel's
+    // local renderBankHeader helper with the shared BankHeader
+    // component. The contract: every tone bank in the panel still
+    // exposes `device-tone-bank-toggle-${N}` + `device-tone-bank-
+    // reload-${N}` testids; every patch bank exposes the analogous
+    // `device-patch-bank-*-${N}` pair. The render also still produces
+    // the slot-range readout text inside .ac-list-bank-meta.
+    //
+    // No prior test pinned these testids — they exist only as code
+    // identifiers, so a refactor that drops them would silently break
+    // any future bank-targeting tests. This assertion adds the
+    // protection BEFORE the BankHeader-reuse refactor lands. Must pass
+    // pre-refactor + stay green post-refactor.
+    const panel = page.locator('[data-capability="C-LIB-02"]');
+    await expect(panel).toBeVisible({ timeout: 5_000 });
+
+    await expect(page.getByTestId('device-tone-bank-toggle-0')).toBeVisible();
+    await expect(page.getByTestId('device-tone-bank-reload-0')).toBeVisible();
+    await expect(page.getByTestId('device-patch-bank-toggle-0')).toBeVisible();
+    await expect(page.getByTestId('device-patch-bank-reload-0')).toBeVisible();
+
+    await expect(page.getByTestId('device-tone-bank-toggle-0')).toContainText('Bank 1');
+    await expect(page.getByTestId('device-patch-bank-toggle-0')).toContainText('Bank 1');
+  });
+
   test('D-LIB-22: Refresh Device button is reachable in the page header', async ({ page }) => {
     // LibraryPage.tsx:249 renders a "Refresh Device" button in the
     // sticky page header. It triggers handleLoadDeviceData, which
