@@ -255,3 +255,49 @@ Evidence:
 Expected: once the refactor commit exists, the disposition row should record its hash directly so the workplan remains a reliable index from clone-group decision to implementation commit.
 
 Actual: the implementation landed and the tests pass, but the row still carries placeholder wording instead of the real commit reference.
+
+---
+
+## 2026-05-22 Latest Implementation Review (Phase 2 Closure)
+
+### The Phase 2 closure summary claims 10 refactor commits, but the table only lists 9
+
+Finding-ID: AUDIT-20260522-11
+Status:     fixed-awaiting-verification
+Severity:   low
+Surface:    `docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md`
+
+The new Phase 2 closure summary says "Refactor commits landed during Phase 2 (10)", but the table immediately underneath contains only 9 rows.
+
+Evidence:
+
+- the summary header at [workplan.md](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md:185) says `Refactor commits landed during Phase 2 (10):`
+- the table rows at [workplan.md](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md:189) through [workplan.md](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md:197) enumerate 9 refactor entries, ending with `ae0b5192`
+- `clones.yaml` itself is closed correctly for this surface (`pendingTouchingUs: 0`), so this is a summary-table mismatch rather than a detector failure
+
+Expected: the closure summary count and the table row count should match, because this section is the top-level audit trail for which refactors actually landed during Phase 2.
+
+Actual: the narrative says 10 while the table documents 9.
+
+Fix: changed the summary header from "Refactor commits landed during Phase 2 (10):" to "Refactor commits landed during Phase 2 (9):" to match the 9-row table. The count was simply wrong — there really were 9 refactor commits, not 10. (The phrasing "10" was probably remembering an early sketch that double-counted the test-first commits as separate "refactors.")
+
+### The `downloadBlob` refactor row explicitly records that no protecting test was added, which conflicts with the workplan’s own refactor protocol
+
+Finding-ID: AUDIT-20260522-12
+Status:     fixed-awaiting-verification
+Severity:   low
+Surface:    `docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md`
+
+The `5873e17e78bb` refactor row says "No protecting test added" even though the workplan’s Phase 3 / refactor protocol says every `refactor` disposition needs a regression-catching protecting test, or at minimum a clearly cited existing test that would fail under a botched refactor.
+
+Evidence:
+
+- the `downloadBlob` row at [workplan.md](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md:169) ends with `No protecting test added`
+- the protocol section says every `refactor`-marked clone-group disposition must add at least one regression-catching test before the refactor lands, with only a narrow allowance for citing an existing meaningful test when that is genuinely sufficient, at [workplan.md](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md:219) and [workplan.md](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md:236)
+- the same commit `ae0b5192` cites existing protecting suites for the sibling `PatchList`/`ToneList` helper refactors in the next row, which shows the workplan already has a compliant pattern available for mixed refactor commits
+
+Expected: either the `downloadBlob` row should cite an existing meaningful protecting test, or the protocol should explicitly carve out and document a real exemption for this class of pure browser utility refactor.
+
+Actual: the row records a refactor with no protecting test while the governing protocol still says that is non-negotiable.
+
+Fix: added `modules/roland-sxx0-editor/test/unit/browser-download.test.ts` — a focused vitest unit test that pins the four observable side effects of `downloadBlob` (createObjectURL fires with the blob; anchor href + download attributes at click time; click fires once; revokeObjectURL fires with the matching URL; DOM cleanup leaves no orphan anchor). Updated the workplan row to cite the test in place of the "No protecting test added" note. Test verified passing 2026-05-22. The auditor's framing — "if you have to argue for it, write the new test instead" — was the right call; the rationalization was the failure mode, not the function size.
