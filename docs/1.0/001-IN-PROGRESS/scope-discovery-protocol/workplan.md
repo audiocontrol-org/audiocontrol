@@ -7,7 +7,16 @@
 
 ## Overview
 
-Four-phase implementation that produces (1) a refined PRD with all Open Questions resolved into binding answers, (2) the foundation tooling — a general code-clone detector and a programmatic sub-agent dispatch wrapper, both with adversarial validator harnesses, (3) the two skills (`/scope-inventory` and `/scope-widen`) implementing the multi-agent discovery model plus a `.dw-lifecycle/config.json` session.start.preamble nudge for system-wide features (no `dw-lifecycle` plugin modification), (4) validation by draining the existing audiocontrol duplication backlog to zero un-dispositioned entries plus a paper-test against the s550 redesign timeline.
+Seven-phase implementation (extended 2026-05-22 via `/dwe` to incorporate roland-bugfix's tooling feedback). Phases 1–3 + a ship-ready slice of Phase 4 merged via PR #441; Phase 4's burndown continues on the post-s550 bugfix branch. Phases 5–7 added to address concrete findings from `feature/roland-bugfix`'s `tooling-feedback.md` exercising the protocol in anger.
+
+Phase rollup:
+1. **Refinement** — PRD's Open Questions resolved into binding answers.
+2. **Foundation Tooling** — general code-clone detector + programmatic sub-agent dispatch wrapper + adversarial validator harnesses for both.
+3. **Skills + session.start.preamble** — `/scope-inventory` + `/scope-widen` skills implementing the multi-agent discovery model + session-start nudge for system-wide features (no `dw-lifecycle` plugin modification).
+4. **Validation by Drain** — drain the audiocontrol duplication backlog to zero un-dispositioned entries + paper-test against the s550 redesign timeline. Reframed mid-implementation: drain happens on the active post-s550 bugfix branch as a natural by-product of its refactor scheduling.
+5. **Refactor Preconditions** (CRITICAL) — refactor commits require declared canonical side + proven regression-detection coverage before they can land. Addresses the MUST FIX from roland-bugfix feedback (regime-erasure prevention) + the operator-added test-precondition rule (no refactor without tests).
+6. **Regime-Holdout Discovery** — anti-pattern registry + adopter manifests + cross-editor symmetry checker + deprecation-driven scan + a `regime-holdout-detector` agent joining `/scope-inventory`'s fleet. Catches regime drift that doesn't show up as clones.
+7. **Tooling Hardening + Operator QoL** — content-hashed clone-group IDs (no more line-shift orphaning of dispositions), self-installing `make scope-inventory`, `make clone-summary`, upstreamed `batch-dispose.ts`, polish bundle.
 
 The `.claude/rules/agent-discipline.md` rule applies in full: every task has an observable completion gate; *"tests pass"* / *"make clean"* are not gates — the gate names the specific artifact (file path, screenshot, fixture, test output line, committed disposition) that proves the task achieved its purpose. **Scope reduction by deferral is forbidden.** Resolutions in the PRD are binding; tasks below implement them in full, not in narrowed v1 shape.
 
@@ -157,17 +166,103 @@ Four sequential phases. Each phase produces a load-bearing artifact that gates t
 
 **Phase 4 acceptance gate:** `docs/scope-discovery/clones.yaml` has zero un-dispositioned entries; every `refactor` entry has a merged PR; paper-test coverage ≥85% with gaps named; feature docs moved to `003-COMPLETE/`.
 
+## Phase 5: Refactor Preconditions (CRITICAL precedence)
+
+**GitHub Issue:** [#443](https://github.com/audiocontrol-org/audiocontrol/issues/443) (parent [#435](https://github.com/audiocontrol-org/audiocontrol/issues/435))
+
+**Source:** `feature/roland-bugfix`'s `docs/1.0/001-IN-PROGRESS/roland-bugfix/tooling-feedback.md` (the MUST FIX in §"Regime holdouts" + the operator-added test-precondition rule).
+
+**Why CRITICAL precedence:** Without Phase 5, every refactor walk on the active post-s550 bugfix branch is at risk of two scaling failure modes that look like progress while introducing regression: (a) regime erasure — an agent extracts a shared helper from the WRONG (legacy) side of a clone and silently downgrades the new-regime call site, undoing prior migration; (b) behavior regression — an agent refactors code whose test coverage doesn't actually catch the regression class the refactor risks, so the clone count drops while behavior quietly diverges. Both are documented in the feedback as observed-or-imminent. Phase 5 lands BEFORE scaling clone-driven refactor work to other branches.
+
+**Deliverable:** every `refactor`-dispositioned clone group in `docs/scope-discovery/clones.yaml` has two mechanically-verifiable preconditions before its PR can land: (a) **canonical-side declaration** documenting whether one side, all sides, or a new shape defines the canonical; (b) **regression-detection coverage** with a named test artifact + a proof-of-detection commit demonstrating the test fails on broken code. Both are enforced at pre-commit; refactor agents and code-reviewers extend their dispatch grammar to enumerate both before proposing extractions.
+
+**Tasks:**
+
+- [ ] **T5.1** — `clones.yaml` schema extension: required fields on `disposition: refactor` entries.
+  - **Proven complete when:** `tools/scope-discovery/schema/scope-manifest.schema.json` and `tools/scope-discovery/clones-yaml.ts` both enforce the new required fields on refactor entries: `canonical_side: <file-path> | "all" | "new"`, `canonical_reason: <text>`, `new_shape_summary: <text>` (required only when `canonical_side: "new"`), `tests: [<test-id-or-command>, ...]`, `tests_proof: { sha: <commit-hash>, demonstration: <one-line> }`. Existing `pending` / `keep-with-reason` / `ignore-with-justification` entries pass validation unchanged. Adversarial validator (`tools/scope-discovery/clone-detector.validate.ts`) gains 4 new scenarios covering each canonical_side enum value plus the missing-tests-field rejection.
+- [ ] **T5.2** — Refactor protocol Step 0 (canonical-side identification + test-precondition identification) documented in the workplan template + auditor checklist.
+  - **Proven complete when:** the workplan template (`~/work/audiocontrol-work/audiocontrol/docs/1.0/<...>/workplan-template.md` if one exists; otherwise documented inline in `docs/scope-discovery/README.md` §"Refactor protocol") names the four-branch decision for Step 0a (one-side-canonical / all-sides-canonical / new-shape / undetermined→keep-with-reason) and the three-branch decision for Step 0b (tests exist with proof / tests exist need proof / no tests need creation). The `code-reviewer` and `codebase-auditor` agent prompts at `~/.claude/agents/` (or wherever the project sources them; T3.3's smoke-test located `.claude/skills/` as the canonical surface) carry the Step 0 checklist verbatim. A smoke-test dispatch of `code-reviewer` against a synthetic refactor commit missing the canonical declaration returns a rejection naming the missing fields.
+- [ ] **T5.3** — Pre-commit gate enforces both preconditions on refactor commits.
+  - **Proven complete when:** `.githooks/pre-commit` invokes a new `make check-refactor-preconditions` target on commits whose message contains a refactor marker (`Closes clones.yaml <id>` or equivalent). The gate rejects when: (a) target clone group's `canonical_side` is empty or invalid; (b) `tests` is empty or names commands that don't exist; (c) `tests_proof.sha` is unset or doesn't resolve via `git rev-parse`; (d) running the test commands at HEAD exits non-zero. Each rejection prints the specific failing precondition + an actionable next step. Adversarial validator: a synthetic refactor commit missing each precondition is rejected, and a commit satisfying all four is accepted (proven by `tools/scope-discovery/refactor-preconditions.validate.ts`).
+- [ ] **T5.4** — Sub-agent prompts extended for refactor preconditions.
+  - **Proven complete when:** the `code-reviewer`, `codebase-auditor`, `code-simplifier`, and refactor-dispatch-orchestrator agent prompts include the canonical-side verification branches (file: diff matches named file's pre-refactor shape; "all": extracted code is a faithful lift of common shape, consumers' behavior unchanged; "new": extracted primitive matches `new_shape_summary`) and the test-precondition verification (named tests exist + the `tests_proof.sha` diff genuinely shows test failure on broken code). A dispatch smoke-test against the T3.6-style fixture confirms each branch fires correctly.
+
+**Phase 5 acceptance gate:** schema enforces the new fields; pre-commit gate rejects refactor commits missing any precondition; adversarial validator harness for the new gate exists with both happy-path and gutted-stub coverage; sub-agent prompts updated; `docs/scope-discovery/README.md` has a `## Refactor Preconditions` section documenting the operator-facing protocol; the bugfix branch's first post-Phase-5 refactor commit demonstrates the gate firing correctly on a real refactor.
+
+## Phase 6: Regime-Holdout Discovery
+
+**GitHub Issue:** [#444](https://github.com/audiocontrol-org/audiocontrol/issues/444) (parent [#435](https://github.com/audiocontrol-org/audiocontrol/issues/435))
+
+**Source:** `feature/roland-bugfix`'s tooling-feedback.md §"Regime holdouts — detecting incomplete migrations directly (not via clone shadow)" — the five-recommendation proposal at lines 145–280.
+
+**Why:** the current protocol catches duplication as a *shadow* of regime gaps (a holdout often duplicates the canonical's shape, so finding the duplication finds the holdout transitively). Six gap classes don't show up as clones: missing-primitive adoption that hasn't yet generated duplication; semantic anti-patterns that aren't token-identical; single-instance holdouts; deprecation queues; cross-editor symmetry gaps; refactor commits that don't carry forward the regime declaration in machine-readable form. Phase 6 closes these gaps with five independent additions that compose.
+
+**Deliverable:** the protocol gains four new artifact/check pairs that directly detect regime drift without requiring duplication to exist first: anti-pattern registry + ast-grep scan, adopter manifests + `make check-adopters`, cross-editor symmetry matrix + `make check-editor-symmetry`, deprecation queue + `make check-deprecations`. `/scope-inventory` adds a `regime-holdout-detector` agent to the fan-out fleet; synthesized manifests gain a `regime_holdouts:` top-level section.
+
+**Tasks:**
+
+- [ ] **T6.1** — Anti-pattern registry + extraction-commit workflow.
+  - **Proven complete when:** `docs/scope-discovery/anti-patterns.yaml` exists with the schema documented in tooling-feedback.md §"Anti-pattern registry tied to extraction commits" (each entry: `id`, `added_in: <commit>`, `primitive`, `from: <import>`, `shape: <code fingerprint>`, `message: <replacement instruction>`). A new make target `make check-anti-patterns` walks the registry, runs `ast-grep` (or a structural-match equivalent) against the source tree, and reports holdouts with the suggested replacement. Pre-commit hook runs the check on TS/TSX changes — surfaces holdouts when a refactor introduces code matching a registered anti-pattern. Adversarial validator at `tools/scope-discovery/anti-patterns.validate.ts` plants a known anti-pattern and asserts detection.
+- [ ] **T6.2** — Adopter manifests + `make check-adopters`.
+  - **Proven complete when:** `docs/scope-discovery/adopter-manifests.yaml` exists with the schema documented in tooling-feedback.md §"Adopter manifest per primitive" (per entry: `primitive`, `from: <import>`, `introduced_in: <commit>`, `expected_adopters_glob`, `exceptions: [{path, reason}]`). `make check-adopters` enumerates each glob, greps each file for the canonical import, computes `expected − actual − exceptions`, reports holdouts. Adversarial validator plants a known holdout (file in the adopter glob without the canonical import) and asserts detection.
+- [ ] **T6.3** — Cross-editor symmetry checker.
+  - **Proven complete when:** `make check-editor-symmetry` builds a matrix (rows = conventions declared in `docs/scope-discovery/adopter-manifests.yaml` or a sibling `conventions.yaml`; columns = editor modules under `modules/*-editor/`). Each cell is computed by greping the editor for the canonical import or convention pattern. Output is a markdown table; holdouts highlighted with `✗`. Adversarial validator plants a convention adopted by N-1 editors and asserts the missing editor surfaces as `✗`.
+- [ ] **T6.4** — Deprecation-driven scan.
+  - **Proven complete when:** `make check-deprecations` walks the source tree for `@deprecated` JSDoc / inline `// @deprecated` markers, counts remaining importers per deprecated file (excluding the file's own re-exports + doc-comment references), emits a status report distinguishing `importers > 0` (deletion blocked; list importers) from `importers = 0` (safe-to-delete queue). A `docs/scope-discovery/deprecation-queue.md` is regenerated on each run for operator review. Adversarial validator plants a deprecated file with N importers and asserts the report names them.
+- [ ] **T6.5** — Regime-holdout discovery agent joins the `/scope-inventory` fleet.
+  - **Proven complete when:** `tools/scope-discovery/discovery-agents/regime-holdout-detector.ts` exists, reads the anti-pattern registry + adopter manifests + deprecation index, runs the scans, returns structured findings JSON matching a `RegimeHoldoutFindings` type added to `tools/scope-discovery/discovery-agents/types.ts`. The synthesis pass (`tools/scope-discovery/synthesis.ts`) consumes the findings and produces a top-level `regime_holdouts:` section in `scope-manifest.yaml`. Manifest schema (T2.1) extended to validate the new section. Smoke-test against `feature/roland-bugfix` produces the expected 5+5+1+6+3 holdout entries the feedback's "what this would have surfaced" prediction names.
+- [ ] **T6.6** — Documentation updates.
+  - **Proven complete when:** `docs/scope-discovery/LAYOUT.md` documents the new on-disk artifacts (anti-patterns.yaml, adopter-manifests.yaml, deprecation-queue.md). `docs/scope-discovery/README.md` gains a `## Regime-holdout discovery` section explaining the four scan types and when each fires. `.claude/skills/scope-inventory/SKILL.md` procedure adds a step naming the new agent's contribution. Workplan template (or feature-define output) gains a "Refactor extractions update the anti-pattern registry" reminder.
+
+**Phase 6 acceptance gate:** all four scan targets (`make check-anti-patterns`, `make check-adopters`, `make check-editor-symmetry`, `make check-deprecations`) exist and pass their adversarial validators; the regime-holdout discovery agent integrates with `/scope-inventory`; smoke-test against roland-bugfix surfaces the predicted holdout set; documentation updated.
+
+## Phase 7: Tooling Hardening + Operator QoL
+
+**GitHub Issue:** [#445](https://github.com/audiocontrol-org/audiocontrol/issues/445) (parent [#435](https://github.com/audiocontrol-org/audiocontrol/issues/435))
+
+**Source:** `feature/roland-bugfix`'s tooling-feedback.md medium-severity items + minor-polish bundle.
+
+**Why:** the feedback surfaced two medium-severity correctness/UX issues (line-shift orphaning of dispositions, first-run `pnpm install` UX) plus high-frequency operator quality-of-life items (per-surface pending count, batch-dispose script). Without these, the bugfix branch's burndown work accumulates operator friction; with them, each subsequent burndown session is faster.
+
+**Deliverable:** clone-group IDs hashed from content (not line numbers); `make scope-inventory` self-installs deps or surfaces an actionable error; `make clone-summary` for per-surface pending counts; upstream `batch-dispose.ts` with verify-after-write; a small bundle of polish items.
+
+**Tasks:**
+
+- [ ] **T7.1** — Content-hashed clone-group IDs.
+  - **Proven complete when:** `tools/scope-discovery/clones-yaml.ts` derives group IDs from `sha1(sorted member-file-paths + jscpd-token-stream fingerprint)`, NOT from line ranges. A `make refresh-clones-baseline` run after a refactor that shifts neighboring code's line numbers shows ZERO id-churn on the un-modified clone groups (only the genuinely-modified groups' ids change). Adversarial validator: plant a line-shift in code adjacent to a known clone group, refresh baseline, assert the un-modified group's id is identical pre- and post-refresh. Migration step: a one-time `make migrate-clone-ids` script reads the existing `clones.yaml`, re-computes IDs under the new hash, writes a `migration-map.yaml` (`<old-id>: <new-id>`), and rewrites `clones.yaml`. Existing dispositions carry forward.
+- [ ] **T7.2** — `make scope-inventory` self-installs deps or errors actionably.
+  - **Proven complete when:** `make scope-inventory FEATURE=<slug>` checks for missing top-level deps (a `node_modules/.install-stamp` style check) before invoking the skill; if missing, prints "run `pnpm install` first — these scope-discovery agents need `yaml`, `ajv`, `ajv-formats`" and exits with a clean error code. OR: the target itself runs `pnpm install` as a pre-step (matching the existing Makefile pattern for build targets that depend on `INSTALL_STAMP`). Pick whichever matches the existing convention; document the choice inline. Adversarial test: remove `node_modules/yaml`, run `make scope-inventory FEATURE=test`, assert the error is actionable (not a raw `ERR_MODULE_NOT_FOUND`).
+- [ ] **T7.3** — `make clone-summary` per-surface pending count.
+  - **Proven complete when:** `make clone-summary SURFACE=<glob>` (or `tsx tools/scope-discovery/summary.ts --surface <glob>`) prints a 4-line summary: `total: N | pending-touching: M | pending-intra: K | dispositioned-touching: L` for any surface glob the operator names. The "touching" vs "intra" distinction matches the feedback's vocabulary: groups with at least one member matching the glob vs. groups with all members matching. Adversarial validator plants a known glob + known clones, asserts the counts match expectations. Documentation in `docs/scope-discovery/README.md` adds a `Day-to-day: how many pending in my surface?` example.
+- [ ] **T7.4** — Upstream `tools/scope-discovery/batch-dispose.ts` with verify-after-write.
+  - **Proven complete when:** the script promoted from the operator-built `.tmp/batch-dispose.ts` (in `feature/roland-bugfix`) lands at `tools/scope-discovery/batch-dispose.ts`. CLI usage: `tsx tools/scope-discovery/batch-dispose.ts --ids <id1,id2,...> --disposition <kind> --reason <text> [--show-existing]`. Verify-after-write step re-reads `clones.yaml` and confirms each applied row landed before reporting success. `--show-existing` flag prints the existing disposition + reason for groups already non-pending. Adversarial validator: plant a YAML file with 3 known pending entries, run batch-dispose against them, assert the file ends with the expected dispositions + reasons. Plant a failed-write scenario (e.g., locked file) and assert the script fails loudly, not silently.
+- [ ] **T7.5** — Polish bundle: small, independent fixes.
+  - **Proven complete when:** the following one-line / few-line fixes all land in this task:
+    - `tools/scope-discovery/clone-detector.ts` adds a `--diff` flag printing only NEW + DROPPED groups (not the full set).
+    - `tools/scope-discovery/discovery-agents/prd-themed-pattern-hunter.ts` strips URL components (`https?://...`, `<github>.com/`) before tokenization.
+    - `tools/scope-discovery/synthesis.ts` surfaces synthesizer warnings in `<run-dir>/synthesis.md` under a `## Synthesizer notes` section (not just stderr).
+    - `tools/scope-discovery/clone-detector.ts` `--refresh-baseline` mode emits a `summary: N dropped, M new (net X)` final line.
+    - `.claude/rules/agent-discipline.md` (or equivalent) gets a one-line cross-reference to `pnpm test:scope-discovery` in the "When CI is absent, the controller is the gate" section.
+    - `tools/scope-discovery/batch-dispose.ts` (T7.4) gains a `--show-existing` flag for skipped rows.
+    - `make install-hooks` output enumerates all active gates (CSS-duplication, TS/TSX clone, chevron-sizing, refactor-preconditions if Phase 5 has landed) — not just the gates this PR added.
+    - `.githooks/pre-commit` logs `--no-verify` bypass attempts to stderr (catching discipline violations).
+
+**Phase 7 acceptance gate:** T7.1 migration completes without dispositioned-entry loss; T7.2 errors actionably on missing deps; `make clone-summary` produces the documented output; `tools/scope-discovery/batch-dispose.ts` exists with verify-after-write + tests; polish-bundle items all land.
+
 ## GitHub Tracking
 
 To be filled by `/feature-issues` after Phase 1 completes (T1.7).
 
 | Issue | Title | Phase | Status |
 |-------|-------|-------|--------|
-| [#435](https://github.com/audiocontrol-org/audiocontrol/issues/435) | [process] scope-discovery-protocol (parent) | All | Planning |
-| [#436](https://github.com/audiocontrol-org/audiocontrol/issues/436) | Phase 1: Refinement | 1 | In Progress |
-| [#437](https://github.com/audiocontrol-org/audiocontrol/issues/437) | Phase 2: Foundation tooling | 2 | Planning |
-| [#438](https://github.com/audiocontrol-org/audiocontrol/issues/438) | Phase 3: Skills + session-start preamble | 3 | Planning |
-| [#439](https://github.com/audiocontrol-org/audiocontrol/issues/439) | Phase 4: Validation by drain | 4 | Planning |
+| [#435](https://github.com/audiocontrol-org/audiocontrol/issues/435) | [process] scope-discovery-protocol (parent) | All | In Progress |
+| [#436](https://github.com/audiocontrol-org/audiocontrol/issues/436) | Phase 1: Refinement | 1 | Complete |
+| [#437](https://github.com/audiocontrol-org/audiocontrol/issues/437) | Phase 2: Foundation tooling | 2 | Complete |
+| [#438](https://github.com/audiocontrol-org/audiocontrol/issues/438) | Phase 3: Skills + session-start preamble | 3 | Complete |
+| [#439](https://github.com/audiocontrol-org/audiocontrol/issues/439) | Phase 4: Validation by drain | 4 | In Progress (on roland-bugfix branch) |
+| [#443](https://github.com/audiocontrol-org/audiocontrol/issues/443) | Phase 5: Refactor Preconditions (CRITICAL) | 5 | Planning |
+| [#444](https://github.com/audiocontrol-org/audiocontrol/issues/444) | Phase 6: Regime-Holdout Discovery | 6 | Planning |
+| [#445](https://github.com/audiocontrol-org/audiocontrol/issues/445) | Phase 7: Tooling Hardening + Operator QoL | 7 | Planning |
 
 Labels: `process`, `tooling`, `priority:high`, `infra`.
 
