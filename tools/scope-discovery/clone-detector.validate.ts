@@ -45,14 +45,18 @@ import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import {
+  type CloneGroup,
   type ClonesYaml,
   parseClonesYaml,
   serializeClonesYaml,
 } from './clones-yaml.js';
 import {
+  scenarioBadTestsProofSha,
   scenarioCanonicalSideAll,
   scenarioCanonicalSideFilePath,
   scenarioCanonicalSideNew,
+  scenarioMalformedTestsElement,
+  scenarioMissingCanonicalReason,
   scenarioMissingTestsField,
 } from './clone-detector.refactor-scenarios.js';
 import { errorMessage } from './util/typeguards.js';
@@ -298,13 +302,24 @@ async function scenarioIgnoreWithJustification(): Promise<ScenarioResult> {
       `expected at least one baseline entry; parsed:\n${baselineText}`,
     );
   }
+  // Construct each mutated entry explicitly from the common-base fields
+  // (no spread). A `{...g, disposition: 'ignore-with-justification'}` form
+  // would carry forward refactor-only fields if g happened to be a
+  // RefactorCloneGroup, producing an in-memory value that the TS compiler
+  // accepts but which violates the discriminated union (a non-refactor
+  // disposition paired with refactor-only fields). Fix 2 from T5.1's
+  // code-review follow-ups.
   const mutated: ClonesYaml = {
     generated_at: parsed.generated_at,
-    clones: parsed.clones.map((g) => ({
-      ...g,
-      disposition: 'ignore-with-justification',
-      reason: 'harness: legitimate near-duplicate, not refactor candidate',
-    })),
+    clones: parsed.clones.map(
+      (g): CloneGroup => ({
+        id: g.id,
+        lines: g.lines,
+        members: g.members,
+        disposition: 'ignore-with-justification',
+        reason: 'harness: legitimate near-duplicate, not refactor candidate',
+      }),
+    ),
   };
   await writeFile(fixture.baseline, serializeClonesYaml(mutated), 'utf8');
   const second = await runDetector(detectorArgs(fixture));
@@ -437,6 +452,9 @@ async function main(): Promise<number> {
     adapt(scenarioCanonicalSideAll),
     adapt(scenarioCanonicalSideNew),
     adapt(scenarioMissingTestsField),
+    adapt(scenarioMalformedTestsElement),
+    adapt(scenarioBadTestsProofSha),
+    adapt(scenarioMissingCanonicalReason),
   ];
   const results: ScenarioResult[] = [];
   try {

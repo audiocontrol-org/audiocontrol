@@ -20,12 +20,15 @@
  *     bug. Refactor-precondition bugs surface at parse time; the test
  *     belongs at the parse-time layer.
  *
- * The four scenarios:
+ * The seven scenarios:
  *
- *   1. canonical_side: <file-path>  happy path  — parser accepts
- *   2. canonical_side: "all"        happy path  — parser accepts
- *   3. canonical_side: "new"        happy path + missing-new_shape_summary rejection
- *   4. missing 'tests' field        rejection   — parser throws RefactorPreconditionError
+ *   1. canonical_side: <file-path>      happy path  — parser accepts
+ *   2. canonical_side: "all"            happy path  — parser accepts
+ *   3. canonical_side: "new"            happy path + missing-new_shape_summary rejection
+ *   4. missing 'tests' field            rejection   — parser throws RefactorPreconditionError
+ *   5. malformed tests[] element        rejection   — non-string in tests[] is rejected by index
+ *   6. malformed tests_proof.sha        rejection   — non-hex sha is rejected
+ *   7. missing canonical_reason field   rejection   — required field absent
  *
  * Each scenario returns the same ScenarioResult shape the host
  * harness emits to stdout.
@@ -34,7 +37,7 @@
 import {
   parseClonesYaml,
   RefactorPreconditionError,
-  isRefactorCloneGroup,
+  hasRefactorDisposition,
 } from './clones-yaml.js';
 
 export interface RefactorScenarioResult {
@@ -114,7 +117,7 @@ export function scenarioCanonicalSideFilePath(): RefactorScenarioResult {
     );
   }
   const group = parsed.clones[0];
-  if (group === undefined || !isRefactorCloneGroup(group)) {
+  if (group === undefined || !hasRefactorDisposition(group)) {
     return fail(
       'canonical_side: <file-path> happy path',
       `expected refactor variant; got disposition=${group?.disposition ?? 'undefined'}`,
@@ -166,7 +169,7 @@ export function scenarioCanonicalSideAll(): RefactorScenarioResult {
     );
   }
   const group = parsed.clones[0];
-  if (group === undefined || !isRefactorCloneGroup(group)) {
+  if (group === undefined || !hasRefactorDisposition(group)) {
     return fail(
       'canonical_side: "all" happy path',
       `expected refactor variant; got ${group?.disposition ?? 'undefined'}`,
@@ -230,7 +233,7 @@ export function scenarioCanonicalSideNew(): RefactorScenarioResult {
     );
   }
   const group = parsed.clones[0];
-  if (group === undefined || !isRefactorCloneGroup(group)) {
+  if (group === undefined || !hasRefactorDisposition(group)) {
     return fail(
       'canonical_side: "new" happy path + missing-new_shape_summary rejection',
       `happy-path expected refactor variant; got ${group?.disposition ?? 'undefined'}`,
@@ -334,5 +337,122 @@ export function scenarioMissingTestsField(): RefactorScenarioResult {
   return pass(
     'missing-tests rejection',
     "parser threw RefactorPreconditionError naming 'tests' field",
+  );
+}
+
+/**
+ * Common adversarial-rejection helper. Each of the post-scenario-4 cases
+ * follows the same shape: hand a malformed YAML to parseClonesYaml and
+ * assert that (a) it throws, (b) the throw is RefactorPreconditionError,
+ * and (c) the error message names the expected field. Centralising the
+ * scaffolding keeps the per-scenario bodies focused on the YAML payload
+ * + the specific field-name needle.
+ */
+function assertRefactorRejection(
+  name: string,
+  yaml: string,
+  needle: string,
+): RefactorScenarioResult {
+  let threw = false;
+  let isExpectedClass = false;
+  let errMsg = '';
+  try {
+    parseClonesYaml(yaml);
+  } catch (err) {
+    threw = true;
+    if (err instanceof RefactorPreconditionError) {
+      isExpectedClass = true;
+      errMsg = err.message;
+    } else {
+      errMsg = err instanceof Error ? err.message : String(err);
+    }
+  }
+  if (!threw) {
+    return fail(name, `parseClonesYaml accepted malformed entry; expected rejection naming ${needle}`);
+  }
+  if (!isExpectedClass) {
+    return fail(name, `parser threw but not RefactorPreconditionError: ${errMsg}`);
+  }
+  if (!errMsg.includes(needle)) {
+    return fail(name, `error did not name ${needle}: ${errMsg}`);
+  }
+  return pass(name, `parser threw RefactorPreconditionError naming ${needle}`);
+}
+
+/**
+ * Scenario 5: malformed tests[] element. Refactor entry has tests as a
+ * list with one valid string + one non-string (number) element. Parser
+ * must reject and name the offending index. Catches the failure mode
+ * where an operator hand-edits a tests entry and accidentally drops the
+ * quotes around a numeric-looking test id ("42" → 42).
+ */
+export function scenarioMalformedTestsElement(): RefactorScenarioResult {
+  const yaml = buildRefactorBaselineYaml(
+    [
+      '    canonical_side: modules/x/file-a.ts',
+      '    canonical_reason: file-a.ts is canonical; file-b.ts is the holdout',
+      '    tests:',
+      '      - 42',
+      '      - modules/x/test/valid-test.ts',
+      '    tests_proof:',
+      '      sha: a1b2c3d',
+      '      demonstration: holdout call sites return legacy shape; test pins the regression',
+    ].join('\n'),
+  );
+  return assertRefactorRejection(
+    'malformed tests[] element rejection',
+    yaml,
+    'tests[0]',
+  );
+}
+
+/**
+ * Scenario 6: malformed tests_proof.sha. Refactor entry has every field
+ * populated correctly EXCEPT tests_proof.sha contains non-hex characters
+ * ("ZZZZZZZ"). Parser must reject and reference the SHA regex. Catches
+ * the failure mode where an operator pastes a placeholder or accidentally
+ * types a non-hex string into the sha field.
+ */
+export function scenarioBadTestsProofSha(): RefactorScenarioResult {
+  const yaml = buildRefactorBaselineYaml(
+    [
+      '    canonical_side: modules/x/file-a.ts',
+      '    canonical_reason: file-a.ts is canonical; file-b.ts is the holdout',
+      '    tests:',
+      '      - modules/x/test/valid-test.ts',
+      '    tests_proof:',
+      '      sha: ZZZZZZZ',
+      '      demonstration: holdout call sites return legacy shape; test pins the regression',
+    ].join('\n'),
+  );
+  return assertRefactorRejection(
+    'bad tests_proof.sha rejection',
+    yaml,
+    'tests_proof.sha',
+  );
+}
+
+/**
+ * Scenario 7: missing canonical_reason. Refactor entry has canonical_side
+ * populated but canonical_reason omitted entirely. Parser must reject and
+ * name the missing field. Catches the failure mode where an operator
+ * declares "which side wins" but forgets to record "why" — exactly the
+ * deferral pattern the precondition schema is built to prevent.
+ */
+export function scenarioMissingCanonicalReason(): RefactorScenarioResult {
+  const yaml = buildRefactorBaselineYaml(
+    [
+      '    canonical_side: all',
+      '    tests:',
+      '      - modules/x/test/valid-test.ts',
+      '    tests_proof:',
+      '      sha: a1b2c3d',
+      '      demonstration: both sides currently render correctly; extraction must preserve identical output',
+    ].join('\n'),
+  );
+  return assertRefactorRejection(
+    'missing canonical_reason rejection',
+    yaml,
+    'canonical_reason',
   );
 }

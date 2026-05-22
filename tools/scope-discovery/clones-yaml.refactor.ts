@@ -91,59 +91,104 @@ export function validateRefactorPreconditions(
   id: string,
 ): RefactorPreconditionsCheck {
   const errors: string[] = [];
-  const canonical_side = entry['canonical_side'];
-  const canonical_reason = entry['canonical_reason'];
-  const new_shape_summary = entry['new_shape_summary'];
-  const tests = entry['tests'];
-  const tests_proof = entry['tests_proof'];
+  const canonical_side_raw = entry['canonical_side'];
+  const canonical_reason_raw = entry['canonical_reason'];
+  const new_shape_summary_raw = entry['new_shape_summary'];
+  const tests_raw = entry['tests'];
+  const tests_proof_raw = entry['tests_proof'];
 
-  const sideOk = typeof canonical_side === 'string' && canonical_side.length > 0;
-  if (!sideOk) {
+  // Per-field locals are typed as the validated type OR null. After all
+  // checks, if errors.length === 0 every local is guaranteed non-null and
+  // we construct the result object from them. This avoids fallback
+  // empty-string literals (which CLAUDE.md forbids outside test code)
+  // while keeping the parser permissive (collect every error in one pass
+  // rather than fail-fast on the first one).
+  const canonical_side: string | null =
+    typeof canonical_side_raw === 'string' && canonical_side_raw.length > 0
+      ? canonical_side_raw
+      : null;
+  if (canonical_side === null) {
     errors.push(
       `refactor entry ${id}: missing or empty 'canonical_side' ` +
         `(expected <file-path> | "all" | "new")`,
     );
   }
-  if (typeof canonical_reason !== 'string' || canonical_reason.length === 0) {
+  const canonical_reason: string | null =
+    typeof canonical_reason_raw === 'string' && canonical_reason_raw.length > 0
+      ? canonical_reason_raw
+      : null;
+  if (canonical_reason === null) {
     errors.push(`refactor entry ${id}: missing or empty 'canonical_reason'`);
   }
-  // new_shape_summary required only when canonical_side === "new".
-  if (canonical_side === 'new') {
-    if (typeof new_shape_summary !== 'string' || new_shape_summary.length === 0) {
+  // new_shape_summary semantics:
+  //   - canonical_side === 'new': required, must be non-empty string
+  //   - canonical_side !== 'new': optional; if present, must be a
+  //     non-empty string. An empty string is rejected in BOTH arms for
+  //     consistency (an explicit empty value is a malformed declaration,
+  //     not a "no value" signal — omit the field instead).
+  let new_shape_summary: string | undefined = undefined;
+  if (canonical_side_raw === 'new') {
+    if (typeof new_shape_summary_raw !== 'string' || new_shape_summary_raw.length === 0) {
       errors.push(
         `refactor entry ${id}: 'new_shape_summary' is required when canonical_side: "new"`,
       );
+    } else {
+      new_shape_summary = new_shape_summary_raw;
     }
-  } else if (new_shape_summary !== undefined && typeof new_shape_summary !== 'string') {
-    errors.push(`refactor entry ${id}: 'new_shape_summary' must be a string when present`);
+  } else if (new_shape_summary_raw !== undefined) {
+    if (typeof new_shape_summary_raw !== 'string' || new_shape_summary_raw.length === 0) {
+      errors.push(
+        `refactor entry ${id}: 'new_shape_summary' must be omitted or a non-empty string ` +
+          `when canonical_side !== "new"`,
+      );
+    } else {
+      new_shape_summary = new_shape_summary_raw;
+    }
   }
-  const testStrs = collectTestStrings(tests, id, errors);
-  const proof = collectTestsProof(tests_proof, id, errors);
+  const tests = collectTestStrings(tests_raw, id, errors);
+  const tests_proof = collectTestsProof(tests_proof_raw, id, errors);
 
   if (errors.length > 0) return { ok: false, errors };
+  // All non-null guards are guaranteed by the errors.length === 0 gate
+  // above. The `!` assertions are load-bearing only as TS-narrowing
+  // sugar; if any local is still null here, the error-collection logic
+  // above is broken.
+  if (canonical_side === null || canonical_reason === null || tests === null || tests_proof === null) {
+    throw new Error(
+      `validateRefactorPreconditions: internal invariant violated for entry ${id} ` +
+        `(errors empty but a per-field local is null)`,
+    );
+  }
   const result: RefactorPreconditions = {
-    canonical_side: sideOk ? canonical_side : '',
-    canonical_reason: typeof canonical_reason === 'string' ? canonical_reason : '',
-    tests: testStrs,
-    tests_proof: proof,
-    ...(typeof new_shape_summary === 'string' ? { new_shape_summary } : {}),
+    canonical_side,
+    canonical_reason,
+    tests,
+    tests_proof,
+    ...(new_shape_summary !== undefined ? { new_shape_summary } : {}),
   };
   return { ok: true, value: result };
 }
 
-function collectTestStrings(tests: unknown, id: string, errors: string[]): readonly string[] {
+function collectTestStrings(
+  tests: unknown,
+  id: string,
+  errors: string[],
+): readonly string[] | null {
   if (!Array.isArray(tests) || tests.length === 0) {
     errors.push(
       `refactor entry ${id}: 'tests' is required and must be a non-empty array ` +
         `of test ids / commands`,
     );
-    return [];
+    return null;
   }
   const out: string[] = [];
-  for (const t of tests) {
+  for (let i = 0; i < tests.length; i++) {
+    const t = tests[i];
     if (typeof t !== 'string' || t.length === 0) {
-      errors.push(`refactor entry ${id}: every 'tests' entry must be a non-empty string`);
-      return [];
+      errors.push(
+        `refactor entry ${id}: tests[${i}] must be a non-empty string (got ${typeof t})`,
+      );
+      return null;
     }
     out.push(t);
   }
@@ -154,29 +199,29 @@ function collectTestsProof(
   tests_proof: unknown,
   id: string,
   errors: string[],
-): { readonly sha: string; readonly demonstration: string } {
+): { readonly sha: string; readonly demonstration: string } | null {
   if (!isPlainObject(tests_proof)) {
     errors.push(
       `refactor entry ${id}: 'tests_proof' is required and must be an object ` +
         `with 'sha' + 'demonstration'`,
     );
-    return { sha: '', demonstration: '' };
+    return null;
   }
-  const sha = tests_proof['sha'];
-  const demo = tests_proof['demonstration'];
-  const shaOk = typeof sha === 'string' && TESTS_PROOF_SHA_REGEX.test(sha);
-  if (!shaOk) {
+  const shaRaw = tests_proof['sha'];
+  const demoRaw = tests_proof['demonstration'];
+  const sha: string | null =
+    typeof shaRaw === 'string' && TESTS_PROOF_SHA_REGEX.test(shaRaw) ? shaRaw : null;
+  if (sha === null) {
     errors.push(
       `refactor entry ${id}: 'tests_proof.sha' must match ${TESTS_PROOF_SHA_REGEX.source} ` +
         `(7-40 lowercase hex)`,
     );
   }
-  const demoOk = typeof demo === 'string' && demo.length > 0;
-  if (!demoOk) {
+  const demonstration: string | null =
+    typeof demoRaw === 'string' && demoRaw.length > 0 ? demoRaw : null;
+  if (demonstration === null) {
     errors.push(`refactor entry ${id}: 'tests_proof.demonstration' is required and non-empty`);
   }
-  return {
-    sha: shaOk ? sha : '',
-    demonstration: demoOk ? demo : '',
-  };
+  if (sha === null || demonstration === null) return null;
+  return { sha, demonstration };
 }

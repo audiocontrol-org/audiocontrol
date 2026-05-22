@@ -198,8 +198,24 @@ export function makeRefactorCloneGroup(args: {
     : base;
 }
 
-/** Type predicate for the refactor variant — used by serializer + consumers. */
-export function isRefactorCloneGroup(g: CloneGroup): g is RefactorCloneGroup {
+/**
+ * Discriminator-only check: returns true iff `g.disposition === 'refactor'`.
+ *
+ * Full structural validation of the refactor-only fields (canonical_side,
+ * canonical_reason, new_shape_summary?, tests, tests_proof) lives in
+ * `validateRefactorPreconditions` (clones-yaml.refactor.ts), which is the
+ * single source of truth for "what counts as a complete refactor
+ * declaration." Use THIS predicate only for type narrowing in code paths
+ * where the discriminated union has already been validated at construction
+ * — e.g., inside `serializeClonesYaml` (operates on CloneGroup values
+ * built via `makeRefactorCloneGroup` or `parseClonesYaml`, both of which
+ * call `validateRefactorPreconditions` upstream).
+ *
+ * Renamed from the old "is-refactor-clone-group" name in T5.1's
+ * code-review follow-ups (Fix 3): the old name was misleading because it
+ * suggested a structural check that the implementation never performed.
+ */
+export function hasRefactorDisposition(g: CloneGroup): g is RefactorCloneGroup {
   return g.disposition === 'refactor';
 }
 
@@ -328,7 +344,7 @@ export function serializeClonesYaml(doc: ClonesYaml): string {
           disposition: g.disposition,
           reason: g.reason,
         };
-        if (!isRefactorCloneGroup(g)) return base;
+        if (!hasRefactorDisposition(g)) return base;
         return {
           ...base,
           canonical_side: g.canonical_side,
@@ -410,7 +426,7 @@ export function mergeDispositions(
     const existing = baselineById.get(g.id);
     if (existing === undefined) return g;
     if (existing.disposition === 'pending') return g;
-    if (isRefactorCloneGroup(existing)) {
+    if (hasRefactorDisposition(existing)) {
       const refreshed: RefactorCloneGroup = {
         id: g.id,
         lines: g.lines,
