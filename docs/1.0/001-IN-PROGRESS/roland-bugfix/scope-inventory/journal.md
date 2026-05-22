@@ -33,3 +33,17 @@ Curation applied to `scope-manifest.yaml` per the synthesis.md hints + the AUDIT
 PRD also gained a `## References` section listing the documents downstream phase work should treat as authoritative (the synthesizer warned at run time that this section was missing; warning lived in stderr only — captured as a `tooling-feedback.md` finding).
 
 Manifest validates against `tools/scope-discovery/schema/scope-manifest.schema.json` post-curation. Curation was applied via `.tmp/curate-manifest.ts` (scratch script, not committed). No re-run of `/scope-inventory` triggered — per LAYOUT.md the canonical manifest is overwritten by re-runs, so curation lives in git history rather than in a new run directory.
+
+## 2026-05-22 Phase 2 closure: strawman survival report
+
+Post-walk report after the Phase 2 clone-disposition closure took `pending touching us` from 172 → 0. Recording how the curated strawman held up against the actual work.
+
+**Strawman survival:** all 5 in-scope curated modules (`roland-sxx0-editor`, `editor-core`, `sampler-devices`, `e2e-infra`) saw refactor or disposition work this session. None were redundant; none turned out to be missing. The pruning from 10 → 4 modules in the curation pass was exactly correct — the dropped editor modules (akai, d110, jv1080, loop-editor, etc.) stayed out of scope and the surviving four were each touched by at least one walk.
+
+**Route survival:** all 5 canonical Roland routes (`/connect`, `/play`, `/patches`, `/tones`, `/library`) saw protecting-test additions or refactor walks. The `/_harness/*` routes were exercised indirectly through wiring suites that route through them. The `/connect` route addition during curation (which the strawman missed) was load-bearing — `D-LIB-23` and `D-LIB-37` cite `/connect`-style URL flow when asserting cross-device chrome.
+
+**Themes survival:** 4 of the 6 retained themes (`bug`, `clone`, `refactor`, `roland`) drove repeated decisions during the walk; the other 2 (`drawer`, `library`) showed up indirectly through the dialog-family decisions. No retained theme turned out to be off-base.
+
+**Did NOT need to re-run `/scope-inventory`.** Curation was binding; the workplan + clones.yaml + disposition log handled the per-walk state. Re-running would have produced a fresh strawman that needed re-curation — no incremental value once the curated manifest is in place. The LAYOUT.md design (re-runs overwrite the canonical manifest by design; the operator branches/tags before re-running to preserve curation) is the right shape.
+
+**What the curated manifest didn't capture, that the walk relied on:** the regime-holdout dimension. The manifest declares which modules/routes/themes are in scope, but says nothing about which primitives are canonical or which call sites should adopt them. The Phase 2 walk re-derived that mapping ad hoc (Export dialogs canonical → Import are holdouts; akai's `$INFRA_DIR/scripts/watchdog.ts` canonical → roland's local copy is the holdout; etc.). The proposal in `tooling-feedback.md` § "Regime holdouts" recommends a `regime_holdouts:` section be added to the synthesized manifest so this dimension stops being implicit. Filing here so the next inventory run + the protocol's own next iteration both see the gap.

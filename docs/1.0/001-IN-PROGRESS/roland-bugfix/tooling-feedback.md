@@ -89,3 +89,192 @@ Exercised 2026-05-22 after the SlotInfo extraction (clones.yaml group `80299d9fd
 
 - ✅ The merge of main into `feature/roland-bugfix` was a clean fast-forward-then-merge (no conflicts). PR #441's surface area (large) didn't touch any of PR #440's changed files.
 - ✅ PR #441's pre-commit additions are additive to PR #440's existing `check-chevron-sizing` hook — both fire under the CSS branch of the conditional, no ordering issue.
+
+## Regime holdouts — detecting incomplete migrations directly (not via clone shadow)
+
+Captured 2026-05-22 after the Phase 2 closure walk dispositioned 172 → 0 pending clones touching `modules/roland-sxx0-editor/` + `modules/editor-core/`. Three of the most consequential dispositions were not clone problems per se — they were regime-holdout problems that the clone detector caught as a downstream symptom. This section names the gap explicitly and proposes how to close it.
+
+### What the operator wants
+
+A failure mode the operator is trying to eradicate: **less-than-complete application of a new regime**. When a new design language, architectural pattern, or shared primitive is introduced, the canonical implementation gets the new shape but a long tail of holdouts stays on the old shape. The holdouts accumulate as silent debt. Each subsequent session "discovers" them all over again because there is no durable record of "this is the canonical, and these other places haven't migrated yet." The operator wants the scope-discovery protocol to surface those holdouts directly — not as a hint that has to be re-derived from clone-detector output every time, but as a first-class finding type.
+
+Concretely the holdouts come in several shapes:
+
+- **Chrome / UX regime gaps:** a new dialog chrome (v3 SlideDrawer) replaces an old one (Radix Dialog); the Export side migrates; the Import side stays on the old chrome.
+- **Lifecycle / state-management primitive gaps:** a new hook (`useExportDialogLifecycle`) absorbs a state-management pattern; the call sites that drove its extraction adopt it; other dialogs with the same lifecycle pattern keep their inline copies.
+- **Convention adoption gaps across editors:** akai adopts `$INFRA_DIR/scripts/watchdog.ts`; roland keeps a byte-identical local copy.
+- **Deprecation queue gaps:** files marked `@deprecated` accumulate in the tree because no scan surfaces remaining importers + schedules deletion.
+- **Primitive-wanting-to-exist gaps:** three pages inline the same title-row markup because no `<PageTitleRow>` primitive exists yet. The primitive's absence is the regime gap.
+- **Cross-editor symmetry gaps:** one editor adopts a convention (deletion of dead-code orphans, use of a shared editor-core primitive, a particular ESLint pattern); siblings don't.
+
+### What the current tooling offers
+
+The current scope-discovery protocol (PR #441) gives one mechanism that catches regime holdouts indirectly: **token-level clone detection via jscpd**. The shadow logic is:
+
+> A regime holdout often contains duplication that the new regime's primitives would have absorbed. Therefore: finding the duplication finds the holdout (transitively).
+
+Three Phase 2 examples where this shadow logic worked:
+
+1. **v3 SlideDrawer + `useExportDialogLifecycle` holdout** — Export dialogs adopted the new chrome + lifecycle hook during Phase 9 Task 4. Import dialogs (5 files) stayed on Radix Dialog + inline state. The detector flagged 15 clone groups across the Import family, covering ~232 lines of duplicated state-management + render-shape patterns. Those clones are precisely what `useExportDialogLifecycle` would absorb. The cone of duplication pointed at the regime gap.
+
+2. **`$INFRA_DIR/scripts/watchdog.ts` convention holdout** — akai-s3k-editor + e2e-infra runner scripts already invoked the shared watchdog through `$INFRA_DIR`. roland-sxx0-editor had a 151-line byte-identical local copy of `watchdog.ts` that its 4 e2e shell scripts referenced directly via `tsx scripts/watchdog.ts`. The detector reported one 151-line cross-module clone (`a975f1067ff4`); fixing it required updating 4 shell scripts and deleting the local copy.
+
+3. **`PageTitleRow` + `AcReloadIcon` primitives wanting to exist** — PatchesPage, TonesPage, and PlayPage each inlined the same `.ac-page-title-row` markup + the same 4-path reload SVG. No primitive existed yet to absorb them. Three clone groups (33L + 16L + 10L) surfaced the gap; extracting two new shared components (`PageTitleRow` + `AcReloadIcon`) closed every group and gave future pages a 1-line affordance.
+
+In each case the duplication was the SHADOW of a regime gap; the detector caught the shadow, and the operator (me, this session) had to recognize the underlying regime to identify the canonical, choose the migration direction, and execute it without erasing the new regime in the process.
+
+### Gaps in the current tooling
+
+The shadow-based discovery works but has six concrete gaps:
+
+1. **No notion of canonical.** Clones are reported symmetrically — the detector says "A and B match." It doesn't know A is the new regime and B is the holdout, or vice versa. (See **MUST FIX** below — this is the most dangerous gap because it can ERADICATE the new regime by mistake during automated remediation.)
+
+2. **Implicit detection only — regimes without active duplication are invisible.** Several regime-holdout shapes don't show up as clones:
+   - Missing primitive adoption that hasn't yet generated duplication (the holdout uses a different shape, not a copy of the canonical).
+   - Semantic anti-patterns like BUG-002's empty `catch { /* error via prop */ }` blocks — every Import dialog has its own variant, structurally similar but not token-identical.
+   - Single-instance holdouts (only one place still uses the legacy chrome) that don't trigger jscpd's 6-line minimum.
+
+3. **No regime registry.** There is no checked-in record that "v3 SlideDrawer is the canonical dialog chrome" or "`useExportDialogLifecycle` is the canonical lifecycle hook for export-style operations" or "`PageTitleRow` is the canonical title-row primitive." Each refactor extraction creates a new primitive but doesn't declare its expected adopter set anywhere a tool can read it. Detecting holdouts requires per-primitive ad-hoc judgment by the next operator, who may not know the primitive exists.
+
+4. **No deprecation-driven scan.** `@deprecated` JSDoc tags mark files as legacy but nothing surfaces their remaining importer count, schedules them for deletion, or alerts when the importer set drops to zero. This session deleted six dead-code orphans (`EnvelopeDisplay.tsx`, `EnvelopeEditor.tsx`, `CreateDirectoryDialog.tsx`, `RenameDirectoryDialog.tsx`, `useDirectoryOperations.ts`, `roland-sxx0-editor/scripts/watchdog.ts`) totalling 1,666 lines. All six carried explicit deprecation markers, comments, or known-unused status that predated this session by weeks or months. The operator's "audit-and-delete dispatch" intent never had a queue.
+
+5. **No cross-editor symmetry checker.** Conventions that span editors (editor-core primitives, shared `$INFRA_DIR/scripts/*` paths, `make` target naming, test-directory structure) have no inventory matrix. The roland watchdog case would have surfaced instantly as "akai: ✓, roland: ✗" if such a matrix existed — without needing a clone to exist at all.
+
+6. **Refactor commits are write-only metadata.** When I extracted `PageTitleRow`, the commit message recorded which clone groups closed and which file became canonical. But nothing in the codebase carries that information forward in machine-readable form. A future agent grepping for `<header class="ac-page-title-row">` outside `PageTitleRow.tsx` would have no automatic signal that they should be consuming the primitive. The regime declaration lives in commit messages, which are read by humans, not tools.
+
+### Recommendations — close the gaps
+
+Each recommendation can land independently. Listed in suggested implementation order (cheapest leverage first).
+
+#### MUST FIX — asymmetric clone reporting (regime-erasure prevention)
+
+**The clone detector treats both sides of a clone symmetrically. The operator-facing pathology: during refactor remediation, an agent can accidentally extract a shared helper from the WRONG side — the legacy side — and silently DOWNGRADE the new-regime call site to legacy semantics, undoing the migration.**
+
+A concrete failure scenario this protocol must prevent:
+
+> ExportToneDialog (v3, uses `SlideDrawer` + `useExportDialogLifecycle` + proper `localError` capture for BUG-001) and ImportToneDialog (legacy, uses Radix `Dialog.Root` + empty `catch { /* error via prop */ }` for BUG-002) share enough surface to flag as a clone. A naïve refactor "extract shared lifecycle helper" could base the extracted hook on ImportToneDialog's shape (empty catch, inline `useState/useEffect`, etc.) and then update BOTH dialogs to consume it. The Export side gets DOWNGRADED — it loses its `localError` capture, BUG-001 returns, and the v3 migration is partially undone. The clone count drops (the protocol reports progress), the test suite passes (BUG-001 isn't actively asserted by a regression test on every dialog), and the regression hides in the diff.
+
+This is the worst possible failure mode the protocol can enable: progress as measured by the detector AND active erasure of prior migration work in the same commit. It can happen without any single decision looking wrong in isolation — each step (find clone, extract shared helper, update call sites) is the obvious refactoring move.
+
+**The fix requires the protocol to know which side is canonical before any extraction.** Two parts:
+
+1. **Per-clone-group "canonical pointer" field** in `clones.yaml`. Refactor agents MUST populate this before extracting:
+   ```yaml
+   - id: <group-id>
+     members:
+       - modules/.../ExportToneDialog.tsx:62:83
+       - modules/.../ImportToneDialog.tsx:48:69
+     disposition: refactor
+     canonical: modules/.../ExportToneDialog.tsx
+     canonical_reason: |
+       v3 SlideDrawer-chrome migration applied here in Phase 9 Task 4.
+       BUG-001 fix (localError capture) lives in this implementation.
+       Import side is the holdout; extraction must follow Export's shape.
+     reason: Extract useExportDialogLifecycle hook from ExportToneDialog
+       and propagate to ImportToneDialog as part of v3 chrome migration.
+   ```
+
+2. **Refactor protocol guardrail.** The "Refactoring protocol: test before extract" section in the workplan adds a step 0: "**Identify the canonical side.** Either (a) one side has a documented regime (cite primitive, ADR, deprecation marker) — that side is canonical; or (b) neither side is canonical, in which case the extraction designs a NEW canonical shape from scratch (do NOT pick one of the existing shapes to copy). If you cannot decide which side is canonical, the disposition is `keep-with-reason` pending a regime decision — not `refactor`."
+
+3. **Pre-commit gate.** A refactor commit (commit message contains `Closes clones.yaml <id>` or similar) is rejected if the target group's `canonical:` field is empty. Forces the decision to happen at disposition time, not at extraction time.
+
+4. **Auditor framing.** Code reviewers (humans + auditor agents) check refactor commits against the canonical declaration: does the extracted helper match the canonical side's shape, or did it inherit shape from the holdout? Any divergence is a finding.
+
+**Severity: critical.** This is the kind of defect that scales with adoption — every refactor walk that happens before the fix lands is a chance to silently undo prior migrations. The longer the protocol runs in production, the more concentrated the canonical knowledge becomes in the (correctly migrated) primitives, and the more catastrophic an accidental erasure becomes. Fix BEFORE scaling clone-driven refactor work to other branches.
+
+#### 1. Anti-pattern registry tied to extraction commits
+
+Every refactor commit that extracts a primitive appends to `docs/scope-discovery/anti-patterns.yaml` a structural fingerprint of the shape the primitive replaces:
+
+```yaml
+- id: export-dialog-lifecycle-inline
+  added_in: dce8fc72
+  primitive: useExportDialogLifecycle
+  from: '@/hooks/useExportDialogLifecycle'
+  shape: |
+    const [localError, setLocalError] = useState<string | null>(null);
+    const [hasStarted, setHasStarted] = useState(false);
+    useEffect(() => {
+      if (open) {
+        setLocalError(null);
+        setHasStarted(false);
+      }
+    }, [open]);
+  message: |
+    This pattern was extracted to `useExportDialogLifecycle`.
+    Replace the inline state + effect with the hook.
+```
+
+A pre-commit step + a scope-inventory pass runs `ast-grep` against the registry. Any holdout matching a registered shape gets flagged with the suggested replacement. The Import dialog family would have lit up the instant the hook landed.
+
+**Why this matters for regime detection:** anti-patterns can be added the same day the canonical primitive lands. The protocol gains a memory; future sessions can't lose track of the regime because the canonical's signature is checked-in.
+
+#### 2. Adopter manifest per primitive
+
+When a refactor commit introduces a shared primitive, it declares the expected adopter set:
+
+```yaml
+# docs/scope-discovery/adopter-manifests.yaml
+- primitive: PageTitleRow
+  from: '@/components/common/PageTitleRow'
+  introduced_in: b996aa01
+  expected_adopters_glob: 'modules/*/src/pages/*Page.tsx'
+  exceptions:
+    - path: 'modules/roland-sxx0-editor/src/pages/ConnectPage.tsx'
+      reason: 'Entry route; no LED-metric / refresh affordance.'
+
+- primitive: SlideDrawer
+  from: '@audiocontrol/editor-core'
+  expected_adopters_glob: 'modules/*/src/components/library/*Dialog.tsx'
+  exceptions:
+    - path: 'modules/roland-sxx0-editor/src/components/library/SaveSetDialog.tsx'
+      reason: 'Uses Radix Dialog intentionally — operator confirmed v3 SlideDrawer migration deferred to ROLAND-BUGFIX-V3-SETSAVE follow-up.'
+```
+
+A `make check-adopters` target enumerates each glob, greps each file for the canonical import, reports holdouts (expected − actual − exceptions). The Import dialogs would surface immediately as "expected SlideDrawer; using Radix Dialog." The detector doesn't need to find a clone for this to work — the holdout shows up because the file is in the adopter glob and isn't importing the canonical.
+
+**Combines with item 1:** anti-patterns catch semantic holdouts (matching the legacy shape); adopter manifests catch structural holdouts (file is in the adopter set but doesn't import the primitive).
+
+#### 3. Cross-editor symmetry checker
+
+A `make check-editor-symmetry` target builds a matrix:
+
+|                      | akai-s3k-editor | roland-sxx0-editor | d110-editor | jv1080-editor |
+|----------------------|-----------------|--------------------|-------------|---------------|
+| `$INFRA_DIR/watchdog`| ✓               | ✓                  | ✓           | ✓             |
+| `editor-core/AcChevron` | ✓            | ✓                  | ✗           | ✗             |
+| `editor-core/SlideDrawer` | ✓          | ✓ (Export only)    | ✗           | ✗             |
+
+Each row is a convention — declared in the same manifest format as item 2. Each column is an editor. Cells are computed by greping the editor for the canonical import (or convention pattern). Holdouts highlighted as `✗`. The roland watchdog case would have flashed red the instant akai adopted the shared path — the regime gap would have been a single line of output.
+
+**Why cross-editor matters:** the operator runs five editors in parallel. The "we did it in akai but not roland" failure mode is the most common shape of regime drift in this codebase. A matrix view makes it impossible to lose track of.
+
+#### 4. Deprecation-driven scans
+
+Every `@deprecated` JSDoc tag becomes a tracked finding. A `make check-deprecations` target:
+
+1. Greps the source tree for `@deprecated` markers.
+2. For each marker, counts remaining importers (excluding the file's own re-export and doc-comment references).
+3. Emits a status report:
+   - **importers > 0:** "deprecated but still consumed — N importers; deletion blocked." Lists importers.
+   - **importers = 0:** "deprecated and unreferenced — safe to delete." Adds to the queue.
+4. The queue can be reviewed manually (operator-approved deletion run) or wired into a follow-up generator.
+
+This session would have surfaced all six dead-code deletions weeks before I rediscovered them via clones. The `EnvelopeDisplay` header literally said "kept for the audit-and-delete dispatch after the rest of Phase 9 Task 4 lands." The dispatch never had a tool to schedule it.
+
+#### 5. Regime-holdout discovery agent in the inventory fleet
+
+Add a new agent under `tools/scope-discovery/discovery-agents/regime-holdout-detector.ts` to the parallel-fanout fleet that `/scope-inventory` already runs. It reads the anti-pattern registry + adopter manifests + the deprecation index, runs the scans, and feeds its findings into `synthesis.ts` the same way the other agents do. The synthesized `scope-manifest.yaml` gains a top-level `regime_holdouts:` section alongside `routes:`, `modules:`, `themes:`. Each holdout entry names the primitive it should adopt, the path, and the suggested fix.
+
+For the roland-bugfix feature this would have surfaced:
+- 5 holdouts for `SlideDrawer` (the Import dialog family)
+- 5 holdouts for `useExportDialogLifecycle` (same files)
+- 1 holdout for `$INFRA_DIR/scripts/watchdog.ts` (roland scripts)
+- 6 deprecation-deletion candidates (the orphans)
+- 3 adopters of `PageTitleRow` (post-extraction, all ✓)
+
+The single section would have driven Phase 2 directly, instead of requiring me to derive the same conclusions from the clone catalog by visual inspection.
+
+### Why these five recommendations matter together
+
+The current protocol catches duplication as a signal. The proposed additions catch *direction*: which side is canonical, which is the holdout, which primitive should absorb the holdout, what other call sites are in the same situation. Without that direction, every refactor walk is at risk of the **MUST FIX** failure mode above — eroding the new regime by accidentally cloning the old. With that direction, the protocol becomes an enforcement layer for the migrations that have already been decided, rather than a discovery layer that re-derives them every time. **The cost is checked-in declarations at primitive-extraction time; the payoff is automated regime convergence + a structural guard against accidental regression.**
