@@ -77,7 +77,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke test-scope-discovery scope-inventory refresh-clones-baseline check-chevron-sizing
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions check-refactor-preconditions-validate test-scope-discovery scope-inventory refresh-clones-baseline check-chevron-sizing
 
 build: $(ALL_STAMPS)
 
@@ -354,6 +354,35 @@ check-dispatch-wrapper-validate:
 check-refactor-preconditions-smoke:
 	tsx tools/scope-discovery/refactor-preconditions.smoke-test.ts
 
+# T5.3 — refactor-preconditions pre-commit (commit-msg) gate. Invoked
+# from .githooks/commit-msg when the commit message contains a
+# `Closes clones.yaml <id>` marker. Verifies the named clone group
+# satisfies both Step 0 preconditions (canonical-side + test-precondition)
+# at commit time: (a) canonical_side file-existence (when not "all"/"new");
+# (b) tests_proof.sha resolves via git rev-parse; (c) named tests[]
+# commands exit 0 at HEAD; plus the T5.1 parse-time fields are surfaced
+# verbatim. Rejects with numbered per-precondition errors + actionable
+# next steps. Exits 0 on non-refactor commits (no marker → silent).
+#
+# COMMIT_MSG_FILE — supplied by the commit-msg hook to point at
+# $GIT_DIR/COMMIT_EDITMSG. When invoked manually (no var), reads the
+# latest commit's message via `git log -1 --format=%B` for diagnostic.
+check-refactor-preconditions:
+ifdef COMMIT_MSG_FILE
+	@tsx tools/scope-discovery/check-refactor-preconditions.ts --commit-msg-file "$(COMMIT_MSG_FILE)"
+else
+	@tsx tools/scope-discovery/check-refactor-preconditions.ts
+endif
+
+# Adversarial validator for the T5.3 gate. Plants 7 synthetic scenarios
+# (happy path, missing canonical-side file, unresolvable SHA, failing
+# test command, marker names non-existent group, marker on pending
+# disposition, no-marker silent) + a gutted-stub self-check that asserts
+# every rejection-scenario assertion fails when runGate is stubbed to
+# return no errors. Workplan T5.3 gate.
+check-refactor-preconditions-validate:
+	tsx tools/scope-discovery/refactor-preconditions.validate.ts
+
 # Run the full scope-discovery validator suite: both adversarial
 # harnesses + the Phase 5 refactor-preconditions smoke-test in
 # sequence. The clone-detector validator runs first (plants fixtures,
@@ -361,12 +390,14 @@ check-refactor-preconditions-smoke:
 # dispatch-wrapper validator runs second (synthetic dispatchFn
 # responses, gutted-logic self-check); on success the Phase 5
 # smoke-test runs third (synthetic refactor entries, gutted-reviewer
+# self-check); on success the T5.3 adversarial validator runs fourth
+# (commit-message marker grammar + runtime preconditions, gutted-stub
 # self-check). Equivalent to `pnpm test:scope-discovery` — both
 # invocations exist so operators and the orchestrator can use
 # whichever fits their flow. Combined runtime is under 30s; if that
 # ever changes, the workplan T2.8 gate is broken and the slowdown
-# must be surfaced. T2.8 gate (+ T5.2 addition).
-test-scope-discovery: check-clone-duplication-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke
+# must be surfaced. T2.8 gate (+ T5.2 + T5.3 additions).
+test-scope-discovery: check-clone-duplication-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions-validate
 
 # Operator ergonomics target for the `/scope-inventory` skill (T3.3).
 # Validates that a feature directory exists under one of the
@@ -415,6 +446,7 @@ install-hooks:
 	@echo "hooks installed: core.hooksPath = .githooks"
 	@echo "  pre-commit: blocks NEW cross-page CSS duplication"
 	@echo "  pre-commit: blocks NEW TS/TSX clone groups (scope-discovery)"
+	@echo "  commit-msg: enforces refactor preconditions when message contains 'Closes clones.yaml <id>'"
 
 # ---------------------------------------------------------------------------
 # Common-Area Library Tests (shared specs, parameterized by env)

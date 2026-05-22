@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# .githooks/commit-msg — invoked by `git commit` with the commit message
+# file path as $1. Fires the refactor-preconditions gate when the message
+# claims to close one or more clones.yaml entries.
+#
+# Why commit-msg (and not pre-commit): pre-commit hooks don't have
+# access to the commit message; the commit message file is only fully
+# resolved at the commit-msg stage. Pulling this out of pre-commit lets
+# the message-driven gate live next to the other repo hooks without
+# poking at .git/COMMIT_EDITMSG from a pre-commit script (which is
+# tighter coupling to git internals than we need).
+#
+# Activated via `make install-hooks` (sets core.hooksPath = .githooks).
+# The hook script itself is tracked, so it travels across clones; the
+# core.hooksPath setting lives in .git/config (not tracked) so each
+# clone runs `make install-hooks` once.
+#
+# Workplan T5.3.
+
+set -euo pipefail
+
+msg_file="$1"
+
+if grep -qiE '^[[:space:]]*Closes[[:space:]]+clones\.yaml[[:space:]]+' "$msg_file"; then
+  echo "commit-msg: refactor marker detected; running check-refactor-preconditions..."
+  exec make --no-print-directory check-refactor-preconditions COMMIT_MSG_FILE="$msg_file"
+fi
