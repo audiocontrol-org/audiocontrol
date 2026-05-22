@@ -1,4 +1,4 @@
-generated_at: 2026-05-22T08:17:04.938Z
+generated_at: 2026-05-22T08:21:54.139Z
 clones:
   - id: c7068172edae
     lines: 15
@@ -2378,20 +2378,6 @@ clones:
       - modules/roland-sxx0-editor/scripts/validate-device.ts:95:109
     disposition: keep-with-reason
     reason: validate-device.ts is a one-binary CLI tool; the 15-line intra-file MIDI port-session boilerplate (input/output declarations, resolved flag, cleanup, timeout) is acceptable duplication. Extracting a withMidiPortSession() helper would require building wiring-test infrastructure (script has no existing test surface) per the test-before-extract protocol, and the cost outweighs the payoff for a single script. Flip to refactor if a future operator builds out a shared scripts/midi-port-session.ts helper across CLI tools and adds the test apparatus.
-  - id: 03544a6f535a
-    lines: 13
-    members:
-      - modules/roland-sxx0-editor/src/components/common/BankHeader.tsx:62:74
-      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:355:367
-    disposition: pending
-    reason: null
-  - id: b9f7e847ff94
-    lines: 13
-    members:
-      - modules/roland-sxx0-editor/src/components/common/BankHeader.tsx:74:86
-      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:367:379
-    disposition: pending
-    reason: null
   - id: 82e7ef31c329
     lines: 16
     members:
@@ -2414,18 +2400,18 @@ clones:
       - modules/roland-sxx0-editor/src/components/library/RenameDirectoryDialog.tsx:90:107
     disposition: pending
     reason: null
-  - id: 80946c86b2d9
+  - id: a56206979911
     lines: 11
     members:
-      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:166:176
-      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:198:208
+      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:156:166
+      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:188:198
     disposition: pending
     reason: null
-  - id: 78866787ffba
+  - id: d15dd72144a6
     lines: 14
     members:
-      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:418:431
-      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:495:508
+      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:356:369
+      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:433:446
     disposition: pending
     reason: null
   - id: e83df277765c

@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import { PatchLabel } from '@/components/common/PatchLabel';
+import { BankHeader } from '@/components/common/BankHeader';
 import { isToneEmpty, isPatchEmpty } from '@/lib/slot-allocation';
 import type { LibraryDragPayload } from '@/lib/library-drag-types';
 import { LIBRARY_ITEM_MIME } from '@/lib/library-drag-types';
@@ -61,17 +62,6 @@ interface DeviceMemoryPanelProps {
   onLoadPatchBank?: (bankIndex: number) => void;
   onReloadToneBank?: (bankIndex: number) => void;
   onReloadPatchBank?: (bankIndex: number) => void;
-}
-
-function ReloadIcon(): JSX.Element {
-  return (
-    <svg viewBox="0 0 16 16" aria-hidden="true">
-      <path d="M3 8a5 5 0 0 1 9-3" />
-      <polyline points="12 2 12 5 9 5" />
-      <path d="M13 8a5 5 0 0 1-9 3" />
-      <polyline points="4 14 4 11 7 11" />
-    </svg>
-  );
 }
 
 export function DeviceMemoryPanel({
@@ -340,58 +330,6 @@ export function DeviceMemoryPanel({
   }, [onDropLibrarySample]);
 
   // ---- Renderers -------------------------------------------------
-  type BankKind = 'tone' | 'patch';
-
-  function renderBankHeader(
-    kind: BankKind,
-    bankIndex: number,
-    firstSlotLabel: string,
-    lastSlotLabel: string,
-    isCollapsed: boolean,
-    onToggle: () => void,
-    isBankLoaded: boolean,
-    isLoading: boolean,
-    onReload?: () => void,
-  ): JSX.Element {
-    const reloadLabel = isBankLoaded
-      ? `Reload bank ${bankIndex + 1}`
-      : `Load bank ${bankIndex + 1}`;
-    return (
-      <div className="ac-list-bank-header">
-        <button
-          type="button"
-          className="ac-list-bank-toggle"
-          onClick={onToggle}
-          aria-expanded={!isCollapsed}
-          aria-label={`Toggle bank ${bankIndex + 1}`}
-          data-testid={`device-${kind}-bank-toggle-${bankIndex}`}
-        >
-          <AcChevron expanded={!isCollapsed} />
-          <span>Bank {bankIndex + 1}</span>
-        </button>
-        <span className="ac-list-bank-meta">
-          <strong>{firstSlotLabel}–{lastSlotLabel}</strong>
-          {onReload && (
-            <button
-              type="button"
-              className={cn(
-                'ac-list-bank-reload',
-                isLoading && 'ac-list-bank-reload--spinning',
-              )}
-              onClick={onReload}
-              disabled={isLoading}
-              aria-label={reloadLabel}
-              title={reloadLabel}
-              data-testid={`device-${kind}-bank-reload-${bankIndex}`}
-            >
-              <ReloadIcon />
-            </button>
-          )}
-        </span>
-      </div>
-    );
-  }
-
   function renderToneSlot(index: number, bankIndex: number, isBankLoading: boolean): JSX.Element {
     const tone = tones[index];
     const isSelected = selectedType === 'tone' && selectedIndex === index;
@@ -607,12 +545,17 @@ export function DeviceMemoryPanel({
                   const isThisBankLoading = loadingToneBank === bankIndex;
                   return (
                     <div key={`tone-bank-${bankIndex}`} data-bank-index={bankIndex}>
-                      {renderBankHeader(
-                        'tone', bankIndex, firstLabel, lastLabel,
-                        isCollapsed, () => toggleToneBank(bankIndex),
-                        isBankLoaded, isThisBankLoading,
-                        onReloadToneBank ? () => onReloadToneBank(bankIndex) : undefined,
-                      )}
+                      <BankHeader
+                        bankIndex={bankIndex}
+                        firstSlotLabel={firstLabel}
+                        lastSlotLabel={lastLabel}
+                        isCollapsed={isCollapsed}
+                        onToggle={() => toggleToneBank(bankIndex)}
+                        isBankLoaded={isBankLoaded}
+                        isThisBankLoading={isThisBankLoading}
+                        onReload={onReloadToneBank}
+                        testIdPrefix="device-tone-bank"
+                      />
                       <div className="ac-collapse" data-expanded={!isCollapsed}>
                         <div>
                           {Array.from({ length: bankEnd - bankStart }, (_, offset) =>
@@ -656,12 +599,17 @@ export function DeviceMemoryPanel({
                   const isThisBankLoading = loadingPatchBank === bankIndex;
                   return (
                     <div key={`patch-bank-${bankIndex}`} data-bank-index={bankIndex}>
-                      {renderBankHeader(
-                        'patch', bankIndex, firstLabel, lastLabel,
-                        isCollapsed, () => togglePatchBank(bankIndex),
-                        isBankLoaded, isThisBankLoading,
-                        onReloadPatchBank ? () => onReloadPatchBank(bankIndex) : undefined,
-                      )}
+                      <BankHeader
+                        bankIndex={bankIndex}
+                        firstSlotLabel={firstLabel}
+                        lastSlotLabel={lastLabel}
+                        isCollapsed={isCollapsed}
+                        onToggle={() => togglePatchBank(bankIndex)}
+                        isBankLoaded={isBankLoaded}
+                        isThisBankLoading={isThisBankLoading}
+                        onReload={onReloadPatchBank}
+                        testIdPrefix="device-patch-bank"
+                      />
                       <div className="ac-collapse" data-expanded={!isCollapsed}>
                         <div>
                           {Array.from({ length: bankEnd - bankStart }, (_, offset) =>
