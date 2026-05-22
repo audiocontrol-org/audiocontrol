@@ -118,7 +118,7 @@ Captured from `docs/scope-discovery/clones.yaml` against HEAD. Refreshed via `ma
 
 ### Phase 2 acceptance
 
-- Zero `pending` entries remain in `docs/scope-discovery/clones.yaml` for groups touching `modules/roland-sxx0-editor` or `modules/editor-core`. Target: count drops from the 2026-05-22 baseline (172) to 0. Most recent recompute (commit `4b069b82`, 2026-05-22): **146 pending touching us / 67 pending intra-roland-sxx0-editor**.
+- Zero `pending` entries remain in `docs/scope-discovery/clones.yaml` for groups touching `modules/roland-sxx0-editor` or `modules/editor-core`. Target: count drops from the 2026-05-22 baseline (172) to 0. For the **current** pending count, run the snippet under "Recompute pending counts" below or read the most-recent rows of the disposition log; we deliberately don't publish a number here because every disposition would invalidate it (AUDIT-20260521-07 + AUDIT-20260522-09 both caught this exact staleness pattern).
 - Every `refactor`-marked group has a merged PR; `make refresh-clones-baseline` after merges removes the group from the file.
 - `docs/1.0/001-IN-PROGRESS/roland-bugfix/scope-inventory/` exists with at least one `/scope-inventory roland-bugfix` run + a curated `scope-manifest.yaml`.
 - `tooling-feedback.md` exists with one section per scope-discovery surface exercised.
@@ -156,7 +156,7 @@ Populated as groups are dispositioned. One row per group resolved.
 | 2026-05-22 | 22 intra-file clones (batch) | `validate-device.ts` self-clone + 21 vitest test-file fixture-setup repetitions across editor-core | keep-with-reason | Test fixtures stay self-contained for debuggability; validate-device CLI has no test-apparatus to support extraction. Commit `77d8003e`. |
 | 2026-05-22 | 7 intra-editor-core clones (batch) | 6 `AcRangeBar.tsx` ↔ `__broken__/AcRangeBar/no-pointer-events.tsx` + 1 cross-test-file `sampleNodes` fixture | keep-with-reason | Broken-variant registry intentionally mirrors canonical for credibility-checking; cross-test fixtures kept per the test-fixture rationale. Commit `a793e4cc`. |
 | 2026-05-22 | 7 cross-module CLI + config clones (batch) | 3 validate-akai-s3000xl ↔ validate-device + 4 leftover vite/vitest/playwright configs | keep-with-reason | Same precedent as the playwright-config + validate-device dispositions. Commit `38d42dcf`. |
-| 2026-05-22 | `38c8236d8a7b` (7 lines) | ExportPatchDialog ↔ ExportToneDialog (eyebrow row) | refactor | Extracted to `modules/roland-sxx0-editor/src/components/library/DestinationEyebrow.tsx` shared by all three export surfaces (ExportToneDialog, ExportPatchDialog, BatchExportDrawer). Protected by D-LIB-34, D-LIB-35, D-LIB-36 (added in test-first commit `3f2d79f8`). Refactor commit lands with this row. |
+| 2026-05-22 | `38c8236d8a7b` (7 lines) | ExportPatchDialog ↔ ExportToneDialog (eyebrow row) | refactor | Extracted to `modules/roland-sxx0-editor/src/components/library/DestinationEyebrow.tsx` shared by all three export surfaces (ExportToneDialog, ExportPatchDialog, BatchExportDrawer). Protected by D-LIB-34, D-LIB-35, D-LIB-36 (added in test-first commit `3f2d79f8`). Refactor commit `81da20a9`. |
 
 ## Phase 3: Roland-surface refactor PRs (clone-group cleanup)
 
@@ -184,6 +184,7 @@ The discipline:
 3. **Commit the test on its own.** Separate commit from the refactor code so the test is individually attributable to this clone group + future-bisects cleanly.
 4. **Then write the refactor.** Verify the test still passes. Run the broader test gate (`make test-wiring-roland` etc.) to catch cross-surface regressions.
 5. **Cite the test in the disposition.** In `clones.yaml`, the `reason:` field for the refactored group MUST name the protecting test by id (e.g. `"Extracted to common/SlotInfo.tsx; protected by D-LIB-34 (.ac-list-info wrapper presence)."`).
+6. **Backfill the refactor commit SHA into the workplan disposition log** immediately after the refactor commit lands. The commit-message-time row carries a placeholder ("Refactor commit lands with this row"); a one-line `git commit --amend` or follow-up doc commit swaps the placeholder for the actual `git rev-parse HEAD` value. Caught absent twice (AUDIT-20260521-08 root cause + AUDIT-20260522-10) — backfill discipline closes it.
 
 What this protocol does NOT require:
 

@@ -209,3 +209,49 @@ Expected: if 25 groups were removed from an intra-Roland pending count of 92, th
 Actual: the row records 68, so the workplan's running tally is off by one.
 
 This is not a detector or code defect, but it does weaken the trustworthiness of the disposition ledger that Phase 2 is relying on as its operator-facing source of truth.
+
+---
+
+## 2026-05-22 Latest Implementation Review
+
+### The published Phase 2 recompute counts are stale again after the newest disposition batches and export-surface refactor
+
+Finding-ID: AUDIT-20260522-09
+Status:     fixed-awaiting-verification
+Severity:   low
+Surface:    `docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md`
+
+Fix: removed the published "Most recent recompute" number from the Phase 2 acceptance bullet entirely. Replaced with a pointer to the recompute snippet ("Recompute pending counts" section) + the disposition log. The earlier AUDIT-07 fix mitigated the staleness by making recompute one bash command, but did NOT auto-update the published line — so the same staleness pattern recurred (caught by this finding). Eliminating the headline number eliminates the staleness surface entirely; future readers run the snippet or read the log. Both AUDIT-07 and AUDIT-09 are referenced in the bullet so the rationale is traceable.
+
+The workplan's top-level Phase 2 progress line still cites the earlier recompute from commit `4b069b82` (`146 pending touching us / 67 pending intra-roland-sxx0-editor`), but several more disposition batches and one refactor have landed since then.
+
+Evidence:
+
+- the current published line remains at [workplan.md](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md:121)
+- the latest `clones.yaml` now reports `493` total groups, with `101` pending groups touching `modules/roland-sxx0-editor` or `modules/editor-core`, and `62` pending intra-`roland-sxx0-editor`
+- the recent landed commits `214a99b8`, `77d8003e`, `a793e4cc`, `38d42dcf`, and `81da20a9` all explicitly reduced the pending count after that older `4b069b82` snapshot
+
+Expected: the published "most recent recompute" should either be refreshed to the latest on-disk counts or explicitly moved to the disposition log only, so the top-level progress indicator does not lag behind several landed batches.
+
+Actual: the workplan now contains a known recount mechanism, but the headline progress line still points at an obsolete snapshot.
+
+### The new `38c8236d8a7b` refactor row still omits the landed commit hash even though the refactor commit exists
+
+Finding-ID: AUDIT-20260522-10
+Status:     fixed-awaiting-verification
+Severity:   low
+Surface:    `docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md`
+
+Fix: replaced the "Refactor commit lands with this row" placeholder in the `38c8236d8a7b` disposition row with the actual commit hash `81da20a9`, matching the `Commit \`30e7346e\`` convention from the earlier `80299d9fda8d` (SlotInfo) row. Root cause: my refactor commit message can't know its own SHA at write time, so the workplan row gets the placeholder; the post-commit step (replace placeholder with SHA) was skipped. Going forward, every refactor commit's follow-up should immediately swap the placeholder for the SHA — adding this as a 1-line discipline note to the workplan's Refactoring protocol section.
+
+The newest refactor disposition row still says "Refactor commit lands with this row" instead of naming the actual landed commit, which breaks the same traceability convention the earlier `SlotInfo` row already follows.
+
+Evidence:
+
+- the row for clone group `38c8236d8a7b` at [workplan.md](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md:159) ends with `Refactor commit lands with this row`
+- the refactor has already landed as commit `81da20a9` (`refactor(roland): extract DestinationEyebrow from 3 export surfaces — clones.yaml 38c8236d8a7b`)
+- the earlier `80299d9fda8d` row already uses the desired shape: `Commit \`30e7346e\``
+
+Expected: once the refactor commit exists, the disposition row should record its hash directly so the workplan remains a reliable index from clone-group decision to implementation commit.
+
+Actual: the implementation landed and the tests pass, but the row still carries placeholder wording instead of the real commit reference.
