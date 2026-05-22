@@ -1,0 +1,51 @@
+{
+  "agent": "ui-route-enumerator",
+  "featureSlug": "roland-bugfix",
+  "modulesInScope": [
+    "roland-sxx0-editor"
+  ],
+  "routes": [
+    {
+      "module": "roland-sxx0-editor",
+      "path": "play",
+      "file": "modules/roland-sxx0-editor/src/App.tsx",
+      "pageFile": "modules/roland-sxx0-editor/src/pages/PlayPage.tsx"
+    },
+    {
+      "module": "roland-sxx0-editor",
+      "path": "patches",
+      "file": "modules/roland-sxx0-editor/src/App.tsx",
+      "pageFile": "modules/roland-sxx0-editor/src/pages/PatchesPage.tsx"
+    },
+    {
+      "module": "roland-sxx0-editor",
+      "path": "tones",
+      "file": "modules/roland-sxx0-editor/src/App.tsx",
+      "pageFile": "modules/roland-sxx0-editor/src/pages/TonesPage.tsx"
+    },
+    {
+      "module": "roland-sxx0-editor",
+      "path": "library",
+      "file": "modules/roland-sxx0-editor/src/App.tsx",
+      "pageFile": "modules/roland-sxx0-editor/src/pages/LibraryPage.tsx"
+    },
+    {
+      "module": "roland-sxx0-editor",
+      "path": "_harness/envelope-table",
+      "file": "modules/roland-sxx0-editor/src/App.tsx",
+      "pageFile": null
+    },
+    {
+      "module": "roland-sxx0-editor",
+      "path": "_harness/range-bar",
+      "file": "modules/roland-sxx0-editor/src/App.tsx",
+      "pageFile": null
+    },
+    {
+      "module": "roland-sxx0-editor",
+      "path": "",
+      "file": "modules/roland-sxx0-editor/src/App.tsx",
+      "pageFile": "modules/roland-sxx0-editor/src/pages/HomePage.tsx"
+    }
+  ]
+}

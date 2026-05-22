@@ -1,0 +1,19 @@
+
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'yaml' imported from /Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/tools/scope-discovery/clones-yaml.ts
+    at Object.getPackageJSONURL (node:internal/modules/package_json_reader:266:9)
+    at packageResolve (node:internal/modules/esm/resolve:767:81)
+    at moduleResolve (node:internal/modules/esm/resolve:853:18)
+    at defaultResolve (node:internal/modules/esm/resolve:983:11)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at resolveBase (file:///opt/homebrew/lib/node_modules/tsx/dist/esm/index.mjs?1779428093584:2:3212)
+    at resolveDirectory (file:///opt/homebrew/lib/node_modules/tsx/dist/esm/index.mjs?1779428093584:2:3584)
+    at resolveTsPaths (file:///opt/homebrew/lib/node_modules/tsx/dist/esm/index.mjs?1779428093584:2:4073)
+    at resolve (file:///opt/homebrew/lib/node_modules/tsx/dist/esm/index.mjs?1779428093584:2:4447)
+    at nextResolve (node:internal/modules/esm/hooks:748:28) {
+  code: 'ERR_MODULE_NOT_FOUND'
+}
+
+Node.js v22.19.0
