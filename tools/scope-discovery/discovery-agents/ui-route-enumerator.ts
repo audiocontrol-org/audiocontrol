@@ -36,7 +36,6 @@ import type {
 } from './types.js';
 import {
   isDirectory,
-  listEditorModules,
   modulesInScopeForFeature,
   readUtf8,
   repoAbs,
@@ -159,12 +158,13 @@ async function enumerateModuleRoutes(args: {
 export async function enumerateUiRoutes(
   input: DiscoveryAgentInput,
 ): Promise<UiRouteFindings> {
+  // modulesInScopeForFeature is the single source of truth for the
+  // empty-vs-all heuristic — it returns the full editor list as its
+  // fallback, so the result is never empty. No second "empty? then
+  // all" branch is needed here.
   const modulesInScope = await modulesInScopeForFeature(input);
-  const allEditors = await listEditorModules(input.repoRoot);
-  const effective: ReadonlyArray<string> =
-    modulesInScope.length > 0 ? modulesInScope : allEditors;
   const routes: UiRoute[] = [];
-  for (const module of effective) {
+  for (const module of modulesInScope) {
     const modAbs = repoAbs(input.repoRoot, join('modules', module));
     if (!(await isDirectory(modAbs))) {
       throw new Error(
@@ -181,7 +181,7 @@ export async function enumerateUiRoutes(
   return {
     agent: 'ui-route-enumerator',
     featureSlug: input.featureSlug,
-    modulesInScope: effective,
+    modulesInScope,
     routes,
   };
 }

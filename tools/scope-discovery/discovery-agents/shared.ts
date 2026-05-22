@@ -130,6 +130,10 @@ function printAgentUsage(agentName: string): void {
  *
  * `rootAbs` must be absolute; results are relative to `repoRoot` so
  * downstream consumers (synthesis, manifest) see consistent paths.
+ *
+ * The root is validated up front: a missing/non-directory root throws a
+ * descriptive error rather than producing zero findings (which would
+ * mask a typo in `--repo-root` as a successful no-op).
  */
 export async function walkSourceFiles(args: {
   readonly rootAbs: string;
@@ -137,28 +141,41 @@ export async function walkSourceFiles(args: {
   readonly extensions?: ReadonlyArray<string>;
 }): Promise<ReadonlyArray<string>> {
   const exts = args.extensions ?? SRC_EXTENSIONS;
+  let rootStat: Awaited<ReturnType<typeof stat>>;
+  try {
+    rootStat = await stat(args.rootAbs);
+  } catch (err) {
+    throw new Error(
+      `walkSourceFiles: source root not accessible: ${args.rootAbs}: ${errorMessage(err)}`,
+    );
+  }
+  if (!rootStat.isDirectory()) {
+    throw new Error(`walkSourceFiles: source root is not a directory: ${args.rootAbs}`);
+  }
   const collected: string[] = [];
   await walkInto(args.rootAbs, args.repoRoot, exts, collected);
   return collected.sort();
 }
 
+/**
+ * Recursive walker. Nested-directory `readdir` errors propagate — the
+ * deliberate choice for a discovery tool is to fail loudly rather than
+ * silently degrade. ENOENT mid-walk (a dir removed between scan and
+ * read) is rare in this read-only context; propagating surfaces it
+ * rather than hiding it as a missing-findings ghost.
+ */
 async function walkInto(
   dirAbs: string,
   repoRoot: string,
   exts: ReadonlyArray<string>,
   out: string[],
 ): Promise<void> {
-  let entries: ReadonlyArray<{ name: string; isDir: boolean; isFile: boolean }>;
-  try {
-    const raw = await readdir(dirAbs, { withFileTypes: true });
-    entries = raw.map((d) => ({
-      name: d.name,
-      isDir: d.isDirectory(),
-      isFile: d.isFile(),
-    }));
-  } catch {
-    return;
-  }
+  const raw = await readdir(dirAbs, { withFileTypes: true });
+  const entries = raw.map((d) => ({
+    name: d.name,
+    isDir: d.isDirectory(),
+    isFile: d.isFile(),
+  }));
   for (const entry of entries) {
     if (entry.name.startsWith('.')) continue;
     if (SKIP_DIRS.has(entry.name)) continue;
@@ -213,6 +230,40 @@ export async function readUtf8(absPath: string): Promise<string> {
 }
 
 /**
+ * The bag-of-views every pattern-scanning agent needs for a source
+ * file: the repo-relative path (for stable downstream references), the
+ * full text (for whole-string regex scans like `applyPattern`), and a
+ * pre-split lines array (for line-grep style scans like
+ * `gatherOccurrences`). Computing once + sharing avoids re-splitting in
+ * each consumer.
+ */
+export interface SourceFileView {
+  readonly file: string;
+  readonly text: string;
+  readonly lines: ReadonlyArray<string>;
+}
+
+/**
+ * Read a repo-relative source file and return its `SourceFileView`.
+ * Errors propagate — matching the discovery-tool failure-loud posture
+ * for `walkSourceFiles`. A file path produced by `walkSourceFiles` and
+ * read moments later is virtually always present; if it disappears
+ * (ENOENT) or the agent can't read it (EACCES), surfacing the error is
+ * the right call rather than masking it as a missing finding.
+ */
+export async function readSourceFile(args: {
+  readonly repoRoot: string;
+  readonly relFile: string;
+}): Promise<SourceFileView> {
+  const text = await readUtf8(repoAbs(args.repoRoot, args.relFile));
+  return {
+    file: args.relFile,
+    text,
+    lines: text.split(/\r?\n/),
+  };
+}
+
+/**
  * Read the feature's PRD as text. The path is the resolved absolute
  * path from the CLI; a missing file is an infra error (the upstream
  * skill must surface it).
@@ -233,19 +284,18 @@ export async function readPrd(input: DiscoveryAgentInput): Promise<string> {
  * This is intentionally simple — naming a module in the PRD is the
  * unambiguous signal of intent; absence of any mention means the
  * feature is system-wide and should fan out across every editor.
+ *
+ * A missing/unreadable PRD is an infra failure, not a "default to
+ * everything" condition — `readPrd` throws a descriptive error which
+ * propagates to the agent's CLI wrapper (per CLAUDE.md "no fallbacks
+ * outside test code"). Callers that genuinely want the system-wide set
+ * without a PRD should call `listEditorModules` directly.
  */
 export async function modulesInScopeForFeature(
   input: DiscoveryAgentInput,
 ): Promise<ReadonlyArray<string>> {
   const editors = await listEditorModules(input.repoRoot);
-  let prdText: string;
-  try {
-    prdText = await readPrd(input);
-  } catch {
-    // If we can't read the PRD, system-wide default is the honest
-    // answer — the agent still runs against every module.
-    return editors;
-  }
+  const prdText = await readPrd(input);
   const lower = prdText.toLowerCase();
   const mentioned = editors.filter((m) => lower.includes(m.toLowerCase()));
   return mentioned.length > 0 ? mentioned : editors;

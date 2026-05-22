@@ -38,10 +38,11 @@ import type {
 } from './types.js';
 import {
   MODULES_DIR,
+  type SourceFileView,
   isDirectory,
   modulesInScopeForFeature,
   readPrd,
-  readUtf8,
+  readSourceFile,
   repoAbs,
   runIfMain,
   walkSourceFiles,
@@ -59,26 +60,31 @@ const SNIPPET_MAX_LEN = 200;
  * Stopwords scrubbed during PRD tokenization. Conservative list —
  * domain-specific terms (e.g., "tone", "patch") stay; only generic
  * English plus reasonably-common PRD vocabulary is removed.
+ *
+ * Sorted alphabetically so future additions land in a diff-friendly
+ * spot; the `Set` constructor handles any accidental duplicates but the
+ * source list itself is kept unique.
  */
 const STOPWORDS: ReadonlySet<string> = new Set([
-  'the', 'and', 'for', 'with', 'this', 'that', 'from', 'into', 'over',
-  'each', 'have', 'will', 'when', 'what', 'they', 'them', 'were', 'been',
-  'being', 'where', 'which', 'than', 'then', 'such', 'some', 'most',
-  'much', 'more', 'less', 'only', 'also', 'just', 'very', 'must', 'should',
-  'would', 'could', 'about', 'after', 'again', 'before', 'between',
-  'their', 'these', 'those', 'because', 'while', 'until', 'across',
-  'whether', 'inside', 'among', 'against', 'every', 'either', 'neither',
-  'within', 'through', 'without', 'around', 'above', 'below', 'under',
-  'phase', 'task', 'feature', 'work', 'tool', 'tools', 'file', 'files',
-  'code', 'codebase', 'repo', 'docs', 'document', 'documentation',
-  'operator', 'agent', 'agents', 'session', 'sessions', 'change',
-  'changes', 'value', 'values', 'pattern', 'patterns', 'block', 'blocks',
-  'group', 'groups', 'item', 'items', 'list', 'lists', 'note', 'notes',
-  'name', 'names', 'path', 'paths', 'line', 'lines', 'page', 'pages',
-  'meta', 'data', 'output', 'input', 'time', 'times', 'first', 'last',
-  'next', 'real', 'same', 'best', 'open', 'good', 'true', 'false',
-  'kind', 'kinds', 'type', 'types', 'shape', 'shapes', 'case', 'cases',
-  'used', 'using', 'use', 'used', 'made', 'make', 'makes', 'made',
+  'about', 'above', 'across', 'after', 'again', 'against', 'agent',
+  'agents', 'also', 'among', 'and', 'around', 'because', 'been',
+  'before', 'being', 'below', 'best', 'between', 'block', 'blocks',
+  'case', 'cases', 'change', 'changes', 'code', 'codebase', 'could',
+  'data', 'docs', 'document', 'documentation', 'each', 'either',
+  'every', 'false', 'feature', 'file', 'files', 'first', 'for', 'from',
+  'good', 'group', 'groups', 'have', 'input', 'inside', 'into', 'item',
+  'items', 'just', 'kind', 'kinds', 'last', 'less', 'line', 'lines',
+  'list', 'lists', 'made', 'make', 'makes', 'meta', 'more', 'most',
+  'much', 'must', 'name', 'names', 'neither', 'next', 'note', 'notes',
+  'only', 'open', 'operator', 'output', 'over', 'page', 'pages', 'path',
+  'paths', 'pattern', 'patterns', 'phase', 'real', 'repo', 'same',
+  'session', 'sessions', 'shape', 'shapes', 'should', 'some', 'such',
+  'task', 'than', 'that', 'the', 'their', 'them', 'then', 'these',
+  'they', 'this', 'those', 'through', 'time', 'times', 'tool', 'tools',
+  'true', 'type', 'types', 'under', 'until', 'use', 'used', 'using',
+  'value', 'values', 'very', 'were', 'what', 'when', 'where', 'whether',
+  'which', 'while', 'will', 'with', 'within', 'without', 'work',
+  'would',
 ]);
 
 interface TermRank {
@@ -121,23 +127,6 @@ function snippet(line: string): string {
   return `${trimmed.slice(0, SNIPPET_MAX_LEN - 3)}...`;
 }
 
-interface FileScan {
-  readonly file: string;
-  readonly lines: ReadonlyArray<string>;
-}
-
-async function scanFile(args: {
-  readonly repoRoot: string;
-  readonly relFile: string;
-}): Promise<FileScan | null> {
-  try {
-    const text = await readUtf8(repoAbs(args.repoRoot, args.relFile));
-    return { file: args.relFile, lines: text.split(/\r?\n/) };
-  } catch {
-    return null;
-  }
-}
-
 /**
  * Escape a term for use as a literal regex source. We use the `\b`
  * word-boundary check so "tone" doesn't match "stone"; the term is
@@ -150,7 +139,7 @@ function termRegex(term: string): RegExp {
 
 function gatherOccurrences(args: {
   readonly term: string;
-  readonly scans: ReadonlyArray<FileScan>;
+  readonly scans: ReadonlyArray<SourceFileView>;
 }): ReadonlyArray<ThemeOccurrence> {
   const re = termRegex(args.term);
   const out: ThemeOccurrence[] = [];
@@ -194,10 +183,9 @@ export async function huntPrdThemes(
   const prdText = await readPrd(input);
   const ranked = tokenizePrd(prdText);
   const files = await gatherInScopeFiles(input);
-  const scans: FileScan[] = [];
+  const scans: SourceFileView[] = [];
   for (const f of files) {
-    const s = await scanFile({ repoRoot: input.repoRoot, relFile: f });
-    if (s !== null) scans.push(s);
+    scans.push(await readSourceFile({ repoRoot: input.repoRoot, relFile: f }));
   }
   const themes: ThemeFinding[] = [];
   for (const rank of ranked) {

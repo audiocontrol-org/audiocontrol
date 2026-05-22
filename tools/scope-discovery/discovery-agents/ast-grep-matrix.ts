@@ -36,9 +36,10 @@ import type {
 } from './types.js';
 import {
   MODULES_DIR,
+  type SourceFileView,
   isDirectory,
   modulesInScopeForFeature,
-  readUtf8,
+  readSourceFile,
   repoAbs,
   runIfMain,
   walkSourceFiles,
@@ -113,26 +114,9 @@ function snippet(line: string): string {
   return `${trimmed.slice(0, SNIPPET_MAX_LEN - 3)}...`;
 }
 
-interface FileScan {
-  readonly file: string;
-  readonly text: string;
-}
-
-async function scanFile(args: {
-  readonly repoRoot: string;
-  readonly relFile: string;
-}): Promise<FileScan | null> {
-  try {
-    const text = await readUtf8(repoAbs(args.repoRoot, args.relFile));
-    return { file: args.relFile, text };
-  } catch {
-    return null;
-  }
-}
-
 function applyPattern(args: {
   readonly pattern: PatternDef;
-  readonly scans: ReadonlyArray<FileScan>;
+  readonly scans: ReadonlyArray<SourceFileView>;
 }): PatternFinding {
   const hits: PatternHit[] = [];
   for (const scan of args.scans) {
@@ -142,9 +126,8 @@ function applyPattern(args: {
     ) {
       continue;
     }
-    const lines = scan.text.split(/\r?\n/);
-    for (let i = 0; i < lines.length; i += 1) {
-      const line = lines[i];
+    for (let i = 0; i < scan.lines.length; i += 1) {
+      const line = scan.lines[i];
       if (line === undefined) continue;
       const re = new RegExp(args.pattern.regex.source, args.pattern.regex.flags);
       if (re.test(line)) {
@@ -189,10 +172,9 @@ export async function buildAstGrepMatrix(
   input: DiscoveryAgentInput,
 ): Promise<AstGrepMatrixFindings> {
   const files = await gatherInScopeFiles(input);
-  const scans: FileScan[] = [];
+  const scans: SourceFileView[] = [];
   for (const f of files) {
-    const s = await scanFile({ repoRoot: input.repoRoot, relFile: f });
-    if (s !== null) scans.push(s);
+    scans.push(await readSourceFile({ repoRoot: input.repoRoot, relFile: f }));
   }
   const patterns: PatternFinding[] = [];
   for (const pat of PATTERNS) {
