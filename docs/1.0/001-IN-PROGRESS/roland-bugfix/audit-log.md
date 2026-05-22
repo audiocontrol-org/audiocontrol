@@ -16,7 +16,7 @@ Canonical grep queue:
 ### Ctrl/Cmd-click mutates the device-memory anchor, so the next Shift-click range starts from the wrong slot
 
 Finding-ID: AUDIT-20260521-01
-Status:     fixed-awaiting-verification
+Status:     verified-2026-05-21
 Severity:   high
 Surface:    `modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx`
 
@@ -44,7 +44,7 @@ This is a load-bearing correctness bug in the headline multi-select workflow int
 ### Export drawers hard-code `S330` in user-facing copy, so S-550 mode is mislabeled
 
 Finding-ID: AUDIT-20260521-02
-Status:     fixed-awaiting-verification
+Status:     verified-2026-05-21
 Severity:   medium
 Surface:    `modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx`, `ExportPatchDialog.tsx`, `BatchExportDrawer.tsx`
 
