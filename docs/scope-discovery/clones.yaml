@@ -1666,8 +1666,8 @@ clones:
     members:
       - modules/editor-core/src/components/AcEnvelope.test.tsx:149:159
       - modules/editor-core/src/components/AcEnvelope.test.tsx:544:554
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: a03cae4027c9
     lines: 13
     members:
@@ -1675,51 +1675,51 @@ clones:
       - modules/editor-core/src/components/AcEnvelope.test.tsx:171:183
       - modules/editor-core/src/components/AcEnvelope.test.tsx:196:208
       - modules/editor-core/src/components/AcEnvelope.test.tsx:397:409
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 3c512455677f
     lines: 14
     members:
       - modules/editor-core/src/components/AcEnvelope.test.tsx:149:557
       - modules/editor-core/src/components/AcEnvelope.test.tsx:588:601
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 3ffe97275bfc
     lines: 11
     members:
       - modules/editor-core/src/components/AcEnvelope.test.tsx:273:283
       - modules/editor-core/src/components/AcEnvelope.test.tsx:497:507
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 54c7640dd224
     lines: 15
     members:
       - modules/editor-core/src/components/AcEnvelope.test.tsx:34:48
       - modules/editor-core/src/components/AcEnvelope.test.tsx:624:638
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: "952051663287"
     lines: 13
     members:
       - modules/editor-core/src/components/AcEnvelope.test.tsx:523:535
       - modules/editor-core/src/components/AcEnvelope.test.tsx:567:579
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: e0e200b44d84
     lines: 10
     members:
       - modules/editor-core/src/components/AcNumberInput.test.tsx:107:116
       - modules/editor-core/src/components/AcNumberInput.test.tsx:121:130
       - modules/editor-core/src/components/AcNumberInput.test.tsx:135:144
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: ff5fc343dbc0
     lines: 10
     members:
       - modules/editor-core/src/components/AcNumberInput.test.tsx:74:83
       - modules/editor-core/src/components/AcNumberInput.test.tsx:87:96
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 399cf703de4c
     lines: 6
     members:
@@ -1781,8 +1781,8 @@ clones:
     members:
       - modules/editor-core/src/components/library/MoveDialog.test.tsx:53:63
       - modules/editor-core/src/components/library/MoveDialog.test.tsx:67:77
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: a0ae2b87b9a1
     lines: 11
     members:
@@ -1795,15 +1795,15 @@ clones:
     members:
       - modules/editor-core/src/components/library/SaveDialog.test.tsx:72:82
       - modules/editor-core/src/components/library/SaveDialog.test.tsx:85:95
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 33c29600a11d
     lines: 11
     members:
       - modules/editor-core/src/components/library/TreeSection.test.tsx:116:126
       - modules/editor-core/src/components/library/TreeSection.test.tsx:37:108
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 64da2409d3c8
     lines: 10
     members:
@@ -1811,22 +1811,22 @@ clones:
       - modules/editor-core/src/components/library/TreeSection.test.tsx:37:46
       - modules/editor-core/src/components/library/TreeSection.test.tsx:82:91
       - modules/editor-core/src/components/library/TreeSection.test.tsx:98:107
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: e9367f92a534
     lines: 8
     members:
       - modules/editor-core/src/components/library/TreeSection.test.tsx:25:32
       - modules/editor-core/src/components/library/TreeSection.test.tsx:41:48
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 16fb9c20e097
     lines: 10
     members:
       - modules/editor-core/src/components/library/TreeSection.test.tsx:52:61
       - modules/editor-core/src/components/library/TreeSection.test.tsx:68:77
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: b702978c588d
     lines: 14
     members:
@@ -1839,50 +1839,50 @@ clones:
     members:
       - modules/editor-core/src/components/library/TreeView.test.tsx:177:189
       - modules/editor-core/src/components/library/TreeView.test.tsx:302:314
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 19262e5aa4e4
     lines: 14
     members:
       - modules/editor-core/src/components/library/TreeView.test.tsx:177:190
       - modules/editor-core/src/components/library/TreeView.test.tsx:194:207
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 83628bd30664
     lines: 14
     members:
       - modules/editor-core/src/components/library/TreeView.test.tsx:177:207
       - modules/editor-core/src/components/library/TreeView.test.tsx:237:250
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: c44ce4edc1a0
     lines: 15
     members:
       - modules/editor-core/src/components/library/TreeView.test.tsx:177:227
       - modules/editor-core/src/components/library/TreeView.test.tsx:255:269
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: d54b0262cbb7
     lines: 13
     members:
       - modules/editor-core/src/components/library/TreeView.test.tsx:178:207
       - modules/editor-core/src/components/library/TreeView.test.tsx:214:226
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 45f1c76897a9
     lines: 18
     members:
       - modules/editor-core/src/components/library/TreeView.test.tsx:178:230
       - modules/editor-core/src/components/library/TreeView.test.tsx:276:293
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 04a5bcbd733c
     lines: 10
     members:
       - modules/editor-core/src/components/library/TreeView.test.tsx:61:67
       - modules/editor-core/src/components/library/TreeView.test.tsx:72:81
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 71d0ea89080c
     lines: 14
     members:
@@ -2376,8 +2376,8 @@ clones:
     members:
       - modules/roland-sxx0-editor/scripts/validate-device.ts:241:255
       - modules/roland-sxx0-editor/scripts/validate-device.ts:95:109
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: validate-device.ts is a one-binary CLI tool; the 15-line intra-file MIDI port-session boilerplate (input/output declarations, resolved flag, cleanup, timeout) is acceptable duplication. Extracting a withMidiPortSession() helper would require building wiring-test infrastructure (script has no existing test surface) per the test-before-extract protocol, and the cost outweighs the payoff for a single script. Flip to refactor if a future operator builds out a shared scripts/midi-port-session.ts helper across CLI tools and adds the test apparatus.
   - id: fc9e30e6e921
     lines: 16
     members:
