@@ -266,6 +266,43 @@ test.describe('Capabilities — Library DnD (Wave 5)', () => {
     await expect(page.getByTestId('export-cancel')).toBeVisible();
   });
 
+  test('D-LIB-EXPORT-LIFECYCLE-01: ExportToneDialog open-reset effect pre-fills name input + Cancel closes the dialog (clones.yaml e83df277765c + 82e7ef31c329 useExportDialogLifecycle refactor contract)', async ({ page }) => {
+    // Test-before-extract contract for promoting the cross-dialog
+    // useState / useEffect / useCallback lifecycle pattern in
+    // ExportToneDialog, ExportPatchDialog, and BatchExportDrawer
+    // (e83df277765c 12L + 82e7ef31c329 16L) to a shared
+    // useExportDialogLifecycle hook. Existing tests (D-LIB-06/07,
+    // D-LIB-34/35/36) pin mount + eyebrow text but do NOT exercise:
+    //   - The useEffect open-reset (proves name state is initialized
+    //     from per-dialog source — `tone?.name || 'Tone_${slot}'` here)
+    //   - handleClose (proves Cancel onClick wires to onOpenChange(false))
+    //
+    // Added 2026-05-22 BEFORE the useExportDialogLifecycle extraction.
+    // Must pass against pre-refactor code AND stay green after.
+    await page.goto(LIBRARY_URL);
+    await cleanupOPFS(page);
+    await connectLibraryOPFS(page);
+    await seedDeviceTone(page, { slot: 0, name: 'TestTone1' });
+
+    const source = deviceToneSlot(page, 'T11');
+    await expect(source).toHaveAttribute('draggable', 'true', { timeout: 5_000 });
+    const target = page.locator('[data-category="tones"][data-testid="library-tones-section"]');
+    await simulateDragAndDrop(page, source, target);
+
+    // Mount: drawer's name input renders + open-reset populates it
+    // from tone?.name (the seeded name 'TestTone1').
+    const nameInput = page.getByTestId('export-tone-name-input');
+    await expect(nameInput).toBeVisible({ timeout: 5_000 });
+    await expect(nameInput).toHaveValue('TestTone1');
+
+    // handleClose: Cancel button click → onOpenChange(false) → drawer
+    // unmounts. The drawer title disappearing is the visible side-effect.
+    await page.getByTestId('export-cancel').click();
+    await expect(
+      page.getByRole('heading', { name: /Export tone to library/i }),
+    ).toHaveCount(0, { timeout: 5_000 });
+  });
+
   test('D-LIB-07: dragging a loaded device patch onto the library Patches section mounts ExportPatchDialog', async ({ page }) => {
     // Symmetric to D-LIB-06; patch side. Patch-export needs no
     // referenced tones for mount-only assertion — the dialog's
