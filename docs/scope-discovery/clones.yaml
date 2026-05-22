@@ -2391,15 +2391,15 @@ clones:
     members:
       - modules/roland-sxx0-editor/src/components/library/CreateDirectoryDialog.tsx:71:82
       - modules/roland-sxx0-editor/src/components/library/RenameDirectoryDialog.tsx:76:86
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: 'CreateDirectoryDialog.tsx and RenameDirectoryDialog.tsx are dead code — defined in src/components/library/ but never instantiated by the production LibraryPage. Folder CRUD is owned by editor-core LibraryBrowser + its own CreateFolderDialog. Documented in modules/roland-sxx0-editor/test/ui/in-context/library-dialogs.in-context.spec.ts:326-335 ("orphan components ... dead-code status tracked separately and should be resolved by deletion, not by accreting dev-only mount paths"). The companion useDirectoryOperations hook is also unused (grep confirms). Extracting a shared helper from files scheduled for deletion would be churn. Disposition: kept until the audit-and-delete dispatch lands. Follow-up: ROLAND-BUGFIX-DEL-002 — delete CreateDirectoryDialog.tsx, RenameDirectoryDialog.tsx, useDirectoryOperations.ts (operator approval required for source-file deletion per auto-mode permission classifier).'
   - id: c7df8647daf8
     lines: 18
     members:
       - modules/roland-sxx0-editor/src/components/library/CreateDirectoryDialog.tsx:86:103
       - modules/roland-sxx0-editor/src/components/library/RenameDirectoryDialog.tsx:90:107
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: 'CreateDirectoryDialog.tsx and RenameDirectoryDialog.tsx are dead code — defined in src/components/library/ but never instantiated by the production LibraryPage. Folder CRUD is owned by editor-core LibraryBrowser + its own CreateFolderDialog. Documented in modules/roland-sxx0-editor/test/ui/in-context/library-dialogs.in-context.spec.ts:326-335 ("orphan components ... dead-code status tracked separately and should be resolved by deletion, not by accreting dev-only mount paths"). The companion useDirectoryOperations hook is also unused (grep confirms). Extracting a shared helper from files scheduled for deletion would be churn. Disposition: kept until the audit-and-delete dispatch lands. Follow-up: ROLAND-BUGFIX-DEL-002 — delete CreateDirectoryDialog.tsx, RenameDirectoryDialog.tsx, useDirectoryOperations.ts (operator approval required for source-file deletion per auto-mode permission classifier).'
   - id: a56206979911
     lines: 11
     members:
