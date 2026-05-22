@@ -793,15 +793,20 @@ export function useLibraryExport({
       // Final completion step — emits a "complete" row that triggers
       // the drawer to transition to Done state via isOperationComplete.
       // Label varies by outcome so the step log's last row reads as a
-      // summary instead of a redundant "Export complete".
+      // summary instead of a redundant "Export complete". Uses
+      // currentStep = items.length + 1 so the summary lands in its own
+      // row instead of overwriting the last item's row (otherwise the
+      // LAST item's per-step error message is clobbered before the
+      // operator can read it — caught by D-LIB-31's all-failed path
+      // where slot N's error was missing from the step log).
       const finalLabel = failures.size === 0
         ? 'Export complete'
         : successCount === 0
           ? `Batch failed — all ${items.length} items errored`
           : `Exported ${successCount} of ${items.length} (${failures.size} failed)`;
       setBatchExportProgress({
-        currentStep: items.length,
-        totalSteps: items.length,
+        currentStep: items.length + 1,
+        totalSteps: items.length + 1,
         stepLabel: finalLabel,
         bytesSent: 0,
         bytesTotal: 0,

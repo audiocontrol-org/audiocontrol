@@ -112,8 +112,24 @@ export function LibraryPage() {
   } = useRolandSelectionMapping(libraryHandle);
 
   useEffect(() => {
-    if (!adapter) { clientRef.current = null; return; }
+    if (!adapter) {
+      clientRef.current = null;
+      if (import.meta.env.DEV) {
+        (window as unknown as { __samplerClient?: SamplerClientInterface | null }).__samplerClient = null;
+      }
+      return;
+    }
     clientRef.current = config.createClient(adapter, { deviceId });
+    // Dev-only test seam — wiring tests monkeypatch `requestWaveData`
+    // here to selectively succeed or throw per slot index so the
+    // batch-export continue-on-error path (D-LIB-31) can be exercised
+    // without a fixture that selectively fails. Mirrors the existing
+    // `__deviceDataStore` seam used by `seedDeviceTone`. Production
+    // builds skip the assignment via the import.meta.env.DEV gate so
+    // the surface is never present in shipped bundles.
+    if (import.meta.env.DEV) {
+      (window as unknown as { __samplerClient?: SamplerClientInterface | null }).__samplerClient = clientRef.current;
+    }
   }, [adapter, deviceId]);
 
   const setToneForHook = useCallback((index: number, tone: SamplerTone) => setTone(index, tone, totalTones), [setTone, totalTones]);

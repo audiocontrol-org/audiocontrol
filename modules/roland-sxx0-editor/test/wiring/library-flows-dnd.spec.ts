@@ -92,9 +92,14 @@ import {
 
 test.describe('Capabilities — Library DnD (Wave 5)', () => {
   let pageErrors: string[];
+  /** Tests that INTENTIONALLY trigger console.error (e.g. D-LIB-31's
+   *  continue-on-error verification) can push regexes here. afterEach
+   *  drops matching entries before asserting. Cleared each test. */
+  let expectedErrorPatterns: RegExp[];
 
   test.beforeEach(async ({ page }) => {
     pageErrors = [];
+    expectedErrorPatterns = [];
     page.on('pageerror', (err) => {
       pageErrors.push(err.message);
     });
@@ -109,8 +114,11 @@ test.describe('Capabilities — Library DnD (Wave 5)', () => {
   });
 
   test.afterEach(() => {
+    const unexpected = pageErrors.filter(
+      (msg) => !expectedErrorPatterns.some((pat) => pat.test(msg)),
+    );
     expect(
-      pageErrors,
+      unexpected,
       'no page errors during library DnD interactions',
     ).toEqual([]);
   });
@@ -690,6 +698,104 @@ test.describe('Capabilities — Library DnD (Wave 5)', () => {
     await expect(page.getByTestId('batch-export-item-4')).toBeVisible();
     await expect(page.getByTestId('batch-export-item-1')).toHaveCount(0);
     await expect(page.getByTestId('batch-export-item-3')).toHaveCount(0);
+  });
+
+  test('D-LIB-31: batch export continues past per-item failure — every item gets its own failed row instead of aborting at the first error', async ({ page }) => {
+    // The continue-on-error contract: a per-item failure inside the
+    // batch loop (e.g. `client.requestWaveData` throws for one slot)
+    // records the error in `batchExportFailures` and the loop moves
+    // on to the next item. The drawer's step log surfaces ✗ on each
+    // failed row instead of aborting at the first error — that abort
+    // was the original bug (user screenshot: T15 succeeded, T16 failed
+    // with "Wave data request rejected", T17 never started).
+    //
+    // The cleanest reproduction in the test environment is to fail
+    // EVERY item with a distinct error message and assert all three
+    // failure rows render. Pre-fix this would have aborted at item 1
+    // and step rows 2 + 3 would never have surfaced; post-fix all
+    // three appear with their respective messages. The partial-
+    // success summary message ("X of N exported · Y failed") is
+    // covered separately by the dispatcher unit logic, not asserted
+    // here — faking exportToneToDirectory's success path requires
+    // valid 12-bit packed wave data + tone-converter-compatible YAML
+    // structure that the wiring harness deliberately doesn't ship.
+    //
+    // Reproducing the per-slot failure requires forcing
+    // `requestWaveData` to throw with a known message. The dev-mode
+    // test seam `window.__samplerClient` (LibraryPage.tsx) exposes
+    // the in-use client so the test can monkeypatch its method.
+    // Mirrors the existing `__deviceDataStore` seam used by
+    // `seedDeviceTone`.
+    await page.goto(LIBRARY_URL);
+    await cleanupOPFS(page);
+    await connectLibraryOPFS(page);
+    await seedDeviceTone(page, { slot: 0, name: 'TestKick1' });
+    await seedDeviceTone(page, { slot: 1, name: 'TestKick2' });
+    await seedDeviceTone(page, { slot: 2, name: 'TestKick3' });
+
+    // The per-item failures we're about to trigger are console.errored
+    // by handleBatchExport (intentionally — operators want the cause
+    // logged beyond the in-drawer step log). Whitelist that pattern so
+    // the suite-wide "no console errors" assertion doesn't fire on the
+    // contract under test.
+    expectedErrorPatterns.push(/\[useLibraryExport\] Batch item T1\d \(tone\) failed/);
+
+    // Pre-fix behavior: loop throws at slot 0 and slots 1 + 2 never
+    // run. Post-fix: each per-slot throw is caught + recorded; the
+    // distinct error messages prove the loop reached each item.
+    await page.evaluate(() => {
+      const w = window as unknown as { __samplerClient?: { requestWaveData: (i: number, cb?: (r: number, t: number) => void) => Promise<unknown> } };
+      const client = w.__samplerClient;
+      if (!client) throw new Error('__samplerClient seam not present — LibraryPage.tsx dev-mode export missing');
+      client.requestWaveData = async (toneIndex: number) => {
+        throw new Error(`SimulatedRejection_slot_${toneIndex}`);
+      };
+    });
+
+    const slot0 = deviceToneSlot(page, 'T11');
+    const slot1 = deviceToneSlot(page, 'T12');
+    const slot2 = deviceToneSlot(page, 'T13');
+    for (const s of [slot0, slot1, slot2]) {
+      await expect(s).toHaveAttribute('draggable', 'true', { timeout: 5_000 });
+    }
+
+    await slot0.click();
+    await slot1.click({ modifiers: ['ControlOrMeta'] });
+    await slot2.click({ modifiers: ['ControlOrMeta'] });
+
+    const target = page.locator('[data-category="tones"][data-testid="library-tones-section"]');
+    await expect(target).toBeVisible({ timeout: 5_000 });
+    await simulateDragAndDrop(page, slot0, target);
+
+    await expect(
+      page.getByRole('heading', { name: /Export 3 tones to library/i }),
+    ).toBeVisible({ timeout: 5_000 });
+
+    // Kick off the batch.
+    await page.getByTestId('export-confirm').click();
+
+    // Wait for the all-failed terminal state. The step-log final row
+    // emits this label only when every per-item try/catch fired.
+    await expect(
+      page.getByText(/Batch failed — all 3 items errored/i),
+    ).toBeVisible({ timeout: 15_000 });
+
+    // Three per-item failure rows plus a final summary row (also
+    // styled failed because the all-failed terminal state sets
+    // batchExportError, which useStepHistory marks the final summary
+    // row as failed too). Pre-fix the loop would have aborted at slot
+    // 0 — only ONE failed row would exist. The load-bearing assertion
+    // is the >=3 per-item rows; counting summary + per-item gives 4.
+    const failedStepRows = page.locator('.ac-step-row--failed');
+    await expect(failedStepRows).toHaveCount(4);
+
+    // Each row carries its own distinct error message — proves each
+    // item ran. If the loop had aborted at slot 0, rows 2 + 3 would
+    // never have been populated.
+    await expect(page.getByText('SimulatedRejection_slot_0')).toBeVisible();
+    await expect(page.getByText('SimulatedRejection_slot_1')).toBeVisible();
+    await expect(page.getByText('SimulatedRejection_slot_2')).toBeVisible();
+
   });
 
   test('D-LIB-29: device-memory multi-select on patches + drag of any member opens the BatchExportDrawer with kind="patch"', async ({ page }) => {
