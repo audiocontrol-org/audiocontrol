@@ -1,4 +1,4 @@
-generated_at: 2026-05-22T09:16:39.684Z
+generated_at: 2026-05-22T09:55:12.746Z
 clones:
   - id: c7068172edae
     lines: 15
@@ -56,10 +56,10 @@ clones:
       - modules/akai-s3k-editor/src/components/keygroups/AdsrDisplay.tsx:229:242
     disposition: pending
     reason: null
-  - id: 17a7c0259902
+  - id: 6fbbd5455fd7
     lines: 19
     members:
-      - modules/akai-s3k-editor/src/components/keygroups/AdsrDisplay.tsx:145:472
+      - modules/akai-s3k-editor/src/components/keygroups/AdsrDisplay.tsx:145:177
       - modules/akai-s3k-editor/src/components/keygroups/AdsrDisplay.tsx:261:279
     disposition: pending
     reason: null
@@ -91,13 +91,13 @@ clones:
       - modules/akai-s3k-editor/src/components/keygroups/AdsrDisplay.tsx:315:321
     disposition: pending
     reason: null
-  - id: b89b02867a9f
+  - id: 9055f161a367
     lines: 11
     members:
       - modules/akai-s3k-editor/src/components/keygroups/FilterDisplay.tsx:167:177
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:462:472
-    disposition: keep-with-reason
-    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
+      - modules/d110-editor/src/components/ui/D110EnvelopeEditor.tsx:363:373
+    disposition: pending
+    reason: null
   - id: 73230cb078b2
     lines: 7
     members:
@@ -846,20 +846,6 @@ clones:
       - modules/jv1080-editor/src/components/layout/Layout.tsx:41:67
     disposition: pending
     reason: null
-  - id: 7ba263eb83ae
-    lines: 12
-    members:
-      - modules/d110-editor/src/components/ui/D110EnvelopeEditor.tsx:362:373
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:461:472
-    disposition: keep-with-reason
-    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
-  - id: 93b9830bf2b2
-    lines: 45
-    members:
-      - modules/d110-editor/src/components/ui/D110EnvelopeEditor.tsx:385:429
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:484:529
-    disposition: keep-with-reason
-    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 59f7a26481c5
     lines: 12
     members:
@@ -984,13 +970,6 @@ clones:
       - modules/roland-sxx0-editor/scripts/validate-device.ts:240:271
     disposition: keep-with-reason
     reason: "Cross-module CLI script / build-config duplication. validate-akai-s3000xl + validate-device + remaining vite / vitest / playwright configs: each is a per-module self-contained CLI or config file that must work independently from its own module path. Extracting shared helpers would couple modules through a single point of failure and complicate test-infra layering. See earlier playwright-config batch (commit 214a99b8) and validate-device intra-file disposition (commit 77d8003e) for the precedent. Flip to refactor if a future operator builds out cross-module test-infra / CLI primitives in modules/e2e-infra/ with the test apparatus the test-before-extract protocol requires."
-  - id: a975f1067ff4
-    lines: 151
-    members:
-      - modules/e2e-infra/scripts/watchdog.ts:1:151
-      - modules/roland-sxx0-editor/scripts/watchdog.ts:1:151
-    disposition: keep-with-reason
-    reason: "The roland-sxx0-editor/scripts/watchdog.ts was byte-identical to modules/e2e-infra/scripts/watchdog.ts. Updated all 4 roland shell scripts (run-hardware-e2e.sh, run-library-e2e.sh, run-device-library-e2e.sh, run-http-midi-e2e.sh) to invoke the shared e2e-infra watchdog via $INFRA_DIR/scripts/watchdog.ts — same convention akai-s3k-editor and the e2e-infra runner scripts already use. The local roland watchdog.ts file is now unused (only references are inside its own header). Disposition: kept until the audit-and-delete dispatch lands (auto-mode permission classifier blocks inline source-file deletion). Follow-up: ROLAND-BUGFIX-DEL-003 — delete modules/roland-sxx0-editor/scripts/watchdog.ts."
   - id: 2fd4c856bf86
     lines: 9
     members:
@@ -2378,20 +2357,6 @@ clones:
       - modules/roland-sxx0-editor/scripts/validate-device.ts:95:109
     disposition: keep-with-reason
     reason: validate-device.ts is a one-binary CLI tool; the 15-line intra-file MIDI port-session boilerplate (input/output declarations, resolved flag, cleanup, timeout) is acceptable duplication. Extracting a withMidiPortSession() helper would require building wiring-test infrastructure (script has no existing test surface) per the test-before-extract protocol, and the cost outweighs the payoff for a single script. Flip to refactor if a future operator builds out a shared scripts/midi-port-session.ts helper across CLI tools and adds the test apparatus.
-  - id: 325d993bda15
-    lines: 12
-    members:
-      - modules/roland-sxx0-editor/src/components/library/CreateDirectoryDialog.tsx:71:82
-      - modules/roland-sxx0-editor/src/components/library/RenameDirectoryDialog.tsx:76:86
-    disposition: keep-with-reason
-    reason: 'CreateDirectoryDialog.tsx and RenameDirectoryDialog.tsx are dead code — defined in src/components/library/ but never instantiated by the production LibraryPage. Folder CRUD is owned by editor-core LibraryBrowser + its own CreateFolderDialog. Documented in modules/roland-sxx0-editor/test/ui/in-context/library-dialogs.in-context.spec.ts:326-335 ("orphan components ... dead-code status tracked separately and should be resolved by deletion, not by accreting dev-only mount paths"). The companion useDirectoryOperations hook is also unused (grep confirms). Extracting a shared helper from files scheduled for deletion would be churn. Disposition: kept until the audit-and-delete dispatch lands. Follow-up: ROLAND-BUGFIX-DEL-002 — delete CreateDirectoryDialog.tsx, RenameDirectoryDialog.tsx, useDirectoryOperations.ts (operator approval required for source-file deletion per auto-mode permission classifier).'
-  - id: c7df8647daf8
-    lines: 18
-    members:
-      - modules/roland-sxx0-editor/src/components/library/CreateDirectoryDialog.tsx:86:103
-      - modules/roland-sxx0-editor/src/components/library/RenameDirectoryDialog.tsx:90:107
-    disposition: keep-with-reason
-    reason: 'CreateDirectoryDialog.tsx and RenameDirectoryDialog.tsx are dead code — defined in src/components/library/ but never instantiated by the production LibraryPage. Folder CRUD is owned by editor-core LibraryBrowser + its own CreateFolderDialog. Documented in modules/roland-sxx0-editor/test/ui/in-context/library-dialogs.in-context.spec.ts:326-335 ("orphan components ... dead-code status tracked separately and should be resolved by deletion, not by accreting dev-only mount paths"). The companion useDirectoryOperations hook is also unused (grep confirms). Extracting a shared helper from files scheduled for deletion would be churn. Disposition: kept until the audit-and-delete dispatch lands. Follow-up: ROLAND-BUGFIX-DEL-002 — delete CreateDirectoryDialog.tsx, RenameDirectoryDialog.tsx, useDirectoryOperations.ts (operator approval required for source-file deletion per auto-mode permission classifier).'
   - id: a56206979911
     lines: 11
     members:
@@ -2585,48 +2550,6 @@ clones:
       - modules/roland-sxx0-editor/src/components/tones/panels/ToneWavePanel.tsx:35:45
     disposition: ignore-with-justification
     reason: "Coincidental similarity rather than duplication: cross-page or cross-file fragments (import blocks, file-path-building utility lines, hook header imports) that happen to share shape because they use the same React hooks / TypeScript imports / file-path helpers, but serve different feature contexts and have no shared semantics. Extracting would create over-generic helpers that obscure intent at the call site. The clone detector flags these because of token overlap; semantically there is no duplication to remove. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
-  - id: 4b372a9e9e18
-    lines: 8
-    members:
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeDisplay.tsx:51:58
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:395:402
-    disposition: keep-with-reason
-    reason: 'EnvelopeDisplay.tsx is marked @deprecated by its own header ("Phase 9 Task 4 TonesPage amend introduced AcEnvelope (editor-core) as the canonical envelope surface — see ToneEnvelopeEditor. This file is kept for the audit-and-delete dispatch after the rest of Phase 9 Task 4 lands."). Source-tree grep confirms zero consumers (only the re-export from ui/index.ts). The duplication with EnvelopeEditor is therefore a transient artifact of a not-yet-completed deletion. Extracting a shared helper from a file scheduled for deletion would be churn. Disposition: kept until the audit-and-delete dispatch lands. Follow-up tracked: ROLAND-BUGFIX-DEL-001 — delete modules/roland-sxx0-editor/src/components/ui/EnvelopeDisplay.tsx + remove its export from ui/index.ts. Operator approval required for the source-file deletion (auto-mode permission classifier blocked the inline attempt).'
-  - id: 62705162bc69
-    lines: 24
-    members:
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeDisplay.tsx:65:88
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:492:515
-    disposition: keep-with-reason
-    reason: 'EnvelopeDisplay.tsx is marked @deprecated by its own header ("Phase 9 Task 4 TonesPage amend introduced AcEnvelope (editor-core) as the canonical envelope surface — see ToneEnvelopeEditor. This file is kept for the audit-and-delete dispatch after the rest of Phase 9 Task 4 lands."). Source-tree grep confirms zero consumers (only the re-export from ui/index.ts). The duplication with EnvelopeEditor is therefore a transient artifact of a not-yet-completed deletion. Extracting a shared helper from a file scheduled for deletion would be churn. Disposition: kept until the audit-and-delete dispatch lands. Follow-up tracked: ROLAND-BUGFIX-DEL-001 — delete modules/roland-sxx0-editor/src/components/ui/EnvelopeDisplay.tsx + remove its export from ui/index.ts. Operator approval required for the source-file deletion (auto-mode permission classifier blocked the inline attempt).'
-  - id: 96898287ce31
-    lines: 21
-    members:
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeDisplay.tsx:88:108
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:543:563
-    disposition: keep-with-reason
-    reason: 'EnvelopeDisplay.tsx is marked @deprecated by its own header ("Phase 9 Task 4 TonesPage amend introduced AcEnvelope (editor-core) as the canonical envelope surface — see ToneEnvelopeEditor. This file is kept for the audit-and-delete dispatch after the rest of Phase 9 Task 4 lands."). Source-tree grep confirms zero consumers (only the re-export from ui/index.ts). The duplication with EnvelopeEditor is therefore a transient artifact of a not-yet-completed deletion. Extracting a shared helper from a file scheduled for deletion would be churn. Disposition: kept until the audit-and-delete dispatch lands. Follow-up tracked: ROLAND-BUGFIX-DEL-001 — delete modules/roland-sxx0-editor/src/components/ui/EnvelopeDisplay.tsx + remove its export from ui/index.ts. Operator approval required for the source-file deletion (auto-mode permission classifier blocked the inline attempt).'
-  - id: 69cc807e1b8f
-    lines: 17
-    members:
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:160:176
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:211:227
-    disposition: keep-with-reason
-    reason: "EnvelopeEditor.tsx is marked @deprecated by its own header (line 9-13): Phase 9 Task 4 TonesPage amend replaced it with ToneEnvelopeEditor (which composes editor-core AcEnvelope); the file is kept for the audit-and-delete dispatch. Source-tree grep confirms zero consumers (only the re-export from ui/index.ts keeps the symbol public; the EnvelopeDisplay header references it in a doc comment). The 3 internal self-clones (paired form sections, paired selector logic, paired table-row renders for normal vs expanded view variants) all live inside this scheduled-for-deletion file — extracting helpers would be churn. Same precedent as ROLAND-BUGFIX-DEL-001 (EnvelopeDisplay). Disposition: kept until the audit-and-delete dispatch lands. Follow-up ROLAND-BUGFIX-DEL-001 (already tracked) expanded to cover EnvelopeEditor.tsx deletion in the same pass."
-  - id: f4fd48187620
-    lines: 18
-    members:
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:177:194
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:228:245
-    disposition: keep-with-reason
-    reason: "EnvelopeEditor.tsx is marked @deprecated by its own header (line 9-13): Phase 9 Task 4 TonesPage amend replaced it with ToneEnvelopeEditor (which composes editor-core AcEnvelope); the file is kept for the audit-and-delete dispatch. Source-tree grep confirms zero consumers (only the re-export from ui/index.ts keeps the symbol public; the EnvelopeDisplay header references it in a doc comment). The 3 internal self-clones (paired form sections, paired selector logic, paired table-row renders for normal vs expanded view variants) all live inside this scheduled-for-deletion file — extracting helpers would be churn. Same precedent as ROLAND-BUGFIX-DEL-001 (EnvelopeDisplay). Disposition: kept until the audit-and-delete dispatch lands. Follow-up ROLAND-BUGFIX-DEL-001 (already tracked) expanded to cover EnvelopeEditor.tsx deletion in the same pass."
-  - id: 268b38788fb8
-    lines: 10
-    members:
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:278:287
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:297:306
-    disposition: keep-with-reason
-    reason: "EnvelopeEditor.tsx is marked @deprecated by its own header (line 9-13): Phase 9 Task 4 TonesPage amend replaced it with ToneEnvelopeEditor (which composes editor-core AcEnvelope); the file is kept for the audit-and-delete dispatch. Source-tree grep confirms zero consumers (only the re-export from ui/index.ts keeps the symbol public; the EnvelopeDisplay header references it in a doc comment). The 3 internal self-clones (paired form sections, paired selector logic, paired table-row renders for normal vs expanded view variants) all live inside this scheduled-for-deletion file — extracting helpers would be churn. Same precedent as ROLAND-BUGFIX-DEL-001 (EnvelopeDisplay). Disposition: kept until the audit-and-delete dispatch lands. Follow-up ROLAND-BUGFIX-DEL-001 (already tracked) expanded to cover EnvelopeEditor.tsx deletion in the same pass."
   - id: 3de857d4bd7d
     lines: 8
     members:
