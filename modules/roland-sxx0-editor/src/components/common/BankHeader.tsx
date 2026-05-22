@@ -25,6 +25,7 @@
 
 import { AcChevron } from '@audiocontrol/editor-core';
 import { cn } from '@/lib/utils';
+import { AcReloadIcon } from './AcReloadIcon';
 
 export interface BankHeaderProps {
   bankIndex: number;
@@ -91,12 +92,7 @@ export function BankHeader({
             title={reloadLabel}
             data-testid={`${testIdPrefix}-reload-${bankIndex}`}
           >
-            <svg viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M3 8a5 5 0 0 1 9-3" />
-              <polyline points="12 2 12 5 9 5" />
-              <path d="M13 8a5 5 0 0 1-9 3" />
-              <polyline points="4 14 4 11 7 11" />
-            </svg>
+            <AcReloadIcon />
           </button>
         )}
       </span>

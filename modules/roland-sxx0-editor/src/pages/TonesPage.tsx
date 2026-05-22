@@ -35,7 +35,7 @@ import type { SamplerClientInterface, SamplerTone } from '@/core/midi/SamplerCli
 import { toneSampleRateHz } from '@/core/midi/SamplerClient';
 import { ToneList } from '@/components/tones/ToneList';
 import { ToneEditor } from '@/components/tones/ToneEditor';
-import { cn } from '@/lib/utils';
+import { PageTitleRow } from '@/components/common/PageTitleRow';
 import { useLoopEditor } from '@audiocontrol/loop-editor/ui';
 
 export function TonesPage() {
@@ -238,60 +238,20 @@ export function TonesPage() {
           bounded shell so the list + detail columns scroll internally
           and the document does not scroll as one tall page (see
           DESIGN-SYSTEM.md § "Page Shell Pattern"). */}
-      <header className="ac-page-title-row">
-        <div className="ac-page-title-block">
-          <h2 id="tones-heading" className="ac-page-title-heading">Tones</h2>
-          <div className="ac-page-title-rule" aria-hidden="true" />
-        </div>
-        <span className="ac-page-title-metric">
-          <span className="ac-page-title-led" aria-hidden="true" />
-          {isLoading && loadingMessage ? (
-            <span
-              className="ac-page-title-metric-status"
-              role="status"
-              aria-live="polite"
-            >
-              {loadingMessage}
-            </span>
-          ) : (
-            <span>
-              <strong>{loadedToneCount}</strong> of <strong>{totalTones}</strong> loaded
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={refreshAll}
-            disabled={isLoading}
-            className={cn(
-              'ac-icon-btn',
-              isLoading && 'ac-icon-btn--spinning',
-            )}
-            aria-label="Refresh all tones from device"
-            title="Refresh all tones from device"
-          >
-            <svg viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M3 8a5 5 0 0 1 9-3" />
-              <polyline points="12 2 12 5 9 5" />
-              <path d="M13 8a5 5 0 0 1-9 3" />
-              <polyline points="4 14 4 11 7 11" />
-            </svg>
-          </button>
-        </span>
-        {/* Load strip — overlays the title-row's bottom hairline so
-            it never displaces neighbors. Mounted only while loading
-            so the underlying hairline shows when idle. */}
-        {isLoading && loadingProgress !== null && (
-          <div
-            className="ac-page-title-progress"
-            aria-hidden="true"
-          >
-            <span
-              className="ac-page-title-progress-fill"
-              style={{ width: `${loadingProgress}%` }}
-            />
-          </div>
-        )}
-      </header>
+      <PageTitleRow
+        headingId="tones-heading"
+        headingText="Tones"
+        metric={
+          <>
+            <strong>{loadedToneCount}</strong> of <strong>{totalTones}</strong> loaded
+          </>
+        }
+        loadingMessage={loadingMessage}
+        isLoading={isLoading}
+        onRefresh={refreshAll}
+        refreshLabel="Refresh all tones from device"
+        loadingProgress={loadingProgress}
+      />
 
       {/* Error display */}
       {error && (

@@ -1,4 +1,4 @@
-generated_at: 2026-05-22T08:29:13.322Z
+generated_at: 2026-05-22T08:44:00.433Z
 clones:
   - id: c7068172edae
     lines: 15
@@ -2804,32 +2804,11 @@ clones:
       - modules/sampler-devices/src/devices/roland-s-series/s-series-wave-format.ts:178:189
     disposition: keep-with-reason
     reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
-  - id: c3ee44db4131
-    lines: 16
-    members:
-      - modules/roland-sxx0-editor/src/pages/PatchesPage.tsx:275:290
-      - modules/roland-sxx0-editor/src/pages/TonesPage.tsx:243:258
-    disposition: pending
-    reason: null
   - id: 826daf1e6a00
     lines: 7
     members:
       - modules/roland-sxx0-editor/src/pages/PatchesPage.tsx:28:34
       - modules/roland-sxx0-editor/src/pages/TonesPage.tsx:26:32
-    disposition: pending
-    reason: null
-  - id: c53786bfb969
-    lines: 33
-    members:
-      - modules/roland-sxx0-editor/src/pages/PatchesPage.tsx:303:335
-      - modules/roland-sxx0-editor/src/pages/TonesPage.tsx:271:303
-    disposition: pending
-    reason: null
-  - id: 8ab1699757ff
-    lines: 10
-    members:
-      - modules/roland-sxx0-editor/src/pages/PlayPage.tsx:313:322
-      - modules/roland-sxx0-editor/src/pages/TonesPage.tsx:271:280
     disposition: pending
     reason: null
   - id: ad7deae8d330

@@ -14,7 +14,7 @@ import { useDeviceDataStore } from '@/stores/deviceDataStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { useBankLoader } from '@/hooks/useBankLoader';
 import type { SamplerClientInterface } from '@/core/midi/SamplerClient';
-import { cn } from '@/lib/utils';
+import { PageTitleRow } from '@/components/common/PageTitleRow';
 import { isMockMidiMode } from '@/mock/mockMode';
 import { isPatchEmpty } from '@/lib/slot-allocation';
 
@@ -286,40 +286,26 @@ export function PlayPage() {
   return (
     <div className="ac-page ac-page-shell ac-page-shell--fixed-viewport">
       {/* Lean page header — h2 + red rule + status metric + refresh icon.
-          Same .ac-page-title-row primitive PatchesPage / TonesPage use.
+          Same PageTitleRow primitive PatchesPage / TonesPage use.
           Replaces the legacy .ac-page-sticky-header chrome which had
           negative inline margins that occluded the VideoCapture drawer
-          and the parts-grid column headers (#423). */}
-      <header className="ac-page-title-row">
-        <div className="ac-page-title-block">
-          <h2 id="play-heading" className="ac-page-title-heading">Play</h2>
-          <div className="ac-page-title-rule" aria-hidden="true" />
-        </div>
-        <span className="ac-page-title-metric">
-          <span className="ac-page-title-led" aria-hidden="true" />
-          <span>
+          and the parts-grid column headers (#423).
+          The simpler PageTitleRow variant: no loadingMessage branch,
+          no loadingProgress strip — PlayPage has its own
+          .ac-page-progress strip rendered below the header. */}
+      <PageTitleRow
+        headingId="play-heading"
+        headingText="Play"
+        metric={
+          <>
             <strong>{loadedBanks.length}</strong> of <strong>{totalBanks}</strong> banks loaded
-          </span>
-          <button
-            type="button"
-            onClick={refreshAll}
-            disabled={isLoading}
-            className={cn(
-              'ac-icon-btn',
-              isLoading && 'ac-icon-btn--spinning',
-            )}
-            aria-label="Refresh multi-mode configuration and patches from device"
-            title="Refresh from device"
-          >
-            <svg viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M3 8a5 5 0 0 1 9-3" />
-              <polyline points="12 2 12 5 9 5" />
-              <path d="M13 8a5 5 0 0 1-9 3" />
-              <polyline points="4 14 4 11 7 11" />
-            </svg>
-          </button>
-        </span>
-      </header>
+          </>
+        }
+        isLoading={isLoading}
+        onRefresh={refreshAll}
+        refreshLabel="Refresh multi-mode configuration and patches from device"
+        refreshTitle="Refresh from device"
+      />
 
       {/* Inline loading progress — sits directly below the title row
           using the shared .ac-page-progress strip. */}
