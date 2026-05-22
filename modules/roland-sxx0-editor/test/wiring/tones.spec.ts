@@ -192,6 +192,35 @@ test.describe('Capabilities — Tones (C-TONE)', () => {
     await expect(bankHeader.locator('.ac-list-bank-meta strong')).toContainText(/T11.*T\d/);
   });
 
+  test('D-TONE-EDITOR-TABS-01: ToneEditorTabs renders the four-tab radio-driven shell (clones.yaml 80f494ba63d3 + 5578c63410e2 AcRadioTabs refactor contract)', async ({ page }) => {
+    // Sibling assertion to D-PATCH-EDITOR-TABS-01 (patches.spec.ts).
+    // Contract: ToneEditorTabs renders the four TABS entries
+    // (Wave, Pitch & LFO, Filter, Amp) as role="tab" labels with
+    // matching [data-tab="tt-wave|tt-pitch-lfo|tt-filter|tt-amp"]
+    // role="tabpanel" sections. The Wave tab is default-active.
+    //
+    // The tone-writes.spec.ts wiring suite already exercises clicking
+    // through tabs and writing into the wave panel, so it would catch
+    // a botched refactor — but it doesn't EXPLICITLY pin the
+    // .ac-tabs / role="tabpanel" wiring shape. This test does.
+    const list = page.locator('[data-capability="C-TONE-01"]');
+    await expect(list).toBeVisible({ timeout: 5_000 });
+    await list.getByRole('button', { name: /^T11\b/ }).click();
+
+    const editor = page.locator('[data-capability="C-TONE-04"]');
+    await expect(editor).toBeVisible({ timeout: 5_000 });
+
+    await expect(editor.getByRole('tab', { name: 'Wave' })).toBeVisible();
+    await expect(editor.getByRole('tab', { name: 'Pitch & LFO' })).toBeVisible();
+    await expect(editor.getByRole('tab', { name: 'Filter' })).toBeVisible();
+    await expect(editor.getByRole('tab', { name: 'Amp' })).toBeVisible();
+
+    await expect(editor.locator('[data-tab="tt-wave"]')).toHaveAttribute('role', 'tabpanel');
+    await expect(editor.locator('[data-tab="tt-pitch-lfo"]')).toHaveAttribute('role', 'tabpanel');
+    await expect(editor.locator('[data-tab="tt-filter"]')).toHaveAttribute('role', 'tabpanel');
+    await expect(editor.locator('[data-tab="tt-amp"]')).toHaveAttribute('role', 'tabpanel');
+  });
+
   test('D-TONE-LIST-08: each row wraps the tone-name testid in an .ac-list-info span (clones.yaml 80299d9fda8d refactor contract)', async ({ page }) => {
     // Test-before-extract contract for clones.yaml group 80299d9fda8d
     // (PatchList.tsx:227-240 ↔ ToneList.tsx:226-239 ac-list-info

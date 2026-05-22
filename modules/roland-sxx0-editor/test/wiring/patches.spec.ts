@@ -294,6 +294,36 @@ test.describe('Capabilities — Patches (C-PATCH)', () => {
     await expect(bankHeader.locator('.ac-list-bank-meta strong')).toContainText(/P11.*P\d/);
   });
 
+  test('D-PATCH-EDITOR-TABS-01: PatchEditorTabs renders the two-tab radio-driven shell (clones.yaml 80f494ba63d3 + 5578c63410e2 AcRadioTabs refactor contract)', async ({ page }) => {
+    // Test-before-extract contract for promoting PatchEditorTabs +
+    // ToneEditorTabs to a shared AcRadioTabs primitive. The contract
+    // PatchEditorTabs preserves through the refactor:
+    //   - The .ac-tabs root wraps the entire tab strip + panel set
+    //   - The two TABS entries (Common, Mapping) each render one
+    //     role="tab" label with the visible name as accessible name
+    //     AND one [data-tab="pt-common|pt-mapping"] role="tabpanel"
+    //   - The radio inputs share a single name= (groupName) so only
+    //     one tab can be active at a time
+    //   - The Common tab is default-active
+    //
+    // No prior test pins the .ac-tabs structure, the [data-tab] panel
+    // selectors, or the role="tabpanel" wiring. Added 2026-05-22
+    // BEFORE the AcRadioTabs extraction lands. Must pass against the
+    // pre-refactor code AND stay green after the refactor.
+    const list = page.locator('[data-capability="C-PATCH-01"]');
+    await expect(list).toBeVisible({ timeout: 5_000 });
+    await list.getByRole('button', { name: /^P11/ }).click();
+
+    const editor = page.locator('[data-capability="C-PATCH-04"]');
+    await expect(editor).toBeVisible({ timeout: 5_000 });
+
+    await expect(editor.getByRole('tab', { name: 'Common' })).toBeVisible();
+    await expect(editor.getByRole('tab', { name: 'Mapping' })).toBeVisible();
+
+    await expect(editor.locator('[data-tab="pt-common"]')).toHaveAttribute('role', 'tabpanel');
+    await expect(editor.locator('[data-tab="pt-mapping"]')).toHaveAttribute('role', 'tabpanel');
+  });
+
   test('D-PATCH-LIST-09: each row wraps the patch-name testid in an .ac-list-info span (clones.yaml 80299d9fda8d refactor contract)', async ({ page }) => {
     // Test-before-extract contract for clones.yaml group 80299d9fda8d
     // (PatchList.tsx:227-240 ↔ ToneList.tsx:226-239 ac-list-info
