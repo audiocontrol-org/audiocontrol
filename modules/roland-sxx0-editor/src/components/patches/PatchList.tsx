@@ -20,12 +20,11 @@
 import { useState, type CSSProperties, type KeyboardEvent } from 'react';
 
 import type { SamplerPatch } from '@/core/midi/SamplerClient';
-import { cn } from '@/lib/utils';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { PatchLabel } from '@/components/common/PatchLabel';
 import { SlotInfo } from '@/components/common/SlotInfo';
+import { BankHeader } from '@/components/common/BankHeader';
 import { isPatchEmpty } from '@/lib/slot-allocation';
-import { AcChevron } from '@audiocontrol/editor-core';
 
 interface PatchListProps {
   /** Sparse array of patches - undefined = not loaded */
@@ -107,53 +106,17 @@ export function PatchList({
               key={`bank-${bankIndex}`}
               data-bank-index={bankIndex}
             >
-              <div className="ac-list-bank-header">
-                <button
-                  type="button"
-                  className="ac-list-bank-toggle"
-                  onClick={() => toggleBank(bankIndex)}
-                  aria-expanded={!isCollapsed}
-                  aria-label={`Toggle bank ${bankIndex + 1}`}
-                  data-testid={`patch-bank-toggle-${bankIndex}`}
-                >
-                  <AcChevron expanded={!isCollapsed} />
-                  <span>Bank {bankIndex + 1}</span>
-                </button>
-                <span className="ac-list-bank-meta">
-                  <strong>
-                    {firstSlotLabel}–{lastSlotLabel}
-                  </strong>
-                  {onReloadBank && (
-                    <button
-                      type="button"
-                      className={cn(
-                        'ac-list-bank-reload',
-                        isThisBankLoading && 'ac-list-bank-reload--spinning',
-                      )}
-                      onClick={() => onReloadBank(bankIndex)}
-                      disabled={isThisBankLoading}
-                      aria-label={
-                        isBankLoaded
-                          ? `Reload bank ${bankIndex + 1}`
-                          : `Load bank ${bankIndex + 1}`
-                      }
-                      title={
-                        isBankLoaded
-                          ? `Reload bank ${bankIndex + 1}`
-                          : `Load bank ${bankIndex + 1}`
-                      }
-                      data-testid={`patch-bank-reload-${bankIndex}`}
-                    >
-                      <svg viewBox="0 0 16 16" aria-hidden="true">
-                        <path d="M3 8a5 5 0 0 1 9-3" />
-                        <polyline points="12 2 12 5 9 5" />
-                        <path d="M13 8a5 5 0 0 1-9 3" />
-                        <polyline points="4 14 4 11 7 11" />
-                      </svg>
-                    </button>
-                  )}
-                </span>
-              </div>
+              <BankHeader
+                bankIndex={bankIndex}
+                firstSlotLabel={firstSlotLabel}
+                lastSlotLabel={lastSlotLabel}
+                isCollapsed={isCollapsed}
+                onToggle={() => toggleBank(bankIndex)}
+                isBankLoaded={isBankLoaded}
+                isThisBankLoading={isThisBankLoading}
+                onReload={onReloadBank}
+                testIdPrefix="patch-bank"
+              />
 
               <div className="ac-collapse" data-expanded={!isCollapsed}>
                 <div>
