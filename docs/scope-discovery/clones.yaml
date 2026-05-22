@@ -2201,50 +2201,50 @@ clones:
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-aliasing.ts:106:115
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:159:169
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 869d2104eb14
     lines: 13
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-aliasing.ts:115:127
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:88:184
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 184f81a30845
     lines: 32
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-aliasing.ts:131:162
       - modules/roland-sxx0-editor/scripts/probe-wave-single.ts:60:145
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 682fa3a4ce37
     lines: 17
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-aliasing.ts:13:29
       - modules/roland-sxx0-editor/scripts/probe-wave-single.ts:9:42
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 79b6a72dc6c3
     lines: 11
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-aliasing.ts:38:48
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:59:70
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 0f5ae92e24a8
     lines: 21
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-aliasing.ts:43:63
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:27:47
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 7627d9f163db
     lines: 23
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-aliasing.ts:68:90
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:56:83
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: c4067caecfdd
     lines: 6
     members:
@@ -2257,120 +2257,120 @@ clones:
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:104:113
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:56:65
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 35b1524c1b7c
     lines: 6
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:118:123
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:68:73
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 82026d488e9f
     lines: 10
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:13:22
       - modules/roland-sxx0-editor/scripts/probe-wave-single.ts:9:19
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: f86cbd50cd0d
     lines: 6
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:154:159
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:73:78
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 66367273995a
     lines: 7
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:169:175
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:87:260
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 68f8e2c6e837
     lines: 6
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:176:181
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:93:99
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 0937dcaf6312
     lines: 19
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:192:210
       - modules/roland-sxx0-editor/scripts/probe-wave-single.ts:60:79
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 7d47de7df8ec
     lines: 8
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:210:217
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:128:88
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 997ad25eb3ee
     lines: 14
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:223:236
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:128:142
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: cdd0209a0e94
     lines: 13
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:28:40
       - modules/roland-sxx0-editor/scripts/probe-wave-single.ts:19:31
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: cdc141c72516
     lines: 28
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:64:91
       - modules/roland-sxx0-editor/scripts/probe-wave-single.ts:28:55
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 779c1d31bc6e
     lines: 13
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:111:123
       - modules/roland-sxx0-editor/scripts/probe-wave-single.ts:57:71
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 85cf78fe67fd
     lines: 6
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:123:128
       - modules/roland-sxx0-editor/scripts/probe-wave-single.ts:72:78
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 34dfa93fff3b
     lines: 9
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:17:25
       - modules/roland-sxx0-editor/scripts/probe-wave-single.ts:9:17
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 84e6442125df
     lines: 9
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:23:31
       - modules/roland-sxx0-editor/scripts/probe-wave-single.ts:17:34
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 46eb9849af93
     lines: 16
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:31:46
       - modules/roland-sxx0-editor/scripts/probe-wave-single.ts:35:55
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 3b3fdd9f2f9b
     lines: 6
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:88:93
       - modules/roland-sxx0-editor/scripts/probe-wave-single.ts:255:260
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: d58176538cd4
     lines: 15
     members:

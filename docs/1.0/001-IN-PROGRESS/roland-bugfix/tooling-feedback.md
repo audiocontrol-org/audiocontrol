@@ -44,6 +44,15 @@ Exercised 2026-05-22 via `/scope-inventory roland-bugfix`. Two runs total — th
 
 - (Pending — Phase 2 Task 5 will exercise this against every Phase 1 bug fix going forward; first report comes with the first invocation.)
 
+## Batch-dispose workflow (no upstream tooling — operator-built)
+
+Operator-built `.tmp/batch-dispose.ts` script applies the same disposition + reason to N clone groups in one pass, with a verify-after-write step that re-reads `clones.yaml` and confirms each row landed before reporting success. Exercised 2026-05-22 to dispose 24 probe-script clones as `keep-with-reason`.
+
+- ✅ **Verify-after-write caught nothing this run, but it's the right discipline.** Lesson from the `c4067caecfdd` single-walkthrough: a failed Edit can vanish silently in batched output, and the workplan disposition log can claim work that isn't on disk. The script re-reads and confirms each APPLIED row.
+- ❌ **There's no upstream `tools/scope-discovery/batch-dispose.ts`.** Every operator dispositioning at scale will write their own script (or this one). Strong candidate for promotion into the scope-discovery toolchain proper. Severity: medium (we'll touch ~170 more groups in Phase 2/3; without a shared script every consumer reinvents the verify-after-write loop, which is exactly where the silent-failure mode lives).
+- 🤔 **Skipped rows would be useful to report.** My script reports `SKIPPED` for groups already non-pending; in practice this means "someone else already dispositioned this — review whether your reason agrees with the existing one." A `--show-existing` flag that prints the existing disposition + reason for skipped rows would tighten that loop. Currently you have to grep `clones.yaml` manually.
+- 🤔 **YAML round-trip preserves structure but reorders keys per the YAML library's defaults.** Diff readability of the resulting commit is the same as my earlier curation pass — workable but not pristine. A schema-aware serializer that emits keys in a stable order would help future code-review.
+
 ## `make refresh-clones-baseline`
 
 Exercised 2026-05-22 after the SlotInfo extraction (clones.yaml group `80299d9fda8d` refactor).
