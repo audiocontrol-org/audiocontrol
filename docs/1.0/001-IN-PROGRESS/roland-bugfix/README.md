@@ -7,8 +7,8 @@ Open-ended catchment branch for post-merge bug fixes against the just-merged Rol
 | Phase | Status | Notes |
 |-------|--------|-------|
 | Phase 1: Rolling Bug-Fix Pass | In Progress | Open-ended; operator-declared completion |
-| Phase 2: Scope-Discovery Audit + Duplication Findings | Pending | Adds upfront route inventory + duplication audit per `docs/analysis/s550-redesign-scope-discovery.md`; inventory feeds Phase 3 |
-| Phase 3: Remediation Pass | Blocked on Phase 2 | One commit per Accept-marked finding; task breakdown via `superpowers:writing-plans` |
+| Phase 2: Disposition Roland-surface clones (scope-discovery validation) | Pending | 172 of 495 clone groups in `docs/scope-discovery/clones.yaml` touch our surface; disposition each + capture tooling feedback. We are the validation test subject for `feature/scope-discovery-protocol`'s Phase 4 (PR #441). |
+| Phase 3: Roland-surface refactor PRs (clone-group cleanup) | Concurrent with Phase 2 | One PR per `refactor`-marked group; not sequential with Phase 2 |
 
 ## Documentation
 

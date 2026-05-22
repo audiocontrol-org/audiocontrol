@@ -20,17 +20,17 @@ The s550-support feature shipped a large redesign of the Roland S-330 / S-550 ed
 
 Phase 1: There is no fixed checklist of bugs to fix. Bugs are added to [`workplan.md`](./workplan.md)'s triage table as they are found by the operator; fixes land as individual commits; the branch ships (or stays open for another round) when the operator says so.
 
-Phase 2 (added 2026-05-21): Cross-route UX divergence inventory + duplication audit complete, operator-reviewed. The agent-surfaced complement to Phase 1's operator-surfaced findings. Closure gate is the populated inventory at `scope-audit.md` with every finding marked Accept/Defer/Reject.
+Phase 2 (added 2026-05-21, re-scoped 2026-05-22 to consume PR #441 tooling): Disposition every clone group in `docs/scope-discovery/clones.yaml` that touches the Roland surface (172 of 495 pending at extension time). We are the validation test subject for `feature/scope-discovery-protocol`'s Phase 4. Closure gate is zero pending entries for groups touching `modules/roland-sxx0-editor` or `modules/editor-core`, plus a `tooling-feedback.md` handed back to that team.
 
-Phase 3 (added 2026-05-21): One commit per Accept-marked Phase 2 finding, with operator confirmation. Per-fix gates inherited from Phase 1.
+Phase 3 (added 2026-05-21, re-scoped 2026-05-22): One PR per `refactor`-marked Phase 2 disposition, with operator confirmation. Runs CONCURRENTLY with Phase 2 — not sequential. Per-PR gates: detector confirms removal, build green, test gate green, real abstraction confirmed.
 
 The per-fix gates (which are fixed) are recorded in [`workplan.md`](./workplan.md) under each phase's acceptance criteria.
 
 ## Implementation Phases
 
 1. **Phase 1: Rolling Bug-Fix Pass** — In Progress. Open-ended; operator-surfaced bugs land in the triage table.
-2. **Phase 2: Scope-Discovery Audit + Duplication Findings** — Pending. Agent-surfaced inventory across all Roland routes × devices, plus CSS and code-duplication audit. Drives Phase 3.
-3. **Phase 3: Remediation Pass** — Blocked on Phase 2. Task-per-finding implementation, plan via `superpowers:writing-plans`.
+2. **Phase 2: Disposition Roland-surface clones (scope-discovery validation)** — Pending. Disposition 172 clone groups + apply `/scope-widen` per Phase 1 fix + capture tooling feedback. Validation test subject for PR #441's Phase 4.
+3. **Phase 3: Roland-surface refactor PRs (clone-group cleanup)** — Concurrent with Phase 2. One PR per `refactor`-marked group; complex extractions planned via `superpowers:writing-plans`.
 
 ## Scope
 
