@@ -14,11 +14,15 @@
  *
  * Pattern mirrors `clone-detector.validate.ts` (T2.5):
  *   - Each scenario is a small async function returning a ScenarioResult.
- *   - A gutted-self-check stubs the wrap() function to always-accept and
- *     re-runs the rejection-asserting helper against it; the harness
- *     correctly reports the stub as broken. If the gut-check ever passes,
- *     the harness has no teeth and every other scenario proves nothing.
- *   - Per-scenario PASS/FAIL with one-line diagnostic.
+ *   - A two-level gutted-self-check stubs the wrap() function and
+ *     re-runs the rejection-asserting helper against it. Level 1
+ *     stubs both parser and validator (fully-gutted); Level 2 keeps
+ *     the parser and gutts only the validator (parser-only). The
+ *     dynamic partition proves BOTH layers are load-bearing — if
+ *     either passes against a rejection scenario, the harness has
+ *     no teeth and the scenario proves nothing.
+ *   - Per-scenario PASS goes to stdout, FAIL goes to stderr (CI
+ *     consumers grep stderr for FAIL).
  *   - Exit 0 = all pass; 1 = any assertion fail; 2 = infrastructure error.
  *
  * Run via:
@@ -28,6 +32,7 @@
 
 import {
   DispatchRejected,
+  parseReturn,
   type DispatchFn,
   type ParsedDispatchReturn,
   type WrapOptions,
@@ -58,10 +63,10 @@ function cannedDispatch(text: string): DispatchFn {
 }
 
 /**
- * A gutted wrap() substitute: ignores the dispatched response entirely
- * and always returns a fixed ParsedDispatchReturn. Simulates the failure
- * mode where someone has commented out parseReturn/validateParsed and
- * the gate silently accepts every sub-agent dispatch.
+ * A fully-gutted wrap() substitute: ignores the dispatched response
+ * entirely and always returns a fixed ParsedDispatchReturn. Simulates
+ * the failure mode where someone has commented out BOTH parseReturn and
+ * validateParsed and the gate silently accepts every sub-agent dispatch.
  */
 const guttedWrap: WrapFn = async () => ({
   searched: { pattern: 'gutted', count: 0 },
@@ -69,6 +74,23 @@ const guttedWrap: WrapFn = async () => ({
   excluded: [],
   rawText: '',
 });
+
+/**
+ * A partially-gutted wrap() substitute: runs parseReturn (so malformed
+ * grammar still throws) but skips validateParsed. Simulates the failure
+ * mode where the parser is intact but the semantic validator (skipped-
+ * audit + forbidden-phrase rules) has been commented out — a regression
+ * class the fully-gutted stub misses, because every rejection scenario
+ * would still appear caught (by the parser) and the test would silently
+ * pass against a half-broken gate.
+ */
+const parserOnlyWrap: WrapFn = async (_agentType, _taskPrompt, options) => {
+  const responseText = await options.dispatchFn({
+    agentType: 'test-agent',
+    prompt: 'test prompt',
+  });
+  return parseReturn(responseText);
+};
 
 // ---------------------------------------------------------------------------
 // Scenario result + helpers
@@ -178,37 +200,136 @@ async function assertScenario(
 // ---------------------------------------------------------------------------
 
 /**
- * Run the gutted-wrap stub against EVERY rejection scenario and assert
- * that each one's assertion correctly FAILS (because the stub accepts
- * everything). If any rejection-scenario assertion *passes* against the
- * gutted stub, the harness has no teeth — guttedWrap returns a fixed
- * accepted ParsedDispatchReturn, so an honest assertScenario must
- * report "expected reject but wrapper accepted" for every rejection
- * scenario. A passing report against the stub means assertScenario is
- * permissive enough that real bugs would slip through too.
+ * Two-level gutted-logic self-check. Exercises both gutting modes and
+ * proves the rejection rules depend on BOTH the parser AND the
+ * validator — a single-level always-accept check would miss the
+ * partial-gut regression where parseReturn runs but validateParsed
+ * is silently bypassed.
+ *
+ *   Level 1 — fully-gutted wrap (guttedWrap): every rejection scenario
+ *     MUST fail its assertion. If any passes, the harness has no teeth.
+ *
+ *   Level 2 — parser-only wrap (parserOnlyWrap): the partition is
+ *     dynamic — scenarios whose response trips parseReturn are still
+ *     rejected (parser-caught); the rest pass through (validator-
+ *     caught). The assertions must:
+ *       (a) PASS against parser-caught scenarios (the parser is doing
+ *           its job), AND
+ *       (b) FAIL against validator-caught scenarios (because the
+ *           always-accept-validator stub lets them through, but the
+ *           rejection-asserting fixture expects a throw).
+ *     If (b) is empty — i.e. every rejection scenario is parser-caught
+ *     — then the suite doesn't exercise the validator at all, which
+ *     itself is a regression.
  */
 async function scenarioGuttedLogicSelfCheck(): Promise<ScenarioResult> {
-  const stubResults: ScenarioResult[] = [];
+  // Level 1 — fully-gutted wrap. Every rejection scenario must fail its
+  // assertion (gutted accepts everything; the assertion expects reject).
+  const fullyGuttedResults: ScenarioResult[] = [];
   for (const scenario of REJECTION_SCENARIOS) {
-    stubResults.push(await assertScenario(scenario, guttedWrap));
+    fullyGuttedResults.push(await assertScenario(scenario, guttedWrap));
   }
-  const stubPasses = stubResults.filter((r) => r.passed);
-  if (stubPasses.length > 0) {
-    const names = stubPasses.map((r) => r.name).join('; ');
+  const fullyGuttedPasses = fullyGuttedResults.filter((r) => r.passed);
+  if (fullyGuttedPasses.length > 0) {
+    const names = fullyGuttedPasses.map((r) => r.name).join('; ');
     return fail(
       'gutted-logic self-check',
-      `assertion passed against gutted always-accept wrap() for: ${names} — harness has no teeth`,
+      `Level 1: assertion passed against fully-gutted wrap() for: ${names} — harness has no teeth`,
     );
   }
+
+  // Level 2 — parser-only wrap. Classify scenarios dynamically by
+  // running parseReturn against each response: scenarios that the
+  // parser rejects are "parser-caught" and must still fail their
+  // assertion correctly under parserOnlyWrap; scenarios the parser
+  // accepts are "validator-caught" and must INCORRECTLY pass against
+  // the stub (proving the validator is the load-bearing layer for
+  // those rules).
+  const parserCaught: string[] = [];
+  const validatorCaught: string[] = [];
+  for (const scenario of REJECTION_SCENARIOS) {
+    try {
+      parseReturn(scenario.response);
+      validatorCaught.push(scenario.name);
+    } catch (err) {
+      if (err instanceof DispatchRejected) {
+        parserCaught.push(scenario.name);
+      } else {
+        return fail(
+          'gutted-logic self-check',
+          `Level 2: parseReturn threw non-DispatchRejected error for "${scenario.name}": ${errorMessage(err)}`,
+        );
+      }
+    }
+  }
+  if (validatorCaught.length === 0) {
+    return fail(
+      'gutted-logic self-check',
+      'Level 2: REJECTION_SCENARIOS contains no validator-caught scenarios — the validator (skipped-audit + forbidden-phrase rules) is not exercised by the rejection fixtures',
+    );
+  }
+  if (parserCaught.length === 0) {
+    return fail(
+      'gutted-logic self-check',
+      'Level 2: REJECTION_SCENARIOS contains no parser-caught scenarios — the grammar parser is not exercised by the rejection fixtures',
+    );
+  }
+
+  const parserOnlyResults: ScenarioResult[] = [];
+  for (const scenario of REJECTION_SCENARIOS) {
+    parserOnlyResults.push(await assertScenario(scenario, parserOnlyWrap));
+  }
+
+  // (a) Parser-caught scenarios MUST still pass against parserOnlyWrap.
+  // If any fail, the parser regressed (or our classification is wrong).
+  const parserCaughtFailures = parserOnlyResults.filter(
+    (r) => !r.passed && parserCaught.includes(r.name),
+  );
+  if (parserCaughtFailures.length > 0) {
+    const names = parserCaughtFailures.map((r) => r.name).join('; ');
+    return fail(
+      'gutted-logic self-check',
+      `Level 2 (a): parser-caught scenarios failed against parserOnlyWrap (parser regression?): ${names}`,
+    );
+  }
+
+  // (b) Validator-caught scenarios MUST fail against parserOnlyWrap
+  // (the validator is gutted; the parser doesn't catch them; so the
+  // wrapper accepts and the rejection-asserting fixture fails).
+  const validatorCaughtPasses = parserOnlyResults.filter(
+    (r) => r.passed && validatorCaught.includes(r.name),
+  );
+  if (validatorCaughtPasses.length > 0) {
+    const names = validatorCaughtPasses.map((r) => r.name).join('; ');
+    return fail(
+      'gutted-logic self-check',
+      `Level 2 (b): validator-caught scenarios passed against parserOnlyWrap — the parser is doing the validator's work (regression class): ${names}`,
+    );
+  }
+
   return pass(
     'gutted-logic self-check',
-    `every rejection assertion (${REJECTION_SCENARIOS.length}) correctly failed against the always-accept stub`,
+    `Level 1: ${REJECTION_SCENARIOS.length} assertions correctly failed against fully-gutted wrap; ` +
+      `Level 2: ${parserCaught.length} parser-caught + ${validatorCaught.length} validator-caught scenarios — both layers proven load-bearing`,
   );
 }
 
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
+
+/**
+ * Per-scenario printer. PASS lines go to stdout; FAIL lines go to
+ * stderr so CI consumers grepping stderr for FAIL see them. Matches
+ * the dual-stream convention used by other validator harnesses.
+ */
+function emitScenarioLine(result: ScenarioResult): void {
+  if (result.passed) {
+    process.stdout.write(`  PASS  ${result.name} — ${result.detail}\n`);
+  } else {
+    process.stderr.write(`  FAIL  ${result.name} — ${result.detail}\n`);
+  }
+}
 
 async function main(): Promise<number> {
   const results: ScenarioResult[] = [];
@@ -219,15 +340,11 @@ async function main(): Promise<number> {
   for (const scenario of allScenarios) {
     const result = await assertScenario(scenario, wrap);
     results.push(result);
-    const marker = result.passed ? 'PASS' : 'FAIL';
-    process.stdout.write(`  ${marker}  ${result.name} — ${result.detail}\n`);
+    emitScenarioLine(result);
   }
   const guttedResult = await scenarioGuttedLogicSelfCheck();
   results.push(guttedResult);
-  const guttedMarker = guttedResult.passed ? 'PASS' : 'FAIL';
-  process.stdout.write(
-    `  ${guttedMarker}  ${guttedResult.name} — ${guttedResult.detail}\n`,
-  );
+  emitScenarioLine(guttedResult);
 
   const failed = results.filter((r) => !r.passed);
   process.stdout.write(
