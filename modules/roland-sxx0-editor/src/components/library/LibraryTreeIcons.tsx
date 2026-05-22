@@ -28,15 +28,15 @@ export function FolderIcon({ isOpen: _isOpen }: { isOpen: boolean }): JSX.Elemen
   );
 }
 
-/** Chevron — Unicode glyph swap matching the bank-header chevron in
- *  ToneList / PatchList and the section-eyebrow chevron in
- *  DeviceMemoryPanel. Single shared vocabulary across all three. */
+/** Legacy alias for the AcChevron primitive. The S330/S550 tree rows
+ *  still import ChevronIcon from this module; this thin wrapper keeps
+ *  those call-sites working without re-routing them all through
+ *  editor-core. Owns no styling — the AcChevron component is the sole
+ *  source of chevron sizing/color/glyph. */
+import { AcChevron } from '@audiocontrol/editor-core';
+
 export function ChevronIcon({ isExpanded }: { isExpanded: boolean }): JSX.Element {
-  return (
-    <span className="ac-tree-chevron" aria-hidden="true">
-      {isExpanded ? '▾' : '▸'}
-    </span>
-  );
+  return <AcChevron expanded={isExpanded} />;
 }
 
 /** Wave icon for tones. */

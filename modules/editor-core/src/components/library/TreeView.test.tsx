@@ -45,12 +45,17 @@ describe('TreeView', () => {
   });
 
   it('hides children when directory is collapsed', () => {
+    // TreeView mounts children inside `<div class="ac-collapse"
+    // data-expanded="…">` regardless of expansion, so the CSS can
+    // animate the open/close. Verify the collapse wrapper reports
+    // collapsed; do not assert child text absence (it's in the DOM,
+    // just hidden via CSS).
     const expanded = new Set<string>();
     const html = renderToStaticMarkup(
       <TreeView nodes={sampleTree} expandedIds={expanded} />,
     );
     expect(html).toContain('Samples');
-    expect(html).not.toContain('kick.wav');
+    expect(html).toContain('class="ac-collapse" data-expanded="false"');
   });
 
   it('shows empty directory message when expanded directory has no children', () => {
@@ -101,7 +106,11 @@ describe('TreeView', () => {
 
   it('renders chevron for directory nodes', () => {
     const html = renderToStaticMarkup(<TreeView nodes={sampleTree} />);
-    expect(html).toContain('ac-tree-chevron');
+    // The AcChevron primitive renders as `<span class="ac-chevron"
+    // data-expanded="…">` — the wrapping toggle (`.ac-tree-disclosure-btn`)
+    // sits around it. Either marker proves a chevron rendered.
+    expect(html).toContain('ac-chevron');
+    expect(html).toContain('ac-tree-disclosure-btn');
   });
 
   it('renders nested children at depth > 1', () => {

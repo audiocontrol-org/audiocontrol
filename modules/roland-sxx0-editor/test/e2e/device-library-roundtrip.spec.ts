@@ -39,6 +39,12 @@ import {
   exportedToneHasWav,
   extractYamlFields,
 } from './helpers/roundtrip-helpers';
+// Playwright HTML5 DnD helper. Lives in the Wave-5 wiring helpers
+// alongside its sibling locators/seeders; the helper itself is
+// harness-agnostic (operates on any Locator + a shared DataTransfer)
+// so reusing it here keeps the DnD round-trip canonical instead of
+// re-implementing the same 5-event sequence per test category.
+import { simulateDragAndDrop } from '../wiring/library-flows-dnd-helpers';
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -405,6 +411,154 @@ test.describe('Device Library Round Trip', () => {
         `Expected s330 sections in both original and exported YAML`
       );
     }
+  });
+
+  // -------------------------------------------------------------------------
+  // Tone Round Trip via Library Drag-Drop (BUG-001 regression coverage)
+  // -------------------------------------------------------------------------
+
+  test('tone round trip via library drag-drop: drag from device memory to library, confirm export, compare', async ({
+    page,
+  }) => {
+    // Mirrors the prior "tone round trip" but drives the export
+    // through the LibraryPage drag-drop path (DeviceMemoryPanel →
+    // library tones section) instead of the Tones-editor "Export"
+    // button. Both paths terminate in ExportToneDialog; this test
+    // is the regression gate for BUG-001 (empty catch in the dialog
+    // swallowed the synchronous precondition throw from
+    // `useLibraryExport`, so the confirm click was a silent no-op).
+    attachConsoleDebugListener(page);
+
+    // Steps 1-7: seed fixture, connect OPFS, import to slot 0 —
+    // identical to the prior test up through dismissing the import
+    // success dialog.
+    await writeToneFixtureToOPFS(
+      page, DEVICE_TYPE, TONE_FIXTURE_NAME, TONE_YAML, TONE_WAV_BASE64,
+    );
+    await connectToOPFS(page);
+
+    const toneItem = page.locator(
+      `[data-testid="library-tone-${TONE_FIXTURE_NAME}"]`,
+    );
+    await expect(toneItem).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await toneItem.click();
+
+    const importButton = page.locator('[data-testid="import-to-device-button"]');
+    await expect(importButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await importButton.click();
+
+    const slotSelect = page.locator('[data-testid="target-slot-select"]');
+    await expect(slotSelect).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await slotSelect.selectOption('0');
+
+    const confirmImport = page.locator('[data-testid="confirm-import-button"]');
+    await expect(confirmImport).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await confirmImport.click();
+
+    await waitForTransferWithHeartbeat(
+      page, 'import-success', 'import-progress', MIDI_TRANSFER_TIMEOUT_MS,
+    );
+
+    const importDone = page.locator('button', { hasText: 'Done' });
+    await importDone.click();
+
+    // Step 8: stay on LibraryPage. The successful import populated
+    // tones[0] in the device-data store, so device-tone-slot-0 in
+    // DeviceMemoryPanel becomes draggable (`draggable={!!tone}` per
+    // DeviceMemoryPanel.tsx:328).
+    const sourceSlot = page.locator('[data-testid="device-tone-slot-0"]');
+    await expect(sourceSlot).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await expect(sourceSlot).toHaveAttribute('draggable', 'true', {
+      timeout: UI_TIMEOUT_MS,
+    });
+
+    // Step 9: drag from the device tone slot to the library tones
+    // section. The shared `DataTransfer` round-trip exercises the real
+    // `DEVICE_DRAG_MIME` payload through
+    // `handleExternalDrop` → `useLibraryExport.handleDropDeviceTone`.
+    // Wave-5 wiring tests D-LIB-06/07 use the same locator + helper.
+    const dropTarget = page.locator(
+      '[data-category="tones"][data-testid="library-tones-section"]',
+    );
+    await expect(dropTarget).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await simulateDragAndDrop(page, sourceSlot, dropTarget);
+
+    // Step 10: ExportToneDialog opens. v3 chrome is a right-edge
+    // SlideDrawer that renders `role="dialog"` with the title
+    // "Export tone to library" as its accessible name (h2 inside
+    // .ac-drawer-header). Targeting via role + name keeps the
+    // selector semantic and survives any future testid drift.
+    const exportDialog = page.getByRole('dialog', {
+      name: /Export tone to library/i,
+    });
+    await expect(exportDialog).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    // Step 11: click Export. Pre-BUG-001-fix this click was silent —
+    // the synchronous precondition throw was swallowed by the
+    // dialog's empty catch and never surfaced as `localError` or
+    // `operationError`. The v3 rewrite captures both throw paths and
+    // any rejected `onExport` promise into the step log's failed row.
+    const confirmExport = exportDialog.locator('[data-testid="export-confirm"]');
+    await expect(confirmExport).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await expect(confirmExport).toBeEnabled({ timeout: UI_TIMEOUT_MS });
+    await confirmExport.click();
+
+    // Step 12: poll the dialog for the success line so each iter is a
+    // heartbeat-feeding assertion (matches the existing pattern).
+    // The v3 success copy lives in `.ac-step-summary` inside the
+    // step-log body — same substring match as before.
+    const exportSuccess = exportDialog.locator('text=exported successfully');
+    {
+      const deadline = Date.now() + EXPORT_TIMEOUT_MS;
+      while (Date.now() < deadline) {
+        if (await exportSuccess.isVisible()) break;
+        await expect(exportDialog).toBeVisible({ timeout: 3_000 });
+        await page.waitForTimeout(500);
+      }
+      await expect(exportSuccess).toBeVisible({ timeout: 3_000 });
+    }
+
+    // The v3 footer reuses the `export-cancel` testid for the
+    // terminal Done button (single footer slot across lifecycle
+    // states) — keeps the locator surface lean.
+    const exportDone = exportDialog.locator('[data-testid="export-cancel"]');
+    await expect(exportDone).toHaveText(/Done/);
+    await exportDone.click();
+
+    // Step 13: verify an exported tone landed in OPFS with the
+    // contracted shape. The exhaustive field-for-field comparison
+    // lives in the prior round-trip test; here we only need to prove
+    // drag-drop → confirm produced a new tone with the right
+    // format/device/version + a sibling WAV.
+    const exportedTones = await listExportedTones(page, DEVICE_TYPE);
+    const exportedNames = exportedTones.filter(
+      (name) => name !== TONE_FIXTURE_NAME,
+    );
+    expect(
+      exportedNames.length,
+      `Expected at least one newly exported tone via drag-drop path. ` +
+        `OPFS tone names: [${exportedTones.join(', ')}]`,
+    ).toBeGreaterThanOrEqual(1);
+
+    const exportedName = exportedNames[0];
+    const hasWav = await exportedToneHasWav(page, DEVICE_TYPE, exportedName);
+    expect(
+      hasWav,
+      `Expected WAV file alongside exported tone "${exportedName}"`,
+    ).toBe(true);
+
+    const exportedYaml = await readExportedToneYaml(
+      page, DEVICE_TYPE, exportedName,
+    );
+    const exportedFields = extractYamlFields(exportedYaml);
+    expect(exportedFields['format']).toBe('sampler-tone');
+    // S-series library contract: every S-330 / S-550 tone uses
+    // `device: s330` as the shared key, regardless of which device
+    // produced the export (matches TONE_YAML's frontmatter at the
+    // top of this file). Comparing against `DEVICE_TYPE` would
+    // incorrectly expect `s550` when E2E_DEVICE_TYPE=s550.
+    expect(exportedFields['device']).toBe('s330');
+    expect(exportedFields['version']).toBe('1');
   });
 
   // -------------------------------------------------------------------------

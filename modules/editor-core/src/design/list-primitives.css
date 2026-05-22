@@ -200,21 +200,9 @@
   outline-offset: 2px;
 }
 
-/* Chevron — sized so the affordance is obvious at the header's
-   eyebrow-scale font. 1.1rem gives ~17.6px which clears AA target-size
-   floors when combined with the button's padding (total hit area
-   ≈28x28px). */
-.ac-list-bank-chevron {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.1rem;
-  height: 1.1rem;
-  font-size: 1.1rem;
-  line-height: 1;
-  color: var(--ac-color-accent);
-  transition: transform var(--ac-duration-fast) var(--ac-easing-default);
-}
+/* (Bank-header chevron lives in chevron-primitives.css as the single
+   `.ac-chevron` primitive, rendered by the AcChevron component. No
+   per-context chevron class is declared here.) */
 
 /* Right-side group inside the bank header: slot-range readout plus the
    per-bank reload icon-button. Wrapped in a flex container so the

@@ -164,6 +164,17 @@ export interface CategoryPlugin {
 
   /** Whether this category is read-only (no modifications allowed) */
   isReadOnly?: boolean;
+
+  /**
+   * Storage scope for this category. Drives the library tree's group
+   * header rendering: device-scoped categories (Sets, Tones, Patches —
+   * stored under `library/<device>/<category>/`) sit under a
+   * 'DEVICE — <deviceName>' band; common-scoped categories (Samples,
+   * Programs — stored under `library/common/<category>/`) sit under a
+   * 'COMMON LIBRARY' band so the operator immediately sees what
+   * survives an editor switch and what doesn't. Default: 'device'.
+   */
+  scope?: 'device' | 'common';
 }
 
 // =========================================================================

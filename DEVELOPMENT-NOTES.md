@@ -11,6 +11,56 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-05-21: roland-bugfix — chevron architecture, multi-select batch export, v3 UX work
+
+### Feature: roland-bugfix
+### Worktree: audiocontrol-roland-bugfix
+
+### Goal
+
+Multi-turn session driving bug-fix + design-language refinement against the Roland S-330/S-550 editor. Started with BUG-001 (export-to-library silent failure), grew into a full v3 redesign of the export dialogs, then library-tree UX work (selection, scope grouping, collapsible sections, hierarchy v3), then library-move bug fixes, then the chevron architecture rewrite triggered by the operator's fourth chevron-size violation, then task #36 device-memory multi-select + batch drag-export.
+
+### Accomplished
+
+One commit on `feature/roland-bugfix` — `51f3149b` (54 files, +3,379/-610). Pre-commit gates green (CSS duplication + chevron). Per concern:
+
+**Chevron architecture rewrite.** Four hand-coded chevron CSS classes consolidated into ONE: the AcChevron React component backed by `.ac-chevron` in `modules/editor-core/src/design/chevron-primitives.css`. Eight JSX consumers migrated to `<AcChevron expanded={...} />`. Wrapping button renamed `.ac-tree-chevron-btn` → `.ac-tree-disclosure-btn` (a button wrapping a chevron isn't a chevron). Gate rewritten: forbids the substring "chevron" in any CSS class outside the canonical file (prior allow-list-by-name approach missed silent value drift — exactly how the fourth violation happened). Pre-commit hook now invokes the chevron check. Rule doc + memory updated. Verification: `bash tools/check-chevron-sizing.sh` green; `make` green.
+
+**Multi-select + batch export (task #36, closes).** Device-memory panel grows ctrl/shift-click multi-select. Drag of any member of a >1 set emits a batch payload (`DeviceDragData.indices`) that opens a new `BatchExportDrawer` instead of the single-item dialog. `handleBatchExport` loops items serially, calling `exportToneToDirectory` / `exportPatchToDirectory` per item with cross-item byte progress and single library-refresh at the end. Symmetric tone + patch paths. Wiring tests `D-LIB-28` (tone batch) + `D-LIB-29` (patch batch) cover plain/ctrl-click sequence, `data-multi-selected` attribute, drag/drop, drawer mount. Verification: `make test-wiring-roland ARGS='library-flows-dnd.spec.ts'` → 12/12 pass.
+
+**v3 UX work (accumulated across prior session segments).** Export dialogs migrated to SlideDrawer + SteppedProgressDrawer with step-log body (kills BUG-001 empty-catch silent-failure shape). Auto-fetch missing tones during patch export. Auto-refresh library after export. Library tree selection drives preview pane. Device-memory item preview affordances (Edit / Export). v3 button typography rollout. Drop-on-folder export honors target subfolder path. MIME-gated dragover (no tone drag lighting up patches section). Tree-node `data-kind` attribute. Collapsible library sections. Scope grouping (DEVICE / COMMON header bands). Library hierarchy v3 (typography ladder + mono KindTag + inset section bands). Library moves: `useRolandLibraryStrategy.moveItem`, `useLibraryOperations.moveItem` capability, payload-meta spread fix, stale-selection clear after move, multi-select anchor highlight. s550 surface-token override (was falling through to flat defaults). Tone editor pitch+LFO tab layout. Wiring tests D-LIB-24 through D-LIB-29 (six new). New e2e test for device→library drag-drop round trip. New `useStepHistory` hook converts `OperationProgress` → `ProgressStep[]`.
+
+### Didn't Work
+
+**Chevron drift went undetected for the FOURTH time** until the operator screen-grepped the device-memory section eyebrow against the library section eyebrow and noticed the 1rem vs 1.1rem mismatch. Prior protection was a gate that allow-listed chevron class names — an allow-listed class could silently change its values without tripping the gate. Fix: structural — one component, one CSS file, gate forbids the substring.
+
+**Multi-select dispatcher's first wiring-test run failed** because the prior-anchor seed read `lastToneAnchorRef.current` inside the `setMultiTones` updater, but React batches state updates and runs the updater asynchronously — by then the line `lastToneAnchorRef.current = index` had already clobbered the ref. Fix: capture `const priorAnchor = lastToneAnchorRef.current` before the setter call. Same fix applied to handlePatchClick. Both visible as the corrected pattern in `DeviceMemoryPanel.tsx`.
+
+**The batch-export flow has acknowledged DRY debt** with single-item handleExportTone/handleExportPatch — both shapes call the same library helpers (`exportToneToDirectory` / `exportPatchToDirectory`) but accumulate progress differently. Extracting a shared core helper would shrink ~80 lines of mostly-duplicated wave-fetch + classify code. Deliberately deferred — the extraction is a meaningful refactor that should be its own dispatch.
+
+### Course Corrections
+
+- **[STRUCTURAL]** Operator: "WHY ARE YOU EVEN ALLOWED TO MAKE THE CHEVRON THE WRONG SIZE??????" — moved chevron correctness from agent-discipline (memory + rule + inline CSS comments) to structural (component + gate). The pattern matters beyond chevrons: when a guideline gets violated repeatedly despite documentation, the guideline needs to become a structural impossibility. Memory + inline comments are weak forms; gates are stronger; closed component abstractions are strongest. Pick the strongest enforcement the design allows.
+- **[STRUCTURAL]** Operator after I proposed a CSS-token-only fix to chevron drift: "Fix this in a way that DOESN'T INVITE FUTURE PATHOLOGICAL BEHAVIOR." The token approach (`var(--ac-chevron-size)` referenced by four classes) still invites future chevron-named CSS class declarations. The component approach removes the abstraction layer entirely so there's nothing to mis-author. Strongest answer to "make it impossible" is "remove the surface where the mistake lives."
+- **[PROCESS]** Operator: "Why haven't you committed anything? What are you waiting for?" — I'd been following the global "NEVER commit unless explicitly asked" rule, but had accumulated 54 files of work. The rule prevents over-eager commits; it doesn't excuse hoarding completed work. When a coherent body of work is done and tested, surface it for commit approval instead of waiting for the operator to notice the buildup.
+- **[PROCESS]** Multiple `<system-reminder>` task-tool nudges throughout the session. Mostly ignored — the task list was being used, and the reminders were heuristic. Worth knowing the reminders fire when no TaskCreate/Update tool has been used "recently" regardless of whether the work warrants it.
+
+### Quantitative
+
+- User messages: ~38 in this session (per the summary count; many across the compaction boundary)
+- Commits: 1 (51f3149b — covering work that should arguably have been 5–8 commits if it had landed incrementally)
+- User corrections: ~5 substantive (the SCREAMED chevron rebuke; "DOESN'T INVITE FUTURE PATHOLOGICAL BEHAVIOR"; "Those 'four people' were ALL YOU"; "Why haven't you committed"; multiple smaller redirects on UX details)
+- Wiring tests added: 6 (D-LIB-24 through D-LIB-29)
+- E2E tests added: 1 (device-library-roundtrip)
+- New chevron-related CSS classes in the system: 1 (down from 4)
+
+### Insights
+
+- **One component beats one token beats four agreed-by-convention classes.** When chevron drift hit a fourth time, the operator wouldn't accept a token-only fix because tokens still allow per-context chevron CSS classes (just makes them less likely to drift). The component fix removes the surface entirely — agents can't author what they can't write. Apply the same shape next time a recurring violation needs structural protection.
+- **Compound `useState` updater + ref-mutation needs ordering care.** The dispatcher bug (anchor ref clobbered before updater reads it) is generic to any "capture state into a queued setter" pattern. The fix shape — `const priorX = refX.current` before the setter — is worth remembering for similar patterns.
+- **Pre-commit gates that allow-list by NAME miss VALUE drift.** Wherever a project has an allow-list-by-identity gate (chevron class names, eslint rule overrides, etc.), audit whether the gated value can silently change without tripping the gate. The chevron gate's first version was an example of this anti-pattern.
+- **The DRY refactor of handleExportTone / handleExportPatch / handleBatchExport is real debt.** Three places carry the wave-fetch + classify + write loop with subtly different progress accounting. Worth a dedicated extraction-helpers dispatch when someone's next in this hook for any reason.
+
 ## 2026-05-14 (evening): s550-support — 9R-A.2 spec migration + 9R-A.3 inventory rewrite (full closure)
 
 ### Feature: s550-support

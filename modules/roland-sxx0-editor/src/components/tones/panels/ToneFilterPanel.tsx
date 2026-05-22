@@ -95,9 +95,9 @@ export function ToneFilterPanel({ tone, onUpdate, onCommit }: ToneFilterPanelPro
           full-width Enable Filter checkbox above the sliders, and
           matches the visual rhythm of the toggles in the Wave panel
           (BANK / LOOP MODE / OUTPUT). */}
-      <div className="tones__compact-grid">
+      <div className="ac-compact-grid">
         <Tooltip content={TONE_TOOLTIPS.tvfEnabled}>
-          <div className="tones__compact-field">
+          <div className="ac-compact-field">
             <span className="ac-field-label">Filter</span>
             <AcToggle
               value={tvf.enabled ? 'on' : 'off'}
@@ -109,7 +109,7 @@ export function ToneFilterPanel({ tone, onUpdate, onCommit }: ToneFilterPanelPro
           </div>
         </Tooltip>
         <Tooltip content={TONE_TOOLTIPS.tvfEgPolarity}>
-          <div className="tones__compact-field">
+          <div className="ac-compact-field">
             <span className="ac-field-label">EG Polarity</span>
             <AcToggle
               value={tvf.egPolarity}

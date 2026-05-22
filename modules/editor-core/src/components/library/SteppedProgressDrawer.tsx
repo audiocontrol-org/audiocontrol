@@ -62,7 +62,7 @@ export interface SteppedProgressDrawerProps {
 // Step icons
 // =========================================================================
 
-function StepIcon({ status }: { status: StepStatus }): JSX.Element {
+export function StepIcon({ status }: { status: StepStatus }): JSX.Element {
   switch (status) {
     case 'pending':
       return (
@@ -106,7 +106,7 @@ function StepIcon({ status }: { status: StepStatus }): JSX.Element {
 // Step row
 // =========================================================================
 
-function StepRow({ step }: { step: ProgressStep }): JSX.Element {
+export function StepRow({ step }: { step: ProgressStep }): JSX.Element {
   return (
     <div className={`ac-step-row ac-step-row--${step.status}`}>
       <StepIcon status={step.status} />

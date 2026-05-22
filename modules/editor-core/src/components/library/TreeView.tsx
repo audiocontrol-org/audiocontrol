@@ -207,10 +207,19 @@ function TreeNodeRow({
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     if (!isDirectory) return;
+    // Only light up the row if the consumer's onTreeDragOver predicate
+    // says it would accept the drop. Without this guard, dragenter
+    // ALWAYS toggles the highlight regardless of MIME-type acceptance
+    // — so a tone dragged over a patches-section folder still glows
+    // even after onTreeDragOver correctly rejects the drop. Consumers
+    // without an onTreeDragOver fall back to legacy "highlight any
+    // dragenter" behavior so non-Roland editors aren't affected.
+    const accepted = drag?.onTreeDragOver ? drag.onTreeDragOver(node, e) : true;
+    if (!accepted) return;
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(true);
-  }, [isDirectory]);
+  }, [node, isDirectory, drag]);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     if (!isDirectory) return;
@@ -265,6 +274,7 @@ function TreeNodeRow({
         className={`ac-tree-node ${stateClass}${isEditing ? ' ac-tree-node--editing' : ''}${isDraggable && !isEditing ? ' ac-tree-node--draggable' : ''}`}
         style={{ paddingLeft }}
         data-testid={testId}
+        data-kind={isDirectory ? 'folder' : 'item'}
         onClick={handleClick}
         onDoubleClick={canRename ? handleDoubleClick : undefined}
         onContextMenu={contextMenu ? handleContextMenu : undefined}
@@ -281,7 +291,7 @@ function TreeNodeRow({
       >
         {(isDirectory || hasChildren) && (
           <span
-            className="ac-tree-chevron-btn"
+            className="ac-tree-disclosure-btn"
             onClick={(e) => { e.stopPropagation(); onToggleExpand(node.id); }}
           >
             <ChevronIcon isExpanded={isExpanded} />

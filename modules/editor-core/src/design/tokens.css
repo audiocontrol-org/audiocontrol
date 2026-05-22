@@ -174,6 +174,27 @@
   --ac-color-selected: var(--ac-roland-primary);
 }
 
+/* S-550 shares the S-330 surface palette: same Roland chassis lineage,
+   same v3 visual target. Without this block the s550 route falls
+   through to the unscoped :root defaults where surface-canvas and
+   surface-panel are nearly identical (#0f172a / #111827) — so the
+   library + device-memory + preview columns lose their lifted card
+   appearance and visually merge with the page canvas. Added 2026-05-21
+   after operator caught the divergence between s330 (lifted panels in
+   screenshots) and s550 (flat). */
+:root[data-editor='s550'] {
+  --ac-color-surface-canvas: #0f172a;
+  --ac-color-surface-panel: #1e293b;
+  --ac-color-border-subtle: #334155;
+  --ac-color-text-primary: #f1f5f9;
+  --ac-color-text-muted: #94a3b8;
+  --ac-color-accent: var(--ac-roland-primary);
+  --ac-color-success: #22c55e;
+  --ac-color-warning: var(--ac-roland-secondary);
+  --ac-color-danger: #fb7185;
+  --ac-color-selected: var(--ac-roland-primary);
+}
+
 :root[data-editor='d110'] {
   --ac-color-surface-canvas: #111827;
   --ac-color-surface-panel: #1f2937;

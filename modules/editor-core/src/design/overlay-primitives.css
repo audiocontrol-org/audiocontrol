@@ -106,11 +106,14 @@
   right: 0;
   bottom: 0;
   z-index: 101;
-  width: 24rem;
+  /* v3: wider than the v2 24rem default so export/move/save forms
+     don't feel cramped. Body content reads cleanly at ~28rem; the
+     90vw cap still keeps it sane on small viewports. */
+  width: 28rem;
   max-width: 90vw;
   background: var(--ac-color-surface-panel);
-  border-left: 1px solid var(--ac-color-border-subtle);
-  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.3);
+  border-left: 1px solid color-mix(in srgb, var(--ac-color-accent) 28%, transparent);
+  box-shadow: -12px 0 36px rgba(0, 0, 0, 0.45);
   display: flex;
   flex-direction: column;
   transform: translateX(0);
@@ -121,19 +124,27 @@
   transform: translateX(100%);
 }
 
+/* v3 drawer header — mirrors the `.ac-page-title-row` rhythm
+   (Departure Mono display heading + accent hairline rule) so a
+   drawer reads as a peer surface to a page, not a generic modal. */
 .ac-drawer-header {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  padding: var(--ac-space-3) var(--ac-space-4);
-  border-bottom: 1px solid var(--ac-color-border-subtle);
+  padding: var(--ac-space-5) var(--ac-space-5) var(--ac-space-3);
+  border-bottom: var(--ac-rule-medium, 2px) solid
+    color-mix(in srgb, var(--ac-color-accent) 55%, transparent);
   flex-shrink: 0;
 }
 
 .ac-drawer-title {
-  font-size: 1rem;
-  font-weight: var(--ac-font-weight-semibold);
-  color: var(--ac-color-text-primary);
+  margin: 0;
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-lg);
+  font-weight: var(--ac-font-weight-medium, 500);
+  letter-spacing: var(--ac-tracking-display);
+  text-transform: uppercase;
+  color: var(--ac-color-text-primary, var(--ac-color-text));
 }
 
 .ac-drawer-close {

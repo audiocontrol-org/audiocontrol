@@ -229,14 +229,17 @@ test.describe('S3K Library Expandable Programs', () => {
     }
 
     // Step 8: Verify expandability -- the program's tree row should have a chevron
-    // Navigate up from the name to the row element to find the chevron button
+    // Navigate up from the name to the row element to find the disclosure button.
+    // The wrapping button class is .ac-tree-disclosure-btn (renamed from
+    // .ac-tree-chevron-btn when the chevron primitive was consolidated into
+    // a single AcChevron component, 2026-05-21).
     const programRow = programTreeNode.locator('..').locator('..');
-    const chevron = programRow.locator('.ac-tree-chevron-btn').first();
+    const chevron = programRow.locator('.ac-tree-disclosure-btn').first();
 
     // The chevron may also be a sibling of the tree node name container
     const altChevron = page.locator('.ac-tree-node', { has: programTreeNode })
       .first()
-      .locator('.ac-tree-chevron-btn');
+      .locator('.ac-tree-disclosure-btn');
 
     const chevronLocator = chevron.or(altChevron).first();
     await expect(chevronLocator).toBeVisible({ timeout: UI_TIMEOUT_MS });

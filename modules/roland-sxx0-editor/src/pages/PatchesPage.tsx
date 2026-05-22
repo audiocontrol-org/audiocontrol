@@ -100,6 +100,10 @@ export function PatchesPage() {
     patches,
     setIndividualTones: () => {}, // Not needed for this page
     setIndividualPatches: () => {}, // Not needed for this page
+    // PatchesPage doesn't render the library tree, so the full
+    // refresh is a no-op here. The hook still calls it; the next
+    // LibraryPage visit re-scans on its own beforeEach effect.
+    handleRefreshLibrary: async () => {},
   });
 
   // Initialize client when adapter changes
