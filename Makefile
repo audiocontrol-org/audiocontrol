@@ -77,7 +77,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions check-refactor-preconditions-validate check-anti-patterns check-anti-patterns-validate test-scope-discovery scope-inventory refresh-clones-baseline check-chevron-sizing
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions check-refactor-preconditions-validate check-anti-patterns check-anti-patterns-validate check-adopters check-adopters-validate test-scope-discovery scope-inventory refresh-clones-baseline check-chevron-sizing
 
 build: $(ALL_STAMPS)
 
@@ -403,6 +403,27 @@ check-anti-patterns:
 check-anti-patterns-validate:
 	tsx tools/scope-discovery/anti-patterns.validate.ts
 
+# T6.2 — Adopter manifest gate. Walks
+# `docs/scope-discovery/adopter-manifests.yaml`, expands each manifest's
+# `expected_adopters_glob`, and reports files that match the glob but
+# don't import the canonical `from` path. Refactor commits that PROMOTE
+# a primitive to a shared location SHOULD append an entry here naming
+# the expected adopter set; future drift (a new editor page bypassing
+# the shared primitive) gets caught structurally. Engine: glob-to-
+# regex + pure-regex import-string match (see check-adopters.ts for
+# rationale on engine choice vs picomatch/fast-glob).
+check-adopters:
+	tsx tools/scope-discovery/check-adopters.ts
+
+# Adversarial validator for the T6.2 gate. Plants 9 synthetic scenarios
+# (empty registry; no holdouts; holdout detected; exception honored;
+# bad exception path → exit 2; malformed registry → exit 2; multi-glob
+# entry; multi-glob with exception; gutted-stub self-check) under per-
+# scenario temp directories. Run whenever the scanner, the registry
+# schema, or this validator's scenarios change. T6.2 gate.
+check-adopters-validate:
+	tsx tools/scope-discovery/adopter-manifests.validate.ts
+
 # Run the full scope-discovery validator suite: both adversarial
 # harnesses + the Phase 5 refactor-preconditions smoke-test in
 # sequence. The clone-detector validator runs first (plants fixtures,
@@ -414,12 +435,15 @@ check-anti-patterns-validate:
 # (commit-message marker grammar + runtime preconditions, gutted-stub
 # self-check); on success the T6.1 anti-pattern validator runs fifth
 # (registry scanner + multi-pattern fingerprint + gutted-stub self-
-# check). Equivalent to `pnpm test:scope-discovery` — both invocations
-# exist so operators and the orchestrator can use whichever fits their
-# flow. Combined runtime is under 30s; if that ever changes, the
-# workplan T2.8 gate is broken and the slowdown must be surfaced.
-# T2.8 gate (+ T5.2 + T5.3 + T6.1 additions).
-test-scope-discovery: check-clone-duplication-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions-validate check-anti-patterns-validate
+# check); on success the T6.2 adopter-manifests validator runs sixth
+# (registry scanner + glob engine + import detection + exception path
+# validation + gutted-stub self-check). Equivalent to
+# `pnpm test:scope-discovery` — both invocations exist so operators
+# and the orchestrator can use whichever fits their flow. Combined
+# runtime is under 30s; if that ever changes, the workplan T2.8 gate
+# is broken and the slowdown must be surfaced.
+# T2.8 gate (+ T5.2 + T5.3 + T6.1 + T6.2 additions).
+test-scope-discovery: check-clone-duplication-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions-validate check-anti-patterns-validate check-adopters-validate
 
 # Operator ergonomics target for the `/scope-inventory` skill (T3.3).
 # Validates that a feature directory exists under one of the

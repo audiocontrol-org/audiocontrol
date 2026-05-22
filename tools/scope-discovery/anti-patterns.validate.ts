@@ -391,16 +391,17 @@ async function main(): Promise<number> {
     process.stderr.write(`anti-patterns.validate: infra error: ${errorMessage(err)}\n`);
     return 2;
   }
-  let allPassed = true;
+  let passed = 0;
   for (const r of results) {
     if (r.passed) {
       process.stdout.write(`PASS ${r.name}: ${r.detail}\n`);
+      passed += 1;
     } else {
       process.stderr.write(`FAIL ${r.name}: ${r.detail}\n`);
-      allPassed = false;
     }
   }
-  return allPassed ? 0 : 1;
+  process.stdout.write(`Summary: ${passed}/${results.length} scenarios passed\n`);
+  return passed === results.length ? 0 : 1;
 }
 
 main().then(
