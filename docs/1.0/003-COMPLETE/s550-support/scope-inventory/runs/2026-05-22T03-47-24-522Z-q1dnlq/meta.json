@@ -1,0 +1,29 @@
+{
+  "runId": "2026-05-22T03-47-24-522Z-q1dnlq",
+  "skill": "scope-inventory",
+  "skillVersion": "0.1.0",
+  "featureSlug": "s550-support",
+  "featureDir": "docs/1.0/003-COMPLETE/s550-support",
+  "featureStatus": "003-COMPLETE",
+  "operator": "oletizi",
+  "startedAt": "2026-05-22T03:47:24.523Z",
+  "completedAt": "2026-05-22T03:47:55.406Z",
+  "inputs": {
+    "prdPath": "docs/1.0/003-COMPLETE/s550-support/prd.md"
+  },
+  "agentsRun": [
+    "ui-route-enumerator",
+    "ast-grep-matrix",
+    "clone-detector-reader",
+    "prd-themed-pattern-hunter"
+  ],
+  "agentExitCodes": {
+    "ui-route-enumerator": 0,
+    "ast-grep-matrix": 0,
+    "clone-detector-reader": 0,
+    "prd-themed-pattern-hunter": 0
+  },
+  "synthesisExitCode": 0,
+  "manifestPath": "docs/1.0/003-COMPLETE/s550-support/scope-manifest.yaml",
+  "captureCount": 0
+}
