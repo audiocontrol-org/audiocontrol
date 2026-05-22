@@ -77,7 +77,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-clone-id-stability-validate migrate-clone-ids migrate-clone-ids-dry check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions check-refactor-preconditions-validate check-anti-patterns check-anti-patterns-validate check-adopters check-adopters-validate check-editor-symmetry check-editor-symmetry-write check-editor-symmetry-validate check-deprecations check-deprecations-write check-deprecations-validate check-regime-holdout-validate test-scope-discovery scope-inventory refresh-clones-baseline check-chevron-sizing
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-clone-id-stability-validate migrate-clone-ids migrate-clone-ids-dry check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions check-refactor-preconditions-validate check-anti-patterns check-anti-patterns-validate check-adopters check-adopters-validate check-editor-symmetry check-editor-symmetry-write check-editor-symmetry-validate check-deprecations check-deprecations-write check-deprecations-validate check-regime-holdout-validate test-scope-discovery scope-inventory check-scope-discovery-deps check-deps-validate refresh-clones-baseline check-chevron-sizing
 
 build: $(ALL_STAMPS)
 
@@ -554,7 +554,32 @@ check-regime-holdout-validate:
 # Combined runtime is under 30s; if that ever changes, the workplan T2.8
 # gate is broken and the slowdown must be surfaced.
 # T2.8 gate (+ T5.2 + T5.3 + T6.1 + T6.2 + T6.3 + T6.4 + T6.5 additions).
-test-scope-discovery: check-clone-duplication-validate check-clone-id-stability-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions-validate check-anti-patterns-validate check-adopters-validate check-editor-symmetry-validate check-deprecations-validate check-regime-holdout-validate
+test-scope-discovery: check-clone-duplication-validate check-clone-id-stability-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions-validate check-anti-patterns-validate check-adopters-validate check-editor-symmetry-validate check-deprecations-validate check-regime-holdout-validate check-deps-validate
+
+# T7.2 — pre-flight dep guard for `make scope-inventory`. Runs
+# `tsx tools/scope-discovery/check-deps.ts` which probes the top-level
+# deps the `/scope-inventory` skill's discovery agents need
+# (yaml, ajv, ajv-formats). If any are missing it prints an actionable
+# message naming the dep + `pnpm install` invocation and exits non-zero
+# before the Make target hands off to the skill, replacing a raw
+# ERR_MODULE_NOT_FOUND mid-dispatch.
+#
+# Convention choice (Option A in T7.2's workplan): other tsx-based
+# check/validate targets in this Makefile do NOT depend on
+# $(INSTALL_STAMP) — only module build targets do (see e.g. $(MIDI_CORE)
+# above). The convention for tsx targets is "deps must already be
+# installed; fail clearly if not." This pre-check is the "fail clearly"
+# half; running `pnpm install` is the operator's call (the script's
+# error message tells them so explicitly).
+check-scope-discovery-deps:
+	@tsx tools/scope-discovery/check-deps.ts
+
+# Adversarial validator for the T7.2 dep guard. Six scenarios covering
+# all-deps-present, one-dep-missing, multiple-deps-missing, message
+# actionability, gutted-stub self-check, and package.json coherence
+# (REQUIRED_SCOPE_DISCOVERY_DEPS must be a subset of devDeps).
+check-deps-validate:
+	@tsx tools/scope-discovery/check-deps.validate.ts
 
 # Operator ergonomics target for the `/scope-inventory` skill (T3.3).
 # Validates that a feature directory exists under one of the
@@ -565,12 +590,16 @@ test-scope-discovery: check-clone-duplication-validate check-clone-id-stability-
 # callable. The on-disk layout the skill writes to is documented in
 # `docs/scope-discovery/LAYOUT.md`.
 #
+# Depends on `check-scope-discovery-deps` (T7.2) so missing top-level
+# deps surface as an actionable error before the skill is dispatched.
+#
 # Usage: make scope-inventory FEATURE=<feature-slug>
 #
-# Exit codes: 0 found + instructions printed; 1 not found;
-#   2 missing FEATURE arg. T2.7 gate: exits non-zero with a clear error
-#   listing the searched candidate paths when FEATURE doesn't exist.
-scope-inventory:
+# Exit codes: 0 found + instructions printed; 1 not found or deps
+#   missing; 2 missing FEATURE arg. T2.7 gate: exits non-zero with a
+#   clear error listing the searched candidate paths when FEATURE
+#   doesn't exist.
+scope-inventory: check-scope-discovery-deps
 ifndef FEATURE
 	@echo "Usage: make scope-inventory FEATURE=<feature-slug>"; exit 2
 endif
