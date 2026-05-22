@@ -221,6 +221,22 @@ test.describe('Capabilities — Tones (C-TONE)', () => {
     await expect(editor.locator('[data-tab="tt-amp"]')).toHaveAttribute('role', 'tabpanel');
   });
 
+  test('D-TONE-PAGE-TITLE-01: TonesPage renders the .ac-page-title-row chrome with heading + rule + LED-metric (clones.yaml c53786bfb969 + c3ee44db4131 PageTitleRow refactor contract)', async ({ page }) => {
+    // Sibling assertion to D-PATCH-PAGE-TITLE-01 (patches.spec.ts).
+    // TonesPage's specific contract: heading text is "Tones" rather
+    // than "Patches"; all other chrome elements match.
+    const titleRow = page.locator('header.ac-page-title-row');
+    await expect(titleRow).toBeVisible({ timeout: 5_000 });
+
+    const heading = titleRow.locator('h2.ac-page-title-heading');
+    await expect(heading).toHaveText('Tones');
+
+    await expect(titleRow.locator('.ac-page-title-rule')).toBeVisible();
+    await expect(titleRow.locator('.ac-page-title-metric .ac-page-title-led')).toBeAttached();
+
+    await expect(titleRow.locator('.ac-page-title-metric').getByText(/of/)).toBeVisible();
+  });
+
   test('D-TONE-LIST-08: each row wraps the tone-name testid in an .ac-list-info span (clones.yaml 80299d9fda8d refactor contract)', async ({ page }) => {
     // Test-before-extract contract for clones.yaml group 80299d9fda8d
     // (PatchList.tsx:227-240 ↔ ToneList.tsx:226-239 ac-list-info

@@ -324,6 +324,34 @@ test.describe('Capabilities — Patches (C-PATCH)', () => {
     await expect(editor.locator('[data-tab="pt-mapping"]')).toHaveAttribute('role', 'tabpanel');
   });
 
+  test('D-PATCH-PAGE-TITLE-01: PatchesPage renders the .ac-page-title-row chrome with heading + rule + LED-metric (clones.yaml c53786bfb969 + c3ee44db4131 PageTitleRow refactor contract)', async ({ page }) => {
+    // Test-before-extract contract for promoting the PatchesPage /
+    // TonesPage / PlayPage title-row chrome to a shared PageTitleRow
+    // primitive. PatchesPage's specific contract:
+    //   - <header class="ac-page-title-row"> wraps the heading + metric
+    //   - .ac-page-title-block contains the h2.ac-page-title-heading
+    //     ("Patches") + .ac-page-title-rule (red rule)
+    //   - .ac-page-title-metric span contains a .ac-page-title-led
+    //     sibling plus a metric line ("<N> of <M> loaded")
+    //   - The refresh icon button lives inside .ac-page-title-metric
+    //
+    // Existing tests (D-PATCH-LIST-06/07) pin the refresh button's
+    // aria-label but not the chrome around it. Added 2026-05-22 BEFORE
+    // PageTitleRow extraction. Must pass pre-refactor + stay green
+    // post-refactor.
+    const titleRow = page.locator('header.ac-page-title-row');
+    await expect(titleRow).toBeVisible({ timeout: 5_000 });
+
+    const heading = titleRow.locator('h2.ac-page-title-heading');
+    await expect(heading).toHaveText('Patches');
+
+    await expect(titleRow.locator('.ac-page-title-rule')).toBeVisible();
+    await expect(titleRow.locator('.ac-page-title-metric .ac-page-title-led')).toBeAttached();
+
+    // The metric span ("N of M loaded") lives inside .ac-page-title-metric.
+    await expect(titleRow.locator('.ac-page-title-metric').getByText(/of/)).toBeVisible();
+  });
+
   test('D-PATCH-LIST-09: each row wraps the patch-name testid in an .ac-list-info span (clones.yaml 80299d9fda8d refactor contract)', async ({ page }) => {
     // Test-before-extract contract for clones.yaml group 80299d9fda8d
     // (PatchList.tsx:227-240 ↔ ToneList.tsx:226-239 ac-list-info
