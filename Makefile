@@ -77,7 +77,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions check-refactor-preconditions-validate check-anti-patterns check-anti-patterns-validate check-adopters check-adopters-validate check-editor-symmetry check-editor-symmetry-write check-editor-symmetry-validate check-deprecations check-deprecations-write check-deprecations-validate check-regime-holdout-validate test-scope-discovery scope-inventory refresh-clones-baseline check-chevron-sizing
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-clone-id-stability-validate migrate-clone-ids migrate-clone-ids-dry check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions check-refactor-preconditions-validate check-anti-patterns check-anti-patterns-validate check-adopters check-adopters-validate check-editor-symmetry check-editor-symmetry-write check-editor-symmetry-validate check-deprecations check-deprecations-write check-deprecations-validate check-regime-holdout-validate test-scope-discovery scope-inventory refresh-clones-baseline check-chevron-sizing
 
 build: $(ALL_STAMPS)
 
@@ -331,6 +331,33 @@ check-clone-duplication:
 check-clone-duplication-validate:
 	tsx tools/scope-discovery/clone-detector.validate.ts
 
+# Validate that T7.1 content-hashed clone-group IDs behave correctly:
+# stable across line shifts; sensitive to content changes; sensitive
+# to member-path changes; deterministic across runs; no collisions
+# in a 50-group sample; migration preserves dispositions; migration
+# detects orphans; gutted-stub stub of the derivation function fails
+# the no-collisions assertion. Adversarial-validator gate for T7.1.
+check-clone-id-stability-validate:
+	tsx tools/scope-discovery/clone-id-stability.validate.ts
+
+# One-time T7.1 migration: re-key docs/scope-discovery/clones.yaml
+# under the new content-hashed ID derivation and write the
+# old-id -> new-id forensic record at docs/scope-discovery/migration-map.yaml.
+# Existing operator-authored dispositions (refactor / keep-with-reason /
+# ignore-with-justification) carry forward onto the new IDs. NOT wired
+# into test-scope-discovery — this is a one-shot operation, not a
+# recurring test. Run once when T7.1 lands; the new IDs become the
+# canonical ones from that commit forward.
+migrate-clone-ids:
+	tsx tools/scope-discovery/migrate-clone-ids.ts
+
+# Preview the T7.1 migration without writing either file. Reports the
+# old-count, new-count, mapped/unmapped/new-only tallies, and the
+# disposition rollup so the operator can spot anomalies before
+# committing to the rewrite.
+migrate-clone-ids-dry:
+	tsx tools/scope-discovery/migrate-clone-ids.ts --dry-run
+
 # Validate that the sub-agent dispatch wrapper actually rejects
 # malformed/forbidden returns and accepts well-formed ones. Plants
 # synthetic dispatchFn responses (no real sub-agent call) covering both
@@ -527,7 +554,7 @@ check-regime-holdout-validate:
 # Combined runtime is under 30s; if that ever changes, the workplan T2.8
 # gate is broken and the slowdown must be surfaced.
 # T2.8 gate (+ T5.2 + T5.3 + T6.1 + T6.2 + T6.3 + T6.4 + T6.5 additions).
-test-scope-discovery: check-clone-duplication-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions-validate check-anti-patterns-validate check-adopters-validate check-editor-symmetry-validate check-deprecations-validate check-regime-holdout-validate
+test-scope-discovery: check-clone-duplication-validate check-clone-id-stability-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions-validate check-anti-patterns-validate check-adopters-validate check-editor-symmetry-validate check-deprecations-validate check-regime-holdout-validate
 
 # Operator ergonomics target for the `/scope-inventory` skill (T3.3).
 # Validates that a feature directory exists under one of the

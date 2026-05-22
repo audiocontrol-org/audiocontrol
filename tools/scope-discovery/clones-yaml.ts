@@ -10,13 +10,20 @@
  *
  *   generated_at: 2026-05-21T22:00:00Z
  *   clones:
- *     - id: <12-char hex from sha1(sorted-members joined with \n)>
+ *     - id: <12-char hex from sha1(sorted bare paths + jscpd fragment-fingerprint)>
  *       lines: <int>
  *       members:
  *         - <path>:<startLine>:<endLine>          # sorted ascending
  *         - <path>:<startLine>:<endLine>
  *       disposition: pending | keep-with-reason | ignore-with-justification | refactor
  *       reason: <string|null>
+ *
+ * ID derivation (T7.1) lives in clones-yaml.id.ts; see deriveContentHashedId.
+ * The previous scheme hashed the full member strings including the
+ * `:start:end` ranges, so any unrelated line-shift adjacent to a known
+ * clone group rewrote that group's id and orphaned its disposition. The
+ * T7.1 scheme follows the *content* across line shifts: id is derived
+ * from sorted bare file-paths plus a sha1 of jscpd's `fragment` text.
  *
  * For `disposition: refactor` entries, five additional fields are
  * required (T5.1, scope-discovery-protocol Phase 5). Schema + rationale
@@ -31,13 +38,13 @@
  * diffs across runs because the first member is always the
  * lexicographically smallest path-line tuple in the group.
  *
- * Enforcement layer: this file + clones-yaml.refactor.ts together are
- * the SSOT. clones.yaml has no JSON Schema (the scope-manifest schema
- * covers a different file). The TS discriminated union + runtime guards
- * here are the only enforcement, paired with T5.3's pre-commit gate.
+ * Enforcement layer: this file + clones-yaml.refactor.ts + clones-yaml.id.ts
+ * together are the SSOT. clones.yaml has no JSON Schema (the
+ * scope-manifest schema covers a different file). The TS discriminated
+ * union + runtime guards here are the only enforcement, paired with
+ * T5.3's pre-commit gate.
  */
 
-import { createHash } from 'node:crypto';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { isPlainObject } from './util/typeguards.js';
 import {
@@ -46,6 +53,17 @@ import {
   TESTS_PROOF_SHA_REGEX,
   validateRefactorPreconditions,
 } from './clones-yaml.refactor.js';
+import {
+  deriveContentHashedId,
+  extractBarePath,
+  sha1HexOfText,
+  sortedBarePathsFromMembers,
+} from './clones-yaml.id.js';
+
+// Re-export the ID surface so consumers can import everything from
+// clones-yaml.js without learning the id-file split. The actual
+// definitions live in clones-yaml.id.ts (file-cap split, T7.1).
+export { deriveContentHashedId, extractBarePath, sha1HexOfText, sortedBarePathsFromMembers };
 
 // Re-export refactor-precondition surface so consumers can import
 // everything from clones-yaml.js without learning the refactor split.
@@ -103,18 +121,6 @@ function isDisposition(v: unknown): v is Disposition {
 }
 
 /**
- * Stable id from the sorted member-strings. SHA-1 of the joined list,
- * truncated to 12 hex chars — long enough to make accidental collisions
- * across ~530 groups vanishingly unlikely, short enough to be a usable
- * label in the yaml.
- */
-export function deriveCloneId(sortedMembers: readonly string[]): string {
-  const hash = createHash('sha1');
-  hash.update(sortedMembers.join('\n'));
-  return hash.digest('hex').slice(0, 12);
-}
-
-/**
  * Sort comparator for the top-level clones[] list: by members[0]
  * ascending, then by id ascending. Both inputs are assumed to have
  * pre-sorted `members` arrays (the constructor enforces this).
@@ -129,7 +135,8 @@ export function compareCloneGroups(a: CloneGroup, b: CloneGroup): number {
 /**
  * Construct a non-refactor CloneGroup from raw inputs. The members array
  * is sorted here so callers don't have to remember; the id is derived
- * from the sorted form so equivalent groups always hash the same.
+ * from the sorted bare paths + tokenFingerprint so equivalent groups
+ * always hash the same regardless of line shifts (T7.1).
  *
  * All callers must supply both disposition and reason explicitly.
  * Avoids exactOptionalPropertyTypes pitfalls and forces deliberate
@@ -142,6 +149,7 @@ export function makeCloneGroup(args: {
   lines: number;
   disposition: Exclude<Disposition, 'refactor'>;
   reason: string | null;
+  tokenFingerprint: string;
 }): CloneGroup {
   if (args.members.length < 2) {
     throw new Error(
@@ -150,8 +158,12 @@ export function makeCloneGroup(args: {
     );
   }
   const sorted = [...args.members].sort();
+  const id = deriveContentHashedId({
+    sortedBarePaths: sortedBarePathsFromMembers(sorted),
+    tokenFingerprint: args.tokenFingerprint,
+  });
   return {
-    id: deriveCloneId(sorted),
+    id,
     lines: args.lines,
     members: sorted,
     disposition: args.disposition,
@@ -174,6 +186,7 @@ export function makeRefactorCloneGroup(args: {
   new_shape_summary?: string;
   tests: readonly string[];
   tests_proof: { readonly sha: string; readonly demonstration: string };
+  tokenFingerprint: string;
 }): RefactorCloneGroup {
   if (args.members.length < 2) {
     throw new Error(
@@ -181,8 +194,12 @@ export function makeRefactorCloneGroup(args: {
     );
   }
   const sorted = [...args.members].sort();
+  const id = deriveContentHashedId({
+    sortedBarePaths: sortedBarePathsFromMembers(sorted),
+    tokenFingerprint: args.tokenFingerprint,
+  });
   const base: RefactorCloneGroup = {
-    id: deriveCloneId(sorted),
+    id,
     lines: args.lines,
     members: sorted,
     disposition: 'refactor',
@@ -369,9 +386,12 @@ export function serializeClonesYaml(doc: ClonesYaml): string {
  * NEW:     in newClones but not in baseline (by id)
  * DROPPED: in baseline but not in newClones (refactor success)
  *
- * Note: id derives from sorted-members + line-ranges; any membership or
- * boundary change yields a fresh id (NEW + DROPPED), so a stable-id
- * growth ("GROWN") is impossible by construction. No GROWN bucket.
+ * Note: id derives from sorted bare member-paths + jscpd token fingerprint
+ * (T7.1). Adding or removing a file from a clone group yields a fresh id
+ * (NEW + DROPPED); modifying the duplicated content yields a fresh id
+ * (NEW + DROPPED). Adjacent line shifts that leave both the membership
+ * and the content unchanged preserve the id — that's the whole point of
+ * T7.1. A stable-id growth ("GROWN") is impossible by construction.
  */
 export interface CloneDiff {
   readonly newGroups: CloneGroup[];

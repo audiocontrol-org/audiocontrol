@@ -51,7 +51,7 @@ const DEFAULT_TEST_TIMEOUT_SECONDS = 300;
  * Marker grammar (workplan T5.3 + T5.2 docs):
  *   `Closes clones.yaml <id-or-comma-space-separated-ids>`
  * Match against any line. IDs are 12 lowercase hex chars
- * (deriveCloneId truncates SHA-1 to 12 hex chars in clones-yaml.ts).
+ * (deriveContentHashedId truncates SHA-1 to 12 hex chars in clones-yaml.ts).
  */
 const MARKER_LINE_REGEX = /^\s*Closes\s+clones\.yaml\s+([0-9a-f, ]+)\s*$/im;
 const CLONE_ID_REGEX = /[0-9a-f]{12}/g;
