@@ -77,7 +77,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-dispatch-wrapper-validate test-scope-discovery scope-inventory refresh-clones-baseline check-chevron-sizing
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke test-scope-discovery scope-inventory refresh-clones-baseline check-chevron-sizing
 
 build: $(ALL_STAMPS)
 
@@ -342,16 +342,31 @@ check-clone-duplication-validate:
 check-dispatch-wrapper-validate:
 	tsx tools/scope-discovery/dispatch-wrapper.validate.ts
 
+# Smoke-test the Phase 5 refactor-preconditions protocol: feeds
+# synthetic clone-group entries (missing canonical declaration, missing
+# new_shape_summary when canonical_side: "new", missing tests / tests_proof,
+# malformed tests_proof.sha, plus three happy-path entries) through the
+# T5.1 validator that the `code-reviewer` + `codebase-auditor` agent
+# prompts at `.claude/agents/` are wired to invoke per the Step 0
+# checklist. Includes a gutted-reviewer self-check that asserts the
+# validator disagrees with a rubber-stamp reviewer on the
+# missing-fields fixture. Workplan T5.2 gate.
+check-refactor-preconditions-smoke:
+	tsx tools/scope-discovery/refactor-preconditions.smoke-test.ts
+
 # Run the full scope-discovery validator suite: both adversarial
-# harnesses in sequence. The clone-detector validator runs first
-# (plants fixtures, asserts NEW/DROPPED/disposition handling); on
-# success the dispatch-wrapper validator runs second (synthetic
-# dispatchFn responses, gutted-logic self-check). Equivalent to
-# `pnpm test:scope-discovery` — both invocations exist so operators
-# and the orchestrator can use whichever fits their flow. Combined
-# runtime is under 30s; if that ever changes, the workplan T2.8 gate
-# is broken and the slowdown must be surfaced. T2.8 gate.
-test-scope-discovery: check-clone-duplication-validate check-dispatch-wrapper-validate
+# harnesses + the Phase 5 refactor-preconditions smoke-test in
+# sequence. The clone-detector validator runs first (plants fixtures,
+# asserts NEW/DROPPED/disposition handling); on success the
+# dispatch-wrapper validator runs second (synthetic dispatchFn
+# responses, gutted-logic self-check); on success the Phase 5
+# smoke-test runs third (synthetic refactor entries, gutted-reviewer
+# self-check). Equivalent to `pnpm test:scope-discovery` — both
+# invocations exist so operators and the orchestrator can use
+# whichever fits their flow. Combined runtime is under 30s; if that
+# ever changes, the workplan T2.8 gate is broken and the slowdown
+# must be surfaced. T2.8 gate (+ T5.2 addition).
+test-scope-discovery: check-clone-duplication-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke
 
 # Operator ergonomics target for the `/scope-inventory` skill (T3.3).
 # Validates that a feature directory exists under one of the

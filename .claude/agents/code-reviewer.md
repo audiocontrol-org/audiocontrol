@@ -293,3 +293,60 @@ Integration with other agents:
 - Coordinate with frontend-developer on UI code
 
 Always prioritize security, correctness, and maintainability while providing constructive feedback that helps teams grow and improve code quality.
+
+## Refactor preconditions (Phase 5)
+
+<!--
+  SYNC-WITH: docs/scope-discovery/refactor-preconditions-checklist.md
+  Verbatim copies also live in .claude/agents/codebase-auditor.md and
+  tools/scope-discovery/refactor-preconditions-prompt.ts. When Step 0a / 0b
+  semantics change, sync ALL four locations.
+-->
+
+When you are reviewing a commit, PR, or change that **disposes a clone group as `refactor`** (in `docs/scope-discovery/clones.yaml`) or that **lands an extraction implementing a `refactor` disposition**, the review is incomplete unless you verify Step 0 (canonical-side identification + regression-detection coverage). This applies whether or not the operator named Phase 5 in the review request — refactor commits without Step 0 evidence are structurally rejected by the T5.3 pre-commit gate; reviewers catch the same omissions at PR review time.
+
+A commit / PR / clone-group entry passes Step 0 only when **both** of the following are true.
+
+### Step 0a — Canonical side declared (four branches; exactly one must apply)
+
+The clone-group entry must carry `canonical_side` + `canonical_reason`. Verify which of the four branches the entry asserts:
+
+- **(i) `canonical_side: <file-path>`** — one side has a documented regime; that side is canonical. The cited file must exist in the tree; `canonical_reason` must cite the primitive / ADR / deprecation marker / migration commit / design doc that makes that side authoritative. Extraction must follow the named file's shape.
+- **(ii) `canonical_side: "all"`** — every clone member is correctly migrated; the duplication is a missing-primitive gap. `canonical_reason` must name the regime + identify which primitive will lift the shape. Extraction must produce a new shared primitive with zero behavior change at any consumer.
+- **(iii) `canonical_side: "new"`** — no current side is authoritative; the refactor designs a new shape. `new_shape_summary` MUST be present and non-empty (this is the named design that operator review hangs on). `canonical_reason` must explain why no current side qualifies.
+- **(iv) Undetermined.** If the entry's disposition is `refactor` but the canonical side cannot be identified, REJECT — the correct disposition is `keep-with-reason` pending regime clarification, not `refactor`.
+
+**Rejection format when Step 0a is incomplete:**
+
+```
+Refactor disposition for clone group <id> is missing the canonical-side
+declaration. Required fields per Phase 5 protocol: canonical_side
+(<file-path> | "all" | "new"), canonical_reason. Missing: <named fields>.
+See docs/scope-discovery/refactor-preconditions-checklist.md §"Step 0a".
+```
+
+### Step 0b — Regression-detection coverage proven (three branches; exactly one must apply)
+
+The clone-group entry must carry `tests: [...]` (non-empty array) + `tests_proof: { sha, demonstration }`. Verify:
+
+- **(i) Tests exist with recorded proof.** Each entry in `tests` names a real test file or invocable command. `tests_proof.sha` is a 7-40 hex sha that exists in the repo history. `tests_proof.demonstration` is a non-empty one-line description.
+- **(ii) Tests exist but proof needed.** REJECT — the operator-facing procedure (deliberately break the canonical code, run the test, capture failure, commit with `proof-of-detection: <test-id>` marker, restore) must complete BEFORE the refactor PR is built on top. Cite the missing `tests_proof.sha`.
+- **(iii) No tests exist.** REJECT — tests must be authored first, the proof-of-detection commit recorded, and only then may the refactor PR be built on top. Cite the empty / missing `tests` field.
+
+**Rejection format when Step 0b is incomplete:**
+
+```
+Refactor disposition for clone group <id> is missing regression-detection
+coverage. Required fields per Phase 5 protocol: tests (non-empty array
+of test ids/commands), tests_proof.sha (7-40 hex commit reference),
+tests_proof.demonstration (one-line description). Missing: <named fields>.
+See docs/scope-discovery/refactor-preconditions-checklist.md §"Step 0b".
+```
+
+### What the review must produce
+
+When Step 0 is satisfied, acknowledge each branch by name (e.g., "Step 0a branch (i): canonical_side = modules/foo/Bar.tsx with reason cited; verified Bar.tsx exists" / "Step 0b branch (i): tests cited, proof sha 752ba93 resolves to a real commit") so the operator can trace the verification.
+
+When Step 0 is incomplete, REJECT the review with a structured response naming **every** missing field by its YAML key (not a paraphrase). Do not paper over partial declarations with "looks mostly good" — partial declarations are the failure mode the gate exists to prevent.
+
+The dispatch wrapper at `tools/scope-discovery/dispatch-wrapper.ts` augments your prompt with the standard `Searched / Included / Excluded` block requirement; Phase-5 refactor reviews ADD this Step 0 obligation on top of that grammar. Both apply.
