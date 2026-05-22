@@ -17,16 +17,13 @@
  * is identical across single and batch flows.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import { SlideDrawer } from '@audiocontrol/editor-core';
 import { StepLogBody, renderFooter } from './ExportToneDialog';
-import { useStepHistory } from '@/hooks/useStepHistory';
+import { useExportDialogLifecycle } from '@/hooks/useExportDialogLifecycle';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { DestinationEyebrow } from '@/components/library/DestinationEyebrow';
-import {
-  type OperationState,
-  isOperationComplete,
-} from '@/types/import-operation';
+import { type OperationState } from '@/types/import-operation';
 
 export interface BatchExportItem {
   /** Device slot index (tone or patch, depending on `kind`). */
@@ -73,26 +70,22 @@ export function BatchExportDrawer({
   error: operationError,
 }: BatchExportDrawerProps): JSX.Element | null {
   const { deviceName } = useDeviceConfig();
-  const [localError, setLocalError] = useState<string | null>(null);
-  const [hasStarted, setHasStarted] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      setLocalError(null);
-      setHasStarted(false);
-    }
-  }, [open]);
-
-  const isComplete = isOperationComplete({
+  const {
+    localError,
+    setLocalError,
+    hasStarted,
+    setHasStarted,
+    isComplete,
+    effectiveError,
+    steps,
+    handleClose,
+  } = useExportDialogLifecycle({
+    open,
     isOperating,
     progress,
-    error: operationError,
-  });
-  const effectiveError = localError ?? operationError;
-  const steps = useStepHistory({
-    progress,
-    isComplete,
-    error: effectiveError,
+    operationError,
+    onOpenChange,
     stepErrors: failures,
   });
 
@@ -104,13 +97,7 @@ export function BatchExportDrawer({
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : 'Batch export failed');
     }
-  }, [onExport]);
-
-  const handleClose = useCallback(() => {
-    if (isOperating) return;
-    setLocalError(null);
-    onOpenChange(false);
-  }, [isOperating, onOpenChange]);
+  }, [onExport, setLocalError, setHasStarted]);
 
   if (!open) return null;
 

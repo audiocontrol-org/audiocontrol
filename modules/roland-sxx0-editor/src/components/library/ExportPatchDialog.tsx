@@ -18,13 +18,10 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { SlideDrawer } from '@audiocontrol/editor-core';
 import type { S330Patch } from '@audiocontrol/sampler-devices/s330';
-import {
-  type OperationState,
-  isOperationComplete,
-} from '@/types/import-operation';
+import { type OperationState } from '@/types/import-operation';
 import { getPatchToneDependencies } from '@/lib/library-service';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
-import { useStepHistory } from '@/hooks/useStepHistory';
+import { useExportDialogLifecycle } from '@/hooks/useExportDialogLifecycle';
 import { DestinationEyebrow } from '@/components/library/DestinationEyebrow';
 import {
   StepLogBody,
@@ -65,8 +62,23 @@ export function ExportPatchDialog({
   const [patchName, setPatchName] = useState(
     patch?.common.name || defaultPatchName,
   );
-  const [localError, setLocalError] = useState<string | null>(null);
-  const [hasStarted, setHasStarted] = useState(false);
+
+  const {
+    localError,
+    setLocalError,
+    hasStarted,
+    setHasStarted,
+    isComplete,
+    effectiveError,
+    steps,
+    handleClose,
+  } = useExportDialogLifecycle({
+    open,
+    isOperating,
+    progress,
+    operationError,
+    onOpenChange,
+  });
 
   const referencedToneCount = useMemo(
     () => (patch ? getPatchToneDependencies(patch).length : 0),
@@ -76,18 +88,8 @@ export function ExportPatchDialog({
   useEffect(() => {
     if (open) {
       setPatchName(patch?.common.name || defaultPatchName);
-      setLocalError(null);
-      setHasStarted(false);
     }
   }, [open, patch?.common.name, defaultPatchName]);
-
-  const isComplete = isOperationComplete({
-    isOperating,
-    progress,
-    error: operationError,
-  });
-  const effectiveError = localError ?? operationError;
-  const steps = useStepHistory({ progress, isComplete, error: effectiveError });
 
   const handleExport = useCallback(async () => {
     const trimmed = patchName.trim();
@@ -102,13 +104,7 @@ export function ExportPatchDialog({
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : 'Export failed');
     }
-  }, [patchName, patchIndex, onExport]);
-
-  const handleClose = useCallback(() => {
-    if (isOperating) return;
-    setLocalError(null);
-    onOpenChange(false);
-  }, [isOperating, onOpenChange]);
+  }, [patchName, patchIndex, onExport, setLocalError, setHasStarted]);
 
   if (!open) return null;
 

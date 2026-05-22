@@ -25,11 +25,8 @@ import {
 } from '@audiocontrol/editor-core';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import type { S330Tone } from '@audiocontrol/sampler-devices/s330';
-import {
-  type OperationState,
-  isOperationComplete,
-} from '@/types/import-operation';
-import { useStepHistory } from '@/hooks/useStepHistory';
+import { type OperationState } from '@/types/import-operation';
+import { useExportDialogLifecycle } from '@/hooks/useExportDialogLifecycle';
 import { DestinationEyebrow } from '@/components/library/DestinationEyebrow';
 
 export interface ExportToneDialogProps extends OperationState {
@@ -59,25 +56,33 @@ export function ExportToneDialog({
   const slotLabel = memoryLayout.formatToneSlot(toneIndex);
 
   const [toneName, setToneName] = useState(tone?.name || `Tone_${slotLabel}`);
-  const [localError, setLocalError] = useState<string | null>(null);
-  const [hasStarted, setHasStarted] = useState(false);
 
-  // Reset on (re)open.
+  // Lifecycle hook owns localError, hasStarted, isComplete,
+  // effectiveError, steps, handleClose. Per-dialog name state stays
+  // here because the initial-name source differs across dialogs.
+  const {
+    localError,
+    setLocalError,
+    hasStarted,
+    setHasStarted,
+    isComplete,
+    effectiveError,
+    steps,
+    handleClose,
+  } = useExportDialogLifecycle({
+    open,
+    isOperating,
+    progress,
+    operationError,
+    onOpenChange,
+  });
+
+  // Reset the per-dialog name when the drawer opens.
   useEffect(() => {
     if (open) {
       setToneName(tone?.name || `Tone_${slotLabel}`);
-      setLocalError(null);
-      setHasStarted(false);
     }
   }, [open, tone?.name, slotLabel]);
-
-  const isComplete = isOperationComplete({
-    isOperating,
-    progress,
-    error: operationError,
-  });
-  const effectiveError = localError ?? operationError;
-  const steps = useStepHistory({ progress, isComplete, error: effectiveError });
 
   const handleExport = useCallback(async () => {
     const trimmed = toneName.trim();
@@ -95,13 +100,7 @@ export function ExportToneDialog({
       // (e.g. `!libraryHandle`) would vanish — that is BUG-001.
       setLocalError(err instanceof Error ? err.message : 'Export failed');
     }
-  }, [toneName, toneIndex, onExport]);
-
-  const handleClose = useCallback(() => {
-    if (isOperating) return;
-    setLocalError(null);
-    onOpenChange(false);
-  }, [isOperating, onOpenChange]);
+  }, [toneName, toneIndex, onExport, setLocalError, setHasStarted]);
 
   if (!open) return null;
 
