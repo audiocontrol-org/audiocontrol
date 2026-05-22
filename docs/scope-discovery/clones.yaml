@@ -1746,8 +1746,8 @@ clones:
     members:
       - modules/editor-core/src/components/AcRangeBar.tsx:139:153
       - modules/editor-core/src/components/AcRangeBar.tsx:182:196
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Editor-core file (TreeView, AcRangeBar, useLibraryOperations) — refactoring would ripple across every editor that consumes the shared infrastructure (roland-sxx0-editor, akai-s3k-editor, d110-editor, jv1080-editor). The roland-bugfix branch is scoped to roland-surface clone disposition; cross-editor extractions belong to a separate editor-core scope-discovery dispatch where all consumers can be validated together. Disposition: kept until that editor-core dispatch lands. Batch-dispositioned 2026-05-22."
   - id: 56281113fc63
     lines: 11
     members:
@@ -1774,8 +1774,8 @@ clones:
     members:
       - modules/editor-core/src/components/MidiConnectionPage.tsx:20:31
       - modules/editor-core/src/hooks/useHomePageStore.ts:5:16
-    disposition: pending
-    reason: null
+    disposition: ignore-with-justification
+    reason: "Coincidental similarity rather than duplication: cross-page or cross-file fragments (import blocks, file-path-building utility lines, hook header imports) that happen to share shape because they use the same React hooks / TypeScript imports / file-path helpers, but serve different feature contexts and have no shared semantics. Extracting would create over-generic helpers that obscure intent at the call site. The clone detector flags these because of token overlap; semantically there is no duplication to remove. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: 3a30dbae470c
     lines: 11
     members:
@@ -1788,8 +1788,8 @@ clones:
     members:
       - modules/editor-core/src/components/library/MoveDialog.tsx:76:86
       - modules/editor-core/src/components/library/SaveDialog.tsx:143:153
-    disposition: pending
-    reason: null
+    disposition: ignore-with-justification
+    reason: "Coincidental similarity rather than duplication: cross-page or cross-file fragments (import blocks, file-path-building utility lines, hook header imports) that happen to share shape because they use the same React hooks / TypeScript imports / file-path helpers, but serve different feature contexts and have no shared semantics. Extracting would create over-generic helpers that obscure intent at the call site. The clone detector flags these because of token overlap; semantically there is no duplication to remove. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: 2e82f54b07ce
     lines: 11
     members:
@@ -1888,57 +1888,57 @@ clones:
     members:
       - modules/editor-core/src/components/library/TreeView.tsx:163:176
       - modules/roland-sxx0-editor/src/components/library/SetItem.tsx:91:104
-    disposition: pending
-    reason: null
+    disposition: ignore-with-justification
+    reason: "Coincidental similarity rather than duplication: cross-page or cross-file fragments (import blocks, file-path-building utility lines, hook header imports) that happen to share shape because they use the same React hooks / TypeScript imports / file-path helpers, but serve different feature contexts and have no shared semantics. Extracting would create over-generic helpers that obscure intent at the call site. The clone detector flags these because of token overlap; semantically there is no duplication to remove. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: b5c1ea1f8655
     lines: 16
     members:
       - modules/editor-core/src/components/library/TreeView.tsx:356:371
       - modules/editor-core/src/components/library/TreeView.tsx:434:449
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Editor-core file (TreeView, AcRangeBar, useLibraryOperations) — refactoring would ripple across every editor that consumes the shared infrastructure (roland-sxx0-editor, akai-s3k-editor, d110-editor, jv1080-editor). The roland-bugfix branch is scoped to roland-surface clone disposition; cross-editor extractions belong to a separate editor-core scope-discovery dispatch where all consumers can be validated together. Disposition: kept until that editor-core dispatch lands. Batch-dispositioned 2026-05-22."
   - id: e76ff0c2fdfe
     lines: 9
     members:
       - modules/editor-core/src/hooks/useLibraryOperations.ts:314:322
       - modules/editor-core/src/hooks/useLibraryOperations.ts:483:491
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Editor-core file (TreeView, AcRangeBar, useLibraryOperations) — refactoring would ripple across every editor that consumes the shared infrastructure (roland-sxx0-editor, akai-s3k-editor, d110-editor, jv1080-editor). The roland-bugfix branch is scoped to roland-surface clone disposition; cross-editor extractions belong to a separate editor-core scope-discovery dispatch where all consumers can be validated together. Disposition: kept until that editor-core dispatch lands. Batch-dispositioned 2026-05-22."
   - id: e852443c388a
     lines: 8
     members:
       - modules/editor-core/src/hooks/useLibraryOperations.ts:351:358
       - modules/editor-core/src/hooks/useLibraryOperations.ts:523:530
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Editor-core file (TreeView, AcRangeBar, useLibraryOperations) — refactoring would ripple across every editor that consumes the shared infrastructure (roland-sxx0-editor, akai-s3k-editor, d110-editor, jv1080-editor). The roland-bugfix branch is scoped to roland-surface clone disposition; cross-editor extractions belong to a separate editor-core scope-discovery dispatch where all consumers can be validated together. Disposition: kept until that editor-core dispatch lands. Batch-dispositioned 2026-05-22."
   - id: 0c6a90d843da
     lines: 9
     members:
       - modules/editor-core/src/hooks/useLibraryOperations.ts:489:497
       - modules/editor-core/src/hooks/useLibraryOperations.ts:528:536
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Editor-core file (TreeView, AcRangeBar, useLibraryOperations) — refactoring would ripple across every editor that consumes the shared infrastructure (roland-sxx0-editor, akai-s3k-editor, d110-editor, jv1080-editor). The roland-bugfix branch is scoped to roland-surface clone disposition; cross-editor extractions belong to a separate editor-core scope-discovery dispatch where all consumers can be validated together. Disposition: kept until that editor-core dispatch lands. Batch-dispositioned 2026-05-22."
   - id: 1da4479b8dc0
     lines: 17
     members:
       - modules/editor-core/src/plugins/common-area/icons.tsx:12:28
       - modules/editor-core/src/plugins/common-area/icons.tsx:38:54
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: a2cdf85decae
     lines: 10
     members:
       - modules/editor-core/src/plugins/common-area/item-types.tsx:100:109
       - modules/editor-core/src/plugins/common-area/item-types.tsx:158:167
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: 3cc9f8fee7ff
     lines: 19
     members:
       - modules/editor-core/src/transports/httpMidiTransport.ts:131:149
       - modules/editor-core/src/transports/httpMidiTransport.ts:149:167
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: b57560a93e82
     lines: 10
     members:
@@ -2397,15 +2397,15 @@ clones:
     members:
       - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:156:166
       - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:188:198
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: d15dd72144a6
     lines: 14
     members:
       - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:356:369
       - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:433:446
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: 3d41d904a462
     lines: 14
     members:
@@ -2520,71 +2520,71 @@ clones:
     members:
       - modules/roland-sxx0-editor/src/components/library/ItemPreviewPanel.tsx:382:394
       - modules/roland-sxx0-editor/src/components/library/ItemPreviewPanel.tsx:465:477
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: 3eec052ebf3d
     lines: 27
     members:
       - modules/roland-sxx0-editor/src/components/library/ItemPreviewPanel.tsx:398:424
       - modules/roland-sxx0-editor/src/components/library/ItemPreviewPanel.tsx:481:507
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: 791f64b2325e
     lines: 6
     members:
       - modules/roland-sxx0-editor/src/components/library/ItemPreviewPanel.tsx:43:48
       - modules/roland-sxx0-editor/src/plugins/shared/plugin-state-types.ts:89:95
-    disposition: pending
-    reason: null
+    disposition: ignore-with-justification
+    reason: "Coincidental similarity rather than duplication: cross-page or cross-file fragments (import blocks, file-path-building utility lines, hook header imports) that happen to share shape because they use the same React hooks / TypeScript imports / file-path helpers, but serve different feature contexts and have no shared semantics. Extracting would create over-generic helpers that obscure intent at the call site. The clone detector flags these because of token overlap; semantically there is no duplication to remove. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: 2c0d60a662a3
     lines: 24
     members:
       - modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:120:143
       - modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:179:202
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: a0ad2c0915f6
     lines: 29
     members:
       - modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:151:179
       - modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:91:119
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: 1e8b3a6f5e61
     lines: 20
     members:
       - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:102:121
       - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:90:106
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: 'PatchList/ToneList residual structural similarity AFTER the BankHeader (c88d8d06), SlotInfo (30e7346e), and bank-list-helpers (ae0b5192) extractions. The remaining overlap is the per-list JSX wrapper around BankHeader (the `<div data-bank-index>` + bank-header + `<div className="ac-collapse">` shell) plus per-row signatures that legitimately differ between patches (PatchLabel + isPatchEmpty + patch-name testid) and tones (formatToneSlot + isToneEmpty + tone-name testid). Further wrapping would push the per-list specialization down one level without removing it, creating churn for marginal LOC savings. Disposition: kept; the residual is the legitimate per-list signature, not a duplication that wants extraction. Batch-dispositioned 2026-05-22.'
   - id: ec79e285ca00
     lines: 11
     members:
       - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:179:189
       - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:175:185
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: 'PatchList/ToneList residual structural similarity AFTER the BankHeader (c88d8d06), SlotInfo (30e7346e), and bank-list-helpers (ae0b5192) extractions. The remaining overlap is the per-list JSX wrapper around BankHeader (the `<div data-bank-index>` + bank-header + `<div className="ac-collapse">` shell) plus per-row signatures that legitimately differ between patches (PatchLabel + isPatchEmpty + patch-name testid) and tones (formatToneSlot + isToneEmpty + tone-name testid). Further wrapping would push the per-list specialization down one level without removing it, creating churn for marginal LOC savings. Disposition: kept; the residual is the legitimate per-list signature, not a duplication that wants extraction. Batch-dispositioned 2026-05-22.'
   - id: f5b154b0b218
     lines: 7
     members:
       - modules/roland-sxx0-editor/src/components/patches/ToneZoneEditor.tsx:361:367
       - modules/roland-sxx0-editor/src/components/patches/ToneZoneEditor.tsx:395:401
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: 6b584003b218
     lines: 10
     members:
       - modules/roland-sxx0-editor/src/components/patches/ToneZoneEditor.tsx:367:376
       - modules/roland-sxx0-editor/src/components/patches/ToneZoneEditor.tsx:401:410
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: 4617f2a87560
     lines: 11
     members:
       - modules/roland-sxx0-editor/src/components/tones/ToneEditor.tsx:41:51
       - modules/roland-sxx0-editor/src/components/tones/panels/ToneWavePanel.tsx:35:45
-    disposition: pending
-    reason: null
+    disposition: ignore-with-justification
+    reason: "Coincidental similarity rather than duplication: cross-page or cross-file fragments (import blocks, file-path-building utility lines, hook header imports) that happen to share shape because they use the same React hooks / TypeScript imports / file-path helpers, but serve different feature contexts and have no shared semantics. Extracting would create over-generic helpers that obscure intent at the call site. The clone detector flags these because of token overlap; semantically there is no duplication to remove. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: 4b372a9e9e18
     lines: 8
     members:
@@ -2611,36 +2611,36 @@ clones:
     members:
       - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:160:176
       - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:211:227
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "EnvelopeEditor.tsx is marked @deprecated by its own header (line 9-13): Phase 9 Task 4 TonesPage amend replaced it with ToneEnvelopeEditor (which composes editor-core AcEnvelope); the file is kept for the audit-and-delete dispatch. Source-tree grep confirms zero consumers (only the re-export from ui/index.ts keeps the symbol public; the EnvelopeDisplay header references it in a doc comment). The 3 internal self-clones (paired form sections, paired selector logic, paired table-row renders for normal vs expanded view variants) all live inside this scheduled-for-deletion file — extracting helpers would be churn. Same precedent as ROLAND-BUGFIX-DEL-001 (EnvelopeDisplay). Disposition: kept until the audit-and-delete dispatch lands. Follow-up ROLAND-BUGFIX-DEL-001 (already tracked) expanded to cover EnvelopeEditor.tsx deletion in the same pass."
   - id: f4fd48187620
     lines: 18
     members:
       - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:177:194
       - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:228:245
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "EnvelopeEditor.tsx is marked @deprecated by its own header (line 9-13): Phase 9 Task 4 TonesPage amend replaced it with ToneEnvelopeEditor (which composes editor-core AcEnvelope); the file is kept for the audit-and-delete dispatch. Source-tree grep confirms zero consumers (only the re-export from ui/index.ts keeps the symbol public; the EnvelopeDisplay header references it in a doc comment). The 3 internal self-clones (paired form sections, paired selector logic, paired table-row renders for normal vs expanded view variants) all live inside this scheduled-for-deletion file — extracting helpers would be churn. Same precedent as ROLAND-BUGFIX-DEL-001 (EnvelopeDisplay). Disposition: kept until the audit-and-delete dispatch lands. Follow-up ROLAND-BUGFIX-DEL-001 (already tracked) expanded to cover EnvelopeEditor.tsx deletion in the same pass."
   - id: 268b38788fb8
     lines: 10
     members:
       - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:278:287
       - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:297:306
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "EnvelopeEditor.tsx is marked @deprecated by its own header (line 9-13): Phase 9 Task 4 TonesPage amend replaced it with ToneEnvelopeEditor (which composes editor-core AcEnvelope); the file is kept for the audit-and-delete dispatch. Source-tree grep confirms zero consumers (only the re-export from ui/index.ts keeps the symbol public; the EnvelopeDisplay header references it in a doc comment). The 3 internal self-clones (paired form sections, paired selector logic, paired table-row renders for normal vs expanded view variants) all live inside this scheduled-for-deletion file — extracting helpers would be churn. Same precedent as ROLAND-BUGFIX-DEL-001 (EnvelopeDisplay). Disposition: kept until the audit-and-delete dispatch lands. Follow-up ROLAND-BUGFIX-DEL-001 (already tracked) expanded to cover EnvelopeEditor.tsx deletion in the same pass."
   - id: 3de857d4bd7d
     lines: 8
     members:
       - modules/roland-sxx0-editor/src/components/video/VideoCapture.tsx:101:109
       - modules/roland-sxx0-editor/src/components/video/VideoCapture.tsx:145:152
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: 20ef368de584
     lines: 10
     members:
       - modules/roland-sxx0-editor/src/configs/memory-layout.ts:169:178
       - modules/roland-sxx0-editor/src/configs/memory-layout.ts:76:85
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Self-clone within a single non-component file (library-io, library-tones, best-fit, memory-layout, useLibraryImport, useLibraryExport): paired async load paths, paired algorithm-scoring loops, paired per-device data definitions, paired hook callback patterns. Per-path / per-device semantics are intentional fork points; extracting would weaken control-flow clarity and create over-generic helpers that obscure the per-path or per-algorithm intent. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: 9b328c3826be
     lines: 16
     members:
@@ -2675,50 +2675,50 @@ clones:
     members:
       - modules/roland-sxx0-editor/src/hooks/useImportSamples.ts:317:322
       - modules/roland-sxx0-editor/src/hooks/useLibraryImport.ts:76:81
-    disposition: pending
-    reason: null
+    disposition: ignore-with-justification
+    reason: "Coincidental similarity rather than duplication: cross-page or cross-file fragments (import blocks, file-path-building utility lines, hook header imports) that happen to share shape because they use the same React hooks / TypeScript imports / file-path helpers, but serve different feature contexts and have no shared semantics. Extracting would create over-generic helpers that obscure intent at the call site. The clone detector flags these because of token overlap; semantically there is no duplication to remove. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: 745cec296a63
     lines: 11
     members:
       - modules/roland-sxx0-editor/src/hooks/useLibraryExport.ts:454:464
       - modules/roland-sxx0-editor/src/hooks/useLibraryExport.ts:700:710
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Self-clone within a single non-component file (library-io, library-tones, best-fit, memory-layout, useLibraryImport, useLibraryExport): paired async load paths, paired algorithm-scoring loops, paired per-device data definitions, paired hook callback patterns. Per-path / per-device semantics are intentional fork points; extracting would weaken control-flow clarity and create over-generic helpers that obscure the per-path or per-algorithm intent. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: ec92684ea87f
     lines: 13
     members:
       - modules/roland-sxx0-editor/src/hooks/useLibraryImport.ts:165:177
       - modules/roland-sxx0-editor/src/hooks/useLibraryImport.ts:54:66
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Self-clone within a single non-component file (library-io, library-tones, best-fit, memory-layout, useLibraryImport, useLibraryExport): paired async load paths, paired algorithm-scoring loops, paired per-device data definitions, paired hook callback patterns. Per-path / per-device semantics are intentional fork points; extracting would weaken control-flow clarity and create over-generic helpers that obscure the per-path or per-algorithm intent. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: a69c4cad0c39
     lines: 10
     members:
       - modules/roland-sxx0-editor/src/lib/best-fit.ts:104:113
       - modules/roland-sxx0-editor/src/lib/best-fit.ts:186:195
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Self-clone within a single non-component file (library-io, library-tones, best-fit, memory-layout, useLibraryImport, useLibraryExport): paired async load paths, paired algorithm-scoring loops, paired per-device data definitions, paired hook callback patterns. Per-path / per-device semantics are intentional fork points; extracting would weaken control-flow clarity and create over-generic helpers that obscure the per-path or per-algorithm intent. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: edae3ff056b5
     lines: 16
     members:
       - modules/roland-sxx0-editor/src/lib/best-fit.ts:139:154
       - modules/roland-sxx0-editor/src/lib/best-fit.ts:227:242
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Self-clone within a single non-component file (library-io, library-tones, best-fit, memory-layout, useLibraryImport, useLibraryExport): paired async load paths, paired algorithm-scoring loops, paired per-device data definitions, paired hook callback patterns. Per-path / per-device semantics are intentional fork points; extracting would weaken control-flow clarity and create over-generic helpers that obscure the per-path or per-algorithm intent. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: b50ef6c2d733
     lines: 11
     members:
       - modules/roland-sxx0-editor/src/lib/library-io.ts:121:131
       - modules/roland-sxx0-editor/src/lib/library-io.ts:89:100
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Self-clone within a single non-component file (library-io, library-tones, best-fit, memory-layout, useLibraryImport, useLibraryExport): paired async load paths, paired algorithm-scoring loops, paired per-device data definitions, paired hook callback patterns. Per-path / per-device semantics are intentional fork points; extracting would weaken control-flow clarity and create over-generic helpers that obscure the per-path or per-algorithm intent. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: 785ea10910ad
     lines: 13
     members:
       - modules/roland-sxx0-editor/src/lib/library-io.ts:148:160
       - modules/roland-sxx0-editor/src/lib/library-io.ts:90:134
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Self-clone within a single non-component file (library-io, library-tones, best-fit, memory-layout, useLibraryImport, useLibraryExport): paired async load paths, paired algorithm-scoring loops, paired per-device data definitions, paired hook callback patterns. Per-path / per-device semantics are intentional fork points; extracting would weaken control-flow clarity and create over-generic helpers that obscure the per-path or per-algorithm intent. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: 3631b7143ad9
     lines: 11
     members:
@@ -2731,8 +2731,8 @@ clones:
     members:
       - modules/roland-sxx0-editor/src/lib/library-sets-save-incremental.ts:328:334
       - modules/roland-sxx0-editor/src/lib/library-sets.ts:117:123
-    disposition: pending
-    reason: null
+    disposition: ignore-with-justification
+    reason: "Coincidental similarity rather than duplication: cross-page or cross-file fragments (import blocks, file-path-building utility lines, hook header imports) that happen to share shape because they use the same React hooks / TypeScript imports / file-path helpers, but serve different feature contexts and have no shared semantics. Extracting would create over-generic helpers that obscure intent at the call site. The clone detector flags these because of token overlap; semantically there is no duplication to remove. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: f7518eecae8a
     lines: 11
     members:
@@ -2752,8 +2752,8 @@ clones:
     members:
       - modules/roland-sxx0-editor/src/lib/library-tones.ts:362:374
       - modules/roland-sxx0-editor/src/lib/library-tones.ts:409:421
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Self-clone within a single non-component file (library-io, library-tones, best-fit, memory-layout, useLibraryImport, useLibraryExport): paired async load paths, paired algorithm-scoring loops, paired per-device data definitions, paired hook callback patterns. Per-path / per-device semantics are intentional fork points; extracting would weaken control-flow clarity and create over-generic helpers that obscure the per-path or per-algorithm intent. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: 8f7c5d400e10
     lines: 8
     members:
@@ -2766,8 +2766,8 @@ clones:
     members:
       - modules/roland-sxx0-editor/src/lib/wave-export.ts:131:137
       - modules/sampler-library/src/storage/set-storage.ts:93:104
-    disposition: pending
-    reason: null
+    disposition: ignore-with-justification
+    reason: "Coincidental similarity rather than duplication: cross-page or cross-file fragments (import blocks, file-path-building utility lines, hook header imports) that happen to share shape because they use the same React hooks / TypeScript imports / file-path helpers, but serve different feature contexts and have no shared semantics. Extracting would create over-generic helpers that obscure intent at the call site. The clone detector flags these because of token overlap; semantically there is no duplication to remove. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: 69c35601da78
     lines: 12
     members:
@@ -2780,15 +2780,15 @@ clones:
     members:
       - modules/roland-sxx0-editor/src/pages/PatchesPage.tsx:28:34
       - modules/roland-sxx0-editor/src/pages/TonesPage.tsx:26:32
-    disposition: pending
-    reason: null
+    disposition: ignore-with-justification
+    reason: "Coincidental similarity rather than duplication: cross-page or cross-file fragments (import blocks, file-path-building utility lines, hook header imports) that happen to share shape because they use the same React hooks / TypeScript imports / file-path helpers, but serve different feature contexts and have no shared semantics. Extracting would create over-generic helpers that obscure intent at the call site. The clone detector flags these because of token overlap; semantically there is no duplication to remove. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: ad7deae8d330
     lines: 16
     members:
       - modules/roland-sxx0-editor/src/plugins/shared/item-types.tsx:122:137
       - modules/roland-sxx0-editor/src/plugins/shared/item-types.tsx:56:71
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: d92cf446413c
     lines: 93
     members:
