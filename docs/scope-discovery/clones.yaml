@@ -40,8 +40,8 @@ clones:
     members:
       - modules/akai-s3k-editor/playwright.test-harness.config.ts:28:44
       - modules/roland-sxx0-editor/playwright.harness.shared.ts:38:54
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Cross-module CLI script / build-config duplication. validate-akai-s3000xl + validate-device + remaining vite / vitest / playwright configs: each is a per-module self-contained CLI or config file that must work independently from its own module path. Extracting shared helpers would couple modules through a single point of failure and complicate test-infra layering. See earlier playwright-config batch (commit 214a99b8) and validate-device intra-file disposition (commit 77d8003e) for the precedent. Flip to refactor if a future operator builds out cross-module test-infra / CLI primitives in modules/e2e-infra/ with the test apparatus the test-before-extract protocol requires."
   - id: e27086acfb56
     lines: 8
     members:
@@ -919,15 +919,15 @@ clones:
     members:
       - modules/d110-editor/vite.config.ts:27:38
       - modules/editor-core/src/vite/vite.ts:97:108
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Cross-module CLI script / build-config duplication. validate-akai-s3000xl + validate-device + remaining vite / vitest / playwright configs: each is a per-module self-contained CLI or config file that must work independently from its own module path. Extracting shared helpers would couple modules through a single point of failure and complicate test-infra layering. See earlier playwright-config batch (commit 214a99b8) and validate-device intra-file disposition (commit 77d8003e) for the precedent. Flip to refactor if a future operator builds out cross-module test-infra / CLI primitives in modules/e2e-infra/ with the test apparatus the test-before-extract protocol requires."
   - id: b05d19c35ebd
     lines: 13
     members:
       - modules/d110-editor/vite.config.ts:7:19
       - modules/editor-core/src/vite/vite.ts:43:55
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Cross-module CLI script / build-config duplication. validate-akai-s3000xl + validate-device + remaining vite / vitest / playwright configs: each is a per-module self-contained CLI or config file that must work independently from its own module path. Extracting shared helpers would couple modules through a single point of failure and complicate test-infra layering. See earlier playwright-config batch (commit 214a99b8) and validate-device intra-file disposition (commit 77d8003e) for the precedent. Flip to refactor if a future operator builds out cross-module test-infra / CLI primitives in modules/e2e-infra/ with the test apparatus the test-before-extract protocol requires."
   - id: 9200b8e5669a
     lines: 10
     members:
@@ -968,22 +968,22 @@ clones:
     members:
       - modules/e2e-infra/scripts/validate-akai-s3000xl.ts:121:136
       - modules/roland-sxx0-editor/scripts/validate-device.ts:171:186
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Cross-module CLI script / build-config duplication. validate-akai-s3000xl + validate-device + remaining vite / vitest / playwright configs: each is a per-module self-contained CLI or config file that must work independently from its own module path. Extracting shared helpers would couple modules through a single point of failure and complicate test-infra layering. See earlier playwright-config batch (commit 214a99b8) and validate-device intra-file disposition (commit 77d8003e) for the precedent. Flip to refactor if a future operator builds out cross-module test-infra / CLI primitives in modules/e2e-infra/ with the test apparatus the test-before-extract protocol requires."
   - id: ab1d0b13541e
     lines: 29
     members:
       - modules/e2e-infra/scripts/validate-akai-s3000xl.ts:136:164
       - modules/roland-sxx0-editor/scripts/validate-device.ts:186:214
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Cross-module CLI script / build-config duplication. validate-akai-s3000xl + validate-device + remaining vite / vitest / playwright configs: each is a per-module self-contained CLI or config file that must work independently from its own module path. Extracting shared helpers would couple modules through a single point of failure and complicate test-infra layering. See earlier playwright-config batch (commit 214a99b8) and validate-device intra-file disposition (commit 77d8003e) for the precedent. Flip to refactor if a future operator builds out cross-module test-infra / CLI primitives in modules/e2e-infra/ with the test apparatus the test-before-extract protocol requires."
   - id: 84caffaf63b4
     lines: 32
     members:
       - modules/e2e-infra/scripts/validate-akai-s3000xl.ts:63:94
       - modules/roland-sxx0-editor/scripts/validate-device.ts:240:271
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Cross-module CLI script / build-config duplication. validate-akai-s3000xl + validate-device + remaining vite / vitest / playwright configs: each is a per-module self-contained CLI or config file that must work independently from its own module path. Extracting shared helpers would couple modules through a single point of failure and complicate test-infra layering. See earlier playwright-config batch (commit 214a99b8) and validate-device intra-file disposition (commit 77d8003e) for the precedent. Flip to refactor if a future operator builds out cross-module test-infra / CLI primitives in modules/e2e-infra/ with the test apparatus the test-before-extract protocol requires."
   - id: a975f1067ff4
     lines: 151
     members:
@@ -1951,8 +1951,8 @@ clones:
     members:
       - modules/editor-core/vitest.config.ts:1:14
       - modules/synth-core/vitest.config.ts:1:14
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Cross-module CLI script / build-config duplication. validate-akai-s3000xl + validate-device + remaining vite / vitest / playwright configs: each is a per-module self-contained CLI or config file that must work independently from its own module path. Extracting shared helpers would couple modules through a single point of failure and complicate test-infra layering. See earlier playwright-config batch (commit 214a99b8) and validate-device intra-file disposition (commit 77d8003e) for the precedent. Flip to refactor if a future operator builds out cross-module test-infra / CLI primitives in modules/e2e-infra/ with the test apparatus the test-before-extract protocol requires."
   - id: a83997e1d17e
     lines: 24
     members:
