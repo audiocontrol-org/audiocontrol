@@ -68,6 +68,57 @@
       "minItems": 1,
       "items": { "$ref": "#/$defs/module" }
     },
+    "regime_holdouts": {
+      "description": "Optional regime-holdout section emitted by the T6.5 regime-holdout-detector agent. Fans the agent's findings into four per-source buckets (anti-pattern matches, adopter-manifest holdouts, editor-symmetry partial/missing cells, deprecation-queue importers) plus a meta summary. Absent when the agent did not contribute findings (existing pre-T6.5 manifests still validate).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["anti_patterns", "adopter_manifests", "editor_symmetry", "deprecations", "meta"],
+      "properties": {
+        "anti_patterns": {
+          "description": "Findings sourced from the T6.1 anti-pattern registry scan.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/regime_holdout_entry" }
+        },
+        "adopter_manifests": {
+          "description": "Findings sourced from the T6.2 adopter-manifest registry scan.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/regime_holdout_entry" }
+        },
+        "editor_symmetry": {
+          "description": "Findings sourced from the T6.3 cross-editor symmetry matrix (partial/missing cells).",
+          "type": "array",
+          "items": { "$ref": "#/$defs/regime_holdout_entry" }
+        },
+        "deprecations": {
+          "description": "Findings sourced from the T6.4 deprecation scan (one entry per importer of a @deprecated file).",
+          "type": "array",
+          "items": { "$ref": "#/$defs/regime_holdout_entry" }
+        },
+        "meta": {
+          "description": "Per-source counts + total. Useful for at-a-glance burndown without iterating the per-bucket arrays.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["total", "by_source"],
+          "properties": {
+            "total": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "by_source": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["anti_pattern", "adopter_manifest", "editor_symmetry", "deprecation"],
+              "properties": {
+                "anti_pattern": { "type": "integer", "minimum": 0 },
+                "adopter_manifest": { "type": "integer", "minimum": 0 },
+                "editor_symmetry": { "type": "integer", "minimum": 0 },
+                "deprecation": { "type": "integer", "minimum": 0 }
+              }
+            }
+          }
+        }
+      }
+    },
     "notes": {
       "description": "Free-text operator notes attached to the manifest. Not consumed by tooling.",
       "type": "string"
@@ -267,6 +318,60 @@
         "query": {
           "description": "Concrete query — regex, AST selector, or jscpd group id. Format depends on the pattern's kind; the agent interpreting it knows the convention.",
           "type": "string"
+        }
+      }
+    },
+    "regime_holdout_entry": {
+      "description": "One regime-holdout finding. Emitted by the T6.5 regime-holdout-detector and grouped by source bucket in the manifest's regime_holdouts section.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "file", "shape", "replacement", "evidence"],
+      "properties": {
+        "id": {
+          "description": "Identifier within the source bucket. Anti-pattern id, adopter-manifest id, '<manifest-id>:<editor>' composite, or path of the deprecated file.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "file": {
+          "description": "Repo-relative POSIX path of the offending file (or editor module dir for editor-symmetry rows).",
+          "type": "string",
+          "minLength": 1
+        },
+        "line": {
+          "description": "Optional 1-based source line. Omitted for whole-file findings (e.g., adopter-manifest holdouts, editor-symmetry rows).",
+          "type": "integer",
+          "minimum": 1
+        },
+        "shape": {
+          "description": "Human description of the legacy / missing / drifted shape the gate caught.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "replacement": {
+          "description": "Human description of the canonical replacement the operator should apply.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "evidence": {
+          "description": "Back-pointer to the registry / scan output that caught the holdout. Lets a reader resolve the manifest entry back to its source registry in one hop.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["registry_path", "registry_id"],
+          "properties": {
+            "registry_path": {
+              "description": "Repo-relative path of the registry YAML or scan-output that caught the holdout.",
+              "type": "string",
+              "minLength": 1
+            },
+            "registry_id": {
+              "description": "Stable identifier within the registry (anti-pattern id, manifest id, '@deprecated' marker, etc.).",
+              "type": "string",
+              "minLength": 1
+            }
+          }
         }
       }
     }

@@ -60,7 +60,7 @@ The `captures/` directory is created empty by this skill; per LAYOUT.md, capture
 
 ### 5. Fan out the discovery-agent fleet in parallel
 
-Each agent reads `--feature <slug> --prd-path <FEATURE_DIR>/prd.md --repo-root .` and writes its findings JSON to stdout. Run all four concurrently and redirect stdout to the corresponding file under `findings/`:
+Each agent reads `--feature <slug> --prd-path <FEATURE_DIR>/prd.md --repo-root .` and writes its findings JSON to stdout. Run all five concurrently and redirect stdout to the corresponding file under `findings/`:
 
 ```bash
 RUN_DIR=<FEATURE_DIR>/scope-inventory/runs/<ISO-stamp>-<runId>
@@ -86,8 +86,15 @@ tsx tools/scope-discovery/discovery-agents/prd-themed-pattern-hunter.ts \
   > "$RUN_DIR/findings/prd-themed-pattern-hunter.json" &
 PID_PRD=$!
 
-wait $PID_UI $PID_AST $PID_CLONE $PID_PRD
+tsx tools/scope-discovery/discovery-agents/regime-holdout-detector.ts \
+  --feature <slug> --prd-path "$PRD" --repo-root . \
+  > "$RUN_DIR/findings/regime-holdout-detector.json" &
+PID_REGIME=$!
+
+wait $PID_UI $PID_AST $PID_CLONE $PID_PRD $PID_REGIME
 ```
+
+The fifth agent — `regime-holdout-detector` (T6.5) — fuses the four Phase 6 gates (anti-patterns, adopter-manifests, editor-symmetry, deprecation-queue) into a single `RegimeHoldoutFindings` payload that the synthesis pass emits as the manifest's top-level `regime_holdouts:` section. It is in-process (consumes the four scanners directly), so its findings reflect the same on-disk state the operator-driven `make check-anti-patterns` / `make check-adopters` / `make check-editor-symmetry` / `make check-deprecations` targets would.
 
 Record each agent's exit code (`$?` after each `wait <pid>`, or by waiting on each pid individually) for `meta.json`. **If any agent exits non-zero, refuse to continue** — surface the agent name, exit code, and the agent's stderr. Do NOT synthesize from partial findings; partial inputs would produce a partial manifest that the operator could mistake for complete.
 
@@ -102,6 +109,7 @@ tsx tools/scope-discovery/synthesis.ts \
              "$RUN_DIR/findings/ast-grep-matrix.json" \
              "$RUN_DIR/findings/clone-detector-reader.json" \
              "$RUN_DIR/findings/prd-themed-pattern-hunter.json" \
+             "$RUN_DIR/findings/regime-holdout-detector.json" \
   --out "<FEATURE_DIR>/scope-manifest.yaml"
 ```
 
@@ -131,13 +139,15 @@ After synthesis succeeds, write the run metadata. Use the Write tool, not `echo`
     "ui-route-enumerator",
     "ast-grep-matrix",
     "clone-detector-reader",
-    "prd-themed-pattern-hunter"
+    "prd-themed-pattern-hunter",
+    "regime-holdout-detector"
   ],
   "agentExitCodes": {
     "ui-route-enumerator": 0,
     "ast-grep-matrix": 0,
     "clone-detector-reader": 0,
-    "prd-themed-pattern-hunter": 0
+    "prd-themed-pattern-hunter": 0,
+    "regime-holdout-detector": 0
   },
   "synthesisExitCode": 0,
   "manifestPath": "<FEATURE_DIR>/scope-manifest.yaml",
@@ -156,6 +166,7 @@ Write a short narrative summary of the run to `$RUN_DIR/synthesis.md`. Use the W
 - **Routes detected** — count + the first ten paths (or all if fewer). For non-UI kinds, write *"n/a — kind=code; no routes in manifest"*.
 - **Modules detected** — count + the top ten by hit count. For non-code kinds, write *"n/a — kind=ui; no modules in manifest"*.
 - **Themes detected** — count + the top ten themes by occurrence.
+- **Regime holdouts** — read the manifest's `regime_holdouts.meta` section. Report `total` plus the four `by_source` counts (`anti_pattern`, `adopter_manifest`, `editor_symmetry`, `deprecation`). For non-zero buckets, list up to five sample finding ids with their `file` field. For an all-zero result, write *"clean — no regime holdouts in the current source tree"*. This section IS the burndown summary the operator drives Phase 6 work from; do not abbreviate.
 - **Reference docs** — count + list (PRD path always included; agent-derived doc references appended).
 - **Operator curation hints** — concrete pointers (e.g., *"26 modules listed across `modules/*`; prune to those genuinely in scope before downstream phase work treats the manifest as binding"*). At minimum mention manifest size, any obvious noise (modules touched by clone-detector-reader but not name-checked by the PRD-themed hunter, etc.), and the next operator action.
 
@@ -196,6 +207,7 @@ Kind:        <kind>
 Routes:      N (sorted by path)
 Modules:     M (sorted by hit count desc)
 Themes:      K (top 10 by occurrence)
+Regime:      H total (anti-pat=A / adopter=B / symmetry=C / deprecation=D)
 Ref docs:    R
 
 Manifest:    <FEATURE_DIR>/scope-manifest.yaml
@@ -242,3 +254,4 @@ If the operator wants to compare a strawman against a prior curated version, the
 - Synthesis pass — [`tools/scope-discovery/synthesis.ts`](../../../tools/scope-discovery/synthesis.ts)
 - `make scope-inventory` target — [`tools/scope-discovery/find-feature.ts`](../../../tools/scope-discovery/find-feature.ts)
 - Workplan T3.3 — [`docs/1.0/001-IN-PROGRESS/scope-discovery-protocol/workplan.md`](../../../docs/1.0/001-IN-PROGRESS/scope-discovery-protocol/workplan.md)
+- Regime-holdout detector (T6.5) — [`tools/scope-discovery/discovery-agents/regime-holdout-detector.ts`](../../../tools/scope-discovery/discovery-agents/regime-holdout-detector.ts)

@@ -23,6 +23,7 @@ import type {
   DiscoveryAgentFinding,
   DiscoveryAgentName,
   PrdThemedFindings,
+  RegimeHoldoutFindings,
   UiRouteFindings,
 } from './discovery-agents/types.js';
 import { isDiscoveryAgentFinding } from './discovery-agents/types.js';
@@ -36,6 +37,7 @@ import {
   defaultScenarioId,
   deriveModules,
   deriveReferenceDocs,
+  deriveRegimeHoldouts,
   deriveRoutes,
   deriveScenarios,
   deriveThemes,
@@ -61,6 +63,7 @@ interface PartitionedFindings {
   readonly ast: ReadonlyArray<AstGrepMatrixFindings>;
   readonly clones: ReadonlyArray<CloneDetectorFindings>;
   readonly themes: ReadonlyArray<PrdThemedFindings>;
+  readonly regime: ReadonlyArray<RegimeHoldoutFindings>;
   readonly agentsConsumed: ReadonlyArray<DiscoveryAgentName>;
   readonly rawCount: number;
 }
@@ -72,6 +75,7 @@ function partition(
   const ast: AstGrepMatrixFindings[] = [];
   const clones: CloneDetectorFindings[] = [];
   const themes: PrdThemedFindings[] = [];
+  const regime: RegimeHoldoutFindings[] = [];
   const seenAgents = new Set<DiscoveryAgentName>();
   // rawCount counts the *signal* the agents handed us — individual
   // hits, clone members, route entries, theme matches — NOT just the
@@ -104,9 +108,21 @@ function partition(
           rawCount += theme.occurrences.length;
         }
         break;
+      case 'regime-holdout-detector':
+        regime.push(f);
+        rawCount += f.findings.length;
+        break;
     }
   }
-  return { ui, ast, clones, themes, rawCount, agentsConsumed: Array.from(seenAgents).sort() };
+  return {
+    ui,
+    ast,
+    clones,
+    themes,
+    regime,
+    rawCount,
+    agentsConsumed: Array.from(seenAgents).sort(),
+  };
 }
 
 function determineKind(p: PartitionedFindings): ManifestKind {
@@ -160,15 +176,21 @@ export async function synthesize(input: SynthesisInput): Promise<SynthesisOutput
     prdPath: input.prdPath,
     prdRelPath: input.prdRelPath,
   });
+  const regimeHoldouts = deriveRegimeHoldouts(partitioned.regime);
 
   const generatedAt = new Date().toISOString();
   // rawCount sums *all* signal entries (hits, clone members, routes,
-  // theme occurrences). finalCount is the count of unique emitted
-  // manifest entries. dedupCount is the reduction — should always be
-  // non-negative under the new counting because finalCount can never
-  // exceed the source signal it was derived from. (If it does, the
-  // assertion below catches it; no silent clamp.)
-  const finalCount = (routes?.length ?? 0) + (modules?.length ?? 0) + themesList.length;
+  // theme occurrences, regime-holdout findings). finalCount is the
+  // count of unique emitted manifest entries. dedupCount is the
+  // reduction — should always be non-negative under the new counting
+  // because finalCount can never exceed the source signal it was
+  // derived from. (If it does, the assertion below catches it; no
+  // silent clamp.)
+  const finalCount =
+    (routes?.length ?? 0) +
+    (modules?.length ?? 0) +
+    themesList.length +
+    (regimeHoldouts?.meta.total ?? 0);
   const dedupCount = partitioned.rawCount - finalCount;
   if (dedupCount < 0) {
     throw new Error(
@@ -189,6 +211,7 @@ export async function synthesize(input: SynthesisInput): Promise<SynthesisOutput
     discovery_themes: themesList,
     ...(routes !== undefined ? { routes } : {}),
     ...(modules !== undefined ? { modules } : {}),
+    ...(regimeHoldouts !== null ? { regime_holdouts: regimeHoldouts } : {}),
     notes:
       `Strawman synthesized from ${partitioned.agentsConsumed.length} discovery agent(s) ` +
       `(${partitioned.agentsConsumed.join(', ')}). Operator curates devices/scenarios/primitives.`,

@@ -77,7 +77,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions check-refactor-preconditions-validate check-anti-patterns check-anti-patterns-validate check-adopters check-adopters-validate check-editor-symmetry check-editor-symmetry-write check-editor-symmetry-validate check-deprecations check-deprecations-write check-deprecations-validate test-scope-discovery scope-inventory refresh-clones-baseline check-chevron-sizing
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions check-refactor-preconditions-validate check-anti-patterns check-anti-patterns-validate check-adopters check-adopters-validate check-editor-symmetry check-editor-symmetry-write check-editor-symmetry-validate check-deprecations check-deprecations-write check-deprecations-validate check-regime-holdout-validate test-scope-discovery scope-inventory refresh-clones-baseline check-chevron-sizing
 
 build: $(ALL_STAMPS)
 
@@ -488,6 +488,16 @@ check-deprecations-write:
 check-deprecations-validate:
 	tsx tools/scope-discovery/deprecation-scan.validate.ts
 
+# Adversarial validator for the T6.5 regime-holdout-detector discovery
+# agent. Plants 9 synthetic scenarios (empty registries + clean tree;
+# anti-pattern catch; adopter-manifest holdout catch; editor-symmetry
+# partial/missing cell; deprecation importer catch; mixed-sources meta-
+# count reconciliation; evidence back-pointer validity; JSON-output
+# shape passes type-predicate; gutted-stub self-check) under per-
+# scenario temp directories. T6.5 gate.
+check-regime-holdout-validate:
+	tsx tools/scope-discovery/discovery-agents/regime-holdout-detector.validate.ts
+
 # Run the full scope-discovery validator suite: both adversarial
 # harnesses + the Phase 5 refactor-preconditions smoke-test in
 # sequence. The clone-detector validator runs first (plants fixtures,
@@ -507,13 +517,17 @@ check-deprecations-validate:
 # self-check); on success the T6.4 deprecation-scan validator runs
 # eighth (marker grammar + importer detection + self-importer
 # exclusion + safe/blocked bucket assignment + --write artifact +
-# gutted-stub self-check). Equivalent to
-# `pnpm test:scope-discovery` — both invocations exist so operators
-# and the orchestrator can use whichever fits their flow. Combined
-# runtime is under 30s; if that ever changes, the workplan T2.8 gate
-# is broken and the slowdown must be surfaced.
-# T2.8 gate (+ T5.2 + T5.3 + T6.1 + T6.2 + T6.3 + T6.4 additions).
-test-scope-discovery: check-clone-duplication-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions-validate check-anti-patterns-validate check-adopters-validate check-editor-symmetry-validate check-deprecations-validate
+# gutted-stub self-check); on success the T6.5 regime-holdout-detector
+# validator runs ninth (the discovery-agent that fuses the four T6.1–T6.4
+# scans into a single RegimeHoldoutFindings shape; mixed-source meta-
+# count reconciliation, evidence back-pointer validity, JSON-shape
+# acceptance via the type-predicate, gutted-stub self-check).
+# Equivalent to `pnpm test:scope-discovery` — both invocations exist so
+# operators and the orchestrator can use whichever fits their flow.
+# Combined runtime is under 30s; if that ever changes, the workplan T2.8
+# gate is broken and the slowdown must be surfaced.
+# T2.8 gate (+ T5.2 + T5.3 + T6.1 + T6.2 + T6.3 + T6.4 + T6.5 additions).
+test-scope-discovery: check-clone-duplication-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions-validate check-anti-patterns-validate check-adopters-validate check-editor-symmetry-validate check-deprecations-validate check-regime-holdout-validate
 
 # Operator ergonomics target for the `/scope-inventory` skill (T3.3).
 # Validates that a feature directory exists under one of the

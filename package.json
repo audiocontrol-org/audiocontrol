@@ -48,7 +48,7 @@
     "check-credibility": "tsx tools/check-credibility.ts",
     "generate-coverage-manifest": "tsx tools/generate-coverage-manifest.ts",
     "check-coverage": "tsx tools/check-coverage.ts",
-    "test:scope-discovery": "make check-clone-duplication-validate && make check-dispatch-wrapper-validate && make check-refactor-preconditions-smoke && make check-refactor-preconditions-validate && make check-anti-patterns-validate && make check-adopters-validate && make check-editor-symmetry-validate && make check-deprecations-validate"
+    "test:scope-discovery": "make check-clone-duplication-validate && make check-dispatch-wrapper-validate && make check-refactor-preconditions-smoke && make check-refactor-preconditions-validate && make check-anti-patterns-validate && make check-adopters-validate && make check-editor-symmetry-validate && make check-deprecations-validate && make check-regime-holdout-validate"
   },
   "keywords": [
     "audio",
