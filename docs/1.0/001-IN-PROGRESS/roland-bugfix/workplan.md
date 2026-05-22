@@ -141,10 +141,30 @@ Populated as groups are dispositioned. One row per group resolved.
 **Per-PR acceptance:**
 
 - Single concern: removes the named clone group(s).
+- **Regression-catching test added BEFORE the refactor code lands** (TDD discipline — see "Refactoring protocol: test before extract" below). The test asserts the contract the refactor preserves, lives in the right test tier (wiring / UI / e2e per the surface), is GREEN against the pre-refactor code (proves it catches the contract), and STAYS GREEN against the post-refactor code. The test's id is cited in the `clones.yaml` disposition's `reason:` field.
 - Detector confirms removal: `make refresh-clones-baseline` and the group's id no longer appears in `docs/scope-discovery/clones.yaml`.
 - `make` build green; relevant test gate green (`make test-wiring-roland`, `make test-ui-roland`, etc., depending on surface).
 - Operator confirms the refactor lands a real abstraction (not "moved bytes around with no win").
 - The Phase 2 disposition row is updated with the merged PR link in the "Reason / Commit" column.
+
+### Refactoring protocol: test before extract
+
+Every `refactor`-marked clone-group disposition must add at least one regression-catching test BEFORE the refactor code lands. This is non-negotiable; it's how the deduplication program leaves the codebase in better shape than it found it rather than just shuffling bytes.
+
+The discipline:
+
+1. **Identify the contract the refactor preserves.** Typical contracts: a `data-testid` survives at the same DOM element, a className stays on the rendered span, a public function signature stays compatible, an exported type stays exported, a CSS rule still applies. Pick one (or more) that, if it silently drifted, the existing test suite would NOT catch.
+2. **Write the test FIRST.** In the right tier: wiring for React component shape, UI for design-system primitives, e2e for round-trips, unit for pure functions. Run against the PRE-refactor code. **Must pass** — if it doesn't, the contract isn't where the test thinks it is and the refactor would silently regress.
+3. **Commit the test on its own.** Separate commit from the refactor code so the test is individually attributable to this clone group + future-bisects cleanly.
+4. **Then write the refactor.** Verify the test still passes. Run the broader test gate (`make test-wiring-roland` etc.) to catch cross-surface regressions.
+5. **Cite the test in the disposition.** In `clones.yaml`, the `reason:` field for the refactored group MUST name the protecting test by id (e.g. `"Extracted to common/SlotInfo.tsx; protected by D-LIB-34 (.ac-list-info wrapper presence)."`).
+
+What this protocol does NOT require:
+
+- `keep-with-reason` and `ignore-with-justification` dispositions don't trigger this — no code changes, no regression risk.
+- Trivial refactors (helper-extract-and-call-site-update inside one module, no public API change) can use an existing test as the protecting assertion IF that test would meaningfully fail under a botched refactor. The rule is "a test that catches a regression of THIS refactor's contract," not "always write a new test." But the bar for "existing test is sufficient" is high — if you have to argue for it, write the new test instead.
+
+Why this exists: Phase 2/3 will touch ~93 intra-roland clone groups + the cross-module ones. Without the test-before-extract rule, the deduplication pass just compresses bytes and leaves the same regression surface. With it, every disposition leaves a durable assertion that future agents (and future Claude) can't silently regress through. The added test density is the dividend.
 
 **Task breakdown:** Generated per-PR via `superpowers:writing-plans` only when a clone group's refactor is non-trivial (>50 LOC change, touches a public type, or crosses module boundaries). Trivial refactors (helper-extraction-and-call-site-update inside one module) skip the writing-plans ceremony and land as direct commits.
 
