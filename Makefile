@@ -77,7 +77,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-dispatch-wrapper-validate
 
 build: $(ALL_STAMPS)
 
@@ -313,6 +313,17 @@ check-clone-duplication:
 # Workplan T2.5 gate.
 check-clone-duplication-validate:
 	tsx tools/scope-discovery/clone-detector.validate.ts
+
+# Validate that the sub-agent dispatch wrapper actually rejects
+# malformed/forbidden returns and accepts well-formed ones. Plants
+# synthetic dispatchFn responses (no real sub-agent call) covering both
+# acceptance and rejection scenarios, plus a gutted-logic self-check
+# that stubs the wrapper to always-accept and asserts the harness's
+# rejection assertions correctly fail against the stub. Run whenever
+# `dispatch-wrapper.ts`, `dispatch-grammar.ts`, or this validator's
+# fixtures change. Workplan T2.6 gate.
+check-dispatch-wrapper-validate:
+	tsx tools/scope-discovery/dispatch-wrapper.validate.ts
 
 # Activate the in-repo pre-commit hooks. Idempotent. Run once per
 # clone; the config setting lives in `.git/config` (not tracked),
