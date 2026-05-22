@@ -196,6 +196,20 @@ if new clone group: commit blocked → fix or disposition before retry
 PR opened, review, merge
 ```
 
+### Day-to-day: how many pending in my surface?
+
+When working on a specific module, `make clone-summary` answers "what clone groups touch the area I'm editing?" without grepping the YAML by hand. Reuses the dispositioned baseline at `docs/scope-discovery/clones.yaml` (T7.1 content-hashed IDs) and the shared glob compiler at `tools/scope-discovery/util/glob.ts`:
+
+```bash
+# How many pending clone groups touch the Roland editor's source tree?
+$ make clone-summary SURFACE='modules/roland-sxx0-editor/src/**'
+total: 495 | pending-touching: 87 | pending-intra: 64 | dispositioned-touching: 0
+```
+
+`touching` means "at least one member's bare path matches the glob" — typical when a duplication straddles two modules. `intra` means "every member matches the glob" — a duplication wholly inside the surface. `intra` is a subset of `touching` by construction; the gap (`touching − intra`) is the cross-surface count. `dispositioned-touching` covers groups already marked `refactor` / `keep-with-reason` / `ignore-with-justification`.
+
+Pass `ARGS=--json` for tooling-friendly output or `ARGS=--verbose` to list each matching group's id, disposition, and matching-member count to stderr. The CLI is `tsx tools/scope-discovery/summary.ts --surface <glob>` directly; the make target is a one-line wrapper that enforces `SURFACE`.
+
 ## The four discovery agents (T3.1)
 
 `/scope-inventory` fans these out in parallel; each produces structured JSON consumed by the synthesis pass:
