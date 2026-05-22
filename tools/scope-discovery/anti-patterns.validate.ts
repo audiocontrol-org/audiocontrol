@@ -25,18 +25,12 @@
  */
 
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { errorMessage } from './util/typeguards.js';
+import { runScannerSubprocess, type ScannerRun } from './util/run-scanner.js';
 
 const SCANNER_ENTRY = 'tools/scope-discovery/check-anti-patterns.ts';
-
-interface ScannerRun {
-  readonly code: number;
-  readonly stdout: string;
-  readonly stderr: string;
-}
 
 interface ScenarioResult {
   readonly name: string;
@@ -55,27 +49,11 @@ function fail(name: string, detail: string): ScenarioResult {
  * Run the scanner as a subprocess. Optionally substitute a stubbed entry
  * point (used by the gutted self-check). Match-mode mirrors how the
  * production hook invokes the gate: tsx + the same argv contract.
+ * Thin wrapper over the shared `runScannerSubprocess` helper that pins
+ * the default `entry` to this validator's scanner.
  */
 function runScanner(args: readonly string[], entry = SCANNER_ENTRY): Promise<ScannerRun> {
-  return new Promise((resolveP, rejectP) => {
-    const proc = spawn('tsx', [entry, ...args], { stdio: ['ignore', 'pipe', 'pipe'] });
-    let stdout = '';
-    let stderr = '';
-    proc.stdout.on('data', (chunk: Buffer) => {
-      stdout += chunk.toString('utf8');
-    });
-    proc.stderr.on('data', (chunk: Buffer) => {
-      stderr += chunk.toString('utf8');
-    });
-    proc.on('error', rejectP);
-    proc.on('close', (code) => {
-      if (code === null) {
-        rejectP(new Error(`scanner terminated by signal; stderr:\n${stderr}`));
-        return;
-      }
-      resolveP({ code, stdout, stderr });
-    });
-  });
+  return runScannerSubprocess(entry, args);
 }
 
 // ---------------------------------------------------------------------------
