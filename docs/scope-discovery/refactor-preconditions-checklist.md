@@ -14,8 +14,14 @@
   string constant cannot transclude this file at load time — the duplication
   is intentional, the synchronization is not optional.
 
-  T5.4 may replace the agent-side copies with a build-time concat step;
-  until then the SYNC-WITH comments in each mirror file name this path.
+  T5.4 added the "Verification per branch" section below — the section is
+  imported by tools/scope-discovery/refactor-preconditions-prompt.ts at module
+  load time + interpolated into the dispatch wrapper's refactor-context
+  prelude, so refactor-context sub-agent dispatches receive the per-branch
+  verification language without a second mirror copy. The agent-prompt
+  mirrors in .claude/agents/code-reviewer.md and .claude/agents/codebase-
+  auditor.md remain because static markdown prompts cannot transclude at
+  load time.
 -->
 
 # Refactor Preconditions (Step 0)
@@ -116,6 +122,24 @@ tests_proof:
   demonstration: <one-line description of the failing-then-passing pair>
 ```
 
+## Verification per branch (T5.4 — what sub-agents actually check)
+
+The disposition fields are necessary but not sufficient — a refactor PR can carry a well-formed `canonical_side` declaration whose extraction implementation diverges from the named shape. T5.4 adds verification actions that sub-agents (code-reviewer, codebase-auditor, code-simplifier, refactor-context dispatched agents) run against the implementation diff. Each canonical_side branch has a different verification action; the test-precondition has its own verification action.
+
+### Canonical-side verification (one per Step 0a branch)
+
+- **`canonical_side: <file-path>`** — verify the **extracted code's shape matches the named file's pre-refactor shape**. Diff the extraction against the file's pre-refactor content (git history before the refactor commit). The extracted code should be a faithful lift of the canonical-side file; the non-canonical clone members are *consumers* that migrate to it. Reject when the extraction silently combines shapes from multiple sides or invents structure not present in the named file (regime-erasure failure mode).
+- **`canonical_side: "all"`** — verify the **extracted code is a faithful lift of the common shape AND no consumer site changes observable behavior**. Diff each consumer's call-site against its pre-refactor body; every consumer must read as a strict substitution (call the new primitive, pass the same inputs, observe the same outputs). Reject when any consumer's behavior shifts under the lift (lifted-but-mutated failure mode).
+- **`canonical_side: "new"`** — verify the **extracted primitive matches the declared `new_shape_summary`**. Read `new_shape_summary` first, then read the extracted primitive's API + structure. The primitive's signature, composition, and named pieces must correspond to what `new_shape_summary` describes. Reject when the actual extraction names a different shape than was declared at disposition time (shape-invented-in-flight failure mode).
+- **Undetermined** — there should be no `disposition: refactor` entry for this case; the disposition is `keep-with-reason`. If you encounter a refactor PR whose entry asserts no canonical side, reject the disposition itself, not just the implementation.
+
+### Test-precondition verification (Step 0b)
+
+- **Named tests exist** — for each entry in `tests: [...]`, verify the test file or command resolves to a real artifact. Test files must exist on disk relative to the repo root; commands must be runnable in the project's test environment (e.g., `make test-ui-roland`, `pnpm --filter <module> test ...`). Reject when any named test is a paraphrase, a non-existent path, or a command that won't run.
+- **`tests_proof.sha` genuinely shows test failure on broken code** — resolve the SHA via `git rev-parse`, inspect the commit's diff. The diff must contain a deliberate code mutation that breaks the canonical-side regression class (not a doc-only change, not a test-only change that always failed, not a no-op). The commit message body must carry a `proof-of-detection` marker phrase or equivalent. Reject when the SHA resolves but the diff doesn't actually demonstrate detection (dummy/falsified proof failure mode).
+
+These verification actions are mechanical — the agent doesn't decide whether a refactor is "good" or "elegant," it decides whether the implementation diff matches the disposition's declared shape and the test proof is real. Subjective judgment (was this the right refactor at all?) lives upstream in the disposition decision; T5.4's verifications catch implementation-side drift from a disposition the operator already approved.
+
 ## Rationale (operator's MUST HAVE)
 
 Step 0 is the operator-declared MUST HAVE for Phase 5. The goal is twofold:
@@ -124,4 +148,4 @@ Step 0 is the operator-declared MUST HAVE for Phase 5. The goal is twofold:
 
 2. **Systematically reinforce test coverage and quality as a side effect of the gate.** Every time a refactor disposition would have been written without coverage, Step 0b forces the test to be written or proven first. The clone-disposition backlog becomes a test-coverage forcing function. Drains that look like cleanup are also coverage walks.
 
-The gate is enforced mechanically by the T5.3 pre-commit hook (`make check-refactor-preconditions`); the schema validator in `tools/scope-discovery/clones-yaml.refactor.ts` catches parse-time omissions; this document is the operator-facing protocol that the schema enforces. T5.4 wires the same checklist into sub-agent dispatched prompts so refactor-context dispatches carry the Step 0 obligation without operator restatement.
+The gate is enforced mechanically by the T5.3 pre-commit hook (`make check-refactor-preconditions`); the schema validator in `tools/scope-discovery/clones-yaml.refactor.ts` catches parse-time omissions; this document is the operator-facing protocol that the schema enforces. T5.4 wires the per-branch verification language above into refactor-context sub-agent dispatches via `tools/scope-discovery/refactor-preconditions-prompt.ts` (imported by `dispatch-wrapper.ts` when the task prompt carries a refactor marker), and the mirror copies in `.claude/agents/code-reviewer.md` + `.claude/agents/codebase-auditor.md` cover the static-prompt code-review + audit surfaces. No `code-simplifier` agent surface exists in this repo (neither project-local nor user-global); the dispatch-wrapper conditional addition covers the orchestrator-pattern dispatches that would otherwise have used a code-simplifier agent.

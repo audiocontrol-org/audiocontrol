@@ -39,6 +39,10 @@ import {
   validateParsed,
   type ParsedDispatchReturn,
 } from './dispatch-grammar.js';
+import {
+  isRefactorContextPrompt,
+  REFACTOR_PRECONDITIONS_CHECKLIST,
+} from './refactor-preconditions-prompt.js';
 import { errorMessage } from './util/typeguards.js';
 
 // Re-export the grammar types so callers import a single module.
@@ -49,6 +53,12 @@ export {
   FORBIDDEN_DEFERRAL_PHRASES,
   FORBIDDEN_DEFERRAL_REGEXES,
 } from './dispatch-grammar.js';
+export {
+  isRefactorContextPrompt,
+  REFACTOR_PRECONDITIONS_CHECKLIST,
+  REFACTOR_CONTEXT_MARKERS,
+  CANONICAL_SIDE_BRANCH_NAMES,
+} from './refactor-preconditions-prompt.js';
 export type {
   ExcludedEntry,
   FileLine,
@@ -142,7 +152,20 @@ export async function wrap(
   taskPrompt: string,
   options: WrapOptions,
 ): Promise<ParsedDispatchReturn> {
-  const augmentedPrompt = taskPrompt + GRAMMAR_INSTRUCTION;
+  // The Phase-5 refactor-context prelude is appended ONLY when the task
+  // prompt carries a refactor marker (Closes clones.yaml / "refactor
+  // disposition" / disposition: refactor / extraction commit / a literal
+  // canonical_side reference). On non-refactor dispatches the wrapper
+  // stays silent on Step 0 — adding the prelude unconditionally would
+  // dilute the signal and balloon every dispatch's prompt by ~60 lines.
+  // T5.4: implements the Phase-5 sub-agent prompt extension for the
+  // orchestrator-pattern dispatched-agent surface (no standalone
+  // refactor-dispatch-orchestrator agent file exists in this repo, so
+  // the wrapper carries the obligation directly).
+  const refactorPrelude = isRefactorContextPrompt(taskPrompt)
+    ? REFACTOR_PRECONDITIONS_CHECKLIST
+    : '';
+  const augmentedPrompt = taskPrompt + GRAMMAR_INSTRUCTION + refactorPrelude;
   const responseText = await options.dispatchFn({
     agentType,
     prompt: augmentedPrompt,
@@ -227,6 +250,71 @@ const SELF_TEST_FIXTURES: ReadonlyArray<SelfTestFixture> = [
   },
 ];
 
+// ---------------------------------------------------------------------------
+// T5.4 refactor-context prelude smoke-checks
+// ---------------------------------------------------------------------------
+
+/**
+ * Independent of the canned-fixture grammar checks above, T5.4 needs to
+ * prove the wrap() function CONDITIONALLY appends the refactor-context
+ * prelude. These two scenarios use a recording DispatchFn that captures
+ * the prompt passed to it; we assert the prelude appears IFF the task
+ * prompt carries a refactor marker.
+ */
+async function runRefactorPreludeScenarios(): Promise<{ passed: number; total: number }> {
+  let passed = 0;
+  let total = 0;
+  const wellFormedResponse = [
+    'Did the work.',
+    '',
+    'Searched: foo — 1 matches',
+    'Included: src/a.tsx:1',
+    'Excluded: src/b.tsx:2 — different primitive',
+  ].join('\n');
+
+  // (a) Non-refactor prompt — prelude must NOT be appended.
+  total += 1;
+  let capturedNonRefactor = '';
+  const nonRefactorDispatch: DispatchFn = async ({ prompt }) => {
+    capturedNonRefactor = prompt;
+    return wellFormedResponse;
+  };
+  await wrap('code-reviewer', 'Review this PR for general quality.', {
+    dispatchFn: nonRefactorDispatch,
+  });
+  if (!capturedNonRefactor.includes('REFACTOR-CONTEXT PRECONDITIONS')) {
+    process.stdout.write('PASS  non-refactor prompt did NOT receive the refactor prelude\n');
+    passed += 1;
+  } else {
+    process.stdout.write(
+      'FAIL  non-refactor prompt received the refactor prelude (should have been suppressed)\n',
+    );
+  }
+
+  // (b) Refactor prompt — prelude MUST be appended.
+  total += 1;
+  let capturedRefactor = '';
+  const refactorDispatch: DispatchFn = async ({ prompt }) => {
+    capturedRefactor = prompt;
+    return wellFormedResponse;
+  };
+  await wrap(
+    'code-reviewer',
+    'Review the extraction PR. Commit message: "Closes clones.yaml abc123".',
+    { dispatchFn: refactorDispatch },
+  );
+  if (capturedRefactor.includes('REFACTOR-CONTEXT PRECONDITIONS')) {
+    process.stdout.write('PASS  refactor prompt received the refactor prelude\n');
+    passed += 1;
+  } else {
+    process.stdout.write(
+      'FAIL  refactor prompt did NOT receive the refactor prelude (marker missed)\n',
+    );
+  }
+
+  return { passed, total };
+}
+
 function runOneFixture(fx: SelfTestFixture): boolean {
   try {
     const parsed = parseReturn(fx.response);
@@ -262,15 +350,18 @@ function runOneFixture(fx: SelfTestFixture): boolean {
   }
 }
 
-function runSelfTest(): number {
+async function runSelfTest(): Promise<number> {
   let passes = 0;
   for (const fx of SELF_TEST_FIXTURES) {
     if (runOneFixture(fx)) passes += 1;
   }
+  const preludeOutcome = await runRefactorPreludeScenarios();
+  const total = SELF_TEST_FIXTURES.length + preludeOutcome.total;
+  const allPasses = passes + preludeOutcome.passed;
   process.stdout.write(
-    `\n${passes}/${SELF_TEST_FIXTURES.length} fixtures behaved as expected.\n`,
+    `\n${allPasses}/${total} fixtures behaved as expected.\n`,
   );
-  return passes === SELF_TEST_FIXTURES.length ? 0 : 1;
+  return allPasses === total ? 0 : 1;
 }
 
 function isCliEntryPoint(): boolean {
@@ -283,12 +374,13 @@ function isCliEntryPoint(): boolean {
 if (isCliEntryPoint()) {
   const args = process.argv.slice(2);
   if (args.includes('--self-test')) {
-    try {
-      process.exit(runSelfTest());
-    } catch (err) {
-      process.stderr.write(`self-test crashed: ${errorMessage(err)}\n`);
-      process.exit(2);
-    }
+    runSelfTest().then(
+      (code) => process.exit(code),
+      (err: unknown) => {
+        process.stderr.write(`self-test crashed: ${errorMessage(err)}\n`);
+        process.exit(2);
+      },
+    );
   } else {
     process.stderr.write(
       'tools/scope-discovery/dispatch-wrapper.ts is a library; run with --self-test for the smoke test.\n',

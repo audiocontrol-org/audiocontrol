@@ -123,9 +123,12 @@ Step 0 is the operator-declared MUST HAVE for Phase 5. The goal is twofold:
 
 2. **Systematically reinforce test coverage and quality as a side effect of the gate.** Every time a refactor disposition would have been written without coverage, Step 0b forces the test to be written or proven first. The clone-disposition backlog becomes a test-coverage forcing function. Drains that look like cleanup are also coverage walks.
 
-The gate is enforced mechanically by the T5.3 pre-commit hook (`make check-refactor-preconditions`); the schema validator in `tools/scope-discovery/clones-yaml.refactor.ts` catches parse-time omissions; this section is the operator-facing protocol that the schema enforces. T5.4 wires the same checklist into sub-agent dispatched prompts so refactor-context dispatches carry the Step 0 obligation without operator restatement.
+The gate is enforced mechanically by the T5.3 pre-commit hook (`make check-refactor-preconditions`); the schema validator in `tools/scope-discovery/clones-yaml.refactor.ts` catches parse-time omissions; this section is the operator-facing protocol that the schema enforces. T5.4 wires the per-branch verification language (canonical fragment §"Verification per branch") into sub-agent dispatched prompts via two paths:
 
-The canonical fragment used by sub-agent prompts and the dispatched-prompt string constant is [`refactor-preconditions-checklist.md`](refactor-preconditions-checklist.md); changes to Step 0a / Step 0b semantics must be mirrored to that file and to the four mirror locations its header enumerates.
+- **Static agent-prompt mirrors** — `.claude/agents/code-reviewer.md` + `.claude/agents/codebase-auditor.md` each carry a §"Step 0 verification" section naming the four canonical_side branch verifications + the test-precondition verification action.
+- **Dispatch-wrapper conditional prelude** — `tools/scope-discovery/dispatch-wrapper.ts` `wrap()` appends the prelude exported by `tools/scope-discovery/refactor-preconditions-prompt.ts` (`REFACTOR_PRECONDITIONS_CHECKLIST`) when the task prompt carries a refactor marker (`Closes clones.yaml` / `refactor disposition` / `disposition: refactor` / `extraction commit` / a literal `canonical_side` reference). This covers refactor-context dispatches without requiring a standalone refactor-orchestrator agent.
+
+The canonical fragment used by sub-agent prompts and the dispatched-prompt string constant is [`refactor-preconditions-checklist.md`](refactor-preconditions-checklist.md); changes to Step 0a / Step 0b semantics + per-branch verification language must be mirrored to that file and to the four mirror locations its header enumerates.
 
 ## Day-to-day workflow
 

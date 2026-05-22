@@ -298,9 +298,15 @@ Always prioritize security, correctness, and maintainability while providing con
 
 <!--
   SYNC-WITH: docs/scope-discovery/refactor-preconditions-checklist.md
-  Verbatim copies also live in .claude/agents/codebase-auditor.md and
-  tools/scope-discovery/refactor-preconditions-prompt.ts. When Step 0a / 0b
-  semantics change, sync ALL four locations.
+  (canonical source). The four mirror locations:
+    - docs/scope-discovery/refactor-preconditions-checklist.md (source)
+    - .claude/agents/code-reviewer.md (this file; covers code-review surface)
+    - .claude/agents/codebase-auditor.md (covers audit surface)
+    - tools/scope-discovery/refactor-preconditions-prompt.ts
+      (exports REFACTOR_PRECONDITIONS_CHECKLIST appended by dispatch-wrapper
+       to refactor-context dispatched prompts; T5.4)
+  When Step 0a / 0b semantics OR the §"Step 0 verification" per-branch
+  language change, sync ALL four locations.
 -->
 
 When you are reviewing a commit, PR, or change that **disposes a clone group as `refactor`** (in `docs/scope-discovery/clones.yaml`) or that **lands an extraction implementing a `refactor` disposition**, the review is incomplete unless you verify Step 0 (canonical-side identification + regression-detection coverage). This applies whether or not the operator named Phase 5 in the review request — refactor commits without Step 0 evidence are structurally rejected by the T5.3 pre-commit gate; reviewers catch the same omissions at PR review time.
@@ -342,6 +348,17 @@ of test ids/commands), tests_proof.sha (7-40 hex commit reference),
 tests_proof.demonstration (one-line description). Missing: <named fields>.
 See docs/scope-discovery/refactor-preconditions-checklist.md §"Step 0b".
 ```
+
+### Step 0 verification (T5.4 — what to check on the implementation diff)
+
+The Step 0a / 0b sections above verify the **disposition fields** are well-formed. A refactor PR can satisfy the disposition's parse-time shape and still ship an implementation that diverges from what was declared. The verification actions below run against the actual implementation diff (not just the YAML entry):
+
+- **`canonical_side: <file-path>`** — diff the extracted code against the **named file's pre-refactor shape**. The extraction should be a faithful lift of that side; the non-canonical members are *consumers* migrated to it. Reject when the extraction combines shapes from multiple sides or invents structure not present in the named file (regime-erasure).
+- **`canonical_side: "all"`** — diff each consumer call-site against its pre-refactor body. Every consumer reads as a strict substitution (calls the new primitive, same inputs, same outputs). Reject when any consumer's behavior shifts under the lift (lifted-but-mutated).
+- **`canonical_side: "new"`** — read `new_shape_summary`, then read the extracted primitive's API + structure. The signature, composition, and named pieces must correspond to what `new_shape_summary` describes. Reject when the actual extraction names a different shape than was declared (shape-invented-in-flight).
+- **Test-precondition** — verify (a) each `tests: [...]` entry resolves to a real file path or runnable command in the project test environment, and (b) the `tests_proof.sha` commit's diff genuinely shows test failure on broken code — a deliberate canonical-side mutation, not a doc-only or no-op commit, with a `proof-of-detection` marker phrase or equivalent in the commit message body. Reject when the SHA resolves but the diff doesn't actually demonstrate detection (dummy/falsified proof).
+
+These checks are mechanical — the review doesn't judge whether the refactor is "good," it checks whether the implementation matches the declared shape and the test proof is real. The canonical fragment at `docs/scope-discovery/refactor-preconditions-checklist.md` §"Verification per branch" carries the same language; if you find a drift between this section and that fragment, the fragment is the source of truth.
 
 ### What the review must produce
 

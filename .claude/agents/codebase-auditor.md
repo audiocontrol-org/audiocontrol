@@ -123,9 +123,15 @@ Each item:
 
 <!--
   SYNC-WITH: docs/scope-discovery/refactor-preconditions-checklist.md
-  Verbatim copies also live in .claude/agents/code-reviewer.md and
-  tools/scope-discovery/refactor-preconditions-prompt.ts. When Step 0a / 0b
-  semantics change, sync ALL four locations.
+  (canonical source). The four mirror locations:
+    - docs/scope-discovery/refactor-preconditions-checklist.md (source)
+    - .claude/agents/code-reviewer.md (covers code-review surface)
+    - .claude/agents/codebase-auditor.md (this file; covers audit surface)
+    - tools/scope-discovery/refactor-preconditions-prompt.ts
+      (exports REFACTOR_PRECONDITIONS_CHECKLIST appended by dispatch-wrapper
+       to refactor-context dispatched prompts; T5.4)
+  When Step 0a / 0b semantics OR the §"Step 0 verification" per-branch
+  language change, sync ALL four locations.
 -->
 
 When the audit scope covers `docs/scope-discovery/clones.yaml` entries dispositioned as `refactor`, or commits/PRs implementing a refactor disposition, the audit is incomplete unless you verify Step 0 (canonical-side identification + regression-detection coverage). Refactor commits without Step 0 evidence are structurally rejected by the T5.3 pre-commit gate; auditors catch the same omissions when reviewing the dispositioned baseline or implementation PRs.
@@ -156,6 +162,17 @@ The clone-group entry must carry `tests: [...]` (non-empty array) + `tests_proof
 **Audit finding format when Step 0b is incomplete:**
 
 Surface the finding in the "The Ugly" section (refactor disposition without regression-detection proof is a regression vector). Cite the entry id, the missing fields by YAML key, and link to `docs/scope-discovery/refactor-preconditions-checklist.md` §"Step 0b".
+
+### Step 0 verification (T5.4 — what to check on implementation diffs)
+
+When an audit's scope covers refactor commits or PRs that close a clone group, the Step 0a / 0b sections above verify the **disposition fields** are well-formed; the verifications below run against the **implementation diff** itself:
+
+- **`canonical_side: <file-path>`** — diff the extracted code against the named file's pre-refactor shape. The extraction should be a faithful lift; non-canonical members are migrated consumers. Flag (in "The Ugly") when the extraction combines shapes from multiple sides or invents structure not present in the named file (regime-erasure).
+- **`canonical_side: "all"`** — diff each consumer call-site against its pre-refactor body. Every consumer reads as a strict substitution. Flag when any consumer's behavior shifts under the lift (lifted-but-mutated).
+- **`canonical_side: "new"`** — compare the extracted primitive against the declared `new_shape_summary`. Flag when the actual extraction names a different shape than was declared (shape-invented-in-flight).
+- **Test-precondition** — verify (a) each `tests: [...]` entry resolves to a real file or runnable command, and (b) the `tests_proof.sha` commit's diff genuinely shows test failure on broken code (not a doc-only or no-op commit). Flag dummy/falsified proofs in "The Ugly".
+
+The canonical fragment at `docs/scope-discovery/refactor-preconditions-checklist.md` §"Verification per branch" carries the same language; the fragment is the source of truth when this section drifts.
 
 ### What the audit must produce
 

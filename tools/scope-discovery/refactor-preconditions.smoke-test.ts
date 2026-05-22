@@ -39,6 +39,12 @@ import {
   validateRefactorPreconditions,
   type RefactorPreconditionsCheck,
 } from './clones-yaml.refactor.js';
+import {
+  CANONICAL_SIDE_BRANCH_NAMES,
+  isRefactorContextPrompt,
+  REFACTOR_PRECONDITIONS_CHECKLIST,
+  readCanonicalFragment,
+} from './refactor-preconditions-prompt.js';
 import { errorMessage } from './util/typeguards.js';
 
 // ---------------------------------------------------------------------------
@@ -276,6 +282,116 @@ function guttedReviewerSelfCheck(): boolean {
   return true;
 }
 
+/**
+ * T5.4 canonical-fragment verification: asserts the canonical fragment at
+ * docs/scope-discovery/refactor-preconditions-checklist.md AND the dispatch
+ * prelude constant in refactor-preconditions-prompt.ts both name all four
+ * canonical_side branches (file-path / "all" / "new" / Undetermined) and
+ * the test-precondition verification action. Without this assertion the
+ * agent prompts could drift away from the per-branch verification language
+ * silently — this is the cheapest mechanical signal that the four-way
+ * SYNC-WITH chain holds.
+ */
+function canonicalFragmentContentCheck(): { passed: number; total: number } {
+  let passed = 0;
+  let total = 0;
+
+  // (1) The canonical fragment names each branch by literal token.
+  total += 1;
+  const fragment = readCanonicalFragment();
+  const missingFromFragment: string[] = [];
+  for (const branch of CANONICAL_SIDE_BRANCH_NAMES) {
+    if (!fragment.includes(branch)) missingFromFragment.push(branch);
+  }
+  if (missingFromFragment.length === 0) {
+    process.stdout.write(
+      `PASS  canonical fragment names all ${CANONICAL_SIDE_BRANCH_NAMES.length} verification branches (file-path / "all" / "new" / tests_proof)\n`,
+    );
+    passed += 1;
+  } else {
+    process.stdout.write(
+      `FAIL  canonical fragment missing branches: ${missingFromFragment.join(', ')}\n`,
+    );
+  }
+
+  // (2) The dispatch prelude names each branch by literal token.
+  total += 1;
+  const missingFromPrelude: string[] = [];
+  for (const branch of CANONICAL_SIDE_BRANCH_NAMES) {
+    if (!REFACTOR_PRECONDITIONS_CHECKLIST.includes(branch)) {
+      missingFromPrelude.push(branch);
+    }
+  }
+  if (missingFromPrelude.length === 0) {
+    process.stdout.write(
+      'PASS  dispatch prelude (REFACTOR_PRECONDITIONS_CHECKLIST) names all 4 verification branches\n',
+    );
+    passed += 1;
+  } else {
+    process.stdout.write(
+      `FAIL  dispatch prelude missing branches: ${missingFromPrelude.join(', ')}\n`,
+    );
+  }
+
+  // (3) The dispatch prelude names the per-branch verification actions
+  //     by literal phrase. Catches the failure mode where the constant
+  //     mentions a branch by name but omits the verification action that
+  //     branch requires (regime-erasure / lifted-but-mutated / shape-
+  //     invented-in-flight / dummy proof).
+  total += 1;
+  const requiredActions: ReadonlyArray<string> = [
+    'EXTRACTED CODE\'S SHAPE MATCHES', // file-path branch
+    'FAITHFUL LIFT', // "all" branch
+    'EXTRACTED PRIMITIVE MATCHES', // "new" branch
+    'NAMED TESTS EXIST', // test-precondition (a)
+    'GENUINELY SHOWS TEST FAILURE ON BROKEN CODE', // test-precondition (b)
+  ];
+  const missingActions = requiredActions.filter(
+    (a) => !REFACTOR_PRECONDITIONS_CHECKLIST.includes(a),
+  );
+  if (missingActions.length === 0) {
+    process.stdout.write(
+      'PASS  dispatch prelude carries all 5 per-branch verification actions (shape-matches / faithful-lift / primitive-matches / tests-exist / proof-real)\n',
+    );
+    passed += 1;
+  } else {
+    process.stdout.write(
+      `FAIL  dispatch prelude missing verification actions: ${missingActions.join(' | ')}\n`,
+    );
+  }
+
+  // (4) isRefactorContextPrompt fires on a refactor marker.
+  total += 1;
+  const refactorPrompt =
+    'Review the extraction PR. Commit message: "Closes clones.yaml abc123def456".';
+  if (isRefactorContextPrompt(refactorPrompt)) {
+    process.stdout.write(
+      'PASS  isRefactorContextPrompt fires on a "Closes clones.yaml" marker\n',
+    );
+    passed += 1;
+  } else {
+    process.stdout.write(
+      'FAIL  isRefactorContextPrompt did NOT fire on a "Closes clones.yaml" marker\n',
+    );
+  }
+
+  // (5) isRefactorContextPrompt does NOT fire on a non-refactor prompt.
+  total += 1;
+  const nonRefactorPrompt = 'Review this PR for general TypeScript quality.';
+  if (!isRefactorContextPrompt(nonRefactorPrompt)) {
+    process.stdout.write(
+      'PASS  isRefactorContextPrompt did NOT fire on a non-refactor prompt\n',
+    );
+    passed += 1;
+  } else {
+    process.stdout.write(
+      'FAIL  isRefactorContextPrompt fired on a non-refactor prompt (false positive)\n',
+    );
+  }
+
+  return { passed, total };
+}
+
 function runSmokeTest(): number {
   let passes = 0;
   let total = 0;
@@ -285,6 +401,12 @@ function runSmokeTest(): number {
   }
   total += 1;
   if (guttedReviewerSelfCheck()) passes += 1;
+
+  // T5.4 canonical-fragment content + dispatch prelude content checks.
+  const contentOutcome = canonicalFragmentContentCheck();
+  total += contentOutcome.total;
+  passes += contentOutcome.passed;
+
   process.stdout.write(
     `\nSummary: ${passes}/${total} fixtures behaved as expected.\n`,
   );
