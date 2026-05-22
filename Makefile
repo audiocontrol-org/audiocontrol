@@ -77,7 +77,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-dispatch-wrapper-validate
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-dispatch-wrapper-validate scope-inventory refresh-clones-baseline
 
 build: $(ALL_STAMPS)
 
@@ -324,6 +324,44 @@ check-clone-duplication-validate:
 # fixtures change. Workplan T2.6 gate.
 check-dispatch-wrapper-validate:
 	tsx tools/scope-discovery/dispatch-wrapper.validate.ts
+
+# Operator ergonomics target for the `/scope-inventory` skill (T3.3).
+# Validates that a feature directory exists under one of the
+# `docs/<version>/<status>/` dirs and prints instructions for invoking
+# the skill in a Claude Code session. The skill itself does the actual
+# discovery work (fan-out + captures + synthesis); this Make target is
+# a shim because skills are operator-typed in Claude Code, not shell-
+# callable. The on-disk layout the skill writes to is documented in
+# `docs/scope-discovery/LAYOUT.md`.
+#
+# Usage: make scope-inventory FEATURE=<feature-slug>
+#
+# Exit codes: 0 found + instructions printed; 1 not found;
+#   2 missing FEATURE arg. T2.7 gate: exits non-zero with a clear error
+#   listing the searched candidate paths when FEATURE doesn't exist.
+scope-inventory:
+ifndef FEATURE
+	@echo "Usage: make scope-inventory FEATURE=<feature-slug>"; exit 2
+endif
+	@tsx tools/scope-discovery/find-feature.ts "$(FEATURE)"
+
+# Rewrite `docs/scope-discovery/clones.yaml` from the current detector
+# run, carrying forward all operator-authored dispositions (refactor /
+# keep-with-reason / ignore-with-justification) from the existing
+# baseline. Pending entries are replaced by whatever the fresh run
+# emits. Use this AFTER landing refactors that legitimately drop clone
+# groups (so the gate stops flagging them as DROPPED), or after an
+# operator-approved scope change that expands the detector's coverage.
+# Never run on a routine basis — the gate's job is to flag NEW clones
+# at commit time, not to be silenced by a refresh.
+#
+# Disposition preservation is the load-bearing behavior here:
+# `--refresh-baseline` is implemented in `clone-detector.ts` such that
+# the merge step copies non-pending dispositions onto the matching new
+# groups by id; operator review of the diff is still expected.
+# T2.7 gate.
+refresh-clones-baseline:
+	@tsx tools/scope-discovery/clone-detector.ts --refresh-baseline
 
 # Activate the in-repo pre-commit hooks. Idempotent. Run once per
 # clone; the config setting lives in `.git/config` (not tracked),
