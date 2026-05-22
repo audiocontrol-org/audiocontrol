@@ -1,4 +1,4 @@
-generated_at: 2026-05-22T06:19:56.653Z
+generated_at: 2026-05-22T07:09:42.159Z
 clones:
   - id: c7068172edae
     lines: 15
@@ -2378,12 +2378,12 @@ clones:
       - modules/roland-sxx0-editor/scripts/validate-device.ts:95:109
     disposition: keep-with-reason
     reason: validate-device.ts is a one-binary CLI tool; the 15-line intra-file MIDI port-session boilerplate (input/output declarations, resolved flag, cleanup, timeout) is acceptable duplication. Extracting a withMidiPortSession() helper would require building wiring-test infrastructure (script has no existing test surface) per the test-before-extract protocol, and the cost outweighs the payoff for a single script. Flip to refactor if a future operator builds out a shared scripts/midi-port-session.ts helper across CLI tools and adds the test apparatus.
-  - id: fc9e30e6e921
+  - id: 82e7ef31c329
     lines: 16
     members:
-      - modules/roland-sxx0-editor/src/components/library/BatchExportDrawer.tsx:106:121
-      - modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx:104:119
-      - modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx:97:112
+      - modules/roland-sxx0-editor/src/components/library/BatchExportDrawer.tsx:107:122
+      - modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx:105:120
+      - modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx:98:113
     disposition: pending
     reason: null
   - id: 325d993bda15
@@ -2421,18 +2421,11 @@ clones:
       - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:495:508
     disposition: pending
     reason: null
-  - id: 38c8236d8a7b
-    lines: 7
-    members:
-      - modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx:195:201
-      - modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx:183:189
-    disposition: pending
-    reason: null
-  - id: d4c7b8219186
+  - id: e83df277765c
     lines: 12
     members:
-      - modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx:81:92
-      - modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx:71:82
+      - modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx:82:93
+      - modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx:72:83
     disposition: pending
     reason: null
   - id: 3d41d904a462

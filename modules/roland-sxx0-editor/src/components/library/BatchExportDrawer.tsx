@@ -22,6 +22,7 @@ import { SlideDrawer } from '@audiocontrol/editor-core';
 import { StepLogBody, renderFooter } from './ExportToneDialog';
 import { useStepHistory } from '@/hooks/useStepHistory';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
+import { DestinationEyebrow } from '@/components/library/DestinationEyebrow';
 import {
   type OperationState,
   isOperationComplete,
@@ -181,21 +182,13 @@ function BatchFormBody({ kind, items, targetPath, deviceName, error }: BatchForm
   const eyebrowKindLabel = kind === 'tone' ? 'TONES' : 'PATCHES';
   return (
     <div className="ac-export-form">
-      <div className="ac-detail-eyebrow-row" data-testid="batch-export-destination">
-        <span className="ac-detail-eyebrow-accent">{eyebrowKindLabel}</span>
-        <span className="ac-detail-eyebrow-sep">·</span>
-        <span>{items.length} ITEMS</span>
-        <span className="ac-detail-eyebrow-sep">·</span>
-        <span>LIBRARY</span>
-        <span className="ac-detail-eyebrow-sep">·</span>
-        <span data-testid="batch-export-device-name">{deviceName.toUpperCase()}</span>
-        {targetPath.length > 0 && (
-          <>
-            <span className="ac-detail-eyebrow-sep">·</span>
-            <span data-testid="batch-export-target-path">{targetPath.join(' / ')}</span>
-          </>
-        )}
-      </div>
+      <DestinationEyebrow
+        kindLabel={eyebrowKindLabel}
+        leftField={`${items.length} ITEMS`}
+        deviceName={deviceName}
+        targetPath={targetPath}
+        testIdPrefix="batch-export"
+      />
       <div className="ac-page-title-rule" aria-hidden="true" />
 
       {error && (

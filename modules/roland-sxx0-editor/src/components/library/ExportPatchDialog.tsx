@@ -25,6 +25,7 @@ import {
 import { getPatchToneDependencies } from '@/lib/library-service';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { useStepHistory } from '@/hooks/useStepHistory';
+import { DestinationEyebrow } from '@/components/library/DestinationEyebrow';
 import {
   StepLogBody,
   ExportSummaryRow,
@@ -191,23 +192,13 @@ function PatchFormBody({
 }: PatchFormBodyProps): JSX.Element {
   return (
     <div className="ac-export-form">
-      <div className="ac-detail-eyebrow-row" data-testid="export-patch-destination">
-        <span className="ac-detail-eyebrow-accent">PATCH</span>
-        <span className="ac-detail-eyebrow-sep">·</span>
-        <span>{slotLabel}</span>
-        <span className="ac-detail-eyebrow-sep">·</span>
-        <span>LIBRARY</span>
-        <span className="ac-detail-eyebrow-sep">·</span>
-        <span data-testid="export-patch-device-name">{deviceName.toUpperCase()}</span>
-        {targetPath.length > 0 && (
-          // Surface the drop-target subfolder so the operator sees where
-          // the bundle will land. See ExportToneDialog for context.
-          <>
-            <span className="ac-detail-eyebrow-sep">·</span>
-            <span data-testid="export-patch-target-path">{targetPath.join(' / ')}</span>
-          </>
-        )}
-      </div>
+      <DestinationEyebrow
+        kindLabel="PATCH"
+        leftField={slotLabel}
+        deviceName={deviceName}
+        targetPath={targetPath}
+        testIdPrefix="export-patch"
+      />
       <div className="ac-page-title-rule" aria-hidden="true" />
 
       <div className="ac-export-form-field">

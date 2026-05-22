@@ -30,6 +30,7 @@ import {
   isOperationComplete,
 } from '@/types/import-operation';
 import { useStepHistory } from '@/hooks/useStepHistory';
+import { DestinationEyebrow } from '@/components/library/DestinationEyebrow';
 
 export interface ExportToneDialogProps extends OperationState {
   open: boolean;
@@ -179,25 +180,13 @@ function ToneFormBody({
 }: ToneFormBodyProps): JSX.Element {
   return (
     <div className="ac-export-form">
-      <div className="ac-detail-eyebrow-row" data-testid="export-tone-destination">
-        <span className="ac-detail-eyebrow-accent">TONE</span>
-        <span className="ac-detail-eyebrow-sep">·</span>
-        <span>{slotLabel}</span>
-        <span className="ac-detail-eyebrow-sep">·</span>
-        <span>LIBRARY</span>
-        <span className="ac-detail-eyebrow-sep">·</span>
-        <span data-testid="export-tone-device-name">{deviceName.toUpperCase()}</span>
-        {targetPath.length > 0 && (
-          // Surface the drop-target subfolder so the operator confirms
-          // the export will land where they intended. Drops on a folder
-          // row populate this from `handleExternalDrop`; drops on the
-          // category root leave it empty and we hide the segment.
-          <>
-            <span className="ac-detail-eyebrow-sep">·</span>
-            <span data-testid="export-tone-target-path">{targetPath.join(' / ')}</span>
-          </>
-        )}
-      </div>
+      <DestinationEyebrow
+        kindLabel="TONE"
+        leftField={slotLabel}
+        deviceName={deviceName}
+        targetPath={targetPath}
+        testIdPrefix="export-tone"
+      />
       <div className="ac-page-title-rule" aria-hidden="true" />
 
       <div className="ac-export-form-field">
