@@ -21,12 +21,9 @@
 
 import type { ReactNode } from 'react';
 
-interface TabDef {
-  id: string;
-  label: string;
-}
+import { AcRadioTabs, type AcRadioTabDef } from '@/components/common/AcRadioTabs';
 
-const TABS: readonly TabDef[] = [
+const TABS: readonly AcRadioTabDef[] = [
   { id: 'tt-wave', label: 'Wave' },
   { id: 'tt-pitch-lfo', label: 'Pitch & LFO' },
   { id: 'tt-filter', label: 'Filter' },
@@ -49,45 +46,12 @@ export function ToneEditorTabs({
   groupName,
 }: ToneEditorTabsProps) {
   return (
-    <div className="ac-tabs">
-      {TABS.map((tab) => (
-        <input
-          key={tab.id}
-          type="radio"
-          name={groupName}
-          id={tab.id}
-          defaultChecked={tab.id === defaultTabId}
-        />
-      ))}
-
-      <nav className="ac-tab-strip" role="tablist" aria-label="Tone editor sections">
-        {TABS.map((tab) => (
-          <label
-            key={tab.id}
-            htmlFor={tab.id}
-            id={`${tab.id}-label`}
-            className="ac-tab"
-            role="tab"
-            tabIndex={0}
-          >
-            {tab.label}
-          </label>
-        ))}
-      </nav>
-
-      <div className="ac-panels">
-        {TABS.map((tab) => (
-          <section
-            key={tab.id}
-            className="ac-panel"
-            data-tab={tab.id}
-            role="tabpanel"
-            aria-labelledby={`${tab.id}-label`}
-          >
-            {panels[tab.id]}
-          </section>
-        ))}
-      </div>
-    </div>
+    <AcRadioTabs
+      tabs={TABS}
+      panels={panels}
+      defaultTabId={defaultTabId}
+      groupName={groupName}
+      ariaLabel="Tone editor sections"
+    />
   );
 }

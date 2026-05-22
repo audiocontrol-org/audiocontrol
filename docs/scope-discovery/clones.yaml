@@ -1,4 +1,4 @@
-generated_at: 2026-05-22T08:21:54.139Z
+generated_at: 2026-05-22T08:29:13.322Z
 clones:
   - id: c7068172edae
     lines: 15
@@ -2563,20 +2563,6 @@ clones:
     members:
       - modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:151:179
       - modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:91:119
-    disposition: pending
-    reason: null
-  - id: 5578c63410e2
-    lines: 14
-    members:
-      - modules/roland-sxx0-editor/src/components/patches/PatchEditorTabs.tsx:43:56
-      - modules/roland-sxx0-editor/src/components/tones/ToneEditorTabs.tsx:50:63
-    disposition: pending
-    reason: null
-  - id: 80f494ba63d3
-    lines: 31
-    members:
-      - modules/roland-sxx0-editor/src/components/patches/PatchEditorTabs.tsx:56:86
-      - modules/roland-sxx0-editor/src/components/tones/ToneEditorTabs.tsx:63:93
     disposition: pending
     reason: null
   - id: 38542efd1697
