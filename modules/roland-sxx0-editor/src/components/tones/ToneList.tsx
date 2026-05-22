@@ -16,13 +16,16 @@
  * on the tone editor's title row (ToneEditorHead).
  */
 
-import { useState, type KeyboardEvent } from 'react';
-
 import type { SamplerTone } from '@/core/midi/SamplerClient';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { isToneEmpty } from '@/lib/slot-allocation';
 import { SlotInfo } from '@/components/common/SlotInfo';
 import { BankHeader } from '@/components/common/BankHeader';
+import {
+  useCollapsedBanks,
+  computeBankInfo,
+  createRowKeyDownHandler,
+} from '@/components/common/bank-list-helpers';
 
 interface ToneListProps {
   /** Sparse array of tones - undefined = not loaded */
@@ -57,19 +60,7 @@ export function ToneList({
   // Group rows by bank so we can emit a sticky bank header before each.
   const totalBanks = Math.ceil(tones.length / tonesPerBank);
 
-  // Per-bank collapse state. Default: every bank expanded. Operator
-  // clicks the bank header chevron-button to toggle. State is
-  // component-local (not persisted across navigations) — kept simple
-  // until we hear the operator wants persistence.
-  const [collapsedBanks, setCollapsedBanks] = useState<Set<number>>(() => new Set());
-  const toggleBank = (i: number): void => {
-    setCollapsedBanks((prev) => {
-      const next = new Set(prev);
-      if (next.has(i)) next.delete(i);
-      else next.add(i);
-      return next;
-    });
-  };
+  const { collapsedBanks, toggleBank } = useCollapsedBanks();
 
   return (
     <aside
@@ -79,20 +70,27 @@ export function ToneList({
     >
       <div className="ac-list-scroll">
         {Array.from({ length: totalBanks }, (_, bankIndex) => {
-          const bankStart = bankIndex * tonesPerBank;
-          const bankEnd = Math.min(bankStart + tonesPerBank, tones.length);
-          const firstSlotLabel = memoryLayout.formatToneSlot(bankStart);
-          const lastSlotLabel = memoryLayout.formatToneSlot(bankEnd - 1);
-          const isCollapsed = collapsedBanks.has(bankIndex);
           // A bank counts as "loaded" if at least one slot in its range
           // has data. The reload-icon affordance renders for every
           // bank regardless of state — for unloaded banks it acts as
           // "load this bank", for loaded banks it re-fetches.
           // forceReload=true in the handler works in both cases.
-          const isBankLoaded = tones
-            .slice(bankStart, bankEnd)
-            .some((t) => t !== undefined);
-          const isThisBankLoading = loadingBank === bankIndex;
+          const {
+            bankStart,
+            bankEnd,
+            firstSlotLabel,
+            lastSlotLabel,
+            isCollapsed,
+            isBankLoaded,
+            isThisBankLoading,
+          } = computeBankInfo({
+            items: tones,
+            bankIndex,
+            perBank: tonesPerBank,
+            formatSlot: memoryLayout.formatToneSlot,
+            collapsedBanks,
+            loadingBank,
+          });
 
           return (
             <div key={`bank-${bankIndex}`} data-bank-index={bankIndex}>
@@ -137,13 +135,10 @@ export function ToneList({
                 // removed but the role="button" structure is retained
                 // since it doesn't hurt — switching to a real <button>
                 // is a separate cleanup.
-                const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-                  if (isBankLoading) return;
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleClick();
-                  }
-                };
+                const handleKeyDown = createRowKeyDownHandler({
+                  isBankLoading,
+                  onActivate: handleClick,
+                });
 
                 // Display rules:
                 //   - bank loading:  '(loading...)'

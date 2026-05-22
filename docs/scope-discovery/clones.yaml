@@ -1,4 +1,4 @@
-generated_at: 2026-05-22T08:57:53.847Z
+generated_at: 2026-05-22T09:16:39.684Z
 clones:
   - id: c7068172edae
     lines: 15
@@ -989,8 +989,8 @@ clones:
     members:
       - modules/e2e-infra/scripts/watchdog.ts:1:151
       - modules/roland-sxx0-editor/scripts/watchdog.ts:1:151
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "The roland-sxx0-editor/scripts/watchdog.ts was byte-identical to modules/e2e-infra/scripts/watchdog.ts. Updated all 4 roland shell scripts (run-hardware-e2e.sh, run-library-e2e.sh, run-device-library-e2e.sh, run-http-midi-e2e.sh) to invoke the shared e2e-infra watchdog via $INFRA_DIR/scripts/watchdog.ts — same convention akai-s3k-editor and the e2e-infra runner scripts already use. The local roland watchdog.ts file is now unused (only references are inside its own header). Disposition: kept until the audit-and-delete dispatch lands (auto-mode permission classifier blocks inline source-file deletion). Follow-up: ROLAND-BUGFIX-DEL-003 — delete modules/roland-sxx0-editor/scripts/watchdog.ts."
   - id: 2fd4c856bf86
     lines: 9
     members:
@@ -2550,25 +2550,18 @@ clones:
       - modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:91:119
     disposition: pending
     reason: null
-  - id: 38542efd1697
-    lines: 18
+  - id: 1e8b3a6f5e61
+    lines: 20
     members:
-      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:101:118
-      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:94:108
+      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:102:121
+      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:90:106
     disposition: pending
     reason: null
-  - id: e7ed36d3a106
+  - id: ec79e285ca00
     lines: 11
     members:
       - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:179:189
-      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:180:190
-    disposition: pending
-    reason: null
-  - id: 3785f9b1220a
-    lines: 14
-    members:
-      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:71:84
-      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:64:77
+      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:175:185
     disposition: pending
     reason: null
   - id: f5b154b0b218
@@ -2726,13 +2719,6 @@ clones:
       - modules/roland-sxx0-editor/src/lib/library-io.ts:90:134
     disposition: pending
     reason: null
-  - id: 5873e17e78bb
-    lines: 10
-    members:
-      - modules/roland-sxx0-editor/src/lib/library-io.ts:186:195
-      - modules/roland-sxx0-editor/src/lib/wave-export.ts:143:152
-    disposition: pending
-    reason: null
   - id: 3631b7143ad9
     lines: 11
     members:
@@ -2775,13 +2761,13 @@ clones:
       - modules/sampler-devices/src/devices/s3000xl/akai-wav-convert.ts:37:44
     disposition: keep-with-reason
     reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
-  - id: 5fd5fd17a6e5
-    lines: 12
+  - id: d9012ded566e
+    lines: 7
     members:
-      - modules/roland-sxx0-editor/src/lib/wave-export.ts:131:142
+      - modules/roland-sxx0-editor/src/lib/wave-export.ts:131:137
       - modules/sampler-library/src/storage/set-storage.ts:93:104
-    disposition: keep-with-reason
-    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
+    disposition: pending
+    reason: null
   - id: 69c35601da78
     lines: 12
     members:

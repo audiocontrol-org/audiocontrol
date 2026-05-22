@@ -134,22 +134,12 @@ function writeString(view: DataView, offset: number, str: string): void {
     }
 }
 
-/**
- * Trigger a file download in the browser
- *
- * @param blob - File blob to download
- * @param filename - Suggested filename for download
- */
-export function downloadBlob(blob: Blob, filename: string): void {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
+// downloadBlob lives in `./browser-download` since 2026-05-22
+// (clones.yaml 5873e17e78bb refactor). Re-exported here so existing
+// callers that imported `downloadBlob` from wave-export don't have
+// to chase the move.
+import { downloadBlob } from './browser-download';
+export { downloadBlob };
 
 /**
  * Export already-decoded 16-bit samples as a WAV file download.

@@ -17,13 +17,18 @@
  * HTML — see comment further down for keyboard wiring.
  */
 
-import { useState, type CSSProperties, type KeyboardEvent } from 'react';
+import { type CSSProperties } from 'react';
 
 import type { SamplerPatch } from '@/core/midi/SamplerClient';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { PatchLabel } from '@/components/common/PatchLabel';
 import { SlotInfo } from '@/components/common/SlotInfo';
 import { BankHeader } from '@/components/common/BankHeader';
+import {
+  useCollapsedBanks,
+  computeBankInfo,
+  createRowKeyDownHandler,
+} from '@/components/common/bank-list-helpers';
 import { isPatchEmpty } from '@/lib/slot-allocation';
 
 interface PatchListProps {
@@ -67,16 +72,7 @@ export function PatchList({
   // Each bank-N section is a sequence: [header, ...rows-in-bank].
   const totalBanks = Math.ceil(patches.length / patchesPerBank);
 
-  // Per-bank collapse state — see ToneList for the same pattern.
-  const [collapsedBanks, setCollapsedBanks] = useState<Set<number>>(() => new Set());
-  const toggleBank = (i: number): void => {
-    setCollapsedBanks((prev) => {
-      const next = new Set(prev);
-      if (next.has(i)) next.delete(i);
-      else next.add(i);
-      return next;
-    });
-  };
+  const { collapsedBanks, toggleBank } = useCollapsedBanks();
 
   return (
     <aside
@@ -91,15 +87,22 @@ export function PatchList({
     >
       <div className="ac-list-scroll">
         {Array.from({ length: totalBanks }, (_, bankIndex) => {
-          const bankStart = bankIndex * patchesPerBank;
-          const bankEnd = Math.min(bankStart + patchesPerBank, patches.length);
-          const firstSlotLabel = memoryLayout.formatPatchSlot(bankStart);
-          const lastSlotLabel = memoryLayout.formatPatchSlot(bankEnd - 1);
-          const isCollapsed = collapsedBanks.has(bankIndex);
-          const isBankLoaded = patches
-            .slice(bankStart, bankEnd)
-            .some((p) => p !== undefined);
-          const isThisBankLoading = loadingBank === bankIndex;
+          const {
+            bankStart,
+            bankEnd,
+            firstSlotLabel,
+            lastSlotLabel,
+            isCollapsed,
+            isBankLoaded,
+            isThisBankLoading,
+          } = computeBankInfo({
+            items: patches,
+            bankIndex,
+            perBank: patchesPerBank,
+            formatSlot: memoryLayout.formatPatchSlot,
+            collapsedBanks,
+            loadingBank,
+          });
 
           return (
             <div
@@ -144,13 +147,10 @@ export function PatchList({
                 // invalid HTML — browsers will hoist the inner button
                 // out unpredictably). Keyboard activation (Enter / Space)
                 // is wired explicitly to match native semantics.
-                const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-                  if (isBankLoading) return;
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleClick();
-                  }
-                };
+                const handleKeyDown = createRowKeyDownHandler({
+                  isBankLoading,
+                  onActivate: handleClick,
+                });
 
                 // Display rules:
                 //   - bank loading:  '(loading...)'
