@@ -44,6 +44,13 @@ Exercised 2026-05-22 via `/scope-inventory roland-bugfix`. Two runs total — th
 
 - (Pending — Phase 2 Task 5 will exercise this against every Phase 1 bug fix going forward; first report comes with the first invocation.)
 
+## Per-surface pending count (no upstream tooling — operator-built one-liner)
+
+The auditor caught two stale-count findings (AUDIT-20260521-07 + -08) where the workplan's "currently pending" numbers drifted from the on-disk truth between commits. Root cause: every disposition changes the count; the workplan re-records the count by hand each time; off-by-one and stale-state slip in.
+
+- ❌ **No checked-in `make clone-summary` (or equivalent) target.** Every operator that wants to know "how many groups touching my surface are still pending" writes their own ad-hoc tsx one-liner. Three of us would write three slightly-different filters. **Recommendation:** ship a `make clone-summary` target (or `tsx tools/scope-discovery/summary.ts --surface <glob>`) that prints `total / pending-touching / pending-intra / dispositioned-touching` for any surface glob the operator names. Severity: low (workaround is a 5-line tsx snippet) but high frequency — Phase 2 will reference these numbers in every dispositioning commit.
+- 🤔 **The workplan's "currently pending" numbers should ideally be auto-generated**, not hand-edited. A pre-commit hook that runs the summary script + injects the current count into the workplan via a fenced marker (e.g., `<!-- BEGIN: clone-summary -->...<!-- END -->`) would make staleness impossible. Heavier lift than the make target; do the target first.
+
 ## Batch-dispose workflow (no upstream tooling — operator-built)
 
 Operator-built `.tmp/batch-dispose.ts` script applies the same disposition + reason to N clone groups in one pass, with a verify-after-write step that re-reads `clones.yaml` and confirms each row landed before reporting success. Exercised 2026-05-22 to dispose 24 probe-script clones as `keep-with-reason`.

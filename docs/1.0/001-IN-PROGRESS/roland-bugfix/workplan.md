@@ -70,7 +70,7 @@ A fix is not "done" until the operator has confirmed the row. `Closed` in the ta
 
 **Deliverable:**
 
-- Every clone group in `docs/scope-discovery/clones.yaml` that touches `modules/roland-sxx0-editor` or `modules/editor-core` (current count: **172 of 495 pending**) is dispositioned: `refactor`, `keep-with-reason`, or `ignore-with-justification`.
+- Every clone group in `docs/scope-discovery/clones.yaml` that touches `modules/roland-sxx0-editor` or `modules/editor-core` is dispositioned: `refactor`, `keep-with-reason`, or `ignore-with-justification`. Baseline at extension time (2026-05-22): **172 pending touching our surface, of 495 total groups**. Current count drifts as dispositions land; recompute with the snippet under "Recompute pending counts" below.
 - For every `refactor`-marked group, a merged PR that removes the duplication (causing the detector to drop the group on the next baseline refresh).
 - A `tooling-feedback.md` capturing this test-subject's experience: friction, surprises, suggestions for the scope-discovery-protocol team.
 
@@ -118,11 +118,30 @@ Captured from `docs/scope-discovery/clones.yaml` against HEAD. Refreshed via `ma
 
 ### Phase 2 acceptance
 
-- Zero `pending` entries remain in `docs/scope-discovery/clones.yaml` for groups touching `modules/roland-sxx0-editor` or `modules/editor-core` (count drops from 172 → 0).
+- Zero `pending` entries remain in `docs/scope-discovery/clones.yaml` for groups touching `modules/roland-sxx0-editor` or `modules/editor-core`. Target: count drops from the 2026-05-22 baseline (172) to 0. Most recent recompute (commit `4b069b82`, 2026-05-22): **146 pending touching us / 67 pending intra-roland-sxx0-editor**.
 - Every `refactor`-marked group has a merged PR; `make refresh-clones-baseline` after merges removes the group from the file.
 - `docs/1.0/001-IN-PROGRESS/roland-bugfix/scope-inventory/` exists with at least one `/scope-inventory roland-bugfix` run + a curated `scope-manifest.yaml`.
 - `tooling-feedback.md` exists with one section per scope-discovery surface exercised.
 - Pre-commit gate at HEAD blocks any NEW clone group; existing dispositioned groups pass regardless of disposition value.
+
+### Recompute pending counts
+
+Run this from the worktree root to print the current pending counts (touching our surface + intra-roland-sxx0). Update the Phase 2 acceptance + disposition log rows when they materially drift from the published values.
+
+```bash
+tsx -e "
+import { readFileSync } from 'fs';
+import { parse } from 'yaml';
+const doc = parse(readFileSync('docs/scope-discovery/clones.yaml','utf8'));
+const me = /modules\/(roland-sxx0-editor|editor-core)/;
+const pending = doc.clones.filter(g => g.disposition === 'pending');
+console.log('total groups:', doc.clones.length);
+console.log('pending touching us:', pending.filter(g => g.members.some(m => me.test(m))).length);
+console.log('pending intra-roland:', pending.filter(g => g.members.every(m => m.startsWith('modules/roland-sxx0-editor/'))).length);
+"
+```
+
+(Promoting this to a proper `make clone-summary` target is a tooling-feedback finding — see `tooling-feedback.md` for the upstream recommendation.)
 
 ### Disposition log (running)
 
@@ -132,7 +151,7 @@ Populated as groups are dispositioned. One row per group resolved.
 |------|----------|---------|-------------|------------------|
 | 2026-05-22 | `80299d9fda8d` (21 lines) | `PatchList.tsx:231–251` ↔ `ToneList.tsx:230–250` | refactor | Extracted to `modules/roland-sxx0-editor/src/components/common/SlotInfo.tsx`. Protected by `D-PATCH-LIST-09` + `D-TONE-LIST-08`. Commit `30e7346e`. Detector confirmed group dropped + 6 sibling groups got re-numbered due to line-shift (no disposition info lost; all were `pending` pre-refactor). |
 | 2026-05-22 | `c4067caecfdd` (6 lines) | `probe-wave-aliasing.ts:85–90` ↔ `probe-wave-memory.ts:131–137` | keep-with-reason | Probe scripts are intentionally self-contained one-off hardware-exploration tools; sharing a helper would defeat their drop-in-standalone-run-against-hardware property. The 3-line SysEx-EOD sequence repetition is acceptable. Sets the precedent for the remaining probe-script clones, batch-dispositioned in the next row. |
-| 2026-05-22 | 24 probe-script clones (batch) | All `modules/roland-sxx0-editor/scripts/probe-wave-*.ts` ↔ same | keep-with-reason | Batch precedent set by `c4067caecfdd` extended to the full probe-script family. IDs (24): `9a4f7220adce, 869d2104eb14, 184f81a30845, 682fa3a4ce37, 79b6a72dc6c3, 0f5ae92e24a8, 7627d9f163db, e0b43789fbde, 35b1524c1b7c, 82026d488e9f, f86cbd50cd0d, 66367273995a, 68f8e2c6e837, 0937dcaf6312, 7d47de7df8ec, 997ad25eb3ee, cdd0209a0e94, cdc141c72516, 779c1d31bc6e, 85cf78fe67fd, 34dfa93fff3b, 84e6442125df, 46eb9849af93, 3b3fdd9f2f9b`. Applied via `.tmp/batch-dispose.ts` with verify-after-write (lesson from the `c4067caecfdd` slip-recovery). Pending intra-roland count: 92 → 68 (-25 including the single-walkthrough). |
+| 2026-05-22 | 24 probe-script clones (batch) | All `modules/roland-sxx0-editor/scripts/probe-wave-*.ts` ↔ same | keep-with-reason | Batch precedent set by `c4067caecfdd` extended to the full probe-script family. IDs (24): `9a4f7220adce, 869d2104eb14, 184f81a30845, 682fa3a4ce37, 79b6a72dc6c3, 0f5ae92e24a8, 7627d9f163db, e0b43789fbde, 35b1524c1b7c, 82026d488e9f, f86cbd50cd0d, 66367273995a, 68f8e2c6e837, 0937dcaf6312, 7d47de7df8ec, 997ad25eb3ee, cdd0209a0e94, cdc141c72516, 779c1d31bc6e, 85cf78fe67fd, 34dfa93fff3b, 84e6442125df, 46eb9849af93, 3b3fdd9f2f9b`. Applied via `.tmp/batch-dispose.ts` with verify-after-write (lesson from the `c4067caecfdd` slip-recovery). Pending intra-roland count: 92 → 67 (-25 total: 1 single-walkthrough `c4067caecfdd` + 24 batch). (Earlier revision of this row said "→ 68"; off-by-one corrected per AUDIT-20260521-08.) |
 
 ## Phase 3: Roland-surface refactor PRs (clone-group cleanup)
 

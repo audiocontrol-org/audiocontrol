@@ -161,3 +161,51 @@ Expected: after exercising `/scope-inventory`, this section should summarize the
 Actual: the underlying evidence exists, but the feedback document has not been updated to reflect it.
 
 This is a low-severity documentation drift issue, but it weakens the claim that the Phase 2 validation feedback loop is being maintained as work happens.
+
+---
+
+## 2026-05-21 Recent Implementation Review
+
+### The Phase 2 acceptance counter in the workplan is stale after the probe-script disposition commits
+
+Finding-ID: AUDIT-20260521-07
+Status:     fixed-awaiting-verification
+Severity:   low
+Surface:    `docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md`
+
+Fix: reframed the Phase 2 acceptance bullet to call out the 172 figure as the EXTENSION-TIME BASELINE (2026-05-22) rather than the current count; added "Current count drifts as dispositions land" + a new "Recompute pending counts" section with a tsx snippet that prints current `total / pending-touching / pending-intra`; updated the second acceptance bullet to record the most-recent computed numbers (146 pending touching us / 67 pending intra-roland at commit `4b069b82`). Tooling-feedback updated with the upstream recommendation to ship `make clone-summary` so future workplan numbers can be auto-computed rather than hand-edited.
+
+The Phase 2 acceptance bullet still claims the current scope is "**172 of 495 pending**" clone groups touching `modules/roland-sxx0-editor` or `modules/editor-core`, but that count is no longer true after the recent disposition work.
+
+Evidence:
+
+- the workplan still presents the old count at [workplan.md](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md:73)
+- the current `clones.yaml` has 146 `pending` groups that touch `modules/roland-sxx0-editor` or `modules/editor-core`, not 172
+- the recent commits explicitly dispositioned 25 Roland-local groups (`c4067caecfdd` plus the 24-script batch), so leaving the top-line metric unchanged misstates remaining Phase 2 scope
+
+Expected: the headline acceptance metric should stay synchronized with the current detector file, because it is the number operators will use to judge remaining work.
+
+Actual: the disposition log moved forward, but the workplan's top-line scope counter still reflects the pre-disposition baseline.
+
+### The batch-disposition row reports the wrong remaining intra-Roland count after applying 25 keep-with-reason decisions
+
+Finding-ID: AUDIT-20260521-08
+Status:     fixed-awaiting-verification
+Severity:   low
+Surface:    `docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md`
+
+Fix: corrected the off-by-one in the batch row from `92 → 68` to `92 → 67`. Added an inline note ("(Earlier revision of this row said '→ 68'; off-by-one corrected per AUDIT-20260521-08.)") so the correction is traceable and the audit-row reference is bidirectional. Root cause was hand-arithmetic against the running ledger; the AUDIT-07 fix (recompute snippet + tooling-feedback upstream recommendation for `make clone-summary`) closes the recurrence risk by removing the hand-arithmetic step entirely.
+
+The batch row says the recent probe-script dispositions changed the "Pending intra-roland count" from `92 -> 68 (-25 including the single-walkthrough)`, but that arithmetic does not match the current detector file.
+
+Evidence:
+
+- the row at [workplan.md](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md:135) claims `92 -> 68 (-25 including the single-walkthrough)`
+- the same row lists 24 ids in the batch plus the prior single-walkthrough `c4067caecfdd`, which is 25 groups total
+- the current `clones.yaml` contains 25 `keep-with-reason` groups whose members are all under `modules/roland-sxx0-editor/scripts/probe-wave-*.ts`, and 67 remaining `pending` groups whose members are all under `modules/roland-sxx0-editor`
+
+Expected: if 25 groups were removed from an intra-Roland pending count of 92, the remaining count should be 67.
+
+Actual: the row records 68, so the workplan's running tally is off by one.
+
+This is not a detector or code defect, but it does weaken the trustworthiness of the disposition ledger that Phase 2 is relying on as its operator-facing source of truth.
