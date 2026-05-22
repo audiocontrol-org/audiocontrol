@@ -107,6 +107,12 @@ interface UseLibraryExportResult {
   batchExportDialog: BatchExportDialogState | null;
   batchExportProgress: OperationProgress | undefined;
   batchExportError: string | null;
+  /** Per-item failure map for the in-flight batch, keyed by step
+   *  number (1-based, matching `OperationProgress.currentStep`). The
+   *  batch loop continues on per-item errors and records them here;
+   *  the drawer reads this to mark failed rows in the step log
+   *  alongside the successful ones. */
+  batchExportFailures: Map<number, string>;
 
   // Shared
   isExporting: boolean;
@@ -168,6 +174,14 @@ export function useLibraryExport({
   const [batchExportDialog, setBatchExportDialog] = useState<BatchExportDialogState | null>(null);
   const [batchExportProgress, setBatchExportProgress] = useState<OperationProgress | undefined>(undefined);
   const [batchExportError, setBatchExportError] = useState<string | null>(null);
+  // Per-item failures keyed by step number (1-based, matches
+  // OperationProgress.currentStep). Populated by handleBatchExport
+  // when an item throws; the loop continues to the next item rather
+  // than aborting. The drawer reads this and passes it to
+  // useStepHistory so the step log shows ✗ on each failed row + ✓
+  // on the successes, instead of the old behavior where one failure
+  // aborted the entire batch.
+  const [batchExportFailures, setBatchExportFailures] = useState<Map<number, string>>(() => new Map());
 
   // Shared
   const [isExporting, setIsExporting] = useState(false);
@@ -195,6 +209,7 @@ export function useLibraryExport({
       setBatchExportDialog(null);
       setBatchExportProgress(undefined);
       setBatchExportError(null);
+      setBatchExportFailures(new Map());
     }
   }, [isExporting]);
 
@@ -598,13 +613,15 @@ export function useLibraryExport({
   }, [libraryHandle, clientRef, exportPatchDialog, tones, setIndividualPatches, handleRefreshLibrary, memoryLayout]);
 
   // Batch export — single entry point for both tone and patch batches.
-  // Loops the items declared in the current `batchExportDialog` serially,
-  // calling the same library helpers (`exportToneToDirectory` /
-  // `exportPatchToDirectory`) as the single-item flows. Progress is
-  // surfaced via `batchExportProgress` as a single step-per-item stream
-  // (each item is one row in the SteppedProgressDrawer's log) — the
-  // per-patch sub-steps (resolve / fetch / write) collapse to a single
-  // "Exporting patch X" row so the drawer doesn't grow unbounded.
+  // Loops the items declared in the current `batchExportDialog` serially.
+  // Each item runs inside its own try/catch: a per-item failure (device
+  // returned no data for a slot, write failed, network blip on a single
+  // wave fetch, etc.) records the error in `batchExportFailures` and
+  // continues to the next item. The whole batch only ends in an error
+  // state if EVERY item failed; partial success still refreshes the
+  // library and shows a "N of M exported (K failed)" summary so the
+  // operator sees what landed and what didn't. This replaces the prior
+  // throw-the-loop behavior which made one bad slot ruin a 20-item drag.
   const handleBatchExport = useCallback(async () => {
     if (!batchExportDialog) {
       throw new Error('No batch is queued for export');
@@ -617,6 +634,8 @@ export function useLibraryExport({
 
     setIsExporting(true);
     setBatchExportError(null);
+    setBatchExportFailures(new Map());
+    const failures = new Map<number, string>();
 
     try {
       let completedBytes = 0;
@@ -637,150 +656,185 @@ export function useLibraryExport({
         };
         setBatchExportProgress(stepHeader);
 
-        if (kind === 'tone') {
-          const tone = tones[item.index];
-          if (!tone) {
-            throw new Error(`Tone at ${item.slotLabel} is no longer loaded`);
-          }
-          const waveData = await client.requestWaveData(
-            item.index,
-            (received, total) => {
-              if (estimatedTotalBytes === 0 || received === 0) {
-                estimatedTotalBytes = completedBytes + total + (total * (items.length - i - 1));
+        try {
+          if (kind === 'tone') {
+            const tone = tones[item.index];
+            if (!tone) {
+              throw new Error(`Tone at ${item.slotLabel} is no longer loaded`);
+            }
+            const waveData = await client.requestWaveData(
+              item.index,
+              (received, total) => {
+                if (estimatedTotalBytes === 0 || received === 0) {
+                  estimatedTotalBytes = completedBytes + total + (total * (items.length - i - 1));
+                }
+                setBatchExportProgress({
+                  ...stepHeader,
+                  bytesSent: received,
+                  bytesTotal: total,
+                  bytesSentAllSteps: completedBytes + received,
+                  bytesTotalAllSteps: estimatedTotalBytes,
+                });
+              },
+            );
+            await exportToneToDirectory(
+              libraryHandle,
+              { ...tone, name: item.name },
+              waveData,
+              item.name,
+              () => {},
+              targetPath,
+            );
+            completedBytes += waveData.data.length;
+          } else {
+            // Patch batch — resolve dependencies, fetch waves, then write.
+            // The per-patch sub-steps collapse into the single step header
+            // above; only the final "All N patches exported" surfaces in
+            // the step log. Mirrors handleExportPatch's structure with the
+            // dialog-state plumbing stripped out.
+            const patch = patches[item.index];
+            if (!patch) {
+              throw new Error(`Patch at ${item.slotLabel} is no longer loaded`);
+            }
+            const referencedSlots = getPatchToneDependencies(patch);
+            const fetchedTones = new Map<number, SamplerTone>();
+
+            const resolveTone = async (slot: number): Promise<SamplerTone> => {
+              const cached = fetchedTones.get(slot);
+              if (cached) return cached;
+              const existing = tones[slot];
+              if (existing) {
+                fetchedTones.set(slot, existing);
+                return existing;
               }
-              setBatchExportProgress({
-                ...stepHeader,
-                bytesSent: received,
-                bytesTotal: total,
-                bytesSentAllSteps: completedBytes + received,
-                bytesTotalAllSteps: estimatedTotalBytes,
-              });
-            },
-          );
-          await exportToneToDirectory(
-            libraryHandle,
-            { ...tone, name: item.name },
-            waveData,
-            item.name,
-            () => {},
-            targetPath,
-          );
-          completedBytes += waveData.data.length;
-        } else {
-          // Patch batch — resolve dependencies, fetch waves, then write.
-          // The per-patch sub-steps collapse into the single step header
-          // above; only the final "All N patches exported" surfaces in
-          // the step log. Mirrors handleExportPatch's structure with the
-          // dialog-state plumbing stripped out.
-          const patch = patches[item.index];
-          if (!patch) {
-            throw new Error(`Patch at ${item.slotLabel} is no longer loaded`);
-          }
-          const referencedSlots = getPatchToneDependencies(patch);
-          const fetchedTones = new Map<number, SamplerTone>();
-
-          const resolveTone = async (slot: number): Promise<SamplerTone> => {
-            const cached = fetchedTones.get(slot);
-            if (cached) return cached;
-            const existing = tones[slot];
-            if (existing) {
-              fetchedTones.set(slot, existing);
-              return existing;
-            }
-            const fetched = await client.requestToneData(slot);
-            if (!fetched) {
-              throw new Error(
-                `Device returned no data for tone ${memoryLayout.formatToneSlot(slot)} ` +
-                  `referenced by patch ${item.slotLabel}.`,
-              );
-            }
-            fetchedTones.set(slot, fetched);
-            return fetched;
-          };
-
-          const originalSlotSet = new Set<number>();
-          const subToneSlots: number[] = [];
-          for (const slot of referencedSlots) {
-            const t = await resolveTone(slot);
-            if (toneHasWaveData(t)) {
-              originalSlotSet.add(slot);
-            } else {
-              subToneSlots.push(slot);
-            }
-          }
-          for (const slot of subToneSlots) {
-            const t = fetchedTones.get(slot)!;
-            if (!originalSlotSet.has(t.sourceTone)) {
-              await resolveTone(t.sourceTone);
-              originalSlotSet.add(t.sourceTone);
-            }
-          }
-          const originalSlots = Array.from(originalSlotSet).sort((a, b) => a - b);
-
-          const bundleTones: PatchBundleTone[] = [];
-          let patchWaveBytes = 0;
-          for (const slot of originalSlots) {
-            const t = fetchedTones.get(slot)!;
-            const waveData = await client.requestWaveData(slot, (received, total) => {
-              if (estimatedTotalBytes === 0 || received === 0) {
-                // Rough estimate: assume each remaining patch's wave footprint
-                // is similar to what we've measured so far. The estimate
-                // self-corrects on every received-bytes callback.
-                estimatedTotalBytes = completedBytes + patchWaveBytes + total
-                  + (total * (items.length - i - 1) * Math.max(1, originalSlots.length));
+              const fetched = await client.requestToneData(slot);
+              if (!fetched) {
+                throw new Error(
+                  `Device returned no data for tone ${memoryLayout.formatToneSlot(slot)} ` +
+                    `referenced by patch ${item.slotLabel}.`,
+                );
               }
-              setBatchExportProgress({
-                ...stepHeader,
-                bytesSent: received,
-                bytesTotal: total,
-                bytesSentAllSteps: completedBytes + patchWaveBytes + received,
-                bytesTotalAllSteps: estimatedTotalBytes,
+              fetchedTones.set(slot, fetched);
+              return fetched;
+            };
+
+            const originalSlotSet = new Set<number>();
+            const subToneSlots: number[] = [];
+            for (const slot of referencedSlots) {
+              const t = await resolveTone(slot);
+              if (toneHasWaveData(t)) {
+                originalSlotSet.add(slot);
+              } else {
+                subToneSlots.push(slot);
+              }
+            }
+            for (const slot of subToneSlots) {
+              const t = fetchedTones.get(slot)!;
+              if (!originalSlotSet.has(t.sourceTone)) {
+                await resolveTone(t.sourceTone);
+                originalSlotSet.add(t.sourceTone);
+              }
+            }
+            const originalSlots = Array.from(originalSlotSet).sort((a, b) => a - b);
+
+            const bundleTones: PatchBundleTone[] = [];
+            let patchWaveBytes = 0;
+            for (const slot of originalSlots) {
+              const t = fetchedTones.get(slot)!;
+              const waveData = await client.requestWaveData(slot, (received, total) => {
+                if (estimatedTotalBytes === 0 || received === 0) {
+                  // Rough estimate: assume each remaining patch's wave footprint
+                  // is similar to what we've measured so far. The estimate
+                  // self-corrects on every received-bytes callback.
+                  estimatedTotalBytes = completedBytes + patchWaveBytes + total
+                    + (total * (items.length - i - 1) * Math.max(1, originalSlots.length));
+                }
+                setBatchExportProgress({
+                  ...stepHeader,
+                  bytesSent: received,
+                  bytesTotal: total,
+                  bytesSentAllSteps: completedBytes + patchWaveBytes + received,
+                  bytesTotalAllSteps: estimatedTotalBytes,
+                });
               });
-            });
-            patchWaveBytes += waveData.data.length;
-            bundleTones.push({ slot, tone: t, waveData });
+              patchWaveBytes += waveData.data.length;
+              bundleTones.push({ slot, tone: t, waveData });
+            }
+            for (const slot of subToneSlots) {
+              const t = fetchedTones.get(slot)!;
+              bundleTones.push({ slot, tone: t });
+            }
+            await exportPatchToDirectory(
+              libraryHandle,
+              { ...patch, common: { ...patch.common, name: item.name } },
+              bundleTones,
+              item.name,
+              () => {},
+              targetPath,
+            );
+            completedBytes += patchWaveBytes;
           }
-          for (const slot of subToneSlots) {
-            const t = fetchedTones.get(slot)!;
-            bundleTones.push({ slot, tone: t });
-          }
-          await exportPatchToDirectory(
-            libraryHandle,
-            { ...patch, common: { ...patch.common, name: item.name } },
-            bundleTones,
-            item.name,
-            () => {},
-            targetPath,
+        } catch (err) {
+          // Per-item failure — record + continue. Logged so the per-
+          // item cause is preserved beyond the in-drawer step log,
+          // which truncates long messages.
+          const message = err instanceof Error ? err.message : 'Item export failed';
+          console.error(
+            `[useLibraryExport] Batch item ${item.slotLabel} (${kind}) failed:`,
+            err,
           );
-          completedBytes += patchWaveBytes;
+          failures.set(i + 1, message);
+          setBatchExportFailures(new Map(failures));
         }
       }
 
-      // Final completion step — emits a clean "Export complete" row
-      // in the step log so the drawer transitions to Done state.
+      const successCount = items.length - failures.size;
+
+      // Final completion step — emits a "complete" row that triggers
+      // the drawer to transition to Done state via isOperationComplete.
+      // Label varies by outcome so the step log's last row reads as a
+      // summary instead of a redundant "Export complete".
+      const finalLabel = failures.size === 0
+        ? 'Export complete'
+        : successCount === 0
+          ? `Batch failed — all ${items.length} items errored`
+          : `Exported ${successCount} of ${items.length} (${failures.size} failed)`;
       setBatchExportProgress({
         currentStep: items.length,
         totalSteps: items.length,
-        stepLabel: 'Export complete',
+        stepLabel: finalLabel,
         bytesSent: 0,
         bytesTotal: 0,
         bytesSentAllSteps: completedBytes,
         bytesTotalAllSteps: completedBytes,
       });
 
-      // Single refresh after the loop — see UseLibraryExportOptions.handleRefreshLibrary
-      // docstring for why per-item refresh is wrong (O(N²) tree work + cross-category
-      // state churn the operator sees as flicker).
-      await handleRefreshLibrary();
-      if (kind === 'tone') {
-        const updatedTones = await listIndividualTones(libraryHandle);
-        setIndividualTones(updatedTones);
-      } else {
-        const updatedPatches = await listIndividualPatches(libraryHandle);
-        setIndividualPatches(updatedPatches);
+      // Refresh only if at least one item landed — a fully-failed
+      // batch wrote nothing, so the tree re-scan would be wasted work.
+      if (successCount > 0) {
+        await handleRefreshLibrary();
+        if (kind === 'tone') {
+          const updatedTones = await listIndividualTones(libraryHandle);
+          setIndividualTones(updatedTones);
+        } else {
+          const updatedPatches = await listIndividualPatches(libraryHandle);
+          setIndividualPatches(updatedPatches);
+        }
+      }
+
+      // Surface the all-failed case as a top-level error so the drawer
+      // chrome shows the Close button instead of Done — partial success
+      // does NOT set this; partial is a "complete with warnings" state
+      // visible via per-step failure rows + the summary label above.
+      if (successCount === 0) {
+        setBatchExportError(`All ${items.length} items failed to export`);
       }
     } catch (err) {
-      console.error('[useLibraryExport] Batch export failed:', err);
+      // Reaches here only on a pre-loop precondition failure (no client,
+      // no library handle, etc.) — per-item throws are caught inside
+      // the loop and recorded in `failures`. Surface as a top-level
+      // error so the drawer doesn't hang in an indeterminate state.
+      console.error('[useLibraryExport] Batch export precondition failure:', err);
       const message = err instanceof Error ? err.message : 'Batch export failed';
       setBatchExportError(message);
       throw err;
@@ -809,6 +863,7 @@ export function useLibraryExport({
     batchExportDialog,
     batchExportProgress,
     batchExportError,
+    batchExportFailures,
     isExporting,
     handleDropDeviceTone,
     handleDropDevicePatch,

@@ -625,6 +625,7 @@ export function LibraryPage() {
         kind={exportOps.batchExportDialog?.kind ?? 'tone'}
         items={exportOps.batchExportDialog?.items ?? []}
         targetPath={exportOps.batchExportDialog?.targetPath ?? []}
+        failures={exportOps.batchExportFailures}
         onExport={exportOps.handleBatchExport}
         isOperating={exportOps.isExporting}
         progress={exportOps.batchExportProgress}

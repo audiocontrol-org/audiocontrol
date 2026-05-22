@@ -49,6 +49,12 @@ export interface BatchExportDrawerProps extends OperationState {
    *  category root (e.g. tones/ or patches/). Surfaced in the eyebrow
    *  so the operator confirms the destination before clicking Export. */
   targetPath: string[];
+  /** Per-item failure map keyed by step number (1-based). Populated by
+   *  useLibraryExport.handleBatchExport as items fail; passed through
+   *  to useStepHistory so failed rows render with ✗ + the per-item
+   *  error message instead of vanishing into a single top-level error.
+   *  An empty map = all items succeeded. */
+  failures: Map<number, string>;
   onExport: () => Promise<void>;
 }
 
@@ -58,6 +64,7 @@ export function BatchExportDrawer({
   kind,
   items,
   targetPath,
+  failures,
   onExport,
   isOperating,
   progress,
@@ -79,7 +86,12 @@ export function BatchExportDrawer({
     error: operationError,
   });
   const effectiveError = localError ?? operationError;
-  const steps = useStepHistory({ progress, isComplete, error: effectiveError });
+  const steps = useStepHistory({
+    progress,
+    isComplete,
+    error: effectiveError,
+    stepErrors: failures,
+  });
 
   const handleExport = useCallback(async () => {
     setLocalError(null);
@@ -115,6 +127,15 @@ export function BatchExportDrawer({
     : `Export ${items.length} patches to library`;
 
   const successKindLabel = kind === 'tone' ? 'tones' : 'patches';
+  // Distinguish all-success from partial-success in the summary row
+  // beneath the step log. A partial-success batch is still considered
+  // "complete" (not error state — the drawer chrome shows Done, not
+  // Close) but the message accurately reports the count so the
+  // operator doesn't need to count green checks themselves.
+  const successCount = items.length - failures.size;
+  const successMessage = failures.size === 0
+    ? `All ${items.length} ${successKindLabel} exported`
+    : `${successCount} of ${items.length} ${successKindLabel} exported · ${failures.size} failed (see step log)`;
 
   return (
     <SlideDrawer
@@ -128,7 +149,7 @@ export function BatchExportDrawer({
           steps={steps}
           isComplete={isComplete}
           hasError={!!effectiveError}
-          successMessage={`All ${items.length} ${successKindLabel} exported`}
+          successMessage={successMessage}
         />
       ) : (
         <BatchFormBody

@@ -635,6 +635,63 @@ test.describe('Capabilities — Library DnD (Wave 5)', () => {
     await expect(page.getByTestId('export-confirm')).toBeVisible();
   });
 
+  test('D-LIB-30: device-memory multi-select with Cmd-click skips intermediate slots (non-contiguous selection)', async ({ page }) => {
+    // The dispatcher branches on `e.ctrlKey || e.metaKey` and seeds the
+    // prior anchor on the first modifier-click; the cascading prior-
+    // session "only shift works" observation came from operators who
+    // assumed ctrl/cmd would extend contiguously like shift. This spec
+    // exercises the genuinely non-contiguous case: anchor on slot 0
+    // then meta-click slot 2 and slot 4 — intermediate slots 1 and 3
+    // are seeded with tones but MUST NOT enter the multi-set. The drag
+    // payload's `indices` array therefore carries exactly 3 entries
+    // and the drawer mounts with 3 items.
+    await page.goto(LIBRARY_URL);
+    await cleanupOPFS(page);
+    await connectLibraryOPFS(page);
+    await seedDeviceTone(page, { slot: 0, name: 'TestToneA' });
+    await seedDeviceTone(page, { slot: 1, name: 'TestToneB' });
+    await seedDeviceTone(page, { slot: 2, name: 'TestToneC' });
+    await seedDeviceTone(page, { slot: 3, name: 'TestToneD' });
+    await seedDeviceTone(page, { slot: 4, name: 'TestToneE' });
+
+    const slot0 = deviceToneSlot(page, 'T11');
+    const slot1 = deviceToneSlot(page, 'T12');
+    const slot2 = deviceToneSlot(page, 'T13');
+    const slot3 = deviceToneSlot(page, 'T14');
+    const slot4 = deviceToneSlot(page, 'T15');
+    for (const s of [slot0, slot1, slot2, slot3, slot4]) {
+      await expect(s).toHaveAttribute('draggable', 'true', { timeout: 5_000 });
+    }
+
+    await slot0.click();
+    await slot2.click({ modifiers: ['ControlOrMeta'] });
+    await slot4.click({ modifiers: ['ControlOrMeta'] });
+
+    // Selected: 0, 2, 4. Unselected: 1, 3.
+    await expect(slot0).toHaveAttribute('data-multi-selected', 'true', { timeout: 2_000 });
+    await expect(slot2).toHaveAttribute('data-multi-selected', 'true', { timeout: 2_000 });
+    await expect(slot4).toHaveAttribute('data-multi-selected', 'true', { timeout: 2_000 });
+    // Intermediate slots remain unselected — the attribute should not
+    // be present (Playwright treats missing attributes as null).
+    await expect(slot1).not.toHaveAttribute('data-multi-selected', 'true');
+    await expect(slot3).not.toHaveAttribute('data-multi-selected', 'true');
+
+    const target = page.locator('[data-category="tones"][data-testid="library-tones-section"]');
+    await expect(target).toBeVisible({ timeout: 5_000 });
+    await simulateDragAndDrop(page, slot0, target);
+
+    // Drawer mounts with exactly 3 items — the indices array carried
+    // [0, 2, 4], so item-0/2/4 testids appear and item-1/3 do not.
+    await expect(
+      page.getByRole('heading', { name: /Export 3 tones to library/i }),
+    ).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByTestId('batch-export-item-0')).toBeVisible();
+    await expect(page.getByTestId('batch-export-item-2')).toBeVisible();
+    await expect(page.getByTestId('batch-export-item-4')).toBeVisible();
+    await expect(page.getByTestId('batch-export-item-1')).toHaveCount(0);
+    await expect(page.getByTestId('batch-export-item-3')).toHaveCount(0);
+  });
+
   test('D-LIB-29: device-memory multi-select on patches + drag of any member opens the BatchExportDrawer with kind="patch"', async ({ page }) => {
     // Symmetric to D-LIB-28 but exercises the patch side of the
     // dispatcher (handlePatchClick) and the patch branch of

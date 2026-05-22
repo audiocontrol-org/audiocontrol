@@ -27,13 +27,34 @@ interface UseStepHistoryOptions {
    *  "no error" so the dialog can pass `localError ?? operationError`
    *  directly without an extra `?? null` coercion at every call site. */
   error: string | null | undefined;
+  /** Per-step failures keyed by `currentStep` (1-based, matches
+   *  `OperationProgress.currentStep`). Used by the batch-export flow
+   *  to mark individual items as failed in the step log while the
+   *  overall operation continues to the next item — without this, the
+   *  hook can only flag the LAST in-flight step as failed (via the
+   *  top-level `error`), which is wrong for continue-on-error batches
+   *  where step N failed but step N+1 succeeded. Keys not present in
+   *  the map are treated as successes when their step transitions out
+   *  of "active". */
+  stepErrors?: Map<number, string>;
 }
 
 export function useStepHistory({
   progress,
   isComplete,
   error,
+  stepErrors,
 }: UseStepHistoryOptions): ProgressStep[] {
+  const stepNumberOf = (id: string): number => {
+    const n = parseInt(id.replace('step-', ''), 10);
+    return Number.isFinite(n) ? n : -1;
+  };
+  const settledStatus = (id: string): { status: StepStatus; error?: string } => {
+    const failure = stepErrors?.get(stepNumberOf(id));
+    return failure
+      ? { status: 'failed', error: failure }
+      : { status: 'complete' };
+  };
   const [steps, setSteps] = useState<ProgressStep[]>([]);
 
   // Reset on idle (no progress, no completion, no error).
@@ -56,11 +77,11 @@ export function useStepHistory({
         progress.bytesTotal > 0
           ? `${formatBytes(progress.bytesSent)} / ${formatBytes(progress.bytesTotal)}`
           : undefined;
-      const completed = prev.map((s) =>
-        s.id === id
-          ? s
-          : { ...s, status: 'complete' as StepStatus, progress: undefined },
-      );
+      const completed = prev.map((s) => {
+        if (s.id === id) return s;
+        const settled = settledStatus(s.id);
+        return { ...s, status: settled.status, error: settled.error, progress: undefined };
+      });
       const existing = completed.find((s) => s.id === id);
       const current: ProgressStep = {
         id,
@@ -75,18 +96,26 @@ export function useStepHistory({
     });
   }, [progress]);
 
-  // Mark every step complete when the operation finishes cleanly.
+  // Mark every step complete (or failed-per-stepErrors) when the
+  // operation finishes cleanly. The single-item flows never populate
+  // stepErrors so this collapses to the prior "all complete" behavior;
+  // the batch flow uses it to freeze per-item failures in the final
+  // step log alongside the successful items.
   useEffect(() => {
     if (isComplete && !error) {
       setSteps((prev) =>
-        prev.map((s) => ({
-          ...s,
-          status: 'complete' as StepStatus,
-          progress: undefined,
-        })),
+        prev.map((s) => {
+          const settled = settledStatus(s.id);
+          return {
+            ...s,
+            status: settled.status,
+            error: settled.error,
+            progress: undefined,
+          };
+        }),
       );
     }
-  }, [isComplete, error]);
+  }, [isComplete, error, stepErrors]);
 
   // Mark the last in-flight step as failed when an error surfaces.
   // If the error fires before any step has started (precondition
