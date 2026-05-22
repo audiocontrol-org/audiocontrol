@@ -887,6 +887,111 @@ test.describe('Capabilities — Library DnD (Wave 5)', () => {
     await expect(page.getByTestId('export-tone-device-name')).toHaveText('S-550');
   });
 
+  test('D-LIB-34: ExportToneDialog destination eyebrow renders kindLabel + LIBRARY + device-name in the right testid-suffixed spans (clones.yaml 38c8236d8a7b refactor contract)', async ({ page }) => {
+    // Test-before-extract contract for clones.yaml group 38c8236d8a7b
+    // (ExportPatchDialog.tsx:195-201 ↔ ExportToneDialog.tsx:183-189
+    // shared eyebrow row). The clone-disposition refactor extracts the
+    // shared eyebrow shape (accent kindLabel + LIBRARY literal + device-
+    // name testid span + optional target-path tail) into a new
+    // DestinationEyebrow component; all three export surfaces
+    // (ExportToneDialog, ExportPatchDialog, BatchExportDrawer) render
+    // <DestinationEyebrow ... /> in place of the inline JSX block.
+    //
+    // The contract this assertion protects: the eyebrow's full token
+    // sequence (testid wrapper, kindLabel accent text, LIBRARY literal,
+    // device-name testid suffix) on the tone surface. D-LIB-35 covers
+    // the patch surface; D-LIB-36 covers the batch surface. Without
+    // these three the refactor could silently drop the LIBRARY literal
+    // or scramble the testid suffixing.
+    //
+    // Added 2026-05-22 BEFORE the DestinationEyebrow extraction lands,
+    // per workplan 'Refactoring protocol: test before extract'. Must
+    // pass against pre-refactor code AND stay green after the refactor.
+    await page.goto(LIBRARY_URL);
+    await cleanupOPFS(page);
+    await connectLibraryOPFS(page);
+    await seedDeviceTone(page, { slot: 0, name: 'TestTone1' });
+
+    const source = deviceToneSlot(page, 'T11');
+    await expect(source).toHaveAttribute('draggable', 'true', { timeout: 5_000 });
+    const target = page.locator('[data-category="tones"][data-testid="library-tones-section"]');
+    await simulateDragAndDrop(page, source, target);
+
+    await expect(
+      page.getByRole('heading', { name: /Export tone to library/i }),
+    ).toBeVisible({ timeout: 5_000 });
+
+    const eyebrow = page.getByTestId('export-tone-destination');
+    await expect(eyebrow).toBeVisible();
+    // Accent label is the kind in caps ("TONE")
+    await expect(eyebrow.locator('.ac-detail-eyebrow-accent')).toHaveText('TONE');
+    // The LIBRARY literal is the third labeled segment
+    await expect(eyebrow).toContainText('LIBRARY');
+    // Device-name span carries the prefixed testid + capitalized name
+    await expect(eyebrow.getByTestId('export-tone-device-name')).toHaveText('S-330');
+  });
+
+  test('D-LIB-35: ExportPatchDialog destination eyebrow renders kindLabel + LIBRARY + device-name in the right testid-suffixed spans (clones.yaml 38c8236d8a7b refactor contract)', async ({ page }) => {
+    // Sibling to D-LIB-34; covers the patch surface. See D-LIB-34 for
+    // full rationale.
+    await page.goto(LIBRARY_URL);
+    await cleanupOPFS(page);
+    await connectLibraryOPFS(page);
+    await seedDevicePatch(page, { slot: 0, name: 'TestPatch1' });
+
+    const source = devicePatchSlot(page, 'P11');
+    await expect(source).toHaveAttribute('draggable', 'true', { timeout: 5_000 });
+    const target = page.locator('[data-category="patches"][data-testid="library-patches-section"]');
+    await simulateDragAndDrop(page, source, target);
+
+    await expect(
+      page.getByRole('heading', { name: /Export patch to library/i }),
+    ).toBeVisible({ timeout: 5_000 });
+
+    const eyebrow = page.getByTestId('export-patch-destination');
+    await expect(eyebrow).toBeVisible();
+    await expect(eyebrow.locator('.ac-detail-eyebrow-accent')).toHaveText('PATCH');
+    await expect(eyebrow).toContainText('LIBRARY');
+    await expect(eyebrow.getByTestId('export-patch-device-name')).toHaveText('S-330');
+  });
+
+  test('D-LIB-36: BatchExportDrawer destination eyebrow renders kindLabel + N ITEMS + LIBRARY + device-name (clones.yaml 38c8236d8a7b refactor contract — batch surface)', async ({ page }) => {
+    // Sibling to D-LIB-34/35; covers the batch surface. The batch
+    // eyebrow's leftField differs from the single-item dialogs (it
+    // shows "N ITEMS" instead of a slot label), so the assertion
+    // exercises the alternate shape. See D-LIB-34 for full rationale.
+    await page.goto(LIBRARY_URL);
+    await cleanupOPFS(page);
+    await connectLibraryOPFS(page);
+    await seedDeviceTone(page, { slot: 0, name: 'TestToneA' });
+    await seedDeviceTone(page, { slot: 1, name: 'TestToneB' });
+    await seedDeviceTone(page, { slot: 2, name: 'TestToneC' });
+
+    const slot0 = deviceToneSlot(page, 'T11');
+    const slot1 = deviceToneSlot(page, 'T12');
+    const slot2 = deviceToneSlot(page, 'T13');
+    for (const s of [slot0, slot1, slot2]) {
+      await expect(s).toHaveAttribute('draggable', 'true', { timeout: 5_000 });
+    }
+    await slot0.click();
+    await slot1.click({ modifiers: ['ControlOrMeta'] });
+    await slot2.click({ modifiers: ['ControlOrMeta'] });
+
+    const target = page.locator('[data-category="tones"][data-testid="library-tones-section"]');
+    await simulateDragAndDrop(page, slot0, target);
+
+    await expect(
+      page.getByRole('heading', { name: /Export 3 tones to library/i }),
+    ).toBeVisible({ timeout: 5_000 });
+
+    const eyebrow = page.getByTestId('batch-export-destination');
+    await expect(eyebrow).toBeVisible();
+    await expect(eyebrow.locator('.ac-detail-eyebrow-accent')).toHaveText('TONES');
+    await expect(eyebrow).toContainText('3 ITEMS');
+    await expect(eyebrow).toContainText('LIBRARY');
+    await expect(eyebrow.getByTestId('batch-export-device-name')).toHaveText('S-330');
+  });
+
   test('D-LIB-29: device-memory multi-select on patches + drag of any member opens the BatchExportDrawer with kind="patch"', async ({ page }) => {
     // Symmetric to D-LIB-28 but exercises the patch side of the
     // dispatcher (handlePatchClick) and the patch branch of
