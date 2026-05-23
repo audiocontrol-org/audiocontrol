@@ -38,8 +38,12 @@ The per-fix gates (which are fixed) are recorded in [`workplan.md`](./workplan.m
 ## Implementation Phases
 
 1. **Phase 1: Rolling Bug-Fix Pass** — In Progress. Open-ended; operator-surfaced bugs land in the triage table.
-2. **Phase 2: Disposition Roland-surface clones (scope-discovery validation)** — Pending. Disposition 172 clone groups + apply `/scope-widen` per Phase 1 fix + capture tooling feedback. Validation test subject for PR #441's Phase 4.
-3. **Phase 3: Roland-surface refactor PRs (clone-group cleanup)** — Concurrent with Phase 2. One PR per `refactor`-marked group; complex extractions planned via `superpowers:writing-plans`.
+2. **Phase 2: Disposition Roland-surface clones (scope-discovery validation)** — ✅ Closed 2026-05-22. 172 → 0 pending touching us; validation test subject for PR #441's Phase 4.
+3. **Phase 3: Roland-surface refactor PRs (clone-group cleanup)** — ✅ Closed 2026-05-22. 9 refactor commits landed concurrently with Phase 2.
+4. **Phase 4: Anti-pattern registry backfill** — Pending (extension 2026-05-22). Exercise PR #446 T6.1 against the 9 Phase 2 refactor extractions; lock the regime so the same anti-patterns can't silently re-emerge.
+5. **Phase 5: Adopter manifest backfill** — Pending (extension 2026-05-22). Exercise PR #446 T6.2 against the 9 new primitives + upstream SlideDrawer. The Import dialog holdouts surface here pending ROLAND-BUGFIX-V3-IMPORT.
+6. **Phase 6: Cross-editor symmetry sweep** — Pending (extension 2026-05-22). Exercise PR #446 T6.3 against roland + akai + d110 + jv1080 + editor-core. Disposition every asymmetry.
+7. **Phase 7: `/scope-inventory` re-run with regime-holdout-detector** — Pending (extension 2026-05-22). Re-invoke the now-5-agent fleet (T6.5 added the 5th); curate the new `regime_holdouts:` section of the manifest; remediate inline or file as follow-ups.
 
 ## Scope
 

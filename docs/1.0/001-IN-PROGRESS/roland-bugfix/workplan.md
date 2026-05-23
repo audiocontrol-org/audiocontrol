@@ -253,6 +253,127 @@ Audit findings against missing or incorrect traces get filed as low-severity boo
 
 **Task breakdown:** Generated per-PR via `superpowers:writing-plans` only when a clone group's refactor is non-trivial (>50 LOC change, touches a public type, or crosses module boundaries). Trivial refactors (helper-extraction-and-call-site-update inside one module) skip the writing-plans ceremony and land as direct commits.
 
+## Phase 4: Anti-pattern registry backfill (PR #446 T6.1 exercise)
+
+**Goal:** Backfill `docs/scope-discovery/anti-patterns.yaml` with the legacy-shape fingerprints that Phase 2's 9 refactor extractions replaced. Locks the regime so the same anti-patterns can't silently re-emerge in new code.
+
+**Gate:** `make check-anti-patterns` returns 0 holdouts. Pre-commit gate (already wired by T6.1) enforces it going forward.
+
+### Tasks
+
+- **T4.1 — Inventory the 9 anti-pattern shapes from Phase 2.** For each extracted primitive, identify the legacy shape it replaces (the code that was inlined at the call sites before extraction):
+  - `useExportDialogLifecycle` ← inline `useState<localError>` + `useState<hasStarted>` + open-reset `useEffect` + `handleClose` callback pattern.
+  - `PageTitleRow` ← inline `<header class="ac-page-title-row">` markup (`.ac-page-title-block` + heading + `.ac-page-title-rule` + `.ac-page-title-metric` + LED + refresh button + optional loading-progress strip).
+  - `AcReloadIcon` ← inline 4-path reload SVG (`viewBox="0 0 16 16"` + the four `<path>`/`<polyline>` instructions).
+  - `BankHeader` ← inline `<div class="ac-list-bank-header">` markup with toggle button + chevron + bank label + slot-range readout + reload button.
+  - `SlotInfo` ← inline `<span class="ac-list-info">` markup wrapping `name` + `status` spans.
+  - `AcRadioTabs` ← inline radio-driven tab strip (hidden radio inputs + label nav + role="tabpanel" sections).
+  - `DestinationEyebrow` ← inline 3-span eyebrow row (kindLabel + LIBRARY + device-name with the right testid-suffixed spans).
+  - `LibraryDeviceMemoryPanel` + `LibraryPreviewPanelAdapter` ← inline DeviceMemoryPanel-rendering and preview-routing function bodies (per-device adapter shape).
+  - `downloadBlob` ← inline `URL.createObjectURL` + anchor mount + click + remove + revoke sequence.
+
+- **T4.2 — Author each anti-pattern as a `ast-grep` rule in `anti-patterns.yaml`.** Per T6.1's schema: each entry carries `id`, `added_in` (the extraction commit SHA), `primitive` (the canonical import), `from` (the canonical module path), `shape` (the pattern), `message` (suggested replacement). Cite the extraction commit hash from the Phase 2 disposition log so the trace is bidirectional.
+
+- **T4.3 — Run `make check-anti-patterns` and verify 0 holdouts.** Every anti-pattern's call sites should ALREADY be using the canonical primitive (because Phase 2 closed them); the scan should return clean. If a holdout surfaces, it means the Phase 2 refactor missed a call site — that becomes a Phase 4 sub-task to migrate.
+
+- **T4.4 — Verify the pre-commit gate fires on a synthetic re-introduction.** Create a throwaway branch that re-inlines one of the registered anti-patterns; commit; verify the pre-commit hook blocks. Throw away the branch. This proves the gate has teeth on this repo's pre-commit configuration.
+
+### Phase 4 acceptance
+
+- All 9 anti-patterns recorded in `anti-patterns.yaml` with cited extraction commit hashes.
+- `make check-anti-patterns` returns 0 holdouts.
+- Pre-commit gate verified to fire on synthetic re-introduction.
+- Tooling-feedback entry added to `tooling-feedback.md` capturing the registry-backfill experience (what was easy, what was hard, what the schema didn't support).
+
+## Phase 5: Adopter manifest backfill (PR #446 T6.2 exercise)
+
+**Goal:** Declare expected adopter globs for the 9 primitives extracted in Phase 2, plus the upstream `SlideDrawer` primitive (whose adopter set covers the 5 Import dialogs still on legacy chrome). Locks the migration intent so future drift surfaces immediately.
+
+**Gate:** `make check-adopters` reports the EXPECTED holdout set (the 5 Import dialogs for `SlideDrawer`; 0 for all other primitives) and zero unexpected holdouts.
+
+### Tasks
+
+- **T5.1 — Inventory the adopter glob + exception list for each new primitive.** Per T6.2's schema, each entry carries `primitive`, `from`, `introduced_in`, `expected_adopters_glob`, and optional `exceptions[].path` + `exceptions[].reason`. Per-primitive scope:
+  - `PageTitleRow` → `modules/*/src/pages/*Page.tsx` with `ConnectPage.tsx` exception (entry route, no LED-metric / refresh affordance).
+  - `BankHeader` → adopters: `PatchList.tsx`, `ToneList.tsx`, `DeviceMemoryPanel.tsx` (already-bound — should report ✓ on all).
+  - `SlotInfo` → adopters: `PatchList.tsx`, `ToneList.tsx`.
+  - `AcRadioTabs` → adopters: `PatchEditorTabs.tsx`, `ToneEditorTabs.tsx`.
+  - `DestinationEyebrow` → adopters: `ExportToneDialog.tsx`, `ExportPatchDialog.tsx`, `BatchExportDrawer.tsx`.
+  - `LibraryDeviceMemoryPanel` + `LibraryPreviewPanelAdapter` → adopters: `s330-library-plugin.tsx`, `s550-library-plugin.tsx`.
+  - `AcReloadIcon` → adopters: anywhere a reload affordance renders (BankHeader, PageTitleRow). Glob: probably hand-curated rather than glob-based.
+  - `useExportDialogLifecycle` → adopters: `Export*Dialog.tsx` + `BatchExportDrawer.tsx`.
+  - `downloadBlob` → adopters: anywhere a file download is triggered. Glob: probably hand-curated.
+
+- **T5.2 — Add upstream-primitive entry for `SlideDrawer`.** Per the rationale documented in `tooling-feedback.md` "Regime holdouts" § Adopter manifests, `SlideDrawer` (editor-core) has an expected adopter glob of `modules/*/src/components/library/*Dialog.tsx` with the 5 Import dialogs listed as TRACKED HOLDOUTS (not exceptions) pending ROLAND-BUGFIX-V3-IMPORT. The schema needs to distinguish "permanent exception" from "tracked holdout with follow-up." If T6.2's schema doesn't have a `tracked_holdouts:` field, file as a tooling-feedback finding and document them as exceptions with `reason: pending ROLAND-BUGFIX-V3-IMPORT` for now.
+
+- **T5.3 — Run `make check-adopters` and verify the holdout set matches expectations.** Expected output: 5 holdouts for SlideDrawer (the Import dialogs), 0 holdouts elsewhere. Any deviation is either a missed Phase 2 migration (fix inline) or a manifest authoring error (refine the glob / exception list).
+
+- **T5.4 — Verify the pre-commit gate fires on a synthetic adopter that drops the canonical import.** Create a throwaway branch, edit one adopter (e.g., PatchesPage.tsx) to drop its `PageTitleRow` import, commit, verify the pre-commit hook blocks. Throw away the branch.
+
+### Phase 5 acceptance
+
+- 9 primitive adopter manifests + 1 upstream (`SlideDrawer`) recorded in `adopter-manifests.yaml`.
+- `make check-adopters` reports exactly the 5 Import dialogs as `SlideDrawer` holdouts and 0 unexpected holdouts.
+- Pre-commit gate verified to fire on synthetic adopter-drop.
+- Tooling-feedback entry capturing manifest-authoring experience.
+
+## Phase 6: Cross-editor symmetry sweep (PR #446 T6.3 exercise)
+
+**Goal:** Run `make check-editor-symmetry` (or T6.3's equivalent CLI) against the 4 editor modules (roland-sxx0-editor, akai-s3k-editor, d110-editor, jv1080-editor) + editor-core. Disposition every asymmetry surfaced.
+
+**Gate:** Every reported asymmetry has a disposition recorded in `docs/scope-discovery/editor-symmetry.md` or equivalent.
+
+### Tasks
+
+- **T6.1 — Run the symmetry scan and capture the raw matrix.** Save the per-convention × per-editor matrix to a Phase 6 evidence file under `docs/1.0/001-IN-PROGRESS/roland-bugfix/scope-inventory/runs/<stamp>-symmetry/`.
+
+- **T6.2 — Categorize each asymmetry.** Expected categories:
+  - **Already-closed:** `$INFRA_DIR/scripts/watchdog.ts` — closed via DEL-003 this session. Should report ✓ symmetric.
+  - **Editor-specific conventions:** e.g., akai-s3k-editor has SCSI-MIDI; roland doesn't. Mark `convention-is-per-editor-by-design`.
+  - **Real holdouts:** a convention adopted in one editor but not another, where parity is desirable. Each gets a disposition: `fix-now` (do it this session) / `refactor-PR` (file as Phase 7 task or follow-up issue) / `keep-with-reason` (intentional divergence with rationale).
+
+- **T6.3 — Disposition + remediate.** Each `fix-now` asymmetry gets a per-walk commit with the protecting test discipline. Each `refactor-PR` asymmetry gets a follow-up issue with a `ROLAND-BUGFIX-SYM-XXX` identifier. Each `keep-with-reason` gets a row in `editor-symmetry.md` with rationale.
+
+- **T6.4 — Re-run the scan to verify zero unresolved asymmetries.** All asymmetries should now have a disposition. The matrix output should show ✓ symmetric for fixed conventions, `keep-with-reason` for intentional divergence, and `follow-up: <issue>` for deferred work.
+
+### Phase 6 acceptance
+
+- Symmetry matrix captured under the run-evidence directory.
+- Every asymmetry dispositioned (`fix-now` resolved inline; `refactor-PR` filed as follow-up; `keep-with-reason` documented).
+- `make check-editor-symmetry` reports zero `pending` rows.
+- Tooling-feedback entry capturing what the symmetry scan caught vs missed.
+
+## Phase 7: `/scope-inventory` re-run with regime-holdout-detector (PR #446 T6.5 exercise)
+
+**Goal:** Re-invoke `/scope-inventory roland-bugfix` so the now-5-agent fleet (with `regime-holdout-detector` added in T6.5) produces an updated `scope-manifest.yaml` with a `regime_holdouts:` section populated from the registries Phases 4-5 just built. Curate; remediate any surfaceable holdouts inline; file the rest as follow-ups.
+
+**Gate:** Updated scope-manifest.yaml lands with the `regime_holdouts:` section populated; every entry has a disposition or follow-up issue.
+
+### Tasks
+
+- **T7.1 — Pre-run baseline check.** Confirm Phases 4-5 registries are populated, Phase 6 dispositions are recorded, and the working tree is clean. Capture pre-run snapshot of `scope-manifest.yaml` for diffing.
+
+- **T7.2 — Invoke `/scope-inventory roland-bugfix`.** The skill spins up 5 agents in parallel (ui-route-enumerator, ast-grep-matrix, clone-detector-reader, prd-themed-pattern-hunter, regime-holdout-detector) and synthesizes a fresh manifest. The run lands a new dated dir under `scope-inventory/runs/`.
+
+- **T7.3 — Diff the new manifest against the pre-run snapshot.** The `regime_holdouts:` section should be new (or populated for the first time). Other sections may have minor drift from the Phase 2 → Phase 6 work landing.
+
+- **T7.4 — Curate the new regime_holdouts: entries.** For each entry surfaced:
+  - **If actionable inline:** apply the test-first protocol → protecting wiring assertion → primitive adoption → commit. Same shape as Phase 2 refactor walks.
+  - **If deferred:** file as a `ROLAND-BUGFIX-RGM-XXX` follow-up issue with the agent's findings JSON as evidence.
+  - **If false positive:** document in tooling-feedback.md with the false-positive shape so the agent can be tuned.
+
+- **T7.5 — Re-curate the rest of the manifest.** Routes / modules / themes may have minor updates; apply the same curation pass that the original Phase 2 task 2 did (commit `dfb8baed`).
+
+- **T7.6 — Update the journal.** Append a post-run entry to `scope-inventory/journal.md` capturing the run ID + the regime_holdouts findings count + curation outcomes.
+
+### Phase 7 acceptance
+
+- New `/scope-inventory` run lands with all 5 agents represented in `findings/`.
+- `scope-manifest.yaml` has a populated `regime_holdouts:` section.
+- Every regime_holdout entry has a disposition (fixed inline, follow-up filed, or false-positive documented).
+- Tooling-feedback entry capturing the 5-agent fleet's behavior (vs the prior 4-agent baseline).
+- Scope-inventory journal updated.
+
 ## Pre-commit Discipline
 
 - One bug per commit; descriptive subject; no sweep refactors slipped in alongside a fix
@@ -263,7 +384,11 @@ Audit findings against missing or incorrect traces get filed as low-severity boo
 ## GitHub Tracking
 
 - **Parent issue:** TBD (created via `/feature-issues`)
-- **Phase 2:** [#442](https://github.com/audiocontrol-org/audiocontrol/issues/442) — Scope-discovery validation + clone disposition (re-scoped 2026-05-22 to use the PR #441 tooling)
+- **Phase 2:** [#442](https://github.com/audiocontrol-org/audiocontrol/issues/442) — Scope-discovery validation + clone disposition (re-scoped 2026-05-22 to use the PR #441 tooling); closed 2026-05-22
+- **Phase 4:** [#447](https://github.com/audiocontrol-org/audiocontrol/issues/447) — Anti-pattern registry backfill (extension 2026-05-22)
+- **Phase 5:** [#448](https://github.com/audiocontrol-org/audiocontrol/issues/448) — Adopter manifest backfill (extension 2026-05-22)
+- **Phase 6:** [#449](https://github.com/audiocontrol-org/audiocontrol/issues/449) — Cross-editor symmetry sweep (extension 2026-05-22)
+- **Phase 7:** [#450](https://github.com/audiocontrol-org/audiocontrol/issues/450) — /scope-inventory re-run with regime-holdout-detector (extension 2026-05-22)
 - **Implementation issues:** per-bug (Phase 1) and per-refactor-PR (Phase 3), opened as found; each triage / disposition row links its issue + PR number when filed.
 
 ## Out of Scope

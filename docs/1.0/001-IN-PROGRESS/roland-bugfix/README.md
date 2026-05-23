@@ -12,8 +12,12 @@ The two purposes share the same code surface but stay in **separate commits and 
 | Phase | Status | Notes |
 |-------|--------|-------|
 | Phase 1: Rolling Bug-Fix Pass | In Progress | Open-ended; operator-declared completion |
-| Phase 2: Disposition Roland-surface clones (scope-discovery validation) | Pending | 172 of 495 clone groups in `docs/scope-discovery/clones.yaml` touch our surface; disposition each + capture tooling feedback. We are the validation test subject for `feature/scope-discovery-protocol`'s Phase 4 (PR #441). |
-| Phase 3: Roland-surface refactor PRs (clone-group cleanup) | Concurrent with Phase 2 | One PR per `refactor`-marked group; not sequential with Phase 2 |
+| Phase 2: Disposition Roland-surface clones (scope-discovery validation) | ✅ Closed 2026-05-22 | 172 → 0 pending touching us. Validation test subject for `feature/scope-discovery-protocol`'s Phase 4 (PR #441). See workplan disposition log + closure summary. |
+| Phase 3: Roland-surface refactor PRs (clone-group cleanup) | ✅ Closed 2026-05-22 | 9 refactor commits landed concurrently with Phase 2. |
+| Phase 4: Anti-pattern registry backfill | Pending | Exercise PR #446 T6.1 against the 9 Phase 2 refactor extractions; lock the regime so the same anti-patterns can't silently re-emerge. |
+| Phase 5: Adopter manifest backfill | Pending | Exercise PR #446 T6.2 against the 9 new primitives + upstream SlideDrawer. Expected output: 5 Import dialogs surface as SlideDrawer holdouts pending ROLAND-BUGFIX-V3-IMPORT. |
+| Phase 6: Cross-editor symmetry sweep | Pending | Exercise PR #446 T6.3 against roland + akai + d110 + jv1080 + editor-core. Disposition every asymmetry. |
+| Phase 7: `/scope-inventory` re-run with regime-holdout-detector | Pending | Re-invoke the now-5-agent fleet (T6.5 added the 5th); curate the new `regime_holdouts:` section of the manifest; remediate inline or file as follow-ups. |
 
 ## Documentation
 
@@ -25,6 +29,10 @@ The two purposes share the same code surface but stay in **separate commits and 
 
 - **Parent issue:** TBD
 - **Phase 2:** [#442](https://github.com/audiocontrol-org/audiocontrol/issues/442) — Scope-Discovery Audit + Duplication Findings
+- **Phase 4:** [#447](https://github.com/audiocontrol-org/audiocontrol/issues/447) — Anti-pattern registry backfill
+- **Phase 5:** [#448](https://github.com/audiocontrol-org/audiocontrol/issues/448) — Adopter manifest backfill
+- **Phase 6:** [#449](https://github.com/audiocontrol-org/audiocontrol/issues/449) — Cross-editor symmetry sweep
+- **Phase 7:** [#450](https://github.com/audiocontrol-org/audiocontrol/issues/450) — /scope-inventory re-run with regime-holdout-detector
 
 ## Worktree
 
