@@ -3467,3 +3467,90 @@ Drive Phase 2 of the roland-bugfix branch (dispositioning every clones.yaml grou
 - **Permission classifier denials are signal, not noise.** Each time the auto-mode permission classifier blocked an action this session (stash -u, file deletion, file deletion, file deletion), it was protecting against a real footgun. The right response was always: pause the walk, surface the proposal to the operator, run verification, get explicit authorization. Treating the denial as a checkpoint rather than a blocker turned three potential silent failures into three audited operations.
 
 - **The auditor's "if you have to argue for it, write the test" framing is the cleanest version of the test-first protocol.** Every time I caught myself drafting a "this is too trivial to need a test" justification, that was the signal to write the test instead. The justification IS the failure mode — the rationalization itself is evidence that the protocol's bar is being lowered, not that the function is too trivial to meet the bar.
+## 2026-05-22 (cont.): scope-discovery-protocol — Phases 5/6/7 closed
+
+### Feature: scope-discovery-protocol
+### Worktree: audiocontrol-scope-discovery-protocol
+
+### Goal
+
+Continue from T5.4 (Phase 5 final task, commit `fa6cb870` landed pre-compaction) through Phase 6 (Regime-Holdout Discovery) and Phase 7 (Tooling Hardening + Operator QoL) to close out the feature's in-scope work. Phase 4 closure stays operator-deferred to the roland-bugfix branch's burndown.
+
+### Accomplished
+
+**Phase 5 — Refactor Preconditions (CRITICAL)** closed at T5.4 (`fa6cb870`, landed before compaction). The five-commit chain `752ba934` → `e510a715` → `4cd57cc2` → `afd38b5f` → `fa6cb870` shipped the `clones.yaml` discriminated union (refactor entries carry `canonical_side` + `tests` + `tests_proof.sha`), the commit-msg hook + runtime validator gating `Closes clones.yaml <id>` markers, per-branch verification language in agent prompts (code-reviewer + codebase-auditor extended with Step 0), and the dispatch wrapper's conditional refactor-context prelude. Phase 5's "first real refactor on the bugfix branch demonstrates gate firing in the wild" sub-gate remains operator-deferred (observable only when refactor work begins).
+
+**Phase 6 — Regime-Holdout Discovery** closed across 8 commits:
+- `0183811b` T6.1 — anti-pattern registry + `make check-anti-patterns` + pre-commit gate + 6-scenario adversarial validator.
+- `09f8c8af` T6.2 — adopter manifests + `make check-adopters` + pre-commit gate + 9-scenario validator. **DRY extraction**: pulled `util/registry-yaml.ts` + `util/glob.ts` so T6.1's anti-patterns module dropped 198 → 149 lines.
+- `d469b060` + `ba030239` + `2697dc65` T6.3 — cross-editor symmetry matrix + `editor-symmetry.md` artifact + 11-scenario validator. Two cleanup commits migrated T6.1/T6.2/clone-detector validators onto the newly-extracted `util/run-scanner.ts` so all four tsx-subprocess validators share the same helper (zero divergent `spawn('tsx', ...)` blocks remain).
+- `4c8fb8b4` T6.4 — deprecation scan + 12-scenario validator. Real-tree finding: 3 deprecated files (EnvelopeDisplay/EnvelopeEditor in roland-sxx0-editor + path-conventions in sampler-backup), all blocked by importers.
+- `4ccbb009` T6.5 — `regime-holdout-detector` agent joins the `/scope-inventory` fleet (now 5 agents); manifest JSON Schema gains `regime_holdouts:` top-level key (backward-compatible); 9-scenario validator. Real-tree smoke: 0/0/0/3 across the four sources (the anti-pattern + adopter + symmetry registries are empty until refactor commits populate them).
+- `1c6d2b36` T6.6 — Phase 6 docs: LAYOUT.md §"Phase 6 artifacts", README.md §"Regime-holdout discovery", PROJECT-MANAGEMENT.md workplan-reminder for primitive-extraction commits.
+
+**Phase 7 — Tooling Hardening + Operator QoL** closed across 6 commits:
+- `aca3a3dc` T7.1 — content-hashed clone-group IDs (`sha1(sorted bare-paths + jscpd fragment fingerprint)`); one-time migration of all 495 existing dispositioned entries (0 unmapped, 0 collisions); `migration-map.yaml` committed as forensic record. 9-scenario stability validator covers line-shift stability, content-change sensitivity, member-path sensitivity, determinism, collision absence, migration disposition-preservation, orphan detection, gutted-stub self-check. Implementer caught + fixed three real bugs DURING this commit: migration was initially matching by full members string (defeated the point); pair-fingerprint collision in 3+-way clones; migrate-clone-ids.ts ran as an import side effect when the validator imported it (was about to overwrite live clones.yaml).
+- `e4235eea` T7.2 — `make scope-inventory` dep guard; actionable error names missing deps + `pnpm install` invocation. Real-world adversarial demo: temporarily renamed `node_modules/yaml`, ran the target, captured the actionable error, restored.
+- `d9dcb250` T7.3 — `make clone-summary SURFACE=<glob>` per-surface counts (`total | pending-touching | pending-intra | dispositioned-touching`). Real-tree against roland-sxx0-editor: 87 pending-touching / 64 pending-intra / 0 dispositioned-touching.
+- `7e1dca6e` T7.4 — `batch-dispose.ts` with verify-after-write; refactor disposition rejected with redirect to manual editing + check-refactor-preconditions-validate; 13-scenario validator including a forged-write fixture that proves verify-after-write detects mismatches.
+- `be1f2c55` + `37c62cb9` T7.5 — polish bundle (8 items). 7 implemented in T7.5 itself; 1 (batch-dispose `--show-existing`) verified as already done in T7.4. Notable: `--no-verify` bypass logging implemented as a `post-commit` sentinel + `pre-push` warning pair (pre-commit can't detect its own bypass), with worktree-aware sentinel path (the first commit used `git rev-parse --git-path hooks` which incorrectly resolved to the tracked `.githooks/` dir under `core.hooksPath`; second commit fixed to `--git-common-dir/hooks-sentinels/`).
+
+**Validator suite final state:** 170/170 scenarios across 15 validators. Clone baseline stayed at `495 groups; 0 NEW; 0 DROPPED` throughout (T7.1's content-hash migration preserved the set; only IDs changed).
+
+**Self-demonstration on the final push:** the T7.5 pre-push warning fired for commits in the push range that pre-date the post-commit sentinel — exactly the "first-install noise" behavior the implementer documented in their concerns section. The mechanism worked the moment it landed.
+
+### Didn't Work
+
+- **Partial DRY extraction in T6.3.** The implementer extracted `util/run-scanner.ts` and used it for T6.3, but left T6.1's `anti-patterns.validate.ts` + T6.2's `adopter-manifests.scenarios.ts` inlining their own `spawn('tsx', ...)` blocks (DONE status with a "flagged for follow-up" line). Per `agent-discipline.md`'s "no temporary fallbacks" rule, this is the "Wave 2 deferred" shape the project explicitly closes off. Re-dispatched immediately for the migration (commit `ba030239`); the same agent then flagged `clone-detector.validate.ts` as still inlining; one more cleanup commit (`2697dc65`) completed it. Three commits where two would have done if the original implementer had migrated all sites in T6.3.
+
+- **T7.1 migration's three-bug debug arc.** The implementer's self-review caught:
+  1. Migration matched by FULL `members` string including line ranges, defeating the whole point of T7.1. Fixed with two-phase matching (exact full-members first, shift-tolerant bare-paths-+-lines second).
+  2. Pair-fingerprint collision in 3+-way clones — jscpd reports different but content-identical fragment slices for A↔B, A↔C, B↔C. Fixed by aggregating the SET of pair-level fragment-shas in the collapsed group.
+  3. `migrate-clone-ids.ts`'s `main()` ran as an import side effect when the validator imported it for pure-function testing — would have written the live clones.yaml. Caught by the validator's git-status checks during testing; fixed by guarding `main()` behind `isCliEntryPoint()`. The third bug is the dangerous one — the validator infrastructure itself caught what would have been silent data loss.
+
+- **T7.5 post-commit hook used wrong git directory.** First commit's hook used `git rev-parse --git-path hooks` which resolved to the tracked `.githooks/` dir under `core.hooksPath`, writing sentinels into a place that shouldn't be polluted. Fixed in `37c62cb9` to use `--git-common-dir/hooks-sentinels/` (worktree-aware, strictly outside the tree). The fix is the right `git rev-parse` invocation; the failure mode is "looks right at glance, wrong under repo configuration the developer hasn't tested against."
+
+### Course Corrections
+
+- **[DRY-DISCIPLINE] When a sub-agent flags "left for follow-up," re-dispatch it now.** T6.3's "flagged for cleanup" line was exactly the deferral shape `agent-discipline.md` names. The right move (made this session) was an immediate cleanup re-dispatch, not adding it to a backlog. Re-dispatching is cheap; the deferral compounds.
+
+- **[CONTROLLER-IS-THE-GATE] Re-run the test suite after every implementer commit before pushing.** Per the project's "When CI is absent" rule, ran `pnpm test:scope-discovery` + `tsx tools/scope-discovery/clone-detector.ts --quiet` independently after each of the 14 commits in this session. Caught zero discrepancies (implementers reported correct counts every time), but the discipline is the structural check, not the catch rate.
+
+- **[SHARED-UTILS] Build the SSOT, then migrate all consumers.** T6.2's `util/registry-yaml.ts` extraction was correct; T6.3's `util/run-scanner.ts` was correct in shape but incomplete in coverage (didn't migrate T6.1/T6.2/clone-detector). The rule for future extractions: when extracting a utility, do the same-commit migration of EVERY call site. "I'll migrate the rest later" is the same-shape deferral.
+
+- **[VALIDATOR-INFRASTRUCTURE-CATCHES-BUGS-IT-WASN'T-DESIGNED-TO-FIND] The clone-id-stability validator caught a side-effect import bug it wasn't checking for.** Scenario design checked stability; the side-effect bug surfaced because the scenarios IMPORTED the migration module. The discipline: build the validator as if you might import it; guard `main()` behind `isCliEntryPoint()` always.
+
+- **[GIT-EDGE-CASES] `git rev-parse --git-path` resolves under `core.hooksPath`.** First commit of T7.5's `--no-verify` logging used the wrong invocation. `--git-common-dir/hooks-sentinels/` is the worktree-aware, hooks-path-independent location for hook bookkeeping. Filed memory candidate but the file size is approaching the cap; restraint applied.
+
+- **[PHASE-SCOPE-DISCIPLINE] Polish bundle audit BEFORE implementation.** T7.5's 8 items were written when Phase 7 was still being designed. The dispatch instructed the implementer to audit each item against the current state first; result: 1 item (batch-dispose `--show-existing`) was already done in T7.4. Saved one round-trip of redundant work.
+
+### Quantitative
+
+- **Commits this session continuation:** 14 on `feature/scope-discovery-protocol`. Range: `fa6cb870` (start; T5.4 landed pre-compaction) → `37c62cb9` (HEAD; T7.5 sentinel fix).
+- **Phases closed:** 3 (5, 6, 7). Phase 4 remains operator-deferred to the roland-bugfix branch.
+- **Tasks completed:** 13 (T5.4 verification + push, T6.1–T6.6, T7.1–T7.5).
+- **Sub-agent dispatches:** ~14 implementer dispatches + 2 cleanup re-dispatches in T6.3.
+- **Validator scenarios added:** 170 - 75 (start) = +95 across the session. Per-validator: anti-patterns 6, adopter-manifests 9, editor-symmetry 11, deprecation-scan 12, regime-holdout-detector 9, check-deps 6, clone-summary 13, batch-dispose 13, clone-id-stability 9, synthesis-warnings 2, prd-themed-pattern-hunter 3, clone-detector +2 (polish).
+- **Clone baseline:** stayed at `495 groups; 0 NEW; 0 DROPPED` throughout (T7.1 migration was ID-only; semantics preserved).
+- **Real-tree findings produced this session:** 3 deprecated files (T6.4); 87 pending-touching clone groups in roland-sxx0-editor (T7.3); 0 anti-pattern / adopter / symmetry holdouts (registries empty until refactor work populates them).
+- **DRY extractions added:** `util/registry-yaml.ts`, `util/glob.ts`, `util/run-scanner.ts`, `util/editors.ts`, `clones-yaml.id.ts`. T6.1's anti-patterns module dropped 198 → 149 lines on the T6.2 extraction.
+- **Files added or significantly modified:** ~50 across the 14 commits (CLIs, validators, fixtures, scenarios, agent prompts, docs).
+- **User messages this session continuation:** 1 ("keep going").
+
+### Insights
+
+- **Building the gate that catches the gate's own bugs.** The clone-id-stability validator was designed to catch line-shift instability. It also caught (a) a migration that matched on the wrong key, (b) a pair-fingerprint collision in 3+-way clones, and (c) a side-effect import that would have silently overwritten the live clones.yaml. The lesson generalizes: a well-designed validator catches more than its scenarios name, because the scenarios exercise the full code path. Build the scenarios as realistic dry-runs of the real workflow, not minimal-coverage stubs.
+
+- **Real-tree numbers vs forward projections.** Phase 6's original PRD expansion estimated `5+5+1+6+3` holdout entries across the four scan types. The real-tree smoke at T6.5 produced `0+0+0+3 = 3`. The placeholders were forward projections from before the gates were built; the empty registries (no refactor work yet) yield no findings. The workplan's "Note from the operator" anticipated this and explicitly said "report the real number." Discipline: never carry a forward-projected number into a "proven complete when" gate; report what the scan actually finds.
+
+- **The DRY ratchet works when applied immediately.** T6.2's extraction (`util/registry-yaml.ts` + `util/glob.ts`) saved ~50 lines on T6.1's existing module + landed T6.2 without copy-paste. T6.3's extraction (`util/run-scanner.ts`) almost shipped half-migrated — the immediate re-dispatch closed the gap before the partial state could ossify. A tool that doesn't migrate all sites is debt; the same-commit migration discipline is the difference.
+
+- **Pre-commit can't catch its own bypass; complementary pairs can.** T7.5's `--no-verify` logging mechanism is structurally interesting: post-commit writes a sentinel for commits that DID run pre-commit; pre-push reads the sentinel and warns for any commit in the pushed range missing a sentinel entry. The mechanism is necessarily non-blocking (operators with explicit deferral approval would otherwise need a flag dance) and necessarily noisy on first install (no sentinel history yet). Both limitations are explicit, documented, and acceptable.
+
+- **The "tooling-feedback.md → /dwe" pattern produced real value.** The bugfix branch's feedback file named 6 must-have items + the operator's test-precondition addition; these became Phases 5/6/7. Every item was concrete, source-cited, and shippable. The discipline for future expansion passes: route operator feedback into the workplan as named, gated, testable tasks — not as aspirational backlog items.
+
+- **Adversarial validators with gutted-stub self-checks are the project's signature pattern.** Every new validator added this session (anti-patterns, adopter-manifests, editor-symmetry, deprecation-scan, regime-holdout, check-deps, clone-summary, batch-dispose, clone-id-stability, synthesis-warnings, prd-themed-pattern-hunter, clone-detector polish) includes at least one gutted-stub scenario that proves the rejection assertions have teeth. The pattern: stub the validator's load-bearing logic to always pass; assert the test-suite REJECTS the stub. Without this, a regressed validator that always returns success would silently pass all scenarios. Twelve validators all carrying this pattern means every gate in the scope-discovery suite is self-verifying.
+
+- **The dispatch wrapper this feature builds catches the same bugs the implementer caught in implementing it.** T7.1's three-bug debug arc was caught by the implementer's self-review + the validator infrastructure. The dispatch wrapper grammar (`Searched: / Included: / Excluded:`) would catch the same shape of "report looks complete but skips parts of the audit" failure in a downstream system-wide change. The protocol that this feature implements would, retroactively, have prevented several of this feature's own fix-pass loops. Closed loop.
+
+- **Phase 4 closure operates on a different timescale than Phases 5–7.** Phase 4 is "drain 495 dispositions"; Phases 5–7 are "build the tools to drain them safely." Phase 4's natural closure is on the bugfix branch where refactor work is already scheduled. The architectural decision (made earlier in this session pre-compaction): ship the tools now, drain on the active branch as natural by-product. Phases 5–7 are now the tools-shipped state; Phase 4 closes when the bugfix branch's burndown finishes. Not deferral — the gates stay binding — but timeline-decoupled.

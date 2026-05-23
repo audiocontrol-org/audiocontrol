@@ -1,0 +1,49 @@
+{
+  "agent": "regime-holdout-detector",
+  "featureSlug": "scope-discovery-protocol",
+  "findings": [
+    {
+      "source": "deprecation",
+      "id": "modules/roland-sxx0-editor/src/components/ui/EnvelopeDisplay.tsx",
+      "file": "modules/roland-sxx0-editor/src/components/ui/index.ts",
+      "line": 7,
+      "shape": "imports deprecated file 'modules/roland-sxx0-editor/src/components/ui/EnvelopeDisplay.tsx' (marker: jsdoc)",
+      "replacement": "migrate per the file's @deprecated note — Phase 9 Task 4 TonesPage amend introduced `AcEnvelope`",
+      "evidence": {
+        "registryPath": "modules/roland-sxx0-editor/src/components/ui/EnvelopeDisplay.tsx",
+        "registryId": "@deprecated"
+      }
+    },
+    {
+      "source": "deprecation",
+      "id": "modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx",
+      "file": "modules/roland-sxx0-editor/src/components/ui/index.ts",
+      "line": 8,
+      "shape": "imports deprecated file 'modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx' (marker: jsdoc)",
+      "replacement": "migrate per the file's @deprecated note — Phase 9 Task 4 TonesPage amend replaced this component",
+      "evidence": {
+        "registryPath": "modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx",
+        "registryId": "@deprecated"
+      }
+    },
+    {
+      "source": "deprecation",
+      "id": "modules/sampler-backup/src/lib/backup/path-conventions.ts",
+      "file": "modules/sampler-backup/src/cli/migrate.ts",
+      "line": 20,
+      "shape": "imports deprecated file 'modules/sampler-backup/src/lib/backup/path-conventions.ts' (marker: jsdoc)",
+      "replacement": "migrate per the file's @deprecated note — Import from '@audiocontrol/sampler-lib' instead",
+      "evidence": {
+        "registryPath": "modules/sampler-backup/src/lib/backup/path-conventions.ts",
+        "registryId": "@deprecated"
+      }
+    }
+  ],
+  "meta": {
+    "anti_pattern_count": 0,
+    "adopter_manifest_count": 0,
+    "editor_symmetry_holdout_count": 0,
+    "deprecation_count": 3,
+    "total": 3
+  }
+}

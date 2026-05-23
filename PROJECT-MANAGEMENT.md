@@ -223,6 +223,16 @@ docs/
 | Lowercase only    | `patch-copy`           |
 | Hyphen-separated  | `tone-export`          |
 
+### Workplan Reminder — Primitive Extraction Updates the Regime-Holdout Registries
+
+When a phase or task in `workplan.md` EXTRACTS or PROMOTES a primitive (component, hook, util) to a shared location, the same commit (or its sibling) should append entries to the scope-discovery regime-holdout registries:
+
+- `docs/scope-discovery/anti-patterns.yaml` — fingerprint the legacy shape the primitive replaces so reimplementations are flagged by the pre-commit gate.
+- `docs/scope-discovery/adopter-manifests.yaml` — declare the expected adopter glob so non-adopters are flagged by the pre-commit gate.
+- Regenerate `docs/scope-discovery/editor-symmetry.md` (`make check-editor-symmetry-write`) when the manifest targets `modules/*-editor/`.
+
+See [`docs/scope-discovery/README.md`](./docs/scope-discovery/README.md) §"Regime-holdout discovery" for the conceptual model and [`docs/scope-discovery/LAYOUT.md`](./docs/scope-discovery/LAYOUT.md) §"Phase 6 regime-holdout artifacts" for the per-artifact schemas.
+
 ---
 
 ## Branch and Workplan Requirements

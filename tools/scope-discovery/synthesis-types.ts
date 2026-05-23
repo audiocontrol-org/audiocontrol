@@ -77,6 +77,47 @@ export interface ManifestModule {
 }
 
 /**
+ * Per-source regime-holdout entry shape, emitted under the manifest's
+ * `regime_holdouts` section. Mirrors the discovery agent's per-finding
+ * shape minus the `source` discriminator (the source is implied by
+ * the bucket the entry lands in).
+ */
+export interface ManifestRegimeHoldoutEntry {
+  readonly id: string;
+  readonly file: string;
+  readonly line?: number;
+  readonly shape: string;
+  readonly replacement: string;
+  readonly evidence: {
+    readonly registry_path: string;
+    readonly registry_id: string;
+  };
+}
+
+export interface ManifestRegimeHoldoutMeta {
+  readonly total: number;
+  readonly by_source: {
+    readonly anti_pattern: number;
+    readonly adopter_manifest: number;
+    readonly editor_symmetry: number;
+    readonly deprecation: number;
+  };
+}
+
+/**
+ * Top-level `regime_holdouts:` section. Produced by the synthesis
+ * pass when a `regime-holdout-detector` agent finding is supplied;
+ * absent when the agent was not run.
+ */
+export interface ManifestRegimeHoldouts {
+  readonly anti_patterns: ReadonlyArray<ManifestRegimeHoldoutEntry>;
+  readonly adopter_manifests: ReadonlyArray<ManifestRegimeHoldoutEntry>;
+  readonly editor_symmetry: ReadonlyArray<ManifestRegimeHoldoutEntry>;
+  readonly deprecations: ReadonlyArray<ManifestRegimeHoldoutEntry>;
+  readonly meta: ManifestRegimeHoldoutMeta;
+}
+
+/**
  * In-memory manifest shape. JSON-serializable; `yaml.stringify()`
  * produces the canonical scope-manifest.yaml output. snake_case field
  * names mirror the schema verbatim so the YAML output stays readable
@@ -93,6 +134,7 @@ export interface ScopeManifest {
   readonly discovery_themes: ReadonlyArray<string>;
   readonly routes?: ReadonlyArray<ManifestRoute>;
   readonly modules?: ReadonlyArray<ManifestModule>;
+  readonly regime_holdouts?: ManifestRegimeHoldouts;
   readonly notes?: string;
 }
 
@@ -114,5 +156,17 @@ export interface SynthesisOutput {
     readonly agentsConsumed: ReadonlyArray<string>;
     readonly dedupCount: number;
     readonly findingsCount: number;
+    /**
+     * Non-fatal synthesizer notes (T7.5 polish): things the operator
+     * should know about how the manifest was derived. Includes:
+     *   - missing PRD References/Appendix (defaulted to PRD+LAYOUT.md)
+     *   - empty regime-holdout findings (no detector ran)
+     *   - kind=ui but only one route detected (likely an under-walked
+     *     UI surface)
+     * Empty array when synthesis produced no notes. The scope-inventory
+     * skill renders these under a `## Synthesizer notes` section in
+     * `<run-dir>/synthesis.md`.
+     */
+    readonly warnings: ReadonlyArray<string>;
   };
 }

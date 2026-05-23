@@ -1,8 +1,10 @@
 # scope-discovery-protocol
 
-**Status:** In Progress
+**Status:** PR Open ([#446](https://github.com/audiocontrol-org/audiocontrol/pull/446))
 **Feature Branch:** `feature/scope-discovery-protocol`
 **Worktree:** `~/work/audiocontrol-work/audiocontrol-scope-discovery-protocol/`
+
+Phases 5/6/7 ship via [PR #446](https://github.com/audiocontrol-org/audiocontrol/pull/446). Phases 1-3 shipped earlier via [PR #441](https://github.com/audiocontrol-org/audiocontrol/pull/441). Phase 4 closure (T4.2/T4.3/T4.6) operator-deferred to the post-s550 bugfix branch's burndown.
 
 A protocol that makes the agent's first move on a system-wide change an *upfront inventory pass* rather than a *reactive single-fix loop*, and that enforces sibling-enumeration on every code-writing sub-agent dispatch via a programmatic wrapper. Motivated by the Roland S-330/S-550 editor v3 redesign, which spent ~230 operator turns over 60 hours doing brute-force discovery the agent should have done in 10–15 minutes at session start.
 
@@ -12,10 +14,13 @@ The design treats agent-side enforcement as code, not directives — passive rul
 
 | Phase | Status | GitHub Issue | Notes |
 |-------|--------|--------------|-------|
-| Phase 1 — Refinement | In Progress | [#436](https://github.com/audiocontrol-org/audiocontrol/issues/436) | Open Questions resolved (T1.1–T1.6 complete); T1.7 complete (issues created — this row reflects them). |
-| Phase 2 — Foundation Tooling | Complete | [#437](https://github.com/audiocontrol-org/audiocontrol/issues/437) | T2.1–T2.8 complete. Manifest schema + clone detector + pre-commit gate + dispatch wrapper + return-grammar parser + both adversarial validators + discovery-evidence layout + `pnpm test:scope-discovery` all in place. Both validator harnesses pass (498-group clone baseline; 43/43 wrapper scenarios); combined runtime ~4s. |
-| Phase 3 — Skills + session-start preamble | Planning | [#438](https://github.com/audiocontrol-org/audiocontrol/issues/438) | Build `/scope-inventory` and `/scope-widen` skills implementing the multi-agent discovery model; update `.dw-lifecycle/config.json` session.start.preamble to remind the operator to invoke `/scope-inventory` for system-wide features (no `dw-lifecycle` plugin modification). Smoke-test against complete s550-support feature. |
-| Phase 4 — Validation by Drain | Planning | [#439](https://github.com/audiocontrol-org/audiocontrol/issues/439) | Run the tooling against `modules/*/src/`; disposition every clone group; refactor every `refactor`-marked entry; paper-test against s550 redesign timeline (≥85% coverage). Feature is not done until `clones.yaml` has zero un-dispositioned entries. |
+| Phase 1 — Refinement | Complete | [#436](https://github.com/audiocontrol-org/audiocontrol/issues/436) | Open Questions resolved into binding answers + GitHub issues filed. |
+| Phase 2 — Foundation Tooling | Complete | [#437](https://github.com/audiocontrol-org/audiocontrol/issues/437) | Manifest schema + clone detector + pre-commit gate + dispatch wrapper + return-grammar parser + both adversarial validators + discovery-evidence layout + `pnpm test:scope-discovery` all merged in PR #441. |
+| Phase 3 — Skills + session-start preamble | Complete | [#438](https://github.com/audiocontrol-org/audiocontrol/issues/438) | `/scope-inventory` + `/scope-widen` skills + 4 discovery agents + synthesis pass + session.start.preamble nudge. Smoke-test 81.3% coverage + paper-test 87.5% combined against s550 redesign's 32 surfaces (≥85% gate PASS). |
+| Phase 4 — Validation by Drain | In Progress | [#439](https://github.com/audiocontrol-org/audiocontrol/issues/439) | T4.1 / T4.4 / T4.5 shipped via PR #441. T4.2 / T4.3 / T4.6 deferred to the active post-s550 bugfix branch (per the reframe in workplan §"Branch reframe"); feature flips to `003-COMPLETE/` when that branch's burndown finishes. |
+| Phase 5 — Refactor Preconditions (CRITICAL) | Complete | [#443](https://github.com/audiocontrol-org/audiocontrol/issues/443) | `clones.yaml` discriminated union: refactor entries carry `canonical_side: <file>\|"all"\|"new"` + `tests` + `tests_proof.sha`. Commit-msg hook gates `Closes clones.yaml <id>` markers via runtime validator (canonical-side file existence + sha resolves in git + named test commands' exit codes). Per-branch verification language in code-reviewer + codebase-auditor agent prompts; dispatch wrapper carries conditional refactor-context prelude. Adversarial validator covers 8 rejection paths + gutted-stub self-check. |
+| Phase 6 — Regime-Holdout Discovery | Complete | [#444](https://github.com/audiocontrol-org/audiocontrol/issues/444) | Anti-pattern registry + adopter manifests + cross-editor symmetry checker + deprecation-driven scan + new `regime-holdout-detector` agent joining `/scope-inventory`'s fleet. Four pre-commit gates (anti-patterns blocks; adopter-manifests blocks; editor-symmetry read-only; deprecation informational). `regime_holdouts:` top-level section in `scope-manifest.yaml`. Docs in `docs/scope-discovery/README.md` §"Regime-holdout discovery" + `LAYOUT.md` §"Phase 6 regime-holdout artifacts". |
+| Phase 7 — Tooling Hardening + Operator QoL | Complete | [#445](https://github.com/audiocontrol-org/audiocontrol/issues/445) | Content-hashed clone-group IDs (no more line-shift orphaning), self-installing `make scope-inventory`, `make clone-summary`, upstreamed `batch-dispose.ts`, polish bundle (clone-detector `--diff` + `--refresh-baseline` summary line; URL-stripping tokenizer; `## Synthesizer notes` plumbing via `--notes-out`; `pnpm test:scope-discovery` cross-reference; `make install-hooks` gate enumeration; post-commit + pre-push pair catching `--no-verify` bypass). `pnpm test:scope-discovery` reports 170 scenarios passing. |
 
 ## Resolved Questions
 

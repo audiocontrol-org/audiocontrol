@@ -99,6 +99,74 @@ export interface PrdThemedFindings {
 }
 
 /**
+ * Source bucket a regime-holdout finding came from. Mirrors the four
+ * T6.1–T6.4 gates the T6.5 detector fuses:
+ *   - 'anti-pattern'     — code matches a registered legacy shape
+ *     (T6.1 anti-patterns.yaml).
+ *   - 'adopter-manifest' — file matches a manifest's expected-adopter
+ *     glob but does NOT import the canonical primitive (T6.2
+ *     adopter-manifests.yaml).
+ *   - 'editor-symmetry'  — one editor in a multi-editor manifest fails
+ *     to adopt while peers do (T6.3 editor-symmetry matrix).
+ *   - 'deprecation'      — an importer of a `@deprecated` file is
+ *     blocking the file's deletion (T6.4 deprecation queue).
+ */
+export type RegimeHoldoutSource =
+  | 'anti-pattern'
+  | 'adopter-manifest'
+  | 'editor-symmetry'
+  | 'deprecation';
+
+/**
+ * Back-pointer to the registry entry that caught a holdout. Lets the
+ * synthesized manifest carry traceable evidence: an operator reading
+ * the manifest can grep `registryPath` for `registryId` and find the
+ * exact entry whose pattern matched. Empty `registryId` is allowed for
+ * sources that do not key on a single registry id (e.g.,
+ * editor-symmetry cells reference `<manifest-id>:<editor>`).
+ */
+export interface RegimeHoldoutEvidence {
+  /** Repo-relative path of the registry / scan output that caught the holdout. */
+  readonly registryPath: string;
+  /** Stable identifier within the registry (anti-pattern id, manifest id, or composite). */
+  readonly registryId: string;
+}
+
+/** One regime-holdout finding. */
+export interface RegimeHoldoutFinding {
+  /** Which gate caught it. */
+  readonly source: RegimeHoldoutSource;
+  /** Registry / manifest / file identifier (back-pointer-friendly). */
+  readonly id: string;
+  /** Repo-relative POSIX path of the offending file. */
+  readonly file: string;
+  /** 1-based source line; undefined for whole-file findings (e.g., adopter-manifest holdouts). */
+  readonly line?: number;
+  /** Human description of the legacy / missing / drifted shape. */
+  readonly shape: string;
+  /** Human description of the canonical replacement. */
+  readonly replacement: string;
+  /** Evidence back-pointer for operator traceability. */
+  readonly evidence: RegimeHoldoutEvidence;
+}
+
+/** Per-source counts + total — surfaced verbatim by the synthesis pass. */
+export interface RegimeHoldoutMeta {
+  readonly anti_pattern_count: number;
+  readonly adopter_manifest_count: number;
+  readonly editor_symmetry_holdout_count: number;
+  readonly deprecation_count: number;
+  readonly total: number;
+}
+
+export interface RegimeHoldoutFindings {
+  readonly agent: 'regime-holdout-detector';
+  readonly featureSlug: string;
+  readonly findings: ReadonlyArray<RegimeHoldoutFinding>;
+  readonly meta: RegimeHoldoutMeta;
+}
+
+/**
  * Discriminated union covering every shape a discovery agent can emit.
  * Consumers branch on `finding.agent` for type-safe narrowing — no
  * `as` casts, no `any` bag of properties.
@@ -107,7 +175,8 @@ export type DiscoveryAgentFinding =
   | UiRouteFindings
   | AstGrepMatrixFindings
   | CloneDetectorFindings
-  | PrdThemedFindings;
+  | PrdThemedFindings
+  | RegimeHoldoutFindings;
 
 /** Discriminator literal — exported so consumers can switch exhaustively. */
 export type DiscoveryAgentName = DiscoveryAgentFinding['agent'];
@@ -146,8 +215,19 @@ export function isPrdThemedFindings(v: unknown): v is PrdThemedFindings {
   return v['agent'] === 'prd-themed-pattern-hunter' && Array.isArray(v['themes']);
 }
 
+export function isRegimeHoldoutFindings(
+  v: unknown,
+): v is RegimeHoldoutFindings {
+  if (!isPlainObject(v)) return false;
+  return (
+    v['agent'] === 'regime-holdout-detector' &&
+    Array.isArray(v['findings']) &&
+    isPlainObject(v['meta'])
+  );
+}
+
 /**
- * Combined predicate covering all four shapes. Returns true when the
+ * Combined predicate covering all five shapes. Returns true when the
  * value matches any agent's structural contract; the per-agent
  * predicates above narrow further.
  */
@@ -158,6 +238,7 @@ export function isDiscoveryAgentFinding(
     isUiRouteFindings(v) ||
     isAstGrepMatrixFindings(v) ||
     isCloneDetectorFindings(v) ||
-    isPrdThemedFindings(v)
+    isPrdThemedFindings(v) ||
+    isRegimeHoldoutFindings(v)
   );
 }

@@ -42,52 +42,49 @@
  */
 
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import {
+  type CloneGroup,
   type ClonesYaml,
   parseClonesYaml,
   serializeClonesYaml,
 } from './clones-yaml.js';
+import {
+  scenarioBadTestsProofSha,
+  scenarioCanonicalSideAll,
+  scenarioCanonicalSideFilePath,
+  scenarioCanonicalSideNew,
+  scenarioMalformedTestsElement,
+  scenarioMissingCanonicalReason,
+  scenarioMissingTestsField,
+} from './clone-detector.refactor-scenarios.js';
+import {
+  cleanupPolishFixtures,
+  scenarioDiffFlagSubsetOnly,
+  scenarioRefreshBaselineSummaryLine,
+} from './clone-detector.polish-scenarios.js';
+import { runScannerSubprocess, type ScannerRun } from './util/run-scanner.js';
 import { errorMessage } from './util/typeguards.js';
 
 const DETECTOR_ENTRY = 'tools/scope-discovery/clone-detector.ts';
 const TMP_ROOT = '.tmp';
 
-interface DetectorRun {
-  readonly code: number;
-  readonly stdout: string;
-  readonly stderr: string;
-}
-
 /**
- * Run the detector as a subprocess against a fixture directory. We
- * spawn `tsx` directly — same shape as the pre-commit hook + the
- * `make check-clone-duplication` target — so the gate we're validating
+ * Thin wrapper over the shared `runScannerSubprocess` helper that pins
+ * the default `entry` to this validator's scanner-under-test
+ * (clone-detector.ts). The signature mirrors the shape used by the
+ * other migrated validators (anti-patterns, adopter-manifests,
+ * editor-symmetry) so call sites stay uniform across the suite. Same
+ * `spawn('tsx', ...)` shape as the pre-commit hook + the
+ * `make check-clone-duplication` target — the gate we're validating
  * is the same gate developers run.
+ *
+ * Migrated onto util/run-scanner in continuation of ba030239; semantically
+ * equivalent to the prior local helper (same stdio config, same accumulation,
+ * same null-code rejection, same resolve shape).
  */
-function runDetector(args: readonly string[]): Promise<DetectorRun> {
-  return new Promise((resolvePromise, rejectPromise) => {
-    const proc = spawn('tsx', [DETECTOR_ENTRY, ...args], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    let stdout = '';
-    let stderr = '';
-    proc.stdout.on('data', (chunk: Buffer) => {
-      stdout += chunk.toString('utf8');
-    });
-    proc.stderr.on('data', (chunk: Buffer) => {
-      stderr += chunk.toString('utf8');
-    });
-    proc.on('error', rejectPromise);
-    proc.on('close', (code) => {
-      if (code === null) {
-        rejectPromise(new Error(`detector terminated by signal; stderr:\n${stderr}`));
-        return;
-      }
-      resolvePromise({ code, stdout, stderr });
-    });
-  });
+function runDetector(args: readonly string[], entry = DETECTOR_ENTRY): Promise<ScannerRun> {
+  return runScannerSubprocess(entry, args);
 }
 
 /**
@@ -178,7 +175,7 @@ function fail(name: string, detail: string): ScenarioResult {
   return { name, passed: false, detail };
 }
 
-type RunDetectorFn = (args: readonly string[]) => Promise<DetectorRun>;
+type RunDetectorFn = (args: readonly string[]) => Promise<ScannerRun>;
 
 /**
  * Core assertion for scenario 1: given a detector function (real or
@@ -292,13 +289,24 @@ async function scenarioIgnoreWithJustification(): Promise<ScenarioResult> {
       `expected at least one baseline entry; parsed:\n${baselineText}`,
     );
   }
+  // Construct each mutated entry explicitly from the common-base fields
+  // (no spread). A `{...g, disposition: 'ignore-with-justification'}` form
+  // would carry forward refactor-only fields if g happened to be a
+  // RefactorCloneGroup, producing an in-memory value that the TS compiler
+  // accepts but which violates the discriminated union (a non-refactor
+  // disposition paired with refactor-only fields). Fix 2 from T5.1's
+  // code-review follow-ups.
   const mutated: ClonesYaml = {
     generated_at: parsed.generated_at,
-    clones: parsed.clones.map((g) => ({
-      ...g,
-      disposition: 'ignore-with-justification',
-      reason: 'harness: legitimate near-duplicate, not refactor candidate',
-    })),
+    clones: parsed.clones.map(
+      (g): CloneGroup => ({
+        id: g.id,
+        lines: g.lines,
+        members: g.members,
+        disposition: 'ignore-with-justification',
+        reason: 'harness: legitimate near-duplicate, not refactor candidate',
+      }),
+    ),
   };
   await writeFile(fixture.baseline, serializeClonesYaml(mutated), 'utf8');
   const second = await runDetector(detectorArgs(fixture));
@@ -405,15 +413,40 @@ async function cleanupTmp(): Promise<void> {
     // .tmp/ may not exist on a fresh checkout; that's fine.
     void err;
   }
+  // The polish-scenarios file uses its own prefix; delegate cleanup so
+  // the symmetric concern stays co-located with the scenarios.
+  await cleanupPolishFixtures();
+}
+
+/**
+ * The refactor-precondition scenarios (T5.1) test `parseClonesYaml`
+ * directly against hand-crafted YAML — they exercise the parse-time
+ * enforcement layer without running jscpd. We wrap each sync function
+ * in an async adapter so the existing scheduler treats them uniformly
+ * with the subprocess-driven scenarios above.
+ */
+type Scenario = () => Promise<ScenarioResult>;
+
+function adapt(syncScenario: () => ScenarioResult): Scenario {
+  return async () => syncScenario();
 }
 
 async function main(): Promise<number> {
   await mkdir(TMP_ROOT, { recursive: true });
-  const scenarios = [
+  const scenarios: Scenario[] = [
     scenarioNewClone,
     scenarioDroppedClone,
     scenarioIgnoreWithJustification,
     scenarioGuttedLogicSelfCheck,
+    adapt(scenarioCanonicalSideFilePath),
+    adapt(scenarioCanonicalSideAll),
+    adapt(scenarioCanonicalSideNew),
+    adapt(scenarioMissingTestsField),
+    adapt(scenarioMalformedTestsElement),
+    adapt(scenarioBadTestsProofSha),
+    adapt(scenarioMissingCanonicalReason),
+    scenarioDiffFlagSubsetOnly,
+    scenarioRefreshBaselineSummaryLine,
   ];
   const results: ScenarioResult[] = [];
   try {
