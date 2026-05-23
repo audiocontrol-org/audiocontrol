@@ -273,12 +273,8 @@ adopter_manifests:
         reason: |
           pending ROLAND-BUGFIX-V3-IMPORT — currently on legacy Radix Dialog
           chrome; v3 SlideDrawer migration deferred.
-      - path: 'modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx'
-        issue: 'https://github.com/audiocontrol-org/audiocontrol/issues/450'
-        reason: |
-          pending ROLAND-BUGFIX-V3-IMPORT — currently on legacy Radix Dialog
-          chrome; v3 SlideDrawer migration deferred. Closes BUG-002 (import
-          dialog empty catches) in the same migration.
+      # ImportSamplesDialog.tsx migrated to v3 SlideDrawer in
+      # V3-IMPORT sub-task 3 of #450 — removed from tracked_holdouts.
       # ImportSampleDialog + ImportToneDialog were dead-code orphans
       # (defined but never JSX-mounted; the production path uses
       # useLibraryImportDialogs + ImportLibraryToneDialog). Deleted as

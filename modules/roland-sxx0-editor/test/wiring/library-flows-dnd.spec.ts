@@ -356,17 +356,60 @@ test.describe('Capabilities — Library DnD (Wave 5)', () => {
 
     await simulateDragAndDrop(page, sourceNode, target);
 
-    // `ImportSamplesDialog.tsx:194` renders the title.
+    // V3-IMPORT (#450): title is now sentence-case ("Import samples")
+    // per the v3 design language convention shared with the Export*
+    // family (e.g. "Export tone to library").
     await expect(
-      page.getByRole('heading', { name: 'Import Samples' }),
+      page.getByRole('heading', { name: 'Import samples' }),
     ).toBeVisible({ timeout: 10_000 });
     // Content-defining affordance: the Memory Map panel (containing
     // both ToneSlotMap and WaveSegmentMap) renders only when the
     // dialog has a valid bundle.
     await expect(page.getByText('Memory Map')).toBeVisible();
     // The starting-tone-slot select is the canonical interaction
-    // affordance (`ImportSamplesDialog.tsx:298`).
+    // affordance.
     await expect(page.locator('#startingToneSlot')).toBeVisible();
+  });
+
+  test('D-LIB-IMPORT-SAMPLES-V3-01: ImportSamplesDialog mounts the v3 SlideDrawer chrome (ac-drawer-panel + sentence-case title)', async ({ page }) => {
+    // Pins the v3 chrome shape for ImportSamplesDialog. Pre-migration
+    // the dialog used Radix.Dialog (centered overlay), which does NOT
+    // produce a `.ac-drawer-panel` element. Post-migration the dialog
+    // is a right-edge SlideDrawer that mounts `.ac-drawer-panel`
+    // inline (NO Portal) with sentence-case title "Import samples".
+    //
+    // Added 2026-05-23 BEFORE the V3-IMPORT sub-task 3 migration.
+    // Must fail against the legacy Radix.Dialog chrome and pass
+    // after. Closes V3-IMPORT (#450) sub-task 3.
+    const sampleName = 'chopped-sine';
+    await page.goto(LIBRARY_URL);
+    await cleanupOPFS(page);
+    await seedOPFSSample(page, { fixtureName: sampleName });
+    await connectLibraryOPFS(page);
+
+    const sourceNode = page.getByTestId(`library-sample-${sampleName}`);
+    await expect(sourceNode).toBeVisible({ timeout: 5_000 });
+
+    const target = devicePanelDropTarget(page);
+    await expect(target).toBeVisible({ timeout: 5_000 });
+
+    await simulateDragAndDrop(page, sourceNode, target);
+
+    // v3 chrome marker: SlideDrawer mounts `.ac-drawer-panel`. The
+    // legacy Radix.Dialog code mounts `.fixed top-1/2 left-1/2 ...`
+    // inside a `Dialog.Portal` and produces NO `.ac-drawer-panel`
+    // node.
+    const drawerPanel = page.locator('.ac-drawer-panel');
+    await expect(drawerPanel).toBeVisible({ timeout: 10_000 });
+
+    // Sentence-case title matches the v3 design language. The legacy
+    // chrome used "Import Samples" (title-case); v3 uses "Import
+    // samples" (sentence-case) per the convention ExportToneDialog
+    // applies ("Export tone to library"). Pinning the heading
+    // directly is more reliable than role+name resolution because
+    // SlideDrawer doesn't set `aria-labelledby`.
+    const drawerTitle = page.locator('.ac-drawer-title');
+    await expect(drawerTitle).toHaveText(/Import samples/i, { timeout: 5_000 });
   });
 
   test('D-LIB-21: WaveSegmentMap renders inside the ImportSamplesDialog mounted via DnD', async ({ page }) => {
@@ -390,7 +433,7 @@ test.describe('Capabilities — Library DnD (Wave 5)', () => {
     await simulateDragAndDrop(page, sourceNode, target);
 
     await expect(
-      page.getByRole('heading', { name: 'Import Samples' }),
+      page.getByRole('heading', { name: 'Import samples' }),
     ).toBeVisible({ timeout: 10_000 });
 
     // The "Wave Memory" label is the `WaveSegmentMap`-region heading
