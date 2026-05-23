@@ -120,7 +120,7 @@ Resolution:
 ## AUDIT-20260522-04
 
 Finding-ID: AUDIT-20260522-04
-Status:     open
+Status:     verified-2026-05-22
 Severity:   medium
 Surface:    tools/scope-discovery/check-anti-patterns.ts, tools/scope-discovery/anti-patterns-registry.ts, docs/scope-discovery/anti-patterns.yaml schema
 
@@ -148,6 +148,11 @@ Fix guidance:
 - Adversarial validator scenarios: (a) canonical file excluded + matches shape → no finding; (b) holdout file matching shape → finding still fires; (c) malformed exclude pattern → registry parse error.
 
 External tracking: ROLAND-BUGFIX-T6.1-EXCLUDE (filed on bugfix branch as consumer-side tracking; this audit-log entry is protocol-side).
+
+Resolution:
+- Corrected mechanism (commit `914710a2`): added optional `excludes_paths:` field to the anti-pattern registry schema. `AntiPatternEntry` gains `readonly excludesPaths: readonly ExcludePath[]` (compiled glob regexes via `util/glob.ts`); the parser accepts a list of non-empty strings (literal paths OR globs) and rejects malformed shapes with the standard prefixed parse error. The scanner now computes `relPath = toPosix(relative(process.cwd(), file))` per file and, for each registry entry, skips the file via `isPathExcluded(entry, relPath)` BEFORE running the entry's shape patterns. The exclusion is per-entry (other entries still scan the file normally), CWD-relative (matches how findings render in the report so an operator can copy a flagged path into `excludes_paths:` as-is), and empty-array-tolerant (missing field OR `[]` preserves prior behavior). YAML schema doc in `docs/scope-discovery/anti-patterns.yaml` updated with the new field. Glob compilation reuses the existing `globToRegex`; the brace-alternation limitation tracked under AUDIT-20260522-05 is not on the hot path for `excludes_paths` (the common case is a single literal path or a `**`-style glob without brace alternation).
+- Adversarial validator: `tools/scope-discovery/anti-patterns.excludes-scenarios.ts` adds five scenarios — `excludes-paths-literal-skips-canonical-file` (with a paired control fixture that runs the same source tree without `excludes_paths` to prove the 2→1 finding delta is caused by the exclusion), `excludes-paths-glob-skips-tree` (`canonical/**/*.ts` excludes a nested subtree while `holdouts/c.ts` still surfaces), `excludes-paths-empty-array-behaves-as-absent`, `excludes-paths-malformed-element-rejected` (non-string element → exit 2 + descriptive parse error), and `excludes-paths-no-match-not-an-error` (glob matching zero files still passes; both files surface). Lives in a sibling module so `anti-patterns.validate.ts` stays under the 300-500 line cap. `util/run-scanner.ts` grew an optional `cwd` so the literal-path scenarios can run the scanner with CWD = the fixture root. Suite: `pnpm test:scope-discovery` 173 → 178 scenarios.
+- Empirical re-exercise (2026-05-22): the auditor's synthetic repro (plant `lib/canonical.ts` + `lib/holdout.ts`, both carrying the legacy shape; run scanner with `excludes_paths: ['lib/canonical.ts']`; re-run without) executed against the corrected scanner reports exactly the expected behavior — Case A: exit 1, 1 finding (`lib/holdout.ts` only); Case B: exit 1, 2 findings (both files). Pre-commit hook recorded the fix commit `914710a2` in `.git/hooks-sentinels/.pre-commit-passed`; no hooks bypassed.
 
 ## AUDIT-20260522-05
 
