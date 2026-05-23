@@ -204,6 +204,40 @@ test.describe('Capabilities — Library (C-LIB)', () => {
     await expect(refresh).toBeVisible();
   });
 
+  test('D-LIB-DEVICE-MEMORY-SLOTINFO-01: DeviceMemoryPanel slot rows render .ac-list-info wrapper around the slot-name span — RGM-001 SlotInfo-migration contract', async ({ page }) => {
+    // Test-before-migration contract for ROLAND-BUGFIX-RGM-001 sub-task 3
+    // (extend SlotInfo with dragOverText?: string + isDragOver?: boolean +
+    // optional testId, then migrate DeviceMemoryPanel's inline span).
+    //
+    // DeviceMemoryPanel's slot rows currently render:
+    //   <span class="ac-list-info">
+    //     <span class="ac-list-name [--placeholder|--empty]">{displayName | "Drop to import"}</span>
+    //     {!tone && !isLoaded && !isBankLoading && !isDragOver && (
+    //       <span class="ac-list-eyebrow">click to load</span>
+    //     )}
+    //   </span>
+    //
+    // This test pins the structural shape (.ac-list-info wrapper +
+    // .ac-list-name inner span) so the upcoming migration to
+    // <SlotInfo .../> doesn't drop the wrapper class. The drag-over
+    // branch (Drop to import) requires simulating a drag event and is
+    // out of scope for this wiring test; the structural shape is what
+    // catches a botched migration.
+    const panel = page.locator('[data-capability="C-LIB-02"]');
+    await expect(panel).toBeVisible({ timeout: 5_000 });
+
+    // First tone slot — under load-everything scenario it's loaded.
+    // The slot may render inside a collapsed bank section depending on
+    // the panel's default expand state; assert structural attachment
+    // (wrapper + name span are in the DOM) rather than visibility.
+    const slot0 = page.getByTestId('device-tone-slot-0');
+    await expect(slot0).toBeAttached({ timeout: 5_000 });
+
+    const wrapper = slot0.locator('.ac-list-info');
+    await expect(wrapper).toBeAttached();
+    await expect(wrapper.locator('.ac-list-name')).toBeAttached();
+  });
+
   test('D-LIB-22: Refresh Device button is reachable in the page header', async ({ page }) => {
     // LibraryPage.tsx:249 renders a "Refresh Device" button in the
     // sticky page header. It triggers handleLoadDeviceData, which
