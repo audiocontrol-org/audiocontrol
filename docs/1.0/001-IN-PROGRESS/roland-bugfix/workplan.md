@@ -278,12 +278,16 @@ Audit findings against missing or incorrect traces get filed as low-severity boo
 
 - **T4.4 — Verify the pre-commit gate fires on a synthetic re-introduction.** Create a throwaway branch that re-inlines one of the registered anti-patterns; commit; verify the pre-commit hook blocks. Throw away the branch. This proves the gate has teeth on this repo's pre-commit configuration.
 
-### Phase 4 acceptance
+### Phase 4 outcome (2026-05-22) — blocked-on-schema-gap; folded into tooling-feedback
 
-- All 9 anti-patterns recorded in `anti-patterns.yaml` with cited extraction commit hashes.
-- `make check-anti-patterns` returns 0 holdouts.
-- Pre-commit gate verified to fire on synthetic re-introduction.
-- Tooling-feedback entry added to `tooling-feedback.md` capturing the registry-backfill experience (what was easy, what was hard, what the schema didn't support).
+Empirically verified that the T6.1 schema lacks the path-exclude mechanism required to register anti-patterns derived from the 9 Phase 2 refactor extractions. The canonical primitive's body IS the legacy shape the registry is asked to flag — without an `excludes_paths:` field, the scan flags the canonical itself and the gate is unsatisfiable.
+
+- **Empirical proof:** drafted `use-export-dialog-lifecycle-inline` against the live registry, ran `make check-anti-patterns`, observed the scan flagging `modules/roland-sxx0-editor/src/hooks/useExportDialogLifecycle.ts:77` as a holdout. Reverted the draft.
+- **Drafts preserved:** all 9 anti-pattern designs are captured at [`scope-inventory/anti-patterns-drafts.yaml`](./scope-inventory/anti-patterns-drafts.yaml) with the `excludes_paths_needed:` annotation marking the field T6.1 should add.
+- **Tooling-feedback finding:** see `tooling-feedback.md` § "Phase 4 dogfooding — T6.1 anti-pattern registry path-exclude gap" for the empirical evidence + proposed schema addition.
+- **Follow-up:** `ROLAND-BUGFIX-T6.1-EXCLUDE` — once T6.1 supports `excludes_paths:`, copy the 9 drafts into `docs/scope-discovery/anti-patterns.yaml` verbatim and verify `make check-anti-patterns` returns 0 holdouts on the roland surface.
+
+**Phase 4 dispositioned blocked-on-tooling.** No code change landed for the registry itself; the deliverable is the dogfooding finding and the preserved drafts. Phase 4 is now closed-with-honest-outcome rather than closed-with-clean-gate.
 
 ## Phase 5: Adopter manifest backfill (PR #446 T6.2 exercise)
 

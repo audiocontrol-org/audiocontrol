@@ -85,6 +85,70 @@ Exercised 2026-05-22 after the SlotInfo extraction (clones.yaml group `80299d9fd
 - ✅ Fail-fast in declaration order (CSS first, then TS/TSX). The comment explaining the choice ("two-cycle case is rare in practice; tighten to collect-and-report both failures together if that pattern starts costing time") is exactly the right kind of in-situ design-decision documentation.
 - 🤔 No skip when running `git commit --no-verify` warning. If a developer ever uses `--no-verify` to bypass an intentional block, no record of the bypass exists. Not a PR-#441 concern — and the project's global rule forbids `--no-verify` — but a hook that LOGS bypasses (even just to stderr) would catch the discipline violation.
 
+## Phase 4 dogfooding — T6.1 anti-pattern registry path-exclude gap
+
+Exercised 2026-05-22 attempting to backfill `docs/scope-discovery/anti-patterns.yaml` with the 9 anti-patterns named after the Phase 2 refactor extractions. Empirically verified that the T6.1 schema lacks the path-exclude mechanism required to make the gate `make check-anti-patterns returns 0 holdouts` achievable when the canonical primitive's body contains the same shape it replaces.
+
+### What happens
+
+For each of the 9 Phase 2 refactors, the canonical primitive's body IS the legacy shape the registry is asked to flag:
+
+- `useExportDialogLifecycle.ts` is itself the source-of-truth for the `useState<localError>` + `useState<hasStarted>` + open-reset `useEffect` pattern.
+- `PageTitleRow.tsx` is itself the source-of-truth for the `<header className="ac-page-title-row">` markup.
+- `AcReloadIcon.tsx` is itself the source-of-truth for the 4-path reload SVG.
+- `BankHeader.tsx`, `SlotInfo.tsx`, `AcRadioTabs.tsx`, `DestinationEyebrow.tsx`, `LibraryDeviceMemoryPanel.tsx`, `LibraryPreviewPanelAdapter.tsx`, `browser-download.ts` — same property.
+
+Empirical verification: drafted `use-export-dialog-lifecycle-inline` (a two-pattern fingerprint with `min_distance: 10`) and ran `make check-anti-patterns`. Result:
+
+```
+modules/roland-sxx0-editor/src/hooks/useExportDialogLifecycle.ts:77: matches anti-pattern use-export-dialog-lifecycle-inline
+  replacement: useExportDialogLifecycle from @/hooks/useExportDialogLifecycle
+anti-patterns: 1 finding(s) across 1347 files.
+make: *** [check-anti-patterns] Error 1
+```
+
+The scan flagged the canonical hook's own file. The gate fires on the source-of-truth. Without a path-exclude mechanism, all 9 entries would fire on their own canonical, making the gate impossible to satisfy.
+
+### Schema gap
+
+`AntiPatternEntry` carries `id`, `addedIn`, `primitive`, `from`, `patterns`, `minDistance`, `message`. There is no `excludes_paths:` field, no `skip_canonical:` flag, no implicit "skip the file the primitive's `from:` path points at" semantic. `tools/scope-discovery/check-anti-patterns.ts:scan` walks every file under `modules/` and runs every entry against it; nothing in the registry-parser or the scan loop knows that "the canonical file is allowed to contain the shape."
+
+### Workaround attempts considered
+
+- **Position-aware fingerprints.** Add a second pattern that matches the canonical's marker (e.g., `export function PageTitleRow`). Doesn't work: the registry semantic is "ALL patterns must match within `min_distance`," so adding the marker would make the entry fire on the canonical (where both match) and NOT fire on inline holdouts (where only the shape matches). The opposite of intended.
+- **Negative-lookbehind regex.** Node's regex engine does support lookbehind; could write `(?<!export function PageTitleRow[\s\S]{0,200})<header.*ac-page-title-row`. Fragile (depends on the lookbehind being within bytes), brittle (any reformat breaks it), and the engine note in the schema docs explicitly says the engine is "pure-regex" not "regex with creative lookbehind contortions."
+- **Drop the JSX/SVG primitives and only register the pure-functional shapes.** Same problem: `useExportDialogLifecycle.ts`'s body IS the pattern; `browser-download.ts`'s body IS the createObjectURL/anchor/revoke sequence. Every extracted primitive whose body contains the shape it replaces has this property — that's most of them.
+
+### Proposed schema addition
+
+Add an optional `excludes_paths:` field to `AntiPatternEntry`:
+
+```yaml
+anti_patterns:
+  - id: use-export-dialog-lifecycle-inline
+    added_in: dce8fc72
+    primitive: useExportDialogLifecycle
+    from: '@/hooks/useExportDialogLifecycle'
+    excludes_paths:
+      - 'modules/roland-sxx0-editor/src/hooks/useExportDialogLifecycle.ts'
+    shape_regex: …
+    message: …
+```
+
+Semantics: when the scan iterates files, `entry.excludesPaths` filters out files whose path matches any listed glob (or literal path). The canonical primitive's own file is the only expected case for now, but the field is per-entry so the operator can also exclude e.g. test fixtures that intentionally carry the legacy shape as evidence.
+
+Alternative semantic (less flexible but simpler): auto-derive the exclude from `from:`. If `from: '@/hooks/useExportDialogLifecycle'`, skip `modules/*/src/hooks/useExportDialogLifecycle.ts` (and `.tsx`). Doesn't handle re-exports cleanly; doesn't handle the test-fixture case. Explicit `excludes_paths:` is more honest.
+
+**Severity: medium.** Blocks Phase 4 of the roland-bugfix branch from registering ANY anti-pattern derived from the 9 Phase 2 extractions, because every one of those primitives carries its own legacy shape by definition. The 9 drafted entries are preserved at `docs/1.0/001-IN-PROGRESS/roland-bugfix/scope-inventory/anti-patterns-drafts.yaml` pending the schema enhancement. **Follow-up: ROLAND-BUGFIX-T6.1-EXCLUDE.**
+
+### What worked despite the gap
+
+- The registry parser + validate-time error messages are clear (kebab-id enforced, git-sha format enforced, regex compile errors actionable).
+- `make check-anti-patterns` is fast (~1s against 1347 files).
+- The empty-registry case prints `anti-patterns: registry empty; nothing to scan.` cleanly — no warning noise.
+- The pre-commit gate fires deterministically with `make: *** [check-anti-patterns] Error 1` on any finding — easy to grep / parse.
+- The multi-pattern + min_distance shape lets fingerprints reach precision the clone detector can't.
+
 ## Cross-feature interaction with PR #440 (chevron + multi-select work)
 
 - ✅ The merge of main into `feature/roland-bugfix` was a clean fast-forward-then-merge (no conflicts). PR #441's surface area (large) didn't touch any of PR #440's changed files.

@@ -53,3 +53,21 @@
 # `tools/scope-discovery/check-anti-patterns.ts` for the gate.
 
 anti_patterns: []
+# NOTE: roland-bugfix Phase 4 attempted to backfill the 9 anti-patterns from
+# Phase 2's refactor extractions and discovered that the T6.1 schema lacks
+# the path-exclude mechanism required to skip the canonical primitive's own
+# defining file during the scan. Empirically verified 2026-05-22: drafting
+# the use-export-dialog-lifecycle-inline entry caused the scan to flag
+# `modules/roland-sxx0-editor/src/hooks/useExportDialogLifecycle.ts:77` (the
+# canonical hook itself) as a finding. All 9 drafted entries from Phase 2
+# refactors have the same property — the canonical primitive's body IS the
+# shape the registry is asked to flag. Without a path-exclude field, the
+# gate "0 holdouts" is impossible-to-meet on any extracted primitive whose
+# implementation contains the same shape it replaces.
+#
+# Draft entries preserved at
+#   docs/1.0/001-IN-PROGRESS/roland-bugfix/scope-inventory/anti-patterns-drafts.yaml
+# pending T6.1 schema enhancement. See tooling-feedback.md § "Phase 4
+# dogfooding — T6.1 anti-pattern registry path-exclude gap" and
+# https://github.com/audiocontrol-org/audiocontrol/issues/451
+# (ROLAND-BUGFIX-T6.1-EXCLUDE).
