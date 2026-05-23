@@ -1,13 +1,24 @@
 #!/usr/bin/env bash
 # Pre-push hook — warns on stderr (does NOT block) when any commit
-# being pushed lacks a post-commit sentinel entry. A missing sentinel
-# is evidence the commit was made with `git commit --no-verify`,
-# bypassing the pre-commit gates.
+# being pushed lacks a sentinel entry. A missing sentinel is evidence
+# the commit was made with `git commit --no-verify`, bypassing the
+# pre-commit gates.
+#
+# T7.5 corrected mechanism (per AUDIT-20260522-01):
+#   - pre-commit writes a transient `.pre-commit-marker` as its last
+#     successful action. `--no-verify` SKIPS pre-commit, so on bypass
+#     the marker is never written.
+#   - post-commit (which runs on EVERY commit, including `--no-verify`)
+#     reads HEAD's SHA, and ONLY appends it to the sentinel file if
+#     the marker exists. It then deletes the marker.
+#   - This hook reads the sentinel file and warns on any SHA in the
+#     pushed range that is absent.
 #
 # This catches discipline violations AFTER the fact — the only point
 # in the commit lifecycle where the bypass leaves a detectable trace.
 # Pre-commit itself cannot warn on its own bypass (it doesn't run on
-# `--no-verify`); pre-push fires next and can scan history.
+# `--no-verify`); the marker-gated post-commit produces the signal,
+# and pre-push surfaces it.
 #
 # Tracked in-repo so it travels; per-clone activation via
 # `make install-hooks`. Warning-only by design — operators with
@@ -63,7 +74,7 @@ done <<< "$to_check"
 
 missing="$(echo "$missing" | grep -v '^$' || true)"
 if [ -n "$missing" ]; then
-  echo "pre-push: WARNING — the following commit(s) lack a post-commit sentinel," >&2
+  echo "pre-push: WARNING — the following commit(s) lack a pre-commit sentinel," >&2
   echo "pre-push: suggesting they were created with 'git commit --no-verify'" >&2
   echo "pre-push: (which bypasses CSS / clone / anti-pattern / adopter / symmetry gates):" >&2
   while read -r sha; do

@@ -69,3 +69,19 @@ if git diff --cached --name-only --diff-filter=ACM | grep -qE '\.tsx?$'; then
   echo "pre-commit: checking cross-editor symmetry…"
   make --no-print-directory check-editor-symmetry > /dev/null
 fi
+
+# T7.5 (corrected per AUDIT-20260522-01) — write the "pre-commit ran to
+# completion" marker as the LAST action. This is the load-bearing primitive
+# that lets post-commit + pre-push detect `--no-verify` bypass: `--no-verify`
+# skips pre-commit, so the marker isn't written, so post-commit (which DOES
+# run on `--no-verify`) has no marker to convert into a SHA-keyed sentinel.
+# Without the marker, post-commit writes nothing, and pre-push warns.
+#
+# Place this AFTER every gate above — a failed gate aborts via `set -e`
+# before the marker is written, so a failed-then-retried commit doesn't
+# falsely advertise success.
+#
+# See post-commit for the rationale on --git-common-dir vs --git-path.
+SENTINEL_DIR="$(git rev-parse --git-common-dir)/hooks-sentinels"
+mkdir -p "$SENTINEL_DIR"
+: > "$SENTINEL_DIR/.pre-commit-marker"

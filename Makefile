@@ -77,7 +77,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-clone-id-stability-validate check-clone-summary-validate clone-summary batch-dispose check-batch-dispose-validate migrate-clone-ids migrate-clone-ids-dry check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions check-refactor-preconditions-validate check-anti-patterns check-anti-patterns-validate check-adopters check-adopters-validate check-editor-symmetry check-editor-symmetry-write check-editor-symmetry-validate check-deprecations check-deprecations-write check-deprecations-validate check-regime-holdout-validate check-prd-themed-validate check-synthesis-warnings-validate test-scope-discovery scope-inventory check-scope-discovery-deps check-deps-validate refresh-clones-baseline check-chevron-sizing
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-clone-id-stability-validate check-clone-summary-validate clone-summary batch-dispose check-batch-dispose-validate migrate-clone-ids migrate-clone-ids-dry check-dispatch-wrapper-validate check-no-verify-detection-validate check-refactor-preconditions-smoke check-refactor-preconditions check-refactor-preconditions-validate check-anti-patterns check-anti-patterns-validate check-adopters check-adopters-validate check-editor-symmetry check-editor-symmetry-write check-editor-symmetry-validate check-deprecations check-deprecations-write check-deprecations-validate check-regime-holdout-validate check-prd-themed-validate check-synthesis-warnings-validate test-scope-discovery scope-inventory check-scope-discovery-deps check-deps-validate refresh-clones-baseline check-chevron-sizing
 
 build: $(ALL_STAMPS)
 
@@ -429,6 +429,17 @@ check-batch-dispose-validate:
 check-dispatch-wrapper-validate:
 	tsx tools/scope-discovery/dispatch-wrapper.validate.ts
 
+# Adversarial validator for the T7.5 `git commit --no-verify` bypass-
+# detection mechanism (per AUDIT-20260522-01). Stands up throwaway
+# git repos in $(mktemp -d), wires the real .githooks/post-commit and
+# .githooks/pre-push against a structurally-faithful pre-commit stub,
+# and asserts three observable outcomes plus an adversarial gutted-
+# detector self-check (replace the stub with a no-op; the
+# "normal commit recorded" assertion must FAIL — proving the marker
+# write is load-bearing, not the post-commit hook alone).
+check-no-verify-detection-validate:
+	tsx tools/scope-discovery/no-verify-detection.validate.ts
+
 # Smoke-test the Phase 5 refactor-preconditions protocol: feeds
 # synthetic clone-group entries (missing canonical declaration, missing
 # new_shape_summary when canonical_side: "new", missing tests / tests_proof,
@@ -628,7 +639,7 @@ check-synthesis-warnings-validate:
 # Combined runtime is under 30s; if that ever changes, the workplan T2.8
 # gate is broken and the slowdown must be surfaced.
 # T2.8 gate (+ T5.2 + T5.3 + T6.1 + T6.2 + T6.3 + T6.4 + T6.5 additions).
-test-scope-discovery: check-clone-duplication-validate check-clone-id-stability-validate check-clone-summary-validate check-batch-dispose-validate check-dispatch-wrapper-validate check-refactor-preconditions-smoke check-refactor-preconditions-validate check-anti-patterns-validate check-adopters-validate check-editor-symmetry-validate check-deprecations-validate check-regime-holdout-validate check-prd-themed-validate check-synthesis-warnings-validate check-deps-validate
+test-scope-discovery: check-clone-duplication-validate check-clone-id-stability-validate check-clone-summary-validate check-batch-dispose-validate check-dispatch-wrapper-validate check-no-verify-detection-validate check-refactor-preconditions-smoke check-refactor-preconditions-validate check-anti-patterns-validate check-adopters-validate check-editor-symmetry-validate check-deprecations-validate check-regime-holdout-validate check-prd-themed-validate check-synthesis-warnings-validate check-deps-validate
 
 # T7.2 — pre-flight dep guard for `make scope-inventory`. Runs
 # `tsx tools/scope-discovery/check-deps.ts` which probes the top-level
