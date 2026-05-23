@@ -4,10 +4,12 @@
 # the commit was made with `git commit --no-verify`, bypassing the
 # pre-commit gates.
 #
-# T7.5 corrected mechanism (per AUDIT-20260522-01):
-#   - pre-commit writes a transient `.pre-commit-marker` as its last
-#     successful action. `--no-verify` SKIPS pre-commit, so on bypass
-#     the marker is never written.
+# T7.5 corrected mechanism (per AUDIT-20260522-01, AUDIT-20260522-03):
+#   - commit-msg writes a transient `.pre-commit-marker` as its last
+#     successful action (moved from pre-commit per AUDIT-03 to close a
+#     stale-marker hole). `--no-verify` SKIPS commit-msg, and commit-msg
+#     only runs after pre-commit succeeds, so on bypass the marker is
+#     never written.
 #   - post-commit (which runs on EVERY commit, including `--no-verify`)
 #     reads HEAD's SHA, and ONLY appends it to the sentinel file if
 #     the marker exists. It then deletes the marker.
