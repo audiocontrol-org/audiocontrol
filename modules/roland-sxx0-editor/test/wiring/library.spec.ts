@@ -168,6 +168,42 @@ test.describe('Capabilities — Library (C-LIB)', () => {
     await expect(page.getByTestId('device-patch-bank-toggle-0')).toContainText('Bank 1');
   });
 
+  test('D-LIB-PAGE-TITLE-01: LibraryPage renders the .ac-page-title-row chrome with heading "Library" + Experimental tag inline + actions slot — RGM-001 PageTitleRow-migration contract', async ({ page }) => {
+    // Test-before-migration contract for ROLAND-BUGFIX-RGM-001 sub-task 2
+    // (migrate LibraryPage to PageTitleRow's new headingNode + actions
+    // variant). The contract LibraryPage preserves through the migration:
+    //   - <header class="ac-page-title-row"> wraps the whole row
+    //   - .ac-page-title-block > h2#library-heading.ac-page-title-heading
+    //     contains "Library" + a child .ac-page-title-tag.ac-page-title-tag--warn
+    //     reading "Experimental"
+    //   - .ac-page-title-rule renders under the heading
+    //   - .ac-page-title-actions (NOT .ac-page-title-metric) contains the
+    //     refresh button with aria-label "Refresh device data"
+    //
+    // Pre-existing tests (D-LIB-22) pin the button's aria-label but not
+    // the chrome around it. Must pass against pre-migration code AND
+    // post-migration code (after LibraryPage adopts <PageTitleRow
+    // headingNode={...} actions={...} />).
+    const titleRow = page.locator('header.ac-page-title-row');
+    await expect(titleRow).toBeVisible({ timeout: 5_000 });
+
+    const heading = titleRow.locator('h2.ac-page-title-heading');
+    await expect(heading).toHaveAttribute('id', 'library-heading');
+    await expect(heading).toContainText('Library');
+
+    const experimentalTag = heading.locator('.ac-page-title-tag.ac-page-title-tag--warn');
+    await expect(experimentalTag).toHaveText('Experimental');
+
+    await expect(titleRow.locator('.ac-page-title-rule')).toBeVisible();
+
+    // Refresh button lives in .ac-page-title-actions, NOT in .ac-page-title-metric.
+    await expect(titleRow.locator('.ac-page-title-actions')).toBeVisible();
+    await expect(titleRow.locator('.ac-page-title-metric')).toHaveCount(0);
+
+    const refresh = titleRow.getByRole('button', { name: 'Refresh device data' });
+    await expect(refresh).toBeVisible();
+  });
+
   test('D-LIB-22: Refresh Device button is reachable in the page header', async ({ page }) => {
     // LibraryPage.tsx:249 renders a "Refresh Device" button in the
     // sticky page header. It triggers handleLoadDeviceData, which
