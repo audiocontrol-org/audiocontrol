@@ -266,12 +266,8 @@ adopter_manifests:
     # deferrals are now properly classified — gate passes AND the matrix
     # renders these as ⏳ instead of being masked as ✓.
     tracked_holdouts:
-      - path: 'modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx'
-        issue: 'https://github.com/audiocontrol-org/audiocontrol/issues/450'
-        reason: |
-          pending ROLAND-BUGFIX-V3-IMPORT — currently on legacy Radix Dialog
-          chrome; v3 SlideDrawer migration deferred. Closes 4 keep-with-reason'd
-          clones from Phase 2.
+      # ImportLibraryToneDialog.tsx migrated to v3 SlideDrawer in
+      # V3-IMPORT sub-task 2 of #450 — removed from tracked_holdouts.
       - path: 'modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx'
         issue: 'https://github.com/audiocontrol-org/audiocontrol/issues/450'
         reason: |

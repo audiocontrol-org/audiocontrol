@@ -188,11 +188,15 @@ test.describe('Capabilities — Library DnD (Wave 5)', () => {
 
     await simulateDragAndDrop(page, sourceNode, target);
 
+    // V3-IMPORT (#450): title is now sentence-case ("Import library tone")
+    // matching the export-side convention. Confirm button is in the
+    // SlideDrawer footer with testid `import-confirm` (renamed from
+    // `confirm-import-button` for symmetry with `export-confirm`).
     await expect(
-      page.getByRole('heading', { name: 'Import Library Tone' }),
+      page.getByRole('heading', { name: 'Import library tone' }),
     ).toBeVisible({ timeout: 5_000 });
     await expect(page.getByTestId('target-slot-select')).toBeVisible();
-    await expect(page.getByTestId('confirm-import-button')).toBeVisible();
+    await expect(page.getByTestId('import-confirm')).toBeVisible();
   });
 
   test('D-LIB-09: dropping a seeded library patch on a device patch slot mounts ImportLibraryPatchDialog', async ({ page }) => {

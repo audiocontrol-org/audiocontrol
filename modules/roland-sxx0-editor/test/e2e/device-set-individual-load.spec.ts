@@ -208,7 +208,7 @@ test.describe('Load Individual Items from Set', () => {
     await slotSelect.selectOption('0');
 
     const confirmButton = page.locator(
-      '[data-testid="confirm-import-button"]'
+      '[data-testid="import-confirm"]'
     );
     await expect(confirmButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await confirmButton.click();
@@ -280,7 +280,7 @@ test.describe('Load Individual Items from Set', () => {
     await slotSelect.selectOption('0');
 
     const confirmButton = page.locator(
-      '[data-testid="confirm-import-button"]'
+      '[data-testid="import-confirm"]'
     );
     await expect(confirmButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await confirmButton.click();

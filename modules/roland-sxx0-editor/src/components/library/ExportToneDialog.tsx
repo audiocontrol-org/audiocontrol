@@ -289,6 +289,16 @@ interface FooterParams {
   onCancel: () => void;
   onExport: () => void;
   onClose: () => void;
+  /** Verb shown on the primary action button + in the disabled
+   *  in-flight tooltip. Defaults to "Export" so existing Export*
+   *  call sites are unchanged. Import* call sites pass "Import". */
+  verb?: string;
+  /** Prefix for the two stable data-testids the footer emits:
+   *  `${prefix}-cancel` on every Cancel/Close/Done button (one at a
+   *  time), and `${prefix}-confirm` on the primary action button.
+   *  Defaults to "export"; Import* call sites pass "import" so the
+   *  testids become `import-cancel` / `import-confirm`. */
+  testIdPrefix?: string;
 }
 
 export function renderFooter({
@@ -300,7 +310,11 @@ export function renderFooter({
   onCancel,
   onExport,
   onClose,
+  verb = 'Export',
+  testIdPrefix = 'export',
 }: FooterParams): JSX.Element {
+  const cancelId = `${testIdPrefix}-cancel`;
+  const confirmId = `${testIdPrefix}-confirm`;
   if (!hasStarted) {
     return (
       <>
@@ -308,7 +322,7 @@ export function renderFooter({
           type="button"
           className="ac-btn ac-btn-sm"
           onClick={onCancel}
-          data-testid="export-cancel"
+          data-testid={cancelId}
         >
           Cancel
         </button>
@@ -317,9 +331,9 @@ export function renderFooter({
           className="ac-btn ac-btn-sm ac-btn-primary"
           onClick={onExport}
           disabled={!canExport}
-          data-testid="export-confirm"
+          data-testid={confirmId}
         >
-          Export
+          {verb}
         </button>
       </>
     );
@@ -330,7 +344,7 @@ export function renderFooter({
         type="button"
         className="ac-btn ac-btn-sm ac-btn-primary"
         onClick={onClose}
-        data-testid="export-cancel"
+        data-testid={cancelId}
       >
         Done
       </button>
@@ -342,22 +356,22 @@ export function renderFooter({
         type="button"
         className="ac-btn ac-btn-sm"
         onClick={onClose}
-        data-testid="export-cancel"
+        data-testid={cancelId}
       >
         Close
       </button>
     );
   }
-  // Running: cancel is unavailable today (the export hook has no abort
-  // signal). Show the button as disabled so the affordance is visible
-  // and the test selector remains stable.
+  // Running: cancel is unavailable today (the underlying op hook has
+  // no abort signal). Show the button as disabled so the affordance
+  // is visible and the test selector remains stable.
   return (
     <button
       type="button"
       className="ac-btn ac-btn-sm"
       disabled
-      data-testid="export-cancel"
-      title={isOperating ? 'Export in progress' : ''}
+      data-testid={cancelId}
+      title={isOperating ? `${verb} in progress` : ''}
     >
       Cancel
     </button>
