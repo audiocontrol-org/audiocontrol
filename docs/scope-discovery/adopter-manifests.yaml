@@ -70,4 +70,186 @@
 # .ts/.tsx change and flags any holdouts. See
 # `tools/scope-discovery/check-adopters.ts` for the gate.
 
-adopter_manifests: []
+adopter_manifests:
+  # ────────────────────────────────────────────────────────────────────────
+  # Backfilled 2026-05-22 from feature/roland-bugfix Phase 5. Covers the
+  # 9 primitives extracted during Phase 2 plus the upstream SlideDrawer
+  # primitive (whose 5 Import-dialog holdouts are tracked via the
+  # ROLAND-BUGFIX-V3-IMPORT follow-up).
+  #
+  # Notes for the reader:
+  # - The narrow-scope component primitives (BankHeader, SlotInfo,
+  #   AcRadioTabs, DestinationEyebrow, LibraryDeviceMemoryPanel,
+  #   LibraryPreviewPanelAdapter, AcReloadIcon) use literal-path globs
+  #   to enumerate the current adopter set. Future expansions of the
+  #   adopter set are operator-edits to the glob; the manifest then
+  #   surfaces holdouts at the new locations.
+  # - SlideDrawer's 5 Import dialogs are listed as exceptions with
+  #   reason="pending ROLAND-BUGFIX-V3-IMPORT" because T6.2's schema
+  #   doesn't yet distinguish "permanent exception" from "tracked-
+  #   holdout-with-follow-up." See tooling-feedback.md §"Phase 5
+  #   dogfooding" for the proposed `tracked_holdouts:` field.
+  # ────────────────────────────────────────────────────────────────────────
+
+  - id: page-title-row
+    introduced_in: b996aa01
+    from: '@/components/common/PageTitleRow'
+    expected_adopters_glob:
+      - 'modules/roland-sxx0-editor/src/pages/PatchesPage.tsx'
+      - 'modules/roland-sxx0-editor/src/pages/TonesPage.tsx'
+      - 'modules/roland-sxx0-editor/src/pages/PlayPage.tsx'
+    message: |
+      Editor pages with a title row + LED metric + refresh affordance
+      should render via the shared PageTitleRow primitive (introduced
+      in commit b996aa01). Replace inline `<header className="ac-page-title-row">`
+      markup with `<PageTitleRow headingId="..." headingText="..."
+      metric={...} loadingMessage={...} isLoading={...} onRefresh={...}
+      refreshLabel="..." />`.
+
+  - id: use-export-dialog-lifecycle
+    introduced_in: dce8fc72
+    from: '@/hooks/useExportDialogLifecycle'
+    expected_adopters_glob:
+      - 'modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx'
+      - 'modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx'
+      - 'modules/roland-sxx0-editor/src/components/library/BatchExportDrawer.tsx'
+    message: |
+      Export-style dialogs/drawers with the shared lifecycle pattern
+      (localError + hasStarted state, open-reset useEffect,
+      isComplete/effectiveError/steps derivation, handleClose callback)
+      should use the useExportDialogLifecycle hook (introduced in commit
+      dce8fc72). Replace inline state + effect with
+      `const { localError, setLocalError, hasStarted, setHasStarted,
+      isComplete, effectiveError, steps, handleClose } =
+      useExportDialogLifecycle({ open, isOperating, progress,
+      operationError, onOpenChange });`
+
+  - id: bank-header
+    introduced_in: c88d8d06
+    from: '@/components/common/BankHeader'
+    expected_adopters_glob:
+      - 'modules/roland-sxx0-editor/src/components/patches/PatchList.tsx'
+      - 'modules/roland-sxx0-editor/src/components/tones/ToneList.tsx'
+      - 'modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx'
+    message: |
+      Bank-row rendering (toggle button + chevron + bank label +
+      slot-range readout + reload button) should use the shared
+      BankHeader component (introduced in commit c88d8d06). Replace
+      inline `.ac-list-bank-header` markup with `<BankHeader ... />`.
+
+  - id: slot-info
+    introduced_in: 30e7346e
+    from: '@/components/common/SlotInfo'
+    expected_adopters_glob:
+      - 'modules/roland-sxx0-editor/src/components/patches/PatchList.tsx'
+      - 'modules/roland-sxx0-editor/src/components/tones/ToneList.tsx'
+    message: |
+      Slot row info (name + status) should render via the SlotInfo
+      component (introduced in commit 30e7346e). Replace inline
+      `<span className="ac-list-info">` markup with `<SlotInfo ... />`.
+
+  - id: ac-radio-tabs
+    introduced_in: 1fa334f5
+    from: '@/components/common/AcRadioTabs'
+    expected_adopters_glob:
+      - 'modules/roland-sxx0-editor/src/components/patches/PatchEditorTabs.tsx'
+      - 'modules/roland-sxx0-editor/src/components/tones/ToneEditorTabs.tsx'
+    message: |
+      Radio-driven tab strips should use the shared AcRadioTabs primitive
+      (introduced in commit 1fa334f5). Replace inline radio + nav +
+      panels markup with `<AcRadioTabs tabs={...} panels={...}
+      defaultTabId={...} groupName={...} ariaLabel={...} />`.
+
+  - id: destination-eyebrow
+    introduced_in: 81da20a9
+    from: '@/components/library/DestinationEyebrow'
+    expected_adopters_glob:
+      - 'modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx'
+      - 'modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx'
+      - 'modules/roland-sxx0-editor/src/components/library/BatchExportDrawer.tsx'
+    message: |
+      Export-destination eyebrow row (kindLabel + LIBRARY + device-name)
+      should use the DestinationEyebrow component (introduced in commit
+      81da20a9). Replace inline 3-span eyebrow markup with
+      `<DestinationEyebrow kindLabel={...} deviceName={...}
+      itemCount={...} />`.
+
+  - id: library-device-memory-panel-adapter
+    introduced_in: dedd4d2f
+    from: '@/plugins/shared/LibraryDeviceMemoryPanel'
+    expected_adopters_glob:
+      - 'modules/roland-sxx0-editor/src/plugins/s330-library-plugin.tsx'
+      - 'modules/roland-sxx0-editor/src/plugins/s550-library-plugin.tsx'
+    message: |
+      Per-device library plugins should render DeviceMemoryPanel via
+      the shared LibraryDeviceMemoryPanel adapter (introduced in commit
+      dedd4d2f). Replace inline `<DeviceMemoryPanel ...props-pass-through... />`
+      with `<LibraryDeviceMemoryPanel state={state} />`.
+
+  - id: library-preview-panel-adapter
+    introduced_in: dedd4d2f
+    from: '@/plugins/shared/LibraryPreviewPanelAdapter'
+    expected_adopters_glob:
+      - 'modules/roland-sxx0-editor/src/plugins/s330-library-plugin.tsx'
+      - 'modules/roland-sxx0-editor/src/plugins/s550-library-plugin.tsx'
+    message: |
+      Per-device library plugins should render the preview panel via
+      the shared LibraryPreviewPanelAdapter (introduced in commit
+      dedd4d2f). Replace inline preview-routing function body with
+      `<LibraryPreviewPanelAdapter selection={selection} context={context} />`.
+
+  # ────────────────────────────────────────────────────────────────────────
+  # Upstream SlideDrawer primitive (editor-core). The 5 Import dialogs are
+  # tracked holdouts pending ROLAND-BUGFIX-V3-IMPORT
+  # (https://github.com/audiocontrol-org/audiocontrol/issues/450).
+  # T6.2's exceptions list is the only mechanism available for tracked-
+  # deferred adopters; see tooling-feedback.md § "Phase 5 dogfooding —
+  # T6.2 adopter manifests tracked-holdouts gap" for the proposed
+  # `tracked_holdouts:` schema field.
+  # ────────────────────────────────────────────────────────────────────────
+
+  - id: slide-drawer-library-dialogs
+    introduced_in: c41cf2a4
+    from: '@audiocontrol/editor-core'
+    expected_adopters_glob:
+      - 'modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx'
+      - 'modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx'
+      - 'modules/roland-sxx0-editor/src/components/library/BatchExportDrawer.tsx'
+      - 'modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx'
+      - 'modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx'
+      - 'modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx'
+      - 'modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx'
+      - 'modules/roland-sxx0-editor/src/components/library/ImportToneDialog.tsx'
+    exceptions:
+      - path: 'modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx'
+        reason: |
+          TRACKED HOLDOUT — pending ROLAND-BUGFIX-V3-IMPORT (issue #450).
+          Currently on legacy Radix Dialog chrome; v3 SlideDrawer migration
+          deferred. Closes 4 keep-with-reason'd clones from Phase 2.
+      - path: 'modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx'
+        reason: |
+          TRACKED HOLDOUT — pending ROLAND-BUGFIX-V3-IMPORT (issue #450).
+          Currently on legacy Radix Dialog chrome; v3 SlideDrawer migration
+          deferred.
+      - path: 'modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx'
+        reason: |
+          TRACKED HOLDOUT — pending ROLAND-BUGFIX-V3-IMPORT (issue #450).
+          Currently on legacy Radix Dialog chrome; v3 SlideDrawer migration
+          deferred.
+      - path: 'modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx'
+        reason: |
+          TRACKED HOLDOUT — pending ROLAND-BUGFIX-V3-IMPORT (issue #450).
+          Currently on legacy Radix Dialog chrome; v3 SlideDrawer migration
+          deferred.
+      - path: 'modules/roland-sxx0-editor/src/components/library/ImportToneDialog.tsx'
+        reason: |
+          TRACKED HOLDOUT — pending ROLAND-BUGFIX-V3-IMPORT (issue #450).
+          Currently on legacy Radix Dialog chrome; v3 SlideDrawer migration
+          deferred. Closes BUG-002 (import dialog empty catches) in the
+          same migration.
+    message: |
+      Library dialogs use the v3 SlideDrawer chrome from editor-core,
+      not legacy Radix Dialog. Replace `<Dialog.Root>` + `<Dialog.Portal>`
+      + `<Dialog.Overlay>` + `<Dialog.Content>` with `<SlideDrawer>`.
+      The 5 Import dialogs are TRACKED HOLDOUTS pending
+      ROLAND-BUGFIX-V3-IMPORT.

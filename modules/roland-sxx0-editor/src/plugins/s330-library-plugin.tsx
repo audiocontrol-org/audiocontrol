@@ -18,8 +18,8 @@ import {
   createTonesCategory,
   createPatchesCategory,
 } from './shared/categories';
-import { LibraryDeviceMemoryPanel } from './shared/LibraryDeviceMemoryPanel';
-import { LibraryPreviewPanelAdapter } from './shared/LibraryPreviewPanelAdapter';
+import { LibraryDeviceMemoryPanel } from '@/plugins/shared/LibraryDeviceMemoryPanel';
+import { LibraryPreviewPanelAdapter } from '@/plugins/shared/LibraryPreviewPanelAdapter';
 import { s330Config } from '@/configs/s330';
 import type { DeviceMemoryCustomState } from './shared/plugin-state-types';
 

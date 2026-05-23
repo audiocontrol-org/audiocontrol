@@ -314,12 +314,29 @@ Empirically verified that the T6.1 schema lacks the path-exclude mechanism requi
 
 - **T5.4 — Verify the pre-commit gate fires on a synthetic adopter that drops the canonical import.** Create a throwaway branch, edit one adopter (e.g., PatchesPage.tsx) to drop its `PageTitleRow` import, commit, verify the pre-commit hook blocks. Throw away the branch.
 
-### Phase 5 acceptance
+### Phase 5 outcome (2026-05-22)
 
-- 9 primitive adopter manifests + 1 upstream (`SlideDrawer`) recorded in `adopter-manifests.yaml`.
-- `make check-adopters` reports exactly the 5 Import dialogs as `SlideDrawer` holdouts and 0 unexpected holdouts.
-- Pre-commit gate verified to fire on synthetic adopter-drop.
-- Tooling-feedback entry capturing manifest-authoring experience.
+**Closed cleanly.** 9 adopter manifest entries committed to `docs/scope-discovery/adopter-manifests.yaml`. Final `make check-adopters` output: `9 entries scanned across 18 files; 0 holdouts.` Per-manifest accounting:
+
+| Manifest | Adopters | Tracked-holdouts | Status |
+|---|---|---|---|
+| page-title-row | 3 | 0 | ✅ |
+| use-export-dialog-lifecycle | 3 | 0 | ✅ |
+| bank-header | 3 | 0 | ✅ |
+| slot-info | 2 | 0 | ✅ |
+| ac-radio-tabs | 2 | 0 | ✅ |
+| destination-eyebrow | 3 | 0 | ✅ |
+| library-device-memory-panel-adapter | 2 | 0 | ✅ |
+| library-preview-panel-adapter | 2 | 0 | ✅ |
+| slide-drawer-library-dialogs | 3 | 5 (exempted) | ✅ — 5 Import dialogs pending ROLAND-BUGFIX-V3-IMPORT |
+
+**Side effects:**
+- Bug caught: `s330-library-plugin.tsx` + `s550-library-plugin.tsx` used relative imports `./shared/...` instead of the `@/` alias the project requires. Fixed both files. Adopter manifests caught what the project's own import-style rule had drifted on.
+- Tooling-feedback findings filed:
+  - **ROLAND-BUGFIX-T6.2-GLOB** ([#452](https://github.com/audiocontrol-org/audiocontrol/issues/452)) — `globToRegex` doesn't expand `*` inside `{}` alternation. Workaround: enumerate alternatives as separate glob entries.
+  - **ROLAND-BUGFIX-T6.2-TRACKED-HOLDOUTS** ([#453](https://github.com/audiocontrol-org/audiocontrol/issues/453)) — schema has `exceptions:` (permanent opt-outs) but no `tracked_holdouts:` field (deferred-but-known migrations). The 5 Import dialogs were modeled as exceptions with `reason: TRACKED HOLDOUT — pending ROLAND-BUGFIX-V3-IMPORT (issue #450)` as the workaround.
+
+See `tooling-feedback.md § "Phase 5 dogfooding — T6.2 adopter manifest gaps + glob compiler bug"` for the full empirical evidence + proposed schema additions.
 
 ## Phase 6: Cross-editor symmetry sweep (PR #446 T6.3 exercise)
 

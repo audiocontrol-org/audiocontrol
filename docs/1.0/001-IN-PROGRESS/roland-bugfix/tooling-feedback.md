@@ -149,6 +149,79 @@ Alternative semantic (less flexible but simpler): auto-derive the exclude from `
 - The pre-commit gate fires deterministically with `make: *** [check-anti-patterns] Error 1` on any finding — easy to grep / parse.
 - The multi-pattern + min_distance shape lets fingerprints reach precision the clone detector can't.
 
+## Phase 5 dogfooding — T6.2 adopter manifest gaps + glob compiler bug
+
+Exercised 2026-05-22 backfilling `docs/scope-discovery/adopter-manifests.yaml` with 9 manifest entries: 7 for the Phase 2 primitives (PageTitleRow, useExportDialogLifecycle, BankHeader, SlotInfo, AcRadioTabs, DestinationEyebrow, LibraryDeviceMemoryPanel + LibraryPreviewPanelAdapter) plus the upstream SlideDrawer primitive (with the 5 Import dialogs as tracked holdouts pending ROLAND-BUGFIX-V3-IMPORT).
+
+### Outcome
+
+Phase 5 closed cleanly. `make check-adopters` reports `9 entries scanned across 18 files; 0 holdouts.` — the manifest accounts for the 5 Import-dialog deferrals via the `exceptions:` mechanism (each with `reason: TRACKED HOLDOUT — pending ROLAND-BUGFIX-V3-IMPORT (issue #450)`). 8 of 9 manifests have 0 holdouts and 0 exceptions; the SlideDrawer manifest has 3 actual adopters + 5 exempted.
+
+Along the way:
+- **Caught a bug in the plugins:** `s330-library-plugin.tsx` and `s550-library-plugin.tsx` were using relative imports `./shared/LibraryDeviceMemoryPanel` instead of the project's required `@/plugins/shared/...` alias (per CLAUDE.md "Always use the @/ import pattern for typescript"). Fixed both files. Adopter manifests caught what the project's own import-style rule had drifted on.
+- **Wrote 7 manifest entries that immediately satisfy the gate** because Phase 2's extractions actually did migrate every expected adopter. The manifest is now a LOCK on that migration — any new file in the adopter glob that doesn't import the primitive surfaces as a holdout.
+
+### Gaps discovered
+
+#### 1. Glob compiler bug: alternation does not expand `*` inside `{...}`
+
+**Severity: medium.** First attempt used `'modules/roland-sxx0-editor/src/components/library/{Export*Dialog,Import*Dialog,BatchExportDrawer}.tsx'` as the adopter glob. `globToRegex` compiled this to `^modules\/roland-sxx0-editor\/src\/components\/library\/(?:Export\*Dialog|Import\*Dialog|BatchExportDrawer)\.tsx$` — the `*` inside the brace alternation was escaped as a literal `\*` instead of being expanded to `[^/]*`. Result: the glob matched zero files, the schema validator rejected the exception entries as "inert" (no glob matches), and the registry was unloadable.
+
+**Reproducer:**
+```typescript
+import { globToRegex } from './tools/scope-discovery/util/glob.ts';
+const re = globToRegex('lib/{Foo*Dialog,Bar*Dialog}.tsx');
+console.log(re.source);
+// → ^lib\/(?:Foo\*Dialog|Bar\*Dialog)\.tsx$
+// expected: ^lib\/(?:Foo[^/]*Dialog|Bar[^/]*Dialog)\.tsx$
+console.log(re.test('lib/FooLibraryDialog.tsx'));  // false (expected true)
+```
+
+**Workaround used:** expand the alternation manually into separate entries in `expected_adopters_glob:`. Worked, but verbose. The 5-Import-dialog case became 5 separate path entries rather than `Import*Dialog`.
+
+**Fix recommendation:** `globToRegex`'s alternation handler should recursively re-compile each alternative through the same `*` / `**` / `?` expansion logic, then join with `|`. Currently it appears to literal-escape the alternation body. Validator scenarios should cover the `{a*c,b*d}` and `{a/**/b,c/**/d}` cases explicitly.
+
+#### 2. Schema gap: no `tracked_holdouts:` field for deferred-but-known migrations
+
+**Severity: medium.** The schema offers `exceptions:` with a `reason:` field, which permanently silences the holdout report for the listed file. There's no separate category for "this file IS a holdout, AND we have an open follow-up to fix it" — the only way to keep the gate green when a known migration is pending is to list the file as a permanent exception.
+
+The semantic mismatch: a `tracked_holdout` represents work-to-do; an `exception` represents work-not-to-do. The current schema collapses both into `exceptions:`. For SlideDrawer's 5 Import dialogs, the manifest's `reason:` field reads "TRACKED HOLDOUT — pending ROLAND-BUGFIX-V3-IMPORT (issue #450)" — visible to manifest readers, but invisible to any tool that derives counts or holdout-burndown metrics from the registry.
+
+**Proposed schema addition:**
+```yaml
+adopter_manifests:
+  - id: slide-drawer-library-dialogs
+    from: '@audiocontrol/editor-core'
+    expected_adopters_glob: …
+    exceptions:                  # permanent opt-outs (current schema)
+      - path: …
+        reason: …
+    tracked_holdouts:            # ← new field
+      - path: 'modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx'
+        issue: 'https://github.com/audiocontrol-org/audiocontrol/issues/450'
+        reason: |
+          pending ROLAND-BUGFIX-V3-IMPORT — currently on legacy Radix
+          Dialog chrome; v3 SlideDrawer migration deferred. Closes 4
+          keep-with-reason'd clones from Phase 2 + BUG-002.
+```
+
+Semantics: `tracked_holdouts:` files are NOT counted as findings (gate passes), but the scanner emits them under a `tracked_holdouts:` section in the report so reporting tools can surface them without using the silencing `exceptions:` field. Each tracked holdout requires an `issue:` URL to prevent the field from becoming a dumping ground for "I'll fix it later" deferrals without operator-accepted follow-up tracking.
+
+**Why this matters:** the operator + the protocol both want to KNOW about the 5 Import dialog deferrals. Silencing them via `exceptions:` hides the work-to-do count. The tracked-holdouts field makes the deferral visible without breaking the gate.
+
+### What worked despite the gaps
+
+- The hand-curated literal-path globs (after the alternation workaround) are easy to read and easy to update.
+- The `--json` output is rich: per-manifest `expected_files`, `actual_adopters`, `exempted_files`, `holdouts` sections make it trivial to derive coverage metrics.
+- The import-match regex correctly handles `import` / `import()` / `export ... from` / `require()` forms in both single- and double-quoted styles.
+- The "exception that doesn't match any glob" rejection at parse time caught the alternation bug immediately (otherwise the operator would have written a manifest that silently produced no holdouts).
+- `make check-adopters` is fast (sub-second for 18 files).
+
+### Phase 5 follow-up
+
+Filed: **ROLAND-BUGFIX-T6.2-GLOB** for the `globToRegex` alternation+wildcard bug.
+Filed: **ROLAND-BUGFIX-T6.2-TRACKED-HOLDOUTS** for the `tracked_holdouts:` schema addition.
+
 ## Cross-feature interaction with PR #440 (chevron + multi-select work)
 
 - ✅ The merge of main into `feature/roland-bugfix` was a clean fast-forward-then-merge (no conflicts). PR #441's surface area (large) didn't touch any of PR #440's changed files.
