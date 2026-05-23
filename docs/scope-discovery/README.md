@@ -151,6 +151,10 @@ The first three fire on every `.ts` / `.tsx` commit via [`.githooks/pre-commit`]
 
 The `synthesis.md` written by `/scope-inventory` carries a §"Regime holdouts" section reporting the four bucket counts plus sample findings; the operator drives Phase 6 burndown work from that section.
 
+### Tracked holdouts (deferred-but-known migrations)
+
+`adopter-manifests.yaml` distinguishes two non-adopter dispositions: `exceptions:` (permanent opt-outs — the file legitimately shouldn't adopt) and `tracked_holdouts:` (the file IS a holdout, but the operator has explicitly deferred the migration with a tracking issue). Each `tracked_holdouts:` entry MUST carry `path:`, `issue:` (URL or `#`-prefixed ref), and `reason:`, and the path must match the manifest's globs. The gate exits 0 when only tracked-holdouts remain; they surface under a dedicated "tracked holdouts (gate-passing, pending follow-up)" section in `make check-adopters` and render as `⏳ A/E (T tracked)` in the editor-symmetry matrix instead of being masked as `✓`. A path cannot appear in both `exceptions:` and `tracked_holdouts:` for the same entry.
+
 ### For future features extracting a primitive
 
 When a phase extracts or promotes a primitive, the refactor commit SHOULD:

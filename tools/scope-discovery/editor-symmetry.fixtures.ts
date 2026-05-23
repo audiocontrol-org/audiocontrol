@@ -133,4 +133,36 @@ export const payloads = {
 
   LIST_BANK_IMPORT_SOURCE:
     "import { ListBank } from '@/components/ListBank';\nexport const x = ListBank;\n",
+
+  // AUDIT-06 — tracked_holdouts: payloads for the editor-symmetry suite.
+
+  TRACKED_HOLDOUT_REGISTRY: `adopter_manifests:
+  - id: slide-drawer-promotion
+    introduced_in: deadbeef
+    from: '@/components/SlideDrawer'
+    expected_adopters_glob:
+      - 'modules/akai-s3k-editor/src/**/*Editor*.tsx'
+    tracked_holdouts:
+      - path: modules/akai-s3k-editor/src/DeferredEditor.tsx
+        issue: 'https://github.com/audiocontrol-org/audiocontrol/issues/450'
+        reason: |
+          pending follow-up — v3 SlideDrawer migration deferred.
+    message: |
+      Replace inline drawer with @/components/SlideDrawer.
+`,
+
+  TRACKED_HOLDOUT_MIXED_REGISTRY: `adopter_manifests:
+  - id: slide-drawer-promotion
+    introduced_in: deadbeef
+    from: '@/components/SlideDrawer'
+    expected_adopters_glob:
+      - 'modules/akai-s3k-editor/src/**/*Editor*.tsx'
+    tracked_holdouts:
+      - path: modules/akai-s3k-editor/src/DeferredEditor.tsx
+        issue: 'https://github.com/audiocontrol-org/audiocontrol/issues/450'
+        reason: |
+          pending follow-up — v3 SlideDrawer migration deferred.
+    message: |
+      Replace inline drawer with @/components/SlideDrawer.
+`,
 } as const;

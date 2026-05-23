@@ -3,26 +3,36 @@
 # durable SHA-keyed sentinel file so a later pre-push gate can detect
 # commits that bypassed the pre-commit hook via `--no-verify`.
 #
-# T7.5 corrected mechanism (per AUDIT-20260522-01):
+# T7.5 corrected mechanism (per AUDIT-20260522-01 and AUDIT-20260522-03):
 #
 # Git lifecycle facts (verified empirically — see audit-log.md):
 #   - `git commit --no-verify` SKIPS pre-commit (and commit-msg).
 #   - `git commit --no-verify` STILL RUNS post-commit.
 #
-# The earlier design wrote the sentinel here unconditionally and claimed
+# The earliest design wrote the sentinel here unconditionally and claimed
 # a missing sentinel proved `--no-verify`. That was wrong: post-commit
 # runs on `--no-verify` too, so the sentinel was always written and the
 # detector had no signal.
 #
+# AUDIT-01 fix moved the marker write to pre-commit; AUDIT-03 then found a
+# stale-marker hole — if pre-commit succeeded but commit-msg (or another
+# later hook) aborted, the marker survived and a subsequent --no-verify
+# commit inherited it. The AUDIT-03 fix moves the marker write to
+# commit-msg as its last successful action. commit-msg is also skipped by
+# --no-verify, and the window between its success exit and this hook's
+# execution is atomic — no abort path can strand a marker.
+#
 # Corrected design:
-#   - pre-commit (which IS skipped by `--no-verify`) writes a marker
-#     `.pre-commit-marker` as its last successful action.
+#   - commit-msg (which IS skipped by `--no-verify`, and which runs AFTER
+#     pre-commit succeeds, IMMEDIATELY before the commit lands atomically)
+#     writes the marker `.pre-commit-marker` as its last successful action.
 #   - This hook (which runs on EVERY commit, including `--no-verify`)
 #     reads HEAD's SHA, then checks for the marker:
-#       * Marker present  → pre-commit ran → record the SHA in the
-#         sentinel file and delete the marker.
-#       * Marker absent   → pre-commit was skipped → write nothing.
-#         pre-push then sees a missing entry for this SHA and warns.
+#       * Marker present  → pre-commit AND commit-msg ran → record the SHA
+#         in the sentinel file and delete the marker.
+#       * Marker absent   → pre-commit or commit-msg was skipped → write
+#         nothing. pre-push then sees a missing entry for this SHA and
+#         warns.
 #
 # The sentinel lives under `.git/hooks-sentinels/` (not tracked) so it
 # stays clone-local. Pre-push consumes it; nothing else should depend
@@ -40,8 +50,9 @@ SENTINEL_FILE="$SENTINEL_DIR/.pre-commit-passed"
 MARKER_FILE="$SENTINEL_DIR/.pre-commit-marker"
 mkdir -p "$SENTINEL_DIR"
 
-# Marker absent → pre-commit was skipped (most likely cause: --no-verify).
-# Leave the sentinel alone so pre-push can warn on this SHA.
+# Marker absent → commit-msg did not write it (most likely cause: --no-verify
+# skipped pre-commit and commit-msg, or one of those gates aborted before
+# the marker write). Leave the sentinel alone so pre-push can warn on this SHA.
 if [ ! -f "$MARKER_FILE" ]; then
   exit 0
 fi
