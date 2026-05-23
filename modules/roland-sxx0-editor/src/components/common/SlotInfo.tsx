@@ -24,7 +24,9 @@ export interface SlotInfoProps {
   nameClass: string;
   /** The text rendered in the name span. Empty string is a valid value
    *  (intentional silence when an unloaded slot's eyebrow is the
-   *  state-conveyance affordance). */
+   *  state-conveyance affordance). When `isDragOver` is true AND
+   *  `dragOverText` is set, that replaces `displayName` for the
+   *  drop-zone affordance. */
   displayName: string;
   /** Whether the underlying bank reports the slot as loaded. */
   isLoaded: boolean;
@@ -32,10 +34,21 @@ export interface SlotInfoProps {
    *  "click to load" eyebrow during in-flight loads (the row
    *  already shows `(loading...)` upstream). */
   isBankLoading: boolean;
-  /** `data-testid` for the inner name span. The two original call
-   *  sites set this to `patch-name` / `tone-name`; the e2e suite
-   *  relies on those exact values via `.locator('[data-testid="..."]')`. */
-  testId: string;
+  /** `data-testid` for the inner name span. Optional — the original
+   *  PatchList/ToneList call sites set this to `patch-name` /
+   *  `tone-name` and the e2e suite relies on those exact values.
+   *  DeviceMemoryPanel doesn't carry a per-slot name-span testid;
+   *  it relies on the slot row's own `device-{tone,patch}-slot-N`
+   *  testid instead. */
+  testId?: string;
+  /** Text rendered in place of `displayName` when `isDragOver` is true
+   *  (e.g., DeviceMemoryPanel uses "Drop to import" as the drop-zone
+   *  affordance). Omit to disable the drag-over swap entirely. */
+  dragOverText?: string;
+  /** Defaults to false. When true AND `dragOverText` is provided, the
+   *  name span displays `dragOverText` and the "click to load" eyebrow
+   *  is suppressed. Used by DeviceMemoryPanel's drop-zone slots. */
+  isDragOver?: boolean;
 }
 
 export function SlotInfo({
@@ -44,13 +57,16 @@ export function SlotInfo({
   isLoaded,
   isBankLoading,
   testId,
+  dragOverText,
+  isDragOver = false,
 }: SlotInfoProps): JSX.Element {
+  const showDragOver = isDragOver && dragOverText !== undefined;
   return (
     <span className="ac-list-info">
-      <span className={nameClass} data-testid={testId}>
-        {displayName}
+      <span className={nameClass} {...(testId !== undefined ? { 'data-testid': testId } : {})}>
+        {showDragOver ? dragOverText : displayName}
       </span>
-      {!isLoaded && !isBankLoading && (
+      {!isLoaded && !isBankLoading && !showDragOver && (
         <span className="ac-list-eyebrow">click to load</span>
       )}
     </span>

@@ -22,6 +22,7 @@ import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import { PatchLabel } from '@/components/common/PatchLabel';
 import { BankHeader } from '@/components/common/BankHeader';
+import { SlotInfo } from '@/components/common/SlotInfo';
 import { isToneEmpty, isPatchEmpty } from '@/lib/slot-allocation';
 import type { LibraryDragPayload } from '@/lib/library-drag-types';
 import { LIBRARY_ITEM_MIME } from '@/lib/library-drag-types';
@@ -393,20 +394,18 @@ export function DeviceMemoryPanel({
         )}
       >
         <span className="ac-list-slot">{memoryLayout.formatToneSlot(index)}</span>
-        <span className="ac-list-info">
-          <span
-            className={cn(
-              'ac-list-name',
-              !tone && 'ac-list-name--placeholder',
-              tone && isEmpty && 'ac-list-name--empty',
-            )}
-          >
-            {isDragOver ? 'Drop to import' : displayName}
-          </span>
-          {!tone && !isLoaded && !isBankLoading && !isDragOver && (
-            <span className="ac-list-eyebrow">click to load</span>
+        <SlotInfo
+          nameClass={cn(
+            'ac-list-name',
+            !tone && 'ac-list-name--placeholder',
+            tone && isEmpty && 'ac-list-name--empty',
           )}
-        </span>
+          displayName={displayName}
+          isLoaded={!!tone || isLoaded}
+          isBankLoading={isBankLoading}
+          dragOverText="Drop to import"
+          isDragOver={isDragOver}
+        />
         {tone && !isEmpty && !isDragOver && (
           <span className="ac-list-meta">{tone.sampleRate}</span>
         )}
@@ -467,20 +466,18 @@ export function DeviceMemoryPanel({
         )}
       >
         <PatchLabel index={index} memoryLayout={memoryLayout} className="ac-list-slot" />
-        <span className="ac-list-info">
-          <span
-            className={cn(
-              'ac-list-name',
-              !patch && 'ac-list-name--placeholder',
-              patch && isEmpty && 'ac-list-name--empty',
-            )}
-          >
-            {isDragOver ? 'Drop to import' : displayName}
-          </span>
-          {!patch && !isLoaded && !isBankLoading && !isDragOver && (
-            <span className="ac-list-eyebrow">click to load</span>
+        <SlotInfo
+          nameClass={cn(
+            'ac-list-name',
+            !patch && 'ac-list-name--placeholder',
+            patch && isEmpty && 'ac-list-name--empty',
           )}
-        </span>
+          displayName={displayName}
+          isLoaded={!!patch || isLoaded}
+          isBankLoading={isBankLoading}
+          dragOverText="Drop to import"
+          isDragOver={isDragOver}
+        />
       </div>
     );
   }
