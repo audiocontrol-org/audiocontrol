@@ -76,3 +76,43 @@ Resolution:
 - Adversarial validator: `tools/scope-discovery/clone-id-stability.collision-scenarios.ts` adds three scenarios (deterministic tiebreaker with 2 candidates, identical-discriminator fail-loud, N-candidate deterministic resolution with 5/5 entries). Wired into `tools/scope-discovery/clone-id-stability.validate.ts` and `pnpm test:scope-discovery` (174 → 177 scenarios).
 - Live-tree verification (2026-05-22): `tsx tools/scope-discovery/migrate-clone-ids.ts --dry-run` against the current `docs/scope-discovery/clones.yaml` (post-T7.1 migration) reports `495 matched, 0 unmapped, 0 newOnly` under the corrected logic. No orphaned dispositions in the live data — the original T7.1 run happened against an all-pending baseline, so even if the buggy `Map<string, CloneGroup>` overwrote candidates internally, no operator-authored disposition existed to be silently dropped at that time.
 - Empirical re-exercise (2026-05-22): all 12 scenarios in `clone-id-stability.validate.ts` pass against the corrected matcher; full `pnpm test:scope-discovery` reports 177/177.
+
+## AUDIT-20260522-03
+
+Finding-ID: AUDIT-20260522-03
+Status:     verified-2026-05-22
+Severity:   high
+Surface:    .githooks/pre-commit, .githooks/post-commit, tools/scope-discovery/no-verify-detection.validate.ts
+
+The replacement `--no-verify` detector still has a stale-marker hole. If a commit attempt runs `pre-commit`, writes `.pre-commit-marker`, and then aborts before `post-commit` runs, the marker is left behind. A later `git commit --no-verify` skips `pre-commit`, but `post-commit` still sees the stale marker and records the bypassed commit as if pre-commit had run.
+
+Evidence:
+- [.githooks/pre-commit](/Users/orion/work/audiocontrol-work/audiocontrol-scope-discovery-protocol/.githooks/pre-commit:73) writes `.pre-commit-marker` as the last successful action, but there is no cleanup path if a later hook aborts the commit.
+- [.githooks/post-commit](/Users/orion/work/audiocontrol-work/audiocontrol-scope-discovery-protocol/.githooks/post-commit:45) treats marker presence as sufficient evidence that pre-commit ran for the current commit and only removes it after recording the SHA.
+- The validator covers only the happy path, direct `--no-verify`, pre-push warning, and gutted-pre-commit self-check [tools/scope-discovery/no-verify-detection.validate.ts](/Users/orion/work/audiocontrol-work/audiocontrol-scope-discovery-protocol/tools/scope-discovery/no-verify-detection.validate.ts:163). It does not exercise “failed commit leaves stale marker, next `--no-verify` commit inherits it.”
+- Repro in a throwaway repo:
+  1. `pre-commit` writes the marker.
+  2. `commit-msg` exits `1`, so the commit aborts and `post-commit` never consumes the marker.
+  3. A later `git commit --no-verify` succeeds.
+  4. The bypassed commit SHA is present in `.pre-commit-passed`.
+
+Observed output:
+
+```text
+after-failed-commit marker=yes sentinel_exists=no
+bypass_sha=752977666209ba27afeaa40a20889666f53f1d0a
+sentinel_contains=yes
+```
+
+Expected vs actual:
+- Expected: a `--no-verify` commit should never be recorded as pre-commit-verified, regardless of prior failed commit attempts.
+- Actual: a stale marker from an aborted earlier commit causes the later bypassed commit to be falsely recorded, so pre-push will not warn.
+
+Fix guidance:
+- Bind the marker to the specific commit attempt rather than using an unscoped presence check, or add cleanup for abort paths before any later commit can reuse the marker.
+- Extend `no-verify-detection.validate.ts` with an adversarial scenario covering “failed commit before post-commit, then `--no-verify`”.
+
+Resolution:
+- Corrected mechanism (commit `29bdc9c2`): move the marker write from `.githooks/pre-commit` to `.githooks/commit-msg` as commit-msg's last successful action. Verified Git lifecycle facts: (a) commit-msg runs after pre-commit succeeds and immediately before the commit lands atomically — Git provides no abort window between commit-msg's success exit and post-commit's execution; (b) commit-msg is also skipped by `git commit --no-verify`, so the bypass case still produces no marker. Architectural property: the only way for the marker to exist when post-commit runs is for commit-msg to have completed, which means both pre-commit and commit-msg ran AND `--no-verify` was not used. There is no stale-marker hole because there is no abort window after the marker write.
+- Adversarial validator: `tools/scope-discovery/no-verify-detection.validate.ts` adds a fifth scenario (`stale-marker-from-aborted-commit`) that wires a commit-msg stub which aborts before the marker write, asserts no marker survives on disk, then runs a `git commit --no-verify` and asserts the bypassed SHA does NOT appear in the sentinel. Confirmed teeth: under the prior AUDIT-01 architecture (pre-commit writes the marker) the scenario fails — stranded marker → bypass recorded → assertion trips. The existing four scenarios were refactored to use a new `FixtureOptions { preCommit, commitMsg }` shape; the gutted-detector self-check now guts commit-msg (the new marker source) rather than pre-commit. Suite: `pnpm test:scope-discovery` 177 → 178.
+- Empirical re-exercise (2026-05-22): the auditor's repro (pre-commit OK → commit-msg aborts → marker absent → `git commit --no-verify` → bypass SHA NOT in sentinel) passes in a throwaway `mktemp -d` git repo. The happy path (normal commit recorded; pre-push warns on `--no-verify` SHA only) also passes. The fix commit `29bdc9c2` itself records correctly under the new mechanism — verified by grepping the sentinel for its SHA — which proves the new mechanism works on itself.
