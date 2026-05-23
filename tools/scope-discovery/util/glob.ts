@@ -20,8 +20,13 @@
  *   - `**`        — any number of path segments (including zero)
  *   - `*`         — any run of non-`/` characters
  *   - `?`         — any single non-`/` character
- *   - `{a,b,c}`   — alternation; commas inside the braces are
- *                   separators; no nesting
+ *   - `{a,b,c}`   — alternation; commas at the brace's top level are
+ *                   separators. Each alternative is itself a glob —
+ *                   wildcards (`*`, `**`, `?`), literal `/`, and nested
+ *                   braces are all valid inside the alternation.
+ *                   Resolved AUDIT-20260522-05: alternatives are
+ *                   recursively re-compiled through the same pipeline
+ *                   instead of being literal-escaped.
  *   - literal `/` — path separator (always forward-slash; callers
  *                   normalize Windows-style backslashes before calling)
  *   - everything else is matched literally (regex metacharacters are
@@ -38,12 +43,26 @@ import { errorMessage, isEnoent } from './typeguards.js';
 
 /** Compile a glob pattern to an anchored RegExp. */
 export function globToRegex(pattern: string): RegExp {
-  // Expand brace alternations first so the segment-aware compiler doesn't
-  // have to track brace depth across `/` boundaries. The output is a
-  // single regex with alternation groups in place of each `{a,b}`.
+  return new RegExp(`^${compileGlobBody(pattern)}$`);
+}
+
+/**
+ * Compile a glob pattern to a regex source string WITHOUT anchors. The
+ * top-level `globToRegex` wraps the result in `^…$`; the alternation
+ * handler in `compileSegment` calls back into this same compiler for
+ * each `{a,b,c}` alternative, so wildcards (`*`, `**`, `?`), literal
+ * `/`, and nested braces all work inside an alternation.
+ *
+ * AUDIT-20260522-05 fix: the prior implementation passed each
+ * alternative through `escapeRegex` directly, which literal-escaped
+ * `*` / `?` inside braces (so `{a*c,b*d}` compiled to `(?:a\*c|b\*d)`
+ * and matched zero files). Re-routing alternatives through the full
+ * pipeline lets each one expand its own wildcards and recursively
+ * resolve any nested braces.
+ */
+function compileGlobBody(pattern: string): string {
   const expanded = expandBraces(pattern);
-  const compiled = compileSegmentwise(expanded);
-  return new RegExp(`^${compiled}$`);
+  return compileSegmentwise(expanded);
 }
 
 /**
@@ -108,14 +127,22 @@ export function toPosix(path: string): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Expand `{a,b}` alternations into a single regex alternation in-line.
- * Returns the pattern with each `{a,b,c}` replaced by `__GLOB_ALT_<n>__`
- * tokens, alongside the per-token alternative lists. Then the segmentwise
- * compiler substitutes the tokens back as regex alternation groups.
+ * Lift top-level `{a,b,c}` alternations into placeholder tokens so the
+ * segmentwise compiler doesn't have to track brace depth across `/`
+ * boundaries. Returns the pattern with each top-level brace group
+ * replaced by `__GLOB_ALT_<n>__` and the corresponding alternatives.
  *
- * Implementation note: we avoid emitting regex pieces during expansion so
- * the segmentwise compiler can still see literal `/` between alternation
- * tokens.
+ * Top-level here means "at brace depth 0 at the moment we encounter
+ * the `{`." Brace depth is tracked properly so nested braces are
+ * lifted intact as part of the outer alternative — the recursive
+ * compile in `compileSegment` re-runs the pipeline on each
+ * alternative, which expands the inner braces on a later pass.
+ *
+ * Commas inside nested braces are NOT separators of the outer group.
+ *
+ * Implementation note: we avoid emitting regex pieces during expansion
+ * so the segmentwise compiler can still see literal `/` between
+ * alternation tokens.
  */
 interface BraceExpansion {
   readonly skeleton: string;
@@ -129,15 +156,9 @@ function expandBraces(pattern: string): BraceExpansion {
   while (i < pattern.length) {
     const ch = pattern[i];
     if (ch === '{') {
-      const closeIndex = pattern.indexOf('}', i + 1);
-      if (closeIndex === -1) {
-        throw new Error(`glob: unmatched '{' at index ${i} in "${pattern}"`);
-      }
+      const closeIndex = findMatchingBrace(pattern, i);
       const inner = pattern.substring(i + 1, closeIndex);
-      if (inner.includes('{')) {
-        throw new Error(`glob: nested braces not supported (pattern: "${pattern}")`);
-      }
-      const parts = inner.split(',').map((s) => s.trim());
+      const parts = splitTopLevelCommas(inner).map((s) => s.trim());
       if (parts.length < 2 || parts.some((p) => p.length === 0)) {
         throw new Error(`glob: brace group must have >=2 non-empty alternatives in "${pattern}"`);
       }
@@ -151,6 +172,52 @@ function expandBraces(pattern: string): BraceExpansion {
     }
   }
   return { skeleton, alternatives };
+}
+
+/**
+ * Locate the `}` that closes the `{` at `openIndex`, accounting for
+ * nesting. Returns the index of the matching close brace; throws when
+ * the input ends before a matching `}` is found.
+ */
+function findMatchingBrace(pattern: string, openIndex: number): number {
+  let depth = 0;
+  for (let j = openIndex; j < pattern.length; j += 1) {
+    const c = pattern[j];
+    if (c === '{') depth += 1;
+    else if (c === '}') {
+      depth -= 1;
+      if (depth === 0) return j;
+    }
+  }
+  throw new Error(`glob: unmatched '{' at index ${openIndex} in "${pattern}"`);
+}
+
+/**
+ * Split `inner` on commas that are AT brace depth 0. Commas inside a
+ * nested `{…}` belong to the inner group and are not separators of the
+ * outer one.
+ */
+function splitTopLevelCommas(inner: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let buf = '';
+  for (let j = 0; j < inner.length; j += 1) {
+    const c = inner[j];
+    if (c === '{') {
+      depth += 1;
+      buf += c;
+    } else if (c === '}') {
+      depth -= 1;
+      buf += c;
+    } else if (c === ',' && depth === 0) {
+      parts.push(buf);
+      buf = '';
+    } else {
+      buf += c;
+    }
+  }
+  parts.push(buf);
+  return parts;
 }
 
 /**
@@ -207,7 +274,11 @@ function compileSegment(segment: string, alternatives: ReadonlyArray<readonly st
       i += 1;
       continue;
     }
-    // Brace-alternation token expansion.
+    // Brace-alternation token expansion. Each alternative is itself a
+    // sub-glob and is recursively re-compiled through the full
+    // pipeline (AUDIT-20260522-05) so wildcards / `**` / `?` / nested
+    // braces inside an alternative resolve correctly instead of being
+    // literal-escaped.
     if (segment.startsWith('__GLOB_ALT_', i)) {
       const end = segment.indexOf('__', i + '__GLOB_ALT_'.length);
       if (end !== -1) {
@@ -215,7 +286,7 @@ function compileSegment(segment: string, alternatives: ReadonlyArray<readonly st
         const altIndex = Number(indexStr);
         if (Number.isInteger(altIndex) && altIndex >= 0 && altIndex < alternatives.length) {
           const alts = alternatives[altIndex];
-          out += `(?:${alts.map(escapeRegex).join('|')})`;
+          out += `(?:${alts.map(compileGlobBody).join('|')})`;
           i = end + 2;
           continue;
         }
