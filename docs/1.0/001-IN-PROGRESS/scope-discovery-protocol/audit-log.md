@@ -116,3 +116,95 @@ Resolution:
 - Corrected mechanism (commit `29bdc9c2`): move the marker write from `.githooks/pre-commit` to `.githooks/commit-msg` as commit-msg's last successful action. Verified Git lifecycle facts: (a) commit-msg runs after pre-commit succeeds and immediately before the commit lands atomically — Git provides no abort window between commit-msg's success exit and post-commit's execution; (b) commit-msg is also skipped by `git commit --no-verify`, so the bypass case still produces no marker. Architectural property: the only way for the marker to exist when post-commit runs is for commit-msg to have completed, which means both pre-commit and commit-msg ran AND `--no-verify` was not used. There is no stale-marker hole because there is no abort window after the marker write.
 - Adversarial validator: `tools/scope-discovery/no-verify-detection.validate.ts` adds a fifth scenario (`stale-marker-from-aborted-commit`) that wires a commit-msg stub which aborts before the marker write, asserts no marker survives on disk, then runs a `git commit --no-verify` and asserts the bypassed SHA does NOT appear in the sentinel. Confirmed teeth: under the prior AUDIT-01 architecture (pre-commit writes the marker) the scenario fails — stranded marker → bypass recorded → assertion trips. The existing four scenarios were refactored to use a new `FixtureOptions { preCommit, commitMsg }` shape; the gutted-detector self-check now guts commit-msg (the new marker source) rather than pre-commit. Suite: `pnpm test:scope-discovery` 177 → 178.
 - Empirical re-exercise (2026-05-22): the auditor's repro (pre-commit OK → commit-msg aborts → marker absent → `git commit --no-verify` → bypass SHA NOT in sentinel) passes in a throwaway `mktemp -d` git repo. The happy path (normal commit recorded; pre-push warns on `--no-verify` SHA only) also passes. The fix commit `29bdc9c2` itself records correctly under the new mechanism — verified by grepping the sentinel for its SHA — which proves the new mechanism works on itself.
+
+## AUDIT-20260522-04
+
+Finding-ID: AUDIT-20260522-04
+Status:     open
+Severity:   medium
+Surface:    tools/scope-discovery/check-anti-patterns.ts, tools/scope-discovery/anti-patterns-registry.ts, docs/scope-discovery/anti-patterns.yaml schema
+
+The T6.1 anti-pattern registry has no path-exclude mechanism. For every primitive whose body IS the legacy shape it replaces (the common case — `useExportDialogLifecycle.ts`, `PageTitleRow.tsx`, `AcReloadIcon.tsx`, `BankHeader.tsx`, `SlotInfo.tsx`, `AcRadioTabs.tsx`, `DestinationEyebrow.tsx`, `LibraryDeviceMemoryPanel.tsx`, `LibraryPreviewPanelAdapter.tsx`, `browser-download.ts`), the scan flags the canonical file as a holdout against its own anti-pattern. The gate cannot be satisfied.
+
+Evidence:
+- Surfaced via dogfooding on `feature/roland-bugfix` Phase 4 backfilling 9 anti-pattern entries from Phase 2 extractions.
+- Empirical repro: drafting `use-export-dialog-lifecycle-inline` (two-pattern fingerprint with `min_distance: 10`) and running `make check-anti-patterns` produces:
+  ```
+  modules/roland-sxx0-editor/src/hooks/useExportDialogLifecycle.ts:77: matches anti-pattern use-export-dialog-lifecycle-inline
+    replacement: useExportDialogLifecycle from @/hooks/useExportDialogLifecycle
+  anti-patterns: 1 finding(s) across 1347 files.
+  make: *** [check-anti-patterns] Error 1
+  ```
+- `AntiPatternEntry` carries `id`, `addedIn`, `primitive`, `from`, `patterns`, `minDistance`, `message`. No `excludes_paths:` field, no `skip_canonical:` flag, no implicit "skip the file the primitive's `from:` path points at" semantic.
+- Workaround attempts considered + rejected by the bugfix-branch operator: position-aware fingerprints (inverts the firing semantic), negative-lookbehind regex (fragile, brittle), drop the JSX/SVG primitives (most extracted primitives have this property).
+
+Expected vs actual:
+- Expected: the canonical file can be excluded from its own anti-pattern's scan via an explicit declaration.
+- Actual: every anti-pattern derived from an extracted primitive whose body contains the legacy shape fires on the canonical file itself, blocking the gate.
+
+Fix guidance:
+- Add an optional `excludes_paths:` field to `AntiPatternEntry`. Semantics: filter out files whose path matches any listed glob or literal path before running the entry's patterns. Primary use case: the canonical primitive's own file. Secondary: test fixtures that intentionally carry the legacy shape as evidence.
+- Path-exclude must be per-entry (not registry-wide) to handle the test-fixture case.
+- Adversarial validator scenarios: (a) canonical file excluded + matches shape → no finding; (b) holdout file matching shape → finding still fires; (c) malformed exclude pattern → registry parse error.
+
+External tracking: ROLAND-BUGFIX-T6.1-EXCLUDE (filed on bugfix branch as consumer-side tracking; this audit-log entry is protocol-side).
+
+## AUDIT-20260522-05
+
+Finding-ID: AUDIT-20260522-05
+Status:     open
+Severity:   medium
+Surface:    tools/scope-discovery/util/glob.ts
+
+The shared `globToRegex` compiler escapes `*` literally when it appears inside `{...}` alternation, instead of expanding it to `[^/]*` like top-level `*`. Result: globs of the form `lib/{Foo*Dialog,Bar*Dialog}.tsx` compile to a regex that matches zero files. Consumers using brace alternation with wildcards (adopter manifests, editor-symmetry matrix, deprecation scans) silently produce empty match sets.
+
+Evidence:
+- Surfaced via dogfooding on `feature/roland-bugfix` Phase 5 backfilling adopter manifests. First attempt used `'modules/roland-sxx0-editor/src/components/library/{Export*Dialog,Import*Dialog,BatchExportDrawer}.tsx'`. The schema validator rejected the exception entries as "inert" (glob matches zero files), making the registry unloadable.
+- Reproducer:
+  ```typescript
+  import { globToRegex } from './tools/scope-discovery/util/glob.ts';
+  const re = globToRegex('lib/{Foo*Dialog,Bar*Dialog}.tsx');
+  console.log(re.source);
+  // -> ^lib\/(?:Foo\*Dialog|Bar\*Dialog)\.tsx$
+  // expected: ^lib\/(?:Foo[^/]*Dialog|Bar[^/]*Dialog)\.tsx$
+  console.log(re.test('lib/FooLibraryDialog.tsx'));  // false (expected true)
+  ```
+- `globToRegex` is imported by `util/glob.ts` consumers across the scope-discovery surface: `adopter-manifests-registry.ts`, `editor-symmetry-matrix.ts`, `deprecation-scan.ts`, `editor-symmetry.scenarios.ts`. Any glob using brace+wildcard silently produces zero matches.
+
+Expected vs actual:
+- Expected: `{a*c,b*d}` expands to `(?:a[^/]*c|b[^/]*d)` — each alternative re-compiled through the same wildcard logic.
+- Actual: `{a*c,b*d}` compiles to `(?:a\*c|b\*d)` — alternation body is literal-escaped.
+
+Fix guidance:
+- `globToRegex`'s alternation handler should recursively re-compile each alternative through the same `*` / `**` / `?` expansion logic, then join with `|`.
+- Adversarial validator scenarios: (a) `{a*c,b*d}` matches `axc` and `byd`; (b) `{a/**/b,c/**/d}` matches `a/x/y/b` and `c/x/y/d`; (c) nested brace `{a,{b,c}}` works correctly; (d) literal-escape preserved for non-wildcard chars (`{a.b,c.d}` → `(?:a\.b|c\.d)`).
+
+External tracking: ROLAND-BUGFIX-T6.2-GLOB (filed on bugfix branch as consumer-side tracking).
+
+## AUDIT-20260522-06
+
+Finding-ID: AUDIT-20260522-06
+Status:     open
+Severity:   medium
+Surface:    docs/scope-discovery/adopter-manifests.yaml schema, tools/scope-discovery/adopter-manifests-registry.ts, tools/scope-discovery/adopter-manifests-report.ts, tools/scope-discovery/editor-symmetry-matrix.ts
+
+The T6.2 adopter-manifest schema's `exceptions:` field collapses two semantically distinct cases: (a) permanent opt-outs (the file legitimately shouldn't adopt) and (b) deferred-but-known holdouts (the file IS a holdout, with an open follow-up to fix it). The only way to keep the gate green when a known migration is pending is to list the file as a permanent exception — which hides the work-to-do count and makes the T6.3 cross-editor symmetry matrix render `✓` for editors with unsilenced-but-acknowledged holdouts.
+
+Evidence:
+- Surfaced via dogfooding on `feature/roland-bugfix` Phase 5 (adopter manifests, 5 Import-dialog SlideDrawer holdouts pending ROLAND-BUGFIX-V3-IMPORT) and Phase 6 (cross-editor matrix masking akai's 9 library-dialog holdouts).
+- The 5 Import-dialog deferrals were tracked via `reason: TRACKED HOLDOUT — pending ROLAND-BUGFIX-V3-IMPORT (issue #450)` in the `exceptions:` field. Visible to manifest readers; invisible to any tool deriving counts or holdout-burndown metrics.
+- The T6.3 matrix's `slide-drawer-library-dialogs × akai-s3k-editor` cell renders `✓ 9/9` because exceptions are silently subtracted from the holdout count before the matrix renders. A reader scanning the matrix for asymmetries sees `✓` everywhere and concludes "no asymmetries" — the opposite of the truth (9 of 9 akai library dialogs are on legacy chrome).
+- Finding #4 in the bugfix-branch tooling-feedback.md (matrix masking) rolls up into this finding — same root cause.
+
+Expected vs actual:
+- Expected: `tracked_holdouts:` is a distinct field from `exceptions:`. Tracked holdouts are not findings (gate passes) but are reported under their own section. Each tracked-holdout entry requires an `issue:` URL to prevent the field from becoming a "I'll fix it later" deferral dumping ground. The matrix renders tracked-holdout cells in a third state (e.g., `⏳ A/E (H tracked)`).
+- Actual: `exceptions:` collapses both semantics. Burndown counts are wrong. Matrix asymmetries are masked.
+
+Fix guidance:
+- Add `tracked_holdouts:` field to `AdopterManifestEntry`. Required sub-fields per entry: `path` (string), `issue` (URL string), `reason` (multi-line string). Validator rejects entries missing `issue:`.
+- `make check-adopters` exit code stays 0 when tracked-holdouts are listed (gate passes) but the report emits them under a separate `tracked_holdouts:` section.
+- `make check-editor-symmetry` matrix renders tracked-holdout cells with a distinct glyph (proposed: `⏳ A/E (H tracked)`).
+- Adversarial validator scenarios for adopter-manifests: (a) tracked-holdout file is NOT a finding; (b) tracked-holdout report section names the file + issue URL; (c) entry without `issue:` → parse error; (d) tracked-holdout path that doesn't match any glob → parse error.
+- Adversarial validator scenarios for editor-symmetry: tracked-holdouts render with the new glyph; existing `✓ N/N` / `⚠ A/E (H)` / `✗` / `—` cells unaffected.
+
+External tracking: ROLAND-BUGFIX-T6.2-TRACKED-HOLDOUTS (#453 — filed on bugfix branch as consumer-side tracking).
