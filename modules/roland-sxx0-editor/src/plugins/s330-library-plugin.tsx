@@ -8,8 +8,6 @@
 
 import type {
   DeviceLibraryPlugin,
-  ItemSelection,
-  PreviewContext,
   DeviceMemoryRenderProps,
 } from '@audiocontrol/editor-core';
 import {
@@ -20,11 +18,10 @@ import {
   createTonesCategory,
   createPatchesCategory,
 } from './shared/categories';
+import { LibraryDeviceMemoryPanel } from '@/plugins/shared/LibraryDeviceMemoryPanel';
+import { LibraryPreviewPanelAdapter } from '@/plugins/shared/LibraryPreviewPanelAdapter';
 import { s330Config } from '@/configs/s330';
-import { DeviceMemoryPanel } from '@/components/library/DeviceMemoryPanel';
-import { ItemPreviewPanel } from '@/components/library/ItemPreviewPanel';
-import { CommonSamplePreviewPanel } from '@/components/library/CommonSamplePreviewPanel';
-import type { DeviceMemoryCustomState, PreviewPanelCustomState } from './shared/plugin-state-types';
+import type { DeviceMemoryCustomState } from './shared/plugin-state-types';
 
 // =========================================================================
 // S-330 Memory Panel Adapter
@@ -51,127 +48,7 @@ function S330MemoryPanelAdapter(props: DeviceMemoryRenderProps): JSX.Element {
     );
   }
 
-  // Render the actual DeviceMemoryPanel
-  return (
-    <DeviceMemoryPanel
-      tones={state.tones}
-      patches={state.patches}
-      loadedToneBanks={state.loadedToneBanks}
-      loadedPatchBanks={state.loadedPatchBanks}
-      selectedIndex={state.selectedIndex}
-      selectedType={state.selectedType}
-      onSelectTone={state.onSelectTone}
-      onSelectPatch={state.onSelectPatch}
-      onDropLibraryTone={state.onDropLibraryTone}
-      onDropLibraryPatch={state.onDropLibraryPatch}
-      onDropLibrarySample={state.onDropLibrarySample}
-      loadingToneBank={state.loadingToneBank}
-      loadingPatchBank={state.loadingPatchBank}
-      onLoadToneBank={state.onLoadToneBank}
-      onLoadPatchBank={state.onLoadPatchBank}
-      onReloadToneBank={state.onReloadToneBank}
-      onReloadPatchBank={state.onReloadPatchBank}
-    />
-  );
-}
-
-// =========================================================================
-// S-330 Preview Panel Adapter
-// =========================================================================
-
-/**
- * Adapter that bridges the plugin interface to preview panels.
- * Routes to ItemPreviewPanel, SampleBundlePreviewPanel, or
- * CommonSamplePreviewPanel based on selection type.
- */
-function S330PreviewPanelAdapter({
-  // Tree-level selection is intentionally unused — see the
-  // pageSelection routing comment below.
-  selection: _selection,
-  context,
-}: {
-  selection: ItemSelection | null;
-  context: PreviewContext;
-}): JSX.Element {
-  const state = context.customState as PreviewPanelCustomState | undefined;
-
-  // Loading state
-  if (context.isLoading) {
-    return (
-      <div className="p-4 text-sm text-s330-muted italic">
-        Loading...
-      </div>
-    );
-  }
-
-  // Error state
-  if (context.error) {
-    return (
-      <div className="p-4 text-sm text-red-400">
-        {context.error}
-      </div>
-    );
-  }
-
-  // The plugin-tree `selection` prop is only set by library-tree
-  // clicks (via `PluginLibraryBrowser.onSelectionChange`); clicks in
-  // `DeviceMemoryPanel` go through the page's `handleSelectDevice`
-  // which sets `state.pageSelection.source === 'device'` but leaves
-  // the tree-level `selection` null. Routing off `pageSelection`
-  // (page-level source of truth) rather than the tree-level `selection`
-  // prop covers both device-memory and library-tree clicks uniformly.
-  const pageSelection = state?.pageSelection;
-  if (!state || !pageSelection) {
-    // Use the canonical column-header chrome so the empty-state
-    // Preview title matches Device Memory / Library in typography.
-    return (
-      <div className="h-full flex flex-col">
-        <div className="ac-panel-header">
-          <h3 className="ac-panel-header-title">Preview</h3>
-        </div>
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="text-center text-s330-muted text-sm">
-            <p>Select an item to view details</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Route to appropriate preview panel based on selection type
-  if (pageSelection?.type === 'sample' || pageSelection?.type === 'program') {
-    return (
-      <CommonSamplePreviewPanel
-        selection={pageSelection ? { type: pageSelection.type as 'sample' | 'program', name: pageSelection.name!, path: pageSelection.path } : null}
-        libraryHandle={state.libraryHandle}
-        onPromoteToDevice={() => {}}
-        onOpenInLoopEditor={state.onOpenInLoopEditor}
-        onOpenInChopper={state.onOpenInChopper}
-        onOpenInSampleEditor={state.onOpenInSampleEditor}
-      />
-    );
-  }
-
-  // Default to ItemPreviewPanel for tones, patches, sets, etc.
-  return (
-    <ItemPreviewPanel
-      selection={pageSelection}
-      deviceTones={state.deviceTones}
-      devicePatches={state.devicePatches}
-      libraryHandle={state.libraryHandle}
-      onImportTone={state.onImportTone}
-      onImportPatch={state.onImportPatch}
-      onImportIndividualTone={state.onImportIndividualTone}
-      onImportIndividualPatch={state.onImportIndividualPatch}
-      onLoadSet={state.onLoadSet}
-      onOpenInLoopEditor={state.onOpenInLoopEditor ? (name, _nodeType, path) => state.onOpenInLoopEditor!(name, path) : undefined}
-      onOpenInSampleEditor={state.onOpenInSampleEditor ? (name, _nodeType, path) => state.onOpenInSampleEditor!(name, path) : undefined}
-      onExportDeviceTone={state.onExportDeviceTone}
-      onExportDevicePatch={state.onExportDevicePatch}
-      onEditDeviceTone={state.onEditDeviceTone}
-      onEditDevicePatch={state.onEditDevicePatch}
-    />
-  );
+  return <LibraryDeviceMemoryPanel state={state} />;
 }
 
 // =========================================================================
@@ -210,7 +87,7 @@ export const s330LibraryPlugin: DeviceLibraryPlugin = {
 
   previewPanel: {
     renderPreview: (selection, context) => (
-      <S330PreviewPanelAdapter selection={selection} context={context} />
+      <LibraryPreviewPanelAdapter selection={selection} context={context} />
     ),
   },
 };

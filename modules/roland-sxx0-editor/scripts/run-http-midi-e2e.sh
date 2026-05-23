@@ -19,6 +19,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+INFRA_DIR="$(cd "$PROJECT_DIR/../e2e-infra" && pwd)"
 
 cd "$PROJECT_DIR"
 
@@ -211,7 +212,7 @@ PLAYWRIGHT_LOG=$(mktemp)
 npx playwright test -c "$PLAYWRIGHT_CONFIG" "$@" > "$PLAYWRIGHT_LOG" 2>&1 &
 PLAYWRIGHT_PID=$!
 
-tsx scripts/watchdog.ts "$PLAYWRIGHT_PID" "$HEARTBEAT_FILE" &
+tsx "$INFRA_DIR/scripts/watchdog.ts" "$PLAYWRIGHT_PID" "$HEARTBEAT_FILE" &
 WATCHDOG_PID=$!
 
 echo "[runner] Playwright PID: $PLAYWRIGHT_PID"

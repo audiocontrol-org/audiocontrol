@@ -26,6 +26,7 @@ import {
 } from '@audiocontrol/editor-core';
 import { useMidiStore } from '@/stores/midiStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
+import { PageTitleRow } from '@/components/common/PageTitleRow';
 import { cn } from '@/lib/utils';
 
 type ProbeState = 'idle' | 'scanning' | 'found' | 'not-found';
@@ -242,15 +243,12 @@ export function HomePage(): JSX.Element {
 
   return (
     <div className="ac-page ac-page-shell">
-      <header className="ac-page-title-row">
-        <div className="ac-page-title-block">
-          <h2 id="connect-heading" className="ac-page-title-heading">Connect</h2>
-          <div className="ac-page-title-rule" aria-hidden="true" />
-        </div>
-        <span className="ac-page-title-metric">
-          {deviceName} · MIDI Handshake
-        </span>
-      </header>
+      <PageTitleRow
+        headingId="connect-heading"
+        headingText="Connect"
+        metric={`${deviceName} · MIDI Handshake`}
+        showLed={false}
+      />
 
       <div className="ac-connect-layout">
        <div className="ac-connect-layout-main">

@@ -1,0 +1,25 @@
+{
+  "agent": "regime-holdout-detector",
+  "featureSlug": "roland-bugfix",
+  "findings": [
+    {
+      "source": "deprecation",
+      "id": "modules/sampler-backup/src/lib/backup/path-conventions.ts",
+      "file": "modules/sampler-backup/src/cli/migrate.ts",
+      "line": 20,
+      "shape": "imports deprecated file 'modules/sampler-backup/src/lib/backup/path-conventions.ts' (marker: jsdoc)",
+      "replacement": "migrate per the file's @deprecated note — Import from '@audiocontrol/sampler-lib' instead",
+      "evidence": {
+        "registryPath": "modules/sampler-backup/src/lib/backup/path-conventions.ts",
+        "registryId": "@deprecated"
+      }
+    }
+  ],
+  "meta": {
+    "anti_pattern_count": 0,
+    "adopter_manifest_count": 0,
+    "editor_symmetry_holdout_count": 0,
+    "deprecation_count": 1,
+    "total": 1
+  }
+}

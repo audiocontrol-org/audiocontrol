@@ -134,22 +134,13 @@ function writeString(view: DataView, offset: number, str: string): void {
     }
 }
 
-/**
- * Trigger a file download in the browser
- *
- * @param blob - File blob to download
- * @param filename - Suggested filename for download
- */
-export function downloadBlob(blob: Blob, filename: string): void {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
+// downloadBlob lives in `@audiocontrol/editor-core` since 2026-05-23
+// (ROLAND-BUGFIX-RGM-001 sub-task 4 promoted it from roland-side
+// `lib/browser-download`). Re-exported here so existing callers that
+// imported `downloadBlob` from wave-export don't have to chase the
+// move; new callers should import from `@audiocontrol/editor-core`.
+import { downloadBlob } from '@audiocontrol/editor-core';
+export { downloadBlob };
 
 /**
  * Export already-decoded 16-bit samples as a WAV file download.

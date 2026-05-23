@@ -61,4 +61,160 @@
 # .ts/.tsx change and flags any matching shape in the staged tree. See
 # `tools/scope-discovery/check-anti-patterns.ts` for the gate.
 
-anti_patterns: []
+# roland-bugfix Phase 4 backfill (2026-05-23, post-PR-#454):
+# T6.1's `excludes_paths:` field shipped in commit 914710a2 closing #451.
+# Backfilled the 9 anti-pattern drafts from Phase 2's refactor extractions;
+# each entry's `excludes_paths:` lists the canonical primitive's own file
+# so the scan correctly skips the source-of-truth definition.
+
+anti_patterns:
+  - id: use-export-dialog-lifecycle-inline
+    added_in: dce8fc72
+    primitive: useExportDialogLifecycle
+    from: '@/hooks/useExportDialogLifecycle'
+    shape_regex:
+      - 'const \[localError, setLocalError\] = useState<string \| null>\(null\)'
+      - 'const \[hasStarted, setHasStarted\] = useState\(false\)'
+    min_distance: 10
+    excludes_paths:
+      - 'modules/roland-sxx0-editor/src/hooks/useExportDialogLifecycle.ts'
+    message: |
+      Inline localError + hasStarted state with open-reset useEffect was
+      promoted to the useExportDialogLifecycle hook in commit dce8fc72.
+      Replace with `const { localError, setLocalError, hasStarted, ... } =
+      useExportDialogLifecycle({ open, isOperating, progress, operationError,
+      onOpenChange });`
+
+  - id: page-title-row-inline
+    added_in: b996aa01
+    primitive: PageTitleRow
+    from: '@/components/common/PageTitleRow'
+    shape_regex: '<header[^>]*className="ac-page-title-row"'
+    excludes_paths:
+      - 'modules/roland-sxx0-editor/src/components/common/PageTitleRow.tsx'
+      # HomePage migrated via RGM-001 sub-task 1 (PageTitleRow extension
+      # added showLed?: boolean + optional isLoading/refreshLabel).
+      # LibraryPage migrated via RGM-001 sub-task 2 (PageTitleRow extension
+      # added headingNode?: ReactNode + actions?: ReactNode slot).
+    message: |
+      Inline `.ac-page-title-row` markup was promoted to the PageTitleRow
+      component in commit b996aa01. Replace with `<PageTitleRow
+      headingId="..." headingText="..." metric={...} loadingMessage={...}
+      isLoading={...} onRefresh={...} refreshLabel="..." />`.
+
+  - id: ac-reload-icon-inline
+    added_in: b996aa01
+    primitive: AcReloadIcon
+    from: '@/components/common/AcReloadIcon'
+    shape_regex:
+      - '<svg viewBox="0 0 16 16" aria-hidden="true">'
+      - 'M3 8a5 5 0 0 1 9-3'
+      - 'M13 8a5 5 0 0 1-9 3'
+    min_distance: 10
+    excludes_paths:
+      - 'modules/roland-sxx0-editor/src/components/common/AcReloadIcon.tsx'
+      # LibraryPage closed via RGM-001 sub-task 2 — now adopts PageTitleRow
+      # which uses AcReloadIcon internally for its refresh button.
+    message: |
+      Inline 4-path reload SVG was promoted to the AcReloadIcon component
+      in commit b996aa01. Replace with `<AcReloadIcon />`.
+
+  - id: bank-header-inline
+    added_in: c88d8d06
+    primitive: BankHeader
+    from: '@/components/common/BankHeader'
+    shape_regex: '<div className="ac-list-bank-header">'
+    excludes_paths:
+      - 'modules/roland-sxx0-editor/src/components/common/BankHeader.tsx'
+    message: |
+      Inline `.ac-list-bank-header` markup was promoted to the BankHeader
+      component in commit c88d8d06. Replace with `<BankHeader bankIndex={...}
+      firstSlotLabel={...} lastSlotLabel={...} isCollapsed={...}
+      onToggle={...} isBankLoaded={...} isThisBankLoading={...}
+      onReload={...} testIdPrefix={...} />`.
+
+  - id: slot-info-inline
+    added_in: 30e7346e
+    primitive: SlotInfo
+    from: '@/components/common/SlotInfo'
+    shape_regex: '<span className="ac-list-info">'
+    excludes_paths:
+      - 'modules/roland-sxx0-editor/src/components/common/SlotInfo.tsx'
+      # DeviceMemoryPanel migrated via RGM-001 sub-task 3 (SlotInfo
+      # extension added dragOverText?: string + isDragOver?: boolean +
+      # optional testId).
+    message: |
+      Inline `.ac-list-info` span block was promoted to the SlotInfo
+      component in commit 30e7346e. Replace with `<SlotInfo nameClass={...}
+      displayName={...} isLoaded={...} isBankLoading={...} testId={...} />`.
+
+  - id: ac-radio-tabs-inline
+    added_in: 1fa334f5
+    primitive: AcRadioTabs
+    from: '@/components/common/AcRadioTabs'
+    shape_regex:
+      - '<div className="ac-tabs">'
+      - '<nav className="ac-tab-strip" role="tablist"'
+      - '<div className="ac-panels">'
+    min_distance: 30
+    excludes_paths:
+      - 'modules/roland-sxx0-editor/src/components/common/AcRadioTabs.tsx'
+    message: |
+      Inline radio-driven tab strip was promoted to the AcRadioTabs component
+      in commit 1fa334f5. Replace with `<AcRadioTabs tabs={...} panels={...}
+      defaultTabId={...} groupName={...} ariaLabel={...} />`.
+
+  - id: destination-eyebrow-inline
+    added_in: 81da20a9
+    primitive: DestinationEyebrow
+    from: '@/components/library/DestinationEyebrow'
+    shape_regex:
+      - 'data-testid="destination-eyebrow-kind"'
+      - 'data-testid="destination-eyebrow-library"'
+      - 'data-testid="destination-eyebrow-device"'
+    min_distance: 10
+    excludes_paths:
+      - 'modules/roland-sxx0-editor/src/components/library/DestinationEyebrow.tsx'
+    message: |
+      Inline 3-span destination eyebrow row was promoted to the
+      DestinationEyebrow component in commit 81da20a9. Replace with
+      `<DestinationEyebrow kindLabel={...} deviceName={...} itemCount={...} />`.
+
+  - id: library-device-memory-panel-inline
+    added_in: dedd4d2f
+    primitive: LibraryDeviceMemoryPanel
+    from: '@/plugins/shared/LibraryDeviceMemoryPanel'
+    shape_regex:
+      - '<DeviceMemoryPanel'
+      - 'tones=\{state\.tones\}'
+      - 'patches=\{state\.patches\}'
+      - 'onSelectTone=\{state\.onSelectTone\}'
+    min_distance: 20
+    excludes_paths:
+      - 'modules/roland-sxx0-editor/src/plugins/shared/LibraryDeviceMemoryPanel.tsx'
+    message: |
+      Inline DeviceMemoryPanel props-pass-through was promoted to the
+      LibraryDeviceMemoryPanel adapter in commit dedd4d2f. Replace with
+      `<LibraryDeviceMemoryPanel state={state} />`.
+
+  - id: download-blob-inline
+    added_in: ae0b5192
+    primitive: downloadBlob
+    from: '@audiocontrol/editor-core'
+    shape_regex:
+      - 'URL\.createObjectURL\('
+      - 'document\.createElement\(.a.\)'
+      - 'URL\.revokeObjectURL\('
+    min_distance: 10
+    excludes_paths:
+      - 'modules/editor-core/src/utils/browser-download.ts'
+      # akai SampleTransferPanel migrated via RGM-001 sub-task 4
+      # (promoted downloadBlob to @audiocontrol/editor-core; akai +
+      # roland-sxx0-editor both import from there now).
+    message: |
+      Inline createObjectURL + anchor click + revoke sequence was promoted to
+      the downloadBlob utility (originally added in commit ae0b5192 in
+      roland-sxx0-editor; promoted to @audiocontrol/editor-core
+      2026-05-23 per RGM-001 sub-task 4). Replace with
+      `import { downloadBlob } from '@audiocontrol/editor-core'` +
+      `downloadBlob(blob, filename)`.

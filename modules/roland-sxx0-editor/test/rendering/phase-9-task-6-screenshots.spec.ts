@@ -26,13 +26,14 @@
  *     (see `ToneEditorHead.tsx:59`); the `tones-bank-0` fixture's
  *     tone 0 decodes to identical wave start/end after replay, so the
  *     Export button never enables in the test environment.
- *   - The remaining 10 library dialogs (CreateDirectoryDialog,
- *     DeleteDirectoryDialog, ExportPatchDialog,
- *     ImportLibraryPatchDialog, ImportLibraryToneDialog,
- *     ImportSampleDialog, ImportSamplesDialog, ImportToneDialog,
- *     MoveItemDialog, RenameDirectoryDialog) are mount-visible-asserted
- *     by the existing capability specs in
+ *   - The remaining library dialogs (DeleteDirectoryDialog,
+ *     ExportPatchDialog, ImportLibraryPatchDialog,
+ *     ImportLibraryToneDialog, ImportSampleDialog,
+ *     ImportSamplesDialog, ImportToneDialog, MoveItemDialog) are
+ *     mount-visible-asserted by the existing capability specs in
  *     `test/wiring/library-flows-dialogs.spec.ts` and siblings
+ *     (CreateDirectoryDialog and RenameDirectoryDialog were dead-code
+ *     orphans deleted as ROLAND-BUGFIX-DEL-002.)
  *     — their visual chrome is the SAME shared `<Dialog.Content>` +
  *     `.ac-input` / `.ac-select` / `.ac-checkbox` primitives polished
  *     in Task 5 commit `8e179806`. Screenshotting each from scratch

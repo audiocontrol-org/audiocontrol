@@ -160,6 +160,46 @@ test.describe('Capabilities — Connection (C-CONN)', () => {
     await expect(deviceIdInput).toHaveAttribute('max', '17');
   });
 
+  test('D-CONNECT-PAGE-TITLE-01: HomePage renders the .ac-page-title-row chrome with heading + rule + metric text (no LED, no refresh) — RGM-001 PageTitleRow-migration contract', async ({ page }) => {
+    // Test-before-migration contract for ROLAND-BUGFIX-RGM-001 sub-task 1
+    // (extend PageTitleRow with showLed?: boolean + headingNode?: ReactNode
+    // + optional isLoading/refreshLabel; then migrate HomePage to use it).
+    //
+    // HomePage's title-row currently has:
+    //   <header class="ac-page-title-row">
+    //     <div class="ac-page-title-block">
+    //       <h2 id="connect-heading" class="ac-page-title-heading">Connect</h2>
+    //       <div class="ac-page-title-rule" />
+    //     </div>
+    //     <span class="ac-page-title-metric">{deviceName} · MIDI Handshake</span>
+    //   </header>
+    //
+    // Notably NO .ac-page-title-led + NO refresh button (HomePage is the
+    // connect page; LED would be misleading until a device is bound).
+    //
+    // This test pins the shape so the PageTitleRow extension that adds
+    // `showLed?: boolean` (default true; HomePage sets false) and makes
+    // `isLoading` / `refreshLabel` optional does NOT inadvertently start
+    // rendering the LED or refresh button on HomePage post-migration.
+    // Must pass against pre-migration code AND post-migration code.
+    const titleRow = page.locator('header.ac-page-title-row');
+    await expect(titleRow).toBeVisible({ timeout: 5_000 });
+
+    const heading = titleRow.locator('h2.ac-page-title-heading');
+    await expect(heading).toHaveText('Connect');
+    await expect(heading).toHaveAttribute('id', 'connect-heading');
+
+    await expect(titleRow.locator('.ac-page-title-rule')).toBeVisible();
+
+    // The metric span carries the device-name · handshake-text. Plain
+    // string content; no LED, no refresh button.
+    const metric = titleRow.locator('.ac-page-title-metric');
+    await expect(metric).toBeVisible();
+    await expect(metric).toContainText(/·\s*MIDI Handshake/);
+    await expect(metric.locator('.ac-page-title-led')).toHaveCount(0);
+    await expect(metric.getByRole('button')).toHaveCount(0);
+  });
+
   test('D-CONN-06: device-setup help items render in the Setup guide / Troubleshooting disclosures', async ({ page }) => {
     // After the 2026-05-18 connect-page redesign the single
     // "Connection Help" section was split into TWO disclosures

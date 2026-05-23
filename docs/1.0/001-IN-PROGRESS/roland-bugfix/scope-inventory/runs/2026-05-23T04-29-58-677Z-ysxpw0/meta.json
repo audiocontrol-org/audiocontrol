@@ -1,0 +1,31 @@
+{
+  "runId": "2026-05-23T04-29-58-677Z-ysxpw0",
+  "skill": "scope-inventory",
+  "skillVersion": "0.1.0",
+  "featureSlug": "roland-bugfix",
+  "featureDir": "docs/1.0/001-IN-PROGRESS/roland-bugfix",
+  "featureStatus": "001-IN-PROGRESS",
+  "operator": "oletizi",
+  "startedAt": "2026-05-23T04:29:58.000Z",
+  "completedAt": "2026-05-23T04:30:33.000Z",
+  "inputs": {
+    "prdPath": "docs/1.0/001-IN-PROGRESS/roland-bugfix/prd.md"
+  },
+  "agentsRun": [
+    "ui-route-enumerator",
+    "ast-grep-matrix",
+    "clone-detector-reader",
+    "prd-themed-pattern-hunter",
+    "regime-holdout-detector"
+  ],
+  "agentExitCodes": {
+    "ui-route-enumerator": 0,
+    "ast-grep-matrix": 0,
+    "clone-detector-reader": 0,
+    "prd-themed-pattern-hunter": 0,
+    "regime-holdout-detector": 0
+  },
+  "synthesisExitCode": 0,
+  "manifestPath": "docs/1.0/001-IN-PROGRESS/roland-bugfix/scope-manifest.yaml",
+  "captureCount": 0
+}

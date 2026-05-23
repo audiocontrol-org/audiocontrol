@@ -5,6 +5,7 @@ import {
   type TransferState,
   type SdsReceiveResult,
 } from '@/hooks/useSampleTransfer';
+import { downloadBlob } from '@audiocontrol/editor-core';
 import { buildWavFile } from '@/lib/wav-writer';
 import { parseWavFile, type WavFileInfo } from '@/lib/wav-reader';
 
@@ -40,16 +41,7 @@ function downloadWav(result: SdsReceiveResult): void {
   );
   const wavBuffer = buildWavFile(result.samples, sampleRate);
   const blob = new Blob([wavBuffer], { type: 'audio/wav' });
-  const url = URL.createObjectURL(blob);
-
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `sample-${result.header.sampleNumber}.wav`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-
-  URL.revokeObjectURL(url);
+  downloadBlob(blob, `sample-${result.header.sampleNumber}.wav`);
 }
 
 function WavFileInfoDisplay({ info, fileName }: { info: WavFileInfo; fileName: string }) {

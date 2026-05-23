@@ -1,47 +1,47 @@
-generated_at: 2026-05-22T21:44:02.547Z
+generated_at: 2026-05-23T18:56:13.248Z
 clones:
   - id: 0c01c0982ede
     lines: 15
     members:
       - modules/akai-s3k-editor/playwright.device-library.config.ts:45:59
       - modules/akai-s3k-editor/playwright.scsi-midi.config.ts:45:59
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Per-suite Playwright configs are intentionally per-suite — each must work independently with its own E2E_PORT, reporter wiring, and webServer hooks. The existing modules/roland-sxx0-editor/playwright.harness.shared.ts factory already extracts the shared shape for harness-driven suites (test-harness, wiring, rendering); the remaining cross-suite (device-library / http-midi / hardware / loop-editor / sample-chopper / sample-editor / visual / library / scsi-midi) and cross-editor (akai / roland / d110 / jv1080) duplication is the irreducible cost of suite-independence. Further extraction would require a cross-editor factory in modules/e2e-infra/ and couple every editor module to a single shared config surface; the current judgment is that the coupling cost outweighs the per-suite-config dedup payoff. Flip to refactor if a future operator builds out an e2e-infra-wide defineE2EConfig() factory.
   - id: 73ec412103b3
     lines: 27
     members:
       - modules/akai-s3k-editor/playwright.http-midi.config.ts:17:43
       - modules/roland-sxx0-editor/playwright.http-midi.config.ts:18:44
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Per-suite Playwright configs are intentionally per-suite — each must work independently with its own E2E_PORT, reporter wiring, and webServer hooks. The existing modules/roland-sxx0-editor/playwright.harness.shared.ts factory already extracts the shared shape for harness-driven suites (test-harness, wiring, rendering); the remaining cross-suite (device-library / http-midi / hardware / loop-editor / sample-chopper / sample-editor / visual / library / scsi-midi) and cross-editor (akai / roland / d110 / jv1080) duplication is the irreducible cost of suite-independence. Further extraction would require a cross-editor factory in modules/e2e-infra/ and couple every editor module to a single shared config surface; the current judgment is that the coupling cost outweighs the per-suite-config dedup payoff. Flip to refactor if a future operator builds out an e2e-infra-wide defineE2EConfig() factory.
   - id: d14d5813f89c
     lines: 19
     members:
       - modules/akai-s3k-editor/playwright.http-midi.config.ts:43:61
       - modules/roland-sxx0-editor/playwright.http-midi.config.ts:44:62
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Per-suite Playwright configs are intentionally per-suite — each must work independently with its own E2E_PORT, reporter wiring, and webServer hooks. The existing modules/roland-sxx0-editor/playwright.harness.shared.ts factory already extracts the shared shape for harness-driven suites (test-harness, wiring, rendering); the remaining cross-suite (device-library / http-midi / hardware / loop-editor / sample-chopper / sample-editor / visual / library / scsi-midi) and cross-editor (akai / roland / d110 / jv1080) duplication is the irreducible cost of suite-independence. Further extraction would require a cross-editor factory in modules/e2e-infra/ and couple every editor module to a single shared config surface; the current judgment is that the coupling cost outweighs the per-suite-config dedup payoff. Flip to refactor if a future operator builds out an e2e-infra-wide defineE2EConfig() factory.
   - id: 6ee7e792805d
     lines: 32
     members:
       - modules/akai-s3k-editor/playwright.library.config.ts:1:32
       - modules/roland-sxx0-editor/playwright.library.config.ts:1:32
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Per-suite Playwright configs are intentionally per-suite — each must work independently with its own E2E_PORT, reporter wiring, and webServer hooks. The existing modules/roland-sxx0-editor/playwright.harness.shared.ts factory already extracts the shared shape for harness-driven suites (test-harness, wiring, rendering); the remaining cross-suite (device-library / http-midi / hardware / loop-editor / sample-chopper / sample-editor / visual / library / scsi-midi) and cross-editor (akai / roland / d110 / jv1080) duplication is the irreducible cost of suite-independence. Further extraction would require a cross-editor factory in modules/e2e-infra/ and couple every editor module to a single shared config surface; the current judgment is that the coupling cost outweighs the per-suite-config dedup payoff. Flip to refactor if a future operator builds out an e2e-infra-wide defineE2EConfig() factory.
   - id: f21fe164c25e
     lines: 19
     members:
       - modules/akai-s3k-editor/playwright.library.config.ts:32:50
       - modules/roland-sxx0-editor/playwright.library.config.ts:32:50
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Per-suite Playwright configs are intentionally per-suite — each must work independently with its own E2E_PORT, reporter wiring, and webServer hooks. The existing modules/roland-sxx0-editor/playwright.harness.shared.ts factory already extracts the shared shape for harness-driven suites (test-harness, wiring, rendering); the remaining cross-suite (device-library / http-midi / hardware / loop-editor / sample-chopper / sample-editor / visual / library / scsi-midi) and cross-editor (akai / roland / d110 / jv1080) duplication is the irreducible cost of suite-independence. Further extraction would require a cross-editor factory in modules/e2e-infra/ and couple every editor module to a single shared config surface; the current judgment is that the coupling cost outweighs the per-suite-config dedup payoff. Flip to refactor if a future operator builds out an e2e-infra-wide defineE2EConfig() factory.
   - id: 1ec4c6125311
     lines: 17
     members:
       - modules/akai-s3k-editor/playwright.test-harness.config.ts:28:44
       - modules/roland-sxx0-editor/playwright.harness.shared.ts:38:54
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Cross-module CLI script / build-config duplication. validate-akai-s3000xl + validate-device + remaining vite / vitest / playwright configs: each is a per-module self-contained CLI or config file that must work independently from its own module path. Extracting shared helpers would couple modules through a single point of failure and complicate test-infra layering. See earlier playwright-config batch (commit 214a99b8) and validate-device intra-file disposition (commit 77d8003e) for the precedent. Flip to refactor if a future operator builds out cross-module test-infra / CLI primitives in modules/e2e-infra/ with the test apparatus the test-before-extract protocol requires."
   - id: e14d3218fcbe
     lines: 8
     members:
@@ -59,7 +59,7 @@ clones:
   - id: 35f3a66c0f21
     lines: 19
     members:
-      - modules/akai-s3k-editor/src/components/keygroups/AdsrDisplay.tsx:145:472
+      - modules/akai-s3k-editor/src/components/keygroups/AdsrDisplay.tsx:145:177
       - modules/akai-s3k-editor/src/components/keygroups/AdsrDisplay.tsx:261:279
     disposition: pending
     reason: null
@@ -91,11 +91,11 @@ clones:
       - modules/akai-s3k-editor/src/components/keygroups/AdsrDisplay.tsx:315:321
     disposition: pending
     reason: null
-  - id: 587ec7e0e6c5
+  - id: 090fc86629c2
     lines: 11
     members:
       - modules/akai-s3k-editor/src/components/keygroups/FilterDisplay.tsx:167:177
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:462:472
+      - modules/d110-editor/src/components/ui/D110EnvelopeEditor.tsx:363:373
     disposition: pending
     reason: null
   - id: b8dfd6196fc8
@@ -139,8 +139,8 @@ clones:
     members:
       - modules/akai-s3k-editor/src/components/layout/Layout.tsx:33:38
       - modules/roland-sxx0-editor/src/components/layout/Layout.tsx:50:56
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 68e9fdaa89c7
     lines: 11
     members:
@@ -224,8 +224,8 @@ clones:
     members:
       - modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx:149:158
       - modules/editor-core/src/hooks/useEditorDialogsCore.ts:298:305
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: c67fdc4801a5
     lines: 7
     members:
@@ -294,15 +294,15 @@ clones:
     members:
       - modules/akai-s3k-editor/src/components/library/LibraryIcons.tsx:32:48
       - modules/editor-core/src/plugins/common-area/icons.tsx:72:91
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 924f39f61fff
     lines: 6
     members:
       - modules/akai-s3k-editor/src/components/library/LibraryIcons.tsx:51:56
       - modules/editor-core/src/plugins/common-area/icons.tsx:100:108
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: ac126334af70
     lines: 7
     members:
@@ -343,22 +343,22 @@ clones:
     members:
       - modules/akai-s3k-editor/src/components/library/S3kKitOutputConfig.tsx:125:136
       - modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:92:103
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: e5c2b18798c5
     lines: 12
     members:
       - modules/akai-s3k-editor/src/components/library/S3kKitOutputConfig.tsx:153:164
       - modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:122:131
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 97dbc71052a9
     lines: 10
     members:
       - modules/akai-s3k-editor/src/components/library/S3kKitOutputConfig.tsx:63:72
       - modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:37:46
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 78e2e8932481
     lines: 18
     members:
@@ -510,14 +510,14 @@ clones:
     lines: 25
     members:
       - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:709:733
-      - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:650:674
-    disposition: pending
-    reason: null
+      - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:635:659
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: a901ae04cedb
     lines: 18
     members:
       - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:733:750
-      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:342:684
+      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:342:669
     disposition: pending
     reason: null
   - id: 3045e6b4adbc
@@ -538,16 +538,16 @@ clones:
     lines: 28
     members:
       - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:315:342
-      - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:648:674
-    disposition: pending
-    reason: null
+      - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:633:659
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 423f58d97969
     lines: 11
     members:
       - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:349:359
-      - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:674:684
-    disposition: pending
-    reason: null
+      - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:659:669
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 7df4383b5cc3
     lines: 11
     members:
@@ -745,8 +745,8 @@ clones:
     members:
       - modules/d110-editor/playwright.visual.config.ts:3:32
       - modules/jv1080-editor/playwright.visual.config.ts:3:32
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Per-suite Playwright configs are intentionally per-suite — each must work independently with its own E2E_PORT, reporter wiring, and webServer hooks. The existing modules/roland-sxx0-editor/playwright.harness.shared.ts factory already extracts the shared shape for harness-driven suites (test-harness, wiring, rendering); the remaining cross-suite (device-library / http-midi / hardware / loop-editor / sample-chopper / sample-editor / visual / library / scsi-midi) and cross-editor (akai / roland / d110 / jv1080) duplication is the irreducible cost of suite-independence. Further extraction would require a cross-editor factory in modules/e2e-infra/ and couple every editor module to a single shared config surface; the current judgment is that the coupling cost outweighs the per-suite-config dedup payoff. Flip to refactor if a future operator builds out an e2e-infra-wide defineE2EConfig() factory.
   - id: 17a50586ce4e
     lines: 9
     members:
@@ -837,8 +837,8 @@ clones:
     members:
       - modules/d110-editor/src/components/layout/Layout.tsx:34:51
       - modules/roland-sxx0-editor/src/components/layout/Layout.tsx:47:64
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 5cdfe2c851fb
     lines: 28
     members:
@@ -846,27 +846,13 @@ clones:
       - modules/jv1080-editor/src/components/layout/Layout.tsx:41:67
     disposition: pending
     reason: null
-  - id: 6f1a1b9da0f4
-    lines: 12
-    members:
-      - modules/d110-editor/src/components/ui/D110EnvelopeEditor.tsx:362:373
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:461:472
-    disposition: pending
-    reason: null
-  - id: e14f41d45c22
-    lines: 45
-    members:
-      - modules/d110-editor/src/components/ui/D110EnvelopeEditor.tsx:385:429
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:484:529
-    disposition: pending
-    reason: null
   - id: 554cd30ae514
     lines: 12
     members:
       - modules/d110-editor/src/components/ui/ParameterSlider.tsx:10:21
       - modules/editor-core/src/components/ParameterSlider.tsx:15:26
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 7c9da11a5421
     lines: 9
     members:
@@ -919,15 +905,15 @@ clones:
     members:
       - modules/d110-editor/vite.config.ts:27:38
       - modules/editor-core/src/vite/vite.ts:97:108
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Cross-module CLI script / build-config duplication. validate-akai-s3000xl + validate-device + remaining vite / vitest / playwright configs: each is a per-module self-contained CLI or config file that must work independently from its own module path. Extracting shared helpers would couple modules through a single point of failure and complicate test-infra layering. See earlier playwright-config batch (commit 214a99b8) and validate-device intra-file disposition (commit 77d8003e) for the precedent. Flip to refactor if a future operator builds out cross-module test-infra / CLI primitives in modules/e2e-infra/ with the test apparatus the test-before-extract protocol requires."
   - id: 4773a406506f
     lines: 13
     members:
       - modules/d110-editor/vite.config.ts:7:19
       - modules/editor-core/src/vite/vite.ts:43:55
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Cross-module CLI script / build-config duplication. validate-akai-s3000xl + validate-device + remaining vite / vitest / playwright configs: each is a per-module self-contained CLI or config file that must work independently from its own module path. Extracting shared helpers would couple modules through a single point of failure and complicate test-infra layering. See earlier playwright-config batch (commit 214a99b8) and validate-device intra-file disposition (commit 77d8003e) for the precedent. Flip to refactor if a future operator builds out cross-module test-infra / CLI primitives in modules/e2e-infra/ with the test apparatus the test-before-extract protocol requires."
   - id: ef27580fa701
     lines: 10
     members:
@@ -968,29 +954,22 @@ clones:
     members:
       - modules/e2e-infra/scripts/validate-akai-s3000xl.ts:121:136
       - modules/roland-sxx0-editor/scripts/validate-device.ts:171:186
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Cross-module CLI script / build-config duplication. validate-akai-s3000xl + validate-device + remaining vite / vitest / playwright configs: each is a per-module self-contained CLI or config file that must work independently from its own module path. Extracting shared helpers would couple modules through a single point of failure and complicate test-infra layering. See earlier playwright-config batch (commit 214a99b8) and validate-device intra-file disposition (commit 77d8003e) for the precedent. Flip to refactor if a future operator builds out cross-module test-infra / CLI primitives in modules/e2e-infra/ with the test apparatus the test-before-extract protocol requires."
   - id: 5f1453b53c34
     lines: 29
     members:
       - modules/e2e-infra/scripts/validate-akai-s3000xl.ts:136:164
       - modules/roland-sxx0-editor/scripts/validate-device.ts:186:214
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Cross-module CLI script / build-config duplication. validate-akai-s3000xl + validate-device + remaining vite / vitest / playwright configs: each is a per-module self-contained CLI or config file that must work independently from its own module path. Extracting shared helpers would couple modules through a single point of failure and complicate test-infra layering. See earlier playwright-config batch (commit 214a99b8) and validate-device intra-file disposition (commit 77d8003e) for the precedent. Flip to refactor if a future operator builds out cross-module test-infra / CLI primitives in modules/e2e-infra/ with the test apparatus the test-before-extract protocol requires."
   - id: fa11bf828dd8
     lines: 32
     members:
       - modules/e2e-infra/scripts/validate-akai-s3000xl.ts:63:94
       - modules/roland-sxx0-editor/scripts/validate-device.ts:240:271
-    disposition: pending
-    reason: null
-  - id: 8743cd528681
-    lines: 151
-    members:
-      - modules/e2e-infra/scripts/watchdog.ts:1:151
-      - modules/roland-sxx0-editor/scripts/watchdog.ts:1:151
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Cross-module CLI script / build-config duplication. validate-akai-s3000xl + validate-device + remaining vite / vitest / playwright configs: each is a per-module self-contained CLI or config file that must work independently from its own module path. Extracting shared helpers would couple modules through a single point of failure and complicate test-infra layering. See earlier playwright-config batch (commit 214a99b8) and validate-device intra-file disposition (commit 77d8003e) for the precedent. Flip to refactor if a future operator builds out cross-module test-infra / CLI primitives in modules/e2e-infra/ with the test apparatus the test-before-extract protocol requires."
   - id: f7ed151802dc
     lines: 9
     members:
@@ -1666,8 +1645,8 @@ clones:
     members:
       - modules/editor-core/src/components/AcEnvelope.test.tsx:149:159
       - modules/editor-core/src/components/AcEnvelope.test.tsx:544:554
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 63ee3605026e
     lines: 13
     members:
@@ -1675,135 +1654,135 @@ clones:
       - modules/editor-core/src/components/AcEnvelope.test.tsx:171:183
       - modules/editor-core/src/components/AcEnvelope.test.tsx:196:208
       - modules/editor-core/src/components/AcEnvelope.test.tsx:397:409
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 67964e1ce808
     lines: 14
     members:
       - modules/editor-core/src/components/AcEnvelope.test.tsx:149:557
       - modules/editor-core/src/components/AcEnvelope.test.tsx:588:601
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 8ada731c55c8
     lines: 11
     members:
       - modules/editor-core/src/components/AcEnvelope.test.tsx:273:283
       - modules/editor-core/src/components/AcEnvelope.test.tsx:497:507
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: "216327924890"
     lines: 15
     members:
       - modules/editor-core/src/components/AcEnvelope.test.tsx:34:48
       - modules/editor-core/src/components/AcEnvelope.test.tsx:624:638
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: a58381417c28
     lines: 13
     members:
       - modules/editor-core/src/components/AcEnvelope.test.tsx:523:535
       - modules/editor-core/src/components/AcEnvelope.test.tsx:567:579
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 73cd218e167c
     lines: 10
     members:
       - modules/editor-core/src/components/AcNumberInput.test.tsx:107:116
       - modules/editor-core/src/components/AcNumberInput.test.tsx:121:130
       - modules/editor-core/src/components/AcNumberInput.test.tsx:135:144
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 3b8a2273cc3f
     lines: 10
     members:
       - modules/editor-core/src/components/AcNumberInput.test.tsx:74:83
       - modules/editor-core/src/components/AcNumberInput.test.tsx:87:96
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 37919edb168d
     lines: 6
     members:
       - modules/editor-core/src/components/AcRangeBar.tsx:122:127
       - modules/editor-core/src/components/__broken__/AcRangeBar/no-pointer-events.tsx:41:46
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Broken-variant registry intentionally mirrors the canonical primitive. modules/editor-core/src/components/__broken__/AcRangeBar/* exists explicitly to deliberately break the canonical AcRangeBar (no-pointer-events, etc.) for the Tier 3 credibility-check dispatcher (BrokenContextWrapper). Each broken variant MUST mirror canonical exactly except for the one targeted break — sharing code would defeat the credibility-check premise.
   - id: 30c796d324a7
     lines: 7
     members:
       - modules/editor-core/src/components/AcRangeBar.tsx:127:133
       - modules/editor-core/src/components/__broken__/AcRangeBar/no-pointer-events.tsx:46:52
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Broken-variant registry intentionally mirrors the canonical primitive. modules/editor-core/src/components/__broken__/AcRangeBar/* exists explicitly to deliberately break the canonical AcRangeBar (no-pointer-events, etc.) for the Tier 3 credibility-check dispatcher (BrokenContextWrapper). Each broken variant MUST mirror canonical exactly except for the one targeted break — sharing code would defeat the credibility-check premise.
   - id: 7afce0beb4a6
     lines: 12
     members:
       - modules/editor-core/src/components/AcRangeBar.tsx:133:144
       - modules/editor-core/src/components/__broken__/AcRangeBar/no-pointer-events.tsx:52:63
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Broken-variant registry intentionally mirrors the canonical primitive. modules/editor-core/src/components/__broken__/AcRangeBar/* exists explicitly to deliberately break the canonical AcRangeBar (no-pointer-events, etc.) for the Tier 3 credibility-check dispatcher (BrokenContextWrapper). Each broken variant MUST mirror canonical exactly except for the one targeted break — sharing code would defeat the credibility-check premise.
   - id: db0ff407af22
     lines: 15
     members:
       - modules/editor-core/src/components/AcRangeBar.tsx:139:153
       - modules/editor-core/src/components/AcRangeBar.tsx:182:196
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Editor-core file (TreeView, AcRangeBar, useLibraryOperations) — refactoring would ripple across every editor that consumes the shared infrastructure (roland-sxx0-editor, akai-s3k-editor, d110-editor, jv1080-editor). The roland-bugfix branch is scoped to roland-surface clone disposition; cross-editor extractions belong to a separate editor-core scope-discovery dispatch where all consumers can be validated together. Disposition: kept until that editor-core dispatch lands. Batch-dispositioned 2026-05-22."
   - id: 68910afce832
     lines: 11
     members:
       - modules/editor-core/src/components/AcRangeBar.tsx:171:181
       - modules/editor-core/src/components/__broken__/AcRangeBar/no-pointer-events.tsx:47:138
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Broken-variant registry intentionally mirrors the canonical primitive. modules/editor-core/src/components/__broken__/AcRangeBar/* exists explicitly to deliberately break the canonical AcRangeBar (no-pointer-events, etc.) for the Tier 3 credibility-check dispatcher (BrokenContextWrapper). Each broken variant MUST mirror canonical exactly except for the one targeted break — sharing code would defeat the credibility-check premise.
   - id: 3cb0b55adebf
     lines: 31
     members:
       - modules/editor-core/src/components/AcRangeBar.tsx:257:287
       - modules/editor-core/src/components/__broken__/AcRangeBar/no-pointer-events.tsx:85:115
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Broken-variant registry intentionally mirrors the canonical primitive. modules/editor-core/src/components/__broken__/AcRangeBar/* exists explicitly to deliberately break the canonical AcRangeBar (no-pointer-events, etc.) for the Tier 3 credibility-check dispatcher (BrokenContextWrapper). Each broken variant MUST mirror canonical exactly except for the one targeted break — sharing code would defeat the credibility-check premise.
   - id: 367c78076c92
     lines: 9
     members:
       - modules/editor-core/src/components/AcRangeBar.tsx:287:295
       - modules/editor-core/src/components/__broken__/AcRangeBar/no-pointer-events.tsx:116:124
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Broken-variant registry intentionally mirrors the canonical primitive. modules/editor-core/src/components/__broken__/AcRangeBar/* exists explicitly to deliberately break the canonical AcRangeBar (no-pointer-events, etc.) for the Tier 3 credibility-check dispatcher (BrokenContextWrapper). Each broken variant MUST mirror canonical exactly except for the one targeted break — sharing code would defeat the credibility-check premise.
   - id: 024fb9164587
     lines: 12
     members:
       - modules/editor-core/src/components/MidiConnectionPage.tsx:20:31
       - modules/editor-core/src/hooks/useHomePageStore.ts:5:16
-    disposition: pending
-    reason: null
+    disposition: ignore-with-justification
+    reason: "Coincidental similarity rather than duplication: cross-page or cross-file fragments (import blocks, file-path-building utility lines, hook header imports) that happen to share shape because they use the same React hooks / TypeScript imports / file-path helpers, but serve different feature contexts and have no shared semantics. Extracting would create over-generic helpers that obscure intent at the call site. The clone detector flags these because of token overlap; semantically there is no duplication to remove. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: bcc9325d305c
     lines: 11
     members:
       - modules/editor-core/src/components/library/MoveDialog.test.tsx:53:63
       - modules/editor-core/src/components/library/MoveDialog.test.tsx:67:77
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: dcc38a74240a
     lines: 11
     members:
       - modules/editor-core/src/components/library/MoveDialog.tsx:76:86
       - modules/editor-core/src/components/library/SaveDialog.tsx:143:153
-    disposition: pending
-    reason: null
+    disposition: ignore-with-justification
+    reason: "Coincidental similarity rather than duplication: cross-page or cross-file fragments (import blocks, file-path-building utility lines, hook header imports) that happen to share shape because they use the same React hooks / TypeScript imports / file-path helpers, but serve different feature contexts and have no shared semantics. Extracting would create over-generic helpers that obscure intent at the call site. The clone detector flags these because of token overlap; semantically there is no duplication to remove. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: 4c78ed7e8aaf
     lines: 11
     members:
       - modules/editor-core/src/components/library/SaveDialog.test.tsx:72:82
       - modules/editor-core/src/components/library/SaveDialog.test.tsx:85:95
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: a74a2c210809
     lines: 11
     members:
       - modules/editor-core/src/components/library/TreeSection.test.tsx:116:126
       - modules/editor-core/src/components/library/TreeSection.test.tsx:37:108
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 7939627c4d75
     lines: 10
     members:
@@ -1811,155 +1790,155 @@ clones:
       - modules/editor-core/src/components/library/TreeSection.test.tsx:37:46
       - modules/editor-core/src/components/library/TreeSection.test.tsx:82:91
       - modules/editor-core/src/components/library/TreeSection.test.tsx:98:107
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: fbc848145e73
     lines: 8
     members:
       - modules/editor-core/src/components/library/TreeSection.test.tsx:25:32
       - modules/editor-core/src/components/library/TreeSection.test.tsx:41:48
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: c9e4c4806ad6
     lines: 10
     members:
       - modules/editor-core/src/components/library/TreeSection.test.tsx:52:61
       - modules/editor-core/src/components/library/TreeSection.test.tsx:68:77
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 45bc5b9e7ca8
     lines: 14
     members:
       - modules/editor-core/src/components/library/TreeSection.test.tsx:7:20
       - modules/editor-core/src/components/library/TreeView.test.tsx:8:21
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Cross-test-file clone of the sampleNodes test fixture between TreeSection.test.tsx and TreeView.test.tsx. Same rationale as the intra-test-file batch: shared test fixtures trade dedup for indirection that hurts test debuggability — each test file owns its own fixture so a reader can understand the test data without chasing imports across files."
   - id: 129985090b05
     lines: 13
     members:
       - modules/editor-core/src/components/library/TreeView.test.tsx:177:189
       - modules/editor-core/src/components/library/TreeView.test.tsx:302:314
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 7b344298c6c3
     lines: 14
     members:
       - modules/editor-core/src/components/library/TreeView.test.tsx:177:190
       - modules/editor-core/src/components/library/TreeView.test.tsx:194:207
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 9675f7d03bdf
     lines: 14
     members:
       - modules/editor-core/src/components/library/TreeView.test.tsx:177:207
       - modules/editor-core/src/components/library/TreeView.test.tsx:237:250
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: da959b217f75
     lines: 15
     members:
       - modules/editor-core/src/components/library/TreeView.test.tsx:177:227
       - modules/editor-core/src/components/library/TreeView.test.tsx:255:269
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 862ba4750c5f
     lines: 13
     members:
       - modules/editor-core/src/components/library/TreeView.test.tsx:178:207
       - modules/editor-core/src/components/library/TreeView.test.tsx:214:226
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 77a47bfabf1b
     lines: 18
     members:
       - modules/editor-core/src/components/library/TreeView.test.tsx:178:230
       - modules/editor-core/src/components/library/TreeView.test.tsx:276:293
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 0eadaffbe887
     lines: 10
     members:
       - modules/editor-core/src/components/library/TreeView.test.tsx:61:67
       - modules/editor-core/src/components/library/TreeView.test.tsx:72:81
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: c4585bb9cfeb
     lines: 14
     members:
       - modules/editor-core/src/components/library/TreeView.tsx:163:176
       - modules/roland-sxx0-editor/src/components/library/SetItem.tsx:91:104
-    disposition: pending
-    reason: null
+    disposition: ignore-with-justification
+    reason: "Coincidental similarity rather than duplication: cross-page or cross-file fragments (import blocks, file-path-building utility lines, hook header imports) that happen to share shape because they use the same React hooks / TypeScript imports / file-path helpers, but serve different feature contexts and have no shared semantics. Extracting would create over-generic helpers that obscure intent at the call site. The clone detector flags these because of token overlap; semantically there is no duplication to remove. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: cadabbc5292e
     lines: 16
     members:
       - modules/editor-core/src/components/library/TreeView.tsx:356:371
       - modules/editor-core/src/components/library/TreeView.tsx:434:449
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Editor-core file (TreeView, AcRangeBar, useLibraryOperations) — refactoring would ripple across every editor that consumes the shared infrastructure (roland-sxx0-editor, akai-s3k-editor, d110-editor, jv1080-editor). The roland-bugfix branch is scoped to roland-surface clone disposition; cross-editor extractions belong to a separate editor-core scope-discovery dispatch where all consumers can be validated together. Disposition: kept until that editor-core dispatch lands. Batch-dispositioned 2026-05-22."
   - id: 3036842e409a
     lines: 9
     members:
       - modules/editor-core/src/hooks/useLibraryOperations.ts:314:322
       - modules/editor-core/src/hooks/useLibraryOperations.ts:483:491
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Editor-core file (TreeView, AcRangeBar, useLibraryOperations) — refactoring would ripple across every editor that consumes the shared infrastructure (roland-sxx0-editor, akai-s3k-editor, d110-editor, jv1080-editor). The roland-bugfix branch is scoped to roland-surface clone disposition; cross-editor extractions belong to a separate editor-core scope-discovery dispatch where all consumers can be validated together. Disposition: kept until that editor-core dispatch lands. Batch-dispositioned 2026-05-22."
   - id: b2e42b0327f5
     lines: 8
     members:
       - modules/editor-core/src/hooks/useLibraryOperations.ts:351:358
       - modules/editor-core/src/hooks/useLibraryOperations.ts:523:530
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Editor-core file (TreeView, AcRangeBar, useLibraryOperations) — refactoring would ripple across every editor that consumes the shared infrastructure (roland-sxx0-editor, akai-s3k-editor, d110-editor, jv1080-editor). The roland-bugfix branch is scoped to roland-surface clone disposition; cross-editor extractions belong to a separate editor-core scope-discovery dispatch where all consumers can be validated together. Disposition: kept until that editor-core dispatch lands. Batch-dispositioned 2026-05-22."
   - id: 23644008a9f6
     lines: 9
     members:
       - modules/editor-core/src/hooks/useLibraryOperations.ts:489:497
       - modules/editor-core/src/hooks/useLibraryOperations.ts:528:536
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Editor-core file (TreeView, AcRangeBar, useLibraryOperations) — refactoring would ripple across every editor that consumes the shared infrastructure (roland-sxx0-editor, akai-s3k-editor, d110-editor, jv1080-editor). The roland-bugfix branch is scoped to roland-surface clone disposition; cross-editor extractions belong to a separate editor-core scope-discovery dispatch where all consumers can be validated together. Disposition: kept until that editor-core dispatch lands. Batch-dispositioned 2026-05-22."
   - id: e559525d7bc0
     lines: 17
     members:
       - modules/editor-core/src/plugins/common-area/icons.tsx:12:28
       - modules/editor-core/src/plugins/common-area/icons.tsx:38:54
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: 008d7be43c74
     lines: 10
     members:
       - modules/editor-core/src/plugins/common-area/item-types.tsx:100:109
       - modules/editor-core/src/plugins/common-area/item-types.tsx:158:167
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: ea40f403ce68
     lines: 19
     members:
       - modules/editor-core/src/transports/httpMidiTransport.ts:131:149
       - modules/editor-core/src/transports/httpMidiTransport.ts:149:167
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: b73627f8ff32
     lines: 10
     members:
       - modules/editor-core/src/transports/httpMidiTransport.ts:40:49
       - modules/midi-core/src/transports/scsi-disk-client.ts:71:80
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 7bdf8f7a20bc
     lines: 14
     members:
       - modules/editor-core/vitest.config.ts:1:14
       - modules/synth-core/vitest.config.ts:1:14
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Cross-module CLI script / build-config duplication. validate-akai-s3000xl + validate-device + remaining vite / vitest / playwright configs: each is a per-module self-contained CLI or config file that must work independently from its own module path. Extracting shared helpers would couple modules through a single point of failure and complicate test-infra layering. See earlier playwright-config batch (commit 214a99b8) and validate-device intra-file disposition (commit 77d8003e) for the precedent. Flip to refactor if a future operator builds out cross-module test-infra / CLI primitives in modules/e2e-infra/ with the test apparatus the test-before-extract protocol requires."
   - id: 532bf6d23aac
     lines: 24
     members:
       - modules/jv1080-editor/playwright.visual.config.ts:4:27
       - modules/roland-sxx0-editor/playwright.visual.config.ts:5:28
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Per-suite Playwright configs are intentionally per-suite — each must work independently with its own E2E_PORT, reporter wiring, and webServer hooks. The existing modules/roland-sxx0-editor/playwright.harness.shared.ts factory already extracts the shared shape for harness-driven suites (test-harness, wiring, rendering); the remaining cross-suite (device-library / http-midi / hardware / loop-editor / sample-chopper / sample-editor / visual / library / scsi-midi) and cross-editor (akai / roland / d110 / jv1080) duplication is the irreducible cost of suite-independence. Further extraction would require a cross-editor factory in modules/e2e-infra/ and couple every editor module to a single shared config surface; the current judgment is that the coupling cost outweighs the per-suite-config dedup payoff. Flip to refactor if a future operator builds out an e2e-infra-wide defineE2EConfig() factory.
   - id: 5382cef9980d
     lines: 9
     members:
@@ -2165,8 +2144,8 @@ clones:
     members:
       - modules/loop-editor/src/ui/hooks/use-loop-editor.ts:169:177
       - modules/roland-sxx0-editor/src/pages/WorkflowsPage.tsx:85:93
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 6f8e7febb0ce
     lines: 15
     members:
@@ -2179,729 +2158,479 @@ clones:
     members:
       - modules/roland-sxx0-editor/playwright.device-library.config.ts:48:63
       - modules/roland-sxx0-editor/playwright.http-midi.config.ts:47:62
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Per-suite Playwright configs are intentionally per-suite — each must work independently with its own E2E_PORT, reporter wiring, and webServer hooks. The existing modules/roland-sxx0-editor/playwright.harness.shared.ts factory already extracts the shared shape for harness-driven suites (test-harness, wiring, rendering); the remaining cross-suite (device-library / http-midi / hardware / loop-editor / sample-chopper / sample-editor / visual / library / scsi-midi) and cross-editor (akai / roland / d110 / jv1080) duplication is the irreducible cost of suite-independence. Further extraction would require a cross-editor factory in modules/e2e-infra/ and couple every editor module to a single shared config surface; the current judgment is that the coupling cost outweighs the per-suite-config dedup payoff. Flip to refactor if a future operator builds out an e2e-infra-wide defineE2EConfig() factory.
   - id: 12f264f951a3
     lines: 17
     members:
       - modules/roland-sxx0-editor/playwright.hardware.config.ts:21:37
       - modules/roland-sxx0-editor/playwright.http-midi.config.ts:32:48
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Per-suite Playwright configs are intentionally per-suite — each must work independently with its own E2E_PORT, reporter wiring, and webServer hooks. The existing modules/roland-sxx0-editor/playwright.harness.shared.ts factory already extracts the shared shape for harness-driven suites (test-harness, wiring, rendering); the remaining cross-suite (device-library / http-midi / hardware / loop-editor / sample-chopper / sample-editor / visual / library / scsi-midi) and cross-editor (akai / roland / d110 / jv1080) duplication is the irreducible cost of suite-independence. Further extraction would require a cross-editor factory in modules/e2e-infra/ and couple every editor module to a single shared config surface; the current judgment is that the coupling cost outweighs the per-suite-config dedup payoff. Flip to refactor if a future operator builds out an e2e-infra-wide defineE2EConfig() factory.
   - id: a963bce8b0b7
     lines: 26
     members:
       - modules/roland-sxx0-editor/playwright.loop-editor.config.ts:25:50
       - modules/roland-sxx0-editor/playwright.sample-chopper.config.ts:25:50
       - modules/roland-sxx0-editor/playwright.sample-editor.config.ts:25:50
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Per-suite Playwright configs are intentionally per-suite — each must work independently with its own E2E_PORT, reporter wiring, and webServer hooks. The existing modules/roland-sxx0-editor/playwright.harness.shared.ts factory already extracts the shared shape for harness-driven suites (test-harness, wiring, rendering); the remaining cross-suite (device-library / http-midi / hardware / loop-editor / sample-chopper / sample-editor / visual / library / scsi-midi) and cross-editor (akai / roland / d110 / jv1080) duplication is the irreducible cost of suite-independence. Further extraction would require a cross-editor factory in modules/e2e-infra/ and couple every editor module to a single shared config surface; the current judgment is that the coupling cost outweighs the per-suite-config dedup payoff. Flip to refactor if a future operator builds out an e2e-infra-wide defineE2EConfig() factory.
   - id: ee1d1bbe4b61
     lines: 10
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-aliasing.ts:106:115
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:159:169
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 529c36bc4bb3
     lines: 13
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-aliasing.ts:115:127
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:88:184
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 126e4ebbbb1a
     lines: 32
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-aliasing.ts:131:162
       - modules/roland-sxx0-editor/scripts/probe-wave-single.ts:60:145
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 03ecd23d56e5
     lines: 17
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-aliasing.ts:13:29
       - modules/roland-sxx0-editor/scripts/probe-wave-single.ts:9:42
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 0c8b60a15a36
     lines: 11
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-aliasing.ts:38:48
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:59:70
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 06d4d3e3b7c8
     lines: 21
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-aliasing.ts:43:63
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:27:47
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 44d68e4b9247
     lines: 23
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-aliasing.ts:68:90
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:56:83
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: d0627ebc9e3b
     lines: 6
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-aliasing.ts:85:90
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:131:137
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts are intentionally self-contained one-off hardware-exploration tools; sharing a helper would defeat their drop-in-standalone-run-against-hardware property. The 3-line SysEx-EOD sequence repetition is acceptable.
   - id: bf621c8701c5
     lines: 10
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:104:113
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:56:65
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 27edbe33d078
     lines: 6
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:118:123
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:68:73
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: feb6f590390e
     lines: 10
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:13:22
       - modules/roland-sxx0-editor/scripts/probe-wave-single.ts:9:19
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 0b580560a523
     lines: 6
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:154:159
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:73:78
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 0284a2552271
     lines: 7
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:169:175
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:87:260
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 16f22b56cfca
     lines: 6
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:176:181
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:93:99
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: "001398311e05"
     lines: 19
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:192:210
       - modules/roland-sxx0-editor/scripts/probe-wave-single.ts:60:79
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: ebdd9f8ceaf2
     lines: 8
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:210:217
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:128:88
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: c13a3f8a7f04
     lines: 14
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:223:236
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:128:142
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 3421210eff71
     lines: 13
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:28:40
       - modules/roland-sxx0-editor/scripts/probe-wave-single.ts:19:31
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: a5d0c337f31d
     lines: 28
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:64:91
       - modules/roland-sxx0-editor/scripts/probe-wave-single.ts:28:55
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 38ff10f7e537
     lines: 13
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:111:123
       - modules/roland-sxx0-editor/scripts/probe-wave-single.ts:57:71
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 62914cc2151e
     lines: 6
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:123:128
       - modules/roland-sxx0-editor/scripts/probe-wave-single.ts:72:78
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 456f2e4a21fd
     lines: 9
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:17:25
       - modules/roland-sxx0-editor/scripts/probe-wave-single.ts:9:17
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: fec82922c1dc
     lines: 9
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:23:31
       - modules/roland-sxx0-editor/scripts/probe-wave-single.ts:17:34
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: 349dd2206a19
     lines: 16
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:31:46
       - modules/roland-sxx0-editor/scripts/probe-wave-single.ts:35:55
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: fca21eed766f
     lines: 6
     members:
       - modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:88:93
       - modules/roland-sxx0-editor/scripts/probe-wave-single.ts:255:260
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Probe scripts under modules/roland-sxx0-editor/scripts/probe-wave-*.ts are intentionally self-contained one-off hardware-exploration tools. Each script (probe-wave-aliasing, probe-wave-memory, probe-wave-seglen, probe-wave-single) was written to investigate a specific S-330/S-550 wave-memory or SCSI-protocol question and must be droppable in standalone to run against the device without shared-helper imports. The SysEx-helper and address-arithmetic repetition across them is the cost of that property.
   - id: e8d0a21bfdee
     lines: 15
     members:
       - modules/roland-sxx0-editor/scripts/validate-device.ts:241:255
       - modules/roland-sxx0-editor/scripts/validate-device.ts:95:109
-    disposition: pending
-    reason: null
-  - id: 0afa59dc8206
-    lines: 16
-    members:
-      - modules/roland-sxx0-editor/src/components/library/BatchExportDrawer.tsx:106:121
-      - modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx:104:119
-      - modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx:97:112
-    disposition: pending
-    reason: null
-  - id: 7a9770e95992
-    lines: 12
-    members:
-      - modules/roland-sxx0-editor/src/components/library/CreateDirectoryDialog.tsx:71:82
-      - modules/roland-sxx0-editor/src/components/library/RenameDirectoryDialog.tsx:76:86
-    disposition: pending
-    reason: null
-  - id: ca1f01de97b2
-    lines: 18
-    members:
-      - modules/roland-sxx0-editor/src/components/library/CreateDirectoryDialog.tsx:86:103
-      - modules/roland-sxx0-editor/src/components/library/RenameDirectoryDialog.tsx:90:107
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: validate-device.ts is a one-binary CLI tool; the 15-line intra-file MIDI port-session boilerplate (input/output declarations, resolved flag, cleanup, timeout) is acceptable duplication. Extracting a withMidiPortSession() helper would require building wiring-test infrastructure (script has no existing test surface) per the test-before-extract protocol, and the cost outweighs the payoff for a single script. Flip to refactor if a future operator builds out a shared scripts/midi-port-session.ts helper across CLI tools and adds the test apparatus.
   - id: 861a1bfcd07e
     lines: 11
     members:
-      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:166:176
-      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:198:208
-    disposition: pending
-    reason: null
-  - id: a579678bbb1f
-    lines: 8
-    members:
-      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:367:374
-      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:106:113
-    disposition: pending
-    reason: null
+      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:157:167
+      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:189:199
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: 73884f46ac3c
     lines: 14
     members:
-      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:418:431
-      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:495:508
-    disposition: pending
-    reason: null
-  - id: 24440d0c8d12
-    lines: 7
-    members:
-      - modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx:195:201
-      - modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx:183:189
-    disposition: pending
-    reason: null
-  - id: f587a7074761
-    lines: 12
-    members:
-      - modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx:81:92
-      - modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx:71:82
-    disposition: pending
-    reason: null
-  - id: 4193f23cd254
-    lines: 14
-    members:
-      - modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx:25:38
-      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:22:35
-    disposition: pending
-    reason: null
-  - id: a043bcaaeaee
-    lines: 10
-    members:
-      - modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx:344:353
-      - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:172:182
-    disposition: pending
-    reason: null
-  - id: df2d49e76c30
-    lines: 13
-    members:
-      - modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx:444:456
-      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:296:308
-    disposition: pending
-    reason: null
-  - id: 2b29518114f0
+      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:357:370
+      - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:432:445
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
+  - id: da1a8b0cf8fe
     lines: 15
     members:
-      - modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx:456:470
-      - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:261:275
-    disposition: pending
-    reason: null
-  - id: bf2218cd17a6
-    lines: 9
+      - modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx:375:389
+      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:383:397
+    disposition: keep-with-reason
+    reason: "Residual Import* dialog clone after V3-IMPORT sub-task 4 (#450) migrated ImportLibraryPatchDialog to v3 SlideDrawer. 43fac0de4325 is patch-info / bundle-summary panel shape shared between ImportLibraryPatchDialogBody and ImportSamplesDialogBody — extracting would require parameterising 3 distinct field sets (patch common fields vs sample bundle counters vs kit counts); the duplication is in shape, not semantics. da1a8b0cf8fe is the SlideDrawer JSX shape (open/title/onClose/footer + StepLog/Form branches) shared between ImportLibraryPatchDialog and ImportLibraryToneDialog — extracting would obscure per-dialog lifecycle (patch needs isLoading guard + handleImport precondition, tone has different success message). Both are intentional per-dialog forks. The chrome extraction (SlideDrawer primitive + useExportDialogLifecycle hook + StepLogBody + renderFooter) IS the V3-IMPORT consolidation surface; the per-dialog forms stay distinct. Closes V3-IMPORT sub-task 4 of #450."
+  - id: 43fac0de4325
+    lines: 16
     members:
-      - modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx:606:614
-      - modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:324:331
-    disposition: pending
-    reason: null
-  - id: d1f9786a2882
+      - modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialogBody.tsx:143:158
+      - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialogBody.tsx:177:192
+    disposition: keep-with-reason
+    reason: "Residual Import* dialog clone after V3-IMPORT sub-task 4 (#450) migrated ImportLibraryPatchDialog to v3 SlideDrawer. 43fac0de4325 is patch-info / bundle-summary panel shape shared between ImportLibraryPatchDialogBody and ImportSamplesDialogBody — extracting would require parameterising 3 distinct field sets (patch common fields vs sample bundle counters vs kit counts); the duplication is in shape, not semantics. da1a8b0cf8fe is the SlideDrawer JSX shape (open/title/onClose/footer + StepLog/Form branches) shared between ImportLibraryPatchDialog and ImportLibraryToneDialog — extracting would obscure per-dialog lifecycle (patch needs isLoading guard + handleImport precondition, tone has different success message). Both are intentional per-dialog forks. The chrome extraction (SlideDrawer primitive + useExportDialogLifecycle hook + StepLogBody + renderFooter) IS the V3-IMPORT consolidation surface; the per-dialog forms stay distinct. Closes V3-IMPORT sub-task 4 of #450."
+  - id: 3be44bb03e81
+    lines: 27
+    members:
+      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialogBody.tsx:120:146
+      - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialogBody.tsx:172:198
+    disposition: keep-with-reason
+    reason: "Residual Import* dialog body clone after V3-IMPORT sub-task 3 (#450) migrated ImportSamplesDialog to v3 SlideDrawer + extracted ImportSamplesDialogBody.tsx. The remaining intra-family shape (form sections in ImportLibraryToneDialogBody, ImportSamplesDialogBody, LoadSetDialog) reflects per-dialog form arity differences — extracting a shared form-section helper would obscure the per-dialog control set (tone-only vs tone+patch+monolithic vs set-level). The chrome migration (SlideDrawer + useExportDialogLifecycle) is the V3-IMPORT extraction surface; the form bodies stay per-dialog. Closes V3-IMPORT sub-task 3 of #450."
+  - id: cf529fa6f101
     lines: 14
     members:
-      - modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx:681:694
-      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:454:467
-      - modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:401:414
-      - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:506:519
-      - modules/roland-sxx0-editor/src/components/library/ImportToneDialog.tsx:163:176
-    disposition: pending
-    reason: null
-  - id: 9c5d0d6fcae5
-    lines: 29
-    members:
-      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:302:330
-      - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:255:283
-    disposition: pending
-    reason: null
-  - id: b951159f88f4
-    lines: 11
-    members:
-      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:338:348
-      - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:283:293
-      - modules/roland-sxx0-editor/src/components/library/LoadSetDialog.tsx:118:128
-    disposition: pending
-    reason: null
-  - id: bfb7ce37ee85
-    lines: 18
-    members:
-      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:380:397
-      - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:321:338
-    disposition: pending
-    reason: null
-  - id: dd1ca0ae04f1
-    lines: 13
-    members:
-      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:413:425
-      - modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:342:354
-    disposition: pending
-    reason: null
-  - id: 6686fb8e2a68
-    lines: 20
-    members:
-      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:428:447
-      - modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:375:500
-    disposition: pending
-    reason: null
-  - id: b18339c818d5
-    lines: 14
-    members:
-      - modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:309:322
-      - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:323:336
-    disposition: pending
-    reason: null
-  - id: 279d6165c512
+      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialogBody.tsx:155:168
+      - modules/roland-sxx0-editor/src/components/library/LoadSetDialog.tsx:118:211
+    disposition: keep-with-reason
+    reason: "Residual Import* dialog body clone after V3-IMPORT sub-task 3 (#450) migrated ImportSamplesDialog to v3 SlideDrawer + extracted ImportSamplesDialogBody.tsx. The remaining intra-family shape (form sections in ImportLibraryToneDialogBody, ImportSamplesDialogBody, LoadSetDialog) reflects per-dialog form arity differences — extracting a shared form-section helper would obscure the per-dialog control set (tone-only vs tone+patch+monolithic vs set-level). The chrome migration (SlideDrawer + useExportDialogLifecycle) is the V3-IMPORT extraction surface; the form bodies stay per-dialog. Closes V3-IMPORT sub-task 3 of #450."
+  - id: e76eb7138563
     lines: 17
     members:
-      - modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:378:394
-      - modules/roland-sxx0-editor/src/components/library/ImportToneDialog.tsx:141:500
-    disposition: pending
-    reason: null
-  - id: 289e953b5ea7
-    lines: 11
+      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialogBody.tsx:208:224
+      - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialogBody.tsx:245:261
+    disposition: keep-with-reason
+    reason: "Residual Import* dialog body clone after V3-IMPORT sub-task 3 (#450) migrated ImportSamplesDialog to v3 SlideDrawer + extracted ImportSamplesDialogBody.tsx. The remaining intra-family shape (form sections in ImportLibraryToneDialogBody, ImportSamplesDialogBody, LoadSetDialog) reflects per-dialog form arity differences — extracting a shared form-section helper would obscure the per-dialog control set (tone-only vs tone+patch+monolithic vs set-level). The chrome migration (SlideDrawer + useExportDialogLifecycle) is the V3-IMPORT extraction surface; the form bodies stay per-dialog. Closes V3-IMPORT sub-task 3 of #450."
+  - id: d96baad7bbee
+    lines: 13
     members:
-      - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:172:182
-      - modules/roland-sxx0-editor/src/components/library/ImportToneDialog.tsx:48:58
-    disposition: pending
-    reason: null
-  - id: 2c878a15f353
-    lines: 24
-    members:
-      - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:477:500
-      - modules/roland-sxx0-editor/src/components/library/ImportToneDialog.tsx:134:157
-    disposition: pending
-    reason: null
+      - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialogBody.tsx:198:210
+      - modules/roland-sxx0-editor/src/components/library/LoadSetDialog.tsx:118:128
+    disposition: keep-with-reason
+    reason: "Residual Import* dialog body clone after V3-IMPORT sub-task 3 (#450) migrated ImportSamplesDialog to v3 SlideDrawer + extracted ImportSamplesDialogBody.tsx. The remaining intra-family shape (form sections in ImportLibraryToneDialogBody, ImportSamplesDialogBody, LoadSetDialog) reflects per-dialog form arity differences — extracting a shared form-section helper would obscure the per-dialog control set (tone-only vs tone+patch+monolithic vs set-level). The chrome migration (SlideDrawer + useExportDialogLifecycle) is the V3-IMPORT extraction surface; the form bodies stay per-dialog. Closes V3-IMPORT sub-task 3 of #450."
   - id: 228a6c25d4f5
     lines: 13
     members:
       - modules/roland-sxx0-editor/src/components/library/ItemPreviewPanel.tsx:382:394
       - modules/roland-sxx0-editor/src/components/library/ItemPreviewPanel.tsx:465:477
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: cd4f8785dd8e
     lines: 27
     members:
       - modules/roland-sxx0-editor/src/components/library/ItemPreviewPanel.tsx:398:424
       - modules/roland-sxx0-editor/src/components/library/ItemPreviewPanel.tsx:481:507
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: 97cb84d9f799
     lines: 6
     members:
       - modules/roland-sxx0-editor/src/components/library/ItemPreviewPanel.tsx:43:48
       - modules/roland-sxx0-editor/src/plugins/shared/plugin-state-types.ts:89:95
-    disposition: pending
-    reason: null
+    disposition: ignore-with-justification
+    reason: "Coincidental similarity rather than duplication: cross-page or cross-file fragments (import blocks, file-path-building utility lines, hook header imports) that happen to share shape because they use the same React hooks / TypeScript imports / file-path helpers, but serve different feature contexts and have no shared semantics. Extracting would create over-generic helpers that obscure intent at the call site. The clone detector flags these because of token overlap; semantically there is no duplication to remove. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: 07c5c03f20cb
     lines: 24
     members:
       - modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:120:143
       - modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:179:202
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: ce107495f9c5
     lines: 29
     members:
       - modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:151:179
       - modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:91:119
-    disposition: pending
-    reason: null
-  - id: edd93a98717a
-    lines: 14
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
+  - id: fe8458249a68
+    lines: 20
     members:
-      - modules/roland-sxx0-editor/src/components/patches/PatchEditorTabs.tsx:43:56
-      - modules/roland-sxx0-editor/src/components/tones/ToneEditorTabs.tsx:50:63
-    disposition: pending
-    reason: null
-  - id: ccc252a9f570
-    lines: 31
-    members:
-      - modules/roland-sxx0-editor/src/components/patches/PatchEditorTabs.tsx:56:86
-      - modules/roland-sxx0-editor/src/components/tones/ToneEditorTabs.tsx:63:93
-    disposition: pending
-    reason: null
-  - id: 78ec05b1a742
-    lines: 16
-    members:
-      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:101:116
-      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:94:106
-    disposition: pending
-    reason: null
-  - id: a5affd08f20a
-    lines: 29
-    members:
-      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:116:144
-      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:106:132
-    disposition: pending
-    reason: null
-  - id: 6c4029eadb4a
-    lines: 16
-    members:
-      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:144:159
-      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:132:147
-    disposition: pending
-    reason: null
+      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:102:121
+      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:90:106
+    disposition: keep-with-reason
+    reason: 'PatchList/ToneList residual structural similarity AFTER the BankHeader (c88d8d06), SlotInfo (30e7346e), and bank-list-helpers (ae0b5192) extractions. The remaining overlap is the per-list JSX wrapper around BankHeader (the `<div data-bank-index>` + bank-header + `<div className="ac-collapse">` shell) plus per-row signatures that legitimately differ between patches (PatchLabel + isPatchEmpty + patch-name testid) and tones (formatToneSlot + isToneEmpty + tone-name testid). Further wrapping would push the per-list specialization down one level without removing it, creating churn for marginal LOC savings. Disposition: kept; the residual is the legitimate per-list signature, not a duplication that wants extraction. Batch-dispositioned 2026-05-22.'
   - id: 2262910df441
     lines: 11
     members:
-      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:215:225
-      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:214:224
-    disposition: pending
-    reason: null
-  - id: 093005ae4f47
-    lines: 21
-    members:
-      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:231:251
-      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:230:250
-    disposition: pending
-    reason: null
-  - id: 0021c908e52b
-    lines: 14
-    members:
-      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:71:84
-      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:64:77
-    disposition: pending
-    reason: null
+      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:179:189
+      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:175:185
+    disposition: keep-with-reason
+    reason: 'PatchList/ToneList residual structural similarity AFTER the BankHeader (c88d8d06), SlotInfo (30e7346e), and bank-list-helpers (ae0b5192) extractions. The remaining overlap is the per-list JSX wrapper around BankHeader (the `<div data-bank-index>` + bank-header + `<div className="ac-collapse">` shell) plus per-row signatures that legitimately differ between patches (PatchLabel + isPatchEmpty + patch-name testid) and tones (formatToneSlot + isToneEmpty + tone-name testid). Further wrapping would push the per-list specialization down one level without removing it, creating churn for marginal LOC savings. Disposition: kept; the residual is the legitimate per-list signature, not a duplication that wants extraction. Batch-dispositioned 2026-05-22.'
   - id: dfe2f58d3ccc
     lines: 7
     members:
       - modules/roland-sxx0-editor/src/components/patches/ToneZoneEditor.tsx:361:367
       - modules/roland-sxx0-editor/src/components/patches/ToneZoneEditor.tsx:395:401
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: 56f714c9148b
     lines: 10
     members:
       - modules/roland-sxx0-editor/src/components/patches/ToneZoneEditor.tsx:367:376
       - modules/roland-sxx0-editor/src/components/patches/ToneZoneEditor.tsx:401:410
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: 3525fa88d07e
     lines: 11
     members:
       - modules/roland-sxx0-editor/src/components/tones/ToneEditor.tsx:41:51
       - modules/roland-sxx0-editor/src/components/tones/panels/ToneWavePanel.tsx:35:45
-    disposition: pending
-    reason: null
-  - id: 16339014804d
-    lines: 8
-    members:
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeDisplay.tsx:51:58
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:395:402
-    disposition: pending
-    reason: null
-  - id: f86a64f16a4d
-    lines: 24
-    members:
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeDisplay.tsx:65:88
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:492:515
-    disposition: pending
-    reason: null
-  - id: 896dfe517ae2
-    lines: 21
-    members:
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeDisplay.tsx:88:108
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:543:563
-    disposition: pending
-    reason: null
-  - id: 06c80d6e95bf
-    lines: 17
-    members:
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:160:176
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:211:227
-    disposition: pending
-    reason: null
-  - id: ac29e59eea33
-    lines: 18
-    members:
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:177:194
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:228:245
-    disposition: pending
-    reason: null
-  - id: 855ef10a9526
-    lines: 10
-    members:
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:278:287
-      - modules/roland-sxx0-editor/src/components/ui/EnvelopeEditor.tsx:297:306
-    disposition: pending
-    reason: null
+    disposition: ignore-with-justification
+    reason: "Coincidental similarity rather than duplication: cross-page or cross-file fragments (import blocks, file-path-building utility lines, hook header imports) that happen to share shape because they use the same React hooks / TypeScript imports / file-path helpers, but serve different feature contexts and have no shared semantics. Extracting would create over-generic helpers that obscure intent at the call site. The clone detector flags these because of token overlap; semantically there is no duplication to remove. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: a0b8b7d4cb8c
     lines: 8
     members:
       - modules/roland-sxx0-editor/src/components/video/VideoCapture.tsx:101:109
       - modules/roland-sxx0-editor/src/components/video/VideoCapture.tsx:145:152
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: 45b11fd3a533
     lines: 10
     members:
       - modules/roland-sxx0-editor/src/configs/memory-layout.ts:169:178
       - modules/roland-sxx0-editor/src/configs/memory-layout.ts:76:85
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Self-clone within a single non-component file (library-io, library-tones, best-fit, memory-layout, useLibraryImport, useLibraryExport): paired async load paths, paired algorithm-scoring loops, paired per-device data definitions, paired hook callback patterns. Per-path / per-device semantics are intentional fork points; extracting would weaken control-flow clarity and create over-generic helpers that obscure the per-path or per-algorithm intent. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: abcf778c254f
     lines: 16
     members:
       - modules/roland-sxx0-editor/src/hooks/useDeviceToneChopper.ts:96:112
       - modules/sample-chopper/dev/main.tsx:162:177
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 377928756b0f
     lines: 12
     members:
       - modules/roland-sxx0-editor/src/hooks/useImportSamples.ts:225:236
       - modules/sampler-library/src/testing/seed-mock-library.ts:34:44
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 5f33ca65cbd5
     lines: 7
     members:
       - modules/roland-sxx0-editor/src/hooks/useImportSamples.ts:240:246
       - modules/sampler-devices/src/devices/roland-s-series/s-series-wave-format.ts:207:213
       - modules/sampler-devices/src/devices/s3000xl/akai-wav-convert.ts:37:43
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 8a166056292d
     lines: 17
     members:
       - modules/roland-sxx0-editor/src/hooks/useImportSamples.ts:271:287
       - modules/sampler-devices/src/devices/s330/drum-kit-import-service.ts:165:181
-    disposition: pending
-    reason: null
-  - id: ef80a538a68a
-    lines: 6
-    members:
-      - modules/roland-sxx0-editor/src/hooks/useImportSamples.ts:317:322
-      - modules/roland-sxx0-editor/src/hooks/useLibraryImport.ts:76:81
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: a5d27361a53b
     lines: 11
     members:
       - modules/roland-sxx0-editor/src/hooks/useLibraryExport.ts:454:464
       - modules/roland-sxx0-editor/src/hooks/useLibraryExport.ts:700:710
-    disposition: pending
-    reason: null
-  - id: 18c6f0de4729
-    lines: 13
-    members:
-      - modules/roland-sxx0-editor/src/hooks/useLibraryImport.ts:165:177
-      - modules/roland-sxx0-editor/src/hooks/useLibraryImport.ts:54:66
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Self-clone within a single non-component file (library-io, library-tones, best-fit, memory-layout, useLibraryImport, useLibraryExport): paired async load paths, paired algorithm-scoring loops, paired per-device data definitions, paired hook callback patterns. Per-path / per-device semantics are intentional fork points; extracting would weaken control-flow clarity and create over-generic helpers that obscure the per-path or per-algorithm intent. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: 62e64c7f6ab2
     lines: 10
     members:
       - modules/roland-sxx0-editor/src/lib/best-fit.ts:104:113
       - modules/roland-sxx0-editor/src/lib/best-fit.ts:186:195
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Self-clone within a single non-component file (library-io, library-tones, best-fit, memory-layout, useLibraryImport, useLibraryExport): paired async load paths, paired algorithm-scoring loops, paired per-device data definitions, paired hook callback patterns. Per-path / per-device semantics are intentional fork points; extracting would weaken control-flow clarity and create over-generic helpers that obscure the per-path or per-algorithm intent. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: b1ceb7a627a6
     lines: 16
     members:
       - modules/roland-sxx0-editor/src/lib/best-fit.ts:139:154
       - modules/roland-sxx0-editor/src/lib/best-fit.ts:227:242
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Self-clone within a single non-component file (library-io, library-tones, best-fit, memory-layout, useLibraryImport, useLibraryExport): paired async load paths, paired algorithm-scoring loops, paired per-device data definitions, paired hook callback patterns. Per-path / per-device semantics are intentional fork points; extracting would weaken control-flow clarity and create over-generic helpers that obscure the per-path or per-algorithm intent. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: 201d5101db33
     lines: 11
     members:
       - modules/roland-sxx0-editor/src/lib/library-io.ts:121:131
       - modules/roland-sxx0-editor/src/lib/library-io.ts:89:100
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Self-clone within a single non-component file (library-io, library-tones, best-fit, memory-layout, useLibraryImport, useLibraryExport): paired async load paths, paired algorithm-scoring loops, paired per-device data definitions, paired hook callback patterns. Per-path / per-device semantics are intentional fork points; extracting would weaken control-flow clarity and create over-generic helpers that obscure the per-path or per-algorithm intent. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: b93c3d300e89
     lines: 13
     members:
       - modules/roland-sxx0-editor/src/lib/library-io.ts:148:160
       - modules/roland-sxx0-editor/src/lib/library-io.ts:90:134
-    disposition: pending
-    reason: null
-  - id: dbb5cd0ec5ff
-    lines: 10
-    members:
-      - modules/roland-sxx0-editor/src/lib/library-io.ts:186:195
-      - modules/roland-sxx0-editor/src/lib/wave-export.ts:143:152
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Self-clone within a single non-component file (library-io, library-tones, best-fit, memory-layout, useLibraryImport, useLibraryExport): paired async load paths, paired algorithm-scoring loops, paired per-device data definitions, paired hook callback patterns. Per-path / per-device semantics are intentional fork points; extracting would weaken control-flow clarity and create over-generic helpers that obscure the per-path or per-algorithm intent. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: 2900b54f5b5f
     lines: 11
     members:
       - modules/roland-sxx0-editor/src/lib/library-sets-save-incremental.ts:318:328
       - modules/sampler-library/src/converters/s-series/set-converter.ts:128:138
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 056a061ceeb4
     lines: 7
     members:
       - modules/roland-sxx0-editor/src/lib/library-sets-save-incremental.ts:328:334
       - modules/roland-sxx0-editor/src/lib/library-sets.ts:117:123
-    disposition: pending
-    reason: null
+    disposition: ignore-with-justification
+    reason: "Coincidental similarity rather than duplication: cross-page or cross-file fragments (import blocks, file-path-building utility lines, hook header imports) that happen to share shape because they use the same React hooks / TypeScript imports / file-path helpers, but serve different feature contexts and have no shared semantics. Extracting would create over-generic helpers that obscure intent at the call site. The clone detector flags these because of token overlap; semantically there is no duplication to remove. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: 720d54a6c4fb
     lines: 11
     members:
       - modules/roland-sxx0-editor/src/lib/library-sets.ts:60:70
       - modules/sampler-library/src/library-fs.ts:590:600
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 19ecf52420f9
     lines: 15
     members:
       - modules/roland-sxx0-editor/src/lib/library-sets.ts:70:84
       - modules/sampler-library/src/storage/set-storage.ts:266:280
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 3b8fe7c81153
     lines: 13
     members:
       - modules/roland-sxx0-editor/src/lib/library-tones.ts:362:374
       - modules/roland-sxx0-editor/src/lib/library-tones.ts:409:421
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Self-clone within a single non-component file (library-io, library-tones, best-fit, memory-layout, useLibraryImport, useLibraryExport): paired async load paths, paired algorithm-scoring loops, paired per-device data definitions, paired hook callback patterns. Per-path / per-device semantics are intentional fork points; extracting would weaken control-flow clarity and create over-generic helpers that obscure the per-path or per-algorithm intent. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: 44e04a2b4f7b
     lines: 8
     members:
       - modules/roland-sxx0-editor/src/lib/wave-export.ts:109:116
       - modules/sampler-devices/src/devices/s3000xl/akai-wav-convert.ts:37:44
-    disposition: pending
-    reason: null
-  - id: f28f258a97dd
-    lines: 12
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
+  - id: 46d11bca2d0e
+    lines: 7
     members:
-      - modules/roland-sxx0-editor/src/lib/wave-export.ts:131:142
+      - modules/roland-sxx0-editor/src/lib/wave-export.ts:131:137
       - modules/sampler-library/src/storage/set-storage.ts:93:104
-    disposition: pending
-    reason: null
+    disposition: ignore-with-justification
+    reason: "Coincidental similarity rather than duplication: cross-page or cross-file fragments (import blocks, file-path-building utility lines, hook header imports) that happen to share shape because they use the same React hooks / TypeScript imports / file-path helpers, but serve different feature contexts and have no shared semantics. Extracting would create over-generic helpers that obscure intent at the call site. The clone detector flags these because of token overlap; semantically there is no duplication to remove. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: 389b8ca04d17
     lines: 12
     members:
       - modules/roland-sxx0-editor/src/lib/wave-export.ts:89:100
       - modules/sampler-devices/src/devices/roland-s-series/s-series-wave-format.ts:178:189
-    disposition: pending
-    reason: null
-  - id: f844c10e8dbe
-    lines: 16
-    members:
-      - modules/roland-sxx0-editor/src/pages/PatchesPage.tsx:275:290
-      - modules/roland-sxx0-editor/src/pages/TonesPage.tsx:243:258
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 31df7029d836
     lines: 7
     members:
       - modules/roland-sxx0-editor/src/pages/PatchesPage.tsx:28:34
       - modules/roland-sxx0-editor/src/pages/TonesPage.tsx:26:32
-    disposition: pending
-    reason: null
-  - id: 799cdd6abf47
-    lines: 33
-    members:
-      - modules/roland-sxx0-editor/src/pages/PatchesPage.tsx:303:335
-      - modules/roland-sxx0-editor/src/pages/TonesPage.tsx:271:303
-    disposition: pending
-    reason: null
-  - id: 0ed95cf1aec8
-    lines: 10
-    members:
-      - modules/roland-sxx0-editor/src/pages/PlayPage.tsx:313:322
-      - modules/roland-sxx0-editor/src/pages/TonesPage.tsx:271:280
-    disposition: pending
-    reason: null
-  - id: 9e384f6a58d5
-    lines: 25
-    members:
-      - modules/roland-sxx0-editor/src/plugins/s330-library-plugin.tsx:55:79
-      - modules/roland-sxx0-editor/src/plugins/s550-library-plugin.tsx:77:101
-    disposition: pending
-    reason: null
-  - id: eb8127b81978
-    lines: 92
-    members:
-      - modules/roland-sxx0-editor/src/plugins/s330-library-plugin.tsx:87:178
-      - modules/roland-sxx0-editor/src/plugins/s550-library-plugin.tsx:109:200
-    disposition: pending
-    reason: null
+    disposition: ignore-with-justification
+    reason: "Coincidental similarity rather than duplication: cross-page or cross-file fragments (import blocks, file-path-building utility lines, hook header imports) that happen to share shape because they use the same React hooks / TypeScript imports / file-path helpers, but serve different feature contexts and have no shared semantics. Extracting would create over-generic helpers that obscure intent at the call site. The clone detector flags these because of token overlap; semantically there is no duplication to remove. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: 48658333661a
     lines: 16
     members:
       - modules/roland-sxx0-editor/src/plugins/shared/item-types.tsx:122:137
       - modules/roland-sxx0-editor/src/plugins/shared/item-types.tsx:56:71
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: 9e9506511a3a
     lines: 93
     members:

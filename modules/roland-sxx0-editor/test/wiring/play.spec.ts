@@ -179,6 +179,25 @@ test.describe('Capabilities — Play (C-PLAY)', () => {
     }
   });
 
+  test('D-PLAY-PAGE-TITLE-01: PlayPage renders the .ac-page-title-row chrome with heading + rule + LED-metric (clones.yaml 8ab1699757ff PageTitleRow refactor contract)', async ({ page }) => {
+    // Sibling assertion to D-PATCH-PAGE-TITLE-01 / D-TONE-PAGE-TITLE-01.
+    // PlayPage uses a simpler PageTitleRow variant: no loadingMessage
+    // branch, no embedded loading-progress strip (it has its own
+    // .ac-page-progress strip below). Heading text is "Play". The
+    // refactor extracts the shared PageTitleRow primitive consumed
+    // by all three pages.
+    const titleRow = page.locator('header.ac-page-title-row');
+    await expect(titleRow).toBeVisible({ timeout: 5_000 });
+
+    const heading = titleRow.locator('h2.ac-page-title-heading');
+    await expect(heading).toHaveText('Play');
+
+    await expect(titleRow.locator('.ac-page-title-rule')).toBeVisible();
+    await expect(titleRow.locator('.ac-page-title-metric .ac-page-title-led')).toBeAttached();
+
+    await expect(titleRow.locator('.ac-page-title-metric').getByText(/of/)).toBeVisible();
+  });
+
   test('D-PLAY-13: error display region renders nothing under the happy path', async ({ page }) => {
     // PlayPage.tsx:453-458 wraps the error display in
     //   {error && <div data-testid="error-message">...</div>}

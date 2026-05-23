@@ -261,4 +261,118 @@ test.describe('Capabilities — Patches (C-PATCH)', () => {
     );
     await expect(anyExportButton).toHaveCount(0);
   });
+
+  test('D-PATCH-LIST-10: each bank renders a header with bank-toggle button + bank-reload button + slot-range readout (clones.yaml fc08c274d295 refactor contract)', async ({ page }) => {
+    // Test-before-extract contract for the BankHeader refactor
+    // (clones.yaml fc08c274d295 + sibling clones spanning the bank-
+    // header block in PatchList.tsx ↔ ToneList.tsx). The extraction
+    // moves the per-bank header (bank-toggle button + bank-meta with
+    // slot-range readout + optional reload button) into a shared
+    // <BankHeader> component used by both PatchList and ToneList.
+    //
+    // Contract pinned here: bank 0 of the patches surface renders
+    // (a) a `patch-bank-toggle-0` testid with the chevron + "Bank 1"
+    // label, (b) a `patch-bank-reload-0` testid with the spinning-
+    // reload icon button, (c) the firstSlotLabel-lastSlotLabel
+    // readout inside `.ac-list-bank-meta strong`. D-TONE-LIST-09 is
+    // the sibling assertion for tones.
+    //
+    // Added 2026-05-22 BEFORE the BankHeader extraction lands, per
+    // workplan 'Refactoring protocol: test before extract'.
+    const list = page.locator('[data-capability="C-PATCH-01"]');
+    await expect(list).toBeVisible({ timeout: 5_000 });
+
+    const toggle = page.getByTestId('patch-bank-toggle-0');
+    const reload = page.getByTestId('patch-bank-reload-0');
+    await expect(toggle).toBeVisible();
+    await expect(reload).toBeVisible();
+    await expect(toggle).toContainText('Bank 1');
+
+    // The slot-range readout (firstSlotLabel–lastSlotLabel) sits in
+    // the bank-meta strong tag right beside the toggle.
+    const bankHeader = toggle.locator('..');
+    await expect(bankHeader.locator('.ac-list-bank-meta strong')).toContainText(/P11.*P\d/);
+  });
+
+  test('D-PATCH-EDITOR-TABS-01: PatchEditorTabs renders the two-tab radio-driven shell (clones.yaml 80f494ba63d3 + 5578c63410e2 AcRadioTabs refactor contract)', async ({ page }) => {
+    // Test-before-extract contract for promoting PatchEditorTabs +
+    // ToneEditorTabs to a shared AcRadioTabs primitive. The contract
+    // PatchEditorTabs preserves through the refactor:
+    //   - The .ac-tabs root wraps the entire tab strip + panel set
+    //   - The two TABS entries (Common, Mapping) each render one
+    //     role="tab" label with the visible name as accessible name
+    //     AND one [data-tab="pt-common|pt-mapping"] role="tabpanel"
+    //   - The radio inputs share a single name= (groupName) so only
+    //     one tab can be active at a time
+    //   - The Common tab is default-active
+    //
+    // No prior test pins the .ac-tabs structure, the [data-tab] panel
+    // selectors, or the role="tabpanel" wiring. Added 2026-05-22
+    // BEFORE the AcRadioTabs extraction lands. Must pass against the
+    // pre-refactor code AND stay green after the refactor.
+    const list = page.locator('[data-capability="C-PATCH-01"]');
+    await expect(list).toBeVisible({ timeout: 5_000 });
+    await list.getByRole('button', { name: /^P11/ }).click();
+
+    const editor = page.locator('[data-capability="C-PATCH-04"]');
+    await expect(editor).toBeVisible({ timeout: 5_000 });
+
+    await expect(editor.getByRole('tab', { name: 'Common' })).toBeVisible();
+    await expect(editor.getByRole('tab', { name: 'Mapping' })).toBeVisible();
+
+    await expect(editor.locator('[data-tab="pt-common"]')).toHaveAttribute('role', 'tabpanel');
+    await expect(editor.locator('[data-tab="pt-mapping"]')).toHaveAttribute('role', 'tabpanel');
+  });
+
+  test('D-PATCH-PAGE-TITLE-01: PatchesPage renders the .ac-page-title-row chrome with heading + rule + LED-metric (clones.yaml c53786bfb969 + c3ee44db4131 PageTitleRow refactor contract)', async ({ page }) => {
+    // Test-before-extract contract for promoting the PatchesPage /
+    // TonesPage / PlayPage title-row chrome to a shared PageTitleRow
+    // primitive. PatchesPage's specific contract:
+    //   - <header class="ac-page-title-row"> wraps the heading + metric
+    //   - .ac-page-title-block contains the h2.ac-page-title-heading
+    //     ("Patches") + .ac-page-title-rule (red rule)
+    //   - .ac-page-title-metric span contains a .ac-page-title-led
+    //     sibling plus a metric line ("<N> of <M> loaded")
+    //   - The refresh icon button lives inside .ac-page-title-metric
+    //
+    // Existing tests (D-PATCH-LIST-06/07) pin the refresh button's
+    // aria-label but not the chrome around it. Added 2026-05-22 BEFORE
+    // PageTitleRow extraction. Must pass pre-refactor + stay green
+    // post-refactor.
+    const titleRow = page.locator('header.ac-page-title-row');
+    await expect(titleRow).toBeVisible({ timeout: 5_000 });
+
+    const heading = titleRow.locator('h2.ac-page-title-heading');
+    await expect(heading).toHaveText('Patches');
+
+    await expect(titleRow.locator('.ac-page-title-rule')).toBeVisible();
+    await expect(titleRow.locator('.ac-page-title-metric .ac-page-title-led')).toBeAttached();
+
+    // The metric span ("N of M loaded") lives inside .ac-page-title-metric.
+    await expect(titleRow.locator('.ac-page-title-metric').getByText(/of/)).toBeVisible();
+  });
+
+  test('D-PATCH-LIST-09: each row wraps the patch-name testid in an .ac-list-info span (clones.yaml 80299d9fda8d refactor contract)', async ({ page }) => {
+    // Test-before-extract contract for clones.yaml group 80299d9fda8d
+    // (PatchList.tsx:227-240 ↔ ToneList.tsx:226-239 ac-list-info
+    // span block). The clone-disposition refactor extracts the shared
+    // block to a new common/SlotInfo.tsx component; both files render
+    // <SlotInfo testId="patch-name|tone-name" .../> in place of the
+    // inline span. Without this assertion the refactor could silently
+    // drop the .ac-list-info wrapper class — no other test asserts it.
+    //
+    // Added 2026-05-22 BEFORE the SlotInfo extraction lands, per the
+    // 'Refactoring protocol: test before extract' rule in workplan.md.
+    // Must pass against the pre-refactor code AND stay green after the
+    // refactor. Sibling assertion: D-TONE-LIST-08 in tones.spec.ts.
+    const list = page.locator('[data-capability="C-PATCH-01"]');
+    await expect(list).toBeVisible({ timeout: 5_000 });
+
+    const loadedRow = list.getByRole('button', { name: /^P11\b/ });
+    await expect(loadedRow).toBeVisible();
+
+    const wrapper = loadedRow.locator('.ac-list-info');
+    await expect(wrapper).toBeVisible();
+    await expect(wrapper.getByTestId('patch-name')).toBeVisible();
+  });
 });

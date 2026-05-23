@@ -188,11 +188,15 @@ test.describe('Capabilities — Library DnD (Wave 5)', () => {
 
     await simulateDragAndDrop(page, sourceNode, target);
 
+    // V3-IMPORT (#450): title is now sentence-case ("Import library tone")
+    // matching the export-side convention. Confirm button is in the
+    // SlideDrawer footer with testid `import-confirm` (renamed from
+    // `confirm-import-button` for symmetry with `export-confirm`).
     await expect(
-      page.getByRole('heading', { name: 'Import Library Tone' }),
+      page.getByRole('heading', { name: 'Import library tone' }),
     ).toBeVisible({ timeout: 5_000 });
     await expect(page.getByTestId('target-slot-select')).toBeVisible();
-    await expect(page.getByTestId('confirm-import-button')).toBeVisible();
+    await expect(page.getByTestId('import-confirm')).toBeVisible();
   });
 
   test('D-LIB-09: dropping a seeded library patch on a device patch slot mounts ImportLibraryPatchDialog', async ({ page }) => {
@@ -215,11 +219,13 @@ test.describe('Capabilities — Library DnD (Wave 5)', () => {
 
     await simulateDragAndDrop(page, sourceNode, target);
 
+    // V3-IMPORT (#450): sentence-case title + import-confirm testid
+    // (renamed from confirm-import-button for export-side symmetry).
     await expect(
-      page.getByRole('heading', { name: 'Import Library Patch' }),
+      page.getByRole('heading', { name: 'Import library patch' }),
     ).toBeVisible({ timeout: 5_000 });
     await expect(page.getByTestId('target-slot-select')).toBeVisible();
-    await expect(page.getByTestId('confirm-import-button')).toBeVisible();
+    await expect(page.getByTestId('import-confirm')).toBeVisible();
   });
 
   test('D-LIB-06: dragging a loaded device tone onto the library Tones section mounts ExportToneDialog', async ({ page }) => {
@@ -264,6 +270,43 @@ test.describe('Capabilities — Library DnD (Wave 5)', () => {
     // across the v3 chrome migration).
     await expect(page.getByTestId('export-confirm')).toBeVisible();
     await expect(page.getByTestId('export-cancel')).toBeVisible();
+  });
+
+  test('D-LIB-EXPORT-LIFECYCLE-01: ExportToneDialog open-reset effect pre-fills name input + Cancel closes the dialog (clones.yaml e83df277765c + 82e7ef31c329 useExportDialogLifecycle refactor contract)', async ({ page }) => {
+    // Test-before-extract contract for promoting the cross-dialog
+    // useState / useEffect / useCallback lifecycle pattern in
+    // ExportToneDialog, ExportPatchDialog, and BatchExportDrawer
+    // (e83df277765c 12L + 82e7ef31c329 16L) to a shared
+    // useExportDialogLifecycle hook. Existing tests (D-LIB-06/07,
+    // D-LIB-34/35/36) pin mount + eyebrow text but do NOT exercise:
+    //   - The useEffect open-reset (proves name state is initialized
+    //     from per-dialog source — `tone?.name || 'Tone_${slot}'` here)
+    //   - handleClose (proves Cancel onClick wires to onOpenChange(false))
+    //
+    // Added 2026-05-22 BEFORE the useExportDialogLifecycle extraction.
+    // Must pass against pre-refactor code AND stay green after.
+    await page.goto(LIBRARY_URL);
+    await cleanupOPFS(page);
+    await connectLibraryOPFS(page);
+    await seedDeviceTone(page, { slot: 0, name: 'TestTone1' });
+
+    const source = deviceToneSlot(page, 'T11');
+    await expect(source).toHaveAttribute('draggable', 'true', { timeout: 5_000 });
+    const target = page.locator('[data-category="tones"][data-testid="library-tones-section"]');
+    await simulateDragAndDrop(page, source, target);
+
+    // Mount: drawer's name input renders + open-reset populates it
+    // from tone?.name (the seeded name 'TestTone1').
+    const nameInput = page.getByTestId('export-tone-name-input');
+    await expect(nameInput).toBeVisible({ timeout: 5_000 });
+    await expect(nameInput).toHaveValue('TestTone1');
+
+    // handleClose: Cancel button click → onOpenChange(false) → drawer
+    // unmounts. The drawer title disappearing is the visible side-effect.
+    await page.getByTestId('export-cancel').click();
+    await expect(
+      page.getByRole('heading', { name: /Export tone to library/i }),
+    ).toHaveCount(0, { timeout: 5_000 });
   });
 
   test('D-LIB-07: dragging a loaded device patch onto the library Patches section mounts ExportPatchDialog', async ({ page }) => {
@@ -315,17 +358,60 @@ test.describe('Capabilities — Library DnD (Wave 5)', () => {
 
     await simulateDragAndDrop(page, sourceNode, target);
 
-    // `ImportSamplesDialog.tsx:194` renders the title.
+    // V3-IMPORT (#450): title is now sentence-case ("Import samples")
+    // per the v3 design language convention shared with the Export*
+    // family (e.g. "Export tone to library").
     await expect(
-      page.getByRole('heading', { name: 'Import Samples' }),
+      page.getByRole('heading', { name: 'Import samples' }),
     ).toBeVisible({ timeout: 10_000 });
     // Content-defining affordance: the Memory Map panel (containing
     // both ToneSlotMap and WaveSegmentMap) renders only when the
     // dialog has a valid bundle.
     await expect(page.getByText('Memory Map')).toBeVisible();
     // The starting-tone-slot select is the canonical interaction
-    // affordance (`ImportSamplesDialog.tsx:298`).
+    // affordance.
     await expect(page.locator('#startingToneSlot')).toBeVisible();
+  });
+
+  test('D-LIB-IMPORT-SAMPLES-V3-01: ImportSamplesDialog mounts the v3 SlideDrawer chrome (ac-drawer-panel + sentence-case title)', async ({ page }) => {
+    // Pins the v3 chrome shape for ImportSamplesDialog. Pre-migration
+    // the dialog used Radix.Dialog (centered overlay), which does NOT
+    // produce a `.ac-drawer-panel` element. Post-migration the dialog
+    // is a right-edge SlideDrawer that mounts `.ac-drawer-panel`
+    // inline (NO Portal) with sentence-case title "Import samples".
+    //
+    // Added 2026-05-23 BEFORE the V3-IMPORT sub-task 3 migration.
+    // Must fail against the legacy Radix.Dialog chrome and pass
+    // after. Closes V3-IMPORT (#450) sub-task 3.
+    const sampleName = 'chopped-sine';
+    await page.goto(LIBRARY_URL);
+    await cleanupOPFS(page);
+    await seedOPFSSample(page, { fixtureName: sampleName });
+    await connectLibraryOPFS(page);
+
+    const sourceNode = page.getByTestId(`library-sample-${sampleName}`);
+    await expect(sourceNode).toBeVisible({ timeout: 5_000 });
+
+    const target = devicePanelDropTarget(page);
+    await expect(target).toBeVisible({ timeout: 5_000 });
+
+    await simulateDragAndDrop(page, sourceNode, target);
+
+    // v3 chrome marker: SlideDrawer mounts `.ac-drawer-panel`. The
+    // legacy Radix.Dialog code mounts `.fixed top-1/2 left-1/2 ...`
+    // inside a `Dialog.Portal` and produces NO `.ac-drawer-panel`
+    // node.
+    const drawerPanel = page.locator('.ac-drawer-panel');
+    await expect(drawerPanel).toBeVisible({ timeout: 10_000 });
+
+    // Sentence-case title matches the v3 design language. The legacy
+    // chrome used "Import Samples" (title-case); v3 uses "Import
+    // samples" (sentence-case) per the convention ExportToneDialog
+    // applies ("Export tone to library"). Pinning the heading
+    // directly is more reliable than role+name resolution because
+    // SlideDrawer doesn't set `aria-labelledby`.
+    const drawerTitle = page.locator('.ac-drawer-title');
+    await expect(drawerTitle).toHaveText(/Import samples/i, { timeout: 5_000 });
   });
 
   test('D-LIB-21: WaveSegmentMap renders inside the ImportSamplesDialog mounted via DnD', async ({ page }) => {
@@ -349,7 +435,7 @@ test.describe('Capabilities — Library DnD (Wave 5)', () => {
     await simulateDragAndDrop(page, sourceNode, target);
 
     await expect(
-      page.getByRole('heading', { name: 'Import Samples' }),
+      page.getByRole('heading', { name: 'Import samples' }),
     ).toBeVisible({ timeout: 10_000 });
 
     // The "Wave Memory" label is the `WaveSegmentMap`-region heading
@@ -885,6 +971,111 @@ test.describe('Capabilities — Library DnD (Wave 5)', () => {
       page.getByRole('heading', { name: /Export tone to library/i }),
     ).toBeVisible({ timeout: 5_000 });
     await expect(page.getByTestId('export-tone-device-name')).toHaveText('S-550');
+  });
+
+  test('D-LIB-34: ExportToneDialog destination eyebrow renders kindLabel + LIBRARY + device-name in the right testid-suffixed spans (clones.yaml 38c8236d8a7b refactor contract)', async ({ page }) => {
+    // Test-before-extract contract for clones.yaml group 38c8236d8a7b
+    // (ExportPatchDialog.tsx:195-201 ↔ ExportToneDialog.tsx:183-189
+    // shared eyebrow row). The clone-disposition refactor extracts the
+    // shared eyebrow shape (accent kindLabel + LIBRARY literal + device-
+    // name testid span + optional target-path tail) into a new
+    // DestinationEyebrow component; all three export surfaces
+    // (ExportToneDialog, ExportPatchDialog, BatchExportDrawer) render
+    // <DestinationEyebrow ... /> in place of the inline JSX block.
+    //
+    // The contract this assertion protects: the eyebrow's full token
+    // sequence (testid wrapper, kindLabel accent text, LIBRARY literal,
+    // device-name testid suffix) on the tone surface. D-LIB-35 covers
+    // the patch surface; D-LIB-36 covers the batch surface. Without
+    // these three the refactor could silently drop the LIBRARY literal
+    // or scramble the testid suffixing.
+    //
+    // Added 2026-05-22 BEFORE the DestinationEyebrow extraction lands,
+    // per workplan 'Refactoring protocol: test before extract'. Must
+    // pass against pre-refactor code AND stay green after the refactor.
+    await page.goto(LIBRARY_URL);
+    await cleanupOPFS(page);
+    await connectLibraryOPFS(page);
+    await seedDeviceTone(page, { slot: 0, name: 'TestTone1' });
+
+    const source = deviceToneSlot(page, 'T11');
+    await expect(source).toHaveAttribute('draggable', 'true', { timeout: 5_000 });
+    const target = page.locator('[data-category="tones"][data-testid="library-tones-section"]');
+    await simulateDragAndDrop(page, source, target);
+
+    await expect(
+      page.getByRole('heading', { name: /Export tone to library/i }),
+    ).toBeVisible({ timeout: 5_000 });
+
+    const eyebrow = page.getByTestId('export-tone-destination');
+    await expect(eyebrow).toBeVisible();
+    // Accent label is the kind in caps ("TONE")
+    await expect(eyebrow.locator('.ac-detail-eyebrow-accent')).toHaveText('TONE');
+    // The LIBRARY literal is the third labeled segment
+    await expect(eyebrow).toContainText('LIBRARY');
+    // Device-name span carries the prefixed testid + capitalized name
+    await expect(eyebrow.getByTestId('export-tone-device-name')).toHaveText('S-330');
+  });
+
+  test('D-LIB-35: ExportPatchDialog destination eyebrow renders kindLabel + LIBRARY + device-name in the right testid-suffixed spans (clones.yaml 38c8236d8a7b refactor contract)', async ({ page }) => {
+    // Sibling to D-LIB-34; covers the patch surface. See D-LIB-34 for
+    // full rationale.
+    await page.goto(LIBRARY_URL);
+    await cleanupOPFS(page);
+    await connectLibraryOPFS(page);
+    await seedDevicePatch(page, { slot: 0, name: 'TestPatch1' });
+
+    const source = devicePatchSlot(page, 'P11');
+    await expect(source).toHaveAttribute('draggable', 'true', { timeout: 5_000 });
+    const target = page.locator('[data-category="patches"][data-testid="library-patches-section"]');
+    await simulateDragAndDrop(page, source, target);
+
+    await expect(
+      page.getByRole('heading', { name: /Export patch to library/i }),
+    ).toBeVisible({ timeout: 5_000 });
+
+    const eyebrow = page.getByTestId('export-patch-destination');
+    await expect(eyebrow).toBeVisible();
+    await expect(eyebrow.locator('.ac-detail-eyebrow-accent')).toHaveText('PATCH');
+    await expect(eyebrow).toContainText('LIBRARY');
+    await expect(eyebrow.getByTestId('export-patch-device-name')).toHaveText('S-330');
+  });
+
+  test('D-LIB-36: BatchExportDrawer destination eyebrow renders kindLabel + N ITEMS + LIBRARY + device-name (clones.yaml 38c8236d8a7b refactor contract — batch surface)', async ({ page }) => {
+    // Sibling to D-LIB-34/35; covers the batch surface. The batch
+    // eyebrow's leftField differs from the single-item dialogs (it
+    // shows "N ITEMS" instead of a slot label), so the assertion
+    // exercises the alternate shape. See D-LIB-34 for full rationale.
+    await page.goto(LIBRARY_URL);
+    await cleanupOPFS(page);
+    await connectLibraryOPFS(page);
+    await seedDeviceTone(page, { slot: 0, name: 'TestToneA' });
+    await seedDeviceTone(page, { slot: 1, name: 'TestToneB' });
+    await seedDeviceTone(page, { slot: 2, name: 'TestToneC' });
+
+    const slot0 = deviceToneSlot(page, 'T11');
+    const slot1 = deviceToneSlot(page, 'T12');
+    const slot2 = deviceToneSlot(page, 'T13');
+    for (const s of [slot0, slot1, slot2]) {
+      await expect(s).toHaveAttribute('draggable', 'true', { timeout: 5_000 });
+    }
+    await slot0.click();
+    await slot1.click({ modifiers: ['ControlOrMeta'] });
+    await slot2.click({ modifiers: ['ControlOrMeta'] });
+
+    const target = page.locator('[data-category="tones"][data-testid="library-tones-section"]');
+    await simulateDragAndDrop(page, slot0, target);
+
+    await expect(
+      page.getByRole('heading', { name: /Export 3 tones to library/i }),
+    ).toBeVisible({ timeout: 5_000 });
+
+    const eyebrow = page.getByTestId('batch-export-destination');
+    await expect(eyebrow).toBeVisible();
+    await expect(eyebrow.locator('.ac-detail-eyebrow-accent')).toHaveText('TONES');
+    await expect(eyebrow).toContainText('3 ITEMS');
+    await expect(eyebrow).toContainText('LIBRARY');
+    await expect(eyebrow.getByTestId('batch-export-device-name')).toHaveText('S-330');
   });
 
   test('D-LIB-29: device-memory multi-select on patches + drag of any member opens the BatchExportDrawer with kind="patch"', async ({ page }) => {

@@ -302,17 +302,30 @@ test.describe('ImportSamplesDialog — Tier 3 in-context (D-LIB-14)', () => {
     // ── CLAIM 1: Reachability — dialog mounted, dropdown visible. ─────
     // The dialog's title is the canonical accessible landmark; the
     // "Starting Tone Slot" dropdown is the bug's primary surface.
-    const heading = page.getByRole('heading', { name: /^Import Samples$/ });
+    // V3-IMPORT (#450): title migrated to sentence-case ("Import samples")
+    // matching the v3 design language convention shared with the
+    // Export* family ("Export tone to library").
+    const heading = page.getByRole('heading', { name: /^Import samples$/ });
     await expect(heading).toBeVisible({ timeout: 5_000 });
 
     const toneDropdown = page.getByLabel(/Starting Tone Slot/);
     await expect(toneDropdown).toBeVisible();
 
+    // V3-IMPORT (#450): the dialog is now a right-edge SlideDrawer
+    // with a sticky footer (`.ac-drawer-footer`). The "Starting Tone
+    // Slot" dropdown sits inside the drawer's scrollable body
+    // (`.ac-drawer-content`); without scrolling, it can render under
+    // the footer's z-index. Scroll the dropdown into the drawer body's
+    // viewport before the reachability check so the assertion
+    // measures dropdown occlusion (the real signal) rather than
+    // sticky-footer overlap (an expected design-system behavior).
+    await toneDropdown.scrollIntoViewIfNeeded();
+
     // Reachability via elementFromPoint: the center of the dropdown's
     // bounding box must be the dropdown itself (or a descendant), not
-    // an overlay. The dialog renders via Radix Dialog.Portal so it's
-    // outside the BrokenContextWrapper — this assertion confirms the
-    // dialog itself isn't occluded by anything within the dialog tree.
+    // an overlay. The SlideDrawer renders inline (no Portal) so the
+    // assertion still confirms the dialog tree isn't occluded by
+    // anything OUTSIDE the dialog or above the dropdown within it.
     const box = await toneDropdown.boundingBox();
     expect(box, 'dropdown must have a bounding box').not.toBeNull();
     if (box === null) {

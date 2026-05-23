@@ -1,0 +1,654 @@
+{
+  "agent": "prd-themed-pattern-hunter",
+  "featureSlug": "roland-bugfix",
+  "themes": [
+    {
+      "term": "scope-discovery",
+      "occurrences": []
+    },
+    {
+      "term": "2026-05-22",
+      "occurrences": [
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/AcRadioTabs.tsx",
+          "line": 9,
+          "snippet": "* Extracted 2026-05-22 from PatchEditorTabs.tsx + ToneEditorTabs.tsx"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/AcReloadIcon.tsx",
+          "line": 10,
+          "snippet": "* Extracted 2026-05-22 as part of the PageTitleRow refactor walk"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/BankHeader.tsx",
+          "line": 8,
+          "snippet": "* Extracted 2026-05-22 from PatchList.tsx (lines 110-156) and"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/PageTitleRow.tsx",
+          "line": 21,
+          "snippet": "* Extracted 2026-05-22 from PatchesPage.tsx (lines ~273-326),"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/SlotInfo.tsx",
+          "line": 8,
+          "snippet": "* Extracted 2026-05-22 from PatchList.tsx (lines 227-240) and"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/DestinationEyebrow.tsx",
+          "line": 10,
+          "snippet": "* Extracted 2026-05-22 from the three inline JSX blocks per clones.yaml"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useExportDialogLifecycle.ts",
+          "line": 22,
+          "snippet": "* Extracted 2026-05-22 from ExportToneDialog (lines 62-83 + 100-111),"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/browser-download.ts",
+          "line": 5,
+          "snippet": "* Extracted 2026-05-22 from `library-io.ts` (as `downloadFile`) +"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/library-io.ts",
+          "line": 184,
+          "snippet": "// `modules/roland-sxx0-editor/src/lib/browser-download.ts` 2026-05-22"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/wave-export.ts",
+          "line": 137,
+          "snippet": "// downloadBlob lives in `./browser-download` since 2026-05-22"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/plugins/shared/LibraryDeviceMemoryPanel.tsx",
+          "line": 9,
+          "snippet": "* Extracted 2026-05-22 from S330MemoryPanelAdapter (lines 54-75) and"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/plugins/shared/LibraryPreviewPanelAdapter.tsx",
+          "line": 8,
+          "snippet": "* Extracted 2026-05-22 from S330PreviewPanelAdapter (lines 87-175) and"
+        }
+      ]
+    },
+    {
+      "term": "bugs",
+      "occurrences": [
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/slot-allocation.ts",
+          "line": 26,
+          "snippet": "* if a slot is empty. This has caused bugs multiple times."
+        }
+      ]
+    },
+    {
+      "term": "roland",
+      "occurrences": [
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/AcRadioTabs.tsx",
+          "line": 19,
+          "snippet": "* non-roland editor consumes it yet. Promotion to editor-core is"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/PageTitleRow.tsx",
+          "line": 6,
+          "snippet": "* `modules/roland-sxx0-editor/src/styles/_shared.css`):"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/front-panel/VirtualFrontPanel.tsx",
+          "line": 4,
+          "snippet": "* The 11-control surface for remote Roland S-330 / S-550 operation,"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/front-panel/index.ts",
+          "line": 4,
+          "snippet": "* Virtual front panel for remote Roland S-330 / S-550 control. The"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx",
+          "line": 163,
+          "snippet": "*  whichever Roland surface the editor is mounted under. AUDIT-20260521-02. */"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/preview-chrome.tsx",
+          "line": 8,
+          "snippet": "* .ac-pane-action*) live in roland-sxx0-editor/src/styles/_shared.css."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/ui/ParamSliderRow.tsx",
+          "line": 2,
+          "snippet": "* ParamSliderRow — Roland editor's wrapper for v3 AcSlider + AcNumberInput."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/s330.ts",
+          "line": 9,
+          "snippet": "import type { SSeriesMidiAdapter } from '@audiocontrol/sampler-devices/roland-s-series';"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/s330.ts",
+          "line": 14,
+          "snippet": "* Roland S-330 sampler configuration."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/s330.ts",
+          "line": 24,
+          "snippet": "manufacturer: 'Roland',"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/s330.ts",
+          "line": 40,
+          "snippet": "basePath: '/roland/s330/editor',"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/s550.ts",
+          "line": 9,
+          "snippet": "import type { SSeriesMidiAdapter } from '@audiocontrol/sampler-devices/roland-s-series';"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/s550.ts",
+          "line": 14,
+          "snippet": "* Roland S-550 sampler configuration."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/s550.ts",
+          "line": 24,
+          "snippet": "manufacturer: 'Roland',"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/s550.ts",
+          "line": 39,
+          "snippet": "basePath: '/roland/s550/editor',"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/types.ts",
+          "line": 12,
+          "snippet": "import type { SSeriesMidiAdapter } from '@audiocontrol/sampler-devices/roland-s-series';"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/types.ts",
+          "line": 162,
+          "snippet": "/** Base path for the editor (e.g., /roland/s330/editor) */"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/context/DeviceConfigContext.tsx",
+          "line": 5,
+          "snippet": "* The configuration is determined by the URL path (e.g., /roland/s330/editor)."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/context/DeviceConfigContext.tsx",
+          "line": 35,
+          "snippet": "* <Route path=\"/roland/:device/editor/*\" element={"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/context/DeviceConfigContext.tsx",
+          "line": 64,
+          "snippet": "Please navigate to a device editor URL, e.g., /roland/s330/editor"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/core/midi/SamplerClient.ts",
+          "line": 51,
+          "snippet": "} from '@audiocontrol/sampler-devices/roland-s-series';"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/core/midi/SamplerClient.ts",
+          "line": 66,
+          "snippet": "} from '@audiocontrol/sampler-devices/roland-s-series';"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/core/midi/SamplerClient.ts",
+          "line": 73,
+          "snippet": "} from '@audiocontrol/sampler-devices/roland-s-series';"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/core/midi/index.ts",
+          "line": 83,
+          "snippet": "0xF0, 0x41, 0x00, 0x1E, 0x41, // Header: SysEx, Roland, Device 0, S-330, RQD"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useRolandEditorDialogs.ts",
+          "line": 2,
+          "snippet": "* Roland editor dialog hook — wraps the shared useEditorDialogsCore"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useRolandEditorDialogs.ts",
+          "line": 3,
+          "snippet": "* with Roland-specific WAV loading for tones."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useRolandEditorDialogs.ts",
+          "line": 10,
+          "snippet": "* Editing a Roland tone promotes the result to the common area."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useRolandEditorDialogs.ts",
+          "line": 63,
+          "snippet": "// Roland strategy: loads tone WAV from device-specific library"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useRolandLibraryData.ts",
+          "line": 2,
+          "snippet": "* Hook managing library data loading and tree state for the Roland Library page."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useRolandLibraryStrategy.ts",
+          "line": 2,
+          "snippet": "* Roland Library Operations Strategy"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useRolandLibraryStrategy.ts",
+          "line": 6,
+          "snippet": "* and sets — all Roland-specific library categories."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useRolandLibraryStrategy.ts",
+          "line": 175,
+          "snippet": "// Roland declares no transfer actions (empty handler map)."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useRolandLibraryStrategy.ts",
+          "line": 176,
+          "snippet": "// When Roland adds device transfer support, add handlers here"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useRolandSelectionMapping.ts",
+          "line": 3,
+          "snippet": "* ItemSelection and Roland's page-level RolandPageSelection type."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/library-drag-types.ts",
+          "line": 2,
+          "snippet": "* Roland-specific library drag-drop helpers."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/library-drag-types.ts",
+          "line": 5,
+          "snippet": "* Roland-specific fields (setName, toneFile, patchFile) are carried in the"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/library-drag-types.ts",
+          "line": 10,
+          "snippet": "* that Roland code has a single import source for drag-drop concerns."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/library-drag-types.ts",
+          "line": 20,
+          "snippet": "* Roland-specific metadata carried in LibraryDragPayload.meta."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/library-drag-types.ts",
+          "line": 45,
+          "snippet": "* Extract Roland-specific fields from a LibraryDragPayload."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/library-drag-types.ts",
+          "line": 47,
+          "snippet": "* Returns a typed view of the meta fields relevant to Roland drag-drop."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/library-drag-types.ts",
+          "line": 62,
+          "snippet": "* Build a LibraryDragPayload for a Roland library item."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/library-io.ts",
+          "line": 184,
+          "snippet": "// `modules/roland-sxx0-editor/src/lib/browser-download.ts` 2026-05-22"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/wave-export.ts",
+          "line": 4,
+          "snippet": "* Converts Roland S-series (S-330 / S-550) wave data to standard audio"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/main.tsx",
+          "line": 70,
+          "snippet": "href={`/roland/${device}/editor`}"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/main.tsx",
+          "line": 73,
+          "snippet": "Roland {device.toUpperCase()}"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/main.tsx",
+          "line": 82,
+          "snippet": "// LegacyRedirect removed - URL structure is now /roland/:device/editor/*"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/main.tsx",
+          "line": 92,
+          "snippet": "<Route path=\"/roland/:device/editor/*\" element={<DeviceEditorWrapper />} />"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/HomePage.tsx",
+          "line": 182,
+          "snippet": "// pair until one replies with Roland mfg id 0x41."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/LibraryPage.tsx",
+          "line": 153,
+          "snippet": "// Roland-specific library strategy for delete/rename"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/LibraryPage.tsx",
+          "line": 424,
+          "snippet": "// device segment (`/roland/<device>/editor/<page>`)."
+        }
+      ]
+    },
+    {
+      "term": "branch",
+      "occurrences": [
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/PlayPage.tsx",
+          "line": 293,
+          "snippet": "The simpler PageTitleRow variant: no loadingMessage branch,"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/plugins/shared/LibraryDeviceMemoryPanel.tsx",
+          "line": 7,
+          "snippet": "* placeholder branch."
+        }
+      ]
+    },
+    {
+      "term": "modules",
+      "occurrences": [
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/PageTitleRow.tsx",
+          "line": 6,
+          "snippet": "* `modules/roland-sxx0-editor/src/styles/_shared.css`):"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/library-io.ts",
+          "line": 21,
+          "snippet": "// Re-export yaml helpers for other library modules"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/library-io.ts",
+          "line": 184,
+          "snippet": "// `modules/roland-sxx0-editor/src/lib/browser-download.ts` 2026-05-22"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/library-service.ts",
+          "line": 4,
+          "snippet": "* Re-exports all library operations from focused sub-modules."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/library-sets.ts",
+          "line": 36,
+          "snippet": "// their dedicated modules so this file remains the single entry point"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/LibraryPage.tsx",
+          "line": 250,
+          "snippet": "// sibling modules may have installed alongside this one. Without"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/PatchesPage.tsx",
+          "line": 268,
+          "snippet": "modules/roland-sxx0-editor/src/styles/_shared.css). The"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/WorkflowsPage.tsx",
+          "line": 2,
+          "snippet": "* Workflows page — container with nested routes for workflow modules."
+        }
+      ]
+    },
+    {
+      "term": "pending",
+      "occurrences": []
+    },
+    {
+      "term": "s550-support",
+      "occurrences": [
+        {
+          "file": "modules/roland-sxx0-editor/src/components/front-panel/VirtualFrontPanel.tsx",
+          "line": 7,
+          "snippet": "* `docs/1.0/001-IN-PROGRESS/s550-support/explorations/"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/HomePage.tsx",
+          "line": 5,
+          "snippet": "* `docs/1.0/001-IN-PROGRESS/s550-support/explorations/ACCEPTED/`"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/_harness/url-params.ts",
+          "line": 14,
+          "snippet": "* See: docs/1.0/001-IN-PROGRESS/s550-support/testing-and-inventory-reform-spec.md §5"
+        }
+      ]
+    },
+    {
+      "term": "surface",
+      "occurrences": [
+        {
+          "file": "modules/roland-sxx0-editor/src/components/front-panel/FrontPanelButton.tsx",
+          "line": 18,
+          "snippet": "*     `VirtualFrontPanel` surface; the primitive renders only the"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/front-panel/VirtualFrontPanel.tsx",
+          "line": 2,
+          "snippet": "* Virtual Front Panel — chunky-button control surface"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/front-panel/VirtualFrontPanel.tsx",
+          "line": 4,
+          "snippet": "* The 11-control surface for remote Roland S-330 / S-550 operation,"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/front-panel/VirtualFrontPanel.tsx",
+          "line": 82,
+          "snippet": "* 7×2 chunky-button control surface."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/BatchExportDrawer.tsx",
+          "line": 163,
+          "snippet": "*  active surface. AUDIT-20260521-02. */"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx",
+          "line": 15,
+          "snippet": "* with `operationError`, and surface as a failed step in the log."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx",
+          "line": 170,
+          "snippet": "*  active surface. AUDIT-20260521-02. */"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx",
+          "line": 163,
+          "snippet": "*  whichever Roland surface the editor is mounted under. AUDIT-20260521-02. */"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx",
+          "line": 140,
+          "snippet": "// Surface the error via `setLocalError + return` (matching the"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/ui/ToneEnvelopeEditor.tsx",
+          "line": 21,
+          "snippet": "* v3 surface."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useDeviceToneChopper.ts",
+          "line": 63,
+          "snippet": "// which the cache is expected to surface via `setError`. We"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useExportDialogLifecycle.ts",
+          "line": 18,
+          "snippet": "*     stream the way every export surface needs them"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useLibraryExport.ts",
+          "line": 481,
+          "snippet": "// slot. Surface as a real error so the v3 step log's failed"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useLibraryExport.ts",
+          "line": 830,
+          "snippet": "// Surface the all-failed case as a top-level error so the drawer"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useLibraryExport.ts",
+          "line": 840,
+          "snippet": "// the loop and recorded in `failures`. Surface as a top-level"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useToneSampleExport.ts",
+          "line": 52,
+          "snippet": "* Surface failures to the caller's error channel (typically the"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useWaveDataCache.ts",
+          "line": 32,
+          "snippet": "* Surface load failures to the caller's error channel (e.g. the"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/HomePage.tsx",
+          "line": 2,
+          "snippet": "* HomePage — the device-connect surface."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/HomePage.tsx",
+          "line": 151,
+          "snippet": "// input label as the primary readout. If input ≠ output we surface"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/LibraryPage.tsx",
+          "line": 129,
+          "snippet": "// the surface is never present in shipped bundles."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/PatchesPage.tsx",
+          "line": 22,
+          "snippet": "*     cross-page commit so this file stays focused on the patches surface."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/TonesPage.tsx",
+          "line": 18,
+          "snippet": "*     commit so this file stays focused on the tones surface."
+        }
+      ]
+    },
+    {
+      "term": "validation",
+      "occurrences": [
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx",
+          "line": 58,
+          "snippet": "* runtime validation against the layout is the source of truth."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx",
+          "line": 49,
+          "snippet": "* validation lives at the device-client boundary"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useLibraryImportDialogs.ts",
+          "line": 33,
+          "snippet": "* `waveBank: number` because runtime validation against"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/library-service.test.ts",
+          "line": 148,
+          "snippet": "describe('importTone validation simulation', () => {"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/library-service.test.ts",
+          "line": 157,
+          "snippet": "// This should pass validation"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/library-service.test.ts",
+          "line": 163,
+          "snippet": "it('would fail validation if using raw file bytes (regression test)', () => {"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/stores/midiStore.ts",
+          "line": 88,
+          "snippet": "notes: `Deterministic ${deviceName} mock transport for screenshot and UI validation.`,"
+        }
+      ]
+    },
+    {
+      "term": "disposition",
+      "occurrences": [
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/BankHeader.tsx",
+          "line": 10,
+          "snippet": "* disposition (the largest of 5 sibling clones across the bank-render"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/SlotInfo.tsx",
+          "line": 10,
+          "snippet": "* disposition. Pre-extraction the two files held byte-identical"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/DestinationEyebrow.tsx",
+          "line": 11,
+          "snippet": "* group 38c8236d8a7b disposition. Pre-extraction the three surfaces held"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/plugins/shared/LibraryDeviceMemoryPanel.tsx",
+          "line": 11,
+          "snippet": "* 290604cd13fe disposition. Pre-extraction the two return statements"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/plugins/shared/LibraryPreviewPanelAdapter.tsx",
+          "line": 10,
+          "snippet": "* 47120235fd38 disposition. Pre-extraction the two function bodies"
+        }
+      ]
+    },
+    {
+      "term": "added",
+      "occurrences": [
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/AcRadioTabs.tsx",
+          "line": 15,
+          "snippet": "* added before this extraction."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/BankHeader.tsx",
+          "line": 17,
+          "snippet": "* D-TONE-LIST-09 wiring assertions added before this extraction."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/PageTitleRow.tsx",
+          "line": 32,
+          "snippet": "* D-PLAY-PAGE-TITLE-01 wiring assertions added before this extraction."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/SlotInfo.tsx",
+          "line": 16,
+          "snippet": "* (tones.spec.ts) wiring assertions added before the extraction."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/bank-list-helpers.ts",
+          "line": 13,
+          "snippet": "* protecting assertions for this extraction. No new test was added."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/DestinationEyebrow.tsx",
+          "line": 17,
+          "snippet": "* span) by D-LIB-34 / D-LIB-35 / D-LIB-36 wiring assertions added"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/ui/ToneEnvelopeEditor.tsx",
+          "line": 118,
+          "snippet": "// The AcEnvelope `disabled` prop (added by the fix-up dispatch) is the"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/_harness/url-params.ts",
+          "line": 75,
+          "snippet": "* literally no wrapper renders — there is no `<Fragment>` cost added."
+        }
+      ]
+    }
+  ]
+}
