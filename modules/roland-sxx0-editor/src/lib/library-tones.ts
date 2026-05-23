@@ -31,7 +31,7 @@ import {
   readToneFilesFromDirectory,
   writeToneFilesToDirectory,
 } from '@/lib/library-io';
-import { downloadBlob } from '@/lib/browser-download';
+import { downloadBlob } from '@audiocontrol/editor-core';
 
 // Re-export for consumers that import from library-service
 export type { PreparedS330Sample };

@@ -134,11 +134,12 @@ function writeString(view: DataView, offset: number, str: string): void {
     }
 }
 
-// downloadBlob lives in `./browser-download` since 2026-05-22
-// (clones.yaml 5873e17e78bb refactor). Re-exported here so existing
-// callers that imported `downloadBlob` from wave-export don't have
-// to chase the move.
-import { downloadBlob } from './browser-download';
+// downloadBlob lives in `@audiocontrol/editor-core` since 2026-05-23
+// (ROLAND-BUGFIX-RGM-001 sub-task 4 promoted it from roland-side
+// `lib/browser-download`). Re-exported here so existing callers that
+// imported `downloadBlob` from wave-export don't have to chase the
+// move; new callers should import from `@audiocontrol/editor-core`.
+import { downloadBlob } from '@audiocontrol/editor-core';
 export { downloadBlob };
 
 /**

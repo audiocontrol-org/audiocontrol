@@ -200,22 +200,21 @@ anti_patterns:
   - id: download-blob-inline
     added_in: ae0b5192
     primitive: downloadBlob
-    from: '@/lib/browser-download'
+    from: '@audiocontrol/editor-core'
     shape_regex:
       - 'URL\.createObjectURL\('
       - 'document\.createElement\(.a.\)'
       - 'URL\.revokeObjectURL\('
     min_distance: 10
     excludes_paths:
-      - 'modules/roland-sxx0-editor/src/lib/browser-download.ts'
-      # ROLAND-BUGFIX-RGM-001 (#455): akai's SampleTransferPanel shouldn't import
-      # from @/lib/browser-download (cross-editor dep — that path is
-      # internal to roland-sxx0-editor). Two real fixes: (a) promote
-      # downloadBlob to a shared package, (b) akai gets its own
-      # browser-download module. Either is out of scope for
-      # feature/roland-bugfix. Tracked-deferral.
-      - 'modules/akai-s3k-editor/src/components/samples/SampleTransferPanel.tsx'
+      - 'modules/editor-core/src/utils/browser-download.ts'
+      # akai SampleTransferPanel migrated via RGM-001 sub-task 4
+      # (promoted downloadBlob to @audiocontrol/editor-core; akai +
+      # roland-sxx0-editor both import from there now).
     message: |
       Inline createObjectURL + anchor click + revoke sequence was promoted to
-      the downloadBlob utility in commit ae0b5192. Replace with
+      the downloadBlob utility (originally added in commit ae0b5192 in
+      roland-sxx0-editor; promoted to @audiocontrol/editor-core
+      2026-05-23 per RGM-001 sub-task 4). Replace with
+      `import { downloadBlob } from '@audiocontrol/editor-core'` +
       `downloadBlob(blob, filename)`.

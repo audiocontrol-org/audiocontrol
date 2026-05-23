@@ -1,20 +1,16 @@
 /**
- * Unit tests for `downloadBlob` — the 9-line browser util promoted to
- * `src/lib/browser-download.ts` in commit `ae0b5192` per clones.yaml
- * 5873e17e78bb refactor.
+ * Unit tests for `downloadBlob` — the 9-line browser util that lives in
+ * editor-core (promoted from roland-sxx0-editor 2026-05-23 per
+ * ROLAND-BUGFIX-RGM-001 sub-task 4 #455).
  *
- * Closes AUDIT-20260522-12: the original `5873e17e78bb` refactor row
- * recorded "No protecting test added" with the argument that the
- * function is too trivial to need one. Per the workplan refactor
- * protocol, "if you have to argue for it, write the new test instead"
- * — so this file is that test. It pins the four observable side
- * effects (createObjectURL, anchor mount + click, DOM cleanup,
- * revokeObjectURL) that any "botched" rewrite could silently break.
+ * Pins the four observable side effects (createObjectURL, anchor
+ * mount + click, DOM cleanup, revokeObjectURL) that any "botched"
+ * rewrite could silently break.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { downloadBlob } from '@/lib/browser-download';
+import { downloadBlob } from './browser-download';
 
 const STUB_URL = 'blob:http://localhost/abcdef-1234-5678';
 
@@ -52,22 +48,17 @@ describe('downloadBlob', () => {
 
     downloadBlob(blob, filename);
 
-    // createObjectURL fires exactly once with the blob.
     expect(createSpy).toHaveBeenCalledTimes(1);
     expect(createSpy).toHaveBeenCalledWith(blob);
 
-    // The anchor click fires exactly once. The anchor element at click
-    // time carried href === STUB_URL and download === filename.
     expect(clickSpy).toHaveBeenCalledTimes(1);
-    const anchorAtClick = clickSpy.mock.instances[0] as HTMLAnchorElement;
+    const anchorAtClick = clickSpy.mock.instances[0] as unknown as HTMLAnchorElement;
     expect(anchorAtClick.href).toBe(STUB_URL);
     expect(anchorAtClick.download).toBe(filename);
 
-    // revokeObjectURL fires exactly once with the same URL.
     expect(revokeSpy).toHaveBeenCalledTimes(1);
     expect(revokeSpy).toHaveBeenCalledWith(STUB_URL);
 
-    // DOM cleanup — no orphan <a> left behind on the document.
     expect(document.querySelectorAll('a').length).toBe(0);
   });
 });
