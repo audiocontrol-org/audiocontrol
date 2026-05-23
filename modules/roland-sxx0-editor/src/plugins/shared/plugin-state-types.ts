@@ -92,10 +92,15 @@ export interface PreviewPanelCustomState {
   onImportIndividualPatch?: (patchDirectoryName: string, path?: string[]) => void;
   onLoadSet?: () => void;
 
-  // Tool action callbacks
-  onOpenInLoopEditor?: (name: string, path?: string[]) => void;
-  onOpenInChopper?: (name: string, path?: string[]) => void;
-  onOpenInSampleEditor?: (name: string, path?: string[]) => void;
+  // Tool action callbacks. `nodeType` is forwarded so the
+  // device-strategy WAV loader can route a click on a *tone* node
+  // (library/<device>/tones/…) differently from a click on a
+  // *sample* node (library/common/samples/…). Hardcoding 'sample'
+  // here makes every tone click fall through to the common-area
+  // path and throw NotFoundError — see BUG-004.
+  onOpenInLoopEditor?: (name: string, nodeType: string, path?: string[]) => void;
+  onOpenInChopper?: (name: string, nodeType: string, path?: string[]) => void;
+  onOpenInSampleEditor?: (name: string, nodeType: string, path?: string[]) => void;
 
   // Device-memory action callbacks. Sibling actions to the library
   // preview's IMPORT-TO-DEVICE / OPEN-IN-EDITOR row — they let the

@@ -368,4 +368,58 @@ test.describe('Capabilities — Library import + sample-editing dialogs (Wave 4)
     await expect(dialog.getByText('Waveform & Slice Preview')).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Save' })).toBeVisible();
   });
+
+  test('D-LIB-38: clicking "Open in Loop Editor" on a seeded library TONE mounts LoopEditorDialog (BUG-004 regression)', async ({ page }) => {
+    // BUG-004 (2026-05-23): the page-level handler at LibraryPage.tsx:445
+    // hardcoded nodeType='sample' for all three Open-in-* handlers. The
+    // Roland WAV-loader strategy (useRolandEditorDialogs.ts:71) only
+    // matches nodeType==='tone' || 'individualTone'; the hardcoded 'sample'
+    // caused the strategy to return null and fall through to the common-
+    // area loadSample() path, which looked for
+    // library/common/samples/<path>/<name>/sample.yaml — a path that does
+    // not exist for a tone. Result: a DOMException NotFoundError surfaced
+    // as "A requested file or directory could not be found at the time
+    // an operation was processed." in 3 banners (page-top, library-mid,
+    // preview-right), and the library state became unrecoverable without
+    // a full page reload.
+    //
+    // This spec is the sibling of D-LIB-17 (which exercises the same
+    // affordance against a common-area SAMPLE). D-LIB-17 hit the
+    // common-area path, which worked; this spec hits the device-tone
+    // strategy, which DID NOT work pre-fix.
+    //
+    // Test-first protocol: this test was written BEFORE the fix lands
+    // in commit-history order but applied to the WORKING tree (the
+    // fix landed first because the operator was sitting at a broken
+    // dev server). The reverse-revert check holds: revert the fix
+    // (re-hardcode 'sample' on LibraryPage.tsx:445) and this test
+    // fails because the LoopEditor dialog never mounts.
+    const toneName = 'basic-sine';
+    await page.goto(LIBRARY_URL);
+    await page.waitForLoadState('networkidle');
+    await cleanupOPFS(page);
+    await seedOPFSTone(page, { fixtureName: toneName });
+    await connectLibraryOPFS(page);
+
+    const toneNode = page.getByTestId(`library-tone-${toneName}`);
+    await expect(toneNode).toBeVisible({ timeout: 5_000 });
+    await toneNode.click();
+
+    // ItemPreviewPanel.tsx:402-407 renders the "Open in Loop Editor"
+    // button inside the Library Tone preview pane. The onClick passes
+    // nodeType='tone' through to the page handler — which prior to the
+    // fix dropped the 'tone' tag and used 'sample' instead.
+    const openLoopButton = page.getByRole('button', { name: 'Open in Loop Editor' });
+    await expect(openLoopButton).toBeVisible({ timeout: 5_000 });
+    await openLoopButton.click();
+
+    // Mount assertion: the LoopEditor dialog renders. Same pattern as
+    // D-LIB-17 — scope by dialog role + name to disambiguate the dialog
+    // title from the embedded LoopEditor component's inner heading.
+    const dialog = page.getByRole('dialog', { name: 'Loop Editor' });
+    await expect(dialog).toBeVisible({ timeout: 10_000 });
+    await expect(
+      dialog.getByRole('button', { name: 'Save Loop Points' }),
+    ).toBeVisible();
+  });
 });
