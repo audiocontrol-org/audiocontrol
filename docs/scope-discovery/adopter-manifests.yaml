@@ -211,6 +211,14 @@ adopter_manifests:
   - id: slide-drawer-library-dialogs
     introduced_in: c41cf2a4
     from: '@audiocontrol/editor-core'
+    # Cross-editor convention: every editor's library dialogs should use
+    # the v3 SlideDrawer chrome from editor-core, not legacy Radix Dialog.
+    # roland-sxx0-editor: 3 adopters + 5 tracked-holdouts (Import dialogs
+    #   pending ROLAND-BUGFIX-V3-IMPORT, listed below as exceptions).
+    # akai-s3k-editor: 0 adopters across 9 library dialogs — never adopted
+    #   the v3 chrome. Listed below as exceptions with reason="out of
+    #   scope for feature/roland-bugfix; ROLAND-BUGFIX-V3-AKAI follow-up
+    #   recommended if/when akai adopts editor-core SlideDrawer."
     expected_adopters_glob:
       - 'modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx'
       - 'modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx'
@@ -220,6 +228,15 @@ adopter_manifests:
       - 'modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx'
       - 'modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx'
       - 'modules/roland-sxx0-editor/src/components/library/ImportToneDialog.tsx'
+      - 'modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx'
+      - 'modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx'
+      - 'modules/akai-s3k-editor/src/components/library/ExportProgramDialog.tsx'
+      - 'modules/akai-s3k-editor/src/components/library/ImportDrumKitDialog.tsx'
+      - 'modules/akai-s3k-editor/src/components/library/ImportInstrumentDialog.tsx'
+      - 'modules/akai-s3k-editor/src/components/library/ImportProgramDialog.tsx'
+      - 'modules/akai-s3k-editor/src/components/library/LibraryToDiskDialog.tsx'
+      - 'modules/akai-s3k-editor/src/components/library/ReceiveSampleDialog.tsx'
+      - 'modules/akai-s3k-editor/src/components/library/SendSampleDialog.tsx'
     exceptions:
       - path: 'modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx'
         reason: |
@@ -247,6 +264,29 @@ adopter_manifests:
           Currently on legacy Radix Dialog chrome; v3 SlideDrawer migration
           deferred. Closes BUG-002 (import dialog empty catches) in the
           same migration.
+      # akai-s3k-editor library dialogs (9 files) — all currently on legacy
+      # Radix Dialog chrome. Out of scope for feature/roland-bugfix; recommend
+      # ROLAND-BUGFIX-V3-AKAI follow-up if/when akai-s3k-editor adopts the
+      # v3 SlideDrawer convention. Surfaced here via the cross-editor
+      # adopter manifest so the regime gap is visible in the symmetry matrix.
+      - path: 'modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx'
+        reason: 'CROSS-EDITOR HOLDOUT — akai never adopted v3 SlideDrawer; out of scope for feature/roland-bugfix.'
+      - path: 'modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx'
+        reason: 'CROSS-EDITOR HOLDOUT — akai never adopted v3 SlideDrawer; out of scope for feature/roland-bugfix.'
+      - path: 'modules/akai-s3k-editor/src/components/library/ExportProgramDialog.tsx'
+        reason: 'CROSS-EDITOR HOLDOUT — akai never adopted v3 SlideDrawer; out of scope for feature/roland-bugfix.'
+      - path: 'modules/akai-s3k-editor/src/components/library/ImportDrumKitDialog.tsx'
+        reason: 'CROSS-EDITOR HOLDOUT — akai never adopted v3 SlideDrawer; out of scope for feature/roland-bugfix.'
+      - path: 'modules/akai-s3k-editor/src/components/library/ImportInstrumentDialog.tsx'
+        reason: 'CROSS-EDITOR HOLDOUT — akai never adopted v3 SlideDrawer; out of scope for feature/roland-bugfix.'
+      - path: 'modules/akai-s3k-editor/src/components/library/ImportProgramDialog.tsx'
+        reason: 'CROSS-EDITOR HOLDOUT — akai never adopted v3 SlideDrawer; out of scope for feature/roland-bugfix.'
+      - path: 'modules/akai-s3k-editor/src/components/library/LibraryToDiskDialog.tsx'
+        reason: 'CROSS-EDITOR HOLDOUT — akai never adopted v3 SlideDrawer; out of scope for feature/roland-bugfix.'
+      - path: 'modules/akai-s3k-editor/src/components/library/ReceiveSampleDialog.tsx'
+        reason: 'CROSS-EDITOR HOLDOUT — akai never adopted v3 SlideDrawer; out of scope for feature/roland-bugfix.'
+      - path: 'modules/akai-s3k-editor/src/components/library/SendSampleDialog.tsx'
+        reason: 'CROSS-EDITOR HOLDOUT — akai never adopted v3 SlideDrawer; out of scope for feature/roland-bugfix.'
     message: |
       Library dialogs use the v3 SlideDrawer chrome from editor-core,
       not legacy Radix Dialog. Replace `<Dialog.Root>` + `<Dialog.Portal>`

@@ -222,6 +222,45 @@ Semantics: `tracked_holdouts:` files are NOT counted as findings (gate passes), 
 Filed: **ROLAND-BUGFIX-T6.2-GLOB** for the `globToRegex` alternation+wildcard bug.
 Filed: **ROLAND-BUGFIX-T6.2-TRACKED-HOLDOUTS** for the `tracked_holdouts:` schema addition.
 
+## Phase 6 dogfooding — T6.3 cross-editor symmetry matrix masks holdouts via exceptions
+
+Exercised 2026-05-22 running `make check-editor-symmetry` against the 8 editor modules. Extended the SlideDrawer adopter manifest to include akai-s3k-editor's 9 library dialogs (since the v3 SlideDrawer convention is genuinely cross-editor — `@audiocontrol/editor-core/SlideDrawer` should be used by every editor's library, not just roland). Result: the matrix RAN successfully and produced 10 ✓ cells across 9 conventions × 7 editors (with 53 — cells indicating n/a).
+
+### Outcome
+
+The mechanical scan works: the matrix renders, the per-editor adoption counts are correct relative to the registry's view of exceptions, the `make check-editor-symmetry` exit code is 0 when no real holdouts exist.
+
+But the *value* of the cross-editor symmetry concept is unrealized in two ways the dogfooding surfaced:
+
+### Gap 1: Exceptions silence the matrix cells, hiding real holdouts
+
+**Severity: medium.** The matrix legend says `✓ N/N` = "all files in the editor matching the manifest glob import the canonical path." The 9 akai library dialogs are listed as exceptions in the `slide-drawer-library-dialogs` manifest with `reason: CROSS-EDITOR HOLDOUT — akai never adopted v3 SlideDrawer; out of scope for feature/roland-bugfix`. The matrix renders akai-s3k-editor's slide-drawer cell as `✓ 9/9` — because exceptions are silently subtracted from the holdout count before the matrix renders.
+
+The akai cell looks identical to a cell where the editor genuinely adopts the convention. A reader scanning the matrix for asymmetries sees ✓ everywhere and concludes "no asymmetries" — exactly the opposite of the truth (9 of the 9 akai library dialogs are on legacy chrome).
+
+**Root cause:** same as `#453` (ROLAND-BUGFIX-T6.2-TRACKED-HOLDOUTS). The `exceptions:` field collapses "permanent opt-out" with "deferred-but-known holdout." When `tracked_holdouts:` lands as a distinct schema field, the matrix can render those as a third state (e.g., `⏳ 0/9 (9 tracked-holdouts)`) and the visibility gap closes.
+
+**Workaround used:** documented the deferral in the exception's `reason:` field. Visible to manifest readers; invisible to the matrix.
+
+### Gap 2: Most adopter manifests are intentionally single-editor
+
+**Severity: low — by design, but worth naming.** 8 of the 9 manifest entries target only `roland-sxx0-editor` (the primitives extracted by feature/roland-bugfix's Phase 2). Their matrix rows show `—` in every other editor's column, which is the "manifest does not target this editor" state. The matrix shows 53 — cells out of 63.
+
+This is correct behavior — those primitives are intentionally roland-scoped. But it means the matrix's cross-editor power only fires when a convention is genuinely supposed to span editors (like SlideDrawer or `@audiocontrol/editor-core/AcChevron`). The current registry's heavy bias toward roland-only entries makes the matrix mostly a single-column report.
+
+**Recommendation:** as more editor-core primitives are extracted and as conventions like `$INFRA_DIR/scripts/watchdog.ts` get adopter-manifest entries, the matrix's cross-editor utility grows automatically. For Phase 6, this is informative — the matrix is ready for cross-editor entries; the registry just needs them. Authors of cross-editor refactors should explicitly add multi-editor adopter manifests so the matrix surfaces asymmetries at the point of extraction.
+
+### What worked
+
+- The matrix script is fast (<1s).
+- The Markdown output is render-ready (drop-in for the editor-symmetry.md doc).
+- The cell legend is self-documenting (`✓ N/N`, `⚠ A/E (H holdout(s))`, `✗`, `—`) — reading the matrix doesn't require external context.
+- Adding a single cross-editor entry (extending SlideDrawer to cover akai) immediately changed the matrix output — the feedback loop on registry authoring is tight.
+
+### Phase 6 follow-up
+
+No new GitHub issue filed beyond `#453` (tracked_holdouts) — Gap 1's fix is the same fix as `#453`, and once landed the matrix-visibility issue resolves automatically. Gap 2 isn't a tooling issue; it's a registry-population issue that solves itself as more cross-editor refactors are tracked.
+
 ## Cross-feature interaction with PR #440 (chevron + multi-select work)
 
 - ✅ The merge of main into `feature/roland-bugfix` was a clean fast-forward-then-merge (no conflicts). PR #441's surface area (large) didn't touch any of PR #440's changed files.

@@ -357,12 +357,19 @@ See `tooling-feedback.md § "Phase 5 dogfooding — T6.2 adopter manifest gaps +
 
 - **T6.4 — Re-run the scan to verify zero unresolved asymmetries.** All asymmetries should now have a disposition. The matrix output should show ✓ symmetric for fixed conventions, `keep-with-reason` for intentional divergence, and `follow-up: <issue>` for deferred work.
 
-### Phase 6 acceptance
+### Phase 6 outcome (2026-05-22)
 
-- Symmetry matrix captured under the run-evidence directory.
-- Every asymmetry dispositioned (`fix-now` resolved inline; `refactor-PR` filed as follow-up; `keep-with-reason` documented).
-- `make check-editor-symmetry` reports zero `pending` rows.
-- Tooling-feedback entry capturing what the symmetry scan caught vs missed.
+**Closed cleanly with one cross-editor extension + a visibility-gap finding.**
+
+- **Cross-editor extension landed:** the `slide-drawer-library-dialogs` adopter manifest now spans both roland-sxx0-editor (8 library dialogs/drawers) and akai-s3k-editor (9 library dialogs). roland-side: 3 actual adopters + 5 tracked-holdout exceptions (pending ROLAND-BUGFIX-V3-IMPORT). akai-side: 0 actual adopters + 9 cross-editor-out-of-scope exceptions (each with `reason: CROSS-EDITOR HOLDOUT — akai never adopted v3 SlideDrawer; out of scope for feature/roland-bugfix`).
+- **Matrix output:** `9 convention(s) × 7 editor(s) = 63 cells; 10 ✓, 0 ⚠, 0 ✗, 53 —.` The DEL-003 watchdog convention does NOT show up here because it's a shell-script path, not an adopter-manifest entry; that's correct — watchdog symmetry was caught + closed via the clones.yaml path before T6.3 landed.
+- **Per-editor breakdown:** roland-sxx0-editor adopts all 9 manifest entries (✓); akai-s3k-editor adopts only the slide-drawer convention (via exception silencing, see Gap 1 below).
+- **Two gaps surfaced via dogfooding:**
+  1. **Exception silencing masks cross-editor holdouts in the matrix.** The akai-s3k-editor cell for `slide-drawer-library-dialogs` renders as `✓ 9/9` despite zero actual adopters — exceptions are subtracted before the matrix renders. Same root cause as #453 (no `tracked_holdouts:` distinction from permanent exceptions). Once #453 lands, the matrix gains a third cell-state and the visibility gap closes automatically. No new issue filed; folded into #453.
+  2. **Most adopter manifests are single-editor by design.** 8 of 9 entries are roland-scoped. Matrix shows 53 `—` cells out of 63. This is correct behavior — cross-editor power grows as cross-editor refactors get adopter-manifest entries. Informational; no fix needed.
+- See `tooling-feedback.md § "Phase 6 dogfooding — T6.3 cross-editor symmetry matrix masks holdouts via exceptions"` for the full dogfooding narrative.
+
+**Phase 6 dispositioned closed.** The cross-editor sweep ran; every asymmetry surfaced has a disposition (5 roland Import dialogs → ROLAND-BUGFIX-V3-IMPORT follow-up; 9 akai library dialogs → out-of-scope per the operator's scope statement on `feature/roland-bugfix`).
 
 ## Phase 7: `/scope-inventory` re-run with regime-holdout-detector (PR #446 T6.5 exercise)
 
