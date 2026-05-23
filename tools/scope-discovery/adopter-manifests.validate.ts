@@ -25,11 +25,17 @@
  */
 
 import { SCENARIOS, type ScenarioResult } from './adopter-manifests.scenarios.js';
+import { TRACKED_HOLDOUTS_SCENARIOS } from './adopter-manifests.tracked-holdouts-scenarios.js';
 import { errorMessage } from './util/typeguards.js';
+
+const ALL_SCENARIOS: ReadonlyArray<() => Promise<ScenarioResult>> = [
+  ...SCENARIOS,
+  ...TRACKED_HOLDOUTS_SCENARIOS,
+];
 
 async function runAll(): Promise<readonly ScenarioResult[]> {
   const results: ScenarioResult[] = [];
-  for (const fn of SCENARIOS) {
+  for (const fn of ALL_SCENARIOS) {
     try {
       results.push(await fn());
     } catch (err) {

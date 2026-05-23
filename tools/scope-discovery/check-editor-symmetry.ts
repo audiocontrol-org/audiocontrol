@@ -159,7 +159,7 @@ function formatSummary(
   return (
     `editor-symmetry: ${matrix.rows.length} convention(s) × ${matrix.editors.length} editor(s) ` +
     `= ${cellCount} cells; ` +
-    `${totals.ok} ✓, ${totals.partial} ⚠, ${totals.missing} ✗, ${totals.na} —.`
+    `${totals.ok} ✓, ${totals.partial} ⚠, ${totals.missing} ✗, ${totals.tracked} ⏳, ${totals.na} —.`
   );
 }
 
