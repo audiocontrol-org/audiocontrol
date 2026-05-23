@@ -1,4 +1,4 @@
-generated_at: 2026-05-23T15:18:19.162Z
+generated_at: 2026-05-23T18:19:57.144Z
 clones:
   - id: 0c01c0982ede
     lines: 15
@@ -2389,7 +2389,7 @@ clones:
     lines: 13
     members:
       - modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx:444:456
-      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:296:308
+      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:295:307
     disposition: keep-with-reason
     reason: 'Import* dialog family (ImportLibraryToneDialog, ImportLibraryPatchDialog, ImportSamplesDialog, ImportSampleDialog, ImportToneDialog) and the cross-LoadSetDialog clone share state-management + render-shape duplication, but the family is pending a v3 SlideDrawer chrome migration that will mirror what was done for ExportToneDialog / ExportPatchDialog (commits c41cf2a4 and the Phase 9 task 4 redesign). The v3 migration is the natural moment to extract shared lifecycle hooks (analogous to useExportDialogLifecycle from clones.yaml e83df277765c refactor) and shared body components (MemoryMapPanel, BestFitPicker, target select). Extracting them now against the legacy Radix.Dialog chrome would create churn that the v3 migration immediately re-churns. The migration also closes BUG-002 (import dialog empty catches — see workplan Phase 1 task #4 "Prep BUG-002 fix"). Disposition: kept until the v3 import-dialog migration lands. Follow-up: ROLAND-BUGFIX-V3-IMPORT — file an explicit follow-up issue once the v3 migration scope is firmed up.'
   - id: 2b29518114f0
@@ -2399,34 +2399,25 @@ clones:
       - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:261:275
     disposition: keep-with-reason
     reason: 'Import* dialog family (ImportLibraryToneDialog, ImportLibraryPatchDialog, ImportSamplesDialog, ImportSampleDialog, ImportToneDialog) and the cross-LoadSetDialog clone share state-management + render-shape duplication, but the family is pending a v3 SlideDrawer chrome migration that will mirror what was done for ExportToneDialog / ExportPatchDialog (commits c41cf2a4 and the Phase 9 task 4 redesign). The v3 migration is the natural moment to extract shared lifecycle hooks (analogous to useExportDialogLifecycle from clones.yaml e83df277765c refactor) and shared body components (MemoryMapPanel, BestFitPicker, target select). Extracting them now against the legacy Radix.Dialog chrome would create churn that the v3 migration immediately re-churns. The migration also closes BUG-002 (import dialog empty catches — see workplan Phase 1 task #4 "Prep BUG-002 fix"). Disposition: kept until the v3 import-dialog migration lands. Follow-up: ROLAND-BUGFIX-V3-IMPORT — file an explicit follow-up issue once the v3 migration scope is firmed up.'
-  - id: bf2218cd17a6
-    lines: 9
-    members:
-      - modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx:606:614
-      - modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:324:331
-    disposition: keep-with-reason
-    reason: 'Import* dialog family (ImportLibraryToneDialog, ImportLibraryPatchDialog, ImportSamplesDialog, ImportSampleDialog, ImportToneDialog) and the cross-LoadSetDialog clone share state-management + render-shape duplication, but the family is pending a v3 SlideDrawer chrome migration that will mirror what was done for ExportToneDialog / ExportPatchDialog (commits c41cf2a4 and the Phase 9 task 4 redesign). The v3 migration is the natural moment to extract shared lifecycle hooks (analogous to useExportDialogLifecycle from clones.yaml e83df277765c refactor) and shared body components (MemoryMapPanel, BestFitPicker, target select). Extracting them now against the legacy Radix.Dialog chrome would create churn that the v3 migration immediately re-churns. The migration also closes BUG-002 (import dialog empty catches — see workplan Phase 1 task #4 "Prep BUG-002 fix"). Disposition: kept until the v3 import-dialog migration lands. Follow-up: ROLAND-BUGFIX-V3-IMPORT — file an explicit follow-up issue once the v3 migration scope is firmed up.'
-  - id: d1f9786a2882
+  - id: 312402352cd2
     lines: 14
     members:
-      - modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx:681:694
-      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:454:467
-      - modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:401:414
+      - modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx:680:693
+      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:453:466
       - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:506:519
-      - modules/roland-sxx0-editor/src/components/library/ImportToneDialog.tsx:163:176
     disposition: keep-with-reason
-    reason: 'Import* dialog family (ImportLibraryToneDialog, ImportLibraryPatchDialog, ImportSamplesDialog, ImportSampleDialog, ImportToneDialog) and the cross-LoadSetDialog clone share state-management + render-shape duplication, but the family is pending a v3 SlideDrawer chrome migration that will mirror what was done for ExportToneDialog / ExportPatchDialog (commits c41cf2a4 and the Phase 9 task 4 redesign). The v3 migration is the natural moment to extract shared lifecycle hooks (analogous to useExportDialogLifecycle from clones.yaml e83df277765c refactor) and shared body components (MemoryMapPanel, BestFitPicker, target select). Extracting them now against the legacy Radix.Dialog chrome would create churn that the v3 migration immediately re-churns. The migration also closes BUG-002 (import dialog empty catches — see workplan Phase 1 task #4 "Prep BUG-002 fix"). Disposition: kept until the v3 import-dialog migration lands. Follow-up: ROLAND-BUGFIX-V3-IMPORT — file an explicit follow-up issue once the v3 migration scope is firmed up.'
+    reason: 'Residual of the larger d1f9786a2882 Import* clone after V3-IMPORT sub-task 1 deleted the 2 orphan dialogs (ImportSampleDialog + ImportToneDialog). The remaining 3 Import dialogs still share the same render-shape + state-management duplication and ship the same V3-IMPORT SlideDrawer migration disposition: extract shared lifecycle hooks + body components in the v3 chrome rewrite, not against legacy Radix.Dialog. Follow-up: ROLAND-BUGFIX-V3-IMPORT (#450).'
   - id: 9c5d0d6fcae5
     lines: 29
     members:
-      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:302:330
+      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:301:329
       - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:255:283
     disposition: keep-with-reason
     reason: 'Import* dialog family (ImportLibraryToneDialog, ImportLibraryPatchDialog, ImportSamplesDialog, ImportSampleDialog, ImportToneDialog) and the cross-LoadSetDialog clone share state-management + render-shape duplication, but the family is pending a v3 SlideDrawer chrome migration that will mirror what was done for ExportToneDialog / ExportPatchDialog (commits c41cf2a4 and the Phase 9 task 4 redesign). The v3 migration is the natural moment to extract shared lifecycle hooks (analogous to useExportDialogLifecycle from clones.yaml e83df277765c refactor) and shared body components (MemoryMapPanel, BestFitPicker, target select). Extracting them now against the legacy Radix.Dialog chrome would create churn that the v3 migration immediately re-churns. The migration also closes BUG-002 (import dialog empty catches — see workplan Phase 1 task #4 "Prep BUG-002 fix"). Disposition: kept until the v3 import-dialog migration lands. Follow-up: ROLAND-BUGFIX-V3-IMPORT — file an explicit follow-up issue once the v3 migration scope is firmed up.'
   - id: b951159f88f4
     lines: 11
     members:
-      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:338:348
+      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:337:347
       - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:283:293
       - modules/roland-sxx0-editor/src/components/library/LoadSetDialog.tsx:118:128
     disposition: keep-with-reason
@@ -2434,52 +2425,17 @@ clones:
   - id: bfb7ce37ee85
     lines: 18
     members:
-      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:380:397
+      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:379:396
       - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:321:338
     disposition: keep-with-reason
     reason: 'Import* dialog family (ImportLibraryToneDialog, ImportLibraryPatchDialog, ImportSamplesDialog, ImportSampleDialog, ImportToneDialog) and the cross-LoadSetDialog clone share state-management + render-shape duplication, but the family is pending a v3 SlideDrawer chrome migration that will mirror what was done for ExportToneDialog / ExportPatchDialog (commits c41cf2a4 and the Phase 9 task 4 redesign). The v3 migration is the natural moment to extract shared lifecycle hooks (analogous to useExportDialogLifecycle from clones.yaml e83df277765c refactor) and shared body components (MemoryMapPanel, BestFitPicker, target select). Extracting them now against the legacy Radix.Dialog chrome would create churn that the v3 migration immediately re-churns. The migration also closes BUG-002 (import dialog empty catches — see workplan Phase 1 task #4 "Prep BUG-002 fix"). Disposition: kept until the v3 import-dialog migration lands. Follow-up: ROLAND-BUGFIX-V3-IMPORT — file an explicit follow-up issue once the v3 migration scope is firmed up.'
-  - id: dd1ca0ae04f1
-    lines: 13
-    members:
-      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:413:425
-      - modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:342:354
-    disposition: keep-with-reason
-    reason: 'Import* dialog family (ImportLibraryToneDialog, ImportLibraryPatchDialog, ImportSamplesDialog, ImportSampleDialog, ImportToneDialog) and the cross-LoadSetDialog clone share state-management + render-shape duplication, but the family is pending a v3 SlideDrawer chrome migration that will mirror what was done for ExportToneDialog / ExportPatchDialog (commits c41cf2a4 and the Phase 9 task 4 redesign). The v3 migration is the natural moment to extract shared lifecycle hooks (analogous to useExportDialogLifecycle from clones.yaml e83df277765c refactor) and shared body components (MemoryMapPanel, BestFitPicker, target select). Extracting them now against the legacy Radix.Dialog chrome would create churn that the v3 migration immediately re-churns. The migration also closes BUG-002 (import dialog empty catches — see workplan Phase 1 task #4 "Prep BUG-002 fix"). Disposition: kept until the v3 import-dialog migration lands. Follow-up: ROLAND-BUGFIX-V3-IMPORT — file an explicit follow-up issue once the v3 migration scope is firmed up.'
-  - id: 6686fb8e2a68
-    lines: 20
-    members:
-      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:428:447
-      - modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:375:500
-    disposition: keep-with-reason
-    reason: 'Import* dialog family (ImportLibraryToneDialog, ImportLibraryPatchDialog, ImportSamplesDialog, ImportSampleDialog, ImportToneDialog) and the cross-LoadSetDialog clone share state-management + render-shape duplication, but the family is pending a v3 SlideDrawer chrome migration that will mirror what was done for ExportToneDialog / ExportPatchDialog (commits c41cf2a4 and the Phase 9 task 4 redesign). The v3 migration is the natural moment to extract shared lifecycle hooks (analogous to useExportDialogLifecycle from clones.yaml e83df277765c refactor) and shared body components (MemoryMapPanel, BestFitPicker, target select). Extracting them now against the legacy Radix.Dialog chrome would create churn that the v3 migration immediately re-churns. The migration also closes BUG-002 (import dialog empty catches — see workplan Phase 1 task #4 "Prep BUG-002 fix"). Disposition: kept until the v3 import-dialog migration lands. Follow-up: ROLAND-BUGFIX-V3-IMPORT — file an explicit follow-up issue once the v3 migration scope is firmed up.'
-  - id: b18339c818d5
-    lines: 14
-    members:
-      - modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:309:322
-      - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:323:336
-    disposition: keep-with-reason
-    reason: 'Import* dialog family (ImportLibraryToneDialog, ImportLibraryPatchDialog, ImportSamplesDialog, ImportSampleDialog, ImportToneDialog) and the cross-LoadSetDialog clone share state-management + render-shape duplication, but the family is pending a v3 SlideDrawer chrome migration that will mirror what was done for ExportToneDialog / ExportPatchDialog (commits c41cf2a4 and the Phase 9 task 4 redesign). The v3 migration is the natural moment to extract shared lifecycle hooks (analogous to useExportDialogLifecycle from clones.yaml e83df277765c refactor) and shared body components (MemoryMapPanel, BestFitPicker, target select). Extracting them now against the legacy Radix.Dialog chrome would create churn that the v3 migration immediately re-churns. The migration also closes BUG-002 (import dialog empty catches — see workplan Phase 1 task #4 "Prep BUG-002 fix"). Disposition: kept until the v3 import-dialog migration lands. Follow-up: ROLAND-BUGFIX-V3-IMPORT — file an explicit follow-up issue once the v3 migration scope is firmed up.'
-  - id: 279d6165c512
+  - id: 66ed59593874
     lines: 17
     members:
-      - modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:378:394
-      - modules/roland-sxx0-editor/src/components/library/ImportToneDialog.tsx:141:500
+      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:430:446
+      - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:484:500
     disposition: keep-with-reason
-    reason: 'Import* dialog family (ImportLibraryToneDialog, ImportLibraryPatchDialog, ImportSamplesDialog, ImportSampleDialog, ImportToneDialog) and the cross-LoadSetDialog clone share state-management + render-shape duplication, but the family is pending a v3 SlideDrawer chrome migration that will mirror what was done for ExportToneDialog / ExportPatchDialog (commits c41cf2a4 and the Phase 9 task 4 redesign). The v3 migration is the natural moment to extract shared lifecycle hooks (analogous to useExportDialogLifecycle from clones.yaml e83df277765c refactor) and shared body components (MemoryMapPanel, BestFitPicker, target select). Extracting them now against the legacy Radix.Dialog chrome would create churn that the v3 migration immediately re-churns. The migration also closes BUG-002 (import dialog empty catches — see workplan Phase 1 task #4 "Prep BUG-002 fix"). Disposition: kept until the v3 import-dialog migration lands. Follow-up: ROLAND-BUGFIX-V3-IMPORT — file an explicit follow-up issue once the v3 migration scope is firmed up.'
-  - id: 289e953b5ea7
-    lines: 11
-    members:
-      - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:172:182
-      - modules/roland-sxx0-editor/src/components/library/ImportToneDialog.tsx:48:58
-    disposition: keep-with-reason
-    reason: 'Import* dialog family (ImportLibraryToneDialog, ImportLibraryPatchDialog, ImportSamplesDialog, ImportSampleDialog, ImportToneDialog) and the cross-LoadSetDialog clone share state-management + render-shape duplication, but the family is pending a v3 SlideDrawer chrome migration that will mirror what was done for ExportToneDialog / ExportPatchDialog (commits c41cf2a4 and the Phase 9 task 4 redesign). The v3 migration is the natural moment to extract shared lifecycle hooks (analogous to useExportDialogLifecycle from clones.yaml e83df277765c refactor) and shared body components (MemoryMapPanel, BestFitPicker, target select). Extracting them now against the legacy Radix.Dialog chrome would create churn that the v3 migration immediately re-churns. The migration also closes BUG-002 (import dialog empty catches — see workplan Phase 1 task #4 "Prep BUG-002 fix"). Disposition: kept until the v3 import-dialog migration lands. Follow-up: ROLAND-BUGFIX-V3-IMPORT — file an explicit follow-up issue once the v3 migration scope is firmed up.'
-  - id: 2c878a15f353
-    lines: 24
-    members:
-      - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:477:500
-      - modules/roland-sxx0-editor/src/components/library/ImportToneDialog.tsx:134:157
-    disposition: keep-with-reason
-    reason: 'Import* dialog family (ImportLibraryToneDialog, ImportLibraryPatchDialog, ImportSamplesDialog, ImportSampleDialog, ImportToneDialog) and the cross-LoadSetDialog clone share state-management + render-shape duplication, but the family is pending a v3 SlideDrawer chrome migration that will mirror what was done for ExportToneDialog / ExportPatchDialog (commits c41cf2a4 and the Phase 9 task 4 redesign). The v3 migration is the natural moment to extract shared lifecycle hooks (analogous to useExportDialogLifecycle from clones.yaml e83df277765c refactor) and shared body components (MemoryMapPanel, BestFitPicker, target select). Extracting them now against the legacy Radix.Dialog chrome would create churn that the v3 migration immediately re-churns. The migration also closes BUG-002 (import dialog empty catches — see workplan Phase 1 task #4 "Prep BUG-002 fix"). Disposition: kept until the v3 import-dialog migration lands. Follow-up: ROLAND-BUGFIX-V3-IMPORT — file an explicit follow-up issue once the v3 migration scope is firmed up.'
+    reason: 'Residual of the larger d1f9786a2882 Import* clone after V3-IMPORT sub-task 1 deleted the 2 orphan dialogs (ImportSampleDialog + ImportToneDialog). The remaining 2 Import dialogs still share the same render-shape duplication and ship the same V3-IMPORT SlideDrawer migration disposition: extract shared body components in the v3 chrome rewrite, not against legacy Radix.Dialog. Follow-up: ROLAND-BUGFIX-V3-IMPORT (#450).'
   - id: 228a6c25d4f5
     lines: 13
     members:
@@ -2593,25 +2549,11 @@ clones:
       - modules/sampler-devices/src/devices/s330/drum-kit-import-service.ts:165:181
     disposition: keep-with-reason
     reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
-  - id: ef80a538a68a
-    lines: 6
-    members:
-      - modules/roland-sxx0-editor/src/hooks/useImportSamples.ts:317:322
-      - modules/roland-sxx0-editor/src/hooks/useLibraryImport.ts:76:81
-    disposition: ignore-with-justification
-    reason: "Coincidental similarity rather than duplication: cross-page or cross-file fragments (import blocks, file-path-building utility lines, hook header imports) that happen to share shape because they use the same React hooks / TypeScript imports / file-path helpers, but serve different feature contexts and have no shared semantics. Extracting would create over-generic helpers that obscure intent at the call site. The clone detector flags these because of token overlap; semantically there is no duplication to remove. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: a5d27361a53b
     lines: 11
     members:
       - modules/roland-sxx0-editor/src/hooks/useLibraryExport.ts:454:464
       - modules/roland-sxx0-editor/src/hooks/useLibraryExport.ts:700:710
-    disposition: keep-with-reason
-    reason: "Self-clone within a single non-component file (library-io, library-tones, best-fit, memory-layout, useLibraryImport, useLibraryExport): paired async load paths, paired algorithm-scoring loops, paired per-device data definitions, paired hook callback patterns. Per-path / per-device semantics are intentional fork points; extracting would weaken control-flow clarity and create over-generic helpers that obscure the per-path or per-algorithm intent. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
-  - id: 18c6f0de4729
-    lines: 13
-    members:
-      - modules/roland-sxx0-editor/src/hooks/useLibraryImport.ts:165:177
-      - modules/roland-sxx0-editor/src/hooks/useLibraryImport.ts:54:66
     disposition: keep-with-reason
     reason: "Self-clone within a single non-component file (library-io, library-tones, best-fit, memory-layout, useLibraryImport, useLibraryExport): paired async load paths, paired algorithm-scoring loops, paired per-device data definitions, paired hook callback patterns. Per-path / per-device semantics are intentional fork points; extracting would weaken control-flow clarity and create over-generic helpers that obscure the per-path or per-algorithm intent. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass."
   - id: 62e64c7f6ab2

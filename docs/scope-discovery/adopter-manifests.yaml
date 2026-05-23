@@ -248,8 +248,10 @@ adopter_manifests:
       - 'modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx'
       - 'modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx'
       - 'modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx'
-      - 'modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx'
-      - 'modules/roland-sxx0-editor/src/components/library/ImportToneDialog.tsx'
+      # NOTE: ImportSampleDialog.tsx + ImportToneDialog.tsx were dead-code
+      # orphans (defined but never mounted by LibraryPage — the production
+      # path uses useLibraryImportDialogs + ImportLibraryToneDialog). Deleted
+      # as part of V3-IMPORT (#450); adopter-glob entries dropped here.
       - 'modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx'
       - 'modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx'
       - 'modules/akai-s3k-editor/src/components/library/ExportProgramDialog.tsx'
@@ -279,18 +281,12 @@ adopter_manifests:
         issue: 'https://github.com/audiocontrol-org/audiocontrol/issues/450'
         reason: |
           pending ROLAND-BUGFIX-V3-IMPORT — currently on legacy Radix Dialog
-          chrome; v3 SlideDrawer migration deferred.
-      - path: 'modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx'
-        issue: 'https://github.com/audiocontrol-org/audiocontrol/issues/450'
-        reason: |
-          pending ROLAND-BUGFIX-V3-IMPORT — currently on legacy Radix Dialog
-          chrome; v3 SlideDrawer migration deferred.
-      - path: 'modules/roland-sxx0-editor/src/components/library/ImportToneDialog.tsx'
-        issue: 'https://github.com/audiocontrol-org/audiocontrol/issues/450'
-        reason: |
-          pending ROLAND-BUGFIX-V3-IMPORT — currently on legacy Radix Dialog
           chrome; v3 SlideDrawer migration deferred. Closes BUG-002 (import
           dialog empty catches) in the same migration.
+      # ImportSampleDialog + ImportToneDialog were dead-code orphans
+      # (defined but never JSX-mounted; the production path uses
+      # useLibraryImportDialogs + ImportLibraryToneDialog). Deleted as
+      # part of V3-IMPORT (#450); tracked_holdouts entries dropped.
       # akai-s3k-editor library dialogs (9 files) — all currently on legacy
       # Radix Dialog chrome. Cross-editor deferral; out of scope for
       # feature/roland-bugfix per the PRD. Recommend filing an

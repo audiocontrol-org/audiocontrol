@@ -1,4 +1,4 @@
-generated_at: 2026-05-23T15:18:19.162Z
+generated_at: 2026-05-23T18:19:57.144Z
 mappings:
   "001398311e05": "001398311e05"
   008d7be43c74: 008d7be43c74
@@ -46,7 +46,6 @@ mappings:
   166313ba5781: 166313ba5781
   16f22b56cfca: 16f22b56cfca
   17a50586ce4e: 17a50586ce4e
-  18c6f0de4729: 18c6f0de4729
   18dd0e30dd03: 18dd0e30dd03
   19a96ad36072: 19a96ad36072
   19d40f96b914: 19d40f96b914
@@ -75,9 +74,7 @@ mappings:
   258e7e30d2e5: 258e7e30d2e5
   25d8aeafa8f5: 25d8aeafa8f5
   26bd07358544: 26bd07358544
-  279d6165c512: 279d6165c512
   27edbe33d078: 27edbe33d078
-  289e953b5ea7: 289e953b5ea7
   28cfeeca6470: 28cfeeca6470
   2900b54f5b5f: 2900b54f5b5f
   29c168c5d83c: 29c168c5d83c
@@ -86,7 +83,6 @@ mappings:
   2bdd4c2da263: 2bdd4c2da263
   2bf5c3224ac3: 2bf5c3224ac3
   2c21d44690b4: 2c21d44690b4
-  2c878a15f353: 2c878a15f353
   2cce00ccc1df: 2cce00ccc1df
   2ce3f141564b: 2ce3f141564b
   2e36ef110016: 2e36ef110016
@@ -140,6 +136,7 @@ mappings:
   45bc5b9e7ca8: 45bc5b9e7ca8
   466ceef58f9b: 466ceef58f9b
   4691e8b7d2fc: 4691e8b7d2fc
+  46d11bca2d0e: 46d11bca2d0e
   4773a406506f: 4773a406506f
   4789f2a48018: 4789f2a48018
   47a4b374d31a: 47a4b374d31a
@@ -150,7 +147,6 @@ mappings:
   4acaba64202d: 4acaba64202d
   4c4e269d785d: 4c4e269d785d
   4c78ed7e8aaf: 4c78ed7e8aaf
-  4d212677359c: 46d11bca2d0e
   4d27bb1c2629: 4d27bb1c2629
   4eae36ecb8dd: 4eae36ecb8dd
   4ee3494c5b8f: 4ee3494c5b8f
@@ -197,7 +193,6 @@ mappings:
   643c0083b968: 643c0083b968
   646b2ad715b2: 646b2ad715b2
   66262e36f1e5: 66262e36f1e5
-  6686fb8e2a68: 6686fb8e2a68
   674d03fdb068: 674d03fdb068
   67964e1ce808: 67964e1ce808
   67ac169f7e02: 67ac169f7e02
@@ -327,7 +322,6 @@ mappings:
   acf3526eb795: acf3526eb795
   adcc1f5f2532: adcc1f5f2532
   afc90b3b16da: afc90b3b16da
-  b18339c818d5: b18339c818d5
   b1ce91b005c7: b1ce91b005c7
   b1ceb7a627a6: b1ceb7a627a6
   b2002aea9997: b2002aea9997
@@ -353,7 +347,6 @@ mappings:
   bc626f7cd9b8: bc626f7cd9b8
   bcc9325d305c: bcc9325d305c
   bebbd5f298f4: bebbd5f298f4
-  bf2218cd17a6: bf2218cd17a6
   bf621c8701c5: bf621c8701c5
   bf891773183c: bf891773183c
   bfb7ce37ee85: bfb7ce37ee85
@@ -393,7 +386,6 @@ mappings:
   d10c79031cf3: d10c79031cf3
   d14d5813f89c: d14d5813f89c
   d1b5e391de69: d1b5e391de69
-  d1f9786a2882: d1f9786a2882
   d2cdc640fac9: d2cdc640fac9
   d42761f5925c: d42761f5925c
   d4854a3768c3: d4854a3768c3
@@ -408,7 +400,6 @@ mappings:
   dbff6166fc0a: dbff6166fc0a
   dca19c605f7d: dca19c605f7d
   dcc38a74240a: dcc38a74240a
-  dd1ca0ae04f1: dd1ca0ae04f1
   dd783eee2142: dd783eee2142
   de7201c3fc02: de7201c3fc02
   deeaf076e5f8: deeaf076e5f8
@@ -439,7 +430,6 @@ mappings:
   ee7cf6eb4e63: ee7cf6eb4e63
   eea1727c24fe: eea1727c24fe
   ef27580fa701: ef27580fa701
-  ef80a538a68a: ef80a538a68a
   f03efd9533fb: f03efd9533fb
   f1cb085dcb4a: f1cb085dcb4a
   f1d72b727a38: f1d72b727a38
@@ -468,3 +458,67 @@ mappings:
   fec82922c1dc: fec82922c1dc
   ff1cb5f8c460: ff1cb5f8c460
   ff6a5ce841e7: ff6a5ce841e7
+unmapped:
+  - id: bf2218cd17a6
+    disposition: keep-with-reason
+    members:
+      - modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx:606:614
+      - modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:324:331
+  - id: d1f9786a2882
+    disposition: keep-with-reason
+    members:
+      - modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx:681:694
+      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:454:467
+      - modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:401:414
+      - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:506:519
+      - modules/roland-sxx0-editor/src/components/library/ImportToneDialog.tsx:163:176
+  - id: dd1ca0ae04f1
+    disposition: keep-with-reason
+    members:
+      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:413:425
+      - modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:342:354
+  - id: 6686fb8e2a68
+    disposition: keep-with-reason
+    members:
+      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:428:447
+      - modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:375:500
+  - id: b18339c818d5
+    disposition: keep-with-reason
+    members:
+      - modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:309:322
+      - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:323:336
+  - id: 279d6165c512
+    disposition: keep-with-reason
+    members:
+      - modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:378:394
+      - modules/roland-sxx0-editor/src/components/library/ImportToneDialog.tsx:141:500
+  - id: 289e953b5ea7
+    disposition: keep-with-reason
+    members:
+      - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:172:182
+      - modules/roland-sxx0-editor/src/components/library/ImportToneDialog.tsx:48:58
+  - id: 2c878a15f353
+    disposition: keep-with-reason
+    members:
+      - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:477:500
+      - modules/roland-sxx0-editor/src/components/library/ImportToneDialog.tsx:134:157
+  - id: ef80a538a68a
+    disposition: ignore-with-justification
+    members:
+      - modules/roland-sxx0-editor/src/hooks/useImportSamples.ts:317:322
+      - modules/roland-sxx0-editor/src/hooks/useLibraryImport.ts:76:81
+  - id: 18c6f0de4729
+    disposition: keep-with-reason
+    members:
+      - modules/roland-sxx0-editor/src/hooks/useLibraryImport.ts:165:177
+      - modules/roland-sxx0-editor/src/hooks/useLibraryImport.ts:54:66
+new_only:
+  - id: 66ed59593874
+    members:
+      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:430:446
+      - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:484:500
+  - id: 312402352cd2
+    members:
+      - modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx:680:693
+      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:453:466
+      - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:506:519

@@ -56,8 +56,7 @@ export interface ImportLibraryToneDialogProps extends OperationState {
      * literal-union would lie about which banks are valid for a given
      * tone group on S-550 (tones 32-63 use banks C/D, not A/B), and
      * runtime validation against the layout is the source of truth.
-     * Mirrors the same widening already in `ImportSampleDialog` (#393)
-     * and `ImportLibraryPatchDialog` (#396).
+     * Mirrors the same widening in `ImportLibraryPatchDialog` (#396).
      */
     waveBank: number;
     segmentTop: number;

@@ -527,9 +527,8 @@ export function ImportLibraryPatchDialog({
                     {toneMappings.map((mapping, index) => {
                       // Bank options are layout-driven per the mapping's
                       // target slot. S-330 always returns A/B; S-550 returns
-                      // A/B for tones 0-31 and C/D for tones 32-63. Mirrors
-                      // the pattern in ImportSampleDialog — no device
-                      // conditionals here.
+                      // A/B for tones 0-31 and C/D for tones 32-63 — no
+                      // device conditionals here.
                       const { labels: bankLabels, indices: bankIndices } =
                         memoryLayout.getWaveBanksForTone(mapping.targetSlot);
                       return (
