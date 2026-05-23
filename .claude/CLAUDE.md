@@ -191,7 +191,37 @@ Never use conditionals in UI components to switch behavior based on device confi
 ### Nucleation Site Prevention
 Bad code attracts more bad code. Eliminate on sight: duplicate code, dead code, backward compatibility shims, and poorly structured code that agents would copy. If an agent reading the code would be confused or tempted to duplicate it, fix the code. Before implementing anything new, check if the same concept already exists in the codebase.
 
-Two pre-commit gates enforce this mechanically — the CSS-class duplication checker (`make check-css-duplication`, runs on `.css`/`.scss` changes) and the general TS/TSX clone detector (`make check-clone-duplication`, runs on `.ts`/`.tsx` changes, backed by `jscpd` + the dispositioned baseline at `docs/scope-discovery/clones.yaml`). New duplicate code blocks the commit; existing groups must be dispositioned in `clones.yaml` as `refactor` / `keep-with-reason` / `ignore-with-justification`. For an upfront scope sweep on a system-wide feature, run `/scope-inventory <slug>`; for mid-implementation widening of a specific complaint, run `/scope-widen <complaint>`. See [`docs/scope-discovery/README.md`](/docs/scope-discovery/README.md) for the full protocol.
+Pre-commit gates enforce this mechanically — agent-side directives are systematically ignored for persistent pathologies, so the discipline lives in code that blocks commits:
+
+| Gate | What it blocks | When it runs |
+|---|---|---|
+| `make check-css-duplication` | duplicate CSS classes | `.css`/`.scss` staged changes |
+| `make check-clone-duplication` | new TS/TSX token-level clones not dispositioned in `docs/scope-discovery/clones.yaml` (495 baseline groups; content-hashed IDs survive line shifts) | `.ts`/`.tsx` staged changes |
+| `make check-chevron-sizing` | chevron CSS classes outside the canonical `.ac-chevron` rule | `.css`/`.scss` staged changes |
+| `make check-anti-patterns` | source matching a registered legacy shape in `docs/scope-discovery/anti-patterns.yaml` | `.ts`/`.tsx` staged changes |
+| `make check-adopters` | files in an adopter glob that don't import the canonical primitive declared in `docs/scope-discovery/adopter-manifests.yaml` | `.ts`/`.tsx` staged changes |
+| `make check-editor-symmetry` | read-only matrix check; the operator-readable artifact at `docs/scope-discovery/editor-symmetry.md` is refreshed by `make check-editor-symmetry-write` | `.ts`/`.tsx` staged changes |
+| `commit-msg` hook | `Closes clones.yaml <id>` markers when the named group's disposition isn't `refactor`, its `canonical_side` file doesn't exist, its `tests_proof.sha` doesn't resolve in git, or its `tests` commands fail at HEAD | every commit message |
+| `pre-commit` + `post-commit` + `pre-push` triad | catches `--no-verify` bypass via marker-gated sentinel; pre-push warns on any pushed SHA missing from `<git-common-dir>/hooks-sentinels/.pre-commit-passed` | commit + push lifecycle |
+
+Refactor commits closing a `clones.yaml` entry MUST declare `canonical_side: <file>|"all"|"new"` + `canonical_reason` + (when extracting a new primitive) `new_shape_summary` + `tests` + `tests_proof.{sha,demonstration}`. The commit-msg gate enforces this; before any refactor, prove either an existing regression-detection test exists OR write one. See [`docs/scope-discovery/refactor-preconditions-checklist.md`](/docs/scope-discovery/refactor-preconditions-checklist.md).
+
+Informational / operator-driven (not pre-commit-blocking):
+
+- `make check-deprecations` / `make check-deprecations-write` — walks `@deprecated` JSDoc + `// DEPRECATED:` markers; emits `docs/scope-discovery/deprecation-queue.md` split into "blocked by importers" + "safe-to-delete".
+- `make clone-summary SURFACE=<glob>` — per-surface counts: `total | pending-touching | pending-intra | dispositioned-touching`.
+- `tsx tools/scope-discovery/batch-dispose.ts --ids <ids> --disposition <kind> --reason "<text>"` — bulk-disposition clone groups with verify-after-write.
+- `make migrate-clone-ids` — one-time migration when the clone-ID hash scheme changes; writes `docs/scope-discovery/migration-map.yaml` as forensic record.
+- `tsx tools/scope-discovery/clone-detector.ts --diff` — prints only NEW + DROPPED groups.
+
+Discovery skills (operator-invoked):
+
+- `/scope-inventory <feature-slug>` — upfront scope sweep for a system-wide feature; fans out 5 discovery agents (UI route enumerator + AST/grep matrix + clone-detector reader + PRD-themed pattern hunter + regime-holdout-detector), synthesizes a strawman `scope-manifest.yaml` with a `regime_holdouts:` section.
+- `/scope-widen <complaint>` — mid-implementation course-correction; produces a widening proposal in the dispatch-wrapper return-grammar.
+
+Validator suite: `pnpm test:scope-discovery` runs every adversarial validator (~177 scenarios across ~15 validators in seconds); every gate has a gutted-stub self-check that proves the rejection assertions have teeth. When CI is absent, **the controller IS the gate** — re-run after every implementer dispatch before dispatching reviewers.
+
+Full protocol contract: [`docs/scope-discovery/README.md`](/docs/scope-discovery/README.md) + [`docs/scope-discovery/LAYOUT.md`](/docs/scope-discovery/LAYOUT.md).
 
 ### Contract Enforcement
 The compiler must catch contract violations. No optional bags of callbacks, no duplicated types, no silent no-ops. When a shared interface changes, every consumer must fail to compile until updated. When changing shared code in editor-core, build all editors before committing (`make`).
