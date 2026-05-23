@@ -18,6 +18,7 @@
  * mechanical task. T6.3 onward consumes this helper.
  */
 
+import { resolve as resolvePath } from 'node:path';
 import { spawn } from 'node:child_process';
 
 export interface ScannerRun {
@@ -26,19 +27,38 @@ export interface ScannerRun {
   readonly stderr: string;
 }
 
+export interface RunScannerOptions {
+  /**
+   * Override the subprocess's working directory. When set, the scanner
+   * resolves CWD-relative paths (its own report rendering, registry
+   * `excludes_paths:` matching) against this directory. The `entry`
+   * path is pre-resolved against the parent's CWD so callers can keep
+   * passing repo-relative paths regardless of where the child runs.
+   */
+  readonly cwd?: string;
+}
+
 /**
  * Spawn a TypeScript scanner via `tsx` and return its exit code +
  * captured stdout/stderr. The `entry` path is resolved relative to
  * the current working directory; callers pass either the canonical
  * scanner module path or a fixture-stub path for gutted-stub self-
- * checks.
+ * checks. When `options.cwd` is set, the subprocess runs with that
+ * directory as its CWD — used by adversarial validators that need the
+ * scanner to evaluate CWD-relative paths against a fixture root.
  */
 export function runScannerSubprocess(
   entry: string,
   args: readonly string[],
+  options: RunScannerOptions = {},
 ): Promise<ScannerRun> {
   return new Promise((resolveP, rejectP) => {
-    const proc = spawn('tsx', [entry, ...args], { stdio: ['ignore', 'pipe', 'pipe'] });
+    const resolvedEntry = resolvePath(entry);
+    const spawnOpts: { stdio: readonly ['ignore', 'pipe', 'pipe']; cwd?: string } = {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    };
+    if (options.cwd !== undefined) spawnOpts.cwd = options.cwd;
+    const proc = spawn('tsx', [resolvedEntry, ...args], spawnOpts);
     let stdout = '';
     let stderr = '';
     proc.stdout.on('data', (chunk: Buffer) => {
