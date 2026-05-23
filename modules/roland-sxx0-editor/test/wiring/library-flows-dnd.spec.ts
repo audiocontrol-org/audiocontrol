@@ -219,11 +219,13 @@ test.describe('Capabilities — Library DnD (Wave 5)', () => {
 
     await simulateDragAndDrop(page, sourceNode, target);
 
+    // V3-IMPORT (#450): sentence-case title + import-confirm testid
+    // (renamed from confirm-import-button for export-side symmetry).
     await expect(
-      page.getByRole('heading', { name: 'Import Library Patch' }),
+      page.getByRole('heading', { name: 'Import library patch' }),
     ).toBeVisible({ timeout: 5_000 });
     await expect(page.getByTestId('target-slot-select')).toBeVisible();
-    await expect(page.getByTestId('confirm-import-button')).toBeVisible();
+    await expect(page.getByTestId('import-confirm')).toBeVisible();
   });
 
   test('D-LIB-06: dragging a loaded device tone onto the library Tones section mounts ExportToneDialog', async ({ page }) => {

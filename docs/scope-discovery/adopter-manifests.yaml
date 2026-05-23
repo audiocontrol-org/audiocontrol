@@ -268,11 +268,10 @@ adopter_manifests:
     tracked_holdouts:
       # ImportLibraryToneDialog.tsx migrated to v3 SlideDrawer in
       # V3-IMPORT sub-task 2 of #450 — removed from tracked_holdouts.
-      - path: 'modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx'
-        issue: 'https://github.com/audiocontrol-org/audiocontrol/issues/450'
-        reason: |
-          pending ROLAND-BUGFIX-V3-IMPORT — currently on legacy Radix Dialog
-          chrome; v3 SlideDrawer migration deferred.
+      # ImportLibraryPatchDialog.tsx migrated to v3 SlideDrawer in
+      # V3-IMPORT sub-task 4 of #450 — removed from tracked_holdouts.
+      # All 3 production Import dialogs are now v3 SlideDrawer adopters;
+      # V3-IMPORT is complete.
       # ImportSamplesDialog.tsx migrated to v3 SlideDrawer in
       # V3-IMPORT sub-task 3 of #450 — removed from tracked_holdouts.
       # ImportSampleDialog + ImportToneDialog were dead-code orphans

@@ -1,4 +1,4 @@
-generated_at: 2026-05-23T18:49:00.730Z
+generated_at: 2026-05-23T18:56:13.248Z
 clones:
   - id: 0c01c0982ede
     lines: 15
@@ -2371,6 +2371,20 @@ clones:
       - modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:432:445
     disposition: keep-with-reason
     reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
+  - id: da1a8b0cf8fe
+    lines: 15
+    members:
+      - modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx:375:389
+      - modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:383:397
+    disposition: keep-with-reason
+    reason: "Residual Import* dialog clone after V3-IMPORT sub-task 4 (#450) migrated ImportLibraryPatchDialog to v3 SlideDrawer. 43fac0de4325 is patch-info / bundle-summary panel shape shared between ImportLibraryPatchDialogBody and ImportSamplesDialogBody — extracting would require parameterising 3 distinct field sets (patch common fields vs sample bundle counters vs kit counts); the duplication is in shape, not semantics. da1a8b0cf8fe is the SlideDrawer JSX shape (open/title/onClose/footer + StepLog/Form branches) shared between ImportLibraryPatchDialog and ImportLibraryToneDialog — extracting would obscure per-dialog lifecycle (patch needs isLoading guard + handleImport precondition, tone has different success message). Both are intentional per-dialog forks. The chrome extraction (SlideDrawer primitive + useExportDialogLifecycle hook + StepLogBody + renderFooter) IS the V3-IMPORT consolidation surface; the per-dialog forms stay distinct. Closes V3-IMPORT sub-task 4 of #450."
+  - id: 43fac0de4325
+    lines: 16
+    members:
+      - modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialogBody.tsx:143:158
+      - modules/roland-sxx0-editor/src/components/library/ImportSamplesDialogBody.tsx:177:192
+    disposition: keep-with-reason
+    reason: "Residual Import* dialog clone after V3-IMPORT sub-task 4 (#450) migrated ImportLibraryPatchDialog to v3 SlideDrawer. 43fac0de4325 is patch-info / bundle-summary panel shape shared between ImportLibraryPatchDialogBody and ImportSamplesDialogBody — extracting would require parameterising 3 distinct field sets (patch common fields vs sample bundle counters vs kit counts); the duplication is in shape, not semantics. da1a8b0cf8fe is the SlideDrawer JSX shape (open/title/onClose/footer + StepLog/Form branches) shared between ImportLibraryPatchDialog and ImportLibraryToneDialog — extracting would obscure per-dialog lifecycle (patch needs isLoading guard + handleImport precondition, tone has different success message). Both are intentional per-dialog forks. The chrome extraction (SlideDrawer primitive + useExportDialogLifecycle hook + StepLogBody + renderFooter) IS the V3-IMPORT consolidation surface; the per-dialog forms stay distinct. Closes V3-IMPORT sub-task 4 of #450."
   - id: 3be44bb03e81
     lines: 27
     members:
