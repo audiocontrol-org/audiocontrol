@@ -40,7 +40,7 @@ Resolution:
 ## AUDIT-20260522-02
 
 Finding-ID: AUDIT-20260522-02
-Status:     open
+Status:     verified-2026-05-22
 Severity:   medium
 Surface:    tools/scope-discovery/migrate-clone-ids.ts
 
@@ -66,3 +66,13 @@ Expected vs actual:
 
 Fix guidance:
 - Index `newByShift` as `Map<string, CloneGroup[]>` and resolve collisions explicitly, or fail the migration whenever a shift-tolerant key is non-unique.
+
+Resolution:
+- Corrected mechanism (commit `7a0eeeee`):
+  - The pure two-pass matching kernel was extracted from `tools/scope-discovery/migrate-clone-ids.ts` into a new sibling file `tools/scope-discovery/migrate-clone-ids.matcher.ts` so the host stays under the 300-500 line cap after the collision-resolution expansion.
+  - `newByShift` is now `Map<string, CloneGroup[]>`: candidates accumulate rather than overwriting.
+  - Each bucket is sorted by smallest member's `startLine` (then by the full sorted-members tuple) at index-build time; old entries pick candidates in that deterministic order and consume the chosen one, so subsequent colliding olds pick the next.
+  - When two candidates compare equal under the tiebreaker (i.e., their `members[]` are IDENTICAL), `migrateGroups` throws a new `MigrationError` instead of silently picking; the message names both candidate ids and the shift-tolerant key.
+- Adversarial validator: `tools/scope-discovery/clone-id-stability.collision-scenarios.ts` adds three scenarios (deterministic tiebreaker with 2 candidates, identical-discriminator fail-loud, N-candidate deterministic resolution with 5/5 entries). Wired into `tools/scope-discovery/clone-id-stability.validate.ts` and `pnpm test:scope-discovery` (174 → 177 scenarios).
+- Live-tree verification (2026-05-22): `tsx tools/scope-discovery/migrate-clone-ids.ts --dry-run` against the current `docs/scope-discovery/clones.yaml` (post-T7.1 migration) reports `495 matched, 0 unmapped, 0 newOnly` under the corrected logic. No orphaned dispositions in the live data — the original T7.1 run happened against an all-pending baseline, so even if the buggy `Map<string, CloneGroup>` overwrote candidates internally, no operator-authored disposition existed to be silently dropped at that time.
+- Empirical re-exercise (2026-05-22): all 12 scenarios in `clone-id-stability.validate.ts` pass against the corrected matcher; full `pnpm test:scope-discovery` reports 177/177.
