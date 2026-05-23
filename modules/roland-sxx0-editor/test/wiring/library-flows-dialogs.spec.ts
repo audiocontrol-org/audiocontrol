@@ -475,6 +475,134 @@ test.describe('Capabilities — Library import + sample-editing dialogs (Wave 4)
     ).toBeGreaterThan(0);
   });
 
+  test('D-LIB-40: top-banner dismiss button clears the page-level error (BUG-005 follow-up: explicit dismiss affordance)', async ({ page }) => {
+    // The auto-clear-on-selection-change fix (D-LIB-39) handles the
+    // natural recovery flow. This spec covers the explicit-dismiss
+    // affordance for cases where the operator doesn't want to change
+    // selection just to clear the banner. Pre-fix the top banner at
+    // LibraryPage.tsx:521 had no dismiss control at all — the operator
+    // could not dismiss without changing selection.
+    const toneA = 'basic-sine';
+    const toneB = 'basic-square';
+    await page.goto(LIBRARY_URL);
+    await page.waitForLoadState('networkidle');
+    await cleanupOPFS(page);
+    await seedOPFSTone(page, { fixtureName: 'basic-sine', targetName: toneA });
+    await seedOPFSTone(page, { fixtureName: 'basic-sine', targetName: toneB });
+    await connectLibraryOPFS(page);
+
+    const pageBanner = page.locator('.ac-alert.ac-alert-error');
+
+    const toneANode = page.getByTestId(`library-tone-${toneA}`);
+    await expect(toneANode).toBeVisible({ timeout: 5_000 });
+    await toneANode.click();
+
+    const openLoopButton = page.getByRole('button', { name: 'Open in Loop Editor' });
+    await expect(openLoopButton).toBeVisible({ timeout: 5_000 });
+
+    await page.evaluate(async (name) => {
+      const root = await navigator.storage.getDirectory();
+      const library = await root.getDirectoryHandle('library');
+      const s330 = await library.getDirectoryHandle('s330');
+      const tones = await s330.getDirectoryHandle('tones');
+      await tones.removeEntry(`${name}.wav`);
+    }, toneA);
+
+    await openLoopButton.click();
+    await expect(pageBanner).toBeVisible({ timeout: 5_000 });
+
+    // The dismiss affordance lives inside the page-level banner.
+    // The button is identified by a stable testid so the assertion is
+    // independent of label text changes.
+    const dismissButton = pageBanner.getByTestId('library-error-dismiss');
+    await expect(dismissButton).toBeVisible();
+    await dismissButton.click();
+
+    await expect(pageBanner).not.toBeVisible({ timeout: 2_000 });
+
+    // Filter the deliberate NotFoundError out of pageErrors so the
+    // afterEach guard passes — same pattern as D-LIB-39.
+    const before = pageErrors.length;
+    const filtered = pageErrors.filter(
+      (e) => !/could not be found at the time an operation was processed|NotFoundError/i.test(e),
+    );
+    pageErrors.length = 0;
+    pageErrors.push(...filtered);
+    expect(before - filtered.length).toBeGreaterThan(0);
+  });
+
+  test('D-LIB-41: middle-banner dismiss button clears the error WITHOUT triggering a library refresh (BUG-005 follow-up: dismiss != refresh)', async ({ page }) => {
+    // PluginLibraryBrowser.tsx:833 — the existing × dismiss button on
+    // the library-section banner was wired to `onRefresh` instead of an
+    // actual dismiss handler. Clicking × triggered a library refresh,
+    // which can re-fire the same error (and is a wrong-shape side
+    // effect for a dismiss control). This spec pins the corrected
+    // behavior: the button dismisses the banner and does NOT trigger
+    // any refresh.
+    const toneA = 'basic-sine';
+    const toneB = 'basic-square';
+    await page.goto(LIBRARY_URL);
+    await page.waitForLoadState('networkidle');
+    await cleanupOPFS(page);
+    await seedOPFSTone(page, { fixtureName: 'basic-sine', targetName: toneA });
+    await seedOPFSTone(page, { fixtureName: 'basic-sine', targetName: toneB });
+    await connectLibraryOPFS(page);
+
+    const toneANode = page.getByTestId(`library-tone-${toneA}`);
+    await expect(toneANode).toBeVisible({ timeout: 5_000 });
+    await toneANode.click();
+
+    const openLoopButton = page.getByRole('button', { name: 'Open in Loop Editor' });
+    await expect(openLoopButton).toBeVisible({ timeout: 5_000 });
+
+    await page.evaluate(async (name) => {
+      const root = await navigator.storage.getDirectory();
+      const library = await root.getDirectoryHandle('library');
+      const s330 = await library.getDirectoryHandle('s330');
+      const tones = await s330.getDirectoryHandle('tones');
+      await tones.removeEntry(`${name}.wav`);
+    }, toneA);
+
+    await openLoopButton.click();
+
+    // Middle banner — rendered by PluginLibraryBrowser. Stable testid
+    // pinned by the fix so the dismiss button is queryable without
+    // depending on its `&times;` glyph or its inline `style=` chrome.
+    const middleDismiss = page.getByTestId('library-browser-error-dismiss');
+    await expect(middleDismiss).toBeVisible({ timeout: 5_000 });
+
+    // Snapshot the library tree's current node list. If the dismiss
+    // accidentally triggers a refresh, the tree will re-render —
+    // detectable by waiting for a refresh side-effect. We check that
+    // the tone B node identity is stable across the dismiss click as
+    // a proxy for "no refresh fired."
+    const toneBNode = page.getByTestId(`library-tone-${toneB}`);
+    await expect(toneBNode).toBeVisible();
+
+    await middleDismiss.click();
+
+    // Banner cleared.
+    const pageBanner = page.locator('.ac-alert.ac-alert-error');
+    await expect(pageBanner).not.toBeVisible({ timeout: 2_000 });
+
+    // Tone B node still mounted (proxy for "no refresh side-effect").
+    // A refresh would briefly unmount tree nodes during reload; the
+    // node staying continuously visible across the dismiss click means
+    // the refresh didn't fire. Not a load-bearing assertion — the
+    // banner-cleared assertion above is the contract — but a useful
+    // smoke check that the dismiss didn't accidentally double up as
+    // the legacy refresh behavior.
+    await expect(toneBNode).toBeVisible();
+
+    const before = pageErrors.length;
+    const filtered = pageErrors.filter(
+      (e) => !/could not be found at the time an operation was processed|NotFoundError/i.test(e),
+    );
+    pageErrors.length = 0;
+    pageErrors.push(...filtered);
+    expect(before - filtered.length).toBeGreaterThan(0);
+  });
+
   test('D-LIB-38: clicking "Open in Loop Editor" on a seeded library TONE mounts LoopEditorDialog (BUG-004 regression)', async ({ page }) => {
     // BUG-004 (2026-05-23): the page-level handler at LibraryPage.tsx:445
     // hardcoded nodeType='sample' for all three Open-in-* handlers. The

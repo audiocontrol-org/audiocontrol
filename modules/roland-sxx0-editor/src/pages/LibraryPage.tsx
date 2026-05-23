@@ -532,7 +532,19 @@ export function LibraryPage() {
           operator expects them. Handlers still live on `importDialogs`
           and are wired through the per-object UI. */}
 
-      {error && (<div className="ac-alert ac-alert-error"><p className="ac-text-error text-sm">{error}</p></div>)}
+      {error && (
+        <div className="ac-alert ac-alert-error" style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--ac-space-2)' }}>
+          <p className="ac-text-error text-sm" style={{ flex: 1, margin: 0 }}>{error}</p>
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            title="Dismiss"
+            aria-label="Dismiss"
+            data-testid="library-error-dismiss"
+            style={{ background: 'none', border: 'none', color: 'var(--ac-color-danger)', cursor: 'pointer', padding: 0, fontSize: '1rem', lineHeight: 1 }}
+          >&times;</button>
+        </div>
+      )}
 
       <div className="ac-page-shell-body" data-capability="C-LIB-01">
         <PluginLibraryBrowser
@@ -557,6 +569,7 @@ export function LibraryPage() {
           previewState={previewState}
           loading={isLoading || exportOps.isExporting}
           error={error ?? undefined}
+          onDismissError={() => setError(null)}
           connectionSlot={connectionSlot}
           headerSections={
             <SetsSection
