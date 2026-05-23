@@ -41,4 +41,47 @@ fi
 if git diff --cached --name-only --diff-filter=ACM | grep -qE '\.tsx?$'; then
   echo "pre-commit: checking for new TS/TSX clone groups…"
   make --no-print-directory check-clone-duplication
+  # T6.1 anti-pattern registry gate. Catches regime drift the clone
+  # detector misses: code matching a registered legacy SHAPE rather than
+  # a token-level clone. Registry is empty until refactors append shapes
+  # the extracted primitive replaces. When empty (the common case until
+  # entries accrue), the scanner short-circuits and exits 0 cheaply.
+  echo "pre-commit: checking for anti-pattern matches…"
+  make --no-print-directory check-anti-patterns
+  # T6.2 adopter-manifest gate. Catches the dual of T6.1: files that
+  # match an extracted primitive's expected-adopter glob but DON'T
+  # import the canonical `from` path (regime-holdout / missing-adopter
+  # case). Registry is empty until refactors append entries naming
+  # promoted primitives. When empty (the common case until entries
+  # accrue), the scanner short-circuits and exits 0 cheaply.
+  echo "pre-commit: checking for adopter-manifest holdouts…"
+  make --no-print-directory check-adopters
+  # T6.3 cross-editor symmetry gate. Reuses the T6.2 registry to
+  # build a fleet matrix (rows = conventions, columns = editor
+  # modules under `modules/*-editor/`). Read-only check — surfaces
+  # ⚠ / ✗ cells when one editor lags the others. The committed
+  # operator-readable artifact at
+  # `docs/scope-discovery/editor-symmetry.md` is refreshed via
+  # `make check-editor-symmetry-write`, NOT by this hook. When the
+  # registry is empty (the common case until refactors append
+  # entries), the matrix has no rows and the scanner short-circuits
+  # to exit 0 cheaply.
+  echo "pre-commit: checking cross-editor symmetry…"
+  make --no-print-directory check-editor-symmetry > /dev/null
 fi
+
+# T7.5 (corrected per AUDIT-20260522-01) — write the "pre-commit ran to
+# completion" marker as the LAST action. This is the load-bearing primitive
+# that lets post-commit + pre-push detect `--no-verify` bypass: `--no-verify`
+# skips pre-commit, so the marker isn't written, so post-commit (which DOES
+# run on `--no-verify`) has no marker to convert into a SHA-keyed sentinel.
+# Without the marker, post-commit writes nothing, and pre-push warns.
+#
+# Place this AFTER every gate above — a failed gate aborts via `set -e`
+# before the marker is written, so a failed-then-retried commit doesn't
+# falsely advertise success.
+#
+# See post-commit for the rationale on --git-common-dir vs --git-path.
+SENTINEL_DIR="$(git rev-parse --git-common-dir)/hooks-sentinels"
+mkdir -p "$SENTINEL_DIR"
+: > "$SENTINEL_DIR/.pre-commit-marker"

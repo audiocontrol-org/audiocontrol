@@ -22,7 +22,7 @@
 import { mkdir, rm, stat } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';
-import { type CloneGroup, makeCloneGroup } from './clones-yaml.js';
+import { type CloneGroup, makeCloneGroup, sha1HexOfText } from './clones-yaml.js';
 import { isEnoent, isPlainObject } from './util/typeguards.js';
 
 export const JSCPD_REPORT_PATH = 'reports/duplication/jscpd-report.json';
@@ -97,11 +97,18 @@ export async function runJscpd(opts: {
 interface RawPair {
   readonly members: string[];
   readonly lines: number;
+  readonly fragmentSha: string;
 }
 
 /**
  * Read jscpd-report.json and convert each `duplicates[]` entry into a
  * CloneGroup. We collapse overlapping pairs (see file header).
+ *
+ * Each `duplicates[]` entry carries a `fragment` field — the duplicated
+ * source text as jscpd normalised it. We sha1-hex that fragment to
+ * produce the per-pair `tokenFingerprint`, which threads into
+ * `deriveContentHashedId` to keep clone-group IDs stable across
+ * unrelated line shifts (T7.1).
  */
 export function parseJscpdReport(reportText: string): CloneGroup[] {
   const parsed: unknown = JSON.parse(reportText);
@@ -116,12 +123,21 @@ export function parseJscpdReport(reportText: string): CloneGroup[] {
   for (const dup of duplicates) {
     if (!isPlainObject(dup)) continue;
     const lines = dup['lines'];
+    const fragment = dup['fragment'];
     const a = memberFromFile(dup['firstFile']);
     const b = memberFromFile(dup['secondFile']);
     if (a === null || b === null) continue;
+    if (typeof fragment !== 'string' || fragment.length === 0) {
+      throw new Error(
+        'jscpd-report.json duplicates[] entry missing non-empty `fragment` field; ' +
+          'T7.1 content-hashed IDs cannot be derived without it. Check that the ' +
+          'jscpd version in use surfaces the duplicated source text in its JSON report.',
+      );
+    }
     pairs.push({
       members: [a, b].sort(),
       lines: typeof lines === 'number' ? lines : 0,
+      fragmentSha: sha1HexOfText(fragment),
     });
   }
   return collapsePairsIntoGroups(pairs).map((p) =>
@@ -130,6 +146,7 @@ export function parseJscpdReport(reportText: string): CloneGroup[] {
       lines: p.lines,
       disposition: 'pending',
       reason: null,
+      tokenFingerprint: p.fragmentSha,
     }),
   );
 }
@@ -149,11 +166,22 @@ function memberFromFile(file: unknown): string | null {
  * Pairs sharing any member AND the same `lines` value merge into one
  * group. We require `lines` parity to avoid collapsing unrelated
  * clones that happen to overlap a hot file.
+ *
+ * tokenFingerprint propagation for collapsed groups: when 3+ files
+ * clone the same fragment, jscpd reports A↔B, A↔C, B↔C as separate
+ * pairs. The per-pair fragment text can differ slightly across these
+ * pairs because jscpd reports each pair's matched range independently
+ * — boundary normalisation may extend one pair's match by a few
+ * tokens beyond another's even when the underlying duplicated body
+ * is the same. We therefore aggregate the SET of pair-level
+ * fragment-shas in the collapsed group and use a sorted hash of that
+ * set as the group's tokenFingerprint. Pair set is symmetric (A↔B
+ * == B↔A; jscpd guarantees this via the alphabetical pair ordering),
+ * so the same source tree always produces the same group fingerprint
+ * across runs.
  */
-function collapsePairsIntoGroups(
-  pairs: readonly RawPair[],
-): RawPair[] {
-  const groups: { members: Set<string>; lines: number }[] = [];
+function collapsePairsIntoGroups(pairs: readonly RawPair[]): RawPair[] {
+  const groups: { members: Set<string>; lines: number; fragmentShas: Set<string> }[] = [];
   for (const pair of pairs) {
     const candidate = groups.find(
       (g) => g.lines === pair.lines && pair.members.some((m) => g.members.has(m)),
@@ -162,13 +190,16 @@ function collapsePairsIntoGroups(
       groups.push({
         members: new Set(pair.members),
         lines: pair.lines,
+        fragmentShas: new Set([pair.fragmentSha]),
       });
     } else {
       for (const m of pair.members) candidate.members.add(m);
+      candidate.fragmentShas.add(pair.fragmentSha);
     }
   }
   return groups.map((g) => ({
     members: [...g.members].sort(),
     lines: g.lines,
+    fragmentSha: sha1HexOfText([...g.fragmentShas].sort().join('\n')),
   }));
 }

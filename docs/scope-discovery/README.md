@@ -15,6 +15,151 @@ The protocol treats agent-side enforcement as **code, not directives** — passi
 | **Pre-commit hook blocked your commit** with "new clone groups detected" | Read the failure output. Then either: (a) refactor so the new clone disappears; (b) edit `docs/scope-discovery/clones.yaml` to disposition the group as `keep-with-reason` / `ignore-with-justification` with a one-line reason; (c) run `/scope-widen` to find sibling cases that should be fixed in the same commit. | The gate enforces "no new duplication beyond the dispositioned baseline." Bypassing it requires explicit disposition, not silent commit-amend. |
 | Reviewing the **duplication backlog** | Inspect `docs/scope-discovery/clones.yaml` (1 entry per clone group) | Each entry carries `id`, `members: [file:line]`, `lines`, `disposition`, `reason`. Operator dispositions every entry; refactor-marked entries become merged PRs. |
 | Sub-agent dispatch returned without enumerating siblings | The dispatch wrapper rejects the return automatically (when the orchestrator uses `wrap(...)` from `tools/scope-discovery/dispatch-wrapper.ts`) | Required return grammar: `Searched: <pattern> — <N matches>` / `Included: <file:line>, ...` / `Excluded: <file:line> — <reason>`. The wrapper parses + validates this block. |
+| **Dispositioning a clone group as `refactor`** | Follow Step 0 (canonical-side identification + regression-detection coverage); see [`## Refactor Preconditions (Step 0)`](#refactor-preconditions-step-0) below | Prevents regime erasure + behavior regression masked by a clone-count drop. Required by T5.3's pre-commit gate; enforced at parse time by the schema validator in `tools/scope-discovery/clones-yaml.refactor.ts`. |
+
+## Refactor Preconditions (Step 0)
+
+A `disposition: refactor` entry in `clones.yaml` is incomplete without both Step 0a (canonical-side identification) and Step 0b (regression-detection coverage). Run Step 0 BEFORE writing extraction code, BEFORE opening a refactor PR.
+
+The two-part check exists because clone-count-driven refactor work has two failure modes that look like progress while introducing regression:
+
+- **Regime erasure** — extracting from the wrong (legacy) side of a clone silently downgrades new-regime call sites to legacy semantics. Step 0a names the canonical side BEFORE extraction so the wrong-side mistake gets caught at disposition time, not after the merge.
+- **Behavior regression masked by clone-count drop** — a refactor lands, the clone counter drops, but no test actually exercises the class of regression the refactor risks. Step 0b requires the test + a recorded failing-then-passing commit (proof-of-detection) BEFORE the refactor PR is built on top.
+
+### Step 0a — Identify the canonical side (four branches)
+
+Pick exactly one branch and record the matching fields on the clone-group entry.
+
+**(i) One side has a documented regime.** Cite the primitive, ADR, deprecation marker, migration commit, or design doc that makes that side authoritative. That side is canonical; holdouts migrate to it.
+
+```yaml
+canonical_side: <relative-file-path-of-canonical-side>
+canonical_reason: <one-line citation — primitive name, ADR id, commit sha, etc.>
+```
+
+Extraction follows the named file's shape; the other clone members are migrated to match. No new shape is introduced.
+
+**(ii) All sides are correctly migrated.** Every member of the clone group already follows the regime; the duplication is a missing-primitive gap. Extraction lifts the common shape into a new shared primitive (a component, a hook, a util fn) with zero behavior change at any call site.
+
+```yaml
+canonical_side: "all"
+canonical_reason: <one-line explanation — which regime, why each side is correctly migrated, what primitive will lift the shape>
+```
+
+**(iii) No side is canonical.** All members are legacy / pre-regime; the refactor designs a NEW shape from scratch. The new shape MUST be named in the disposition record before extraction begins, otherwise the shape is invented in flight and inherits whichever side happened to be edited last.
+
+```yaml
+canonical_side: "new"
+canonical_reason: <one-line explanation — why no current side is authoritative>
+new_shape_summary: <one-line design summary naming the target shape>
+```
+
+The operator should review the named design before extraction work starts.
+
+**(iv) Cannot decide which branch applies.** The clone group's canonical side is undetermined — perhaps the regime question itself is unsettled, or the members straddle two regimes whose relationship is unclear. **Do not proceed to extraction.** Disposition the group as `keep-with-reason` with a one-line note pointing to the regime question that needs resolving.
+
+```yaml
+disposition: keep-with-reason
+reason: <regime-clarification needed — see issue #N or doc-path>
+```
+
+Once the regime clarification lands, re-evaluate the group; only then is `refactor` a valid disposition.
+
+### Step 0b — Identify regression-detection coverage (three branches)
+
+Pick exactly one branch and record the matching fields on the clone-group entry.
+
+**(i) Regression-detecting tests exist AND have a recorded proof-of-detection commit.** Cite both — name the tests, and cite the commit that demonstrates the test catches the regression class the refactor risks.
+
+```yaml
+tests:
+  - <test-id-or-command>
+  - <test-id-or-command>
+tests_proof:
+  sha: <7-40 hex commit sha>
+  demonstration: <one-line description of the failing-then-passing pair>
+```
+
+The refactor PR is built on top of the proof-of-detection commit's safety net.
+
+**(ii) Tests exist but no recorded proof-of-detection.** The test file is present but nobody has ever broken the canonical code and watched the test fail. **Create the proof first.** The procedure is:
+
+1. Deliberately break the canonical-side code in a way that simulates the regression class the refactor risks.
+2. Run the named test(s). Capture the failure output (commit message body, comment block, or attached log).
+3. Commit the demonstration with a marker phrase like `proof-of-detection: <test-id>` in the commit message body.
+4. Restore the canonical code (revert the deliberate break) in a follow-up commit; the test now passes again.
+5. The refactor PR then references the demonstration commit's SHA in `tests_proof.sha`.
+
+```yaml
+tests:
+  - <test-id-or-command>
+tests_proof:
+  sha: <commit sha from step 3>
+  demonstration: <one-line description of the deliberate break + failure>
+```
+
+**(iii) No tests exist.** The clone group has no regression-detecting coverage at all. **Create the tests first.** The procedure is:
+
+1. Write the regression-detecting test against the canonical-side code (per Step 0a).
+2. Run the test. It should pass (canonical code is correct).
+3. Deliberately break the canonical code. Run the test. It should fail. This is the proof-of-detection.
+4. Commit the demonstration with a marker phrase like `proof-of-detection: <test-id>` in the commit message body.
+5. Restore the canonical code. The test passes again.
+6. Build the refactor PR on top, referencing the demonstration commit's SHA.
+
+```yaml
+tests:
+  - <test-id-or-command>
+tests_proof:
+  sha: <commit sha from step 4>
+  demonstration: <one-line description of the failing-then-passing pair>
+```
+
+### Rationale (operator's MUST HAVE)
+
+Step 0 is the operator-declared MUST HAVE for Phase 5. The goal is twofold:
+
+1. **Prevent behavior regression during refactoring.** The proof-of-detection commit anchors the test to a specific failing-then-passing pair; the refactor PR can no longer be a clone-count drop without a corresponding behavior-preservation guarantee.
+
+2. **Systematically reinforce test coverage and quality as a side effect of the gate.** Every time a refactor disposition would have been written without coverage, Step 0b forces the test to be written or proven first. The clone-disposition backlog becomes a test-coverage forcing function. Drains that look like cleanup are also coverage walks.
+
+The gate is enforced mechanically by the T5.3 pre-commit hook (`make check-refactor-preconditions`); the schema validator in `tools/scope-discovery/clones-yaml.refactor.ts` catches parse-time omissions; this section is the operator-facing protocol that the schema enforces. T5.4 wires the per-branch verification language (canonical fragment §"Verification per branch") into sub-agent dispatched prompts via two paths:
+
+- **Static agent-prompt mirrors** — `.claude/agents/code-reviewer.md` + `.claude/agents/codebase-auditor.md` each carry a §"Step 0 verification" section naming the four canonical_side branch verifications + the test-precondition verification action.
+- **Dispatch-wrapper conditional prelude** — `tools/scope-discovery/dispatch-wrapper.ts` `wrap()` appends the prelude exported by `tools/scope-discovery/refactor-preconditions-prompt.ts` (`REFACTOR_PRECONDITIONS_CHECKLIST`) when the task prompt carries a refactor marker (`Closes clones.yaml` / `refactor disposition` / `disposition: refactor` / `extraction commit` / a literal `canonical_side` reference). This covers refactor-context dispatches without requiring a standalone refactor-orchestrator agent.
+
+The canonical fragment used by sub-agent prompts and the dispatched-prompt string constant is [`refactor-preconditions-checklist.md`](refactor-preconditions-checklist.md); changes to Step 0a / Step 0b semantics + per-branch verification language must be mirrored to that file and to the four mirror locations its header enumerates.
+
+## Regime-holdout discovery
+
+The clone detector catches duplication as a *shadow* of regime gaps — a holdout often duplicates the canonical's shape, so finding the duplication finds the holdout transitively. Several gap classes do NOT show up as clones: missing-primitive adoption that hasn't yet generated duplication; semantic anti-patterns that aren't token-identical; single-instance holdouts; deprecation queues; cross-editor symmetry gaps. Phase 6 adds four scan types that detect regime drift DIRECTLY, without requiring duplication to exist first.
+
+### The four scan types
+
+| Scan | Artifact | Detects | Pre-commit gate |
+|---|---|---|---|
+| **Anti-pattern** (T6.1) | [`anti-patterns.yaml`](anti-patterns.yaml) | Legacy structural fingerprint match — files that match a shape registered as "replaced by primitive X" | **blocks** new shape matches |
+| **Adopter manifest** (T6.2) | [`adopter-manifests.yaml`](adopter-manifests.yaml) | Files matching a per-primitive adopter glob that don't import the canonical `from` path | **blocks** new holdouts |
+| **Cross-editor symmetry** (T6.3) | [`editor-symmetry.md`](editor-symmetry.md) | Fleet-matrix view across `modules/*-editor/`; surfaces editors that didn't follow a convention adopted by peers | runs read-only (presentation of the adopter data above) |
+| **Deprecation** (T6.4) | [`deprecation-queue.md`](deprecation-queue.md) | Files carrying `@deprecated` / `// DEPRECATED:` markers, counted by remaining importers; splits into "blocked" vs "safe to delete" | informational; operator-driven |
+
+The first three fire on every `.ts` / `.tsx` commit via [`.githooks/pre-commit`](../../.githooks/pre-commit). The fourth is operator-invoked (`make check-deprecations-write` regenerates the queue artifact).
+
+### Composition into `/scope-inventory`
+
+`/scope-inventory` fans out a five-agent fleet (T6.5). The fifth agent — [`regime-holdout-detector`](../../tools/scope-discovery/discovery-agents/regime-holdout-detector.ts) — consumes the four scanners IN-PROCESS and emits a `RegimeHoldoutFindings` payload covering all four sources under one discriminated `source` field (`'anti-pattern' | 'adopter-manifest' | 'editor-symmetry' | 'deprecation'`). The synthesis pass folds the findings into the manifest's top-level `regime_holdouts:` section plus a `regime_holdouts.meta` summary (`total` + `by_source.{anti_pattern,adopter_manifest,editor_symmetry,deprecation}`). Schema enforced by [`scope-manifest.schema.json`](../../tools/scope-discovery/schema/scope-manifest.schema.json).
+
+The `synthesis.md` written by `/scope-inventory` carries a §"Regime holdouts" section reporting the four bucket counts plus sample findings; the operator drives Phase 6 burndown work from that section.
+
+### For future features extracting a primitive
+
+When a phase extracts or promotes a primitive, the refactor commit SHOULD:
+
+1. Append an `anti_patterns:` entry naming the legacy shape the primitive replaces (so future code that reimplements the shape from scratch is flagged).
+2. Append an `adopter_manifests:` entry naming the expected adopter glob (so files in scope that don't migrate surface as holdouts).
+3. Regenerate `editor-symmetry.md` (`make check-editor-symmetry-write`) when the manifest targets an `*-editor/` module so the fleet matrix reflects the new convention.
+
+The on-disk schema headers are documented in each artifact's top docblock; see [`LAYOUT.md`](LAYOUT.md) §"Phase 6 regime-holdout artifacts" for the per-artifact contract.
 
 ## Day-to-day workflow
 
@@ -50,6 +195,20 @@ if new clone group: commit blocked → fix or disposition before retry
 ↓
 PR opened, review, merge
 ```
+
+### Day-to-day: how many pending in my surface?
+
+When working on a specific module, `make clone-summary` answers "what clone groups touch the area I'm editing?" without grepping the YAML by hand. Reuses the dispositioned baseline at `docs/scope-discovery/clones.yaml` (T7.1 content-hashed IDs) and the shared glob compiler at `tools/scope-discovery/util/glob.ts`:
+
+```bash
+# How many pending clone groups touch the Roland editor's source tree?
+$ make clone-summary SURFACE='modules/roland-sxx0-editor/src/**'
+total: 495 | pending-touching: 87 | pending-intra: 64 | dispositioned-touching: 0
+```
+
+`touching` means "at least one member's bare path matches the glob" — typical when a duplication straddles two modules. `intra` means "every member matches the glob" — a duplication wholly inside the surface. `intra` is a subset of `touching` by construction; the gap (`touching − intra`) is the cross-surface count. `dispositioned-touching` covers groups already marked `refactor` / `keep-with-reason` / `ignore-with-justification`.
+
+Pass `ARGS=--json` for tooling-friendly output or `ARGS=--verbose` to list each matching group's id, disposition, and matching-member count to stderr. The CLI is `tsx tools/scope-discovery/summary.ts --surface <glob>` directly; the make target is a one-line wrapper that enforces `SURFACE`.
 
 ## The four discovery agents (T3.1)
 

@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Post-commit hook — converts a transient "pre-commit ran" marker into a
+# durable SHA-keyed sentinel file so a later pre-push gate can detect
+# commits that bypassed the pre-commit hook via `--no-verify`.
+#
+# T7.5 corrected mechanism (per AUDIT-20260522-01):
+#
+# Git lifecycle facts (verified empirically — see audit-log.md):
+#   - `git commit --no-verify` SKIPS pre-commit (and commit-msg).
+#   - `git commit --no-verify` STILL RUNS post-commit.
+#
+# The earlier design wrote the sentinel here unconditionally and claimed
+# a missing sentinel proved `--no-verify`. That was wrong: post-commit
+# runs on `--no-verify` too, so the sentinel was always written and the
+# detector had no signal.
+#
+# Corrected design:
+#   - pre-commit (which IS skipped by `--no-verify`) writes a marker
+#     `.pre-commit-marker` as its last successful action.
+#   - This hook (which runs on EVERY commit, including `--no-verify`)
+#     reads HEAD's SHA, then checks for the marker:
+#       * Marker present  → pre-commit ran → record the SHA in the
+#         sentinel file and delete the marker.
+#       * Marker absent   → pre-commit was skipped → write nothing.
+#         pre-push then sees a missing entry for this SHA and warns.
+#
+# The sentinel lives under `.git/hooks-sentinels/` (not tracked) so it
+# stays clone-local. Pre-push consumes it; nothing else should depend
+# on it. Use --git-common-dir (worktree-aware: resolves to .git/ on the
+# main checkout, .git/worktrees/<name>/ inside a worktree) instead of
+# --git-path hooks, which returns the configured `core.hooksPath`
+# (.githooks) when set — that would put the sentinel inside the tracked
+# hooks dir. The sentinel must live OUTSIDE the tree so it stays
+# clone-local.
+
+set -euo pipefail
+
+SENTINEL_DIR="$(git rev-parse --git-common-dir)/hooks-sentinels"
+SENTINEL_FILE="$SENTINEL_DIR/.pre-commit-passed"
+MARKER_FILE="$SENTINEL_DIR/.pre-commit-marker"
+mkdir -p "$SENTINEL_DIR"
+
+# Marker absent → pre-commit was skipped (most likely cause: --no-verify).
+# Leave the sentinel alone so pre-push can warn on this SHA.
+if [ ! -f "$MARKER_FILE" ]; then
+  exit 0
+fi
+
+HEAD_SHA="$(git rev-parse HEAD)"
+# Append one SHA per line. Idempotent against duplicate post-commit
+# invocations (e.g., `git commit --amend` re-triggers pre-commit, which
+# re-writes the marker, then post-commit re-appends the new SHA — both
+# old and new will appear, which is fine for the pre-push consumer that
+# grep-checks for membership).
+echo "$HEAD_SHA" >> "$SENTINEL_FILE"
+
+# Consume the marker so a subsequent `--no-verify` commit's post-commit
+# can't accidentally inherit it (paranoia: the marker file lives outside
+# the tree and a stray copy/restore could otherwise leak signal).
+rm -f "$MARKER_FILE"

@@ -77,7 +77,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-dispatch-wrapper-validate test-scope-discovery scope-inventory refresh-clones-baseline check-chevron-sizing
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-clone-id-stability-validate check-clone-summary-validate clone-summary batch-dispose check-batch-dispose-validate migrate-clone-ids migrate-clone-ids-dry check-dispatch-wrapper-validate check-no-verify-detection-validate check-refactor-preconditions-smoke check-refactor-preconditions check-refactor-preconditions-validate check-anti-patterns check-anti-patterns-validate check-adopters check-adopters-validate check-editor-symmetry check-editor-symmetry-write check-editor-symmetry-validate check-deprecations check-deprecations-write check-deprecations-validate check-regime-holdout-validate check-prd-themed-validate check-synthesis-warnings-validate test-scope-discovery scope-inventory check-scope-discovery-deps check-deps-validate refresh-clones-baseline check-chevron-sizing
 
 build: $(ALL_STAMPS)
 
@@ -331,6 +331,93 @@ check-clone-duplication:
 check-clone-duplication-validate:
 	tsx tools/scope-discovery/clone-detector.validate.ts
 
+# Validate that T7.1 content-hashed clone-group IDs behave correctly:
+# stable across line shifts; sensitive to content changes; sensitive
+# to member-path changes; deterministic across runs; no collisions
+# in a 50-group sample; migration preserves dispositions; migration
+# detects orphans; gutted-stub stub of the derivation function fails
+# the no-collisions assertion. Adversarial-validator gate for T7.1.
+check-clone-id-stability-validate:
+	tsx tools/scope-discovery/clone-id-stability.validate.ts
+
+# One-time T7.1 migration: re-key docs/scope-discovery/clones.yaml
+# under the new content-hashed ID derivation and write the
+# old-id -> new-id forensic record at docs/scope-discovery/migration-map.yaml.
+# Existing operator-authored dispositions (refactor / keep-with-reason /
+# ignore-with-justification) carry forward onto the new IDs. NOT wired
+# into test-scope-discovery — this is a one-shot operation, not a
+# recurring test. Run once when T7.1 lands; the new IDs become the
+# canonical ones from that commit forward.
+migrate-clone-ids:
+	tsx tools/scope-discovery/migrate-clone-ids.ts
+
+# Preview the T7.1 migration without writing either file. Reports the
+# old-count, new-count, mapped/unmapped/new-only tallies, and the
+# disposition rollup so the operator can spot anomalies before
+# committing to the rewrite.
+migrate-clone-ids-dry:
+	tsx tools/scope-discovery/migrate-clone-ids.ts --dry-run
+
+# T7.3 — per-surface clone-group summary. Reads
+# docs/scope-discovery/clones.yaml and prints a 4-field summary line
+# for the surface glob the operator names:
+#
+#   total: N | pending-touching: M | pending-intra: K | dispositioned-touching: L
+#
+# "touching" = group with at least one member matching the glob;
+# "intra"    = group with all members matching the glob (subset of touching).
+# Wraps `tsx tools/scope-discovery/summary.ts --surface <glob>`. SURFACE
+# is required; the error message names the missing variable. Pass
+# additional flags via ARGS (e.g. ARGS=--json or ARGS=--verbose).
+clone-summary:
+ifndef SURFACE
+	$(error SURFACE=<glob> is required; e.g., make clone-summary SURFACE='modules/roland-sxx0-editor/src/**/*.tsx')
+endif
+	tsx tools/scope-discovery/summary.ts --surface "$(SURFACE)" $(ARGS)
+
+# Adversarial validator for T7.3 clone-summary: 13 scenarios covering
+# empty fixture, no-glob-match, pending-touching, pending-intra,
+# dispositioned-touching, mixed-bucket, brace-alternation glob,
+# --verbose group listing, --json output shape, gutted-stub self-check,
+# missing --surface error path, format-line layout lock, and the
+# programmatic runSummary entry. Wired into test-scope-discovery so
+# changes to summary.ts re-run the math + CLI contract against the
+# pinned expectations.
+check-clone-summary-validate:
+	tsx tools/scope-discovery/summary.validate.ts
+
+# T7.4 — batch-apply (disposition, reason) to N clone-group ids. Wraps
+# `tsx tools/scope-discovery/batch-dispose.ts --ids <ids> --disposition
+# <kind> --reason <text>`. IDS, DISPOSITION, and REASON are required;
+# pass EXTRA_FLAGS=--show-existing or EXTRA_FLAGS=--dry-run to drill in.
+# The script verifies-after-write: re-reads clones.yaml + confirms each
+# applied row landed before reporting success.
+batch-dispose:
+ifndef IDS
+	$(error IDS=<id1,id2,...> is required)
+endif
+ifndef DISPOSITION
+	$(error DISPOSITION=<kind> is required; one of: pending, keep-with-reason, ignore-with-justification (refactor requires manual editing))
+endif
+ifndef REASON
+	$(error REASON="<text>" is required)
+endif
+	tsx tools/scope-discovery/batch-dispose.ts --ids "$(IDS)" --disposition "$(DISPOSITION)" --reason "$(REASON)" $(EXTRA_FLAGS)
+
+# Adversarial validator for T7.4 batch-dispose: 13 scenarios covering
+# apply-to-3-pending happy path, already-disposed skipped (default +
+# --show-existing variants), unknown-id-fails-hard, empty --ids,
+# invalid disposition, refactor disposition rejected with redirect to
+# manual editing, verify-after-write detects a forged write (writer
+# flips one reason between write and re-read), --dry-run leaves file
+# unchanged, 5-of-10 partial batch, member-ordering preserved across
+# writes, gutted-stub self-check (no-op writer detected), and CLI
+# subprocess smoke. Wired into test-scope-discovery + pnpm
+# test:scope-discovery so changes to batch-dispose.ts re-run the
+# contract against the pinned expectations.
+check-batch-dispose-validate:
+	tsx tools/scope-discovery/batch-dispose.validate.ts
+
 # Validate that the sub-agent dispatch wrapper actually rejects
 # malformed/forbidden returns and accepts well-formed ones. Plants
 # synthetic dispatchFn responses (no real sub-agent call) covering both
@@ -342,16 +429,242 @@ check-clone-duplication-validate:
 check-dispatch-wrapper-validate:
 	tsx tools/scope-discovery/dispatch-wrapper.validate.ts
 
+# Adversarial validator for the T7.5 `git commit --no-verify` bypass-
+# detection mechanism (per AUDIT-20260522-01). Stands up throwaway
+# git repos in $(mktemp -d), wires the real .githooks/post-commit and
+# .githooks/pre-push against a structurally-faithful pre-commit stub,
+# and asserts three observable outcomes plus an adversarial gutted-
+# detector self-check (replace the stub with a no-op; the
+# "normal commit recorded" assertion must FAIL — proving the marker
+# write is load-bearing, not the post-commit hook alone).
+check-no-verify-detection-validate:
+	tsx tools/scope-discovery/no-verify-detection.validate.ts
+
+# Smoke-test the Phase 5 refactor-preconditions protocol: feeds
+# synthetic clone-group entries (missing canonical declaration, missing
+# new_shape_summary when canonical_side: "new", missing tests / tests_proof,
+# malformed tests_proof.sha, plus three happy-path entries) through the
+# T5.1 validator that the `code-reviewer` + `codebase-auditor` agent
+# prompts at `.claude/agents/` are wired to invoke per the Step 0
+# checklist. Includes a gutted-reviewer self-check that asserts the
+# validator disagrees with a rubber-stamp reviewer on the
+# missing-fields fixture. Workplan T5.2 gate.
+check-refactor-preconditions-smoke:
+	tsx tools/scope-discovery/refactor-preconditions.smoke-test.ts
+
+# T5.3 — refactor-preconditions pre-commit (commit-msg) gate. Invoked
+# from .githooks/commit-msg when the commit message contains a
+# `Closes clones.yaml <id>` marker. Verifies the named clone group
+# satisfies both Step 0 preconditions (canonical-side + test-precondition)
+# at commit time: (a) canonical_side file-existence (when not "all"/"new");
+# (b) tests_proof.sha resolves via git rev-parse; (c) named tests[]
+# commands exit 0 at HEAD; plus the T5.1 parse-time fields are surfaced
+# verbatim. Rejects with numbered per-precondition errors + actionable
+# next steps. Exits 0 on non-refactor commits (no marker → silent).
+#
+# COMMIT_MSG_FILE — supplied by the commit-msg hook to point at
+# $GIT_DIR/COMMIT_EDITMSG. When invoked manually (no var), reads the
+# latest commit's message via `git log -1 --format=%B` for diagnostic.
+check-refactor-preconditions:
+ifdef COMMIT_MSG_FILE
+	@tsx tools/scope-discovery/check-refactor-preconditions.ts --commit-msg-file "$(COMMIT_MSG_FILE)"
+else
+	@tsx tools/scope-discovery/check-refactor-preconditions.ts
+endif
+
+# Adversarial validator for the T5.3 gate. Plants 7 synthetic scenarios
+# (happy path, missing canonical-side file, unresolvable SHA, failing
+# test command, marker names non-existent group, marker on pending
+# disposition, no-marker silent) + a gutted-stub self-check that asserts
+# every rejection-scenario assertion fails when runGate is stubbed to
+# return no errors. Workplan T5.3 gate.
+check-refactor-preconditions-validate:
+	tsx tools/scope-discovery/refactor-preconditions.validate.ts
+
+# T6.1 — Anti-pattern registry gate. Walks
+# `docs/scope-discovery/anti-patterns.yaml` and scans the source tree for
+# any code matching a registered legacy shape. Each refactor commit that
+# extracts a primitive SHOULD append an entry here naming the shape the
+# primitive replaces; future drift gets caught structurally even without a
+# token-level clone. Pure-regex engine (single-pattern OR multi-pattern
+# fingerprint with `min_distance`). See the script header for full
+# rationale on engine choice (pure-regex vs ast-grep).
+check-anti-patterns:
+	tsx tools/scope-discovery/check-anti-patterns.ts
+
+# Adversarial validator for the T6.1 gate. Plants 6 synthetic scenarios
+# (empty registry → exit 0; single-pattern match detected; populated
+# registry, no match → exit 0; multi-pattern fingerprint within
+# min_distance; malformed registry → exit 2; gutted-stub self-check)
+# under per-scenario temp directories. Run whenever the scanner, the
+# registry schema, or this validator's scenarios change. T6.1 gate.
+check-anti-patterns-validate:
+	tsx tools/scope-discovery/anti-patterns.validate.ts
+
+# T6.2 — Adopter manifest gate. Walks
+# `docs/scope-discovery/adopter-manifests.yaml`, expands each manifest's
+# `expected_adopters_glob`, and reports files that match the glob but
+# don't import the canonical `from` path. Refactor commits that PROMOTE
+# a primitive to a shared location SHOULD append an entry here naming
+# the expected adopter set; future drift (a new editor page bypassing
+# the shared primitive) gets caught structurally. Engine: glob-to-
+# regex + pure-regex import-string match (see check-adopters.ts for
+# rationale on engine choice vs picomatch/fast-glob).
+check-adopters:
+	tsx tools/scope-discovery/check-adopters.ts
+
+# Adversarial validator for the T6.2 gate. Plants 9 synthetic scenarios
+# (empty registry; no holdouts; holdout detected; exception honored;
+# bad exception path → exit 2; malformed registry → exit 2; multi-glob
+# entry; multi-glob with exception; gutted-stub self-check) under per-
+# scenario temp directories. Run whenever the scanner, the registry
+# schema, or this validator's scenarios change. T6.2 gate.
+check-adopters-validate:
+	tsx tools/scope-discovery/adopter-manifests.validate.ts
+
+# T6.3 — Cross-editor symmetry gate. Reuses the T6.2 adopter-manifest
+# registry (no parallel "conventions" registry; the matrix derives
+# from the same per-primitive entries) and produces a fleet matrix:
+# rows are adoption conventions, columns are editor modules
+# auto-discovered under `modules/*-editor/`. Each cell shows the
+# adoption status of the editor for the convention (✓ N/N | ⚠
+# A/E (H holdouts) | ✗ missing | — n/a). Output goes to stdout
+# (always) and to `docs/scope-discovery/editor-symmetry.md` when
+# `--write` is passed. DRY: reuses util/registry-yaml.ts + util/glob.ts
+# (from T6.1/T6.2 extraction) + the import-regex builder from
+# check-adopters.ts. Exits 1 when any ⚠ or ✗ cell is present; exits
+# 0 on empty registry or all-✓ matrix.
+check-editor-symmetry:
+	tsx tools/scope-discovery/check-editor-symmetry.ts
+
+# Operator-driven refresh of the committed artifact at
+# `docs/scope-discovery/editor-symmetry.md`. Run this after the
+# adopter-manifest registry changes; the rendered markdown is the
+# operator-readable single-page view of the fleet matrix.
+check-editor-symmetry-write:
+	tsx tools/scope-discovery/check-editor-symmetry.ts --write --quiet
+
+# Adversarial validator for the T6.3 gate. Plants 11 synthetic
+# scenarios (empty registry; single-editor adopt; single-editor
+# partial; multi-editor all-adopt; multi-editor N-1 adopt; multi-
+# editor missing-with-no-files surfaces as ✗; editor-not-targeted
+# is n/a; exception counts toward expected; matrix is valid
+# markdown; --write produces artifact; gutted-stub self-check)
+# under per-scenario temp directories. T6.3 gate.
+check-editor-symmetry-validate:
+	tsx tools/scope-discovery/editor-symmetry.validate.ts
+
+# Deprecation-driven scan (T6.4). Walks the source tree for
+# file-level `@deprecated` JSDoc tags + inline `// DEPRECATED:`
+# markers, counts remaining importers per deprecated file, and
+# emits a status report ("blocked" with importer file:line lists +
+# "safe-to-delete" queue). Default invocation is read-only; the gate
+# is informational (operators consult the queue to drain deprecated
+# files), so this target does NOT block commits and is NOT wired
+# into the pre-commit hook. Exit codes: 0 on success (regardless of
+# importer count); 2 on infra error. DRY: reuses util/glob.ts +
+# util/typeguards.ts; mirrors the CLI shape of check-editor-symmetry.
+check-deprecations:
+	tsx tools/scope-discovery/check-deprecations.ts
+
+# Operator-driven refresh of the committed artifact at
+# `docs/scope-discovery/deprecation-queue.md`. Run after marking a
+# file `@deprecated` (or unmarking one) so the queue reflects the
+# current importer count.
+check-deprecations-write:
+	tsx tools/scope-discovery/check-deprecations.ts --write --quiet
+
+# Adversarial validator for the T6.4 gate. Plants 12 synthetic
+# scenarios (no deprecated files; zero-importers safe-to-delete;
+# N-importers all named in blocked queue; mixed safe + blocked;
+# JSDoc form recognized; inline `// DEPRECATED:` form recognized;
+# message body surfaces; self-importer ignored; symbol-level
+# @deprecated is out of v1 scope; bare @deprecated (no message)
+# still surfaces; --write produces well-formed markdown;
+# gutted-stub self-check rejects a stub that reports "nothing")
+# under per-scenario temp directories. T6.4 gate.
+check-deprecations-validate:
+	tsx tools/scope-discovery/deprecation-scan.validate.ts
+
+# Adversarial validator for the T6.5 regime-holdout-detector discovery
+# agent. Plants 9 synthetic scenarios (empty registries + clean tree;
+# anti-pattern catch; adopter-manifest holdout catch; editor-symmetry
+# partial/missing cell; deprecation importer catch; mixed-sources meta-
+# count reconciliation; evidence back-pointer validity; JSON-output
+# shape passes type-predicate; gutted-stub self-check) under per-
+# scenario temp directories. T6.5 gate.
+check-regime-holdout-validate:
+	tsx tools/scope-discovery/discovery-agents/regime-holdout-detector.validate.ts
+
+# T7.5 polish — assert the prd-themed pattern-hunter's tokenizer strips
+# URL/host components before splitting on non-word so URL fragments
+# (https, github, com, etc.) don't pollute the theme bag-of-words.
+# Single scenario + gutted-stub self-check.
+check-prd-themed-validate:
+	tsx tools/scope-discovery/discovery-agents/prd-themed-pattern-hunter.validate.ts
+
+# T7.5 polish — assert synthesis.ts surfaces non-fatal warnings on
+# SynthesisOutput.metadata.warnings AND writes a `## Synthesizer notes`
+# markdown fragment via --notes-out so the scope-inventory skill can
+# splice it into synthesis.md (not just stderr).
+check-synthesis-warnings-validate:
+	tsx tools/scope-discovery/synthesis-warnings.validate.ts
+
 # Run the full scope-discovery validator suite: both adversarial
-# harnesses in sequence. The clone-detector validator runs first
-# (plants fixtures, asserts NEW/DROPPED/disposition handling); on
-# success the dispatch-wrapper validator runs second (synthetic
-# dispatchFn responses, gutted-logic self-check). Equivalent to
-# `pnpm test:scope-discovery` — both invocations exist so operators
-# and the orchestrator can use whichever fits their flow. Combined
-# runtime is under 30s; if that ever changes, the workplan T2.8 gate
-# is broken and the slowdown must be surfaced. T2.8 gate.
-test-scope-discovery: check-clone-duplication-validate check-dispatch-wrapper-validate
+# harnesses + the Phase 5 refactor-preconditions smoke-test in
+# sequence. The clone-detector validator runs first (plants fixtures,
+# asserts NEW/DROPPED/disposition handling); on success the
+# dispatch-wrapper validator runs second (synthetic dispatchFn
+# responses, gutted-logic self-check); on success the Phase 5
+# smoke-test runs third (synthetic refactor entries, gutted-reviewer
+# self-check); on success the T5.3 adversarial validator runs fourth
+# (commit-message marker grammar + runtime preconditions, gutted-stub
+# self-check); on success the T6.1 anti-pattern validator runs fifth
+# (registry scanner + multi-pattern fingerprint + gutted-stub self-
+# check); on success the T6.2 adopter-manifests validator runs sixth
+# (registry scanner + glob engine + import detection + exception path
+# validation + gutted-stub self-check); on success the T6.3 editor-
+# symmetry validator runs seventh (matrix computation + per-editor
+# bucketing + markdown structure + --write artifact + gutted-stub
+# self-check); on success the T6.4 deprecation-scan validator runs
+# eighth (marker grammar + importer detection + self-importer
+# exclusion + safe/blocked bucket assignment + --write artifact +
+# gutted-stub self-check); on success the T6.5 regime-holdout-detector
+# validator runs ninth (the discovery-agent that fuses the four T6.1–T6.4
+# scans into a single RegimeHoldoutFindings shape; mixed-source meta-
+# count reconciliation, evidence back-pointer validity, JSON-shape
+# acceptance via the type-predicate, gutted-stub self-check).
+# Equivalent to `pnpm test:scope-discovery` — both invocations exist so
+# operators and the orchestrator can use whichever fits their flow.
+# Combined runtime is under 30s; if that ever changes, the workplan T2.8
+# gate is broken and the slowdown must be surfaced.
+# T2.8 gate (+ T5.2 + T5.3 + T6.1 + T6.2 + T6.3 + T6.4 + T6.5 additions).
+test-scope-discovery: check-clone-duplication-validate check-clone-id-stability-validate check-clone-summary-validate check-batch-dispose-validate check-dispatch-wrapper-validate check-no-verify-detection-validate check-refactor-preconditions-smoke check-refactor-preconditions-validate check-anti-patterns-validate check-adopters-validate check-editor-symmetry-validate check-deprecations-validate check-regime-holdout-validate check-prd-themed-validate check-synthesis-warnings-validate check-deps-validate
+
+# T7.2 — pre-flight dep guard for `make scope-inventory`. Runs
+# `tsx tools/scope-discovery/check-deps.ts` which probes the top-level
+# deps the `/scope-inventory` skill's discovery agents need
+# (yaml, ajv, ajv-formats). If any are missing it prints an actionable
+# message naming the dep + `pnpm install` invocation and exits non-zero
+# before the Make target hands off to the skill, replacing a raw
+# ERR_MODULE_NOT_FOUND mid-dispatch.
+#
+# Convention choice (Option A in T7.2's workplan): other tsx-based
+# check/validate targets in this Makefile do NOT depend on
+# $(INSTALL_STAMP) — only module build targets do (see e.g. $(MIDI_CORE)
+# above). The convention for tsx targets is "deps must already be
+# installed; fail clearly if not." This pre-check is the "fail clearly"
+# half; running `pnpm install` is the operator's call (the script's
+# error message tells them so explicitly).
+check-scope-discovery-deps:
+	@tsx tools/scope-discovery/check-deps.ts
+
+# Adversarial validator for the T7.2 dep guard. Six scenarios covering
+# all-deps-present, one-dep-missing, multiple-deps-missing, message
+# actionability, gutted-stub self-check, and package.json coherence
+# (REQUIRED_SCOPE_DISCOVERY_DEPS must be a subset of devDeps).
+check-deps-validate:
+	@tsx tools/scope-discovery/check-deps.validate.ts
 
 # Operator ergonomics target for the `/scope-inventory` skill (T3.3).
 # Validates that a feature directory exists under one of the
@@ -362,12 +675,16 @@ test-scope-discovery: check-clone-duplication-validate check-dispatch-wrapper-va
 # callable. The on-disk layout the skill writes to is documented in
 # `docs/scope-discovery/LAYOUT.md`.
 #
+# Depends on `check-scope-discovery-deps` (T7.2) so missing top-level
+# deps surface as an actionable error before the skill is dispatched.
+#
 # Usage: make scope-inventory FEATURE=<feature-slug>
 #
-# Exit codes: 0 found + instructions printed; 1 not found;
-#   2 missing FEATURE arg. T2.7 gate: exits non-zero with a clear error
-#   listing the searched candidate paths when FEATURE doesn't exist.
-scope-inventory:
+# Exit codes: 0 found + instructions printed; 1 not found or deps
+#   missing; 2 missing FEATURE arg. T2.7 gate: exits non-zero with a
+#   clear error listing the searched candidate paths when FEATURE
+#   doesn't exist.
+scope-inventory: check-scope-discovery-deps
 ifndef FEATURE
 	@echo "Usage: make scope-inventory FEATURE=<feature-slug>"; exit 2
 endif
@@ -398,8 +715,21 @@ refresh-clones-baseline:
 install-hooks:
 	git config core.hooksPath .githooks
 	@echo "hooks installed: core.hooksPath = .githooks"
-	@echo "  pre-commit: blocks NEW cross-page CSS duplication"
-	@echo "  pre-commit: blocks NEW TS/TSX clone groups (scope-discovery)"
+	@echo "Active pre-commit gates (CSS-touching commits):"
+	@echo "  - check-css-duplication      blocks NEW cross-page CSS class duplication"
+	@echo "  - check-chevron-sizing       blocks chevron-named CSS outside the canonical primitive"
+	@echo "Active pre-commit gates (TS/TSX-touching commits):"
+	@echo "  - check-clone-duplication    blocks NEW TS/TSX clone groups (jscpd + clones.yaml)"
+	@echo "  - check-anti-patterns        blocks files matching registered legacy-shape anti-patterns"
+	@echo "  - check-adopters             blocks expected-adopter files missing the canonical import"
+	@echo "  - check-editor-symmetry      reports cross-editor symmetry gaps (read-only, fail-on-✗)"
+	@echo "Active commit-msg gate:"
+	@echo "  - check-refactor-preconditions  enforces Step 0 preconditions when message contains"
+	@echo "                                  'Closes clones.yaml <id>' (Phase 5)"
+	@echo "Active post-commit + pre-push gates:"
+	@echo "  - post-commit: records HEAD SHA in .git/hooks/.pre-commit-passed"
+	@echo "  - pre-push:    warns on stderr when pushed commits lack the sentinel"
+	@echo "                 (catches 'git commit --no-verify' bypass attempts)"
 
 # ---------------------------------------------------------------------------
 # Common-Area Library Tests (shared specs, parameterized by env)

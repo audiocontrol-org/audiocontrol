@@ -23,6 +23,7 @@ import type {
   DiscoveryAgentFinding,
   DiscoveryAgentName,
   PrdThemedFindings,
+  RegimeHoldoutFindings,
   UiRouteFindings,
 } from './discovery-agents/types.js';
 import { isDiscoveryAgentFinding } from './discovery-agents/types.js';
@@ -36,6 +37,7 @@ import {
   defaultScenarioId,
   deriveModules,
   deriveReferenceDocs,
+  deriveRegimeHoldouts,
   deriveRoutes,
   deriveScenarios,
   deriveThemes,
@@ -61,6 +63,7 @@ interface PartitionedFindings {
   readonly ast: ReadonlyArray<AstGrepMatrixFindings>;
   readonly clones: ReadonlyArray<CloneDetectorFindings>;
   readonly themes: ReadonlyArray<PrdThemedFindings>;
+  readonly regime: ReadonlyArray<RegimeHoldoutFindings>;
   readonly agentsConsumed: ReadonlyArray<DiscoveryAgentName>;
   readonly rawCount: number;
 }
@@ -72,6 +75,7 @@ function partition(
   const ast: AstGrepMatrixFindings[] = [];
   const clones: CloneDetectorFindings[] = [];
   const themes: PrdThemedFindings[] = [];
+  const regime: RegimeHoldoutFindings[] = [];
   const seenAgents = new Set<DiscoveryAgentName>();
   // rawCount counts the *signal* the agents handed us — individual
   // hits, clone members, route entries, theme matches — NOT just the
@@ -104,9 +108,21 @@ function partition(
           rawCount += theme.occurrences.length;
         }
         break;
+      case 'regime-holdout-detector':
+        regime.push(f);
+        rawCount += f.findings.length;
+        break;
     }
   }
-  return { ui, ast, clones, themes, rawCount, agentsConsumed: Array.from(seenAgents).sort() };
+  return {
+    ui,
+    ast,
+    clones,
+    themes,
+    regime,
+    rawCount,
+    agentsConsumed: Array.from(seenAgents).sort(),
+  };
 }
 
 function determineKind(p: PartitionedFindings): ManifestKind {
@@ -156,19 +172,46 @@ export async function synthesize(input: SynthesisInput): Promise<SynthesisOutput
         'the agent\'s tokenizer).',
     );
   }
-  const referenceDocs = await deriveReferenceDocs({
+  const warnings: string[] = [];
+  const refDocsResult = await deriveReferenceDocs({
     prdPath: input.prdPath,
     prdRelPath: input.prdRelPath,
   });
+  const referenceDocs = refDocsResult.refs;
+  for (const w of refDocsResult.warnings) warnings.push(w);
+  const regimeHoldouts = deriveRegimeHoldouts(partitioned.regime);
+  // Notes the operator should see in synthesis.md beyond the
+  // reference-docs fallback. Each entry is a single line; the skill
+  // renders them as a bulleted list under `## Synthesizer notes`.
+  if (regimeHoldouts === null) {
+    warnings.push(
+      'No regime-holdout-detector findings supplied; manifest omits `regime_holdouts:` section. ' +
+        'Run the agent to surface anti-pattern / adopter-manifest / editor-symmetry / deprecation holdouts.',
+    );
+  }
+  if (kind === 'ui' && partitioned.ui.length > 0) {
+    const totalRoutes = partitioned.ui.reduce((n, f) => n + f.routes.length, 0);
+    if (totalRoutes <= 1) {
+      warnings.push(
+        `ui-route-enumerator surfaced only ${totalRoutes} route(s); the UI surface may be ` +
+          'under-walked. Re-run with a deeper crawl or supply additional UI findings.',
+      );
+    }
+  }
 
   const generatedAt = new Date().toISOString();
   // rawCount sums *all* signal entries (hits, clone members, routes,
-  // theme occurrences). finalCount is the count of unique emitted
-  // manifest entries. dedupCount is the reduction — should always be
-  // non-negative under the new counting because finalCount can never
-  // exceed the source signal it was derived from. (If it does, the
-  // assertion below catches it; no silent clamp.)
-  const finalCount = (routes?.length ?? 0) + (modules?.length ?? 0) + themesList.length;
+  // theme occurrences, regime-holdout findings). finalCount is the
+  // count of unique emitted manifest entries. dedupCount is the
+  // reduction — should always be non-negative under the new counting
+  // because finalCount can never exceed the source signal it was
+  // derived from. (If it does, the assertion below catches it; no
+  // silent clamp.)
+  const finalCount =
+    (routes?.length ?? 0) +
+    (modules?.length ?? 0) +
+    themesList.length +
+    (regimeHoldouts?.meta.total ?? 0);
   const dedupCount = partitioned.rawCount - finalCount;
   if (dedupCount < 0) {
     throw new Error(
@@ -189,6 +232,7 @@ export async function synthesize(input: SynthesisInput): Promise<SynthesisOutput
     discovery_themes: themesList,
     ...(routes !== undefined ? { routes } : {}),
     ...(modules !== undefined ? { modules } : {}),
+    ...(regimeHoldouts !== null ? { regime_holdouts: regimeHoldouts } : {}),
     notes:
       `Strawman synthesized from ${partitioned.agentsConsumed.length} discovery agent(s) ` +
       `(${partitioned.agentsConsumed.join(', ')}). Operator curates devices/scenarios/primitives.`,
@@ -209,6 +253,7 @@ export async function synthesize(input: SynthesisInput): Promise<SynthesisOutput
       agentsConsumed: partitioned.agentsConsumed,
       dedupCount,
       findingsCount: input.findings.length,
+      warnings,
     },
   };
 }
@@ -220,6 +265,7 @@ interface CliOptions {
   readonly prdPath: string;
   readonly findingsPaths: ReadonlyArray<string>;
   readonly outPath: string | null;
+  readonly notesOutPath: string | null;
   readonly repoRoot: string;
 }
 
@@ -227,7 +273,13 @@ function parseCli(argv: ReadonlyArray<string>): CliOptions {
   const scalars = new Map<string, string>();
   const findingsPaths: string[] = [];
   let mode: 'scalar' | 'findings' = 'scalar';
-  const SCALAR_FLAGS = new Set(['--feature', '--prd-path', '--out', '--repo-root']);
+  const SCALAR_FLAGS = new Set([
+    '--feature',
+    '--prd-path',
+    '--out',
+    '--notes-out',
+    '--repo-root',
+  ]);
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === '--help' || a === '-h') throw new Error('HELP');
@@ -266,8 +318,27 @@ function parseCli(argv: ReadonlyArray<string>): CliOptions {
     prdPath: isAbsolute(prdPath) ? prdPath : resolve(root, prdPath),
     findingsPaths,
     outPath: scalars.get('--out') ?? null,
+    notesOutPath: scalars.get('--notes-out') ?? null,
     repoRoot: root,
   };
+}
+
+/**
+ * Render the synthesizer's warnings as a markdown fragment whose
+ * top-level heading matches the section name the scope-inventory skill
+ * (`SKILL.md` §8) splices into `synthesis.md`. When `warnings` is
+ * empty, the fragment STILL emits the heading with a "clean — no notes"
+ * single-line body so the section's presence is invariant.
+ */
+function renderSynthesizerNotes(warnings: ReadonlyArray<string>): string {
+  const lines: string[] = ['## Synthesizer notes', ''];
+  if (warnings.length === 0) {
+    lines.push('clean — no notes from this run.');
+  } else {
+    for (const w of warnings) lines.push(`- ${w}`);
+  }
+  lines.push('');
+  return lines.join('\n');
 }
 
 async function loadFinding(path: string): Promise<DiscoveryAgentFinding> {
@@ -282,7 +353,7 @@ async function loadFinding(path: string): Promise<DiscoveryAgentFinding> {
 const USAGE =
   'Usage: tsx tools/scope-discovery/synthesis.ts \\\n' +
   '    --feature <slug> --prd-path <path-to-prd.md> \\\n' +
-  '    --findings <path1> <path2> ... [--out <path>] [--repo-root <path>]\n';
+  '    --findings <path1> <path2> ... [--out <path>] [--notes-out <path>] [--repo-root <path>]\n';
 
 async function main(): Promise<number> {
   let opts: CliOptions;
@@ -337,6 +408,26 @@ async function main(): Promise<number> {
       `findings=${output.metadata.findingsCount}, ` +
       `dedup-savings=${output.metadata.dedupCount})\n`,
   );
+  // Surface warnings on stderr (legacy channel) AND, when --notes-out
+  // is supplied, write a `## Synthesizer notes` markdown fragment so
+  // the scope-inventory skill can splice it into `synthesis.md` without
+  // re-deriving the warning set. T7.5 polish — keeps notes off stderr-
+  // only so the operator sees them in the run-dir reading-surface.
+  for (const w of output.metadata.warnings) {
+    process.stderr.write(`synthesis: note: ${w}\n`);
+  }
+  if (opts.notesOutPath !== null) {
+    const notesAbs = isAbsolute(opts.notesOutPath)
+      ? opts.notesOutPath
+      : resolve(opts.repoRoot, opts.notesOutPath);
+    try {
+      await mkdir(dirname(notesAbs), { recursive: true });
+      await writeFile(notesAbs, renderSynthesizerNotes(output.metadata.warnings), 'utf8');
+    } catch (err) {
+      process.stderr.write(`synthesis: notes write failed: ${errorMessage(err)}\n`);
+      return 2;
+    }
+  }
   return 0;
 }
 

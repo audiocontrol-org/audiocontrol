@@ -129,7 +129,7 @@ The two-stage review (`superpowers:subagent-driven-development`) catches spec-co
 
 **How to apply:**
 
-- **After every implementer dispatch that touches code, re-run the load-bearing test gate yourself before dispatching reviewers.** For roland-sxx0-editor work: `make test-ui-roland`. For other modules: the corresponding `make test-*` target named in the workplan's "Proven complete when" gate. Run from the project root in a fresh background bash.
+- **After every implementer dispatch that touches code, re-run the load-bearing test gate yourself before dispatching reviewers.** For roland-sxx0-editor work: `make test-ui-roland`. For scope-discovery-protocol tooling: `pnpm test:scope-discovery`. For other modules: the corresponding `make test-*` target named in the workplan's "Proven complete when" gate. Run from the project root in a fresh background bash.
 
 - **The independent re-run does NOT replace the two-stage review.** The order is:
   1. Implementer reports DONE.

@@ -1,0 +1,73 @@
+# Adopter manifest registry — Phase 6 T6.2
+#
+# Pairs with `anti-patterns.yaml` (T6.1):
+#   - anti-patterns find LEGACY shapes that should be REPLACED.
+#   - adopter manifests find FILES that should be USING a canonical
+#     primitive but aren't (regime-holdout / missing-adopter case).
+#
+# Each refactor commit that PROMOTES a primitive to a shared location
+# (e.g., lifts `SlideDrawer` from one editor into `@/components/SlideDrawer`)
+# SHOULD append an entry here naming the expected adopter set. The pre-
+# commit gate (`make check-adopters`) walks the registry on every
+# .ts/.tsx change and surfaces files matching the adopter glob but
+# NOT importing the canonical `from` path. This closes the gap where
+# the clone detector and the anti-pattern registry both miss the
+# new-file-doesn't-adopt-the-extracted-primitive case.
+#
+# ──────────────────────────────────────────────────────────────────────────
+# Schema
+# ──────────────────────────────────────────────────────────────────────────
+#
+#   - id: <kebab-case-id; unique across the registry>
+#     introduced_in: <commit-sha; 7-40 lowercase hex; the extraction commit>
+#     from: <canonical import path; e.g., '@/components/SlideDrawer'>
+#     expected_adopters_glob:
+#       - <glob string; matched against repo-relative POSIX paths>
+#       - <glob string>
+#     exceptions:                  # optional; default empty
+#       - path: <exact repo-relative path that matches one of the globs>
+#         reason: |
+#           <multi-line explanation for why this file legitimately
+#            bypasses the primitive — e.g., "needs frame-rate scroll
+#            lock that SlideDrawer doesn't expose">
+#     message: |
+#       <multi-line replacement instruction shown when a holdout is found>
+#
+# ──────────────────────────────────────────────────────────────────────────
+# Glob syntax (see tools/scope-discovery/util/glob.ts for the compiler)
+# ──────────────────────────────────────────────────────────────────────────
+#
+#   - `**`        — any number of path segments (including zero)
+#   - `*`         — any run of non-`/` characters within a segment
+#   - `?`         — any single non-`/` character
+#   - `{a,b,c}`   — alternation; non-nested; commas separate alternatives
+#   - literal `/` — path separator (always forward-slash)
+#
+# Patterns are anchored against the full repo-relative path. Repo-relative
+# paths are computed from the gate's `--root` flag (default: cwd).
+#
+# Exceptions: each exception `path` must match at least one of the
+# manifest's `expected_adopters_glob` patterns. Exceptions whose path
+# wouldn't be considered by the holdout calculation are rejected at
+# parse time (they would be inert; the diagnostic is mechanical).
+#
+# Import detection: the gate matches `import ... from '<from>'`,
+# `import('<from>')`, `export ... from '<from>'`, and
+# `require('<from>')`. Both single- and double-quoted strings are
+# accepted. The `<from>` value is escaped before insertion into the
+# match regex, so meta characters in the canonical path (`/`, `.`, `@`)
+# are matched literally.
+#
+# Engine choice (documented inline for future agents):
+#   Glob-to-regex over `fast-glob` / `picomatch` / `globby`. None of
+#   those packages are a direct dependency of this repo (they appear
+#   only transitively); adding one for the narrow shapes adopter
+#   manifests actually use widens the dep surface for marginal benefit.
+#   The shape grammar (above) is small and finite; a 100-line compiler
+#   beats a 2MB dep. Mirrors T6.1's pure-regex stance.
+#
+# Pre-commit hook (`make check-adopters`) walks this registry on every
+# .ts/.tsx change and flags any holdouts. See
+# `tools/scope-discovery/check-adopters.ts` for the gate.
+
+adopter_manifests: []
