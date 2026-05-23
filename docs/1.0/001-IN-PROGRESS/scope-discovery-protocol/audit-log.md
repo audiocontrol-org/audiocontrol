@@ -157,7 +157,7 @@ Resolution:
 ## AUDIT-20260522-05
 
 Finding-ID: AUDIT-20260522-05
-Status:     open
+Status:     verified-2026-05-22
 Severity:   medium
 Surface:    tools/scope-discovery/util/glob.ts
 
@@ -185,6 +185,11 @@ Fix guidance:
 - Adversarial validator scenarios: (a) `{a*c,b*d}` matches `axc` and `byd`; (b) `{a/**/b,c/**/d}` matches `a/x/y/b` and `c/x/y/d`; (c) nested brace `{a,{b,c}}` works correctly; (d) literal-escape preserved for non-wildcard chars (`{a.b,c.d}` → `(?:a\.b|c\.d)`).
 
 External tracking: ROLAND-BUGFIX-T6.2-GLOB (filed on bugfix branch as consumer-side tracking).
+
+Resolution:
+- Corrected mechanism (commit `2b3158e6`): `globToRegex` now routes every brace alternative back through the full compile pipeline. A new private `compileGlobBody(pattern)` exposes the unanchored compile pass (`expandBraces` + `compileSegmentwise`); the top-level `globToRegex` wraps it in `^…$`, and `compileSegment`'s alternation-token expander calls `compileGlobBody` on each alternative instead of `escapeRegex`. As a side-effect of the recursive entry point, `expandBraces` now tracks brace depth properly: `findMatchingBrace` pairs `{` / `}`, and `splitTopLevelCommas` only treats depth-0 commas as alternation separators. Nested braces (`{a,{b,c}}`) work as a free by-product — the outer pass lifts the whole inner group as part of one alternative; the recursive compile re-lifts the inner group on the next pass. Top-level `*` / `**` / `?` paths through `compileSegmentwise` are unchanged.
+- Adversarial validator: `tools/scope-discovery/util/glob.validate.ts` exercises eight scenarios — `wildcard-in-alternation-single-star` (`{a*c,b*d}` → `[^/]*` expansion; no `\*`), `wildcard-in-alternation-double-star` (`{a/**/b,c/**/d}` matches `a/b`, `a/x/b`, `a/x/y/b`, `c/d`, `c/x/y/z/d`), `wildcard-in-alternation-question` (`{a?c,b?d}` matches single-char fillers, rejects multi-char and slash), `nested-braces` (`{a,{b,c}}` matches `a`/`b`/`c`), `literal-chars-in-braces` (`{a.b,c.d}` keeps `.` escaped), `top-level-wildcard-still-works` (`lib/*.ts` regression guard), `bugfix-repro` (the audit's verbatim `lib/{Foo*Dialog,Bar*Dialog}.tsx`), and `gutted-stub-self-check` (a literal-escaping compiler stub MUST fail the bugfix-repro assertion — confirmed teeth). Wired via `make check-glob-validate` and `pnpm test:scope-discovery` (178 → 186 scenarios).
+- Empirical re-exercise (2026-05-22): the auditor's verbatim reproducer (`globToRegex('lib/{Foo*Dialog,Bar*Dialog}.tsx')`) now produces `^lib\/(?:Foo[^/]*Dialog|Bar[^/]*Dialog)\.tsx$` and `re.test('lib/FooLibraryDialog.tsx')` returns `true`. Side-effect check: `pnpm test:scope-discovery` reports 186/186 (no existing validator regressed); `tsx tools/scope-discovery/clone-detector.ts --quiet` reports `495 groups; 0 NEW; 0 DROPPED`; `pnpm exec tsc --noEmit` exits 0. Pre-commit hook recorded the fix commit `2b3158e6` in `.git/hooks-sentinels/.pre-commit-passed`; no hooks bypassed.
 
 ## AUDIT-20260522-06
 
