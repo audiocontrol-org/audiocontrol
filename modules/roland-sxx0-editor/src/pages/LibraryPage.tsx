@@ -16,6 +16,7 @@ import { useDeviceDataStore } from '@/stores/deviceDataStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { useLibraryStore } from '@/stores/libraryStore';
 import { useEditorStore } from '@/stores/editorStore';
+import { PageTitleRow } from '@/components/common/PageTitleRow';
 import type { SamplerClientInterface, SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import {
   useLibraryConnection, useErrorReporter, useLibraryOperations, LibraryConnectionUI, PluginLibraryBrowser,
@@ -49,7 +50,6 @@ import type { LibraryDragPayload } from '@/lib/library-drag-types';
 import { useRolandEditorDialogs } from '@/hooks/useRolandEditorDialogs';
 import { useRolandLibraryData } from '@/hooks/useRolandLibraryData';
 import { useRolandSelectionMapping } from '@/hooks/useRolandSelectionMapping';
-import { cn } from '@/lib/utils';
 
 /** Selection state for items in either panel */
 export interface RolandPageSelection {
@@ -487,16 +487,17 @@ export function LibraryPage() {
           legacy .ac-page-sticky-header chrome whose negative inline
           margins overlap the VideoCapture drawer + the library browser
           column headers. */}
-      <header className="ac-page-title-row">
-        <div className="ac-page-title-block">
-          {/* Render the Experimental tag INSIDE the <h2> as inline
-              content so the heading's intrinsic line-height is the
-              row's height — identical to TonesPage / PatchesPage
-              where the <h2> is a direct child of .ac-page-title-block
-              with no wrapper. Using a flex wrapper around the h2
-              shifts vertical baselines by 1–2px on macOS Safari,
-              which the operator perceives as a header inconsistency. */}
-          <h2 id="library-heading" className="ac-page-title-heading">
+      {/* Render the Experimental tag INSIDE the <h2> as inline content
+          (passed via headingNode) so the heading's intrinsic line-
+          height is the row's height — identical to TonesPage /
+          PatchesPage where the <h2> is a direct child of
+          .ac-page-title-block with no wrapper. Using a flex wrapper
+          around the h2 shifts vertical baselines by 1–2px on macOS
+          Safari, which the operator perceives as a header inconsistency. */}
+      <PageTitleRow
+        headingId="library-heading"
+        headingNode={
+          <>
             Library
             <span
               className="ac-page-title-tag ac-page-title-tag--warn"
@@ -505,33 +506,17 @@ export function LibraryPage() {
             >
               Experimental
             </span>
-          </h2>
-          <div className="ac-page-title-rule" aria-hidden="true" />
-        </div>
-        <div className="ac-page-title-actions">
-          <button
-            type="button"
-            onClick={handleLoadDeviceData}
-            disabled={isLoading}
-            className={cn('ac-icon-btn', isLoading && 'ac-icon-btn--spinning')}
-            aria-label="Refresh device data"
-            title="Refresh device data"
-          >
-            <svg viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M3 8a5 5 0 0 1 9-3" />
-              <polyline points="12 2 12 5 9 5" />
-              <path d="M13 8a5 5 0 0 1-9 3" />
-              <polyline points="4 14 4 11 7 11" />
-            </svg>
-          </button>
-          {/* Save to Library / Load Selected Set were removed — the
-              library now offers per-object load + save affordances
-              attached to the relevant object (set / tone / patch /
-              sample) where the operator expects them. Handlers
-              still live on `importDialogs` and are wired through the
-              per-object UI. */}
-        </div>
-      </header>
+          </>
+        }
+        onRefresh={handleLoadDeviceData}
+        isLoading={isLoading}
+        refreshLabel="Refresh device data"
+      />
+      {/* Save to Library / Load Selected Set were removed — the library
+          now offers per-object load + save affordances attached to the
+          relevant object (set / tone / patch / sample) where the
+          operator expects them. Handlers still live on `importDialogs`
+          and are wired through the per-object UI. */}
 
       {error && (<div className="ac-alert ac-alert-error"><p className="ac-text-error text-sm">{error}</p></div>)}
 

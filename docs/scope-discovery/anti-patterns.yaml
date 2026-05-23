@@ -92,14 +92,10 @@ anti_patterns:
     shape_regex: '<header[^>]*className="ac-page-title-row"'
     excludes_paths:
       - 'modules/roland-sxx0-editor/src/components/common/PageTitleRow.tsx'
-      # ROLAND-BUGFIX-RGM-001 (#455): LibraryPage uses .ac-page-title-actions
-      # (different from PageTitleRow's .ac-page-title-metric) + an
-      # Experimental tag inside the heading + handleLoadDeviceData
-      # instead of refreshAll. PageTitleRow's contract doesn't cover
-      # either variant. Tracked-deferral.
-      - 'modules/roland-sxx0-editor/src/pages/LibraryPage.tsx'
       # HomePage migrated via RGM-001 sub-task 1 (PageTitleRow extension
       # added showLed?: boolean + optional isLoading/refreshLabel).
+      # LibraryPage migrated via RGM-001 sub-task 2 (PageTitleRow extension
+      # added headingNode?: ReactNode + actions?: ReactNode slot).
     message: |
       Inline `.ac-page-title-row` markup was promoted to the PageTitleRow
       component in commit b996aa01. Replace with `<PageTitleRow
@@ -117,11 +113,8 @@ anti_patterns:
     min_distance: 10
     excludes_paths:
       - 'modules/roland-sxx0-editor/src/components/common/AcReloadIcon.tsx'
-      # ROLAND-BUGFIX-RGM-001 (#455): LibraryPage's refresh button is inside
-      # the page-title-row deferral noted above; closes automatically
-      # when LibraryPage migrates to PageTitleRow (which uses AcReloadIcon
-      # internally). Tracked-deferral.
-      - 'modules/roland-sxx0-editor/src/pages/LibraryPage.tsx'
+      # LibraryPage closed via RGM-001 sub-task 2 — now adopts PageTitleRow
+      # which uses AcReloadIcon internally for its refresh button.
     message: |
       Inline 4-path reload SVG was promoted to the AcReloadIcon component
       in commit b996aa01. Replace with `<AcReloadIcon />`.
