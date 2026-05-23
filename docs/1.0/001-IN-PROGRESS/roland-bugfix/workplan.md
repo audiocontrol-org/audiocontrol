@@ -285,9 +285,19 @@ Empirically verified that the T6.1 schema lacks the path-exclude mechanism requi
 - **Empirical proof:** drafted `use-export-dialog-lifecycle-inline` against the live registry, ran `make check-anti-patterns`, observed the scan flagging `modules/roland-sxx0-editor/src/hooks/useExportDialogLifecycle.ts:77` as a holdout. Reverted the draft.
 - **Drafts preserved:** all 9 anti-pattern designs are captured at [`scope-inventory/anti-patterns-drafts.yaml`](./scope-inventory/anti-patterns-drafts.yaml) with the `excludes_paths_needed:` annotation marking the field T6.1 should add.
 - **Tooling-feedback finding:** see `tooling-feedback.md` § "Phase 4 dogfooding — T6.1 anti-pattern registry path-exclude gap" for the empirical evidence + proposed schema addition.
-- **Follow-up:** `ROLAND-BUGFIX-T6.1-EXCLUDE` — once T6.1 supports `excludes_paths:`, copy the 9 drafts into `docs/scope-discovery/anti-patterns.yaml` verbatim and verify `make check-anti-patterns` returns 0 holdouts on the roland surface.
+- **Follow-up:** `ROLAND-BUGFIX-T6.1-EXCLUDE` (#451) — once T6.1 supports `excludes_paths:`, copy the 9 drafts into `docs/scope-discovery/anti-patterns.yaml` verbatim and verify `make check-anti-patterns` returns 0 holdouts on the roland surface.
 
-**Phase 4 dispositioned blocked-on-tooling.** No code change landed for the registry itself; the deliverable is the dogfooding finding and the preserved drafts. Phase 4 is now closed-with-honest-outcome rather than closed-with-clean-gate.
+### Phase 4 unblocked (2026-05-23) — `excludes_paths:` shipped via PR #454; backfill landed
+
+PR #454 (merged to main 2026-05-23) landed commit `914710a2` adding the `excludes_paths:` field exactly as the Phase 4 finding proposed. Closes #451. Backfilled the 9 anti-pattern drafts from `scope-inventory/anti-patterns-drafts.yaml` into the live `docs/scope-discovery/anti-patterns.yaml`.
+
+- **Initial scan:** 5 real holdouts surfaced — `LibraryPage.tsx` (page-title-row + reload-icon), `HomePage.tsx` (page-title-row), `DeviceMemoryPanel.tsx` (slot-info), `akai SampleTransferPanel.tsx` (downloadBlob).
+- **Triage:** each holdout is a legitimate **API-mismatch deferral** — the canonical primitive's contract doesn't accommodate the caller's actual needs (e.g., HomePage doesn't need `isLoading`/`refreshLabel`; LibraryPage uses `.ac-page-title-actions` slot PageTitleRow doesn't expose; DeviceMemoryPanel's slot-info carries an `isDragOver` branch SlotInfo doesn't expose; akai shouldn't take a cross-editor dep on roland's `@/lib/browser-download`).
+- **Dispositioned:** each of the 5 files added to the corresponding anti-pattern's `excludes_paths:` with reason citing **ROLAND-BUGFIX-RGM-001 (#455)** as the tracked-deferral. The follow-up issue proposes preferred fixes for each (extend the primitive's contract; promote downloadBlob to a shared package; etc.).
+- **Gate state:** `make check-anti-patterns: 9 entries scanned across 1347 files; 0 findings.` Phase 4 gate now satisfied with the 9 registered anti-patterns + 5 documented tracked-deferrals.
+- **Side observation:** the same `tracked_holdouts:` schema gap that #453 fixed for adopter-manifests also applies to anti-patterns — `excludes_paths:` permanently silences the file. A future enhancement would add `tracked_holdouts:` to T6.1 too. Documented in tooling-feedback under the same Phase 4 section.
+
+**Phase 4 closed cleanly.** The dogfooding loop completed: filed the gap (#451) → tooling team shipped the fix (PR #454) → backfilled on this branch → surfaced 5 real regime-drift findings → dispositioned each via the new schema field + a single follow-up issue tracking the API extensions.
 
 ## Phase 5: Adopter manifest backfill (PR #446 T6.2 exercise)
 
@@ -328,7 +338,7 @@ Empirically verified that the T6.1 schema lacks the path-exclude mechanism requi
 | destination-eyebrow | 3 | 0 | ✅ |
 | library-device-memory-panel-adapter | 2 | 0 | ✅ |
 | library-preview-panel-adapter | 2 | 0 | ✅ |
-| slide-drawer-library-dialogs | 3 | 5 (exempted) | ✅ — 5 Import dialogs pending ROLAND-BUGFIX-V3-IMPORT |
+| slide-drawer-library-dialogs | 3 | 5 roland + 9 akai (tracked_holdouts post-PR-#454) | ✅ — upgraded 2026-05-23 from exceptions to proper `tracked_holdouts:` field; matrix now renders `⏳ 3/8 (5 tracked)` for roland + `⏳ 0/9 (9 tracked)` for akai instead of being masked as `✓` |
 
 **Side effects:**
 - Bug caught: `s330-library-plugin.tsx` + `s550-library-plugin.tsx` used relative imports `./shared/...` instead of the `@/` alias the project requires. Fixed both files. Adopter manifests caught what the project's own import-style rule had drifted on.
