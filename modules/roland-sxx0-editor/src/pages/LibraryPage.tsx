@@ -111,6 +111,20 @@ export function LibraryPage() {
     handlePluginSelectionChange, handleSelectDevice, handleSelectLibrary,
   } = useRolandSelectionMapping(libraryHandle);
 
+  // Clear the page-level error banner when the operator switches to a
+  // different library item. Without this, any failed load leaves a
+  // sticky banner that survives every subsequent action — the operator
+  // can't recover without a full page reload. ItemPreviewPanel.tsx:204
+  // already does the equivalent for its local loadError; this is the
+  // page-level counterpart. See BUG-005 / D-LIB-39.
+  useEffect(() => {
+    setError(null);
+  }, [
+    selection?.source, selection?.type, selection?.index,
+    selection?.name, selection?.setName, selection?.path?.join('|'),
+    setError,
+  ]);
+
   useEffect(() => {
     if (!adapter) {
       clientRef.current = null;

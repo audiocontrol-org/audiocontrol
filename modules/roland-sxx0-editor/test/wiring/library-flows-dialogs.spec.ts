@@ -369,6 +369,112 @@ test.describe('Capabilities — Library import + sample-editing dialogs (Wave 4)
     await expect(dialog.getByRole('button', { name: 'Save' })).toBeVisible();
   });
 
+  test('D-LIB-39: page-level error banner clears when the operator selects a different library item (BUG-005 regression)', async ({ page }) => {
+    // BUG-005 (2026-05-23): the page-level error banner above the
+    // library tree (LibraryPage.tsx:521, `ac-alert ac-alert-error`)
+    // never clears once `errorReporter.report()` fires. ItemPreviewPanel's
+    // local `loadError` resets on selection change (ItemPreviewPanel.tsx:204),
+    // but the page-level `useLibraryStore.error` does not — there's no
+    // useEffect tying `selection` to `setError(null)`. Result: any failed
+    // load leaves a sticky banner that survives every subsequent action,
+    // forcing the operator to do a full page reload to recover.
+    //
+    // This spec exercises the recovery flow: seed two tones, delete tone A's
+    // WAV under it (post-seed) to force an Open-in-Loop-Editor failure,
+    // verify the page-level banner appears, click tone B, verify the banner
+    // clears. The middle banner (PluginLibraryBrowser) and the right pane
+    // (LibraryPreviewPanelAdapter context.error) both render off the same
+    // store-level error, so testing the top banner is sufficient.
+    //
+    // Test-first ordering: this test was written BEFORE the fix, must
+    // FAIL against current code, must PASS after the fix lands. The
+    // reverse-revert check holds: revert the selection-change effect
+    // and this test fails because the banner persists across the click.
+    const toneA = 'basic-sine';
+    const toneB = 'basic-square';
+    await page.goto(LIBRARY_URL);
+    await page.waitForLoadState('networkidle');
+    await cleanupOPFS(page);
+    await seedOPFSTone(page, { fixtureName: 'basic-sine', targetName: toneA });
+    // Reuse the same fixture for tone B — what matters is two distinct
+    // tree nodes the operator can click between. seedOPFSTone writes
+    // YAML+WAV under `library/s330/tones/<targetName>.{yaml,wav}` so
+    // both tones load cleanly.
+    await seedOPFSTone(page, { fixtureName: 'basic-sine', targetName: toneB });
+    await connectLibraryOPFS(page);
+
+    // The page-level banner is the canonical sticky-error surface. Pin
+    // by the .ac-alert.ac-alert-error class pair — same selector
+    // LibraryPage.tsx:521 emits. The right pane (ItemPreviewPanel)
+    // owns its own local loadError; the middle banner
+    // (PluginLibraryBrowser) reads off the same page-level store.
+    // Asserting the page-level banner is sufficient — the others
+    // share its source.
+    const pageBanner = page.locator('.ac-alert.ac-alert-error');
+
+    // Click tone A → preview pane loads its YAML+WAV cleanly. The
+    // editor-dialog action chain (Open in Loop Editor) is what feeds
+    // the page-level errorReporter via useEditorDialogsCore's catches;
+    // a preview-time failure stays local to ItemPreviewPanel.loadError.
+    const toneANode = page.getByTestId(`library-tone-${toneA}`);
+    await expect(toneANode).toBeVisible({ timeout: 5_000 });
+    await toneANode.click();
+
+    // Wait for the preview to render its action buttons. The "Open in
+    // Loop Editor" button is only rendered after libraryTone resolves
+    // (ItemPreviewPanel.tsx:387-407).
+    const openLoopButton = page.getByRole('button', { name: 'Open in Loop Editor' });
+    await expect(openLoopButton).toBeVisible({ timeout: 5_000 });
+
+    // Now delete tone A's WAV after the preview has resolved, so the
+    // editor-dialog action's WAV-load step (useRolandEditorDialogs.ts:72)
+    // throws NotFoundError → errorReporter pushes to the page-level
+    // store error → top/middle banners fire.
+    await page.evaluate(async (name) => {
+      const root = await navigator.storage.getDirectory();
+      const library = await root.getDirectoryHandle('library');
+      const s330 = await library.getDirectoryHandle('s330');
+      const tones = await s330.getDirectoryHandle('tones');
+      await tones.removeEntry(`${name}.wav`);
+    }, toneA);
+
+    await openLoopButton.click();
+
+    // Page-level banner appears after the editor-dialog handler's
+    // catch fires errorReporter.report.
+    await expect(pageBanner).toBeVisible({ timeout: 5_000 });
+
+    // Recovery action: click tone B. This is the operator's
+    // most-natural recovery flow — "this one's broken, let me try a
+    // different one." The selection change should clear the page-
+    // level error so the banner disappears.
+    const toneBNode = page.getByTestId(`library-tone-${toneB}`);
+    await expect(toneBNode).toBeVisible({ timeout: 5_000 });
+    await toneBNode.click();
+
+    // The banner must be GONE after the recovery click. Pre-fix this
+    // assertion fails because nothing in the codebase resets the
+    // store-level error on selection change.
+    await expect(pageBanner).not.toBeVisible({ timeout: 5_000 });
+
+    // The deliberately-deleted WAV produces an expected console.error
+    // (NotFoundError from the file handle). Filter it out of the
+    // suite-level pageErrors guard so the afterEach assertion passes —
+    // the error is the failure mode we're testing the recovery for, not
+    // a separate unexpected regression. The other test-scope errors
+    // (if any) survive the filter and still fail the afterEach.
+    const before = pageErrors.length;
+    const filtered = pageErrors.filter(
+      (e) => !/could not be found at the time an operation was processed|NotFoundError/i.test(e),
+    );
+    pageErrors.length = 0;
+    pageErrors.push(...filtered);
+    expect(
+      before - filtered.length,
+      'D-LIB-39 expects at least one NotFoundError-shaped page error from the deliberately-deleted WAV',
+    ).toBeGreaterThan(0);
+  });
+
   test('D-LIB-38: clicking "Open in Loop Editor" on a seeded library TONE mounts LoopEditorDialog (BUG-004 regression)', async ({ page }) => {
     // BUG-004 (2026-05-23): the page-level handler at LibraryPage.tsx:445
     // hardcoded nodeType='sample' for all three Open-in-* handlers. The
