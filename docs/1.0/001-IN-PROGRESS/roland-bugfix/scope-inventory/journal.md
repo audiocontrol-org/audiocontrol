@@ -47,3 +47,13 @@ Post-walk report after the Phase 2 clone-disposition closure took `pending touch
 **Did NOT need to re-run `/scope-inventory`.** Curation was binding; the workplan + clones.yaml + disposition log handled the per-walk state. Re-running would have produced a fresh strawman that needed re-curation — no incremental value once the curated manifest is in place. The LAYOUT.md design (re-runs overwrite the canonical manifest by design; the operator branches/tags before re-running to preserve curation) is the right shape.
 
 **What the curated manifest didn't capture, that the walk relied on:** the regime-holdout dimension. The manifest declares which modules/routes/themes are in scope, but says nothing about which primitives are canonical or which call sites should adopt them. The Phase 2 walk re-derived that mapping ad hoc (Export dialogs canonical → Import are holdouts; akai's `$INFRA_DIR/scripts/watchdog.ts` canonical → roland's local copy is the holdout; etc.). The proposal in `tooling-feedback.md` § "Regime holdouts" recommends a `regime_holdouts:` section be added to the synthesized manifest so this dimension stops being implicit. Filing here so the next inventory run + the protocol's own next iteration both see the gap.
+
+## 2026-05-23T04-29-58-677Z-ysxpw0
+
+- **Operator:** oletizi
+- **Kind:** hybrid (from manifest)
+- **Counts:** 7 routes / 10 modules / 10 themes / 1 regime holdout
+- **Manifest:** [`../scope-manifest.yaml`](../scope-manifest.yaml)
+- **Evidence:** [`runs/2026-05-23T04-29-58-677Z-ysxpw0/`](runs/2026-05-23T04-29-58-677Z-ysxpw0/)
+
+Phase 7 re-run with the post-PR-#446 5-agent fleet (`regime-holdout-detector` joined the original 4 from T6.5). The new `regime_holdouts:` manifest section is populated for the first time and reports `1 total finding` — a single deprecation in `modules/sampler-backup/src/lib/backup/path-conventions.ts` that's out of scope for feature/roland-bugfix. The other three buckets (anti_patterns, adopter_manifests, editor_symmetry) are correctly 0 — the registries built in Phases 4-6 are either empty (anti-patterns, blocked on T6.1 schema gap #451) or have all expected adopters in compliance (Phase 5 + Phase 6 work). No new scope changes required. The 5-agent fleet ran end-to-end in ~35 seconds; `regime-holdout-detector` is the cheapest agent (it reads the four already-populated registries).

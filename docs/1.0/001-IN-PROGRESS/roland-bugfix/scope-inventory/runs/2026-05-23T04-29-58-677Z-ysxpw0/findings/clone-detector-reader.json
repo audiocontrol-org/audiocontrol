@@ -1,0 +1,899 @@
+{
+  "agent": "clone-detector-reader",
+  "featureSlug": "roland-bugfix",
+  "baselinePath": "docs/scope-discovery/clones.yaml",
+  "filterApplied": "modules-in-scope",
+  "modulesInScope": [
+    "roland-sxx0-editor"
+  ],
+  "clones": [
+    {
+      "id": "73ec412103b3",
+      "members": [
+        "modules/akai-s3k-editor/playwright.http-midi.config.ts:17:43",
+        "modules/roland-sxx0-editor/playwright.http-midi.config.ts:18:44"
+      ],
+      "lines": 27,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "d14d5813f89c",
+      "members": [
+        "modules/akai-s3k-editor/playwright.http-midi.config.ts:43:61",
+        "modules/roland-sxx0-editor/playwright.http-midi.config.ts:44:62"
+      ],
+      "lines": 19,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "6ee7e792805d",
+      "members": [
+        "modules/akai-s3k-editor/playwright.library.config.ts:1:32",
+        "modules/roland-sxx0-editor/playwright.library.config.ts:1:32"
+      ],
+      "lines": 32,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "f21fe164c25e",
+      "members": [
+        "modules/akai-s3k-editor/playwright.library.config.ts:32:50",
+        "modules/roland-sxx0-editor/playwright.library.config.ts:32:50"
+      ],
+      "lines": 19,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "1ec4c6125311",
+      "members": [
+        "modules/akai-s3k-editor/playwright.test-harness.config.ts:28:44",
+        "modules/roland-sxx0-editor/playwright.harness.shared.ts:38:54"
+      ],
+      "lines": 17,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "14ad000daf5b",
+      "members": [
+        "modules/akai-s3k-editor/src/components/layout/Layout.tsx:33:38",
+        "modules/roland-sxx0-editor/src/components/layout/Layout.tsx:50:56"
+      ],
+      "lines": 6,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "4691e8b7d2fc",
+      "members": [
+        "modules/akai-s3k-editor/src/components/library/S3kKitOutputConfig.tsx:125:136",
+        "modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:92:103"
+      ],
+      "lines": 12,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "e5c2b18798c5",
+      "members": [
+        "modules/akai-s3k-editor/src/components/library/S3kKitOutputConfig.tsx:153:164",
+        "modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:122:131"
+      ],
+      "lines": 12,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "97dbc71052a9",
+      "members": [
+        "modules/akai-s3k-editor/src/components/library/S3kKitOutputConfig.tsx:63:72",
+        "modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:37:46"
+      ],
+      "lines": 10,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "ac0330ff40c0",
+      "members": [
+        "modules/akai-s3k-editor/src/pages/LibraryPage.tsx:709:733",
+        "modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:650:674"
+      ],
+      "lines": 25,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "0c8162dddb47",
+      "members": [
+        "modules/akai-s3k-editor/src/pages/SamplesPage.tsx:315:342",
+        "modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:648:674"
+      ],
+      "lines": 28,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "423f58d97969",
+      "members": [
+        "modules/akai-s3k-editor/src/pages/SamplesPage.tsx:349:359",
+        "modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:674:684"
+      ],
+      "lines": 11,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "1cbbe47b763e",
+      "members": [
+        "modules/d110-editor/src/components/layout/Layout.tsx:34:51",
+        "modules/roland-sxx0-editor/src/components/layout/Layout.tsx:47:64"
+      ],
+      "lines": 18,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "c9ff2b18354c",
+      "members": [
+        "modules/e2e-infra/scripts/validate-akai-s3000xl.ts:121:136",
+        "modules/roland-sxx0-editor/scripts/validate-device.ts:171:186"
+      ],
+      "lines": 16,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "5f1453b53c34",
+      "members": [
+        "modules/e2e-infra/scripts/validate-akai-s3000xl.ts:136:164",
+        "modules/roland-sxx0-editor/scripts/validate-device.ts:186:214"
+      ],
+      "lines": 29,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "fa11bf828dd8",
+      "members": [
+        "modules/e2e-infra/scripts/validate-akai-s3000xl.ts:63:94",
+        "modules/roland-sxx0-editor/scripts/validate-device.ts:240:271"
+      ],
+      "lines": 32,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "c4585bb9cfeb",
+      "members": [
+        "modules/editor-core/src/components/library/TreeView.tsx:163:176",
+        "modules/roland-sxx0-editor/src/components/library/SetItem.tsx:91:104"
+      ],
+      "lines": 14,
+      "disposition": "ignore-with-justification"
+    },
+    {
+      "id": "532bf6d23aac",
+      "members": [
+        "modules/jv1080-editor/playwright.visual.config.ts:4:27",
+        "modules/roland-sxx0-editor/playwright.visual.config.ts:5:28"
+      ],
+      "lines": 24,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "20c1eb363c09",
+      "members": [
+        "modules/loop-editor/src/ui/hooks/use-loop-editor.ts:169:177",
+        "modules/roland-sxx0-editor/src/pages/WorkflowsPage.tsx:85:93"
+      ],
+      "lines": 9,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "a6d7d51f4516",
+      "members": [
+        "modules/roland-sxx0-editor/playwright.device-library.config.ts:48:63",
+        "modules/roland-sxx0-editor/playwright.http-midi.config.ts:47:62"
+      ],
+      "lines": 16,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "12f264f951a3",
+      "members": [
+        "modules/roland-sxx0-editor/playwright.hardware.config.ts:21:37",
+        "modules/roland-sxx0-editor/playwright.http-midi.config.ts:32:48"
+      ],
+      "lines": 17,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "a963bce8b0b7",
+      "members": [
+        "modules/roland-sxx0-editor/playwright.loop-editor.config.ts:25:50",
+        "modules/roland-sxx0-editor/playwright.sample-chopper.config.ts:25:50",
+        "modules/roland-sxx0-editor/playwright.sample-editor.config.ts:25:50"
+      ],
+      "lines": 26,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "ee1d1bbe4b61",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/probe-wave-aliasing.ts:106:115",
+        "modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:159:169"
+      ],
+      "lines": 10,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "529c36bc4bb3",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/probe-wave-aliasing.ts:115:127",
+        "modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:88:184"
+      ],
+      "lines": 13,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "126e4ebbbb1a",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/probe-wave-aliasing.ts:131:162",
+        "modules/roland-sxx0-editor/scripts/probe-wave-single.ts:60:145"
+      ],
+      "lines": 32,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "03ecd23d56e5",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/probe-wave-aliasing.ts:13:29",
+        "modules/roland-sxx0-editor/scripts/probe-wave-single.ts:9:42"
+      ],
+      "lines": 17,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "0c8b60a15a36",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/probe-wave-aliasing.ts:38:48",
+        "modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:59:70"
+      ],
+      "lines": 11,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "06d4d3e3b7c8",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/probe-wave-aliasing.ts:43:63",
+        "modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:27:47"
+      ],
+      "lines": 21,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "44d68e4b9247",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/probe-wave-aliasing.ts:68:90",
+        "modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:56:83"
+      ],
+      "lines": 23,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "d0627ebc9e3b",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/probe-wave-aliasing.ts:85:90",
+        "modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:131:137"
+      ],
+      "lines": 6,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "bf621c8701c5",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:104:113",
+        "modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:56:65"
+      ],
+      "lines": 10,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "27edbe33d078",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:118:123",
+        "modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:68:73"
+      ],
+      "lines": 6,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "feb6f590390e",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:13:22",
+        "modules/roland-sxx0-editor/scripts/probe-wave-single.ts:9:19"
+      ],
+      "lines": 10,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "0b580560a523",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:154:159",
+        "modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:73:78"
+      ],
+      "lines": 6,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "0284a2552271",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:169:175",
+        "modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:87:260"
+      ],
+      "lines": 7,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "16f22b56cfca",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:176:181",
+        "modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:93:99"
+      ],
+      "lines": 6,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "001398311e05",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:192:210",
+        "modules/roland-sxx0-editor/scripts/probe-wave-single.ts:60:79"
+      ],
+      "lines": 19,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "ebdd9f8ceaf2",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:210:217",
+        "modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:128:88"
+      ],
+      "lines": 8,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "c13a3f8a7f04",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:223:236",
+        "modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:128:142"
+      ],
+      "lines": 14,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "3421210eff71",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:28:40",
+        "modules/roland-sxx0-editor/scripts/probe-wave-single.ts:19:31"
+      ],
+      "lines": 13,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "a5d0c337f31d",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/probe-wave-memory.ts:64:91",
+        "modules/roland-sxx0-editor/scripts/probe-wave-single.ts:28:55"
+      ],
+      "lines": 28,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "38ff10f7e537",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:111:123",
+        "modules/roland-sxx0-editor/scripts/probe-wave-single.ts:57:71"
+      ],
+      "lines": 13,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "62914cc2151e",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:123:128",
+        "modules/roland-sxx0-editor/scripts/probe-wave-single.ts:72:78"
+      ],
+      "lines": 6,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "456f2e4a21fd",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:17:25",
+        "modules/roland-sxx0-editor/scripts/probe-wave-single.ts:9:17"
+      ],
+      "lines": 9,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "fec82922c1dc",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:23:31",
+        "modules/roland-sxx0-editor/scripts/probe-wave-single.ts:17:34"
+      ],
+      "lines": 9,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "349dd2206a19",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:31:46",
+        "modules/roland-sxx0-editor/scripts/probe-wave-single.ts:35:55"
+      ],
+      "lines": 16,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "fca21eed766f",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/probe-wave-seglen.ts:88:93",
+        "modules/roland-sxx0-editor/scripts/probe-wave-single.ts:255:260"
+      ],
+      "lines": 6,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "e8d0a21bfdee",
+      "members": [
+        "modules/roland-sxx0-editor/scripts/validate-device.ts:241:255",
+        "modules/roland-sxx0-editor/scripts/validate-device.ts:95:109"
+      ],
+      "lines": 15,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "861a1bfcd07e",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:156:166",
+        "modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:188:198"
+      ],
+      "lines": 11,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "73884f46ac3c",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:356:369",
+        "modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx:433:446"
+      ],
+      "lines": 14,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "4193f23cd254",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx:25:38",
+        "modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:22:35"
+      ],
+      "lines": 14,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "a043bcaaeaee",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx:344:353",
+        "modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:172:182"
+      ],
+      "lines": 10,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "df2d49e76c30",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx:444:456",
+        "modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:296:308"
+      ],
+      "lines": 13,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "2b29518114f0",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx:456:470",
+        "modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:261:275"
+      ],
+      "lines": 15,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "bf2218cd17a6",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx:606:614",
+        "modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:324:331"
+      ],
+      "lines": 9,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "d1f9786a2882",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialog.tsx:681:694",
+        "modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:454:467",
+        "modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:401:414",
+        "modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:506:519",
+        "modules/roland-sxx0-editor/src/components/library/ImportToneDialog.tsx:163:176"
+      ],
+      "lines": 14,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "9c5d0d6fcae5",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:302:330",
+        "modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:255:283"
+      ],
+      "lines": 29,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "b951159f88f4",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:338:348",
+        "modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:283:293",
+        "modules/roland-sxx0-editor/src/components/library/LoadSetDialog.tsx:118:128"
+      ],
+      "lines": 11,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "bfb7ce37ee85",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:380:397",
+        "modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:321:338"
+      ],
+      "lines": 18,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "dd1ca0ae04f1",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:413:425",
+        "modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:342:354"
+      ],
+      "lines": 13,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "6686fb8e2a68",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/library/ImportLibraryToneDialog.tsx:428:447",
+        "modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:375:500"
+      ],
+      "lines": 20,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "b18339c818d5",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:309:322",
+        "modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:323:336"
+      ],
+      "lines": 14,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "279d6165c512",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/library/ImportSampleDialog.tsx:378:394",
+        "modules/roland-sxx0-editor/src/components/library/ImportToneDialog.tsx:141:500"
+      ],
+      "lines": 17,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "289e953b5ea7",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:172:182",
+        "modules/roland-sxx0-editor/src/components/library/ImportToneDialog.tsx:48:58"
+      ],
+      "lines": 11,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "2c878a15f353",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/library/ImportSamplesDialog.tsx:477:500",
+        "modules/roland-sxx0-editor/src/components/library/ImportToneDialog.tsx:134:157"
+      ],
+      "lines": 24,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "228a6c25d4f5",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/library/ItemPreviewPanel.tsx:382:394",
+        "modules/roland-sxx0-editor/src/components/library/ItemPreviewPanel.tsx:465:477"
+      ],
+      "lines": 13,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "cd4f8785dd8e",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/library/ItemPreviewPanel.tsx:398:424",
+        "modules/roland-sxx0-editor/src/components/library/ItemPreviewPanel.tsx:481:507"
+      ],
+      "lines": 27,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "97cb84d9f799",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/library/ItemPreviewPanel.tsx:43:48",
+        "modules/roland-sxx0-editor/src/plugins/shared/plugin-state-types.ts:89:95"
+      ],
+      "lines": 6,
+      "disposition": "ignore-with-justification"
+    },
+    {
+      "id": "07c5c03f20cb",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:120:143",
+        "modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:179:202"
+      ],
+      "lines": 24,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "ce107495f9c5",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:151:179",
+        "modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:91:119"
+      ],
+      "lines": 29,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "fe8458249a68",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:102:121",
+        "modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:90:106"
+      ],
+      "lines": 20,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "2262910df441",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:179:189",
+        "modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:175:185"
+      ],
+      "lines": 11,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "dfe2f58d3ccc",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/patches/ToneZoneEditor.tsx:361:367",
+        "modules/roland-sxx0-editor/src/components/patches/ToneZoneEditor.tsx:395:401"
+      ],
+      "lines": 7,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "56f714c9148b",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/patches/ToneZoneEditor.tsx:367:376",
+        "modules/roland-sxx0-editor/src/components/patches/ToneZoneEditor.tsx:401:410"
+      ],
+      "lines": 10,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "3525fa88d07e",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/tones/ToneEditor.tsx:41:51",
+        "modules/roland-sxx0-editor/src/components/tones/panels/ToneWavePanel.tsx:35:45"
+      ],
+      "lines": 11,
+      "disposition": "ignore-with-justification"
+    },
+    {
+      "id": "a0b8b7d4cb8c",
+      "members": [
+        "modules/roland-sxx0-editor/src/components/video/VideoCapture.tsx:101:109",
+        "modules/roland-sxx0-editor/src/components/video/VideoCapture.tsx:145:152"
+      ],
+      "lines": 8,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "45b11fd3a533",
+      "members": [
+        "modules/roland-sxx0-editor/src/configs/memory-layout.ts:169:178",
+        "modules/roland-sxx0-editor/src/configs/memory-layout.ts:76:85"
+      ],
+      "lines": 10,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "abcf778c254f",
+      "members": [
+        "modules/roland-sxx0-editor/src/hooks/useDeviceToneChopper.ts:96:112",
+        "modules/sample-chopper/dev/main.tsx:162:177"
+      ],
+      "lines": 16,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "377928756b0f",
+      "members": [
+        "modules/roland-sxx0-editor/src/hooks/useImportSamples.ts:225:236",
+        "modules/sampler-library/src/testing/seed-mock-library.ts:34:44"
+      ],
+      "lines": 12,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "5f33ca65cbd5",
+      "members": [
+        "modules/roland-sxx0-editor/src/hooks/useImportSamples.ts:240:246",
+        "modules/sampler-devices/src/devices/roland-s-series/s-series-wave-format.ts:207:213",
+        "modules/sampler-devices/src/devices/s3000xl/akai-wav-convert.ts:37:43"
+      ],
+      "lines": 7,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "8a166056292d",
+      "members": [
+        "modules/roland-sxx0-editor/src/hooks/useImportSamples.ts:271:287",
+        "modules/sampler-devices/src/devices/s330/drum-kit-import-service.ts:165:181"
+      ],
+      "lines": 17,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "ef80a538a68a",
+      "members": [
+        "modules/roland-sxx0-editor/src/hooks/useImportSamples.ts:317:322",
+        "modules/roland-sxx0-editor/src/hooks/useLibraryImport.ts:76:81"
+      ],
+      "lines": 6,
+      "disposition": "ignore-with-justification"
+    },
+    {
+      "id": "a5d27361a53b",
+      "members": [
+        "modules/roland-sxx0-editor/src/hooks/useLibraryExport.ts:454:464",
+        "modules/roland-sxx0-editor/src/hooks/useLibraryExport.ts:700:710"
+      ],
+      "lines": 11,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "18c6f0de4729",
+      "members": [
+        "modules/roland-sxx0-editor/src/hooks/useLibraryImport.ts:165:177",
+        "modules/roland-sxx0-editor/src/hooks/useLibraryImport.ts:54:66"
+      ],
+      "lines": 13,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "62e64c7f6ab2",
+      "members": [
+        "modules/roland-sxx0-editor/src/lib/best-fit.ts:104:113",
+        "modules/roland-sxx0-editor/src/lib/best-fit.ts:186:195"
+      ],
+      "lines": 10,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "b1ceb7a627a6",
+      "members": [
+        "modules/roland-sxx0-editor/src/lib/best-fit.ts:139:154",
+        "modules/roland-sxx0-editor/src/lib/best-fit.ts:227:242"
+      ],
+      "lines": 16,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "201d5101db33",
+      "members": [
+        "modules/roland-sxx0-editor/src/lib/library-io.ts:121:131",
+        "modules/roland-sxx0-editor/src/lib/library-io.ts:89:100"
+      ],
+      "lines": 11,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "b93c3d300e89",
+      "members": [
+        "modules/roland-sxx0-editor/src/lib/library-io.ts:148:160",
+        "modules/roland-sxx0-editor/src/lib/library-io.ts:90:134"
+      ],
+      "lines": 13,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "2900b54f5b5f",
+      "members": [
+        "modules/roland-sxx0-editor/src/lib/library-sets-save-incremental.ts:318:328",
+        "modules/sampler-library/src/converters/s-series/set-converter.ts:128:138"
+      ],
+      "lines": 11,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "056a061ceeb4",
+      "members": [
+        "modules/roland-sxx0-editor/src/lib/library-sets-save-incremental.ts:328:334",
+        "modules/roland-sxx0-editor/src/lib/library-sets.ts:117:123"
+      ],
+      "lines": 7,
+      "disposition": "ignore-with-justification"
+    },
+    {
+      "id": "720d54a6c4fb",
+      "members": [
+        "modules/roland-sxx0-editor/src/lib/library-sets.ts:60:70",
+        "modules/sampler-library/src/library-fs.ts:590:600"
+      ],
+      "lines": 11,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "19ecf52420f9",
+      "members": [
+        "modules/roland-sxx0-editor/src/lib/library-sets.ts:70:84",
+        "modules/sampler-library/src/storage/set-storage.ts:266:280"
+      ],
+      "lines": 15,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "3b8fe7c81153",
+      "members": [
+        "modules/roland-sxx0-editor/src/lib/library-tones.ts:362:374",
+        "modules/roland-sxx0-editor/src/lib/library-tones.ts:409:421"
+      ],
+      "lines": 13,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "44e04a2b4f7b",
+      "members": [
+        "modules/roland-sxx0-editor/src/lib/wave-export.ts:109:116",
+        "modules/sampler-devices/src/devices/s3000xl/akai-wav-convert.ts:37:44"
+      ],
+      "lines": 8,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "4d212677359c",
+      "members": [
+        "modules/roland-sxx0-editor/src/lib/wave-export.ts:131:137",
+        "modules/sampler-library/src/storage/set-storage.ts:93:104"
+      ],
+      "lines": 7,
+      "disposition": "ignore-with-justification"
+    },
+    {
+      "id": "389b8ca04d17",
+      "members": [
+        "modules/roland-sxx0-editor/src/lib/wave-export.ts:89:100",
+        "modules/sampler-devices/src/devices/roland-s-series/s-series-wave-format.ts:178:189"
+      ],
+      "lines": 12,
+      "disposition": "keep-with-reason"
+    },
+    {
+      "id": "31df7029d836",
+      "members": [
+        "modules/roland-sxx0-editor/src/pages/PatchesPage.tsx:28:34",
+        "modules/roland-sxx0-editor/src/pages/TonesPage.tsx:26:32"
+      ],
+      "lines": 7,
+      "disposition": "ignore-with-justification"
+    },
+    {
+      "id": "48658333661a",
+      "members": [
+        "modules/roland-sxx0-editor/src/plugins/shared/item-types.tsx:122:137",
+        "modules/roland-sxx0-editor/src/plugins/shared/item-types.tsx:56:71"
+      ],
+      "lines": 16,
+      "disposition": "keep-with-reason"
+    }
+  ]
+}

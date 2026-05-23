@@ -1,7 +1,7 @@
 kind: hybrid
 feature_slug: roland-bugfix
-generated_by: curated
-generated_at: 2026-05-22T05:36:28.681Z
+generated_by: strawman
+generated_at: 2026-05-23T04:30:33.330Z
 scenarios:
   - id: default
     label: Default state
@@ -10,15 +10,37 @@ reference_docs:
   - path: docs/1.0/001-IN-PROGRESS/roland-bugfix/prd.md
     role: prd
     summary: Feature PRD — synthesis anchor.
-  - path: docs/scope-discovery/LAYOUT.md
+  - path: docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md
     role: other
-    summary: On-disk layout contract for scope-discovery artifacts.
+    summary: workplan.md
+  - path: Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/scope-discovery/LAYOUT.md
+    role: other
+    summary: docs/scope-discovery/LAYOUT.md
+  - path: Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/scope-discovery/clones.yaml
+    role: other
+    summary: docs/scope-discovery/clones.yaml
+  - path: Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/analysis/s550-redesign-scope-discovery.md
+    role: other
+    summary: docs/analysis/s550-redesign-scope-discovery.md
+  - path: Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/DESIGN-SYSTEM.md
+    role: other
+    summary: DESIGN-SYSTEM.md
+  - path: docs/1.0/003-COMPLETE/s550-support/explorations/
+    role: other
+    summary: s550-support/explorations/*.html
+  - path: Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/AUDITOR-IMPLEMENTER-PROTOCOL.md
+    role: other
+    summary: AUDITOR-IMPLEMENTER-PROTOCOL.md
 discovery_themes:
-  - audiocontrol (50 occurrences)
   - roland (50 occurrences)
-  - surface (26 occurrences)
-  - modules (6 occurrences)
+  - surface (22 occurrences)
+  - 2026-05-22 (12 occurrences)
+  - added (8 occurrences)
+  - modules (8 occurrences)
+  - validation (7 occurrences)
+  - disposition (5 occurrences)
   - s550-support (3 occurrences)
+  - branch (2 occurrences)
   - bugs (1 occurrence)
 routes:
   - path: /
@@ -36,34 +58,24 @@ routes:
       - none
     scenarios:
       - default
-  - path: /connect
-    devices:
-      - s330
-      - s550
-    scenarios:
-      - default
   - path: /library
     devices:
-      - s330
-      - s550
+      - none
     scenarios:
       - default
   - path: /patches
     devices:
-      - s330
-      - s550
+      - none
     scenarios:
       - default
   - path: /play
     devices:
-      - s330
-      - s550
+      - none
     scenarios:
       - default
   - path: /tones
     devices:
-      - s330
-      - s550
+      - none
     scenarios:
       - default
 modules:
@@ -72,7 +84,8 @@ modules:
     patterns:
       - id: ac-class-consumer
         kind: grep
-        description: Consumer of an .ac-* CSS class (className string literal or template containing "ac-")
+        description: Consumer of an .ac-* CSS class (className string literal or
+          template containing "ac-")
         query: className\s*=\s*[{"`'][^"`'}\n]*\bac-[a-z][a-z0-9-]*
       - id: any-annotation
         kind: grep
@@ -82,557 +95,696 @@ modules:
         kind: grep
         description: '`as <TypeName>` cast (banned per CLAUDE.md "never bypass typing")'
         query: \bas\s+(?!const\b|unknown\b)[A-Z][A-Za-z0-9_]*
-      - id: clone-group-000ef48c127e
-        kind: clone-group
-        description: "jscpd clone group 000ef48c127e (9 lines, disposition: pending)"
-        query: jscpd-group:000ef48c127e
-      - id: clone-group-0293e0b8848b
-        kind: clone-group
-        description: "jscpd clone group 0293e0b8848b (19 lines, disposition: pending)"
-        query: jscpd-group:0293e0b8848b
-      - id: clone-group-0937dcaf6312
-        kind: clone-group
-        description: "jscpd clone group 0937dcaf6312 (19 lines, disposition: pending)"
-        query: jscpd-group:0937dcaf6312
-      - id: clone-group-096ccd5ccf3a
-        kind: clone-group
-        description: "jscpd clone group 096ccd5ccf3a (17 lines, disposition: pending)"
-        query: jscpd-group:096ccd5ccf3a
-      - id: clone-group-0e76b0ea32a9
-        kind: clone-group
-        description: "jscpd clone group 0e76b0ea32a9 (19 lines, disposition: pending)"
-        query: jscpd-group:0e76b0ea32a9
-      - id: clone-group-0eef549f62a5
-        kind: clone-group
-        description: "jscpd clone group 0eef549f62a5 (12 lines, disposition: pending)"
-        query: jscpd-group:0eef549f62a5
-      - id: clone-group-0f5ae92e24a8
-        kind: clone-group
-        description: "jscpd clone group 0f5ae92e24a8 (21 lines, disposition: pending)"
-        query: jscpd-group:0f5ae92e24a8
-      - id: clone-group-0f96a5eef2b8
-        kind: clone-group
-        description: "jscpd clone group 0f96a5eef2b8 (29 lines, disposition: pending)"
-        query: jscpd-group:0f96a5eef2b8
-      - id: clone-group-184f81a30845
-        kind: clone-group
-        description: "jscpd clone group 184f81a30845 (32 lines, disposition: pending)"
-        query: jscpd-group:184f81a30845
-      - id: clone-group-20ef368de584
-        kind: clone-group
-        description: "jscpd clone group 20ef368de584 (10 lines, disposition: pending)"
-        query: jscpd-group:20ef368de584
-      - id: clone-group-21346549c97e
-        kind: clone-group
-        description: "jscpd clone group 21346549c97e (24 lines, disposition: pending)"
-        query: jscpd-group:21346549c97e
-      - id: clone-group-24430e8eac71
-        kind: clone-group
-        description: "jscpd clone group 24430e8eac71 (14 lines, disposition: pending)"
-        query: jscpd-group:24430e8eac71
-      - id: clone-group-268b38788fb8
-        kind: clone-group
-        description: "jscpd clone group 268b38788fb8 (10 lines, disposition: pending)"
-        query: jscpd-group:268b38788fb8
-      - id: clone-group-290604cd13fe
-        kind: clone-group
-        description: "jscpd clone group 290604cd13fe (25 lines, disposition: pending)"
-        query: jscpd-group:290604cd13fe
-      - id: clone-group-29113b638960
-        kind: clone-group
-        description: "jscpd clone group 29113b638960 (11 lines, disposition: pending)"
-        query: jscpd-group:29113b638960
-      - id: clone-group-2c0d60a662a3
-        kind: clone-group
-        description: "jscpd clone group 2c0d60a662a3 (24 lines, disposition: pending)"
-        query: jscpd-group:2c0d60a662a3
-      - id: clone-group-325d993bda15
-        kind: clone-group
-        description: "jscpd clone group 325d993bda15 (12 lines, disposition: pending)"
-        query: jscpd-group:325d993bda15
-      - id: clone-group-32af5bdccc0e
-        kind: clone-group
-        description: "jscpd clone group 32af5bdccc0e (17 lines, disposition: pending)"
-        query: jscpd-group:32af5bdccc0e
-      - id: clone-group-34dfa93fff3b
-        kind: clone-group
-        description: "jscpd clone group 34dfa93fff3b (9 lines, disposition: pending)"
-        query: jscpd-group:34dfa93fff3b
-      - id: clone-group-35b1524c1b7c
-        kind: clone-group
-        description: "jscpd clone group 35b1524c1b7c (6 lines, disposition: pending)"
-        query: jscpd-group:35b1524c1b7c
-      - id: clone-group-35c226931fbc
-        kind: clone-group
-        description: "jscpd clone group 35c226931fbc (13 lines, disposition: pending)"
-        query: jscpd-group:35c226931fbc
-      - id: clone-group-3631b7143ad9
-        kind: clone-group
-        description: "jscpd clone group 3631b7143ad9 (11 lines, disposition: pending)"
-        query: jscpd-group:3631b7143ad9
-      - id: clone-group-3785f9b1220a
-        kind: clone-group
-        description: "jscpd clone group 3785f9b1220a (14 lines, disposition: pending)"
-        query: jscpd-group:3785f9b1220a
-      - id: clone-group-38c8236d8a7b
-        kind: clone-group
-        description: "jscpd clone group 38c8236d8a7b (7 lines, disposition: pending)"
-        query: jscpd-group:38c8236d8a7b
-      - id: clone-group-3b3fdd9f2f9b
-        kind: clone-group
-        description: "jscpd clone group 3b3fdd9f2f9b (6 lines, disposition: pending)"
-        query: jscpd-group:3b3fdd9f2f9b
-      - id: clone-group-3d41d904a462
-        kind: clone-group
-        description: "jscpd clone group 3d41d904a462 (14 lines, disposition: pending)"
-        query: jscpd-group:3d41d904a462
-      - id: clone-group-3de857d4bd7d
-        kind: clone-group
-        description: "jscpd clone group 3de857d4bd7d (8 lines, disposition: pending)"
-        query: jscpd-group:3de857d4bd7d
-      - id: clone-group-3eec052ebf3d
-        kind: clone-group
-        description: "jscpd clone group 3eec052ebf3d (27 lines, disposition: pending)"
-        query: jscpd-group:3eec052ebf3d
-      - id: clone-group-401814472a09
-        kind: clone-group
-        description: "jscpd clone group 401814472a09 (18 lines, disposition: pending)"
-        query: jscpd-group:401814472a09
-      - id: clone-group-4617f2a87560
-        kind: clone-group
-        description: "jscpd clone group 4617f2a87560 (11 lines, disposition: pending)"
-        query: jscpd-group:4617f2a87560
-      - id: clone-group-46eb9849af93
-        kind: clone-group
-        description: "jscpd clone group 46eb9849af93 (16 lines, disposition: pending)"
-        query: jscpd-group:46eb9849af93
-      - id: clone-group-47120235fd38
-        kind: clone-group
-        description: "jscpd clone group 47120235fd38 (92 lines, disposition: pending)"
-        query: jscpd-group:47120235fd38
-      - id: clone-group-4b372a9e9e18
-        kind: clone-group
-        description: "jscpd clone group 4b372a9e9e18 (8 lines, disposition: pending)"
-        query: jscpd-group:4b372a9e9e18
-      - id: clone-group-4d263afcb4e9
-        kind: clone-group
-        description: "jscpd clone group 4d263afcb4e9 (12 lines, disposition: pending)"
-        query: jscpd-group:4d263afcb4e9
-      - id: clone-group-4e19f76d879a
-        kind: clone-group
-        description: "jscpd clone group 4e19f76d879a (18 lines, disposition: pending)"
-        query: jscpd-group:4e19f76d879a
-      - id: clone-group-4f4233ce57a4
-        kind: clone-group
-        description: "jscpd clone group 4f4233ce57a4 (17 lines, disposition: pending)"
-        query: jscpd-group:4f4233ce57a4
-      - id: clone-group-516a0782d38c
-        kind: clone-group
-        description: "jscpd clone group 516a0782d38c (27 lines, disposition: pending)"
-        query: jscpd-group:516a0782d38c
-      - id: clone-group-536ec5699e5a
-        kind: clone-group
-        description: "jscpd clone group 536ec5699e5a (29 lines, disposition: pending)"
-        query: jscpd-group:536ec5699e5a
-      - id: clone-group-537344005018
-        kind: clone-group
-        description: "jscpd clone group 537344005018 (14 lines, disposition: pending)"
-        query: jscpd-group:537344005018
-      - id: clone-group-5578c63410e2
-        kind: clone-group
-        description: "jscpd clone group 5578c63410e2 (14 lines, disposition: pending)"
-        query: jscpd-group:5578c63410e2
-      - id: clone-group-566c8489289b
-        kind: clone-group
-        description: "jscpd clone group 566c8489289b (9 lines, disposition: pending)"
-        query: jscpd-group:566c8489289b
-      - id: clone-group-5873e17e78bb
-        kind: clone-group
-        description: "jscpd clone group 5873e17e78bb (10 lines, disposition: pending)"
-        query: jscpd-group:5873e17e78bb
-      - id: clone-group-5ed27614fc4e
-        kind: clone-group
-        description: "jscpd clone group 5ed27614fc4e (10 lines, disposition: pending)"
-        query: jscpd-group:5ed27614fc4e
-      - id: clone-group-5fd5fd17a6e5
-        kind: clone-group
-        description: "jscpd clone group 5fd5fd17a6e5 (12 lines, disposition: pending)"
-        query: jscpd-group:5fd5fd17a6e5
-      - id: clone-group-61eb63a0099a
-        kind: clone-group
-        description: "jscpd clone group 61eb63a0099a (12 lines, disposition: pending)"
-        query: jscpd-group:61eb63a0099a
-      - id: clone-group-62705162bc69
-        kind: clone-group
-        description: "jscpd clone group 62705162bc69 (24 lines, disposition: pending)"
-        query: jscpd-group:62705162bc69
-      - id: clone-group-649d1bf0c1df
-        kind: clone-group
-        description: "jscpd clone group 649d1bf0c1df (13 lines, disposition: pending)"
-        query: jscpd-group:649d1bf0c1df
-      - id: clone-group-66367273995a
-        kind: clone-group
-        description: "jscpd clone group 66367273995a (7 lines, disposition: pending)"
-        query: jscpd-group:66367273995a
-      - id: clone-group-682fa3a4ce37
-        kind: clone-group
-        description: "jscpd clone group 682fa3a4ce37 (17 lines, disposition: pending)"
-        query: jscpd-group:682fa3a4ce37
-      - id: clone-group-68f8e2c6e837
-        kind: clone-group
-        description: "jscpd clone group 68f8e2c6e837 (6 lines, disposition: pending)"
-        query: jscpd-group:68f8e2c6e837
-      - id: clone-group-69c35601da78
-        kind: clone-group
-        description: "jscpd clone group 69c35601da78 (12 lines, disposition: pending)"
-        query: jscpd-group:69c35601da78
-      - id: clone-group-69cc807e1b8f
-        kind: clone-group
-        description: "jscpd clone group 69cc807e1b8f (17 lines, disposition: pending)"
-        query: jscpd-group:69cc807e1b8f
-      - id: clone-group-6b584003b218
-        kind: clone-group
-        description: "jscpd clone group 6b584003b218 (10 lines, disposition: pending)"
-        query: jscpd-group:6b584003b218
-      - id: clone-group-715843c86da4
-        kind: clone-group
-        description: "jscpd clone group 715843c86da4 (7 lines, disposition: pending)"
-        query: jscpd-group:715843c86da4
-      - id: clone-group-71d0ea89080c
-        kind: clone-group
-        description: "jscpd clone group 71d0ea89080c (14 lines, disposition: pending)"
-        query: jscpd-group:71d0ea89080c
-      - id: clone-group-727acb9ed73c
-        kind: clone-group
-        description: "jscpd clone group 727acb9ed73c (11 lines, disposition: pending)"
-        query: jscpd-group:727acb9ed73c
-      - id: clone-group-745cec296a63
-        kind: clone-group
-        description: "jscpd clone group 745cec296a63 (11 lines, disposition: pending)"
-        query: jscpd-group:745cec296a63
-      - id: clone-group-7627d9f163db
-        kind: clone-group
-        description: "jscpd clone group 7627d9f163db (23 lines, disposition: pending)"
-        query: jscpd-group:7627d9f163db
-      - id: clone-group-779c1d31bc6e
-        kind: clone-group
-        description: "jscpd clone group 779c1d31bc6e (13 lines, disposition: pending)"
-        query: jscpd-group:779c1d31bc6e
-      - id: clone-group-785ea10910ad
-        kind: clone-group
-        description: "jscpd clone group 785ea10910ad (13 lines, disposition: pending)"
-        query: jscpd-group:785ea10910ad
-      - id: clone-group-78866787ffba
-        kind: clone-group
-        description: "jscpd clone group 78866787ffba (14 lines, disposition: pending)"
-        query: jscpd-group:78866787ffba
-      - id: clone-group-791f64b2325e
-        kind: clone-group
-        description: "jscpd clone group 791f64b2325e (6 lines, disposition: pending)"
-        query: jscpd-group:791f64b2325e
-      - id: clone-group-79b6a72dc6c3
-        kind: clone-group
-        description: "jscpd clone group 79b6a72dc6c3 (11 lines, disposition: pending)"
-        query: jscpd-group:79b6a72dc6c3
-      - id: clone-group-7ba263eb83ae
-        kind: clone-group
-        description: "jscpd clone group 7ba263eb83ae (12 lines, disposition: pending)"
-        query: jscpd-group:7ba263eb83ae
-      - id: clone-group-7d47de7df8ec
-        kind: clone-group
-        description: "jscpd clone group 7d47de7df8ec (8 lines, disposition: pending)"
-        query: jscpd-group:7d47de7df8ec
-      - id: clone-group-80299d9fda8d
-        kind: clone-group
-        description: "jscpd clone group 80299d9fda8d (21 lines, disposition: pending)"
-        query: jscpd-group:80299d9fda8d
-      - id: clone-group-80946c86b2d9
-        kind: clone-group
-        description: "jscpd clone group 80946c86b2d9 (11 lines, disposition: pending)"
-        query: jscpd-group:80946c86b2d9
-      - id: clone-group-80f494ba63d3
-        kind: clone-group
-        description: "jscpd clone group 80f494ba63d3 (31 lines, disposition: pending)"
-        query: jscpd-group:80f494ba63d3
-      - id: clone-group-82026d488e9f
-        kind: clone-group
-        description: "jscpd clone group 82026d488e9f (10 lines, disposition: pending)"
-        query: jscpd-group:82026d488e9f
-      - id: clone-group-826daf1e6a00
-        kind: clone-group
-        description: "jscpd clone group 826daf1e6a00 (7 lines, disposition: pending)"
-        query: jscpd-group:826daf1e6a00
-      - id: clone-group-84caffaf63b4
-        kind: clone-group
-        description: "jscpd clone group 84caffaf63b4 (32 lines, disposition: pending)"
-        query: jscpd-group:84caffaf63b4
-      - id: clone-group-84e6442125df
-        kind: clone-group
-        description: "jscpd clone group 84e6442125df (9 lines, disposition: pending)"
-        query: jscpd-group:84e6442125df
-      - id: clone-group-85cf78fe67fd
-        kind: clone-group
-        description: "jscpd clone group 85cf78fe67fd (6 lines, disposition: pending)"
-        query: jscpd-group:85cf78fe67fd
-      - id: clone-group-869d2104eb14
-        kind: clone-group
-        description: "jscpd clone group 869d2104eb14 (13 lines, disposition: pending)"
-        query: jscpd-group:869d2104eb14
-      - id: clone-group-8803390240c0
-        kind: clone-group
-        description: "jscpd clone group 8803390240c0 (11 lines, disposition: pending)"
-        query: jscpd-group:8803390240c0
-      - id: clone-group-8ab1699757ff
-        kind: clone-group
-        description: "jscpd clone group 8ab1699757ff (10 lines, disposition: pending)"
-        query: jscpd-group:8ab1699757ff
-      - id: clone-group-8bdd5aefa31a
-        kind: clone-group
-        description: "jscpd clone group 8bdd5aefa31a (20 lines, disposition: pending)"
-        query: jscpd-group:8bdd5aefa31a
-      - id: clone-group-8d26f23c5d5b
-        kind: clone-group
-        description: "jscpd clone group 8d26f23c5d5b (11 lines, disposition: pending)"
-        query: jscpd-group:8d26f23c5d5b
-      - id: clone-group-8f7c5d400e10
-        kind: clone-group
-        description: "jscpd clone group 8f7c5d400e10 (8 lines, disposition: pending)"
-        query: jscpd-group:8f7c5d400e10
-      - id: clone-group-93118bb09088
-        kind: clone-group
-        description: "jscpd clone group 93118bb09088 (16 lines, disposition: pending)"
-        query: jscpd-group:93118bb09088
-      - id: clone-group-93b9830bf2b2
-        kind: clone-group
-        description: "jscpd clone group 93b9830bf2b2 (45 lines, disposition: pending)"
-        query: jscpd-group:93b9830bf2b2
-      - id: clone-group-947a8989d323
-        kind: clone-group
-        description: "jscpd clone group 947a8989d323 (25 lines, disposition: pending)"
-        query: jscpd-group:947a8989d323
-      - id: clone-group-94900958d837
-        kind: clone-group
-        description: "jscpd clone group 94900958d837 (16 lines, disposition: pending)"
-        query: jscpd-group:94900958d837
-      - id: clone-group-96898287ce31
-        kind: clone-group
-        description: "jscpd clone group 96898287ce31 (21 lines, disposition: pending)"
-        query: jscpd-group:96898287ce31
-      - id: clone-group-997ad25eb3ee
-        kind: clone-group
-        description: "jscpd clone group 997ad25eb3ee (14 lines, disposition: pending)"
-        query: jscpd-group:997ad25eb3ee
-      - id: clone-group-9a4f7220adce
-        kind: clone-group
-        description: "jscpd clone group 9a4f7220adce (10 lines, disposition: pending)"
-        query: jscpd-group:9a4f7220adce
-      - id: clone-group-9b328c3826be
-        kind: clone-group
-        description: "jscpd clone group 9b328c3826be (16 lines, disposition: pending)"
-        query: jscpd-group:9b328c3826be
-      - id: clone-group-9d95e639fba3
-        kind: clone-group
-        description: "jscpd clone group 9d95e639fba3 (17 lines, disposition: pending)"
-        query: jscpd-group:9d95e639fba3
-      - id: clone-group-a0ad2c0915f6
-        kind: clone-group
-        description: "jscpd clone group a0ad2c0915f6 (29 lines, disposition: pending)"
-        query: jscpd-group:a0ad2c0915f6
-      - id: clone-group-a5919ceb45dc
-        kind: clone-group
-        description: "jscpd clone group a5919ceb45dc (7 lines, disposition: pending)"
-        query: jscpd-group:a5919ceb45dc
-      - id: clone-group-a69c4cad0c39
-        kind: clone-group
-        description: "jscpd clone group a69c4cad0c39 (10 lines, disposition: pending)"
-        query: jscpd-group:a69c4cad0c39
-      - id: clone-group-a83997e1d17e
-        kind: clone-group
-        description: "jscpd clone group a83997e1d17e (24 lines, disposition: pending)"
-        query: jscpd-group:a83997e1d17e
-      - id: clone-group-a975f1067ff4
-        kind: clone-group
-        description: "jscpd clone group a975f1067ff4 (151 lines, disposition: pending)"
-        query: jscpd-group:a975f1067ff4
-      - id: clone-group-aa1084835749
-        kind: clone-group
-        description: "jscpd clone group aa1084835749 (15 lines, disposition: pending)"
-        query: jscpd-group:aa1084835749
-      - id: clone-group-ab1d0b13541e
-        kind: clone-group
-        description: "jscpd clone group ab1d0b13541e (29 lines, disposition: pending)"
-        query: jscpd-group:ab1d0b13541e
-      - id: clone-group-acdc4a474bd4
-        kind: clone-group
-        description: "jscpd clone group acdc4a474bd4 (10 lines, disposition: pending)"
-        query: jscpd-group:acdc4a474bd4
-      - id: clone-group-ad7deae8d330
-        kind: clone-group
-        description: "jscpd clone group ad7deae8d330 (16 lines, disposition: pending)"
-        query: jscpd-group:ad7deae8d330
-      - id: clone-group-ae9365f90235
-        kind: clone-group
-        description: "jscpd clone group ae9365f90235 (26 lines, disposition: pending)"
-        query: jscpd-group:ae9365f90235
-      - id: clone-group-af59f9a4d226
-        kind: clone-group
-        description: "jscpd clone group af59f9a4d226 (8 lines, disposition: pending)"
-        query: jscpd-group:af59f9a4d226
-      - id: clone-group-b50ef6c2d733
-        kind: clone-group
-        description: "jscpd clone group b50ef6c2d733 (11 lines, disposition: pending)"
-        query: jscpd-group:b50ef6c2d733
-      - id: clone-group-b5c2c25e595f
-        kind: clone-group
-        description: "jscpd clone group b5c2c25e595f (32 lines, disposition: pending)"
-        query: jscpd-group:b5c2c25e595f
-      - id: clone-group-b89b02867a9f
-        kind: clone-group
-        description: "jscpd clone group b89b02867a9f (11 lines, disposition: pending)"
-        query: jscpd-group:b89b02867a9f
-      - id: clone-group-c3ee44db4131
-        kind: clone-group
-        description: "jscpd clone group c3ee44db4131 (16 lines, disposition: pending)"
-        query: jscpd-group:c3ee44db4131
-      - id: clone-group-c4067caecfdd
-        kind: clone-group
-        description: "jscpd clone group c4067caecfdd (6 lines, disposition: pending)"
-        query: jscpd-group:c4067caecfdd
-      - id: clone-group-c53786bfb969
-        kind: clone-group
-        description: "jscpd clone group c53786bfb969 (33 lines, disposition: pending)"
-        query: jscpd-group:c53786bfb969
-      - id: clone-group-c7df8647daf8
-        kind: clone-group
-        description: "jscpd clone group c7df8647daf8 (18 lines, disposition: pending)"
-        query: jscpd-group:c7df8647daf8
-      - id: clone-group-c86fd9f305ac
-        kind: clone-group
-        description: "jscpd clone group c86fd9f305ac (6 lines, disposition: pending)"
-        query: jscpd-group:c86fd9f305ac
-      - id: clone-group-cd3ae27bbe6f
-        kind: clone-group
-        description: "jscpd clone group cd3ae27bbe6f (28 lines, disposition: pending)"
-        query: jscpd-group:cd3ae27bbe6f
-      - id: clone-group-cdc141c72516
-        kind: clone-group
-        description: "jscpd clone group cdc141c72516 (28 lines, disposition: pending)"
-        query: jscpd-group:cdc141c72516
-      - id: clone-group-cdd0209a0e94
-        kind: clone-group
-        description: "jscpd clone group cdd0209a0e94 (13 lines, disposition: pending)"
-        query: jscpd-group:cdd0209a0e94
-      - id: clone-group-d44f468ecf00
-        kind: clone-group
-        description: "jscpd clone group d44f468ecf00 (13 lines, disposition: pending)"
-        query: jscpd-group:d44f468ecf00
-      - id: clone-group-d4c7b8219186
-        kind: clone-group
-        description: "jscpd clone group d4c7b8219186 (12 lines, disposition: pending)"
-        query: jscpd-group:d4c7b8219186
-      - id: clone-group-d58176538cd4
-        kind: clone-group
-        description: "jscpd clone group d58176538cd4 (15 lines, disposition: pending)"
-        query: jscpd-group:d58176538cd4
-      - id: clone-group-deba5983b1f1
-        kind: clone-group
-        description: "jscpd clone group deba5983b1f1 (13 lines, disposition: pending)"
-        query: jscpd-group:deba5983b1f1
-      - id: clone-group-e0b43789fbde
-        kind: clone-group
-        description: "jscpd clone group e0b43789fbde (10 lines, disposition: pending)"
-        query: jscpd-group:e0b43789fbde
-      - id: clone-group-e2f41456da80
-        kind: clone-group
-        description: "jscpd clone group e2f41456da80 (16 lines, disposition: pending)"
-        query: jscpd-group:e2f41456da80
-      - id: clone-group-eb74ce8e346c
-        kind: clone-group
-        description: "jscpd clone group eb74ce8e346c (15 lines, disposition: pending)"
-        query: jscpd-group:eb74ce8e346c
-      - id: clone-group-ec92684ea87f
-        kind: clone-group
-        description: "jscpd clone group ec92684ea87f (13 lines, disposition: pending)"
-        query: jscpd-group:ec92684ea87f
-      - id: clone-group-edae3ff056b5
-        kind: clone-group
-        description: "jscpd clone group edae3ff056b5 (16 lines, disposition: pending)"
-        query: jscpd-group:edae3ff056b5
-      - id: clone-group-f1ecec1791db
-        kind: clone-group
-        description: "jscpd clone group f1ecec1791db (16 lines, disposition: pending)"
-        query: jscpd-group:f1ecec1791db
-      - id: clone-group-f4fd48187620
-        kind: clone-group
-        description: "jscpd clone group f4fd48187620 (18 lines, disposition: pending)"
-        query: jscpd-group:f4fd48187620
-      - id: clone-group-f5b154b0b218
-        kind: clone-group
-        description: "jscpd clone group f5b154b0b218 (7 lines, disposition: pending)"
-        query: jscpd-group:f5b154b0b218
-      - id: clone-group-f6fc1c6b4456
-        kind: clone-group
-        description: "jscpd clone group f6fc1c6b4456 (6 lines, disposition: pending)"
-        query: jscpd-group:f6fc1c6b4456
-      - id: clone-group-f7518eecae8a
-        kind: clone-group
-        description: "jscpd clone group f7518eecae8a (11 lines, disposition: pending)"
-        query: jscpd-group:f7518eecae8a
-      - id: clone-group-f86cbd50cd0d
-        kind: clone-group
-        description: "jscpd clone group f86cbd50cd0d (6 lines, disposition: pending)"
-        query: jscpd-group:f86cbd50cd0d
-      - id: clone-group-fc9e30e6e921
-        kind: clone-group
-        description: "jscpd clone group fc9e30e6e921 (16 lines, disposition: pending)"
-        query: jscpd-group:fc9e30e6e921
+      - id: clone-group-001398311e05
+        kind: clone-group
+        description: "jscpd clone group 001398311e05 (19 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:001398311e05
+      - id: clone-group-0284a2552271
+        kind: clone-group
+        description: "jscpd clone group 0284a2552271 (7 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:0284a2552271
+      - id: clone-group-03ecd23d56e5
+        kind: clone-group
+        description: "jscpd clone group 03ecd23d56e5 (17 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:03ecd23d56e5
+      - id: clone-group-056a061ceeb4
+        kind: clone-group
+        description: "jscpd clone group 056a061ceeb4 (7 lines, disposition:
+          ignore-with-justification)"
+        query: jscpd-group:056a061ceeb4
+      - id: clone-group-06d4d3e3b7c8
+        kind: clone-group
+        description: "jscpd clone group 06d4d3e3b7c8 (21 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:06d4d3e3b7c8
+      - id: clone-group-07c5c03f20cb
+        kind: clone-group
+        description: "jscpd clone group 07c5c03f20cb (24 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:07c5c03f20cb
+      - id: clone-group-0b580560a523
+        kind: clone-group
+        description: "jscpd clone group 0b580560a523 (6 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:0b580560a523
+      - id: clone-group-0c8162dddb47
+        kind: clone-group
+        description: "jscpd clone group 0c8162dddb47 (28 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:0c8162dddb47
+      - id: clone-group-0c8b60a15a36
+        kind: clone-group
+        description: "jscpd clone group 0c8b60a15a36 (11 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:0c8b60a15a36
+      - id: clone-group-126e4ebbbb1a
+        kind: clone-group
+        description: "jscpd clone group 126e4ebbbb1a (32 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:126e4ebbbb1a
+      - id: clone-group-12f264f951a3
+        kind: clone-group
+        description: "jscpd clone group 12f264f951a3 (17 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:12f264f951a3
+      - id: clone-group-14ad000daf5b
+        kind: clone-group
+        description: "jscpd clone group 14ad000daf5b (6 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:14ad000daf5b
+      - id: clone-group-16f22b56cfca
+        kind: clone-group
+        description: "jscpd clone group 16f22b56cfca (6 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:16f22b56cfca
+      - id: clone-group-18c6f0de4729
+        kind: clone-group
+        description: "jscpd clone group 18c6f0de4729 (13 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:18c6f0de4729
+      - id: clone-group-19ecf52420f9
+        kind: clone-group
+        description: "jscpd clone group 19ecf52420f9 (15 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:19ecf52420f9
+      - id: clone-group-1cbbe47b763e
+        kind: clone-group
+        description: "jscpd clone group 1cbbe47b763e (18 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:1cbbe47b763e
+      - id: clone-group-1ec4c6125311
+        kind: clone-group
+        description: "jscpd clone group 1ec4c6125311 (17 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:1ec4c6125311
+      - id: clone-group-201d5101db33
+        kind: clone-group
+        description: "jscpd clone group 201d5101db33 (11 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:201d5101db33
+      - id: clone-group-20c1eb363c09
+        kind: clone-group
+        description: "jscpd clone group 20c1eb363c09 (9 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:20c1eb363c09
+      - id: clone-group-2262910df441
+        kind: clone-group
+        description: "jscpd clone group 2262910df441 (11 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:2262910df441
+      - id: clone-group-228a6c25d4f5
+        kind: clone-group
+        description: "jscpd clone group 228a6c25d4f5 (13 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:228a6c25d4f5
+      - id: clone-group-279d6165c512
+        kind: clone-group
+        description: "jscpd clone group 279d6165c512 (17 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:279d6165c512
+      - id: clone-group-27edbe33d078
+        kind: clone-group
+        description: "jscpd clone group 27edbe33d078 (6 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:27edbe33d078
+      - id: clone-group-289e953b5ea7
+        kind: clone-group
+        description: "jscpd clone group 289e953b5ea7 (11 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:289e953b5ea7
+      - id: clone-group-2900b54f5b5f
+        kind: clone-group
+        description: "jscpd clone group 2900b54f5b5f (11 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:2900b54f5b5f
+      - id: clone-group-2b29518114f0
+        kind: clone-group
+        description: "jscpd clone group 2b29518114f0 (15 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:2b29518114f0
+      - id: clone-group-2c878a15f353
+        kind: clone-group
+        description: "jscpd clone group 2c878a15f353 (24 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:2c878a15f353
+      - id: clone-group-31df7029d836
+        kind: clone-group
+        description: "jscpd clone group 31df7029d836 (7 lines, disposition:
+          ignore-with-justification)"
+        query: jscpd-group:31df7029d836
+      - id: clone-group-3421210eff71
+        kind: clone-group
+        description: "jscpd clone group 3421210eff71 (13 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:3421210eff71
+      - id: clone-group-349dd2206a19
+        kind: clone-group
+        description: "jscpd clone group 349dd2206a19 (16 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:349dd2206a19
+      - id: clone-group-3525fa88d07e
+        kind: clone-group
+        description: "jscpd clone group 3525fa88d07e (11 lines, disposition:
+          ignore-with-justification)"
+        query: jscpd-group:3525fa88d07e
+      - id: clone-group-377928756b0f
+        kind: clone-group
+        description: "jscpd clone group 377928756b0f (12 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:377928756b0f
+      - id: clone-group-389b8ca04d17
+        kind: clone-group
+        description: "jscpd clone group 389b8ca04d17 (12 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:389b8ca04d17
+      - id: clone-group-38ff10f7e537
+        kind: clone-group
+        description: "jscpd clone group 38ff10f7e537 (13 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:38ff10f7e537
+      - id: clone-group-3b8fe7c81153
+        kind: clone-group
+        description: "jscpd clone group 3b8fe7c81153 (13 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:3b8fe7c81153
+      - id: clone-group-4193f23cd254
+        kind: clone-group
+        description: "jscpd clone group 4193f23cd254 (14 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:4193f23cd254
+      - id: clone-group-423f58d97969
+        kind: clone-group
+        description: "jscpd clone group 423f58d97969 (11 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:423f58d97969
+      - id: clone-group-44d68e4b9247
+        kind: clone-group
+        description: "jscpd clone group 44d68e4b9247 (23 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:44d68e4b9247
+      - id: clone-group-44e04a2b4f7b
+        kind: clone-group
+        description: "jscpd clone group 44e04a2b4f7b (8 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:44e04a2b4f7b
+      - id: clone-group-456f2e4a21fd
+        kind: clone-group
+        description: "jscpd clone group 456f2e4a21fd (9 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:456f2e4a21fd
+      - id: clone-group-45b11fd3a533
+        kind: clone-group
+        description: "jscpd clone group 45b11fd3a533 (10 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:45b11fd3a533
+      - id: clone-group-4691e8b7d2fc
+        kind: clone-group
+        description: "jscpd clone group 4691e8b7d2fc (12 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:4691e8b7d2fc
+      - id: clone-group-48658333661a
+        kind: clone-group
+        description: "jscpd clone group 48658333661a (16 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:48658333661a
+      - id: clone-group-4d212677359c
+        kind: clone-group
+        description: "jscpd clone group 4d212677359c (7 lines, disposition:
+          ignore-with-justification)"
+        query: jscpd-group:4d212677359c
+      - id: clone-group-529c36bc4bb3
+        kind: clone-group
+        description: "jscpd clone group 529c36bc4bb3 (13 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:529c36bc4bb3
+      - id: clone-group-532bf6d23aac
+        kind: clone-group
+        description: "jscpd clone group 532bf6d23aac (24 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:532bf6d23aac
+      - id: clone-group-56f714c9148b
+        kind: clone-group
+        description: "jscpd clone group 56f714c9148b (10 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:56f714c9148b
+      - id: clone-group-5f1453b53c34
+        kind: clone-group
+        description: "jscpd clone group 5f1453b53c34 (29 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:5f1453b53c34
+      - id: clone-group-5f33ca65cbd5
+        kind: clone-group
+        description: "jscpd clone group 5f33ca65cbd5 (7 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:5f33ca65cbd5
+      - id: clone-group-62914cc2151e
+        kind: clone-group
+        description: "jscpd clone group 62914cc2151e (6 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:62914cc2151e
+      - id: clone-group-62e64c7f6ab2
+        kind: clone-group
+        description: "jscpd clone group 62e64c7f6ab2 (10 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:62e64c7f6ab2
+      - id: clone-group-6686fb8e2a68
+        kind: clone-group
+        description: "jscpd clone group 6686fb8e2a68 (20 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:6686fb8e2a68
+      - id: clone-group-6ee7e792805d
+        kind: clone-group
+        description: "jscpd clone group 6ee7e792805d (32 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:6ee7e792805d
+      - id: clone-group-720d54a6c4fb
+        kind: clone-group
+        description: "jscpd clone group 720d54a6c4fb (11 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:720d54a6c4fb
+      - id: clone-group-73884f46ac3c
+        kind: clone-group
+        description: "jscpd clone group 73884f46ac3c (14 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:73884f46ac3c
+      - id: clone-group-73ec412103b3
+        kind: clone-group
+        description: "jscpd clone group 73ec412103b3 (27 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:73ec412103b3
+      - id: clone-group-861a1bfcd07e
+        kind: clone-group
+        description: "jscpd clone group 861a1bfcd07e (11 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:861a1bfcd07e
+      - id: clone-group-8a166056292d
+        kind: clone-group
+        description: "jscpd clone group 8a166056292d (17 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:8a166056292d
+      - id: clone-group-97cb84d9f799
+        kind: clone-group
+        description: "jscpd clone group 97cb84d9f799 (6 lines, disposition:
+          ignore-with-justification)"
+        query: jscpd-group:97cb84d9f799
+      - id: clone-group-97dbc71052a9
+        kind: clone-group
+        description: "jscpd clone group 97dbc71052a9 (10 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:97dbc71052a9
+      - id: clone-group-9c5d0d6fcae5
+        kind: clone-group
+        description: "jscpd clone group 9c5d0d6fcae5 (29 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:9c5d0d6fcae5
+      - id: clone-group-a043bcaaeaee
+        kind: clone-group
+        description: "jscpd clone group a043bcaaeaee (10 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:a043bcaaeaee
+      - id: clone-group-a0b8b7d4cb8c
+        kind: clone-group
+        description: "jscpd clone group a0b8b7d4cb8c (8 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:a0b8b7d4cb8c
+      - id: clone-group-a5d0c337f31d
+        kind: clone-group
+        description: "jscpd clone group a5d0c337f31d (28 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:a5d0c337f31d
+      - id: clone-group-a5d27361a53b
+        kind: clone-group
+        description: "jscpd clone group a5d27361a53b (11 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:a5d27361a53b
+      - id: clone-group-a6d7d51f4516
+        kind: clone-group
+        description: "jscpd clone group a6d7d51f4516 (16 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:a6d7d51f4516
+      - id: clone-group-a963bce8b0b7
+        kind: clone-group
+        description: "jscpd clone group a963bce8b0b7 (26 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:a963bce8b0b7
+      - id: clone-group-abcf778c254f
+        kind: clone-group
+        description: "jscpd clone group abcf778c254f (16 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:abcf778c254f
+      - id: clone-group-ac0330ff40c0
+        kind: clone-group
+        description: "jscpd clone group ac0330ff40c0 (25 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:ac0330ff40c0
+      - id: clone-group-b18339c818d5
+        kind: clone-group
+        description: "jscpd clone group b18339c818d5 (14 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:b18339c818d5
+      - id: clone-group-b1ceb7a627a6
+        kind: clone-group
+        description: "jscpd clone group b1ceb7a627a6 (16 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:b1ceb7a627a6
+      - id: clone-group-b93c3d300e89
+        kind: clone-group
+        description: "jscpd clone group b93c3d300e89 (13 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:b93c3d300e89
+      - id: clone-group-b951159f88f4
+        kind: clone-group
+        description: "jscpd clone group b951159f88f4 (11 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:b951159f88f4
+      - id: clone-group-bf2218cd17a6
+        kind: clone-group
+        description: "jscpd clone group bf2218cd17a6 (9 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:bf2218cd17a6
+      - id: clone-group-bf621c8701c5
+        kind: clone-group
+        description: "jscpd clone group bf621c8701c5 (10 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:bf621c8701c5
+      - id: clone-group-bfb7ce37ee85
+        kind: clone-group
+        description: "jscpd clone group bfb7ce37ee85 (18 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:bfb7ce37ee85
+      - id: clone-group-c13a3f8a7f04
+        kind: clone-group
+        description: "jscpd clone group c13a3f8a7f04 (14 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:c13a3f8a7f04
+      - id: clone-group-c4585bb9cfeb
+        kind: clone-group
+        description: "jscpd clone group c4585bb9cfeb (14 lines, disposition:
+          ignore-with-justification)"
+        query: jscpd-group:c4585bb9cfeb
+      - id: clone-group-c9ff2b18354c
+        kind: clone-group
+        description: "jscpd clone group c9ff2b18354c (16 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:c9ff2b18354c
+      - id: clone-group-cd4f8785dd8e
+        kind: clone-group
+        description: "jscpd clone group cd4f8785dd8e (27 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:cd4f8785dd8e
+      - id: clone-group-ce107495f9c5
+        kind: clone-group
+        description: "jscpd clone group ce107495f9c5 (29 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:ce107495f9c5
+      - id: clone-group-d0627ebc9e3b
+        kind: clone-group
+        description: "jscpd clone group d0627ebc9e3b (6 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:d0627ebc9e3b
+      - id: clone-group-d14d5813f89c
+        kind: clone-group
+        description: "jscpd clone group d14d5813f89c (19 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:d14d5813f89c
+      - id: clone-group-d1f9786a2882
+        kind: clone-group
+        description: "jscpd clone group d1f9786a2882 (14 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:d1f9786a2882
+      - id: clone-group-dd1ca0ae04f1
+        kind: clone-group
+        description: "jscpd clone group dd1ca0ae04f1 (13 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:dd1ca0ae04f1
+      - id: clone-group-df2d49e76c30
+        kind: clone-group
+        description: "jscpd clone group df2d49e76c30 (13 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:df2d49e76c30
+      - id: clone-group-dfe2f58d3ccc
+        kind: clone-group
+        description: "jscpd clone group dfe2f58d3ccc (7 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:dfe2f58d3ccc
+      - id: clone-group-e5c2b18798c5
+        kind: clone-group
+        description: "jscpd clone group e5c2b18798c5 (12 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:e5c2b18798c5
+      - id: clone-group-e8d0a21bfdee
+        kind: clone-group
+        description: "jscpd clone group e8d0a21bfdee (15 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:e8d0a21bfdee
+      - id: clone-group-ebdd9f8ceaf2
+        kind: clone-group
+        description: "jscpd clone group ebdd9f8ceaf2 (8 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:ebdd9f8ceaf2
+      - id: clone-group-ee1d1bbe4b61
+        kind: clone-group
+        description: "jscpd clone group ee1d1bbe4b61 (10 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:ee1d1bbe4b61
+      - id: clone-group-ef80a538a68a
+        kind: clone-group
+        description: "jscpd clone group ef80a538a68a (6 lines, disposition:
+          ignore-with-justification)"
+        query: jscpd-group:ef80a538a68a
+      - id: clone-group-f21fe164c25e
+        kind: clone-group
+        description: "jscpd clone group f21fe164c25e (19 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:f21fe164c25e
+      - id: clone-group-fa11bf828dd8
+        kind: clone-group
+        description: "jscpd clone group fa11bf828dd8 (32 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:fa11bf828dd8
+      - id: clone-group-fca21eed766f
+        kind: clone-group
+        description: "jscpd clone group fca21eed766f (6 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:fca21eed766f
+      - id: clone-group-fe8458249a68
+        kind: clone-group
+        description: "jscpd clone group fe8458249a68 (20 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:fe8458249a68
+      - id: clone-group-feb6f590390e
+        kind: clone-group
+        description: "jscpd clone group feb6f590390e (10 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:feb6f590390e
+      - id: clone-group-fec82922c1dc
+        kind: clone-group
+        description: "jscpd clone group fec82922c1dc (9 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:fec82922c1dc
       - id: magic-number
         kind: grep
-        description: Inline numeric literal >= 2 not bound to a const/named identifier (heuristic — synthesis layer + operator curate)
+        description: Inline numeric literal >= 2 not bound to a const/named identifier
+          (heuristic — synthesis layer + operator curate)
         query: (?<![A-Za-z0-9_.=])\d{2,}\b
+  - glob: modules/akai-s3k-editor/src/**/*.{ts,tsx}
+    label: akai-s3k-editor
+    patterns:
+      - id: clone-group-0c8162dddb47
+        kind: clone-group
+        description: "jscpd clone group 0c8162dddb47 (28 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:0c8162dddb47
+      - id: clone-group-14ad000daf5b
+        kind: clone-group
+        description: "jscpd clone group 14ad000daf5b (6 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:14ad000daf5b
+      - id: clone-group-1ec4c6125311
+        kind: clone-group
+        description: "jscpd clone group 1ec4c6125311 (17 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:1ec4c6125311
+      - id: clone-group-423f58d97969
+        kind: clone-group
+        description: "jscpd clone group 423f58d97969 (11 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:423f58d97969
+      - id: clone-group-4691e8b7d2fc
+        kind: clone-group
+        description: "jscpd clone group 4691e8b7d2fc (12 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:4691e8b7d2fc
+      - id: clone-group-6ee7e792805d
+        kind: clone-group
+        description: "jscpd clone group 6ee7e792805d (32 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:6ee7e792805d
+      - id: clone-group-73ec412103b3
+        kind: clone-group
+        description: "jscpd clone group 73ec412103b3 (27 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:73ec412103b3
+      - id: clone-group-97dbc71052a9
+        kind: clone-group
+        description: "jscpd clone group 97dbc71052a9 (10 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:97dbc71052a9
+      - id: clone-group-ac0330ff40c0
+        kind: clone-group
+        description: "jscpd clone group ac0330ff40c0 (25 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:ac0330ff40c0
+      - id: clone-group-d14d5813f89c
+        kind: clone-group
+        description: "jscpd clone group d14d5813f89c (19 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:d14d5813f89c
+      - id: clone-group-e5c2b18798c5
+        kind: clone-group
+        description: "jscpd clone group e5c2b18798c5 (12 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:e5c2b18798c5
+      - id: clone-group-f21fe164c25e
+        kind: clone-group
+        description: "jscpd clone group f21fe164c25e (19 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:f21fe164c25e
+  - glob: modules/d110-editor/src/**/*.{ts,tsx}
+    label: d110-editor
+    patterns:
+      - id: clone-group-1cbbe47b763e
+        kind: clone-group
+        description: "jscpd clone group 1cbbe47b763e (18 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:1cbbe47b763e
   - glob: modules/e2e-infra/src/**/*.{ts,tsx}
     label: e2e-infra
     patterns:
-      - id: clone-group-84caffaf63b4
+      - id: clone-group-5f1453b53c34
         kind: clone-group
-        description: "jscpd clone group 84caffaf63b4 (32 lines, disposition: pending)"
-        query: jscpd-group:84caffaf63b4
-      - id: clone-group-94900958d837
+        description: "jscpd clone group 5f1453b53c34 (29 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:5f1453b53c34
+      - id: clone-group-c9ff2b18354c
         kind: clone-group
-        description: "jscpd clone group 94900958d837 (16 lines, disposition: pending)"
-        query: jscpd-group:94900958d837
-      - id: clone-group-a975f1067ff4
+        description: "jscpd clone group c9ff2b18354c (16 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:c9ff2b18354c
+      - id: clone-group-fa11bf828dd8
         kind: clone-group
-        description: "jscpd clone group a975f1067ff4 (151 lines, disposition: pending)"
-        query: jscpd-group:a975f1067ff4
-      - id: clone-group-ab1d0b13541e
-        kind: clone-group
-        description: "jscpd clone group ab1d0b13541e (29 lines, disposition: pending)"
-        query: jscpd-group:ab1d0b13541e
+        description: "jscpd clone group fa11bf828dd8 (32 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:fa11bf828dd8
   - glob: modules/editor-core/src/**/*.{ts,tsx}
     label: editor-core
     patterns:
-      - id: clone-group-71d0ea89080c
+      - id: clone-group-c4585bb9cfeb
         kind: clone-group
-        description: "jscpd clone group 71d0ea89080c (14 lines, disposition: pending)"
-        query: jscpd-group:71d0ea89080c
+        description: "jscpd clone group c4585bb9cfeb (14 lines, disposition:
+          ignore-with-justification)"
+        query: jscpd-group:c4585bb9cfeb
+  - glob: modules/jv1080-editor/src/**/*.{ts,tsx}
+    label: jv1080-editor
+    patterns:
+      - id: clone-group-532bf6d23aac
+        kind: clone-group
+        description: "jscpd clone group 532bf6d23aac (24 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:532bf6d23aac
+  - glob: modules/loop-editor/src/**/*.{ts,tsx}
+    label: loop-editor
+    patterns:
+      - id: clone-group-20c1eb363c09
+        kind: clone-group
+        description: "jscpd clone group 20c1eb363c09 (9 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:20c1eb363c09
+  - glob: modules/sample-chopper/src/**/*.{ts,tsx}
+    label: sample-chopper
+    patterns:
+      - id: clone-group-abcf778c254f
+        kind: clone-group
+        description: "jscpd clone group abcf778c254f (16 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:abcf778c254f
   - glob: modules/sampler-devices/src/**/*.{ts,tsx}
     label: sampler-devices
     patterns:
-      - id: clone-group-69c35601da78
+      - id: clone-group-389b8ca04d17
         kind: clone-group
-        description: "jscpd clone group 69c35601da78 (12 lines, disposition: pending)"
-        query: jscpd-group:69c35601da78
-      - id: clone-group-715843c86da4
+        description: "jscpd clone group 389b8ca04d17 (12 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:389b8ca04d17
+      - id: clone-group-44e04a2b4f7b
         kind: clone-group
-        description: "jscpd clone group 715843c86da4 (7 lines, disposition: pending)"
-        query: jscpd-group:715843c86da4
-      - id: clone-group-8f7c5d400e10
+        description: "jscpd clone group 44e04a2b4f7b (8 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:44e04a2b4f7b
+      - id: clone-group-5f33ca65cbd5
         kind: clone-group
-        description: "jscpd clone group 8f7c5d400e10 (8 lines, disposition: pending)"
-        query: jscpd-group:8f7c5d400e10
-      - id: clone-group-9d95e639fba3
+        description: "jscpd clone group 5f33ca65cbd5 (7 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:5f33ca65cbd5
+      - id: clone-group-8a166056292d
         kind: clone-group
-        description: "jscpd clone group 9d95e639fba3 (17 lines, disposition: pending)"
-        query: jscpd-group:9d95e639fba3
-notes: 'Curated 2026-05-22 from the strawman generated at 2026-05-22T05:36:28.681Z. Modules pruned to in-scope set per PRD (roland-sxx0-editor, editor-core, sampler-devices, e2e-infra). /connect added; device matrices set on canonical Roland routes. Noise themes dropped. Original strawman notes: "Strawman synthesized from 4 discovery agent(s) (ast-grep-matrix, clone-detector-reader, prd-themed-pattern-hunter, ui-route-enumerator). Operator curates devices/scenarios/primitives."'
+        description: "jscpd clone group 8a166056292d (17 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:8a166056292d
+  - glob: modules/sampler-library/src/**/*.{ts,tsx}
+    label: sampler-library
+    patterns:
+      - id: clone-group-19ecf52420f9
+        kind: clone-group
+        description: "jscpd clone group 19ecf52420f9 (15 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:19ecf52420f9
+      - id: clone-group-2900b54f5b5f
+        kind: clone-group
+        description: "jscpd clone group 2900b54f5b5f (11 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:2900b54f5b5f
+      - id: clone-group-377928756b0f
+        kind: clone-group
+        description: "jscpd clone group 377928756b0f (12 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:377928756b0f
+      - id: clone-group-4d212677359c
+        kind: clone-group
+        description: "jscpd clone group 4d212677359c (7 lines, disposition:
+          ignore-with-justification)"
+        query: jscpd-group:4d212677359c
+      - id: clone-group-720d54a6c4fb
+        kind: clone-group
+        description: "jscpd clone group 720d54a6c4fb (11 lines, disposition:
+          keep-with-reason)"
+        query: jscpd-group:720d54a6c4fb
+regime_holdouts:
+  anti_patterns: []
+  adopter_manifests: []
+  editor_symmetry: []
+  deprecations:
+    - id: modules/sampler-backup/src/lib/backup/path-conventions.ts
+      file: modules/sampler-backup/src/cli/migrate.ts
+      line: 20
+      shape: "imports deprecated file
+        'modules/sampler-backup/src/lib/backup/path-conventions.ts' (marker:
+        jsdoc)"
+      replacement: migrate per the file's @deprecated note — Import from
+        '@audiocontrol/sampler-lib' instead
+      evidence:
+        registry_path: modules/sampler-backup/src/lib/backup/path-conventions.ts
+        registry_id: "@deprecated"
+  meta:
+    total: 1
+    by_source:
+      anti_pattern: 0
+      adopter_manifest: 0
+      editor_symmetry: 0
+      deprecation: 1
+notes: Strawman synthesized from 5 discovery agent(s) (ast-grep-matrix,
+  clone-detector-reader, prd-themed-pattern-hunter, regime-holdout-detector,
+  ui-route-enumerator). Operator curates devices/scenarios/primitives.

@@ -394,13 +394,22 @@ See `tooling-feedback.md § "Phase 5 dogfooding — T6.2 adopter manifest gaps +
 
 - **T7.6 — Update the journal.** Append a post-run entry to `scope-inventory/journal.md` capturing the run ID + the regime_holdouts findings count + curation outcomes.
 
-### Phase 7 acceptance
+### Phase 7 outcome (2026-05-23)
 
-- New `/scope-inventory` run lands with all 5 agents represented in `findings/`.
-- `scope-manifest.yaml` has a populated `regime_holdouts:` section.
-- Every regime_holdout entry has a disposition (fixed inline, follow-up filed, or false-positive documented).
-- Tooling-feedback entry capturing the 5-agent fleet's behavior (vs the prior 4-agent baseline).
-- Scope-inventory journal updated.
+**Closed cleanly.** Re-invoked `/scope-inventory roland-bugfix` with the post-PR-#446 5-agent fleet. The new `regime-holdout-detector` joined the original 4 (ui-route-enumerator, ast-grep-matrix, clone-detector-reader, prd-themed-pattern-hunter). All 5 agents exited 0; synthesis ran clean in ~35 seconds end-to-end.
+
+- **Run:** `2026-05-23T04-29-58-677Z-ysxpw0` (under `scope-inventory/runs/`).
+- **Manifest:** kind=hybrid, 7 routes / 10 modules / 10 themes / 8 reference docs.
+- **`regime_holdouts:` (new section, populated for the first time):** 1 total finding.
+  - `anti_patterns: 0` — registry empty per Phase 4 outcome (T6.1 schema gap blocks backfill; drafts preserved at `scope-inventory/anti-patterns-drafts.yaml`).
+  - `adopter_manifests: 0` — Phase 5's 9 entries all have expected adopters bound; 5 SlideDrawer tracked-holdouts silenced via `exceptions:`.
+  - `editor_symmetry: 0` — Phase 6's cross-editor SlideDrawer manifest extension surfaces akai's 9 holdouts but they're silenced via cross-editor `exceptions:`.
+  - `deprecation: 1` — `modules/sampler-backup/src/lib/backup/path-conventions.ts` imported by `modules/sampler-backup/src/cli/migrate.ts:20`. OUT OF SCOPE for feature/roland-bugfix (sampler-backup is not in this branch's surface per the PRD).
+- **Curation outcome:** the 1 deprecation finding dispositioned as out-of-scope (sampler-backup); no inline fix. Recommend filing a sampler-backup-side follow-up if/when sampler-backup gets its own scope-discovery work. No re-curation of routes/modules/themes needed — the existing curated manifest (commit `dfb8baed`) remains binding.
+- **Tooling-feedback:** see `synthesis.md` for the full per-section commentary. Confirms the regime-holdout-detector's value comes from the registries it reads, not from any new discovery the agent itself does. With empty/silenced registries, the agent correctly reports "clean" — the gate works exactly as designed.
+- **Journal:** post-run entry appended to `scope-inventory/journal.md` per LAYOUT.md.
+
+**Phase 7 dispositioned closed.** The 5-agent fleet ran end-to-end; the new `regime_holdouts:` section is populated; the 1 finding is dispositioned (out-of-scope, no follow-up filed because sampler-backup isn't owned by this branch); the run evidence is captured.
 
 ## Pre-commit Discipline
 
