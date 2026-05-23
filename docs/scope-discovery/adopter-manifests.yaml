@@ -96,8 +96,9 @@ adopter_manifests:
   # ────────────────────────────────────────────────────────────────────────
   # Backfilled 2026-05-22 from feature/roland-bugfix Phase 5. Covers the
   # 9 primitives extracted during Phase 2 plus the upstream SlideDrawer
-  # primitive (whose 5 Import-dialog holdouts are tracked via the
-  # ROLAND-BUGFIX-V3-IMPORT follow-up).
+  # primitive. The 3 Roland Import-dialog deferrals were closed by
+  # ROLAND-BUGFIX-V3-IMPORT (#450) on 2026-05-23; the remaining 9
+  # SlideDrawer tracked_holdouts are all Akai cross-editor deferrals.
   #
   # Notes for the reader:
   # - The narrow-scope component primitives (BankHeader, SlotInfo,
@@ -106,11 +107,10 @@ adopter_manifests:
   #   to enumerate the current adopter set. Future expansions of the
   #   adopter set are operator-edits to the glob; the manifest then
   #   surfaces holdouts at the new locations.
-  # - SlideDrawer's 5 Import dialogs are listed as exceptions with
-  #   reason="pending ROLAND-BUGFIX-V3-IMPORT" because T6.2's schema
-  #   doesn't yet distinguish "permanent exception" from "tracked-
-  #   holdout-with-follow-up." See tooling-feedback.md §"Phase 5
-  #   dogfooding" for the proposed `tracked_holdouts:` field.
+  # - SlideDrawer's Roland adopters are now complete (6 of 6 active
+  #   library dialogs/drawers); the only remaining tracked_holdouts
+  #   are 9 Akai library dialogs that never adopted v3 chrome (out of
+  #   scope for feature/roland-bugfix).
   # ────────────────────────────────────────────────────────────────────────
 
   - id: page-title-row
@@ -221,13 +221,13 @@ adopter_manifests:
       `<LibraryPreviewPanelAdapter selection={selection} context={context} />`.
 
   # ────────────────────────────────────────────────────────────────────────
-  # Upstream SlideDrawer primitive (editor-core). The 5 Import dialogs are
-  # tracked holdouts pending ROLAND-BUGFIX-V3-IMPORT
-  # (https://github.com/audiocontrol-org/audiocontrol/issues/450).
-  # T6.2's exceptions list is the only mechanism available for tracked-
-  # deferred adopters; see tooling-feedback.md § "Phase 5 dogfooding —
-  # T6.2 adopter manifests tracked-holdouts gap" for the proposed
-  # `tracked_holdouts:` schema field.
+  # Upstream SlideDrawer primitive (editor-core). The 3 Roland Import
+  # dialog deferrals were closed by ROLAND-BUGFIX-V3-IMPORT (#450) on
+  # 2026-05-23 — all 6 active Roland library dialogs/drawers now adopt
+  # SlideDrawer. The remaining 9 tracked_holdouts are all Akai library
+  # dialogs (cross-editor deferral, out of scope for feature/roland-
+  # bugfix). The 2 deleted ImportToneDialog + ImportSampleDialog were
+  # dead-code orphans (never JSX-mounted); also removed by V3-IMPORT.
   # ────────────────────────────────────────────────────────────────────────
 
   - id: slide-drawer-library-dialogs
@@ -235,12 +235,12 @@ adopter_manifests:
     from: '@audiocontrol/editor-core'
     # Cross-editor convention: every editor's library dialogs should use
     # the v3 SlideDrawer chrome from editor-core, not legacy Radix Dialog.
-    # roland-sxx0-editor: 3 adopters + 5 tracked-holdouts (Import dialogs
-    #   pending ROLAND-BUGFIX-V3-IMPORT, listed below as exceptions).
+    # roland-sxx0-editor: 6 adopters (3 Export + 3 Import) + 0 tracked-
+    #   holdouts — ROLAND-BUGFIX-V3-IMPORT (#450) closed 2026-05-23.
     # akai-s3k-editor: 0 adopters across 9 library dialogs — never adopted
-    #   the v3 chrome. Listed below as exceptions with reason="out of
-    #   scope for feature/roland-bugfix; ROLAND-BUGFIX-V3-AKAI follow-up
-    #   recommended if/when akai adopts editor-core SlideDrawer."
+    #   the v3 chrome. Listed below as tracked_holdouts with reason="out
+    #   of scope for feature/roland-bugfix; ROLAND-BUGFIX-V3-AKAI follow-
+    #   up recommended if/when akai adopts editor-core SlideDrawer."
     expected_adopters_glob:
       - 'modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx'
       - 'modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx'
@@ -262,19 +262,15 @@ adopter_manifests:
       - 'modules/akai-s3k-editor/src/components/library/ReceiveSampleDialog.tsx'
       - 'modules/akai-s3k-editor/src/components/library/SendSampleDialog.tsx'
     # T6.2/T6.3's `tracked_holdouts:` field shipped in commit caa132d9
-    # (closes #453). The 5 Import dialog deferrals + 9 akai cross-editor
-    # deferrals are now properly classified — gate passes AND the matrix
-    # renders these as ⏳ instead of being masked as ✓.
+    # (closes #453). After ROLAND-BUGFIX-V3-IMPORT (#450) closed on
+    # 2026-05-23, the only remaining tracked_holdouts are 9 Akai cross-
+    # editor deferrals — gate passes AND the matrix renders these as
+    # ⏳ instead of being masked as ✓.
     tracked_holdouts:
-      # ImportLibraryToneDialog.tsx migrated to v3 SlideDrawer in
-      # V3-IMPORT sub-task 2 of #450 — removed from tracked_holdouts.
-      # ImportLibraryPatchDialog.tsx migrated to v3 SlideDrawer in
-      # V3-IMPORT sub-task 4 of #450 — removed from tracked_holdouts.
-      # All 3 production Import dialogs are now v3 SlideDrawer adopters;
-      # V3-IMPORT is complete.
-      # ImportSamplesDialog.tsx migrated to v3 SlideDrawer in
-      # V3-IMPORT sub-task 3 of #450 — removed from tracked_holdouts.
-      # ImportSampleDialog + ImportToneDialog were dead-code orphans
+      # All 3 production Roland Import dialogs (ImportLibraryToneDialog,
+      # ImportLibraryPatchDialog, ImportSamplesDialog) migrated to v3
+      # SlideDrawer in V3-IMPORT sub-tasks 2-4 of #450 on 2026-05-23.
+      # The 2 dead-code orphans (ImportSampleDialog + ImportToneDialog)
       # (defined but never JSX-mounted; the production path uses
       # useLibraryImportDialogs + ImportLibraryToneDialog). Deleted as
       # part of V3-IMPORT (#450); tracked_holdouts entries dropped.
@@ -313,5 +309,6 @@ adopter_manifests:
       Library dialogs use the v3 SlideDrawer chrome from editor-core,
       not legacy Radix Dialog. Replace `<Dialog.Root>` + `<Dialog.Portal>`
       + `<Dialog.Overlay>` + `<Dialog.Content>` with `<SlideDrawer>`.
-      The 5 Import dialogs are TRACKED HOLDOUTS pending
-      ROLAND-BUGFIX-V3-IMPORT.
+      Roland Import dialogs migrated 2026-05-23 (V3-IMPORT, #450). The
+      9 Akai library dialogs remain TRACKED HOLDOUTS pending a cross-
+      editor follow-up (ROLAND-BUGFIX-V3-AKAI).

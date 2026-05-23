@@ -301,3 +301,105 @@ Expected: either the `downloadBlob` row should cite an existing meaningful prote
 Actual: the row records a refactor with no protecting test while the governing protocol still says that is non-negotiable.
 
 Fix: added `modules/roland-sxx0-editor/test/unit/browser-download.test.ts` — a focused vitest unit test that pins the four observable side effects of `downloadBlob` (createObjectURL fires with the blob; anchor href + download attributes at click time; click fires once; revokeObjectURL fires with the matching URL; DOM cleanup leaves no orphan anchor). Updated the workplan row to cite the test in place of the "No protecting test added" note. Test verified passing 2026-05-22. The auditor's framing — "if you have to argue for it, write the new test instead" — was the right call; the rationalization was the failure mode, not the function size.
+
+---
+
+## 2026-05-23 Latest Implementation Review
+
+### The Phase 2 closure summary still lists `ROLAND-BUGFIX-V3-IMPORT` as a remaining follow-up even though V3-IMPORT is now complete
+
+Finding-ID: AUDIT-20260523-13
+Status:     fixed-awaiting-verification
+Severity:   low
+Surface:    `docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md`
+
+Fix: rewrote the "Deferred-with-explicit-follow-up (remaining)" section at `workplan.md:206-207` — V3-IMPORT moved to a new "(closed since this list was opened)" sub-list with the 4 closing commit SHAs (`f2670944` / `c6c769b3` / `2f8b235b` / `19104420`) + closure date + GitHub issue link. "Remaining" list is now empty. The two-list structure preserves the historical record (what the follow-up was, when it was filed) without misrepresenting the current state. Duplicate AUDIT-15 closed in the same commit.
+
+The latest implementation completed all three production import-dialog migrations, but the older Phase 2 closure summary still presents `ROLAND-BUGFIX-V3-IMPORT` as an outstanding deferred follow-up.
+
+Evidence:
+
+- the closure summary still lists `ROLAND-BUGFIX-V3-IMPORT` under "Deferred-with-explicit-follow-up (remaining)" at [workplan.md](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md:207)
+- the latest commits explicitly complete that work:
+  - `c6c769b3` migrated `ImportLibraryToneDialog`
+  - `2f8b235b` migrated `ImportSamplesDialog`
+  - `19104420` migrated `ImportLibraryPatchDialog` and states `V3-IMPORT complete`
+- the adopter manifest comments now also say "All 3 production Import dialogs are now v3 SlideDrawer adopters; V3-IMPORT is complete" in [adopter-manifests.yaml](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/scope-discovery/adopter-manifests.yaml:273)
+
+Expected: once the follow-up is fully closed, the Phase 2 closure summary should stop presenting it as remaining work.
+
+Actual: the summary still reads as though the import-dialog migration is outstanding.
+
+### The `slide-drawer-library-dialogs` adopter-manifest commentary still describes 5 Roland import holdouts even though none remain
+
+Finding-ID: AUDIT-20260523-14
+Status:     fixed-awaiting-verification
+Severity:   low
+Surface:    `docs/scope-discovery/adopter-manifests.yaml`, `docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md`
+
+Fix: scrubbed the stale "5 Roland holdouts" narrative across the cited locations. `adopter-manifests.yaml`: top-of-file backfill comment (lines 95-114), SlideDrawer section header (lines 223-231), per-editor breakdown comment (lines 237-245), `tracked_holdouts:` block lead-in (lines 264-272), and the diagnostic `message:` (lines 312-318) all updated to describe the post-V3-IMPORT state (6 Roland adopters / 0 Roland tracked / 9 Akai tracked). `workplan.md`: Phase 5 outcome table cell (line 341), Phase 6 cross-editor extension paragraph (line 374), and Phase 6 closure paragraph (line 382) all updated with the new counts + V3-IMPORT closure annotation (`[closed 2026-05-23 via #450]`). Historical plan sections (Phase 5 Goal / Gate / Tasks lines 304-326) left as-is — they describe the plan at write-time and editing them would rewrite history. Duplicate AUDIT-16 closed in the same commit. Follows the `feedback_grep_after_doc_sync.md` memory rule — grepped both files for `"5 Import dialogs"`, `"5 roland"`, and `"5 tracked"` before committing to confirm no stragglers remained.
+
+The data structure is updated correctly, but several surrounding comments/messages still describe the old state where Roland had 5 pending SlideDrawer holdouts. That makes the manifest harder to trust as current operator documentation.
+
+Evidence:
+
+- the manifest comments still say "The 5 Import dialogs are tracked holdouts pending ROLAND-BUGFIX-V3-IMPORT" at [adopter-manifests.yaml](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/scope-discovery/adopter-manifests.yaml:224)
+- the inline convention comment still says "roland-sxx0-editor: 3 adopters + 5 tracked-holdouts" at [adopter-manifests.yaml](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/scope-discovery/adopter-manifests.yaml:238)
+- the manifest's diagnostic `message:` still ends with "The 5 Import dialogs are TRACKED HOLDOUTS pending ROLAND-BUGFIX-V3-IMPORT" at [adopter-manifests.yaml](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/scope-discovery/adopter-manifests.yaml:316)
+- the actual manifest state no longer matches that text: the `slide-drawer-library-dialogs` entry has `9` `tracked_holdouts`, all Akai-side cross-editor deferrals, and `0` Roland holdouts
+
+Expected: the manifest commentary and human-facing replacement message should describe the current state: Roland complete, Akai deferred cross-editor.
+
+Actual: the structure is current but the surrounding text still narrates the pre-completion Roland holdout state.
+
+---
+
+## 2026-05-23 Latest Implementation Review
+
+### The Phase 2 closure summary still lists `ROLAND-BUGFIX-V3-IMPORT` as remaining work even though the migration completed on 2026-05-23
+
+Finding-ID: AUDIT-20260523-15
+Status:     fixed-awaiting-verification (duplicate of AUDIT-20260523-13)
+Severity:   low
+Surface:    `docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md`
+
+Fix: duplicate of AUDIT-13 from the same audit run. Closed by the same commit; see AUDIT-13 for the resolution narrative.
+
+The latest import-dialog migration commits complete the V3-IMPORT follow-up, but the Phase 2 closure summary still presents that follow-up as outstanding.
+
+Evidence:
+
+- the "Deferred-with-explicit-follow-up (remaining)" section still includes `ROLAND-BUGFIX-V3-IMPORT` at [workplan.md](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md:207)
+- the latest landed commits explicitly complete the work:
+  - `c6c769b3` migrates `ImportLibraryToneDialog`
+  - `2f8b235b` migrates `ImportSamplesDialog`
+  - `19104420` migrates `ImportLibraryPatchDialog` and states `V3-IMPORT complete`
+- the adopter manifest now has no Roland-side SlideDrawer holdouts left, only 9 Akai-side cross-editor tracked holdouts
+
+Expected: once the migration is complete, the remaining-follow-ups list should stop naming it as unresolved work.
+
+Actual: the summary still reads as though V3-IMPORT is pending.
+
+### The SlideDrawer adopter-manifest commentary and downstream workplan notes still describe 5 Roland tracked holdouts, but the current manifest data has 0
+
+Finding-ID: AUDIT-20260523-16
+Status:     fixed-awaiting-verification (duplicate of AUDIT-20260523-14)
+Severity:   low
+Surface:    `docs/scope-discovery/adopter-manifests.yaml`, `docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md`
+
+Fix: duplicate of AUDIT-14 from the same audit run. Closed by the same commit; see AUDIT-14 for the resolution narrative.
+
+The manifest structure is current, but several comments and workplan notes still narrate the pre-migration state where Roland had 5 pending SlideDrawer holdouts.
+
+Evidence:
+
+- the manifest commentary still says "The 5 Import dialogs are tracked holdouts pending ROLAND-BUGFIX-V3-IMPORT" at [adopter-manifests.yaml](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/scope-discovery/adopter-manifests.yaml:224)
+- the human-facing `message:` still ends with "The 5 Import dialogs are TRACKED HOLDOUTS pending ROLAND-BUGFIX-V3-IMPORT" at [adopter-manifests.yaml](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/scope-discovery/adopter-manifests.yaml:316)
+- the workplan still repeats the old state in multiple places, for example:
+  - [workplan.md](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md:341) says `5 roland + 9 akai`
+  - [workplan.md](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md:374) says `roland-side: 3 actual adopters + 5 tracked-holdout exceptions`
+- the actual manifest data now has `tracked_holdouts: 9`, all Akai-side cross-editor deferrals, and 0 Roland tracked holdouts
+
+Expected: the commentary and matrix notes should describe the current state: Roland complete, Akai deferred cross-editor.
+
+Actual: the machine-readable data is current, but the surrounding text still describes the superseded Roland-holdout state.

@@ -204,7 +204,10 @@ Deletion follow-ups landed 2026-05-22 with explicit operator authorization:
 Pre-deletion verification: grep sweep confirmed zero source consumers; `tsx "$INFRA_DIR/scripts/watchdog.ts"` spawn-verified for DEL-003. Build green + 49/49 unit tests + 155/161 wiring tests post-deletion (the 6 wiring failures are all pre-existing flakes unrelated to any deleted code — none of the failing specs grep-match the deleted file paths or symbols).
 
 Deferred-with-explicit-follow-up (remaining):
-- **ROLAND-BUGFIX-V3-IMPORT** — v3 import-dialog migration; closes 15 keep-with-reason'd Import* family clones + BUG-002
+- _(none — all follow-ups closed)_
+
+Deferred-with-explicit-follow-up (closed since this list was opened):
+- **ROLAND-BUGFIX-V3-IMPORT** ✅ — v3 import-dialog migration; closed 2026-05-23 via commits `f2670944` (delete 3 dead-code orphans), `c6c769b3` (ImportLibraryToneDialog), `2f8b235b` (ImportSamplesDialog), `19104420` (ImportLibraryPatchDialog). Closes 15 keep-with-reason'd Import* family clones + BUG-002 (empty catches eliminated). All 6 active Roland library dialogs/drawers now adopt v3 SlideDrawer. GitHub issue #450.
 
 ## Phase 3: Roland-surface refactor PRs (clone-group cleanup)
 
@@ -338,7 +341,7 @@ PR #454 (merged to main 2026-05-23) landed commit `914710a2` adding the `exclude
 | destination-eyebrow | 3 | 0 | ✅ |
 | library-device-memory-panel-adapter | 2 | 0 | ✅ |
 | library-preview-panel-adapter | 2 | 0 | ✅ |
-| slide-drawer-library-dialogs | 3 | 5 roland + 9 akai (tracked_holdouts post-PR-#454) | ✅ — upgraded 2026-05-23 from exceptions to proper `tracked_holdouts:` field; matrix now renders `⏳ 3/8 (5 tracked)` for roland + `⏳ 0/9 (9 tracked)` for akai instead of being masked as `✓` |
+| slide-drawer-library-dialogs | 6 | 0 roland + 9 akai (cross-editor) | ✅ — upgraded 2026-05-23 from exceptions to proper `tracked_holdouts:` field. ROLAND-BUGFIX-V3-IMPORT (#450) closed 2026-05-23 — all 3 Roland Import dialogs migrated; the 2 dead-code orphans deleted. Roland-side now `✓ 6/6`; Akai-side remains `⏳ 0/9 (9 tracked)` cross-editor. |
 
 **Side effects:**
 - Bug caught: `s330-library-plugin.tsx` + `s550-library-plugin.tsx` used relative imports `./shared/...` instead of the `@/` alias the project requires. Fixed both files. Adopter manifests caught what the project's own import-style rule had drifted on.
@@ -371,7 +374,7 @@ See `tooling-feedback.md § "Phase 5 dogfooding — T6.2 adopter manifest gaps +
 
 **Closed cleanly with one cross-editor extension + a visibility-gap finding.**
 
-- **Cross-editor extension landed:** the `slide-drawer-library-dialogs` adopter manifest now spans both roland-sxx0-editor (8 library dialogs/drawers) and akai-s3k-editor (9 library dialogs). roland-side: 3 actual adopters + 5 tracked-holdout exceptions (pending ROLAND-BUGFIX-V3-IMPORT). akai-side: 0 actual adopters + 9 cross-editor-out-of-scope exceptions (each with `reason: CROSS-EDITOR HOLDOUT — akai never adopted v3 SlideDrawer; out of scope for feature/roland-bugfix`).
+- **Cross-editor extension landed:** the `slide-drawer-library-dialogs` adopter manifest now spans both roland-sxx0-editor (6 library dialogs/drawers post-V3-IMPORT) and akai-s3k-editor (9 library dialogs). Roland-side: 6 actual adopters + 0 tracked-holdouts (ROLAND-BUGFIX-V3-IMPORT closed 2026-05-23). Akai-side: 0 actual adopters + 9 cross-editor-out-of-scope tracked_holdouts (each with `reason: cross-editor — akai never adopted v3 SlideDrawer; out of scope for feature/roland-bugfix`).
 - **Matrix output:** `9 convention(s) × 7 editor(s) = 63 cells; 10 ✓, 0 ⚠, 0 ✗, 53 —.` The DEL-003 watchdog convention does NOT show up here because it's a shell-script path, not an adopter-manifest entry; that's correct — watchdog symmetry was caught + closed via the clones.yaml path before T6.3 landed.
 - **Per-editor breakdown:** roland-sxx0-editor adopts all 9 manifest entries (✓); akai-s3k-editor adopts only the slide-drawer convention (via exception silencing, see Gap 1 below).
 - **Two gaps surfaced via dogfooding:**
@@ -379,7 +382,7 @@ See `tooling-feedback.md § "Phase 5 dogfooding — T6.2 adopter manifest gaps +
   2. **Most adopter manifests are single-editor by design.** 8 of 9 entries are roland-scoped. Matrix shows 53 `—` cells out of 63. This is correct behavior — cross-editor power grows as cross-editor refactors get adopter-manifest entries. Informational; no fix needed.
 - See `tooling-feedback.md § "Phase 6 dogfooding — T6.3 cross-editor symmetry matrix masks holdouts via exceptions"` for the full dogfooding narrative.
 
-**Phase 6 dispositioned closed.** The cross-editor sweep ran; every asymmetry surfaced has a disposition (5 roland Import dialogs → ROLAND-BUGFIX-V3-IMPORT follow-up; 9 akai library dialogs → out-of-scope per the operator's scope statement on `feature/roland-bugfix`).
+**Phase 6 dispositioned closed.** The cross-editor sweep ran; every asymmetry surfaced has a disposition (5 roland Import dialogs → ROLAND-BUGFIX-V3-IMPORT follow-up [closed 2026-05-23 via #450]; 9 akai library dialogs → out-of-scope per the operator's scope statement on `feature/roland-bugfix`).
 
 ## Phase 7: `/scope-inventory` re-run with regime-holdout-detector (PR #446 T6.5 exercise)
 
