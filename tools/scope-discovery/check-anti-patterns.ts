@@ -26,10 +26,11 @@
  */
 
 import { readdir, readFile, stat } from 'node:fs/promises';
-import { extname, join, resolve } from 'node:path';
+import { extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   type AntiPatternEntry,
+  isPathExcluded,
   loadRegistry,
 } from './anti-patterns-registry.js';
 import {
@@ -38,6 +39,7 @@ import {
   reportJson,
   reportText,
 } from './anti-patterns-report.js';
+import { toPosix } from './util/glob.js';
 import { errorMessage } from './util/typeguards.js';
 
 const DEFAULT_REGISTRY = 'docs/scope-discovery/anti-patterns.yaml';
@@ -238,16 +240,27 @@ export async function scan(opts: CliOptions): Promise<ScanResult> {
   }
   const files = await listSourceFiles(opts.scanRoot);
   const findings: Finding[] = [];
+  const cwd = process.cwd();
   for (const file of files) {
-    let content: string;
-    try {
-      const fileStat = await stat(file);
-      if (fileStat.size === 0) continue; // skip empty files cheaply
-      content = await readFile(file, 'utf8');
-    } catch (err) {
-      throw new Error(`anti-patterns: failed to read ${file}: ${errorMessage(err)}`);
-    }
+    // Path against which `excludes_paths:` entries match: CWD-relative,
+    // POSIX-form. Matches how findings are rendered in the report, so an
+    // operator copying a flagged path into `excludes_paths:` works as-is.
+    const relPath = toPosix(relative(cwd, file));
+    let content: string | null = null;
     for (const entry of registry.entries) {
+      if (isPathExcluded(entry, relPath)) continue;
+      if (content === null) {
+        try {
+          const fileStat = await stat(file);
+          if (fileStat.size === 0) {
+            content = '';
+            break; // empty file: nothing to match against; skip remaining entries
+          }
+          content = await readFile(file, 'utf8');
+        } catch (err) {
+          throw new Error(`anti-patterns: failed to read ${file}: ${errorMessage(err)}`);
+        }
+      }
       const line = matchFile(content, entry);
       if (line !== null) findings.push({ file, line, entry });
     }

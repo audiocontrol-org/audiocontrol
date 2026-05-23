@@ -15,14 +15,21 @@
  *
  * Status semantics per cell:
  *   - ✓: every glob-matched file in the editor imports the canonical
- *        path OR is exempted; no holdouts.
+ *        path OR is exempted; no holdouts AND no tracked-holdouts.
  *   - ⚠: at least one glob-matched file in the editor does NOT import
  *        the canonical path and is not exempted (partial adoption).
+ *        REAL holdouts dominate tracked-holdouts: if both exist in the
+ *        same cell, status is ⚠, not ⏳.
  *   - ✗: the manifest's glob targets the editor (the glob's static
  *        prefix is `modules/<editor>/...` or a wildcard editor segment)
  *        but no glob-matched files exist in the editor OR all
  *        matched files are holdouts with no adoption. The editor was
  *        EXPECTED to participate but isn't.
+ *   - ⏳: the editor has tracked-holdouts but NO regular holdouts.
+ *        Gate-passing (AUDIT-06): operator has explicitly deferred
+ *        these files via `tracked_holdouts:` with mandatory tracking
+ *        issues; matrix surfaces them distinctly so the deferral is
+ *        visible instead of masked behind a false ✓.
  *   - —: the manifest's glob does not target this editor at all
  *        (n/a). The cell carries no signal; it's there for matrix
  *        alignment.
@@ -57,7 +64,7 @@ const SKIP_DIRS: ReadonlySet<string> = new Set([
 ]);
 
 /** Adoption status of one (manifest × editor) cell. */
-export type CellStatus = 'ok' | 'partial' | 'missing' | 'na';
+export type CellStatus = 'ok' | 'partial' | 'missing' | 'tracked' | 'na';
 
 export interface MatrixCell {
   readonly status: CellStatus;
@@ -67,8 +74,14 @@ export interface MatrixCell {
   readonly actual: number;
   /** Subset of `expected` that match a declared exception. */
   readonly exempted: number;
-  /** Subset of `expected` flagged as holdouts (not adopting, not exempted). */
+  /** Subset of `expected` flagged as holdouts (not adopting, not exempted, not tracked). */
   readonly holdouts: number;
+  /**
+   * Subset of `expected` flagged as tracked-holdouts (AUDIT-06).
+   * Gate-passing; surfaced via the ⏳ glyph instead of being silently
+   * subtracted (as exceptions are).
+   */
+  readonly trackedHoldouts: number;
 }
 
 export interface MatrixRow {
@@ -113,6 +126,7 @@ interface PerEditorBuckets {
   expected: Set<string>;
   actual: Set<string>;
   exempted: Set<string>;
+  trackedHoldouts: Set<string>;
   holdouts: Set<string>;
 }
 
@@ -135,11 +149,13 @@ async function computeRow(
       expected: new Set(),
       actual: new Set(),
       exempted: new Set(),
+      trackedHoldouts: new Set(),
       holdouts: new Set(),
     });
   }
 
   const exceptionSet = new Set(entry.exceptions.map((e) => e.path));
+  const trackedHoldoutSet = new Set(entry.trackedHoldouts.map((th) => th.path));
   const importRe = buildImportRegex(entry.from);
 
   for (const abs of matchedAbs) {
@@ -152,6 +168,10 @@ async function computeRow(
     bucket.expected.add(rel);
     if (exceptionSet.has(rel)) {
       bucket.exempted.add(rel);
+      continue;
+    }
+    if (trackedHoldoutSet.has(rel)) {
+      bucket.trackedHoldouts.add(rel);
       continue;
     }
     const content = await readFileSafe(abs);
@@ -180,13 +200,14 @@ async function computeRow(
     const expected = bucket.expected.size;
     const actual = bucket.actual.size;
     const exempted = bucket.exempted.size;
+    const trackedHoldouts = bucket.trackedHoldouts.size;
     const holdouts = bucket.holdouts.size;
     if (!targetedEditors.has(editor)) {
       // The glob doesn't target this editor's tree.
-      return { status: 'na', expected: 0, actual: 0, exempted: 0, holdouts: 0 };
+      return cellNa();
     }
-    const status = deriveStatus(expected, actual, exempted, holdouts);
-    return { status, expected, actual, exempted, holdouts };
+    const status = deriveStatus(expected, actual, exempted, holdouts, trackedHoldouts);
+    return { status, expected, actual, exempted, holdouts, trackedHoldouts };
   });
 
   return { entry, cells };
@@ -197,15 +218,27 @@ function deriveStatus(
   actual: number,
   exempted: number,
   holdouts: number,
+  trackedHoldouts: number,
 ): CellStatus {
   if (expected === 0) return 'missing';
-  if (holdouts === 0 && actual + exempted === expected) return 'ok';
-  if (actual === 0 && exempted === 0) return 'missing';
+  // Real holdouts dominate tracked-holdouts: if there's a non-deferred
+  // gap, surface it as ⚠ / ✗ even when tracked-holdouts also exist.
+  if (holdouts === 0 && actual + exempted + trackedHoldouts === expected) {
+    return trackedHoldouts > 0 ? 'tracked' : 'ok';
+  }
+  if (actual === 0 && exempted === 0 && trackedHoldouts === 0) return 'missing';
   return 'partial';
 }
 
 function cellNa(): MatrixCell {
-  return { status: 'na', expected: 0, actual: 0, exempted: 0, holdouts: 0 };
+  return {
+    status: 'na',
+    expected: 0,
+    actual: 0,
+    exempted: 0,
+    holdouts: 0,
+    trackedHoldouts: 0,
+  };
 }
 
 function toRepoRel(abs: string, rootAbs: string): string {

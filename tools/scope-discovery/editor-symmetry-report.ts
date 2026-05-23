@@ -16,6 +16,7 @@
  *   - ok      → "✓ N/N"
  *   - partial → "⚠ A/E (H holdout(s))"
  *   - missing → "✗ A/E"  (with "no matching files" when E === 0)
+ *   - tracked → "⏳ A/E (T tracked)"  (AUDIT-06; gate-passing deferral)
  *   - na      → "—"
  *
  * Empty matrix (no manifest entries) emits a "no manifests" placeholder
@@ -38,6 +39,7 @@ export const STATUS_GLYPH: Record<CellStatus, string> = {
   ok: '✓',
   partial: '⚠',
   missing: '✗',
+  tracked: '⏳',
   na: '—',
 };
 
@@ -79,8 +81,11 @@ function intro(): string {
     '`✓ N/N` = all files in the editor matching the manifest glob import ' +
     'the canonical path; `⚠ A/E (H holdout(s))` = partial adoption with ' +
     '`H` files holding out; `✗` = the editor was targeted by the glob ' +
-    'but has zero matched files or zero adopters; `—` = the manifest ' +
-    'does not target this editor (n/a).'
+    'but has zero matched files or zero adopters; ' +
+    '`⏳ A/E (T tracked)` = adopter set has only tracked-holdouts ' +
+    '(deferred-but-known migrations, each with a `tracked_holdouts:` ' +
+    'entry naming the follow-up issue; gate-passing, NOT masked as ✓); ' +
+    '`—` = the manifest does not target this editor (n/a).'
   );
 }
 
@@ -115,6 +120,11 @@ function renderCell(cell: MatrixCell): string {
         return `${STATUS_GLYPH.missing} no matching files`;
       }
       return `${STATUS_GLYPH.missing} ${cell.actual + cell.exempted}/${cell.expected}`;
+    case 'tracked':
+      return (
+        `${STATUS_GLYPH.tracked} ${cell.actual + cell.exempted}/${cell.expected} ` +
+        `(${cell.trackedHoldouts} tracked)`
+      );
     case 'na':
       return STATUS_GLYPH.na;
   }
@@ -169,7 +179,13 @@ function renderSuggestions(matrix: SymmetryMatrix): readonly string[] {
  * line + the validator's structural assertions.
  */
 export function tallyStatuses(matrix: SymmetryMatrix): Record<CellStatus, number> {
-  const totals: Record<CellStatus, number> = { ok: 0, partial: 0, missing: 0, na: 0 };
+  const totals: Record<CellStatus, number> = {
+    ok: 0,
+    partial: 0,
+    missing: 0,
+    tracked: 0,
+    na: 0,
+  };
   for (const row of matrix.rows) {
     for (const cell of row.cells) {
       totals[cell.status] += 1;

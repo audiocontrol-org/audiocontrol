@@ -29,6 +29,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { errorMessage } from './util/typeguards.js';
 import { runScannerSubprocess, type ScannerRun } from './util/run-scanner.js';
+import { EXCLUDES_PATHS_SCENARIOS } from './anti-patterns.excludes-scenarios.js';
 
 const SCANNER_ENTRY = 'tools/scope-discovery/check-anti-patterns.ts';
 
@@ -348,6 +349,8 @@ async function runAll(): Promise<readonly ScenarioResult[]> {
     scenarioNoMatch,
     scenarioMultiPattern,
     scenarioMalformedRegistry,
+    // AUDIT-20260522-04 — `excludes_paths:` field (sibling scenarios file).
+    ...EXCLUDES_PATHS_SCENARIOS,
     scenarioGuttedStub,
   ];
   const results: ScenarioResult[] = [];

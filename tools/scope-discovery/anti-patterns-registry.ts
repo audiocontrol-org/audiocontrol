@@ -15,6 +15,7 @@
  *       from: <import path>
  *       shape_regex: <regex string OR list of regex strings>
  *       min_distance: <int; optional; defaults to DEFAULT_MIN_DISTANCE>
+ *       excludes_paths: <optional list of literal paths or globs>
  *       message: <multi-line replacement instruction>
  *
  * Parse-time validation rejects:
@@ -23,6 +24,7 @@
  *   - empty regex pattern list
  *   - unparseable regex
  *   - non-positive min_distance
+ *   - excludes_paths whose entries are not non-empty strings
  *
  * Returns a `ParsedRegistry` with the entries narrowed to concrete shapes
  * (single-pattern vs multi-pattern fingerprint), with regexes pre-compiled.
@@ -32,6 +34,7 @@
  * registry); this module only owns the per-entry shape + regex compile.
  */
 
+import { globToRegex } from './util/glob.js';
 import { errorMessage } from './util/typeguards.js';
 import {
   loadKeyedListRegistry,
@@ -52,10 +55,19 @@ const REGEX_FLAGS = 'gm';
 const NAMESPACE = 'anti-patterns';
 const TOP_LEVEL_KEY = 'anti_patterns';
 
+/** One entry in the optional `excludes_paths:` list, pre-compiled. */
+export interface ExcludePath {
+  /** Original pattern as authored (literal path OR glob). */
+  readonly pattern: string;
+  /** Compiled regex matched against a candidate file's CWD-relative POSIX path. */
+  readonly regex: RegExp;
+}
+
 /**
  * One entry in the registry, with regex pre-compiled.
  * Single-pattern fingerprints carry `patterns.length === 1`; multi-pattern
  * fingerprints carry length >= 2 and `minDistance > 0`.
+ * `excludesPaths` is empty when the entry has no `excludes_paths:` field.
  */
 export interface AntiPatternEntry {
   readonly id: string;
@@ -64,7 +76,23 @@ export interface AntiPatternEntry {
   readonly from: string;
   readonly patterns: readonly RegExp[];
   readonly minDistance: number;
+  readonly excludesPaths: readonly ExcludePath[];
   readonly message: string;
+}
+
+/**
+ * True iff `relPath` (POSIX, relative to the scanner's CWD) matches any
+ * pattern in `entry.excludesPaths`. Used by the scanner to skip a file
+ * for this entry BEFORE running the shape patterns. Primary motivation:
+ * a canonical primitive's own file whose body IS the legacy shape the
+ * entry catches; secondary: test fixtures intentionally carrying the
+ * legacy shape as evidence.
+ */
+export function isPathExcluded(entry: AntiPatternEntry, relPath: string): boolean {
+  for (const exclude of entry.excludesPaths) {
+    if (exclude.regex.test(relPath)) return true;
+  }
+  return false;
 }
 
 export type ParsedRegistry = ParsedKeyedListRegistry<AntiPatternEntry>;
@@ -98,7 +126,8 @@ function parseEntry(raw: Record<string, unknown>, ctx: string): AntiPatternEntry
   const message = requireString(raw, 'message', ctx, NAMESPACE);
   const patterns = parsePatterns(raw['shape_regex'], ctx);
   const minDistance = parseMinDistance(raw['min_distance'], ctx);
-  return { id, addedIn, primitive, from, patterns, minDistance, message };
+  const excludesPaths = parseExcludesPaths(raw['excludes_paths'], ctx);
+  return { id, addedIn, primitive, from, patterns, minDistance, excludesPaths, message };
 }
 
 function parsePatterns(raw: unknown, ctx: string): readonly RegExp[] {
@@ -146,4 +175,39 @@ function parseMinDistance(raw: unknown, ctx: string): number {
     );
   }
   return raw;
+}
+
+/**
+ * Parse the optional `excludes_paths:` field. Missing field OR empty array
+ * → no exclusions (returns `[]`). Each element is a literal-path or glob
+ * string, compiled via `globToRegex` (literal paths are valid globs).
+ * Non-array values or non-string elements raise a descriptive parse error.
+ *
+ * "A glob that matches nothing" is intentionally NOT an error here — it
+ * matches the adopter-manifests stance on globs and keeps the registry
+ * tolerant to file renames that the operator will fix on the next run.
+ */
+function parseExcludesPaths(raw: unknown, ctx: string): readonly ExcludePath[] {
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw)) {
+    throw new Error(
+      `${NAMESPACE}: ${ctx} \`excludes_paths\` must be a list; got ${typeof raw}`,
+    );
+  }
+  return raw.map((value, index) => {
+    if (typeof value !== 'string' || value.length === 0) {
+      throw new Error(
+        `${NAMESPACE}: ${ctx} \`excludes_paths[${index}]\` must be a non-empty string; got ${typeof value}`,
+      );
+    }
+    let regex: RegExp;
+    try {
+      regex = globToRegex(value);
+    } catch (err) {
+      throw new Error(
+        `${NAMESPACE}: ${ctx} \`excludes_paths[${index}]\` is not a valid glob: ${errorMessage(err)}`,
+      );
+    }
+    return { pattern: value, regex };
+  });
 }

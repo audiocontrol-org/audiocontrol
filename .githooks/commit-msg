@@ -23,5 +23,28 @@ msg_file="$1"
 
 if grep -qiE '^[[:space:]]*Closes[[:space:]]+clones\.yaml[[:space:]]+' "$msg_file"; then
   echo "commit-msg: refactor marker detected; running check-refactor-preconditions..."
-  exec make --no-print-directory check-refactor-preconditions COMMIT_MSG_FILE="$msg_file"
+  # Run the gate as a child process (not exec'd) so the marker-write below
+  # still runs on the success path. set -e fails the hook if the gate fails,
+  # which aborts the commit before the marker is written — preserving the
+  # bypass-detection contract.
+  make --no-print-directory check-refactor-preconditions COMMIT_MSG_FILE="$msg_file"
 fi
+
+# T7.5 marker-write (moved here per AUDIT-20260522-03). This MUST be the
+# last successful action of commit-msg. Architectural rationale:
+#
+#   - commit-msg runs AFTER pre-commit succeeds (Git lifecycle: pre-commit
+#     → prepare-commit-msg → commit-msg → atomic commit → post-commit).
+#   - commit-msg is itself SKIPPED by `git commit --no-verify`, same as
+#     pre-commit, so a bypassed commit never reaches this line.
+#   - Between commit-msg's success exit and post-commit's execution the
+#     commit lands atomically — Git provides no abort window in which a
+#     written marker could be stranded for a later commit to inherit.
+#
+# The only way for the marker to exist when post-commit runs is for
+# commit-msg to have completed, which means both pre-commit and
+# commit-msg ran and `--no-verify` was not used. See .githooks/post-commit
+# for the rationale on --git-common-dir vs --git-path.
+SENTINEL_DIR="$(git rev-parse --git-common-dir)/hooks-sentinels"
+mkdir -p "$SENTINEL_DIR"
+: > "$SENTINEL_DIR/.pre-commit-marker"

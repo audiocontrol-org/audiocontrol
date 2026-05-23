@@ -151,3 +151,44 @@ The two-stage review (`superpowers:subagent-driven-development`) catches spec-co
 **The hard test:** before reporting a wave / phase / task as complete to the operator, ask — *"can I quote the exact `N passed` line from a test run I personally invoked after the latest commit?"* If no, the gate isn't proven; re-run before reporting. The implementer's number is a hypothesis until you've independently confirmed it.
 
 - **When the operator catches a deferral the controller missed, the response is not "I'll file an issue and continue."** The response is: revert or amend the deferring commit, complete the missed work in scope, and re-land. A missed deferral that has already shipped is a regression to be fixed, not a backlog item to be tracked.
+
+---
+
+## Validator-paired changes — every gate-semantic change ships with a scenario that would have failed against the prior behavior
+
+**A passing test suite is only as honest as its scenario coverage.** When a registry schema, report shape, scanner partition, or gate predicate changes, the change is incomplete until a new adversarial scenario lands in the same commit that would have REJECTED the pre-change behavior. Without that scenario, the next regression of the same semantic ships silently — every existing scenario stays green because the new behavior is *adjacent to*, not directly covered by, what the old scenarios assert.
+
+**Why:** Recorded as audit-log finding `AUDIT-20260523-07` (informational) in `docs/1.0/001-IN-PROGRESS/scope-discovery-protocol/audit-log.md` after the scope-discovery feature accumulated 15+ paired adversarial validators across Phases 2–7. The auditor's framing, verbatim: *"a future edit can change registry semantics, report shape, or gate meaning while leaving the existing validators green if the new behavior is adjacent to, rather than directly covered by, the current scenario set."* The session's recent fixes (`AUDIT-20260522-03` stale-marker, `AUDIT-20260522-05` brace-alternation wildcards, `AUDIT-20260522-06` `tracked_holdouts` vs `exceptions`) all required new scenarios alongside the production-code change — proving the discipline works in the small. The risk this rule names is the discipline DECAYING at turnover.
+
+**The class of failure modes this rule names:**
+
+| The pattern | What it actually means |
+|---|---|
+| *"All scenarios pass; safe to ship"* | All scenarios pass; behavior outside the scenario set is uncovered |
+| *"This is a minor refactor; no test changes needed"* | A "minor refactor" can shift gate meaning; if the shift isn't asserted, future regression is invisible |
+| *"The existing scenarios cover this case"* | If you can't quote the scenario by name that would have failed against the pre-change behavior, they don't |
+| *"I'll add a scenario in a follow-up"* | The follow-up doesn't happen; the "Just for now is bullshit" trap (top of this file) reproduces here too |
+| *"This is just a schema field addition"* | New field = new contract surface = new scenario rejecting malformed/conflicting/missing values |
+| *"The change is internal; no observable contract changes"* | Internal refactors that touch registry parsing, gate partitioning, or report-shape ARE observable contract changes |
+
+**How to apply:**
+
+- **Before changing any gate-semantic, name the adversarial scenario you will add.** If you can't articulate "scenario X would have failed under the old behavior; under the new behavior it passes; here's the one-line assertion," the change isn't ready. Articulate the scenario FIRST; implement it second; change production code third.
+
+- **Same-commit discipline.** The production-code change and the validator scenario land in the SAME commit. Not "fix + follow-up validator update." Not "land the scenario in a docs cleanup later." Same commit. If the scenario is genuinely large enough to warrant a separate file, the file lands in the same commit; the discipline is "no semantic-change diff goes to main without its scenario."
+
+- **Gutted-stub self-check is mandatory for new validators.** Every new `*.validate.ts` (or scenario set) includes a "gutted stub" scenario that proves the validator's load-bearing logic is actually load-bearing — stub the validator to be a no-op, assert the new scenarios REJECT the stub. Without this, a validator that always passes silently looks identical to a validator that's working. Existing validators in the scope-discovery suite all carry one; new ones must match.
+
+- **New scenarios MUST have teeth.** A scenario that asserts behavior already covered by an existing scenario doesn't earn its keep. The test for whether a new scenario has teeth: when re-applied against the PRE-CHANGE codebase, does the scenario FAIL? If it would have passed against both pre- and post-change behavior, it's coverage padding, not coverage. Replace it with one that distinguishes the two states.
+
+- **Schema additions earn at least three scenarios.** A new schema field (e.g., `excludes_paths:`, `tracked_holdouts:`) needs (a) a happy-path scenario exercising the field's intended behavior, (b) a malformed-value rejection scenario asserting the validator catches schema violations, (c) a conflicting-disposition or invariant-violation scenario asserting the field can't be silently misused.
+
+- **Report-shape changes earn parsing scenarios.** A new section in a markdown report, a new field in a JSON report, a new glyph in a rendered matrix — each is a new contract surface. Add a scenario that PARSES the report back and asserts the new shape is present + well-formed. The scope-discovery suite already does this for the editor-symmetry matrix (`matrix-is-valid-markdown`); replicate the pattern.
+
+- **Gate-predicate changes earn boundary scenarios.** When a partition changes (e.g., the adopter-manifest scanner partitioned candidates into 2 buckets and now partitions into 3), add boundary scenarios that distinguish the buckets: an entry that should land in bucket A and not B; an entry that should land in bucket B and not A; a malformed entry that lands in NEITHER and produces an error.
+
+- **Doc-only changes are NOT exempt.** A change to a markdown schema header that describes new field semantics is a contract change — even if no `.ts` file moved. The discipline asks: would a future reader trying to use the new field hit a gap because the validator doesn't know about it? If yes, the docs change and the validator change ship together.
+
+**The hard test:** before claiming a semantic change is complete, ask — *"if I revert ONLY my production-code change, leaving my scenario changes in place, do my new scenarios FAIL?"* If yes, the scenarios have teeth and the gate is honest. If no, the scenarios are coverage padding; the new behavior is uncovered; the next regression of the same semantic ships silently. Add at least one scenario that fails this revert test before reporting DONE.
+
+**Companion to the "When CI is absent, the controller is the gate" rule above:** that rule closes the trust gap between an implementer's reported pass and an actually-passing suite. THIS rule closes the trust gap between a passing suite and an honest suite. Both rules apply to every scope-discovery change.

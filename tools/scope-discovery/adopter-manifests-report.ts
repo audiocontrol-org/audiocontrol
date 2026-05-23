@@ -11,10 +11,16 @@
  *     respects `--quiet`. When the registry is empty / no holdouts,
  *     returns a one-line acknowledgement so a dev running
  *     `make check-adopters` always sees a non-empty stdout line.
+ *     Tracked holdouts (AUDIT-06) appear in a separate gate-passing
+ *     section so the operator can see "work-to-do" counts without the
+ *     gate blocking.
  *   - reportJson: structured stable-shape JSON for downstream tooling.
  */
 
-import type { AdopterManifestEntry } from './adopter-manifests-registry.js';
+import type {
+  AdopterManifestEntry,
+  TrackedHoldout,
+} from './adopter-manifests-registry.js';
 
 /** Per-manifest scan outcome. */
 export interface ManifestResult {
@@ -25,7 +31,18 @@ export interface ManifestResult {
   readonly actualAdopters: readonly string[];
   /** Subset of `expectedFiles` that match a declared exception. */
   readonly exemptedFiles: readonly string[];
-  /** Files that match the glob but do NOT import `from` and are not exempted. */
+  /**
+   * Subset of `expectedFiles` that match a declared `tracked_holdouts:`
+   * entry. NOT findings — the gate exits 0 when these are the only
+   * non-adopters. Reported in their own report section so the operator
+   * sees the work-to-do count without the gate blocking.
+   */
+  readonly trackedHoldoutFiles: readonly TrackedHoldout[];
+  /**
+   * Files that match the glob but do NOT import `from` AND are neither
+   * exempted nor tracked-holdouts. These ARE findings; the gate exits
+   * 1 if any are present.
+   */
   readonly holdouts: readonly string[];
 }
 
@@ -45,13 +62,20 @@ export function reportText(result: ScanResult, opts: ReportOptions): string {
     return opts.quiet ? '' : 'adopter-manifests: registry empty; nothing to scan.\n';
   }
   const totalHoldouts = result.manifests.reduce((n, m) => n + m.holdouts.length, 0);
-  if (totalHoldouts === 0) {
+  const totalTracked = result.manifests.reduce(
+    (n, m) => n + m.trackedHoldoutFiles.length,
+    0,
+  );
+  if (totalHoldouts === 0 && totalTracked === 0) {
     return opts.quiet
       ? ''
       : `adopter-manifests: ${result.entriesScanned} entries scanned across ${result.filesVisited} files; 0 holdouts.\n`;
   }
   if (opts.quiet) {
-    return `adopter-manifests: ${totalHoldouts} holdout(s).\n`;
+    if (totalHoldouts === 0) {
+      return `adopter-manifests: 0 holdout(s); ${totalTracked} tracked holdout(s).\n`;
+    }
+    return `adopter-manifests: ${totalHoldouts} holdout(s); ${totalTracked} tracked holdout(s).\n`;
   }
   const lines: string[] = [];
   for (const manifest of result.manifests) {
@@ -65,6 +89,15 @@ export function reportText(result: ScanResult, opts: ReportOptions): string {
     lines.push(`  exceptions: ${manifest.exemptedFiles.length} file(s) excluded`);
     lines.push(`  actual adopters: ${manifest.actualAdopters.length} file(s) import ${manifest.entry.from}`);
     lines.push(`  holdouts: ${manifest.holdouts.length} file(s)`);
+    if (manifest.trackedHoldoutFiles.length > 0) {
+      lines.push(
+        `  tracked holdouts (gate-passing, pending follow-up): ${manifest.trackedHoldoutFiles.length} file(s)`,
+      );
+      for (const th of manifest.trackedHoldoutFiles) {
+        const reasonFirstLine = th.reason.trim().split('\n')[0] ?? '';
+        lines.push(`    ${th.path} — issue: ${th.issue} — reason: ${reasonFirstLine}`);
+      }
+    }
     if (manifest.holdouts.length === 0) {
       lines.push('');
       continue;
@@ -81,9 +114,15 @@ export function reportText(result: ScanResult, opts: ReportOptions): string {
     lines.push(indented);
     lines.push('');
   }
-  lines.push(
-    `adopter-manifests: ${totalHoldouts} holdout(s) across ${result.entriesScanned} manifest(s).`,
-  );
+  if (totalHoldouts > 0) {
+    lines.push(
+      `adopter-manifests: ${totalHoldouts} holdout(s) across ${result.entriesScanned} manifest(s).`,
+    );
+  } else {
+    lines.push(
+      `adopter-manifests: 0 holdouts across ${result.entriesScanned} manifest(s); ${totalTracked} tracked holdout(s) reported separately.`,
+    );
+  }
   return lines.join('\n') + '\n';
 }
 
@@ -99,6 +138,11 @@ export function reportJson(result: ScanResult): string {
       actual_adopters: m.actualAdopters,
       exempted_files: m.exemptedFiles,
       holdouts: m.holdouts,
+      tracked_holdouts: m.trackedHoldoutFiles.map((th) => ({
+        path: th.path,
+        issue: th.issue,
+        reason: th.reason,
+      })),
       message: m.entry.message,
     })),
   };

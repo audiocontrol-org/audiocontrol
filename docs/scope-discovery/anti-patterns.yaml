@@ -26,6 +26,15 @@
 #     min_distance: <integer; max line gap between match positions when
 #       shape_regex is a list. Defaults to 50. Ignored when shape_regex is
 #       a single regex string.>
+#     excludes_paths: <optional list of literal repo-relative paths or
+#       globs (CWD-relative POSIX form). Files whose path matches any
+#       entry are skipped for THIS anti-pattern only; other entries
+#       still scan them normally. Primary use case: the canonical
+#       primitive's own file, whose body IS the legacy shape the entry
+#       catches. Secondary use case: test fixtures intentionally
+#       carrying the legacy shape as evidence. Empty list OR missing
+#       field => no exclusions. Glob syntax matches util/glob.ts
+#       (e.g., `**/*.tsx`, `lib/{Foo,Bar}.ts`).>
 #     message: <multi-line replacement instruction; what an agent should do
 #       when this shape is found>
 #

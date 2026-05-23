@@ -32,6 +32,7 @@ import { fileURLToPath } from 'node:url';
 import {
   loadRegistry,
   type AdopterManifestEntry,
+  type TrackedHoldout,
 } from './adopter-manifests-registry.js';
 import {
   type ManifestResult,
@@ -199,13 +200,28 @@ async function scanEntry(
   const actualAdopters: string[] = [];
   const exemptedFiles: string[] = [];
   const holdouts: string[] = [];
+  const trackedHoldoutFiles: TrackedHoldout[] = [];
+  // Partition expected files into three buckets BEFORE checking imports:
+  // (a) `exceptionSet` — permanent opt-outs (never findings, never tracked);
+  // (b) `trackedHoldoutByPath` — deferred-but-known holdouts (never findings,
+  //     surfaced in their own report section);
+  // (c) everything else — regular candidates whose import status determines
+  //     adopter vs. finding.
   const exceptionSet = new Set(entry.exceptions.map((e) => e.path));
+  const trackedHoldoutByPath = new Map<string, TrackedHoldout>(
+    entry.trackedHoldouts.map((th) => [th.path, th]),
+  );
   for (const abs of matched) {
     visited.add(abs);
     const rel = toPosix(toRepoRel(abs, rootAbs));
     expectedFiles.push(rel);
     if (exceptionSet.has(rel)) {
       exemptedFiles.push(rel);
+      continue;
+    }
+    const tracked = trackedHoldoutByPath.get(rel);
+    if (tracked !== undefined) {
+      trackedHoldoutFiles.push(tracked);
       continue;
     }
     const content = await readFileSafe(abs);
@@ -219,7 +235,15 @@ async function scanEntry(
   actualAdopters.sort();
   exemptedFiles.sort();
   holdouts.sort();
-  return { entry, expectedFiles, actualAdopters, exemptedFiles, holdouts };
+  trackedHoldoutFiles.sort((a, b) => a.path.localeCompare(b.path));
+  return {
+    entry,
+    expectedFiles,
+    actualAdopters,
+    exemptedFiles,
+    trackedHoldoutFiles,
+    holdouts,
+  };
 }
 
 function toRepoRel(abs: string, rootAbs: string): string {

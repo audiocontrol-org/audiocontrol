@@ -18,75 +18,24 @@
  * sequence; this module is otherwise side-effect-free.
  */
 
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { runScannerSubprocess, type ScannerRun } from './util/run-scanner.js';
+import {
+  SOURCE_PAYLOADS,
+  args,
+  cleanup,
+  fail,
+  makeFixture,
+  pass,
+  runScanner,
+  writeRegistry,
+  writeSource,
+  type ScannerRun,
+  type ScenarioResult,
+} from './adopter-manifests.fixtures.js';
 
-const SCANNER_ENTRY = 'tools/scope-discovery/check-adopters.ts';
-
-export type { ScannerRun };
-
-export interface ScenarioResult {
-  readonly name: string;
-  readonly passed: boolean;
-  readonly detail: string;
-}
-
-function pass(name: string, detail: string): ScenarioResult {
-  return { name, passed: true, detail };
-}
-function fail(name: string, detail: string): ScenarioResult {
-  return { name, passed: false, detail };
-}
-
-/**
- * Run the scanner as a subprocess. Optionally substitute a stubbed entry
- * point (used by the gutted self-check). Thin wrapper over the shared
- * `runScannerSubprocess` helper that pins the default `entry` to this
- * validator's scanner.
- */
-export function runScanner(args: readonly string[], entry = SCANNER_ENTRY): Promise<ScannerRun> {
-  return runScannerSubprocess(entry, args);
-}
-
-// ---------------------------------------------------------------------------
-// Fixture helpers
-// ---------------------------------------------------------------------------
-
-interface Fixture {
-  readonly registryPath: string;
-  readonly scanRoot: string;
-  readonly dir: string;
-}
-
-async function makeFixture(slug: string): Promise<Fixture> {
-  const root = await mkdtemp(join(tmpdir(), `adopter-manifests-validator-${slug}-`));
-  const scanRoot = join(root, 'src');
-  await mkdir(scanRoot, { recursive: true });
-  return { registryPath: join(root, 'registry.yaml'), scanRoot, dir: root };
-}
-
-async function writeRegistry(fixture: Fixture, yamlText: string): Promise<void> {
-  await writeFile(fixture.registryPath, yamlText, 'utf8');
-}
-
-async function writeSource(fixture: Fixture, relPath: string, content: string): Promise<void> {
-  const full = join(fixture.scanRoot, relPath);
-  const lastSlash = full.lastIndexOf('/');
-  if (lastSlash > fixture.scanRoot.length) {
-    await mkdir(full.substring(0, lastSlash), { recursive: true });
-  }
-  await writeFile(full, content, 'utf8');
-}
-
-async function cleanup(fixture: Fixture): Promise<void> {
-  await rm(fixture.dir, { recursive: true, force: true });
-}
-
-function args(fixture: Fixture, extra: readonly string[] = []): string[] {
-  return ['--registry', fixture.registryPath, '--root', fixture.scanRoot, ...extra];
-}
+export type { ScannerRun, ScenarioResult };
 
 // ---------------------------------------------------------------------------
 // Fixture payloads (registry YAML + source-file bodies)
@@ -171,16 +120,8 @@ const MULTI_GLOB_WITH_EXCEPTION_REGISTRY = `adopter_manifests:
       Use @/components/ListBank for consistent virtualization.
 `;
 
-const IMPORTING_SOURCE =
-  "import { SlideDrawer } from '@/components/SlideDrawer';\n" +
-  'export function PatchEditor() { return <SlideDrawer />; }\n';
-
-const HOLDOUT_SOURCE =
-  "import { useState } from 'react';\n" +
-  'export function PatchEditor() {\n' +
-  '  const [open, setOpen] = useState(false);\n' +
-  '  return open ? <div className="inline-drawer" /> : null;\n' +
-  '}\n';
+const IMPORTING_SOURCE = SOURCE_PAYLOADS.IMPORTING;
+const HOLDOUT_SOURCE = SOURCE_PAYLOADS.HOLDOUT;
 
 const LIST_BANK_IMPORT_SOURCE =
   "import { ListBank } from '@/components/ListBank';\nexport const x = ListBank;\n";
