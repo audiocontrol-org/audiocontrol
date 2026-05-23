@@ -3484,3 +3484,86 @@ Continue from T5.4 (Phase 5 final task, commit `fa6cb870` landed pre-compaction)
 
 - **Phase 4 closure operates on a different timescale than Phases 5–7.** Phase 4 is "drain 495 dispositions"; Phases 5–7 are "build the tools to drain them safely." Phase 4's natural closure is on the bugfix branch where refactor work is already scheduled. The architectural decision (made earlier in this session pre-compaction): ship the tools now, drain on the active branch as natural by-product. Phases 5–7 are now the tools-shipped state; Phase 4 closes when the bugfix branch's burndown finishes. Not deferral — the gates stay binding — but timeline-decoupled.
 
+
+## 2026-05-23: scope-discovery-protocol — ship PR #446, drain 7 audit findings, ship PR #454
+
+### Feature: scope-discovery-protocol
+### Worktree: audiocontrol-scope-discovery-protocol
+
+### Goal
+
+Pick up from PR #446's first version (Phases 5/6/7 in draft) and: (a) merge PR #446, (b) work through every audit-log finding the bugfix-branch operator surfaced against the work I'd just shipped, (c) open + merge a follow-up PR for the audit fixes.
+
+### Accomplished
+
+**PR #446 merged** at commit `cf5e00db`. 92 files; +17,083 / -692. Carried Phases 5/6/7 + the AUDIT-01/02 fixes that landed pre-merge.
+
+**Seven audit findings closed**, all surfaced by the bugfix-branch operator's auditor pass against the surfaces I'd shipped:
+
+| Finding | Severity | Surface | Fix commit | Verified |
+|---|---|---|---|---|
+| AUDIT-01 | high | `--no-verify` detector (false post-commit-skipped premise) | `bf599ad2` | 2026-05-22 |
+| AUDIT-02 | medium | Clone-ID migrator collision orphaning | `7a0eeeee` | 2026-05-22 |
+| AUDIT-03 | high | Stale-marker hole in AUDIT-01's own fix | `29bdc9c2` | 2026-05-22 |
+| AUDIT-04 | medium | T6.1 `excludes_paths` for canonical files | `914710a2` | 2026-05-22 |
+| AUDIT-05 | medium | `globToRegex` brace+wildcard literal-escape | `2b3158e6` | 2026-05-22 |
+| AUDIT-06 | medium | T6.2/T6.3 `tracked_holdouts` schema + `⏳` matrix glyph | `caa132d9` | 2026-05-23 |
+| AUDIT-07 | informational | Validator-paired-changes discipline | `8f9fb163` (rule encoded) | informational |
+
+The pattern: every fix added at least one adversarial scenario with TEETH (would have failed against the pre-fix code), every fix's commit was sentinel-recorded by the corrected `--no-verify` detector (proving the mechanism worked on its own protocol changes), every status flip to `verified-<date>` followed an empirical re-exercise of the audit's verbatim repro.
+
+**Validator suite at end-of-session:** 199/199 scenarios across 17 validators. Up from 170/170 at the start of yesterday's session continuation; +29 across the audit-fix arc. Clone baseline stayed `495 groups; 0 NEW; 0 DROPPED` throughout.
+
+**PR #454 opened + merged** at commit `9f6c07d5`. 33 files; +2,304 / -218. Carried the 10 post-PR-#446 audit-fix commits.
+
+**Validator-paired-changes rule encoded** in `.claude/rules/agent-discipline.md` as a new top-level rule, companion to "When CI is absent, the controller is the gate." Names the "scenarios with teeth" hard test: *"if I revert ONLY my production-code change, leaving my scenario changes in place, do my new scenarios FAIL?"* If no → coverage padding, not coverage. Closes AUDIT-07 (informational; the auditor explicitly said no production defect to verify, the rule's purpose is preventing turnover-decay).
+
+**Project-level docs synced** earlier in the session at commit `f946216a`: `.claude/CLAUDE.md` and `AGENTS.md` both gain a full gate-set table under §"Nucleation Site Prevention" (6 blocking pre-commit gates + commit-msg refactor-preconditions gate + pre-commit/post-commit/pre-push `--no-verify` triad + operator-driven informational tools + 2 discovery skills + validator suite reminder).
+
+### Didn't Work
+
+- **AUDIT-01's first fix was itself audited and broken.** I shipped `bf599ad2` claiming the `--no-verify` detection mechanism worked, with a self-demonstration in my report ("the pre-push warning fired for commits in the push range that pre-date the post-commit sentinel — exactly the 'first-install noise' behavior the implementer documented"). The auditor's AUDIT-03 verbatim quote: "this is actually the FAILURE MODE" — my "self-demonstration" was the failure dressed as success. The post-commit hook ran on `--no-verify` commits the same as on normal commits (since `--no-verify` doesn't skip post-commit), so the sentinel was being written for EVERY commit; missing sentinels only flagged pre-mechanism commits, never actual bypasses. Recovered by moving the marker write from `pre-commit` to `commit-msg` (skipped by `--no-verify`, no abort window between marker write and post-commit). The lesson is the AUDIT-07 rule's discipline applied retroactively: my AUDIT-01 fix didn't earn its keep because I never asked "what scenario would have failed against the pre-AUDIT-01 code under my new mechanism, and is that scenario in my validator?" The answer was no — my 4 scenarios covered happy path + direct `--no-verify` + pre-push warning + gutted-pre-commit. None covered "stale marker from a different commit attempt." The validator was passing-but-not-honest. The same gap shape that AUDIT-07 names.
+
+- **T7.1's first migration almost overwrote the live clones.yaml as an import side effect.** The T7.1 implementer caught it themselves during the dispatch — `migrate-clone-ids.ts`'s `main()` ran when the validator imported `migrateGroups` for pure-function testing, which triggered the full migration as an import side effect. The .tmp/ migration-scenarios harness was about to overwrite the actual live `docs/scope-discovery/clones.yaml`. Caught by the validator's git-status checks during testing; fixed by guarding `main()` behind `isCliEntryPoint()`. Mentioned at the start of this session because it informed my caution dispatching subsequent audit fixes — every fix sub-agent now gets explicit "don't bypass hooks, your fix must be sentinel-recorded" language in the dispatch.
+
+- **Partial DRY extraction earlier in the session (T6.3) almost shipped half-migrated.** Sub-agent extracted `util/run-scanner.ts` for T6.3 but left T6.1's `anti-patterns.validate.ts` + T6.2's `adopter-manifests.scenarios.ts` inlining their own copies. The agent flagged it as "follow-up" — exactly the deferral shape `agent-discipline.md` names. I re-dispatched immediately for migration; a second cleanup commit (`2697dc65`) caught `clone-detector.validate.ts` still inlining and migrated that too. Three commits to do what could have been one. The same agent-discipline rule that says "Just for now is bullshit" applies to "I'll migrate the rest later."
+
+### Course Corrections
+
+- **[PROCESS] My own AUDIT-01 fix needed an AUDIT-03 to catch it.** The "self-demonstration" framing I used in PR #446 was a confirmation bias trap. The pre-push warning firing during my push proved NOTHING about the detector working — it could have fired for any number of reasons (pre-existing commits without sentinel, the mechanism failing, the mechanism succeeding-but-against-wrong-signal). The discipline going forward: when claiming a mechanism works, the proof must be a TARGETED empirical test that distinguishes the working case from the failing case — not an opportunistic observation that "something happened that's consistent with working." The 3-step repro the auditor cited (normal commit recorded; `--no-verify` NOT recorded; pre-push warns on the bypassed SHA) is the right shape. My PR #446 narrative was the wrong shape.
+
+- **[STRUCTURAL] Validator-paired discipline now has a rule.** The pattern of "every fix adds a scenario with teeth" was emergent across AUDIT-01/02/03/04/05/06 — none of those was deferred to a follow-up scenario commit. The auditor's AUDIT-07 framing made the implicit pattern explicit; the rule encoding makes it survive turnover. Companion to "When CI is absent, the controller is the gate."
+
+- **[DOCUMENTATION] PR-body test plans should distinguish "done" from "first observable after merge."** PR #446's test plan had 9 [x] items + 4 [ ] items, where the [ ] items were genuinely future-observable: "On merge: post-merge sentinel mechanism activates against main's hook directory" / "First operator-driven `make check-deprecations-write` after merge" / "First post-merge refactor commit on a downstream branch exercises the commit-msg gate." The distinction surfaced naturally — done-work vs validation-events-that-can-only-happen-post-merge. PR #454's test plan adopted the same pattern. Worth preserving for future PR bodies.
+
+- **[FABRICATION] Don't trust "the sub-agent reported the number" — verify the test count yourself.** AUDIT-04's implementer claimed "178/178 (baseline was 173; +5 new)" but my baseline tracking from earlier this session was 178. Independent re-run revealed both were right relative to their measurement points: AUDIT-04's "baseline was 173" was correct for THAT sub-agent's starting point, and "178 post-fix" was also correct because the +5 was a new scenario set. My own running-total bookkeeping had drifted because earlier sub-agents' numbers were what I'd recorded. The discipline: run `pnpm test:scope-discovery` myself and sum the Summary lines after every fix; quote MY number, not the sub-agent's.
+
+- **[PROCESS] Sentinel-recording proved the AUDIT-03 fix works on the protocol's own commits.** After AUDIT-03 shipped, every subsequent fix commit's SHA appears in `.git/hooks-sentinels/.pre-commit-passed`. The mechanism validates itself on every protocol change. The same shape as the "the dispatch wrapper this feature builds would have caught this feature's own bugs" observation from yesterday's journal entry — closed-loop discipline.
+
+### Quantitative
+
+- **Commits this session continuation:** 10 (post-PR-#446 merge) + the workplan/README/audit-log churn from earlier in the session. Range on the post-merge slice: `29bdc9c2` → `8f9fb163`.
+- **PRs:** 2 opened + merged (#446 + #454), one prior-existing (#441 already merged before this session).
+- **Audit findings closed:** 7 (3 high, 4 medium/informational). 6 verified-via-empirical-re-exercise + 1 informational with encoded rule.
+- **Sub-agent dispatches for audit-fix work:** 7 (one per finding; AUDIT-07 was an in-context edit, not a dispatch). Plus 2 inline cleanups (the T6.3 DRY-migration re-dispatches earlier in the session).
+- **Validator scenarios added:** 199 - 170 = +29 across the audit-fix arc. Per-validator deltas: +1 no-verify-detection (AUDIT-03 stale-marker), +5 anti-patterns (AUDIT-04 excludes_paths), +8 glob.validate.ts NEW validator (AUDIT-05), +5 adopter-manifests (AUDIT-06 tracked_holdouts), +3 editor-symmetry (AUDIT-06 ⏳ glyph), +3 clone-id-stability (AUDIT-02 collision; pre-PR-#446), +4 no-verify-detection NEW validator (AUDIT-01; pre-PR-#446).
+- **Clone baseline:** stayed `495 groups; 0 NEW; 0 DROPPED` across all 10 post-merge commits.
+- **Sentinel-recorded commits:** 10/10. Zero `--no-verify` bypasses. Validates the AUDIT-03 fix mechanism on every protocol change after it landed.
+- **User messages this session continuation:** ~8 (review-the-audit-log + fix-them-now + open-the-pr + merge-the-pr each repeated as the work cycled).
+
+### Insights
+
+- **My own work was the highest-priority dogfood.** The bugfix-branch operator was running their feature against the scope-discovery surfaces I shipped in PR #441 + PR #446. Their auditor surfaced 7 findings — every one a defect in MY shipped work. The protocol's value is exactly this: dogfooding by a real consumer who isn't the protocol author surfaces failure modes the author's own validators didn't anticipate. The lesson: every validator has a coverage horizon defined by what its author thought to scenario; cross-author dogfooding extends the horizon faster than self-review.
+
+- **AUDIT-01's flaw was inverting verification semantics.** I claimed "pre-push warning fired = mechanism works" without distinguishing the case "pre-push warned because the mechanism caught a real bypass" from "pre-push warned because the mechanism is broken in the same shape as the case it's supposed to catch." This is a fundamental verification-design failure: when a mechanism's failure mode and its success mode produce the same observable output, the observable doesn't distinguish them. The auditor's 3-step repro was structured precisely to distinguish the two cases (recorded vs not-recorded). The discipline going forward: a verification observable must be DIFFERENT in the working vs broken cases — opportunistic observation isn't verification.
+
+- **The audit-log protocol is load-bearing in a way I didn't fully appreciate until AUDIT-03.** It's not just "track findings" — it's "track findings against work I've shipped, with empirical re-exercise required for closure." AUDIT-03 wouldn't have been possible without AUDIT-01 being in the log + the auditor having the AUDIT-01 surface to dogfood. The chain `AUDIT-01-fix → AUDIT-03-audit-of-fix → AUDIT-03-fix → my-fix-commit-self-verifies-via-sentinel` is exactly the structural discipline the audit-log protocol exists for. The auditor + protocol + sentinel form a closed loop that's stronger than any single component.
+
+- **The bugfix-branch operator's `tooling-feedback.md` is a high-leverage artifact.** It drove the entire `/dwe` Phase 5/6/7 expansion AND surfaced 4 of the 7 audit findings in this arc (AUDIT-04/05/06 came directly from its Phase 4/5/6 dogfooding sections; AUDIT-01/03 came from the auditor reading the work as it shipped). The artifact's value scales: each protocol change produces more surface area for the consumer to exercise, which produces more findings, which produce more protocol changes. The discipline is to keep the feedback document fresh and to drain its findings systematically rather than letting them accumulate as backlog.
+
+- **The validator-paired-changes rule retroactively explains the entire AUDIT-fix arc.** Every fix added a scenario with teeth; every scenario closed a specific class of regression. AUDIT-07 (informational) made the discipline explicit and canonized it as a rule. The rule's "hard test" (revert the production code, do scenarios FAIL?) is the same shape as scientific falsifiability: a scenario that can't fail under any production-code state isn't a scenario, it's a tautology. Making this explicit is the difference between a discipline that works because the current operator happens to follow it and a discipline that survives turnover because it's encoded.
+
+- **Two phases of project-level docs sync now exist in `.claude/CLAUDE.md` / `AGENTS.md`.** The §"Nucleation Site Prevention" section grew from a single-paragraph mention of the Phase 2 gates (pre-this-session) to a full table covering 6 blocking gates + commit-msg gate + `--no-verify` triad + 5 operator-driven tools + 2 discovery skills + validator-suite reminder. Pattern: project-level docs surface what's there; detailed contracts live in `docs/scope-discovery/`. The sync ensures Codex (AGENTS.md) and Claude (CLAUDE.md) agents see the same gate set.
+
+- **PR #454's existence is the protocol working as designed.** PR #446 shipped, the auditor reviewed, found problems, I fixed them, PR #454 carries the fixes. This is exactly the "ship → audit → fix → ship-the-fixes" loop the audit-log protocol exists to enable. Two PRs in one ~36-hour arc, all empirically verified, zero hook bypasses, all in the audit trail. The protocol's overhead pays for itself the first time it catches a defect post-merge that would otherwise have shipped silently.
+
