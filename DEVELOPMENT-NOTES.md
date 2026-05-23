@@ -11,6 +11,56 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-05-23: roland-bugfix — V3-IMPORT closure + post-migration doc sync
+
+### Feature: roland-bugfix
+### Worktree: audiocontrol-roland-bugfix
+
+### Goal
+
+Drain the remaining V3-IMPORT (ROLAND-BUGFIX-V3-IMPORT, #450) follow-up: 3 production Import dialogs still on legacy Radix Dialog chrome, plus close the RGM-001 follow-ups and any other resolved tracking issues. Net: get the branch's outstanding-followup count to zero.
+
+### Accomplished
+
+5 commits on `feature/roland-bugfix` (~+2459 / -2381 net; deletions dominate):
+
+- `f2670944` — **V3-IMPORT #1 (operator-authorized deletion):** removed 3 dead-code orphan files (`ImportToneDialog.tsx`, `ImportSampleDialog.tsx`, `useLibraryImport.ts`) — 875 LOC of unreachable code. Discovered while scoping V3-IMPORT; none are JSX-mounted (production path uses `useLibraryImportDialogs` + `ImportLibrary*Dialog`). Auto-mode classifier blocked the deletion until explicit AskUserQuestion authorization (same pattern as DEL-001/002/003). Cleaned up `index.ts` re-export + 2 stale comment references + adopter-manifest entries.
+- `c6c769b3` / `2f8b235b` / `19104420` — **V3-IMPORT #2/3/4:** migrated `ImportLibraryToneDialog` → `ImportSamplesDialog` → `ImportLibraryPatchDialog` from Radix.Dialog → v3 SlideDrawer + `useExportDialogLifecycle`. Test-first protocol applied (D-LIB-IMPORT-TONE/SAMPLES/PATCH-V3-01 wiring assertions added pre-migration). Each dialog's body extracted into a sibling `*DialogBody.tsx` to stay under the 500-LOC cap; `ImportLibraryPatchDialog` also got an `ImportLibraryPatchDialogLoad.ts` helper for the async load/materialise pipeline. Net file sizes (host + body + helper): 398+265, 335+426, 389+394+235 — all under cap. Closes the SlideDrawer adopter manifest's 3 Roland tracked_holdouts (6/15 actual adopters now). BUG-002 (empty catches) eliminated — the empty catches were in the orphans + the active dialogs now wrap callbacks with try/catch routing through `setLocalError`.
+- `a6f1680c` — **AUDIT-13/14/15/16 doc sync:** audit log surfaced 4 open findings (2 pairs of duplicates from successive audit runs) about stale "5 Roland holdouts" narrative lingering across `adopter-manifests.yaml` (5 spots) + `workplan.md` (3 spots) post-V3-IMPORT. Scrubbed all current-state prose; left historical plan/disposition sections intact with closure annotations. Audit entries updated to `fixed-awaiting-verification`. Audit-log open count: 0.
+
+GitHub issues closed with explanatory comments: **#447** (Phase 4), **#448** (Phase 5), **#449** (Phase 6), **#450** (Phase 7 + V3-IMPORT tracking), **#451** (T6.1 excludes_paths — shipped in PR #454), **#452** (T6.2 globToRegex — PR #454), **#453** (T6.2 tracked_holdouts — PR #454). 7 issues drained.
+
+### Didn't Work
+
+**Sub-agent post-migration doc-sync failed.** After delegating the 3 dialog migrations to a ui-engineer sub-agent, the sub-agent updated the machine-readable `tracked_holdouts:` data structure correctly but left the surrounding narrative ("5 Roland Import dialogs holdouts pending V3-IMPORT") stale across multiple comment blocks + workplan sections + the diagnostic `message:` field. The audit caught it (AUDIT-13 through 16 filed) and this session closed it via the `a6f1680c` doc-scrub commit. Root cause: the sub-agent didn't grep for synonyms of the old narrative after updating the data — exactly the `feedback_grep_after_doc_sync.md` memory rule. Worth a process note: when delegating a state-mutating migration to a sub-agent, the prompt should explicitly include the grep-after-sync discipline, or the controller should re-grep after accepting the dispatch. The controller-side test re-run discipline (which I did follow) caught no failures because the stale text was prose, not code.
+
+**Classifier blocked the orphan deletion twice.** First time, auto-mode classifier flagged the `rm` of the 3 orphan files as "not pre-authorized by name" even though prior DEL-001/002/003 deletions had set the pattern. Pivoted to AskUserQuestion + restored the files (had to also revert dependent `index.ts` + `adopter-manifests.yaml` edits to keep working tree consistent during the ask). Operator authorized via the multiple-choice; second deletion attempt succeeded. Worth noting: classifier authorization for one set of "dead code deletions" doesn't transitively authorize subsequent dead-code deletions even when the operator pattern is identical.
+
+### Course Corrections
+
+- **[PROCESS]** Operator: "let's fix the follow ups" + "Also close any resolved github issues" — confirmed the autonomous-close memory rule (feedback_no_autonomous_close.md) yields to explicit operator authorization. The 7 issues closed here had been gated by that rule pending operator say-so; the close-comments name the resolving commits/PRs verbatim so anyone re-opening the issue can trace what landed.
+- **[DOCUMENTATION]** Operator: "review the latest audit log" — surfaced that my own end-of-V3-IMPORT report was incomplete: I'd verified the gates green but hadn't read the audit log to see if the new commits had induced documentation drift. The audit had been written after the migrations landed but before this turn; it caught what my "all gates green" check missed. Lesson: gate-greenness is not the same as audit-cleanness. After every multi-commit landed feature, read the audit log before declaring done.
+
+### Quantitative
+
+- User messages: 5 (excluding skill invocations and the system summary at conversation start)
+- Commits: 5 (4 V3-IMPORT migrations + 1 audit doc sync)
+- GitHub issues closed: 7
+- Audit findings closed: 4 (AUDIT-13/14/15/16)
+- Net LOC change: +2459 / -2381 (dead-code orphan deletion dominates the deletes; migration body-extraction dominates the inserts)
+- File-cap impact: 1 file moved over→under the 500-LOC cap (ImportSamplesDialog: 519 → 335), 1 file substantially reduced (ImportLibraryPatchDialog: 693 → 389), 1 reduced (ImportLibraryToneDialog: 466 → 398)
+- User corrections: 2 (the "review audit log" surfacing AUDIT-13-16, and the implicit deletion-authorization request via AskUserQuestion)
+
+### Insights
+
+The dogfooding feedback loop closed cleanly: schema gaps surfaced (#451/#452/#453) → tooling team shipped fixes (PR #454) → applied back on this branch → drained the regime holdouts. Phases 4-7 of the workplan all moved from `Pending` to `✅ Closed` in this session as the V3-IMPORT closure was the gating prerequisite.
+
+Sub-agent delegation pattern that worked: pre-state full file paths + reference files (ExportToneDialog as the canonical v3 pattern) + explicit gates to run post-migration + commit-message template + git push after each migration. The sub-agent returned with verifiable claims (commit SHAs + file LOC + gate output) and the controller-side re-verification matched. Single dispatch handled all 3 migrations in ~36 minutes wall-clock, which would have been multiple hours of main-thread context if I'd done them serially.
+
+The Phase 4-7 closure pattern is now well-established: identify a scope-discovery follow-up → backfill the registry → run the dogfooding-feedback loop → file the gaps → apply the schema fixes back → drain the holdouts. Reusable for future scope-discovery extensions to other features.
+
+---
+
 ## 2026-05-21: roland-bugfix — chevron architecture, multi-select batch export, v3 UX work
 
 ### Feature: roland-bugfix

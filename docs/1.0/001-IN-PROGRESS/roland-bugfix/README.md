@@ -14,10 +14,10 @@ The two purposes share the same code surface but stay in **separate commits and 
 | Phase 1: Rolling Bug-Fix Pass | In Progress | Open-ended; operator-declared completion |
 | Phase 2: Disposition Roland-surface clones (scope-discovery validation) | ✅ Closed 2026-05-22 | 172 → 0 pending touching us. Validation test subject for `feature/scope-discovery-protocol`'s Phase 4 (PR #441). See workplan disposition log + closure summary. |
 | Phase 3: Roland-surface refactor PRs (clone-group cleanup) | ✅ Closed 2026-05-22 | 9 refactor commits landed concurrently with Phase 2. |
-| Phase 4: Anti-pattern registry backfill | Pending | Exercise PR #446 T6.1 against the 9 Phase 2 refactor extractions; lock the regime so the same anti-patterns can't silently re-emerge. |
-| Phase 5: Adopter manifest backfill | Pending | Exercise PR #446 T6.2 against the 9 new primitives + upstream SlideDrawer. Expected output: 5 Import dialogs surface as SlideDrawer holdouts pending ROLAND-BUGFIX-V3-IMPORT. |
-| Phase 6: Cross-editor symmetry sweep | Pending | Exercise PR #446 T6.3 against roland + akai + d110 + jv1080 + editor-core. Disposition every asymmetry. |
-| Phase 7: `/scope-inventory` re-run with regime-holdout-detector | Pending | Re-invoke the now-5-agent fleet (T6.5 added the 5th); curate the new `regime_holdouts:` section of the manifest; remediate inline or file as follow-ups. |
+| Phase 4: Anti-pattern registry backfill | ✅ Closed 2026-05-23 | 9 anti-pattern entries committed; `make check-anti-patterns` → 0 findings. Dogfooding surfaced 5 real API-mismatch deferrals filed as RGM-001 (#455, closed) and the schema-gap that became #451 (closed via PR #454). |
+| Phase 5: Adopter manifest backfill | ✅ Closed 2026-05-23 | 9 adopter manifests committed; `make check-adopters` → 0 holdouts. Filed + got fixes for #452 (globToRegex alternation) and #453 (`tracked_holdouts:` schema field) via PR #454. SlideDrawer now 6/6 Roland adopters after V3-IMPORT. |
+| Phase 6: Cross-editor symmetry sweep | ✅ Closed 2026-05-23 | 9 conventions × 7 editors matrix captured + every asymmetry dispositioned. 9 Akai library dialogs are tracked_holdouts under cross-editor `ROLAND-BUGFIX-V3-AKAI` (out of scope per PRD). |
+| Phase 7: `/scope-inventory` re-run with regime-holdout-detector | ✅ Closed 2026-05-23 | Updated `scope-manifest.yaml` with populated `regime_holdouts:` section; surfaceable holdouts remediated inline (RGM-001 sub-tasks 1-4) and V3-IMPORT (#450) drained all 3 Roland Import dialog deferrals + the 2 dead-code orphans. |
 
 ## Documentation
 
