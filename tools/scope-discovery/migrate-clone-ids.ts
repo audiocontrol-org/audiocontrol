@@ -42,13 +42,22 @@ import { stringify as stringifyYaml } from 'yaml';
 import {
   type CloneGroup,
   type ClonesYaml,
-  extractBarePath,
-  hasRefactorDisposition,
   parseClonesYaml,
   serializeClonesYaml,
 } from './clones-yaml.js';
 import { JSCPD_REPORT_PATH, parseJscpdReport, runJscpd } from './jscpd-runner.js';
+import {
+  MigrationError,
+  type MigrationResult,
+  migrateGroups,
+} from './migrate-clone-ids.matcher.js';
 import { errorMessage, isEnoent } from './util/typeguards.js';
+
+// Re-export the pure matcher surface so existing callers
+// (validators, migration-scenarios) can keep importing `migrateGroups`
+// from this module after the AUDIT-20260522-02 split.
+export { MigrationError, migrateGroups };
+export type { MigrationResult };
 
 const REPO_ROOT = process.cwd();
 const DEFAULT_BASELINE = 'docs/scope-discovery/clones.yaml';
@@ -83,43 +92,6 @@ function parseCli(argv: readonly string[]): Cli {
   return { dryRun, allowUnmapped, baselinePath, mapPath };
 }
 
-/**
- * Two-phase matching keys. The migration deliberately does NOT compare
- * IDs (the whole point of T7.1 is that they're changing). Instead we
- * pair old<->new entries in two passes:
- *
- *   1. exactMembersKey   — full `<path>:<start>:<end>` per member,
- *                          sorted, joined. This matches when the source
- *                          tree hasn't shifted around the clone group
- *                          (the vast majority of cases on the initial
- *                          migration). Guaranteed unique per group.
- *
- *   2. shiftTolerantKey  — sorted BARE file paths + `lines` count. Used
- *                          for old entries that didn't get an exact
- *                          match. Multiple clone groups can share the
- *                          same bare-path pair when one file pair
- *                          contains several distinct duplicated
- *                          fragments at different sites. `lines` count
- *                          differentiates siblings of differing length;
- *                          shift-tolerant matching only collides when
- *                          two sibling fragments happen to share length
- *                          AND file pair AND both shifted, which is
- *                          rare. Collisions in this pass are reported
- *                          honestly: when multiple new entries match
- *                          the same shift-tolerant key, the FIRST
- *                          unmatched new entry wins; subsequent old
- *                          entries with the same key surface as
- *                          unmapped so the operator decides.
- */
-function exactMembersKey(group: CloneGroup): string {
-  return [...group.members].sort().join('|');
-}
-
-function shiftTolerantKey(group: CloneGroup): string {
-  const bare = [...group.members].map(extractBarePath).sort().join('|');
-  return `${bare}#L${group.lines}`;
-}
-
 /** Disposition-count tally for the summary line. */
 interface DispositionCounts {
   readonly pending: number;
@@ -145,136 +117,6 @@ function countDispositions(groups: readonly CloneGroup[]): DispositionCounts {
     'ignore-with-justification': ignoreWithJustification,
     refactor,
   };
-}
-
-/**
- * Carry an old entry's disposition forward onto a new entry. New entry
- * keeps its (freshly-derived) id; everything else (`disposition`,
- * `reason`, and refactor-only fields when present) comes from old.
- */
-function carryForward(newGroup: CloneGroup, oldGroup: CloneGroup): CloneGroup {
-  if (hasRefactorDisposition(oldGroup)) {
-    return {
-      id: newGroup.id,
-      lines: newGroup.lines,
-      members: newGroup.members,
-      disposition: 'refactor',
-      reason: oldGroup.reason,
-      canonical_side: oldGroup.canonical_side,
-      canonical_reason: oldGroup.canonical_reason,
-      tests: oldGroup.tests,
-      tests_proof: oldGroup.tests_proof,
-      ...(oldGroup.new_shape_summary !== undefined
-        ? { new_shape_summary: oldGroup.new_shape_summary }
-        : {}),
-    };
-  }
-  return {
-    id: newGroup.id,
-    lines: newGroup.lines,
-    members: newGroup.members,
-    disposition: oldGroup.disposition,
-    reason: oldGroup.reason,
-  };
-}
-
-interface MigrationResult {
-  readonly migratedGroups: CloneGroup[];
-  readonly idMap: ReadonlyMap<string, string>;
-  readonly unmapped: readonly CloneGroup[];
-  readonly newOnly: readonly CloneGroup[];
-}
-
-/**
- * Match old entries to new entries in two passes:
- *
- *   Pass 1 (exact): match by full `<path>:<start>:<end>` per member.
- *                   Captures every clone group whose line ranges
- *                   haven't shifted.
- *   Pass 2 (shift-tolerant): for the leftovers, match by sorted bare
- *                   paths + `lines` count. Captures clone groups whose
- *                   line ranges shifted but whose duplication signature
- *                   stayed the same.
- *
- * Old entries with no match in either pass surface as `unmapped`. New
- * entries with no old match surface as `newOnly` (default disposition).
- *
- * Each new entry can be claimed by at most one old entry (first-pass
- * exact match wins over second-pass shift-tolerant match). Each old
- * entry can match at most one new entry (the first that hashes to the
- * same shift-tolerant key on pass 2; subsequent old entries with the
- * same key surface as unmapped).
- */
-export function migrateGroups(
-  newGroups: readonly CloneGroup[],
-  oldGroups: readonly CloneGroup[],
-): MigrationResult {
-  // Build new-by-key maps for both passes.
-  const newByExact = new Map<string, CloneGroup>();
-  for (const g of newGroups) newByExact.set(exactMembersKey(g), g);
-  const newByShift = new Map<string, CloneGroup>();
-  for (const g of newGroups) newByShift.set(shiftTolerantKey(g), g);
-
-  // Track which new entries have been claimed and which old entries
-  // have been paired. Two passes so exact wins over shift-tolerant.
-  const newClaimed = new Set<string>(); // new entry ids
-  const idMap = new Map<string, string>();
-  const oldByOldId = new Map<string, CloneGroup>();
-  for (const g of oldGroups) oldByOldId.set(g.id, g);
-  const oldMatched = new Set<string>();
-
-  // Pass 1: exact match.
-  for (const oldG of oldGroups) {
-    const newMatch = newByExact.get(exactMembersKey(oldG));
-    if (newMatch !== undefined && !newClaimed.has(newMatch.id)) {
-      newClaimed.add(newMatch.id);
-      oldMatched.add(oldG.id);
-      idMap.set(oldG.id, newMatch.id);
-    }
-  }
-
-  // Pass 2: shift-tolerant match (only for un-matched olds).
-  for (const oldG of oldGroups) {
-    if (oldMatched.has(oldG.id)) continue;
-    const newMatch = newByShift.get(shiftTolerantKey(oldG));
-    if (newMatch !== undefined && !newClaimed.has(newMatch.id)) {
-      newClaimed.add(newMatch.id);
-      oldMatched.add(oldG.id);
-      idMap.set(oldG.id, newMatch.id);
-    }
-  }
-
-  // Build the migrated list: for each new entry, either carry forward
-  // the matching old disposition or keep it as-is (default pending).
-  const migrated: CloneGroup[] = [];
-  const newOnly: CloneGroup[] = [];
-  // Invert idMap to find old by new.
-  const oldByNewId = new Map<string, string>();
-  for (const [oldId, newId] of idMap) oldByNewId.set(newId, oldId);
-
-  for (const g of newGroups) {
-    const oldId = oldByNewId.get(g.id);
-    if (oldId === undefined) {
-      newOnly.push(g);
-      migrated.push(g);
-      continue;
-    }
-    const oldG = oldByOldId.get(oldId);
-    if (oldG === undefined) {
-      // Defensive: shouldn't happen because idMap was populated from oldGroups.
-      newOnly.push(g);
-      migrated.push(g);
-      continue;
-    }
-    migrated.push(carryForward(g, oldG));
-  }
-
-  const unmapped: CloneGroup[] = [];
-  for (const g of oldGroups) {
-    if (!oldMatched.has(g.id)) unmapped.push(g);
-  }
-
-  return { migratedGroups: migrated, idMap, unmapped, newOnly };
 }
 
 interface MigrationMapDoc {

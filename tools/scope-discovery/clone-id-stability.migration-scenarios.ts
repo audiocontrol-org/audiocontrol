@@ -22,7 +22,7 @@ import {
   makeCloneGroup,
   serializeClonesYaml,
 } from './clones-yaml.js';
-import { migrateGroups } from './migrate-clone-ids.js';
+import { MigrationError, migrateGroups } from './migrate-clone-ids.js';
 import { runScannerSubprocess } from './util/run-scanner.js';
 
 const MIGRATOR_ENTRY = 'tools/scope-discovery/migrate-clone-ids.ts';

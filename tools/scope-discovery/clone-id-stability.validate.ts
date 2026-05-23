@@ -15,16 +15,27 @@
  *      baseline with every disposition intact at the new ID.
  *   7. Migration detects orphans (pure-function): an old entry whose
  *      members don't match anything yields `unmapped` from migrateGroups.
- *   8. Gutted-stub self-check: a stubbed deriveContentHashedId that
+ *   8. Collision deterministic tiebreaker (AUDIT-20260522-02): two
+ *      colliding old entries + two colliding new entries with distinct
+ *      startLines must match 1:1 via the smallest-startLine tiebreaker;
+ *      zero unmapped, zero newOnly.
+ *   9. Collision identical-discriminator fails: two new entries with
+ *      IDENTICAL members[] must cause migrateGroups to throw
+ *      MigrationError rather than silently picking one.
+ *  10. Collision N-candidate: 5 colliding old entries + 5 colliding new
+ *      entries match 5:5 deterministically in ascending startLine order.
+ *  11. Gutted-stub self-check: a stubbed deriveContentHashedId that
  *      returns a constant string causes scenario 5's assertion to FAIL,
  *      proving the harness has teeth.
- *   9. Migration orphan detection (subprocess): the migrate-clone-ids.ts
+ *  12. Migration orphan detection (subprocess): the migrate-clone-ids.ts
  *      CLI rejects an orphan without --allow-unmapped and accepts it
  *      with the flag.
  *
- * Migration-related scenarios (6-7-9) live in the sibling file
- * clone-id-stability.migration-scenarios.ts to keep both files under
- * the 300-500 line cap. Pure-function scenarios (1-5, 8) live here.
+ * Migration-related scenarios (6-7- 12) live in
+ * clone-id-stability.migration-scenarios.ts; collision-resolution
+ * scenarios (8-10) live in clone-id-stability.collision-scenarios.ts;
+ * pure-function scenarios (1-5, 11) live here. The split keeps every
+ * file under the 300-500 line cap.
  *
  * Each scenario uses its own short-lived fixture directory under
  * `.tmp/clone-id-stability-<runid>/`, torn down on success or failure
@@ -49,6 +60,11 @@ import {
   scenarioMigrationPreservesDispositions,
   type ScenarioResult,
 } from './clone-id-stability.migration-scenarios.js';
+import {
+  scenarioCollisionDeterministicTiebreaker,
+  scenarioCollisionIdenticalDiscriminatorFails,
+  scenarioCollisionNCandidates,
+} from './clone-id-stability.collision-scenarios.js';
 import { errorMessage } from './util/typeguards.js';
 
 const TMP_ROOT = '.tmp';
@@ -236,6 +252,9 @@ const SCENARIOS: readonly Scenario[] = [
   scenarioNoCollisions,
   scenarioMigrationPreservesDispositions,
   scenarioMigrationDetectsOrphans,
+  scenarioCollisionDeterministicTiebreaker,
+  scenarioCollisionIdenticalDiscriminatorFails,
+  scenarioCollisionNCandidates,
   scenarioGuttedStubSelfCheck,
   scenarioMigrationOrphanSubprocess,
 ];
