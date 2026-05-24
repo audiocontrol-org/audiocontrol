@@ -208,17 +208,114 @@
   --ac-color-selected: var(--ac-roland-primary);
 }
 
+/*
+ * ============================================================
+ * Akai S3000XL dialect tokens — phase 2 task 2.1.
+ *
+ * The akai dialect is a LIGHT theme (cream chassis matching the
+ * S3000XL's front panel) with red brand accent (the AKAI red used
+ * for the "S3000XL" model badge + the REC GAIN ring) and a
+ * deep-blue STN LCD palette for graphical readouts (envelope
+ * graph, waveform preview — see Phase 2 task 2.2 where envelope-
+ * primitives.css and a new waveform-primitives.css migrate to
+ * consume the --ac-lcd-* tokens).
+ *
+ * Per the harmonization-spec dialect contract: every difference
+ * between the akai and roland surfaces reduces to token values
+ * declared HERE — no per-editor primitive forks anywhere else
+ * in the design layer.
+ *
+ * Reference: docs/1.0/001-IN-PROGRESS/akai-harmonization/harmonization-spec.md § 3
+ * ============================================================
+ */
 :root[data-editor='s3000xl'] {
-  --ac-color-surface-canvas: #111214;
-  --ac-color-surface-panel: #1a1c20;
-  --ac-color-border-subtle: #2e3138;
-  --ac-color-text-primary: #e8e6e3;
-  --ac-color-text-muted: #8a8d93;
-  --ac-color-accent: #d4a843;
-  --ac-color-success: #4ade80;
-  --ac-color-warning: #e0b24f;
-  --ac-color-danger: #fb7185;
-  --ac-color-selected: #d4a843;
+  /* Brand — the AKAI red used across the dialect. */
+  --ac-akai-red: #d8262c;
+  --ac-akai-red-hover: #ba1f24;
+  --ac-akai-red-glow: rgba(216, 38, 44, 0.45);
+
+  /* Surfaces — light theme. The S3000XL chassis is cream/champagne;
+     the entire editor is light because the device is light. Roland
+     stays dark because the S-330/S-550 are dark slate. */
+  --ac-color-surface-canvas: #dad2b9;
+  --ac-color-surface-panel: #c8c0a4;
+  --ac-color-border-subtle: #8c8460;
+  --ac-color-text-primary: #1a1812;
+  --ac-color-text-muted: #524c3a;
+  --ac-color-text: #1a1812;
+  --ac-color-fg: #1a1812;
+
+  /* Compat aliases — re-point so any pre-existing rule that reads
+     `--ac-bg-primary` / `--ac-bg-panel` / `--ac-border` / `--ac-text-*`
+     / `--ac-highlight` / `--ac-highlight-secondary` follows the
+     dialect too. */
+  --ac-bg-primary: var(--ac-color-surface-canvas);
+  --ac-bg-panel: var(--ac-color-surface-panel);
+  --ac-border: var(--ac-color-border-subtle);
+  --ac-text-primary: var(--ac-color-text-primary);
+  --ac-text-muted: var(--ac-color-text-muted);
+
+  /* Accent + status. */
+  --ac-color-accent: var(--ac-akai-red);
+  --ac-color-selected: var(--ac-akai-red);
+  --ac-color-success: #2f7836;
+  --ac-color-warning: #b46e00;
+  --ac-color-danger: #a01e1e;
+  --ac-highlight: var(--ac-akai-red);
+  --ac-highlight-secondary: #b46e00;
+  --ac-status-connected: var(--ac-color-success);
+  --ac-status-warning: var(--ac-color-warning);
+  --ac-status-danger: var(--ac-color-danger);
+  --ac-status-selected: var(--ac-akai-red);
+
+  /* REC-LED — bright "I am live" glow for the live-edit footer dot,
+     front-panel pressed indicator, page-title-row LED. Brighter than
+     the brand red because it's actively lit. */
+  --ac-color-rec: #ff3838;
+  --ac-color-rec-glow: rgba(255, 56, 56, 0.6);
+
+  /* Typography — readability first.
+       display: Big Shoulders Display — bold condensed sans, evokes
+                the silkscreen on the chassis (SINGLE / MULTI / etc.)
+       body:    DM Sans — clean modern body, distinct from Inter
+                (forbidden) + IBM Plex Sans (roland's body)
+       mono:    JetBrains Mono — same as roland; reused because it's
+                the right tool for parameter values regardless of
+                dialect
+       lcd:     VT323 — dot-matrix character cell for LCD-style
+                readouts (NEW token introduced here; canonical CSS
+                doesn't reference it yet — Phase 2 task 2.2 wires it
+                into envelope-primitives.css alongside the
+                --ac-lcd-* color tokens). */
+  --ac-font-display: "Big Shoulders Display", "Archivo Narrow",
+    "Roboto Condensed", system-ui, sans-serif;
+  --ac-font-body: "DM Sans", "Familjen Grotesk", system-ui,
+    -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ac-font-mono: "JetBrains Mono", "IBM Plex Mono", "SFMono-Regular",
+    Menlo, monospace;
+  --ac-font-lcd: "VT323", "JetBrains Mono", monospace;
+
+  /* LCD tokens — NEW for the akai dialect; used by Phase 2 task 2.2
+     to retreat the envelope graph + waveform preview as inset LCD
+     windows. The actual S3000XL display is a deep-blue STN backlight
+     with bright white-cyan dot-matrix text; reverse-video blocks
+     (section headers, active value cells) use the inverted polarity.
+     Until Phase 2 task 2.2 lands, these tokens are dormant for
+     non-akai editors (they don't consume them yet). When the
+     migration lands, other editors get :root defaults appropriate
+     to their hardware (roland: amber VFD on near-black). */
+  --ac-lcd-bg: #2c5fa8;
+  --ac-lcd-bg-edge: #234a85;
+  --ac-lcd-text: #eaf2f8;
+  --ac-lcd-text-dim: #b8cce0;
+  --ac-lcd-text-rev: #0a1e3e;
+  --ac-lcd-text-rev-bg: #d8e6f0;
+  --ac-lcd-bezel: #2c2a22;
+
+  /* color-scheme: light tells the UA to render scrollbars +
+     form-control defaults in light-theme polarity even though the
+     rest of the page paints custom chrome. */
+  color-scheme: light;
 }
 
 :root[data-editor='jv1080'] {

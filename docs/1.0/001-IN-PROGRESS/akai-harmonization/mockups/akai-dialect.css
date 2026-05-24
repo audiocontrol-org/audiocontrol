@@ -1,134 +1,38 @@
 /*
- * akai-dialect.css — TOKEN OVERRIDES ONLY for the akai-harmonization mockups.
+ * akai-dialect.css — MOCKUP-LOCAL OVERRIDES for the akai-harmonization
+ * HTML mockups.
  *
- * The mockup HTML files <link> the canonical editor-core CSS chain
- * (/modules/editor-core/src/design/styles.css) plus the roland page-shell
- * shared styles (/modules/roland-sxx0-editor/src/styles/_shared.css), then
- * this file LAST so the [data-editor='s3000xl'] block wins the cascade.
+ * The dialect's token block (palette + typography + LCD + rec-LED)
+ * was lifted into canonical editor-core/src/design/tokens.css as part
+ * of Phase 2 task 2.1 (commit history on this branch). What remains
+ * in THIS file is mockup-only:
  *
- * This file MUST NOT declare any primitive rules (.ac-list, .ac-detail,
- * .ac-tree-node, .ac-envelope, etc.). The dialect contract is: same
- * primitives, different tokens. If a primitive needs to change shape
- * for the akai surface, that's a structural divergence and Phase 2
- * needs to extract a new primitive in editor-core, not patch it here.
+ *   1. Google Fonts @import — the real akai editor will load fonts
+ *      via its own index.html when it's wired up; the mockup needs
+ *      the @import here so static HTML pages can render with the
+ *      dialect typography.
+ *   2. Body paint — the canonical CSS doesn't paint <body> directly
+ *      (the .ac-site-header / .ac-site-main chrome carry the
+ *      background in the real app). Mockups have no site chrome
+ *      wrapper, so this paints body so the page doesn't show the
+ *      user-agent default white behind the fixed-viewport shell.
+ *   3. Tab-group ID registrations (ap-*, ak-*, as-*) — Phase 2
+ *      task 2.2 will lift these into _shared.css alongside the
+ *      existing tt-* / pt-* groups.
+ *   4. Envelope graphic overrides — Phase 2 task 2.2 will lift
+ *      these into envelope-primitives.css as the canonical LCD
+ *      treatment driven by --ac-lcd-* tokens.
  *
- * Reference photos (operator-provided 2026-05-23): the S3000XL has a
- * cream/champagne chassis with black silkscreen labels, a deep-blue
- * STN LCD with bright-white-cyan dot-matrix text, the AKAI red brand
- * color used for the "S3000XL" model badge + the REC GAIN ring, and
- * (because the akai has a fully functional physical front panel) no
- * virtual front panel is mounted.
+ * The token block, the dialect contract, and the mobile escape hatch
+ * are all canonical now — those lived here temporarily during Phase 1
+ * to demonstrate the right shape.
  */
 
 @import url("https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=VT323&display=swap");
 
-:root[data-editor="s3000xl"] {
-  /* ----------------------------------------------------------------
-   * Brand
-   * ---------------------------------------------------------------- */
-  --ac-akai-red: #d8262c;
-  --ac-akai-red-hover: #ba1f24;
-  --ac-akai-red-glow: rgba(216, 38, 44, 0.45);
-
-  /* ----------------------------------------------------------------
-   * Surfaces — light theme. The S3000XL chassis is cream/champagne;
-   * the entire editor is light because the device is light. Roland
-   * stays dark because the S-330/S-550 are dark slate.
-   * ---------------------------------------------------------------- */
-  --ac-color-surface-canvas: #dad2b9;
-  --ac-color-surface-panel: #c8c0a4;
-  --ac-color-border-subtle: #8c8460;
-  --ac-color-text-primary: #1a1812;
-  --ac-color-text-muted: #524c3a;
-  --ac-color-text: #1a1812;
-  --ac-color-fg: #1a1812;
-
-  /* ----------------------------------------------------------------
-   * Aliases consumed by various roland primitive rules
-   * (--ac-bg-primary / -panel / -border / -text-primary / -text-muted
-   * + --ac-highlight + --ac-highlight-secondary). Re-point them all
-   * to the dialect values so any pre-existing rule that read the
-   * compat aliases follows the dialect too.
-   * ---------------------------------------------------------------- */
-  --ac-bg-primary: var(--ac-color-surface-canvas);
-  --ac-bg-panel: var(--ac-color-surface-panel);
-  --ac-border: var(--ac-color-border-subtle);
-  --ac-text-primary: var(--ac-color-text-primary);
-  --ac-text-muted: var(--ac-color-text-muted);
-
-  /* ----------------------------------------------------------------
-   * Accent + status
-   * ---------------------------------------------------------------- */
-  --ac-color-accent: var(--ac-akai-red);
-  --ac-color-selected: var(--ac-akai-red);
-  --ac-color-success: #2f7836;
-  --ac-color-warning: #b46e00;
-  --ac-color-danger: #a01e1e;
-  --ac-highlight: var(--ac-akai-red);
-  --ac-highlight-secondary: #b46e00;
-  --ac-status-connected: var(--ac-color-success);
-  --ac-status-warning: var(--ac-color-warning);
-  --ac-status-danger: var(--ac-color-danger);
-  --ac-status-selected: var(--ac-akai-red);
-
-  /* ----------------------------------------------------------------
-   * REC-LED — the bright "I am live" glow (live-edit footer dot,
-   * front-panel pressed indicator, page-title-row LED). Brighter
-   * than the brand red because it's actively lit.
-   * ---------------------------------------------------------------- */
-  --ac-color-rec: #ff3838;
-  --ac-color-rec-glow: rgba(255, 56, 56, 0.6);
-
-  /* ----------------------------------------------------------------
-   * Typography — readability first.
-   *   display: Big Shoulders Display — bold condensed sans, evokes
-   *            the silkscreen on the chassis (SINGLE / MULTI / etc.)
-   *   body:    DM Sans — clean modern body, distinct from Inter
-   *            (forbidden) + IBM Plex Sans (roland's body)
-   *   mono:    JetBrains Mono — same as roland; reused because it's
-   *            the right tool for parameter values regardless of
-   *            dialect
-   *   lcd:     VT323 — dot-matrix character cell for any LCD-style
-   *            readout (NEW token; canonical CSS doesn't reference
-   *            it yet — Phase 2 will introduce it alongside the
-   *            envelope/waveform LCD treatment)
-   * ---------------------------------------------------------------- */
-  --ac-font-display: "Big Shoulders Display", "Archivo Narrow",
-    "Roboto Condensed", system-ui, sans-serif;
-  --ac-font-body: "DM Sans", "Familjen Grotesk", system-ui,
-    -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --ac-font-mono: "JetBrains Mono", "IBM Plex Mono", "SFMono-Regular",
-    Menlo, monospace;
-  --ac-font-lcd: "VT323", "JetBrains Mono", monospace;
-
-  /* ----------------------------------------------------------------
-   * LCD tokens — NEW for the akai dialect; used by Phase 2's
-   * extension of envelope-primitives.css + a new waveform-primitives.css
-   * to render those surfaces as inset LCD windows. The actual
-   * S3000XL display is a deep-blue STN backlight with white dot-matrix
-   * text; reverse-video blocks (section headers, active value cells)
-   * use the inverted polarity.
-   * ---------------------------------------------------------------- */
-  --ac-lcd-bg: #2c5fa8;
-  --ac-lcd-bg-edge: #234a85;
-  --ac-lcd-text: #eaf2f8;
-  --ac-lcd-text-dim: #b8cce0;
-  --ac-lcd-text-rev: #0a1e3e;
-  --ac-lcd-text-rev-bg: #d8e6f0;
-  --ac-lcd-bezel: #2c2a22;
-
-  /* ----------------------------------------------------------------
-   * Body background — roland's <body> rule doesn't paint a background
-   * itself (the chrome carries it via .ac-site-header etc.), but the
-   * mockup has no roland app shell, so paint the canvas here to keep
-   * the page from showing the user-agent default white behind the
-   * fixed-viewport shell.
-   * ---------------------------------------------------------------- */
-  color-scheme: light;
-}
-
-/* Body painted with the dialect canvas — applies whenever data-editor
-   selects this scope. Outside the akai scope the body stays default. */
+/* Body paint — mockup-only. The real akai editor's index.html /
+   App.tsx will paint the body; canonical CSS deliberately leaves
+   <body> unstyled so the editor app shell controls it. */
 :root[data-editor="s3000xl"] body {
   background: var(--ac-color-surface-canvas);
   color: var(--ac-color-text-primary);
