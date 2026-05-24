@@ -134,7 +134,7 @@ function printHelp(): void {
 // ---------------------------------------------------------------------------
 
 /**
- * Build a regex that detects an import of `path`. Matches:
+ * Build a regex that detects an import of ANY of `canonicalPaths`. Matches:
  *   import ... from '<path>'
  *   import ... from "<path>"
  *   import('<path>')
@@ -142,21 +142,33 @@ function printHelp(): void {
  *   export ... from '<path>'  (re-export, counts as adoption)
  *   require('<path>')         (CommonJS interop, counts as adoption)
  *
- * The path is escaped before insertion; regex meta in `from` (slashes,
- * `@`, etc.) are matched literally.
+ * Each path is escaped before insertion; regex meta (slashes, `@`,
+ * etc.) are matched literally. Multiple paths are OR-combined in a
+ * single inner alternation so a consumer importing the primitive via
+ * ANY listed path counts as an adopter (AUDIT-08 — cross-module
+ * primitive promotion).
+ *
+ * Throws when `canonicalPaths` is empty — the parser already enforces
+ * non-emptiness, so this is a load-bearing invariant violation
+ * (not a fallback path).
  */
-export function buildImportRegex(canonicalPath: string): RegExp {
-  const escaped = escapeRegex(canonicalPath);
+export function buildImportRegex(canonicalPaths: readonly string[]): RegExp {
+  if (canonicalPaths.length === 0) {
+    throw new Error('buildImportRegex: canonicalPaths must be non-empty');
+  }
+  const pathAlt = canonicalPaths.map(escapeRegex).join('|');
   // Order matters: the union below covers static imports, re-exports,
   // dynamic imports, and CJS requires. Multi-line flag so the regex
-  // matches imports anywhere in the file.
+  // matches imports anywhere in the file. The inner alternation
+  // `(?:p1|p2|...)` matches any one of the canonical paths inside the
+  // quoted import specifier.
   const pattern =
     `(?:` +
-    `(?:import|export)\\s+(?:[^'"]*\\sfrom\\s+)?['"]${escaped}['"]` +
+    `(?:import|export)\\s+(?:[^'"]*\\sfrom\\s+)?['"](?:${pathAlt})['"]` +
     `|` +
-    `import\\s*\\(\\s*['"]${escaped}['"]\\s*\\)` +
+    `import\\s*\\(\\s*['"](?:${pathAlt})['"]\\s*\\)` +
     `|` +
-    `require\\s*\\(\\s*['"]${escaped}['"]\\s*\\)` +
+    `require\\s*\\(\\s*['"](?:${pathAlt})['"]\\s*\\)` +
     `)`;
   return new RegExp(pattern, 'm');
 }

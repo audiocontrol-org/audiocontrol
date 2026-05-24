@@ -20,7 +20,18 @@
 #
 #   - id: <kebab-case-id; unique across the registry>
 #     introduced_in: <commit-sha; 7-40 lowercase hex; the extraction commit>
-#     from: <canonical import path; e.g., '@/components/SlideDrawer'>
+#     from: <canonical import path STRING (back-compat) OR LIST OF paths>
+#       # e.g., single:  from: '@/components/SlideDrawer'
+#       # e.g., list:    from:
+#       #                  - '@audiocontrol/editor-core'
+#       #                  - '@/components/common/PageTitleRow'
+#       # The list form supports cross-module primitive promotion
+#       # (AUDIT-20260524-08): list both the post-promotion canonical
+#       # path AND any pre-promotion module-local path so consumers
+#       # importing via EITHER path count as adopters during the
+#       # transition. The first list element is treated as the
+#       # "primary" canonical (used for display in the gate's report);
+#       # additional elements are transitional aliases.
 #     expected_adopters_glob:
 #       - <glob string; matched against repo-relative POSIX paths>
 #       - <glob string>
@@ -76,9 +87,12 @@
 # Import detection: the gate matches `import ... from '<from>'`,
 # `import('<from>')`, `export ... from '<from>'`, and
 # `require('<from>')`. Both single- and double-quoted strings are
-# accepted. The `<from>` value is escaped before insertion into the
+# accepted. Each `<from>` value is escaped before insertion into the
 # match regex, so meta characters in the canonical path (`/`, `.`, `@`)
-# are matched literally.
+# are matched literally. When `from:` is a list, the detection regex
+# OR-combines every listed path inside the quoted-string position; a
+# consumer file containing an import of ANY listed path counts as an
+# adopter (AUDIT-08).
 #
 # Engine choice (documented inline for future agents):
 #   Glob-to-regex over `fast-glob` / `picomatch` / `globby`. None of

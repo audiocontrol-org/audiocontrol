@@ -35,6 +35,19 @@
 #       carrying the legacy shape as evidence. Empty list OR missing
 #       field => no exclusions. Glob syntax matches util/glob.ts
 #       (e.g., `**/*.tsx`, `lib/{Foo,Bar}.ts`).>
+#     canonical_implementation_file: <optional CWD-relative POSIX path
+#       (AUDIT-20260524-08). Names the canonical primitive's CURRENT
+#       source-of-truth file. The scanner auto-excludes that file from
+#       this entry's shape match (it would otherwise self-flag — its
+#       body IS the legacy shape, by construction). When the field is
+#       set AND the file does not exist at scan time, the scanner
+#       FAILS LOUD with an actionable error naming the entry id and
+#       the missing path — typically caused by a git rename without
+#       registry update. Independent from `excludes_paths:`: when both
+#       are set, both apply (auto-exclude PLUS the globs). Use this
+#       instead of repeating the canonical's path in `excludes_paths:`
+#       so a future primitive relocation is detected loudly rather
+#       than silently masking the new canonical as a holdout.>
 #     message: <multi-line replacement instruction; what an agent should do
 #       when this shape is found>
 #

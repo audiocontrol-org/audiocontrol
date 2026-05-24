@@ -12,7 +12,7 @@
  *   adopter_manifests:
  *     - id: <kebab-case-id>
  *       introduced_in: <7-40 lowercase hex>
- *       from: <canonical import path>
+ *       from: <canonical import path STRING or LIST OF STRINGS>
  *       expected_adopters_glob:
  *         - <glob string>
  *         - <glob string>
@@ -25,10 +25,22 @@
  *           reason: <multi-line explanation>
  *       message: <multi-line replacement instruction>
  *
+ * `from:` (AUDIT-08): may be a single non-empty string (back-compat)
+ * OR a non-empty list of non-empty strings. The list form supports
+ * cross-module primitive promotion (e.g., `@/components/common/X`
+ * promoted to `@audiocontrol/editor-core`): list BOTH paths during the
+ * transition so consumers importing via EITHER path count as adopters
+ * and the gate does not produce false holdouts. A single string parses
+ * to a one-element array internally; ordering is preserved so the
+ * first element is the "primary" canonical path used for display in
+ * the report layers.
+ *
  * Parse-time validation rejects:
  *   - non-object entries
  *   - missing/malformed required fields
  *   - empty / non-string globs
+ *   - `from:` that is neither a non-empty string nor a non-empty list
+ *     of non-empty strings
  *   - exceptions whose `path` is empty or whose `reason` is empty
  *   - tracked-holdouts missing any of `path` / `issue` / `reason`
  *   - tracked-holdouts whose `path` doesn't match any glob
@@ -95,8 +107,18 @@ export interface AdopterGlob {
 export interface AdopterManifestEntry {
   readonly id: string;
   readonly introducedIn: string;
-  /** Canonical import path the entry asserts (e.g., '@/components/SlideDrawer'). */
-  readonly from: string;
+  /**
+   * Canonical import path(s) the entry asserts. Always a non-empty
+   * array: a single YAML string `from: '@/x'` normalizes to `['@/x']`;
+   * a YAML list `from: ['@a/x', '@b/x']` keeps its ordering. The
+   * first element is the "primary" path used for display in the
+   * report (the current canonical); additional elements are
+   * transitional aliases (e.g., the pre-promotion module-local path
+   * that consumers may still import during a multi-step refactor).
+   * Adoption detection requires ANY listed path to appear in the
+   * consumer file (AUDIT-08).
+   */
+  readonly from: readonly string[];
   /** Pre-compiled adopter globs; at least one. */
   readonly globs: readonly AdopterGlob[];
   /** Exception list; empty when no exceptions are declared. */
@@ -133,7 +155,7 @@ function parseEntry(raw: Record<string, unknown>, ctx: string): AdopterManifestE
   validateKebabId(id, ctx, NAMESPACE);
   const introducedIn = requireString(raw, 'introduced_in', ctx, NAMESPACE);
   validateGitSha(introducedIn, 'introduced_in', ctx, NAMESPACE);
-  const from = requireString(raw, 'from', ctx, NAMESPACE);
+  const from = parseFrom(raw['from'], ctx);
   const message = requireString(raw, 'message', ctx, NAMESPACE);
   const globs = parseGlobs(raw['expected_adopters_glob'], ctx);
   const exceptions = parseExceptions(raw['exceptions'], ctx);
@@ -142,6 +164,44 @@ function parseEntry(raw: Record<string, unknown>, ctx: string): AdopterManifestE
   validatePathsMatchGlobs(trackedHoldouts, globs, ctx, 'tracked_holdout');
   validateNoPathConflict(exceptions, trackedHoldouts, ctx);
   return { id, introducedIn, from, globs, exceptions, trackedHoldouts, message };
+}
+
+/**
+ * Parse the `from:` field. Accepts EITHER a single non-empty string
+ * (back-compat with pre-AUDIT-08 entries) OR a non-empty list of
+ * non-empty strings (post-AUDIT-08 multi-path form for cross-module
+ * primitive promotion). Always normalizes to a non-empty `string[]`.
+ *
+ * An empty array, an empty string element, or a non-string element
+ * are all rejected with a descriptive parse error — the field is
+ * load-bearing for the import-detection regex; silently dropping bad
+ * entries would produce wrong holdout reports.
+ */
+function parseFrom(raw: unknown, ctx: string): readonly string[] {
+  if (typeof raw === 'string') {
+    if (raw.length === 0) {
+      throw new Error(`${NAMESPACE}: ${ctx} requires non-empty string \`from\``);
+    }
+    return [raw];
+  }
+  if (Array.isArray(raw)) {
+    if (raw.length === 0) {
+      throw new Error(
+        `${NAMESPACE}: ${ctx} \`from\` list must contain >= 1 import path`,
+      );
+    }
+    return raw.map((value, index) => {
+      if (typeof value !== 'string' || value.length === 0) {
+        throw new Error(
+          `${NAMESPACE}: ${ctx} \`from[${index}]\` must be a non-empty string; got ${typeof value}`,
+        );
+      }
+      return value;
+    });
+  }
+  throw new Error(
+    `${NAMESPACE}: ${ctx} \`from\` must be a non-empty string OR a non-empty list of strings; got ${typeof raw}`,
+  );
 }
 
 function parseGlobs(raw: unknown, ctx: string): readonly AdopterGlob[] {

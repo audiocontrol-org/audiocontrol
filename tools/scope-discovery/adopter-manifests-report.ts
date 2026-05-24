@@ -79,15 +79,20 @@ export function reportText(result: ScanResult, opts: ReportOptions): string {
   }
   const lines: string[] = [];
   for (const manifest of result.manifests) {
+    // `entry.from` is a non-empty array (AUDIT-08). The primary path
+    // (index 0) is the current canonical; any additional paths are
+    // transitional aliases listed in `(... | ...)` form so the
+    // operator sees both when a primitive is mid-promotion.
+    const fromDisplay = renderFromList(manifest.entry.from);
     const head =
-      `manifest=${manifest.entry.id} primitive=${manifest.entry.from} ` +
+      `manifest=${manifest.entry.id} primitive=${fromDisplay} ` +
       `(introduced in ${manifest.entry.introducedIn})`;
     lines.push(head);
     lines.push(
       `  expected adopters: ${manifest.expectedFiles.length} file(s) match glob(s)`,
     );
     lines.push(`  exceptions: ${manifest.exemptedFiles.length} file(s) excluded`);
-    lines.push(`  actual adopters: ${manifest.actualAdopters.length} file(s) import ${manifest.entry.from}`);
+    lines.push(`  actual adopters: ${manifest.actualAdopters.length} file(s) import ${fromDisplay}`);
     lines.push(`  holdouts: ${manifest.holdouts.length} file(s)`);
     if (manifest.trackedHoldoutFiles.length > 0) {
       lines.push(
@@ -103,7 +108,7 @@ export function reportText(result: ScanResult, opts: ReportOptions): string {
       continue;
     }
     for (const path of manifest.holdouts) {
-      lines.push(`    ${path} — no import matches ${manifest.entry.from}`);
+      lines.push(`    ${path} — no import matches ${renderFromList(manifest.entry.from)}`);
     }
     lines.push('  suggested replacement:');
     const indented = manifest.entry.message
@@ -132,6 +137,9 @@ export function reportJson(result: ScanResult): string {
     entries_scanned: result.entriesScanned,
     manifests: result.manifests.map((m) => ({
       id: m.entry.id,
+      // `from` is always a non-empty array post-AUDIT-08; downstream
+      // JSON consumers parse the canonical primary as `from[0]` and
+      // see transitional aliases at subsequent indices.
       from: m.entry.from,
       introduced_in: m.entry.introducedIn,
       expected_files: m.expectedFiles,
@@ -147,4 +155,21 @@ export function reportJson(result: ScanResult): string {
     })),
   };
   return JSON.stringify(payload, null, 2) + '\n';
+}
+
+/**
+ * Render a `from:` list for display. Single-element arrays render as
+ * the bare path (preserves existing report shape for back-compat
+ * single-string entries); multi-element arrays render as
+ * `<primary> (alias: <a1>, <a2>, …)` so the operator sees the
+ * transitional aliases inline. The primary path (index 0) always
+ * appears first.
+ */
+function renderFromList(from: readonly string[]): string {
+  const [primary, ...aliases] = from;
+  if (primary === undefined) {
+    throw new Error('renderFromList: from array must be non-empty');
+  }
+  if (aliases.length === 0) return primary;
+  return `${primary} (alias: ${aliases.join(', ')})`;
 }

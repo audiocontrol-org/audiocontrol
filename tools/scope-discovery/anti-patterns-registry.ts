@@ -16,7 +16,18 @@
  *       shape_regex: <regex string OR list of regex strings>
  *       min_distance: <int; optional; defaults to DEFAULT_MIN_DISTANCE>
  *       excludes_paths: <optional list of literal paths or globs>
+ *       canonical_implementation_file: <optional CWD-relative POSIX path>
  *       message: <multi-line replacement instruction>
+ *
+ * `canonical_implementation_file:` (AUDIT-08): optional path to the
+ * primitive's source-of-truth file. The scanner auto-excludes that
+ * file from the entry's shape match (its body IS the legacy shape,
+ * by construction). If the field is set AND the file does not exist
+ * at scan time, the scanner FAILS LOUD with an actionable error
+ * naming the entry id + the missing path — typically caused by a git
+ * rename without registry update. Independent from `excludes_paths:`:
+ * both apply when set together (auto-exclude the canonical PLUS the
+ * `excludes_paths` globs).
  *
  * Parse-time validation rejects:
  *   - non-object entries
@@ -25,6 +36,13 @@
  *   - unparseable regex
  *   - non-positive min_distance
  *   - excludes_paths whose entries are not non-empty strings
+ *   - canonical_implementation_file that is set but empty / non-string
+ *
+ * `canonical_implementation_file` existence is NOT validated at parse
+ * time — a multi-step refactor may legitimately update the registry
+ * before moving the file. Existence is checked at SCAN time, where
+ * the failure mode is meaningful (the scanner is about to evaluate
+ * the entry against the wrong tree).
  *
  * Returns a `ParsedRegistry` with the entries narrowed to concrete shapes
  * (single-pattern vs multi-pattern fingerprint), with regexes pre-compiled.
@@ -68,6 +86,9 @@ export interface ExcludePath {
  * Single-pattern fingerprints carry `patterns.length === 1`; multi-pattern
  * fingerprints carry length >= 2 and `minDistance > 0`.
  * `excludesPaths` is empty when the entry has no `excludes_paths:` field.
+ * `canonicalImplementationFile` is `null` when the entry omits the field
+ * (preserves pre-AUDIT-08 behavior — the only exclusion source is
+ * `excludesPaths`).
  */
 export interface AntiPatternEntry {
   readonly id: string;
@@ -77,18 +98,39 @@ export interface AntiPatternEntry {
   readonly patterns: readonly RegExp[];
   readonly minDistance: number;
   readonly excludesPaths: readonly ExcludePath[];
+  /**
+   * CWD-relative POSIX path of the canonical implementation file
+   * (AUDIT-08). When set, the scanner auto-excludes this file from
+   * the entry's shape match AND verifies the file exists at scan
+   * start (failing loud if it doesn't — the primitive may have been
+   * git-renamed without updating the registry).
+   */
+  readonly canonicalImplementationFile: string | null;
   readonly message: string;
 }
 
 /**
  * True iff `relPath` (POSIX, relative to the scanner's CWD) matches any
- * pattern in `entry.excludesPaths`. Used by the scanner to skip a file
- * for this entry BEFORE running the shape patterns. Primary motivation:
- * a canonical primitive's own file whose body IS the legacy shape the
- * entry catches; secondary: test fixtures intentionally carrying the
- * legacy shape as evidence.
+ * pattern in `entry.excludesPaths` OR equals `entry.canonicalImplementationFile`.
+ * Used by the scanner to skip a file for this entry BEFORE running the
+ * shape patterns. Primary motivation: a canonical primitive's own file
+ * whose body IS the legacy shape the entry catches; secondary: test
+ * fixtures intentionally carrying the legacy shape as evidence.
+ *
+ * AUDIT-08: when `canonicalImplementationFile` is set, the exact
+ * (POSIX-normalized) match is treated as an implicit exclusion. The
+ * scanner's existence check (in `check-anti-patterns.ts`) catches the
+ * "primitive renamed but registry not updated" failure mode at scan
+ * start; the exclusion here closes the loop by skipping the file once
+ * it's confirmed to exist.
  */
 export function isPathExcluded(entry: AntiPatternEntry, relPath: string): boolean {
+  if (
+    entry.canonicalImplementationFile !== null &&
+    entry.canonicalImplementationFile === relPath
+  ) {
+    return true;
+  }
   for (const exclude of entry.excludesPaths) {
     if (exclude.regex.test(relPath)) return true;
   }
@@ -127,7 +169,42 @@ function parseEntry(raw: Record<string, unknown>, ctx: string): AntiPatternEntry
   const patterns = parsePatterns(raw['shape_regex'], ctx);
   const minDistance = parseMinDistance(raw['min_distance'], ctx);
   const excludesPaths = parseExcludesPaths(raw['excludes_paths'], ctx);
-  return { id, addedIn, primitive, from, patterns, minDistance, excludesPaths, message };
+  const canonicalImplementationFile = parseCanonicalImplementationFile(
+    raw['canonical_implementation_file'],
+    ctx,
+  );
+  return {
+    id,
+    addedIn,
+    primitive,
+    from,
+    patterns,
+    minDistance,
+    excludesPaths,
+    canonicalImplementationFile,
+    message,
+  };
+}
+
+/**
+ * Parse the optional `canonical_implementation_file:` field
+ * (AUDIT-08). Returns `null` when the field is absent (preserves
+ * pre-AUDIT-08 behavior); returns the trimmed, POSIX-normalized
+ * path string when set. Empty / non-string values raise a parse
+ * error.
+ *
+ * Existence is NOT checked here — see `check-anti-patterns.ts`'s
+ * scan-start guard. A multi-step refactor may legitimately update
+ * the registry before moving the file.
+ */
+function parseCanonicalImplementationFile(raw: unknown, ctx: string): string | null {
+  if (raw === undefined || raw === null) return null;
+  if (typeof raw !== 'string' || raw.length === 0) {
+    throw new Error(
+      `${NAMESPACE}: ${ctx} \`canonical_implementation_file\` must be a non-empty string; got ${typeof raw}`,
+    );
+  }
+  return raw;
 }
 
 function parsePatterns(raw: unknown, ctx: string): readonly RegExp[] {
