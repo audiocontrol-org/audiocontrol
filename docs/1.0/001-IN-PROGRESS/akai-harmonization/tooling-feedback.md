@@ -14,6 +14,22 @@ Categories:
 
 Severity: **high** (blocks work or hides bugs) · **medium** (slows work meaningfully) · **low** (papercut).
 
+## Status summary
+
+| TF | Status | Closing commit |
+|---|---|---|
+| TF-001, TF-002 | Addressed | `fddbad06` (PR #462) — primitive-relocation awareness |
+| TF-003 | Addressed | `10dee19f` (PR #462) — clone-detector cites batch-dispose for NEW groups |
+| TF-004 | Addressed | `a5986c8e` (PR #462) — pre-commit gate consolidation |
+| TF-005 | Addressed | `e294a29a` (PR #462) — scope-inventory PRD-scoped module pruning |
+| TF-006 | Addressed | `4278986f` (PR #462) — synthesizer References warning gains paste-ready skeleton |
+| TF-010 | Addressed | `837c9336` (PR #462) — check-adopters summary moves to last line + --quiet flag |
+| TF-007, TF-008, TF-009, TF-011, TF-012, TF-013 | Open | — |
+
+Of the 13 entries logged during Phase 2, 7 are now closed by the PR #462 burndown landing on `origin/main` 2026-05-24. The remaining 6 are operator-driven (test triage, file-cap refactor, a11y harness, package-exports automation, CSS preprocessor work, clone-detector regen safety) and not yet scheduled.
+
+A parallel improvement landed in `676dd164` on this branch — the `imports:` field on adopter-manifests entries lets the gate distinguish "imports the canonical primitive" from "imports some other symbol from the same package," and recognizes transitive adoption via wrapping primitives (e.g., SteppedProgressDrawer wraps SlideDrawer; importing the wrapper now counts). Not a TF entry of its own — it surfaced as a finding during the SlideDrawer adoption work and was fixed in the same commit pair.
+
 ---
 
 ## TF-001 · AM · medium · Adopter-manifest `from:` is a literal string; doesn't survive primitive relocation
@@ -24,6 +40,8 @@ Severity: **high** (blocks work or hides bugs) · **medium** (slows work meaning
 
 **Suggested fix:** allow `from:` to be a list (`from: ['@audiocontrol/editor-core', '@/components/common/PageTitleRow']`) so a primitive in transit is recognized by either path. Better: a re-export-aware import resolver that follows the editor-core barrel + roland's local re-export so the `from:` can name ONE canonical path and the resolver walks aliases.
 
+**Addressed by:** `fddbad06` (fix(scope-discovery-protocol): primitive-relocation awareness, PR #462). The `from:` field now accepts EITHER a single YAML string (back-compat) OR a non-empty list of strings; both forms normalize to `readonly string[]` internally, and the import-detection regex builds a path alternation so consumers importing via ANY listed path count as adopters. Paired adversarial scenarios in `tools/scope-discovery/adopter-manifests.from-list-scenarios.ts`. Verified locally post-merge: `make check-adopters` exits 0 across 9 manifests; `pnpm tsx tools/scope-discovery/adopter-manifests.validate.ts` reports 32/32 (the from-list suite contributes 6 scenarios including the relocation-mixed-state happy path).
+
 ---
 
 ## TF-002 · A · medium · Anti-pattern registry flags the canonical component itself when the primitive moves modules
@@ -33,6 +51,8 @@ Severity: **high** (blocks work or hides bugs) · **medium** (slows work meaning
 **Workaround used:** updated each entry's `excludes_paths:` to the new editor-core file paths + updated each entry's `from:` to `@audiocontrol/editor-core` so the message tells operators where to import from now.
 
 **Suggested fix:** the registry should keep `excludes_paths:` relative to the primitive's canonical location, not a hardcoded path. Or: each entry could declare a `canonical_implementation_file:` field, and the matcher auto-excludes that file. Bonus: when a `canonical_implementation_file` moves (detected via git rename), the matcher could fail the build with a specific error ("primitive file `X` moved to `Y`; update `excludes_paths`") rather than silently flagging the new location.
+
+**Addressed by:** `fddbad06` (fix(scope-discovery-protocol): primitive-relocation awareness, PR #462). Anti-pattern entries gained a `canonical_file:` field; the matcher auto-excludes that file regardless of whether it appears in `excludes_paths`, so a primitive relocation doesn't break the gate the moment the file moves modules. Paired adversarial scenarios in `tools/scope-discovery/anti-patterns.canonical-file-scenarios.ts`. Verified locally post-merge: `make check-anti-patterns` exits 0; the scope-discovery validator suite reports its anti-patterns-canonical-file scenarios PASS.
 
 ---
 
@@ -50,6 +70,8 @@ Severity: **high** (blocks work or hides bugs) · **medium** (slows work meaning
               --disposition <refactor|keep-with-reason|ignore-with-justification> \
               --reason "<one-line rationale>"
 
+**Addressed by:** `10dee19f` (fix(scope-discovery-protocol): clone-detector cites batch-dispose for NEW groups, PR #462). The pre-commit clone-detector now prints a paste-ready `batch-dispose.ts` command with the NEW group id pre-filled when it fails on undispositioned new groups. Operator paste-and-edits the disposition + reason instead of hand-writing the YAML entry.
+
 ---
 
 ## TF-004 · GATE · medium · Pre-commit gates fail one-at-a-time across the hook chain
@@ -66,6 +88,8 @@ Each failure required a separate fix-and-retry cycle. Total: 3 round-trips to la
 
 **Suggested fix:** the pre-commit driver could run all gates in parallel, collect every failure, and present a single consolidated report. Operator does one fix-pass instead of N. The current short-circuit behavior is good for fast iteration when only one gate is red, but bad when multiple are red after a substantial change like a primitive promotion. A `--no-short-circuit` flag would let the operator opt in.
 
+**Addressed by:** `a5986c8e` (fix(scope-discovery-protocol): pre-commit gate consolidation, PR #462). The hook chain now runs all staged-file-relevant gates in a single pass with non-short-circuiting reporting; operator sees every failure in a single output rather than playing whack-a-mole. Paired adversarial scenarios in `tools/scope-discovery/pre-commit-consolidation.validate.ts`.
+
 ---
 
 ## TF-005 · DSC · medium · Scope-inventory's module list is over-broad (12-of-12 workspace modules)
@@ -76,6 +100,8 @@ Each failure required a separate fix-and-retry cycle. Total: 3 round-trips to la
 
 **Suggested fix:** the PRD-themed-pattern-hunter agent already reads the PRD; it could parse the "In Scope" / "Out of Scope" sections explicitly and emit a `module_relevance_score` per module so the synthesizer can mark out-of-scope entries with `excluded_by: prd-out-of-scope` instead of including them silently. Operator curation would then be reviewing the agent's pruning judgment, not writing the prune list from scratch.
 
+**Addressed by:** `e294a29a` (fix(scope-discovery-protocol): scope-inventory PRD-scoped module pruning, PR #462). PRD-themed-pattern-hunter now parses In Scope / Out of Scope sections explicitly and emits a `prd_relevance` field per finding (high / medium / low / excluded). Synthesizer drops `excluded` modules with a cited warning and annotates low-relevance entries so operator curation reviews the pruning judgment rather than authoring it from scratch. Paired adversarial scenarios in `tools/scope-discovery/discovery-agents/prd-themed-pattern-hunter.relevance-scenarios.ts`.
+
 ---
 
 ## TF-006 · DSC · low · Synthesizer warns "PRD has no References/Appendix section" but the warning is mild
@@ -85,6 +111,8 @@ Each failure required a separate fix-and-retry cycle. Total: 3 round-trips to la
 **Workaround used:** accepted the default; noted that a Phase 2 re-run after the operator appends an Appendix to the PRD would produce richer references.
 
 **Suggested fix:** the `/dw-lifecycle:define` PRD template could include a default empty Appendix section with explicit "References" / "Related issues" subheadings so the synthesizer has hooks to populate.
+
+**Addressed by:** `4278986f` (fix(scope-discovery-protocol): synthesizer References warning gains paste-ready skeleton, PR #462). When the missing-References warning fires, the warning text + `synthesis-notes.md` now include a paste-ready PRD skeleton (Related issues / Related ADRs / External docs subheadings) the operator drops into the PRD verbatim. Paired adversarial scenario in `tools/scope-discovery/synthesis-warnings.validate.ts`.
 
 ---
 
@@ -125,6 +153,8 @@ Each failure required a separate fix-and-retry cycle. Total: 3 round-trips to la
 **Workaround used:** piped through `tail -5` to find the summary line.
 
 **Suggested fix:** the summary line should be the LAST line of output, not the middle. Or a `--quiet` flag that prints only the summary unless there are non-tracked findings. Or color-code: tracked holdouts in muted gray, real findings in red.
+
+**Addressed by:** `837c9336` (fix(scope-discovery-protocol): check-adopters summary moves to last line + --quiet flag, PR #462). Both fixes shipped: the summary line is now always the last non-empty line of stdout, AND `make check-adopters QUIET=1` (or `--quiet` on the CLI) suppresses per-manifest detail when there are zero real holdouts. The `--quiet` mode is automatically overridden when real holdouts are present so the operator never silently misses a finding. Paired adversarial scenarios in `tools/scope-discovery/adopter-manifests.summary-ordering-scenarios.ts` (4 scenarios). Verified locally: my post-merge `make check-adopters` invocation showed the summary cleanly at the tail.
 
 ---
 
