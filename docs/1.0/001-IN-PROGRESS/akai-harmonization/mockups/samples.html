@@ -2,10 +2,11 @@
 <html lang="en" data-editor="s3000xl">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=1280" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Akai S3000XL — Samples · Mockup</title>
   <link rel="stylesheet" href="/modules/editor-core/src/design/styles.css" />
   <link rel="stylesheet" href="/modules/roland-sxx0-editor/src/styles/_shared.css" />
+  <link rel="stylesheet" href="/modules/roland-sxx0-editor/src/styles/tones.css" />
   <link rel="stylesheet" href="./akai-dialect.css" />
 </head>
 <body>
@@ -41,146 +42,66 @@
             </button>
             <strong>001–062</strong>
           </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">001</span>
-            <span class="ac-list-name">KICK_808_HI</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">002</span>
-            <span class="ac-list-name">SNARE_LIN77</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0" aria-selected="true">
-            <span class="ac-list-slot">003</span>
-            <span class="ac-list-name">HAT_CL_SOFT</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">004</span>
-            <span class="ac-list-name">HAT_CL_HARD</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">005</span>
-            <span class="ac-list-name">HAT_OP_LB</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">006</span>
-            <span class="ac-list-name">HAT_OP_SH</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">007</span>
-            <span class="ac-list-name">RIDE_LB</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">008</span>
-            <span class="ac-list-name">CRASH_BR_SH</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">009</span>
-            <span class="ac-list-name">CRASH_BR_LB</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">010</span>
-            <span class="ac-list-name">TOM_HI_MPL</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">011</span>
-            <span class="ac-list-name">TOM_MID_MPL</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">012</span>
-            <span class="ac-list-name">TOM_LO_MPL</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">013</span>
-            <span class="ac-list-name">PERC_SHKR</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">014</span>
-            <span class="ac-list-name">PERC_CLAVES</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">015</span>
-            <span class="ac-list-name">PERC_CONGAS</span>
-          </div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">001</span><span class="ac-list-name">KICK_808_HI</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">002</span><span class="ac-list-name">SNARE_LIN77</span></div>
+          <div class="ac-list-row" role="button" tabindex="0" aria-selected="true"><span class="ac-list-slot">003</span><span class="ac-list-name">HAT_CL_SOFT</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">004</span><span class="ac-list-name">HAT_CL_HARD</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">005</span><span class="ac-list-name">HAT_OP_LB</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">006</span><span class="ac-list-name">HAT_OP_SH</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">007</span><span class="ac-list-name">RIDE_LB</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">008</span><span class="ac-list-name">CRASH_BR_SH</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">009</span><span class="ac-list-name">CRASH_BR_LB</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">010</span><span class="ac-list-name">TOM_HI_MPL</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">011</span><span class="ac-list-name">TOM_MID_MPL</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">012</span><span class="ac-list-name">TOM_LO_MPL</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">013</span><span class="ac-list-name">PERC_SHKR</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">014</span><span class="ac-list-name">PERC_CLAVES</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">015</span><span class="ac-list-name">PERC_CONGAS</span></div>
         </div>
       </aside>
 
       <!-- ============================================================ -->
-      <!-- DETAIL COLUMN — sample editor                                  -->
+      <!-- DETAIL COLUMN — sample editor (dense)                          -->
       <!-- ============================================================ -->
       <section class="ac-detail-pane" aria-label="Sample editor">
         <header class="ac-detail-head">
-          <div class="ac-detail-head-block">
-            <span class="ac-detail-eyebrow">Sample 003 of 62 · 22050 Hz · 40 KB</span>
-            <h3 class="ac-detail-title">HAT_CL_SOFT</h3>
+          <div class="ac-detail-eyebrow-row">
+            <span>Sample</span>
+            <span class="ac-detail-eyebrow-sep">·</span>
+            <span class="ac-detail-eyebrow-accent">Editing</span>
+            <span class="ac-detail-eyebrow-sep">·</span>
+            <span>003 of 62</span>
+            <span class="ac-detail-eyebrow-sep">·</span>
+            <span>22050 Hz · 40 KB · 0.91 s</span>
           </div>
-          <div class="ac-detail-head-actions">
-            <button type="button" class="ac-btn ac-btn-sm">Loop Editor</button>
-            <button type="button" class="ac-btn ac-btn-sm">Sample Editor</button>
-            <button type="button" class="ac-btn ac-btn-sm">Chopper</button>
-            <button type="button" class="ac-btn ac-btn-sm">Clone</button>
-            <button type="button" class="ac-btn ac-btn-sm ac-btn-danger">Delete</button>
-          </div>
+          <h3 id="sample-detail-title" class="ac-detail-title">
+            <span class="ac-detail-slot">003</span>
+            <input type="text" value="HAT_CL_SOFT" maxlength="12" class="ac-input ac-detail-name-input" />
+          </h3>
         </header>
 
-        <div class="ac-tabs">
-          <input type="radio" name="as-tabs" id="as-wave" checked />
-          <input type="radio" name="as-tabs" id="as-loop" />
-          <input type="radio" name="as-tabs" id="as-trim" />
-          <input type="radio" name="as-tabs" id="as-misc" />
+        <div class="ac-detail-body">
+          <div class="ac-tabs">
+            <input type="radio" name="as-tabs" id="as-wave" checked />
+            <input type="radio" name="as-tabs" id="as-loop" />
+            <input type="radio" name="as-tabs" id="as-trim" />
+            <input type="radio" name="as-tabs" id="as-misc" />
 
-          <div class="ac-tab-strip" role="tablist">
-            <label class="ac-tab" for="as-wave" role="tab">Wave</label>
-            <label class="ac-tab" for="as-loop" role="tab">Loop</label>
-            <label class="ac-tab" for="as-trim" role="tab">Trim</label>
-            <label class="ac-tab" for="as-misc" role="tab">Misc</label>
-          </div>
+            <div class="ac-tab-strip" role="tablist">
+              <label class="ac-tab" for="as-wave" role="tab">Wave</label>
+              <label class="ac-tab" for="as-loop" role="tab">Loop</label>
+              <label class="ac-tab" for="as-trim" role="tab">Trim</label>
+              <label class="ac-tab" for="as-misc" role="tab">Misc</label>
+            </div>
 
-          <div class="ac-panels">
+            <div class="ac-panels">
 
-            <!-- Wave tab -->
-            <div class="ac-panel" data-tab="as-wave">
-              <div class="ac-detail-body">
+              <!-- WAVE TAB -->
+              <div class="ac-panel" data-tab="as-wave">
                 <div class="ac-panel-stack">
 
-                  <section class="tones__section">
-                    <div class="tones__section-head">
-                      <h4 class="tones__section-title">Sample identity</h4>
-                      <span class="tones__section-eyebrow">§01 · Wave</span>
-                    </div>
-                    <div class="tones__field-grid">
-                      <div class="tones__field">
-                        <label class="ac-field-label">Name</label>
-                        <input class="ac-input" type="text" value="HAT_CL_SOFT" />
-                      </div>
-                      <div class="tones__field">
-                        <label class="ac-field-label">Slot</label>
-                        <input class="ac-input" type="text" value="003" />
-                      </div>
-                      <div class="tones__field">
-                        <label class="ac-field-label">Sample rate</label>
-                        <input class="ac-input" type="text" value="22050" />
-                      </div>
-                      <div class="tones__field">
-                        <label class="ac-field-label">Length (samples)</label>
-                        <input class="ac-input" type="text" value="20160" />
-                      </div>
-                      <div class="tones__field">
-                        <label class="ac-field-label">Duration</label>
-                        <input class="ac-input" type="text" value="0.91 s" />
-                      </div>
-                      <div class="tones__field">
-                        <label class="ac-field-label">Size</label>
-                        <input class="ac-input" type="text" value="40 KB" />
-                      </div>
-                    </div>
-                  </section>
-
-                  <section class="tones__section">
-                    <div class="tones__section-head">
-                      <h4 class="tones__section-title">Format</h4>
-                      <span class="tones__section-eyebrow">§02 · Format</span>
-                    </div>
-                    <div class="tones__field-row">
+                  <div class="ac-compact-grid">
+                    <div class="ac-compact-field">
                       <span class="ac-field-label">Channels</span>
                       <div class="ac-toggle" role="radiogroup">
                         <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="as-chan" checked /><span class="ac-toggle__label">Mono</span></label>
@@ -188,7 +109,7 @@
                         <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="as-chan" /><span class="ac-toggle__label">Stereo R</span></label>
                       </div>
                     </div>
-                    <div class="tones__field-row">
+                    <div class="ac-compact-field">
                       <span class="ac-field-label">Bit depth</span>
                       <div class="ac-toggle" role="radiogroup">
                         <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="as-bits" /><span class="ac-toggle__label">8</span></label>
@@ -196,133 +117,202 @@
                         <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="as-bits" checked /><span class="ac-toggle__label">16</span></label>
                       </div>
                     </div>
-                  </section>
+                    <div class="ac-compact-field">
+                      <span class="ac-field-label">Sample rate</span>
+                      <div class="ac-toggle" role="radiogroup">
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="as-rate" /><span class="ac-toggle__label">11.0k</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="as-rate" /><span class="ac-toggle__label">14.7k</span></label>
+                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="as-rate" checked /><span class="ac-toggle__label">22.0k</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="as-rate" /><span class="ac-toggle__label">44.1k</span></label>
+                      </div>
+                    </div>
+                  </div>
 
-                  <!--
-                    Waveform preview placeholder — Phase 2 mounts the
-                    canonical loop-editor waveform canvas (from
-                    @audiocontrol/loop-editor's WaveformCanvas) here.
-                    Not transposed into the mockup because the canvas
-                    component lives in loop-editor, not editor-core, and
-                    the dialect contract doesn't add a parallel rendering.
-                    Operator opens the full editor via the "Sample Editor"
-                    / "Loop Editor" actions in the detail-head.
-                  -->
+                  <div class="tones__param-rows">
+                    <div class="ac-slider"><span class="ac-slider__label">Volume</span><div class="ac-range-bar" style="--ac-range-fill: 78%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>99</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Pan</span><div class="ac-range-bar ac-range-bar--bipolar" style="--ac-range-bar-l: 50%; --ac-range-bar-w: 0%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>+00</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Velocity</span><div class="ac-range-bar" style="--ac-range-fill: 50%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>64</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Fade in (ms)</span><div class="ac-range-bar" style="--ac-range-fill: 0%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>0</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Fade out (ms)</span><div class="ac-range-bar" style="--ac-range-fill: 0%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>0</strong></span></div>
+                  </div>
+
+                  <div class="ac-compact-grid">
+                    <div class="ac-compact-field ac-compact-field--readout">
+                      <span class="ac-field-label">Length</span>
+                      <span class="ac-field-readout">20,160 samples</span>
+                    </div>
+                    <div class="ac-compact-field ac-compact-field--readout">
+                      <span class="ac-field-label">Duration</span>
+                      <span class="ac-field-readout">0.913 s</span>
+                    </div>
+                    <div class="ac-compact-field ac-compact-field--readout">
+                      <span class="ac-field-label">Size</span>
+                      <span class="ac-field-readout">40 KB</span>
+                    </div>
+                    <div class="ac-compact-field ac-compact-field--readout">
+                      <span class="ac-field-label">Peak</span>
+                      <span class="ac-field-readout">−1.4 dB</span>
+                    </div>
+                  </div>
 
                 </div>
               </div>
-            </div>
 
-            <!-- Loop tab -->
-            <div class="ac-panel" data-tab="as-loop">
-              <div class="ac-detail-body">
+              <!-- LOOP TAB -->
+              <div class="ac-panel" data-tab="as-loop">
                 <div class="ac-panel-stack">
-                  <section class="tones__section">
-                    <div class="tones__section-head">
-                      <h4 class="tones__section-title">Loop region</h4>
-                      <span class="tones__section-eyebrow">§03 · Loop</span>
-                    </div>
-                    <div class="tones__field-row">
+                  <div class="ac-compact-grid">
+                    <div class="ac-compact-field">
                       <span class="ac-field-label">Loop mode</span>
                       <div class="ac-toggle" role="radiogroup">
-                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="as-loopmode" checked /><span class="ac-toggle__label">Hold</span></label>
-                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="as-loopmode" /><span class="ac-toggle__label">One-shot</span></label>
-                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="as-loopmode" /><span class="ac-toggle__label">Until ko</span></label>
-                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="as-loopmode" /><span class="ac-toggle__label">Loop</span></label>
+                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="as-lmode" checked /><span class="ac-toggle__label">Hold</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="as-lmode" /><span class="ac-toggle__label">One-shot</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="as-lmode" /><span class="ac-toggle__label">Until ko</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="as-lmode" /><span class="ac-toggle__label">Loop</span></label>
                       </div>
                     </div>
-                    <div class="tones__addresses">
-                      <div>
-                        <label class="ac-field-label">Loop start</label>
-                        <input class="ac-input" type="text" value="36" />
-                      </div>
-                      <div>
-                        <label class="ac-field-label">Loop end</label>
-                        <input class="ac-input" type="text" value="16128" />
-                      </div>
-                      <div>
-                        <label class="ac-field-label">Length (s)</label>
-                        <input class="ac-input" type="text" value="0.731" />
+                    <div class="ac-compact-field">
+                      <span class="ac-field-label">Crossfade</span>
+                      <div class="ac-toggle" role="radiogroup">
+                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="as-xfade" checked /><span class="ac-toggle__label">Off</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="as-xfade" /><span class="ac-toggle__label">Linear</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="as-xfade" /><span class="ac-toggle__label">Equal-pwr</span></label>
                       </div>
                     </div>
-                  </section>
+                  </div>
 
-                  <section class="tones__section">
-                    <div class="tones__section-head">
-                      <h4 class="tones__section-title">Crossfade</h4>
-                      <span class="tones__section-eyebrow">§04 · Smoothing</span>
+                  <div class="tones__param-rows">
+                    <div class="ac-slider"><span class="ac-slider__label">Loop start</span><div class="ac-range-bar" style="--ac-range-fill: 0.2%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>36</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Loop end</span><div class="ac-range-bar" style="--ac-range-fill: 80%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>16128</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Length</span><div class="ac-range-bar" style="--ac-range-fill: 80%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>16092</strong> <span class="ac-slider__readout-unit">smp</span></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Crossfade (ms)</span><div class="ac-range-bar" style="--ac-range-fill: 0%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>0</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Loop tune</span><div class="ac-range-bar ac-range-bar--bipolar" style="--ac-range-bar-l: 50%; --ac-range-bar-w: 0%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>+00</strong> <span class="ac-slider__readout-unit">cents</span></span></div>
+                  </div>
+
+                  <div class="ac-compact-grid">
+                    <div class="ac-compact-field ac-compact-field--readout">
+                      <span class="ac-field-label">Loop duration</span>
+                      <span class="ac-field-readout">0.730 s</span>
                     </div>
-                    <div class="tones__field-grid">
-                      <div class="tones__field">
-                        <label class="ac-field-label">Length (ms)</label>
-                        <input class="ac-input" type="text" value="0" />
-                      </div>
-                      <div class="tones__field">
-                        <label class="ac-field-label">Curve</label>
-                        <input class="ac-input" type="text" value="Linear" />
-                      </div>
+                    <div class="ac-compact-field ac-compact-field--readout">
+                      <span class="ac-field-label">Zero-crossings</span>
+                      <span class="ac-field-readout">Aligned</span>
                     </div>
-                  </section>
+                  </div>
+
                 </div>
               </div>
-            </div>
 
-            <!-- Trim tab -->
-            <div class="ac-panel" data-tab="as-trim">
-              <div class="ac-detail-body">
+              <!-- TRIM TAB -->
+              <div class="ac-panel" data-tab="as-trim">
                 <div class="ac-panel-stack">
-                  <section class="tones__section">
-                    <div class="tones__section-head">
-                      <h4 class="tones__section-title">Trim points</h4>
-                      <span class="tones__section-eyebrow">§05 · Trim</span>
-                    </div>
-                    <div class="tones__addresses">
-                      <div>
-                        <label class="ac-field-label">Start</label>
-                        <input class="ac-input" type="text" value="0" />
-                      </div>
-                      <div>
-                        <label class="ac-field-label">End</label>
-                        <input class="ac-input" type="text" value="20160" />
-                      </div>
-                      <div>
-                        <label class="ac-field-label">Trimmed (s)</label>
-                        <input class="ac-input" type="text" value="0.913" />
+                  <div class="ac-compact-grid">
+                    <div class="ac-compact-field">
+                      <span class="ac-field-label">Mode</span>
+                      <div class="ac-toggle" role="radiogroup">
+                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="as-tmode" checked /><span class="ac-toggle__label">Soft</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="as-tmode" /><span class="ac-toggle__label">Hard</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="as-tmode" /><span class="ac-toggle__label">Destructive</span></label>
                       </div>
                     </div>
-                  </section>
+                    <div class="ac-compact-field">
+                      <span class="ac-field-label">Zero-cross</span>
+                      <div class="ac-toggle" role="radiogroup">
+                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="as-zx" checked /><span class="ac-toggle__label">Snap</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="as-zx" /><span class="ac-toggle__label">Free</span></label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="tones__param-rows">
+                    <div class="ac-slider"><span class="ac-slider__label">Start</span><div class="ac-range-bar" style="--ac-range-fill: 0%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>0</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">End</span><div class="ac-range-bar" style="--ac-range-fill: 100%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>20160</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Pre-roll (ms)</span><div class="ac-range-bar" style="--ac-range-fill: 0%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>0</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Post-roll (ms)</span><div class="ac-range-bar" style="--ac-range-fill: 0%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>0</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Trim gain</span><div class="ac-range-bar ac-range-bar--bipolar" style="--ac-range-bar-l: 50%; --ac-range-bar-w: 0%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>+0.0</strong> <span class="ac-slider__readout-unit">dB</span></span></div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <!-- Misc tab -->
-            <div class="ac-panel" data-tab="as-misc">
-              <div class="ac-detail-body">
+              <!-- MISC TAB -->
+              <div class="ac-panel" data-tab="as-misc">
                 <div class="ac-panel-stack">
-                  <section class="tones__section">
-                    <div class="tones__section-head">
-                      <h4 class="tones__section-title">Tuning</h4>
-                      <span class="tones__section-eyebrow">§06 · Misc</span>
-                    </div>
-                    <div class="tones__field-grid">
-                      <div class="tones__field">
-                        <label class="ac-field-label">Root key</label>
-                        <input class="ac-input" type="text" value="F#3" />
-                      </div>
-                      <div class="tones__field">
-                        <label class="ac-field-label">Tune (cents)</label>
-                        <input class="ac-input" type="text" value="+04" />
+                  <div class="ac-compact-grid">
+                    <div class="ac-compact-field">
+                      <span class="ac-field-label">Playback</span>
+                      <div class="ac-toggle" role="radiogroup">
+                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="as-play" checked /><span class="ac-toggle__label">Forward</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="as-play" /><span class="ac-toggle__label">Reverse</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="as-play" /><span class="ac-toggle__label">Ping-pong</span></label>
                       </div>
                     </div>
-                  </section>
+                  </div>
+
+                  <div class="tones__param-rows">
+                    <div class="ac-slider"><span class="ac-slider__label">Root key</span><div class="ac-range-bar" style="--ac-range-fill: 42%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>F#3</strong> <span class="ac-slider__readout-unit">54</span></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Tune (cents)</span><div class="ac-range-bar ac-range-bar--bipolar" style="--ac-range-bar-l: 50%; --ac-range-bar-w: 3%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>+04</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Tune (semi)</span><div class="ac-range-bar ac-range-bar--bipolar" style="--ac-range-bar-l: 50%; --ac-range-bar-w: 0%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>+00</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Lo note range</span><div class="ac-range-bar" style="--ac-range-fill: 0%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>C-2</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Hi note range</span><div class="ac-range-bar" style="--ac-range-fill: 100%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>G8</strong></span></div>
+                  </div>
+
+                  <div class="ac-compact-grid">
+                    <div class="ac-compact-field ac-compact-field--readout">
+                      <span class="ac-field-label">Used by programs</span>
+                      <span class="ac-field-readout">PRG_MPC_STK · KG3 · Z1</span>
+                    </div>
+                    <div class="ac-compact-field ac-compact-field--readout">
+                      <span class="ac-field-label">Imported</span>
+                      <span class="ac-field-readout">2026-04-12 14:08</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
+            </div>
           </div>
         </div>
+
+        <footer class="ac-detail-foot">
+          <span class="ac-live-indicator" aria-live="polite">
+            <span class="ac-live-led" aria-hidden="true"></span>
+            <span class="ac-live-text">Live · streaming to S3000XL · last edit 5.8 s ago</span>
+          </span>
+          <span class="ac-detail-foot-actions">
+            <button type="button" class="ac-btn ac-btn-sm">Loop Editor</button>
+            <button type="button" class="ac-btn ac-btn-sm">Sample Editor</button>
+            <button type="button" class="ac-btn ac-btn-sm">Chopper</button>
+            <button type="button" class="ac-btn ac-btn-sm">Clone</button>
+            <button type="button" class="ac-btn ac-btn-sm ac-btn-danger">Delete</button>
+          </span>
+        </footer>
       </section>
     </div>
   </div>
+
+  <style>
+    :root[data-editor="s3000xl"] .ac-detail-foot {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: var(--ac-space-3); padding: var(--ac-space-2) var(--ac-space-4);
+      border-top: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+      background: color-mix(in srgb, var(--ac-color-surface-canvas) 70%, transparent);
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+    :root[data-editor="s3000xl"] .ac-live-indicator {
+      display: inline-flex; align-items: center; gap: var(--ac-space-2);
+      font-family: var(--ac-font-mono); font-size: var(--ac-text-xs);
+      color: var(--ac-color-text-muted);
+    }
+    :root[data-editor="s3000xl"] .ac-live-led {
+      width: 0.55rem; height: 0.55rem; border-radius: 50%;
+      background: var(--ac-color-rec);
+      box-shadow: 0 0 6px var(--ac-color-rec-glow);
+      animation: ac-rec-pulse 1.6s ease-in-out infinite;
+    }
+    :root[data-editor="s3000xl"] .ac-live-text { color: var(--ac-color-text-primary); }
+    :root[data-editor="s3000xl"] .ac-detail-foot-actions { display: inline-flex; gap: var(--ac-space-2); flex-wrap: wrap; }
+    @keyframes ac-rec-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  </style>
 </body>
 </html>

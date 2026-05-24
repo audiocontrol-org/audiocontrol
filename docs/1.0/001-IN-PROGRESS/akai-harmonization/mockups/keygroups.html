@@ -2,10 +2,11 @@
 <html lang="en" data-editor="s3000xl">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=1280" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Akai S3000XL — Keygroups · Mockup</title>
   <link rel="stylesheet" href="/modules/editor-core/src/design/styles.css" />
   <link rel="stylesheet" href="/modules/roland-sxx0-editor/src/styles/_shared.css" />
+  <link rel="stylesheet" href="/modules/roland-sxx0-editor/src/styles/tones.css" />
   <link rel="stylesheet" href="./akai-dialect.css" />
 </head>
 <body>
@@ -30,7 +31,7 @@
     <div class="ac-app-shell" aria-labelledby="keygroups-heading">
 
       <!-- ============================================================ -->
-      <!-- LIST COLUMN — keygroups (KG1..KG11)                            -->
+      <!-- LIST COLUMN                                                    -->
       <!-- ============================================================ -->
       <aside class="ac-list" aria-label="Keygroups">
         <div class="ac-list-scroll">
@@ -41,211 +42,229 @@
             </button>
             <strong>KG01–KG11</strong>
           </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">KG1</span>
-            <span class="ac-list-name">C1–B1 · KICK_808_HI</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">KG2</span>
-            <span class="ac-list-name">C2–B2 · SNARE_LIN77</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0" aria-selected="true">
-            <span class="ac-list-slot">KG3</span>
-            <span class="ac-list-name">C3–D#3 · HAT_CL</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">KG4</span>
-            <span class="ac-list-name">E3–G3 · HAT_OP</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">KG5</span>
-            <span class="ac-list-name">A3–C4 · RIDE_LB</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">KG6</span>
-            <span class="ac-list-name">D4–F4 · CRASH_BR</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">KG7</span>
-            <span class="ac-list-name">G4–A4 · TOM_HI</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">KG8</span>
-            <span class="ac-list-name">B4–C#5 · TOM_MID</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">KG9</span>
-            <span class="ac-list-name">D5–E5 · TOM_LO</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">KG10</span>
-            <span class="ac-list-name">F5–B5 · PERC_CL</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">KG11</span>
-            <span class="ac-list-name">C6–F#6 · FX_REV</span>
-          </div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">KG1</span><span class="ac-list-name">C1–B1 · KICK_808_HI</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">KG2</span><span class="ac-list-name">C2–B2 · SNARE_LIN77</span></div>
+          <div class="ac-list-row" role="button" tabindex="0" aria-selected="true"><span class="ac-list-slot">KG3</span><span class="ac-list-name">C3–D#3 · HAT_CL</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">KG4</span><span class="ac-list-name">E3–G3 · HAT_OP</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">KG5</span><span class="ac-list-name">A3–C4 · RIDE_LB</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">KG6</span><span class="ac-list-name">D4–F4 · CRASH_BR</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">KG7</span><span class="ac-list-name">G4–A4 · TOM_HI</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">KG8</span><span class="ac-list-name">B4–C#5 · TOM_MID</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">KG9</span><span class="ac-list-name">D5–E5 · TOM_LO</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">KG10</span><span class="ac-list-name">F5–B5 · PERC_CL</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">KG11</span><span class="ac-list-name">C6–F#6 · FX_REV</span></div>
         </div>
       </aside>
 
       <!-- ============================================================ -->
-      <!-- DETAIL COLUMN — keygroup editor                                -->
+      <!-- DETAIL COLUMN — keygroup editor (dense per canonical pattern)  -->
       <!-- ============================================================ -->
       <section class="ac-detail-pane" aria-label="Keygroup editor">
         <header class="ac-detail-head">
-          <div class="ac-detail-head-block">
-            <span class="ac-detail-eyebrow">Keygroup 3 of 11</span>
-            <h3 class="ac-detail-title">HAT_CL · C3 – D#3</h3>
+          <div class="ac-detail-eyebrow-row">
+            <span>Keygroup</span>
+            <span class="ac-detail-eyebrow-sep">·</span>
+            <span class="ac-detail-eyebrow-accent">Editing</span>
+            <span class="ac-detail-eyebrow-sep">·</span>
+            <span>3 of 11</span>
           </div>
-          <div class="ac-detail-head-actions">
-            <button type="button" class="ac-btn ac-btn-sm">Add Zone</button>
-            <button type="button" class="ac-btn ac-btn-sm ac-btn-danger">Delete</button>
-          </div>
+          <h3 id="keygroup-detail-title" class="ac-detail-title">
+            <span class="ac-detail-slot">KG3</span>
+            <input type="text" value="HAT_CL · C3 – D#3" class="ac-input ac-detail-name-input" />
+          </h3>
         </header>
 
-        <div class="ac-tabs">
-          <input type="radio" name="ak-tabs" id="ak-zones" />
-          <input type="radio" name="ak-tabs" id="ak-pitch" />
-          <input type="radio" name="ak-tabs" id="ak-filter" />
-          <input type="radio" name="ak-tabs" id="ak-amp" checked />
-          <input type="radio" name="ak-tabs" id="ak-lfo" />
+        <div class="ac-detail-body">
+          <div class="ac-tabs">
+            <input type="radio" name="ak-tabs" id="ak-zones" />
+            <input type="radio" name="ak-tabs" id="ak-pitch" />
+            <input type="radio" name="ak-tabs" id="ak-filter" />
+            <input type="radio" name="ak-tabs" id="ak-amp" checked />
+            <input type="radio" name="ak-tabs" id="ak-lfo" />
 
-          <div class="ac-tab-strip" role="tablist">
-            <label class="ac-tab" for="ak-zones" role="tab">Zones</label>
-            <label class="ac-tab" for="ak-pitch" role="tab">Pitch</label>
-            <label class="ac-tab" for="ak-filter" role="tab">Filter</label>
-            <label class="ac-tab" for="ak-amp" role="tab">Amp</label>
-            <label class="ac-tab" for="ak-lfo" role="tab">LFO</label>
-          </div>
-
-          <div class="ac-panels">
-
-            <!-- Zones tab -->
-            <div class="ac-panel" data-tab="ak-zones">
-              <div class="ac-detail-body">
-                <div class="ac-panel-stack">
-                  <section class="tones__section">
-                    <div class="tones__section-head">
-                      <h4 class="tones__section-title">Note range</h4>
-                      <span class="tones__section-eyebrow">§01 · Zones</span>
-                    </div>
-                    <div class="tones__field-grid">
-                      <div class="tones__field">
-                        <label class="ac-field-label">Low note</label>
-                        <input class="ac-input" type="text" value="C3" />
-                      </div>
-                      <div class="tones__field">
-                        <label class="ac-field-label">High note</label>
-                        <input class="ac-input" type="text" value="D#3" />
-                      </div>
-                    </div>
-                  </section>
-
-                  <section class="tones__section">
-                    <div class="tones__section-head">
-                      <h4 class="tones__section-title">Velocity zones</h4>
-                      <span class="tones__section-eyebrow">§02 · 2 zones</span>
-                    </div>
-                    <div class="tones__field-row">
-                      <span class="ac-field-label">Z1 · vel 0–80</span>
-                      <span class="ac-field-readout">HAT_CL_SOFT · −12 dB</span>
-                    </div>
-                    <div class="tones__field-row">
-                      <span class="ac-field-label">Z2 · vel 81–127</span>
-                      <span class="ac-field-readout">HAT_CL_HARD · 0 dB</span>
-                    </div>
-                  </section>
-                </div>
-              </div>
+            <div class="ac-tab-strip" role="tablist">
+              <label class="ac-tab" for="ak-zones" role="tab">Zones</label>
+              <label class="ac-tab" for="ak-pitch" role="tab">Pitch</label>
+              <label class="ac-tab" for="ak-filter" role="tab">Filter</label>
+              <label class="ac-tab" for="ak-amp" role="tab">Amp</label>
+              <label class="ac-tab" for="ak-lfo" role="tab">LFO</label>
             </div>
 
-            <!-- Pitch tab -->
-            <div class="ac-panel" data-tab="ak-pitch">
-              <div class="ac-detail-body">
+            <div class="ac-panels">
+
+              <!-- ZONES TAB -->
+              <div class="ac-panel" data-tab="ak-zones">
                 <div class="ac-panel-stack">
-                  <section class="tones__section">
-                    <div class="tones__section-head">
-                      <h4 class="tones__section-title">Pitch</h4>
-                      <span class="tones__section-eyebrow">§03 · Pitch</span>
-                    </div>
-                    <div class="tones__field-grid">
-                      <div class="tones__field">
-                        <label class="ac-field-label">Tune (cents)</label>
-                        <input class="ac-input" type="text" value="+00" />
-                      </div>
-                      <div class="tones__field">
-                        <label class="ac-field-label">Tracking</label>
-                        <input class="ac-input" type="text" value="+50" />
+                  <div class="ac-compact-grid">
+                    <div class="ac-compact-field">
+                      <span class="ac-field-label">Polyphony</span>
+                      <div class="ac-toggle" role="radiogroup">
+                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="ak-poly" checked /><span class="ac-toggle__label">Poly</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ak-poly" /><span class="ac-toggle__label">Mono</span></label>
                       </div>
                     </div>
-                    <div class="tones__field-row">
+                    <div class="ac-compact-field">
+                      <span class="ac-field-label">Mute group</span>
+                      <div class="ac-toggle" role="radiogroup">
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ak-mute" /><span class="ac-toggle__label">Off</span></label>
+                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="ak-mute" checked /><span class="ac-toggle__label">1</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ak-mute" /><span class="ac-toggle__label">2</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ak-mute" /><span class="ac-toggle__label">3</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ak-mute" /><span class="ac-toggle__label">4</span></label>
+                      </div>
+                    </div>
+                    <div class="ac-compact-field">
+                      <span class="ac-field-label">Trigger</span>
+                      <div class="ac-toggle" role="radiogroup">
+                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="ak-trig" checked /><span class="ac-toggle__label">Vel</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ak-trig" /><span class="ac-toggle__label">Note</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ak-trig" /><span class="ac-toggle__label">Random</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ak-trig" /><span class="ac-toggle__label">Cycle</span></label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="tones__param-rows">
+                    <div class="ac-slider"><span class="ac-slider__label">Low note</span><div class="ac-range-bar" style="--ac-range-fill: 27%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>C3</strong> <span class="ac-slider__readout-unit">36</span></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">High note</span><div class="ac-range-bar" style="--ac-range-fill: 30%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>D#3</strong> <span class="ac-slider__readout-unit">39</span></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Z1 lo vel</span><div class="ac-range-bar" style="--ac-range-fill: 0%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>0</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Z1 hi vel</span><div class="ac-range-bar" style="--ac-range-fill: 63%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>80</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Z2 lo vel</span><div class="ac-range-bar" style="--ac-range-fill: 64%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>81</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Z2 hi vel</span><div class="ac-range-bar" style="--ac-range-fill: 100%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>127</strong></span></div>
+                  </div>
+
+                  <div class="ac-compact-grid">
+                    <div class="ac-compact-field ac-compact-field--readout">
+                      <span class="ac-field-label">Zone 1 sample</span>
+                      <span class="ac-field-readout">HAT_CL_SOFT</span>
+                    </div>
+                    <div class="ac-compact-field ac-compact-field--readout">
+                      <span class="ac-field-label">Zone 1 trim</span>
+                      <span class="ac-field-readout">−12 dB</span>
+                    </div>
+                    <div class="ac-compact-field ac-compact-field--readout">
+                      <span class="ac-field-label">Zone 2 sample</span>
+                      <span class="ac-field-readout">HAT_CL_HARD</span>
+                    </div>
+                    <div class="ac-compact-field ac-compact-field--readout">
+                      <span class="ac-field-label">Zone 2 trim</span>
+                      <span class="ac-field-readout">0 dB</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- PITCH TAB -->
+              <div class="ac-panel" data-tab="ak-pitch">
+                <div class="ac-panel-stack">
+                  <div class="ac-compact-grid">
+                    <div class="ac-compact-field">
                       <span class="ac-field-label">Constant pitch</span>
                       <div class="ac-toggle" role="radiogroup">
                         <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ak-const" /><span class="ac-toggle__label">On</span></label>
                         <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="ak-const" checked /><span class="ac-toggle__label">Off</span></label>
                       </div>
                     </div>
-                  </section>
+                    <div class="ac-compact-field">
+                      <span class="ac-field-label">Glide</span>
+                      <div class="ac-toggle" role="radiogroup">
+                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="ak-glide" checked /><span class="ac-toggle__label">Off</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ak-glide" /><span class="ac-toggle__label">Legato</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ak-glide" /><span class="ac-toggle__label">Always</span></label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="tones__param-rows">
+                    <div class="ac-slider"><span class="ac-slider__label">Tune (cents)</span><div class="ac-range-bar ac-range-bar--bipolar" style="--ac-range-bar-l: 50%; --ac-range-bar-w: 0%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>+00</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Semitone</span><div class="ac-range-bar ac-range-bar--bipolar" style="--ac-range-bar-l: 50%; --ac-range-bar-w: 0%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>+00</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Tracking</span><div class="ac-range-bar" style="--ac-range-fill: 50%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>+50</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Vel → pitch</span><div class="ac-range-bar ac-range-bar--bipolar" style="--ac-range-bar-l: 50%; --ac-range-bar-w: 0%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>+00</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Pres → pitch</span><div class="ac-range-bar ac-range-bar--bipolar" style="--ac-range-bar-l: 50%; --ac-range-bar-w: 0%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>+00</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Glide time</span><div class="ac-range-bar" style="--ac-range-fill: 0%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>00</strong></span></div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <!-- Filter tab -->
-            <div class="ac-panel" data-tab="ak-filter">
-              <div class="ac-detail-body">
+              <!-- FILTER TAB -->
+              <div class="ac-panel" data-tab="ak-filter">
                 <div class="ac-panel-stack">
-                  <section class="tones__section">
+                  <div class="ac-compact-grid">
+                    <div class="ac-compact-field">
+                      <span class="ac-field-label">Filter type</span>
+                      <div class="ac-toggle" role="radiogroup">
+                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="ak-ftype" checked /><span class="ac-toggle__label">LPF</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ak-ftype" /><span class="ac-toggle__label">HPF</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ak-ftype" /><span class="ac-toggle__label">BPF</span></label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="tones__param-rows">
+                    <div class="ac-slider"><span class="ac-slider__label">Cutoff</span><div class="ac-range-bar" style="--ac-range-fill: 63%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>80</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Resonance</span><div class="ac-range-bar" style="--ac-range-fill: 9%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>12</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Vel → cutoff</span><div class="ac-range-bar ac-range-bar--bipolar" style="--ac-range-bar-l: 50%; --ac-range-bar-w: 14%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>+18</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Key → cutoff</span><div class="ac-range-bar ac-range-bar--bipolar" style="--ac-range-bar-l: 50%; --ac-range-bar-w: 39%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>+50</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Env → cutoff</span><div class="ac-range-bar ac-range-bar--bipolar" style="--ac-range-bar-l: 50%; --ac-range-bar-w: 18%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>+24</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">LFO → cutoff</span><div class="ac-range-bar" style="--ac-range-fill: 8%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>10</strong></span></div>
+                  </div>
+
+                  <!-- 4-segment filter envelope, identical canonical chrome to the amp envelope below -->
+                  <div class="tones__section">
                     <div class="tones__section-head">
-                      <h4 class="tones__section-title">Filter</h4>
-                      <span class="tones__section-eyebrow">§04 · Filter</span>
+                      <h4 class="tones__section-title">Filter envelope</h4>
+                      <span class="tones__section-eyebrow">§F · 4-segment</span>
                     </div>
-                    <div class="tones__field-grid">
-                      <div class="tones__field">
-                        <label class="ac-field-label">Cutoff</label>
-                        <input class="ac-input" type="text" value="80" />
-                      </div>
-                      <div class="tones__field">
-                        <label class="ac-field-label">Resonance</label>
-                        <input class="ac-input" type="text" value="12" />
-                      </div>
-                      <div class="tones__field">
-                        <label class="ac-field-label">Vel → cutoff</label>
-                        <input class="ac-input" type="text" value="+18" />
-                      </div>
-                      <div class="tones__field">
-                        <label class="ac-field-label">Key → cutoff</label>
-                        <input class="ac-input" type="text" value="+50" />
+                    <div class="ac-envelope">
+                      <div class="ac-envelope-graph">
+                        <span class="ac-envelope-graph__label">FILTER · 4-SEGMENT ADSR</span>
+                        <div class="ac-envelope-y-axis" aria-hidden="true">
+                          <span>127</span><span>64</span><span>0</span>
+                        </div>
+                        <div class="ac-envelope-canvas">
+                          <svg preserveAspectRatio="none" viewBox="0 0 100 100">
+                            <line x1="0" y1="0" x2="100" y2="0" class="ac-envelope-grid-line"/>
+                            <line x1="0" y1="50" x2="100" y2="50" class="ac-envelope-grid-line ac-envelope-grid-line--baseline"/>
+                            <line x1="0" y1="100" x2="100" y2="100" class="ac-envelope-grid-line ac-envelope-grid-line--baseline"/>
+                            <path d="M 0 100 L 12 12 L 28 48 L 65 48 L 100 100 Z" class="ac-envelope-fill"/>
+                            <path d="M 0 100 L 12 12 L 28 48 L 65 48 L 100 100" class="ac-envelope-line"/>
+                          </svg>
+                          <div class="ac-envelope-points">
+                            <span class="ac-envelope-point" style="left: 0%; top: 100%;"></span>
+                            <button type="button" class="ac-envelope-point" style="left: 12%; top: 12%;" aria-label="Attack"></button>
+                            <button type="button" class="ac-envelope-point" style="left: 28%; top: 48%;" aria-label="Decay"></button>
+                            <button type="button" class="ac-envelope-point" style="left: 65%; top: 48%;" aria-label="Sustain"></button>
+                            <button type="button" class="ac-envelope-point" style="left: 100%; top: 100%;" aria-label="Release"></button>
+                          </div>
+                        </div>
+                        <div class="ac-envelope-axis" aria-hidden="true">
+                          <span class="ac-envelope-axis-tick" style="left: 0%;">0</span>
+                          <span class="ac-envelope-axis-tick" style="left: 12%;">A</span>
+                          <span class="ac-envelope-axis-tick" style="left: 28%;">D</span>
+                          <span class="ac-envelope-axis-tick" style="left: 65%;">S</span>
+                          <span class="ac-envelope-axis-tick" style="left: 100%;">R</span>
+                        </div>
                       </div>
                     </div>
-                  </section>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <!-- Amp tab — AcEnvelope (4-segment ADSR) -->
-            <div class="ac-panel" data-tab="ak-amp">
-              <div class="ac-detail-body">
+              <!-- AMP TAB — AcEnvelope (4-segment) + slider rows -->
+              <div class="ac-panel" data-tab="ak-amp">
                 <div class="ac-panel-stack">
 
                   <section class="tones__section">
                     <div class="tones__section-head">
                       <h4 class="tones__section-title">Amp envelope</h4>
-                      <span class="tones__section-eyebrow">§05 · 4-segment ADSR</span>
+                      <span class="tones__section-eyebrow">§A · 4-segment ADSR</span>
                     </div>
-
-                    <!-- AcEnvelope canonical DOM (graph + table; meta omitted for brevity) -->
                     <div class="ac-envelope">
-
-                      <!-- AcEnvelopeGraph -->
                       <div class="ac-envelope-graph">
                         <span class="ac-envelope-graph__label">AMP · 4-SEGMENT ADSR</span>
-
                         <div class="ac-envelope-y-axis" aria-hidden="true">
-                          <span>127</span>
-                          <span>64</span>
-                          <span>0</span>
+                          <span>127</span><span>64</span><span>0</span>
                         </div>
-
                         <div class="ac-envelope-canvas">
                           <svg preserveAspectRatio="none" viewBox="0 0 100 100">
                             <line x1="0" y1="0" x2="100" y2="0" class="ac-envelope-grid-line"/>
@@ -257,14 +276,13 @@
                           </svg>
                           <div class="ac-envelope-points">
                             <span class="ac-envelope-point" style="left: 0%; top: 100%;"></span>
-                            <button type="button" class="ac-envelope-point" style="left: 15%; top: 5%;" aria-label="Attack point"></button>
-                            <button type="button" class="ac-envelope-point" style="left: 32%; top: 35%;" aria-label="Decay point"></button>
-                            <button type="button" class="ac-envelope-point ac-envelope-point--active" style="left: 65%; top: 35%;" aria-label="Sustain point"></button>
-                            <button type="button" class="ac-envelope-point" style="left: 100%; top: 100%;" aria-label="Release point"></button>
+                            <button type="button" class="ac-envelope-point" style="left: 15%; top: 5%;" aria-label="Attack"></button>
+                            <button type="button" class="ac-envelope-point" style="left: 32%; top: 35%;" aria-label="Decay"></button>
+                            <button type="button" class="ac-envelope-point ac-envelope-point--active" style="left: 65%; top: 35%;" aria-label="Sustain"></button>
+                            <button type="button" class="ac-envelope-point" style="left: 100%; top: 100%;" aria-label="Release"></button>
                           </div>
                           <span class="ac-envelope-sustain-label" style="left: 65%; top: 35%;">Sustain</span>
                         </div>
-
                         <div class="ac-envelope-axis" aria-hidden="true">
                           <span class="ac-envelope-axis-tick" style="left: 0%;">0</span>
                           <span class="ac-envelope-axis-tick" style="left: 15%;">A</span>
@@ -273,8 +291,6 @@
                           <span class="ac-envelope-axis-tick" style="left: 100%;">R</span>
                         </div>
                       </div>
-
-                      <!-- AcEnvelopeTable -->
                       <div class="ac-envelope-table" role="table">
                         <div class="ac-envelope-table__header" role="row">
                           <span class="ac-envelope-table__head" role="columnheader">Seg</span>
@@ -283,115 +299,116 @@
                         </div>
                         <div class="ac-envelope-table__row" role="row">
                           <button type="button" class="ac-envelope-table__seg" role="cell">A</button>
-                          <div class="ac-envelope-table__cell" role="cell">
-                            <div class="ac-envelope-mini"><div class="ac-envelope-mini__fill" style="width: 12%;"></div></div>
-                          </div>
-                          <div class="ac-envelope-table__cell" role="cell">
-                            <div class="ac-envelope-mini"><div class="ac-envelope-mini__fill" style="width: 99%;"></div></div>
-                          </div>
+                          <div class="ac-envelope-table__cell" role="cell"><div class="ac-envelope-mini"><div class="ac-envelope-mini__fill" style="width: 12%;"></div></div></div>
+                          <div class="ac-envelope-table__cell" role="cell"><div class="ac-envelope-mini"><div class="ac-envelope-mini__fill" style="width: 99%;"></div></div></div>
                         </div>
                         <div class="ac-envelope-table__row" role="row">
                           <button type="button" class="ac-envelope-table__seg" role="cell">D</button>
-                          <div class="ac-envelope-table__cell" role="cell">
-                            <div class="ac-envelope-mini"><div class="ac-envelope-mini__fill" style="width: 28%;"></div></div>
-                          </div>
-                          <div class="ac-envelope-table__cell" role="cell">
-                            <div class="ac-envelope-mini"><div class="ac-envelope-mini__fill" style="width: 62%;"></div></div>
-                          </div>
+                          <div class="ac-envelope-table__cell" role="cell"><div class="ac-envelope-mini"><div class="ac-envelope-mini__fill" style="width: 28%;"></div></div></div>
+                          <div class="ac-envelope-table__cell" role="cell"><div class="ac-envelope-mini"><div class="ac-envelope-mini__fill" style="width: 62%;"></div></div></div>
                         </div>
                         <div class="ac-envelope-table__row" role="row" data-active="true" data-sustain="true">
                           <button type="button" class="ac-envelope-table__seg" role="cell">S</button>
-                          <div class="ac-envelope-table__cell" role="cell">
-                            <span style="font-family: var(--ac-font-mono); font-size: var(--ac-text-xs); color: var(--ac-color-text-muted);">—</span>
-                          </div>
-                          <div class="ac-envelope-table__cell" role="cell">
-                            <div class="ac-envelope-mini"><div class="ac-envelope-mini__fill" style="width: 62%;"></div></div>
-                          </div>
+                          <div class="ac-envelope-table__cell" role="cell"><span style="font-family: var(--ac-font-mono); font-size: var(--ac-text-xs); color: var(--ac-color-text-muted);">—</span></div>
+                          <div class="ac-envelope-table__cell" role="cell"><div class="ac-envelope-mini"><div class="ac-envelope-mini__fill" style="width: 62%;"></div></div></div>
                         </div>
                         <div class="ac-envelope-table__row" role="row">
                           <button type="button" class="ac-envelope-table__seg" role="cell">R</button>
-                          <div class="ac-envelope-table__cell" role="cell">
-                            <div class="ac-envelope-mini"><div class="ac-envelope-mini__fill" style="width: 38%;"></div></div>
-                          </div>
-                          <div class="ac-envelope-table__cell" role="cell">
-                            <div class="ac-envelope-mini"><div class="ac-envelope-mini__fill" style="width: 0%;"></div></div>
-                          </div>
+                          <div class="ac-envelope-table__cell" role="cell"><div class="ac-envelope-mini"><div class="ac-envelope-mini__fill" style="width: 38%;"></div></div></div>
+                          <div class="ac-envelope-table__cell" role="cell"><div class="ac-envelope-mini"><div class="ac-envelope-mini__fill" style="width: 0%;"></div></div></div>
                         </div>
                       </div>
                     </div>
                   </section>
 
-                  <section class="tones__section">
-                    <div class="tones__section-head">
-                      <h4 class="tones__section-title">Output</h4>
-                      <span class="tones__section-eyebrow">§06 · Amp</span>
-                    </div>
-                    <div class="tones__field-grid">
-                      <div class="tones__field">
-                        <label class="ac-field-label">Level</label>
-                        <input class="ac-input" type="text" value="99" />
-                      </div>
-                      <div class="tones__field">
-                        <label class="ac-field-label">Pan</label>
-                        <input class="ac-input" type="text" value="+00" />
-                      </div>
-                      <div class="tones__field">
-                        <label class="ac-field-label">Vel → level</label>
-                        <input class="ac-input" type="text" value="+12" />
-                      </div>
-                      <div class="tones__field">
-                        <label class="ac-field-label">Key → level</label>
-                        <input class="ac-input" type="text" value="−02" />
-                      </div>
-                    </div>
-                  </section>
-
+                  <div class="tones__param-rows">
+                    <div class="ac-slider"><span class="ac-slider__label">Level</span><div class="ac-range-bar" style="--ac-range-fill: 78%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>99</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Pan</span><div class="ac-range-bar ac-range-bar--bipolar" style="--ac-range-bar-l: 50%; --ac-range-bar-w: 0%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>+00</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Vel → level</span><div class="ac-range-bar ac-range-bar--bipolar" style="--ac-range-bar-l: 50%; --ac-range-bar-w: 9%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>+12</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Key → level</span><div class="ac-range-bar ac-range-bar--bipolar" style="--ac-range-bar-l: 50%; --ac-range-bar-w: 1.5%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>−02</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Vel → attack</span><div class="ac-range-bar ac-range-bar--bipolar" style="--ac-range-bar-l: 50%; --ac-range-bar-w: 0%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>+00</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Vel → release</span><div class="ac-range-bar ac-range-bar--bipolar" style="--ac-range-bar-l: 50%; --ac-range-bar-w: 0%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>+00</strong></span></div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <!-- LFO tab -->
-            <div class="ac-panel" data-tab="ak-lfo">
-              <div class="ac-detail-body">
+              <!-- LFO TAB -->
+              <div class="ac-panel" data-tab="ak-lfo">
                 <div class="ac-panel-stack">
-                  <section class="tones__section">
-                    <div class="tones__section-head">
-                      <h4 class="tones__section-title">LFO</h4>
-                      <span class="tones__section-eyebrow">§07 · LFO</span>
-                    </div>
-                    <div class="tones__field-row">
+                  <div class="ac-compact-grid">
+                    <div class="ac-compact-field">
                       <span class="ac-field-label">Shape</span>
                       <div class="ac-toggle" role="radiogroup">
                         <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="ak-shape" checked /><span class="ac-toggle__label">Sine</span></label>
                         <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ak-shape" /><span class="ac-toggle__label">Tri</span></label>
-                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ak-shape" /><span class="ac-toggle__label">Saw</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ak-shape" /><span class="ac-toggle__label">Saw ↗</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ak-shape" /><span class="ac-toggle__label">Saw ↘</span></label>
                         <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ak-shape" /><span class="ac-toggle__label">Sqr</span></label>
                         <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ak-shape" /><span class="ac-toggle__label">S/H</span></label>
                       </div>
                     </div>
-                    <div class="tones__field-grid">
-                      <div class="tones__field">
-                        <label class="ac-field-label">Rate</label>
-                        <input class="ac-input" type="text" value="42" />
-                      </div>
-                      <div class="tones__field">
-                        <label class="ac-field-label">Depth</label>
-                        <input class="ac-input" type="text" value="16" />
-                      </div>
-                      <div class="tones__field">
-                        <label class="ac-field-label">Delay</label>
-                        <input class="ac-input" type="text" value="00" />
+                    <div class="ac-compact-field">
+                      <span class="ac-field-label">Sync</span>
+                      <div class="ac-toggle" role="radiogroup">
+                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="ak-sync" checked /><span class="ac-toggle__label">Free</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ak-sync" /><span class="ac-toggle__label">Key</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ak-sync" /><span class="ac-toggle__label">Tempo</span></label>
                       </div>
                     </div>
-                  </section>
+                  </div>
+
+                  <div class="tones__param-rows">
+                    <div class="ac-slider"><span class="ac-slider__label">Rate</span><div class="ac-range-bar" style="--ac-range-fill: 33%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>42</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Depth</span><div class="ac-range-bar" style="--ac-range-fill: 12%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>16</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Delay</span><div class="ac-range-bar" style="--ac-range-fill: 0%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>00</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Mod wheel</span><div class="ac-range-bar" style="--ac-range-fill: 50%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>64</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Pres → depth</span><div class="ac-range-bar" style="--ac-range-fill: 25%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>32</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Vel → depth</span><div class="ac-range-bar ac-range-bar--bipolar" style="--ac-range-bar-l: 50%; --ac-range-bar-w: 0%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>+00</strong></span></div>
+                  </div>
                 </div>
               </div>
-            </div>
 
+            </div>
           </div>
         </div>
+
+        <footer class="ac-detail-foot">
+          <span class="ac-live-indicator" aria-live="polite">
+            <span class="ac-live-led" aria-hidden="true"></span>
+            <span class="ac-live-text">Live · streaming to S3000XL · last edit 1.2 s ago</span>
+          </span>
+          <span class="ac-detail-foot-actions">
+            <button type="button" class="ac-btn ac-btn-sm">Add Zone</button>
+            <button type="button" class="ac-btn ac-btn-sm">Clone keygroup</button>
+            <button type="button" class="ac-btn ac-btn-sm ac-btn-danger">Delete keygroup</button>
+          </span>
+        </footer>
       </section>
     </div>
   </div>
+
+  <style>
+    :root[data-editor="s3000xl"] .ac-detail-foot {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: var(--ac-space-3); padding: var(--ac-space-2) var(--ac-space-4);
+      border-top: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+      background: color-mix(in srgb, var(--ac-color-surface-canvas) 70%, transparent);
+      flex-shrink: 0;
+    }
+    :root[data-editor="s3000xl"] .ac-live-indicator {
+      display: inline-flex; align-items: center; gap: var(--ac-space-2);
+      font-family: var(--ac-font-mono); font-size: var(--ac-text-xs);
+      color: var(--ac-color-text-muted);
+    }
+    :root[data-editor="s3000xl"] .ac-live-led {
+      width: 0.55rem; height: 0.55rem; border-radius: 50%;
+      background: var(--ac-color-rec);
+      box-shadow: 0 0 6px var(--ac-color-rec-glow);
+      animation: ac-rec-pulse 1.6s ease-in-out infinite;
+    }
+    :root[data-editor="s3000xl"] .ac-live-text { color: var(--ac-color-text-primary); }
+    :root[data-editor="s3000xl"] .ac-detail-foot-actions { display: inline-flex; gap: var(--ac-space-2); }
+    @keyframes ac-rec-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  </style>
 </body>
 </html>
