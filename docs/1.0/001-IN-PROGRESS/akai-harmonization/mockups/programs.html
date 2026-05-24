@@ -2,22 +2,16 @@
 <html lang="en" data-editor="s3000xl">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=1280" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Akai S3000XL — Programs · Mockup</title>
-
-  <!-- Canonical editor-core CSS chain (tokens → layout → primitives → list → controls → envelope → library → chevron). -->
   <link rel="stylesheet" href="/modules/editor-core/src/design/styles.css" />
-
-  <!-- Roland page-shell shared chrome (.ac-page-title-*, .ac-detail-pane-*, .ac-tab*, .ac-list-row, etc.). -->
   <link rel="stylesheet" href="/modules/roland-sxx0-editor/src/styles/_shared.css" />
-
-  <!-- Akai dialect token-override block — LAST so [data-editor='s3000xl'] wins the cascade. -->
+  <link rel="stylesheet" href="/modules/roland-sxx0-editor/src/styles/tones.css" />
   <link rel="stylesheet" href="./akai-dialect.css" />
 </head>
 <body>
   <div class="ac-page ac-page-shell ac-page-shell--fixed-viewport">
 
-    <!-- PageTitleRow — h2 + red rule + metric + refresh icon -->
     <header class="ac-page-title-row">
       <div class="ac-page-title-block">
         <h2 id="programs-heading" class="ac-page-title-heading">Programs</h2>
@@ -34,15 +28,13 @@
       </span>
     </header>
 
-    <!-- List + detail -->
     <div class="ac-app-shell" aria-labelledby="programs-heading">
 
       <!-- ============================================================ -->
-      <!-- LIST COLUMN                                                    -->
+      <!-- LIST COLUMN — same as before                                   -->
       <!-- ============================================================ -->
       <aside class="ac-list" aria-label="Programs">
         <div class="ac-list-scroll">
-
           <div class="ac-list-bank-header">
             <button type="button" class="ac-list-bank-toggle" aria-expanded="true">
               <span class="ac-chevron" data-expanded="true">▾</span>
@@ -50,31 +42,12 @@
             </button>
             <strong>A01–A16</strong>
           </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">A01</span>
-            <span class="ac-list-name">PRG_DRUMKIT</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">A02</span>
-            <span class="ac-list-name">PRG_CR78_KIT</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0" aria-selected="true">
-            <span class="ac-list-slot">A03</span>
-            <span class="ac-list-name">PRG_MPC_STK</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">A04</span>
-            <span class="ac-list-name">PRG_LINN_LM2</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">A05</span>
-            <span class="ac-list-name">PRG_808_BASS</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">A06</span>
-            <span class="ac-list-name">PRG_909_CLAP</span>
-          </div>
-
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">A01</span><span class="ac-list-name">PRG_DRUMKIT</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">A02</span><span class="ac-list-name">PRG_CR78_KIT</span></div>
+          <div class="ac-list-row" role="button" tabindex="0" aria-selected="true"><span class="ac-list-slot">A03</span><span class="ac-list-name">PRG_MPC_STK</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">A04</span><span class="ac-list-name">PRG_LINN_LM2</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">A05</span><span class="ac-list-name">PRG_808_BASS</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">A06</span><span class="ac-list-name">PRG_909_CLAP</span></div>
           <div class="ac-list-bank-header">
             <button type="button" class="ac-list-bank-toggle" aria-expanded="true">
               <span class="ac-chevron" data-expanded="true">▾</span>
@@ -82,23 +55,10 @@
             </button>
             <strong>B01–B16</strong>
           </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">B01</span>
-            <span class="ac-list-name">PRG_GRAND_M9</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">B02</span>
-            <span class="ac-list-name">PRG_RHODES_73</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">B03</span>
-            <span class="ac-list-name">PRG_WURLI_2OO</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">B04</span>
-            <span class="ac-list-name">PRG_CP70_BRIGHT</span>
-          </div>
-
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">B01</span><span class="ac-list-name">PRG_GRAND_M9</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">B02</span><span class="ac-list-name">PRG_RHODES_73</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">B03</span><span class="ac-list-name">PRG_WURLI_2OO</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">B04</span><span class="ac-list-name">PRG_CP70_BRIGHT</span></div>
           <div class="ac-list-bank-header">
             <button type="button" class="ac-list-bank-toggle" aria-expanded="true">
               <span class="ac-chevron" data-expanded="true">▾</span>
@@ -106,99 +66,64 @@
             </button>
             <strong>C01–C16</strong>
           </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">C01</span>
-            <span class="ac-list-name">PRG_VIOLIN_ENS</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">C02</span>
-            <span class="ac-list-name">PRG_CELLO_S0L0</span>
-          </div>
-          <div class="ac-list-row" role="button" tabindex="0">
-            <span class="ac-list-slot">C03</span>
-            <span class="ac-list-name">PRG_VIOLA_ENS</span>
-          </div>
-
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">C01</span><span class="ac-list-name">PRG_VIOLIN_ENS</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">C02</span><span class="ac-list-name">PRG_CELLO_S0L0</span></div>
+          <div class="ac-list-row" role="button" tabindex="0"><span class="ac-list-slot">C03</span><span class="ac-list-name">PRG_VIOLA_ENS</span></div>
         </div>
       </aside>
 
       <!-- ============================================================ -->
-      <!-- DETAIL COLUMN — program editor                                 -->
+      <!-- DETAIL COLUMN — program editor (DENSE per canonical pattern)   -->
       <!-- ============================================================ -->
       <section class="ac-detail-pane" aria-label="Program editor">
         <header class="ac-detail-head">
-          <div class="ac-detail-head-block">
-            <span class="ac-detail-eyebrow">Program · A03</span>
-            <h3 class="ac-detail-title">PRG_MPC_STK</h3>
+          <div class="ac-detail-eyebrow-row">
+            <span>Program</span>
+            <span class="ac-detail-eyebrow-sep">·</span>
+            <span class="ac-detail-eyebrow-accent">Editing</span>
+            <span class="ac-detail-eyebrow-sep">·</span>
+            <span>Source · S3000XL</span>
           </div>
-          <div class="ac-detail-head-actions">
-            <button type="button" class="ac-btn ac-btn-sm">Clone</button>
-            <button type="button" class="ac-btn ac-btn-sm ac-btn-danger">Delete</button>
-          </div>
+          <h3 id="program-detail-title" class="ac-detail-title">
+            <span class="ac-detail-slot">A03</span>
+            <input type="text" value="PRG_MPC_STK" maxlength="12" class="ac-input ac-detail-name-input" />
+          </h3>
         </header>
 
-        <!-- AcRadioTabs — CSS-only radio-driven tabs, registered in akai-dialect.css -->
-        <div class="ac-tabs">
-          <input type="radio" name="ap-tabs" id="ap-common" checked />
-          <input type="radio" name="ap-tabs" id="ap-midi" />
-          <input type="radio" name="ap-tabs" id="ap-effects" />
-          <input type="radio" name="ap-tabs" id="ap-output" />
+        <div class="ac-detail-body">
+          <div class="ac-tabs">
+            <input type="radio" name="ap-tabs" id="ap-common" checked />
+            <input type="radio" name="ap-tabs" id="ap-midi" />
+            <input type="radio" name="ap-tabs" id="ap-effects" />
+            <input type="radio" name="ap-tabs" id="ap-output" />
 
-          <div class="ac-tab-strip" role="tablist">
-            <label class="ac-tab" for="ap-common" role="tab">Common</label>
-            <label class="ac-tab" for="ap-midi" role="tab">MIDI</label>
-            <label class="ac-tab" for="ap-effects" role="tab">Effects</label>
-            <label class="ac-tab" for="ap-output" role="tab">Output</label>
-          </div>
+            <div class="ac-tab-strip" role="tablist">
+              <label class="ac-tab" for="ap-common" role="tab">Common</label>
+              <label class="ac-tab" for="ap-midi" role="tab">MIDI</label>
+              <label class="ac-tab" for="ap-effects" role="tab">Effects</label>
+              <label class="ac-tab" for="ap-output" role="tab">Output</label>
+            </div>
 
-          <div class="ac-panels">
+            <div class="ac-panels">
 
-            <!-- Common tab -->
-            <div class="ac-panel" data-tab="ap-common">
-              <div class="ac-detail-body">
+              <!-- ===================================================== -->
+              <!-- COMMON TAB — toggles top, slider rows below            -->
+              <!-- ===================================================== -->
+              <div class="ac-panel" data-tab="ap-common">
                 <div class="ac-panel-stack">
 
-                  <section class="tones__section">
-                    <div class="tones__section-head">
-                      <h4 class="tones__section-title">Identity</h4>
-                      <span class="tones__section-eyebrow">§01 · Program</span>
-                    </div>
-                    <div class="tones__field-grid">
-                      <div class="tones__field">
-                        <label class="ac-field-label">Name</label>
-                        <input class="ac-input" type="text" value="PRG_MPC_STK" />
-                      </div>
-                      <div class="tones__field">
-                        <label class="ac-field-label">Program #</label>
-                        <input class="ac-input" type="text" value="A03" />
-                      </div>
-                      <div class="tones__field">
-                        <label class="ac-field-label">Keygroups</label>
-                        <input class="ac-input" type="text" value="11" />
-                      </div>
-                      <div class="tones__field">
-                        <label class="ac-field-label">Polyphony</label>
-                        <input class="ac-input" type="text" value="32" />
-                      </div>
-                    </div>
-                  </section>
-
-                  <section class="tones__section">
-                    <div class="tones__section-head">
-                      <h4 class="tones__section-title">Voice allocation</h4>
-                      <span class="tones__section-eyebrow">§02 · Voice</span>
-                    </div>
-                    <!-- AcToggle for low-cardinality enums — canonical primitive -->
-                    <div class="tones__field-row">
-                      <span class="ac-field-label">Priority</span>
-                      <div class="ac-toggle" role="radiogroup" aria-label="Priority">
+                  <!-- Toggles cluster — wraps across the row at any width -->
+                  <div class="ac-compact-grid">
+                    <div class="ac-compact-field">
+                      <span class="ac-field-label">Voice priority</span>
+                      <div class="ac-toggle" role="radiogroup" aria-label="Voice priority">
                         <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-priority" /><span class="ac-toggle__label">High</span></label>
                         <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="ap-priority" checked /><span class="ac-toggle__label">Lo note</span></label>
                         <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-priority" /><span class="ac-toggle__label">Soft</span></label>
                         <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-priority" /><span class="ac-toggle__label">Loud</span></label>
                       </div>
                     </div>
-                    <div class="tones__field-row">
+                    <div class="ac-compact-field">
                       <span class="ac-field-label">Reassign</span>
                       <div class="ac-toggle" role="radiogroup" aria-label="Reassign">
                         <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="ap-reassign" checked /><span class="ac-toggle__label">Oldest</span></label>
@@ -206,92 +131,209 @@
                         <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-reassign" /><span class="ac-toggle__label">Newest</span></label>
                       </div>
                     </div>
-                    <div class="tones__field-row">
+                    <div class="ac-compact-field">
                       <span class="ac-field-label">Aftertouch</span>
                       <div class="ac-toggle" role="radiogroup" aria-label="Aftertouch">
-                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="ap-after" checked /><span class="ac-toggle__label">On</span></label>
-                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-after" /><span class="ac-toggle__label">Off</span></label>
+                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="ap-at" checked /><span class="ac-toggle__label">On</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-at" /><span class="ac-toggle__label">Off</span></label>
                       </div>
                     </div>
-                  </section>
+                    <div class="ac-compact-field">
+                      <span class="ac-field-label">Pres assign</span>
+                      <div class="ac-toggle" role="radiogroup" aria-label="Pres assign">
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-pres" /><span class="ac-toggle__label">Mod</span></label>
+                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="ap-pres" checked /><span class="ac-toggle__label">Vol</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-pres" /><span class="ac-toggle__label">Bend+</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-pres" /><span class="ac-toggle__label">Bend−</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-pres" /><span class="ac-toggle__label">Filter</span></label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Slider rows — 2-3 columns at desktop, 1 on mobile.
+                       Each .ac-slider is the canonical row: label | bar | readout. -->
+                  <div class="tones__param-rows">
+                    <div class="ac-slider">
+                      <span class="ac-slider__label">Polyphony</span>
+                      <div class="ac-range-bar" style="--ac-range-fill: 100%;"><div class="ac-range-bar__fill"></div></div>
+                      <span class="ac-slider__readout"><strong>32</strong></span>
+                    </div>
+                    <div class="ac-slider">
+                      <span class="ac-slider__label">Output level</span>
+                      <div class="ac-range-bar" style="--ac-range-fill: 78%;"><div class="ac-range-bar__fill"></div></div>
+                      <span class="ac-slider__readout"><strong>99</strong></span>
+                    </div>
+                    <div class="ac-slider">
+                      <span class="ac-slider__label">Output pan</span>
+                      <div class="ac-range-bar ac-range-bar--bipolar" style="--ac-range-bar-l: 50%; --ac-range-bar-w: 4%;"><div class="ac-range-bar__fill"></div></div>
+                      <span class="ac-slider__readout"><strong>+04</strong></span>
+                    </div>
+                    <div class="ac-slider">
+                      <span class="ac-slider__label">Detune</span>
+                      <div class="ac-range-bar ac-range-bar--bipolar" style="--ac-range-bar-l: 50%; --ac-range-bar-w: 0%;"><div class="ac-range-bar__fill"></div></div>
+                      <span class="ac-slider__readout"><strong>+00</strong> <span class="ac-slider__readout-unit">cents</span></span>
+                    </div>
+                    <div class="ac-slider">
+                      <span class="ac-slider__label">A.T sens</span>
+                      <div class="ac-range-bar" style="--ac-range-fill: 50%;"><div class="ac-range-bar__fill"></div></div>
+                      <span class="ac-slider__readout"><strong>64</strong></span>
+                    </div>
+                    <div class="ac-slider">
+                      <span class="ac-slider__label">Vel sens</span>
+                      <div class="ac-range-bar" style="--ac-range-fill: 75%;"><div class="ac-range-bar__fill"></div></div>
+                      <span class="ac-slider__readout"><strong>96</strong></span>
+                    </div>
+                    <div class="ac-slider">
+                      <span class="ac-slider__label">Soft pedal</span>
+                      <div class="ac-range-bar" style="--ac-range-fill: 25%;"><div class="ac-range-bar__fill"></div></div>
+                      <span class="ac-slider__readout"><strong>32</strong></span>
+                    </div>
+                    <div class="ac-slider">
+                      <span class="ac-slider__label">Loudness</span>
+                      <div class="ac-range-bar" style="--ac-range-fill: 60%;"><div class="ac-range-bar__fill"></div></div>
+                      <span class="ac-slider__readout"><strong>76</strong></span>
+                    </div>
+                  </div>
+
+                  <!-- Identity readouts — last because they're metadata, not edits -->
+                  <div class="ac-compact-grid">
+                    <div class="ac-compact-field ac-compact-field--readout">
+                      <span class="ac-field-label">Program #</span>
+                      <span class="ac-field-readout">A03</span>
+                    </div>
+                    <div class="ac-compact-field ac-compact-field--readout">
+                      <span class="ac-field-label">Keygroups</span>
+                      <span class="ac-field-readout">11</span>
+                    </div>
+                    <div class="ac-compact-field ac-compact-field--readout">
+                      <span class="ac-field-label">Voices in use</span>
+                      <span class="ac-field-readout">0 / 32</span>
+                    </div>
+                    <div class="ac-compact-field ac-compact-field--readout">
+                      <span class="ac-field-label">Last edit</span>
+                      <span class="ac-field-readout">0.4 s</span>
+                    </div>
+                  </div>
 
                 </div>
               </div>
-            </div>
 
-            <!-- MIDI tab -->
-            <div class="ac-panel" data-tab="ap-midi">
-              <div class="ac-detail-body">
+              <!-- ===================================================== -->
+              <!-- MIDI TAB                                                -->
+              <!-- ===================================================== -->
+              <div class="ac-panel" data-tab="ap-midi">
                 <div class="ac-panel-stack">
-                  <section class="tones__section">
-                    <div class="tones__section-head">
-                      <h4 class="tones__section-title">MIDI channel</h4>
-                      <span class="tones__section-eyebrow">§03 · MIDI</span>
-                    </div>
-                    <div class="tones__field-grid">
-                      <div class="tones__field">
-                        <label class="ac-field-label">Receive</label>
-                        <input class="ac-input" type="text" value="01" />
-                      </div>
-                      <div class="tones__field">
-                        <label class="ac-field-label">Bend ↑ (semi)</label>
-                        <input class="ac-input" type="text" value="2" />
-                      </div>
-                      <div class="tones__field">
-                        <label class="ac-field-label">Bend ↓ (semi)</label>
-                        <input class="ac-input" type="text" value="2" />
-                      </div>
-                      <div class="tones__field">
-                        <label class="ac-field-label">Pres &gt; pitch</label>
-                        <input class="ac-input" type="text" value="00" />
-                      </div>
-                    </div>
-                  </section>
-                </div>
-              </div>
-            </div>
 
-            <!-- Effects tab -->
-            <div class="ac-panel" data-tab="ap-effects">
-              <div class="ac-detail-body">
-                <div class="ac-panel-stack">
-                  <section class="tones__section">
-                    <div class="tones__section-head">
-                      <h4 class="tones__section-title">FX bus</h4>
-                      <span class="tones__section-eyebrow">§04 · Effects</span>
-                    </div>
-                    <div class="tones__field-row">
-                      <span class="ac-field-label">FX send</span>
+                  <div class="ac-compact-grid">
+                    <div class="ac-compact-field">
+                      <span class="ac-field-label">MIDI mode</span>
                       <div class="ac-toggle" role="radiogroup">
-                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="ap-fx-send" checked /><span class="ac-toggle__label">On</span></label>
-                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-fx-send" /><span class="ac-toggle__label">Off</span></label>
+                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="ap-mmode" checked /><span class="ac-toggle__label">Omni off</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-mmode" /><span class="ac-toggle__label">Omni on</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-mmode" /><span class="ac-toggle__label">Mono</span></label>
                       </div>
                     </div>
-                    <div class="tones__field-grid">
-                      <div class="tones__field">
-                        <label class="ac-field-label">FX level</label>
-                        <input class="ac-input" type="text" value="42" />
-                      </div>
-                      <div class="tones__field">
-                        <label class="ac-field-label">Dry/wet</label>
-                        <input class="ac-input" type="text" value="64" />
+                    <div class="ac-compact-field">
+                      <span class="ac-field-label">Program change</span>
+                      <div class="ac-toggle" role="radiogroup">
+                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="ap-pgmc" checked /><span class="ac-toggle__label">Enable</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-pgmc" /><span class="ac-toggle__label">Ignore</span></label>
                       </div>
                     </div>
-                  </section>
+                    <div class="ac-compact-field">
+                      <span class="ac-field-label">Pedal</span>
+                      <div class="ac-toggle" role="radiogroup">
+                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="ap-pedal" checked /><span class="ac-toggle__label">Sustain</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-pedal" /><span class="ac-toggle__label">Soft</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-pedal" /><span class="ac-toggle__label">Sost</span></label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="tones__param-rows">
+                    <div class="ac-slider">
+                      <span class="ac-slider__label">Receive ch</span>
+                      <div class="ac-range-bar" style="--ac-range-fill: 6.25%;"><div class="ac-range-bar__fill"></div></div>
+                      <span class="ac-slider__readout"><strong>01</strong></span>
+                    </div>
+                    <div class="ac-slider">
+                      <span class="ac-slider__label">Bend up</span>
+                      <div class="ac-range-bar" style="--ac-range-fill: 16.7%;"><div class="ac-range-bar__fill"></div></div>
+                      <span class="ac-slider__readout"><strong>02</strong> <span class="ac-slider__readout-unit">semi</span></span>
+                    </div>
+                    <div class="ac-slider">
+                      <span class="ac-slider__label">Bend down</span>
+                      <div class="ac-range-bar" style="--ac-range-fill: 16.7%;"><div class="ac-range-bar__fill"></div></div>
+                      <span class="ac-slider__readout"><strong>02</strong> <span class="ac-slider__readout-unit">semi</span></span>
+                    </div>
+                    <div class="ac-slider">
+                      <span class="ac-slider__label">Mod wheel</span>
+                      <div class="ac-range-bar" style="--ac-range-fill: 0%;"><div class="ac-range-bar__fill"></div></div>
+                      <span class="ac-slider__readout"><strong>00</strong></span>
+                    </div>
+                    <div class="ac-slider">
+                      <span class="ac-slider__label">Pres → filter</span>
+                      <div class="ac-range-bar ac-range-bar--bipolar" style="--ac-range-bar-l: 50%; --ac-range-bar-w: 14%;"><div class="ac-range-bar__fill"></div></div>
+                      <span class="ac-slider__readout"><strong>+18</strong></span>
+                    </div>
+                    <div class="ac-slider">
+                      <span class="ac-slider__label">Pres → amp</span>
+                      <div class="ac-range-bar ac-range-bar--bipolar" style="--ac-range-bar-l: 50%; --ac-range-bar-w: 0%;"><div class="ac-range-bar__fill"></div></div>
+                      <span class="ac-slider__readout"><strong>+00</strong></span>
+                    </div>
+                    <div class="ac-slider">
+                      <span class="ac-slider__label">Pres → LFO</span>
+                      <div class="ac-range-bar" style="--ac-range-fill: 35%;"><div class="ac-range-bar__fill"></div></div>
+                      <span class="ac-slider__readout"><strong>45</strong></span>
+                    </div>
+                    <div class="ac-slider">
+                      <span class="ac-slider__label">Wheel → LFO</span>
+                      <div class="ac-range-bar" style="--ac-range-fill: 50%;"><div class="ac-range-bar__fill"></div></div>
+                      <span class="ac-slider__readout"><strong>64</strong></span>
+                    </div>
+                  </div>
+
                 </div>
               </div>
-            </div>
 
-            <!-- Output tab -->
-            <div class="ac-panel" data-tab="ap-output">
-              <div class="ac-detail-body">
+              <!-- ===================================================== -->
+              <!-- EFFECTS TAB                                             -->
+              <!-- ===================================================== -->
+              <div class="ac-panel" data-tab="ap-effects">
                 <div class="ac-panel-stack">
-                  <section class="tones__section">
-                    <div class="tones__section-head">
-                      <h4 class="tones__section-title">Output routing</h4>
-                      <span class="tones__section-eyebrow">§05 · Output</span>
+
+                  <div class="ac-compact-grid">
+                    <div class="ac-compact-field">
+                      <span class="ac-field-label">FX type</span>
+                      <div class="ac-toggle" role="radiogroup">
+                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="ap-fxtype" checked /><span class="ac-toggle__label">Off</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-fxtype" /><span class="ac-toggle__label">Reverb</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-fxtype" /><span class="ac-toggle__label">Echo</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-fxtype" /><span class="ac-toggle__label">Chorus</span></label>
+                      </div>
                     </div>
-                    <div class="tones__field-row">
+                  </div>
+
+                  <div class="tones__param-rows">
+                    <div class="ac-slider"><span class="ac-slider__label">FX send</span><div class="ac-range-bar" style="--ac-range-fill: 33%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>42</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Dry / wet</span><div class="ac-range-bar" style="--ac-range-fill: 50%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>64</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Pre-delay</span><div class="ac-range-bar" style="--ac-range-fill: 15%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>19</strong> <span class="ac-slider__readout-unit">ms</span></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Time</span><div class="ac-range-bar" style="--ac-range-fill: 62%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>79</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Feedback</span><div class="ac-range-bar" style="--ac-range-fill: 28%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>36</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">HF damp</span><div class="ac-range-bar" style="--ac-range-fill: 70%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>89</strong></span></div>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- ===================================================== -->
+              <!-- OUTPUT TAB                                              -->
+              <!-- ===================================================== -->
+              <div class="ac-panel" data-tab="ap-output">
+                <div class="ac-panel-stack">
+
+                  <div class="ac-compact-grid">
+                    <div class="ac-compact-field">
                       <span class="ac-field-label">Bus</span>
                       <div class="ac-toggle" role="radiogroup">
                         <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="ap-bus" checked /><span class="ac-toggle__label">L/R</span></label>
@@ -301,25 +343,92 @@
                         <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-bus" /><span class="ac-toggle__label">7/8</span></label>
                       </div>
                     </div>
-                    <div class="tones__field-grid">
-                      <div class="tones__field">
-                        <label class="ac-field-label">Level</label>
-                        <input class="ac-input" type="text" value="99" />
-                      </div>
-                      <div class="tones__field">
-                        <label class="ac-field-label">Pan</label>
-                        <input class="ac-input" type="text" value="+00" />
+                    <div class="ac-compact-field">
+                      <span class="ac-field-label">Stereo width</span>
+                      <div class="ac-toggle" role="radiogroup">
+                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="ap-stwidth" checked /><span class="ac-toggle__label">Full</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-stwidth" /><span class="ac-toggle__label">Wide</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-stwidth" /><span class="ac-toggle__label">Narrow</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-stwidth" /><span class="ac-toggle__label">Mono</span></label>
                       </div>
                     </div>
-                  </section>
+                  </div>
+
+                  <div class="tones__param-rows">
+                    <div class="ac-slider"><span class="ac-slider__label">Master level</span><div class="ac-range-bar" style="--ac-range-fill: 78%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>99</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Master pan</span><div class="ac-range-bar ac-range-bar--bipolar" style="--ac-range-bar-l: 50%; --ac-range-bar-w: 4%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>+04</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Bus level</span><div class="ac-range-bar" style="--ac-range-fill: 100%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>127</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Bus pan</span><div class="ac-range-bar ac-range-bar--bipolar" style="--ac-range-bar-l: 50%; --ac-range-bar-w: 0%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>+00</strong></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Headroom</span><div class="ac-range-bar" style="--ac-range-fill: 90%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>−1.2</strong> <span class="ac-slider__readout-unit">dB</span></span></div>
+                    <div class="ac-slider"><span class="ac-slider__label">Limiter</span><div class="ac-range-bar" style="--ac-range-fill: 0%;"><div class="ac-range-bar__fill"></div></div><span class="ac-slider__readout"><strong>Off</strong></span></div>
+                  </div>
+
                 </div>
               </div>
-            </div>
 
+            </div>
           </div>
         </div>
+
+        <!-- Bottom action band — Clone / Delete sit here, not in the head
+             (per the live-edit / no-save-cancel pattern, primary actions
+             live in a dedicated band rather than the title row). -->
+        <footer class="ac-detail-foot">
+          <span class="ac-live-indicator" aria-live="polite">
+            <span class="ac-live-led" aria-hidden="true"></span>
+            <span class="ac-live-text">Live · streaming to S3000XL · last edit 0.4 s ago</span>
+          </span>
+          <span class="ac-detail-foot-actions">
+            <button type="button" class="ac-btn ac-btn-sm">Clone program</button>
+            <button type="button" class="ac-btn ac-btn-sm ac-btn-danger">Delete program</button>
+          </span>
+        </footer>
       </section>
     </div>
   </div>
+
+  <!-- Tiny dialect-only style block: the live-footer chrome isn't yet
+       canonical in editor-core (Phase 2 will land it). Kept here, scoped
+       under the dialect, so the mockup demonstrates the live-edit
+       affordance without polluting akai-dialect.css with primitive rules. -->
+  <style>
+    :root[data-editor="s3000xl"] .ac-detail-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--ac-space-3);
+      padding: var(--ac-space-2) var(--ac-space-4);
+      border-top: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+      background: color-mix(in srgb, var(--ac-color-surface-canvas) 70%, transparent);
+      flex-shrink: 0;
+    }
+    :root[data-editor="s3000xl"] .ac-live-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--ac-space-2);
+      font-family: var(--ac-font-mono);
+      font-size: var(--ac-text-xs);
+      color: var(--ac-color-text-muted);
+    }
+    :root[data-editor="s3000xl"] .ac-live-led {
+      width: 0.55rem;
+      height: 0.55rem;
+      border-radius: 50%;
+      background: var(--ac-color-rec);
+      box-shadow: 0 0 6px var(--ac-color-rec-glow);
+      animation: ac-rec-pulse 1.6s ease-in-out infinite;
+    }
+    :root[data-editor="s3000xl"] .ac-live-text {
+      color: var(--ac-color-text-primary);
+    }
+    :root[data-editor="s3000xl"] .ac-detail-foot-actions {
+      display: inline-flex;
+      gap: var(--ac-space-2);
+    }
+    @keyframes ac-rec-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+  </style>
 </body>
 </html>
