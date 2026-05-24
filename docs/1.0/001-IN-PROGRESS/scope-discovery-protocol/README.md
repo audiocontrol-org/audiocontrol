@@ -1,10 +1,15 @@
 # scope-discovery-protocol
 
-**Status:** PR Open ([#446](https://github.com/audiocontrol-org/audiocontrol/pull/446))
+**Status:** Merged (Phases 1–3, 5–7 + audit follow-ups). Phase 4 closure operator-deferred.
 **Feature Branch:** `feature/scope-discovery-protocol`
 **Worktree:** `~/work/audiocontrol-work/audiocontrol-scope-discovery-protocol/`
 
-Phases 5/6/7 ship via [PR #446](https://github.com/audiocontrol-org/audiocontrol/pull/446). Phases 1-3 shipped earlier via [PR #441](https://github.com/audiocontrol-org/audiocontrol/pull/441). Phase 4 closure (T4.2/T4.3/T4.6) operator-deferred to the post-s550 bugfix branch's burndown.
+- [PR #441](https://github.com/audiocontrol-org/audiocontrol/pull/441) — Phases 1–3 + T4.1/T4.4/T4.5 (merged)
+- [PR #446](https://github.com/audiocontrol-org/audiocontrol/pull/446) — Phases 5/6/7 (merged, commit `cf5e00db`)
+- [PR #454](https://github.com/audiocontrol-org/audiocontrol/pull/454) — audit findings 03–07 follow-up (merged, commit `9f6c07d5`)
+- [PR #462](https://github.com/audiocontrol-org/audiocontrol/pull/462) — audit findings 08–13 + main merge (open)
+
+Phase 4 burndown is in flight. Roland portion drained via [PR #456](https://github.com/audiocontrol-org/audiocontrol/pull/456) (roland-bugfix branch): `modules/roland-sxx0-editor/**` + `modules/editor-core/**` both at 0 pending. Akai portion in flight on the akai-harmonization branch (`modules/akai-s3k-editor/**` at 63 pending). Feature flips to `003-COMPLETE/` when both editors' burndowns finish.
 
 A protocol that makes the agent's first move on a system-wide change an *upfront inventory pass* rather than a *reactive single-fix loop*, and that enforces sibling-enumeration on every code-writing sub-agent dispatch via a programmatic wrapper. Motivated by the Roland S-330/S-550 editor v3 redesign, which spent ~230 operator turns over 60 hours doing brute-force discovery the agent should have done in 10–15 minutes at session start.
 

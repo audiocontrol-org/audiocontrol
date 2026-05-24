@@ -152,10 +152,20 @@ export async function synthesize(input: SynthesisInput): Promise<SynthesisOutput
     kind === 'ui' || kind === 'hybrid'
       ? deriveRoutes(partitioned.ui, scenarioId)
       : undefined;
-  const modules =
+  // AUDIT-20260524-11 — `deriveModules` now consumes the PRD-themed
+  // findings to honor the PRD's `## In Scope` / `## Out of Scope`
+  // sections (dropping excluded modules + annotating low-relevance
+  // ones). The returned `warnings` get folded into the synthesis-level
+  // warning list so the operator sees which modules were pruned.
+  const moduleResult =
     kind === 'code' || kind === 'hybrid'
-      ? deriveModules({ astFindings: partitioned.ast, cloneFindings: partitioned.clones })
+      ? deriveModules({
+          astFindings: partitioned.ast,
+          cloneFindings: partitioned.clones,
+          prdThemedFindings: partitioned.themes,
+        })
       : undefined;
+  const modules = moduleResult?.modules;
   const themesList = deriveThemes(partitioned.themes);
   // Empty themes is a real "no signal" outcome — either no PrdThemedFindings
   // was passed in, or the prd-themed-pattern-hunter agent ran but matched
@@ -173,6 +183,9 @@ export async function synthesize(input: SynthesisInput): Promise<SynthesisOutput
     );
   }
   const warnings: string[] = [];
+  if (moduleResult !== undefined) {
+    for (const w of moduleResult.warnings) warnings.push(w);
+  }
   const refDocsResult = await deriveReferenceDocs({
     prdPath: input.prdPath,
     prdRelPath: input.prdRelPath,
@@ -335,7 +348,21 @@ function renderSynthesizerNotes(warnings: ReadonlyArray<string>): string {
   if (warnings.length === 0) {
     lines.push('clean — no notes from this run.');
   } else {
-    for (const w of warnings) lines.push(`- ${w}`);
+    // Multi-line warnings (e.g., the AUDIT-20260524-12 References
+    // skeleton) need continuation-line indentation so the whole block
+    // renders as a single markdown bullet rather than fragmenting into
+    // a bullet + loose paragraphs. First line gets `- `; subsequent
+    // lines get two-space indent; intentional blank lines inside the
+    // warning are preserved without the indent (so the embedded
+    // markdown fence still parses).
+    for (const w of warnings) {
+      const wLines = w.split('\n');
+      const [first, ...rest] = wLines;
+      lines.push(`- ${first ?? ''}`);
+      for (const cont of rest) {
+        lines.push(cont === '' ? '' : `  ${cont}`);
+      }
+    }
   }
   lines.push('');
   return lines.join('\n');

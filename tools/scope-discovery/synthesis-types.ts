@@ -69,11 +69,29 @@ export interface ManifestModuleExclude {
   readonly reason: string;
 }
 
+/**
+ * Per-module relevance score emitted into the strawman manifest when
+ * the PRD's scope sections name the module (AUDIT-20260524-11).
+ * 'excluded' modules do NOT appear in the manifest at all (they're
+ * filtered before emission), so the manifest-side type only includes
+ * the three values that can actually serialize.
+ */
+export type ManifestModuleRelevance = 'high' | 'medium' | 'low';
+
 export interface ManifestModule {
   readonly glob: string;
   readonly label?: string;
   readonly patterns: ReadonlyArray<ManifestModulePattern>;
   readonly excludes?: ReadonlyArray<ManifestModuleExclude>;
+  /**
+   * Optional PRD-derived relevance score (AUDIT-20260524-11). Absent
+   * when no PRD signal was available — preserves pre-AUDIT-11
+   * behavior (every module included, no annotations). 'low' surfaces
+   * when the operator should review whether the module is actually in
+   * scope; 'high' / 'medium' are informational. 'excluded' modules
+   * are dropped before emission so they never appear here.
+   */
+  readonly relevance?: ManifestModuleRelevance;
 }
 
 /**
