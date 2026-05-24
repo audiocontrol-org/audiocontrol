@@ -7,14 +7,13 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { AcRangeBar, AcNumberInput } from '@audiocontrol/editor-core';
+import { AcRangeBar, AcNumberInput, PageTitleRow } from '@audiocontrol/editor-core';
 import { useMidiStore } from '@/stores/midiStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { useDeviceDataStore } from '@/stores/deviceDataStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { useBankLoader } from '@/hooks/useBankLoader';
 import type { SamplerClientInterface } from '@/core/midi/SamplerClient';
-import { PageTitleRow } from '@/components/common/PageTitleRow';
 import { isMockMidiMode } from '@/mock/mockMode';
 import { isPatchEmpty } from '@/lib/slot-allocation';
 

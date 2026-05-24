@@ -1,0 +1,178 @@
+/**
+ * Page-title primitives — canonical lean editor-page title row.
+ *
+ * Promoted from `modules/roland-sxx0-editor/src/styles/_shared.css`
+ * (lines 42-200) on 2026-05-24 per akai-harmonization Phase 2 task 2.2
+ * (harmonization-spec § 5.1 disposition "adopt-roland-pattern") so the
+ * akai dialect can consume the same canonical primitive instead of
+ * hand-rolling `.ac-page-sticky-header` / `.ac-page-header` chrome.
+ *
+ * Mounted exclusively by the `PageTitleRow` React component in
+ * `editor-core/src/components/PageTitleRow.tsx`. Composes the
+ * `--ac-*` design tokens (see `tokens.css` "Phase 9 polish tokens").
+ *
+ * Naming: classes live under the `.ac-*` namespace because they are
+ * cross-page, cross-editor primitives. Anything truly page-specific
+ * (list-row grid templates, envelope chrome, parameter-row primitives)
+ * stays page-scoped in the consumer module.
+ */
+
+/* ============================================================
+   PAGE TITLE — lean h2 + red rule + status metric + icon-button.
+   Replaces per-bank reload toolbars; refresh-from-device is a
+   single icon-button on the title row (DESIGN-SYSTEM.md
+   "List-Level Actions" + "CRUD Affordances on List Items").
+   ============================================================ */
+.ac-page-title-row {
+  position: relative;
+  display: flex;
+  /* `align-items: center` instead of baseline. `baseline` produces
+     pixel-accurate alignment ONLY when both sides expose a text
+     baseline. When the right-side container is a plain <div>
+     (Library page: actions div with buttons) it gets a synthetic
+     baseline at the bottom of the box, which shifts the left block
+     down a few pixels — measured at 2.5px between Tones and Library
+     before this fix. Center-alignment normalizes height regardless
+     of right-side chrome (text + LED + icon, or plain buttons). */
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ac-space-4);
+  padding-bottom: var(--ac-space-3);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+}
+
+.ac-page-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-2);
+}
+
+/* Heading + inline tag(s). Used when a page needs a status pill next
+   to the title (e.g. Library's "Experimental" tag). */
+.ac-page-title-heading-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-3);
+}
+
+.ac-page-title-heading {
+  margin: 0;
+  font-family: var(--ac-font-display);
+  font-weight: var(--ac-font-weight-normal);
+  font-size: 1.45rem;
+  line-height: 1.2;
+  letter-spacing: var(--ac-tracking-display);
+  color: var(--ac-color-text-primary);
+}
+
+/* Status tag rendered next to the title. Default is muted; tonal
+   variants below. Used for things like "Experimental" or "Beta". */
+.ac-page-title-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem var(--ac-space-2);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  line-height: 1.4;
+  border-radius: var(--ac-radius-sm);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 60%, transparent);
+  color: var(--ac-color-text-muted);
+  cursor: help;
+}
+
+.ac-page-title-tag--warn {
+  border-color: color-mix(in srgb, var(--ac-color-rec) 60%, transparent);
+  background: color-mix(in srgb, var(--ac-color-rec) 12%, transparent);
+  color: color-mix(in srgb, var(--ac-color-rec) 85%, var(--ac-color-text-primary));
+}
+
+/* Red rule beneath the heading — REC-LED accent (used sparingly). */
+.ac-page-title-rule {
+  width: 2.25rem;
+  height: var(--ac-rule-medium);
+  background: var(--ac-color-rec);
+  box-shadow: 0 0 8px var(--ac-color-rec-glow);
+}
+
+/* Status metric — "<n> of <N> loaded" + signal LED + refresh icon. */
+.ac-page-title-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-3);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  white-space: nowrap;
+}
+
+.ac-page-title-metric strong {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--ac-font-weight-normal);
+  color: var(--ac-color-accent);
+}
+
+.ac-page-title-led {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--ac-color-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 70%, transparent);
+}
+
+/* Right-side action cluster — used when a page needs multiple labeled
+   buttons on the title row instead of (or in addition to) a status
+   metric. Library uses this for refresh + save + load. */
+.ac-page-title-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+}
+
+/* ============================================================
+   PAGE PROGRESS — bottom-edge load strip overlaid on the title
+   row's hairline border. Out of flow: when loading starts/stops,
+   nothing below the title row shifts. Reads as a tiny VU strip
+   beneath the heading, in keeping with the page's vintage-hardware
+   visual language (Roland S-series VFD + LED accents).
+   ============================================================ */
+.ac-page-title-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* Sit ON the title-row's bottom hairline so the loading state
+     visually consumes the border without nudging neighbors. */
+  bottom: calc(-1 * var(--ac-rule-medium) / 2);
+  height: var(--ac-rule-medium);
+  pointer-events: none;
+  /* No background — the existing hairline reads as the track. The
+     fill below paints over it. */
+}
+
+.ac-page-title-progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--ac-color-rec);
+  box-shadow: 0 0 10px var(--ac-color-rec-glow);
+  transition: width var(--ac-duration-normal) var(--ac-easing-default);
+}
+
+/* Inline load-status text inside .ac-page-title-metric while a load
+   is in flight. Swaps in place of "<n> of <N> loaded" so the metric
+   row keeps its size and the layout never reflows. */
+.ac-page-title-metric-status {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ac-color-text-primary);
+  max-width: 22rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -49,6 +49,8 @@ export {
   type CollapsibleSectionTheme,
 } from './CollapsibleSection';
 export { NotificationArea, type NotificationAreaProps } from './NotificationArea';
+export { PageTitleRow, type PageTitleRowProps } from './PageTitleRow';
+export { AcReloadIcon } from './AcReloadIcon';
 export {
   MidiConnectionPage,
   type MidiConnectionPageConfig,

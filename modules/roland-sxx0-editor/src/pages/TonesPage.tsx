@@ -35,7 +35,7 @@ import type { SamplerClientInterface, SamplerTone } from '@/core/midi/SamplerCli
 import { toneSampleRateHz } from '@/core/midi/SamplerClient';
 import { ToneList } from '@/components/tones/ToneList';
 import { ToneEditor } from '@/components/tones/ToneEditor';
-import { PageTitleRow } from '@/components/common/PageTitleRow';
+import { PageTitleRow } from '@audiocontrol/editor-core';
 import { useLoopEditor } from '@audiocontrol/loop-editor/ui';
 
 export function TonesPage() {

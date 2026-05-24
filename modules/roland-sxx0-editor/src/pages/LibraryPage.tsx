@@ -16,10 +16,10 @@ import { useDeviceDataStore } from '@/stores/deviceDataStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { useLibraryStore } from '@/stores/libraryStore';
 import { useEditorStore } from '@/stores/editorStore';
-import { PageTitleRow } from '@/components/common/PageTitleRow';
 import type { SamplerClientInterface, SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import {
   useLibraryConnection, useErrorReporter, useLibraryOperations, LibraryConnectionUI, PluginLibraryBrowser,
+  PageTitleRow,
 } from '@audiocontrol/editor-core';
 import { s330LibraryPlugin } from '@/plugins/s330-library-plugin';
 import { s550LibraryPlugin } from '@/plugins/s550-library-plugin';

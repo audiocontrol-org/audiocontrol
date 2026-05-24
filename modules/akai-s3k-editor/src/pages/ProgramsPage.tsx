@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useRef, useState } from 'react';
-import { ConfirmDialog, SteppedProgressDrawer, type ProgressStep } from '@audiocontrol/editor-core';
+import { ConfirmDialog, PageTitleRow, SteppedProgressDrawer, type ProgressStep } from '@audiocontrol/editor-core';
 import { ProgramList, ProgramEditor, KeygroupSummary } from '@/components/programs';
 import { useS3000xlClient } from '@/hooks/useS3000xlClient';
 import { useProgramLoader } from '@/hooks/useProgramLoader';
@@ -308,20 +308,14 @@ export function ProgramsPage(): JSX.Element {
 
   return (
     <div className="ac-page ac-page-shell">
-      <div className="ac-page-sticky-header">
-        <div className="ac-page-header flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-bold">Programs</h2>
-            <CacheAge timestamp={lastRefreshed} />
-          </div>
-          {isLoading && (
-            <span className="text-sm text-gray-400" data-testid="loading-status">
-              {loadingMessage}
-              {loadingProgress !== null && ` (${loadingProgress}%)`}
-            </span>
-          )}
-        </div>
-      </div>
+      <PageTitleRow
+        headingId="programs-page-heading"
+        headingText="Programs"
+        metric={<CacheAge timestamp={lastRefreshed} />}
+        loadingMessage={loadingMessage}
+        isLoading={isLoading}
+        loadingProgress={loadingProgress}
+      />
 
       {error && <ErrorBanner message={error} />}
 

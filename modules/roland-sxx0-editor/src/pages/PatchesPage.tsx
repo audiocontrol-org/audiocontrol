@@ -36,8 +36,7 @@ import type { SamplerClientInterface, SamplerPatch, SamplerTone } from '@/core/m
 import { PatchList } from '@/components/patches/PatchList';
 import { PatchEditor } from '@/components/patches/PatchEditor';
 import { ExportPatchDialog } from '@/components/library/ExportPatchDialog';
-import { useLibraryConnection } from '@audiocontrol/editor-core';
-import { PageTitleRow } from '@/components/common/PageTitleRow';
+import { useLibraryConnection, PageTitleRow } from '@audiocontrol/editor-core';
 
 export function PatchesPage() {
   const config = useDeviceConfig();

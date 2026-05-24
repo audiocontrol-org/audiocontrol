@@ -23,9 +23,8 @@
  * doesn't snowball into a chained refactor.
  */
 
-import { AcChevron } from '@audiocontrol/editor-core';
+import { AcChevron, AcReloadIcon } from '@audiocontrol/editor-core';
 import { cn } from '@/lib/utils';
-import { AcReloadIcon } from './AcReloadIcon';
 
 export interface BankHeaderProps {
   bankIndex: number;

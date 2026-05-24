@@ -23,10 +23,10 @@ import {
   clearTransportConfig,
   AcToggle,
   type AcToggleOption,
+  PageTitleRow,
 } from '@audiocontrol/editor-core';
 import { useMidiStore } from '@/stores/midiStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
-import { PageTitleRow } from '@/components/common/PageTitleRow';
 import { cn } from '@/lib/utils';
 
 type ProbeState = 'idle' | 'scanning' | 'found' | 'not-found';

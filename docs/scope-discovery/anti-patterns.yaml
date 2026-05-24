@@ -88,31 +88,42 @@ anti_patterns:
   - id: page-title-row-inline
     added_in: b996aa01
     primitive: PageTitleRow
-    from: '@/components/common/PageTitleRow'
+    # Promoted to editor-core in akai-harmonization Phase 2 task 2.2 —
+    # canonical import path now '@audiocontrol/editor-core' for cross-editor
+    # consumption. The old '@/components/common/PageTitleRow' path resolves
+    # to the same component while it's re-exported from the roland alias.
+    from: '@audiocontrol/editor-core'
     shape_regex: '<header[^>]*className="ac-page-title-row"'
     excludes_paths:
-      - 'modules/roland-sxx0-editor/src/components/common/PageTitleRow.tsx'
+      # Canonical component file (moved from roland to editor-core in
+      # akai-harmonization Phase 2 task 2.2).
+      - 'modules/editor-core/src/components/PageTitleRow.tsx'
       # HomePage migrated via RGM-001 sub-task 1 (PageTitleRow extension
       # added showLed?: boolean + optional isLoading/refreshLabel).
       # LibraryPage migrated via RGM-001 sub-task 2 (PageTitleRow extension
       # added headingNode?: ReactNode + actions?: ReactNode slot).
     message: |
       Inline `.ac-page-title-row` markup was promoted to the PageTitleRow
-      component in commit b996aa01. Replace with `<PageTitleRow
-      headingId="..." headingText="..." metric={...} loadingMessage={...}
-      isLoading={...} onRefresh={...} refreshLabel="..." />`.
+      component in commit b996aa01 (then moved to editor-core in
+      akai-harmonization Phase 2 task 2.2). Replace with
+      `<PageTitleRow headingId="..." headingText="..." metric={...}
+      loadingMessage={...} isLoading={...} onRefresh={...}
+      refreshLabel="..." />` imported from `@audiocontrol/editor-core`.
 
   - id: ac-reload-icon-inline
     added_in: b996aa01
     primitive: AcReloadIcon
-    from: '@/components/common/AcReloadIcon'
+    # Promoted to editor-core in akai-harmonization Phase 2 task 2.2.
+    from: '@audiocontrol/editor-core'
     shape_regex:
       - '<svg viewBox="0 0 16 16" aria-hidden="true">'
       - 'M3 8a5 5 0 0 1 9-3'
       - 'M13 8a5 5 0 0 1-9 3'
     min_distance: 10
     excludes_paths:
-      - 'modules/roland-sxx0-editor/src/components/common/AcReloadIcon.tsx'
+      # Canonical component file (moved from roland to editor-core in
+      # akai-harmonization Phase 2 task 2.2).
+      - 'modules/editor-core/src/components/AcReloadIcon.tsx'
       # LibraryPage closed via RGM-001 sub-task 2 — now adopts PageTitleRow
       # which uses AcReloadIcon internally for its refresh button.
     message: |

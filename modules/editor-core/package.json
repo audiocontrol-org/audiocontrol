@@ -17,6 +17,7 @@
     "./styles.css": "./src/design/styles.css",
     "./tokens.css": "./src/design/tokens.css",
     "./layout-primitives.css": "./src/design/layout-primitives.css",
+    "./page-title-primitives.css": "./src/design/page-title-primitives.css",
     "./overlay-primitives.css": "./src/design/overlay-primitives.css",
     "./primitives.css": "./src/design/primitives.css",
     "./feedback-primitives.css": "./src/design/feedback-primitives.css",

@@ -1,9 +1,12 @@
 /**
  * PageTitleRow
  *
- * Lean editor-page title row used by PatchesPage, TonesPage, and PlayPage.
- * Composes the .ac-page-title-* shared primitives (declared in
- * `modules/roland-sxx0-editor/src/styles/_shared.css`):
+ * Lean editor-page title row consumed by every list-detail editor
+ * page across editor dialects (Roland S-330/S-550 PatchesPage /
+ * TonesPage / PlayPage / LibraryPage / HomePage; Akai S3000XL
+ * ProgramsPage / KeygroupsPage / SamplesPage / LibraryPage). Composes
+ * the .ac-page-title-* canonical primitives (declared in
+ * `modules/editor-core/src/design/page-title-primitives.css`):
  *
  *   <header class="ac-page-title-row">
  *     <div class="ac-page-title-block">
@@ -18,23 +21,31 @@
  *     {loadingProgress && <div class="ac-page-title-progress">…</div>}
  *   </header>
  *
- * Extracted 2026-05-22 from PatchesPage.tsx (lines ~273-326),
- * TonesPage.tsx (~241-294), and PlayPage.tsx (~293-322) per clones.yaml
- * groups c53786bfb969 (33L) + c3ee44db4131 (16L) + 8ab1699757ff (10L)
- * dispositions. Pre-extraction the three call sites held byte-identical
- * markup for the header, h2/rule, LED span, refresh button, and reload
- * SVG; the only divergences were the heading text, the metric template,
- * the refresh button's aria-label, and whether PatchesPage/TonesPage
- * vs. PlayPage rendered the inline loading-progress strip (PlayPage
- * has a separate .ac-page-progress strip below the header).
+ * Originally extracted 2026-05-22 from roland-sxx0-editor PatchesPage
+ * (lines ~273-326), TonesPage (~241-294), and PlayPage (~293-322) per
+ * clones.yaml groups c53786bfb969 (33L) + c3ee44db4131 (16L) +
+ * 8ab1699757ff (10L) dispositions. Pre-extraction the three call sites
+ * held byte-identical markup for the header, h2/rule, LED span, refresh
+ * button, and reload SVG; the only divergences were the heading text,
+ * the metric template, the refresh button's aria-label, and whether
+ * PatchesPage/TonesPage vs. PlayPage rendered the inline loading-progress
+ * strip (PlayPage has a separate .ac-page-progress strip below the
+ * header).
+ *
+ * Promoted to editor-core 2026-05-24 per akai-harmonization Phase 2
+ * task 2.2 (harmonization-spec § 5.1 disposition "adopt-roland-pattern")
+ * so the akai dialect's hand-rolled `.ac-page-sticky-header` chrome
+ * can be replaced with a canonical primitive shared across editors.
  *
  * Contract pinned by D-PATCH-PAGE-TITLE-01 + D-TONE-PAGE-TITLE-01 +
- * D-PLAY-PAGE-TITLE-01 wiring assertions added before this extraction.
+ * D-PLAY-PAGE-TITLE-01 + D-CONNECT-PAGE-TITLE-01 + D-LIB-PAGE-TITLE-01
+ * wiring assertions; these continue to assert against the relocated
+ * component without modification.
  */
 
 import type { ReactNode } from 'react';
 
-import { cn } from '@/lib/utils';
+import { cn } from '../utils/cn';
 import { AcReloadIcon } from './AcReloadIcon';
 
 export interface PageTitleRowProps {

@@ -3227,3 +3227,10 @@ clones:
       - modules/synth-core/src/hooks/use-slice-player.ts:49:63
     disposition: pending
     reason: null
+  - id: a50e0d779738
+    lines: 21
+    members:
+      - modules/akai-s3k-editor/src/pages/ProgramsPage.tsx:292:312
+      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:214:234
+    disposition: keep-with-reason
+    reason: Intentional adoption of the canonical PageTitleRow primitive across the akai surface (Phase 2 task 2.2 of akai-harmonization). Both akai pages now invoke the same canonical component imported from @audiocontrol/editor-core with the same prop shape (heading + metric={<CacheAge>} + loading wiring). The duplication is the irreducible cost of two pages using the same canonical chrome the same way — extracting a wrapper would just hide that they're invoking the canonical correctly. Flip to refactor only if a third akai page lands with the exact same wiring AND there's a meaningful akai-side extraction (e.g., a useAkaiPageTitleWiring hook that abstracts the loadingMessage / loadingProgress / CacheAge boilerplate). Same shape that the roland editor's PatchesPage / TonesPage / PlayPage invoke; same disposition principle applies.

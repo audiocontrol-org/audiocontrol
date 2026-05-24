@@ -8,6 +8,8 @@
  * per-file 500-line cap):
  *   - tokens.css              — design tokens
  *   - layout-primitives.css   — page shell, site chrome, list-detail, tabs
+ *   - page-title-primitives.css — lean page-title row (h2 + rule + metric +
+ *                               icon-btn); mounted by PageTitleRow component
  *   - overlay-primitives.css  — modal + slide-over drawer
  *   - primitives.css          — buttons, inputs, selects, labels, fields,
  *                               card/title/text utilities, link, radio,
@@ -27,6 +29,7 @@
 
 @import './tokens.css';
 @import './layout-primitives.css';
+@import './page-title-primitives.css';
 @import './overlay-primitives.css';
 @import './primitives.css';
 @import './feedback-primitives.css';

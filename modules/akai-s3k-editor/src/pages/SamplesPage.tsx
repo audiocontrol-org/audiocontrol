@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useRef, useState } from 'react';
-import { ConfirmDialog, SteppedProgressDrawer, type ProgressStep } from '@audiocontrol/editor-core';
+import { ConfirmDialog, PageTitleRow, SteppedProgressDrawer, type ProgressStep } from '@audiocontrol/editor-core';
 import { LoopEditorDialog } from '@audiocontrol/loop-editor/ui';
 import { SampleEditorDialog } from '@audiocontrol/sample-editor/ui';
 import { SampleChopperDialog } from '@audiocontrol/sample-chopper/ui';
@@ -230,17 +230,13 @@ export function SamplesPage(): JSX.Element {
 
   return (
     <div className="ac-page ac-page-shell">
-      <div className="ac-page-sticky-header">
-        <div className="ac-page-header flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-bold">Samples</h2>
-            <CacheAge timestamp={lastRefreshed} />
-          </div>
-          {isLoading && (
-            <span className="text-sm text-gray-400">Loading...</span>
-          )}
-        </div>
-      </div>
+      <PageTitleRow
+        headingId="samples-page-heading"
+        headingText="Samples"
+        metric={<CacheAge timestamp={lastRefreshed} />}
+        loadingMessage={isLoading ? 'Loading...' : null}
+        isLoading={isLoading}
+      />
 
       {error && <ErrorBanner message={error} />}
 

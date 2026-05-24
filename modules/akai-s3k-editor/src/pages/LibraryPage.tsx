@@ -28,6 +28,7 @@ import {
   useLibraryConnection,
   useErrorReporter,
   LibraryConnectionUI,
+  PageTitleRow,
   PluginLibraryBrowser,
   type TreeNode,
   type ItemSelection,
@@ -556,11 +557,11 @@ export function LibraryPage(): JSX.Element {
 
   return (
     <div className="ac-page ac-page-shell">
-      <div className="ac-page-sticky-header">
-        <div className="ac-page-header">
-          <h2 className="text-xl font-bold">Library</h2>
-        </div>
-      </div>
+      <PageTitleRow
+        headingId="library-page-heading"
+        headingText="Library"
+      />
+
       <div className="ac-page-content flex" style={{ height: 'calc(100vh - 8rem)' }}>
         <div className="flex-1 min-w-0">
           <PluginLibraryBrowser

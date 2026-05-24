@@ -115,18 +115,30 @@ adopter_manifests:
 
   - id: page-title-row
     introduced_in: b996aa01
-    from: '@/components/common/PageTitleRow'
+    # Promoted to editor-core in akai-harmonization Phase 2 task 2.2 —
+    # canonical import path moved from roland-local '@/components/common/'
+    # to '@audiocontrol/editor-core' so cross-editor consumers (akai
+    # now, jv1080 / d110 later) can adopt the same primitive without
+    # per-module forking.
+    from: '@audiocontrol/editor-core'
     expected_adopters_glob:
       - 'modules/roland-sxx0-editor/src/pages/PatchesPage.tsx'
       - 'modules/roland-sxx0-editor/src/pages/TonesPage.tsx'
       - 'modules/roland-sxx0-editor/src/pages/PlayPage.tsx'
+      - 'modules/roland-sxx0-editor/src/pages/HomePage.tsx'
+      - 'modules/roland-sxx0-editor/src/pages/LibraryPage.tsx'
+      - 'modules/akai-s3k-editor/src/pages/ProgramsPage.tsx'
+      - 'modules/akai-s3k-editor/src/pages/KeygroupsPage.tsx'
+      - 'modules/akai-s3k-editor/src/pages/SamplesPage.tsx'
+      - 'modules/akai-s3k-editor/src/pages/LibraryPage.tsx'
     message: |
       Editor pages with a title row + LED metric + refresh affordance
       should render via the shared PageTitleRow primitive (introduced
-      in commit b996aa01). Replace inline `<header className="ac-page-title-row">`
+      in commit b996aa01, promoted to editor-core in akai-harmonization
+      Phase 2 task 2.2). Replace inline `<header className="ac-page-title-row">`
       markup with `<PageTitleRow headingId="..." headingText="..."
       metric={...} loadingMessage={...} isLoading={...} onRefresh={...}
-      refreshLabel="..." />`.
+      refreshLabel="..." />` imported from `@audiocontrol/editor-core`.
 
   - id: use-export-dialog-lifecycle
     introduced_in: dce8fc72

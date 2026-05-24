@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { PageTitleRow } from '@audiocontrol/editor-core';
 import { KeygroupList, KeygroupEditor, ZoneOverview } from '@/components/keygroups';
 import type { ZoneDragField, NewZoneRange } from '@/components/keygroups';
 import { useS3000xlClient } from '@/hooks/useS3000xlClient';
@@ -303,22 +304,14 @@ export function KeygroupsPage(): JSX.Element {
 
   return (
     <div className="ac-page ac-page-shell">
-      <div className="ac-page-sticky-header">
-        <div className="ac-page-header flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-bold">
-              Keygroups — {selectedProgram.PRNAME.trim() || '(unnamed)'}
-            </h2>
-            <CacheAge timestamp={keygroupLastRefreshed} />
-          </div>
-          {isLoading && (
-            <span className="text-sm text-gray-400">
-              {loadingMessage}
-              {loadingProgress !== null && ` (${loadingProgress}%)`}
-            </span>
-          )}
-        </div>
-      </div>
+      <PageTitleRow
+        headingId="keygroups-page-heading"
+        headingText={`Keygroups — ${selectedProgram.PRNAME.trim() || '(unnamed)'}`}
+        metric={<CacheAge timestamp={keygroupLastRefreshed} />}
+        loadingMessage={loadingMessage}
+        isLoading={isLoading}
+        loadingProgress={loadingProgress}
+      />
 
       {error && <ErrorBanner message={error} />}
 

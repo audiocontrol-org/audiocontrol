@@ -2,15 +2,16 @@
  * AcReloadIcon
  *
  * 16x16 reload-arrows SVG glyph. The same four-path shape historically
- * lived inline in three call sites:
+ * lived inline in three roland-sxx0-editor call sites:
  *   - BankHeader (per-bank reload button)
  *   - PatchesPage / TonesPage / PlayPage (title-row refresh-all button)
  *   - DeviceMemoryPanel (per-bank reload — now consumed via BankHeader)
  *
- * Extracted 2026-05-22 as part of the PageTitleRow refactor walk
- * (clones.yaml c53786bfb969 + c3ee44db4131 + 8ab1699757ff). Promoting
- * the glyph to a single component closes the inline duplications and
- * gives future refresh-bearing surfaces a one-line affordance.
+ * Originally extracted 2026-05-22 as part of the PageTitleRow refactor
+ * walk (clones.yaml c53786bfb969 + c3ee44db4131 + 8ab1699757ff).
+ * Promoted to editor-core 2026-05-24 alongside PageTitleRow per
+ * akai-harmonization Phase 2 task 2.2 so future editor dialects can
+ * consume the same canonical refresh glyph.
  *
  * No props by design — the glyph is a fixed visual primitive. The
  * surrounding `<button>` carries all variable affordance state
