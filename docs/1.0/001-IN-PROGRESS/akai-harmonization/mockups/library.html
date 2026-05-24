@@ -75,7 +75,7 @@
             <!-- Programs section -->
             <div class="ac-device-memory-section" data-expanded="true">
               <button type="button" class="ac-device-memory-section-eyebrow" aria-expanded="true">
-                <span class="ac-chevron" data-expanded="true"></span>
+                <span class="ac-chevron" data-expanded="true">▾</span>
                 <span>Programs (128 slots · 0 loaded)</span>
               </button>
               <div class="ac-list ac-list-scroll" role="list">
@@ -105,7 +105,7 @@
             <!-- Samples section -->
             <div class="ac-device-memory-section" data-expanded="true">
               <button type="button" class="ac-device-memory-section-eyebrow" aria-expanded="true">
-                <span class="ac-chevron" data-expanded="true"></span>
+                <span class="ac-chevron" data-expanded="true">▾</span>
                 <span>Samples (62 loaded · 11.8 MB)</span>
               </button>
               <div class="ac-list ac-list-scroll" role="list">
@@ -182,7 +182,7 @@
             <div class="ac-tree-section" data-category="s3k-programs" data-expanded="true">
               <div class="ac-tree-section-header">
                 <button type="button" class="ac-tree-section-toggle" aria-expanded="true">
-                  <span class="ac-chevron" data-expanded="true"></span>
+                  <span class="ac-chevron" data-expanded="true">▾</span>
                   <span class="ac-tree-section-title">S3K Programs</span>
                 </button>
               </div>
@@ -217,7 +217,7 @@
             <div class="ac-tree-section" data-category="samples" data-expanded="true">
               <div class="ac-tree-section-header">
                 <button type="button" class="ac-tree-section-toggle" aria-expanded="true">
-                  <span class="ac-chevron" data-expanded="true"></span>
+                  <span class="ac-chevron" data-expanded="true">▾</span>
                   <span class="ac-tree-section-title">Samples</span>
                 </button>
                 <span class="ac-tree-section-actions">
@@ -230,7 +230,7 @@
               </div>
               <div role="tree" class="ac-tree-view">
                 <div role="treeitem" class="ac-tree-node" data-kind="folder" aria-expanded="true">
-                  <span class="ac-tree-disclosure-btn"><span class="ac-chevron" data-expanded="true"></span></span>
+                  <span class="ac-tree-disclosure-btn"><span class="ac-chevron" data-expanded="true">▾</span></span>
                   <span class="ac-tree-node-name">drum-kits</span>
                   <span class="ac-tree-node-meta">28 items</span>
                 </div>
@@ -262,22 +262,22 @@
                   </div>
                 </div>
                 <div role="treeitem" class="ac-tree-node" data-kind="folder">
-                  <span class="ac-tree-disclosure-btn"><span class="ac-chevron"></span></span>
+                  <span class="ac-tree-disclosure-btn"><span class="ac-chevron" data-expanded="false">▸</span></span>
                   <span class="ac-tree-node-name">percussion</span>
                   <span class="ac-tree-node-meta">42 items</span>
                 </div>
                 <div role="treeitem" class="ac-tree-node" data-kind="folder">
-                  <span class="ac-tree-disclosure-btn"><span class="ac-chevron"></span></span>
+                  <span class="ac-tree-disclosure-btn"><span class="ac-chevron" data-expanded="false">▸</span></span>
                   <span class="ac-tree-node-name">keys</span>
                   <span class="ac-tree-node-meta">36 items</span>
                 </div>
                 <div role="treeitem" class="ac-tree-node" data-kind="folder">
-                  <span class="ac-tree-disclosure-btn"><span class="ac-chevron"></span></span>
+                  <span class="ac-tree-disclosure-btn"><span class="ac-chevron" data-expanded="false">▸</span></span>
                   <span class="ac-tree-node-name">strings</span>
                   <span class="ac-tree-node-meta">22 items</span>
                 </div>
                 <div role="treeitem" class="ac-tree-node" data-kind="folder">
-                  <span class="ac-tree-disclosure-btn"><span class="ac-chevron"></span></span>
+                  <span class="ac-tree-disclosure-btn"><span class="ac-chevron" data-expanded="false">▸</span></span>
                   <span class="ac-tree-node-name">fx</span>
                   <span class="ac-tree-node-meta">14 items</span>
                 </div>
@@ -288,7 +288,7 @@
             <div class="ac-tree-section" data-category="programs" data-expanded="true">
               <div class="ac-tree-section-header">
                 <button type="button" class="ac-tree-section-toggle" aria-expanded="true">
-                  <span class="ac-chevron" data-expanded="true"></span>
+                  <span class="ac-chevron" data-expanded="true">▾</span>
                   <span class="ac-tree-section-title">Programs</span>
                 </button>
               </div>
@@ -354,5 +354,77 @@
     </div>
 
   </div>
+
+  <!--
+    Minimal collapse-toggle wiring for the static mockup. In production
+    these toggles are React useState() handlers inside AcChevron + the
+    TreeSection / DeviceMemoryPanel components; the mockup needs JS to
+    show the same affordance without a React mount.
+  -->
+  <script>
+    function setChevron(span, expanded) {
+      if (!span) return;
+      span.setAttribute('data-expanded', expanded ? 'true' : 'false');
+      span.textContent = expanded ? '▾' : '▸';
+    }
+
+    // Device-memory sections — eyebrow click toggles data-expanded on
+    // the parent .ac-device-memory-section + hides the .ac-list body.
+    document.querySelectorAll('.ac-device-memory-section-eyebrow').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var section = btn.closest('.ac-device-memory-section');
+        if (!section) return;
+        var expanded = section.getAttribute('data-expanded') !== 'false';
+        section.setAttribute('data-expanded', expanded ? 'false' : 'true');
+        btn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+        setChevron(btn.querySelector('.ac-chevron'), !expanded);
+        var body = section.querySelector('.ac-list');
+        if (body) body.style.display = expanded ? 'none' : '';
+      });
+    });
+
+    // Tree-section toggles — section-toggle click toggles the
+    // .ac-tree-section--collapsed class + the .ac-tree-view body.
+    document.querySelectorAll('.ac-tree-section-toggle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var section = btn.closest('.ac-tree-section');
+        if (!section) return;
+        var collapsed = section.classList.toggle('ac-tree-section--collapsed');
+        btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        setChevron(btn.querySelector('.ac-chevron'), !collapsed);
+        var body = section.querySelector('.ac-tree-view');
+        if (body) body.style.display = collapsed ? 'none' : '';
+      });
+    });
+
+    // Folder disclosures — chevron-btn click toggles the next-sibling
+    // .ac-tree-children block.
+    document.querySelectorAll('.ac-tree-disclosure-btn').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var node = btn.closest('.ac-tree-node');
+        if (!node) return;
+        var expanded = node.getAttribute('aria-expanded') === 'true';
+        node.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+        setChevron(btn.querySelector('.ac-chevron'), !expanded);
+        var children = node.nextElementSibling;
+        if (children && children.classList.contains('ac-tree-children')) {
+          children.style.display = expanded ? 'none' : '';
+        }
+      });
+    });
+
+    // Initialize: folder rows without aria-expanded="true" start
+    // collapsed so their .ac-tree-children siblings hide.
+    document.querySelectorAll('.ac-tree-node[data-kind="folder"]').forEach(function (node) {
+      var expanded = node.getAttribute('aria-expanded') === 'true';
+      if (!expanded) {
+        var children = node.nextElementSibling;
+        if (children && children.classList.contains('ac-tree-children')) {
+          children.style.display = 'none';
+        }
+      }
+    });
+  </script>
 </body>
 </html>
