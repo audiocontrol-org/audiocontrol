@@ -175,4 +175,89 @@ test.describe('Capabilities — Tones (C-TONE)', () => {
     );
     await expect(anyExportButton).toHaveCount(0);
   });
+
+  test('D-TONE-LIST-09: each bank renders a header with bank-toggle button + bank-reload button + slot-range readout (clones.yaml fc08c274d295 refactor contract)', async ({ page }) => {
+    // Sibling assertion to D-PATCH-LIST-10; covers the tones surface.
+    // See D-PATCH-LIST-10 for full rationale.
+    const list = page.locator('[data-capability="C-TONE-01"]');
+    await expect(list).toBeVisible({ timeout: 5_000 });
+
+    const toggle = page.getByTestId('tone-bank-toggle-0');
+    const reload = page.getByTestId('tone-bank-reload-0');
+    await expect(toggle).toBeVisible();
+    await expect(reload).toBeVisible();
+    await expect(toggle).toContainText('Bank 1');
+
+    const bankHeader = toggle.locator('..');
+    await expect(bankHeader.locator('.ac-list-bank-meta strong')).toContainText(/T11.*T\d/);
+  });
+
+  test('D-TONE-EDITOR-TABS-01: ToneEditorTabs renders the four-tab radio-driven shell (clones.yaml 80f494ba63d3 + 5578c63410e2 AcRadioTabs refactor contract)', async ({ page }) => {
+    // Sibling assertion to D-PATCH-EDITOR-TABS-01 (patches.spec.ts).
+    // Contract: ToneEditorTabs renders the four TABS entries
+    // (Wave, Pitch & LFO, Filter, Amp) as role="tab" labels with
+    // matching [data-tab="tt-wave|tt-pitch-lfo|tt-filter|tt-amp"]
+    // role="tabpanel" sections. The Wave tab is default-active.
+    //
+    // The tone-writes.spec.ts wiring suite already exercises clicking
+    // through tabs and writing into the wave panel, so it would catch
+    // a botched refactor — but it doesn't EXPLICITLY pin the
+    // .ac-tabs / role="tabpanel" wiring shape. This test does.
+    const list = page.locator('[data-capability="C-TONE-01"]');
+    await expect(list).toBeVisible({ timeout: 5_000 });
+    await list.getByRole('button', { name: /^T11\b/ }).click();
+
+    const editor = page.locator('[data-capability="C-TONE-04"]');
+    await expect(editor).toBeVisible({ timeout: 5_000 });
+
+    await expect(editor.getByRole('tab', { name: 'Wave' })).toBeVisible();
+    await expect(editor.getByRole('tab', { name: 'Pitch & LFO' })).toBeVisible();
+    await expect(editor.getByRole('tab', { name: 'Filter' })).toBeVisible();
+    await expect(editor.getByRole('tab', { name: 'Amp' })).toBeVisible();
+
+    await expect(editor.locator('[data-tab="tt-wave"]')).toHaveAttribute('role', 'tabpanel');
+    await expect(editor.locator('[data-tab="tt-pitch-lfo"]')).toHaveAttribute('role', 'tabpanel');
+    await expect(editor.locator('[data-tab="tt-filter"]')).toHaveAttribute('role', 'tabpanel');
+    await expect(editor.locator('[data-tab="tt-amp"]')).toHaveAttribute('role', 'tabpanel');
+  });
+
+  test('D-TONE-PAGE-TITLE-01: TonesPage renders the .ac-page-title-row chrome with heading + rule + LED-metric (clones.yaml c53786bfb969 + c3ee44db4131 PageTitleRow refactor contract)', async ({ page }) => {
+    // Sibling assertion to D-PATCH-PAGE-TITLE-01 (patches.spec.ts).
+    // TonesPage's specific contract: heading text is "Tones" rather
+    // than "Patches"; all other chrome elements match.
+    const titleRow = page.locator('header.ac-page-title-row');
+    await expect(titleRow).toBeVisible({ timeout: 5_000 });
+
+    const heading = titleRow.locator('h2.ac-page-title-heading');
+    await expect(heading).toHaveText('Tones');
+
+    await expect(titleRow.locator('.ac-page-title-rule')).toBeVisible();
+    await expect(titleRow.locator('.ac-page-title-metric .ac-page-title-led')).toBeAttached();
+
+    await expect(titleRow.locator('.ac-page-title-metric').getByText(/of/)).toBeVisible();
+  });
+
+  test('D-TONE-LIST-08: each row wraps the tone-name testid in an .ac-list-info span (clones.yaml 80299d9fda8d refactor contract)', async ({ page }) => {
+    // Test-before-extract contract for clones.yaml group 80299d9fda8d
+    // (PatchList.tsx:227-240 ↔ ToneList.tsx:226-239 ac-list-info
+    // span block). The clone-disposition refactor extracts the shared
+    // block to a new common/SlotInfo.tsx component; both files render
+    // <SlotInfo testId="patch-name|tone-name" .../> in place of the
+    // inline span. Without this assertion the refactor could silently
+    // drop the .ac-list-info wrapper class — no other test asserts it.
+    //
+    // Added 2026-05-22 BEFORE the SlotInfo extraction lands, per the
+    // 'Refactoring protocol: test before extract' rule in workplan.md.
+    // Must pass against the pre-refactor code AND stay green after the
+    // refactor. Sibling assertion: D-PATCH-LIST-09 in patches.spec.ts.
+    const list = page.locator('[data-capability="C-TONE-01"]');
+    await expect(list).toBeVisible({ timeout: 5_000 });
+
+    const loadedRow = list.getByRole('button', { name: /^T11\b/ });
+    await expect(loadedRow).toBeVisible();
+
+    const wrapper = loadedRow.locator('.ac-list-info');
+    await expect(wrapper).toBeVisible();
+    await expect(wrapper.getByTestId('tone-name')).toBeVisible();
+  });
 });

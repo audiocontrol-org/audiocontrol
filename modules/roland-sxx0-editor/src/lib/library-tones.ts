@@ -30,8 +30,8 @@ import {
   stringifyYaml,
   readToneFilesFromDirectory,
   writeToneFilesToDirectory,
-  downloadFile,
 } from '@/lib/library-io';
+import { downloadBlob } from '@audiocontrol/editor-core';
 
 // Re-export for consumers that import from library-service
 export type { PreparedS330Sample };
@@ -174,9 +174,9 @@ export async function exportToneAsDownload(
 
   onProgress?.(50);
 
-  downloadFile(new Blob([yamlContent], { type: 'text/yaml' }), `${toneName}.yaml`);
+  downloadBlob(new Blob([yamlContent], { type: 'text/yaml' }), `${toneName}.yaml`);
   onProgress?.(75);
-  downloadFile(wavBlob, `${toneName}.wav`);
+  downloadBlob(wavBlob, `${toneName}.wav`);
   onProgress?.(100);
 }
 

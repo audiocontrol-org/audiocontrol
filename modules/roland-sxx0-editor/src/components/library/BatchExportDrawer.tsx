@@ -17,15 +17,13 @@
  * is identical across single and batch flows.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import { SlideDrawer } from '@audiocontrol/editor-core';
 import { StepLogBody, renderFooter } from './ExportToneDialog';
-import { useStepHistory } from '@/hooks/useStepHistory';
+import { useExportDialogLifecycle } from '@/hooks/useExportDialogLifecycle';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
-import {
-  type OperationState,
-  isOperationComplete,
-} from '@/types/import-operation';
+import { DestinationEyebrow } from '@/components/library/DestinationEyebrow';
+import { type OperationState } from '@/types/import-operation';
 
 export interface BatchExportItem {
   /** Device slot index (tone or patch, depending on `kind`). */
@@ -72,26 +70,22 @@ export function BatchExportDrawer({
   error: operationError,
 }: BatchExportDrawerProps): JSX.Element | null {
   const { deviceName } = useDeviceConfig();
-  const [localError, setLocalError] = useState<string | null>(null);
-  const [hasStarted, setHasStarted] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      setLocalError(null);
-      setHasStarted(false);
-    }
-  }, [open]);
-
-  const isComplete = isOperationComplete({
+  const {
+    localError,
+    setLocalError,
+    hasStarted,
+    setHasStarted,
+    isComplete,
+    effectiveError,
+    steps,
+    handleClose,
+  } = useExportDialogLifecycle({
+    open,
     isOperating,
     progress,
-    error: operationError,
-  });
-  const effectiveError = localError ?? operationError;
-  const steps = useStepHistory({
-    progress,
-    isComplete,
-    error: effectiveError,
+    operationError,
+    onOpenChange,
     stepErrors: failures,
   });
 
@@ -103,13 +97,7 @@ export function BatchExportDrawer({
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : 'Batch export failed');
     }
-  }, [onExport]);
-
-  const handleClose = useCallback(() => {
-    if (isOperating) return;
-    setLocalError(null);
-    onOpenChange(false);
-  }, [isOperating, onOpenChange]);
+  }, [onExport, setLocalError, setHasStarted]);
 
   if (!open) return null;
 
@@ -181,21 +169,13 @@ function BatchFormBody({ kind, items, targetPath, deviceName, error }: BatchForm
   const eyebrowKindLabel = kind === 'tone' ? 'TONES' : 'PATCHES';
   return (
     <div className="ac-export-form">
-      <div className="ac-detail-eyebrow-row" data-testid="batch-export-destination">
-        <span className="ac-detail-eyebrow-accent">{eyebrowKindLabel}</span>
-        <span className="ac-detail-eyebrow-sep">·</span>
-        <span>{items.length} ITEMS</span>
-        <span className="ac-detail-eyebrow-sep">·</span>
-        <span>LIBRARY</span>
-        <span className="ac-detail-eyebrow-sep">·</span>
-        <span data-testid="batch-export-device-name">{deviceName.toUpperCase()}</span>
-        {targetPath.length > 0 && (
-          <>
-            <span className="ac-detail-eyebrow-sep">·</span>
-            <span data-testid="batch-export-target-path">{targetPath.join(' / ')}</span>
-          </>
-        )}
-      </div>
+      <DestinationEyebrow
+        kindLabel={eyebrowKindLabel}
+        leftField={`${items.length} ITEMS`}
+        deviceName={deviceName}
+        targetPath={targetPath}
+        testIdPrefix="batch-export"
+      />
       <div className="ac-page-title-rule" aria-hidden="true" />
 
       {error && (

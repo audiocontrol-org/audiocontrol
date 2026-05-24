@@ -265,7 +265,7 @@ test.describe('Device Library Round Trip', () => {
     await slotSelect.selectOption('0');
 
     const confirmImport = page.locator(
-      '[data-testid="confirm-import-button"]'
+      '[data-testid="import-confirm"]'
     );
     await expect(confirmImport).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await confirmImport.click();
@@ -451,7 +451,7 @@ test.describe('Device Library Round Trip', () => {
     await expect(slotSelect).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await slotSelect.selectOption('0');
 
-    const confirmImport = page.locator('[data-testid="confirm-import-button"]');
+    const confirmImport = page.locator('[data-testid="import-confirm"]');
     await expect(confirmImport).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await confirmImport.click();
 
@@ -659,7 +659,7 @@ s330:
     await slotSelect.selectOption('0');
 
     const confirmImport = page.locator(
-      '[data-testid="confirm-import-button"]'
+      '[data-testid="import-confirm"]'
     );
     await expect(confirmImport).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await confirmImport.click();

@@ -107,13 +107,65 @@ test.describe('Capabilities — Library import + sample-editing dialogs (Wave 4)
     // defining affordances renders. We pin the heading + the confirm
     // button rather than just the title, so an empty-but-mounted state
     // (e.g., dialog opened against a missing fixture) wouldn't pass.
+    //
+    // V3-IMPORT (#450): the v3 chrome migration switched the title to
+    // sentence-case ("Import library tone") matching the sibling
+    // Export* dialogs ("Export tone to library"). The legacy
+    // title-case heading "Import Library Tone" is gone.
     await expect(
-      page.getByRole('heading', { name: 'Import Library Tone' }),
+      page.getByRole('heading', { name: 'Import library tone' }),
     ).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByTestId('confirm-import-button')).toBeVisible();
-    // The target-slot select is the canonical interaction affordance —
-    // without it the dialog mounted but cannot be used.
+    // The confirm button + the target-slot select are the canonical
+    // interaction affordances. v3 chrome moved the confirm into the
+    // SlideDrawer footer; the `renderFooter` helper from
+    // ExportToneDialog is reused with `testIdPrefix: 'import'`, so
+    // the testid is `import-confirm` (matches the legacy
+    // `confirm-import-button` semantics; renamed for symmetry with
+    // the export-side `export-confirm`).
+    await expect(page.getByTestId('import-confirm')).toBeVisible();
     await expect(page.getByTestId('target-slot-select')).toBeVisible();
+  });
+
+  test('D-LIB-IMPORT-TONE-V3-01: ImportLibraryToneDialog mounts the v3 SlideDrawer chrome (ac-drawer-panel + sentence-case title)', async ({ page }) => {
+    // Pins the v3 chrome shape for ImportLibraryToneDialog. Pre-migration
+    // the dialog used Radix.Dialog (centered overlay), which does NOT
+    // produce a `.ac-drawer-panel` element. Post-migration the dialog is
+    // a right-edge SlideDrawer that mounts `.ac-drawer-panel` inline
+    // (NO Portal) with `role="dialog"` + sentence-case title text.
+    //
+    // Added 2026-05-23 BEFORE the V3-IMPORT sub-task 2 migration.
+    // Must fail against the legacy Radix.Dialog chrome and pass after.
+    // Closes V3-IMPORT (#450) follow-up for the legacy Import dialog.
+    const toneName = 'basic-sine';
+    await page.goto(LIBRARY_URL);
+    await page.waitForLoadState('networkidle');
+    await cleanupOPFS(page);
+    await seedOPFSTone(page, { fixtureName: toneName });
+    await connectLibraryOPFS(page);
+
+    const toneNode = page.getByTestId(`library-tone-${toneName}`);
+    await expect(toneNode).toBeVisible({ timeout: 5_000 });
+    await toneNode.click();
+
+    const importButton = page.getByTestId('import-to-device-button');
+    await expect(importButton).toBeVisible({ timeout: 5_000 });
+    await importButton.click();
+
+    // v3 chrome marker: SlideDrawer mounts `.ac-drawer-panel`. The
+    // legacy Radix.Dialog code mounts `.fixed top-1/2 left-1/2 ...`
+    // inside a `Dialog.Portal` and produces NO `.ac-drawer-panel` node.
+    const drawerPanel = page.locator('.ac-drawer-panel');
+    await expect(drawerPanel).toBeVisible({ timeout: 5_000 });
+
+    // Sentence-case title matches the v3 design language. The legacy
+    // chrome used "Import Library Tone" (title-case); v3 uses
+    // "Import library tone" (sentence-case) per the same convention
+    // ExportToneDialog applies ("Export tone to library"). The drawer
+    // title renders inside `.ac-drawer-title` (an h2) — pinning the
+    // heading directly is more reliable than role+name resolution
+    // because SlideDrawer doesn't set `aria-labelledby`.
+    const drawerTitle = page.locator('.ac-drawer-title');
+    await expect(drawerTitle).toHaveText(/Import library tone/i, { timeout: 5_000 });
   });
 
   test('D-LIB-13: clicking "Import to Device" on a seeded library patch mounts ImportLibraryPatchDialog', async ({ page }) => {
@@ -155,15 +207,57 @@ test.describe('Capabilities — Library import + sample-editing dialogs (Wave 4)
     await expect(importButton).toBeVisible({ timeout: 5_000 });
     await importButton.click();
 
+    // V3-IMPORT (#450): the v3 chrome migration switched the title to
+    // sentence-case ("Import library patch") matching the sibling
+    // Export* dialogs. The confirm testid is `import-confirm` (renamed
+    // from `confirm-import-button` for symmetry with `export-confirm`).
     await expect(
-      page.getByRole('heading', { name: 'Import Library Patch' }),
+      page.getByRole('heading', { name: 'Import library patch' }),
     ).toBeVisible({ timeout: 5_000 });
-    // The target-slot select + confirm button are the canonical
-    // interaction affordances for the patch import dialog — same
-    // shape as the tone dialog (`ImportLibraryPatchDialog.tsx:480` +
-    // `:691`).
     await expect(page.getByTestId('target-slot-select')).toBeVisible();
-    await expect(page.getByTestId('confirm-import-button')).toBeVisible();
+    await expect(page.getByTestId('import-confirm')).toBeVisible();
+  });
+
+  test('D-LIB-IMPORT-PATCH-V3-01: ImportLibraryPatchDialog mounts the v3 SlideDrawer chrome (ac-drawer-panel + sentence-case title)', async ({ page }) => {
+    // Pins the v3 chrome shape for ImportLibraryPatchDialog. Pre-migration
+    // the dialog used Radix.Dialog (centered overlay), which does NOT
+    // produce a `.ac-drawer-panel` element. Post-migration the dialog
+    // is a right-edge SlideDrawer that mounts `.ac-drawer-panel`
+    // inline (NO Portal) with sentence-case title "Import library patch".
+    //
+    // Added 2026-05-23 BEFORE the V3-IMPORT sub-task 4 migration.
+    // Must fail against the legacy Radix.Dialog chrome and pass
+    // after. Closes V3-IMPORT (#450) final sub-task.
+    await page.goto(LIBRARY_URL);
+    await page.waitForLoadState('networkidle');
+    await cleanupOPFS(page);
+    const { patchDirName } = await seedOPFSPatch(page);
+    await connectLibraryOPFS(page);
+
+    const testIdSuffix = patchDirName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    const patchNode = page.getByTestId(`library-patch-${testIdSuffix}`);
+    await expect(patchNode).toBeVisible({ timeout: 5_000 });
+    await patchNode.click();
+
+    const importButton = page.getByTestId('import-to-device-button');
+    await expect(importButton).toBeVisible({ timeout: 5_000 });
+    await importButton.click();
+
+    // v3 chrome marker: SlideDrawer mounts `.ac-drawer-panel`. The
+    // legacy Radix.Dialog code mounts `.fixed top-1/2 left-1/2 ...`
+    // inside a `Dialog.Portal` and produces NO `.ac-drawer-panel` node.
+    const drawerPanel = page.locator('.ac-drawer-panel');
+    await expect(drawerPanel).toBeVisible({ timeout: 5_000 });
+
+    // Sentence-case title matches the v3 design language. The legacy
+    // chrome used "Import Library Patch" (title-case); v3 uses
+    // "Import library patch" (sentence-case).
+    const drawerTitle = page.locator('.ac-drawer-title');
+    await expect(drawerTitle).toHaveText(/Import library patch/i, { timeout: 5_000 });
   });
 
   test('D-LIB-17: clicking "Open in Loop Editor" on a seeded library sample mounts LoopEditorDialog', async ({ page }) => {

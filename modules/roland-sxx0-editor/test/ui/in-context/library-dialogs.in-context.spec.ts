@@ -15,12 +15,13 @@
  *   D-LIB-10 — SaveSetDialog (visible description)
  *   D-LIB-11 — LoadSetDialog (visible description)
  *
- * The controller's family audit also found `CreateDirectoryDialog` and
- * `RenameDirectoryDialog` lacked `Dialog.Description`, but those are
- * orphan components — defined under `src/components/library/` but
- * never instantiated by the production LibraryPage (folder CRUD routes
- * through editor-core's `LibraryBrowser` and its own
- * `CreateFolderDialog`). The audit finding `LIVE-S550-LIB-001` is
+ * The controller's family audit originally found `CreateDirectoryDialog`
+ * and `RenameDirectoryDialog` lacked `Dialog.Description`, but those
+ * dialogs were orphan components (defined under `src/components/library/`
+ * but never instantiated by the production LibraryPage — folder CRUD
+ * routes through editor-core's `LibraryBrowser` and its own
+ * `CreateFolderDialog`). They were deleted as ROLAND-BUGFIX-DEL-002
+ * (commit on `feature/roland-bugfix`). The audit finding `LIVE-S550-LIB-001` is
  * scoped to warnings that fire during real operator sessions; orphans
  * that never mount cannot trigger the warning, so they fall outside
  * the finding's actual surface. Their dead-code status is tracked as
@@ -323,14 +324,10 @@ test.describe('Library-dialog family Dialog.Description — Tier 3 in-context (#
     await assertDialogHasAccessibleDescription(page, 'LoadSetDialog');
   });
 
-  // NOTE: CreateDirectoryDialog and RenameDirectoryDialog are NOT covered
-  // by this spec. They are orphan components — defined in
-  // `src/components/library/` but never instantiated by the production
-  // LibraryPage (folder CRUD is owned by editor-core's LibraryBrowser +
-  // its own CreateFolderDialog). The audit finding `LIVE-S550-LIB-001`
-  // surfaces warnings that fire during real operator sessions; orphans
-  // that never mount cannot trigger the warning, so they fall outside
-  // the finding's actual surface. Their dead-code status is tracked
-  // separately and should be resolved by deletion, not by accreting
-  // dev-only mount paths to test components no operator can reach.
+  // CreateDirectoryDialog and RenameDirectoryDialog were dead-code
+  // orphans (defined under `src/components/library/` but never
+  // instantiated by the production LibraryPage — folder CRUD is
+  // owned by editor-core's LibraryBrowser + its own CreateFolderDialog).
+  // Deleted as ROLAND-BUGFIX-DEL-002 on `feature/roland-bugfix`; no
+  // longer present in the codebase, so no test surface to cover.
 });

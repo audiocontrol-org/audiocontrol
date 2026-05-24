@@ -25,11 +25,9 @@ import {
 } from '@audiocontrol/editor-core';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import type { S330Tone } from '@audiocontrol/sampler-devices/s330';
-import {
-  type OperationState,
-  isOperationComplete,
-} from '@/types/import-operation';
-import { useStepHistory } from '@/hooks/useStepHistory';
+import { type OperationState } from '@/types/import-operation';
+import { useExportDialogLifecycle } from '@/hooks/useExportDialogLifecycle';
+import { DestinationEyebrow } from '@/components/library/DestinationEyebrow';
 
 export interface ExportToneDialogProps extends OperationState {
   open: boolean;
@@ -58,25 +56,33 @@ export function ExportToneDialog({
   const slotLabel = memoryLayout.formatToneSlot(toneIndex);
 
   const [toneName, setToneName] = useState(tone?.name || `Tone_${slotLabel}`);
-  const [localError, setLocalError] = useState<string | null>(null);
-  const [hasStarted, setHasStarted] = useState(false);
 
-  // Reset on (re)open.
+  // Lifecycle hook owns localError, hasStarted, isComplete,
+  // effectiveError, steps, handleClose. Per-dialog name state stays
+  // here because the initial-name source differs across dialogs.
+  const {
+    localError,
+    setLocalError,
+    hasStarted,
+    setHasStarted,
+    isComplete,
+    effectiveError,
+    steps,
+    handleClose,
+  } = useExportDialogLifecycle({
+    open,
+    isOperating,
+    progress,
+    operationError,
+    onOpenChange,
+  });
+
+  // Reset the per-dialog name when the drawer opens.
   useEffect(() => {
     if (open) {
       setToneName(tone?.name || `Tone_${slotLabel}`);
-      setLocalError(null);
-      setHasStarted(false);
     }
   }, [open, tone?.name, slotLabel]);
-
-  const isComplete = isOperationComplete({
-    isOperating,
-    progress,
-    error: operationError,
-  });
-  const effectiveError = localError ?? operationError;
-  const steps = useStepHistory({ progress, isComplete, error: effectiveError });
 
   const handleExport = useCallback(async () => {
     const trimmed = toneName.trim();
@@ -94,13 +100,7 @@ export function ExportToneDialog({
       // (e.g. `!libraryHandle`) would vanish — that is BUG-001.
       setLocalError(err instanceof Error ? err.message : 'Export failed');
     }
-  }, [toneName, toneIndex, onExport]);
-
-  const handleClose = useCallback(() => {
-    if (isOperating) return;
-    setLocalError(null);
-    onOpenChange(false);
-  }, [isOperating, onOpenChange]);
+  }, [toneName, toneIndex, onExport, setLocalError, setHasStarted]);
 
   if (!open) return null;
 
@@ -179,25 +179,13 @@ function ToneFormBody({
 }: ToneFormBodyProps): JSX.Element {
   return (
     <div className="ac-export-form">
-      <div className="ac-detail-eyebrow-row" data-testid="export-tone-destination">
-        <span className="ac-detail-eyebrow-accent">TONE</span>
-        <span className="ac-detail-eyebrow-sep">·</span>
-        <span>{slotLabel}</span>
-        <span className="ac-detail-eyebrow-sep">·</span>
-        <span>LIBRARY</span>
-        <span className="ac-detail-eyebrow-sep">·</span>
-        <span data-testid="export-tone-device-name">{deviceName.toUpperCase()}</span>
-        {targetPath.length > 0 && (
-          // Surface the drop-target subfolder so the operator confirms
-          // the export will land where they intended. Drops on a folder
-          // row populate this from `handleExternalDrop`; drops on the
-          // category root leave it empty and we hide the segment.
-          <>
-            <span className="ac-detail-eyebrow-sep">·</span>
-            <span data-testid="export-tone-target-path">{targetPath.join(' / ')}</span>
-          </>
-        )}
-      </div>
+      <DestinationEyebrow
+        kindLabel="TONE"
+        leftField={slotLabel}
+        deviceName={deviceName}
+        targetPath={targetPath}
+        testIdPrefix="export-tone"
+      />
       <div className="ac-page-title-rule" aria-hidden="true" />
 
       <div className="ac-export-form-field">
@@ -301,6 +289,16 @@ interface FooterParams {
   onCancel: () => void;
   onExport: () => void;
   onClose: () => void;
+  /** Verb shown on the primary action button + in the disabled
+   *  in-flight tooltip. Defaults to "Export" so existing Export*
+   *  call sites are unchanged. Import* call sites pass "Import". */
+  verb?: string;
+  /** Prefix for the two stable data-testids the footer emits:
+   *  `${prefix}-cancel` on every Cancel/Close/Done button (one at a
+   *  time), and `${prefix}-confirm` on the primary action button.
+   *  Defaults to "export"; Import* call sites pass "import" so the
+   *  testids become `import-cancel` / `import-confirm`. */
+  testIdPrefix?: string;
 }
 
 export function renderFooter({
@@ -312,7 +310,11 @@ export function renderFooter({
   onCancel,
   onExport,
   onClose,
+  verb = 'Export',
+  testIdPrefix = 'export',
 }: FooterParams): JSX.Element {
+  const cancelId = `${testIdPrefix}-cancel`;
+  const confirmId = `${testIdPrefix}-confirm`;
   if (!hasStarted) {
     return (
       <>
@@ -320,7 +322,7 @@ export function renderFooter({
           type="button"
           className="ac-btn ac-btn-sm"
           onClick={onCancel}
-          data-testid="export-cancel"
+          data-testid={cancelId}
         >
           Cancel
         </button>
@@ -329,9 +331,9 @@ export function renderFooter({
           className="ac-btn ac-btn-sm ac-btn-primary"
           onClick={onExport}
           disabled={!canExport}
-          data-testid="export-confirm"
+          data-testid={confirmId}
         >
-          Export
+          {verb}
         </button>
       </>
     );
@@ -342,7 +344,7 @@ export function renderFooter({
         type="button"
         className="ac-btn ac-btn-sm ac-btn-primary"
         onClick={onClose}
-        data-testid="export-cancel"
+        data-testid={cancelId}
       >
         Done
       </button>
@@ -354,22 +356,22 @@ export function renderFooter({
         type="button"
         className="ac-btn ac-btn-sm"
         onClick={onClose}
-        data-testid="export-cancel"
+        data-testid={cancelId}
       >
         Close
       </button>
     );
   }
-  // Running: cancel is unavailable today (the export hook has no abort
-  // signal). Show the button as disabled so the affordance is visible
-  // and the test selector remains stable.
+  // Running: cancel is unavailable today (the underlying op hook has
+  // no abort signal). Show the button as disabled so the affordance
+  // is visible and the test selector remains stable.
   return (
     <button
       type="button"
       className="ac-btn ac-btn-sm"
       disabled
-      data-testid="export-cancel"
-      title={isOperating ? 'Export in progress' : ''}
+      data-testid={cancelId}
+      title={isOperating ? `${verb} in progress` : ''}
     >
       Cancel
     </button>

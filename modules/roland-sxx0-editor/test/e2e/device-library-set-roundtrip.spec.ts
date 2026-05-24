@@ -164,7 +164,7 @@ async function importToneFixtureToDevice(
   await slotSelect.selectOption('0');
 
   const confirmImport = page.locator(
-    '[data-testid="confirm-import-button"]'
+    '[data-testid="import-confirm"]'
   );
   await expect(confirmImport).toBeVisible({ timeout: UI_TIMEOUT_MS });
   await confirmImport.click();

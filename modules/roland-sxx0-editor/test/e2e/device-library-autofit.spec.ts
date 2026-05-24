@@ -251,7 +251,7 @@ ${DEVICE_TYPE}:
 
     // Step 7: Confirm import
     const confirmImport = page.locator(
-      '[data-testid="confirm-import-button"]'
+      '[data-testid="import-confirm"]'
     );
     await expect(confirmImport).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await confirmImport.click();
@@ -528,7 +528,7 @@ ${DEVICE_TYPE}:
 
     // Step 7: Confirm import
     const confirmImport = page.locator(
-      '[data-testid="confirm-import-button"]'
+      '[data-testid="import-confirm"]'
     );
     await expect(confirmImport).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await confirmImport.click();

@@ -17,14 +17,19 @@
  * HTML — see comment further down for keyboard wiring.
  */
 
-import { useState, type CSSProperties, type KeyboardEvent } from 'react';
+import { type CSSProperties } from 'react';
 
 import type { SamplerPatch } from '@/core/midi/SamplerClient';
-import { cn } from '@/lib/utils';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { PatchLabel } from '@/components/common/PatchLabel';
+import { SlotInfo } from '@/components/common/SlotInfo';
+import { BankHeader } from '@/components/common/BankHeader';
+import {
+  useCollapsedBanks,
+  computeBankInfo,
+  createRowKeyDownHandler,
+} from '@/components/common/bank-list-helpers';
 import { isPatchEmpty } from '@/lib/slot-allocation';
-import { AcChevron } from '@audiocontrol/editor-core';
 
 interface PatchListProps {
   /** Sparse array of patches - undefined = not loaded */
@@ -67,16 +72,7 @@ export function PatchList({
   // Each bank-N section is a sequence: [header, ...rows-in-bank].
   const totalBanks = Math.ceil(patches.length / patchesPerBank);
 
-  // Per-bank collapse state — see ToneList for the same pattern.
-  const [collapsedBanks, setCollapsedBanks] = useState<Set<number>>(() => new Set());
-  const toggleBank = (i: number): void => {
-    setCollapsedBanks((prev) => {
-      const next = new Set(prev);
-      if (next.has(i)) next.delete(i);
-      else next.add(i);
-      return next;
-    });
-  };
+  const { collapsedBanks, toggleBank } = useCollapsedBanks();
 
   return (
     <aside
@@ -91,68 +87,39 @@ export function PatchList({
     >
       <div className="ac-list-scroll">
         {Array.from({ length: totalBanks }, (_, bankIndex) => {
-          const bankStart = bankIndex * patchesPerBank;
-          const bankEnd = Math.min(bankStart + patchesPerBank, patches.length);
-          const firstSlotLabel = memoryLayout.formatPatchSlot(bankStart);
-          const lastSlotLabel = memoryLayout.formatPatchSlot(bankEnd - 1);
-          const isCollapsed = collapsedBanks.has(bankIndex);
-          const isBankLoaded = patches
-            .slice(bankStart, bankEnd)
-            .some((p) => p !== undefined);
-          const isThisBankLoading = loadingBank === bankIndex;
+          const {
+            bankStart,
+            bankEnd,
+            firstSlotLabel,
+            lastSlotLabel,
+            isCollapsed,
+            isBankLoaded,
+            isThisBankLoading,
+          } = computeBankInfo({
+            items: patches,
+            bankIndex,
+            perBank: patchesPerBank,
+            formatSlot: memoryLayout.formatPatchSlot,
+            collapsedBanks,
+            loadingBank,
+          });
 
           return (
             <div
               key={`bank-${bankIndex}`}
               data-bank-index={bankIndex}
             >
-              <div className="ac-list-bank-header">
-                <button
-                  type="button"
-                  className="ac-list-bank-toggle"
-                  onClick={() => toggleBank(bankIndex)}
-                  aria-expanded={!isCollapsed}
-                  aria-label={`Toggle bank ${bankIndex + 1}`}
-                  data-testid={`patch-bank-toggle-${bankIndex}`}
-                >
-                  <AcChevron expanded={!isCollapsed} />
-                  <span>Bank {bankIndex + 1}</span>
-                </button>
-                <span className="ac-list-bank-meta">
-                  <strong>
-                    {firstSlotLabel}–{lastSlotLabel}
-                  </strong>
-                  {onReloadBank && (
-                    <button
-                      type="button"
-                      className={cn(
-                        'ac-list-bank-reload',
-                        isThisBankLoading && 'ac-list-bank-reload--spinning',
-                      )}
-                      onClick={() => onReloadBank(bankIndex)}
-                      disabled={isThisBankLoading}
-                      aria-label={
-                        isBankLoaded
-                          ? `Reload bank ${bankIndex + 1}`
-                          : `Load bank ${bankIndex + 1}`
-                      }
-                      title={
-                        isBankLoaded
-                          ? `Reload bank ${bankIndex + 1}`
-                          : `Load bank ${bankIndex + 1}`
-                      }
-                      data-testid={`patch-bank-reload-${bankIndex}`}
-                    >
-                      <svg viewBox="0 0 16 16" aria-hidden="true">
-                        <path d="M3 8a5 5 0 0 1 9-3" />
-                        <polyline points="12 2 12 5 9 5" />
-                        <path d="M13 8a5 5 0 0 1-9 3" />
-                        <polyline points="4 14 4 11 7 11" />
-                      </svg>
-                    </button>
-                  )}
-                </span>
-              </div>
+              <BankHeader
+                bankIndex={bankIndex}
+                firstSlotLabel={firstSlotLabel}
+                lastSlotLabel={lastSlotLabel}
+                isCollapsed={isCollapsed}
+                onToggle={() => toggleBank(bankIndex)}
+                isBankLoaded={isBankLoaded}
+                isThisBankLoading={isThisBankLoading}
+                onReload={onReloadBank}
+                testIdPrefix="patch-bank"
+              />
 
               <div className="ac-collapse" data-expanded={!isCollapsed}>
                 <div>
@@ -180,13 +147,10 @@ export function PatchList({
                 // invalid HTML — browsers will hoist the inner button
                 // out unpredictably). Keyboard activation (Enter / Space)
                 // is wired explicitly to match native semantics.
-                const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-                  if (isBankLoading) return;
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleClick();
-                  }
-                };
+                const handleKeyDown = createRowKeyDownHandler({
+                  isBankLoading,
+                  onActivate: handleClick,
+                });
 
                 // Display rules:
                 //   - bank loading:  '(loading...)'
@@ -224,19 +188,13 @@ export function PatchList({
                     <span className="ac-list-slot">
                       <PatchLabel index={index} memoryLayout={memoryLayout} />
                     </span>
-                    <span className="ac-list-info">
-                      <span
-                        className={nameClass}
-                        data-testid="patch-name"
-                      >
-                        {displayName}
-                      </span>
-                      {!isLoaded && !isBankLoading && (
-                        <span className="ac-list-eyebrow">
-                          click to load
-                        </span>
-                      )}
-                    </span>
+                    <SlotInfo
+                      nameClass={nameClass}
+                      displayName={displayName}
+                      isLoaded={isLoaded}
+                      isBankLoading={isBankLoading}
+                      testId="patch-name"
+                    />
                   </div>
                 );
               })}

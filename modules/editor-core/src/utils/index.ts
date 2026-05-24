@@ -8,6 +8,8 @@ export {
   formatPan,
 } from './formatters';
 
+export { downloadBlob } from './browser-download';
+
 export {
   initLogCapture,
   getLogEntries,

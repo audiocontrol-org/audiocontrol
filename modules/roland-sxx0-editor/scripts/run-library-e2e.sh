@@ -14,6 +14,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+INFRA_DIR="$(cd "$PROJECT_DIR/../e2e-infra" && pwd)"
 
 cd "$PROJECT_DIR"
 
@@ -100,8 +101,9 @@ PLAYWRIGHT_LOG=$(mktemp)
 npx playwright test -c playwright.library.config.ts "$@" > "$PLAYWRIGHT_LOG" 2>&1 &
 PLAYWRIGHT_PID=$!
 
-# Start watchdog in background
-tsx scripts/watchdog.ts "$PLAYWRIGHT_PID" "$HEARTBEAT_FILE" &
+# Start watchdog in background (use shared e2e-infra watchdog — same
+# convention as akai-s3k-editor/scripts/run-library-e2e.sh)
+tsx "$INFRA_DIR/scripts/watchdog.ts" "$PLAYWRIGHT_PID" "$HEARTBEAT_FILE" &
 WATCHDOG_PID=$!
 
 echo "[runner] Playwright PID: $PLAYWRIGHT_PID"

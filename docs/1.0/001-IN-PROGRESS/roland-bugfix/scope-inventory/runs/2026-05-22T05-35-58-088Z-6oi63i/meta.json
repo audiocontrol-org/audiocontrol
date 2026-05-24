@@ -1,0 +1,35 @@
+{
+  "runId": "2026-05-22T05-35-58-088Z-6oi63i",
+  "skill": "scope-inventory",
+  "skillVersion": "0.1.0",
+  "featureSlug": "roland-bugfix",
+  "featureDir": "docs/1.0/001-IN-PROGRESS/roland-bugfix",
+  "featureStatus": "001-IN-PROGRESS",
+  "operator": "oletizi",
+  "startedAt": "2026-05-22T05:35:58.088Z",
+  "completedAt": "2026-05-22T05:36:28.681Z",
+  "inputs": {
+    "prdPath": "docs/1.0/001-IN-PROGRESS/roland-bugfix/prd.md"
+  },
+  "agentsRun": [
+    "ui-route-enumerator",
+    "ast-grep-matrix",
+    "clone-detector-reader",
+    "prd-themed-pattern-hunter"
+  ],
+  "agentExitCodes": {
+    "ui-route-enumerator": 0,
+    "ast-grep-matrix": 0,
+    "clone-detector-reader": 0,
+    "prd-themed-pattern-hunter": 0
+  },
+  "synthesisExitCode": 0,
+  "manifestPath": "docs/1.0/001-IN-PROGRESS/roland-bugfix/scope-manifest.yaml",
+  "captureCount": 0,
+  "priorRun": {
+    "runId": "2026-05-22T05-34-15-199Z-iwx5ns",
+    "outcome": "failed",
+    "failedAgent": "clone-detector-reader",
+    "failureReason": "ERR_MODULE_NOT_FOUND: 'yaml' package not installed; resolved by running 'pnpm install' before re-running. Run dir preserved as audit evidence per SKILL.md error-handling rule."
+  }
+}
