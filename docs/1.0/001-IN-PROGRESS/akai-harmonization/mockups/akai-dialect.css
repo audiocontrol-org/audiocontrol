@@ -232,6 +232,100 @@
   box-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 55%, transparent);
 }
 
+/* ============================================================
+ * Envelope graphic — blue ink on warm paper, no scanlines.
+ *
+ * The canonical .ac-envelope-graph (editor-core envelope-primitives.css)
+ * paints a dark radial-darkened canvas + horizontal scanlines + amber
+ * VFD-glow stroke. That treatment evokes a phosphor monitor — correct
+ * for the roland dialect where the editor is dark and the S-550's
+ * actual display IS a fluorescent display. On the akai dialect, the
+ * cream chassis + the S3000XL's blue STN LCD make the CRT-scanline
+ * read wrong (the akai is an LCD-equipped digital sampler), and the
+ * radial-darken-toward-black turns the cream into muddy putty.
+ *
+ * The akai treatment: warm paper-white background, deep-blue ink
+ * strokes (matches the device's LCD-blue brand color), no scanlines,
+ * no glow. Reads as a chart from the device's service manual rather
+ * than a phosphor screen. The .ac-envelope-active-guide + the active
+ * point keep the AKAI red so the editing-target remains visually
+ * distinct from the static envelope shape.
+ *
+ * Scope: only the envelope GRAPH chrome — the .ac-envelope-mini bars
+ * in the per-segment table stay accent-red because they're parameter
+ * indicators, not chart elements.
+ *
+ * Phase 2 question: should this become a tokenized variant of the
+ * canonical primitive (chart-style vs vfd-style), so future editors
+ * can pick which polarity their envelope graphic uses without
+ * dialect-specific overrides? Filed as a Phase 2 design question.
+ * ============================================================ */
+
+:root[data-editor="s3000xl"] .ac-envelope-graph {
+  background: #f1e7c8;
+  border-color: var(--ac-color-border-strong);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) inset;
+}
+
+:root[data-editor="s3000xl"] .ac-envelope-graph::after {
+  /* No scanlines — wrong device metaphor (S3000XL is LCD, not CRT). */
+  display: none;
+}
+
+:root[data-editor="s3000xl"] .ac-envelope-graph__label {
+  color: var(--ac-lcd-bg-edge);
+  text-shadow: none;
+}
+
+:root[data-editor="s3000xl"] .ac-envelope-y-axis,
+:root[data-editor="s3000xl"] .ac-envelope-axis-tick {
+  color: color-mix(in srgb, var(--ac-lcd-bg-edge) 75%, transparent);
+}
+
+:root[data-editor="s3000xl"] .ac-envelope-axis-tick--active {
+  color: var(--ac-akai-red);
+  text-shadow: none;
+}
+
+:root[data-editor="s3000xl"] .ac-envelope-line {
+  stroke: var(--ac-lcd-bg-edge);
+  filter: none;
+}
+
+:root[data-editor="s3000xl"] .ac-envelope-fill {
+  fill: var(--ac-lcd-bg);
+  fill-opacity: 0.15;
+}
+
+:root[data-editor="s3000xl"] .ac-envelope-grid-line,
+:root[data-editor="s3000xl"] .ac-envelope-grid-line--baseline {
+  stroke: color-mix(in srgb, var(--ac-lcd-bg-edge) 28%, transparent);
+}
+
+:root[data-editor="s3000xl"] .ac-envelope-active-guide {
+  stroke: var(--ac-akai-red);
+  opacity: 0.65;
+}
+
+:root[data-editor="s3000xl"] .ac-envelope-point {
+  background: #f1e7c8;
+  border-color: var(--ac-lcd-bg-edge);
+  box-shadow: 0 1px 2px rgba(10, 30, 62, 0.2);
+}
+
+:root[data-editor="s3000xl"] .ac-envelope-point--active {
+  background: var(--ac-akai-red);
+  border-color: var(--ac-color-text-primary);
+  box-shadow:
+    0 0 8px var(--ac-akai-red-glow),
+    0 0 2px var(--ac-akai-red) inset;
+}
+
+:root[data-editor="s3000xl"] .ac-envelope-sustain-label {
+  color: var(--ac-akai-red);
+  text-shadow: none;
+}
+
 #ap-common:checked    ~ .ac-panels > [data-tab="ap-common"],
 #ap-midi:checked      ~ .ac-panels > [data-tab="ap-midi"],
 #ap-effects:checked   ~ .ac-panels > [data-tab="ap-effects"],
