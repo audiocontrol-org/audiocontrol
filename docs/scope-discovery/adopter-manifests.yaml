@@ -256,6 +256,51 @@ adopter_manifests:
   # dead-code orphans (never JSX-mounted); also removed by V3-IMPORT.
   # ────────────────────────────────────────────────────────────────────────
 
+  # ────────────────────────────────────────────────────────────────────────
+  # akai-harmonization Phase 2 task 2.2 (2026-05-24). The canonical
+  # control-primitive triad (AcSlider, AcNumberInput, AcToggle) is now
+  # consumed via per-editor wrappers that compose them into the same
+  # parameter-row shape but layer dialect-specific affordances on top
+  # (akai: integer-round + select-all-on-focus; roland: required
+  # tooltip + labelToTestId). The manifest enumerates the wrapper
+  # files; the gate enforces that each wrapper actually imports the
+  # canonical primitives (and didn't, e.g., reinvent the composition
+  # locally).
+  # ────────────────────────────────────────────────────────────────────────
+
+  - id: ac-control-primitives-row
+    introduced_in: '74505449'
+    from: '@audiocontrol/editor-core'
+    # Narrow the adoption check to the actual canonical primitive
+    # imports — unrelated editor-core symbols in the wrapper file
+    # (e.g., a hook import) MUST NOT satisfy the gate. Any one of
+    # AcSlider / AcNumberInput / AcToggle counts as adoption since the
+    # three are designed to compose; not every wrapper uses all three
+    # (S3kParamSelectRow uses none of them — it uses raw <select> + CSS,
+    # so it's intentionally NOT in this manifest's expected adopters).
+    imports:
+      - AcSlider
+      - AcNumberInput
+      - AcToggle
+    expected_adopters_glob:
+      # Akai dialect wrappers (S3kParamRow + S3kParamToggleRow).
+      # S3kParamSelectRow is excluded — it uses native <select> + the
+      # ac-select CSS class, not the React primitives.
+      - 'modules/akai-s3k-editor/src/components/ui/S3kParamRow.tsx'
+      - 'modules/akai-s3k-editor/src/components/ui/S3kParamToggleRow.tsx'
+      # Roland dialect wrapper for the AcSlider + AcNumberInput
+      # composition (the canonical-side pattern this manifest extends).
+      - 'modules/roland-sxx0-editor/src/components/ui/ParamSliderRow.tsx'
+    message: |
+      Per-editor parameter-row wrappers (S3kParamRow, S3kParamToggleRow,
+      ParamSliderRow) compose AcSlider + AcNumberInput + AcToggle from
+      @audiocontrol/editor-core. If a new wrapper file lands without
+      importing any of those symbols, it's reinventing the canonical
+      composition — adopt the editor-core primitives instead. See
+      modules/roland-sxx0-editor/src/components/ui/ParamSliderRow.tsx
+      and modules/akai-s3k-editor/src/components/ui/S3kParamRow.tsx
+      for the canonical compositions.
+
   - id: slide-drawer-library-dialogs
     introduced_in: c41cf2a4
     from: '@audiocontrol/editor-core'

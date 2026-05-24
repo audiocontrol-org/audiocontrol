@@ -31,6 +31,7 @@ import { errorMessage } from './util/typeguards.js';
 import { runScannerSubprocess, type ScannerRun } from './util/run-scanner.js';
 import { EXCLUDES_PATHS_SCENARIOS } from './anti-patterns.excludes-scenarios.js';
 import { CANONICAL_FILE_SCENARIOS } from './anti-patterns.canonical-file-scenarios.js';
+import { S3K_PARAM_SHAPE_SCENARIOS } from './anti-patterns.s3k-param-shape-scenarios.js';
 
 const SCANNER_ENTRY = 'tools/scope-discovery/check-anti-patterns.ts';
 
@@ -355,6 +356,9 @@ async function runAll(): Promise<readonly ScenarioResult[]> {
     // AUDIT-20260524-08 Part B — `canonical_implementation_file:` field
     // + auto-exclude + missing-file fail-loud.
     ...CANONICAL_FILE_SCENARIOS,
+    // akai-harmonization Phase 2 task 2.2 — paired scenarios for the
+    // three s3k-param-* anti-pattern entries (input / select / toggle).
+    ...S3K_PARAM_SHAPE_SCENARIOS,
     scenarioGuttedStub,
   ];
   const results: ScenarioResult[] = [];

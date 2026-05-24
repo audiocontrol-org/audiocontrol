@@ -58,29 +58,26 @@ async function waitForKeygroupEditor(page: Page): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// ParamKnob helpers
+// S3kParamRow helpers — target the canonical AcNumberInput readout that lives
+// inside the AcSlider. Each S3kParamRow exposes its editable readout with
+// aria-label `${label} value`, so role=spinbutton+name is the stable hook
+// regardless of the surrounding chrome.
 // ---------------------------------------------------------------------------
 
-function paramKnobValue(page: Page, label: string) {
-  return page.locator('.s3k-param', {
-    has: page.locator(`.s3k-param-label:text-is("${label}")`),
-  }).locator('.s3k-param-value');
+function paramReadout(page: Page, label: string) {
+  return page.getByRole('spinbutton', { name: `${label} value` });
 }
 
 async function setParamKnobValue(page: Page, label: string, value: string): Promise<void> {
-  const valueBtn = paramKnobValue(page, label);
-  await valueBtn.click();
-  const input = page.locator('.s3k-param', {
-    has: page.locator(`.s3k-param-label:text-is("${label}")`),
-  }).locator('.s3k-param-input');
+  const input = paramReadout(page, label);
   await expect(input).toBeVisible({ timeout: 2_000 });
   await input.fill(value);
   await input.press('Enter');
 }
 
 async function readParamKnobValue(page: Page, label: string): Promise<number> {
-  const text = await paramKnobValue(page, label).textContent();
-  return Number(text?.trim());
+  const value = await paramReadout(page, label).inputValue();
+  return Number(value);
 }
 
 async function refreshKeygroups(page: Page): Promise<void> {

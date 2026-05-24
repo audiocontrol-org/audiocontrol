@@ -221,6 +221,72 @@ anti_patterns:
       LibraryDeviceMemoryPanel adapter in commit dedd4d2f. Replace with
       `<LibraryDeviceMemoryPanel state={state} />`.
 
+  # akai-harmonization Phase 2 task 2.2 (2026-05-24) — the three S3K
+  # parallel control-primitive families promoted to canonical chrome.
+  # Paired adversarial scenarios live in
+  # tools/scope-discovery/anti-patterns.s3k-param-shape-scenarios.ts
+  # (positive + negative + gutted-stub). The ParamKnob.tsx legacy
+  # component file was deleted in the same commit, so no excludes_paths
+  # is needed — the canonical primitives live in editor-core, not akai.
+  - id: s3k-param-input-inline
+    added_in: '74505449'
+    primitive: AcNumberInput
+    from: '@audiocontrol/editor-core'
+    shape_regex: '\bs3k-param-input\b'
+    excludes_paths:
+      # The paired scenarios file plants the legacy shape as a fixture
+      # to assert the scanner catches it; excluding the scenarios file
+      # is the canonical excludes_paths secondary use case (per the
+      # YAML schema header docs).
+      - 'tools/scope-discovery/anti-patterns.s3k-param-shape-scenarios.ts'
+    message: |
+      Legacy s3k-param-input chrome (akai dialect's
+      pre-harmonization editable parameter readout) was promoted to
+      the canonical AcNumberInput (editable shape). Replace with
+      `<AcNumberInput editable value={...} onChange={...} min={...}
+      max={...} />` imported from `@audiocontrol/editor-core`, OR use
+      the akai dialect wrapper `<S3kParamRow>` which composes
+      AcSlider + AcNumberInput.
+
+  - id: s3k-param-select-inline
+    added_in: '74505449'
+    primitive: ac-select (native HTML select styled by .ac-select)
+    from: '@audiocontrol/editor-core'
+    shape_regex: '\bs3k-param-select\b'
+    excludes_paths:
+      - 'tools/scope-discovery/anti-patterns.s3k-param-shape-scenarios.ts'
+    message: |
+      Legacy s3k-param-select chrome (akai dialect's
+      pre-harmonization enum-picker) was promoted to the canonical
+      `<select className="ac-select">` pattern wrapped in
+      `<div className="ac-compact-field">` with an
+      `<span className="ac-field-label">` eyebrow. Replace with the
+      `<S3kParamSelectRow>` akai dialect wrapper OR the raw
+      compact-field shape (see roland's PatchCommonPanel.tsx for
+      the canonical consumer).
+
+  - id: s3k-param-toggle-inline
+    added_in: '74505449'
+    primitive: AcToggle
+    from: '@audiocontrol/editor-core'
+    # Matches the legacy class name in any JSX className form:
+    #   - className="s3k-param-toggle"
+    #   - className={`s3k-param-toggle ${...}`}
+    #   - className={'s3k-param-toggle'}
+    # The class name appears as a quoted string in every shape we care
+    # about, surrounded by `=` / `{` / `"` / `'` / `` ` ``.
+    shape_regex: '\bs3k-param-toggle\b'
+    excludes_paths:
+      - 'tools/scope-discovery/anti-patterns.s3k-param-shape-scenarios.ts'
+    message: |
+      Legacy s3k-param-toggle chrome (akai dialect's
+      pre-harmonization ON/OFF button) was promoted to AcToggle
+      configured as a two-position segmented control. Replace with
+      `<S3kParamToggleRow label={...} checked={...} onChange={...} />`
+      from `@/components/ui/S3kParamToggleRow` OR construct AcToggle
+      directly. The regex matches the bare class name anywhere it
+      appears (className=, template literals, modifiers).
+
   - id: download-blob-inline
     added_in: ae0b5192
     primitive: downloadBlob

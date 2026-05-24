@@ -45,20 +45,20 @@ async function waitForSampleEditor(page: Page): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// ParamKnob helpers
+// S3kParamRow / S3kParamSelectRow helpers — target the canonical primitives
+// landed during akai-harmonization Phase 2 task 2.2. Each wrapper exposes a
+// stable accessible name:
+//   - editable readout: aria-label "${label} value" (AcNumberInput)
+//   - enum select:      aria-label "${label}"       (raw <select>)
 // ---------------------------------------------------------------------------
 
-function paramKnobValue(page: Page, label: string) {
-  return page
-    .locator('.s3k-param', {
-      has: page.locator(`.s3k-param-label:text-is("${label}")`),
-    })
-    .locator('.s3k-param-value');
+function paramReadout(page: Page, label: string) {
+  return page.getByRole('spinbutton', { name: `${label} value` });
 }
 
 async function readParamKnobValue(page: Page, label: string): Promise<number> {
-  const text = await paramKnobValue(page, label).textContent();
-  return Number(text?.trim());
+  const value = await paramReadout(page, label).inputValue();
+  return Number(value);
 }
 
 async function setParamKnobValue(
@@ -66,28 +66,14 @@ async function setParamKnobValue(
   label: string,
   value: string,
 ): Promise<void> {
-  const valueBtn = paramKnobValue(page, label);
-  await valueBtn.click();
-  const input = page
-    .locator('.s3k-param', {
-      has: page.locator(`.s3k-param-label:text-is("${label}")`),
-    })
-    .locator('.s3k-param-input');
+  const input = paramReadout(page, label);
   await expect(input).toBeVisible({ timeout: 2_000 });
   await input.fill(value);
   await input.press('Enter');
 }
 
-// ---------------------------------------------------------------------------
-// ParamSelect helpers
-// ---------------------------------------------------------------------------
-
 function paramSelectLocator(page: Page, label: string) {
-  return page
-    .locator('.s3k-param', {
-      has: page.locator(`.s3k-param-label:text-is("${label}")`),
-    })
-    .locator('.s3k-param-select');
+  return page.getByRole('combobox', { name: label });
 }
 
 async function readParamSelectValue(
@@ -145,11 +131,15 @@ test.describe('S3000XL Sample Editor Round-Trip (SCSI)', () => {
   });
 
   test('sample editor shows Basic section fields', async ({ page }) => {
+    // Each label renders inside the canonical wrapper's label slot
+    // (.ac-slider__label for S3kParamRow, .ac-field-label for
+    // S3kParamSelectRow / read-only AcNumberInput). `getByText` is the
+    // shape-agnostic way to assert the label text is visible.
     const labels = ['Original Key', 'Bandwidth', 'Sample Rate', 'Playback Mode'];
     for (const label of labels) {
-      await expect(
-        page.locator(`.s3k-param-label:text-is("${label}")`),
-      ).toBeVisible({ timeout: 5_000 });
+      await expect(page.getByText(label, { exact: true }).first()).toBeVisible({
+        timeout: 5_000,
+      });
     }
   });
 
