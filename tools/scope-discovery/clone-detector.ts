@@ -55,9 +55,10 @@ import {
   type CloneDiff,
   type CloneGroup,
   type ClonesYaml,
+  ClonesYamlParseError,
   diffClones,
   mergeDispositions,
-  parseClonesYaml,
+  parseClonesYamlStrict,
   serializeClonesYaml,
 } from './clones-yaml.js';
 import { JSCPD_REPORT_PATH, parseJscpdReport, runJscpd } from './jscpd-runner.js';
@@ -101,21 +102,29 @@ function parseCli(argv: readonly string[]): Cli {
   return { root, quiet, json, baselinePath, refreshBaseline, diff };
 }
 
+/**
+ * Read the baseline file.
+ *
+ * Returns null ONLY when the file is truly absent (ENOENT). When the file
+ * exists but parses to a shape error, throws `ClonesYamlParseError` so
+ * the detector exits 2 with an actionable diagnostic — silently treating
+ * a malformed-but-present baseline as null would let the subsequent
+ * `--refresh-baseline` write wipe every operator disposition without a
+ * visible diff (AUDIT-20260524-14).
+ *
+ * `RefactorPreconditionError` from `parseClonesYamlStrict` also
+ * propagates — refactor-only field errors were already loud and the
+ * strict path preserves that contract.
+ */
 async function readBaseline(path: string): Promise<ClonesYaml | null> {
+  let text: string;
   try {
-    const text = await readFile(path, 'utf8');
-    const parsed = parseClonesYaml(text);
-    if (parsed === null) {
-      console.error(
-        `warning: ${path} did not parse as a clones.yaml document; treating as empty baseline.`,
-      );
-      return null;
-    }
-    return parsed;
+    text = await readFile(path, 'utf8');
   } catch (err) {
     if (isEnoent(err)) return null;
     throw err;
   }
+  return parseClonesYamlStrict(text);
 }
 
 async function writeBaseline(path: string, doc: ClonesYaml): Promise<void> {
@@ -251,7 +260,26 @@ async function main(): Promise<number> {
   const detectedGroups = parseJscpdReport(reportText);
 
   const baselineAbs = resolve(REPO_ROOT, cli.baselinePath);
-  const baseline = await readBaseline(baselineAbs);
+  let baseline: ClonesYaml | null;
+  try {
+    baseline = await readBaseline(baselineAbs);
+  } catch (err) {
+    if (err instanceof ClonesYamlParseError) {
+      // AUDIT-20260524-14: refuse to silently overwrite an existing-but-
+      // malformed baseline. The previous lenient behavior treated this
+      // as `null` and the subsequent refresh-write erased every operator
+      // disposition without a diff. Fail loud with the structured reason
+      // so the operator can hand-fix the YAML.
+      console.error(
+        `baseline ${baselineAbs} exists but is malformed:\n  ${err.reason}\n` +
+          `\nRefusing to silently overwrite operator-curated dispositions. ` +
+          `Hand-fix the YAML and re-run, OR explicitly remove the file to ` +
+          `regenerate from scratch.`,
+      );
+      return 2;
+    }
+    throw err;
+  }
   const baselineExisted = baseline !== null;
   const diff = diffClones(detectedGroups, baseline);
 

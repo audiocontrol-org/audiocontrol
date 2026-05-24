@@ -48,11 +48,15 @@ PRE_COMMIT_SHORT_CIRCUIT="${PRE_COMMIT_SHORT_CIRCUIT:-0}"
 STAGED_NAMES="$(git diff --cached --name-only --diff-filter=ACM || true)"
 HAS_CSS=0
 HAS_TS=0
+HAS_CLONES_YAML=0
 if printf '%s\n' "$STAGED_NAMES" | grep -qE '\.(css|scss)$'; then
   HAS_CSS=1
 fi
 if printf '%s\n' "$STAGED_NAMES" | grep -qE '\.tsx?$'; then
   HAS_TS=1
+fi
+if printf '%s\n' "$STAGED_NAMES" | grep -qxF 'docs/scope-discovery/clones.yaml'; then
+  HAS_CLONES_YAML=1
 fi
 
 # -----------------------------------------------------------------------
@@ -82,6 +86,13 @@ if [ "$PRE_COMMIT_SHORT_CIRCUIT" = "1" ]; then
     make --no-print-directory check-adopters
     echo "pre-commit: checking cross-editor symmetry…"
     make --no-print-directory check-editor-symmetry > /dev/null
+  fi
+  if [ "$HAS_CLONES_YAML" = "1" ]; then
+    # AUDIT-20260524-14 Heavy backstop. Only relevant when the baseline
+    # itself is staged — most commits don't touch clones.yaml and pay
+    # zero cost for this gate.
+    echo "pre-commit: checking clones.yaml disposition-survivor invariant…"
+    make --no-print-directory check-disposition-survivor
   fi
   exit 0
 fi
@@ -138,6 +149,12 @@ if [ "$HAS_TS" = "1" ]; then
   run_gate check-anti-patterns make --no-print-directory check-anti-patterns
   run_gate check-adopters make --no-print-directory check-adopters
   run_gate check-editor-symmetry make --no-print-directory check-editor-symmetry
+fi
+if [ "$HAS_CLONES_YAML" = "1" ]; then
+  # AUDIT-20260524-14 Heavy backstop. Pre-commit invariant: no entry
+  # silently transitions from a protected disposition to `pending` in
+  # the staged diff against HEAD.
+  run_gate check-disposition-survivor make --no-print-directory check-disposition-survivor
 fi
 
 # Tally failures + render the consolidated report. Format: failure
