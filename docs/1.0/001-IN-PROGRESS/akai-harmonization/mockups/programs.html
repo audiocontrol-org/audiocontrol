@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en" data-editor="s3000xl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1280" />
+  <title>Akai S3000XL — Programs · Mockup</title>
+
+  <!-- Canonical editor-core CSS chain (tokens → layout → primitives → list → controls → envelope → library → chevron). -->
+  <link rel="stylesheet" href="/modules/editor-core/src/design/styles.css" />
+
+  <!-- Roland page-shell shared chrome (.ac-page-title-*, .ac-detail-pane-*, .ac-tab*, .ac-list-row, etc.). -->
+  <link rel="stylesheet" href="/modules/roland-sxx0-editor/src/styles/_shared.css" />
+
+  <!-- Akai dialect token-override block — LAST so [data-editor='s3000xl'] wins the cascade. -->
+  <link rel="stylesheet" href="./akai-dialect.css" />
+</head>
+<body>
+  <div class="ac-page ac-page-shell ac-page-shell--fixed-viewport">
+
+    <!-- PageTitleRow — h2 + red rule + metric + refresh icon -->
+    <header class="ac-page-title-row">
+      <div class="ac-page-title-block">
+        <h2 id="programs-heading" class="ac-page-title-heading">Programs</h2>
+        <div class="ac-page-title-rule" aria-hidden="true"></div>
+      </div>
+      <span class="ac-page-title-metric">
+        <span class="ac-page-title-led" aria-hidden="true"></span>
+        <span><strong>128</strong> of <strong>128</strong> loaded</span>
+        <button type="button" class="ac-icon-btn" aria-label="Refresh all programs from device" title="Refresh all programs from device">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 0 1 15.5-6.3M21 12a9 9 0 0 1-15.5 6.3M21 4v6h-6M3 20v-6h6"/>
+          </svg>
+        </button>
+      </span>
+    </header>
+
+    <!-- List + detail -->
+    <div class="ac-app-shell" aria-labelledby="programs-heading">
+
+      <!-- ============================================================ -->
+      <!-- LIST COLUMN                                                    -->
+      <!-- ============================================================ -->
+      <aside class="ac-list" aria-label="Programs">
+        <div class="ac-list-scroll">
+
+          <div class="ac-list-bank-header">
+            <button type="button" class="ac-list-bank-toggle" aria-expanded="true">
+              <span class="ac-chevron" data-expanded="true">▾</span>
+              <span>Bank A · Drums</span>
+            </button>
+            <strong>A01–A16</strong>
+          </div>
+          <div class="ac-list-row" role="button" tabindex="0">
+            <span class="ac-list-slot">A01</span>
+            <span class="ac-list-name">PRG_DRUMKIT</span>
+          </div>
+          <div class="ac-list-row" role="button" tabindex="0">
+            <span class="ac-list-slot">A02</span>
+            <span class="ac-list-name">PRG_CR78_KIT</span>
+          </div>
+          <div class="ac-list-row" role="button" tabindex="0" aria-selected="true">
+            <span class="ac-list-slot">A03</span>
+            <span class="ac-list-name">PRG_MPC_STK</span>
+          </div>
+          <div class="ac-list-row" role="button" tabindex="0">
+            <span class="ac-list-slot">A04</span>
+            <span class="ac-list-name">PRG_LINN_LM2</span>
+          </div>
+          <div class="ac-list-row" role="button" tabindex="0">
+            <span class="ac-list-slot">A05</span>
+            <span class="ac-list-name">PRG_808_BASS</span>
+          </div>
+          <div class="ac-list-row" role="button" tabindex="0">
+            <span class="ac-list-slot">A06</span>
+            <span class="ac-list-name">PRG_909_CLAP</span>
+          </div>
+
+          <div class="ac-list-bank-header">
+            <button type="button" class="ac-list-bank-toggle" aria-expanded="true">
+              <span class="ac-chevron" data-expanded="true">▾</span>
+              <span>Bank B · Pianos</span>
+            </button>
+            <strong>B01–B16</strong>
+          </div>
+          <div class="ac-list-row" role="button" tabindex="0">
+            <span class="ac-list-slot">B01</span>
+            <span class="ac-list-name">PRG_GRAND_M9</span>
+          </div>
+          <div class="ac-list-row" role="button" tabindex="0">
+            <span class="ac-list-slot">B02</span>
+            <span class="ac-list-name">PRG_RHODES_73</span>
+          </div>
+          <div class="ac-list-row" role="button" tabindex="0">
+            <span class="ac-list-slot">B03</span>
+            <span class="ac-list-name">PRG_WURLI_2OO</span>
+          </div>
+          <div class="ac-list-row" role="button" tabindex="0">
+            <span class="ac-list-slot">B04</span>
+            <span class="ac-list-name">PRG_CP70_BRIGHT</span>
+          </div>
+
+          <div class="ac-list-bank-header">
+            <button type="button" class="ac-list-bank-toggle" aria-expanded="true">
+              <span class="ac-chevron" data-expanded="true">▾</span>
+              <span>Bank C · Strings</span>
+            </button>
+            <strong>C01–C16</strong>
+          </div>
+          <div class="ac-list-row" role="button" tabindex="0">
+            <span class="ac-list-slot">C01</span>
+            <span class="ac-list-name">PRG_VIOLIN_ENS</span>
+          </div>
+          <div class="ac-list-row" role="button" tabindex="0">
+            <span class="ac-list-slot">C02</span>
+            <span class="ac-list-name">PRG_CELLO_S0L0</span>
+          </div>
+          <div class="ac-list-row" role="button" tabindex="0">
+            <span class="ac-list-slot">C03</span>
+            <span class="ac-list-name">PRG_VIOLA_ENS</span>
+          </div>
+
+        </div>
+      </aside>
+
+      <!-- ============================================================ -->
+      <!-- DETAIL COLUMN — program editor                                 -->
+      <!-- ============================================================ -->
+      <section class="ac-detail-pane" aria-label="Program editor">
+        <header class="ac-detail-head">
+          <div class="ac-detail-head-block">
+            <span class="ac-detail-eyebrow">Program · A03</span>
+            <h3 class="ac-detail-title">PRG_MPC_STK</h3>
+          </div>
+          <div class="ac-detail-head-actions">
+            <button type="button" class="ac-btn ac-btn-sm">Clone</button>
+            <button type="button" class="ac-btn ac-btn-sm ac-btn-danger">Delete</button>
+          </div>
+        </header>
+
+        <!-- AcRadioTabs — CSS-only radio-driven tabs, registered in akai-dialect.css -->
+        <div class="ac-tabs">
+          <input type="radio" name="ap-tabs" id="ap-common" checked />
+          <input type="radio" name="ap-tabs" id="ap-midi" />
+          <input type="radio" name="ap-tabs" id="ap-effects" />
+          <input type="radio" name="ap-tabs" id="ap-output" />
+
+          <div class="ac-tab-strip" role="tablist">
+            <label class="ac-tab" for="ap-common" role="tab">Common</label>
+            <label class="ac-tab" for="ap-midi" role="tab">MIDI</label>
+            <label class="ac-tab" for="ap-effects" role="tab">Effects</label>
+            <label class="ac-tab" for="ap-output" role="tab">Output</label>
+          </div>
+
+          <div class="ac-panels">
+
+            <!-- Common tab -->
+            <div class="ac-panel" data-tab="ap-common">
+              <div class="ac-detail-body">
+                <div class="ac-panel-stack">
+
+                  <section class="tones__section">
+                    <div class="tones__section-head">
+                      <h4 class="tones__section-title">Identity</h4>
+                      <span class="tones__section-eyebrow">§01 · Program</span>
+                    </div>
+                    <div class="tones__field-grid">
+                      <div class="tones__field">
+                        <label class="ac-field-label">Name</label>
+                        <input class="ac-input" type="text" value="PRG_MPC_STK" />
+                      </div>
+                      <div class="tones__field">
+                        <label class="ac-field-label">Program #</label>
+                        <input class="ac-input" type="text" value="A03" />
+                      </div>
+                      <div class="tones__field">
+                        <label class="ac-field-label">Keygroups</label>
+                        <input class="ac-input" type="text" value="11" />
+                      </div>
+                      <div class="tones__field">
+                        <label class="ac-field-label">Polyphony</label>
+                        <input class="ac-input" type="text" value="32" />
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="tones__section">
+                    <div class="tones__section-head">
+                      <h4 class="tones__section-title">Voice allocation</h4>
+                      <span class="tones__section-eyebrow">§02 · Voice</span>
+                    </div>
+                    <!-- AcToggle for low-cardinality enums — canonical primitive -->
+                    <div class="tones__field-row">
+                      <span class="ac-field-label">Priority</span>
+                      <div class="ac-toggle" role="radiogroup" aria-label="Priority">
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-priority" /><span class="ac-toggle__label">High</span></label>
+                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="ap-priority" checked /><span class="ac-toggle__label">Lo note</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-priority" /><span class="ac-toggle__label">Soft</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-priority" /><span class="ac-toggle__label">Loud</span></label>
+                      </div>
+                    </div>
+                    <div class="tones__field-row">
+                      <span class="ac-field-label">Reassign</span>
+                      <div class="ac-toggle" role="radiogroup" aria-label="Reassign">
+                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="ap-reassign" checked /><span class="ac-toggle__label">Oldest</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-reassign" /><span class="ac-toggle__label">Quietest</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-reassign" /><span class="ac-toggle__label">Newest</span></label>
+                      </div>
+                    </div>
+                    <div class="tones__field-row">
+                      <span class="ac-field-label">Aftertouch</span>
+                      <div class="ac-toggle" role="radiogroup" aria-label="Aftertouch">
+                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="ap-after" checked /><span class="ac-toggle__label">On</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-after" /><span class="ac-toggle__label">Off</span></label>
+                      </div>
+                    </div>
+                  </section>
+
+                </div>
+              </div>
+            </div>
+
+            <!-- MIDI tab -->
+            <div class="ac-panel" data-tab="ap-midi">
+              <div class="ac-detail-body">
+                <div class="ac-panel-stack">
+                  <section class="tones__section">
+                    <div class="tones__section-head">
+                      <h4 class="tones__section-title">MIDI channel</h4>
+                      <span class="tones__section-eyebrow">§03 · MIDI</span>
+                    </div>
+                    <div class="tones__field-grid">
+                      <div class="tones__field">
+                        <label class="ac-field-label">Receive</label>
+                        <input class="ac-input" type="text" value="01" />
+                      </div>
+                      <div class="tones__field">
+                        <label class="ac-field-label">Bend ↑ (semi)</label>
+                        <input class="ac-input" type="text" value="2" />
+                      </div>
+                      <div class="tones__field">
+                        <label class="ac-field-label">Bend ↓ (semi)</label>
+                        <input class="ac-input" type="text" value="2" />
+                      </div>
+                      <div class="tones__field">
+                        <label class="ac-field-label">Pres &gt; pitch</label>
+                        <input class="ac-input" type="text" value="00" />
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+
+            <!-- Effects tab -->
+            <div class="ac-panel" data-tab="ap-effects">
+              <div class="ac-detail-body">
+                <div class="ac-panel-stack">
+                  <section class="tones__section">
+                    <div class="tones__section-head">
+                      <h4 class="tones__section-title">FX bus</h4>
+                      <span class="tones__section-eyebrow">§04 · Effects</span>
+                    </div>
+                    <div class="tones__field-row">
+                      <span class="ac-field-label">FX send</span>
+                      <div class="ac-toggle" role="radiogroup">
+                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="ap-fx-send" checked /><span class="ac-toggle__label">On</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-fx-send" /><span class="ac-toggle__label">Off</span></label>
+                      </div>
+                    </div>
+                    <div class="tones__field-grid">
+                      <div class="tones__field">
+                        <label class="ac-field-label">FX level</label>
+                        <input class="ac-input" type="text" value="42" />
+                      </div>
+                      <div class="tones__field">
+                        <label class="ac-field-label">Dry/wet</label>
+                        <input class="ac-input" type="text" value="64" />
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+
+            <!-- Output tab -->
+            <div class="ac-panel" data-tab="ap-output">
+              <div class="ac-detail-body">
+                <div class="ac-panel-stack">
+                  <section class="tones__section">
+                    <div class="tones__section-head">
+                      <h4 class="tones__section-title">Output routing</h4>
+                      <span class="tones__section-eyebrow">§05 · Output</span>
+                    </div>
+                    <div class="tones__field-row">
+                      <span class="ac-field-label">Bus</span>
+                      <div class="ac-toggle" role="radiogroup">
+                        <label class="ac-toggle__option" data-active><input class="ac-toggle__input" type="radio" name="ap-bus" checked /><span class="ac-toggle__label">L/R</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-bus" /><span class="ac-toggle__label">1/2</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-bus" /><span class="ac-toggle__label">3/4</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-bus" /><span class="ac-toggle__label">5/6</span></label>
+                        <label class="ac-toggle__option"><input class="ac-toggle__input" type="radio" name="ap-bus" /><span class="ac-toggle__label">7/8</span></label>
+                      </div>
+                    </div>
+                    <div class="tones__field-grid">
+                      <div class="tones__field">
+                        <label class="ac-field-label">Level</label>
+                        <input class="ac-input" type="text" value="99" />
+                      </div>
+                      <div class="tones__field">
+                        <label class="ac-field-label">Pan</label>
+                        <input class="ac-input" type="text" value="+00" />
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</body>
+</html>

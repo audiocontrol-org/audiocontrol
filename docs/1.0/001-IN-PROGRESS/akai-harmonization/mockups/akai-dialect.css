@@ -135,3 +135,72 @@
   font-family: var(--ac-font-body);
   margin: 0;
 }
+
+/* ============================================================
+ * Akai tab-group ID registrations.
+ *
+ * The canonical radio-driven tab chrome in
+ * roland-sxx0-editor/src/styles/_shared.css enumerates every tab-ID
+ * the editor recognizes (lit-tab fill, tab underline, panel show,
+ * reduced-motion). That comment explicitly says: "Every new tab
+ * group adds its `id="<group>-<tab>"` to all four selector lists."
+ *
+ * The akai dialect adds three tab groups:
+ *   ap-* — Programs editor   (common, midi, effects, output)
+ *   ak-* — Keygroups editor  (zones, pitch, filter, amp, lfo)
+ *   as-* — Samples editor    (wave, loop, trim, misc)
+ *
+ * Phase 2 will land these directly in _shared.css alongside the
+ * existing tt-* / pt-* groups. Until then the mockup hosts them
+ * here so the canonical chrome activates without modification.
+ * ============================================================ */
+
+#ap-common:checked    ~ .ac-tab-strip [for="ap-common"],
+#ap-midi:checked      ~ .ac-tab-strip [for="ap-midi"],
+#ap-effects:checked   ~ .ac-tab-strip [for="ap-effects"],
+#ap-output:checked    ~ .ac-tab-strip [for="ap-output"],
+#ak-zones:checked     ~ .ac-tab-strip [for="ak-zones"],
+#ak-pitch:checked     ~ .ac-tab-strip [for="ak-pitch"],
+#ak-filter:checked    ~ .ac-tab-strip [for="ak-filter"],
+#ak-amp:checked       ~ .ac-tab-strip [for="ak-amp"],
+#ak-lfo:checked       ~ .ac-tab-strip [for="ak-lfo"],
+#as-wave:checked      ~ .ac-tab-strip [for="as-wave"],
+#as-loop:checked      ~ .ac-tab-strip [for="as-loop"],
+#as-trim:checked      ~ .ac-tab-strip [for="as-trim"],
+#as-misc:checked      ~ .ac-tab-strip [for="as-misc"] {
+  color: var(--ac-color-accent);
+  background: color-mix(in srgb, var(--ac-color-accent) 8%, transparent);
+}
+
+#ap-common:checked    ~ .ac-tab-strip [for="ap-common"]::after,
+#ap-midi:checked      ~ .ac-tab-strip [for="ap-midi"]::after,
+#ap-effects:checked   ~ .ac-tab-strip [for="ap-effects"]::after,
+#ap-output:checked    ~ .ac-tab-strip [for="ap-output"]::after,
+#ak-zones:checked     ~ .ac-tab-strip [for="ak-zones"]::after,
+#ak-pitch:checked     ~ .ac-tab-strip [for="ak-pitch"]::after,
+#ak-filter:checked    ~ .ac-tab-strip [for="ak-filter"]::after,
+#ak-amp:checked       ~ .ac-tab-strip [for="ak-amp"]::after,
+#ak-lfo:checked       ~ .ac-tab-strip [for="ak-lfo"]::after,
+#as-wave:checked      ~ .ac-tab-strip [for="as-wave"]::after,
+#as-loop:checked      ~ .ac-tab-strip [for="as-loop"]::after,
+#as-trim:checked      ~ .ac-tab-strip [for="as-trim"]::after,
+#as-misc:checked      ~ .ac-tab-strip [for="as-misc"]::after {
+  background: var(--ac-color-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 55%, transparent);
+}
+
+#ap-common:checked    ~ .ac-panels > [data-tab="ap-common"],
+#ap-midi:checked      ~ .ac-panels > [data-tab="ap-midi"],
+#ap-effects:checked   ~ .ac-panels > [data-tab="ap-effects"],
+#ap-output:checked    ~ .ac-panels > [data-tab="ap-output"],
+#ak-zones:checked     ~ .ac-panels > [data-tab="ak-zones"],
+#ak-pitch:checked     ~ .ac-panels > [data-tab="ak-pitch"],
+#ak-filter:checked    ~ .ac-panels > [data-tab="ak-filter"],
+#ak-amp:checked       ~ .ac-panels > [data-tab="ak-amp"],
+#ak-lfo:checked       ~ .ac-panels > [data-tab="ak-lfo"],
+#as-wave:checked      ~ .ac-panels > [data-tab="as-wave"],
+#as-loop:checked      ~ .ac-panels > [data-tab="as-loop"],
+#as-trim:checked      ~ .ac-panels > [data-tab="as-trim"],
+#as-misc:checked      ~ .ac-panels > [data-tab="as-misc"] {
+  display: block;
+}
