@@ -11,6 +11,66 @@ Canonical grep queue:
 
 ---
 
+## 2026-05-24 Feature review — latest shell-contract closure verification
+
+Surfaced while reviewing the latest shell-contract closure commits through `0bcadbe1` on 2026-05-24, after `AUDIT-20260524-06` and `-07` were marked verified. This pass was a code-review audit of the new harness/spec work; I did not complete a full Playwright run in this pass. I did confirm that the ordinary module `pnpm test` script does not pick up `test/ui/**`, so these findings are based on the code and runner wiring rather than an end-to-end browser execution.
+
+### The Akai shell-contract spec documents `.ac-detail-scroll` as part of the contract but never asserts the detail pane's scroll ownership
+
+Finding-ID: AUDIT-20260524-08
+Status:     open
+Severity:   medium
+Surface:    `modules/akai-s3k-editor/test/ui/page-shell-contract.spec.ts`, `modules/akai-s3k-editor/src/index.css`, `modules/akai-s3k-editor/src/pages/ProgramsPage.tsx`, `modules/akai-s3k-editor/src/pages/SamplesPage.tsx`, `modules/akai-s3k-editor/src/pages/KeygroupsPage.tsx`
+
+The new shell-contract spec now covers the four intended Akai routes, but it still only checks internal scroll ownership on the list side. Its header explicitly names `.ac-detail-scroll` as part of the fixed-viewport contract (`page-shell-contract.spec.ts:12-13`), yet the desktop assertions only verify `.ac-list-scroll` overflow for app-shell routes (`page-shell-contract.spec.ts:197-206`). There is no corresponding assertion that the detail pane declares `overflow-y: auto|scroll`, even though the Akai implementation relies on the dialect-local `.ac-detail-scroll` wrapper for exactly that behavior.
+
+That omission matters because the detail side is where the dense editors live. `ProgramsPage`, `SamplesPage`, and `KeygroupsPage` each wrap the real editor surface in `<div className="ac-detail-scroll">` (`ProgramsPage.tsx:351`, `SamplesPage.tsx:259`, `KeygroupsPage.tsx:351`), and the CSS comment in `index.css` says this wrapper exists so long editor surfaces scroll inside the grid track instead of getting clipped (`index.css:21-53`). A future regression that drops the class, removes `overflow-y: auto`, or replaces it with a non-scrolling wrapper would still leave the current spec green as long as the list column kept working.
+
+**Evidence:**
+
+- The spec describes `.ac-detail-scroll` as part of the shell contract:
+  - `modules/akai-s3k-editor/test/ui/page-shell-contract.spec.ts:12-13`
+- The actual app-shell assertion checks only the list column:
+  - `modules/akai-s3k-editor/test/ui/page-shell-contract.spec.ts:197-206`
+- The real Akai pages depend on `.ac-detail-scroll` for editor-pane scrolling:
+  - `modules/akai-s3k-editor/src/pages/ProgramsPage.tsx:351`
+  - `modules/akai-s3k-editor/src/pages/SamplesPage.tsx:259`
+  - `modules/akai-s3k-editor/src/pages/KeygroupsPage.tsx:351`
+  - `modules/akai-s3k-editor/src/index.css:21-53`
+
+**Expected:** the shell-contract regression spec should assert both sides of the app-shell contract: `.ac-list-scroll` for list ownership and `.ac-detail-scroll` for detail ownership.
+
+**Actual:** only the list column's overflow contract is tested.
+
+**Fix guidance:** extend the app-shell branch of `page-shell-contract.spec.ts` with a `.ac-detail-scroll` computed-style assertion, and preferably add a contentful detail harness state that forces vertical overflow so the test checks behavior under scroll pressure rather than just class presence.
+
+### The new real-library harness mounts empty library/device state, so the "inner overflow" assertion never exercises the contentful states that actually create scroll pressure
+
+Finding-ID: AUDIT-20260524-09
+Status:     open
+Severity:   medium
+Surface:    `modules/akai-s3k-editor/src/pages/TestLibraryRealPage.tsx`, `modules/akai-s3k-editor/test/ui/page-shell-contract.spec.ts`, `modules/akai-s3k-editor/src/pages/LibraryPage.tsx`
+
+`TestLibraryRealPage` improves on the earlier stub by mounting the real `PluginLibraryBrowser`, but it still feeds that component an empty/disconnected world: `categoryData` is `{ samples: [], 'common-programs': [], 's3k-programs': [] }` and `EMPTY_MEMORY_STATE` has `isConnected: false` with no program or sample names (`TestLibraryRealPage.tsx:40-67`). The paired spec then asserts only that the three inner panes *declare* `overflow-y: auto|scroll` (`page-shell-contract.spec.ts:220-272`).
+
+That means the new test proves CSS declarations on the empty-state DOM, not the populated states that actually create nested-scroll pressure on the production Library page. In the real page, `categoryData` is computed from live library contents (`LibraryPage.tsx:296`) and the browser receives a real `deviceMemoryState` (`LibraryPage.tsx:591`). Those are the cases where long trees, device-memory banks, and preview content can expose `min-height`, descendant sizing, or clipping regressions even if the empty-state panes still report `overflow-y: auto`.
+
+**Evidence:**
+
+- The "real" harness intentionally passes empty category/device state:
+  - `modules/akai-s3k-editor/src/pages/TestLibraryRealPage.tsx:40-67`
+- The spec checks pane styles, not overflow under populated content:
+  - `modules/akai-s3k-editor/test/ui/page-shell-contract.spec.ts:220-272`
+- The production page supplies real category/device data:
+  - `modules/akai-s3k-editor/src/pages/LibraryPage.tsx:296`
+  - `modules/akai-s3k-editor/src/pages/LibraryPage.tsx:591`
+
+**Expected:** the real-library harness used for overflow protection should include deterministic but contentful tree/device data so the asserted panes actually need to scroll.
+
+**Actual:** the asserted panes render empty/disconnected states, so the test never proves overflow ownership under the content patterns most likely to regress.
+
+**Fix guidance:** seed `TestLibraryRealPage` with enough deterministic library nodes and device-memory rows to overflow each pane, then keep the existing computed-style checks and add one reachability or bounded-scroll assertion per pane. That would turn the test from "the CSS property exists" into a real guard against clipped or bubbling overflow.
+
 ## 2026-05-24 Feature review — latest shell-contract follow-up
 
 Surfaced while reviewing the latest `feature/akai-harmonization` commits through `1a6261d2` on 2026-05-24, specifically the new Akai shell-contract harness/spec work that closed `AUDIT-20260524-05`. This pass was a code-review audit only; I did not run the test suite locally in this pass.
