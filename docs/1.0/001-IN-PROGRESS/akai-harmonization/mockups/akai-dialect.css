@@ -1,0 +1,1280 @@
+/*
+ * akai-dialect.css — shared stylesheet for the akai-harmonization HTML mockups.
+ *
+ * GUIDELINE DEVIATION: this file exceeds the 300–500-line cap from CLAUDE.md.
+ * RULE: "Code files should be no larger than 300-500 lines long."
+ * RATIONALE: the file is a single-file transposition of editor-core's
+ * primitives + layout-primitives + control-primitives + envelope-primitives
+ * + chevron-primitives + the roland front-panel.css, intentionally collapsed
+ * into ONE file so every mockup HTML page can <link rel="stylesheet"> a
+ * single sheet (which the real codebase imports as 6+ split files via
+ * styles.css). Splitting the mockup CSS would create 6+ link tags per
+ * mockup with no readability benefit — the file is documentation, not
+ * shippable code. The actual editor-core CSS Phase 2 produces will respect
+ * the per-file cap.
+ *
+ * This file is the visual proof of the harmonization-spec.md dialect contract:
+ * the structural primitives are byte-for-byte the roland post-v3-redesign
+ * patterns (.ac-page-shell--fixed-viewport, .ac-page-title-row, .ac-app-shell,
+ * .ac-detail-head, .ac-radio-tabs, .ac-envelope-graph, the chunky front-panel
+ * button), and the akai variance lives ONLY in (a) the color tokens scoped
+ * inside :root and the [data-editor='s3000xl'] block, and (b) the typography
+ * stack (Major Mono Display + Sora + Share Tech Mono in place of roland's
+ * Departure Mono + IBM Plex Sans + JetBrains Mono).
+ *
+ * Mockup pages: programs.html, keygroups.html, samples.html, library.html.
+ * Each is self-contained and openable in a browser (no build step). They
+ * import this stylesheet and a Google Fonts link for the three akai faces.
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Major+Mono+Display&family=Share+Tech+Mono&family=Sora:wght@300;400;500;600;700&display=swap");
+
+/* ---------------------------------------------------------------- */
+/* Tokens — global roland defaults, then [data-editor='s3000xl']    */
+/* override block. Same pattern as modules/editor-core/src/design/   */
+/* tokens.css — the akai dialect is a single scope, never a fork.    */
+/* ---------------------------------------------------------------- */
+
+:root {
+  /* Color — roland defaults (unscoped). Pages without [data-editor]
+     fall through to these (the mockups all set data-editor='s3000xl'
+     on <html>, so the akai overrides win). */
+  --ac-roland-primary: #6bc3ea;
+  --ac-roland-secondary: #e0b24f;
+
+  --ac-color-surface-canvas: #0f172a;
+  --ac-color-surface-panel: #111827;
+  --ac-color-border-subtle: #334155;
+  --ac-color-text-primary: #e5e7eb;
+  --ac-color-text-muted: #9ca3af;
+  --ac-color-accent: var(--ac-roland-primary);
+  --ac-color-success: #4ade80;
+  --ac-color-warning: var(--ac-roland-secondary);
+  --ac-color-danger: #fca5a5;
+  --ac-color-selected: var(--ac-roland-primary);
+
+  /* Spacing — shared across all editors */
+  --ac-space-1: 0.25rem;
+  --ac-space-2: 0.5rem;
+  --ac-space-3: 0.75rem;
+  --ac-space-4: 1rem;
+  --ac-space-5: 1.25rem;
+  --ac-space-6: 1.5rem;
+  --ac-space-7: 1.75rem;
+  --ac-space-8: 2rem;
+
+  --ac-radius-sm: 0.25rem;
+  --ac-radius-md: 0.5rem;
+  --ac-radius-lg: 0.75rem;
+
+  /* Type scale */
+  --ac-text-xs: 0.75rem;
+  --ac-text-sm: 0.875rem;
+  --ac-text-md: 1rem;
+  --ac-text-lg: 1.5rem;
+  --ac-text-eyebrow: 0.78rem;
+
+  --ac-leading-tight: 1.25;
+  --ac-leading-normal: 1.5;
+
+  --ac-font-weight-normal: 400;
+  --ac-font-weight-medium: 500;
+  --ac-font-weight-semibold: 600;
+
+  --ac-tracking-eyebrow: 0.14em;
+  --ac-tracking-display: 0.01em;
+
+  --ac-rule-hairline: 1px;
+  --ac-rule-medium: 2px;
+
+  /* Motion */
+  --ac-duration-fast: 150ms;
+  --ac-duration-normal: 250ms;
+  --ac-easing-default: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* REC-LED — roland default (S-550 PLAY LED red) */
+  --ac-color-rec: #f6533c;
+  --ac-color-rec-glow: rgba(246, 83, 60, 0.55);
+
+  /* Page chrome */
+  --ac-site-header-height: 3.75rem;
+  --ac-page-header-height: 3.2rem;
+  --ac-page-main-vertical: 1rem;
+  --ac-page-section-gap: var(--ac-space-4);
+
+  /* Font stacks — roland default */
+  --ac-font-display: "Departure Mono", "JetBrains Mono", "IBM Plex Mono",
+    ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --ac-font-body: "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  --ac-font-mono: "JetBrains Mono", "IBM Plex Mono", "SFMono-Regular",
+    Menlo, monospace;
+
+  /* Virtual front panel — roland chassis */
+  --ac-fp-chassis-top: hsl(220 5% 7%);
+  --ac-fp-chassis-bot: hsl(220 6% 3%);
+  --ac-fp-chassis-edge: hsl(220 6% 3%);
+  --ac-fp-btn-top: hsl(220 4% 14%);
+  --ac-fp-btn-mid: hsl(220 5% 9%);
+  --ac-fp-btn-bot: hsl(220 6% 5%);
+  --ac-fp-btn-bezel: hsl(220 8% 2%);
+  --ac-fp-btn-pressed-top: hsl(215 30% 18%);
+  --ac-fp-btn-pressed-mid: hsl(215 28% 11%);
+  --ac-fp-btn-pressed-bot: hsl(215 32% 6%);
+  --ac-fp-label-fn: hsl(210 12% 86%);
+  --ac-fp-label-pressed: hsl(210 96% 86%);
+  --ac-fp-shadow-rim-light: hsl(220 18% 22% / 0.4);
+  --ac-fp-shadow-highlight: hsl(0 0% 100% / 0.05);
+  --ac-fp-shadow-chassis-drop: hsl(0 0% 0% / 0.5);
+  --ac-fp-shadow-btn-drop: hsl(0 0% 0% / 0.45);
+}
+
+/* ---------------------------------------------------------------- */
+/* The akai dialect — overrides the unscoped roland defaults.        */
+/* This is the ENTIRE difference between the two editors expressed   */
+/* as CSS custom properties. Structural rules below this point read  */
+/* the tokens without ever knowing which editor is mounted.          */
+/* ---------------------------------------------------------------- */
+
+:root[data-editor="s3000xl"] {
+  /* Palette — warm matte-black chassis, cream silkscreen, amber LCD glow */
+  --ac-akai-primary: #f39200;
+  --ac-akai-secondary: #e5b22e;
+
+  --ac-color-surface-canvas: hsl(28 8% 8%);
+  --ac-color-surface-panel: hsl(28 8% 12%);
+  --ac-color-border-subtle: hsl(28 6% 22%);
+  --ac-color-text-primary: hsl(38 25% 88%);
+  --ac-color-text-muted: hsl(30 12% 60%);
+  --ac-color-accent: var(--ac-akai-primary);
+  --ac-color-selected: var(--ac-akai-primary);
+  --ac-color-success: hsl(140 40% 56%);
+  --ac-color-warning: var(--ac-akai-secondary);
+  --ac-color-danger: hsl(0 60% 60%);
+
+  /* REC-LED — amber, not roland's red */
+  --ac-color-rec: #f47a00;
+  --ac-color-rec-glow: hsl(28 100% 48% / 0.55);
+
+  /* Typography — Major Mono Display + Sora + Share Tech Mono.
+     Each falls back to the roland stack so incremental migration
+     works (an akai page on a deploy without Major Mono Display
+     loaded still gets a monospace display face). */
+  --ac-font-display: "Major Mono Display", "Departure Mono", "JetBrains Mono",
+    "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --ac-font-body: "Sora", "IBM Plex Sans", system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ac-font-mono: "Share Tech Mono", "JetBrains Mono", "IBM Plex Mono",
+    "SFMono-Regular", Menlo, monospace;
+
+  /* Front panel chassis — warmer black, brown undertones */
+  --ac-fp-chassis-top: hsl(28 6% 9%);
+  --ac-fp-chassis-bot: hsl(28 8% 4%);
+  --ac-fp-chassis-edge: hsl(28 8% 4%);
+  --ac-fp-btn-top: hsl(28 4% 16%);
+  --ac-fp-btn-mid: hsl(28 5% 11%);
+  --ac-fp-btn-bot: hsl(28 6% 6%);
+  --ac-fp-btn-bezel: hsl(28 10% 3%);
+  --ac-fp-btn-pressed-top: hsl(34 60% 22%);
+  --ac-fp-btn-pressed-mid: hsl(34 55% 14%);
+  --ac-fp-btn-pressed-bot: hsl(34 60% 8%);
+  --ac-fp-label-fn: hsl(38 20% 86%);
+  --ac-fp-label-pressed: hsl(34 96% 86%);
+}
+
+/* ---------------------------------------------------------------- */
+/* Site chrome + page shell. STRUCTURAL — identical to the          */
+/* canonical roland rules in editor-core/src/design/                 */
+/* layout-primitives.css. The tokens above carry the dialect.        */
+/* ---------------------------------------------------------------- */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--ac-font-body);
+  font-size: var(--ac-text-md);
+  line-height: var(--ac-leading-normal);
+  color: var(--ac-color-text-primary);
+  background: var(--ac-color-surface-canvas);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.ac-site {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.ac-site-header {
+  height: var(--ac-site-header-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: var(--ac-space-6);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 80%, transparent);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.ac-site-header__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-3);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-md);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-primary);
+}
+
+.ac-site-header__brand .badge {
+  background: var(--ac-color-accent);
+  color: hsl(28 60% 8%);
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--ac-radius-sm);
+  font-size: var(--ac-text-eyebrow);
+  letter-spacing: 0.08em;
+}
+
+.ac-site-header__nav {
+  display: flex;
+  gap: var(--ac-space-2);
+}
+
+.ac-site-header__nav a {
+  font-family: var(--ac-font-body);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text-muted);
+  text-decoration: none;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--ac-radius-sm);
+  transition: color var(--ac-duration-fast) var(--ac-easing-default),
+    background var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-site-header__nav a:hover {
+  color: var(--ac-color-text-primary);
+  background: color-mix(in srgb, var(--ac-color-accent) 8%, transparent);
+}
+
+.ac-site-header__nav a.is-active {
+  color: var(--ac-color-accent);
+  background: color-mix(in srgb, var(--ac-color-accent) 14%, transparent);
+}
+
+.ac-site-header__status {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-site-header__status::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--ac-color-success);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--ac-color-success) 60%, transparent);
+}
+
+.ac-site-main {
+  flex: 1;
+  padding: var(--ac-page-main-vertical) var(--ac-space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-page-section-gap);
+}
+
+.ac-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-page-section-gap);
+  flex: 1;
+  min-height: 0;
+}
+
+.ac-page-shell--fixed-viewport {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: calc(
+    100dvh - var(--ac-site-header-height) - (var(--ac-page-main-vertical) * 2)
+  );
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------- */
+/* PageTitleRow — lean page header (h2 + accent rule + metric +     */
+/* icon-button). Identical structurally to the roland canonical.    */
+/* ---------------------------------------------------------------- */
+
+.ac-page-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ac-space-4);
+  padding-bottom: var(--ac-space-2);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  position: relative;
+}
+
+.ac-page-title-row::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 4rem;
+  height: var(--ac-rule-medium);
+  background: var(--ac-color-rec);
+  box-shadow: 0 0 8px var(--ac-color-rec-glow);
+}
+
+.ac-page-title-row__lead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ac-space-4);
+  min-width: 0;
+}
+
+.ac-page-title-row h2 {
+  margin: 0;
+  font-family: var(--ac-font-display);
+  font-size: 1.5rem;
+  font-weight: var(--ac-font-weight-normal);
+  letter-spacing: var(--ac-tracking-display);
+  color: var(--ac-color-text-primary);
+}
+
+.ac-page-title-row__metric {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text-muted);
+  white-space: nowrap;
+}
+
+.ac-page-title-row__metric strong {
+  color: var(--ac-color-text-primary);
+  font-weight: var(--ac-font-weight-medium);
+}
+
+.ac-page-title-row__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+}
+
+.ac-icon-btn {
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  color: var(--ac-color-text-muted);
+  cursor: pointer;
+  transition: color var(--ac-duration-fast) var(--ac-easing-default),
+    border-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-icon-btn:hover {
+  color: var(--ac-color-accent);
+  border-color: color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+}
+
+.ac-icon-btn svg {
+  width: 1rem;
+  height: 1rem;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---------------------------------------------------------------- */
+/* App shell — list + detail (2 cols). 3-col variant for the         */
+/* library page sets its own grid-template-columns.                  */
+/* ---------------------------------------------------------------- */
+
+.ac-app-shell {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 18rem minmax(0, 1fr);
+  gap: var(--ac-space-4);
+  overflow: hidden;
+}
+
+.ac-app-shell--three-col {
+  grid-template-columns: 16rem minmax(0, 1fr) 22rem;
+}
+
+/* ---------------------------------------------------------------- */
+/* List column + list rows                                           */
+/* ---------------------------------------------------------------- */
+
+.ac-list {
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 88%, transparent);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ac-list__head {
+  padding: var(--ac-space-2) var(--ac-space-3);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ac-list__body {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.ac-list-row {
+  display: grid;
+  grid-template-columns: 2.4rem 1fr auto;
+  align-items: center;
+  gap: var(--ac-space-2);
+  padding: var(--ac-space-2) var(--ac-space-3);
+  border-bottom: var(--ac-rule-hairline) solid
+    color-mix(in srgb, var(--ac-color-border-subtle) 60%, transparent);
+  cursor: pointer;
+  transition: background var(--ac-duration-fast) var(--ac-easing-default);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text-primary);
+}
+
+.ac-list-row:hover {
+  background: color-mix(in srgb, var(--ac-color-accent) 6%, transparent);
+}
+
+.ac-list-row.is-selected {
+  background: color-mix(in srgb, var(--ac-color-accent) 18%, transparent);
+  color: var(--ac-color-text-primary);
+}
+
+.ac-list-row.is-selected .ac-list-row__index {
+  color: var(--ac-color-accent);
+}
+
+.ac-list-row__index {
+  color: var(--ac-color-text-muted);
+  text-align: right;
+}
+
+.ac-list-row__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ac-list-row__meta {
+  color: var(--ac-color-text-muted);
+  font-size: var(--ac-text-xs);
+}
+
+.ac-list__bank-head {
+  background: color-mix(in srgb, var(--ac-color-accent) 6%, transparent);
+  padding: var(--ac-space-1) var(--ac-space-3);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-accent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: var(--ac-rule-hairline) solid
+    color-mix(in srgb, var(--ac-color-accent) 20%, transparent);
+}
+
+/* ---------------------------------------------------------------- */
+/* Detail column + tabbed pane (AcRadioTabs)                         */
+/* ---------------------------------------------------------------- */
+
+.ac-detail {
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 92%, transparent);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.ac-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ac-space-4);
+  padding: var(--ac-space-3) var(--ac-space-4);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+}
+
+.ac-detail-head__eyebrow {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-detail-head__title {
+  font-family: var(--ac-font-display);
+  font-size: 1.125rem;
+  font-weight: var(--ac-font-weight-normal);
+  color: var(--ac-color-text-primary);
+}
+
+.ac-radio-tabs {
+  display: flex;
+  gap: 1px;
+  background: color-mix(in srgb, var(--ac-color-border-subtle) 50%, transparent);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+}
+
+.ac-radio-tabs__tab {
+  flex: 1;
+  appearance: none;
+  border: 0;
+  background: var(--ac-color-surface-panel);
+  color: var(--ac-color-text-muted);
+  padding: var(--ac-space-2) var(--ac-space-3);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  cursor: pointer;
+  transition: color var(--ac-duration-fast) var(--ac-easing-default),
+    background var(--ac-duration-fast) var(--ac-easing-default),
+    box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-radio-tabs__tab:hover {
+  color: var(--ac-color-text-primary);
+  background: color-mix(in srgb, var(--ac-color-accent) 6%, transparent);
+}
+
+.ac-radio-tabs__tab.is-active {
+  color: var(--ac-color-accent);
+  background: var(--ac-color-surface-canvas);
+  box-shadow: inset 0 -2px 0 var(--ac-color-accent);
+}
+
+.ac-detail-body {
+  padding: var(--ac-space-4);
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.ac-detail-body__title {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  margin: 0 0 var(--ac-space-3) 0;
+}
+
+.ac-detail-body__section + .ac-detail-body__section {
+  margin-top: var(--ac-space-5);
+  padding-top: var(--ac-space-4);
+  border-top: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+}
+
+/* ---------------------------------------------------------------- */
+/* Param grid — dense field cluster used inside .ac-detail-body      */
+/* ---------------------------------------------------------------- */
+
+.ac-param-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  gap: var(--ac-space-3) var(--ac-space-4);
+}
+
+.ac-param {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-1);
+  min-width: 0;
+}
+
+.ac-param__label {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ac-param__value {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-md);
+  color: var(--ac-color-text-primary);
+  line-height: 1.3;
+}
+
+.ac-param__value--accent {
+  color: var(--ac-color-accent);
+}
+
+/* AcSlider (range bar) primitive — mono ticks + accent fill */
+.ac-slider {
+  position: relative;
+  height: 0.5rem;
+  background: color-mix(in srgb, var(--ac-color-border-subtle) 50%, transparent);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.ac-slider__fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--ac-color-accent);
+  opacity: 0.7;
+}
+
+.ac-slider__tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: color-mix(in srgb, var(--ac-color-text-muted) 50%, transparent);
+}
+
+/* AcCheckbox / toggle */
+.ac-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 1.5rem;
+  border-radius: 2px;
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 50%, transparent);
+  color: var(--ac-color-text-muted);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-eyebrow);
+  letter-spacing: 0.05em;
+  cursor: pointer;
+}
+
+.ac-toggle.is-on {
+  background: color-mix(in srgb, var(--ac-color-accent) 22%, transparent);
+  color: var(--ac-color-accent);
+  border-color: color-mix(in srgb, var(--ac-color-accent) 45%, transparent);
+}
+
+.ac-select-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 60%, transparent);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  padding: var(--ac-space-1) var(--ac-space-3);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text-primary);
+}
+
+.ac-select-pill::after {
+  content: "▾";
+  color: var(--ac-color-accent);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-xs);
+}
+
+/* ---------------------------------------------------------------- */
+/* AcRangeBar — endpoint ticks + tinted center zone                  */
+/* ---------------------------------------------------------------- */
+
+.ac-range-bar {
+  position: relative;
+  height: 1.5rem;
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 60%, transparent);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.ac-range-bar__zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: color-mix(in srgb, var(--ac-color-accent) 25%, transparent);
+}
+
+.ac-range-bar__endpoint {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--ac-color-text-muted);
+}
+
+.ac-range-bar__endpoint.is-active {
+  background: var(--ac-color-accent);
+  box-shadow: 0 0 4px color-mix(in srgb, var(--ac-color-accent) 70%, transparent);
+}
+
+/* ---------------------------------------------------------------- */
+/* AcEnvelope — VFD-glow graphic + per-segment table beneath         */
+/* ---------------------------------------------------------------- */
+
+.ac-envelope {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-4);
+}
+
+.ac-envelope-graph {
+  position: relative;
+  height: 11rem;
+  background: radial-gradient(
+      ellipse at 50% 30%,
+      color-mix(in srgb, var(--ac-color-surface-canvas) 92%, #000) 0%,
+      color-mix(in srgb, var(--ac-color-surface-canvas) 60%, #000) 70%
+    ),
+    var(--ac-color-surface-canvas);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ac-envelope-graph::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    180deg,
+    transparent 0,
+    transparent 3px,
+    rgba(0, 0, 0, 0.18) 3px,
+    rgba(0, 0, 0, 0.18) 4px
+  );
+  mix-blend-mode: multiply;
+}
+
+.ac-envelope-graph__label {
+  position: absolute;
+  top: 0.6rem;
+  left: 0.8rem;
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-accent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  z-index: 2;
+}
+
+.ac-envelope-canvas {
+  position: absolute;
+  top: 2rem;
+  left: 0.8rem;
+  right: 0.8rem;
+  bottom: 0.8rem;
+  z-index: 1;
+}
+
+.ac-envelope-canvas svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.ac-envelope-canvas .env-line {
+  fill: none;
+  stroke: var(--ac-color-accent);
+  stroke-width: 1.5;
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--ac-color-accent) 60%, transparent));
+}
+
+.ac-envelope-canvas .env-fill {
+  fill: var(--ac-color-accent);
+  opacity: 0.1;
+}
+
+.ac-envelope-canvas .env-point {
+  fill: var(--ac-color-accent);
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--ac-color-accent) 70%, transparent));
+}
+
+.ac-envelope-table {
+  display: grid;
+  grid-template-columns: 6rem repeat(var(--cols, 4), 1fr);
+  gap: 1px;
+  background: var(--ac-color-border-subtle);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.ac-envelope-table > div {
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 92%, transparent);
+  padding: var(--ac-space-1) var(--ac-space-2);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-primary);
+  text-align: center;
+}
+
+.ac-envelope-table .env-row-label {
+  text-align: left;
+  font-family: var(--ac-font-display);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-envelope-table .env-col-label {
+  font-family: var(--ac-font-display);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  font-size: var(--ac-text-eyebrow);
+}
+
+/* ---------------------------------------------------------------- */
+/* Buttons — primary, secondary, toolbar, danger                     */
+/* ---------------------------------------------------------------- */
+
+.ac-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ac-space-2);
+  border-radius: var(--ac-radius-md);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 94%, transparent);
+  color: var(--ac-color-text-primary);
+  padding: 0.4rem 0.95rem;
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-sm);
+  font-weight: 400;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: filter var(--ac-duration-fast) var(--ac-easing-default),
+    background var(--ac-duration-fast) var(--ac-easing-default),
+    border-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.ac-btn-primary {
+  background: var(--ac-color-accent);
+  border-color: color-mix(in srgb, var(--ac-color-accent) 60%, var(--ac-color-border-subtle));
+  color: hsl(28 60% 8%);
+}
+
+.ac-btn-secondary {
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 92%, transparent);
+}
+
+.ac-btn-danger {
+  background: var(--ac-color-danger);
+  border-color: color-mix(in srgb, var(--ac-color-danger) 60%, var(--ac-color-border-subtle));
+  color: #fff;
+}
+
+.ac-btn-sm {
+  padding: 0.3rem 0.7rem;
+  font-size: var(--ac-text-eyebrow);
+}
+
+/* ---------------------------------------------------------------- */
+/* Live-editing footer — rec-LED dot + status string                 */
+/* ---------------------------------------------------------------- */
+
+.ac-live-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-3);
+  padding: var(--ac-space-2) var(--ac-space-4);
+  border-top: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 80%, transparent);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-live-footer__led {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--ac-color-rec);
+  box-shadow: 0 0 6px var(--ac-color-rec-glow),
+    0 0 1.5px var(--ac-color-rec);
+  animation: ac-rec-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes ac-rec-pulse {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 0.4; }
+}
+
+.ac-live-footer__label {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-accent);
+}
+
+.ac-live-footer__detail {
+  flex: 1;
+}
+
+.ac-live-footer__timestamp {
+  color: var(--ac-color-text-muted);
+}
+
+/* ---------------------------------------------------------------- */
+/* Virtual front panel — akai layout (S3000XL-shaped grid)           */
+/* The .ac-fp* class shape is reused; only the grid track + label    */
+/* differs. Per the dialect contract, this is the one place where     */
+/* layout (not just tokens) varies between editors.                  */
+/* ---------------------------------------------------------------- */
+
+.ac-fp {
+  background: linear-gradient(
+    180deg,
+    var(--ac-fp-chassis-top) 0%,
+    var(--ac-fp-chassis-bot) 100%
+  );
+  padding: 0.85rem;
+  border-radius: 3px;
+  box-shadow: 0 1px 0 var(--ac-fp-shadow-rim-light) inset,
+    0 0 0 1px var(--ac-fp-chassis-edge) inset,
+    0 8px 24px var(--ac-fp-shadow-chassis-drop);
+  display: grid;
+  gap: 0.65rem;
+  width: 100%;
+}
+
+/* Akai S3000XL layout — LCD on the left, soft-function row beneath,
+   numeric keypad + value rocker on the right. */
+.ac-fp--akai {
+  grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  gap: 0.85rem;
+}
+
+.ac-fp__lcd {
+  grid-column: 1 / 2;
+  grid-row: 1 / 2;
+  background: linear-gradient(
+    180deg,
+    hsl(28 30% 12%) 0%,
+    hsl(28 25% 8%) 100%
+  );
+  border: 1px solid var(--ac-fp-btn-bezel);
+  border-radius: 3px;
+  padding: 0.55rem 0.85rem;
+  height: 4.5rem;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  font-family: var(--ac-font-mono);
+  color: var(--ac-color-accent);
+  text-shadow: 0 0 4px color-mix(in srgb, var(--ac-color-accent) 60%, transparent),
+    0 0 8px color-mix(in srgb, var(--ac-color-accent) 40%, transparent);
+  font-size: var(--ac-text-sm);
+  line-height: 1.4;
+  position: relative;
+  overflow: hidden;
+}
+
+.ac-fp__lcd::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    180deg,
+    transparent 0,
+    transparent 2px,
+    rgba(0, 0, 0, 0.25) 2px,
+    rgba(0, 0, 0, 0.25) 3px
+  );
+}
+
+.ac-fp__lcd__line {
+  letter-spacing: 0.05em;
+}
+
+.ac-fp__soft-keys {
+  grid-column: 1 / 2;
+  grid-row: 2 / 3;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 0.4rem;
+}
+
+.ac-fp__right {
+  grid-column: 2 / 3;
+  grid-row: 1 / 3;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 0.55rem;
+}
+
+.ac-fp__mode-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
+}
+
+.ac-fp__keypad {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 0.4rem;
+}
+
+.ac-fp__btn {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 0.45rem 0.5rem;
+  min-height: 1.8rem;
+  cursor: pointer;
+  color: var(--ac-fp-label-fn);
+  background: linear-gradient(
+    180deg,
+    var(--ac-fp-btn-top) 0%,
+    var(--ac-fp-btn-mid) 55%,
+    var(--ac-fp-btn-bot) 100%
+  );
+  border-radius: 3px;
+  box-shadow: 0 1px 0 var(--ac-fp-shadow-highlight) inset,
+    0 -1px 0 var(--ac-fp-btn-bezel) inset,
+    0 0 0 1px var(--ac-fp-btn-bezel),
+    0 2px 2px var(--ac-fp-shadow-btn-drop);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: var(--ac-font-body);
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.05;
+  user-select: none;
+  transition: background 80ms ease, color 80ms ease, transform 80ms ease;
+  position: relative;
+}
+
+.ac-fp__btn:hover {
+  color: var(--ac-fp-label-pressed);
+}
+
+.ac-fp__btn:active,
+.ac-fp__btn[data-pressed="true"] {
+  transform: translateY(1px);
+  background: linear-gradient(
+    180deg,
+    var(--ac-fp-btn-pressed-top) 0%,
+    var(--ac-fp-btn-pressed-mid) 55%,
+    var(--ac-fp-btn-pressed-bot) 100%
+  );
+  color: var(--ac-fp-label-pressed);
+}
+
+.ac-fp__btn--value {
+  font-family: var(--ac-font-display);
+  font-size: 1rem;
+  color: var(--ac-color-accent);
+}
+
+.ac-fp__btn--mode.is-active {
+  background: linear-gradient(
+    180deg,
+    var(--ac-fp-btn-pressed-top) 0%,
+    var(--ac-fp-btn-pressed-mid) 55%,
+    var(--ac-fp-btn-pressed-bot) 100%
+  );
+  color: var(--ac-fp-label-pressed);
+}
+
+.ac-fp__btn--mode.is-active::before {
+  content: "";
+  position: absolute;
+  top: 0.25rem;
+  left: 0.25rem;
+  width: 0.34rem;
+  height: 0.34rem;
+  border-radius: 50%;
+  background: var(--ac-color-rec);
+  box-shadow: 0 0 5px var(--ac-color-rec-glow);
+}
+
+/* ---------------------------------------------------------------- */
+/* Misc — section heads, panel cards, tree, status bar               */
+/* ---------------------------------------------------------------- */
+
+.ac-section-head {
+  padding: var(--ac-space-2) var(--ac-space-3);
+  background: color-mix(in srgb, var(--ac-color-accent) 4%, transparent);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-chevron {
+  display: inline-block;
+  width: 1.1rem;
+  height: 1.1rem;
+  line-height: 1.1rem;
+  text-align: center;
+  color: var(--ac-color-accent);
+  font-family: var(--ac-font-display);
+  font-size: 0.95rem;
+  transition: transform var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-chevron.is-expanded {
+  transform: none;
+}
+
+.ac-chevron::before {
+  content: "▸";
+}
+
+.ac-chevron.is-expanded::before {
+  content: "▾";
+}
+
+.ac-tree {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text-primary);
+}
+
+.ac-tree-node {
+  display: grid;
+  grid-template-columns: 1.5rem 1fr auto;
+  align-items: center;
+  gap: var(--ac-space-1);
+  padding: var(--ac-space-1) var(--ac-space-2);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.ac-tree-node:hover {
+  background: color-mix(in srgb, var(--ac-color-accent) 6%, transparent);
+}
+
+.ac-tree-node.is-selected {
+  background: color-mix(in srgb, var(--ac-color-accent) 18%, transparent);
+}
+
+.ac-tree-node__kind {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-tree-children {
+  margin-left: 1rem;
+  border-left: 1px dashed
+    color-mix(in srgb, var(--ac-color-border-subtle) 80%, transparent);
+  padding-left: 0.5rem;
+}
+
+.ac-panel-card {
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 88%, transparent);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ac-panel-card__body {
+  flex: 1;
+  padding: var(--ac-space-3);
+  overflow-y: auto;
+}
+
+.ac-page-actions-inline {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  margin-bottom: var(--ac-space-3);
+}
+
+/* Mockup-only badge for the "MOCKUP" overlay tag at the top right */
+.mockup-badge {
+  position: fixed;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 1000;
+  font-family: var(--ac-font-display);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--ac-color-accent);
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 85%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
+  padding: 0.2rem 0.5rem;
+  border-radius: 2px;
+}
+
+/* Mockup-only — the spec-link line at the top of every page */
+.mockup-meta {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+  margin: 0 0 var(--ac-space-3) 0;
+  padding-bottom: var(--ac-space-2);
+  border-bottom: 1px dashed
+    color-mix(in srgb, var(--ac-color-border-subtle) 80%, transparent);
+}
+
+.mockup-meta a {
+  color: var(--ac-color-accent);
+  text-decoration: none;
+}

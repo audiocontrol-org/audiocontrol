@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en" data-editor="s3000xl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1280" />
+  <title>Akai S3000XL — Samples · Mockup</title>
+  <link rel="stylesheet" href="./akai-dialect.css" />
+  <style>
+    /* Page-local waveform preview — mono-rendered LCD-style on the canvas. */
+    .smp__waveform {
+      position: relative;
+      height: 9rem;
+      background:
+        radial-gradient(ellipse at 50% 40%,
+          color-mix(in srgb, var(--ac-color-surface-canvas) 92%, #000) 0%,
+          color-mix(in srgb, var(--ac-color-surface-canvas) 60%, #000) 70%);
+      border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .smp__waveform::after {
+      content: "";
+      position: absolute; inset: 0;
+      pointer-events: none;
+      background: repeating-linear-gradient(180deg,
+        transparent 0, transparent 3px,
+        rgba(0,0,0,0.18) 3px, rgba(0,0,0,0.18) 4px);
+      mix-blend-mode: multiply;
+    }
+    .smp__waveform__label {
+      position: absolute;
+      top: 0.6rem; left: 0.8rem;
+      font-family: var(--ac-font-display);
+      font-size: var(--ac-text-xs);
+      text-transform: uppercase;
+      letter-spacing: var(--ac-tracking-eyebrow);
+      color: var(--ac-color-accent);
+      text-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+      z-index: 2;
+    }
+    .smp__waveform__caption {
+      position: absolute;
+      bottom: 0.5rem; left: 0; right: 0;
+      text-align: center;
+      font-family: var(--ac-font-mono);
+      font-size: 0.65rem;
+      color: var(--ac-color-text-muted);
+      z-index: 2;
+    }
+    .smp__wave-canvas {
+      position: absolute;
+      top: 2rem; left: 0.8rem; right: 0.8rem; bottom: 1.4rem;
+      z-index: 1;
+    }
+    .smp__wave-canvas svg {
+      width: 100%; height: 100%;
+    }
+    .smp__loop-marker {
+      stroke: var(--ac-color-rec);
+      stroke-width: 1.5;
+      stroke-dasharray: 3 2;
+      filter: drop-shadow(0 0 3px var(--ac-color-rec-glow));
+    }
+  </style>
+</head>
+<body>
+  <div class="mockup-badge">Mockup · Samples</div>
+
+  <div class="ac-site">
+    <header class="ac-site-header">
+      <div class="ac-site-header__brand">
+        <span class="badge">AKAI</span>
+        <span>S3000XL · Editor</span>
+      </div>
+      <nav class="ac-site-header__nav">
+        <a>Connect</a>
+        <a>Programs</a>
+        <a>Keygroups</a>
+        <a class="is-active">Samples</a>
+        <a>Library</a>
+      </nav>
+      <div class="ac-site-header__status">SCSI 6 · CHAN 1 · 4.2 MB free</div>
+    </header>
+
+    <main class="ac-site-main">
+      <p class="mockup-meta">
+        Spec: <a href="../harmonization-spec.md">harmonization-spec.md § 4.3</a>
+        — AcRadioTabs (Wave · Loop · Trim · Misc), launch-editor row inside Wave tab
+      </p>
+
+      <section class="ac-page ac-page-shell--fixed-viewport">
+        <div class="ac-page-title-row">
+          <div class="ac-page-title-row__lead">
+            <h2>Samples</h2>
+            <span class="ac-page-title-row__metric">
+              <strong>62</strong> of <strong>62</strong> loaded · last refresh <strong>0:34</strong> ago
+            </span>
+          </div>
+          <div class="ac-page-title-row__actions">
+            <button class="ac-icon-btn" title="Refresh">
+              <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15.5-6.3M21 12a9 9 0 0 1-15.5 6.3M21 4v6h-6M3 20v-6h6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="ac-app-shell">
+          <!-- Sample list -->
+          <aside class="ac-list" aria-label="Samples">
+            <div class="ac-list__head">
+              <span>Slot · Sample</span>
+              <span>62/62</span>
+            </div>
+            <div class="ac-list__body">
+              <div class="ac-list__bank-head"><span>S3K Onboard</span><span>62</span></div>
+              <div class="ac-list-row"><span class="ac-list-row__index">001</span><span class="ac-list-row__name">KICK_808_HI</span><span class="ac-list-row__meta">22k · 132K</span></div>
+              <div class="ac-list-row"><span class="ac-list-row__index">002</span><span class="ac-list-row__name">SNARE_LIN77</span><span class="ac-list-row__meta">22k · 88K</span></div>
+              <div class="ac-list-row is-selected"><span class="ac-list-row__index">003</span><span class="ac-list-row__name">HAT_CL_SOFT</span><span class="ac-list-row__meta">22k · 40K</span></div>
+              <div class="ac-list-row"><span class="ac-list-row__index">004</span><span class="ac-list-row__name">HAT_CL_HARD</span><span class="ac-list-row__meta">22k · 44K</span></div>
+              <div class="ac-list-row"><span class="ac-list-row__index">005</span><span class="ac-list-row__name">HAT_OP_LB</span><span class="ac-list-row__meta">22k · 110K</span></div>
+              <div class="ac-list-row"><span class="ac-list-row__index">006</span><span class="ac-list-row__name">HAT_OP_SH</span><span class="ac-list-row__meta">22k · 96K</span></div>
+              <div class="ac-list-row"><span class="ac-list-row__index">007</span><span class="ac-list-row__name">RIDE_LB</span><span class="ac-list-row__meta">22k · 248K</span></div>
+              <div class="ac-list-row"><span class="ac-list-row__index">008</span><span class="ac-list-row__name">CRASH_BR_SH</span><span class="ac-list-row__meta">22k · 312K</span></div>
+              <div class="ac-list-row"><span class="ac-list-row__index">009</span><span class="ac-list-row__name">CRASH_BR_LB</span><span class="ac-list-row__meta">22k · 388K</span></div>
+              <div class="ac-list-row"><span class="ac-list-row__index">010</span><span class="ac-list-row__name">TOM_HI_MPL</span><span class="ac-list-row__meta">22k · 88K</span></div>
+              <div class="ac-list-row"><span class="ac-list-row__index">011</span><span class="ac-list-row__name">TOM_MID_MPL</span><span class="ac-list-row__meta">22k · 92K</span></div>
+              <div class="ac-list-row"><span class="ac-list-row__index">012</span><span class="ac-list-row__name">TOM_LO_MPL</span><span class="ac-list-row__meta">22k · 104K</span></div>
+              <div class="ac-list-row"><span class="ac-list-row__index">013</span><span class="ac-list-row__name">PERC_SHKR</span><span class="ac-list-row__meta">22k · 44K</span></div>
+              <div class="ac-list-row"><span class="ac-list-row__index">014</span><span class="ac-list-row__name">PERC_CLAVES</span><span class="ac-list-row__meta">22k · 32K</span></div>
+              <div class="ac-list-row"><span class="ac-list-row__index">015</span><span class="ac-list-row__name">PERC_CONGAS</span><span class="ac-list-row__meta">22k · 68K</span></div>
+            </div>
+          </aside>
+
+          <!-- Detail / sample editor -->
+          <section class="ac-detail" aria-label="Sample editor">
+            <header class="ac-detail-head">
+              <div>
+                <div class="ac-detail-head__eyebrow">§ Sample 003 of 62</div>
+                <div class="ac-detail-head__title">HAT_CL_SOFT · 22050 Hz · 40 KB</div>
+              </div>
+              <div style="display:flex; gap:var(--ac-space-2);">
+                <button class="ac-btn ac-btn-sm">Clone</button>
+                <button class="ac-btn ac-btn-sm">Rename</button>
+                <button class="ac-btn ac-btn-sm ac-btn-danger">Delete</button>
+              </div>
+            </header>
+
+            <nav class="ac-radio-tabs" role="tablist">
+              <button class="ac-radio-tabs__tab is-active" role="tab">Wave</button>
+              <button class="ac-radio-tabs__tab" role="tab">Loop</button>
+              <button class="ac-radio-tabs__tab" role="tab">Trim</button>
+              <button class="ac-radio-tabs__tab" role="tab">Misc</button>
+            </nav>
+
+            <div class="ac-detail-body">
+              <!-- Launch-editor row sits inside Wave tab as a primary action cluster -->
+              <div class="ac-page-actions-inline">
+                <button class="ac-btn">Loop Editor</button>
+                <button class="ac-btn">Sample Editor</button>
+                <button class="ac-btn">Chopper</button>
+                <span style="margin-left:auto; font-family:var(--ac-font-mono); font-size:var(--ac-text-xs); color:var(--ac-color-text-muted);">
+                  Opens the rich editor in a slide drawer
+                </span>
+              </div>
+
+              <section class="ac-detail-body__section" style="margin-top:0; padding-top:0; border-top:none;">
+                <h3 class="ac-detail-body__title">Waveform preview</h3>
+                <div class="smp__waveform">
+                  <div class="smp__waveform__label">WAVEFORM · 22.05 KHZ · MONO</div>
+                  <div class="smp__wave-canvas">
+                    <svg preserveAspectRatio="none" viewBox="0 0 800 100">
+                      <!-- Center line -->
+                      <line x1="0" y1="50" x2="800" y2="50" stroke="currentColor" stroke-opacity="0.18" stroke-width="0.5"/>
+                      <!-- Stylized waveform — short percussive transient + decay -->
+                      <path d="M 0 50 L 4 50 L 6 48 L 8 30 L 10 75 L 12 22 L 14 78 L 16 18 L 18 80 L 20 25 L 22 70 L 24 32 L 26 66 L 28 40 L 30 60 L 34 48 L 38 52 L 42 49 L 46 51 L 50 49 L 60 50 L 80 50 L 120 50 L 200 50 L 320 50 L 480 50 L 640 50 L 800 50"
+                        fill="none" stroke="currentColor" stroke-width="1.2"
+                        style="color: var(--ac-color-accent); filter: drop-shadow(0 0 3px color-mix(in srgb, var(--ac-color-accent) 60%, transparent));"/>
+                      <!-- Loop start + end markers -->
+                      <line class="smp__loop-marker" x1="36" y1="0" x2="36" y2="100"/>
+                      <line class="smp__loop-marker" x1="320" y1="0" x2="320" y2="100"/>
+                    </svg>
+                  </div>
+                  <div class="smp__waveform__caption">0.000 s — 0.91 s · 20,160 samples · LOOP IN 36 → LOOP OUT 16,128</div>
+                </div>
+              </section>
+
+              <section class="ac-detail-body__section">
+                <h3 class="ac-detail-body__title">Sample identity</h3>
+                <div class="ac-param-grid">
+                  <div class="ac-param">
+                    <div class="ac-param__label">Name</div>
+                    <div class="ac-param__value">HAT_CL_SOFT</div>
+                  </div>
+                  <div class="ac-param">
+                    <div class="ac-param__label">Sample #</div>
+                    <div class="ac-param__value">003</div>
+                  </div>
+                  <div class="ac-param">
+                    <div class="ac-param__label">Length</div>
+                    <div class="ac-param__value">20160</div>
+                  </div>
+                  <div class="ac-param">
+                    <div class="ac-param__label">Rate</div>
+                    <div class="ac-param__value">22050</div>
+                  </div>
+                  <div class="ac-param">
+                    <div class="ac-param__label">Pitch (root)</div>
+                    <div class="ac-param__value">F#3</div>
+                  </div>
+                  <div class="ac-param">
+                    <div class="ac-param__label">Tune (cents)</div>
+                    <div class="ac-param__value">+04</div>
+                  </div>
+                  <div class="ac-param">
+                    <div class="ac-param__label">Loop mode</div>
+                    <div class="ac-select-pill">Hold loop</div>
+                  </div>
+                  <div class="ac-param">
+                    <div class="ac-param__label">Channels</div>
+                    <div class="ac-select-pill">Mono</div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="ac-detail-body__section">
+                <h3 class="ac-detail-body__title">Loop region</h3>
+                <div class="ac-param-grid" style="grid-template-columns: minmax(0, 1fr) 7rem 7rem;">
+                  <div class="ac-param">
+                    <div class="ac-param__label">Loop window · sample 0 → 20160</div>
+                    <div class="ac-range-bar">
+                      <div class="ac-range-bar__zone" style="left:4.5%; right:60%;"></div>
+                      <div class="ac-range-bar__endpoint is-active" style="left:4.5%;"></div>
+                      <div class="ac-range-bar__endpoint is-active" style="left:40%;"></div>
+                    </div>
+                  </div>
+                  <div class="ac-param">
+                    <div class="ac-param__label">Loop in</div>
+                    <div class="ac-param__value">36</div>
+                  </div>
+                  <div class="ac-param">
+                    <div class="ac-param__label">Loop out</div>
+                    <div class="ac-param__value">16128</div>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <footer class="ac-live-footer">
+              <span class="ac-live-footer__led" aria-hidden="true"></span>
+              <span class="ac-live-footer__label">Live</span>
+              <span class="ac-live-footer__detail">streaming edits to S3000XL · sample 003 metadata</span>
+              <span class="ac-live-footer__timestamp">last edit 5.8 s ago</span>
+            </footer>
+          </section>
+        </div>
+      </section>
+
+      <!-- Virtual front panel — akai layout -->
+      <section class="ac-fp ac-fp--akai" aria-label="Virtual front panel">
+        <div class="ac-fp__lcd">
+          <div class="ac-fp__lcd__line">SMP: 003 HAT_CL_SOFT</div>
+          <div class="ac-fp__lcd__line">22050 HZ  20160 SMP  40 KB</div>
+        </div>
+        <div class="ac-fp__soft-keys">
+          <button class="ac-fp__btn">F1<br/>WAVE</button>
+          <button class="ac-fp__btn">F2<br/>LOOP</button>
+          <button class="ac-fp__btn">F3<br/>TRIM</button>
+          <button class="ac-fp__btn">F4<br/>NAME</button>
+          <button class="ac-fp__btn">F5<br/>PLAY</button>
+          <button class="ac-fp__btn">F6<br/>SAVE</button>
+          <button class="ac-fp__btn">F7<br/>COPY</button>
+          <button class="ac-fp__btn">F8<br/>DEL</button>
+        </div>
+        <div class="ac-fp__right">
+          <div class="ac-fp__mode-row">
+            <button class="ac-fp__btn ac-fp__btn--mode">PROG</button>
+            <button class="ac-fp__btn ac-fp__btn--mode">EDIT</button>
+            <button class="ac-fp__btn ac-fp__btn--mode is-active">DISK</button>
+            <button class="ac-fp__btn ac-fp__btn--mode">MIDI</button>
+          </div>
+          <div class="ac-fp__keypad">
+            <button class="ac-fp__btn">1</button>
+            <button class="ac-fp__btn">2</button>
+            <button class="ac-fp__btn">3</button>
+            <button class="ac-fp__btn ac-fp__btn--value">−</button>
+            <button class="ac-fp__btn">4</button>
+            <button class="ac-fp__btn">5</button>
+            <button class="ac-fp__btn">6</button>
+            <button class="ac-fp__btn ac-fp__btn--value">+</button>
+            <button class="ac-fp__btn">7</button>
+            <button class="ac-fp__btn">8</button>
+            <button class="ac-fp__btn">9</button>
+            <button class="ac-fp__btn">ENT</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
