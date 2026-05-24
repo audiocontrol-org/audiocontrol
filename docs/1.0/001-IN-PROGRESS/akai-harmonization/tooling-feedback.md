@@ -138,6 +138,20 @@ Each failure required a separate fix-and-retry cycle. Total: 3 round-trips to la
 
 ---
 
+## TF-012 · MISC · medium · CSS tab-activation pattern requires N coupled selector lists; dropping one is silent + visually subtle
+
+**Repro:** The canonical radio-driven tab chrome in `_shared.css` requires every tab-ID to appear in FOUR coupled selector lists: lit-tab fill (`:checked ~ .ac-tab-strip [for="..."]`), tab underline (`...::after`), panel show (`:checked ~ .ac-panels > [data-tab="..."]`), and reduced-motion (same selectors inside `@media (prefers-reduced-motion: reduce)`). During the d5d99516 akai-dialect.css token refactor, I accidentally dropped the third list (panel-show) when rewriting the file. The first two lists still functioned (active tab gets the accent fill + glow underline), and `.ac-panel { display: none }` got overridden somewhere else (specificity accident?), so the visual effect was subtle — the wrong panel might stay visible or the active panel might also display, depending on cascade order. Easy to miss in a quick screenshot review.
+
+**Workaround used:** restored the missing selector list when lifting the akai tab registrations into `_shared.css`.
+
+**Suggested fix:** the canonical chrome's authoring pattern would benefit from a build-time check or a single source-of-truth construct that fans out to all N lists. Two shapes:
+- A CSS preprocessor / postcss plugin that takes `@tab-group(ap-common, ap-midi, ap-effects, ap-output)` and expands to the four selector lists.
+- A JSON registry (e.g., `docs/scope-discovery/tab-groups.yaml`) listing every editor's tab IDs; a build-time script generates the four CSS selector blocks. Pre-commit gate fails if any tab ID appears in `.tsx`/`.html` as `id="<x>"` but not in the registry.
+
+Either shape would make dropping one list structurally impossible: a missing entry would either fail the build or fail a gate, not silently break panel-switching.
+
+---
+
 ## How to add an entry
 
 1. Hit friction or pathology or notice an improvement opportunity.

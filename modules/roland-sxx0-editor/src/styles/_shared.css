@@ -1593,8 +1593,17 @@
    one list to keep in sync, not one per page.
 
    Current consumers:
-     · tones page  — tt-wave, tt-pitch-lfo, tt-filter, tt-amp
-     · patches page — pt-common, pt-mapping
+     · roland tones page    — tt-wave, tt-pitch-lfo, tt-filter, tt-amp
+     · roland patches page  — pt-common, pt-mapping
+     · akai programs page   — ap-common, ap-midi, ap-effects, ap-output
+     · akai keygroups page  — ak-zones, ak-pitch, ak-filter, ak-amp, ak-lfo
+     · akai samples page    — as-wave, as-loop, as-trim, as-misc
+
+   The akai tab groups were hosted in mockups/akai-dialect.css during
+   Phase 1 of akai-harmonization while the canonical chrome was
+   exercised against the static mockups. Phase 2 task 2.2 lifts them
+   here so the live akai editor — when it adopts AcRadioTabs — gets
+   the canonical activation behavior the same way the roland pages do.
    ------------------------------------------------------------ */
 
 #tt-wave:checked       ~ .ac-tab-strip [for="tt-wave"],
@@ -1602,7 +1611,20 @@
 #tt-filter:checked     ~ .ac-tab-strip [for="tt-filter"],
 #tt-amp:checked        ~ .ac-tab-strip [for="tt-amp"],
 #pt-common:checked     ~ .ac-tab-strip [for="pt-common"],
-#pt-mapping:checked    ~ .ac-tab-strip [for="pt-mapping"] {
+#pt-mapping:checked    ~ .ac-tab-strip [for="pt-mapping"],
+#ap-common:checked     ~ .ac-tab-strip [for="ap-common"],
+#ap-midi:checked       ~ .ac-tab-strip [for="ap-midi"],
+#ap-effects:checked    ~ .ac-tab-strip [for="ap-effects"],
+#ap-output:checked     ~ .ac-tab-strip [for="ap-output"],
+#ak-zones:checked      ~ .ac-tab-strip [for="ak-zones"],
+#ak-pitch:checked      ~ .ac-tab-strip [for="ak-pitch"],
+#ak-filter:checked     ~ .ac-tab-strip [for="ak-filter"],
+#ak-amp:checked        ~ .ac-tab-strip [for="ak-amp"],
+#ak-lfo:checked        ~ .ac-tab-strip [for="ak-lfo"],
+#as-wave:checked       ~ .ac-tab-strip [for="as-wave"],
+#as-loop:checked       ~ .ac-tab-strip [for="as-loop"],
+#as-trim:checked       ~ .ac-tab-strip [for="as-trim"],
+#as-misc:checked       ~ .ac-tab-strip [for="as-misc"] {
   color: var(--ac-color-accent);
   background: color-mix(in srgb, var(--ac-color-accent) 8%, transparent);
 }
@@ -1612,7 +1634,20 @@
 #tt-filter:checked     ~ .ac-tab-strip [for="tt-filter"]::after,
 #tt-amp:checked        ~ .ac-tab-strip [for="tt-amp"]::after,
 #pt-common:checked     ~ .ac-tab-strip [for="pt-common"]::after,
-#pt-mapping:checked    ~ .ac-tab-strip [for="pt-mapping"]::after {
+#pt-mapping:checked    ~ .ac-tab-strip [for="pt-mapping"]::after,
+#ap-common:checked     ~ .ac-tab-strip [for="ap-common"]::after,
+#ap-midi:checked       ~ .ac-tab-strip [for="ap-midi"]::after,
+#ap-effects:checked    ~ .ac-tab-strip [for="ap-effects"]::after,
+#ap-output:checked     ~ .ac-tab-strip [for="ap-output"]::after,
+#ak-zones:checked      ~ .ac-tab-strip [for="ak-zones"]::after,
+#ak-pitch:checked      ~ .ac-tab-strip [for="ak-pitch"]::after,
+#ak-filter:checked     ~ .ac-tab-strip [for="ak-filter"]::after,
+#ak-amp:checked        ~ .ac-tab-strip [for="ak-amp"]::after,
+#ak-lfo:checked        ~ .ac-tab-strip [for="ak-lfo"]::after,
+#as-wave:checked       ~ .ac-tab-strip [for="as-wave"]::after,
+#as-loop:checked       ~ .ac-tab-strip [for="as-loop"]::after,
+#as-trim:checked       ~ .ac-tab-strip [for="as-trim"]::after,
+#as-misc:checked       ~ .ac-tab-strip [for="as-misc"]::after {
   background: var(--ac-color-accent);
   box-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 55%, transparent);
 }
@@ -1622,7 +1657,20 @@
 #tt-filter:checked     ~ .ac-panels > [data-tab="tt-filter"],
 #tt-amp:checked        ~ .ac-panels > [data-tab="tt-amp"],
 #pt-common:checked     ~ .ac-panels > [data-tab="pt-common"],
-#pt-mapping:checked    ~ .ac-panels > [data-tab="pt-mapping"] {
+#pt-mapping:checked    ~ .ac-panels > [data-tab="pt-mapping"],
+#ap-common:checked     ~ .ac-panels > [data-tab="ap-common"],
+#ap-midi:checked       ~ .ac-panels > [data-tab="ap-midi"],
+#ap-effects:checked    ~ .ac-panels > [data-tab="ap-effects"],
+#ap-output:checked     ~ .ac-panels > [data-tab="ap-output"],
+#ak-zones:checked      ~ .ac-panels > [data-tab="ak-zones"],
+#ak-pitch:checked      ~ .ac-panels > [data-tab="ak-pitch"],
+#ak-filter:checked     ~ .ac-panels > [data-tab="ak-filter"],
+#ak-amp:checked        ~ .ac-panels > [data-tab="ak-amp"],
+#ak-lfo:checked        ~ .ac-panels > [data-tab="ak-lfo"],
+#as-wave:checked       ~ .ac-panels > [data-tab="as-wave"],
+#as-loop:checked       ~ .ac-panels > [data-tab="as-loop"],
+#as-trim:checked       ~ .ac-panels > [data-tab="as-trim"],
+#as-misc:checked       ~ .ac-panels > [data-tab="as-misc"] {
   display: block;
   animation: ac-tab-fade-in 180ms var(--ac-easing-default);
 }
@@ -1633,7 +1681,20 @@
   #tt-filter:checked     ~ .ac-panels > [data-tab="tt-filter"],
   #tt-amp:checked        ~ .ac-panels > [data-tab="tt-amp"],
   #pt-common:checked     ~ .ac-panels > [data-tab="pt-common"],
-  #pt-mapping:checked    ~ .ac-panels > [data-tab="pt-mapping"] {
+  #pt-mapping:checked    ~ .ac-panels > [data-tab="pt-mapping"],
+  #ap-common:checked     ~ .ac-panels > [data-tab="ap-common"],
+  #ap-midi:checked       ~ .ac-panels > [data-tab="ap-midi"],
+  #ap-effects:checked    ~ .ac-panels > [data-tab="ap-effects"],
+  #ap-output:checked     ~ .ac-panels > [data-tab="ap-output"],
+  #ak-zones:checked      ~ .ac-panels > [data-tab="ak-zones"],
+  #ak-pitch:checked      ~ .ac-panels > [data-tab="ak-pitch"],
+  #ak-filter:checked     ~ .ac-panels > [data-tab="ak-filter"],
+  #ak-amp:checked        ~ .ac-panels > [data-tab="ak-amp"],
+  #ak-lfo:checked        ~ .ac-panels > [data-tab="ak-lfo"],
+  #as-wave:checked       ~ .ac-panels > [data-tab="as-wave"],
+  #as-loop:checked       ~ .ac-panels > [data-tab="as-loop"],
+  #as-trim:checked       ~ .ac-panels > [data-tab="as-trim"],
+  #as-misc:checked       ~ .ac-panels > [data-tab="as-misc"] {
     animation: none;
   }
 }
