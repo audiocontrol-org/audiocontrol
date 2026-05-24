@@ -1,0 +1,121 @@
+{
+  "agent": "ui-route-enumerator",
+  "featureSlug": "akai-harmonization",
+  "modulesInScope": [
+    "akai-s3k-editor",
+    "d110-editor",
+    "jv1080-editor",
+    "roland-sxx0-editor",
+    "sample-editor"
+  ],
+  "routes": [
+    {
+      "module": "akai-s3k-editor",
+      "path": "/akai/s3000xl/editor",
+      "file": "modules/akai-s3k-editor/src/App.tsx",
+      "pageFile": null
+    },
+    {
+      "module": "akai-s3k-editor",
+      "path": "/akai/s3000xl/editor/programs",
+      "file": "modules/akai-s3k-editor/src/App.tsx",
+      "pageFile": "modules/akai-s3k-editor/src/pages/ProgramsPage.tsx"
+    },
+    {
+      "module": "akai-s3k-editor",
+      "path": "/akai/s3000xl/editor/keygroups",
+      "file": "modules/akai-s3k-editor/src/App.tsx",
+      "pageFile": "modules/akai-s3k-editor/src/pages/KeygroupsPage.tsx"
+    },
+    {
+      "module": "akai-s3k-editor",
+      "path": "/akai/s3000xl/editor/samples",
+      "file": "modules/akai-s3k-editor/src/App.tsx",
+      "pageFile": "modules/akai-s3k-editor/src/pages/SamplesPage.tsx"
+    },
+    {
+      "module": "akai-s3k-editor",
+      "path": "/akai/s3000xl/editor/library",
+      "file": "modules/akai-s3k-editor/src/App.tsx",
+      "pageFile": "modules/akai-s3k-editor/src/pages/LibraryPage.tsx"
+    },
+    {
+      "module": "akai-s3k-editor",
+      "path": "/akai/s3000xl/editor/test/keygroups",
+      "file": "modules/akai-s3k-editor/src/App.tsx",
+      "pageFile": "modules/akai-s3k-editor/src/pages/TestKeygroupsPage.tsx"
+    },
+    {
+      "module": "d110-editor",
+      "path": "/",
+      "file": "modules/d110-editor/src/App.tsx",
+      "pageFile": "modules/d110-editor/src/pages/HomePage.tsx"
+    },
+    {
+      "module": "d110-editor",
+      "path": "/tones",
+      "file": "modules/d110-editor/src/App.tsx",
+      "pageFile": "modules/d110-editor/src/pages/TonesPage.tsx"
+    },
+    {
+      "module": "d110-editor",
+      "path": "/patches",
+      "file": "modules/d110-editor/src/App.tsx",
+      "pageFile": "modules/d110-editor/src/pages/PatchesPage.tsx"
+    },
+    {
+      "module": "jv1080-editor",
+      "path": "/",
+      "file": "modules/jv1080-editor/src/App.tsx",
+      "pageFile": "modules/jv1080-editor/src/pages/HomePage.tsx"
+    },
+    {
+      "module": "jv1080-editor",
+      "path": "/editor",
+      "file": "modules/jv1080-editor/src/App.tsx",
+      "pageFile": "modules/jv1080-editor/src/pages/EditorPage.tsx"
+    },
+    {
+      "module": "roland-sxx0-editor",
+      "path": "play",
+      "file": "modules/roland-sxx0-editor/src/App.tsx",
+      "pageFile": "modules/roland-sxx0-editor/src/pages/PlayPage.tsx"
+    },
+    {
+      "module": "roland-sxx0-editor",
+      "path": "patches",
+      "file": "modules/roland-sxx0-editor/src/App.tsx",
+      "pageFile": "modules/roland-sxx0-editor/src/pages/PatchesPage.tsx"
+    },
+    {
+      "module": "roland-sxx0-editor",
+      "path": "tones",
+      "file": "modules/roland-sxx0-editor/src/App.tsx",
+      "pageFile": "modules/roland-sxx0-editor/src/pages/TonesPage.tsx"
+    },
+    {
+      "module": "roland-sxx0-editor",
+      "path": "library",
+      "file": "modules/roland-sxx0-editor/src/App.tsx",
+      "pageFile": "modules/roland-sxx0-editor/src/pages/LibraryPage.tsx"
+    },
+    {
+      "module": "roland-sxx0-editor",
+      "path": "_harness/envelope-table",
+      "file": "modules/roland-sxx0-editor/src/App.tsx",
+      "pageFile": null
+    },
+    {
+      "module": "roland-sxx0-editor",
+      "path": "_harness/range-bar",
+      "file": "modules/roland-sxx0-editor/src/App.tsx",
+      "pageFile": null
+    },
+    {
+      "module": "roland-sxx0-editor",
+      "path": "",
+      "file": "modules/roland-sxx0-editor/src/App.tsx",
+      "pageFile": "modules/roland-sxx0-editor/src/pages/HomePage.tsx"
+    }
+  ]
+}

@@ -1,0 +1,1514 @@
+{
+  "agent": "prd-themed-pattern-hunter",
+  "featureSlug": "akai-harmonization",
+  "themes": [
+    {
+      "term": "akai",
+      "occurrences": [
+        {
+          "file": "modules/akai-s3k-editor/src/App.tsx",
+          "line": 13,
+          "snippet": "<Route path=\"/akai/s3000xl/editor\" element={<Navigate to=\"/akai/s3000xl/editor/programs\" replace />} />"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/App.tsx",
+          "line": 14,
+          "snippet": "<Route path=\"/akai/s3000xl/editor/programs\" element={<ProgramsPage />} />"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/App.tsx",
+          "line": 15,
+          "snippet": "<Route path=\"/akai/s3000xl/editor/keygroups\" element={<KeygroupsPage />} />"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/App.tsx",
+          "line": 16,
+          "snippet": "<Route path=\"/akai/s3000xl/editor/samples\" element={<SamplesPage />} />"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/App.tsx",
+          "line": 17,
+          "snippet": "<Route path=\"/akai/s3000xl/editor/library\" element={<LibraryPage />} />"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/App.tsx",
+          "line": 18,
+          "snippet": "<Route path=\"/akai/s3000xl/editor/test/keygroups\" element={<TestKeygroupsPage />} />"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/App.tsx",
+          "line": 19,
+          "snippet": "<Route path=\"*\" element={<Navigate to=\"/akai/s3000xl/editor/programs\" replace />} />"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/layout/ConnectionDrawer.tsx",
+          "line": 15,
+          "snippet": "deviceName: 'Akai S3000XL',"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/layout/Layout.tsx",
+          "line": 12,
+          "snippet": "const BASE_PATH = '/akai/s3000xl/editor';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/layout/Layout.tsx",
+          "line": 16,
+          "snippet": "editorName: 'Akai S3000XL',"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/layout/Layout.tsx",
+          "line": 17,
+          "snippet": "editorSubtitle: 'Akai Sampler',"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/layout/Layout.tsx",
+          "line": 26,
+          "snippet": "editorDescription: 'Akai Sampler',"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 42,
+          "snippet": "/** Save a device sample to the Akai device-specific library area. */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 46,
+          "snippet": "/** Save a device program to the Akai device-specific library area. */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 259,
+          "snippet": "const deviceLabel = type === 'program' ? 'Save to Akai Library' : 'Save to Akai Samples';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx",
+          "line": 2,
+          "snippet": "* DiskBrowserPanel — displays the contents of Akai-formatted SCSI disks."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx",
+          "line": 70,
+          "snippet": "export const DISK_ITEM_MIME = 'application/x-akai-disk-item';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx",
+          "line": 568,
+          "snippet": "const deviceLabel = isSample ? 'Save to Akai Samples' : 'Save to Akai Library';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx",
+          "line": 2,
+          "snippet": "* DiskToLibraryDialog -- saves an Akai disk file to the library."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx",
+          "line": 140,
+          "snippet": "/** Save to S3K library section (raw Akai bytes, no translation). */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx",
+          "line": 343,
+          "snippet": ": `Save to Akai library`;"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ExportProgramDialog.tsx",
+          "line": 71,
+          "snippet": "const target = saveToCommonArea ? 'common library' : 'Akai library';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/LibraryToDiskDialog.tsx",
+          "line": 3,
+          "snippet": "* Akai-formatted SCSI disk image via the bridge."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/LibraryToDiskDialog.tsx",
+          "line": 215,
+          "snippet": "Write <strong>{programName}</strong> to an Akai disk."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/hooks/useDiskBrowser.ts",
+          "line": 103,
+          "snippet": "* Read specific Akai blocks from disk into a buffer at their correct"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/hooks/useDiskBrowser.ts",
+          "line": 274,
+          "snippet": "* Read file data on demand and convert an Akai sample to WAV."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/hooks/useDiskBrowser.ts",
+          "line": 298,
+          "snippet": "* Read file data on demand and parse an Akai program."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/hooks/useLibraryData.ts",
+          "line": 8,
+          "snippet": "* library categories (e.g., Akai program bundles) will be added in a future"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/drumkit-import.ts",
+          "line": 65,
+          "snippet": "/** Akai S3000XL sample name max length */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/drumkit-import.ts",
+          "line": 73,
+          "snippet": "* Truncate a name to fit Akai's 12-character limit."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/drumkit-import.ts",
+          "line": 74,
+          "snippet": "* Pads with spaces if shorter (Akai convention)."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/drumkit-import.ts",
+          "line": 81,
+          "snippet": "* Generate a unique Akai-safe sample name for a slice."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/drumkit-import.ts",
+          "line": 195,
+          "snippet": "// Generate Akai-safe names for each slice"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/drumkit-import.ts",
+          "line": 289,
+          "snippet": "// Clamp to valid MIDI note range (21-127 for Akai, per LONOTE spec)"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/program-import.ts",
+          "line": 50,
+          "snippet": "/** Akai S3000XL sample name max length */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/program-import.ts",
+          "line": 58,
+          "snippet": "* Truncate a name to fit Akai's 12-character limit."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/program-import.ts",
+          "line": 59,
+          "snippet": "* Pads with spaces if shorter (Akai convention)."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/program-promotion.ts",
+          "line": 6,
+          "snippet": "* akai-to-common converter, then copying referenced sample WAVs."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/program-serialization.ts",
+          "line": 222,
+          "snippet": "* so they can be written back to any Akai disk without loss."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/program-serialization.ts",
+          "line": 295,
+          "snippet": "* Returns the complete on-disk file data ready to write back to an Akai disk."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/program-writers.ts",
+          "line": 8,
+          "snippet": "* correct byte offset using Akai's nibble format."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/pages/KeygroupsPage.tsx",
+          "line": 286,
+          "snippet": "Go to the <a href=\"/akai/s3000xl/editor/programs\" className=\"text-blue-400 hover:underline\">Programs</a> page and select a program to edit its keygroups."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/pages/LibraryPage.tsx",
+          "line": 81,
+          "snippet": "const PICKER_ID = 'akai-s3k-library';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/plugins/categories.tsx",
+          "line": 7,
+          "snippet": "* - S3K Programs: Akai-native serialized programs (library/s3k/programs/)"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/plugins/categories.tsx",
+          "line": 50,
+          "snippet": "title: 'Akai Programs',"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/plugins/categories.tsx",
+          "line": 54,
+          "snippet": "emptyMessage: 'No Akai programs in library.',"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/plugins/s3k-library-plugin.tsx",
+          "line": 4,
+          "snippet": "* Device library plugin for the Akai S3000XL sampler."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/plugins/s3k-library-plugin.tsx",
+          "line": 115,
+          "snippet": "deviceName: 'Akai S3000XL',"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/LibraryPage.tsx",
+          "line": 265,
+          "snippet": "* this callback. This mirrors the Akai editor's `handleExternalDrop` in"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/LibraryPage.tsx",
+          "line": 266,
+          "snippet": "* `akai-s3k-editor/src/pages/LibraryPage.tsx:151-167`."
+        }
+      ]
+    },
+    {
+      "term": "scope-discovery",
+      "occurrences": []
+    },
+    {
+      "term": "canonical",
+      "occurrences": [
+        {
+          "file": "modules/akai-s3k-editor/src/lib/midi-note-parser.ts",
+          "line": 4,
+          "snippet": "* Re-exports canonical implementations from @audiocontrol/editor-core."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/front-panel/FrontPanelButton.tsx",
+          "line": 17,
+          "snippet": "*   - `chunky` — unstyled-chrome mode for the canonical"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/front-panel/VirtualFrontPanel.tsx",
+          "line": 40,
+          "snippet": "/** Press handler — fired with the canonical button id. */"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/front-panel/index.ts",
+          "line": 5,
+          "snippet": "* canonical mount is the drawer-embedded `<VirtualFrontPanel>` inside"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ItemPreviewPanel.tsx",
+          "line": 564,
+          "snippet": "// Canonical dependency analysis lives in `getPatchToneDependencies`"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/SaveSetDialog.tsx",
+          "line": 23,
+          "snippet": "* shared `OperationProgress` shape so the dialog can render the canonical"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/ui/ToneEnvelopeEditor.tsx",
+          "line": 119,
+          "snippet": "// canonical disabled gate: it removes pip tab stops and adds the native"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useLibraryExport.ts",
+          "line": 412,
+          "snippet": "// directly; the canonical refresh is the full re-scan."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/library-drag-types.ts",
+          "line": 4,
+          "snippet": "* The canonical drag payload type is LibraryDragPayload from editor-core."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/library-drag-types.ts",
+          "line": 9,
+          "snippet": "* This module also re-exports the canonical MIME type and payload type so"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/library-drag-types.ts",
+          "line": 15,
+          "snippet": "// Re-export the canonical type and MIME for convenience"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/library-io.ts",
+          "line": 42,
+          "snippet": "* This is the canonical function for reading tone data - used by all"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/library-io.ts",
+          "line": 78,
+          "snippet": "* This is the canonical function for writing tone data - used by both"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/library-io.ts",
+          "line": 139,
+          "snippet": "* This is the canonical function for writing patch data - used by both"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/library-patches.ts",
+          "line": 90,
+          "snippet": "* THIS IS THE CANONICAL FUNCTION FOR PATCH TONE DEPENDENCY ANALYSIS."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/utils.ts",
+          "line": 7,
+          "snippet": "// Re-export midiNoteToName from canonical location for consumers"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/plugins/shared/LibraryPreviewPanelAdapter.tsx",
+          "line": 14,
+          "snippet": "* assertion (the canonical .ac-panel-header-title \"Preview\" chrome"
+        }
+      ]
+    },
+    {
+      "term": "harmonization",
+      "occurrences": []
+    },
+    {
+      "term": "primitives",
+      "occurrences": [
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/PageTitleRow.tsx",
+          "line": 5,
+          "snippet": "* Composes the .ac-page-title-* shared primitives (declared in"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 15,
+          "snippet": "* Uses .ac-preview-pane chrome + shared .ac-list-* primitives for"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/preview-chrome.tsx",
+          "line": 2,
+          "snippet": "* Library preview chrome — shared React primitives that render the"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/preview-chrome.tsx",
+          "line": 6,
+          "snippet": "* The visual primitives (.ac-preview-pane*, .ac-preview-eyebrow-row,"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/patches/PatchEditor.tsx",
+          "line": 225,
+          "snippet": "pixel-identical chrome via the .ac-detail-* primitives in"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/patches/ToneZoneEditor.tsx",
+          "line": 11,
+          "snippet": "* Chrome: composed from `.ac-zone-*` primitives defined in"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/tones/ToneEditorHead.tsx",
+          "line": 10,
+          "snippet": "* primitives in `_shared.css`)."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/tones/panels/ToneAmpPanel.tsx",
+          "line": 8,
+          "snippet": "* v3 atomic primitives:"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/tones/panels/ToneFilterPanel.tsx",
+          "line": 8,
+          "snippet": "* v3 atomic primitives:"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/ui/ParamSliderRow.tsx",
+          "line": 4,
+          "snippet": "* Composes the editor-core atomic primitives (AcSlider + AcNumberInput"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/ui/Tooltip.tsx",
+          "line": 15,
+          "snippet": "* Arrow primitives) — the dependency is still in the workspace."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useToneSampleExport.ts",
+          "line": 28,
+          "snippet": "* checks. It composes the generic primitives (cache, export helper)"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/PatchesPage.tsx",
+          "line": 267,
+          "snippet": "Composed from .ac-page-title-* shared primitives (see"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/TonesPage.tsx",
+          "line": 236,
+          "snippet": "Composed from .ac-page-title-* shared primitives. The"
+        }
+      ]
+    },
+    {
+      "term": "roland",
+      "occurrences": [
+        {
+          "file": "modules/akai-s3k-editor/src/components/keygroups/AdsrDisplay.tsx",
+          "line": 4,
+          "snippet": "* Layout: each segment has a FIXED horizontal budget (like Roland)."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/keygroups/AdsrDisplay.tsx",
+          "line": 10,
+          "snippet": "* This is the opposite of Roland (where rate 127 = fastest)."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/LibraryIcons.tsx",
+          "line": 5,
+          "snippet": "* as the Roland editor's LibraryTreeIcons but using ac-tree-icon"
+        },
+        {
+          "file": "modules/d110-editor/src/components/PatchEditor/PatchEditor.tsx",
+          "line": 113,
+          "snippet": "<a href=\"/roland/d110/editor/\" className=\"ac-btn ac-btn-primary inline-block\">"
+        },
+        {
+          "file": "modules/d110-editor/src/components/layout/Layout.tsx",
+          "line": 19,
+          "snippet": "editorSubtitle: 'Roland LA Synthesizer',"
+        },
+        {
+          "file": "modules/d110-editor/src/components/layout/Layout.tsx",
+          "line": 27,
+          "snippet": "editorDescription: 'Roland LA Synthesizer',"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/D110Client.ts",
+          "line": 4,
+          "snippet": "* High-level client for communicating with the Roland D-110."
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/EasymidiAdapter.ts",
+          "line": 2,
+          "snippet": "* EasyMIDI Adapter for Roland D-110 Client"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/constants.ts",
+          "line": 2,
+          "snippet": "* Roland D-110 MIDI constants"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/constants.ts",
+          "line": 8,
+          "snippet": "* Roland manufacturer ID"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/index.ts",
+          "line": 5,
+          "snippet": "* communicating with the Roland D-110 synthesizer."
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 56,
+          "snippet": "expect(message[1]).toBe(ROLAND_ID); // Roland ID"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 94,
+          "snippet": "expect(message[1]).toBe(ROLAND_ID); // Roland ID"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.test.ts",
+          "line": 152,
+          "snippet": "expect(parsed.error).toContain('Not a Roland message');"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.ts",
+          "line": 2,
+          "snippet": "* Roland D-110 SysEx message generation and parsing"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.ts",
+          "line": 9,
+          "snippet": "* - 41 = Roland manufacturer ID"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.ts",
+          "line": 15,
+          "snippet": "* - checksum = Roland checksum"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.ts",
+          "line": 30,
+          "snippet": "* Calculate Roland checksum for address and data bytes"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.ts",
+          "line": 169,
+          "snippet": "// Verify Roland ID"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/sysex.ts",
+          "line": 177,
+          "snippet": "error: `Not a Roland message: manufacturer ID ${message[1].toString(16)}`,"
+        },
+        {
+          "file": "modules/d110-editor/src/core/midi/types.ts",
+          "line": 2,
+          "snippet": "* TypeScript types for Roland D-110 MIDI communication"
+        },
+        {
+          "file": "modules/d110-editor/src/main.tsx",
+          "line": 21,
+          "snippet": "<BrowserRouter basename=\"/roland/d110/editor\">"
+        },
+        {
+          "file": "modules/d110-editor/src/pages/TonesPage.tsx",
+          "line": 26,
+          "snippet": "<a href=\"/roland/d110/editor/\" className=\"ac-btn ac-btn-primary inline-block\">"
+        },
+        {
+          "file": "modules/d110-editor/src/testing/visualFixtures.ts",
+          "line": 9,
+          "snippet": "path: buildVisualRoute('/roland/d110/editor/'),"
+        },
+        {
+          "file": "modules/d110-editor/src/testing/visualFixtures.ts",
+          "line": 14,
+          "snippet": "path: buildVisualRoute('/roland/d110/editor/tones'),"
+        },
+        {
+          "file": "modules/d110-editor/src/testing/visualFixtures.ts",
+          "line": 19,
+          "snippet": "path: buildVisualRoute('/roland/d110/editor/patches'),"
+        },
+        {
+          "file": "modules/jv1080-editor/src/components/layout/Layout.tsx",
+          "line": 19,
+          "snippet": "editorSubtitle: 'Roland Synthesizer Module',"
+        },
+        {
+          "file": "modules/jv1080-editor/src/components/layout/Layout.tsx",
+          "line": 26,
+          "snippet": "editorDescription: 'Roland Synthesizer Module',"
+        },
+        {
+          "file": "modules/jv1080-editor/src/main.tsx",
+          "line": 21,
+          "snippet": "<BrowserRouter basename=\"/roland/jv1080/editor\">"
+        },
+        {
+          "file": "modules/jv1080-editor/src/testing/visualFixtures.ts",
+          "line": 9,
+          "snippet": "path: buildVisualRoute('/roland/jv1080/editor/'),"
+        },
+        {
+          "file": "modules/jv1080-editor/src/testing/visualFixtures.ts",
+          "line": 14,
+          "snippet": "path: buildVisualRoute('/roland/jv1080/editor/editor'),"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/AcRadioTabs.tsx",
+          "line": 19,
+          "snippet": "* non-roland editor consumes it yet. Promotion to editor-core is"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/PageTitleRow.tsx",
+          "line": 6,
+          "snippet": "* `modules/roland-sxx0-editor/src/styles/_shared.css`):"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/front-panel/VirtualFrontPanel.tsx",
+          "line": 4,
+          "snippet": "* The 11-control surface for remote Roland S-330 / S-550 operation,"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/front-panel/index.ts",
+          "line": 4,
+          "snippet": "* Virtual front panel for remote Roland S-330 / S-550 control. The"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx",
+          "line": 163,
+          "snippet": "*  whichever Roland surface the editor is mounted under. AUDIT-20260521-02. */"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/preview-chrome.tsx",
+          "line": 8,
+          "snippet": "* .ac-pane-action*) live in roland-sxx0-editor/src/styles/_shared.css."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/ui/ParamSliderRow.tsx",
+          "line": 2,
+          "snippet": "* ParamSliderRow — Roland editor's wrapper for v3 AcSlider + AcNumberInput."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/s330.ts",
+          "line": 9,
+          "snippet": "import type { SSeriesMidiAdapter } from '@audiocontrol/sampler-devices/roland-s-series';"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/s330.ts",
+          "line": 14,
+          "snippet": "* Roland S-330 sampler configuration."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/s330.ts",
+          "line": 24,
+          "snippet": "manufacturer: 'Roland',"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/s330.ts",
+          "line": 40,
+          "snippet": "basePath: '/roland/s330/editor',"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/s550.ts",
+          "line": 9,
+          "snippet": "import type { SSeriesMidiAdapter } from '@audiocontrol/sampler-devices/roland-s-series';"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/s550.ts",
+          "line": 14,
+          "snippet": "* Roland S-550 sampler configuration."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/s550.ts",
+          "line": 24,
+          "snippet": "manufacturer: 'Roland',"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/s550.ts",
+          "line": 39,
+          "snippet": "basePath: '/roland/s550/editor',"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/types.ts",
+          "line": 12,
+          "snippet": "import type { SSeriesMidiAdapter } from '@audiocontrol/sampler-devices/roland-s-series';"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/configs/types.ts",
+          "line": 162,
+          "snippet": "/** Base path for the editor (e.g., /roland/s330/editor) */"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/context/DeviceConfigContext.tsx",
+          "line": 5,
+          "snippet": "* The configuration is determined by the URL path (e.g., /roland/s330/editor)."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/context/DeviceConfigContext.tsx",
+          "line": 35,
+          "snippet": "* <Route path=\"/roland/:device/editor/*\" element={"
+        }
+      ]
+    },
+    {
+      "term": "yaml",
+      "occurrences": [
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx",
+          "line": 153,
+          "snippet": "const yaml = serializeDiskProgram(program, fileData);"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx",
+          "line": 154,
+          "snippet": "await saveProgramToLibrary(libraryRoot, name, yaml);"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx",
+          "line": 180,
+          "snippet": "const yaml = ["
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx",
+          "line": 188,
+          "snippet": "await saveProgramToLibrary(libraryRoot, name, yaml);"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx",
+          "line": 217,
+          "snippet": "yaml: commonSample as SampleSavePayload['yaml'],"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx",
+          "line": 227,
+          "snippet": "const { stringify: stringifyYaml } = await import('yaml');"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx",
+          "line": 260,
+          "snippet": "await writeFile(samplesDir, `${sampleName.trim()}.yaml`, sampleYaml);"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx",
+          "line": 273,
+          "snippet": "await writeFile(programDir, 'program.yaml', programYaml);"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx",
+          "line": 379,
+          "snippet": "const { stringify: stringifyYaml } = await import('yaml');"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx",
+          "line": 414,
+          "snippet": "await writeFile(samplesDir, `${sampleName.trim()}.yaml`, stringifyYaml(commonSample, { indent: 2 }));"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx",
+          "line": 426,
+          "snippet": "await writeFile(programDir, 'program.yaml', stringifyYaml(commonProgram, { indent: 2 }));"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 5,
+          "snippet": "* Supports both legacy samples (sample.yaml with slices/drumKit)"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 6,
+          "snippet": "* and programs (program.yaml with zones)."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 8,
+          "snippet": "* For samples: loads slices and drumKit metadata, saves back to sample.yaml."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 9,
+          "snippet": "* For programs: loads zones as pads, saves back to program.yaml."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 13,
+          "snippet": "import { stringify as stringifyYaml } from 'yaml';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 81,
+          "snippet": "const yaml = await loadSampleMeta(libraryRoot, kitName, kitPath);"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 82,
+          "snippet": "const dk = yaml.drumKit;"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 88,
+          "snippet": "const slices = yaml.slices ?? [];"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 95,
+          "snippet": "return { settings, pads, sampleRate: yaml.sampleRate };"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 102,
+          "snippet": "const yaml = await loadProgramMeta(libraryRoot, kitName);"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 109,
+          "snippet": "const pads = yaml.zones.map((z, i) => ({"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 131,
+          "snippet": "const yaml = await loadSampleMeta(libraryRoot, kitName, kitPath);"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 133,
+          "snippet": "yaml.drumKit = {"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 139,
+          "snippet": "if (yaml.slices) {"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 140,
+          "snippet": "yaml.slices = yaml.slices.map((s, i) => ({"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 146,
+          "snippet": "yaml.modifiedAt = new Date().toISOString();"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 152,
+          "snippet": "const yamlHandle = await sampleDir.getFileHandle('sample.yaml', { create: true });"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 154,
+          "snippet": "await writable.write(stringifyYaml(yaml, { indent: 2, lineWidth: 120 }));"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 163,
+          "snippet": "const yaml = await loadProgramMeta(libraryRoot, kitName);"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 165,
+          "snippet": "yaml.zones = yaml.zones.map((z, i) => ({"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 170,
+          "snippet": "yaml.modifiedAt = new Date().toISOString();"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 175,
+          "snippet": "const yamlHandle = await programDir.getFileHandle('program.yaml', { create: true });"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx",
+          "line": 177,
+          "snippet": "await writable.write(stringifyYaml(yaml, { indent: 2, lineWidth: 120 }));"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ImportProgramDialog.tsx",
+          "line": 5,
+          "snippet": "* 1. Load program YAML from library"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ImportProgramDialog.tsx",
+          "line": 105,
+          "snippet": "// Step 1: Load and parse program YAML"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ImportProgramDialog.tsx",
+          "line": 106,
+          "snippet": "const yaml = await loadProgramFromLibrary(libraryRoot, programDirName);"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ImportProgramDialog.tsx",
+          "line": 107,
+          "snippet": "const program = deserializeProgram(yaml);"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/LibraryToDiskDialog.tsx",
+          "line": 94,
+          "snippet": "const yaml = await loadProgramFromLibrary(libraryRoot, programDirName);"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/LibraryToDiskDialog.tsx",
+          "line": 95,
+          "snippet": "const format = detectProgramFormat(yaml);"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/LibraryToDiskDialog.tsx",
+          "line": 99,
+          "snippet": "const parsed = deserializeDiskProgram(yaml);"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/LibraryToDiskDialog.tsx",
+          "line": 156,
+          "snippet": "const yaml = await loadProgramFromLibrary(libraryRoot, programDirName);"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/LibraryToDiskDialog.tsx",
+          "line": 157,
+          "snippet": "const format = detectProgramFormat(yaml);"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/LibraryToDiskDialog.tsx",
+          "line": 163,
+          "snippet": "const parsed = deserializeDiskProgram(yaml);"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ReceiveSampleDialog.tsx",
+          "line": 50,
+          "snippet": "const yaml: SampleYaml = {"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ReceiveSampleDialog.tsx",
+          "line": 60,
+          "snippet": "yaml.loopMode = loopModeMap[result.header.loopType];"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ReceiveSampleDialog.tsx",
+          "line": 61,
+          "snippet": "yaml.loopStart = result.header.loopStart;"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ReceiveSampleDialog.tsx",
+          "line": 62,
+          "snippet": "yaml.loopEnd = result.header.loopEnd;"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ReceiveSampleDialog.tsx",
+          "line": 65,
+          "snippet": "return yaml;"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ReceiveSampleDialog.tsx",
+          "line": 160,
+          "snippet": "const yaml = makeSampleYaml(trimmedName, sampleRate, result);"
+        }
+      ]
+    },
+    {
+      "term": "audit",
+      "occurrences": [
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/BatchExportDrawer.tsx",
+          "line": 163,
+          "snippet": "*  active surface. AUDIT-20260521-02. */"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/DestinationEyebrow.tsx",
+          "line": 31,
+          "snippet": "*  Uppercased at render. AUDIT-20260521-02 contract. */"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 152,
+          "snippet": "// OS-standard file-manager idiom (caught by AUDIT-20260521-01)."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx",
+          "line": 170,
+          "snippet": "*  active surface. AUDIT-20260521-02. */"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx",
+          "line": 163,
+          "snippet": "*  whichever Roland surface the editor is mounted under. AUDIT-20260521-02. */"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/PatchesPage.tsx",
+          "line": 91,
+          "snippet": "// Phase 9 Task 4 carry-over (audit finding 5): use the imperative"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/_harness/url-params.ts",
+          "line": 7,
+          "snippet": "* audit) is met the moment the second consumer arrives — that's now."
+        }
+      ]
+    },
+    {
+      "term": "editor-core",
+      "occurrences": [
+        {
+          "file": "modules/akai-s3k-editor/src/components/keygroups/KeygroupList.tsx",
+          "line": 2,
+          "snippet": "import { DeleteIcon, RefreshIcon, CloneIcon } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/layout/ConnectionDrawer.tsx",
+          "line": 2,
+          "snippet": "import { SlideDrawer, MidiConnectionPage, useHomePageStore, type MidiConnectionPageConfig } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/layout/Layout.tsx",
+          "line": 7,
+          "snippet": "} from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 13,
+          "snippet": "import { LIBRARY_ITEM_MIME, LoadingBar, ContextMenu, ConfirmDialog, DeleteIcon, CloneIcon, type LibraryDragPayload, type ContextMenuAction } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx",
+          "line": 21,
+          "snippet": "import { ContextMenu, ChevronIcon, LoadingBar, SampleIcon, ProgramIcon, type ContextMenuAction } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx",
+          "line": 29,
+          "snippet": "import { SteppedProgressDrawer, type ProgressStep, type OperationProgress, formatBytes } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ExportProgramDialog.tsx",
+          "line": 14,
+          "snippet": "import { SteppedProgressDrawer, type ProgressStep, formatBytes } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ImportDrumKitDialog.tsx",
+          "line": 15,
+          "snippet": "import { SteppedProgressDrawer, type ProgressStep } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ImportInstrumentDialog.tsx",
+          "line": 23,
+          "snippet": "import { SteppedProgressDrawer, type ProgressStep, formatBytes } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ImportProgramDialog.tsx",
+          "line": 17,
+          "snippet": "import { SteppedProgressDrawer, type ProgressStep } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/LibraryDetailPanel.tsx",
+          "line": 15,
+          "snippet": "import type { TreeNode } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/ReceiveSampleDialog.tsx",
+          "line": 16,
+          "snippet": "import { SteppedProgressDrawer, type ProgressStep, formatBytes } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/S3kItemPreviewPanel.tsx",
+          "line": 21,
+          "snippet": "import type { ItemSelection, PreviewContext } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/S3kKitOutputConfig.tsx",
+          "line": 10,
+          "snippet": "import type { BaseKitConfig, KitOutputConfigProps } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/SendSampleDialog.tsx",
+          "line": 13,
+          "snippet": "import { SteppedProgressDrawer, type ProgressStep, formatBytes } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/programs/KeygroupSummary.tsx",
+          "line": 2,
+          "snippet": "import { DeleteIcon } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/programs/ProgramList.tsx",
+          "line": 2,
+          "snippet": "import { DeleteIcon, CloneIcon, RefreshIcon } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/samples/SampleList.tsx",
+          "line": 2,
+          "snippet": "import { DeleteIcon, RefreshIcon, CloneIcon } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/samples/SampleTransferPanel.tsx",
+          "line": 8,
+          "snippet": "import { downloadBlob } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/ui/Dialog.tsx",
+          "line": 2,
+          "snippet": "* Re-export the shared Dialog primitive from editor-core."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/ui/Dialog.tsx",
+          "line": 5,
+          "snippet": "* prevention) is implemented in the editor-core Dialog. S3K consumers"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/ui/Dialog.tsx",
+          "line": 15,
+          "snippet": "} from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/components/ui/SdsTransferProgress.tsx",
+          "line": 11,
+          "snippet": "import { formatBytes } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/hooks/useEditorDialogs.ts",
+          "line": 20,
+          "snippet": "} from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/hooks/useEditorDialogs.ts",
+          "line": 39,
+          "snippet": "} from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/hooks/useLibraryData.ts",
+          "line": 5,
+          "snippet": "* the results into editor-core TreeNodes for display in the library browser."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/hooks/useLibraryPrograms.ts",
+          "line": 13,
+          "snippet": "import type { TreeNode } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/hooks/useProgramTransfer.ts",
+          "line": 10,
+          "snippet": "import { SAVE_DIALOG_CLOSED, type SaveToLibraryDialogState } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/hooks/usePromotionTransfer.ts",
+          "line": 10,
+          "snippet": "import type { ErrorReporter } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/hooks/useS3kLibraryStrategy.ts",
+          "line": 6,
+          "snippet": "* - Shared transfer action handler from editor-core"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/hooks/useS3kLibraryStrategy.ts",
+          "line": 15,
+          "snippet": "} from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/hooks/useS3kSelectionHandlers.ts",
+          "line": 10,
+          "snippet": "import type { ItemSelection } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/hooks/useS3kTransferCallbacks.ts",
+          "line": 15,
+          "snippet": "import type { SendToDeviceDialogState, SaveToLibraryDialogState } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/hooks/useS3kTransferCallbacks.ts",
+          "line": 16,
+          "snippet": "export type { SendToDeviceDialogState, SaveToLibraryDialogState } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/drumkit-import.ts",
+          "line": 22,
+          "snippet": "import type { OperationProgress } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/library-tree.ts",
+          "line": 2,
+          "snippet": "* Converts LibraryTreeNode (from sampler-library) to TreeNode (from editor-core)."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/library-tree.ts",
+          "line": 5,
+          "snippet": "* editor-core's UI components expect TreeNode. This module bridges the two."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/library-tree.ts",
+          "line": 8,
+          "snippet": "import type { TreeNode } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/library-tree.ts",
+          "line": 11,
+          "snippet": "/** Convert a LibraryTreeNode to an editor-core TreeNode, recursively. */"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/midi-note-parser.ts",
+          "line": 4,
+          "snippet": "* Re-exports canonical implementations from @audiocontrol/editor-core."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/midi-note-parser.ts",
+          "line": 11,
+          "snippet": "export { parseMidiNote } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/midi-note-parser.ts",
+          "line": 12,
+          "snippet": "export { midiNoteToName as formatMidiNote } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/program-import.ts",
+          "line": 23,
+          "snippet": "import type { OperationProgress } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/utils.ts",
+          "line": 1,
+          "snippet": "export { cn } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/wav-reader.ts",
+          "line": 1,
+          "snippet": "import type { WavFileMetadata } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/main.tsx",
+          "line": 6,
+          "snippet": "import { initLogCapture } from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/main.tsx",
+          "line": 7,
+          "snippet": "import '@audiocontrol/editor-core/styles.css';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/main.tsx",
+          "line": 12,
+          "snippet": "// Set device theme for editor-core design tokens"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/pages/LibraryPage.tsx",
+          "line": 35,
+          "snippet": "} from '@audiocontrol/editor-core';"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/pages/LibraryPage.tsx",
+          "line": 56,
+          "snippet": "} from '@audiocontrol/editor-core';"
+        }
+      ]
+    },
+    {
+      "term": "scope",
+      "occurrences": [
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useToneSampleExport.ts",
+          "line": 29,
+          "snippet": "* the page already has in scope."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/_harness/AcRangeBarHarness.tsx",
+          "line": 36,
+          "snippet": "* scope here; a separate harness or `?variant=` parameter would be needed."
+        }
+      ]
+    },
+    {
+      "term": "contract",
+      "occurrences": [
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/AcRadioTabs.tsx",
+          "line": 13,
+          "snippet": "* divergence was the TABS constant + aria-label. Contract pinned by"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/BankHeader.tsx",
+          "line": 16,
+          "snippet": "* preserved verbatim. Contract pinned by D-PATCH-LIST-10 +"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/BankHeader.tsx",
+          "line": 43,
+          "snippet": "*  contract: the same button covers both \"load\" and \"reload\""
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/PageTitleRow.tsx",
+          "line": 31,
+          "snippet": "* Contract pinned by D-PATCH-PAGE-TITLE-01 + D-TONE-PAGE-TITLE-01 +"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/SlotInfo.tsx",
+          "line": 14,
+          "snippet": "* are preserved verbatim — the contract is protected by"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/front-panel/FrontPanelButton.tsx",
+          "line": 5,
+          "snippet": "* accessible-name contract (load-bearing for the D-XX-02 / D-XX-03 /"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/front-panel/VirtualFrontPanel.tsx",
+          "line": 22,
+          "snippet": "* Capability contract (load-bearing for"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/DestinationEyebrow.tsx",
+          "line": 15,
+          "snippet": "* + leftField semantics (slot label vs \"N ITEMS\"). Contract preserved"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/DestinationEyebrow.tsx",
+          "line": 31,
+          "snippet": "*  Uppercased at render. AUDIT-20260521-02 contract. */"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/ImportLibraryPatchDialogLoad.ts",
+          "line": 59,
+          "snippet": "* SlideDrawer's step-log renders a failed row (BUG-002 contract)."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/MoveItemDialog.tsx",
+          "line": 72,
+          "snippet": "void _category; // Preserved in props contract for LibraryPage; not used by the shared MoveDialog"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/ui/ToneEnvelopeEditor.tsx",
+          "line": 40,
+          "snippet": "* can synthesize the full tone the device-write contract expects."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useExportDialogLifecycle.ts",
+          "line": 29,
+          "snippet": "* Contract pinned by D-LIB-06/07 (mount), D-LIB-34/35/36 (eyebrow),"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/LibraryPage.tsx",
+          "line": 223,
+          "snippet": "// Tier 3's contract (test/ui/in-context/README.md) forbids the"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/PlayPage.tsx",
+          "line": 324,
+          "snippet": "{/* Parts Grid — fixed-viewport contract: the card claims the"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/_harness/AcEnvelopeTableHarness.tsx",
+          "line": 15,
+          "snippet": "* slider with real pointer events and assert the contract."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/_harness/AcEnvelopeTableHarness.tsx",
+          "line": 17,
+          "snippet": "* This is the \"primitive contract\" harness (Layer 1) — no MIDI, no fixtures,"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/_harness/AcEnvelopeTableHarness.tsx",
+          "line": 87,
+          "snippet": "Drive the segment-1 Time bar with a pointer. The contract spec asserts"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/_harness/AcRangeBarHarness.tsx",
+          "line": 16,
+          "snippet": "* real pointer / keyboard events and assert the contract."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/_harness/AcRangeBarHarness.tsx",
+          "line": 18,
+          "snippet": "* This is the \"primitive contract\" harness (Layer 1) — no MIDI, no fixtures,"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/_harness/AcRangeBarHarness.tsx",
+          "line": 35,
+          "snippet": "* registry). Bipolar / enum interactive contract verification is out of"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/_harness/AcRangeBarHarness.tsx",
+          "line": 81,
+          "snippet": "Linear AcRangeBar. Drive with pointer or keyboard. The contract spec"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/_harness/harness-globals.d.ts",
+          "line": 16,
+          "snippet": "* a contract failure (the harness body must have run before the spec reads)."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/_harness/url-params.ts",
+          "line": 9,
+          "snippet": "* The credibility check (Phase 9R-A.1, issue #392) runs each contract spec"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/library-page-test-hooks.d.ts",
+          "line": 7,
+          "snippet": "* round-trip (forbidden under the Tier 3 contract — see"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/library-page-test-hooks.d.ts",
+          "line": 17,
+          "snippet": "* missing entries as a contract failure (the hook must have been"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/plugins/shared/LibraryDeviceMemoryPanel.tsx",
+          "line": 14,
+          "snippet": "* !state placeholders, which stay in the per-device file. Contract"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/plugins/shared/LibraryPreviewPanelAdapter.tsx",
+          "line": 13,
+          "snippet": "* concrete preview panels. Contract pinned by D-LIB-37 wiring"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/transports/simulatedMidiTransport.ts",
+          "line": 11,
+          "snippet": "* simulated transport mirrors that contract."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/transports/simulatedMidiTransport.ts",
+          "line": 39,
+          "snippet": "* `SimulatedAdapterIntrospection` — the public introspection contract"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/transports/simulatedMidiTransport.ts",
+          "line": 47,
+          "snippet": "* to compile-fail until updated. That's the contract."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/transports/simulatedMidiTransport.ts",
+          "line": 133,
+          "snippet": "// initialize — reuses the same adapter under this contract. If a"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/transports/simulatedMidiTransport.ts",
+          "line": 183,
+          "snippet": "// it was. See `initialize()` above for the lifetime contract:"
+        }
+      ]
+    },
+    {
+      "term": "does",
+      "occurrences": [
+        {
+          "file": "modules/akai-s3k-editor/src/components/library/S3kKitOutputConfig.tsx",
+          "line": 17,
+          "snippet": "* S3kKitConfig is identical to BaseKitConfig — the S3000XL does not"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/hooks/useDiskBrowser.ts",
+          "line": 146,
+          "snippet": "* and file directory blocks. Does NOT read file content."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/program-storage.ts",
+          "line": 53,
+          "snippet": "* Returns null if the directory does not exist."
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/program-storage.ts",
+          "line": 127,
+          "snippet": "throw new Error(`Programs directory does not exist`);"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/program-storage.ts",
+          "line": 227,
+          "snippet": "throw new Error('Programs directory does not exist');"
+        },
+        {
+          "file": "modules/akai-s3k-editor/src/lib/program-storage.ts",
+          "line": 250,
+          "snippet": "if (!programsDir) throw new Error('Programs directory does not exist');"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/common/PageTitleRow.tsx",
+          "line": 54,
+          "snippet": "*  variant. When omitted, the `.ac-page-title-metric` span does not"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/DestinationEyebrow.tsx",
+          "line": 24,
+          "snippet": "*  variant; the component does not. */"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx",
+          "line": 183,
+          "snippet": "// See handleToneClick — ctrl/meta does NOT move the anchor; the"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/components/tones/panels/ToneWavePanel.tsx",
+          "line": 323,
+          "snippet": "of bank X does this tone occupy\" affordance — the"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useLibraryExport.ts",
+          "line": 86,
+          "snippet": "* file download instead). PatchesPage does NOT need this — it gates the"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useLibraryExport.ts",
+          "line": 832,
+          "snippet": "// does NOT set this; partial is a \"complete with warnings\" state"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useToneSampleExport.ts",
+          "line": 72,
+          "snippet": "* `setError`; this function does not reject."
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/hooks/useWaveDataCache.ts",
+          "line": 33,
+          "snippet": "* editor store's `setError`). The cache itself does not own UI error"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/lib/library-sets-save-incremental.ts",
+          "line": 56,
+          "snippet": "* It does NOT use any cached UI state to ensure accuracy even when"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/PatchesPage.tsx",
+          "line": 271,
+          "snippet": "and the document does not scroll as one tall page (see"
+        },
+        {
+          "file": "modules/roland-sxx0-editor/src/pages/TonesPage.tsx",
+          "line": 239,
+          "snippet": "and the document does not scroll as one tall page (see"
+        }
+      ]
+    }
+  ]
+}
