@@ -113,6 +113,33 @@ describe('TreeView', () => {
     expect(html).toContain('ac-tree-disclosure-btn');
   });
 
+  it('disclosure button does not add a second tab stop per folder row', () => {
+    // Regression guard for AUDIT-20260524-01: the disclosure button was
+    // promoted from <span> to <button type="button"> in AUDIT-20260523-02
+    // to fix voice-control / screen-reader semantics, but that also made
+    // it a focusable element. Without tabIndex={-1} every folder row
+    // would contribute TWO tab stops (the role="treeitem" row AND the
+    // nested disclosure button), doubling the tree's tab-stop count AND
+    // stranding keyboard users on the nested button where the row-level
+    // arrow-key handler (handleKeyDown on the treeitem) doesn't fire.
+    // The fix: keep the button semantics (so voice control + SR enumeration
+    // still work) but remove the button from the tab order so the parent
+    // row stays the keyboard anchor.
+    const html = renderToStaticMarkup(<TreeView nodes={sampleTree} />);
+    // Every .ac-tree-disclosure-btn in the rendered output must carry
+    // tabIndex={-1}. React serializes that as tabindex="-1" in the HTML
+    // markup. Match the wrapping button so the assertion is anchored to
+    // the disclosure-btn specifically (not just any tabindex="-1" elsewhere).
+    const disclosureBtnMatches = html.match(
+      /<button[^>]*class="ac-tree-disclosure-btn"[^>]*>/g,
+    );
+    expect(disclosureBtnMatches).not.toBeNull();
+    expect(disclosureBtnMatches!.length).toBeGreaterThan(0);
+    for (const tag of disclosureBtnMatches!) {
+      expect(tag).toMatch(/tabindex="-1"/i);
+    }
+  });
+
   it('renders nested children at depth > 1', () => {
     const deepTree: TreeNode[] = [
       {

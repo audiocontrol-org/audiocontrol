@@ -11,6 +11,90 @@ Canonical grep queue:
 
 ---
 
+## 2026-05-24 Feature review — implementation work so far
+
+Surfaced while reviewing `feature/akai-harmonization` against `origin/main` after the first implementation commits landed in `editor-core` plus the new feature-doc set. Scope reviewed: branch diff from merge-base `57a6dd9fdfe08e93f3813a7d2c221611aa9995d6` through `HEAD` (`0c09c87e` at review time).
+
+### Disclosure-button fix introduces a second tab stop per folder row and strands keyboard users on the nested button
+
+Finding-ID: AUDIT-20260524-01
+Status:     verified-2026-05-24
+Severity:   high
+Surface:    `modules/editor-core/src/components/library/TreeView.tsx`
+
+The accessibility fix that promoted the folder disclosure affordance from a `<span>` to a `<button>` solved pointer target size and button semantics, but it also made every expandable folder row contain two focusable elements: the row itself (`role="treeitem"`, `tabIndex={0}` at `TreeView.tsx:288-290`) and the nested disclosure button (`TreeView.tsx:293-299`).
+
+That breaks the tree's keyboard model in two ways:
+
+1. Tabbing through the tree now lands on both the row and the disclosure button for every folder, doubling the tab-stop count through the library.
+2. Once focus lands on the nested button, the row-level `handleKeyDown` logic is no longer in play. Arrow-key tree navigation and row-level expand/collapse affordances are attached to the parent row, not the button, so the user can get "stuck" on the nested button and lose the expected tree navigation behavior until they tab away again.
+
+This is a regression introduced by the new fix, not a pre-existing condition of the tree: the previous `<span>` shape left only the row itself in the focus order.
+
+**Evidence:**
+
+- Parent row remains tabbable: `modules/editor-core/src/components/library/TreeView.tsx:288-290`
+- New nested button is focusable by default and has no compensating `tabIndex={-1}` or keyboard forwarding: `modules/editor-core/src/components/library/TreeView.tsx:293-299`
+- Existing tests only assert that the disclosure class renders (`modules/editor-core/src/components/library/TreeView.test.tsx:107-113`); there is no keyboard-navigation test covering focus order or arrow-key behavior after the change.
+
+**Expected:** one keyboard focus target per tree row, with the disclosure affordance exposed semantically without adding a competing tab stop inside the composite tree item.
+
+**Actual:** every expandable folder row now contributes a second focusable control with no tree-key handling of its own.
+
+**Fix guidance:** keep the button semantics, but remove it from the tab order (`tabIndex={-1}`) and let the parent `treeitem` remain the keyboard anchor, or move the tree semantics onto the button itself and stop making the wrapper row separately tabbable. Either route needs a regression test that tabs through the tree and verifies folder rows do not create extra tab stops.
+
+**Fix landed:** this session, 2026-05-24. `modules/editor-core/src/components/library/TreeView.tsx:292-309` got `tabIndex={-1}` on the disclosure button. The parent row's `role="treeitem"` + `tabIndex={0}` stays the keyboard anchor; arrow-key tree navigation continues to fire from the row's `handleKeyDown`. The button keeps its `<button type="button">` semantics + `aria-label` + `aria-expanded` so screen readers and voice-control element-enumeration still address it for pointer activation (closes-paired with AUDIT-20260523-02). Pointer-click + voice-control activation route through the existing `e.stopPropagation()` onClick. The 24×24 hit target from AUDIT-20260523-01 also stays intact. **Regression test added** at `modules/editor-core/src/components/library/TreeView.test.tsx`: the new test "disclosure button does not add a second tab stop per folder row" asserts every `<button class="ac-tree-disclosure-btn">` in the rendered HTML carries `tabindex="-1"`. A future edit that drops the attribute will fail the test. `pnpm vitest run src/components/library/TreeView.test.tsx`: 25 tests pass (24 previously + 1 new).
+
+### Akai light-theme token block leaves action-button colors pinned to white-on-dark assumptions
+
+Finding-ID: AUDIT-20260524-02
+Status:     open
+Severity:   medium
+Surface:    `modules/editor-core/src/design/layout-primitives.css`, `modules/editor-core/src/design/primitives.css`, `modules/editor-core/src/design/library.css`, `modules/akai-s3k-editor/src/main.tsx`
+
+Phase 2's new Akai dialect token block flips the S3000XL surface to a light cream/champagne theme and is live in production because the Akai app now sets `document.documentElement.dataset.editor = 's3000xl'` in `modules/akai-s3k-editor/src/main.tsx:12-13`. But the shared action-button color tokens still live only in the global `:root` block in `layout-primitives.css:71-77`, where they remain semi-transparent white values tuned for the dark Roland surfaces.
+
+Those tokens drive both generic list-row actions (`primitives.css:446-475`, `.ac-list-action-btn`) and tree-row destructive actions (`library.css:198-232`, `.ac-tree-delete-btn`). On the new light Akai panels (`tokens.css:240-245`), the default action state is therefore still `rgba(255, 255, 255, 0.4)` on a pale background. That is a low-contrast hover affordance at exactly the moment the branch is trying to establish the light Akai dialect as production truth.
+
+**Evidence:**
+
+- Light Akai surfaces are active: `modules/akai-s3k-editor/src/main.tsx:12-13`, `modules/editor-core/src/design/tokens.css:231-269`
+- Action tokens remain white-on-dark globals with no `:root[data-editor='s3000xl']` override: `modules/editor-core/src/design/layout-primitives.css:71-77`
+- Production consumers of those tokens:
+  - `.ac-list-action-btn`: `modules/editor-core/src/design/primitives.css:446-475`
+  - `.ac-tree-delete-btn`: `modules/editor-core/src/design/library.css:198-232`
+
+**Expected:** the Akai dialect overrides `--ac-action-color`, `--ac-action-hover`, and the selected/danger variants so action icons remain legible on the light S3000XL surfaces.
+
+**Actual:** Akai now opts into a light background while action affordances still assume a dark background.
+
+**Fix guidance:** move the `--ac-action-*` tokens into the per-editor token layer and add an S3000XL-specific override set. Pair the fix with a visual or computed-style test on an Akai list/tree row so a future palette migration cannot silently regress action contrast again.
+
+### Phase 1 audit advanced past its own harness/screenshot prerequisites, leaving most Akai surfaces without a rerunnable visual test bed
+
+Finding-ID: AUDIT-20260524-03
+Status:     open
+Severity:   medium
+Surface:    `docs/1.0/001-IN-PROGRESS/akai-harmonization/workplan.md`, `modules/akai-s3k-editor/src/pages/`
+
+The branch marks Phase 1 task 1.4 complete and has already produced `harmonization-spec.md` plus the mockup set, but the workplan still leaves the prerequisite harness/screenshot tasks open: 1.1 (inventory + add harness routes where missing) and 1.3 (capture committed screenshot baseline) remain unchecked in `workplan.md:98-100`.
+
+The codebase matches that gap. Under `modules/akai-s3k-editor/src/pages/`, the only `Test*Page` route currently present is `TestKeygroupsPage.tsx`; there is no corresponding harness page for Programs, Samples, or Library. That means the harmonization work has started without the promised rerunnable browser-test surfaces for three of the four core Akai pages, and without the screenshot baseline the workplan says Phase 2 should diff against.
+
+**Evidence:**
+
+- Workplan prerequisite tasks still open: `docs/1.0/001-IN-PROGRESS/akai-harmonization/workplan.md:98-100`
+- Only one Akai harness page exists: `modules/akai-s3k-editor/src/pages/TestKeygroupsPage.tsx`
+- No `TestProgramsPage`, `TestSamplesPage`, or `TestLibraryPage` exists under `modules/akai-s3k-editor/src/pages/`
+
+**Expected:** before or alongside the Phase 1 audit, each audited Akai page has a harness route or equivalent rerunnable UI surface, and the screenshot baseline exists in-repo so Phase 2 changes can be diffed against something repeatable.
+
+**Actual:** the branch has mockup HTML and a spec, but most real Akai pages still lack the harness coverage the workplan explicitly required before the audit proceeded.
+
+**Fix guidance:** finish Phase 1's gating work before more Phase 2 migration lands: add the missing Akai harness routes, capture the baseline screenshots, then update the workplan so the audit's evidence trail matches what the feature says it depends on.
+
+---
+
 ## 2026-05-23 Phase 1 mockup audit — canonical chrome accessibility
 
 Surfaced while reviewing the canonical `.ac-tree-disclosure-btn` + `AcChevron` chrome that the akai library mockup transposes verbatim. Both findings apply to the canonical editor-core implementation — the mockup faithfully replicates the issues because the dialect contract forbids per-editor primitive forks. Fix lives in `editor-core`; akai-harmonization is the surface that surfaced it.

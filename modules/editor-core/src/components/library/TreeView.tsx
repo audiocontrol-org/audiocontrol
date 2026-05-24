@@ -290,9 +290,19 @@ function TreeNodeRow({
         aria-expanded={(isDirectory || hasChildren) ? isExpanded : undefined}
       >
         {(isDirectory || hasChildren) && (
+          // tabIndex={-1} closes AUDIT-20260524-01: the row itself
+          // (role="treeitem", tabIndex={0} on the parent <div>) remains
+          // the keyboard anchor for arrow-key tree navigation. The
+          // <button> keeps its semantics for screen readers + voice-control
+          // element-enumeration (closes AUDIT-20260523-02) and has the
+          // 24×24 hit target (closes AUDIT-20260523-01), but does not
+          // add a second tab stop per folder row. Pointer + voice-control
+          // activation still works; keyboard users stay on the row where
+          // the tree-key handler lives.
           <button
             type="button"
             className="ac-tree-disclosure-btn"
+            tabIndex={-1}
             aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${node.name}`}
             aria-expanded={isExpanded}
             onClick={(e) => { e.stopPropagation(); onToggleExpand(node.id); }}
