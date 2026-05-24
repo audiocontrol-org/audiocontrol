@@ -262,9 +262,17 @@
  * ============================================================ */
 
 :root[data-editor="s3000xl"] .ac-envelope-graph {
-  background: #f1e7c8;
-  border-color: var(--ac-color-border-strong);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) inset;
+  /* Matches the device LCD: deep blue STN backlight, top-to-bottom
+     gradient adds a faint depth without becoming a phosphor metaphor. */
+  background: linear-gradient(
+    180deg,
+    var(--ac-lcd-bg) 0%,
+    var(--ac-lcd-bg-edge) 100%
+  );
+  border: 2px solid var(--ac-lcd-bezel);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.35),
+    inset 0 1px 8px rgba(0, 0, 0, 0.4);
 }
 
 :root[data-editor="s3000xl"] .ac-envelope-graph::after {
@@ -273,57 +281,66 @@
 }
 
 :root[data-editor="s3000xl"] .ac-envelope-graph__label {
-  color: var(--ac-lcd-bg-edge);
+  color: var(--ac-lcd-text);
   text-shadow: none;
 }
 
 :root[data-editor="s3000xl"] .ac-envelope-y-axis,
 :root[data-editor="s3000xl"] .ac-envelope-axis-tick {
-  color: color-mix(in srgb, var(--ac-lcd-bg-edge) 75%, transparent);
+  color: var(--ac-lcd-text-dim);
 }
 
 :root[data-editor="s3000xl"] .ac-envelope-axis-tick--active {
-  color: var(--ac-akai-red);
+  color: var(--ac-lcd-text);
+  font-weight: 600;
   text-shadow: none;
 }
 
 :root[data-editor="s3000xl"] .ac-envelope-line {
-  stroke: var(--ac-lcd-bg-edge);
+  /* White stroke on blue LCD field. No drop-shadow glow — the canonical
+     amber-glow filter mixes wrong on the blue background. */
+  stroke: var(--ac-lcd-text);
   filter: none;
 }
 
 :root[data-editor="s3000xl"] .ac-envelope-fill {
-  fill: var(--ac-lcd-bg);
-  fill-opacity: 0.15;
+  fill: var(--ac-lcd-text);
+  fill-opacity: 0.18;
 }
 
 :root[data-editor="s3000xl"] .ac-envelope-grid-line,
 :root[data-editor="s3000xl"] .ac-envelope-grid-line--baseline {
-  stroke: color-mix(in srgb, var(--ac-lcd-bg-edge) 28%, transparent);
+  /* Faint white grid lines on the blue field. */
+  stroke: rgba(234, 242, 248, 0.22);
 }
 
 :root[data-editor="s3000xl"] .ac-envelope-active-guide {
-  stroke: var(--ac-akai-red);
-  opacity: 0.65;
+  /* Dashed white guide for the active-segment column. */
+  stroke: var(--ac-lcd-text);
+  opacity: 0.55;
 }
 
 :root[data-editor="s3000xl"] .ac-envelope-point {
-  background: #f1e7c8;
+  /* White-filled circles on the blue field, with a subtle outer ring. */
+  background: var(--ac-lcd-text);
   border-color: var(--ac-lcd-bg-edge);
-  box-shadow: 0 1px 2px rgba(10, 30, 62, 0.2);
+  box-shadow: 0 0 0 2px var(--ac-lcd-bg);
 }
 
 :root[data-editor="s3000xl"] .ac-envelope-point--active {
-  background: var(--ac-akai-red);
-  border-color: var(--ac-color-text-primary);
+  /* Active point: larger white dot with a heavier blue ring + glow.
+     No red anywhere — the active cue is size + ring + glow, not hue. */
+  background: var(--ac-lcd-text);
+  border-color: var(--ac-lcd-text);
   box-shadow:
-    0 0 8px var(--ac-akai-red-glow),
-    0 0 2px var(--ac-akai-red) inset;
+    0 0 0 2px var(--ac-lcd-bg-edge),
+    0 0 10px rgba(234, 242, 248, 0.5);
 }
 
 :root[data-editor="s3000xl"] .ac-envelope-sustain-label {
-  color: var(--ac-akai-red);
+  color: var(--ac-lcd-text);
   text-shadow: none;
+  font-weight: 600;
 }
 
 #ap-common:checked    ~ .ac-panels > [data-tab="ap-common"],
