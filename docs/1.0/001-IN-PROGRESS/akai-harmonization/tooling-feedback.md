@@ -16,6 +16,8 @@ Severity: **high** (blocks work or hides bugs) · **medium** (slows work meaning
 
 ## Status summary
 
+This log tracks **scope-discovery + duplication tooling** friction only. Entries that turned out to be implementation work in other modules were re-scoped into [`workplan.md`](./workplan.md) on 2026-05-24 (see "Re-scoped out of this log" below).
+
 | TF | Status | Closing commit |
 |---|---|---|
 | TF-001, TF-002 | Addressed | `fddbad06` (PR #462) — primitive-relocation awareness |
@@ -24,11 +26,23 @@ Severity: **high** (blocks work or hides bugs) · **medium** (slows work meaning
 | TF-005 | Addressed | `e294a29a` (PR #462) — scope-inventory PRD-scoped module pruning |
 | TF-006 | Addressed | `4278986f` (PR #462) — synthesizer References warning gains paste-ready skeleton |
 | TF-010 | Addressed | `837c9336` (PR #462) — check-adopters summary moves to last line + --quiet flag |
-| TF-007, TF-008, TF-009, TF-011, TF-012, TF-013 | Open | — |
-
-Of the 13 entries logged during Phase 2, 7 are now closed by the PR #462 burndown landing on `origin/main` 2026-05-24. The remaining 6 are operator-driven (test triage, file-cap refactor, a11y harness, package-exports automation, CSS preprocessor work, clone-detector regen safety) and not yet scheduled.
+| TF-013 | Open (genuine tooling) | — |
 
 A parallel improvement landed in `676dd164` on this branch — the `imports:` field on adopter-manifests entries lets the gate distinguish "imports the canonical primitive" from "imports some other symbol from the same package," and recognizes transitive adoption via wrapping primitives (e.g., SteppedProgressDrawer wraps SlideDrawer; importing the wrapper now counts). Not a TF entry of its own — it surfaced as a finding during the SlideDrawer adoption work and was fixed in the same commit pair.
+
+### Re-scoped out of this log
+
+Originally logged here but re-classified as implementation work (not scope-discovery tooling):
+
+| Previous TF | What it actually is | New home |
+|---|---|---|
+| TF-007 | Editor-core test bug (7 pre-existing failures in `PluginLibraryBrowser` / `AcEnvelope` / `MoveDialog`) | [`workplan.md`](./workplan.md) Phase 0 bug-triage row `BUG-EC-001` |
+| TF-008 | Roland-sxx0-editor file-cap refactor (`_shared.css` 1856 lines) | [`workplan.md`](./workplan.md) Phase 2 task 2.8 |
+| TF-009 | Editor-core a11y keyboard-navigation test harness gap | [`workplan.md`](./workplan.md) Phase 2 task 2.7 |
+| TF-011 | Editor-core `package.json exports:` workflow (or small gate) | [`workplan.md`](./workplan.md) Phase 2 task 2.9 |
+| TF-012 | CSS tab-activation architecture (N-coupled selector lists) | [`workplan.md`](./workplan.md) Phase 2 task 2.10 |
+
+Keeping THIS log focused on `tools/scope-discovery/` + `docs/scope-discovery/` friction so the tools team's burndown signal stays clean.
 
 ---
 
@@ -116,36 +130,6 @@ Each failure required a separate fix-and-retry cycle. Total: 3 round-trips to la
 
 ---
 
-## TF-007 · MISC · low · Editor-core has 7 pre-existing baseline-flaky tests that pollute every test run
-
-**Repro:** `pnpm --filter @audiocontrol/editor-core test` ends with `Test Files 3 failed | 29 passed (32) · Tests 7 failed | 286 passed (293)` on a clean baseline. Failures live in `PluginLibraryBrowser.test.tsx` (2), `AcEnvelope.test.tsx` (1), `MoveDialog.test.tsx` (4) and are unrelated to current branch work — verified by stash + re-run. They make it impossible to use `pnpm --filter @audiocontrol/editor-core test` as a regression gate without manually correlating failures against the baseline.
-
-**Workaround used:** ran the test, noted the failure count matched baseline, proceeded.
-
-**Suggested fix:** triage + either fix or `.skip` the 7 baseline-flaky tests with `// TODO: ...` notes naming the underlying issue. A green editor-core test suite is more useful than a partially-green one with the same 7 always-failing entries.
-
----
-
-## TF-008 · MISC · medium · roland-sxx0-editor's `_shared.css` is 1856 lines (well over the 300-500 cap)
-
-**Repro:** The file pre-existed at ~2014 lines; the PageTitleRow promotion removed 158 lines (the `.ac-page-title-*` block now lives in editor-core) leaving 1856. Still way over the per-file 500-line cap mentioned in CLAUDE.md.
-
-**Workaround used:** noted in the promotion commit message; not in scope for this commit.
-
-**Suggested fix:** systematic per-section extraction pass — split `_shared.css` into role-named modules (e.g., `detail-pane-primitives.css`, `tab-primitives.css`, `device-memory-primitives.css`, `preview-pane-primitives.css`). Each Phase 2 primitive promotion to editor-core can take a chunk with it; the residual roland-specific bits stay in `_shared.css` until it's under the cap.
-
----
-
-## TF-009 · A · medium · No automated regression test surfaces UI-accessibility regressions like the AUDIT-20260524-01 tab-stop bug
-
-**Repro:** When I closed AUDIT-20260523-02 (span → button on TreeView's disclosure-btn), the change introduced a second tab stop per folder row. No existing test failed. The regression was caught by the next audit pass (AUDIT-20260524-01), days later.
-
-**Workaround used:** added a vitest test asserting `<button class="ac-tree-disclosure-btn">` carries `tabindex="-1"` — but that's narrow (it only catches MY exact pattern, not the general class of "interactive child of role='treeitem' becomes focusable").
-
-**Suggested fix:** a Playwright spec (or vitest-with-jsdom + @testing-library/user-event) that exercises canonical components for keyboard-navigation invariants: "tabbing through a TreeView with N folder rows produces N tab stops, not 2N". Could be a generic editor-core test that grows with the primitive surface. Pairs with WCAG-conformance checks (target-size, ARIA-roles) — same harness.
-
----
-
 ## TF-010 · GATE · low · `make check-adopters` output is verbose; the relevant findings get lost in tracked-holdout noise
 
 **Repro:** `make check-adopters` after a clean state prints `adopter-manifests: 0 holdouts across 9 manifest(s); 9 tracked holdout(s) reported separately.` then several KB of per-manifest output including all tracked holdouts (the 9 SlideDrawer cross-editor entries that are pre-existing). When checking gate state during a commit, the operator has to scroll past unrelated output to find the actual finding count.
@@ -155,30 +139,6 @@ Each failure required a separate fix-and-retry cycle. Total: 3 round-trips to la
 **Suggested fix:** the summary line should be the LAST line of output, not the middle. Or a `--quiet` flag that prints only the summary unless there are non-tracked findings. Or color-code: tracked holdouts in muted gray, real findings in red.
 
 **Addressed by:** `837c9336` (fix(scope-discovery-protocol): check-adopters summary moves to last line + --quiet flag, PR #462). Both fixes shipped: the summary line is now always the last non-empty line of stdout, AND `make check-adopters QUIET=1` (or `--quiet` on the CLI) suppresses per-manifest detail when there are zero real holdouts. The `--quiet` mode is automatically overridden when real holdouts are present so the operator never silently misses a finding. Paired adversarial scenarios in `tools/scope-discovery/adopter-manifests.summary-ordering-scenarios.ts` (4 scenarios). Verified locally: my post-merge `make check-adopters` invocation showed the summary cleanly at the tail.
-
----
-
-## TF-011 · MISC · low · package.json `exports` needs manual updates when adding canonical CSS files
-
-**Repro:** Promoting PageTitleRow required creating `modules/editor-core/src/design/page-title-primitives.css`. To make it consumable by external packages, `modules/editor-core/package.json` needed `"./page-title-primitives.css"` added to the `exports:` block. The sub-agent handled this correctly, but it's an extra step that's easy to miss.
-
-**Workaround used:** verified package.json got updated.
-
-**Suggested fix:** a build-time generator that walks `modules/editor-core/src/design/*.css` and emits the `exports:` block automatically. Or a pre-commit gate that grep-asserts every CSS file in `src/design/` has a corresponding `exports:` entry.
-
----
-
-## TF-012 · MISC · medium · CSS tab-activation pattern requires N coupled selector lists; dropping one is silent + visually subtle
-
-**Repro:** The canonical radio-driven tab chrome in `_shared.css` requires every tab-ID to appear in FOUR coupled selector lists: lit-tab fill (`:checked ~ .ac-tab-strip [for="..."]`), tab underline (`...::after`), panel show (`:checked ~ .ac-panels > [data-tab="..."]`), and reduced-motion (same selectors inside `@media (prefers-reduced-motion: reduce)`). During the d5d99516 akai-dialect.css token refactor, I accidentally dropped the third list (panel-show) when rewriting the file. The first two lists still functioned (active tab gets the accent fill + glow underline), and `.ac-panel { display: none }` got overridden somewhere else (specificity accident?), so the visual effect was subtle — the wrong panel might stay visible or the active panel might also display, depending on cascade order. Easy to miss in a quick screenshot review.
-
-**Workaround used:** restored the missing selector list when lifting the akai tab registrations into `_shared.css`.
-
-**Suggested fix:** the canonical chrome's authoring pattern would benefit from a build-time check or a single source-of-truth construct that fans out to all N lists. Two shapes:
-- A CSS preprocessor / postcss plugin that takes `@tab-group(ap-common, ap-midi, ap-effects, ap-output)` and expands to the four selector lists.
-- A JSON registry (e.g., `docs/scope-discovery/tab-groups.yaml`) listing every editor's tab IDs; a build-time script generates the four CSS selector blocks. Pre-commit gate fails if any tab ID appears in `.tsx`/`.html` as `id="<x>"` but not in the registry.
-
-Either shape would make dropping one list structurally impossible: a missing entry would either fail the build or fail a gate, not silently break panel-switching.
 
 ---
 
