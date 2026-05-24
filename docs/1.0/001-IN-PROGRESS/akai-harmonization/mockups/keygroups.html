@@ -6,21 +6,32 @@
   <title>Akai S3000XL — Keygroups · Mockup</title>
   <link rel="stylesheet" href="./akai-dialect.css" />
   <style>
-    /* Page-local — zone overview band sits above the app-shell. */
+    /*
+     * Zone overview band — rendered as an inset turquoise LCD window
+     * with dark-navy zone outlines. Cream chassis bezel surrounds the
+     * LCD; tick labels live outside the LCD on the cream so they
+     * read at the chassis contrast level.
+     *
+     * The selected zone fills with AKAI red and white text — exactly
+     * mirroring the way an active mode-button on the front panel
+     * lights up red.
+     */
     .kg__overview {
-      border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
-      border-radius: var(--ac-radius-sm);
-      background: color-mix(in srgb, var(--ac-color-surface-canvas) 90%, #000);
-      padding: var(--ac-space-3) var(--ac-space-3) var(--ac-space-2);
+      border: 1px solid var(--ac-color-border-subtle);
+      border-radius: 2px;
+      background: var(--ac-color-surface-panel);
+      padding: var(--ac-space-3);
       display: flex;
       flex-direction: column;
       gap: var(--ac-space-2);
+      box-shadow: 0 1px 0 rgba(255,255,255,0.3) inset;
     }
     .kg__overview-head {
       display: flex;
       justify-content: space-between;
       align-items: center;
       font-family: var(--ac-font-display);
+      font-weight: 600;
       font-size: var(--ac-text-eyebrow);
       text-transform: uppercase;
       letter-spacing: var(--ac-tracking-eyebrow);
@@ -28,49 +39,71 @@
     }
     .kg__overview-canvas {
       position: relative;
-      height: 5rem;
-      background:
-        radial-gradient(ellipse at 50% 30%,
-          color-mix(in srgb, var(--ac-color-surface-canvas) 92%, #000) 0%,
-          color-mix(in srgb, var(--ac-color-surface-canvas) 60%, #000) 70%);
-      border-radius: 2px;
+      height: 5.25rem;
+      background: linear-gradient(
+        180deg,
+        var(--ac-lcd-bg) 0%,
+        var(--ac-lcd-bg-edge) 100%
+      );
+      border: 2px solid var(--ac-lcd-bezel);
+      border-radius: 3px;
       overflow: hidden;
-      box-shadow: inset 0 0 0 1px var(--ac-color-border-subtle);
+      box-shadow:
+        inset 0 0 0 1px rgba(0,0,0,0.35),
+        inset 0 1px 6px rgba(0,0,0,0.4);
     }
     .kg__overview-canvas::after {
+      /* very subtle scanline — LCD pixel-grid feel without obscuring zones */
       content: "";
       position: absolute; inset: 0;
       pointer-events: none;
       background: repeating-linear-gradient(180deg,
         transparent 0, transparent 2px,
-        rgba(0,0,0,0.18) 2px, rgba(0,0,0,0.18) 3px);
-      mix-blend-mode: multiply;
+        rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 3px);
+    }
+    /* Octave grid — faint dark-navy vertical lines on the LCD, every C-note */
+    .kg__overview-canvas .kg__octave {
+      position: absolute;
+      top: 0; bottom: 0;
+      width: 1px;
+      background: rgba(10, 30, 62, 0.18);
     }
     .kg__zone {
       position: absolute;
-      top: 6%;
-      height: 88%;
-      border: 1px solid var(--ac-color-accent);
-      background: color-mix(in srgb, var(--ac-color-accent) 18%, transparent);
+      top: 10%;
+      height: 80%;
+      border: 1.5px solid var(--ac-lcd-text);
+      background: rgba(255, 255, 255, 0.12);
       border-radius: 1px;
       font-family: var(--ac-font-mono);
-      font-size: 0.6rem;
-      color: var(--ac-color-text-primary);
-      padding: 0 0.25rem;
+      font-size: 0.66rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: var(--ac-lcd-text);
+      padding: 0 0.3rem;
       display: flex;
       align-items: center;
-      box-shadow: 0 0 6px color-mix(in srgb, var(--ac-color-accent) 30%, transparent);
+      overflow: hidden;
+      white-space: nowrap;
     }
     .kg__zone.is-selected {
-      background: color-mix(in srgb, var(--ac-color-accent) 40%, transparent);
-      box-shadow: 0 0 10px color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+      background: var(--ac-akai-red);
+      border-color: var(--ac-akai-red-hover);
+      color: #fff;
+      text-shadow: 0 1px 0 rgba(0,0,0,0.25);
+      box-shadow:
+        0 0 8px var(--ac-akai-red-glow),
+        inset 0 1px 0 rgba(255,255,255,0.25);
+      z-index: 2;
     }
     .kg__keys {
       display: flex;
       justify-content: space-between;
       font-family: var(--ac-font-mono);
       font-size: var(--ac-text-eyebrow);
-      color: var(--ac-color-text-muted);
+      font-weight: 600;
+      color: var(--ac-color-text-primary);
+      padding: 0 2px;
     }
   </style>
 </head>
