@@ -495,3 +495,39 @@ Resolution:
   Validator total: 20 → 24 adopter-manifests scenarios. Aggregate `pnpm test:scope-discovery` count: 228 → 232 scenarios across 18 validator suites.
 - **AUDIT-07 hard test outcome (validator-paired changes):** ran `git stash push -- tools/scope-discovery/adopter-manifests-report.ts` to revert ONLY the production-code change, kept the new scenarios module + validator wiring in place, re-ran `tsx tools/scope-discovery/adopter-manifests.validate.ts`. Result: all 4 of 4 new scenarios FAIL — `summary-line-is-last-line` fails because the prior `holdout(s)` substring doesn't match the new `holdouts?` regex (pre-change format was `1 holdout(s) across 1 manifest(s).` — the parenthesized `(s)` defeats the `s?` quantifier); `quiet-mode-no-real-holdouts` fails because the prior `--quiet` summary was `adopter-manifests: 0 holdout(s); 1 tracked holdout(s).` (no "across N manifest" tail); `quiet-mode-with-real-holdouts` fails because the prior `--quiet` always printed only the summary line regardless of real-holdout presence (detail signatures absent); `default-mode-summary-still-at-end` fails for the same `holdout(s)` regex reason as scenario 1. After `git stash pop`, all 24 scenarios pass. Confirms every load-bearing scenario has teeth; the existing 20 pre-AUDIT-13 scenarios still pass against the new production code (no regression in tracked-holdouts / from-list / exception assertions).
 - Empirical re-exercise (2026-05-24): `make check-adopters | tail -1` prints `adopter-manifests: 0 holdouts across 0 manifest(s).` cleanly (the live registry is empty on this branch). Synthetic post-change repro against a non-empty registry (mixed real + tracked holdouts; 1 real + 2 tracked): default-mode last line `adopter-manifests: 1 holdout across 1 manifest. 2 tracked holdout(s) reported separately.` matches the regex (singular `holdout` + singular `manifest` via the noun-agreement helper; `holdouts?` accepts both); `--quiet` with tracked-only fixture (2 tracked, 0 real) emits exactly one stdout line `adopter-manifests: 0 holdouts across 1 manifest. 2 tracked holdout(s) reported separately.` (no per-manifest detail bleed); `--quiet` with real+tracked fixture (1 real + 2 tracked) emits the full per-manifest detail block + summary at end (operator can act). Side-effect checks: `pnpm test:scope-discovery` reports 232/232 scenarios passing across 18 validator suites (was 228 — +4 from the new summary-ordering scenarios); `tsx tools/scope-discovery/clone-detector.ts --quiet` reports `495 groups; 0 NEW; 0 DROPPED`; `pnpm exec tsc --noEmit` exits 0. Pre-commit hook recorded the fix commit in `.git/hooks-sentinels/.pre-commit-passed`; no hooks bypassed.
+
+## AUDIT-20260524-14
+
+Finding-ID: AUDIT-20260524-14
+Status:     open
+Severity:   medium
+Surface:    tools/scope-discovery/clone-detector.ts, tools/scope-discovery/clones-yaml.ts (`mergeDispositions`), docs/scope-discovery/clones.yaml
+
+The clone-detector's regen path silently wipes operator-curated dispositions in some scenarios. The akai-harmonization operator reports: after a sub-agent dispatch for harness pages + shell-contract spec, `git status` revealed an unstaged diff on `clones.yaml` that reverted four operator-curated `keep-with-reason` dispositions (with multi-paragraph `reason:` fields) on playwright-config-per-suite clone groups back to `pending + null`. The pre-commit baseline-diff still reported `0 NEW, 0 DROPPED` (the groups are structurally the same content-hash), so the regen lands silently in the workdir if the operator doesn't notice. The audit trail of "we considered this; here's why it's intentional" was about to be erased.
+
+Evidence (from akai-harmonization tooling-feedback.md TF-013):
+- Operator's repro: after the sub-agent dispatch, `git status` showed clones.yaml dirty; `git diff` showed 4 `keep-with-reason → pending` transitions with multi-paragraph `reason:` → `null` losses.
+- Operator's workaround: `git checkout -- docs/scope-discovery/clones.yaml` (destructive against the regen; required permission-gate approval).
+- The pre-commit baseline-diff reported `0 NEW, 0 DROPPED` — the gate had no way to flag the silent loss.
+
+Apparent contradiction with current code:
+- `tools/scope-discovery/clone-detector.ts:267` calls `mergeDispositions(detectedGroups, baseline)` before writing.
+- `tools/scope-discovery/clones-yaml.ts:438` `mergeDispositions` is documented to "preserve non-pending dispositions when content-hash keys match." It SHOULD have preserved the 4 dispositions.
+- For the bug to manifest, ONE of the following must be true:
+  1. The 4 groups' content hashes changed between detection runs (despite the operator's claim of "same content hash"). T7.1's stability validator covers this; investigate whether it has a coverage hole.
+  2. `mergeDispositions` has a bug not caught by existing scenarios.
+  3. A code path bypasses `mergeDispositions` (e.g., a different write callsite).
+  4. The operator's scenario involves multiple regen passes where `pending`-default emission compounds.
+
+Expected vs actual:
+- Expected: dispositioned entries with multi-paragraph `reason:` fields survive any number of regen passes as long as their content hash is stable.
+- Actual: 4 entries reverted to `pending + null` after one sub-agent dispatch despite no apparent content change.
+
+Fix guidance (operator-proposed, increasing structural soundness):
+- **Light**: ensure `mergeDispositions` preserves disposition + reason for ANY group whose content-hash key is still in the new output. This is the documented behavior; the fix may be diagnosing why it isn't always working.
+- **Medium**: split `clones.yaml` into `clones-detected.yaml` (machine-generated, regenerated freely) + `clones-dispositions.yaml` (operator-authored, append-only modifications). Gate composes both at check time. Operator dispositions can never be silently lost.
+- **Heavy**: pre-commit "disposition-survivor" gate that fails the commit if the diff includes any `keep-with-reason → pending` transitions. Forces conscious confirmation (or — more likely — fix the detector).
+
+The Light fix is preferred if the actual bug is diagnosable + fixable in `mergeDispositions`. The Heavy fix is preferred as a backstop regardless: it catches the bug + every future regression of the same shape, and the cost is one pre-commit check per commit.
+
+External tracking: TF-013 on `feature/akai-harmonization` branch.
