@@ -250,3 +250,170 @@ Resolution:
 - Guidance encoded as a new rule in `.claude/rules/agent-discipline.md` §"Validator-paired changes — every gate-semantic change ships with a scenario that would have failed against the prior behavior" (companion to the existing "When CI is absent, the controller is the gate" rule). Both rules now apply to every scope-discovery change.
 - The new rule names the "hard test" the auditor's guidance implies: *"if I revert ONLY my production-code change, leaving my scenario changes in place, do my new scenarios FAIL?"* — if no, the scenarios are coverage padding.
 - Status stays `informational` per protocol: the auditor explicitly noted "this is currently true in the reviewed fixes" — no production code defect to verify. The rule's purpose is to keep that statement true across turnover.
+
+## AUDIT-20260524-08
+
+Finding-ID: AUDIT-20260524-08
+Status:     open
+Severity:   medium
+Surface:    tools/scope-discovery/adopter-manifests-registry.ts, tools/scope-discovery/check-adopters.ts, tools/scope-discovery/anti-patterns-registry.ts, tools/scope-discovery/check-anti-patterns.ts, docs/scope-discovery/{adopter-manifests,anti-patterns}.yaml schemas
+
+The adopter-manifest `from:` field and the anti-pattern `excludes_paths:` field both assume the canonical primitive's location is stable. When a primitive is promoted across modules (the protocol's intended workflow — e.g., `roland-sxx0-editor/src/components/common/PageTitleRow.tsx` → `editor-core/src/components/PageTitleRow.tsx`), both fields silently invalidate:
+
+- Adopter-manifest `from:` becomes a literal string that doesn't match consumers' new import paths. `make check-adopters` reports holdouts that aren't holdouts.
+- Anti-pattern `excludes_paths:` stays pinned at the old canonical location. `make check-anti-patterns` flags the NEW canonical file as a holdout because its body IS the legacy shape.
+
+Both findings surface together in the akai-harmonization feature's Phase 2 (PageTitleRow + AcReloadIcon promotion to editor-core). Bundled as one audit-log entry because they share root cause + share fix shape.
+
+Evidence (from akai-harmonization tooling-feedback.md TF-001 + TF-002):
+
+- TF-001 repro: Phase 2 task 2.2 promoted `PageTitleRow`. Consumers' imports changed from `@/components/common/PageTitleRow` to `@audiocontrol/editor-core`. `make check-adopters` then reported 3 holdouts ("0 file(s) import @/components/common/PageTitleRow") — accurate per the literal `from:` string, but misleading: the consumers DO import the same component via a different path.
+- TF-002 repro: same promotion. `anti-patterns.yaml` had `page-title-row-inline` + `ac-reload-icon-inline` entries with `excludes_paths:` pinned at the old roland paths. After `git mv`, the canonical components (now in editor-core) matched the anti-pattern shape and `make check-anti-patterns` flagged the new canonical location.
+- Workaround used by akai-harmonization operator (manual): update each entry's `from:` to `@audiocontrol/editor-core` + `excludes_paths:` to the new editor-core paths + expand `expected_adopters_glob` to include both editors' pages.
+
+Expected vs actual:
+- Expected: when a primitive moves modules, the registry tracks the new canonical without operator intervention OR fails the build with a specific actionable error naming the rename pair.
+- Actual: the operator must manually update both registries; mistakes silently produce wrong holdout reports OR false flag the new canonical.
+
+Fix guidance:
+- **Adopter-manifest fix:** allow `from:` to be a list of import paths (alias-aware) so a primitive in transit is recognized by either path. The import-detection regex iterates the list and reports adoption if any path matches.
+- **Anti-pattern fix:** add an optional `canonical_implementation_file:` field that names the canonical file's CURRENT path. The matcher auto-excludes that file (no need to repeat the path in `excludes_paths:`). When the file disappears (git rename detected via `git rev-parse HEAD:<path>` returning empty), fail the build with `primitive file <X> no longer exists; update canonical_implementation_file: in <entry-id>`.
+- **Both fixes:** add adversarial scenarios covering the relocation case (synthetic fixture: primitive at path A, then renamed to path B; assert manifest with both A and B in `from:` reports correct adoption; assert anti-pattern with `canonical_implementation_file: B` doesn't flag B but does flag a planted holdout).
+
+External tracking: TF-001 + TF-002 (filed on feature/akai-harmonization branch as consumer-side tracking).
+
+## AUDIT-20260524-09
+
+Finding-ID: AUDIT-20260524-09
+Status:     open
+Severity:   low
+Surface:    tools/scope-discovery/clone-detector.ts, .githooks/pre-commit
+
+When the pre-commit clone-detector reports a NEW group, the operator must (a) find the right insertion point in `docs/scope-discovery/clones.yaml` (3000+ lines), (b) hand-write a YAML entry, (c) re-run the gate. The `tools/scope-discovery/batch-dispose.ts` script already automates this, but the pre-commit hook's error output doesn't mention it — operators reinvent the manual workflow each time.
+
+Evidence (from akai-harmonization tooling-feedback.md TF-003):
+- Pre-commit clone-detector reported `NEW    a50e0d779738 (21 lines)` for two akai pages newly invoking the canonical `<PageTitleRow>` with same wiring.
+- Operator hand-appended the entry; would have preferred a pasteable batch-dispose command.
+
+Expected vs actual:
+- Expected: the pre-commit hook's error output cites the existing `batch-dispose.ts` command with the NEW id pre-filled + a placeholder disposition + reason, so the operator can paste-and-edit.
+- Actual: operator finds the file, finds the insertion point, hand-writes the entry, re-runs the gate.
+
+Fix guidance:
+- Extend the clone-detector's NEW-group error output to include a `tsx tools/scope-discovery/batch-dispose.ts --ids <id> --disposition <pick> --reason "<one-line>"` line per NEW group.
+- Example output:
+  ```
+  NEW    a50e0d779738 (21 lines)
+    Run:  tsx tools/scope-discovery/batch-dispose.ts \
+            --ids a50e0d779738 \
+            --disposition <refactor|keep-with-reason|ignore-with-justification> \
+            --reason "<one-line rationale>"
+  ```
+- Adversarial scenario: clone-detector's NEW-group error output (captured via subprocess) contains the literal string `batch-dispose.ts --ids <id>` for each NEW group.
+
+External tracking: TF-003.
+
+## AUDIT-20260524-10
+
+Finding-ID: AUDIT-20260524-10
+Status:     open
+Severity:   medium
+Surface:    .githooks/pre-commit
+
+The pre-commit hook chain short-circuits on the first failing gate. For substantial commits (primitive promotion, multi-module refactor) where multiple gates may fail independently, the operator pays the round-trip cost N times for what could be a single consolidated report.
+
+Evidence (from akai-harmonization tooling-feedback.md TF-004):
+- A PageTitleRow promotion commit hit three sequential failures: `check-clone-duplication` (new group), then `check-anti-patterns` (stale findings on moved canonical), then `check-adopters` (old `from:` path). 3 commit attempts for 1 commit.
+- The failures were independent (different gates, different findings) but landed serially because the hook short-circuits.
+
+Expected vs actual:
+- Expected: pre-commit collects every gate's findings + presents a single consolidated report. Operator fixes everything in one pass.
+- Actual: hook fails on the first red gate; operator never sees the other failures until the first is resolved.
+
+Fix guidance:
+- Restructure `.githooks/pre-commit` to collect every gate's exit code + stderr in an array, then report all failures at the end. If any gate failed, exit non-zero.
+- Add a `PRE_COMMIT_SHORT_CIRCUIT=1` env var for backward-compat (developers who prefer fast-fail for tight iteration loops can opt back in).
+- Adversarial scenario: synthetic state where 2+ gates would fail; assert pre-commit reports ALL failures + returns non-zero (default behavior); assert `PRE_COMMIT_SHORT_CIRCUIT=1` returns after the first failure (opt-in behavior).
+
+External tracking: TF-004.
+
+## AUDIT-20260524-11
+
+Finding-ID: AUDIT-20260524-11
+Status:     open
+Severity:   medium
+Surface:    tools/scope-discovery/discovery-agents/prd-themed-pattern-hunter.ts, tools/scope-discovery/synthesis-derive.ts
+
+`/scope-inventory` produces strawman manifests that over-enumerate modules — including every workspace module that matched any pattern, regardless of PRD relevance. The akai-harmonization run listed 12 of 12 workspace modules including out-of-scope `d110-editor`, `jv1080-editor`, `sampler-devices`, `sampler-library`, `synth-core`, `e2e-infra`. Operator must manually prune.
+
+Evidence (from akai-harmonization tooling-feedback.md TF-005):
+- `/scope-inventory akai-harmonization` listed 12 modules; operator dropped 6 as out-of-scope.
+- The PRD explicitly named In Scope / Out of Scope; the synthesizer didn't consult this.
+
+Expected vs actual:
+- Expected: the synthesizer parses the PRD's "In Scope" / "Out of Scope" sections and either (a) excludes out-of-scope modules with `excluded_by: prd-out-of-scope` OR (b) emits a relevance score so the operator reviews the agent's pruning judgment rather than authoring the prune list from scratch.
+- Actual: every matched module lands in the strawman; operator does the curation work manually.
+
+Fix guidance:
+- Extend `prd-themed-pattern-hunter` to parse the PRD's `## In Scope` / `## Out of Scope` (or equivalent) sections. Emit a `module_relevance_score: high|medium|low|excluded` per module.
+- The synthesizer's `deriveModules` consumes the score: `excluded` modules don't appear; `low` modules appear with a `relevance: low` annotation; operator decides whether to keep.
+- Adversarial scenarios: synthetic PRD with explicit In/Out sections + synthetic module hits; assert excluded modules don't appear in synthesized manifest; assert low-relevance modules carry the annotation.
+
+External tracking: TF-005.
+
+## AUDIT-20260524-12
+
+Finding-ID: AUDIT-20260524-12
+Status:     open
+Severity:   low
+Surface:    tools/scope-discovery/synthesis.ts (warning text)
+
+The synthesizer's "PRD has no References/Appendix section" warning is mild and easy to ignore. The result: synthesizer falls back to a minimal `reference_docs[]` (just PRD + LAYOUT.md). Operators who would have added richer references if prompted don't see actionable guidance.
+
+Evidence (from akai-harmonization tooling-feedback.md TF-006):
+- akai-harmonization synthesizer wrote `reference_docs[]` with just PRD + LAYOUT.md and surfaced a note in `synthesis-notes.md`: "PRD has no References/Appendix section; reference_docs[] defaulted to PRD + LAYOUT.md."
+- Operator accepted the default; noted the Phase 2 re-run after appending an Appendix would produce richer references — but the prompt to do so was easy to miss.
+
+Expected vs actual:
+- Expected: when the warning fires, the synthesizer's note includes a specific suggested PRD addition (a fence with `## References` + `## Related issues` + `## Related ADRs` subheadings) so the operator can paste the skeleton into the PRD.
+- Actual: warning is one line; operator has to infer what to add.
+
+Fix guidance:
+- Extend the synthesizer's warning to include the PRD-augmentation skeleton inline. Example:
+  ```
+  WARNING: PRD has no References/Appendix section; reference_docs[] defaulted to PRD + LAYOUT.md.
+  Add this section to <prd-path> to produce a richer manifest on re-run:
+
+    ## References
+
+    - **Related issues:** [#NNN](url), [#MMM](url)
+    - **Related ADRs:** [docs/adr/NNN.md](path)
+    - **External docs:** [Title](url)
+  ```
+- Adversarial scenario: synthesize a manifest from a PRD without References; assert warning output contains the literal skeleton.
+
+External tracking: TF-006.
+
+## AUDIT-20260524-13
+
+Finding-ID: AUDIT-20260524-13
+Status:     open
+Severity:   low
+Surface:    tools/scope-discovery/check-adopters.ts (output ordering)
+
+`make check-adopters` prints the summary line in the MIDDLE of its output, followed by several KB of per-manifest details (including all tracked holdouts). During pre-commit verification the operator must scroll past unrelated output to find the actual finding count.
+
+Evidence (from akai-harmonization tooling-feedback.md TF-010):
+- `make check-adopters` output: `adopter-manifests: 0 holdouts across 9 manifest(s); 9 tracked holdout(s) reported separately.` appears early; the per-manifest tracked-holdouts listing follows; no closing summary.
+- Operator piped through `tail -5` to find summary; not stable across output-shape changes.
+
+Expected vs actual:
+- Expected: summary line is the LAST line of output OR a `--quiet` flag prints summary only unless non-tracked findings exist.
+- Actual: summary is mid-output; operator hunts for it.
+
+Fix guidance:
+- Move the summary line to the END of the output (after per-manifest details). The first line stays for operators who scan top-down; the last line ALSO has the summary so `tail -1` works.
+- Optional `--quiet` flag prints only the summary unless real holdouts exist (in which case full output prints).
+- Adversarial scenarios: assert summary is on the LAST output line; assert `--quiet` mode prints only the summary when 0 real holdouts; assert `--quiet` mode prints full output when real holdouts exist.
+
+External tracking: TF-010.
