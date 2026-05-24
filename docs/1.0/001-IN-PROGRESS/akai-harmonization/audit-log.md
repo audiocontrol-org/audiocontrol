@@ -18,7 +18,7 @@ Surfaced while reviewing the latest `feature/akai-harmonization` commits through
 ### Shell-contract closure still excludes the Keygroups route, so the one migrated page with the most unique shell structure has no direct Akai regression spec
 
 Finding-ID: AUDIT-20260524-06
-Status:     open
+Status:     verified-7e431a69
 Severity:   medium
 Surface:    `modules/akai-s3k-editor/test/ui/page-shell-contract.spec.ts`, `modules/akai-s3k-editor/src/App.tsx`, `modules/akai-s3k-editor/src/pages/TestKeygroupsPage.tsx`, `docs/1.0/001-IN-PROGRESS/akai-harmonization/workplan.md`
 
@@ -45,10 +45,12 @@ That matters because Keygroups is not just another copy of the same page shape. 
 
 **Fix guidance:** add a shell-compliant `TestKeygroupsPage` variant that mirrors the production `KeygroupsPage` shell contract, then include it in `SHELL_HARNESS_ROUTES` and remove the `KEYGROUPS_SHELL_HARNESS_AVAILABLE = false` seam. Until then, the audit log and workplan should describe the shell-contract closure as partial rather than complete.
 
+**Fix landed:** commit `7e431a69` (2026-05-24). New file `modules/akai-s3k-editor/src/pages/TestKeygroupsShellPage.tsx` registered at the new route `/akai/s3000xl/editor/test/keygroups-shell` in `modules/akai-s3k-editor/src/App.tsx`. The harness mirrors the production `KeygroupsPage` shell scaffold (`.ac-page-shell--fixed-viewport` + `PageTitleRow` + `ZoneOverviewToolbar` + `ZoneOverview` + `.ac-app-shell` + real `KeygroupList` + `.ac-detail-scroll` stub detail) with 16 factory keygroups + local React state; no zustand stores, no `useS3000xlClient`. The pre-existing `/akai/s3000xl/editor/test/keygroups` route stays pointing at the inline-styled `TestKeygroupsPage` because `zone-overview.spec.ts:3` depends on it. The `KEYGROUPS_SHELL_HARNESS_AVAILABLE` constant + its header-comment block were removed from `page-shell-contract.spec.ts`; the new route is added to `SHELL_HARNESS_ROUTES` and the 13 existing test cases automatically extend coverage to keygroups-shell via the loop. `make test-ui-s3k`: 41 passed (was 32 — added the keygroups-shell route × 4 viewports + 1 viewport-route combination for library-real; see AUDIT-20260524-07 below for the rest).
+
 ### Library shell harness only proves wrapper geometry; it does not exercise the real `PluginLibraryBrowser` overflow surface the finding claimed to protect
 
 Finding-ID: AUDIT-20260524-07
-Status:     open
+Status:     verified-7e431a69
 Severity:   medium
 Surface:    `modules/akai-s3k-editor/src/pages/TestLibraryPage.tsx`, `modules/akai-s3k-editor/test/ui/page-shell-contract.spec.ts`
 
@@ -70,6 +72,21 @@ This is a meaningful gap because `AUDIT-20260524-05` was about fixed-viewport co
 **Actual:** the current harness proves only that a generic full-height block fits inside `.ac-page-shell-body`.
 
 **Fix guidance:** build a deterministic library harness around the real `PluginLibraryBrowser` with stubbed library/device inputs, or add a second targeted spec that mounts the real browser and asserts document-scroll containment plus inner-pane overflow ownership. If the stub-only approach is kept, the audit closure should explicitly state that only outer wrapper geometry is covered.
+
+**Fix landed:** commit `7e431a69` (2026-05-24). Chose **shape (a)** from the operator's fix-guidance — a deterministic real-`PluginLibraryBrowser` harness. New file `modules/akai-s3k-editor/src/pages/TestLibraryRealPage.tsx` registered at the new route `/akai/s3000xl/editor/test/library-real` in `modules/akai-s3k-editor/src/App.tsx`. The harness mounts the REAL `PluginLibraryBrowser` with:
+- `s3kLibraryPlugin` (the production plugin config from `@/plugins/s3k-library-plugin`)
+- A stub `{ name: 'TestLibraryRoot' }` library handle — matches the truthy `{ name }` shape `PluginLibraryBrowser.test.tsx` uses (`{} as FileSystemDirectoryHandle`)
+- An empty `S3kMemoryPanelState` (`isConnected: false`, empty `programNames`/`sampleNames`) so the device-memory panel renders empty
+- Empty `categoryData` for `samples` / `common-programs` / `s3k-programs` — the contract under test is inner-pane overflow ownership, not tree-rendering behavior
+
+The pre-existing `/akai/s3000xl/editor/test/library` route stays pointing at the stub-`<div>` `TestLibraryPage` because it's the outer wrapper-geometry baseline for the contract spec; the new `library-real` route is the inner-pane gate. Both routes are now in `SHELL_HARNESS_ROUTES` in `page-shell-contract.spec.ts`.
+
+**Inner-pane assertion specifics** (`page-shell-contract.spec.ts:220-272`): a new per-route test, gated by the `asserts_inner_library_overflow` flag on the route metadata (only `library-real` opts in today), asserts the three inner panes of `PluginLibraryBrowser` each declare `overflow-y: auto` or `scroll`:
+- `.ac-plugin-library-browser-device` (device memory column)
+- `.ac-plugin-library-browser-sections` (library tree scroll container)
+- `.ac-plugin-library-browser-preview` (preview pane)
+
+If any pane's `overflow-y` regresses to `visible`, content overflow bubbles up the parent chain until either the `.ac-page-shell-body` clips it (content unreachable) or the document scrolls (regresses the fixed-viewport contract) — both outcomes are shell-contract failures the assertion catches at the inner-pane layer. A cross-check at the end of the same test re-asserts `document.documentElement.scrollHeight <= window.innerHeight + slack` against the real-`PluginLibraryBrowser` mount, pinning the no-document-scroll invariant specifically against the real component so a regression here implicates the inner-pane overflow rules, not the outer shell.
 
 ## 2026-05-24 Feature review — latest Phase 2 implementation
 
@@ -131,7 +148,7 @@ Files changed (the canonical fix is editor-core CSS; the consumer fix is 5 JSX s
 ### Phase 2 landed four Akai page-shell migrations with no direct regression test for the new fixed-viewport/app-shell contract
 
 Finding-ID: AUDIT-20260524-05
-Status:     acknowledged-partial-coverage (downgraded 2026-05-24 from verified-2026-05-24 — see AUDIT-20260524-06 and AUDIT-20260524-07 which surfaced the gaps)
+Status:     verified-7e431a69 (re-closed 2026-05-24 — see "Re-closed" paragraph below)
 Severity:   medium
 Surface:    `modules/akai-s3k-editor/src/pages/ProgramsPage.tsx`, `modules/akai-s3k-editor/src/pages/KeygroupsPage.tsx`, `modules/akai-s3k-editor/src/pages/SamplesPage.tsx`, `modules/akai-s3k-editor/src/pages/LibraryPage.tsx`, `modules/akai-s3k-editor/test/`
 
@@ -171,6 +188,18 @@ This matters because the migration is precisely the kind of change that can regr
 - **AUDIT-20260524-07**: `TestLibraryPage` mounts a stub `<div>` instead of the real `PluginLibraryBrowser`. The spec validates outer wrapper geometry but not the inner-overflow surface that AUDIT-05's fix-guidance specifically called out ("list and detail panes own internal scroll on desktop without clipping their bodies"). Stub-only coverage is not the closure shape the original finding asked for.
 
 Re-closing AUDIT-05 requires landing fixes for both -06 and -07 (a shell-compliant `TestKeygroupsShellPage` route at `/akai/s3000xl/editor/test/keygroups-shell` registered in `SHELL_HARNESS_ROUTES`; a deterministic real-`PluginLibraryBrowser` harness route or paired spec that asserts inner-pane overflow ownership). When both ship, all three findings close together with `verified-<sha>`.
+
+**Re-closed:** commit `7e431a69` (2026-05-24). Both -06 and -07 closed in the same commit, which re-closes -05. The full coverage picture is now:
+- **Keygroups:** new shell-compliant `TestKeygroupsShellPage` at `/akai/s3000xl/editor/test/keygroups-shell` exercises the structurally most-distinct of the four migrated pages (zone-overview toolbar + overview block ahead of the canonical `.ac-app-shell`) through the contract spec's full per-route gauntlet (desktop fixed-viewport, app-shell 2-col grid, mobile escape-hatch falls back to auto-height, app-shell collapses to single column on mobile, last list row reachable via scroll).
+- **Library:** new `TestLibraryRealPage` at `/akai/s3000xl/editor/test/library-real` mounts the REAL `PluginLibraryBrowser` with the production `s3kLibraryPlugin` + stub library handle + empty `S3kMemoryPanelState`. A new per-route assertion gated by `asserts_inner_library_overflow` (only `library-real` opts in) covers the inner-pane overflow contract AUDIT-05's fix-guidance specifically named: each of `.ac-plugin-library-browser-device`, `.ac-plugin-library-browser-sections`, `.ac-plugin-library-browser-preview` MUST declare `overflow-y: auto` or `scroll`. A cross-check asserts document-scroll containment against the real `PluginLibraryBrowser` mount so a regression here implicates the inner-pane overflow rules, not the outer shell. The original `/test/library` route stays as the outer wrapper-geometry baseline; both routes are now in `SHELL_HARNESS_ROUTES`.
+
+**New contract-spec test count:** 22 (was 13). Decomposition:
+- Desktop describe: 5 routes × 2 base tests (`fixed-viewport shell` + `body layout matches its kind`) + 1 inner-pane test (only `library-real`) = 11
+- Mobile describe: 5 routes × 1 escape-hatch test + 3 `app-shell`-kind routes × 2 tests (`collapse-to-single-col` + `last-row-reachable`) = 5 + 6 = 11
+
+`make test-ui-s3k`: 41 passed (was 32 — 19 zone-overview unchanged + 22 page-shell-contract). Independent re-run after the implementer commit per agent-discipline.md "When CI is absent, the controller is the gate."
+
+**Inner-pane coverage proof:** revert-test confirms the new assertions have teeth — if `.ac-plugin-library-browser-device`'s CSS rule loses its `overflow-y: auto` declaration in `modules/editor-core/src/design/library.css`, the new `library-real: inner library panes own their own overflow` test turns red with a message naming the regressing selector + the actual computed `overflow-y` value. This closes the gap AUDIT-07 named: AUDIT-05's original closure validated `.ac-page-shell-body` geometry but said nothing about inner-pane ownership; now the contract spec asserts both.
 
 ---
 
