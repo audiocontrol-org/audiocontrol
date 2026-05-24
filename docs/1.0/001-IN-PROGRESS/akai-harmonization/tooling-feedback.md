@@ -18,6 +18,8 @@ Severity: **high** (blocks work or hides bugs) · **medium** (slows work meaning
 
 This log tracks **scope-discovery + duplication tooling** friction only. Entries that turned out to be implementation work in other modules were re-scoped into [`workplan.md`](./workplan.md) on 2026-05-24 (see "Re-scoped out of this log" below).
 
+**All 7 logged scope-discovery TF entries are now closed** — 6 by PR #462 (2026-05-24) and TF-013 by PR #463 (2026-05-24 evening). No open scope-discovery tooling friction remains from this feature's Phase 2 work.
+
 | TF | Status | Closing commit |
 |---|---|---|
 | TF-001, TF-002 | Addressed | `fddbad06` (PR #462) — primitive-relocation awareness |
@@ -26,7 +28,7 @@ This log tracks **scope-discovery + duplication tooling** friction only. Entries
 | TF-005 | Addressed | `e294a29a` (PR #462) — scope-inventory PRD-scoped module pruning |
 | TF-006 | Addressed | `4278986f` (PR #462) — synthesizer References warning gains paste-ready skeleton |
 | TF-010 | Addressed | `837c9336` (PR #462) — check-adopters summary moves to last line + --quiet flag |
-| TF-013 | Open (genuine tooling) | — |
+| TF-013 | Addressed | `6a1f8365` (PR #463) — disposition-survivor gate + strict-parse fix |
 
 A parallel improvement landed in `676dd164` on this branch — the `imports:` field on adopter-manifests entries lets the gate distinguish "imports the canonical primitive" from "imports some other symbol from the same package," and recognizes transitive adoption via wrapping primitives (e.g., SteppedProgressDrawer wraps SlideDrawer; importing the wrapper now counts). Not a TF entry of its own — it surfaced as a finding during the SlideDrawer adoption work and was fixed in the same commit pair.
 
@@ -156,6 +158,8 @@ This session: after the sub-agent dispatch for harness pages + shell-contract sp
 - (Heavy): A pre-commit "disposition-survivor" gate that fails the commit if the diff includes any `keep-with-reason → pending` transitions. Forces the operator to consciously confirm the loss (or — more likely — fix the detector).
 
 The middle option seems most aligned with the existing scope-discovery design (machine artifacts vs operator artifacts, audited separately). It would also make the `clones-dispositions.yaml` file the single place operators look for "what have we decided to keep, and why" — useful for new operators joining a feature.
+
+**Addressed by:** `6a1f8365` (fix(scope-discovery-protocol): disposition-survivor gate + strict-parse fix, PR #463). Tools team picked the "Heavy" option from my suggested-fix list — a pre-commit `check-disposition-survivor` gate (`tools/scope-discovery/check-disposition-survivor.ts`, 309 lines) that fails the commit if any staged diff transitions a clones.yaml group from `keep-with-reason` / `refactor` / `ignore-with-justification` → `pending` without operator-conscious confirmation. Paired strict-parse fix (`tools/scope-discovery/clones-yaml.parse.ts`, 237 lines) ensures the YAML loader is strict-mode about disposition shape so the gate's comparison is deterministic. Paired adversarial scenarios across two new validators: `disposition-survivor.validate.ts` (319 lines, full subprocess invocation suite) + `disposition-survivor.gate-scenarios.ts` (268 lines, fixture-based gate scenarios). Audit-log filed as AUDIT-20260524-14 in scope-discovery-protocol (referenced in `b6e32883`). Verified locally post-merge: `pnpm test:scope-discovery` includes the new validator suites in its run; all green. The recurrence of TF-013 across my session's 8+ commits (every commit had the workdir regen) should stop now — the gate either prevents the silent disposition wipe at commit time OR fires loudly to surface it.
 
 ---
 
