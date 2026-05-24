@@ -5,9 +5,11 @@ import { KeygroupsPage } from '@/pages/KeygroupsPage';
 import { LibraryPage } from '@/pages/LibraryPage';
 import { SamplesPage } from '@/pages/SamplesPage';
 import { TestKeygroupsPage } from '@/pages/TestKeygroupsPage';
+import { TestKeygroupsShellPage } from '@/pages/TestKeygroupsShellPage';
 import { TestProgramsPage } from '@/pages/TestProgramsPage';
 import { TestSamplesPage } from '@/pages/TestSamplesPage';
 import { TestLibraryPage } from '@/pages/TestLibraryPage';
+import { TestLibraryRealPage } from '@/pages/TestLibraryRealPage';
 
 export function App() {
   return (
@@ -25,10 +27,23 @@ export function App() {
          * isolated, store-free mount of each list-detail page's
          * production chrome. See the page files for the contract
          * details.
+         *
+         * `keygroups-shell` is the separate, shell-compliant Keygroups
+         * harness landed alongside AUDIT-20260524-06's closure. The
+         * original `test/keygroups` route stays pointing at the
+         * inline-styled `TestKeygroupsPage` because `zone-overview.spec.ts`
+         * depends on that route.
+         *
+         * `library-real` mounts the real `PluginLibraryBrowser` (vs
+         * `library` which mounts a stub `<div>`) so the contract spec
+         * can assert inner-pane overflow ownership — closes
+         * AUDIT-20260524-07.
          */}
         <Route path="/akai/s3000xl/editor/test/programs" element={<TestProgramsPage />} />
         <Route path="/akai/s3000xl/editor/test/samples" element={<TestSamplesPage />} />
         <Route path="/akai/s3000xl/editor/test/library" element={<TestLibraryPage />} />
+        <Route path="/akai/s3000xl/editor/test/library-real" element={<TestLibraryRealPage />} />
+        <Route path="/akai/s3000xl/editor/test/keygroups-shell" element={<TestKeygroupsShellPage />} />
         <Route path="*" element={<Navigate to="/akai/s3000xl/editor/programs" replace />} />
       </Routes>
     </Layout>
