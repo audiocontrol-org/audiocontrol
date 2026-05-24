@@ -4,332 +4,355 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=1280" />
   <title>Akai S3000XL — Library · Mockup</title>
+
+  <!--
+    Canonical editor-core CSS chain. The mockup uses LITERALLY the same
+    primitives the production roland editor uses — no transposition, no
+    parallel rules. The browser loads styles.css which @imports
+    tokens.css + layout-primitives.css + primitives.css + library.css
+    + the rest in the same order the build does.
+  -->
+  <link rel="stylesheet" href="/modules/editor-core/src/design/styles.css" />
+
+  <!--
+    Roland page-shell shared chrome (.ac-page-title-*, .ac-device-memory-*,
+    .ac-preview-pane-*, etc.) — these live in roland-sxx0-editor because
+    they were extracted from roland pages first; Phase 2 task 2.2 promotes
+    them to editor-core. Until then the mockup links the roland file
+    directly so the canonical class names resolve.
+  -->
+  <link rel="stylesheet" href="/modules/roland-sxx0-editor/src/styles/_shared.css" />
+
+  <!--
+    Akai dialect token-override block — LAST so [data-editor='s3000xl']
+    wins the cascade. The file contains ONLY token rules (palette, fonts,
+    LCD, rec-LED). No primitive rules; no per-page styles.
+  -->
   <link rel="stylesheet" href="./akai-dialect.css" />
-  <style>
-    /* Page-local — preview panel layout */
-    .lib__preview {
-      display: flex; flex-direction: column;
-      min-height: 0;
-    }
-    .lib__preview__hero {
-      padding: var(--ac-space-3);
-      border-bottom: 1px solid var(--ac-color-border-subtle);
-      background: color-mix(in srgb, var(--ac-color-accent) 4%, transparent);
-    }
-    .lib__preview__hero__kind {
-      font-family: var(--ac-font-display);
-      font-size: var(--ac-text-eyebrow);
-      text-transform: uppercase;
-      letter-spacing: var(--ac-tracking-eyebrow);
-      color: var(--ac-color-accent);
-    }
-    .lib__preview__hero__name {
-      font-family: var(--ac-font-display);
-      font-size: 1.1rem;
-      color: var(--ac-color-text-primary);
-      margin-top: var(--ac-space-1);
-    }
-    .lib__preview__hero__meta {
-      font-family: var(--ac-font-mono);
-      font-size: var(--ac-text-xs);
-      color: var(--ac-color-text-muted);
-      margin-top: var(--ac-space-1);
-    }
-    .lib__preview__body {
-      padding: var(--ac-space-3);
-      overflow-y: auto;
-      flex: 1;
-    }
-    .lib__device-storage {
-      display: flex;
-      flex-direction: column;
-      gap: var(--ac-space-1);
-      padding: var(--ac-space-2) var(--ac-space-3);
-      font-family: var(--ac-font-mono);
-      font-size: var(--ac-text-xs);
-      color: var(--ac-color-text-muted);
-      border-top: 1px solid var(--ac-color-border-subtle);
-    }
-    .lib__storage-bar {
-      height: 0.4rem;
-      background: color-mix(in srgb, var(--ac-color-surface-canvas) 60%, transparent);
-      border-radius: 1px;
-      overflow: hidden;
-      display: flex;
-    }
-    .lib__storage-bar__used {
-      background: var(--ac-color-accent);
-    }
-    .lib__storage-bar__free {
-      background: color-mix(in srgb, var(--ac-color-success) 50%, transparent);
-    }
-  </style>
 </head>
 <body>
-  <div class="mockup-badge">Mockup · Library</div>
+  <!--
+    Outer page shell — same shape as roland's LibraryPage.tsx:
+      .ac-page.ac-page-shell.ac-page-shell--fixed-viewport
+        > <PageTitleRow>   (header)
+        > .ac-page-shell-body[data-capability="C-LIB-01"]
+            > <PluginLibraryBrowser>
+  -->
+  <div class="ac-page ac-page-shell ac-page-shell--fixed-viewport">
 
-  <div class="ac-site">
-    <header class="ac-site-header">
-      <div class="ac-site-header__brand">
-        <span class="badge">AKAI</span>
-        <span>S3000XL · Editor</span>
+    <!-- PageTitleRow — h2 + red rule + actions slot (Library uses actions, not metric) -->
+    <header class="ac-page-title-row">
+      <div class="ac-page-title-block">
+        <h2 id="library-heading" class="ac-page-title-heading">
+          Library
+          <span class="ac-page-title-tag ac-page-title-tag--warn"
+            title="This feature is still being designed and not all the wrinkles have been smoothed out yet."
+            style="margin-left: var(--ac-space-3); vertical-align: middle;">Experimental</span>
+        </h2>
+        <div class="ac-page-title-rule" aria-hidden="true"></div>
       </div>
-      <nav class="ac-site-header__nav">
-        <a>Connect</a>
-        <a>Programs</a>
-        <a>Keygroups</a>
-        <a>Samples</a>
-        <a class="is-active">Library</a>
-      </nav>
-      <div class="ac-site-header__status">SCSI 6 · CHAN 1 · 4.2 MB free</div>
+      <div class="ac-page-title-actions">
+        <button type="button" class="ac-icon-btn" aria-label="Refresh device data" title="Refresh device data">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 0 1 15.5-6.3M21 12a9 9 0 0 1-15.5 6.3M21 4v6h-6M3 20v-6h6"/>
+          </svg>
+        </button>
+      </div>
     </header>
 
-    <main class="ac-site-main">
-      <p class="mockup-meta">
-        Spec: <a href="../harmonization-spec.md">harmonization-spec.md § 4.4</a>
-        — PluginLibraryBrowser (3-col) · BankHeader · TreeView · SlideDrawer for transfers
-      </p>
+    <!-- Body wrapper carries the data-capability attribute the production page uses -->
+    <div class="ac-page-shell-body" data-capability="C-LIB-01">
 
-      <section class="ac-page ac-page-shell--fixed-viewport">
-        <div class="ac-page-title-row">
-          <div class="ac-page-title-row__lead">
-            <h2>Library</h2>
-            <span class="ac-page-title-row__metric">
-              <strong>62</strong> samples · <strong>128</strong> programs · <strong>11.8 MB</strong> on device
+      <!-- PluginLibraryBrowser — 3-column flex (Device | Library | Preview) -->
+      <div class="ac-plugin-library-browser ac-plugin-library-browser--three-column">
+
+        <!-- ===================================================================== -->
+        <!-- DEVICE MEMORY COLUMN (left)                                             -->
+        <!-- ===================================================================== -->
+        <div class="ac-plugin-library-browser-device">
+          <div class="ac-device-memory-panel">
+
+            <!-- Programs section -->
+            <div class="ac-device-memory-section" data-expanded="true">
+              <button type="button" class="ac-device-memory-section-eyebrow" aria-expanded="true">
+                <span class="ac-chevron" data-expanded="true"></span>
+                <span>Programs (128 slots · 0 loaded)</span>
+              </button>
+              <div class="ac-list ac-list-scroll" role="list">
+                <div class="ac-device-memory-row" role="listitem" aria-selected="false">
+                  <span class="ac-list-slot">A03</span>
+                  <span class="ac-list-name">PRG_MPC_STK</span>
+                  <span class="ac-list-meta">11 KG</span>
+                </div>
+                <div class="ac-device-memory-row" role="listitem" aria-selected="false">
+                  <span class="ac-list-slot">B02</span>
+                  <span class="ac-list-name">PRG_RHODES_73</span>
+                  <span class="ac-list-meta">16 KG</span>
+                </div>
+                <div class="ac-device-memory-row" role="listitem" aria-selected="false">
+                  <span class="ac-list-slot">C01</span>
+                  <span class="ac-list-name">PRG_VIOLIN_ENS</span>
+                  <span class="ac-list-meta">18 KG</span>
+                </div>
+                <div class="ac-device-memory-row" role="listitem" aria-selected="false">
+                  <span class="ac-list-slot">D04</span>
+                  <span class="ac-list-name">PRG_PAD_LUSH</span>
+                  <span class="ac-list-meta">6 KG</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Samples section -->
+            <div class="ac-device-memory-section" data-expanded="true">
+              <button type="button" class="ac-device-memory-section-eyebrow" aria-expanded="true">
+                <span class="ac-chevron" data-expanded="true"></span>
+                <span>Samples (62 loaded · 11.8 MB)</span>
+              </button>
+              <div class="ac-list ac-list-scroll" role="list">
+                <div class="ac-device-memory-row" role="listitem" aria-selected="true">
+                  <span class="ac-list-slot">003</span>
+                  <span class="ac-list-name">HAT_CL_SOFT</span>
+                  <span class="ac-list-meta">40K</span>
+                </div>
+                <div class="ac-device-memory-row" role="listitem" aria-selected="false">
+                  <span class="ac-list-slot">004</span>
+                  <span class="ac-list-name">HAT_CL_HARD</span>
+                  <span class="ac-list-meta">44K</span>
+                </div>
+                <div class="ac-device-memory-row" role="listitem" aria-selected="false">
+                  <span class="ac-list-slot">005</span>
+                  <span class="ac-list-name">HAT_OP_LB</span>
+                  <span class="ac-list-meta">110K</span>
+                </div>
+                <div class="ac-device-memory-row" role="listitem" aria-selected="false">
+                  <span class="ac-list-slot">006</span>
+                  <span class="ac-list-name">HAT_OP_SH</span>
+                  <span class="ac-list-meta">96K</span>
+                </div>
+                <div class="ac-device-memory-row" role="listitem" aria-selected="false">
+                  <span class="ac-list-slot">007</span>
+                  <span class="ac-list-name">RIDE_LB</span>
+                  <span class="ac-list-meta">248K</span>
+                </div>
+                <div class="ac-device-memory-row" role="listitem" aria-selected="false">
+                  <span class="ac-list-slot">008</span>
+                  <span class="ac-list-name">CRASH_BR_SH</span>
+                  <span class="ac-list-meta">312K</span>
+                </div>
+                <div class="ac-device-memory-row" role="listitem" aria-selected="false">
+                  <span class="ac-list-slot">009</span>
+                  <span class="ac-list-name">CRASH_BR_LB</span>
+                  <span class="ac-list-meta">388K</span>
+                </div>
+                <div class="ac-device-memory-row" role="listitem" aria-selected="false">
+                  <span class="ac-list-slot">010</span>
+                  <span class="ac-list-name">TOM_HI_MPL</span>
+                  <span class="ac-list-meta">88K</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ===================================================================== -->
+        <!-- LIBRARY COLUMN (center)                                                 -->
+        <!-- ===================================================================== -->
+        <div class="ac-plugin-library-browser-library">
+
+          <!-- Connection slot — production renders <LibraryConnectionUI> here -->
+          <div class="ac-plugin-library-browser-connection">
+            <span style="font-family: var(--ac-font-mono); font-size: var(--ac-text-xs); color: var(--ac-color-text-muted);">
+              Connected · OPFS · ~/work/audiocontrol-library
             </span>
           </div>
-          <div class="ac-page-title-row__actions">
-            <button class="ac-btn ac-btn-sm">Import…</button>
-            <button class="ac-icon-btn" title="Refresh tree">
-              <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15.5-6.3M21 12a9 9 0 0 1-15.5 6.3M21 4v6h-6M3 20v-6h6"/></svg>
-            </button>
+
+          <!-- Scrollable sections column -->
+          <div class="ac-plugin-library-browser-sections">
+
+            <!-- Device-scope group band -->
+            <div class="ac-plib-group-head" data-scope="device">
+              <span class="ac-plib-group-eyebrow">
+                Device <span class="ac-plib-group-eyebrow-sep">/</span> S3000XL
+              </span>
+              <div class="ac-plib-group-rule" aria-hidden="true"></div>
+            </div>
+
+            <!-- TreeSection: S3K Programs (akai-native .prg files) -->
+            <div class="ac-tree-section" data-category="s3k-programs" data-expanded="true">
+              <div class="ac-tree-section-header">
+                <button type="button" class="ac-tree-section-toggle" aria-expanded="true">
+                  <span class="ac-chevron" data-expanded="true"></span>
+                  <span class="ac-tree-section-title">S3K Programs</span>
+                </button>
+              </div>
+              <div role="tree" class="ac-tree-view">
+                <div role="treeitem" class="ac-tree-node" data-kind="item">
+                  <span class="ac-tree-item-tag">P</span>
+                  <span class="ac-tree-node-name">MPC_STACK.prg</span>
+                  <span class="ac-tree-node-meta">11 KG · 2.4 MB</span>
+                </div>
+                <div role="treeitem" class="ac-tree-node" data-kind="item">
+                  <span class="ac-tree-item-tag">P</span>
+                  <span class="ac-tree-node-name">ANALOG_BASS.prg</span>
+                  <span class="ac-tree-node-meta">4 KG · 0.8 MB</span>
+                </div>
+                <div role="treeitem" class="ac-tree-node" data-kind="item">
+                  <span class="ac-tree-item-tag">P</span>
+                  <span class="ac-tree-node-name">LINN_KIT.prg</span>
+                  <span class="ac-tree-node-meta">9 KG · 1.6 MB</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Common-scope group band -->
+            <div class="ac-plib-group-head" data-scope="common">
+              <span class="ac-plib-group-eyebrow">
+                Common <span class="ac-plib-group-eyebrow-sep">/</span> cross-device
+              </span>
+              <div class="ac-plib-group-rule" aria-hidden="true"></div>
+            </div>
+
+            <!-- TreeSection: Samples -->
+            <div class="ac-tree-section" data-category="samples" data-expanded="true">
+              <div class="ac-tree-section-header">
+                <button type="button" class="ac-tree-section-toggle" aria-expanded="true">
+                  <span class="ac-chevron" data-expanded="true"></span>
+                  <span class="ac-tree-section-title">Samples</span>
+                </button>
+                <span class="ac-tree-section-actions">
+                  <button type="button" class="ac-icon-btn" title="New folder">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM12 11v6M9 14h6"/>
+                    </svg>
+                  </button>
+                </span>
+              </div>
+              <div role="tree" class="ac-tree-view">
+                <div role="treeitem" class="ac-tree-node" data-kind="folder" aria-expanded="true">
+                  <span class="ac-tree-disclosure-btn"><span class="ac-chevron" data-expanded="true"></span></span>
+                  <span class="ac-tree-node-name">drum-kits</span>
+                  <span class="ac-tree-node-meta">28 items</span>
+                </div>
+                <div class="ac-tree-children">
+                  <div role="treeitem" class="ac-tree-node" data-kind="item">
+                    <span class="ac-tree-item-tag">S</span>
+                    <span class="ac-tree-node-name">KICK_808_HI.wav</span>
+                    <span class="ac-tree-node-meta">132K · 22k</span>
+                  </div>
+                  <div role="treeitem" class="ac-tree-node" data-kind="item">
+                    <span class="ac-tree-item-tag">S</span>
+                    <span class="ac-tree-node-name">SNARE_LIN77.wav</span>
+                    <span class="ac-tree-node-meta">88K · 22k</span>
+                  </div>
+                  <div role="treeitem" class="ac-tree-node ac-tree-node--selected" data-kind="item">
+                    <span class="ac-tree-item-tag">S</span>
+                    <span class="ac-tree-node-name">HAT_CL_SOFT.wav</span>
+                    <span class="ac-tree-node-meta">40K · 22k</span>
+                  </div>
+                  <div role="treeitem" class="ac-tree-node" data-kind="item">
+                    <span class="ac-tree-item-tag">S</span>
+                    <span class="ac-tree-node-name">HAT_CL_HARD.wav</span>
+                    <span class="ac-tree-node-meta">44K · 22k</span>
+                  </div>
+                  <div role="treeitem" class="ac-tree-node" data-kind="item">
+                    <span class="ac-tree-item-tag">S</span>
+                    <span class="ac-tree-node-name">HAT_OP_LB.wav</span>
+                    <span class="ac-tree-node-meta">110K · 22k</span>
+                  </div>
+                </div>
+                <div role="treeitem" class="ac-tree-node" data-kind="folder">
+                  <span class="ac-tree-disclosure-btn"><span class="ac-chevron"></span></span>
+                  <span class="ac-tree-node-name">percussion</span>
+                  <span class="ac-tree-node-meta">42 items</span>
+                </div>
+                <div role="treeitem" class="ac-tree-node" data-kind="folder">
+                  <span class="ac-tree-disclosure-btn"><span class="ac-chevron"></span></span>
+                  <span class="ac-tree-node-name">keys</span>
+                  <span class="ac-tree-node-meta">36 items</span>
+                </div>
+                <div role="treeitem" class="ac-tree-node" data-kind="folder">
+                  <span class="ac-tree-disclosure-btn"><span class="ac-chevron"></span></span>
+                  <span class="ac-tree-node-name">strings</span>
+                  <span class="ac-tree-node-meta">22 items</span>
+                </div>
+                <div role="treeitem" class="ac-tree-node" data-kind="folder">
+                  <span class="ac-tree-disclosure-btn"><span class="ac-chevron"></span></span>
+                  <span class="ac-tree-node-name">fx</span>
+                  <span class="ac-tree-node-meta">14 items</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- TreeSection: Programs (cross-device .acprog files) -->
+            <div class="ac-tree-section" data-category="programs" data-expanded="true">
+              <div class="ac-tree-section-header">
+                <button type="button" class="ac-tree-section-toggle" aria-expanded="true">
+                  <span class="ac-chevron" data-expanded="true"></span>
+                  <span class="ac-tree-section-title">Programs</span>
+                </button>
+              </div>
+              <div role="tree" class="ac-tree-view">
+                <div role="treeitem" class="ac-tree-node" data-kind="item">
+                  <span class="ac-tree-item-tag">P</span>
+                  <span class="ac-tree-node-name">PRG_MPC_STK.acprog</span>
+                  <span class="ac-tree-node-meta">CROSS · 11 KG</span>
+                </div>
+                <div role="treeitem" class="ac-tree-node" data-kind="item">
+                  <span class="ac-tree-item-tag">P</span>
+                  <span class="ac-tree-node-name">PRG_GRAND_M9.acprog</span>
+                  <span class="ac-tree-node-meta">CROSS · 24 KG</span>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 
-        <div class="ac-app-shell ac-app-shell--three-col">
-          <!-- Left column — device memory -->
-          <aside class="ac-list" aria-label="Device memory">
-            <div class="ac-list__head">
-              <span>S3000XL memory</span>
-              <span>62 + 128</span>
+        <!-- ===================================================================== -->
+        <!-- PREVIEW COLUMN (right)                                                  -->
+        <!-- ===================================================================== -->
+        <div class="ac-plugin-library-browser-preview" data-testid="library-preview-panel">
+          <div class="ac-preview-pane">
+            <div class="ac-preview-pane-head">
+              <h3 class="ac-preview-pane-head-title">HAT_CL_SOFT.wav</h3>
+              <span class="ac-preview-pane-head-sub">common-area / samples / drum-kits</span>
             </div>
-            <div class="ac-list__body">
-              <div class="ac-list__bank-head">
-                <span><span class="ac-chevron is-expanded"></span> Programs (128)</span>
-                <span>128</span>
+            <div class="ac-preview-pane-body">
+
+              <div class="ac-preview-eyebrow-row">
+                <span>Library Sample</span>
+                <span class="ac-preview-eyebrow-sep">·</span>
+                <span class="ac-preview-eyebrow-slot">.wav</span>
+                <span class="ac-preview-eyebrow-sep">·</span>
+                <span>40 KB</span>
               </div>
-              <div class="ac-list-row"><span class="ac-list-row__index">A03</span><span class="ac-list-row__name">PRG_MPC_STK</span><span class="ac-list-row__meta">11 KG</span></div>
-              <div class="ac-list-row"><span class="ac-list-row__index">B02</span><span class="ac-list-row__name">PRG_RHODES_73</span><span class="ac-list-row__meta">16 KG</span></div>
-              <div class="ac-list-row"><span class="ac-list-row__index">C01</span><span class="ac-list-row__name">PRG_VIOLIN_ENS</span><span class="ac-list-row__meta">18 KG</span></div>
-              <div class="ac-list-row"><span class="ac-list-row__index">D04</span><span class="ac-list-row__name">PRG_PAD_LUSH</span><span class="ac-list-row__meta">6 KG</span></div>
 
-              <div class="ac-list__bank-head">
-                <span><span class="ac-chevron is-expanded"></span> Samples (62)</span>
-                <span>11.8 MB</span>
+              <div class="ac-preview-name">HAT_CL_SOFT.wav</div>
+
+              <div class="ac-preview-fields">
+                <div class="ac-preview-field"><span class="ac-preview-field-label">Rate</span><span class="ac-preview-field-value">22050 Hz</span></div>
+                <div class="ac-preview-field"><span class="ac-preview-field-label">Channels</span><span class="ac-preview-field-value">Mono</span></div>
+                <div class="ac-preview-field"><span class="ac-preview-field-label">Length</span><span class="ac-preview-field-value">20,160 samples</span></div>
+                <div class="ac-preview-field"><span class="ac-preview-field-label">Duration</span><span class="ac-preview-field-value">0.91 s</span></div>
+                <div class="ac-preview-field"><span class="ac-preview-field-label">Bit depth</span><span class="ac-preview-field-value">16-bit</span></div>
+                <div class="ac-preview-field"><span class="ac-preview-field-label">Imported</span><span class="ac-preview-field-value">2026-04-12</span></div>
               </div>
-              <div class="ac-list-row is-selected"><span class="ac-list-row__index">003</span><span class="ac-list-row__name">HAT_CL_SOFT</span><span class="ac-list-row__meta">40K</span></div>
-              <div class="ac-list-row"><span class="ac-list-row__index">004</span><span class="ac-list-row__name">HAT_CL_HARD</span><span class="ac-list-row__meta">44K</span></div>
-              <div class="ac-list-row"><span class="ac-list-row__index">005</span><span class="ac-list-row__name">HAT_OP_LB</span><span class="ac-list-row__meta">110K</span></div>
-              <div class="ac-list-row"><span class="ac-list-row__index">006</span><span class="ac-list-row__name">HAT_OP_SH</span><span class="ac-list-row__meta">96K</span></div>
-              <div class="ac-list-row"><span class="ac-list-row__index">007</span><span class="ac-list-row__name">RIDE_LB</span><span class="ac-list-row__meta">248K</span></div>
-              <div class="ac-list-row"><span class="ac-list-row__index">008</span><span class="ac-list-row__name">CRASH_BR_SH</span><span class="ac-list-row__meta">312K</span></div>
-              <div class="ac-list-row"><span class="ac-list-row__index">009</span><span class="ac-list-row__name">CRASH_BR_LB</span><span class="ac-list-row__meta">388K</span></div>
-              <div class="ac-list-row"><span class="ac-list-row__index">010</span><span class="ac-list-row__name">TOM_HI_MPL</span><span class="ac-list-row__meta">88K</span></div>
-            </div>
 
-            <div class="lib__device-storage">
-              <div style="display:flex; justify-content:space-between;">
-                <span>STORAGE · 16 MB</span>
-                <span><strong style="color: var(--ac-color-text-primary);">11.8</strong> used · <strong style="color: var(--ac-color-success);">4.2</strong> free</span>
+              <div class="ac-pane-actions">
+                <button type="button" class="ac-btn ac-btn-primary">Send to S3000XL (slot 003)</button>
+                <button type="button" class="ac-btn">Open in Sample Editor</button>
+                <button type="button" class="ac-btn">Open in Loop Editor</button>
+                <button type="button" class="ac-btn">Open in Chopper</button>
               </div>
-              <div class="lib__storage-bar">
-                <div class="lib__storage-bar__used" style="flex: 11.8;"></div>
-                <div class="lib__storage-bar__free" style="flex: 4.2;"></div>
-              </div>
-            </div>
-          </aside>
 
-          <!-- Center column — library tree -->
-          <section class="ac-panel-card" aria-label="Library tree">
-            <div class="ac-section-head">
-              § Cross-device library · drag to / from device
             </div>
-            <div class="ac-panel-card__body">
-              <div class="ac-tree">
-                <div class="ac-tree-node">
-                  <span class="ac-chevron is-expanded"></span>
-                  <span>📁 common-area</span>
-                  <span class="ac-tree-node__kind">SHARED</span>
-                </div>
-                <div class="ac-tree-children">
-                  <div class="ac-tree-node">
-                    <span class="ac-chevron is-expanded"></span>
-                    <span>📁 samples</span>
-                    <span class="ac-tree-node__kind">142 items</span>
-                  </div>
-                  <div class="ac-tree-children">
-                    <div class="ac-tree-node">
-                      <span class="ac-chevron is-expanded"></span>
-                      <span>📁 drum-kits</span>
-                      <span class="ac-tree-node__kind">28 items</span>
-                    </div>
-                    <div class="ac-tree-children">
-                      <div class="ac-tree-node">
-                        <span></span>
-                        <span>♪ KICK_808_HI.wav</span>
-                        <span class="ac-tree-node__kind">132K · 22k</span>
-                      </div>
-                      <div class="ac-tree-node">
-                        <span></span>
-                        <span>♪ SNARE_LIN77.wav</span>
-                        <span class="ac-tree-node__kind">88K · 22k</span>
-                      </div>
-                      <div class="ac-tree-node is-selected">
-                        <span></span>
-                        <span>♪ HAT_CL_SOFT.wav</span>
-                        <span class="ac-tree-node__kind">40K · 22k</span>
-                      </div>
-                      <div class="ac-tree-node">
-                        <span></span>
-                        <span>♪ HAT_CL_HARD.wav</span>
-                        <span class="ac-tree-node__kind">44K · 22k</span>
-                      </div>
-                      <div class="ac-tree-node">
-                        <span></span>
-                        <span>♪ HAT_OP_LB.wav</span>
-                        <span class="ac-tree-node__kind">110K · 22k</span>
-                      </div>
-                    </div>
-                    <div class="ac-tree-node">
-                      <span class="ac-chevron"></span>
-                      <span>📁 percussion</span>
-                      <span class="ac-tree-node__kind">42 items</span>
-                    </div>
-                    <div class="ac-tree-node">
-                      <span class="ac-chevron"></span>
-                      <span>📁 keys</span>
-                      <span class="ac-tree-node__kind">36 items</span>
-                    </div>
-                    <div class="ac-tree-node">
-                      <span class="ac-chevron"></span>
-                      <span>📁 strings</span>
-                      <span class="ac-tree-node__kind">22 items</span>
-                    </div>
-                    <div class="ac-tree-node">
-                      <span class="ac-chevron"></span>
-                      <span>📁 fx</span>
-                      <span class="ac-tree-node__kind">14 items</span>
-                    </div>
-                  </div>
-                  <div class="ac-tree-node">
-                    <span class="ac-chevron is-expanded"></span>
-                    <span>📁 programs</span>
-                    <span class="ac-tree-node__kind">48 items</span>
-                  </div>
-                  <div class="ac-tree-children">
-                    <div class="ac-tree-node">
-                      <span></span>
-                      <span>⌬ PRG_MPC_STK.acprog</span>
-                      <span class="ac-tree-node__kind">CROSS</span>
-                    </div>
-                    <div class="ac-tree-node">
-                      <span></span>
-                      <span>⌬ PRG_GRAND_M9.acprog</span>
-                      <span class="ac-tree-node__kind">CROSS</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="ac-tree-node">
-                  <span class="ac-chevron is-expanded"></span>
-                  <span>📁 s3k-programs</span>
-                  <span class="ac-tree-node__kind">S3K</span>
-                </div>
-                <div class="ac-tree-children">
-                  <div class="ac-tree-node">
-                    <span></span>
-                    <span>⌬ MPC_STACK.prg</span>
-                    <span class="ac-tree-node__kind">.prg · 11 KG</span>
-                  </div>
-                  <div class="ac-tree-node">
-                    <span></span>
-                    <span>⌬ ANALOG_BASS.prg</span>
-                    <span class="ac-tree-node__kind">.prg · 4 KG</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <!-- Right column — preview / actions -->
-          <aside class="ac-panel-card lib__preview" aria-label="Selection preview">
-            <div class="lib__preview__hero">
-              <div class="lib__preview__hero__kind">Sample · WAV</div>
-              <div class="lib__preview__hero__name">HAT_CL_SOFT.wav</div>
-              <div class="lib__preview__hero__meta">
-                common-area/samples/drum-kits/ · 40 KB · 22050 Hz · mono · 16-bit · 0.91 s
-              </div>
-            </div>
-            <div class="lib__preview__body">
-              <section class="ac-detail-body__section" style="margin-top:0; padding-top:0; border-top:none;">
-                <h3 class="ac-detail-body__title">Actions</h3>
-                <div style="display:flex; flex-direction:column; gap:var(--ac-space-2);">
-                  <button class="ac-btn ac-btn-primary">→ Send to S3000XL (slot 003)</button>
-                  <button class="ac-btn">Open in Sample Editor</button>
-                  <button class="ac-btn">Open in Loop Editor</button>
-                  <button class="ac-btn">Open in Chopper</button>
-                </div>
-              </section>
-
-              <section class="ac-detail-body__section">
-                <h3 class="ac-detail-body__title">Audio</h3>
-                <div style="display:flex; gap:var(--ac-space-2); align-items:center;">
-                  <button class="ac-btn ac-btn-sm">▶ Play</button>
-                  <button class="ac-btn ac-btn-sm">■ Stop</button>
-                  <div style="flex:1;">
-                    <div class="ac-slider"><div class="ac-slider__fill" style="left:0; width:60%;"></div></div>
-                  </div>
-                  <span style="font-family:var(--ac-font-mono); font-size:var(--ac-text-xs); color:var(--ac-color-text-muted);">0:00.55 / 0:00.91</span>
-                </div>
-              </section>
-
-              <section class="ac-detail-body__section">
-                <h3 class="ac-detail-body__title">In use by</h3>
-                <div class="ac-tree" style="font-size:var(--ac-text-xs);">
-                  <div class="ac-tree-node">
-                    <span class="ac-chevron"></span>
-                    <span>PRG_MPC_STK · KG3 · Z1</span>
-                    <span class="ac-tree-node__kind">vel 0–80</span>
-                  </div>
-                  <div class="ac-tree-node">
-                    <span class="ac-chevron"></span>
-                    <span>PRG_LINN_LM2 · KG4 · Z1</span>
-                    <span class="ac-tree-node__kind">vel 0–127</span>
-                  </div>
-                </div>
-              </section>
-
-              <section class="ac-detail-body__section">
-                <h3 class="ac-detail-body__title">Metadata</h3>
-                <div class="ac-param-grid" style="grid-template-columns: 1fr;">
-                  <div class="ac-param">
-                    <div class="ac-param__label">Source</div>
-                    <div class="ac-param__value" style="font-size:var(--ac-text-sm);">orion-m4.local</div>
-                  </div>
-                  <div class="ac-param">
-                    <div class="ac-param__label">Imported</div>
-                    <div class="ac-param__value" style="font-size:var(--ac-text-sm);">2026-04-12 14:08</div>
-                  </div>
-                  <div class="ac-param">
-                    <div class="ac-param__label">Tags</div>
-                    <div class="ac-param__value" style="font-size:var(--ac-text-sm);">hi-hat · closed · soft · drum</div>
-                  </div>
-                </div>
-              </section>
-            </div>
-          </aside>
+          </div>
         </div>
-      </section>
-    </main>
+
+      </div>
+    </div>
+
   </div>
 </body>
 </html>
