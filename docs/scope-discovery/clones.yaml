@@ -1,4 +1,4 @@
-generated_at: 2026-05-23T18:56:13.248Z
+generated_at: 2026-05-24T11:42:31.309Z
 clones:
   - id: 0c01c0982ede
     lines: 15
@@ -113,11 +113,11 @@ clones:
       - modules/akai-s3k-editor/src/components/programs/ProgramEditor.tsx:62:68
     disposition: pending
     reason: null
-  - id: 4820ba340865
-    lines: 33
+  - id: 5f51abbeaf50
+    lines: 37
     members:
-      - modules/akai-s3k-editor/src/components/keygroups/KeygroupList.tsx:13:45
-      - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:13:48
+      - modules/akai-s3k-editor/src/components/keygroups/KeygroupList.tsx:13:49
+      - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:13:52
     disposition: pending
     reason: null
   - id: a8790ef526af
@@ -321,7 +321,7 @@ clones:
     lines: 6
     members:
       - modules/akai-s3k-editor/src/components/library/ReceiveSampleDialog.tsx:72:79
-      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:393:398
+      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:390:395
     disposition: pending
     reason: null
   - id: 8a9862c34efd
@@ -359,60 +359,53 @@ clones:
       - modules/roland-sxx0-editor/src/components/library/S330KitOutputConfig.tsx:37:46
     disposition: keep-with-reason
     reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
-  - id: 78e2e8932481
+  - id: 22537c8af2d2
+    lines: 12
+    members:
+      - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:106:117
+      - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:112:123
+    disposition: pending
+    reason: null
+  - id: c171bce2c3d3
+    lines: 10
+    members:
+      - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:117:126
+      - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:123:132
+    disposition: pending
+    reason: null
+  - id: 7fcb9c2e7b29
+    lines: 37
+    members:
+      - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:13:49
+      - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:16:52
+    disposition: pending
+    reason: null
+  - id: dcea235e9673
     lines: 18
     members:
-      - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:118:135
-      - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:95:112
+      - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:152:169
+      - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:159:176
     disposition: pending
     reason: null
-  - id: c0e18eb409a9
-    lines: 33
+  - id: 9e2bdb863521
+    lines: 29
     members:
-      - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:13:45
-      - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:16:48
+      - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:178:206
+      - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:184:212
     disposition: pending
     reason: null
-  - id: 81196e876abe
-    lines: 16
+  - id: fa5b7859d98a
+    lines: 19
     members:
-      - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:143:158
-      - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:96:111
-    disposition: pending
-    reason: null
-  - id: 4379ad663413
-    lines: 13
-    members:
-      - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:159:171
-      - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:165:177
-    disposition: pending
-    reason: null
-  - id: ee7cf6eb4e63
-    lines: 43
-    members:
-      - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:171:213
-      - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:177:219
-    disposition: pending
-    reason: null
-  - id: 13eb4b98ce16
-    lines: 21
-    members:
-      - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:214:234
-      - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:220:240
+      - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:206:224
+      - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:212:230
     disposition: pending
     reason: null
   - id: cb1708096026
     lines: 10
     members:
-      - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:235:244
-      - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:241:250
-    disposition: pending
-    reason: null
-  - id: f74fe175ec99
-    lines: 17
-    members:
-      - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:55:71
-      - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:61:77
+      - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:225:234
+      - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:231:240
     disposition: pending
     reason: null
   - id: 3ce232024fd4
@@ -422,32 +415,11 @@ clones:
       - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:6:14
     disposition: pending
     reason: null
-  - id: 22537c8af2d2
-    lines: 12
+  - id: f74fe175ec99
+    lines: 17
     members:
-      - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:77:88
-      - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:83:94
-    disposition: pending
-    reason: null
-  - id: 553a411b1fcd
-    lines: 12
-    members:
-      - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:88:99
-      - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:94:105
-    disposition: pending
-    reason: null
-  - id: 57aa4f41d030
-    lines: 18
-    members:
-      - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:101:118
-      - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:124:141
-    disposition: pending
-    reason: null
-  - id: 8f13cc30609c
-    lines: 16
-    members:
-      - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:102:117
-      - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:149:164
+      - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:84:100
+      - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:90:106
     disposition: pending
     reason: null
   - id: 3ad90c76f457
@@ -485,46 +457,46 @@ clones:
       - modules/akai-s3k-editor/src/lib/program-serialization.ts:285:296
     disposition: pending
     reason: null
-  - id: 6c20c006e3ac
-    lines: 6
-    members:
-      - modules/akai-s3k-editor/src/pages/KeygroupsPage.tsx:25:30
-      - modules/akai-s3k-editor/src/pages/ProgramsPage.tsx:26:32
-    disposition: pending
-    reason: null
   - id: 5171971d6e40
     lines: 18
     members:
-      - modules/akai-s3k-editor/src/pages/KeygroupsPage.tsx:262:279
+      - modules/akai-s3k-editor/src/pages/KeygroupsPage.tsx:263:280
       - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:214:231
+    disposition: pending
+    reason: null
+  - id: 6c20c006e3ac
+    lines: 6
+    members:
+      - modules/akai-s3k-editor/src/pages/KeygroupsPage.tsx:26:31
+      - modules/akai-s3k-editor/src/pages/ProgramsPage.tsx:26:32
     disposition: pending
     reason: null
   - id: 134ecd693c01
     lines: 12
     members:
-      - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:472:483
-      - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:491:502
+      - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:473:484
+      - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:492:503
     disposition: pending
     reason: null
   - id: ac0330ff40c0
     lines: 25
     members:
-      - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:709:733
+      - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:715:739
       - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:635:659
     disposition: keep-with-reason
     reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: a901ae04cedb
     lines: 18
     members:
-      - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:733:750
-      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:342:669
+      - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:739:756
+      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:339:669
     disposition: pending
     reason: null
-  - id: 3045e6b4adbc
-    lines: 23
+  - id: c9df03ca9cd9
+    lines: 26
     members:
-      - modules/akai-s3k-editor/src/pages/ProgramsPage.tsx:292:314
-      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:214:236
+      - modules/akai-s3k-editor/src/pages/ProgramsPage.tsx:292:317
+      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:214:235
     disposition: pending
     reason: null
   - id: 821e163d9d47
@@ -537,14 +509,14 @@ clones:
   - id: 0c8162dddb47
     lines: 28
     members:
-      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:315:342
+      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:312:339
       - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:633:659
     disposition: keep-with-reason
     reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 423f58d97969
     lines: 11
     members:
-      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:349:359
+      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:346:356
       - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:659:669
     disposition: keep-with-reason
     reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
@@ -1816,43 +1788,43 @@ clones:
   - id: 129985090b05
     lines: 13
     members:
-      - modules/editor-core/src/components/library/TreeView.test.tsx:177:189
-      - modules/editor-core/src/components/library/TreeView.test.tsx:302:314
+      - modules/editor-core/src/components/library/TreeView.test.tsx:204:216
+      - modules/editor-core/src/components/library/TreeView.test.tsx:329:341
     disposition: keep-with-reason
     reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 7b344298c6c3
     lines: 14
     members:
-      - modules/editor-core/src/components/library/TreeView.test.tsx:177:190
-      - modules/editor-core/src/components/library/TreeView.test.tsx:194:207
+      - modules/editor-core/src/components/library/TreeView.test.tsx:204:217
+      - modules/editor-core/src/components/library/TreeView.test.tsx:221:234
     disposition: keep-with-reason
     reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 9675f7d03bdf
     lines: 14
     members:
-      - modules/editor-core/src/components/library/TreeView.test.tsx:177:207
-      - modules/editor-core/src/components/library/TreeView.test.tsx:237:250
+      - modules/editor-core/src/components/library/TreeView.test.tsx:204:234
+      - modules/editor-core/src/components/library/TreeView.test.tsx:264:277
     disposition: keep-with-reason
     reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: da959b217f75
     lines: 15
     members:
-      - modules/editor-core/src/components/library/TreeView.test.tsx:177:227
-      - modules/editor-core/src/components/library/TreeView.test.tsx:255:269
+      - modules/editor-core/src/components/library/TreeView.test.tsx:204:254
+      - modules/editor-core/src/components/library/TreeView.test.tsx:282:296
     disposition: keep-with-reason
     reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 862ba4750c5f
     lines: 13
     members:
-      - modules/editor-core/src/components/library/TreeView.test.tsx:178:207
-      - modules/editor-core/src/components/library/TreeView.test.tsx:214:226
+      - modules/editor-core/src/components/library/TreeView.test.tsx:205:234
+      - modules/editor-core/src/components/library/TreeView.test.tsx:241:253
     disposition: keep-with-reason
     reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 77a47bfabf1b
     lines: 18
     members:
-      - modules/editor-core/src/components/library/TreeView.test.tsx:178:230
-      - modules/editor-core/src/components/library/TreeView.test.tsx:276:293
+      - modules/editor-core/src/components/library/TreeView.test.tsx:205:257
+      - modules/editor-core/src/components/library/TreeView.test.tsx:303:320
     disposition: keep-with-reason
     reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 0eadaffbe887
@@ -1872,8 +1844,8 @@ clones:
   - id: cadabbc5292e
     lines: 16
     members:
-      - modules/editor-core/src/components/library/TreeView.tsx:356:371
-      - modules/editor-core/src/components/library/TreeView.tsx:434:449
+      - modules/editor-core/src/components/library/TreeView.tsx:369:384
+      - modules/editor-core/src/components/library/TreeView.tsx:447:462
     disposition: keep-with-reason
     reason: "Editor-core file (TreeView, AcRangeBar, useLibraryOperations) — refactoring would ripple across every editor that consumes the shared infrastructure (roland-sxx0-editor, akai-s3k-editor, d110-editor, jv1080-editor). The roland-bugfix branch is scoped to roland-surface clone disposition; cross-editor extractions belong to a separate editor-core scope-discovery dispatch where all consumers can be validated together. Disposition: kept until that editor-core dispatch lands. Batch-dispositioned 2026-05-22."
   - id: 3036842e409a
@@ -3227,10 +3199,3 @@ clones:
       - modules/synth-core/src/hooks/use-slice-player.ts:49:63
     disposition: pending
     reason: null
-  - id: a50e0d779738
-    lines: 21
-    members:
-      - modules/akai-s3k-editor/src/pages/ProgramsPage.tsx:292:312
-      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:214:234
-    disposition: keep-with-reason
-    reason: Intentional adoption of the canonical PageTitleRow primitive across the akai surface (Phase 2 task 2.2 of akai-harmonization). Both akai pages now invoke the same canonical component imported from @audiocontrol/editor-core with the same prop shape (heading + metric={<CacheAge>} + loading wiring). The duplication is the irreducible cost of two pages using the same canonical chrome the same way — extracting a wrapper would just hide that they're invoking the canonical correctly. Flip to refactor only if a third akai page lands with the exact same wiring AND there's a meaningful akai-side extraction (e.g., a useAkaiPageTitleWiring hook that abstracts the loadingMessage / loadingProgress / CacheAge boilerplate). Same shape that the roland editor's PatchesPage / TonesPage / PlayPage invoke; same disposition principle applies.

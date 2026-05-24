@@ -229,7 +229,10 @@ export function SamplesPage(): JSX.Element {
   }
 
   return (
-    <div className="ac-page ac-page-shell">
+    <div className="ac-page ac-page-shell ac-page-shell--fixed-viewport">
+      {/* Lean page header + height-bounded shell — see ProgramsPage.tsx
+          for the rationale on `--fixed-viewport` + `.ac-app-shell`.
+          Promoted during akai-harmonization Phase 2 task 2.2. */}
       <PageTitleRow
         headingId="samples-page-heading"
         headingText="Samples"
@@ -240,22 +243,20 @@ export function SamplesPage(): JSX.Element {
 
       {error && <ErrorBanner message={error} />}
 
-      <div className="ac-list-detail-grid">
-        <div className="ac-list-column-sticky">
-          <SampleList
-            sampleNames={sampleNames}
-            selectedIndex={selectedSampleIndex}
-            onSelect={selectSample}
-            onDelete={handleDelete}
-            onRename={handleRename}
-            onClone={handleClone}
-            onRefresh={handleRefresh}
-            onRefreshAll={handleRefreshAll}
-            isLoading={isLoading}
-          />
-        </div>
+      <div className="ac-app-shell" aria-labelledby="samples-page-heading">
+        <SampleList
+          sampleNames={sampleNames}
+          selectedIndex={selectedSampleIndex}
+          onSelect={selectSample}
+          onDelete={handleDelete}
+          onRename={handleRename}
+          onClone={handleClone}
+          onRefresh={handleRefresh}
+          onRefreshAll={handleRefreshAll}
+          isLoading={isLoading}
+        />
 
-        <div className="p-4">
+        <div className="ac-detail-scroll">
           {selectedHeader && selectedSampleIndex !== null ? (
             <>
               <div className="flex items-center gap-2 mb-3">

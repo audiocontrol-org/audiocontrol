@@ -18,11 +18,161 @@
     @apply rounded-lg p-4 shadow-lg;
   }
 
-  /* S3K program list: 12-char names + index + action icons = ~14rem max */
-  @media (min-width: 1024px) {
-    .ac-list-detail-grid {
-      grid-template-columns: 18rem minmax(0, 1fr);
-    }
+  /*
+   * Detail-pane scroll wrapper for Akai editor pages.
+   *
+   * The canonical `.ac-app-shell` height-bounded grid sets
+   * `overflow: hidden` on every direct child (so each pane handles
+   * its own scroll). Roland's PatchEditor / ToneEditor wrap in
+   * `<article className="ac-detail-pane">` which provides the
+   * detail chrome + interior scroll. Akai's ProgramEditor /
+   * KeygroupEditor / SampleEditor render dense parameter grids
+   * directly; they don't carry the `.ac-detail-pane` border /
+   * head / body shell, but they STILL need the same interior-
+   * scroll contract or content past one viewport gets clipped.
+   *
+   * This wrapper class provides the minimum subset:
+   *   - `overflow-y: auto` so long editor surfaces scroll inside
+   *     the grid track rather than overflowing it.
+   *   - Padding so the editor content doesn't bleed into the
+   *     pane edge.
+   *   - `min-width: 0` so the inner grid columns can shrink.
+   *
+   * Adopted by ProgramsPage / KeygroupsPage / SamplesPage during
+   * akai-harmonization Phase 2 task 2.2. Lives in akai's index.css
+   * because the chrome it pairs with (the `.s3k-*` editor surfaces)
+   * is dialect-specific; the `.ac-app-shell` parent that drives
+   * the height contract is shared. If a sibling editor (jv1080,
+   * d110, …) lands without a `.ac-detail-pane` wrapper, promote
+   * this primitive to editor-core/list-primitives.css then.
+   */
+  .ac-detail-scroll {
+    overflow-y: auto;
+    min-width: 0;
+    padding: 1rem;
+  }
+
+  /*
+   * Akai list eyebrow — title row above `.ac-list-scroll`. Sits at
+   * the top of the `.ac-list` container, outside the scroll pane,
+   * so it never scrolls off-screen as the user pages through items.
+   * Mirrors the shape Roland's BankHeader provides for its bank-
+   * structured lists, but the Akai lists are flat (no banks) so a
+   * simple title eyebrow is enough.
+   */
+  .ac-akai-list-eyebrow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--ac-space-3) var(--ac-space-4);
+    border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-xs);
+    text-transform: uppercase;
+    letter-spacing: var(--ac-tracking-eyebrow);
+    color: var(--ac-color-text-muted);
+  }
+
+  .ac-akai-list-eyebrow-title {
+    font-weight: var(--ac-font-weight-medium);
+  }
+
+  .ac-akai-list-eyebrow-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ac-space-1);
+  }
+
+  .ac-akai-list-eyebrow-btn {
+    color: var(--ac-color-text-muted);
+    padding: 0.125rem;
+    border-radius: var(--ac-radius-sm);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    transition: color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+
+  .ac-akai-list-eyebrow-btn:hover:not(:disabled) {
+    color: var(--ac-color-text-primary);
+  }
+
+  .ac-akai-list-eyebrow-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  /*
+   * Akai list-row decoration — extends `.ac-list-row` (canonical row
+   * grid in editor-core/list-primitives.css) with the row-action
+   * cluster on the right (refresh / clone / delete on hover). The
+   * canonical `.ac-list-row` declares the slot/name/auto grid + the
+   * hover/selected/focus/disabled state rules; the additions below
+   * are Akai-specific:
+   *   - opacity-0 / hover-reveal for the inline action cluster
+   *   - rename-input chrome (inline edit-in-place affordance)
+   * Roland's PatchList / ToneList retired their per-row actions in
+   * the 2026-05-19 sweep, so they don't need these rules; promoting
+   * them to editor-core would be premature.
+   */
+  .ac-akai-list-row {
+    position: relative;
+  }
+
+  .ac-akai-list-row-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.125rem;
+    opacity: 0;
+    transition: opacity var(--ac-duration-fast) var(--ac-easing-default);
+  }
+
+  .ac-akai-list-row:hover .ac-akai-list-row-actions,
+  .ac-akai-list-row[aria-selected="true"] .ac-akai-list-row-actions,
+  .ac-akai-list-row:focus-within .ac-akai-list-row-actions {
+    opacity: 1;
+  }
+
+  /*
+   * Rename input — inline edit-in-place affordance that replaces
+   * `.ac-list-name` while the user is renaming. Styled to read as
+   * a continuation of the row (no jarring chrome change), with an
+   * accent border-bottom for the focus state.
+   */
+  .ac-akai-list-rename {
+    min-width: 0;
+    flex: 1;
+    background: var(--ac-color-surface-canvas);
+    border: var(--ac-rule-hairline) solid var(--ac-color-accent);
+    border-radius: var(--ac-radius-sm);
+    padding: 0.25rem 0.5rem;
+    font-family: var(--ac-font-mono);
+    font-size: var(--ac-text-sm);
+    color: var(--ac-color-text-primary);
+    text-transform: uppercase;
+    outline: none;
+  }
+
+  .ac-akai-list-rename--saving {
+    background: var(--ac-color-surface-panel);
+    border-color: var(--ac-color-border-subtle);
+    color: var(--ac-color-text-muted);
+  }
+
+  /*
+   * Empty / loading state shown inside `.ac-list-scroll` when the
+   * underlying source has no rows or is mid-fetch.
+   */
+  .ac-akai-list-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+  }
+
+  .ac-akai-list-state-msg {
+    font-size: var(--ac-text-sm);
+    color: var(--ac-color-text-muted);
   }
 
   /* Transparent button wrapper for MidiStatusDisplay so it remains clickable

@@ -358,13 +358,109 @@
   color: color-mix(in srgb, var(--ac-color-text-muted) 70%, transparent);
 }
 
+/* ============================================================
+   LIST META — right-most cell of a list-row's grid (e.g., a
+   keygroup's note-range readout "C2–G5", or a sample's size in
+   bytes). Renders as monospace + muted color so it reads as a
+   secondary detail beside the primary name.
+   ============================================================ */
+.ac-list-meta {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+}
+
+/* ============================================================
+   LIST ROW — slot + name + meta chrome, shared across every
+   list-detail editor (Roland PatchList / ToneList, Akai
+   ProgramList / KeygroupList / SampleList). The slot-column
+   width is exposed via the `--ac-list-row-slot-width` custom
+   property so each page can size it independently:
+     ToneList (T11..T48) + Akai ProgramList (1..256) /
+     SampleList (1..62) / KeygroupList (KG1..KG11) all fit the
+     default (2.25rem — fits three chars).
+     PatchList overrides via inline style to 3rem — S-550
+     patches use four-char slot labels ("II11"–"II48").
+   The non-slot chrome (gap, padding, hover, selected, focus,
+   disabled, action-reveal) is identical across every consumer
+   and lives in one rule per state.
+
+   Promoted from `roland-sxx0-editor/src/styles/_shared.css`
+   during akai-harmonization Phase 2 task 2.2 so cross-editor
+   consumers (akai now, jv1080 / d110 later) can adopt without
+   per-module forking.
+   ============================================================ */
+
+.ac-list-row {
+  --ac-list-row-slot-width: 2.25rem;
+  display: grid;
+  grid-template-columns: var(--ac-list-row-slot-width) minmax(0, 1fr) auto;
+  gap: var(--ac-space-2);
+  align-items: center;
+  /* Pin a uniform row height regardless of name-cell content. Without
+     this, named rows render at the body line-height (~21px content,
+     38px total), empty rows collapse to the slot-label height
+     (35px), and "Click to load" rows split the difference (~35.8px).
+     The visible 3px row-to-row variance was the recurring chrome bug
+     between patches + tones (and between filled + empty rows on the
+     same page). 2.5rem = 40px, which is the named-row height rounded
+     up by 2px so the line-box has breathing room. */
+  min-height: 2.5rem;
+  padding: var(--ac-space-2) var(--ac-space-3);
+  border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 50%, transparent);
+  border-left: var(--ac-rule-medium) solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--ac-color-text-primary);
+  background: transparent;
+  transition:
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    border-left-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-list-row:hover:not([aria-disabled="true"]) {
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 60%, transparent);
+  border-left-color: color-mix(in srgb, var(--ac-color-accent) 40%, transparent);
+}
+
+.ac-list-row[aria-selected="true"] {
+  background: color-mix(in srgb, var(--ac-color-accent) 12%, transparent);
+  border-left-color: var(--ac-color-accent);
+}
+
+.ac-list-row[aria-selected="true"] .ac-list-slot {
+  color: var(--ac-color-accent);
+}
+
+.ac-list-row:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--ac-color-accent) 12%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
+}
+
+.ac-list-row[aria-disabled="true"] {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+/* Hover-reveal for inline row actions. Currently no per-row
+   action button on either Roland list (the Export affordance was
+   retired 2026-05-19), but the selector is left in place so
+   future per-row actions get the same fade-on-hover treatment
+   without re-deriving the rule. */
+.ac-list-row:hover .ac-list-action,
+.ac-list-row[aria-selected="true"] .ac-list-action,
+.ac-list-row:focus-within .ac-list-action {
+  opacity: 1;
+}
+
 /*
  * Hover-revealed Export action — opacity transitions from 0 to 1 when
- * the parent row (a `.<page>__list-row`) is hovered, selected, or has
- * focus-within. The parent-class selector is page-scoped because we
- * can't write a single shared selector that targets both row classes
- * with high specificity. Each page-scoped row CSS owns the reveal rule
- * (see patches.css / tones.css).
+ * the parent row (`.ac-list-row` or a `.<page>__list-row` variant) is
+ * hovered, selected, or has focus-within. The reveal-on-hover rule for
+ * `.ac-list-row` lives above; the per-page rules in patches.css /
+ * tones.css cover their legacy row-class variants.
  */
 .ac-list-action {
   display: inline-flex;

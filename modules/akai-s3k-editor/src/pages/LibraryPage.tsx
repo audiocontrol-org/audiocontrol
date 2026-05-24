@@ -556,15 +556,21 @@ export function LibraryPage(): JSX.Element {
   const libraryHandle = root;
 
   return (
-    <div className="ac-page ac-page-shell">
+    <div className="ac-page ac-page-shell ac-page-shell--fixed-viewport">
+      {/* Lean page header + height-bounded shell. The `.ac-page-shell-body`
+          wrapper provides `flex: 1 1 auto; min-height: 0; overflow: hidden`
+          so the PluginLibraryBrowser fills the remaining viewport and
+          handles its own internal scroll — replacing the hand-rolled
+          `style={{ height: 'calc(100vh - 8rem)' }}` height math.
+          Matches Roland LibraryPage's canonical shape; promoted during
+          akai-harmonization Phase 2 task 2.2. */}
       <PageTitleRow
         headingId="library-page-heading"
         headingText="Library"
       />
 
-      <div className="ac-page-content flex" style={{ height: 'calc(100vh - 8rem)' }}>
-        <div className="flex-1 min-w-0">
-          <PluginLibraryBrowser
+      <div className="ac-page-shell-body" data-capability="C-LIB-01">
+        <PluginLibraryBrowser
             plugin={s3kLibraryPlugin}
             libraryHandle={libraryHandle}
             categoryData={categoryData}
@@ -620,7 +626,6 @@ export function LibraryPage(): JSX.Element {
               />
             }
           />
-        </div>
       </div>
 
       {/* Transfer Dialogs (all require device client + library root) */}

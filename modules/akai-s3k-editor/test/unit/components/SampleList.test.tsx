@@ -40,18 +40,24 @@ describe('SampleList', () => {
     expect(onSelect).toHaveBeenCalledWith(1);
   });
 
-  it('highlights selected sample with bg-blue-600', () => {
+  it('marks the selected sample with aria-selected="true"', () => {
+    // The visual selected-state highlight is owned by the canonical
+    // `.ac-list-row[aria-selected="true"]` rule in
+    // editor-core/list-primitives.css (promoted from roland during
+    // akai-harmonization Phase 2 task 2.2). The unit test asserts
+    // the observable contract — the `aria-selected` attribute — not
+    // the specific Tailwind class the old chrome used (`bg-blue-600`).
     renderList({ selectedIndex: 0 });
 
     const button = screen.getByTestId('sample-item-0');
-    expect(button.className).toContain('bg-blue-600');
+    expect(button.getAttribute('aria-selected')).toBe('true');
   });
 
-  it('does not highlight unselected samples with bg-blue-600', () => {
+  it('does not mark unselected samples as aria-selected', () => {
     renderList({ selectedIndex: 0 });
 
     const button = screen.getByTestId('sample-item-1');
-    expect(button.className).not.toContain('bg-blue-600');
+    expect(button.getAttribute('aria-selected')).toBe('false');
   });
 
   it('shows hover actions (delete, refresh) via group class', () => {

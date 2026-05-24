@@ -303,7 +303,10 @@ export function KeygroupsPage(): JSX.Element {
   }
 
   return (
-    <div className="ac-page ac-page-shell">
+    <div className="ac-page ac-page-shell ac-page-shell--fixed-viewport">
+      {/* Lean page header + height-bounded shell — see ProgramsPage.tsx
+          for the rationale on `--fixed-viewport` + `.ac-app-shell`.
+          Promoted during akai-harmonization Phase 2 task 2.2. */}
       <PageTitleRow
         headingId="keygroups-page-heading"
         headingText={`Keygroups — ${selectedProgram.PRNAME.trim() || '(unnamed)'}`}
@@ -333,21 +336,19 @@ export function KeygroupsPage(): JSX.Element {
         onNoteRangeChange={setNoteRange}
       />
 
-      <div className="ac-list-detail-grid">
-        <div className="ac-list-column-sticky">
-          <KeygroupList
-            keygroups={keygroups}
-            keygroupCount={keygroupCount}
-            selectedIndex={selectedKeygroupIndex}
-            onSelect={selectKeygroup}
-            onAdd={handleAddKeygroup}
-            onDelete={handleDeleteKeygroup}
-            onRefresh={handleRefresh}
-            isLoading={isLoading}
-          />
-        </div>
+      <div className="ac-app-shell" aria-labelledby="keygroups-page-heading">
+        <KeygroupList
+          keygroups={keygroups}
+          keygroupCount={keygroupCount}
+          selectedIndex={selectedKeygroupIndex}
+          onSelect={selectKeygroup}
+          onAdd={handleAddKeygroup}
+          onDelete={handleDeleteKeygroup}
+          onRefresh={handleRefresh}
+          isLoading={isLoading}
+        />
 
-        <div className="p-4">
+        <div className="ac-detail-scroll">
           {selectedHeader ? (
             <KeygroupEditor
               header={selectedHeader}

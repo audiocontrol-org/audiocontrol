@@ -42,6 +42,50 @@ function ActionButton({
   );
 }
 
+/**
+ * Eyebrow row above the list scroll pane — see ProgramList for the
+ * same shape. Lives outside `.ac-list-scroll` so the title + add /
+ * refresh icons stay pinned as the user scrolls.
+ */
+function KeygroupListHeader({
+  onAdd,
+  onRefresh,
+  isLoading,
+}: {
+  onAdd?: () => void;
+  onRefresh?: () => void;
+  isLoading: boolean;
+}): JSX.Element {
+  return (
+    <div className="ac-akai-list-eyebrow">
+      <span className="ac-akai-list-eyebrow-title">Keygroups</span>
+      <div className="ac-akai-list-eyebrow-actions">
+        {onAdd && (
+          <button
+            onClick={onAdd}
+            disabled={isLoading}
+            className="ac-akai-list-eyebrow-btn"
+            title="Add keygroup"
+            data-testid="add-keygroup-btn"
+          >
+            <CloneIcon />
+          </button>
+        )}
+        {onRefresh && (
+          <button
+            onClick={onRefresh}
+            disabled={isLoading}
+            className="ac-akai-list-eyebrow-btn"
+            title="Reload keygroups from device"
+          >
+            <RefreshIcon />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function KeygroupList({
   keygroups,
   keygroupCount,
@@ -56,97 +100,64 @@ export function KeygroupList({
 
   if (keygroupCount === 0) {
     return (
-      <div className="card p-2">
-        <div className="px-2 py-1 mb-2 flex items-center justify-between">
-          <span className="text-sm font-medium text-gray-300">Keygroups</span>
-          {onRefresh && (
-            <button
-              onClick={onRefresh}
-              disabled={isLoading}
-              className="text-gray-500 hover:text-gray-200 disabled:opacity-50 transition-colors p-0.5 rounded"
-              title="Reload keygroups from device"
-            >
-              <RefreshIcon />
-            </button>
-          )}
+      <aside className="ac-list" aria-label="Keygroup list">
+        <KeygroupListHeader onAdd={onAdd} onRefresh={onRefresh} isLoading={isLoading} />
+        <div className="ac-list-scroll ac-akai-list-state">
+          <span className="ac-akai-list-state-msg">No keygroups available. Select a program first.</span>
         </div>
-        <div className="ac-list-scroll flex items-center justify-center py-8">
-          <span className="text-sm text-gray-500">No keygroups available. Select a program first.</span>
-        </div>
-      </div>
+      </aside>
     );
   }
 
   return (
-    <div className="card p-2">
-      <div className="px-2 py-1 mb-2 flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-300">Keygroups</span>
-        <div className="flex items-center gap-1">
-          {onAdd && (
-            <button
-              onClick={onAdd}
-              disabled={isLoading}
-              className="text-gray-500 hover:text-gray-200 disabled:opacity-50 transition-colors p-0.5 rounded"
-              title="Add keygroup"
-              data-testid="add-keygroup-btn"
-            >
-              <CloneIcon />
-            </button>
-          )}
-          {onRefresh && (
-            <button
-              onClick={onRefresh}
-              disabled={isLoading}
-              className="text-gray-500 hover:text-gray-200 disabled:opacity-50 transition-colors p-0.5 rounded"
-              title="Reload keygroups from device"
-            >
-              <RefreshIcon />
-            </button>
-          )}
-        </div>
-      </div>
-      <div className="ac-list-scroll space-y-1">
+    <aside
+      className="ac-list"
+      // KG1..KG11 = max 4 chars; widen the slot column slightly so
+      // the label doesn't truncate or shift between 1-digit and
+      // 2-digit indices.
+      style={{ ['--ac-list-row-slot-width' as string]: '2.75rem' }}
+      aria-label="Keygroup list"
+    >
+      <KeygroupListHeader onAdd={onAdd} onRefresh={onRefresh} isLoading={isLoading} />
+      <div className="ac-list-scroll">
         {Array.from({ length: keygroupCount }, (_, i) => {
           const kg = keygroups[i];
           const isSelected = selectedIndex === i;
+          const showDelete = onDelete && canDeleteSelected && isSelected;
+
+          const handleClick = () => onSelect(i);
+          const handleKeyDown = (e: React.KeyboardEvent) => {
+            if (isLoading) return;
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleClick();
+            }
+          };
 
           return (
-            <div key={i} className="group relative">
-              <button
-                onClick={() => onSelect(i)}
-                disabled={isLoading}
-                data-testid={`keygroup-item-${i}`}
-                className={cn(
-                  'w-full px-3 py-2 rounded text-left text-sm transition-colors',
-                  'hover:bg-gray-700/50',
-                  isSelected
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-300',
-                  isLoading && 'opacity-50',
-                )}
-              >
-                <div className="flex items-center gap-3 pr-8">
-                  <span className="text-xs text-gray-500 w-6 text-right font-mono">
-                    {i + 1}
-                  </span>
-                  <span className="truncate font-mono">
-                    KG {i + 1}
-                  </span>
-                  {kg ? (
-                    <span className="text-xs text-gray-400 ml-auto whitespace-nowrap">
-                      {formatMidiNote(kg.LONOTE)}–{formatMidiNote(kg.HINOTE)}
-                    </span>
-                  ) : (
-                    <span className="text-xs text-gray-600 ml-auto">...</span>
-                  )}
-                </div>
-              </button>
-              {onDelete && canDeleteSelected && isSelected && (
-                <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div
+              key={i}
+              data-testid={`keygroup-item-${i}`}
+              role="button"
+              tabIndex={isLoading ? -1 : 0}
+              aria-disabled={isLoading}
+              aria-selected={isSelected}
+              className="ac-list-row ac-akai-list-row"
+              onClick={isLoading ? undefined : handleClick}
+              onKeyDown={handleKeyDown}
+            >
+              <span className="ac-list-slot">KG{i + 1}</span>
+              <span className="ac-list-name">
+                {kg
+                  ? `${formatMidiNote(kg.LONOTE)}–${formatMidiNote(kg.HINOTE)}`
+                  : '...'}
+              </span>
+              {showDelete && (
+                <span className="ac-akai-list-row-actions">
                   <ActionButton
                     onClick={(e) => {
                       e.stopPropagation();
-                      onDelete(i);
+                      if (onDelete) onDelete(i);
                     }}
                     selected={isSelected}
                     title="Delete keygroup"
@@ -154,12 +165,12 @@ export function KeygroupList({
                   >
                     <DeleteIcon />
                   </ActionButton>
-                </div>
+                </span>
               )}
             </div>
           );
         })}
       </div>
-    </div>
+    </aside>
   );
 }

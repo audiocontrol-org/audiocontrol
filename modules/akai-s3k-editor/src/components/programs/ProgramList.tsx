@@ -42,6 +42,35 @@ function ActionButton({
   );
 }
 
+/**
+ * Eyebrow row shown above the list scroll pane — title + optional
+ * refresh-all icon. Lives outside `.ac-list-scroll` so it never
+ * scrolls off-screen as the user pages through programs.
+ */
+function ProgramListHeader({
+  onRefreshAll,
+  isLoading,
+}: {
+  onRefreshAll?: () => void;
+  isLoading: boolean;
+}): JSX.Element {
+  return (
+    <div className="ac-akai-list-eyebrow">
+      <span className="ac-akai-list-eyebrow-title">Programs</span>
+      {onRefreshAll && (
+        <button
+          onClick={onRefreshAll}
+          disabled={isLoading}
+          className="ac-akai-list-eyebrow-btn"
+          title="Reload all programs from device"
+        >
+          <RefreshIcon />
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function ProgramList({
   programNames,
   selectedIndex,
@@ -94,131 +123,92 @@ export function ProgramList({
 
   if (isLoading) {
     return (
-      <div className="card p-2">
-        <div className="px-2 py-1 mb-2 flex items-center justify-between">
-          <span className="text-sm font-medium text-gray-300">Programs</span>
-          {onRefreshAll && (
-            <button
-              onClick={onRefreshAll}
-              disabled={isLoading}
-              className="text-gray-500 hover:text-gray-200 disabled:opacity-50 transition-colors p-0.5 rounded"
-              title="Reload all programs from device"
-            >
-              <RefreshIcon />
-            </button>
-          )}
+      <aside className="ac-list" aria-label="Program list">
+        <ProgramListHeader onRefreshAll={onRefreshAll} isLoading={isLoading} />
+        <div className="ac-list-scroll ac-akai-list-state">
+          <span className="ac-akai-list-state-msg">Loading programs...</span>
         </div>
-        <div className="ac-list-scroll flex items-center justify-center py-8">
-          <span className="text-sm text-gray-500">Loading programs...</span>
-        </div>
-      </div>
+      </aside>
     );
   }
 
   if (programNames.length === 0) {
     return (
-      <div className="card p-2">
-        <div className="px-2 py-1 mb-2 flex items-center justify-between">
-          <span className="text-sm font-medium text-gray-300">Programs</span>
-          {onRefreshAll && (
-            <button
-              onClick={onRefreshAll}
-              disabled={isLoading}
-              className="text-gray-500 hover:text-gray-200 disabled:opacity-50 transition-colors p-0.5 rounded"
-              title="Reload all programs from device"
-            >
-              <RefreshIcon />
-            </button>
-          )}
+      <aside className="ac-list" aria-label="Program list">
+        <ProgramListHeader onRefreshAll={onRefreshAll} isLoading={isLoading} />
+        <div className="ac-list-scroll ac-akai-list-state">
+          <span className="ac-akai-list-state-msg">No programs loaded</span>
         </div>
-        <div className="ac-list-scroll flex items-center justify-center py-8">
-          <span className="text-sm text-gray-500">No programs loaded</span>
-        </div>
-      </div>
+      </aside>
     );
   }
 
   const hasActions = onDelete || onRename || onClone || onRefresh;
 
   return (
-    <div className="card p-2">
-      <div className="px-2 py-1 mb-2 flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-300">Programs</span>
-        {onRefreshAll && (
-          <button
-            onClick={onRefreshAll}
-            disabled={isLoading}
-            className="text-gray-500 hover:text-gray-200 disabled:opacity-50 transition-colors p-0.5 rounded"
-            title="Reload all programs from device"
-          >
-            <RefreshIcon />
-          </button>
-        )}
-      </div>
-      <div className="ac-list-scroll space-y-1">
+    <aside className="ac-list" aria-label="Program list">
+      <ProgramListHeader onRefreshAll={onRefreshAll} isLoading={isLoading} />
+      <div className="ac-list-scroll">
         {programNames.map((name, index) => {
           const isSelected = index === selectedIndex;
           const isEmpty = name.trim() === '';
-
           const isEditing = editingIndex === index;
+
+          const handleClick = () => onSelect(index);
+          const handleDoubleClick = () => {
+            if (onRename && !isEmpty) startRename(index);
+          };
+          const handleKeyDown = (e: React.KeyboardEvent) => {
+            if (isEditing) return;
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleClick();
+            }
+          };
+
+          // Display name (or placeholder for empty slots).
+          const displayName = isEmpty ? '(empty)' : name;
+          const nameClass = isEmpty
+            ? 'ac-list-name ac-list-name--empty'
+            : 'ac-list-name';
 
           return (
             <div
               key={index}
-              className="group relative"
+              data-testid={`program-item-${index}`}
+              role="button"
+              tabIndex={0}
+              aria-selected={isSelected}
+              className="ac-list-row ac-akai-list-row"
+              onClick={isEditing ? undefined : handleClick}
+              onDoubleClick={isEditing ? undefined : handleDoubleClick}
+              onKeyDown={handleKeyDown}
             >
-              <button
-                data-testid={`program-item-${index}`}
-                onClick={() => onSelect(index)}
-                onDoubleClick={() => { if (onRename && !isEmpty) startRename(index); }}
-                className={cn(
-                  'w-full px-3 py-2 rounded text-left text-sm transition-colors',
-                  'hover:bg-gray-700/50',
-                  isSelected
-                    ? 'bg-blue-600 text-white'
-                    : isEmpty
-                      ? 'text-gray-500/50'
-                      : 'text-gray-300',
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-gray-500 w-6 text-right font-mono">
-                    {index + 1}
-                  </span>
-                  {isEditing ? (
-                    <input
-                      ref={inputRef}
-                      type="text"
-                      value={isSaving ? `${editValue.trim()}…` : editValue}
-                      maxLength={12}
-                      readOnly={isSaving}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') void commitRename();
-                        if (e.key === 'Escape') cancelRename();
-                        e.stopPropagation();
-                      }}
-                      onBlur={() => void commitRename()}
-                      onClick={(e) => e.stopPropagation()}
-                      className={cn(
-                        'flex-1 min-w-0 rounded px-1.5 py-0.5 text-sm font-mono uppercase outline-none',
-                        isSaving
-                          ? 'bg-gray-800 border border-gray-600 text-gray-400'
-                          : 'bg-gray-900 border border-blue-500 text-gray-200',
-                      )}
-                    />
-                  ) : (
-                    <span
-                      className={cn('truncate', isEmpty && 'italic')}
-                      data-testid="program-name"
-                    >
-                      {isEmpty ? '(empty)' : name}
-                    </span>
-                  )}
-                </div>
-              </button>
+              <span className="ac-list-slot">{index + 1}</span>
+              {isEditing ? (
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={isSaving ? `${editValue.trim()}…` : editValue}
+                  maxLength={12}
+                  readOnly={isSaving}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void commitRename();
+                    if (e.key === 'Escape') cancelRename();
+                    e.stopPropagation();
+                  }}
+                  onBlur={() => void commitRename()}
+                  onClick={(e) => e.stopPropagation()}
+                  className={cn('ac-akai-list-rename', isSaving && 'ac-akai-list-rename--saving')}
+                />
+              ) : (
+                <span className={nameClass} data-testid="program-name">
+                  {displayName}
+                </span>
+              )}
               {hasActions && !isEmpty && !isEditing && (
-                <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="ac-akai-list-row-actions">
                   {onRefresh && (
                     <ActionButton
                       onClick={(e) => { e.stopPropagation(); onRefresh(index); }}
@@ -247,12 +237,12 @@ export function ProgramList({
                       <DeleteIcon />
                     </ActionButton>
                   )}
-                </div>
+                </span>
               )}
             </div>
           );
         })}
       </div>
-    </div>
+    </aside>
   );
 }

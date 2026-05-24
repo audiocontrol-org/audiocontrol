@@ -307,7 +307,14 @@ export function ProgramsPage(): JSX.Element {
   }
 
   return (
-    <div className="ac-page ac-page-shell">
+    <div className="ac-page ac-page-shell ac-page-shell--fixed-viewport">
+      {/* Lean page header — composed from .ac-page-title-* shared
+          primitives via PageTitleRow. The `--fixed-viewport` modifier
+          opts this page into the height-bounded shell so the list +
+          detail columns scroll internally and the document does not
+          scroll as one tall page (see DESIGN-SYSTEM.md
+          § "Page Shell Pattern"). Promoted to the canonical shape
+          during akai-harmonization Phase 2 task 2.2. */}
       <PageTitleRow
         headingId="programs-page-heading"
         headingText="Programs"
@@ -319,44 +326,43 @@ export function ProgramsPage(): JSX.Element {
 
       {error && <ErrorBanner message={error} />}
 
-      <div className="ac-list-detail-grid">
-        <div className="ac-list-column-sticky">
-          <ProgramList
-            programNames={programNames}
-            selectedIndex={selectedProgramIndex}
-            onSelect={selectProgram}
-            onDelete={(index) => setDeletingProgramIndex(index)}
-            onRename={(index, newName) => handleRenameProgram(index, newName)}
-            onClone={(index) => void handleCloneProgram(index)}
-            onRefresh={(index) => void handleRefreshProgram(index)}
-            onRefreshAll={() => {
-              useProgramStore.getState().invalidateCache();
-              if (client) client.invalidateProgramCache();
-              lastLoadedKeygroupProgram.current = null;
-              invalidateKeygroupCache();
-              loadProgramNames();
-            }}
-            isLoading={isLoading && !namesLoaded}
-          />
-        </div>
+      {/* List + detail — fills the remaining vertical space. The
+          `.ac-app-shell` 2-col grid lets its children scroll
+          internally rather than the page scrolling as one document. */}
+      <div className="ac-app-shell" aria-labelledby="programs-page-heading">
+        <ProgramList
+          programNames={programNames}
+          selectedIndex={selectedProgramIndex}
+          onSelect={selectProgram}
+          onDelete={(index) => setDeletingProgramIndex(index)}
+          onRename={(index, newName) => handleRenameProgram(index, newName)}
+          onClone={(index) => void handleCloneProgram(index)}
+          onRefresh={(index) => void handleRefreshProgram(index)}
+          onRefreshAll={() => {
+            useProgramStore.getState().invalidateCache();
+            if (client) client.invalidateProgramCache();
+            lastLoadedKeygroupProgram.current = null;
+            invalidateKeygroupCache();
+            loadProgramNames();
+          }}
+          isLoading={isLoading && !namesLoaded}
+        />
 
-        <div className="p-4">
+        <div className="ac-detail-scroll">
           {selectedHeader ? (
-            <>
-              <ProgramEditor
-                header={selectedHeader}
-                programIndex={selectedProgramIndex!}
-                onParameterChange={handleParameterChange}
-              >
-                <KeygroupSummary
-                  keygroups={keygroups}
-                  keygroupCount={keygroupCount}
-                  isLoading={isLoading}
-                  onAddKeygroup={() => void handleAddKeygroup()}
-                  onDeleteKeygroup={(index) => void handleDeleteKeygroup(index)}
-                />
-              </ProgramEditor>
-            </>
+            <ProgramEditor
+              header={selectedHeader}
+              programIndex={selectedProgramIndex!}
+              onParameterChange={handleParameterChange}
+            >
+              <KeygroupSummary
+                keygroups={keygroups}
+                keygroupCount={keygroupCount}
+                isLoading={isLoading}
+                onAddKeygroup={() => void handleAddKeygroup()}
+                onDeleteKeygroup={(index) => void handleDeleteKeygroup(index)}
+              />
+            </ProgramEditor>
           ) : selectedProgramIndex !== null ? (
             <p className="text-gray-400">Loading program...</p>
           ) : (
