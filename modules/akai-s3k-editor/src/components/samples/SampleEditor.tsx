@@ -1,5 +1,7 @@
 import type { SampleHeader } from '@audiocontrol/sampler-devices/s3k';
-import { ParamKnob, ParamSelect } from '@/components/ui/ParamKnob';
+import { AcNumberInput } from '@audiocontrol/editor-core';
+import { S3kParamRow } from '@/components/ui/S3kParamRow';
+import { S3kParamSelectRow } from '@/components/ui/S3kParamSelectRow';
 
 interface SampleEditorProps {
   header: SampleHeader;
@@ -51,9 +53,9 @@ function LoopSection({
 }): JSX.Element {
   return (
     <Section title={`Loop ${loopNumber}`}>
-      <ParamKnob label="Loop Start" value={loopAt} min={0} max={maxLength} onChange={num(`LOOPAT${loopNumber}`)} />
-      <ParamKnob label="Loop Length" value={loopLength} min={0} max={maxLength} onChange={num(`LLNGTH${loopNumber}`)} />
-      <ParamKnob label="Dwell" value={dwell} min={0} max={9999} onChange={num(`LDWELL${loopNumber}`)} />
+      <S3kParamRow label="Loop Start" value={loopAt} min={0} max={maxLength} onChange={num(`LOOPAT${loopNumber}`)} />
+      <S3kParamRow label="Loop Length" value={loopLength} min={0} max={maxLength} onChange={num(`LLNGTH${loopNumber}`)} />
+      <S3kParamRow label="Dwell" value={dwell} min={0} max={9999} onChange={num(`LDWELL${loopNumber}`)} />
     </Section>
   );
 }
@@ -80,30 +82,30 @@ export function SampleEditor({
       {/* Row 1: Basic + Tuning */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Section title="Basic">
-          <ParamKnob label="Original Key" value={header.SPITCH} min={21} max={127} onChange={num('SPITCH')} />
-          <ParamSelect label="Bandwidth" value={header.SBANDW} options={BANDWIDTH_OPTIONS} onChange={num('SBANDW')} />
-          <span className="s3k-param">
-            <span className="s3k-param-label">Sample Rate</span>
-            <span className="s3k-param-value" style={{ cursor: 'default' }}>{header.SSRATE} Hz</span>
-          </span>
-          <ParamSelect label="Playback Mode" value={header.SPTYPE} options={PLAYBACK_MODE_OPTIONS} onChange={num('SPTYPE')} />
+          <S3kParamRow label="Original Key" value={header.SPITCH} min={21} max={127} onChange={num('SPITCH')} />
+          <S3kParamSelectRow label="Bandwidth" value={header.SBANDW} options={BANDWIDTH_OPTIONS} onChange={num('SBANDW')} />
+          <div className="ac-compact-field">
+            <span className="ac-field-label">Sample Rate</span>
+            <AcNumberInput value={header.SSRATE} unit="Hz" ariaLabel="Sample rate (read-only)" />
+          </div>
+          <S3kParamSelectRow label="Playback Mode" value={header.SPTYPE} options={PLAYBACK_MODE_OPTIONS} onChange={num('SPTYPE')} />
         </Section>
 
         <Section title="Tuning">
-          <ParamKnob label="Tune Offset" value={header.STUNO} min={-3600} max={3600} onChange={num('STUNO')} bipolar />
-          <ParamKnob label="Hold Loop Tune" value={header.SHLTO} min={-50} max={50} onChange={num('SHLTO')} bipolar />
+          <S3kParamRow label="Tune Offset" value={header.STUNO} min={-3600} max={3600} onChange={num('STUNO')} bipolar />
+          <S3kParamRow label="Hold Loop Tune" value={header.SHLTO} min={-50} max={50} onChange={num('SHLTO')} bipolar />
         </Section>
       </div>
 
       {/* Row 2: Playback Range + Loop 1 (if present) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Section title="Playback Range">
-          <ParamKnob label="Start" value={header.SSTART} min={0} max={header.SLNGTH} onChange={num('SSTART')} />
-          <ParamKnob label="End" value={header.SMPEND} min={0} max={header.SLNGTH} onChange={num('SMPEND')} />
-          <span className="s3k-param">
-            <span className="s3k-param-label">Length</span>
-            <span className="s3k-param-value" style={{ cursor: 'default' }}>{header.SLNGTH}</span>
-          </span>
+          <S3kParamRow label="Start" value={header.SSTART} min={0} max={header.SLNGTH} onChange={num('SSTART')} />
+          <S3kParamRow label="End" value={header.SMPEND} min={0} max={header.SLNGTH} onChange={num('SMPEND')} />
+          <div className="ac-compact-field">
+            <span className="ac-field-label">Length</span>
+            <AcNumberInput value={header.SLNGTH} ariaLabel="Sample length (read-only)" />
+          </div>
         </Section>
 
         {header.SLOOPS >= 1 && (

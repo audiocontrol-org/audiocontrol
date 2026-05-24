@@ -40,8 +40,13 @@ describe('SampleEditor', () => {
     expect(screen.getByText('Original Key')).toBeInTheDocument();
     expect(screen.getByText('Bandwidth')).toBeInTheDocument();
     expect(screen.getByText('Sample Rate')).toBeInTheDocument();
-    // The sample rate renders as "{value} Hz" in a span — use a regex to match combined text
-    expect(screen.getByText(/44100\s*Hz/)).toBeInTheDocument();
+    // Sample Rate (read-only) renders via AcNumberInput as
+    // `<span class="ac-number-input__value">44100</span>
+    //  <span class="ac-number-input__unit">Hz</span>` — two sibling spans
+    // inside a span[aria-label="Sample rate (read-only)"].
+    const sampleRateReadout = screen.getByLabelText('Sample rate (read-only)');
+    expect(sampleRateReadout).toHaveTextContent('44100');
+    expect(sampleRateReadout).toHaveTextContent('Hz');
     expect(screen.getByText('Playback Mode')).toBeInTheDocument();
   });
 
@@ -117,20 +122,15 @@ describe('SampleEditor', () => {
     expect(onParameterChange).toHaveBeenCalledWith('SHNAME', 'NEW NAME');
   });
 
-  it('calls onParameterChange when a ParamKnob value is clicked and edited', () => {
+  it('calls onParameterChange when the Original Key readout is edited', () => {
     const { onParameterChange } = renderEditor({
       header: makeSampleHeader({ SPITCH: 60 }),
     });
 
-    // ParamKnob renders a button with the current value as text.
-    // Click it to enter edit mode, then change the value.
-    const valueButton = screen.getByTitle(/Original Key: 60/);
-    fireEvent.click(valueButton);
-
-    // Now there should be a number input
-    const input = screen.getByDisplayValue('60');
-    fireEvent.change(input, { target: { value: '72' } });
-    fireEvent.keyDown(input, { key: 'Enter' });
+    // S3kParamRow composes AcSlider + AcNumberInput editable; the
+    // readout is reachable by its accessible name `${label} value`.
+    const readout = screen.getByRole('spinbutton', { name: 'Original Key value' });
+    fireEvent.change(readout, { target: { value: '72' } });
 
     expect(onParameterChange).toHaveBeenCalledWith('SPITCH', 72);
   });

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
-import { ParamKnob, ParamSelect } from '@/components/ui/ParamKnob';
+import { S3kParamRow } from '@/components/ui/S3kParamRow';
+import { S3kParamSelectRow } from '@/components/ui/S3kParamSelectRow';
 import { VelocityRangeBar } from '@/components/keygroups/VelocityRangeBar';
 
 interface VelocityZoneEditorProps {
@@ -113,13 +114,13 @@ function SingleZoneEditor({
       {/* Right: zone parameters in dense grid */}
       <div className="s3k-zone-params">
         <div className="s3k-section-grid">
-          <ParamKnob label="Lo Vel" value={getZoneValue(header, 'LOVEL', zone)} min={0} max={127} onChange={num('LOVEL')} />
-          <ParamKnob label="Hi Vel" value={getZoneValue(header, 'HIVEL', zone)} min={0} max={127} onChange={num('HIVEL')} />
-          <ParamKnob label="Tune" value={getZoneValue(header, 'VTUNO', zone)} min={-50} max={50} onChange={num('VTUNO')} bipolar />
-          <ParamKnob label="Loudness" value={getZoneValue(header, 'VLOUD', zone)} min={-50} max={50} onChange={num('VLOUD')} bipolar />
-          <ParamKnob label="Filter" value={getZoneValue(header, 'VFREQ', zone)} min={-50} max={50} onChange={num('VFREQ')} bipolar />
-          <ParamKnob label="Pan" value={getZoneValue(header, 'VPANO', zone)} min={-50} max={50} onChange={num('VPANO')} bipolar />
-          <ParamSelect label="Playback" value={getZoneValue(header, 'ZPLAY', zone)} options={PLAYBACK_MODE_OPTIONS} onChange={num('ZPLAY')} />
+          <S3kParamRow label="Lo Vel" value={getZoneValue(header, 'LOVEL', zone)} min={0} max={127} onChange={num('LOVEL')} />
+          <S3kParamRow label="Hi Vel" value={getZoneValue(header, 'HIVEL', zone)} min={0} max={127} onChange={num('HIVEL')} />
+          <S3kParamRow label="Tune" value={getZoneValue(header, 'VTUNO', zone)} min={-50} max={50} onChange={num('VTUNO')} bipolar />
+          <S3kParamRow label="Loudness" value={getZoneValue(header, 'VLOUD', zone)} min={-50} max={50} onChange={num('VLOUD')} bipolar />
+          <S3kParamRow label="Filter" value={getZoneValue(header, 'VFREQ', zone)} min={-50} max={50} onChange={num('VFREQ')} bipolar />
+          <S3kParamRow label="Pan" value={getZoneValue(header, 'VPANO', zone)} min={-50} max={50} onChange={num('VPANO')} bipolar />
+          <S3kParamSelectRow label="Playback" value={getZoneValue(header, 'ZPLAY', zone)} options={PLAYBACK_MODE_OPTIONS} onChange={num('ZPLAY')} />
         </div>
       </div>
     </div>
