@@ -146,13 +146,25 @@
   --ac-color-rec: #ff3838;
   --ac-color-rec-glow: rgba(255, 56, 56, 0.6);
 
-  /* LCD — turquoise-cyan STN backlight with dark navy dot-matrix
-     text. The actual S3000XL display. Bright field + dark text
-     reads more legibly at small character sizes than the inverse. */
-  --ac-lcd-bg: #6fb4c5;
-  --ac-lcd-bg-edge: #4f8c9c;
-  --ac-lcd-text: #0a1e3e;
-  --ac-lcd-text-dim: #1a3460;
+  /* LCD — medium blue STN backlight with bright white-cyan text.
+     The actual S3000XL display rendering: white dot-matrix pixels
+     glow on a deep blue field. The earlier dark-on-light guess
+     was the wrong polarity.
+       --ac-lcd-bg          backlight field
+       --ac-lcd-bg-edge     bottom-of-LCD shade for body depth
+       --ac-lcd-text        primary glyph color (white-cyan)
+       --ac-lcd-text-dim    secondary line / faint indicators
+       --ac-lcd-text-rev    reverse-video block text (dark on white,
+                            for section headers + editable param
+                            cells like "PROGRAM NUMBER: [2]")
+       --ac-lcd-text-rev-bg reverse-video block background
+       --ac-lcd-bezel       warm dark putty surround */
+  --ac-lcd-bg: #2c5fa8;
+  --ac-lcd-bg-edge: #234a85;
+  --ac-lcd-text: #eaf2f8;
+  --ac-lcd-text-dim: #b8cce0;
+  --ac-lcd-text-rev: #0a1e3e;
+  --ac-lcd-text-rev-bg: #d8e6f0;
   --ac-lcd-bezel: #2c2a22;
 
   /* Typography — readable first. Big Shoulders Display gives
@@ -851,8 +863,26 @@ body {
   opacity: 0.18;
 }
 
+/*
+ * Envelope point markers — rendered as ABSOLUTELY POSITIONED HTML
+ * elements over the SVG, NOT as SVG <circle> nodes. The canonical
+ * pattern from envelope-primitives.css: the SVG uses
+ * preserveAspectRatio="none" so the line + fill stretch with the
+ * container, which would also squash <circle> elements into ovals.
+ * Rendering points as HTML markers keeps them circular at any
+ * aspect ratio. Position via inline `style="left:X%; top:Y%;"`;
+ * `transform: translate(-50%, -50%)` centers the marker on the
+ * coordinate so the point sits exactly on the line.
+ */
 .ac-envelope-canvas .env-point {
-  fill: var(--ac-lcd-text);
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ac-lcd-text);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  box-shadow: 0 0 0 2px var(--ac-lcd-bg);
 }
 
 .ac-envelope-table {

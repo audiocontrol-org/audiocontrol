@@ -222,26 +222,19 @@
                   <div class="ac-envelope-graph">
                     <div class="ac-envelope-graph__label">AMP ENV · 4-SEGMENT ADSR</div>
                     <div class="ac-envelope-canvas">
+                      <!-- SVG holds the line + fill (stretches with container) -->
                       <svg preserveAspectRatio="none" viewBox="0 0 400 100">
-                        <defs>
-                          <linearGradient id="env-grad" x1="0" x2="0" y1="0" y2="1">
-                            <stop offset="0%" stop-color="currentColor" stop-opacity="0.18"/>
-                            <stop offset="100%" stop-color="currentColor" stop-opacity="0"/>
-                          </linearGradient>
-                        </defs>
-                        <!-- Fill area beneath the line -->
                         <path class="env-fill"
-                          d="M 0 100 L 0 100 L 60 5 L 130 30 L 250 30 L 400 100 Z"/>
-                        <!-- Envelope line: A → D → S → R -->
+                          d="M 0 100 L 60 5 L 130 30 L 250 30 L 400 100 Z"/>
                         <path class="env-line"
                           d="M 0 100 L 60 5 L 130 30 L 250 30 L 400 100"/>
-                        <!-- Segment points -->
-                        <circle class="env-point" cx="0" cy="100" r="3"/>
-                        <circle class="env-point" cx="60" cy="5" r="3"/>
-                        <circle class="env-point" cx="130" cy="30" r="3"/>
-                        <circle class="env-point" cx="250" cy="30" r="3"/>
-                        <circle class="env-point" cx="400" cy="100" r="3"/>
                       </svg>
+                      <!-- Point markers are HTML — stay circular at any aspect ratio -->
+                      <span class="env-point" style="left: 0%;    top: 100%;"></span>
+                      <span class="env-point" style="left: 15%;   top: 5%;"></span>
+                      <span class="env-point" style="left: 32.5%; top: 30%;"></span>
+                      <span class="env-point" style="left: 62.5%; top: 30%;"></span>
+                      <span class="env-point" style="left: 100%;  top: 100%;"></span>
                     </div>
                   </div>
                   <div class="ac-envelope-table" style="--cols: 4;">
@@ -328,64 +321,6 @@
               <span class="ac-live-footer__timestamp">last edit 1.2 s ago</span>
             </footer>
           </section>
-        </div>
-      </section>
-
-      <!-- Virtual front panel — akai S3000XL layout -->
-      <section class="ac-fp ac-fp--akai" aria-label="Virtual front panel">
-        <span class="ac-fp__brand">AKAI <em>professional</em> · MIDI STEREO DIGITAL SAMPLER</span>
-        <span class="ac-fp__model-badge">S3000XL</span>
-
-        <div class="ac-fp__modes">
-          <button class="ac-fp__btn ac-fp__btn--mode">SINGLE <small>A</small></button>
-          <button class="ac-fp__btn ac-fp__btn--mode">MULTI <small>B</small></button>
-          <button class="ac-fp__btn ac-fp__btn--mode">SAMPLE <small>C</small></button>
-          <button class="ac-fp__btn ac-fp__btn--mode">EFFECTS <small>D</small></button>
-          <button class="ac-fp__btn ac-fp__btn--mode is-active">EDIT <small>E</small></button>
-          <button class="ac-fp__btn ac-fp__btn--mode">GLOBAL <small>F</small></button>
-          <button class="ac-fp__btn ac-fp__btn--mode">SAVE <small>G</small></button>
-          <button class="ac-fp__btn ac-fp__btn--mode">LOAD <small>H</small></button>
-        </div>
-
-        <div class="ac-fp__center">
-          <div class="ac-fp__lcd">
-            <div class="ac-fp__lcd__line">EDIT KEYGROUP <strong>03</strong> / 11</div>
-            <div class="ac-fp__lcd__line">HAT_CL  C3-D#3</div>
-            <div class="ac-fp__lcd__line--small">AMP: A 04  D 32  S 62  R 40</div>
-          </div>
-          <div class="ac-fp__soft-keys">
-            <button class="ac-fp__btn">F1 <small>ZONE</small></button>
-            <button class="ac-fp__btn">F2 <small>PITCH</small></button>
-            <button class="ac-fp__btn">F3 <small>FILT</small></button>
-            <button class="ac-fp__btn">F4 <small>AMP</small></button>
-            <button class="ac-fp__btn">F5 <small>LFO</small></button>
-            <button class="ac-fp__btn">F6 <small>NAME</small></button>
-            <button class="ac-fp__btn">F7 <small>SAMP</small></button>
-            <button class="ac-fp__btn">F8 <small>NEXT</small></button>
-          </div>
-        </div>
-
-        <div class="ac-fp__right">
-          <div class="ac-fp__keypad">
-            <button class="ac-fp__btn ac-fp__btn--keypad">1 <small>T</small></button>
-            <button class="ac-fp__btn ac-fp__btn--keypad">2 <small>U</small></button>
-            <button class="ac-fp__btn ac-fp__btn--keypad">3 <small>V</small></button>
-            <button class="ac-fp__btn ac-fp__btn--keypad">MARK</button>
-            <button class="ac-fp__btn ac-fp__btn--keypad">4 <small>W</small></button>
-            <button class="ac-fp__btn ac-fp__btn--keypad">5 <small>X</small></button>
-            <button class="ac-fp__btn ac-fp__btn--keypad">6 <small>Y</small></button>
-            <button class="ac-fp__btn ac-fp__btn--keypad">JUMP</button>
-            <button class="ac-fp__btn ac-fp__btn--keypad">7 <small>Z</small></button>
-            <button class="ac-fp__btn ac-fp__btn--keypad">8 <small>+</small></button>
-            <button class="ac-fp__btn ac-fp__btn--keypad">9 <small>−</small></button>
-            <button class="ac-fp__btn ac-fp__btn--keypad">NAME</button>
-          </div>
-          <div class="ac-fp__cursor-row">
-            <button class="ac-fp__btn ac-fp__btn--cursor">◀</button>
-            <button class="ac-fp__btn ac-fp__btn--cursor">▲</button>
-            <button class="ac-fp__btn ac-fp__btn--cursor">▼</button>
-            <button class="ac-fp__btn ac-fp__btn--cursor">▶</button>
-          </div>
         </div>
       </section>
     </main>
