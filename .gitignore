@@ -35,6 +35,8 @@ pnpm-lock.yamltmp/
 # Garbage
 tmp/
 .tmp/
+.tmp-commitmsg/
+.tmp-scripts/
 # Generated license files
 modules/*/LICENSE
 *~
