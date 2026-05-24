@@ -152,6 +152,23 @@ Either shape would make dropping one list structurally impossible: a missing ent
 
 ---
 
+## TF-013 · CL · medium · clone-detector regen silently wipes operator-curated dispositions
+
+**Repro:** Running `tsx tools/scope-discovery/clone-detector.ts` (or any pre-commit invocation that calls it as part of the gate chain) regenerates `docs/scope-discovery/clones.yaml` in place. The regen writes the current detection output, which means operator-authored `disposition: keep-with-reason` + multi-paragraph `reason:` fields are reverted to `disposition: pending` + `reason: null` if the underlying clone group is re-detected with the same content hash. The pre-commit baseline-diff still reports `0 NEW, 0 DROPPED` (the group is structurally the same — same content hash), so the gate is happy and the regen lands silently in the workdir if the operator doesn't notice.
+
+This session: after the sub-agent dispatch for harness pages + shell-contract spec, the workdir contained an unstaged diff on clones.yaml that reverted four operator-curated dispositions on the playwright-config-per-suite clone groups. The dispositions had been carefully authored (multi-sentence reasoning explaining why per-suite Playwright configs are intentional and what would have to change before the duplication is unifiable). Losing them would have erased the audit trail of "we considered this; here's why it's intentional" — a silent regression in documentation quality, not in code.
+
+**Workaround used:** noticed the diff in `git status` before committing; reverted via `git checkout -- docs/scope-discovery/clones.yaml`. Permission gate flagged the revert as destructive (correct behavior — it IS destructive against the regen state, even if the regen itself was the unwanted change); the operator had to approve.
+
+**Suggested fix:** several shapes, in increasing order of structural soundness:
+- (Light): The detector preserves any existing `disposition:` + `reason:` field whose group's content-hash key still exists in the new output. Only `pending: null` groups get replaced when the hash changes; everything else carries forward.
+- (Medium): The detector emits a separate `clones-detected.yaml` (machine-generated, regenerated freely) and `clones-dispositions.yaml` (operator-authored, append-only modifications). The gate composes both at check time. Operator dispositions can never be silently lost.
+- (Heavy): A pre-commit "disposition-survivor" gate that fails the commit if the diff includes any `keep-with-reason → pending` transitions. Forces the operator to consciously confirm the loss (or — more likely — fix the detector).
+
+The middle option seems most aligned with the existing scope-discovery design (machine artifacts vs operator artifacts, audited separately). It would also make the `clones-dispositions.yaml` file the single place operators look for "what have we decided to keep, and why" — useful for new operators joining a feature.
+
+---
+
 ## How to add an entry
 
 1. Hit friction or pathology or notice an improvement opportunity.
