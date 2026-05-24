@@ -101,4 +101,83 @@ Same wrapper-vs-glyph composition exists for `.ac-device-memory-section-eyebrow`
 
 Surfaced during Phase 1 mockup transposition (commit `62ee5373`).
 
+### Fixed-viewport page shell collapses detail body to ~120 px on mobile
+
+Finding-ID: AUDIT-20260523-03
+Status:     open
+Severity:   high
+Surface:    `modules/editor-core/src/design/layout-primitives.css` (`.ac-page-shell--fixed-viewport` rule, lines 113-119), `.ac-app-shell` rule lines 200-228
+
+The canonical `.ac-page-shell--fixed-viewport` rule caps the page at
+`calc(100dvh - site-header - 2*page-vertical)` unconditionally — no
+media query. Combined with `.ac-app-shell`'s `grid-template-columns:
+minmax(0, 1fr)` single-column stack below 1024px (the 2-col template
+only applies inside `@media (min-width: 1024px)`), the result on
+mobile is: list and detail stack vertically inside the height-bounded
+parent, the list claims most of the available vertical space, and the
+detail body collapses to whatever's left.
+
+**Repro (operator-confirmed 2026-05-23 on iPhone Safari):**
+
+1. Open `programs.html` on a mobile device (or browser at ≤900 px viewport).
+2. The list column renders ~5 rows visible.
+3. The detail column below shows the header (eyebrow + name input) +
+   the tab strip + ONE compact toggle row + the footer band.
+4. The slider rows that follow the toggles in the tab body are not
+   visible — scrolling the detail body works but the body is only
+   ~120 px tall, so each scroll move shows ~2 rows at a time and
+   reading the parameter editor becomes impractical.
+
+Same problem will affect TonesPage / PatchesPage / LibraryPage on
+mobile in the production roland editor — every consumer of
+`.ac-page-shell--fixed-viewport` inherits the bug. The akai mockup
+surfaced it because the operator viewed it on a phone; the production
+editor likely hasn't been exercised at mobile widths often enough for
+this to have been reported through the normal path.
+
+**Expected:** below ~900 px viewport, the fixed-viewport constraint
+drops and the page scrolls as one tall document, list above the
+detail with each at its intrinsic content height. The list's internal
+`.ac-list-scroll` can stay (with a `max-height` cap) so very long
+banks don't push the detail too far down.
+
+**Actual:** fixed-viewport applies unconditionally; detail body
+collapses; parameter sliders are unreachable without significant
+internal-scroll friction.
+
+**Fix guidance:**
+
+```css
+@media (max-width: 899px) {
+  .ac-page-shell--fixed-viewport {
+    height: auto;
+    overflow: visible;
+  }
+  .ac-app-shell,
+  .ac-app-shell > * {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+  .ac-list-scroll {
+    max-height: 70vh;
+  }
+}
+```
+
+Test coverage: needs a Playwright spec at iPhone-shaped viewport
+(414×896 baseline) asserting that the detail body content (slider
+rows) is reachable without the user manually scrolling a nested
+container. Run against PatchesPage / TonesPage / LibraryPage to
+verify the fix doesn't regress the desktop layout.
+
+The akai-harmonization mockup carries an equivalent rule scoped
+under `[data-editor='s3000xl']` in `mockups/akai-dialect.css` as a
+demonstration; Phase 2 should land the canonical version in
+`editor-core/src/design/layout-primitives.css` (and remove the
+dialect-scoped override).
+
+Pair-able with AUDIT-20260523-01 + -02 if a mobile-accessibility
+sweep on the disclosure-btn is done at the same time.
+
 ---
