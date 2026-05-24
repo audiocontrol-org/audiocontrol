@@ -18,7 +18,7 @@ Surfaced while reviewing the latest shell-contract closure commits through `0bca
 ### The Akai shell-contract spec documents `.ac-detail-scroll` as part of the contract but never asserts the detail pane's scroll ownership
 
 Finding-ID: AUDIT-20260524-08
-Status:     open
+Status:     verified-c8b09bc4
 Severity:   medium
 Surface:    `modules/akai-s3k-editor/test/ui/page-shell-contract.spec.ts`, `modules/akai-s3k-editor/src/index.css`, `modules/akai-s3k-editor/src/pages/ProgramsPage.tsx`, `modules/akai-s3k-editor/src/pages/SamplesPage.tsx`, `modules/akai-s3k-editor/src/pages/KeygroupsPage.tsx`
 
@@ -44,10 +44,12 @@ That omission matters because the detail side is where the dense editors live. `
 
 **Fix guidance:** extend the app-shell branch of `page-shell-contract.spec.ts` with a `.ac-detail-scroll` computed-style assertion, and preferably add a contentful detail harness state that forces vertical overflow so the test checks behavior under scroll pressure rather than just class presence.
 
+**Fix landed (c8b09bc4):** extended the app-shell branch of `page-shell-contract.spec.ts` with a `.ac-detail-scroll` `overflow-y` computed-style assertion alongside the existing `.ac-list-scroll` check (covers all 3 app-shell routes: programs, samples, keygroups-shell). Seeded `TestKeygroupsShellPage` with 20 stacked synthetic param rows (`min-height: 80px` each, ~1600px total content) inside `.ac-detail-scroll`, each carrying `data-testid="kg-detail-row-<index>"`. Added a new test case `keygroups-shell: .ac-detail-scroll owns scroll under contentful detail content` that asserts the contentful pressure shape: (a) `scrollHeight > clientHeight` on the detail pane (proves the seed creates real overflow), (b) the last detail row (`[data-testid="kg-detail-row-19"]`) is reachable via `scrollIntoView()` and lands inside the pane's bottom edge (proves the pane owns scroll), (c) `document.documentElement.scrollHeight` stays within `innerHeight` afterwards (proves the pane's scroll did not bleed to the document). Revert-test confirmed the new assertions have teeth: removing `overflow-y: auto` from `.ac-detail-scroll` in `index.css` turns the app-shell body-layout test red on all 3 routes (`"overflow-y should be 'auto' or 'scroll', got 'hidden'"`); removing the 20 synthetic rows turns the new contentful test red (`"scrollHeight (433px) should be > clientHeight (433px)"`). Test count: `make test-ui-s3k` 41 → 43 passed.
+
 ### The new real-library harness mounts empty library/device state, so the "inner overflow" assertion never exercises the contentful states that actually create scroll pressure
 
 Finding-ID: AUDIT-20260524-09
-Status:     open
+Status:     verified-c8b09bc4
 Severity:   medium
 Surface:    `modules/akai-s3k-editor/src/pages/TestLibraryRealPage.tsx`, `modules/akai-s3k-editor/test/ui/page-shell-contract.spec.ts`, `modules/akai-s3k-editor/src/pages/LibraryPage.tsx`
 
@@ -70,6 +72,8 @@ That means the new test proves CSS declarations on the empty-state DOM, not the 
 **Actual:** the asserted panes render empty/disconnected states, so the test never proves overflow ownership under the content patterns most likely to regress.
 
 **Fix guidance:** seed `TestLibraryRealPage` with enough deterministic library nodes and device-memory rows to overflow each pane, then keep the existing computed-style checks and add one reachability or bounded-scroll assertion per pane. That would turn the test from "the CSS property exists" into a real guard against clipped or bubbling overflow.
+
+**Fix landed (c8b09bc4):** seeded `TestLibraryRealPage` with deterministic contentful inputs mirroring the production wiring shapes: `categoryData` carries 30 `TreeNode` entries per category (samples / common-programs / s3k-programs), matching the `{ id, name, type }` shape from `TreeView.tsx:23-30` and the `Record<categoryId, TreeNode[]>` aggregation at `LibraryPage.tsx:296`; the type discriminator is `'sample'` for samples and `'program'` for both program categories (matches `categories.tsx`). `S3kMemoryPanelState` now has `isConnected: true` with 30 program names (`PRG_00_NAME` .. `PRG_29_NAME`) and 30 sample names (`SMP_00_NAME` .. `SMP_29_NAME`), matching the `S3kMemoryPanelState` interface at `s3k-library-plugin.tsx:35-57`; action callbacks remain no-op because the contract under test is overflow ownership, not write behavior. Kept the existing computed-style overflow checks; added a new test case `library-real: contentful library + device-memory state forces real overflow pressure` that asserts, for each of `.ac-plugin-library-browser-device` and `.ac-plugin-library-browser-sections`: (a) `scrollHeight > clientHeight` (proves the seed creates real overflow pressure), (b) a deterministic last item is reachable via `scrollIntoView()` and lands inside the pane's bottom edge — `[data-testid="device-sample-29"]` for the device pane (from `DeviceMemoryPanel`'s `data-testid={`device-${type}-${index}`}` shape), `[data-testid="library-sample-samples-sample-029"]` for the sections pane (slug shape from `TreeView.tsx:267-269`) — (c) `document.documentElement.scrollHeight` stays within `innerHeight` afterwards (no bleed). The preview pane is explicitly excluded from the populated-overflow assertions because it renders the SELECTED item's preview, not all items; with no selection it stays empty. Its overflow declaration is still asserted by the prior inner-pane test. Revert-test confirmed teeth: reverting `categoryData` + `memoryState` back to empty inputs turns the new contentful test red (`"pane '.ac-plugin-library-browser-device' scrollHeight (739px) should be > clientHeight (739px)"`). Test count: `make test-ui-s3k` 41 → 43 passed.
 
 ## 2026-05-24 Feature review — latest shell-contract follow-up
 
