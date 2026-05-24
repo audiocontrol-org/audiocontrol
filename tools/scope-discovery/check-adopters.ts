@@ -161,6 +161,47 @@ export function buildImportRegex(canonicalPath: string): RegExp {
   return new RegExp(pattern, 'm');
 }
 
+/**
+ * Build a regex that detects a static `import { ... <name> ... } from '<path>'`
+ * statement where `<name>` is any of the listed import names. Used when a
+ * manifest declares `imports:` to narrow adoption-matching from "any
+ * import from path" to "imports at least one of these specific symbols
+ * from path."
+ *
+ * Token-boundary matching: the named symbol must appear as a whole
+ * identifier inside the brace-list (i.e., bounded by word-boundaries
+ * and not part of a longer identifier like `SteppedProgressDrawerProps`
+ * unless that name is explicitly listed too).
+ *
+ * The matcher is intentionally conservative — it only matches static
+ * named imports with curly-brace clauses. Default imports, namespace
+ * imports (`import * as X`), and dynamic imports are not matched by the
+ * named-imports filter, on the theory that adoption of a wrapped
+ * primitive should be visible at the syntactic level.
+ *
+ * `[^'"]*` is non-greedy enough in practice because the brace-list is
+ * the only place in an `import ... from '<path>'` statement where
+ * symbol names appear. Multi-line flag (`m`) plus dot-matches-newline
+ * (`s`) so the clause is matched across line breaks (long imports
+ * wrap the brace-list across lines).
+ */
+export function buildNamedImportRegex(
+  canonicalPath: string,
+  names: readonly string[],
+): RegExp {
+  if (names.length === 0) {
+    throw new Error('buildNamedImportRegex: names must be non-empty');
+  }
+  const escapedPath = escapeRegex(canonicalPath);
+  const nameAlternation = names.map(escapeRegex).join('|');
+  // Match: import [type] { ...names with the listed symbol ... } from '<path>'
+  // The `[\\s\\S]*?` inside the braces is the safe wildcard — `.` doesn't
+  // cross newlines without `s` flag; this version is portable.
+  const pattern =
+    `import\\s+(?:type\\s+)?\\{[\\s\\S]*?\\b(?:${nameAlternation})\\b[\\s\\S]*?\\}\\s*from\\s+['"]${escapedPath}['"]`;
+  return new RegExp(pattern, 'm');
+}
+
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
 }
@@ -195,7 +236,21 @@ async function scanEntry(
 ): Promise<ManifestResult> {
   const regexes = entry.globs.map((g) => g.regex);
   const matched = await listFilesMatching(rootAbs, regexes, SKIP_DIRS, SCANNED_EXTENSIONS);
+  // Adoption detection has two layers:
+  //  - `importRe`: ANY import statement from `entry.from` (legacy
+  //    behavior; used when no `imports:` field is declared).
+  //  - `namedImportRe`: an `import { ... <name> ... } from '<from>'`
+  //    statement where `<name>` is one of `entry.imports`. Built only
+  //    when the manifest declares `imports:`; otherwise undefined.
+  //
+  // When `entry.imports` is declared, named-import adoption is the
+  // STRONGER assertion — it rejects files that import the path but not
+  // any of the listed symbols (the false-positive the manifest is
+  // explicitly trying to catch).
   const importRe = buildImportRegex(entry.from);
+  const namedImportRe = entry.imports !== undefined
+    ? buildNamedImportRegex(entry.from, entry.imports)
+    : undefined;
   const expectedFiles: string[] = [];
   const actualAdopters: string[] = [];
   const exemptedFiles: string[] = [];
@@ -225,7 +280,14 @@ async function scanEntry(
       continue;
     }
     const content = await readFileSafe(abs);
-    if (importRe.test(content)) {
+    // When `imports:` is declared, the file must satisfy the named-
+    // import test (the stronger assertion). When absent, fall back to
+    // the legacy any-import-from-path test for backward compatibility
+    // with existing manifests that don't need named-import filtering.
+    const isAdopter = namedImportRe !== undefined
+      ? namedImportRe.test(content)
+      : importRe.test(content);
+    if (isAdopter) {
       actualAdopters.push(rel);
     } else {
       holdouts.push(rel);

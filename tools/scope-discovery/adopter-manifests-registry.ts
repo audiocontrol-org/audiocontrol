@@ -97,6 +97,24 @@ export interface AdopterManifestEntry {
   readonly introducedIn: string;
   /** Canonical import path the entry asserts (e.g., '@/components/SlideDrawer'). */
   readonly from: string;
+  /**
+   * Optional list of named-import symbols that count as adoption. When
+   * present, a file is considered an adopter only if (a) it imports from
+   * `from` AND (b) at least one of the listed symbols appears in the
+   * import clause's brace-list. This lets a manifest distinguish "imports
+   * the canonical primitive" from "imports some other symbol from the
+   * same package."
+   *
+   * When the canonical primitive is wrapped by another primitive in the
+   * same package (e.g., SteppedProgressDrawer wraps SlideDrawer), list
+   * BOTH names so files importing either count as transitive adopters.
+   *
+   * Backward-compat: when omitted, the matcher falls back to the pre-
+   * existing any-import-from-path behavior — any import from `from`
+   * counts as adoption. Existing manifests that don't need named-import
+   * filtering keep working unchanged.
+   */
+  readonly imports?: readonly string[];
   /** Pre-compiled adopter globs; at least one. */
   readonly globs: readonly AdopterGlob[];
   /** Exception list; empty when no exceptions are declared. */
@@ -136,12 +154,16 @@ function parseEntry(raw: Record<string, unknown>, ctx: string): AdopterManifestE
   const from = requireString(raw, 'from', ctx, NAMESPACE);
   const message = requireString(raw, 'message', ctx, NAMESPACE);
   const globs = parseGlobs(raw['expected_adopters_glob'], ctx);
+  const imports = parseImports(raw['imports'], ctx);
   const exceptions = parseExceptions(raw['exceptions'], ctx);
   const trackedHoldouts = parseTrackedHoldouts(raw['tracked_holdouts'], ctx);
   validatePathsMatchGlobs(exceptions, globs, ctx, 'exception');
   validatePathsMatchGlobs(trackedHoldouts, globs, ctx, 'tracked_holdout');
   validateNoPathConflict(exceptions, trackedHoldouts, ctx);
-  return { id, introducedIn, from, globs, exceptions, trackedHoldouts, message };
+  const entry: AdopterManifestEntry = imports === undefined
+    ? { id, introducedIn, from, globs, exceptions, trackedHoldouts, message }
+    : { id, introducedIn, from, imports, globs, exceptions, trackedHoldouts, message };
+  return entry;
 }
 
 function parseGlobs(raw: unknown, ctx: string): readonly AdopterGlob[] {
@@ -165,6 +187,37 @@ function parseGlobs(raw: unknown, ctx: string): readonly AdopterGlob[] {
       );
     }
     return { pattern: value, regex };
+  });
+}
+
+/**
+ * Parse the optional `imports:` field. When present, must be a non-empty
+ * array of non-empty strings. When absent or null, returns `undefined`
+ * (which is the signal to fall back to any-import-from-path matching).
+ *
+ * Rejected: empty array (would silently match nothing — almost certainly
+ * an authoring mistake), non-array values, non-string entries, empty-
+ * string entries.
+ */
+function parseImports(raw: unknown, ctx: string): readonly string[] | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (!Array.isArray(raw)) {
+    throw new Error(
+      `${NAMESPACE}: ${ctx} \`imports\` must be a list of strings; got ${typeof raw}`,
+    );
+  }
+  if (raw.length === 0) {
+    throw new Error(
+      `${NAMESPACE}: ${ctx} \`imports\` must be a non-empty list (omit the field to fall back to any-import-from-path matching)`,
+    );
+  }
+  return raw.map((value, index) => {
+    if (typeof value !== 'string' || value.length === 0) {
+      throw new Error(
+        `${NAMESPACE}: ${ctx} \`imports[${index}]\` must be a non-empty string`,
+      );
+    }
+    return value;
   });
 }
 
