@@ -316,6 +316,20 @@
      form-control defaults in light-theme polarity even though the
      rest of the page paints custom chrome. */
   color-scheme: light;
+
+  /* Action-icon tokens — closes AUDIT-20260524-02.
+     The global --ac-action-* tokens in layout-primitives.css pin to
+     rgba(255,255,255,0.x) (white-on-dark assumption — correct for the
+     roland dark theme). Akai is a light cream surface; white-tinted
+     action icons would have ~0% contrast on cream. Override per
+     dialect: dark text at 45/95% opacity for default/hover,
+     dialect-appropriate reds for danger/selected variants. */
+  --ac-action-color: rgba(26, 24, 18, 0.45);
+  --ac-action-hover: rgba(26, 24, 18, 0.95);
+  --ac-action-danger-hover: var(--ac-color-danger);
+  --ac-action-selected-color: var(--ac-akai-red);
+  --ac-action-selected-hover: var(--ac-akai-red-hover);
+  --ac-action-selected-danger-hover: #6b0e0e;
 }
 
 :root[data-editor='jv1080'] {

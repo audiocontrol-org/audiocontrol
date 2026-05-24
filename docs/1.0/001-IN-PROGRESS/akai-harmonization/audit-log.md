@@ -48,7 +48,7 @@ This is a regression introduced by the new fix, not a pre-existing condition of 
 ### Akai light-theme token block leaves action-button colors pinned to white-on-dark assumptions
 
 Finding-ID: AUDIT-20260524-02
-Status:     open
+Status:     verified-2026-05-24
 Severity:   medium
 Surface:    `modules/editor-core/src/design/layout-primitives.css`, `modules/editor-core/src/design/primitives.css`, `modules/editor-core/src/design/library.css`, `modules/akai-s3k-editor/src/main.tsx`
 
@@ -69,6 +69,8 @@ Those tokens drive both generic list-row actions (`primitives.css:446-475`, `.ac
 **Actual:** Akai now opts into a light background while action affordances still assume a dark background.
 
 **Fix guidance:** move the `--ac-action-*` tokens into the per-editor token layer and add an S3000XL-specific override set. Pair the fix with a visual or computed-style test on an Akai list/tree row so a future palette migration cannot silently regress action contrast again.
+
+**Fix landed:** this session, 2026-05-24. `modules/editor-core/src/design/tokens.css` `:root[data-editor='s3000xl']` block now includes six `--ac-action-*` overrides: `--ac-action-color: rgba(26, 24, 18, 0.45)` (dark text at 45% for the default state on cream — visible-but-secondary), `--ac-action-hover: rgba(26, 24, 18, 0.95)` (near-black on hover for strong contrast), `--ac-action-danger-hover: var(--ac-color-danger)` (the dialect's deeper akai red `#a01e1e`), `--ac-action-selected-color: var(--ac-akai-red)`, `--ac-action-selected-hover: var(--ac-akai-red-hover)`, `--ac-action-selected-danger-hover: #6b0e0e` (deeper red on the selected-row hover). The global `--ac-action-*` tokens stay unchanged for the roland dark surfaces. **Test gap:** no automated computed-style assertion yet — the auditor's suggested pairing (a visual or computed-style test on an akai list/tree row) is deferred to the AUDIT-20260524-03 screenshot-baseline work where the akai harness pages will provide the visual surface to assert against.
 
 ### Phase 1 audit advanced past its own harness/screenshot prerequisites, leaving most Akai surfaces without a rerunnable visual test bed
 
