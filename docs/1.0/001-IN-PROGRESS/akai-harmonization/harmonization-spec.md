@@ -147,77 +147,103 @@ The current akai page header is already this lean. **Disposition: `genuinely-dia
 
 ## 3. The akai dialect — palette + fonts + REC-LED + front panel
 
-### 3.1 Palette tokens (extends the existing `[data-editor='s3000xl']` block in `tokens.css`)
+**Important: this section was rewritten on 2026-05-23 after operator-provided reference photos corrected two wrong assumptions in the original draft (warm-black chassis instead of cream; amber LCD instead of blue-backlit STN; Major Mono Display instead of a readable typeface).** The corrected dialect makes the akai surface a LIGHT theme — because the actual S3000XL chassis is cream. This is a genuine departure from the roland dialect's dark theme, but the dialect contract still holds: every difference reduces to a CSS-token value swap.
 
-The current `[data-editor='s3000xl']` scope (already in [tokens.css:211-222](../../../../modules/editor-core/src/design/tokens.css)) is correct in shape but shallow — 8 tokens. Phase 2 task 2.1 will extend it to override:
+### 3.1 Palette tokens (extends `[data-editor='s3000xl']` in `tokens.css`)
 
-| Token | Current global / s3000xl value | Proposed akai dialect value | Why |
+The current `[data-editor='s3000xl']` scope (already in [tokens.css:211-222](../../../../modules/editor-core/src/design/tokens.css)) is correct in shape but shallow — 8 tokens, and the values it carries (`#111214` canvas + `#d4a843` accent) describe a dark-theme akai that doesn't match the device. Phase 2 task 2.1 will replace those values with the cream-chassis dialect:
+
+| Token | Current `[data-editor='s3000xl']` | Proposed akai dialect value | Why |
 |---|---|---|---|
-| `--ac-color-surface-canvas` | `#111214` | `#1A1612` (HSL 28 8% 8%) | Warmer black, matches the matte plastic of the actual S3000XL chassis |
-| `--ac-color-surface-panel` | `#1a1c20` | `#221E1A` (HSL 28 8% 12%) | Same warm undertone, slightly lifted |
-| `--ac-color-border-subtle` | `#2e3138` | `#3A3530` (HSL 28 6% 22%) | |
-| `--ac-color-text-primary` | `#e8e6e3` | `#E8DDC5` (HSL 38 25% 88%) | Cream silkscreen, not pure off-white |
-| `--ac-color-text-muted` | `#8a8d93` | `#A89C8C` (HSL 30 12% 60%) | Warm gray |
-| `--ac-color-accent` | `#d4a843` (gold) | `#F39200` (HSL 34 100% 50%) | The amber of the actual S3000XL LCD glow — bolder than the current gold, distinctive from roland's blue (#6bc3ea) |
-| `--ac-color-selected` | `#d4a843` | `#F39200` | Same as accent (canonical pattern) |
-| `--ac-color-warning` | `#e0b24f` | `#E5B22E` (HSL 45 80% 55%) | Saturated gold |
-| `--ac-color-success` | `#4ade80` | `#5BBF7B` (HSL 140 40% 56%) | Slightly desaturated to live next to amber without competing |
-| `--ac-color-danger` | `#fb7185` | `#DD5B5B` (HSL 0 60% 60%) | Warmer red |
+| `--ac-color-surface-canvas` | `#111214` (near-black) | `#DAD2B9` (warm cream — chassis) | Matches the actual S3000XL front-panel color |
+| `--ac-color-surface-panel` | `#1a1c20` | `#C8C0A4` (slightly darker putty — inset panels) | Distinguishes lifted card surfaces from the chassis |
+| `--ac-color-surface-recessed` | (not present) | `#B8AF90` (deeper warm putty — recessed clusters) | New token for list-head / detail-head / live-footer bands |
+| `--ac-color-border-subtle` | `#2e3138` | `#8C8460` (warm putty border) | Reads as a hairline on cream, not a stroke |
+| `--ac-color-border-strong` | (not present) | `#4A4630` (deep warm-brown) | Used for chassis edges, primary buttons |
+| `--ac-color-text-primary` | `#e8e6e3` (off-white) | `#1A1812` (near-black with warm undertone) | Black silkscreen on cream is the chassis-print convention |
+| `--ac-color-text-muted` | `#8a8d93` | `#524C3A` (deep warm gray) | High-contrast muted that reads on cream |
+| `--ac-color-accent` | `#d4a843` (gold) | `#D8262C` (AKAI red — the brand) | The red used for the "S3000XL" model badge + the REC GAIN ring on the actual panel |
+| `--ac-color-selected` | `#d4a843` | `#D8262C` | Same as accent (canonical pattern) |
+| `--ac-color-warning` | `#e0b24f` | `#B46E00` (deep amber-brown) | Reads on cream; distinct from accent |
+| `--ac-color-success` | `#4ade80` | `#2F7836` (deeper forest green) | Reads on cream; distinct from LCD turquoise |
+| `--ac-color-danger` | `#fb7185` | `#A01E1E` (slightly darker than accent) | Distinguishes destructive from highlight |
+| `--ac-color-rec` | global `#f6533c` | `#FF3838` (saturated red — active glow) | Brighter than the brand red; reads as "actively lit" |
+| `--ac-color-rec-glow` | global `rgba(246,83,60,0.55)` | `rgba(255,56,56,0.6)` | Halo for the live-edit LED |
 
-The roland-primary token (`--ac-roland-primary: #6bc3ea`) is NOT overridden — that's a brand color for roland-tagged elements (e.g., the export-dialog accent on roland surfaces). The akai dialect introduces a parallel `--ac-akai-primary: #F39200` for any akai-tagged element; the `--ac-color-accent` alias points to it inside the `[data-editor='s3000xl']` scope.
+The roland-primary token (`--ac-roland-primary: #6bc3ea`) is NOT overridden — it remains the brand color for roland-tagged surfaces. The akai dialect introduces `--ac-akai-red: #D8262C` as the parallel akai brand color, and the `--ac-color-accent` alias points to it inside the `[data-editor='s3000xl']` scope.
 
-### 3.2 REC-LED override
+**Why a light theme is honest:** the dialect contract holds because every structural rule consumes its colors through CSS custom properties. `.ac-page-title-row`, `.ac-list-row`, `.ac-detail` etc. don't care whether `--ac-color-surface-canvas` is `#0f172a` (roland's dark slate) or `#DAD2B9` (akai's cream). The structure is dialect-agnostic; the color hierarchy flips wholesale. The pages render identically in shape with inverse luminance.
 
-Current global (in `:root`): `--ac-color-rec: #f6533c` (S-550 hardware-referenced red).
+### 3.2 LCD rendering — turquoise backlight with dark navy text
 
-Akai dialect override (inside `[data-editor='s3000xl']`):
+The actual S3000XL LCD is a blue-backlit STN display: bright turquoise-cyan field with dark navy dot-matrix text. This is distinct from the older S2000 (green-on-dark) and distinct from the amber VFD on roland's S-550. The akai dialect introduces two new tokens for any LCD-style surface:
+
 ```css
---ac-color-rec: #F47A00;       /* HSL 28 100% 48% — deep amber, matches the LCD "active" feel */
---ac-color-rec-glow: rgba(244, 122, 0, 0.55);
+:root[data-editor='s3000xl'] {
+  --ac-lcd-bg: #6FB4C5;        /* turquoise-cyan backlight */
+  --ac-lcd-bg-edge: #4F8C9C;   /* slightly darker bottom edge — gives the LCD body depth */
+  --ac-lcd-text: #0A1E3E;      /* dark navy dot-matrix pixels */
+  --ac-lcd-text-dim: #1A3460;  /* secondary line (free memory, etc.) */
+  --ac-lcd-bezel: #2C2A22;     /* warm dark bezel around the LCD */
+}
 ```
 
-This carries forward to: the page-title underline (`.ac-page-title-row` accent rule), the live-edit footer dot, the virtual-front-panel pressed-LED, the FrontPanelButton arrow color. None of these need component-level changes.
+LCD-bearing surfaces in the akai dialect: (a) the virtual front panel LCD readout, (b) the envelope graph background (the VFD-glow primitive renders into the LCD blue), (c) any waveform preview in the sample editor. The roland editor leaves these tokens at their global defaults (amber VFD-glow), so the envelope graph and waveform preview render in the roland's existing amber on dark.
 
-### 3.3 Typography
+This requires a small extension to the canonical [envelope-primitives.css](../../../../modules/editor-core/src/design/envelope-primitives.css): the current `.ac-envelope-graph` hardcodes a radial-gradient via `var(--ac-color-surface-canvas)` and the line color via `var(--ac-color-accent)`. Phase 2 task 2.1 will introduce `--ac-lcd-bg` / `--ac-lcd-text` and re-point the envelope/waveform primitives to consume them — so the akai dialect's LCD blue and the roland dialect's VFD amber both flow through the same primitive.
 
-The roland editor uses `Departure Mono → JetBrains Mono → IBM Plex Mono` for display, `IBM Plex Sans` for body, `JetBrains Mono` for mono. The akai dialect picks a distinctive sister stack:
+### 3.3 Typography — readability first, distinctiveness second
+
+The first draft of this spec proposed `Major Mono Display + Sora + Share Tech Mono`, on the theory that distinctive monospace would evoke industrial-LCD typography. Operator review (2026-05-23) found Major Mono Display unreadable at parameter-value sizes — its ambiguous H/L/C glyphs caused "HAT_CL_SOFT" to read as "NAT_CL_SOFT". The corrected stack prioritizes readability:
 
 | Token | Roland stack | Akai dialect stack | Why |
 |---|---|---|---|
-| `--ac-font-display` | `"Departure Mono", "JetBrains Mono", ...` | `"Major Mono Display", "Departure Mono", "JetBrains Mono", ...` | Major Mono Display is geometric monospace with distinctly different glyph shapes — distinctive without being slop, and fallbacks back to the roland stack so existing infrastructure works during incremental migration |
-| `--ac-font-body` | `"IBM Plex Sans", system-ui, ...` | `"Sora", "IBM Plex Sans", system-ui, ...` | Sora is a humanist sans with character; distinct from Inter (forbidden by the design language) and from IBM Plex Sans |
-| `--ac-font-mono` | `"JetBrains Mono", "IBM Plex Mono", ...` | `"Share Tech Mono", "JetBrains Mono", "IBM Plex Mono", ...` | Share Tech Mono evokes LCD readouts; reads as a font you'd see on an actual sampler's panel printout |
+| `--ac-font-display` | `"Departure Mono", "JetBrains Mono", ...` | `"Big Shoulders Display", "Archivo Narrow", "Roboto Condensed", system-ui, sans-serif` | Big Shoulders Display is a heavy condensed sans that evokes the silkscreen labels on the actual chassis (the "SINGLE / MULTI / SAMPLE / EFFECTS" button printing). Highly legible at any size. Distinctive without being illegible. |
+| `--ac-font-body` | `"IBM Plex Sans", system-ui, ...` | `"DM Sans", "Familjen Grotesk", system-ui, ...` | DM Sans is a clean modern body sans with character. Distinct from Inter (forbidden by the design language) and from IBM Plex Sans (roland's body). Reads cleanly at all sizes. |
+| `--ac-font-mono` | `"JetBrains Mono", "IBM Plex Mono", ...` | `"JetBrains Mono", "IBM Plex Mono", "SFMono-Regular", Menlo, monospace` | Same as roland — JetBrains Mono is highly readable, the right choice for parameter values regardless of dialect. Choosing a "more distinctive" mono failed; reusing the canonical mono is the right call. |
+| `--ac-font-lcd` (NEW) | (not present) | `"VT323", "JetBrains Mono", monospace` | VT323 is a dot-matrix character cell that evokes the actual LCD's pixel rendering. Used ONLY inside `.ac-fp__lcd` and similar LCD-styled surfaces. Highly legible because the dot-matrix grid forces minimum glyph contrast. |
 
-All three are Google Fonts (Open Font License) — no licensing friction.
+All four fonts are Google Fonts (Open Font License). The `--ac-font-lcd` is a new token added in Phase 2; the rest replace the current akai stack.
 
-The akai dialect override lives inside `[data-editor='s3000xl']`. Pages OUTSIDE the akai scope (the roland editor, anything on `/connect`, etc.) continue using the roland stack.
+**Why this typography is more disciplined than the first draft:** display fonts that compete with mono fonts for the parameter-value slot are a category error. Display fonts belong on labels and headings; mono fonts belong on numeric values and identifiers. The first draft put a display mono (Major Mono Display) on values, which broke legibility. Big Shoulders Display sits on labels only; JetBrains Mono sits on values only; VT323 sits on the LCD only. Three roles, three fonts, no overlap.
 
-### 3.4 Virtual front panel — akai chassis tokens
+### 3.4 Virtual front panel — cream chassis with lighter cream button faces
 
-The roland chassis tokens (`--ac-fp-chassis-top`, etc.) describe a neutral matte-black plastic. The akai dialect needs warmer values (the S3000XL plastic has a brown undertone in operator photos):
+The roland chassis tokens (`--ac-fp-chassis-top`, etc.) describe a neutral matte-black plastic with darker button faces. The akai S3000XL has the inverse contrast: a cream chassis with LIGHTER cream button faces and warm dark bezels around each button cluster. New tokens for the akai dialect:
 
 | Token | Roland (global) | Akai dialect |
 |---|---|---|
-| `--ac-fp-chassis-top` | `hsl(220 5% 7%)` | `hsl(28 6% 9%)` |
-| `--ac-fp-chassis-bot` | `hsl(220 6% 3%)` | `hsl(28 8% 4%)` |
-| `--ac-fp-chassis-edge` | `hsl(220 6% 3%)` | `hsl(28 8% 4%)` |
-| `--ac-fp-btn-top` | `hsl(220 4% 14%)` | `hsl(28 4% 16%)` |
-| `--ac-fp-btn-mid` | `hsl(220 5% 9%)` | `hsl(28 5% 11%)` |
-| `--ac-fp-btn-bot` | `hsl(220 6% 5%)` | `hsl(28 6% 6%)` |
-| `--ac-fp-btn-bezel` | `hsl(220 8% 2%)` | `hsl(28 10% 3%)` |
-| `--ac-fp-btn-pressed-top` | `hsl(215 30% 18%)` (cool blue tint) | `hsl(34 60% 22%)` (warm amber tint) |
-| `--ac-fp-btn-pressed-mid` | `hsl(215 28% 11%)` | `hsl(34 55% 14%)` |
-| `--ac-fp-btn-pressed-bot` | `hsl(215 32% 6%)` | `hsl(34 60% 8%)` |
-| `--ac-fp-label-fn` | `hsl(210 12% 86%)` | `hsl(38 20% 86%)` (cream) |
-| `--ac-fp-label-pressed` | `hsl(210 96% 86%)` (bright blue) | `hsl(34 96% 86%)` (bright amber) |
+| `--ac-fp-chassis-top` | `hsl(220 5% 7%)` (matte black) | `#E3DCC4` (light cream) |
+| `--ac-fp-chassis-mid` | (not present) | `#D8D0B6` (slight gradient — gives the chassis subtle depth) |
+| `--ac-fp-chassis-bot` | `hsl(220 6% 3%)` | `#CCC4A8` |
+| `--ac-fp-chassis-edge` | `hsl(220 6% 3%)` | `#8C8460` (warm putty rim) |
+| `--ac-fp-btn-top` | `hsl(220 4% 14%)` (darker than chassis) | `#F0EAD7` (LIGHTER than chassis — button face) |
+| `--ac-fp-btn-mid` | `hsl(220 5% 9%)` | `#E1DAC3` |
+| `--ac-fp-btn-bot` | `hsl(220 6% 5%)` | `#C8C0A4` |
+| `--ac-fp-btn-bezel` | `hsl(220 8% 2%)` | `#5E5840` (warm dark putty — surrounds each button) |
+| `--ac-fp-btn-label` | `hsl(210 12% 86%)` (cream label on dark) | `#1A1812` (black silkscreen on cream) |
+| `--ac-fp-btn-pressed-top` | `hsl(215 30% 18%)` (cool blue tint when pressed) | `#B6C4A8` (subtle desaturated push) |
+| `--ac-fp-btn-pressed-mid` | `hsl(215 28% 11%)` | `#99A890` |
+| `--ac-fp-btn-pressed-bot` | `hsl(215 32% 6%)` | `#82907A` |
+| `--ac-fp-btn-pressed-label` | `hsl(210 96% 86%)` (bright blue) | `#0A0D08` (deeper black on pressed) |
 
-Same chrome (chunky-button molded-plastic 3D extrusion, hairline bezel, ~80 ms mechanical-travel transition, pressed-LED dot), warmer palette. Phase 2 task 2.1 lifts these into the `[data-editor='s3000xl']` scope.
+Mode-button active state is an exception: instead of darkening the button, it fills with the AKAI red brand color (`#D8262C`) with white text — exactly mirroring the way an active mode lights up the LED above the button on the real hardware.
 
-### 3.5 Front panel layout
+### 3.5 Front panel layout — S3000XL 3-cluster strip
 
-The roland virtual front panel is a 7-column × 2-row 11-button grid (5x1.5 aspect ratio). The S3000XL front panel is structurally different — wider, with a 2-line LCD centerpiece, soft-function keys below the LCD, and mode/numeric clusters flanking. See § 4.4 for the proposed akai layout. **The `VirtualFrontPanel` component must accept a `layout` prop** (or be replaced by a per-device factory) so the akai dialect can mount its own grid without forking the chunky-button primitive.
+The roland virtual front panel is a 7×2 button grid (5:1.5 aspect ratio). The S3000XL is a 19" rackmount with a horizontal 3-cluster layout: mode buttons on the left (2 cols × 4 rows), LCD + soft-function keys in the center, numeric keypad + cursor cluster on the right. The mockup CSS captures this as a 3-column grid (`.ac-fp--akai` → `grid-template-columns: 0.7fr 1.6fr 1fr`).
 
-This is the one place where the dialect needs structural (not just token-level) variance. The variance is honest — the hardware differs — and the prescribed pattern (per CLAUDE.md "Multi-Device Architecture") is a factory method returning an interface implementation, not a JSX conditional.
+Per CLAUDE.md "Multi-Device Architecture": the `VirtualFrontPanel` component takes a `layout` prop (or is replaced by a per-device factory) so each editor mounts its own grid. The underlying `FrontPanelButton` primitive is shared; only the grid shape varies. This is the one place where the dialect needs structural (not just token-level) variance, and the variance is honest — the hardware genuinely differs.
+
+The actual S3000XL mode buttons (top-to-bottom in 2 columns):
+- SINGLE / MULTI / SAMPLE / EFFECTS (top 2 rows)
+- EDIT / GLOBAL / SAVE / LOAD (bottom 2 rows)
+
+Soft-function keys F1–F8 below the LCD, with letter-alt labels for the naming-entry mode (F1/A, F2/B, … F8/H).
+
+Numeric keypad with letter alts on the right (1/T, 2/U, … 9/Z), plus MARK / JUMP / NAME / cursor diamond.
+
+The chassis carries the "AKAI professional · MIDI STEREO DIGITAL SAMPLER" silkscreen on the top-left and the red "S3000XL" model badge on the top-right — both rendered as absolute-positioned spans inside the chassis container.
 
 ## 4. Per-page disposition + mockup index
 

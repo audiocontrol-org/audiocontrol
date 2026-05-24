@@ -298,42 +298,60 @@
         </div>
       </section>
 
-      <!-- Virtual front panel — akai layout -->
+      <!-- Virtual front panel — akai S3000XL layout -->
       <section class="ac-fp ac-fp--akai" aria-label="Virtual front panel">
-        <div class="ac-fp__lcd">
-          <div class="ac-fp__lcd__line">EDIT KG: 03 OF 11 · HAT_CL</div>
-          <div class="ac-fp__lcd__line">AMP A:04 D:32 S:62 R:40</div>
+        <span class="ac-fp__brand">AKAI <em>professional</em> · MIDI STEREO DIGITAL SAMPLER</span>
+        <span class="ac-fp__model-badge">S3000XL</span>
+
+        <div class="ac-fp__modes">
+          <button class="ac-fp__btn ac-fp__btn--mode">SINGLE <small>A</small></button>
+          <button class="ac-fp__btn ac-fp__btn--mode">MULTI <small>B</small></button>
+          <button class="ac-fp__btn ac-fp__btn--mode">SAMPLE <small>C</small></button>
+          <button class="ac-fp__btn ac-fp__btn--mode">EFFECTS <small>D</small></button>
+          <button class="ac-fp__btn ac-fp__btn--mode is-active">EDIT <small>E</small></button>
+          <button class="ac-fp__btn ac-fp__btn--mode">GLOBAL <small>F</small></button>
+          <button class="ac-fp__btn ac-fp__btn--mode">SAVE <small>G</small></button>
+          <button class="ac-fp__btn ac-fp__btn--mode">LOAD <small>H</small></button>
         </div>
-        <div class="ac-fp__soft-keys">
-          <button class="ac-fp__btn">F1<br/>ZONE</button>
-          <button class="ac-fp__btn">F2<br/>PITCH</button>
-          <button class="ac-fp__btn">F3<br/>FILT</button>
-          <button class="ac-fp__btn">F4<br/>AMP</button>
-          <button class="ac-fp__btn">F5<br/>LFO</button>
-          <button class="ac-fp__btn">F6<br/>NAME</button>
-          <button class="ac-fp__btn">F7<br/>SAMPLE</button>
-          <button class="ac-fp__btn">F8<br/>NEXT</button>
-        </div>
-        <div class="ac-fp__right">
-          <div class="ac-fp__mode-row">
-            <button class="ac-fp__btn ac-fp__btn--mode">PROG</button>
-            <button class="ac-fp__btn ac-fp__btn--mode is-active">EDIT</button>
-            <button class="ac-fp__btn ac-fp__btn--mode">DISK</button>
-            <button class="ac-fp__btn ac-fp__btn--mode">MIDI</button>
+
+        <div class="ac-fp__center">
+          <div class="ac-fp__lcd">
+            <div class="ac-fp__lcd__line">EDIT KEYGROUP <strong>03</strong> / 11</div>
+            <div class="ac-fp__lcd__line">HAT_CL  C3-D#3</div>
+            <div class="ac-fp__lcd__line--small">AMP: A 04  D 32  S 62  R 40</div>
           </div>
+          <div class="ac-fp__soft-keys">
+            <button class="ac-fp__btn">F1 <small>ZONE</small></button>
+            <button class="ac-fp__btn">F2 <small>PITCH</small></button>
+            <button class="ac-fp__btn">F3 <small>FILT</small></button>
+            <button class="ac-fp__btn">F4 <small>AMP</small></button>
+            <button class="ac-fp__btn">F5 <small>LFO</small></button>
+            <button class="ac-fp__btn">F6 <small>NAME</small></button>
+            <button class="ac-fp__btn">F7 <small>SAMP</small></button>
+            <button class="ac-fp__btn">F8 <small>NEXT</small></button>
+          </div>
+        </div>
+
+        <div class="ac-fp__right">
           <div class="ac-fp__keypad">
-            <button class="ac-fp__btn">1</button>
-            <button class="ac-fp__btn">2</button>
-            <button class="ac-fp__btn">3</button>
-            <button class="ac-fp__btn ac-fp__btn--value">−</button>
-            <button class="ac-fp__btn">4</button>
-            <button class="ac-fp__btn">5</button>
-            <button class="ac-fp__btn">6</button>
-            <button class="ac-fp__btn ac-fp__btn--value">+</button>
-            <button class="ac-fp__btn">7</button>
-            <button class="ac-fp__btn">8</button>
-            <button class="ac-fp__btn">9</button>
-            <button class="ac-fp__btn">ENT</button>
+            <button class="ac-fp__btn ac-fp__btn--keypad">1 <small>T</small></button>
+            <button class="ac-fp__btn ac-fp__btn--keypad">2 <small>U</small></button>
+            <button class="ac-fp__btn ac-fp__btn--keypad">3 <small>V</small></button>
+            <button class="ac-fp__btn ac-fp__btn--keypad">MARK</button>
+            <button class="ac-fp__btn ac-fp__btn--keypad">4 <small>W</small></button>
+            <button class="ac-fp__btn ac-fp__btn--keypad">5 <small>X</small></button>
+            <button class="ac-fp__btn ac-fp__btn--keypad">6 <small>Y</small></button>
+            <button class="ac-fp__btn ac-fp__btn--keypad">JUMP</button>
+            <button class="ac-fp__btn ac-fp__btn--keypad">7 <small>Z</small></button>
+            <button class="ac-fp__btn ac-fp__btn--keypad">8 <small>+</small></button>
+            <button class="ac-fp__btn ac-fp__btn--keypad">9 <small>−</small></button>
+            <button class="ac-fp__btn ac-fp__btn--keypad">NAME</button>
+          </div>
+          <div class="ac-fp__cursor-row">
+            <button class="ac-fp__btn ac-fp__btn--cursor">◀</button>
+            <button class="ac-fp__btn ac-fp__btn--cursor">▲</button>
+            <button class="ac-fp__btn ac-fp__btn--cursor">▼</button>
+            <button class="ac-fp__btn ac-fp__btn--cursor">▶</button>
           </div>
         </div>
       </section>
