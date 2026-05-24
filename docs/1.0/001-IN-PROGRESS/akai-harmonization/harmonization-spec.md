@@ -331,14 +331,20 @@ The matrix below is the proof-of-design Phase 2 implementers cite for each `cano
 
 | Primitive | Current akai equivalent | Disposition | Canonical side | Phase 2 task |
 |---|---|---|---|---|
-| AcInput | inline native input + `.s3k-param-input` | `adopt-roland-pattern` | roland | 2.2 |
-| AcSelect | `.s3k-param-select` | `adopt-roland-pattern` | roland | 2.2 |
-| AcSlider | `.s3k-param-track` + `.s3k-param-fill` | `adopt-roland-pattern` | roland (new shared `AcSlider`) | 2.2 |
-| AcCheckbox | `.s3k-param-toggle` | `adopt-roland-pattern` | roland | 2.2 |
+| AcInput | ~~inline native input + `.s3k-param-input`~~ → AcNumberInput via S3kParamRow | DONE 2026-05-24 (`20e56322` + `74505449` + `f25b10a1`) | roland | 2.2 |
+| AcSelect | ~~`.s3k-param-select`~~ → `<select class="ac-select">` via S3kParamSelectRow | DONE 2026-05-24 (`20e56322` + `74505449` + `f25b10a1`) | roland | 2.2 |
+| AcSlider | ~~`.s3k-param-track` + `.s3k-param-fill`~~ → AcSlider via S3kParamRow | DONE 2026-05-24 (`20e56322` + `74505449` + `f25b10a1`) | roland (shared `AcSlider`) | 2.2 |
+| AcCheckbox | ~~`.s3k-param-toggle`~~ → AcToggle via S3kParamToggleRow | DONE 2026-05-24 (`20e56322` + `74505449` + `f25b10a1`) | roland | 2.2 |
 | AcRangeBar | inline SVG in `ZoneOverview` | `genuinely-dialect` (extract primitive) | new (shared) | 2.2 |
 | AcEnvelope | `.s3k-envelope-display` (ADSR-only) | `genuinely-dialect` (parameterize segment count) | extend roland's 8-segment primitive | 2.2 |
 | AcChevron | absent | `adopt-roland-pattern` | roland | 2.2 |
 | AcButton | mix of `.s3k-*` and tailwind | `adopt-roland-pattern` | roland | 2.2 |
+
+Notes on the DONE rows:
+  - The `S3k*Row` wrappers add the akai dialect's affordances (integer-round on emitted values, select-all on readout focus) over the canonical AcSlider + AcNumberInput + AcToggle substrate. They live at `modules/akai-s3k-editor/src/components/ui/`.
+  - The bipolar center-tick visual (preserves the legacy `.s3k-param-center` divider's affordance) is implemented as a `:root[data-editor='s3000xl']` pseudo-element on `.ac-range-bar--bipolar` in `modules/editor-core/src/design/control-primitives.css`. Roland-scoped bipolars stay unmarked.
+  - The legacy `.s3k-param*` CSS block was deleted in `f25b10a1`; the new anti-pattern entries `s3k-param-input-inline` / `s3k-param-select-inline` / `s3k-param-toggle-inline` prevent reintroduction via the pre-commit gate.
+  - S3kParamRow's `tooltip:` prop currently throws when supplied (the akai Tooltip primitive hasn't landed yet); the throw forces awareness rather than silently dropping the text. Wiring is a separate dispatch once Tooltip ships.
 
 ### 5.3 Layout primitives
 
