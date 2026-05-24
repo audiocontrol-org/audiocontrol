@@ -26,6 +26,7 @@
  */
 
 import { readdir, readFile, stat } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -238,6 +239,15 @@ export async function scan(opts: CliOptions): Promise<ScanResult> {
   if (registry.entries.length === 0) {
     return { findings: [], filesScanned: 0, entriesScanned: 0 };
   }
+  // AUDIT-08: every entry with `canonical_implementation_file:` must
+  // point at a file that exists RIGHT NOW. If it doesn't, the
+  // primitive was likely git-renamed without updating the registry —
+  // the entry would silently miss its auto-exclusion and flag the
+  // NEW canonical location (whichever file now carries the legacy
+  // shape) as a holdout against its own anti-pattern. Fail loud at
+  // scan start with the entry id + the missing path so the operator
+  // can update `canonical_implementation_file:` in one step.
+  assertCanonicalImplementationFilesExist(registry.entries);
   const files = await listSourceFiles(opts.scanRoot);
   const findings: Finding[] = [];
   const cwd = process.cwd();
@@ -266,6 +276,34 @@ export async function scan(opts: CliOptions): Promise<ScanResult> {
     }
   }
   return { findings, filesScanned: files.length, entriesScanned: registry.entries.length };
+}
+
+/**
+ * AUDIT-08 — guard against stale `canonical_implementation_file:`
+ * entries. The check runs once at scan start (not per-file) and
+ * throws on the first missing canonical so the operator gets a
+ * single actionable error instead of a per-finding cascade.
+ *
+ * The path resolves against the scanner's CWD — matches how
+ * `isPathExcluded` compares the canonical to each candidate file
+ * (CWD-relative POSIX), so an entry that passes this check will
+ * actually self-exclude during the per-file loop.
+ */
+function assertCanonicalImplementationFilesExist(
+  entries: readonly AntiPatternEntry[],
+): void {
+  for (const entry of entries) {
+    if (entry.canonicalImplementationFile === null) continue;
+    const abs = resolve(process.cwd(), entry.canonicalImplementationFile);
+    if (!existsSync(abs)) {
+      throw new Error(
+        `anti-pattern ${entry.id}: canonical_implementation_file ` +
+          `'${entry.canonicalImplementationFile}' does not exist; ` +
+          `the primitive may have been renamed. Update ` +
+          `canonical_implementation_file: in ${entry.id} or remove the field.`,
+      );
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -92,10 +92,39 @@ export interface ThemeFinding {
   readonly occurrences: ReadonlyArray<ThemeOccurrence>;
 }
 
+/**
+ * Per-module relevance score sourced from the PRD's "In Scope" /
+ * "Out of Scope" sections. AUDIT-20260524-11. Modules NOT in this
+ * list have unstated relevance — the synthesis layer treats them as
+ * 'medium' (default). 'excluded' modules are DROPPED from the
+ * synthesized manifest; 'low' modules are annotated.
+ */
+export type PrdModuleRelevanceLevel = 'high' | 'medium' | 'low' | 'excluded';
+
+export interface PrdModuleRelevanceEntry {
+  /** Workspace module name (e.g., `roland-sxx0-editor`). */
+  readonly module: string;
+  /** The relevance level the PRD section assigned. */
+  readonly relevance: PrdModuleRelevanceLevel;
+  /**
+   * The PRD heading text that drove the assignment — surfaced in the
+   * synthesis warning so the operator sees which section excluded each
+   * module without re-reading the PRD.
+   */
+  readonly section: string;
+}
+
 export interface PrdThemedFindings {
   readonly agent: 'prd-themed-pattern-hunter';
   readonly featureSlug: string;
   readonly themes: ReadonlyArray<ThemeFinding>;
+  /**
+   * Optional — present when the PRD contains "In Scope" / "Out of
+   * Scope" / "Non-goals" sections. Absent for older findings produced
+   * by pre-AUDIT-20260524-11 agent versions. The synthesis layer
+   * defaults to 'medium' for every workspace module not listed.
+   */
+  readonly moduleRelevance?: ReadonlyArray<PrdModuleRelevanceEntry>;
 }
 
 /**

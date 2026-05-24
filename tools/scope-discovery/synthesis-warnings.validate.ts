@@ -207,6 +207,169 @@ async function scenarioRendererTeethOnEmptyWarnings(): Promise<ScenarioResult> {
   return pass(name, 'empty-warnings input still produced the heading with body content');
 }
 
+/**
+ * AUDIT-20260524-12: the "PRD has no References/Appendix section"
+ * warning must include a paste-ready PRD-augmentation skeleton so the
+ * operator gets actionable guidance instead of a single line that's
+ * easy to ignore. The skeleton MUST surface in BOTH the in-memory
+ * warnings array (synthesize() return) AND the rendered notes file
+ * (--notes-out output), since both are operator-facing channels.
+ */
+const SKELETON_SUBSTRINGS: ReadonlyArray<string> = [
+  '## References',
+  'Related issues:',
+  'Related ADRs:',
+  'External docs:',
+];
+
+async function scenarioWarningTextIncludesSkeleton(): Promise<ScenarioResult> {
+  const name =
+    'AUDIT-12: missing-References warning includes paste-ready PRD skeleton (in-memory + notes file)';
+  const fixture = await makeFixture('skeleton-included');
+  // In-memory channel: synthesize() return value.
+  const result = await synthesize({
+    featureSlug: 'warnings-fixture',
+    findings: SYNTHETIC_FINDINGS,
+    prdPath: fixture.prdPath,
+    prdRelPath: 'prd.md',
+  });
+  const referencesWarning = result.metadata.warnings.find((w) =>
+    /no References\/Appendix/i.test(w),
+  );
+  if (referencesWarning === undefined) {
+    return fail(name, `expected a References/Appendix warning; got: ${result.metadata.warnings.join(' / ')}`);
+  }
+  const missingInMemory = SKELETON_SUBSTRINGS.filter(
+    (s) => !referencesWarning.includes(s),
+  );
+  if (missingInMemory.length > 0) {
+    return fail(
+      name,
+      `in-memory warning missing skeleton substrings [${missingInMemory.join(', ')}]; warning was:\n${referencesWarning}`,
+    );
+  }
+  // The warning should also reference the PRD path so the operator
+  // knows which file to edit (the skeleton is keyed on `prd.md`).
+  if (!referencesWarning.includes('prd.md')) {
+    return fail(
+      name,
+      `in-memory warning should name the PRD path; warning was:\n${referencesWarning}`,
+    );
+  }
+  // Notes-file channel: --notes-out output.
+  const manifestPath = join(fixture.dir, 'scope-manifest.yaml');
+  const findingsDir = join(fixture.dir, 'findings');
+  await mkdir(findingsDir, { recursive: true });
+  const findingsPaths: string[] = [];
+  for (const f of SYNTHETIC_FINDINGS) {
+    const p = join(findingsDir, `${f.agent}.json`);
+    await writeFile(p, JSON.stringify(f, null, 2), 'utf8');
+    findingsPaths.push(p);
+  }
+  const run = await runScannerSubprocess(SYNTHESIS_ENTRY, [
+    '--feature', 'warnings-fixture',
+    '--prd-path', fixture.prdPath,
+    '--findings', ...findingsPaths,
+    '--out', manifestPath,
+    '--notes-out', fixture.notesPath,
+  ]);
+  if (run.code !== 0) {
+    return fail(name, `synthesis CLI exited ${run.code}; stderr:\n${run.stderr}`);
+  }
+  const notes = await readFile(fixture.notesPath, 'utf8');
+  const missingInNotes = SKELETON_SUBSTRINGS.filter((s) => !notes.includes(s));
+  if (missingInNotes.length > 0) {
+    return fail(
+      name,
+      `notes file missing skeleton substrings [${missingInNotes.join(', ')}]; notes were:\n${notes}`,
+    );
+  }
+  return pass(
+    name,
+    'skeleton substrings present in BOTH in-memory warning and notes file',
+  );
+}
+
+async function scenarioSkeletonOmittedWhenPrdHasReferences(): Promise<ScenarioResult> {
+  const name =
+    'AUDIT-12: missing-References warning + skeleton absent when PRD has References section';
+  const fixture = await makeFixture('skeleton-omitted');
+  const prdWithRefs =
+    '# Feature: has-refs-fixture\n\n' +
+    'polishtest polishtest polishtest body.\n\n' +
+    '## References\n\n' +
+    '- [LAYOUT](docs/scope-discovery/LAYOUT.md)\n';
+  await writeFile(fixture.prdPath, prdWithRefs, 'utf8');
+  // In-memory channel: synthesize() return value.
+  const result = await synthesize({
+    featureSlug: 'has-refs-fixture',
+    findings: SYNTHETIC_FINDINGS.map((f) => ({ ...f, featureSlug: 'has-refs-fixture' })) as DiscoveryAgentFinding[],
+    prdPath: fixture.prdPath,
+    prdRelPath: 'prd.md',
+  });
+  const referencesWarning = result.metadata.warnings.find((w) =>
+    /no References\/Appendix/i.test(w),
+  );
+  if (referencesWarning !== undefined) {
+    return fail(
+      name,
+      `expected NO References/Appendix warning (PRD has the section); got: ${referencesWarning}`,
+    );
+  }
+  // The skeleton's load-bearing substrings should be absent from EVERY
+  // warning in the array — no other warning channel should accidentally
+  // ship the skeleton when the gate isn't tripped.
+  for (const w of result.metadata.warnings) {
+    for (const s of SKELETON_SUBSTRINGS) {
+      if (w.includes(s)) {
+        return fail(
+          name,
+          `unexpected skeleton substring "${s}" present in non-References warning:\n${w}`,
+        );
+      }
+    }
+  }
+  // Notes-file channel: --notes-out output.
+  const findingsDir = join(fixture.dir, 'findings');
+  await mkdir(findingsDir, { recursive: true });
+  const findingsPaths: string[] = [];
+  for (const f of SYNTHETIC_FINDINGS) {
+    const p = join(findingsDir, `${f.agent}.json`);
+    const remapped = { ...f, featureSlug: 'has-refs-fixture' } as DiscoveryAgentFinding;
+    await writeFile(p, JSON.stringify(remapped, null, 2), 'utf8');
+    findingsPaths.push(p);
+  }
+  const manifestPath = join(fixture.dir, 'scope-manifest.yaml');
+  const run = await runScannerSubprocess(SYNTHESIS_ENTRY, [
+    '--feature', 'has-refs-fixture',
+    '--prd-path', fixture.prdPath,
+    '--findings', ...findingsPaths,
+    '--out', manifestPath,
+    '--notes-out', fixture.notesPath,
+  ]);
+  if (run.code !== 0) {
+    return fail(name, `synthesis CLI exited ${run.code}; stderr:\n${run.stderr}`);
+  }
+  const notes = await readFile(fixture.notesPath, 'utf8');
+  // The notes file's own heading is literally `## Synthesizer notes`,
+  // which is unrelated to the skeleton. Check that NONE of the
+  // skeleton-specific substrings (which all reference PRD-section
+  // content) appear — the heading check uses the literal subheading
+  // names + bullet labels chosen to never collide with the synthesizer
+  // notes' own structure.
+  const leakedInNotes = SKELETON_SUBSTRINGS.filter((s) => notes.includes(s));
+  if (leakedInNotes.length > 0) {
+    return fail(
+      name,
+      `notes file leaked skeleton substrings [${leakedInNotes.join(', ')}] when PRD has References; notes were:\n${notes}`,
+    );
+  }
+  return pass(
+    name,
+    'no References/Appendix warning fired and no skeleton substrings appeared in either channel',
+  );
+}
+
 async function cleanupTmp(): Promise<void> {
   try {
     const { readdir } = await import('node:fs/promises');
@@ -229,6 +392,8 @@ async function main(): Promise<number> {
     scenarioWarningsInOutput,
     scenarioNotesOutWritesSection,
     scenarioRendererTeethOnEmptyWarnings,
+    scenarioWarningTextIncludesSkeleton,
+    scenarioSkeletonOmittedWhenPrdHasReferences,
   ];
   const results: ScenarioResult[] = [];
   try {

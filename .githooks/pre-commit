@@ -14,61 +14,182 @@
 # blocks NEW duplication at commit time. Pre-existing pairs are
 # catalogued in `tools/check-css-duplication.expected.txt` and
 # don't block; they're tracked as backlog work.
+#
+# AUDIT-20260524-10 (TF-004) restructure: previously this hook ran
+# `set -e` and aborted on the FIRST failing gate. For substantial
+# commits (primitive promotion, multi-module refactor) where multiple
+# gates may fail independently, that cost N commit attempts — operator
+# fixed one gate, hit the next, fixed it, hit the next, etc.
+#
+# New shape (default): each gate's exit code + combined output is
+# captured to a per-gate log under a `mktemp -d` directory. AFTER
+# every applicable gate has run, a consolidated report names every
+# PASS + every FAIL with the failure's captured output indented under
+# its FAIL line. If any gate failed, the hook exits non-zero and the
+# AUDIT-03 commit-msg marker write never fires (because the commit
+# aborts before commit-msg runs).
+#
+# Gates that don't trigger (e.g., CSS-only gates with no .css files
+# staged) do not appear in the report at all — only ran-and-passed
+# and ran-and-failed gates appear.
+#
+# Opt-in fast-fail: set PRE_COMMIT_SHORT_CIRCUIT=1 to restore the
+# previous short-circuit behavior for tight iteration loops. First
+# failing gate prints its output (live, un-captured) and exits.
 
-set -euo pipefail
+set -uo pipefail
 
-# Gates fail-fast in declaration order: CSS first, then TS/TSX clone.
-# A commit touching both will surface CSS failures before the TS check
-# runs; the developer fixes CSS, commits again, then sees any TS clone
-# issues on the second cycle. Acceptable because each gate is fast and
-# the two-cycle case is rare in practice; tighten to collect-and-report
-# both failures together if that pattern starts costing time.
+PRE_COMMIT_SHORT_CIRCUIT="${PRE_COMMIT_SHORT_CIRCUIT:-0}"
 
-# Only re-run the CSS check when staged files actually touch CSS.
-# Without this, every commit pays the parse cost. The pattern
-# matches the stylesheet directories the checker walks.
-if git diff --cached --name-only --diff-filter=ACM | grep -qE '\.(css|scss)$'; then
-  echo "pre-commit: checking for new cross-page CSS duplication…"
-  make --no-print-directory check-css-duplication
-  echo "pre-commit: checking for chevron-named classes outside the canonical primitive…"
-  make --no-print-directory check-chevron-sizing
+# Detect which staged-file conditions apply so each gate's conditional
+# is evaluated once up-front (and consistently between the fast-fail
+# and consolidated paths). Both checks tolerate the empty-diff case
+# (initial commit etc.) by treating the grep miss as "no files match".
+STAGED_NAMES="$(git diff --cached --name-only --diff-filter=ACM || true)"
+HAS_CSS=0
+HAS_TS=0
+if printf '%s\n' "$STAGED_NAMES" | grep -qE '\.(css|scss)$'; then
+  HAS_CSS=1
+fi
+if printf '%s\n' "$STAGED_NAMES" | grep -qE '\.tsx?$'; then
+  HAS_TS=1
 fi
 
-# Only re-run the general TS/TSX clone check when staged files
-# actually touch TypeScript. Without this, every commit pays the
-# jscpd parse cost. The pattern matches the file extensions
-# `.jscpd.json` scans (`typescript` -> `ts`, `tsx`).
-if git diff --cached --name-only --diff-filter=ACM | grep -qE '\.tsx?$'; then
-  echo "pre-commit: checking for new TS/TSX clone groups…"
-  make --no-print-directory check-clone-duplication
-  # T6.1 anti-pattern registry gate. Catches regime drift the clone
-  # detector misses: code matching a registered legacy SHAPE rather than
-  # a token-level clone. Registry is empty until refactors append shapes
-  # the extracted primitive replaces. When empty (the common case until
-  # entries accrue), the scanner short-circuits and exits 0 cheaply.
-  echo "pre-commit: checking for anti-pattern matches…"
-  make --no-print-directory check-anti-patterns
-  # T6.2 adopter-manifest gate. Catches the dual of T6.1: files that
-  # match an extracted primitive's expected-adopter glob but DON'T
-  # import the canonical `from` path (regime-holdout / missing-adopter
-  # case). Registry is empty until refactors append entries naming
-  # promoted primitives. When empty (the common case until entries
-  # accrue), the scanner short-circuits and exits 0 cheaply.
-  echo "pre-commit: checking for adopter-manifest holdouts…"
-  make --no-print-directory check-adopters
-  # T6.3 cross-editor symmetry gate. Reuses the T6.2 registry to
-  # build a fleet matrix (rows = conventions, columns = editor
-  # modules under `modules/*-editor/`). Read-only check — surfaces
-  # ⚠ / ✗ cells when one editor lags the others. The committed
-  # operator-readable artifact at
-  # `docs/scope-discovery/editor-symmetry.md` is refreshed via
-  # `make check-editor-symmetry-write`, NOT by this hook. When the
-  # registry is empty (the common case until refactors append
-  # entries), the matrix has no rows and the scanner short-circuits
-  # to exit 0 cheaply.
-  echo "pre-commit: checking cross-editor symmetry…"
-  make --no-print-directory check-editor-symmetry > /dev/null
+# -----------------------------------------------------------------------
+# Fast-fail path (PRE_COMMIT_SHORT_CIRCUIT=1)
+#
+# Keeps the prior `set -e` semantics: gates run in declaration order;
+# the first non-zero exit aborts the hook. Output is un-captured so
+# the operator sees live progress + the failing gate's full output
+# inline. Used by developers whose iteration workflow benefits from
+# fail-fast (small commits, tight feedback loops).
+# -----------------------------------------------------------------------
+
+if [ "$PRE_COMMIT_SHORT_CIRCUIT" = "1" ]; then
+  set -e
+  if [ "$HAS_CSS" = "1" ]; then
+    echo "pre-commit: checking for new cross-page CSS duplication…"
+    make --no-print-directory check-css-duplication
+    echo "pre-commit: checking for chevron-named classes outside the canonical primitive…"
+    make --no-print-directory check-chevron-sizing
+  fi
+  if [ "$HAS_TS" = "1" ]; then
+    echo "pre-commit: checking for new TS/TSX clone groups…"
+    make --no-print-directory check-clone-duplication
+    echo "pre-commit: checking for anti-pattern matches…"
+    make --no-print-directory check-anti-patterns
+    echo "pre-commit: checking for adopter-manifest holdouts…"
+    make --no-print-directory check-adopters
+    echo "pre-commit: checking cross-editor symmetry…"
+    make --no-print-directory check-editor-symmetry > /dev/null
+  fi
+  exit 0
 fi
+
+# -----------------------------------------------------------------------
+# Consolidated path (default)
+#
+# Each gate's combined stdout+stderr captured to a per-gate log.
+# After every applicable gate has run, the consolidated report is
+# printed. Any non-zero exit causes the hook to exit 1 (commit
+# aborts, commit-msg marker write never fires).
+# -----------------------------------------------------------------------
+
+LOG_DIR="$(mktemp -d -t pre-commit-gates.XXXXXX)"
+# Cleanup on any exit path. The trap fires on normal exit, error exit,
+# and signal-driven exit (HUP/INT/TERM). The temp dir is fully owned
+# by this hook invocation — nothing outside this script reads it.
+trap 'rm -rf "$LOG_DIR"' EXIT HUP INT TERM
+
+# Parallel arrays tracking gate name + exit code + captured-log path.
+# Bash arrays are clumsier than a struct but they keep this hook
+# dependency-free (no python/jq/etc.) and the report iteration is
+# trivial. Index-aligned: GATE_NAMES[i] / GATE_CODES[i] / GATE_LOGS[i].
+GATE_NAMES=()
+GATE_CODES=()
+GATE_LOGS=()
+
+# run_gate <name> <command...> — runs the command with combined
+# stdout+stderr captured to a per-gate log file, records the exit
+# code, and appends to the parallel arrays. Does NOT abort on a
+# non-zero exit — the consolidated report decides the hook's fate.
+run_gate() {
+  local name="$1"; shift
+  local log="$LOG_DIR/$name.log"
+  # Combine stdout+stderr so the captured output mirrors what an
+  # interactive operator would see if the gate were running live.
+  # `|| true` would mask the exit code; capture it via $? instead.
+  local code=0
+  "$@" > "$log" 2>&1 || code=$?
+  GATE_NAMES+=("$name")
+  GATE_CODES+=("$code")
+  GATE_LOGS+=("$log")
+}
+
+# Mirror the conditional structure of the fast-fail path so gate
+# selection is identical between modes. Gates that don't trigger
+# don't appear in the consolidated report.
+if [ "$HAS_CSS" = "1" ]; then
+  run_gate check-css-duplication make --no-print-directory check-css-duplication
+  run_gate check-chevron-sizing make --no-print-directory check-chevron-sizing
+fi
+if [ "$HAS_TS" = "1" ]; then
+  run_gate check-clone-duplication make --no-print-directory check-clone-duplication
+  run_gate check-anti-patterns make --no-print-directory check-anti-patterns
+  run_gate check-adopters make --no-print-directory check-adopters
+  run_gate check-editor-symmetry make --no-print-directory check-editor-symmetry
+fi
+
+# Tally failures + render the consolidated report. Format: failure
+# block first (operator-actionable content top-of-screen), pass list
+# afterwards. Failure-block stderr is indented by 4 spaces so it's
+# visually distinct from the gate headers.
+FAILED=0
+TOTAL=${#GATE_NAMES[@]}
+for code in "${GATE_CODES[@]+"${GATE_CODES[@]}"}"; do
+  if [ "$code" -ne 0 ]; then
+    FAILED=$((FAILED + 1))
+  fi
+done
+
+if [ "$TOTAL" -eq 0 ]; then
+  # No gates triggered (e.g., commit touches only .md or .png files).
+  # Nothing to report; fall through to exit 0.
+  exit 0
+fi
+
+if [ "$FAILED" -gt 0 ]; then
+  echo "pre-commit: $FAILED of $TOTAL gate(s) failed:"
+  echo ""
+  # FAIL blocks first.
+  for i in "${!GATE_NAMES[@]}"; do
+    name="${GATE_NAMES[$i]}"
+    code="${GATE_CODES[$i]}"
+    log="${GATE_LOGS[$i]}"
+    if [ "$code" -ne 0 ]; then
+      echo "  [FAIL] $name (exit $code):"
+      # sed-free indentation: prefix every line of the captured log
+      # with 4 spaces. awk handles empty logs gracefully (no output).
+      awk '{ print "    " $0 }' "$log"
+      echo ""
+    fi
+  done
+  # PASS list after.
+  for i in "${!GATE_NAMES[@]}"; do
+    name="${GATE_NAMES[$i]}"
+    code="${GATE_CODES[$i]}"
+    if [ "$code" -eq 0 ]; then
+      echo "  [PASS] $name"
+    fi
+  done
+  echo ""
+  echo "Fix all failures + re-commit; or set PRE_COMMIT_SHORT_CIRCUIT=1 to fail-fast."
+  exit 1
+fi
+
+# All gates passed — fall through to the (pre-existing) marker-write
+# rationale below. No per-gate logging in the happy path; operators
+# who want progress output should set PRE_COMMIT_SHORT_CIRCUIT=1.
 
 # T7.5 (corrected per AUDIT-20260522-03) — the "pre-commit ran to
 # completion" marker is intentionally NOT written here. It is written by
