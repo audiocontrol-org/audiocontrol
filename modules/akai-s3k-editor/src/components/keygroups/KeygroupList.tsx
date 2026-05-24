@@ -141,7 +141,7 @@ export function KeygroupList({
               role="button"
               tabIndex={isLoading ? -1 : 0}
               aria-disabled={isLoading}
-              aria-selected={isSelected}
+              aria-current={isSelected ? 'true' : undefined}
               className="ac-list-row ac-akai-list-row"
               onClick={isLoading ? undefined : handleClick}
               onKeyDown={handleKeyDown}

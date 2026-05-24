@@ -180,7 +180,7 @@ export function PatchList({
                     role="button"
                     tabIndex={isBankLoading ? -1 : 0}
                     aria-disabled={isBankLoading}
-                    aria-selected={isSelected}
+                    aria-current={isSelected ? 'true' : undefined}
                     onClick={isBankLoading ? undefined : handleClick}
                     onKeyDown={handleKeyDown}
                     className="ac-list-row"

@@ -3199,3 +3199,17 @@ clones:
       - modules/synth-core/src/hooks/use-slice-player.ts:49:63
     disposition: pending
     reason: null
+  - id: 310995005263
+    lines: 11
+    members:
+      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:179:189
+      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:175:185
+    disposition: keep-with-reason
+    reason: Cross-row canonical chrome — both roland list components render the same `<div className="ac-list-row" role="button" tabIndex aria-disabled aria-current onClick onKeyDown>` shape that the canonical .ac-list-row in editor-core/list-primitives.css expects. Same shape as the akai trio dispositioned at 5a74b915439b. Extracting a `<CanonicalListRow>` React wrapper would just hide that they're invoking the canonical correctly. Flip to refactor only if a third roland list with the exact same wiring lands AND a meaningful extraction emerges (e.g., a hook that abstracts the bank-loading-state wiring). Both rows acquired this shape via akai-harmonization Phase 2 task 2.2 (PatchList + ToneList already used .ac-list-row; the aria-selected → aria-current change in AUDIT-20260524-04 fix tightened the line range so the clone detector noticed).
+  - id: 5a74b915439b
+    lines: 29
+    members:
+      - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:178:206
+      - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:184:212
+    disposition: keep-with-reason
+    reason: Cross-row canonical chrome — both akai list components render the same row shape (`<div className="ac-list-row ac-akai-list-row" role="button" tabIndex aria-current onClick onDoubleClick onKeyDown>` plus the inline-rename branch + the per-row action cluster). Programs + Samples have the most overlapping shape because they're both flat slot-indexed lists with rename/clone/delete affordances. KeygroupList uses a similar shape but with bank-loading state that makes its grid template slightly different (slot-width override) so it doesn't clone with this pair. Same disposition principle as the roland pair at 310995005263. Flip to refactor only if a third akai list with the exact same wiring lands AND a meaningful extraction emerges (e.g., a useAkaiListRowState hook that abstracts the editing + onSelect + onDelete + onClone + onRefresh prop bundle).

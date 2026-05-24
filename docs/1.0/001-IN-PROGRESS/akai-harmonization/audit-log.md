@@ -11,6 +11,99 @@ Canonical grep queue:
 
 ---
 
+## 2026-05-24 Feature review — latest Phase 2 implementation
+
+Surfaced while reviewing the latest harmonization commits on `feature/akai-harmonization` after `AUDIT-20260524-01` and `-02` were fixed. Scope reviewed from commit `68799ed9` through `HEAD` (`5a15c01c` at review time), with targeted local verification runs:
+
+- `pnpm --filter @audiocontrol/editor-core test -- TreeView.test.tsx`
+- `pnpm --filter @audiocontrol/akai-s3k-editor test -- SampleList.test.tsx`
+
+Both targeted runs passed, but they do not cover the new issues below.
+
+### Akai list-row migration codifies selected state on `role="button"` rows via `aria-selected`, which screen readers will not treat as a button state
+
+Finding-ID: AUDIT-20260524-04
+Status:     verified-2026-05-24
+Severity:   medium
+Surface:    `modules/akai-s3k-editor/src/components/programs/ProgramList.tsx`, `modules/akai-s3k-editor/src/components/samples/SampleList.tsx`, `modules/akai-s3k-editor/src/components/keygroups/KeygroupList.tsx`, `modules/akai-s3k-editor/test/unit/components/SampleList.test.tsx`
+
+Phase 2 task 2.2 migrated the Akai list widgets onto the canonical `.ac-list-row` chrome and, in the process, standardized all three row types as focusable `<div role="button">` wrappers carrying `aria-selected={isSelected}`:
+
+- `ProgramList.tsx:176-185`
+- `SampleList.tsx:182-191`
+- `KeygroupList.tsx:138-147`
+
+The visual selected-state styling is then keyed off `[aria-selected="true"]` in CSS, and the updated `SampleList` unit test now treats that attribute as the selected-state contract (`SampleList.test.tsx:43-60`).
+
+The problem is semantic: `aria-selected` is not a supported state for the ARIA `button` role. Browsers will happily leave the attribute in the DOM and CSS can style against it, but assistive technology will not reliably announce "selected" for a button because "selected" is a state for roles like `option`, `tab`, `gridcell`, or `treeitem`, not buttons.
+
+So the branch now has a selected-state signal that works visually and in DOM-attribute tests, but does not actually expose the state to screen-reader users in the way the tests imply.
+
+**Evidence:**
+
+- Akai rows now expose `role="button"` + `aria-selected={...}`:
+  - `modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:176-185`
+  - `modules/akai-s3k-editor/src/components/samples/SampleList.tsx:182-191`
+  - `modules/akai-s3k-editor/src/components/keygroups/KeygroupList.tsx:138-147`
+- The updated unit test explicitly blesses `aria-selected` as the new observable contract:
+  - `modules/akai-s3k-editor/test/unit/components/SampleList.test.tsx:43-60`
+
+**Expected:** either use a role that legitimately carries `aria-selected` (for example a listbox/option-style pattern), or keep the button role and expose selection through a supported button state / wording instead of treating `aria-selected` as meaningful.
+
+**Actual:** the selected-state contract is visually correct but semantically inert for assistive tech.
+
+**Fix guidance:** do not deepen the new contract in more tests. Either re-model these lists as composite widgets with roles that support selection, or keep the button role and move the state exposure to a supported pattern (`aria-current`, `aria-pressed`, or explicit screen-reader text depending on the intended interaction model). A follow-up regression test should assert the accessible role/state combination, not just the raw attribute.
+
+**Fix landed:** this session, 2026-05-24. Per the auditor's guidance, switched the selected-state contract from `aria-selected` to `aria-current="true"` everywhere. This is the "currently-selected item from a set" ARIA pattern that IS supported on the `button` role.
+
+Per the ARIA spec, the omit-when-not-current convention applies: selected rows render `aria-current="true"`, unselected rows omit the attribute entirely (the JSX uses `aria-current={isSelected ? 'true' : undefined}`).
+
+Files changed (the canonical fix is editor-core CSS; the consumer fix is 5 JSX sites across roland + akai):
+- `modules/editor-core/src/design/list-primitives.css` — 3 selectors changed from `[aria-selected="true"]` to `[aria-current="true"]` (hover-reveal action class, slot color, row background).
+- `modules/roland-sxx0-editor/src/components/patches/PatchList.tsx` + `tones/ToneList.tsx` — `aria-selected={isSelected}` → `aria-current={isSelected ? 'true' : undefined}`.
+- `modules/akai-s3k-editor/src/components/programs/ProgramList.tsx` + `samples/SampleList.tsx` + `keygroups/KeygroupList.tsx` — same.
+- `modules/akai-s3k-editor/test/unit/components/SampleList.test.tsx` — both tests updated: the "selected sample" test now asserts `aria-current === 'true'`; the "unselected" test now asserts the attribute is null (per omit-when-not-current).
+
+**Verification:** `make` clean. `make test-ui-roland` 4 passed + 2 skipped (matches baseline; roland row-state styling continues to work with the new attribute). `make test-ui-s3k` 19 passed. `pnpm --filter @audiocontrol/akai-s3k-editor test` 175 passed + 1 failed (matches baseline — the failing test is the pre-existing `ProgramsPage delete flow > shows loading status when isLoading with a message` unrelated to this change, confirmed via stash + re-run).
+
+**Test-gap follow-up:** the auditor recommended "a follow-up regression test should assert the accessible role/state combination, not just the raw attribute." The current SampleList test asserts `aria-current === 'true'` on the raw attribute. A stronger test would use `@testing-library/react`'s `getByRole` + accessibility-tree assertions to verify the rendered role + state actually exposes to AT correctly. Deferred to a follow-up — landing the literal-attribute fix first closes the immediate semantic bug.
+
+### Phase 2 landed four Akai page-shell migrations with no direct regression test for the new fixed-viewport/app-shell contract
+
+Finding-ID: AUDIT-20260524-05
+Status:     open
+Severity:   medium
+Surface:    `modules/akai-s3k-editor/src/pages/ProgramsPage.tsx`, `modules/akai-s3k-editor/src/pages/KeygroupsPage.tsx`, `modules/akai-s3k-editor/src/pages/SamplesPage.tsx`, `modules/akai-s3k-editor/src/pages/LibraryPage.tsx`, `modules/akai-s3k-editor/test/`
+
+The latest Phase 2 work moved all four primary Akai pages onto the canonical shell/layout primitives:
+
+- `ProgramsPage.tsx:310-351` now uses `.ac-page-shell--fixed-viewport`, `.ac-app-shell`, `.ac-detail-scroll`
+- `KeygroupsPage.tsx:307-351` now uses the same contract
+- `SamplesPage.tsx:231-259` now uses the same contract
+- `LibraryPage.tsx:560-572` now uses `.ac-page-shell--fixed-viewport` + `.ac-page-shell-body`
+
+That is a large live-surface migration: page header, height bounding, internal scroll ownership, and list/detail pane structure all changed together. But the Akai test surface still does not exercise that contract directly. The only touched unit test in this pass is `SampleList.test.tsx`, and it checks row attributes only. A grep across `modules/akai-s3k-editor/test/` shows waits for lists to appear and hardware workflows that happen to pass through the pages, but no test that asserts the new shell/layout invariants themselves (`ac-page-shell--fixed-viewport`, `ac-app-shell`, `ac-detail-scroll`) or any dedicated Akai UI harness for the migrated pages.
+
+This matters because the migration is precisely the kind of change that can regress scroll containment, clipping, or mobile behavior while leaving data-loading tests green. Roland has explicit design/rendering coverage for the canonical fixed-viewport shell; Akai still does not.
+
+**Evidence:**
+
+- New page-shell adoption:
+  - `modules/akai-s3k-editor/src/pages/ProgramsPage.tsx:310-351`
+  - `modules/akai-s3k-editor/src/pages/KeygroupsPage.tsx:307-351`
+  - `modules/akai-s3k-editor/src/pages/SamplesPage.tsx:231-259`
+  - `modules/akai-s3k-editor/src/pages/LibraryPage.tsx:560-572`
+- Current Akai tests reference the lists/pages only indirectly (load/wait helpers and hardware flows), not the new layout contract itself:
+  - `modules/akai-s3k-editor/test/` grep shows list waits and one `SampleList` unit spec, but no assertion on `ac-page-shell--fixed-viewport`, `ac-app-shell`, or `ac-detail-scroll`
+
+**Expected:** when Phase 2 replaces a page’s shell/layout contract, the branch adds a direct regression surface for that contract on Akai too, not just on Roland. At minimum one targeted UI/rendering spec should assert scroll containment / non-clipping for the migrated Akai pages.
+
+**Actual:** the canonical shell rollout to Akai is effectively covered only by incidental e2e traffic and one row-level unit test.
+
+**Fix guidance:** add a focused Akai UI/rendering spec for the migrated pages before more shell-level harmonization lands. The most valuable first assertion is the fixed-viewport invariant: list and detail panes own internal scroll on desktop without clipping their bodies, with the mobile escape hatch still falling back to document scroll below 900 px.
+
+---
+
 ## 2026-05-24 Feature review — implementation work so far
 
 Surfaced while reviewing `feature/akai-harmonization` against `origin/main` after the first implementation commits landed in `editor-core` plus the new feature-doc set. Scope reviewed: branch diff from merge-base `57a6dd9fdfe08e93f3813a7d2c221611aa9995d6` through `HEAD` (`0c09c87e` at review time).

@@ -424,12 +424,12 @@
   border-left-color: color-mix(in srgb, var(--ac-color-accent) 40%, transparent);
 }
 
-.ac-list-row[aria-selected="true"] {
+.ac-list-row[aria-current="true"] {
   background: color-mix(in srgb, var(--ac-color-accent) 12%, transparent);
   border-left-color: var(--ac-color-accent);
 }
 
-.ac-list-row[aria-selected="true"] .ac-list-slot {
+.ac-list-row[aria-current="true"] .ac-list-slot {
   color: var(--ac-color-accent);
 }
 
@@ -450,7 +450,7 @@
    future per-row actions get the same fade-on-hover treatment
    without re-deriving the rule. */
 .ac-list-row:hover .ac-list-action,
-.ac-list-row[aria-selected="true"] .ac-list-action,
+.ac-list-row[aria-current="true"] .ac-list-action,
 .ac-list-row:focus-within .ac-list-action {
   opacity: 1;
 }

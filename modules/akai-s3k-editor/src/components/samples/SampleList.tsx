@@ -184,7 +184,7 @@ export function SampleList({
               data-testid={`sample-item-${index}`}
               role="button"
               tabIndex={0}
-              aria-selected={isSelected}
+              aria-current={isSelected ? 'true' : undefined}
               className="ac-list-row ac-akai-list-row"
               onClick={isEditing ? undefined : handleClick}
               onDoubleClick={isEditing ? undefined : handleDoubleClick}

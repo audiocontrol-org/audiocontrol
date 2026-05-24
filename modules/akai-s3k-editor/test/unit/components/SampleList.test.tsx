@@ -40,24 +40,35 @@ describe('SampleList', () => {
     expect(onSelect).toHaveBeenCalledWith(1);
   });
 
-  it('marks the selected sample with aria-selected="true"', () => {
+  it('marks the selected sample with aria-current="true"', () => {
     // The visual selected-state highlight is owned by the canonical
-    // `.ac-list-row[aria-selected="true"]` rule in
+    // `.ac-list-row[aria-current="true"]` rule in
     // editor-core/list-primitives.css (promoted from roland during
     // akai-harmonization Phase 2 task 2.2). The unit test asserts
-    // the observable contract — the `aria-selected` attribute — not
-    // the specific Tailwind class the old chrome used (`bg-blue-600`).
+    // the observable contract — the `aria-current` attribute.
+    //
+    // The attribute changed from aria-selected → aria-current per
+    // AUDIT-20260524-04: aria-selected is not a supported state for
+    // the ARIA `button` role (it's valid for `option` / `tab` /
+    // `gridcell` / `treeitem`), so screen readers would not announce
+    // "selected" for the previous markup. aria-current="true" IS the
+    // supported "this is the currently-selected item from a set"
+    // pattern for a button role.
     renderList({ selectedIndex: 0 });
 
     const button = screen.getByTestId('sample-item-0');
-    expect(button.getAttribute('aria-selected')).toBe('true');
+    expect(button.getAttribute('aria-current')).toBe('true');
   });
 
-  it('does not mark unselected samples as aria-selected', () => {
+  it('does not mark unselected samples with aria-current', () => {
+    // Per the ARIA spec, the right way to indicate non-current is to
+    // omit the attribute entirely (the implicit default). The JSX
+    // renders `aria-current={isSelected ? 'true' : undefined}` so
+    // unselected rows have no aria-current attribute at all.
     renderList({ selectedIndex: 0 });
 
     const button = screen.getByTestId('sample-item-1');
-    expect(button.getAttribute('aria-selected')).toBe('false');
+    expect(button.getAttribute('aria-current')).toBeNull();
   });
 
   it('shows hover actions (delete, refresh) via group class', () => {
