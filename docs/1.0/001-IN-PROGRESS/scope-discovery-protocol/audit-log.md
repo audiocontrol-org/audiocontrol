@@ -296,7 +296,7 @@ Resolution:
 ## AUDIT-20260524-09
 
 Finding-ID: AUDIT-20260524-09
-Status:     open
+Status:     verified-2026-05-24
 Severity:   low
 Surface:    tools/scope-discovery/clone-detector.ts, .githooks/pre-commit
 
@@ -323,6 +323,23 @@ Fix guidance:
 - Adversarial scenario: clone-detector's NEW-group error output (captured via subprocess) contains the literal string `batch-dispose.ts --ids <id>` for each NEW group.
 
 External tracking: TF-003.
+
+Resolution:
+- Corrected mechanism: extended `tools/scope-discovery/clone-detector.ts` with a single `batchDisposeHintLines(id, indent)` helper (DRY — one function consumed by both output modes) and a `writeBatchDisposeHint` wrapper that emits the four-line hint per NEW group. Both `reportDiff` (--diff mode) and `reportHuman` (default-mode, non-quiet) iterate NEW groups identically to before; the hint is appended ADDITIVELY after each NEW group's existing member listing — every prior `NEW    <id>` and member-path line is preserved so any downstream consumer grepping the stdout sees only added lines, never replacement. DROPPED groups intentionally do NOT carry a citation (DROPPED entries are removed via `make refresh-clones-baseline`, not via batch-dispose; citing batch-dispose for a DROPPED would mislead the operator). The hint indentation matches each caller's existing convention: --diff mode uses no leading indent for the `Run:` prefix; default-mode wraps the hint in 2-space indent to mirror the surrounding `  NEW    ...` lines. Empirical post-change shape verified end-to-end against a synthetic fixture: --diff mode emits
+  ```
+  NEW    95407554c33e (7 lines)
+           ../a/c.ts:1:7
+           ../a/d.ts:1:7
+    Run:  tsx tools/scope-discovery/batch-dispose.ts \
+            --ids 95407554c33e \
+            --disposition <refactor|keep-with-reason|ignore-with-justification> \
+            --reason "<one-line rationale>"
+  summary: 0 dropped, 1 new (net +1)
+  ```
+  and default-mode emits the same hint nested under the indented `  NEW    ...` block. Programmatic-consumer audit: `grep -rn clone-detector tools/` confirms the only stdout consumer is `tools/scope-discovery/discovery-agents/clone-detector-reader.ts`, which reads the committed YAML baseline directly (not the detector's stdout) — no breakage risk.
+- Adversarial validator: `tools/scope-discovery/clone-detector.batch-dispose-hint-scenarios.ts` adds four scenarios — `scenarioNewGroupCitesBatchDispose` (synthetic NEW group via --diff; asserts stdout contains `tsx tools/scope-discovery/batch-dispose.ts \\`, `--ids <actual-id>` for each parsed NEW id, the `--disposition <refactor|keep-with-reason|ignore-with-justification>` placeholder, and the `--reason "<one-line rationale>"` placeholder), `scenarioNewGroupCitesBatchDisposeDefaultMode` (same fixture in default non-quiet mode; asserts the citation lands in the indented per-group output the pre-commit hook surfaces), `scenarioDroppedGroupNoCitation` (capture baseline → remove one member → assert exit 0 with `DROPPED` reported AND stdout free of `batch-dispose.ts` in BOTH default and --diff modes), `scenarioNoChangesNoCitation` (clone-free fixture; asserts no `batch-dispose.ts` mention in BOTH modes). Lives in a sibling module (the parent validator was 475 lines; the new module is 280 lines) so the 300-500 line cap holds across both files. Wired into `clone-detector.validate.ts` (imports + scenario array + cleanup hook). Suite: `pnpm test:scope-discovery` 210 → 214 scenarios.
+- **AUDIT-07 hard test outcome (validator-paired changes):** stashed ONLY `tools/scope-discovery/clone-detector.ts` (the production-code change), kept the new scenarios module + validator wiring, re-ran the harness. Result: 2 of 4 scenarios FAIL (`scenarioNewGroupCitesBatchDispose` — diff stdout was `NEW    f6a131dcf46d (7 lines)` + member lines + `summary:` line with NO `tsx tools/scope-discovery/batch-dispose.ts \\`; `scenarioNewGroupCitesBatchDisposeDefaultMode` — default-mode stdout was `Detected 2 clone group(s)...` + `Baseline diff: 1 NEW, 0 DROPPED.` + indented NEW group with NO `--ids <id>` line). The 2 PASSING scenarios (`scenarioDroppedGroupNoCitation`, `scenarioNoChangesNoCitation`) are regression-guards by design — they assert ABSENCE of the citation in non-NEW paths, so they must pass against pristine production code as well. Confirms the two NEW-citation scenarios have teeth and the two no-citation scenarios are correct regression-guards. After restoring the production code (`git stash pop`), all 17 scenarios in `clone-detector.validate.ts` pass.
+- Empirical re-exercise (2026-05-24): synthetic post-change repro — capture baseline with 2 clone members → add 2 new clone members → re-run in `--diff` mode reports `NEW    <id> (7 lines)` + 2 member-path lines + a 4-line `tsx tools/scope-discovery/batch-dispose.ts ... --ids <id> ... --disposition <refactor|keep-with-reason|ignore-with-justification> --reason "<one-line rationale>"` block + `summary: 0 dropped, 1 new (net +1)`; default-mode repro emits the same hint nested under the `  NEW    ...` indentation. Side-effect checks: `pnpm test:scope-discovery` reports 214/214; `tsx tools/scope-discovery/clone-detector.ts --quiet` reports `495 groups; 0 NEW; 0 DROPPED`; `pnpm exec tsc --noEmit` exits 0. Pre-commit hook will record the fix commit in `.git/hooks-sentinels/.pre-commit-passed`; no hooks bypassed.
 
 ## AUDIT-20260524-10
 
