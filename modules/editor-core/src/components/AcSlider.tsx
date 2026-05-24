@@ -7,11 +7,15 @@ import { AcRangeBar, type AcRangeBarProps } from './AcRangeBar';
  * Three-column grid: LABEL | range-bar | mono readout. The range-bar is
  * `<AcRangeBar>`; the readout supports a primary value plus an optional unit.
  *
- * NOTE: this is the v3 RANGE-BAR pattern (read-or-write display of a value
- * inside a fixed range). It is NOT a replacement for `ParameterSlider`
- * (Radix-based with drag handle, used by Roland editor) — that component
- * remains unchanged. Consumers of the new v3 pages use `<AcSlider>`; legacy
- * pages keep `ParameterSlider` until their per-page polish dispatch.
+ * Read-or-write: the inner `<AcRangeBar>` becomes a real interactive control
+ * when its `onChange` prop is supplied (overlay `<input type="range">`
+ * provides pointer drag, click-to-set, and native keyboard semantics —
+ * arrow keys, home / end, page up/down). The readout is a separate slot;
+ * pair with `<AcNumberInput editable>` for click-to-type. See
+ * `modules/roland-sxx0-editor/src/components/ui/ParamSliderRow.tsx` for
+ * the canonical interactive consumer and
+ * `modules/akai-s3k-editor/src/components/ui/S3kParamRow.tsx` for the akai
+ * dialect's equivalent.
  *
  * Mockup source:
  *   docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:1465-1546

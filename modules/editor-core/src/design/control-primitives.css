@@ -444,3 +444,28 @@ button.ac-range-bar__enum-pip:hover:not(:disabled) {
   border: 0;
 }
 
+/* =========================================================================
+ * Dialect overlay — Akai S3000XL bipolar center tick
+ *
+ * The legacy `.s3k-param-center` rule rendered a 1px vertical divider at
+ * the bipolar zero-anchor inside `.s3k-param-track`. The canonical
+ * `.ac-range-bar--bipolar` has no such indicator (roland's bipolar params
+ * read by fill-extent alone). Preserve the akai affordance by painting a
+ * subtle center tick INSIDE the akai-scoped bar only — roland-scoped
+ * bipolars stay unmarked.
+ *
+ * Painted as a `::after` pseudo-element on the bar (not the fill) so the
+ * fill animation doesn't move the tick.
+ * ========================================================================= */
+:root[data-editor='s3000xl'] .ac-range-bar--bipolar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: color-mix(in srgb, var(--ac-color-text-primary) 30%, transparent);
+  pointer-events: none;
+  z-index: 0;
+}
+

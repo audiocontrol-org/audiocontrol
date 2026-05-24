@@ -1,4 +1,4 @@
-import { forwardRef, type ChangeEvent, type Ref } from 'react';
+import { forwardRef, type ChangeEvent, type FocusEvent, type Ref } from 'react';
 
 /**
  * `<AcNumberInput>` — display-font numeric readout. Two shapes:
@@ -69,6 +69,12 @@ export interface AcNumberInputEditProps {
    * would behave.
    */
   dataTestId?: string;
+  /**
+   * Optional passthrough focus handler on the `<input>`. Akai dialect
+   * uses this for "select-all on focus" dense-panel ergonomics; other
+   * dialects can use it for analytics or any focus-time side effect.
+   */
+  onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
 }
 
 export type AcNumberInputProps = AcNumberInputReadProps | AcNumberInputEditProps;
@@ -132,6 +138,7 @@ function renderEditable(
         className="ac-number-input__value"
         value={formatted}
         onChange={handleChange}
+        onFocus={p.onFocus}
         min={p.min}
         max={p.max}
         step={p.step ?? 1}
