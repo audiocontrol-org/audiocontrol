@@ -18,7 +18,7 @@ import {
   getNestedDirectory,
   sanitizeForFilename,
 } from '@audiocontrol/sampler-library/browser';
-import { Dialog, DialogTitle, DialogActions } from '@/components/ui/Dialog';
+import { SlideDrawer } from '@audiocontrol/editor-core';
 import { DEFAULT_BASE_NOTE } from '@audiocontrol/sample-chopper';
 
 // =========================================================================
@@ -259,10 +259,31 @@ export function DrumKitEditorDialog({
     return ms < 1000 ? `${ms.toFixed(0)}ms` : `${(ms / 1000).toFixed(2)}s`;
   };
 
-  return (
-    <Dialog open={open} onClose={onClose} className="max-w-2xl">
-      <DialogTitle>Edit Drum Kit: {kitName}</DialogTitle>
+  const footer = (
+    <>
+      <button
+        onClick={onClose}
+        className="px-4 py-2 text-sm text-gray-300 hover:text-gray-100 transition-colors"
+      >
+        Cancel
+      </button>
+      <button
+        onClick={() => void handleSave()}
+        disabled={saving}
+        className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded transition-colors"
+      >
+        {saving ? 'Saving...' : 'Save'}
+      </button>
+    </>
+  );
 
+  return (
+    <SlideDrawer
+      open={open}
+      title={`Edit Drum Kit: ${kitName}`}
+      onClose={onClose}
+      footer={footer}
+    >
       {error && (
         <div className="text-sm text-red-400 bg-red-900/30 rounded p-2 mb-4">
           {error}
@@ -383,21 +404,6 @@ export function DrumKitEditorDialog({
         </div>
       </div>
 
-      <DialogActions>
-        <button
-          onClick={onClose}
-          className="px-4 py-2 text-sm text-gray-300 hover:text-gray-100 transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={() => void handleSave()}
-          disabled={saving}
-          className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded transition-colors"
-        >
-          {saving ? 'Saving...' : 'Save'}
-        </button>
-      </DialogActions>
-    </Dialog>
+    </SlideDrawer>
   );
 }

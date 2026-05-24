@@ -249,10 +249,11 @@ adopter_manifests:
     # the v3 SlideDrawer chrome from editor-core, not legacy Radix Dialog.
     # roland-sxx0-editor: 6 adopters (3 Export + 3 Import) + 0 tracked-
     #   holdouts — ROLAND-BUGFIX-V3-IMPORT (#450) closed 2026-05-23.
-    # akai-s3k-editor: 0 adopters across 9 library dialogs — never adopted
-    #   the v3 chrome. Listed below as tracked_holdouts with reason="out
-    #   of scope for feature/roland-bugfix; ROLAND-BUGFIX-V3-AKAI follow-
-    #   up recommended if/when akai adopts editor-core SlideDrawer."
+    # akai-s3k-editor: 2 direct adopters (DrumKitEditorDialog +
+    #   LibraryToDiskDialog, migrated 2026-05-24 in Phase 2 task 2.2 of
+    #   feature/akai-harmonization). 7 tracked-holdouts use
+    #   SteppedProgressDrawer which transitively wraps SlideDrawer; the
+    #   gate's checker does not yet recognize transitive adoption.
     expected_adopters_glob:
       - 'modules/roland-sxx0-editor/src/components/library/ExportToneDialog.tsx'
       - 'modules/roland-sxx0-editor/src/components/library/ExportPatchDialog.tsx'
@@ -290,37 +291,41 @@ adopter_manifests:
       # Radix Dialog chrome. Cross-editor deferral; out of scope for
       # feature/roland-bugfix per the PRD. Recommend filing an
       # akai-side follow-up if/when akai-s3k-editor adopts v3 SlideDrawer.
+      # DrumKitEditorDialog + LibraryToDiskDialog migrated to v3 SlideDrawer
+      # in Phase 2 task 2.2 of feature/akai-harmonization (2026-05-24); both
+      # raw-Dialog dialogs are now direct adopters and dropped from
+      # tracked_holdouts. The 7 remaining akai dialogs use SteppedProgressDrawer
+      # (which transitively wraps SlideDrawer) — they stay as tracked_holdouts
+      # until the adopter-manifest gate is taught to recognize SteppedProgressDrawer
+      # as a transitive SlideDrawer adopter.
       - path: 'modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx'
         issue: '#cross-editor-akai-slidedrawer'
-        reason: 'cross-editor — akai never adopted v3 SlideDrawer; out of scope for feature/roland-bugfix.'
-      - path: 'modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx'
-        issue: '#cross-editor-akai-slidedrawer'
-        reason: 'cross-editor — akai never adopted v3 SlideDrawer; out of scope for feature/roland-bugfix.'
+        reason: 'cross-editor — akai uses SteppedProgressDrawer (wraps SlideDrawer); gate needs transitive-adopter support.'
       - path: 'modules/akai-s3k-editor/src/components/library/ExportProgramDialog.tsx'
         issue: '#cross-editor-akai-slidedrawer'
-        reason: 'cross-editor — akai never adopted v3 SlideDrawer; out of scope for feature/roland-bugfix.'
+        reason: 'cross-editor — akai uses SteppedProgressDrawer (wraps SlideDrawer); gate needs transitive-adopter support.'
       - path: 'modules/akai-s3k-editor/src/components/library/ImportDrumKitDialog.tsx'
         issue: '#cross-editor-akai-slidedrawer'
-        reason: 'cross-editor — akai never adopted v3 SlideDrawer; out of scope for feature/roland-bugfix.'
+        reason: 'cross-editor — akai uses SteppedProgressDrawer (wraps SlideDrawer); gate needs transitive-adopter support.'
       - path: 'modules/akai-s3k-editor/src/components/library/ImportInstrumentDialog.tsx'
         issue: '#cross-editor-akai-slidedrawer'
-        reason: 'cross-editor — akai never adopted v3 SlideDrawer; out of scope for feature/roland-bugfix.'
+        reason: 'cross-editor — akai uses SteppedProgressDrawer (wraps SlideDrawer); gate needs transitive-adopter support.'
       - path: 'modules/akai-s3k-editor/src/components/library/ImportProgramDialog.tsx'
         issue: '#cross-editor-akai-slidedrawer'
-        reason: 'cross-editor — akai never adopted v3 SlideDrawer; out of scope for feature/roland-bugfix.'
-      - path: 'modules/akai-s3k-editor/src/components/library/LibraryToDiskDialog.tsx'
-        issue: '#cross-editor-akai-slidedrawer'
-        reason: 'cross-editor — akai never adopted v3 SlideDrawer; out of scope for feature/roland-bugfix.'
+        reason: 'cross-editor — akai uses SteppedProgressDrawer (wraps SlideDrawer); gate needs transitive-adopter support.'
       - path: 'modules/akai-s3k-editor/src/components/library/ReceiveSampleDialog.tsx'
         issue: '#cross-editor-akai-slidedrawer'
-        reason: 'cross-editor — akai never adopted v3 SlideDrawer; out of scope for feature/roland-bugfix.'
+        reason: 'cross-editor — akai uses SteppedProgressDrawer (wraps SlideDrawer); gate needs transitive-adopter support.'
       - path: 'modules/akai-s3k-editor/src/components/library/SendSampleDialog.tsx'
         issue: '#cross-editor-akai-slidedrawer'
-        reason: 'cross-editor — akai never adopted v3 SlideDrawer; out of scope for feature/roland-bugfix.'
+        reason: 'cross-editor — akai uses SteppedProgressDrawer (wraps SlideDrawer); gate needs transitive-adopter support.'
     message: |
       Library dialogs use the v3 SlideDrawer chrome from editor-core,
       not legacy Radix Dialog. Replace `<Dialog.Root>` + `<Dialog.Portal>`
       + `<Dialog.Overlay>` + `<Dialog.Content>` with `<SlideDrawer>`.
-      Roland Import dialogs migrated 2026-05-23 (V3-IMPORT, #450). The
-      9 Akai library dialogs remain TRACKED HOLDOUTS pending a cross-
-      editor follow-up (ROLAND-BUGFIX-V3-AKAI).
+      Roland Import dialogs migrated 2026-05-23 (V3-IMPORT, #450).
+      DrumKitEditorDialog + LibraryToDiskDialog migrated 2026-05-24
+      (Phase 2 task 2.2 of feature/akai-harmonization). The 7 remaining
+      Akai library dialogs use SteppedProgressDrawer (transitively wraps
+      SlideDrawer); the gate's checker needs transitive-adopter support
+      to recognize them as adopters.

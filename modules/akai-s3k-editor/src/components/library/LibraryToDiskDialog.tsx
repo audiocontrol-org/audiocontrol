@@ -6,7 +6,7 @@
  * allocates blocks on the target volume, and writes via SCSI block I/O.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import type { ScsiDiskClient } from '@audiocontrol/midi-core';
 import {
   parsePartitionTable,
@@ -23,12 +23,7 @@ import {
 } from '@/lib/program-serialization';
 import { loadProgramFromLibrary } from '@/lib/program-storage';
 import type { DiskTarget } from '@/hooks/useDiskBrowser';
-import {
-  Dialog,
-  DialogTitle,
-  DialogDescription,
-  DialogActions,
-} from '@/components/ui/Dialog';
+import { SlideDrawer } from '@audiocontrol/editor-core';
 
 // =========================================================================
 // Types
@@ -201,116 +196,117 @@ export function LibraryToDiskDialog({
     }
   }, [diskClient, selectedTargetId, volumes, selectedVolume, libraryRoot, programDirName, diskTargets, onUploadComplete]);
 
-  return (
-    <Dialog open={open} onClose={handleClose}>
-      <DialogTitle>Send Program to Disk</DialogTitle>
+  const description = (
+    <p className="text-sm text-gray-400">
+      {phase === 'loading' && 'Loading program...'}
+      {phase === 'confirm' && (
+        <>
+          Write <strong>{programName}</strong> to an Akai disk.
+          {sampleCount > 0 && <> ({sampleCount} referenced samples)</>}
+        </>
+      )}
+      {phase === 'writing' && 'Writing to disk...'}
+      {phase === 'success' && (
+        <>Successfully wrote <strong>{programName}</strong> to disk.</>
+      )}
+      {phase === 'error' && (
+        <span className="text-red-400">Error: {errorMessage}</span>
+      )}
+    </p>
+  );
 
-      {phase === 'loading' && (
-        <DialogDescription>Loading program...</DialogDescription>
+  let footer: ReactNode = null;
+  if (phase === 'confirm') {
+    footer = (
+      <>
+        <button
+          type="button"
+          onClick={handleClose}
+          className="px-4 py-1.5 text-sm text-gray-400 hover:text-gray-200"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={handleWrite}
+          disabled={programFormat !== 's3000xl-disk-program' || volumes.length === 0}
+          className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded disabled:opacity-50"
+        >
+          Write to Disk
+        </button>
+      </>
+    );
+  } else if (phase === 'success') {
+    footer = (
+      <button
+        type="button"
+        onClick={handleClose}
+        className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded"
+      >
+        Done
+      </button>
+    );
+  } else if (phase === 'error') {
+    footer = (
+      <button
+        type="button"
+        onClick={handleClose}
+        className="px-4 py-1.5 text-sm text-gray-400 hover:text-gray-200"
+      >
+        Close
+      </button>
+    );
+  }
+
+  return (
+    <SlideDrawer
+      open={open}
+      title="Send Program to Disk"
+      onClose={handleClose}
+      footer={footer}
+    >
+      {description}
+
+      {phase === 'confirm' && programFormat !== 's3000xl-disk-program' && (
+        <div className="mt-2 text-yellow-400 text-xs">
+          Note: Only disk-origin programs can be written to disk.
+          This program was saved from {programFormat === 's3000xl-program' ? 'device SysEx' : 'an unknown source'}.
+        </div>
       )}
 
       {phase === 'confirm' && (
-        <>
-          <DialogDescription>
-            Write <strong>{programName}</strong> to an Akai disk.
-            {sampleCount > 0 && <> ({sampleCount} referenced samples)</>}
-            {programFormat !== 's3000xl-disk-program' && (
-              <div className="mt-2 text-yellow-400 text-xs">
-                Note: Only disk-origin programs can be written to disk.
-                This program was saved from {programFormat === 's3000xl-program' ? 'device SysEx' : 'an unknown source'}.
-              </div>
-            )}
-          </DialogDescription>
+        <div className="my-4 space-y-3">
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">Target Disk:</label>
+            <select
+              className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-1.5 text-sm text-gray-100"
+              value={selectedTargetId ?? ''}
+              onChange={(e) => setSelectedTargetId(Number(e.target.value))}
+            >
+              {diskTargets.map(t => (
+                <option key={t.id} value={t.id}>
+                  ID {t.id}: {t.vendor.trim()} {t.product.trim()}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          <div className="my-4 space-y-3">
+          {volumes.length > 0 && (
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Target Disk:</label>
+              <label className="block text-sm text-gray-400 mb-1">Target Volume:</label>
               <select
                 className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-1.5 text-sm text-gray-100"
-                value={selectedTargetId ?? ''}
-                onChange={(e) => setSelectedTargetId(Number(e.target.value))}
+                value={selectedVolume}
+                onChange={(e) => setSelectedVolume(Number(e.target.value))}
               >
-                {diskTargets.map(t => (
-                  <option key={t.id} value={t.id}>
-                    ID {t.id}: {t.vendor.trim()} {t.product.trim()}
-                  </option>
+                {volumes.map((v, i) => (
+                  <option key={i} value={i}>{v.name}</option>
                 ))}
               </select>
             </div>
-
-            {volumes.length > 0 && (
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Target Volume:</label>
-                <select
-                  className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-1.5 text-sm text-gray-100"
-                  value={selectedVolume}
-                  onChange={(e) => setSelectedVolume(Number(e.target.value))}
-                >
-                  {volumes.map((v, i) => (
-                    <option key={i} value={i}>{v.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
-
-          <DialogActions>
-            <button
-              type="button"
-              onClick={handleClose}
-              className="px-4 py-1.5 text-sm text-gray-400 hover:text-gray-200"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleWrite}
-              disabled={programFormat !== 's3000xl-disk-program' || volumes.length === 0}
-              className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded disabled:opacity-50"
-            >
-              Write to Disk
-            </button>
-          </DialogActions>
-        </>
+          )}
+        </div>
       )}
-
-      {phase === 'writing' && (
-        <DialogDescription>Writing to disk...</DialogDescription>
-      )}
-
-      {phase === 'success' && (
-        <>
-          <DialogDescription>
-            Successfully wrote <strong>{programName}</strong> to disk.
-          </DialogDescription>
-          <DialogActions>
-            <button
-              type="button"
-              onClick={handleClose}
-              className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded"
-            >
-              Done
-            </button>
-          </DialogActions>
-        </>
-      )}
-
-      {phase === 'error' && (
-        <>
-          <DialogDescription>
-            <span className="text-red-400">Error: {errorMessage}</span>
-          </DialogDescription>
-          <DialogActions>
-            <button
-              type="button"
-              onClick={handleClose}
-              className="px-4 py-1.5 text-sm text-gray-400 hover:text-gray-200"
-            >
-              Close
-            </button>
-          </DialogActions>
-        </>
-      )}
-    </Dialog>
+    </SlideDrawer>
   );
 }
