@@ -5,13 +5,11 @@
 
 ## GitHub Tracking
 
-Filled in by `/feature-issues` once the parent + per-phase issues land.
-
-- **Parent issue:** TBD
-- **Phase 0 (rolling bug-fix pass):** TBD
-- **Phase 1 (design-language audit):** TBD
-- **Phase 2 (harmonization implementation):** TBD
-- **Phase 3 (scope-discovery on the harmonized akai surface):** TBD
+- **Parent issue:** [#457](https://github.com/audiocontrol-org/audiocontrol/issues/457) — `[akai-harmonization] feature lifecycle parent`
+- **Phase 0 (rolling bug-fix pass):** [#458](https://github.com/audiocontrol-org/audiocontrol/issues/458)
+- **Phase 1 (design-language audit):** [#459](https://github.com/audiocontrol-org/audiocontrol/issues/459)
+- **Phase 2 (harmonization implementation):** [#460](https://github.com/audiocontrol-org/audiocontrol/issues/460) — blocked on #459 closure
+- **Phase 3 (scope-discovery on the harmonized akai surface):** [#461](https://github.com/audiocontrol-org/audiocontrol/issues/461) — blocked on #460 closure
 
 ## Four-phase mandate
 

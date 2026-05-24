@@ -23,10 +23,8 @@ The audiocontrol editor surfaces for `roland-sxx0-editor` and `akai-s3k-editor` 
 
 ## GitHub Tracking
 
-Filled in by `/feature-issues` once the parent + per-phase issues land.
-
-- **Parent issue:** TBD
-- **Phase 0:** TBD
-- **Phase 1:** TBD
-- **Phase 2:** TBD
-- **Phase 3:** TBD
+- **Parent issue:** [#457](https://github.com/audiocontrol-org/audiocontrol/issues/457) — `[akai-harmonization] feature lifecycle parent`
+- **Phase 0:** [#458](https://github.com/audiocontrol-org/audiocontrol/issues/458) — Rolling Bug-Fix Pass
+- **Phase 1:** [#459](https://github.com/audiocontrol-org/audiocontrol/issues/459) — Design-language audit
+- **Phase 2:** [#460](https://github.com/audiocontrol-org/audiocontrol/issues/460) — Harmonization implementation (blocked on #459)
+- **Phase 3:** [#461](https://github.com/audiocontrol-org/audiocontrol/issues/461) — Scope-discovery on harmonized akai surface (blocked on #460)
