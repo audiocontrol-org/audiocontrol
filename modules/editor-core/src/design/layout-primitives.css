@@ -119,6 +119,45 @@
 }
 
 /*
+ * Mobile escape hatch — closes AUDIT-20260523-03.
+ *
+ * Below ~900 px the `.ac-app-shell` 2-col grid collapses to single
+ * column (the `@media (min-width: 1024px)` rule below the shell). The
+ * fixed-viewport height constraint then crams list + detail into one
+ * viewport-bounded box: the list eats most of the vertical space and
+ * the detail body collapses to ~120 px, making the parameter editor
+ * unreachable without nested-scroll friction.
+ *
+ * The mobile escape: drop the height constraint, let the page scroll
+ * naturally as one tall document (list above, detail below, each at
+ * intrinsic content height). The `.ac-list-scroll` inside the list
+ * keeps a `max-height` cap so very long banks don't push the detail
+ * too far down. Desktop layout is unchanged.
+ *
+ * Surfaced by the akai-harmonization mockup at iPhone-Safari widths
+ * 2026-05-23; previously every consumer of
+ * `.ac-page-shell--fixed-viewport` (PatchesPage, TonesPage, PlayPage,
+ * LibraryPage, akai pages) inherited the mobile-collapse bug.
+ */
+@media (max-width: 899px) {
+  .ac-page-shell--fixed-viewport {
+    height: auto;
+    overflow: visible;
+  }
+
+  .ac-app-shell,
+  .ac-app-shell > * {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .ac-list-scroll {
+    max-height: 70vh;
+  }
+}
+
+/*
  * Body row of a fixed-viewport shell whose body is a SINGLE full-height
  * widget (PluginLibraryBrowser, multi-part grid, etc.) — i.e., pages
  * that don't need their own list+detail grid track layout.

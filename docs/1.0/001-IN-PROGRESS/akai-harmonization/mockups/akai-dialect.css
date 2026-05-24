@@ -137,47 +137,13 @@
 }
 
 /*
- * Mobile escape hatch for the fixed-viewport shell.
- *
- * Canonical `.ac-page-shell--fixed-viewport` (editor-core layout-primitives.css)
- * caps the page at 100dvh unconditionally. Combined with `.ac-app-shell`'s
- * single-column stack below 1024px, this crams list + detail into one
- * viewport and the detail body collapses to ~120 px on mobile — operator
- * report from a real device 2026-05-23, see audit-log AUDIT-20260523-03.
- *
- * Below 900px the dialect drops the height constraint so the page scrolls
- * naturally as one tall document: list above, detail below, each at its
- * intrinsic content height. The list's internal `.ac-list-scroll` still
- * lets long banks scroll within the list; the detail body just renders
- * inline because there's no longer a height-bounded parent to demand
- * internal scroll.
- *
- * This belongs in canonical CSS, not the dialect — Phase 2 / a separate
- * mobile-responsiveness pass should land an equivalent rule in
- * layout-primitives.css. Hosting it here so the mockup demonstrates the
- * right shape without forking the primitive.
+ * The mobile escape hatch that lived here previously (a dialect-scoped
+ * @media (max-width: 899px) override of .ac-page-shell--fixed-viewport)
+ * was lifted into canonical editor-core/src/design/layout-primitives.css
+ * as part of closing AUDIT-20260523-03. The akai dialect no longer
+ * needs its own copy; every consumer of .ac-page-shell--fixed-viewport
+ * inherits the responsive behavior from the canonical rule.
  */
-@media (max-width: 899px) {
-  :root[data-editor="s3000xl"] .ac-page-shell--fixed-viewport {
-    height: auto;
-    overflow: visible;
-  }
-  :root[data-editor="s3000xl"] .ac-app-shell {
-    /* Let the app-shell + its children grow to content height instead of
-       fighting for slices of the (now-removed) bounded viewport. */
-    overflow: visible;
-  }
-  :root[data-editor="s3000xl"] .ac-app-shell > * {
-    height: auto;
-    min-height: 0;
-    overflow: visible;
-  }
-  :root[data-editor="s3000xl"] .ac-list-scroll {
-    /* List rows render inline; no inner scroll needed when the page
-       itself scrolls. */
-    max-height: 70vh;
-  }
-}
 
 /* ============================================================
  * Akai tab-group ID registrations.

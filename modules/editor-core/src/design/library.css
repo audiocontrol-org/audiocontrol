@@ -139,8 +139,11 @@
 }
 
 /* Disclosure-toggle button — wraps the AcChevron glyph in a tree row.
-   The button has no own size: the AcChevron child (declared in
-   chevron-primitives.css) is the sole authority on the chevron's box.
+   The wrapper is sized 1.5rem (24 CSS px at the default 16-px root)
+   so the pointer-target hit area clears WCAG 2.5.8 Target Size
+   Minimum (Level AA, 24×24). The AcChevron child remains 1.1rem +
+   centers inside the wrapper via flex; the visible glyph size is
+   unchanged. Closes audit AUDIT-20260523-01.
    Renamed from `.ac-tree-chevron-btn` 2026-05-21 when the chevron
    pathology was closed; the word "chevron" cannot appear in any class
    name outside chevron-primitives.css, so this wrapper is named after
@@ -149,13 +152,22 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
+  width: 1.5rem;
+  height: 1.5rem;
   margin-left: -2px;
   background: transparent;
   border: 0;
+  padding: 0;
   cursor: pointer;
   flex-shrink: 0;
   color: var(--ac-color-accent);
+}
+
+.ac-tree-disclosure-btn:focus-visible {
+  outline: var(--ac-rule-medium) solid
+    color-mix(in srgb, var(--ac-color-accent) 55%, transparent);
+  outline-offset: -2px;
+  border-radius: var(--ac-radius-sm);
 }
 
 .ac-tree-icon {

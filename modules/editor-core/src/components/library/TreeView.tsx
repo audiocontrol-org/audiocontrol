@@ -290,12 +290,15 @@ function TreeNodeRow({
         aria-expanded={(isDirectory || hasChildren) ? isExpanded : undefined}
       >
         {(isDirectory || hasChildren) && (
-          <span
+          <button
+            type="button"
             className="ac-tree-disclosure-btn"
+            aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${node.name}`}
+            aria-expanded={isExpanded}
             onClick={(e) => { e.stopPropagation(); onToggleExpand(node.id); }}
           >
             <ChevronIcon isExpanded={isExpanded} />
-          </span>
+          </button>
         )}
 
         {icon}

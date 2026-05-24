@@ -19,9 +19,16 @@
  * a no-chevron-elsewhere gate makes drift structurally impossible
  * without consciously editing this file.
  *
- * Target-size baseline: 1.1rem ≈ 17.6px glyph in a 1.1rem square,
- * which combined with the wrapping toggle's padding clears WCAG AA
- * target-size floors. Don't shrink this.
+ * Target-size baseline: 1.1rem ≈ 17.6 CSS px glyph in a 1.1rem square.
+ * The glyph itself is BELOW the WCAG 2.5.8 Target Size Minimum
+ * (Level AA, 24×24); the wrapping toggle button is responsible for
+ * clearing that floor. Wrappers that compose a chevron with other
+ * content (`.ac-tree-section-toggle`: chevron + title in one button;
+ * `.ac-device-memory-section-eyebrow`: full-width section header) get
+ * their hit area from the composition. Wrappers that ONLY wrap a
+ * chevron (`.ac-tree-disclosure-btn` for the per-folder expand toggle)
+ * MUST set explicit width/height ≥ 24 CSS px — see library.css.
+ * Don't shrink the chevron glyph itself.
  */
 
 .ac-chevron {
