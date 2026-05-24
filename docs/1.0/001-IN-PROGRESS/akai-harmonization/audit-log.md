@@ -11,6 +11,66 @@ Canonical grep queue:
 
 ---
 
+## 2026-05-24 Feature review — latest shell-contract follow-up
+
+Surfaced while reviewing the latest `feature/akai-harmonization` commits through `1a6261d2` on 2026-05-24, specifically the new Akai shell-contract harness/spec work that closed `AUDIT-20260524-05`. This pass was a code-review audit only; I did not run the test suite locally in this pass.
+
+### Shell-contract closure still excludes the Keygroups route, so the one migrated page with the most unique shell structure has no direct Akai regression spec
+
+Finding-ID: AUDIT-20260524-06
+Status:     open
+Severity:   medium
+Surface:    `modules/akai-s3k-editor/test/ui/page-shell-contract.spec.ts`, `modules/akai-s3k-editor/src/App.tsx`, `modules/akai-s3k-editor/src/pages/TestKeygroupsPage.tsx`, `docs/1.0/001-IN-PROGRESS/akai-harmonization/workplan.md`
+
+The new `page-shell-contract.spec.ts` is framed as the Akai-side closure for the Phase 2 shell migration, and its file header says the migration covered all four Akai pages: Programs, Samples, Keygroups, and Library (`page-shell-contract.spec.ts:5-6`). But the spec immediately documents that Keygroups is still excluded: `/test/keygroups` is wired to the pre-existing inline-styled harness rather than a shell-compliant page harness (`page-shell-contract.spec.ts:30-39`), `KEYGROUPS_SHELL_HARNESS_AVAILABLE` is hardcoded `false` (`page-shell-contract.spec.ts:60`), and the actual loop only exercises Programs, Samples, and Library (`page-shell-contract.spec.ts:74-93`).
+
+That matters because Keygroups is not just another copy of the same page shape. Its production page has the most structurally distinct layout of the four migrated surfaces: the zone-overview toolbar and overview block sit ahead of the canonical shell, so it is the route most likely to regress height ownership, clipping, or scroll interactions in a way that the other three harnesses would not catch. Today the spec marks `AUDIT-20260524-05` closed while leaving that route outside the Akai-specific regression surface.
+
+**Evidence:**
+
+- The spec header claims all four migrated pages are in scope: `modules/akai-s3k-editor/test/ui/page-shell-contract.spec.ts:5-6`
+- The same file explicitly excludes Keygroups and keeps the seam disabled:
+  - `modules/akai-s3k-editor/test/ui/page-shell-contract.spec.ts:30-39`
+  - `modules/akai-s3k-editor/test/ui/page-shell-contract.spec.ts:60`
+  - `modules/akai-s3k-editor/test/ui/page-shell-contract.spec.ts:74-93`
+- The route still points to the old inline-styled harness, not a canonical shell harness:
+  - `modules/akai-s3k-editor/src/App.tsx:21`
+  - `modules/akai-s3k-editor/src/pages/TestKeygroupsPage.tsx:160-183`
+- The workplan now marks harness coverage complete for all four pages, which overstates what the shell-contract spec actually exercises:
+  - `docs/1.0/001-IN-PROGRESS/akai-harmonization/workplan.md:98`
+
+**Expected:** if `AUDIT-20260524-05` is considered closed, each migrated Akai page should have a shell-contract harness that the Akai regression spec actually runs, including Keygroups.
+
+**Actual:** Keygroups remains routed to a legacy inline harness and is intentionally omitted from the Akai shell-contract spec.
+
+**Fix guidance:** add a shell-compliant `TestKeygroupsPage` variant that mirrors the production `KeygroupsPage` shell contract, then include it in `SHELL_HARNESS_ROUTES` and remove the `KEYGROUPS_SHELL_HARNESS_AVAILABLE = false` seam. Until then, the audit log and workplan should describe the shell-contract closure as partial rather than complete.
+
+### Library shell harness only proves wrapper geometry; it does not exercise the real `PluginLibraryBrowser` overflow surface the finding claimed to protect
+
+Finding-ID: AUDIT-20260524-07
+Status:     open
+Severity:   medium
+Surface:    `modules/akai-s3k-editor/src/pages/TestLibraryPage.tsx`, `modules/akai-s3k-editor/test/ui/page-shell-contract.spec.ts`
+
+The new Library harness does not mount `PluginLibraryBrowser`. Its own header says it uses a stub `<div>` standing in for the browser (`TestLibraryPage.tsx:9-13`), and the body comment repeats that the harness only needs a single full-height block so the spec can verify `.ac-page-shell-body` geometry (`TestLibraryPage.tsx:27-31`). That means the new regression spec validates the page wrapper shape, but not the real surface that owns the complex internal overflow behavior on the production Library page.
+
+This is a meaningful gap because `AUDIT-20260524-05` was about fixed-viewport containment and internal scroll ownership after the page-shell migration. The production Library page delegates that behavior to a full-height three-column widget; a stand-in block cannot catch regressions where the real browser's own DOM, overflow rules, or descendant sizing reintroduce document scroll or clipped inner panes while the outer `.ac-page-shell-body` still looks correct.
+
+**Evidence:**
+
+- The harness explicitly uses a stand-in block instead of the production browser:
+  - `modules/akai-s3k-editor/src/pages/TestLibraryPage.tsx:9-13`
+  - `modules/akai-s3k-editor/src/pages/TestLibraryPage.tsx:27-31`
+- The page-shell spec relies on that harness route as the Library coverage surface:
+  - `modules/akai-s3k-editor/test/ui/page-shell-contract.spec.ts:24-28`
+  - `modules/akai-s3k-editor/test/ui/page-shell-contract.spec.ts:87-92`
+
+**Expected:** the closure for the Library shell-contract finding should exercise either the real `PluginLibraryBrowser` in a deterministic harness or a test surface that preserves the browser's actual internal overflow structure.
+
+**Actual:** the current harness proves only that a generic full-height block fits inside `.ac-page-shell-body`.
+
+**Fix guidance:** build a deterministic library harness around the real `PluginLibraryBrowser` with stubbed library/device inputs, or add a second targeted spec that mounts the real browser and asserts document-scroll containment plus inner-pane overflow ownership. If the stub-only approach is kept, the audit closure should explicitly state that only outer wrapper geometry is covered.
+
 ## 2026-05-24 Feature review — latest Phase 2 implementation
 
 Surfaced while reviewing the latest harmonization commits on `feature/akai-harmonization` after `AUDIT-20260524-01` and `-02` were fixed. Scope reviewed from commit `68799ed9` through `HEAD` (`5a15c01c` at review time), with targeted local verification runs:
@@ -71,7 +131,7 @@ Files changed (the canonical fix is editor-core CSS; the consumer fix is 5 JSX s
 ### Phase 2 landed four Akai page-shell migrations with no direct regression test for the new fixed-viewport/app-shell contract
 
 Finding-ID: AUDIT-20260524-05
-Status:     verified-2026-05-24
+Status:     acknowledged-partial-coverage (downgraded 2026-05-24 from verified-2026-05-24 — see AUDIT-20260524-06 and AUDIT-20260524-07 which surfaced the gaps)
 Severity:   medium
 Surface:    `modules/akai-s3k-editor/src/pages/ProgramsPage.tsx`, `modules/akai-s3k-editor/src/pages/KeygroupsPage.tsx`, `modules/akai-s3k-editor/src/pages/SamplesPage.tsx`, `modules/akai-s3k-editor/src/pages/LibraryPage.tsx`, `modules/akai-s3k-editor/test/`
 
@@ -105,6 +165,12 @@ This matters because the migration is precisely the kind of change that can regr
 **Fix landed:** commit `ff07963c` (2026-05-24). Added `modules/akai-s3k-editor/test/ui/page-shell-contract.spec.ts` — 13 Playwright test cases across two `test.describe` blocks. Desktop (1280×900): asserts `.ac-page-shell--fixed-viewport` is present, page-shell `boundingClientRect.height` ≤ `window.innerHeight - site-header` (bounded-viewport contract), `document.documentElement.scrollHeight === window.innerHeight` (no document-level scroll), `.ac-app-shell` is a 2-col grid via `gridTemplateColumns` introspection, `.ac-list-scroll` `overflow-y` is `auto`/`scroll`. Library variant asserts `.ac-page-shell-body` instead of `.ac-app-shell`. Mobile (414×896): asserts the escape hatch — page-shell falls back to `height: auto`, doc scrolls naturally (`scrollHeight > innerHeight`), `.ac-app-shell` collapses to single track, last list row is reachable via scroll (`scrollIntoView` + `boundingClientRect` reachability check). Runs against the three new harness routes (`/akai/s3000xl/editor/test/{programs,samples,library}`) landed alongside in this same commit. `make test-ui-s3k`: 32 passed (19 existing zone-overview + 13 new contract tests).
 
 **Coverage gap (intentional, documented):** `TestKeygroupsPage` is not included in the contract loop — it predates the canonical shell chrome (renders inline styles, not `.ac-page-shell--fixed-viewport`). The spec records this with `KEYGROUPS_SHELL_HARNESS_AVAILABLE = false` at the top + a header comment naming the gap, so a future opt-in is mechanical. The production `KeygroupsPage` IS shell-compliant (migrated in `bba5b13b` and covered indirectly via the cross-page contract this spec asserts); only the harness lags.
+
+**Closure downgraded 2026-05-24 from `verified-2026-05-24` to `acknowledged-partial-coverage`.** Auditor flagged two gaps the closure paragraph above understated:
+- **AUDIT-20260524-06**: Keygroups is the structurally most-distinct of the four migrated pages (zone-overview toolbar + overview block ahead of canonical shell). Leaving its harness route excluded means the page most likely to regress shell behavior is the one route the Akai-specific spec doesn't exercise. The "intentional gap" framing above was wrong — the right disposition is to BUILD the missing shell-compliant harness, not document its absence.
+- **AUDIT-20260524-07**: `TestLibraryPage` mounts a stub `<div>` instead of the real `PluginLibraryBrowser`. The spec validates outer wrapper geometry but not the inner-overflow surface that AUDIT-05's fix-guidance specifically called out ("list and detail panes own internal scroll on desktop without clipping their bodies"). Stub-only coverage is not the closure shape the original finding asked for.
+
+Re-closing AUDIT-05 requires landing fixes for both -06 and -07 (a shell-compliant `TestKeygroupsShellPage` route at `/akai/s3000xl/editor/test/keygroups-shell` registered in `SHELL_HARNESS_ROUTES`; a deterministic real-`PluginLibraryBrowser` harness route or paired spec that asserts inner-pane overflow ownership). When both ship, all three findings close together with `verified-<sha>`.
 
 ---
 
