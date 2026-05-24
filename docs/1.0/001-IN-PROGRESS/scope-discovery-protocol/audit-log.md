@@ -419,7 +419,7 @@ Resolution:
 ## AUDIT-20260524-12
 
 Finding-ID: AUDIT-20260524-12
-Status:     open
+Status:     verified-2026-05-24
 Severity:   low
 Surface:    tools/scope-discovery/synthesis.ts (warning text)
 
@@ -448,6 +448,17 @@ Fix guidance:
 - Adversarial scenario: synthesize a manifest from a PRD without References; assert warning output contains the literal skeleton.
 
 External tracking: TF-006.
+
+Resolution:
+- Corrected mechanism: the "PRD has no References/Appendix section" warning now includes a paste-ready PRD-augmentation skeleton the operator can drop into the PRD verbatim. DRY: extracted to a single builder `buildMissingReferencesWarning(prdRelPath)` in a new sibling module `tools/scope-discovery/synthesis-warnings.ts` (29 lines) so the warning text has one source of truth that production callers AND the validator suite can both import. The builder also keeps `synthesis-derive.ts` under the 300-500 line cap (492 lines post-change, was 493 pre-change). The single returned string is consumed by BOTH operator-facing channels:
+  - **stderr** — `synthesis.ts` main() emits `synthesis: note: <w>\n` per warning; the multi-line warning streams to stderr with the `synthesis: note:` prefix on line 1 and the indented skeleton on lines 2–N (visible verbatim to the operator without losing the leading-space markdown convention).
+  - **synthesis-notes.md** (the `--notes-out` markdown fragment) — `renderSynthesizerNotes()` in `synthesis.ts` now indents continuation lines under the bullet so multi-line warnings render as a SINGLE markdown bullet (first line gets `- `, subsequent non-empty lines get two-space indent; intentional blank lines inside the warning are preserved without the indent so the embedded `## References` heading still parses correctly inside the bullet's continuation block). Empty-warnings rendering is unchanged.
+  - The warning's continuation includes the PRD path the operator should edit (`Add this section to <prd-rel-path> to produce a richer manifest on re-run:`), keyed off the `prdRelPath` the synthesizer already plumbs through `deriveReferenceDocs(args)` — no new plumbing required.
+- Adversarial validator extended (`tools/scope-discovery/synthesis-warnings.validate.ts`) with 2 new scenarios alongside the existing 3:
+  - `AUDIT-12: missing-References warning includes paste-ready PRD skeleton (in-memory + notes file)` — synthesizes from a PRD without References; asserts the load-bearing substrings `## References`, `Related issues:`, `Related ADRs:`, `External docs:` appear in BOTH the in-memory `synthesize()` warnings array AND the rendered `--notes-out` file. Also asserts the warning names the PRD path so the operator knows which file to edit.
+  - `AUDIT-12: missing-References warning + skeleton absent when PRD has References section` — synthesizes from a PRD WITH a `## References` section; asserts NO `no References/Appendix` warning fires AND none of the skeleton substrings leak into any other warning channel (in-memory OR notes file). Regression-guard against accidentally shipping the skeleton when the gate isn't tripped.
+- **AUDIT-07 hard test outcome (validator-paired changes):** backed up the 3 production-code files (`synthesis-warnings.ts` builder, `synthesis-derive.ts` import, `synthesis.ts` renderer), reverted `synthesis-warnings.ts` to the pre-change one-line shape AND reverted the `renderSynthesizerNotes` bullet-continuation logic in `synthesis.ts` to its prior one-line bullet form, re-ran the validator. Result: 1 of 2 new scenarios FAILED — `AUDIT-12: missing-References warning includes paste-ready PRD skeleton (in-memory + notes file)` reported `in-memory warning missing skeleton substrings [## References, Related issues:, Related ADRs:, External docs:]; warning was: PRD has no References/Appendix section; reference_docs[] defaulted to PRD + LAYOUT.md.`, proving the new scenario has teeth. The 1 PASSING new scenario (`AUDIT-12: ... skeleton absent when PRD has References section`) is a correctly-shaped regression-guard — it asserts ABSENCE when the PRD has the section, which is true under both pre- and post-change code. After restoring the production code from backup, all 5 scenarios PASS.
+- Empirical re-exercise (2026-05-24): `pnpm test:scope-discovery` reports 228/228 scenarios passing across the 18 validator suites (was 226 — +2 from the new skeleton-included + skeleton-absent scenarios); `tsx tools/scope-discovery/clone-detector.ts --quiet` reports `495 groups; 0 NEW; 0 DROPPED`; `pnpm exec tsc --noEmit` exits 0. Pre-commit hook will record the fix commit in `.git/hooks-sentinels/.pre-commit-passed`; no hooks bypassed.
 
 ## AUDIT-20260524-13
 

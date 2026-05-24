@@ -348,7 +348,21 @@ function renderSynthesizerNotes(warnings: ReadonlyArray<string>): string {
   if (warnings.length === 0) {
     lines.push('clean — no notes from this run.');
   } else {
-    for (const w of warnings) lines.push(`- ${w}`);
+    // Multi-line warnings (e.g., the AUDIT-20260524-12 References
+    // skeleton) need continuation-line indentation so the whole block
+    // renders as a single markdown bullet rather than fragmenting into
+    // a bullet + loose paragraphs. First line gets `- `; subsequent
+    // lines get two-space indent; intentional blank lines inside the
+    // warning are preserved without the indent (so the embedded
+    // markdown fence still parses).
+    for (const w of warnings) {
+      const wLines = w.split('\n');
+      const [first, ...rest] = wLines;
+      lines.push(`- ${first ?? ''}`);
+      for (const cont of rest) {
+        lines.push(cont === '' ? '' : `  ${cont}`);
+      }
+    }
   }
   lines.push('');
   return lines.join('\n');

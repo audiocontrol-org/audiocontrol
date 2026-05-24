@@ -30,6 +30,7 @@ import type {
   ManifestScenario,
 } from './synthesis-types.js';
 import { errorMessage } from './util/typeguards.js';
+import { buildMissingReferencesWarning } from './synthesis-warnings.js';
 
 const DEFAULT_SCENARIO_ID = 'default';
 const MAX_THEMES = 10;
@@ -368,9 +369,7 @@ export async function deriveReferenceDocs(args: {
         summary: 'On-disk layout contract for scope-discovery artifacts.',
       },
     ],
-    warnings: [
-      'PRD has no References/Appendix section; reference_docs[] defaulted to PRD + LAYOUT.md.',
-    ],
+    warnings: [buildMissingReferencesWarning(args.prdRelPath)],
   };
 }
 
