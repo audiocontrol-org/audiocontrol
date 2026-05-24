@@ -263,6 +263,11 @@
           "type": "string",
           "maxLength": 200
         },
+        "relevance": {
+          "description": "Optional PRD-derived relevance score (AUDIT-20260524-11). Emitted by the strawman synthesizer when the PRD's 'In Scope' / 'Out of Scope' sections name the module. 'low' marks a module the operator should review for actual relevance; 'high' / 'medium' are informational. 'excluded' modules are filtered out of the manifest BEFORE emission and never appear here.",
+          "type": "string",
+          "enum": ["high", "medium", "low"]
+        },
         "patterns": {
           "description": "Pattern/AST shapes being inventoried in this module. Each entry names what discovery agents are looking for; the synthesis pass groups findings by pattern id.",
           "type": "array",

@@ -12,6 +12,7 @@ import { dirname, posix } from 'node:path';
 import type {
   AstGrepMatrixFindings,
   CloneDetectorFindings,
+  PrdModuleRelevanceLevel,
   PrdThemedFindings,
   RegimeHoldoutFinding,
   RegimeHoldoutFindings,
@@ -21,6 +22,7 @@ import type {
 import type {
   ManifestModule,
   ManifestModulePattern,
+  ManifestModuleRelevance,
   ManifestReferenceDoc,
   ManifestRegimeHoldoutEntry,
   ManifestRegimeHoldouts,
@@ -105,15 +107,87 @@ function ensureModuleEntry(
 }
 
 /**
+ * Result of `deriveModules` — the modules themselves plus any warnings
+ * the PRD-relevance pruning surfaced (AUDIT-20260524-11). Warnings are
+ * routed by `synthesize()` into `metadata.warnings` so the operator
+ * sees which modules the PRD's "Out of Scope" section dropped.
+ */
+export interface DeriveModulesResult {
+  readonly modules: ReadonlyArray<ManifestModule>;
+  readonly warnings: ReadonlyArray<string>;
+}
+
+/**
+ * Lookup map: workspace module slug → (relevance, section). Built once
+ * from the prd-themed-pattern-hunter finding so the per-module emission
+ * loop is O(1) per slug.
+ */
+interface RelevanceLookup {
+  readonly byModule: ReadonlyMap<
+    string,
+    { readonly relevance: PrdModuleRelevanceLevel; readonly section: string }
+  >;
+}
+
+function buildRelevanceLookup(
+  prdThemedFindings: ReadonlyArray<PrdThemedFindings>,
+): RelevanceLookup {
+  const byModule = new Map<
+    string,
+    { readonly relevance: PrdModuleRelevanceLevel; readonly section: string }
+  >();
+  for (const finding of prdThemedFindings) {
+    const entries = finding.moduleRelevance;
+    if (entries === undefined) continue;
+    for (const e of entries) {
+      // 'excluded' wins over 'high' across multiple agent findings
+      // (mirrors the in-agent same-rule resolution; safety belt for
+      // future multi-feature merges).
+      const existing = byModule.get(e.module);
+      if (existing?.relevance === 'excluded') continue;
+      byModule.set(e.module, { relevance: e.relevance, section: e.section });
+    }
+  }
+  return { byModule };
+}
+
+/**
+ * Resolve a module's relevance to its manifest-emission shape:
+ *   - 'excluded' → returns null (caller drops the module + emits a warning)
+ *   - 'low'      → returns 'low' (caller annotates the entry)
+ *   - 'high'/'medium' or unstated → returns undefined (no annotation, included)
+ *
+ * Returning undefined for 'high' is intentional: the manifest entry's
+ * absence of a `relevance:` field is the encoding for "in scope at
+ * default emphasis." Emitting `relevance: high` would add noise to every
+ * scope-listed module without changing operator behavior.
+ */
+function resolveManifestRelevance(
+  level: PrdModuleRelevanceLevel | undefined,
+): { drop: true } | { drop: false; annotation: ManifestModuleRelevance | undefined } {
+  if (level === 'excluded') return { drop: true };
+  if (level === 'low') return { drop: false, annotation: 'low' };
+  return { drop: false, annotation: undefined };
+}
+
+/**
  * Derive `modules[]` from AST + clone findings. Groups by source-module
  * slug (extracted from `modules/<slug>/...` file paths). Each module
  * accumulates ast-grep patterns + any clone group whose members include
  * a file under that module.
+ *
+ * AUDIT-20260524-11: when prd-themed-pattern-hunter findings supply a
+ * `moduleRelevance` map, modules tagged 'excluded' are DROPPED from the
+ * output (with a warning naming the section that excluded them); modules
+ * tagged 'low' are emitted with a `relevance: 'low'` annotation. Older
+ * findings (no `moduleRelevance` field) preserve pre-AUDIT-11 behavior
+ * — every module included, no annotations, empty warnings array.
  */
 export function deriveModules(args: {
   readonly astFindings: ReadonlyArray<AstGrepMatrixFindings>;
   readonly cloneFindings: ReadonlyArray<CloneDetectorFindings>;
-}): ReadonlyArray<ManifestModule> {
+  readonly prdThemedFindings?: ReadonlyArray<PrdThemedFindings>;
+}): DeriveModulesResult {
   const bySlug = new Map<string, ModuleAccumulator>();
 
   for (const ast of args.astFindings) {
@@ -165,15 +239,28 @@ export function deriveModules(args: {
     }
   }
 
+  const relevance = buildRelevanceLookup(args.prdThemedFindings ?? []);
   const modules: ManifestModule[] = [];
+  const droppedNames: { readonly module: string; readonly section: string }[] = [];
   for (const acc of bySlug.values()) {
-    modules.push({
+    const entry = relevance.byModule.get(acc.slug);
+    const resolved = resolveManifestRelevance(entry?.relevance);
+    if (resolved.drop) {
+      droppedNames.push({ module: acc.slug, section: entry?.section ?? '' });
+      continue;
+    }
+    const base: ManifestModule = {
       glob: `modules/${acc.slug}/src/**/*.{ts,tsx}`,
       label: acc.slug,
       patterns: Array.from(acc.patternsById.values()).sort((a, b) =>
         a.id < b.id ? -1 : a.id > b.id ? 1 : 0,
       ),
-    });
+    };
+    modules.push(
+      resolved.annotation === undefined
+        ? base
+        : { ...base, relevance: resolved.annotation },
+    );
   }
   // Sort by member-count desc, then alphabetically (clone-only modules tie at 0).
   modules.sort((a, b) => {
@@ -182,7 +269,19 @@ export function deriveModules(args: {
     if (aCount !== bCount) return bCount - aCount;
     return a.glob < b.glob ? -1 : a.glob > b.glob ? 1 : 0;
   });
-  return modules;
+  const warnings: string[] = [];
+  if (droppedNames.length > 0) {
+    droppedNames.sort((a, b) => (a.module < b.module ? -1 : a.module > b.module ? 1 : 0));
+    const renderEach = droppedNames
+      .map(({ module, section }) =>
+        section.length > 0 ? `${module} (excluded by "${section}")` : module,
+      )
+      .join(', ');
+    warnings.push(
+      `PRD scope sections excluded ${droppedNames.length} module(s) from the strawman manifest: ${renderEach}.`,
+    );
+  }
+  return { modules, warnings };
 }
 
 /** v1: single placeholder scenario (schema requires minItems:1); operator curates. */

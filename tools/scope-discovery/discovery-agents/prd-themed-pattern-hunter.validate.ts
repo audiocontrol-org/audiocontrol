@@ -17,6 +17,7 @@
  */
 
 import { tokenizePrd, type TermRank } from './prd-themed-pattern-hunter.js';
+import { RELEVANCE_SCENARIOS } from './prd-themed-pattern-hunter.relevance-scenarios.js';
 import { errorMessage } from '../util/typeguards.js';
 
 interface ScenarioResult {
@@ -147,10 +148,19 @@ function scenarioHarnessTeeth(): ScenarioResult {
 }
 
 async function main(): Promise<number> {
-  const scenarios = [scenarioUrlComponentsStripped, scenarioHarnessTeeth];
+  const tokenizerScenarios = [scenarioUrlComponentsStripped, scenarioHarnessTeeth];
   const results: ScenarioResult[] = [];
-  for (const scenario of scenarios) {
+  for (const scenario of tokenizerScenarios) {
     const r = scenario();
+    results.push(r);
+    const marker = r.passed ? 'PASS' : 'FAIL';
+    process.stdout.write(`  ${marker}  ${r.name} — ${r.detail}\n`);
+  }
+  // AUDIT-20260524-11 — PRD-scope-based module relevance scenarios.
+  // Each entry returns a {name, passed, detail} shape compatible with
+  // ScenarioResult; sync results pass through await unchanged.
+  for (const scenario of RELEVANCE_SCENARIOS) {
+    const r = await scenario();
     results.push(r);
     const marker = r.passed ? 'PASS' : 'FAIL';
     process.stdout.write(`  ${marker}  ${r.name} — ${r.detail}\n`);

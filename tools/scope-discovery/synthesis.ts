@@ -152,10 +152,20 @@ export async function synthesize(input: SynthesisInput): Promise<SynthesisOutput
     kind === 'ui' || kind === 'hybrid'
       ? deriveRoutes(partitioned.ui, scenarioId)
       : undefined;
-  const modules =
+  // AUDIT-20260524-11 — `deriveModules` now consumes the PRD-themed
+  // findings to honor the PRD's `## In Scope` / `## Out of Scope`
+  // sections (dropping excluded modules + annotating low-relevance
+  // ones). The returned `warnings` get folded into the synthesis-level
+  // warning list so the operator sees which modules were pruned.
+  const moduleResult =
     kind === 'code' || kind === 'hybrid'
-      ? deriveModules({ astFindings: partitioned.ast, cloneFindings: partitioned.clones })
+      ? deriveModules({
+          astFindings: partitioned.ast,
+          cloneFindings: partitioned.clones,
+          prdThemedFindings: partitioned.themes,
+        })
       : undefined;
+  const modules = moduleResult?.modules;
   const themesList = deriveThemes(partitioned.themes);
   // Empty themes is a real "no signal" outcome — either no PrdThemedFindings
   // was passed in, or the prd-themed-pattern-hunter agent ran but matched
@@ -173,6 +183,9 @@ export async function synthesize(input: SynthesisInput): Promise<SynthesisOutput
     );
   }
   const warnings: string[] = [];
+  if (moduleResult !== undefined) {
+    for (const w of moduleResult.warnings) warnings.push(w);
+  }
   const refDocsResult = await deriveReferenceDocs({
     prdPath: input.prdPath,
     prdRelPath: input.prdRelPath,
