@@ -121,7 +121,7 @@ function printHelp(): void {
       'Options:',
       '  --registry <path>  Override registry path (default: docs/scope-discovery/adopter-manifests.yaml)',
       '  --root <path>      Override scan root (default: repo root cwd)',
-      '  --quiet            Suppress per-holdout output; print summary only',
+      '  --quiet            Print summary only when zero real holdouts; if real holdouts exist, full report still prints (operator needs to act)',
       '  --json             Emit findings as JSON',
       '  --help, -h         Show this help',
       '',

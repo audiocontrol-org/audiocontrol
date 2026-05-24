@@ -7,13 +7,17 @@
  * Two output modes:
  *   - reportText: human-readable; per-manifest header (expected /
  *     exception / actual / holdout counts) followed by one block per
- *     holdout naming the file + the suggested replacement message;
- *     respects `--quiet`. When the registry is empty / no holdouts,
- *     returns a one-line acknowledgement so a dev running
- *     `make check-adopters` always sees a non-empty stdout line.
+ *     holdout naming the file + the suggested replacement message.
  *     Tracked holdouts (AUDIT-06) appear in a separate gate-passing
  *     section so the operator can see "work-to-do" counts without the
- *     gate blocking.
+ *     gate blocking. AUDIT-13: the summary line is ALWAYS the LAST
+ *     non-empty line of output so operators can `tail -1` reliably,
+ *     and always matches the regex
+ *       /^adopter-manifests: \d+ holdouts? across \d+ manifest/.
+ *     `--quiet` behavior (AUDIT-13): when ZERO real holdouts exist,
+ *     emit only the summary line (no per-manifest details, no tracked-
+ *     holdouts section); when ANY real holdouts exist, emit the full
+ *     report so the operator sees what to act on.
  *   - reportJson: structured stable-shape JSON for downstream tooling.
  */
 
@@ -59,76 +63,103 @@ export interface ReportOptions {
 
 export function reportText(result: ScanResult, opts: ReportOptions): string {
   if (result.entriesScanned === 0) {
-    return opts.quiet ? '' : 'adopter-manifests: registry empty; nothing to scan.\n';
+    // Empty-registry summary still matches the regex `^adopter-manifests:
+    // \d+ holdouts? across \d+ manifest` so `tail -1` consumers don't
+    // have to special-case this path.
+    return 'adopter-manifests: 0 holdouts across 0 manifest(s).\n';
   }
   const totalHoldouts = result.manifests.reduce((n, m) => n + m.holdouts.length, 0);
   const totalTracked = result.manifests.reduce(
     (n, m) => n + m.trackedHoldoutFiles.length,
     0,
   );
-  if (totalHoldouts === 0 && totalTracked === 0) {
-    return opts.quiet
-      ? ''
-      : `adopter-manifests: ${result.entriesScanned} entries scanned across ${result.filesVisited} files; 0 holdouts.\n`;
-  }
-  if (opts.quiet) {
-    if (totalHoldouts === 0) {
-      return `adopter-manifests: 0 holdout(s); ${totalTracked} tracked holdout(s).\n`;
-    }
-    return `adopter-manifests: ${totalHoldouts} holdout(s); ${totalTracked} tracked holdout(s).\n`;
+  const summary = buildSummaryLine(result.entriesScanned, totalHoldouts, totalTracked);
+  // AUDIT-13: `--quiet` only suppresses details when there are ZERO real
+  // holdouts. If any real holdouts exist, the operator needs the full
+  // report to act, so we emit details regardless of `--quiet`.
+  if (opts.quiet && totalHoldouts === 0) {
+    return summary + '\n';
   }
   const lines: string[] = [];
   for (const manifest of result.manifests) {
-    // `entry.from` is a non-empty array (AUDIT-08). The primary path
-    // (index 0) is the current canonical; any additional paths are
-    // transitional aliases listed in `(... | ...)` form so the
-    // operator sees both when a primitive is mid-promotion.
-    const fromDisplay = renderFromList(manifest.entry.from);
-    const head =
-      `manifest=${manifest.entry.id} primitive=${fromDisplay} ` +
-      `(introduced in ${manifest.entry.introducedIn})`;
-    lines.push(head);
-    lines.push(
-      `  expected adopters: ${manifest.expectedFiles.length} file(s) match glob(s)`,
-    );
-    lines.push(`  exceptions: ${manifest.exemptedFiles.length} file(s) excluded`);
-    lines.push(`  actual adopters: ${manifest.actualAdopters.length} file(s) import ${fromDisplay}`);
-    lines.push(`  holdouts: ${manifest.holdouts.length} file(s)`);
-    if (manifest.trackedHoldoutFiles.length > 0) {
-      lines.push(
-        `  tracked holdouts (gate-passing, pending follow-up): ${manifest.trackedHoldoutFiles.length} file(s)`,
-      );
-      for (const th of manifest.trackedHoldoutFiles) {
-        const reasonFirstLine = th.reason.trim().split('\n')[0] ?? '';
-        lines.push(`    ${th.path} — issue: ${th.issue} — reason: ${reasonFirstLine}`);
-      }
-    }
-    if (manifest.holdouts.length === 0) {
-      lines.push('');
-      continue;
-    }
-    for (const path of manifest.holdouts) {
-      lines.push(`    ${path} — no import matches ${renderFromList(manifest.entry.from)}`);
-    }
-    lines.push('  suggested replacement:');
-    const indented = manifest.entry.message
-      .trim()
-      .split('\n')
-      .map((l) => `    ${l}`)
-      .join('\n');
-    lines.push(indented);
-    lines.push('');
+    appendManifestBlock(lines, manifest);
   }
-  if (totalHoldouts > 0) {
-    lines.push(
-      `adopter-manifests: ${totalHoldouts} holdout(s) across ${result.entriesScanned} manifest(s).`,
-    );
-  } else {
-    lines.push(
-      `adopter-manifests: 0 holdouts across ${result.entriesScanned} manifest(s); ${totalTracked} tracked holdout(s) reported separately.`,
-    );
-  }
+  // AUDIT-13: summary is ALWAYS the last non-empty line of output so
+  // `make check-adopters | tail -1` reliably returns the finding count.
+  lines.push(summary);
   return lines.join('\n') + '\n';
+}
+
+/**
+ * Single source of truth for the summary line. The shape always matches
+ * the regex `/^adopter-manifests: \d+ holdouts? across \d+ manifest/`
+ * (AUDIT-13) so `tail -1` consumers can parse the count without
+ * special-casing the "zero" / "tracked-holdouts-present" branches. The
+ * tracked-holdouts tail appears only when there is at least one.
+ */
+function buildSummaryLine(
+  entriesScanned: number,
+  totalHoldouts: number,
+  totalTracked: number,
+): string {
+  const holdoutWord = totalHoldouts === 1 ? 'holdout' : 'holdouts';
+  const manifestWord = entriesScanned === 1 ? 'manifest' : 'manifest(s)';
+  const base = `adopter-manifests: ${totalHoldouts} ${holdoutWord} across ${entriesScanned} ${manifestWord}.`;
+  if (totalTracked === 0) return base;
+  const trackedWord = totalTracked === 1 ? 'tracked holdout' : 'tracked holdout(s)';
+  return `${base} ${totalTracked} ${trackedWord} reported separately.`;
+}
+
+/**
+ * Append one manifest's detail block (head + counts + tracked-holdouts
+ * + per-holdout lines + suggested-replacement message) to the running
+ * lines array. Kept as a single function so the per-manifest layout
+ * lives in one place; both real-holdout and tracked-only branches push
+ * a trailing empty line so the next manifest's block is visually
+ * separated.
+ */
+function appendManifestBlock(lines: string[], manifest: ManifestResult): void {
+  // `entry.from` is a non-empty array (AUDIT-08). The primary path
+  // (index 0) is the current canonical; any additional paths are
+  // transitional aliases listed in `(... | ...)` form so the operator
+  // sees both when a primitive is mid-promotion.
+  const fromDisplay = renderFromList(manifest.entry.from);
+  lines.push(
+    `manifest=${manifest.entry.id} primitive=${fromDisplay} ` +
+      `(introduced in ${manifest.entry.introducedIn})`,
+  );
+  lines.push(
+    `  expected adopters: ${manifest.expectedFiles.length} file(s) match glob(s)`,
+  );
+  lines.push(`  exceptions: ${manifest.exemptedFiles.length} file(s) excluded`);
+  lines.push(
+    `  actual adopters: ${manifest.actualAdopters.length} file(s) import ${fromDisplay}`,
+  );
+  lines.push(`  holdouts: ${manifest.holdouts.length} file(s)`);
+  if (manifest.trackedHoldoutFiles.length > 0) {
+    lines.push(
+      `  tracked holdouts (gate-passing, pending follow-up): ${manifest.trackedHoldoutFiles.length} file(s)`,
+    );
+    for (const th of manifest.trackedHoldoutFiles) {
+      const reasonFirstLine = th.reason.trim().split('\n')[0] ?? '';
+      lines.push(`    ${th.path} — issue: ${th.issue} — reason: ${reasonFirstLine}`);
+    }
+  }
+  if (manifest.holdouts.length === 0) {
+    lines.push('');
+    return;
+  }
+  for (const path of manifest.holdouts) {
+    lines.push(`    ${path} — no import matches ${fromDisplay}`);
+  }
+  lines.push('  suggested replacement:');
+  const indented = manifest.entry.message
+    .trim()
+    .split('\n')
+    .map((l) => `    ${l}`)
+    .join('\n');
+  lines.push(indented);
+  lines.push('');
 }
 
 export function reportJson(result: ScanResult): string {
